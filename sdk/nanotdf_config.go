@@ -17,7 +17,6 @@ import (
 // ============================================================================================================
 
 type NanoTDFConfig struct {
-	eccMode      ocrypto.ECCMode // TODO: need to move out of ocrypto
 	keyPair      ocrypto.ECKeyPair
 	kasPublicKey *ecdh.PublicKey
 	attributes   []string
@@ -25,7 +24,7 @@ type NanoTDFConfig struct {
 	kasURL       ResourceLocator
 	sigCfg       signatureConfig
 	policy       policyInfo
-	binding      bindingCfg
+	bindCfg      bindingConfig
 }
 
 type NanoTDFOption func(*NanoTDFConfig) error
@@ -52,8 +51,12 @@ jm8jeB4u2MJfBjDzgD3EHSHlJKE3fb7m/T3Lko9tyPP6S1c7Nt6oXn6FHw==
 	c := &NanoTDFConfig{
 		keyPair:      newECKeyPair,
 		kasPublicKey: kasPublicKey,
-		eccMode:      ocrypto.ECCModeSecp256r1,
-		cipher:       kCipher96AuthTagSize,
+		bindCfg: bindingConfig{
+			useEcdsaBinding: false,
+			padding:         0,
+			eccMode:         ocrypto.ECCModeSecp256r1,
+		},
+		cipher: kCipher96AuthTagSize,
 		sigCfg: signatureConfig{
 			hasSignature:  false,
 			signatureMode: ocrypto.ECCModeSecp256r1,

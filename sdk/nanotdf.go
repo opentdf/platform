@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"io"
+	"log/slog"
 )
 
 // ============================================================================================================
@@ -50,10 +51,17 @@ const (
   | Ephemeral Key      | 33                  | 67                  |
   ********************************* Header*************************/
 
+type NTDFHeader struct {
+	kasURL       ResourceLocator
+	bindCfg      bindingConfig
+	sigCfg       signatureConfig
+	ephemeralKey []byte
+}
+
 type NanoTDFHeader struct {
 	magicNumber          [len(kNanoTDFMagicStringAndVersion)]byte
 	kasURL               ResourceLocator
-	binding              bindingCfg
+	bindCfg              bindingConfig
 	sigCfg               signatureConfig
 	policy               policyInfo
 	policyObjectAsStr    []byte
@@ -100,10 +108,12 @@ func (ep embeddedPolicy) writeEmbeddedPolicy(writer io.Writer) error {
 	if _, err := writer.Write(buf); err != nil {
 		return err
 	}
+	slog.Info("writeEmbeddedPolicy", slog.Uint64("policy length", uint64(ep.lengthBody)))
 
 	if _, err := writer.Write(ep.body); err != nil {
 		return err
 	}
+	slog.Info("writeEmbeddedPolicy", slog.Uint64("policy body", uint64(len(ep.body))))
 
 	return nil
 }
@@ -135,10 +145,10 @@ func (rp *remotePolicy) getLength() uint16 {
 
 // ============================================================================================================
 
-type bindingCfg struct {
+type bindingConfig struct {
 	useEcdsaBinding bool
 	padding         uint8
-	bindingBody     ocrypto.ECCMode
+	eccMode         ocrypto.ECCMode
 }
 
 type signatureConfig struct {
@@ -185,21 +195,21 @@ const (
 // bit 5-7 - eccMode
 // bit 1-4 - padding
 
-// deserializeBindingCfg - read byte of binding config into bindingCfg struct
-func deserializeBindingCfg(b byte) bindingCfg {
-	cfg := bindingCfg{}
+// deserializeBindingCfg - read byte of binding config into bindingConfig struct
+func deserializeBindingCfg(b byte) bindingConfig {
+	cfg := bindingConfig{}
 	// Shift to low nybble test low bit
 	cfg.useEcdsaBinding = (b >> 7 & 0b00000001) == 1 //nolint:gomnd // better readability as literal
 	// ignore padding
 	cfg.padding = 0
 	// shift to low nybble and use low 3 bits
-	cfg.bindingBody = ocrypto.ECCMode((b >> 4) & 0b00000111) //nolint:gomnd // better readability as literal
+	cfg.eccMode = ocrypto.ECCMode((b >> 4) & 0b00000111) //nolint:gomnd // better readability as literal
 
 	return cfg
 }
 
 // serializeBindingCfg - take info from bindingConfig struct and encode as single byte
-func serializeBindingCfg(bindCfg bindingCfg) byte {
+func serializeBindingCfg(bindCfg bindingConfig) byte {
 	var bindSerial byte = 0x00
 
 	// Set high bit if ecdsa binding is enabled
@@ -207,7 +217,7 @@ func serializeBindingCfg(bindCfg bindingCfg) byte {
 		bindSerial |= 0b10000000
 	}
 	// Mask value to low 3 bytes and shift to high nybble
-	bindSerial |= (byte(bindCfg.bindingBody) & 0b00000111) << 4 //nolint:gomnd // better readability as literal
+	bindSerial |= (byte(bindCfg.eccMode) & 0b00000111) << 4 //nolint:gomnd // better readability as literal
 
 	return bindSerial
 }
@@ -394,7 +404,7 @@ func NewNanoTDFHeader(config NanoTDFConfig) (*NanoTDFHeader, error) {
 	h.magicNumber = [3]byte([]byte(kNanoTDFMagicStringAndVersion))
 	h.keyPair = config.keyPair
 	h.kasURL = config.kasURL
-	h.binding = config.binding
+	h.bindCfg = config.bindCfg
 	h.sigCfg = config.sigCfg
 	h.policy = config.policy
 
@@ -409,45 +419,6 @@ func NewNanoTDFHeader(config NanoTDFConfig) (*NanoTDFHeader, error) {
 	//}
 
 	return &h, nil
-}
-
-// ReadNanoTDFHeader - decode input into a NanoTDFHeader object
-func (header *NanoTDFHeader) ReadNanoTDFHeader(reader io.Reader) error {
-
-	if err := binary.Read(reader, binary.BigEndian, &header.magicNumber); err != nil {
-		return errors.Join(ErrNanoTDFHeaderRead, err)
-	}
-
-	if err := header.kasURL.readResourceLocator(reader); err != nil {
-		return errors.Join(ErrNanoTDFHeaderRead, err)
-	}
-
-	var bindingByte uint8
-	if err := binary.Read(reader, binary.BigEndian, &bindingByte); err != nil {
-		return errors.Join(ErrNanoTDFHeaderRead, err)
-	}
-	header.binding = deserializeBindingCfg(bindingByte)
-
-	var signatureByte uint8
-	if err := binary.Read(reader, binary.BigEndian, &signatureByte); err != nil {
-		return errors.Join(ErrNanoTDFHeaderRead, err)
-	}
-	header.sigCfg = deserializeSignatureCfg(signatureByte)
-
-	if err := header.policy.body.readPolicyBody(reader); err != nil {
-		return errors.Join(ErrNanoTDFHeaderRead, err)
-	}
-
-	header.policy.binding = &eccSignature{}
-	header.policy.binding.value = make([]byte, kEccSignatureLength)
-	if err := binary.Read(reader, binary.BigEndian, &header.policy.binding.value); err != nil {
-		return errors.Join(ErrNanoTDFHeaderRead, err)
-	}
-
-	//var err error
-	//header.EphemeralPublicKey, err = readEphemeralPublicKey(reader, header.binding.bindingBody)
-
-	return nil
 }
 
 func createHeader(header *NanoTDFHeader, config *NanoTDFConfig) error {
@@ -489,7 +460,7 @@ func writeHeader(header *NanoTDFHeader, writer io.Writer) error {
 		return err
 	}
 
-	bindingByte := serializeBindingCfg(header.binding)
+	bindingByte := serializeBindingCfg(header.bindCfg)
 	if err = binary.Write(writer, binary.BigEndian, bindingByte); err != nil {
 		return err
 	}
@@ -800,6 +771,7 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 		return nil, 0, err
 	}
 	totalBytes += uint32(l)
+	slog.Info("writeNanoTDFHeader", slog.Uint64("magic number", uint64(len(kNanoTDFMagicStringAndVersion))))
 
 	// Write the kas url
 	err = config.kasURL.writeResourceLocator(writer)
@@ -807,20 +779,21 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 		return nil, 0, err
 	}
 	totalBytes += uint32(config.kasURL.getLength())
+	slog.Info("writeNanoTDFHeader", slog.Uint64("resource locator number", uint64(config.kasURL.getLength())))
 
 	// Write ECC And Binding Mode
-	l, err = writer.Write([]byte{byte(config.eccMode)})
+	l, err = writer.Write([]byte{serializeBindingCfg(config.bindCfg)})
 	if err != nil {
 		return nil, 0, err
 	}
-	totalBytes += 1 // TODO: size of
+	totalBytes += uint32(l)
 
 	// Write Payload and Sig Mode
 	l, err = writer.Write([]byte{serializeSignatureCfg(config.sigCfg)})
 	if err != nil {
 		return nil, 0, err
 	}
-	totalBytes += 1 // TODO: size of
+	totalBytes += uint32(l)
 
 	// Write policy - (Policy Mode, Policy length, Policy cipherText, Policy binding)
 	config.policy.body.mode = policyTypeEmbeddedPolicyEncrypted
@@ -828,7 +801,7 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	if err != nil {
 		return nil, 0, err
 	}
-	totalBytes += 1 // TODO: size of
+	totalBytes += uint32(l)
 
 	policyObj, err := createPolicyObject(config.attributes)
 	if err != nil {
@@ -859,7 +832,7 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	if err != nil {
 		return nil, 0, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
 	}
-	
+
 	tagSize, err := SizeOfAuthTagForCipher(config.sigCfg.cipher)
 	if err != nil {
 		return nil, 0, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
@@ -880,7 +853,8 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 		return nil, 0, fmt.Errorf("writeEmbeddedPolicy failed:%w", err)
 	}
 
-	totalBytes += uint32(embeddedP.lengthBody) + uint32(len(embeddedP.body))
+	// size of uint16
+	totalBytes += 2 + uint32(len(embeddedP.body))
 
 	digest := ocrypto.CalculateSHA256(cipherText)
 	binding := digest[len(digest)-kNanoTDFGMACLength:]
@@ -890,7 +864,7 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	}
 	totalBytes += uint32(l)
 
-	ephemeralPublicKeyKey, _ := ocrypto.CompressedECPublicKey(config.eccMode, config.keyPair.PrivateKey.PublicKey)
+	ephemeralPublicKeyKey, _ := ocrypto.CompressedECPublicKey(config.bindCfg.eccMode, config.keyPair.PrivateKey.PublicKey)
 	if err != nil {
 		return nil, 0, fmt.Errorf("ocrypto.CompressedECPublicKey failed:%w", err)
 	}
@@ -899,9 +873,107 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	if err != nil {
 		return nil, 0, err
 	}
-	totalBytes += uint32(len(ephemeralPublicKeyKey))
+	totalBytes += uint32(l)
 
 	return key, totalBytes, nil
+}
+
+func NewNanoTDFHeaderFromReader(reader io.Reader) (NTDFHeader, uint32, error) {
+
+	header := NTDFHeader{}
+	var size uint32 = 0
+
+	magicNumber := make([]byte, 3)
+	l, err := reader.Read(magicNumber)
+	if err != nil {
+		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
+	}
+	size += uint32(l)
+
+	if string(magicNumber) != kNanoTDFMagicStringAndVersion {
+		return header, 0, fmt.Errorf("Not a valid nano tdf")
+	}
+
+	// read resource locator
+	resource, err := NewResourceLocatorFromReader(reader)
+	if err != nil {
+		return header, 0, fmt.Errorf("NewResourceLocatorFromReader failed :%w", err)
+	}
+	size += uint32(resource.getLength())
+	header.kasURL = *resource
+
+	slog.Info("NewNanoTDFHeaderFromReader", slog.Uint64("resource locator", uint64(resource.getLength())))
+
+	// read ECC and Binding Mode
+	oneBytes := make([]byte, 1)
+	l, err = reader.Read(oneBytes)
+	if err != nil {
+		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
+	}
+	size += uint32(l)
+	header.bindCfg = deserializeBindingCfg(oneBytes[0])
+
+	// check  ephemeral ECC Params Enum
+	if header.bindCfg.eccMode != ocrypto.ECCModeSecp256r1 {
+		return header, 0, fmt.Errorf("current implementation of nano tdf only support secp256r1 curve")
+	}
+
+	// read  Payload and Sig Mode
+	l, err = reader.Read(oneBytes)
+	if err != nil {
+		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
+	}
+	size += uint32(l)
+	header.sigCfg = deserializeSignatureCfg(oneBytes[0])
+
+	// Read policy type
+	l, err = reader.Read(oneBytes)
+	if err != nil {
+		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
+	}
+	size += uint32(l)
+
+	if oneBytes[0] != uint8(policyTypeEmbeddedPolicyEncrypted) {
+		return header, 0, fmt.Errorf(" current implementation only support embedded policy type")
+	}
+
+	// read policy length
+	twoBytes := make([]byte, 2)
+	l, err = reader.Read(twoBytes)
+	if err != nil {
+		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
+	}
+	size += uint32(l)
+	policyLength := binary.BigEndian.Uint16(twoBytes)
+	slog.Info("NewNanoTDFHeaderFromReader", slog.Uint64("policyLength", uint64(policyLength)))
+
+	// read policy body
+	policyBody := make([]byte, policyLength)
+	l, err = reader.Read(policyBody)
+	if err != nil {
+		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
+	}
+	size += uint32(l)
+
+	// read policy binding
+	policyBinding := make([]byte, kNanoTDFGMACLength)
+	l, err = reader.Read(policyBinding)
+	if err != nil {
+		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
+	}
+	size += uint32(l)
+
+	// read ephemeral Key
+	ephemeralKey := make([]byte, 33)
+	l, err = reader.Read(ephemeralKey)
+	if err != nil {
+		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
+	}
+	size += uint32(l)
+
+	slog.Info("NewNanoTDFHeaderFromReader", slog.Uint64("header size", uint64(size)))
+
+	return header, size, nil
 }
 
 //func (s SDK) CreateNanoTDF(writer io.Writer, reader io.ReadSeeker, config NanoTDFConfig) error {
@@ -924,6 +996,8 @@ func CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFConfig) (ui
 	if err != nil {
 		return 0, fmt.Errorf("writeNanoTDFHeader failed:%w", err)
 	}
+
+	slog.Info("CreateNanoTDF", slog.Uint64("Header", uint64(totalSize)))
 
 	aesGcm, err := ocrypto.NewAESGcm(key)
 	if err != nil {
@@ -956,6 +1030,8 @@ func CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFConfig) (ui
 	}
 	totalSize += uint32(l)
 
+	slog.Info("CreateNanoTDF", slog.Uint64("payloadLength", uint64(len(cipherDataWithoutPadding))))
+
 	// write cipher data
 	l, err = writer.Write(cipherDataWithoutPadding)
 	if err != nil {
@@ -967,21 +1043,19 @@ func CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFConfig) (ui
 }
 
 func ReadNanoTDF(writer io.Writer, reader io.Reader) (int32, error) {
-	nanoTDFBuf := bytes.Buffer{}
-	size, err := nanoTDFBuf.ReadFrom(reader)
+
+	_, _, err := NewNanoTDFHeaderFromReader(reader)
 	if err != nil {
 		return 0, err
 	}
 
-	if size > kMaxEncryptedNTDFSize {
-		return 0, errors.New("exceeds max size for nano tdf")
-	}
-
-	var resultHeader NanoTDFHeader
-	err = resultHeader.ReadNanoTDFHeader(reader)
+	payloadLengthBuf := make([]byte, 4)
+	_, err = reader.Read(payloadLengthBuf[1:])
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
 	}
+	payloadLength := binary.BigEndian.Uint32(payloadLengthBuf)
+	slog.Info("ReadNanoTDF", slog.Uint64("payloadLength", uint64(payloadLength)))
 
 	//headerSize := resultHeader.getLength()
 	//encodedHeader := ocrypto.Base64Encode(nanoTDFBuf.Bytes()[:headerSize])

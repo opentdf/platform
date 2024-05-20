@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.3](https://github.com/opentdf/platform/compare/protocol/go/v0.2.2...protocol/go/v0.2.3) (2024-05-17)
+
+
+### Features
+
+* **authz:** Handle jwts as entity chains in decision requests ([#759](https://github.com/opentdf/platform/issues/759)) ([65612e0](https://github.com/opentdf/platform/commit/65612e08b418eb17c9576903c002685daed21ec1))
+
+
+### Bug Fixes
+
+* **policy:** make resource-mappings update patch instead of put in RESTful gateway ([#824](https://github.com/opentdf/platform/issues/824)) ([1878bb5](https://github.com/opentdf/platform/commit/1878bb55fb17419487e6c8add6d363469e364923)), closes [#313](https://github.com/opentdf/platform/issues/313)
+
 ## [0.2.2](https://github.com/opentdf/platform/compare/protocol/go/v0.2.1...protocol/go/v0.2.2) (2024-05-13)
 
 

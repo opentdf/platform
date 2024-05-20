@@ -881,6 +881,40 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InMultiple() {
 	s.True(foundMappedSubjectConditionSet1)
 }
 
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DeactivatedValueNotReturned() {
+	// create a new subject mapping with a deactivated attribute value
+	fixtureAttrVal := s.f.GetAttributeValueKey("deactivated.io/attr/deactivated_attr/value/deactivated_value")
+	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
+	aTransmit := fixtureActions[Transmit]
+
+	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              fixtureAttrVal.ID,
+		Actions:                       []*policy.Action{aTransmit},
+		ExistingSubjectConditionSetId: fixtureScs.ID,
+	}
+	sm, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
+	s.Require().NoError(err)
+	s.NotNil(sm)
+
+	// call GetMatchedSubjectMappings with the expected subject properties to match the new subject mapping
+	props := []*policy.SubjectProperty{
+		{
+			ExternalSelectorValue: fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue,
+			ExternalValue:         fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues[0],
+		},
+	}
+	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
+	s.Require().NoError(err)
+	s.NotZero(smList)
+
+	// verify the list contains only active values and our deactivated value was not found as a match
+	for _, sm := range smList {
+		s.NotEqual(sm.GetAttributeValue().GetValue(), fixtureAttrVal.Value)
+		s.NotEqual(sm.GetAttributeValue().GetId(), fixtureAttrVal.ID)
+		s.True(sm.GetAttributeValue().GetActive().GetValue())
+	}
+}
+
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInMultiple() {
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_not_in")
 	externalSelectorValue := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue

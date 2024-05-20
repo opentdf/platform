@@ -35,6 +35,7 @@ tmp-gen/
 /sdkjava/target
 /serviceapp
 /service/opentdf
+service/rttests/*.tdf
 coverage.out
 coverage.lcov
 

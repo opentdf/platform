@@ -259,7 +259,7 @@ func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 	s.Require().NoError(err)
 	s.NotNil(deactivatedVal)
 
-	// get attribute and ensure order stays consistent
+	// get attribute and ensure order stays consistent with all present
 	gotAttr, err = s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
 	s.Require().NoError(err)
 	s.NotNil(gotAttr)
@@ -270,7 +270,7 @@ func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 	s.Equal(values[3], gotAttr.GetValues()[3].GetValue())
 	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, gotAttr.GetRule())
 
-	// get attribute by value fqn and ensure the order of the values is preserved
+	// get attribute by value fqn and ensure the order of the values is preserved with the deactivated not returned
 	fqns := []string{fmt.Sprintf("https://%s/attr/%s/value/%s", gotAttr.GetNamespace().GetName(), createdAttr.GetName(), gotAttr.GetValues()[0].GetValue())}
 	req := &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: fqns,
@@ -283,11 +283,11 @@ func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 	s.NotNil(resp)
 	s.Len(resp, 1)
 	gotVals := resp[fqns[0]].GetAttribute().GetValues()
-	s.Len(gotVals, 4)
+	s.Len(gotVals, 3)
+	// the value that was originally second and deactivated should not have been returned
 	s.Equal(values[0], gotVals[0].GetValue())
-	s.Equal(values[1], gotVals[1].GetValue())
-	s.Equal(values[2], gotVals[2].GetValue())
-	s.Equal(values[3], gotVals[3].GetValue())
+	s.Equal(values[2], gotVals[1].GetValue())
+	s.Equal(values[3], gotVals[2].GetValue())
 }
 
 func (s *AttributesSuite) Test_GetAttribute() {
@@ -318,7 +318,7 @@ func (s *AttributesSuite) Test_GetAttribute_WithInvalidIdFails() {
 }
 
 func (s *AttributesSuite) Test_GetAttribute_Deactivated_Succeeds() {
-	deactivated := s.f.GetAttributeKey("deactivated.io/attr/attr1")
+	deactivated := s.f.GetAttributeKey("deactivated.io/attr/deactivated_attr")
 	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, deactivated.ID)
 	s.Require().NoError(err)
 	s.NotNil(gotAttr)

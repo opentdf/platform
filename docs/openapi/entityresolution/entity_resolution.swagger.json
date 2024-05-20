@@ -16,6 +16,38 @@
     "application/json"
   ],
   "paths": {
+    "/entityresolution/entitychain": {
+      "post": {
+        "operationId": "EntityResolutionService_CreateEntityChainFromJwt",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/entityresolutionCreateEntityChainFromJwtResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/entityresolutionCreateEntityChainFromJwtRequest"
+            }
+          }
+        ],
+        "tags": [
+          "EntityResolutionService"
+        ]
+      }
+    },
     "/entityresolution/resolve": {
       "post": {
         "operationId": "EntityResolutionService_ResolveEntities",
@@ -66,7 +98,7 @@
         "remoteClaimsUrl": {
           "type": "string"
         },
-        "jwt": {
+        "uuid": {
           "type": "string"
         },
         "claims": {
@@ -81,6 +113,23 @@
       },
       "title": "PE (Person Entity) or NPE (Non-Person Entity)"
     },
+    "authorizationEntityChain": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ephemeral id for tracking between request and response"
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authorizationEntity"
+          }
+        }
+      },
+      "title": "A set of related PE and NPE"
+    },
     "authorizationEntityCustom": {
       "type": "object",
       "properties": {
@@ -89,6 +138,45 @@
         }
       },
       "title": "Entity type for custom entities beyond the standard types"
+    },
+    "authorizationToken": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ephemeral id for tracking between request and response"
+        },
+        "jwt": {
+          "type": "string",
+          "title": "the token"
+        }
+      }
+    },
+    "entityresolutionCreateEntityChainFromJwtRequest": {
+      "type": "object",
+      "properties": {
+        "tokens": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authorizationToken"
+          }
+        }
+      },
+      "title": "Example: Get Entity chains for tokens aaaaaa and bbbbbb\n{\n\"tokens\": [\n\"aaaaaaa\",\n\"bbbbbbbb\"\n]\n}"
+    },
+    "entityresolutionCreateEntityChainFromJwtResponse": {
+      "type": "object",
+      "properties": {
+        "entityChains": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authorizationEntityChain"
+          }
+        }
+      },
+      "title": "Example: Return the entity chains from the provided tokens\n{\n\"entity_chains\": [\n{\n\"id\": \"tok1\",\n\"entities\": [\n{\n\"clientId\": \"client1\"\n}\n]\n},\n{\n\"id\": \"tok2\",\n\"entities\": [\n{\n\"userName\": \"alice\",\n\"clientId\": \"client2\"\n}\n]\n}\n]\n}"
     },
     "entityresolutionEntityRepresentation": {
       "type": "object",

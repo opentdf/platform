@@ -62,10 +62,60 @@ message EntityNotFoundError {
 }
 
 
+/*
+   Example: Get Entity chains for tokens aaaaaa and bbbbbb
+   {
+     "tokens": [
+       "aaaaaaa",
+       "bbbbbbbb"
+     ]
+   }
+
+*/
+message CreateEntityChainFromJwtRequest {
+    repeated authorization.Token tokens = 1;
+}
+
+/*
+   Example: Return the entity chains from the provided tokens
+   {
+     "entity_chains": [
+    {
+      "id": "tok1",
+      "entities": [
+        {
+          "clientId": "client1"
+        }
+      ]
+    },
+    {
+      "id": "tok2",
+      "entities": [
+        {
+          "userName": "alice",
+          "clientId": "client2"
+        }
+      ]
+    }
+  ]
+   }
+
+*/
+message CreateEntityChainFromJwtResponse {
+  repeated authorization.EntityChain entity_chains = 1;
+}
+
+
 service EntityResolutionService {
   rpc ResolveEntities(ResolveEntitiesRequest) returns (ResolveEntitiesResponse) {
     option (google.api.http) = {
         post: "/entityresolution/resolve"
+        body: "*";
+    };
+  }
+  rpc CreateEntityChainFromJwt(CreateEntityChainFromJwtRequest) returns (CreateEntityChainFromJwtResponse) {
+    option (google.api.http) = {
+        post: "/entityresolution/entitychain"
         body: "*";
     };
   }

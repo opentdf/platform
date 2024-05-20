@@ -57,10 +57,6 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 			EntityId:           "e1",
 			AttributeValueFqns: []string{mockFqn1},
 		},
-		{
-			EntityId:           "e999",
-			AttributeValueFqns: []string{mockFqn1},
-		},
 	}}
 	attrDef := policy.Attribute{
 		Name: mockAttrName,
@@ -116,6 +112,16 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.GetDecisionResponses()[0].GetDecision())
 
 	// run again with two attribute values throughout
+	entitlementsResponse = authorization.GetEntitlementsResponse{Entitlements: []*authorization.EntityEntitlements{
+		{
+			EntityId:           "e1",
+			AttributeValueFqns: []string{mockFqn1},
+		},
+		{
+			EntityId:           "e999",
+			AttributeValueFqns: []string{mockFqn1},
+		},
+	}}
 	// set the request
 	req = authorization.GetDecisionsRequest{DecisionRequests: []*authorization.DecisionRequest{
 		{

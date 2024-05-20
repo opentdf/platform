@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
@@ -38,6 +39,7 @@ type SDK struct {
 	SubjectMapping          subjectmapping.SubjectMappingServiceClient
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
 	Authorization           authorization.AuthorizationServiceClient
+	EntityResoution         entityresolution.EntityResolutionServiceClient
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
@@ -70,9 +72,10 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 
 	var (
-		defaultConn       *grpc.ClientConn
-		policyConn        *grpc.ClientConn
-		authorizationConn *grpc.ClientConn
+		defaultConn          *grpc.ClientConn
+		policyConn           *grpc.ClientConn
+		authorizationConn    *grpc.ClientConn
+		entityresolutionConn *grpc.ClientConn
 	)
 
 	if platformEndpoint != "" {
@@ -95,6 +98,12 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		authorizationConn = defaultConn
 	}
 
+	if cfg.entityresolutionConn != nil {
+		entityresolutionConn = cfg.entityresolutionConn
+	} else {
+		entityresolutionConn = defaultConn
+	}
+
 	return &SDK{
 		conn:                    defaultConn,
 		dialOptions:             dialOptions,
@@ -105,6 +114,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(policyConn),
 		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(policyConn),
 		Authorization:           authorization.NewAuthorizationServiceClient(authorizationConn),
+		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(entityresolutionConn),
 	}, nil
 }
 

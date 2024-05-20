@@ -376,7 +376,10 @@ func TestNanoTDFCreate(t *testing.T) {
 		t.Fatalf("Cannot create config: %v", err)
 	}
 
-	nanoTDFCOnfig.SetKasUrl("https://kas.virtru.com")
+	err = nanoTDFCOnfig.SetKasUrl("https://kas.virtru.com")
+	if err != nil {
+		t.Fatalf("Cannot set KasUrl: %v", err)
+	}
 	nanoTDFCOnfig.SetAttributes(attributes)
 
 	inBuf := bytes.NewBufferString(plaintText)
@@ -385,8 +388,50 @@ func TestNanoTDFCreate(t *testing.T) {
 
 	tdfSize, err := CreateNanoTDF(io.Writer(&tdfBuf), bufReader, *nanoTDFCOnfig)
 	if err != nil {
-		t.Fatalf("Cannot set policy url: %v", err)
+		t.Fatalf("Error from CreateNanoTDF: %v", err)
 	}
 
 	println(tdfSize)
+}
+
+func TestNanoTDFRoundTrip(t *testing.T) {
+	plaintText := "virtru!!"
+	attributes := []string{
+		"https://example.com/attr/Classification/value/S",
+		"https://example.com/attr/Classification/value/X",
+	}
+
+	nanoTDFConfig, err := NewNanoTDFConfig()
+	if err != nil {
+		t.Fatalf("Cannot create config: %v", err)
+	}
+
+	err = nanoTDFConfig.SetKasUrl("https://kas.virtru.com")
+	if err != nil {
+		t.Fatalf("Cannot set KasUrl: %v", err)
+	}
+	nanoTDFConfig.SetAttributes(attributes)
+
+	inBuf := bytes.NewBufferString(plaintText)
+	bufReader := bytes.NewReader(inBuf.Bytes())
+	tdfBuf := bytes.Buffer{}
+	var tdfWriter = io.Writer(&tdfBuf)
+
+	_, err = CreateNanoTDF(tdfWriter, bufReader, *nanoTDFConfig)
+	if err != nil {
+		t.Fatalf("Error from CreateNanoTDF: %v", err)
+	}
+
+	outPlaintextBuf := bytes.NewBuffer(make([]byte, 128))
+	outPlaintextBufWriter := io.Writer(outPlaintextBuf)
+
+	tdfSizeRead, err := ReadNanoTDF(outPlaintextBufWriter, io.Reader(&tdfBuf))
+	if err != nil {
+		t.Fatalf("Error from ReadNanoTDF: %v", err)
+	}
+
+	if tdfSizeRead != int32(len(plaintText)) {
+		t.Fatalf("Incorrect number of bytes read")
+	}
+
 }

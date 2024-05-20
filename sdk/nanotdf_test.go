@@ -19,7 +19,7 @@ import (
 //	}
 //
 //	// Compare binding field
-//	if a.binding.useEcdsaBinding != b.binding.useEcdsaBinding || a.binding.padding != b.binding.padding || a.binding.bindingBody != b.binding.bindingBody {
+//	if a.binding.useEcdsaBinding != b.binding.useEcdsaBinding || a.binding.padding != b.binding.padding || a.binding.eccMode != b.binding.eccMode {
 //		return false
 //	}
 //
@@ -90,10 +90,10 @@ import (
 //			protocol: urlProtocolHTTPS,
 //			body:     "kas.virtru.com",
 //		},
-//		binding: bindingCfg{
+//		binding: bindingConfig{
 //			useEcdsaBinding: true,
 //			padding:         0,
-//			bindingBody:     ocrypto.ECCModeSecp256r1,
+//			eccMode:     ocrypto.ECCModeSecp256r1,
 //		},
 //		sigCfg: signatureConfig{
 //			hasSignature:  true,
@@ -365,7 +365,7 @@ func TestInt24(t *testing.T) {
 }
 
 func TestNanoTDFCreate(t *testing.T) {
-	plaintText := "virtru!!"
+
 	attributes := []string{
 		"https://example.com/attr/Classification/value/S",
 		"https://example.com/attr/Classification/value/X",
@@ -379,14 +379,47 @@ func TestNanoTDFCreate(t *testing.T) {
 	nanoTDFCOnfig.SetKasUrl("https://kas.virtru.com")
 	nanoTDFCOnfig.SetAttributes(attributes)
 
+	// max nanoTDF size = 16777215
+	b := [...]uint32{0, 16, 1234, 99999, 837434, 16777181}
+	for _, size := range b {
+		inBuf := bytes.NewBuffer(make([]byte, size))
+
+		bufReader := bytes.NewReader(inBuf.Bytes())
+		tdfBuf := bytes.Buffer{}
+
+		tdfSize, err := CreateNanoTDF(io.Writer(&tdfBuf), bufReader, *nanoTDFCOnfig)
+		if err != nil {
+			t.Fatalf("CreateNanoTDF failed: %v", err)
+		}
+		println(tdfSize)
+
+		inBuf = bytes.NewBuffer(tdfBuf.Bytes())
+		nanoTDFReader := bytes.NewReader(inBuf.Bytes())
+		outBuf := bytes.Buffer{}
+		dataSize, err := ReadNanoTDF(io.Writer(&outBuf), nanoTDFReader)
+		if err != nil {
+			t.Fatalf("ReadNanoTDF failed: %v", err)
+		}
+		println(dataSize)
+	}
+
+	plaintText := "virtru!!"
 	inBuf := bytes.NewBufferString(plaintText)
 	bufReader := bytes.NewReader(inBuf.Bytes())
 	tdfBuf := bytes.Buffer{}
 
 	tdfSize, err := CreateNanoTDF(io.Writer(&tdfBuf), bufReader, *nanoTDFCOnfig)
 	if err != nil {
-		t.Fatalf("Cannot set policy url: %v", err)
+		t.Fatalf("CreateNanoTDF failed: %v", err)
 	}
-
 	println(tdfSize)
+
+	inBuf = bytes.NewBuffer(tdfBuf.Bytes())
+	nanoTDFReader := bytes.NewReader(inBuf.Bytes())
+	outBuf := bytes.Buffer{}
+	dataSize, err := ReadNanoTDF(io.Writer(&outBuf), nanoTDFReader)
+	if err != nil {
+		t.Fatalf("ReadNanoTDF failed: %v", err)
+	}
+	println(dataSize)
 }

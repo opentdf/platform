@@ -303,13 +303,19 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 
 	if err != nil {
 		p.Logger.WarnContext(ctx, "Could not perform access decision!", "err", err)
-		p.Logger.AuditRewrap(ctx, *auditPolicy, false)
+		err := p.Logger.Audit.RewrapFailure(ctx, *auditPolicy)
+		if err != nil {
+			p.Logger.ErrorContext(ctx, "failed to audit rewrap failure", "err", err)
+		}
 		return nil, err403("forbidden")
 	}
 
 	if !access {
 		p.Logger.WarnContext(ctx, "Access Denied; no reason given")
-		p.Logger.AuditRewrap(ctx, *auditPolicy, false)
+		err := p.Logger.Audit.RewrapFailure(ctx, *auditPolicy)
+		if err != nil {
+			p.Logger.ErrorContext(ctx, "failed to audit rewrap failure", "err", err)
+		}
 		return nil, err403("forbidden")
 	}
 
@@ -321,11 +327,17 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 	rewrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "rewrap: ocrypto.AsymEncryption.encrypt failed", "err", err, "clientPublicKey", &body.ClientPublicKey)
-		p.Logger.AuditRewrap(ctx, *auditPolicy, false)
+		err = p.Logger.Audit.RewrapFailure(ctx, *auditPolicy)
+		if err != nil {
+			p.Logger.ErrorContext(ctx, "failed to audit rewrap failure", "err", err)
+		}
 		return nil, err400("bad key for rewrap")
 	}
 
-	p.Logger.AuditRewrap(ctx, *auditPolicy, true)
+	err = p.Logger.Audit.RewrapSuccess(ctx, *auditPolicy)
+	if err != nil {
+		p.Logger.ErrorContext(ctx, "failed to audit rewrap success", "err", err)
+	}
 	return &kaspb.RewrapResponse{
 		EntityWrappedKey: rewrappedKey,
 		SessionPublicKey: "",

@@ -1,8 +1,6 @@
 package logger
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -11,6 +9,7 @@ import (
 
 type Logger struct {
 	*slog.Logger
+	Audit *AuditLogger
 }
 
 type Config struct {
@@ -78,24 +77,27 @@ func NewLogger(config Config) (*Logger, error) {
 	default:
 		return nil, fmt.Errorf("invalid logger type: %s", config.Type)
 	}
+
+	// Audit logger will always log at the AUDIT level and be JSON formatted
+	auditLoggerHandler := slog.NewJSONHandler(w, &slog.HandlerOptions{
+		Level:       LevelAudit,
+		ReplaceAttr: customReplaceAttributes,
+	})
+
+	auditLoggerBase := slog.New(auditLoggerHandler)
+	auditLogger := CreateAuditLogger(*auditLoggerBase)
+
 	return &Logger{
 		Logger: logger,
+		Audit:  auditLogger,
 	}, nil
 }
 
 func (l *Logger) With(key string, value string) *Logger {
 	return &Logger{
 		Logger: l.Logger.With(key, value),
+		Audit:  l.Audit.With(key, value),
 	}
-}
-
-func (l *Logger) AuditRewrap(ctx context.Context, policy PolicyLog, isSuccess bool) {
-	auditLog := CreateRewrapAuditLog(policy, isSuccess)
-	auditLogJSONString, err := json.Marshal(auditLog)
-	if err != nil {
-		l.Logger.ErrorContext(ctx, "failed to marshal audit log", slog.String("error", err.Error()))
-	}
-	l.Logger.Log(ctx, LevelAudit, string(auditLogJSONString))
 }
 
 func getWriter(config Config) (io.Writer, error) {

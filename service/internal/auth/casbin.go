@@ -214,6 +214,7 @@ func (e Enforcer) Enforce(token jwt.Token, resource, action string) (bool, error
 func (e Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
 	slog.Debug("building subject from token", slog.Any("token", t))
 	roles := e.extractRolesFromToken(t)
+	slog.Debug("roles from token", slog.Any("roles", roles))
 
 	return casbinSubject{
 		Subject: t.Subject(),
@@ -275,7 +276,6 @@ func (e Enforcer) extractRolesFromToken(t jwt.Token) []string {
 	filtered := []string{}
 	for _, r := range roles {
 		for m, rr := range roleMap {
-			slog.Debug("checking role", slog.String("role", r), slog.String("map", m))
 			// if the role is in the map, add the mapped role to the filtered list
 			if r == rr {
 				filtered = append(filtered, m)

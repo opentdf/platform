@@ -153,7 +153,9 @@ func normalizeURL(o string, u *url.URL) string {
 // verifyTokenHandler is a http handler that verifies the token
 func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		slog.Debug("mux handling", slog.String("path", r.URL.Path))
 		if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(r.URL.Path)) {
+			slog.Debug("public route match", slog.String("path", r.URL.Path))
 			handler.ServeHTTP(w, r)
 			return
 		}
@@ -519,7 +521,6 @@ func (a Authentication) isPublicRoute(path string) func(string) bool {
 			slog.Warn("error matching route", slog.String("route", route), slog.String("path", path), slog.String("error", err.Error()))
 			return false
 		}
-		slog.Debug("matching route", slog.String("route", route), slog.String("path", path), slog.Bool("matched", matched))
 		return matched
 	}
 }

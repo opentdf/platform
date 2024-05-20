@@ -30,7 +30,7 @@ server:
   auth:
     enabled: true
     enforceDPoP: false
-    audience: "http://localhost:8080"
+    audience: http://localhost:8080
     issuer: http://localhost:8888/auth/realms/opentdf
     policy:
       ## Default policy for all requests
@@ -51,14 +51,18 @@ server:
         # org-admin - organization admin
         # admin - admin
         # readonly - readonly
-        # user - rewrap
         # unknown - unknown role or no role
+
+        ## Resources
+        # Resources beginning with / are HTTP routes. Generally, this does not matter, but when HTTP routes don't map well
+        # with the protos this may become important.
+
         ## Actions
         # read - read the resource
         # write - write to the resource
         # delete - delete the resource
         # unsafe - unsafe actions
-        
+
         # Role: user
         p,	role:user,		kas.AccessService/PublicKey,						read,			allow
         p,	role:user,		kas.AccessService/Rewrap, 			        write,		allow
@@ -84,7 +88,7 @@ server:
         p,	role:org-admin,		/key-access-servers*,										*,			allow
         p,	role:org-admin,		/kas.AccessService/LegacyPublicKey,			*,			allow
         # add unsafe actions to the org-admin role
-        
+
         # Role: Admin
         ## gRPC routes
         p,	role:admin,		policy.*,																		*,			allow
@@ -101,7 +105,7 @@ server:
         p,	role:admin,		/resource-mappings*,												*,			allow
         p,	role:admin,		/key-access-servers*,												*,			allow
         p,	role:admin,		/kas.AccessService/LegacyPublicKey,					*,			allow
-        
+
         ## Role: Readonly
         ## gRPC routes
         p,	role:readonly,		policy.*,																read,			allow
@@ -118,17 +122,21 @@ server:
         p,	role:readonly,		/resource-mappings*,										read,			allow
         p,	role:readonly,		/key-access-servers*,										read,			allow
         p,	role:readonly,		/kas.AccessService/LegacyPublicKey,			read,			allow
-        
+
         # Public routes
         ## gRPC routes
         p,	role:unknown,			kas.AccessService/LegacyPublicKey,			other,	allow
         p,	role:unknown,			kas.AccessService/PublicKey,						other,	allow
+        ## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)
+        p,	role:unknown,			entityresolution.EntityResolutionService.ResolveEntities,										write,		allow
         ## HTTP routes
         p,	role:unknown,			/health,																read,		allow
         p,	role:unknown,			/kas/v2/kas_public_key,									read,		allow
         p,	role:unknown,			/kas/kas_public_key,										read,		allow
         p,	role:unknown,			/entityresolution/resolve,							write,	allow
 
+        ## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)
+        p,	role:unknown,			/entityresolution/resolve,										write,		allow
       ## Custom model (see https://casbin.org/docs/syntax-for-models/)
       model: #|
       #  [request_definition]

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto"
-	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/hmac"
 	"crypto/rsa"
@@ -273,11 +272,15 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 
 	if body.Algorithm == "ec:secp256r1" {
 		rsp, err := p.nanoTDFRewrap(body)
-		slog.ErrorContext(ctx, "rewrap nano", "err", err)
+		if err != nil {
+			slog.ErrorContext(ctx, "rewrap nano", "err", err)
+		}
 		return rsp, err
 	}
 	rsp, err := p.tdf3Rewrap(ctx, body, entityInfo)
-	slog.ErrorContext(ctx, "rewrap tdf3", "err", err)
+	if err != nil {
+		slog.ErrorContext(ctx, "rewrap tdf3", "err", err)
+	}
 	return rsp, err
 }
 
@@ -375,7 +378,7 @@ func (p *Provider) nanoTDFRewrap(body *RequestBody) (*kaspb.RewrapResponse, erro
 		return nil, fmt.Errorf("failed to generate session key: %w", err)
 	}
 
-	cipherText, err := wrapKeyAES(sessionKey, symmetricKey)
+	wrappedKey, err := wrapKeyAES(sessionKey, symmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt key: %w", err)
 	}
@@ -383,26 +386,17 @@ func (p *Provider) nanoTDFRewrap(body *RequestBody) (*kaspb.RewrapResponse, erro
 	if len(publicKeyHandle) < 2 {
 		return nil, fmt.Errorf("incorrect length of public key handle")
 	}
-	// see explanation why Public Key starts at position 2
-	//https://github.com/wqx0532/hyperledger-fabric-gm-1/blob/master/bccsp/pkcs11/pkcs11.go#L480
-	pubGoKey, err := ecdh.P256().NewPublicKey(publicKeyHandle[2:])
-	if err != nil {
-		return nil, fmt.Errorf("failed to make public key") // Handle error, e.g., invalid public key format
-	}
+	// HSM pkcs11 see explanation why Public Key starts at position 2
+	// https://github.com/wqx0532/hyperledger-fabric-gm-1/blob/master/bccsp/pkcs11/pkcs11.go#L480
+	//pubGoKey, err := ecdh.P256().NewPublicKey(publicKeyHandle)
+	//if err != nil {
+	//	return nil, fmt.Errorf("failed to make public key") // Handle error, e.g., invalid public key format
+	//}
 
-	pbk, err := x509.MarshalPKIXPublicKey(pubGoKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert public Key to PKIX")
-	}
-
-	pemBlock := &pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: pbk,
-	}
-	pemString := string(pem.EncodeToMemory(pemBlock))
+	pemString := string(publicKeyHandle)
 
 	return &kaspb.RewrapResponse{
-		EntityWrappedKey: cipherText,
+		EntityWrappedKey: wrappedKey,
 		SessionPublicKey: pemString,
 		SchemaVersion:    schemaVersion,
 	}, nil

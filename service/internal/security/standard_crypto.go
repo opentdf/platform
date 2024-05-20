@@ -3,7 +3,9 @@ package security
 import (
 	"crypto"
 	"crypto/ecdh"
-	"crypto/rand"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
@@ -38,7 +40,7 @@ type StandardRSACrypto struct {
 
 type StandardECCrypto struct {
 	Identifier       string
-	ecPrivateKey     *ecdh.PrivateKey
+	ecPrivateKey     any
 	ecCertificatePEM string
 }
 
@@ -83,21 +85,17 @@ func NewStandardCrypto(cfg StandardConfig) (*StandardCrypto, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to EC private key file: %w", err)
 		}
-		// this returns a certificate not a PUBLIC KEY
-		publicPemData, err := os.ReadFile(kasInfo.PublicKeyPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to EC public key file: %w", err)
-		}
 		block, _ := pem.Decode(privatePemData)
 		if block == nil {
 			return nil, errors.New("failed to decode PEM block containing private key")
 		}
 		ecPrivateKey, err := ocrypto.ECPrivateKeyFromPem(privatePemData)
+		if err != nil {
+			return nil, fmt.Errorf("ocrypto.ECPrivateKeyFromPem failed: %w", err)
+		}
 		standardCrypto.ecKeys = append(standardCrypto.ecKeys, StandardECCrypto{
-			Identifier: id,
-			//ecPublicKey:      ecdsaPublicKey,
-			ecPrivateKey:     ecPrivateKey,
-			ecCertificatePEM: string(publicPemData),
+			Identifier:   id,
+			ecPrivateKey: ecPrivateKey,
 		})
 	}
 
@@ -134,20 +132,40 @@ func (s StandardCrypto) ECCertificate(identifier string) (string, error) {
 	return "", fmt.Errorf("no EC Key found with the given identifier: %s", identifier)
 }
 
-func (s StandardCrypto) ECPublicKey(string) (string, error) {
+func (s StandardCrypto) ECPublicKey(identifier string) (string, error) {
 	if len(s.ecKeys) == 0 {
 		return "", ErrCertNotFound
 	}
-	ecKey := s.ecKeys[0]
-	publicKeyBytes, err := x509.MarshalPKIXPublicKey(ecKey.ecPrivateKey.PublicKey)
-	if err != nil {
-		return "", fmt.Errorf(string(ErrPublicKeyMarshal)+": %w", err)
+	for _, ecKey := range s.ecKeys {
+		slog.Debug("ecKey", "id", ecKey.Identifier)
+		if ecKey.Identifier != identifier {
+			continue
+		}
+
+		var ecPublicKey crypto.PublicKey
+		switch k := ecKey.ecPrivateKey.(type) {
+		case *ecdh.PrivateKey:
+			ecPublicKey = k.Public()
+		case *ecdsa.PrivateKey:
+			ecPublicKey = k.Public()
+		}
+
+		derBytes, err := x509.MarshalPKIXPublicKey(ecPublicKey)
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal public key: %s %w", identifier, err)
+		}
+
+		pemBlock := &pem.Block{
+			Type:  "PUBLIC KEY",
+			Bytes: derBytes,
+		}
+		pemBytes := pem.EncodeToMemory(pemBlock)
+		if pemBytes == nil {
+			return "", fmt.Errorf("failed to encode public key to PEM: %s", identifier)
+		}
+		return string(pemBytes), nil
 	}
-	pemEncoded := pem.EncodeToMemory(&pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: publicKeyBytes,
-	})
-	return string(pemEncoded), nil
+	return "", fmt.Errorf("no EC Key found with the given identifier: %s", identifier)
 }
 
 func (s StandardCrypto) RSADecrypt(_ crypto.Hash, keyID string, _ string, ciphertext []byte) ([]byte, error) {
@@ -187,18 +205,46 @@ func (s StandardCrypto) RSAPublicKeyAsJSON(keyID string) (string, error) {
 	return string(jsonPublicKey), nil
 }
 
-func (s StandardCrypto) GenerateNanoTDFSymmetricKey(ephemeralPublicKey []byte) ([]byte, error) {
-	keyLengthBytes := len(ephemeralPublicKey)
-	if keyLengthBytes <= 0 {
-		return nil, errors.New("key length should be positive")
+func (s StandardCrypto) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte) ([]byte, error) {
+	ephemeralECDSAPublicKey, err := ConvertEphemeralPublicKeyBytesToECDSAPublicKey(ephemeralPublicKeyBytes)
+	if err != nil {
+		return nil, err
 	}
-	key := make([]byte, keyLengthBytes)
-	_, err := rand.Read(key)
 
+	derBytes, err := x509.MarshalPKIXPublicKey(ephemeralECDSAPublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal ECDSA public key: %w", err)
+	}
+
+	pemBlock := &pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: derBytes,
+	}
+
+	ephemeralECDSAPublicKeyPEM := pem.EncodeToMemory(pemBlock)
+	var ecKeyPair ocrypto.ECKeyPair
+	switch k := s.ecKeys[0].ecPrivateKey.(type) {
+	case *ecdsa.PrivateKey:
+		ecKeyPair = ocrypto.ECKeyPair{
+			PrivateKey: k,
+		}
+	case *ecdh.PrivateKey:
+		ecKeyPair = ocrypto.ECKeyPair{
+			ECDHPrivateKey: k,
+		}
+	}
+	ecPrivateKeyPem, err := ecKeyPair.PrivateKeyInPemFormat()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get EC private key in PEM format: %w", err)
+	}
+	sharedKey, err := ocrypto.ComputeECDHKey([]byte(ecPrivateKeyPem), ephemeralECDSAPublicKeyPEM)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
 	}
-	return key, nil
+	return sharedKey, nil
 }
 
 func (s StandardCrypto) GenerateEphemeralKasKeys() (any, []byte, error) {
@@ -220,25 +266,46 @@ func (s StandardCrypto) GenerateEphemeralKasKeys() (any, []byte, error) {
 	return privKey, pubKeyBytes, nil
 }
 
-func (s StandardCrypto) GenerateNanoTDFSessionKey(privateKey any, ephemeralPublicKey []byte) ([]byte, error) {
-
-	// Convert privateKey to ECDH
-	ecdhPrivateKey, ok := privateKey.(*ecdh.PrivateKey)
-	if !ok {
-		return nil, fmt.Errorf("expected privateKey of type '*ecdh.PrivateKey', got: %T", privateKey)
-	}
-
-	ecdhPublicKey, err := ocrypto.ECPubKeyFromPem(ephemeralPublicKey)
+func (s StandardCrypto) GenerateNanoTDFSessionKey(privateKey any, ephemeralPublicKeyPEM []byte) ([]byte, error) {
+	ecdhKey, err := ocrypto.ConvertToECDHPrivateKey(privateKey)
 	if err != nil {
-		return nil, fmt.Errorf("ocrypto.ECPubKeyFromPem failed: %w", err)
+		return nil, fmt.Errorf("GenerateNanoTDFSessionKey failed to ConvertToECDHPrivateKey: %w", err)
 	}
-
-	sharedKey, err := ecdhPrivateKey.ECDH(ecdhPublicKey)
+	ephemeralECDSAPublicKey, err := ocrypto.ECPubKeyFromPem(ephemeralPublicKeyPEM)
 	if err != nil {
-		return nil, fmt.Errorf("there was a problem deriving a shared ECDH key: %w", err)
+		return nil, fmt.Errorf("GenerateNanoTDFSessionKey failed to ocrypto.ECPubKeyFromPem: %w", err)
 	}
+	ephemeralECDHPublicKey, err := ocrypto.ConvertToECDHPublicKey(ephemeralECDSAPublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("GenerateNanoTDFSessionKey failed to ocrypto.ConvertToECDHPublicKey: %w", err)
+	}
+	secret, err := ecdhKey.ECDH(ephemeralECDHPublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("GenerateNanoTDFSessionKey failed to ecdhKey.ECDH: %w", err)
+	}
+	// salt
+	digest := sha256.New()
+	digest.Write([]byte("L1L"))
+	sessionKey, err := ocrypto.CalculateHKDF(digest.Sum(nil), secret, 32)
+	if err != nil {
+		return nil, fmt.Errorf("GenerateNanoTDFSessionKey deriving a shared ECDH key: %w", err)
+	}
+	return sessionKey, nil
+}
 
-	return sharedKey, nil
+func ConvertEphemeralPublicKeyBytesToECDSAPublicKey(ephemeralPublicKeyBytes []byte) (*ecdsa.PublicKey, error) {
+	// Converting ephemeralPublicKey byte array to *big.Int
+	x, y := elliptic.UnmarshalCompressed(elliptic.P256(), ephemeralPublicKeyBytes)
+	if x == nil {
+		return nil, errors.New("failed to unmarshal compressed public key")
+	}
+	// Creating ecdsa.PublicKey from *big.Int
+	ephemeralECDSAPublicKey := &ecdsa.PublicKey{
+		Curve: elliptic.P256(),
+		X:     x,
+		Y:     y,
+	}
+	return ephemeralECDSAPublicKey, nil
 }
 
 func (s StandardCrypto) Close() {

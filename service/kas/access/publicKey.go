@@ -34,7 +34,7 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, in *kaspb.LegacyPublicKe
 		if !ok {
 			return nil, errors.New("services.kas.eccertid is not a string")
 		}
-		pem, err = p.CryptoProvider.ECCertificate(ecCertID)
+		pem, err = p.CryptoProvider.ECPublicKey(ecCertID)
 		if err != nil {
 			slog.ErrorContext(ctx, "CryptoProvider.ECPublicKey failed", "err", err)
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))

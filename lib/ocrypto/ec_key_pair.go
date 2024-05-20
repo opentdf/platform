@@ -26,7 +26,8 @@ const (
 )
 
 type ECKeyPair struct {
-	PrivateKey *ecdsa.PrivateKey
+	PrivateKey     *ecdsa.PrivateKey
+	ECDHPrivateKey *ecdh.PrivateKey
 }
 
 // NewECKeyPair Generates an EC key pair of the given bit size.
@@ -57,13 +58,21 @@ func NewECKeyPair(mode ECCMode) (ECKeyPair, error) {
 
 // PrivateKeyInPemFormat Returns private key in pem format.
 func (keyPair ECKeyPair) PrivateKeyInPemFormat() (string, error) {
-	if keyPair.PrivateKey == nil {
+	if keyPair.PrivateKey == nil && keyPair.ECDHPrivateKey == nil {
 		return "", errors.New("failed to generate PEM formatted private key")
 	}
-
-	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(keyPair.PrivateKey)
-	if err != nil {
-		return "", fmt.Errorf("x509.MarshalPKCS8PrivateKey failed: %w", err)
+	var privateKeyBytes []byte
+	var err error
+	if keyPair.PrivateKey != nil {
+		privateKeyBytes, err = x509.MarshalPKCS8PrivateKey(keyPair.PrivateKey)
+		if err != nil {
+			return "", fmt.Errorf("x509.MarshalPKCS8PrivateKey failed: %w", err)
+		}
+	} else {
+		privateKeyBytes, err = x509.MarshalPKCS8PrivateKey(keyPair.ECDHPrivateKey)
+		if err != nil {
+			return "", fmt.Errorf("x509.MarshalPKCS8PrivateKey failed: %w", err)
+		}
 	}
 
 	privateKeyPem := pem.EncodeToMemory(
@@ -196,6 +205,8 @@ func ECPrivateKeyFromPem(privateECKeyInPem []byte) (*ecdh.PrivateKey, error) {
 	switch privateKey := priv.(type) {
 	case *ecdsa.PrivateKey:
 		return ConvertToECDHPrivateKey(privateKey)
+	case *ecdh.PrivateKey:
+		return privateKey, nil
 	default:
 		break
 	}

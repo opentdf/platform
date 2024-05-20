@@ -89,15 +89,18 @@ func (rl ResourceLocator) getUrl() (string, error) {
 
 // writeResourceLocator - writes the content of the resource locator to the supplied writer
 func (rl ResourceLocator) writeResourceLocator(writer io.Writer) error {
-	if err := binary.Write(writer, binary.BigEndian, byte(rl.protocol)); err != nil {
+	if _, err := writer.Write([]byte{byte(rl.protocol)}); err != nil {
 		return err
 	}
-	if err := binary.Write(writer, binary.BigEndian, uint8(len(rl.body))); err != nil {
+
+	if _, err := writer.Write([]byte{byte(len(rl.body))}); err != nil {
 		return err
 	}
-	if err := binary.Write(writer, binary.BigEndian, []byte(rl.body)); err != nil { // TODO - normalize to lowercase?
+
+	if _, err := writer.Write([]byte(rl.body)); err != nil {
 		return err
 	}
+
 	return nil
 }
 

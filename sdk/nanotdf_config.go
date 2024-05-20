@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"crypto/ecdh"
 	"fmt"
 	"github.com/opentdf/platform/lib/ocrypto"
 )
@@ -16,58 +17,48 @@ import (
 // ============================================================================================================
 
 type NanoTDFConfig struct {
-	datasetMode        bool
-	maxKeyIterations   uint64
-	keyIterationCount  uint64
-	eccMode            ocrypto.ECCMode
-	keyPair            ocrypto.ECKeyPair
-	privateKey         string
-	publicKey          string
-	attributes         []string
-	bufferSize         uint64
-	signerPrivateKey   []byte
-	cipher             cipherMode
-	kasURL             ResourceLocator
-	mKasPublicKey      string
-	mDefaultSalt       []byte
-	EphemeralPublicKey eccKey
-	sigCfg             signatureConfig
-	policy             policyInfo
-
-	binding bindingCfg
+	eccMode      ocrypto.ECCMode // TODO: need to move out of ocrypto
+	keyPair      ocrypto.ECKeyPair
+	kasPublicKey *ecdh.PublicKey
+	attributes   []string
+	cipher       cipherMode
+	kasURL       ResourceLocator
+	sigCfg       signatureConfig
+	policy       policyInfo
+	binding      bindingCfg
 }
 
 type NanoTDFOption func(*NanoTDFConfig) error
 
 // NewNanoTDFConfig - Create a new instance of a nanoTDF config
-func NewNanoTDFConfig(opt ...NanoTDFOption) (*NanoTDFConfig, error) {
+func NewNanoTDFConfig() (*NanoTDFConfig, error) {
 	// TODO FIXME - how to pass in mode value and use here before 'c' is initialized?
 	newECKeyPair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
 	}
 
-	publicKeyInPemFormat, err := newECKeyPair.PublicKeyInPemFormat()
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
-	}
+	// TODO: This need come form KAS
+	kasPubKey := `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEhwi1B2OLMxYlVfvgvfgBTJBC9oBv
+jm8jeB4u2MJfBjDzgD3EHSHlJKE3fb7m/T3Lko9tyPP6S1c7Nt6oXn6FHw==
+-----END PUBLIC KEY-----`
 
-	privateKeyInPemFormat, err := newECKeyPair.PrivateKeyInPemFormat()
+	kasPublicKey, err := ocrypto.ECPubKeyFromPem([]byte(kasPubKey))
 	if err != nil {
-		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
+		return nil, fmt.Errorf("ocrypto.ECPubKeyFromPem failed: %w", err)
 	}
 
 	c := &NanoTDFConfig{
-		keyPair:    newECKeyPair,
-		publicKey:  publicKeyInPemFormat,
-		privateKey: privateKeyInPemFormat,
-	}
-
-	for _, o := range opt {
-		err := o(c)
-		if err != nil {
-			return nil, err
-		}
+		keyPair:      newECKeyPair,
+		kasPublicKey: kasPublicKey,
+		eccMode:      ocrypto.ECCModeSecp256r1,
+		cipher:       kCipher96AuthTagSize,
+		sigCfg: signatureConfig{
+			hasSignature:  false,
+			signatureMode: ocrypto.ECCModeSecp256r1,
+			cipher:        cipherModeAes256gcm96Bit,
+		},
 	}
 
 	return c, nil

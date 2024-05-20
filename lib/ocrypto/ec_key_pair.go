@@ -269,6 +269,15 @@ func ComputeECDHKeyFromEC(publicKey *ecdsa.PublicKey, privateKey *ecdsa.PrivateK
 	return sharedKey, nil
 }
 
+func ComputeECDHKeyFromECDHKeys(publicKey *ecdh.PublicKey, privateKey *ecdh.PrivateKey) ([]byte, error) {
+	sharedKey, err := privateKey.ECDH(publicKey)
+	if err != nil {
+		return nil, fmt.Errorf("there was a problem deriving a shared ECDH key: %w", err)
+	}
+
+	return sharedKey, nil
+}
+
 // TODO FIXME
 func GetPEMPublicKeyFromPrivateKey(_ /*key*/ []byte, _ /*mode*/ ECCMode) ecdsa.PublicKey {
 	b := ecdsa.PublicKey{}
@@ -283,4 +292,39 @@ const (
 func ComputeECDSASig(_ /*digest*/ [32]byte, _ /*key*/ []byte) []byte {
 	b := bytes.NewBuffer(make([]byte, 0, kDummyLength))
 	return b.Bytes()
+}
+
+// ECPrivateKeyInPemFormat Returns private key in pem format.
+func ECPrivateKeyInPemFormat(privateKey ecdsa.PrivateKey) (string, error) {
+
+	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	if err != nil {
+		return "", fmt.Errorf("x509.MarshalPKCS8PrivateKey failed: %w", err)
+	}
+
+	privateKeyPem := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "PRIVATE KEY",
+			Bytes: privateKeyBytes,
+		},
+	)
+	return string(privateKeyPem), nil
+}
+
+// ECPublicKeyInPemFormat Returns public key in pem format.
+func ECPublicKeyInPemFormat(publicKey ecdsa.PublicKey) (string, error) {
+
+	publicKeyBytes, err := x509.MarshalPKIXPublicKey(publicKey)
+	if err != nil {
+		return "", fmt.Errorf("x509.MarshalPKIXPublicKey failed: %w", err)
+	}
+
+	publicKeyPem := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "PUBLIC KEY",
+			Bytes: publicKeyBytes,
+		},
+	)
+
+	return string(publicKeyPem), nil
 }

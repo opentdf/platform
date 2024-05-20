@@ -423,14 +423,14 @@ func wrapKeyAES(sessionKey, dek []byte) ([]byte, error) {
 	return cipherText, nil
 }
 
-func transformAuditPolicy(policy *Policy) *logger.PolicyLog {
-	var dataAttributes []logger.SimpleAttribute
+func transformAuditPolicy(policy *Policy) *logger.AuditPolicy {
+	var dataAttributes []logger.AuditPolicySimpleAttribute
 	for _, attr := range policy.Body.DataAttributes {
-		dataAttributes = append(dataAttributes, logger.SimpleAttribute{URI: attr.URI})
+		dataAttributes = append(dataAttributes, logger.AuditPolicySimpleAttribute{URI: attr.URI})
 	}
-	return &logger.PolicyLog{
+	return &logger.AuditPolicy{
 		UUID: policy.UUID,
-		Body: logger.PolicyBody{
+		Body: logger.AuditPolicyBody{
 			DataAttributes: dataAttributes,
 			Dissem:         policy.Body.Dissem,
 		},

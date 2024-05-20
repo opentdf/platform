@@ -931,7 +931,6 @@ func CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFConfig) (in
 }
 
 func ReadNanoTDF(writer io.Writer, reader io.Reader) (int32, error) {
-
 	nanoTDFBuf := bytes.Buffer{}
 	size, err := nanoTDFBuf.ReadFrom(reader)
 	if err != nil {
@@ -948,7 +947,44 @@ func ReadNanoTDF(writer io.Writer, reader io.Reader) (int32, error) {
 		return 0, err
 	}
 
+	headerSize := resultHeader.getLength()
+	encodedHeader := ocrypto.Base64Encode(nanoTDFBuf.Bytes()[:headerSize])
+
 	return 0, nil
+}
+
+type requestBody struct {
+	Algorithm       string    `json:"algorithm,omitempty"`
+	KeyAccess       keyAccess `json:"keyAccess"`
+	ClientPublicKey string    `json:"clientPublicKey"`
+}
+
+type keyAccess struct {
+	Header        string `json:"header"`
+	KeyAccessType string `json:"type"`
+	Url           string `json:"url"`
+	Protocol      string `json:"protocol"`
+}
+
+func nanoTDFRewrap(header string) {
+
+	kAccess := keyAccess{
+		Header:        header,
+		KeyAccessType: "remote",
+		Url:           "kas-url",
+		Protocol:      "kas",
+	}
+
+	rBody := requestBody{
+		Algorithm:       "ec:secp256r1",
+		KeyAccess:       kAccess,
+		ClientPublicKey: "PEM pub key",
+	}
+
+	_, err := json.Marshal(rBody)
+	if err != nil {
+
+	}
 }
 
 func UInt24ToUInt32(b []byte) uint32 {

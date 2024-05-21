@@ -1066,7 +1066,7 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	return totalSize, nil
 }
 
-func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (int32, error) {
+func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error) {
 
 	header, headerSize, err := NewNanoTDFHeaderFromReader(reader)
 	if err != nil {
@@ -1114,10 +1114,41 @@ func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (int32, error) 
 	payloadLength := binary.BigEndian.Uint32(payloadLengthBuf)
 	slog.Info("ReadNanoTDF", slog.Uint64("payloadLength", uint64(payloadLength)))
 
-	//headerSize := resultHeader.getLength()
-	//encodedHeader := ocrypto.Base64Encode(nanoTDFBuf.Bytes()[:headerSize])
+	cipherDate := make([]byte, payloadLength)
+	_, err = reader.Read(cipherDate)
+	if err != nil {
+		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
+	}
 
-	return 0, nil
+	aesGcm, err := ocrypto.NewAESGcm(symmetricKey)
+	if err != nil {
+		return 0, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
+	}
+
+	ivPadding := make([]byte, kIvPadding)
+	iv := cipherDate[:kNanoTDFIvSize]
+	if err != nil {
+		return 0, fmt.Errorf("ocrypto.RandomBytes failed:%w", err)
+	}
+
+	tagSize, err := SizeOfAuthTagForCipher(header.sigCfg.cipher)
+	if err != nil {
+		return 0, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
+	}
+
+	decryptedData, err := aesGcm.DecryptWithIVAndTagSize(append(ivPadding, iv...), cipherDate[kNanoTDFIvSize:], tagSize)
+	if err != nil {
+		return 0, err
+	}
+
+	len, err := writer.Write(decryptedData)
+	if err != nil {
+		return 0, err
+	}
+	//print(payloadLength)
+	//print(string(decryptedData))
+
+	return uint32(len), nil
 }
 
 func getECPublicKey(kasURL string, opts ...grpc.DialOption) (string, error) {

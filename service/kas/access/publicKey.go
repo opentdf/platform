@@ -51,7 +51,7 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, in *kaspb.LegacyPublicKe
 func (p *Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*kaspb.PublicKeyResponse, error) {
 	algorithm := in.GetAlgorithm()
 	if algorithm == algorithmEc256 {
-		ecPublicKeyPem, err := p.CryptoProvider.ECPublicKey("unknown")
+		ecPublicKeyPem, err := p.CryptoProvider.ECPublicKey("123")
 		if err != nil {
 			slog.ErrorContext(ctx, "CryptoProvider.ECPublicKey failed", "err", err)
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))

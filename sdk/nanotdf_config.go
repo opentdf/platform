@@ -3,6 +3,7 @@ package sdk
 import (
 	"crypto/ecdh"
 	"fmt"
+
 	"github.com/opentdf/platform/lib/ocrypto"
 )
 

@@ -1,8 +1,9 @@
 package sdk
 
 import (
-	"github.com/opentdf/platform/lib/ocrypto"
 	"testing"
+
+	"github.com/opentdf/platform/lib/ocrypto"
 )
 
 // TestNanoTDFConfig1 - Create a new config, verify that the config contains valid PEMs for the key pair

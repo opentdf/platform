@@ -23,6 +23,7 @@ attributes := {attribute |
         "method" : "POST",
         "url": input.ers_url,
         "body": ers_request,
+		"tls_insecure_skip_verify": true,
 		"headers": {
 			"Authorization":  concat(" ", ["Bearer", input.auth_token])
 		}

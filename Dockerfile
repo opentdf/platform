@@ -9,7 +9,7 @@ COPY lib/ocrypto lib/ocrypto
 COPY lib/fixtures lib/fixtures
 COPY service/ service/
 COPY examples/ examples/
-COPY go.work go.work.sum ./
+COPY go.work ./
 RUN cd service \
     && go mod download \
     && go mod verify

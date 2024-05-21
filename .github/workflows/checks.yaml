@@ -248,12 +248,14 @@ jobs:
       - run: git diff-files --ignore-submodules
       - name: Check that make proto-generate has run before PR submission; see above for error details
         run: git diff-files --quiet --ignore-submodules
+
   ci:
     needs:
       - buflint
       - go
       - image
       - integration
+      - license
       - pr
     runs-on: ubuntu-latest
     if: always()

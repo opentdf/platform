@@ -62,6 +62,7 @@ func NewRegistration() serviceregistry.Registration {
 					panic("Error casting ersURL to string")
 				}
 			}
+			fmt.Println("ersURL variable after reading config: ", ersURL)
 			val, ok = srp.Config.ExtraProps["clientId"]
 			if ok {
 				clientID, ok = val.(string)

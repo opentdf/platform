@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.3](https://github.com/opentdf/platform/compare/sdk/v0.2.2...sdk/v0.2.3) (2024-05-21)
+
+
+### Features
+
+* **authz:** Handle jwts as entity chains in decision requests ([#759](https://github.com/opentdf/platform/issues/759)) ([65612e0](https://github.com/opentdf/platform/commit/65612e08b418eb17c9576903c002685daed21ec1))
+* **sdk:** Allow setting TDF mime type ([#797](https://github.com/opentdf/platform/issues/797)) ([97926a1](https://github.com/opentdf/platform/commit/97926a1c323f95bbc96b82acce00c1d2bd6eb378))
+
+
+### Bug Fixes
+
+* bump internal versions ([#840](https://github.com/opentdf/platform/issues/840)) ([8f45f18](https://github.com/opentdf/platform/commit/8f45f184eaa2512fd0633c4afaf9f148d415cb74))
+
 ## [0.2.2](https://github.com/opentdf/platform/compare/sdk/v0.2.1...sdk/v0.2.2) (2024-05-15)
 
 

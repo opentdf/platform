@@ -17,8 +17,8 @@ type CryptoProvider interface {
 
 	ECPublicKey(keyID string) (string, error)
 	GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte) ([]byte, error)
-	GenerateEphemeralKasKeys() (PrivateKeyEC, []byte, error)
-	GenerateNanoTDFSessionKey(privateKeyHandle PrivateKeyEC, ephemeralPublicKey []byte) ([]byte, error)
+	GenerateEphemeralKasKeys() (any, []byte, error)
+	GenerateNanoTDFSessionKey(privateKeyHandle any, ephemeralPublicKey []byte) ([]byte, error)
 	Close()
 }
 

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto"
-	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/hmac"
 	"crypto/rsa"
@@ -359,6 +358,8 @@ func (p *Provider) nanoTDFRewrap(body *RequestBody) (*kaspb.RewrapResponse, erro
 		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
 	}
 
+	println(string(ocrypto.Base64Encode(symmetricKey)))
+
 	pub, ok := body.PublicKey.(*ecdsa.PublicKey)
 	if !ok {
 		return nil, fmt.Errorf("failed to extract public key: %w", err)
@@ -372,40 +373,25 @@ func (p *Provider) nanoTDFRewrap(body *RequestBody) (*kaspb.RewrapResponse, erro
 	}
 
 	privateKeyHandle, publicKeyHandle, err := p.CryptoProvider.GenerateEphemeralKasKeys()
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate keypair: %w", err)
 	}
-	sessionKey, err := p.CryptoProvider.GenerateNanoTDFSessionKey(privateKeyHandle, pubKeyBytes)
+	sessionKey, err := p.CryptoProvider.GenerateNanoTDFSessionKey(privateKeyHandle, []byte(body.ClientPublicKey))
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate session key: %w", err)
 	}
+
+	println(string(ocrypto.Base64Encode(sessionKey)))
 
 	cipherText, err := wrapKeyAES(sessionKey, symmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt key: %w", err)
 	}
 
-	// see explanation why Public Key starts at position 2
-	//https://github.com/wqx0532/hyperledger-fabric-gm-1/blob/master/bccsp/pkcs11/pkcs11.go#L480
-	pubGoKey, err := ecdh.P256().NewPublicKey(publicKeyHandle[2:])
-	if err != nil {
-		return nil, fmt.Errorf("failed to make public key") // Handle error, e.g., invalid public key format
-	}
-
-	pbk, err := x509.MarshalPKIXPublicKey(pubGoKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert public Key to PKIX")
-	}
-
-	pemBlock := &pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: pbk,
-	}
-	pemString := string(pem.EncodeToMemory(pemBlock))
-
 	return &kaspb.RewrapResponse{
 		EntityWrappedKey: cipherText,
-		SessionPublicKey: pemString,
+		SessionPublicKey: string(publicKeyHandle),
 		SchemaVersion:    schemaVersion,
 	}, nil
 }

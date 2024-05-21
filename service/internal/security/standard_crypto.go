@@ -237,14 +237,14 @@ func (s StandardCrypto) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []by
 	if err != nil {
 		return nil, fmt.Errorf("failed to get EC private key in PEM format: %w", err)
 	}
-	sharedKey, err := ocrypto.ComputeECDHKey([]byte(ecPrivateKeyPem), ephemeralECDSAPublicKeyPEM)
+	symmetricKey, err := ocrypto.ComputeECDHKey([]byte(ecPrivateKeyPem), ephemeralECDSAPublicKeyPEM)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
 	}
-	return sharedKey, nil
+	return symmetricKey, nil
 }
 
 func (s StandardCrypto) GenerateEphemeralKasKeys() (any, []byte, error) {
@@ -271,26 +271,24 @@ func (s StandardCrypto) GenerateNanoTDFSessionKey(privateKey any, ephemeralPubli
 	if err != nil {
 		return nil, fmt.Errorf("GenerateNanoTDFSessionKey failed to ConvertToECDHPrivateKey: %w", err)
 	}
-	ephemeralECDSAPublicKey, err := ocrypto.ECPubKeyFromPem(ephemeralPublicKeyPEM)
+	ephemeralECDHPublicKey, err := ocrypto.ECPubKeyFromPem(ephemeralPublicKeyPEM)
 	if err != nil {
 		return nil, fmt.Errorf("GenerateNanoTDFSessionKey failed to ocrypto.ECPubKeyFromPem: %w", err)
 	}
-	ephemeralECDHPublicKey, err := ocrypto.ConvertToECDHPublicKey(ephemeralECDSAPublicKey)
-	if err != nil {
-		return nil, fmt.Errorf("GenerateNanoTDFSessionKey failed to ocrypto.ConvertToECDHPublicKey: %w", err)
-	}
-	secret, err := ecdhKey.ECDH(ephemeralECDHPublicKey)
+	// shared secret
+	sessionKey, err := ecdhKey.ECDH(ephemeralECDHPublicKey)
 	if err != nil {
 		return nil, fmt.Errorf("GenerateNanoTDFSessionKey failed to ecdhKey.ECDH: %w", err)
 	}
 	// salt
 	digest := sha256.New()
 	digest.Write([]byte("L1L"))
-	sessionKey, err := ocrypto.CalculateHKDF(digest.Sum(nil), secret, 32)
+	salt := digest.Sum(nil)
+	derivedKey, err := ocrypto.CalculateHKDF(salt, sessionKey, 32)
 	if err != nil {
 		return nil, fmt.Errorf("GenerateNanoTDFSessionKey deriving a shared ECDH key: %w", err)
 	}
-	return sessionKey, nil
+	return derivedKey, nil
 }
 
 func ConvertEphemeralPublicKeyBytesToECDSAPublicKey(ephemeralPublicKeyBytes []byte) (*ecdsa.PublicKey, error) {

@@ -271,7 +271,7 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 	}
 
 	if body.Algorithm == "ec:secp256r1" {
-		rsp, err := p.nanoTDFRewrap(body)
+		rsp, err := p.nanoTDFRewrap(ctx, body)
 		if err != nil {
 			slog.ErrorContext(ctx, "rewrap nano", "err", err)
 		}
@@ -334,15 +334,15 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 	}, nil
 }
 
-func (p *Provider) nanoTDFRewrap(body *RequestBody) (*kaspb.RewrapResponse, error) {
+func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody) (*kaspb.RewrapResponse, error) {
 	headerReader := bytes.NewReader(body.KeyAccess.Header)
 
-	header, err := sdk.ReadNanoTDFHeader(headerReader)
+	nanoTDFHeader, err := sdk.ReadNanoTDFHeader(headerReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
 	}
 
-	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(header.EphemeralPublicKey.Key)
+	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(nanoTDFHeader.EphemeralPublicKey.Key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
 	}
@@ -352,14 +352,7 @@ func (p *Provider) nanoTDFRewrap(body *RequestBody) (*kaspb.RewrapResponse, erro
 		return nil, fmt.Errorf("failed to extract public key: %w", err)
 	}
 
-	// Convert public key to 65-bytes format
-	pubKeyBytes := make([]byte, 1+len(pub.X.Bytes())+len(pub.Y.Bytes()))
-	pubKeyBytes[0] = 0x4 // ID for uncompressed format
-	if copy(pubKeyBytes[1:33], pub.X.Bytes()) != 32 || copy(pubKeyBytes[33:], pub.Y.Bytes()) != 32 {
-		return nil, fmt.Errorf("failed to serialize keypair: %v", pub)
-	}
-
-	privateKeyHandle, publicKeyHandle, err := p.CryptoProvider.GenerateEphemeralKasKeys()
+	ephemeralPrivateKey, ephemeralPublicKeyPEM, err := p.CryptoProvider.GenerateEphemeralKasKeys()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate keypair: %w", err)
 	}
@@ -373,7 +366,7 @@ func (p *Provider) nanoTDFRewrap(body *RequestBody) (*kaspb.RewrapResponse, erro
 		Bytes: pubDER,
 	})
 
-	sessionKey, err := p.CryptoProvider.GenerateNanoTDFSessionKey(privateKeyHandle, pubKeyPEM)
+	sessionKey, err := p.CryptoProvider.GenerateNanoTDFSessionKey(ephemeralPrivateKey, pubKeyPEM)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate session key: %w", err)
 	}
@@ -383,21 +376,14 @@ func (p *Provider) nanoTDFRewrap(body *RequestBody) (*kaspb.RewrapResponse, erro
 		return nil, fmt.Errorf("failed to encrypt key: %w", err)
 	}
 
-	if len(publicKeyHandle) < 2 {
+	if len(ephemeralPublicKeyPEM) < 2 {
 		return nil, fmt.Errorf("incorrect length of public key handle")
 	}
-	// HSM pkcs11 see explanation why Public Key starts at position 2
-	// https://github.com/wqx0532/hyperledger-fabric-gm-1/blob/master/bccsp/pkcs11/pkcs11.go#L480
-	//pubGoKey, err := ecdh.P256().NewPublicKey(publicKeyHandle)
-	//if err != nil {
-	//	return nil, fmt.Errorf("failed to make public key") // Handle error, e.g., invalid public key format
-	//}
-
-	pemString := string(publicKeyHandle)
 
 	return &kaspb.RewrapResponse{
 		EntityWrappedKey: wrappedKey,
-		SessionPublicKey: pemString,
+		// TODO ephemeral key or session key here???
+		SessionPublicKey: string(ephemeralPublicKeyPEM),
 		SchemaVersion:    schemaVersion,
 	}, nil
 }

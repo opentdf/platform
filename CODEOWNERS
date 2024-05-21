@@ -11,6 +11,7 @@
 ## General
 
 .gitignore    @opentdf/maintainers
+go.mod        @opentdf/maintainers
 *.sum         @opentdf/maintainers
 
 ### Documentation

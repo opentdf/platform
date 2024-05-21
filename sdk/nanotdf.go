@@ -2,11 +2,14 @@ package sdk
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/protocol/go/kas"
+	"google.golang.org/grpc"
 	"io"
 	"log/slog"
 )
@@ -823,12 +826,15 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 		return nil, 0, fmt.Errorf("ocrypto.ComputeECDHKeyFromEC failed:%w", err)
 	}
 
-	key, err := ocrypto.CalculateHKDF([]byte(kNanoTDFMagicStringAndVersion), symKey)
+	symmetricKey, err := ocrypto.CalculateHKDF([]byte(kNanoTDFMagicStringAndVersion), symKey)
 	if err != nil {
 		return nil, 0, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
 	}
 
-	aesGcm, err := ocrypto.NewAESGcm(key)
+	encoded := ocrypto.Base64Encode(symmetricKey)
+	slog.Info("writeNanoTDFHeader", slog.String("symmetricKey", string(encoded)))
+
+	aesGcm, err := ocrypto.NewAESGcm(symmetricKey)
 	if err != nil {
 		return nil, 0, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
 	}
@@ -875,7 +881,7 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	}
 	totalBytes += uint32(l)
 
-	return key, totalBytes, nil
+	return symmetricKey, totalBytes, nil
 }
 
 func NewNanoTDFHeaderFromReader(reader io.Reader) (NTDFHeader, uint32, error) {
@@ -979,7 +985,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NTDFHeader, uint32, error) {
 
 //func (s SDK) CreateNanoTDF(writer io.Writer, reader io.ReadSeeker, config NanoTDFConfig) error {
 
-func CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFConfig) (uint32, error) {
+func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFConfig) (uint32, error) {
 
 	var totalSize uint32 = 0
 	buf := bytes.Buffer{}
@@ -990,6 +996,23 @@ func CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFConfig) (ui
 
 	if size > kMaxTDFSize {
 		return 0, errors.New("exceeds max size for nano tdf")
+	}
+
+	kasURL, err := config.kasURL.getUrl()
+	if err != nil {
+		return 0, fmt.Errorf("config.kasURL failed:%w", err)
+	}
+
+	kasPublicKey, err := getECPublicKey(kasURL, s.dialOptions...)
+	if err != nil {
+		return 0, fmt.Errorf("getECPublicKey failed:%w", err)
+	}
+
+	slog.Info("CreateNanoTDF", slog.String("header size", kasPublicKey))
+
+	config.kasPublicKey, err = ocrypto.ECPubKeyFromPem([]byte(kasPublicKey))
+	if err != nil {
+		return 0, fmt.Errorf("ocrypto.ECPubKeyFromPem failed: %w", err)
 	}
 
 	// Create nano tdf header
@@ -1043,18 +1066,51 @@ func CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFConfig) (ui
 	return totalSize, nil
 }
 
-func ReadNanoTDF(writer io.Writer, reader io.Reader) (int32, error) {
+func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (int32, error) {
 
-	_, _, err := NewNanoTDFHeaderFromReader(reader)
+	header, headerSize, err := NewNanoTDFHeaderFromReader(reader)
 	if err != nil {
 		return 0, err
 	}
 
+	_, err = reader.Seek(0, io.SeekStart)
+	if err != nil {
+		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
+	}
+
+	headerBuf := make([]byte, headerSize)
+	_, err = reader.Read(headerBuf)
+	if err != nil {
+		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
+	}
+
+	kasURL, err := header.kasURL.getUrl()
+	if err != nil {
+		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
+	}
+
+	encodedHeader := ocrypto.Base64Encode(headerBuf)
+
+	client, err := newKASClient(s.dialOptions, s.tokenSource)
+	if err != nil {
+		return 0, fmt.Errorf("newKASClient failed: %w", err)
+	}
+
+	symmetricKey, err := client.unwrapNanoTDF(string(encodedHeader), kasURL)
+	if err != nil {
+		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
+	}
+
+	encoded := ocrypto.Base64Encode(symmetricKey)
+	slog.Info("ReadNanoTDF", slog.String("symmetricKey", string(encoded)))
+
 	payloadLengthBuf := make([]byte, 4)
 	_, err = reader.Read(payloadLengthBuf[1:])
+
 	if err != nil {
 		return 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
 	}
+
 	payloadLength := binary.BigEndian.Uint32(payloadLengthBuf)
 	slog.Info("ReadNanoTDF", slog.Uint64("payloadLength", uint64(payloadLength)))
 
@@ -1062,6 +1118,31 @@ func ReadNanoTDF(writer io.Writer, reader io.Reader) (int32, error) {
 	//encodedHeader := ocrypto.Base64Encode(nanoTDFBuf.Bytes()[:headerSize])
 
 	return 0, nil
+}
+
+func getECPublicKey(kasURL string, opts ...grpc.DialOption) (string, error) {
+	req := kas.PublicKeyRequest{}
+	req.Algorithm = "ec:secp256r1"
+	grpcAddress, err := getGRPCAddress(kasURL)
+	if err != nil {
+		return "", err
+	}
+	conn, err := grpc.Dial(grpcAddress, opts...)
+	if err != nil {
+		return "", fmt.Errorf("error connecting to grpc service at %s: %w", kasURL, err)
+	}
+	defer conn.Close()
+
+	ctx := context.Background()
+	serviceClient := kas.NewAccessServiceClient(conn)
+
+	resp, err := serviceClient.PublicKey(ctx, &req)
+
+	if err != nil {
+		return "", fmt.Errorf("error making request to KAS: %w", err)
+	}
+
+	return resp.GetPublicKey(), nil
 }
 
 type requestBody struct {
@@ -1077,26 +1158,36 @@ type keyAccess struct {
 	Protocol      string `json:"protocol"`
 }
 
-func nanoTDFRewrap(header string) {
-
-	kAccess := keyAccess{
-		Header:        header,
-		KeyAccessType: "remote",
-		Url:           "kas-url",
-		Protocol:      "kas",
-	}
-
-	rBody := requestBody{
-		Algorithm:       "ec:secp256r1",
-		KeyAccess:       kAccess,
-		ClientPublicKey: "PEM pub key",
-	}
-
-	_, err := json.Marshal(rBody)
-	if err != nil {
-
-	}
-}
+//func nanoTDFRewrap(header string, kasURL string) ([]byte, error) {
+//
+//	keypair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
+//	if err != nil {
+//		return nil, fmt.Errorf("ocrypto.NewECKeyPair failed :%w", err)
+//	}
+//
+//	publicKeyAsPem, err := keypair.PublicKeyInPemFormat()
+//	if err != nil {
+//		return nil, fmt.Errorf("ocrypto.NewECKeyPair.PublicKeyInPemFormat failed :%w", err)
+//	}
+//
+//	kAccess := keyAccess{
+//		Header:        header,
+//		KeyAccessType: "remote",
+//		Url:           kasURL,
+//		Protocol:      "kas",
+//	}
+//
+//	rBody := requestBody{
+//		Algorithm:       "ec:secp256r1",
+//		KeyAccess:       kAccess,
+//		ClientPublicKey: publicKeyAsPem,
+//	}
+//
+//	_, err := json.Marshal(rBody)
+//	if err != nil {
+//
+//	}
+//}
 
 func UInt24ToUInt32(b []byte) uint32 {
 	buf := make([]byte, 4)

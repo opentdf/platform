@@ -30,27 +30,15 @@ type NanoTDFConfig struct {
 type NanoTDFOption func(*NanoTDFConfig) error
 
 // NewNanoTDFConfig - Create a new instance of a nanoTDF config
-func NewNanoTDFConfig() (*NanoTDFConfig, error) {
+func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
 	// TODO FIXME - how to pass in mode value and use here before 'c' is initialized?
 	newECKeyPair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
 	}
 
-	// TODO: This need come form KAS
-	kasPubKey := `-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEhwi1B2OLMxYlVfvgvfgBTJBC9oBv
-jm8jeB4u2MJfBjDzgD3EHSHlJKE3fb7m/T3Lko9tyPP6S1c7Nt6oXn6FHw==
------END PUBLIC KEY-----`
-
-	kasPublicKey, err := ocrypto.ECPubKeyFromPem([]byte(kasPubKey))
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.ECPubKeyFromPem failed: %w", err)
-	}
-
 	c := &NanoTDFConfig{
-		keyPair:      newECKeyPair,
-		kasPublicKey: kasPublicKey,
+		keyPair: newECKeyPair,
 		bindCfg: bindingConfig{
 			useEcdsaBinding: false,
 			padding:         0,

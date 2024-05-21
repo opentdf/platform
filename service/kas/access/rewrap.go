@@ -299,7 +299,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 
 	access, err := canAccess(ctx, tok, *policy, p.SDK)
 
-	auditPolicy := transformAuditPolicy(policy)
+	auditPolicy := transformAuditPolicy(policy, entity.Token, *p.Logger)
 
 	if err != nil {
 		p.Logger.WarnContext(ctx, "Could not perform access decision!", "err", err)
@@ -423,16 +423,15 @@ func wrapKeyAES(sessionKey, dek []byte) ([]byte, error) {
 	return cipherText, nil
 }
 
-func transformAuditPolicy(policy *Policy) *logger.AuditPolicy {
+func transformAuditPolicy(policy *Policy, entityToken string, lg logger.Logger) *logger.AuditPolicy {
+	var token, err = jwt.Parse([]byte(entityToken), jwt.WithVerify(false))
+	if err != nil {
+		lg.Warn("unable to parse entity token", "err", err)
+	}
+
 	var dataAttributes []logger.AuditPolicySimpleAttribute
 	for _, attr := range policy.Body.DataAttributes {
 		dataAttributes = append(dataAttributes, logger.AuditPolicySimpleAttribute{URI: attr.URI})
 	}
-	return &logger.AuditPolicy{
-		UUID: policy.UUID,
-		Body: logger.AuditPolicyBody{
-			DataAttributes: dataAttributes,
-			Dissem:         policy.Body.Dissem,
-		},
-	}
+	return logger.CreateAuditPolicy(policy.UUID, dataAttributes, policy.Body.Dissem, token)
 }

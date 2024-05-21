@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+
+	"github.com/google/uuid"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
 type AuditLogger struct {
@@ -13,6 +16,30 @@ type AuditLogger struct {
 func CreateAuditLogger(logger slog.Logger) *AuditLogger {
 	return &AuditLogger{
 		logger: &logger,
+	}
+}
+
+// Creates a simple Audit Policy to be passed into the audit rewrap logs
+func CreateAuditPolicy(
+	uuid uuid.UUID,
+	dataAttributes []AuditPolicySimpleAttribute,
+	policyDissem []string,
+	entityToken jwt.Token,
+) *AuditPolicy {
+	var actorID = ""
+	if entityToken != nil {
+		actorID = entityToken.Subject()
+	}
+
+	return &AuditPolicy{
+		UUID: uuid,
+		Body: AuditPolicyBody{
+			DataAttributes: dataAttributes,
+			Dissem:         policyDissem,
+		},
+		Actor: AuditLogActor{
+			ID: actorID,
+		},
 	}
 }
 
@@ -48,11 +75,15 @@ func (a *AuditLogger) rewrapBase(ctx context.Context, policy AuditPolicy, isSucc
 	}
 	auditLog.Object.Attributes.Dissem = policy.Body.Dissem
 
-	auditLogJSONString, err := json.Marshal(auditLog)
+	// Actor
+	auditLog.Actor.ID = policy.Actor.ID
+
+	auditLogJSONBytes, err := json.Marshal(auditLog)
+	auditLogJSONString := string(auditLogJSONBytes)
 	if err != nil {
 		return err
 	}
 
-	a.logger.Log(ctx, LevelAudit, string(auditLogJSONString))
+	a.logger.Log(ctx, LevelAudit, auditLogJSONString)
 	return nil
 }

@@ -7,8 +7,9 @@ import (
 )
 
 type AuditPolicy struct {
-	UUID uuid.UUID       `json:"uuid"`
-	Body AuditPolicyBody `json:"body"`
+	UUID  uuid.UUID       `json:"uuid"`
+	Body  AuditPolicyBody `json:"body"`
+	Actor AuditLogActor   `json:"actor"`
 }
 
 type AuditPolicyBody struct {
@@ -37,7 +38,7 @@ type auditPolicyAction struct {
 	Result string `json:"result"`
 }
 
-type auditLogActor struct {
+type AuditLogActor struct {
 	ID         string                `json:"id"`
 	Attributes auditPolicyAttributes `json:"attributes"`
 }
@@ -52,7 +53,7 @@ type AuditLog struct {
 	ID            string                 `json:"id"`
 	Object        auditPolicyObject      `json:"object"`
 	Action        auditPolicyAction      `json:"action"`
-	Actor         auditLogActor          `json:"actor"`
+	Actor         AuditLogActor          `json:"actor"`
 	EventMetaData map[string]interface{} `json:"eventMetaData"`
 	ClientInfo    auditLogClientInfo     `json:"clientInfo"`
 	Diff          map[string]interface{} `json:"diff"`
@@ -70,21 +71,28 @@ func createAuditLogBase(isSuccess bool) AuditLog {
 		Object: auditPolicyObject{
 			Type: "data_object",
 			// ID: added from policy object
-			Attributes: auditPolicyAttributes{},
+			Attributes: auditPolicyAttributes{
+				Attrs:       []string{},
+				Dissem:      []string{},
+				Permissions: []string{},
+			},
 		},
 		Action: auditPolicyAction{
 			Type:   "read",
 			Result: actionResult,
 		},
-		Actor: auditLogActor{
-			// ID: "??"
-			Attributes: auditPolicyAttributes{},
+		Actor: AuditLogActor{
+			ID: "", // Filled out by service
+			Attributes: auditPolicyAttributes{
+				Attrs:  []string{},
+				Dissem: []string{},
+			},
 		},
 		EventMetaData: map[string]interface{}{},
 		ClientInfo: auditLogClientInfo{
-			UserAgent: "",
+			UserAgent: "", // Filled out by service
 			Platform:  "kas",
-			RequestIP: "",
+			RequestIP: "", // Filled out by service
 		},
 		Diff:      map[string]interface{}{},
 		Timestamp: time.Now().Format(time.RFC3339),

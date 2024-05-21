@@ -1,8 +1,9 @@
-go 1.21.9
+go 1.22.3
 
 use (
 	./examples
 	./lib/ocrypto
+        ./lib/fixtures
 	./protocol/go
 	./sdk
 	./service

@@ -1,12 +1,14 @@
 package sdk
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -74,10 +76,8 @@ func getNewDPoPKey() (string, jwk.Key, *ocrypto.AsymDecryption, error) { //nolin
 	return dpopPublicKeyPEM.String(), dpopKey, &asymDecryption, nil
 }
 
-/*
-Credentials that allow us to connect to an IDP and obtain an access token that is bound
-to a DPoP key
-*/
+// IDPAccessTokenSource credentials that allow us to connect to an IDP and obtain an access token that is bound
+// to a DPoP key
 type IDPAccessTokenSource struct {
 	credentials      oauth.ClientCredentials
 	idpTokenEndpoint url.URL
@@ -90,18 +90,18 @@ type IDPAccessTokenSource struct {
 }
 
 func NewIDPAccessTokenSource(
-	credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string) (IDPAccessTokenSource, error) {
+	credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string) (*IDPAccessTokenSource, error) {
 	endpoint, err := url.Parse(idpTokenEndpoint)
 	if err != nil {
-		return IDPAccessTokenSource{}, fmt.Errorf("invalid url [%s]: %w", idpTokenEndpoint, err)
+		return nil, fmt.Errorf("invalid url [%s]: %w", idpTokenEndpoint, err)
 	}
 
 	dpopPublicKeyPEM, dpopKey, asymDecryption, err := getNewDPoPKey()
 	if err != nil {
-		return IDPAccessTokenSource{}, err
+		return nil, err
 	}
 
-	creds := IDPAccessTokenSource{
+	tokenSource := IDPAccessTokenSource{
 		credentials:      credentials,
 		idpTokenEndpoint: *endpoint,
 		token:            nil,
@@ -112,17 +112,17 @@ func NewIDPAccessTokenSource(
 		tokenMutex:       &sync.Mutex{},
 	}
 
-	return creds, nil
+	return &tokenSource, nil
 }
 
-// use a pointer receiver so that the token state is shared
-func (t *IDPAccessTokenSource) AccessToken() (auth.AccessToken, error) {
+// AccessToken use a pointer receiver so that the token state is shared
+func (t *IDPAccessTokenSource) AccessToken(ctx context.Context, client *http.Client) (auth.AccessToken, error) {
 	t.tokenMutex.Lock()
 	defer t.tokenMutex.Unlock()
 
 	if t.token == nil || t.token.Expired() {
-		slog.Debug("getting new access token")
-		tok, err := oauth.GetAccessToken(t.idpTokenEndpoint.String(), t.scopes, t.credentials, t.dpopKey)
+		slog.DebugContext(ctx, "getting new access token")
+		tok, err := oauth.GetAccessToken(client, t.idpTokenEndpoint.String(), t.scopes, t.credentials, t.dpopKey)
 		if err != nil {
 			return "", fmt.Errorf("error getting access token: %w", err)
 		}

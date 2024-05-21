@@ -1209,6 +1209,7 @@ type GetAttributeValuesByFqnsRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Required
+	// Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
 	Fqns      []string                       `protobuf:"bytes,1,rep,name=fqns,proto3" json:"fqns,omitempty"`
 	WithValue *policy.AttributeValueSelector `protobuf:"bytes,2,opt,name=with_value,json=withValue,proto3" json:"with_value,omitempty"`
 }
@@ -1264,7 +1265,7 @@ type GetAttributeValuesByFqnsResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// map of fqns to complete attributes and the one selected value
+	// map of FQNs to complete attributes and the one selected value
 	FqnAttributeValues map[string]*GetAttributeValuesByFqnsResponse_AttributeAndValue `protobuf:"bytes,1,rep,name=fqn_attribute_values,json=fqnAttributeValues,proto3" json:"fqn_attribute_values,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 

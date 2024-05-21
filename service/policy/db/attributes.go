@@ -12,11 +12,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/protocol/go/common"
-	"github.com/opentdf/platform/protocol/go/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/service/internal/db"
-	kasrDB "github.com/opentdf/platform/service/kasregistry/db"
+	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -114,7 +112,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			"'public_key', kas.public_key"+
 			")"+
 			") "+
-			"FROM "+kasrDB.Tables.KeyAccessServerRegistry.Name()+" kas "+
+			"FROM "+Tables.KeyAccessServerRegistry.Name()+" kas "+
 			"JOIN "+Tables.AttributeValueKeyAccessGrants.Name()+" avkag ON avkag.key_access_server_id = kas.id "+
 			"WHERE avkag.attribute_value_id = "+avt.Field("id")+
 			")"+
@@ -128,17 +126,22 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		LeftJoin(nt.Name() + " ON " + nt.Field("id") + " = " + t.Field("namespace_id"))
 
 	if opts.withAttributeValues {
-		sb = sb.LeftJoin("(SELECT av.id, av.value, av.active, COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
+		subQuery := "(SELECT av.id, av.value, av.active, COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
 			"'id', vmv.id, " +
 			"'value', vmv.value, " +
 			"'active', vmv.active, " +
 			"'members', vmv.members || ARRAY[]::UUID[], " +
 			"'attribute', JSON_BUILD_OBJECT(" +
-			"'id', vmv.attribute_definition_id ))) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members, av.attribute_definition_id FROM " + avt.Name() + " av LEFT JOIN " + Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id LEFT JOIN " + avt.Name() + " vmv ON vm.member_id = vmv.id GROUP BY av.id) avt ON avt.attribute_definition_id = " + t.Field("id"))
+			"'id', vmv.attribute_definition_id ))) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members, av.attribute_definition_id FROM " + avt.Name() + " av LEFT JOIN " + Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id LEFT JOIN " + avt.Name() + " vmv ON vm.member_id = vmv.id "
+		if opts.withOneValueByFqn != "" {
+			subQuery += "WHERE av.active = true "
+		}
+		subQuery += "GROUP BY av.id) avt ON avt.attribute_definition_id = " + t.Field("id")
+		sb = sb.LeftJoin(subQuery)
 	}
 	if opts.withKeyAccessGrants {
 		sb = sb.LeftJoin(Tables.AttributeKeyAccessGrants.Name() + " ON " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).
-			LeftJoin(kasrDB.Tables.KeyAccessServerRegistry.Name() + " ON " + kasrDB.Tables.KeyAccessServerRegistry.Field("id") + " = " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".key_access_server_id")
+			LeftJoin(Tables.KeyAccessServerRegistry.Name() + " ON " + Tables.KeyAccessServerRegistry.Field("id") + " = " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".key_access_server_id")
 	}
 	if opts.withFqn {
 		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id") +
@@ -164,6 +167,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 				"LEFT JOIN " + scsT.Name() + " ON " + smT.Field("subject_condition_set_id") + " = " + scsT.Field("id") + " " +
 				"INNER JOIN " + fqnt.Name() + " AS inner_fqns ON " + avt.Field("id") + " = inner_fqns.value_id " +
 				"WHERE inner_fqns.fqn = '" + opts.withOneValueByFqn + "' " +
+				"AND " + avt.Field("active") + " = true " +
 				"GROUP BY " + avt.Field("id") + ", inner_fqns.fqn " +
 				") AS val_sm_fqn_join ON " + "avt.id" + " = val_sm_fqn_join.av_id " +
 				"AND " + "avt.id" + " = " + fqnt.Field("value_id"),
@@ -188,7 +192,7 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 		name          string
 		rule          string
 		metadataJSON  []byte
-		namespaceId   string
+		namespaceID   string
 		active        bool
 		namespaceName string
 		valuesJSON    []byte
@@ -197,7 +201,7 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 		fqn           sql.NullString
 	)
 
-	fields := []interface{}{&id, &name, &rule, &metadataJSON, &namespaceId, &active, &namespaceName}
+	fields := []interface{}{&id, &name, &rule, &metadataJSON, &namespaceID, &active, &namespaceName}
 	if opts.withAttributeValues || opts.withOneValueByFqn != "" {
 		fields = append(fields, &valuesOrder, &valuesJSON)
 	}
@@ -228,7 +232,7 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 			return nil, err
 		}
 	}
-	var k []*kasregistry.KeyAccessServer
+	var k []*policy.KeyAccessServer
 	if grants != nil {
 		k, err = db.KeyAccessServerProtoJSON(grants)
 		if err != nil {
@@ -243,29 +247,30 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 		Rule:      attributesRuleTypeEnumTransformOut(rule),
 		Active:    &wrapperspb.BoolValue{Value: active},
 		Metadata:  m,
-		Namespace: &policy.Namespace{Id: namespaceId, Name: namespaceName},
+		Namespace: &policy.Namespace{Id: namespaceID, Name: namespaceName},
 		Grants:    k,
 		Fqn:       fqn.String,
 	}
 
-	// In Go, 0 is not equal to 0, so check if they're not equal and more than 0. If so, then the values_order column
-	// on the attribute_definition table does not match the number of values, which is a problem but should not fail the query.
-	if len(v) > 0 && len(valuesOrder) > 0 && len(valuesOrder) != len(v) {
-		slog.Warn("attribute's values order and number of values do not match - DB is in potentially bad state", slog.String("attribute definition id", id), slog.Any("expected values order", valuesOrder), slog.Any("retrieved values", v))
-		attr.Values = v
-	} else {
-		// sort the values according to the order
-		ordered := make([]*policy.Value, len(v))
-		for i, order := range valuesOrder {
-			for _, value := range v {
-				if value.GetId() == order {
-					ordered[i] = value
-					break
-				}
+	// Deactivations of individual values can unsync the order in the values_order column and the selected number of attribute values.
+	// In Go, int value 0 is not equal to 0, so check if they're not equal and more than 0 to check a potential count mismatch.
+	mismatchedCount := len(v) > 0 && len(valuesOrder) > 0 && len(valuesOrder) != len(v)
+
+	// sort the values according to the order
+	ordered := make([]*policy.Value, 0)
+	for _, order := range valuesOrder {
+		for _, value := range v {
+			if value.GetId() == order {
+				ordered = append(ordered, value)
+				break
+			}
+			// If all values are active, the order should be correct and the number of values should match the count of ordered ids.
+			if mismatchedCount && !value.GetActive().GetValue() {
+				slog.Warn("attribute's values order and number of values do not match - DB is in potentially bad state", slog.String("attribute definition id", id), slog.Any("expected values order", valuesOrder), slog.Any("retrieved values", v))
 			}
 		}
-		attr.Values = ordered
 	}
+	attr.Values = ordered
 
 	return attr, nil
 }
@@ -286,7 +291,7 @@ func attributesHydrateList(rows pgx.Rows, opts attributesSelectOptions) ([]*poli
 // CRUD operations
 ///
 
-func listAllAttributesSql(opts attributesSelectOptions) (string, []interface{}, error) {
+func listAllAttributesSQL(opts attributesSelectOptions) (string, []interface{}, error) {
 	t := Tables.Attributes
 	sb := attributesSelect(opts).
 		From(t.Name())
@@ -315,7 +320,7 @@ func (c PolicyDBClient) ListAllAttributes(ctx context.Context, state string, nam
 		namespace:           namespace,
 	}
 
-	sql, args, err := listAllAttributesSql(opts)
+	sql, args, err := listAllAttributesSQL(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -344,7 +349,7 @@ func (c PolicyDBClient) ListAllAttributesWithout(ctx context.Context, state stri
 		state:               state,
 	}
 
-	sql, args, err := listAllAttributesSql(opts)
+	sql, args, err := listAllAttributesSQL(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -364,7 +369,7 @@ func (c PolicyDBClient) ListAllAttributesWithout(ctx context.Context, state stri
 	return list, nil
 }
 
-func getAttributeSql(id string, opts attributesSelectOptions) (string, []interface{}, error) {
+func getAttributeSQL(id string, opts attributesSelectOptions) (string, []interface{}, error) {
 	t := Tables.Attributes
 	return attributesSelect(opts).
 		Where(sq.Eq{t.Field("id"): id}).
@@ -377,7 +382,7 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.At
 		withFqn:             true,
 		withAttributeValues: true,
 	}
-	sql, args, err := getAttributeSql(id, opts)
+	sql, args, err := getAttributeSQL(id, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -396,15 +401,17 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.At
 	return attribute, nil
 }
 
-// / Get attribute by fqn
-func getAttributeByFqnSql(fqn string, opts attributesSelectOptions) (string, []interface{}, error) {
+// Get attribute by fqn, ensuring the attribute definition and namespace are both active
+func getAttributeByFqnSQL(fqn string, opts attributesSelectOptions) (string, []interface{}, error) {
 	return attributesSelect(opts).
-		Where(sq.Eq{Tables.AttrFqn.Field("fqn"): fqn}).
+		Where(sq.Eq{Tables.AttrFqn.Field("fqn"): fqn, Tables.Attributes.Field("active"): true, Tables.Namespaces.Field("active"): true}).
 		From(Tables.Attributes.Name()).
 		ToSql()
 }
 
 func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*policy.Attribute, error) {
+	// normalize to lower case
+	fqn = strings.ToLower(fqn)
 	opts := attributesSelectOptions{
 		withAttributeValues: true,
 		withKeyAccessGrants: false,
@@ -414,7 +421,7 @@ func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 	} else {
 		opts.withFqn = true
 	}
-	sql, args, err := getAttributeByFqnSql(fqn, opts)
+	sql, args, err := getAttributeByFqnSQL(fqn, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -432,17 +439,17 @@ func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 	return attribute, nil
 }
 
-func getAttributesByNamespaceSql(namespaceId string, opts attributesSelectOptions) (string, []interface{}, error) {
+func getAttributesByNamespaceSQL(namespaceID string, opts attributesSelectOptions) (string, []interface{}, error) {
 	t := Tables.Attributes
 	return attributesSelect(opts).
-		Where(sq.Eq{t.Field("namespace_id"): namespaceId}).
+		Where(sq.Eq{t.Field("namespace_id"): namespaceID}).
 		From(t.Name()).
 		ToSql()
 }
 
 func (c PolicyDBClient) GetAttributesByNamespace(ctx context.Context, namespaceID string) ([]*policy.Attribute, error) {
 	opts := attributesSelectOptions{}
-	sql, args, err := getAttributesByNamespaceSql(namespaceID, opts)
+	sql, args, err := getAttributesByNamespaceSQL(namespaceID, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -461,12 +468,12 @@ func (c PolicyDBClient) GetAttributesByNamespace(ctx context.Context, namespaceI
 	return list, nil
 }
 
-func createAttributeSql(namespaceId string, name string, rule string, metadata []byte) (string, []interface{}, error) {
+func createAttributeSQL(namespaceID string, name string, rule string, metadata []byte) (string, []interface{}, error) {
 	t := Tables.Attributes
 	return db.NewStatementBuilder().
 		Insert(t.Name()).
 		Columns("namespace_id", "name", "rule", "metadata").
-		Values(namespaceId, name, rule, metadata).
+		Values(namespaceID, name, rule, metadata).
 		Suffix(createSuffix).
 		ToSql()
 }
@@ -479,7 +486,7 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 
 	name := strings.ToLower(r.GetName())
 
-	sql, args, err := createAttributeSql(r.GetNamespaceId(), name, attributesRuleTypeEnumTransformIn(r.GetRule().String()), metadataJSON)
+	sql, args, err := createAttributeSQL(r.GetNamespaceId(), name, attributesRuleTypeEnumTransformIn(r.GetRule().String()), metadataJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -496,7 +503,7 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	}
 
 	// Update the FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeId: id})
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeID: id})
 
 	// Add values
 	var values []*policy.Value
@@ -547,7 +554,7 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 // 	return sb.Where(sq.Eq{t.Field("id"): id}).ToSql()
 // }
 
-func safeUpdateAttributeSql(id string, metadata []byte) (string, []interface{}, error) {
+func safeUpdateAttributeSQL(id string, metadata []byte) (string, []interface{}, error) {
 	t := Tables.Attributes
 	sb := db.NewStatementBuilder().Update(t.Name())
 
@@ -571,7 +578,7 @@ func (c PolicyDBClient) UpdateAttribute(ctx context.Context, id string, r *attri
 		return nil, err
 	}
 
-	sql, args, err := safeUpdateAttributeSql(id, metadataJSON)
+	sql, args, err := safeUpdateAttributeSQL(id, metadataJSON)
 	if db.IsQueryBuilderSetClauseError(err) {
 		return &policy.Attribute{
 			Id: id,
@@ -586,14 +593,14 @@ func (c PolicyDBClient) UpdateAttribute(ctx context.Context, id string, r *attri
 	}
 
 	// Update the FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeId: id})
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeID: id})
 
 	return &policy.Attribute{
 		Id: id,
 	}, nil
 }
 
-func deactivateAttributeSql(id string) (string, []interface{}, error) {
+func deactivateAttributeSQL(id string) (string, []interface{}, error) {
 	t := Tables.Attributes
 	return db.NewStatementBuilder().
 		Update(t.Name()).
@@ -604,7 +611,7 @@ func deactivateAttributeSql(id string) (string, []interface{}, error) {
 }
 
 func (c PolicyDBClient) DeactivateAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
-	sql, args, err := deactivateAttributeSql(id)
+	sql, args, err := deactivateAttributeSQL(id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -615,7 +622,7 @@ func (c PolicyDBClient) DeactivateAttribute(ctx context.Context, id string) (*po
 	return c.GetAttribute(ctx, id)
 }
 
-func deleteAttributeSql(id string) (string, []interface{}, error) {
+func deleteAttributeSQL(id string) (string, []interface{}, error) {
 	t := Tables.Attributes
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
@@ -630,7 +637,7 @@ func (c PolicyDBClient) DeleteAttribute(ctx context.Context, id string) (*policy
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	sql, args, err := deleteAttributeSql(id)
+	sql, args, err := deleteAttributeSQL(id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -643,7 +650,7 @@ func (c PolicyDBClient) DeleteAttribute(ctx context.Context, id string) (*policy
 	return a, nil
 }
 
-func assignKeyAccessServerToAttributeSql(attributeID, keyAccessServerID string) (string, []interface{}, error) {
+func assignKeyAccessServerToAttributeSQL(attributeID, keyAccessServerID string) (string, []interface{}, error) {
 	t := Tables.AttributeKeyAccessGrants
 	return db.NewStatementBuilder().
 		Insert(t.Name()).
@@ -653,7 +660,7 @@ func assignKeyAccessServerToAttributeSql(attributeID, keyAccessServerID string) 
 }
 
 func (c PolicyDBClient) AssignKeyAccessServerToAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
-	sql, args, err := assignKeyAccessServerToAttributeSql(k.GetAttributeId(), k.GetKeyAccessServerId())
+	sql, args, err := assignKeyAccessServerToAttributeSQL(k.GetAttributeId(), k.GetKeyAccessServerId())
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -665,7 +672,7 @@ func (c PolicyDBClient) AssignKeyAccessServerToAttribute(ctx context.Context, k 
 	return k, nil
 }
 
-func removeKeyAccessServerFromAttributeSql(attributeID, keyAccessServerID string) (string, []interface{}, error) {
+func removeKeyAccessServerFromAttributeSQL(attributeID, keyAccessServerID string) (string, []interface{}, error) {
 	t := Tables.AttributeKeyAccessGrants
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
@@ -675,7 +682,7 @@ func removeKeyAccessServerFromAttributeSql(attributeID, keyAccessServerID string
 }
 
 func (c PolicyDBClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
-	sql, args, err := removeKeyAccessServerFromAttributeSql(k.GetAttributeId(), k.GetKeyAccessServerId())
+	sql, args, err := removeKeyAccessServerFromAttributeSQL(k.GetAttributeId(), k.GetKeyAccessServerId())
 	if err != nil {
 		return nil, err
 	}

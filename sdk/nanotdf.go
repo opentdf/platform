@@ -5,15 +5,17 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+
+	"github.com/opentdf/platform/lib/ocrypto"
 )
 
 const (
 	ErrNanoTdfRead = Error("nanotdf read error")
 )
 
-type nanoTdf struct {
+type NanoTdf struct {
 	magicNumber        [3]byte
-	kasUrl             *resourceLocator
+	kasURL             *resourceLocator
 	binding            *bindingCfg
 	sigCfg             *signatureConfig
 	policy             *policyInfo
@@ -31,12 +33,12 @@ func (resourceLocator) isPolicyBody() {}
 type bindingCfg struct {
 	useEcdsaBinding bool
 	padding         uint8
-	bindingBody     eccMode
+	bindingBody     ocrypto.ECCMode
 }
 
 type signatureConfig struct {
 	hasSignature  bool
-	signatureMode eccMode
+	signatureMode ocrypto.ECCMode
 	cipher        cipherMode
 }
 
@@ -74,18 +76,9 @@ type eccKey struct {
 type urlProtocol uint8
 
 const (
-	urlProtocolHttp   urlProtocol = 0
-	urlProtocolHttps  urlProtocol = 1
+	urlProtocolHTTP   urlProtocol = 0
+	urlProtocolHTTPS  urlProtocol = 1
 	urlProtocolShared urlProtocol = 255
-)
-
-type eccMode uint8
-
-const (
-	eccModeSecp256r1 eccMode = 0
-	eccModeSecp384r1 eccMode = 1
-	eccModeSecp521r1 eccMode = 2
-	eccModeSecp256k1 eccMode = 3
 )
 
 type cipherMode int
@@ -112,7 +105,7 @@ func deserializeBindingCfg(b byte) *bindingCfg {
 	cfg := bindingCfg{}
 	cfg.useEcdsaBinding = (b >> 7 & 0x01) == 1
 	cfg.padding = 0
-	cfg.bindingBody = eccMode((b >> 4) & 0x07)
+	cfg.bindingBody = ocrypto.ECCMode((b >> 4) & 0x07)
 
 	return &cfg
 }
@@ -120,7 +113,7 @@ func deserializeBindingCfg(b byte) *bindingCfg {
 func deserializeSignatureCfg(b byte) *signatureConfig {
 	cfg := signatureConfig{}
 	cfg.hasSignature = (b >> 7 & 0x01) == 1
-	cfg.signatureMode = eccMode((b >> 4) & 0x07)
+	cfg.signatureMode = ocrypto.ECCMode((b >> 4) & 0x07)
 	cfg.cipher = cipherMode(b & 0x0F)
 
 	return &cfg
@@ -152,18 +145,20 @@ func readPolicyBody(reader io.Reader, mode uint8) (PolicyBody, error) {
 			return nil, errors.Join(ErrNanoTdfRead, err)
 		}
 		embedPolicy.body = string(body)
-		return embeddedPolicy(embedPolicy), nil
+		return embedPolicy, nil
 	}
 }
 
-func readEphemeralPublicKey(reader io.Reader, curve eccMode) (*eccKey, error) {
+func readEphemeralPublicKey(reader io.Reader, curve ocrypto.ECCMode) (*eccKey, error) {
 	var numberOfBytes uint8
 	switch curve {
-	case eccModeSecp256r1:
+	case ocrypto.ECCModeSecp256r1:
 		numberOfBytes = 33
-	case eccModeSecp384r1:
+	case ocrypto.ECCModeSecp256k1:
+		numberOfBytes = 33
+	case ocrypto.ECCModeSecp384r1:
 		numberOfBytes = 49
-	case eccModeSecp521r1:
+	case ocrypto.ECCModeSecp521r1:
 		numberOfBytes = 67
 	}
 	buffer := make([]byte, numberOfBytes)
@@ -173,25 +168,25 @@ func readEphemeralPublicKey(reader io.Reader, curve eccMode) (*eccKey, error) {
 	return &eccKey{Key: buffer}, nil
 }
 
-func ReadNanoTDFHeader(reader io.Reader) (*nanoTdf, error) {
-	var nanoTDF nanoTdf
+func ReadNanoTDFHeader(reader io.Reader) (*NanoTdf, error) {
+	var nanoTDF NanoTdf
 
 	if err := binary.Read(reader, binary.BigEndian, &nanoTDF.magicNumber); err != nil {
 		return nil, errors.Join(ErrNanoTdfRead, err)
 	}
 
-	nanoTDF.kasUrl = &resourceLocator{}
-	if err := binary.Read(reader, binary.BigEndian, &nanoTDF.kasUrl.protocol); err != nil {
+	nanoTDF.kasURL = &resourceLocator{}
+	if err := binary.Read(reader, binary.BigEndian, &nanoTDF.kasURL.protocol); err != nil {
 		return nil, errors.Join(ErrNanoTdfRead, err)
 	}
-	if err := binary.Read(reader, binary.BigEndian, &nanoTDF.kasUrl.lengthBody); err != nil {
+	if err := binary.Read(reader, binary.BigEndian, &nanoTDF.kasURL.lengthBody); err != nil {
 		return nil, errors.Join(ErrNanoTdfRead, err)
 	}
-	body := make([]byte, nanoTDF.kasUrl.lengthBody)
+	body := make([]byte, nanoTDF.kasURL.lengthBody)
 	if err := binary.Read(reader, binary.BigEndian, &body); err != nil {
 		return nil, errors.Join(ErrNanoTdfRead, err)
 	}
-	nanoTDF.kasUrl.body = string(body)
+	nanoTDF.kasURL.body = string(body)
 
 	var bindingByte uint8
 	if err := binary.Read(reader, binary.BigEndian, &bindingByte); err != nil {

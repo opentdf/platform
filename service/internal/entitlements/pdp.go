@@ -5,7 +5,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 )
 
-func OpaInput(entity *authorization.Entity, sms map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, config map[string]interface{}) (map[string]interface{}, error) {
+func OpaInput(entity *authorization.Entity, sms map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, ersURL string, authToken string) (map[string]interface{}, error) {
 	// OPA wants this as a generic map[string]interface{} and will not handle
 	// deserializing to concrete structs
 	inputUnstructured := make(map[string]interface{})
@@ -19,11 +19,14 @@ func OpaInput(entity *authorization.Entity, sms map[string]*attributes.GetAttrib
 		ea["client_id"] = entity.GetClientId()
 	case *authorization.Entity_EmailAddress:
 		ea["email_address"] = entity.GetEmailAddress()
-	case *authorization.Entity_Jwt:
-		ea["jwt"] = entity.GetJwt()
+	case *authorization.Entity_UserName:
+		ea["user_name"] = entity.GetUserName()
+	case *authorization.Entity_Uuid:
+		ea["uuid"] = entity.GetUuid()
 	}
 	inputUnstructured["entity"] = ea
+	inputUnstructured["ers_url"] = ersURL
+	inputUnstructured["auth_token"] = authToken
 
-	inputUnstructured["idp"] = config
 	return inputUnstructured, nil
 }

@@ -79,10 +79,10 @@ func (a *AuditLogger) rewrapBase(ctx context.Context, policy AuditPolicy, isSucc
 	auditLog.Actor.ID = policy.Actor.ID
 
 	auditLogJSONBytes, err := json.Marshal(auditLog)
-	auditLogJSONString := string(auditLogJSONBytes)
 	if err != nil {
 		return err
 	}
+	auditLogJSONString := string(auditLogJSONBytes)
 
 	a.logger.Log(ctx, LevelAudit, auditLogJSONString)
 	return nil

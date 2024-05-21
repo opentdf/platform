@@ -55,7 +55,7 @@ func NewRegistration() serviceregistry.Registration {
 			}
 
 			// if its passed in the config use that
-			val, ok := srp.Config.ExtraProps["ersUrl"]
+			val, ok := srp.Config.ExtraProps["ersurl"]
 			if ok {
 				ersURL, ok = val.(string)
 				if !ok {

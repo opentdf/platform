@@ -55,7 +55,7 @@ type NTDFHeader struct {
 	kasURL       ResourceLocator
 	bindCfg      bindingConfig
 	sigCfg       signatureConfig
-	ephemeralKey []byte
+	EphemeralKey []byte
 }
 
 type NanoTDFHeader struct {
@@ -970,6 +970,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NTDFHeader, uint32, error) {
 		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
 	}
 	size += uint32(l)
+	header.EphemeralKey = ephemeralKey
 
 	slog.Info("NewNanoTDFHeaderFromReader", slog.Uint64("header size", uint64(size)))
 

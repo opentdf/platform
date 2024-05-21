@@ -349,12 +349,12 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 func (p *Provider) nanoTDFRewrap(body *RequestBody) (*kaspb.RewrapResponse, error) {
 	headerReader := bytes.NewReader(body.KeyAccess.Header)
 
-	header, err := sdk.ReadNanoTDFHeader(headerReader)
+	header, _, err := sdk.NewNanoTDFHeaderFromReader(headerReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
 	}
 
-	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(header.EphemeralPublicKey.Key)
+	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(header.EphemeralKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
 	}

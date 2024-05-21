@@ -22,7 +22,7 @@ Start the required infrastructure with [compose-spec](https://compose-spec.io).
 
 ```sh
 # Note this might be `podman compose` on some systems
-docker compose -f docker-compose.yml up
+docker compose -f docker-compose.yaml up
 ```
 
 Copy the configuration file from the example and update it with your own values.

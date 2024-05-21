@@ -19,7 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	EntityResolutionService_ResolveEntities_FullMethodName = "/entityresolution.EntityResolutionService/ResolveEntities"
+	EntityResolutionService_ResolveEntities_FullMethodName          = "/entityresolution.EntityResolutionService/ResolveEntities"
+	EntityResolutionService_CreateEntityChainFromJwt_FullMethodName = "/entityresolution.EntityResolutionService/CreateEntityChainFromJwt"
 )
 
 // EntityResolutionServiceClient is the client API for EntityResolutionService service.
@@ -27,6 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type EntityResolutionServiceClient interface {
 	ResolveEntities(ctx context.Context, in *ResolveEntitiesRequest, opts ...grpc.CallOption) (*ResolveEntitiesResponse, error)
+	CreateEntityChainFromJwt(ctx context.Context, in *CreateEntityChainFromJwtRequest, opts ...grpc.CallOption) (*CreateEntityChainFromJwtResponse, error)
 }
 
 type entityResolutionServiceClient struct {
@@ -46,11 +48,21 @@ func (c *entityResolutionServiceClient) ResolveEntities(ctx context.Context, in 
 	return out, nil
 }
 
+func (c *entityResolutionServiceClient) CreateEntityChainFromJwt(ctx context.Context, in *CreateEntityChainFromJwtRequest, opts ...grpc.CallOption) (*CreateEntityChainFromJwtResponse, error) {
+	out := new(CreateEntityChainFromJwtResponse)
+	err := c.cc.Invoke(ctx, EntityResolutionService_CreateEntityChainFromJwt_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EntityResolutionServiceServer is the server API for EntityResolutionService service.
 // All implementations must embed UnimplementedEntityResolutionServiceServer
 // for forward compatibility
 type EntityResolutionServiceServer interface {
 	ResolveEntities(context.Context, *ResolveEntitiesRequest) (*ResolveEntitiesResponse, error)
+	CreateEntityChainFromJwt(context.Context, *CreateEntityChainFromJwtRequest) (*CreateEntityChainFromJwtResponse, error)
 	mustEmbedUnimplementedEntityResolutionServiceServer()
 }
 
@@ -60,6 +72,9 @@ type UnimplementedEntityResolutionServiceServer struct {
 
 func (UnimplementedEntityResolutionServiceServer) ResolveEntities(context.Context, *ResolveEntitiesRequest) (*ResolveEntitiesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ResolveEntities not implemented")
+}
+func (UnimplementedEntityResolutionServiceServer) CreateEntityChainFromJwt(context.Context, *CreateEntityChainFromJwtRequest) (*CreateEntityChainFromJwtResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateEntityChainFromJwt not implemented")
 }
 func (UnimplementedEntityResolutionServiceServer) mustEmbedUnimplementedEntityResolutionServiceServer() {
 }
@@ -93,6 +108,24 @@ func _EntityResolutionService_ResolveEntities_Handler(srv interface{}, ctx conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EntityResolutionService_CreateEntityChainFromJwt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateEntityChainFromJwtRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EntityResolutionServiceServer).CreateEntityChainFromJwt(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EntityResolutionService_CreateEntityChainFromJwt_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EntityResolutionServiceServer).CreateEntityChainFromJwt(ctx, req.(*CreateEntityChainFromJwtRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // EntityResolutionService_ServiceDesc is the grpc.ServiceDesc for EntityResolutionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -103,6 +136,10 @@ var EntityResolutionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveEntities",
 			Handler:    _EntityResolutionService_ResolveEntities_Handler,
+		},
+		{
+			MethodName: "CreateEntityChainFromJwt",
+			Handler:    _EntityResolutionService_CreateEntityChainFromJwt_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

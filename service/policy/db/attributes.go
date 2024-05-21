@@ -126,13 +126,18 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		LeftJoin(nt.Name() + " ON " + nt.Field("id") + " = " + t.Field("namespace_id"))
 
 	if opts.withAttributeValues {
-		sb = sb.LeftJoin("(SELECT av.id, av.value, av.active, COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
+		subQuery := "(SELECT av.id, av.value, av.active, COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
 			"'id', vmv.id, " +
 			"'value', vmv.value, " +
 			"'active', vmv.active, " +
 			"'members', vmv.members || ARRAY[]::UUID[], " +
 			"'attribute', JSON_BUILD_OBJECT(" +
-			"'id', vmv.attribute_definition_id ))) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members, av.attribute_definition_id FROM " + avt.Name() + " av LEFT JOIN " + Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id LEFT JOIN " + avt.Name() + " vmv ON vm.member_id = vmv.id GROUP BY av.id) avt ON avt.attribute_definition_id = " + t.Field("id"))
+			"'id', vmv.attribute_definition_id ))) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members, av.attribute_definition_id FROM " + avt.Name() + " av LEFT JOIN " + Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id LEFT JOIN " + avt.Name() + " vmv ON vm.member_id = vmv.id "
+		if opts.withOneValueByFqn != "" {
+			subQuery += "WHERE av.active = true "
+		}
+		subQuery += "GROUP BY av.id) avt ON avt.attribute_definition_id = " + t.Field("id")
+		sb = sb.LeftJoin(subQuery)
 	}
 	if opts.withKeyAccessGrants {
 		sb = sb.LeftJoin(Tables.AttributeKeyAccessGrants.Name() + " ON " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).
@@ -162,6 +167,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 				"LEFT JOIN " + scsT.Name() + " ON " + smT.Field("subject_condition_set_id") + " = " + scsT.Field("id") + " " +
 				"INNER JOIN " + fqnt.Name() + " AS inner_fqns ON " + avt.Field("id") + " = inner_fqns.value_id " +
 				"WHERE inner_fqns.fqn = '" + opts.withOneValueByFqn + "' " +
+				"AND " + avt.Field("active") + " = true " +
 				"GROUP BY " + avt.Field("id") + ", inner_fqns.fqn " +
 				") AS val_sm_fqn_join ON " + "avt.id" + " = val_sm_fqn_join.av_id " +
 				"AND " + "avt.id" + " = " + fqnt.Field("value_id"),
@@ -246,24 +252,25 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 		Fqn:       fqn.String,
 	}
 
-	// In Go, 0 is not equal to 0, so check if they're not equal and more than 0. If so, then the values_order column
-	// on the attribute_definition table does not match the number of values, which is a problem but should not fail the query.
-	if len(v) > 0 && len(valuesOrder) > 0 && len(valuesOrder) != len(v) {
-		slog.Warn("attribute's values order and number of values do not match - DB is in potentially bad state", slog.String("attribute definition id", id), slog.Any("expected values order", valuesOrder), slog.Any("retrieved values", v))
-		attr.Values = v
-	} else {
-		// sort the values according to the order
-		ordered := make([]*policy.Value, len(v))
-		for i, order := range valuesOrder {
-			for _, value := range v {
-				if value.GetId() == order {
-					ordered[i] = value
-					break
-				}
+	// Deactivations of individual values can unsync the order in the values_order column and the selected number of attribute values.
+	// In Go, int value 0 is not equal to 0, so check if they're not equal and more than 0 to check a potential count mismatch.
+	mismatchedCount := len(v) > 0 && len(valuesOrder) > 0 && len(valuesOrder) != len(v)
+
+	// sort the values according to the order
+	ordered := make([]*policy.Value, 0)
+	for _, order := range valuesOrder {
+		for _, value := range v {
+			if value.GetId() == order {
+				ordered = append(ordered, value)
+				break
+			}
+			// If all values are active, the order should be correct and the number of values should match the count of ordered ids.
+			if mismatchedCount && !value.GetActive().GetValue() {
+				slog.Warn("attribute's values order and number of values do not match - DB is in potentially bad state", slog.String("attribute definition id", id), slog.Any("expected values order", valuesOrder), slog.Any("retrieved values", v))
 			}
 		}
-		attr.Values = ordered
 	}
+	attr.Values = ordered
 
 	return attr, nil
 }
@@ -394,10 +401,10 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.At
 	return attribute, nil
 }
 
-// / Get attribute by fqn
+// Get attribute by fqn, ensuring the attribute definition and namespace are both active
 func getAttributeByFqnSQL(fqn string, opts attributesSelectOptions) (string, []interface{}, error) {
 	return attributesSelect(opts).
-		Where(sq.Eq{Tables.AttrFqn.Field("fqn"): fqn}).
+		Where(sq.Eq{Tables.AttrFqn.Field("fqn"): fqn, Tables.Attributes.Field("active"): true, Tables.Namespaces.Field("active"): true}).
 		From(Tables.Attributes.Name()).
 		ToSql()
 }

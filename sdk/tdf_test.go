@@ -48,6 +48,7 @@ type tdfTest struct {
 	tdfFileSize int64
 	checksum    string
 	kasInfoList []KASInfo
+	mimeType    string
 }
 
 //nolint:gochecknoglobals // Mock Value
@@ -109,6 +110,18 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 				PublicKey: "",
 			},
 		},
+	},
+	{
+		fileSize:    5,
+		tdfFileSize: 1557,
+		checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
+		kasInfoList: []KASInfo{
+			{
+				URL:       "http://localhost:65432/api/kas",
+				PublicKey: "",
+			},
+		},
+		mimeType: "text/plain",
 	},
 	{
 		fileSize:    oneKB,
@@ -502,7 +515,18 @@ func testEncrypt(t *testing.T, sdk *SDK, kasInfoList []KASInfo, plainTextFilenam
 		err := fileWriter.Close()
 		require.NoError(t, err)
 	}(fileWriter) // CreateTDF TDFConfig
-	tdfObj, err := sdk.CreateTDF(fileWriter, readSeeker, WithKasInformation(kasInfoList...))
+	var options []TDFOption
+	if test.mimeType != "" {
+		options = []TDFOption{
+			WithKasInformation(kasInfoList...),
+			WithMimeType(test.mimeType),
+		}
+	} else {
+		options = []TDFOption{
+			WithKasInformation(kasInfoList...),
+		}
+	}
+	tdfObj, err := sdk.CreateTDF(fileWriter, readSeeker, options...)
 	require.NoError(t, err)
 
 	assert.LessOrEqual(t, math.Abs(float64(tdfObj.size-test.tdfFileSize)), 1.01*float64(test.tdfFileSize))
@@ -519,6 +543,10 @@ func testDecryptWithReader(t *testing.T, sdk *SDK, tdfFile, decryptedTdfFileName
 
 	r, err := sdk.LoadTDF(readSeeker)
 	require.NoError(t, err)
+
+	if test.mimeType != "" {
+		assert.Equal(t, test.mimeType, r.Manifest().Payload.MimeType, "mimeType does not match")
+	}
 
 	{
 		fileWriter, err := os.Create(decryptedTdfFileName)

@@ -139,11 +139,11 @@ func (s StandardCrypto) GenerateNanoTDFSymmetricKey([]byte) ([]byte, error) {
 	return nil, errNotImplemented
 }
 
-func (s StandardCrypto) GenerateEphemeralKasKeys() (PrivateKeyEC, []byte, error) {
+func (s StandardCrypto) GenerateEphemeralKasKeys() (any, []byte, error) {
 	return 0, nil, errNotImplemented
 }
 
-func (s StandardCrypto) GenerateNanoTDFSessionKey(PrivateKeyEC, []byte) ([]byte, error) {
+func (s StandardCrypto) GenerateNanoTDFSessionKey(any, []byte) ([]byte, error) {
 	return nil, errNotImplemented
 }
 

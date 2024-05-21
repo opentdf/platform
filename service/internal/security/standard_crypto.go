@@ -210,34 +210,31 @@ func (s StandardCrypto) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []by
 	if err != nil {
 		return nil, err
 	}
-
 	derBytes, err := x509.MarshalPKIXPublicKey(ephemeralECDSAPublicKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal ECDSA public key: %w", err)
 	}
-
 	pemBlock := &pem.Block{
 		Type:  "PUBLIC KEY",
 		Bytes: derBytes,
 	}
-
 	ephemeralECDSAPublicKeyPEM := pem.EncodeToMemory(pemBlock)
-	var ecKeyPair ocrypto.ECKeyPair
+	var kasKeyPair ocrypto.ECKeyPair
 	switch k := s.ecKeys[0].ecPrivateKey.(type) {
 	case *ecdsa.PrivateKey:
-		ecKeyPair = ocrypto.ECKeyPair{
+		kasKeyPair = ocrypto.ECKeyPair{
 			PrivateKey: k,
 		}
 	case *ecdh.PrivateKey:
-		ecKeyPair = ocrypto.ECKeyPair{
+		kasKeyPair = ocrypto.ECKeyPair{
 			ECDHPrivateKey: k,
 		}
 	}
-	ecPrivateKeyPem, err := ecKeyPair.PrivateKeyInPemFormat()
+	kasPrivateKeyPem, err := kasKeyPair.PrivateKeyInPemFormat()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get EC private key in PEM format: %w", err)
 	}
-	symmetricKey, err := ocrypto.ComputeECDHKey([]byte(ecPrivateKeyPem), ephemeralECDSAPublicKeyPEM)
+	symmetricKey, err := ocrypto.ComputeECDHKey([]byte(kasPrivateKeyPem), ephemeralECDSAPublicKeyPEM)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
 	}
@@ -248,18 +245,18 @@ func (s StandardCrypto) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []by
 }
 
 func (s StandardCrypto) GenerateEphemeralKasKeys() (any, []byte, error) {
-	ecKeyPair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
+	ephemeralKeyPair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
 	if err != nil {
 		return nil, nil, fmt.Errorf("ocrypto.NewECKeyPair failed: %w", err)
 	}
 
-	pubKeyInPem, err := ecKeyPair.PublicKeyInPemFormat()
+	pubKeyInPem, err := ephemeralKeyPair.PublicKeyInPemFormat()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get public key in PEM format: %w", err)
 	}
 	pubKeyBytes := []byte(pubKeyInPem)
 
-	privKey, err := ocrypto.ConvertToECDHPrivateKey(ecKeyPair.PrivateKey)
+	privKey, err := ocrypto.ConvertToECDHPrivateKey(ephemeralKeyPair.PrivateKey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to convert provate key to ECDH: %w", err)
 	}

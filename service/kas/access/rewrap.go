@@ -261,10 +261,6 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 		return nil, err
 	}
 
-	if !strings.HasPrefix(body.KeyAccess.URL, p.URI.String()) {
-		slog.InfoContext(ctx, "mismatched key access url", "keyAccessURL", body.KeyAccess.URL, "kasURL", p.URI.String())
-	}
-
 	if body.Algorithm == "" {
 		slog.DebugContext(ctx, "default rewrap algorithm")
 		body.Algorithm = "rsa:2048"
@@ -336,53 +332,33 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 
 func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody) (*kaspb.RewrapResponse, error) {
 	headerReader := bytes.NewReader(body.KeyAccess.Header)
-
 	nanoTDFHeader, err := sdk.ReadNanoTDFHeader(headerReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
 	}
-
-	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(nanoTDFHeader.EphemeralPublicKey.Key)
+	// DEK is a symmetric key
+	dek, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(nanoTDFHeader.EphemeralPublicKey.Key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
-	}
-
-	pub, ok := body.PublicKey.(*ecdsa.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("failed to extract public key: %w", err)
 	}
 
 	ephemeralPrivateKey, ephemeralPublicKeyPEM, err := p.CryptoProvider.GenerateEphemeralKasKeys()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate keypair: %w", err)
 	}
-
-	pubDER, err := x509.MarshalPKIXPublicKey(pub)
-	if err != nil {
-		return nil, err
-	}
-	pubKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: pubDER,
-	})
-
-	sessionKey, err := p.CryptoProvider.GenerateNanoTDFSessionKey(ephemeralPrivateKey, pubKeyPEM)
+	// session key is derived key aka response encryption key
+	sessionKey, err := p.CryptoProvider.GenerateNanoTDFSessionKey(ephemeralPrivateKey, []byte(body.ClientPublicKey))
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate session key: %w", err)
 	}
 
-	wrappedKey, err := wrapKeyAES(sessionKey, symmetricKey)
+	wrappedKey, err := wrapKeyAES(sessionKey, dek)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt key: %w", err)
 	}
 
-	if len(ephemeralPublicKeyPEM) < 2 {
-		return nil, fmt.Errorf("incorrect length of public key handle")
-	}
-
 	return &kaspb.RewrapResponse{
 		EntityWrappedKey: wrappedKey,
-		// TODO ephemeral key or session key here???
 		SessionPublicKey: string(ephemeralPublicKeyPEM),
 		SchemaVersion:    schemaVersion,
 	}, nil

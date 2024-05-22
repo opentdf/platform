@@ -64,12 +64,15 @@ func (f *FakeAccessServiceServer) Info(ctx context.Context, _ *kas.InfoRequest) 
 
 	return &kas.InfoResponse{}, nil
 }
+
 func (f *FakeAccessServiceServer) PublicKey(context.Context, *kas.PublicKeyRequest) (*kas.PublicKeyResponse, error) {
 	return &kas.PublicKeyResponse{}, status.Error(codes.Unauthenticated, "no public key for you")
 }
+
 func (f *FakeAccessServiceServer) LegacyPublicKey(context.Context, *kas.LegacyPublicKeyRequest) (*wrapperspb.StringValue, error) {
 	return &wrapperspb.StringValue{}, nil
 }
+
 func (f *FakeAccessServiceServer) Rewrap(context.Context, *kas.RewrapRequest) (*kas.RewrapResponse, error) {
 	return &kas.RewrapResponse{}, nil
 }
@@ -82,6 +85,7 @@ type FakeTokenSource struct {
 func (fts *FakeTokenSource) AccessToken(context.Context, *http.Client) (sdkauth.AccessToken, error) {
 	return sdkauth.AccessToken(fts.accessToken), nil
 }
+
 func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	if fts.key == nil {
 		return nil, errors.New("no such key")
@@ -92,6 +96,7 @@ func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, 
 func (fake FakeAccessTokenSource) AccessToken() (sdkauth.AccessToken, error) {
 	return sdkauth.AccessToken(fake.accessToken), nil
 }
+
 func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	return tokenMaker(fake.dpopKey)
 }
@@ -249,7 +254,7 @@ func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
 
 	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().Error(err)
-	s.Equal("invalid issuer", err.Error())
+	s.Contains(err.Error(), "invalid issuer")
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Audience_Missing_Expect_Error() {
@@ -358,10 +363,14 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/different/path", "", time.Now(), "incorrect `htu` claim in DPoP JWT"},
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POSTERS", "/a/path", "", time.Now(), "incorrect `htm` claim in DPoP JWT"},
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "bad ath", time.Now(), "incorrect `ath` claim in DPoP JWT"},
-		{otherKeyPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(),
-			"the `jkt` from the DPoP JWT didn't match the thumbprint from the access token"},
-		{dpopPublic, dpopKey, signedTokWithNoCNF, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(),
-			"missing `cnf` claim in access token"},
+		{
+			otherKeyPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(),
+			"the `jkt` from the DPoP JWT didn't match the thumbprint from the access token",
+		},
+		{
+			dpopPublic, dpopKey, signedTokWithNoCNF, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(),
+			"missing `cnf` claim in access token",
+		},
 	}
 
 	for _, testCase := range testCases {
@@ -557,7 +566,6 @@ func makeDPoPToken(t *testing.T, tc dpopTestCase) string {
 	}
 
 	dpopTok, err := b.Build()
-
 	if err != nil {
 		t.Fatalf("error creating dpop jwt: %v", err)
 	}

@@ -44,10 +44,10 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &authorization.AuthorizationService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			// default ERS endpoint
-			var ersURL = "http://localhost:8080/entityresolution/resolve"
-			var clientID = "tdf-authorization-svc"
-			var clientSecret = "secret"
-			var tokenEndpoint = "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token" //nolint:gosec // default token endpoint
+			ersURL := "http://localhost:8080/entityresolution/resolve"
+			clientID := "tdf-authorization-svc"
+			clientSecret := "secret"
+			tokenEndpoint := "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token" //nolint:gosec // default token endpoint
 
 			as := &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, logger: srp.Logger}
 			if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
@@ -85,6 +85,7 @@ func NewRegistration() serviceregistry.Registration {
 				}
 			}
 			config := clientcredentials.Config{ClientID: clientID, ClientSecret: clientSecret, TokenURL: tokenEndpoint}
+			slog.Debug("authorization service client config", slog.Any("config", config))
 			newTokenSource := oauth2.ReuseTokenSourceWithExpiry(nil, config.TokenSource(context.Background()), tokenExpiryDelay)
 			slog.Debug("authorization service token source created", slog.Any("token_source", newTokenSource))
 
@@ -267,9 +268,9 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	for i, entity := range req.GetEntities() {
 		slog.Debug("checking as.tokenSource", slog.Any("as.tokenSource", as.tokenSource))
 		// get the client auth token
-		authToken, err := (*as.tokenSource).Token()
+		authToken, err := (*as.tokenSource).Token() // this is never assigned?
 		if err != nil {
-			slog.Error("failed to get client auth token", slog.Any("as.tokenSource", as.tokenSource), slog.String("error", err.Error()))
+			slog.Error("failed to get client auth token in GetEntitlements", slog.String("error", err.Error()))
 			return nil, fmt.Errorf("failed to get client auth token in GetEntitlements: %w", err)
 		}
 		// OPA

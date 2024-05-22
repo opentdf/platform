@@ -24,14 +24,14 @@ import (
 
 // / Constants
 const (
-	kMaxTDFSize        = ((16 * 1024 * 1024) - 3 - 32) //nolint:gomnd // 16 mb - 3(iv) - 32(max auth tag)
-	kDatasetMaxMBBytes = 2097152                       // 2mb
+	kMaxTDFSize = ((16 * 1024 * 1024) - 3 - 32) //nolint:gomnd // 16 mb - 3(iv) - 32(max auth tag)
+	// kDatasetMaxMBBytes = 2097152                       // 2mb
 
 	// Max size of the encrypted tdfs
 	//  16mb payload
 	// ~67kb of policy
 	// 133 of signature
-	kMaxEncryptedNTDFSize = (16 * 1024 * 1024) + (68 * 1024) + 133 //nolint:gomnd // See comment block above
+	// kMaxEncryptedNTDFSize = (16 * 1024 * 1024) + (68 * 1024) + 133 //nolint:gomnd // See comment block above
 
 	kIvPadding                    = 9
 	kNanoTDFIvSize                = 3
@@ -70,13 +70,19 @@ type embeddedPolicy struct {
 
 // getLength - size in bytes of the serialized content of this object
 func (ep *embeddedPolicy) getLength() uint16 {
-	return uint16(2 /* length word length */ + len(ep.body) /* body data length */)
+	const (
+		kUint16Len = 2
+	)
+	return uint16(kUint16Len /* length word length */ + len(ep.body) /* body data length */)
 }
 
 // writeEmbeddedPolicy - writes the content of the  to the supplied writer
 func (ep embeddedPolicy) writeEmbeddedPolicy(writer io.Writer) error {
 	// store uint16 in big endian format
-	buf := make([]byte, 2)
+	const (
+		kUint16Len = 2
+	)
+	buf := make([]byte, kUint16Len)
 	binary.BigEndian.PutUint16(buf, ep.lengthBody)
 	if _, err := writer.Write(buf); err != nil {
 		return err
@@ -139,9 +145,9 @@ type eccSignature struct {
 	value []byte
 }
 
-type eccKey struct {
-	Key []byte
-}
+// type eccKey struct {
+//	Key []byte
+// }
 
 type cipherMode int
 
@@ -311,7 +317,7 @@ func SizeOfAuthTagForCipher(cipherType cipherMode) (int, error) {
 // ============================================================================================================
 
 func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32, error) {
-	var totalBytes uint32 = 0
+	var totalBytes uint32
 
 	// Write the magic number
 	l, err := writer.Write([]byte(kNanoTDFMagicStringAndVersion))
@@ -390,7 +396,10 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 		return nil, 0, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
 	}
 
-	iv := make([]byte, 12)
+	const (
+		kIvLength = 12
+	)
+	iv := make([]byte, kIvLength)
 	cipherText, err := aesGcm.EncryptWithIVAndTagSize(iv, policyObjectAsStr, tagSize)
 	if err != nil {
 		return nil, 0, fmt.Errorf("AesGcm.EncryptWithIVAndTagSize failed:%w", err)
@@ -432,12 +441,15 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 
 func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error) {
 	header := NanoTDFHeader{}
-	var size uint32 = 0
+	var size uint32
 
-	magicNumber := make([]byte, 3)
+	magicNumber := make([]byte, len(kNanoTDFMagicStringAndVersion))
 	l, err := reader.Read(magicNumber)
 	if err != nil {
 		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
+	}
+	if magicNumber[0] != kNanoTDFMagicStringAndVersion[0] || magicNumber[1] != kNanoTDFMagicStringAndVersion[1] || magicNumber[2] != kNanoTDFMagicStringAndVersion[2] {
+		return header, 0, fmt.Errorf(" io.Reader.Read magic number failed : %w", err)
 	}
 	size += uint32(l)
 
@@ -489,7 +501,10 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	}
 
 	// read policy length
-	twoBytes := make([]byte, 2)
+	const (
+		kSizeOfUint16 = 2
+	)
+	twoBytes := make([]byte, kSizeOfUint16)
 	l, err = reader.Read(twoBytes)
 	if err != nil {
 		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
@@ -539,7 +554,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 
 // CreateNanoTDF - reads plain text from the given reader and saves it to the writer, subject to the given options
 func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFConfig) (uint32, error) {
-	var totalSize uint32 = 0
+	var totalSize uint32
 	buf := bytes.Buffer{}
 	size, err := buf.ReadFrom(reader)
 	if err != nil {
@@ -591,14 +606,18 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 		return 0, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
 	}
 
-	cipherData, err := aesGcm.EncryptWithIVAndTagSize(append(ivPadding, iv...), buf.Bytes(), tagSize)
+	// TODO - FIXME - do zero init here
+	cipherData, err := aesGcm.EncryptWithIVAndTagSize(append(ivPadding, iv...), buf.Bytes(), tagSize) // nolint:makezero working code
 	if err != nil {
 		return 0, err
 	}
 
 	// Write the length of the payload as int24
 	cipherDataWithoutPadding := cipherData[kIvPadding:]
-	uint32Buf := make([]byte, 4)
+	const (
+		kUint32BufLen = 4
+	)
+	uint32Buf := make([]byte, kUint32BufLen)
 	binary.BigEndian.PutUint32(uint32Buf, uint32(len(cipherDataWithoutPadding)))
 	l, err := writer.Write(uint32Buf[1:])
 	if err != nil {
@@ -660,7 +679,10 @@ func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error)
 	encoded := ocrypto.Base64Encode(symmetricKey)
 	slog.Debug("ReadNanoTDF", slog.String("symmetricKey", string(encoded)))
 
-	payloadLengthBuf := make([]byte, 4)
+	const (
+		kPayloadLoadLengthBufLength = 4
+	)
+	payloadLengthBuf := make([]byte, kPayloadLoadLengthBufLength)
 	_, err = reader.Read(payloadLengthBuf[1:])
 
 	if err != nil {
@@ -689,19 +711,20 @@ func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error)
 		return 0, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
 	}
 
-	decryptedData, err := aesGcm.DecryptWithIVAndTagSize(append(ivPadding, iv...), cipherDate[kNanoTDFIvSize:], tagSize)
+	// TODO FIXME - zero init needed?
+	decryptedData, err := aesGcm.DecryptWithIVAndTagSize(append(ivPadding, iv...), cipherDate[kNanoTDFIvSize:], tagSize) // nolint:makezero working code
 	if err != nil {
 		return 0, err
 	}
 
-	len, err := writer.Write(decryptedData)
+	writeLen, err := writer.Write(decryptedData)
 	if err != nil {
 		return 0, err
 	}
 	// print(payloadLength)
 	// print(string(decryptedData))
 
-	return uint32(len), nil
+	return uint32(writeLen), nil
 }
 
 // getECPublicKey - Contact the specified KAS and get its public key
@@ -739,6 +762,6 @@ type requestBody struct {
 type keyAccess struct {
 	Header        string `json:"header"`
 	KeyAccessType string `json:"type"`
-	Url           string `json:"url"`
+	URL           string `json:"url"`
 	Protocol      string `json:"protocol"`
 }

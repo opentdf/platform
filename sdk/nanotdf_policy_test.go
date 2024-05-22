@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	kSampleUrlBody  = "test.virtru.com"
-	kSampleUrlProto = policyTypeRemotePolicy
-	kSampleUrlFull  = "https://" + kSampleUrlBody
+	kSampleURLBody = "test.virtru.com"
+	// kSampleUrlProto = policyTypeRemotePolicy
+	kSampleURLFull = "https://" + kSampleURLBody
 )
 
 // TestNanoTDFPolicyWrite - Create a new policy, write it to a buffer
@@ -19,7 +19,7 @@ func TestNanoTDFPolicy(t *testing.T) {
 		rp: remotePolicy{
 			url: ResourceLocator{
 				protocol: 1,
-				body:     kSampleUrlBody,
+				body:     kSampleURLBody,
 			},
 		},
 	}
@@ -36,11 +36,11 @@ func TestNanoTDFPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fullUrl, err := pb2.rp.url.getURL()
+	fullURL, err := pb2.rp.url.getURL()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fullUrl != kSampleUrlFull {
-		t.Fatal(fullUrl)
+	if fullURL != kSampleURLFull {
+		t.Fatal(fullURL)
 	}
 }

@@ -3,12 +3,13 @@ package sdk
 import (
 	"bytes"
 	"encoding/gob"
-	"github.com/opentdf/platform/lib/ocrypto"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"io"
 	"os"
 	"testing"
+
+	"github.com/opentdf/platform/lib/ocrypto"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // nanotdfEqual compares two nanoTdf structures for equality.
@@ -42,40 +43,40 @@ func nanoTDFEqual(a, b *NanoTDFHeader) bool {
 	return true
 }
 
-// policyBodyEqual compares two PolicyBody instances for equality.
-func policyBodyEqual(a, b PolicyBody) bool {
-	// Compare based on the concrete type of PolicyBody
-	switch a.mode {
-	case policyTypeRemotePolicy:
-		return remotePolicyEqual(a.rp, b.rp)
-	case policyTypeEmbeddedPolicyPlainText:
-	case policyTypeEmbeddedPolicyEncrypted:
-	case policyTypeEmbeddedPolicyEncryptedPolicyKeyAccess:
-		return embeddedPolicyEqual(a.ep, b.ep)
-	}
-	return false
-}
+//// policyBodyEqual compares two PolicyBody instances for equality.
+// func policyBodyEqual(a, b PolicyBody) bool { //nolint:unused future usage
+//	// Compare based on the concrete type of PolicyBody
+//	switch a.mode {
+//	case policyTypeRemotePolicy:
+//		return remotePolicyEqual(a.rp, b.rp)
+//	case policyTypeEmbeddedPolicyPlainText:
+//	case policyTypeEmbeddedPolicyEncrypted:
+//	case policyTypeEmbeddedPolicyEncryptedPolicyKeyAccess:
+//		return embeddedPolicyEqual(a.ep, b.ep)
+//	}
+//	return false
+// }
 
-// remotePolicyEqual compares two remotePolicy instances for equality.
-func remotePolicyEqual(a, b remotePolicy) bool {
-	// Compare url field
-	if a.url.protocol != b.url.protocol || a.url.getLength() != b.url.getLength() || a.url.body != b.url.body {
-		return false
-	}
-	return true
-}
-
-// embeddedPolicyEqual compares two embeddedPolicy instances for equality.
-func embeddedPolicyEqual(a, b embeddedPolicy) bool {
-	// Compare lengthBody and body fields
-	return a.lengthBody == b.lengthBody && bytes.Equal(a.body, b.body)
-}
-
-// eccSignatureEqual compares two eccSignature instances for equality.
-func eccSignatureEqual(a, b *eccSignature) bool {
-	// Compare value field
-	return bytes.Equal(a.value, b.value)
-}
+//// remotePolicyEqual compares two remotePolicy instances for equality.
+// func remotePolicyEqual(a, b remotePolicy) bool { // nolint:unused future usage
+//	// Compare url field
+//	if a.url.protocol != b.url.protocol || a.url.getLength() != b.url.getLength() || a.url.body != b.url.body {
+//		return false
+//	}
+//	return true
+// }
+//
+//// embeddedPolicyEqual compares two embeddedPolicy instances for equality.
+// func embeddedPolicyEqual(a, b embeddedPolicy) bool { // nolint:unused future usage
+//	// Compare lengthBody and body fields
+//	return a.lengthBody == b.lengthBody && bytes.Equal(a.body, b.body)
+// }
+//
+//// eccSignatureEqual compares two eccSignature instances for equality.
+// func eccSignatureEqual(a, b *eccSignature) bool { // nolint:unused future usage
+//	// Compare value field
+//	return bytes.Equal(a.value, b.value)
+// }
 
 func init() {
 	// Register the remotePolicy type with gob
@@ -145,27 +146,28 @@ func NotTestReadNanoTDFHeader(t *testing.T) {
 }
 
 const (
-	sdkPrivateKey = `-----BEGIN PRIVATE KEY-----
-MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg1HjFYV8D16BQszNW
-6Hx/JxTE53oqk5/bWaIj4qV5tOyhRANCAAQW1Hsq0tzxN6ObuXqV+JoJN0f78Em/
-PpJXUV02Y6Ex3WlxK/Oaebj8ATsbfaPaxrhyCWB3nc3w/W6+lySlLPn5
------END PRIVATE KEY-----`
+//	sdkPrivateKey = `-----BEGIN PRIVATE KEY-----
+// MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg1HjFYV8D16BQszNW
+// 6Hx/JxTE53oqk5/bWaIj4qV5tOyhRANCAAQW1Hsq0tzxN6ObuXqV+JoJN0f78Em/
+// PpJXUV02Y6Ex3WlxK/Oaebj8ATsbfaPaxrhyCWB3nc3w/W6+lySlLPn5
+// -----END PRIVATE KEY-----`
 
-	//	sdkPublicKey = `-----BEGIN PUBLIC KEY-----
-	// MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFtR7KtLc8Tejm7l6lfiaCTdH+/BJ
-	// vz6SV1FdNmOhMd1pcSvzmnm4/AE7G32j2sa4cglgd53N8P1uvpckpSz5+Q==
-	// -----END PUBLIC KEY-----`
+//	sdkPublicKey = `-----BEGIN PUBLIC KEY-----
+// MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFtR7KtLc8Tejm7l6lfiaCTdH+/BJ
+// vz6SV1FdNmOhMd1pcSvzmnm4/AE7G32j2sa4cglgd53N8P1uvpckpSz5+Q==
+// -----END PUBLIC KEY-----`
 
-	//	kasPrivateKey = `-----BEGIN PRIVATE KEY-----
-	// MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgu2Hmm80uUzQB1OfB
-	// PyMhWIyJhPA61v+j0arvcLjTwtqhRANCAASHCLUHY4szFiVV++C9+AFMkEL2gG+O
-	// byN4Hi7Ywl8GMPOAPcQdIeUkoTd9vub9PcuSj23I8/pLVzs23qhefoUf
-	// -----END PRIVATE KEY-----`
+//	kasPrivateKey = `-----BEGIN PRIVATE KEY-----
+// MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgu2Hmm80uUzQB1OfB
+// PyMhWIyJhPA61v+j0arvcLjTwtqhRANCAASHCLUHY4szFiVV++C9+AFMkEL2gG+O
+// byN4Hi7Ywl8GMPOAPcQdIeUkoTd9vub9PcuSj23I8/pLVzs23qhefoUf
+// -----END PRIVATE KEY-----`
 
-	kasPublicKey = `-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEhwi1B2OLMxYlVfvgvfgBTJBC9oBv
-jm8jeB4u2MJfBjDzgD3EHSHlJKE3fb7m/T3Lko9tyPP6S1c7Nt6oXn6FHw==
------END PUBLIC KEY-----`
+//	kasPublicKey = `-----BEGIN PUBLIC KEY-----
+//
+// MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEhwi1B2OLMxYlVfvgvfgBTJBC9oBv
+// jm8jeB4u2MJfBjDzgD3EHSHlJKE3fb7m/T3Lko9tyPP6S1c7Nt6oXn6FHw==
+// -----END PUBLIC KEY-----`
 )
 
 // disabled for now, no remote policy support yet
@@ -207,7 +209,6 @@ func NotTestNanoTDFEncryptFile(t *testing.T) {
 
 // disabled for now
 func NotTestCreateNanoTDF(t *testing.T) {
-
 	var s SDK
 
 	grpc.WithTransportCredentials(insecure.NewCredentials())

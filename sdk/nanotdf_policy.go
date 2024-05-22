@@ -27,20 +27,20 @@ type PolicyBody struct {
 }
 
 // getLength - size in bytes of the serialized content of this object
-func (pb *PolicyBody) getLength() uint16 {
-	var result uint16
-
-	result = 1 /* policy mode byte */
-
-	if pb.mode == policyTypeRemotePolicy {
-		result += pb.rp.getLength()
-	} else {
-		// If it's not remote, assume embedded policy
-		result += pb.ep.getLength()
-	}
-
-	return result
-}
+// func (pb *PolicyBody) getLength() uint16 { // nolint:unused future use
+//	var result uint16
+//
+//	result = 1 /* policy mode byte */
+//
+//	if pb.mode == policyTypeRemotePolicy {
+//		result += pb.rp.getLength()
+//	} else {
+//		// If it's not remote, assume embedded policy
+//		result += pb.ep.getLength()
+//	}
+//
+//	return result
+// }
 
 // readPolicyBody - helper function to decode input data into a PolicyBody object
 func (pb *PolicyBody) readPolicyBody(reader io.Reader) error {

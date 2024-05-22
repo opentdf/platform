@@ -34,7 +34,7 @@ func TestNanoTDFConfig1(t *testing.T) {
 // TestNanoTDFConfig2 - set kas url, retrieve kas url, verify value is correct
 func TestNanoTDFConfig2(t *testing.T) {
 	const (
-		kasUrl = "https://test.virtru.com"
+		kasURL = "https://test.virtru.com"
 	)
 
 	var s SDK
@@ -42,16 +42,16 @@ func TestNanoTDFConfig2(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = conf.SetKasUrl(kasUrl)
+	err = conf.SetKasURL(kasURL)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	readKasUrl, err := conf.kasURL.getURL()
+	readKasURL, err := conf.kasURL.getURL()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if readKasUrl != kasUrl {
-		t.Fatalf("expect %s, got %s", kasUrl, readKasUrl)
+	if readKasURL != kasURL {
+		t.Fatalf("expect %s, got %s", kasURL, readKasURL)
 	}
 }

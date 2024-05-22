@@ -117,7 +117,7 @@ func (k *KASClient) getNanoTDFRewrapRequest(header string, kasURL string, pubKey
 	kAccess := keyAccess{
 		Header:        header,
 		KeyAccessType: "remote",
-		Url:           kasURL,
+		URL:           kasURL,
 		Protocol:      "kas",
 	}
 
@@ -209,7 +209,7 @@ func (k *KASClient) unwrapNanoTDF(header string, kasURL string) ([]byte, error) 
 		return nil, fmt.Errorf("error making request to kas: %w", err)
 	}
 
-	sessionKey, err := ocrypto.ComputeECDHKey([]byte(privateKeyAsPem), []byte(response.SessionPublicKey))
+	sessionKey, err := ocrypto.ComputeECDHKey([]byte(privateKeyAsPem), []byte(response.GetSessionPublicKey()))
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed :%w", err)
 	}
@@ -224,7 +224,7 @@ func (k *KASClient) unwrapNanoTDF(header string, kasURL string) ([]byte, error) 
 		return nil, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
 	}
 
-	symmetricKey, err := aesGcm.Decrypt(response.EntityWrappedKey)
+	symmetricKey, err := aesGcm.Decrypt(response.GetEntityWrappedKey())
 	if err != nil {
 		return nil, fmt.Errorf("AesGcm.Decrypt failed:%w", err)
 	}

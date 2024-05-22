@@ -55,8 +55,8 @@ func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
 	return c, nil
 }
 
-// SetKasUrl - set the URL of the KAS endpoint to be used for this nanoTDF
-func (config *NanoTDFConfig) SetKasUrl(url string) error {
+// SetKasURL - set the URL of the KAS endpoint to be used for this nanoTDF
+func (config *NanoTDFConfig) SetKasURL(url string) error {
 	return config.kasURL.setURL(url)
 }
 

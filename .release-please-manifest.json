@@ -3,5 +3,5 @@
   "lib/ocrypto": "0.1.3",
   "protocol/go": "0.2.3",
   "sdk": "0.2.3",
-  "service": "0.4.2"
+  "service": "0.4.3"
 }

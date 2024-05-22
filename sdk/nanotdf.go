@@ -112,12 +112,12 @@ func (ep embeddedPolicy) writeEmbeddedPolicy(writer io.Writer) error {
 	if _, err := writer.Write(buf); err != nil {
 		return err
 	}
-	slog.Info("writeEmbeddedPolicy", slog.Uint64("policy length", uint64(ep.lengthBody)))
+	slog.Debug("writeEmbeddedPolicy", slog.Uint64("policy length", uint64(ep.lengthBody)))
 
 	if _, err := writer.Write(ep.body); err != nil {
 		return err
 	}
-	slog.Info("writeEmbeddedPolicy", slog.Uint64("policy body", uint64(len(ep.body))))
+	slog.Debug("writeEmbeddedPolicy", slog.Uint64("policy body", uint64(len(ep.body))))
 
 	return nil
 }
@@ -775,7 +775,8 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 		return nil, 0, err
 	}
 	totalBytes += uint32(l)
-	slog.Info("writeNanoTDFHeader", slog.Uint64("magic number", uint64(len(kNanoTDFMagicStringAndVersion))))
+
+	slog.Debug("writeNanoTDFHeader", slog.Uint64("magic number", uint64(len(kNanoTDFMagicStringAndVersion))))
 
 	// Write the kas url
 	err = config.kasURL.writeResourceLocator(writer)
@@ -783,7 +784,7 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 		return nil, 0, err
 	}
 	totalBytes += uint32(config.kasURL.getLength())
-	slog.Info("writeNanoTDFHeader", slog.Uint64("resource locator number", uint64(config.kasURL.getLength())))
+	slog.Debug("writeNanoTDFHeader", slog.Uint64("resource locator number", uint64(config.kasURL.getLength())))
 
 	// Write ECC And Binding Mode
 	l, err = writer.Write([]byte{serializeBindingCfg(config.bindCfg)})
@@ -833,7 +834,7 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	}
 
 	encoded := ocrypto.Base64Encode(symmetricKey)
-	slog.Info("writeNanoTDFHeader", slog.String("symmetricKey", string(encoded)))
+	slog.Debug("writeNanoTDFHeader", slog.String("symmetricKey", string(encoded)))
 
 	aesGcm, err := ocrypto.NewAESGcm(symmetricKey)
 	if err != nil {
@@ -909,7 +910,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NTDFHeader, uint32, error) {
 	size += uint32(resource.getLength())
 	header.kasURL = *resource
 
-	slog.Info("NewNanoTDFHeaderFromReader", slog.Uint64("resource locator", uint64(resource.getLength())))
+	slog.Debug("NewNanoTDFHeaderFromReader", slog.Uint64("resource locator", uint64(resource.getLength())))
 
 	// read ECC and Binding Mode
 	oneBytes := make([]byte, 1)
@@ -952,7 +953,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NTDFHeader, uint32, error) {
 	}
 	size += uint32(l)
 	policyLength := binary.BigEndian.Uint16(twoBytes)
-	slog.Info("NewNanoTDFHeaderFromReader", slog.Uint64("policyLength", uint64(policyLength)))
+	slog.Debug("NewNanoTDFHeaderFromReader", slog.Uint64("policyLength", uint64(policyLength)))
 
 	// read policy body
 	policyBody := make([]byte, policyLength)
@@ -979,7 +980,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NTDFHeader, uint32, error) {
 	size += uint32(l)
 	header.EphemeralKey = ephemeralKey
 
-	slog.Info("NewNanoTDFHeaderFromReader", slog.Uint64("header size", uint64(size)))
+	slog.Debug("NewNanoTDFHeaderFromReader", slog.Uint64("header size", uint64(size)))
 
 	return header, size, nil
 }
@@ -1009,7 +1010,7 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 		return 0, fmt.Errorf("getECPublicKey failed:%w", err)
 	}
 
-	slog.Info("CreateNanoTDF", slog.String("header size", kasPublicKey))
+	slog.Debug("CreateNanoTDF", slog.String("header size", kasPublicKey))
 
 	config.kasPublicKey, err = ocrypto.ECPubKeyFromPem([]byte(kasPublicKey))
 	if err != nil {
@@ -1022,7 +1023,7 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 		return 0, fmt.Errorf("writeNanoTDFHeader failed:%w", err)
 	}
 
-	slog.Info("CreateNanoTDF", slog.Uint64("Header", uint64(totalSize)))
+	slog.Debug("CreateNanoTDF", slog.Uint64("Header", uint64(totalSize)))
 
 	aesGcm, err := ocrypto.NewAESGcm(key)
 	if err != nil {
@@ -1055,7 +1056,7 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	}
 	totalSize += uint32(l)
 
-	slog.Info("CreateNanoTDF", slog.Uint64("payloadLength", uint64(len(cipherDataWithoutPadding))))
+	slog.Debug("CreateNanoTDF", slog.Uint64("payloadLength", uint64(len(cipherDataWithoutPadding))))
 
 	// write cipher data
 	l, err = writer.Write(cipherDataWithoutPadding)
@@ -1103,7 +1104,7 @@ func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error)
 	}
 
 	encoded := ocrypto.Base64Encode(symmetricKey)
-	slog.Info("ReadNanoTDF", slog.String("symmetricKey", string(encoded)))
+	slog.Debug("ReadNanoTDF", slog.String("symmetricKey", string(encoded)))
 
 	payloadLengthBuf := make([]byte, 4)
 	_, err = reader.Read(payloadLengthBuf[1:])
@@ -1113,7 +1114,7 @@ func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error)
 	}
 
 	payloadLength := binary.BigEndian.Uint32(payloadLengthBuf)
-	slog.Info("ReadNanoTDF", slog.Uint64("payloadLength", uint64(payloadLength)))
+	slog.Debug("ReadNanoTDF", slog.Uint64("payloadLength", uint64(payloadLength)))
 
 	cipherDate := make([]byte, payloadLength)
 	_, err = reader.Read(cipherDate)

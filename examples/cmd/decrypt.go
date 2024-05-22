@@ -52,6 +52,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	if err != nil && err != io.EOF {
 		return err
 	}
+	cmd.Println()
 
 	nTdfFile, err := os.Open("sensitive.txt.ntdf")
 	if err != nil {

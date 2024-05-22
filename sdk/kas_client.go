@@ -221,9 +221,6 @@ func (k *KASClient) unwrapNanoTDF(header string, kasURL string) ([]byte, error) 
 		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
 	}
 
-	println("******")
-	println(len(response.EntityWrappedKey))
-
 	aesGcm, err := ocrypto.NewAESGcm(sessionKey)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)

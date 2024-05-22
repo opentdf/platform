@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"os"
 	"strings"
 
@@ -82,8 +84,10 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	nanoTDFCOnfig.SetKasUrl(fmt.Sprintf("http://%s", cmd.Flag("platformEndpoint").Value.String()))
 	nanoTDFCOnfig.SetAttributes(attributes)
 
+	nTDFile := "sensitive.txt.ntdf"
 	strReader = strings.NewReader(plainText)
-	nTdfFile, err := os.Create("sensitive.txt.ntdf")
+	nTdfFile, err := os.Create(nTDFile)
+	defer nTdfFile.Close()
 
 	_, err = client.CreateNanoTDF(nTdfFile, strReader, *nanoTDFCOnfig)
 	if err != nil {
@@ -91,6 +95,27 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	cmd.Println("NanoTDF encrypt done.")
+
+	err = dumpNanoTDF(cmd, nTDFile)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func dumpNanoTDF(cmd *cobra.Command, nTdfFile string) error {
+	f, err := os.Open(nTdfFile)
+	if err != nil {
+		return err
+	}
+
+	buf := bytes.Buffer{}
+	_, err = buf.ReadFrom(f)
+	if err != nil {
+		return err
+	}
+
+	cmd.Println(string(ocrypto.Base64Encode(buf.Bytes())))
 
 	return nil
 }

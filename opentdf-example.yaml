@@ -16,21 +16,21 @@ services:
   entityresolution:
     enabled: true
     url: http://keycloak:8888/auth
-    clientid: "tdf-entity-resolution"
-    clientsecret: "secret"
-    realm: "opentdf"
+    clientid: 'tdf-entity-resolution'
+    clientsecret: 'secret'
+    realm: 'opentdf'
     legacykeycloak: true
   authorization:
     enabled: true
     ersurl: http://localhost:8080/entityresolution/resolve
     clientid: tdf-authorization-svc
     clientsecret: secret
-    tokenEndpoint: http://keycloak:8888/auth/realms/opentdf/protocol/openid-connect/token
+    tokenendpoint: http://keycloak:8888/auth/realms/opentdf/protocol/openid-connect/token
 server:
   auth:
     enabled: true
     enforceDPoP: false
-    audience: "http://localhost:8080"
+    audience: 'http://localhost:8080'
     issuer: http://keycloak:8888/auth/realms/opentdf
     policy:
       ## Default policy for all requests
@@ -69,7 +69,7 @@ server:
   cors:
     enabled: false
     # '*' to allow any origin or a specific domain like 'https://yourdomain.com'
-    allowedorigins: "*"
+    allowedorigins: '*'
     # List of methods. Examples: 'GET,POST,PUT'
     allowedmethods:
       - GET

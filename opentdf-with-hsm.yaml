@@ -16,25 +16,25 @@ services:
   entityresolution:
     enabled: true
     url: http://localhost:8888/auth
-    clientid: "tdf-entity-resolution"
-    clientsecret: "secret"
-    realm: "opentdf"
+    clientid: 'tdf-entity-resolution'
+    clientsecret: 'secret'
+    realm: 'opentdf'
     legacykeycloak: true
   authorization:
     enabled: true
     ersurl: http://localhost:8080/entityresolution/resolve
     clientid: tdf-authorization-svc
     clientsecret: secret
-    tokenEndpoint: http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token
+    tokenendpoint: http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token
 server:
   auth:
     enabled: true
     enforceDPoP: false
-    audience: "http://localhost:8080"
+    audience: 'http://localhost:8080'
     issuer: http://localhost:8888/auth/realms/opentdf
     clients:
-      - "opentdf"
-      - "opentdf-sdk"
+      - 'opentdf'
+      - 'opentdf-sdk'
     policy:
       ## Default policy for all requests
       default: #"role:readonly"
@@ -74,7 +74,7 @@ server:
   cors:
     enabled: false
     # '*' to allow any origin or a specific domain like 'https://yourdomain.com'
-    allowedorigins: "*"
+    allowedorigins: '*'
     # List of methods. Examples: 'GET,POST,PUT'
     allowedmethods:
       - GET
@@ -102,8 +102,8 @@ server:
     type: hsm
     hsm:
       # As configured by init-temp-keys.sh --hsm
-      pin: "12345"
-      slotlabel: "dev-token"
+      pin: '12345'
+      slotlabel: 'dev-token'
       keys:
         rsa:
           label: development-rsa-kas

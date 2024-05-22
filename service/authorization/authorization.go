@@ -77,11 +77,11 @@ func NewRegistration() serviceregistry.Registration {
 					panic("Error casting clientSecert to string")
 				}
 			}
-			val, ok = srp.Config.ExtraProps["tokenEndpoint"]
+			val, ok = srp.Config.ExtraProps["tokenendpoint"]
 			if ok {
 				tokenEndpoint, ok = val.(string)
 				if !ok {
-					panic("Error casting tokenEndpoint to string")
+					panic("Error casting tokenendpoint to string")
 				}
 			}
 			config := clientcredentials.Config{ClientID: clientID, ClientSecret: clientSecret, TokenURL: tokenEndpoint}

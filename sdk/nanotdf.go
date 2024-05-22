@@ -60,6 +60,11 @@ type NanoTDFHeader struct {
 	PolicyBinding       []byte
 }
 
+// GetCipher -- get the cipher from the nano tdf header
+func (header *NanoTDFHeader) GetCipher() cipherMode {
+	return header.sigCfg.cipher
+}
+
 // ============================================================================================================
 
 // embeddedPolicy - policy for data that is stored locally within the nanoTDF

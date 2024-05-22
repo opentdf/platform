@@ -44,10 +44,10 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &authorization.AuthorizationService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			// default ERS endpoint
-			ersURL := "http://localhost:8080/entityresolution/resolve"
-			clientID := "tdf-authorization-svc"
-			clientSecret := "secret"
-			tokenEndpoint := "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token" //nolint:gosec // default token endpoint
+			var ersURL = "http://localhost:8080/entityresolution/resolve"
+			var clientID = "tdf-authorization-svc"
+			var clientSecret = "secret"
+			var tokenEndpoint = "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token" //nolint:gosec // default token endpointdefault token endpoint
 
 			as := &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, logger: srp.Logger}
 			if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
@@ -266,9 +266,8 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		Entitlements: make([]*authorization.EntityEntitlements, len(req.GetEntities())),
 	}
 	for i, entity := range req.GetEntities() {
-		slog.Debug("checking as.tokenSource", slog.Any("as.tokenSource", as.tokenSource))
 		// get the client auth token
-		authToken, err := (*as.tokenSource).Token() // this is never assigned?
+		authToken, err := (*as.tokenSource).Token()
 		if err != nil {
 			slog.Error("failed to get client auth token in GetEntitlements", slog.String("error", err.Error()))
 			return nil, fmt.Errorf("failed to get client auth token in GetEntitlements: %w", err)

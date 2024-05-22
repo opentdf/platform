@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/opentdf/platform/lib/ocrypto"
 	"os"
 	"strings"
+
+	"github.com/opentdf/platform/lib/ocrypto"
 
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
@@ -72,8 +73,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	//
 
 	attributes := []string{
-		"https://example.com/attr/Classification/value/S",
-		"https://example.com/attr/Classification/value/X",
+		"https://example.com/attr/attr1/value/value1",
 	}
 
 	nanoTDFCOnfig, err := client.NewNanoTDFConfig()

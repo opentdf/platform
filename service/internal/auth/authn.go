@@ -208,7 +208,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 
 // UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
 func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-	// Allow health checks to pass through
+	// Allow health checks and other public routes to pass through
 	if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(info.FullMethod)) {
 		return handler(ctx, req)
 	}
@@ -302,11 +302,13 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 	}
 
 	// Get the openid configuration for the issuer
-	// Because we get an interface we need to cast it to a string
-	// and jwx expects it as a string so we should never hit this error if the token is valid
 	oidc, exists := a.oidcConfigurations[issuer]
 	if !exists {
-		return nil, nil, fmt.Errorf("invalid issuer")
+		validIssuers := make([]string, 0)
+		for iss := range a.oidcConfigurations {
+			validIssuers = append(validIssuers, iss)
+		}
+		return nil, nil, fmt.Errorf("invalid issuer: [%s], expected one of the configured issuers: %v", issuer, validIssuers)
 	}
 
 	// Get key set from cache that matches the jwks_uri
@@ -457,7 +459,6 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 	// at this point we have the right key because its thumbprint matches the `jkt` claim
 	// in the validated access token
 	dpopToken, err := jwt.Parse([]byte(dpopHeader), jwt.WithKey(protectedHeaders.Algorithm(), dpopKey))
-
 	if err != nil {
 		slog.Error("error validating DPoP JWT", "error", err)
 		return nil, fmt.Errorf("failed to verify signature on DPoP JWT")
@@ -478,7 +479,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 	}
 
 	if htm != dpopInfo.m {
-		return nil, fmt.Errorf("incorrect `htm` claim in DPoP JWT; should match [%v]", dpopInfo.m)
+		return nil, fmt.Errorf("incorrect `htm` claim in DPoP JWT; received [%v], but should match [%v]", htm, dpopInfo.m)
 	}
 
 	htu, ok := dpopToken.Get("htu")
@@ -487,7 +488,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 	}
 
 	if htu != dpopInfo.u {
-		return nil, fmt.Errorf("incorrect `htu` claim in DPoP JWT; should match %v", dpopInfo.u)
+		return nil, fmt.Errorf("incorrect `htu` claim in DPoP JWT; received [%v], but should match [%v]", htu, dpopInfo.u)
 	}
 
 	ath, ok := dpopToken.Get("ath")

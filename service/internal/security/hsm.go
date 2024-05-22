@@ -22,25 +22,6 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-type Config struct {
-	Type string `yaml:"type" default:"standard"`
-	// HSMConfig is the configuration for the HSM
-	HSMConfig HSMConfig `yaml:"hsm,omitempty" mapstructure:"hsm"`
-	// StandardConfig is the configuration for the standard key provider
-	StandardConfig StandardConfig `yaml:"standard,omitempty" mapstructure:"standard"`
-}
-
-func NewCryptoProvider(cfg Config) (CryptoProvider, error) {
-	switch cfg.Type {
-	case "hsm":
-		return NewHSM(&cfg.HSMConfig)
-	case "standard":
-		return NewStandardCrypto(cfg.StandardConfig)
-	default:
-		return NewStandardCrypto(cfg.StandardConfig)
-	}
-}
-
 const keyLength = 32
 
 // A session with a security module; useful for abstracting basic cryptographic
@@ -650,7 +631,6 @@ func (h *HSMSession) GenerateNanoTDFSessionKey(
 	privateKey any,
 	ephemeralPublicKey []byte,
 ) ([]byte, error) {
-
 	privateKeyHandle, ok := privateKey.(PrivateKeyEC)
 	if !ok {
 		return nil, ErrHSMUnexpected

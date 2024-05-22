@@ -439,7 +439,10 @@ func extractNanoPolicy(symmetricKey []byte, header sdk.NanoTDFHeader) (*Policy, 
 		return nil, fmt.Errorf("crypto.NewAESGcm:%w", err)
 	}
 
-	iv := make([]byte, 12)
+	const (
+		kIvLen = 12
+	)
+	iv := make([]byte, kIvLen)
 	tagSize, err := sdk.SizeOfAuthTagForCipher(header.GetCipher())
 	if err != nil {
 		return nil, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)

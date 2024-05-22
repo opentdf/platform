@@ -8,7 +8,6 @@ import (
 )
 
 // ============================================================================================================
-// Pat Mancuso May 2024
 // Support for specifying configuration information for nanoTDF operations
 //
 // The config information in this structure is referenced once at the beginning of the nanoTDF

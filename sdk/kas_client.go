@@ -226,7 +226,6 @@ func (k *KASClient) unwrapNanoTDF(header string, kasURL string) ([]byte, error) 
 		return nil, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
 	}
 
-	// BUG - should read tag size for nanoTDF header
 	symmetricKey, err := aesGcm.Decrypt(response.EntityWrappedKey)
 	if err != nil {
 		return nil, fmt.Errorf("AesGcm.Decrypt failed:%w", err)

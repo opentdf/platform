@@ -971,8 +971,13 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NTDFHeader, uint32, error) {
 	}
 	size += uint32(l)
 
+	ephemeralKeySize, err := getECCKeyLength(header.bindCfg.eccMode)
+	if err != nil {
+		return header, 0, fmt.Errorf("getECCKeyLength :%w", err)
+	}
+
 	// read ephemeral Key
-	ephemeralKey := make([]byte, 33)
+	ephemeralKey := make([]byte, ephemeralKeySize)
 	l, err = reader.Read(ephemeralKey)
 	if err != nil {
 		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)

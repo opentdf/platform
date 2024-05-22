@@ -366,26 +366,9 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 	}
 
 	// extract the policy
-	gcm, err := ocrypto.NewAESGcm(symmetricKey)
+	policy, err := extractNanoPolicy(symmetricKey, header)
 	if err != nil {
-		return nil, fmt.Errorf("crypto.NewAESGcm:%w", err)
-	}
-
-	iv := make([]byte, 12)
-	tagSize, err := sdk.SizeOfAuthTagForCipher(header.GetCipher())
-	if err != nil {
-		return nil, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
-	}
-
-	policyData, err := gcm.DecryptWithIVAndTagSize(iv, header.EncryptedPolicyBody, tagSize)
-	if err != nil {
-		return nil, fmt.Errorf("Error decrypting policy body:%w", err)
-	}
-
-	var policy Policy
-	err = json.Unmarshal(policyData, &policy)
-	if err != nil {
-		return nil, fmt.Errorf("Error unmarshalling policy:%w", err)
+		return nil, fmt.Errorf("Error extracting policy: %w", err)
 	}
 
 	// do the access check
@@ -394,9 +377,9 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		Jwt: entity.Token,
 	}
 
-	access, err := canAccess(ctx, tok, policy, p.SDK)
+	access, err := canAccess(ctx, tok, *policy, p.SDK)
 
-	auditPolicy := transformAuditPolicy(&policy, entity.Token, *p.Logger)
+	auditPolicy := transformAuditPolicy(policy, entity.Token, *p.Logger)
 
 	if err != nil {
 		p.Logger.WarnContext(ctx, "Could not perform access decision!", "err", err)
@@ -448,6 +431,31 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		SessionPublicKey: string(publicKeyHandle),
 		SchemaVersion:    schemaVersion,
 	}, nil
+}
+
+func extractNanoPolicy(symmetricKey []byte, header sdk.NanoTDFHeader) (*Policy, error) {
+	gcm, err := ocrypto.NewAESGcm(symmetricKey)
+	if err != nil {
+		return nil, fmt.Errorf("crypto.NewAESGcm:%w", err)
+	}
+
+	iv := make([]byte, 12)
+	tagSize, err := sdk.SizeOfAuthTagForCipher(header.GetCipher())
+	if err != nil {
+		return nil, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
+	}
+
+	policyData, err := gcm.DecryptWithIVAndTagSize(iv, header.EncryptedPolicyBody, tagSize)
+	if err != nil {
+		return nil, fmt.Errorf("Error decrypting policy body:%w", err)
+	}
+
+	var policy Policy
+	err = json.Unmarshal(policyData, &policy)
+	if err != nil {
+		return nil, fmt.Errorf("Error unmarshalling policy:%w", err)
+	}
+	return &policy, nil
 }
 
 func wrapKeyAES(sessionKey, dek []byte) ([]byte, error) {

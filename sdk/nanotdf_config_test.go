@@ -7,7 +7,7 @@ import (
 // TestNanoTDFConfig1 - Create a new config, verify that the config contains valid PEMs for the key pair
 func TestNanoTDFConfig1(t *testing.T) {
 	var s SDK
-	conf, err := s.NewNanoTDFConfig()
+	_, err := s.NewNanoTDFConfig()
 	if err != nil {
 		t.Fatal(err)
 	}

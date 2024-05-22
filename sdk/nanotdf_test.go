@@ -1,9 +1,5 @@
 package sdk
 
-import (
-	"testing"
-)
-
 //// nanotdfEqual compares two nanoTdf structures for equality.
 //func nanoTDFEqual(a, b *NanoTDFHeader) bool {
 //	// Compare magicNumber field
@@ -346,78 +342,3 @@ jm8jeB4u2MJfBjDzgD3EHSHlJKE3fb7m/T3Lko9tyPP6S1c7Nt6oXn6FHw==
 //		t.Fatal(err)
 //	}
 //}
-
-func TestInt24(t *testing.T) {
-
-	b := [...]uint32{0, 16, 1234, 99999, 837434, 16777215}
-	for _, value := range b {
-
-		uint24AsBytes := UInt32ToUInt24(value)
-		int24 := UInt24ToUInt32(uint24AsBytes)
-		//println(value)
-		//println(int24)
-		if value != int24 {
-			t.Fatalf("Int24 test failed")
-		}
-	}
-}
-
-func TestNanoTDFCreate(t *testing.T) {
-
-	//attributes := []string{
-	//	"https://example.com/attr/Classification/value/S",
-	//	"https://example.com/attr/Classification/value/X",
-	//}
-	//
-	//nanoTDFCOnfig, err := NewNanoTDFConfig()
-	//if err != nil {
-	//	t.Fatalf("Cannot create config: %v", err)
-	//}
-	//
-	//nanoTDFCOnfig.SetKasUrl("https://kas.virtru.com")
-	//nanoTDFCOnfig.SetAttributes(attributes)
-	//
-	//// max nanoTDF size = 16777215
-	//b := [...]uint32{0, 16, 1234, 99999, 837434, 16777181}
-	//for _, size := range b {
-	//	inBuf := bytes.NewBuffer(make([]byte, size))
-	//
-	//	bufReader := bytes.NewReader(inBuf.Bytes())
-	//	tdfBuf := bytes.Buffer{}
-	//
-	//	tdfSize, err := CreateNanoTDF(io.Writer(&tdfBuf), bufReader, *nanoTDFCOnfig)
-	//	if err != nil {
-	//		t.Fatalf("CreateNanoTDF failed: %v", err)
-	//	}
-	//	println(tdfSize)
-	//
-	//	inBuf = bytes.NewBuffer(tdfBuf.Bytes())
-	//	nanoTDFReader := bytes.NewReader(inBuf.Bytes())
-	//	outBuf := bytes.Buffer{}
-	//	dataSize, err := ReadNanoTDF(io.Writer(&outBuf), nanoTDFReader)
-	//	if err != nil {
-	//		t.Fatalf("ReadNanoTDF failed: %v", err)
-	//	}
-	//	println(dataSize)
-	//}
-	//
-	//plaintText := "virtru!!"
-	//inBuf := bytes.NewBufferString(plaintText)
-	//bufReader := bytes.NewReader(inBuf.Bytes())
-	//tdfBuf := bytes.Buffer{}
-	//
-	//tdfSize, err := CreateNanoTDF(io.Writer(&tdfBuf), bufReader, *nanoTDFCOnfig)
-	//if err != nil {
-	//	t.Fatalf("CreateNanoTDF failed: %v", err)
-	//}
-	//println(tdfSize)
-	//
-	//inBuf = bytes.NewBuffer(tdfBuf.Bytes())
-	//nanoTDFReader := bytes.NewReader(inBuf.Bytes())
-	//outBuf := bytes.Buffer{}
-	//dataSize, err := ReadNanoTDF(io.Writer(&outBuf), nanoTDFReader)
-	//if err != nil {
-	//	t.Fatalf("ReadNanoTDF failed: %v", err)
-	//}
-	//println(dataSize)
-}

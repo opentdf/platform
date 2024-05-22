@@ -600,7 +600,7 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 		return 0, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
 	}
 
-	ivPadding := make([]byte, kIvPadding)
+	ivPadding := make([]byte, 0, kIvPadding)
 	iv, err := ocrypto.RandomBytes(kNanoTDFIvSize)
 	if err != nil {
 		return 0, fmt.Errorf("ocrypto.RandomBytes failed:%w", err)
@@ -611,8 +611,7 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 		return 0, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
 	}
 
-	// TODO - FIXME - do zero init here
-	cipherData, err := aesGcm.EncryptWithIVAndTagSize(append(ivPadding, iv...), buf.Bytes(), tagSize) // nolint:makezero working code
+	cipherData, err := aesGcm.EncryptWithIVAndTagSize(append(ivPadding, iv...), buf.Bytes(), tagSize)
 	if err != nil {
 		return 0, err
 	}
@@ -708,7 +707,7 @@ func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error)
 		return 0, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
 	}
 
-	ivPadding := make([]byte, kIvPadding)
+	ivPadding := make([]byte, 0, kIvPadding)
 	iv := cipherDate[:kNanoTDFIvSize]
 
 	tagSize, err := SizeOfAuthTagForCipher(header.sigCfg.cipher)
@@ -716,8 +715,7 @@ func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error)
 		return 0, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
 	}
 
-	// TODO FIXME - zero init needed?
-	decryptedData, err := aesGcm.DecryptWithIVAndTagSize(append(ivPadding, iv...), cipherDate[kNanoTDFIvSize:], tagSize) // nolint:makezero working code
+	decryptedData, err := aesGcm.DecryptWithIVAndTagSize(append(ivPadding, iv...), cipherDate[kNanoTDFIvSize:], tagSize)
 	if err != nil {
 		return 0, err
 	}

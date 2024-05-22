@@ -61,7 +61,7 @@ type NanoTDFHeader struct {
 }
 
 // GetCipher -- get the cipher from the nano tdf header
-func (header *NanoTDFHeader) GetCipher() cipherMode {
+func (header *NanoTDFHeader) GetCipher() CipherMode {
 	return header.sigCfg.cipher
 }
 
@@ -74,12 +74,12 @@ type embeddedPolicy struct {
 }
 
 // getLength - size in bytes of the serialized content of this object
-func (ep *embeddedPolicy) getLength() uint16 {
-	const (
-		kUint16Len = 2
-	)
-	return uint16(kUint16Len /* length word length */ + len(ep.body) /* body data length */)
-}
+// func (ep *embeddedPolicy) getLength() uint16 {
+//	const (
+//		kUint16Len = 2
+//	)
+//	return uint16(kUint16Len /* length word length */ + len(ep.body) /* body data length */)
+// }
 
 // writeEmbeddedPolicy - writes the content of the  to the supplied writer
 func (ep embeddedPolicy) writeEmbeddedPolicy(writer io.Writer) error {
@@ -123,9 +123,9 @@ type remotePolicy struct {
 }
 
 // getLength - size in bytes of the serialized content of this object
-func (rp *remotePolicy) getLength() uint16 {
-	return rp.url.getLength()
-}
+// func (rp *remotePolicy) getLength() uint16 {
+//	return rp.url.getLength()
+// }
 
 // ============================================================================================================
 
@@ -138,31 +138,31 @@ type bindingConfig struct {
 type signatureConfig struct {
 	hasSignature  bool
 	signatureMode ocrypto.ECCMode
-	cipher        cipherMode
+	cipher        CipherMode
 }
 
 type policyInfo struct {
-	body    PolicyBody
-	binding *eccSignature
+	body PolicyBody
+	//	binding *eccSignature
 }
 
-type eccSignature struct {
-	value []byte
-}
+// type eccSignature struct {
+//	value []byte
+// }
 
 // type eccKey struct {
 //	Key []byte
 // }
 
-type cipherMode int
+type CipherMode int
 
 const (
-	cipherModeAes256gcm64Bit  cipherMode = 0
-	cipherModeAes256gcm96Bit  cipherMode = 1
-	cipherModeAes256gcm104Bit cipherMode = 2
-	cipherModeAes256gcm112Bit cipherMode = 3
-	cipherModeAes256gcm120Bit cipherMode = 4
-	cipherModeAes256gcm128Bit cipherMode = 5
+	cipherModeAes256gcm64Bit  CipherMode = 0
+	cipherModeAes256gcm96Bit  CipherMode = 1
+	cipherModeAes256gcm104Bit CipherMode = 2
+	cipherModeAes256gcm112Bit CipherMode = 3
+	cipherModeAes256gcm120Bit CipherMode = 4
+	cipherModeAes256gcm128Bit CipherMode = 5
 )
 
 const (
@@ -224,7 +224,7 @@ func deserializeSignatureCfg(b byte) signatureConfig {
 	// Shift high nybble down and mask for eccmode value
 	cfg.signatureMode = ocrypto.ECCMode((b >> 4) & 0b00000111) //nolint:gomnd // better readability as literal
 	// Mask low nybble for cipher value
-	cfg.cipher = cipherMode(b & 0b00001111) //nolint:gomnd // better readability as literal
+	cfg.cipher = CipherMode(b & 0b00001111) //nolint:gomnd // better readability as literal
 
 	return cfg
 }
@@ -290,7 +290,7 @@ const (
 )
 
 // SizeOfAuthTagForCipher - Return the size in bytes of auth tag to be used for aes gcm encryption
-func SizeOfAuthTagForCipher(cipherType cipherMode) (int, error) {
+func SizeOfAuthTagForCipher(cipherType CipherMode) (int, error) {
 	var numberOfBytes int
 	switch cipherType {
 	case cipherModeAes256gcm64Bit:

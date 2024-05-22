@@ -20,7 +20,7 @@ type NanoTDFConfig struct {
 	keyPair      ocrypto.ECKeyPair
 	kasPublicKey *ecdh.PublicKey
 	attributes   []string
-	cipher       cipherMode
+	cipher       CipherMode
 	kasURL       ResourceLocator
 	sigCfg       signatureConfig
 	policy       policyInfo

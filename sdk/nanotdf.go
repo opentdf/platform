@@ -56,10 +56,12 @@ const (
   ********************************* Header*************************/
 
 type NTDFHeader struct {
-	kasURL       ResourceLocator
-	bindCfg      bindingConfig
-	sigCfg       signatureConfig
-	EphemeralKey []byte
+	kasURL              ResourceLocator
+	bindCfg             bindingConfig
+	sigCfg              signatureConfig
+	EphemeralKey        []byte
+	EncryptedPolicyBody []byte
+	PolicyBinding       []byte
 }
 
 type NanoTDFHeader struct {
@@ -864,7 +866,7 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	// size of uint16
 	totalBytes += 2 + uint32(len(embeddedP.body))
 
-	digest := ocrypto.CalculateSHA256(cipherText)
+	digest := ocrypto.CalculateSHA256(embeddedP.body)
 	binding := digest[len(digest)-kNanoTDFGMACLength:]
 	l, err = writer.Write(binding)
 	if err != nil {
@@ -956,16 +958,16 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NTDFHeader, uint32, error) {
 	slog.Debug("NewNanoTDFHeaderFromReader", slog.Uint64("policyLength", uint64(policyLength)))
 
 	// read policy body
-	policyBody := make([]byte, policyLength)
-	l, err = reader.Read(policyBody)
+	header.EncryptedPolicyBody = make([]byte, policyLength)
+	l, err = reader.Read(header.EncryptedPolicyBody)
 	if err != nil {
 		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
 	}
 	size += uint32(l)
 
 	// read policy binding
-	policyBinding := make([]byte, kNanoTDFGMACLength)
-	l, err = reader.Read(policyBinding)
+	header.PolicyBinding = make([]byte, kNanoTDFGMACLength)
+	l, err = reader.Read(header.PolicyBinding)
 	if err != nil {
 		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
 	}

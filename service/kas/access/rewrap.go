@@ -55,8 +55,9 @@ type entityInfo struct {
 }
 
 const (
-	ErrUser     = Error("request error")
-	ErrInternal = Error("internal error")
+	kNanoTDFGMACLength = 8
+	ErrUser            = Error("request error")
+	ErrInternal        = Error("internal error")
 )
 
 func err400(s string) error {
@@ -358,7 +359,12 @@ func (p *Provider) nanoTDFRewrap(body *RequestBody) (*kaspb.RewrapResponse, erro
 		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
 	}
 
-	println(string(ocrypto.Base64Encode(symmetricKey)))
+	// check the policy binding
+	digest := ocrypto.CalculateSHA256(header.EncryptedPolicyBody)
+	binding := digest[len(digest)-kNanoTDFGMACLength:]
+	if !bytes.Equal(binding, header.PolicyBinding) {
+		return nil, fmt.Errorf("policy binding check failed")
+	}
 
 	pub, ok := body.PublicKey.(*ecdsa.PublicKey)
 	if !ok {
@@ -381,8 +387,6 @@ func (p *Provider) nanoTDFRewrap(body *RequestBody) (*kaspb.RewrapResponse, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate session key: %w", err)
 	}
-
-	println(string(ocrypto.Base64Encode(sessionKey)))
 
 	cipherText, err := wrapKeyAES(sessionKey, symmetricKey)
 	if err != nil {

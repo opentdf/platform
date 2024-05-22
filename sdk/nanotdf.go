@@ -710,15 +710,18 @@ func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error)
 		return 0, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
 	}
 
-	ivPadding := make([]byte, 0, kIvPadding)
+	ivPadded := make([]byte, 0, ocrypto.GcmStandardNonceSize)
+	noncePadding := make([]byte, kIvPadding)
+	ivPadded = append(ivPadded, noncePadding...)
 	iv := cipherDate[:kNanoTDFIvSize]
+	ivPadded = append(ivPadded, iv...)
 
 	tagSize, err := SizeOfAuthTagForCipher(header.sigCfg.cipher)
 	if err != nil {
 		return 0, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
 	}
 
-	decryptedData, err := aesGcm.DecryptWithIVAndTagSize(append(ivPadding, iv...), cipherDate[kNanoTDFIvSize:], tagSize)
+	decryptedData, err := aesGcm.DecryptWithIVAndTagSize(ivPadded, cipherDate[kNanoTDFIvSize:], tagSize)
 	if err != nil {
 		return 0, err
 	}

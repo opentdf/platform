@@ -10,7 +10,6 @@ import (
 )
 
 // ============================================================================================================
-// Pat Mancuso May 2024
 // Support for serializing/deserializing URLS for nano usage
 //
 // If an URL is specified as "https://some.site.com/endpoint"

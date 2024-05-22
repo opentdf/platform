@@ -47,7 +47,7 @@ func NewRegistration() serviceregistry.Registration {
 			var ersURL = "http://localhost:8080/entityresolution/resolve"
 			var clientID = "tdf-authorization-svc"
 			var clientSecret = "secret"
-			var tokenEndpoint = "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token" //nolint:gosec // default token endpointdefault token endpoint
+			var tokenEndpoint = "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token" //nolint:gosec // default token endpoint
 
 			as := &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, logger: srp.Logger}
 			if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {

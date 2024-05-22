@@ -94,8 +94,6 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cmd.Println("NanoTDF encrypt done.")
-
 	err = dumpNanoTDF(cmd, nTDFile)
 	if err != nil {
 		return err

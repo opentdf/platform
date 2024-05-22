@@ -44,10 +44,10 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &authorization.AuthorizationService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			// default ERS endpoint
-			var ersURL = "http://localhost:8080/entityresolution/resolve"
-			var clientID = "tdf-authorization-svc"
-			var clientSecret = "secret"
-			var tokenEndpoint = "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token" //nolint:gosec // default token endpoint
+			ersURL := "http://localhost:8080/entityresolution/resolve"
+			clientID := "tdf-authorization-svc"
+			clientSecret := "secret"
+			tokenEndpoint := "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token" //nolint:gosec // default token endpoint
 
 			as := &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, logger: srp.Logger}
 			if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
@@ -62,7 +62,7 @@ func NewRegistration() serviceregistry.Registration {
 					panic("Error casting ersURL to string")
 				}
 			}
-			fmt.Println("ersURL variable after reading config: ", ersURL)
+			slog.Debug("entity resolution service url read from config", "ersURL", ersURL)
 			val, ok = srp.Config.ExtraProps["clientId"]
 			if ok {
 				clientID, ok = val.(string)
@@ -86,6 +86,7 @@ func NewRegistration() serviceregistry.Registration {
 			}
 			config := clientcredentials.Config{ClientID: clientID, ClientSecret: clientSecret, TokenURL: tokenEndpoint}
 			newTokenSource := oauth2.ReuseTokenSourceWithExpiry(nil, config.TokenSource(context.Background()), tokenExpiryDelay)
+			slog.Debug("authorization service token source created", slog.Any("token_source", newTokenSource))
 
 			as.ersURL = ersURL
 			as.tokenSource = &newTokenSource
@@ -264,15 +265,19 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		Entitlements: make([]*authorization.EntityEntitlements, len(req.GetEntities())),
 	}
 	for i, entity := range req.GetEntities() {
+		slog.Debug("checking as.tokenSource", slog.Any("as.tokenSource", as.tokenSource))
 		// get the client auth token
 		authToken, err := (*as.tokenSource).Token()
 		if err != nil {
-			return nil, err
+			slog.Error("failed to get client auth token", slog.Any("as.tokenSource", as.tokenSource), slog.String("error", err.Error()))
+			return nil, fmt.Errorf("failed to get client auth token in GetEntitlements: %w", err)
 		}
 		// OPA
 		in, err := entitlements.OpaInput(entity, subjectMappings, as.ersURL, authToken.AccessToken)
 		if err != nil {
-			return nil, err
+			slog.Error("failed to build OPA input", slog.Any("entity", entity), slog.String("error", err.Error()))
+			slog.Debug("authToken", "authToken", authToken) // only log token in debug mode
+			return nil, fmt.Errorf("failed to build OPA input in GetEntitlements: %w", err)
 		}
 		as.logger.DebugContext(ctx, "entitlements", "entity_id", entity.GetId(), "input", fmt.Sprintf("%+v", in))
 		// uncomment for debugging
@@ -293,7 +298,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		}
 		decision, err := as.eng.Decision(ctx, options)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get decision from OPA Engine in GetEntitlements: %w", err)
 		}
 		// uncomment for debugging
 		// if slog.Default().Enabled(ctx, slog.LevelDebug) {

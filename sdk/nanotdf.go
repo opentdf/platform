@@ -36,10 +36,7 @@ const (
 	kIvPadding                    = 9
 	kNanoTDFIvSize                = 3
 	kNanoTDFGMACLength            = 8
-	kNanoTDFHeader                = "header"
 	kNanoTDFMagicStringAndVersion = "L1L"
-	kUint64Size                   = 8 // 64 bits = 8 bytes
-	kEccSignatureLength           = 8
 )
 
 /******************************** Header**************************
@@ -239,95 +236,7 @@ func serializeSignatureCfg(sigCfg signatureConfig) byte {
 }
 
 // ============================================================================================================
-
-type policyType uint8
-
-const (
-	policyTypeRemotePolicy                           policyType = 0
-	policyTypeEmbeddedPolicyPlainText                policyType = 1
-	policyTypeEmbeddedPolicyEncrypted                policyType = 2
-	policyTypeEmbeddedPolicyEncryptedPolicyKeyAccess policyType = 3
-)
-
-type PolicyBody struct {
-	mode policyType
-	rp   remotePolicy
-	ep   embeddedPolicy
-}
-
-// getLength - size in bytes of the serialized content of this object
-func (pb *PolicyBody) getLength() uint16 {
-	var result uint16
-
-	result = 1 /* policy mode byte */
-
-	if pb.mode == policyTypeRemotePolicy {
-		result += pb.rp.getLength()
-	} else {
-		// If it's not remote, assume embedded policy
-		result += pb.ep.getLength()
-	}
-
-	return result
-}
-
-// readPolicyBody - helper function to decode input data into a PolicyBody object
-func (pb *PolicyBody) readPolicyBody(reader io.Reader) error {
-
-	var mode policyType
-	if err := binary.Read(reader, binary.BigEndian, &mode); err != nil {
-		return err
-	}
-	switch mode {
-	case policyTypeRemotePolicy:
-		var rl ResourceLocator
-		if err := rl.readResourceLocator(reader); err != nil {
-			return errors.Join(ErrNanoTDFHeaderRead, err)
-		}
-		pb.rp = remotePolicy{url: rl}
-	case policyTypeEmbeddedPolicyPlainText:
-	case policyTypeEmbeddedPolicyEncrypted:
-	case policyTypeEmbeddedPolicyEncryptedPolicyKeyAccess:
-		var ep embeddedPolicy
-		if err := ep.readEmbeddedPolicy(reader); err != nil {
-			return errors.Join(ErrNanoTDFHeaderRead, err)
-		}
-		pb.ep = ep
-	default:
-		return errors.New("unknown policy type")
-	}
-	return nil
-}
-
-// writePolicyBody - helper function to encode and write a PolicyBody object
-func (pb *PolicyBody) writePolicyBody(writer io.Writer) error {
-	var err error
-
-	switch pb.mode {
-	case policyTypeRemotePolicy: // remote policy - resource locator
-		if err = binary.Write(writer, binary.BigEndian, pb.mode); err != nil {
-			return err
-		}
-		if err = pb.rp.url.writeResourceLocator(writer); err != nil {
-			return err
-		}
-		return nil
-	case policyTypeEmbeddedPolicyPlainText:
-	case policyTypeEmbeddedPolicyEncrypted:
-	case policyTypeEmbeddedPolicyEncryptedPolicyKeyAccess:
-		// embedded policy - inline
-		if err = binary.Write(writer, binary.BigEndian, pb.mode); err != nil {
-			return err
-		}
-		if err = pb.ep.writeEmbeddedPolicy(writer); err != nil {
-			return err
-		}
-	default:
-		return errors.New("unsupported policy mode")
-	}
-	return nil
-}
-
+// ECC info
 // ============================================================================================================
 
 // Key length sizes for different curves
@@ -356,6 +265,8 @@ func getECCKeyLength(curve ocrypto.ECCMode) (uint8, error) {
 	return numberOfBytes, nil
 }
 
+// ============================================================================================================
+// Auth Tag info
 // ============================================================================================================
 
 // auth tag size in bytes for different ciphers
@@ -395,6 +306,10 @@ func SizeOfAuthTagForCipher(cipherType cipherMode) (int, error) {
 	}
 	return numberOfBytes, nil
 }
+
+// ============================================================================================================
+// NanoTDF Header read/write
+// ============================================================================================================
 
 func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32, error) {
 
@@ -621,7 +536,11 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	return header, size, nil
 }
 
-// CreateNanoTDF reads plain text from the given reader and saves it to the writer, subject to the given options
+// ============================================================================================================
+// NanoTDF Encrypt
+// ============================================================================================================
+
+// CreateNanoTDF - reads plain text from the given reader and saves it to the writer, subject to the given options
 func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFConfig) (uint32, error) {
 
 	var totalSize uint32 = 0
@@ -703,7 +622,11 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	return totalSize, nil
 }
 
-// ReadNanoTDF read the nano tdf and return the decrypted data from it
+// ============================================================================================================
+// NanoTDF Decrypt
+// ============================================================================================================
+
+// ReadNanoTDF - read the nano tdf and return the decrypted data from it
 func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error) {
 
 	header, headerSize, err := NewNanoTDFHeaderFromReader(reader)
@@ -789,6 +712,7 @@ func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error)
 	return uint32(len), nil
 }
 
+// getECPublicKey - Contact the specified KAS and get its public key
 func getECPublicKey(kasURL string, opts ...grpc.DialOption) (string, error) {
 	req := kas.PublicKeyRequest{}
 	req.Algorithm = "ec:secp256r1"

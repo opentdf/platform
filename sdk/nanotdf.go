@@ -600,18 +600,21 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 		return 0, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
 	}
 
-	ivPadding := make([]byte, 0, kIvPadding)
+	ivPadded := make([]byte, 0, ocrypto.GcmStandardNonceSize)
+	noncePadding := make([]byte, kIvPadding)
+	ivPadded = append(ivPadded, noncePadding...)
 	iv, err := ocrypto.RandomBytes(kNanoTDFIvSize)
 	if err != nil {
 		return 0, fmt.Errorf("ocrypto.RandomBytes failed:%w", err)
 	}
+	ivPadded = append(ivPadded, iv...)
 
 	tagSize, err := SizeOfAuthTagForCipher(config.sigCfg.cipher)
 	if err != nil {
 		return 0, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
 	}
 
-	cipherData, err := aesGcm.EncryptWithIVAndTagSize(append(ivPadding, iv...), buf.Bytes(), tagSize)
+	cipherData, err := aesGcm.EncryptWithIVAndTagSize(ivPadded, buf.Bytes(), tagSize)
 	if err != nil {
 		return 0, err
 	}

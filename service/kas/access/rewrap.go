@@ -382,15 +382,11 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		return nil, fmt.Errorf("Error decrypting policy body:%w", err)
 	}
 
-	p.Logger.Info("policy bytes", policyData)
-
 	var policy Policy
 	err = json.Unmarshal(policyData, &policy)
 	if err != nil {
 		return nil, fmt.Errorf("Error unmarshalling policy:%w", err)
 	}
-
-	p.Logger.Info("policy", policy)
 
 	// do the access check
 	tok := &authorization.Token{

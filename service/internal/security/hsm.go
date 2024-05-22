@@ -22,23 +22,26 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-const (
-	ErrCertNotFound        = Error("not found")
-	ErrCertificateEncode   = Error("certificate encode error")
-	ErrPublicKeyMarshal    = Error("public key marshal error")
-	ErrHSMUnexpected       = Error("hsm unexpected")
-	ErrHSMDecrypt          = Error("hsm decrypt error")
-	ErrHSMNotFound         = Error("hsm unavailable")
-	ErrKeyConfig           = Error("key configuration error")
-	ErrUnknownHashFunction = Error("unknown hash function")
-)
-const keyLength = 32
-
-type Error string
-
-func (e Error) Error() string {
-	return string(e)
+type Config struct {
+	Type string `yaml:"type" default:"standard"`
+	// HSMConfig is the configuration for the HSM
+	HSMConfig HSMConfig `yaml:"hsm,omitempty" mapstructure:"hsm"`
+	// StandardConfig is the configuration for the standard key provider
+	StandardConfig StandardConfig `yaml:"standard,omitempty" mapstructure:"standard"`
 }
+
+func NewCryptoProvider(cfg Config) (CryptoProvider, error) {
+	switch cfg.Type {
+	case "hsm":
+		return NewHSM(&cfg.HSMConfig)
+	case "standard":
+		return NewStandardCrypto(cfg.StandardConfig)
+	default:
+		return NewStandardCrypto(cfg.StandardConfig)
+	}
+}
+
+const keyLength = 32
 
 // A session with a security module; useful for abstracting basic cryptographic
 // operations.
@@ -234,6 +237,77 @@ func lookupSlotWithLabel(ctx *pkcs11.Ctx, label string) (uint, error) {
 }
 
 func New(c *HSMConfig) (*HSMSession, error) {
+	pkcs11Lib := findHSMLibrary(
+		c.ModulePath,
+		"/usr/lib/softhsm/libsofthsm2.so",
+		"/lib/softhsm/libsofthsm2.so",
+	)
+	if pkcs11Lib == "" {
+		slog.Error("pkcs11 error softhsm not available")
+		return nil, ErrHSMNotFound
+	}
+	hctx, err := newPKCS11Context(pkcs11Lib)
+	if err != nil {
+		slog.Error("pkcs11 error initializing hsm", "err", err)
+		return nil, errors.Join(ErrHSMUnexpected, err)
+	}
+	info, err := hctx.GetInfo()
+	if err != nil {
+		destroyPKCS11Context(hctx)
+		slog.Error("pkcs11 error querying module info", "err", err)
+		return nil, errors.Join(err, ErrHSMUnexpected)
+	}
+	slog.Info("pkcs11 module", "pkcs11info", info, "cfg", c)
+
+	if c.SlotLabel != "" {
+		slog.Info("pkcs11 loading WithLabel", "label", c.SlotLabel)
+		slotID, err := lookupSlotWithLabel(hctx, c.SlotLabel)
+		if err != nil {
+			return nil, ErrHSMUnexpected
+		}
+		c.SlotID = slotID
+	}
+	slog.Info("pkcs11 loading WithSlot", "slot", c.SlotID)
+	hs, err := newHSMSession(hctx, c.SlotID)
+	if err != nil {
+		slog.Error("pkcs11 error initializing session", "err", err)
+		return nil, errors.Join(ErrHSMUnexpected, err)
+	}
+	fine := false
+	defer func() {
+		if !fine {
+			hs.destroy()
+			hs = nil
+		}
+	}()
+
+	err = hctx.Login(hs.sh, pkcs11.CKU_USER, c.PIN)
+	if err != nil {
+		slog.Error("pkcs11 error logging in as CKU USER", "err", err)
+		return nil, errors.Join(ErrHSMUnexpected, err)
+	}
+	defer func(ctx *pkcs11.Ctx, sh pkcs11.SessionHandle) {
+		if !fine {
+			err := ctx.Logout(sh)
+			if err != nil {
+				slog.Error("pkcs11 error logging out", "err", err)
+			}
+		}
+	}(hctx, hs.sh)
+
+	info, err = hctx.GetInfo()
+	if err != nil {
+		slog.Error("pkcs11 error querying module info", "err", err)
+		return nil, errors.Join(ErrHSMUnexpected, err)
+	}
+	slog.Info("pkcs11 module info after initialization", "pkcs11info", info)
+
+	fine = true
+	err = hs.loadKeys(c.Keys)
+	return hs, err
+}
+
+func NewHSM(c *HSMConfig) (*HSMSession, error) {
 	pkcs11Lib := findHSMLibrary(
 		c.ModulePath,
 		"/usr/lib/softhsm/libsofthsm2.so",

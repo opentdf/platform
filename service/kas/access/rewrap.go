@@ -272,7 +272,7 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 	}
 
 	if body.Algorithm == "ec:secp256r1" {
-		return p.nanoTDFRewrap(body)
+		return p.nanoTDFRewrap(ctx, body, entityInfo)
 	}
 	return p.tdf3Rewrap(ctx, body, entityInfo)
 }
@@ -345,7 +345,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 	}, nil
 }
 
-func (p *Provider) nanoTDFRewrap(body *RequestBody) (*kaspb.RewrapResponse, error) {
+func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
 	headerReader := bytes.NewReader(body.KeyAccess.Header)
 
 	header, _, err := sdk.NewNanoTDFHeaderFromReader(headerReader)
@@ -363,6 +363,61 @@ func (p *Provider) nanoTDFRewrap(body *RequestBody) (*kaspb.RewrapResponse, erro
 	binding := digest[len(digest)-kNanoTDFGMACLength:]
 	if !bytes.Equal(binding, header.PolicyBinding) {
 		return nil, fmt.Errorf("policy binding check failed")
+	}
+
+	// extract the policy
+	gcm, err := ocrypto.NewAESGcm(symmetricKey)
+	if err != nil {
+		return nil, fmt.Errorf("crypto.NewAESGcm:%w", err)
+	}
+
+	iv := make([]byte, 12)
+	tagSize, err := sdk.SizeOfAuthTagForCipher(header.GetCipher())
+	if err != nil {
+		return nil, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
+	}
+
+	policyData, err := gcm.DecryptWithIVAndTagSize(iv, header.EncryptedPolicyBody, tagSize)
+	if err != nil {
+		return nil, fmt.Errorf("Error decrypting policy body:%w", err)
+	}
+
+	p.Logger.Info("policy bytes", policyData)
+
+	var policy Policy
+	err = json.Unmarshal(policyData, &policy)
+	if err != nil {
+		return nil, fmt.Errorf("Error unmarshalling policy:%w", err)
+	}
+
+	p.Logger.Info("policy", policy)
+
+	// do the access check
+	tok := &authorization.Token{
+		Id:  "rewrap-tok",
+		Jwt: entity.Token,
+	}
+
+	access, err := canAccess(ctx, tok, policy, p.SDK)
+
+	auditPolicy := transformAuditPolicy(&policy, entity.Token, *p.Logger)
+
+	if err != nil {
+		p.Logger.WarnContext(ctx, "Could not perform access decision!", "err", err)
+		err := p.Logger.Audit.RewrapFailure(ctx, *auditPolicy)
+		if err != nil {
+			p.Logger.ErrorContext(ctx, "failed to audit rewrap failure", "err", err)
+		}
+		return nil, err403("forbidden")
+	}
+
+	if !access {
+		p.Logger.WarnContext(ctx, "Access Denied; no reason given")
+		err := p.Logger.Audit.RewrapFailure(ctx, *auditPolicy)
+		if err != nil {
+			p.Logger.ErrorContext(ctx, "failed to audit rewrap failure", "err", err)
+		}
+		return nil, err403("forbidden")
 	}
 
 	pub, ok := body.PublicKey.(*ecdsa.PublicKey)

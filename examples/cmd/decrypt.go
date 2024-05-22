@@ -66,9 +66,9 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	if "Hello Virtru" == outBuf.String() {
-		cmd.Println("✅NanoTDF test passed!")
+		cmd.Println("✅ NanoTDF test passed!")
 	} else {
-		cmd.Println("❌NanoTDF test failed!")
+		cmd.Println("❌ NanoTDF test failed!")
 	}
 
 	return nil

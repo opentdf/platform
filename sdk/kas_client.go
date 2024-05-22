@@ -114,7 +114,6 @@ func (k *KASClient) unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
 }
 
 func (k *KASClient) getNanoTDFRewrapRequest(header string, kasURL string, pubKey string) (*kas.RewrapRequest, error) {
-
 	kAccess := keyAccess{
 		Header:        header,
 		KeyAccessType: "remote",
@@ -190,7 +189,6 @@ func (k *KASClient) makeNanoTDFRewrapRequest(header string, kasURL string, pubKe
 }
 
 func (k *KASClient) unwrapNanoTDF(header string, kasURL string) ([]byte, error) {
-
 	keypair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewECKeyPair failed :%w", err)

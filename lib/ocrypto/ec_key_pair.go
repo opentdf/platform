@@ -296,7 +296,6 @@ func ComputeECDSASig(_ /*digest*/ [32]byte, _ /*key*/ []byte) []byte {
 
 // ECPrivateKeyInPemFormat Returns private key in pem format.
 func ECPrivateKeyInPemFormat(privateKey ecdsa.PrivateKey) (string, error) {
-
 	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
 	if err != nil {
 		return "", fmt.Errorf("x509.MarshalPKCS8PrivateKey failed: %w", err)
@@ -313,7 +312,6 @@ func ECPrivateKeyInPemFormat(privateKey ecdsa.PrivateKey) (string, error) {
 
 // ECPublicKeyInPemFormat Returns public key in pem format.
 func ECPublicKeyInPemFormat(publicKey ecdsa.PublicKey) (string, error) {
-
 	publicKeyBytes, err := x509.MarshalPKIXPublicKey(publicKey)
 	if err != nil {
 		return "", fmt.Errorf("x509.MarshalPKIXPublicKey failed: %w", err)

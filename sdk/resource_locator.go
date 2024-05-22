@@ -27,18 +27,18 @@ type ResourceLocator struct {
 type urlProtocol uint8
 
 const (
-	kPrefixHTTPS      string      = "https://"
-	kPrefixHTTP       string      = "http://"
-	urlProtocolHTTP   urlProtocol = 0
-	urlProtocolHTTPS  urlProtocol = 1
-	urlProtocolShared urlProtocol = 255 // TODO - how is this handled/parsed/rendered?
+	kMaxBodyLen      int         = 255
+	kPrefixHTTPS     string      = "https://"
+	kPrefixHTTP      string      = "http://"
+	urlProtocolHTTP  urlProtocol = 0
+	urlProtocolHTTPS urlProtocol = 1
+	// urlProtocolShared urlProtocol = 255 // TODO - how is this handled/parsed/rendered?
 )
 
 func NewResourceLocator(url string) (*ResourceLocator, error) {
-
 	rl := &ResourceLocator{}
 
-	err := rl.setUrl(url)
+	err := rl.setURL(url)
 	if err != nil {
 		return nil, err
 	}
@@ -53,14 +53,12 @@ func NewResourceLocatorFromReader(reader io.Reader) (*ResourceLocator, error) {
 	_, err := reader.Read(oneByte)
 	if err != nil {
 		return rl, err
-
 	}
 	rl.protocol = urlProtocol(oneByte[0])
 
-	_, err = reader.Read(oneByte[:])
+	_, err = reader.Read(oneByte)
 	if err != nil {
 		return rl, err
-
 	}
 
 	l := oneByte[0]
@@ -79,39 +77,39 @@ func (rl ResourceLocator) getLength() uint16 {
 	return uint16(1 /* protocol byte */ + 1 /* length byte */ + len(rl.body))
 }
 
-// setUrl - Store a fully qualified protocol+body string into a ResourceLocator as a protocol value and a body string
-func (rl *ResourceLocator) setUrl(url string) error {
-	lowerUrl := strings.ToLower(url)
-	if strings.HasPrefix(lowerUrl, kPrefixHTTPS) {
+// setURL - Store a fully qualified protocol+body string into a ResourceLocator as a protocol value and a body string
+func (rl *ResourceLocator) setURL(url string) error {
+	lowerURL := strings.ToLower(url)
+	if strings.HasPrefix(lowerURL, kPrefixHTTPS) {
 		urlBody := url[len(kPrefixHTTPS):]
-		if len(urlBody) > 255 {
+		if len(urlBody) > kMaxBodyLen {
 			return errors.New("URL too long")
 		}
 		rl.protocol = urlProtocolHTTPS
 		rl.body = urlBody
 		return nil
 	}
-	if strings.HasPrefix(lowerUrl, kPrefixHTTP) {
+	if strings.HasPrefix(lowerURL, kPrefixHTTP) {
 		urlBody := url[len(kPrefixHTTP):]
-		if len(urlBody) > 255 {
+		if len(urlBody) > kMaxBodyLen {
 			return errors.New("URL too long")
 		}
 		rl.protocol = urlProtocolHTTP
 		rl.body = urlBody
 		return nil
 	}
-	return errors.New("Unsupported protocol: " + url)
+	return errors.New("unsupported protocol: " + url)
 }
 
-// getUrl - Retrieve a fully qualified protocol+body URL string from a ResourceLocator struct
-func (rl ResourceLocator) getUrl() (string, error) {
+// getURL - Retrieve a fully qualified protocol+body URL string from a ResourceLocator struct
+func (rl ResourceLocator) getURL() (string, error) {
 	if rl.protocol == urlProtocolHTTPS {
 		return kPrefixHTTPS + rl.body, nil
 	}
 	if rl.protocol == urlProtocolHTTP {
 		return kPrefixHTTP + rl.body, nil
 	}
-	return "", fmt.Errorf("Unsupported protocol: %d", rl.protocol)
+	return "", fmt.Errorf("unsupported protocol: %d", rl.protocol)
 }
 
 // writeResourceLocator - writes the content of the resource locator to the supplied writer

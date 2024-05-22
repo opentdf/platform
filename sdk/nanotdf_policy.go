@@ -44,7 +44,6 @@ func (pb *PolicyBody) getLength() uint16 {
 
 // readPolicyBody - helper function to decode input data into a PolicyBody object
 func (pb *PolicyBody) readPolicyBody(reader io.Reader) error {
-
 	var mode policyType
 	if err := binary.Read(reader, binary.BigEndian, &mode); err != nil {
 		return err

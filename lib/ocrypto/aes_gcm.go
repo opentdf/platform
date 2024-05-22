@@ -117,7 +117,6 @@ func (aesGcm AesGcm) DecryptWithTagSize(data []byte, authTagSize int) ([]byte, e
 // DecryptWithIVAndTagSize decrypts data with symmetric key.
 // NOTE: This method expects gcm standard nonce size(12) of iv.
 func (aesGcm AesGcm) DecryptWithIVAndTagSize(iv, data []byte, authTagSize int) ([]byte, error) {
-
 	if len(iv) != GcmStandardNonceSize {
 		return nil, errors.New("invalid nonce size, expects GcmStandardNonceSize")
 	}

@@ -75,7 +75,6 @@ func (ep *embeddedPolicy) getLength() uint16 {
 
 // writeEmbeddedPolicy - writes the content of the  to the supplied writer
 func (ep embeddedPolicy) writeEmbeddedPolicy(writer io.Writer) error {
-
 	// store uint16 in big endian format
 	buf := make([]byte, 2)
 	binary.BigEndian.PutUint16(buf, ep.lengthBody)
@@ -312,7 +311,6 @@ func SizeOfAuthTagForCipher(cipherType cipherMode) (int, error) {
 // ============================================================================================================
 
 func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32, error) {
-
 	var totalBytes uint32 = 0
 
 	// Write the magic number
@@ -408,7 +406,10 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	}
 
 	// size of uint16
-	totalBytes += 2 + uint32(len(embeddedP.body))
+	const (
+		kSizeOfUint16 = 2
+	)
+	totalBytes += kSizeOfUint16 + uint32(len(embeddedP.body))
 
 	digest := ocrypto.CalculateSHA256(embeddedP.body)
 	binding := digest[len(digest)-kNanoTDFGMACLength:]
@@ -419,9 +420,6 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	totalBytes += uint32(l)
 
 	ephemeralPublicKeyKey, _ := ocrypto.CompressedECPublicKey(config.bindCfg.eccMode, config.keyPair.PrivateKey.PublicKey)
-	if err != nil {
-		return nil, 0, fmt.Errorf("ocrypto.CompressedECPublicKey failed:%w", err)
-	}
 
 	l, err = writer.Write(ephemeralPublicKeyKey)
 	if err != nil {
@@ -433,7 +431,6 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 }
 
 func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error) {
-
 	header := NanoTDFHeader{}
 	var size uint32 = 0
 
@@ -445,13 +442,13 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	size += uint32(l)
 
 	if string(magicNumber) != kNanoTDFMagicStringAndVersion {
-		return header, 0, fmt.Errorf("Not a valid nano tdf")
+		return header, 0, fmt.Errorf("not a valid nano tdf")
 	}
 
 	// read resource locator
 	resource, err := NewResourceLocatorFromReader(reader)
 	if err != nil {
-		return header, 0, fmt.Errorf("NewResourceLocatorFromReader failed :%w", err)
+		return header, 0, fmt.Errorf("call to NewResourceLocatorFromReader failed :%w", err)
 	}
 	size += uint32(resource.getLength())
 	header.kasURL = *resource
@@ -542,7 +539,6 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 
 // CreateNanoTDF - reads plain text from the given reader and saves it to the writer, subject to the given options
 func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFConfig) (uint32, error) {
-
 	var totalSize uint32 = 0
 	buf := bytes.Buffer{}
 	size, err := buf.ReadFrom(reader)
@@ -554,7 +550,7 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 		return 0, errors.New("exceeds max size for nano tdf")
 	}
 
-	kasURL, err := config.kasURL.getUrl()
+	kasURL, err := config.kasURL.getURL()
 	if err != nil {
 		return 0, fmt.Errorf("config.kasURL failed:%w", err)
 	}
@@ -628,7 +624,6 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 
 // ReadNanoTDF - read the nano tdf and return the decrypted data from it
 func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error) {
-
 	header, headerSize, err := NewNanoTDFHeaderFromReader(reader)
 	if err != nil {
 		return 0, err
@@ -645,7 +640,7 @@ func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error)
 		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
-	kasURL, err := header.kasURL.getUrl()
+	kasURL, err := header.kasURL.getURL()
 	if err != nil {
 		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
@@ -688,9 +683,6 @@ func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error)
 
 	ivPadding := make([]byte, kIvPadding)
 	iv := cipherDate[:kNanoTDFIvSize]
-	if err != nil {
-		return 0, fmt.Errorf("ocrypto.RandomBytes failed:%w", err)
-	}
 
 	tagSize, err := SizeOfAuthTagForCipher(header.sigCfg.cipher)
 	if err != nil {
@@ -706,8 +698,8 @@ func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error)
 	if err != nil {
 		return 0, err
 	}
-	//print(payloadLength)
-	//print(string(decryptedData))
+	// print(payloadLength)
+	// print(string(decryptedData))
 
 	return uint32(len), nil
 }

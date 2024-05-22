@@ -93,9 +93,14 @@ func NewStandardCrypto(cfg StandardConfig) (*StandardCrypto, error) {
 		if err != nil {
 			return nil, fmt.Errorf("ocrypto.ECPrivateKeyFromPem failed: %w", err)
 		}
+		ecCertificatePEM, err := os.ReadFile(kasInfo.PublicKeyPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to EC certificate file: %w", err)
+		}
 		standardCrypto.ecKeys = append(standardCrypto.ecKeys, StandardECCrypto{
-			Identifier:   id,
-			ecPrivateKey: ecPrivateKey,
+			Identifier:       id,
+			ecPrivateKey:     ecPrivateKey,
+			ecCertificatePEM: string(ecCertificatePEM),
 		})
 	}
 
@@ -281,6 +286,8 @@ func (s StandardCrypto) GenerateNanoTDFSessionKey(privateKey any, ephemeralPubli
 	digest := sha256.New()
 	digest.Write([]byte("L1L"))
 	salt := digest.Sum(nil)
+	// salt hex is 3de3ca1e50cf62d8b6aba603a96fca6761387a7ac86c3d3afe85ae2d1812edfc
+	slog.Debug("Salt", "hex", fmt.Sprintf("%x", salt))
 	derivedKey, err := ocrypto.CalculateHKDF(salt, sessionKey, 32)
 	if err != nil {
 		return nil, fmt.Errorf("GenerateNanoTDFSessionKey deriving a shared ECDH key: %w", err)

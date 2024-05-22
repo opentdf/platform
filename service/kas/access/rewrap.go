@@ -357,6 +357,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody) (*kaspb
 		return nil, fmt.Errorf("failed to encrypt key: %w", err)
 	}
 
+	slog.DebugContext(ctx, "nanoTDFRewrap", "ephemeralPublicKeyPEM", ephemeralPublicKeyPEM)
 	return &kaspb.RewrapResponse{
 		EntityWrappedKey: wrappedKey,
 		SessionPublicKey: string(ephemeralPublicKeyPEM),

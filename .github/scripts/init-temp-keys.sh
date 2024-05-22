@@ -65,7 +65,9 @@ if [ "$opt_hsm" = true ]; then
 fi
 
 openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=kas" -keyout "$opt_output/kas-private.pem" -out "$opt_output/kas-cert.pem" -days 365
-openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:prime256v1 -out "$opt_output/kas-ec-private.pem"
+openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:prime256v1 -out "$opt_output/kas-ecdsa-private.pem"
+openssl ecparam -name prime256v1 >ecparams.tmp
+openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout "$opt_output/kas-ec-private.pem" -out "$opt_output/kas-ec-cert.pem" -days 365
 
 if [ "$opt_hsm" = true ]; then
   pkcs11-tool --module "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH}" --login --pin "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN}" --write-object kas-private.pem --type privkey --label "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_KEYS_RSA_LABEL}"

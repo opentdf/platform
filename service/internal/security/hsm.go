@@ -1,3 +1,5 @@
+//go:build opentdf.hsm
+
 package security
 
 import (
@@ -22,7 +24,24 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-const keyLength = 32
+type Config struct {
+	Type string `yaml:"type" default:"standard"`
+	// HSMConfig is the configuration for the HSM
+	HSMConfig HSMConfig `yaml:"hsm,omitempty" mapstructure:"hsm"`
+	// StandardConfig is the configuration for the standard key provider
+	StandardConfig StandardConfig `yaml:"standard,omitempty" mapstructure:"standard"`
+}
+
+func NewCryptoProvider(cfg Config) (CryptoProvider, error) {
+	switch cfg.Type {
+	case "hsm":
+		return NewHSM(&cfg.HSMConfig)
+	case "standard":
+		return NewStandardCrypto(cfg.StandardConfig)
+	default:
+		return NewStandardCrypto(cfg.StandardConfig)
+	}
+}
 
 // A session with a security module; useful for abstracting basic cryptographic
 // operations.
@@ -67,6 +86,8 @@ type RSAKeyPair struct {
 	*rsa.PublicKey
 	*x509.Certificate
 }
+
+const keyLength = 32
 
 func sh(c string, arg ...string) (string, string, error) {
 	cmd := exec.Command(c, arg...)

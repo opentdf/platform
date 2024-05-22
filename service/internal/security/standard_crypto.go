@@ -144,15 +144,6 @@ func (s StandardCrypto) ECPublicKey(identifier string) (string, error) {
 		}
 
 		ecPublicKey := ecPrivateKey.PublicKey()
-
-		//var ecPublicKey crypto.PublicKey
-		//switch k := ecPrivateKey.(type) {
-		//case *ecdh.PrivateKey:
-		//	ecPublicKey = k.Public()
-		//case *ecdsa.PrivateKey:
-		//	ecPublicKey = k.Public()
-		//}
-
 		derBytes, err := x509.MarshalPKIXPublicKey(ecPublicKey)
 		if err != nil {
 			return "", fmt.Errorf("failed to marshal public key: %s %w", identifier, err)
@@ -223,28 +214,9 @@ func (s StandardCrypto) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []by
 	}
 	ephemeralECDSAPublicKeyPEM := pem.EncodeToMemory(pemBlock)
 
-	//var kasKeyPair ocrypto.ECKeyPair
-	//switch k := s.ecKeys[0].ecPrivateKey.(type) {
-	//case *ecdsa.PrivateKey:
-	//	kasKeyPair = ocrypto.ECKeyPair{
-	//		PrivateKey: k,
-	//	}
-	//case *ecdh.PrivateKey:
-	//	kasKeyPair = ocrypto.ECKeyPair{
-	//		PrivateKey: k,
-	//	}
-	//}
-	//kasPrivateKeyPem, err := kasKeyPair.PrivateKeyInPemFormat()
-	//if err != nil {
-	//	return nil, fmt.Errorf("failed to get EC private key in PEM format: %w", err)
-	//}
-
 	symmetricKey, err := ocrypto.ComputeECDHKey([]byte(s.ecKeys[0].ecPrivateKeyPem), ephemeralECDSAPublicKeyPEM)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
 	}
 
 	key, err := ocrypto.CalculateHKDF([]byte(kNanoTDFMagicStringAndVersion), symmetricKey)

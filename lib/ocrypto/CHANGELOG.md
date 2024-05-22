@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.3](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.1.2...lib/ocrypto/v0.1.3) (2024-05-20)
+
+
+### Features
+
+* **core:** Adds opentdf.hsm build constraint ([#830](https://github.com/opentdf/platform/issues/830)) ([e13e52a](https://github.com/opentdf/platform/commit/e13e52a5fb860213b195a14a5d2be087ffb49cb3))
+
+## [0.1.2](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.1.1...lib/ocrypto/v0.1.2) (2024-05-13)
+
+
+### Bug Fixes
+
+* **core:** Bump libs patch version ([#779](https://github.com/opentdf/platform/issues/779)) ([3b68dea](https://github.com/opentdf/platform/commit/3b68dea867609071047554a6a7697becaaee2805))
+
 ## [0.1.1](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.1.0...lib/ocrypto/v0.1.1) (2024-05-07)
 
 

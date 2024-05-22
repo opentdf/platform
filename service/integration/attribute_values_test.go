@@ -127,7 +127,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_NormalizesValueToLowerC
 }
 
 func (s *AttributeValuesSuite) Test_GetAttributeValue_Deactivated_Succeeds() {
-	inactive := s.f.GetAttributeValueKey("deactivated.io/attr/attr1/value/deactivated_value")
+	inactive := s.f.GetAttributeValueKey("deactivated.io/attr/deactivated_attr/value/deactivated_value")
 
 	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, inactive.ID)
 	s.Require().NoError(err)

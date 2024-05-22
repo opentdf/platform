@@ -1,7 +1,7 @@
 # make
 # To run all lint checks: `LINT_OPTIONS= make lint`
 
-.PHONY: all build clean docker-build fix go-lint lint proto-generate proto-lint sdk/sdk test toolcheck
+.PHONY: all build clean docker-build fix fmt go-lint license lint proto-generate proto-lint sdk/sdk test tidy toolcheck
 
 MODS=protocol/go lib/ocrypto lib/fixtures sdk service examples
 HAND_MODS=lib/ocrypto lib/fixtures sdk service examples
@@ -12,17 +12,26 @@ ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 # LINT_OPTIONS?=-new-from-rev=main
 LINT_OPTIONS?=-c $(ROOT_DIR)/.golangci.yaml
 
-all: toolcheck clean build lint test
+all: toolcheck clean build lint license test
 
 toolcheck:
 	@echo "Checking for required tools..."
 	@which buf > /dev/null || (echo "buf not found, please install it from https://docs.buf.build/installation" && exit 1)
 	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.57.2'" && exit 1)
 	@which protoc-gen-doc > /dev/null || (echo "protoc-gen-doc not found, run 'go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1'" && exit 1)
-	@golangci-lint --version | grep "version v\?1.5[67]" > /dev/null || (echo "golangci-lint version must be v1.55 [$$(golangci-lint --version)]" && exit 1)
+	@golangci-lint --version | grep "version v\?1.5[678]" > /dev/null || (echo "golangci-lint version must be v1.56 or later [$$(golangci-lint --version)]" && exit 1)
+	@which goimports >/dev/null || (echo "goimports not found, run 'go install golang.org/x/tools/cmd/goimports@latest'")
 
-fix:
-	for m in $(HAND_MODS); do (cd $$m && go mod tidy && find ./ -name \*.go | xargs goimports -w) || exit 1; done
+fix: tidy fmt
+
+fmt:
+	for m in $(HAND_MODS); do (cd $$m && find ./ -name \*.go | xargs goimports -w) || exit 1; done
+
+tidy:
+	for m in $(HAND_MODS); do (cd $$m && go mod tidy) || exit 1; done
+
+license:
+	for m in $(HAND_MODS); do (cd $$m && go-licenses check --disallowed_types=forbidden --include_tests ./) || exit 1; done
 
 lint: proto-lint go-lint
 
@@ -58,7 +67,7 @@ clean:
 build: proto-generate opentdf sdk/sdk examples/examples
 
 opentdf: $(shell find service)
-	go build -o opentdf -v service/main.go
+	go build --tags=opentdf.hsm -o opentdf -v service/main.go
 
 sdk/sdk: $(shell find sdk)
 	(cd sdk && go build ./...)

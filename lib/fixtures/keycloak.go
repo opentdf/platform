@@ -845,7 +845,7 @@ func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectPara
 	}
 	if err := client.UpdatePermissionScope(ctx, token.AccessToken, connectParams.Realm,
 		*realmManagementClientID, tokenExchangePolicyScopePermissionID, permissionScopePolicyRepresentation); err != nil {
-		slog.Error("Error creating permission scope : %s", err)
+		slog.Error("Error creating permission scope", "error", err)
 		return err
 	}
 	return nil
@@ -896,7 +896,7 @@ func createCertExchange(ctx context.Context, connectParams *KeycloakConnectParam
 	}
 	if len(authExecutions) != 1 {
 		err = fmt.Errorf("expected a single flow execution for %s", topLevelFlowName)
-		slog.Error("Error setting up authentication flow", err)
+		slog.Error("Error setting up authentication flow", "error", err)
 		return err
 	}
 

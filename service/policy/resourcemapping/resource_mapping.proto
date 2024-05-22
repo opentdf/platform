@@ -271,7 +271,7 @@ service ResourceMappingService {
   */
   rpc UpdateResourceMapping(UpdateResourceMappingRequest) returns (UpdateResourceMappingResponse) {
     option (google.api.http) = {
-      post: "/resource-mappings/{id}"
+      patch: "/resource-mappings/{id}"
       body: "*"
     };
   }

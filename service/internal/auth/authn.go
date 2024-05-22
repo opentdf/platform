@@ -412,7 +412,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 
 	dpop, err := jws.Parse([]byte(dpopHeader))
 	if err != nil {
-		slog.Error("error parsing JWT: %w", err)
+		slog.Error("error parsing JWT", "error", err)
 		return nil, fmt.Errorf("invalid DPoP JWT")
 	}
 	if len(dpop.Signatures()) != 1 {
@@ -435,7 +435,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 
 	isPrivate, err := jwk.IsPrivateKey(dpopKey)
 	if err != nil {
-		slog.Error("error checking if key is private", err)
+		slog.Error("error checking if key is private", "error", err)
 		return nil, fmt.Errorf("invalid DPoP key specified")
 	}
 
@@ -445,7 +445,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
 	if err != nil {
-		slog.Error("error computing thumbprint for key", err)
+		slog.Error("error computing thumbprint for key", "error", err)
 		return nil, fmt.Errorf("couldn't compute thumbprint for key in `jwk` in DPoP JWT")
 	}
 
@@ -459,7 +459,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 	dpopToken, err := jwt.Parse([]byte(dpopHeader), jwt.WithKey(protectedHeaders.Algorithm(), dpopKey))
 
 	if err != nil {
-		slog.Error("error validating DPoP JWT", err)
+		slog.Error("error validating DPoP JWT", "error", err)
 		return nil, fmt.Errorf("failed to verify signature on DPoP JWT")
 	}
 

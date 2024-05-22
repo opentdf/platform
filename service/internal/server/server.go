@@ -40,6 +40,7 @@ func (e Error) Error() string {
 	return string(e)
 }
 
+// Configurations for the server
 type Config struct {
 	Auth                    auth.Config     `yaml:"auth"`
 	GRPC                    GRPCConfig      `yaml:"grpc"`
@@ -47,21 +48,30 @@ type Config struct {
 	TLS                     TLSConfig       `yaml:"tls"`
 	CORS                    CORSConfig      `yaml:"cors"`
 	WellKnownConfigRegister func(namespace string, config any) error
-	Port                    int    `yaml:"port" default:"8080"`
-	Host                    string `yaml:"host,omitempty"`
+	// Port to listen on
+	Port int    `yaml:"port" default:"8080"`
+	Host string `yaml:"host,omitempty"`
 }
 
+// GRPC Server specific configurations
 type GRPCConfig struct {
+	// Enable reflection for grpc server (default: true)
 	ReflectionEnabled bool `yaml:"reflectionEnabled" default:"true"`
 }
 
+// TLS Configuration for the server
 type TLSConfig struct {
-	Enabled bool   `yaml:"enabled" default:"false"`
-	Cert    string `yaml:"cert"`
-	Key     string `yaml:"key"`
+	// Enable TLS for the server (default: false)
+	Enabled bool `yaml:"enabled" default:"false"`
+	// Path to the certificate file
+	Cert string `yaml:"cert"`
+	// Path to the key file
+	Key string `yaml:"key"`
 }
 
+// CORS Configuration for the server
 type CORSConfig struct {
+	// Enable CORS for the server (default: true)
 	Enabled          bool     `yaml:"enabled" default:"true"`
 	AllowedOrigins   []string `yaml:"allowedorigins"`
 	AllowedMethods   []string `yaml:"allowedmethods"`
@@ -106,9 +116,9 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
 		}
-		slog.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
+		slog.Debug("authentication interceptor enabled")
 	} else {
-		slog.Info("authentication enabled")
+		slog.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
 	// Try an register oidc issuer to wellknown service but don't return an error if it fails
@@ -142,22 +152,11 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		GRPCInProcess: grpcIPCServer,
 	}
 
-	if config.CryptoProvider.HSMConfig.Enabled {
-		config.CryptoProvider.Type = "hsm"
-		o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
-		if err != nil {
-			return nil, fmt.Errorf("HSM security.NewCryptoProvider: %w", err)
-		}
-
-		slog.Info("✅crypto provider: HSM")
-	} else {
-		config.CryptoProvider.Type = "standard"
-		o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
-		if err != nil {
-			return nil, fmt.Errorf("standard security.NewCryptoProvider: %w", err)
-		}
-
-		slog.Info("✅ crypto provider: standard")
+	// Create crypto provider
+	slog.Info("creating crypto provider", slog.String("type", config.CryptoProvider.Type))
+	o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
+	if err != nil {
+		return nil, fmt.Errorf("HSM security.NewCryptoProvider: %w", err)
 	}
 
 	return &o, nil
@@ -169,7 +168,7 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 	var tc *tls.Config
 
 	// Add authN interceptor
-	// TODO check if this is needed or if it is handled by gRPC
+	// This is needed because we are leveraging RegisterXServiceHandlerServer instead of RegisterXServiceHandlerFromEndpoint
 	if c.Auth.Enabled {
 		h = a.MuxHandler(h)
 	} else {

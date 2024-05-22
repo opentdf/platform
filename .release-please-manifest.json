@@ -1,7 +1,7 @@
 {
-  "lib/fixtures": "0.2.1",
-  "lib/ocrypto": "0.1.1",
-  "protocol/go": "0.2.1",
-  "sdk": "0.2.0",
-  "service": "0.4.1"
+  "lib/fixtures": "0.2.3",
+  "lib/ocrypto": "0.1.3",
+  "protocol/go": "0.2.3",
+  "sdk": "0.2.3",
+  "service": "0.4.2"
 }

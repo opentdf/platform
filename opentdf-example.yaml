@@ -69,7 +69,7 @@ server:
   cors:
     enabled: false
     # '*' to allow any origin or a specific domain like 'https://yourdomain.com'
-    allowedorigins: '*'
+    allowedorigins: "*"
     # List of methods. Examples: 'GET,POST,PUT'
     allowedmethods:
       - GET
@@ -94,9 +94,7 @@ server:
   grpc:
     reflectionEnabled: true # Default is false
   cryptoProvider:
-    hsm:
-      enabled: false
-      pin:
+    type: standard
     standard:
       rsa:
         123:

@@ -2,6 +2,10 @@
 
 ![Vulnerability Check](https://github.com/opentdf/platform/actions/workflows/vulnerability-check.yaml/badge.svg?branch=main)
 
+> [!NOTE]
+> It is advised to familiarize yourself with the [terms and concepts](../README.md#terms-and-concepts) used in the
+> OpenTDF platform.
+
 ## Documentation
 
 - [Configuration](./docs/configuration.md)
@@ -9,34 +13,7 @@
 - [Policy Config Schema](./service/migrations/20240212000000_schema_erd.md)
 - [Policy Config Testing Diagram](./service/integration/testing_diagram.png)
 
-## Running the Platform Locally
-
-### Setting up pre-requisites
-
-1. Initialize KAS Keys ```.github/scripts/init-temp-keys.sh -o kas-keys```
-2. Stand up the local Postgres database and Keycloak instances using `docker-compose up -d --wait`.
-3. Copy the `opentdf-example.yaml` file to `opentdf.yaml` and update the [configuration](./docs/configuration.md) as needed.
-Bootstrap Keycloak
-
-   ```sh
-      docker run --network opentdf_platform \
-         -v "$(pwd)/opentdf.yaml:/home/nonroot/.opentdf/opentdf.yaml" \
-         -it registry.opentdf.io/platform:nightly provision keycloak -e http://keycloak:8888/auth
-   ```
-4. Start the platform
-
-   Exposes the server at localhost:8080
-   ```sh
-   docker run --network opentdf_platform \
-      -p "127.0.0.1:8080:8080" \
-      -v "$(pwd)/kas-keys/:/keys/" \
-      -v "$(pwd)/opentdf.yaml:/home/nonroot/.opentdf/opentdf.yaml" \
-      -it registry.opentdf.io/platform:nightly start
-   ```
-
-## Development
-
-### Prerequisites
+### Prerequisites for Project Consumers & Contributors
 
 - [Go](https://go.dev/) (_see go.mod for specific version_)
 - Container runtime
@@ -47,66 +24,104 @@ Bootstrap Keycloak
   - [Podman Compose](https://github.com/containers/podman-compose)
 - [Buf](https://buf.build/docs/ecosystem/cli-overview) is used for managing protobuf files.
   Required for developing services.
-- _Optional_ [Air](https://github.com/cosmtrek/air) is used for hot-reload development
-- _Optional_ [golangci-lint](https://golangci-lint.run/) is used for ensuring good coding practices
-  - install with `brew install golangci-lint`
-- _Optional_ [grpcurl](https://github.com/fullstorydev/grpcurl) is used for testing gRPC services
 
 On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 
 ```sh
-brew install buf go golangci-lint goose grpcurl openssl
+brew install buf go
 ```
 
-### Run
+#### Optional tools
 
-> [!NOTE]
-> Migrations are handled automatically by the server. This can be disabled via the config file, as
-> needed. They can also be run manually using the `migrate` command
-> (`go run github.com/opentdf/platform/service migrate up`).
+- _Optional_ [Air](https://github.com/cosmtrek/air) is used for hot-reload development
+  - install with `go install github.com/cosmtrek/air@latest`  
+- _Optional_ [golangci-lint](https://golangci-lint.run/) is used for ensuring good coding practices
+  - install with `brew install golangci-lint`
+- _Optional_ [grpcurl](https://github.com/fullstorydev/grpcurl) is used for testing gRPC services
+  - install with `brew install grpcurl`
+- _Optional_ [openssl](https://www.openssl.org/) is used for generating certificates
+  - install with `brew install openssl`
 
-1.  Configure KAS and Keycloak keys: `.github/scripts/init-temp-keys.sh`. Creates temporary keys for the local KAS and Keycloak Certificate Exchange. 
-2. `docker-compose up`. Starts both the local Postgres database (contains the ABAC policy configuration data) and Keycloak (the local IdP).
-   1. Note: You will have to add the ``localhost.crt`` as a trusted certificate to do TLS authentication at ``localhost:8443``.
-3. Create an OpenTDF config file: `opentdf.yaml`
-   1. The `opentdf-dev.yaml` file is the more secure starting point, but you will likely need to modify it to match your environment. This configuration is recommended as it is more secure but it does require valid development keypairs.
-   2. The `opentdf-example-no-kas.yaml` file is simpler to run but less secure. This file configures the platform to startup without a KAS instances and without endpoint authentication.
-4. Provision keycloak: `go run github.com/opentdf/platform/service provision keycloak`. Updates the local Keycloak configuration for local testing and development by creating a realm, roles, a client, and users.
-5. Run the server: `go run github.com/opentdf/platform/service start`. Runs the OpenTDF platform capabilities as a monolithic service.
-   1. _Alt_ use the hot-reload development environment `air`
-6. The server is now running on `localhost:8080` (or the port specified in the config file)
+## Audience
 
-Note: support was added to provision a set of fixture data into the database.
-Run `go run github.com/opentdf/platform/service provision fixtures -h` for more information.
+There are two primary audiences for this project. Consumers and Contributors
 
-### Provisioning Custom Keycloak and Policy Data
+1. Consuming
+Consumers of the OpenTDF platform should begin their journey [here](./Consuming.md).
 
-To provision a custom Keycloak setup, create a yaml following the format of [the sample Keycloak config](service/cmd/keycloak_data.yaml). You can create different realms with separate users, clients, roles, and groups. Run the provisioning with `go run ./service provision keycloak-from-config -f <path-to-your-yaml-file>`.
+2. Contributing
+To contribute to the OpenTDF platform, you'll need bit more set setup and should start [here](./Contributing.md).
 
-### Generation
+## Additional info for Project Consumers & Contributors
 
-Our native gRPC service functions are generated from `proto` definitions using [Buf](https://buf.build/docs/introduction).
+## For Consumers
 
-The `Makefile` provides command scripts to invoke `Buf` with the `buf.gen.yaml` config, including OpenAPI docs, grpc docs, and the
-generated code.
+The OpenTDF service is the main entry point for the OpenTDF platform. [See service documentation](./service/README.md)
+for more information.
 
-For convenience, the `make toolcheck` script checks if you have the necessary dependencies for `proto -> gRPC` generation.
+### Quick Start
 
-## Services
+<!-- START copy ./service/README.md#quick-start -->
 
-### Key Access Service (KAS)
+> [!WARNING]
+> This quickstart guide is intended for development and testing purposes only. The OpenTDF platform team does not
+> provide recommendations for production deployments.
 
-A KAS controls access to TDF protected content.
+To get started with the OpenTDF platform make sure you are running the same Go version found in the `go.mod` file.
 
-#### Configuration
+<!-- markdownlint-disable MD034 github embedded sourcecode -->
+https://github.com/opentdf/platform/blob/main/service/go.mod#L3
 
-To enable KAS, you must have stable asymmetric keypairs configured.
-[The temp keys init script](.github/scripts/init-temp-keys.sh) will generate two development keys.
+Start the required infrastructure with [compose-spec](https://compose-spec.io).
 
-### Policy
+```sh
+# Note this might be `podman compose` on some systems
+docker compose -f docker-compose.yaml up
+```
 
-The policy service is responsible for managing policy configurations. It provides a gRPC API for
-creating, updating, and deleting policy configurations. [Docs](https://github.com/opentdf/platform/tree/main/docs)
+Copy the configuration file from the example and update it with your own values.
+
+```sh
+cp opentdf-example.yaml opentdf.yaml
+```
+
+Provision default configurations.
+
+```sh
+# Provision keycloak with the default configuration.
+go run ./service provision keycloak
+# Generate the temporary keys for KAS
+./.github/scripts/init-temp-keys.sh
+```
+
+Run the OpenTDF platform service.
+
+```sh
+go run ./service start
+```
+<!-- END copy ./service/README#quick-start -->
+
+## For Contributors
+
+This section is focused on the development of the OpenTDF platform.
+
+### Libraries
+
+Libraries `./lib` are shared libraries that are used across the OpenTDF platform. These libraries are used to provide
+common functionality between the various sub-modules of the platform monorepo. Specifically, these libraries are shared
+between the services and the SDKs.
+
+### Services
+
+Services `./services` are the core building blocks of the OpenTDF platform. Generally, each service is one or more gRPC services that
+are scoped to a namespace. The essence of the service is that it takes a modular binary architecture approach enabling
+multiple deployment models.
+
+### SDKs
+
+SDKs `./sdk` are the contracts which the platform uses to ensure that developers and services can interact with the
+platform. The SDKs contain a native Go SDK and generated Go service SDKs. A full list of SDKs can be found at
+[github.com/opentdf](https://github.com/opentdf).
 
 ### How To Add a New Go Module
 
@@ -174,3 +189,37 @@ COPY lib/foo/ lib/foo/
 1. Add your new `go.mod` directory to the `.github/workflows/checks.yaml`'s `go` job's `matrix.strategry.directory` line.
 2. Add the module to the `license` job in the `checks` workflow as well, especially if you declare _any_ dependencies.
 3. Do the same for any other workflows that should be running on your folder, such as `vuln-check` and `lint`.
+
+---
+
+## Terms and Concepts
+
+Common terms used in the OpenTDF platform.
+
+**Service** is the core service of the OpenTDF platform as well as the sub-services that make up the platform. The main
+service follows a modular binary architecture, while the sub-services are gRPC services with HTTP gateways.
+
+**Policy** is the set of rules that govern access to the platform.
+
+**OIDC** is the OpenID Connect protocol used solely for authentication within the OpenTDF platform.
+
+- **IdP** - Identity Provider. This is the service that authenticates the user.
+- **Keycloak** is the turn-key OIDC provider used within the platform for proof-of-value, but should be replaced with a
+  production-grade OIDC provider or deployment.
+
+**Attribute Based Access Control** (ABAC) is the policy-based access control model used within the OpenTDF platform.
+
+- PEP - A Policy Enforcement Point. This is a service that enforces access control policies.
+- PDP - A Policy Decision Point. This is a service that makes access control decisions.
+
+**Entities** are the main actors within the OpenTDF platform. These include people and systems.
+
+- Person Entity (PE) - A person entity is a person that is interacting with the platform.
+- Non Person Entity (NPE) - A non-person entity is a service or system that is interacting with the platform.
+
+**SDKs** are the contracts which the platform uses to ensure that developers and services can interact with the platform.
+
+- SDK - The native Go OpenTDF SDK (other languages are outside the platform repo).
+  - A full list of SDKs can be found at [github.com/opentdf](https://github.com/opentdf).
+- Service SDK - The SDK generated from the service proto definitions.
+  - The proto definitions are maintained by each service.

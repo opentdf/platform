@@ -1,10 +1,8 @@
 package cmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -67,6 +65,10 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	// Print Manifest
 	cmd.Println(string(manifestJSON))
 
+	//
+	// NanoTDF
+	//
+
 	attributes := []string{
 		"https://example.com/attr/Classification/value/S",
 		"https://example.com/attr/Classification/value/X",
@@ -80,29 +82,15 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	nanoTDFCOnfig.SetKasUrl(fmt.Sprintf("http://%s", cmd.Flag("platformEndpoint").Value.String()))
 	nanoTDFCOnfig.SetAttributes(attributes)
 
-	plaintData := "virtru!!"
-	inBuf := bytes.NewBufferString(plaintData)
-	bufReader := bytes.NewReader(inBuf.Bytes())
-	tdfBuf := bytes.Buffer{}
+	strReader = strings.NewReader(plainText)
+	nTdfFile, err := os.Create("sensitive.txt.ntdf")
 
-	_, err = client.CreateNanoTDF(io.Writer(&tdfBuf), bufReader, *nanoTDFCOnfig)
+	_, err = client.CreateNanoTDF(nTdfFile, strReader, *nanoTDFCOnfig)
 	if err != nil {
 		return err
 	}
 
-	inBuf = bytes.NewBuffer(tdfBuf.Bytes())
-	nanoTDFReader := bytes.NewReader(inBuf.Bytes())
-	outBuf := bytes.Buffer{}
-	_, err = client.ReadNanoTDF(io.Writer(&outBuf), nanoTDFReader)
-	if err != nil {
-		return err
-	}
-
-	if plaintData == outBuf.String() {
-		cmd.Println("✅NanoTDF test passed!")
-	} else {
-		cmd.Println("❌NanoTDF test failed!")
-	}
+	cmd.Println("NanoTDF encrypt done.")
 
 	return nil
 }

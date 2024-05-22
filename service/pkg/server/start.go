@@ -81,6 +81,8 @@ func Start(f ...StartOptions) error {
 				sdkOptions = append(sdkOptions, sdk.WithCustomPolicyConnection(otdf.GRPCInProcess.Conn()))
 			case "authorization":
 				sdkOptions = append(sdkOptions, sdk.WithCustomAuthorizationConnection(otdf.GRPCInProcess.Conn()))
+			case "entityresolution":
+				sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(otdf.GRPCInProcess.Conn()))
 			}
 		}
 	}

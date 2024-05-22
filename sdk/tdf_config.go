@@ -44,6 +44,7 @@ type TDFConfig struct {
 	tdfPublicKey              string // TODO: Remove it
 	tdfPrivateKey             string
 	metaData                  string
+	mimeType                  string
 	integrityAlgorithm        IntegrityAlgorithm
 	segmentIntegrityAlgorithm IntegrityAlgorithm
 	assertions                []Assertion //nolint:unused // TODO
@@ -112,6 +113,13 @@ func WithKasInformation(kasInfoList ...KASInfo) TDFOption {
 func WithMetaData(metaData string) TDFOption {
 	return func(c *TDFConfig) error {
 		c.metaData = metaData
+		return nil
+	}
+}
+
+func WithMimeType(mimeType string) TDFOption {
+	return func(c *TDFConfig) error {
+		c.mimeType = mimeType
 		return nil
 	}
 }

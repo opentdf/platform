@@ -222,6 +222,17 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	if err != nil {
 		return err
 	}
+	// Create test public Client
+	_, err = createClient(ctx, client, token, &kcConnectParams, gocloak.Client{
+		ClientID:                gocloak.StringP("test-client2"),
+		Enabled:                 gocloak.BoolP(true),
+		Name:                    gocloak.StringP("test client2"),
+		ClientAuthenticatorType: gocloak.StringP("client-secret"),
+		Secret:                  gocloak.StringP("secret"),
+	}, []gocloak.Role{*opentdfOrgAdminRole}, nil)
+	if err != nil {
+		return err
+	}
 
 	var (
 		testScopeID = "5787804c-cdd1-44db-ac74-c46fbda91ccc"
@@ -605,7 +616,7 @@ func createClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.J
 	}
 
 	// if the client is not public
-	if !*newClient.PublicClient {
+	if newClient.ServiceAccountsEnabled != nil && *newClient.ServiceAccountsEnabled {
 		// Get service account user
 		user, err := client.GetClientServiceAccount(ctx, token.AccessToken, connectParams.Realm, longClientID)
 		if err != nil {

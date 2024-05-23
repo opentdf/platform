@@ -122,6 +122,8 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	opentdfClientID := "opentdf"
 	opentdfSdkClientID := "opentdf-sdk"
 	opentdfSdkCertExchangeClientID := "opentdf-sdk-cert-exchange"
+	sampleUserName := "sample-user"
+	sampleUserPassword := "testuser123"
 	opentdfOrgAdminRoleName := "opentdf-org-admin"
 	opentdfAdminRoleName := "opentdf-admin"
 	opentdfReadonlyRoleName := "opentdf-readonly"
@@ -336,12 +338,13 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	// }
 
 	user := gocloak.User{
-		FirstName:  gocloak.StringP("sample"),
-		LastName:   gocloak.StringP("user"),
-		Email:      gocloak.StringP("sampleuser@sample.com"),
-		Enabled:    gocloak.BoolP(true),
-		Username:   gocloak.StringP("sampleuser"),
-		Attributes: &map[string][]string{"superhero_name": {"thor"}, "superhero_group": {"avengers"}},
+		FirstName:   gocloak.StringP("sample"),
+		LastName:    gocloak.StringP("user"),
+		Email:       gocloak.StringP("sampleuser@sample.com"),
+		Enabled:     gocloak.BoolP(true),
+		Username:    gocloak.StringP(sampleUserName),
+		Credentials: &[]gocloak.CredentialRepresentation{{Value: gocloak.StringP(sampleUserPassword), Type: gocloak.StringP("password")}},
+		Attributes:  &map[string][]string{"superhero_name": {"thor"}, "superhero_group": {"avengers"}},
 	}
 	_, err = createUser(ctx, client, token, &kcConnectParams, user)
 	if err != nil {

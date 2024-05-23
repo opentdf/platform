@@ -31,7 +31,7 @@ tidy:
 	for m in $(HAND_MODS); do (cd $$m && go mod tidy) || exit 1; done
 
 license:
-#	for m in $(HAND_MODS); do (cd $$m && go-licenses check --disallowed_types=forbidden --include_tests ./) || exit 1; done
+	for m in $(HAND_MODS); do (cd $$m && go-licenses check --disallowed_types=forbidden --include_tests ./) || exit 1; done
 
 lint: proto-lint go-lint
 

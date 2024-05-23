@@ -593,41 +593,43 @@ func createClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.J
 		slog.Info(fmt.Sprintf("✅ Client created: client id = %s, client identifier=%s", clientID, longClientID))
 	}
 
-	// Get service account user
-	user, err := client.GetClientServiceAccount(ctx, token.AccessToken, connectParams.Realm, longClientID)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Error getting service account user for client %s : %s", clientID, err))
-		return "", err
-	}
-	slog.Info(fmt.Sprintf("ℹ️  Service account user for client %s : %s", clientID, *user.Username))
-
-	if realmRoles != nil {
-		slog.Info(fmt.Sprintf("Adding realm roles to client %s via service account %s", longClientID, *user.Username))
-		if err := client.AddRealmRoleToUser(ctx, token.AccessToken, connectParams.Realm, *user.ID, realmRoles); err != nil {
-			for _, role := range realmRoles {
-				slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
-			}
+	// if the client is not public
+	if newClient.ServiceAccountsEnabled != nil && *newClient.ServiceAccountsEnabled { //nolint:nestif // have to handle the different cases
+		// Get service account user
+		user, err := client.GetClientServiceAccount(ctx, token.AccessToken, connectParams.Realm, longClientID)
+		if err != nil {
+			slog.Error(fmt.Sprintf("Error getting service account user for client %s : %s", clientID, err))
 			return "", err
 		}
-		for _, role := range realmRoles {
-			slog.Info(fmt.Sprintf("✅ Realm Role %s added to client %s", *role.Name, longClientID))
-		}
-	}
-	if clientRoles != nil {
-		slog.Info(fmt.Sprintf("Adding client roles to client %s via service account %s", longClientID, *user.Username))
-		for clientIDRole, roles := range clientRoles {
-			if err := client.AddClientRolesToUser(ctx, token.AccessToken, connectParams.Realm, clientIDRole, *user.ID, roles); err != nil {
-				for _, role := range roles {
+		slog.Info(fmt.Sprintf("ℹ️  Service account user for client %s : %s", clientID, *user.Username))
+
+		if realmRoles != nil {
+			slog.Info(fmt.Sprintf("Adding realm roles to client %s via service account %s", longClientID, *user.Username))
+			if err := client.AddRealmRoleToUser(ctx, token.AccessToken, connectParams.Realm, *user.ID, realmRoles); err != nil {
+				for _, role := range realmRoles {
 					slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
 				}
 				return "", err
 			}
-			for _, role := range roles {
-				slog.Info(fmt.Sprintf("✅ Client Role %s added to client %s", *role.Name, longClientID))
+			for _, role := range realmRoles {
+				slog.Info(fmt.Sprintf("✅ Realm Role %s added to client %s", *role.Name, longClientID))
+			}
+		}
+		if clientRoles != nil {
+			slog.Info(fmt.Sprintf("Adding client roles to client %s via service account %s", longClientID, *user.Username))
+			for clientIDRole, roles := range clientRoles {
+				if err := client.AddClientRolesToUser(ctx, token.AccessToken, connectParams.Realm, clientIDRole, *user.ID, roles); err != nil {
+					for _, role := range roles {
+						slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
+					}
+					return "", err
+				}
+				for _, role := range roles {
+					slog.Info(fmt.Sprintf("✅ Client Role %s added to client %s", *role.Name, longClientID))
+				}
 			}
 		}
 	}
-
 	return longClientID, nil
 }
 

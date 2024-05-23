@@ -259,7 +259,7 @@ func getTokenEndpoint(c PlatformConfigurationType) (string, error) {
 func fetchTokenEndpoint(issuerURL string) (string, error) {
 	wellKnownConfigURL := issuerURL + "/.well-known/openid-configuration"
 
-	req, err := http.NewRequest(http.MethodGet, wellKnownConfigURL, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, wellKnownConfigURL, nil)
 	if err != nil {
 		return "", err
 	}

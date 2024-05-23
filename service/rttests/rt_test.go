@@ -16,6 +16,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/sdk"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/oauth2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -27,16 +28,26 @@ import (
 // then those will need to be updated.
 
 type TestConfig struct {
-	PlatformEndpoint string
-	TokenEndpoint    string
-	ClientID         string
-	ClientSecret     string
+	PlatformEndpoint          string
+	TokenEndpoint             string
+	ClientID                  string
+	ClientSecret              string
+	TokenExchangeClientID     string
+	TokenExchangeClientSecret string
+	Username                  string
+	Password                  string
 }
 
-var attributesToMap = []string{
+var clientAttributes = []string{
 	"https://example.com/attr/language/value/english",
 	"https://example.com/attr/color/value/red",
 	"https://example.com/attr/cards/value/queen"}
+
+var userAttributes = []string{
+	"https://example.com/attr/language/value/french",
+	"https://example.com/attr/language/value/english",
+	"https://example.com/attr/color/value/blue",
+	"https://example.com/attr/cards/value/jack"}
 
 var successAttributeSets = [][]string{
 	{"https://example.com/attr/language/value/english"},
@@ -71,12 +82,77 @@ var failureAttributeSets = [][]string{
 		"https://example.com/attr/cards/value/king"},
 }
 
+var successTokenExchangeAttributeSets = [][]string{
+	{"https://example.com/attr/language/value/english"},
+	{"https://example.com/attr/color/value/red", "https://example.com/attr/color/value/blue"},
+	{"https://example.com/attr/color/value/red", "https://example.com/attr/color/value/blue", "https://example.com/attr/color/value/green"},
+	{"https://example.com/attr/color/value/red", "https://example.com/attr/color/value/blue"},
+	{"https://example.com/attr/color/value/red", "https://example.com/attr/color/value/blue", "https://example.com/attr/color/value/green"},
+	{"https://example.com/attr/cards/value/jack"},
+	{"https://example.com/attr/language/value/english",
+		"https://example.com/attr/color/value/red",
+		"https://example.com/attr/color/value/blue",
+		"https://example.com/attr/cards/value/jack"},
+	{"https://example.com/attr/language/value/english",
+		"https://example.com/attr/color/value/red",
+		"https://example.com/attr/color/value/blue",
+		"https://example.com/attr/color/value/green",
+		"https://example.com/attr/cards/value/jack"},
+}
+
+var failureTokenExchangeSets = [][]string{
+	{"https://example.com/attr/language/value/french"},
+	{"https://example.com/attr/language/value/english", "https://example.com/attr/language/value/french"},
+	{"https://example.com/attr/color/value/red"},
+	{"https://example.com/attr/color/value/blue"},
+	{"https://example.com/attr/color/value/green"},
+	{"https://example.com/attr/color/value/red", "https://example.com/attr/color/value/green"},
+	{"https://example.com/attr/color/value/blue", "https://example.com/attr/color/value/green"},
+	{"https://example.com/attr/cards/value/queen"},
+	{"https://example.com/attr/cards/value/queen", "https://example.com/attr/cards/value/jack"},
+	{"https://example.com/attr/language/value/english",
+		"https://example.com/attr/language/value/french",
+		"https://example.com/attr/color/value/red",
+		"https://example.com/attr/color/value/blue",
+		"https://example.com/attr/cards/value/jack"},
+	{"https://example.com/attr/language/value/english",
+		"https://example.com/attr/color/value/green",
+		"https://example.com/attr/cards/value/jack"},
+	{"https://example.com/attr/language/value/english",
+		"https://example.com/attr/color/value/blue",
+		"https://example.com/attr/color/value/green",
+		"https://example.com/attr/cards/value/jack"},
+	{"https://example.com/attr/language/value/english",
+		"https://example.com/attr/color/value/red",
+		"https://example.com/attr/color/value/green",
+		"https://example.com/attr/cards/value/jack"},
+	{"https://example.com/attr/language/value/english",
+		"https://example.com/attr/color/value/red",
+		"https://example.com/attr/color/value/blue",
+		"https://example.com/attr/cards/value/queen"},
+	{"https://example.com/attr/language/value/english",
+		"https://example.com/attr/color/value/red",
+		"https://example.com/attr/color/value/blue",
+		"https://example.com/attr/cards/value/queen",
+		"https://example.com/attr/cards/value/jack"},
+	{"https://example.com/attr/language/value/english",
+		"https://example.com/attr/color/value/red",
+		"https://example.com/attr/color/value/blue",
+		"https://example.com/attr/cards/value/queen",
+		"https://example.com/attr/cards/value/jack",
+		"https://example.com/attr/cards/value/king"},
+}
+
 func newTestConfig() TestConfig {
 	return TestConfig{
-		PlatformEndpoint: "localhost:8080",
-		TokenEndpoint:    "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token",
-		ClientID:         "opentdf",
-		ClientSecret:     "secret",
+		PlatformEndpoint:          "localhost:8080",
+		TokenEndpoint:             "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token",
+		ClientID:                  "opentdf",
+		ClientSecret:              "secret",
+		TokenExchangeClientID:     "opentdf-sdk",
+		TokenExchangeClientSecret: "secret",
+		Username:                  "sample-user",
+		Password:                  "testuser123",
 	}
 }
 
@@ -96,6 +172,7 @@ func Test_RoundTrips(t *testing.T) {
 }
 
 func RunRoundtripTests(testConfig *TestConfig) error {
+	// client credentials tests:
 	// success tests
 	for _, attributes := range successAttributeSets {
 		slog.Info("success roundtrip for ", "attributes", attributes)
@@ -109,6 +186,25 @@ func RunRoundtripTests(testConfig *TestConfig) error {
 	for _, attributes := range failureAttributeSets {
 		slog.Info("failutre roundtrip for ", "attributes", attributes)
 		err := roundtrip(testConfig, attributes, true)
+		if err != nil {
+			return err
+		}
+	}
+
+	// token exchange tests
+	// success tests
+	for _, attributes := range successTokenExchangeAttributeSets {
+		slog.Info("success token exchange roundtrip for ", "attributes", attributes)
+		err := tokenExchangeRoundTrip(context.Background(), testConfig, attributes, false)
+		if err != nil {
+			return err
+		}
+	}
+
+	// failure tests
+	for _, attributes := range failureTokenExchangeSets {
+		slog.Info("failutre token exchange roundtrip for ", "attributes", attributes)
+		err := tokenExchangeRoundTrip(context.Background(), testConfig, attributes, true)
 		if err != nil {
 			return err
 		}
@@ -235,24 +331,49 @@ func CreateTestData(testConfig *TestConfig) error {
 
 	slog.Info("##################################\n#######################################")
 
+	///////  Client entitlements ////////////////
+	err = entitleEntity(context.Background(), s, clientAttributes, testConfig.ClientID, ".clientId")
+	if err != nil {
+		slog.Error("could not entitle client", slog.String("error", err.Error()))
+		return err
+	}
+
+	/////// User entitlements ////////////////
+	err = entitleEntity(context.Background(), s, userAttributes, testConfig.Username, ".username")
+	if err != nil {
+		slog.Error("could not entitle user", slog.String("error", err.Error()))
+		return err
+	}
+
+	allSubMaps, err := s.SubjectMapping.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{})
+	if err != nil {
+		slog.Error("could not list subject mappings", slog.String("error", err.Error()))
+		return err
+	}
+	slog.Info(fmt.Sprintf("list subject mappings response: %s", protojson.Format(allSubMaps)))
+
+	return nil
+}
+
+func entitleEntity(ctx context.Context, s *sdk.SDK, attributesFqns []string, entity string, selector string) error {
 	// get the attribute ids for the values were mapping to the client
 	var attributeValueIDs []string
-	fqnResp, err := s.Attributes.GetAttributeValuesByFqns(context.Background(), &attributes.GetAttributeValuesByFqnsRequest{
-		Fqns:      attributesToMap,
+	fqnResp, err := s.Attributes.GetAttributeValuesByFqns(ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns:      attributesFqns,
 		WithValue: &policy.AttributeValueSelector{},
 	})
 	if err != nil {
 		slog.Error("get attribute values by fqn ", slog.String("error", err.Error()))
 		return err
 	}
-	for _, attribute := range attributesToMap {
+	for _, attribute := range attributesFqns {
 		attributeValueIDs = append(attributeValueIDs, fqnResp.GetFqnAttributeValues()[attribute].GetValue().GetId())
 	}
 
 	// create subject mappings
-	slog.Info("creating subject mappings for client " + testConfig.ClientID)
+	slog.Info("creating subject mappings for entity " + entity)
 	for _, attributeID := range attributeValueIDs {
-		_, err = s.SubjectMapping.CreateSubjectMapping(context.Background(), &subjectmapping.CreateSubjectMappingRequest{
+		_, err = s.SubjectMapping.CreateSubjectMapping(ctx, &subjectmapping.CreateSubjectMappingRequest{
 			AttributeValueId: attributeID,
 			Actions: []*policy.Action{{Value: &policy.Action_Standard{
 				Standard: policy.Action_STANDARD_ACTION_DECRYPT,
@@ -265,9 +386,9 @@ func CreateTestData(testConfig *TestConfig) error {
 				SubjectSets: []*policy.SubjectSet{
 					{ConditionGroups: []*policy.ConditionGroup{
 						{Conditions: []*policy.Condition{{
-							SubjectExternalSelectorValue: ".clientId",
+							SubjectExternalSelectorValue: selector,
 							Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-							SubjectExternalValues:        []string{testConfig.ClientID},
+							SubjectExternalValues:        []string{entity},
 						}},
 							BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
 						},
@@ -286,25 +407,36 @@ func CreateTestData(testConfig *TestConfig) error {
 			slog.Info("subject mapping created")
 		}
 	}
-
-	allSubMaps, err := s.SubjectMapping.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{})
-	if err != nil {
-		slog.Error("could not list subject mappings", slog.String("error", err.Error()))
-		return err
-	}
-	slog.Info(fmt.Sprintf("list subject mappings response: %s", protojson.Format(allSubMaps)))
-
 	return nil
 }
 
-func roundtrip(testConfig *TestConfig, attributes []string, failure bool) error {
+func tokenExchangeRoundTrip(ctx context.Context, testConfig *TestConfig, attributes []string, failure bool) error {
 	const filename = "test-success.tdf"
-	const plaintext = "Running a roundtrip test!"
-	err := encrypt(testConfig, plaintext, attributes, filename)
+	const plaintext = "Running a token exchange roundtrip test!"
+
+	config := oauth2.Config{ClientID: testConfig.TokenExchangeClientID, ClientSecret: testConfig.TokenExchangeClientSecret, Endpoint: oauth2.Endpoint{TokenURL: testConfig.TokenEndpoint}}
+	token, err := config.PasswordCredentialsToken(ctx, testConfig.Username, testConfig.Password)
 	if err != nil {
 		return err
 	}
-	err = decrypt(testConfig, filename, plaintext)
+
+	// Create new offline client
+	client, err := sdk.New(testConfig.PlatformEndpoint,
+		sdk.WithInsecurePlaintextConn(),
+		sdk.WithTokenExchange(token.AccessToken, []string{testConfig.TokenExchangeClientID}),
+		sdk.WithClientCredentials(testConfig.ClientID,
+			testConfig.ClientSecret, nil),
+		sdk.WithTokenEndpoint(testConfig.TokenEndpoint),
+	)
+	if err != nil {
+		return err
+	}
+
+	err = encrypt(client, testConfig, plaintext, attributes, filename)
+	if err != nil {
+		return err
+	}
+	err = decrypt(client, testConfig, filename, plaintext)
 	if failure {
 		if err == nil {
 			return errors.New("decrypt passed but was expected to fail")
@@ -318,9 +450,9 @@ func roundtrip(testConfig *TestConfig, attributes []string, failure bool) error 
 	return nil
 }
 
-func encrypt(testConfig *TestConfig, plaintext string, attributes []string, filename string) error {
-	strReader := strings.NewReader(plaintext)
-
+func roundtrip(testConfig *TestConfig, attributes []string, failure bool) error {
+	const filename = "test-success.tdf"
+	const plaintext = "Running a roundtrip test!"
 	// Create new offline client
 	client, err := sdk.New(testConfig.PlatformEndpoint,
 		sdk.WithInsecurePlaintextConn(),
@@ -331,6 +463,27 @@ func encrypt(testConfig *TestConfig, plaintext string, attributes []string, file
 	if err != nil {
 		return err
 	}
+
+	err = encrypt(client, testConfig, plaintext, attributes, filename)
+	if err != nil {
+		return err
+	}
+	err = decrypt(client, testConfig, filename, plaintext)
+	if failure {
+		if err == nil {
+			return errors.New("decrypt passed but was expected to fail")
+		}
+		if !(strings.Contains(err.Error(), "PermissionDenied")) {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+	return nil
+}
+
+func encrypt(client *sdk.SDK, testConfig *TestConfig, plaintext string, attributes []string, filename string) error {
+	strReader := strings.NewReader(plaintext)
 
 	tdfFile, err := os.Create(filename)
 	if err != nil {
@@ -353,17 +506,7 @@ func encrypt(testConfig *TestConfig, plaintext string, attributes []string, file
 	return nil
 }
 
-func decrypt(testConfig *TestConfig, tdfFile string, plaintext string) error {
-	// Create new client
-	client, err := sdk.New(testConfig.PlatformEndpoint,
-		sdk.WithInsecurePlaintextConn(),
-		sdk.WithClientCredentials(testConfig.ClientID,
-			testConfig.ClientSecret, nil),
-		sdk.WithTokenEndpoint(testConfig.TokenEndpoint),
-	)
-	if err != nil {
-		return err
-	}
+func decrypt(client *sdk.SDK, testConfig *TestConfig, tdfFile string, plaintext string) error {
 	file, err := os.Open(tdfFile)
 	if err != nil {
 		return err

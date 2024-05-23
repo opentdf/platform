@@ -41,6 +41,7 @@ realms:
           enabled: true
           name: opentdf-sdk
           serviceAccountsEnabled: true
+          directAccessGrantsEnabled: true
           clientAuthenticatorType: client-secret
           secret: secret
           protocolMappers:

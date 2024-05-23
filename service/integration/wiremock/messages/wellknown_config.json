@@ -1,8 +1,0 @@
-{
-  "configuration": {
-    "health": {
-      "endpoint": "/healthz"
-    },
-    "platform_issuer": "{{request.baseUrl}}/auth"
-  }
-}

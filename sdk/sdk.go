@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log/slog"
 	"net/http"
 
@@ -52,6 +52,15 @@ type SDK struct {
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
+	var (
+		defaultConn          *grpc.ClientConn
+		policyConn           *grpc.ClientConn
+		authorizationConn    *grpc.ClientConn
+		wellknownConn        *grpc.ClientConn
+		entityresolutionConn *grpc.ClientConn
+		err                  error
+	)
+
 	// Set default options
 	cfg := &config{
 		dialOption: grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
@@ -70,14 +79,6 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	if len(cfg.extraDialOptions) > 0 {
 		dialOptions = append(dialOptions, cfg.extraDialOptions...)
 	}
-
-	var (
-		defaultConn          *grpc.ClientConn
-		policyConn           *grpc.ClientConn
-		authorizationConn    *grpc.ClientConn
-		wellknownConn        *grpc.ClientConn
-		entityresolutionConn *grpc.ClientConn
-	)
 
 	if platformEndpoint != "" {
 		var err error
@@ -114,9 +115,11 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		cfg.platformConfiguration = pcfg
 	}
 
-	err := setTokenEndpoint(cfg)
-	if err != nil {
-		return nil, err
+	if cfg.tokenEndpoint == "" {
+		cfg.tokenEndpoint, err = getTokenEndpoint(cfg.platformConfiguration)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if cfg.entityresolutionConn != nil {
@@ -221,50 +224,40 @@ func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfigurationType,
 	return configuration.AsMap(), nil
 }
 
-type OIDCConfig struct {
-	TokenEndpoint string `json:"token_endpoint"`
-}
+func getTokenEndpoint(c PlatformConfigurationType) (string, error) {
 
-func setTokenEndpoint(c *config) error {
-
-	platformConfiguration := c.platformConfiguration
-
-	issuerURL, ok := platformConfiguration["platform_issuer"].(string)
+	issuerURL, ok := c["platform_issuer"].(string)
 
 	if !ok {
-		return errors.New("platform_issuer is not set, or is not a string")
+		return "", errors.New("platform_issuer is not set, or is not a string")
 	}
 
-	tokenEndpoint, err := fetchTokenEndpoint(issuerURL)
-
-	if err != nil {
-		return errors.New("unable to retrieve token endpoint")
-	}
-
-	c.tokenEndpoint = tokenEndpoint
-
-	return nil
+	return fetchTokenEndpoint(issuerURL)
 }
 
 // TODO: This should be moved to a separate package. We do discovery in ../service/internal/auth/discovery.go
 func fetchTokenEndpoint(issuerURL string) (string, error) {
 	wellKnownConfigURL := issuerURL + "/.well-known/openid-configuration"
-
-	resp, err := http.Get(wellKnownConfigURL)
+	req, err := http.NewRequest(http.MethodGet, wellKnownConfigURL, nil)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
 
-	var config OIDCConfig
+	var config map[string]interface{}
+
 	if err = json.Unmarshal(body, &config); err != nil {
 		return "", err
 	}
-
-	return config.TokenEndpoint, nil
+	tokenEndpoint, ok := config["token_endpoint"].(string)
+	if !ok {
+		return "", errors.New("token_endpoint not found in well-known configuration")
+	}
+	return tokenEndpoint, nil
 }

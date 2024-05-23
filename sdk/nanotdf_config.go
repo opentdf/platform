@@ -64,3 +64,35 @@ func (config *NanoTDFConfig) SetKasURL(url string) error {
 func (config *NanoTDFConfig) SetAttributes(attributes []string) {
 	config.attributes = attributes
 }
+
+// WithNanoDataAttributes appends the given data attributes to the bound policy
+func WithNanoDataAttributes(attributes ...string) NanoTDFOption {
+	return func(c *NanoTDFConfig) error {
+		c.attributes = append(c.attributes, attributes...)
+		return nil
+	}
+}
+
+type NanoKASInfo struct {
+	kasPublicKeyPem string
+	kasURL          string
+}
+
+// WithNanoKasInformation adds the first kas url and its corresponding public key
+// that is required to create and read the nanotdf.  Note that only the first
+// entry is used, as multi-kas is not supported for nanotdf
+func WithNanoKasInformation(kasInfoList ...NanoKASInfo) NanoTDFOption {
+	return func(c *NanoTDFConfig) error {
+		newKasInfos := make([]NanoKASInfo, 0)
+		newKasInfos = append(newKasInfos, kasInfoList...)
+		err := c.kasURL.setURL(newKasInfos[0].kasURL)
+		if err != nil {
+			return err
+		}
+		c.kasPublicKey, err = ocrypto.ECPubKeyFromPem([]byte(newKasInfos[0].kasPublicKeyPem))
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+}

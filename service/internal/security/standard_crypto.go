@@ -226,7 +226,7 @@ func (s StandardCrypto) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []by
 		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
 	}
 
-	key, err := ocrypto.CalculateHKDF([]byte(kNanoTDFMagicStringAndVersion), symmetricKey)
+	key, err := ocrypto.CalculateHKDF(versionSalt(), symmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
 	}

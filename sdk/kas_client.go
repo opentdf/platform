@@ -214,7 +214,7 @@ func (k *KASClient) unwrapNanoTDF(header string, kasURL string) ([]byte, error) 
 		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed :%w", err)
 	}
 
-	sessionKey, err = ocrypto.CalculateHKDF([]byte(kNanoTDFMagicStringAndVersion), sessionKey)
+	sessionKey, err = ocrypto.CalculateHKDF(versionSalt(), sessionKey)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
 	}

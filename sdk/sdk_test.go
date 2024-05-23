@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/sdk"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,9 +30,6 @@ func GetMethods(i interface{}) []string {
 func TestNew_ShouldCreateSDK(t *testing.T) {
 	sdk, err := sdk.New(goodPlatformEndpoint,
 		sdk.WithClientCredentials("myid", "mysecret", nil),
-		sdk.WithPlatformConfiguration(sdk.PlatformConfigurationType{
-			"platform_issuer": "https://example.org",
-		}),
 		sdk.WithTokenEndpoint("https://example.org/token"),
 	)
 	require.NoError(t, err)
@@ -52,21 +50,17 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 	}
 }
 
-// TODO: We need to revisit what it means passing in no credentials
-// func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {
-// 	// When
-// 	sdk, err := sdk.New(goodPlatformEndpoint)
-// 	// Then
-// 	require.NoError(t, err)
-// 	assert.NotNil(t, sdk)
-// }
+func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {
+	// When
+	sdk, err := sdk.New(goodPlatformEndpoint)
+	// Then
+	require.NoError(t, err)
+	assert.NotNil(t, sdk)
+}
 
 func TestNew_ShouldCloseConnections(t *testing.T) {
 	sdk, err := sdk.New(goodPlatformEndpoint,
 		sdk.WithClientCredentials("myid", "mysecret", nil),
-		sdk.WithPlatformConfiguration(sdk.PlatformConfigurationType{
-			"platform_issuer": "https://example.org",
-		}),
 		sdk.WithTokenEndpoint("https://example.org/token"),
 	)
 	require.NoError(t, err)
@@ -76,9 +70,6 @@ func TestNew_ShouldCloseConnections(t *testing.T) {
 func TestNew_ShouldHaveSameMethods(t *testing.T) {
 	sdk, err := sdk.New(goodPlatformEndpoint,
 		sdk.WithClientCredentials("myid", "mysecret", nil),
-		sdk.WithPlatformConfiguration(sdk.PlatformConfigurationType{
-			"platform_issuer": "https://example.org",
-		}),
 		sdk.WithTokenEndpoint("https://example.org/token"),
 	)
 	if err != nil {

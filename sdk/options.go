@@ -3,6 +3,7 @@ package sdk
 import (
 	"crypto/tls"
 
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/internal/oauth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -26,6 +27,8 @@ type config struct {
 	certExchange          *oauth.CertExchangeInfo
 	wellknownConn         *grpc.ClientConn
 	platformConfiguration PlatformConfigurationType
+	kasKey                *ocrypto.RsaKeyPair
+	dpopKey               *ocrypto.RsaKeyPair
 }
 
 type PlatformConfigurationType map[string]interface{}
@@ -122,5 +125,17 @@ func WithExtraDialOptions(dialOptions ...grpc.DialOption) Option {
 func WithPlatformConfiguration(platformConfiguration PlatformConfigurationType) Option {
 	return func(c *config) {
 		c.platformConfiguration = platformConfiguration
+	}
+}
+
+func WithKASKey(key ocrypto.RsaKeyPair) Option {
+	return func(c *config) {
+		c.kasKey = &key
+	}
+}
+
+func WithDPoPKey(key ocrypto.RsaKeyPair) Option {
+	return func(c *config) {
+		c.dpopKey = &key
 	}
 }

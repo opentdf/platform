@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/oauth"
 )
@@ -20,8 +21,8 @@ type CertExchangeTokenSource struct {
 	key         jwk.Key
 }
 
-func NewCertExchangeTokenSource(info oauth.CertExchangeInfo, credentials oauth.ClientCredentials, idpTokenEndpoint string) (auth.AccessTokenSource, error) {
-	_, dpopKey, _, err := getNewDPoPKey()
+func NewCertExchangeTokenSource(info oauth.CertExchangeInfo, credentials oauth.ClientCredentials, idpTokenEndpoint string, dpop *ocrypto.RsaKeyPair) (auth.AccessTokenSource, error) {
+	_, dpopKey, _, err := getNewDPoPKey(dpop)
 	if err != nil {
 		return nil, err
 	}

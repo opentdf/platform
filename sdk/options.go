@@ -1,7 +1,6 @@
 package sdk
 
 import (
-	"crypto/rsa"
 	"crypto/tls"
 
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -26,8 +25,8 @@ type config struct {
 	entityresolutionConn *grpc.ClientConn
 	extraDialOptions     []grpc.DialOption
 	certExchange         *oauth.CertExchangeInfo
-  kasKey               *ocrypto.RsaKeyPair
-  dpopKey              *rsa.PrivateKey 
+	kasKey               *ocrypto.RsaKeyPair
+	dpopKey              *ocrypto.RsaKeyPair
 }
 
 func (c *config) build() []grpc.DialOption {
@@ -114,13 +113,13 @@ func WithExtraDialOptions(dialOptions ...grpc.DialOption) Option {
 }
 
 func WithKASKey(key ocrypto.RsaKeyPair) Option {
-  return func(c *config) {
-    c.kasKey = &key 
-  }
+	return func(c *config) {
+		c.kasKey = &key
+	}
 }
 
-func WithDPoPKey(key *rsa.PrivateKey) Option {
-  return func(c *config) {
-     c.dpopKey = key
-  }
+func WithDPoPKey(key ocrypto.RsaKeyPair) Option {
+	return func(c *config) {
+		c.dpopKey = &key
+	}
 }

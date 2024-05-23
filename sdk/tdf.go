@@ -69,7 +69,7 @@ type Reader struct {
 	aesGcm              ocrypto.AesGcm
 	payloadSize         int64
 	payloadKey          []byte
-  kasKey              ocrypto.RsaKeyPair
+	kasKey              ocrypto.RsaKeyPair
 }
 
 type TDFObject struct {
@@ -387,7 +387,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
 		dialOptions: s.dialOptions,
 		tdfReader:   tdfReader,
 		manifest:    *manifestObj,
-    kasKey:      s.kasKey,
+		kasKey:      s.kasKey,
 	}, nil
 }
 

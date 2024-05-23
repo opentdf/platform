@@ -2,14 +2,10 @@ package sdk
 
 import (
 	"context"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
-	"strings"
 	"sync"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -23,8 +19,17 @@ const (
 	dpopKeySize = 2048
 )
 
-func getNewDPoPKey(dpopPrivate *rsa.PrivateKey) (string, jwk.Key, *ocrypto.AsymDecryption, error) { //nolint:ireturn // this is only internal
-	dpopKey, err := jwk.FromRaw(dpopPrivate)
+func getNewDPoPKey(dpopKeyPair *ocrypto.RsaKeyPair) (string, jwk.Key, *ocrypto.AsymDecryption, error) { //nolint:ireturn // this is only internal
+	dpopPrivateKeyPEM, err := dpopKeyPair.PrivateKeyInPemFormat()
+	if err != nil {
+		return "", nil, nil, fmt.Errorf("error getting dpop of key: %w", err)
+	}
+	dpopPublicKeyPEM, err := dpopKeyPair.PrivateKeyInPemFormat()
+	if err != nil {
+		return "", nil, nil, fmt.Errorf("error getting dpop of key: %w", err)
+	}
+
+	dpopKey, err := jwk.ParseKey([]byte(dpopPrivateKeyPEM), jwk.WithPEM(true))
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("error creating JWK: %w", err)
 	}
@@ -33,42 +38,12 @@ func getNewDPoPKey(dpopPrivate *rsa.PrivateKey) (string, jwk.Key, *ocrypto.AsymD
 		return "", nil, nil, fmt.Errorf("error setting the key algorithm: %w", err)
 	}
 
-	dpopKeyDER, err := x509.MarshalPKCS8PrivateKey(dpopPrivate)
-	if err != nil {
-		return "", nil, nil, fmt.Errorf("error marshalling private key: %w", err)
-	}
-
-	var dpopPrivatePEM strings.Builder
-
-	err = pem.Encode(&dpopPrivatePEM, &pem.Block{
-		Type:  "PRIVATE KEY",
-		Bytes: dpopKeyDER,
-	})
-	if err != nil {
-		return "", nil, nil, fmt.Errorf("error encoding private key to PEM")
-	}
-
-	dpopPublic := dpopPrivate.Public()
-	dpopPublicDER, err := x509.MarshalPKIXPublicKey(dpopPublic)
-	if err != nil {
-		return "", nil, nil, fmt.Errorf("error marshalling public key: %w", err)
-	}
-
-	var dpopPublicKeyPEM strings.Builder
-	err = pem.Encode(&dpopPublicKeyPEM, &pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: dpopPublicDER,
-	})
-	if err != nil {
-		return "", nil, nil, fmt.Errorf("error encoding public key to PEM")
-	}
-
-	asymDecryption, err := ocrypto.NewAsymDecryption(dpopPrivatePEM.String())
+	asymDecryption, err := ocrypto.NewAsymDecryption(dpopPrivateKeyPEM)
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("error creating asymmetric decryptor: %w", err)
 	}
 
-	return dpopPublicKeyPEM.String(), dpopKey, &asymDecryption, nil
+	return dpopPublicKeyPEM, dpopKey, &asymDecryption, nil
 }
 
 // IDPAccessTokenSource credentials that allow us to connect to an IDP and obtain an access token that is bound
@@ -85,7 +60,7 @@ type IDPAccessTokenSource struct {
 }
 
 func NewIDPAccessTokenSource(
-	credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string, key *rsa.PrivateKey) (*IDPAccessTokenSource, error) {
+	credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string, key *ocrypto.RsaKeyPair) (*IDPAccessTokenSource, error) {
 	endpoint, err := url.Parse(idpTokenEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("invalid url [%s]: %w", idpTokenEndpoint, err)

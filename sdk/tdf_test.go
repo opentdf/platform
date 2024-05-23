@@ -675,8 +675,11 @@ func runKas() (string, func(), *SDK) {
 				"platform_issuer": "http://localhost:%s/auth"
 			}
 		}`
-	wiremockClient.StubFor(wiremock.Post(wiremock.URLPathEqualTo("/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration")).
+	err = wiremockClient.StubFor(wiremock.Post(wiremock.URLPathEqualTo("/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration")).
 		WillReturnResponse(wiremock.NewResponse().WithBody(fmt.Sprintf(wellknownCfg, port.Port())).WithStatus(http.StatusOK)))
+	if err != nil {
+		panic(fmt.Sprintf("wiremockClient.StubFor failed: %v", err))
+	}
 
 	grpcListener := bufconn.Listen(1024 * 1024)
 	grpcServer := grpc.NewServer()

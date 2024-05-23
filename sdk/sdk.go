@@ -246,7 +246,6 @@ func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfigurationType,
 }
 
 func getTokenEndpoint(c PlatformConfigurationType) (string, error) {
-
 	issuerURL, ok := c["platform_issuer"].(string)
 
 	if !ok {
@@ -259,7 +258,12 @@ func getTokenEndpoint(c PlatformConfigurationType) (string, error) {
 // TODO: This should be moved to a separate package. We do discovery in ../service/internal/auth/discovery.go
 func fetchTokenEndpoint(issuerURL string) (string, error) {
 	wellKnownConfigURL := issuerURL + "/.well-known/openid-configuration"
+
 	req, err := http.NewRequest(http.MethodGet, wellKnownConfigURL, nil)
+	if err != nil {
+		return "", err
+	}
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", err

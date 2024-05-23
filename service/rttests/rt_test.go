@@ -432,11 +432,11 @@ func tokenExchangeRoundTrip(ctx context.Context, testConfig *TestConfig, attribu
 		return err
 	}
 
-	err = encrypt(client, testConfig, plaintext, attributes, filename)
+	err = encrypt(client, testConfig, plaintext, attributes, filename) //nolint:contextcheck // Not able to pass context
 	if err != nil {
 		return err
 	}
-	err = decrypt(client, testConfig, filename, plaintext)
+	err = decrypt(client, filename, plaintext)
 	if failure {
 		if err == nil {
 			return errors.New("decrypt passed but was expected to fail")
@@ -468,7 +468,7 @@ func roundtrip(testConfig *TestConfig, attributes []string, failure bool) error 
 	if err != nil {
 		return err
 	}
-	err = decrypt(client, testConfig, filename, plaintext)
+	err = decrypt(client, filename, plaintext)
 	if failure {
 		if err == nil {
 			return errors.New("decrypt passed but was expected to fail")
@@ -506,7 +506,7 @@ func encrypt(client *sdk.SDK, testConfig *TestConfig, plaintext string, attribut
 	return nil
 }
 
-func decrypt(client *sdk.SDK, testConfig *TestConfig, tdfFile string, plaintext string) error {
+func decrypt(client *sdk.SDK, tdfFile string, plaintext string) error {
 	file, err := os.Open(tdfFile)
 	if err != nil {
 		return err

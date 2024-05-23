@@ -66,6 +66,7 @@ server:
         p,	role:user,		/kas/kas_public_key,  									read,			allow
         p,	role:user,		/kas/v2/kas_public_key,									read,			allow
         p,	role:user,		/kas/v2/rewrap,													write,		allow
+        p,	role:user,		/entityresolution/resolve,							write,  	allow
         
         # Role: Org-Admin
         ## gRPC routes
@@ -126,6 +127,7 @@ server:
         p,	role:unknown,			/health,																read,		allow
         p,	role:unknown,			/kas/v2/kas_public_key,									read,		allow
         p,	role:unknown,			/kas/kas_public_key,										read,		allow
+        p,	role:unknown,			/entityresolution/resolve,							write,	allow
 
       ## Custom model (see https://casbin.org/docs/syntax-for-models/)
       model: #|

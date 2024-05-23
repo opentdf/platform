@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -32,6 +33,7 @@ func (c Error) Error() string {
 type SDK struct {
 	conn                    *grpc.ClientConn
 	dialOptions             []grpc.DialOption
+	kasKey                  ocrypto.RsaKeyPair
 	tokenSource             auth.AccessTokenSource
 	Namespaces              namespaces.NamespaceServiceClient
 	Attributes              attributes.AttributesServiceClient
@@ -53,6 +55,14 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	// Apply options
 	for _, opt := range opts {
 		opt(cfg)
+	}
+
+	if cfg.kasKey == nil {
+		key, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
+		if err != nil {
+			return nil, err
+		}
+		cfg.kasKey = &key
 	}
 
 	// once we change KAS to use standard DPoP we can put this all in the `build()` method
@@ -108,6 +118,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		conn:                    defaultConn,
 		dialOptions:             dialOptions,
 		tokenSource:             accessTokenSource,
+		kasKey:                  *cfg.kasKey,
 		Attributes:              attributes.NewAttributesServiceClient(policyConn),
 		Namespaces:              namespaces.NewNamespaceServiceClient(policyConn),
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(policyConn),
@@ -134,24 +145,34 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 		return nil, fmt.Errorf("cannot do both token exchange and certificate exchange")
 	}
 
+	if c.dpopKey == nil {
+		rsaKeyPair, err := ocrypto.NewRSAKeyPair(dpopKeySize)
+		if err != nil {
+			return nil, fmt.Errorf("could not generate RSA Key: %w", err)
+		}
+		c.dpopKey = &rsaKeyPair
+	}
+
 	var ts auth.AccessTokenSource
 	var err error
 
 	switch {
 	case c.certExchange != nil:
-		ts, err = NewCertExchangeTokenSource(*c.certExchange, *c.clientCredentials, c.tokenEndpoint)
+		ts, err = NewCertExchangeTokenSource(*c.certExchange, *c.clientCredentials, c.tokenEndpoint, c.dpopKey)
 	case c.tokenExchange != nil:
 		ts, err = NewIDPTokenExchangeTokenSource(
 			*c.tokenExchange,
 			*c.clientCredentials,
 			c.tokenEndpoint,
 			c.scopes,
+			c.dpopKey,
 		)
 	default:
 		ts, err = NewIDPAccessTokenSource(
 			*c.clientCredentials,
 			c.tokenEndpoint,
 			c.scopes,
+			c.dpopKey,
 		)
 	}
 

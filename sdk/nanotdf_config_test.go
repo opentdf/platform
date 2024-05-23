@@ -7,26 +7,26 @@ import (
 // TestNanoTDFConfig1 - Create a new config, verify that the config contains valid PEMs for the key pair
 func TestNanoTDFConfig1(t *testing.T) {
 	var s SDK
-	_, err := s.NewNanoTDFConfig()
+	conf, err := s.NewNanoTDFConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
-	// pemPubKey, err := ocrypto.ECPrivateKeyInPemFormat(*conf.keyPair.PrivateKey)
-	// if err != nil {
-	//	t.Fatal(err)
-	// }
-	//
-	// if len(pemPubKey) == 0 {
-	//	t.Fatal("no public key")
-	// }
-	//
-	// privateKey, err := ocrypto.ECPublicKeyInPemFormat(conf.keyPair.PrivateKey.PublicKey)
-	// if err != nil {
-	//	t.Fatal(err)
-	// }
-	// if len(privateKey) == 0 {
-	//	t.Fatal("no private key")
-	// }
+	pemPrvKey, err := conf.keyPair.PrivateKeyInPemFormat()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(pemPrvKey) == 0 {
+		t.Fatal("no private key")
+	}
+
+	pemPubKey, err := conf.keyPair.PublicKeyInPemFormat()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pemPubKey) == 0 {
+		t.Fatal("no public key")
+	}
 }
 
 // TestNanoTDFConfig2 - set kas url, retrieve kas url, verify value is correct

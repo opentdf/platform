@@ -4,6 +4,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
@@ -267,7 +268,8 @@ func (s StandardCrypto) GenerateNanoTDFSessionKey(privateKey any, ephemeralPubli
 		return nil, fmt.Errorf("GenerateNanoTDFSessionKey failed to ecdhKey.ECDH: %w", err)
 	}
 
-	derivedKey, err := ocrypto.CalculateHKDF([]byte(kNanoTDFMagicStringAndVersion), sessionKey)
+	salt := versionSalt()
+	derivedKey, err := ocrypto.CalculateHKDF(salt, sessionKey)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
 	}
@@ -290,4 +292,10 @@ func ConvertEphemeralPublicKeyBytesToECDSAPublicKey(ephemeralPublicKeyBytes []by
 }
 
 func (s StandardCrypto) Close() {
+}
+
+func versionSalt() []byte {
+	digest := sha256.New()
+	digest.Write([]byte(kNanoTDFMagicStringAndVersion))
+	return digest.Sum(nil)
 }

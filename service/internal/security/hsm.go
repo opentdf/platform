@@ -752,12 +752,6 @@ func (h *HSMSession) RSADecrypt(hash crypto.Hash, keyID string, keyLabel string,
 	return decrypt, nil
 }
 
-func versionSalt() []byte {
-	digest := sha256.New()
-	digest.Write([]byte("L1L"))
-	return digest.Sum(nil)
-}
-
 func (h *HSMSession) ECCertificate(string) (string, error) {
 	return "", nil
 }

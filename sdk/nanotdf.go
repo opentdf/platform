@@ -3,6 +3,7 @@ package sdk
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -383,7 +384,9 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 		return nil, 0, fmt.Errorf("ocrypto.ComputeECDHKeyFromEC failed:%w", err)
 	}
 
-	symmetricKey, err := ocrypto.CalculateHKDF([]byte(kNanoTDFMagicStringAndVersion), symKey)
+	salt := versionSalt()
+
+	symmetricKey, err := ocrypto.CalculateHKDF(salt, symKey)
 	if err != nil {
 		return nil, 0, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
 	}
@@ -773,4 +776,10 @@ type keyAccess struct {
 	KeyAccessType string `json:"type"`
 	URL           string `json:"url"`
 	Protocol      string `json:"protocol"`
+}
+
+func versionSalt() []byte {
+	digest := sha256.New()
+	digest.Write([]byte(kNanoTDFMagicStringAndVersion))
+	return digest.Sum(nil)
 }

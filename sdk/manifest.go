@@ -45,7 +45,7 @@ type Payload struct {
 
 type EncryptionInformation struct {
 	KeyAccessType        string      `json:"type"`
-	Policy               string      `json:"policy"`
+	Policy               string      `json:"Policy"`
 	KeyAccessObjs        []KeyAccess `json:"keyAccess"`
 	Method               Method      `json:"method"`
 	IntegrityInformation `json:"integrityInformation"`
@@ -69,7 +69,7 @@ type PolicyObject struct {
 	Body struct {
 		DataAttributes []attributeObject `json:"dataAttributes"`
 		Dissem         []string          `json:"dissem"`
-	} `json:"body"`
+	} `json:"Body"`
 }
 
 type EncryptedMetadata struct {

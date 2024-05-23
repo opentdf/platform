@@ -346,6 +346,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		Username:    gocloak.StringP(sampleUserName),
 		Credentials: &[]gocloak.CredentialRepresentation{{Value: gocloak.StringP(sampleUserPassword), Type: gocloak.StringP("password")}},
 		Attributes:  &map[string][]string{"superhero_name": {"thor"}, "superhero_group": {"avengers"}},
+		RealmRoles:  &[]string{opentdfReadonlyRoleName},
 	}
 	_, err = createUser(ctx, client, token, &kcConnectParams, user)
 	if err != nil {

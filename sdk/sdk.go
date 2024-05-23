@@ -46,7 +46,7 @@ type SDK struct {
 	SubjectMapping          subjectmapping.SubjectMappingServiceClient
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
 	Authorization           authorization.AuthorizationServiceClient
-	platformConfiguration   *PlatformConfigurationType
+	platformConfiguration   PlatformConfigurationType
 	WellknownConfiguration  wellknownconfiguration.WellKnownServiceClient
 	EntityResoution         entityresolution.EntityResolutionServiceClient
 }
@@ -72,22 +72,12 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 
 	var (
-		defaultConn           *grpc.ClientConn
-		policyConn            *grpc.ClientConn
-		authorizationConn     *grpc.ClientConn
-		wellknownConn         *grpc.ClientConn
-		platformConfiguration *PlatformConfigurationType
-		entityresolutionConn  *grpc.ClientConn
+		defaultConn          *grpc.ClientConn
+		policyConn           *grpc.ClientConn
+		authorizationConn    *grpc.ClientConn
+		wellknownConn        *grpc.ClientConn
+		entityresolutionConn *grpc.ClientConn
 	)
-
-	accessTokenSource, err := buildIDPTokenSource(cfg)
-	if err != nil {
-		return nil, err
-	}
-	if accessTokenSource != nil {
-		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource, cfg.tlsConfig)
-		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
-	}
 
 	if platformEndpoint != "" {
 		var err error
@@ -115,19 +105,16 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		wellknownConn = defaultConn
 	}
 
+	// If platformConfiguration is not provided, fetch it from the platform
 	if cfg.platformConfiguration == nil && platformEndpoint != "" {
-		configMap, err := getPlatformConfiguration(wellknownConn)
-
-		platformConfiguration = &configMap
+		pcfg, err := getPlatformConfiguration(wellknownConn)
 		if err != nil {
 			return nil, errors.Join(ErrPlatformConfigFailed, err)
 		}
-
-	} else {
-		platformConfiguration = cfg.platformConfiguration
+		cfg.platformConfiguration = pcfg
 	}
 
-	err = setTokenEndpoint(cfg)
+	err := setTokenEndpoint(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -138,11 +125,20 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		entityresolutionConn = defaultConn
 	}
 
+	accessTokenSource, err := buildIDPTokenSource(cfg)
+	if err != nil {
+		return nil, err
+	}
+	if accessTokenSource != nil {
+		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource, cfg.tlsConfig)
+		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
+	}
+
 	return &SDK{
 		conn:                    defaultConn,
 		dialOptions:             dialOptions,
 		tokenSource:             accessTokenSource,
-		platformConfiguration:   platformConfiguration,
+		platformConfiguration:   cfg.platformConfiguration,
 		Attributes:              attributes.NewAttributesServiceClient(policyConn),
 		Namespaces:              namespaces.NewNamespaceServiceClient(policyConn),
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(policyConn),
@@ -150,6 +146,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(policyConn),
 		Authorization:           authorization.NewAuthorizationServiceClient(authorizationConn),
 		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(entityresolutionConn),
+		WellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(wellknownConn),
 	}, nil
 }
 
@@ -216,7 +213,7 @@ func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfigurationType,
 	response, err := wellKnownConfig.GetWellKnownConfiguration(context.Background(), &req)
 
 	if err != nil {
-		return nil, errors.New("Unable to retrieve config information, and none was provided")
+		return nil, errors.New("unable to retrieve config information, and none was provided")
 	}
 	// Get token endpoint
 	configuration := response.GetConfiguration()
@@ -230,24 +227,26 @@ type OIDCConfig struct {
 
 func setTokenEndpoint(c *config) error {
 
-	platformConfiguration := *c.platformConfiguration
+	platformConfiguration := c.platformConfiguration
 
-	issuerUrl, ok := platformConfiguration["platform_issuer"].(string)
+	issuerURL, ok := platformConfiguration["platform_issuer"].(string)
 
 	if !ok {
 		return errors.New("platform_issuer is not set, or is not a string")
 	}
 
-	tokenEndpoint, err := fetchTokenEndpoint(issuerUrl)
+	tokenEndpoint, err := fetchTokenEndpoint(issuerURL)
 
 	if err != nil {
-		return errors.New("Unable to retrieve token endpoint")
+		return errors.New("unable to retrieve token endpoint")
 	}
 
 	c.tokenEndpoint = tokenEndpoint
 
 	return nil
 }
+
+// TODO: This should be moved to a separate package. We do discovery in ../service/internal/auth/discovery.go
 func fetchTokenEndpoint(issuerURL string) (string, error) {
 	wellKnownConfigURL := issuerURL + "/.well-known/openid-configuration"
 

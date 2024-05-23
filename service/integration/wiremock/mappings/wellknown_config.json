@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration"
+  },
+  "response": {
+    "status": 200,
+    "bodyFileName": "messages/wellknown_config.json",
+    "headers": {
+      "Content-Type": "application/grpc"
+    },
+    "transformers": [
+      "response-template"
+    ]
+  }
+}

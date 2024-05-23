@@ -25,7 +25,7 @@ type config struct {
 	extraDialOptions      []grpc.DialOption
 	certExchange          *oauth.CertExchangeInfo
 	wellknownConn         *grpc.ClientConn
-	platformConfiguration *PlatformConfigurationType
+	platformConfiguration PlatformConfigurationType
 }
 
 type PlatformConfigurationType map[string]interface{}
@@ -96,6 +96,12 @@ func WithCustomEntityResolutionConnection(conn *grpc.ClientConn) Option {
 	}
 }
 
+func WithCustomWellknownConnection(conn *grpc.ClientConn) Option {
+	return func(c *config) {
+		c.wellknownConn = conn
+	}
+}
+
 // WithTokenExchange specifies that the SDK should obtain its
 // access token by exchanging the given token for a new one
 func WithTokenExchange(subjectToken string, audience []string) Option {
@@ -113,7 +119,7 @@ func WithExtraDialOptions(dialOptions ...grpc.DialOption) Option {
 	}
 }
 
-func WithPlatformConfiguration(platformConfiguration *PlatformConfigurationType) Option {
+func WithPlatformConfiguration(platformConfiguration PlatformConfigurationType) Option {
 	return func(c *config) {
 		c.platformConfiguration = platformConfiguration
 	}

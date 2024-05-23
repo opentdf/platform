@@ -5,11 +5,12 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
-	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
-	"io/ioutil"
 	"fmt"
+	"io/ioutil"
 	"log/slog"
 	"net/http"
+
+	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
@@ -45,12 +46,9 @@ type SDK struct {
 	SubjectMapping          subjectmapping.SubjectMappingServiceClient
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
 	Authorization           authorization.AuthorizationServiceClient
-<<<<<<< HEAD
 	platformConfiguration   *PlatformConfigurationType
 	WellknownConfiguration  wellknownconfiguration.WellKnownServiceClient
-=======
 	EntityResoution         entityresolution.EntityResolutionServiceClient
->>>>>>> main
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
@@ -73,14 +71,15 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		dialOptions = append(dialOptions, cfg.extraDialOptions...)
 	}
 
-<<<<<<< HEAD
 	var (
 		defaultConn           *grpc.ClientConn
 		policyConn            *grpc.ClientConn
 		authorizationConn     *grpc.ClientConn
 		wellknownConn         *grpc.ClientConn
 		platformConfiguration *PlatformConfigurationType
-=======
+		entityresolutionConn  *grpc.ClientConn
+	)
+
 	accessTokenSource, err := buildIDPTokenSource(cfg)
 	if err != nil {
 		return nil, err
@@ -89,14 +88,6 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource, cfg.tlsConfig)
 		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
 	}
-
-	var (
-		defaultConn          *grpc.ClientConn
-		policyConn           *grpc.ClientConn
-		authorizationConn    *grpc.ClientConn
-		entityresolutionConn *grpc.ClientConn
->>>>>>> main
-	)
 
 	if platformEndpoint != "" {
 		var err error
@@ -118,7 +109,6 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		authorizationConn = defaultConn
 	}
 
-<<<<<<< HEAD
 	if cfg.wellknownConn != nil {
 		wellknownConn = cfg.wellknownConn
 	} else {
@@ -137,26 +127,15 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		platformConfiguration = cfg.platformConfiguration
 	}
 
-	err := setTokenEndpoint(cfg)
-
+	err = setTokenEndpoint(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	accessTokenSource, err := buildIDPTokenSource(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	if accessTokenSource != nil {
-		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource)
-		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
-=======
 	if cfg.entityresolutionConn != nil {
 		entityresolutionConn = cfg.entityresolutionConn
 	} else {
 		entityresolutionConn = defaultConn
->>>>>>> main
 	}
 
 	return &SDK{

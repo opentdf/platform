@@ -43,3 +43,4 @@ sdk/nanotest1.ntdf
 *.zip
 sensitive.txt.tdf
 keys/
+/examples/sensitive.txt.ntdf

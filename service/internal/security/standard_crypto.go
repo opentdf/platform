@@ -84,14 +84,20 @@ func NewStandardCrypto(cfg StandardConfig) (*StandardCrypto, error) {
 	}
 	for id, kasInfo := range cfg.ECKeys {
 		slog.Info("cfg.ECKeys", "id", id, "kasInfo", kasInfo)
+		// private and public EC KAS key
 		privatePemData, err := os.ReadFile(kasInfo.PrivateKeyPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to EC private key file: %w", err)
 		}
-
+		// certificate EC KAS key
+		ecCertificatePEM, err := os.ReadFile(kasInfo.PublicKeyPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to EC certificate file: %w", err)
+		}
 		standardCrypto.ecKeys = append(standardCrypto.ecKeys, StandardECCrypto{
-			Identifier:      id,
-			ecPrivateKeyPem: string(privatePemData),
+			Identifier:       id,
+			ecPrivateKeyPem:  string(privatePemData),
+			ecCertificatePEM: string(ecCertificatePEM),
 		})
 	}
 

@@ -26,6 +26,16 @@ const note = `
    export TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true;
    export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock;
 
+
+ If using Colima, export these variables:
+   export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock";
+   export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="/var/run/docker.sock";
+   export TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true;
+   export TESTCONTAINERS_RYUK_DISABLED=true;
+
+ Note: Colima does not run well on MacOS with Ryuk, so it is better to run with Ryuk disabled.
+ This means you must more carefully ensure container termination.
+
  For more information please see: https://www.testcontainers.org/
 
  ---------------------------------------------------------------------------------
@@ -35,8 +45,10 @@ const note = `
 
    Docker: docker-machine restart
    Podman: podman machine stop;podman machine start
+   Colima: colima restart
 
-====================================================================================`
+====================================================================================
+`
 
 func init() {
 	os.Stderr.Write([]byte(note))
@@ -110,50 +122,8 @@ func TestMain(m *testing.M) {
 
 	conf.DB.Port = port.Int()
 
-	db := fixtures.NewDBInterface(*Config)
-
-	slog.Info("🚚 applying migrations")
-	applied, err := db.Client.RunMigrations(ctx)
-	if err != nil {
-		slog.Error("issue running migrations", slog.String("error", err.Error()))
-		panic(err)
-	}
-	slog.Info("🚚 applied migrations", slog.Int("count", applied))
-
 	slog.Info("🏠 loading fixtures")
 	fixtures.LoadFixtureData("../internal/fixtures/policy_fixtures.yaml")
-
-	slog.Info("📚 indexing FQNs for test fixtures")
-	db.PolicyClient.AttrFqnReindex()
-	slog.Info("📚 successfully indexed FQNs")
-
-	// otdf, err := server.NewOpenTDFServer(conf.Server)
-	// if err != nil {
-	// 	slog.Error("issue creating opentdf server", slog.String("error", err.Error()))
-	// 	panic(err)
-	// }
-	// defer otdf.Stop()
-
-	// slog.Info("starting opa engine")
-	// // Start the opa engine
-	// conf.OPA.Embedded = true
-	// eng, err := opa.NewEngine(conf.OPA)
-	// if err != nil {
-	// 	slog.Error("could not start opa engine", slog.String("error", err.Error()))
-	// 	panic(err)
-	// }
-	// defer eng.Stop(context.Background())
-
-	// // Register the services
-	// err = cmd.RegisterServices(*conf, otdf, dbClient, eng)
-	// if err != nil {
-	// 	slog.Error("issue registering services", slog.String("error", err.Error()))
-	// 	panic(err)
-	// }
-
-	// // Start the server
-	// slog.Info("starting opentdf server", slog.Int("grpcPort", conf.Server.Grpc.Port), slog.Int("httpPort", conf.Server.HTTP.Port))
-	// otdf.Run()
 
 	m.Run()
 }

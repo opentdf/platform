@@ -2,6 +2,7 @@ package oauth
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,6 +22,11 @@ import (
 const (
 	tokenExpirationBuffer = 10 * time.Second
 )
+
+type CertExchangeInfo struct {
+	TLSConfig *tls.Config
+	Audience  []string
+}
 
 type ClientCredentials struct {
 	ClientAuth interface{} // the supported types for this are a JWK (implying jwt-bearer auth) or a string (implying client secret auth)
@@ -131,16 +137,15 @@ func getSignedToken(clientID, tokenEndpoint string, key jwk.Key) ([]byte, error)
 	return jwt.Sign(tok, jwt.WithKey(alg, key, jws.WithProtectedHeaders(headers)))
 }
 
-// this misses the flow where the Authorization server can tell us the next nonce to use.
+// GetAccessToken this misses the flow where the Authorization server can tell us the next nonce to use.
 // missing this flow costs us a bit in efficiency (a round trip per access token) but this is
 // still correct because
-func GetAccessToken(tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, dpopPrivateKey jwk.Key) (*Token, error) {
+func GetAccessToken(client *http.Client, tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, dpopPrivateKey jwk.Key) (*Token, error) {
 	req, err := getAccessTokenRequest(tokenEndpoint, "", scopes, clientCredentials, &dpopPrivateKey)
 	if err != nil {
 		return nil, err
 	}
 
-	client := http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error making request to IdP with dpop nonce: %w", err)
@@ -169,12 +174,12 @@ func GetAccessToken(tokenEndpoint string, scopes []string, clientCredentials Cli
 func processResponse(resp *http.Response) (*Token, error) {
 	respBytes, err := io.ReadAll(resp.Body)
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("got status %d when making request to IdP: %s", resp.StatusCode, string(respBytes))
-	}
-
 	if err != nil {
 		return nil, fmt.Errorf("error reading bytes from response: %w", err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("got status %d when making request to IdP: %s", resp.StatusCode, string(respBytes))
 	}
 
 	var token *Token
@@ -239,12 +244,11 @@ func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce str
 	return string(proof), nil
 }
 
-func DoTokenExchange(ctx context.Context, tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, tokenExchange TokenExchangeInfo, key jwk.Key) (*Token, error) {
+func DoTokenExchange(ctx context.Context, client *http.Client, tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, tokenExchange TokenExchangeInfo, key jwk.Key) (*Token, error) {
 	req, err := getTokenExchangeRequest(ctx, tokenEndpoint, "", scopes, clientCredentials, tokenExchange, &key)
 	if err != nil {
 		return nil, err
 	}
-	client := http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error making request to IdP for token exchange: %w", err)
@@ -298,6 +302,47 @@ func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce strin
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	err = setClientAuth(clientCredentials, &data, req, tokenEndpoint)
 	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+func DoCertExchange(ctx context.Context, client *http.Client, tokenEndpoint string, exchangeInfo CertExchangeInfo, clientCredentials ClientCredentials, key jwk.Key) (*Token, error) {
+	req, err := getCertExchangeRequest(ctx, tokenEndpoint, clientCredentials, exchangeInfo, key)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to IdP for certificate exchange: %w", err)
+	}
+	defer resp.Body.Close()
+
+	return processResponse(resp)
+}
+
+func getCertExchangeRequest(ctx context.Context, tokenEndpoint string, clientCredentials ClientCredentials, exchangeInfo CertExchangeInfo, key jwk.Key) (*http.Request, error) {
+	data := url.Values{"grant_type": {"password"}, "client_id": {clientCredentials.ClientID}, "username": {""}, "password": {""}}
+
+	for _, a := range exchangeInfo.Audience {
+		data.Add("audience", a)
+	}
+
+	body := strings.NewReader(data.Encode())
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, body)
+	if err != nil {
+		return nil, err
+	}
+
+	dpop, err := getDPoPAssertion(key, http.MethodPost, tokenEndpoint, "")
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("accept", "application/json")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("dpop", dpop)
+	if err = setClientAuth(clientCredentials, &data, req, tokenEndpoint); err != nil {
 		return nil, err
 	}
 

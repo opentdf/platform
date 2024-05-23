@@ -3,6 +3,7 @@ package kas
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"strings"
 
@@ -33,7 +34,13 @@ func NewRegistration() serviceregistry.Registration {
 				AttributeSvc:   nil,
 				CryptoProvider: srp.OTDF.CryptoProvider,
 				SDK:            srp.SDK,
+				Logger:         srp.Logger,
 			}
+
+			if err := srp.RegisterReadinessCheck("kas", p.IsReady); err != nil {
+				slog.Error("failed to register kas readiness check", slog.String("error", err.Error()))
+			}
+
 			return &p, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				kas, ok := server.(*access.Provider)
 				if !ok {

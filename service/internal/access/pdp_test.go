@@ -11,13 +11,14 @@ import (
 
 func fqnBuilder(n string, a string, v string) string {
 	fqn := "https://"
-	if n != "" && a != "" && v != "" {
+	switch {
+	case n != "" && a != "" && v != "":
 		return fqn + n + "/attr/" + a + "/value/" + v
-	} else if n != "" && a != "" && v == "" {
+	case n != "" && a != "" && v == "":
 		return fqn + n + "/attr/" + a
-	} else if n != "" && a == "" {
+	case n != "" && a == "":
 		return fqn + n
-	} else {
+	default:
 		panic("Invalid FQN")
 	}
 }
@@ -28,7 +29,7 @@ var (
 	mockAttributeValues = []string{"Value1", "Value2", "Value3", "Value4", "Value5"}
 
 	mockExtraneousValueFqn = fqnBuilder("meep.org", "meep", "beepbeep")
-	mockEntityId           = "4f6636ca-c60c-40d1-9f3f-015086303f74"
+	mockEntityID           = "4f6636ca-c60c-40d1-9f3f-015086303f74"
 
 	simpleAnyOfAttribute = policy.Attribute{
 		Name: mockAttributeNames[0],
@@ -102,7 +103,7 @@ func Test_AccessPDP_AnyOf_Pass(t *testing.T) {
 	}
 
 	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityId] = []string{
+	mockEntityAttrs[mockEntityID] = []string{
 		fqnBuilder(ns, name, val1.GetValue()),
 		mockExtraneousValueFqn,
 	}
@@ -116,12 +117,12 @@ func Test_AccessPDP_AnyOf_Pass(t *testing.T) {
 	)
 
 	require.NoError(t, err)
-	assert.True(t, decisions[mockEntityId].Access)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results))
-	assert.True(t, decisions[mockEntityId].Results[0].Passed)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results[0].ValueFailures))
-	assert.Equal(t, val0, decisions[mockEntityId].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
+	assert.True(t, decisions[mockEntityID].Access)
+	assert.Len(t, decisions[mockEntityID].Results, 1)
+	assert.True(t, decisions[mockEntityID].Results[0].Passed)
+	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 1)
+	assert.Equal(t, val0, decisions[mockEntityID].Results[0].ValueFailures[0].DataAttribute)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
@@ -133,7 +134,7 @@ func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
 	ns := mockAttrDefinitions[0].GetNamespace().GetName()
 	name := mockAttrDefinitions[0].GetName()
 	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityId] = []string{
+	mockEntityAttrs[mockEntityID] = []string{
 		fqnBuilder(ns, name, "randomValue"),
 		mockExtraneousValueFqn,
 	}
@@ -146,12 +147,12 @@ func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
 		mockAttrDefinitions)
 
 	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityId].Access)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results))
-	assert.False(t, decisions[mockEntityId].Results[0].Passed)
-	assert.Equal(t, 2, len(decisions[mockEntityId].Results[0].ValueFailures))
-	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityId].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
+	assert.False(t, decisions[mockEntityID].Access)
+	assert.Len(t, decisions[mockEntityID].Results, 1)
+	assert.False(t, decisions[mockEntityID].Results[0].Passed)
+	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 2)
+	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityID].Results[0].ValueFailures[0].DataAttribute)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_AnyOf_FailMissingAttr(t *testing.T) {
@@ -163,7 +164,7 @@ func Test_AccessPDP_AnyOf_FailMissingAttr(t *testing.T) {
 	}
 
 	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityId] = []string{
+	mockEntityAttrs[mockEntityID] = []string{
 		fqnBuilder("dank.org", "noop", "randomVal"),
 		mockExtraneousValueFqn,
 	}
@@ -176,12 +177,12 @@ func Test_AccessPDP_AnyOf_FailMissingAttr(t *testing.T) {
 		mockAttrDefinitions)
 
 	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityId].Access)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results))
-	assert.False(t, decisions[mockEntityId].Results[0].Passed)
-	assert.Equal(t, 2, len(decisions[mockEntityId].Results[0].ValueFailures))
-	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityId].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
+	assert.False(t, decisions[mockEntityID].Access)
+	assert.Len(t, decisions[mockEntityID].Results, 1)
+	assert.False(t, decisions[mockEntityID].Results[0].Passed)
+	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 2)
+	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityID].Results[0].ValueFailures[0].DataAttribute)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_AnyOf_FailAttrWrongNamespace(t *testing.T) {
@@ -195,7 +196,7 @@ func Test_AccessPDP_AnyOf_FailAttrWrongNamespace(t *testing.T) {
 	mockEntityAttrs := map[string][]string{}
 	name := mockAttrDefinitions[0].GetName()
 	val1 := mockAttrDefinitions[0].GetValues()[0].GetValue()
-	mockEntityAttrs[mockEntityId] = []string{fqnBuilder("otherrandomnamespace.com", name, val1), mockExtraneousValueFqn}
+	mockEntityAttrs[mockEntityID] = []string{fqnBuilder("otherrandomnamespace.com", name, val1), mockExtraneousValueFqn}
 
 	accessPDP := NewPdp()
 	decisions, err := accessPDP.DetermineAccess(
@@ -205,12 +206,12 @@ func Test_AccessPDP_AnyOf_FailAttrWrongNamespace(t *testing.T) {
 		mockAttrDefinitions)
 
 	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityId].Access)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results))
-	assert.False(t, decisions[mockEntityId].Results[0].Passed)
-	assert.Equal(t, 2, len(decisions[mockEntityId].Results[0].ValueFailures))
-	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityId].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
+	assert.False(t, decisions[mockEntityID].Access)
+	assert.Len(t, decisions[mockEntityID].Results, 1)
+	assert.False(t, decisions[mockEntityID].Results[0].Passed)
+	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 2)
+	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityID].Results[0].ValueFailures[0].DataAttribute)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_AnyOf_NoEntityAttributes_Fails(t *testing.T) {
@@ -222,7 +223,7 @@ func Test_AccessPDP_AnyOf_NoEntityAttributes_Fails(t *testing.T) {
 	}
 
 	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityId] = []string{}
+	mockEntityAttrs[mockEntityID] = []string{}
 
 	accessPDP := NewPdp()
 	decisions, err := accessPDP.DetermineAccess(
@@ -232,12 +233,12 @@ func Test_AccessPDP_AnyOf_NoEntityAttributes_Fails(t *testing.T) {
 		mockAttrDefinitions)
 
 	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityId].Access)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results))
-	assert.False(t, decisions[mockEntityId].Results[0].Passed)
-	assert.Equal(t, 2, len(decisions[mockEntityId].Results[0].ValueFailures))
-	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityId].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
+	assert.False(t, decisions[mockEntityID].Access)
+	assert.Len(t, decisions[mockEntityID].Results, 1)
+	assert.False(t, decisions[mockEntityID].Results[0].Passed)
+	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 2)
+	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityID].Results[0].ValueFailures[0].DataAttribute)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_AnyOf_NoDataAttributes_NoDecisions(t *testing.T) {
@@ -247,7 +248,7 @@ func Test_AccessPDP_AnyOf_NoDataAttributes_NoDecisions(t *testing.T) {
 
 	mockDataAttrs := []*policy.Value{}
 	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityId] = []string{
+	mockEntityAttrs[mockEntityID] = []string{
 		fqnBuilder(mockNamespaces[0], mockAttributeNames[0], mockAttributeValues[0]),
 		mockExtraneousValueFqn,
 	}
@@ -260,10 +261,10 @@ func Test_AccessPDP_AnyOf_NoDataAttributes_NoDecisions(t *testing.T) {
 		mockAttrDefinitions)
 
 	require.NoError(t, err)
-	assert.Nil(t, decisions[mockEntityId])
+	assert.Nil(t, decisions[mockEntityID])
 	// No data attributes -> no decisions to make -> no decisions per-entity
 	// (PDP Caller can do what it wants with this info - infer this means access for all, or infer this means failure)
-	assert.Equal(t, 0, len(decisions))
+	assert.Empty(t, decisions)
 }
 
 func Test_AccessPDP_AnyOf_AllEntitiesFilteredOutOfDataAttributeComparison_NoDecisions(t *testing.T) {
@@ -315,7 +316,7 @@ func Test_AccessPDP_AnyOf_AllEntitiesFilteredOutOfDataAttributeComparison_NoDeci
 	assert.Nil(t, decisions[entityID2])
 	// No data attributes -> no decisions to make -> no decisions per-entity
 	// (PDP Caller can do what it wants with this info - infer this means access for all, or infer this means failure)
-	assert.Equal(t, 0, len(decisions))
+	assert.Empty(t, decisions)
 }
 
 // AllOf tests
@@ -329,7 +330,7 @@ func Test_AccessPDP_AllOf_Pass(t *testing.T) {
 	mockEntityAttrs := map[string][]string{}
 	ns := mockAttrDefinitions[0].GetNamespace().GetName()
 	name := mockAttrDefinitions[0].GetName()
-	mockEntityAttrs[mockEntityId] = []string{
+	mockEntityAttrs[mockEntityID] = []string{
 		fqnBuilder(ns, name, mockAttrDefinitions[0].GetValues()[0].GetValue()),
 		fqnBuilder(ns, name, mockAttrDefinitions[0].GetValues()[1].GetValue()),
 		mockExtraneousValueFqn,
@@ -343,11 +344,11 @@ func Test_AccessPDP_AllOf_Pass(t *testing.T) {
 		mockAttrDefinitions)
 
 	require.NoError(t, err)
-	assert.True(t, decisions[mockEntityId].Access)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results))
-	assert.True(t, decisions[mockEntityId].Results[0].Passed)
-	assert.Equal(t, 0, len(decisions[mockEntityId].Results[0].ValueFailures))
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
+	assert.True(t, decisions[mockEntityID].Access)
+	assert.Len(t, decisions[mockEntityID].Results, 1)
+	assert.True(t, decisions[mockEntityID].Results[0].Passed)
+	assert.Empty(t, decisions[mockEntityID].Results[0].ValueFailures)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_AllOf_FailMissingValue(t *testing.T) {
@@ -357,7 +358,7 @@ func Test_AccessPDP_AllOf_FailMissingValue(t *testing.T) {
 		mockAttrDefinitions[0].GetValues()[0],
 	}
 	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityId] = []string{
+	mockEntityAttrs[mockEntityID] = []string{
 		fqnBuilder(mockAttrDefinitions[0].GetNamespace().GetName(), mockAttrDefinitions[0].GetName(), mockAttrDefinitions[0].GetValues()[0].GetValue()),
 		mockExtraneousValueFqn,
 		fqnBuilder(mockAttrDefinitions[0].GetNamespace().GetName(), mockAttrDefinitions[0].GetName(), "otherValue"),
@@ -371,12 +372,12 @@ func Test_AccessPDP_AllOf_FailMissingValue(t *testing.T) {
 		mockAttrDefinitions)
 
 	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityId].Access)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results))
-	assert.False(t, decisions[mockEntityId].Results[0].Passed)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results[0].ValueFailures))
-	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityId].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
+	assert.False(t, decisions[mockEntityID].Access)
+	assert.Len(t, decisions[mockEntityID].Results, 1)
+	assert.False(t, decisions[mockEntityID].Results[0].Passed)
+	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 1)
+	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityID].Results[0].ValueFailures[0].DataAttribute)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_AllOf_FailMissingAttr(t *testing.T) {
@@ -388,7 +389,7 @@ func Test_AccessPDP_AllOf_FailMissingAttr(t *testing.T) {
 		mockAttrDefinitions[0].GetValues()[0],
 	}
 	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityId] = []string{
+	mockEntityAttrs[mockEntityID] = []string{
 		fqnBuilder("dank.org", "noop", "randomVal"),
 		fqnBuilder("somewhere.com", "hello", "world"),
 	}
@@ -400,12 +401,12 @@ func Test_AccessPDP_AllOf_FailMissingAttr(t *testing.T) {
 		mockAttrDefinitions)
 
 	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityId].Access)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results))
-	assert.False(t, decisions[mockEntityId].Results[0].Passed)
-	assert.Equal(t, 2, len(decisions[mockEntityId].Results[0].ValueFailures))
-	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityId].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
+	assert.False(t, decisions[mockEntityID].Access)
+	assert.Len(t, decisions[mockEntityID].Results, 1)
+	assert.False(t, decisions[mockEntityID].Results[0].Passed)
+	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 2)
+	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityID].Results[0].ValueFailures[0].DataAttribute)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_AllOf_FailAttrWrongNamespace(t *testing.T) {
@@ -418,7 +419,7 @@ func Test_AccessPDP_AllOf_FailAttrWrongNamespace(t *testing.T) {
 	wrongNs := "wrong" + mockAttrDefinitions[0].GetNamespace().GetName()
 	name := mockAttrDefinitions[0].GetName()
 	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityId] = []string{
+	mockEntityAttrs[mockEntityID] = []string{
 		fqnBuilder(wrongNs, name, mockAttrDefinitions[0].GetValues()[0].GetValue()),
 		fqnBuilder(wrongNs, name, mockAttrDefinitions[0].GetValues()[1].GetValue()),
 		mockExtraneousValueFqn,
@@ -432,12 +433,12 @@ func Test_AccessPDP_AllOf_FailAttrWrongNamespace(t *testing.T) {
 		mockAttrDefinitions)
 
 	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityId].Access)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results))
-	assert.False(t, decisions[mockEntityId].Results[0].Passed)
-	assert.Equal(t, 2, len(decisions[mockEntityId].Results[0].ValueFailures))
-	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityId].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
+	assert.False(t, decisions[mockEntityID].Access)
+	assert.Len(t, decisions[mockEntityID].Results, 1)
+	assert.False(t, decisions[mockEntityID].Results[0].Passed)
+	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 2)
+	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityID].Results[0].ValueFailures[0].DataAttribute)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
 }
 
 // Hierarchy tests
@@ -453,7 +454,7 @@ func Test_AccessPDP_Hierarchy_Pass(t *testing.T) {
 	mockEntityAttrs := map[string][]string{}
 	ns := mockAttrDefinitions[0].GetNamespace().GetName()
 	name := mockAttrDefinitions[0].GetName()
-	mockEntityAttrs[mockEntityId] = []string{
+	mockEntityAttrs[mockEntityID] = []string{
 		fqnBuilder(ns, name, topValue.GetValue()),
 		mockExtraneousValueFqn,
 	}
@@ -466,11 +467,11 @@ func Test_AccessPDP_Hierarchy_Pass(t *testing.T) {
 		mockAttrDefinitions)
 
 	require.NoError(t, err)
-	assert.True(t, decisions[mockEntityId].Access)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results))
-	assert.True(t, decisions[mockEntityId].Results[0].Passed)
-	assert.Equal(t, 0, len(decisions[mockEntityId].Results[0].ValueFailures))
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
+	assert.True(t, decisions[mockEntityID].Access)
+	assert.Len(t, decisions[mockEntityID].Results, 1)
+	assert.True(t, decisions[mockEntityID].Results[0].Passed)
+	assert.Empty(t, decisions[mockEntityID].Results[0].ValueFailures)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
 }
 
 // TODO: Is this test accurate? Containing the top AND a lower value results in a fail?
@@ -486,7 +487,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
 	ns := mockAttrDefinitions[0].GetNamespace().GetName()
 	name := mockAttrDefinitions[0].GetName()
 
-	mockEntityAttrs[mockEntityId] = []string{
+	mockEntityAttrs[mockEntityID] = []string{
 		fqnBuilder(ns, name, topValue.GetValue()),
 		fqnBuilder(ns, name, midValue.GetValue()),
 		mockExtraneousValueFqn,
@@ -500,11 +501,11 @@ func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
 		mockAttrDefinitions)
 
 	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityId].Access)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results))
-	assert.False(t, decisions[mockEntityId].Results[0].Passed)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results[0].ValueFailures))
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
+	assert.False(t, decisions[mockEntityID].Access)
+	assert.Len(t, decisions[mockEntityID].Results, 1)
+	assert.False(t, decisions[mockEntityID].Results[0].Passed)
+	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 1)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_Hierarchy_FailEntityValueAndDataValuesBothLowest(t *testing.T) {
@@ -516,7 +517,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueAndDataValuesBothLowest(t *testing.
 	mockEntityAttrs := map[string][]string{}
 	ns := mockAttrDefinitions[0].GetNamespace().GetName()
 	name := mockAttrDefinitions[0].GetName()
-	mockEntityAttrs[mockEntityId] = []string{
+	mockEntityAttrs[mockEntityID] = []string{
 		fqnBuilder(ns, name, lowValue.GetValue()),
 	}
 
@@ -528,11 +529,11 @@ func Test_AccessPDP_Hierarchy_FailEntityValueAndDataValuesBothLowest(t *testing.
 		mockAttrDefinitions)
 
 	require.NoError(t, err)
-	assert.True(t, decisions[mockEntityId].Access)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results))
-	assert.True(t, decisions[mockEntityId].Results[0].Passed)
-	assert.Equal(t, 0, len(decisions[mockEntityId].Results[0].ValueFailures))
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
+	assert.True(t, decisions[mockEntityID].Access)
+	assert.Len(t, decisions[mockEntityID].Results, 1)
+	assert.True(t, decisions[mockEntityID].Results[0].Passed)
+	assert.Empty(t, decisions[mockEntityID].Results[0].ValueFailures)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
@@ -547,7 +548,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
 	ns := mockAttrDefinitions[0].GetNamespace().GetName()
 	name := mockAttrDefinitions[0].GetName()
 	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityId] = []string{
+	mockEntityAttrs[mockEntityID] = []string{
 		fqnBuilder(ns, name, midValue.GetValue()),
 		fqnBuilder(ns, name, topValue.GetValue()),
 		mockExtraneousValueFqn,
@@ -561,11 +562,11 @@ func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
 		mockAttrDefinitions)
 
 	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityId].Access)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results))
-	assert.False(t, decisions[mockEntityId].Results[0].Passed)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results[0].ValueFailures))
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
+	assert.False(t, decisions[mockEntityID].Access)
+	assert.Len(t, decisions[mockEntityID].Results, 1)
+	assert.False(t, decisions[mockEntityID].Results[0].Passed)
+	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 1)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
@@ -580,7 +581,7 @@ func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
 	ns := mockAttrDefinitions[0].GetNamespace().GetName()
 	name := mockAttrDefinitions[0].GetName()
 	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityId] = []string{
+	mockEntityAttrs[mockEntityID] = []string{
 		fqnBuilder(ns, name, midValue.GetValue()),
 		fqnBuilder(ns, name, topValue.GetValue()),
 		mockExtraneousValueFqn,
@@ -594,11 +595,11 @@ func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
 		mockAttrDefinitions)
 
 	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityId].Access)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results))
-	assert.False(t, decisions[mockEntityId].Results[0].Passed)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results[0].ValueFailures))
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
+	assert.False(t, decisions[mockEntityID].Access)
+	assert.Len(t, decisions[mockEntityID].Results, 1)
+	assert.False(t, decisions[mockEntityID].Results[0].Passed)
+	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 1)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
@@ -612,7 +613,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
 	mockEntityAttrs := map[string][]string{}
 	ns := mockAttrDefinitions[0].GetNamespace().GetName()
 	name := mockAttrDefinitions[0].GetName()
-	mockEntityAttrs[mockEntityId] = []string{
+	mockEntityAttrs[mockEntityID] = []string{
 		fqnBuilder(ns, name, "unknownPrivilegeValue"),
 		mockExtraneousValueFqn,
 	}
@@ -625,11 +626,11 @@ func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
 		mockAttrDefinitions)
 
 	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityId].Access)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results))
-	assert.False(t, decisions[mockEntityId].Results[0].Passed)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results[0].ValueFailures))
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
+	assert.False(t, decisions[mockEntityID].Access)
+	assert.Len(t, decisions[mockEntityID].Results, 1)
+	assert.False(t, decisions[mockEntityID].Results[0].Passed)
+	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 1)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_Hierarchy_FailDataValueNotInOrder(t *testing.T) {
@@ -644,7 +645,7 @@ func Test_AccessPDP_Hierarchy_FailDataValueNotInOrder(t *testing.T) {
 	}
 
 	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityId] = []string{
+	mockEntityAttrs[mockEntityID] = []string{
 		fqnBuilder(ns, name, mockAttrDefinitions[0].GetValues()[0].GetValue()),
 		mockExtraneousValueFqn,
 	}
@@ -657,12 +658,12 @@ func Test_AccessPDP_Hierarchy_FailDataValueNotInOrder(t *testing.T) {
 		mockAttrDefinitions)
 
 	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityId].Access)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results))
-	assert.False(t, decisions[mockEntityId].Results[0].Passed)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results[0].ValueFailures))
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
-	assert.Nil(t, decisions[mockEntityId].Results[0].ValueFailures[0].DataAttribute)
+	assert.False(t, decisions[mockEntityID].Access)
+	assert.Len(t, decisions[mockEntityID].Results, 1)
+	assert.False(t, decisions[mockEntityID].Results[0].Passed)
+	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 1)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
+	assert.Nil(t, decisions[mockEntityID].Results[0].ValueFailures[0].DataAttribute)
 }
 
 func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T) {
@@ -679,7 +680,7 @@ func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T
 	}
 
 	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityId] = []string{
+	mockEntityAttrs[mockEntityID] = []string{
 		fqnBuilder(ns, name, topValue.GetValue()),
 		mockExtraneousValueFqn,
 	}
@@ -692,11 +693,11 @@ func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T
 		mockAttrDefinitions)
 
 	require.NoError(t, err)
-	assert.True(t, decisions[mockEntityId].Access)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results))
-	assert.True(t, decisions[mockEntityId].Results[0].Passed)
-	assert.Equal(t, 0, len(decisions[mockEntityId].Results[0].ValueFailures))
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
+	assert.True(t, decisions[mockEntityID].Access)
+	assert.Len(t, decisions[mockEntityID].Results, 1)
+	assert.True(t, decisions[mockEntityID].Results[0].Passed)
+	assert.Empty(t, decisions[mockEntityID].Results[0].ValueFailures)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_Hierarchy_FailWithWrongNamespace(t *testing.T) {
@@ -706,7 +707,7 @@ func Test_AccessPDP_Hierarchy_FailWithWrongNamespace(t *testing.T) {
 		midValue,
 	}
 	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityId] = []string{
+	mockEntityAttrs[mockEntityID] = []string{
 		fqnBuilder("wrong"+mockAttrDefinitions[0].GetNamespace().GetName(), mockAttrDefinitions[0].GetName(), midValue.GetValue()),
 		mockExtraneousValueFqn,
 	}
@@ -719,12 +720,12 @@ func Test_AccessPDP_Hierarchy_FailWithWrongNamespace(t *testing.T) {
 		mockAttrDefinitions)
 
 	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityId].Access)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results))
-	assert.False(t, decisions[mockEntityId].Results[0].Passed)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results[0].ValueFailures))
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
+	assert.False(t, decisions[mockEntityID].Access)
+	assert.Len(t, decisions[mockEntityID].Results, 1)
+	assert.False(t, decisions[mockEntityID].Results[0].Passed)
+	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 1)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
 }
 
 func Test_AccessPDP_Hierarchy_FailWithMixedKnownAndUnknownEntityOrder(t *testing.T) {
@@ -738,7 +739,7 @@ func Test_AccessPDP_Hierarchy_FailWithMixedKnownAndUnknownEntityOrder(t *testing
 	ns := mockAttrDefinitions[0].GetNamespace().GetName()
 	name := mockAttrDefinitions[0].GetName()
 	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityId] = []string{
+	mockEntityAttrs[mockEntityID] = []string{
 		fqnBuilder(ns, name, topValue.GetValue()),
 		fqnBuilder(ns, name, "unknownPrivilegeValue"),
 		mockExtraneousValueFqn,
@@ -752,11 +753,11 @@ func Test_AccessPDP_Hierarchy_FailWithMixedKnownAndUnknownEntityOrder(t *testing
 		mockAttrDefinitions)
 
 	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityId].Access)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results))
-	assert.False(t, decisions[mockEntityId].Results[0].Passed)
-	assert.Equal(t, 1, len(decisions[mockEntityId].Results[0].ValueFailures))
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityId].Results[0].RuleDefinition)
+	assert.False(t, decisions[mockEntityID].Access)
+	assert.Len(t, decisions[mockEntityID].Results, 1)
+	assert.False(t, decisions[mockEntityID].Results[0].Passed)
+	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 1)
+	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
 }
 
 // Helper tests
@@ -815,7 +816,7 @@ func Test_GroupValuesByDefinition_NoProvidedDefinitionFqn_Succeeds(t *testing.T)
 
 	for _, attrDef := range mockAttrDefinitions {
 		fqn := fqnBuilder(attrDef.GetNamespace().GetName(), attrDef.GetName(), "")
-		assert.Equal(t, 2, len(groupedValues[fqn]))
+		assert.Len(t, groupedValues[fqn], 2)
 		assert.Equal(t, attrDef.GetValues()[0], groupedValues[fqn][0])
 		assert.Equal(t, attrDef.GetValues()[1], groupedValues[fqn][1])
 	}
@@ -842,10 +843,10 @@ func Test_GroupValuesByDefinition_WithProvidedDefinitionFqn_Succeeds(t *testing.
 	groupedValues, err := GroupValuesByDefinition(mockDataAttrs)
 	require.NoError(t, err)
 
-	assert.Equal(t, 1, len(groupedValues))
+	assert.Len(t, groupedValues, 1)
 	for k, v := range groupedValues {
 		assert.Equal(t, attrFqn, k)
-		assert.Equal(t, 2, len(v))
+		assert.Len(t, v, 2)
 		assert.Equal(t, mockDataAttrs[0], v[0])
 		assert.Equal(t, mockDataAttrs[1], v[1])
 	}
@@ -864,7 +865,7 @@ func Test_GroupValueFqnsByDefinition(t *testing.T) {
 	groupedFqns, err := GroupValueFqnsByDefinition(mockFqns)
 	require.NoError(t, err)
 
-	assert.Equal(t, 3, len(groupedFqns))
+	assert.Len(t, groupedFqns, 3)
 	found := map[string]bool{}
 	for _, v := range mockFqns {
 		found[v] = false
@@ -942,7 +943,7 @@ func Test_GetDefinitionFqnFromValue_FailsWithMissingPieces(t *testing.T) {
 
 	for _, val := range mockValues {
 		def, err := GetDefinitionFqnFromValue(val)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 		assert.Zero(t, def)
 	}
 }
@@ -976,7 +977,7 @@ func Test_GetDefinitionFqnFromValueFqn_FailsWithMissingPieces(t *testing.T) {
 
 	for _, fqn := range mockValueFqns {
 		got, err := GetDefinitionFqnFromValueFqn(fqn)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 		assert.Zero(t, got)
 	}
 }
@@ -1028,7 +1029,7 @@ func Test_GetDefinitionFqnFromDefinition_FailsWithNoNamespace(t *testing.T) {
 
 	for _, attrDef := range mockAttrDefinitions {
 		_, err := GetDefinitionFqnFromDefinition(attrDef)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 	}
 }
 
@@ -1043,7 +1044,7 @@ func Test_GetDefinitionFqnFromDefinition_FailsWithNoName(t *testing.T) {
 
 	for _, attrDef := range mockAttrDefinitions {
 		_, err := GetDefinitionFqnFromDefinition(attrDef)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 	}
 }
 
@@ -1180,7 +1181,7 @@ func Test_GetOrderOfValue_FailsCorrectly(t *testing.T) {
 	for _, v := range bad {
 		order := []*policy.Value{v, good}
 		got, err := getOrderOfValue(order, good)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 		assert.Equal(t, -1, got)
 	}
 
@@ -1188,7 +1189,7 @@ func Test_GetOrderOfValue_FailsCorrectly(t *testing.T) {
 	idx, err := getOrderOfValue(append(bad, good), &policy.Value{
 		Value: "unknownValue",
 	})
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, -1, idx)
 }
 
@@ -1284,7 +1285,7 @@ func Test_GetOrderOfValueByFqn_SadCases(t *testing.T) {
 	for _, v := range bad {
 		order := []*policy.Value{v, good}
 		got, err := getOrderOfValueByFqn(order, fqn)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 		assert.Equal(t, -1, got)
 	}
 }

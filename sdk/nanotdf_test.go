@@ -10,14 +10,14 @@ import (
 )
 
 // nanotdfEqual compares two nanoTdf structures for equality.
-func nanoTDFEqual(a, b *nanoTdf) bool {
+func nanoTDFEqual(a, b *NanoTdf) bool {
 	// Compare magicNumber field
 	if a.magicNumber != b.magicNumber {
 		return false
 	}
 
-	// Compare kasUrl field
-	if a.kasUrl.protocol != b.kasUrl.protocol || a.kasUrl.lengthBody != b.kasUrl.lengthBody || a.kasUrl.body != b.kasUrl.body {
+	// Compare kasURL field
+	if a.kasURL.protocol != b.kasURL.protocol || a.kasURL.lengthBody != b.kasURL.lengthBody || a.kasURL.body != b.kasURL.body {
 		return false
 	}
 
@@ -95,10 +95,10 @@ func init() {
 
 func TestReadNanoTDFHeader(t *testing.T) {
 	// Prepare a sample nanoTdf structure
-	nanoTDF := nanoTdf{
+	nanoTDF := NanoTdf{
 		magicNumber: [3]byte{'L', '1', 'L'},
-		kasUrl: &resourceLocator{
-			protocol:   urlProtocolHttps,
+		kasURL: &resourceLocator{
+			protocol:   urlProtocolHTTPS,
 			lengthBody: 14,
 			body:       "kas.virtru.com",
 		},
@@ -116,7 +116,7 @@ func TestReadNanoTDFHeader(t *testing.T) {
 			mode: uint8(policyTypeRemotePolicy),
 			body: remotePolicy{
 				url: &resourceLocator{
-					protocol:   urlProtocolHttps,
+					protocol:   urlProtocolHTTPS,
 					lengthBody: 21,
 					body:       "kas.virtru.com/policy",
 				},

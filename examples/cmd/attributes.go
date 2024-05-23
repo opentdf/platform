@@ -29,7 +29,7 @@ func init() {
 }
 
 func attributesExample(examplesConfig *ExampleConfig) error {
-	s, err := sdk.New(examplesConfig.PlatformEndpoint, sdk.WithInsecureConn())
+	s, err := sdk.New(examplesConfig.PlatformEndpoint, sdk.WithInsecurePlaintextConn())
 	if err != nil {
 		slog.Error("could not connect", slog.String("error", err.Error()))
 		return err

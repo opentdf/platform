@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
-	"strconv"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
-	"github.com/opentdf/platform/service/internal/db"
+	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -47,21 +46,6 @@ func unmarshalSubjectSetsProto(conditionJSON []byte) ([]*policy.SubjectSet, erro
 			return nil, err
 		}
 		ss = append(ss, &s)
-	}
-
-	// unescape any complex selector values with double quotes
-	for _, s := range ss {
-		for _, cg := range s.GetConditionGroups() {
-			for _, c := range cg.GetConditions() {
-				if c.GetSubjectExternalSelectorValue() != "" {
-					unescaped, err := unescapeSelectorValue(c.GetSubjectExternalSelectorValue())
-					c.SubjectExternalSelectorValue = unescaped
-					if err != nil {
-						return nil, err
-					}
-				}
-			}
-		}
 	}
 
 	return ss, nil
@@ -162,6 +146,8 @@ func subjectMappingSelect() sq.SelectBuilder {
 	t := Tables.SubjectMappings
 	avT := Tables.AttributeValues
 	scsT := Tables.SubjectConditionSet
+	adT := Tables.Attributes
+	nsT := Tables.Namespaces
 	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
 		"'id', vmv.id, " +
 		"'value', vmv.value, " +
@@ -187,6 +173,8 @@ func subjectMappingSelect() sq.SelectBuilder {
 		LeftJoin(avT.Name() + " av ON " + t.Field("attribute_value_id") + " = " + "av.id").
 		LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id").
 		LeftJoin(avT.Name() + " vmv ON vm.member_id = vmv.id").
+		LeftJoin(adT.Name() + " ad ON av.attribute_definition_id = ad.id").
+		LeftJoin(nsT.Name() + " ns ON ad.namespace_id = ns.id").
 		GroupBy("av.id").
 		GroupBy(t.Field("id")).
 		LeftJoin(scsT.Name() + " ON " + scsT.Field("id") + " = " + t.Field("subject_condition_set_id")).
@@ -252,20 +240,6 @@ func subjectMappingHydrateItem(row pgx.Row) (*policy.SubjectMapping, error) {
 			slog.Error("could not unmarshal subject condition set", slog.String("error", err.Error()), slog.String("subject condition set JSON", string(scsJSON)))
 			return nil, err
 		}
-		// unescape any complex selector values with double quotes
-		for _, ss := range scs.GetSubjectSets() {
-			for _, cg := range ss.GetConditionGroups() {
-				for _, c := range cg.GetConditions() {
-					if c.GetSubjectExternalSelectorValue() != "" {
-						unescaped, err := unescapeSelectorValue(c.GetSubjectExternalSelectorValue())
-						c.SubjectExternalSelectorValue = unescaped
-						if err != nil {
-							return nil, err
-						}
-					}
-				}
-			}
-		}
 	}
 
 	return &policy.SubjectMapping{
@@ -289,7 +263,7 @@ func subjectMappingHydrateList(rows pgx.Rows) ([]*policy.SubjectMapping, error) 
 	return list, nil
 }
 
-func createSubjectConditionSetSql(subjectSets []*policy.SubjectSet, metadataJSON []byte) (string, []interface{}, error) {
+func createSubjectConditionSetSQL(subjectSets []*policy.SubjectSet, metadataJSON []byte) (string, []interface{}, error) {
 	t := Tables.SubjectConditionSet
 	conditionJSON, err := marshalSubjectSetsProto(subjectSets)
 	if err != nil {
@@ -314,7 +288,7 @@ func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjec
 		return nil, err
 	}
 
-	sql, args, err := createSubjectConditionSetSql(s.GetSubjectSets(), metadataJSON)
+	sql, args, err := createSubjectConditionSetSQL(s.GetSubjectSets(), metadataJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -339,14 +313,14 @@ func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjec
 	}, nil
 }
 
-func getSubjectConditionSetSql(id string) (string, []interface{}, error) {
+func getSubjectConditionSetSQL(id string) (string, []interface{}, error) {
 	t := Tables.SubjectConditionSet
 	return subjectConditionSetSelect().
 		From(t.Name()).Where(sq.Eq{t.Field("id"): id}).ToSql()
 }
 
 func (c PolicyDBClient) GetSubjectConditionSet(ctx context.Context, id string) (*policy.SubjectConditionSet, error) {
-	sql, args, err := getSubjectConditionSetSql(id)
+	sql, args, err := getSubjectConditionSetSQL(id)
 	if err != nil {
 		return nil, err
 	}
@@ -359,7 +333,7 @@ func (c PolicyDBClient) GetSubjectConditionSet(ctx context.Context, id string) (
 	return subjectConditionSetHydrateItem(row)
 }
 
-func listSubjectConditionSetsSql() (string, []interface{}, error) {
+func listSubjectConditionSetsSQL() (string, []interface{}, error) {
 	t := Tables.SubjectConditionSet
 	return subjectConditionSetSelect().
 		From(t.Name()).
@@ -367,7 +341,7 @@ func listSubjectConditionSetsSql() (string, []interface{}, error) {
 }
 
 func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context) ([]*policy.SubjectConditionSet, error) {
-	sql, args, err := listSubjectConditionSetsSql()
+	sql, args, err := listSubjectConditionSetsSQL()
 	if err != nil {
 		return nil, err
 	}
@@ -381,7 +355,7 @@ func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context) ([]*policy
 	return subjectConditionSetHydrateList(rows)
 }
 
-func updateSubjectConditionSetSql(id string, metadata []byte, condition []byte) (string, []interface{}, error) {
+func updateSubjectConditionSetSQL(id string, metadata []byte, condition []byte) (string, []interface{}, error) {
 	t := Tables.SubjectConditionSet
 
 	sb := db.NewStatementBuilder().
@@ -423,7 +397,7 @@ func (c PolicyDBClient) UpdateSubjectConditionSet(ctx context.Context, r *subjec
 		}
 	}
 
-	sql, args, err := updateSubjectConditionSetSql(
+	sql, args, err := updateSubjectConditionSetSQL(
 		r.GetId(),
 		metadataJSON,
 		condition,
@@ -446,7 +420,7 @@ func (c PolicyDBClient) UpdateSubjectConditionSet(ctx context.Context, r *subjec
 	}, nil
 }
 
-func deleteSubjectConditionSetSql(id string) (string, []interface{}, error) {
+func deleteSubjectConditionSetSQL(id string) (string, []interface{}, error) {
 	t := Tables.SubjectConditionSet
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
@@ -457,7 +431,7 @@ func deleteSubjectConditionSetSql(id string) (string, []interface{}, error) {
 
 // Deletes specified subject condition set and returns the id of the deleted
 func (c PolicyDBClient) DeleteSubjectConditionSet(ctx context.Context, id string) (*policy.SubjectConditionSet, error) {
-	sql, args, err := deleteSubjectConditionSetSql(id)
+	sql, args, err := deleteSubjectConditionSetSQL(id)
 	if err != nil {
 		return nil, err
 	}
@@ -471,7 +445,7 @@ func (c PolicyDBClient) DeleteSubjectConditionSet(ctx context.Context, id string
 	}, nil
 }
 
-func createSubjectMappingSql(attribute_value_id string, actions []byte, metadata []byte, subject_condition_set_id string) (string, []interface{}, error) {
+func createSubjectMappingSQL(attributeValueID string, actions []byte, metadata []byte, subjectConditionSetID string) (string, []interface{}, error) {
 	t := Tables.SubjectMappings
 
 	columns := []string{
@@ -481,10 +455,10 @@ func createSubjectMappingSql(attribute_value_id string, actions []byte, metadata
 		"subject_condition_set_id",
 	}
 	values := []interface{}{
-		attribute_value_id,
+		attributeValueID,
 		actions,
 		metadata,
-		subject_condition_set_id,
+		subjectConditionSetID,
 	}
 
 	return db.NewStatementBuilder().
@@ -504,18 +478,19 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 	)
 
 	// Prefer existing id over new creation per documented proto behavior.
-	if s.GetExistingSubjectConditionSetId() != "" {
+	switch {
+	case s.GetExistingSubjectConditionSetId() != "":
 		scs, err = c.GetSubjectConditionSet(ctx, s.GetExistingSubjectConditionSetId())
 		if err != nil {
 			return nil, err
 		}
-	} else if s.GetNewSubjectConditionSet() != nil {
+	case s.GetNewSubjectConditionSet() != nil:
 		// create the new subject condition set
 		scs, err = c.CreateSubjectConditionSet(ctx, s.GetNewSubjectConditionSet())
 		if err != nil {
 			return nil, err
 		}
-	} else {
+	default:
 		return nil, errors.Join(db.ErrMissingValue, errors.New("either an existing Subject Condition Set ID or a new Subject Condition Set is required when creating a subject mapping"))
 	}
 
@@ -532,7 +507,7 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 	}
 
 	// Create the subject mapping
-	sql, args, err := createSubjectMappingSql(
+	sql, args, err := createSubjectMappingSQL(
 		s.GetAttributeValueId(),
 		actionsJSON,
 		metadataJSON,
@@ -564,7 +539,7 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 	}, nil
 }
 
-func getSubjectMappingSql(id string) (string, []interface{}, error) {
+func getSubjectMappingSQL(id string) (string, []interface{}, error) {
 	t := Tables.SubjectMappings
 	return subjectMappingSelect().
 		From(t.Name()).
@@ -573,7 +548,7 @@ func getSubjectMappingSql(id string) (string, []interface{}, error) {
 }
 
 func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*policy.SubjectMapping, error) {
-	sql, args, err := getSubjectMappingSql(id)
+	sql, args, err := getSubjectMappingSQL(id)
 	if err != nil {
 		return nil, err
 	}
@@ -586,7 +561,7 @@ func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*poli
 	return subjectMappingHydrateItem(row)
 }
 
-func listSubjectMappingsSql() (string, []interface{}, error) {
+func listSubjectMappingsSQL() (string, []interface{}, error) {
 	t := Tables.SubjectMappings
 	return subjectMappingSelect().
 		From(t.Name()).
@@ -594,7 +569,7 @@ func listSubjectMappingsSql() (string, []interface{}, error) {
 }
 
 func (c PolicyDBClient) ListSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
-	sql, args, err := listSubjectMappingsSql()
+	sql, args, err := listSubjectMappingsSQL()
 	if err != nil {
 		return nil, err
 	}
@@ -613,7 +588,7 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context) ([]*policy.Subj
 	return subjectMappings, nil
 }
 
-func updateSubjectMappingSql(id string, metadataJSON []byte, subject_condition_set_id string, actionsJSON []byte) (string, []interface{}, error) {
+func updateSubjectMappingSQL(id string, metadataJSON []byte, subjectConditionSetID string, actionsJSON []byte) (string, []interface{}, error) {
 	t := Tables.SubjectMappings
 	sb := db.NewStatementBuilder().
 		Update(t.Name())
@@ -622,8 +597,8 @@ func updateSubjectMappingSql(id string, metadataJSON []byte, subject_condition_s
 		sb = sb.Set("metadata", metadataJSON)
 	}
 
-	if subject_condition_set_id != "" {
-		sb = sb.Set("subject_condition_set_id", subject_condition_set_id)
+	if subjectConditionSetID != "" {
+		sb = sb.Set("subject_condition_set_id", subjectConditionSetID)
 	}
 
 	if actionsJSON != nil {
@@ -657,7 +632,7 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 		}
 	}
 
-	sql, args, err := updateSubjectMappingSql(
+	sql, args, err := updateSubjectMappingSQL(
 		r.GetId(),
 		metadataJSON,
 		r.GetSubjectConditionSetId(),
@@ -681,7 +656,7 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 	}, nil
 }
 
-func deleteSubjectMappingSql(id string) (string, []interface{}, error) {
+func deleteSubjectMappingSQL(id string) (string, []interface{}, error) {
 	t := Tables.SubjectMappings
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
@@ -692,7 +667,7 @@ func deleteSubjectMappingSql(id string) (string, []interface{}, error) {
 
 // Deletes specified subject mapping and returns the id of the deleted
 func (c PolicyDBClient) DeleteSubjectMapping(ctx context.Context, id string) (*policy.SubjectMapping, error) {
-	sql, args, err := deleteSubjectMappingSql(id)
+	sql, args, err := deleteSubjectMappingSQL(id)
 	if err != nil {
 		return nil, err
 	}
@@ -704,27 +679,6 @@ func (c PolicyDBClient) DeleteSubjectMapping(ctx context.Context, id string) (*p
 	return &policy.SubjectMapping{
 		Id: id,
 	}, nil
-}
-
-// PostgreSQL requires the expression in 'subject_external_selector_value' to be escaped as valid JSONB, but SELECT statements that are
-// escaped will fail to find the row (i.e. 'any(index(\"hello\"))' ), and jq evaluations on escaped strings will error out. Therefore,
-// we must unescape if there are any escaped double quotes.
-func unescapeSelectorValue(selectorValue string) (string, error) {
-	if selectorValue == "" {
-		return "", nil
-	}
-	subjectExternalSelectorVal, err := strconv.Unquote(selectorValue)
-	if err != nil {
-		if err.Error() == "invalid syntax" {
-			slog.Debug("invalid syntax error when unquoting means there was nothing to unescape. carry on.", slog.String("subject_external_selector_value", selectorValue))
-			subjectExternalSelectorVal = selectorValue
-		} else {
-			slog.Error("failed to unescape double quotes in subject external selector value", slog.String("subject_external_selector_value", selectorValue), slog.String("error", err.Error()))
-			return "", err
-		}
-	}
-	slog.Debug("unescaped any double quotes in subject external selector value", slog.String("subject_external_selector_value", subjectExternalSelectorVal))
-	return subjectExternalSelectorVal, nil
 }
 
 // This function generates a SQL select statement for SubjectMappings that based on external Subject property fields & values. This relationship
@@ -742,7 +696,7 @@ func unescapeSelectorValue(selectorValue string) (string, error) {
 // in some way or another. This could theoretically be every attribute in the DB if a policy admin has relied heavily on that field.
 //
 // NOTE: if you have any issues, set the log level to 'debug' for more comprehensive context.
-func selectMatchedSubjectMappingsSql(subjectProperties []*policy.SubjectProperty) (string, []interface{}, error) {
+func selectMatchedSubjectMappingsSQL(subjectProperties []*policy.SubjectProperty) (string, []interface{}, error) {
 	var err error
 	if len(subjectProperties) == 0 {
 		err = errors.Join(db.ErrMissingValue, errors.New("one or more subject properties is required"))
@@ -760,12 +714,7 @@ func selectMatchedSubjectMappingsSql(subjectProperties []*policy.SubjectProperty
 			where += " OR "
 		}
 
-		subjectExternalSelectorVal, err := unescapeSelectorValue(sp.GetExternalSelectorValue())
-		if err != nil {
-			return "", nil, err
-		}
-
-		hasField := "each_condition->>'subject_external_selector_value' = '" + subjectExternalSelectorVal + "'"
+		hasField := "each_condition->>'subject_external_selector_value' = '" + sp.GetExternalSelectorValue() + "'"
 		hasValue := "(each_condition->>'subject_external_values')::jsonb @> '[\"" + sp.GetExternalValue() + "\"]'::jsonb"
 		hasInOperator := "each_condition->>'operator' = 'SUBJECT_MAPPING_OPERATOR_ENUM_IN'"
 		hasNotInOperator := "each_condition->>'operator' = 'SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN'"
@@ -796,7 +745,8 @@ func selectMatchedSubjectMappingsSql(subjectProperties []*policy.SubjectProperty
 
 	return subjectMappingSelect().
 		From(smT.Name()).
-		Where("EXISTS (" + whereSubQ + ")").
+		// ensure namespace, definition, and value of mapped attribute are all active
+		Where("ns.active = true AND ad.active = true AND av.active = true AND EXISTS (" + whereSubQ + ")").
 		ToSql()
 }
 
@@ -813,7 +763,7 @@ func selectMatchedSubjectMappingsSql(subjectProperties []*policy.SubjectProperty
 // NOTE: This relationship is sometimes called Entitlements or Subject Entitlements.
 // NOTE: if you have any issues, set the log level to 'debug' for more comprehensive context.
 func (c PolicyDBClient) GetMatchedSubjectMappings(ctx context.Context, properties []*policy.SubjectProperty) ([]*policy.SubjectMapping, error) {
-	sql, args, err := selectMatchedSubjectMappingsSql(properties)
+	sql, args, err := selectMatchedSubjectMappingsSQL(properties)
 	slog.Debug("generated SQL for subject entitlements", slog.Any("properties", properties), slog.String("sql", sql), slog.Any("args", args))
 	if err != nil {
 		return nil, err

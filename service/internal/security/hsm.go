@@ -828,3 +828,7 @@ func versionSalt() []byte {
 	digest.Write([]byte("L1L"))
 	return digest.Sum(nil)
 }
+
+func (h *HSMSession) ECCertificate(string) (string, error) {
+	return "", nil
+}

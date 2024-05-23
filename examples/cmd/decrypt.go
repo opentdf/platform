@@ -41,6 +41,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	defer file.Close()
+	cmd.Println("# TDF")
 
 	tdfreader, err := client.LoadTDF(file)
 	if err != nil {
@@ -52,7 +53,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	if err != nil && err != io.EOF {
 		return err
 	}
-	cmd.Println()
+	cmd.Println("\n-----\n\n# NANO")
 
 	nTdfFile, err := os.Open("sensitive.txt.ntdf")
 	if err != nil {

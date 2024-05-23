@@ -81,8 +81,8 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	nanoTDFCOnfig.SetKasURL(fmt.Sprintf("http://%s", cmd.Flag("platformEndpoint").Value.String()))
 	nanoTDFCOnfig.SetAttributes(attributes)
+	nanoTDFCOnfig.SetKasURL(fmt.Sprintf("http://%s/kas", cmd.Flag("platformEndpoint").Value.String()))
 
 	nTDFile := "sensitive.txt.ntdf"
 	strReader = strings.NewReader(plainText)

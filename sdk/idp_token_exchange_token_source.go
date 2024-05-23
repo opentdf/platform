@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"context"
+	"crypto/rsa"
 	"net/http"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -14,8 +15,8 @@ type IDPTokenExchangeTokenSource struct {
 	oauth.TokenExchangeInfo
 }
 
-func NewIDPTokenExchangeTokenSource(exchangeInfo oauth.TokenExchangeInfo, credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string) (*IDPTokenExchangeTokenSource, error) {
-	idpSource, err := NewIDPAccessTokenSource(credentials, idpTokenEndpoint, scopes)
+func NewIDPTokenExchangeTokenSource(exchangeInfo oauth.TokenExchangeInfo, credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string, key *rsa.PrivateKey) (*IDPTokenExchangeTokenSource, error) {
+	idpSource, err := NewIDPAccessTokenSource(credentials, idpTokenEndpoint, scopes, key)
 	if err != nil {
 		return nil, err
 	}

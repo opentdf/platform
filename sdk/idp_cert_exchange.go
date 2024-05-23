@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"context"
+	"crypto/rsa"
 	"net/http"
 	"sync"
 
@@ -20,8 +21,8 @@ type CertExchangeTokenSource struct {
 	key         jwk.Key
 }
 
-func NewCertExchangeTokenSource(info oauth.CertExchangeInfo, credentials oauth.ClientCredentials, idpTokenEndpoint string) (auth.AccessTokenSource, error) {
-	_, dpopKey, _, err := getNewDPoPKey()
+func NewCertExchangeTokenSource(info oauth.CertExchangeInfo, credentials oauth.ClientCredentials, idpTokenEndpoint string, dpop *rsa.PrivateKey) (auth.AccessTokenSource, error) {
+	_, dpopKey, _, err := getNewDPoPKey(dpop)
 	if err != nil {
 		return nil, err
 	}

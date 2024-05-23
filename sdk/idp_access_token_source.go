@@ -2,7 +2,6 @@ package sdk
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -24,11 +23,7 @@ const (
 	dpopKeySize = 2048
 )
 
-func getNewDPoPKey() (string, jwk.Key, *ocrypto.AsymDecryption, error) { //nolint:ireturn // this is only internal
-	dpopPrivate, err := rsa.GenerateKey(rand.Reader, dpopKeySize)
-	if err != nil {
-		return "", nil, nil, fmt.Errorf("error creating DPoP keypair: %w", err)
-	}
+func getNewDPoPKey(dpopPrivate *rsa.PrivateKey) (string, jwk.Key, *ocrypto.AsymDecryption, error) { //nolint:ireturn // this is only internal
 	dpopKey, err := jwk.FromRaw(dpopPrivate)
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("error creating JWK: %w", err)
@@ -90,13 +85,13 @@ type IDPAccessTokenSource struct {
 }
 
 func NewIDPAccessTokenSource(
-	credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string) (*IDPAccessTokenSource, error) {
+	credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string, key *rsa.PrivateKey) (*IDPAccessTokenSource, error) {
 	endpoint, err := url.Parse(idpTokenEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("invalid url [%s]: %w", idpTokenEndpoint, err)
 	}
 
-	dpopPublicKeyPEM, dpopKey, asymDecryption, err := getNewDPoPKey()
+	dpopPublicKeyPEM, dpopKey, asymDecryption, err := getNewDPoPKey(key)
 	if err != nil {
 		return nil, err
 	}

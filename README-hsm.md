@@ -16,6 +16,8 @@ On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 1. Start with a configuration the enables HSM: `cp opentdf-with-hsm.yaml opentdf.yaml`
 2. Initialize temporary keys and load them: `.github/scripts/init-temp-keys.sh --hsm`
 3. Build or run using the `--tags=opentdf.hsm` flag set.
+   This can be accomplished with `make opentdf-hsm`,
+   which builds a binary named `opentdf-hsm` with the hsm feature enabled.
 
 ### Detailed Configuration
 

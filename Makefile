@@ -64,10 +64,13 @@ clean:
 	for m in $(MODS); do (cd $$m && go clean) || exit 1; done
 	rm -f opentdf examples/examples
 
-build: proto-generate opentdf sdk/sdk examples/examples
+build: proto-generate opentdf opentdf-hsm sdk/sdk examples/examples
 
 opentdf: $(shell find service)
-	go build --tags=opentdf.hsm -o opentdf -v service/main.go
+	go build -o opentdf -v service/main.go
+
+opentdf-hsm: $(shell find service)
+	go build --tags=opentdf.hsm -o opentdf-hsm -v service/main.go
 
 sdk/sdk: $(shell find sdk)
 	(cd sdk && go build ./...)

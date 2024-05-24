@@ -65,7 +65,7 @@ func (i TokenAddingInterceptor) AddCredentials(
 		// since we don't have a setting about whether DPoP is in use on the client and this request _could_ succeed if
 		// they are talking to a server where DPoP is not required we will just let this through. this method is extremely
 		// unlikely to fail so hopefully this isn't confusing
-		slog.ErrorContext(ctx, "error adding dpop token to outgoing request. Request will not have DPoP token", "error", err)
+		slog.ErrorContext(ctx, "error getting DPoP token for outgoing request. Request will not have DPoP token", "error", err)
 	}
 
 	newCtx := metadata.AppendToOutgoingContext(ctx, newMetadata...)

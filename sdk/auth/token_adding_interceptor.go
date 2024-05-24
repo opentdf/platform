@@ -54,6 +54,7 @@ func (i TokenAddingInterceptor) AddCredentials(
 	if err == nil {
 		newMetadata = append(newMetadata, "Authorization", fmt.Sprintf("DPoP %s", accessToken))
 	} else {
+		slog.ErrorContext(ctx, "error getting access token", "error", err)
 		return status.Error(codes.Unauthenticated, err.Error())
 	}
 

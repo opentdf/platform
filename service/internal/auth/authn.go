@@ -165,6 +165,14 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 		origin := r.Header.Get("Origin")
+		if origin == "" {
+			origin = r.Host
+			if r.TLS != nil {
+				origin = "https://" + strings.TrimSuffix(origin, ":443")
+			} else {
+				origin = "http://" + strings.TrimSuffix(origin, ":80")
+			}
+		}
 		accessTok, ctxWithJWK, err := a.checkToken(r.Context(), header, receiverInfo{
 			u: normalizeURL(origin, r.URL),
 			m: r.Method,

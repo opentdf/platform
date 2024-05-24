@@ -9,6 +9,7 @@ import (
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/security"
+	"github.com/opentdf/platform/service/pkg/serviceregistry"
 )
 
 const (
@@ -23,10 +24,11 @@ type Provider struct {
 	AttributeSvc   *url.URL
 	CryptoProvider security.CryptoProvider
 	Logger         *logger.Logger
+	Config         *serviceregistry.ServiceConfig
 }
 
-// TODO: Not sure what we want to check here?
-func (p Provider) IsReady(ctx context.Context) error {
+func (p *Provider) IsReady(ctx context.Context) error {
+	// TODO: Not sure what we want to check here?
 	slog.DebugContext(ctx, "checking readiness of kas service")
 	return nil
 }

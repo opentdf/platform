@@ -1,10 +1,13 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/opentdf/platform/lib/ocrypto"
 
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
@@ -64,5 +67,53 @@ func encrypt(cmd *cobra.Command, args []string) error {
 
 	// Print Manifest
 	cmd.Println(string(manifestJSON))
+
+	//
+	// NanoTDF
+	//
+
+	attributes := []string{
+		"https://example.com/attr/attr1/value/value1",
+	}
+
+	nanoTDFCOnfig, err := client.NewNanoTDFConfig()
+	if err != nil {
+		return err
+	}
+
+	nanoTDFCOnfig.SetAttributes(attributes)
+	nanoTDFCOnfig.SetKasURL(fmt.Sprintf("http://%s/kas", cmd.Flag("platformEndpoint").Value.String()))
+
+	nTDFile := "sensitive.txt.ntdf"
+	strReader = strings.NewReader(plainText)
+	nTdfFile, err := os.Create(nTDFile)
+	defer nTdfFile.Close()
+
+	_, err = client.CreateNanoTDF(nTdfFile, strReader, *nanoTDFCOnfig)
+	if err != nil {
+		return err
+	}
+
+	err = dumpNanoTDF(cmd, nTDFile)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func dumpNanoTDF(cmd *cobra.Command, nTdfFile string) error {
+	f, err := os.Open(nTdfFile)
+	if err != nil {
+		return err
+	}
+
+	buf := bytes.Buffer{}
+	_, err = buf.ReadFrom(f)
+	if err != nil {
+		return err
+	}
+
+	cmd.Println(string(ocrypto.Base64Encode(buf.Bytes())))
+
 	return nil
 }

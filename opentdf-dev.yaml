@@ -40,16 +40,95 @@ server:
       ## Maps the external role to the opentdf role
       ## Note: left side is used in the policy, right side is the external role
       map:
-      #  readonly: opentdf-readonly
-      #  admin: opentdf-admin
-      #  org-admin: opentdf-org-admin
+        readonly: opentdf-readonly
+        admin: opentdf-admin
+        user: default-roles-opentdf
+        org-admin: opentdf-org-admin
 
       ## Custom policy (see examples https://github.com/casbin/casbin/tree/master/examples)
-      csv: #|
-      #  p, role:org-admin, policy:attributes, *, *, allow
-      #  p, role:org-admin, policy:subject-mappings, *, *, allow
-      #  p, role:org-admin, policy:resource-mappings, *, *, allow
-      #  p, role:org-admin, policy:kas-registry, *, *, allow
+      csv: |
+        ## Roles (prefixed with role:)
+        # org-admin - organization admin
+        # admin - admin
+        # readonly - readonly
+        # user - rewrap
+        # unknown - unknown role or no role
+        ## Actions
+        # read - read the resource
+        # write - write to the resource
+        # delete - delete the resource
+        # unsafe - unsafe actions
+        
+        # Role: user
+        p,	role:user,		kas.AccessService/PublicKey,						read,			allow
+        p,	role:user,		kas.AccessService/Rewrap, 			        write,		allow
+        p,	role:user,		/,																      read,			allow
+        p,	role:user,		/kas/kas_public_key,  									read,			allow
+        p,	role:user,		/kas/v2/kas_public_key,									read,			allow
+        p,	role:user,		/kas/v2/rewrap,													write,		allow
+        p,	role:user,		/entityresolution/resolve,							write,  	allow
+        
+        # Role: Org-Admin
+        ## gRPC routes
+        p,	role:org-admin,		policy.*,																*,			allow
+        p,	role:org-admin,		kasregistry.*,													*,			allow
+        p,	role:org-admin,		kas.AccessService/LegacyPublicKey,			*,			allow
+        p,	role:org-admin,		kas.AccessService/PublicKey,						*,			allow
+        p,	role:org-admin,		kas.AccessService/Rewrap, 			            *,			allow
+        ## HTTP routes
+        p,	role:org-admin,		/health,																*,			allow
+        p,	role:org-admin,		/attributes*,														*,			allow
+        p,	role:org-admin,		/namespaces*,														*,			allow
+        p,	role:org-admin,		/subject-mappings*,											*,			allow
+        p,	role:org-admin,		/resource-mappings*,										*,			allow
+        p,	role:org-admin,		/key-access-servers*,										*,			allow
+        p,	role:org-admin,		/kas.AccessService/LegacyPublicKey,			*,			allow
+        # add unsafe actions to the org-admin role
+        
+        # Role: Admin
+        ## gRPC routes
+        p,	role:admin,		policy.*,																		*,			allow
+        p,	role:admin,		kasregistry.*,															*,			allow
+        p,	role:admin,		kas.AccessService/Info,					            *,			allow
+        p,	role:admin,		kas.AccessService/Rewrap, 			            *,			allow
+        p,	role:admin,		kas.AccessService/LegacyPublicKey,					*,			allow
+        p,	role:admin,		kas.AccessService/PublicKey,								*,			allow
+        ## HTTP routes
+        p,	role:admin,		/health,																		*,			allow
+        p,	role:admin,		/attributes*,																*,			allow
+        p,	role:admin,		/namespaces*,																*,			allow
+        p,	role:admin,		/subject-mappings*,													*,			allow
+        p,	role:admin,		/resource-mappings*,												*,			allow
+        p,	role:admin,		/key-access-servers*,												*,			allow
+        p,	role:admin,		/kas.AccessService/LegacyPublicKey,					*,			allow
+        
+        ## Role: Readonly
+        ## gRPC routes
+        p,	role:readonly,		policy.*,																read,			allow
+        p,	role:readonly,		kasregistry.*,													read,			allow
+        p,	role:readonly,		kas.AccessService/Info,		 		             *,			allow
+        p,	role:readonly,    kas.AccessService/Rewrap, 			           *,			allow
+        p,	role:readonly,    kas.AccessService/LegacyPublicKey,				 *,			allow
+        p,	role:readonly,    kas.AccessService/PublicKey,							 *,			allow
+        ## HTTP routes
+        p,	role:readonly,		/health,																read,			allow
+        p,	role:readonly,		/attributes*,														read,			allow
+        p,	role:readonly,		/namespaces*,														read,			allow
+        p,	role:readonly,		/subject-mappings*,											read,			allow
+        p,	role:readonly,		/resource-mappings*,										read,			allow
+        p,	role:readonly,		/key-access-servers*,										read,			allow
+        p,	role:readonly,		/kas.AccessService/LegacyPublicKey,			read,			allow
+        
+        # Public routes
+        ## gRPC routes
+        p,	role:unknown,			kas.AccessService/LegacyPublicKey,			other,	allow
+        p,	role:unknown,			kas.AccessService/PublicKey,						other,	allow
+        ## HTTP routes
+        p,	role:unknown,			/health,																read,		allow
+        p,	role:unknown,			/kas/v2/kas_public_key,									read,		allow
+        p,	role:unknown,			/kas/kas_public_key,										read,		allow
+        p,	role:unknown,			/entityresolution/resolve,							write,	allow
+
       ## Custom model (see https://casbin.org/docs/syntax-for-models/)
       model: #|
       #  [request_definition]

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4](https://github.com/opentdf/platform/compare/lib/fixtures/v0.2.3...lib/fixtures/v0.2.4) (2024-05-24)
+
+
+### Bug Fixes
+
+* **ci:** Handle provisioning of keycloak clients without service accounts enabled ([#865](https://github.com/opentdf/platform/issues/865)) ([16af636](https://github.com/opentdf/platform/commit/16af63687e0be55cbbb59c13f96c5490b9c30c87))
+
 ## [0.2.3](https://github.com/opentdf/platform/compare/lib/fixtures/v0.2.2...lib/fixtures/v0.2.3) (2024-05-14)
 
 

@@ -1,0 +1,14 @@
+{
+  "configurations": [
+    {
+      "name": "Launch file",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${file}",
+      "buildFlags": ["-tags", "opentdf.hsm"],
+      "args": ["start"]
+    }
+  
+  ]
+}

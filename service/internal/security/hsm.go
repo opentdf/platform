@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/opentdf/platform/lib/ocrypto"
 
 	"github.com/miekg/pkcs11"
 	"golang.org/x/crypto/hkdf"
@@ -579,7 +580,7 @@ func (h *HSMSession) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte)
 
 func (h *HSMSession) GenerateNanoTDFSessionKey(
 	privateKey any,
-	ephemeralPublicKey []byte,
+	ephemeralPublicKeyPEM []byte,
 ) ([]byte, error) {
 	privateKeyHandle, ok := privateKey.(PrivateKeyEC)
 	if !ok {
@@ -598,7 +599,12 @@ func (h *HSMSession) GenerateNanoTDFSessionKey(
 		pkcs11.NewAttribute(pkcs11.CKA_UNWRAP, true),
 	}
 
-	params := pkcs11.ECDH1DeriveParams{KDF: pkcs11.CKD_NULL, PublicKeyData: ephemeralPublicKey}
+	ephemeralPublicKey, err := ocrypto.ECPubKeyFromPem(ephemeralPublicKeyPEM)
+	if err != nil {
+		return nil, fmt.Errorf("GenerateNanoTDFSessionKey failed to ocrypto.ECPubKeyFromPem: %w", err)
+	}
+
+	params := pkcs11.ECDH1DeriveParams{KDF: pkcs11.CKD_NULL, PublicKeyData: ephemeralPublicKey.Bytes()}
 
 	mech := []*pkcs11.Mechanism{
 		pkcs11.NewMechanism(pkcs11.CKM_ECDH1_DERIVE, &params),
@@ -661,9 +667,18 @@ func (h *HSMSession) GenerateEphemeralKasKeys() (any, []byte, error) {
 	if err != nil {
 		return 0, nil, fmt.Errorf("failed to retrieve public key bytes: %w", err)
 	}
-	publicKeyBytes := pubBytes[0].Value
+	pemBytes := pem.EncodeToMemory(
+		&pem.Block{
+			Type:    "PUBLIC KEY",
+			Headers: nil,
+			Bytes:   pubBytes[0].Value,
+		},
+	)
+	if pemBytes == nil {
+		return 0, nil, err
+	}
 
-	return PrivateKeyEC(prvHandle), publicKeyBytes, nil
+	return PrivateKeyEC(prvHandle), pemBytes, nil
 }
 
 func (h *HSMSession) RSAPublicKey(keyID string) (string, error) {

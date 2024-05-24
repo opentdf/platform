@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/oauth"
 )
@@ -14,8 +15,8 @@ type IDPTokenExchangeTokenSource struct {
 	oauth.TokenExchangeInfo
 }
 
-func NewIDPTokenExchangeTokenSource(exchangeInfo oauth.TokenExchangeInfo, credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string) (*IDPTokenExchangeTokenSource, error) {
-	idpSource, err := NewIDPAccessTokenSource(credentials, idpTokenEndpoint, scopes)
+func NewIDPTokenExchangeTokenSource(exchangeInfo oauth.TokenExchangeInfo, credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string, key *ocrypto.RsaKeyPair) (*IDPTokenExchangeTokenSource, error) {
+	idpSource, err := NewIDPAccessTokenSource(credentials, idpTokenEndpoint, scopes, key)
 	if err != nil {
 		return nil, err
 	}

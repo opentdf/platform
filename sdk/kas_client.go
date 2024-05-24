@@ -42,18 +42,13 @@ type rewrapRequestBody struct {
 	SchemaVersion   string    `json:"schemaVersion,omitempty"`
 }
 
-func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource) (*KASClient, error) {
-	rsaKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
-	}
-
-	clientPublicKey, err := rsaKeyPair.PublicKeyInPemFormat()
+func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, kasKey ocrypto.RsaKeyPair) (*KASClient, error) {
+	clientPublicKey, err := kasKey.PublicKeyInPemFormat()
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
 	}
 
-	clientPrivateKey, err := rsaKeyPair.PrivateKeyInPemFormat()
+	clientPrivateKey, err := kasKey.PrivateKeyInPemFormat()
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
 	}
@@ -84,7 +79,7 @@ func (k *KASClient) makeRewrapRequest(keyAccess KeyAccess, policy string) (*kas.
 
 	conn, err := grpc.Dial(grpcAddress, k.dialOptions...)
 	if err != nil {
-		return nil, fmt.Errorf("error connecting to kas: %w", err)
+		return nil, fmt.Errorf("error connecting to sas: %w", err)
 	}
 	defer conn.Close()
 

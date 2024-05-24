@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.4.3](https://github.com/opentdf/platform/compare/service/v0.4.2...service/v0.4.3) (2024-05-22)
+
+
+### Features
+
+* **authz:** Allow un-scoped GetEntitlements calls ([#833](https://github.com/opentdf/platform/issues/833)) ([9146947](https://github.com/opentdf/platform/commit/9146947a8df6f91dc733e957ba9b663223cd4fc4))
+* **authz:** Handle jwts as entity chains in decision requests ([#759](https://github.com/opentdf/platform/issues/759)) ([65612e0](https://github.com/opentdf/platform/commit/65612e08b418eb17c9576903c002685daed21ec1))
+* **ci:** Add e2e roundtrip tests for different attribute combinations ([#790](https://github.com/opentdf/platform/issues/790)) ([1b0ec23](https://github.com/opentdf/platform/commit/1b0ec2347b1dc43c90fae600aebe9707351ea9c0))
+* **core:** Adds opentdf.hsm build constraint ([#830](https://github.com/opentdf/platform/issues/830)) ([e13e52a](https://github.com/opentdf/platform/commit/e13e52a5fb860213b195a14a5d2be087ffb49cb3))
+* **core:** audit logging ([#774](https://github.com/opentdf/platform/issues/774)) ([ea58b3c](https://github.com/opentdf/platform/commit/ea58b3c359d3a68c6436b0472c90bfd5ad4cb06c))
+
+
+### Bug Fixes
+
+* **authz:** Populate fqn field in attribute values returned from GetAttributeValuesByFqns ([#816](https://github.com/opentdf/platform/issues/816)) ([0ac8390](https://github.com/opentdf/platform/commit/0ac83904836f1c0b42416d137f4a929a7804467d))
+* **authz:** Typo in client secret config ([#835](https://github.com/opentdf/platform/issues/835)) ([7cad1f1](https://github.com/opentdf/platform/commit/7cad1f11cc16d81e3b37a5b17dc6f1298f423496))
+* bump internal versions ([#840](https://github.com/opentdf/platform/issues/840)) ([8f45f18](https://github.com/opentdf/platform/commit/8f45f184eaa2512fd0633c4afaf9f148d415cb74))
+* **core:** bump sdk deps to 0.2.3 ([#848](https://github.com/opentdf/platform/issues/848)) ([ca8b9f7](https://github.com/opentdf/platform/commit/ca8b9f71102dbdbfcb7b6a327567d7a078e4e4f7))
+* **policy:** fix policy fqn-reindex command schema suffix ([#818](https://github.com/opentdf/platform/issues/818)) ([aff9850](https://github.com/opentdf/platform/commit/aff985092e83b5d1c14ef48f9c92df66b726e8d2)), closes [#817](https://github.com/opentdf/platform/issues/817)
+* **policy:** GetAttributeValuesByFqns and MatchSubjectMappings should not return deactivated policy objects ([#813](https://github.com/opentdf/platform/issues/813)) ([41ca82d](https://github.com/opentdf/platform/commit/41ca82d692209d120bfa52800fa0988bf373b0b5)), closes [#494](https://github.com/opentdf/platform/issues/494)
+* **policy:** make resource-mappings update patch instead of put in RESTful gateway ([#824](https://github.com/opentdf/platform/issues/824)) ([1878bb5](https://github.com/opentdf/platform/commit/1878bb55fb17419487e6c8add6d363469e364923)), closes [#313](https://github.com/opentdf/platform/issues/313)
+
 ## [0.4.2](https://github.com/opentdf/platform/compare/service/v0.4.1...service/v0.4.2) (2024-05-15)
 
 

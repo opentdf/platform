@@ -324,7 +324,7 @@ func (c PolicyDBClient) ListAllAttributes(ctx context.Context, state string, nam
 	if err != nil {
 		return nil, err
 	}
-	slog.Info("list all attributes", slog.String("sql", sql), slog.Any("args", args))
+	slog.Debug("list all attributes", slog.String("sql", sql), slog.Any("args", args))
 
 	rows, err := c.Query(ctx, sql, args)
 	if err != nil {
@@ -364,7 +364,7 @@ func (c PolicyDBClient) ListAllAttributesWithout(ctx context.Context, state stri
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-	slog.Info("list", slog.Any("list", list))
+	slog.Debug("list", slog.Any("list", list))
 
 	return list, nil
 }

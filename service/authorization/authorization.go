@@ -79,11 +79,13 @@ func NewRegistration() serviceregistry.Registration {
 			if ok {
 				tokenEndpoint, ok = val.(string)
 				if !ok {
-					panic("Error casting tokenEndpoint to string")
+					panic("Error casting tokenendpoint to string")
 				}
 			}
 			config := clientcredentials.Config{ClientID: clientID, ClientSecret: clientSecret, TokenURL: tokenEndpoint}
+			slog.Debug("authorization service client config", slog.Any("config", config))
 			newTokenSource := oauth2.ReuseTokenSourceWithExpiry(nil, config.TokenSource(context.Background()), tokenExpiryDelay)
+			slog.Debug("authorization service token source created", slog.Any("token_source", newTokenSource))
 
 			as.ersURL = ersURL
 			as.tokenSource = &newTokenSource
@@ -320,12 +322,15 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		// get the client auth token
 		authToken, err := (*as.tokenSource).Token()
 		if err != nil {
-			return nil, err
+			slog.Error("failed to get client auth token in GetEntitlements", slog.String("error", err.Error()))
+			return nil, fmt.Errorf("failed to get client auth token in GetEntitlements: %w", err)
 		}
 		// OPA
 		in, err := entitlements.OpaInput(entity, subjectMappings, as.ersURL, authToken.AccessToken)
 		if err != nil {
-			return nil, err
+			slog.Error("failed to build OPA input", slog.Any("entity", entity), slog.String("error", err.Error()))
+			slog.Debug("authToken", "authToken", authToken) // only log token in debug mode
+			return nil, fmt.Errorf("failed to build OPA input in GetEntitlements: %w", err)
 		}
 		as.logger.DebugContext(ctx, "entitlements", "entity_id", entity.GetId(), "input", fmt.Sprintf("%+v", in))
 		// uncomment for debugging
@@ -346,7 +351,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		}
 		decision, err := as.eng.Decision(ctx, options)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get decision from OPA Engine in GetEntitlements: %w", err)
 		}
 		// uncomment for debugging
 		// if slog.Default().Enabled(ctx, slog.LevelDebug) {

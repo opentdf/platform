@@ -34,6 +34,7 @@ func NewRegistration() serviceregistry.Registration {
 				AttributeSvc:   nil,
 				CryptoProvider: srp.OTDF.CryptoProvider,
 				SDK:            srp.SDK,
+				Logger:         srp.Logger,
 			}
 
 			if err := srp.RegisterReadinessCheck("kas", p.IsReady); err != nil {

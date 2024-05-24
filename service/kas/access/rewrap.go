@@ -16,7 +16,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 
@@ -29,6 +28,7 @@ import (
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/auth"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/kas/tdf3"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -72,11 +72,11 @@ func err403(s string) error {
 	return errors.Join(ErrUser, status.Error(codes.PermissionDenied, s))
 }
 
-func generateHMACDigest(ctx context.Context, msg, key []byte) ([]byte, error) {
+func generateHMACDigest(ctx context.Context, msg, key []byte, logger logger.Logger) ([]byte, error) {
 	mac := hmac.New(sha256.New, key)
 	_, err := mac.Write(msg)
 	if err != nil {
-		slog.WarnContext(ctx, "failed to compute hmac")
+		logger.WarnContext(ctx, "failed to compute hmac")
 		return nil, errors.Join(ErrUser, status.Error(codes.InvalidArgument, "policy hmac"))
 	}
 	return mac.Sum(nil), nil
@@ -84,48 +84,48 @@ func generateHMACDigest(ctx context.Context, msg, key []byte) ([]byte, error) {
 
 var acceptableSkew = 30 * time.Second
 
-func verifySRT(ctx context.Context, srt string, dpopJWK jwk.Key) (string, error) {
+func verifySRT(ctx context.Context, srt string, dpopJWK jwk.Key, logger logger.Logger) (string, error) {
 	token, err := jwt.Parse([]byte(srt), jwt.WithKey(jwa.RS256, dpopJWK), jwt.WithAcceptableSkew(acceptableSkew))
 	if err != nil {
-		slog.WarnContext(ctx, "unable to verify request token", "err", err, "srt", srt, "jwk", dpopJWK)
+		logger.WarnContext(ctx, "unable to verify request token", "err", err, "srt", srt, "jwk", dpopJWK)
 		return "", err401("unable to verify request token")
 	}
-	return justRequestBody(ctx, token)
+	return justRequestBody(ctx, token, logger)
 }
 
-func noverify(ctx context.Context, srt string) (string, error) {
+func noverify(ctx context.Context, srt string, logger logger.Logger) (string, error) {
 	token, err := jwt.Parse([]byte(srt), jwt.WithVerify(false), jwt.WithAcceptableSkew(acceptableSkew))
 	if err != nil {
-		slog.WarnContext(ctx, "unable to validate or parse token", "err", err)
+		logger.WarnContext(ctx, "unable to validate or parse token", "err", err)
 		return "", err401("could not parse token")
 	}
-	return justRequestBody(ctx, token)
+	return justRequestBody(ctx, token, logger)
 }
 
-func justRequestBody(ctx context.Context, token jwt.Token) (string, error) {
+func justRequestBody(ctx context.Context, token jwt.Token, logger logger.Logger) (string, error) {
 	rb, exists := token.Get("requestBody")
 	if !exists {
-		slog.WarnContext(ctx, "missing request body")
+		logger.WarnContext(ctx, "missing request body")
 		return "", err400("missing request body")
 	}
 
 	rbString, ok := rb.(string)
 	if !ok {
-		slog.WarnContext(ctx, "invalid request body")
+		logger.WarnContext(ctx, "invalid request body")
 		return "", err400("invalid request body")
 	}
 	return rbString, nil
 }
 
-func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest) (*RequestBody, error) {
+func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest, logger logger.Logger) (*RequestBody, error) {
 	// First load legacy method for verifying SRT
 	md, exists := metadata.FromIncomingContext(ctx)
 	if !exists {
-		slog.WarnContext(ctx, "missing metadata for srt validation")
+		logger.WarnContext(ctx, "missing metadata for srt validation")
 		return nil, errors.New("missing metadata")
 	}
 	if vpk, ok := md["X-Virtrupubkey"]; ok && len(vpk) == 1 {
-		slog.InfoContext(ctx, "Legacy Client: Processing X-Virtrupubkey")
+		logger.InfoContext(ctx, "Legacy Client: Processing X-Virtrupubkey")
 	}
 
 	// get dpop public key from context
@@ -135,20 +135,20 @@ func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest) (*RequestBody,
 	var rbString string
 	srt := in.GetSignedRequestToken()
 	if dpopJWK == nil {
-		slog.InfoContext(ctx, "no DPoP key provided")
+		logger.InfoContext(ctx, "no DPoP key provided")
 		// if we have no DPoP key it's for one of two reasons:
 		// 1. auth is disabled so we can't get a DPoP JWK
 		// 2. auth is enabled _but_ we aren't requiring DPoP
 		// in either case letting the request through makes sense
-		rbString, err = noverify(ctx, srt)
+		rbString, err = noverify(ctx, srt, logger)
 		if err != nil {
-			slog.ErrorContext(ctx, "unable to load RSA verifier", "err", err)
+			logger.ErrorContext(ctx, "unable to load RSA verifier", "err", err)
 			return nil, err
 		}
 	} else {
 		// verify and validate the request token
 		var err error
-		rbString, err = verifySRT(ctx, srt, dpopJWK)
+		rbString, err = verifySRT(ctx, srt, dpopJWK, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -157,21 +157,21 @@ func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest) (*RequestBody,
 	var requestBody RequestBody
 	err = json.Unmarshal([]byte(rbString), &requestBody)
 	if err != nil {
-		slog.WarnContext(ctx, "invalid request body")
+		logger.WarnContext(ctx, "invalid request body")
 		return nil, err400("invalid request body")
 	}
 
-	slog.DebugContext(ctx, "extract public key", "requestBody.ClientPublicKey", requestBody.ClientPublicKey)
+	logger.DebugContext(ctx, "extract public key", "requestBody.ClientPublicKey", requestBody.ClientPublicKey)
 	block, _ := pem.Decode([]byte(requestBody.ClientPublicKey))
 	if block == nil {
-		slog.WarnContext(ctx, "missing clientPublicKey")
+		logger.WarnContext(ctx, "missing clientPublicKey")
 		return nil, err400("clientPublicKey failure")
 	}
 
 	// Try to parse the clientPublicKey
 	clientPublicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		slog.WarnContext(ctx, "failure to parse clientPublicKey", "err", err)
+		logger.WarnContext(ctx, "failure to parse clientPublicKey", "err", err)
 		return nil, err400("clientPublicKey parse failure")
 	}
 	// Check to make sure the clientPublicKey is a supported key type
@@ -183,15 +183,15 @@ func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest) (*RequestBody,
 		requestBody.PublicKey = publicKey
 		return &requestBody, nil
 	default:
-		slog.WarnContext(ctx, fmt.Sprintf("clientPublicKey not a supported key, was [%T]", clientPublicKey))
+		logger.WarnContext(ctx, fmt.Sprintf("clientPublicKey not a supported key, was [%T]", clientPublicKey))
 		return nil, err400("clientPublicKey unsupported type")
 	}
 }
 
-func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byte) (*Policy, error) {
-	actualHMAC, err := generateHMACDigest(ctx, []byte(requestBody.Policy), k)
+func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byte, logger logger.Logger) (*Policy, error) {
+	actualHMAC, err := generateHMACDigest(ctx, []byte(requestBody.Policy), k, logger)
 	if err != nil {
-		slog.WarnContext(ctx, "unable to generate policy hmac", "err", err)
+		logger.WarnContext(ctx, "unable to generate policy hmac", "err", err)
 		return nil, err400("bad request")
 	}
 	expectedHMAC := make([]byte, base64.StdEncoding.DecodedLen(len(requestBody.KeyAccess.PolicyBinding)))
@@ -201,29 +201,29 @@ func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byt
 	}
 	expectedHMAC = expectedHMAC[:n]
 	if err != nil {
-		slog.WarnContext(ctx, "invalid policy binding", "err", err)
+		logger.WarnContext(ctx, "invalid policy binding", "err", err)
 		return nil, err400("bad request")
 	}
 	if !hmac.Equal(actualHMAC, expectedHMAC) {
-		slog.WarnContext(ctx, "policy hmac mismatch", "actual", actualHMAC, "expected", expectedHMAC, "policyBinding", requestBody.KeyAccess.PolicyBinding)
+		logger.WarnContext(ctx, "policy hmac mismatch", "actual", actualHMAC, "expected", expectedHMAC, "policyBinding", requestBody.KeyAccess.PolicyBinding)
 		return nil, err400("bad request")
 	}
 	sDecPolicy, err := base64.StdEncoding.DecodeString(requestBody.Policy)
 	if err != nil {
-		slog.WarnContext(ctx, "unable to decode policy", "err", err)
+		logger.WarnContext(ctx, "unable to decode policy", "err", err)
 		return nil, err400("bad request")
 	}
 	decoder := json.NewDecoder(strings.NewReader(string(sDecPolicy)))
 	var policy Policy
 	err = decoder.Decode(&policy)
 	if err != nil {
-		slog.WarnContext(ctx, "unable to decode policy", "err", err)
+		logger.WarnContext(ctx, "unable to decode policy", "err", err)
 		return nil, err400("bad request")
 	}
 	return &policy, nil
 }
 
-func getEntityInfo(ctx context.Context) (*entityInfo, error) {
+func getEntityInfo(ctx context.Context, logger logger.Logger) (*entityInfo, error) {
 	var info = new(entityInfo)
 
 	token := auth.GetAccessTokenFromContext(ctx)
@@ -236,10 +236,10 @@ func getEntityInfo(ctx context.Context) (*entityInfo, error) {
 		var subAssert bool
 		info.EntityID, subAssert = sub.(string)
 		if !subAssert {
-			slog.WarnContext(ctx, "sub not a string")
+			logger.WarnContext(ctx, "sub not a string")
 		}
 	} else {
-		slog.WarnContext(ctx, "missing sub")
+		logger.WarnContext(ctx, "missing sub")
 	}
 
 	info.Token = auth.GetRawAccessTokenFromContext(ctx)
@@ -248,26 +248,26 @@ func getEntityInfo(ctx context.Context) (*entityInfo, error) {
 }
 
 func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
-	slog.DebugContext(ctx, "REWRAP")
+	p.Logger.DebugContext(ctx, "REWRAP")
 
-	body, err := extractSRTBody(ctx, in)
+	body, err := extractSRTBody(ctx, in, *p.Logger)
 	if err != nil {
-		slog.DebugContext(ctx, "unverifiable srt", "err", err)
+		p.Logger.DebugContext(ctx, "unverifiable srt", "err", err)
 		return nil, err
 	}
 
-	entityInfo, err := getEntityInfo(ctx)
+	entityInfo, err := getEntityInfo(ctx, *p.Logger)
 	if err != nil {
-		slog.DebugContext(ctx, "no entity info", "err", err)
+		p.Logger.DebugContext(ctx, "no entity info", "err", err)
 		return nil, err
 	}
 
 	if !strings.HasPrefix(body.KeyAccess.URL, p.URI.String()) {
-		slog.InfoContext(ctx, "mismatched key access url", "keyAccessURL", body.KeyAccess.URL, "kasURL", p.URI.String())
+		p.Logger.InfoContext(ctx, "mismatched key access url", "keyAccessURL", body.KeyAccess.URL, "kasURL", p.URI.String())
 	}
 
 	if body.Algorithm == "" {
-		slog.DebugContext(ctx, "default rewrap algorithm")
+		p.Logger.DebugContext(ctx, "default rewrap algorithm")
 		body.Algorithm = "rsa:2048"
 	}
 
@@ -280,17 +280,17 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
 	symmetricKey, err := p.CryptoProvider.RSADecrypt(crypto.SHA1, "UnKnown", "", body.KeyAccess.WrappedKey)
 	if err != nil {
-		slog.WarnContext(ctx, "failure to decrypt dek", "err", err)
+		p.Logger.WarnContext(ctx, "failure to decrypt dek", "err", err)
 		return nil, err400("bad request")
 	}
 
-	slog.DebugContext(ctx, "verifying policy binding", "requestBody.policy", body.Policy)
-	policy, err := verifyAndParsePolicy(ctx, body, symmetricKey)
+	p.Logger.DebugContext(ctx, "verifying policy binding", "requestBody.policy", body.Policy)
+	policy, err := verifyAndParsePolicy(ctx, body, symmetricKey, *p.Logger)
 	if err != nil {
 		return nil, err
 	}
 
-	slog.DebugContext(ctx, "extracting policy", "requestBody.policy", body.Policy)
+	p.Logger.DebugContext(ctx, "extracting policy", "requestBody.policy", body.Policy)
 	// changed use the entities in the token to get the decisions
 	tok := &authorization.Token{
 		Id:  "rewrap-tok",
@@ -299,27 +299,45 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 
 	access, err := canAccess(ctx, tok, *policy, p.SDK)
 
+	auditPolicy := transformAuditPolicy(policy, entity.Token, *p.Logger)
+
 	if err != nil {
-		slog.WarnContext(ctx, "Could not perform access decision!", "err", err)
+		p.Logger.WarnContext(ctx, "Could not perform access decision!", "err", err)
+		err := p.Logger.Audit.RewrapFailure(ctx, *auditPolicy)
+		if err != nil {
+			p.Logger.ErrorContext(ctx, "failed to audit rewrap failure", "err", err)
+		}
 		return nil, err403("forbidden")
 	}
 
 	if !access {
-		slog.WarnContext(ctx, "Access Denied; no reason given")
+		p.Logger.WarnContext(ctx, "Access Denied; no reason given")
+		err := p.Logger.Audit.RewrapFailure(ctx, *auditPolicy)
+		if err != nil {
+			p.Logger.ErrorContext(ctx, "failed to audit rewrap failure", "err", err)
+		}
 		return nil, err403("forbidden")
 	}
 
 	asymEncrypt, err := ocrypto.NewAsymEncryption(body.ClientPublicKey)
 	if err != nil {
-		slog.WarnContext(ctx, "ocrypto.NewAsymEncryption:", "err", err)
+		p.Logger.WarnContext(ctx, "ocrypto.NewAsymEncryption:", "err", err)
 	}
 
 	rewrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
 	if err != nil {
-		slog.WarnContext(ctx, "rewrap: ocrypto.AsymEncryption.encrypt failed", "err", err, "clientPublicKey", &body.ClientPublicKey)
+		p.Logger.WarnContext(ctx, "rewrap: ocrypto.AsymEncryption.encrypt failed", "err", err, "clientPublicKey", &body.ClientPublicKey)
+		err = p.Logger.Audit.RewrapFailure(ctx, *auditPolicy)
+		if err != nil {
+			p.Logger.ErrorContext(ctx, "failed to audit rewrap failure", "err", err)
+		}
 		return nil, err400("bad key for rewrap")
 	}
 
+	err = p.Logger.Audit.RewrapSuccess(ctx, *auditPolicy)
+	if err != nil {
+		p.Logger.ErrorContext(ctx, "failed to audit rewrap success", "err", err)
+	}
 	return &kaspb.RewrapResponse{
 		EntityWrappedKey: rewrappedKey,
 		SessionPublicKey: "",
@@ -403,4 +421,17 @@ func wrapKeyAES(sessionKey, dek []byte) ([]byte, error) {
 	}
 
 	return cipherText, nil
+}
+
+func transformAuditPolicy(policy *Policy, entityToken string, lg logger.Logger) *logger.AuditPolicy {
+	var token, err = jwt.Parse([]byte(entityToken), jwt.WithVerify(false))
+	if err != nil {
+		lg.Warn("unable to parse entity token", "err", err)
+	}
+
+	var dataAttributes []logger.AuditPolicySimpleAttribute
+	for _, attr := range policy.Body.DataAttributes {
+		dataAttributes = append(dataAttributes, logger.AuditPolicySimpleAttribute{URI: attr.URI})
+	}
+	return logger.CreateAuditPolicy(policy.UUID, dataAttributes, policy.Body.Dissem, token)
 }

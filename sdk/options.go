@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"crypto/rsa"
 	"crypto/tls"
 
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -112,14 +113,16 @@ func WithExtraDialOptions(dialOptions ...grpc.DialOption) Option {
 	}
 }
 
-func WithKASKey(key ocrypto.RsaKeyPair) Option {
+func WithSessionEncryptionRSA(key *rsa.PrivateKey) Option {
 	return func(c *config) {
-		c.kasKey = &key
+		o := ocrypto.FromRSA(key)
+		c.kasKey = &o
 	}
 }
 
-func WithDPoPKey(key ocrypto.RsaKeyPair) Option {
+func WithSessionSignerRSA(key *rsa.PrivateKey) Option {
 	return func(c *config) {
-		c.dpopKey = &key
+		o := ocrypto.FromRSA(key)
+		c.dpopKey = &o
 	}
 }

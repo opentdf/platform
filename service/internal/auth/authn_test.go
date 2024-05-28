@@ -494,7 +494,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	})
 	s.Require().NoError(err)
 	req.Header.Set("authorization", fmt.Sprintf("Bearer %s", signedTok))
-	dpopTok, err := addingInterceptor.GetDPoPToken("/attributes", "GET", string(signedTok))
+	dpopTok, err := addingInterceptor.GetDPoPToken(server.URL+"/attributes", "GET", string(signedTok))
 	s.Require().NoError(err)
 	req.Header.Set("DPoP", dpopTok)
 

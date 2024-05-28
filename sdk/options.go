@@ -26,7 +26,7 @@ type config struct {
 	entityresolutionConn *grpc.ClientConn
 	extraDialOptions     []grpc.DialOption
 	certExchange         *oauth.CertExchangeInfo
-	kasKey               *ocrypto.RsaKeyPair
+	kasSessionKey        *ocrypto.RsaKeyPair
 	dpopKey              *ocrypto.RsaKeyPair
 }
 
@@ -115,14 +115,14 @@ func WithExtraDialOptions(dialOptions ...grpc.DialOption) Option {
 
 func WithSessionEncryptionRSA(key *rsa.PrivateKey) Option {
 	return func(c *config) {
-		o := ocrypto.FromRSA(key)
-		c.kasKey = &o
+		okey := ocrypto.FromRSA(key)
+		c.kasSessionKey = &okey
 	}
 }
 
 func WithSessionSignerRSA(key *rsa.PrivateKey) Option {
 	return func(c *config) {
-		o := ocrypto.FromRSA(key)
-		c.dpopKey = &o
+		okey := ocrypto.FromRSA(key)
+		c.dpopKey = &okey
 	}
 }

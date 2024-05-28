@@ -33,7 +33,7 @@ func (c Error) Error() string {
 type SDK struct {
 	conn                    *grpc.ClientConn
 	dialOptions             []grpc.DialOption
-	kasKey                  ocrypto.RsaKeyPair
+	kasSessionKey           ocrypto.RsaKeyPair
 	tokenSource             auth.AccessTokenSource
 	Namespaces              namespaces.NamespaceServiceClient
 	Attributes              attributes.AttributesServiceClient
@@ -57,12 +57,12 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		opt(cfg)
 	}
 
-	if cfg.kasKey == nil {
+	if cfg.kasSessionKey == nil {
 		key, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
 		if err != nil {
 			return nil, err
 		}
-		cfg.kasKey = &key
+		cfg.kasSessionKey = &key
 	}
 
 	// once we change KAS to use standard DPoP we can put this all in the `build()` method
@@ -118,7 +118,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		conn:                    defaultConn,
 		dialOptions:             dialOptions,
 		tokenSource:             accessTokenSource,
-		kasKey:                  *cfg.kasKey,
+		kasSessionKey:           *cfg.kasSessionKey,
 		Attributes:              attributes.NewAttributesServiceClient(policyConn),
 		Namespaces:              namespaces.NewNamespaceServiceClient(policyConn),
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(policyConn),

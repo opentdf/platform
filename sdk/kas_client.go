@@ -42,13 +42,13 @@ type rewrapRequestBody struct {
 	SchemaVersion   string    `json:"schemaVersion,omitempty"`
 }
 
-func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, kasKey ocrypto.RsaKeyPair) (*KASClient, error) {
-	clientPublicKey, err := kasKey.PublicKeyInPemFormat()
+func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, sessionKey ocrypto.RsaKeyPair) (*KASClient, error) {
+	clientPublicKey, err := sessionKey.PublicKeyInPemFormat()
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
 	}
 
-	clientPrivateKey, err := kasKey.PrivateKeyInPemFormat()
+	clientPrivateKey, err := sessionKey.PrivateKeyInPemFormat()
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
 	}

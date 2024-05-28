@@ -29,6 +29,9 @@ func GetMethods(i interface{}) []string {
 
 func TestNew_ShouldCreateSDK(t *testing.T) {
 	sdk, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfigurationType{
+			"platform_issuer": "https://example.org",
+		}),
 		sdk.WithClientCredentials("myid", "mysecret", nil),
 		sdk.WithTokenEndpoint("https://example.org/token"),
 	)
@@ -60,6 +63,9 @@ func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {
 
 func TestNew_ShouldCloseConnections(t *testing.T) {
 	sdk, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfigurationType{
+			"platform_issuer": "https://example.org",
+		}),
 		sdk.WithClientCredentials("myid", "mysecret", nil),
 		sdk.WithTokenEndpoint("https://example.org/token"),
 	)
@@ -69,6 +75,9 @@ func TestNew_ShouldCloseConnections(t *testing.T) {
 
 func TestNew_ShouldHaveSameMethods(t *testing.T) {
 	sdk, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfigurationType{
+			"platform_issuer": "https://example.org",
+		}),
 		sdk.WithClientCredentials("myid", "mysecret", nil),
 		sdk.WithTokenEndpoint("https://example.org/token"),
 	)

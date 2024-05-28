@@ -117,18 +117,17 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 
 	// If platformConfiguration is not provided, fetch it from the platform
-	if cfg.platformConfiguration == nil && platformEndpoint != "" {
+	if cfg.platformConfiguration == nil && platformEndpoint != "" && (cfg.clientCredentials != nil || cfg.certExchange != nil || cfg.tokenExchange != nil) {
 		pcfg, err := getPlatformConfiguration(wellknownConn)
 		if err != nil {
 			return nil, errors.Join(ErrPlatformConfigFailed, err)
 		}
 		cfg.platformConfiguration = pcfg
-	}
-
-	if cfg.tokenEndpoint == "" {
-		cfg.tokenEndpoint, err = getTokenEndpoint(cfg.platformConfiguration)
-		if err != nil {
-			return nil, err
+		if cfg.tokenEndpoint == "" {
+			cfg.tokenEndpoint, err = getTokenEndpoint(*cfg)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -237,7 +236,7 @@ func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfigurationType,
 	response, err := wellKnownConfig.GetWellKnownConfiguration(context.Background(), &req)
 
 	if err != nil {
-		return nil, errors.New("unable to retrieve config information, and none was provided")
+		return nil, errors.Join(errors.New("unable to retrieve config information, and none was provided"), err)
 	}
 	// Get token endpoint
 	configuration := response.GetConfiguration()
@@ -245,26 +244,28 @@ func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfigurationType,
 	return configuration.AsMap(), nil
 }
 
-func getTokenEndpoint(c PlatformConfigurationType) (string, error) {
-	issuerURL, ok := c["platform_issuer"].(string)
+// TODO: This should be moved to a separate package. We do discovery in ../service/internal/auth/discovery.go
+func getTokenEndpoint(c config) (string, error) {
+	issuerURL, ok := c.platformConfiguration["platform_issuer"].(string)
 
 	if !ok {
 		return "", errors.New("platform_issuer is not set, or is not a string")
 	}
 
-	return fetchTokenEndpoint(issuerURL)
-}
+	oidcConfigURL := issuerURL + "/.well-known/openid-configuration"
 
-// TODO: This should be moved to a separate package. We do discovery in ../service/internal/auth/discovery.go
-func fetchTokenEndpoint(issuerURL string) (string, error) {
-	wellKnownConfigURL := issuerURL + "/.well-known/openid-configuration"
-
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, wellKnownConfigURL, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, oidcConfigURL, nil)
 	if err != nil {
 		return "", err
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: c.tlsConfig,
+		},
+	}
+
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -284,5 +285,6 @@ func fetchTokenEndpoint(issuerURL string) (string, error) {
 	if !ok {
 		return "", errors.New("token_endpoint not found in well-known configuration")
 	}
+
 	return tokenEndpoint, nil
 }

@@ -92,7 +92,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 
 	// If platformConfiguration is not provided, fetch it from the platform
-	if cfg.platformConfiguration == nil && platformEndpoint != "" {
+	if cfg.platformConfiguration == nil && platformEndpoint != "" { //nolint:nestif // Most of checks are for errors
 		// We need an initial connection to the platform to get the platform configuration
 		initialConn, err := grpc.Dial(platformEndpoint, dialOptions...)
 		if err != nil {

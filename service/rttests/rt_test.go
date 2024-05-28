@@ -122,7 +122,7 @@ func CreateTestData(testConfig *TestConfig) error {
 		sdk.WithInsecurePlaintextConn(),
 		sdk.WithClientCredentials(testConfig.ClientID,
 			testConfig.ClientSecret, nil),
-		sdk.WithTokenEndpoint(testConfig.TokenEndpoint))
+	)
 	if err != nil {
 		slog.Error("could not connect", slog.String("error", err.Error()))
 		return err

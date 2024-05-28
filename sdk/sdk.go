@@ -48,14 +48,14 @@ type SDK struct {
 	SubjectMapping          subjectmapping.SubjectMappingServiceClient
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
 	Authorization           authorization.AuthorizationServiceClient
-	platformConfiguration   PlatformConfigurationType
-	WellknownConfiguration  wellknownconfiguration.WellKnownServiceClient
+	platformConfiguration   PlatformConfiguration
+	wellknownConfiguration  wellknownconfiguration.WellKnownServiceClient
 	EntityResoution         entityresolution.EntityResolutionServiceClient
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	var (
-		defaultConn          *grpc.ClientConn
+		defaultConn          *grpc.ClientConn // Connection to the platform if no other connection is provided
 		policyConn           *grpc.ClientConn
 		authorizationConn    *grpc.ClientConn
 		wellknownConn        *grpc.ClientConn
@@ -75,6 +75,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		opt(cfg)
 	}
 
+	// If KAS key is not provided, generate a new one
 	if cfg.kasKey == nil {
 		key, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
 		if err != nil {
@@ -88,6 +89,35 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	// Add extra grpc dial options if provided. This is useful during tests.
 	if len(cfg.extraDialOptions) > 0 {
 		dialOptions = append(dialOptions, cfg.extraDialOptions...)
+	}
+
+	// If platformConfiguration is not provided, fetch it from the platform
+	if cfg.platformConfiguration == nil && platformEndpoint != "" {
+		// We need an initial connection to the platform to get the platform configuration
+		initialConn, err := grpc.Dial(platformEndpoint, dialOptions...)
+		if err != nil {
+			return nil, errors.Join(ErrGrpcDialFailed, err)
+		}
+		pcfg, err := getPlatformConfiguration(initialConn)
+		if err != nil {
+			return nil, errors.Join(ErrPlatformConfigFailed, err)
+		}
+		cfg.platformConfiguration = pcfg
+		if cfg.tokenEndpoint == "" {
+			cfg.tokenEndpoint, err = getTokenEndpoint(*cfg)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	accessTokenSource, err := buildIDPTokenSource(cfg)
+	if err != nil {
+		return nil, err
+	}
+	if accessTokenSource != nil {
+		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource, cfg.tlsConfig)
+		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
 	}
 
 	if platformEndpoint != "" {
@@ -116,34 +146,10 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		wellknownConn = defaultConn
 	}
 
-	// If platformConfiguration is not provided, fetch it from the platform
-	if cfg.platformConfiguration == nil && platformEndpoint != "" && (cfg.clientCredentials != nil || cfg.certExchange != nil || cfg.tokenExchange != nil) {
-		pcfg, err := getPlatformConfiguration(wellknownConn)
-		if err != nil {
-			return nil, errors.Join(ErrPlatformConfigFailed, err)
-		}
-		cfg.platformConfiguration = pcfg
-		if cfg.tokenEndpoint == "" {
-			cfg.tokenEndpoint, err = getTokenEndpoint(*cfg)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
 	if cfg.entityresolutionConn != nil {
 		entityresolutionConn = cfg.entityresolutionConn
 	} else {
 		entityresolutionConn = defaultConn
-	}
-
-	accessTokenSource, err := buildIDPTokenSource(cfg)
-	if err != nil {
-		return nil, err
-	}
-	if accessTokenSource != nil {
-		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource, cfg.tlsConfig)
-		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
 	}
 
 	return &SDK{
@@ -159,7 +165,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(policyConn),
 		Authorization:           authorization.NewAuthorizationServiceClient(authorizationConn),
 		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(entityresolutionConn),
-		WellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(wellknownConn),
+		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(wellknownConn),
 	}, nil
 }
 

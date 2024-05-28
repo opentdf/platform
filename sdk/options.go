@@ -26,12 +26,12 @@ type config struct {
 	extraDialOptions      []grpc.DialOption
 	certExchange          *oauth.CertExchangeInfo
 	wellknownConn         *grpc.ClientConn
-	platformConfiguration PlatformConfigurationType
+	platformConfiguration PlatformConfiguration
 	kasKey                *ocrypto.RsaKeyPair
 	dpopKey               *ocrypto.RsaKeyPair
 }
 
-type PlatformConfigurationType map[string]interface{}
+type PlatformConfiguration map[string]interface{}
 
 func (c *config) build() []grpc.DialOption {
 	return []grpc.DialOption{c.dialOption}

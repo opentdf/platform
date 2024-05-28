@@ -113,6 +113,9 @@ func WithExtraDialOptions(dialOptions ...grpc.DialOption) Option {
 	}
 }
 
+// The session key pair is used to encrypt responses from KAS for a given session
+// and can be reused across an entire session.
+// Please use with caution.
 func WithSessionEncryptionRSA(key *rsa.PrivateKey) Option {
 	return func(c *config) {
 		okey := ocrypto.FromRSA(key)
@@ -120,6 +123,9 @@ func WithSessionEncryptionRSA(key *rsa.PrivateKey) Option {
 	}
 }
 
+// The DPoP key pair is used to implement sender constrained tokens from the identity provider,
+// and should be associated with the lifetime of a session for a given identity.
+// Please use with caution.
 func WithSessionSignerRSA(key *rsa.PrivateKey) Option {
 	return func(c *config) {
 		okey := ocrypto.FromRSA(key)

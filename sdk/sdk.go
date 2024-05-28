@@ -109,6 +109,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 				return nil, err
 			}
 		}
+		initialConn.Close()
 	}
 
 	accessTokenSource, err := buildIDPTokenSource(cfg)

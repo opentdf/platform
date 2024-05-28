@@ -55,7 +55,11 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 
 func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {
 	// When
-	sdk, err := sdk.New(goodPlatformEndpoint)
+	sdk, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"platform_issuer": "https://example.org",
+		}),
+	)
 	// Then
 	require.NoError(t, err)
 	assert.NotNil(t, sdk)

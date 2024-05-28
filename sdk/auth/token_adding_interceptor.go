@@ -15,7 +15,9 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -52,15 +54,18 @@ func (i TokenAddingInterceptor) AddCredentials(
 	if err == nil {
 		newMetadata = append(newMetadata, "Authorization", fmt.Sprintf("DPoP %s", accessToken))
 	} else {
-		slog.ErrorContext(ctx, "error getting access token. request will be unauthenticated", "error", err)
-		return invoker(ctx, method, req, reply, cc, opts...)
+		slog.ErrorContext(ctx, "error getting access token", "error", err)
+		return status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	dpopTok, err := i.GetDPoPToken(method, http.MethodPost, string(accessToken))
 	if err == nil {
 		newMetadata = append(newMetadata, "DPoP", dpopTok)
 	} else {
-		slog.ErrorContext(ctx, "error adding dpop token to outgoing request. Request will not have DPoP token", "error", err)
+		// since we don't have a setting about whether DPoP is in use on the client and this request _could_ succeed if
+		// they are talking to a server where DPoP is not required we will just let this through. this method is extremely
+		// unlikely to fail so hopefully this isn't confusing
+		slog.ErrorContext(ctx, "error getting DPoP token for outgoing request. Request will not have DPoP token", "error", err)
 	}
 
 	newCtx := metadata.AppendToOutgoingContext(ctx, newMetadata...)

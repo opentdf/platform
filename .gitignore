@@ -38,7 +38,9 @@ tmp-gen/
 service/rttests/*.tdf
 coverage.out
 coverage.lcov
+sdk/nanotest1.ntdf
 
 *.zip
 sensitive.txt.tdf
 keys/
+/examples/sensitive.txt.ntdf

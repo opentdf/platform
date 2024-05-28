@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto"
-	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/hmac"
 	"crypto/rsa"
@@ -16,6 +15,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -56,8 +56,9 @@ type entityInfo struct {
 }
 
 const (
-	ErrUser     = Error("request error")
-	ErrInternal = Error("internal error")
+	kNanoTDFGMACLength = 8
+	ErrUser            = Error("request error")
+	ErrInternal        = Error("internal error")
 )
 
 func err400(s string) error {
@@ -272,9 +273,18 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 	}
 
 	if body.Algorithm == "ec:secp256r1" {
-		return p.nanoTDFRewrap(body)
+		rsp, err := p.nanoTDFRewrap(ctx, body, entityInfo)
+		if err != nil {
+			slog.ErrorContext(ctx, "rewrap nano", "err", err)
+		}
+		p.Logger.DebugContext(ctx, "rewrap nano", "rsp", rsp)
+		return rsp, err
 	}
-	return p.tdf3Rewrap(ctx, body, entityInfo)
+	rsp, err := p.tdf3Rewrap(ctx, body, entityInfo)
+	if err != nil {
+		slog.ErrorContext(ctx, "rewrap tdf3", "err", err)
+	}
+	return rsp, err
 }
 
 func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
@@ -345,17 +355,58 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 	}, nil
 }
 
-func (p *Provider) nanoTDFRewrap(body *RequestBody) (*kaspb.RewrapResponse, error) {
+func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
 	headerReader := bytes.NewReader(body.KeyAccess.Header)
 
-	header, err := sdk.ReadNanoTDFHeader(headerReader)
+	header, _, err := sdk.NewNanoTDFHeaderFromReader(headerReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
 	}
 
-	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(header.EphemeralPublicKey.Key)
+	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(header.EphemeralKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
+	}
+
+	// check the policy binding
+	digest := ocrypto.CalculateSHA256(header.EncryptedPolicyBody)
+	binding := digest[len(digest)-kNanoTDFGMACLength:]
+	if !bytes.Equal(binding, header.PolicyBinding) {
+		return nil, fmt.Errorf("policy binding check failed")
+	}
+
+	// extract the policy
+	policy, err := extractNanoPolicy(symmetricKey, header)
+	if err != nil {
+		return nil, fmt.Errorf("Error extracting policy: %w", err)
+	}
+
+	// do the access check
+	tok := &authorization.Token{
+		Id:  "rewrap-tok",
+		Jwt: entity.Token,
+	}
+
+	access, err := canAccess(ctx, tok, *policy, p.SDK)
+
+	auditPolicy := transformAuditPolicy(policy, entity.Token, *p.Logger)
+
+	if err != nil {
+		p.Logger.WarnContext(ctx, "Could not perform access decision!", "err", err)
+		err := p.Logger.Audit.RewrapFailure(ctx, *auditPolicy)
+		if err != nil {
+			p.Logger.ErrorContext(ctx, "failed to audit rewrap failure", "err", err)
+		}
+		return nil, err403("forbidden")
+	}
+
+	if !access {
+		p.Logger.WarnContext(ctx, "Access Denied; no reason given")
+		err := p.Logger.Audit.RewrapFailure(ctx, *auditPolicy)
+		if err != nil {
+			p.Logger.ErrorContext(ctx, "failed to audit rewrap failure", "err", err)
+		}
+		return nil, err403("forbidden")
 	}
 
 	pub, ok := body.PublicKey.(*ecdsa.PublicKey)
@@ -371,10 +422,11 @@ func (p *Provider) nanoTDFRewrap(body *RequestBody) (*kaspb.RewrapResponse, erro
 	}
 
 	privateKeyHandle, publicKeyHandle, err := p.CryptoProvider.GenerateEphemeralKasKeys()
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate keypair: %w", err)
 	}
-	sessionKey, err := p.CryptoProvider.GenerateNanoTDFSessionKey(privateKeyHandle, pubKeyBytes)
+	sessionKey, err := p.CryptoProvider.GenerateNanoTDFSessionKey(privateKeyHandle, []byte(body.ClientPublicKey))
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate session key: %w", err)
 	}
@@ -384,29 +436,39 @@ func (p *Provider) nanoTDFRewrap(body *RequestBody) (*kaspb.RewrapResponse, erro
 		return nil, fmt.Errorf("failed to encrypt key: %w", err)
 	}
 
-	// see explanation why Public Key starts at position 2
-	//https://github.com/wqx0532/hyperledger-fabric-gm-1/blob/master/bccsp/pkcs11/pkcs11.go#L480
-	pubGoKey, err := ecdh.P256().NewPublicKey(publicKeyHandle[2:])
-	if err != nil {
-		return nil, fmt.Errorf("failed to make public key") // Handle error, e.g., invalid public key format
-	}
-
-	pbk, err := x509.MarshalPKIXPublicKey(pubGoKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert public Key to PKIX")
-	}
-
-	pemBlock := &pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: pbk,
-	}
-	pemString := string(pem.EncodeToMemory(pemBlock))
-
 	return &kaspb.RewrapResponse{
 		EntityWrappedKey: cipherText,
-		SessionPublicKey: pemString,
+		SessionPublicKey: string(publicKeyHandle),
 		SchemaVersion:    schemaVersion,
 	}, nil
+}
+
+func extractNanoPolicy(symmetricKey []byte, header sdk.NanoTDFHeader) (*Policy, error) {
+	gcm, err := ocrypto.NewAESGcm(symmetricKey)
+	if err != nil {
+		return nil, fmt.Errorf("crypto.NewAESGcm:%w", err)
+	}
+
+	const (
+		kIvLen = 12
+	)
+	iv := make([]byte, kIvLen)
+	tagSize, err := sdk.SizeOfAuthTagForCipher(header.GetCipher())
+	if err != nil {
+		return nil, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
+	}
+
+	policyData, err := gcm.DecryptWithIVAndTagSize(iv, header.EncryptedPolicyBody, tagSize)
+	if err != nil {
+		return nil, fmt.Errorf("Error decrypting policy body:%w", err)
+	}
+
+	var policy Policy
+	err = json.Unmarshal(policyData, &policy)
+	if err != nil {
+		return nil, fmt.Errorf("Error unmarshalling policy:%w", err)
+	}
+	return &policy, nil
 }
 
 func wrapKeyAES(sessionKey, dek []byte) ([]byte, error) {

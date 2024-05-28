@@ -122,7 +122,7 @@ func WithExtraDialOptions(dialOptions ...grpc.DialOption) Option {
 	}
 }
 
-func WithPlatformConfiguration(platformConfiguration PlatformConfigurationType) Option {
+func WithPlatformConfiguration(platformConfiguration PlatformConfiguration) Option {
 	return func(c *config) {
 		c.platformConfiguration = platformConfiguration
 	}

@@ -235,7 +235,7 @@ func (s SDK) Conn() *grpc.ClientConn {
 	return s.conn
 }
 
-func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfigurationType, error) {
+func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfiguration, error) {
 	req := wellknownconfiguration.GetWellKnownConfigurationRequest{}
 	wellKnownConfig := wellknownconfiguration.NewWellKnownServiceClient(conn)
 

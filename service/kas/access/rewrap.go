@@ -363,9 +363,9 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
 	}
 
-	ecCurve, err := header.GetSupportedECCurve()
+	ecCurve, err := header.ECCurve()
 	if err != nil {
-		return nil, fmt.Errorf("GetSupportedECCurve failed: %w", err)
+		return nil, fmt.Errorf("ECCurve failed: %w", err)
 	}
 
 	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(header.EphemeralKey, ecCurve)
@@ -380,26 +380,13 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 	}
 
 	// check the policy binding
-	digest := ocrypto.CalculateSHA256(header.EncryptedPolicyBody)
-	if header.IsEcdsaBindingEnabled() {
-		ephemeralECDSAPublicKey, err := ocrypto.UnCompressECPubKey(ecCurve, header.EphemeralKey)
-		if err != nil {
-			return nil, err
-		}
+	verify, err := header.VerifyPolicyBinding()
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify policy binding: %w", err)
+	}
 
-		verify := ocrypto.VerifyECDSASig(digest,
-			header.ECDSAPolicyBindingR,
-			header.ECDSAPolicyBindingS,
-			ephemeralECDSAPublicKey)
-		if !verify {
-			return nil, fmt.Errorf("ecdsa policy binding check failed")
-		}
-
-	} else {
-		binding := digest[len(digest)-kNanoTDFGMACLength:]
-		if !bytes.Equal(binding, header.GMACPolicyBinding) {
-			return nil, fmt.Errorf("policy binding check failed")
-		}
+	if !verify {
+		return nil, fmt.Errorf("policy binding verification failed")
 	}
 
 	// do the access check

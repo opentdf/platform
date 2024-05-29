@@ -204,7 +204,7 @@ func (s StandardCrypto) RSAPublicKeyAsJSON(keyID string) (string, error) {
 }
 
 func (s StandardCrypto) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error) {
-	ephemeralECDSAPublicKey, err := ocrypto.UnCompressECPubKey(curve, ephemeralPublicKeyBytes)
+	ephemeralECDSAPublicKey, err := ocrypto.UncompressECPubKey(curve, ephemeralPublicKeyBytes)
 	if err != nil {
 		return nil, err
 	}

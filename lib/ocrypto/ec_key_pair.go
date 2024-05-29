@@ -300,8 +300,8 @@ func ComputeECDHKeyFromECDHKeys(publicKey *ecdh.PublicKey, privateKey *ecdh.Priv
 	return sharedKey, nil
 }
 
-// UnCompressECPubKey create EC public key from compressed form
-func UnCompressECPubKey(curve elliptic.Curve, compressedPubKey []byte) (*ecdsa.PublicKey, error) {
+// UncompressECPubKey create EC public key from compressed form
+func UncompressECPubKey(curve elliptic.Curve, compressedPubKey []byte) (*ecdsa.PublicKey, error) {
 
 	// Converting ephemeralPublicKey byte array to *big.Int
 	x, y := elliptic.UnmarshalCompressed(curve, compressedPubKey)

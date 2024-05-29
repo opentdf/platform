@@ -102,8 +102,8 @@ func WithNanoKasInformation(kasInfoList ...NanoKASInfo) NanoTDFOption {
 	}
 }
 
-// WithPolicyEcdsaBinding enable ecdsa policy binding
-func WithPolicyEcdsaBinding() NanoTDFOption {
+// WithECDSAPolicyBinding enable ecdsa policy binding
+func WithECDSAPolicyBinding() NanoTDFOption {
 	return func(c *NanoTDFConfig) error {
 		c.bindCfg.useEcdsaBinding = true
 		return nil

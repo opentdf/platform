@@ -59,9 +59,9 @@ type NanoTDFHeader struct {
 	sigCfg              signatureConfig
 	EphemeralKey        []byte
 	EncryptedPolicyBody []byte
-	GMACPolicyBinding   []byte
-	ECDSAPolicyBindingR []byte
-	ECDSAPolicyBindingS []byte
+	gmacPolicyBinding   []byte
+	ecdsaPolicyBindingR []byte
+	ecdsaPolicyBindingS []byte
 }
 
 // GetCipher -- get the cipher from the nano tdf header
@@ -73,8 +73,33 @@ func (header *NanoTDFHeader) IsEcdsaBindingEnabled() bool {
 	return header.bindCfg.useEcdsaBinding
 }
 
-func (header *NanoTDFHeader) GetSupportedECCurve() (elliptic.Curve, error) {
+func (header *NanoTDFHeader) ECCurve() (elliptic.Curve, error) {
 	return ocrypto.GetECCurveFromECCMode(header.bindCfg.eccMode)
+}
+
+func (header *NanoTDFHeader) VerifyPolicyBinding() (bool, error) {
+
+	curve, err := ocrypto.GetECCurveFromECCMode(header.bindCfg.eccMode)
+	if err != nil {
+		return false, err
+	}
+
+	digest := ocrypto.CalculateSHA256(header.EncryptedPolicyBody)
+	if header.IsEcdsaBindingEnabled() {
+		ephemeralECDSAPublicKey, err := ocrypto.UncompressECPubKey(curve, header.EphemeralKey)
+		if err != nil {
+			return false, err
+		}
+
+		return ocrypto.VerifyECDSASig(digest,
+			header.ecdsaPolicyBindingR,
+			header.ecdsaPolicyBindingS,
+			ephemeralECDSAPublicKey), nil
+
+	} else {
+		binding := digest[len(digest)-kNanoTDFGMACLength:]
+		return bytes.Equal(binding, header.gmacPolicyBinding), nil
+	}
 }
 
 // ============================================================================================================
@@ -583,8 +608,8 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 		}
 		size += uint32(l)
 
-		header.ECDSAPolicyBindingR = make([]byte, oneBytes[0])
-		l, err = reader.Read(header.ECDSAPolicyBindingR)
+		header.ecdsaPolicyBindingR = make([]byte, oneBytes[0])
+		l, err = reader.Read(header.ecdsaPolicyBindingR)
 		if err != nil {
 			return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
 		}
@@ -597,15 +622,15 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 		}
 		size += uint32(l)
 
-		header.ECDSAPolicyBindingS = make([]byte, oneBytes[0])
-		l, err = reader.Read(header.ECDSAPolicyBindingS)
+		header.ecdsaPolicyBindingS = make([]byte, oneBytes[0])
+		l, err = reader.Read(header.ecdsaPolicyBindingS)
 		if err != nil {
 			return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
 		}
 		size += uint32(l)
 	} else {
-		header.GMACPolicyBinding = make([]byte, kNanoTDFGMACLength)
-		l, err = reader.Read(header.GMACPolicyBinding)
+		header.gmacPolicyBinding = make([]byte, kNanoTDFGMACLength)
+		l, err = reader.Read(header.gmacPolicyBinding)
 		if err != nil {
 			return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
 		}

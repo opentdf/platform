@@ -132,7 +132,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		dialOptions:             dialOptions,
 		tokenSource:             accessTokenSource,
 		platformConfiguration:   cfg.platformConfiguration,
-		kasKey:                  *cfg.kasKey,
+		kasSessionKey:           *cfg.kasSessionKey,
 		Attributes:              attributes.NewAttributesServiceClient(selectConn(cfg.policyConn, defaultConn)),
 		Namespaces:              namespaces.NewNamespaceServiceClient(selectConn(cfg.policyConn, defaultConn)),
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(selectConn(cfg.policyConn, defaultConn)),

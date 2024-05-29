@@ -47,7 +47,6 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 	assert.NotNil(t, s.ResourceMapping)
 	assert.NotNil(t, s.SubjectMapping)
 	assert.NotNil(t, s.KeyAccessServerRegistry)
-
 }
 
 func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {

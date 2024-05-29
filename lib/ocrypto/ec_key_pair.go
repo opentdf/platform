@@ -108,7 +108,6 @@ func (keyPair ECKeyPair) PublicKeyInPemFormat() (string, error) {
 			Bytes: publicKeyBytes,
 		},
 	)
-
 	return string(publicKeyPem), nil
 }
 
@@ -302,7 +301,6 @@ func ComputeECDHKeyFromECDHKeys(publicKey *ecdh.PublicKey, privateKey *ecdh.Priv
 
 // UncompressECPubKey create EC public key from compressed form
 func UncompressECPubKey(curve elliptic.Curve, compressedPubKey []byte) (*ecdsa.PublicKey, error) {
-
 	// Converting ephemeralPublicKey byte array to *big.Int
 	x, y := elliptic.UnmarshalCompressed(curve, compressedPubKey)
 	if x == nil {

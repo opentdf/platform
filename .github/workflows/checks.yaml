@@ -164,7 +164,7 @@ jobs:
           cp opentdf-with-hsm.yaml opentdf.yaml
         if: matrix.crypto == 'hsm'
       - run: |
-          .github/scripts/init-temp-keys.sh --output ./keys/
+          .github/scripts/init-temp-keys.sh
           cp opentdf-dev.yaml opentdf.yaml
         if: matrix.crypto == 'standard'
       - name: Added Trusted Certs

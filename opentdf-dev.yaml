@@ -196,14 +196,14 @@ server:
           publicKeyPath: kas-cert.pem
       ec:
         secp256r1:
-          privateKeyPath: /keys/kas-secp256r1-private.pem
-          publicKeyPath: /keys/kas-secp256r1-cert.pem
+          privateKeyPath: kas-secp256r1-private.pem
+          publicKeyPath: kas-secp256r1-cert.pem
         secp384r1:
-          privateKeyPath: /keys/kas-secp384r1-private.pem
-          publicKeyPath: /keys/kas-secp384r1-cert.pem
+          privateKeyPath: kas-secp384r1-private.pem
+          publicKeyPath: kas-secp384r1-cert.pem
         secp521r1:
-          privateKeyPath: /keys/kas-secp521r1-private.pem
-          publicKeyPath: /keys/kas-secp521r1-cert.pem
+          privateKeyPath: kas-secp521r1-private.pem
+          publicKeyPath: kas-secp521r1-cert.pem
   port: 8080
 opa:
   embedded: true # Only for local development

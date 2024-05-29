@@ -24,7 +24,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 		return cmd.Usage()
 	}
 
-	//tdfFile := args[0]
+	tdfFile := args[0]
 
 	// Create new client
 	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint,
@@ -35,24 +35,24 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	//file, err := os.Open(tdfFile)
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//defer file.Close()
-	//cmd.Println("# TDF")
-	//
-	//tdfreader, err := client.LoadTDF(file)
-	//if err != nil {
-	//	return err
-	//}
-	//
-	////Print decrypted string
-	//_, err = io.Copy(os.Stdout, tdfreader)
-	//if err != nil && err != io.EOF {
-	//	return err
-	//}
+	file, err := os.Open(tdfFile)
+	if err != nil {
+		return err
+	}
+
+	defer file.Close()
+	cmd.Println("# TDF")
+
+	tdfreader, err := client.LoadTDF(file)
+	if err != nil {
+		return err
+	}
+
+	//Print decrypted string
+	_, err = io.Copy(os.Stdout, tdfreader)
+	if err != nil && err != io.EOF {
+		return err
+	}
 	cmd.Println("\n-----\n\n# NANO")
 
 	nTdfFile, err := os.Open("sensitive.txt.ntdf")
@@ -66,7 +66,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if "hello" == outBuf.String() {
+	if "Hello Virtru" == outBuf.String() {
 		cmd.Println("✅ NanoTDF test passed!")
 	} else {
 		cmd.Println("❌ NanoTDF test failed!")

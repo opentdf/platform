@@ -73,7 +73,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	//
 
 	attributes := []string{
-		//"https://example.com/attr/attr1/value/value1",
+		"https://example.com/attr/attr1/value/value1",
 	}
 
 	nanoTDFCOnfig, err := client.NewNanoTDFConfig()

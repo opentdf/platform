@@ -214,7 +214,7 @@ func (s SDK) Conn() *grpc.ClientConn {
 func fetchPlatformConfiguration(platformEndpoint string, dialOptions []grpc.DialOption) (PlatformConfiguration, error) {
 	conn, err := grpc.Dial(platformEndpoint, dialOptions...)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrGrpcDialFailed, err)
+		return nil, errors.Join(ErrGrpcDialFailed, err)
 	}
 	defer conn.Close()
 

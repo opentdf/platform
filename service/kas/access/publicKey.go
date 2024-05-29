@@ -59,7 +59,7 @@ func (p Provider) LegacyPublicKey(ctx context.Context, in *kaspb.LegacyPublicKey
 	case security.AlgorithmECP256R1:
 		pem, err = p.CryptoProvider.ECCertificate(kid)
 		if err != nil {
-			slog.ErrorContext(ctx, "CryptoProvider.ECPublicKey failed", "err", err)
+			slog.ErrorContext(ctx, "failed LegacyPublicKey to get certificate", "err", err)
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
 		}
 	case security.AlgorithmRSA2048:
@@ -71,7 +71,17 @@ func (p Provider) LegacyPublicKey(ctx context.Context, in *kaspb.LegacyPublicKey
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
 		}
 	default:
-		return nil, errors.Join(ErrConfig, status.Error(codes.NotFound, "invalid algorithm"))
+		return &wrapperspb.StringValue{Value: pem}, nil
+	}
+	if algorithm != "" {
+		slog.ErrorContext(ctx, "failed LegacyPublicKey unknown", "algorithm", algorithm)
+		return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
+	}
+	// rsa
+	pem, err = p.CryptoProvider.RSAPublicKey("unknown")
+	if err != nil {
+		slog.ErrorContext(ctx, "failed LegacyPublicKey RSA CryptoProvider.RSAPublicKey", "err", err)
+		return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
 	}
 	return &wrapperspb.StringValue{Value: pem}, nil
 }
@@ -80,19 +90,6 @@ func (p Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*k
 	algorithm := in.GetAlgorithm()
 	if algorithm == "" {
 		algorithm = security.AlgorithmRSA2048
-	}
-	if algorithm == algorithmEc256 || algorithm == algorithmEc384 || algorithm == algorithmEc512 {
-		var ecKeyID string
-		as := strings.Split(algorithm, ":")
-		if len(as) > 1 {
-			ecKeyID = as[1]
-		}
-		ecPublicKeyPem, err := p.CryptoProvider.ECPublicKey(ecKeyID)
-		if err != nil {
-			slog.ErrorContext(ctx, "CryptoProvider.ECPublicKey failed", "err", err)
-			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
-		}
-		return &kaspb.PublicKeyResponse{PublicKey: ecPublicKeyPem}, nil
 	}
 	fmt := in.GetFmt()
 	kid, err := p.lookupKid(ctx, algorithm)

@@ -7,13 +7,13 @@ mkdir keys
 openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=kas" -keyout keys/kas-private.pem -out keys/kas-cert.pem -days 365
 REM  P-256 aka secp256r1 , prime256v1
 openssl ecparam -name secp256r1 >ecparams.tmp
-openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout "$opt_output/kas-secp256r1-private.pem" -out "$opt_output/kas-secp256r1-cert.pem" -days 365
+openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout keys/kas-secp256r1-private.pem -out keys/kas-secp256r1-cert.pem -days 365
 REM  P-384
 openssl ecparam -name secp384r1 >ecparams.tmp
-openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout "$opt_output/kas-secp384r1-private.pem" -out "$opt_output/kas-secp384r1-cert.pem" -days 365
+openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout keys//kas-secp384r1-private.pem -out keys/kas-secp384r1-cert.pem -days 365
 REM  P-521
 openssl ecparam -name secp521r1 >ecparams.tmp
-openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout "$opt_output/kas-secp521r1-private.pem" -out "$opt_output/kas-secp521r1-cert.pem" -days 365
+openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout keys/kas-secp521r1-private.pem -out keys/kas-secp521r1-cert.pem -days 365
 
 openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=ca" -keyout keys/keycloak-ca-private.pem -out keys/keycloak-ca.pem -days 365
 printf "subjectAltName=DNS:localhost,IP:127.0.0.1" > keys/sanX509.conf

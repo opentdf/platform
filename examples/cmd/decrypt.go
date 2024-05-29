@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"errors"
 	"io"
 	"os"
 
@@ -25,10 +24,10 @@ func decrypt(cmd *cobra.Command, args []string) error {
 		return cmd.Usage()
 	}
 
-	tdfFile := args[0]
+	//tdfFile := args[0]
 
 	// Create new client
-	client, err := sdk.New(platformEndpoint,
+	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint,
 		sdk.WithInsecurePlaintextConn(),
 		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
 		sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
@@ -36,46 +35,42 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	file, err := os.Open(tdfFile)
+	//file, err := os.Open(tdfFile)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//defer file.Close()
+	//cmd.Println("# TDF")
+	//
+	//tdfreader, err := client.LoadTDF(file)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	////Print decrypted string
+	//_, err = io.Copy(os.Stdout, tdfreader)
+	//if err != nil && err != io.EOF {
+	//	return err
+	//}
+	cmd.Println("\n-----\n\n# NANO")
+
+	nTdfFile, err := os.Open("sensitive.txt.ntdf")
 	if err != nil {
 		return err
 	}
-	defer file.Close()
 
-	var magic [3]byte
-	var isNano bool
-	n, err := io.ReadFull(file, magic[:])
-	switch {
-	case err != nil:
-		return err
-	case n < 3:
-		return errors.New("file too small; no magic number found")
-	case bytes.HasPrefix(magic[:], []byte("L1L")):
-		isNano = true
-	default:
-		isNano = false
-	}
-	_, err = file.Seek(0, 0)
+	outBuf := bytes.Buffer{}
+	_, err = client.ReadNanoTDF(io.Writer(&outBuf), nTdfFile)
 	if err != nil {
 		return err
 	}
 
-	if !isNano {
-		tdfreader, err := client.LoadTDF(file)
-		if err != nil {
-			return err
-		}
-
-		//Print decrypted string
-		_, err = io.Copy(os.Stdout, tdfreader)
-		if err != nil && err != io.EOF {
-			return err
-		}
+	if "hello" == outBuf.String() {
+		cmd.Println("✅ NanoTDF test passed!")
 	} else {
-		_, err = client.ReadNanoTDF(os.Stdout, file)
-		if err != nil {
-			return err
-		}
+		cmd.Println("❌ NanoTDF test failed!")
 	}
+
 	return nil
 }

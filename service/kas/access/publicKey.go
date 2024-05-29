@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"log/slog"
+	"strings"
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/service/internal/security"
@@ -19,6 +20,9 @@ import (
 const (
 	ErrCertificateEncode = Error("certificate encode error")
 	ErrPublicKeyMarshal  = Error("public key marshal error")
+	algorithmEc256       = "ec:secp256r1"
+	algorithmEc384       = "ec:secp384r1"
+	algorithmEc512       = "ec:secp521r1"
 )
 
 func (p Provider) lookupKid(ctx context.Context, algorithm string) (string, error) {
@@ -76,6 +80,20 @@ func (p Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*k
 	algorithm := in.GetAlgorithm()
 	if algorithm == "" {
 		algorithm = security.AlgorithmRSA2048
+	}
+	if algorithm == algorithmEc256 || algorithm == algorithmEc384 || algorithm == algorithmEc512 {
+		var ecKeyID string
+		as := strings.Split(algorithm, ":")
+		if len(as) > 1 {
+			ecKeyID = as[1]
+		}
+		ecPublicKeyPem, err := p.CryptoProvider.ECPublicKey(ecKeyID)
+		if err != nil {
+			slog.ErrorContext(ctx, "CryptoProvider.ECPublicKey failed", "err", err)
+			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
+
+		}
+		return &kaspb.PublicKeyResponse{PublicKey: ecPublicKeyPem}, nil
 	}
 	fmt := in.GetFmt()
 	kid, err := p.lookupKid(ctx, algorithm)

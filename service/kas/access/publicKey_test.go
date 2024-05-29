@@ -256,12 +256,11 @@ func TestStandardPublicKeyHandlerV2WithJwk(t *testing.T) {
 }
 
 func TestStandardCertificateHandlerWithEc256(t *testing.T) {
-	t.Skip("EC Not yet implemented")
 	configStandard := security.Config{
 		Type: "standard",
 		StandardConfig: security.StandardConfig{
 			ECKeys: map[string]security.StandardKeyInfo{
-				"ec": {
+				"secp256r1": {
 					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
 					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
 				},
@@ -279,16 +278,67 @@ func TestStandardCertificateHandlerWithEc256(t *testing.T) {
 	result, err := kas.LegacyPublicKey(context.Background(), &kaspb.LegacyPublicKeyRequest{Algorithm: "ec:secp256r1"})
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	assert.Contains(t, result.GetValue(), "BEGIN PUBLIC KEY")
+	assert.Contains(t, result.GetValue(), "BEGIN CERTIFICATE")
 }
 
-func TestStandardPublicKeyHandlerWithEc256(t *testing.T) {
-	t.Skip("EC Not yet implemented")
+func TestStandardCertificateHandlerWithEc384(t *testing.T) {
 	configStandard := security.Config{
 		Type: "standard",
 		StandardConfig: security.StandardConfig{
 			ECKeys: map[string]security.StandardKeyInfo{
-				"ec": {
+				"secp384r1": {
+					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
+					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+				},
+			},
+		},
+	}
+	c := mustNewCryptoProvider(t, configStandard)
+	defer c.Close()
+	kasURI := urlHost(t)
+	kas := Provider{
+		URI:            *kasURI,
+		CryptoProvider: c,
+	}
+
+	result, err := kas.LegacyPublicKey(context.Background(), &kaspb.LegacyPublicKeyRequest{Algorithm: "ec:secp384r1"})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Contains(t, result.GetValue(), "BEGIN CERTIFICATE")
+}
+
+func TestStandardCertificateHandlerWithEc521(t *testing.T) {
+	configStandard := security.Config{
+		Type: "standard",
+		StandardConfig: security.StandardConfig{
+			ECKeys: map[string]security.StandardKeyInfo{
+				"secp521r1": {
+					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
+					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+				},
+			},
+		},
+	}
+	c := mustNewCryptoProvider(t, configStandard)
+	defer c.Close()
+	kasURI := urlHost(t)
+	kas := Provider{
+		URI:            *kasURI,
+		CryptoProvider: c,
+	}
+
+	result, err := kas.LegacyPublicKey(context.Background(), &kaspb.LegacyPublicKeyRequest{Algorithm: "ec:secp521r1"})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Contains(t, result.GetValue(), "BEGIN CERTIFICATE")
+}
+
+func TestStandardPublicKeyHandlerWithEc256(t *testing.T) {
+	configStandard := security.Config{
+		Type: "standard",
+		StandardConfig: security.StandardConfig{
+			ECKeys: map[string]security.StandardKeyInfo{
+				"secp256r1": {
 					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
 					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
 				},
@@ -309,13 +359,64 @@ func TestStandardPublicKeyHandlerWithEc256(t *testing.T) {
 	assert.Contains(t, result.GetPublicKey(), "BEGIN PUBLIC KEY")
 }
 
-func TestStandardPublicKeyHandlerV2WithEc256(t *testing.T) {
-	t.Skip("EC Not yet implemented")
+func TestStandardPublicKeyHandlerWithEc384(t *testing.T) {
 	configStandard := security.Config{
 		Type: "standard",
 		StandardConfig: security.StandardConfig{
 			ECKeys: map[string]security.StandardKeyInfo{
-				"ec": {
+				"secp384r1": {
+					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
+					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+				},
+			},
+		},
+	}
+	c := mustNewCryptoProvider(t, configStandard)
+	defer c.Close()
+	kasURI := urlHost(t)
+	kas := Provider{
+		URI:            *kasURI,
+		CryptoProvider: c,
+	}
+
+	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "ec:secp384r1"})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Contains(t, result.GetPublicKey(), "BEGIN PUBLIC KEY")
+}
+
+func TestStandardPublicKeyHandlerWithEc521(t *testing.T) {
+	configStandard := security.Config{
+		Type: "standard",
+		StandardConfig: security.StandardConfig{
+			ECKeys: map[string]security.StandardKeyInfo{
+				"secp521r1": {
+					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
+					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+				},
+			},
+		},
+	}
+	c := mustNewCryptoProvider(t, configStandard)
+	defer c.Close()
+	kasURI := urlHost(t)
+	kas := Provider{
+		URI:            *kasURI,
+		CryptoProvider: c,
+	}
+
+	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "ec:secp521r1"})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Contains(t, result.GetPublicKey(), "BEGIN PUBLIC KEY")
+}
+
+func TestStandardPublicKeyHandlerV2WithEc256(t *testing.T) {
+	configStandard := security.Config{
+		Type: "standard",
+		StandardConfig: security.StandardConfig{
+			ECKeys: map[string]security.StandardKeyInfo{
+				"secp256r1": {
 					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
 					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
 				},
@@ -331,6 +432,60 @@ func TestStandardPublicKeyHandlerV2WithEc256(t *testing.T) {
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "ec:secp256r1",
+		V: "2"})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Contains(t, result.GetPublicKey(), "BEGIN PUBLIC KEY")
+}
+
+func TestStandardPublicKeyHandlerV2WithEc384(t *testing.T) {
+	configStandard := security.Config{
+		Type: "standard",
+		StandardConfig: security.StandardConfig{
+			ECKeys: map[string]security.StandardKeyInfo{
+				"secp384r1": {
+					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
+					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+				},
+			},
+		},
+	}
+	c := mustNewCryptoProvider(t, configStandard)
+	defer c.Close()
+	kasURI := urlHost(t)
+	kas := Provider{
+		URI:            *kasURI,
+		CryptoProvider: c,
+	}
+
+	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "ec:secp384r1",
+		V: "2"})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Contains(t, result.GetPublicKey(), "BEGIN PUBLIC KEY")
+}
+
+func TestStandardPublicKeyHandlerV2WithEc521(t *testing.T) {
+	configStandard := security.Config{
+		Type: "standard",
+		StandardConfig: security.StandardConfig{
+			ECKeys: map[string]security.StandardKeyInfo{
+				"secp521r1": {
+					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
+					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+				},
+			},
+		},
+	}
+	c := mustNewCryptoProvider(t, configStandard)
+	defer c.Close()
+	kasURI := urlHost(t)
+	kas := Provider{
+		URI:            *kasURI,
+		CryptoProvider: c,
+	}
+
+	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "ec:secp521r1",
 		V: "2"})
 	require.NoError(t, err)
 	require.NotNil(t, result)

@@ -11,8 +11,6 @@ db:
 services:
   kas:
     enabled: true
-    eccertid: e1
-    rsacertid: r1
   policy:
     enabled: true
   entityresolution:
@@ -36,13 +34,13 @@ server:
     issuer: http://keycloak:8888/auth/realms/opentdf
     policy:
       ## Default policy for all requests
-      default: #"role:standard"
+      default: #"role:readonly"
       ## Dot notation is used to access nested claims (i.e. realm_access.roles)
       claim: # realm_access.roles
       ## Maps the external role to the opentdf role
       ## Note: left side is used in the policy, right side is the external role
       map:
-      #  standard: opentdf-standard
+      #  readonly: opentdf-readonly
       #  admin: opentdf-admin
       #  org-admin: opentdf-org-admin
 
@@ -71,8 +69,7 @@ server:
   cors:
     enabled: false
     # '*' to allow any origin or a specific domain like 'https://yourdomain.com'
-    allowedorigins: 
-      - "*"
+    allowedorigins: "*"
     # List of methods. Examples: 'GET,POST,PUT'
     allowedmethods:
       - GET
@@ -99,15 +96,23 @@ server:
   cryptoProvider:
     type: standard
     standard:
-      keys:
-        - kid: r1
-          alg: rsa:2048
-          private: /keys/kas-private.pem
-          cert: /keys/kas-cert.pem
-        - kid: e1
-          alg: ec:secp256r1
-          private: /keys/kas-ec-private.pem
-          cert: /keys/kas-ec-cert.pem
+      rsa:
+        123:
+          privateKeyPath: /keys/kas-private.pem
+          publicKeyPath: /keys/kas-cert.pem
+        456:
+          privateKeyPath: /keys/kas-private.pem
+          publicKeyPath: /keys/kas-cert.pem
+      ec:
+        secp256r1:
+          privateKeyPath: /keys/kas-secp256r1-private.pem
+          publicKeyPath: /keys/kas-secp256r1-cert.pem
+        secp384r1:
+          privateKeyPath: /keys/kas-secp384r1-private.pem
+          publicKeyPath: /keys/kas-secp384r1-cert.pem
+        secp521r1:
+          privateKeyPath: /keys/kas-secp521r1-private.pem
+          publicKeyPath: /keys/kas-secp521r1-cert.pem
   port: 8080
 opa:
   embedded: true # Only for local development

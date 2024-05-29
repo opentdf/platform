@@ -91,7 +91,6 @@ func (p Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*k
 		if err != nil {
 			slog.ErrorContext(ctx, "CryptoProvider.ECPublicKey failed", "err", err)
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
-
 		}
 		return &kaspb.PublicKeyResponse{PublicKey: ecPublicKeyPem}, nil
 	}

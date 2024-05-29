@@ -28,7 +28,7 @@ openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=kas" -days 365 \
     -keyout kas-private.pem -out kas-cert.pem
 openssl ecparam -name prime256v1 >ecparams.tmp
 openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -days 365 \
-     -keyout kas-ec-private.pem -out kas-ec-cert.pem
+     -keyout kas-secp256r1-private.pem -out kas-ec-cert.pem
 ```
 
 To enable HSM, you must have a working `PKCS #11` library on your system.

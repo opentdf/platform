@@ -122,6 +122,8 @@ func WithExtraDialOptions(dialOptions ...grpc.DialOption) Option {
 	}
 }
 
+// WithPlatformConfiguration allows you to override the remote platform configuration
+// Use this option with caution, as it may lead to unexpected behavior
 func WithPlatformConfiguration(platformConfiguration PlatformConfiguration) Option {
 	return func(c *config) {
 		c.platformConfiguration = platformConfiguration

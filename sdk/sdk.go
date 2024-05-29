@@ -71,12 +71,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		opt(cfg)
 	}
 
-<<<<<<< HEAD
-	// If KAS key is not provided, generate a new one
-	if cfg.kasKey == nil {
-=======
 	if cfg.kasSessionKey == nil {
->>>>>>> main
 		key, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
 		if err != nil {
 			return nil, err

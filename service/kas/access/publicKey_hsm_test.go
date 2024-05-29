@@ -20,14 +20,16 @@ var (
 			PIN:        "12345",
 			SlotID:     0,
 			SlotLabel:  "dev-token",
-			Keys: map[string]security.KeyInfo{
-				"rsa": {
-					Name:  "rsa",
-					Label: "development-rsa-kas",
+			Keys: []security.KeyPairInfo{
+				{
+					Algorithm: security.AlgorithmRSA2048,
+					KID:       "rsa",
+					Private:   "development-rsa-kas",
 				},
-				"ec": {
-					Name:  "ec",
-					Label: "development-ec-kas",
+				{
+					Algorithm: security.AlgorithmECP256R1,
+					KID:       "ec",
+					Private:   "development-ec-kas",
 				},
 			},
 		},
@@ -35,10 +37,7 @@ var (
 )
 
 func TestHSMCertificateHandlerEmpty(t *testing.T) {
-	configHSM.HSMConfig.Keys = map[string]security.KeyInfo{
-		"rsa": {},
-		"ec":  {},
-	}
+	configHSM.HSMConfig.Keys = []security.KeyPairInfo{}
 	c := mustNewCryptoProvider(t, configHSM)
 	defer c.Close()
 	kasURI := urlHost(t)
@@ -54,14 +53,16 @@ func TestHSMCertificateHandlerEmpty(t *testing.T) {
 }
 
 func TestCertificateHandlerWithEc256(t *testing.T) {
-	configHSM.HSMConfig.Keys = map[string]security.KeyInfo{
-		"rsa": {
-			Name:  "rsa",
-			Label: "development-rsa-kas",
+	configHSM.HSMConfig.Keys = []security.KeyPairInfo{
+		{
+			Algorithm: security.AlgorithmRSA2048,
+			KID:       "rsa",
+			Private:   "development-rsa-kas",
 		},
-		"ec": {
-			Name:  "ec",
-			Label: "development-ec-kas",
+		{
+			Algorithm: security.AlgorithmECP256R1,
+			KID:       "ec",
+			Private:   "development-ec-kas",
 		},
 	}
 	c := mustNewCryptoProvider(t, configHSM)
@@ -72,21 +73,23 @@ func TestCertificateHandlerWithEc256(t *testing.T) {
 		CryptoProvider: c,
 	}
 
-	result, err := kas.LegacyPublicKey(context.Background(), &kaspb.LegacyPublicKeyRequest{Algorithm: "ec:secp256r1"})
+	result, err := kas.LegacyPublicKey(context.Background(), &kaspb.LegacyPublicKeyRequest{Algorithm: security.AlgorithmECP256R1})
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Contains(t, result.GetValue(), "BEGIN PUBLIC KEY")
 }
 
 func TestHSMPublicKeyHandlerWithEc256(t *testing.T) {
-	configHSM.HSMConfig.Keys = map[string]security.KeyInfo{
-		"rsa": {
-			Name:  "rsa",
-			Label: "development-rsa-kas",
+	configHSM.HSMConfig.Keys = []security.KeyPairInfo{
+		{
+			Algorithm: security.AlgorithmRSA2048,
+			KID:       "rsa",
+			Private:   "development-rsa-kas",
 		},
-		"ec": {
-			Name:  "ec",
-			Label: "development-ec-kas",
+		{
+			Algorithm: security.AlgorithmECP256R1,
+			KID:       "ec",
+			Private:   "development-ec-kas",
 		},
 	}
 	c := mustNewCryptoProvider(t, configHSM)
@@ -97,21 +100,23 @@ func TestHSMPublicKeyHandlerWithEc256(t *testing.T) {
 		CryptoProvider: c,
 	}
 
-	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "ec:secp256r1"})
+	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: security.AlgorithmECP256R1})
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Contains(t, result.GetPublicKey(), "BEGIN PUBLIC KEY")
 }
 
 func TestHSMPublicKeyHandlerV2(t *testing.T) {
-	configHSM.HSMConfig.Keys = map[string]security.KeyInfo{
-		"rsa": {
-			Name:  "rsa",
-			Label: "development-rsa-kas",
+	configHSM.HSMConfig.Keys = []security.KeyPairInfo{
+		{
+			Algorithm: security.AlgorithmRSA2048,
+			KID:       "rsa",
+			Private:   "development-rsa-kas",
 		},
-		"ec": {
-			Name:  "ec",
-			Label: "development-ec-kas",
+		{
+			Algorithm: security.AlgorithmECP256R1,
+			KID:       "ec",
+			Private:   "development-ec-kas",
 		},
 	}
 	c := mustNewCryptoProvider(t, configHSM)
@@ -122,17 +127,14 @@ func TestHSMPublicKeyHandlerV2(t *testing.T) {
 		CryptoProvider: c,
 	}
 
-	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "rsa"})
+	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: security.AlgorithmRSA2048})
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Contains(t, result.GetPublicKey(), "BEGIN PUBLIC KEY")
 }
 
 func TestHSMPublicKeyHandlerV2Failure(t *testing.T) {
-	configHSM.HSMConfig.Keys = map[string]security.KeyInfo{
-		"rsa": {},
-		"ec":  {},
-	}
+	configHSM.HSMConfig.Keys = []security.KeyPairInfo{}
 	c := mustNewCryptoProvider(t, configHSM)
 	defer c.Close()
 	kasURI := urlHost(t)
@@ -141,19 +143,21 @@ func TestHSMPublicKeyHandlerV2Failure(t *testing.T) {
 		CryptoProvider: c,
 	}
 
-	_, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "rsa"})
+	_, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: security.AlgorithmRSA2048})
 	assert.Error(t, err)
 }
 
 func TestHSMPublicKeyHandlerV2WithEc256(t *testing.T) {
-	configHSM.HSMConfig.Keys = map[string]security.KeyInfo{
-		"rsa": {
-			Name:  "rsa",
-			Label: "development-rsa-kas",
+	configHSM.HSMConfig.Keys = []security.KeyPairInfo{
+		{
+			Algorithm: security.AlgorithmRSA2048,
+			KID:       "rsa",
+			Private:   "development-rsa-kas",
 		},
-		"ec": {
-			Name:  "ec",
-			Label: "development-ec-kas",
+		{
+			Algorithm: security.AlgorithmECP256R1,
+			KID:       "ec",
+			Private:   "development-ec-kas",
 		},
 	}
 	c := mustNewCryptoProvider(t, configHSM)
@@ -164,7 +168,7 @@ func TestHSMPublicKeyHandlerV2WithEc256(t *testing.T) {
 		CryptoProvider: c,
 	}
 
-	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "ec:secp256r1",
+	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: security.AlgorithmECP256R1,
 		V: "2"})
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -172,14 +176,16 @@ func TestHSMPublicKeyHandlerV2WithEc256(t *testing.T) {
 }
 
 func TestHSMPublicKeyHandlerV2WithJwk(t *testing.T) {
-	configHSM.HSMConfig.Keys = map[string]security.KeyInfo{
-		"rsa": {
-			Name:  "rsa",
-			Label: "development-rsa-kas",
+	configHSM.HSMConfig.Keys = []security.KeyPairInfo{
+		{
+			Algorithm: security.AlgorithmRSA2048,
+			KID:       "rsa",
+			Private:   "development-rsa-kas",
 		},
-		"ec": {
-			Name:  "ec",
-			Label: "development-ec-kas",
+		{
+			Algorithm: security.AlgorithmECP256R1,
+			KID:       "ec",
+			Private:   "development-ec-kas",
 		},
 	}
 	c := mustNewCryptoProvider(t, configHSM)
@@ -191,7 +197,7 @@ func TestHSMPublicKeyHandlerV2WithJwk(t *testing.T) {
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{
-		Algorithm: "rsa",
+		Algorithm: security.AlgorithmRSA2048,
 		V:         "2",
 		Fmt:       "jwk",
 	})

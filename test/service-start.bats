@@ -25,6 +25,9 @@
 
   # Is an RSA key
   printf '%s\n' "$p" | openssl asn1parse | grep rsaEncryption
+
+  # Has expected kid
+  [ $(jq -r .kid <<<"${output}") = r1 ]
 }
 
 @test "REST: new public key endpoint (no algorithm)" {
@@ -37,6 +40,9 @@
 
   # Is an RSA key
   printf '%s\n' "$p" | openssl asn1parse | grep rsaEncryption
+
+  # Has expected kid
+  [ $(jq -r .kid <<<"${output}") = r1 ]
 }
 
 @test "REST: new public key endpoint (ec)" {
@@ -49,6 +55,9 @@
 
   # Is an EC P256r1 curve
   printf '%s\n' "$p" | openssl asn1parse | grep prime256v1
+
+  # Has expected kid
+  [ $(jq -r .kid <<<"${output}") = e1 ]
 }
 
 @test "REST: public key endpoint (unknown algorithm)" {

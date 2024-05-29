@@ -287,15 +287,19 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 	return &rewrapRequest, nil
 }
 
-func getPublicKey(kasInfo KASInfo, opts ...grpc.DialOption) (string, error) {
+type publicKeyWithID struct {
+	publicKey, kid string
+}
+
+func getPublicKey(kasInfo KASInfo, opts ...grpc.DialOption) (*publicKeyWithID, error) {
 	req := kas.PublicKeyRequest{}
 	grpcAddress, err := getGRPCAddress(kasInfo.URL)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	conn, err := grpc.Dial(grpcAddress, opts...)
 	if err != nil {
-		return "", fmt.Errorf("error connecting to grpc service at %s: %w", kasInfo.URL, err)
+		return nil, fmt.Errorf("error connecting to grpc service at %s: %w", kasInfo.URL, err)
 	}
 	defer conn.Close()
 
@@ -305,8 +309,8 @@ func getPublicKey(kasInfo KASInfo, opts ...grpc.DialOption) (string, error) {
 	resp, err := serviceClient.PublicKey(ctx, &req)
 
 	if err != nil {
-		return "", fmt.Errorf("error making request to KAS: %w", err)
+		return nil, fmt.Errorf("error making request to KAS: %w", err)
 	}
 
-	return resp.GetPublicKey(), nil
+	return &publicKeyWithID{resp.GetPublicKey(), resp.GetKid()}, nil
 }

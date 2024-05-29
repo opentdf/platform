@@ -275,6 +275,7 @@ func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen
 		keyAccess := KeyAccess{}
 		keyAccess.KeyType = kWrapped
 		keyAccess.KasURL = kasInfo.URL
+		keyAccess.KID = kasInfo.KID
 		keyAccess.Protocol = kKasProtocol
 
 		// add policyBinding
@@ -752,7 +753,8 @@ func fillInPublicKeys(kasInfos []KASInfo, opts ...grpc.DialOption) error {
 			return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", kasInfo.URL, err)
 		}
 
-		kasInfos[idx].PublicKey = publicKey
+		kasInfos[idx].PublicKey = publicKey.publicKey
+		kasInfos[idx].KID = publicKey.kid
 	}
 	return nil
 }

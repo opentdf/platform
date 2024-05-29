@@ -25,6 +25,20 @@ type Provider struct {
 	CryptoProvider security.CryptoProvider
 	Logger         *logger.Logger
 	Config         *serviceregistry.ServiceConfig
+	KASConfig
+}
+
+type KASConfig struct {
+	// Which keys are currently the default.
+	Keyring []CurrentKeyFor `mapstructure:"keyring"`
+	// Deprecated
+	ECCertID string `mapstructure:"eccertid"`
+}
+
+// Specifies the preferred/default key for a given algorithm type.
+type CurrentKeyFor struct {
+	Algorithm string `mapstructure:"alg"`
+	KID       string `mapstructure:"kid"`
 }
 
 func (p *Provider) IsReady(ctx context.Context) error {

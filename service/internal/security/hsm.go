@@ -33,6 +33,13 @@ type Config struct {
 	StandardConfig StandardConfig `yaml:"standard,omitempty" mapstructure:"standard"`
 }
 
+func (h HSMSession) FindKID(alg string) string {
+	if kid, ok := h.kidByAlg[alg]; ok {
+		return kid
+	}
+	return ""
+}
+
 func NewCryptoProvider(cfg Config) (CryptoProvider, error) {
 	switch cfg.Type {
 	case "hsm":
@@ -54,37 +61,24 @@ func NewCryptoProvider(cfg Config) (CryptoProvider, error) {
 type HSMSession struct {
 	ctx pkcs11.Ctx
 	sh  pkcs11.SessionHandle
-	RSA *RSAKeyPair
-	EC  *ECKeyPair
+	// Default kid for each algorithm. Avoid; specify by service instead.
+	kidByAlg  map[string]string
+	keysByKID map[string]LiveKeyPair
 }
 
 type HSMConfig struct {
-	Enabled    bool               `yaml:"enabled"`
-	ModulePath string             `yaml:"modulePath,omitempty"`
-	PIN        string             `yaml:"pin,omitempty"`
-	SlotID     uint               `yaml:"slotId,omitempty"`
-	SlotLabel  string             `yaml:"slotLabel,omitempty"`
-	Keys       map[string]KeyInfo `yaml:"keys,omitempty"`
+	Enabled    bool          `yaml:"enabled"`
+	ModulePath string        `yaml:"modulePath,omitempty"`
+	PIN        string        `yaml:"pin,omitempty"`
+	SlotID     uint          `yaml:"slotId,omitempty"`
+	SlotLabel  string        `yaml:"slotLabel,omitempty"`
+	Keys       []KeyPairInfo `yaml:"keys,omitempty"`
 }
 
-type KeyInfo struct {
-	Name  string `yaml:"name,omitempty"`
-	Label string `yaml:"label,omitempty"`
-}
-
-type PrivateKeyRSA pkcs11.ObjectHandle
-
-type PrivateKeyEC pkcs11.ObjectHandle
-
-type ECKeyPair struct {
-	PrivateKey PrivateKeyEC
-	*ecdsa.PublicKey
-	*x509.Certificate
-}
-
-type RSAKeyPair struct {
-	PrivateKey PrivateKeyRSA
-	*rsa.PublicKey
+type LiveKeyPair struct {
+	KeyPairInfo
+	pkcs11.ObjectHandle
+	crypto.PublicKey
 	*x509.Certificate
 }
 
@@ -310,28 +304,33 @@ func NewHSM(c *HSMConfig) (*HSMSession, error) {
 	return hs, err
 }
 
-func (h *HSMSession) loadKeys(keys map[string]KeyInfo) error {
-	for name, info := range keys {
-		if info.Name == "" {
-			info.Name = name
+func (h *HSMSession) loadKeys(keys []KeyPairInfo) error {
+	h.keysByKID = make(map[string]LiveKeyPair)
+	for _, info := range keys {
+		if _, ok := h.kidByAlg[info.Algorithm]; !ok {
+			h.kidByAlg[info.Algorithm] = info.KID
 		}
-		switch info.Name {
-		case "rsa":
+		switch info.Algorithm {
+		case AlgorithmRSA2048:
 			pair, err := h.LoadRSAKey(info)
 			if err != nil {
-				slog.Error("pkcs11 error unable to load RSA key", "err", err)
+				slog.Error("pkcs11 error unable to load RSA key", "err", err, "label", info.Private, "kid", info.KID)
+			} else if _, ok := h.keysByKID[pair.KID]; ok {
+				slog.Error("unable to load key with duplicate key identifier", "err", err, "label", info.Private, "kid", info.KID)
 			} else {
-				h.RSA = pair
+				h.keysByKID[pair.KID] = *pair
 			}
-		case "ec":
+		case AlgorithmECP256R1:
 			pair, err := h.LoadECKey(info)
 			if err != nil {
-				slog.Error("pkcs11 error unable to load EC key", "err", err)
+				slog.Error("pkcs11 error unable to load EC key", "err", err, "label", info.Private, "kid", info.KID)
+			} else if _, ok := h.keysByKID[pair.KID]; ok {
+				slog.Error("unable to load key with duplicate key identifier", "err", err, "label", info.Private, "kid", info.KID)
 			} else {
-				h.EC = pair
+				h.keysByKID[pair.KID] = *pair
 			}
 		default:
-			return fmt.Errorf("unrecognized key type [%s], %w", info.Name, ErrKeyConfig)
+			return fmt.Errorf("unrecognized key algorithm [%s], %w", info.Algorithm, ErrKeyConfig)
 		}
 	}
 	return nil
@@ -391,20 +390,19 @@ func (h *HSMSession) findKey(class uint, label string) (pkcs11.ObjectHandle, err
 	return handle, err
 }
 
-func (h *HSMSession) LoadRSAKey(info KeyInfo) (*RSAKeyPair, error) {
-	var pair RSAKeyPair
+func (h *HSMSession) LoadRSAKey(info KeyPairInfo) (*LiveKeyPair, error) {
+	pair := LiveKeyPair{KeyPairInfo: info}
 
 	slog.Debug("Finding RSA key to wrap.")
-	keyHandle, err := h.findKey(pkcs11.CKO_PRIVATE_KEY, info.Label)
+	keyHandle, err := h.findKey(pkcs11.CKO_PRIVATE_KEY, info.Private)
 	if err != nil {
 		slog.Error("pkcs11 error finding key", "err", err)
 		return nil, errors.Join(ErrKeyConfig, err)
 	}
+	pair.ObjectHandle = keyHandle
 
-	pair.PrivateKey = PrivateKeyRSA(keyHandle)
-
-	slog.Debug("Finding RSA certificate", "rsaLabel", info.Label)
-	certHandle, err := h.findKey(pkcs11.CKO_CERTIFICATE, info.Label)
+	slog.Debug("Finding RSA certificate", "label", info.Private)
+	certHandle, err := h.findKey(pkcs11.CKO_CERTIFICATE, info.Private)
 	certTemplate := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_CERTIFICATE),
 		pkcs11.NewAttribute(pkcs11.CKA_CERTIFICATE_TYPE, pkcs11.CKC_X_509),
@@ -448,20 +446,20 @@ func (h *HSMSession) LoadRSAKey(info KeyInfo) (*RSAKeyPair, error) {
 	return &pair, nil
 }
 
-func (h *HSMSession) LoadECKey(info KeyInfo) (*ECKeyPair, error) {
-	var pair ECKeyPair
+func (h *HSMSession) LoadECKey(info KeyPairInfo) (*LiveKeyPair, error) {
+	pair := LiveKeyPair{KeyPairInfo: info}
 
-	slog.Debug("Finding EC private key", "ecLabel", info.Label)
-	keyHandleEC, err := h.findKey(pkcs11.CKO_PRIVATE_KEY, info.Label)
+	slog.Debug("Finding EC private key", "kid", info.KID, "alg", info.Algorithm, "label", info.Private)
+	keyHandleEC, err := h.findKey(pkcs11.CKO_PRIVATE_KEY, info.Private)
 	if err != nil {
 		slog.Error("pkcs11 error finding ec key", "err", err)
 		return nil, errors.Join(ErrKeyConfig, err)
 	}
 
-	pair.PrivateKey = PrivateKeyEC(keyHandleEC)
+	pair.ObjectHandle = keyHandleEC
 
 	// EC Cert
-	certECHandle, err := h.findKey(pkcs11.CKO_CERTIFICATE, info.Label)
+	certECHandle, err := h.findKey(pkcs11.CKO_CERTIFICATE, info.Private)
 	if err != nil {
 		slog.Error("public key EC cert error")
 		return nil, errors.Join(ErrKeyConfig, err)
@@ -532,7 +530,7 @@ func oaepForHash(hashFunction crypto.Hash, keyLabel string) (*pkcs11.OAEPParams,
 		[]byte(keyLabel)), nil
 }
 
-func (h *HSMSession) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte, _ elliptic.Curve) ([]byte, error) {
+func (h *HSMSession) GenerateNanoTDFSymmetricKey(kasKID string, ephemeralPublicKeyBytes []byte, _ elliptic.Curve) ([]byte, error) {
 	template := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, false),
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_SECRET_KEY),
@@ -551,7 +549,12 @@ func (h *HSMSession) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte,
 		pkcs11.NewMechanism(pkcs11.CKM_ECDH1_DERIVE, &params),
 	}
 
-	handle, err := h.ctx.DeriveKey(h.sh, mech, pkcs11.ObjectHandle(h.EC.PrivateKey), template)
+	ec, ok := h.keysByKID[kasKID]
+	if !ok {
+		return nil, ErrCertNotFound
+	}
+
+	handle, err := h.ctx.DeriveKey(h.sh, mech, ec.ObjectHandle, template)
 	if err != nil {
 		return nil, fmt.Errorf("failed to derive symmetric key: %w", err)
 	}
@@ -582,7 +585,7 @@ func (h *HSMSession) GenerateNanoTDFSessionKey(
 	privateKey any,
 	ephemeralPublicKey []byte,
 ) ([]byte, error) {
-	privateKeyHandle, ok := privateKey.(PrivateKeyEC)
+	privateKeyHandle, ok := privateKey.(pkcs11.ObjectHandle)
 	if !ok {
 		return nil, ErrHSMUnexpected
 	}
@@ -664,18 +667,16 @@ func (h *HSMSession) GenerateEphemeralKasKeys() (any, []byte, error) {
 	}
 	publicKeyBytes := pubBytes[0].Value
 
-	return PrivateKeyEC(prvHandle), publicKeyBytes, nil
+	return prvHandle, publicKeyBytes, nil
 }
 
-func (h *HSMSession) RSAPublicKey(keyID string) (string, error) {
-	// TODO: For now ignore the key id
-	slog.Info("⚠️ Ignoring the", slog.String("key id", keyID))
-
-	if h.RSA == nil {
+func (h *HSMSession) RSAPublicKey(kid string) (string, error) {
+	rsa, ok := h.keysByKID[kid]
+	if !ok || rsa.Algorithm != AlgorithmRSA2048 || rsa.PublicKey == nil {
 		return "", ErrCertNotFound
 	}
 
-	pubkeyBytes, err := x509.MarshalPKIXPublicKey(h.RSA.PublicKey)
+	pubkeyBytes, err := x509.MarshalPKIXPublicKey(rsa.PublicKey)
 	if err != nil {
 		return "", errors.Join(ErrPublicKeyMarshal, err)
 	}
@@ -693,14 +694,12 @@ func (h *HSMSession) RSAPublicKey(keyID string) (string, error) {
 	return string(certPem), nil
 }
 
-func (h *HSMSession) RSAPublicKeyAsJSON(keyID string) (string, error) {
-	// TODO: For now ignore the key id
-	slog.Info("⚠️ Ignoring the", slog.String("key id", keyID))
-
-	if h.RSA == nil || h.RSA.PublicKey == nil {
+func (h *HSMSession) RSAPublicKeyAsJSON(kid string) (string, error) {
+	rsa, ok := h.keysByKID[kid]
+	if !ok || rsa.Algorithm != AlgorithmRSA2048 || rsa.PublicKey == nil {
 		return "", ErrCertNotFound
 	}
-	rsaPublicKeyJwk, err := jwk.FromRaw(h.RSA.PublicKey)
+	rsaPublicKeyJwk, err := jwk.FromRaw(rsa.PublicKey)
 	if err != nil {
 		return "", fmt.Errorf("jwk.FromRaw: %w", err)
 	}
@@ -713,11 +712,12 @@ func (h *HSMSession) RSAPublicKeyAsJSON(keyID string) (string, error) {
 	return string(jsonPublicKey), nil
 }
 
-func (h *HSMSession) ECPublicKey(string) (string, error) {
-	if h.EC == nil || h.EC.PublicKey == nil {
+func (h *HSMSession) ECPublicKey(kid string) (string, error) {
+	ec, ok := h.keysByKID[kid]
+	if !ok || ec.Algorithm != AlgorithmECP256R1 || ec.PublicKey == nil {
 		return "", ErrCertNotFound
 	}
-	pubkeyBytes, err := x509.MarshalPKIXPublicKey(h.EC.PublicKey)
+	pubkeyBytes, err := x509.MarshalPKIXPublicKey(ec.PublicKey)
 	if err != nil {
 		return "", errors.Join(ErrPublicKeyMarshal, err)
 	}
@@ -732,17 +732,18 @@ func (h *HSMSession) ECPublicKey(string) (string, error) {
 	return string(pubkeyPem), nil
 }
 
-func (h *HSMSession) RSADecrypt(hash crypto.Hash, keyID string, keyLabel string, ciphertext []byte) ([]byte, error) {
-	// TODO: For now ignore the key id
-	slog.Info("⚠️ Ignoring the", slog.String("key id", keyID))
-
+func (h *HSMSession) RSADecrypt(hash crypto.Hash, kid string, keyLabel string, ciphertext []byte) ([]byte, error) {
 	oaepParams, err := oaepForHash(hash, keyLabel)
 	if err != nil {
 		return nil, errors.Join(ErrHSMDecrypt, err)
 	}
 	mech := pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_OAEP, oaepParams)
 
-	err = h.ctx.DecryptInit(h.sh, []*pkcs11.Mechanism{mech}, pkcs11.ObjectHandle(h.RSA.PrivateKey))
+	rsa, ok := h.keysByKID[kid]
+	if !ok || rsa.Algorithm != AlgorithmRSA2048 {
+		return nil, ErrCertNotFound
+	}
+	err = h.ctx.DecryptInit(h.sh, []*pkcs11.Mechanism{mech}, rsa.ObjectHandle)
 	if err != nil {
 		return nil, errors.Join(ErrHSMDecrypt, err)
 	}
@@ -753,6 +754,10 @@ func (h *HSMSession) RSADecrypt(hash crypto.Hash, keyID string, keyLabel string,
 	return decrypt, nil
 }
 
-func (h *HSMSession) ECCertificate(string) (string, error) {
-	return "", nil
+func (h *HSMSession) ECCertificate(kid string) (string, error) {
+	k, ok := h.keysByKID[kid]
+	if !ok || k.Algorithm != AlgorithmECP256R1 || k.Certificate == nil {
+		return "", ErrCertNotFound
+	}
+	return "", errors.New("ec cert format unimplemented")
 }

@@ -11,6 +11,8 @@ logger:
 services:
   kas:
     enabled: true
+    eccertid: e1
+    rsacertid: r1
   policy:
     enabled: true
   entityresolution:
@@ -106,10 +108,12 @@ server:
       pin: "12345"
       slotlabel: "dev-token"
       keys:
-        rsa:
-          label: development-rsa-kas
-        ec:
-          label: development-ec-kas
+        - kid: r1
+          alg: rsa:2048
+          private: development-rsa-kas
+        - kid: e1
+          alg: ec:secp256r1
+          private: development-ec-kas
   port: 8080
 opa:
   embedded: true # Only for local development

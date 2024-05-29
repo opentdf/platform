@@ -30,6 +30,7 @@ import (
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/logger/audit"
+	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/kas/tdf3"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -289,7 +290,16 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 }
 
 func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
-	symmetricKey, err := p.CryptoProvider.RSADecrypt(crypto.SHA1, "UnKnown", "", body.KeyAccess.WrappedKey)
+	kid := body.KeyAccess.KID
+	if kid == "" {
+		var err error
+		kid, err = p.lookupKid(ctx, security.AlgorithmRSA2048)
+		if err != nil {
+			p.Logger.WarnContext(ctx, "failure to find default kid for rsa", "err", err)
+			return nil, err400("bad request")
+		}
+	}
+	symmetricKey, err := p.CryptoProvider.RSADecrypt(crypto.SHA1, kid, "", body.KeyAccess.WrappedKey)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "failure to decrypt dek", "err", err)
 		return nil, err400("bad request")
@@ -353,6 +363,13 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 }
 
 func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
+	// TODO Lookup KID from request content
+	// Should this be in the locator or somewhere else?
+	kid, err := p.lookupKid(ctx, security.AlgorithmECP256R1)
+	if err != nil {
+		p.Logger.WarnContext(ctx, "failure to find default kid for ec", "err", err)
+		return nil, err400("bad request")
+	}
 	headerReader := bytes.NewReader(body.KeyAccess.Header)
 
 	header, _, err := sdk.NewNanoTDFHeaderFromReader(headerReader)
@@ -365,7 +382,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		return nil, fmt.Errorf("ECCurve failed: %w", err)
 	}
 
-	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(header.EphemeralKey, ecCurve)
+	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(kid, header.EphemeralKey, ecCurve)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
 	}

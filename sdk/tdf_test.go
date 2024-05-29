@@ -146,10 +146,12 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 			{
 				URL:       "http://localhost:65432/api/kas",
 				PublicKey: mockKasPublicKey,
+				KID:       "a",
 			},
 			{
 				URL:       "http://localhost:65432/api/kas",
 				PublicKey: mockKasPublicKey,
+				KID:       "b",
 			},
 		},
 	},
@@ -161,10 +163,12 @@ var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing
 			{
 				URL:       "http://localhost:65432/api/kas",
 				PublicKey: mockKasPublicKey,
+				KID:       "a",
 			},
 			{
 				URL:       "http://localhost:65432/api/kas",
 				PublicKey: mockKasPublicKey,
+				KID:       "b",
 			},
 		},
 	},

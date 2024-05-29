@@ -76,6 +76,7 @@ func WithTLSCredentials(tls *tls.Config, audience []string) Option {
 }
 
 // WithTokenEndpoint When we implement service discovery using a .well-known endpoint this option may become deprecated
+// Deprecated: SDK will discover the token endpoint from the platform configuration
 func WithTokenEndpoint(tokenEndpoint string) Option {
 	return func(c *config) {
 		c.tokenEndpoint = tokenEndpoint

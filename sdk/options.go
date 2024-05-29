@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"crypto/rsa"
 	"crypto/tls"
 
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -27,7 +28,7 @@ type config struct {
 	certExchange          *oauth.CertExchangeInfo
 	wellknownConn         *grpc.ClientConn
 	platformConfiguration PlatformConfiguration
-	kasKey                *ocrypto.RsaKeyPair
+	kasSessionKey         *ocrypto.RsaKeyPair
 	dpopKey               *ocrypto.RsaKeyPair
 }
 
@@ -130,14 +131,22 @@ func WithPlatformConfiguration(platformConfiguration PlatformConfiguration) Opti
 	}
 }
 
-func WithKASKey(key ocrypto.RsaKeyPair) Option {
+// The session key pair is used to encrypt responses from KAS for a given session
+// and can be reused across an entire session.
+// Please use with caution.
+func WithSessionEncryptionRSA(key *rsa.PrivateKey) Option {
 	return func(c *config) {
-		c.kasKey = &key
+		okey := ocrypto.FromRSA(key)
+		c.kasSessionKey = &okey
 	}
 }
 
-func WithDPoPKey(key ocrypto.RsaKeyPair) Option {
+// The DPoP key pair is used to implement sender constrained tokens from the identity provider,
+// and should be associated with the lifetime of a session for a given identity.
+// Please use with caution.
+func WithSessionSignerRSA(key *rsa.PrivateKey) Option {
 	return func(c *config) {
-		c.dpopKey = &key
+		okey := ocrypto.FromRSA(key)
+		c.dpopKey = &okey
 	}
 }

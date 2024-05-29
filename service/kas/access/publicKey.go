@@ -73,16 +73,6 @@ func (p Provider) LegacyPublicKey(ctx context.Context, in *kaspb.LegacyPublicKey
 	default:
 		return &wrapperspb.StringValue{Value: pem}, nil
 	}
-	if algorithm != "" {
-		slog.ErrorContext(ctx, "failed LegacyPublicKey unknown", "algorithm", algorithm)
-		return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
-	}
-	// rsa
-	pem, err = p.CryptoProvider.RSAPublicKey("unknown")
-	if err != nil {
-		slog.ErrorContext(ctx, "failed LegacyPublicKey RSA CryptoProvider.RSAPublicKey", "err", err)
-		return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
-	}
 	return &wrapperspb.StringValue{Value: pem}, nil
 }
 

@@ -702,7 +702,6 @@ func runKas() (string, func(), *SDK) {
 
 	sdk, err := New(host,
 		WithClientCredentials("test", "test", nil),
-		WithTokenEndpoint(fmt.Sprintf("http://%s/auth/token", host)),
 		WithInsecurePlaintextConn(),
 		WithCustomWellknownConnection(wellknownConn),
 		WithExtraDialOptions(grpc.WithContextDialer(dialer)))

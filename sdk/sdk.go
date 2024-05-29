@@ -55,12 +55,8 @@ type SDK struct {
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	var (
-		defaultConn          *grpc.ClientConn // Connection to the platform if no other connection is provided
-		policyConn           *grpc.ClientConn
-		authorizationConn    *grpc.ClientConn
-		wellknownConn        *grpc.ClientConn
-		entityresolutionConn *grpc.ClientConn
-		err                  error
+		defaultConn *grpc.ClientConn // Connection to the platform if no other connection is provided
+		err         error
 	)
 
 	// Set default options
@@ -93,23 +89,26 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	// If platformConfiguration is not provided, fetch it from the platform
 	if cfg.platformConfiguration == nil && platformEndpoint != "" { //nolint:nestif // Most of checks are for errors
-		// We need an initial connection to the platform to get the platform configuration
-		initialConn, err := grpc.Dial(platformEndpoint, dialOptions...)
-		if err != nil {
-			return nil, errors.Join(ErrGrpcDialFailed, err)
+		var pcfg PlatformConfiguration
+		var err error
+
+		if cfg.wellknownConn != nil {
+			pcfg, err = getPlatformConfiguration(cfg.wellknownConn)
+		} else {
+			pcfg, err = fetchPlatformConfiguration(platformEndpoint, dialOptions)
 		}
-		pcfg, err := getPlatformConfiguration(initialConn)
+
 		if err != nil {
 			return nil, errors.Join(ErrPlatformConfigFailed, err)
 		}
 		cfg.platformConfiguration = pcfg
+
 		if cfg.tokenEndpoint == "" {
 			cfg.tokenEndpoint, err = getTokenEndpoint(*cfg)
 			if err != nil {
 				return nil, err
 			}
 		}
-		initialConn.Close()
 	}
 
 	accessTokenSource, err := buildIDPTokenSource(cfg)
@@ -129,44 +128,20 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		}
 	}
 
-	if cfg.policyConn != nil {
-		policyConn = cfg.policyConn
-	} else {
-		policyConn = defaultConn
-	}
-
-	if cfg.authorizationConn != nil {
-		authorizationConn = cfg.authorizationConn
-	} else {
-		authorizationConn = defaultConn
-	}
-
-	if cfg.wellknownConn != nil {
-		wellknownConn = cfg.wellknownConn
-	} else {
-		wellknownConn = defaultConn
-	}
-
-	if cfg.entityresolutionConn != nil {
-		entityresolutionConn = cfg.entityresolutionConn
-	} else {
-		entityresolutionConn = defaultConn
-	}
-
 	return &SDK{
 		conn:                    defaultConn,
 		dialOptions:             dialOptions,
 		tokenSource:             accessTokenSource,
 		platformConfiguration:   cfg.platformConfiguration,
 		kasKey:                  *cfg.kasKey,
-		Attributes:              attributes.NewAttributesServiceClient(policyConn),
-		Namespaces:              namespaces.NewNamespaceServiceClient(policyConn),
-		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(policyConn),
-		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(policyConn),
-		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(policyConn),
-		Authorization:           authorization.NewAuthorizationServiceClient(authorizationConn),
-		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(entityresolutionConn),
-		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(wellknownConn),
+		Attributes:              attributes.NewAttributesServiceClient(selectConn(cfg.policyConn, defaultConn)),
+		Namespaces:              namespaces.NewNamespaceServiceClient(selectConn(cfg.policyConn, defaultConn)),
+		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(selectConn(cfg.policyConn, defaultConn)),
+		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(selectConn(cfg.policyConn, defaultConn)),
+		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(selectConn(cfg.policyConn, defaultConn)),
+		Authorization:           authorization.NewAuthorizationServiceClient(selectConn(cfg.authorizationConn, defaultConn)),
+		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(selectConn(cfg.entityresolutionConn, defaultConn)),
+		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(selectConn(cfg.wellknownConn, defaultConn)),
 	}, nil
 }
 
@@ -236,6 +211,16 @@ func (s SDK) Conn() *grpc.ClientConn {
 	return s.conn
 }
 
+func fetchPlatformConfiguration(platformEndpoint string, dialOptions []grpc.DialOption) (PlatformConfiguration, error) {
+	conn, err := grpc.Dial(platformEndpoint, dialOptions...)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrGrpcDialFailed, err)
+	}
+	defer conn.Close()
+
+	return getPlatformConfiguration(conn)
+}
+
 func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfiguration, error) {
 	req := wellknownconfiguration.GetWellKnownConfigurationRequest{}
 	wellKnownConfig := wellknownconfiguration.NewWellKnownServiceClient(conn)
@@ -294,4 +279,13 @@ func getTokenEndpoint(c config) (string, error) {
 	}
 
 	return tokenEndpoint, nil
+}
+
+// selectConn returns the preferred connection if it is not nil, otherwise it returns the fallback connection
+// which is the default connection built to the platform.
+func selectConn(preferred, fallback *grpc.ClientConn) *grpc.ClientConn {
+	if preferred != nil {
+		return preferred
+	}
+	return fallback
 }

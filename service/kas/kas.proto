@@ -54,6 +54,14 @@ message RewrapResponse {
   string schema_version = 4;
 }
 
+message BulkRewrapRequest {
+  repeated string signed_request_token = 1;
+}
+
+message BulkRewrapResponse {
+  repeated RewrapResponse rewrap_responses = 1;
+}
+
 // Get app info from the root path
 service AccessService {
   // Get the current version of the service
@@ -85,6 +93,17 @@ service AccessService {
   rpc Rewrap(RewrapRequest) returns (RewrapResponse) {
     option (google.api.http) = {
       post: "/kas/v2/rewrap"
+      body: "*";
+    };
+
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      responses: {key: "200"}
+    };
+  }
+
+  rpc BulkRewrap(BulkRewrapRequest) returns (BulkRewrapResponse) {
+    option (google.api.http) = {
+      post: "/kas/v2/bulk_rewrap"
       body: "*";
     };
 

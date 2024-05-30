@@ -25,8 +25,7 @@ const (
 func (p Provider) lookupKid(ctx context.Context, algorithm string) (string, error) {
 	key := "unknown"
 	defaultKid := "unknown"
-	switch algorithm {
-	case algorithmEc256:
+	if algorithm == algorithmEc256 {
 		defaultKid = "123"
 		key = "eccertid"
 	}

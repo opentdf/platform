@@ -22,9 +22,8 @@ const (
 	kNanoTDFMagicStringAndVersion = "L1L"
 )
 
-var (
-	errStandardCryptoObjIsInvalid = errors.New("standard crypto object is invalid")
-)
+var errStandardCryptoObjIsInvalid = errors.New("standard crypto object is invalid")
+
 type StandardConfig struct {
 	RSAKeys map[string]StandardKeyInfo `yaml:"rsa,omitempty" mapstructure:"rsa"`
 	ECKeys  map[string]StandardKeyInfo `yaml:"ec,omitempty" mapstructure:"ec"`

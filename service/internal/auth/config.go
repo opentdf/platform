@@ -1,20 +1,25 @@
 package auth
 
-import "fmt"
+import (
+	"fmt"
+	"log/slog"
+)
 
 // AuthConfig pulls AuthN and AuthZ together
 type Config struct {
-	Enabled     bool `yaml:"enabled" default:"true" `
-	AuthNConfig `mapstructure:",squash"`
+	Enabled      bool     `yaml:"enabled" default:"true" `
+	PublicRoutes []string `mapstructure:"-"`
+	AuthNConfig  `mapstructure:",squash"`
 }
 
 // AuthNConfig is the configuration need for the platform to validate tokens
-type AuthNConfig struct {
-	Issuer            string   `yaml:"issuer" json:"issuer"`
-	Audience          string   `yaml:"audience" json:"audience"`
-	Clients           []string `yaml:"clients" json:"clients"`
+type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
+	EnforceDPoP       bool   `yaml:"enforceDPoP" json:"enforceDPoP" mapstructure:"enforceDPoP" default:"false"`
+	Issuer            string `yaml:"issuer" json:"issuer"`
+	Audience          string `yaml:"audience" json:"audience"`
 	OIDCConfiguration `yaml:"-" json:"-"`
 	Policy            PolicyConfig `yaml:"policy" json:"policy" mapstructure:"policy"`
+	CacheRefresh      string       `mapstructure:"cache_refresh_interval"`
 }
 
 type PolicyConfig struct {
@@ -34,8 +39,8 @@ func (c AuthNConfig) validateAuthNConfig() error {
 		return fmt.Errorf("config Auth.Audience is required")
 	}
 
-	if len(c.Clients) == 0 {
-		return fmt.Errorf("config Auth.Clients is required")
+	if !c.EnforceDPoP {
+		slog.Warn("config Auth.EnforceDPoP is false. DPoP will not be enforced.")
 	}
 
 	return nil

@@ -1,3 +1,5 @@
+//go:build opentdf.hsm
+
 package security
 
 import (
@@ -22,22 +24,23 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-const (
-	ErrCertNotFound        = Error("not found")
-	ErrCertificateEncode   = Error("certificate encode error")
-	ErrPublicKeyMarshal    = Error("public key marshal error")
-	ErrHSMUnexpected       = Error("hsm unexpected")
-	ErrHSMDecrypt          = Error("hsm decrypt error")
-	ErrHSMNotFound         = Error("hsm unavailable")
-	ErrKeyConfig           = Error("key configuration error")
-	ErrUnknownHashFunction = Error("unknown hash function")
-)
-const keyLength = 32
+type Config struct {
+	Type string `yaml:"type" default:"standard"`
+	// HSMConfig is the configuration for the HSM
+	HSMConfig HSMConfig `yaml:"hsm,omitempty" mapstructure:"hsm"`
+	// StandardConfig is the configuration for the standard key provider
+	StandardConfig StandardConfig `yaml:"standard,omitempty" mapstructure:"standard"`
+}
 
-type Error string
-
-func (e Error) Error() string {
-	return string(e)
+func NewCryptoProvider(cfg Config) (CryptoProvider, error) {
+	switch cfg.Type {
+	case "hsm":
+		return NewHSM(&cfg.HSMConfig)
+	case "standard":
+		return NewStandardCrypto(cfg.StandardConfig)
+	default:
+		return NewStandardCrypto(cfg.StandardConfig)
+	}
 }
 
 // A session with a security module; useful for abstracting basic cryptographic
@@ -83,6 +86,8 @@ type RSAKeyPair struct {
 	*rsa.PublicKey
 	*x509.Certificate
 }
+
+const keyLength = 32
 
 func sh(c string, arg ...string) (string, string, error) {
 	cmd := exec.Command(c, arg...)
@@ -233,7 +238,7 @@ func lookupSlotWithLabel(ctx *pkcs11.Ctx, label string) (uint, error) {
 	return 0, ErrHSMUnexpected
 }
 
-func New(c *HSMConfig) (*HSMSession, error) {
+func NewHSM(c *HSMConfig) (*HSMSession, error) {
 	pkcs11Lib := findHSMLibrary(
 		c.ModulePath,
 		"/usr/lib/softhsm/libsofthsm2.so",
@@ -500,21 +505,30 @@ func (h *HSMSession) LoadECKey(info KeyInfo) (*ECKeyPair, error) {
 	return &pair, nil
 }
 
-func hashToPKCS11(hashFunction crypto.Hash) (hashAlg uint, mgfAlg uint, hashLen uint, err error) {
-	switch hashFunction {
+func oaepForHash(hashFunction crypto.Hash, keyLabel string) (*pkcs11.OAEPParams, error) {
+	var hashAlg, mgfAlg uint
+
+	switch hashFunction { //nolint:exhaustive // We only handle SHA family in this switch
 	case crypto.SHA1:
-		return pkcs11.CKM_SHA_1, pkcs11.CKG_MGF1_SHA1, 20, nil
+		hashAlg = pkcs11.CKM_SHA_1
+		mgfAlg = pkcs11.CKG_MGF1_SHA1
 	case crypto.SHA224:
-		return pkcs11.CKM_SHA224, pkcs11.CKG_MGF1_SHA224, 28, nil
+		hashAlg = pkcs11.CKM_SHA224
+		mgfAlg = pkcs11.CKG_MGF1_SHA224
 	case crypto.SHA256:
-		return pkcs11.CKM_SHA256, pkcs11.CKG_MGF1_SHA256, 32, nil
+		hashAlg = pkcs11.CKM_SHA256
+		mgfAlg = pkcs11.CKG_MGF1_SHA256
 	case crypto.SHA384:
-		return pkcs11.CKM_SHA384, pkcs11.CKG_MGF1_SHA384, 48, nil
+		hashAlg = pkcs11.CKM_SHA384
+		mgfAlg = pkcs11.CKG_MGF1_SHA384
 	case crypto.SHA512:
-		return pkcs11.CKM_SHA512, pkcs11.CKG_MGF1_SHA512, 64, nil
+		hashAlg = pkcs11.CKM_SHA512
+		mgfAlg = pkcs11.CKG_MGF1_SHA512
 	default:
-		return 0, 0, 0, ErrHSMUnexpected
+		return nil, ErrHSMUnexpected
 	}
+	return pkcs11.NewOAEPParams(hashAlg, mgfAlg, pkcs11.CKZ_DATA_SPECIFIED,
+		[]byte(keyLabel)), nil
 }
 
 func (h *HSMSession) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte) ([]byte, error) {
@@ -564,9 +578,14 @@ func (h *HSMSession) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte)
 }
 
 func (h *HSMSession) GenerateNanoTDFSessionKey(
-	privateKeyHandle PrivateKeyEC,
+	privateKey any,
 	ephemeralPublicKey []byte,
 ) ([]byte, error) {
+	privateKeyHandle, ok := privateKey.(PrivateKeyEC)
+	if !ok {
+		return nil, ErrHSMUnexpected
+	}
+
 	template := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, false),
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_SECRET_KEY),
@@ -611,7 +630,7 @@ func (h *HSMSession) GenerateNanoTDFSessionKey(
 	return derivedKey, nil
 }
 
-func (h *HSMSession) GenerateEphemeralKasKeys() (PrivateKeyEC, []byte, error) {
+func (h *HSMSession) GenerateEphemeralKasKeys() (any, []byte, error) {
 	pubKeyTemplate := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
@@ -716,14 +735,11 @@ func (h *HSMSession) RSADecrypt(hash crypto.Hash, keyID string, keyLabel string,
 	// TODO: For now ignore the key id
 	slog.Info("⚠️ Ignoring the", slog.String("key id", keyID))
 
-	hashAlg, mgfAlg, _, err := hashToPKCS11(hash)
+	oaepParams, err := oaepForHash(hash, keyLabel)
 	if err != nil {
 		return nil, errors.Join(ErrHSMDecrypt, err)
 	}
-
-	mech := pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_OAEP,
-		pkcs11.NewOAEPParams(hashAlg, mgfAlg, pkcs11.CKZ_DATA_SPECIFIED,
-			[]byte(keyLabel)))
+	mech := pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_OAEP, oaepParams)
 
 	err = h.ctx.DecryptInit(h.sh, []*pkcs11.Mechanism{mech}, pkcs11.ObjectHandle(h.RSA.PrivateKey))
 	if err != nil {
@@ -736,8 +752,6 @@ func (h *HSMSession) RSADecrypt(hash crypto.Hash, keyID string, keyLabel string,
 	return decrypt, nil
 }
 
-func versionSalt() []byte {
-	digest := sha256.New()
-	digest.Write([]byte("L1L"))
-	return digest.Sum(nil)
+func (h *HSMSession) ECCertificate(string) (string, error) {
+	return "", nil
 }

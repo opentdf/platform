@@ -26,8 +26,6 @@ const (
 	GMAC
 )
 
-const kHTTPOk = 200
-
 // KASInfo contains Key Access Server information.
 type KASInfo struct {
 	// URL of the KAS server``
@@ -46,6 +44,7 @@ type TDFConfig struct {
 	tdfPublicKey              string // TODO: Remove it
 	tdfPrivateKey             string
 	metaData                  string
+	mimeType                  string
 	integrityAlgorithm        IntegrityAlgorithm
 	segmentIntegrityAlgorithm IntegrityAlgorithm
 	assertions                []Assertion //nolint:unused // TODO
@@ -53,7 +52,7 @@ type TDFConfig struct {
 	kasInfoList               []KASInfo
 }
 
-// NewTDFConfig CreateTDF a new instance of tdf config.
+// NewTDFConfig CreateTDF a new instance of a tdf config.
 func NewTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 	rsaKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
 	if err != nil {
@@ -67,7 +66,7 @@ func NewTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 
 	privateKey, err := rsaKeyPair.PublicKeyInPemFormat()
 	if err != nil {
-		return nil, fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
+		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
 	}
 
 	c := &TDFConfig{
@@ -114,6 +113,13 @@ func WithKasInformation(kasInfoList ...KASInfo) TDFOption {
 func WithMetaData(metaData string) TDFOption {
 	return func(c *TDFConfig) error {
 		c.metaData = metaData
+		return nil
+	}
+}
+
+func WithMimeType(mimeType string) TDFOption {
+	return func(c *TDFConfig) error {
+		c.mimeType = mimeType
 		return nil
 	}
 }

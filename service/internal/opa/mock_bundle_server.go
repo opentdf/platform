@@ -14,7 +14,7 @@ type mockBundleServer struct {
 }
 
 func createMockServer() (*mockBundleServer, error) {
-	policy, err := policies.EntitlementsRego.ReadFile("entitlements/entitlements-keycloak.rego")
+	policy, err := policies.EntitlementsRego.ReadFile("entitlements/entitlements.rego")
 	if err != nil {
 		return nil, fmt.Errorf("failed to read entitlements policy: %w", err)
 	}

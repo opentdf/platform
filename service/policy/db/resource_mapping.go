@@ -9,7 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
-	"github.com/opentdf/platform/service/internal/db"
+	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -207,13 +207,13 @@ func (c PolicyDBClient) ListResourceMappings(ctx context.Context) ([]*policy.Res
 	return list, nil
 }
 
-func updateResourceMappingSQL(id string, attribute_value_id string, metadata []byte, terms []string) (string, []interface{}, error) {
+func updateResourceMappingSQL(id string, attributeValueID string, metadata []byte, terms []string) (string, []interface{}, error) {
 	t := Tables.ResourceMappings
 	sb := db.NewStatementBuilder().
 		Update(t.Name())
 
-	if attribute_value_id != "" {
-		sb = sb.Set("attribute_value_id", attribute_value_id)
+	if attributeValueID != "" {
+		sb = sb.Set("attribute_value_id", attributeValueID)
 	}
 
 	if metadata != nil {

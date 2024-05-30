@@ -30,11 +30,17 @@ opentdf.yaml
 # Generated files
 tmp-gen/
 /examples/examples
-/kas-*.pem
+/**/kas-*.pem
 /opentdf
 /sdkjava/target
 /serviceapp
 /service/opentdf
+service/rttests/*.tdf
+coverage.out
+coverage.lcov
+sdk/nanotest1.ntdf
 
 *.zip
 sensitive.txt.tdf
+keys/
+/examples/sensitive.txt.ntdf

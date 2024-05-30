@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "go",
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": true,
+  "separate-pull-requests": true,
+  "include-component-in-tag": true,
+  "tag-separator": "/",
+  "packages": {
+    "lib/fixtures": {
+      "component": "lib/fixtures"
+    },
+    "lib/ocrypto": {
+      "component": "lib/ocrypto"
+    },
+    "protocol/go": {
+      "component": "protocol/go"
+    },
+    "sdk": {
+      "component": "sdk"
+    },
+    "service": {
+      "component": "service"
+    }
+  }
+}

@@ -11,17 +11,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opentdf/platform/service/internal/security"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
-
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/go-chi/cors"
 	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/auth"
-	"github.com/opentdf/platform/service/internal/db"
+	"github.com/opentdf/platform/service/internal/security"
 	"github.com/valyala/fasthttp/fasthttputil"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -42,24 +40,45 @@ func (e Error) Error() string {
 	return string(e)
 }
 
+// Configurations for the server
 type Config struct {
 	Auth                    auth.Config     `yaml:"auth"`
 	GRPC                    GRPCConfig      `yaml:"grpc"`
 	CryptoProvider          security.Config `yaml:"cryptoProvider"`
 	TLS                     TLSConfig       `yaml:"tls"`
+	CORS                    CORSConfig      `yaml:"cors"`
 	WellKnownConfigRegister func(namespace string, config any) error
-	Port                    int    `yaml:"port" default:"8080"`
-	Host                    string `yaml:"host,omitempty"`
+	// Port to listen on
+	Port int    `yaml:"port" default:"8080"`
+	Host string `yaml:"host,omitempty"`
 }
 
+// GRPC Server specific configurations
 type GRPCConfig struct {
+	// Enable reflection for grpc server (default: true)
 	ReflectionEnabled bool `yaml:"reflectionEnabled" default:"true"`
 }
 
+// TLS Configuration for the server
 type TLSConfig struct {
-	Enabled bool   `yaml:"enabled" default:"false"`
-	Cert    string `yaml:"cert"`
-	Key     string `yaml:"key"`
+	// Enable TLS for the server (default: false)
+	Enabled bool `yaml:"enabled" default:"false"`
+	// Path to the certificate file
+	Cert string `yaml:"cert"`
+	// Path to the key file
+	Key string `yaml:"key"`
+}
+
+// CORS Configuration for the server
+type CORSConfig struct {
+	// Enable CORS for the server (default: true)
+	Enabled          bool     `yaml:"enabled" default:"true"`
+	AllowedOrigins   []string `yaml:"allowedorigins"`
+	AllowedMethods   []string `yaml:"allowedmethods"`
+	AllowedHeaders   []string `yaml:"allowedheaders"`
+	ExposedHeaders   []string `yaml:"exposedheaders"`
+	AllowCredentials bool     `yaml:"allowcredentials" default:"true"`
+	MaxAge           int      `yaml:"maxage" default:"3600"`
 }
 
 type OpenTDFServer struct {
@@ -81,7 +100,7 @@ type inProcessServer struct {
 	srv *grpc.Server
 }
 
-func NewOpenTDFServer(config Config, d *db.Client) (*OpenTDFServer, error) {
+func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 	var (
 		authN *auth.Authentication
 		err   error
@@ -90,11 +109,16 @@ func NewOpenTDFServer(config Config, d *db.Client) (*OpenTDFServer, error) {
 	// Add authN interceptor
 	// TODO Remove this conditional once we move to the hardening phase (https://github.com/opentdf/platform/issues/381)
 	if config.Auth.Enabled {
-		slog.Info("authentication enabled")
-		authN, err = auth.NewAuthenticator(config.Auth.AuthNConfig, d)
+		authN, err = auth.NewAuthenticator(
+			context.Background(),
+			config.Auth,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
 		}
+		slog.Debug("authentication interceptor enabled")
+	} else {
+		slog.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
 	// Try an register oidc issuer to wellknown service but don't return an error if it fails
@@ -116,7 +140,7 @@ func NewOpenTDFServer(config Config, d *db.Client) (*OpenTDFServer, error) {
 	mux := runtime.NewServeMux(
 		runtime.WithHealthzEndpoint(healthpb.NewHealthClient(grpcIPCServer.Conn())),
 	)
-	httpServer, err := newHttpServer(config, mux, authN, grpcServer)
+	httpServer, err := newHTTPServer(config, mux, authN, grpcServer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http server: %w", err)
 	}
@@ -128,47 +152,50 @@ func NewOpenTDFServer(config Config, d *db.Client) (*OpenTDFServer, error) {
 		GRPCInProcess: grpcIPCServer,
 	}
 
-	if config.CryptoProvider.HSMConfig.Enabled {
-		config.CryptoProvider.Type = "hsm"
-		o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
-		if err != nil {
-			return nil, fmt.Errorf("HSM security.NewCryptoProvider: %w", err)
-		}
-
-		slog.Info("✅crypto provider: HSM")
-	} else {
-		config.CryptoProvider.Type = "standard"
-		o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
-		if err != nil {
-			return nil, fmt.Errorf("standard security.NewCryptoProvider: %w", err)
-		}
-
-		slog.Info("✅ crypto provider: standard")
+	// Create crypto provider
+	slog.Info("creating crypto provider", slog.String("type", config.CryptoProvider.Type))
+	o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
+	if err != nil {
+		return nil, fmt.Errorf("HSM security.NewCryptoProvider: %w", err)
 	}
 
 	return &o, nil
 }
 
-// newHttpServer creates a new http server with the given handler and grpc server
-func newHttpServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Server) (*http.Server, error) {
+// newHTTPServer creates a new http server with the given handler and grpc server
+func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Server) (*http.Server, error) {
 	var err error
 	var tc *tls.Config
 
 	// Add authN interceptor
-	// TODO check if this is needed or if it is handled by gRPC
+	// This is needed because we are leveraging RegisterXServiceHandlerServer instead of RegisterXServiceHandlerFromEndpoint
 	if c.Auth.Enabled {
 		h = a.MuxHandler(h)
+	} else {
+		slog.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
-	// Add CORS // TODO We need to make cors configurable (https://github.com/opentdf/platform/issues/305)
-	h = cors.New(cors.Options{
-		AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
-		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodPut, http.MethodDelete, http.MethodOptions},
-		AllowedHeaders:   []string{"ACCEPT", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: true,
-		MaxAge:           maxAge,
-	}).Handler(h)
+	// CORS
+	if c.CORS.Enabled {
+		h = cors.New(cors.Options{
+			AllowOriginFunc: func(_ *http.Request, origin string) bool {
+				for _, allowedOrigin := range c.CORS.AllowedOrigins {
+					if allowedOrigin == "*" {
+						return true
+					}
+					if strings.EqualFold(origin, allowedOrigin) {
+						return true
+					}
+				}
+				return false
+			},
+			AllowedMethods:   c.CORS.AllowedMethods,
+			AllowedHeaders:   c.CORS.AllowedHeaders,
+			ExposedHeaders:   c.CORS.ExposedHeaders,
+			AllowCredentials: c.CORS.AllowCredentials,
+			MaxAge:           c.CORS.MaxAge,
+		}).Handler(h)
+	}
 
 	// Add grpc handler
 	h2 := httpGrpcHandlerFunc(h, g)
@@ -208,15 +235,16 @@ func newGrpcServer(c Config, a *auth.Authentication) (*grpc.Server, error) {
 	var i []grpc.UnaryServerInterceptor
 	var o []grpc.ServerOption
 
-	// Enbale proto validation
+	// Enable proto validation
 	validator, err := protovalidate.New()
 	if err != nil {
 		slog.Warn("failed to create proto validator", slog.String("error", err.Error()))
 	}
 
-	// Add authN interceptor
 	if c.Auth.Enabled {
 		i = append(i, a.UnaryServerInterceptor)
+	} else {
+		slog.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
 	}
 
 	// Add tls creds if tls is not nil
@@ -273,7 +301,7 @@ func (s inProcessServer) GetGrpcServer() *grpc.Server {
 
 func (s inProcessServer) Conn() *grpc.ClientConn {
 	defaultOptions := []grpc.DialOption{
-		grpc.WithContextDialer(func(_ context.Context, addr string) (net.Conn, error) {
+		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
 			conn, err := s.ln.Dial()
 			if err != nil {
 				return nil, fmt.Errorf("failed to dial in process grpc server: %w", err)

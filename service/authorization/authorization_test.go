@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
 	otdf "github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,30 +26,27 @@ var (
 	mockFqn2                         = fmt.Sprintf("https://%s/attr/%s/value/%s", mockNamespace, mockAttrName, mockAttrValue2)
 )
 
-func mockRetrieveAttributeDefinitions(ctx context.Context, ra *authorization.ResourceAttribute, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
-	fmt.Println("Using mocked GetAttributeValuesByFqns: " + getAttributesByValueFqnsResponse.String())
+func mockRetrieveAttributeDefinitions(ctx context.Context, _ *authorization.ResourceAttribute, _ *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
+	slog.DebugContext(ctx, "Using mocked GetAttributeValuesByFqns: "+getAttributesByValueFqnsResponse.String())
 	return getAttributesByValueFqnsResponse.GetFqnAttributeValues(), nil
 }
 
-func mockRetrieveEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest, as AuthorizationService) (*authorization.GetEntitlementsResponse, error) {
-	fmt.Println("Using mocked GetEntitlements: " + entitlementsResponse.String())
+func mockRetrieveEntitlements(ctx context.Context, _ *authorization.GetEntitlementsRequest, _ *AuthorizationService) (*authorization.GetEntitlementsResponse, error) {
+	slog.DebugContext(ctx, "Using mocked GetEntitlements: "+entitlementsResponse.String())
 	return &entitlementsResponse, nil
 }
 
-func showLogsInTest() {
-	logLevel := &slog.LevelVar{} // INFO
-	logLevel.Set(slog.LevelDebug)
-
-	opts := &slog.HandlerOptions{
-		Level: logLevel,
+func createTestLogger() (*logger.Logger, error) {
+	logger, err := logger.NewLogger(logger.Config{Level: "debug", Output: "stdout", Type: "json"})
+	if err != nil {
+		return nil, err
 	}
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, opts))
-
-	slog.SetDefault(logger)
+	return logger, nil
 }
 
 func Test_GetDecisionsAllOf_Pass(t *testing.T) {
-	showLogsInTest()
+	logger, err := createTestLogger()
+	require.NoError(t, err)
 
 	retrieveAttributeDefinitions = mockRetrieveAttributeDefinitions
 	retrieveEntitlements = mockRetrieveEntitlements
@@ -58,10 +55,6 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	entitlementsResponse = authorization.GetEntitlementsResponse{Entitlements: []*authorization.EntityEntitlements{
 		{
 			EntityId:           "e1",
-			AttributeValueFqns: []string{mockFqn1},
-		},
-		{
-			EntityId:           "e999",
 			AttributeValueFqns: []string{mockFqn1},
 		},
 	}}
@@ -104,7 +97,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 		},
 	}}
 
-	as := AuthorizationService{}
+	as := AuthorizationService{logger: logger}
 	retrieveEntitlements = mockRetrieveEntitlements
 	ctxb := context.Background()
 
@@ -114,11 +107,21 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	assert.NotNil(t, resp)
 
 	// one entitlement, one attribute value throughout
-	fmt.Print(resp.String())
-	assert.Equal(t, 1, len(resp.GetDecisionResponses()))
-	assert.Equal(t, resp.GetDecisionResponses()[0].GetDecision(), authorization.DecisionResponse_DECISION_PERMIT)
+	slog.Debug(resp.String())
+	assert.Len(t, resp.GetDecisionResponses(), 1)
+	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.GetDecisionResponses()[0].GetDecision())
 
 	// run again with two attribute values throughout
+	entitlementsResponse = authorization.GetEntitlementsResponse{Entitlements: []*authorization.EntityEntitlements{
+		{
+			EntityId:           "e1",
+			AttributeValueFqns: []string{mockFqn1},
+		},
+		{
+			EntityId:           "e999",
+			AttributeValueFqns: []string{mockFqn1},
+		},
+	}}
 	// set the request
 	req = authorization.GetDecisionsRequest{DecisionRequests: []*authorization.DecisionRequest{
 		{
@@ -162,14 +165,15 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	entitlementsResponse.Entitlements[0].AttributeValueFqns = []string{mockFqn1, mockFqn2}
 
 	resp, err = as.GetDecisions(ctxb, &req)
-	assert.Nil(t, err)
-	assert.Equal(t, 2, len(resp.GetDecisionResponses()))
-	assert.Equal(t, resp.GetDecisionResponses()[0].GetDecision(), authorization.DecisionResponse_DECISION_DENY)
-	assert.Equal(t, resp.GetDecisionResponses()[1].GetDecision(), authorization.DecisionResponse_DECISION_DENY)
+	require.NoError(t, err)
+	assert.Len(t, resp.GetDecisionResponses(), 2)
+	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.GetDecisionResponses()[0].GetDecision())
+	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.GetDecisionResponses()[1].GetDecision())
 }
 
 func Test_GetDecisions_AllOf_Fail(t *testing.T) {
-	showLogsInTest()
+	logger, err := createTestLogger()
+	require.NoError(t, err)
 
 	retrieveAttributeDefinitions = mockRetrieveAttributeDefinitions
 	retrieveEntitlements = mockRetrieveEntitlements
@@ -233,7 +237,7 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 		},
 	}}
 
-	as := AuthorizationService{}
+	as := AuthorizationService{logger: logger}
 	ctxb := context.Background()
 
 	resp, err := as.GetDecisions(ctxb, &req)
@@ -244,7 +248,7 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 	// NOTE: there should be two decision responses, one for each data attribute value, but authorization service
 	// only responds with one permit/deny at the moment
 	// entitlements only contain the first FQN, so we have a deny decision
-	fmt.Print(resp.String())
-	assert.Equal(t, len(resp.GetDecisionResponses()), 1)
-	assert.Equal(t, resp.GetDecisionResponses()[0].GetDecision(), authorization.DecisionResponse_DECISION_DENY)
+	slog.Debug(resp.String())
+	assert.Len(t, resp.GetDecisionResponses(), 1)
+	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.GetDecisionResponses()[0].GetDecision())
 }

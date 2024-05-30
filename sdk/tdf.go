@@ -12,7 +12,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/archive"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -58,14 +60,16 @@ const (
 )
 
 type Reader struct {
+	tokenSource         auth.AccessTokenSource
+	dialOptions         []grpc.DialOption
 	manifest            Manifest
 	unencryptedMetadata []byte
 	tdfReader           archive.TDFReader
-	unwrapper           Unwrapper
 	cursor              int64
 	aesGcm              ocrypto.AesGcm
 	payloadSize         int64
 	payloadKey          []byte
+	kasSessionKey       ocrypto.RsaKeyPair
 }
 
 type TDFObject struct {
@@ -73,11 +77,6 @@ type TDFObject struct {
 	size       int64
 	aesGcm     ocrypto.AesGcm
 	payloadKey [kKeySize]byte
-}
-
-type Unwrapper interface {
-	unwrap(keyAccess KeyAccess, policy string) ([]byte, error)
-	getPublicKey(kas KASInfo) (string, error)
 }
 
 // CreateTDF reads plain text from the given reader and saves it to the writer, subject to the given options
@@ -101,7 +100,8 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
 	}
 
-	err = fillInPublicKeys(s.unwrapper, tdfConfig.kasInfoList)
+	// How do we want to handle different dial options for different KAS servers?
+	err = fillInPublicKeys(tdfConfig.kasInfoList, s.dialOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +147,7 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 		}
 
 		if int64(n) != readSize {
-			return nil, fmt.Errorf("io.ReadSeeker.Read size missmatch")
+			return nil, fmt.Errorf("io.ReadSeeker.Read size mismatch")
 		}
 
 		cipherData, err := tdfObject.aesGcm.Encrypt(readBuf.Bytes()[:readSize])
@@ -205,7 +205,11 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 	tdfObject.manifest.EncryptionInformation.Method.IsStreamable = true
 
 	// add payload info
-	tdfObject.manifest.Payload.MimeType = defaultMimeType
+	mimeType := tdfConfig.mimeType
+	if mimeType == "" {
+		mimeType = defaultMimeType
+	}
+	tdfObject.manifest.Payload.MimeType = mimeType
 	tdfObject.manifest.Payload.Protocol = tdfAsZip
 	tdfObject.manifest.Payload.Type = tdfZipReference
 	tdfObject.manifest.Payload.URL = archive.TDFPayloadFileName
@@ -379,9 +383,11 @@ func (s SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
 	}
 
 	return &Reader{
-		tdfReader: tdfReader,
-		manifest:  *manifestObj,
-		unwrapper: s.unwrapper,
+		tokenSource:   s.tokenSource,
+		dialOptions:   s.dialOptions,
+		tdfReader:     tdfReader,
+		manifest:      *manifestObj,
+		kasSessionKey: s.kasSessionKey,
 	}, nil
 }
 
@@ -392,7 +398,7 @@ func (r *Reader) Read(p []byte) (int, error) {
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap()
 		if err != nil {
-			return 0, fmt.Errorf("reader.doPayloadKeyUnwrap failed: %w", err)
+			return 0, fmt.Errorf("reader.Read failed: %w", err)
 		}
 	}
 
@@ -407,7 +413,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap()
 		if err != nil {
-			return 0, fmt.Errorf("reader.doPayloadKeyUnwrap failed: %w", err)
+			return 0, fmt.Errorf("reader.WriteTo failed: %w", err)
 		}
 	}
 
@@ -468,7 +474,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap()
 		if err != nil {
-			return 0, fmt.Errorf("reader.doPayloadKeyUnwrap failed: %w", err)
+			return 0, fmt.Errorf("reader.ReadAt failed: %w", err)
 		}
 	}
 
@@ -563,7 +569,7 @@ func (r *Reader) UnencryptedMetadata() ([]byte, error) {
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap()
 		if err != nil {
-			return nil, fmt.Errorf("reader.doPayloadKeyUnwrap failed: %w", err)
+			return nil, fmt.Errorf("reader.UnencryptedMetadata failed: %w", err)
 		}
 	}
 
@@ -614,9 +620,14 @@ func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit // Better readab
 	var unencryptedMetadata []byte
 	var payloadKey [kKeySize]byte
 	for _, keyAccessObj := range r.manifest.EncryptionInformation.KeyAccessObjs {
-		wrappedKey, err := r.unwrapper.unwrap(keyAccessObj, r.manifest.EncryptionInformation.Policy)
+		client, err := newKASClient(r.dialOptions, r.tokenSource, r.kasSessionKey)
 		if err != nil {
-			return fmt.Errorf(" splitKey.rewrap failed:%w", err)
+			return fmt.Errorf("newKASClient failed:%w", err)
+		}
+
+		wrappedKey, err := client.unwrap(keyAccessObj, r.manifest.EncryptionInformation.Policy)
+		if err != nil {
+			return fmt.Errorf("doPayloadKeyUnwrap splitKey.rewrap failed: %w", err)
 		}
 
 		for keyByteIndex, keyByte := range wrappedKey {
@@ -730,13 +741,13 @@ func validateRootSignature(manifest Manifest, secret []byte) (bool, error) {
 	return false, nil
 }
 
-func fillInPublicKeys(unwrapper Unwrapper, kasInfos []KASInfo) error {
+func fillInPublicKeys(kasInfos []KASInfo, opts ...grpc.DialOption) error {
 	for idx, kasInfo := range kasInfos {
 		if kasInfo.PublicKey != "" {
 			continue
 		}
 
-		publicKey, err := unwrapper.getPublicKey(kasInfo)
+		publicKey, err := getPublicKey(kasInfo, opts...)
 		if err != nil {
 			return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", kasInfo.URL, err)
 		}

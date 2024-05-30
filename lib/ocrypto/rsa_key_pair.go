@@ -13,6 +13,10 @@ type RsaKeyPair struct {
 	privateKey *rsa.PrivateKey
 }
 
+func FromRSA(k *rsa.PrivateKey) RsaKeyPair {
+	return RsaKeyPair{k}
+}
+
 // NewRSAKeyPair Generates an RSA key pair of the given bit size.
 func NewRSAKeyPair(bits int) (RsaKeyPair, error) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, bits)

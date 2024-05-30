@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/base64"
 	"fmt"
 	"log/slog"
@@ -14,38 +15,57 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 const (
-	JTILength            = 14
-	JWTExpirationMinutes = 10
+	JTILength = 14
 )
 
-func NewTokenAddingInterceptor(t AccessTokenSource) TokenAddingInterceptor {
-	return TokenAddingInterceptor{tokenSource: t}
+func NewTokenAddingInterceptor(t AccessTokenSource, c *tls.Config) TokenAddingInterceptor {
+	return TokenAddingInterceptor{
+		tokenSource: t,
+		tlsConfig:   c,
+	}
 }
 
 type TokenAddingInterceptor struct {
 	tokenSource AccessTokenSource
+	tlsConfig   *tls.Config
 }
 
-func (i TokenAddingInterceptor) AddCredentials(ctx context.Context,
-	method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+func (i TokenAddingInterceptor) AddCredentials(
+	ctx context.Context,
+	method string,
+	req, reply any,
+	cc *grpc.ClientConn,
+	invoker grpc.UnaryInvoker,
+	opts ...grpc.CallOption,
+) error {
 	newMetadata := make([]string, 0)
-	accessToken, err := i.tokenSource.AccessToken()
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: i.tlsConfig,
+		},
+	}
+	accessToken, err := i.tokenSource.AccessToken(ctx, client)
 	if err == nil {
 		newMetadata = append(newMetadata, "Authorization", fmt.Sprintf("DPoP %s", accessToken))
 	} else {
-		slog.Error("error getting access token: %w. request will be unauthenticated", err)
-		return invoker(ctx, method, req, reply, cc, opts...)
+		slog.ErrorContext(ctx, "error getting access token", "error", err)
+		return status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	dpopTok, err := i.GetDPoPToken(method, http.MethodPost, string(accessToken))
 	if err == nil {
 		newMetadata = append(newMetadata, "DPoP", dpopTok)
 	} else {
-		slog.Error("error adding dpop token to outgoing request. Request will not have DPoP token", err)
+		// since we don't have a setting about whether DPoP is in use on the client and this request _could_ succeed if
+		// they are talking to a server where DPoP is not required we will just let this through. this method is extremely
+		// unlikely to fail so hopefully this isn't confusing
+		slog.ErrorContext(ctx, "error getting DPoP token for outgoing request. Request will not have DPoP token", "error", err)
 	}
 
 	newCtx := metadata.AppendToOutgoingContext(ctx, newMetadata...)

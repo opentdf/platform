@@ -78,7 +78,7 @@ jobs:
           git push -f -u origin update-go-mods-for-${{matrix.path}}
           cd ${{matrix.path}}
           for x in ${{join(fromJson(needs.release-please.outputs.paths_released), ' ')}}; do
-            pkg=github.com/dmihalcik-virtru/workflow-testing-zone/${x}
+            pkg=github.com/opentdf/platform/${x}
             echo "Should we update [${pkg}] in [${{ matrix.path }}]?"
             if grep "$pkg"<go.mod; then
               ver=$(jq -r .${x} < "${GITHUB_WORKSPACE}/.release-please-manifest.json")
@@ -93,7 +93,7 @@ jobs:
           done
           git diff
         env:
-          GONOSUMDB: github.com/dmihalcik-virtru/workflow-testing-zone/${{join(fromJson(needs.release-please.outputs.paths_released), ',github.com/dmihalcik-virtru/workflow-testing-zone/')}}
+          GONOSUMDB: github.com/opentdf/platform/${{join(fromJson(needs.release-please.outputs.paths_released), ',github.com/opentdf/platform/')}}
       - uses: planetscale/ghcommit-action@b662a9d7235a07e80d976152ed5afe41651c4973
         with:
           commit_message: "chore(core): Update dependencies in ${{ matrix.path }}"

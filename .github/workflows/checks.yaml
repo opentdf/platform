@@ -191,7 +191,7 @@ jobs:
       - run: curl --show-error --fail-with-body --insecure localhost:8080/kas/v2/kas_public_key
       - run: curl --show-error --fail-with-body --insecure localhost:8080/kas/v2/kas_public_key?algorithm=ec:secp256r1
       - run: |-
-          curl_status=$(curl -o -I -L -s -w "%{http_code}" localhost:8080/kas/v2/kas_public_key?algorithm=invalid)
+          curl_status=$(curl -o /dev/null -s -w "%{http_code}" localhost:8080/kas/v2/kas_public_key?algorithm=invalid)
           [ $curl_status = 404 ]
       - run: go run ./examples encrypt "Hello Virtru"
       - run: go run ./examples decrypt sensitive.txt.tdf

@@ -124,8 +124,8 @@ func EvaluateSubjectMappings(attributeMappings map[string]*attributes.GetAttribu
 func EvaluateSubjectSet(subjectSet *policy.SubjectSet, entity map[string]any) (bool, error) {
 	// condition groups anded togethor
 	subjectSetConditionResult := true
-	for _, condition_group := range subjectSet.GetConditionGroups() {
-		conditionGroupResult, err := EvaluateConditionGroup(condition_group, entity)
+	for _, conditionGroup := range subjectSet.GetConditionGroups() {
+		conditionGroupResult, err := EvaluateConditionGroup(conditionGroup, entity)
 		if err != nil {
 			return false, err
 		}

@@ -17,20 +17,20 @@ import (
 // evaluate condition IN
 var inCondition1 policy.Condition = policy.Condition{
 	SubjectExternalSelectorValue: ".attributes.testing[]",
-	Operator:                     policy.SubjectMappingOperatorEnum(policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
+	Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
 	SubjectExternalValues:        []string{"option1", "option2"},
 }
-var entity1 map[string]any = map[string]interface{}{
+var entity1 = map[string]interface{}{
 	"attributes": map[string]interface{}{
 		"testing": []any{"option1", "option3"},
 	},
 }
-var entity2 map[string]any = map[string]any{
+var entity2 = map[string]any{
 	"attributes": map[string]interface{}{
 		"testing": []any{"option4", "option3"},
 	},
 }
-var entity3 map[string]any = map[string]any{
+var entity3 = map[string]any{
 	"attributes": map[string]interface{}{
 		"testing": []any{"option1", "option4"},
 	},
@@ -39,36 +39,36 @@ var entity3 map[string]any = map[string]any{
 func Test_EvaluateConditionINTrue(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateCondition(&inCondition1, entity1)
 	require.NoError(t, err)
-	assert.Equal(t, true, res)
+	assert.True(t, res)
 }
 func Test_EvaluateConditionINFalse(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateCondition(&inCondition1, entity2)
 	require.NoError(t, err)
-	assert.Equal(t, false, res)
+	assert.False(t, res)
 }
 
 // evaluate condition NOTIN
 var notInCondition2 policy.Condition = policy.Condition{
 	SubjectExternalSelectorValue: ".attributes.testing[]",
-	Operator:                     policy.SubjectMappingOperatorEnum(policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN),
+	Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN,
 	SubjectExternalValues:        []string{"option1", "option2"},
 }
 
 func Test_EvaluateConditionNOTINTrue(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateCondition(&notInCondition2, entity2)
 	require.NoError(t, err)
-	assert.Equal(t, true, res)
+	assert.True(t, res)
 }
 func Test_EvaluateConditionNOTINFalse(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateCondition(&notInCondition2, entity1)
 	require.NoError(t, err)
-	assert.Equal(t, false, res)
+	assert.False(t, res)
 }
 
 // evaluate condition group AND
 var notInCondition3 policy.Condition = policy.Condition{
 	SubjectExternalSelectorValue: ".attributes.testing[]",
-	Operator:                     policy.SubjectMappingOperatorEnum(policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN),
+	Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN,
 	SubjectExternalValues:        []string{"option4", "option5"},
 }
 
@@ -82,12 +82,12 @@ var andConditionGroup1 policy.ConditionGroup = policy.ConditionGroup{
 func Test_EvaluateConditionGroupANDTrue(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateConditionGroup(&andConditionGroup1, entity1)
 	require.NoError(t, err)
-	assert.Equal(t, true, res)
+	assert.True(t, res)
 }
 func Test_EvaluateConditionGroupANDFalse(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateConditionGroup(&andConditionGroup1, entity2)
 	require.NoError(t, err)
-	assert.Equal(t, false, res)
+	assert.False(t, res)
 }
 
 // evaluate condition group OR
@@ -101,18 +101,18 @@ var orConditionGroup1 policy.ConditionGroup = policy.ConditionGroup{
 func Test_EvaluateConditionGroupORTrueBoth(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateConditionGroup(&orConditionGroup1, entity1)
 	require.NoError(t, err)
-	assert.Equal(t, true, res)
+	assert.True(t, res)
 }
 func Test_EvaluateConditionGroupORTrueOne(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateConditionGroup(&orConditionGroup1, entity3)
 	require.NoError(t, err)
-	assert.Equal(t, true, res)
+	assert.True(t, res)
 }
 
 func Test_EvaluateConditionGroupORFalse(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateConditionGroup(&orConditionGroup1, entity2)
 	require.NoError(t, err)
-	assert.Equal(t, false, res)
+	assert.False(t, res)
 }
 
 // evaluate subject sets
@@ -125,7 +125,7 @@ var subjectSet1 policy.SubjectSet = policy.SubjectSet{
 func Test_EvaluateSubjectSetTrue(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateSubjectSet(&subjectSet1, entity1)
 	require.NoError(t, err)
-	assert.Equal(t, true, res)
+	assert.True(t, res)
 }
 
 var andConditionGroup2 policy.ConditionGroup = policy.ConditionGroup{
@@ -144,7 +144,7 @@ var subjectSet2 policy.SubjectSet = policy.SubjectSet{
 func Test_EvaluateSubjectSetFalse(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateSubjectSet(&subjectSet2, entity1)
 	require.NoError(t, err)
-	assert.Equal(t, false, res)
+	assert.False(t, res)
 }
 
 // evaluate attribute mappings

@@ -8,7 +8,6 @@ import (
 )
 
 func ExecuteQuery(inputJSON map[string]any, queryString string) ([]any, error) {
-	slog.Debug("Executing query", "query=", queryString)
 	// first unescape the query string
 	unescapedQueryString, err := unescapeQueryString(queryString)
 	if err != nil {

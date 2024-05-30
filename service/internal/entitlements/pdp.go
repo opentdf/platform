@@ -12,26 +12,27 @@ func OpaInput(entity *authorization.Entity, sms map[string]*attributes.GetAttrib
 	// OPA wants this as a generic map[string]interface{} and will not handle
 	// deserializing to concrete structs
 	inputUnstructured := make(map[string]interface{})
+
 	// SubjectMapping
 	// convert sms to json string
-	smsJson := make(map[string]string)
+	smsJSON := make(map[string]string)
 	for k, v := range sms {
 		attrDefBytes, err := protojson.Marshal(v)
 		if err != nil {
 			return nil, err
 		}
-		smsJson[k] = string(attrDefBytes)
+		smsJSON[k] = string(attrDefBytes)
 	}
-	inputUnstructured["attribute_mappings"] = smsJson
+	inputUnstructured["attribute_mappings"] = smsJSON
 
 	// Entity
 	// convert entity to map[string]string
-	eaJson, err := protojson.Marshal(entity)
+	eaJSON, err := protojson.Marshal(entity)
 	if err != nil {
 		return nil, err
 	}
 	var eaMap map[string]string
-	err = json.Unmarshal(eaJson, &eaMap)
+	err = json.Unmarshal(eaJSON, &eaMap)
 	if err != nil {
 		return nil, err
 	}

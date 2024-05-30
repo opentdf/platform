@@ -25,15 +25,14 @@ const (
 var (
 	errStandardCryptoObjIsInvalid = errors.New("standard crypto object is invalid")
 )
-
 type StandardConfig struct {
 	RSAKeys map[string]StandardKeyInfo `yaml:"rsa,omitempty" mapstructure:"rsa"`
 	ECKeys  map[string]StandardKeyInfo `yaml:"ec,omitempty" mapstructure:"ec"`
 }
 
 type StandardKeyInfo struct {
-	PrivateKeyPath string `yaml:"privateKeyPath" mapstructure:"privateKeyPath"`
-	PublicKeyPath  string `yaml:"publicKeyPath" mapstructure:"publicKeyPath"`
+	PrivateKeyPath string `yaml:"privatekeypath" mapstructure:"privatekeypath"`
+	PublicKeyPath  string `yaml:"publickeypath" mapstructure:"publickeypath"`
 }
 
 type StandardRSACrypto struct {

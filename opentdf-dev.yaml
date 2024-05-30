@@ -177,15 +177,15 @@ server:
     standard:
       rsa:
         123:
-          privateKeyPath: kas-private.pem
-          publicKeyPath: kas-cert.pem
+          privatekeypath: kas-private.pem
+          publickeypath: kas-cert.pem
         456:
-          privateKeyPath: kas-private.pem
-          publicKeyPath: kas-cert.pem
+          privatekeypath: kas-private.pem
+          publickeypath: kas-cert.pem
       ec:
         123:
-          privateKeyPath: kas-ec-private.pem
-          publicKeyPath: kas-ec-cert.pem
+          privatekeypath: kas-ec-private.pem
+          publickeypath: kas-ec-cert.pem
   port: 8080
 opa:
   embedded: true # Only for local development

@@ -22,9 +22,7 @@ const (
 	kNanoTDFMagicStringAndVersion = "L1L"
 )
 
-var (
-	errStandardCryptoObjIsInvalid = errors.New("standard crypto object is invalid")
-)
+var errStandardCryptoObjIsInvalid = errors.New("standard crypto object is invalid")
 
 type StandardConfig struct {
 	RSAKeys map[string]StandardKeyInfo `yaml:"rsa,omitempty" mapstructure:"rsa"`
@@ -32,8 +30,8 @@ type StandardConfig struct {
 }
 
 type StandardKeyInfo struct {
-	PrivateKeyPath string `yaml:"privateKeyPath" mapstructure:"privateKeyPath"`
-	PublicKeyPath  string `yaml:"publicKeyPath" mapstructure:"publicKeyPath"`
+	PrivateKeyPath string `yaml:"private_key_path" mapstructure:"private_key_path"`
+	PublicKeyPath  string `yaml:"public_key_path" mapstructure:"public_key_path"`
 }
 
 type StandardRSACrypto struct {

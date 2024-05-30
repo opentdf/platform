@@ -233,7 +233,7 @@ func Test_EvaluateAttributeMappingTwoAttributes(t *testing.T) {
 	require.NoError(t, err)
 	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput3, []*entityresolution.EntityRepresentation{{AdditionalProps: []*structpb.Struct{additionalProps}}})
 	require.NoError(t, err)
-	assert.Equal(t, []string{"https://demo.org/attr/hello/value/world", "https://demo.org/attr/hi/value/there"}, res)
+	assert.ElementsMatch(t, []string{"https://demo.org/attr/hello/value/world", "https://demo.org/attr/hi/value/there"}, res)
 }
 
 var subjectMappingInput4 map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue = map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{

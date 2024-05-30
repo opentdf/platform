@@ -125,13 +125,13 @@ func EvaluateSubjectSet(subjectSet *policy.SubjectSet, entity map[string]any) (b
 	// condition groups anded togethor
 	subjectSetConditionResult := true
 	for _, condition_group := range subjectSet.GetConditionGroups() {
-		condition_group_result, err := EvaluateConditionGroup(condition_group, entity)
+		conditionGroupResult, err := EvaluateConditionGroup(condition_group, entity)
 		if err != nil {
 			return false, err
 		}
 		// update the subject condition set result
 		// and togethor with previous condition group results
-		subjectSetConditionResult = subjectSetConditionResult && condition_group_result
+		subjectSetConditionResult = subjectSetConditionResult && conditionGroupResult
 		// if one condition group fails, subject condition set fails
 		if !subjectSetConditionResult {
 			break
@@ -148,34 +148,38 @@ func EvaluateConditionGroup(conditionGroup *policy.ConditionGroup, entity map[st
 		conditionGroupResult = true
 	case policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR:
 		conditionGroupResult = false
+	case policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED:
+		return false, errors.New("unspecified condition group boolean operator: " + conditionGroup.GetBooleanOperator().String())
 	default:
-		// unsopported boolean operator
+		// unsupported boolean operator
 		return false, errors.New("unsupported condition group boolean operator: " + conditionGroup.GetBooleanOperator().String())
 	}
 
 ConditionEval:
 	for _, condition := range conditionGroup.GetConditions() {
-		condition_result, err := EvaluateCondition(condition, entity)
+		conditionResult, err := EvaluateCondition(condition, entity)
 		if err != nil {
 			return false, err
 		}
 		switch conditionGroup.GetBooleanOperator() {
 		case policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND:
 			// update result for condition group
-			conditionGroupResult = conditionGroupResult && condition_result
+			conditionGroupResult = conditionGroupResult && conditionResult
 			// if we find a false condition, whole group is false bc AND
 			if !conditionGroupResult {
 				break ConditionEval
 			}
 		case policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR:
 			// update result for condition group
-			conditionGroupResult = conditionGroupResult || condition_result
+			conditionGroupResult = conditionGroupResult || conditionResult
 			// if we find a true condition, whole group is true bc OR
 			if conditionGroupResult {
 				break ConditionEval
 			}
+		case policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED:
+			return false, errors.New("unspecified condition group boolean operator: " + conditionGroup.GetBooleanOperator().String())
 		default:
-			// unsopported boolean operator
+			// unsupported boolean operator
 			return false, errors.New("unsupported condition group boolean operator: " + conditionGroup.GetBooleanOperator().String())
 		}
 	}
@@ -189,7 +193,7 @@ func EvaluateCondition(condition *policy.Condition, entity map[string]any) (bool
 	}
 	// slog.Debug("mapped values", "", mappedValues)
 	result := false
-	switch condition.Operator {
+	switch condition.GetOperator() {
 	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN:
 		// slog.Debug("the operator is IN")
 		for _, possibleValue := range condition.GetSubjectExternalValues() {
@@ -224,8 +228,11 @@ func EvaluateCondition(condition *policy.Condition, entity map[string]any) (bool
 		if notInResult {
 			result = true
 		}
+	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED:
+		// unspecified subject mapping operator
+		return false, errors.New("unspecified subject mapping operator: " + condition.GetOperator().String())
 	default:
-		// unsopported subject mapping operator
+		// unsupported subject mapping operator
 		return false, errors.New("unsupported subject mapping operator: " + condition.GetOperator().String())
 	}
 	return result, nil

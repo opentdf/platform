@@ -20,6 +20,7 @@ const (
 	ErrCertificateEncode = Error("certificate encode error")
 	ErrPublicKeyMarshal  = Error("public key marshal error")
 	algorithmEc256       = "ec:secp256r1"
+	algorithmRSA2048     = "rsa:2048"
 )
 
 func (p Provider) lookupKid(ctx context.Context, algorithm string) (string, error) {
@@ -68,7 +69,7 @@ func (p Provider) LegacyPublicKey(ctx context.Context, in *kaspb.LegacyPublicKey
 			slog.ErrorContext(ctx, "CryptoProvider.ECPublicKey failed", "err", err)
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
 		}
-	case "rsa:2048":
+	case algorithmRSA2048:
 		fallthrough
 	case "":
 		pem, err = p.CryptoProvider.RSAPublicKey(kid)
@@ -101,23 +102,25 @@ func (p Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*k
 		return &kaspb.PublicKeyResponse{PublicKey: k}, nil
 	}
 
-	if algorithm == algorithmEc256 {
+	switch algorithm {
+	case algorithmEc256:
 		ecPublicKeyPem, err := p.CryptoProvider.ECPublicKey(kid)
 		return r(ecPublicKeyPem, err)
+	case algorithmRSA2048:
+		fallthrough
+	case "":
+		switch fmt {
+		case "jwk":
+			rsaPublicKeyPem, err := p.CryptoProvider.RSAPublicKeyAsJSON(kid)
+			return r(rsaPublicKeyPem, err)
+		case "pkcs8":
+			fallthrough
+		case "":
+			rsaPublicKeyPem, err := p.CryptoProvider.RSAPublicKey(kid)
+			return r(rsaPublicKeyPem, err)
+		}
 	}
-
-	if fmt == "jwk" {
-		rsaPublicKeyPem, err := p.CryptoProvider.RSAPublicKeyAsJSON(kid)
-		return r(rsaPublicKeyPem, err)
-	}
-
-	if fmt == "pkcs8" {
-		rsaPublicKeyPem, err := p.CryptoProvider.RSAPublicKey(kid)
-		return r(rsaPublicKeyPem, err)
-	}
-
-	rsaPublicKeyPem, err := p.CryptoProvider.RSAPublicKey(kid)
-	return r(rsaPublicKeyPem, err)
+	return nil, status.Error(codes.NotFound, "invalid algorithm or format")
 }
 
 func exportRsaPublicKeyAsPemStr(pubkey *rsa.PublicKey) (string, error) {

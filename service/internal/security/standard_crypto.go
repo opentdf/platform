@@ -110,49 +110,50 @@ func (s StandardCrypto) RSAPublicKey(keyID string) (string, error) {
 		return "", ErrCertNotFound
 	}
 
-	for _, e := range s.rsaKeys {
-		if keyID == "" || e.Identifier == keyID {
-			pem, err := e.asymEncryption.PublicKeyInPemFormat()
-			if err != nil {
-				return "", fmt.Errorf("failed to retrieve rsa public key file: %w", err)
-			}
-			return pem, nil
-		}
+	// TODO: For now ignore the key id
+	slog.Info("⚠️ Ignoring the", slog.String("key id", keyID))
+
+	pem, err := s.rsaKeys[0].asymEncryption.PublicKeyInPemFormat()
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve rsa public key file: %w", err)
 	}
-	return "", ErrCertNotFound
+
+	return pem, nil
 }
 
-func (s StandardCrypto) ECCertificate(keyID string) (string, error) {
+func (s StandardCrypto) ECCertificate(identifier string) (string, error) {
 	if len(s.ecKeys) == 0 {
 		return "", ErrCertNotFound
 	}
 	// this endpoint returns certificate
 	for _, ecKey := range s.ecKeys {
-		if keyID == "" || ecKey.Identifier == keyID {
+		slog.Debug("ecKey", "id", ecKey.Identifier)
+		if ecKey.Identifier == identifier {
 			return ecKey.ecCertificatePEM, nil
 		}
 	}
-	return "", ErrCertNotFound
+	return "", fmt.Errorf("no EC Key found with the given identifier: %s", identifier)
 }
 
-func (s StandardCrypto) ECPublicKey(keyID string) (string, error) {
+func (s StandardCrypto) ECPublicKey(identifier string) (string, error) {
 	if len(s.ecKeys) == 0 {
 		return "", ErrCertNotFound
 	}
 	for _, ecKey := range s.ecKeys {
-		if keyID != "" && ecKey.Identifier != keyID {
+		slog.Debug("ecKey", "id", ecKey.Identifier)
+		if ecKey.Identifier != identifier {
 			continue
 		}
 
 		ecPrivateKey, err := ocrypto.ECPrivateKeyFromPem([]byte(ecKey.ecPrivateKeyPem))
 		if err != nil {
-			return "", fmt.Errorf("ECPrivateKeyFromPem failed: %s %w", keyID, err)
+			return "", fmt.Errorf("ECPrivateKeyFromPem failed: %s %w", identifier, err)
 		}
 
 		ecPublicKey := ecPrivateKey.PublicKey()
 		derBytes, err := x509.MarshalPKIXPublicKey(ecPublicKey)
 		if err != nil {
-			return "", fmt.Errorf("failed to marshal public key: %s %w", keyID, err)
+			return "", fmt.Errorf("failed to marshal public key: %s %w", identifier, err)
 		}
 
 		pemBlock := &pem.Block{
@@ -161,11 +162,11 @@ func (s StandardCrypto) ECPublicKey(keyID string) (string, error) {
 		}
 		pemBytes := pem.EncodeToMemory(pemBlock)
 		if pemBytes == nil {
-			return "", fmt.Errorf("failed to encode public key to PEM: %s", keyID)
+			return "", fmt.Errorf("failed to encode public key to PEM: %s", identifier)
 		}
 		return string(pemBytes), nil
 	}
-	return "", ErrCertNotFound
+	return "", fmt.Errorf("no EC Key found with the given identifier: %s", identifier)
 }
 
 func (s StandardCrypto) RSADecrypt(_ crypto.Hash, keyID string, _ string, ciphertext []byte) ([]byte, error) {
@@ -176,7 +177,6 @@ func (s StandardCrypto) RSADecrypt(_ crypto.Hash, keyID string, _ string, cipher
 	// TODO: For now ignore the key id
 	slog.Info("⚠️ Ignoring the", slog.String("key id", keyID))
 
-	// TODO respect kid
 	data, err := s.rsaKeys[0].asymDecryption.Decrypt(ciphertext)
 	if err != nil {
 		return nil, fmt.Errorf("error decrypting data: %w", err)
@@ -221,7 +221,6 @@ func (s StandardCrypto) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []by
 	}
 	ephemeralECDSAPublicKeyPEM := pem.EncodeToMemory(pemBlock)
 
-	// TODO respect kid
 	symmetricKey, err := ocrypto.ComputeECDHKey([]byte(s.ecKeys[0].ecPrivateKeyPem), ephemeralECDSAPublicKeyPEM)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)

@@ -68,12 +68,16 @@ func (p Provider) LegacyPublicKey(ctx context.Context, in *kaspb.LegacyPublicKey
 			slog.ErrorContext(ctx, "CryptoProvider.ECPublicKey failed", "err", err)
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
 		}
-	default:
+	case "rsa:2048":
+		fallthrough
+	case "":
 		pem, err = p.CryptoProvider.RSAPublicKey(kid)
 		if err != nil {
 			slog.ErrorContext(ctx, "CryptoProvider.RSAPublicKey failed", "err", err)
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
 		}
+	default:
+
 	}
 	return &wrapperspb.StringValue{Value: pem}, nil
 }

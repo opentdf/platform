@@ -1,0 +1,80 @@
+package logger
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/lestrrat-go/jwx/v2/jwt"
+)
+
+type KasPolicy struct {
+	UUID uuid.UUID
+	Body KasPolicyBody
+}
+type KasPolicyBody struct {
+	DataAttributes []KasAttribute
+	Dissem         []string
+}
+type KasAttribute struct {
+	URI string
+}
+
+type RewrapAuditEventParams struct {
+	Policy      KasPolicy
+	IsSuccess   bool
+	EntityToken string
+	TDFFormat   string
+	Algorithm   string
+}
+
+func CreateRewrapAuditEvent(params RewrapAuditEventParams) (*AuditEvent, error) {
+	// Assign action result
+	auditEventActionResult := "failure"
+	if params.IsSuccess {
+		auditEventActionResult = "success"
+	}
+
+	// Extract sub from valid token
+	entityTokenJWT, parseError := jwt.Parse([]byte(params.EntityToken), jwt.WithVerify(false))
+	if parseError != nil {
+		return nil, parseError
+	}
+	entityTokenSub := entityTokenJWT.Subject()
+
+	return &AuditEvent{
+		Object: auditEventObject{
+			Type: "key_object",
+			ID:   params.Policy.UUID.String(),
+			Attributes: auditEventObjectAttributes{
+				Assertions:  []string{},
+				Attrs:       []string{},
+				Permissions: []string{},
+			},
+		},
+		Action: auditEventAction{
+			Type:   "rewrap",
+			Result: auditEventActionResult,
+		},
+		Owner: auditEventOwner{
+			ID:    uuid.Nil,
+			OrgID: uuid.Nil,
+		},
+		Actor: auditEventActor{
+			ID:         entityTokenSub,
+			Attributes: map[string]string{},
+		},
+		// TODO: keyID and policyBinding
+		EventMetaData: map[string]string{
+			"keyID":         "",
+			"policyBinding": "",
+			"tdfFormat":     params.TDFFormat,
+			"algorithm":     params.Algorithm,
+		},
+		// TODO: client info: userAgent and requestIP
+		ClientInfo: auditEventClientInfo{
+			Platform: "kas",
+		},
+		// TODO: requestID
+		Timestamp: time.Now().Format(time.RFC3339),
+	}, nil
+}

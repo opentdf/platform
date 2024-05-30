@@ -1,8 +1,11 @@
 package entitlements
 
 import (
+	"encoding/json"
+
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func OpaInput(entity *authorization.Entity, sms map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, ersURL string, authToken string) (map[string]interface{}, error) {
@@ -10,21 +13,30 @@ func OpaInput(entity *authorization.Entity, sms map[string]*attributes.GetAttrib
 	// deserializing to concrete structs
 	inputUnstructured := make(map[string]interface{})
 	// SubjectMapping
-	inputUnstructured["attribute_mappings"] = sms
-	// Entity
-	ea := make(map[string]interface{})
-	ea["id"] = entity.GetId()
-	switch entity.GetEntityType().(type) {
-	case *authorization.Entity_ClientId:
-		ea["client_id"] = entity.GetClientId()
-	case *authorization.Entity_EmailAddress:
-		ea["email_address"] = entity.GetEmailAddress()
-	case *authorization.Entity_UserName:
-		ea["user_name"] = entity.GetUserName()
-	case *authorization.Entity_Uuid:
-		ea["uuid"] = entity.GetUuid()
+	// convert sms to json string
+	smsJson := make(map[string]string)
+	for k, v := range sms {
+		attrDefBytes, err := protojson.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+		smsJson[k] = string(attrDefBytes)
 	}
-	inputUnstructured["entity"] = ea
+	inputUnstructured["attribute_mappings"] = smsJson
+
+	// Entity
+	// convert entity to map[string]string
+	eaJson, err := protojson.Marshal(entity)
+	if err != nil {
+		return nil, err
+	}
+	var eaMap map[string]string
+	err = json.Unmarshal(eaJson, &eaMap)
+	if err != nil {
+		return nil, err
+	}
+
+	inputUnstructured["entity"] = eaMap
 	inputUnstructured["ers_url"] = ersURL
 	inputUnstructured["auth_token"] = authToken
 

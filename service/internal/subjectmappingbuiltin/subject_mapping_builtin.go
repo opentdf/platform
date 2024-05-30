@@ -8,8 +8,10 @@ import (
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/open-policy-agent/opa/types"
+	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func SubjectMappingBuiltin() {
@@ -22,21 +24,46 @@ func SubjectMappingBuiltin() {
 		slog.Debug("Subject mapping plugin invoked")
 
 		//input handling
-		var attribute_mappings map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue
-		var entity_representations []map[string]any
+		var attribute_mappings_map map[string]string
+		var attribute_mappings = map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{}
+		var entity_representations_map map[string]interface{}
+		var entity_representations entityresolution.ResolveEntitiesResponse
 
-		if err := ast.As(a.Value, &attribute_mappings); err != nil {
+		if err := ast.As(a.Value, &attribute_mappings_map); err != nil {
 			return nil, err
-		} else if err := ast.As(b.Value, &entity_representations); err != nil {
+		} else if err := ast.As(b.Value, &entity_representations_map); err != nil {
 			return nil, err
 		}
 
-		// do the work
-		res, err := EvaluateSubjectMappings(attribute_mappings, entity_representations)
+		entity_representations_bytes, err := json.Marshal(entity_representations_map)
+		if err != nil {
+			return nil, err
+		}
+		err = protojson.Unmarshal(entity_representations_bytes, &entity_representations)
 		if err != nil {
 			return nil, err
 		}
 
+		// need to do extra conversion for pb json within map
+		for k, v := range attribute_mappings_map {
+			var temp_attribute_mappings = attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{}
+			attribute_mappings[k] = &temp_attribute_mappings
+			slog.Debug("vjson", "", v)
+			err := protojson.Unmarshal([]byte(v), &temp_attribute_mappings)
+			if err != nil {
+				slog.Debug("error with protojson unmarshal")
+				return nil, err
+			}
+			slog.Debug("after unmarshal", "", temp_attribute_mappings.String())
+			attribute_mappings[k] = &temp_attribute_mappings
+		}
+
+		// do the work
+		res, err := EvaluateSubjectMappings(attribute_mappings, entity_representations.GetEntityRepresentations())
+		if err != nil {
+			return nil, err
+		}
+		slog.Debug("sub mapping eval: ", "res", res)
 		// output handling
 		respBytes, err := json.Marshal(res)
 		if err != nil {
@@ -53,37 +80,44 @@ func SubjectMappingBuiltin() {
 	)
 }
 
-func EvaluateSubjectMappings(attribute_mappings map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, entity_representations []map[string]any) ([]string, error) {
+func EvaluateSubjectMappings(attribute_mappings map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, entity_representations []*entityresolution.EntityRepresentation) ([]string, error) {
 	// for now just look at first entity
-	entity := entity_representations[0]
+	// We only provide one input to ERS to resolve
+	jsonEntities := entity_representations[0].GetAdditionalProps()
+	var entitlements_set = make(map[string]bool)
 	var entitlements []string = []string{}
-	for attr, mapping := range attribute_mappings {
-		// subject mapping results or-ed togethor
-		mapping_result := false
-		for _, subject_mapping := range mapping.Value.SubjectMappings {
-			subject_mapping_result := true
-			for _, subject_set := range subject_mapping.SubjectConditionSet.SubjectSets {
-				subject_set_condition_result, err := EvaluateSubjectSet(subject_set, entity)
-				if err != nil {
-					return nil, err
+	for _, entity := range jsonEntities {
+		for attr, mapping := range attribute_mappings {
+			// subject mapping results or-ed togethor
+			mapping_result := false
+			for _, subject_mapping := range mapping.Value.SubjectMappings {
+				subject_mapping_result := true
+				for _, subject_set := range subject_mapping.SubjectConditionSet.SubjectSets {
+					subject_set_condition_result, err := EvaluateSubjectSet(subject_set, entity.AsMap())
+					if err != nil {
+						return nil, err
+					}
+					// update the result for the subject mapping
+					subject_mapping_result = subject_mapping_result && subject_set_condition_result
+					// if one subject condition set fails, subject mapping fails
+					if !subject_set_condition_result {
+						break
+					}
 				}
-				// update the result for the subject mapping
-				subject_mapping_result = subject_mapping_result && subject_set_condition_result
-				// if one subject condition set fails, subject mapping fails
-				if !subject_set_condition_result {
+				// update the result for the attribute mapping
+				mapping_result = mapping_result || subject_mapping_result
+				// if we find one subject mapping that is true then attribute should be mapped
+				if mapping_result {
 					break
 				}
 			}
-			// update the result for the attribute mapping
-			mapping_result = mapping_result || subject_mapping_result
-			// if we find one subject mapping that is true then attribute should be mapped
 			if mapping_result {
-				break
+				entitlements_set[attr] = true
 			}
 		}
-		if mapping_result {
-			entitlements = append(entitlements, attr)
-		}
+	}
+	for k := range entitlements_set {
+		entitlements = append(entitlements, k)
 	}
 	return entitlements, nil
 }

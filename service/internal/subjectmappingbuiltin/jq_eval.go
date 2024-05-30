@@ -7,42 +7,6 @@ import (
 	"github.com/itchyny/gojq"
 )
 
-// func JQBuiltin() {
-// 	rego.RegisterBuiltin2(&rego.Function{
-// 		Name:             "jq.evaluate",
-// 		Decl:             types.NewFunction(types.Args(types.A, types.S), types.A),
-// 		Memoize:          true,
-// 		Nondeterministic: true,
-// 	}, func(_ rego.BuiltinContext, a, b *ast.Term) (*ast.Term, error) {
-// 		slog.Debug("JQ plugin invoked")
-// 		var input map[string]any
-// 		var query string
-
-// 		if err := ast.As(a.Value, &input); err != nil {
-// 			return nil, err
-// 		} else if err := ast.As(b.Value, &query); err != nil {
-// 			return nil, err
-// 		}
-
-// 		res, err := ExecuteQuery(input, query)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		respBytes, err := json.Marshal(res)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		reader := bytes.NewReader(respBytes)
-// 		v, err := ast.ValueFromReader(reader)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		return ast.NewTerm(v), nil
-// 	},
-// 	)
-// }
-
 func ExecuteQuery(inputJSON map[string]any, queryString string) ([]any, error) {
 	slog.Debug("Executing query", "query=", queryString)
 	// first unescape the query string

@@ -2,76 +2,35 @@ package opentdf.entitlements
 
 import rego.v1
 
-# proto oneof only allows for one of the fields in the entity struct
-ers_request := {"entities": [{
-	"id": input.entity.id,
-	"clientId": input.entity.client_id,
-}]} if { input.entity.client_id }
-else := {"entities": [{
-	"id": input.entity.id,
-	"emailAddress": input.entity.email_address,
-}]} if { input.entity.email_address }
-else := {"entities": [{
-	"id": input.entity.id,
-	"userName": input.entity.user_name,
-}]} if { input.entity.user_name }
+ers_request := {"entities": [input.entity]}
 
-
-attributes := {attribute |
-	# external entity
-    response := http.send({
-        "method" : "POST",
-        "url": input.ers_url,
-        "body": ers_request,
+response := http.send({
+		"method" : "POST",
+		"url": input.ers_url,
+		"body": ers_request,
 		"headers": {
 			"Authorization":  concat(" ", ["Bearer", input.auth_token])
-		}
-    })
-	response.body != null
-	response.status_code == 200
+		},
+		"raise_error": false,
+	})
 
-    entity_representations := response.body.entityRepresentations
-    some entity_representation in entity_representations
-
-	# mappings
-	some subject_mapping in input.attribute_mappings[attribute].value.subject_mappings
-	some subject_set in subject_mapping.subject_condition_set.subject_sets
-	some condition_group in subject_set.condition_groups
-	condition_group_evaluate(entity_representation.additionalProps, condition_group.boolean_operator, condition_group.conditions)
+handle_response(response) := res if {
+    response.status_code == 0
+    res := sprintf("error connecting to entity resolution: %v", [response])
+}
+handle_response(response) := res if {
+    response.status_code == 200
+    res := subjectmapping.resolve(input.attribute_mappings, response.body)
+}
+handle_response(response) := res if {
+	response.status_code > 200
+    res := sprintf("error from entity resolution: %v", [response])
+}
+handle_response(response) := res if {
+	response.status_code != 0
+	response.status_code != 200
+	response.status_code < 200
+    res := sprintf("unexpected code from entity resolution: %v", [response])
 }
 
-# condition_group
-condition_group_evaluate(payload, boolean_operator, conditions) if {
-	# AND
-	boolean_operator == 1
-	some condition in conditions
-	# TODO: additional_props is a list of entity representations
-	# (for when an email provided is for a group)
-	# how do we handle the situation when multiple entities returned
-	# add to the list for each entity?
-	# or do they all have to have the attribtue for it to be returned?
-	condition_evaluate(jq.evaluate(payload[0], condition.subject_external_selector_value),
-         condition.operator, condition.subject_external_values
-    )
-} else if {
-	# OR
-	boolean_operator == 2
-	payload[key]
-	some condition in conditions
-	condition_evaluate(jq.evaluate(payload[0], condition.subject_external_selector_value),
-         condition.operator, condition.subject_external_values
-    )
-}
-
-# condition
-condition_evaluate(property_values, operator, values) if {
-	# IN
-	operator == 1
-	some property_value in property_values
-	property_value in values
-} else if {
-	# NOT IN
-	operator == 2
-	some property_value in property_values
-	not property_value in values
-}
+attributes := handle_response(response)

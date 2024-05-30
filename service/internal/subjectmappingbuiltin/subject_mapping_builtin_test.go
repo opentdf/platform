@@ -3,11 +3,13 @@ package subjectmappingbuiltin_test
 import (
 	"testing"
 
+	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // Subject Mapping evaluation tests
@@ -165,7 +167,9 @@ var subjectMappingInput1 map[string]*attributes.GetAttributeValuesByFqnsResponse
 }
 
 func Test_EvaluateAttributeMappingSimpleTrue(t *testing.T) {
-	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput1, []map[string]any{entity1})
+	additionalProps, err := structpb.NewStruct(entity1)
+	require.NoError(t, err)
+	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput1, []*entityresolution.EntityRepresentation{{AdditionalProps: []*structpb.Struct{additionalProps}}})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"https://demo.org/attr/hello/value/world"}, res)
 }
@@ -187,7 +191,9 @@ var subjectMappingInput2 map[string]*attributes.GetAttributeValuesByFqnsResponse
 }
 
 func Test_EvaluateAttributeMappingSimpleFalse(t *testing.T) {
-	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput2, []map[string]any{entity1})
+	additionalProps, err := structpb.NewStruct(entity1)
+	require.NoError(t, err)
+	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput2, []*entityresolution.EntityRepresentation{{AdditionalProps: []*structpb.Struct{additionalProps}}})
 	require.NoError(t, err)
 	assert.Equal(t, []string{}, res)
 }
@@ -223,7 +229,9 @@ var subjectMappingInput3 map[string]*attributes.GetAttributeValuesByFqnsResponse
 }
 
 func Test_EvaluateAttributeMappingTwoAttributes(t *testing.T) {
-	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput3, []map[string]any{entity1})
+	additionalProps, err := structpb.NewStruct(entity1)
+	require.NoError(t, err)
+	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput3, []*entityresolution.EntityRepresentation{{AdditionalProps: []*structpb.Struct{additionalProps}}})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"https://demo.org/attr/hello/value/world", "https://demo.org/attr/hi/value/there"}, res)
 }
@@ -258,7 +266,9 @@ var subjectMappingInput4 map[string]*attributes.GetAttributeValuesByFqnsResponse
 }
 
 func Test_EvaluateAttributeMappingTwoAttributesOnlySecond(t *testing.T) {
-	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput4, []map[string]any{entity1})
+	additionalProps, err := structpb.NewStruct(entity1)
+	require.NoError(t, err)
+	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput4, []*entityresolution.EntityRepresentation{{AdditionalProps: []*structpb.Struct{additionalProps}}})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"https://demo.org/attr/hi/value/there"}, res)
 }
@@ -288,7 +298,9 @@ var subjectMappingInput5 map[string]*attributes.GetAttributeValuesByFqnsResponse
 }
 
 func Test_EvaluateAttributeMappingTwoMappingsBothTrue(t *testing.T) {
-	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput5, []map[string]any{entity1})
+	additionalProps, err := structpb.NewStruct(entity1)
+	require.NoError(t, err)
+	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput5, []*entityresolution.EntityRepresentation{{AdditionalProps: []*structpb.Struct{additionalProps}}})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"https://demo.org/attr/hello/value/world"}, res)
 }
@@ -318,7 +330,9 @@ var subjectMappingInput6 map[string]*attributes.GetAttributeValuesByFqnsResponse
 }
 
 func Test_EvaluateAttributeMappingTwoMappingsBothFalse(t *testing.T) {
-	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput6, []map[string]any{entity1})
+	additionalProps, err := structpb.NewStruct(entity1)
+	require.NoError(t, err)
+	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput6, []*entityresolution.EntityRepresentation{{AdditionalProps: []*structpb.Struct{additionalProps}}})
 	require.NoError(t, err)
 	assert.Equal(t, []string{}, res)
 }
@@ -348,7 +362,9 @@ var subjectMappingInput7 map[string]*attributes.GetAttributeValuesByFqnsResponse
 }
 
 func Test_EvaluateAttributeMappingTwoMappingsFirstTrueSecondFalse(t *testing.T) {
-	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput7, []map[string]any{entity1})
+	additionalProps, err := structpb.NewStruct(entity1)
+	require.NoError(t, err)
+	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput7, []*entityresolution.EntityRepresentation{{AdditionalProps: []*structpb.Struct{additionalProps}}})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"https://demo.org/attr/hello/value/world"}, res)
 }
@@ -378,7 +394,9 @@ var subjectMappingInput8 map[string]*attributes.GetAttributeValuesByFqnsResponse
 }
 
 func Test_EvaluateAttributeMappingTwoMappingsFirstFalseSecondTrue(t *testing.T) {
-	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput8, []map[string]any{entity1})
+	additionalProps, err := structpb.NewStruct(entity1)
+	require.NoError(t, err)
+	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput8, []*entityresolution.EntityRepresentation{{AdditionalProps: []*structpb.Struct{additionalProps}}})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"https://demo.org/attr/hello/value/world"}, res)
 }

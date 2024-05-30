@@ -98,15 +98,15 @@ server:
     standard:
       rsa:
         123:
-          privatekeypath: /keys/kas-private.pem
-          publickeypath: /keys/kas-cert.pem
+          private_key_path: /keys/kas-private.pem
+          public_key_path: /keys/kas-cert.pem
         456:
-          privatekeypath: /keys/kas-private.pem
-          publickeypath: /keys/kas-cert.pem
+          private_key_path: /keys/kas-private.pem
+          public_key_path: /keys/kas-cert.pem
       ec:
         123:
-          privatekeypath: /keys/kas-ec-private.pem
-          publickeypath: /keys/kas-ec-cert.pem
+          private_key_path: /keys/kas-ec-private.pem
+          public_key_path: /keys/kas-ec-cert.pem
   port: 8080
 opa:
   embedded: true # Only for local development

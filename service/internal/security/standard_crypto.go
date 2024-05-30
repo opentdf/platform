@@ -30,8 +30,8 @@ type StandardConfig struct {
 }
 
 type StandardKeyInfo struct {
-	PrivateKeyPath string `yaml:"privatekeypath" mapstructure:"privatekeypath"`
-	PublicKeyPath  string `yaml:"publickeypath" mapstructure:"publickeypath"`
+	PrivateKeyPath string `yaml:"private_key_path" mapstructure:"private_key_path"`
+	PublicKeyPath  string `yaml:"public_key_path" mapstructure:"public_key_path"`
 }
 
 type StandardRSACrypto struct {

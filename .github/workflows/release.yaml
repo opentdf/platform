@@ -38,9 +38,6 @@ jobs:
               lib/fixtures)
                 echo "TO_UPDATE=['sdk','service']">>"$GITHUB_OUTPUT"
                 ;;
-              lib/fixtures)
-                echo "TO_UPDATE=['sdk','service']">>"$GITHUB_OUTPUT"
-                ;;
               protocol/go)
                 echo "TO_UPDATE=['examples', 'sdk','service']">>"$GITHUB_OUTPUT"
                 ;;

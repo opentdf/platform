@@ -30,6 +30,11 @@ func (p Provider) lookupKid(ctx context.Context, algorithm string) (string, erro
 		key = "eccertid"
 	}
 
+	if p.Config == nil || p.Config.ExtraProps == nil {
+		slog.WarnContext(ctx, "using default kid", "kid", defaultKid, "algorithm", algorithm, "certid", key)
+		return defaultKid, nil
+	}
+
 	certid, ok := p.Config.ExtraProps[key]
 	if !ok {
 		slog.WarnContext(ctx, "using default kid", "kid", defaultKid, "algorithm", algorithm, "certid", key)

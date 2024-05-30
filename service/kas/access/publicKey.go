@@ -77,7 +77,7 @@ func (p Provider) LegacyPublicKey(ctx context.Context, in *kaspb.LegacyPublicKey
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
 		}
 	default:
-
+		return nil, errors.Join(ErrConfig, status.Error(codes.NotFound, "invalid algorithm"))
 	}
 	return &wrapperspb.StringValue{Value: pem}, nil
 }

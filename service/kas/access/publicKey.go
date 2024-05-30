@@ -10,6 +10,7 @@ import (
 	"log/slog"
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/service/internal/security"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
@@ -57,7 +58,10 @@ func (p *Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*
 	algorithm := in.GetAlgorithm()
 	if algorithm == algorithmEc256 {
 		ecPublicKeyPem, err := p.CryptoProvider.ECPublicKey("123")
-		if err != nil {
+		if errors.Is(err, security.ErrCertNotFound) {
+			slog.ErrorContext(ctx, "CryptoProvider.ECPublicKey failed", "err", err)
+			return nil, errors.Join(err, status.Error(codes.NotFound, "configuration error"))
+		} else if err != nil {
 			slog.ErrorContext(ctx, "CryptoProvider.ECPublicKey failed", "err", err)
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
 		}

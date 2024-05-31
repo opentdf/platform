@@ -466,8 +466,17 @@ func createRealm(ctx context.Context, kcConnectParams KeycloakConnectParams, rea
 
 	// Create realm
 	r, err := client.GetRealm(ctx, token.AccessToken, *realm.Realm)
-	if err != nil {
-		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
+	var kcErr *gocloak.APIError
+	if errors.As(err, &kcErr) {
+		switch kcErr.Code {
+		case http.StatusNotFound:
+			// yes
+		case http.StatusConflict:
+			slog.Info(fmt.Sprintf("⏭️ %s realm already exists, skipping create", *realm.Realm))
+		default:
+			return err
+		}
+	} else if err != nil {
 		if kcErr.Code == http.StatusConflict {
 			slog.Info(fmt.Sprintf("⏭️ %s realm already exists, skipping create", *realm.Realm))
 		} else if kcErr.Code != http.StatusNotFound {

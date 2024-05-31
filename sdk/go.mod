@@ -11,6 +11,7 @@ require (
 	github.com/opentdf/platform/protocol/go v0.2.3
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.28.0
+	github.com/wiremock/go-wiremock v1.9.0
 	google.golang.org/grpc v1.62.1
 	google.golang.org/protobuf v1.33.0
 )

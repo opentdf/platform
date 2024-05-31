@@ -1,3 +1,5 @@
+# Generate release PRs, and follow up with update PRs
+
 name: Release
 
 on:
@@ -8,6 +10,10 @@ on:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      paths_released: ${{ steps.release-please.outputs.paths_released }}
+      releases_created: ${{ steps.release-please.outputs.releases_created }}
+      to_update: ${{ steps.todo.outputs.TO_UPDATE }}
     steps:
       - name: Generate a token
         id: generate_token
@@ -15,8 +21,93 @@ jobs:
         with:
           app-id: "${{ secrets.APP_ID }}"
           private-key: "${{ secrets.AUTOMATION_KEY }}"
-      - uses: google-github-actions/release-please-action@v4
+      - uses: googleapis/release-please-action@f3969c04a4ec81d7a9aa4010d84ae6a7602f86a7
+        id: release-please
         with:
           token: "${{ steps.generate_token.outputs.token }}"
           config-file: release-please.json
           manifest-file: .release-please-manifest.json
+      - id: todo
+        if: fromJson(steps.release-please.outputs.releases_created)
+        run: |
+          for x in ${{join(fromJson(steps.release-please.outputs.paths_released), ' ')}}; do
+            case "$x" in
+              lib/ocrypto)
+                echo "TO_UPDATE=['examples','sdk','service']">>"$GITHUB_OUTPUT"
+                ;;
+              lib/fixtures)
+                echo "TO_UPDATE=['sdk','service']">>"$GITHUB_OUTPUT"
+                ;;
+              protocol/go)
+                echo "TO_UPDATE=['examples', 'sdk','service']">>"$GITHUB_OUTPUT"
+                ;;
+              sdk)
+                echo "TO_UPDATE=['examples','service']">>"$GITHUB_OUTPUT"
+                ;;
+              services)
+                # examples does not import service, but assumes it is running separately
+                ;;
+              examples)
+                # nothing downstream
+                ;;
+              *)
+                echo "[WARN] unrecognized module path: [${x}]"
+                ;;
+            esac
+          done
+
+  update-go-mods:
+    runs-on: ubuntu-latest
+    needs: 
+      - release-please
+    if: fromJSON(needs.release-please.outputs.releases_created) && fromJSON(needs.release-please.outputs.to_update)
+    strategy:
+      matrix:
+        path: ${{ fromJSON(needs.release-please.outputs.to_update) }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          fetch-depth: 0
+      - run: |
+          git checkout -b update-go-mods-for-${{matrix.path}}
+          git push -f -u origin update-go-mods-for-${{matrix.path}}
+          cd ${{matrix.path}}
+          for x in ${{join(fromJson(needs.release-please.outputs.paths_released), ' ')}}; do
+            pkg=github.com/opentdf/platform/${x}
+            echo "Should we update [${pkg}] in [${{ matrix.path }}]?"
+            if grep "$pkg"<go.mod; then
+              ver=$(jq -r .${x} < "${GITHUB_WORKSPACE}/.release-please-manifest.json")
+              echo "go get ${pkg}@v${ver}"
+              go get "${pkg}@v${ver}"
+            fi
+            echo "go mod tidy of"
+            cat<go.mod
+            echo "-----"
+            go mod tidy
+            cat<go.mod
+          done
+          git diff
+        env:
+          GONOSUMDB: github.com/opentdf/platform/${{join(fromJson(needs.release-please.outputs.paths_released), ',github.com/opentdf/platform/')}}
+      - uses: planetscale/ghcommit-action@b662a9d7235a07e80d976152ed5afe41651c4973
+        with:
+          commit_message: "chore(core): Update dependencies in ${{ matrix.path }}"
+          repo: ${{ github.repository }}
+          branch: update-go-mods-for-${{ matrix.path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Generate a token
+        id: generate_token
+        uses: actions/create-github-app-token@7bfa3a4717ef143a604ee0a99d859b8886a96d00 # v1.9.3
+        with:
+          app-id: "${{ secrets.APP_ID }}"
+          private-key: "${{ secrets.AUTOMATION_KEY }}"
+      - name: create pull request
+        run: |
+          git restore .
+          git pull origin update-go-mods-for-${{ matrix.path }}
+          gh pr create -B main -H update-go-mods-for-${{ matrix.path }} --fill
+        env:
+          GITHUB_TOKEN: "${{ steps.generate_token.outputs.token }}"

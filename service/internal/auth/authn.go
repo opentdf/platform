@@ -235,6 +235,12 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 		return nil, status.Error(codes.Unauthenticated, "missing authorization header")
 	}
 
+	// Set the user-agent in the context for audit logging
+	userAgent := md["user-agent"]
+	if len(userAgent) > 0 {
+		ctx = context.WithValue(ctx, "user-agent", userAgent[0])
+	}
+
 	// parse the rpc method
 	p := strings.Split(info.FullMethod, "/")
 	resource := p[1] + "/" + p[2]

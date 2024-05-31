@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,7 +28,13 @@ type RewrapAuditEventParams struct {
 	Algorithm   string
 }
 
-func CreateRewrapAuditEvent(params RewrapAuditEventParams) (*AuditEvent, error) {
+func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) (*AuditEvent, error) {
+	// Extract header values from context
+	userAgent, uaOk := ctx.Value("user-agent").(string)
+	if !uaOk {
+		userAgent = "None"
+	}
+
 	// Assign action result
 	auditEventActionResult := "failure"
 	if params.IsSuccess {
@@ -72,7 +79,8 @@ func CreateRewrapAuditEvent(params RewrapAuditEventParams) (*AuditEvent, error) 
 		},
 		// TODO: client info: userAgent and requestIP
 		ClientInfo: auditEventClientInfo{
-			Platform: "kas",
+			Platform:  "kas",
+			UserAgent: userAgent,
 		},
 		// TODO: requestID
 		Timestamp: time.Now().Format(time.RFC3339),

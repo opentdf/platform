@@ -33,7 +33,7 @@ func (a *AuditLogger) RewrapFailure(ctx context.Context, eventParams RewrapAudit
 }
 
 func (a *AuditLogger) rewrap(ctx context.Context, eventParams RewrapAuditEventParams) {
-	auditEvent, err := CreateRewrapAuditEvent(eventParams)
+	auditEvent, err := CreateRewrapAuditEvent(ctx, eventParams)
 	if err != nil {
 		a.logger.ErrorContext(ctx, "error creating rewrap audit event", err)
 		return

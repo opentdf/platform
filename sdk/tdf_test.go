@@ -9,7 +9,9 @@ import (
 	"io"
 	"log/slog"
 	"math"
+	"math/rand"
 	"net"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -20,7 +22,9 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"github.com/wiremock/go-wiremock"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
 
 	"github.com/stretchr/testify/assert"
@@ -606,7 +610,8 @@ func createFileName(buf []byte, filename string, size int64) {
 }
 
 func runKas() (string, func(), *SDK) {
-	listenPort, _ := nat.NewPort("tcp", "8184")
+	randPort := (rand.Intn(30000-20000) + 20000)
+	listenPort, _ := nat.NewPort("tcp", strconv.Itoa(randPort))
 	req := tc.ContainerRequest{
 		FromDockerfile: tc.FromDockerfile{
 			Repo:       "platform/mocks",
@@ -614,8 +619,8 @@ func runKas() (string, func(), *SDK) {
 			Context:    "../service/integration/wiremock",
 			Dockerfile: "Dockerfile",
 		},
-		ExposedPorts: []string{fmt.Sprintf("%s/tcp", listenPort.Port())},
-		Cmd:          []string{fmt.Sprintf("--port=%s", listenPort.Port()), "--verbose"},
+		ExposedPorts: []string{fmt.Sprintf("%s/tcp", listenPort.Port()), "8080/tcp"},
+		Cmd:          []string{fmt.Sprintf("--port=%s", listenPort.Port()), "--disable-banner", "--global-response-templating"},
 		WaitingFor:   wait.ForLog("extensions:"),
 		Files: []tc.ContainerFile{
 			{
@@ -644,7 +649,7 @@ func runKas() (string, func(), *SDK) {
 		providerType = tc.ProviderDocker
 	}
 
-	wiremock, err := tc.GenericContainer(context.Background(), tc.GenericContainerRequest{
+	wiremockContainer, err := tc.GenericContainer(context.Background(), tc.GenericContainerRequest{
 		ProviderType:     providerType,
 		ContainerRequest: req,
 		Started:          true,
@@ -653,10 +658,27 @@ func runKas() (string, func(), *SDK) {
 		panic(err)
 	}
 
-	port, err := wiremock.MappedPort(context.Background(), "8184/tcp")
+	port, err := wiremockContainer.MappedPort(context.Background(), listenPort)
 	if err != nil {
 		slog.Error("could not get wiremock mapped port", slog.String("error", err.Error()))
 		panic(err)
+	}
+
+	wiremockClient := wiremock.NewClient(fmt.Sprintf("http://localhost:%s", port.Port()))
+
+	// Create a stub for wellknown
+	wellknownCfg := `{
+			"configuration": {
+				"health": {
+					"endpoint": "/healthz"
+				},
+				"platform_issuer": "http://localhost:%s/auth"
+			}
+		}`
+	err = wiremockClient.StubFor(wiremock.Post(wiremock.URLPathEqualTo("/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration")).
+		WillReturnResponse(wiremock.NewResponse().WithBody(fmt.Sprintf(wellknownCfg, port.Port())).WithStatus(http.StatusOK)))
+	if err != nil {
+		panic(fmt.Sprintf("wiremockClient.StubFor failed: %v", err))
 	}
 
 	grpcListener := bufconn.Listen(1024 * 1024)
@@ -672,16 +694,23 @@ func runKas() (string, func(), *SDK) {
 	}
 
 	host := net.JoinHostPort("localhost", port.Port())
+
+	wellknownConn, err := grpc.Dial(host, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		panic(fmt.Sprintf("grpc.Dial failed: %v", err))
+	}
+
 	sdk, err := New(host,
 		WithClientCredentials("test", "test", nil),
 		WithTokenEndpoint(fmt.Sprintf("http://%s/auth/token", host)),
 		WithInsecurePlaintextConn(),
+		WithCustomWellknownConnection(wellknownConn),
 		WithExtraDialOptions(grpc.WithContextDialer(dialer)))
 	if err != nil {
 		panic(fmt.Sprintf("error creating SDK with authconfig: %v", err))
 	}
 	terminate := func() {
-		if err := wiremock.Terminate(context.Background()); err != nil {
+		if err := wiremockContainer.Terminate(context.Background()); err != nil {
 			slog.Error("could not stop postgres container", slog.String("error", err.Error()))
 			return
 		}

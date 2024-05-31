@@ -1,10 +1,14 @@
 package sdk
 
 import (
+	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/authorization"
@@ -14,14 +18,16 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"github.com/opentdf/platform/sdk/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
 const (
-	ErrGrpcDialFailed = Error("failed to dial grpc endpoint")
-	ErrShutdownFailed = Error("failed to shutdown sdk")
+	ErrGrpcDialFailed       = Error("failed to dial grpc endpoint")
+	ErrShutdownFailed       = Error("failed to shutdown sdk")
+	ErrPlatformConfigFailed = Error("failed to retrieve platform configuration")
 )
 
 type Error string
@@ -42,9 +48,16 @@ type SDK struct {
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
 	Authorization           authorization.AuthorizationServiceClient
 	EntityResoution         entityresolution.EntityResolutionServiceClient
+	platformConfiguration   PlatformConfiguration
+	wellknownConfiguration  wellknownconfiguration.WellKnownServiceClient
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
+	var (
+		defaultConn *grpc.ClientConn // Connection to the platform if no other connection is provided
+		err         error
+	)
+
 	// Set default options
 	cfg := &config{
 		dialOption: grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
@@ -72,6 +85,30 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		dialOptions = append(dialOptions, cfg.extraDialOptions...)
 	}
 
+	// If platformConfiguration is not provided, fetch it from the platform
+	if cfg.platformConfiguration == nil && platformEndpoint != "" { //nolint:nestif // Most of checks are for errors
+		var pcfg PlatformConfiguration
+		var err error
+
+		if cfg.wellknownConn != nil {
+			pcfg, err = getPlatformConfiguration(cfg.wellknownConn)
+		} else {
+			pcfg, err = fetchPlatformConfiguration(platformEndpoint, dialOptions)
+		}
+
+		if err != nil {
+			return nil, errors.Join(ErrPlatformConfigFailed, err)
+		}
+		cfg.platformConfiguration = pcfg
+
+		if cfg.tokenEndpoint == "" {
+			cfg.tokenEndpoint, err = getTokenEndpoint(*cfg)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	accessTokenSource, err := buildIDPTokenSource(cfg)
 	if err != nil {
 		return nil, err
@@ -81,13 +118,6 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
 	}
 
-	var (
-		defaultConn          *grpc.ClientConn
-		policyConn           *grpc.ClientConn
-		authorizationConn    *grpc.ClientConn
-		entityresolutionConn *grpc.ClientConn
-	)
-
 	if platformEndpoint != "" {
 		var err error
 		defaultConn, err = grpc.Dial(platformEndpoint, dialOptions...)
@@ -96,36 +126,20 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		}
 	}
 
-	if cfg.policyConn != nil {
-		policyConn = cfg.policyConn
-	} else {
-		policyConn = defaultConn
-	}
-
-	if cfg.authorizationConn != nil {
-		authorizationConn = cfg.authorizationConn
-	} else {
-		authorizationConn = defaultConn
-	}
-
-	if cfg.entityresolutionConn != nil {
-		entityresolutionConn = cfg.entityresolutionConn
-	} else {
-		entityresolutionConn = defaultConn
-	}
-
 	return &SDK{
 		conn:                    defaultConn,
 		dialOptions:             dialOptions,
 		tokenSource:             accessTokenSource,
 		kasSessionKey:           *cfg.kasSessionKey,
-		Attributes:              attributes.NewAttributesServiceClient(policyConn),
-		Namespaces:              namespaces.NewNamespaceServiceClient(policyConn),
-		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(policyConn),
-		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(policyConn),
-		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(policyConn),
-		Authorization:           authorization.NewAuthorizationServiceClient(authorizationConn),
-		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(entityresolutionConn),
+		platformConfiguration:   cfg.platformConfiguration,
+		Attributes:              attributes.NewAttributesServiceClient(selectConn(cfg.policyConn, defaultConn)),
+		Namespaces:              namespaces.NewNamespaceServiceClient(selectConn(cfg.policyConn, defaultConn)),
+		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(selectConn(cfg.policyConn, defaultConn)),
+		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(selectConn(cfg.policyConn, defaultConn)),
+		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(selectConn(cfg.policyConn, defaultConn)),
+		Authorization:           authorization.NewAuthorizationServiceClient(selectConn(cfg.authorizationConn, defaultConn)),
+		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(selectConn(cfg.entityresolutionConn, defaultConn)),
+		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(selectConn(cfg.wellknownConn, defaultConn)),
 	}, nil
 }
 
@@ -193,4 +207,83 @@ func (s SDK) Close() error {
 // Conn returns the underlying grpc.ClientConn.
 func (s SDK) Conn() *grpc.ClientConn {
 	return s.conn
+}
+
+func fetchPlatformConfiguration(platformEndpoint string, dialOptions []grpc.DialOption) (PlatformConfiguration, error) {
+	conn, err := grpc.Dial(platformEndpoint, dialOptions...)
+	if err != nil {
+		return nil, errors.Join(ErrGrpcDialFailed, err)
+	}
+	defer conn.Close()
+
+	return getPlatformConfiguration(conn)
+}
+
+func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfiguration, error) {
+	req := wellknownconfiguration.GetWellKnownConfigurationRequest{}
+	wellKnownConfig := wellknownconfiguration.NewWellKnownServiceClient(conn)
+
+	response, err := wellKnownConfig.GetWellKnownConfiguration(context.Background(), &req)
+
+	if err != nil {
+		return nil, errors.Join(errors.New("unable to retrieve config information, and none was provided"), err)
+	}
+	// Get token endpoint
+	configuration := response.GetConfiguration()
+
+	return configuration.AsMap(), nil
+}
+
+// TODO: This should be moved to a separate package. We do discovery in ../service/internal/auth/discovery.go
+func getTokenEndpoint(c config) (string, error) {
+	issuerURL, ok := c.platformConfiguration["platform_issuer"].(string)
+
+	if !ok {
+		return "", errors.New("platform_issuer is not set, or is not a string")
+	}
+
+	oidcConfigURL := issuerURL + "/.well-known/openid-configuration"
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, oidcConfigURL, nil)
+	if err != nil {
+		return "", err
+	}
+
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: c.tlsConfig,
+		},
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var config map[string]interface{}
+
+	if err = json.Unmarshal(body, &config); err != nil {
+		return "", err
+	}
+	tokenEndpoint, ok := config["token_endpoint"].(string)
+	if !ok {
+		return "", errors.New("token_endpoint not found in well-known configuration")
+	}
+
+	return tokenEndpoint, nil
+}
+
+// selectConn returns the preferred connection if it is not nil, otherwise it returns the fallback connection
+// which is the default connection built to the platform.
+func selectConn(preferred, fallback *grpc.ClientConn) *grpc.ClientConn {
+	if preferred != nil {
+		return preferred
+	}
+	return fallback
 }

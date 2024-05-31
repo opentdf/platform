@@ -15,20 +15,24 @@ type Option func(*config)
 
 // Internal config struct for building SDK options.
 type config struct {
-	dialOption           grpc.DialOption
-	tlsConfig            *tls.Config
-	clientCredentials    *oauth.ClientCredentials
-	tokenExchange        *oauth.TokenExchangeInfo
-	tokenEndpoint        string
-	scopes               []string
-	policyConn           *grpc.ClientConn
-	authorizationConn    *grpc.ClientConn
-	entityresolutionConn *grpc.ClientConn
-	extraDialOptions     []grpc.DialOption
-	certExchange         *oauth.CertExchangeInfo
-	kasSessionKey        *ocrypto.RsaKeyPair
-	dpopKey              *ocrypto.RsaKeyPair
+	dialOption            grpc.DialOption
+	tlsConfig             *tls.Config
+	clientCredentials     *oauth.ClientCredentials
+	tokenExchange         *oauth.TokenExchangeInfo
+	tokenEndpoint         string
+	scopes                []string
+	policyConn            *grpc.ClientConn
+	authorizationConn     *grpc.ClientConn
+	entityresolutionConn  *grpc.ClientConn
+	extraDialOptions      []grpc.DialOption
+	certExchange          *oauth.CertExchangeInfo
+	wellknownConn         *grpc.ClientConn
+	platformConfiguration PlatformConfiguration
+	kasSessionKey         *ocrypto.RsaKeyPair
+	dpopKey               *ocrypto.RsaKeyPair
 }
+
+type PlatformConfiguration map[string]interface{}
 
 func (c *config) build() []grpc.DialOption {
 	return []grpc.DialOption{c.dialOption}
@@ -72,6 +76,7 @@ func WithTLSCredentials(tls *tls.Config, audience []string) Option {
 }
 
 // WithTokenEndpoint When we implement service discovery using a .well-known endpoint this option may become deprecated
+// Deprecated: SDK will discover the token endpoint from the platform configuration
 func WithTokenEndpoint(tokenEndpoint string) Option {
 	return func(c *config) {
 		c.tokenEndpoint = tokenEndpoint
@@ -130,5 +135,19 @@ func WithSessionSignerRSA(key *rsa.PrivateKey) Option {
 	return func(c *config) {
 		okey := ocrypto.FromRSA(key)
 		c.dpopKey = &okey
+	}
+}
+
+func WithCustomWellknownConnection(conn *grpc.ClientConn) Option {
+	return func(c *config) {
+		c.wellknownConn = conn
+	}
+}
+
+// WithPlatformConfiguration allows you to override the remote platform configuration
+// Use this option with caution, as it may lead to unexpected behavior
+func WithPlatformConfiguration(platformConfiguration PlatformConfiguration) Option {
+	return func(c *config) {
+		c.platformConfiguration = platformConfiguration
 	}
 }

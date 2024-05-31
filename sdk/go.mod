@@ -7,7 +7,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/opentdf/platform/lib/fixtures v0.2.3
-	github.com/opentdf/platform/lib/ocrypto v0.1.3
+	github.com/opentdf/platform/lib/ocrypto v0.1.4
 	github.com/opentdf/platform/protocol/go v0.2.3
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.28.0

@@ -45,7 +45,7 @@ func (p Provider) lookupKid(ctx context.Context, algorithm string) (string, erro
 	kid, ok := certid.(string)
 	if !ok {
 		slog.ErrorContext(ctx, "invalid key configuration", "kid", defaultKid, "algorithm", algorithm, "certid", key)
-		return "", errors.New("services.kas.certid is not a string")
+		return "", ErrConfig
 	}
 	return kid, nil
 }

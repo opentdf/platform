@@ -110,7 +110,6 @@ func TestNanoTDFRewrapKeyGenerate(t *testing.T) {
 }
 
 func TestECDSASignature(t *testing.T) {
-
 	digest := CalculateSHA256([]byte("Virtru"))
 	for _, cvurve := range []ECCMode{ECCModeSecp256r1, ECCModeSecp384r1, ECCModeSecp521r1} {
 		ecKeyPair, err := NewECKeyPair(cvurve)

@@ -78,7 +78,6 @@ func (header *NanoTDFHeader) ECCurve() (elliptic.Curve, error) {
 }
 
 func (header *NanoTDFHeader) VerifyPolicyBinding() (bool, error) {
-
 	curve, err := ocrypto.GetECCurveFromECCMode(header.bindCfg.eccMode)
 	if err != nil {
 		return false, err
@@ -95,11 +94,9 @@ func (header *NanoTDFHeader) VerifyPolicyBinding() (bool, error) {
 			header.ecdsaPolicyBindingR,
 			header.ecdsaPolicyBindingS,
 			ephemeralECDSAPublicKey), nil
-
-	} else {
-		binding := digest[len(digest)-kNanoTDFGMACLength:]
-		return bytes.Equal(binding, header.gmacPolicyBinding), nil
 	}
+	binding := digest[len(digest)-kNanoTDFGMACLength:]
+	return bytes.Equal(binding, header.gmacPolicyBinding), nil
 }
 
 // ============================================================================================================
@@ -465,7 +462,7 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	totalBytes += kSizeOfUint16 + uint32(len(embeddedP.body))
 
 	digest := ocrypto.CalculateSHA256(embeddedP.body)
-	if config.bindCfg.useEcdsaBinding {
+	if config.bindCfg.useEcdsaBinding { //nolint:nestif // todo: subfunction
 		rBytes, sBytes, err := ocrypto.ComputeECDSASig(digest, config.keyPair.PrivateKey)
 		if err != nil {
 			return nil, 0, fmt.Errorf("ComputeECDSASig failed:%w", err)
@@ -496,7 +493,6 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 			return nil, 0, err
 		}
 		totalBytes += uint32(l)
-
 	} else {
 		binding := digest[len(digest)-kNanoTDFGMACLength:]
 		l, err = writer.Write(binding)
@@ -600,7 +596,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	size += uint32(l)
 
 	// read policy binding
-	if header.bindCfg.useEcdsaBinding {
+	if header.bindCfg.useEcdsaBinding { //nolint:nestif // todo: subfunction
 		// read rBytes len and its contents
 		l, err = reader.Read(oneBytes)
 		if err != nil {

@@ -65,6 +65,11 @@ func (config *NanoTDFConfig) SetAttributes(attributes []string) {
 	config.attributes = attributes
 }
 
+// EnableECDSAPolicyBinding enable ecdsa policy binding
+func (config *NanoTDFConfig) EnableECDSAPolicyBinding() {
+	config.bindCfg.useEcdsaBinding = true
+}
+
 // WithNanoDataAttributes appends the given data attributes to the bound policy
 func WithNanoDataAttributes(attributes ...string) NanoTDFOption {
 	return func(c *NanoTDFConfig) error {
@@ -93,6 +98,14 @@ func WithNanoKasInformation(kasInfoList ...NanoKASInfo) NanoTDFOption {
 		if err != nil {
 			return err
 		}
+		return nil
+	}
+}
+
+// WithECDSAPolicyBinding enable ecdsa policy binding
+func WithECDSAPolicyBinding() NanoTDFOption {
+	return func(c *NanoTDFConfig) error {
+		c.bindCfg.useEcdsaBinding = true
 		return nil
 	}
 }

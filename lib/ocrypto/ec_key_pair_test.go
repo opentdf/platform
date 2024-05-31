@@ -108,3 +108,19 @@ func TestNanoTDFRewrapKeyGenerate(t *testing.T) {
 			string(kasSymmetricKey), string(sdkSymmetricKey))
 	}
 }
+
+func TestECDSASignature(t *testing.T) {
+	digest := CalculateSHA256([]byte("Virtru"))
+	for _, cvurve := range []ECCMode{ECCModeSecp256r1, ECCModeSecp384r1, ECCModeSecp521r1} {
+		ecKeyPair, err := NewECKeyPair(cvurve)
+		require.NoError(t, err, "fail on NewECKeyPair")
+
+		rBytes, sBytes, err := ComputeECDSASig(digest, ecKeyPair.PrivateKey)
+		require.NoError(t, err, "fail on ComputeECDSASig")
+
+		verify := VerifyECDSASig(digest, rBytes, sBytes, &ecKeyPair.PrivateKey.PublicKey)
+		if verify == false {
+			t.Fatalf("Fail to verify ECDSA Signature")
+		}
+	}
+}

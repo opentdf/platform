@@ -3,6 +3,7 @@ package sdk
 import (
 	"bytes"
 	"context"
+	"crypto/elliptic"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/json"
@@ -58,12 +59,44 @@ type NanoTDFHeader struct {
 	sigCfg              signatureConfig
 	EphemeralKey        []byte
 	EncryptedPolicyBody []byte
-	PolicyBinding       []byte
+	gmacPolicyBinding   []byte
+	ecdsaPolicyBindingR []byte
+	ecdsaPolicyBindingS []byte
 }
 
 // GetCipher -- get the cipher from the nano tdf header
 func (header *NanoTDFHeader) GetCipher() CipherMode {
 	return header.sigCfg.cipher
+}
+
+func (header *NanoTDFHeader) IsEcdsaBindingEnabled() bool {
+	return header.bindCfg.useEcdsaBinding
+}
+
+func (header *NanoTDFHeader) ECCurve() (elliptic.Curve, error) {
+	return ocrypto.GetECCurveFromECCMode(header.bindCfg.eccMode)
+}
+
+func (header *NanoTDFHeader) VerifyPolicyBinding() (bool, error) {
+	curve, err := ocrypto.GetECCurveFromECCMode(header.bindCfg.eccMode)
+	if err != nil {
+		return false, err
+	}
+
+	digest := ocrypto.CalculateSHA256(header.EncryptedPolicyBody)
+	if header.IsEcdsaBindingEnabled() {
+		ephemeralECDSAPublicKey, err := ocrypto.UncompressECPubKey(curve, header.EphemeralKey)
+		if err != nil {
+			return false, err
+		}
+
+		return ocrypto.VerifyECDSASig(digest,
+			header.ecdsaPolicyBindingR,
+			header.ecdsaPolicyBindingS,
+			ephemeralECDSAPublicKey), nil
+	}
+	binding := digest[len(digest)-kNanoTDFGMACLength:]
+	return bytes.Equal(binding, header.gmacPolicyBinding), nil
 }
 
 // ============================================================================================================
@@ -429,12 +462,45 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	totalBytes += kSizeOfUint16 + uint32(len(embeddedP.body))
 
 	digest := ocrypto.CalculateSHA256(embeddedP.body)
-	binding := digest[len(digest)-kNanoTDFGMACLength:]
-	l, err = writer.Write(binding)
-	if err != nil {
-		return nil, 0, err
+	if config.bindCfg.useEcdsaBinding { //nolint:nestif // todo: subfunction
+		rBytes, sBytes, err := ocrypto.ComputeECDSASig(digest, config.keyPair.PrivateKey)
+		if err != nil {
+			return nil, 0, fmt.Errorf("ComputeECDSASig failed:%w", err)
+		}
+
+		// write rBytes len and rBytes contents
+		l, err = writer.Write([]byte{uint8(len(rBytes))})
+		if err != nil {
+			return nil, 0, err
+		}
+		totalBytes += uint32(l)
+
+		l, err = writer.Write(rBytes)
+		if err != nil {
+			return nil, 0, err
+		}
+		totalBytes += uint32(l)
+
+		// write sBytes len and sBytes contents
+		l, err = writer.Write([]byte{uint8(len(sBytes))})
+		if err != nil {
+			return nil, 0, err
+		}
+		totalBytes += uint32(l)
+
+		l, err = writer.Write(sBytes)
+		if err != nil {
+			return nil, 0, err
+		}
+		totalBytes += uint32(l)
+	} else {
+		binding := digest[len(digest)-kNanoTDFGMACLength:]
+		l, err = writer.Write(binding)
+		if err != nil {
+			return nil, 0, err
+		}
+		totalBytes += uint32(l)
 	}
-	totalBytes += uint32(l)
 
 	ephemeralPublicKeyKey, _ := ocrypto.CompressedECPublicKey(config.bindCfg.eccMode, config.keyPair.PrivateKey.PublicKey)
 
@@ -530,12 +596,42 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	size += uint32(l)
 
 	// read policy binding
-	header.PolicyBinding = make([]byte, kNanoTDFGMACLength)
-	l, err = reader.Read(header.PolicyBinding)
-	if err != nil {
-		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
+	if header.bindCfg.useEcdsaBinding { //nolint:nestif // todo: subfunction
+		// read rBytes len and its contents
+		l, err = reader.Read(oneBytes)
+		if err != nil {
+			return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
+		}
+		size += uint32(l)
+
+		header.ecdsaPolicyBindingR = make([]byte, oneBytes[0])
+		l, err = reader.Read(header.ecdsaPolicyBindingR)
+		if err != nil {
+			return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
+		}
+		size += uint32(l)
+
+		// read sBytes len and its contents
+		l, err = reader.Read(oneBytes)
+		if err != nil {
+			return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
+		}
+		size += uint32(l)
+
+		header.ecdsaPolicyBindingS = make([]byte, oneBytes[0])
+		l, err = reader.Read(header.ecdsaPolicyBindingS)
+		if err != nil {
+			return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
+		}
+		size += uint32(l)
+	} else {
+		header.gmacPolicyBinding = make([]byte, kNanoTDFGMACLength)
+		l, err = reader.Read(header.gmacPolicyBinding)
+		if err != nil {
+			return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
+		}
+		size += uint32(l)
 	}
-	size += uint32(l)
 
 	ephemeralKeySize, err := getECCKeyLength(header.bindCfg.eccMode)
 	if err != nil {

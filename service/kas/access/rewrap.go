@@ -363,22 +363,30 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
 	}
 
-	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(header.EphemeralKey)
+	ecCurve, err := header.ECCurve()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
+		return nil, fmt.Errorf("ECCurve failed: %w", err)
 	}
 
-	// check the policy binding
-	digest := ocrypto.CalculateSHA256(header.EncryptedPolicyBody)
-	binding := digest[len(digest)-kNanoTDFGMACLength:]
-	if !bytes.Equal(binding, header.PolicyBinding) {
-		return nil, fmt.Errorf("policy binding check failed")
+	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(header.EphemeralKey, ecCurve)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
 	}
 
 	// extract the policy
 	policy, err := extractNanoPolicy(symmetricKey, header)
 	if err != nil {
 		return nil, fmt.Errorf("Error extracting policy: %w", err)
+	}
+
+	// check the policy binding
+	verify, err := header.VerifyPolicyBinding()
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify policy binding: %w", err)
+	}
+
+	if !verify {
+		return nil, fmt.Errorf("policy binding verification failed")
 	}
 
 	// do the access check

@@ -1,4 +1,4 @@
-//nolint:gomnd // pkzip magics and lengths are inlined for clarity
+//nolint:mnd // pkzip magics and lengths are inlined for clarity
 package archive
 
 import (

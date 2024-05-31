@@ -26,14 +26,14 @@ import (
 
 // / Constants
 const (
-	kMaxTDFSize = ((16 * 1024 * 1024) - 3 - 32) //nolint:gomnd // 16 mb - 3(iv) - 32(max auth tag)
+	kMaxTDFSize = ((16 * 1024 * 1024) - 3 - 32) //nolint:mnd // 16 mb - 3(iv) - 32(max auth tag)
 	// kDatasetMaxMBBytes = 2097152                       // 2mb
 
 	// Max size of the encrypted tdfs
 	//  16mb payload
 	// ~67kb of policy
 	// 133 of signature
-	// kMaxEncryptedNTDFSize = (16 * 1024 * 1024) + (68 * 1024) + 133 //nolint:gomnd // See comment block above
+	// kMaxEncryptedNTDFSize = (16 * 1024 * 1024) + (68 * 1024) + 133 //nolint:mnd // See comment block above
 
 	kIvPadding                    = 9
 	kNanoTDFIvSize                = 3
@@ -217,11 +217,11 @@ const (
 func deserializeBindingCfg(b byte) bindingConfig {
 	cfg := bindingConfig{}
 	// Shift to low nybble test low bit
-	cfg.useEcdsaBinding = (b >> 7 & 0b00000001) == 1 //nolint:gomnd // better readability as literal
+	cfg.useEcdsaBinding = (b >> 7 & 0b00000001) == 1 //nolint:mnd // better readability as literal
 	// ignore padding
 	cfg.padding = 0
 	// shift to low nybble and use low 3 bits
-	cfg.eccMode = ocrypto.ECCMode((b >> 4) & 0b00000111) //nolint:gomnd // better readability as literal
+	cfg.eccMode = ocrypto.ECCMode((b >> 4) & 0b00000111) //nolint:mnd // better readability as literal
 
 	return cfg
 }
@@ -235,7 +235,7 @@ func serializeBindingCfg(bindCfg bindingConfig) byte {
 		bindSerial |= 0b10000000
 	}
 	// Mask value to low 3 bytes and shift to high nybble
-	bindSerial |= (byte(bindCfg.eccMode) & 0b00000111) << 4 //nolint:gomnd // better readability as literal
+	bindSerial |= (byte(bindCfg.eccMode) & 0b00000111) << 4 //nolint:mnd // better readability as literal
 
 	return bindSerial
 }
@@ -254,11 +254,11 @@ func serializeBindingCfg(bindCfg bindingConfig) byte {
 func deserializeSignatureCfg(b byte) signatureConfig {
 	cfg := signatureConfig{}
 	// Shift high bit down and mask to test for value
-	cfg.hasSignature = (b >> 7 & 0b000000001) == 1 //nolint:gomnd // better readability as literal
+	cfg.hasSignature = (b >> 7 & 0b000000001) == 1 //nolint:mnd // better readability as literal
 	// Shift high nybble down and mask for eccmode value
-	cfg.signatureMode = ocrypto.ECCMode((b >> 4) & 0b00000111) //nolint:gomnd // better readability as literal
+	cfg.signatureMode = ocrypto.ECCMode((b >> 4) & 0b00000111) //nolint:mnd // better readability as literal
 	// Mask low nybble for cipher value
-	cfg.cipher = CipherMode(b & 0b00001111) //nolint:gomnd // better readability as literal
+	cfg.cipher = CipherMode(b & 0b00001111) //nolint:mnd // better readability as literal
 
 	return cfg
 }
@@ -272,9 +272,9 @@ func serializeSignatureCfg(sigCfg signatureConfig) byte {
 		sigSerial |= 0b10000000
 	}
 	// Mask low 3 bits of mode and shift to high nybble
-	sigSerial |= byte((sigCfg.signatureMode)&0b00000111) << 4 //nolint:gomnd // better readability as literal
+	sigSerial |= byte((sigCfg.signatureMode)&0b00000111) << 4 //nolint:mnd // better readability as literal
 	// Mask low nybble of cipher
-	sigSerial |= byte((sigCfg.cipher) & 0b00001111) //nolint:gomnd // better readability as literal
+	sigSerial |= byte((sigCfg.cipher) & 0b00001111) //nolint:mnd // better readability as literal
 
 	return sigSerial
 }

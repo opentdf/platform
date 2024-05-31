@@ -152,7 +152,7 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 	// any just return a KAS client that can only get public keys
 	if c.clientCredentials == nil {
 		slog.Info("no client credentials provided. GRPC requests to KAS and services will not be authenticated.")
-		return nil, nil // not having credentials is not an error
+		return nil, nil //nolint:nilnil // not having credentials is not an error
 	}
 
 	if c.certExchange != nil && c.tokenExchange != nil {

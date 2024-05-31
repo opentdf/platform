@@ -94,7 +94,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@9d1e0624a798bb64f6c3cea93db47765312263dc
         with:
-          version: v1.57
+          version: v1.58
           working-directory: ${{ matrix.directory }}
           skip-cache: true
           args: --out-format=colored-line-number

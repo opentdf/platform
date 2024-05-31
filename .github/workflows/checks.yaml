@@ -193,6 +193,7 @@ jobs:
       - run: |-
           curl_status=$(curl -o /dev/null -s -w "%{http_code}" localhost:8080/kas/v2/kas_public_key?algorithm=invalid)
           [ $curl_status = 404 ]
+      - run: grpcurl -d '{"algorithm":"invalid"}' -plaintext localhost:8080 kas.AccessService/PublicKey  2>&1  | grep NotFound
       - run: go run ./examples encrypt "Hello Virtru"
       - run: go run ./examples decrypt sensitive.txt.tdf
       - run: go run ./examples decrypt sensitive.txt.tdf | grep "Hello Virtru"

@@ -54,6 +54,7 @@ jobs:
             policy
             kas
             authz
+            examples
 
   go:
     runs-on: ubuntu-22.04

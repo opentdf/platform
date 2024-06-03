@@ -7,7 +7,7 @@ To contribute/develop, see [here](./Contributing.md).
 ## Running the Platform Locally
 
 1. Initialize KAS Keys ```.github/scripts/init-temp-keys.sh -o kas-keys```
-1. Stand up the local Postgres database and Keycloak instances using `docker-compose up -d --wait`.
+1. Stand up the local Postgres database and Keycloak instances using `docker compose up -d --wait`.
 1. Copy the `opentdf-example.yaml` file to `opentdf.yaml` and update the [configuration](./docs/configuration.md) as needed.
 1. Bootstrap Keycloak
 

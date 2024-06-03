@@ -10,7 +10,7 @@ go build
 ```
 
 ```shell
-./examples attributes
+./examples attributes --platformEndpoint localhost:8080
 ```
 
 Examples:

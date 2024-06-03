@@ -93,7 +93,7 @@ jobs:
           GONOSUMDB: github.com/opentdf/platform/${{join(fromJson(needs.release-please.outputs.paths_released), ',github.com/opentdf/platform/')}}
       - uses: planetscale/ghcommit-action@b662a9d7235a07e80d976152ed5afe41651c4973
         with:
-          commit_message: "chore(core): Update dependencies in ${{ matrix.path }}"
+          commit_message: "fix(core): Autobump ${{ matrix.path }}"
           repo: ${{ github.repository }}
           branch: update-go-mods-for-${{ matrix.path }}
         env:

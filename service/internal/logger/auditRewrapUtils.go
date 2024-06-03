@@ -30,6 +30,12 @@ type RewrapAuditEventParams struct {
 }
 
 func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) (*AuditEvent, error) {
+	// Extract the request ID from context
+	requestID, requestIDOk := ctx.Value("request-id").(uuid.UUID)
+	if !requestIDOk {
+		requestID = uuid.Nil
+	}
+
 	// Extract header values from context
 	userAgent, uaOk := ctx.Value("user-agent").(string)
 	if !uaOk {
@@ -85,13 +91,12 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 			"tdfFormat":     params.TDFFormat,
 			"algorithm":     params.Algorithm,
 		},
-		// TODO: client info: requestIP
 		ClientInfo: auditEventClientInfo{
 			Platform:  "kas",
 			UserAgent: userAgent,
 			RequestIP: requestIPString,
 		},
-		// TODO: requestID
+		RequestID: requestID,
 		Timestamp: time.Now().Format(time.RFC3339),
 	}, nil
 }

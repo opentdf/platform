@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
@@ -27,6 +28,7 @@ import (
 const (
 	authnContextKey = authContextKey("dpop-jwk")
 	userAgentKey    = "user-agent"
+	requestID       = "request-id"
 )
 
 type authContextKey string
@@ -241,6 +243,10 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 	if len(userAgent) > 0 {
 		ctx = context.WithValue(ctx, userAgentKey, userAgent[0])
 	}
+
+	// Set request ID on the request
+	requestUUID := uuid.New()
+	ctx = context.WithValue(ctx, requestID, requestUUID)
 
 	// parse the rpc method
 	p := strings.Split(info.FullMethod, "/")

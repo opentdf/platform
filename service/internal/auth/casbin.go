@@ -56,7 +56,7 @@ p,	role:org-admin,		/subject-mappings*,											*,			allow
 p,	role:org-admin,		/resource-mappings*,										*,			allow
 p,	role:org-admin,		/key-access-servers*,										*,			allow
 p,	role:org-admin,		/kas.AccessService/LegacyPublicKey,			*,			allow
-p,  role:org-admin,     /kas/v2/rewrap,						  		*,      allow
+p,	role:org-admin, 	/kas/v2/rewrap,						  		*,      allow
 # add unsafe actions to the org-admin role
 
 # Role: Admin
@@ -75,7 +75,7 @@ p,	role:admin,		/subject-mappings*,													*,			allow
 p,	role:admin,		/resource-mappings*,												*,			allow
 p,	role:admin,		/key-access-servers*,												*,			allow
 p,	role:admin,		/kas.AccessService/LegacyPublicKey,					*,			allow
-p,  role:admin,     /kas/v2/rewrap,						  				*,      allow
+p,	role:admin, 	/kas/v2/rewrap,						  				*,      allow
 
 ## Role: Readonly
 ## gRPC routes

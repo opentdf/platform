@@ -28,53 +28,59 @@ func GetMethods(i interface{}) []string {
 }
 
 func TestNew_ShouldCreateSDK(t *testing.T) {
-	sdk, err := sdk.New(goodPlatformEndpoint,
+	s, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"platform_issuer": "https://example.org",
+		}),
 		sdk.WithClientCredentials("myid", "mysecret", nil),
 		sdk.WithTokenEndpoint("https://example.org/token"),
 	)
 	require.NoError(t, err)
-	require.NotNil(t, sdk)
+	require.NotNil(t, s)
+
+	// Check platform issuer
+	assert.Equal(t, "https://example.org", s.PlatformIssuer())
 
 	// check if the clients are available
-	if sdk.Attributes == nil {
-		t.Errorf("Expected Attributes client, got nil")
-	}
-	if sdk.ResourceMapping == nil {
-		t.Errorf("Expected ResourceEncoding client, got nil")
-	}
-	if sdk.SubjectMapping == nil {
-		t.Errorf("Expected SubjectEncoding client, got nil")
-	}
-	if sdk.KeyAccessServerRegistry == nil {
-		t.Errorf("Expected KeyAccessGrants client, got nil")
-	}
+	assert.NotNil(t, s.Attributes)
+	assert.NotNil(t, s.ResourceMapping)
+	assert.NotNil(t, s.SubjectMapping)
+	assert.NotNil(t, s.KeyAccessServerRegistry)
 }
 
 func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {
 	// When
-	sdk, err := sdk.New(goodPlatformEndpoint)
+	s, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"platform_issuer": "https://example.org",
+		}),
+	)
 	// Then
 	require.NoError(t, err)
-	assert.NotNil(t, sdk)
+	assert.NotNil(t, s)
 }
 
 func TestNew_ShouldCloseConnections(t *testing.T) {
-	sdk, err := sdk.New(goodPlatformEndpoint,
+	s, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"platform_issuer": "https://example.org",
+		}),
 		sdk.WithClientCredentials("myid", "mysecret", nil),
 		sdk.WithTokenEndpoint("https://example.org/token"),
 	)
 	require.NoError(t, err)
-	require.NoError(t, sdk.Close())
+	require.NoError(t, s.Close())
 }
 
 func TestNew_ShouldHaveSameMethods(t *testing.T) {
-	sdk, err := sdk.New(goodPlatformEndpoint,
+	s, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"platform_issuer": "https://example.org",
+		}),
 		sdk.WithClientCredentials("myid", "mysecret", nil),
 		sdk.WithTokenEndpoint("https://example.org/token"),
 	)
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
 	tests := []struct {
 		name     string
@@ -83,31 +89,29 @@ func TestNew_ShouldHaveSameMethods(t *testing.T) {
 	}{
 		{
 			name:     "Attributes",
-			expected: GetMethods(reflect.TypeOf(attributes.NewAttributesServiceClient(sdk.Conn()))),
-			actual:   GetMethods(reflect.TypeOf(sdk.Attributes)),
+			expected: GetMethods(reflect.TypeOf(attributes.NewAttributesServiceClient(s.Conn()))),
+			actual:   GetMethods(reflect.TypeOf(s.Attributes)),
 		},
 		{
 			name:     "ResourceEncoding",
-			expected: GetMethods(reflect.TypeOf(resourcemapping.NewResourceMappingServiceClient(sdk.Conn()))),
-			actual:   GetMethods(reflect.TypeOf(sdk.ResourceMapping)),
+			expected: GetMethods(reflect.TypeOf(resourcemapping.NewResourceMappingServiceClient(s.Conn()))),
+			actual:   GetMethods(reflect.TypeOf(s.ResourceMapping)),
 		},
 		{
 			name:     "SubjectEncoding",
-			expected: GetMethods(reflect.TypeOf(subjectmapping.NewSubjectMappingServiceClient(sdk.Conn()))),
-			actual:   GetMethods(reflect.TypeOf(sdk.SubjectMapping)),
+			expected: GetMethods(reflect.TypeOf(subjectmapping.NewSubjectMappingServiceClient(s.Conn()))),
+			actual:   GetMethods(reflect.TypeOf(s.SubjectMapping)),
 		},
 		{
 			name:     "KeyAccessGrants",
-			expected: GetMethods(reflect.TypeOf(kasregistry.NewKeyAccessServerRegistryServiceClient(sdk.Conn()))),
-			actual:   GetMethods(reflect.TypeOf(sdk.KeyAccessServerRegistry)),
+			expected: GetMethods(reflect.TypeOf(kasregistry.NewKeyAccessServerRegistryServiceClient(s.Conn()))),
+			actual:   GetMethods(reflect.TypeOf(s.KeyAccessServerRegistry)),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if !reflect.DeepEqual(tt.expected, tt.actual) {
-				t.Errorf("Expected Attributes client to have methods %v, got %v", tt.actual, tt.expected)
-			}
+			assert.Equal(t, tt.expected, tt.actual)
 		})
 	}
 }
@@ -116,12 +120,8 @@ func Test_ShouldCreateNewSDKWithBadEndpoint(t *testing.T) {
 	// Bad endpoints are not detected until the first call to the platform
 	t.Skip("Skipping test since this is expected but not great behavior")
 	// When
-	sdk, err := sdk.New(badPlatformEndpoint)
+	s, err := sdk.New(badPlatformEndpoint)
 	// Then
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-	if sdk == nil {
-		t.Errorf("Expected sdk, got nil")
-	}
+	require.NoError(t, err)
+	assert.NotNil(t, s)
 }

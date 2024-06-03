@@ -104,7 +104,7 @@ func (l *AdapterSlogger) GetLevel() opalog.Level {
 
 // getFields returns additional fields of this logger.
 func (l *AdapterSlogger) getFieldsKV() []interface{} {
-	kv := make([]interface{}, len(l.fields)*2) //nolint:gomnd // key and value is added so double the length
+	kv := make([]interface{}, len(l.fields)*2) //nolint:mnd // key and value is added so double the length
 	i := 0
 	for k, v := range l.fields {
 		kv[i] = k

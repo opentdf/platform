@@ -1,7 +1,6 @@
 package ocrypto
 
 import (
-	"bytes"
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -12,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"strings"
 
 	"golang.org/x/crypto/hkdf"
@@ -30,7 +30,8 @@ type ECKeyPair struct {
 	PrivateKey *ecdsa.PrivateKey
 }
 
-func getCurveFromECCMode(mode ECCMode) (elliptic.Curve, error) {
+// GetECCurveFromECCMode return elliptic curve from ecc mode
+func GetECCurveFromECCMode(mode ECCMode) (elliptic.Curve, error) {
 	var c elliptic.Curve
 
 	switch mode {
@@ -42,9 +43,9 @@ func getCurveFromECCMode(mode ECCMode) (elliptic.Curve, error) {
 		c = elliptic.P521()
 	case ECCModeSecp256k1:
 		// TODO FIXME - unsupported?
-		return nil, errors.New("unsupported ec key pair mode")
+		return nil, errors.New("unsupported nanoTDF ecc mode")
 	default:
-		return nil, fmt.Errorf("invalid ec key pair mode %d", mode)
+		return nil, fmt.Errorf("unsupported nanoTDF ecc mode %d", mode)
 	}
 
 	return c, nil
@@ -56,7 +57,7 @@ func NewECKeyPair(mode ECCMode) (ECKeyPair, error) {
 
 	var err error
 
-	c, err = getCurveFromECCMode(mode)
+	c, err = GetECCurveFromECCMode(mode)
 	if err != nil {
 		return ECKeyPair{}, err
 	}
@@ -107,7 +108,6 @@ func (keyPair ECKeyPair) PublicKeyInPemFormat() (string, error) {
 			Bytes: publicKeyBytes,
 		},
 	)
-
 	return string(publicKeyPem), nil
 }
 
@@ -121,7 +121,7 @@ func (keyPair ECKeyPair) KeySize() (int, error) {
 
 // CompressedECPublicKey - return a compressed key from the supplied curve and public key
 func CompressedECPublicKey(mode ECCMode, pubKey ecdsa.PublicKey) ([]byte, error) {
-	curve, err := getCurveFromECCMode(mode)
+	curve, err := GetECCurveFromECCMode(mode)
 	if err != nil {
 		return nil, fmt.Errorf("x509.MarshalPKIXPublicKey failed: %w", err)
 	}
@@ -170,6 +170,27 @@ func CalculateHKDF(salt []byte, secret []byte) ([]byte, error) {
 	}
 
 	return derivedKey, nil
+}
+
+// ComputeECDSASig compute ecdsa signature
+func ComputeECDSASig(digest []byte, privKey *ecdsa.PrivateKey) ([]byte, []byte, error) {
+	r, s, err := ecdsa.Sign(rand.Reader, privKey, digest)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return r.Bytes(), s.Bytes(), nil
+}
+
+// VerifyECDSASig verify ecdsa signature.
+func VerifyECDSASig(digest, r, s []byte, pubKey *ecdsa.PublicKey) bool {
+	rAsBigInt := new(big.Int)
+	rAsBigInt.SetBytes(r)
+
+	sAsBigInt := new(big.Int)
+	sAsBigInt.SetBytes(s)
+
+	return ecdsa.Verify(pubKey, digest, rAsBigInt, sAsBigInt)
 }
 
 // ECPubKeyFromPem generate ec public from pem format
@@ -278,20 +299,20 @@ func ComputeECDHKeyFromECDHKeys(publicKey *ecdh.PublicKey, privateKey *ecdh.Priv
 	return sharedKey, nil
 }
 
-// TODO FIXME
-func GetPEMPublicKeyFromPrivateKey(_ /*key*/ []byte, _ /*mode*/ ECCMode) ecdsa.PublicKey {
-	b := ecdsa.PublicKey{}
-	return b
-}
-
-// TODO FIXME
-const (
-	kDummyLength = 128
-)
-
-func ComputeECDSASig(_ /*digest*/ [32]byte, _ /*key*/ []byte) []byte {
-	b := bytes.NewBuffer(make([]byte, 0, kDummyLength))
-	return b.Bytes()
+// UncompressECPubKey create EC public key from compressed form
+func UncompressECPubKey(curve elliptic.Curve, compressedPubKey []byte) (*ecdsa.PublicKey, error) {
+	// Converting ephemeralPublicKey byte array to *big.Int
+	x, y := elliptic.UnmarshalCompressed(curve, compressedPubKey)
+	if x == nil {
+		return nil, errors.New("failed to unmarshal compressed public key")
+	}
+	// Creating ecdsa.PublicKey from *big.Int
+	ephemeralECDSAPublicKey := &ecdsa.PublicKey{
+		Curve: elliptic.P256(),
+		X:     x,
+		Y:     y,
+	}
+	return ephemeralECDSAPublicKey, nil
 }
 
 // ECPrivateKeyInPemFormat Returns private key in pem format.

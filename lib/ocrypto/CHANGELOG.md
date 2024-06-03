@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.1.4...lib/ocrypto/v0.1.5) (2024-05-31)
+
+
+### Features
+
+* **sdk:** Support for ECDSA policy binding on both KAS and SDK ([#877](https://github.com/opentdf/platform/issues/877)) ([7baf039](https://github.com/opentdf/platform/commit/7baf03928eb3d29f615359860f9217a69b51c1fe))
+
 ## [0.1.4](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.1.3...lib/ocrypto/v0.1.4) (2024-05-29)
 
 

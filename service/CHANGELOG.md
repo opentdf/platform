@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.4](https://github.com/opentdf/platform/compare/service/v0.4.3...service/v0.4.4) (2024-05-30)
+
+
+### Features
+
+* **sdk:** PLAT-3082 nanotdf encrypt ([#744](https://github.com/opentdf/platform/issues/744)) ([6c82536](https://github.com/opentdf/platform/commit/6c8253689ec65e68c2114750c10c501423cbe03c))
+
+
+### Bug Fixes
+
+* **kas:** lowercase config mapstructure for kas key paths ([#891](https://github.com/opentdf/platform/issues/891)) ([b205926](https://github.com/opentdf/platform/commit/b205926bad5b6787c04a5f02cdf0040bc103b98d)), closes [#890](https://github.com/opentdf/platform/issues/890)
+* **policy:** downgrade policy SQL statement info level logs to debug ([#853](https://github.com/opentdf/platform/issues/853)) ([771abd6](https://github.com/opentdf/platform/commit/771abd6423d15b7dc30ba4742348f0195ea36037)), closes [#845](https://github.com/opentdf/platform/issues/845)
+* **core:** bump sdk version in service module ([#892](https://github.com/opentdf/platform/pull/892)) ([d66ce92](https://github.com/opentdf/platform/commit/d66ce9205ec6482aec315961fe2ceff57b2357be))
+
 ## [0.4.3](https://github.com/opentdf/platform/compare/service/v0.4.2...service/v0.4.3) (2024-05-22)
 
 

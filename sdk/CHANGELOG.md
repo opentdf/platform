@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.2.5](https://github.com/opentdf/platform/compare/sdk/v0.2.4...sdk/v0.2.5) (2024-06-03)
+
+
+### Features
+
+* **sdk:** leverage platform wellknown configuration endpoint ([#895](https://github.com/opentdf/platform/issues/895)) ([53b3f42](https://github.com/opentdf/platform/commit/53b3f4231501c6e6ea54ee002c7420436bb44000))
+* **sdk:** Support for ECDSA policy binding on both KAS and SDK ([#877](https://github.com/opentdf/platform/issues/877)) ([7baf039](https://github.com/opentdf/platform/commit/7baf03928eb3d29f615359860f9217a69b51c1fe))
+
+
+### Bug Fixes
+
+* **sdk:** bump ocrypto to 0.1.5 ([#912](https://github.com/opentdf/platform/issues/912)) ([6de799b](https://github.com/opentdf/platform/commit/6de799bc848b974120254575d3c211c553c2e2c0))
+
+## [0.2.4](https://github.com/opentdf/platform/compare/sdk/v0.2.3...sdk/v0.2.4) (2024-05-30)
+
+
+### Features
+
+* **core:** Allow app specified session keys ([#882](https://github.com/opentdf/platform/issues/882)) ([529fb0e](https://github.com/opentdf/platform/commit/529fb0ec775eca93f8cdd83388eba950a5e81bba))
+* **sdk:** Adds Option to Pass in RSA Keys to SDK ([#867](https://github.com/opentdf/platform/issues/867)) ([739a828](https://github.com/opentdf/platform/commit/739a828a65c4d4448dcb77c12d2bbae7cd18a060))
+* **sdk:** PLAT-3082 nanotdf encrypt ([#744](https://github.com/opentdf/platform/issues/744)) ([6c82536](https://github.com/opentdf/platform/commit/6c8253689ec65e68c2114750c10c501423cbe03c))
+
+
+### Bug Fixes
+
+* **sdk:** if we encounter an error getting an access token then don't make the request ([#872](https://github.com/opentdf/platform/issues/872)) ([19188d5](https://github.com/opentdf/platform/commit/19188d5f713b3cca3c9f4568cf58cc54c86bd262))
+
 ## [0.2.3](https://github.com/opentdf/platform/compare/sdk/v0.2.2...sdk/v0.2.3) (2024-05-21)
 
 

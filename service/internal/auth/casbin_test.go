@@ -260,6 +260,24 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 			resource: "non-existent",
 			action:   "read",
 		},
+		{
+			allowed:  true,
+			roles:    standard,
+			resource: "/kas/kas_public_key",
+			action:   "read",
+		},
+		{
+			allowed:  true,
+			roles:    standard,
+			resource: "/kas/v2/kas_public_key",
+			action:   "read",
+		},
+		{
+			allowed:  true,
+			roles:    standard,
+			resource: "/kas/v2/rewrap",
+			action:   "write",
+		},
 
 		// undefined role
 		{

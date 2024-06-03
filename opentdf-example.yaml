@@ -69,7 +69,8 @@ server:
   cors:
     enabled: false
     # '*' to allow any origin or a specific domain like 'https://yourdomain.com'
-    allowedorigins: "*"
+    allowedorigins: 
+      - "*"
     # List of methods. Examples: 'GET,POST,PUT'
     allowedmethods:
       - GET

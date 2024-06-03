@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
@@ -33,6 +34,13 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 	userAgent, uaOk := ctx.Value("user-agent").(string)
 	if !uaOk {
 		userAgent = "None"
+	}
+
+	// Extract request IP from context
+	requestIPString := "None"
+	requestIP, ipOK := realip.FromContext(ctx)
+	if ipOK {
+		requestIPString = requestIP.String()
 	}
 
 	// Assign action result
@@ -77,10 +85,11 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 			"tdfFormat":     params.TDFFormat,
 			"algorithm":     params.Algorithm,
 		},
-		// TODO: client info: userAgent and requestIP
+		// TODO: client info: requestIP
 		ClientInfo: auditEventClientInfo{
 			Platform:  "kas",
 			UserAgent: userAgent,
+			RequestIP: requestIPString,
 		},
 		// TODO: requestID
 		Timestamp: time.Now().Format(time.RFC3339),

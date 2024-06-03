@@ -8,12 +8,14 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/netip"
 	"strings"
 	"time"
 
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/go-chi/cors"
 	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/security"
@@ -261,6 +263,14 @@ func newGrpcServer(c Config, a *auth.Authentication) (*grpc.Server, error) {
 
 	o = append(o, grpc.ChainUnaryInterceptor(
 		i...,
+	))
+
+	// Chain relaip interceptor
+	trustedPeers := []netip.Prefix{} // TODO: add this as a config option?
+	headers := []string{realip.XForwardedFor, realip.XRealIp}
+
+	o = append(o, grpc.ChainUnaryInterceptor(
+		realip.UnaryServerInterceptor(trustedPeers, headers),
 	))
 
 	s := grpc.NewServer(o...)

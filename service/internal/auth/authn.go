@@ -26,6 +26,7 @@ import (
 
 const (
 	authnContextKey = authContextKey("dpop-jwk")
+	userAgentKey    = "user-agent"
 )
 
 type authContextKey string
@@ -236,9 +237,9 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 	}
 
 	// Set the user-agent in the context for audit logging
-	userAgent := md["user-agent"]
+	userAgent := md[userAgentKey]
 	if len(userAgent) > 0 {
-		ctx = context.WithValue(ctx, "user-agent", userAgent[0])
+		ctx = context.WithValue(ctx, userAgentKey, userAgent[0])
 	}
 
 	// parse the rpc method

@@ -22,11 +22,12 @@ type KasAttribute struct {
 }
 
 type RewrapAuditEventParams struct {
-	Policy      KasPolicy
-	IsSuccess   bool
-	EntityToken string
-	TDFFormat   string
-	Algorithm   string
+	Policy        KasPolicy
+	IsSuccess     bool
+	EntityToken   string
+	TDFFormat     string
+	Algorithm     string
+	PolicyBinding string
 }
 
 func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) (*AuditEvent, error) {
@@ -84,10 +85,10 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 			ID:         entityTokenSub,
 			Attributes: map[string]string{},
 		},
-		// TODO: keyID and policyBinding
+		// TODO: keyID once implemented
 		EventMetaData: map[string]string{
 			"keyID":         "",
-			"policyBinding": "",
+			"policyBinding": params.PolicyBinding,
 			"tdfFormat":     params.TDFFormat,
 			"algorithm":     params.Algorithm,
 		},

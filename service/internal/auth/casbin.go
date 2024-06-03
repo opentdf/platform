@@ -75,7 +75,7 @@ p,	role:admin,		/subject-mappings*,													*,			allow
 p,	role:admin,		/resource-mappings*,												*,			allow
 p,	role:admin,		/key-access-servers*,												*,			allow
 p,	role:admin,		/kas.AccessService/LegacyPublicKey,					*,			allow
-p,	role:admin, 	/kas/v2/rewrap,						  				*,      allow
+p,	role:admin,		/kas/v2/rewrap,						  				*,      allow
 
 ## Role: Readonly
 ## gRPC routes

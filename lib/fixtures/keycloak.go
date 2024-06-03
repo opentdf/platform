@@ -122,7 +122,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	opentdfSdkClientID := "opentdf-sdk"
 	opentdfOrgAdminRoleName := "opentdf-org-admin"
 	opentdfAdminRoleName := "opentdf-admin"
-	opentdfReadonlyRoleName := "opentdf-readonly"
+	opentdfStandardRoleName := "opentdf-standard"
 	testingOnlyRoleName := "opentdf-testing-role"
 	opentdfERSClientID := "tdf-entity-resolution"
 	opentdfAuthorizationClientID := "tdf-authorization-svc"
@@ -155,7 +155,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	}
 
 	// Create Roles
-	roles := []string{opentdfOrgAdminRoleName, opentdfAdminRoleName, opentdfReadonlyRoleName, testingOnlyRoleName}
+	roles := []string{opentdfOrgAdminRoleName, opentdfAdminRoleName, opentdfStandardRoleName, testingOnlyRoleName}
 	for _, role := range roles {
 		_, err := client.CreateRealmRole(ctx, token.AccessToken, kcConnectParams.Realm, gocloak.Role{
 			Name: gocloak.StringP(role),
@@ -175,7 +175,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	// Get the roles
 	var opentdfOrgAdminRole *gocloak.Role
 	// var opentdfAdminRole *gocloak.Role
-	var opentdfReadonlyRole *gocloak.Role
+	var opentdfStandardRole *gocloak.Role
 	var testingOnlyRole *gocloak.Role
 	realmRoles, err := client.GetRealmRoles(ctx, token.AccessToken, kcConnectParams.Realm, gocloak.GetRoleParams{
 		Search: gocloak.StringP("opentdf"),
@@ -191,8 +191,8 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 			opentdfOrgAdminRole = role
 		// case opentdfAdminRoleName:
 		// 	opentdfAdminRole = role
-		case opentdfReadonlyRoleName:
-			opentdfReadonlyRole = role
+		case opentdfStandardRoleName:
+			opentdfStandardRole = role
 		case testingOnlyRoleName:
 			testingOnlyRole = role
 		}
@@ -251,7 +251,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		Secret:                    gocloak.StringP("secret"),
 		DirectAccessGrantsEnabled: gocloak.BoolP(true),
 		ProtocolMappers:           &protocolMappers,
-	}, []gocloak.Role{*opentdfReadonlyRole, *testingOnlyRole}, nil)
+	}, []gocloak.Role{*opentdfStandardRole, *testingOnlyRole}, nil)
 	if err != nil {
 		return err
 	}
@@ -985,7 +985,8 @@ func createCertExchange(ctx context.Context, connectParams *KeycloakConnectParam
 
 // updateExecutionConfig Posts an authentication execution config (body) to keycloak for a given execution
 func updateExecutionConfig(ctx context.Context, client *gocloak.GoCloak, execution *gocloak.ModifyAuthenticationExecutionRepresentation,
-	connectParams *KeycloakConnectParams, accessToken string, body interface{}) error {
+	connectParams *KeycloakConnectParams, accessToken string, body interface{},
+) error {
 	updateURL := fmt.Sprintf("%s/admin/realms/%s/authentication/executions/%s/config", connectParams.BasePath,
 		connectParams.Realm, *execution.ID)
 	resp, respErr := client.GetRequestWithBearerAuth(ctx, accessToken).SetBody(body).

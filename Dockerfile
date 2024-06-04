@@ -9,11 +9,10 @@ COPY lib/ocrypto lib/ocrypto
 COPY lib/fixtures lib/fixtures
 COPY service/ service/
 COPY examples/ examples/
-COPY go.work go.work.sum ./
-RUN cd service \
-    && go mod download \
+COPY go.mod go.sum ./
+RUN go mod download \
     && go mod verify
-RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o opentdf ./service
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o opentdf ./service/main.go
 
 FROM cgr.dev/chainguard/glibc-dynamic
 

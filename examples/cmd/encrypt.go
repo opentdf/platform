@@ -92,11 +92,13 @@ func encrypt(cmd *cobra.Command, args []string) error {
 
 	_, err = client.CreateNanoTDF(nTdfFile, strReader, *nanoTDFCOnfig)
 	if err != nil {
+		cmd.Println("CreateNanoTDF Failed")
 		return err
 	}
 
 	err = dumpNanoTDF(cmd, nTDFile)
 	if err != nil {
+		cmd.Println("There was a problem dumping the nanotdf")
 		return err
 	}
 	return nil

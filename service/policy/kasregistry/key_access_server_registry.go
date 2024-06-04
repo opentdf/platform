@@ -8,6 +8,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	kasr "github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/internal/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policydb "github.com/opentdf/platform/service/policy/db"
@@ -39,10 +40,19 @@ func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 ) (*kasr.CreateKeyAccessServerResponse, error) {
 	s.logger.Debug("creating key access server")
 
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypeKasRegistry,
+	}
+
 	ks, err := s.dbClient.CreateKeyAccessServer(ctx, req)
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("keyAccessServer", req.String()))
 	}
+
+	auditParams.ObjectID = ks.GetId()
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &kasr.CreateKeyAccessServerResponse{
 		KeyAccessServer: ks,
@@ -90,10 +100,19 @@ func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
 func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
 	req *kasr.DeleteKeyAccessServerRequest,
 ) (*kasr.DeleteKeyAccessServerResponse, error) {
+	kasID := req.GetId()
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeKasRegistry,
+		ObjectID:   kasID,
+	}
+
 	keyAccessServer, err := s.dbClient.DeleteKeyAccessServer(ctx, req.GetId())
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	return &kasr.DeleteKeyAccessServerResponse{
 		KeyAccessServer: keyAccessServer,
 	}, nil

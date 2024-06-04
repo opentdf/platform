@@ -121,12 +121,22 @@ func (s *AttributesService) DeactivateAttribute(ctx context.Context,
 ) (*attributes.DeactivateAttributeResponse, error) {
 	rsp := &attributes.DeactivateAttributeResponse{}
 
-	a, err := s.dbClient.DeactivateAttribute(ctx, req.GetId())
+	attributeID := req.GetId()
+
+	auditParams := audit.PolicyEventParams{
+		ObjectType: audit.ObjectTypeAttributeDefinition,
+		ActionType: audit.ActionTypeDelete,
+		ObjectID:   attributeID,
+	}
+
+	a, err := s.dbClient.DeactivateAttribute(ctx, attributeID)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextDeactivationFailed, slog.String("id", req.GetId()))
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextDeactivationFailed, slog.String("id", attributeID))
 	}
 	rsp.Attribute = a
 
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	return rsp, nil
 }
 
@@ -135,10 +145,19 @@ func (s *AttributesService) DeactivateAttribute(ctx context.Context,
 ///
 
 func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attributes.CreateAttributeValueRequest) (*attributes.CreateAttributeValueResponse, error) {
+	auditParams := audit.PolicyEventParams{
+		ObjectType: audit.ObjectTypeAttributeValue,
+		ActionType: audit.ActionTypeCreate,
+	}
+
 	item, err := s.dbClient.CreateAttributeValue(ctx, req.GetAttributeId(), req)
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("attributeId", req.GetAttributeId()), slog.String("value", req.String()))
 	}
+
+	auditParams.ObjectID = item.GetId()
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &attributes.CreateAttributeValueResponse{
 		Value: item,
@@ -181,11 +200,21 @@ func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *attri
 }
 
 func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *attributes.DeactivateAttributeValueRequest) (*attributes.DeactivateAttributeValueResponse, error) {
-	a, err := s.dbClient.DeactivateAttributeValue(ctx, req.GetId())
-	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextDeactivationFailed, slog.String("id", req.GetId()))
+	attributeID := req.GetId()
+
+	auditParams := audit.PolicyEventParams{
+		ObjectType: audit.ObjectTypeAttributeValue,
+		ActionType: audit.ActionTypeDelete,
+		ObjectID:   attributeID,
 	}
 
+	a, err := s.dbClient.DeactivateAttributeValue(ctx, attributeID)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextDeactivationFailed, slog.String("id", attributeID))
+	}
+
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	return &attributes.DeactivateAttributeValueResponse{
 		Value: a,
 	}, nil

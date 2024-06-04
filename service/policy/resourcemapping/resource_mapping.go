@@ -8,6 +8,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/internal/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policydb "github.com/opentdf/platform/service/policy/db"
@@ -43,10 +44,19 @@ func (s ResourceMappingService) CreateResourceMapping(ctx context.Context,
 ) (*resourcemapping.CreateResourceMappingResponse, error) {
 	s.logger.Debug("creating resource mapping")
 
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypeResourceMapping,
+	}
+
 	rm, err := s.dbClient.CreateResourceMapping(ctx, req)
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("resourceMapping", req.String()))
 	}
+
+	auditParams.ObjectID = rm.GetId()
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &resourcemapping.CreateResourceMappingResponse{
 		ResourceMapping: rm,
@@ -98,10 +108,20 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 func (s ResourceMappingService) DeleteResourceMapping(ctx context.Context,
 	req *resourcemapping.DeleteResourceMappingRequest,
 ) (*resourcemapping.DeleteResourceMappingResponse, error) {
-	rm, err := s.dbClient.DeleteResourceMapping(ctx, req.GetId())
-	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
+	resourceMappingID := req.GetId()
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeResourceMapping,
+		ObjectID:   resourceMappingID,
 	}
+
+	rm, err := s.dbClient.DeleteResourceMapping(ctx, resourceMappingID)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", resourceMappingID))
+	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	return &resourcemapping.DeleteResourceMappingResponse{
 		ResourceMapping: rm,
 	}, nil

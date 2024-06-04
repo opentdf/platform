@@ -18,6 +18,7 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/auth"
+	l "github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/valyala/fasthttp/fasthttputil"
 	"golang.org/x/net/http2"
@@ -242,6 +243,9 @@ func newGrpcServer(c Config, a *auth.Authentication) (*grpc.Server, error) {
 	if err != nil {
 		slog.Warn("failed to create proto validator", slog.String("error", err.Error()))
 	}
+
+	// Add Audit Unary Server Interceptor
+	i = append(i, l.AuditUnaryServerInterceptor)
 
 	if c.Auth.Enabled {
 		i = append(i, a.UnaryServerInterceptor)

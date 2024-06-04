@@ -85,9 +85,8 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 			ID:         entityTokenSub,
 			Attributes: map[string]string{},
 		},
-		// TODO: keyID once implemented
 		EventMetaData: map[string]string{
-			"keyID":         "",
+			"keyID":         "", // TODO: keyID once implemented
 			"policyBinding": params.PolicyBinding,
 			"tdfFormat":     params.TDFFormat,
 			"algorithm":     params.Algorithm,

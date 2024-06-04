@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
@@ -237,16 +236,6 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 	if len(header) < 1 {
 		return nil, status.Error(codes.Unauthenticated, "missing authorization header")
 	}
-
-	// Set the user-agent in the context for audit logging
-	userAgent := md[userAgentKey]
-	if len(userAgent) > 0 {
-		ctx = context.WithValue(ctx, userAgentKey, userAgent[0])
-	}
-
-	// Set request ID on the request
-	requestUUID := uuid.New()
-	ctx = context.WithValue(ctx, requestID, requestUUID)
 
 	// parse the rpc method
 	p := strings.Split(info.FullMethod, "/")

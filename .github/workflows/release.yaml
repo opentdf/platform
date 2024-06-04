@@ -78,7 +78,7 @@ jobs:
             pkg=github.com/opentdf/platform/${x}
             echo "Should we update [${pkg}] in [${{ matrix.path }}]?"
             if grep "$pkg"<go.mod; then
-              ver=$(jq -r .${x} < "${GITHUB_WORKSPACE}/.release-please-manifest.json")
+              ver=$(jq -r .\[\"${x}\"\] < "${GITHUB_WORKSPACE}/.release-please-manifest.json")
               echo "go get ${pkg}@v${ver}"
               go get "${pkg}@v${ver}"
             fi

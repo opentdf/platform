@@ -13,7 +13,7 @@ func main() {
 
 	slog.SetDefault(logger)
 
-	jqbuiltin.JQBuiltin()
+	subjectmappingbuiltin.JQBuiltin()
 
 	if err := cmd.RootCommand.Execute(); err != nil {
 		fmt.Println(err)

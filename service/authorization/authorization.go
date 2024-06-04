@@ -357,6 +357,13 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		// if slog.Default().Enabled(ctx, slog.LevelDebug) {
 		//	_ = json.NewEncoder(os.Stdout).Encode(decision.Result)
 		// }
+
+		// if the output is a string, it is an error
+		resultError, ok := decision.Result.(string)
+		if ok {
+			as.logger.DebugContext(ctx, "not ok", "entity_id", entity.GetId(), "decision.Result", fmt.Sprintf("%+v", resultError))
+			return nil, errors.New(resultError)
+		}
 		results, ok := decision.Result.([]interface{})
 		if !ok {
 			as.logger.DebugContext(ctx, "not ok", "entity_id", entity.GetId(), "decision.Result", fmt.Sprintf("%+v", decision.Result))

@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.6](https://github.com/opentdf/platform/compare/lib/fixtures/v0.2.5...lib/fixtures/v0.2.6) (2024-06-04)
+
+
+### Bug Fixes
+
+* **core:** bump golang.org/x/net from 0.17.0 to 0.23.0 in /lib/fixtures ([#626](https://github.com/opentdf/platform/issues/626)) ([1201145](https://github.com/opentdf/platform/commit/1201145aafaac89c8ebe49d2ee577e83048ddad7))
+
+## [0.2.5](https://github.com/opentdf/platform/compare/lib/fixtures/v0.2.4...lib/fixtures/v0.2.5) (2024-06-03)
+
+
+### Bug Fixes
+
+* **core:** update default casbin auth policy ([#927](https://github.com/opentdf/platform/issues/927)) ([c354fdb](https://github.com/opentdf/platform/commit/c354fdb118af4e4a222f3c65fcbf5de581d08bee))
+
 ## [0.2.4](https://github.com/opentdf/platform/compare/lib/fixtures/v0.2.3...lib/fixtures/v0.2.4) (2024-05-24)
 
 

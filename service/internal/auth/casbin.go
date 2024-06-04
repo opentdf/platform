@@ -19,7 +19,7 @@ var defaultRole = "unknown"
 var defaultRoleClaim = "realm_access.roles"
 
 var defaultRoleMap = map[string]string{
-	"readonly":  "opentdf-readonly",
+	"standard":  "opentdf-standard",
 	"admin":     "opentdf-admin",
 	"org-admin": "opentdf-org-admin",
 }
@@ -28,7 +28,7 @@ var defaultPolicy = `
 ## Roles (prefixed with role:)
 # org-admin - organization admin
 # admin - admin
-# readonly - readonly
+# standard - standard
 # unknown - unknown role or no role
 
 ## Resources
@@ -56,6 +56,7 @@ p,	role:org-admin,		/subject-mappings*,											*,			allow
 p,	role:org-admin,		/resource-mappings*,										*,			allow
 p,	role:org-admin,		/key-access-servers*,										*,			allow
 p,	role:org-admin,		/kas.AccessService/LegacyPublicKey,			*,			allow
+p,	role:org-admin, 	/kas/v2/rewrap,						  		*,      allow
 # add unsafe actions to the org-admin role
 
 # Role: Admin
@@ -74,23 +75,27 @@ p,	role:admin,		/subject-mappings*,													*,			allow
 p,	role:admin,		/resource-mappings*,												*,			allow
 p,	role:admin,		/key-access-servers*,												*,			allow
 p,	role:admin,		/kas.AccessService/LegacyPublicKey,					*,			allow
+p,	role:admin,		/kas/v2/rewrap,						  				*,      allow
 
-## Role: Readonly
+## Role: Standard
 ## gRPC routes
-p,	role:readonly,		policy.*,																read,			allow
-p,	role:readonly,		kasregistry.*,													read,			allow
-p,	role:readonly,		kas.AccessService/Info,		 		             *,			allow
-p,	role:readonly,    kas.AccessService/Rewrap, 			           *,			allow
-p,	role:readonly,    kas.AccessService/LegacyPublicKey,				 *,			allow
-p,	role:readonly,    kas.AccessService/PublicKey,							 *,			allow
+p,	role:standard,		policy.*,																read,			allow
+p,	role:standard,		kasregistry.*,													read,			allow
+p,	role:standard,		kas.AccessService/Info,		 		             *,			allow
+p,	role:standard,    kas.AccessService/Rewrap, 			           *,			allow
+p,	role:standard,    kas.AccessService/LegacyPublicKey,				 *,			allow
+p,	role:standard,    kas.AccessService/PublicKey,							 *,			allow
 ## HTTP routes
-p,	role:readonly,		/health,																read,			allow
-p,	role:readonly,		/attributes*,														read,			allow
-p,	role:readonly,		/namespaces*,														read,			allow
-p,	role:readonly,		/subject-mappings*,											read,			allow
-p,	role:readonly,		/resource-mappings*,										read,			allow
-p,	role:readonly,		/key-access-servers*,										read,			allow
-p,	role:readonly,		/kas.AccessService/LegacyPublicKey,			read,			allow
+p,	role:standard,		/health,																read,			allow
+p,	role:standard,		/attributes*,														read,			allow
+p,	role:standard,		/namespaces*,														read,			allow
+p,	role:standard,		/subject-mappings*,											read,			allow
+p,	role:standard,		/resource-mappings*,										read,			allow
+p,	role:standard,		/key-access-servers*,										read,			allow
+p,	role:standard,		/kas/kas_public_key,  									read,			allow
+p,	role:standard,		/kas/v2/kas_public_key,									read,			allow
+p,	role:standard,		/kas/v2/rewrap,													write,		allow
+p,	role:standard,		/entityresolution/resolve,							write,  	allow
 
 # Public routes
 ## gRPC routes

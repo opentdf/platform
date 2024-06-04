@@ -11,7 +11,7 @@ import (
 
 type Logger struct {
 	*slog.Logger
-	Audit *audit.AuditLogger
+	Audit *audit.Logger
 }
 
 type Config struct {

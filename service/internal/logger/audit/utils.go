@@ -7,6 +7,8 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
 )
 
+type auditContextKey string
+
 // Header Values
 const (
 	UserAgentHeaderKey = "user-agent"
@@ -14,9 +16,9 @@ const (
 
 // Context Keys
 const (
-	UserAgentContextKey = "user-agent"
-	RequestIDContextKey = "request-id"
-	ActorIdContextKey   = "actor-id"
+	UserAgentContextKey auditContextKey = "user-agent"
+	RequestIDContextKey auditContextKey = "request-id"
+	ActorIDContextKey   auditContextKey = "actor-id"
 )
 
 // Action Types
@@ -32,14 +34,19 @@ const (
 	ActionResultError   = "error"
 )
 
+// Common Strings
+const (
+	DefaultNone = "None"
+)
+
 // event
-type AuditEvent struct {
-	Object        auditEventObject     `json:"object"`
-	Action        auditEventAction     `json:"action"`
-	Owner         auditEventOwner      `json:"owner"`
-	Actor         auditEventActor      `json:"actor"`
-	EventMetaData map[string]string    `json:"eventMetaData"`
-	ClientInfo    auditEventClientInfo `json:"clientInfo"`
+type EventObject struct {
+	Object        auditEventObject  `json:"object"`
+	Action        eventAction       `json:"action"`
+	Owner         EventOwner        `json:"owner"`
+	Actor         auditEventActor   `json:"actor"`
+	EventMetaData map[string]string `json:"eventMetaData"`
+	ClientInfo    eventClientInfo   `json:"clientInfo"`
 
 	Diff      interface{} `json:"diff"`
 	RequestID uuid.UUID   `json:"requestId"`
@@ -48,27 +55,27 @@ type AuditEvent struct {
 
 // event.object
 type auditEventObject struct {
-	Type       string                     `json:"type"`
-	ID         string                     `json:"id"`
-	Name       string                     `json:"name"`
-	Attributes auditEventObjectAttributes `json:"attributes"`
+	Type       string                `json:"type"`
+	ID         string                `json:"id"`
+	Name       string                `json:"name"`
+	Attributes eventObjectAttributes `json:"attributes"`
 }
 
 // event.object.attributes
-type auditEventObjectAttributes struct {
+type eventObjectAttributes struct {
 	Assertions  []string `json:"assertions"`
 	Attrs       []string `json:"attrs"`
 	Permissions []string `json:"permissions"`
 }
 
 // event.action
-type auditEventAction struct {
+type eventAction struct {
 	Type   string `json:"type"`
 	Result string `json:"result"`
 }
 
 // event.owner
-type auditEventOwner struct {
+type EventOwner struct {
 	ID    uuid.UUID `json:"id"`
 	OrgID uuid.UUID `json:"orgId"`
 }
@@ -80,20 +87,20 @@ type auditEventActor struct {
 }
 
 // event.clientInfo
-type auditEventClientInfo struct {
+type eventClientInfo struct {
 	UserAgent string `json:"userAgent"`
 	Platform  string `json:"platform"`
 	RequestIP string `json:"requestIp"`
 }
 
-type AuditDataFromContext struct {
+type ContextData struct {
 	RequestID uuid.UUID
 	UserAgent string
 	RequestIP string
 	ActorID   string
 }
 
-func GetAuditDataFromContext(ctx context.Context) AuditDataFromContext {
+func GetAuditDataFromContext(ctx context.Context) ContextData {
 	// Extract the request ID from context
 	requestID, requestIDOk := ctx.Value(RequestIDContextKey).(uuid.UUID)
 	if !requestIDOk {
@@ -103,23 +110,23 @@ func GetAuditDataFromContext(ctx context.Context) AuditDataFromContext {
 	// Extract user agent from context
 	userAgent, userAgentOK := ctx.Value(UserAgentContextKey).(string)
 	if !userAgentOK {
-		userAgent = "None"
+		userAgent = DefaultNone
 	}
 
 	// Extract actor ID from context
-	actorID, actorIDOK := ctx.Value(ActorIdContextKey).(string)
+	actorID, actorIDOK := ctx.Value(ActorIDContextKey).(string)
 	if !actorIDOK || actorID == "" {
-		actorID = "None"
+		actorID = DefaultNone
 	}
 
 	// Extract request IP from context
-	requestIPString := "None"
+	requestIPString := DefaultNone
 	requestIP, ipOK := realip.FromContext(ctx)
 	if ipOK {
 		requestIPString = requestIP.String()
 	}
 
-	return AuditDataFromContext{
+	return ContextData{
 		RequestID: requestID,
 		UserAgent: userAgent,
 		RequestIP: requestIPString,
@@ -129,8 +136,8 @@ func GetAuditDataFromContext(ctx context.Context) AuditDataFromContext {
 
 // Audit requires an "owner" field but that doesn't apply in the context of the
 // platform. Therefore we just create a "nil" owner which has nil UUID fields.
-func CreateNilOwner() auditEventOwner {
-	return auditEventOwner{
+func CreateNilOwner() EventOwner {
+	return EventOwner{
 		ID:    uuid.Nil,
 		OrgID: uuid.Nil,
 	}

@@ -11,7 +11,7 @@ type PolicyAttributeAuditEventParams struct {
 	AttributeID string
 }
 
-func CreatePolicyAttributeAuditEvent(ctx context.Context, params PolicyAttributeAuditEventParams) (*AuditEvent, error) {
+func CreatePolicyAttributeAuditEvent(ctx context.Context, params PolicyAttributeAuditEventParams) (*EventObject, error) {
 	auditDataFromContext := GetAuditDataFromContext(ctx)
 
 	auditEventActionResult := ActionResultError
@@ -19,12 +19,12 @@ func CreatePolicyAttributeAuditEvent(ctx context.Context, params PolicyAttribute
 		auditEventActionResult = ActionResultSuccess
 	}
 
-	return &AuditEvent{
+	return &EventObject{
 		Object: auditEventObject{
 			Type: "attribute_definition",
 			ID:   params.AttributeID,
 		},
-		Action: auditEventAction{
+		Action: eventAction{
 			Type:   params.ActionType,
 			Result: auditEventActionResult,
 		},
@@ -34,7 +34,7 @@ func CreatePolicyAttributeAuditEvent(ctx context.Context, params PolicyAttribute
 		},
 		Owner: CreateNilOwner(),
 
-		ClientInfo: auditEventClientInfo{
+		ClientInfo: eventClientInfo{
 			Platform:  "policy",
 			UserAgent: auditDataFromContext.UserAgent,
 			RequestIP: auditDataFromContext.RequestIP,

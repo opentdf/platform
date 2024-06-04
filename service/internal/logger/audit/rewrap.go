@@ -27,7 +27,7 @@ type RewrapAuditEventParams struct {
 	PolicyBinding string
 }
 
-func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) (*AuditEvent, error) {
+func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) (*EventObject, error) {
 	auditDataFromContext := GetAuditDataFromContext(ctx)
 
 	// Assign action result
@@ -36,17 +36,17 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 		auditEventActionResult = ActionResultSuccess
 	}
 
-	return &AuditEvent{
+	return &EventObject{
 		Object: auditEventObject{
 			Type: "key_object",
 			ID:   params.Policy.UUID.String(),
-			Attributes: auditEventObjectAttributes{
+			Attributes: eventObjectAttributes{
 				Assertions:  []string{},
 				Attrs:       []string{},
 				Permissions: []string{},
 			},
 		},
-		Action: auditEventAction{
+		Action: eventAction{
 			Type:   "rewrap",
 			Result: auditEventActionResult,
 		},
@@ -61,7 +61,7 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 			"tdfFormat":     params.TDFFormat,
 			"algorithm":     params.Algorithm,
 		},
-		ClientInfo: auditEventClientInfo{
+		ClientInfo: eventClientInfo{
 			Platform:  "kas",
 			UserAgent: auditDataFromContext.UserAgent,
 			RequestIP: auditDataFromContext.RequestIP,

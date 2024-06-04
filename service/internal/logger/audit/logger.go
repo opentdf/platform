@@ -14,66 +14,66 @@ const (
 	LevelAudit = slog.Level(10)
 )
 
-var AuditLogLevelNames = map[slog.Level]string{
+var AuditLogLevelNames = map[slog.Leveler]string{
 	LevelAudit: "AUDIT",
 }
 
-type AuditLogger struct {
+type Logger struct {
 	logger *slog.Logger
 }
 
-func CreateAuditLogger(logger slog.Logger) *AuditLogger {
-	return &AuditLogger{
+func CreateAuditLogger(logger slog.Logger) *Logger {
+	return &Logger{
 		logger: &logger,
 	}
 }
 
-func (a *AuditLogger) With(key string, value string) *AuditLogger {
-	return &AuditLogger{
+func (a *Logger) With(key string, value string) *Logger {
+	return &Logger{
 		logger: a.logger.With(key, value),
 	}
 }
 
-func (a *AuditLogger) RewrapSuccess(ctx context.Context, eventParams RewrapAuditEventParams) {
+func (a *Logger) RewrapSuccess(ctx context.Context, eventParams RewrapAuditEventParams) {
 	eventParams.IsSuccess = true
 	a.rewrap(ctx, eventParams)
 }
 
-func (a *AuditLogger) RewrapFailure(ctx context.Context, eventParams RewrapAuditEventParams) {
+func (a *Logger) RewrapFailure(ctx context.Context, eventParams RewrapAuditEventParams) {
 	eventParams.IsSuccess = false
 	a.rewrap(ctx, eventParams)
 }
 
-func (a *AuditLogger) PolicyAttributeSuccess(ctx context.Context, eventParams PolicyAttributeAuditEventParams) {
+func (a *Logger) PolicyAttributeSuccess(ctx context.Context, eventParams PolicyAttributeAuditEventParams) {
 	eventParams.IsSuccess = true
 	a.policyAttributeCrud(ctx, eventParams)
 }
 
-func (a *AuditLogger) policyAttributeCrud(ctx context.Context, eventParams PolicyAttributeAuditEventParams) {
+func (a *Logger) policyAttributeCrud(ctx context.Context, eventParams PolicyAttributeAuditEventParams) {
 	auditEvent, err := CreatePolicyAttributeAuditEvent(ctx, eventParams)
 	if err != nil {
-		a.logger.ErrorContext(ctx, "error creating policy attribute audit event", err)
+		a.logger.ErrorContext(ctx, "error creating policy attribute audit event", "err", err)
 		return
 	}
 
 	auditEventJSONBytes, err := json.Marshal(auditEvent)
 	if err != nil {
-		a.logger.ErrorContext(ctx, "error marshalling policy attribute audit event", err)
+		a.logger.ErrorContext(ctx, "error marshalling policy attribute audit event", "err", err)
 	}
 
 	a.logger.Log(ctx, LevelAudit, string(auditEventJSONBytes))
 }
 
-func (a *AuditLogger) rewrap(ctx context.Context, eventParams RewrapAuditEventParams) {
+func (a *Logger) rewrap(ctx context.Context, eventParams RewrapAuditEventParams) {
 	auditEvent, err := CreateRewrapAuditEvent(ctx, eventParams)
 	if err != nil {
-		a.logger.ErrorContext(ctx, "error creating rewrap audit event", err)
+		a.logger.ErrorContext(ctx, "error creating rewrap audit event", "err", err)
 		return
 	}
 
 	auditEventJSONBytes, err := json.Marshal(auditEvent)
 	if err != nil {
-		a.logger.ErrorContext(ctx, "error marshalling rewrap audit event", err)
+		a.logger.ErrorContext(ctx, "error marshalling rewrap audit event", "err", err)
 	}
 
 	a.logger.Log(ctx, LevelAudit, string(auditEventJSONBytes))

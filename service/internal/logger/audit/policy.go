@@ -5,24 +5,36 @@ import (
 	"time"
 )
 
-type PolicyAttributeAuditEventParams struct {
-	ActionType  string
-	IsSuccess   bool
-	AttributeID string
+// Object Types for Policies
+const (
+	ObjectTypeSubjectMapping         = "subject_mapping"
+	ObjectTypeResourceMapping        = "resource_mapping"
+	ObjectTypeAttributeDefinition    = "attribute_definition"
+	ObjectTypeAttributeValue         = "attribute_value"
+	ObjectTypeNamespace              = "namespace"
+	ObjectTypeConditionSet           = "condition_set"
+	ObjectTypeKasRegistry            = "kas_registry"
+	ObjectTypeKasAttributeAssignment = "kas_attribute_assignment"
+)
+
+type PolicyEventParams struct {
+	ActionType string
+	ObjectID   string
+	ObjectType string
 }
 
-func CreatePolicyAttributeAuditEvent(ctx context.Context, params PolicyAttributeAuditEventParams) (*EventObject, error) {
+func CreatePolicyEvent(ctx context.Context, isSuccess bool, params PolicyEventParams) (*EventObject, error) {
 	auditDataFromContext := GetAuditDataFromContext(ctx)
 
 	auditEventActionResult := ActionResultError
-	if params.IsSuccess {
+	if isSuccess {
 		auditEventActionResult = ActionResultSuccess
 	}
 
 	return &EventObject{
 		Object: auditEventObject{
-			Type: "attribute_definition",
-			ID:   params.AttributeID,
+			Type: params.ObjectType,
+			ID:   params.ObjectID,
 		},
 		Action: eventAction{
 			Type:   params.ActionType,

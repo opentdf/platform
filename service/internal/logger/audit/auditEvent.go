@@ -7,19 +7,27 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
 )
 
+// Header Values
 const (
-	// Metadata Keys
-	UserAgentHeaderKey  = "user-agent"
+	UserAgentHeaderKey = "user-agent"
+)
+
+// Context Keys
+const (
 	UserAgentContextKey = "user-agent"
 	RequestIDContextKey = "request-id"
 	ActorIdContextKey   = "actor-id"
+)
 
-	// Action Types
+// Action Types
+const (
 	ActionTypeCreate = "create"
 	ActionTypeUpdate = "update"
 	ActionTypeDelete = "delete"
+)
 
-	// Action Results
+// Action Results
+const (
 	ActionResultSuccess = "success"
 	ActionResultError   = "error"
 )

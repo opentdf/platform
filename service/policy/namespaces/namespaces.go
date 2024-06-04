@@ -8,6 +8,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/internal/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policydb "github.com/opentdf/platform/service/policy/db"
@@ -84,12 +85,21 @@ func (ns NamespacesService) GetNamespace(ctx context.Context, req *namespaces.Ge
 
 func (ns NamespacesService) CreateNamespace(ctx context.Context, req *namespaces.CreateNamespaceRequest) (*namespaces.CreateNamespaceResponse, error) {
 	ns.logger.Debug("creating new namespace", slog.String("name", req.GetName()))
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypeNamespace,
+	}
 	rsp := &namespaces.CreateNamespaceResponse{}
 
 	n, err := ns.dbClient.CreateNamespace(ctx, req)
 	if err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("name", req.GetName()))
 	}
+
+	auditParams.ObjectID = n.GetId()
+	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	ns.logger.Debug("created new namespace", slog.String("name", req.GetName()))
 	rsp.Namespace = n

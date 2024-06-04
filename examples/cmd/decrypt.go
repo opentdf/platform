@@ -14,17 +14,13 @@ func init() {
 		Use:   "decrypt",
 		Short: "Decrypt TDF file",
 		RunE:  decrypt,
-		Args:  cobra.MinimumNArgs(1),
 	}
 	ExamplesCmd.AddCommand(decryptCmd)
 }
 
 func decrypt(cmd *cobra.Command, args []string) error {
-	if len(args) < 1 {
-		return cmd.Usage()
-	}
-
-	tdfFile := args[0]
+	tdfFile := "sensitive.txt.tdf"
+	ntdfFile := "sensitive.txt.ntdf"
 
 	// Create new client
 	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint,
@@ -55,7 +51,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	}
 	cmd.Println("\n-----\n\n# NANO")
 
-	nTdfFile, err := os.Open("sensitive.txt.ntdf")
+	nTdfFile, err := os.Open(ntdfFile)
 	if err != nil {
 		return err
 	}
@@ -66,7 +62,8 @@ func decrypt(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if "Hello Virtru" == outBuf.String() {
+	cmd.Println("Result: ", outBuf.String())
+	if "Hello, Virtru!" == outBuf.String() {
 		cmd.Println("✅ NanoTDF test passed!")
 	} else {
 		cmd.Println("❌ NanoTDF test failed!")

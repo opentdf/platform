@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
+	"io"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
 var nanoPerfCmd = &cobra.Command{
-	Use:   "nano-perf",
+	Use:   "nano-perf [plaintext] [numNanoTDFs]",
 	Short: "Measure nanoTDF performance",
 	RunE:  nanoTdfPerf,
-	Args:  cobra.MinimumNArgs(2),
+	Args:  cobra.MinimumNArgs(1),
 }
 
 func init() {
@@ -23,15 +23,15 @@ func init() {
 }
 
 func nanoTdfPerf(cmd *cobra.Command, args []string) error {
-	if len(args) < 2 {
+	if len(args) < 1 {
 		return cmd.Usage()
 	}
-
-	plainText := args[0]
-	numTDFs, err := strconv.Atoi(args[1])
-	if err != nil || numTDFs <= 0 {
-		return fmt.Errorf("invalid number of TDFs: %s", args[1])
+	numNanoTDFs, err := strconv.Atoi(args[0])
+	if err != nil {
+		return fmt.Errorf("invalid number of NanoTDFs: %v", err)
 	}
+
+	strReader := strings.NewReader(plainText)
 
 	// Create new offline client
 	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint,
@@ -47,93 +47,50 @@ func nanoTdfPerf(cmd *cobra.Command, args []string) error {
 	// NanoTDF
 	//
 
-	attributes := []string{
-		"https://example.com/attr/attr1/value/value1",
-	}
-
 	nanoTDFConfig, err := client.NewNanoTDFConfig()
 	if err != nil {
 		return err
 	}
 
-	nanoTDFConfig.SetAttributes(attributes)
 	nanoTDFConfig.SetKasURL(fmt.Sprintf("http://%s/kas", cmd.Flag("platformEndpoint").Value.String()))
 	nanoTDFConfig.EnableECDSAPolicyBinding()
 
-	var wg sync.WaitGroup
-	results := make(chan result, numTDFs)
+	nanoTDFArray := make([][]byte, numNanoTDFs)
 
-	startTime := time.Now()
+	// Create NanoTDFs
+	for i := 0; i < numNanoTDFs; i++ {
+		strReader = strings.NewReader(plainText)
+		var nTdfBuffer bytes.Buffer
 
-	for i := 0; i < numTDFs; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-
-			strReader := strings.NewReader(plainText)
-			var buffer bytes.Buffer
-
-			start := time.Now()
-			_, err := client.CreateNanoTDF(&buffer, strReader, *nanoTDFConfig)
-			duration := time.Since(start)
-
-			nanoTDFData := buffer.Bytes()
-			results <- result{index: i, data: nanoTDFData, err: err, duration: duration}
-		}(i)
-	}
-
-	wg.Wait()
-	close(results)
-
-	var totalDuration time.Duration
-	var successCount int
-
-	for res := range results {
-		if res.err != nil {
-			cmd.Printf("CreateNanoTDF %d Failed: %v\n", res.index, res.err)
-			continue
+		start := time.Now()
+		_, err = client.CreateNanoTDF(&nTdfBuffer, strReader, *nanoTDFConfig)
+		duration := time.Since(start)
+		if err != nil {
+			cmd.Println("CreateNanoTDF Failed")
+			return err
 		}
-		totalDuration += res.duration
-		successCount++
-		cmd.Printf("NanoTDF %d size: %d bytes, creation time: %d ms\n", res.index, len(res.data), res.duration.Milliseconds())
+
+		nanoTDFArray[i] = nTdfBuffer.Bytes()
+		cmd.Printf("NanoTDF %d created in %s\n", i, duration)
 	}
 
-	if successCount == 0 {
-		return fmt.Errorf("all NanoTDF creations failed")
+	// Read NanoTDFs
+	for i := 0; i < numNanoTDFs; i++ {
+		var outBuf bytes.Buffer
+		nTdfBuffer := bytes.NewReader(nanoTDFArray[i])
+
+		start := time.Now()
+		_, err = client.ReadNanoTDF(io.Writer(&outBuf), nTdfBuffer)
+		duration := time.Since(start)
+		if err != nil {
+			cmd.Println("ReadNanoTDF Failed")
+			return err
+		}
+
+		cmd.Printf("NanoTDF %d read in %s\n", i, duration)
 	}
 
-	totalTime := time.Since(startTime)
-	//averageDuration := totalDuration / int64(successCount)
-
-	cmd.Printf("totalDuration: %d \n", totalDuration)
-	cmd.Printf("successCount: %d \n", successCount)
-
-	//cmd.Printf("Average creation time: %d ms\n", averageDuration)
-	cmd.Printf("Total creation time: %d ms\n", totalTime.Milliseconds())
+	cmd.Println("NanoTDFs created and read successfully")
 
 	return nil
 }
-
-type result struct {
-	index    int
-	data     []byte
-	err      error
-	duration time.Duration
-}
-
-//func dumpNanoTDF(cmd *cobra.Command, nTdfFile string) error {
-//	f, err := os.Open(nTdfFile)
-//	if err != nil {
-//		return err
-//	}
-//
-//	buf := bytes.Buffer{}
-//	_, err = buf.ReadFrom(f)
-//	if err != nil {
-//		return err
-//	}
-//
-//	cmd.Println(string(ocrypto.Base64Encode(buf.Bytes())))
-//
-//	return nil
-//}

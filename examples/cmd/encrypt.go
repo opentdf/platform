@@ -4,32 +4,24 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
-	"strings"
-
 	"github.com/opentdf/platform/lib/ocrypto"
-
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
+	"os"
+	"strings"
 )
 
 var encryptCmd = &cobra.Command{
 	Use:   "encrypt",
 	Short: "Create encrypted TDF",
 	RunE:  encrypt,
-	Args:  cobra.MinimumNArgs(1),
 }
 
 func init() {
 	ExamplesCmd.AddCommand(encryptCmd)
 }
 
-func encrypt(cmd *cobra.Command, args []string) error {
-	if len(args) < 1 {
-		return cmd.Usage()
-	}
-
-	plainText := args[0]
+func encrypt(cmd *cobra.Command, args []string) error { // If you change the string here
 	strReader := strings.NewReader(plainText)
 
 	// Create new offline client
@@ -49,7 +41,6 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	defer tdfFile.Close()
 
 	tdf, err := client.CreateTDF(tdfFile, strReader,
-		sdk.WithDataAttributes("https://example.com/attr/attr1/value/value1"),
 		sdk.WithKasInformation(
 			sdk.KASInfo{
 				// examples assume insecure http
@@ -72,16 +63,16 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	// NanoTDF
 	//
 
-	attributes := []string{
-		"https://example.com/attr/attr1/value/value1",
-	}
+	//attributes := []string{
+	//	"https://example.com/attr/attr1/value/value1",
+	//}
 
 	nanoTDFCOnfig, err := client.NewNanoTDFConfig()
 	if err != nil {
 		return err
 	}
 
-	nanoTDFCOnfig.SetAttributes(attributes)
+	//nanoTDFCOnfig.SetAttributes(attributes)
 	nanoTDFCOnfig.SetKasURL(fmt.Sprintf("http://%s/kas", cmd.Flag("platformEndpoint").Value.String()))
 	nanoTDFCOnfig.EnableECDSAPolicyBinding()
 
@@ -103,7 +94,6 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	}
 	return nil
 }
-
 func dumpNanoTDF(cmd *cobra.Command, nTdfFile string) error {
 	f, err := os.Open(nTdfFile)
 	if err != nil {

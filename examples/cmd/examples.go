@@ -10,6 +10,7 @@ import (
 
 type configKey string
 
+const plainText = "Hello, Virtru!"
 const RootConfigKey configKey = "example-config"
 
 type ExampleConfig struct {

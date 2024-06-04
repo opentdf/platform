@@ -255,8 +255,8 @@ github.com/opencontainers/image-spec v1.1.0 h1:8SG7/vwALn54lVB/0yZ/MMwhFrPYtpEHQ
 github.com/opencontainers/image-spec v1.1.0/go.mod h1:W4s4sFTMaBeK1BQLXbG4AdM2szdn85PY75RI83NrTrM=
 github.com/opencontainers/runc v1.1.12 h1:BOIssBaW1La0/qbNZHXOOa71dZfZEQOzW7dqQf3phss=
 github.com/opencontainers/runc v1.1.12/go.mod h1:S+lQwSfncpBha7XTy/5lBwWgm5+y5Ma/O44Ekby9FK8=
-github.com/opentdf/platform/lib/fixtures v0.2.3 h1:KXdUL51N3DOoV2ZB++PHf+Ab1uBW2hbwyv9aUZdiz0Y=
-github.com/opentdf/platform/lib/fixtures v0.2.3/go.mod h1:hll1gp/BxPtFqH56YdfvHCUOz4Jk7lhWQSKtU8qptPo=
+github.com/opentdf/platform/lib/fixtures v0.2.5 h1:7eupU0RKv+TfS3jNqNszlwXnPuCf/R3aaEdTk1U0MV0=
+github.com/opentdf/platform/lib/fixtures v0.2.5/go.mod h1:hll1gp/BxPtFqH56YdfvHCUOz4Jk7lhWQSKtU8qptPo=
 github.com/opentdf/platform/lib/ocrypto v0.1.5 h1:Gv5dAmZEVQeD9w1Fg9fix8gdZIsPDHJ96jG9GdtnYhc=
 github.com/opentdf/platform/lib/ocrypto v0.1.5/go.mod h1:ne+l8Q922OdzA0xesK3XJmfECBnn5vLSGYU3/3OhiHM=
 github.com/opentdf/platform/protocol/go v0.2.3 h1:rLTgSgNfe0Hal2IFlXnGvKR0QndQ1ufGuQp5Xvwgz7I=

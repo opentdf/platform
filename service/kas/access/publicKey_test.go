@@ -18,6 +18,8 @@ import (
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // Skips if not in CI and failure due to library missing
@@ -154,7 +156,7 @@ func TestStandardPublicKeyHandlerV2(t *testing.T) {
 		CryptoProvider: c,
 	}
 
-	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "rsa"})
+	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{})
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Contains(t, result.GetPublicKey(), "BEGIN PUBLIC KEY")
@@ -172,9 +174,39 @@ func TestStandardPublicKeyHandlerV2Failure(t *testing.T) {
 		CryptoProvider: c,
 	}
 
-	k, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "rsa"})
+	k, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{})
 	assert.Nil(t, k)
 	require.Error(t, err)
+}
+
+func TestStandardPublicKeyHandlerV2NotFound(t *testing.T) {
+	configStandard := security.Config{
+		Type: "standard",
+		StandardConfig: security.StandardConfig{
+			RSAKeys: map[string]security.StandardKeyInfo{
+				"rsa": {
+					PrivateKeyPath: "./testdata/access-provider-000-private.pem",
+					PublicKeyPath:  "./testdata/access-provider-000-certificate.pem",
+				},
+			},
+		},
+	}
+	c := mustNewCryptoProvider(t, configStandard)
+	defer c.Close()
+	kasURI := urlHost(t)
+	kas := Provider{
+		URI:            *kasURI,
+		CryptoProvider: c,
+	}
+
+	k, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{
+		Algorithm: "algorithm:unknown",
+	})
+	assert.Nil(t, k)
+	require.Error(t, err)
+	status, ok := status.FromError(err)
+	assert.True(t, ok)
+	assert.Equal(t, codes.NotFound, status.Code())
 }
 
 func TestStandardPublicKeyHandlerV2WithJwk(t *testing.T) {
@@ -198,7 +230,7 @@ func TestStandardPublicKeyHandlerV2WithJwk(t *testing.T) {
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{
-		Algorithm: "rsa",
+		Algorithm: "rsa:2048",
 		V:         "2",
 		Fmt:       "jwk",
 	})

@@ -46,6 +46,10 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 	rsp.Attribute = item
 
 	s.logger.Debug("created new attribute definition", slog.String("name", req.GetName()))
+	s.logger.Audit.PolicyAttributeSuccess(ctx, logger.PolicyAttributeAuditEventParams{
+		ActionType:  logger.ActionTypeCreate,
+		AttributeID: item.GetId(),
+	})
 	return rsp, nil
 }
 

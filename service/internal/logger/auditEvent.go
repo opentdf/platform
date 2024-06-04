@@ -1,7 +1,27 @@
 package logger
 
 import (
+	"context"
+
 	"github.com/google/uuid"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
+)
+
+const (
+	// Metadata Keys
+	UserAgentHeaderKey  = "user-agent"
+	UserAgentContextKey = "user-agent"
+	RequestIDContextKey = "request-id"
+	ActorIdContextKey   = "actor-id"
+
+	// Action Types
+	ActionTypeCreate = "create"
+	ActionTypeUpdate = "update"
+	ActionTypeDelete = "delete"
+
+	// Action Results
+	ActionResultSuccess = "success"
+	ActionResultError   = "error"
 )
 
 // event
@@ -56,4 +76,54 @@ type auditEventClientInfo struct {
 	UserAgent string `json:"userAgent"`
 	Platform  string `json:"platform"`
 	RequestIP string `json:"requestIp"`
+}
+
+type AuditDataFromContext struct {
+	RequestID uuid.UUID
+	UserAgent string
+	RequestIP string
+	ActorID   string
+}
+
+func GetAuditDataFromContext(ctx context.Context) AuditDataFromContext {
+	// Extract the request ID from context
+	requestID, requestIDOk := ctx.Value(RequestIDContextKey).(uuid.UUID)
+	if !requestIDOk {
+		requestID = uuid.Nil
+	}
+
+	// Extract user agent from context
+	userAgent, userAgentOK := ctx.Value(UserAgentContextKey).(string)
+	if !userAgentOK {
+		userAgent = "None"
+	}
+
+	// Extract actor ID from context
+	actorID, actorIDOK := ctx.Value(ActorIdContextKey).(string)
+	if !actorIDOK || actorID == "" {
+		actorID = "None"
+	}
+
+	// Extract request IP from context
+	requestIPString := "None"
+	requestIP, ipOK := realip.FromContext(ctx)
+	if ipOK {
+		requestIPString = requestIP.String()
+	}
+
+	return AuditDataFromContext{
+		RequestID: requestID,
+		UserAgent: userAgent,
+		RequestIP: requestIPString,
+		ActorID:   actorID,
+	}
+}
+
+// Audit requires an "owner" field but that doesn't apply in the context of the
+// platform. Therefore we just create a "nil" owner which has nil UUID fields.
+func CreateNilOwner() auditEventOwner {
+	return auditEventOwner{
+		ID:    uuid.Nil,
+		OrgID: uuid.Nil,
+	}
 }

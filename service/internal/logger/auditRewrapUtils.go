@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
-	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
 type KasPolicy struct {
@@ -24,44 +22,19 @@ type KasAttribute struct {
 type RewrapAuditEventParams struct {
 	Policy        KasPolicy
 	IsSuccess     bool
-	EntityToken   string
 	TDFFormat     string
 	Algorithm     string
 	PolicyBinding string
 }
 
 func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) (*AuditEvent, error) {
-	// Extract the request ID from context
-	requestID, requestIDOk := ctx.Value("request-id").(uuid.UUID)
-	if !requestIDOk {
-		requestID = uuid.Nil
-	}
-
-	// Extract header values from context
-	userAgent, uaOk := ctx.Value("user-agent").(string)
-	if !uaOk {
-		userAgent = "None"
-	}
-
-	// Extract request IP from context
-	requestIPString := "None"
-	requestIP, ipOK := realip.FromContext(ctx)
-	if ipOK {
-		requestIPString = requestIP.String()
-	}
+	auditDataFromContext := GetAuditDataFromContext(ctx)
 
 	// Assign action result
-	auditEventActionResult := "failure"
+	auditEventActionResult := ActionResultError
 	if params.IsSuccess {
-		auditEventActionResult = "success"
+		auditEventActionResult = ActionResultSuccess
 	}
-
-	// Extract sub from valid token
-	entityTokenJWT, parseError := jwt.Parse([]byte(params.EntityToken), jwt.WithVerify(false))
-	if parseError != nil {
-		return nil, parseError
-	}
-	entityTokenSub := entityTokenJWT.Subject()
 
 	return &AuditEvent{
 		Object: auditEventObject{
@@ -77,12 +50,9 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 			Type:   "rewrap",
 			Result: auditEventActionResult,
 		},
-		Owner: auditEventOwner{
-			ID:    uuid.Nil,
-			OrgID: uuid.Nil,
-		},
+		Owner: CreateNilOwner(),
 		Actor: auditEventActor{
-			ID:         entityTokenSub,
+			ID:         auditDataFromContext.ActorID,
 			Attributes: map[string]string{},
 		},
 		EventMetaData: map[string]string{
@@ -93,10 +63,10 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 		},
 		ClientInfo: auditEventClientInfo{
 			Platform:  "kas",
-			UserAgent: userAgent,
-			RequestIP: requestIPString,
+			UserAgent: auditDataFromContext.UserAgent,
+			RequestIP: auditDataFromContext.RequestIP,
 		},
-		RequestID: requestID,
+		RequestID: auditDataFromContext.RequestID,
 		Timestamp: time.Now().Format(time.RFC3339),
 	}, nil
 }

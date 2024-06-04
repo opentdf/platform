@@ -314,7 +314,6 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 	auditEventParams := logger.RewrapAuditEventParams{
 		Policy:        kasPolicy,
 		IsSuccess:     access,
-		EntityToken:   entity.Token,
 		TDFFormat:     "tdf3",
 		Algorithm:     body.Algorithm,
 		PolicyBinding: body.KeyAccess.PolicyBinding,
@@ -397,10 +396,9 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 	// Audit the rewrap
 	kasPolicy := ConvertToAuditKasPolicy(*policy)
 	auditEventParams := logger.RewrapAuditEventParams{
-		Policy:      kasPolicy,
-		EntityToken: entity.Token,
-		TDFFormat:   "nano",
-		Algorithm:   body.Algorithm,
+		Policy:    kasPolicy,
+		TDFFormat: "nano",
+		Algorithm: body.Algorithm,
 	}
 
 	if err != nil {

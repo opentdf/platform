@@ -1,10 +1,22 @@
-package logger
+package audit
 
 import (
 	"context"
 	"encoding/json"
 	"log/slog"
 )
+
+// From the Slog docs (https://betterstack.com/community/guides/logging/logging-in-go/#customizing-slog-levels):
+// The log/slog package provides four log levels by default, with each one
+// associated with an integer value: DEBUG (-4), INFO (0), WARN (4), and ERROR (8).
+const (
+	// Currently setting AUDIT level to 10, a level above ERROR so it is always logged
+	LevelAudit = slog.Level(10)
+)
+
+var AuditLogLevelNames = map[slog.Level]string{
+	LevelAudit: "AUDIT",
+}
 
 type AuditLogger struct {
 	logger *slog.Logger

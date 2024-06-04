@@ -29,6 +29,7 @@ import (
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/internal/logger/audit"
 	"github.com/opentdf/platform/service/kas/tdf3"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -311,7 +312,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 
 	// Audit the TDF3 Rewrap
 	kasPolicy := ConvertToAuditKasPolicy(*policy)
-	auditEventParams := logger.RewrapAuditEventParams{
+	auditEventParams := audit.RewrapAuditEventParams{
 		Policy:        kasPolicy,
 		IsSuccess:     access,
 		TDFFormat:     "tdf3",
@@ -395,7 +396,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 
 	// Audit the rewrap
 	kasPolicy := ConvertToAuditKasPolicy(*policy)
-	auditEventParams := logger.RewrapAuditEventParams{
+	auditEventParams := audit.RewrapAuditEventParams{
 		Policy:    kasPolicy,
 		TDFFormat: "nano",
 		Algorithm: body.Algorithm,

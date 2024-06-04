@@ -18,7 +18,7 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/auth"
-	l "github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/internal/logger/audit"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/valyala/fasthttp/fasthttputil"
 	"golang.org/x/net/http2"
@@ -245,7 +245,7 @@ func newGrpcServer(c Config, a *auth.Authentication) (*grpc.Server, error) {
 	}
 
 	// Add Audit Unary Server Interceptor
-	i = append(i, l.AuditUnaryServerInterceptor)
+	i = append(i, audit.UnaryServerInterceptor)
 
 	if c.Auth.Enabled {
 		i = append(i, a.UnaryServerInterceptor)

@@ -5,29 +5,19 @@ import (
 	"io"
 	"log/slog"
 	"os"
+
+	"github.com/opentdf/platform/service/internal/logger/audit"
 )
 
 type Logger struct {
 	*slog.Logger
-	Audit *AuditLogger
+	Audit *audit.AuditLogger
 }
 
 type Config struct {
 	Level  string `yaml:"level" default:"info"`
 	Output string `yaml:"output" default:"stdout"`
 	Type   string `yaml:"type" default:"json"`
-}
-
-// From the Slog docs (https://betterstack.com/community/guides/logging/logging-in-go/#customizing-slog-levels):
-// The log/slog package provides four log levels by default, with each one
-// associated with an integer value: DEBUG (-4), INFO (0), WARN (4), and ERROR (8).
-const (
-	// Currently setting AUDIT level to 10, a level above ERROR so it is always logged
-	LevelAudit = slog.Level(10)
-)
-
-var CustomLevelNames = map[slog.Leveler]string{
-	LevelAudit: "AUDIT",
 }
 
 // Used to support custom log levels showing up with custom labels as well
@@ -38,7 +28,7 @@ func customReplaceAttributes(_ []string, a slog.Attr) slog.Attr {
 		if !ok {
 			return a
 		}
-		levelLabel, exists := CustomLevelNames[level]
+		levelLabel, exists := audit.AuditLogLevelNames[level]
 		if !exists {
 			levelLabel = level.String()
 		}
@@ -80,12 +70,12 @@ func NewLogger(config Config) (*Logger, error) {
 
 	// Audit logger will always log at the AUDIT level and be JSON formatted
 	auditLoggerHandler := slog.NewJSONHandler(w, &slog.HandlerOptions{
-		Level:       LevelAudit,
+		Level:       audit.LevelAudit,
 		ReplaceAttr: customReplaceAttributes,
 	})
 
 	auditLoggerBase := slog.New(auditLoggerHandler)
-	auditLogger := CreateAuditLogger(*auditLoggerBase)
+	auditLogger := audit.CreateAuditLogger(*auditLoggerBase)
 
 	return &Logger{
 		Logger: logger,

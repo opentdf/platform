@@ -8,6 +8,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/internal/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policydb "github.com/opentdf/platform/service/policy/db"
@@ -46,8 +47,8 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 	rsp.Attribute = item
 
 	s.logger.Debug("created new attribute definition", slog.String("name", req.GetName()))
-	s.logger.Audit.PolicyAttributeSuccess(ctx, logger.PolicyAttributeAuditEventParams{
-		ActionType:  logger.ActionTypeCreate,
+	s.logger.Audit.PolicyAttributeSuccess(ctx, audit.PolicyAttributeAuditEventParams{
+		ActionType:  audit.ActionTypeCreate,
 		AttributeID: item.GetId(),
 	})
 	return rsp, nil

@@ -2,7 +2,7 @@ package access
 
 import (
 	"github.com/google/uuid"
-	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/internal/logger/audit"
 )
 
 type Policy struct {
@@ -16,20 +16,20 @@ type PolicyBody struct {
 }
 
 // Audit helper methods
-func ConvertToAuditKasPolicy(policy Policy) logger.KasPolicy {
-	return logger.KasPolicy{
+func ConvertToAuditKasPolicy(policy Policy) audit.KasPolicy {
+	return audit.KasPolicy{
 		UUID: policy.UUID,
-		Body: logger.KasPolicyBody{
+		Body: audit.KasPolicyBody{
 			DataAttributes: convertToAuditKasBodyDataAttributes(policy.Body.DataAttributes),
 			Dissem:         policy.Body.Dissem,
 		},
 	}
 }
 
-func convertToAuditKasBodyDataAttributes(dataAttributes []Attribute) []logger.KasAttribute {
-	var kasAttributes []logger.KasAttribute
+func convertToAuditKasBodyDataAttributes(dataAttributes []Attribute) []audit.KasAttribute {
+	var kasAttributes []audit.KasAttribute
 	for _, attribute := range dataAttributes {
-		kasAttributes = append(kasAttributes, logger.KasAttribute{
+		kasAttributes = append(kasAttributes, audit.KasAttribute{
 			URI: attribute.URI,
 		})
 	}

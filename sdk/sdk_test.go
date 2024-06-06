@@ -126,7 +126,7 @@ func Test_ShouldCreateNewSDKWithBadEndpoint(t *testing.T) {
 	assert.NotNil(t, s)
 }
 
-func Test_ShouldSantizePlatformEndpoint(t *testing.T) {
+func Test_ShouldSanitizePlatformEndpoint(t *testing.T) {
 	tests := []struct {
 		name     string
 		endpoint string

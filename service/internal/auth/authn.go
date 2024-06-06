@@ -27,8 +27,6 @@ import (
 
 const (
 	authnContextKey = authContextKey("dpop-jwk")
-	userAgentKey    = "user-agent"
-	requestID       = "request-id"
 )
 
 type authContextKey string

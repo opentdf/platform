@@ -97,14 +97,33 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 	req *sm.UpdateSubjectMappingRequest,
 ) (*sm.UpdateSubjectMappingResponse, error) {
 	rsp := &sm.UpdateSubjectMappingResponse{}
+	subjectMappingID := req.GetId()
+
 	s.logger.Debug("updating subject mapping", slog.String("subjectMapping", req.String()))
 
-	sm, err := s.dbClient.UpdateSubjectMapping(ctx, req)
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeSubjectMapping,
+		ObjectID:   subjectMappingID,
+	}
+
+	originalSM, err := s.dbClient.GetSubjectMapping(ctx, subjectMappingID)
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", subjectMappingID))
+	}
+
+	updatedSM, err := s.dbClient.UpdateSubjectMapping(ctx, req)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("subjectMapping fields", req.String()))
 	}
 
-	rsp.SubjectMapping = sm
+	auditParams.Original = originalSM
+	auditParams.Updated = updatedSM
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.SubjectMapping = updatedSM
 	return rsp, nil
 }
 
@@ -212,12 +231,29 @@ func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
 	rsp := &sm.UpdateSubjectConditionSetResponse{}
 	s.logger.Debug("updating subject condition set", slog.String("subjectConditionSet", req.String()))
 
-	conditionSet, err := s.dbClient.UpdateSubjectConditionSet(ctx, req)
+	subjectConditionSetID := req.GetId()
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeConditionSet,
+		ObjectID:   subjectConditionSetID,
+	}
+
+	originalConditionSet, err := s.dbClient.GetSubjectConditionSet(ctx, subjectConditionSetID)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", subjectConditionSetID))
+	}
+
+	updatedConditionSet, err := s.dbClient.UpdateSubjectConditionSet(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("subjectConditionSet fields", req.String()))
 	}
 
-	rsp.SubjectConditionSet = conditionSet
+	auditParams.Original = originalConditionSet
+	auditParams.Updated = updatedConditionSet
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.SubjectConditionSet = updatedConditionSet
 	return rsp, nil
 }
 

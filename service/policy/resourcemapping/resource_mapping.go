@@ -92,16 +92,36 @@ func (s ResourceMappingService) GetResourceMapping(ctx context.Context,
 func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 	req *resourcemapping.UpdateResourceMappingRequest,
 ) (*resourcemapping.UpdateResourceMappingResponse, error) {
-	rm, err := s.dbClient.UpdateResourceMapping(
+	resourceMappingID := req.GetId()
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeResourceMapping,
+		ObjectID:   resourceMappingID,
+	}
+
+	originalRM, err := s.dbClient.GetResourceMapping(ctx, resourceMappingID)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
+	}
+
+	updatedRM, err := s.dbClient.UpdateResourceMapping(
 		ctx,
-		req.GetId(),
+		resourceMappingID,
 		req,
 	)
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("resourceMapping", req.String()))
 	}
+
+	auditParams.Original = originalRM
+	auditParams.Updated = updatedRM
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
 	return &resourcemapping.UpdateResourceMappingResponse{
-		ResourceMapping: rm,
+		ResourceMapping: updatedRM,
 	}, nil
 }
 

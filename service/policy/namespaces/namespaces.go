@@ -108,28 +108,64 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *namespaces
 }
 
 func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces.UpdateNamespaceRequest) (*namespaces.UpdateNamespaceResponse, error) {
-	ns.logger.Debug("updating namespace", slog.String("name", req.GetId()))
+	namespaceID := req.GetId()
+	ns.logger.Debug("updating namespace", slog.String("name", namespaceID))
 	rsp := &namespaces.UpdateNamespaceResponse{}
 
-	namespace, err := ns.dbClient.UpdateNamespace(ctx, req.GetId(), req)
-	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()))
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeNamespace,
+		ObjectID:   namespaceID,
 	}
 
-	ns.logger.Debug("updated namespace", slog.String("id", req.GetId()))
-	rsp.Namespace = namespace
+	originalNamespace, err := ns.dbClient.GetNamespace(ctx, namespaceID)
+	if err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", namespaceID))
+	}
 
+	updatedNamespace, err := ns.dbClient.UpdateNamespace(ctx, namespaceID, req)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", namespaceID))
+	}
+
+	auditParams.Original = originalNamespace
+	auditParams.Updated = updatedNamespace
+	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	ns.logger.Debug("updated namespace", slog.String("id", namespaceID))
+
+	rsp.Namespace = updatedNamespace
 	return rsp, nil
 }
 
 func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *namespaces.DeactivateNamespaceRequest) (*namespaces.DeactivateNamespaceResponse, error) {
-	ns.logger.Debug("deactivating namespace", slog.String("id", req.GetId()))
+	namespaceID := req.GetId()
+
+	ns.logger.Debug("deactivating namespace", slog.String("id", namespaceID))
 	rsp := &namespaces.DeactivateNamespaceResponse{}
 
-	if _, err := ns.dbClient.DeactivateNamespace(ctx, req.GetId()); err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeNamespace,
+		ObjectID:   namespaceID,
 	}
 
-	ns.logger.Debug("soft-deleted namespace", slog.String("id", req.GetId()))
+	originalNamespace, err := ns.dbClient.GetNamespace(ctx, namespaceID)
+	if err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", namespaceID))
+	}
+
+	updatedNamespace, err := ns.dbClient.DeactivateNamespace(ctx, namespaceID)
+	if err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", namespaceID))
+	}
+
+	auditParams.Original = originalNamespace
+	auditParams.Updated = updatedNamespace
+	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	ns.logger.Debug("soft-deleted namespace", slog.String("id", namespaceID))
+
 	return rsp, nil
 }

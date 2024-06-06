@@ -88,12 +88,32 @@ func (s KeyAccessServerRegistry) GetKeyAccessServer(ctx context.Context,
 func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
 	req *kasr.UpdateKeyAccessServerRequest,
 ) (*kasr.UpdateKeyAccessServerResponse, error) {
-	k, err := s.dbClient.UpdateKeyAccessServer(ctx, req.GetId(), req)
+	kasID := req.GetId()
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeKasRegistry,
+		ObjectID:   kasID,
+	}
+
+	originalKAS, err := s.dbClient.GetKeyAccessServer(ctx, kasID)
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", kasID))
+	}
+
+	updatedKAS, err := s.dbClient.UpdateKeyAccessServer(ctx, kasID, req)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("keyAccessServer", req.String()))
 	}
+
+	auditParams.Original = originalKAS
+	auditParams.Updated = updatedKAS
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
 	return &kasr.UpdateKeyAccessServerResponse{
-		KeyAccessServer: k,
+		KeyAccessServer: updatedKAS,
 	}, nil
 }
 

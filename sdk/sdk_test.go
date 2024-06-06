@@ -125,3 +125,84 @@ func Test_ShouldCreateNewSDKWithBadEndpoint(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, s)
 }
+
+func Test_ShouldSantizePlatformEndpoint(t *testing.T) {
+	tests := []struct {
+		name     string
+		endpoint string
+		expected string
+	}{
+		{
+			name:     "No scheme",
+			endpoint: "localhost:8080",
+			expected: "localhost:8080",
+		},
+		{
+			name:     "HTTP scheme with port",
+			endpoint: "http://localhost:8080",
+			expected: "localhost:8080",
+		},
+		{
+			name:     "HTTPS scheme with port",
+			endpoint: "https://localhost:8080",
+			expected: "localhost:8080",
+		},
+		{
+			name:     "HTTP scheme no port",
+			endpoint: "http://localhost",
+			expected: "localhost:80",
+		},
+		{
+			name:     "HTTPS scheme no port",
+			endpoint: "https://localhost",
+			expected: "localhost:443",
+		},
+		{
+			name:     "Malformed url",
+			endpoint: "http://localhost:8080:8080",
+			expected: "",
+		},
+		{
+			name:     "Malformed url",
+			endpoint: "http://localhost:8080:",
+			expected: "",
+		},
+		{
+			name:     "Malformed url",
+			endpoint: "http//localhost:8080:",
+			expected: "",
+		},
+		{
+			name:     "Malformed url",
+			endpoint: "//localhost",
+			expected: "",
+		},
+		{
+			name:     "Malformed url",
+			endpoint: "://localhost",
+			expected: "",
+		},
+		{
+			name:     "Malformed url",
+			endpoint: "http/localhost",
+			expected: "",
+		},
+		{
+			name:     "Malformed url",
+			endpoint: "http:localhost",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual, err := sdk.SanitizePlatformEndpoint(tt.endpoint)
+			if tt.expected == "" {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expected, actual)
+			}
+		})
+	}
+}

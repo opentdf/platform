@@ -8,7 +8,10 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/url"
+	"regexp"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/authorization"
@@ -25,9 +28,10 @@ import (
 )
 
 const (
-	ErrGrpcDialFailed       = Error("failed to dial grpc endpoint")
-	ErrShutdownFailed       = Error("failed to shutdown sdk")
-	ErrPlatformConfigFailed = Error("failed to retrieve platform configuration")
+	ErrGrpcDialFailed            = Error("failed to dial grpc endpoint")
+	ErrShutdownFailed            = Error("failed to shutdown sdk")
+	ErrPlatformConfigFailed      = Error("failed to retrieve platform configuration")
+	ErrPlatformEndpointMalformed = Error("platform endpoint is malformed")
 )
 
 type Error string
@@ -57,6 +61,11 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		defaultConn *grpc.ClientConn // Connection to the platform if no other connection is provided
 		err         error
 	)
+
+	platformEndpoint, err = SanitizePlatformEndpoint(platformEndpoint)
+	if err != nil {
+		return nil, errors.Join(ErrPlatformEndpointMalformed, err)
+	}
 
 	// Set default options
 	cfg := &config{
@@ -141,6 +150,34 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(selectConn(cfg.entityresolutionConn, defaultConn)),
 		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(selectConn(cfg.wellknownConn, defaultConn)),
 	}, nil
+}
+
+func SanitizePlatformEndpoint(e string) (string, error) {
+	// check if there's a scheme, if not, add https
+	if !regexp.MustCompile(`^https?://`).MatchString(e) {
+		e = "https://" + e
+	}
+
+	if !regexp.MustCompile(`^(https?:\/\/)?(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(:\d+)?|(localhost)(:\d+)?)(\/.*)?$`).MatchString(e) {
+		return "", errors.New("platform endpoint is not a valid URL")
+	}
+
+	u, err := url.ParseRequestURI(e)
+	if err != nil {
+		return "", errors.Join(fmt.Errorf("cannot parse platform endpoint(%s)", e), err)
+	}
+	fmt.Printf("u: %v\n", u)
+
+	p := u.Port()
+	if p == "" {
+		if u.Scheme == "http" {
+			p = "80"
+		} else {
+			p = "443"
+		}
+	}
+
+	return net.JoinHostPort(u.Hostname(), p), nil
 }
 
 func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {

@@ -62,11 +62,6 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		err         error
 	)
 
-	platformEndpoint, err = SanitizePlatformEndpoint(platformEndpoint)
-	if err != nil {
-		return nil, errors.Join(ErrPlatformEndpointMalformed, err)
-	}
-
 	// Set default options
 	cfg := &config{
 		dialOption: grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
@@ -77,6 +72,13 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	// Apply options
 	for _, opt := range opts {
 		opt(cfg)
+	}
+
+	if !cfg.ipc {
+		platformEndpoint, err = SanitizePlatformEndpoint(platformEndpoint)
+		if err != nil {
+			return nil, errors.Join(ErrPlatformEndpointMalformed, err)
+		}
 	}
 
 	if cfg.kasSessionKey == nil {

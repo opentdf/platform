@@ -161,7 +161,7 @@ func SanitizePlatformEndpoint(e string) (string, error) {
 	}
 
 	if !regexp.MustCompile(`^(https?:\/\/)?(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(:\d+)?|(localhost)(:\d+)?)\/?$`).MatchString(e) {
-		return "", errors.New("platform endpoint is not a valid URL")
+		return "", errors.New("platform endpoint is not valid")
 	}
 
 	u, err := url.ParseRequestURI(e)

@@ -273,10 +273,18 @@ func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *a
 }
 
 func (s *AttributesService) AssignKeyAccessServerToAttribute(ctx context.Context, req *attributes.AssignKeyAccessServerToAttributeRequest) (*attributes.AssignKeyAccessServerToAttributeResponse, error) {
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypeKasAttributeDefinitionAssignment,
+		ObjectID:   fmt.Sprintf("%s-%s", req.GetAttributeKeyAccessServer().GetAttributeId(), req.GetAttributeKeyAccessServer().GetKeyAccessServerId()),
+	}
+
 	attributeKas, err := s.dbClient.AssignKeyAccessServerToAttribute(ctx, req.GetAttributeKeyAccessServer())
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("attributeKas", req.GetAttributeKeyAccessServer().String()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &attributes.AssignKeyAccessServerToAttributeResponse{
 		AttributeKeyAccessServer: attributeKas,
@@ -284,10 +292,18 @@ func (s *AttributesService) AssignKeyAccessServerToAttribute(ctx context.Context
 }
 
 func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Context, req *attributes.RemoveKeyAccessServerFromAttributeRequest) (*attributes.RemoveKeyAccessServerFromAttributeResponse, error) {
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeKasAttributeDefinitionAssignment,
+		ObjectID:   fmt.Sprintf("%s-%s", req.GetAttributeKeyAccessServer().GetAttributeId(), req.GetAttributeKeyAccessServer().GetKeyAccessServerId()),
+	}
+
 	attributeKas, err := s.dbClient.RemoveKeyAccessServerFromAttribute(ctx, req.GetAttributeKeyAccessServer())
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("attributeKas", req.GetAttributeKeyAccessServer().String()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &attributes.RemoveKeyAccessServerFromAttributeResponse{
 		AttributeKeyAccessServer: attributeKas,
@@ -295,10 +311,18 @@ func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Conte
 }
 
 func (s *AttributesService) AssignKeyAccessServerToValue(ctx context.Context, req *attributes.AssignKeyAccessServerToValueRequest) (*attributes.AssignKeyAccessServerToValueResponse, error) {
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypeKasAttributeValueAssignment,
+		ObjectID:   fmt.Sprintf("%s-%s", req.GetValueKeyAccessServer().GetValueId(), req.GetValueKeyAccessServer().GetKeyAccessServerId()),
+	}
+
 	valueKas, err := s.dbClient.AssignKeyAccessServerToValue(ctx, req.GetValueKeyAccessServer())
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("attributeValueKas", req.GetValueKeyAccessServer().String()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &attributes.AssignKeyAccessServerToValueResponse{
 		ValueKeyAccessServer: valueKas,
@@ -306,10 +330,18 @@ func (s *AttributesService) AssignKeyAccessServerToValue(ctx context.Context, re
 }
 
 func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, req *attributes.RemoveKeyAccessServerFromValueRequest) (*attributes.RemoveKeyAccessServerFromValueResponse, error) {
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeKasAttributeValueAssignment,
+		ObjectID:   fmt.Sprintf("%s-%s", req.GetValueKeyAccessServer().GetValueId(), req.GetValueKeyAccessServer().GetKeyAccessServerId()),
+	}
+
 	valueKas, err := s.dbClient.RemoveKeyAccessServerFromValue(ctx, req.GetValueKeyAccessServer())
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("attributeValueKas", req.GetValueKeyAccessServer().String()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &attributes.RemoveKeyAccessServerFromValueResponse{
 		ValueKeyAccessServer: valueKas,

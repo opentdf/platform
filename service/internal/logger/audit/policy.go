@@ -8,14 +8,15 @@ import (
 
 // Object Types for Policies
 const (
-	ObjectTypeSubjectMapping         = "subject_mapping"
-	ObjectTypeResourceMapping        = "resource_mapping"
-	ObjectTypeAttributeDefinition    = "attribute_definition"
-	ObjectTypeAttributeValue         = "attribute_value"
-	ObjectTypeNamespace              = "namespace"
-	ObjectTypeConditionSet           = "condition_set"
-	ObjectTypeKasRegistry            = "kas_registry"
-	ObjectTypeKasAttributeAssignment = "kas_attribute_assignment"
+	ObjectTypeSubjectMapping                   = "subject_mapping"
+	ObjectTypeResourceMapping                  = "resource_mapping"
+	ObjectTypeAttributeDefinition              = "attribute_definition"
+	ObjectTypeAttributeValue                   = "attribute_value"
+	ObjectTypeNamespace                        = "namespace"
+	ObjectTypeConditionSet                     = "condition_set"
+	ObjectTypeKasRegistry                      = "kas_registry"
+	ObjectTypeKasAttributeDefinitionAssignment = "kas_attribute_definition_assignment"
+	ObjectTypeKasAttributeValueAssignment      = "kas_attribute_value_assignment"
 )
 
 type PolicyEventParams struct {

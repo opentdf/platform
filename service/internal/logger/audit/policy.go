@@ -2,6 +2,7 @@ package audit
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 )
 
@@ -21,6 +22,9 @@ type PolicyEventParams struct {
 	ActionType string
 	ObjectID   string
 	ObjectType string
+
+	Original interface{}
+	Updated  interface{}
 }
 
 func CreatePolicyEvent(ctx context.Context, isSuccess bool, params PolicyEventParams) (*EventObject, error) {
@@ -29,6 +33,27 @@ func CreatePolicyEvent(ctx context.Context, isSuccess bool, params PolicyEventPa
 	auditEventActionResult := ActionResultError
 	if isSuccess {
 		auditEventActionResult = ActionResultSuccess
+	}
+
+	// Calculate the diff for update events
+	var diff []DiffEntry
+	if params.ActionType == ActionTypeUpdate && isSuccess {
+		// marshal interface to byte string
+		original, err := json.Marshal(params.Original)
+		if err != nil {
+			return nil, err
+		}
+
+		updated, err := json.Marshal(params.Updated)
+		if err != nil {
+			return nil, err
+		}
+
+		patchDiff, err := createJsonPatchDiff(original, updated)
+		if err != nil {
+			return nil, err
+		}
+		diff = patchDiff
 	}
 
 	return &EventObject{
@@ -45,6 +70,7 @@ func CreatePolicyEvent(ctx context.Context, isSuccess bool, params PolicyEventPa
 			Attributes: map[string]string{},
 		},
 		Owner: CreateNilOwner(),
+		Diff:  diff,
 
 		ClientInfo: eventClientInfo{
 			Platform:  "policy",

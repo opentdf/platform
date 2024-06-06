@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
+	"github.com/wI2L/jsondiff"
 )
 
 type auditContextKey string
@@ -48,7 +49,7 @@ type EventObject struct {
 	EventMetaData map[string]string `json:"eventMetaData"`
 	ClientInfo    eventClientInfo   `json:"clientInfo"`
 
-	Diff      interface{} `json:"diff"`
+	Diff      []DiffEntry `json:"diff,omitempty"`
 	RequestID uuid.UUID   `json:"requestId"`
 	Timestamp string      `json:"timestamp"`
 }
@@ -141,4 +142,28 @@ func CreateNilOwner() EventOwner {
 		ID:    uuid.Nil,
 		OrgID: uuid.Nil,
 	}
+}
+
+type DiffEntry struct {
+	Type  string      `json:"op"`
+	Path  string      `json:"path"`
+	Value interface{} `json:"value,omitempty"`
+}
+
+func createJsonPatchDiff(original []byte, target []byte) ([]DiffEntry, error) {
+	patch, err := jsondiff.CompareJSON(original, target, jsondiff.Invertible())
+	diffArray := make([]DiffEntry, len(patch))
+	if err != nil {
+		return nil, err
+	}
+
+	for i, item := range patch {
+		diffArray[i] = DiffEntry{
+			Type:  item.Type,
+			Path:  item.Path,
+			Value: item.Value,
+		}
+	}
+
+	return diffArray, nil
 }

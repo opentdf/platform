@@ -108,11 +108,30 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 ) (*attributes.UpdateAttributeResponse, error) {
 	rsp := &attributes.UpdateAttributeResponse{}
 
-	a, err := s.dbClient.UpdateAttribute(ctx, req.GetId(), req)
+	attributeID := req.GetId()
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeAttributeDefinition,
+		ObjectID:   attributeID,
+	}
+
+	original, err := s.dbClient.GetAttribute(ctx, attributeID)
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", attributeID))
+	}
+
+	updated, err := s.dbClient.UpdateAttribute(ctx, req.GetId(), req)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("attribute", req.String()))
 	}
-	rsp.Attribute = a
+
+	auditParams.Original = original
+	auditParams.Updated = updated
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.Attribute = updated
 	return rsp, nil
 }
 

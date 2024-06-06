@@ -168,7 +168,6 @@ func SanitizePlatformEndpoint(e string) (string, error) {
 	if err != nil {
 		return "", errors.Join(fmt.Errorf("cannot parse platform endpoint(%s)", e), err)
 	}
-	fmt.Printf("u: %v\n", u)
 
 	p := u.Port()
 	if p == "" {

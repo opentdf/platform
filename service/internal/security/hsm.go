@@ -5,6 +5,7 @@ package security
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -58,6 +59,7 @@ type HSMSession struct {
 }
 
 type HSMConfig struct {
+	Enabled    bool               `yaml:"enabled"`
 	ModulePath string             `yaml:"modulePath,omitempty"`
 	PIN        string             `yaml:"pin,omitempty"`
 	SlotID     uint               `yaml:"slotId,omitempty"`
@@ -124,7 +126,7 @@ func findHSMLibrary(paths ...string) string {
 			continue
 		}
 		i, err := os.Stat(l)
-		slog.Debug("stat", "path", l, "info", i, "err", err)
+		slog.Info("stat", "path", l, "info", i, "err", err)
 		if os.IsNotExist(err) {
 			continue
 		} else if err == nil {
@@ -138,9 +140,9 @@ func findHSMLibrary(paths ...string) string {
 	}
 	l := o + "/lib/softhsm/libsofthsm2.so"
 	i, err := os.Stat(l)
-	slog.Debug("stat", "path", l, "info", i, "err", err)
+	slog.Info("stat", "path", l, "info", i, "err", err)
 	if os.IsNotExist(err) {
-		slog.Debug("pkcs11 error: softhsm not installed by brew", "err", err)
+		slog.Warn("pkcs11 error: softhsm not installed by brew", "err", err)
 		return ""
 	} else if err == nil {
 		return l
@@ -530,7 +532,7 @@ func oaepForHash(hashFunction crypto.Hash, keyLabel string) (*pkcs11.OAEPParams,
 		[]byte(keyLabel)), nil
 }
 
-func (h *HSMSession) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte) ([]byte, error) {
+func (h *HSMSession) GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte, _ elliptic.Curve) ([]byte, error) {
 	template := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, false),
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_SECRET_KEY),
@@ -751,8 +753,6 @@ func (h *HSMSession) RSADecrypt(hash crypto.Hash, keyID string, keyLabel string,
 	return decrypt, nil
 }
 
-func versionSalt() []byte {
-	digest := sha256.New()
-	digest.Write([]byte("L1L"))
-	return digest.Sum(nil)
+func (h *HSMSession) ECCertificate(string) (string, error) {
+	return "", nil
 }

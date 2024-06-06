@@ -6,11 +6,12 @@ require (
 	github.com/docker/go-connections v0.5.0
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v2 v2.0.21
-	github.com/opentdf/platform/lib/fixtures v0.2.3
-	github.com/opentdf/platform/lib/ocrypto v0.1.3
+	github.com/opentdf/platform/lib/fixtures v0.2.5
+	github.com/opentdf/platform/lib/ocrypto v0.1.5
 	github.com/opentdf/platform/protocol/go v0.2.3
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.28.0
+	github.com/wiremock/go-wiremock v1.9.0
 	google.golang.org/grpc v1.62.1
 	google.golang.org/protobuf v1.33.0
 )

@@ -15,7 +15,7 @@ realms:
     custom_realm_roles:
       - name: opentdf-org-admin
       - name: opentdf-admin
-      - name: opentdf-readonly
+      - name: opentdf-standard
     custom_client_roles:
       tdf-entity-resolution:
         - name: entity-resolution-test-role
@@ -59,7 +59,7 @@ realms:
           protocolMappers:
             - *customAudMapper
         sa_realm_roles: 
-          - opentdf-readonly
+          - opentdf-standard
       - client:
           clientID: tdf-entity-resolution
           enabled: true

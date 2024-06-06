@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.4.5](https://github.com/opentdf/platform/compare/service/v0.4.4...service/v0.4.5) (2024-06-04)
+
+
+### Features
+
+* **authz:** Subject mapping OPA builtin for condition evaluation and jq selection ([#568](https://github.com/opentdf/platform/issues/568)) ([5379611](https://github.com/opentdf/platform/commit/5379611f4ef498867e86be998e0f6b8d2c590bd3))
+* **sdk:** leverage platform wellknown configuration endpoint ([#895](https://github.com/opentdf/platform/issues/895)) ([53b3f42](https://github.com/opentdf/platform/commit/53b3f4231501c6e6ea54ee002c7420436bb44000))
+* **sdk:** Support for ECDSA policy binding on both KAS and SDK ([#877](https://github.com/opentdf/platform/issues/877)) ([7baf039](https://github.com/opentdf/platform/commit/7baf03928eb3d29f615359860f9217a69b51c1fe))
+
+
+### Bug Fixes
+
+* **core:** allow http /kas/v2/rewrap calls in casbin defaultPolicy ([#922](https://github.com/opentdf/platform/issues/922)) ([6414d86](https://github.com/opentdf/platform/commit/6414d868e49cba396e07d57f66838ad87672672b)), closes [#921](https://github.com/opentdf/platform/issues/921)
+* **core:** Autobump service ([#920](https://github.com/opentdf/platform/issues/920)) ([a797c16](https://github.com/opentdf/platform/commit/a797c16b4c7398dd7d88f759009ac043d29f4820))
+* **core:** Autobump service ([#935](https://github.com/opentdf/platform/issues/935)) ([ded6d60](https://github.com/opentdf/platform/commit/ded6d60e9d7a072ae0ad99efe7e6af3742d3c1c9))
+* **core:** bump ocrypto to 0.1.5 ([#913](https://github.com/opentdf/platform/issues/913)) ([4244e06](https://github.com/opentdf/platform/commit/4244e06582f6afa283797172647aeb919bc1889c))
+* **core:** Bumps lib/fixtures ([#932](https://github.com/opentdf/platform/issues/932)) ([18586f9](https://github.com/opentdf/platform/commit/18586f9c96421ac63ddc4bb904604cbb8bdbed8c))
+* **core:** update default casbin auth policy ([#927](https://github.com/opentdf/platform/issues/927)) ([c354fdb](https://github.com/opentdf/platform/commit/c354fdb118af4e4a222f3c65fcbf5de581d08bee))
+* **kas:** misleading hsm error message ([#899](https://github.com/opentdf/platform/issues/899)) ([65fdd4c](https://github.com/opentdf/platform/commit/65fdd4c9a2c91d3f741911da02bb5c14cee42cdc))
+
+## [0.4.4](https://github.com/opentdf/platform/compare/service/v0.4.3...service/v0.4.4) (2024-05-30)
+
+
+### Features
+
+* **sdk:** PLAT-3082 nanotdf encrypt ([#744](https://github.com/opentdf/platform/issues/744)) ([6c82536](https://github.com/opentdf/platform/commit/6c8253689ec65e68c2114750c10c501423cbe03c))
+
+
+### Bug Fixes
+
+* **kas:** lowercase config mapstructure for kas key paths ([#891](https://github.com/opentdf/platform/issues/891)) ([b205926](https://github.com/opentdf/platform/commit/b205926bad5b6787c04a5f02cdf0040bc103b98d)), closes [#890](https://github.com/opentdf/platform/issues/890)
+* **policy:** downgrade policy SQL statement info level logs to debug ([#853](https://github.com/opentdf/platform/issues/853)) ([771abd6](https://github.com/opentdf/platform/commit/771abd6423d15b7dc30ba4742348f0195ea36037)), closes [#845](https://github.com/opentdf/platform/issues/845)
+* **core:** bump sdk version in service module ([#892](https://github.com/opentdf/platform/pull/892)) ([d66ce92](https://github.com/opentdf/platform/commit/d66ce9205ec6482aec315961fe2ceff57b2357be))
+
 ## [0.4.3](https://github.com/opentdf/platform/compare/service/v0.4.2...service/v0.4.3) (2024-05-22)
 
 

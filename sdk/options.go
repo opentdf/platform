@@ -1,8 +1,10 @@
 package sdk
 
 import (
+	"crypto/rsa"
 	"crypto/tls"
 
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/internal/oauth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -13,18 +15,24 @@ type Option func(*config)
 
 // Internal config struct for building SDK options.
 type config struct {
-	dialOption           grpc.DialOption
-	tlsConfig            *tls.Config
-	clientCredentials    *oauth.ClientCredentials
-	tokenExchange        *oauth.TokenExchangeInfo
-	tokenEndpoint        string
-	scopes               []string
-	policyConn           *grpc.ClientConn
-	authorizationConn    *grpc.ClientConn
-	entityresolutionConn *grpc.ClientConn
-	extraDialOptions     []grpc.DialOption
-	certExchange         *oauth.CertExchangeInfo
+	dialOption            grpc.DialOption
+	tlsConfig             *tls.Config
+	clientCredentials     *oauth.ClientCredentials
+	tokenExchange         *oauth.TokenExchangeInfo
+	tokenEndpoint         string
+	scopes                []string
+	policyConn            *grpc.ClientConn
+	authorizationConn     *grpc.ClientConn
+	entityresolutionConn  *grpc.ClientConn
+	extraDialOptions      []grpc.DialOption
+	certExchange          *oauth.CertExchangeInfo
+	wellknownConn         *grpc.ClientConn
+	platformConfiguration PlatformConfiguration
+	kasSessionKey         *ocrypto.RsaKeyPair
+	dpopKey               *ocrypto.RsaKeyPair
 }
+
+type PlatformConfiguration map[string]interface{}
 
 func (c *config) build() []grpc.DialOption {
 	return []grpc.DialOption{c.dialOption}
@@ -68,6 +76,7 @@ func WithTLSCredentials(tls *tls.Config, audience []string) Option {
 }
 
 // WithTokenEndpoint When we implement service discovery using a .well-known endpoint this option may become deprecated
+// Deprecated: SDK will discover the token endpoint from the platform configuration
 func WithTokenEndpoint(tokenEndpoint string) Option {
 	return func(c *config) {
 		c.tokenEndpoint = tokenEndpoint
@@ -106,5 +115,39 @@ func WithTokenExchange(subjectToken string, audience []string) Option {
 func WithExtraDialOptions(dialOptions ...grpc.DialOption) Option {
 	return func(c *config) {
 		c.extraDialOptions = dialOptions
+	}
+}
+
+// The session key pair is used to encrypt responses from KAS for a given session
+// and can be reused across an entire session.
+// Please use with caution.
+func WithSessionEncryptionRSA(key *rsa.PrivateKey) Option {
+	return func(c *config) {
+		okey := ocrypto.FromRSA(key)
+		c.kasSessionKey = &okey
+	}
+}
+
+// The DPoP key pair is used to implement sender constrained tokens from the identity provider,
+// and should be associated with the lifetime of a session for a given identity.
+// Please use with caution.
+func WithSessionSignerRSA(key *rsa.PrivateKey) Option {
+	return func(c *config) {
+		okey := ocrypto.FromRSA(key)
+		c.dpopKey = &okey
+	}
+}
+
+func WithCustomWellknownConnection(conn *grpc.ClientConn) Option {
+	return func(c *config) {
+		c.wellknownConn = conn
+	}
+}
+
+// WithPlatformConfiguration allows you to override the remote platform configuration
+// Use this option with caution, as it may lead to unexpected behavior
+func WithPlatformConfiguration(platformConfiguration PlatformConfiguration) Option {
+	return func(c *config) {
+		c.platformConfiguration = platformConfiguration
 	}
 }

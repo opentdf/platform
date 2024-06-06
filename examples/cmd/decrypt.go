@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"io"
 	"os"
 
@@ -40,6 +41,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	defer file.Close()
+	cmd.Println("# TDF")
 
 	tdfreader, err := client.LoadTDF(file)
 	if err != nil {
@@ -50,6 +52,24 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	_, err = io.Copy(os.Stdout, tdfreader)
 	if err != nil && err != io.EOF {
 		return err
+	}
+	cmd.Println("\n-----\n\n# NANO")
+
+	nTdfFile, err := os.Open("sensitive.txt.ntdf")
+	if err != nil {
+		return err
+	}
+
+	outBuf := bytes.Buffer{}
+	_, err = client.ReadNanoTDF(io.Writer(&outBuf), nTdfFile)
+	if err != nil {
+		return err
+	}
+
+	if "Hello Virtru" == outBuf.String() {
+		cmd.Println("✅ NanoTDF test passed!")
+	} else {
+		cmd.Println("❌ NanoTDF test failed!")
 	}
 
 	return nil

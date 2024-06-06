@@ -50,7 +50,12 @@ func getTokenSource(t *testing.T) FakeAccessTokenSource {
 func TestCreatingRequest(t *testing.T) {
 	var dialOption []grpc.DialOption
 	tokenSource := getTokenSource(t)
-	client, err := newKASClient(dialOption, tokenSource)
+	kasKey, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
+	if err != nil {
+		t.Fatalf("error creating RSA Key: %v", err)
+	}
+
+	client, err := newKASClient(dialOption, tokenSource, kasKey)
 	if err != nil {
 		t.Fatalf("error setting KASClient: %v", err)
 	}

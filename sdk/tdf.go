@@ -69,6 +69,7 @@ type Reader struct {
 	aesGcm              ocrypto.AesGcm
 	payloadSize         int64
 	payloadKey          []byte
+	kasSessionKey       ocrypto.RsaKeyPair
 }
 
 type TDFObject struct {
@@ -382,10 +383,11 @@ func (s SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
 	}
 
 	return &Reader{
-		tokenSource: s.tokenSource,
-		dialOptions: s.dialOptions,
-		tdfReader:   tdfReader,
-		manifest:    *manifestObj,
+		tokenSource:   s.tokenSource,
+		dialOptions:   s.dialOptions,
+		tdfReader:     tdfReader,
+		manifest:      *manifestObj,
+		kasSessionKey: s.kasSessionKey,
 	}, nil
 }
 
@@ -618,7 +620,7 @@ func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit // Better readab
 	var unencryptedMetadata []byte
 	var payloadKey [kKeySize]byte
 	for _, keyAccessObj := range r.manifest.EncryptionInformation.KeyAccessObjs {
-		client, err := newKASClient(r.dialOptions, r.tokenSource)
+		client, err := newKASClient(r.dialOptions, r.tokenSource, r.kasSessionKey)
 		if err != nil {
 			return fmt.Errorf("newKASClient failed:%w", err)
 		}

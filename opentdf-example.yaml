@@ -34,13 +34,13 @@ server:
     issuer: http://keycloak:8888/auth/realms/opentdf
     policy:
       ## Default policy for all requests
-      default: #"role:readonly"
+      default: #"role:standard"
       ## Dot notation is used to access nested claims (i.e. realm_access.roles)
       claim: # realm_access.roles
       ## Maps the external role to the opentdf role
       ## Note: left side is used in the policy, right side is the external role
       map:
-      #  readonly: opentdf-readonly
+      #  standard: opentdf-standard
       #  admin: opentdf-admin
       #  org-admin: opentdf-org-admin
 
@@ -69,7 +69,8 @@ server:
   cors:
     enabled: false
     # '*' to allow any origin or a specific domain like 'https://yourdomain.com'
-    allowedorigins: "*"
+    allowedorigins: 
+      - "*"
     # List of methods. Examples: 'GET,POST,PUT'
     allowedmethods:
       - GET
@@ -98,15 +99,15 @@ server:
     standard:
       rsa:
         123:
-          privateKeyPath: /keys/kas-private.pem
-          publicKeyPath: /keys/kas-cert.pem
+          private_key_path: /keys/kas-private.pem
+          public_key_path: /keys/kas-cert.pem
         456:
-          privateKeyPath: /keys/kas-private.pem
-          publicKeyPath: /keys/kas-cert.pem
+          private_key_path: /keys/kas-private.pem
+          public_key_path: /keys/kas-cert.pem
       ec:
         123:
-          privateKeyPath: /keys/kas-ec-private.pem
-          publicKeyPath: /keys/kas-ec-cert.pem
+          private_key_path: /keys/kas-ec-private.pem
+          public_key_path: /keys/kas-ec-cert.pem
   port: 8080
 opa:
   embedded: true # Only for local development

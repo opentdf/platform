@@ -5,8 +5,6 @@ env:
 
 on:
   pull_request:
-    branches:
-      - main
   push:
     branches:
       - main
@@ -56,6 +54,7 @@ jobs:
             policy
             kas
             authz
+            examples
 
   go:
     runs-on: ubuntu-22.04
@@ -75,7 +74,7 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
         with:
           go-version: "1.22.3"
           check-latest: false
@@ -94,9 +93,9 @@ jobs:
         if: env.IS_RELEASE_BRANCH == 'true'
         working-directory: ${{ matrix.directory }}
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@9d1e0624a798bb64f6c3cea93db47765312263dc
+        uses: golangci/golangci-lint-action@a4f60bb28d35aeee14e6880718e0c85ff1882e64
         with:
-          version: v1.57
+          version: v1.58
           working-directory: ${{ matrix.directory }}
           skip-cache: true
           args: --out-format=colored-line-number
@@ -134,11 +133,10 @@ jobs:
     strategy:
       matrix:
         crypto:
-          - hsm
           - standard
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
         with:
           go-version: "1.22.3"
           check-latest: false
@@ -191,7 +189,12 @@ jobs:
       - run: grpcurl -plaintext localhost:8080 list
       - run: grpcurl -plaintext localhost:8080 grpc.health.v1.Health.Check
       - run: grpcurl -plaintext localhost:8080 kas.AccessService/PublicKey
-      - run: curl --show-error --fail --insecure localhost:8080/kas/v2/kas_public_key
+      - run: curl --show-error --fail-with-body --insecure localhost:8080/kas/v2/kas_public_key
+      - run: curl --show-error --fail-with-body --insecure localhost:8080/kas/v2/kas_public_key?algorithm=ec:secp256r1
+      - run: |-
+          curl_status=$(curl -o /dev/null -s -w "%{http_code}" localhost:8080/kas/v2/kas_public_key?algorithm=invalid)
+          [ $curl_status = 404 ]
+      - run: grpcurl -d '{"algorithm":"invalid"}' -plaintext localhost:8080 kas.AccessService/PublicKey  2>&1  | grep NotFound
       - run: go run ./examples encrypt "Hello Virtru"
       - run: go run ./examples decrypt sensitive.txt.tdf
       - run: go run ./examples decrypt sensitive.txt.tdf | grep "Hello Virtru"
@@ -215,7 +218,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: bufbuild/buf-setup-action@480a0ee8a588045b52a847b48138c6f377a89519
+      - uses: bufbuild/buf-setup-action@dde0b9351db90fbf78e345f41a57de8514bf1091
       - uses: bufbuild/buf-lint-action@044d13acb1f155179c606aaa2e53aea304d22058
         with:
           input: service
@@ -225,7 +228,7 @@ jobs:
         with:
           input: service
           against: "https://github.com/opentdf/platform.git#branch=main,subdir=service"
-      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
         with:
           go-version: "1.22.3"
           check-latest: false
@@ -268,7 +271,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
         with:
           go-version: "1.22.3"
           check-latest: false

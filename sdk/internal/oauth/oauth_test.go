@@ -165,7 +165,7 @@ func (s *OAuthSuite) TestGettingAccessTokenFromKeycloak() {
 	s.Greaterf(tok.ExpiresIn, int64(0), "invalid expiration is before current time: %v", tok)
 	s.Falsef(tok.Expired(), "got a token that is currently expired: %v", tok)
 
-	// verify that we got a token that has the opentdf-readonly role, which only the sdk client has
+	// verify that we got a token that has the opentdf-standard role, which only the sdk client has
 	ra, ok := tokenDetails.Get("realm_access")
 	s.Require().True(ok)
 	raMap, ok := ra.(map[string]interface{})
@@ -174,7 +174,7 @@ func (s *OAuthSuite) TestGettingAccessTokenFromKeycloak() {
 	s.Require().True(ok)
 	rolesList, ok := roles.([]interface{})
 	s.Require().True(ok)
-	s.Require().True(slices.Contains(rolesList, "opentdf-readonly"), "missing the `opentdf-readonly` role")
+	s.Require().True(slices.Contains(rolesList, "opentdf-standard"), "missing the `opentdf-standard` role")
 }
 
 func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
@@ -226,7 +226,7 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 	s.Greaterf(subjectToken.ExpiresIn, int64(0), "invalid expiration is before current time: %v", subjectToken)
 	s.Falsef(subjectToken.Expired(), "got a token that is currently expired: %v", subjectToken)
 
-	// verify that we got a token that has the opentdf-readonly role, which only the sdk client has
+	// verify that we got a token that has the opentdf-standard role, which only the sdk client has
 	ra, ok := tokenDetails.Get("realm_access")
 	s.Require().True(ok)
 	raMap, ok := ra.(map[string]interface{})
@@ -235,7 +235,7 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 	s.Require().True(ok)
 	rolesList, ok := roles.([]interface{})
 	s.Require().True(ok)
-	s.Require().True(slices.Contains(rolesList, "opentdf-readonly"), "missing the `opentdf-readonly` role")
+	s.Require().True(slices.Contains(rolesList, "opentdf-standard"), "missing the `opentdf-standard` role")
 
 	// verify that the calling client is the authorized party
 	azpClaim, ok := tokenDetails.Get("azp")

@@ -127,7 +127,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	sampleUserNoCreds := "sampleuser"
 	opentdfOrgAdminRoleName := "opentdf-org-admin"
 	opentdfAdminRoleName := "opentdf-admin"
-	opentdfReadonlyRoleName := "opentdf-readonly"
+	opentdfStandardRoleName := "opentdf-standard"
 	testingOnlyRoleName := "opentdf-testing-role"
 	opentdfERSClientID := "tdf-entity-resolution"
 	opentdfAuthorizationClientID := "tdf-authorization-svc"
@@ -160,7 +160,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	}
 
 	// Create Roles
-	roles := []string{opentdfOrgAdminRoleName, opentdfAdminRoleName, opentdfReadonlyRoleName, testingOnlyRoleName}
+	roles := []string{opentdfOrgAdminRoleName, opentdfAdminRoleName, opentdfStandardRoleName, testingOnlyRoleName}
 	for _, role := range roles {
 		_, err := client.CreateRealmRole(ctx, token.AccessToken, kcConnectParams.Realm, gocloak.Role{
 			Name: gocloak.StringP(role),
@@ -180,7 +180,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	// Get the roles
 	var opentdfOrgAdminRole *gocloak.Role
 	// var opentdfAdminRole *gocloak.Role
-	var opentdfReadonlyRole *gocloak.Role
+	var opentdfStandardRole *gocloak.Role
 	var testingOnlyRole *gocloak.Role
 	realmRoles, err := client.GetRealmRoles(ctx, token.AccessToken, kcConnectParams.Realm, gocloak.GetRoleParams{
 		Search: gocloak.StringP("opentdf"),
@@ -196,8 +196,8 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 			opentdfOrgAdminRole = role
 		// case opentdfAdminRoleName:
 		// 	opentdfAdminRole = role
-		case opentdfReadonlyRoleName:
-			opentdfReadonlyRole = role
+		case opentdfStandardRoleName:
+			opentdfStandardRole = role
 		case testingOnlyRoleName:
 			testingOnlyRole = role
 		}
@@ -256,7 +256,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		Secret:                    gocloak.StringP("secret"),
 		DirectAccessGrantsEnabled: gocloak.BoolP(true),
 		ProtocolMappers:           &protocolMappers,
-	}, []gocloak.Role{*opentdfReadonlyRole, *testingOnlyRole}, nil)
+	}, []gocloak.Role{*opentdfStandardRole, *testingOnlyRole}, nil)
 	if err != nil {
 		return err
 	}
@@ -522,8 +522,17 @@ func createRealm(ctx context.Context, kcConnectParams KeycloakConnectParams, rea
 
 	// Create realm
 	r, err := client.GetRealm(ctx, token.AccessToken, *realm.Realm)
-	if err != nil {
-		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
+	var kcErr *gocloak.APIError
+	if errors.As(err, &kcErr) {
+		switch kcErr.Code {
+		case http.StatusNotFound:
+			// yes
+		case http.StatusConflict:
+			slog.Info(fmt.Sprintf("⏭️ %s realm already exists, skipping create", *realm.Realm))
+		default:
+			return err
+		}
+	} else if err != nil {
 		if kcErr.Code == http.StatusConflict {
 			slog.Info(fmt.Sprintf("⏭️ %s realm already exists, skipping create", *realm.Realm))
 		} else if kcErr.Code != http.StatusNotFound {
@@ -649,41 +658,43 @@ func createClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.J
 		slog.Info(fmt.Sprintf("✅ Client created: client id = %s, client identifier=%s", clientID, longClientID))
 	}
 
-	// Get service account user
-	user, err := client.GetClientServiceAccount(ctx, token.AccessToken, connectParams.Realm, longClientID)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Error getting service account user for client %s : %s", clientID, err))
-		return "", err
-	}
-	slog.Info(fmt.Sprintf("ℹ️  Service account user for client %s : %s", clientID, *user.Username))
-
-	if realmRoles != nil {
-		slog.Info(fmt.Sprintf("Adding realm roles to client %s via service account %s", longClientID, *user.Username))
-		if err := client.AddRealmRoleToUser(ctx, token.AccessToken, connectParams.Realm, *user.ID, realmRoles); err != nil {
-			for _, role := range realmRoles {
-				slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
-			}
+	// if the client is not public
+	if newClient.ServiceAccountsEnabled != nil && *newClient.ServiceAccountsEnabled { //nolint:nestif // have to handle the different cases
+		// Get service account user
+		user, err := client.GetClientServiceAccount(ctx, token.AccessToken, connectParams.Realm, longClientID)
+		if err != nil {
+			slog.Error(fmt.Sprintf("Error getting service account user for client %s : %s", clientID, err))
 			return "", err
 		}
-		for _, role := range realmRoles {
-			slog.Info(fmt.Sprintf("✅ Realm Role %s added to client %s", *role.Name, longClientID))
-		}
-	}
-	if clientRoles != nil {
-		slog.Info(fmt.Sprintf("Adding client roles to client %s via service account %s", longClientID, *user.Username))
-		for clientIDRole, roles := range clientRoles {
-			if err := client.AddClientRolesToUser(ctx, token.AccessToken, connectParams.Realm, clientIDRole, *user.ID, roles); err != nil {
-				for _, role := range roles {
+		slog.Info(fmt.Sprintf("ℹ️  Service account user for client %s : %s", clientID, *user.Username))
+
+		if realmRoles != nil {
+			slog.Info(fmt.Sprintf("Adding realm roles to client %s via service account %s", longClientID, *user.Username))
+			if err := client.AddRealmRoleToUser(ctx, token.AccessToken, connectParams.Realm, *user.ID, realmRoles); err != nil {
+				for _, role := range realmRoles {
 					slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
 				}
 				return "", err
 			}
-			for _, role := range roles {
-				slog.Info(fmt.Sprintf("✅ Client Role %s added to client %s", *role.Name, longClientID))
+			for _, role := range realmRoles {
+				slog.Info(fmt.Sprintf("✅ Realm Role %s added to client %s", *role.Name, longClientID))
+			}
+		}
+		if clientRoles != nil {
+			slog.Info(fmt.Sprintf("Adding client roles to client %s via service account %s", longClientID, *user.Username))
+			for clientIDRole, roles := range clientRoles {
+				if err := client.AddClientRolesToUser(ctx, token.AccessToken, connectParams.Realm, clientIDRole, *user.ID, roles); err != nil {
+					for _, role := range roles {
+						slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
+					}
+					return "", err
+				}
+				for _, role := range roles {
+					slog.Info(fmt.Sprintf("✅ Client Role %s added to client %s", *role.Name, longClientID))
+				}
 			}
 		}
 	}
-
 	return longClientID, nil
 }
 
@@ -1030,7 +1041,8 @@ func createCertExchange(ctx context.Context, connectParams *KeycloakConnectParam
 
 // updateExecutionConfig Posts an authentication execution config (body) to keycloak for a given execution
 func updateExecutionConfig(ctx context.Context, client *gocloak.GoCloak, execution *gocloak.ModifyAuthenticationExecutionRepresentation,
-	connectParams *KeycloakConnectParams, accessToken string, body interface{}) error {
+	connectParams *KeycloakConnectParams, accessToken string, body interface{},
+) error {
 	updateURL := fmt.Sprintf("%s/admin/realms/%s/authentication/executions/%s/config", connectParams.BasePath,
 		connectParams.Realm, *execution.ID)
 	resp, respErr := client.GetRequestWithBearerAuth(ctx, accessToken).SetBody(body).

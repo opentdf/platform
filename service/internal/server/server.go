@@ -156,7 +156,7 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 	slog.Info("creating crypto provider", slog.String("type", config.CryptoProvider.Type))
 	o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
 	if err != nil {
-		return nil, fmt.Errorf("HSM security.NewCryptoProvider: %w", err)
+		return nil, fmt.Errorf("security.NewCryptoProvider: %w", err)
 	}
 
 	return &o, nil

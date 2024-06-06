@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"strings"
 
 	"golang.org/x/crypto/hkdf"
@@ -29,9 +30,10 @@ type ECKeyPair struct {
 	PrivateKey *ecdsa.PrivateKey
 }
 
-// NewECKeyPair Generates an EC key pair of the given bit size.
-func NewECKeyPair(mode ECCMode) (ECKeyPair, error) {
+// GetECCurveFromECCMode return elliptic curve from ecc mode
+func GetECCurveFromECCMode(mode ECCMode) (elliptic.Curve, error) {
 	var c elliptic.Curve
+
 	switch mode {
 	case ECCModeSecp256r1:
 		c = elliptic.P256()
@@ -41,9 +43,23 @@ func NewECKeyPair(mode ECCMode) (ECKeyPair, error) {
 		c = elliptic.P521()
 	case ECCModeSecp256k1:
 		// TODO FIXME - unsupported?
-		return ECKeyPair{}, errors.New("unsupported ec key pair mode")
+		return nil, errors.New("unsupported nanoTDF ecc mode")
 	default:
-		return ECKeyPair{}, fmt.Errorf("invalid ec key pair mode %d", mode)
+		return nil, fmt.Errorf("unsupported nanoTDF ecc mode %d", mode)
+	}
+
+	return c, nil
+}
+
+// NewECKeyPair Generates an EC key pair of the given bit size.
+func NewECKeyPair(mode ECCMode) (ECKeyPair, error) {
+	var c elliptic.Curve
+
+	var err error
+
+	c, err = GetECCurveFromECCMode(mode)
+	if err != nil {
+		return ECKeyPair{}, err
 	}
 
 	privateKey, err := ecdsa.GenerateKey(c, rand.Reader)
@@ -92,7 +108,6 @@ func (keyPair ECKeyPair) PublicKeyInPemFormat() (string, error) {
 			Bytes: publicKeyBytes,
 		},
 	)
-
 	return string(publicKeyPem), nil
 }
 
@@ -102,6 +117,18 @@ func (keyPair ECKeyPair) KeySize() (int, error) {
 		return -1, errors.New("failed to return key size")
 	}
 	return keyPair.PrivateKey.Params().N.BitLen(), nil
+}
+
+// CompressedECPublicKey - return a compressed key from the supplied curve and public key
+func CompressedECPublicKey(mode ECCMode, pubKey ecdsa.PublicKey) ([]byte, error) {
+	curve, err := GetECCurveFromECCMode(mode)
+	if err != nil {
+		return nil, fmt.Errorf("x509.MarshalPKIXPublicKey failed: %w", err)
+	}
+
+	compressedKey := elliptic.MarshalCompressed(curve, pubKey.X, pubKey.Y)
+
+	return compressedKey, nil
 }
 
 // ConvertToECDHPublicKey convert the ec public key to ECDH public key
@@ -133,16 +160,37 @@ func ConvertToECDHPrivateKey(key interface{}) (*ecdh.PrivateKey, error) {
 }
 
 // CalculateHKDF generate a key using key derivation function.
-func CalculateHKDF(salt []byte, secret []byte, keyLen int) ([]byte, error) {
+func CalculateHKDF(salt []byte, secret []byte) ([]byte, error) {
 	hkdfObj := hkdf.New(sha256.New, secret, salt, nil)
 
-	derivedKey := make([]byte, keyLen)
+	derivedKey := make([]byte, len(secret))
 	_, err := io.ReadFull(hkdfObj, derivedKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to derive hkdf key: %w", err)
 	}
 
 	return derivedKey, nil
+}
+
+// ComputeECDSASig compute ecdsa signature
+func ComputeECDSASig(digest []byte, privKey *ecdsa.PrivateKey) ([]byte, []byte, error) {
+	r, s, err := ecdsa.Sign(rand.Reader, privKey, digest)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return r.Bytes(), s.Bytes(), nil
+}
+
+// VerifyECDSASig verify ecdsa signature.
+func VerifyECDSASig(digest, r, s []byte, pubKey *ecdsa.PublicKey) bool {
+	rAsBigInt := new(big.Int)
+	rAsBigInt.SetBytes(r)
+
+	sAsBigInt := new(big.Int)
+	sAsBigInt.SetBytes(s)
+
+	return ecdsa.Verify(pubKey, digest, rAsBigInt, sAsBigInt)
 }
 
 // ECPubKeyFromPem generate ec public from pem format
@@ -221,4 +269,81 @@ func ComputeECDHKey(privateKeyInPem []byte, publicKeyInPem []byte) ([]byte, erro
 	}
 
 	return sharedKey, nil
+}
+
+func ComputeECDHKeyFromEC(publicKey *ecdsa.PublicKey, privateKey *ecdsa.PrivateKey) ([]byte, error) {
+	ecdhPrivateKey, err := ConvertToECDHPrivateKey(privateKey)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.ECPrivateKeyFromPem failed: %w", err)
+	}
+
+	ecdhPublicKey, err := ConvertToECDHPublicKey(publicKey)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.ECPubKeyFromPem failed: %w", err)
+	}
+
+	sharedKey, err := ecdhPrivateKey.ECDH(ecdhPublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("there was a problem deriving a shared ECDH key: %w", err)
+	}
+
+	return sharedKey, nil
+}
+
+func ComputeECDHKeyFromECDHKeys(publicKey *ecdh.PublicKey, privateKey *ecdh.PrivateKey) ([]byte, error) {
+	sharedKey, err := privateKey.ECDH(publicKey)
+	if err != nil {
+		return nil, fmt.Errorf("there was a problem deriving a shared ECDH key: %w", err)
+	}
+
+	return sharedKey, nil
+}
+
+// UncompressECPubKey create EC public key from compressed form
+func UncompressECPubKey(curve elliptic.Curve, compressedPubKey []byte) (*ecdsa.PublicKey, error) {
+	// Converting ephemeralPublicKey byte array to *big.Int
+	x, y := elliptic.UnmarshalCompressed(curve, compressedPubKey)
+	if x == nil {
+		return nil, errors.New("failed to unmarshal compressed public key")
+	}
+	// Creating ecdsa.PublicKey from *big.Int
+	ephemeralECDSAPublicKey := &ecdsa.PublicKey{
+		Curve: elliptic.P256(),
+		X:     x,
+		Y:     y,
+	}
+	return ephemeralECDSAPublicKey, nil
+}
+
+// ECPrivateKeyInPemFormat Returns private key in pem format.
+func ECPrivateKeyInPemFormat(privateKey ecdsa.PrivateKey) (string, error) {
+	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	if err != nil {
+		return "", fmt.Errorf("x509.MarshalPKCS8PrivateKey failed: %w", err)
+	}
+
+	privateKeyPem := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "PRIVATE KEY",
+			Bytes: privateKeyBytes,
+		},
+	)
+	return string(privateKeyPem), nil
+}
+
+// ECPublicKeyInPemFormat Returns public key in pem format.
+func ECPublicKeyInPemFormat(publicKey ecdsa.PublicKey) (string, error) {
+	publicKeyBytes, err := x509.MarshalPKIXPublicKey(publicKey)
+	if err != nil {
+		return "", fmt.Errorf("x509.MarshalPKIXPublicKey failed: %w", err)
+	}
+
+	publicKeyPem := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "PUBLIC KEY",
+			Bytes: publicKeyBytes,
+		},
+	)
+
+	return string(publicKeyPem), nil
 }

@@ -49,7 +49,6 @@ p,	role:org-admin,		kas.AccessService/LegacyPublicKey,			*,			allow
 p,	role:org-admin,		kas.AccessService/PublicKey,						*,			allow
 p,	role:org-admin,		kas.AccessService/Rewrap, 			            *,			allow
 ## HTTP routes
-p,	role:org-admin,		/health,																*,			allow
 p,	role:org-admin,		/attributes*,														*,			allow
 p,	role:org-admin,		/namespaces*,														*,			allow
 p,	role:org-admin,		/subject-mappings*,											*,			allow
@@ -68,7 +67,6 @@ p,	role:admin,		kas.AccessService/Rewrap, 			            *,			allow
 p,	role:admin,		kas.AccessService/LegacyPublicKey,					*,			allow
 p,	role:admin,		kas.AccessService/PublicKey,								*,			allow
 ## HTTP routes
-p,	role:admin,		/health,																		*,			allow
 p,	role:admin,		/attributes*,																*,			allow
 p,	role:admin,		/namespaces*,																*,			allow
 p,	role:admin,		/subject-mappings*,													*,			allow
@@ -86,7 +84,6 @@ p,	role:standard,    kas.AccessService/Rewrap, 			           *,			allow
 p,	role:standard,    kas.AccessService/LegacyPublicKey,				 *,			allow
 p,	role:standard,    kas.AccessService/PublicKey,							 *,			allow
 ## HTTP routes
-p,	role:standard,		/health,																read,			allow
 p,	role:standard,		/attributes*,														read,			allow
 p,	role:standard,		/namespaces*,														read,			allow
 p,	role:standard,		/subject-mappings*,											read,			allow
@@ -104,7 +101,6 @@ p,	role:unknown,			kas.AccessService/PublicKey,						other,	allow
 ## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)
 p,	role:unknown,			entityresolution.EntityResolutionService.ResolveEntities,										write,		allow
 ## HTTP routes
-p,	role:unknown,			/health,																read,		allow
 p,	role:unknown,			/kas/v2/kas_public_key,									read,		allow
 p,	role:unknown,			/kas/kas_public_key,										read,		allow
 ## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)

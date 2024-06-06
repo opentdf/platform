@@ -396,7 +396,6 @@ func (x *EntityChain) GetEntities() []*Entity {
 // Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)
 // and Alice (represented by entity chain ec2) have TRANSMIT authorization for
 // 2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
-//
 // {
 // "actions": [
 // {
@@ -423,14 +422,14 @@ func (x *EntityChain) GetEntities() []*Entity {
 // ],
 // "resourceAttributes": [
 // {
-// "resourceAttributeId":  "attr-set-1",
-// "attributeFqns": [
+// "resourceAttributesId":  "attr-set-1",
+// "attributeValueFqns": [
 // "https://www.example.org/attr/foo/value/value1"
 // ]
 // },
 // {
-// "resourceAttributeId":  "attr-set-2",
-// "attributeFqns": [
+// "resourceAttributesId":  "attr-set-2",
+// "attributeValueFqns": [
 // "https://example.net/attr/attr1/value/value1",
 // "https://example.net/attr/attr1/value/value2"
 // ]
@@ -511,27 +510,39 @@ func (x *DecisionRequest) GetResourceAttributes() []*ResourceAttribute {
 // - alice has denied authorization to transmit a for a resource defined by attr-set-2 attributes
 //
 // {
-// "entityChainId":  "ec1",
-// "resourceAttributesId":  "attr-set-1",
+// "entity_chain_id":  "ec1",
+// "resource_attributes_id":  "attr-set-1",
 // "decision":  "DECISION_PERMIT",
+// "action": {
+// "standard": "STANDARD_ACTION_TRANSMIT"
+// },
 // "obligations":  [
 // "http://www.example.org/obligation/watermark"
 // ]
 // },
 // {
-// "entityChainId":  "ec1",
-// "resourceAttributesId":  "attr-set-2",
+// "entity_chain_id":  "ec1",
+// "resource_attributes_id":  "attr-set-2",
 // "decision":  "DECISION_PERMIT"
+// "action": {
+// "standard": "STANDARD_ACTION_TRANSMIT"
+// },
 // },
 // {
-// "entityChainId":  "ec2",
-// "resourceAttributesId":  "attr-set-1",
+// "entity_chain_id":  "ec2",
+// "resource_attributes_id":  "attr-set-1",
 // "decision":  "DECISION_PERMIT"
+// "action": {
+// "standard": "STANDARD_ACTION_TRANSMIT"
+// },
 // },
 // {
-// "entityChainId":  "ec2",
-// "resourceAttributesId":  "attr-set-2",
+// "entity_chain_id":  "ec2",
+// "resource_attributes_id":  "attr-set-2",
 // "decision":  "DECISION_DENY"
+// "action": {
+// "standard": "STANDARD_ACTION_TRANSMIT"
+// },
 // }
 type DecisionResponse struct {
 	state         protoimpl.MessageState
@@ -725,7 +736,8 @@ func (x *GetDecisionsResponse) GetDecisionResponses() []*DecisionResponse {
 // "attributeFqns": [
 // "https://example.net/attr/attr1/value/value1",
 // "https://example.net/attr/attr1/value/value2"
-// ]
+// ],
+// "resourceAttributesId": "r1"
 // }
 // }
 type GetEntitlementsRequest struct {
@@ -899,19 +911,15 @@ func (x *ResourceAttribute) GetAttributeValueFqns() []string {
 // {
 // "entitlements":  [
 // {
-// "entityId":  "e1",
-// "attributeValueReferences":  [
-// {
-// "attributeFqn":  "http://www.example.org/attr/foo/value/bar"
-// }
+// "entity_id":  "e1",
+// "attribute_value_fqns": [
+// "http://www.example.org/attr/foo/value/bar"
 // ]
 // },
 // {
-// "entityId":  "e2",
-// "attributeValueReferences":  [
-// {
-// "attributeFqn":  "http://www.example.org/attr/color/value/red"
-// }
+// "entity_id":  "e2",
+// "attribute_value_fqns": [
+// "http://www.example.org/attr/color/value/red"
 // ]
 // }
 // ]
@@ -985,12 +993,14 @@ func (x *GetEntitlementsResponse) GetEntitlements() []*EntityEntitlements {
 // ],
 // "resourceAttributes": [
 // {
-// "attributeFqns": [
+// "resourceAttributesId":  "attr-set-1",
+// "attributeValueFqns": [
 // "https://www.example.org/attr/foo/value/value1"
 // ]
 // },
 // {
-// "attributeFqns": [
+// "resourceAttributesId":  "attr-set-2",
+// "attributeValueFqns": [
 // "https://example.net/attr/attr1/value/value1",
 // "https://example.net/attr/attr1/value/value2"
 // ]

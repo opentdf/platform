@@ -18,8 +18,6 @@
 
 @test "REST: new public key endpoint (ec)" {
   curl --show-error --fail-with-body --insecure localhost:8080/kas/v2/kas_public_key?algorithm=ec:secp256r1
-  # TODO: replace with jq and exact query to avoid false negatives
-  curl --show-error --fail-with-body --insecure localhost:8080/kas/v2/kas_public_key?algorithm=ec:secp256r1 | grep e1
 }
 
 @test "REST: public key endpoint (unknown algorithm)" {

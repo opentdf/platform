@@ -39,13 +39,17 @@ type authContext struct {
 var (
 	// Set of allowed public endpoints that do not require authentication
 	allowedPublicEndpoints = [...]string{
-		"/grpc.health.v1.Health/Check",
+		// Well Known Configuration Endpoints
 		"/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration",
-		"/kas.AccessService/PublicKey",
-		"/healthz",
 		"/.well-known/opentdf-configuration",
+		// KAS Public Key Endpoints
+		"/kas.AccessService/PublicKey",
+		"/kas.AccessService/LegacyPublicKey",
 		"/kas/kas_public_key",
 		"/kas/v2/kas_public_key",
+		// HealthZ
+		"/healthz",
+		"/grpc.health.v1.Health/Check",
 	}
 	// only asymmetric algorithms and no 'none'
 	allowedSignatureAlgorithms = map[jwa.SignatureAlgorithm]bool{ //nolint:exhaustive // only asymmetric algorithms

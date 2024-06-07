@@ -150,7 +150,7 @@ type DiffEntry struct {
 	Value interface{} `json:"value,omitempty"`
 }
 
-func createJsonPatchDiff(original []byte, target []byte) ([]DiffEntry, error) {
+func createJSONPatchDiff(original []byte, target []byte) ([]DiffEntry, error) {
 	patch, err := jsondiff.CompareJSON(original, target, jsondiff.Invertible())
 	diffArray := make([]DiffEntry, len(patch))
 	if err != nil {

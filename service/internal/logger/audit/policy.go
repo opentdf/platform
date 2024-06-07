@@ -50,7 +50,7 @@ func CreatePolicyEvent(ctx context.Context, isSuccess bool, params PolicyEventPa
 			return nil, err
 		}
 
-		patchDiff, err := createJsonPatchDiff(original, updated)
+		patchDiff, err := createJSONPatchDiff(original, updated)
 		if err != nil {
 			return nil, err
 		}

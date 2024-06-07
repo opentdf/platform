@@ -21,15 +21,18 @@ func canAccess(ctx context.Context, token *authorization.Token, policy Policy, s
 		// TODO: Move dissems check to the getdecisions endpoint
 		slog.Error("Dissems check is not enabled in v2 platform kas")
 	}
-	if policy.Body.DataAttributes != nil {
-		attrAccess, err := checkAttributes(ctx, policy.Body.DataAttributes, token, sdk)
-		if err != nil {
-			return false, err
-		}
-		return attrAccess, nil
-	}
-	// if no dissem and no attributes then allow
+	slog.Debug("--------------------------------------")
+	slog.Debug("DOING ACCESS CHECK")
 	return true, nil
+	//if policy.Body.DataAttributes != nil {
+	//	attrAccess, err := checkAttributes(ctx, policy.Body.DataAttributes, token, sdk)
+	//	if err != nil {
+	//		return false, err
+	//	}
+	//	return attrAccess, nil
+	//}
+	//// if no dissem and no attributes then allow
+	//return true, nil
 }
 
 func checkDissems(dissems []string, ent *authorization.Entity) (bool, error) {

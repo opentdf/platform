@@ -249,8 +249,8 @@ func getEntityInfo(ctx context.Context, logger logger.Logger) (*entityInfo, erro
 }
 
 func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
-	p.Logger.DebugContext(ctx, "REWRAP")
-
+	p.Logger.DebugContext(ctx, "REWRAP!!!!!!")
+	p.Logger.DebugContext(ctx, "TEST LOG")
 	body, err := extractSRTBody(ctx, in, *p.Logger)
 	if err != nil {
 		p.Logger.DebugContext(ctx, "unverifiable srt", "err", err)

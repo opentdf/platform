@@ -30,6 +30,7 @@ type config struct {
 	platformConfiguration PlatformConfiguration
 	kasSessionKey         *ocrypto.RsaKeyPair
 	dpopKey               *ocrypto.RsaKeyPair
+	ipc                   bool
 }
 
 type PlatformConfiguration map[string]interface{}
@@ -149,5 +150,13 @@ func WithCustomWellknownConnection(conn *grpc.ClientConn) Option {
 func WithPlatformConfiguration(platformConfiguration PlatformConfiguration) Option {
 	return func(c *config) {
 		c.platformConfiguration = platformConfiguration
+	}
+}
+
+// WithIPC returns an Option that indicates the SDK should use IPC for communication
+// this will allow the platform endpoint to be an empty string
+func WithIPC() Option {
+	return func(c *config) {
+		c.ipc = true
 	}
 }

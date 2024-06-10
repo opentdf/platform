@@ -22,13 +22,6 @@ const (
 	ActorIDContextKey   auditContextKey = "actor-id"
 )
 
-// Action Types
-const (
-	ActionTypeCreate = "create"
-	ActionTypeUpdate = "update"
-	ActionTypeDelete = "delete"
-)
-
 // Action Results
 const (
 	ActionResultSuccess = "success"
@@ -56,7 +49,7 @@ type EventObject struct {
 
 // event.object
 type auditEventObject struct {
-	Type       string                `json:"type"`
+	Type       ObjectType            `json:"type"`
 	ID         string                `json:"id"`
 	Name       string                `json:"name"`
 	Attributes eventObjectAttributes `json:"attributes"`
@@ -71,8 +64,8 @@ type eventObjectAttributes struct {
 
 // event.action
 type eventAction struct {
-	Type   string `json:"type"`
-	Result string `json:"result"`
+	Type   ActionType `json:"type"`
+	Result string     `json:"result"`
 }
 
 // event.owner

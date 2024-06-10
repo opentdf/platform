@@ -28,11 +28,11 @@ func (p Provider) lookupKid(ctx context.Context, algorithm string) (string, erro
 	}
 
 	for _, k := range p.KASConfig.Keyring {
-		if k.Algorithm == algorithm {
+		if k.Algorithm == algorithm && !k.Legacy {
 			return k.KID, nil
 		}
 	}
-	slog.WarnContext(ctx, "no key for requested algorithm", "algorithm", algorithm)
+	slog.WarnContext(ctx, "no (non-legacy) key for requested algorithm", "algorithm", algorithm)
 	return "", errors.Join(ErrConfig, status.Error(codes.NotFound, "no default key for algorithm"))
 }
 
@@ -90,6 +90,10 @@ func (p Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*k
 		} else if err != nil {
 			slog.ErrorContext(ctx, "configuration error for key lookup", "err", err, "kid", kid, "algorithm", algorithm, "fmt", fmt)
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
+		}
+		if in.GetV() == "1" {
+			slog.WarnContext(ctx, "hiding kid in public key response for legacy client", "kid", kid, "v", in.GetV())
+			return &kaspb.PublicKeyResponse{PublicKey: value}, nil
 		}
 		return &kaspb.PublicKeyResponse{PublicKey: value, Kid: kid}, nil
 	}

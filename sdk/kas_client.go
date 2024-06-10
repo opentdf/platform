@@ -291,13 +291,12 @@ type publicKeyWithID struct {
 	publicKey, kid string
 }
 
-func getPublicKey(kasInfo KASInfo, opts ...grpc.DialOption) (*publicKeyWithID, error) {
-	req := kas.PublicKeyRequest{}
+func (s SDK) getPublicKey(kasInfo KASInfo) (*publicKeyWithID, error) {
 	grpcAddress, err := getGRPCAddress(kasInfo.URL)
 	if err != nil {
 		return nil, err
 	}
-	conn, err := grpc.Dial(grpcAddress, opts...)
+	conn, err := grpc.Dial(grpcAddress, s.dialOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to grpc service at %s: %w", kasInfo.URL, err)
 	}
@@ -306,11 +305,22 @@ func getPublicKey(kasInfo KASInfo, opts ...grpc.DialOption) (*publicKeyWithID, e
 	ctx := context.Background()
 	serviceClient := kas.NewAccessServiceClient(conn)
 
+	req := kas.PublicKeyRequest{
+		Algorithm: "rsa:2048",
+	}
+	if s.config.tdfFeatures.noKID {
+		req.V = "1"
+	}
 	resp, err := serviceClient.PublicKey(ctx, &req)
 
 	if err != nil {
 		return nil, fmt.Errorf("error making request to KAS: %w", err)
 	}
 
-	return &publicKeyWithID{resp.GetPublicKey(), resp.GetKid()}, nil
+	kid := resp.GetKid()
+	if s.config.tdfFeatures.noKID {
+		kid = ""
+	}
+
+	return &publicKeyWithID{resp.GetPublicKey(), kid}, nil
 }

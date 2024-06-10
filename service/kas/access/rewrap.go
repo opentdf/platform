@@ -290,16 +290,29 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 }
 
 func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
-	kid := body.KeyAccess.KID
-	if kid == "" {
-		var err error
-		kid, err = p.lookupKid(ctx, security.AlgorithmRSA2048)
-		if err != nil {
-			p.Logger.WarnContext(ctx, "failure to find default kid for rsa", "err", err)
+	var kidsToCheck []string
+	if body.KeyAccess.KID != "" {
+		kidsToCheck = []string{body.KeyAccess.KID}
+	} else {
+		p.Logger.InfoContext(ctx, "kid free kao")
+		for _, k := range p.KASConfig.Keyring {
+			if k.Algorithm == security.AlgorithmRSA2048 && k.Legacy {
+				kidsToCheck = append(kidsToCheck, k.KID)
+			}
+		}
+		if len(kidsToCheck) == 0 {
+			p.Logger.WarnContext(ctx, "failure to find legacy kids for rsa")
 			return nil, err400("bad request")
 		}
 	}
-	symmetricKey, err := p.CryptoProvider.RSADecrypt(crypto.SHA1, kid, "", body.KeyAccess.WrappedKey)
+	symmetricKey, err := p.CryptoProvider.RSADecrypt(crypto.SHA1, kidsToCheck[0], "", body.KeyAccess.WrappedKey)
+	for _, kid := range kidsToCheck[1:] {
+		p.Logger.WarnContext(ctx, "continue paging through legacy KIDs for kid free kao", "err", err)
+		if err == nil {
+			break
+		}
+		symmetricKey, err = p.CryptoProvider.RSADecrypt(crypto.SHA1, kid, "", body.KeyAccess.WrappedKey)
+	}
 	if err != nil {
 		p.Logger.WarnContext(ctx, "failure to decrypt dek", "err", err)
 		return nil, err400("bad request")

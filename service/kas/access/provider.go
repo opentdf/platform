@@ -39,6 +39,9 @@ type KASConfig struct {
 type CurrentKeyFor struct {
 	Algorithm string `mapstructure:"alg"`
 	KID       string `mapstructure:"kid"`
+	// Indicates that the key should not be serves by default,
+	// but instead is allowed for legacy reasons on decrypt (rewrap) only
+	Legacy bool `mapstructure:"legacy"`
 }
 
 func (p *Provider) IsReady(ctx context.Context) error {

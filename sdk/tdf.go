@@ -101,7 +101,7 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 	}
 
 	// How do we want to handle different dial options for different KAS servers?
-	err = fillInPublicKeys(tdfConfig.kasInfoList, s.dialOptions...)
+	err = s.fillInPublicKeys(tdfConfig.kasInfoList)
 	if err != nil {
 		return nil, err
 	}
@@ -742,13 +742,13 @@ func validateRootSignature(manifest Manifest, secret []byte) (bool, error) {
 	return false, nil
 }
 
-func fillInPublicKeys(kasInfos []KASInfo, opts ...grpc.DialOption) error {
+func (s SDK) fillInPublicKeys(kasInfos []KASInfo) error {
 	for idx, kasInfo := range kasInfos {
 		if kasInfo.PublicKey != "" {
 			continue
 		}
 
-		publicKey, err := getPublicKey(kasInfo, opts...)
+		publicKey, err := s.getPublicKey(kasInfo)
 		if err != nil {
 			return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", kasInfo.URL, err)
 		}

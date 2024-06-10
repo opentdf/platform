@@ -87,6 +87,9 @@ func Start(f ...StartOptions) error {
 		}
 	}
 
+	// Use IPC for the SDK client
+	sdkOptions = append(sdkOptions, sdk.WithIPC())
+
 	client, err := sdk.New("", sdkOptions...)
 	if err != nil {
 		slog.Error("issue creating sdk client", slog.String("error", err.Error()))

@@ -55,6 +55,8 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 
 	auditParams.ObjectID = item.GetId()
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.Attribute = item
 	return rsp, nil
 }
 

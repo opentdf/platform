@@ -106,7 +106,7 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
 
-	updatedRM, err := s.dbClient.UpdateResourceMapping(
+	item, err := s.dbClient.UpdateResourceMapping(
 		ctx,
 		resourceMappingID,
 		req,
@@ -116,12 +116,20 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("resourceMapping", req.String()))
 	}
 
+	// UpdateResourceMapping only returns the ID of the updated resource mapping
+	// so we need to fetch the updated resource mapping to compute the audit diff
+	updatedRM, err := s.dbClient.GetResourceMapping(ctx, resourceMappingID)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
+	}
+
 	auditParams.Original = originalRM
 	auditParams.Updated = updatedRM
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &resourcemapping.UpdateResourceMappingResponse{
-		ResourceMapping: updatedRM,
+		ResourceMapping: item,
 	}, nil
 }
 

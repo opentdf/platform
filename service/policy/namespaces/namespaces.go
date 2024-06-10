@@ -124,9 +124,17 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", namespaceID))
 	}
 
-	updatedNamespace, err := ns.dbClient.UpdateNamespace(ctx, namespaceID, req)
+	item, err := ns.dbClient.UpdateNamespace(ctx, namespaceID, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", namespaceID))
+	}
+
+	// UpdateNamespace only returns the ID of the updated namespace, so we need to
+	// fetch the updated namespace to compute the audit diff
+	updatedNamespace, err := ns.dbClient.GetNamespace(ctx, namespaceID)
+	if err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", namespaceID))
 	}
 
 	auditParams.Original = originalNamespace
@@ -134,7 +142,7 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces
 	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	ns.logger.Debug("updated namespace", slog.String("id", namespaceID))
 
-	rsp.Namespace = updatedNamespace
+	rsp.Namespace = item
 	return rsp, nil
 }
 
@@ -156,6 +164,8 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *namesp
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", namespaceID))
 	}
 
+	// DeactivateNamespace actually returns the full namespace object so we can
+	// use the result to compute the audit diff
 	updatedNamespace, err := ns.dbClient.DeactivateNamespace(ctx, namespaceID)
 	if err != nil {
 		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)

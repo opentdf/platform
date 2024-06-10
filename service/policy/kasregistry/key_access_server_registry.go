@@ -102,10 +102,18 @@ func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", kasID))
 	}
 
-	updatedKAS, err := s.dbClient.UpdateKeyAccessServer(ctx, kasID, req)
+	item, err := s.dbClient.UpdateKeyAccessServer(ctx, kasID, req)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("keyAccessServer", req.String()))
+	}
+
+	// UpdateKeyAccessServer only returns the ID of the updated KAS, so we need to
+	// fetch the updated KAS to compute the audit diff
+	updatedKAS, err := s.dbClient.GetKeyAccessServer(ctx, kasID)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", kasID))
 	}
 
 	auditParams.Original = originalKAS
@@ -113,7 +121,7 @@ func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &kasr.UpdateKeyAccessServerResponse{
-		KeyAccessServer: updatedKAS,
+		KeyAccessServer: item,
 	}, nil
 }
 

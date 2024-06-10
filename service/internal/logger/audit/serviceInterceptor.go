@@ -20,7 +20,7 @@ func UnaryServerInterceptor(ctx context.Context, req any, _ *grpc.UnaryServerInf
 	// Get metadata from the context
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return nil, status.Error(codes.Unauthenticated, "missing metadata")
+		return nil, status.Error(codes.InvalidArgument, "missing metadata")
 	}
 
 	// Sets the user agent header on the context if it is present in the metadata

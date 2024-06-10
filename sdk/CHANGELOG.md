@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.7](https://github.com/opentdf/platform/compare/sdk/v0.2.6...sdk/v0.2.7) (2024-06-10)
+
+
+### Bug Fixes
+
+* **sdk:** convert platform endpoint to grpc dial format ([#941](https://github.com/opentdf/platform/issues/941)) ([3a72a54](https://github.com/opentdf/platform/commit/3a72a54a31d35d31dfcc13ac6e716d68c9c909d1))
+
 ## [0.2.6](https://github.com/opentdf/platform/compare/sdk/v0.2.5...sdk/v0.2.6) (2024-06-04)
 
 

@@ -177,7 +177,6 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 			if err != nil {
 				// if attribute an FQN does not exist
 				// return deny for all entity chains aginst this RA set and continue to next
-				slog.Error("ran into error", err)
 				if strings.Contains(err.Error(), db.ErrTextNotFound) {
 					for _, ec := range dr.GetEntityChains() {
 						decisionResp := &authorization.DecisionResponse{

@@ -76,13 +76,14 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		"https://example.com/attr/attr1/value/value1",
 	}
 
-	nanoTDFCOnfig, err := client.NewNanoTDFConfig(ocrypto.ECCModeSecp521r1)
+	nanoTDFCOnfig, err := client.NewNanoTDFConfig()
 	if err != nil {
 		return err
 	}
 
 	nanoTDFCOnfig.SetAttributes(attributes)
 	nanoTDFCOnfig.SetKasURL(fmt.Sprintf("http://%s/kas", cmd.Flag("platformEndpoint").Value.String()))
+	err = nanoTDFCOnfig.SetECCMode(ocrypto.ECCModeSecp521r1)
 
 	nTDFile := "sensitive.txt.ntdf"
 	strReader = strings.NewReader(plainText)

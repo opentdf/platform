@@ -72,6 +72,19 @@ func Start(f ...StartOptions) error {
 		return fmt.Errorf("issue registering services: %w", err)
 	}
 
+	// verify dependencies
+	slog.Info("verifying dependencies")
+	for name, service := range conf.Services {
+		if service.Enabled && (service.Dependencies != nil) {
+			for _, dep := range service.Dependencies {
+				if !conf.Services[dep].Enabled {
+					slog.Error(fmt.Sprintf("a dependency of %s was not enabled: %s", name, dep))
+					return fmt.Errorf("%s requires the following dependencies to be enabled: %v", name, service.Dependencies)
+				}
+			}
+		}
+	}
+
 	// Create the SDK client for services to use
 	var sdkOptions []sdk.Option
 	for name, service := range conf.Services {

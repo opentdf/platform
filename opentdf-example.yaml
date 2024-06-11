@@ -11,6 +11,8 @@ db:
 services:
   kas:
     enabled: true
+    dependencies:
+      - authorization
   policy:
     enabled: true
   entityresolution:
@@ -22,6 +24,9 @@ services:
     legacykeycloak: true
   authorization:
     enabled: true
+    dependencies:
+      - entityresolution
+      - policy
     ersurl: http://localhost:8080/entityresolution/resolve
     clientid: tdf-authorization-svc
     clientsecret: secret

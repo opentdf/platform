@@ -11,10 +11,15 @@ logger:
 services:
   kas:
     enabled: true
+    dependencies:
+      - authorization
   policy:
     enabled: true
   authorization:
     enabled: true
+    dependencies:
+      - entityresolution
+      - policy
     ersurl: http://localhost:8080/entityresolution/resolve
     clientid: tdf-authorization-svc
     clientsecret: secret

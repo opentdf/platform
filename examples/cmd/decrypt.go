@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"os"
 
@@ -27,7 +28,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	tdfFile := args[0]
 
 	// Create new client
-	client, err := sdk.New(cmd.Context().Value(RootConfigKey).(*ExampleConfig).PlatformEndpoint,
+	client, err := sdk.New(platformEndpoint,
 		sdk.WithInsecurePlaintextConn(),
 		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
 		sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
@@ -39,38 +40,42 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
 	defer file.Close()
-	cmd.Println("# TDF")
 
-	tdfreader, err := client.LoadTDF(file)
+	var magic [3]byte
+	var isNano bool
+	n, err := io.ReadFull(file, magic[:])
+	switch {
+	case err != nil:
+		return err
+	case n < 3:
+		return errors.New("file too small; no magic number found")
+	case bytes.HasPrefix(magic[:], []byte("L1L")):
+		isNano = true
+	default:
+		isNano = false
+	}
+	_, err = file.Seek(0, 0)
 	if err != nil {
 		return err
 	}
 
-	//Print decrypted string
-	_, err = io.Copy(os.Stdout, tdfreader)
-	if err != nil && err != io.EOF {
-		return err
-	}
-	cmd.Println("\n-----\n\n# NANO")
+	if !isNano {
+		tdfreader, err := client.LoadTDF(file)
+		if err != nil {
+			return err
+		}
 
-	nTdfFile, err := os.Open("sensitive.txt.ntdf")
-	if err != nil {
-		return err
-	}
-
-	outBuf := bytes.Buffer{}
-	_, err = client.ReadNanoTDF(io.Writer(&outBuf), nTdfFile)
-	if err != nil {
-		return err
-	}
-
-	if "Hello Virtru" == outBuf.String() {
-		cmd.Println("✅ NanoTDF test passed!")
+		//Print decrypted string
+		_, err = io.Copy(os.Stdout, tdfreader)
+		if err != nil && err != io.EOF {
+			return err
+		}
 	} else {
-		cmd.Println("❌ NanoTDF test failed!")
+		_, err = client.ReadNanoTDF(os.Stdout, file)
+		if err != nil {
+			return err
+		}
 	}
-
 	return nil
 }

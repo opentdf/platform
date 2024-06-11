@@ -29,6 +29,7 @@ import (
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/internal/logger/audit"
 	"github.com/opentdf/platform/service/kas/tdf3"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -309,23 +310,25 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 
 	access, err := canAccess(ctx, tok, *policy, p.SDK)
 
-	auditPolicy := transformAuditPolicy(policy, entity.Token, *p.Logger)
+	// Audit the TDF3 Rewrap
+	kasPolicy := ConvertToAuditKasPolicy(*policy)
+	auditEventParams := audit.RewrapAuditEventParams{
+		Policy:        kasPolicy,
+		IsSuccess:     access,
+		TDFFormat:     "tdf3",
+		Algorithm:     body.Algorithm,
+		PolicyBinding: body.KeyAccess.PolicyBinding,
+	}
 
 	if err != nil {
 		p.Logger.WarnContext(ctx, "Could not perform access decision!", "err", err)
-		err := p.Logger.Audit.RewrapFailure(ctx, *auditPolicy)
-		if err != nil {
-			p.Logger.ErrorContext(ctx, "failed to audit rewrap failure", "err", err)
-		}
+		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
 		return nil, err403("forbidden")
 	}
 
 	if !access {
 		p.Logger.WarnContext(ctx, "Access Denied; no reason given")
-		err := p.Logger.Audit.RewrapFailure(ctx, *auditPolicy)
-		if err != nil {
-			p.Logger.ErrorContext(ctx, "failed to audit rewrap failure", "err", err)
-		}
+		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
 		return nil, err403("forbidden")
 	}
 
@@ -337,17 +340,11 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 	rewrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "rewrap: ocrypto.AsymEncryption.encrypt failed", "err", err, "clientPublicKey", &body.ClientPublicKey)
-		err = p.Logger.Audit.RewrapFailure(ctx, *auditPolicy)
-		if err != nil {
-			p.Logger.ErrorContext(ctx, "failed to audit rewrap failure", "err", err)
-		}
+		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
 		return nil, err400("bad key for rewrap")
 	}
 
-	err = p.Logger.Audit.RewrapSuccess(ctx, *auditPolicy)
-	if err != nil {
-		p.Logger.ErrorContext(ctx, "failed to audit rewrap success", "err", err)
-	}
+	p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
 	return &kaspb.RewrapResponse{
 		EntityWrappedKey: rewrappedKey,
 		SessionPublicKey: "",
@@ -397,28 +394,29 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 
 	access, err := canAccess(ctx, tok, *policy, p.SDK)
 
-	auditPolicy := transformAuditPolicy(policy, entity.Token, *p.Logger)
+	// Audit the rewrap
+	kasPolicy := ConvertToAuditKasPolicy(*policy)
+	auditEventParams := audit.RewrapAuditEventParams{
+		Policy:    kasPolicy,
+		TDFFormat: "nano",
+		Algorithm: body.Algorithm,
+	}
 
 	if err != nil {
 		p.Logger.WarnContext(ctx, "Could not perform access decision!", "err", err)
-		err := p.Logger.Audit.RewrapFailure(ctx, *auditPolicy)
-		if err != nil {
-			p.Logger.ErrorContext(ctx, "failed to audit rewrap failure", "err", err)
-		}
+		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
 		return nil, err403("forbidden")
 	}
 
 	if !access {
 		p.Logger.WarnContext(ctx, "Access Denied; no reason given")
-		err := p.Logger.Audit.RewrapFailure(ctx, *auditPolicy)
-		if err != nil {
-			p.Logger.ErrorContext(ctx, "failed to audit rewrap failure", "err", err)
-		}
+		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
 		return nil, err403("forbidden")
 	}
 
 	pub, ok := body.PublicKey.(*ecdsa.PublicKey)
 	if !ok {
+		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
 		return nil, fmt.Errorf("failed to extract public key: %w", err)
 	}
 
@@ -426,23 +424,29 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 	pubKeyBytes := make([]byte, 1+len(pub.X.Bytes())+len(pub.Y.Bytes()))
 	pubKeyBytes[0] = 0x4 // ID for uncompressed format
 	if copy(pubKeyBytes[1:33], pub.X.Bytes()) != 32 || copy(pubKeyBytes[33:], pub.Y.Bytes()) != 32 {
+		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
 		return nil, fmt.Errorf("failed to serialize keypair: %v", pub)
 	}
 
 	privateKeyHandle, publicKeyHandle, err := p.CryptoProvider.GenerateEphemeralKasKeys()
 
 	if err != nil {
+		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
 		return nil, fmt.Errorf("failed to generate keypair: %w", err)
 	}
 	sessionKey, err := p.CryptoProvider.GenerateNanoTDFSessionKey(privateKeyHandle, []byte(body.ClientPublicKey))
 	if err != nil {
+		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
 		return nil, fmt.Errorf("failed to generate session key: %w", err)
 	}
 
 	cipherText, err := wrapKeyAES(sessionKey, symmetricKey)
 	if err != nil {
+		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
 		return nil, fmt.Errorf("failed to encrypt key: %w", err)
 	}
+
+	p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
 
 	return &kaspb.RewrapResponse{
 		EntityWrappedKey: cipherText,
@@ -491,17 +495,4 @@ func wrapKeyAES(sessionKey, dek []byte) ([]byte, error) {
 	}
 
 	return cipherText, nil
-}
-
-func transformAuditPolicy(policy *Policy, entityToken string, lg logger.Logger) *logger.AuditPolicy {
-	var token, err = jwt.Parse([]byte(entityToken), jwt.WithVerify(false))
-	if err != nil {
-		lg.Warn("unable to parse entity token", "err", err)
-	}
-
-	var dataAttributes []logger.AuditPolicySimpleAttribute
-	for _, attr := range policy.Body.DataAttributes {
-		dataAttributes = append(dataAttributes, logger.AuditPolicySimpleAttribute{URI: attr.URI})
-	}
-	return logger.CreateAuditPolicy(policy.UUID, dataAttributes, policy.Body.Dissem, token)
 }

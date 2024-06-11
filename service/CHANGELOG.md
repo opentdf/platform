@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.6](https://github.com/opentdf/platform/compare/service/v0.4.5...service/v0.4.6) (2024-06-11)
+
+
+### Features
+
+* **core:** Rewrap and Policy CRUD Audit Events ([#889](https://github.com/opentdf/platform/issues/889)) ([d909a5e](https://github.com/opentdf/platform/commit/d909a5e49c2e87884651c56cd30b9331ed4044c7))
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#960](https://github.com/opentdf/platform/issues/960)) ([6b96fee](https://github.com/opentdf/platform/commit/6b96feef714e0e5bdfbdfe3ea9a56a36d4b50289))
+* **core:** remove /health from casbin default policy ([#943](https://github.com/opentdf/platform/issues/943)) ([cb3d8df](https://github.com/opentdf/platform/commit/cb3d8df468e62d797e94c474f2900aff527edec0)), closes [#905](https://github.com/opentdf/platform/issues/905)
+* **core:** remove public routes from casbin default policy ([#951](https://github.com/opentdf/platform/issues/951)) ([57c2a45](https://github.com/opentdf/platform/commit/57c2a4576060c0dcd87cfc6b170b8dd03c6501c8))
+* **core:** Return 404 if public key not found ([#888](https://github.com/opentdf/platform/issues/888)) ([8b110f0](https://github.com/opentdf/platform/commit/8b110f0f608e82ad3a76c9d3bcd586beaaf20b1d))
+* **sdk:** convert platform endpoint to grpc dial format ([#941](https://github.com/opentdf/platform/issues/941)) ([3a72a54](https://github.com/opentdf/platform/commit/3a72a54a31d35d31dfcc13ac6e716d68c9c909d1))
+
 ## [0.4.5](https://github.com/opentdf/platform/compare/service/v0.4.4...service/v0.4.5) (2024-06-04)
 
 

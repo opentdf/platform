@@ -528,7 +528,9 @@ func (a Authentication) isPublicRoute(path string) func(string) bool {
 			slog.Warn("error matching route", slog.String("route", route), slog.String("path", path), slog.String("error", err.Error()))
 			return false
 		}
-		slog.Debug("matching route", slog.String("route", route), slog.String("path", path), slog.Bool("matched", matched))
+		if matched {
+			slog.Debug("matching route", slog.String("route", route), slog.String("path", path), slog.Bool("matched", matched))
+		}
 		return matched
 	}
 }

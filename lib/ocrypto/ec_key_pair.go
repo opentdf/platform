@@ -51,6 +51,17 @@ func GetECCurveFromECCMode(mode ECCMode) (elliptic.Curve, error) {
 	return c, nil
 }
 
+// NewECKeyPairForCurve Generates an EC key pair of the given curve.
+func NewECKeyPairForCurve(curve elliptic.Curve) (ECKeyPair, error) {
+	privateKey, err := ecdsa.GenerateKey(curve, rand.Reader)
+	if err != nil {
+		return ECKeyPair{}, fmt.Errorf("ec.GenerateKey failed: %w", err)
+	}
+
+	ecKeyPair := ECKeyPair{PrivateKey: privateKey}
+	return ecKeyPair, nil
+}
+
 // NewECKeyPair Generates an EC key pair of the given bit size.
 func NewECKeyPair(mode ECCMode) (ECKeyPair, error) {
 	var c elliptic.Curve
@@ -163,7 +174,7 @@ func ConvertToECDHPrivateKey(key interface{}) (*ecdh.PrivateKey, error) {
 func CalculateHKDF(salt []byte, secret []byte) ([]byte, error) {
 	hkdfObj := hkdf.New(sha256.New, secret, salt, nil)
 
-	derivedKey := make([]byte, len(secret))
+	derivedKey := make([]byte, len(salt))
 	_, err := io.ReadFull(hkdfObj, derivedKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to derive hkdf key: %w", err)

@@ -97,6 +97,23 @@ func (header *NanoTDFHeader) VerifyPolicyBinding() (bool, error) {
 	}
 	binding := digest[len(digest)-kNanoTDFGMACLength:]
 	return bytes.Equal(binding, header.gmacPolicyBinding), nil
+
+// GetECMode Return ECCMode of the nano tdf
+func (header *NanoTDFHeader) GetECMode() ocrypto.ECCMode {
+	return header.bindCfg.eccMode
+}
+
+// GetCurveName return the curve used for creating nano tdf
+func (header *NanoTDFHeader) GetCurveName() (string, error) {
+	if header.bindCfg.eccMode == ocrypto.ECCModeSecp256r1 {
+		return "secp256r1", nil
+	} else if header.bindCfg.eccMode == ocrypto.ECCModeSecp384r1 {
+		return "secp384r1", nil
+	} else if header.bindCfg.eccMode == ocrypto.ECCModeSecp521r1 {
+		return "secp521r1", nil
+	} else {
+		return "", ErrNanoTDFECCurveNotSupported
+	}
 }
 
 // ============================================================================================================
@@ -200,7 +217,8 @@ const (
 )
 
 const (
-	ErrNanoTDFHeaderRead = Error("nanoTDF read error")
+	ErrNanoTDFHeaderRead          = Error("nanoTDF read error")
+	ErrNanoTDFECCurveNotSupported = Error("ec curve not supported")
 )
 
 // Binding config byte format
@@ -550,11 +568,6 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	size += uint32(l)
 	header.bindCfg = deserializeBindingCfg(oneBytes[0])
 
-	// check  ephemeral ECC Params Enum
-	if header.bindCfg.eccMode != ocrypto.ECCModeSecp256r1 {
-		return header, 0, fmt.Errorf("current implementation of nano tdf only support secp256r1 curve")
-	}
-
 	// read  Payload and Sig Mode
 	l, err = reader.Read(oneBytes)
 	if err != nil {
@@ -674,12 +687,12 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 		return 0, fmt.Errorf("config.kasURL failed:%w", err)
 	}
 
-	kasPublicKey, err := getECPublicKey(kasURL, s.dialOptions...)
+	kasPublicKey, err := getECPublicKey(kasURL, config.bindCfg.eccMode, s.dialOptions...)
 	if err != nil {
 		return 0, fmt.Errorf("getECPublicKey failed:%w", err)
 	}
 
-	slog.Debug("CreateNanoTDF", slog.String("header size", kasPublicKey))
+	slog.Debug("CreateNanoTDF", slog.String("kas public key", kasPublicKey))
 
 	config.kasPublicKey, err = ocrypto.ECPubKeyFromPem([]byte(kasPublicKey))
 	if err != nil {
@@ -782,7 +795,7 @@ func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error)
 		return 0, fmt.Errorf("newKASClient failed: %w", err)
 	}
 
-	symmetricKey, err := client.unwrapNanoTDF(string(encodedHeader), kasURL)
+	symmetricKey, err := client.unwrapNanoTDF(header.GetECMode(), string(encodedHeader), kasURL)
 	if err != nil {
 		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
@@ -841,9 +854,17 @@ func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error)
 }
 
 // getECPublicKey - Contact the specified KAS and get its public key
-func getECPublicKey(kasURL string, opts ...grpc.DialOption) (string, error) {
+func getECPublicKey(kasURL string, ecMode ocrypto.ECCMode, opts ...grpc.DialOption) (string, error) {
 	req := kas.PublicKeyRequest{}
 	req.Algorithm = "ec:secp256r1"
+	if ecMode == ocrypto.ECCModeSecp384r1 {
+		req.Algorithm = "ec:secp384r1"
+	} else {
+		req.Algorithm = "ec:secp521r1"
+	}
+
+	slog.Info(fmt.Sprintf("kas public key algorithm: %s", req.Algorithm))
+
 	grpcAddress, err := getGRPCAddress(kasURL)
 	if err != nil {
 		return "", err

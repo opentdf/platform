@@ -383,8 +383,8 @@ func (s StandardCrypto) GenerateNanoTDFSymmetricKey(kasKID string, ephemeralPubl
 	return key, nil
 }
 
-func (s StandardCrypto) GenerateEphemeralKasKeys() (any, []byte, error) {
-	ephemeralKeyPair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
+func (s StandardCrypto) GenerateEphemeralKasKeys(curve elliptic.Curve) (any, []byte, error) {
+	ephemeralKeyPair, err := ocrypto.NewECKeyPairForCurve(curve)
 	if err != nil {
 		return nil, nil, fmt.Errorf("ocrypto.NewECKeyPair failed: %w", err)
 	}
@@ -423,6 +423,21 @@ func (s StandardCrypto) GenerateNanoTDFSessionKey(privateKey any, ephemeralPubli
 		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
 	}
 	return derivedKey, nil
+}
+
+func ConvertEphemeralPublicKeyBytesToECDSAPublicKey(curve elliptic.Curve, ephemeralPublicKeyBytes []byte) (*ecdsa.PublicKey, error) {
+	// Converting ephemeralPublicKey byte array to *big.Int
+	x, y := elliptic.UnmarshalCompressed(curve, ephemeralPublicKeyBytes)
+	if x == nil {
+		return nil, errors.New("failed to unmarshal compressed public key")
+	}
+	// Creating ecdsa.PublicKey from *big.Int
+	ephemeralECDSAPublicKey := &ecdsa.PublicKey{
+		Curve: curve,
+		X:     x,
+		Y:     y,
+	}
+	return ephemeralECDSAPublicKey, nil
 }
 
 func (s StandardCrypto) Close() {

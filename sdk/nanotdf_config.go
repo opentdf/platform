@@ -30,9 +30,9 @@ type NanoTDFConfig struct {
 type NanoTDFOption func(*NanoTDFConfig) error
 
 // NewNanoTDFConfig - Create a new instance of a nanoTDF config
-func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
-	// TODO FIXME - how to pass in mode value and use here before 'c' is initialized?
-	newECKeyPair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
+func (s SDK) NewNanoTDFConfig(ecMode ocrypto.ECCMode) (*NanoTDFConfig, error) {
+
+	newECKeyPair, err := ocrypto.NewECKeyPair(ecMode)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
 	}
@@ -42,7 +42,7 @@ func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
 		bindCfg: bindingConfig{
 			useEcdsaBinding: false,
 			padding:         0,
-			eccMode:         ocrypto.ECCModeSecp256r1,
+			eccMode:         ecMode,
 		},
 		cipher: kCipher96AuthTagSize,
 		sigCfg: signatureConfig{

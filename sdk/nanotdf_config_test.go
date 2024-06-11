@@ -1,13 +1,14 @@
 package sdk
 
 import (
+	"github.com/opentdf/platform/lib/ocrypto"
 	"testing"
 )
 
 // TestNanoTDFConfig1 - Create a new config, verify that the config contains valid PEMs for the key pair
 func TestNanoTDFConfig1(t *testing.T) {
 	var s SDK
-	conf, err := s.NewNanoTDFConfig()
+	conf, err := s.NewNanoTDFConfig(ocrypto.ECCModeSecp256r1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +37,7 @@ func TestNanoTDFConfig2(t *testing.T) {
 	)
 
 	var s SDK
-	conf, err := s.NewNanoTDFConfig()
+	conf, err := s.NewNanoTDFConfig(ocrypto.ECCModeSecp256r1)
 	if err != nil {
 		t.Fatal(err)
 	}

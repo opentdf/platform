@@ -76,7 +76,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		"https://example.com/attr/attr1/value/value1",
 	}
 
-	nanoTDFCOnfig, err := client.NewNanoTDFConfig()
+	nanoTDFCOnfig, err := client.NewNanoTDFConfig(ocrypto.ECCModeSecp521r1)
 	if err != nil {
 		return err
 	}

@@ -390,7 +390,19 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
 	}
 
-	ecCurve, err := header.ECCurve()
+	//ecCurve, err := header.ECCurve()
+	ecmode := header.GetECMode()
+	curve, err := ocrypto.GetCurveFromECCMode(ecmode)
+	if err != nil {
+		return nil, fmt.Errorf("GetCurveFromECCMode failed: %w", err)
+	}
+
+	curveName, err := header.GetCurveName()
+	if err != nil {
+		return nil, fmt.Errorf("GetCurveName failed: %w", err)
+	}
+
+	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(curve, curveName, header.EphemeralKey)
 	if err != nil {
 		return nil, fmt.Errorf("ECCurve failed: %w", err)
 	}
@@ -458,7 +470,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		return nil, fmt.Errorf("failed to serialize keypair: %v", pub)
 	}
 
-	privateKeyHandle, publicKeyHandle, err := p.CryptoProvider.GenerateEphemeralKasKeys()
+	privateKeyHandle, publicKeyHandle, err := p.CryptoProvider.GenerateEphemeralKasKeys(curve)
 
 	if err != nil {
 		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)

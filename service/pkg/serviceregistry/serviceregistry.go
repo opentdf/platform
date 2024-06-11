@@ -19,9 +19,10 @@ import (
 // ServiceConfig is a struct that holds the configuration for a service and used for the global
 // config rollup powered by Viper (https://github.com/spf13/viper)
 type ServiceConfig struct {
-	Enabled    bool                   `yaml:"enabled"`
-	Remote     RemoteServiceConfig    `yaml:"remote"`
-	ExtraProps map[string]interface{} `json:"-" mapstructure:",remain"`
+	Enabled      bool                   `yaml:"enabled"`
+	Dependencies []string               `yaml:"dependencies"`
+	Remote       RemoteServiceConfig    `yaml:"remote"`
+	ExtraProps   map[string]interface{} `json:"-" mapstructure:",remain"`
 }
 
 type RemoteServiceConfig struct {

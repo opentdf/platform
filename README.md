@@ -56,10 +56,17 @@ To contribute to the OpenTDF platform, you'll need bit more set setup and should
 
 ## For Consumers
 
-The OpenTDF service is the main entry point for the OpenTDF platform. [See service documentation](./service/README.md)
-for more information.
+> [!WARNING]
+> OpenTDF is a platform for developers to build secure, scalable, and compliant applications. It is
+> not a turn-key solution for end-users. Please see the Contributing section for more information.
 
-### Quick Start
+<!-- TODO build a docker compose for consumers to use -->
+
+## For Contributors
+
+This section is focused on the development of the OpenTDF platform.
+
+### Quick Start for Development
 
 <!-- START copy ./service/README.md#quick-start -->
 
@@ -100,10 +107,6 @@ Run the OpenTDF platform service.
 go run ./service start
 ```
 <!-- END copy ./service/README#quick-start -->
-
-## For Contributors
-
-This section is focused on the development of the OpenTDF platform.
 
 ### Libraries
 

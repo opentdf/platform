@@ -15,23 +15,23 @@ services:
     enabled: true
   entityresolution:
     enabled: true
-    url: http://keycloak:8888/auth
+    url: http://localhost:8888/auth
     clientid: "tdf-entity-resolution"
     clientsecret: "secret"
     realm: "opentdf"
-    legacykeycloak: true
+    legacylocalhost: true
   authorization:
     enabled: true
     ersurl: http://localhost:8080/entityresolution/resolve
     clientid: tdf-authorization-svc
     clientsecret: secret
-    tokenendpoint: http://keycloak:8888/auth/realms/opentdf/protocol/openid-connect/token
+    tokenendpoint: http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token
 server:
   auth:
     enabled: true
     enforceDPoP: false
     audience: "http://localhost:8080"
-    issuer: http://keycloak:8888/auth/realms/opentdf
+    issuer: http://localhost:8888/auth/realms/opentdf
     policy:
       ## Default policy for all requests
       default: #"role:standard"
@@ -99,15 +99,15 @@ server:
     standard:
       rsa:
         123:
-          private_key_path: /keys/kas-private.pem
-          public_key_path: /keys/kas-cert.pem
+          private_key_path: ./keys/kas-private.pem
+          public_key_path: ./keys/kas-cert.pem
         456:
-          private_key_path: /keys/kas-private.pem
-          public_key_path: /keys/kas-cert.pem
+          private_key_path: ./keys/kas-private.pem
+          public_key_path: ./keys/kas-cert.pem
       ec:
         123:
-          private_key_path: /keys/kas-ec-private.pem
-          public_key_path: /keys/kas-ec-cert.pem
+          private_key_path: ./keys/kas-ec-private.pem
+          public_key_path: ./keys/kas-ec-cert.pem
   port: 8080
 opa:
   embedded: true # Only for local development

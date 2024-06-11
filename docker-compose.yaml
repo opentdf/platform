@@ -8,7 +8,7 @@ services:
     - ./keys/localhost.key:/etc/x509/tls/localhost.key
     - ./keys/ca.jks:/truststore/truststore.jks
     # This is kc 24.0.1 with opentdf protocol mapper on board
-    image: cgr.dev/chainguard/keycloak@sha256:37895558d2e0e93ffff75da5900f9ae7e79ec6d1c390b18b2ecea6cee45ec26f
+    image: ghcr.io/opentdf/keycloak:sha-8a6d35a
     restart: always
     command:
     - "start-dev"

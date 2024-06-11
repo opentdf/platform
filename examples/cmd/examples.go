@@ -1,39 +1,20 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
-type configKey string
-
-const RootConfigKey configKey = "example-config"
-
-type ExampleConfig struct {
-	PlatformEndpoint string
-}
+var platformEndpoint string
 
 var ExamplesCmd = &cobra.Command{
 	Use: "examples",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		platformEndpoint, err := cmd.Parent().PersistentFlags().GetString("platformEndpoint")
-		if err != nil {
-			return err
-		}
-		config := &ExampleConfig{
-			PlatformEndpoint: platformEndpoint,
-		}
-		ctx := context.WithValue(cmd.Context(), RootConfigKey, config)
-		cmd.SetContext(ctx)
-		return nil
-	},
 }
 
 func init() {
-	ExamplesCmd.PersistentFlags().StringP("platformEndpoint", "e", "localhost:8080", "Platform Endpoint")
+	ExamplesCmd.PersistentFlags().StringVarP(&platformEndpoint, "platformEndpoint", "e", "localhost:8080", "Platform Endpoint")
 }
 
 func Execute() {

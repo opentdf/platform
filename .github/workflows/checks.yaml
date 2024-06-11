@@ -176,13 +176,11 @@ jobs:
       - run: docker compose up -d --wait --wait-timeout 240
       - run: go run ./service provision keycloak
       - run: go run ./service provision fixtures
-      - run: 
       - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
         name: start server in background
         with:
           run: |
-            go build -o service-app ${{ matrix.crypto == 'hsm' && '--tags=opentdf.hsm' || '' }} ./service
-            .github/scripts/watch.sh ./service-app start
+            go run ${{ matrix.crypto == 'hsm' && '--tags=opentdf.hsm' || '' }} ./service start
           wait-on: |
             tcp:localhost:8080
           log-output-if: true

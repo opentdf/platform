@@ -15,7 +15,6 @@ import (
 
 var (
 	nanoFormat           bool
-	noKIDInKAO           bool
 	outputName           string
 	joinedDataAttributes string
 )
@@ -27,10 +26,6 @@ func init() {
 		RunE:  encrypt,
 		Args:  cobra.MinimumNArgs(1),
 	}
-	encryptCmd.Flags().StringVarP(&joinedDataAttributes, "data-attributes", "a", "https://example.com/attr/attr1/value/value1", "space separated list of data attributes")
-	encryptCmd.Flags().StringVarP(&outputName, "output", "o", "sensitive.txt.tdf", "name or path of output file; - for stdout")
-	encryptCmd.Flags().BoolVar(&nanoFormat, "nano", false, "Output in nanoTDF format")
-	encryptCmd.Flags().BoolVar(&noKIDInKAO, "no-kid-in-kao", false, "[deprecated] Disable storing key identifiers in TDF KAOs")
 	encryptCmd.Flags().BoolVar(&nanoFormat, "nano", false, "Output in nanoTDF format")
 	encryptCmd.Flags().StringVarP(&outputName, "output", "o", "sensitive.txt.tdf", "name or path of output file; - for stdout")
 	encryptCmd.Flags().StringVarP(&joinedDataAttributes, "data-attributes", "a", "https://example.com/attr/attr1/value/value1", "space separated list of data attributes")
@@ -46,18 +41,13 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	plainText := args[0]
 	in := strings.NewReader(plainText)
 
-	opts := []sdk.Option{
+	// Create new offline client
+	client, err := sdk.New(
+		platformEndpoint,
 		sdk.WithInsecurePlaintextConn(),
 		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
 		sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
-	}
-
-	if noKIDInKAO {
-		opts = append(opts, sdk.WithNoKIDInKAO())
-	}
-
-	// Create new offline client
-	client, err := sdk.New(platformEndpoint, opts...)
+	)
 	if err != nil {
 		return err
 	}

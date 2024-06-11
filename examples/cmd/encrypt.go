@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -53,16 +52,18 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var out io.Writer
-	if outputName == "-" {
-		out = os.Stdout
-	} else {
-		tdfFile, err := os.Create(outputName)
+	out := os.Stdout
+	if outputName != "-" {
+		out, err = os.Create(outputName)
 		if err != nil {
 			return err
 		}
-		defer tdfFile.Close()
 	}
+	defer func() {
+		if outputName != "-" {
+			out.Close()
+		}
+	}()
 
 	if !nanoFormat {
 

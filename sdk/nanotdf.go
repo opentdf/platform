@@ -106,15 +106,15 @@ func (header *NanoTDFHeader) GetECMode() ocrypto.ECCMode {
 
 // GetCurveName return the curve used for creating nano tdf
 func (header *NanoTDFHeader) GetCurveName() (string, error) {
-	if header.bindCfg.eccMode == ocrypto.ECCModeSecp256r1 {
+	switch header.bindCfg.eccMode {
+	case ocrypto.ECCModeSecp256r1:
 		return "secp256r1", nil
-	} else if header.bindCfg.eccMode == ocrypto.ECCModeSecp384r1 {
+	case ocrypto.ECCModeSecp384r1:
 		return "secp384r1", nil
-	} else if header.bindCfg.eccMode == ocrypto.ECCModeSecp521r1 {
+	case ocrypto.ECCModeSecp521r1:
 		return "secp521r1", nil
-	} else {
-		return "", ErrNanoTDFECCurveNotSupported
 	}
+	return "", ErrNanoTDFECCurveNotSupported
 }
 
 // ============================================================================================================
@@ -864,7 +864,7 @@ func getECPublicKey(kasURL string, ecMode ocrypto.ECCMode, opts ...grpc.DialOpti
 		req.Algorithm = "ec:secp521r1"
 	}
 
-	slog.Info(fmt.Sprintf("kas public key algorithm: %s", req.Algorithm))
+	slog.Info(fmt.Sprintf("kas public key algorithm: %s", req.GetAlgorithm))
 
 	grpcAddress, err := getGRPCAddress(kasURL)
 	if err != nil {

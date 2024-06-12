@@ -295,9 +295,9 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				as.logger.Audit.GetDecision(ctx, audit.GetDecisionEventParams{
 					Decision:                auditDecision,
 					EntityChainEntitlements: auditECEntitlements,
-					EntityChainId:           decisionResp.GetEntityChainId(),
+					EntityChainID:           decisionResp.GetEntityChainId(),
 					EntityDecisions:         auditEntityDecisions,
-					ResourceAttributeId:     decisionResp.GetResourceAttributesId(),
+					ResourceAttributeID:     decisionResp.GetResourceAttributesId(),
 				})
 				rsp.DecisionResponses = append(rsp.DecisionResponses, decisionResp)
 			}

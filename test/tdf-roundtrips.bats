@@ -191,7 +191,6 @@ teardown_file() {
   go run ./examples decrypt sensitive.txt.ntdf | grep "Hello NanoTDF"
 }
 
-# bats test_tags=bats:focus
 @test "examples: legacy key support Z-TDF" {
   echo [INFO] encrypting samples
   go run ./examples encrypt -o sensitive-with-no-kid.txt.tdf --no-kid-in-kao "Hello Legacy"

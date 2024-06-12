@@ -163,7 +163,7 @@ setup_file() {
   wait_for_green
 }
 
-teardown_file() {
+  teardown_file() {
   if [ -f opentdf-test-backup.yaml.bak ]; then
     mv opentdf-test-backup.yaml.bak opentdf.yaml
   fi
@@ -173,11 +173,10 @@ teardown_file() {
   run go run ./examples encrypt "Hello Zero Trust"
   echo "$output"
 
-
   # Has expected kid
   kid=$(jq -r '.encryptionInformation.keyAccess[0].kid' <<<"${output}")
   echo "$kid"
-  [ $kid = r2 ]
+  [ $kid = r1 ]
 
   # decrypts properly
   run go run ./examples decrypt sensitive.txt.tdf
@@ -192,6 +191,9 @@ teardown_file() {
 }
 
 @test "examples: legacy key support Z-TDF" {
+  echo [INFO] validating default key is r1
+  [ $(grpcurl -plaintext "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
+
   echo [INFO] encrypting samples
   go run ./examples encrypt -o sensitive-with-no-kid.txt.tdf --no-kid-in-kao "Hello Legacy"
   go run ./examples encrypt -o sensitive-with-kid.txt.tdf "Hello with Key Identifier"
@@ -204,6 +206,9 @@ teardown_file() {
   update_config e2 e1 r2 r1
   sleep 4
   wait_for_green
+
+  echo [INFO] validating default key is r2
+  [ $(grpcurl -plaintext "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r2 ]
 
   echo [INFO] decrypting after key rotation
   go run ./examples decrypt sensitive-with-no-kid.txt.tdf | grep "Hello Legacy"

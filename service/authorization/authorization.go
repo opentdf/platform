@@ -210,12 +210,15 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				// TODO: we should already have the subject mappings here and be able to just use OPA to trim down the known data attr values to the ones matched up with the entities
 				//
 				entities := ec.GetEntities()
-				auditECEntitlements := make([]audit.EntityChainEntitlement, 0)
 				req := authorization.GetEntitlementsRequest{
 					Entities: entities,
 					Scope:    &allPertinentFqnsRA,
 				}
+
+				auditECEntitlements := make([]audit.EntityChainEntitlement, 0)
+				auditEntityDecisions := make([]audit.EntityDecision, 0)
 				entityAttrValues := make(map[string][]string)
+
 				if len(entities) == 0 || len(allPertinentFqnsRA.GetAttributeValueFqns()) == 0 {
 					slog.WarnContext(ctx, "Empty entity list and/or entity data attribute list")
 				} else {
@@ -250,10 +253,24 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				}
 				// check the decisions
 				decision := authorization.DecisionResponse_DECISION_PERMIT
-				for _, d := range decisions {
+				for entityID, d := range decisions {
+					// Set overall decision as well as individual entity decision
+					entityDecision := authorization.DecisionResponse_DECISION_PERMIT
 					if !d.Access {
+						entityDecision = authorization.DecisionResponse_DECISION_DENY
 						decision = authorization.DecisionResponse_DECISION_DENY
 					}
+
+					// Add entity decision to audit list
+					entityEntitlementFqns := entityAttrValues[entityID]
+					if entityEntitlementFqns == nil {
+						entityEntitlementFqns = []string{}
+					}
+					auditEntityDecisions = append(auditEntityDecisions, audit.EntityDecision{
+						EntityID:     entityID,
+						Decision:     entityDecision.String(),
+						Entitlements: entityEntitlementFqns,
+					})
 				}
 
 				decisionResp := &authorization.DecisionResponse{
@@ -277,8 +294,9 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				}
 				as.logger.Audit.GetDecision(ctx, audit.GetDecisionEventParams{
 					Decision:                auditDecision,
-					EntityChainId:           decisionResp.GetEntityChainId(),
 					EntityChainEntitlements: auditECEntitlements,
+					EntityChainId:           decisionResp.GetEntityChainId(),
+					EntityDecisions:         auditEntityDecisions,
 					ResourceAttributeId:     decisionResp.GetResourceAttributesId(),
 				})
 				rsp.DecisionResponses = append(rsp.DecisionResponses, decisionResp)

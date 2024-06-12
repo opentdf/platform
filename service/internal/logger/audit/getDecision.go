@@ -25,11 +25,18 @@ type EntityChainEntitlement struct {
 	AttributeValueReferences []string `json:"attributeValueReferences"`
 }
 
+type EntityDecision struct {
+	EntityID     string   `json:"id"`
+	Decision     string   `json:"decision"`
+	Entitlements []string `json:"entitlements"`
+}
+
 type GetDecisionEventParams struct {
 	Decision                DecisionResult
-	EntityChainId           string
-	ResourceAttributeId     string
 	EntityChainEntitlements []EntityChainEntitlement
+	EntityChainId           string
+	EntityDecisions         []EntityDecision
+	ResourceAttributeId     string
 }
 
 func CreateGetDecisionEvent(ctx context.Context, params GetDecisionEventParams) (*EventObject, error) {
@@ -39,18 +46,6 @@ func CreateGetDecisionEvent(ctx context.Context, params GetDecisionEventParams) 
 	result := ActionResultSuccess
 	if params.Decision == GetDecisionResultDeny {
 		result = ActionResultFailure
-	}
-
-	// Build the actor attributes for the event based off of the entity chain entitlements
-	actorAttributes := make([]interface{}, len(params.EntityChainEntitlements))
-	for i, v := range params.EntityChainEntitlements {
-		actorAttributes[i] = struct {
-			EntityID                 string   `json:"entityId"`
-			AttributeValueReferences []string `json:"attributeValueReferences"`
-		}{
-			EntityID:                 v.EntityID,
-			AttributeValueReferences: v.AttributeValueReferences,
-		}
 	}
 
 	return &EventObject{
@@ -64,10 +59,9 @@ func CreateGetDecisionEvent(ctx context.Context, params GetDecisionEventParams) 
 		},
 		Actor: auditEventActor{
 			ID:         params.EntityChainId,
-			Attributes: actorAttributes,
+			Attributes: buildActorAttributes(params.EntityChainEntitlements),
 		},
-		// TODO: EventMetadata
-		EventMetaData: map[string]string{},
+		EventMetaData: buildEventMetadata(params.EntityDecisions),
 		Owner:         CreateNilOwner(),
 		ClientInfo: eventClientInfo{
 			Platform:  "authorization",
@@ -77,4 +71,40 @@ func CreateGetDecisionEvent(ctx context.Context, params GetDecisionEventParams) 
 		RequestID: auditDataFromContext.RequestID,
 		Timestamp: time.Now().Format(time.RFC3339),
 	}, nil
+}
+
+func buildActorAttributes(entityChainEntitlements []EntityChainEntitlement) []interface{} {
+	actorAttributes := make([]interface{}, len(entityChainEntitlements))
+	for i, v := range entityChainEntitlements {
+		actorAttributes[i] = struct {
+			EntityID                 string   `json:"entityId"`
+			AttributeValueReferences []string `json:"attributeValueReferences"`
+		}{
+			EntityID:                 v.EntityID,
+			AttributeValueReferences: v.AttributeValueReferences,
+		}
+	}
+	return actorAttributes
+}
+
+func buildEventMetadata(entityDecisions []EntityDecision) interface{} {
+	eventMetadata := struct {
+		Entities []interface{} `json:"entities"`
+	}{
+		Entities: make([]interface{}, len(entityDecisions)),
+	}
+
+	for i, v := range entityDecisions {
+		eventMetadata.Entities[i] = struct {
+			EntityID     string   `json:"id"`
+			Decision     string   `json:"decision"`
+			Entitlements []string `json:"entitlements"`
+		}{
+			EntityID:     v.EntityID,
+			Decision:     v.Decision,
+			Entitlements: v.Entitlements,
+		}
+	}
+
+	return eventMetadata
 }

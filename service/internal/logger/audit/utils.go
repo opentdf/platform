@@ -29,12 +29,12 @@ const (
 
 // event
 type EventObject struct {
-	Object        auditEventObject  `json:"object"`
-	Action        eventAction       `json:"action"`
-	Owner         EventOwner        `json:"owner"`
-	Actor         auditEventActor   `json:"actor"`
-	EventMetaData map[string]string `json:"eventMetaData"`
-	ClientInfo    eventClientInfo   `json:"clientInfo"`
+	Object        auditEventObject `json:"object"`
+	Action        eventAction      `json:"action"`
+	Owner         EventOwner       `json:"owner"`
+	Actor         auditEventActor  `json:"actor"`
+	EventMetaData interface{}      `json:"eventMetaData"`
+	ClientInfo    eventClientInfo  `json:"clientInfo"`
 
 	Diff      []DiffEntry `json:"diff,omitempty"`
 	RequestID uuid.UUID   `json:"requestId"`

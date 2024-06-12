@@ -11,6 +11,8 @@ logger:
 services:
   kas:
     enabled: true
+    eccertid: e1
+    rsacertid: r1
   policy:
     enabled: true
   authorization:
@@ -98,17 +100,15 @@ server:
   cryptoProvider:
     type: standard
     standard:
-      rsa:
-        123:
-          private_key_path: kas-private.pem
-          public_key_path: kas-cert.pem
-        456:
-          private_key_path: kas-private.pem
-          public_key_path: kas-cert.pem
-      ec:
-        123:
-          private_key_path: kas-ec-private.pem
-          public_key_path: kas-ec-cert.pem
+      keys:
+        - kid: r1
+          alg: rsa:2048
+          private: kas-private.pem
+          cert: kas-cert.pem
+        - kid: e1
+          alg: ec:secp256r1
+          private: kas-ec-private.pem
+          cert: kas-ec-cert.pem
   port: 8080
 opa:
   embedded: true # Only for local development

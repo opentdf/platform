@@ -169,7 +169,7 @@ jobs:
         if: matrix.crypto == 'standard'
       - name: Added Trusted Certs
         run: |
-          sudo chmod -R 777 ./keys 
+          sudo chmod -R 777 ./keys
           sudo apt-get install -y ca-certificates
           sudo cp ./keys/localhost.crt /usr/local/share/ca-certificates
           sudo update-ca-certificates

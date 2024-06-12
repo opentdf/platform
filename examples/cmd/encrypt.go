@@ -65,10 +65,11 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
-	if !nanoFormat {
+	attributes := strings.Split(joinedDataAttributes, " ")
 
+	if !nanoFormat {
 		tdf, err := client.CreateTDF(out, in,
-			sdk.WithDataAttributes(strings.Split(joinedDataAttributes, " ")...),
+			sdk.WithDataAttributes(attributes...),
 			sdk.WithKasInformation(
 				sdk.KASInfo{
 					// examples assume insecure http
@@ -83,19 +84,12 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-
-		// Print Manifest
 		cmd.Println(string(manifestJSON))
 	} else {
-		attributes := []string{
-			"https://example.com/attr/attr1/value/value1",
-		}
-
 		nanoTDFConfig, err := client.NewNanoTDFConfig()
 		if err != nil {
 			return err
 		}
-
 		nanoTDFConfig.SetAttributes(attributes)
 		nanoTDFConfig.EnableECDSAPolicyBinding()
 		err = nanoTDFConfig.SetKasURL(fmt.Sprintf("http://%s/kas", platformEndpoint))

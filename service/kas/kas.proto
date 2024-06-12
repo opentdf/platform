@@ -32,13 +32,14 @@ message LegacyPublicKeyRequest {
 }
 
 message PublicKeyRequest {
-  string algorithm = 1;
-  string fmt = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "version"}];
-  string v = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "version"}];
+  string algorithm = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "algorithm type rsa:<keysize> or ec:<curvename>"}];
+  string fmt = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "response format"}];
+  string v = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "request version"}];
 }
 
 message PublicKeyResponse {
   string public_key = 1;
+  string kid = 2;
 }
 
 message RewrapRequest {

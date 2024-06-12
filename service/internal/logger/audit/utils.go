@@ -22,12 +22,6 @@ const (
 	ActorIDContextKey   auditContextKey = "actor-id"
 )
 
-// Action Results
-const (
-	ActionResultSuccess = "success"
-	ActionResultError   = "error"
-)
-
 // Common Strings
 const (
 	DefaultNone = "None"
@@ -64,8 +58,8 @@ type eventObjectAttributes struct {
 
 // event.action
 type eventAction struct {
-	Type   ActionType `json:"type"`
-	Result string     `json:"result"`
+	Type   ActionType   `json:"type"`
+	Result ActionResult `json:"result"`
 }
 
 // event.owner
@@ -76,8 +70,8 @@ type EventOwner struct {
 
 // event.actor
 type auditEventActor struct {
-	ID         string            `json:"id"`
-	Attributes map[string]string `json:"attributes"`
+	ID         string        `json:"id"`
+	Attributes []interface{} `json:"attributes"`
 }
 
 // event.clientInfo

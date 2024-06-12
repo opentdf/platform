@@ -21,6 +21,7 @@ import (
 	"github.com/opentdf/platform/service/internal/access"
 	"github.com/opentdf/platform/service/internal/entitlements"
 	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/internal/logger/audit"
 	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -209,6 +210,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				// TODO: we should already have the subject mappings here and be able to just use OPA to trim down the known data attr values to the ones matched up with the entities
 				//
 				entities := ec.GetEntities()
+				auditECEntitlements := make([]audit.EntityChainEntitlement, 0)
 				req := authorization.GetEntitlementsRequest{
 					Entities: entities,
 					Scope:    &allPertinentFqnsRA,
@@ -226,6 +228,10 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 					// TODO this might cause errors if multiple entities dont have ids
 					// currently just adding each entity returned to same list
 					for _, e := range ecEntitlements.GetEntitlements() {
+						auditECEntitlements = append(auditECEntitlements, audit.EntityChainEntitlement{
+							EntityID:                 e.GetEntityId(),
+							AttributeValueReferences: e.GetAttributeValueFqns(),
+						})
 						entityAttrValues[e.GetEntityId()] = e.GetAttributeValueFqns()
 					}
 				}
@@ -264,6 +270,17 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				} else if len(ra.GetAttributeValueFqns()) > 0 {
 					decisionResp.ResourceAttributesId = ra.GetAttributeValueFqns()[0]
 				}
+
+				auditDecision := audit.GetDecisionResultDeny
+				if decision == authorization.DecisionResponse_DECISION_PERMIT {
+					auditDecision = audit.GetDecisionResultPermit
+				}
+				as.logger.Audit.GetDecision(ctx, audit.GetDecisionEventParams{
+					Decision:                auditDecision,
+					EntityChainId:           decisionResp.GetEntityChainId(),
+					EntityChainEntitlements: auditECEntitlements,
+					ResourceAttributeId:     decisionResp.GetResourceAttributesId(),
+				})
 				rsp.DecisionResponses = append(rsp.DecisionResponses, decisionResp)
 			}
 		}

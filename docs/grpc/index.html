@@ -5659,7 +5659,7 @@ Attribute &lt;&gt; Key Access Server RPCs
 
       
         <h3 id="policy.resourcemapping.ResourceMappingService">ResourceMappingService</h3>
-        <p>Resource Mappings</p>
+        <p></p>
         <table class="enum-table">
           <thead>
             <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
@@ -5670,214 +5670,35 @@ Attribute &lt;&gt; Key Access Server RPCs
                 <td>ListResourceMappings</td>
                 <td><a href="#policy.resourcemapping.ListResourceMappingsRequest">ListResourceMappingsRequest</a></td>
                 <td><a href="#policy.resourcemapping.ListResourceMappingsResponse">ListResourceMappingsResponse</a></td>
-                <td><p>Request Example:
-- empty body
-
-Response Example:
-{
-&#34;resource_mappings&#34;: [
-{
-&#34;terms&#34;: [
-&#34;TOPSECRET&#34;,
-&#34;TS&#34;,
-],
-&#34;id&#34;: &#34;3c649464-95b4-4fe0-a09c-ca4b1fecbb0e&#34;,
-&#34;metadata&#34;: {
-&#34;labels&#34;: [],
-&#34;created_at&#34;: {
-&#34;seconds&#34;: &#34;1706103276&#34;,
-&#34;nanos&#34;: 510718000
-},
-&#34;updated_at&#34;: {
-&#34;seconds&#34;: &#34;1706107873&#34;,
-&#34;nanos&#34;: 399786000
-},
-&#34;description&#34;: &#34;&#34;
-},
-&#34;attribute_value&#34;: {
-&#34;members&#34;: [],
-&#34;id&#34;: &#34;f0d1d4f6-bff9-45fd-8170-607b6b559349&#34;,
-&#34;metadata&#34;: null,
-&#34;attribute_id&#34;: &#34;&#34;,
-&#34;value&#34;: &#34;value1&#34;
-}
-}
-]
-}</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
                 <td>GetResourceMapping</td>
                 <td><a href="#policy.resourcemapping.GetResourceMappingRequest">GetResourceMappingRequest</a></td>
                 <td><a href="#policy.resourcemapping.GetResourceMappingResponse">GetResourceMappingResponse</a></td>
-                <td><p>Request Example:
-{
-&#34;id&#34;: &#34;3c649464-95b4-4fe0-a09c-ca4b1fecbb0e&#34;
-}
-
-Response Example:
-{
-&#34;resource_mapping&#34;: {
-&#34;terms&#34;: [
-&#34;TOPSECRET&#34;,
-&#34;TS&#34;,
-],
-&#34;id&#34;: &#34;3c649464-95b4-4fe0-a09c-ca4b1fecbb0e&#34;,
-&#34;metadata&#34;: {
-&#34;labels&#34;: [],
-&#34;created_at&#34;: {
-&#34;seconds&#34;: &#34;1706103276&#34;,
-&#34;nanos&#34;: 510718000
-},
-&#34;updated_at&#34;: {
-&#34;seconds&#34;: &#34;1706107873&#34;,
-&#34;nanos&#34;: 399786000
-},
-&#34;description&#34;: &#34;&#34;
-},
-&#34;attribute_value&#34;: {
-&#34;members&#34;: [],
-&#34;id&#34;: &#34;f0d1d4f6-bff9-45fd-8170-607b6b559349&#34;,
-&#34;metadata&#34;: null,
-&#34;attribute_id&#34;: &#34;&#34;,
-&#34;value&#34;: &#34;value1&#34;
-}
-}
-}</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
                 <td>CreateResourceMapping</td>
                 <td><a href="#policy.resourcemapping.CreateResourceMappingRequest">CreateResourceMappingRequest</a></td>
                 <td><a href="#policy.resourcemapping.CreateResourceMappingResponse">CreateResourceMappingResponse</a></td>
-                <td><p>Request Example:
-{
-&#34;resource_mapping&#34;: {
-&#34;attribute_value_id&#34;: &#34;f0d1d4f6-bff9-45fd-8170-607b6b559349&#34;,
-&#34;terms&#34;: [
-&#34;TOPSECRET&#34;,
-&#34;TS&#34;,
-]
-}
-}
-
-Response Example:
-{
-&#34;resource_mapping&#34;: {
-&#34;terms&#34;: [
-&#34;TOPSECRET&#34;,
-&#34;TS&#34;,
-],
-&#34;id&#34;: &#34;3c649464-95b4-4fe0-a09c-ca4b1fecbb0e&#34;,
-&#34;metadata&#34;: {
-&#34;labels&#34;: [],
-&#34;created_at&#34;: {
-&#34;seconds&#34;: &#34;1706103276&#34;,
-&#34;nanos&#34;: 510718000
-},
-&#34;updated_at&#34;: {
-&#34;seconds&#34;: &#34;1706107873&#34;,
-&#34;nanos&#34;: 399786000
-},
-&#34;description&#34;: &#34;&#34;
-},
-&#34;attribute_value&#34;: {
-&#34;members&#34;: [],
-&#34;id&#34;: &#34;f0d1d4f6-bff9-45fd-8170-607b6b559349&#34;,
-&#34;metadata&#34;: null,
-&#34;attribute_id&#34;: &#34;&#34;,
-&#34;value&#34;: &#34;value1&#34;
-}
-}
-}</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
                 <td>UpdateResourceMapping</td>
                 <td><a href="#policy.resourcemapping.UpdateResourceMappingRequest">UpdateResourceMappingRequest</a></td>
                 <td><a href="#policy.resourcemapping.UpdateResourceMappingResponse">UpdateResourceMappingResponse</a></td>
-                <td><p>Request Example:
-{
-&#34;id&#34;: &#34;3c649464-95b4-4fe0-a09c-ca4b1fecbb0e&#34;,
-&#34;resource_mapping&#34;: {
-&#34;attribute_value_id&#34;: &#34;f0d1d4f6-bff9-45fd-8170-607b6b559349&#34;,
-&#34;terms&#34;: [
-&#34;TOPSECRET&#34;,
-&#34;TS&#34;,
-&#34;NEWTERM&#34;
-]
-}
-}
-
-Response Example:
-{
-&#34;resource_mapping&#34;: {
-&#34;terms&#34;: [
-&#34;TOPSECRET&#34;,
-&#34;TS&#34;,
-],
-&#34;id&#34;: &#34;3c649464-95b4-4fe0-a09c-ca4b1fecbb0e&#34;,
-&#34;metadata&#34;: {
-&#34;labels&#34;: [],
-&#34;created_at&#34;: {
-&#34;seconds&#34;: &#34;1706103276&#34;,
-&#34;nanos&#34;: 510718000
-},
-&#34;updated_at&#34;: {
-&#34;seconds&#34;: &#34;1706107873&#34;,
-&#34;nanos&#34;: 399786000
-},
-&#34;description&#34;: &#34;&#34;
-},
-&#34;attribute_value&#34;: {
-&#34;members&#34;: [],
-&#34;id&#34;: &#34;f0d1d4f6-bff9-45fd-8170-607b6b559349&#34;,
-&#34;metadata&#34;: null,
-&#34;attribute_id&#34;: &#34;&#34;,
-&#34;value&#34;: &#34;value1&#34;
-}
-}
-}</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
                 <td>DeleteResourceMapping</td>
                 <td><a href="#policy.resourcemapping.DeleteResourceMappingRequest">DeleteResourceMappingRequest</a></td>
                 <td><a href="#policy.resourcemapping.DeleteResourceMappingResponse">DeleteResourceMappingResponse</a></td>
-                <td><p>Request Example:
-{
-&#34;id&#34;: &#34;3c649464-95b4-4fe0-a09c-ca4b1fecbb0e&#34;
-}
-
-Response Example:
-{
-&#34;resource_mapping&#34;: {
-&#34;terms&#34;: [
-&#34;TOPSECRET&#34;,
-&#34;TS&#34;,
-],
-&#34;id&#34;: &#34;3c649464-95b4-4fe0-a09c-ca4b1fecbb0e&#34;,
-&#34;metadata&#34;: {
-&#34;labels&#34;: [],
-&#34;created_at&#34;: {
-&#34;seconds&#34;: &#34;1706103276&#34;,
-&#34;nanos&#34;: 510718000
-},
-&#34;updated_at&#34;: {
-&#34;seconds&#34;: &#34;1706107873&#34;,
-&#34;nanos&#34;: 399786000
-},
-&#34;description&#34;: &#34;&#34;
-},
-&#34;attribute_value&#34;: {
-&#34;members&#34;: [],
-&#34;id&#34;: &#34;f0d1d4f6-bff9-45fd-8170-607b6b559349&#34;,
-&#34;metadata&#34;: null,
-&#34;attribute_id&#34;: &#34;&#34;,
-&#34;value&#34;: &#34;value1&#34;
-}
-}
-}</p></td>
+                <td><p></p></td>
               </tr>
             
           </tbody>

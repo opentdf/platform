@@ -113,6 +113,8 @@ func (header *NanoTDFHeader) GetCurveName() (string, error) {
 		return "secp384r1", nil
 	case ocrypto.ECCModeSecp521r1:
 		return "secp521r1", nil
+	case ocrypto.ECCModeSecp256k1:
+		return "secp521k1", nil
 	}
 	return "", ErrNanoTDFECCurveNotSupported
 }
@@ -864,7 +866,7 @@ func getECPublicKey(kasURL string, ecMode ocrypto.ECCMode, opts ...grpc.DialOpti
 		req.Algorithm = "ec:secp521r1"
 	}
 
-	slog.Info(fmt.Sprintf("kas public key algorithm: %s", req.GetAlgorithm))
+	slog.Debug(fmt.Sprintf("kas public key algorithm: %s", req.GetAlgorithm()))
 
 	grpcAddress, err := getGRPCAddress(kasURL)
 	if err != nil {

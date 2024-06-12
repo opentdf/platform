@@ -6,9 +6,13 @@ import (
 )
 
 const (
-	// Key agreement along P-256
+	// AlgorithmECP256R1 Key agreement along P-256
 	AlgorithmECP256R1 = "ec:secp256r1"
-	// Used for encryption with RSA of the KAO
+	// AlgorithmECP384R1 Key agreement along P-384
+	AlgorithmECP384R1 = "ec:secp384r1"
+	// AlgorithmECP512R1 Key agreement along P-512
+	AlgorithmECP512R1 = "ec:secp512r1"
+	// AlgorithmECP512R1 Used for encryption with RSA of the KAO
 	AlgorithmRSA2048 = "rsa:2048"
 )
 

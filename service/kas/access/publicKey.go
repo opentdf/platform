@@ -19,9 +19,6 @@ import (
 const (
 	ErrCertificateEncode = Error("certificate encode error")
 	ErrPublicKeyMarshal  = Error("public key marshal error")
-	algorithmEc256       = "ec:secp256r1"
-	algorithmEc384       = "ec:secp384r1"
-	algorithmEc512       = "ec:secp521r1"
 )
 
 func (p Provider) lookupKid(ctx context.Context, algorithm string) (string, error) {
@@ -56,6 +53,18 @@ func (p Provider) LegacyPublicKey(ctx context.Context, in *kaspb.LegacyPublicKey
 
 	switch algorithm {
 	case security.AlgorithmECP256R1:
+		pem, err = p.CryptoProvider.ECCertificate(kid)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed LegacyPublicKey to get certificate", "err", err)
+			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
+		}
+	case security.AlgorithmECP384R1:
+		pem, err = p.CryptoProvider.ECCertificate(kid)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed LegacyPublicKey to get certificate", "err", err)
+			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
+		}
+	case security.AlgorithmECP512R1:
 		pem, err = p.CryptoProvider.ECCertificate(kid)
 		if err != nil {
 			slog.ErrorContext(ctx, "failed LegacyPublicKey to get certificate", "err", err)
@@ -103,6 +112,12 @@ func (p Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*k
 
 	switch algorithm {
 	case security.AlgorithmECP256R1:
+		ecPublicKeyPem, err := p.CryptoProvider.ECPublicKey(kid)
+		return r(ecPublicKeyPem, kid, err)
+	case security.AlgorithmECP384R1:
+		ecPublicKeyPem, err := p.CryptoProvider.ECPublicKey(kid)
+		return r(ecPublicKeyPem, kid, err)
+	case security.AlgorithmECP512R1:
 		ecPublicKeyPem, err := p.CryptoProvider.ECPublicKey(kid)
 		return r(ecPublicKeyPem, kid, err)
 	case security.AlgorithmRSA2048:

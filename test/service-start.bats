@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+# Tests for validating that the system is nominally running
+
 @test "gRPC: lists attributes" {
   run grpcurl -plaintext "localhost:8080" list
   echo "$output"

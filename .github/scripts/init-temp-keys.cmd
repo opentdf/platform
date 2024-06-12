@@ -5,6 +5,8 @@ REM Initialize temporary keys for use with a KAS. No HSM for now.
 mkdir keys
 
 openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=kas" -keyout keys/kas-private.pem -out keys/kas-cert.pem -days 365
+openssl ecparam -name prime256v1 >ecparams.tmp
+openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout keys/kas-ec-private.pem -out keys/kas-ec-cert.pem -days 365
 REM  P-256 aka secp256r1 , prime256v1
 openssl ecparam -name secp256r1 >ecparams.tmp
 openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout keys/kas-secp256r1-private.pem -out keys/kas-secp256r1-cert.pem -days 365

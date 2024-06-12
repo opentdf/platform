@@ -37,6 +37,7 @@ type GetDecisionEventParams struct {
 	EntityChainID           string
 	EntityDecisions         []EntityDecision
 	ResourceAttributeID     string
+	FQNs                    []string
 }
 
 func CreateGetDecisionEvent(ctx context.Context, params GetDecisionEventParams) (*EventObject, error) {
@@ -52,6 +53,9 @@ func CreateGetDecisionEvent(ctx context.Context, params GetDecisionEventParams) 
 		Object: auditEventObject{
 			Type: ObjectTypeEntityObject,
 			ID:   fmt.Sprintf("%s-%s", params.EntityChainID, params.ResourceAttributeID),
+			Attributes: eventObjectAttributes{
+				Attrs: params.FQNs,
+			},
 		},
 		Action: eventAction{
 			Type:   ActionTypeRead,

@@ -181,9 +181,11 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 			}
 			var attrDefs []*policy.Attribute
 			var attrVals []*policy.Value
+			var fqns []string
 			for fqn, v := range dataAttrDefsAndVals {
 				attrDefs = append(attrDefs, v.GetAttribute())
 				attrVal := v.GetValue()
+				fqns = append(fqns, fqn)
 				attrVal.Fqn = fqn
 				attrVals = append(attrVals, attrVal)
 			}
@@ -297,6 +299,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 					EntityChainEntitlements: auditECEntitlements,
 					EntityChainID:           decisionResp.GetEntityChainId(),
 					EntityDecisions:         auditEntityDecisions,
+					FQNs:                    fqns,
 					ResourceAttributeID:     decisionResp.GetResourceAttributesId(),
 				})
 				rsp.DecisionResponses = append(rsp.DecisionResponses, decisionResp)

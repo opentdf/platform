@@ -2,6 +2,7 @@ package security
 
 import (
 	"crypto"
+	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/sha256"
 	"crypto/x509"

@@ -8,7 +8,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"log/slog"
-	"strings"
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/service/internal/security"

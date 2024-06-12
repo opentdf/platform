@@ -97,6 +97,7 @@ func (header *NanoTDFHeader) VerifyPolicyBinding() (bool, error) {
 	}
 	binding := digest[len(digest)-kNanoTDFGMACLength:]
 	return bytes.Equal(binding, header.gmacPolicyBinding), nil
+}
 
 // GetECMode Return ECCMode of the nano tdf
 func (header *NanoTDFHeader) GetECMode() ocrypto.ECCMode {

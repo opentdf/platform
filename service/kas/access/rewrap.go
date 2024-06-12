@@ -392,17 +392,12 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 
 	//ecCurve, err := header.ECCurve()
 	ecmode := header.GetECMode()
-	curve, err := ocrypto.GetCurveFromECCMode(ecmode)
+	curve, err := ocrypto.GetECCurveFromECCMode(ecmode)
 	if err != nil {
 		return nil, fmt.Errorf("GetCurveFromECCMode failed: %w", err)
 	}
 
-	curveName, err := header.GetCurveName()
-	if err != nil {
-		return nil, fmt.Errorf("GetCurveName failed: %w", err)
-	}
-
-	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(curve, curveName, header.EphemeralKey)
+	ecCurve, err := header.ECCurve()
 	if err != nil {
 		return nil, fmt.Errorf("ECCurve failed: %w", err)
 	}
@@ -415,7 +410,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 	// extract the policy
 	policy, err := extractNanoPolicy(symmetricKey, header)
 	if err != nil {
-		return nil, fmt.Errorf("Error extracting policy: %w", err)
+		return nil, fmt.Errorf("error extracting policy: %w", err)
 	}
 
 	// check the policy binding

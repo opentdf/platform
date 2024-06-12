@@ -207,8 +207,8 @@ teardown_file() {
   wait_for_green
 
   echo [INFO] decrypting after key rotation
-  go run ./examples decrypt sensitive-legacy.txt.tdf
-  go run ./examples decrypt sensitive-legacy.txt.tdf | grep "Hello Zero Trust"
+  go run ./examples decrypt sensitive-with-no-kid.txt.tdf | grep "Hello Legacy"
+  go run ./examples decrypt sensitive-with-kid.txt.tdf | grep "Hello with Key Identifier"
 }
 
 teardown() {

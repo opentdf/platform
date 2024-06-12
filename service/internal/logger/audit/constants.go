@@ -1,5 +1,7 @@
 package audit
 
+import "encoding/json"
+
 type ObjectType int
 
 const (
@@ -32,6 +34,10 @@ func (ot ObjectType) String() string {
 	}[ot]
 }
 
+func (ot ObjectType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(ot.String())
+}
+
 type ActionType int
 
 const (
@@ -50,6 +56,10 @@ func (at ActionType) String() string {
 		"delete",
 		"rewrap",
 	}[at]
+}
+
+func (at ActionType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(at.String())
 }
 
 type ActionResult int
@@ -76,4 +86,8 @@ func (ar ActionResult) String() string {
 		"override",
 		"cancel",
 	}[ar]
+}
+
+func (ar ActionResult) MarshalJSON() ([]byte, error) {
+	return json.Marshal(ar.String())
 }

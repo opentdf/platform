@@ -45,15 +45,15 @@ type EventObject struct {
 type auditEventObject struct {
 	Type       ObjectType            `json:"type"`
 	ID         string                `json:"id"`
-	Name       string                `json:"name"`
-	Attributes eventObjectAttributes `json:"attributes"`
+	Name       string                `json:"name,omitempty"`
+	Attributes eventObjectAttributes `json:"attributes,omitempty"`
 }
 
 // event.object.attributes
 type eventObjectAttributes struct {
 	Assertions  []string `json:"assertions"`
 	Attrs       []string `json:"attrs"`
-	Permissions []string `json:"permissions"`
+	Permissions []string `json:"permissions,omitempty"`
 }
 
 // event.action

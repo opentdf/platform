@@ -165,7 +165,7 @@ setup_file() {
 
 teardown_file() {
   if [ -f opentdf-test-backup.yaml.bak ]; then
-    mv opentdf-test-backup.yaml opentdf.yaml
+    mv opentdf-test-backup.yaml.bak opentdf.yaml
   fi
 }
 

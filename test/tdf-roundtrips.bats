@@ -4,52 +4,52 @@
 # Notably, tests both 'ztdf' and 'nano' formats.
 
 @test "examples: roundtrip Z-TDF" {
-  echo [INFO] create a tdf3 format file
+  echo "[INFO] create a tdf3 format file"
   run go run ./examples encrypt "Hello Zero Trust"
-  echo [INFO] echoing output; if successful, this is just the manifest
+  echo "[INFO] echoing output; if successful, this is just the manifest"
   echo "$output"
 
-  echo [INFO] Validate the manifest lists the expected kid in its KAO
+  echo "[INFO] Validate the manifest lists the expected kid in its KAO"
   kid=$(jq -r '.encryptionInformation.keyAccess[0].kid' <<<"${output}")
   echo "$kid"
   [ $kid = r1 ]
 
-  echo [INFO] decrypting...
+  echo "[INFO] decrypting..."
   run go run ./examples decrypt sensitive.txt.tdf
   echo "$output"
   printf '%s\n' "$output" | grep "Hello Zero Trust"
 }
 
 @test "examples: roundtrip nanoTDF" {
-  echo [INFO] creating nanotdf file
+  echo "[INFO] creating nanotdf file"
   go run ./examples encrypt -o sensitive.txt.ntdf --nano "Hello NanoTDF"
 
-  echo [INFO] decrypting nanotdf...
+  echo "[INFO] decrypting nanotdf..."
   go run ./examples decrypt sensitive.txt.ntdf
   go run ./examples decrypt sensitive.txt.ntdf | grep "Hello NanoTDF"
 }
 
 @test "examples: legacy key support Z-TDF" {
-  echo [INFO] validating default key is r1
+  echo "[INFO] validating default key is r1"
   [ $(grpcurl -plaintext "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
 
-  echo [INFO] encrypting samples
+  echo "[INFO] encrypting samples"
   go run ./examples encrypt -o sensitive-with-no-kid.txt.tdf --no-kid-in-kao "Hello Legacy"
   go run ./examples encrypt -o sensitive-with-kid.txt.tdf "Hello with Key Identifier"
 
-  echo [INFO] decrypting...
+  echo "[INFO] decrypting..."
   go run ./examples decrypt sensitive-with-no-kid.txt.tdf | grep "Hello Legacy"
   go run ./examples decrypt sensitive-with-kid.txt.tdf | grep "Hello with Key Identifier"
 
-  echo [INFO] rotating keys
+  echo "[INFO] rotating keys"
   update_config e2 e1 r2 r1
   sleep 4
   wait_for_green
 
-  echo [INFO] validating default key is r2
+  echo "[INFO] validating default key is r2"
   [ $(grpcurl -plaintext "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r2 ]
 
-  echo [INFO] decrypting after key rotation
+  echo "[INFO] decrypting after key rotation"
   go run ./examples decrypt sensitive-with-no-kid.txt.tdf | grep "Hello Legacy"
   go run ./examples decrypt sensitive-with-kid.txt.tdf | grep "Hello with Key Identifier"
 }

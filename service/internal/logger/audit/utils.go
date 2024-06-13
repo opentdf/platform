@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
 	"github.com/wI2L/jsondiff"
-	"google.golang.org/grpc/metadata"
 )
 
 // Common Strings
@@ -77,9 +76,12 @@ type ContextData struct {
 }
 
 func GetAuditDataFromContext(ctx context.Context) ContextData {
-	// Add request ID from existing header or create a new one
-	requestID := getRequestIDFromContext(ctx)
-	slog.Info("BACON(GetAuditDataFromContext) REQUEST ID", "reqID", requestID.String())
+	// Extract the request ID from context
+	requestID, requestIDOk := ctx.Value(RequestIDContextKey).(uuid.UUID)
+	if !requestIDOk {
+		requestID = uuid.Nil
+	}
+	slog.Info("BACON(GetAuditDataFromContext)", "reqID", requestID)
 
 	// Extract user agent from context
 	userAgent, userAgentOK := ctx.Value(UserAgentContextKey).(string)
@@ -139,35 +141,4 @@ func createJSONPatchDiff(original []byte, target []byte) ([]DiffEntry, error) {
 	}
 
 	return diffArray, nil
-}
-
-func getRequestIDFromContext(ctx context.Context) uuid.UUID {
-	requestID, ok := ctx.Value(RequestIDContextKey).(uuid.UUID)
-	if ok {
-		slog.Info("BACON(reqIdFromCtx) REQUEST ID FROM CONTEXT")
-		return requestID
-	} else {
-		slog.Info("BACON(reqIdFromCtx) NO REQUEST ID IN CONTEXT")
-	}
-
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		slog.Info("BACON(reqIdFromCtx) NO METADATA", "reqId", uuid.Nil)
-		return uuid.Nil
-	}
-
-	requestIDFromMetadata := md[string(RequestIDHeaderKey)]
-	if len(requestIDFromMetadata) < 1 {
-		slog.Info("BACON(reqIdFromCtx) NO REQUEST ID IN METADATA", "reqId", uuid.Nil)
-		return uuid.Nil
-	}
-
-	requestID, err := uuid.Parse(requestIDFromMetadata[0])
-	if err != nil {
-		slog.Info("BACON(reqIdFromCtx) UUID PARSE ERROR FROM METADATA", "reqId", requestIDFromMetadata)
-		return uuid.Nil
-	}
-
-	slog.Info("BACON(reqIdFromCtx) UUID FROM HEADER", "reqId", requestID.String())
-	return requestID
 }

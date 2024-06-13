@@ -27,17 +27,15 @@ func UnaryServerInterceptor(ctx context.Context, req any, i *grpc.UnaryServerInf
 	requestIDFromMetadata := md[string(RequestIDHeaderKey)]
 	if len(requestIDFromMetadata) > 0 {
 		requestID, err = uuid.Parse(requestIDFromMetadata[0])
+		slog.Info("BACON(ServerInterceptor)", "method", i.FullMethod, "X-Request-ID", requestID)
 		if err != nil {
 			requestID = uuid.New()
-			slog.Info("BACON(ServerInterceptor) UUID PARSE ERROR FROM METADATA", "reqID", requestID, "method", i.FullMethod)
-		} else {
-			slog.Info("BACON(ServerInterceptor) REQUEST ID FROM HEADER", "reqID", requestID, "method", i.FullMethod)
 		}
 	} else {
+		slog.Info("BACON(ServerInterceptor)", "method", i.FullMethod, "X-Request-ID", "NONE")
 		requestID = uuid.New()
-		slog.Info("BACON(ServerInterceptor) NO METADATA, GENERATED ID", "reqID", requestID, "method", i.FullMethod)
 	}
-	slog.Info("BACON(ServerInterceptor) SETTING REQUEST ID", "reqID", requestID, "method", i.FullMethod)
+	slog.Info("BACON(ServerInterceptor)", "method", i.FullMethod, "Set-ReqIDCxt", requestID)
 	ctx = context.WithValue(ctx, RequestIDContextKey, requestID)
 
 	// Sets the user agent header on the context if it is present in the metadata

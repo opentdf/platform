@@ -34,7 +34,7 @@ func RequestIDClientInterceptor(
 	}
 	newMetadata = append(newMetadata, requestIDHeaderKey, requestID.String())
 
-	slog.Info("BACON SETTING REQUEST ID HEADER", "reqID", requestID.String())
+	slog.Info("BACON Request Info", "reqID", requestID.String())
 	newCtx := metadata.AppendToOutgoingContext(ctx, newMetadata...)
 
 	err := invoker(newCtx, method, req, reply, cc, opts...)

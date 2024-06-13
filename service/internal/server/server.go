@@ -242,9 +242,9 @@ func newGrpcInProcessServer() *grpc.Server {
 
 	// FIXME: this should probably use existing IP address instead of local?
 	// Add RealIP interceptor to in process server
-	trustedPeers := []netip.Prefix{} // TODO: add this as a config option?
-	headers := []string{realip.XForwardedFor, realip.XRealIp}
-	interceptors = append(interceptors, realip.UnaryServerInterceptor(trustedPeers, headers))
+	// trustedPeers := []netip.Prefix{} // TODO: add this as a config option?
+	// headers := []string{realip.XForwardedFor, realip.XRealIp}
+	// interceptors = append(interceptors, realip.UnaryServerInterceptor(trustedPeers, headers))
 
 	// Add interceptors to server options
 	serverOptions = append(serverOptions, grpc.ChainUnaryInterceptor(interceptors...))

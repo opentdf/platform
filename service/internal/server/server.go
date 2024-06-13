@@ -136,7 +136,7 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 	}
 	grpcIPCServer := &inProcessServer{
 		ln:  fasthttputil.NewInmemoryListener(),
-		srv: grpc.NewServer(),
+		srv: newGrpcInProcessServer(),
 	}
 
 	// Create http server
@@ -231,6 +231,24 @@ func httpGrpcHandlerFunc(h http.Handler, g *grpc.Server) http.Handler {
 			h.ServeHTTP(w, r)
 		}
 	})
+}
+
+func newGrpcInProcessServer() *grpc.Server {
+	var interceptors []grpc.UnaryServerInterceptor
+	var serverOptions []grpc.ServerOption
+
+	// Add audit to in process server
+	interceptors = append(interceptors, audit.UnaryServerInterceptor)
+
+	// FIXME: this should probably use existing IP address instead of local?
+	// Add RealIP interceptor to in process server
+	trustedPeers := []netip.Prefix{} // TODO: add this as a config option?
+	headers := []string{realip.XForwardedFor, realip.XRealIp}
+	interceptors = append(interceptors, realip.UnaryServerInterceptor(trustedPeers, headers))
+
+	// Add interceptors to server options
+	serverOptions = append(serverOptions, grpc.ChainUnaryInterceptor(interceptors...))
+	return grpc.NewServer(serverOptions...)
 }
 
 // newGrpcServer creates a new grpc server with the given config and authN interceptor

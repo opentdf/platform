@@ -308,7 +308,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 		Jwt: entity.Token,
 	}
 
-	access, err := canAccess(ctx, tok, *policy, p.SDK)
+	access, err := canAccess(ctx, tok, *policy, p.SDK, *p.Logger)
 
 	// Audit the TDF3 Rewrap
 	kasPolicy := ConvertToAuditKasPolicy(*policy)
@@ -345,6 +345,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 	}
 
 	p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
+	p.Logger.Info("BACON TDF REWRAP DONE")
 	return &kaspb.RewrapResponse{
 		EntityWrappedKey: rewrappedKey,
 		SessionPublicKey: "",
@@ -392,7 +393,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		Jwt: entity.Token,
 	}
 
-	access, err := canAccess(ctx, tok, *policy, p.SDK)
+	access, err := canAccess(ctx, tok, *policy, p.SDK, *p.Logger)
 
 	// Audit the rewrap
 	kasPolicy := ConvertToAuditKasPolicy(*policy)
@@ -447,6 +448,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 	}
 
 	p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
+	p.Logger.Info("BACON NANO REWRAP DONE")
 
 	return &kaspb.RewrapResponse{
 		EntityWrappedKey: cipherText,

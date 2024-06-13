@@ -86,6 +86,7 @@ server:
       - Authorization
       - Content-Type
       - X-CSRF-Token
+      - X-Request-ID
     # List of response headers that browsers are allowed to access
     exposedheaders:
       - Link

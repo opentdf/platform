@@ -30,7 +30,6 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	client, err := sdk.New(platformEndpoint,
 		sdk.WithInsecurePlaintextConn(),
 		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
-		sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
 	)
 	if err != nil {
 		return err

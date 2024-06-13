@@ -18,6 +18,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/logger/audit"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -79,12 +80,15 @@ type Authentication struct {
 	enforcer *Enforcer
 	// Public Routes HTTP & gRPC
 	publicRoutes []string
+	// Custom Logger
+	logger *logger.Logger
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
-func NewAuthenticator(ctx context.Context, cfg Config) (*Authentication, error) {
+func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger) (*Authentication, error) {
 	a := &Authentication{
 		enforceDPoP: cfg.EnforceDPoP,
+		logger:      logr,
 	}
 	a.oidcConfigurations = make(map[string]AuthNConfig)
 
@@ -106,7 +110,7 @@ func NewAuthenticator(ctx context.Context, cfg Config) (*Authentication, error) 
 
 	cacheInterval, err := time.ParseDuration(cfg.CacheRefresh)
 	if err != nil {
-		slog.ErrorContext(ctx, fmt.Sprintf("Invalid cache_refresh_interval [%s]", cfg.CacheRefresh), "err", err)
+		logr.ErrorContext(ctx, fmt.Sprintf("Invalid cache_refresh_interval [%s]", cfg.CacheRefresh), "err", err)
 		cacheInterval = refreshInterval
 	}
 
@@ -118,7 +122,7 @@ func NewAuthenticator(ctx context.Context, cfg Config) (*Authentication, error) 
 	casbinConfig := CasbinConfig{
 		PolicyConfig: cfg.Policy,
 	}
-	slog.Info("initializing casbin enforcer")
+	logr.Info("initializing casbin enforcer")
 	if a.enforcer, err = NewCasbinEnforcer(casbinConfig); err != nil {
 		return nil, fmt.Errorf("failed to initialize casbin enforcer: %w", err)
 	}
@@ -184,7 +188,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		}, r.Header["Dpop"])
 
 		if err != nil {
-			slog.WarnContext(r.Context(), "failed to validate token", slog.String("error", err.Error()))
+			a.logger.WarnContext(r.Context(), "failed to validate token", slog.String("error", err.Error()))
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
 			return
 		}
@@ -203,14 +207,14 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		}
 		if allow, err := a.enforcer.Enforce(accessTok, r.URL.Path, action); err != nil {
 			if err.Error() == "permission denied" {
-				slog.WarnContext(r.Context(), "permission denied", slog.String("azp", accessTok.Subject()), slog.String("error", err.Error()))
+				a.logger.WarnContext(r.Context(), "permission denied", slog.String("azp", accessTok.Subject()), slog.String("error", err.Error()))
 				http.Error(w, "permission denied", http.StatusForbidden)
 				return
 			}
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		} else if !allow {
-			slog.WarnContext(r.Context(), "permission denied", slog.String("azp", accessTok.Subject()))
+			a.logger.WarnContext(r.Context(), "permission denied", slog.String("azp", accessTok.Subject()))
 			http.Error(w, "permission denied", http.StatusForbidden)
 			return
 		}
@@ -267,19 +271,19 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 		md["dpop"],
 	)
 	if err != nil {
-		slog.Warn("failed to validate token", slog.String("error", err.Error()))
+		a.logger.Warn("failed to validate token", slog.String("error", err.Error()))
 		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
 	}
 
 	// Check if the token is allowed to access the resource
 	if allowed, err := a.enforcer.Enforce(token, resource, action); err != nil {
 		if err.Error() == "permission denied" {
-			slog.Warn("permission denied", slog.String("azp", token.Subject()), slog.String("error", err.Error()))
+			a.logger.Warn("permission denied", slog.String("azp", token.Subject()), slog.String("error", err.Error()))
 			return nil, status.Errorf(codes.PermissionDenied, "permission denied")
 		}
 		return nil, err
 	} else if !allowed {
-		slog.Warn("permission denied", slog.String("azp", token.Subject()))
+		a.logger.Warn("permission denied", slog.String("azp", token.Subject()))
 		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
 	}
 
@@ -378,6 +382,7 @@ func getContextDetails(ctx context.Context) *authContext {
 		return c
 	}
 
+	// We should probably return an error here?
 	slog.ErrorContext(ctx, "invalid authContext")
 	return nil
 }
@@ -525,10 +530,10 @@ func (a Authentication) isPublicRoute(path string) func(string) bool {
 	return func(route string) bool {
 		matched, err := filepath.Match(route, path)
 		if err != nil {
-			slog.Warn("error matching route", slog.String("route", route), slog.String("path", path), slog.String("error", err.Error()))
+			a.logger.Warn("error matching route", slog.String("route", route), slog.String("path", path), slog.String("error", err.Error()))
 			return false
 		}
-		slog.Debug("matching route", slog.String("route", route), slog.String("path", path), slog.Bool("matched", matched))
+		a.logger.Trace("matching route", slog.String("route", route), slog.String("path", path), slog.Bool("matched", matched))
 		return matched
 	}
 }

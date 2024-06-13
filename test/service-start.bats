@@ -2,34 +2,40 @@
 
 # Tests for validating that the system is nominally running
 
+setup() {
+    bats_load_library bats-support
+    bats_load_library bats-assert
+}
+
 @test "gRPC: lists attributes" {
   run grpcurl -plaintext "localhost:8080" list
-  echo "$output"
-  [ $status = 0 ]
-  [[ $output = *grpc.health.v1.Health* ]]
-  [[ $output = *wellknownconfiguration.WellKnownService* ]]
+  assert_success
+  assert_line grpc.health.v1.Health
+  assert_line wellknownconfiguration.WellKnownService
 }
 
 @test "gRPC: health check is healthy" {
   run grpcurl -plaintext "localhost:8080" "grpc.health.v1.Health.Check"
-  echo "$output"
-  [ $status = 0 ]
-  [ $(jq -r .status <<<"${output}") = SERVING ]
+  assert_success
+  assert_output --partial SERVING
+  assert_equal "$(jq -r .status <<<"${output}") SERVING
 }
 
 @test "gRPC: reports a public key" {
   run grpcurl -plaintext "localhost:8080" "kas.AccessService/PublicKey"
-  echo "$output"
 
+grpcurl -plaintext "localhost:8080" "kas.AccessService/PublicKey" | jq -r .publicKey | openssl asn1parse
   # Is public key
+  assert_output --partial PUBLIC
   p=$(jq -r .publicKey <<<"${output}")
-  [[ "$p" = "-----BEGIN PUBLIC KEY"-----* ]]
+  assert_regex "$p" "^-----BEGIN PUBLIC KEY"-----"
 
   # Is an RSA key
-  printf '%s\n' "$p" | openssl asn1parse | grep rsaEncryption
+  run openssl asn1parse <<<$p
+  assert_line --partial rsaEncryption
 
   # Has expected kid
-  [ $(jq -r .kid <<<"${output}") = r1 ]
+  assert_equal "$(jq -r .kid <<<"${output}")" r1
 }
 
 @test "REST: new public key endpoint (no algorithm)" {

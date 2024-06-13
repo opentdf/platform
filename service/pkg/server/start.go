@@ -42,7 +42,7 @@ func Start(f ...StartOptions) error {
 	}
 
 	if conf.DevMode {
-		fmt.Println(devModeMessage)
+		fmt.Println(devModeMessage) //nolint:forbidigo // This ascii art is only displayed in dev mode
 	}
 
 	// Set allowed public routes when platform is being extended

@@ -38,7 +38,7 @@ type AuthorizationService struct { //nolint:revive // AuthorizationService is a 
 	tokenSource *oauth2.TokenSource
 }
 
-type AuthorizationServiceConfig struct {
+type Config struct {
 	// Entity Resolution Service URL
 	ERSURL string `mapstructure:"ersurl"`
 	// OAuth Client ID
@@ -62,7 +62,7 @@ func NewRegistration() serviceregistry.Registration {
 				slog.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
 			}
 
-			authZCfg := AuthorizationServiceConfig{
+			authZCfg := Config{
 				ERSURL:        "http://localhost:8080/entityresolution/resolve",
 				ClientID:      "tdf-authorization-svc",
 				ClientSecret:  "secret",

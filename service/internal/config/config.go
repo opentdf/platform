@@ -17,7 +17,7 @@ import (
 )
 
 type Config struct {
-	DevMode	bool                                    	`mapstructure:"dev_mode"`
+	DevMode  bool                                     `mapstructure:"dev_mode"`
 	DB       db.Config                                `yaml:"db"`
 	OPA      opa.Config                               `yaml:"opa"`
 	Server   server.Config                            `yaml:"server"`

@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+# Tests for validating that the system is nominally running
+
 @test "gRPC: lists attributes" {
   run grpcurl -plaintext "localhost:8080" list
   echo "$output"
@@ -70,16 +72,4 @@
   run grpcurl -d '{"algorithm":"invalid"}' -plaintext "localhost:8080" "kas.AccessService/PublicKey" 
   echo "$output"
   [[ $output = *NotFound* ]]
-}
-
-@test "examples: roundtrip Z-TDF" {
-  go run ./examples encrypt "Hello Zero Trust"
-  go run ./examples decrypt sensitive.txt.tdf
-  go run ./examples decrypt sensitive.txt.tdf | grep "Hello Zero Trust"
-}
-
-@test "examples: roundtrip nanoTDF" {
-  go run ./examples encrypt -o sensitive.txt.ntdf --nano "Hello NanoTDF"
-  go run ./examples decrypt sensitive.txt.ntdf
-  go run ./examples decrypt sensitive.txt.ntdf | grep "Hello NanoTDF"
 }

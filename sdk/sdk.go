@@ -42,6 +42,7 @@ func (c Error) Error() string {
 }
 
 type SDK struct {
+	config
 	conn                    *grpc.ClientConn
 	dialOptions             []grpc.DialOption
 	kasSessionKey           ocrypto.RsaKeyPair
@@ -146,6 +147,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 
 	return &SDK{
+		config:                  *cfg,
 		conn:                    defaultConn,
 		dialOptions:             dialOptions,
 		tokenSource:             accessTokenSource,

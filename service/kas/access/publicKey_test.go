@@ -154,6 +154,14 @@ func TestStandardPublicKeyHandlerV2(t *testing.T) {
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: c,
+		KASConfig: KASConfig{
+			Keyring: []CurrentKeyFor{
+				{
+					Algorithm: security.AlgorithmRSA2048,
+					KID:       "rsa",
+				},
+			},
+		},
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{})
@@ -227,6 +235,14 @@ func TestStandardPublicKeyHandlerV2WithJwk(t *testing.T) {
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: c,
+		KASConfig: KASConfig{
+			Keyring: []CurrentKeyFor{
+				{
+					Algorithm: security.AlgorithmRSA2048,
+					KID:       "rsa",
+				},
+			},
+		},
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{

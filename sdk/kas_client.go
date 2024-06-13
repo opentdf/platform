@@ -287,26 +287,40 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 	return &rewrapRequest, nil
 }
 
-func getPublicKey(kasInfo KASInfo, opts ...grpc.DialOption) (string, error) {
-	req := kas.PublicKeyRequest{}
+type publicKeyWithID struct {
+	publicKey, kid string
+}
+
+func (s SDK) getPublicKey(kasInfo KASInfo) (*publicKeyWithID, error) {
 	grpcAddress, err := getGRPCAddress(kasInfo.URL)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	conn, err := grpc.Dial(grpcAddress, opts...)
+	conn, err := grpc.Dial(grpcAddress, s.dialOptions...)
 	if err != nil {
-		return "", fmt.Errorf("error connecting to grpc service at %s: %w", kasInfo.URL, err)
+		return nil, fmt.Errorf("error connecting to grpc service at %s: %w", kasInfo.URL, err)
 	}
 	defer conn.Close()
 
 	ctx := context.Background()
 	serviceClient := kas.NewAccessServiceClient(conn)
 
+	req := kas.PublicKeyRequest{
+		Algorithm: "rsa:2048",
+	}
+	if s.config.tdfFeatures.noKID {
+		req.V = "1"
+	}
 	resp, err := serviceClient.PublicKey(ctx, &req)
 
 	if err != nil {
-		return "", fmt.Errorf("error making request to KAS: %w", err)
+		return nil, fmt.Errorf("error making request to KAS: %w", err)
 	}
 
-	return resp.GetPublicKey(), nil
+	kid := resp.GetKid()
+	if s.config.tdfFeatures.noKID {
+		kid = ""
+	}
+
+	return &publicKeyWithID{resp.GetPublicKey(), kid}, nil
 }

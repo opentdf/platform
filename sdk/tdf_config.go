@@ -32,6 +32,8 @@ type KASInfo struct {
 	URL string
 	// Public key can be empty. If it is empty, the public key will be fetched from the KAS server.
 	PublicKey string
+	// Key identifier associated with the given key, if present.
+	KID string
 }
 
 type TDFOption func(*TDFConfig) error

@@ -11,8 +11,17 @@ logger:
 services:
   kas:
     enabled: true
-    eccertid: e1
-    rsacertid: r1
+    keyring:
+      - kid: e1
+        alg: ec:secp256r1
+      - kid: e1
+        alg: ec:secp256r1
+        legacy: true
+      - kid: r1
+        alg: rsa:2048
+      - kid: r1
+        alg: rsa:2048
+        legacy: true
   policy:
     enabled: true
   authorization:

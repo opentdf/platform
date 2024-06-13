@@ -54,6 +54,31 @@
   go run ./examples decrypt sensitive-with-kid.txt.tdf | grep "Hello with Key Identifier"
 }
 
+@test "examples: legacy kas and service config format support" {
+  echo "[INFO] validating default key is r1"
+  [ $(grpcurl -plaintext "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
+
+  echo "[INFO] encrypting samples"
+  go run ./examples encrypt -o sensitive-with-no-kid.txt.tdf --no-kid-in-kao "Hello Legacy"
+  go run ./examples encrypt -o sensitive-with-kid.txt.tdf "Hello with Key Identifier"
+
+  echo "[INFO] decrypting..."
+  go run ./examples decrypt sensitive-with-no-kid.txt.tdf | grep "Hello Legacy"
+  go run ./examples decrypt sensitive-with-kid.txt.tdf | grep "Hello with Key Identifier"
+
+  echo "[INFO] downgrading"
+  downgrade_config e1 r1
+  sleep 4
+  wait_for_green
+
+  echo "[INFO] validating default key is r1"
+  [ $(grpcurl -plaintext "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
+
+  echo "[INFO] decrypting after key rotation"
+  go run ./examples decrypt sensitive-with-no-kid.txt.tdf | grep "Hello Legacy"
+  go run ./examples decrypt sensitive-with-kid.txt.tdf | grep "Hello with Key Identifier"
+}
+
 
 wait_for_green() {
   limit=5
@@ -63,6 +88,65 @@ wait_for_green() {
     fi
     sleep 4
   done
+}
+
+downgrade_config() {
+  ec_current_key=$1
+  rsa_current_key=$2
+  cat >opentdf.yaml<<EOF
+logger:
+  level: debug
+  type: text
+  output: stdout
+services:
+  kas:
+    enabled: true
+    eccertid: ${ec_current_key}
+    rsacertid: ${rsa_current_key}
+  policy:
+    enabled: true
+  authorization:
+    enabled: true
+    ersurl: http://localhost:8080/entityresolution/resolve
+    clientid: tdf-authorization-svc
+    clientsecret: secret
+    tokenendpoint: http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token
+  entityresolution:
+    enabled: true
+    url: http://localhost:8888/auth
+    clientid: "tdf-entity-resolution"
+    clientsecret: "secret"
+    realm: "opentdf"
+    legacykeycloak: true
+server:
+  auth:
+    enabled: true
+    enforceDPoP: false
+    audience: "http://localhost:8080"
+    issuer: http://localhost:8888/auth/realms/opentdf
+  cors:
+    enabled: false
+  cryptoProvider:
+    type: standard
+    standard:
+      rsa:
+        r1:
+          private_key_path: kas-private.pem
+          public_key_path: kas-cert.pem
+        r2:
+          private_key_path: kas-r2-private.pem
+          public_key_path: kas-r2-cert.pem
+      ec:
+        e1:
+          private_key_path: kas-ec-private.pem
+          public_key_path: kas-ec-cert.pem
+        e2:
+          private_key_path: kas-e2-private.pem
+          public_key_path: kas-e2-cert.pem
+  port: 8080
+opa:
+  embedded: true
+EOF
 }
 
 update_config() {
@@ -141,12 +225,14 @@ EOF
 
 setup_file() {
   if [ -f opentdf.yaml ]; then
-    mv opentdf.yaml opentdf-test-backup.yaml.bak
+    cp opentdf.yaml opentdf-test-backup.yaml.bak
   fi
   openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=kas" -keyout kas-r2-private.pem -out kas-r2-cert.pem -days 365
   openssl ecparam -name prime256v1 >ecparams.tmp
   openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout kas-e2-private.pem -out kas-e2-cert.pem -days 365
+}
 
+setup() {
   update_config e1 e1 r1 r1
   sleep 4
   wait_for_green

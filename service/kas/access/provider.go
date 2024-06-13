@@ -33,6 +33,8 @@ type KASConfig struct {
 	Keyring []CurrentKeyFor `mapstructure:"keyring"`
 	// Deprecated
 	ECCertID string `mapstructure:"eccertid"`
+	// Deprecated
+	RSACertID string `mapstructure:"rsacertid"`
 }
 
 // Specifies the preferred/default key for a given algorithm type.

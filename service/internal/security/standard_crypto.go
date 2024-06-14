@@ -114,7 +114,7 @@ func loadKey(k KeyPairInfo) (any, error) {
 		}
 	}
 	switch k.Algorithm {
-	case AlgorithmECP256R1:
+	case AlgorithmECP256R1, AlgorithmECP384R1, AlgorithmECP521R1:
 		return StandardECCrypto{
 			KeyPairInfo:      k,
 			ecPrivateKeyPem:  string(privatePEM),

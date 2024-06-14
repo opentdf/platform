@@ -336,7 +336,7 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 	var clientInterceptors []grpc.UnaryClientInterceptor
 
 	// Add audit interceptor
-	clientInterceptors = append(clientInterceptors, sdkAudit.RequestIDClientInterceptor)
+	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingClientInterceptor)
 
 	defaultOptions := []grpc.DialOption{
 		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {

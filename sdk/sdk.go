@@ -134,7 +134,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 
 	// Add request ID interceptor
-	uci = append(uci, audit.RequestIDClientInterceptor)
+	uci = append(uci, audit.MetadataAddingClientInterceptor)
 
 	dialOptions = append(dialOptions, grpc.WithChainUnaryInterceptor(uci...))
 

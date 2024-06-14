@@ -24,7 +24,7 @@ func ContextServerInterceptor(ctx context.Context, req any, i *grpc.UnaryServerI
 	// Add request ID from existing header or create a new one
 	var requestID uuid.UUID
 	var err error
-	requestIDFromMetadata := md[string(RequestIDHeaderKey)]
+	requestIDFromMetadata := md[string(sdkAudit.RequestIDHeaderKey)]
 	if len(requestIDFromMetadata) > 0 {
 		requestID, err = uuid.Parse(requestIDFromMetadata[0])
 		if err != nil {
@@ -36,19 +36,19 @@ func ContextServerInterceptor(ctx context.Context, req any, i *grpc.UnaryServerI
 	ctx = context.WithValue(ctx, sdkAudit.RequestIDContextKey, requestID)
 
 	// Get the request IP from the metadata header
-	requestIPFromMetadata := md[string(RequestIPHeaderKey)]
+	requestIPFromMetadata := md[string(sdkAudit.RequestIPHeaderKey)]
 	if len(requestIPFromMetadata) > 0 {
 		ctx = context.WithValue(ctx, sdkAudit.RequestIPContextKey, requestIPFromMetadata[0])
 	}
 
 	// Get the actor ID from the metadata header
-	actorIDFromMetadata := md[string(ActorIDHeaderKey)]
+	actorIDFromMetadata := md[string(sdkAudit.ActorIDHeaderKey)]
 	if len(actorIDFromMetadata) > 0 {
 		ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, actorIDFromMetadata[0])
 	}
 
 	// Sets the user agent header on the context if it is present in the metadata
-	userAgent := md[string(UserAgentHeaderKey)]
+	userAgent := md[string(sdkAudit.UserAgentHeaderKey)]
 	if len(userAgent) > 0 {
 		ctx = context.WithValue(ctx, sdkAudit.UserAgentContextKey, userAgent[0])
 	}

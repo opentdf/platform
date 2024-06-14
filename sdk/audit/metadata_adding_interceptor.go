@@ -15,10 +15,10 @@ const (
 	actorIDHeaderKey   = "x-forwarded-actor-id"
 )
 
-// RequestIDClientInterceptor is a client side gRPC interceptor that adds an
+// MetadataAddingClientInterceptor is a client side gRPC interceptor that adds an
 // X-Request-ID header to outgoing requests. If a request ID is already present
 // in the context, it will be used. Otherwise, a new request ID will be generated.
-func RequestIDClientInterceptor(
+func MetadataAddingClientInterceptor(
 	ctx context.Context,
 	method string,
 	req, reply any,

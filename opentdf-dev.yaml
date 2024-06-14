@@ -17,6 +17,16 @@ services:
       - kid: e1
         alg: ec:secp256r1
         legacy: true
+      - kid: e2
+        alg: ec:secp384r1
+      - kid: e2
+        alg: ec:secp384r1
+        legacy: true
+      - kid: e3
+        alg: ec:secp521r1
+      - kid: e3
+        alg: ec:secp521r1
+        legacy: true
       - kid: r1
         alg: rsa:2048
       - kid: r1

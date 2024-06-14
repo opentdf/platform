@@ -859,13 +859,14 @@ func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error)
 // getECPublicKey - Contact the specified KAS and get its public key
 func getECPublicKey(kasURL string, ecMode ocrypto.ECCMode, opts ...grpc.DialOption) (string, error) {
 	req := kas.PublicKeyRequest{}
-	req.Algorithm = "ec:secp256r1"
-	if ecMode == ocrypto.ECCModeSecp384r1 {
-		req.Algorithm = "ec:secp384r1"
-	} else {
-		req.Algorithm = "ec:secp521r1"
+	switch ecMode {
+	case ocrypto.ECCModeSecp256r1:
+		req.Algorithm = "ec:secp256r1" // security.AlgorithmECP256R1
+	case ocrypto.ECCModeSecp384r1:
+		req.Algorithm = "ec:secp384r1" // security.AlgorithmECP384R1
+	case ocrypto.ECCModeSecp521r1:
+		req.Algorithm = "ec:secp521r1" // security.AlgorithmECP521R1
 	}
-
 	slog.Debug(fmt.Sprintf("kas public key algorithm: %s", req.GetAlgorithm()))
 
 	grpcAddress, err := getGRPCAddress(kasURL)

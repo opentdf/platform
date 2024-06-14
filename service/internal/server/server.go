@@ -17,6 +17,7 @@ import (
 	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/logger/audit"
 	"github.com/opentdf/platform/service/internal/security"
@@ -238,7 +239,7 @@ func newGrpcInProcessServer() *grpc.Server {
 	var serverOptions []grpc.ServerOption
 
 	// Add audit to in process server
-	interceptors = append(interceptors, audit.UnaryServerInterceptor)
+	interceptors = append(interceptors, audit.ContextServerInterceptor)
 
 	// FIXME: this should probably use existing IP address instead of local?
 	// Add RealIP interceptor to in process server
@@ -263,7 +264,7 @@ func newGrpcServer(c Config, a *auth.Authentication) (*grpc.Server, error) {
 	}
 
 	// Add Audit Unary Server Interceptor
-	i = append(i, audit.UnaryServerInterceptor)
+	i = append(i, audit.ContextServerInterceptor)
 
 	if c.Auth.Enabled {
 		i = append(i, a.UnaryServerInterceptor)
@@ -335,7 +336,7 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 	var clientInterceptors []grpc.UnaryClientInterceptor
 
 	// Add audit interceptor
-	clientInterceptors = append(clientInterceptors, audit.RequestIDClientInterceptor)
+	clientInterceptors = append(clientInterceptors, sdkAudit.RequestIDClientInterceptor)
 
 	defaultOptions := []grpc.DialOption{
 		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {

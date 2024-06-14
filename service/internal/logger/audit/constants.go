@@ -1,20 +1,14 @@
 package audit
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 type RequestHeader string
 
 const (
 	UserAgentHeaderKey RequestHeader = "user-agent"
 	RequestIDHeaderKey RequestHeader = "x-request-id"
-)
-
-type AuditContextKey string
-
-const (
-	UserAgentContextKey AuditContextKey = "user-agent"
-	RequestIDContextKey AuditContextKey = "request-id"
-	ActorIDContextKey   AuditContextKey = "actor-id"
 )
 
 type ObjectType int

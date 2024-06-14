@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
+	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/wI2L/jsondiff"
 )
 
@@ -76,19 +77,19 @@ type ContextData struct {
 
 func GetAuditDataFromContext(ctx context.Context) ContextData {
 	// Extract the request ID from context
-	requestID, requestIDOk := ctx.Value(RequestIDContextKey).(uuid.UUID)
+	requestID, requestIDOk := ctx.Value(sdkAudit.RequestIDContextKey).(uuid.UUID)
 	if !requestIDOk {
 		requestID = uuid.Nil
 	}
 
 	// Extract user agent from context
-	userAgent, userAgentOK := ctx.Value(UserAgentContextKey).(string)
+	userAgent, userAgentOK := ctx.Value(sdkAudit.UserAgentContextKey).(string)
 	if !userAgentOK {
 		userAgent = defaultNone
 	}
 
 	// Extract actor ID from context
-	actorID, actorIDOK := ctx.Value(ActorIDContextKey).(string)
+	actorID, actorIDOK := ctx.Value(sdkAudit.ActorIDContextKey).(string)
 	if !actorIDOK || actorID == "" {
 		actorID = defaultNone
 	}

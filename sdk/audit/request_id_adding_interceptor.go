@@ -9,8 +9,7 @@ import (
 )
 
 const (
-	requestIDContextKey = "request-id"
-	requestIDHeaderKey  = "x-request-id"
+	requestIDHeaderKey = "x-request-id"
 )
 
 // RequestIDClientInterceptor is a client side gRPC interceptor that adds an
@@ -27,7 +26,7 @@ func RequestIDClientInterceptor(
 	newMetadata := make([]string, 0)
 
 	// Get any existing request ID from context
-	requestID, ok := ctx.Value(requestIDContextKey).(uuid.UUID)
+	requestID, ok := ctx.Value(RequestIDContextKey).(uuid.UUID)
 	if !ok || requestID == uuid.Nil {
 		requestID = uuid.New()
 	}

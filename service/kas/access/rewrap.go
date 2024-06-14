@@ -368,7 +368,6 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 	}
 
 	p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
-	p.Logger.Info("BACON TDF REWRAP DONE")
 	return &kaspb.RewrapResponse{
 		EntityWrappedKey: rewrappedKey,
 		SessionPublicKey: "",
@@ -478,7 +477,6 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 	}
 
 	p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
-	p.Logger.Info("BACON NANO REWRAP DONE")
 
 	return &kaspb.RewrapResponse{
 		EntityWrappedKey: cipherText,

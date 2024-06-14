@@ -2,7 +2,6 @@ package audit
 
 import (
 	"context"
-	"log/slog"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
@@ -34,7 +33,6 @@ func RequestIDClientInterceptor(
 	}
 	newMetadata = append(newMetadata, requestIDHeaderKey, requestID.String())
 
-	slog.Info("BACON Request Info", "reqID", requestID.String())
 	newCtx := metadata.AppendToOutgoingContext(ctx, newMetadata...)
 
 	err := invoker(newCtx, method, req, reply, cc, opts...)

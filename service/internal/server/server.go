@@ -332,6 +332,11 @@ func (s inProcessServer) GetGrpcServer() *grpc.Server {
 }
 
 func (s inProcessServer) Conn() *grpc.ClientConn {
+	var clientInterceptors []grpc.UnaryClientInterceptor
+
+	// Add audit interceptor
+	clientInterceptors = append(clientInterceptors, audit.RequestIDClientInterceptor)
+
 	defaultOptions := []grpc.DialOption{
 		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
 			conn, err := s.ln.Dial()
@@ -341,6 +346,7 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 			return conn, nil
 		}),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithChainUnaryInterceptor(clientInterceptors...),
 	}
 
 	conn, _ := grpc.Dial("", defaultOptions...)

@@ -2,7 +2,6 @@ package audit
 
 import (
 	"context"
-	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
@@ -81,7 +80,6 @@ func GetAuditDataFromContext(ctx context.Context) ContextData {
 	if !requestIDOk {
 		requestID = uuid.Nil
 	}
-	slog.Info("BACON(GetAuditDataFromContext)", "reqID", requestID)
 
 	// Extract user agent from context
 	userAgent, userAgentOK := ctx.Value(UserAgentContextKey).(string)

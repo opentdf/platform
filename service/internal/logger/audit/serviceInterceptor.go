@@ -2,7 +2,6 @@ package audit
 
 import (
 	"context"
-	"log/slog"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
@@ -27,15 +26,12 @@ func UnaryServerInterceptor(ctx context.Context, req any, i *grpc.UnaryServerInf
 	requestIDFromMetadata := md[string(RequestIDHeaderKey)]
 	if len(requestIDFromMetadata) > 0 {
 		requestID, err = uuid.Parse(requestIDFromMetadata[0])
-		slog.Info("BACON(ServerInterceptor)", "method", i.FullMethod, "X-Request-ID", requestID)
 		if err != nil {
 			requestID = uuid.New()
 		}
 	} else {
-		slog.Info("BACON(ServerInterceptor)", "method", i.FullMethod, "X-Request-ID", "NONE")
 		requestID = uuid.New()
 	}
-	slog.Info("BACON(ServerInterceptor)", "method", i.FullMethod, "Set-ReqIDCxt", requestID)
 	ctx = context.WithValue(ctx, RequestIDContextKey, requestID)
 
 	// Sets the user agent header on the context if it is present in the metadata
@@ -45,4 +41,31 @@ func UnaryServerInterceptor(ctx context.Context, req any, i *grpc.UnaryServerInf
 	}
 
 	return handler(ctx, req)
+}
+
+// RequestIDClientInterceptor is a client side gRPC interceptor that adds an
+// X-Request-ID header to outgoing requests. If a request ID is already present
+// in the context, it will be used. Otherwise, a new request ID will be generated.
+func RequestIDClientInterceptor(
+	ctx context.Context,
+	method string,
+	req, reply any,
+	cc *grpc.ClientConn,
+	invoker grpc.UnaryInvoker,
+	opts ...grpc.CallOption,
+) error {
+	newMetadata := make([]string, 0)
+
+	// Get any existing request ID from context
+	requestID, ok := ctx.Value(RequestIDContextKey).(uuid.UUID)
+	if !ok || requestID == uuid.Nil {
+		requestID = uuid.New()
+	}
+	newMetadata = append(newMetadata, string(RequestIDHeaderKey), requestID.String())
+
+	newCtx := metadata.AppendToOutgoingContext(ctx, newMetadata...)
+
+	err := invoker(newCtx, method, req, reply, cc, opts...)
+
+	return err
 }

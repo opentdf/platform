@@ -26,6 +26,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
@@ -158,7 +159,11 @@ func (s *AuthSuite) SetupTest() {
 				Audience:    "test",
 			},
 			PublicRoutes: []string{"/public", "/public2/*", "/public3/static", "/static/*", "/static/*/*"},
-		})
+		},
+		&logger.Logger{
+			Logger: slog.New(slog.Default().Handler()),
+		},
+	)
 
 	s.Require().NoError(err)
 
@@ -586,7 +591,9 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	}
 	config := Config{}
 	config.AuthNConfig = authnConfig
-	auth, err := NewAuthenticator(context.Background(), config)
+	auth, err := NewAuthenticator(context.Background(), config, &logger.Logger{
+		Logger: slog.New(slog.Default().Handler()),
+	})
 
 	s.Require().NoError(err)
 

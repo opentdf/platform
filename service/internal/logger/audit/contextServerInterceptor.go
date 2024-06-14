@@ -35,6 +35,18 @@ func ContextServerInterceptor(ctx context.Context, req any, i *grpc.UnaryServerI
 	}
 	ctx = context.WithValue(ctx, sdkAudit.RequestIDContextKey, requestID)
 
+	// Get the request IP from the metadata header
+	requestIPFromMetadata := md[string(RequestIPHeaderKey)]
+	if len(requestIPFromMetadata) > 0 {
+		ctx = context.WithValue(ctx, sdkAudit.RequestIPContextKey, requestIPFromMetadata[0])
+	}
+
+	// Get the actor ID from the metadata header
+	actorIDFromMetadata := md[string(ActorIDHeaderKey)]
+	if len(actorIDFromMetadata) > 0 {
+		ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, actorIDFromMetadata[0])
+	}
+
 	// Sets the user agent header on the context if it is present in the metadata
 	userAgent := md[string(UserAgentHeaderKey)]
 	if len(userAgent) > 0 {

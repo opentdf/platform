@@ -75,6 +75,7 @@ type ContextData struct {
 	ActorID   string
 }
 
+// Gets relevant audit data from the context object.
 func GetAuditDataFromContext(ctx context.Context) ContextData {
 	// Extract the request ID from context
 	requestID, requestIDOk := ctx.Value(sdkAudit.RequestIDContextKey).(uuid.UUID)
@@ -82,31 +83,39 @@ func GetAuditDataFromContext(ctx context.Context) ContextData {
 		requestID = uuid.Nil
 	}
 
-	// Extract user agent from context
-	userAgent, userAgentOK := ctx.Value(sdkAudit.UserAgentContextKey).(string)
-	if !userAgentOK {
-		userAgent = defaultNone
-	}
-
-	// Extract actor ID from context
-	actorID, actorIDOK := ctx.Value(sdkAudit.ActorIDContextKey).(string)
-	if !actorIDOK || actorID == "" {
-		actorID = defaultNone
-	}
-
-	// Extract request IP from context
-	requestIPString := defaultNone
-	requestIP, ipOK := realip.FromContext(ctx)
-	if ipOK {
-		requestIPString = requestIP.String()
-	}
-
 	return ContextData{
 		RequestID: requestID,
-		UserAgent: userAgent,
-		RequestIP: requestIPString,
-		ActorID:   actorID,
+		UserAgent: getContextValue(ctx, sdkAudit.UserAgentContextKey),
+		RequestIP: getRequestIPFromContext(ctx),
+		ActorID:   getContextValue(ctx, sdkAudit.ActorIDContextKey),
 	}
+}
+
+// Gets a value from the context. If the value is not present or is an empty
+// string, it returns the default value.
+func getContextValue(ctx context.Context, key sdkAudit.AuditContextKey) string {
+	value, ok := ctx.Value(key).(string)
+	if !ok || value == "" {
+		return defaultNone
+	}
+	return value
+}
+
+// Gets the request IP from the context. It first checks the context key, as we
+// can pass the custom X-Forwarded-Request-IP header for internal requests. If
+// that is not present, it falls back to the realip package.
+func getRequestIPFromContext(ctx context.Context) string {
+	requestIPFromContextKey, isOK := ctx.Value(sdkAudit.RequestIPContextKey).(string)
+	if isOK {
+		return requestIPFromContextKey
+	}
+
+	requestIPFromRealip, ipOK := realip.FromContext(ctx)
+	if ipOK {
+		return requestIPFromRealip.String()
+	}
+
+	return defaultNone
 }
 
 // Audit requires an "owner" field but that doesn't apply in the context of the

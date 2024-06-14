@@ -310,8 +310,12 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 	}
 
 	// Get actor ID (sub) from unverified token for audit and add to context
-	actorID := unverifiedToken.Subject()
-	ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, actorID)
+	// Only set the actor ID if it is not already defined
+	existingActorID := ctx.Value(sdkAudit.ActorIDContextKey)
+	if existingActorID == nil {
+		actorID := unverifiedToken.Subject()
+		ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, actorID)
+	}
 
 	// Get issuer from unverified token
 	issuer := unverifiedToken.Issuer()

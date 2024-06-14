@@ -162,7 +162,7 @@ func normalizeURL(o string, u *url.URL) string {
 // verifyTokenHandler is a http handler that verifies the token
 func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(r.URL.Path)) {
+		if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(r.URL.Path)) { //nolint:contextcheck // There is no way to pass a context here
 			handler.ServeHTTP(w, r)
 			return
 		}
@@ -226,7 +226,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 // UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
 func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	// Allow health checks and other public routes to pass through
-	if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(info.FullMethod)) {
+	if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(info.FullMethod)) { //nolint:contextcheck // There is no way to pass a context here
 		return handler(ctx, req)
 	}
 

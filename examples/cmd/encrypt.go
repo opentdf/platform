@@ -102,8 +102,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		// P-512 example, P-256 is good enough
-		err = nanoTDFConfig.SetECCMode(ocrypto.ECCModeSecp521r1)
+		err = nanoTDFConfig.SetECCMode(ocrypto.ECCModeSecp256r1)
 		if err != nil {
 			return err
 		}

@@ -217,6 +217,14 @@ server:
           alg: ec:secp256r1
           private: kas-ec-private.pem
           cert: kas-ec-cert.pem
+        - kid: e384
+          alg: ec:secp384r1
+          private: kas-secp384r1-private.pem
+          cert: kas-secp384r1-cert.pem
+        - kid: e521
+          alg: ec:secp521r1
+          private: kas-secp521r1-private.pem
+          cert: kas-secp521r1-cert.pem
   port: 8080
 opa:
   embedded: true

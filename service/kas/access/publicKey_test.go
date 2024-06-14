@@ -259,10 +259,12 @@ func TestStandardCertificateHandlerWithEc256(t *testing.T) {
 	configStandard := security.Config{
 		Type: "standard",
 		StandardConfig: security.StandardConfig{
-			ECKeys: map[string]security.StandardKeyInfo{
-				"c1-256": {
-					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+			Keys: []security.KeyPairInfo{
+				{
+					Algorithm:   security.AlgorithmECP256R1,
+					KID:         "c1-256",
+					Private:     "./testdata/access-provider-ec-private.pem",
+					Certificate: "./testdata/access-provider-ec-certificate.pem",
 				},
 			},
 		},
@@ -293,10 +295,12 @@ func TestStandardCertificateHandlerWithEc384(t *testing.T) {
 	configStandard := security.Config{
 		Type: "standard",
 		StandardConfig: security.StandardConfig{
-			ECKeys: map[string]security.StandardKeyInfo{
-				"c2-384": {
-					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+			Keys: []security.KeyPairInfo{
+				{
+					Algorithm:   security.AlgorithmECP384R1,
+					KID:         "c2-384",
+					Private:     "./testdata/access-provider-ec-private.pem",
+					Certificate: "./testdata/access-provider-ec-certificate.pem",
 				},
 			},
 		},
@@ -327,10 +331,12 @@ func TestStandardCertificateHandlerWithEc521(t *testing.T) {
 	configStandard := security.Config{
 		Type: "standard",
 		StandardConfig: security.StandardConfig{
-			ECKeys: map[string]security.StandardKeyInfo{
-				"c3-512": {
-					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+			Keys: []security.KeyPairInfo{
+				{
+					Algorithm:   security.AlgorithmECP521R1,
+					KID:         "c3-521",
+					Private:     "./testdata/access-provider-ec-private.pem",
+					Certificate: "./testdata/access-provider-ec-certificate.pem",
 				},
 			},
 		},
@@ -344,14 +350,14 @@ func TestStandardCertificateHandlerWithEc521(t *testing.T) {
 		KASConfig: KASConfig{
 			Keyring: []CurrentKeyFor{
 				{
-					Algorithm: security.AlgorithmECP512R1,
-					KID:       "c3-512",
+					Algorithm: security.AlgorithmECP521R1,
+					KID:       "c3-521",
 				},
 			},
 		},
 	}
 
-	result, err := kas.LegacyPublicKey(context.Background(), &kaspb.LegacyPublicKeyRequest{Algorithm: security.AlgorithmECP512R1})
+	result, err := kas.LegacyPublicKey(context.Background(), &kaspb.LegacyPublicKeyRequest{Algorithm: security.AlgorithmECP521R1})
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Contains(t, result.GetValue(), "BEGIN CERTIFICATE")
@@ -361,10 +367,12 @@ func TestStandardPublicKeyHandlerWithEc256(t *testing.T) {
 	configStandard := security.Config{
 		Type: "standard",
 		StandardConfig: security.StandardConfig{
-			ECKeys: map[string]security.StandardKeyInfo{
-				"c1-256": {
-					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+			Keys: []security.KeyPairInfo{
+				{
+					Algorithm:   security.AlgorithmECP256R1,
+					KID:         "c1-256",
+					Private:     "./testdata/access-provider-ec-private.pem",
+					Certificate: "./testdata/access-provider-ec-certificate.pem",
 				},
 			},
 		},
@@ -395,10 +403,12 @@ func TestStandardPublicKeyHandlerWithEc384(t *testing.T) {
 	configStandard := security.Config{
 		Type: "standard",
 		StandardConfig: security.StandardConfig{
-			ECKeys: map[string]security.StandardKeyInfo{
-				"c2-384": {
-					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+			Keys: []security.KeyPairInfo{
+				{
+					Algorithm:   security.AlgorithmECP384R1,
+					KID:         "c2-384",
+					Private:     "./testdata/access-provider-ec-private.pem",
+					Certificate: "./testdata/access-provider-ec-certificate.pem",
 				},
 			},
 		},
@@ -429,10 +439,12 @@ func TestStandardPublicKeyHandlerWithEc521(t *testing.T) {
 	configStandard := security.Config{
 		Type: "standard",
 		StandardConfig: security.StandardConfig{
-			ECKeys: map[string]security.StandardKeyInfo{
-				"c3-512": {
-					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+			Keys: []security.KeyPairInfo{
+				{
+					Algorithm:   security.AlgorithmECP521R1,
+					KID:         "c3-521",
+					Private:     "./testdata/access-provider-ec-private.pem",
+					Certificate: "./testdata/access-provider-ec-certificate.pem",
 				},
 			},
 		},
@@ -446,14 +458,14 @@ func TestStandardPublicKeyHandlerWithEc521(t *testing.T) {
 		KASConfig: KASConfig{
 			Keyring: []CurrentKeyFor{
 				{
-					Algorithm: security.AlgorithmECP512R1,
-					KID:       "c3-512",
+					Algorithm: security.AlgorithmECP521R1,
+					KID:       "c3-521",
 				},
 			},
 		},
 	}
 
-	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: security.AlgorithmECP512R1})
+	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: security.AlgorithmECP521R1})
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Contains(t, result.GetPublicKey(), "BEGIN PUBLIC KEY")
@@ -463,10 +475,12 @@ func TestStandardPublicKeyHandlerV2WithEc256(t *testing.T) {
 	configStandard := security.Config{
 		Type: "standard",
 		StandardConfig: security.StandardConfig{
-			ECKeys: map[string]security.StandardKeyInfo{
-				"c1-256": {
-					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+			Keys: []security.KeyPairInfo{
+				{
+					Algorithm:   security.AlgorithmECP256R1,
+					KID:         "c1-256",
+					Private:     "./testdata/access-provider-ec-private.pem",
+					Certificate: "./testdata/access-provider-ec-certificate.pem",
 				},
 			},
 		},
@@ -498,10 +512,12 @@ func TestStandardPublicKeyHandlerV2WithEc384(t *testing.T) {
 	configStandard := security.Config{
 		Type: "standard",
 		StandardConfig: security.StandardConfig{
-			ECKeys: map[string]security.StandardKeyInfo{
-				"c2-384": {
-					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+			Keys: []security.KeyPairInfo{
+				{
+					Algorithm:   security.AlgorithmECP384R1,
+					KID:         "c2-384",
+					Private:     "./testdata/access-provider-ec-private.pem",
+					Certificate: "./testdata/access-provider-ec-certificate.pem",
 				},
 			},
 		},
@@ -533,10 +549,12 @@ func TestStandardPublicKeyHandlerV2WithEc521(t *testing.T) {
 	configStandard := security.Config{
 		Type: "standard",
 		StandardConfig: security.StandardConfig{
-			ECKeys: map[string]security.StandardKeyInfo{
-				"c3-512": {
-					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+			Keys: []security.KeyPairInfo{
+				{
+					Algorithm:   security.AlgorithmECP521R1,
+					KID:         "c3-521",
+					Private:     "./testdata/access-provider-ec-private.pem",
+					Certificate: "./testdata/access-provider-ec-certificate.pem",
 				},
 			},
 		},
@@ -550,14 +568,14 @@ func TestStandardPublicKeyHandlerV2WithEc521(t *testing.T) {
 		KASConfig: KASConfig{
 			Keyring: []CurrentKeyFor{
 				{
-					Algorithm: security.AlgorithmECP512R1,
-					KID:       "c3-512",
+					Algorithm: security.AlgorithmECP521R1,
+					KID:       "c3-521",
 				},
 			},
 		},
 	}
 
-	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: security.AlgorithmECP512R1,
+	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: security.AlgorithmECP521R1,
 		V: "2"})
 	require.NoError(t, err)
 	require.NotNil(t, result)

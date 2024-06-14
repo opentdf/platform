@@ -241,8 +241,8 @@ func (s StandardCrypto) RSAPublicKey(kid string) (string, error) {
 	return pem, nil
 }
 
-func (s StandardCrypto) ECCertificate(kid string) (string, error) {
-	ecKeys, ok := s.keys[AlgorithmECP256R1]
+func (s StandardCrypto) ECCertificate(kid string, curveName string) (string, error) {
+	ecKeys, ok := s.keys[curveName]
 	if !ok || len(ecKeys) == 0 {
 		return "", ErrCertNotFound
 	}
@@ -257,8 +257,8 @@ func (s StandardCrypto) ECCertificate(kid string) (string, error) {
 	return ec.ecCertificatePEM, nil
 }
 
-func (s StandardCrypto) ECPublicKey(kid string) (string, error) {
-	ecKeys, ok := s.keys[AlgorithmECP256R1]
+func (s StandardCrypto) ECPublicKey(kid string, curveName string) (string, error) {
+	ecKeys, ok := s.keys[curveName]
 	if !ok || len(ecKeys) == 0 {
 		return "", ErrCertNotFound
 	}

@@ -24,8 +24,8 @@ type CryptoProvider interface {
 	RSAPublicKeyAsJSON(keyID string) (string, error)
 	RSADecrypt(hash crypto.Hash, keyID string, keyLabel string, ciphertext []byte) ([]byte, error)
 
-	ECPublicKey(keyID string) (string, error)
-	ECCertificate(keyID string) (string, error)
+	ECPublicKey(keyID string, curveName string) (string, error)
+	ECCertificate(keyID string, curveName string) (string, error)
 	GenerateNanoTDFSymmetricKey(kasKID string, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error)
 	GenerateEphemeralKasKeys(curve elliptic.Curve) (any, []byte, error)
 	GenerateNanoTDFSessionKey(privateKeyHandle any, ephemeralPublicKey []byte) ([]byte, error)

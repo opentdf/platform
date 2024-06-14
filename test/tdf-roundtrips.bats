@@ -174,6 +174,14 @@ services:
       - kid: ${rsa_legacy_key}
         alg: rsa:2048
         legacy: true
+      - kid: e384
+        alg: ec:secp384r1
+        private: kas-secp384r1-private.pem
+        cert: kas-secp384r1-cert.pem
+      - kid: e521
+        alg: ec:secp521r1
+        private: kas-secp521r1-private.pem
+        cert: kas-secp521r1-cert.pem
   policy:
     enabled: true
   authorization:

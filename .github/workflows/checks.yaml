@@ -134,6 +134,8 @@ jobs:
       matrix:
         crypto:
           - standard
+    env:
+      BATS_LIB_PATH: "${{ github.workspace }}/test/bats/lib/"
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
@@ -189,6 +191,9 @@ jobs:
       - run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.9
       - name: Setup Bats and bats libs
         uses: bats-core/bats-action@2.0.0
+        with:
+          support-path: ${{ github.workspace }}/test/bats/lib/bats-support
+          assert-path: ${{ github.workspace }}/test/bats/lib/bats-assert
       - run: test/service-start.bats
       - run: test/tdf-roundtrips.bats
       - name: create roundtrip test data and run tests

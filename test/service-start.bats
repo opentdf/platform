@@ -18,24 +18,26 @@ setup() {
   run grpcurl -plaintext "localhost:8080" "grpc.health.v1.Health.Check"
   assert_success
   assert_output --partial SERVING
-  assert_equal "$(jq -r .status <<<"${output}") SERVING
+
+  run jq -r .status <<<${output}
+  assert_equal "${output}" SERVING
 }
 
 @test "gRPC: reports a public key" {
   run grpcurl -plaintext "localhost:8080" "kas.AccessService/PublicKey"
 
-grpcurl -plaintext "localhost:8080" "kas.AccessService/PublicKey" | jq -r .publicKey | openssl asn1parse
-  # Is public key
-  assert_output --partial PUBLIC
-  p=$(jq -r .publicKey <<<"${output}")
-  assert_regex "$p" "^-----BEGIN PUBLIC KEY"-----"
-
-  # Is an RSA key
-  run openssl asn1parse <<<$p
-  assert_line --partial rsaEncryption
-
   # Has expected kid
   assert_equal "$(jq -r .kid <<<"${output}")" r1
+
+  # Is public key
+  assert_output --partial PUBLIC
+
+  run jq -r .publicKey <<<"${output}"
+  assert_regex "$output" "^-----BEGIN PUBLIC KEY-----"
+
+  # Is an RSA key
+  run openssl asn1parse <<<$output
+  assert_line --partial rsaEncryption
 }
 
 @test "REST: new public key endpoint (no algorithm)" {

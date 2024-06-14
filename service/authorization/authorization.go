@@ -66,7 +66,7 @@ func NewRegistration() serviceregistry.Registration {
 				ERSURL:        "http://localhost:8080/entityresolution/resolve",
 				ClientID:      "tdf-authorization-svc",
 				ClientSecret:  "secret",
-				TokenEndpoint: "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token", //nolint:gosec // default token endpoint
+				TokenEndpoint: "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token",
 			}
 			if err := mapstructure.Decode(srp.Config.ExtraProps, &authZCfg); err != nil {
 				panic(fmt.Errorf("invalid auth svc cfg [%v] %w", srp.Config.ExtraProps, err))

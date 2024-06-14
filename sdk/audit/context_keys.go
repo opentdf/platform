@@ -1,12 +1,12 @@
 package audit
 
-type AuditContextKey string
+type ContextKey string
 
 const (
-	RequestIDContextKey AuditContextKey = "request-id"
-	RequestIPContextKey AuditContextKey = "request-ip"
-	UserAgentContextKey AuditContextKey = "user-agent"
-	ActorIDContextKey   AuditContextKey = "actor-id"
+	RequestIDContextKey ContextKey = "request-id"
+	RequestIPContextKey ContextKey = "request-ip"
+	UserAgentContextKey ContextKey = "user-agent"
+	ActorIDContextKey   ContextKey = "actor-id"
 )
 
 type RequestHeader string

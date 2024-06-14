@@ -93,7 +93,7 @@ func GetAuditDataFromContext(ctx context.Context) ContextData {
 
 // Gets a value from the context. If the value is not present or is an empty
 // string, it returns the default value.
-func getContextValue(ctx context.Context, key sdkAudit.AuditContextKey) string {
+func getContextValue(ctx context.Context, key sdkAudit.ContextKey) string {
 	value, ok := ctx.Value(key).(string)
 	if !ok || value == "" {
 		return defaultNone

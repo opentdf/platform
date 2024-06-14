@@ -14,7 +14,7 @@ import (
 // The audit unary server interceptor is a gRPC interceptor that adds metadata
 // to the context of incoming requests. This metadata is used to log audit
 // audit events.
-func ContextServerInterceptor(ctx context.Context, req any, i *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+func ContextServerInterceptor(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	// Get metadata from the context
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {

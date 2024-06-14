@@ -16,6 +16,15 @@ import (
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
 )
 
+const devModeMessage = `
+██████╗ ███████╗██╗   ██╗███████╗██╗      ██████╗ ██████╗ ███╗   ███╗███████╗███╗   ██╗████████╗    ███╗   ███╗ ██████╗ ██████╗ ███████╗
+██╔══██╗██╔════╝██║   ██║██╔════╝██║     ██╔═══██╗██╔══██╗████╗ ████║██╔════╝████╗  ██║╚══██╔══╝    ████╗ ████║██╔═══██╗██╔══██╗██╔════╝
+██║  ██║█████╗  ██║   ██║█████╗  ██║     ██║   ██║██████╔╝██╔████╔██║█████╗  ██╔██╗ ██║   ██║       ██╔████╔██║██║   ██║██║  ██║█████╗  
+██║  ██║██╔══╝  ╚██╗ ██╔╝██╔══╝  ██║     ██║   ██║██╔═══╝ ██║╚██╔╝██║██╔══╝  ██║╚██╗██║   ██║       ██║╚██╔╝██║██║   ██║██║  ██║██╔══╝  
+██████╔╝███████╗ ╚████╔╝ ███████╗███████╗╚██████╔╝██║     ██║ ╚═╝ ██║███████╗██║ ╚████║   ██║       ██║ ╚═╝ ██║╚██████╔╝██████╔╝███████╗
+╚═════╝ ╚══════╝  ╚═══╝  ╚══════╝╚══════╝ ╚═════╝ ╚═╝     ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝   ╚═╝       ╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝                                                                                        
+`
+
 func Start(f ...StartOptions) error {
 	startConfig := StartConfig{}
 	for _, fn := range f {
@@ -30,6 +39,10 @@ func Start(f ...StartOptions) error {
 	conf, err := config.LoadConfig(startConfig.ConfigKey, startConfig.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("could not load config: %w", err)
+	}
+
+	if conf.DevMode {
+		fmt.Print(devModeMessage) //nolint:forbidigo // This ascii art is only displayed in dev mode
 	}
 
 	// Set allowed public routes when platform is being extended

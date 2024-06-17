@@ -26,8 +26,8 @@
 
   echo "[INFO] decrypting nanotdf..."
   echo "[WARN] skipped due to https://github.com/opentdf/platform/issues/900"
-#  go run ./examples decrypt sensitive.txt.ntdf
-#  go run ./examples decrypt sensitive.txt.ntdf | grep "Hello NanoTDF"
+  go run ./examples decrypt sensitive.txt.ntdf
+  go run ./examples decrypt sensitive.txt.ntdf | grep "Hello NanoTDF"
 }
 
 @test "examples: legacy key support Z-TDF" {

@@ -42,25 +42,30 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	defer file.Close()
 	cmd.Println("# TDF")
 
+	var isTDF = true
 	tdfreader, err := client.LoadTDF(file)
 	if err != nil {
-		return err
+		cmd.Println("Not TDF, proceeding to try Nano")
+		isTDF = false
 	}
 
-	//Print decrypted string
-	_, err = io.Copy(os.Stdout, tdfreader)
-	if err != nil && err != io.EOF {
-		return err
+	//Print TDF decrypted string
+	if isTDF {
+		_, err = io.Copy(os.Stdout, tdfreader)
+		if err != nil && err != io.EOF {
+			return err
+		}
+		return nil
 	}
+
 	cmd.Println("\n-----\n\n# NANO")
 
-	nTdfFile, err := os.Open("sensitive.txt.ntdf")
+	_, err = file.Seek(0, 0)
 	if err != nil {
 		return err
 	}
-
 	outBuf := bytes.Buffer{}
-	_, err = client.ReadNanoTDF(io.Writer(&outBuf), nTdfFile)
+	_, err = client.ReadNanoTDF(io.Writer(&outBuf), file)
 	if err != nil {
 		return err
 	}

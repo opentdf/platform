@@ -18,6 +18,7 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/auth"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/logger/audit"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/valyala/fasthttp/fasthttputil"
@@ -103,7 +104,7 @@ type inProcessServer struct {
 	srv *grpc.Server
 }
 
-func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
+func NewOpenTDFServer(config Config, logr *logger.Logger) (*OpenTDFServer, error) {
 	var (
 		authN *auth.Authentication
 		err   error
@@ -115,18 +116,19 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 		authN, err = auth.NewAuthenticator(
 			context.Background(),
 			config.Auth,
+			logr,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
 		}
-		slog.Debug("authentication interceptor enabled")
+		logr.Debug("authentication interceptor enabled")
 	} else {
-		slog.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
+		logr.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
 	// Try an register oidc issuer to wellknown service but don't return an error if it fails
 	if err := config.WellKnownConfigRegister("platform_issuer", config.Auth.Issuer); err != nil {
-		slog.Warn("failed to register platform issuer", slog.String("error", err.Error()))
+		logr.Warn("failed to register platform issuer", slog.String("error", err.Error()))
 	}
 
 	// Create grpc server and in process grpc server
@@ -156,7 +158,7 @@ func NewOpenTDFServer(config Config) (*OpenTDFServer, error) {
 	}
 
 	// Create crypto provider
-	slog.Info("creating crypto provider", slog.String("type", config.CryptoProvider.Type))
+	logr.Info("creating crypto provider", slog.String("type", config.CryptoProvider.Type))
 	o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
 	if err != nil {
 		return nil, fmt.Errorf("security.NewCryptoProvider: %w", err)

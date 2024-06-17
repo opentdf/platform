@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"log/slog"
+
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/config"
@@ -18,7 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/exp/slog"
 )
 
 type TestServiceService interface{}
@@ -74,7 +75,11 @@ func mockOpenTDFServer() (*server.OpenTDFServer, error) {
 			PublicRoutes: []string{"/testpath/*"},
 		},
 		Port: 43481,
-	})
+	},
+		&logger.Logger{
+			Logger: slog.New(slog.Default().Handler()),
+		},
+	)
 }
 
 type StartTestSuite struct {

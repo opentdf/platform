@@ -35,6 +35,11 @@ jobs:
               lib/ocrypto)
                 echo "TO_UPDATE=['examples','sdk','service']">>"$GITHUB_OUTPUT"
                 ;;
+              lib/flattening)
+                # currently nothing downstream
+                # TODO: uncomment when services updates
+                # echo "TO_UPDATE=['service']">>"$GITHUB_OUTPUT"
+                ;;
               lib/fixtures)
                 echo "TO_UPDATE=['sdk','service']">>"$GITHUB_OUTPUT"
                 ;;

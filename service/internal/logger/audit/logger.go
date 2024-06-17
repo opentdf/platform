@@ -11,12 +11,9 @@ import (
 // associated with an integer value: DEBUG (-4), INFO (0), WARN (4), and ERROR (8).
 const (
 	// Currently setting AUDIT level to 10, a level above ERROR so it is always logged
-	LevelAudit = slog.Level(10)
+	LevelAudit    = slog.Level(10)
+	LevelAuditStr = "AUDIT"
 )
-
-var AuditLogLevelNames = map[slog.Leveler]string{
-	LevelAudit: "AUDIT",
-}
 
 type Logger struct {
 	logger *slog.Logger

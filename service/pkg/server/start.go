@@ -16,6 +16,15 @@ import (
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
 )
 
+const devModeMessage = `
+██████╗ ███████╗██╗   ██╗███████╗██╗      ██████╗ ██████╗ ███╗   ███╗███████╗███╗   ██╗████████╗    ███╗   ███╗ ██████╗ ██████╗ ███████╗
+██╔══██╗██╔════╝██║   ██║██╔════╝██║     ██╔═══██╗██╔══██╗████╗ ████║██╔════╝████╗  ██║╚══██╔══╝    ████╗ ████║██╔═══██╗██╔══██╗██╔════╝
+██║  ██║█████╗  ██║   ██║█████╗  ██║     ██║   ██║██████╔╝██╔████╔██║█████╗  ██╔██╗ ██║   ██║       ██╔████╔██║██║   ██║██║  ██║█████╗  
+██║  ██║██╔══╝  ╚██╗ ██╔╝██╔══╝  ██║     ██║   ██║██╔═══╝ ██║╚██╔╝██║██╔══╝  ██║╚██╗██║   ██║       ██║╚██╔╝██║██║   ██║██║  ██║██╔══╝  
+██████╔╝███████╗ ╚████╔╝ ███████╗███████╗╚██████╔╝██║     ██║ ╚═╝ ██║███████╗██║ ╚████║   ██║       ██║ ╚═╝ ██║╚██████╔╝██████╔╝███████╗
+╚═════╝ ╚══════╝  ╚═══╝  ╚══════╝╚══════╝ ╚═════╝ ╚═╝     ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝   ╚═╝       ╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝                                                                                        
+`
+
 func Start(f ...StartOptions) error {
 	startConfig := StartConfig{}
 	for _, fn := range f {
@@ -32,6 +41,10 @@ func Start(f ...StartOptions) error {
 		return fmt.Errorf("could not load config: %w", err)
 	}
 
+	if conf.DevMode {
+		fmt.Print(devModeMessage) //nolint:forbidigo // This ascii art is only displayed in dev mode
+	}
+
 	// Set allowed public routes when platform is being extended
 	if len(startConfig.PublicRoutes) > 0 {
 		conf.Server.Auth.PublicRoutes = startConfig.PublicRoutes
@@ -42,11 +55,13 @@ func Start(f ...StartOptions) error {
 	if err != nil {
 		return fmt.Errorf("could not start logger: %w", err)
 	}
+
+	// Set default for places we can't pass the logger
 	slog.SetDefault(logger.Logger)
 
-	slog.Debug("config loaded", slog.Any("config", conf))
+	logger.Debug("config loaded", slog.Any("config", conf))
 
-	slog.Info("starting opa engine")
+	logger.Info("starting opa engine")
 	eng, err := opa.NewEngine(conf.OPA)
 	if err != nil {
 		return fmt.Errorf("could not start opa engine: %w", err)
@@ -57,18 +72,18 @@ func Start(f ...StartOptions) error {
 	conf.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
 
 	// Create new server for grpc & http. Also will support in process grpc potentially too
-	slog.Info("init opentdf server")
+	logger.Info("init opentdf server")
 	conf.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
-	otdf, err := server.NewOpenTDFServer(conf.Server)
+	otdf, err := server.NewOpenTDFServer(conf.Server, logger)
 	if err != nil {
-		slog.Error("issue creating opentdf server", slog.String("error", err.Error()))
+		logger.Error("issue creating opentdf server", slog.String("error", err.Error()))
 		return fmt.Errorf("issue creating opentdf server: %w", err)
 	}
 	defer otdf.Stop()
 
-	slog.Info("registering services")
+	logger.Info("registering services")
 	if err := registerServices(); err != nil {
-		slog.Error("issue registering services", slog.String("error", err.Error()))
+		logger.Error("issue registering services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue registering services: %w", err)
 	}
 
@@ -92,27 +107,27 @@ func Start(f ...StartOptions) error {
 
 	client, err := sdk.New("", sdkOptions...)
 	if err != nil {
-		slog.Error("issue creating sdk client", slog.String("error", err.Error()))
+		logger.Error("issue creating sdk client", slog.String("error", err.Error()))
 		return fmt.Errorf("issue creating sdk client: %w", err)
 	}
 	defer client.Close()
 
-	slog.Info("starting services")
+	logger.Info("starting services")
 	closeServices, services, err := startServices(ctx, *conf, otdf, eng, client, logger)
 	if err != nil {
-		slog.Error("issue starting services", slog.String("error", err.Error()))
+		logger.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)
 	}
 	defer closeServices()
 
 	// Start the server
-	slog.Info("starting opentdf")
+	logger.Info("starting opentdf")
 	otdf.Start()
 
 	// Print out the registered services
-	slog.Info("services running")
+	logger.Info("services running")
 	for _, service := range services {
-		slog.Info(
+		logger.Info(
 			"service running",
 			slog.String("namespace", service.Registration.Namespace),
 			slog.String("service", service.ServiceDesc.ServiceName),

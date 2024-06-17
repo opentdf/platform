@@ -35,6 +35,11 @@ jobs:
               lib/ocrypto)
                 echo "TO_UPDATE=['examples','sdk','service']">>"$GITHUB_OUTPUT"
                 ;;
+              lib/flattening)
+                # currently nothing downstream
+                # TODO: uncomment when services updates
+                # echo "TO_UPDATE=['service']">>"$GITHUB_OUTPUT"
+                ;;
               lib/fixtures)
                 echo "TO_UPDATE=['sdk','service']">>"$GITHUB_OUTPUT"
                 ;;
@@ -76,6 +81,11 @@ jobs:
           cd ${{matrix.path}}
           for x in ${{join(fromJson(needs.release-please.outputs.paths_released), ' ')}}; do
             pkg=github.com/opentdf/platform/${x}
+            if awk -v p="^replace ${pkg}"  '$0 !~ p {r=1; print};END{exit !r}' go.mod > go.mod.tmp; then
+              mv go.mod.tmp go.mod
+            else
+              rm go.mod.tmp
+            fi
             echo "Should we update [${pkg}] in [${{ matrix.path }}]?"
             if grep "$pkg"<go.mod; then
               ver=$(jq -r .\[\"${x}\"\] < "${GITHUB_WORKSPACE}/.release-please-manifest.json")

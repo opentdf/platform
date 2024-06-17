@@ -4,6 +4,7 @@ use (
 	./examples
 	./lib/ocrypto
 	./lib/fixtures
+	./lib/flattening
 	./protocol/go
 	./sdk
 	./service

@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
@@ -20,6 +21,15 @@ type Config struct {
 	Type   string `yaml:"type" default:"json"`
 }
 
+const (
+	LevelTrace = slog.Level(-8)
+)
+
+var logLevelNames = map[slog.Leveler]string{
+	LevelTrace:       "TRACE",
+	audit.LevelAudit: audit.LevelAuditStr,
+}
+
 // Used to support custom log levels showing up with custom labels as well
 // see https://betterstack.com/community/guides/logging/logging-in-go/#creating-custom-log-levels
 func customReplaceAttributes(_ []string, a slog.Attr) slog.Attr {
@@ -28,7 +38,7 @@ func customReplaceAttributes(_ []string, a slog.Attr) slog.Attr {
 		if !ok {
 			return a
 		}
-		levelLabel, exists := audit.AuditLogLevelNames[level]
+		levelLabel, exists := logLevelNames[level]
 		if !exists {
 			levelLabel = level.String()
 		}
@@ -107,7 +117,17 @@ func getLevel(config Config) (slog.Leveler, error) {
 		return slog.LevelInfo, nil
 	case "error":
 		return slog.LevelError, nil
+	case "trace":
+		return LevelTrace, nil
 	default:
 		return nil, fmt.Errorf("invalid logger level: %s", config.Level)
 	}
+}
+
+func (l *Logger) Trace(msg string, args ...any) {
+	l.Log(context.Background(), LevelTrace, msg, args...)
+}
+
+func (l *Logger) TraceContext(ctx context.Context, msg string, args ...any) {
+	l.Log(ctx, LevelTrace, msg, args...)
 }

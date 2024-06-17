@@ -9,7 +9,6 @@ import (
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/open-policy-agent/opa/types"
-	"github.com/opentdf/platform/lib/flattening"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -188,11 +187,7 @@ ConditionEval:
 }
 
 func EvaluateCondition(condition *policy.Condition, entity map[string]any) (bool, error) {
-	flattenedEntity, err := flattening.Flatten(entity)
-	if err != nil {
-		return false, err
-	}
-	mappedValues, err := flattening.GetFromFlattened(flattenedEntity, condition.GetSubjectExternalSelectorValue())
+	mappedValues, err := ExecuteQuery(entity, condition.GetSubjectExternalSelectorValue())
 	if err != nil {
 		return false, err
 	}

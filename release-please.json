@@ -13,6 +13,9 @@
     "lib/ocrypto": {
       "component": "lib/ocrypto"
     },
+    "lib/flattening": {
+      "component": "lib/flattening"
+    },
     "protocol/go": {
       "component": "protocol/go"
     },

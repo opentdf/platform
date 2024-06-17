@@ -14,14 +14,14 @@ type Item struct {
 	Value interface{} `json:"value"`
 }
 
-func GetFromFlattened(flat Flattened, selector string) ([]interface{}, error) {
+func GetFromFlattened(flat Flattened, selector string) []interface{} {
 	itemsToReturn := []interface{}{}
 	for _, item := range flat.Items {
 		if item.Key == selector {
 			itemsToReturn = append(itemsToReturn, item.Value)
 		}
 	}
-	return itemsToReturn, nil
+	return itemsToReturn
 }
 
 func Flatten(m map[string]interface{}) (Flattened, error) {

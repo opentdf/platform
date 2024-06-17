@@ -177,8 +177,7 @@ func TestSimpleValueExtraction(t *testing.T) {
 	}
 	queryString := ".a"
 	expectedOutput := []interface{}{"aa"}
-	actualOutput, err := GetFromFlattened(flatInput, queryString)
-	require.NoError(t, err)
+	actualOutput := GetFromFlattened(flatInput, queryString)
 	assert.NotNil(t, actualOutput)
 	assert.ElementsMatch(t, expectedOutput, actualOutput)
 }
@@ -200,8 +199,7 @@ func TestDotValueExtraction(t *testing.T) {
 	}
 	queryString := ".submap.f"
 	expectedOutput := []interface{}{"ff"}
-	actualOutput, err := GetFromFlattened(flatInput, queryString)
-	require.NoError(t, err)
+	actualOutput := GetFromFlattened(flatInput, queryString)
 	assert.NotNil(t, actualOutput)
 	assert.ElementsMatch(t, expectedOutput, actualOutput)
 }
@@ -223,8 +221,7 @@ func TestListIndexValueExtraction(t *testing.T) {
 	}
 	queryString := ".sublist[0]"
 	expectedOutput := []interface{}{2}
-	actualOutput, err := GetFromFlattened(flatInput, queryString)
-	require.NoError(t, err)
+	actualOutput := GetFromFlattened(flatInput, queryString)
 	assert.NotNil(t, actualOutput)
 	assert.ElementsMatch(t, expectedOutput, actualOutput)
 }
@@ -246,8 +243,7 @@ func TestListIndexDotValueExtraction(t *testing.T) {
 	}
 	queryString := ".sublist[1].d"
 	expectedOutput := []interface{}{false}
-	actualOutput, err := GetFromFlattened(flatInput, queryString)
-	require.NoError(t, err)
+	actualOutput := GetFromFlattened(flatInput, queryString)
 	assert.NotNil(t, actualOutput)
 	assert.ElementsMatch(t, expectedOutput, actualOutput)
 }
@@ -269,8 +265,7 @@ func TestListNoIndexValueExtraction(t *testing.T) {
 	}
 	queryString := ".sublist[]"
 	expectedOutput := []interface{}{2, 4}
-	actualOutput, err := GetFromFlattened(flatInput, queryString)
-	require.NoError(t, err)
+	actualOutput := GetFromFlattened(flatInput, queryString)
 	assert.NotNil(t, actualOutput)
 	assert.ElementsMatch(t, expectedOutput, actualOutput)
 }

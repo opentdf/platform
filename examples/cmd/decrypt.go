@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 
@@ -70,6 +71,6 @@ func decrypt(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	outStr := outBuf.String()
-	cmd.Println(outStr)
+	fmt.Println(outStr)
 	return nil
 }

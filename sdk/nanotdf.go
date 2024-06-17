@@ -868,6 +868,11 @@ func getECPublicKey(kasURL string, ecMode ocrypto.ECCMode, opts ...grpc.DialOpti
 		req.Algorithm = "ec:secp521r1" // security.AlgorithmECP521R1
 	case ocrypto.ECCModeSecp256k1:
 		req.Algorithm = "ec:secp256k1" // not supported
+		slog.Error(fmt.Sprintf("unsupported algorithm: %s", req.GetAlgorithm()))
+		return "", fmt.Errorf("unsupported algorithm: %s", req.GetAlgorithm())
+	default:
+		slog.Error("unknown algorithm")
+		return "", fmt.Errorf("unknown algorithm")
 	}
 	slog.Debug(fmt.Sprintf("kas public key algorithm: %s", req.GetAlgorithm()))
 

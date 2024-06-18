@@ -1,12 +1,12 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "policy/attributes/attributes.proto",
+    "title": "policy/unsafe/unsafe.proto",
     "version": "version not set"
   },
   "tags": [
     {
-      "name": "AttributesService"
+      "name": "UnsafeService"
     }
   ],
   "consumes": [
@@ -16,15 +16,14 @@
     "application/json"
   ],
   "paths": {
-    "/attributes": {
-      "get": {
-        "summary": "--------------------------------------*\nAttribute RPCs\n---------------------------------------",
-        "operationId": "AttributesService_ListAttributes",
+    "/unsafe/attributes/values/{id}": {
+      "delete": {
+        "operationId": "UnsafeService_DeleteAttributeValue",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/attributesListAttributesResponse"
+              "$ref": "#/definitions/unsafeDeleteAttributeValueResponse"
             }
           },
           "default": {
@@ -36,174 +35,32 @@
         },
         "parameters": [
           {
-            "name": "state",
-            "description": "ACTIVE by default when not specified",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "enum": [
-              "ACTIVE_STATE_ENUM_UNSPECIFIED",
-              "ACTIVE_STATE_ENUM_ACTIVE",
-              "ACTIVE_STATE_ENUM_INACTIVE",
-              "ACTIVE_STATE_ENUM_ANY"
-            ],
-            "default": "ACTIVE_STATE_ENUM_UNSPECIFIED"
+            "name": "id",
+            "description": "Required\nUUID of the Attribute Value",
+            "in": "path",
+            "required": true,
+            "type": "string"
           },
           {
-            "name": "namespace",
-            "description": "can be id or name",
+            "name": "fqn",
+            "description": "Fully Qualified Name (FQN) of Attribute Value (i.e. https://\u003cnamespace\u003e/attr/\u003cattribute name\u003e/value/\u003cvalue\u003e), normalized to lower case.",
             "in": "query",
             "required": false,
             "type": "string"
           }
         ],
         "tags": [
-          "AttributesService"
+          "UnsafeService"
         ]
       },
-      "post": {
-        "operationId": "AttributesService_CreateAttribute",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesCreateAttributeResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/attributesCreateAttributeRequest"
-            }
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/*/fqn": {
-      "get": {
-        "operationId": "AttributesService_GetAttributeValuesByFqns",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesGetAttributeValuesByFqnsResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "fqns",
-            "description": "Required\nFully Qualified Names of attribute values (i.e. https://\u003cnamespace\u003e/attr/\u003cattribute_name\u003e/value/\u003cvalue_name\u003e), normalized to lower case.",
-            "in": "query",
-            "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
-          },
-          {
-            "name": "withValue.withKeyAccessGrants",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "name": "withValue.withSubjectMaps",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "name": "withValue.withResourceMaps",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "name": "withValue.withAttribute.withKeyAccessGrants",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/*/values": {
-      "get": {
-        "operationId": "AttributesService_ListAttributeValues",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesListAttributeValuesResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "attributeId",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "state",
-            "description": "ACTIVE by default when not specified",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "enum": [
-              "ACTIVE_STATE_ENUM_UNSPECIFIED",
-              "ACTIVE_STATE_ENUM_ACTIVE",
-              "ACTIVE_STATE_ENUM_INACTIVE",
-              "ACTIVE_STATE_ENUM_ANY"
-            ],
-            "default": "ACTIVE_STATE_ENUM_UNSPECIFIED"
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/*/values/{id}": {
-      "get": {
+      "patch": {
         "summary": "--------------------------------------*\nValue RPCs\n---------------------------------------",
-        "operationId": "AttributesService_GetAttributeValue",
+        "operationId": "UnsafeService_UpdateAttributeValue",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/attributesGetAttributeValueResponse"
+              "$ref": "#/definitions/policyunsafeUpdateAttributeValueResponse"
             }
           },
           "default": {
@@ -219,19 +76,27 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
-          "AttributesService"
+          "UnsafeService"
         ]
-      },
-      "delete": {
-        "operationId": "AttributesService_DeactivateAttributeValue",
+      }
+    },
+    "/unsafe/attributes/values/{id}/reactivate": {
+      "post": {
+        "operationId": "UnsafeService_ReactivateAttributeValue",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/attributesDeactivateAttributeValueResponse"
+              "$ref": "#/definitions/unsafeReactivateAttributeValueResponse"
             }
           },
           "default": {
@@ -250,310 +115,55 @@
           }
         ],
         "tags": [
-          "AttributesService"
+          "UnsafeService"
+        ]
+      }
+    },
+    "/unsafe/attributes/{id}": {
+      "delete": {
+        "operationId": "UnsafeService_DeleteAttribute",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/unsafeDeleteAttributeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "Required\nUUID of the Attribute",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "fqn",
+            "description": "Fully Qualified Name (FQN) of Attribute Definition (i.e. https://\u003cnamespace\u003e/attr/\u003cattribute name\u003e), normalized to lower case.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "UnsafeService"
         ]
       },
       "patch": {
-        "operationId": "AttributesService_UpdateAttributeValue",
+        "summary": "--------------------------------------*\nAttribute RPCs\n---------------------------------------",
+        "operationId": "UnsafeService_UpdateAttribute",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/policyattributesUpdateAttributeValueResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "members": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": "Optional"
-                },
-                "metadata": {
-                  "$ref": "#/definitions/commonMetadataMutable",
-                  "title": "Common metadata"
-                },
-                "metadataUpdateBehavior": {
-                  "$ref": "#/definitions/commonMetadataUpdateEnum"
-                }
-              }
-            }
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/keyaccessserver/assign": {
-      "post": {
-        "summary": "--------------------------------------*\nAttribute \u003c\u003e Key Access Server RPCs\n---------------------------------------",
-        "operationId": "AttributesService_AssignKeyAccessServerToAttribute",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesAssignKeyAccessServerToAttributeResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "attributeKeyAccessServer",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/attributesAttributeKeyAccessServer"
-            }
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/keyaccessserver/remove": {
-      "post": {
-        "operationId": "AttributesService_RemoveKeyAccessServerFromAttribute",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesRemoveKeyAccessServerFromAttributeResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "attributeKeyAccessServer",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/attributesAttributeKeyAccessServer"
-            }
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/values/keyaccessserver/assign": {
-      "post": {
-        "operationId": "AttributesService_AssignKeyAccessServerToValue",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesAssignKeyAccessServerToValueResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "valueKeyAccessServer",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/attributesValueKeyAccessServer"
-            }
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/values/keyaccessserver/remove": {
-      "post": {
-        "operationId": "AttributesService_RemoveKeyAccessServerFromValue",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesRemoveKeyAccessServerFromValueResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "valueKeyAccessServer",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/attributesValueKeyAccessServer"
-            }
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/{attributeId}/values": {
-      "post": {
-        "operationId": "AttributesService_CreateAttributeValue",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesCreateAttributeValueResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "attributeId",
-            "description": "Required",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "value": {
-                  "type": "string"
-                },
-                "members": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": "Optional"
-                },
-                "metadata": {
-                  "$ref": "#/definitions/commonMetadataMutable",
-                  "title": "Common metadata"
-                }
-              }
-            }
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/{id}": {
-      "get": {
-        "operationId": "AttributesService_GetAttribute",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesGetAttributeResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      },
-      "delete": {
-        "operationId": "AttributesService_DeactivateAttribute",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesDeactivateAttributeResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      },
-      "patch": {
-        "operationId": "AttributesService_UpdateAttribute",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/policyattributesUpdateAttributeResponse"
+              "$ref": "#/definitions/policyunsafeUpdateAttributeResponse"
             }
           },
           "default": {
@@ -572,25 +182,163 @@
             "type": "string"
           },
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "metadata": {
-                  "$ref": "#/definitions/commonMetadataMutable",
-                  "title": "Optional"
-                },
-                "metadataUpdateBehavior": {
-                  "$ref": "#/definitions/commonMetadataUpdateEnum"
-                }
-              }
-            }
+            "name": "name",
+            "description": "Optional\nWARNING!! \nUpdating the name of an Attribute will retroactively alter access to existing TDFs of the old and new Attribute name.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "rule",
+            "description": "WARNING!! \nUpdating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
+              "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+              "ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
+              "ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY"
+            ],
+            "default": "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED"
           }
         ],
         "tags": [
-          "AttributesService"
+          "UnsafeService"
+        ]
+      }
+    },
+    "/unsafe/attributes/{id}/reactivate": {
+      "post": {
+        "operationId": "UnsafeService_ReactivateAttribute",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/unsafeReactivateAttributeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "UnsafeService"
+        ]
+      }
+    },
+    "/unsafe/namespaces/{id}": {
+      "delete": {
+        "operationId": "UnsafeService_DeleteNamespace",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/unsafeDeleteNamespaceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "Required\nUUID of the Namespace",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "fqn",
+            "description": "Fully Qualified Name (FQN) of Namespace (i.e. https://\u003cnamespace\u003e), normalized to lower case.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "UnsafeService"
+        ]
+      },
+      "patch": {
+        "summary": "--------------------------------------*\nNamespace RPCs\n---------------------------------------",
+        "operationId": "UnsafeService_UpdateNamespace",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/policyunsafeUpdateNamespaceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "Required",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "UnsafeService"
+        ]
+      }
+    },
+    "/unsafe/namespaces/{id}/reactivate": {
+      "post": {
+        "operationId": "UnsafeService_ReactivateNamespace",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/unsafeReactivateNamespaceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "UnsafeService"
         ]
       }
     }
@@ -605,195 +353,6 @@
       ],
       "default": "STANDARD_ACTION_UNSPECIFIED",
       "title": "Standard actions supported by the platform"
-    },
-    "AttributeValueSelectorAttributeSelectorNamespaceSelector": {
-      "type": "object"
-    },
-    "GetAttributeValuesByFqnsResponseAttributeAndValue": {
-      "type": "object",
-      "properties": {
-        "attribute": {
-          "$ref": "#/definitions/policyAttribute"
-        },
-        "value": {
-          "$ref": "#/definitions/policyValue"
-        }
-      }
-    },
-    "attributesAssignKeyAccessServerToAttributeResponse": {
-      "type": "object",
-      "properties": {
-        "attributeKeyAccessServer": {
-          "$ref": "#/definitions/attributesAttributeKeyAccessServer"
-        }
-      }
-    },
-    "attributesAssignKeyAccessServerToValueResponse": {
-      "type": "object",
-      "properties": {
-        "valueKeyAccessServer": {
-          "$ref": "#/definitions/attributesValueKeyAccessServer"
-        }
-      }
-    },
-    "attributesAttributeKeyAccessServer": {
-      "type": "object",
-      "properties": {
-        "attributeId": {
-          "type": "string"
-        },
-        "keyAccessServerId": {
-          "type": "string"
-        }
-      }
-    },
-    "attributesCreateAttributeRequest": {
-      "type": "object",
-      "properties": {
-        "namespaceId": {
-          "type": "string",
-          "title": "Required"
-        },
-        "name": {
-          "type": "string"
-        },
-        "rule": {
-          "$ref": "#/definitions/policyAttributeRuleTypeEnum"
-        },
-        "values": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Optional attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.\nThe stored attribute value will be normalized to lower case."
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadataMutable",
-          "title": "Optional"
-        }
-      }
-    },
-    "attributesCreateAttributeResponse": {
-      "type": "object",
-      "properties": {
-        "attribute": {
-          "$ref": "#/definitions/policyAttribute"
-        }
-      }
-    },
-    "attributesCreateAttributeValueResponse": {
-      "type": "object",
-      "properties": {
-        "value": {
-          "$ref": "#/definitions/policyValue"
-        }
-      }
-    },
-    "attributesDeactivateAttributeResponse": {
-      "type": "object",
-      "properties": {
-        "attribute": {
-          "$ref": "#/definitions/policyAttribute"
-        }
-      }
-    },
-    "attributesDeactivateAttributeValueResponse": {
-      "type": "object",
-      "properties": {
-        "value": {
-          "$ref": "#/definitions/policyValue"
-        }
-      }
-    },
-    "attributesGetAttributeResponse": {
-      "type": "object",
-      "properties": {
-        "attribute": {
-          "$ref": "#/definitions/policyAttribute"
-        }
-      }
-    },
-    "attributesGetAttributeValueResponse": {
-      "type": "object",
-      "properties": {
-        "value": {
-          "$ref": "#/definitions/policyValue"
-        }
-      }
-    },
-    "attributesGetAttributeValuesByFqnsResponse": {
-      "type": "object",
-      "properties": {
-        "fqnAttributeValues": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/GetAttributeValuesByFqnsResponseAttributeAndValue"
-          },
-          "title": "map of FQNs to complete attributes and the one selected value"
-        }
-      }
-    },
-    "attributesListAttributeValuesResponse": {
-      "type": "object",
-      "properties": {
-        "values": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/policyValue"
-          }
-        }
-      }
-    },
-    "attributesListAttributesResponse": {
-      "type": "object",
-      "properties": {
-        "attributes": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/policyAttribute"
-          }
-        }
-      }
-    },
-    "attributesRemoveKeyAccessServerFromAttributeResponse": {
-      "type": "object",
-      "properties": {
-        "attributeKeyAccessServer": {
-          "$ref": "#/definitions/attributesAttributeKeyAccessServer"
-        }
-      }
-    },
-    "attributesRemoveKeyAccessServerFromValueResponse": {
-      "type": "object",
-      "properties": {
-        "valueKeyAccessServer": {
-          "$ref": "#/definitions/attributesValueKeyAccessServer"
-        }
-      }
-    },
-    "attributesValueKeyAccessServer": {
-      "type": "object",
-      "properties": {
-        "valueId": {
-          "type": "string"
-        },
-        "keyAccessServerId": {
-          "type": "string"
-        }
-      }
-    },
-    "commonActiveStateEnum": {
-      "type": "string",
-      "enum": [
-        "ACTIVE_STATE_ENUM_UNSPECIFIED",
-        "ACTIVE_STATE_ENUM_ACTIVE",
-        "ACTIVE_STATE_ENUM_INACTIVE",
-        "ACTIVE_STATE_ENUM_ANY"
-      ],
-      "default": "ACTIVE_STATE_ENUM_UNSPECIFIED",
-      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
     },
     "commonMetadata": {
       "type": "object",
@@ -817,28 +376,6 @@
         }
       },
       "title": "Struct to uniquely identify a resource with optional additional metadata"
-    },
-    "commonMetadataMutable": {
-      "type": "object",
-      "properties": {
-        "labels": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "title": "optional labels"
-        }
-      }
-    },
-    "commonMetadataUpdateEnum": {
-      "type": "string",
-      "enum": [
-        "METADATA_UPDATE_ENUM_UNSPECIFIED",
-        "METADATA_UPDATE_ENUM_EXTEND",
-        "METADATA_UPDATE_ENUM_REPLACE"
-      ],
-      "default": "METADATA_UPDATE_ENUM_UNSPECIFIED",
-      "title": "- METADATA_UPDATE_ENUM_UNSPECIFIED: unspecified update type\n - METADATA_UPDATE_ENUM_EXTEND: only update the fields that are provided\n - METADATA_UPDATE_ENUM_REPLACE: replace the entire metadata with the provided metadata"
     },
     "policyAction": {
       "type": "object",
@@ -907,34 +444,6 @@
       ],
       "default": "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
       "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
-    },
-    "policyAttributeValueSelector": {
-      "type": "object",
-      "properties": {
-        "withKeyAccessGrants": {
-          "type": "boolean"
-        },
-        "withSubjectMaps": {
-          "type": "boolean"
-        },
-        "withResourceMaps": {
-          "type": "boolean"
-        },
-        "withAttribute": {
-          "$ref": "#/definitions/policyAttributeValueSelectorAttributeSelector"
-        }
-      }
-    },
-    "policyAttributeValueSelectorAttributeSelector": {
-      "type": "object",
-      "properties": {
-        "withKeyAccessGrants": {
-          "type": "boolean"
-        },
-        "withNamespace": {
-          "$ref": "#/definitions/AttributeValueSelectorAttributeSelectorNamespaceSelector"
-        }
-      }
     },
     "policyCondition": {
       "type": "object",
@@ -1163,7 +672,7 @@
         }
       }
     },
-    "policyattributesUpdateAttributeResponse": {
+    "policyunsafeUpdateAttributeResponse": {
       "type": "object",
       "properties": {
         "attribute": {
@@ -1171,11 +680,19 @@
         }
       }
     },
-    "policyattributesUpdateAttributeValueResponse": {
+    "policyunsafeUpdateAttributeValueResponse": {
       "type": "object",
       "properties": {
         "value": {
           "$ref": "#/definitions/policyValue"
+        }
+      }
+    },
+    "policyunsafeUpdateNamespaceResponse": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "$ref": "#/definitions/policyNamespace"
         }
       }
     },
@@ -1206,6 +723,54 @@
             "type": "object",
             "$ref": "#/definitions/protobufAny"
           }
+        }
+      }
+    },
+    "unsafeDeleteAttributeResponse": {
+      "type": "object",
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/policyAttribute"
+        }
+      }
+    },
+    "unsafeDeleteAttributeValueResponse": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "$ref": "#/definitions/policyValue"
+        }
+      }
+    },
+    "unsafeDeleteNamespaceResponse": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "$ref": "#/definitions/policyNamespace"
+        }
+      }
+    },
+    "unsafeReactivateAttributeResponse": {
+      "type": "object",
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/policyAttribute"
+        }
+      }
+    },
+    "unsafeReactivateAttributeValueResponse": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "$ref": "#/definitions/policyValue"
+        }
+      }
+    },
+    "unsafeReactivateNamespaceResponse": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "$ref": "#/definitions/policyNamespace"
         }
       }
     }

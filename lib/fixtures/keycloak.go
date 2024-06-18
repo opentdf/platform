@@ -484,7 +484,7 @@ func createRealm(ctx context.Context, kcConnectParams KeycloakConnectParams, rea
 		}
 	}
 
-	if r == nil { //nolint:nestif // realm doesnt already exist
+	if r == nil {
 		if _, err := client.CreateRealm(ctx, token.AccessToken, realm); err != nil {
 			return err
 		}

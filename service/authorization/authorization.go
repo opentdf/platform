@@ -21,6 +21,7 @@ import (
 	"github.com/opentdf/platform/service/internal/access"
 	"github.com/opentdf/platform/service/internal/entitlements"
 	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/internal/logger/audit"
 	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -180,9 +181,11 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 			}
 			var attrDefs []*policy.Attribute
 			var attrVals []*policy.Value
+			var fqns []string
 			for fqn, v := range dataAttrDefsAndVals {
 				attrDefs = append(attrDefs, v.GetAttribute())
 				attrVal := v.GetValue()
+				fqns = append(fqns, fqn)
 				attrVal.Fqn = fqn
 				attrVals = append(attrVals, attrVal)
 			}
@@ -213,7 +216,11 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 					Entities: entities,
 					Scope:    &allPertinentFqnsRA,
 				}
+
+				auditECEntitlements := make([]audit.EntityChainEntitlement, 0)
+				auditEntityDecisions := make([]audit.EntityDecision, 0)
 				entityAttrValues := make(map[string][]string)
+
 				if len(entities) == 0 || len(allPertinentFqnsRA.GetAttributeValueFqns()) == 0 {
 					slog.WarnContext(ctx, "Empty entity list and/or entity data attribute list")
 				} else {
@@ -226,6 +233,10 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 					// TODO this might cause errors if multiple entities dont have ids
 					// currently just adding each entity returned to same list
 					for _, e := range ecEntitlements.GetEntitlements() {
+						auditECEntitlements = append(auditECEntitlements, audit.EntityChainEntitlement{
+							EntityID:                 e.GetEntityId(),
+							AttributeValueReferences: e.GetAttributeValueFqns(),
+						})
 						entityAttrValues[e.GetEntityId()] = e.GetAttributeValueFqns()
 					}
 				}
@@ -244,10 +255,24 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				}
 				// check the decisions
 				decision := authorization.DecisionResponse_DECISION_PERMIT
-				for _, d := range decisions {
+				for entityID, d := range decisions {
+					// Set overall decision as well as individual entity decision
+					entityDecision := authorization.DecisionResponse_DECISION_PERMIT
 					if !d.Access {
+						entityDecision = authorization.DecisionResponse_DECISION_DENY
 						decision = authorization.DecisionResponse_DECISION_DENY
 					}
+
+					// Add entity decision to audit list
+					entityEntitlementFqns := entityAttrValues[entityID]
+					if entityEntitlementFqns == nil {
+						entityEntitlementFqns = []string{}
+					}
+					auditEntityDecisions = append(auditEntityDecisions, audit.EntityDecision{
+						EntityID:     entityID,
+						Decision:     entityDecision.String(),
+						Entitlements: entityEntitlementFqns,
+					})
 				}
 
 				decisionResp := &authorization.DecisionResponse{
@@ -264,6 +289,19 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				} else if len(ra.GetAttributeValueFqns()) > 0 {
 					decisionResp.ResourceAttributesId = ra.GetAttributeValueFqns()[0]
 				}
+
+				auditDecision := audit.GetDecisionResultDeny
+				if decision == authorization.DecisionResponse_DECISION_PERMIT {
+					auditDecision = audit.GetDecisionResultPermit
+				}
+				as.logger.Audit.GetDecision(ctx, audit.GetDecisionEventParams{
+					Decision:                auditDecision,
+					EntityChainEntitlements: auditECEntitlements,
+					EntityChainID:           decisionResp.GetEntityChainId(),
+					EntityDecisions:         auditEntityDecisions,
+					FQNs:                    fqns,
+					ResourceAttributeID:     decisionResp.GetResourceAttributesId(),
+				})
 				rsp.DecisionResponses = append(rsp.DecisionResponses, decisionResp)
 			}
 		}

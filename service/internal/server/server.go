@@ -17,6 +17,7 @@ import (
 	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/logger/audit"
@@ -138,7 +139,7 @@ func NewOpenTDFServer(config Config, logr *logger.Logger) (*OpenTDFServer, error
 	}
 	grpcIPCServer := &inProcessServer{
 		ln:  fasthttputil.NewInmemoryListener(),
-		srv: grpc.NewServer(),
+		srv: newGrpcInProcessServer(),
 	}
 
 	// Create http server
@@ -235,6 +236,24 @@ func httpGrpcHandlerFunc(h http.Handler, g *grpc.Server) http.Handler {
 	})
 }
 
+func newGrpcInProcessServer() *grpc.Server {
+	var interceptors []grpc.UnaryServerInterceptor
+	var serverOptions []grpc.ServerOption
+
+	// Add audit to in process server
+	interceptors = append(interceptors, audit.ContextServerInterceptor)
+
+	// FIXME: this should probably use existing IP address instead of local?
+	// Add RealIP interceptor to in process server
+	// trustedPeers := []netip.Prefix{} // TODO: add this as a config option?
+	// headers := []string{realip.XForwardedFor, realip.XRealIp}
+	// interceptors = append(interceptors, realip.UnaryServerInterceptor(trustedPeers, headers))
+
+	// Add interceptors to server options
+	serverOptions = append(serverOptions, grpc.ChainUnaryInterceptor(interceptors...))
+	return grpc.NewServer(serverOptions...)
+}
+
 // newGrpcServer creates a new grpc server with the given config and authN interceptor
 func newGrpcServer(c Config, a *auth.Authentication) (*grpc.Server, error) {
 	var i []grpc.UnaryServerInterceptor
@@ -247,7 +266,7 @@ func newGrpcServer(c Config, a *auth.Authentication) (*grpc.Server, error) {
 	}
 
 	// Add Audit Unary Server Interceptor
-	i = append(i, audit.UnaryServerInterceptor)
+	i = append(i, audit.ContextServerInterceptor)
 
 	if c.Auth.Enabled {
 		i = append(i, a.UnaryServerInterceptor)
@@ -316,6 +335,11 @@ func (s inProcessServer) GetGrpcServer() *grpc.Server {
 }
 
 func (s inProcessServer) Conn() *grpc.ClientConn {
+	var clientInterceptors []grpc.UnaryClientInterceptor
+
+	// Add audit interceptor
+	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingClientInterceptor)
+
 	defaultOptions := []grpc.DialOption{
 		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
 			conn, err := s.ln.Dial()
@@ -325,6 +349,7 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 			return conn, nil
 		}),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithChainUnaryInterceptor(clientInterceptors...),
 	}
 
 	conn, _ := grpc.Dial("", defaultOptions...)

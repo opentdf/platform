@@ -9,11 +9,11 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"path/filepath"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/bmatcuk/doublestar"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
@@ -528,7 +528,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 
 func (a Authentication) isPublicRoute(path string) func(string) bool {
 	return func(route string) bool {
-		matched, err := filepath.Match(route, path)
+		matched, err := doublestar.Match(route, path)
 		if err != nil {
 			a.logger.Warn("error matching route", slog.String("route", route), slog.String("path", path), slog.String("error", err.Error()))
 			return false

@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/Nerzal/gocloak/v13 v13.9.0
+	github.com/bmatcuk/doublestar v1.3.4
 	github.com/bufbuild/protovalidate-go v0.6.0
 	github.com/casbin/casbin/v2 v2.84.0
 	github.com/creasty/defaults v1.7.0

@@ -77,3 +77,18 @@ func (a *Logger) policyCrudBase(ctx context.Context, isSuccess bool, eventParams
 
 	a.logger.Log(ctx, LevelAudit, string(auditEventJSONBytes))
 }
+
+func (a *Logger) GetDecision(ctx context.Context, eventParams GetDecisionEventParams) {
+	auditEvent, err := CreateGetDecisionEvent(ctx, eventParams)
+	if err != nil {
+		a.logger.ErrorContext(ctx, "error creating get decision audit event", "err", err)
+		return
+	}
+
+	auditEventJSONBytes, err := json.Marshal(auditEvent)
+	if err != nil {
+		a.logger.ErrorContext(ctx, "error marshalling get decision audit event", "err", err)
+	}
+
+	a.logger.Log(ctx, LevelAudit, string(auditEventJSONBytes))
+}

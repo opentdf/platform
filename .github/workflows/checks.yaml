@@ -89,7 +89,7 @@ jobs:
         run: ./.github/scripts/work-init.sh
       - if:  github.head_ref == format('release-please--branches--main--components--{0}', matrix.directory)
         name: prevent tagging with replace directives
-        run: awk '/^replace /{r=1};END{exit !r}' go.mod
+        run: go mod edit --json | jq -e '.Replace | not'
         working-directory: ${{ matrix.directory }}
       - run: go mod download
         working-directory: ${{ matrix.directory }}

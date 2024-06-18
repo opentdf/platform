@@ -21,10 +21,9 @@ jobs:
         id: go-mod-tidy
         run: |
           # iterate over work file, cd and run go mod tidy
-          while read -r line; do
-            cd $line
-            go mod tidy
-          done < go.work
+          for line in $(go work edit --json | jq -r '.Use.[].DiskPath'); do
+            (cd $line && go mod tidy)
+          done
           # check if any changes were made
           echo $(git status --porcelain) >> $GITHUB_OUTPUT
 

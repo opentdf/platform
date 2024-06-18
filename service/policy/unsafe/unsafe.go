@@ -26,7 +26,7 @@ func NewRegistration() serviceregistry.Registration {
 				if srv, ok := server.(unsafe.UnsafeServiceServer); ok {
 					return unsafe.RegisterUnsafeServiceHandlerServer(ctx, mux, srv)
 				}
-				return fmt.Errorf("failed to assert server as attributes.AttributesServiceServer")
+				return fmt.Errorf("failed to assert server as unsafe.UnsafeServiceServer")
 			}
 		},
 	}

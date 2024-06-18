@@ -12,7 +12,7 @@ import (
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
-type UnsafeService struct {
+type UnsafeService struct { //nolint:revive // UnsafeService is a valid name for this struct
 	unsafe.UnimplementedUnsafeServiceServer
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
@@ -36,7 +36,7 @@ func NewRegistration() serviceregistry.Registration {
 // Unsafe Namespace RPCs
 //
 
-func (s *UnsafeService) UpdateNamespace(ctx context.Context, req *unsafe.UpdateNamespaceRequest) (*unsafe.UpdateNamespaceResponse, error) {
+func (s *UnsafeService) UpdateNamespace(_ context.Context, req *unsafe.UpdateNamespaceRequest) (*unsafe.UpdateNamespaceResponse, error) {
 	// _, err := s.dbClient.GetNamespace(ctx, req.GetId())
 	// if err != nil {
 	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
@@ -54,7 +54,7 @@ func (s *UnsafeService) UpdateNamespace(ctx context.Context, req *unsafe.UpdateN
 	}, nil
 }
 
-func (s *UnsafeService) ReactivateNamespace(ctx context.Context, req *unsafe.ReactivateNamespaceRequest) (*unsafe.ReactivateNamespaceResponse, error) {
+func (s *UnsafeService) ReactivateNamespace(_ context.Context, req *unsafe.ReactivateNamespaceRequest) (*unsafe.ReactivateNamespaceResponse, error) {
 	// _, err := s.dbClient.GetNamespace(ctx, req.GetId())
 	// if err != nil {
 	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
@@ -72,7 +72,7 @@ func (s *UnsafeService) ReactivateNamespace(ctx context.Context, req *unsafe.Rea
 	}, nil
 }
 
-func (s *UnsafeService) DeleteNamespace(ctx context.Context, req *unsafe.DeleteNamespaceRequest) (*unsafe.DeleteNamespaceResponse, error) {
+func (s *UnsafeService) DeleteNamespace(_ context.Context, req *unsafe.DeleteNamespaceRequest) (*unsafe.DeleteNamespaceResponse, error) {
 	// _, err := s.dbClient.GetNamespace(ctx, req.GetId())
 	// if err != nil {
 	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
@@ -94,7 +94,7 @@ func (s *UnsafeService) DeleteNamespace(ctx context.Context, req *unsafe.DeleteN
 // Unsafe Attribute Definition RPCs
 //
 
-func (s *UnsafeService) UpdateAttribute(ctx context.Context, req *unsafe.UpdateAttributeRequest) (*unsafe.UpdateAttributeResponse, error) {
+func (s *UnsafeService) UpdateAttribute(_ context.Context, req *unsafe.UpdateAttributeRequest) (*unsafe.UpdateAttributeResponse, error) {
 	// _, err := s.dbClient.GetAttribute(ctx, req.GetId())
 	// if err != nil {
 	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
@@ -112,7 +112,7 @@ func (s *UnsafeService) UpdateAttribute(ctx context.Context, req *unsafe.UpdateA
 	}, nil
 }
 
-func (s *UnsafeService) ReactivateAttribute(ctx context.Context, req *unsafe.ReactivateAttributeRequest) (*unsafe.ReactivateAttributeResponse, error) {
+func (s *UnsafeService) ReactivateAttribute(_ context.Context, req *unsafe.ReactivateAttributeRequest) (*unsafe.ReactivateAttributeResponse, error) {
 	// _, err := s.dbClient.GetAttribute(ctx, req.GetId())
 	// if err != nil {
 	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
@@ -130,7 +130,7 @@ func (s *UnsafeService) ReactivateAttribute(ctx context.Context, req *unsafe.Rea
 	}, nil
 }
 
-func (s *UnsafeService) DeleteAttribute(ctx context.Context, req *unsafe.DeleteAttributeRequest) (*unsafe.DeleteAttributeResponse, error) {
+func (s *UnsafeService) DeleteAttribute(_ context.Context, req *unsafe.DeleteAttributeRequest) (*unsafe.DeleteAttributeResponse, error) {
 	// _, err := s.dbClient.GetAttribute(ctx, req.GetId())
 	// if err != nil {
 	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
@@ -152,7 +152,7 @@ func (s *UnsafeService) DeleteAttribute(ctx context.Context, req *unsafe.DeleteA
 // Unsafe Attribute Value RPCs
 //
 
-func (s *UnsafeService) UpdateAttributeValue(ctx context.Context, req *unsafe.UpdateAttributeValueRequest) (*unsafe.UpdateAttributeValueResponse, error) {
+func (s *UnsafeService) UpdateAttributeValue(_ context.Context, req *unsafe.UpdateAttributeValueRequest) (*unsafe.UpdateAttributeValueResponse, error) {
 	// _, err := s.dbClient.GetAttributeValue(ctx, req.GetId())
 	// if err != nil {
 	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
@@ -170,7 +170,7 @@ func (s *UnsafeService) UpdateAttributeValue(ctx context.Context, req *unsafe.Up
 	}, nil
 }
 
-func (s *UnsafeService) ReactivateAttributeValue(ctx context.Context, req *unsafe.ReactivateAttributeValueRequest) (*unsafe.ReactivateAttributeValueResponse, error) {
+func (s *UnsafeService) ReactivateAttributeValue(_ context.Context, req *unsafe.ReactivateAttributeValueRequest) (*unsafe.ReactivateAttributeValueResponse, error) {
 	// _, err := s.dbClient.GetAttributeValue(ctx, req.GetId())
 	// if err != nil {
 	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
@@ -188,7 +188,7 @@ func (s *UnsafeService) ReactivateAttributeValue(ctx context.Context, req *unsaf
 	}, nil
 }
 
-func (s *UnsafeService) DeleteAttributeValue(ctx context.Context, req *unsafe.DeleteAttributeValueRequest) (*unsafe.DeleteAttributeValueResponse, error) {
+func (s *UnsafeService) DeleteAttributeValue(_ context.Context, req *unsafe.DeleteAttributeValueRequest) (*unsafe.DeleteAttributeValueResponse, error) {
 	// _, err := s.dbClient.GetAttributeValue(ctx, req.GetId())
 	// if err != nil {
 	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))

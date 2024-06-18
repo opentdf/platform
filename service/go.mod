@@ -20,6 +20,7 @@ require (
 	github.com/miekg/pkcs11 v1.1.1
 	github.com/open-policy-agent/opa v0.63.0
 	github.com/opentdf/platform/lib/fixtures v0.2.5
+	github.com/opentdf/platform/lib/flattening v0.1.1
 	github.com/opentdf/platform/lib/ocrypto v0.1.5
 	github.com/opentdf/platform/protocol/go v0.2.3
 	github.com/opentdf/platform/sdk v0.2.7

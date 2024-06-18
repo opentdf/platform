@@ -9,12 +9,6 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-const (
-	requestIDHeaderKey = "x-request-id"
-	requestIPHeaderKey = "x-forwarded-request-ip"
-	actorIDHeaderKey   = "x-forwarded-actor-id"
-)
-
 // MetadataAddingClientInterceptor is a client side gRPC interceptor that adds an
 // X-Request-ID header to outgoing requests. If a request ID is already present
 // in the context, it will be used. Otherwise, a new request ID will be generated.
@@ -33,18 +27,18 @@ func MetadataAddingClientInterceptor(
 	if !ok || requestID == uuid.Nil {
 		requestID = uuid.New()
 	}
-	newMetadata = append(newMetadata, requestIDHeaderKey, requestID.String())
+	newMetadata = append(newMetadata, string(RequestIDHeaderKey), requestID.String())
 
 	// Add the request IP to a custom header so it is preserved
 	requestIP, isOK := realip.FromContext(ctx)
 	if isOK {
-		newMetadata = append(newMetadata, requestIPHeaderKey, requestIP.String())
+		newMetadata = append(newMetadata, string(RequestIPHeaderKey), requestIP.String())
 	}
 
 	// Add the actor ID from the request so it is preserved if we need it
 	actorID, isOK := ctx.Value(ActorIDContextKey).(string)
 	if isOK {
-		newMetadata = append(newMetadata, actorIDHeaderKey, actorID)
+		newMetadata = append(newMetadata, string(ActorIDHeaderKey), actorID)
 	}
 
 	newCtx := metadata.AppendToOutgoingContext(ctx, newMetadata...)

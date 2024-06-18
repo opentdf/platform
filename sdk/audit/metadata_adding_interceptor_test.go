@@ -22,17 +22,17 @@ type FakeAccessServiceServer struct {
 
 func (f *FakeAccessServiceServer) Info(ctx context.Context, _ *kas.InfoRequest) (*kas.InfoResponse, error) {
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		requestIDFromMetadata := md.Get(requestIDHeaderKey)
+		requestIDFromMetadata := md.Get(string(RequestIDHeaderKey))
 		if len(requestIDFromMetadata) > 0 {
 			f.requestID, _ = uuid.Parse(requestIDFromMetadata[0])
 		}
 
-		requestIPFromMetadata := md.Get(requestIPHeaderKey)
+		requestIPFromMetadata := md.Get(string(RequestIPHeaderKey))
 		if len(requestIPFromMetadata) > 0 {
 			f.requestIP = requestIPFromMetadata[0]
 		}
 
-		actorIDFromMetadata := md.Get(actorIDHeaderKey)
+		actorIDFromMetadata := md.Get(string(ActorIDHeaderKey))
 		if len(actorIDFromMetadata) > 0 {
 			f.actorID = actorIDFromMetadata[0]
 		}

@@ -15,7 +15,14 @@ message UpdateNamespaceRequest {
   // Required
   string id = 1 [(buf.validate.field).required = true];
 
-  string name = 2 [(buf.validate.field).required = true];
+  string name = 2 [
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "namespace_name_format",
+      message: "Namespace name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored namespace name will be normalized to lower case.",
+      expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
 }
 message UpdateNamespaceResponse {
   policy.Namespace namespace = 1;
@@ -35,7 +42,11 @@ message ReactivateNamespaceResponse {
 // Deleting a Namespace will free up the Attribute Namespace, Definitions, and Values for reuse, which can introduce an access path to existing TDFs containing the deleted policy.
 // Definitions and their Values under this Namespace will be cascadingly deleted.
 message DeleteNamespaceRequest {
+  // Required
+  // UUID of the Namespace
   string id = 1 [(buf.validate.field).required = true];
+  // Fully Qualified Name (FQN) of Namespace (i.e. https://<namespace>), normalized to lower case.
+  string fqn = 2 [(buf.validate.field).required = true];
 }
 message DeleteNamespaceResponse {
   policy.Namespace namespace = 1;
@@ -85,7 +96,11 @@ message ReactivateAttributeResponse {
 // Values under this Attribute will be cascadingly deleted.
 // Any KAS Grants associated with this Attribute will be cascadingly deleted.
 message DeleteAttributeRequest {
+  // Required
+  // UUID of the Attribute
   string id = 1 [(buf.validate.field).required = true];
+  // Fully Qualified Name (FQN) of Attribute Definition (i.e. https://<namespace>/attr/<attribute name>), normalized to lower case.
+  string fqn = 2 [(buf.validate.field).required = true];
 }
 message DeleteAttributeResponse {
   policy.Attribute attribute = 1;
@@ -100,7 +115,14 @@ message DeleteAttributeResponse {
 message UpdateAttributeValueRequest {
   string id = 1 [(buf.validate.field).required = true];
 
-  string value = 2;
+  string value = 2 [
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "value_format",
+      message: "Attribute Value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute value will be normalized to lower case.",
+      expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
 }
 message UpdateAttributeValueResponse {
   policy.Value value = 1;
@@ -119,7 +141,11 @@ message ReactivateAttributeValueResponse {
 // Deleting an Attribute Value will free up the Attribute Value for reuse, which can introduce an access path to existing TDFs containing the deleted Attribute Value.
 // Any KAS Grants associated with this Attribute Value will be cascadingly deleted.
 message DeleteAttributeValueRequest {
+  // Required
+  // UUID of the Attribute Value
   string id = 1 [(buf.validate.field).required = true];
+  // Fully Qualified Name (FQN) of Attribute Value (i.e. https://<namespace>/attr/<attribute name>/value/<value>), normalized to lower case.
+  string fqn = 2 [(buf.validate.field).required = true];
 }
 message DeleteAttributeValueResponse {
   policy.Value value = 1;

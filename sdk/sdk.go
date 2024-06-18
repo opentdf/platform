@@ -22,6 +22,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
+	"github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/sdk/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -121,14 +122,21 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		}
 	}
 
+	var uci []grpc.UnaryClientInterceptor
+
 	accessTokenSource, err := buildIDPTokenSource(cfg)
 	if err != nil {
 		return nil, err
 	}
 	if accessTokenSource != nil {
 		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource, cfg.tlsConfig)
-		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
+		uci = append(uci, interceptor.AddCredentials)
 	}
+
+	// Add request ID interceptor
+	uci = append(uci, audit.MetadataAddingClientInterceptor)
+
+	dialOptions = append(dialOptions, grpc.WithChainUnaryInterceptor(uci...))
 
 	if platformEndpoint != "" {
 		var err error

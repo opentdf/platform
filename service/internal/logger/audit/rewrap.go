@@ -53,7 +53,7 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 		Owner: CreateNilOwner(),
 		Actor: auditEventActor{
 			ID:         auditDataFromContext.ActorID,
-			Attributes: map[string]string{},
+			Attributes: make([]interface{}, 0),
 		},
 		EventMetaData: map[string]string{
 			"keyID":         "", // TODO: keyID once implemented

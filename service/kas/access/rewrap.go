@@ -331,7 +331,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 		Jwt: entity.Token,
 	}
 
-	access, err := canAccess(ctx, tok, *policy, p.SDK)
+	access, err := canAccess(ctx, tok, *policy, p.SDK, *p.Logger)
 
 	// Audit the TDF3 Rewrap
 	kasPolicy := ConvertToAuditKasPolicy(*policy)
@@ -422,7 +422,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		Jwt: entity.Token,
 	}
 
-	access, err := canAccess(ctx, tok, *policy, p.SDK)
+	access, err := canAccess(ctx, tok, *policy, p.SDK, *p.Logger)
 
 	// Audit the rewrap
 	kasPolicy := ConvertToAuditKasPolicy(*policy)

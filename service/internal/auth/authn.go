@@ -18,8 +18,9 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+
+	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/logger"
-	"github.com/opentdf/platform/service/internal/logger/audit"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -313,8 +314,12 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 	}
 
 	// Get actor ID (sub) from unverified token for audit and add to context
-	actorID := unverifiedToken.Subject()
-	ctx = context.WithValue(ctx, audit.ActorIDContextKey, actorID)
+	// Only set the actor ID if it is not already defined
+	existingActorID := ctx.Value(sdkAudit.ActorIDContextKey)
+	if existingActorID == nil {
+		actorID := unverifiedToken.Subject()
+		ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, actorID)
+	}
 
 	// Get issuer from unverified token
 	issuer := unverifiedToken.Issuer()

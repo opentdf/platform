@@ -1,5 +1,9 @@
 package audit
 
+import (
+	"encoding/json"
+)
+
 type ObjectType int
 
 const (
@@ -13,9 +17,10 @@ const (
 	ObjectTypeKasAttributeDefinitionAssignment
 	ObjectTypeKasAttributeValueAssignment
 	ObjectTypeKeyObject
+	ObjectTypeEntityObject
 )
 
-func (o ObjectType) String() string {
+func (ot ObjectType) String() string {
 	return [...]string{
 		"subject_mapping",
 		"resource_mapping",
@@ -27,23 +32,64 @@ func (o ObjectType) String() string {
 		"kas_attribute_definition_assignment",
 		"kas_attribute_value_assignment",
 		"key_object",
-	}[o]
+		"entity_object",
+	}[ot]
+}
+
+func (ot ObjectType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(ot.String())
 }
 
 type ActionType int
 
 const (
 	ActionTypeCreate ActionType = iota
+	ActionTypeRead
 	ActionTypeUpdate
 	ActionTypeDelete
 	ActionTypeRewrap
 )
 
-func (a ActionType) String() string {
+func (at ActionType) String() string {
 	return [...]string{
 		"create",
+		"read",
 		"update",
 		"delete",
 		"rewrap",
-	}[a]
+	}[at]
+}
+
+func (at ActionType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(at.String())
+}
+
+type ActionResult int
+
+const (
+	ActionResultSuccess ActionResult = iota
+	ActionResultFailure
+	ActionResultError
+	ActionResultEncrypt
+	ActionResultBlock
+	ActionResultIgnore
+	ActionResultOverride
+	ActionResultCancel
+)
+
+func (ar ActionResult) String() string {
+	return [...]string{
+		"success",
+		"failure",
+		"error",
+		"encrypt",
+		"block",
+		"ignore",
+		"override",
+		"cancel",
+	}[ar]
+}
+
+func (ar ActionResult) MarshalJSON() ([]byte, error) {
+	return json.Marshal(ar.String())
 }

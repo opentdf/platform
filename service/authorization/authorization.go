@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/mitchellh/mapstructure"
 	"github.com/open-policy-agent/opa/metrics"
 	"github.com/open-policy-agent/opa/profiler"
 	opaSdk "github.com/open-policy-agent/opa/sdk"
@@ -38,6 +39,17 @@ type AuthorizationService struct { //nolint:revive // AuthorizationService is a 
 	tokenSource *oauth2.TokenSource
 }
 
+type Config struct {
+	// Entity Resolution Service URL
+	ERSURL string `mapstructure:"ersurl"`
+	// OAuth Client ID
+	ClientID string `mapstructure:"clientid"`
+	// OAuth Client secret
+	ClientSecret string `mapstructure:"clientsecret"`
+	// OAuth token endpoint
+	TokenEndpoint string `mapstructure:"tokenendpoint"`
+}
+
 const tokenExpiryDelay = 100
 
 func NewRegistration() serviceregistry.Registration {
@@ -46,49 +58,27 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &authorization.AuthorizationService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			// default ERS endpoint
-			var ersURL = "http://localhost:8080/entityresolution/resolve"
-			var clientID = "tdf-authorization-svc"
-			var clientSecret = "secret"
-			var tokenEndpoint = "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token" //nolint:gosec // default token endpoint
 			as := &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, logger: srp.Logger}
 			if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
 				slog.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
 			}
-			// if its passed in the config use that
-			val, ok := srp.Config.ExtraProps["ersurl"]
-			if ok {
-				ersURL, ok = val.(string)
-				if !ok {
-					panic("Error casting ersURL to string")
-				}
+
+			authZCfg := Config{
+				ERSURL:        "http://localhost:8080/entityresolution/resolve",
+				ClientID:      "tdf-authorization-svc",
+				ClientSecret:  "secret",
+				TokenEndpoint: "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token",
 			}
-			val, ok = srp.Config.ExtraProps["clientid"]
-			if ok {
-				clientID, ok = val.(string)
-				if !ok {
-					panic("Error casting clientID to string")
-				}
+			if err := mapstructure.Decode(srp.Config.ExtraProps, &authZCfg); err != nil {
+				panic(fmt.Errorf("invalid auth svc cfg [%v] %w", srp.Config.ExtraProps, err))
 			}
-			val, ok = srp.Config.ExtraProps["clientsecret"]
-			if ok {
-				clientSecret, ok = val.(string)
-				if !ok {
-					panic("Error casting clientSecret to string")
-				}
-			}
-			val, ok = srp.Config.ExtraProps["tokenendpoint"]
-			if ok {
-				tokenEndpoint, ok = val.(string)
-				if !ok {
-					panic("Error casting tokenendpoint to string")
-				}
-			}
-			config := clientcredentials.Config{ClientID: clientID, ClientSecret: clientSecret, TokenURL: tokenEndpoint}
+
+			config := clientcredentials.Config{ClientID: authZCfg.ClientID, ClientSecret: authZCfg.ClientSecret, TokenURL: authZCfg.TokenEndpoint}
 			slog.Debug("authorization service client config", slog.Any("config", config))
 			newTokenSource := oauth2.ReuseTokenSourceWithExpiry(nil, config.TokenSource(context.Background()), tokenExpiryDelay)
 			slog.Debug("authorization service token source created", slog.Any("token_source", newTokenSource))
 
-			as.ersURL = ersURL
+			as.ersURL = authZCfg.ERSURL
 			as.tokenSource = &newTokenSource
 
 			return as, func(ctx context.Context, mux *runtime.ServeMux, server any) error {

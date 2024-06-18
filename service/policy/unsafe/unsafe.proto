@@ -3,10 +3,8 @@ syntax = "proto3";
 package policy.unsafe;
 
 import "buf/validate/validate.proto";
-import "common/common.proto";
 import "google/api/annotations.proto";
 import "policy/objects.proto";
-import "policy/selectors.proto";
 
 // Namespaces Unsafe RPCs
 

@@ -158,7 +158,17 @@ func (s *AuthSuite) SetupTest() {
 				Issuer:      s.server.URL,
 				Audience:    "test",
 			},
-			PublicRoutes: []string{"/public", "/public2/*", "/public3/static", "/static/*", "/static/*/*"},
+			PublicRoutes: []string{
+				"/public",
+				"/public2/*",
+				"/public3/static",
+				"/static/*",
+				"/static/*/*",
+				"/static-doublestar/**",
+				"/static-doublestar2/**/*",
+				"/static-doublestar3/*/**",
+				"/static-doublestar4/x/**",
+			},
 		},
 		&logger.Logger{
 			Logger: slog.New(slog.Default().Handler()),
@@ -620,6 +630,11 @@ func (s *AuthSuite) Test_PublicPath_Matches() {
 	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2/")))
 	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static/test")))
 	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static/test/next")))
+
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static-doublestar/test")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static-doublestar2/test/next")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static-doublestar3/test/next")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static-doublestar4/x/test/next")))
 
 	// Failing routes
 	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public3/")))

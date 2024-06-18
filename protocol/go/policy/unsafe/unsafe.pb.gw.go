@@ -153,6 +153,10 @@ func local_request_UnsafeService_ReactivateNamespace_0(ctx context.Context, mars
 
 }
 
+var (
+	filter_UnsafeService_DeleteNamespace_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+)
+
 func request_UnsafeService_DeleteNamespace_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq DeleteNamespaceRequest
 	var metadata runtime.ServerMetadata
@@ -172,6 +176,13 @@ func request_UnsafeService_DeleteNamespace_0(ctx context.Context, marshaler runt
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
+	}
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_DeleteNamespace_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.DeleteNamespace(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -198,6 +209,13 @@ func local_request_UnsafeService_DeleteNamespace_0(ctx context.Context, marshale
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
+	}
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_DeleteNamespace_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := server.DeleteNamespace(ctx, &protoReq)
@@ -327,6 +345,10 @@ func local_request_UnsafeService_ReactivateAttribute_0(ctx context.Context, mars
 
 }
 
+var (
+	filter_UnsafeService_DeleteAttribute_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+)
+
 func request_UnsafeService_DeleteAttribute_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq DeleteAttributeRequest
 	var metadata runtime.ServerMetadata
@@ -346,6 +368,13 @@ func request_UnsafeService_DeleteAttribute_0(ctx context.Context, marshaler runt
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
+	}
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_DeleteAttribute_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.DeleteAttribute(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -372,6 +401,13 @@ func local_request_UnsafeService_DeleteAttribute_0(ctx context.Context, marshale
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
+	}
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_DeleteAttribute_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := server.DeleteAttribute(ctx, &protoReq)
@@ -501,6 +537,10 @@ func local_request_UnsafeService_ReactivateAttributeValue_0(ctx context.Context,
 
 }
 
+var (
+	filter_UnsafeService_DeleteAttributeValue_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+)
+
 func request_UnsafeService_DeleteAttributeValue_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq DeleteAttributeValueRequest
 	var metadata runtime.ServerMetadata
@@ -520,6 +560,13 @@ func request_UnsafeService_DeleteAttributeValue_0(ctx context.Context, marshaler
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
+	}
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_DeleteAttributeValue_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.DeleteAttributeValue(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -546,6 +593,13 @@ func local_request_UnsafeService_DeleteAttributeValue_0(ctx context.Context, mar
 	protoReq.Id, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
+	}
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_DeleteAttributeValue_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := server.DeleteAttributeValue(ctx, &protoReq)

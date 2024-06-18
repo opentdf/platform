@@ -36,8 +36,15 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
+            "type": "string"
+          },
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
             "type": "string"
           }
         ],
@@ -131,8 +138,15 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
+            "type": "string"
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
             "type": "string"
           }
         ],
@@ -242,8 +256,15 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
+            "type": "string"
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
             "type": "string"
           }
         ],

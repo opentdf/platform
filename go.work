@@ -3,8 +3,9 @@ go 1.22.4
 use (
 	./examples
 	./lib/fixtures
-	./lib/ocrypto
 	./lib/flattening
+	./lib/ocrypto
+	./multi
 	./protocol/go
 	./sdk
 	./service

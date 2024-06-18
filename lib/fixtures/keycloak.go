@@ -489,28 +489,29 @@ func createRealm(ctx context.Context, kcConnectParams KeycloakConnectParams, rea
 			return err
 		}
 		slog.Info("✅ Realm created", slog.String("realm", *realm.Realm))
-
-		// update realm users profile via upconfig
-		realmProfileURL := fmt.Sprintf("%s/admin/realms/%s/users/profile", kcConnectParams.BasePath, *realm.Realm)
-		realmUserProfileResp, err := client.GetRequestWithBearerAuth(ctx, token.AccessToken).Get(realmProfileURL)
-		if err != nil {
-			slog.Error("Error retrieving realm users profile ", slog.String("realm", *realm.Realm))
-			return err
-		}
-		var upConfig map[string]interface{}
-		err = json.Unmarshal([]byte(realmUserProfileResp.String()), &upConfig)
-		if err != nil {
-			return err
-		}
-		upConfig["unmanagedAttributePolicy"] = "ENABLED"
-		_, err = client.GetRequestWithBearerAuth(ctx, token.AccessToken).SetBody(upConfig).Put(realmProfileURL)
-		if err != nil {
-			return err
-		}
-		slog.Info("✅ Realm Users Profile Updated", slog.String("realm", *realm.Realm))
 	} else {
 		slog.Info("⏭️  Realm already exists", slog.String("realm", *realm.Realm))
 	}
+
+	// update realm users profile via upconfig
+	realmProfileURL := fmt.Sprintf("%s/admin/realms/%s/users/profile", kcConnectParams.BasePath, *realm.Realm)
+	realmUserProfileResp, err := client.GetRequestWithBearerAuth(ctx, token.AccessToken).Get(realmProfileURL)
+	if err != nil {
+		slog.Error("Error retrieving realm users profile ", slog.String("realm", *realm.Realm))
+		return err
+	}
+	var upConfig map[string]interface{}
+	err = json.Unmarshal([]byte(realmUserProfileResp.String()), &upConfig)
+	if err != nil {
+		return err
+	}
+	upConfig["unmanagedAttributePolicy"] = "ENABLED"
+	_, err = client.GetRequestWithBearerAuth(ctx, token.AccessToken).SetBody(upConfig).Put(realmProfileURL)
+	if err != nil {
+		return err
+	}
+	slog.Info("✅ Realm Users Profile Updated", slog.String("realm", *realm.Realm))
+
 	return nil
 }
 

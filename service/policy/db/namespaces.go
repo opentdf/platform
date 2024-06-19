@@ -362,7 +362,6 @@ func (c PolicyDBClient) UnsafeReactivateNamespace(ctx context.Context, id string
 
 func deleteNamespaceSQL(id string) (string, []interface{}, error) {
 	t := Tables.Namespaces
-	// TODO: handle delete cascade
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
 		Where(sq.Eq{t.Field("id"): id}).

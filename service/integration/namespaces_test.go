@@ -215,7 +215,7 @@ func (s *NamespacesSuite) Test_DeleteNamespace() {
 
 	// Deletion should fail when the namespace is referenced as FK in attribute(s)
 	for _, ns := range testData {
-		deleted, err := s.db.PolicyClient.DeleteNamespace(s.ctx, ns.ID)
+		deleted, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, ns.ID)
 		s.Require().Error(err)
 		s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 		s.Nil(deleted)
@@ -226,7 +226,7 @@ func (s *NamespacesSuite) Test_DeleteNamespace() {
 	s.Require().NoError(err)
 	s.NotEqual("", n)
 
-	deleted, err := s.db.PolicyClient.DeleteNamespace(s.ctx, n.GetId())
+	deleted, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, n.GetId())
 	s.Require().NoError(err)
 	s.NotNil(deleted)
 
@@ -431,12 +431,12 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_Cascades_ToAttributesAndValue
 }
 
 func (s *NamespacesSuite) Test_DeleteNamespace_DoesNotExist_ShouldFail() {
-	ns, err := s.db.PolicyClient.DeleteNamespace(s.ctx, nonExistentNamespaceID)
+	ns, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, nonExistentNamespaceID)
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(ns)
 
-	ns, err = s.db.PolicyClient.DeleteNamespace(s.ctx, nonExistentNamespaceID)
+	ns, err = s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, nonExistentNamespaceID)
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(ns)

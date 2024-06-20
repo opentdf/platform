@@ -660,6 +660,12 @@ func (s *NamespacesSuite) Test_UnsafeUpdateNamespace() {
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(after, got.GetName())
+
+	// should be able to create original name after unsafely updating
+	recreated, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})
+	s.Require().NoError(err)
+	s.NotNil(recreated)
+	s.NotEqual(created.GetId(), recreated.GetId())
 }
 
 func (s *NamespacesSuite) Test_UnsafeUpdateNamespace_DoesNotExist_ShouldFail() {

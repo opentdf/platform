@@ -388,7 +388,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
 		dialOptions:   s.dialOptions,
 		tdfReader:     tdfReader,
 		manifest:      *manifestObj,
-		kasSessionKey: s.kasSessionKey,
+		kasSessionKey: *s.config.kasSessionKey,
 	}, nil
 }
 

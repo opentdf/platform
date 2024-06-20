@@ -146,8 +146,7 @@
           }
         }
       },
-      "description": "{\n\"actions\": [\n{\n\"standard\": \"STANDARD_ACTION_TRANSMIT\"\n}\n],\n\"entityChains\": [\n{\n\"id\": \"ec1\",\n\"entities\": [\n{\n\"emailAddress\": \"bob@example.org\"\n}\n]\n},\n{\n\"id\": \"ec2\",\n\"entities\": [\n{\n\"userName\": \"alice@example.org\"\n}\n]\n}\n],\n\"resourceAttributes\": [\n{\n\"resourceAttributeId\":  \"attr-set-1\",\n\"attributeFqns\": [\n\"https://www.example.org/attr/foo/value/value1\"\n]\n},\n{\n\"resourceAttributeId\":  \"attr-set-2\",\n\"attributeFqns\": [\n\"https://example.net/attr/attr1/value/value1\",\n\"https://example.net/attr/attr1/value/value2\"\n]\n}\n]\n}",
-      "title": "Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)\nand Alice (represented by entity chain ec2) have TRANSMIT authorization for\n2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?"
+      "title": "Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)\nand Alice (represented by entity chain ec2) have TRANSMIT authorization for\n2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?\n{\n\"actions\": [\n{\n\"standard\": \"STANDARD_ACTION_TRANSMIT\"\n}\n],\n\"entityChains\": [\n{\n\"id\": \"ec1\",\n\"entities\": [\n{\n\"emailAddress\": \"bob@example.org\"\n}\n]\n},\n{\n\"id\": \"ec2\",\n\"entities\": [\n{\n\"userName\": \"alice@example.org\"\n}\n]\n}\n],\n\"resourceAttributes\": [\n{\n\"resourceAttributesId\":  \"attr-set-1\",\n\"attributeValueFqns\": [\n\"https://www.example.org/attr/foo/value/value1\"\n]\n},\n{\n\"resourceAttributesId\":  \"attr-set-2\",\n\"attributeValueFqns\": [\n\"https://example.net/attr/attr1/value/value1\",\n\"https://example.net/attr/attr1/value/value2\"\n]\n}\n]\n}"
     },
     "authorizationDecisionResponse": {
       "type": "object",
@@ -176,7 +175,7 @@
           "title": "optional list of obligations represented in URI format"
         }
       },
-      "description": "Results:\n- bob has permitted authorization to transmit for a resource defined by attr-set-1 attributes and has a watermark obligation\n- bob has denied authorization to transmit a for a resource defined by attr-set-2 attributes\n- alice has permitted authorization to transmit for a resource defined by attr-set-1 attributes\n- alice has denied authorization to transmit a for a resource defined by attr-set-2 attributes\n\n{\n\"entityChainId\":  \"ec1\",\n\"resourceAttributesId\":  \"attr-set-1\",\n\"decision\":  \"DECISION_PERMIT\",\n\"obligations\":  [\n\"http://www.example.org/obligation/watermark\"\n]\n},\n{\n\"entityChainId\":  \"ec1\",\n\"resourceAttributesId\":  \"attr-set-2\",\n\"decision\":  \"DECISION_PERMIT\"\n},\n{\n\"entityChainId\":  \"ec2\",\n\"resourceAttributesId\":  \"attr-set-1\",\n\"decision\":  \"DECISION_PERMIT\"\n},\n{\n\"entityChainId\":  \"ec2\",\n\"resourceAttributesId\":  \"attr-set-2\",\n\"decision\":  \"DECISION_DENY\"\n}",
+      "description": "Results:\n- bob has permitted authorization to transmit for a resource defined by attr-set-1 attributes and has a watermark obligation\n- bob has denied authorization to transmit a for a resource defined by attr-set-2 attributes\n- alice has permitted authorization to transmit for a resource defined by attr-set-1 attributes\n- alice has denied authorization to transmit a for a resource defined by attr-set-2 attributes\n\n{\n\"entity_chain_id\":  \"ec1\",\n\"resource_attributes_id\":  \"attr-set-1\",\n\"decision\":  \"DECISION_PERMIT\",\n\"action\": {\n\"standard\": \"STANDARD_ACTION_TRANSMIT\"\n},\n\"obligations\":  [\n\"http://www.example.org/obligation/watermark\"\n]\n},\n{\n\"entity_chain_id\":  \"ec1\",\n\"resource_attributes_id\":  \"attr-set-2\",\n\"decision\":  \"DECISION_PERMIT\"\n\"action\": {\n\"standard\": \"STANDARD_ACTION_TRANSMIT\"\n},\n},\n{\n\"entity_chain_id\":  \"ec2\",\n\"resource_attributes_id\":  \"attr-set-1\",\n\"decision\":  \"DECISION_PERMIT\"\n\"action\": {\n\"standard\": \"STANDARD_ACTION_TRANSMIT\"\n},\n},\n{\n\"entity_chain_id\":  \"ec2\",\n\"resource_attributes_id\":  \"attr-set-2\",\n\"decision\":  \"DECISION_DENY\"\n\"action\": {\n\"standard\": \"STANDARD_ACTION_TRANSMIT\"\n},\n}",
       "title": "Example response for a Decision Request -  Do Bob (represented by entity chain ec1)\nand Alice (represented by entity chain ec2) have TRANSMIT authorization for\n2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?"
     },
     "authorizationEntity": {
@@ -285,7 +284,7 @@
           }
         }
       },
-      "description": "{\n\"entitlements\":  [\n{\n\"entityId\":  \"e1\",\n\"attributeValueReferences\":  [\n{\n\"attributeFqn\":  \"http://www.example.org/attr/foo/value/bar\"\n}\n]\n},\n{\n\"entityId\":  \"e2\",\n\"attributeValueReferences\":  [\n{\n\"attributeFqn\":  \"http://www.example.org/attr/color/value/red\"\n}\n]\n}\n]\n}",
+      "description": "{\n\"entitlements\":  [\n{\n\"entity_id\":  \"e1\",\n\"attribute_value_fqns\": [\n\"http://www.example.org/attr/foo/value/bar\"\n]\n},\n{\n\"entity_id\":  \"e2\",\n\"attribute_value_fqns\": [\n\"http://www.example.org/attr/color/value/red\"\n]\n}\n]\n}",
       "title": "Example Response for a request of : Get entitlements for bob and alice (both represented using an email address"
     },
     "authorizationResourceAttribute": {
@@ -341,7 +340,7 @@
           }
         }
       },
-      "description": "{\n\"actions\": [\n{\n\"standard\": \"STANDARD_ACTION_TRANSMIT\"\n}\n],\n\"tokens\": [\n{\n\"id\": \"tok1\",\n\"jwt\": ....\n},\n{\n\"id\": \"tok2\",\n\"jwt\": .....\n}\n],\n\"resourceAttributes\": [\n{\n\"attributeFqns\": [\n\"https://www.example.org/attr/foo/value/value1\"\n]\n},\n{\n\"attributeFqns\": [\n\"https://example.net/attr/attr1/value/value1\",\n\"https://example.net/attr/attr1/value/value2\"\n]\n}\n]\n}",
+      "description": "{\n\"actions\": [\n{\n\"standard\": \"STANDARD_ACTION_TRANSMIT\"\n}\n],\n\"tokens\": [\n{\n\"id\": \"tok1\",\n\"jwt\": ....\n},\n{\n\"id\": \"tok2\",\n\"jwt\": .....\n}\n],\n\"resourceAttributes\": [\n{\n\"resourceAttributesId\":  \"attr-set-1\",\n\"attributeValueFqns\": [\n\"https://www.example.org/attr/foo/value/value1\"\n]\n},\n{\n\"resourceAttributesId\":  \"attr-set-2\",\n\"attributeValueFqns\": [\n\"https://example.net/attr/attr1/value/value1\",\n\"https://example.net/attr/attr1/value/value2\"\n]\n}\n]\n}",
       "title": "Example Request Get Decisions by Token to answer the question -  Do Bob and client1 (represented by token tok1)\nand Alice and client2 (represented by token tok2) have TRANSMIT authorization for\n2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?"
     },
     "policyAction": {

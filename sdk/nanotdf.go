@@ -749,6 +749,11 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 
 // ReadNanoTDF - read the nano tdf and return the decrypted data from it
 func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error) {
+	return s.ReadNanoTDFContext(context.Background(), writer, reader)
+}
+
+// ReadNanoTDFContext - allows cancelling the reader
+func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io.ReadSeeker) (uint32, error) {
 	header, headerSize, err := NewNanoTDFHeaderFromReader(reader)
 	if err != nil {
 		return 0, err
@@ -782,7 +787,7 @@ func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error)
 		return 0, fmt.Errorf("newKASClient failed: %w", err)
 	}
 
-	symmetricKey, err := client.unwrapNanoTDF(string(encodedHeader), kasURL)
+	symmetricKey, err := client.unwrapNanoTDF(ctx, string(encodedHeader), kasURL)
 	if err != nil {
 		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}

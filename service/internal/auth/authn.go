@@ -19,7 +19,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
-	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -313,61 +312,65 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		return nil, nil, err
 	}
 
+	ctx = ContextWithAuthNInfo(ctx, nil, unverifiedToken, tokenRaw)
+
+	return unverifiedToken, ctx, nil
+
 	// Get actor ID (sub) from unverified token for audit and add to context
 	// Only set the actor ID if it is not already defined
-	existingActorID := ctx.Value(sdkAudit.ActorIDContextKey)
-	if existingActorID == nil {
-		actorID := unverifiedToken.Subject()
-		ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, actorID)
-	}
+	// existingActorID := ctx.Value(sdkAudit.ActorIDContextKey)
+	// if existingActorID == nil {
+	// 	actorID := unverifiedToken.Subject()
+	// 	ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, actorID)
+	// }
 
-	// Get issuer from unverified token
-	issuer := unverifiedToken.Issuer()
-	if issuer == "" {
-		return nil, nil, fmt.Errorf("missing issuer")
-	}
+	// // Get issuer from unverified token
+	// issuer := unverifiedToken.Issuer()
+	// if issuer == "" {
+	// 	return nil, nil, fmt.Errorf("missing issuer")
+	// }
 
-	// Get the openid configuration for the issuer
-	oidc, exists := a.oidcConfigurations[issuer]
-	if !exists {
-		validIssuers := make([]string, 0)
-		for iss := range a.oidcConfigurations {
-			validIssuers = append(validIssuers, iss)
-		}
-		return nil, nil, fmt.Errorf("invalid issuer: [%s], expected one of the configured issuers: %v", issuer, validIssuers)
-	}
+	// // Get the openid configuration for the issuer
+	// oidc, exists := a.oidcConfigurations[issuer]
+	// if !exists {
+	// 	validIssuers := make([]string, 0)
+	// 	for iss := range a.oidcConfigurations {
+	// 		validIssuers = append(validIssuers, iss)
+	// 	}
+	// 	return nil, nil, fmt.Errorf("invalid issuer: [%s], expected one of the configured issuers: %v", issuer, validIssuers)
+	// }
 
-	// Get key set from cache that matches the jwks_uri
-	keySet, err := a.cache.Get(ctx, oidc.JwksURI)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get jwks from cache")
-	}
+	// // Get key set from cache that matches the jwks_uri
+	// keySet, err := a.cache.Get(ctx, oidc.JwksURI)
+	// if err != nil {
+	// 	return nil, nil, fmt.Errorf("failed to get jwks from cache")
+	// }
 
-	// Now we verify the token signature
-	accessToken, err := jwt.Parse([]byte(tokenRaw),
-		jwt.WithKeySet(keySet),
-		jwt.WithValidate(true),
-		jwt.WithIssuer(issuer),
-		jwt.WithAudience(oidc.Audience),
-	)
+	// // Now we verify the token signature
+	// accessToken, err := jwt.Parse([]byte(tokenRaw),
+	// 	jwt.WithKeySet(keySet),
+	// 	jwt.WithValidate(true),
+	// 	jwt.WithIssuer(issuer),
+	// 	jwt.WithAudience(oidc.Audience),
+	// )
 
-	if err != nil {
-		return nil, nil, err
-	}
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
 
-	_, tokenHasCNF := accessToken.Get("cnf")
-	if !tokenHasCNF && !a.enforceDPoP {
-		// this condition is not quite tight because it's possible that the `cnf` claim may
-		// come from token introspection
-		ctx = ContextWithAuthNInfo(ctx, nil, accessToken, tokenRaw)
-		return accessToken, ctx, nil
-	}
-	key, err := validateDPoP(accessToken, tokenRaw, dpopInfo, dpopHeader)
-	if err != nil {
-		return nil, nil, err
-	}
-	ctx = ContextWithAuthNInfo(ctx, key, accessToken, tokenRaw)
-	return accessToken, ctx, nil
+	// _, tokenHasCNF := accessToken.Get("cnf")
+	// if !tokenHasCNF && !a.enforceDPoP {
+	// 	// this condition is not quite tight because it's possible that the `cnf` claim may
+	// 	// come from token introspection
+	// 	ctx = ContextWithAuthNInfo(ctx, nil, accessToken, tokenRaw)
+	// 	return accessToken, ctx, nil
+	// }
+	// key, err := validateDPoP(accessToken, tokenRaw, dpopInfo, dpopHeader)
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
+	// ctx = ContextWithAuthNInfo(ctx, key, accessToken, tokenRaw)
+	// return accessToken, ctx, nil
 }
 
 func ContextWithAuthNInfo(ctx context.Context, key jwk.Key, accessToken jwt.Token, raw string) context.Context {

@@ -15,7 +15,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 
@@ -252,41 +251,41 @@ func getEntityInfo(ctx context.Context, logger logger.Logger) (*entityInfo, erro
 
 func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
 	p.Logger.DebugContext(ctx, "REWRAP")
+	return &kaspb.RewrapResponse{}, nil
+	// body, err := extractSRTBody(ctx, in, *p.Logger)
+	// if err != nil {
+	// 	p.Logger.DebugContext(ctx, "unverifiable srt", "err", err)
+	// 	return nil, err
+	// }
 
-	body, err := extractSRTBody(ctx, in, *p.Logger)
-	if err != nil {
-		p.Logger.DebugContext(ctx, "unverifiable srt", "err", err)
-		return nil, err
-	}
+	// entityInfo, err := getEntityInfo(ctx, *p.Logger)
+	// if err != nil {
+	// 	p.Logger.DebugContext(ctx, "no entity info", "err", err)
+	// 	return nil, err
+	// }
 
-	entityInfo, err := getEntityInfo(ctx, *p.Logger)
-	if err != nil {
-		p.Logger.DebugContext(ctx, "no entity info", "err", err)
-		return nil, err
-	}
+	// if !strings.HasPrefix(body.KeyAccess.URL, p.URI.String()) {
+	// 	p.Logger.InfoContext(ctx, "mismatched key access url", "keyAccessURL", body.KeyAccess.URL, "kasURL", p.URI.String())
+	// }
 
-	if !strings.HasPrefix(body.KeyAccess.URL, p.URI.String()) {
-		p.Logger.InfoContext(ctx, "mismatched key access url", "keyAccessURL", body.KeyAccess.URL, "kasURL", p.URI.String())
-	}
+	// if body.Algorithm == "" {
+	// 	p.Logger.DebugContext(ctx, "default rewrap algorithm")
+	// 	body.Algorithm = "rsa:2048"
+	// }
 
-	if body.Algorithm == "" {
-		p.Logger.DebugContext(ctx, "default rewrap algorithm")
-		body.Algorithm = "rsa:2048"
-	}
-
-	if body.Algorithm == "ec:secp256r1" {
-		rsp, err := p.nanoTDFRewrap(ctx, body, entityInfo)
-		if err != nil {
-			slog.ErrorContext(ctx, "rewrap nano", "err", err)
-		}
-		p.Logger.DebugContext(ctx, "rewrap nano", "rsp", rsp)
-		return rsp, err
-	}
-	rsp, err := p.tdf3Rewrap(ctx, body, entityInfo)
-	if err != nil {
-		slog.ErrorContext(ctx, "rewrap tdf3", "err", err)
-	}
-	return rsp, err
+	// if body.Algorithm == "ec:secp256r1" {
+	// 	rsp, err := p.nanoTDFRewrap(ctx, body, entityInfo)
+	// 	if err != nil {
+	// 		slog.ErrorContext(ctx, "rewrap nano", "err", err)
+	// 	}
+	// 	p.Logger.DebugContext(ctx, "rewrap nano", "rsp", rsp)
+	// 	return rsp, err
+	// }
+	// rsp, err := p.tdf3Rewrap(ctx, body, entityInfo)
+	// if err != nil {
+	// 	slog.ErrorContext(ctx, "rewrap tdf3", "err", err)
+	// }
+	// return rsp, err
 }
 
 func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {

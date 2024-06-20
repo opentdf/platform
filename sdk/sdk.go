@@ -29,6 +29,8 @@ import (
 )
 
 const (
+	// Failure while connecting to a service.
+	// Check your configuration and/or retry.
 	ErrGrpcDialFailed            = Error("failed to dial grpc endpoint")
 	ErrShutdownFailed            = Error("failed to shutdown sdk")
 	ErrPlatformConfigFailed      = Error("failed to retrieve platform configuration")
@@ -43,6 +45,7 @@ func (c Error) Error() string {
 
 type SDK struct {
 	config
+	*kasKeyCache
 	conn                    *grpc.ClientConn
 	dialOptions             []grpc.DialOption
 	tokenSource             auth.AccessTokenSource
@@ -146,6 +149,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	return &SDK{
 		config:                  *cfg,
+		kasKeyCache:             newKasKeyCache(),
 		conn:                    defaultConn,
 		dialOptions:             dialOptions,
 		tokenSource:             accessTokenSource,

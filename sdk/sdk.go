@@ -45,7 +45,6 @@ type SDK struct {
 	config
 	conn                    *grpc.ClientConn
 	dialOptions             []grpc.DialOption
-	kasSessionKey           ocrypto.RsaKeyPair
 	tokenSource             auth.AccessTokenSource
 	Namespaces              namespaces.NamespaceServiceClient
 	Attributes              attributes.AttributesServiceClient
@@ -54,7 +53,6 @@ type SDK struct {
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
 	Authorization           authorization.AuthorizationServiceClient
 	EntityResoution         entityresolution.EntityResolutionServiceClient
-	platformConfiguration   PlatformConfiguration
 	wellknownConfiguration  wellknownconfiguration.WellKnownServiceClient
 }
 
@@ -151,8 +149,6 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		conn:                    defaultConn,
 		dialOptions:             dialOptions,
 		tokenSource:             accessTokenSource,
-		kasSessionKey:           *cfg.kasSessionKey,
-		platformConfiguration:   cfg.platformConfiguration,
 		Attributes:              attributes.NewAttributesServiceClient(selectConn(cfg.policyConn, defaultConn)),
 		Namespaces:              namespaces.NewNamespaceServiceClient(selectConn(cfg.policyConn, defaultConn)),
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(selectConn(cfg.policyConn, defaultConn)),

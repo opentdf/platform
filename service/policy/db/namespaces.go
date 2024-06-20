@@ -273,7 +273,7 @@ func unsafeUpdateNamespaceSQL(id string, name string) (string, []interface{}, er
 		Update(t.Name()).
 		Set("name", name).
 		Where(sq.Eq{t.Field("id"): id}).
-		Suffix("RETURNING \"id\"").
+		Suffix("RETURNING \"id\", \"name\", \"active\", " + constructMetadata(TableNamespaces, false)).
 		ToSql()
 }
 
@@ -288,16 +288,18 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 		return nil, err
 	}
 
-	if err := c.Exec(ctx, sql, args); err != nil {
+	row, err := c.QueryRow(ctx, sql, args)
+	if err != nil {
 		return nil, err
 	}
-
 	// Update FQN
 	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
 
-	return &policy.Namespace{
-		Id: id,
-	}, nil
+	var n *policy.Namespace
+	if n, err = hydrateNamespaceItem(row, namespaceSelectOptions{}); err != nil {
+		return nil, err
+	}
+	return n, nil
 }
 
 func setNamespaceActiveStateSQL(id string, isActive bool) (string, []interface{}, error) {

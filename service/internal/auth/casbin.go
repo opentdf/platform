@@ -53,7 +53,7 @@ p,	role:org-admin,		/subject-mappings*,											*,			allow
 p,	role:org-admin,		/resource-mappings*,										*,			allow
 p,	role:org-admin,		/key-access-servers*,										*,			allow
 p,	role:org-admin, 	/kas/v2/rewrap,						  		*,      allow
-# add unsafe actions to the org-admin role
+p,	role:org-admin,		/unsafe*,										*,			allow
 
 # Role: Admin
 ## gRPC routes

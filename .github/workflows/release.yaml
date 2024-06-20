@@ -80,7 +80,7 @@ jobs:
           git push -f -u origin update-go-mods-for-${{matrix.path}}
           cd ${{matrix.path}}
           for x in ${{join(fromJson(needs.release-please.outputs.paths_released), ' ')}}; do
-            pkg=github.com/opentdf/platform/${x}
+            export pkg=github.com/opentdf/platform/${x}
             if go mod edit --json | jq -e '.Replace.[] | select(.Old.Path == env.pkg)'; then
               go mod edit --dropreplace=$pkg
             fi

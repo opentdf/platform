@@ -370,6 +370,12 @@ func deleteNamespaceSQL(id string) (string, []interface{}, error) {
 }
 
 func (c PolicyDBClient) UnsafeDeleteNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
+	// get a namespace before deleting
+	_, err := c.GetNamespace(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
 	sql, args, err := deleteNamespaceSQL(id)
 	if err != nil {
 		return nil, err

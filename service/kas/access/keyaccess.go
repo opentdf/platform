@@ -7,6 +7,7 @@ type KeyAccess struct {
 	Type              string `json:"type"`
 	URL               string `json:"url"`
 	KID               string `json:"kid,omitempty"`
+	SID               string `json:"sid,omitempty"`
 	WrappedKey        []byte `json:"wrappedKey,omitempty"`
 	Header            []byte `json:"header,omitempty"`
 	Algorithm         string `json:"algorithm,omitempty"`

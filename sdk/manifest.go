@@ -27,6 +27,7 @@ type KeyAccess struct {
 	PolicyBinding     string `json:"policyBinding"`
 	EncryptedMetadata string `json:"encryptedMetadata,omitempty"`
 	KID               string `json:"kid,omitempty"`
+	SplitID           string `json:"sid,omitempty"`
 }
 
 type Method struct {

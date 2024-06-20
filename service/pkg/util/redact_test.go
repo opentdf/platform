@@ -108,13 +108,16 @@ func TestRedactSensitiveData_WithSensitiveFieldsInNestedStruct(t *testing.T) {
 	}`
 
 	var config Config
-	json.Unmarshal([]byte(rawConfig), &config)
+	err := json.Unmarshal([]byte(rawConfig), &config)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal rawConfig: %v", err)
+	}
 
 	sensitiveFields := []string{"Password", "clientsecret"}
 	redacted := RedactSensitiveData(config, sensitiveFields)
 
-	redactedConfig, ok := redacted.(Config)
-	if !ok {
+	redactedConfig, ok1 := redacted.(Config)
+	if !ok1 {
 		t.Fatalf("Expected redacted data to be of type Config")
 	}
 
@@ -123,7 +126,7 @@ func TestRedactSensitiveData_WithSensitiveFieldsInNestedStruct(t *testing.T) {
 	}
 
 	for _, service := range redactedConfig.Services {
-		if clientSecret, ok := service.ExtraProps["clientsecret"]; ok && clientSecret != "REDACTED" {
+		if clientSecret, ok2 := service.ExtraProps["clientsecret"]; ok2 && clientSecret != "REDACTED" {
 			t.Errorf("Expected Services.ExtraProps.ClientSecret to be redacted")
 		}
 	}

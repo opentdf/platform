@@ -12,6 +12,7 @@ func RedactSensitiveData(i interface{}, sensitiveFields []string) interface{} {
 }
 
 func redact(v reflect.Value, sensitiveFields []string) reflect.Value {
+	//nolint:exhaustive
 	switch v.Kind() {
 	case reflect.Ptr:
 		if v.IsNil() {

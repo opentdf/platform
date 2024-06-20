@@ -12,6 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"net/http/pprof"
+	_ "net/http/pprof"
+
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/go-chi/cors"
 	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
@@ -33,7 +36,7 @@ import (
 )
 
 const (
-	writeTimeoutSeconds = 5
+	writeTimeoutSeconds = 60
 	readTimeoutSeconds  = 10
 	shutdownTimeout     = 5
 	maxAge              = 300
@@ -56,6 +59,8 @@ type Config struct {
 	// Port to listen on
 	Port int    `yaml:"port" default:"8080"`
 	Host string `yaml:"host,omitempty"`
+	// Enable pprof
+	EnablePprof bool `mapstructure:"enable_pprof" default:"false"`
 }
 
 // GRPC Server specific configurations
@@ -203,6 +208,11 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 		}).Handler(h)
 	}
 
+	// Enable pprof
+	if c.EnablePprof {
+		h = pprofHandler(h)
+	}
+
 	// Add grpc handler
 	h2 := httpGrpcHandlerFunc(h, g)
 
@@ -222,6 +232,28 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 		Handler:      h2,
 		TLSConfig:    tc,
 	}, nil
+}
+
+// ppprof handler
+func pprofHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/debug/pprof/":
+			pprof.Index(w, r)
+		case "/debug/pprof/cmdline":
+			pprof.Cmdline(w, r)
+		case "/debug/pprof/heap":
+			pprof.Index(w, r)
+		case "/debug/pprof/profile":
+			pprof.Profile(w, r)
+		case "/debug/pprof/symbol":
+			pprof.Symbol(w, r)
+		case "/debug/pprof/trace":
+			pprof.Trace(w, r)
+		default:
+			h.ServeHTTP(w, r)
+		}
+	})
 }
 
 // httpGrpcHandlerFunc returns a http.Handler that delegates to the grpc server if the request is a grpc request

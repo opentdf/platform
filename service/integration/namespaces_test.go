@@ -660,6 +660,7 @@ func (s *NamespacesSuite) Test_UnsafeUpdateNamespace() {
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(after, got.GetName())
+	s.Equal("https://"+after, got.GetFqn())
 
 	// should be able to create original name after unsafely updating
 	recreated, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})

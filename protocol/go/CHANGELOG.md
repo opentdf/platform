@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.4](https://github.com/opentdf/platform/compare/protocol/go/v0.2.3...protocol/go/v0.2.4) (2024-06-18)
+
+
+### Features
+
+* **core:** New cryptoProvider config ([#939](https://github.com/opentdf/platform/issues/939)) ([8150623](https://github.com/opentdf/platform/commit/81506237e2e640af34df8c745b71c3f20358d5a4))
+* **policy:** add unsafe service protos and unsafe service proto Go gencode ([#1003](https://github.com/opentdf/platform/issues/1003)) ([55cc045](https://github.com/opentdf/platform/commit/55cc0459f8e5594765cecf62c3e2a1adff40a565))
+
+
+### Bug Fixes
+
+* **core:** policy resource-mappings fix doc drift in proto comments ([#980](https://github.com/opentdf/platform/issues/980)) ([09ab763](https://github.com/opentdf/platform/commit/09ab763263d092653bbded294895dcc08d03bdb2))
+
 ## [0.2.3](https://github.com/opentdf/platform/compare/protocol/go/v0.2.2...protocol/go/v0.2.3) (2024-05-17)
 
 

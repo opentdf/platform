@@ -295,11 +295,7 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 	// Update FQN
 	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
 
-	var n *policy.Namespace
-	if n, err = hydrateNamespaceItem(row, namespaceSelectOptions{}); err != nil {
-		return nil, err
-	}
-	return n, nil
+	return hydrateNamespaceItem(row, namespaceSelectOptions{})
 }
 
 func setNamespaceActiveStateSQL(id string, isActive bool) (string, []interface{}, error) {

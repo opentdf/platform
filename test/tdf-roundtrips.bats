@@ -134,8 +134,8 @@ server:
           private_key_path: kas-private.pem
           public_key_path: kas-cert.pem
         r2:
-          private_key_path: kas-private.pem
-          public_key_path: kas-cert.pem
+          private_key_path: kas-r2-private.pem
+          public_key_path: kas-r2-cert.pem
       ec:
         e1:
           private_key_path: kas-ec-private.pem

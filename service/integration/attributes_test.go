@@ -453,11 +453,66 @@ func (s *AttributesSuite) Test_UpdateAttribute_WithInvalidIdFails() {
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
-// test:
-// - updating rule and name
-// - updating rule and name and values order
+func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithRuleAndNameAndReordering() {
+	originalName := "test__update_attribute_with_rule_and_name_and_reordering"
+	newName := "updated_hello"
+	namespaceId := s.f.GetNamespaceKey("example.org").ID
+	values := []string{"abc", "def", "xyz", "testing"}
+	attr := &attributes.CreateAttributeRequest{
+		Name:        originalName,
+		NamespaceId: namespaceId,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values:      values,
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
 
-func (s *AttributesSuite) Test_UpdateAttribute_WithRule() {
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	nsName := got.GetNamespace().GetName()
+	reversedVals := make([]string, len(values))
+	for i, v := range got.GetValues() {
+		reversedVals[len(values)-i-1] = v.GetValue()
+	}
+
+	// name, rule, order updates respected
+	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UpdateAttributeRequest{
+		Name:        newName,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		ValuesOrder: reversedVals,
+	})
+	s.Require().NoError(err)
+	s.NotNil(updated)
+	s.Equal(newName, updated.GetName())
+	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, updated.GetRule())
+
+	// name, rule, order updates respected and fqn is updated
+	updated, err = s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(updated)
+	s.Equal(newName, updated.GetName())
+	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, updated.GetRule())
+	s.Equal(fmt.Sprintf("https://%s/attr/%s", nsName, updated.GetName()), updated.GetFqn())
+	s.Len(updated.GetValues(), len(values))
+
+	// values reflect new updated name
+	for i, v := range updated.GetValues() {
+		s.Equal(reversedVals[i], v.GetId())
+		fqn := fmt.Sprintf("https://%s/attr/%s/value/%s", nsName, newName, v.GetValue())
+
+		val, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+			Fqns: []string{fqn},
+		})
+		s.Require().NoError(err)
+		s.NotNil(val)
+		s.Len(val, 1)
+		s.Equal(v.GetId(), val[fqn].GetValue().GetId())
+	}
+}
+
+func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithRule() {
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__update_attribute_with_rule",
 		NamespaceId: fixtureNamespaceID,
@@ -486,7 +541,7 @@ func (s *AttributesSuite) Test_UpdateAttribute_WithRule() {
 	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, updated.GetRule())
 }
 
-func (s *AttributesSuite) Test_UpdateAttribute_WithNewName() {
+func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithNewName() {
 	originalName := "test__update_attribute_with_new_name"
 	newName := originalName + "updated"
 	attr := &attributes.CreateAttributeRequest{

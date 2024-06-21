@@ -630,7 +630,7 @@ func (s *AttributesSuite) Test_UnsafeDeleteAttribute() {
 	resp, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, fqn)
 	s.Require().Error(err)
 	s.Nil(resp)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 
 	// value fqns should not be found
 	for _, v := range createdAttr.GetValues() {
@@ -644,7 +644,7 @@ func (s *AttributesSuite) Test_UnsafeDeleteAttribute() {
 		retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, req)
 		s.Require().Error(err)
 		s.Nil(retrieved)
-		s.ErrorIs(err, db.ErrNotFound)
+		s.Require().ErrorIs(err, db.ErrNotFound)
 	}
 
 	// should be able to create attribute of same name as deleted

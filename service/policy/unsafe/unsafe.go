@@ -107,7 +107,7 @@ func (s *UnsafeService) UpdateAttribute(ctx context.Context, req *unsafe.UpdateA
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
 	}
 
-	item, err := s.dbClient.UnsafeUpdateAttribute(ctx, req.GetId(), req)
+	item, err := s.dbClient.UnsafeUpdateAttribute(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("attribute", req.String()))
 	}

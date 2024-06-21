@@ -13,15 +13,15 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1
-	github.com/itchyny/gojq v0.12.15
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.5.5
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/miekg/pkcs11 v1.1.1
 	github.com/open-policy-agent/opa v0.63.0
 	github.com/opentdf/platform/lib/fixtures v0.2.5
+	github.com/opentdf/platform/lib/flattening v0.1.1
 	github.com/opentdf/platform/lib/ocrypto v0.1.5
-	github.com/opentdf/platform/protocol/go v0.2.3
+	github.com/opentdf/platform/protocol/go v0.2.4
 	github.com/opentdf/platform/sdk v0.2.7
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.8.0
@@ -58,7 +58,6 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
-	github.com/itchyny/timefmt-go v0.1.5 // indirect
 	github.com/tidwall/gjson v1.17.1 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect

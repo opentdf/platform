@@ -1,0 +1,197 @@
+syntax = "proto3";
+
+package policy.unsafe;
+
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+import "policy/objects.proto";
+
+// Namespaces Unsafe RPCs
+
+// WARNING!!
+// Updating the Namespace of an Attribute will retroactively alter access to existing TDFs of the old and new Namespace name.
+// Existing Attribute Definitions and their Values under the Namespace will now be associated with the new Namespace name.
+message UpdateNamespaceRequest {
+  // Required
+  string id = 1 [(buf.validate.field).required = true];
+
+  string name = 2 [
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "namespace_name_format",
+      message: "Namespace name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored namespace name will be normalized to lower case.",
+      expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
+}
+message UpdateNamespaceResponse {
+  policy.Namespace namespace = 1;
+}
+
+// WARNING!!
+// Reactivating a Namespace can potentially open up an access path to existing TDFs containing any Attributes under the Namespace.
+// Active state of any Definitions and their Values under this Namespace will NOT be changed.
+message ReactivateNamespaceRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message ReactivateNamespaceResponse {
+    policy.Namespace namespace = 1;
+}
+
+// WARNING!!
+// Deleting a Namespace will free up the Attribute Namespace, Definitions, and Values for reuse, which can introduce an access path to existing TDFs containing the deleted policy.
+// Definitions and their Values under this Namespace will be cascadingly deleted.
+message DeleteNamespaceRequest {
+  // Required
+  // UUID of the Namespace
+  string id = 1 [(buf.validate.field).required = true];
+  // Fully Qualified Name (FQN) of Namespace (i.e. https://<namespace>), normalized to lower case.
+  string fqn = 2 [(buf.validate.field).required = true];
+}
+message DeleteNamespaceResponse {
+  policy.Namespace namespace = 1;
+}
+
+// Attribute Definitions Unsafe RPCs
+
+// WARNING!!
+// Updating an Attribute can have dangerous consequences. Use with caution.
+message UpdateAttributeRequest {
+  // Required
+  string id = 1 [(buf.validate.field).required = true];
+
+  // Optional
+  // WARNING!! 
+  // Updating the name of an Attribute will retroactively alter access to existing TDFs of the old and new Attribute name.
+  string name = 2 [
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "attribute_name_format",
+      message: "Attribute name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute name will be normalized to lower case.",
+      expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
+  // WARNING!! 
+  // Updating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.
+  AttributeRuleTypeEnum rule = 3 [
+    (buf.validate.field).enum.defined_only = true
+  ];
+}
+message UpdateAttributeResponse {
+  policy.Attribute attribute = 1;
+}
+
+// WARNING!!
+// Reactivating an Attribute can potentially open up an access path to existing TDFs containing the Attribute name.
+// Active state of any Values under this Attribute Definition will NOT be changed.
+message ReactivateAttributeRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message ReactivateAttributeResponse {
+  policy.Attribute attribute = 1;
+}
+
+// WARNING!!
+// Deleting an Attribute will free up the Attribute name for reuse, which can introduce an access path to existing TDFs containing the deleted Attribute name.
+// Values under this Attribute will be cascadingly deleted.
+// Any KAS Grants associated with this Attribute will be cascadingly deleted.
+message DeleteAttributeRequest {
+  // Required
+  // UUID of the Attribute
+  string id = 1 [(buf.validate.field).required = true];
+  // Fully Qualified Name (FQN) of Attribute Definition (i.e. https://<namespace>/attr/<attribute name>), normalized to lower case.
+  string fqn = 2 [(buf.validate.field).required = true];
+}
+message DeleteAttributeResponse {
+  policy.Attribute attribute = 1;
+}
+
+///
+/// Value Unsafe RPC messages
+///
+
+// WARNING!! 
+// Updating an Attribute Value will retroactively alter access to existing TDFs containing the old and new Attribute Value.
+message UpdateAttributeValueRequest {
+  string id = 1 [(buf.validate.field).required = true];
+
+  string value = 2 [
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "value_format",
+      message: "Attribute Value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute value will be normalized to lower case.",
+      expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
+}
+message UpdateAttributeValueResponse {
+  policy.Value value = 1;
+}
+
+// WARNING!!
+// Reactivating an Attribute Value can potentially open up an access path to existing TDFs containing the Attribute Value.
+message ReactivateAttributeValueRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+message ReactivateAttributeValueResponse {
+  policy.Value value = 1;
+}
+
+// WARNING!!
+// Deleting an Attribute Value will free up the Attribute Value for reuse, which can introduce an access path to existing TDFs containing the deleted Attribute Value.
+// Any KAS Grants associated with this Attribute Value will be cascadingly deleted.
+message DeleteAttributeValueRequest {
+  // Required
+  // UUID of the Attribute Value
+  string id = 1 [(buf.validate.field).required = true];
+  // Fully Qualified Name (FQN) of Attribute Value (i.e. https://<namespace>/attr/<attribute name>/value/<value>), normalized to lower case.
+  string fqn = 2 [(buf.validate.field).required = true];
+}
+message DeleteAttributeValueResponse {
+  policy.Value value = 1;
+}
+
+///
+/// Unsafe Service 
+/// IN FLIGHT AND NOT YET IMPLEMENTED!
+///
+service UnsafeService {
+  /*--------------------------------------*
+   * Namespace RPCs
+   *---------------------------------------*/
+  rpc UpdateNamespace(UpdateNamespaceRequest) returns (UpdateNamespaceResponse) {
+    option (google.api.http) = {patch: "/unsafe/namespaces/{id}"};
+  }
+  rpc ReactivateNamespace(ReactivateNamespaceRequest) returns (ReactivateNamespaceResponse) {
+    option (google.api.http) = {post: "/unsafe/namespaces/{id}/reactivate"};
+  }
+  rpc DeleteNamespace(DeleteNamespaceRequest) returns (DeleteNamespaceResponse) {
+    option (google.api.http) = {delete: "/unsafe/namespaces/{id}"};
+  }
+
+  /*--------------------------------------*
+   * Attribute RPCs
+   *---------------------------------------*/
+  rpc UpdateAttribute(UpdateAttributeRequest) returns (UpdateAttributeResponse) {
+    option (google.api.http) = {patch: "/unsafe/attributes/{id}"};
+  }
+  rpc ReactivateAttribute(ReactivateAttributeRequest) returns (ReactivateAttributeResponse) {
+    option (google.api.http) = {post: "/unsafe/attributes/{id}/reactivate"};
+  }
+  rpc DeleteAttribute(DeleteAttributeRequest) returns (DeleteAttributeResponse) {
+    option (google.api.http) = {delete: "/unsafe/attributes/{id}"};
+  }
+
+  /*--------------------------------------*
+   * Value RPCs
+   *---------------------------------------*/
+  rpc UpdateAttributeValue(UpdateAttributeValueRequest) returns (UpdateAttributeValueResponse) {
+    option (google.api.http) = {patch: "/unsafe/attributes/values/{id}"};
+  }
+  rpc ReactivateAttributeValue(ReactivateAttributeValueRequest) returns (ReactivateAttributeValueResponse) {
+    option (google.api.http) = {post: "/unsafe/attributes/values/{id}/reactivate"};
+  }
+  rpc DeleteAttributeValue(DeleteAttributeValueRequest) returns (DeleteAttributeValueResponse) {
+    option (google.api.http) = {delete: "/unsafe/attributes/values/{id}"};
+  }
+}

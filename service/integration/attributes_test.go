@@ -479,6 +479,7 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithRuleAndNameAndReorderin
 
 	// name, rule, order updates respected
 	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UpdateAttributeRequest{
+		Id:          createdAttr.GetId(),
 		Name:        newName,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 		ValuesOrder: reversedVals,
@@ -504,6 +505,9 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithRuleAndNameAndReorderin
 
 		val, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 			Fqns: []string{fqn},
+			WithValue: &policy.AttributeValueSelector{
+				WithSubjectMaps: true,
+			},
 		})
 		s.Require().NoError(err)
 		s.NotNil(val)

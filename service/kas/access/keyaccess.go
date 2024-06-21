@@ -1,4 +1,4 @@
-package tdf3
+package access
 
 type KeyAccess struct {
 	EncryptedMetadata string `json:"encryptedMetadata,omitempty"`

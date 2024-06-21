@@ -76,6 +76,9 @@ message UpdateAttributeRequest {
   AttributeRuleTypeEnum rule = 3 [
     (buf.validate.field).enum.defined_only = true
   ];
+  // WARNING!!
+  // Updating the order of values in a HIERARCHY-rule Attribute Definition will retroactively alter access to existing TDFs containing those values.
+  repeated string values_order = 4;
 }
 message UpdateAttributeResponse {
   policy.Attribute attribute = 1;

@@ -201,6 +201,17 @@
               "ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY"
             ],
             "default": "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED"
+          },
+          {
+            "name": "valuesOrder",
+            "description": "WARNING!!\nUpdating the order of values in a HIERARCHY-rule Attribute Definition will retroactively alter access to existing TDFs containing those values.",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
           }
         ],
         "tags": [

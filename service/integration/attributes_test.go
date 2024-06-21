@@ -498,7 +498,7 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithRuleAndNameAndReorderin
 	s.Equal(fmt.Sprintf("https://%s/attr/%s", nsName, updated.GetName()), updated.GetFqn())
 	s.Len(updated.GetValues(), len(values))
 
-	// values reflect new updated name
+	// values reflect new updated name and requested update order
 	for i, v := range updated.GetValues() {
 		s.Equal(reversedVals[i], v.GetId())
 		fqn := fmt.Sprintf("https://%s/attr/%s/value/%s", nsName, newName, v.GetValue())
@@ -693,8 +693,8 @@ func (s *AttributesSuite) Test_UnsafeDeleteAttribute() {
 	s.Nil(resp)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 
-	// value fqns should not be found
-	for _, v := range createdAttr.GetValues() {
+	// value fqns should be deleted and not found
+	for _, v := range got.GetValues() {
 		fqns := []string{fmt.Sprintf("https://%s/attr/%s/value/%s", ns.GetName(), name, v.GetValue())}
 		req := &attributes.GetAttributeValuesByFqnsRequest{
 			Fqns: fqns,

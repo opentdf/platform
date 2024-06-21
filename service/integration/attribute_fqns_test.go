@@ -366,6 +366,57 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithDeactivatedAt
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
+func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithDeactivatedAttributeValue() {
+	// create a new namespace
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test_fqn_namespace.goodbye",
+	})
+	s.Require().NoError(err)
+
+	// give it an attribute with two values
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: ns.GetId(),
+		Name:        "deactivating_attr",
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+	})
+	s.Require().NoError(err)
+
+	v1, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attr.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: "value1",
+	})
+	s.Require().NoError(err)
+
+	v2, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attr.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: "value2",
+	})
+	s.Require().NoError(err)
+
+	// deactivate the first attribute value only
+	_, err = s.db.PolicyClient.DeactivateAttributeValue(s.ctx, v1.GetId())
+	s.Require().NoError(err)
+
+	// get the attribute by the value fqn for v1
+	v, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{fqnBuilder(ns.GetName(), attr.GetName(), v1.GetValue())},
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	})
+	s.Require().Error(err)
+	s.Nil(v)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+
+	// get the attribute by the value fqn for v2
+	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{fqnBuilder(ns.GetName(), attr.GetName(), v2.GetValue())},
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	})
+	s.Require().NoError(err)
+	s.Len(v, 1)
+}
+
 func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithNonValueFqns() {
 	nsFqn := fqnBuilder("example.com", "", "")
 	attrFqn := fqnBuilder("example.com", "attr1", "")

@@ -13,7 +13,6 @@ import (
 	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/internal/server"
-	"github.com/opentdf/platform/service/pkg/util"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
 )
 
@@ -60,9 +59,7 @@ func Start(f ...StartOptions) error {
 	// Set default for places we can't pass the logger
 	slog.SetDefault(logger.Logger)
 
-	sensitiveWords := []string{"password", "clientsecret"}
-	redactedConf := util.RedactSensitiveData(conf, sensitiveWords)
-	logger.Debug("config loaded", slog.Any("config", redactedConf))
+	logger.Debug("config loaded", slog.Any("config", conf))
 
 	logger.Info("starting opa engine")
 	eng, err := opa.NewEngine(conf.OPA)

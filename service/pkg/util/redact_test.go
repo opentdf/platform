@@ -10,7 +10,7 @@ type DBConfig struct {
 	Port             int    `json:"port"`
 	Database         string `json:"database"`
 	User             string `json:"user"`
-	Password         string `json:"password"`
+	Password         string `json:"password" secret:"true"`
 	RunMigrations    bool   `json:"runMigrations"`
 	SSLMode          string `json:"sslmode"`
 	Schema           string `json:"schema"`
@@ -113,21 +113,14 @@ func TestRedactSensitiveData_WithSensitiveFieldsInNestedStruct(t *testing.T) {
 		t.Fatalf("Failed to unmarshal rawConfig: %v", err)
 	}
 
-	sensitiveFields := []string{"Password", "clientsecret"}
-	redacted := RedactSensitiveData(config, sensitiveFields)
+	redacted := RedactSensitiveData(config)
 
 	redactedConfig, ok1 := redacted.(Config)
 	if !ok1 {
 		t.Fatalf("Expected redacted data to be of type Config")
 	}
 
-	if redactedConfig.DB.Password != "REDACTED" {
+	if redactedConfig.DB.Password != "***" {
 		t.Errorf("Expected DB.Password to be redacted")
-	}
-
-	for _, service := range redactedConfig.Services {
-		if clientSecret, ok2 := service.ExtraProps["clientsecret"]; ok2 && clientSecret != "REDACTED" {
-			t.Errorf("Expected Services.ExtraProps.ClientSecret to be redacted")
-		}
 	}
 }

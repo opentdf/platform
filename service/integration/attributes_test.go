@@ -457,50 +457,6 @@ func (s *AttributesSuite) Test_UpdateAttribute_WithInvalidIdFails() {
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
-func (s *AttributesSuite) Test_UpdateAttribute_NamespaceIsImmutableOnUpdate() {
-	s.T().Skip("Defunct test: not possible to test update in this way; check request struct for validation instead.")
-	original := &attributes.CreateAttributeRequest{
-		Name:        "test__update_attribute_namespace_immutable",
-		NamespaceId: s.f.GetNamespaceKey("example.com").ID,
-		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
-	}
-	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, original)
-	s.Require().NoError(err)
-	s.NotNil(createdAttr)
-
-	// should error on attempt to change namespace
-	update := &attributes.UpdateAttributeRequest{}
-	resp, err := s.db.PolicyClient.UpdateAttribute(s.ctx, createdAttr.GetId(), update)
-	s.Require().Error(err)
-	s.Nil(resp)
-	s.Require().ErrorIs(err, db.ErrRestrictViolation)
-
-	// validate namespace should not have been changed
-	updated, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
-	s.Require().NoError(err)
-	s.NotNil(updated)
-	s.Equal(original.GetNamespaceId(), updated.GetNamespace().GetId())
-}
-
-func (s *AttributesSuite) Test_UpdateAttributeWithSameNameAndNamespaceConflictFails() {
-	s.T().Skip("Defunct test: not possible to test update in this way; check request struct for validation instead.")
-	fixtureData := s.f.GetAttributeKey("example.org/attr/attr3")
-	original := &attributes.CreateAttributeRequest{
-		Name:        "test__update_attribute_with_same_name_and_namespace",
-		NamespaceId: fixtureData.NamespaceID,
-		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-	}
-	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, original)
-	s.Require().NoError(err)
-	s.NotNil(createdAttr)
-
-	conflict := &attributes.UpdateAttributeRequest{}
-	resp, err := s.db.PolicyClient.UpdateAttribute(s.ctx, fixtureData.ID, conflict)
-	s.Require().Error(err)
-	s.Nil(resp)
-	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
-}
-
 func (s *AttributesSuite) Test_UnsafeDeleteAttribute() {
 	name := "test__delete_attribute"
 	attr := &attributes.CreateAttributeRequest{

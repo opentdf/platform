@@ -56,6 +56,7 @@ func redact(v reflect.Value) reflect.Value {
 }
 
 func StructToString(v reflect.Value) string {
+	//nolint:exhaustive // default case covers other type
 	var b strings.Builder
 	switch v.Kind() {
 	case reflect.Ptr:

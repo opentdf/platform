@@ -607,6 +607,37 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithNewName() {
 	s.Len(retrieved, 2)
 }
 
+func (s *AttributesSuite) Test_UnsafeUpdateAttribute_NormalizesCasing() {
+	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "BANANA_PUDDING",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values:      []string{"fig", "jam"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal("banana_pudding", got.GetName())
+	s.Contains(got.GetFqn(), "banana_pudding")
+
+	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UpdateAttributeRequest{
+		Id:   created.GetId(),
+		Name: "STRAWBERRY_SHORTCAKE",
+	})
+	s.Require().NoError(err)
+	s.NotNil(updated)
+	s.Equal("strawberry_shortcake", updated.GetName())
+
+	got, err = s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal("strawberry_shortcake", got.GetName())
+	s.Contains(got.GetFqn(), "strawberry_shortcake")
+}
+
 func (s *AttributesSuite) Test_UnsafeUpdateAttribute_ReplaceValuesOrder() {
 	toCreate := &attributes.CreateAttributeRequest{
 		Name:        "test__unsafe_update_attribute_replace_values_order",

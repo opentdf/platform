@@ -578,12 +578,13 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Upd
 		}
 	}
 
+	// Handle case where rule is not actually being updated
 	rule := ""
 	if r.GetRule() != policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED {
 		rule = attributesRuleTypeEnumTransformIn(r.GetRule().String())
 	}
 
-	sql, args, err := unsafeUpdateAttributeSQL(id, r.GetName(), rule, r.GetValuesOrder())
+	sql, args, err := unsafeUpdateAttributeSQL(id, strings.ToLower(r.GetName()), rule, r.GetValuesOrder())
 	if err != nil {
 		return nil, err
 	}
@@ -594,11 +595,12 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Upd
 	}
 
 	if r.GetName() != "" {
+		nsID := before.GetNamespace().GetId()
 		// update the FQN for the attribute
-		c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeID: id, namespaceID: before.GetNamespace().GetId()})
+		c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeID: id, namespaceID: nsID})
 		// update all the values' FQNs
 		for _, v := range before.GetValues() {
-			c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: v.GetId(), attributeID: id, namespaceID: before.GetNamespace().GetId()})
+			c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: v.GetId(), attributeID: id, namespaceID: nsID})
 		}
 	}
 

@@ -694,6 +694,26 @@ func (s *NamespacesSuite) Test_UnsafeUpdateNamespace_DoesNotExist_ShouldFail() {
 	s.Nil(ns)
 }
 
+func (s *NamespacesSuite) Test_UnsafeUpdateNamespace_NormalizeCasing() {
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "TeStInG-NaMeSpAcE-123.com"})
+	s.Require().NoError(err)
+	s.NotNil(ns)
+
+	got, _ := s.db.PolicyClient.GetNamespace(s.ctx, ns.GetId())
+	s.NotNil(got)
+	s.Equal("testing-namespace-123.com", got.GetName())
+
+	updated, err := s.db.PolicyClient.UnsafeUpdateNamespace(s.ctx, ns.GetId(), "HELLOWORLD.COM")
+	s.Require().NoError(err)
+	s.NotNil(updated)
+	s.Equal("helloworld.com", updated.GetName())
+
+	got, _ = s.db.PolicyClient.GetNamespace(s.ctx, ns.GetId())
+	s.NotNil(got)
+	s.Equal("helloworld.com", got.GetName())
+	s.Contains(got.GetFqn(), "helloworld.com")
+}
+
 func TestNamespacesSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping namespaces integration tests")

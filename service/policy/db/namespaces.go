@@ -279,7 +279,7 @@ func unsafeUpdateNamespaceSQL(id string, name string) (string, []interface{}, er
 }
 
 func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, name string) (*policy.Namespace, error) {
-	sql, args, err := unsafeUpdateNamespaceSQL(id, name)
+	sql, args, err := unsafeUpdateNamespaceSQL(id, strings.ToLower(name))
 	if db.IsQueryBuilderSetClauseError(err) {
 		return &policy.Namespace{
 			Id: id,

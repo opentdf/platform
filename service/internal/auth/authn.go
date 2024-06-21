@@ -106,8 +106,6 @@ func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger) (*Au
 		return nil, err
 	}
 
-	// cfg.OIDCConfiguration = *oidcConfig
-
 	cacheInterval, err := time.ParseDuration(cfg.CacheRefresh)
 	if err != nil {
 		logr.ErrorContext(ctx, fmt.Sprintf("Invalid cache_refresh_interval [%s]", cfg.CacheRefresh), "err", err)

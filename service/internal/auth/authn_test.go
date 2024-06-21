@@ -254,7 +254,7 @@ func (s *AuthSuite) Test_CheckToken_When_Missing_Issuer_Expect_Error() {
 
 	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().Error(err)
-	s.Equal("missing issuer", err.Error())
+	s.Equal("\"iss\" not satisfied: claim \"iss\" does not exist", err.Error())
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {

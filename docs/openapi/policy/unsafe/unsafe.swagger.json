@@ -204,7 +204,7 @@
           },
           {
             "name": "valuesOrder",
-            "description": "WARNING!!\nUpdating the order of values in a HIERARCHY-rule Attribute Definition will retroactively alter access to existing TDFs containing those values.",
+            "description": "WARNING!!\nUnsafe reordering requires the full list of values in the new order they should be stored. Updating the order of values in a HIERARCHY-rule Attribute Definition\nwill retroactively alter access to existing TDFs containing those values. Replacing values on an attribute in place is not supported; values can be unsafely deleted\ndeleted, created, and unsafely re-ordered as necessary.",
             "in": "query",
             "required": false,
             "type": "array",

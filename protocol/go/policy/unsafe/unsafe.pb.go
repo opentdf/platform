@@ -351,7 +351,9 @@ type UpdateAttributeRequest struct {
 	// Updating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.
 	Rule policy.AttributeRuleTypeEnum `protobuf:"varint,3,opt,name=rule,proto3,enum=policy.AttributeRuleTypeEnum" json:"rule,omitempty"`
 	// WARNING!!
-	// Updating the order of values in a HIERARCHY-rule Attribute Definition will retroactively alter access to existing TDFs containing those values.
+	// Unsafe reordering requires the full list of values in the new order they should be stored. Updating the order of values in a HIERARCHY-rule Attribute Definition
+	// will retroactively alter access to existing TDFs containing those values. Replacing values on an attribute in place is not supported; values can be unsafely deleted
+	// deleted, created, and unsafely re-ordered as necessary.
 	ValuesOrder []string `protobuf:"bytes,4,rep,name=values_order,json=valuesOrder,proto3" json:"values_order,omitempty"`
 }
 

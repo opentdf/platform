@@ -77,7 +77,9 @@ message UpdateAttributeRequest {
     (buf.validate.field).enum.defined_only = true
   ];
   // WARNING!!
-  // Updating the order of values in a HIERARCHY-rule Attribute Definition will retroactively alter access to existing TDFs containing those values.
+  // Unsafe reordering requires the full list of values in the new order they should be stored. Updating the order of values in a HIERARCHY-rule Attribute Definition
+  // will retroactively alter access to existing TDFs containing those values. Replacing values on an attribute in place is not supported; values can be unsafely deleted
+  // deleted, created, and unsafely re-ordered as necessary.
   repeated string values_order = 4;
 }
 message UpdateAttributeResponse {

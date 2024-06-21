@@ -80,13 +80,7 @@ func (s *UnsafeService) DeleteNamespace(ctx context.Context, req *unsafe.DeleteN
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
 	}
 
-	// TODO: move this down into db call
-	// validate the provided namespace FQN is a match for the provided namespace ID
-	if existing.GetFqn() != req.GetFqn() {
-		return nil, db.StatusifyError(db.ErrNotFound, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()), slog.String("fqn", req.GetFqn()))
-	}
-
-	deleted, err := s.dbClient.UnsafeDeleteNamespace(ctx, req.GetId())
+	deleted, err := s.dbClient.UnsafeDeleteNamespace(ctx, existing, req.GetFqn())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
 	}
@@ -149,7 +143,7 @@ func (s *UnsafeService) DeleteAttribute(ctx context.Context, req *unsafe.DeleteA
 		return nil, db.StatusifyError(db.ErrNotFound, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()), slog.String("fqn", req.GetFqn()))
 	}
 
-	deleted, err := s.dbClient.UnsafeDeleteAttribute(ctx, req.GetId())
+	deleted, err := s.dbClient.UnsafeDeleteAttribute(ctx, existing, req.GetFqn())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
 	}

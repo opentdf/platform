@@ -462,8 +462,10 @@ func (s *NamespacesSuite) Test_UnsafeDeleteNamespace_Cascades() {
 	s.Require().NoError(err)
 	s.NotNil(createdVal2)
 
+	existing, _ := s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
+
 	// delete the namespace
-	deleted, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, n.GetId())
+	deleted, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, existing, existing.GetFqn())
 	s.Require().NoError(err)
 	s.NotNil(deleted)
 
@@ -496,14 +498,33 @@ func (s *NamespacesSuite) Test_UnsafeDeleteNamespace_ShouldBeAbleToRecreateDelet
 	s.Require().NoError(err)
 	s.NotNil(n)
 
+	got, _ := s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
+
 	// delete the namespace
-	_, err = s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, n.GetId())
+	_, err = s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, got, got.GetFqn())
 	s.Require().NoError(err)
 
 	// create the namespace again
 	n, err = s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "deleting-namespace.com"})
 	s.Require().NoError(err)
 	s.NotNil(n)
+}
+
+func (s *NamespacesSuite) Test_UnsafeDeleteNamespace_DoesNotExist_ShouldFail() {
+	ns, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, &policy.Namespace{}, "does.not.exist")
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(ns)
+
+	created, _ := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "deletingns.com"})
+	s.NotNil(created)
+	got, _ := s.db.PolicyClient.GetNamespace(s.ctx, created.GetId())
+	s.NotNil(got)
+
+	ns, err = s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, got, "https://bad.fqn")
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(ns)
 }
 
 func (s *NamespacesSuite) Test_UnsafeReactivateNamespace_SetsActiveStatusOfNamespace() {

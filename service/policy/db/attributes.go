@@ -705,7 +705,12 @@ func unsafeDeleteAttributeSQL(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c PolicyDBClient) UnsafeDeleteAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
+func (c PolicyDBClient) UnsafeDeleteAttribute(ctx context.Context, existing *policy.Attribute, fqn string) (*policy.Attribute, error) {
+	id := existing.GetId()
+
+	if existing.GetFqn() != fqn {
+		return nil, fmt.Errorf("fqn mismatch: %w", db.ErrNotFound)
+	}
 	sql, args, err := unsafeDeleteAttributeSQL(id)
 	if err != nil {
 		return nil, err

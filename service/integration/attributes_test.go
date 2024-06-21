@@ -654,7 +654,9 @@ func (s *AttributesSuite) Test_UnsafeDeleteAttribute() {
 	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 
-	deleted, err := s.db.PolicyClient.UnsafeDeleteAttribute(s.ctx, createdAttr.GetId())
+	got, _ := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+
+	deleted, err := s.db.PolicyClient.UnsafeDeleteAttribute(s.ctx, got, got.GetFqn())
 	s.Require().NoError(err)
 	s.NotNil(deleted)
 
@@ -712,8 +714,13 @@ func (s *AttributesSuite) Test_UnsafeDeleteAttribute() {
 	s.NotNil(createdAttr)
 }
 
-func (s *AttributesSuite) Test_UnsafeDeleteAttribute_WithInvalidIdFails() {
-	deleted, err := s.db.PolicyClient.UnsafeDeleteAttribute(s.ctx, nonExistentAttrID)
+func (s *AttributesSuite) Test_UnsafeDeleteAttribute_WithBadFqnFails() {
+	created, _ := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test__delete_attribute_with_bad_fqn",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	deleted, err := s.db.PolicyClient.UnsafeDeleteAttribute(s.ctx, created, "bad_fqn")
 	s.Require().Error(err)
 	s.Nil(deleted)
 	s.Require().ErrorIs(err, db.ErrNotFound)

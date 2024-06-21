@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -367,7 +368,12 @@ func deleteNamespaceSQL(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c PolicyDBClient) UnsafeDeleteNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
+func (c PolicyDBClient) UnsafeDeleteNamespace(ctx context.Context, existing *policy.Namespace, fqn string) (*policy.Namespace, error) {
+	id := existing.GetId()
+
+	if existing.GetFqn() != fqn {
+		return nil, fmt.Errorf("fqn mismatch: %w", db.ErrNotFound)
+	}
 	sql, args, err := deleteNamespaceSQL(id)
 	if err != nil {
 		return nil, err

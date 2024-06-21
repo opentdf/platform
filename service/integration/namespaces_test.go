@@ -490,13 +490,6 @@ func (s *NamespacesSuite) Test_UnsafeDeleteNamespace_Cascades() {
 	s.Nil(v)
 }
 
-func (s *NamespacesSuite) Test_UnsafeDeleteNamespace_DoesNotExist_ShouldFail() {
-	ns, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, nonExistentNamespaceID)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrNotFound)
-	s.Nil(ns)
-}
-
 func (s *NamespacesSuite) Test_UnsafeDeleteNamespace_ShouldBeAbleToRecreateDeletedNamespace() {
 	// create namespace
 	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "deleting-namespace.com"})

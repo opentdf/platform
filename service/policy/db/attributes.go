@@ -708,6 +708,9 @@ func unsafeDeleteAttributeSQL(id string) (string, []interface{}, error) {
 }
 
 func (c PolicyDBClient) UnsafeDeleteAttribute(ctx context.Context, existing *policy.Attribute, fqn string) (*policy.Attribute, error) {
+	if existing == nil {
+		return nil, fmt.Errorf("attribute not found: %w", db.ErrNotFound)
+	}
 	id := existing.GetId()
 
 	if existing.GetFqn() != fqn {

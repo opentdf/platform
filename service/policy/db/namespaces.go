@@ -293,8 +293,22 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 	if err != nil {
 		return nil, err
 	}
-	// Update FQN
+	attrs, err := c.ListAllAttributes(ctx, StateAny, id)
+	if err != nil {
+		slog.Error("appear to have updated namespace name but failed to list attributes. Fqns may now be out of sync", slog.String("error", err.Error()))
+		return nil, err
+	}
+	// Update FQNs
+	// namespace FQN
 	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
+	for _, attr := range attrs {
+		// attribute FQN
+		c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id, attributeID: attr.GetId()})
+		// value FQNs
+		for _, val := range attr.GetValues() {
+			c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id, attributeID: attr.GetId(), valueID: val.GetId()})
+		}
+	}
 
 	return hydrateNamespaceItem(row, namespaceSelectOptions{})
 }
@@ -369,6 +383,9 @@ func deleteNamespaceSQL(id string) (string, []interface{}, error) {
 }
 
 func (c PolicyDBClient) UnsafeDeleteNamespace(ctx context.Context, existing *policy.Namespace, fqn string) (*policy.Namespace, error) {
+	if existing == nil {
+		return nil, fmt.Errorf("namespace not found: %w", db.ErrNotFound)
+	}
 	id := existing.GetId()
 
 	if existing.GetFqn() != fqn {

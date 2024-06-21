@@ -15,6 +15,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +23,6 @@ import (
 
 	"github.com/google/uuid"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
-	"github.com/opentdf/platform/service/kas/tdf3"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -203,10 +203,11 @@ func createTestLogger(t *testing.T) logger.Logger {
 	return *l
 }
 
-func keyAccessWrappedRaw(t *testing.T) tdf3.KeyAccess {
+func keyAccessWrappedRaw(t *testing.T) KeyAccess {
 	policyBytes := fauxPolicyBytes(t)
-
-	wrappedKey, err := tdf3.EncryptWithPublicKey([]byte(plainKey), entityPublicKey(t))
+	asym, err := ocrypto.NewAsymEncryption(rsaPublicAlt)
+	require.NoError(t, err, "rewrap: NewAsymEncryption failed")
+	wrappedKey, err := asym.Encrypt([]byte(plainKey))
 	require.NoError(t, err, "rewrap: encryptWithPublicKey failed")
 
 	logger := createTestLogger(t)
@@ -219,7 +220,7 @@ func keyAccessWrappedRaw(t *testing.T) tdf3.KeyAccess {
 	policyBinding := base64.StdEncoding.EncodeToString(dst)
 	slog.Debug("Generated binding", "binding", bindingBytes, "encodedBinding", policyBinding)
 
-	return tdf3.KeyAccess{
+	return KeyAccess{
 		Type:          "wrapped",
 		URL:           "http://127.0.0.1:4000",
 		Protocol:      "kas",

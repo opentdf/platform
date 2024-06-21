@@ -474,7 +474,7 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithRuleAndNameAndReorderin
 	nsName := got.GetNamespace().GetName()
 	reversedVals := make([]string, len(values))
 	for i, v := range got.GetValues() {
-		reversedVals[len(values)-i-1] = v.GetValue()
+		reversedVals[len(values)-i-1] = v.GetId()
 	}
 
 	// name, rule, order updates respected

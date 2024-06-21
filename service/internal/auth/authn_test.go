@@ -269,7 +269,7 @@ func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
 
 	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().Error(err)
-	s.Contains(err.Error(), "invalid issuer")
+	s.Contains(err.Error(), "\"iss\" not satisfied: values do not match")
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Audience_Missing_Expect_Error() {

@@ -531,7 +531,7 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	return a, nil
 }
 
-func unsafeUpdateAttributeSql(id string, updateName string, updateRule string, replaceValuesOrder []string) (string, []interface{}, error) {
+func unsafeUpdateAttributeSQL(id string, updateName string, updateRule string, replaceValuesOrder []string) (string, []interface{}, error) {
 	t := Tables.Attributes
 	sb := db.NewStatementBuilder().Update(t.Name())
 
@@ -577,7 +577,7 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, id string, r 
 		}
 	}
 
-	sql, args, err := unsafeUpdateAttributeSql(id, r.GetName(), attributesRuleTypeEnumTransformIn(r.GetRule().String()), r.GetValuesOrder())
+	sql, args, err := unsafeUpdateAttributeSQL(id, r.GetName(), attributesRuleTypeEnumTransformIn(r.GetRule().String()), r.GetValuesOrder())
 	if err != nil {
 		return nil, err
 	}

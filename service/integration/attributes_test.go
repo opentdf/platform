@@ -501,28 +501,62 @@ func (s *AttributesSuite) Test_UpdateAttributeWithSameNameAndNamespaceConflictFa
 	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
 }
 
-func (s *AttributesSuite) Test_DeleteAttribute() {
+func (s *AttributesSuite) Test_UnsafeDeleteAttribute() {
+	name := "test__delete_attribute"
 	attr := &attributes.CreateAttributeRequest{
-		Name:        "test__delete_attribute",
+		Name:        name,
 		NamespaceId: fixtureNamespaceID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
+		Values:      []string{"value1", "value2", "value3"},
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
 	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 
-	deleted, err := s.db.PolicyClient.DeleteAttribute(s.ctx, createdAttr.GetId())
+	deleted, err := s.db.PolicyClient.UnsafeDeleteAttribute(s.ctx, createdAttr.GetId())
 	s.Require().NoError(err)
 	s.NotNil(deleted)
 
-	// should not exist anymore
+	// attribute should not exist anymore
 	resp, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
 	s.Require().Error(err)
 	s.Nil(resp)
+
+	// values should not exist anymore
+	for _, v := range createdAttr.GetValues() {
+		resp, err := s.db.PolicyClient.GetAttributeValue(s.ctx, v.GetId())
+		s.Require().Error(err)
+		s.Nil(resp)
+	}
+
+	// namespace should still exist unaffected
+	ns, err := s.db.PolicyClient.GetNamespace(s.ctx, fixtureNamespaceID)
+	s.Require().NoError(err)
+	s.NotNil(ns)
+	s.NotEqual("", ns.GetId())
+
+	// attribute should not be listed anymore
+	list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateAny, fixtureNamespaceID)
+	s.Require().NoError(err)
+	s.NotNil(list)
+	for _, l := range list {
+		s.NotEqual(createdAttr.GetId(), l.GetId())
+	}
+
+	// fqn should not be found
+	fqn := fmt.Sprintf("https://%s/attr/%s", ns.GetName(), name)
+	resp, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, fqn)
+	s.Require().Error(err)
+	s.Nil(resp)
+
+	// should be able to create attribute of same name as deleted
+	createdAttr, err = s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
 }
 
-func (s *AttributesSuite) Test_DeleteAttribute_WithInvalidIdFails() {
-	deleted, err := s.db.PolicyClient.DeleteAttribute(s.ctx, nonExistentAttrID)
+func (s *AttributesSuite) Test_UnsafeDeleteAttribute_WithInvalidIdFails() {
+	deleted, err := s.db.PolicyClient.UnsafeDeleteAttribute(s.ctx, nonExistentAttrID)
 	s.Require().Error(err)
 	s.Nil(deleted)
 	s.Require().ErrorIs(err, db.ErrNotFound)

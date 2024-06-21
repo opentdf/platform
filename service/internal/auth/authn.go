@@ -73,10 +73,10 @@ const refreshInterval = 15 * time.Minute
 // Authentication holds a jwks cache and information about the openid configuration
 type Authentication struct {
 	enforceDPoP bool
-	// cache holds the jwks cache
-	cache *jwk.Cache
-	// openidConfigurations holds the openid configuration for each issuer
-	oidcConfigurations map[string]AuthNConfig
+	// keySet holds a cached key set
+	cachedKeySet jwk.Set
+	// openidConfigurations holds the openid configuration for the issuer
+	oidcConfiguration AuthNConfig
 	// Casbin enforcer
 	enforcer *Enforcer
 	// Public Routes HTTP & gRPC
@@ -91,14 +91,13 @@ func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger) (*Au
 		enforceDPoP: cfg.EnforceDPoP,
 		logger:      logr,
 	}
-	a.oidcConfigurations = make(map[string]AuthNConfig)
 
 	// validate the configuration
 	if err := cfg.validateAuthNConfig(); err != nil {
 		return nil, err
 	}
 
-	a.cache = jwk.NewCache(ctx)
+	cache := jwk.NewCache(ctx)
 
 	// Build new cache
 	// Discover OIDC Configuration
@@ -107,7 +106,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger) (*Au
 		return nil, err
 	}
 
-	cfg.OIDCConfiguration = *oidcConfig
+	// cfg.OIDCConfiguration = *oidcConfig
 
 	cacheInterval, err := time.ParseDuration(cfg.CacheRefresh)
 	if err != nil {
@@ -116,7 +115,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger) (*Au
 	}
 
 	// Register the jwks_uri with the cache
-	if err := a.cache.Register(cfg.JwksURI, jwk.WithMinRefreshInterval(cacheInterval)); err != nil {
+	if err := cache.Register(oidcConfig.JwksURI, jwk.WithMinRefreshInterval(cacheInterval)); err != nil {
 		return nil, err
 	}
 
@@ -129,16 +128,19 @@ func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger) (*Au
 	}
 
 	// Need to refresh the cache to verify jwks is available
-	_, err = a.cache.Refresh(ctx, cfg.JwksURI)
+	_, err = cache.Refresh(ctx, oidcConfig.JwksURI)
 	if err != nil {
 		return nil, err
 	}
+
+	// Set the cache
+	a.cachedKeySet = jwk.NewCachedSet(cache, oidcConfig.JwksURI)
 
 	// Combine public routes
 	a.publicRoutes = append(a.publicRoutes, cfg.PublicRoutes...)
 	a.publicRoutes = append(a.publicRoutes, allowedPublicEndpoints[:]...)
 
-	a.oidcConfigurations[cfg.Issuer] = cfg.AuthNConfig
+	a.oidcConfiguration = cfg.AuthNConfig
 
 	return a, nil
 }
@@ -307,8 +309,14 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		return nil, nil, fmt.Errorf("not of type bearer or dpop")
 	}
 
-	// We have to get iss from the token first to verify the signature
-	unverifiedToken, err := jwt.Parse([]byte(tokenRaw), jwt.WithVerify(false))
+	// Now we verify the token signature
+	accessToken, err := jwt.Parse([]byte(tokenRaw),
+		jwt.WithKeySet(a.cachedKeySet),
+		jwt.WithValidate(true),
+		jwt.WithIssuer(a.oidcConfiguration.Issuer),
+		jwt.WithAudience(a.oidcConfiguration.Audience),
+	)
+
 	if err != nil {
 		return nil, nil, err
 	}
@@ -317,42 +325,8 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 	// Only set the actor ID if it is not already defined
 	existingActorID := ctx.Value(sdkAudit.ActorIDContextKey)
 	if existingActorID == nil {
-		actorID := unverifiedToken.Subject()
+		actorID := accessToken.Subject()
 		ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, actorID)
-	}
-
-	// Get issuer from unverified token
-	issuer := unverifiedToken.Issuer()
-	if issuer == "" {
-		return nil, nil, fmt.Errorf("missing issuer")
-	}
-
-	// Get the openid configuration for the issuer
-	oidc, exists := a.oidcConfigurations[issuer]
-	if !exists {
-		validIssuers := make([]string, 0)
-		for iss := range a.oidcConfigurations {
-			validIssuers = append(validIssuers, iss)
-		}
-		return nil, nil, fmt.Errorf("invalid issuer: [%s], expected one of the configured issuers: %v", issuer, validIssuers)
-	}
-
-	// Get key set from cache that matches the jwks_uri
-	keySet, err := a.cache.Get(ctx, oidc.JwksURI)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get jwks from cache")
-	}
-
-	// Now we verify the token signature
-	accessToken, err := jwt.Parse([]byte(tokenRaw),
-		jwt.WithKeySet(keySet),
-		jwt.WithValidate(true),
-		jwt.WithIssuer(issuer),
-		jwt.WithAudience(oidc.Audience),
-	)
-
-	if err != nil {
-		return nil, nil, err
 	}
 
 	_, tokenHasCNF := accessToken.Get("cnf")

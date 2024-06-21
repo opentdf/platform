@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -472,9 +473,11 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithRuleAndNameAndReorderin
 	s.Require().NoError(err)
 	s.NotNil(got)
 	nsName := got.GetNamespace().GetName()
-	reversedVals := make([]string, len(values))
+	updatedVals := []string{"def", "abc", "testing", "xyz"}
+	updatedValIDs := make([]string, len(values))
 	for i, v := range got.GetValues() {
-		reversedVals[len(values)-i-1] = v.GetId()
+		idx := slices.Index(updatedVals, v.GetValue())
+		updatedValIDs[i] = got.GetValues()[idx].GetId()
 	}
 
 	// name, rule, order updates respected
@@ -482,7 +485,7 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithRuleAndNameAndReorderin
 		Id:          createdAttr.GetId(),
 		Name:        newName,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
-		ValuesOrder: reversedVals,
+		ValuesOrder: updatedValIDs,
 	})
 	s.Require().NoError(err)
 	s.NotNil(updated)
@@ -500,7 +503,7 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithRuleAndNameAndReorderin
 
 	// values reflect new updated name and requested update order
 	for i, v := range updated.GetValues() {
-		s.Equal(reversedVals[i], v.GetId())
+		s.Equal(updatedVals[i], v.GetValue())
 		fqn := fmt.Sprintf("https://%s/attr/%s/value/%s", nsName, newName, v.GetValue())
 
 		val, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{

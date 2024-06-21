@@ -456,11 +456,11 @@ func (s *AttributesSuite) Test_UpdateAttribute_WithInvalidIdFails() {
 func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithRuleAndNameAndReordering() {
 	originalName := "test__update_attribute_with_rule_and_name_and_reordering"
 	newName := "updated_hello"
-	namespaceId := s.f.GetNamespaceKey("example.org").ID
+	namespaceID := s.f.GetNamespaceKey("example.org").ID
 	values := []string{"abc", "def", "xyz", "testing"}
 	attr := &attributes.CreateAttributeRequest{
 		Name:        originalName,
-		NamespaceId: namespaceId,
+		NamespaceId: namespaceID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 		Values:      values,
 	}

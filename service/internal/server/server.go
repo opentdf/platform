@@ -213,7 +213,7 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 	if c.EnablePprof {
 		h = pprofHandler(h)
 		// Need to extend write timeout to collect pprof data.
-		writeTimeoutOverride = 30 * time.Second //nolint:gomnd // easier to read that we are overriding the default
+		writeTimeoutOverride = 30 * time.Second //nolint:mnd // easier to read that we are overriding the default
 	}
 
 	// Add grpc handler

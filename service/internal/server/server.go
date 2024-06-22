@@ -35,10 +35,9 @@ import (
 )
 
 const (
-	writeTimeoutSeconds = 60
-	readTimeoutSeconds  = 10
-	shutdownTimeout     = 5
-	maxAge              = 300
+	writeTimeout    time.Duration = 5 * time.Second
+	readTimeout     time.Duration = 10 * time.Second
+	shutdownTimeout time.Duration = 5 * time.Second
 )
 
 type Error string
@@ -174,8 +173,11 @@ func NewOpenTDFServer(config Config, logr *logger.Logger) (*OpenTDFServer, error
 
 // newHTTPServer creates a new http server with the given handler and grpc server
 func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Server) (*http.Server, error) {
-	var err error
-	var tc *tls.Config
+	var (
+		err                  error
+		tc                   *tls.Config
+		writeTimeoutOverride = writeTimeout
+	)
 
 	// Add authN interceptor
 	// This is needed because we are leveraging RegisterXServiceHandlerServer instead of RegisterXServiceHandlerFromEndpoint
@@ -210,6 +212,8 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 	// Enable pprof
 	if c.EnablePprof {
 		h = pprofHandler(h)
+		// Need to extend write timeout to collect pprof data.
+		writeTimeoutOverride = 30 * time.Second
 	}
 
 	// Add grpc handler
@@ -226,8 +230,8 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 
 	return &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", c.Host, c.Port),
-		WriteTimeout: writeTimeoutSeconds * time.Second,
-		ReadTimeout:  readTimeoutSeconds * time.Second,
+		WriteTimeout: writeTimeoutOverride,
+		ReadTimeout:  readTimeout,
 		Handler:      h2,
 		TLSConfig:    tc,
 	}, nil
@@ -348,7 +352,7 @@ func (s OpenTDFServer) Start() {
 
 func (s OpenTDFServer) Stop() {
 	slog.Info("shutting down http server")
-	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	if err := s.HTTPServer.Shutdown(ctx); err != nil {
 		slog.Error("failed to shutdown http server", slog.String("error", err.Error()))

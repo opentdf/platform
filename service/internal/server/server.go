@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"net/http/pprof"
-	_ "net/http/pprof"
 
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/go-chi/cors"
@@ -237,20 +236,20 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 // ppprof handler
 func pprofHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/debug/pprof/":
-			pprof.Index(w, r)
-		case "/debug/pprof/cmdline":
-			pprof.Cmdline(w, r)
-		case "/debug/pprof/heap":
-			pprof.Index(w, r)
-		case "/debug/pprof/profile":
-			pprof.Profile(w, r)
-		case "/debug/pprof/symbol":
-			pprof.Symbol(w, r)
-		case "/debug/pprof/trace":
-			pprof.Trace(w, r)
-		default:
+		if strings.HasPrefix(r.URL.Path, "/debug/pprof/") {
+			switch r.URL.Path {
+			case "/debug/pprof/cmdline":
+				pprof.Cmdline(w, r)
+			case "/debug/pprof/profile":
+				pprof.Profile(w, r)
+			case "/debug/pprof/symbol":
+				pprof.Symbol(w, r)
+			case "/debug/pprof/trace":
+				pprof.Trace(w, r)
+			default:
+				pprof.Index(w, r)
+			}
+		} else {
 			h.ServeHTTP(w, r)
 		}
 	})

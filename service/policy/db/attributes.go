@@ -520,7 +520,7 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	slog.Debug("upserted fqn with new attribute definition", slog.Any("fqn", fqn))
 
 	for _, v := range values {
-		fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id, valueID: v.GetId()})
+		fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id, valueID: v.GetId()})
 		slog.Debug("upserted fqn with new attribute value on new definition create", slog.Any("fqn", fqn))
 	}
 
@@ -605,15 +605,11 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Upd
 	if r.GetName() != "" {
 		namespaceID := before.GetNamespace().GetId()
 		fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id})
-		if fqn != "" {
-			slog.Debug("upserted attribute fqn with new definition name", slog.Any("fqn", fqn))
-		}
+		slog.Debug("upserted attribute fqn with new definition name", slog.Any("fqn", fqn))
 		if len(before.GetValues()) > 0 {
 			for _, v := range before.GetValues() {
-				fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id, valueID: v.GetId()})
-				if fqn != "" {
-					slog.Debug("upserted attribute value fqn with new definition name", slog.Any("fqn", fqn))
-				}
+				fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id, valueID: v.GetId()})
+				slog.Debug("upserted attribute value fqn with new definition name", slog.Any("fqn", fqn))
 			}
 		}
 	}

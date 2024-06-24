@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.8](https://github.com/opentdf/platform/compare/sdk/v0.2.7...sdk/v0.2.8) (2024-06-24)
+
+
+### Features
+
+* Audit GetDecisions ([#976](https://github.com/opentdf/platform/issues/976)) ([55bdfeb](https://github.com/opentdf/platform/commit/55bdfeb4dd4a846d244febd23825ced38e8e91b1))
+* **core:** New cryptoProvider config ([#939](https://github.com/opentdf/platform/issues/939)) ([8150623](https://github.com/opentdf/platform/commit/81506237e2e640af34df8c745b71c3f20358d5a4))
+
+
+### Bug Fixes
+
+* **core:** Update to lib/fixtures 0.2.7 ([#1017](https://github.com/opentdf/platform/issues/1017)) ([dbae6ff](https://github.com/opentdf/platform/commit/dbae6ff10aadbfc805d9acef8440a7930f3c684e))
+* **core:** Updates to protos 0.2.4 ([#1014](https://github.com/opentdf/platform/issues/1014)) ([43e11a3](https://github.com/opentdf/platform/commit/43e11a34c47c76fe2845d0a9d60a686ea394c131))
+
 ## [0.2.7](https://github.com/opentdf/platform/compare/sdk/v0.2.6...sdk/v0.2.7) (2024-06-10)
 
 

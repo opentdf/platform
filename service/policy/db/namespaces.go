@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -210,12 +209,8 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 	}
 
 	// Update FQN
-	fqns, err := c.Queries.UpsertAttrFqnNamespace(ctx, uuid.MustParse(id))
-	if err != nil {
-		// swallow error
-		slog.Error("error upserting fqn for created namespace", slog.String("error", err.Error()), slog.String("namespace", r.String()))
-	}
-	slog.Debug("upserted fqns for created namespace", slog.Any("fqns", fqns))
+	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
+	slog.Debug("upserted fqn for created namespace", slog.Any("fqn", fqn))
 
 	return &policy.Namespace{
 		Id:       id,
@@ -297,12 +292,22 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 		return nil, err
 	}
 
-	fqns, err := c.Queries.UpsertAttrFqnNamespace(ctx, uuid.MustParse(id))
+	// Update all FQNs that may contain the namespace name
+	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
+	slog.Debug("upserted fqn for unsafely updated namespace", slog.Any("fqn", fqn))
+
+	attrs, err := c.ListAllAttributes(ctx, StateAny, id)
 	if err != nil {
-		// swallow error
-		slog.Error("error upserting fqn while unsafely updating namespace", slog.String("error", err.Error()), slog.String("namespace_id", id), slog.String("name", name))
+		return nil, err
 	}
-	slog.Debug("upserted fqns for unsafely updated namespace", slog.Any("fqns", fqns))
+	for _, attr := range attrs {
+		fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id, attributeID: attr.GetId()})
+		slog.Debug("upserted definition fqn for unsafely updated namespace", slog.Any("fqn", fqn))
+		for _, value := range attr.GetValues() {
+			fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id, attributeID: attr.GetId(), valueID: value.GetId()})
+			slog.Debug("upserted value fqn for unsafely updated namespace", slog.Any("fqn", fqn))
+		}
+	}
 
 	return hydrateNamespaceItem(row, namespaceSelectOptions{})
 }

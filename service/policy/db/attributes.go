@@ -515,12 +515,14 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	}
 
 	// Update the FQNs
-	fqns, err := c.Queries.UpsertAttrFqnDefinition(ctx, uuid.MustParse(id))
-	if err != nil {
-		// error is swallowed
-		slog.Error("could not update FQNs while creating attribute", slog.String("attribute", r.String()), slog.String("error", err.Error()))
+	namespaceID := r.GetNamespaceId()
+	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id})
+	slog.Debug("upserted fqn with new attribute definition", slog.Any("fqn", fqn))
+
+	for _, v := range values {
+		fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id, valueID: v.GetId()})
+		slog.Debug("upserted fqn with new attribute value on new definition create", slog.Any("fqn", fqn))
 	}
-	slog.Debug("indexed FQNs", slog.Any("fqn", fqns))
 
 	a := &policy.Attribute{
 		Id:       id,
@@ -599,13 +601,21 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Upd
 		return nil, err
 	}
 
+	// Upsert all the FQNs with the definition name mutation
 	if r.GetName() != "" {
-		fqns, err := c.Queries.UpsertAttrFqnDefinition(ctx, uuid.MustParse(id))
-		if err != nil {
-			// error is swallowed
-			slog.Error("could not update FQNs while unsafely updating attribute", slog.String("attribute", r.String()), slog.String("error", err.Error()))
+		namespaceID := before.GetNamespace().GetId()
+		fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id})
+		if fqn != "" {
+			slog.Debug("upserted attribute fqn with new definition name", slog.Any("fqn", fqn))
 		}
-		slog.Debug("indexed FQNs", slog.Any("fqn", fqns))
+		if len(before.GetValues()) > 0 {
+			for _, v := range before.GetValues() {
+				fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id, valueID: v.GetId()})
+				if fqn != "" {
+					slog.Debug("upserted attribute value fqn with new definition name", slog.Any("fqn", fqn))
+				}
+			}
+		}
 	}
 
 	return c.GetAttribute(ctx, id)

@@ -3,7 +3,6 @@ package db
 import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/service/pkg/db"
-	"github.com/opentdf/platform/service/policy/db/queries"
 )
 
 const (
@@ -15,7 +14,6 @@ const (
 
 type PolicyDBClient struct {
 	*db.Client
-	*queries.Queries
 }
 
 var (
@@ -60,7 +58,7 @@ func NewClient(c *db.Client) PolicyDBClient {
 	Tables.SubjectConditionSet = t(TableSubjectConditionSet)
 	Tables.KeyAccessServerRegistry = t(TableKeyAccessServerRegistry)
 
-	return PolicyDBClient{c, queries.New(c.Pgx)}
+	return PolicyDBClient{c}
 }
 
 func GetDBStateTypeTransformedEnum(state common.ActiveStateEnum) string {

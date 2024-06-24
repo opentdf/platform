@@ -173,7 +173,7 @@ func (s *AuthSuite) SetupTest() {
 		&logger.Logger{
 			Logger: slog.New(slog.Default().Handler()),
 		},
-		func(n string, config any) error { return nil },
+		func(_ string, _ any) error { return nil },
 	)
 
 	s.Require().NoError(err)
@@ -605,7 +605,7 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	auth, err := NewAuthenticator(context.Background(), config, &logger.Logger{
 		Logger: slog.New(slog.Default().Handler()),
 	},
-		func(n string, config any) error { return nil },
+		func(_ string, _ any) error { return nil },
 	)
 
 	s.Require().NoError(err)

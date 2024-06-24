@@ -503,9 +503,6 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 		return nil, err
 	}
 
-	// Update the FQN
-	c.Queries.UpsertAttrFqnDefinition(ctx, uuid.MustParse(id))
-
 	// Add values
 	var values []*policy.Value
 	for _, v := range r.GetValues() {
@@ -516,6 +513,14 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 		}
 		values = append(values, value)
 	}
+
+	// Update the FQNs
+	fqns, err := c.Queries.UpsertAttrFqnDefinition(ctx, uuid.MustParse(id))
+	if err != nil {
+		// error is swallowed
+		slog.Error("could not update FQNs while creating attribute", slog.String("attribute", r.String()), slog.String("error", err.Error()))
+	}
+	slog.Debug("indexed FQNs", slog.Any("fqn", fqns))
 
 	a := &policy.Attribute{
 		Id:       id,
@@ -595,7 +600,12 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Upd
 	}
 
 	if r.GetName() != "" {
-		c.Queries.UpsertAttrFqnDefinition(ctx, uuid.MustParse(id))
+		fqns, err := c.Queries.UpsertAttrFqnDefinition(ctx, uuid.MustParse(id))
+		if err != nil {
+			// error is swallowed
+			slog.Error("could not update FQNs while unsafely updating attribute", slog.String("attribute", r.String()), slog.String("error", err.Error()))
+		}
+		slog.Debug("indexed FQNs", slog.Any("fqn", fqns))
 	}
 
 	return c.GetAttribute(ctx, id)

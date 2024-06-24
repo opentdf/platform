@@ -210,7 +210,12 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 	}
 
 	// Update FQN
-	c.Queries.UpsertAttrFqnNamespace(ctx, uuid.MustParse(id))
+	fqns, err := c.Queries.UpsertAttrFqnNamespace(ctx, uuid.MustParse(id))
+	if err != nil {
+		// swallow error
+		slog.Error("error upserting fqn for created namespace", slog.String("error", err.Error()), slog.String("namespace", r.String()))
+	}
+	slog.Debug("upserted fqns for created namespace", slog.Any("fqns", fqns))
 
 	return &policy.Namespace{
 		Id:       id,
@@ -261,9 +266,6 @@ func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *names
 		return nil, err
 	}
 
-	// Update FQN
-	c.Queries.UpsertAttrFqnNamespace(ctx, uuid.MustParse(id))
-
 	return &policy.Namespace{
 		Id: id,
 	}, nil
@@ -295,8 +297,12 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 		return nil, err
 	}
 
-	// Update FQN
-	c.Queries.UpsertAttrFqnNamespace(ctx, uuid.MustParse(id))
+	fqns, err := c.Queries.UpsertAttrFqnNamespace(ctx, uuid.MustParse(id))
+	if err != nil {
+		// swallow error
+		slog.Error("error upserting fqn while unsafely updating namespace", slog.String("error", err.Error()), slog.String("namespace_id", id), slog.String("name", name))
+	}
+	slog.Debug("upserted fqns for unsafely updated namespace", slog.Any("fqns", fqns))
 
 	return hydrateNamespaceItem(row, namespaceSelectOptions{})
 }

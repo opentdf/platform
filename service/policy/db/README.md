@@ -30,9 +30,9 @@ common table expressions (CTEs), subqueries, and transactions are only supported
 
 As a prerequisite, install `sqlc` with `brew install sqlc`.
 
-To make or update a query, add your query within [query.sql](./query.sql) following the sqlc [conventions and docs](https://docs.sqlc.dev/en/latest/tutorials/getting-started-postgresql.html#schema-and-queries:~:text=Next%2C%20create%20a%20query.sql%20file%20with%20the%20following%20five%20queries%3A).
+To make or update a query, add your query within [query.sql](./queries/query.sql) following the sqlc [conventions and docs](https://docs.sqlc.dev/en/latest/tutorials/getting-started-postgresql.html#schema-and-queries:~:text=Next%2C%20create%20a%20query.sql%20file%20with%20the%20following%20five%20queries%3A).
 
 Generate your Go code with `sqlc generate`, which will read the [config file](./sqlc.yaml) and output the generated
-Go code to execute your SQL queries in the `db` package within the [sqlc-gen](./sqlc-gen/) directory.
+Go code to execute your SQL queries in the `db` package within the [queries](./queries/) directory.
 
 Sqlc utilizes Goose for migrations as well ([see above](#migrations)) and should be used for all new db logic.

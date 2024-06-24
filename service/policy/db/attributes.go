@@ -504,7 +504,7 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	}
 
 	// Update the FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeID: id})
+	c.Queries.UpsertAttrFqnDefinition(ctx, uuid.MustParse(id))
 
 	// Add values
 	var values []*policy.Value
@@ -595,13 +595,7 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Upd
 	}
 
 	if r.GetName() != "" {
-		nsID := before.GetNamespace().GetId()
-		// update the FQN for the attribute
-		c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeID: id, namespaceID: nsID})
-		// update all the values' FQNs
-		for _, v := range before.GetValues() {
-			c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: v.GetId(), attributeID: id, namespaceID: nsID})
-		}
+		c.Queries.UpsertAttrFqnDefinition(ctx, uuid.MustParse(id))
 	}
 
 	return c.GetAttribute(ctx, id)
@@ -644,9 +638,6 @@ func (c PolicyDBClient) UpdateAttribute(ctx context.Context, id string, r *attri
 	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
-
-	// Update the FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeID: id})
 
 	return &policy.Attribute{
 		Id: id,

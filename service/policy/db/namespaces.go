@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -209,7 +210,7 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 	}
 
 	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
+	c.Queries.UpsertAttrFqnNamespace(ctx, uuid.MustParse(id))
 
 	return &policy.Namespace{
 		Id:       id,
@@ -261,7 +262,7 @@ func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *names
 	}
 
 	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
+	c.Queries.UpsertAttrFqnNamespace(ctx, uuid.MustParse(id))
 
 	return &policy.Namespace{
 		Id: id,
@@ -293,22 +294,9 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 	if err != nil {
 		return nil, err
 	}
-	attrs, err := c.ListAllAttributes(ctx, StateAny, id)
-	if err != nil {
-		slog.Error("appear to have updated namespace name but failed to list attributes. Fqns may now be out of sync", slog.String("error", err.Error()))
-		return nil, err
-	}
-	// Update FQNs
-	// namespace FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
-	for _, attr := range attrs {
-		// attribute FQN
-		c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id, attributeID: attr.GetId()})
-		// value FQNs
-		for _, val := range attr.GetValues() {
-			c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id, attributeID: attr.GetId(), valueID: val.GetId()})
-		}
-	}
+
+	// Update FQN
+	c.Queries.UpsertAttrFqnNamespace(ctx, uuid.MustParse(id))
 
 	return hydrateNamespaceItem(row, namespaceSelectOptions{})
 }

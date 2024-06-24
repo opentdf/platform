@@ -608,6 +608,18 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithNewName() {
 	s.Require().NoError(err)
 	s.NotNil(retrieved)
 	s.Len(retrieved, 2)
+
+	val, err := s.db.PolicyClient.GetAttributeValue(s.ctx, updated.GetValues()[0].GetId())
+	s.Require().NoError(err)
+	s.NotNil(val)
+	s.Equal(fqns[0], val.GetFqn())
+	s.Contains(val.GetFqn(), updated.GetName())
+
+	val, err = s.db.PolicyClient.GetAttributeValue(s.ctx, updated.GetValues()[1].GetId())
+	s.Require().NoError(err)
+	s.NotNil(val)
+	s.Equal(fqns[1], val.GetFqn())
+	s.Contains(val.GetFqn(), updated.GetName())
 }
 
 func (s *AttributesSuite) Test_UnsafeUpdateAttribute_NormalizesCasing() {

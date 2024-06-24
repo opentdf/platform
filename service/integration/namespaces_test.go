@@ -756,6 +756,7 @@ func (s *NamespacesSuite) Test_UnsafeUpdateNamespace_NormalizeCasing() {
 	s.NotNil(got)
 	s.Equal("helloworld.com", got.GetName())
 	s.Contains(got.GetFqn(), "helloworld.com")
+	s.Equal("https://helloworld.com", got.GetFqn())
 }
 
 func TestNamespacesSuite(t *testing.T) {

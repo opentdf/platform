@@ -1,0 +1,949 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "policy/subjectmapping/subject_mapping.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "SubjectMappingService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/subject-condition-sets": {
+      "get": {
+        "operationId": "SubjectMappingService_ListSubjectConditionSets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingListSubjectConditionSetsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "SubjectMappingService"
+        ]
+      },
+      "post": {
+        "operationId": "SubjectMappingService_CreateSubjectConditionSet",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingCreateSubjectConditionSetResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/subjectmappingCreateSubjectConditionSetRequest"
+            }
+          }
+        ],
+        "tags": [
+          "SubjectMappingService"
+        ]
+      }
+    },
+    "/subject-condition-sets/{id}": {
+      "get": {
+        "operationId": "SubjectMappingService_GetSubjectConditionSet",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingGetSubjectConditionSetResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SubjectMappingService"
+        ]
+      },
+      "delete": {
+        "operationId": "SubjectMappingService_DeleteSubjectConditionSet",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingDeleteSubjectConditionSetResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SubjectMappingService"
+        ]
+      },
+      "patch": {
+        "operationId": "SubjectMappingService_UpdateSubjectConditionSet",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingUpdateSubjectConditionSetResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "Required",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "subjectSets": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "$ref": "#/definitions/policySubjectSet"
+                  },
+                  "title": "Optional\nIf provided, replaces entire existing structure of Subject Sets, Condition Groups, \u0026 Conditions"
+                },
+                "metadata": {
+                  "$ref": "#/definitions/commonMetadataMutable",
+                  "title": "Common metadata"
+                },
+                "metadataUpdateBehavior": {
+                  "$ref": "#/definitions/commonMetadataUpdateEnum"
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "SubjectMappingService"
+        ]
+      }
+    },
+    "/subject-mappings": {
+      "get": {
+        "operationId": "SubjectMappingService_ListSubjectMappings",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingListSubjectMappingsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "SubjectMappingService"
+        ]
+      },
+      "post": {
+        "operationId": "SubjectMappingService_CreateSubjectMapping",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingCreateSubjectMappingResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/subjectmappingCreateSubjectMappingRequest"
+            }
+          }
+        ],
+        "tags": [
+          "SubjectMappingService"
+        ]
+      }
+    },
+    "/subject-mappings/match": {
+      "post": {
+        "summary": "Find matching Subject Mappings for a given Subject",
+        "operationId": "SubjectMappingService_MatchSubjectMappings",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingMatchSubjectMappingsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "subjectProperties",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "$ref": "#/definitions/policySubjectProperty"
+              }
+            }
+          }
+        ],
+        "tags": [
+          "SubjectMappingService"
+        ]
+      }
+    },
+    "/subject-mappings/{id}": {
+      "get": {
+        "operationId": "SubjectMappingService_GetSubjectMapping",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingGetSubjectMappingResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SubjectMappingService"
+        ]
+      },
+      "delete": {
+        "operationId": "SubjectMappingService_DeleteSubjectMapping",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingDeleteSubjectMappingResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SubjectMappingService"
+        ]
+      },
+      "patch": {
+        "operationId": "SubjectMappingService_UpdateSubjectMapping",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingUpdateSubjectMappingResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "Required",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "subjectConditionSetId": {
+                  "type": "string",
+                  "title": "Optional\nReplaces the existing SubjectConditionSet id with a new one"
+                },
+                "actions": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "$ref": "#/definitions/policyAction"
+                  },
+                  "title": "Replaces entire list of actions permitted by subjects"
+                },
+                "metadata": {
+                  "$ref": "#/definitions/commonMetadataMutable",
+                  "title": "Common metadata"
+                },
+                "metadataUpdateBehavior": {
+                  "$ref": "#/definitions/commonMetadataUpdateEnum"
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "SubjectMappingService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "ActionStandardAction": {
+      "type": "string",
+      "enum": [
+        "STANDARD_ACTION_UNSPECIFIED",
+        "STANDARD_ACTION_DECRYPT",
+        "STANDARD_ACTION_TRANSMIT"
+      ],
+      "default": "STANDARD_ACTION_UNSPECIFIED",
+      "title": "Standard actions supported by the platform"
+    },
+    "commonMetadata": {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "created_at set by server (entity who created will recorded in an audit event)"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "updated_at set by server (entity who updated will recorded in an audit event)"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "optional short description"
+        }
+      },
+      "title": "Struct to uniquely identify a resource with optional additional metadata"
+    },
+    "commonMetadataMutable": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "optional labels"
+        }
+      }
+    },
+    "commonMetadataUpdateEnum": {
+      "type": "string",
+      "enum": [
+        "METADATA_UPDATE_ENUM_UNSPECIFIED",
+        "METADATA_UPDATE_ENUM_EXTEND",
+        "METADATA_UPDATE_ENUM_REPLACE"
+      ],
+      "default": "METADATA_UPDATE_ENUM_UNSPECIFIED",
+      "title": "- METADATA_UPDATE_ENUM_UNSPECIFIED: unspecified update type\n - METADATA_UPDATE_ENUM_EXTEND: only update the fields that are provided\n - METADATA_UPDATE_ENUM_REPLACE: replace the entire metadata with the provided metadata"
+    },
+    "policyAction": {
+      "type": "object",
+      "properties": {
+        "standard": {
+          "$ref": "#/definitions/ActionStandardAction"
+        },
+        "custom": {
+          "type": "string"
+        }
+      },
+      "title": "An action an entity can take"
+    },
+    "policyAttribute": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "namespace": {
+          "$ref": "#/definitions/policyNamespace",
+          "title": "namespace of the attribute"
+        },
+        "name": {
+          "type": "string",
+          "title": "attribute name"
+        },
+        "rule": {
+          "$ref": "#/definitions/policyAttributeRuleTypeEnum",
+          "title": "attribute rule enum"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyValue"
+          }
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKeyAccessServer"
+          }
+        },
+        "fqn": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean",
+          "title": "active by default until explicitly deactivated"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
+        }
+      }
+    },
+    "policyAttributeRuleTypeEnum": {
+      "type": "string",
+      "enum": [
+        "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
+        "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
+        "ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
+        "ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY"
+      ],
+      "default": "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+    },
+    "policyCondition": {
+      "type": "object",
+      "properties": {
+        "subjectExternalSelectorValue": {
+          "type": "string",
+          "title": "a selector for a field value on a flattened Entity Representation (such as from idP/LDAP)"
+        },
+        "operator": {
+          "$ref": "#/definitions/policySubjectMappingOperatorEnum",
+          "title": "the evaluation operator of relation"
+        },
+        "subjectExternalValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "list of comparison values for the result of applying the subject_external_selector_value on a flattened Entity Representation (Subject), evaluated by the operator"
+        }
+      },
+      "description": "Example:  Subjects with a field selected by the flattened selector \"'.division'\" and a value of \"Accounting\" or \"Marketing\":\n{\n\"subject_external_selector_value\": \"'.division'\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_IN\",\n\"subject_external_values\" : [\"Accounting\", \"Marketing\"]\n}\n\nExample: Subjects that are not part of the Fantastic Four according to their alias field:\n{\n\"subject_external_selector_value\": \"'.data[0].alias'\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN\",\n\"subject_external_values\" : [\"mister_fantastic\", \"the_thing\", \"human_torch\", \"invisible_woman\"]\n}",
+      "title": "*\nA Condition defines a rule of \u003cthe value at the flattened 'selector value' location\u003e \u003coperator\u003e \u003csubject external values\u003e"
+    },
+    "policyConditionBooleanTypeEnum": {
+      "type": "string",
+      "enum": [
+        "CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED",
+        "CONDITION_BOOLEAN_TYPE_ENUM_AND",
+        "CONDITION_BOOLEAN_TYPE_ENUM_OR"
+      ],
+      "default": "CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED",
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+    },
+    "policyConditionGroup": {
+      "type": "object",
+      "properties": {
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyCondition"
+          }
+        },
+        "booleanOperator": {
+          "$ref": "#/definitions/policyConditionBooleanTypeEnum",
+          "title": "the boolean evaluation type across the conditions"
+        }
+      },
+      "title": "A collection of Conditions evaluated by the boolean_operator provided"
+    },
+    "policyKeyAccessServer": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "uri": {
+          "type": "string",
+          "title": "Address of a KAS instance"
+        },
+        "publicKey": {
+          "$ref": "#/definitions/policyPublicKey"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
+        }
+      },
+      "title": "Key Access Server Registry"
+    },
+    "policyNamespace": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "generated uuid in database"
+        },
+        "name": {
+          "type": "string",
+          "title": "used to partition Attribute Definitions, support by namespace AuthN and enable federation"
+        },
+        "fqn": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean",
+          "title": "active by default until explicitly deactivated"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
+        }
+      }
+    },
+    "policyPublicKey": {
+      "type": "object",
+      "properties": {
+        "remote": {
+          "type": "string",
+          "title": "kas public key url - optional since can also be retrieved via public key"
+        },
+        "local": {
+          "type": "string",
+          "title": "public key - optional since can also be retrieved via url"
+        }
+      }
+    },
+    "policySubjectConditionSet": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "subjectSets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policySubjectSet"
+          }
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
+        }
+      },
+      "description": "A container for multiple Subject Sets, each containing Condition Groups, each containing Conditions. Multiple Subject Sets in a SubjectConditionSet\nare evaluated with AND logic. As each Subject Mapping has only one Attribute Value, the SubjectConditionSet is reusable across multiple\nSubject Mappings / Attribute Values and is an independent unit."
+    },
+    "policySubjectMapping": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "attributeValue": {
+          "$ref": "#/definitions/policyValue",
+          "title": "the Attribute Value mapped to; aka: \"The Entity Entitlement Attribute\""
+        },
+        "subjectConditionSet": {
+          "$ref": "#/definitions/policySubjectConditionSet",
+          "title": "the reusable SubjectConditionSet mapped to the given Attribute Value"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyAction"
+          },
+          "title": "The actions permitted by subjects in this mapping"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
+        }
+      },
+      "description": "Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one\nwith permitted actions TRANSMIT and DECRYPT\n{\n\"id\": \"someid\",\n\"attribute_value\": {example_one_attribute_value...},\n\"subject_condition_set\": {\"subject_sets\":[{subject_set_1},{subject_set_2}]...},\n\"actions\": [{\"standard\": \"STANDARD_ACTION_DECRYPT\"}\", {\"standard\": \"STANDARD_ACTION_TRANSMIT\"}]\n}",
+      "title": "Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute value + action(s) combination"
+    },
+    "policySubjectMappingOperatorEnum": {
+      "type": "string",
+      "enum": [
+        "SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED",
+        "SUBJECT_MAPPING_OPERATOR_ENUM_IN",
+        "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN"
+      ],
+      "default": "SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED",
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+    },
+    "policySubjectProperty": {
+      "type": "object",
+      "properties": {
+        "externalSelectorValue": {
+          "type": "string"
+        },
+        "externalValue": {
+          "type": "string"
+        }
+      },
+      "description": "A property of a Subject/Entity as its selector expression -\u003e value result pair. This would mirror external user attributes retrieved\nfrom an authoritative source such as an IDP (Identity Provider) or User Store. Examples include such ADFS/LDAP, OKTA, etc.\nFor now, a valid property must contain both a selector expression \u0026 a resulting value.\n\nThe external_selector_value is a specifier to select a value from a flattened external representation of an Entity (such as from idP/LDAP),\nand the external_value is the value selected by the external_selector_value on that Entity Representation (Subject Context). These mirror the Condition."
+    },
+    "policySubjectSet": {
+      "type": "object",
+      "properties": {
+        "conditionGroups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyConditionGroup"
+          },
+          "title": "multiple Condition Groups are evaluated with AND logic"
+        }
+      },
+      "title": "A collection of Condition Groups"
+    },
+    "policyValue": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "generated uuid in database"
+        },
+        "attribute": {
+          "$ref": "#/definitions/policyAttribute"
+        },
+        "value": {
+          "type": "string"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyValue"
+          },
+          "title": "list of attribute values that this value is related to (attribute group)"
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKeyAccessServer"
+          },
+          "title": "list of key access servers"
+        },
+        "fqn": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean",
+          "title": "active by default until explicitly deactivated"
+        },
+        "subjectMappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policySubjectMapping"
+          },
+          "title": "subject mapping"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string",
+          "description": "A URL/resource name that uniquely identifies the type of the serialized\nprotocol buffer message. This string must contain at least\none \"/\" character. The last segment of the URL's path must represent\nthe fully qualified name of the type (as in\n`path/google.protobuf.Duration`). The name should be in a canonical form\n(e.g., leading \".\" is not accepted).\n\nIn practice, teams usually precompile into the binary all types that they\nexpect it to use in the context of Any. However, for URLs which use the\nscheme `http`, `https`, or no scheme, one can optionally set up a type\nserver that maps type URLs to message definitions as follows:\n\n* If no scheme is provided, `https` is assumed.\n* An HTTP GET on the URL must yield a [google.protobuf.Type][]\n  value in binary format, or produce an error.\n* Applications are allowed to cache lookup results based on the\n  URL, or have them precompiled into a binary to avoid any\n  lookup. Therefore, binary compatibility needs to be preserved\n  on changes to types. (Use versioned type names to manage\n  breaking changes.)\n\nNote: this functionality is not currently available in the official\nprotobuf release, and it is not used for type URLs beginning with\ntype.googleapis.com. As of May 2023, there are no widely used type server\nimplementations and no plans to implement one.\n\nSchemes other than `http`, `https` (or the empty scheme) might be\nused with implementation specific semantics."
+        }
+      },
+      "additionalProperties": {},
+      "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(\u0026foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n    // or ...\n    if (any.isSameTypeAs(Foo.getDefaultInstance())) {\n      foo = any.unpack(Foo.getDefaultInstance());\n    }\n\n Example 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\n Example 4: Pack and unpack a message in Go\n\n     foo := \u0026pb.Foo{...}\n     any, err := anypb.New(foo)\n     if err != nil {\n       ...\n     }\n     ...\n     foo := \u0026pb.Foo{}\n     if err := any.UnmarshalTo(foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\nJSON\n====\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": \u003cstring\u003e,\n      \"lastName\": \u003cstring\u003e\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "subjectmappingCreateSubjectConditionSetRequest": {
+      "type": "object",
+      "properties": {
+        "subjectConditionSet": {
+          "$ref": "#/definitions/subjectmappingSubjectConditionSetCreate"
+        }
+      }
+    },
+    "subjectmappingCreateSubjectConditionSetResponse": {
+      "type": "object",
+      "properties": {
+        "subjectConditionSet": {
+          "$ref": "#/definitions/policySubjectConditionSet"
+        }
+      }
+    },
+    "subjectmappingCreateSubjectMappingRequest": {
+      "type": "object",
+      "properties": {
+        "attributeValueId": {
+          "type": "string",
+          "title": "Required\nAttribute Value to be mapped to"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyAction"
+          },
+          "title": "The actions permitted by subjects in this mapping"
+        },
+        "existingSubjectConditionSetId": {
+          "type": "string",
+          "title": "Either of the following:\nReuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)"
+        },
+        "newSubjectConditionSet": {
+          "$ref": "#/definitions/subjectmappingSubjectConditionSetCreate",
+          "title": "Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadataMutable",
+          "title": "Optional"
+        }
+      }
+    },
+    "subjectmappingCreateSubjectMappingResponse": {
+      "type": "object",
+      "properties": {
+        "subjectMapping": {
+          "$ref": "#/definitions/policySubjectMapping"
+        }
+      }
+    },
+    "subjectmappingDeleteSubjectConditionSetResponse": {
+      "type": "object",
+      "properties": {
+        "subjectConditionSet": {
+          "$ref": "#/definitions/policySubjectConditionSet",
+          "title": "Only ID of deleted Subject Condition Set provided"
+        }
+      }
+    },
+    "subjectmappingDeleteSubjectMappingResponse": {
+      "type": "object",
+      "properties": {
+        "subjectMapping": {
+          "$ref": "#/definitions/policySubjectMapping",
+          "title": "Only ID of the updated Subject Mapping provided"
+        }
+      }
+    },
+    "subjectmappingGetSubjectConditionSetResponse": {
+      "type": "object",
+      "properties": {
+        "subjectConditionSet": {
+          "$ref": "#/definitions/policySubjectConditionSet"
+        },
+        "associatedSubjectMappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policySubjectMapping"
+          },
+          "title": "contextualized Subject Mappings associated with this SubjectConditionSet"
+        }
+      }
+    },
+    "subjectmappingGetSubjectMappingResponse": {
+      "type": "object",
+      "properties": {
+        "subjectMapping": {
+          "$ref": "#/definitions/policySubjectMapping"
+        }
+      }
+    },
+    "subjectmappingListSubjectConditionSetsResponse": {
+      "type": "object",
+      "properties": {
+        "subjectConditionSets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policySubjectConditionSet"
+          }
+        }
+      }
+    },
+    "subjectmappingListSubjectMappingsResponse": {
+      "type": "object",
+      "properties": {
+        "subjectMappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policySubjectMapping"
+          }
+        }
+      }
+    },
+    "subjectmappingMatchSubjectMappingsResponse": {
+      "type": "object",
+      "properties": {
+        "subjectMappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policySubjectMapping"
+          }
+        }
+      }
+    },
+    "subjectmappingSubjectConditionSetCreate": {
+      "type": "object",
+      "properties": {
+        "subjectSets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policySubjectSet"
+          },
+          "title": "Required"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadataMutable",
+          "title": "Optional\nCommon metadata"
+        }
+      }
+    },
+    "subjectmappingUpdateSubjectConditionSetResponse": {
+      "type": "object",
+      "properties": {
+        "subjectConditionSet": {
+          "$ref": "#/definitions/policySubjectConditionSet",
+          "title": "Only ID of updated Subject Condition Set provided"
+        }
+      }
+    },
+    "subjectmappingUpdateSubjectMappingResponse": {
+      "type": "object",
+      "properties": {
+        "subjectMapping": {
+          "$ref": "#/definitions/policySubjectMapping",
+          "title": "Only ID of the updated Subject Mapping provided"
+        }
+      }
+    }
+  }
+}

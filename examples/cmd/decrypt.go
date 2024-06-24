@@ -41,9 +41,8 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	defer file.Close()
-	cmd.Println("# TDF")
 
-	var isTDF = true
+	isTDF := true
 	tdfreader, err := client.LoadTDF(file)
 	if err != nil {
 		cmd.Println("Not TDF, proceeding to try Nano")
@@ -58,8 +57,6 @@ func decrypt(cmd *cobra.Command, args []string) error {
 		}
 		return nil
 	}
-
-	cmd.Println("\n-----\n\n# NANO")
 
 	_, err = file.Seek(0, 0)
 	if err != nil {

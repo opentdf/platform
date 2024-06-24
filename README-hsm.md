@@ -52,10 +52,10 @@ pkcs11-tool --module $OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH \
 
 pkcs11-tool --module $OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH \
             --login --pin ${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN} \
-            --write-object ec-private.pem --type privkey \
+            --write-object kas-secp256r1-private.pem --type privkey \
             --label kas-ec
 pkcs11-tool --module $OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH \
             --login --pin ${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN} \
-            --write-object ec-cert.pem --type cert \
+            --write-object kas-ec-cert.pem --type cert \
             --label kas-ec
 ```

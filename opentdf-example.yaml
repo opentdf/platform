@@ -11,6 +11,23 @@ db:
 services:
   kas:
     enabled: true
+    keyring:
+      - kid: e1
+        alg: ec:secp256r1
+      - kid: e2
+        alg: ec:secp256r1
+      - kid: e3
+        alg: ec:secp256r1
+      - kid: r1
+        alg: rsa:2048
+      - kid: e1
+        alg: ec:secp256r1
+        legacy: true
+      - kid: r1
+        alg: rsa:2048
+        legacy: true
+    eccertid: e1
+    rsacertid: r1
   policy:
     enabled: true
   entityresolution:
@@ -34,13 +51,13 @@ server:
     issuer: http://keycloak:8888/auth/realms/opentdf
     policy:
       ## Default policy for all requests
-      default: #"role:readonly"
+      default: #"role:standard"
       ## Dot notation is used to access nested claims (i.e. realm_access.roles)
       claim: # realm_access.roles
       ## Maps the external role to the opentdf role
       ## Note: left side is used in the policy, right side is the external role
       map:
-      #  readonly: opentdf-readonly
+      #  standard: opentdf-standard
       #  admin: opentdf-admin
       #  org-admin: opentdf-org-admin
 
@@ -69,7 +86,8 @@ server:
   cors:
     enabled: false
     # '*' to allow any origin or a specific domain like 'https://yourdomain.com'
-    allowedorigins: "*"
+    allowedorigins: 
+      - "*"
     # List of methods. Examples: 'GET,POST,PUT'
     allowedmethods:
       - GET

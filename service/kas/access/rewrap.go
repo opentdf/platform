@@ -57,7 +57,9 @@ type entityInfo struct {
 }
 
 const (
-	ErrUser = Error("request error")
+	kNanoTDFGMACLength = 8
+	ErrUser            = Error("request error")
+	ErrInternal        = Error("internal error")
 )
 
 func err400(s string) error {

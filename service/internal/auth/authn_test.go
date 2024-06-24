@@ -136,7 +136,7 @@ func (s *AuthSuite) SetupTest() {
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if r.URL.Path == "/.well-known/openid-configuration" {
-			_, err := w.Write([]byte(fmt.Sprintf(`{"jwks_uri": "%s/jwks"}`, s.server.URL)))
+			_, err := w.Write([]byte(fmt.Sprintf(`{"issuer":"%s","jwks_uri": "%s/jwks"}`, s.server.URL, s.server.URL)))
 			if err != nil {
 				panic(err)
 			}
@@ -173,6 +173,7 @@ func (s *AuthSuite) SetupTest() {
 		&logger.Logger{
 			Logger: slog.New(slog.Default().Handler()),
 		},
+		func(n string, config any) error { return nil },
 	)
 
 	s.Require().NoError(err)
@@ -603,7 +604,9 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	config.AuthNConfig = authnConfig
 	auth, err := NewAuthenticator(context.Background(), config, &logger.Logger{
 		Logger: slog.New(slog.Default().Handler()),
-	})
+	},
+		func(n string, config any) error { return nil },
+	)
 
 	s.Require().NoError(err)
 

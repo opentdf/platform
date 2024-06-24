@@ -31,7 +31,6 @@ import (
 	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/logger/audit"
 	"github.com/opentdf/platform/service/internal/security"
-	"github.com/opentdf/platform/service/kas/tdf3"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -42,13 +41,13 @@ type SignedRequestBody struct {
 }
 
 type RequestBody struct {
-	AuthToken       string         `json:"authToken"`
-	KeyAccess       tdf3.KeyAccess `json:"keyAccess"`
-	Policy          string         `json:"policy,omitempty"`
-	Algorithm       string         `json:"algorithm,omitempty"`
-	ClientPublicKey string         `json:"clientPublicKey"`
-	PublicKey       interface{}    `json:"-"`
-	SchemaVersion   string         `json:"schemaVersion,omitempty"`
+	AuthToken       string      `json:"authToken"`
+	KeyAccess       KeyAccess   `json:"keyAccess"`
+	Policy          string      `json:"policy,omitempty"`
+	Algorithm       string      `json:"algorithm,omitempty"`
+	ClientPublicKey string      `json:"clientPublicKey"`
+	PublicKey       interface{} `json:"-"`
+	SchemaVersion   string      `json:"schemaVersion,omitempty"`
 }
 
 type entityInfo struct {

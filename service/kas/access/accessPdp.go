@@ -32,16 +32,6 @@ func canAccess(ctx context.Context, token *authorization.Token, policy Policy, s
 	return true, nil
 }
 
-func checkDissems(dissems []string, ent *authorization.Entity) (bool, error) {
-	if ent.GetEmailAddress() == "" {
-		return false, ErrPolicyDissemInvalid
-	}
-	if len(dissems) == 0 || contains(dissems, ent.GetEmailAddress()) {
-		return true, nil
-	}
-	return false, nil
-}
-
 func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent *authorization.Token, sdk *otdf.SDK, logger logger.Logger) (bool, error) {
 	ras := []*authorization.ResourceAttribute{{
 		AttributeValueFqns: make([]string, 0),
@@ -73,13 +63,4 @@ func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent *authorizat
 		return true, nil
 	}
 	return false, nil
-}
-
-func contains(s []string, e string) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-	return false
 }

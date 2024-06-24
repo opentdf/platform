@@ -81,11 +81,11 @@ jobs:
           cd ${{matrix.path}}
           for x in ${{join(fromJson(needs.release-please.outputs.paths_released), ' ')}}; do
             export pkg=github.com/opentdf/platform/${x}
-            if go mod edit --json | jq -e '.Replace.[] | select(.Old.Path == env.pkg)'; then
+            if go mod edit --json | jq -e '.Replace[] | select(.Old.Path == env.pkg)'; then
               go mod edit --dropreplace=$pkg
             fi
             echo "Should we update [${pkg}] in [${{ matrix.path }}]?"
-            if go mod edit --json | jq -e '.Require.[] | select(.Path == env.pkg)'; then
+            if go mod edit --json | jq -e '.Require[] | select(.Path == env.pkg)'; then
               ver=$(jq -r .\[\"${x}\"\] < "${GITHUB_WORKSPACE}/.release-please-manifest.json")
               echo "go get ${pkg}@v${ver}"
               go get "${pkg}@v${ver}"

@@ -7,7 +7,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
 	github.com/lestrrat-go/jwx/v2 v2.0.21
-	github.com/opentdf/platform/lib/fixtures v0.2.5
+	github.com/opentdf/platform/lib/fixtures v0.2.7
 	github.com/opentdf/platform/lib/ocrypto v0.1.5
 	github.com/opentdf/platform/protocol/go v0.2.4
 	github.com/stretchr/testify v1.9.0

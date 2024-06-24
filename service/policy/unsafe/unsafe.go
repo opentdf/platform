@@ -3,11 +3,13 @@ package unsafe
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
@@ -36,58 +38,61 @@ func NewRegistration() serviceregistry.Registration {
 // Unsafe Namespace RPCs
 //
 
-func (s *UnsafeService) UpdateNamespace(_ context.Context, req *unsafe.UpdateNamespaceRequest) (*unsafe.UpdateNamespaceResponse, error) {
-	// _, err := s.dbClient.GetNamespace(ctx, req.GetId())
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
-	// }
+func (s *UnsafeService) UpdateNamespace(ctx context.Context, req *unsafe.UpdateNamespaceRequest) (*unsafe.UpdateNamespaceResponse, error) {
+	rsp := &unsafe.UpdateNamespaceResponse{}
 
-	// item, err := s.dbClient.UnsafeUpdateNamespace(ctx, req.GetId(), req)
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("namespace", req.String()))
-	// }
+	_, err := s.dbClient.GetNamespace(ctx, req.GetId())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+	}
 
-	return &unsafe.UpdateNamespaceResponse{
-		Namespace: &policy.Namespace{
-			Id: req.GetId(), // stubbed
-		},
-	}, nil
+	item, err := s.dbClient.UnsafeUpdateNamespace(ctx, req.GetId(), req.GetName())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("namespace", req.GetName()))
+	}
+	rsp.Namespace = item
+
+	return rsp, nil
 }
 
-func (s *UnsafeService) ReactivateNamespace(_ context.Context, req *unsafe.ReactivateNamespaceRequest) (*unsafe.ReactivateNamespaceResponse, error) {
-	// _, err := s.dbClient.GetNamespace(ctx, req.GetId())
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
-	// }
+func (s *UnsafeService) ReactivateNamespace(ctx context.Context, req *unsafe.ReactivateNamespaceRequest) (*unsafe.ReactivateNamespaceResponse, error) {
+	rsp := &unsafe.ReactivateNamespaceResponse{}
 
-	// item, err := s.dbClient.UnsafeReactivateNamespace(ctx, req.GetId())
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()))
-	// }
+	_, err := s.dbClient.GetNamespace(ctx, req.GetId())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+	}
 
-	return &unsafe.ReactivateNamespaceResponse{
-		Namespace: &policy.Namespace{
-			Id: req.GetId(), // stubbed
-		},
-	}, nil
+	item, err := s.dbClient.UnsafeReactivateNamespace(ctx, req.GetId())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()))
+	}
+	rsp.Namespace = item
+
+	return rsp, nil
 }
 
-func (s *UnsafeService) DeleteNamespace(_ context.Context, req *unsafe.DeleteNamespaceRequest) (*unsafe.DeleteNamespaceResponse, error) {
-	// _, err := s.dbClient.GetNamespace(ctx, req.GetId())
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
-	// }
+func (s *UnsafeService) DeleteNamespace(ctx context.Context, req *unsafe.DeleteNamespaceRequest) (*unsafe.DeleteNamespaceResponse, error) {
+	rsp := &unsafe.DeleteNamespaceResponse{}
 
-	// err = s.dbClient.UnsafeDeleteNamespace(ctx, req.GetId())
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextDeleteFailed, slog.String("id", req.GetId()))
-	// }
+	existing, err := s.dbClient.GetNamespace(ctx, req.GetId())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+	}
 
-	return &unsafe.DeleteNamespaceResponse{
-		Namespace: &policy.Namespace{
-			Id: req.GetId(), // stubbed
-		},
-	}, nil
+	// validate the provided namespace FQN is a match for the provided namespace ID
+	if existing.GetFqn() != req.GetFqn() {
+		return nil, db.StatusifyError(db.ErrNotFound, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()), slog.String("fqn", req.GetFqn()))
+	}
+
+	deleted, err := s.dbClient.UnsafeDeleteNamespace(ctx, req.GetId())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
+	}
+
+	rsp.Namespace = deleted
+
+	return rsp, nil
 }
 
 //

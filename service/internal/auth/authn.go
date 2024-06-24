@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -86,7 +87,7 @@ type Authentication struct {
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
-func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger) (*Authentication, error) {
+func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger, wellknownRegistration func(namespace string, config any) error) (*Authentication, error) {
 	a := &Authentication{
 		enforceDPoP: cfg.EnforceDPoP,
 		logger:      logr,
@@ -104,6 +105,13 @@ func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger) (*Au
 	oidcConfig, err := DiscoverOIDCConfiguration(ctx, cfg.Issuer)
 	if err != nil {
 		return nil, err
+	}
+
+	// If the issuer is different from the one in the configuration, update the configuration
+	// This could happen if we are hitting an internal endpoint. Example we might point to https://keycloak.opentdf.svc/realms/opentdf
+	// but the external facing issuer is https://keycloak.opentdf.local/realms/opentdf
+	if oidcConfig.Issuer != cfg.Issuer {
+		cfg.Issuer = oidcConfig.Issuer
 	}
 
 	cacheInterval, err := time.ParseDuration(cfg.CacheRefresh)
@@ -139,6 +147,27 @@ func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger) (*Au
 	a.publicRoutes = append(a.publicRoutes, allowedPublicEndpoints[:]...)
 
 	a.oidcConfiguration = cfg.AuthNConfig
+
+	// Try an register oidc issuer to wellknown service but don't return an error if it fails
+	if err := wellknownRegistration("platform_issuer", cfg.Issuer); err != nil {
+		logr.Warn("failed to register platform issuer", slog.String("error", err.Error()))
+	}
+
+	var oidcConfigMap map[string]any
+
+	// Create a map of the oidc configuration
+	oidcConfigBytes, err := json.Marshal(oidcConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(oidcConfigBytes, &oidcConfigMap); err != nil {
+		return nil, err
+	}
+
+	if err := wellknownRegistration("idp", oidcConfigMap); err != nil {
+		logr.Warn("failed to register platform idp information", slog.String("error", err.Error()))
+	}
 
 	return a, nil
 }

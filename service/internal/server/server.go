@@ -118,6 +118,7 @@ func NewOpenTDFServer(config Config, logr *logger.Logger) (*OpenTDFServer, error
 			context.Background(),
 			config.Auth,
 			logr,
+			config.WellKnownConfigRegister,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
@@ -125,11 +126,6 @@ func NewOpenTDFServer(config Config, logr *logger.Logger) (*OpenTDFServer, error
 		logr.Debug("authentication interceptor enabled")
 	} else {
 		logr.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
-	}
-
-	// Try an register oidc issuer to wellknown service but don't return an error if it fails
-	if err := config.WellKnownConfigRegister("platform_issuer", config.Auth.Issuer); err != nil {
-		logr.Warn("failed to register platform issuer", slog.String("error", err.Error()))
 	}
 
 	// Create grpc server and in process grpc server

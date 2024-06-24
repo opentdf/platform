@@ -66,7 +66,7 @@ type Config struct {
 	Port          int    `yaml:"port" default:"5432"`
 	Database      string `yaml:"database" default:"opentdf"`
 	User          string `yaml:"user" default:"postgres"`
-	Password      string `yaml:"password" default:"changeme"`
+	Password      string `yaml:"password" default:"changeme" secret:"true"`
 	RunMigrations bool   `yaml:"runMigrations" default:"true"`
 	SSLMode       string `yaml:"sslmode" default:"prefer"`
 	Schema        string `yaml:"schema" default:"opentdf"`

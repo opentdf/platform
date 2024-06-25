@@ -45,7 +45,6 @@ type tdfTest struct {
 	fileSize    int64
 	tdfFileSize float64
 	checksum    string
-	kasInfoList []KASInfo
 	mimeType    string
 }
 
@@ -556,7 +555,7 @@ type FakeWellKnown struct {
 	v map[string]interface{}
 }
 
-func (f *FakeWellKnown) GetWellKnownConfiguration(ctx context.Context, in *wellknownpb.GetWellKnownConfigurationRequest) (*wellknownpb.GetWellKnownConfigurationResponse, error) {
+func (f *FakeWellKnown) GetWellKnownConfiguration(_ context.Context, _ *wellknownpb.GetWellKnownConfigurationRequest) (*wellknownpb.GetWellKnownConfigurationResponse, error) {
 	cfg, err := structpb.NewStruct(f.v)
 	if err != nil {
 		return nil, err

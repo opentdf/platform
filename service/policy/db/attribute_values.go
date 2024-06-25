@@ -516,13 +516,14 @@ func unsafeUpdateAttributeValueSQL(id string, value string) (string, []interface
 		Update(t.Name()).
 		Set("value", value).
 		Where(sq.Eq{t.Field("id"): id}).
-		Suffix("RETURNING \"id\", \"value\", \"active\", " + constructMetadata(TableAttributeValues, false)).
+		Suffix("RETURNING \"id\"").
 		ToSql()
 }
 
 func (c PolicyDBClient) UnsafeUpdateAttributeValue(ctx context.Context, r *unsafe.UpdateAttributeValueRequest) (*policy.Value, error) {
 	id := r.GetId()
-	sql, args, err := unsafeUpdateAttributeValueSQL(id, r.GetValue())
+	val := strings.ToLower(r.GetValue())
+	sql, args, err := unsafeUpdateAttributeValueSQL(id, val)
 	if err != nil {
 		if db.IsQueryBuilderSetClauseError(err) {
 			return &policy.Value{
@@ -532,7 +533,7 @@ func (c PolicyDBClient) UnsafeUpdateAttributeValue(ctx context.Context, r *unsaf
 		return nil, err
 	}
 
-	row, err := c.QueryRow(ctx, sql, args)
+	err = c.Exec(ctx, sql, args)
 	if err != nil {
 		return nil, err
 	}
@@ -541,7 +542,7 @@ func (c PolicyDBClient) UnsafeUpdateAttributeValue(ctx context.Context, r *unsaf
 	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: id})
 	slog.Debug("upserted fqn for unsafely updated value", slog.String("id", id), slog.String("value", r.GetValue()), slog.String("fqn", fqn))
 
-	return attributeValueHydrateItem(row, attributeValueSelectOptions{withFqn: true})
+	return c.GetAttributeValue(ctx, id)
 }
 
 func deactivateAttributeValueSQL(id string) (string, []interface{}, error) {

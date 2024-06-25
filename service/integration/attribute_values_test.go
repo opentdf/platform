@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	policydb "github.com/opentdf/platform/service/policy/db"
@@ -347,7 +348,85 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue_WithInvalidId_Fails() {
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
-func (s *AttributeValuesSuite) Test_DeleteAttribute() {
+func (s *AttributeValuesSuite) Test_UnsafeUpdateAttributeValue() {
+	// create a value
+	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
+	created, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.ID, &attributes.CreateAttributeValueRequest{
+		Value: "created_value",
+	})
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	// update with changes
+	updatedWithChange, err := s.db.PolicyClient.UnsafeUpdateAttributeValue(s.ctx, &unsafe.UpdateAttributeValueRequest{
+		Id:    created.GetId(),
+		Value: "new_value",
+	})
+	s.Require().NoError(err)
+	s.NotNil(updatedWithChange)
+	s.Equal(created.GetId(), updatedWithChange.GetId())
+
+	// get it again to verify it was updated
+	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(created.GetId(), got.GetId())
+	s.Equal("new_value", got.GetValue())
+
+	// TODO: should we actually just not provide the not found fqn list and only error out if none were found rather than erroring out totally if a sole fqn wasn't found?
+	// verify can get the new by fqn but not the original
+	// original := "https://example.net/attr/attr1/value/created_value"
+	// retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+	// 	Fqns: []string{original, got.GetFqn()},
+	// 	WithValue: &policy.AttributeValueSelector{
+	// 		WithSubjectMaps: true,
+	// 	},
+	// })
+	// s.Require().NoError(err)
+	// s.NotNil(retrieved)
+	// s.Equal(1, len(retrieved))
+}
+
+func (s *AttributeValuesSuite) Test_UnsafeUpdateAttributeValue_WithInvalidId_Fails() {
+	updated, err := s.db.PolicyClient.UnsafeUpdateAttributeValue(s.ctx, &unsafe.UpdateAttributeValueRequest{
+		Id:    absentAttributeValueUUID,
+		Value: "new_value",
+	})
+	s.Require().Error(err)
+	s.Nil(updated)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *AttributeValuesSuite) Test_UnsafeUpdateAttributeValue_CasingNormalized() {
+	// create a value
+	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
+	created, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.ID, &attributes.CreateAttributeValueRequest{
+		Value: "CREATED",
+	})
+	s.Require().NoError(err)
+	s.NotNil(created)
+	got, _ := s.db.PolicyClient.GetAttributeValue(s.ctx, created.GetId())
+	s.NotNil(got)
+	s.Equal("created", got.GetValue())
+
+	// update with changes
+	updatedWithChange, err := s.db.PolicyClient.UnsafeUpdateAttributeValue(s.ctx, &unsafe.UpdateAttributeValueRequest{
+		Id:    created.GetId(),
+		Value: "NEW_VALUE_UPPER_CASE",
+	})
+	s.Require().NoError(err)
+	s.NotNil(updatedWithChange)
+	s.Equal(created.GetId(), updatedWithChange.GetId())
+
+	// get it again to verify it was updated
+	got, err = s.db.PolicyClient.GetAttributeValue(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(created.GetId(), got.GetId())
+	s.Equal("new_value_upper_case", got.GetValue())
+}
+
+func (s *AttributeValuesSuite) Test_UnsafeDeleteAttributeValue() {
 	// create a value
 	value := &attributes.CreateAttributeValueRequest{
 		Value: "created value testing delete",
@@ -355,20 +434,42 @@ func (s *AttributeValuesSuite) Test_DeleteAttribute() {
 	created, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, s.f.GetAttributeKey("example.net/attr/attr1").ID, value)
 	s.Require().NoError(err)
 	s.NotNil(created)
+	got, _ := s.db.PolicyClient.GetAttributeValue(s.ctx, created.GetId())
+	s.NotNil(got)
 
 	// delete it
-	resp, err := s.db.PolicyClient.DeleteAttributeValue(s.ctx, created.GetId())
+	req := &unsafe.DeleteAttributeValueRequest{
+		Id:  created.GetId(),
+		Fqn: got.GetFqn(),
+	}
+	resp, err := s.db.PolicyClient.UnsafeDeleteAttributeValue(s.ctx, got, req)
 	s.Require().NoError(err)
 	s.NotNil(resp)
 
 	// get it again to verify it no longer exists
-	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, created.GetId())
+	got, err = s.db.PolicyClient.GetAttributeValue(s.ctx, created.GetId())
 	s.Require().Error(err)
 	s.Nil(got)
 }
 
-func (s *AttributeValuesSuite) Test_DeleteAttribute_NotFound() {
-	resp, err := s.db.PolicyClient.DeleteAttributeValue(s.ctx, absentAttributeValueUUID)
+func (s *AttributeValuesSuite) Test_UnsafeDeleteAttribute_WrongFqn_Fails() {
+	fixtureAttrID := s.f.GetAttributeKey("example.net/attr/attr1").ID
+
+	created, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, fixtureAttrID, &attributes.CreateAttributeValueRequest{
+		Value: "delete_test",
+	})
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	got, _ := s.db.PolicyClient.GetAttributeValue(s.ctx, created.GetId())
+	s.NotNil(got)
+
+	req := &unsafe.DeleteAttributeValueRequest{
+		Id: created.GetId(),
+		// wrong namespace
+		Fqn: "https://example.com/attr/attr1/value/delete_test",
+	}
+	resp, err := s.db.PolicyClient.UnsafeDeleteAttributeValue(s.ctx, got, req)
 	s.Require().Error(err)
 	s.Nil(resp)
 	s.Require().ErrorIs(err, db.ErrNotFound)

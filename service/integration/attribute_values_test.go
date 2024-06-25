@@ -383,7 +383,7 @@ func (s *AttributeValuesSuite) Test_UnsafeUpdateAttributeValue() {
 		},
 	})
 	s.Require().Error(err)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(retrieved)
 
 	updated := "https://example.net/attr/attr1/value/new_value"

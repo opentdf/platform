@@ -172,7 +172,7 @@ func prepareValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy
 			values[i].SubjectMappings = nil
 		}
 		// ensure all values have FQNs
-		if values[i].Fqn == "" {
+		if values[i].GetFqn() == "" {
 			values[i].Fqn = attrFqn + "/value/" + v.GetValue()
 		}
 	}

@@ -157,56 +157,51 @@ func (s *UnsafeService) DeleteAttribute(_ context.Context, req *unsafe.DeleteAtt
 // Unsafe Attribute Value RPCs
 //
 
-func (s *UnsafeService) UpdateAttributeValue(_ context.Context, req *unsafe.UpdateAttributeValueRequest) (*unsafe.UpdateAttributeValueResponse, error) {
-	// _, err := s.dbClient.GetAttributeValue(ctx, req.GetId())
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
-	// }
+func (s *UnsafeService) UpdateAttributeValue(ctx context.Context, req *unsafe.UpdateAttributeValueRequest) (*unsafe.UpdateAttributeValueResponse, error) {
+	rsp := &unsafe.UpdateAttributeValueResponse{}
+	_, err := s.dbClient.GetAttributeValue(ctx, req.GetId())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+	}
 
-	// item, err := s.dbClient.UnsafeUpdateAttributeValue(ctx, req.GetId(), req)
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("attribute_value", req.String()))
-	// }
+	item, err := s.dbClient.UnsafeUpdateAttributeValue(ctx, req.GetId(), req)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("attribute_value", req.String()))
+	}
 
-	return &unsafe.UpdateAttributeValueResponse{
-		Value: &policy.Value{
-			Id: req.GetId(), // stubbed
-		},
-	}, nil
+	rsp.Value = item
+	return rsp, nil
 }
 
-func (s *UnsafeService) ReactivateAttributeValue(_ context.Context, req *unsafe.ReactivateAttributeValueRequest) (*unsafe.ReactivateAttributeValueResponse, error) {
-	// _, err := s.dbClient.GetAttributeValue(ctx, req.GetId())
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
-	// }
+func (s *UnsafeService) ReactivateAttributeValue(ctx context.Context, req *unsafe.ReactivateAttributeValueRequest) (*unsafe.ReactivateAttributeValueResponse, error) {
+	rsp := &unsafe.ReactivateAttributeValueResponse{}
 
-	// item, err := s.dbClient.UnsafeReactivateAttributeValue(ctx, req.GetId())
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()))
-	// }
+	_, err := s.dbClient.GetAttributeValue(ctx, req.GetId())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+	}
 
-	return &unsafe.ReactivateAttributeValueResponse{
-		Value: &policy.Value{
-			Id: req.GetId(), // stubbed
-		},
-	}, nil
+	item, err := s.dbClient.UnsafeReactivateAttributeValue(ctx, req.GetId())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()))
+	}
+
+	rsp.Value = item
+	return rsp, nil
 }
 
-func (s *UnsafeService) DeleteAttributeValue(_ context.Context, req *unsafe.DeleteAttributeValueRequest) (*unsafe.DeleteAttributeValueResponse, error) {
-	// _, err := s.dbClient.GetAttributeValue(ctx, req.GetId())
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
-	// }
+func (s *UnsafeService) DeleteAttributeValue(ctx context.Context, req *unsafe.DeleteAttributeValueRequest) (*unsafe.DeleteAttributeValueResponse, error) {
+	rsp := &unsafe.DeleteAttributeValueResponse{}
+	existing, err := s.dbClient.GetAttributeValue(ctx, req.GetId())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+	}
 
-	// err = s.dbClient.UnsafeDeleteAttributeValue(ctx, req.GetId())
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextDeleteFailed, slog.String("id", req.GetId()))
-	// }
+	deleted, err := s.dbClient.UnsafeDeleteAttributeValue(ctx, existing, req.GetId())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
+	}
 
-	return &unsafe.DeleteAttributeValueResponse{
-		Value: &policy.Value{
-			Id: req.GetId(), // stubbed
-		},
-	}, nil
+	rsp.Value = deleted
+	return rsp, nil
 }

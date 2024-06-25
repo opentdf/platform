@@ -147,7 +147,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/namespacesUpdateNamespaceResponse"
+              "$ref": "#/definitions/policynamespacesUpdateNamespaceResponse"
             }
           },
           "default": {
@@ -290,14 +290,6 @@
         }
       }
     },
-    "namespacesUpdateNamespaceResponse": {
-      "type": "object",
-      "properties": {
-        "namespace": {
-          "$ref": "#/definitions/policyNamespace"
-        }
-      }
-    },
     "policyNamespace": {
       "type": "object",
       "properties": {
@@ -318,6 +310,14 @@
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata"
+        }
+      }
+    },
+    "policynamespacesUpdateNamespaceResponse": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "$ref": "#/definitions/policyNamespace"
         }
       }
     },

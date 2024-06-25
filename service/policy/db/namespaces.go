@@ -267,11 +267,42 @@ func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *names
 	}, nil
 }
 
-func deactivateNamespaceSQL(id string) (string, []interface{}, error) {
+func unsafeUpdateNamespaceSQL(id string, name string) (string, []interface{}, error) {
 	t := Tables.Namespaces
 	return db.NewStatementBuilder().
 		Update(t.Name()).
-		Set("active", false).
+		Set("name", name).
+		Where(sq.Eq{t.Field("id"): id}).
+		Suffix("RETURNING \"id\", \"name\", \"active\", " + constructMetadata(TableNamespaces, false)).
+		ToSql()
+}
+
+func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, name string) (*policy.Namespace, error) {
+	sql, args, err := unsafeUpdateNamespaceSQL(id, name)
+	if db.IsQueryBuilderSetClauseError(err) {
+		return &policy.Namespace{
+			Id: id,
+		}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := c.QueryRow(ctx, sql, args)
+	if err != nil {
+		return nil, err
+	}
+	// Update FQN
+	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
+
+	return hydrateNamespaceItem(row, namespaceSelectOptions{})
+}
+
+func setNamespaceActiveStateSQL(id string, isActive bool) (string, []interface{}, error) {
+	t := Tables.Namespaces
+	return db.NewStatementBuilder().
+		Update(t.Name()).
+		Set("active", isActive).
 		Where(sq.Eq{t.Field("id"): id}).
 		Suffix("RETURNING \"id\"").
 		ToSql()
@@ -295,7 +326,28 @@ func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*po
 		slog.Warn("deactivating the namespace with existed attributes can affect access to related data. Please be aware and proceed accordingly.")
 	}
 
-	sql, args, err := deactivateNamespaceSQL(id)
+	sql, args, err := setNamespaceActiveStateSQL(id, false)
+	if err != nil {
+		return nil, err
+	}
+
+	if e := c.Exec(ctx, sql, args); e != nil {
+		return nil, e
+	}
+	return c.GetNamespace(ctx, id)
+}
+
+func (c PolicyDBClient) UnsafeReactivateNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
+	attrs, err := c.GetAttributesByNamespace(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(attrs) > 0 {
+		slog.Warn("reactivating the namespace with existing attributes can affect access to related data. Please be aware and proceed accordingly.")
+	}
+
+	sql, args, err := setNamespaceActiveStateSQL(id, true)
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +360,6 @@ func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*po
 
 func deleteNamespaceSQL(id string) (string, []interface{}, error) {
 	t := Tables.Namespaces
-	// TODO: handle delete cascade, dangerous deletion via special rpc [https://github.com/opentdf/platform/issues/115]
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
 		Where(sq.Eq{t.Field("id"): id}).
@@ -316,12 +367,7 @@ func deleteNamespaceSQL(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c PolicyDBClient) DeleteNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
-	// get a namespace before deleting
-	ns, err := c.GetNamespace(ctx, id)
-	if err != nil {
-		return nil, err
-	}
+func (c PolicyDBClient) UnsafeDeleteNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
 	sql, args, err := deleteNamespaceSQL(id)
 	if err != nil {
 		return nil, err
@@ -331,6 +377,8 @@ func (c PolicyDBClient) DeleteNamespace(ctx context.Context, id string) (*policy
 		return nil, err
 	}
 
-	// return the namespace before it was deleted
-	return ns, nil
+	// return the namespace id that was deleted
+	return &policy.Namespace{
+		Id: id,
+	}, nil
 }

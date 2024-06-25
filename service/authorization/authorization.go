@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/mitchellh/mapstructure"
 	"github.com/open-policy-agent/opa/metrics"
 	"github.com/open-policy-agent/opa/profiler"
 	opaSdk "github.com/open-policy-agent/opa/sdk"
@@ -21,6 +22,7 @@ import (
 	"github.com/opentdf/platform/service/internal/access"
 	"github.com/opentdf/platform/service/internal/entitlements"
 	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/internal/logger/audit"
 	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -37,6 +39,17 @@ type AuthorizationService struct { //nolint:revive // AuthorizationService is a 
 	tokenSource *oauth2.TokenSource
 }
 
+type Config struct {
+	// Entity Resolution Service URL
+	ERSURL string `mapstructure:"ersurl"`
+	// OAuth Client ID
+	ClientID string `mapstructure:"clientid"`
+	// OAuth Client secret
+	ClientSecret string `mapstructure:"clientsecret"`
+	// OAuth token endpoint
+	TokenEndpoint string `mapstructure:"tokenendpoint"`
+}
+
 const tokenExpiryDelay = 100
 
 func NewRegistration() serviceregistry.Registration {
@@ -45,49 +58,27 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &authorization.AuthorizationService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			// default ERS endpoint
-			var ersURL = "http://localhost:8080/entityresolution/resolve"
-			var clientID = "tdf-authorization-svc"
-			var clientSecret = "secret"
-			var tokenEndpoint = "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token" //nolint:gosec // default token endpoint
 			as := &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, logger: srp.Logger}
 			if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
 				slog.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
 			}
-			// if its passed in the config use that
-			val, ok := srp.Config.ExtraProps["ersurl"]
-			if ok {
-				ersURL, ok = val.(string)
-				if !ok {
-					panic("Error casting ersURL to string")
-				}
+
+			authZCfg := Config{
+				ERSURL:        "http://localhost:8080/entityresolution/resolve",
+				ClientID:      "tdf-authorization-svc",
+				ClientSecret:  "secret",
+				TokenEndpoint: "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token",
 			}
-			val, ok = srp.Config.ExtraProps["clientid"]
-			if ok {
-				clientID, ok = val.(string)
-				if !ok {
-					panic("Error casting clientID to string")
-				}
+			if err := mapstructure.Decode(srp.Config.ExtraProps, &authZCfg); err != nil {
+				panic(fmt.Errorf("invalid auth svc cfg [%v] %w", srp.Config.ExtraProps, err))
 			}
-			val, ok = srp.Config.ExtraProps["clientsecret"]
-			if ok {
-				clientSecret, ok = val.(string)
-				if !ok {
-					panic("Error casting clientSecret to string")
-				}
-			}
-			val, ok = srp.Config.ExtraProps["tokenendpoint"]
-			if ok {
-				tokenEndpoint, ok = val.(string)
-				if !ok {
-					panic("Error casting tokenendpoint to string")
-				}
-			}
-			config := clientcredentials.Config{ClientID: clientID, ClientSecret: clientSecret, TokenURL: tokenEndpoint}
+
+			config := clientcredentials.Config{ClientID: authZCfg.ClientID, ClientSecret: authZCfg.ClientSecret, TokenURL: authZCfg.TokenEndpoint}
 			slog.Debug("authorization service client config", slog.Any("config", config))
 			newTokenSource := oauth2.ReuseTokenSourceWithExpiry(nil, config.TokenSource(context.Background()), tokenExpiryDelay)
 			slog.Debug("authorization service token source created", slog.Any("token_source", newTokenSource))
 
-			as.ersURL = ersURL
+			as.ersURL = authZCfg.ERSURL
 			as.tokenSource = &newTokenSource
 
 			return as, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
@@ -201,9 +192,11 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 			}
 			var attrDefs []*policy.Attribute
 			var attrVals []*policy.Value
+			var fqns []string
 			for fqn, v := range dataAttrDefsAndVals {
 				attrDefs = append(attrDefs, v.GetAttribute())
 				attrVal := v.GetValue()
+				fqns = append(fqns, fqn)
 				attrVal.Fqn = fqn
 				attrVals = append(attrVals, attrVal)
 			}
@@ -234,7 +227,11 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 					Entities: entities,
 					Scope:    &allPertinentFqnsRA,
 				}
+
+				auditECEntitlements := make([]audit.EntityChainEntitlement, 0)
+				auditEntityDecisions := make([]audit.EntityDecision, 0)
 				entityAttrValues := make(map[string][]string)
+
 				if len(entities) == 0 || len(allPertinentFqnsRA.GetAttributeValueFqns()) == 0 {
 					slog.WarnContext(ctx, "Empty entity list and/or entity data attribute list")
 				} else {
@@ -247,6 +244,10 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 					// TODO this might cause errors if multiple entities dont have ids
 					// currently just adding each entity returned to same list
 					for _, e := range ecEntitlements.GetEntitlements() {
+						auditECEntitlements = append(auditECEntitlements, audit.EntityChainEntitlement{
+							EntityID:                 e.GetEntityId(),
+							AttributeValueReferences: e.GetAttributeValueFqns(),
+						})
 						entityAttrValues[e.GetEntityId()] = e.GetAttributeValueFqns()
 					}
 				}
@@ -265,10 +266,24 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				}
 				// check the decisions
 				decision := authorization.DecisionResponse_DECISION_PERMIT
-				for _, d := range decisions {
+				for entityID, d := range decisions {
+					// Set overall decision as well as individual entity decision
+					entityDecision := authorization.DecisionResponse_DECISION_PERMIT
 					if !d.Access {
+						entityDecision = authorization.DecisionResponse_DECISION_DENY
 						decision = authorization.DecisionResponse_DECISION_DENY
 					}
+
+					// Add entity decision to audit list
+					entityEntitlementFqns := entityAttrValues[entityID]
+					if entityEntitlementFqns == nil {
+						entityEntitlementFqns = []string{}
+					}
+					auditEntityDecisions = append(auditEntityDecisions, audit.EntityDecision{
+						EntityID:     entityID,
+						Decision:     entityDecision.String(),
+						Entitlements: entityEntitlementFqns,
+					})
 				}
 
 				decisionResp := &authorization.DecisionResponse{
@@ -285,6 +300,19 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				} else if len(ra.GetAttributeValueFqns()) > 0 {
 					decisionResp.ResourceAttributesId = ra.GetAttributeValueFqns()[0]
 				}
+
+				auditDecision := audit.GetDecisionResultDeny
+				if decision == authorization.DecisionResponse_DECISION_PERMIT {
+					auditDecision = audit.GetDecisionResultPermit
+				}
+				as.logger.Audit.GetDecision(ctx, audit.GetDecisionEventParams{
+					Decision:                auditDecision,
+					EntityChainEntitlements: auditECEntitlements,
+					EntityChainID:           decisionResp.GetEntityChainId(),
+					EntityDecisions:         auditEntityDecisions,
+					FQNs:                    fqns,
+					ResourceAttributeID:     decisionResp.GetResourceAttributesId(),
+				})
 				rsp.DecisionResponses = append(rsp.DecisionResponses, decisionResp)
 			}
 		}

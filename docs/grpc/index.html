@@ -924,6 +924,93 @@
         
           
           <li>
+            <a href="#policy%2funsafe%2funsafe.proto">policy/unsafe/unsafe.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#policy.unsafe.DeleteAttributeRequest"><span class="badge">M</span>DeleteAttributeRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.DeleteAttributeResponse"><span class="badge">M</span>DeleteAttributeResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.DeleteAttributeValueRequest"><span class="badge">M</span>DeleteAttributeValueRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.DeleteAttributeValueResponse"><span class="badge">M</span>DeleteAttributeValueResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.DeleteNamespaceRequest"><span class="badge">M</span>DeleteNamespaceRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.DeleteNamespaceResponse"><span class="badge">M</span>DeleteNamespaceResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.ReactivateAttributeRequest"><span class="badge">M</span>ReactivateAttributeRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.ReactivateAttributeResponse"><span class="badge">M</span>ReactivateAttributeResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.ReactivateAttributeValueRequest"><span class="badge">M</span>ReactivateAttributeValueRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.ReactivateAttributeValueResponse"><span class="badge">M</span>ReactivateAttributeValueResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.ReactivateNamespaceRequest"><span class="badge">M</span>ReactivateNamespaceRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.ReactivateNamespaceResponse"><span class="badge">M</span>ReactivateNamespaceResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.UpdateAttributeRequest"><span class="badge">M</span>UpdateAttributeRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.UpdateAttributeResponse"><span class="badge">M</span>UpdateAttributeResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.UpdateAttributeValueRequest"><span class="badge">M</span>UpdateAttributeValueRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.UpdateAttributeValueResponse"><span class="badge">M</span>UpdateAttributeValueResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.UpdateNamespaceRequest"><span class="badge">M</span>UpdateNamespaceRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.UpdateNamespaceResponse"><span class="badge">M</span>UpdateNamespaceResponse</a>
+                </li>
+              
+              
+              
+              
+                <li>
+                  <a href="#policy.unsafe.UnsafeService"><span class="badge">S</span>UnsafeService</a>
+                </li>
+              
+            </ul>
+          </li>
+        
+          
+          <li>
             <a href="#wellknownconfiguration%2fwellknown_configuration.proto">wellknownconfiguration/wellknown_configuration.proto</a>
             <ul>
               
@@ -2860,6 +2947,13 @@
               
                 <tr>
                   <td>public_key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kid</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
@@ -5652,7 +5746,7 @@ Attribute &lt;&gt; Key Access Server RPCs
 
       
         <h3 id="policy.resourcemapping.ResourceMappingService">ResourceMappingService</h3>
-        <p>Resource Mappings</p>
+        <p></p>
         <table class="enum-table">
           <thead>
             <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
@@ -5663,214 +5757,35 @@ Attribute &lt;&gt; Key Access Server RPCs
                 <td>ListResourceMappings</td>
                 <td><a href="#policy.resourcemapping.ListResourceMappingsRequest">ListResourceMappingsRequest</a></td>
                 <td><a href="#policy.resourcemapping.ListResourceMappingsResponse">ListResourceMappingsResponse</a></td>
-                <td><p>Request Example:
-- empty body
-
-Response Example:
-{
-&#34;resource_mappings&#34;: [
-{
-&#34;terms&#34;: [
-&#34;TOPSECRET&#34;,
-&#34;TS&#34;,
-],
-&#34;id&#34;: &#34;3c649464-95b4-4fe0-a09c-ca4b1fecbb0e&#34;,
-&#34;metadata&#34;: {
-&#34;labels&#34;: [],
-&#34;created_at&#34;: {
-&#34;seconds&#34;: &#34;1706103276&#34;,
-&#34;nanos&#34;: 510718000
-},
-&#34;updated_at&#34;: {
-&#34;seconds&#34;: &#34;1706107873&#34;,
-&#34;nanos&#34;: 399786000
-},
-&#34;description&#34;: &#34;&#34;
-},
-&#34;attribute_value&#34;: {
-&#34;members&#34;: [],
-&#34;id&#34;: &#34;f0d1d4f6-bff9-45fd-8170-607b6b559349&#34;,
-&#34;metadata&#34;: null,
-&#34;attribute_id&#34;: &#34;&#34;,
-&#34;value&#34;: &#34;value1&#34;
-}
-}
-]
-}</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
                 <td>GetResourceMapping</td>
                 <td><a href="#policy.resourcemapping.GetResourceMappingRequest">GetResourceMappingRequest</a></td>
                 <td><a href="#policy.resourcemapping.GetResourceMappingResponse">GetResourceMappingResponse</a></td>
-                <td><p>Request Example:
-{
-&#34;id&#34;: &#34;3c649464-95b4-4fe0-a09c-ca4b1fecbb0e&#34;
-}
-
-Response Example:
-{
-&#34;resource_mapping&#34;: {
-&#34;terms&#34;: [
-&#34;TOPSECRET&#34;,
-&#34;TS&#34;,
-],
-&#34;id&#34;: &#34;3c649464-95b4-4fe0-a09c-ca4b1fecbb0e&#34;,
-&#34;metadata&#34;: {
-&#34;labels&#34;: [],
-&#34;created_at&#34;: {
-&#34;seconds&#34;: &#34;1706103276&#34;,
-&#34;nanos&#34;: 510718000
-},
-&#34;updated_at&#34;: {
-&#34;seconds&#34;: &#34;1706107873&#34;,
-&#34;nanos&#34;: 399786000
-},
-&#34;description&#34;: &#34;&#34;
-},
-&#34;attribute_value&#34;: {
-&#34;members&#34;: [],
-&#34;id&#34;: &#34;f0d1d4f6-bff9-45fd-8170-607b6b559349&#34;,
-&#34;metadata&#34;: null,
-&#34;attribute_id&#34;: &#34;&#34;,
-&#34;value&#34;: &#34;value1&#34;
-}
-}
-}</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
                 <td>CreateResourceMapping</td>
                 <td><a href="#policy.resourcemapping.CreateResourceMappingRequest">CreateResourceMappingRequest</a></td>
                 <td><a href="#policy.resourcemapping.CreateResourceMappingResponse">CreateResourceMappingResponse</a></td>
-                <td><p>Request Example:
-{
-&#34;resource_mapping&#34;: {
-&#34;attribute_value_id&#34;: &#34;f0d1d4f6-bff9-45fd-8170-607b6b559349&#34;,
-&#34;terms&#34;: [
-&#34;TOPSECRET&#34;,
-&#34;TS&#34;,
-]
-}
-}
-
-Response Example:
-{
-&#34;resource_mapping&#34;: {
-&#34;terms&#34;: [
-&#34;TOPSECRET&#34;,
-&#34;TS&#34;,
-],
-&#34;id&#34;: &#34;3c649464-95b4-4fe0-a09c-ca4b1fecbb0e&#34;,
-&#34;metadata&#34;: {
-&#34;labels&#34;: [],
-&#34;created_at&#34;: {
-&#34;seconds&#34;: &#34;1706103276&#34;,
-&#34;nanos&#34;: 510718000
-},
-&#34;updated_at&#34;: {
-&#34;seconds&#34;: &#34;1706107873&#34;,
-&#34;nanos&#34;: 399786000
-},
-&#34;description&#34;: &#34;&#34;
-},
-&#34;attribute_value&#34;: {
-&#34;members&#34;: [],
-&#34;id&#34;: &#34;f0d1d4f6-bff9-45fd-8170-607b6b559349&#34;,
-&#34;metadata&#34;: null,
-&#34;attribute_id&#34;: &#34;&#34;,
-&#34;value&#34;: &#34;value1&#34;
-}
-}
-}</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
                 <td>UpdateResourceMapping</td>
                 <td><a href="#policy.resourcemapping.UpdateResourceMappingRequest">UpdateResourceMappingRequest</a></td>
                 <td><a href="#policy.resourcemapping.UpdateResourceMappingResponse">UpdateResourceMappingResponse</a></td>
-                <td><p>Request Example:
-{
-&#34;id&#34;: &#34;3c649464-95b4-4fe0-a09c-ca4b1fecbb0e&#34;,
-&#34;resource_mapping&#34;: {
-&#34;attribute_value_id&#34;: &#34;f0d1d4f6-bff9-45fd-8170-607b6b559349&#34;,
-&#34;terms&#34;: [
-&#34;TOPSECRET&#34;,
-&#34;TS&#34;,
-&#34;NEWTERM&#34;
-]
-}
-}
-
-Response Example:
-{
-&#34;resource_mapping&#34;: {
-&#34;terms&#34;: [
-&#34;TOPSECRET&#34;,
-&#34;TS&#34;,
-],
-&#34;id&#34;: &#34;3c649464-95b4-4fe0-a09c-ca4b1fecbb0e&#34;,
-&#34;metadata&#34;: {
-&#34;labels&#34;: [],
-&#34;created_at&#34;: {
-&#34;seconds&#34;: &#34;1706103276&#34;,
-&#34;nanos&#34;: 510718000
-},
-&#34;updated_at&#34;: {
-&#34;seconds&#34;: &#34;1706107873&#34;,
-&#34;nanos&#34;: 399786000
-},
-&#34;description&#34;: &#34;&#34;
-},
-&#34;attribute_value&#34;: {
-&#34;members&#34;: [],
-&#34;id&#34;: &#34;f0d1d4f6-bff9-45fd-8170-607b6b559349&#34;,
-&#34;metadata&#34;: null,
-&#34;attribute_id&#34;: &#34;&#34;,
-&#34;value&#34;: &#34;value1&#34;
-}
-}
-}</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
                 <td>DeleteResourceMapping</td>
                 <td><a href="#policy.resourcemapping.DeleteResourceMappingRequest">DeleteResourceMappingRequest</a></td>
                 <td><a href="#policy.resourcemapping.DeleteResourceMappingResponse">DeleteResourceMappingResponse</a></td>
-                <td><p>Request Example:
-{
-&#34;id&#34;: &#34;3c649464-95b4-4fe0-a09c-ca4b1fecbb0e&#34;
-}
-
-Response Example:
-{
-&#34;resource_mapping&#34;: {
-&#34;terms&#34;: [
-&#34;TOPSECRET&#34;,
-&#34;TS&#34;,
-],
-&#34;id&#34;: &#34;3c649464-95b4-4fe0-a09c-ca4b1fecbb0e&#34;,
-&#34;metadata&#34;: {
-&#34;labels&#34;: [],
-&#34;created_at&#34;: {
-&#34;seconds&#34;: &#34;1706103276&#34;,
-&#34;nanos&#34;: 510718000
-},
-&#34;updated_at&#34;: {
-&#34;seconds&#34;: &#34;1706107873&#34;,
-&#34;nanos&#34;: 399786000
-},
-&#34;description&#34;: &#34;&#34;
-},
-&#34;attribute_value&#34;: {
-&#34;members&#34;: [],
-&#34;id&#34;: &#34;f0d1d4f6-bff9-45fd-8170-607b6b559349&#34;,
-&#34;metadata&#34;: null,
-&#34;attribute_id&#34;: &#34;&#34;,
-&#34;value&#34;: &#34;value1&#34;
-}
-}
-}</p></td>
+                <td><p></p></td>
               </tr>
             
           </tbody>
@@ -6782,6 +6697,696 @@ Replaces the existing SubjectConditionSet id with a new one </p></td>
                 <td>DeleteSubjectConditionSet</td>
                 <td>DELETE</td>
                 <td>/subject-condition-sets/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+            </tbody>
+          </table>
+          
+        
+    
+      
+      <div class="file-heading">
+        <h2 id="policy/unsafe/unsafe.proto">policy/unsafe/unsafe.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="policy.unsafe.DeleteAttributeRequest">DeleteAttributeRequest</h3>
+        <p>WARNING!!</p><p>Deleting an Attribute will free up the Attribute name for reuse, which can introduce an access path to existing TDFs containing the deleted Attribute name.</p><p>Values under this Attribute will be cascadingly deleted.</p><p>Any KAS Grants associated with this Attribute will be cascadingly deleted.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required
+UUID of the Attribute </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Fully Qualified Name (FQN) of Attribute Definition (i.e. https://&lt;namespace&gt;/attr/&lt;attribute name&gt;), normalized to lower case. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.unsafe.DeleteAttributeResponse">DeleteAttributeResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>attribute</td>
+                  <td><a href="#policy.Attribute">policy.Attribute</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.unsafe.DeleteAttributeValueRequest">DeleteAttributeValueRequest</h3>
+        <p>WARNING!!</p><p>Deleting an Attribute Value will free up the Attribute Value for reuse, which can introduce an access path to existing TDFs containing the deleted Attribute Value.</p><p>Any KAS Grants associated with this Attribute Value will be cascadingly deleted.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required
+UUID of the Attribute Value </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Fully Qualified Name (FQN) of Attribute Value (i.e. https://&lt;namespace&gt;/attr/&lt;attribute name&gt;/value/&lt;value&gt;), normalized to lower case. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.unsafe.DeleteAttributeValueResponse">DeleteAttributeValueResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#policy.Value">policy.Value</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.unsafe.DeleteNamespaceRequest">DeleteNamespaceRequest</h3>
+        <p>WARNING!!</p><p>Deleting a Namespace will free up the Attribute Namespace, Definitions, and Values for reuse, which can introduce an access path to existing TDFs containing the deleted policy.</p><p>Definitions and their Values under this Namespace will be cascadingly deleted.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required
+UUID of the Namespace </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Fully Qualified Name (FQN) of Namespace (i.e. https://&lt;namespace&gt;), normalized to lower case. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.unsafe.DeleteNamespaceResponse">DeleteNamespaceResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace</td>
+                  <td><a href="#policy.Namespace">policy.Namespace</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.unsafe.ReactivateAttributeRequest">ReactivateAttributeRequest</h3>
+        <p>WARNING!!</p><p>Reactivating an Attribute can potentially open up an access path to existing TDFs containing the Attribute name.</p><p>Active state of any Values under this Attribute Definition will NOT be changed.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.unsafe.ReactivateAttributeResponse">ReactivateAttributeResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>attribute</td>
+                  <td><a href="#policy.Attribute">policy.Attribute</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.unsafe.ReactivateAttributeValueRequest">ReactivateAttributeValueRequest</h3>
+        <p>WARNING!!</p><p>Reactivating an Attribute Value can potentially open up an access path to existing TDFs containing the Attribute Value.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.unsafe.ReactivateAttributeValueResponse">ReactivateAttributeValueResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#policy.Value">policy.Value</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.unsafe.ReactivateNamespaceRequest">ReactivateNamespaceRequest</h3>
+        <p>WARNING!!</p><p>Reactivating a Namespace can potentially open up an access path to existing TDFs containing any Attributes under the Namespace.</p><p>Active state of any Definitions and their Values under this Namespace will NOT be changed.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.unsafe.ReactivateNamespaceResponse">ReactivateNamespaceResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace</td>
+                  <td><a href="#policy.Namespace">policy.Namespace</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.unsafe.UpdateAttributeRequest">UpdateAttributeRequest</h3>
+        <p>WARNING!!</p><p>Updating an Attribute can have dangerous consequences. Use with caution.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+WARNING!! 
+Updating the name of an Attribute will retroactively alter access to existing TDFs of the old and new Attribute name. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>rule</td>
+                  <td><a href="#policy.AttributeRuleTypeEnum">policy.AttributeRuleTypeEnum</a></td>
+                  <td></td>
+                  <td><p>WARNING!! 
+Updating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.unsafe.UpdateAttributeResponse">UpdateAttributeResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>attribute</td>
+                  <td><a href="#policy.Attribute">policy.Attribute</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.unsafe.UpdateAttributeValueRequest">UpdateAttributeValueRequest</h3>
+        <p>WARNING!! </p><p>Updating an Attribute Value will retroactively alter access to existing TDFs containing the old and new Attribute Value.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.unsafe.UpdateAttributeValueResponse">UpdateAttributeValueResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#policy.Value">policy.Value</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.unsafe.UpdateNamespaceRequest">UpdateNamespaceRequest</h3>
+        <p>WARNING!!</p><p>Updating the Namespace of an Attribute will retroactively alter access to existing TDFs of the old and new Namespace name.</p><p>Existing Attribute Definitions and their Values under the Namespace will now be associated with the new Namespace name.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.unsafe.UpdateNamespaceResponse">UpdateNamespaceResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace</td>
+                  <td><a href="#policy.Namespace">policy.Namespace</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+
+      
+
+      
+
+      
+        <h3 id="policy.unsafe.UnsafeService">UnsafeService</h3>
+        <p>Unsafe Service </p><p>/ IN FLIGHT AND NOT YET IMPLEMENTED!</p><p>/</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>UpdateNamespace</td>
+                <td><a href="#policy.unsafe.UpdateNamespaceRequest">UpdateNamespaceRequest</a></td>
+                <td><a href="#policy.unsafe.UpdateNamespaceResponse">UpdateNamespaceResponse</a></td>
+                <td><p>--------------------------------------*
+Namespace RPCs
+---------------------------------------</p></td>
+              </tr>
+            
+              <tr>
+                <td>ReactivateNamespace</td>
+                <td><a href="#policy.unsafe.ReactivateNamespaceRequest">ReactivateNamespaceRequest</a></td>
+                <td><a href="#policy.unsafe.ReactivateNamespaceResponse">ReactivateNamespaceResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>DeleteNamespace</td>
+                <td><a href="#policy.unsafe.DeleteNamespaceRequest">DeleteNamespaceRequest</a></td>
+                <td><a href="#policy.unsafe.DeleteNamespaceResponse">DeleteNamespaceResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>UpdateAttribute</td>
+                <td><a href="#policy.unsafe.UpdateAttributeRequest">UpdateAttributeRequest</a></td>
+                <td><a href="#policy.unsafe.UpdateAttributeResponse">UpdateAttributeResponse</a></td>
+                <td><p>--------------------------------------*
+Attribute RPCs
+---------------------------------------</p></td>
+              </tr>
+            
+              <tr>
+                <td>ReactivateAttribute</td>
+                <td><a href="#policy.unsafe.ReactivateAttributeRequest">ReactivateAttributeRequest</a></td>
+                <td><a href="#policy.unsafe.ReactivateAttributeResponse">ReactivateAttributeResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>DeleteAttribute</td>
+                <td><a href="#policy.unsafe.DeleteAttributeRequest">DeleteAttributeRequest</a></td>
+                <td><a href="#policy.unsafe.DeleteAttributeResponse">DeleteAttributeResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>UpdateAttributeValue</td>
+                <td><a href="#policy.unsafe.UpdateAttributeValueRequest">UpdateAttributeValueRequest</a></td>
+                <td><a href="#policy.unsafe.UpdateAttributeValueResponse">UpdateAttributeValueResponse</a></td>
+                <td><p>--------------------------------------*
+Value RPCs
+---------------------------------------</p></td>
+              </tr>
+            
+              <tr>
+                <td>ReactivateAttributeValue</td>
+                <td><a href="#policy.unsafe.ReactivateAttributeValueRequest">ReactivateAttributeValueRequest</a></td>
+                <td><a href="#policy.unsafe.ReactivateAttributeValueResponse">ReactivateAttributeValueResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>DeleteAttributeValue</td>
+                <td><a href="#policy.unsafe.DeleteAttributeValueRequest">DeleteAttributeValueRequest</a></td>
+                <td><a href="#policy.unsafe.DeleteAttributeValueResponse">DeleteAttributeValueResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+
+        
+          
+          
+          <h4>Methods with HTTP bindings</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Method</td>
+                <td>Pattern</td>
+                <td>Body</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              
+              
+              <tr>
+                <td>UpdateNamespace</td>
+                <td>PATCH</td>
+                <td>/unsafe/namespaces/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>ReactivateNamespace</td>
+                <td>POST</td>
+                <td>/unsafe/namespaces/{id}/reactivate</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>DeleteNamespace</td>
+                <td>DELETE</td>
+                <td>/unsafe/namespaces/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>UpdateAttribute</td>
+                <td>PATCH</td>
+                <td>/unsafe/attributes/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>ReactivateAttribute</td>
+                <td>POST</td>
+                <td>/unsafe/attributes/{id}/reactivate</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>DeleteAttribute</td>
+                <td>DELETE</td>
+                <td>/unsafe/attributes/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>UpdateAttributeValue</td>
+                <td>PATCH</td>
+                <td>/unsafe/attributes/values/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>ReactivateAttributeValue</td>
+                <td>POST</td>
+                <td>/unsafe/attributes/values/{id}/reactivate</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>DeleteAttributeValue</td>
+                <td>DELETE</td>
+                <td>/unsafe/attributes/values/{id}</td>
                 <td></td>
               </tr>
               

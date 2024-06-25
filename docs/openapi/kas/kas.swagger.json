@@ -94,20 +94,21 @@
         "parameters": [
           {
             "name": "algorithm",
+            "description": "algorithm type rsa:\u003ckeysize\u003e or ec:\u003ccurvename\u003e",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "fmt",
-            "description": "version",
+            "description": "response format",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "v",
-            "description": "version",
+            "description": "request version",
             "in": "query",
             "required": false,
             "type": "string"
@@ -165,6 +166,9 @@
       "type": "object",
       "properties": {
         "publicKey": {
+          "type": "string"
+        },
+        "kid": {
           "type": "string"
         }
       }

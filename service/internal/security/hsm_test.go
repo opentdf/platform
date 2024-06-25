@@ -108,7 +108,7 @@ func TestDecryptOAEPUnsupportedRSAFailure(t *testing.T) {
 		sh:  sessionHandle,
 	}
 
-	decrypted, err := session.RSADecrypt(crypto.BLAKE2b_384, "unknown", "sample label", []byte("sample ciphertext"))
+	decrypted, err := session.RSADecrypt(crypto.BLAKE2b_384, "", "sample label", []byte("sample ciphertext"))
 
 	t.Log(err)
 	t.Log(decrypted)

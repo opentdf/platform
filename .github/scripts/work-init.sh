@@ -13,7 +13,7 @@
 #  lib/fixtures -> ∅
 #  protocol/go -> ∅
 #  sdk -> lib/fixtures, lib/ocrypto, protocol/go
-#  services -> lib/fixtures, lib/ocrypto, protocol/go, sdk
+#  services -> lib/fixtures, lib/ocrypto, protocol/go, sdk, lib/flattening
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
 ROOT_DIR="$(cd "${APP_DIR}/../.." >/dev/null && pwd)"
@@ -32,7 +32,7 @@ fi
 
 echo "[INFO] Rebuilding partial go.work for [${component}]"
 case $component in
-  lib/ocrypto | lib/fixtures | protocol/go)
+  lib/ocrypto | lib/fixtures | lib/flattening | protocol/go )
     echo "[INFO] skipping for leaf package"
     ;;
   sdk)

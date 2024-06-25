@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.4.7](https://github.com/opentdf/platform/compare/service/v0.4.6...service/v0.4.7) (2024-06-24)
+
+
+### Features
+
+* add dev_mode flag ([#985](https://github.com/opentdf/platform/issues/985)) ([8da2436](https://github.com/opentdf/platform/commit/8da2436312ceccc002a434752911c6119dae9bae))
+* adds new trace log level ([#989](https://github.com/opentdf/platform/issues/989)) ([25f699e](https://github.com/opentdf/platform/commit/25f699e2c7d77ae2c9f83ee8e2c877c06bcf2b13))
+* Audit GetDecisions ([#976](https://github.com/opentdf/platform/issues/976)) ([55bdfeb](https://github.com/opentdf/platform/commit/55bdfeb4dd4a846d244febd23825ced38e8e91b1))
+* **authz:** Use flattened entity representations in subject mapping evaluation ([#1007](https://github.com/opentdf/platform/issues/1007)) ([b80443f](https://github.com/opentdf/platform/commit/b80443f1828382a12d0a1cdac30f27861e0c19d4))
+* **core:** add doublestar for public routes ([#998](https://github.com/opentdf/platform/issues/998)) ([1c70c16](https://github.com/opentdf/platform/commit/1c70c16250485fc41062fd8641ad173c27fa6fc4))
+* **core:** New cryptoProvider config ([#939](https://github.com/opentdf/platform/issues/939)) ([8150623](https://github.com/opentdf/platform/commit/81506237e2e640af34df8c745b71c3f20358d5a4))
+* **policy:** add unsafe service protos and unsafe service proto Go gencode ([#1003](https://github.com/opentdf/platform/issues/1003)) ([55cc045](https://github.com/opentdf/platform/commit/55cc0459f8e5594765cecf62c3e2a1adff40a565))
+* **policy:** policy unsafe namespace RPCs wired up to database ([#1018](https://github.com/opentdf/platform/issues/1018)) ([239d9fa](https://github.com/opentdf/platform/commit/239d9fa025814d0baa9f5c8e7f383604d0574e1d))
+* **policy:** service stubs and registration for unsafe service ([#1009](https://github.com/opentdf/platform/issues/1009)) ([9145491](https://github.com/opentdf/platform/commit/9145491450236cb0bb640d0262db7b0605ad4e4c))
+
+
+### Bug Fixes
+
+* config loaded debug statement logs secrets ([#1010](https://github.com/opentdf/platform/issues/1010)) ([6f6a603](https://github.com/opentdf/platform/commit/6f6a603ae78ea948e6c93b1fba436a862e3f15af))
+* **core:** Autobump service ([#1025](https://github.com/opentdf/platform/issues/1025)) ([588827c](https://github.com/opentdf/platform/commit/588827c6b4b7b1c0b8f39002eefd294357b5a206))
+* **core:** Fixes issue failing to find keys for kid-free kaos ([#982](https://github.com/opentdf/platform/issues/982)) ([f27d484](https://github.com/opentdf/platform/commit/f27d48426762d684a9b6abe0c54820999b385329))
+* **core:** policy resource-mappings fix doc drift in proto comments ([#980](https://github.com/opentdf/platform/issues/980)) ([09ab763](https://github.com/opentdf/platform/commit/09ab763263d092653bbded294895dcc08d03bdb2))
+* **core:** Update to lib/fixtures 0.2.7 ([#1017](https://github.com/opentdf/platform/issues/1017)) ([dbae6ff](https://github.com/opentdf/platform/commit/dbae6ff10aadbfc805d9acef8440a7930f3c684e))
+* **core:** Updates to protos 0.2.4 ([#1014](https://github.com/opentdf/platform/issues/1014)) ([43e11a3](https://github.com/opentdf/platform/commit/43e11a34c47c76fe2845d0a9d60a686ea394c131))
+* **kas:** remove old logs ([#992](https://github.com/opentdf/platform/issues/992)) ([192ff6d](https://github.com/opentdf/platform/commit/192ff6d98b7ab6a59eebe7561def7a43ad049ac5))
+
+## [0.4.6](https://github.com/opentdf/platform/compare/service/v0.4.5...service/v0.4.6) (2024-06-11)
+
+
+### Features
+
+* **core:** Rewrap and Policy CRUD Audit Events ([#889](https://github.com/opentdf/platform/issues/889)) ([d909a5e](https://github.com/opentdf/platform/commit/d909a5e49c2e87884651c56cd30b9331ed4044c7))
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#960](https://github.com/opentdf/platform/issues/960)) ([6b96fee](https://github.com/opentdf/platform/commit/6b96feef714e0e5bdfbdfe3ea9a56a36d4b50289))
+* **core:** remove /health from casbin default policy ([#943](https://github.com/opentdf/platform/issues/943)) ([cb3d8df](https://github.com/opentdf/platform/commit/cb3d8df468e62d797e94c474f2900aff527edec0)), closes [#905](https://github.com/opentdf/platform/issues/905)
+* **core:** remove public routes from casbin default policy ([#951](https://github.com/opentdf/platform/issues/951)) ([57c2a45](https://github.com/opentdf/platform/commit/57c2a4576060c0dcd87cfc6b170b8dd03c6501c8))
+* **core:** Return 404 if public key not found ([#888](https://github.com/opentdf/platform/issues/888)) ([8b110f0](https://github.com/opentdf/platform/commit/8b110f0f608e82ad3a76c9d3bcd586beaaf20b1d))
+* **sdk:** convert platform endpoint to grpc dial format ([#941](https://github.com/opentdf/platform/issues/941)) ([3a72a54](https://github.com/opentdf/platform/commit/3a72a54a31d35d31dfcc13ac6e716d68c9c909d1))
+
 ## [0.4.5](https://github.com/opentdf/platform/compare/service/v0.4.4...service/v0.4.5) (2024-06-04)
 
 

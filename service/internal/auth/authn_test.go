@@ -26,6 +26,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
@@ -135,7 +136,7 @@ func (s *AuthSuite) SetupTest() {
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if r.URL.Path == "/.well-known/openid-configuration" {
-			_, err := w.Write([]byte(fmt.Sprintf(`{"jwks_uri": "%s/jwks"}`, s.server.URL)))
+			_, err := w.Write([]byte(fmt.Sprintf(`{"issuer":"%s","jwks_uri": "%s/jwks"}`, s.server.URL, s.server.URL)))
 			if err != nil {
 				panic(err)
 			}
@@ -157,8 +158,23 @@ func (s *AuthSuite) SetupTest() {
 				Issuer:      s.server.URL,
 				Audience:    "test",
 			},
-			PublicRoutes: []string{"/public", "/public2/*", "/public3/static", "/static/*", "/static/*/*"},
-		})
+			PublicRoutes: []string{
+				"/public",
+				"/public2/*",
+				"/public3/static",
+				"/static/*",
+				"/static/*/*",
+				"/static-doublestar/**",
+				"/static-doublestar2/**/*",
+				"/static-doublestar3/*/**",
+				"/static-doublestar4/x/**",
+			},
+		},
+		&logger.Logger{
+			Logger: slog.New(slog.Default().Handler()),
+		},
+		func(_ string, _ any) error { return nil },
+	)
 
 	s.Require().NoError(err)
 
@@ -239,7 +255,7 @@ func (s *AuthSuite) Test_CheckToken_When_Missing_Issuer_Expect_Error() {
 
 	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().Error(err)
-	s.Equal("missing issuer", err.Error())
+	s.Equal("\"iss\" not satisfied: claim \"iss\" does not exist", err.Error())
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
@@ -254,7 +270,7 @@ func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
 
 	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().Error(err)
-	s.Contains(err.Error(), "invalid issuer")
+	s.Contains(err.Error(), "\"iss\" not satisfied: values do not match")
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Audience_Missing_Expect_Error() {
@@ -586,7 +602,11 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	}
 	config := Config{}
 	config.AuthNConfig = authnConfig
-	auth, err := NewAuthenticator(context.Background(), config)
+	auth, err := NewAuthenticator(context.Background(), config, &logger.Logger{
+		Logger: slog.New(slog.Default().Handler()),
+	},
+		func(_ string, _ any) error { return nil },
+	)
 
 	s.Require().NoError(err)
 
@@ -613,6 +633,11 @@ func (s *AuthSuite) Test_PublicPath_Matches() {
 	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2/")))
 	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static/test")))
 	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static/test/next")))
+
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static-doublestar/test")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static-doublestar2/test/next")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static-doublestar3/test/next")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static-doublestar4/x/test/next")))
 
 	// Failing routes
 	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public3/")))

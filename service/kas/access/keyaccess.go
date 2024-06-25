@@ -1,4 +1,4 @@
-package tdf3
+package access
 
 type KeyAccess struct {
 	EncryptedMetadata string `json:"encryptedMetadata,omitempty"`
@@ -6,6 +6,7 @@ type KeyAccess struct {
 	Protocol          string `json:"protocol"`
 	Type              string `json:"type"`
 	URL               string `json:"url"`
+	KID               string `json:"kid,omitempty"`
 	WrappedKey        []byte `json:"wrappedKey,omitempty"`
 	Header            []byte `json:"header,omitempty"`
 	Algorithm         string `json:"algorithm,omitempty"`

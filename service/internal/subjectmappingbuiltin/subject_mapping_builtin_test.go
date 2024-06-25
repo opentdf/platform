@@ -3,6 +3,7 @@ package subjectmappingbuiltin_test
 import (
 	"testing"
 
+	"github.com/opentdf/platform/lib/flattening"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -25,24 +26,27 @@ var entity1 = map[string]interface{}{
 		"testing": []any{"option1", "option3"},
 	},
 }
+var flattenedEntity1, _ = flattening.Flatten(entity1)
 var entity2 = map[string]any{
 	"attributes": map[string]interface{}{
 		"testing": []any{"option4", "option3"},
 	},
 }
+var flattenedEntity2, _ = flattening.Flatten(entity2)
 var entity3 = map[string]any{
 	"attributes": map[string]interface{}{
 		"testing": []any{"option1", "option4"},
 	},
 }
+var flattenedEntity3, _ = flattening.Flatten(entity3)
 
 func Test_EvaluateConditionINTrue(t *testing.T) {
-	res, err := subjectmappingbuiltin.EvaluateCondition(&inCondition1, entity1)
+	res, err := subjectmappingbuiltin.EvaluateCondition(&inCondition1, flattenedEntity1)
 	require.NoError(t, err)
 	assert.True(t, res)
 }
 func Test_EvaluateConditionINFalse(t *testing.T) {
-	res, err := subjectmappingbuiltin.EvaluateCondition(&inCondition1, entity2)
+	res, err := subjectmappingbuiltin.EvaluateCondition(&inCondition1, flattenedEntity2)
 	require.NoError(t, err)
 	assert.False(t, res)
 }
@@ -55,12 +59,12 @@ var notInCondition2 policy.Condition = policy.Condition{
 }
 
 func Test_EvaluateConditionNOTINTrue(t *testing.T) {
-	res, err := subjectmappingbuiltin.EvaluateCondition(&notInCondition2, entity2)
+	res, err := subjectmappingbuiltin.EvaluateCondition(&notInCondition2, flattenedEntity2)
 	require.NoError(t, err)
 	assert.True(t, res)
 }
 func Test_EvaluateConditionNOTINFalse(t *testing.T) {
-	res, err := subjectmappingbuiltin.EvaluateCondition(&notInCondition2, entity1)
+	res, err := subjectmappingbuiltin.EvaluateCondition(&notInCondition2, flattenedEntity1)
 	require.NoError(t, err)
 	assert.False(t, res)
 }
@@ -80,12 +84,12 @@ var andConditionGroup1 policy.ConditionGroup = policy.ConditionGroup{
 }
 
 func Test_EvaluateConditionGroupANDTrue(t *testing.T) {
-	res, err := subjectmappingbuiltin.EvaluateConditionGroup(&andConditionGroup1, entity1)
+	res, err := subjectmappingbuiltin.EvaluateConditionGroup(&andConditionGroup1, flattenedEntity1)
 	require.NoError(t, err)
 	assert.True(t, res)
 }
 func Test_EvaluateConditionGroupANDFalse(t *testing.T) {
-	res, err := subjectmappingbuiltin.EvaluateConditionGroup(&andConditionGroup1, entity2)
+	res, err := subjectmappingbuiltin.EvaluateConditionGroup(&andConditionGroup1, flattenedEntity2)
 	require.NoError(t, err)
 	assert.False(t, res)
 }
@@ -99,18 +103,18 @@ var orConditionGroup1 policy.ConditionGroup = policy.ConditionGroup{
 }
 
 func Test_EvaluateConditionGroupORTrueBoth(t *testing.T) {
-	res, err := subjectmappingbuiltin.EvaluateConditionGroup(&orConditionGroup1, entity1)
+	res, err := subjectmappingbuiltin.EvaluateConditionGroup(&orConditionGroup1, flattenedEntity1)
 	require.NoError(t, err)
 	assert.True(t, res)
 }
 func Test_EvaluateConditionGroupORTrueOne(t *testing.T) {
-	res, err := subjectmappingbuiltin.EvaluateConditionGroup(&orConditionGroup1, entity3)
+	res, err := subjectmappingbuiltin.EvaluateConditionGroup(&orConditionGroup1, flattenedEntity3)
 	require.NoError(t, err)
 	assert.True(t, res)
 }
 
 func Test_EvaluateConditionGroupORFalse(t *testing.T) {
-	res, err := subjectmappingbuiltin.EvaluateConditionGroup(&orConditionGroup1, entity2)
+	res, err := subjectmappingbuiltin.EvaluateConditionGroup(&orConditionGroup1, flattenedEntity2)
 	require.NoError(t, err)
 	assert.False(t, res)
 }
@@ -123,7 +127,7 @@ var subjectSet1 policy.SubjectSet = policy.SubjectSet{
 }
 
 func Test_EvaluateSubjectSetTrue(t *testing.T) {
-	res, err := subjectmappingbuiltin.EvaluateSubjectSet(&subjectSet1, entity1)
+	res, err := subjectmappingbuiltin.EvaluateSubjectSet(&subjectSet1, flattenedEntity1)
 	require.NoError(t, err)
 	assert.True(t, res)
 }
@@ -142,7 +146,7 @@ var subjectSet2 policy.SubjectSet = policy.SubjectSet{
 }
 
 func Test_EvaluateSubjectSetFalse(t *testing.T) {
-	res, err := subjectmappingbuiltin.EvaluateSubjectSet(&subjectSet2, entity1)
+	res, err := subjectmappingbuiltin.EvaluateSubjectSet(&subjectSet2, flattenedEntity1)
 	require.NoError(t, err)
 	assert.False(t, res)
 }

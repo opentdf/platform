@@ -259,7 +259,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/attributesUpdateAttributeValueResponse"
+              "$ref": "#/definitions/policyattributesUpdateAttributeValueResponse"
             }
           },
           "default": {
@@ -553,7 +553,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/attributesUpdateAttributeResponse"
+              "$ref": "#/definitions/policyattributesUpdateAttributeResponse"
             }
           },
           "default": {
@@ -770,22 +770,6 @@
       "properties": {
         "valueKeyAccessServer": {
           "$ref": "#/definitions/attributesValueKeyAccessServer"
-        }
-      }
-    },
-    "attributesUpdateAttributeResponse": {
-      "type": "object",
-      "properties": {
-        "attribute": {
-          "$ref": "#/definitions/policyAttribute"
-        }
-      }
-    },
-    "attributesUpdateAttributeValueResponse": {
-      "type": "object",
-      "properties": {
-        "value": {
-          "$ref": "#/definitions/policyValue"
         }
       }
     },
@@ -1176,6 +1160,22 @@
         "metadata": {
           "$ref": "#/definitions/commonMetadata",
           "title": "Common metadata"
+        }
+      }
+    },
+    "policyattributesUpdateAttributeResponse": {
+      "type": "object",
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/policyAttribute"
+        }
+      }
+    },
+    "policyattributesUpdateAttributeValueResponse": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "$ref": "#/definitions/policyValue"
         }
       }
     },

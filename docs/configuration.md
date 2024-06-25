@@ -35,23 +35,18 @@ logger:
 
 The server configuration is used to define how the application runs its server.
 
-| Field                           | Description                                                              | Default    |
-| ------------------------------- | ------------------------------------------------------------------------ | ---------- |
-| `port`                          | The port number for the server.                                          | `9000`     |
-| `host`                          | The host address for the server.                                         | `""`       |
-| `grpc.reflection`               | The configuration for the grpc server.                                   | `true`     |
-| `tls.enabled`                   | Enable tls.                                                              | `false`    |
-| `tls.cert`                      | The path to the tls certificate.                                         |            |
-| `tls.key`                       | The path to the tls key.                                                 |            |
-| `auth.audience`                 | The audience for the IDP.                                                |            |
-| `auth.issuer`                   | The issuer for the IDP.                                                  |            |
-| `auth.enforceDPoP`              | If true, DPoP bindings on Access Tokens are enforced.                    | `false`    |
-| `cryptoProvider.type`           | The type of crypto provider to use. Valid values are `standard` or `hsm` | `standard` |
-| `cryptoProvider.hsm.modulePath` | The configuration for the HSM crypto provider.                           |            |
-| `cryptoProvider.hsm.pin`        | The pin for the HSM crypto provider.                                     |            |
-| `cryptoProvider.hsm.slotId`     | The slot id for the HSM crypto provider.                                 |            |
-| `cryptoProvider.hsm.slotLabel`  | The slot label for the HSM crypto provider.                              |            |
-| `cryptoProvider.hsm.keys`       | List of keys by `name` and `label`                                       |            |
+| Field                 | Description                                                       | Default |
+| --------------------- | ----------------------------------------------------------------- | ------- |
+| `port`                | The port number for the server.                                   | `9000`  |
+| `host`                | The host address for the server.                                  | `""`    |
+| `grpc.reflection`     | The configuration for the grpc server.                            | `true`  |
+| `tls.enabled`         | Enable tls.                                                       | `false` |
+| `tls.cert`            | The path to the tls certificate.                                  |         |
+| `tls.key`             | The path to the tls key.                                          |         |
+| `auth.audience`       | The audience for the IDP.                                         |         |
+| `auth.issuer`         | The issuer for the IDP.                                           |         |
+| `auth.enforceDPoP`    | If true, DPoP bindings on Access Tokens are enforced.             | `false` |
+| `auth.cryptoProvider` | A list of public/private keypairs and their use. Described below. | empty   |
 
 Example:
 
@@ -69,16 +64,37 @@ server:
     audience: https://example.com
     issuer: https://example.com
   cryptoProvider:
-    type: hsm
-    hsm:
-      modulePath: /path/to/module
-      pin: 1234
-      slotId: 0
-      slotLabel: 'mySlot'
+    standard:
       keys:
-        - name: 'myKey'
-          label: 'myLabel'
+        - kid: r1
+          alg: rsa:2048
+          private: kas-private.pem
+          cert: kas-cert.pem
+        - kid: e1
+          alg: ec:secp256r1
+          private: kas-ec-private.pem
+          cert: kas-ec-cert.pem
 ```
+
+### Crypto Provider
+
+To configure the Key Access Server,
+you must define a set of one or more public keypairs
+and a method for loading and using them.
+
+The crypto provider is implemented as an interface,
+allowing multiple implementations.
+We currently only intend to support `standard` as part of our open source offering,
+with the `hsm` variant a proof of concept alternative using PKCS#11.
+
+| Field                               | Description                                                               | Default    |
+| ----------------------------------- | ------------------------------------------------------------------------- | ---------- |
+| `cryptoProvider.type`               | The type of crypto provider to use.                                       | `standard` |
+| `cryptoProvider.standard.*.alg`     | An enum for the associated crypto type. E.g. `rsa:2048` or `ec:secp256r1` |            |
+| `cryptoProvider.standard.*.kid`     | A short, globally unique, stable identifier for this keypair.             |            |
+| `cryptoProvider.standard.*.private` | Path to the private key as a PEM file.                                    |            |
+| `cryptoProvider.standard.*.cert`    | (Optional) Path to a public cert for the keypair.                         |            |
+| `cryptoProvider.standard.*.public`  | (Optional) Path to a public key as a PEM file.                            |            |
 
 ## Database Configuration
 
@@ -128,9 +144,12 @@ opa:
 
 ### Key Access Server (KAS)
 
-| Field     | Description                  | Default |
-| --------- | ---------------------------- | ------- |
-| `enabled` | Enable the Key Access Server | `true`  |
+| Field              | Description                                                                     | Default |
+| ------------------ | ------------------------------------------------------------------------------- | ------- |
+| `enabled`          | Enable the Key Access Server                                                    | `true`  |
+| `keyring.*.kid`    | Which key id this is binding                                                    |         |
+| `keyring.*.alg`    | (Optional) Associated algorithm. (Allows reusing KID with different algorithms) |         |
+| `keyring.*.legacy` | When loading a TDF with no key identifier, this key may be used.                | `false` |
 
 Example:
 
@@ -138,6 +157,17 @@ Example:
 services:
   kas:
     enabled: true
+    keyring:
+      - kid: e2
+        alg: ec:secp256r1
+      - kid: e1
+        alg: ec:secp256r1
+        legacy: true
+      - kid: r2f
+        alg: rsa:2048
+      - kid: r1
+        alg: rsa:2048
+        legacy: true
 ```
 
 ### Policy

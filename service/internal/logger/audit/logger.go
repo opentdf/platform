@@ -11,12 +11,9 @@ import (
 // associated with an integer value: DEBUG (-4), INFO (0), WARN (4), and ERROR (8).
 const (
 	// Currently setting AUDIT level to 10, a level above ERROR so it is always logged
-	LevelAudit = slog.Level(10)
+	LevelAudit    = slog.Level(10)
+	LevelAuditStr = "AUDIT"
 )
-
-var AuditLogLevelNames = map[slog.Leveler]string{
-	LevelAudit: "AUDIT",
-}
 
 type Logger struct {
 	logger *slog.Logger
@@ -76,6 +73,21 @@ func (a *Logger) policyCrudBase(ctx context.Context, isSuccess bool, eventParams
 	auditEventJSONBytes, err := json.Marshal(auditEvent)
 	if err != nil {
 		a.logger.ErrorContext(ctx, "error marshalling policy attribute audit event", "err", err)
+	}
+
+	a.logger.Log(ctx, LevelAudit, string(auditEventJSONBytes))
+}
+
+func (a *Logger) GetDecision(ctx context.Context, eventParams GetDecisionEventParams) {
+	auditEvent, err := CreateGetDecisionEvent(ctx, eventParams)
+	if err != nil {
+		a.logger.ErrorContext(ctx, "error creating get decision audit event", "err", err)
+		return
+	}
+
+	auditEventJSONBytes, err := json.Marshal(auditEvent)
+	if err != nil {
+		a.logger.ErrorContext(ctx, "error marshalling get decision audit event", "err", err)
 	}
 
 	a.logger.Log(ctx, LevelAudit, string(auditEventJSONBytes))

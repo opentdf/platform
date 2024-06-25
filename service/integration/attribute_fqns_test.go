@@ -262,7 +262,6 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 	}
 }
 
-// Test multiple get attributes by multiple fqns
 func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_AllValuesHaveProperFqns() {
 	namespace := "testing_multiple_fqns.properfqns"
 	attr := "test_attr"
@@ -347,6 +346,7 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_AllValuesHaveProperFqns
 	s.True(ok)
 	s.Equal(a.GetId(), val.GetAttribute().GetId())
 
+	// ensure fqns are properly found in response for each value
 	for fqn, attrAndVal := range attributeAndValues {
 		values := attrAndVal.GetAttribute().GetValues()
 		s.Equal(fqn, attrAndVal.GetValue().GetFqn())

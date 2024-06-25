@@ -78,8 +78,14 @@ type ContextData struct {
 // Gets relevant audit data from the context object.
 func GetAuditDataFromContext(ctx context.Context) ContextData {
 	// Extract the request ID from context
-	requestID, requestIDOk := ctx.Value(sdkAudit.RequestIDContextKey).(uuid.UUID)
-	if !requestIDOk {
+
+	requestIDString, ok := ctx.Value(sdkAudit.RequestIDContextKey).(string)
+	if !ok {
+		requestIDString = ""
+	}
+
+	requestID, err := uuid.Parse(requestIDString)
+	if err != nil {
 		requestID = uuid.Nil
 	}
 

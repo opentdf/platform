@@ -520,6 +520,7 @@ func (s *NamespacesSuite) Test_UnsafeDeleteNamespace_DoesNotExist_ShouldFail() {
 	s.NotNil(created)
 	got, _ := s.db.PolicyClient.GetNamespace(s.ctx, created.GetId())
 	s.NotNil(got)
+	s.NotEqual("", got.GetFqn())
 
 	ns, err = s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, got, "https://bad.fqn")
 	s.Require().Error(err)

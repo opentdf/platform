@@ -766,7 +766,11 @@ func (s *AttributesSuite) Test_UnsafeDeleteAttribute_WithBadFqnFails() {
 		NamespaceId: fixtureNamespaceID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	})
-	deleted, err := s.db.PolicyClient.UnsafeDeleteAttribute(s.ctx, created, "bad_fqn")
+	got, _ := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+	s.NotNil(got)
+	s.NotEqual("", got.GetFqn())
+
+	deleted, err := s.db.PolicyClient.UnsafeDeleteAttribute(s.ctx, got, "bad_fqn")
 	s.Require().Error(err)
 	s.Nil(deleted)
 	s.Require().ErrorIs(err, db.ErrNotFound)

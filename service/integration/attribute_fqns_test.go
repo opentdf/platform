@@ -262,6 +262,113 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 	}
 }
 
+// Test multiple get attributes by multiple fqns
+func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_AllValuesHaveProperFqns() {
+	namespace := "testing_multiple_fqns.properfqns"
+	attr := "test_attr"
+	value1 := "test_value"
+	value2 := "test_value_2"
+	value3 := "testing_values_3"
+	fqn1 := fqnBuilder(namespace, attr, value1)
+	fqn2 := fqnBuilder(namespace, attr, value2)
+	fqn3 := fqnBuilder(namespace, attr, value3)
+
+	// Create namespace
+	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: namespace,
+	})
+	s.Require().NoError(err)
+
+	// Create attribute
+	a, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: n.GetId(),
+		Name:        attr,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+	})
+	s.Require().NoError(err)
+
+	// Create attribute value1
+	v1, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: value1,
+	})
+	s.Require().NoError(err)
+
+	// Get attributes by fqns with a solo value
+	fqns := []string{fqn1}
+	attributeAndValues, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: fqns,
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	})
+	s.Require().NoError(err)
+
+	// Verify attribute1 is sole attribute
+	s.Len(attributeAndValues, 1)
+	val, ok := attributeAndValues[fqn1]
+	s.True(ok)
+	s.Equal(a.GetId(), val.GetAttribute().GetId())
+
+	s.Equal(v1.GetId(), val.GetAttribute().GetValues()[0].GetId())
+	s.Equal(v1.GetValue(), val.GetValue().GetValue())
+
+	s.Equal(v1.GetValue(), val.GetAttribute().GetValues()[0].GetValue())
+	s.Equal(v1.GetId(), val.GetValue().GetId())
+
+	// Create attribute value2
+	v2, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: value2,
+	})
+	s.Require().NoError(err)
+
+	// Create attribute value3
+	v3, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: value3,
+	})
+	s.Require().NoError(err)
+	s.NotNil(v3)
+
+	// Get attributes by fqns with all three values
+	fqns = []string{fqn1, fqn2, fqn3}
+	attributeAndValues, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: fqns,
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	})
+	s.Require().NoError(err)
+	s.Len(attributeAndValues, 3)
+
+	val, ok = attributeAndValues[fqn2]
+	s.True(ok)
+	s.Equal(a.GetId(), val.GetAttribute().GetId())
+
+	val, ok = attributeAndValues[fqn3]
+	s.True(ok)
+	s.Equal(a.GetId(), val.GetAttribute().GetId())
+
+	for fqn, attrAndVal := range attributeAndValues {
+		values := attrAndVal.GetAttribute().GetValues()
+		s.Equal(fqn, attrAndVal.GetValue().GetFqn())
+		for i, v := range values {
+			s.Equal(fqns[i], v.GetFqn())
+			switch {
+			case v.GetId() == v1.GetId():
+				s.Equal(v1.GetId(), v.GetId())
+				s.Equal(v1.GetValue(), v.GetValue())
+			case v.GetId() == v2.GetId():
+				s.Equal(v2.GetId(), v.GetId())
+				s.Equal(v2.GetValue(), v.GetValue())
+			case v.GetId() == v3.GetId():
+				s.Equal(v3.GetId(), v.GetId())
+				s.Equal(v3.GetValue(), v.GetValue())
+			default:
+				s.Fail("unexpected value", v)
+			}
+		}
+	}
+}
+
 func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithDeactivatedNamespace() {
 	// create a new namespace
 	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{

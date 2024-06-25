@@ -15,6 +15,7 @@ require (
 	github.com/wiremock/go-wiremock v1.9.0
 	google.golang.org/grpc v1.62.1
 	google.golang.org/protobuf v1.33.0
+	github.com/gowebpki/jcs v1.0.1
 )
 
 require (

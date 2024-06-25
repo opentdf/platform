@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -75,33 +76,33 @@ wVyElqp317Ksz+GtTIc+DE6oryxK3tZd4hrj9fXT4KiJvQ4pcRjpePgH7B8=
 
 //nolint:gochecknoglobals // Mock value
 var mockKasPrivateKey = `-----BEGIN PRIVATE KEY-----
-	MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDOpiotrvV2i5h6
-	clHMzDGgh3h/kMa0LoGx2OkDPd8jogycUh7pgE5GNiN2lpSmFkjxwYMXnyrwr9Ex
-	yczBWJ7sRGDCDaQg5fjVUIloZ8FJVbn+sEcfQ9iX6vmI9/S++oGK79QM3V8M8cp4
-	1r/T1YVmuzUHE1say/TLHGhjtGkxHDF8qFy6Z2rYFTCVJQHNqGmwNVGd0qG7gim8
-	6Hawu/CMYj4jG9oITlj8rJtQOaJ6ZqemQVoNmb3j1LkyeUKzRIt+86aoBiz+T3Tf
-	OEvXF6xgBj3XoiOhPYK+abFPYcrArvb6oubT8NjjQoj3j0sXWUnIIMg+e4f+XNVU
-	54ZzDaLZAgMBAAECggEBALb0yK0PlMUyzHnEUwXV1y5AIoAWhsYp0qvJ1msHUVKz
-	+yQ/VJz4+tQQxI8OvGbbnhNkd5LnWdYkYzsIZl7b/kBCPcQw3Zo+4XLCzhUAn1E1
-	M+n42c8le1LtN6Z7mVWoZh7DPONy7t+ABvm7b7S1+1i78DPmgCeWYZGeAhIcPXG6
-	5AxWIV3jigxksE6kYY9Y7DmtsZgMRrdV7SU8VtgPtT7tua8z5/U3Av0WINyKBSoM
-	0yDHsAg57KnM8znx2JWLtHd0Mk5bBuu2DLbtyKNrVUAUuMPzrLGBh9S9QRd934KU
-	uFAi1TEfgEachnGgSHJpzVzr2ur1tifABnQ7GNXObe0CgYEA6KowK0subdDY+uGW
-	ciP2XDAMerbJJeL0/UIGPb/LUmskniio2493UBGgY2FsRyvbzJ+/UAOjIPyIxhj7
-	78ZyVG8BmIzKan1RRVh//O+5yvks/eTOYjWeQ1Lcgqs3q4YAO13CEBZgKWKTUomg
-	mskFJq04tndeSIyhDaW+BuWaXA8CgYEA42ABz3pql+DH7oL5C4KYBymK6wFBBOqk
-	dVk+ftyJQ6PzuZKpfsu4aPIjKm71lkTgK6O9o08s3SckAdu6vLukq2TZFF+a+9OI
-	lu5ww7GvfdMTgLAaFchD4bPlOInh1KVjBc1MwGXpl0ROde5pi8+WUrv9QJuoQfB/
-	4rhYdbJLSpcCgYA41mqSCPm8pgp7r2RbWeGzP6Gs0L5u3PTQcbKonxQCfF4jrPcj
-	O/b/vm6aGJClClfVsyi/WUQeqNKY4j2Zo7cGXV/cbnh8b0TNVgNePQn8Rcbx91Vb
-	tJGHDNUFruIYqtGfrxXbbDvtoEExJqHvbjAt9J8oJB0KSCCH/vdfI/QDjQKBgQCD
-	xLPH5Y24js/O7aAeh4RLQkv7fTKNAt5kE2AgbPYveOhZ9yC7Fpy8VPcENGGmwCuZ
-	nr7b0ZqSX4iCezBxB92aZktXf0B2CFT0AyLehi7JoHWA8o1rai/MsVB5v45ciawl
-	RKDiLy18OF2wAoawO5FGSSOvOYX9EL9MSMEbFESF6QKBgCVlZ9pPC+55rGT6AcEL
-	tUpDs+/wZvcmfsFd8xC5mMUN0DatAVzVAUI95+tQaWU3Uj+bqHq0lC6Wy2VceG0D
-	D+7EicjdGFN/2WVPXiYX1fblkxasZY+wChYBrPLjA9g0qOzzmXbRBph5QxDuQjJ6
-	qcddVKB624a93ZBssn7OivnR
-	-----END PRIVATE KEY-----`
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDOpiotrvV2i5h6
+clHMzDGgh3h/kMa0LoGx2OkDPd8jogycUh7pgE5GNiN2lpSmFkjxwYMXnyrwr9Ex
+yczBWJ7sRGDCDaQg5fjVUIloZ8FJVbn+sEcfQ9iX6vmI9/S++oGK79QM3V8M8cp4
+1r/T1YVmuzUHE1say/TLHGhjtGkxHDF8qFy6Z2rYFTCVJQHNqGmwNVGd0qG7gim8
+6Hawu/CMYj4jG9oITlj8rJtQOaJ6ZqemQVoNmb3j1LkyeUKzRIt+86aoBiz+T3Tf
+OEvXF6xgBj3XoiOhPYK+abFPYcrArvb6oubT8NjjQoj3j0sXWUnIIMg+e4f+XNVU
+54ZzDaLZAgMBAAECggEBALb0yK0PlMUyzHnEUwXV1y5AIoAWhsYp0qvJ1msHUVKz
++yQ/VJz4+tQQxI8OvGbbnhNkd5LnWdYkYzsIZl7b/kBCPcQw3Zo+4XLCzhUAn1E1
+M+n42c8le1LtN6Z7mVWoZh7DPONy7t+ABvm7b7S1+1i78DPmgCeWYZGeAhIcPXG6
+5AxWIV3jigxksE6kYY9Y7DmtsZgMRrdV7SU8VtgPtT7tua8z5/U3Av0WINyKBSoM
+0yDHsAg57KnM8znx2JWLtHd0Mk5bBuu2DLbtyKNrVUAUuMPzrLGBh9S9QRd934KU
+uFAi1TEfgEachnGgSHJpzVzr2ur1tifABnQ7GNXObe0CgYEA6KowK0subdDY+uGW
+ciP2XDAMerbJJeL0/UIGPb/LUmskniio2493UBGgY2FsRyvbzJ+/UAOjIPyIxhj7
+78ZyVG8BmIzKan1RRVh//O+5yvks/eTOYjWeQ1Lcgqs3q4YAO13CEBZgKWKTUomg
+mskFJq04tndeSIyhDaW+BuWaXA8CgYEA42ABz3pql+DH7oL5C4KYBymK6wFBBOqk
+dVk+ftyJQ6PzuZKpfsu4aPIjKm71lkTgK6O9o08s3SckAdu6vLukq2TZFF+a+9OI
+lu5ww7GvfdMTgLAaFchD4bPlOInh1KVjBc1MwGXpl0ROde5pi8+WUrv9QJuoQfB/
+4rhYdbJLSpcCgYA41mqSCPm8pgp7r2RbWeGzP6Gs0L5u3PTQcbKonxQCfF4jrPcj
+O/b/vm6aGJClClfVsyi/WUQeqNKY4j2Zo7cGXV/cbnh8b0TNVgNePQn8Rcbx91Vb
+tJGHDNUFruIYqtGfrxXbbDvtoEExJqHvbjAt9J8oJB0KSCCH/vdfI/QDjQKBgQCD
+xLPH5Y24js/O7aAeh4RLQkv7fTKNAt5kE2AgbPYveOhZ9yC7Fpy8VPcENGGmwCuZ
+nr7b0ZqSX4iCezBxB92aZktXf0B2CFT0AyLehi7JoHWA8o1rai/MsVB5v45ciawl
+RKDiLy18OF2wAoawO5FGSSOvOYX9EL9MSMEbFESF6QKBgCVlZ9pPC+55rGT6AcEL
+tUpDs+/wZvcmfsFd8xC5mMUN0DatAVzVAUI95+tQaWU3Uj+bqHq0lC6Wy2VceG0D
+D+7EicjdGFN/2WVPXiYX1fblkxasZY+wChYBrPLjA9g0qOzzmXbRBph5QxDuQjJ6
+qcddVKB624a93ZBssn7OivnR
+-----END PRIVATE KEY-----`
 
 var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing tdf
 	{
@@ -247,11 +248,11 @@ type partialReadTdfTest struct {
 	readAtTests []TestReadAt
 }
 
-const payload = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const testPayload = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 var partialTDFTestHarnesses = []partialReadTdfTest{ //nolint:gochecknoglobals // requires for testing tdf
 	{
-		payload: payload, // len: 62
+		payload: testPayload, // len: 62
 		kasInfoList: []KASInfo{
 			{
 				URL:       "http://localhost:65432/api/kas",
@@ -279,13 +280,13 @@ var partialTDFTestHarnesses = []partialReadTdfTest{ //nolint:gochecknoglobals //
 				segmentSize:     2,
 				dataOffset:      0,
 				dataLength:      62,
-				expectedPayload: payload,
+				expectedPayload: testPayload,
 			},
 			{
-				segmentSize:     int64(len(payload)),
+				segmentSize:     int64(len(testPayload)),
 				dataOffset:      0,
-				dataLength:      len(payload),
-				expectedPayload: payload,
+				dataLength:      len(testPayload),
+				expectedPayload: testPayload,
 			},
 			{
 				segmentSize:     1,
@@ -338,6 +339,33 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		"https://example.com/attr/Classification/value/X",
 	}
 
+	assertions := []Assertion{
+		{
+			Id:           "assertion1",
+			Type:         handlingAssertion.String(),
+			Scope:        trustedDataObj.String(),
+			AppliedState: unencrypted.String(),
+			Statement: Statement{
+				Format: Base64BinaryStatement.String(),
+				Value:  "ICAgIDxlZGoOkVkaD4=",
+			},
+		},
+		{
+			Id:           "assertion2",
+			Type:         baseAssertion.String(),
+			Scope:        trustedDataObj.String(),
+			AppliedState: unencrypted.String(),
+			Statement: Statement{
+				Format: Base64BinaryStatement.String(),
+				Value:  "ICAgIDxlZGoOkVkaD4=",
+			},
+			Binding: Binding{
+				Method:    JWT.String(),
+				Signature: "ICAgIDxlZGoOkVkaD4=",
+			},
+		},
+	}
+
 	expectedTdfSize := int64(2069)
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
@@ -363,7 +391,8 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		tdfObj, err := s.sdk.CreateTDF(fileWriter, bufReader,
 			WithKasInformation(kasURLs...),
 			WithMetaData(string(metaData)),
-			WithDataAttributes(attributes...))
+			WithDataAttributes(attributes...),
+			WithAssertions(assertions...))
 
 		s.Require().NoError(err)
 		s.LessOrEqual(math.Abs(float64(tdfObj.size-expectedTdfSize)), 1.01*float64(expectedTdfSize))
@@ -419,6 +448,99 @@ func (s *TDFSuite) Test_SimpleTDF() {
 	}
 
 	_ = os.Remove(tdfFilename)
+}
+
+func TestSimpleUnencryptedTDF(t *testing.T) {
+	serverURL, closer, sdk := runKas()
+	defer closer()
+
+	assertions := []Assertion{
+		{
+			Id:           "assertion1",
+			Type:         handlingAssertion.String(),
+			Scope:        trustedDataObj.String(),
+			AppliedState: unencrypted.String(),
+			Statement: Statement{
+				Format: Base64BinaryStatement.String(),
+				Value:  "ICAgIDxlZGoOkVkaD4=",
+			},
+		},
+	}
+
+	expectedTdfSize := int64(2069)
+	tdfFilename := "secure-text.tdf"
+	plainText := "Virtru"
+	{
+		kasURLs := []KASInfo{
+			{
+				URL:       serverURL,
+				PublicKey: "",
+			},
+		}
+
+		inBuf := bytes.NewBufferString(plainText)
+		bufReader := bytes.NewReader(inBuf.Bytes())
+
+		fileWriter, err := os.Create(tdfFilename)
+		if err != nil {
+			t.Fatalf("os.CreateTDF failed: %v", err)
+		}
+		defer func(fileWriter *os.File) {
+			err := fileWriter.Close()
+			if err != nil {
+				t.Fatalf("Fail to close the file: %v", err)
+			}
+		}(fileWriter)
+
+		tdfObj, err := sdk.CreateTDF(fileWriter, bufReader,
+			WithKasInformation(kasURLs...),
+			WithAssertions(assertions...),
+			WithAssertionSigningKey(mockKasPrivateKey),
+			WithAssertionVerifyKey(mockKasPublicKey),
+			WithUnencryptedTDF())
+		if err != nil {
+			t.Fatalf("tdf.CreateTDF failed: %v", err)
+		}
+
+		if math.Abs(float64(tdfObj.size-expectedTdfSize)) > 1.01*float64(expectedTdfSize) {
+			t.Errorf("tdf size test failed expected %v, got %v", tdfObj.size, expectedTdfSize)
+		}
+	}
+
+	// test reader
+	{
+		readSeeker, err := os.Open(tdfFilename)
+		if err != nil {
+			t.Fatalf("Fail to open archive file:%s %v", tdfFilename, err)
+		}
+
+		defer func(readSeeker *os.File) {
+			err := readSeeker.Close()
+			if err != nil {
+				t.Fatalf("Fail to close archive file:%v", err)
+			}
+		}(readSeeker)
+
+		buf := make([]byte, 8)
+
+		r, err := sdk.LoadTDF(readSeeker)
+		if err != nil {
+			t.Fatalf("Fail to create reader:%v", err)
+		}
+
+		offset := 2
+		n, err := r.ReadAt(buf, int64(offset))
+		if err != nil && errors.Is(err, io.EOF) != true {
+			t.Fatalf("Fail to read from reader:%v", err)
+		}
+
+		expectedPlainTxt := plainText[offset : offset+n]
+		if string(buf[:n]) != expectedPlainTxt {
+			t.Errorf("decrypt test failed expected %v, got %v", expectedPlainTxt, string(buf))
+		}
+	}
+
+	//_ = os.Remove(tdfFilename)
 }
 
 func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing tdf

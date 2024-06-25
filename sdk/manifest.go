@@ -52,9 +52,29 @@ type EncryptionInformation struct {
 	IntegrityInformation `json:"integrityInformation"`
 }
 
+type Statement struct {
+	Format string `json:"format,omitempty"`
+	Value  string `json:"value,omitempty"`
+}
+
+type Binding struct {
+	Method    string `json:"method,omitempty"`
+	Signature string `json:"signature,omitempty"`
+}
+
+type Assertion struct {
+	Id           string    `json:"id"`
+	Type         string    `json:"type"`
+	Scope        string    `json:"scope"`
+	AppliedState string    `json:"appliesToState,omitempty"`
+	Statement    Statement `json:"statement"`
+	Binding      Binding   `json:"binding"`
+}
+
 type Manifest struct {
 	EncryptionInformation `json:"encryptionInformation"`
 	Payload               `json:"payload"`
+	Assertions            []Assertion `json:"assertions"`
 }
 
 type attributeObject struct {

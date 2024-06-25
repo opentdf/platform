@@ -32,6 +32,7 @@ type AttributeValuesSuite struct {
 func (s *AttributeValuesSuite) SetupSuite() {
 	slog.Info("setting up db.AttributeValues test suite")
 	s.ctx = context.Background()
+	fixtureNamespaceID = s.f.GetNamespaceKey("example.com").ID
 	fixtureKeyAccessServerID = s.f.GetKasRegistryKey("key_access_server_1").ID
 	c := *Config
 	c.DB.Schema = "test_opentdf_attribute_values"
@@ -373,18 +374,40 @@ func (s *AttributeValuesSuite) Test_UnsafeUpdateAttributeValue() {
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal("new_value", got.GetValue())
 
-	// TODO: should we actually just not provide the not found fqn list and only error out if none were found rather than erroring out totally if a sole fqn wasn't found?
 	// verify can get the new by fqn but not the original
-	// original := "https://example.net/attr/attr1/value/created_value"
-	// retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
-	// 	Fqns: []string{original, got.GetFqn()},
-	// 	WithValue: &policy.AttributeValueSelector{
-	// 		WithSubjectMaps: true,
-	// 	},
-	// })
-	// s.Require().NoError(err)
-	// s.NotNil(retrieved)
-	// s.Equal(1, len(retrieved))
+	original := "https://example.net/attr/attr1/value/created_value"
+	retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{original},
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	})
+	s.Require().Error(err)
+	s.ErrorIs(err, db.ErrNotFound)
+	s.Nil(retrieved)
+
+	updated := "https://example.net/attr/attr1/value/new_value"
+	retrieved, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{updated},
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(retrieved)
+	s.Len(retrieved, 1)
+	s.Equal(updated, retrieved[updated].GetValue().GetFqn())
+
+	// get its parent attribute to verify the value was updated
+	attribute, err := s.db.PolicyClient.GetAttribute(s.ctx, attrDef.ID)
+	s.Require().NoError(err)
+	s.NotNil(attribute)
+	for _, v := range attribute.GetValues() {
+		if v.GetId() == got.GetId() {
+			s.Equal("new_value", v.GetValue())
+		}
+		s.NotEqual("created_value", v.GetValue())
+	}
 }
 
 func (s *AttributeValuesSuite) Test_UnsafeUpdateAttributeValue_WithInvalidId_Fails() {
@@ -427,11 +450,12 @@ func (s *AttributeValuesSuite) Test_UnsafeUpdateAttributeValue_CasingNormalized(
 }
 
 func (s *AttributeValuesSuite) Test_UnsafeDeleteAttributeValue() {
+	attrID := s.f.GetAttributeKey("example.net/attr/attr1").ID
 	// create a value
 	value := &attributes.CreateAttributeValueRequest{
-		Value: "created value testing delete",
+		Value: "created_delete",
 	}
-	created, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, s.f.GetAttributeKey("example.net/attr/attr1").ID, value)
+	created, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrID, value)
 	s.Require().NoError(err)
 	s.NotNil(created)
 	got, _ := s.db.PolicyClient.GetAttributeValue(s.ctx, created.GetId())
@@ -450,6 +474,20 @@ func (s *AttributeValuesSuite) Test_UnsafeDeleteAttributeValue() {
 	got, err = s.db.PolicyClient.GetAttributeValue(s.ctx, created.GetId())
 	s.Require().Error(err)
 	s.Nil(got)
+
+	// verify it's not in the list of parent attribute's values
+	attribute, err := s.db.PolicyClient.GetAttribute(s.ctx, attrID)
+	s.Require().NoError(err)
+	s.NotNil(attribute)
+	for _, v := range attribute.GetValues() {
+		s.NotEqual(created.GetId(), v.GetId())
+	}
+
+	// verify it can be recreated without conflict
+	newlyCreated, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrID, value)
+	s.Require().NoError(err)
+	s.NotNil(newlyCreated)
+	s.NotEqual(newlyCreated.GetId(), created.GetId())
 }
 
 func (s *AttributeValuesSuite) Test_UnsafeDeleteAttribute_WrongFqn_Fails() {
@@ -643,6 +681,93 @@ func (s *AttributeValuesSuite) Test_DeactivateAttributeValue_Get() {
 	// value was deactivated
 	gotVal, err := s.db.PolicyClient.GetAttributeValue(s.ctx, deactivatedAttrValueID)
 	s.Require().NoError(err)
+	s.NotNil(gotVal)
+	s.False(gotVal.GetActive().GetValue())
+}
+
+func (s *AttributeValuesSuite) Test_UnsafeReactivateAttributeValue() {
+	// create a value
+	attrDef := s.f.GetAttributeKey("example.com/attr/attr1")
+	created, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.ID, &attributes.CreateAttributeValueRequest{
+		Value: "testing_reactivation",
+	})
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	// deactivate the value
+	deactivated, err := s.db.PolicyClient.DeactivateAttributeValue(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(deactivated)
+
+	got, _ := s.db.PolicyClient.GetAttributeValue(s.ctx, created.GetId())
+	s.NotNil(got)
+	s.False(got.GetActive().GetValue())
+
+	// reactivate the value
+	reactivated, err := s.db.PolicyClient.UnsafeReactivateAttributeValue(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(reactivated)
+
+	// get it again to verify it was reactivated
+	got, err = s.db.PolicyClient.GetAttributeValue(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.True(got.GetActive().GetValue())
+}
+
+func (s *AttributeValuesSuite) Test_UnsafeReactivateAttributeValue_WithInvalidIdFails() {
+	reactivated, err := s.db.PolicyClient.UnsafeReactivateAttributeValue(s.ctx, absentAttributeValueUUID)
+	s.Require().Error(err)
+	s.Nil(reactivated)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *AttributeValuesSuite) Test_UnsafeReactivateAttributeValue_DoesNotReactivateParentsOrSiblings() {
+	// create an attribute
+	attr := &attributes.CreateAttributeRequest{
+		Name:        "test__create_attribute_to_deactivate",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values:      []string{"example_value_1", "example_value_2"},
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
+
+	got, _ := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.NotNil(got)
+	s.True(got.GetActive().GetValue())
+	values := got.GetValues()
+
+	// deactivate the attribute
+	deactivated, err := s.db.PolicyClient.DeactivateAttribute(s.ctx, createdAttr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(deactivated)
+
+	// ensure values are deactivated
+	for _, v := range values {
+		gotVal, _ := s.db.PolicyClient.GetAttributeValue(s.ctx, v.GetId())
+		s.NotNil(gotVal)
+		s.False(gotVal.GetActive().GetValue())
+	}
+
+	// reactivate the first value
+	reactivated, err := s.db.PolicyClient.UnsafeReactivateAttributeValue(s.ctx, values[0].GetId())
+	s.Require().NoError(err)
+	s.NotNil(reactivated)
+
+	// ensure the value is now active
+	gotVal, _ := s.db.PolicyClient.GetAttributeValue(s.ctx, values[0].GetId())
+	s.NotNil(gotVal)
+	s.True(gotVal.GetActive().GetValue())
+
+	// ensure the attribute is still deactivated
+	gotAttr, _ := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.NotNil(gotAttr)
+	s.False(gotAttr.GetActive().GetValue())
+
+	// ensure the second value is still deactivated
+	gotVal, _ = s.db.PolicyClient.GetAttributeValue(s.ctx, values[1].GetId())
 	s.NotNil(gotVal)
 	s.False(gotVal.GetActive().GetValue())
 }

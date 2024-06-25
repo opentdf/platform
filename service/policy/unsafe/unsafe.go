@@ -164,7 +164,7 @@ func (s *UnsafeService) UpdateAttributeValue(ctx context.Context, req *unsafe.Up
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
 	}
 
-	item, err := s.dbClient.UnsafeUpdateAttributeValue(ctx, req.GetId(), req)
+	item, err := s.dbClient.UnsafeUpdateAttributeValue(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("attribute_value", req.String()))
 	}
@@ -197,7 +197,7 @@ func (s *UnsafeService) DeleteAttributeValue(ctx context.Context, req *unsafe.De
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
 	}
 
-	deleted, err := s.dbClient.UnsafeDeleteAttributeValue(ctx, existing, req.GetId())
+	deleted, err := s.dbClient.UnsafeDeleteAttributeValue(ctx, existing, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
 	}

@@ -8,29 +8,23 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"math"
-	"math/rand"
 	"net"
-	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/docker/go-connections/nat"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
-	"github.com/testcontainers/testcontainers-go/wait"
-	"github.com/wiremock/go-wiremock"
+	wellknownpb "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	tc "github.com/testcontainers/testcontainers-go"
 )
 
 const (
@@ -49,14 +43,14 @@ const (
 
 type tdfTest struct {
 	fileSize    int64
-	tdfFileSize int64
+	tdfFileSize float64
 	checksum    string
 	kasInfoList []KASInfo
 	mimeType    string
 }
 
-//nolint:gochecknoglobals // Mock Value
-var mockKasPublicKey = `-----BEGIN CERTIFICATE-----
+const (
+	mockRSAPublicKey1 = `-----BEGIN CERTIFICATE-----
 MIICmDCCAYACCQC3BCaSANRhYzANBgkqhkiG9w0BAQsFADAOMQwwCgYDVQQDDANr
 YXMwHhcNMjEwOTE1MTQxMTQ4WhcNMjIwOTE1MTQxMTQ4WjAOMQwwCgYDVQQDDANr
 YXMwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDOpiotrvV2i5h6clHM
@@ -73,8 +67,7 @@ I099IoRfC5djHUYYLMU/VkOIHuPC3sb7J65pSN26eR8bTMVNagk187V/xNwUuvkf
 wVyElqp317Ksz+GtTIc+DE6oryxK3tZd4hrj9fXT4KiJvQ4pcRjpePgH7B8=
 -----END CERTIFICATE-----`
 
-//nolint:gochecknoglobals // Mock value
-var mockKasPrivateKey = `-----BEGIN PRIVATE KEY-----
+	mockRSAPrivateKey1 = `-----BEGIN PRIVATE KEY-----
 	MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDOpiotrvV2i5h6
 	clHMzDGgh3h/kMa0LoGx2OkDPd8jogycUh7pgE5GNiN2lpSmFkjxwYMXnyrwr9Ex
 	yczBWJ7sRGDCDaQg5fjVUIloZ8FJVbn+sEcfQ9iX6vmI9/S++oGK79QM3V8M8cp4
@@ -102,136 +95,35 @@ var mockKasPrivateKey = `-----BEGIN PRIVATE KEY-----
 	D+7EicjdGFN/2WVPXiYX1fblkxasZY+wChYBrPLjA9g0qOzzmXbRBph5QxDuQjJ6
 	qcddVKB624a93ZBssn7OivnR
 	-----END PRIVATE KEY-----`
+)
 
 var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing tdf
 	{
 		fileSize:    5,
 		tdfFileSize: 1557,
 		checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-		kasInfoList: []KASInfo{
-			{
-				URL:       "http://localhost:65432/api/kas",
-				PublicKey: "",
-			},
-		},
 	},
 	{
 		fileSize:    5,
 		tdfFileSize: 1557,
 		checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-		kasInfoList: []KASInfo{
-			{
-				URL:       "http://localhost:65432/api/kas",
-				PublicKey: "",
-			},
-		},
-		mimeType: "text/plain",
+		mimeType:    "text/plain",
 	},
 	{
 		fileSize:    oneKB,
 		tdfFileSize: 2581,
 		checksum:    "2edc986847e209b4016e141a6dc8716d3207350f416969382d431539bf292e4a",
-		kasInfoList: []KASInfo{
-			{
-				URL:       "http://localhost:65432/api/kas",
-				PublicKey: "",
-			},
-		},
 	},
 	{
 		fileSize:    hundredMB,
 		tdfFileSize: 104866410,
 		checksum:    "cee41e98d0a6ad65cc0ec77a2ba50bf26d64dc9007f7f1c7d7df68b8b71291a6",
-		kasInfoList: []KASInfo{
-			{
-				URL:       "http://localhost:65432/api/kas",
-				PublicKey: mockKasPublicKey,
-				KID:       "a",
-			},
-			{
-				URL:       "http://localhost:65432/api/kas",
-				PublicKey: mockKasPublicKey,
-				KID:       "b",
-			},
-		},
 	},
 	{
 		fileSize:    5 * hundredMB,
 		tdfFileSize: 524324210,
 		checksum:    "d2fb707e70a804cf2ea770c9229295689831b4c88879c62bdb966e77e7336f18",
-		kasInfoList: []KASInfo{
-			{
-				URL:       "http://localhost:65432/api/kas",
-				PublicKey: mockKasPublicKey,
-				KID:       "a",
-			},
-			{
-				URL:       "http://localhost:65432/api/kas",
-				PublicKey: mockKasPublicKey,
-				KID:       "b",
-			},
-		},
 	},
-	// {
-	//	fileSize:    2 * oneGB,
-	//	tdfFileSize: 2097291006,
-	//	checksum:    "57bb3422770a98f193baa6f0fd67dd9743dc07c868abd95ad0606dff0bee32b4",
-	//	kasInfoList: []KASInfo{
-	//		{
-	//			url:       "http://localhost:65432/api/kas",
-	//			publicKey: mockKasPublicKey,
-	//		},
-	//		{
-	//			url:       "http://localhost:65432/api/kas",
-	//			publicKey: mockKasPublicKey,
-	//		},
-	//	},
-	// },
-	// {
-	//	fileSize:    4 * oneGB,
-	//	tdfFileSize: 4194580006,
-	//	checksum:    "a9c267f8600c18263250a10b0ab7995528cf80fc85275ab5a36ada3e350519fd",
-	//	kasInfoList: []KASInfo{
-	//		{
-	//			url:       "http://localhost:65432/api/kas",
-	//			publicKey: mockKasPublicKey,
-	//		},
-	//		{
-	//			url:       "http://localhost:65432/api/kas",
-	//			publicKey: mockKasPublicKey,
-	//		},
-	//	},
-	// },
-	// {
-	//	fileSize:    6 * oneGB,
-	//	tdfFileSize: 6291869194,
-	//	checksum:    "1a48fc773889be3361e9ca826fad32c191b10309f03996e1d233e02bc4c4b979",
-	//	kasInfoList: []KASInfo{
-	//		{
-	//			url:       "http://localhost:65432/api/kas",
-	//			publicKey: mockKasPublicKey,
-	//		},
-	//		{
-	//			url:       "http://localhost:65432/api/kas",
-	//			publicKey: mockKasPublicKey,
-	//		},
-	//	},
-	// },
-	// {
-	//	fileSize:    20 * oneGB,
-	//	tdfFileSize: 20972892194,
-	//	checksum:    "bd218f6cc4dc038d5707a276b0fdd5d1b3725cebe4e2e7b475cf2d09d551af08",
-	//	kasInfoList: []KASInfo{
-	//		{
-	//			url:       "http://localhost:65432/api/kas",
-	//			publicKey: mockKasPublicKey,
-	//		},
-	//		{
-	//			url:       "http://localhost:65432/api/kas",
-	//			publicKey: mockKasPublicKey,
-	//		},
-	//	},
-	// },
 }
 
 type TestReadAt struct {
@@ -255,11 +147,11 @@ var partialTDFTestHarnesses = []partialReadTdfTest{ //nolint:gochecknoglobals //
 		kasInfoList: []KASInfo{
 			{
 				URL:       "http://localhost:65432/api/kas",
-				PublicKey: mockKasPublicKey,
+				PublicKey: mockRSAPublicKey1,
 			},
 			{
 				URL:       "http://localhost:65432/api/kas",
-				PublicKey: mockKasPublicKey,
+				PublicKey: mockRSAPublicKey1,
 			},
 		},
 		readAtTests: []TestReadAt{
@@ -311,15 +203,12 @@ type TDFSuite struct {
 	suite.Suite
 	tcTerminate func()
 	sdk         *SDK
-	serverURL   string
+	kas         FakeKas
 }
 
 func (s *TDFSuite) SetupSuite() {
 	// Set up the test environment
-	serverURL, terminate, sdk := runKas()
-	s.tcTerminate = terminate
-	s.sdk = sdk
-	s.serverURL = serverURL
+	s.startBackend()
 }
 
 func (s *TDFSuite) TearDownSuite() {
@@ -344,7 +233,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 	{
 		kasURLs := []KASInfo{
 			{
-				URL:       s.serverURL,
+				URL:       "http://localhost:65432/",
 				PublicKey: "",
 			},
 		}
@@ -366,7 +255,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 			WithDataAttributes(attributes...))
 
 		s.Require().NoError(err)
-		s.LessOrEqual(math.Abs(float64(tdfObj.size-expectedTdfSize)), 1.01*float64(expectedTdfSize))
+		s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 32.0)
 	}
 
 	// test meta data
@@ -424,8 +313,9 @@ func (s *TDFSuite) Test_SimpleTDF() {
 func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing tdf
 	for _, test := range partialTDFTestHarnesses { // create .txt file
 		kasInfoList := test.kasInfoList
+
+		// reset public keys so we have to get them from the service
 		for index := range kasInfoList {
-			kasInfoList[index].URL = s.serverURL
 			kasInfoList[index].PublicKey = ""
 		}
 
@@ -484,11 +374,10 @@ func (s *TDFSuite) Test_TDF() {
 		tdfFileName := plaintTextFileName + ".tdf"
 		decryptedTdfFileName := tdfFileName + ".txt"
 
-		kasInfoList := test.kasInfoList
-		for index := range kasInfoList {
-			kasInfoList[index].URL = s.serverURL
-			kasInfoList[index].PublicKey = ""
+		kasInfoList := []KASInfo{
+			s.kas.KASInfo,
 		}
+		kasInfoList[0].PublicKey = ""
 
 		// test encrypt
 		testEncrypt(s.T(), s.sdk, kasInfoList, plaintTextFileName, tdfFileName, test)
@@ -537,7 +426,7 @@ func testEncrypt(t *testing.T, sdk *SDK, kasInfoList []KASInfo, plainTextFilenam
 	tdfObj, err := sdk.CreateTDF(fileWriter, readSeeker, options...)
 	require.NoError(t, err)
 
-	assert.LessOrEqual(t, math.Abs(float64(tdfObj.size-test.tdfFileSize)), 1.01*float64(test.tdfFileSize))
+	assert.InDelta(t, float64(test.tdfFileSize), float64(tdfObj.size), .04*float64(test.tdfFileSize))
 }
 
 func testDecryptWithReader(t *testing.T, sdk *SDK, tdfFile, decryptedTdfFileName string, test tdfTest) {
@@ -613,121 +502,75 @@ func createFileName(buf []byte, filename string, size int64) {
 	}
 }
 
-func runKas() (string, func(), *SDK) {
-	randPort := (rand.Intn(30000-20000) + 20000)
-	listenPort, _ := nat.NewPort("tcp", strconv.Itoa(randPort))
-	req := tc.ContainerRequest{
-		FromDockerfile: tc.FromDockerfile{
-			Repo:       "platform/mocks",
-			KeepImage:  false,
-			Context:    "../service/integration/wiremock",
-			Dockerfile: "Dockerfile",
-		},
-		ExposedPorts: []string{fmt.Sprintf("%s/tcp", listenPort.Port()), "8080/tcp"},
-		Cmd:          []string{fmt.Sprintf("--port=%s", listenPort.Port()), "--disable-banner", "--global-response-templating"},
-		WaitingFor:   wait.ForLog("extensions:"),
-		Files: []tc.ContainerFile{
-			{
-				HostFilePath:      "../service/integration/wiremock/mappings",
-				ContainerFilePath: "/home/wiremock/mappings",
-				FileMode:          0o444,
-			},
-			{
-				HostFilePath:      "../service/integration/wiremock/messages",
-				ContainerFilePath: "/home/wiremock/__files/messages",
-				FileMode:          0o444,
-			},
-			{
-				HostFilePath:      "../service/integration/wiremock/grpc",
-				ContainerFilePath: "/home/wiremock/grpc",
-				FileMode:          0o444,
-			},
-		},
-	}
-
-	var providerType tc.ProviderType
-
-	if os.Getenv("TESTCONTAINERS_PODMAN") == "true" {
-		providerType = tc.ProviderPodman
-	} else {
-		providerType = tc.ProviderDocker
-	}
-
-	wiremockContainer, err := tc.GenericContainer(context.Background(), tc.GenericContainerRequest{
-		ProviderType:     providerType,
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	port, err := wiremockContainer.MappedPort(context.Background(), listenPort)
-	if err != nil {
-		slog.Error("could not get wiremock mapped port", slog.String("error", err.Error()))
-		panic(err)
-	}
-
-	wiremockClient := wiremock.NewClient(fmt.Sprintf("http://localhost:%s", port.Port()))
-
+func (s *TDFSuite) startBackend() {
 	// Create a stub for wellknown
-	wellknownCfg := `{
-			"configuration": {
-				"health": {
-					"endpoint": "/healthz"
-				},
-				"platform_issuer": "http://localhost:%s/auth"
-			}
-		}`
-	err = wiremockClient.StubFor(wiremock.Post(wiremock.URLPathEqualTo("/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration")).
-		WillReturnResponse(wiremock.NewResponse().WithBody(fmt.Sprintf(wellknownCfg, port.Port())).WithStatus(http.StatusOK)))
-	if err != nil {
-		panic(fmt.Sprintf("wiremockClient.StubFor failed: %v", err))
+	wellknownCfg := map[string]interface{}{
+		"configuration": map[string]interface{}{
+			"health": map[string]interface{}{
+				"endpoint": "/healthz",
+			},
+			"platform_issuer": "http://localhost:65432/auth",
+		},
 	}
+
+	fwk := &FakeWellKnown{v: wellknownCfg}
 
 	grpcListener := bufconn.Listen(1024 * 1024)
+
 	grpcServer := grpc.NewServer()
-	kaspb.RegisterAccessServiceServer(grpcServer, &FakeKas{})
+	s.kas = FakeKas{privateKey: mockRSAPrivateKey1, KASInfo: KASInfo{
+		URL: "http://localhost:65432/", PublicKey: mockRSAPublicKey1, KID: "r1", Algorithm: "rsa:2048"},
+	}
+	kaspb.RegisterAccessServiceServer(grpcServer, &s.kas)
+	wellknownpb.RegisterWellKnownServiceServer(grpcServer, fwk)
 	go func() {
 		if err := grpcServer.Serve(grpcListener); err != nil {
 			panic(fmt.Sprintf("failed to serve: %v", err))
 		}
 	}()
-	dialer := func(_ context.Context, _ string) (net.Conn, error) {
+	dialer := func(ctx context.Context, host string) (net.Conn, error) {
+		slog.InfoContext(ctx, "dialing with custom dialer (local grpc)", "ctx", ctx, "host", host)
 		return grpcListener.Dial()
 	}
 
-	host := net.JoinHostPort("localhost", port.Port())
+	ats := getTokenSource(s.T())
 
-	wellknownConn, err := grpc.Dial(host, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		panic(fmt.Sprintf("grpc.Dial failed: %v", err))
-	}
-
-	sdk, err := New(host,
+	sdk, err := New("localhost:65432",
 		WithClientCredentials("test", "test", nil),
-		WithTokenEndpoint(fmt.Sprintf("http://%s/auth/token", host)),
+		withCustomAccessTokenSource(&ats),
+		WithTokenEndpoint("http://localhost:65432/auth/token"),
 		WithInsecurePlaintextConn(),
-		WithCustomWellknownConnection(wellknownConn),
 		WithExtraDialOptions(grpc.WithContextDialer(dialer)))
 	if err != nil {
 		panic(fmt.Sprintf("error creating SDK with authconfig: %v", err))
 	}
-	terminate := func() {
-		if err := wiremockContainer.Terminate(context.Background()); err != nil {
-			slog.Error("could not stop postgres container", slog.String("error", err.Error()))
-			return
-		}
+	s.sdk = sdk
 
-		if err := recover(); err != nil {
-			os.Exit(1)
-		}
+	s.tcTerminate = func() {
+		slog.Info("terminando")
 	}
-	return "", terminate, sdk
+}
+
+type FakeWellKnown struct {
+	wellknownpb.UnimplementedWellKnownServiceServer
+	v map[string]interface{}
+}
+
+func (f *FakeWellKnown) GetWellKnownConfiguration(ctx context.Context, in *wellknownpb.GetWellKnownConfigurationRequest) (*wellknownpb.GetWellKnownConfigurationResponse, error) {
+	cfg, err := structpb.NewStruct(f.v)
+	if err != nil {
+		return nil, err
+	}
+
+	return &wellknownpb.GetWellKnownConfigurationResponse{
+		Configuration: cfg,
+	}, nil
 }
 
 type FakeKas struct {
 	kaspb.UnimplementedAccessServiceServer
+	KASInfo
+	privateKey string
 }
 
 func (f *FakeKas) Rewrap(_ context.Context, in *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
@@ -747,16 +590,16 @@ func (f *FakeKas) Rewrap(_ context.Context, in *kaspb.RewrapRequest) (*kaspb.Rew
 	if !ok {
 		return nil, fmt.Errorf("requestBody not a string")
 	}
-	entityWrappedKey := getRewrappedKey(requestBodyStr)
+	entityWrappedKey := f.getRewrappedKey(requestBodyStr)
 
 	return &kaspb.RewrapResponse{EntityWrappedKey: entityWrappedKey}, nil
 }
 
 func (f *FakeKas) PublicKey(_ context.Context, _ *kaspb.PublicKeyRequest) (*kaspb.PublicKeyResponse, error) {
-	return &kaspb.PublicKeyResponse{PublicKey: mockKasPublicKey}, nil
+	return &kaspb.PublicKeyResponse{PublicKey: f.KASInfo.PublicKey, Kid: f.KID}, nil
 }
 
-func getRewrappedKey(rewrapRequest string) []byte {
+func (f *FakeKas) getRewrappedKey(rewrapRequest string) []byte {
 	bodyData := RequestBody{}
 	err := json.Unmarshal([]byte(rewrapRequest), &bodyData)
 	if err != nil {
@@ -766,7 +609,7 @@ func getRewrappedKey(rewrapRequest string) []byte {
 	if err != nil {
 		panic(fmt.Sprintf("ocrypto.Base64Decode failed: %v", err))
 	}
-	kasPrivateKey := strings.ReplaceAll(mockKasPrivateKey, "\n\t", "\n")
+	kasPrivateKey := strings.ReplaceAll(f.privateKey, "\n\t", "\n")
 	asymDecrypt, err := ocrypto.NewAsymDecryption(kasPrivateKey)
 	if err != nil {
 		panic(fmt.Sprintf("ocrypto.NewAsymDecryption failed: %v", err))

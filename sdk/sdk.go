@@ -188,6 +188,10 @@ func SanitizePlatformEndpoint(e string) (string, error) {
 }
 
 func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
+	if c.customAccessTokenSource != nil {
+		return c.customAccessTokenSource, nil
+	}
+
 	if (c.clientCredentials == nil) != (c.tokenEndpoint == "") {
 		return nil, errors.New("either both or neither of client credentials and token endpoint must be specified")
 	}

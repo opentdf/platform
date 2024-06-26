@@ -232,8 +232,6 @@ func TestPolicyCRUDSuccess(t *testing.T) {
 
 	logEntry, logEntryTime := extractLogEntry(t, buf)
 
-	fmt.Print(logEntry.Msg)
-
 	expectedAuditLog := fmt.Sprintf(
 		`{
 		  "object": {
@@ -305,8 +303,6 @@ func TestPolicyCrudFailure(t *testing.T) {
 
 	logEntry, logEntryTime := extractLogEntry(t, buf)
 
-	fmt.Print(logEntry.Msg)
-
 	expectedAuditLog := fmt.Sprintf(
 		`{
 		  "object": {
@@ -360,5 +356,95 @@ func TestPolicyCrudFailure(t *testing.T) {
 }
 
 func TestGetDecision(t *testing.T) {
+	l, buf := createTestLogger()
 
+	params := GetDecisionEventParams{
+		Decision: GetDecisionResultPermit,
+		EntityChainEntitlements: []EntityChainEntitlement{
+			{EntityID: "test-entity-id", AttributeValueReferences: []string{"test-attribute-value-reference"}},
+		},
+		EntityChainID: "test-entity-chain-id",
+		EntityDecisions: []EntityDecision{
+			{EntityID: "test-entity-id", Decision: GetDecisionResultPermit.String(), Entitlements: []string{"test-entitlement"}},
+		},
+		ResourceAttributeID: "test-resource-attribute-id",
+		FQNs:                []string{"test-fqn"},
+	}
+
+	l.GetDecision(createTestContext(), params)
+
+	logEntry, logEntryTime := extractLogEntry(t, buf)
+
+	fmt.Print(logEntry.Msg)
+
+	expectedAuditLog := fmt.Sprintf(
+		`{
+				"object": {
+					"type": "%s",
+					"id": "%s",
+					"attributes": {
+						"assertions": null,
+						"attrs": %q
+					}
+				},
+				"action": {
+					"type": "%s",
+					"result": "%s"
+				},
+				"owner": {
+					"id": "%s",
+					"orgId": "%s"
+				},
+				"actor": {
+					"id": "%s",
+					"attributes": [
+						{
+							"entityId": "%s",
+							"attributeValueReferences": %q
+						}
+					]
+				},
+				"eventMetaData": {
+					"entities": [
+						{
+							"id": "%s",
+							"decision": "%s",
+							"entitlements": %q
+						}
+					]
+				},
+				"clientInfo": {
+					"userAgent": "%s",
+					"platform": "authorization",
+					"requestIp": "%s"
+				},
+				"requestId": "%s",
+				"timestamp": "%s"
+		}`,
+		ObjectTypeEntityObject.String(),
+		fmt.Sprintf("%s-%s", params.EntityChainID, params.ResourceAttributeID),
+		params.FQNs,
+		ActionTypeRead.String(),
+		ActionResultSuccess,
+		uuid.Nil.String(),
+		uuid.Nil.String(),
+		params.EntityChainID,
+		params.EntityChainEntitlements[0].EntityID,
+		params.EntityChainEntitlements[0].AttributeValueReferences,
+		params.EntityDecisions[0].EntityID,
+		params.EntityDecisions[0].Decision,
+		params.EntityDecisions[0].Entitlements,
+		TestUserAgent,
+		TestRequestIP,
+		TestRequestID,
+		logEntryTime.Format(time.RFC3339),
+	)
+
+	// Remove newlines and spaces from expected
+	expectedAuditLog = removeWhitespace(expectedAuditLog)
+	loggedMessage := removeWhitespace(logEntry.Msg)
+
+	if expectedAuditLog != loggedMessage {
+		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)
+	}
 }

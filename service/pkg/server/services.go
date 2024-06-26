@@ -100,22 +100,18 @@ func startService(
 		if d == nil {
 			var err error
 
-			// Conditionally set the db client if the service requires it (one per namespace)
 			logger.Info("creating database client", slog.String("namespace", s.Namespace))
 			d, err = db.New(ctx, cfg.DB,
 				db.WithService(s.Namespace),
+				db.WithMigrations(s.DB.Migrations),
 			)
 			if err != nil {
 				return s, d, fmt.Errorf("issue creating database client for %s: %w", s.Namespace, err)
 			}
 		}
 
-		// Run migrations if required
+		// Run migrations IFF a service requires it and they're configured to run
 		if *runMigrations {
-			if s.DB.Migrations == nil {
-				return s, d, fmt.Errorf("migrations FS is required when runMigrations is enabled")
-			}
-
 			logger.Info("running database migrations")
 			appliedMigrations, err := d.RunMigrations(ctx, s.DB.Migrations)
 			if err != nil {

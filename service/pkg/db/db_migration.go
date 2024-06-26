@@ -55,6 +55,9 @@ func migrationInit(ctx context.Context, c *Client, migrations *embed.FS) (*goose
 // RunMigrations runs the migrations for the schema
 // Schema will be created if it doesn't exist
 func (c *Client) RunMigrations(ctx context.Context, migrations *embed.FS) (int, error) {
+	if migrations == nil {
+		return 0, fmt.Errorf("migrations FS is required when to run migrations")
+	}
 	slog.Info("running migration up", slog.String("schema", c.config.Schema), slog.String("database", c.config.Database))
 
 	// Create schema if it doesn't exist

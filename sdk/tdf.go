@@ -95,7 +95,7 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
-	tdfConfig, err := NewTDFConfig(opts...)
+	tdfConfig, err := newTDFConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
 	}

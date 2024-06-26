@@ -166,7 +166,28 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 			// get attribute definition/value combinations
 			dataAttrDefsAndVals, err := retrieveAttributeDefinitions(ctx, ra, as.sdk)
 			if err != nil {
-				// TODO: should all decisions in a request fail if one FQN lookup fails?
+				// if attribute an FQN does not exist
+				// return deny for all entity chains aginst this RA set and continue to next
+				if errors.Is(err, db.StatusifyError(db.ErrNotFound, "")) {
+					for _, ec := range dr.GetEntityChains() {
+						decisionResp := &authorization.DecisionResponse{
+							Decision:      authorization.DecisionResponse_DECISION_DENY,
+							EntityChainId: ec.GetId(),
+							Action: &policy.Action{
+								Value: &policy.Action_Standard{
+									Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
+								},
+							},
+						}
+						if ra.GetResourceAttributesId() != "" {
+							decisionResp.ResourceAttributesId = ra.GetResourceAttributesId()
+						} else if len(ra.GetAttributeValueFqns()) > 0 {
+							decisionResp.ResourceAttributesId = ra.GetAttributeValueFqns()[0]
+						}
+						rsp.DecisionResponses = append(rsp.DecisionResponses, decisionResp)
+					}
+					continue
+				}
 				return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("fqns", strings.Join(ra.GetAttributeValueFqns(), ", ")))
 			}
 			var attrDefs []*policy.Attribute

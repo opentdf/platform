@@ -96,42 +96,52 @@ func startService(
 	logger *logger.Logger,
 ) (serviceregistry.Service, *db.Client, error) {
 	// Create the database client only if required
-	if s.DB.Required {
-		if d == nil {
-			var err error
+	if s.DB.Required && d == nil {
+		var err error
 
-			logger.Info("creating database client", slog.String("namespace", s.Namespace))
-			d, err = db.New(ctx, cfg.DB,
-				db.WithService(s.Namespace),
-				db.WithMigrations(s.DB.Migrations),
-			)
-			if err != nil {
-				return s, d, fmt.Errorf("issue creating database client for %s: %w", s.Namespace, err)
-			}
+		logger.Info("creating database client", slog.String("namespace", s.Namespace))
+		d, err = db.New(ctx, cfg.DB,
+			db.WithService(s.Namespace),
+			db.WithMigrations(s.DB.Migrations),
+		)
+		if err != nil {
+			return s, d, fmt.Errorf("issue creating database client for %s: %w", s.Namespace, err)
+		}
+	}
+
+	// Run migrations IFF a service requires it and they're configured to run
+	if s.DB.Required && *runMigrations {
+		logger.Info("running database migrations")
+		appliedMigrations, err := d.RunMigrations(ctx, s.DB.Migrations)
+		if err != nil {
+			return s, d, fmt.Errorf("issue running database migrations: %w", err)
+		}
+		logger.Info("database migrations complete",
+			slog.Int("applied", appliedMigrations),
+		)
+		// Only run migrations once
+		*runMigrations = false
+	} else {
+
+		requiredAlreadyRan := s.DB.Required && cfg.DB.RunMigrations && !*runMigrations
+		noDBRequired := !s.DB.Required
+		migrationsDisabled := !cfg.DB.RunMigrations
+
+		var reason string
+		if requiredAlreadyRan {
+			reason = "required migrations already ran"
+		} else if noDBRequired {
+			reason = "service does not require a database"
+		} else if migrationsDisabled {
+			reason = "migrations are disabled"
 		}
 
-		// Run migrations IFF a service requires it and they're configured to run
-		if *runMigrations {
-			logger.Info("running database migrations")
-			appliedMigrations, err := d.RunMigrations(ctx, s.DB.Migrations)
-			if err != nil {
-				return s, d, fmt.Errorf("issue running database migrations: %w", err)
-			}
-			logger.Info("database migrations complete",
-				slog.Int("applied", appliedMigrations),
-			)
-			*runMigrations = false
-		} else {
-			reason := "runMigrations is false"
-			if cfg.DB.RunMigrations {
-				reason = "migrations already ran"
-			}
-			logger.Info("skipping migrations",
-				slog.String("namespace", s.Namespace),
-				slog.Bool("runMigrations", cfg.DB.RunMigrations),
-				slog.String("reason", reason),
-			)
-		}
+		logger.Info("skipping migrations",
+			slog.String("namespace", s.Namespace),
+			slog.String("service", s.ServiceDesc.ServiceName),
+			slog.Bool("runMigrations", cfg.DB.RunMigrations),
+			slog.String("reason", reason),
+		)
 	}
 
 	// Create the service

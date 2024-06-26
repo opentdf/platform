@@ -67,11 +67,12 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 			continue
 		}
 
-		// Use a single database client per namespace
+		// Use a single database client per namespace and run migrations once
 		var d *db.Client
+		runMigrations := cfg.DB.RunMigrations
 
 		for _, r := range registers {
-			s, err := startService(ctx, cfg, r, otdf, eng, client, d, logger)
+			s, err := startService(ctx, &cfg, r, otdf, eng, client, d, &runMigrations, logger)
 			if err != nil {
 				return closeServices, services, err
 			}
@@ -82,7 +83,17 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 	return closeServices, services, nil
 }
 
-func startService(ctx context.Context, cfg config.Config, s serviceregistry.Service, otdf *server.OpenTDFServer, eng *opa.Engine, client *sdk.SDK, d *db.Client, logger *logger.Logger) (serviceregistry.Service, error) {
+func startService(
+	ctx context.Context,
+	cfg *config.Config,
+	s serviceregistry.Service,
+	otdf *server.OpenTDFServer,
+	eng *opa.Engine,
+	client *sdk.SDK,
+	d *db.Client,
+	runMigrations *bool,
+	logger *logger.Logger,
+) (serviceregistry.Service, error) {
 	// Create the database client if required
 	if s.DB.Required && d == nil {
 		var err error
@@ -104,7 +115,7 @@ func startService(ctx context.Context, cfg config.Config, s serviceregistry.Serv
 	}
 
 	// Run migrations if required
-	if cfg.DB.RunMigrations && d != nil {
+	if *runMigrations && d != nil {
 		if s.DB.Migrations == nil {
 			return s, fmt.Errorf("migrations FS is required when runMigrations is enabled")
 		}
@@ -117,6 +128,7 @@ func startService(ctx context.Context, cfg config.Config, s serviceregistry.Serv
 		logger.Info("database migrations complete",
 			slog.Int("applied", appliedMigrations),
 		)
+		*runMigrations = false
 	} else {
 		logger.Info("skipping migrations",
 			slog.String("namespace", s.Namespace),

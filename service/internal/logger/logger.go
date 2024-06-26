@@ -25,29 +25,6 @@ const (
 	LevelTrace = slog.Level(-8)
 )
 
-var logLevelNames = map[slog.Leveler]string{
-	LevelTrace:       "TRACE",
-	audit.LevelAudit: audit.LevelAuditStr,
-}
-
-// Used to support custom log levels showing up with custom labels as well
-// see https://betterstack.com/community/guides/logging/logging-in-go/#creating-custom-log-levels
-func customReplaceAttributes(_ []string, a slog.Attr) slog.Attr {
-	if a.Key == slog.LevelKey {
-		level, ok := a.Value.Any().(slog.Level)
-		if !ok {
-			return a
-		}
-		levelLabel, exists := logLevelNames[level]
-		if !exists {
-			levelLabel = level.String()
-		}
-		a.Value = slog.StringValue(levelLabel)
-	}
-
-	return a
-}
-
 func NewLogger(config Config) (*Logger, error) {
 	var logger *slog.Logger
 
@@ -65,13 +42,13 @@ func NewLogger(config Config) (*Logger, error) {
 	case "json":
 		j := slog.NewJSONHandler(w, &slog.HandlerOptions{
 			Level:       level,
-			ReplaceAttr: customReplaceAttributes,
+			ReplaceAttr: audit.CustomReplaceAttr,
 		})
 		logger = slog.New(j)
 	case "text":
 		t := slog.NewTextHandler(w, &slog.HandlerOptions{
 			Level:       level,
-			ReplaceAttr: customReplaceAttributes,
+			ReplaceAttr: audit.CustomReplaceAttr,
 		})
 		logger = slog.New(t)
 	default:
@@ -81,7 +58,7 @@ func NewLogger(config Config) (*Logger, error) {
 	// Audit logger will always log at the AUDIT level and be JSON formatted
 	auditLoggerHandler := slog.NewJSONHandler(w, &slog.HandlerOptions{
 		Level:       audit.LevelAudit,
-		ReplaceAttr: customReplaceAttributes,
+		ReplaceAttr: audit.CustomReplaceAttr,
 	})
 
 	auditLoggerBase := slog.New(auditLoggerHandler)

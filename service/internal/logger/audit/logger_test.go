@@ -33,19 +33,19 @@ func removeWhitespace(s string) string {
 	return trimmed
 }
 
-type logEntry struct {
+type logEntryStructure struct {
 	Time  string `json:"time"`
 	Level string `json:"level"`
 	Msg   string `json:"msg"`
 }
 
-func extractLogEntry(t *testing.T, logBuffer *bytes.Buffer) (logEntry, time.Time) {
+func extractLogEntry(t *testing.T, logBuffer *bytes.Buffer) (logEntryStructure, time.Time) {
 	loggedString := logBuffer.String()
 	if loggedString == "" {
 		t.Error("log was empty")
 	}
 
-	var entry logEntry
+	var entry logEntryStructure
 	err := json.Unmarshal([]byte(loggedString), &entry)
 	if err != nil {
 		t.Fatalf("Failed to parse log entry: %v", err)
@@ -374,8 +374,6 @@ func TestGetDecision(t *testing.T) {
 	l.GetDecision(createTestContext(), params)
 
 	logEntry, logEntryTime := extractLogEntry(t, buf)
-
-	fmt.Print(logEntry.Msg)
 
 	expectedAuditLog := fmt.Sprintf(
 		`{

@@ -93,5 +93,4 @@ func TestDiffGenerationUpdateEvents(t *testing.T) {
 	if !reflect.DeepEqual(event.Diff, expectedDiff) {
 		t.Fatalf("event diff did not match expected: got %+v, want %+v", event.Diff, expectedDiff)
 	}
-
 }

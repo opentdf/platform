@@ -73,7 +73,7 @@ func TestCreateGetDecisionEventHappyPathSuccess(t *testing.T) {
 	}
 
 	expectedClientInfo := eventClientInfo{
-		Platform:  "policy",
+		Platform:  "authorization",
 		UserAgent: TestUserAgent,
 		RequestIP: TestRequestIP,
 	}

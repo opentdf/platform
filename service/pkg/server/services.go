@@ -94,47 +94,48 @@ func startService(
 	runMigrations *bool,
 	logger *logger.Logger,
 ) (serviceregistry.Service, error) {
-	// Create the database client if required
-	if s.DB.Required && d == nil {
-		var err error
+	// Create the database client only if required
+	if s.DB.Required {
+		if d == nil {
+			var err error
 
-		// Conditionally set the db client if the service requires it
-		// Currently, we are dynamically registering namespaces and don't offer the ability to apply
-		// config at the NS layer. This poses a problem where services under a NS want to share a
-		// database connection.
-		// TODO: this should be reassessed with how we handle registering a single namespace
-		logger.Info("creating database client", slog.String("namespace", s.Namespace))
-		// Make sure we only create a single db client per namespace
-		d, err = db.New(ctx, cfg.DB,
-			db.WithService(s.Namespace),
-			db.WithMigrations(s.DB.Migrations),
-		)
-		if err != nil {
-			return s, fmt.Errorf("issue creating database client for %s: %w", s.Namespace, err)
-		}
-	}
-
-	// Run migrations if required
-	if *runMigrations && d != nil {
-		if s.DB.Migrations == nil {
-			return s, fmt.Errorf("migrations FS is required when runMigrations is enabled")
+			// Conditionally set the db client if the service requires it (one per namespace)
+			logger.Info("creating database client", slog.String("namespace", s.Namespace))
+			d, err = db.New(ctx, cfg.DB,
+				db.WithService(s.Namespace),
+				db.WithMigrations(s.DB.Migrations),
+			)
+			if err != nil {
+				return s, fmt.Errorf("issue creating database client for %s: %w", s.Namespace, err)
+			}
 		}
 
-		logger.Info("running database migrations")
-		appliedMigrations, err := d.RunMigrations(ctx, s.DB.Migrations)
-		if err != nil {
-			return s, fmt.Errorf("issue running database migrations: %w", err)
+		// Run migrations if required
+		if *runMigrations && d != nil {
+			if s.DB.Migrations == nil {
+				return s, fmt.Errorf("migrations FS is required when runMigrations is enabled")
+			}
+
+			logger.Info("running database migrations")
+			appliedMigrations, err := d.RunMigrations(ctx, s.DB.Migrations)
+			if err != nil {
+				return s, fmt.Errorf("issue running database migrations: %w", err)
+			}
+			logger.Info("database migrations complete",
+				slog.Int("applied", appliedMigrations),
+			)
+			*runMigrations = false
+		} else {
+			reason := "runMigrations is false"
+			if cfg.DB.RunMigrations {
+				reason = "migrations already ran"
+			}
+			logger.Info("skipping migrations",
+				slog.String("namespace", s.Namespace),
+				slog.Bool("runMigrations", cfg.DB.RunMigrations),
+				slog.String("reason", reason),
+			)
 		}
-		logger.Info("database migrations complete",
-			slog.Int("applied", appliedMigrations),
-		)
-		*runMigrations = false
-	} else {
-		logger.Info("skipping migrations",
-			slog.String("namespace", s.Namespace),
-			slog.String("reason", "runMigrations is false"),
-			slog.Bool("runMigrations", false),
-		)
 	}
 
 	// Create the service

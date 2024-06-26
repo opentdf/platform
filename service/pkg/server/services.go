@@ -72,10 +72,11 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 		runMigrations := cfg.DB.RunMigrations
 
 		for _, r := range registers {
-			s, err := startService(ctx, &cfg, r, otdf, eng, client, d, &runMigrations, logger)
+			s, db, err := startService(ctx, &cfg, r, otdf, eng, client, d, &runMigrations, logger)
 			if err != nil {
 				return closeServices, services, err
 			}
+			d = db
 			services = append(services, s)
 		}
 	}
@@ -93,7 +94,7 @@ func startService(
 	d *db.Client,
 	runMigrations *bool,
 	logger *logger.Logger,
-) (serviceregistry.Service, error) {
+) (serviceregistry.Service, *db.Client, error) {
 	// Create the database client only if required
 	if s.DB.Required {
 		if d == nil {
@@ -103,23 +104,22 @@ func startService(
 			logger.Info("creating database client", slog.String("namespace", s.Namespace))
 			d, err = db.New(ctx, cfg.DB,
 				db.WithService(s.Namespace),
-				db.WithMigrations(s.DB.Migrations),
 			)
 			if err != nil {
-				return s, fmt.Errorf("issue creating database client for %s: %w", s.Namespace, err)
+				return s, d, fmt.Errorf("issue creating database client for %s: %w", s.Namespace, err)
 			}
 		}
 
 		// Run migrations if required
-		if *runMigrations && d != nil {
+		if *runMigrations {
 			if s.DB.Migrations == nil {
-				return s, fmt.Errorf("migrations FS is required when runMigrations is enabled")
+				return s, d, fmt.Errorf("migrations FS is required when runMigrations is enabled")
 			}
 
 			logger.Info("running database migrations")
 			appliedMigrations, err := d.RunMigrations(ctx, s.DB.Migrations)
 			if err != nil {
-				return s, fmt.Errorf("issue running database migrations: %w", err)
+				return s, d, fmt.Errorf("issue running database migrations: %w", err)
 			}
 			logger.Info("database migrations complete",
 				slog.Int("applied", appliedMigrations),
@@ -159,7 +159,7 @@ func startService(
 	// Register the service with the gRPC gateway
 	if err := handler(ctx, otdf.Mux, impl); err != nil {
 		logger.Error("failed to start service", slog.String("namespace", s.Namespace), slog.String("error", err.Error()))
-		return s, err
+		return s, d, err
 	}
 
 	logger.Info("started service", slog.String("namespace", s.Namespace), slog.String("service", s.ServiceDesc.ServiceName))
@@ -171,5 +171,5 @@ func startService(
 			d.Close()
 		}
 	}
-	return s, nil
+	return s, d, nil
 }

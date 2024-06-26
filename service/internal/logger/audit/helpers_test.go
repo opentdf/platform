@@ -2,6 +2,8 @@ package audit
 
 import (
 	"context"
+	"testing"
+	"time"
 
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 )
@@ -23,4 +25,19 @@ func createTestContext() context.Context {
 	ctx = context.WithValue(ctx, sdkAudit.RequestIPContextKey, TestRequestIP)
 	ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, TestActorID)
 	return ctx
+}
+
+func validateRecentEventTimestamp(t *testing.T, event *EventObject) {
+	if event.Timestamp == "" {
+		t.Fatalf("event timestamp is empty")
+	}
+
+	eventTime, err := time.Parse(time.RFC3339, event.Timestamp)
+	if err != nil {
+		t.Fatalf("error parsing timestamp: %v", err)
+	}
+
+	if time.Since(eventTime) > time.Second {
+		t.Fatalf("event timestamp is not recent: got %v, want less than 1 second", eventTime)
+	}
 }

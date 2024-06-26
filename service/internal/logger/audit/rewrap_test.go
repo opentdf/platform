@@ -3,7 +3,6 @@ package audit
 import (
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -91,12 +90,5 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 		t.Fatalf("event request ID did not match expected: got %v, want %v", event.RequestID, expectedRequestID)
 	}
 
-	ts, err := time.Parse(time.RFC3339, event.Timestamp)
-	if err != nil {
-		t.Fatalf("error parsing timestamp: %v", err)
-	}
-
-	if time.Since(ts) > time.Second {
-		t.Fatalf("event timestamp is not recent: got %v, want less than 1 second", ts)
-	}
+	validateRecentEventTimestamp(t, event)
 }

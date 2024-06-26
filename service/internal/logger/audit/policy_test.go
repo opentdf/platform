@@ -8,47 +8,31 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
-	kasPolicy := KasPolicy{
-		UUID: uuid.New(),
-		Body: KasPolicyBody{
-			DataAttributes: []KasAttribute{
-				{URI: "https://example1.com"},
-				{URI: "https://example2.com"},
-			},
-			Dissem: []string{"dissem1", "dissem2"},
-		},
+func TestCreatePolicyEventHappyPath(t *testing.T) {
+	params := PolicyEventParams{
+		ActionType: ActionTypeCreate,
+		ObjectID:   "test-object-id",
+		ObjectType: ObjectTypeKeyObject,
+		Original:   nil,
+		Updated:    nil,
 	}
 
-	params := RewrapAuditEventParams{
-		Policy:        kasPolicy,
-		IsSuccess:     true,
-		TDFFormat:     TestTDFFormat,
-		Algorithm:     TestAlgorithm,
-		PolicyBinding: TestPolicyBinding,
-	}
-
-	event, err := CreateRewrapAuditEvent(createTestContext(), params)
+	event, err := CreatePolicyEvent(createTestContext(), true, params)
 
 	if err != nil {
-		t.Fatalf("error creating rewrap audit event: %v", err)
+		t.Fatalf("error creating policy audit event: %v", err)
 	}
 
 	expectedEventObject := auditEventObject{
 		Type: ObjectTypeKeyObject,
-		ID:   kasPolicy.UUID.String(),
-		Attributes: eventObjectAttributes{
-			Assertions:  []string{},
-			Attrs:       []string{},
-			Permissions: []string{},
-		},
+		ID:   "test-object-id",
 	}
 	if !reflect.DeepEqual(event.Object, expectedEventObject) {
 		t.Fatalf("event object did not match expected: got %+v, want %+v", event.Object, expectedEventObject)
 	}
 
 	expectedEventAction := eventAction{
-		Type:   ActionTypeRewrap,
+		Type:   ActionTypeCreate,
 		Result: ActionResultSuccess,
 	}
 	if !reflect.DeepEqual(event.Action, expectedEventAction) {
@@ -67,18 +51,8 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 		t.Fatalf("event actor did not match expected: got %+v, want %+v", event.Actor, expectedEventActor)
 	}
 
-	expectedEventMetaData := map[string]string{
-		"keyID":         "",
-		"policyBinding": TestPolicyBinding,
-		"tdfFormat":     TestTDFFormat,
-		"algorithm":     TestAlgorithm,
-	}
-	if !reflect.DeepEqual(event.EventMetaData, expectedEventMetaData) {
-		t.Fatalf("event metadata did not match expected: got %+v, want %+v", event.EventMetaData, expectedEventMetaData)
-	}
-
 	expectedClientInfo := eventClientInfo{
-		Platform:  "kas",
+		Platform:  "policy",
 		UserAgent: TestUserAgent,
 		RequestIP: TestRequestIP,
 	}
@@ -99,4 +73,33 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 	if time.Since(ts) > time.Second {
 		t.Fatalf("event timestamp is not recent: got %v, want less than 1 second", ts)
 	}
+}
+
+func TestDiffGenerationUpdateEvents(t *testing.T) {
+	params := PolicyEventParams{
+		ActionType: ActionTypeUpdate,
+		ObjectID:   "test-object-id",
+		ObjectType: ObjectTypeKeyObject,
+		Original:   map[string]string{"key": "value", "key2": "value2"},
+		Updated:    map[string]string{"key": "updated-value", "key3": "value3"},
+	}
+
+	event, err := CreatePolicyEvent(createTestContext(), true, params)
+
+	if err != nil {
+		t.Fatalf("error creating policy audit event: %v", err)
+	}
+
+	expectedDiff := []DiffEntry{
+		{Type: "test", Path: "/key", Value: "value"},
+		{Type: "replace", Path: "/key", Value: "updated-value"},
+		{Type: "test", Path: "/key2", Value: "value2"},
+		{Type: "remove", Path: "/key2", Value: nil},
+		{Type: "add", Path: "/key3", Value: "value3"},
+	}
+
+	if !reflect.DeepEqual(event.Diff, expectedDiff) {
+		t.Fatalf("event diff did not match expected: got %+v, want %+v", event.Diff, expectedDiff)
+	}
+
 }

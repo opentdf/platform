@@ -79,10 +79,7 @@ type ContextData struct {
 func GetAuditDataFromContext(ctx context.Context) ContextData {
 	// Extract the request ID from context
 
-	requestIDString, ok := ctx.Value(sdkAudit.RequestIDContextKey).(string)
-	if !ok {
-		requestIDString = ""
-	}
+	requestIDString, _ := ctx.Value(sdkAudit.RequestIDContextKey).(string)
 
 	requestID, err := uuid.Parse(requestIDString)
 	if err != nil {

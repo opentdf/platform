@@ -88,11 +88,6 @@ func (s *OAuthSuite) TestCertExchangeFromKeycloak() {
 
 	tok, err := DoCertExchange(
 		context.Background(),
-		&http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tlsConfig,
-			},
-		},
 		s.keycloakHTTPSEndpoint,
 		exhcangeInfo,
 		clientCredentials,

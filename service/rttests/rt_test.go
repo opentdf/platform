@@ -308,27 +308,6 @@ func (s *RoundtripSuite) CreateTestData() error {
 	return nil
 }
 
-func roundtrip(testConfig *TestConfig, attributes []string, failure bool) error {
-	const filename = "test-success.tdf"
-	const plaintext = "Running a roundtrip test!"
-	err := encrypt(testConfig, plaintext, attributes, filename)
-	if err != nil {
-		return err
-	}
-	err = decrypt(testConfig, filename, plaintext)
-	if failure {
-		if err == nil {
-			return errors.New("decrypt passed but was expected to fail")
-		}
-		if !(strings.Contains(err.Error(), "PermissionDenied")) {
-			return err
-		}
-	} else if err != nil {
-		return err
-	}
-	return nil
-}
-
 func encrypt(testConfig *TestConfig, plaintext string, attributes []string, filename string) error {
 	strReader := strings.NewReader(plaintext)
 

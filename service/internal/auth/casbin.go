@@ -61,7 +61,7 @@ p,	role:org-admin,		/unsafe*,										            *,			allow
 p,	role:admin,		    policy.*,																*,			allow
 p,	role:admin,		    kasregistry.*,													*,			allow
 p,	role:admin,		    kas.AccessService/Rewrap, 			        *,			allow
-p,  role:org-admin,   authorization.*,                        *,      allow
+p,  role:admin,   authorization.*,                        *,      allow
 ## HTTP routes
 p,	role:admin,		/attributes*,																*,			allow
 p,	role:admin,		/namespaces*,																*,			allow

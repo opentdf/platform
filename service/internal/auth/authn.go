@@ -49,6 +49,7 @@ var (
 		// KAS Public Key Endpoints
 		"/kas.AccessService/PublicKey",
 		"/kas.AccessService/LegacyPublicKey",
+		"/kas.AccessService/Info",
 		"/kas/kas_public_key",
 		"/kas/v2/kas_public_key",
 		// HealthZ

@@ -67,7 +67,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 			continue
 		}
 
-		// Use a single database client per namespace and run migrations once
+		// Use a single database client per namespace and run migrations once per namespace
 		var d *db.Client
 		runMigrations := cfg.DB.RunMigrations
 
@@ -109,8 +109,9 @@ func startService(
 		}
 	}
 
-	// Run migrations IFF a service requires it and they're configured to run
-	if s.DB.Required && *runMigrations {
+	// Run migrations IFF a service requires it and they're configured to run but haven't run yet
+	shouldRun := s.DB.Required && *runMigrations
+	if shouldRun {
 		logger.Info("running database migrations")
 		appliedMigrations, err := d.RunMigrations(ctx, s.DB.Migrations)
 		if err != nil {
@@ -121,14 +122,15 @@ func startService(
 		)
 		// Only run migrations once
 		*runMigrations = false
-	} else {
+	}
 
+	if !shouldRun {
 		requiredAlreadyRan := s.DB.Required && cfg.DB.RunMigrations && !*runMigrations
 		noDBRequired := !s.DB.Required
 		migrationsDisabled := !cfg.DB.RunMigrations
 
-		var reason string
-		if requiredAlreadyRan {
+		reason := "undetermined"
+		if requiredAlreadyRan { //nolint:gocritic // This is more readable than a switch
 			reason = "required migrations already ran"
 		} else if noDBRequired {
 			reason = "service does not require a database"
@@ -139,7 +141,7 @@ func startService(
 		logger.Info("skipping migrations",
 			slog.String("namespace", s.Namespace),
 			slog.String("service", s.ServiceDesc.ServiceName),
-			slog.Bool("runMigrations", cfg.DB.RunMigrations),
+			slog.Bool("configured runMigrations", cfg.DB.RunMigrations),
 			slog.String("reason", reason),
 		)
 	}

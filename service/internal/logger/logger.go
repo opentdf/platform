@@ -42,13 +42,13 @@ func NewLogger(config Config) (*Logger, error) {
 	case "json":
 		j := slog.NewJSONHandler(w, &slog.HandlerOptions{
 			Level:       level,
-			ReplaceAttr: audit.AuditLevelReplaceAttr,
+			ReplaceAttr: audit.ReplaceAttrAuditLevel,
 		})
 		logger = slog.New(j)
 	case "text":
 		t := slog.NewTextHandler(w, &slog.HandlerOptions{
 			Level:       level,
-			ReplaceAttr: audit.AuditLevelReplaceAttr,
+			ReplaceAttr: audit.ReplaceAttrAuditLevel,
 		})
 		logger = slog.New(t)
 	default:
@@ -58,7 +58,7 @@ func NewLogger(config Config) (*Logger, error) {
 	// Audit logger will always log at the AUDIT level and be JSON formatted
 	auditLoggerHandler := slog.NewJSONHandler(w, &slog.HandlerOptions{
 		Level:       audit.LevelAudit,
-		ReplaceAttr: audit.AuditLevelReplaceAttr,
+		ReplaceAttr: audit.ReplaceAttrAuditLevel,
 	})
 
 	auditLoggerBase := slog.New(auditLoggerHandler)

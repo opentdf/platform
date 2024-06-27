@@ -25,7 +25,7 @@ type Logger struct {
 
 // Used to support custom log levels showing up with custom labels as well
 // see https://betterstack.com/community/guides/logging/logging-in-go/#creating-custom-log-levels
-func AuditLevelReplaceAttr(_ []string, a slog.Attr) slog.Attr {
+func ReplaceAttrAuditLevel(_ []string, a slog.Attr) slog.Attr {
 	if a.Key != slog.LevelKey {
 		return a
 	}

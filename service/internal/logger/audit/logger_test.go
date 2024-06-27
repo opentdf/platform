@@ -17,7 +17,7 @@ func createTestLogger() (*Logger, *bytes.Buffer) {
 
 	handler := slog.NewJSONHandler(&buf, &slog.HandlerOptions{
 		Level:       LevelAudit,
-		ReplaceAttr: AuditLevelReplaceAttr,
+		ReplaceAttr: ReplaceAttrAuditLevel,
 	})
 	logger := slog.New(handler)
 

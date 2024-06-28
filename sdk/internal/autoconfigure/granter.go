@@ -1,0 +1,517 @@
+package autoconfigure
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net/url"
+	"regexp"
+	"sort"
+	"strings"
+
+	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
+)
+
+// Attribute rule types: operators!
+const (
+	hierarchy   = "hierarchy"
+	allOf       = "allOf"
+	anyOf       = "anyOf"
+	unspecified = "unspecified"
+)
+
+// Represents a which KAS a split with the associated ID should shared with.
+type SplitStep struct {
+	KAS, SplitID string
+}
+
+// Utility type to represent an FQN for an attribute.
+type AttributeName string
+
+// Utility type to represent an FQN for an attribute value.
+type AttributeValue string
+
+func NewAttributeValue(u string) (AttributeValue, error) {
+	re := regexp.MustCompile(`^(https?://[\w./]+)/attr/(\S*)/value/(\S*)$`)
+	m := re.FindStringSubmatch(u)
+	if len(m[0]) == 0 {
+		return "", errors.New("invalid attribute url")
+	}
+
+	_, err := url.PathUnescape(m[2])
+	if err != nil {
+		return "", fmt.Errorf("invalid attribute url; error in name [%s]", m[2])
+	}
+	_, err = url.PathUnescape(m[3])
+	if err != nil {
+		return "", fmt.Errorf("invalid attribute url; error in value [%s]", m[3])
+	}
+
+	return AttributeValue(u), nil
+}
+
+// Structure capable of generating a split plan from a given set of data tags.
+type Granter struct {
+	policy []AttributeValue
+	grants map[AttributeValue]*keyAccessGrant
+}
+
+type keyAccessGrant struct {
+	attr  *policy.Attribute
+	kases []string
+}
+
+func (r Granter) addGrant(fqn AttributeValue, kas string, attr *policy.Attribute) {
+	if _, ok := r.grants[fqn]; ok {
+		r.grants[fqn].kases = append(r.grants[fqn].kases, kas)
+	} else {
+		r.grants[fqn] = &keyAccessGrant{attr, []string{kas}}
+	}
+}
+
+func (r Granter) addAllGrants(fqn AttributeValue, gs []*policy.KeyAccessServer, attr *policy.Attribute) {
+	for _, g := range gs {
+		if g != nil {
+			r.addGrant(fqn, g.GetUri(), attr)
+		}
+	}
+	if len(gs) == 0 {
+		if _, ok := r.grants[fqn]; !ok {
+			r.grants[fqn] = &keyAccessGrant{attr, []string{}}
+		}
+	}
+}
+
+func (r Granter) byAttribute(fqn AttributeValue) *keyAccessGrant {
+	return r.grants[fqn]
+}
+
+// Gets a list of directory of KAS grants for a list of attribute FQNs
+func NewGranterFromService(ctx context.Context, as attributes.AttributesServiceClient, fqns ...AttributeValue) (Granter, error) {
+	fqnsStr := make([]string, len(fqns))
+	for i, v := range fqns {
+		fqnsStr[i] = string(v)
+	}
+
+	av, err :=
+		as.GetAttributeValuesByFqns(ctx, &attributes.GetAttributeValuesByFqnsRequest{
+			Fqns: fqnsStr,
+			WithValue: &policy.AttributeValueSelector{
+				WithKeyAccessGrants: true,
+			},
+		})
+	if err != nil {
+		return Granter{}, err
+	}
+
+	grants := Granter{
+		policy: fqns[:],
+		grants: make(map[AttributeValue]*keyAccessGrant),
+	}
+	for fqns, pair := range av.GetFqnAttributeValues() {
+		fqn := AttributeValue(fqns)
+		def := pair.GetAttribute()
+		if def != nil {
+			grants.addAllGrants(fqn, def.GetGrants(), def)
+		}
+		v := pair.GetValue()
+		if v != nil {
+			grants.addAllGrants(fqn, v.GetGrants(), def)
+		}
+	}
+
+	return grants, nil
+}
+
+// Given a policy (list of data attributes or tags),
+// get a set of grants from attribute values to KASes.
+// Unlike `NewGranterFromService`, this works offline.
+func NewGranterFromAttributes(attrs ...*policy.Value) (Granter, error) {
+	grants := Granter{
+		grants: make(map[AttributeValue]*keyAccessGrant),
+		policy: make([]AttributeValue, len(attrs)),
+	}
+	for i, v := range attrs {
+		fqn := AttributeValue(v.GetFqn())
+		grants.policy[i] = fqn
+		def := v.GetAttribute()
+		if def == nil {
+			return Granter{}, fmt.Errorf("no associated definition with value [%s]", fqn)
+		}
+		grants.addAllGrants(fqn, def.GetGrants(), def)
+		grants.addAllGrants(fqn, v.GetGrants(), def)
+	}
+
+	return grants, nil
+}
+
+func (a AttributeValue) Authority() string {
+	re := regexp.MustCompile(`^(https?://[\w./]+)/attr/\S*/value/\S*$`)
+	m := re.FindStringSubmatch(string(a))
+	if m == nil {
+		panic("invalid attributeInstance")
+	}
+	return m[1]
+}
+
+func (a AttributeValue) Prefix() AttributeName {
+	re := regexp.MustCompile(`^(https?://[\w./]+/attr/\S*)/value/\S*$`)
+	m := re.FindStringSubmatch(string(a))
+	if m == nil {
+		panic("invalid attributeInstance")
+	}
+	return AttributeName(m[1])
+}
+
+func (a AttributeValue) Value() string {
+	re := regexp.MustCompile(`^https?://[\w./]+/attr/\S*/value/(\S*)$`)
+	m := re.FindStringSubmatch(string(a))
+	if m == nil {
+		panic("invalid attributeInstance")
+	}
+	v, err := url.PathUnescape(m[1])
+	if err != nil {
+		panic("invalid attributeInstance")
+	}
+	return v
+}
+
+func (a AttributeValue) Name() string {
+	re := regexp.MustCompile(`^https?://[\w./]+/attr/(\S*)/value/\S*$`)
+	m := re.FindStringSubmatch(string(a))
+	if m == nil {
+		panic("invalid attributeInstance")
+	}
+	v, err := url.PathUnescape(m[1])
+	if err != nil {
+		panic("invalid attributeInstance")
+	}
+	return v
+}
+
+func (a AttributeName) Select(v string) AttributeValue {
+	return AttributeValue(fmt.Sprintf("%s/value/%s", a, url.PathEscape(v)))
+}
+
+func (a AttributeName) Prefix() string {
+	return string(a)
+}
+
+type AttributeService struct {
+	dict map[AttributeName]*policy.Attribute
+}
+
+func (s *AttributeService) Put(ad *policy.Attribute) error {
+	if s.dict == nil {
+		s.dict = make(map[AttributeName]*policy.Attribute)
+	}
+	prefix := AttributeName(ad.GetFqn())
+	if _, exists := s.dict[prefix]; exists {
+		return errors.New(fmt.Sprintf("ad prefix already found [%s]", prefix))
+	}
+	s.dict[prefix] = ad
+	return nil
+}
+
+// Given an attribute without a value (everything before /value/...), get the definition
+func (s *AttributeService) Get(prefix AttributeName) (*policy.Attribute, error) {
+	ad, exists := s.dict[prefix]
+	if !exists {
+		return nil, errors.New(fmt.Sprintf("[404] Unknown attribute type: [%s], not in [%v]", prefix, s.dict))
+	}
+	return ad, nil
+}
+
+type singleAttributeClause struct {
+	def    *policy.Attribute
+	values []AttributeValue
+}
+
+type attributeBooleanExpression struct {
+	must []singleAttributeClause
+}
+
+func (e attributeBooleanExpression) String() string {
+	if len(e.must) == 0 {
+		return "∅"
+	}
+	var sb strings.Builder
+	for i, clause := range e.must {
+		if i > 0 {
+			sb.WriteString("&")
+		}
+		switch len(clause.values) {
+		case 0:
+			sb.WriteString(clause.def.GetFqn())
+		case 1:
+			sb.WriteString(string(clause.values[0]))
+		default:
+			sb.WriteString(clause.def.GetFqn())
+			sb.WriteString("/value/{")
+			for j, v := range clause.values {
+				if j > 0 {
+					sb.WriteString(",")
+				}
+				sb.WriteString(v.Value())
+			}
+			sb.WriteString("}")
+		}
+	}
+	return sb.String()
+}
+
+func (r Granter) Plan(defaultKas string, genSplitID func() string) ([]SplitStep, error) {
+	b, err := r.constructAttributeBoolean()
+	if err != nil {
+		return nil, err
+	}
+
+	k, err := r.insertKeysForAttribute(*b)
+	if err != nil {
+		return nil, err
+	}
+
+	k = k.reduce()
+	l := k.Len()
+	if l == 0 {
+		if defaultKas == "" {
+			return nil, fmt.Errorf("no default KAS specified; required for grantless plans")
+		}
+		return []SplitStep{{KAS: defaultKas}}, nil
+	}
+	p := make([]SplitStep, 0, l)
+	for _, v := range k.values {
+		splitID := ""
+		if l > 1 {
+			splitID = genSplitID()
+		}
+		for _, o := range v.values {
+			p = append(p, SplitStep{KAS: o.kas, SplitID: splitID})
+		}
+	}
+	return p, nil
+}
+
+func (r Granter) constructAttributeBoolean() (*attributeBooleanExpression, error) {
+	prefixes := make(map[AttributeName]*singleAttributeClause)
+	sortedPrefixes := make([]AttributeName, 0)
+	for _, aP := range r.policy {
+		a := AttributeValue(aP)
+		p := a.Prefix()
+		if clause, ok := prefixes[p]; ok {
+			clause.values = append(clause.values, a)
+		} else if kag := r.byAttribute(a); kag != nil {
+			prefixes[p] = &singleAttributeClause{kag.attr, []AttributeValue{a}}
+			sortedPrefixes = append(sortedPrefixes, p)
+		}
+	}
+	must := make([]singleAttributeClause, 0, len(prefixes))[0:0]
+	for _, p := range sortedPrefixes {
+		must = append(must, *prefixes[p])
+	}
+	return &attributeBooleanExpression{must}, nil
+}
+
+type publicKeyInfo struct {
+	kas string
+}
+
+type keyClause struct {
+	operator string
+	values   []publicKeyInfo
+}
+
+func (e keyClause) String() string {
+	if len(e.values) == 1 && e.values[0].kas == "DEFAULT" {
+		return "[DEFAULT]"
+	}
+	if len(e.values) == 1 {
+		return "(" + e.values[0].kas + ")"
+	}
+	var sb strings.Builder
+	sb.WriteString("(")
+	op := "⋀"
+	if e.operator == anyOf {
+		op = "⋁"
+	}
+	for i, v := range e.values {
+		if i > 0 {
+			sb.WriteString(op)
+		}
+		sb.WriteString(v.kas)
+	}
+	sb.WriteString(")")
+	return sb.String()
+}
+
+type booleanKeyExpression struct {
+	values []keyClause
+}
+
+func (e booleanKeyExpression) String() string {
+	var sb strings.Builder
+	for i, v := range e.values {
+		if i > 0 {
+			sb.WriteString("&")
+		}
+		sb.WriteString(v.String())
+	}
+	return sb.String()
+}
+
+func ruleToOperator(e policy.AttributeRuleTypeEnum) string {
+	switch e {
+	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF:
+		return allOf
+	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF:
+		return anyOf
+	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY:
+		return hierarchy
+	default:
+		return unspecified
+	}
+}
+
+func (r *Granter) insertKeysForAttribute(e attributeBooleanExpression) (booleanKeyExpression, error) {
+	kcs := make([]keyClause, 0, len(e.must))
+	for _, clause := range e.must {
+		kcv := make([]publicKeyInfo, 0, len(clause.values))
+		for _, term := range clause.values {
+			grant := r.byAttribute(term)
+			if grant == nil {
+				return booleanKeyExpression{}, fmt.Errorf("no defintion or grant found for [%s]", term)
+			}
+			kases := grant.kases
+			if len(kases) == 0 {
+				kases = []string{"DEFAULT"}
+			}
+			for _, kas := range kases {
+				kcv = append(kcv, publicKeyInfo{kas})
+			}
+		}
+		op := allOf
+		switch clause.def.GetRule() {
+		case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY:
+			op = hierarchy
+		case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF:
+			op = allOf
+		case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF:
+			op = anyOf
+		default:
+			slog.Warn("unknown attribute rule type", "rule.type", clause.def.GetRule())
+		}
+		kc := keyClause{
+			operator: op,
+			values:   kcv,
+		}
+		kcs = append(kcs, kc)
+	}
+	return booleanKeyExpression{
+		values: kcs,
+	}, nil
+}
+
+// remove duplicates, sort a set of strings
+func sortedNoDupes(l []publicKeyInfo) disjunction {
+	set := map[string]bool{}
+	list := make([]string, 0, 2)
+	for _, e := range l {
+		kas := e.kas
+		if kas == "DEFAULT" {
+			// skip
+		} else if !set[kas] {
+			set[kas] = true
+			list = append(list, kas)
+		}
+	}
+	sort.Strings(list)
+	return list
+}
+
+type disjunction []string
+
+func (l disjunction) Less(r disjunction) bool {
+	m := min(len(l), len(r))
+	for i := 1; i <= m; i++ {
+		if l[i] < r[i] {
+			return true
+		}
+		if l[i] > r[i] {
+			return false
+		}
+	}
+	return len(l) < len(r)
+}
+
+func (l disjunction) Equal(r disjunction) bool {
+	if len(l) != len(r) {
+		return false
+	}
+	for i, v := range l {
+		if v != r[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func within(l []disjunction, e disjunction) bool {
+	for _, v := range l {
+		if e.Equal(v) {
+			return true
+		}
+	}
+	return false
+}
+
+func (e booleanKeyExpression) Len() int {
+	c := 0
+	for _, v := range e.values {
+		c += len(v.values)
+	}
+	return c
+}
+
+func (e booleanKeyExpression) reduce() booleanKeyExpression {
+	var conjunction []disjunction
+	for _, v := range e.values {
+		switch v.operator {
+		case anyOf:
+			disjunction := sortedNoDupes(v.values)
+			if len(disjunction) == 0 {
+				// default clause
+			} else if within(conjunction, disjunction) {
+				// already present disjunction clause
+			} else {
+				conjunction = append(conjunction, disjunction)
+			}
+		default:
+			for _, k := range v.values {
+				if k.kas == "DEFAULT" {
+					continue
+				}
+				disjunction := []string{k.kas}
+				if !within(conjunction, disjunction) {
+					conjunction = append(conjunction, disjunction)
+				}
+			}
+		}
+	}
+	if len(conjunction) == 0 {
+		return booleanKeyExpression{}
+	}
+	values := make([]keyClause, len(conjunction))
+	for i, d := range conjunction {
+		pki := make([]publicKeyInfo, len(d))
+		for j, k := range d {
+			pki[j] = publicKeyInfo{k}
+		}
+		values[i] = keyClause{
+			operator: anyOf,
+			values:   pki,
+		}
+	}
+	return booleanKeyExpression{values}
+}

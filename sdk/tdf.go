@@ -15,6 +15,7 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/archive"
+	"github.com/opentdf/platform/sdk/internal/autoconfigure"
 	"google.golang.org/grpc"
 )
 
@@ -60,6 +61,7 @@ const (
 	kGmacIntegrityAlgorithm = "GMAC"
 )
 
+// Loads and reads ZTDF files
 type Reader struct {
 	tokenSource         auth.AccessTokenSource
 	dialOptions         []grpc.DialOption
@@ -85,7 +87,21 @@ func (t TDFObject) Size() int64 {
 }
 
 // CreateTDF reads plain text from the given reader and saves it to the writer, subject to the given options
-func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll // Better readability keeping it as is
+func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) {
+	return s.CreateTDFContext(context.Background(), writer, reader, opts...)
+}
+
+func (s SDK) defaultKas(c *TDFConfig) string {
+	for _, k := range c.kasInfoList {
+		if k.Default || len(c.kasInfoList) == 1 {
+			return k.URL
+		}
+	}
+	return ""
+}
+
+// CreateTDF reads plain text from the given reader and saves it to the writer, subject to the given options
+func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll // Better readability keeping it as is
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
@@ -103,6 +119,21 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 	tdfConfig, err := newTDFConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
+	}
+
+	if tdfConfig.autoconfigure {
+		g, err := autoconfigure.NewGranterFromService(ctx, s.Attributes, tdfConfig.attributes...)
+		if err != nil {
+			return nil, err
+		}
+
+		dk := s.defaultKas(tdfConfig)
+		tdfConfig.splitPlan, err = g.Plan(dk, func() string {
+			return uuid.New().String()
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	tdfObject := &TDFObject{}
@@ -264,11 +295,11 @@ func (s SDK) prepareManifest(t *TDFObject, tdfConfig TDFConfig) error { //nolint
 	latestKASInfo := make(map[string]KASInfo)
 	if len(tdfConfig.splitPlan) == 0 {
 		// Default split plan: Split keys across all kases
-		tdfConfig.splitPlan = make([]splitStep, len(tdfConfig.kasInfoList))
+		tdfConfig.splitPlan = make([]autoconfigure.SplitStep, len(tdfConfig.kasInfoList))
 		for i, kasInfo := range tdfConfig.kasInfoList {
-			tdfConfig.splitPlan[i].kas = kasInfo.URL
+			tdfConfig.splitPlan[i].KAS = kasInfo.URL
 			if len(tdfConfig.kasInfoList) > 1 {
-				tdfConfig.splitPlan[i].splitID = fmt.Sprintf("s-%d", i)
+				tdfConfig.splitPlan[i].SplitID = fmt.Sprintf("s-%d", i)
 			}
 			if kasInfo.PublicKey != "" {
 				latestKASInfo[kasInfo.URL] = kasInfo
@@ -288,20 +319,20 @@ func (s SDK) prepareManifest(t *TDFObject, tdfConfig TDFConfig) error { //nolint
 
 	for _, splitInfo := range tdfConfig.splitPlan {
 		// Public key was passed in with kasInfoList
-		ki, ok := latestKASInfo[splitInfo.kas]
+		ki, ok := latestKASInfo[splitInfo.KAS]
 		if !ok || ki.PublicKey == "" {
-			k, err := s.getPublicKey(splitInfo.kas, "rsa:2048")
+			k, err := s.getPublicKey(splitInfo.KAS, "rsa:2048")
 			if err != nil {
-				return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", splitInfo.kas, err)
+				return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", splitInfo.KAS, err)
 			}
-			latestKASInfo[splitInfo.kas] = *k
+			latestKASInfo[splitInfo.KAS] = *k
 			ki = *k
 		}
-		if _, ok = conjunction[splitInfo.splitID]; ok {
-			conjunction[splitInfo.splitID] = append(conjunction[splitInfo.splitID], ki)
+		if _, ok = conjunction[splitInfo.SplitID]; ok {
+			conjunction[splitInfo.SplitID] = append(conjunction[splitInfo.SplitID], ki)
 		} else {
-			conjunction[splitInfo.splitID] = []KASInfo{ki}
-			splitIDs = append(splitIDs, splitInfo.splitID)
+			conjunction[splitInfo.SplitID] = []KASInfo{ki}
+			splitIDs = append(splitIDs, splitInfo.SplitID)
 		}
 	}
 
@@ -395,7 +426,7 @@ func (s SDK) prepareManifest(t *TDFObject, tdfConfig TDFConfig) error { //nolint
 }
 
 // create policy object
-func createPolicyObject(attributes []string) (PolicyObject, error) {
+func createPolicyObject(attributes []autoconfigure.AttributeValue) (PolicyObject, error) {
 	uuidObj, err := uuid.NewUUID()
 	if err != nil {
 		return PolicyObject{}, fmt.Errorf("uuid.NewUUID failed: %w", err)
@@ -406,7 +437,7 @@ func createPolicyObject(attributes []string) (PolicyObject, error) {
 
 	for _, attribute := range attributes {
 		attributeObj := attributeObject{}
-		attributeObj.Attribute = attribute
+		attributeObj.Attribute = string(attribute)
 		policyObj.Body.DataAttributes = append(policyObj.Body.DataAttributes, attributeObj)
 		policyObj.Body.Dissem = make([]string, 0)
 	}
@@ -681,7 +712,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 	var payloadKey [kKeySize]byte
 	knownSplits := make(map[string]bool)
 	foundSplits := make(map[string]bool)
-	skippedSplits := make(map[splitStep]error)
+	skippedSplits := make(map[autoconfigure.SplitStep]error)
 	mixedSplits := len(r.manifest.KeyAccessObjs) > 1 && r.manifest.KeyAccessObjs[0].SplitID != ""
 
 	for _, keyAccessObj := range r.manifest.EncryptionInformation.KeyAccessObjs {
@@ -690,7 +721,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 			return fmt.Errorf("newKASClient failed:%w", err)
 		}
 
-		ss := splitStep{keyAccessObj.KasURL, keyAccessObj.SplitID}
+		ss := autoconfigure.SplitStep{KAS: keyAccessObj.KasURL, SplitID: keyAccessObj.SplitID}
 
 		var wrappedKey []byte
 		if !mixedSplits {
@@ -699,8 +730,8 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 				return fmt.Errorf("doPayloadKeyUnwrap splitKey.rewrap failed: %w", err)
 			}
 		} else {
-			knownSplits[ss.splitID] = true
-			if foundSplits[ss.splitID] {
+			knownSplits[ss.SplitID] = true
+			if foundSplits[ss.SplitID] {
 				// already found
 				continue
 			}
@@ -714,7 +745,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		for keyByteIndex, keyByte := range wrappedKey {
 			payloadKey[keyByteIndex] ^= keyByte
 		}
-		foundSplits[ss.splitID] = true
+		foundSplits[ss.SplitID] = true
 
 		if len(keyAccessObj.EncryptedMetadata) != 0 {
 			gcm, err := ocrypto.NewAESGcm(wrappedKey)

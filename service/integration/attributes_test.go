@@ -347,6 +347,39 @@ func (s *AttributesSuite) Test_ListAttribute() {
 	}
 }
 
+func (s *AttributesSuite) Test_ListAttribute_FqnsIncluded() {
+	// create an attribute
+	attr := &attributes.CreateAttributeRequest{
+		Name:        "list_attribute_fqns_new_attr",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values:      []string{"value1", "value2", "value3"},
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
+
+	list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateActive, fixtureNamespaceID)
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	for _, a := range list {
+		// attr fqn
+		s.NotEqual("", a.GetFqn())
+		s.Equal(fmt.Sprintf("https://%s/attr/%s", a.GetNamespace().GetName(), a.GetName()), a.GetFqn())
+
+		// namespace fqn
+		s.NotEqual("", a.GetNamespace().GetFqn())
+		s.Equal(fmt.Sprintf("https://%s", a.GetNamespace().GetName()), a.GetNamespace().GetFqn())
+
+		// value fqns
+		for _, v := range a.GetValues() {
+			s.NotEqual("", v.GetFqn())
+			s.Equal(fmt.Sprintf("https://%s/attr/%s/value/%s", a.GetNamespace().GetName(), a.GetName(), v.GetValue()), v.GetFqn())
+		}
+	}
+}
+
 func (s *AttributesSuite) Test_ListAttributesByNamespace() {
 	// get all unique namespace_ids
 	namespaces := map[string]string{}

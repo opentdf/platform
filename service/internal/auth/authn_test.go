@@ -57,12 +57,7 @@ type FakeAccessServiceServer struct {
 	kas.UnimplementedAccessServiceServer
 }
 
-func (f *FakeAccessServiceServer) Info(ctx context.Context, _ *kas.InfoRequest) (*kas.InfoResponse, error) {
-	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		f.accessToken = md.Get("authorization")
-		f.dpopKey = GetJWKFromContext(ctx)
-	}
-
+func (f *FakeAccessServiceServer) Info(context.Context, *kas.InfoRequest) (*kas.InfoResponse, error) {
 	return &kas.InfoResponse{}, nil
 }
 
@@ -74,7 +69,11 @@ func (f *FakeAccessServiceServer) LegacyPublicKey(context.Context, *kas.LegacyPu
 	return &wrapperspb.StringValue{}, nil
 }
 
-func (f *FakeAccessServiceServer) Rewrap(context.Context, *kas.RewrapRequest) (*kas.RewrapResponse, error) {
+func (f *FakeAccessServiceServer) Rewrap(ctx context.Context, _ *kas.RewrapRequest) (*kas.RewrapResponse, error) {
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		f.accessToken = md.Get("authorization")
+		f.dpopKey = GetJWKFromContext(ctx)
+	}
 	return &kas.RewrapResponse{}, nil
 }
 
@@ -454,7 +453,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 
 	client := kas.NewAccessServiceClient(conn)
 
-	_, err = client.Info(context.Background(), &kas.InfoRequest{})
+	_, err = client.Rewrap(context.Background(), &kas.RewrapRequest{})
 	s.Require().NoError(err)
 	s.NotNil(fakeServer.dpopKey)
 	dpopJWKFromRequest, ok := fakeServer.dpopKey.(jwk.RSAPublicKey)

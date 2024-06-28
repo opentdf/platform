@@ -17,13 +17,6 @@ func migrationInit(ctx context.Context, c *Client, migrations *embed.FS) (*goose
 		return nil, 0, nil, fmt.Errorf("migrations are disabled")
 	}
 
-	// Set the schema
-	q := fmt.Sprintf("SET search_path TO %s", c.config.Schema)
-	if tag, err := c.Pgx.Exec(ctx, q); err != nil {
-		slog.Error("migration error", slog.String("query", q), slog.String("error", err.Error()), slog.Any("tag", tag))
-		return nil, 0, nil, fmt.Errorf("failed to SET search_path [%w]", err)
-	}
-
 	// Cast the pgxpool.Pool to a *sql.DB
 	pool, ok := c.Pgx.(*pgxpool.Pool)
 	if !ok || pool == nil {
@@ -42,7 +35,7 @@ func migrationInit(ctx context.Context, c *Client, migrations *embed.FS) (*goose
 	if e != nil {
 		return nil, 0, nil, errors.Join(fmt.Errorf("failed to get current version"), e)
 	}
-	slog.Info("migration db info ", slog.Any("current version", v))
+	slog.Info("migration db info", slog.Any("current version", v))
 
 	// Return the provider, version, and close function
 	return provider, v, func() {

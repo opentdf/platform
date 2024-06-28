@@ -15,8 +15,31 @@ const (
 	LevelAuditStr = "AUDIT"
 )
 
+var logLevelNames = map[slog.Leveler]string{
+	LevelAudit: LevelAuditStr,
+}
+
 type Logger struct {
 	logger *slog.Logger
+}
+
+// Used to support custom log levels showing up with custom labels as well
+// see https://betterstack.com/community/guides/logging/logging-in-go/#creating-custom-log-levels
+func ReplaceAttrAuditLevel(_ []string, a slog.Attr) slog.Attr {
+	if a.Key != slog.LevelKey {
+		return a
+	}
+	level, ok := a.Value.Any().(slog.Level)
+	if !ok {
+		return a
+	}
+
+	levelLabel, exists := logLevelNames[level]
+	if !exists {
+		levelLabel = level.String()
+	}
+	a.Value = slog.StringValue(levelLabel)
+	return a
 }
 
 func CreateAuditLogger(logger slog.Logger) *Logger {

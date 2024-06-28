@@ -29,6 +29,7 @@ type RealmToCreate struct {
 	CustomClientRoles   map[string][]gocloak.Role   `yaml:"custom_client_roles,omitempty" json:"custom_client_roles,omitempty"`
 	CustomGroups        []gocloak.Group             `yaml:"custom_groups,omitempty" json:"custom_groups,omitempty"`
 	TokenExchanges      []TokenExchange             `yaml:"token_exchanges,omitempty" json:"token_exchanges,omitempty"`
+	CertExchanges       map[string][]string         `yaml:"cert_exchanges,omitempty" json:"cert_exchanges,omitempty"`
 }
 
 type Client struct {
@@ -120,6 +121,10 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 
 	opentdfClientID := "opentdf"
 	opentdfSdkClientID := "opentdf-sdk"
+	opentdfSdkCertExchangeClientID := "opentdf-sdk-cert-exchange"
+	sampleUserName := "sample-user"
+	sampleUserPassword := "testuser123"
+	sampleUserNoCreds := "sampleuser"
 	opentdfOrgAdminRoleName := "opentdf-org-admin"
 	opentdfAdminRoleName := "opentdf-admin"
 	opentdfStandardRoleName := "opentdf-standard"
@@ -268,6 +273,28 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		return err
 	}
 
+	// Create TDF SDK Cert Exchange Client
+	sdkCertExchangeNumericID, err := createClient(ctx, client, token, &kcConnectParams, gocloak.Client{
+		ClientID: gocloak.StringP(opentdfSdkCertExchangeClientID),
+		Enabled:  gocloak.BoolP(true),
+		// OptionalClientScopes:    &[]string{"testscope"},
+		Name:                      gocloak.StringP(opentdfSdkCertExchangeClientID),
+		ServiceAccountsEnabled:    gocloak.BoolP(true),
+		ClientAuthenticatorType:   gocloak.StringP("client-secret"),
+		Secret:                    gocloak.StringP("secret"),
+		DirectAccessGrantsEnabled: gocloak.BoolP(true),
+		ProtocolMappers:           &protocolMappers,
+	}, []gocloak.Role{*opentdfReadonlyRole, *testingOnlyRole}, nil)
+	if err != nil {
+		return err
+	}
+
+	err = client.AddOptionalScopeToClient(ctx, token.AccessToken, kcConnectParams.Realm, sdkCertExchangeNumericID, testScopeID)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error adding scope to client: %s", err))
+		return err
+	}
+
 	// Create TDF Entity Resolution Client
 	realmManagementClientID, err := getIDOfClient(ctx, client, token, &kcConnectParams, &realmMangementClientName)
 	if err != nil {
@@ -312,11 +339,26 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	// }
 
 	user := gocloak.User{
+		FirstName:   gocloak.StringP("sample"),
+		LastName:    gocloak.StringP("user"),
+		Email:       gocloak.StringP("sample-user@sample.com"),
+		Enabled:     gocloak.BoolP(true),
+		Username:    gocloak.StringP(sampleUserName),
+		Credentials: &[]gocloak.CredentialRepresentation{{Value: gocloak.StringP(sampleUserPassword), Type: gocloak.StringP("password")}},
+		Attributes:  &map[string][]string{"superhero_name": {"thor"}, "superhero_group": {"avengers"}},
+		RealmRoles:  &[]string{opentdfReadonlyRoleName},
+	}
+	_, err = createUser(ctx, client, token, &kcConnectParams, user)
+	if err != nil {
+		panic("Oh no!, failed to create user :(")
+	}
+
+	user = gocloak.User{
 		FirstName:  gocloak.StringP("sample"),
 		LastName:   gocloak.StringP("user"),
 		Email:      gocloak.StringP("sampleuser@sample.com"),
 		Enabled:    gocloak.BoolP(true),
-		Username:   gocloak.StringP("sampleuser"),
+		Username:   gocloak.StringP(sampleUserNoCreds),
 		Attributes: &map[string][]string{"superhero_name": {"thor"}, "superhero_group": {"avengers"}},
 	}
 	_, err = createUser(ctx, client, token, &kcConnectParams, user)
@@ -328,7 +370,9 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	if err := createTokenExchange(ctx, &kcConnectParams, opentdfClientID, opentdfSdkClientID); err != nil {
 		return err
 	}
-	if err := createCertExchange(ctx, &kcConnectParams, "x509-auth-flow", opentdfSdkClientID); err != nil {
+
+	// Create cert exchange for opentdf-sdk-cert-exchange
+	if err := createCertExchange(ctx, &kcConnectParams, "x509-auth-flow", opentdfSdkCertExchangeClientID); err != nil {
 		return err
 	}
 
@@ -436,6 +480,18 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 				err := createTokenExchange(ctx, &kcConnectParams, tokenExchange.StartClientID, tokenExchange.TargetClientID)
 				if err != nil {
 					return err
+				}
+			}
+		}
+
+		// create cert exchanges
+		if realmToCreate.CertExchanges != nil {
+			for flowName, clients := range realmToCreate.CertExchanges {
+				for _, client := range clients {
+					err := createCertExchange(ctx, &kcConnectParams, flowName, client)
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}

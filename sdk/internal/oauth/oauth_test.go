@@ -72,7 +72,7 @@ var ca []byte
 
 func (s *OAuthSuite) TestCertExchangeFromKeycloak() {
 	clientCredentials := ClientCredentials{
-		ClientID:   "opentdf-sdk",
+		ClientID:   "opentdf-sdk-cert-exchange",
 		ClientAuth: "secret",
 	}
 	cert, err := tls.LoadX509KeyPair("testdata/sampleuser.crt", "testdata/sampleuser.key")

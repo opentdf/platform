@@ -400,14 +400,13 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		// get the client auth token
 		authToken, err := (*as.tokenSource).Token()
 		if err != nil {
-			slog.Error("failed to get client auth token in GetEntitlements", slog.String("error", err.Error()))
+			as.logger.ErrorContext(ctx, "failed to get client auth token in GetEntitlements", slog.String("error", err.Error()))
 			return nil, fmt.Errorf("failed to get client auth token in GetEntitlements: %w", err)
 		}
-		// OPA
+
 		in, err := entitlements.OpaInput(entity, subjectMappings, as.config.ERSURL, authToken.AccessToken)
 		if err != nil {
-			slog.Error("failed to build OPA input", slog.Any("entity", entity), slog.String("error", err.Error()))
-			slog.Debug("authToken", "authToken", authToken) // only log token in debug mode
+			as.logger.ErrorContext(ctx, "failed to build OPA input", slog.Any("entity", entity), slog.String("error", err.Error()))
 			return nil, fmt.Errorf("failed to build OPA input in GetEntitlements: %w", err)
 		}
 		as.logger.DebugContext(ctx, "entitlements", "entity_id", entity.GetId(), "input", fmt.Sprintf("%+v", in))

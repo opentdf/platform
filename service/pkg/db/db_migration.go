@@ -42,7 +42,7 @@ func migrationInit(ctx context.Context, c *Client, migrations *embed.FS) (*goose
 	if e != nil {
 		return nil, 0, nil, errors.Join(fmt.Errorf("failed to get current version"), e)
 	}
-	slog.Info("migration db info ", slog.Any("current version", v))
+	slog.Info("migration db info", slog.Any("current version", v))
 
 	// Return the provider, version, and close function
 	return provider, v, func() {

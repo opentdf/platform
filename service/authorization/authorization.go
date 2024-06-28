@@ -8,6 +8,9 @@ import (
 	"os"
 	"strings"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"github.com/creasty/defaults"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/mitchellh/mapstructure"
@@ -369,12 +372,13 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		// TODO: Reomve and use MatchSubjectMappings instead later in the flow
 		listAttributeResp, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{})
 		if err != nil {
-			return nil, err
+			as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
+			return nil, status.Error(codes.Internal, "failed to list attributes")
 		}
 		var attributeFqns []string
 		for _, attr := range listAttributeResp.GetAttributes() {
 			for _, val := range attr.GetValues() {
-				attributeFqns = append(attributeFqns, fmt.Sprintf("%s/value/%s", attr.GetFqn(), val.GetValue()))
+				attributeFqns = append(attributeFqns, val.GetFqn())
 			}
 		}
 		request.Fqns = attributeFqns
@@ -384,13 +388,15 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	}
 	avf, err := as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &request)
 	if err != nil {
-		return nil, err
+		as.logger.ErrorContext(ctx, "failed to get attribute values by fqns", slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, "failed to get attribute values by fqns")
 	}
 	subjectMappings := avf.GetFqnAttributeValues()
 	as.logger.DebugContext(ctx, "retrieved from subject mappings service", slog.Any("subject_mappings: ", subjectMappings))
+	// TODO: this could probably be moved to proto validation https://github.com/opentdf/platform/issues/1057
 	if req.Entities == nil {
 		as.logger.ErrorContext(ctx, "requires entities")
-		return nil, errors.New("entity chain is required")
+		return nil, status.Error(codes.InvalidArgument, "requires entities")
 	}
 	rsp := &authorization.GetEntitlementsResponse{
 		Entitlements: make([]*authorization.EntityEntitlements, len(req.GetEntities())),
@@ -401,13 +407,13 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		authToken, err := (*as.tokenSource).Token()
 		if err != nil {
 			as.logger.ErrorContext(ctx, "failed to get client auth token in GetEntitlements", slog.String("error", err.Error()))
-			return nil, fmt.Errorf("failed to get client auth token in GetEntitlements: %w", err)
+			return nil, status.Error(codes.Internal, "failed to get client auth token in GetEntitlements")
 		}
 
 		in, err := entitlements.OpaInput(entity, subjectMappings, as.config.ERSURL, authToken.AccessToken)
 		if err != nil {
-			as.logger.ErrorContext(ctx, "failed to build OPA input", slog.Any("entity", entity), slog.String("error", err.Error()))
-			return nil, fmt.Errorf("failed to build OPA input in GetEntitlements: %w", err)
+			as.logger.ErrorContext(ctx, "failed to build rego input", slog.Any("entity", entity), slog.String("error", err.Error()))
+			return nil, status.Error(codes.Internal, "failed to build rego input")
 		}
 		as.logger.DebugContext(ctx, "entitlements", "entity_id", entity.GetId(), "input", fmt.Sprintf("%+v", in))
 
@@ -415,40 +421,48 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			rego.EvalInput(in),
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to determine entitlements: %w", err)
+			return nil, status.Error(codes.Internal, "failed to evaluate entitlements policy")
 		}
 
+		// If we get no results and no error then we assume that the entity is not entitled to anything
 		if len(results) == 0 {
 			as.logger.DebugContext(ctx, "no entitlement results", slog.String("entity_id", entity.GetId()))
 			return rsp, nil
 		}
 
-		// I am not sure how we would end up with multiple results lets return an empty set for now
+		// I am not sure how we would end up with multiple results but lets return an empty entitlement set for now
 		if len(results) > 1 {
 			as.logger.WarnContext(ctx, "multiple entitlement results", slog.String("entity_id", entity.GetId()), slog.String("results", fmt.Sprintf("%+v", results)))
 			return rsp, nil
 		}
 
+		// If we get no expressions then we assume that the entity is not entitled to anything
 		if len(results[0].Expressions) == 0 {
 			as.logger.WarnContext(ctx, "no entitlement expressions", slog.String("entity_id", entity.GetId()), slog.String("results", fmt.Sprintf("%+v", results)))
 			return rsp, nil
 		}
+
+		// Check to maksure if the value is a list. Good validation if someone customizes the rego policy
 		resultsEntitlements, valueListOk := results[0].Expressions[0].Value.([]interface{})
 		if !valueListOk {
-			as.logger.ErrorContext(ctx, "entitlements is not an array", slog.String("entity_id", entity.GetId()), slog.String("value", fmt.Sprintf("%+v", results[0].Expressions[0].Value)))
+			as.logger.ErrorContext(ctx, "entitlements is not an array", slog.String("entity_id", entity.GetId()), slog.String("value", fmt.Sprintf("%+v", resultsEntitlements...)))
 			return rsp, nil
 		}
-
+		// Build array with length of results
 		var entitlements = make([]string, len(resultsEntitlements))
+
+		// Build entitlements list
 		for valueIDX, value := range resultsEntitlements {
 			entitlement, valueOK := value.(string)
+			// If value is not okay skip adding to entitlements
 			if !valueOK {
-				as.logger.ErrorContext(ctx, "entitlement is not a string", slog.String("entity_id", entity.GetId()), slog.String("value", fmt.Sprintf("%+v", value)))
-				return rsp, nil
+				as.logger.WarnContext(ctx, "issue with adding entitlement", slog.String("entity_id", entity.GetId()), slog.String("entitlement", entitlement))
+				continue
 			}
+			// Add entitlement to entitlements array
 			entitlements[valueIDX] = entitlement
 		}
-
+		// Update the entity with its entitlements
 		rsp.Entitlements[idx] = &authorization.EntityEntitlements{
 			EntityId:           entity.GetId(),
 			AttributeValueFqns: entitlements,

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/sdk/internal/autoconfigure"
 )
 
 const (
@@ -37,16 +38,15 @@ type KASInfo struct {
 	KID string
 	// The algorithm associated with this key
 	Algorithm string
+	// If this KAS should be used as the default for 'encrypt' calls
+	Default bool
 }
 
 type TDFOption func(*TDFConfig) error
 
-type splitStep struct {
-	kas, splitID string
-}
-
 // TDFConfig Internal config struct for building TDF options.
 type TDFConfig struct {
+	autoconfigure             bool
 	defaultSegmentSize        int64
 	enableEncryption          bool
 	tdfFormat                 TDFFormat
@@ -57,9 +57,9 @@ type TDFConfig struct {
 	integrityAlgorithm        IntegrityAlgorithm
 	segmentIntegrityAlgorithm IntegrityAlgorithm
 	assertions                []Assertion //nolint:unused // TODO
-	attributes                []string
+	attributes                []autoconfigure.AttributeValue
 	kasInfoList               []KASInfo
-	splitPlan                 []splitStep
+	splitPlan                 []autoconfigure.SplitStep
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -101,7 +101,13 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 // WithDataAttributes appends the given data attributes to the bound policy
 func WithDataAttributes(attributes ...string) TDFOption {
 	return func(c *TDFConfig) error {
-		c.attributes = append(c.attributes, attributes...)
+		for _, a := range attributes {
+			v, err := autoconfigure.NewAttributeValue(a)
+			if err != nil {
+				return err
+			}
+			c.attributes = append(c.attributes, v)
+		}
 		return nil
 	}
 }
@@ -123,10 +129,11 @@ func WithKasInformation(kasInfoList ...KASInfo) TDFOption {
 	}
 }
 
-func withSplitPlan(p ...splitStep) TDFOption {
+func withSplitPlan(p ...autoconfigure.SplitStep) TDFOption {
 	return func(c *TDFConfig) error {
-		c.splitPlan = make([]splitStep, len(p))
+		c.splitPlan = make([]autoconfigure.SplitStep, len(p))
 		copy(c.splitPlan, p)
+		c.autoconfigure = false
 		return nil
 	}
 }
@@ -150,6 +157,17 @@ func WithMimeType(mimeType string) TDFOption {
 func WithSegmentSize(size int64) TDFOption {
 	return func(c *TDFConfig) error {
 		c.defaultSegmentSize = size
+		return nil
+	}
+}
+
+// WithAutoconfigure enables inferring KAS info for encrypt from data attributes
+// This will use the Attributes service to look up key access grants.
+// These are KAS URLs associated with attributes.
+func WithAutoconfigure() TDFOption {
+	return func(c *TDFConfig) error {
+		c.autoconfigure = true
+		c.splitPlan = nil
 		return nil
 	}
 }

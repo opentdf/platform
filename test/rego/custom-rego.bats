@@ -3,11 +3,11 @@
 # Set up environment variables or any required setup
 setup() {
   if [ -z "$BATS_LIB_PATH" ]; then
-    BATS_LIB_PATH="/usr"
+    BATS_LIB_PATH="/usr/lib"
   fi
   echo "BATS LIB PATH" $BATS_LIB_PATH
-  load "${BATS_LIB_PATH}/lib/bats-support/load.bash"
-  load "${BATS_LIB_PATH}/lib/bats-assert/load.bash"
+  load "${BATS_LIB_PATH}/bats-support/load.bash"
+  load "${BATS_LIB_PATH}/bats-assert/load.bash"
   export BASE_URL="localhost:8080"
   export CLIENT_ID="opentdf"
   export CLIENT_SECRET="secret"

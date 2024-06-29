@@ -201,6 +201,7 @@ jobs:
         run: go test ./service/rttests -v
       - name: enable custom rego policy
         run: yq eval '.services.authorization.rego.path = "./test/rego/entitlements.rego"' -i opentdf.yaml
+      - run: sleep 30
       - name: validate custom rego policy
         run: test/rego/custom-rego.bats
 

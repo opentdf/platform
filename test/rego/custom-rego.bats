@@ -2,12 +2,11 @@
 
 # Set up environment variables or any required setup
 setup() {
-  if [ -z "$BATS_LIB_PATH" ]; then
-    BATS_LIB_PATH="/usr/lib"
-  fi
-  echo "BATS LIB PATH" $BATS_LIB_PATH
-  load "${BATS_LIB_PATH}/bats-support/load.bash"
-  load "${BATS_LIB_PATH}/bats-assert/load.bash"
+  export BATS_LIB_PATH="${BATS_LIB_PATH}:/usr/lib"
+  bats_load_library bats-support
+  bats_load_library bats-assert
+  bats_load_library bats-file
+  bats_load_library bats-detik/detik.bash
   export BASE_URL="localhost:8080"
   export CLIENT_ID="opentdf"
   export CLIENT_SECRET="secret"

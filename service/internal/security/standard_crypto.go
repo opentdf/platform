@@ -2,6 +2,7 @@ package security
 
 import (
 	"crypto"
+	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/sha256"
 	"crypto/x509"
@@ -113,7 +114,7 @@ func loadKey(k KeyPairInfo) (any, error) {
 		}
 	}
 	switch k.Algorithm {
-	case AlgorithmECP256R1:
+	case AlgorithmECP256R1, AlgorithmECP384R1, AlgorithmECP521R1:
 		return StandardECCrypto{
 			KeyPairInfo:      k,
 			ecPrivateKeyPem:  string(privatePEM),
@@ -240,8 +241,8 @@ func (s StandardCrypto) RSAPublicKey(kid string) (string, error) {
 	return pem, nil
 }
 
-func (s StandardCrypto) ECCertificate(kid string) (string, error) {
-	ecKeys, ok := s.keys[AlgorithmECP256R1]
+func (s StandardCrypto) ECCertificate(kid string, curveName string) (string, error) {
+	ecKeys, ok := s.keys[curveName]
 	if !ok || len(ecKeys) == 0 {
 		return "", ErrCertNotFound
 	}
@@ -256,8 +257,8 @@ func (s StandardCrypto) ECCertificate(kid string) (string, error) {
 	return ec.ecCertificatePEM, nil
 }
 
-func (s StandardCrypto) ECPublicKey(kid string) (string, error) {
-	ecKeys, ok := s.keys[AlgorithmECP256R1]
+func (s StandardCrypto) ECPublicKey(kid string, curveName string) (string, error) {
+	ecKeys, ok := s.keys[curveName]
 	if !ok || len(ecKeys) == 0 {
 		return "", ErrCertNotFound
 	}
@@ -383,8 +384,8 @@ func (s StandardCrypto) GenerateNanoTDFSymmetricKey(kasKID string, ephemeralPubl
 	return key, nil
 }
 
-func (s StandardCrypto) GenerateEphemeralKasKeys() (any, []byte, error) {
-	ephemeralKeyPair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
+func (s StandardCrypto) GenerateEphemeralKasKeys(curve elliptic.Curve) (any, []byte, error) {
+	ephemeralKeyPair, err := ocrypto.NewECKeyPairForCurve(curve)
 	if err != nil {
 		return nil, nil, fmt.Errorf("ocrypto.NewECKeyPair failed: %w", err)
 	}
@@ -423,6 +424,21 @@ func (s StandardCrypto) GenerateNanoTDFSessionKey(privateKey any, ephemeralPubli
 		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
 	}
 	return derivedKey, nil
+}
+
+func ConvertEphemeralPublicKeyBytesToECDSAPublicKey(curve elliptic.Curve, ephemeralPublicKeyBytes []byte) (*ecdsa.PublicKey, error) {
+	// Converting ephemeralPublicKey byte array to *big.Int
+	x, y := elliptic.UnmarshalCompressed(curve, ephemeralPublicKeyBytes)
+	if x == nil {
+		return nil, errors.New("failed to unmarshal compressed public key")
+	}
+	// Creating ecdsa.PublicKey from *big.Int
+	ephemeralECDSAPublicKey := &ecdsa.PublicKey{
+		Curve: curve,
+		X:     x,
+		Y:     y,
+	}
+	return ephemeralECDSAPublicKey, nil
 }
 
 func (s StandardCrypto) Close() {

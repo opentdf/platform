@@ -52,10 +52,10 @@ func (p Provider) LegacyPublicKey(ctx context.Context, in *kaspb.LegacyPublicKey
 	}
 
 	switch algorithm {
-	case security.AlgorithmECP256R1:
-		pem, err = p.CryptoProvider.ECCertificate(kid)
+	case security.AlgorithmECP256R1, security.AlgorithmECP384R1, security.AlgorithmECP521R1:
+		pem, err = p.CryptoProvider.ECCertificate(kid, algorithm)
 		if err != nil {
-			slog.ErrorContext(ctx, "CryptoProvider.ECPublicKey failed", "err", err)
+			slog.ErrorContext(ctx, "failed LegacyPublicKey to get certificate", "err", err)
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
 		}
 	case security.AlgorithmRSA2048:
@@ -99,8 +99,8 @@ func (p Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*k
 	}
 
 	switch algorithm {
-	case security.AlgorithmECP256R1:
-		ecPublicKeyPem, err := p.CryptoProvider.ECPublicKey(kid)
+	case security.AlgorithmECP256R1, security.AlgorithmECP384R1, security.AlgorithmECP521R1:
+		ecPublicKeyPem, err := p.CryptoProvider.ECPublicKey(kid, algorithm)
 		return r(ecPublicKeyPem, kid, err)
 	case security.AlgorithmRSA2048:
 		fallthrough

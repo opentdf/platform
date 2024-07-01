@@ -46,7 +46,6 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	opts := []sdk.Option{
 		sdk.WithInsecurePlaintextConn(),
 		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
-		sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
 	}
 
 	if noKIDInKAO {
@@ -103,7 +102,10 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-
+		err = nanoTDFConfig.SetECCMode(ocrypto.ECCModeSecp256r1)
+		if err != nil {
+			return err
+		}
 		_, err = client.CreateNanoTDF(out, in, *nanoTDFConfig)
 		if err != nil {
 			return err

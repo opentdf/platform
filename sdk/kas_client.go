@@ -183,8 +183,8 @@ func (k *KASClient) makeNanoTDFRewrapRequest(header string, kasURL string, pubKe
 	return response, nil
 }
 
-func (k *KASClient) unwrapNanoTDF(header string, kasURL string) ([]byte, error) {
-	keypair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
+func (k *KASClient) unwrapNanoTDF(ecMode ocrypto.ECCMode, header string, kasURL string) ([]byte, error) {
+	keypair, err := ocrypto.NewECKeyPair(ecMode)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewECKeyPair failed :%w", err)
 	}

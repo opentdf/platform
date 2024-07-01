@@ -402,7 +402,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 	// extract the policy
 	policy, err := extractNanoPolicy(symmetricKey, header)
 	if err != nil {
-		return nil, fmt.Errorf("Error extracting policy: %w", err)
+		return nil, fmt.Errorf("error extracting policy: %w", err)
 	}
 
 	// check the policy binding
@@ -457,7 +457,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		return nil, fmt.Errorf("failed to serialize keypair: %v", pub)
 	}
 
-	privateKeyHandle, publicKeyHandle, err := p.CryptoProvider.GenerateEphemeralKasKeys()
+	privateKeyHandle, publicKeyHandle, err := p.CryptoProvider.GenerateEphemeralKasKeys(ecCurve)
 
 	if err != nil {
 		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)

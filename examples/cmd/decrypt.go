@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"bytes"
-	"errors"
+	"fmt"
 	"io"
 	"os"
 
@@ -31,7 +31,6 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	client, err := sdk.New(platformEndpoint,
 		sdk.WithInsecurePlaintextConn(),
 		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
-		sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
 	)
 	if err != nil {
 		return err
@@ -40,42 +39,35 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	defer file.Close()
 
-	var magic [3]byte
-	var isNano bool
-	n, err := io.ReadFull(file, magic[:])
-	switch {
-	case err != nil:
-		return err
-	case n < 3:
-		return errors.New("file too small; no magic number found")
-	case bytes.HasPrefix(magic[:], []byte("L1L")):
-		isNano = true
-	default:
-		isNano = false
-	}
-	_, err = file.Seek(0, 0)
+	isTDF := true
+	tdfreader, err := client.LoadTDF(file)
 	if err != nil {
-		return err
+		cmd.Println("Not TDF, proceeding to try Nano")
+		isTDF = false
 	}
 
-	if !isNano {
-		tdfreader, err := client.LoadTDF(file)
-		if err != nil {
-			return err
-		}
-
-		//Print decrypted string
+	//Print TDF decrypted string
+	if isTDF {
 		_, err = io.Copy(os.Stdout, tdfreader)
 		if err != nil && err != io.EOF {
 			return err
 		}
-	} else {
-		_, err = client.ReadNanoTDF(os.Stdout, file)
-		if err != nil {
-			return err
-		}
+		return nil
 	}
+
+	_, err = file.Seek(0, 0)
+	if err != nil {
+		return err
+	}
+	outBuf := bytes.Buffer{}
+	_, err = client.ReadNanoTDF(io.Writer(&outBuf), file)
+	if err != nil {
+		return err
+	}
+	outStr := outBuf.String()
+	fmt.Println(outStr)
 	return nil
 }

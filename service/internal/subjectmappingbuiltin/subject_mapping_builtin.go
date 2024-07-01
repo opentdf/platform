@@ -42,7 +42,6 @@ func SubjectMappingBuiltin() {
 		if err != nil {
 			return nil, err
 		}
-
 		err = protojson.Unmarshal(entityRepresentationsBytes, &entityRepresentations)
 		if err != nil {
 			return nil, err

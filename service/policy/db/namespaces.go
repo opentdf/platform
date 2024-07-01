@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -208,7 +209,8 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 	}
 
 	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
+	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
+	slog.Debug("upserted fqn for created namespace", slog.Any("fqn", fqn))
 
 	return &policy.Namespace{
 		Id:       id,
@@ -259,9 +261,6 @@ func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *names
 		return nil, err
 	}
 
-	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
-
 	return &policy.Namespace{
 		Id: id,
 	}, nil
@@ -278,7 +277,7 @@ func unsafeUpdateNamespaceSQL(id string, name string) (string, []interface{}, er
 }
 
 func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, name string) (*policy.Namespace, error) {
-	sql, args, err := unsafeUpdateNamespaceSQL(id, name)
+	sql, args, err := unsafeUpdateNamespaceSQL(id, strings.ToLower(name))
 	if db.IsQueryBuilderSetClauseError(err) {
 		return &policy.Namespace{
 			Id: id,
@@ -292,8 +291,23 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 	if err != nil {
 		return nil, err
 	}
-	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
+
+	// Update all FQNs that may contain the namespace name
+	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
+	slog.Debug("upserted fqn for unsafely updated namespace", slog.Any("fqn", fqn))
+
+	attrs, err := c.ListAllAttributes(ctx, StateAny, id)
+	if err != nil {
+		return nil, err
+	}
+	for _, attr := range attrs {
+		fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id, attributeID: attr.GetId()})
+		slog.Debug("upserted definition fqn for unsafely updated namespace", slog.Any("fqn", fqn))
+		for _, value := range attr.GetValues() {
+			fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id, attributeID: attr.GetId(), valueID: value.GetId()})
+			slog.Debug("upserted value fqn for unsafely updated namespace", slog.Any("fqn", fqn))
+		}
+	}
 
 	return hydrateNamespaceItem(row, namespaceSelectOptions{})
 }
@@ -367,7 +381,15 @@ func deleteNamespaceSQL(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c PolicyDBClient) UnsafeDeleteNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
+func (c PolicyDBClient) UnsafeDeleteNamespace(ctx context.Context, existing *policy.Namespace, fqn string) (*policy.Namespace, error) {
+	if existing == nil {
+		return nil, fmt.Errorf("namespace not found: %w", db.ErrNotFound)
+	}
+	id := existing.GetId()
+
+	if existing.GetFqn() != fqn {
+		return nil, fmt.Errorf("fqn mismatch: %w", db.ErrNotFound)
+	}
 	sql, args, err := deleteNamespaceSQL(id)
 	if err != nil {
 		return nil, err

@@ -197,7 +197,10 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 	}
 
 	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: id})
+	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: id})
+	if fqn != "" {
+		slog.Debug("created new attribute value FQN", slog.String("value_id", id), slog.String("value", value), slog.String("fqn", fqn))
+	}
 
 	rV := &policy.Value{
 		Id:        id,

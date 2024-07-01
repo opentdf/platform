@@ -523,7 +523,7 @@ func unsafeUpdateAttributeValueSQL(id string, value string) (string, []interface
 		ToSql()
 }
 
-func (c PolicyDBClient) UnsafeUpdateAttributeValue(ctx context.Context, r *unsafe.UpdateAttributeValueRequest) (*policy.Value, error) {
+func (c PolicyDBClient) UnsafeUpdateAttributeValue(ctx context.Context, r *unsafe.UnsafeUpdateAttributeValueRequest) (*policy.Value, error) {
 	id := r.GetId()
 	val := strings.ToLower(r.GetValue())
 	sql, args, err := unsafeUpdateAttributeValueSQL(id, val)
@@ -600,7 +600,7 @@ func unsafeDeleteAttributeValueSQL(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c PolicyDBClient) UnsafeDeleteAttributeValue(ctx context.Context, toDelete *policy.Value, r *unsafe.DeleteAttributeValueRequest) (*policy.Value, error) {
+func (c PolicyDBClient) UnsafeDeleteAttributeValue(ctx context.Context, toDelete *policy.Value, r *unsafe.UnsafeDeleteAttributeValueRequest) (*policy.Value, error) {
 	id := r.GetId()
 	fqn := r.GetFqn()
 

@@ -47,7 +47,6 @@ func SubjectMappingBuiltin() {
 		if err != nil {
 			return nil, err
 		}
-		slog.Debug("mapping entity", entityRepresentations.GetEntityRepresentations())
 
 		// need to do extra conversion for pbjson within map
 		for k, v := range attributeMappingsMap {
@@ -91,7 +90,6 @@ func EvaluateSubjectMappings(attributeMappings map[string]*attributes.GetAttribu
 	entitlements := []string{}
 	for _, entity := range jsonEntities {
 		flattenedEntity, err := flattening.Flatten(entity.AsMap())
-		slog.Debug("flattened entity", flattenedEntity)
 		if err != nil {
 			return nil, fmt.Errorf("failure to flatten entity in subject mapping builtin: %w", err)
 		}

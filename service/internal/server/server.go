@@ -183,7 +183,6 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 			// AllowedOrigins: c.CORS.AllowedOrigins,
 			AllowOriginFunc: func(_ *http.Request, origin string) bool {
 				for _, allowedOrigin := range c.CORS.AllowedOrigins {
-					fmt.Println("in cors handler", allowedOrigin)
 					if allowedOrigin == "*" {
 						return true
 					}
@@ -198,7 +197,6 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 			ExposedHeaders:   c.CORS.ExposedHeaders,
 			AllowCredentials: c.CORS.AllowCredentials,
 			MaxAge:           c.CORS.MaxAge,
-			Debug:            true,
 		}).Handler(h)
 	}
 

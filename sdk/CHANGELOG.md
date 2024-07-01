@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.9](https://github.com/opentdf/platform/compare/sdk/v0.2.8...sdk/v0.2.9) (2024-07-01)
+
+
+### Bug Fixes
+
+* Issue [#1008](https://github.com/opentdf/platform/issues/1008) : Use exchange info's TLS Configuration for cert based auth ([#1043](https://github.com/opentdf/platform/issues/1043)) ([93d8f70](https://github.com/opentdf/platform/commit/93d8f70750d181e0818911e5b317c9d85044623b))
+
 ## [0.2.8](https://github.com/opentdf/platform/compare/sdk/v0.2.7...sdk/v0.2.8) (2024-06-24)
 
 

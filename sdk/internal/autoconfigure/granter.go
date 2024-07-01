@@ -20,6 +20,7 @@ const (
 	allOf       = "allOf"
 	anyOf       = "anyOf"
 	unspecified = "unspecified"
+	emptyTerm   = "DEFAULT"
 )
 
 // Represents a which KAS a split with the associated ID should shared with.
@@ -107,7 +108,7 @@ func NewGranterFromService(ctx context.Context, as attributes.AttributesServiceC
 	}
 
 	grants := Granter{
-		policy: fqns[:],
+		policy: fqns,
 		grants: make(map[AttributeValue]*keyAccessGrant),
 	}
 	for fqns, pair := range av.GetFqnAttributeValues() {
@@ -209,7 +210,7 @@ func (s *AttributeService) Put(ad *policy.Attribute) error {
 	}
 	prefix := AttributeName(ad.GetFqn())
 	if _, exists := s.dict[prefix]; exists {
-		return errors.New(fmt.Sprintf("ad prefix already found [%s]", prefix))
+		return fmt.Errorf("ad prefix already found [%s]", prefix)
 	}
 	s.dict[prefix] = ad
 	return nil
@@ -219,7 +220,7 @@ func (s *AttributeService) Put(ad *policy.Attribute) error {
 func (s *AttributeService) Get(prefix AttributeName) (*policy.Attribute, error) {
 	ad, exists := s.dict[prefix]
 	if !exists {
-		return nil, errors.New(fmt.Sprintf("[404] Unknown attribute type: [%s], not in [%v]", prefix, s.dict))
+		return nil, fmt.Errorf("[404] Unknown attribute type: [%s], not in [%v]", prefix, s.dict)
 	}
 	return ad, nil
 }
@@ -263,11 +264,7 @@ func (e attributeBooleanExpression) String() string {
 }
 
 func (r Granter) Plan(defaultKas string, genSplitID func() string) ([]SplitStep, error) {
-	b, err := r.constructAttributeBoolean()
-	if err != nil {
-		return nil, err
-	}
-
+	b := r.constructAttributeBoolean()
 	k, err := r.insertKeysForAttribute(*b)
 	if err != nil {
 		return nil, err
@@ -294,11 +291,11 @@ func (r Granter) Plan(defaultKas string, genSplitID func() string) ([]SplitStep,
 	return p, nil
 }
 
-func (r Granter) constructAttributeBoolean() (*attributeBooleanExpression, error) {
+func (r Granter) constructAttributeBoolean() *attributeBooleanExpression {
 	prefixes := make(map[AttributeName]*singleAttributeClause)
 	sortedPrefixes := make([]AttributeName, 0)
 	for _, aP := range r.policy {
-		a := AttributeValue(aP)
+		a := aP
 		p := a.Prefix()
 		if clause, ok := prefixes[p]; ok {
 			clause.values = append(clause.values, a)
@@ -311,7 +308,7 @@ func (r Granter) constructAttributeBoolean() (*attributeBooleanExpression, error
 	for _, p := range sortedPrefixes {
 		must = append(must, *prefixes[p])
 	}
-	return &attributeBooleanExpression{must}, nil
+	return &attributeBooleanExpression{must}
 }
 
 type publicKeyInfo struct {
@@ -324,8 +321,8 @@ type keyClause struct {
 }
 
 func (e keyClause) String() string {
-	if len(e.values) == 1 && e.values[0].kas == "DEFAULT" {
-		return "[DEFAULT]"
+	if len(e.values) == 1 && e.values[0].kas == emptyTerm {
+		return "[" + emptyTerm + "]"
 	}
 	if len(e.values) == 1 {
 		return "(" + e.values[0].kas + ")"
@@ -369,9 +366,10 @@ func ruleToOperator(e policy.AttributeRuleTypeEnum) string {
 		return anyOf
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY:
 		return hierarchy
-	default:
+	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED:
 		return unspecified
 	}
+	return ""
 }
 
 func (r *Granter) insertKeysForAttribute(e attributeBooleanExpression) (booleanKeyExpression, error) {
@@ -385,22 +383,15 @@ func (r *Granter) insertKeysForAttribute(e attributeBooleanExpression) (booleanK
 			}
 			kases := grant.kases
 			if len(kases) == 0 {
-				kases = []string{"DEFAULT"}
+				kases = []string{emptyTerm}
 			}
 			for _, kas := range kases {
 				kcv = append(kcv, publicKeyInfo{kas})
 			}
 		}
-		op := allOf
-		switch clause.def.GetRule() {
-		case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY:
-			op = hierarchy
-		case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF:
-			op = allOf
-		case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF:
-			op = anyOf
-		default:
-			slog.Warn("unknown attribute rule type", "rule.type", clause.def.GetRule())
+		op := ruleToOperator(clause.def.GetRule())
+		if op == unspecified {
+			slog.Warn("unknown attribute rule type", "rule", clause)
 		}
 		kc := keyClause{
 			operator: op,
@@ -416,12 +407,10 @@ func (r *Granter) insertKeysForAttribute(e attributeBooleanExpression) (booleanK
 // remove duplicates, sort a set of strings
 func sortedNoDupes(l []publicKeyInfo) disjunction {
 	set := map[string]bool{}
-	list := make([]string, 0, 2)
+	list := make([]string, 0)
 	for _, e := range l {
 		kas := e.kas
-		if kas == "DEFAULT" {
-			// skip
-		} else if !set[kas] {
+		if kas != emptyTerm && !set[kas] {
 			set[kas] = true
 			list = append(list, kas)
 		}
@@ -479,22 +468,18 @@ func (e booleanKeyExpression) reduce() booleanKeyExpression {
 	for _, v := range e.values {
 		switch v.operator {
 		case anyOf:
-			disjunction := sortedNoDupes(v.values)
-			if len(disjunction) == 0 {
-				// default clause
-			} else if within(conjunction, disjunction) {
-				// already present disjunction clause
-			} else {
-				conjunction = append(conjunction, disjunction)
+			terms := sortedNoDupes(v.values)
+			if len(terms) > 0 && !within(conjunction, terms) {
+				conjunction = append(conjunction, terms)
 			}
 		default:
 			for _, k := range v.values {
-				if k.kas == "DEFAULT" {
+				if k.kas == emptyTerm {
 					continue
 				}
-				disjunction := []string{k.kas}
-				if !within(conjunction, disjunction) {
-					conjunction = append(conjunction, disjunction)
+				terms := []string{k.kas}
+				if !within(conjunction, terms) {
+					conjunction = append(conjunction, terms)
 				}
 			}
 		}

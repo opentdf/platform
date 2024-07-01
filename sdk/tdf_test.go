@@ -614,7 +614,7 @@ func (s *TDFSuite) Test_Autoconfigure() {
 			fileSize:         5,
 			tdfFileSize:      1733,
 			checksum:         "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			policy:           []autoconfigure.AttributeValue{CLS_Allowed},
+			policy:           []autoconfigure.AttributeValue{clsAllowed},
 			expectedPlanSize: 1,
 		},
 		{
@@ -622,7 +622,7 @@ func (s *TDFSuite) Test_Autoconfigure() {
 			fileSize:         5,
 			tdfFileSize:      2517,
 			checksum:         "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			policy:           []autoconfigure.AttributeValue{REL_AUS, REL_USA},
+			policy:           []autoconfigure.AttributeValue{rel2aus, rel2usa},
 			expectedPlanSize: 2,
 		},
 	} {
@@ -691,15 +691,16 @@ func (s *TDFSuite) testEncrypt(sdk *SDK, kasInfoList []KASInfo, plainTextFilenam
 	if test.mimeType != "" {
 		encryptOpts = append(encryptOpts, WithMimeType(test.mimeType))
 	}
-	if len(test.policy) > 0 {
+	switch {
+	case len(test.policy) > 0:
 		da := make([]string, len(test.policy))
 		for i := 0; i < len(da); i++ {
 			da[i] = string(test.policy[i])
 		}
 		encryptOpts = append(encryptOpts, WithAutoconfigure(), WithDataAttributes(da...))
-	} else if len(test.splitPlan) == 0 {
+	case len(test.splitPlan) == 0:
 		encryptOpts = append(encryptOpts, withSplitPlan(autoconfigure.SplitStep{KAS: kasInfoList[0].URL, SplitID: ""}))
-	} else {
+	default:
 		encryptOpts = append(encryptOpts, withSplitPlan(test.splitPlan...))
 	}
 
@@ -816,11 +817,11 @@ func (s *TDFSuite) startBackend() {
 		{"https://a.kas/", mockRSAPrivateKey1, mockRSAPublicKey1},
 		{"https://b.kas/", mockRSAPrivateKey2, mockRSAPublicKey2},
 		{"https://c.kas/", mockRSAPrivateKey3, mockRSAPublicKey3},
-		{AUS_KAS, mockRSAPrivateKey1, mockRSAPublicKey1},
-		{CAN_KAS, mockRSAPrivateKey2, mockRSAPublicKey2},
-		{GBR_KAS, mockRSAPrivateKey2, mockRSAPublicKey2},
-		{NZL_KAS, mockRSAPrivateKey3, mockRSAPublicKey3},
-		{USA_KAS, mockRSAPrivateKey1, mockRSAPublicKey1},
+		{kasAu, mockRSAPrivateKey1, mockRSAPublicKey1},
+		{kasCa, mockRSAPrivateKey2, mockRSAPublicKey2},
+		{lasUk, mockRSAPrivateKey2, mockRSAPublicKey2},
+		{kasNz, mockRSAPrivateKey3, mockRSAPublicKey3},
+		{kasUs, mockRSAPrivateKey1, mockRSAPublicKey1},
 	} {
 		grpcListener := bufconn.Listen(1024 * 1024)
 		url, err := url.Parse(ki.url)
@@ -881,34 +882,30 @@ func (f *FakeWellKnown) GetWellKnownConfiguration(_ context.Context, _ *wellknow
 }
 
 const (
-	AUS_KAS     = "https://kas.au/"
-	CAN_KAS     = "https://kas.ca/"
-	GBR_KAS     = "https://kas.uk/"
-	NZL_KAS     = "https://kas.nz/"
-	USA_KAS     = "https://kas.us/"
-	HCS_USA_KAS = "https://hcs.kas.us/"
-	SI_USA_KAS  = "https://si.kas.us/"
-	authority   = "https://virtru.com/"
+	kasAu     = "https://kas.au/"
+	kasCa     = "https://kas.ca/"
+	lasUk     = "https://kas.uk/"
+	kasNz     = "https://kas.nz/"
+	kasUs     = "https://kas.us/"
+	kasUsHcs  = "https://hcs.kas.us/"
+	kasUsSI   = "https://si.kas.us/"
+	authority = "https://virtru.com/"
 
 	CLS autoconfigure.AttributeName = "https://virtru.com/attr/Classification"
 	N2K autoconfigure.AttributeName = "https://virtru.com/attr/Need%20to%20Know"
 	REL autoconfigure.AttributeName = "https://virtru.com/attr/Releasable%20To"
 
-	CLS_Allowed      autoconfigure.AttributeValue = "https://virtru.com/attr/Classification/value/Allowed"
-	CLS_Confidential autoconfigure.AttributeValue = "https://virtru.com/attr/Classification/value/Confidential"
-	CLS_Secret       autoconfigure.AttributeValue = "https://virtru.com/attr/Classification/value/Secret"
-	CLS_TopSecret    autoconfigure.AttributeValue = "https://virtru.com/attr/Classification/value/Top%20Secret"
+	clsAllowed autoconfigure.AttributeValue = "https://virtru.com/attr/Classification/value/Allowed"
+	clsConf    autoconfigure.AttributeValue = "https://virtru.com/attr/Classification/value/Confidential"
+	clsSec     autoconfigure.AttributeValue = "https://virtru.com/attr/Classification/value/Secret"
+	clsTS      autoconfigure.AttributeValue = "https://virtru.com/attr/Classification/value/Top%20Secret"
 
-	N2K_HCS autoconfigure.AttributeValue = "https://virtru.com/attr/Need%20to%20Know/value/HCS"
-	N2K_INT autoconfigure.AttributeValue = "https://virtru.com/attr/Need%20to%20Know/value/INT"
-	N2K_SI  autoconfigure.AttributeValue = "https://virtru.com/attr/Need%20to%20Know/value/SI"
-
-	REL_FVEY autoconfigure.AttributeValue = "https://virtru.com/attr/Releasable%20To/value/FVEY"
-	REL_AUS  autoconfigure.AttributeValue = "https://virtru.com/attr/Releasable%20To/value/AUS"
-	REL_CAN  autoconfigure.AttributeValue = "https://virtru.com/attr/Releasable%20To/value/CAN"
-	REL_GBR  autoconfigure.AttributeValue = "https://virtru.com/attr/Releasable%20To/value/GBR"
-	REL_NZL  autoconfigure.AttributeValue = "https://virtru.com/attr/Releasable%20To/value/NZL"
-	REL_USA  autoconfigure.AttributeValue = "https://virtru.com/attr/Releasable%20To/value/USA"
+	rel25eye autoconfigure.AttributeValue = "https://virtru.com/attr/Releasable%20To/value/FVEY"
+	rel2aus  autoconfigure.AttributeValue = "https://virtru.com/attr/Releasable%20To/value/AUS"
+	rel2can  autoconfigure.AttributeValue = "https://virtru.com/attr/Releasable%20To/value/CAN"
+	rel2gbr  autoconfigure.AttributeValue = "https://virtru.com/attr/Releasable%20To/value/GBR"
+	rel2nzl  autoconfigure.AttributeValue = "https://virtru.com/attr/Releasable%20To/value/NZL"
+	rel2usa  autoconfigure.AttributeValue = "https://virtru.com/attr/Releasable%20To/value/USA"
 )
 
 func mockAttributeFor(fqn autoconfigure.AttributeName) *policy.Attribute {
@@ -947,10 +944,10 @@ func mockAttributeFor(fqn autoconfigure.AttributeName) *policy.Attribute {
 }
 func mockValueFor(fqn autoconfigure.AttributeValue) *policy.Value {
 	an := fqn.Prefix()
-	a := mockAttributeFor(autoconfigure.AttributeName(an))
+	a := mockAttributeFor(an)
 	v := fqn.Value()
 	p := policy.Value{
-		Id:        a.Id + ":" + v,
+		Id:        a.GetId() + ":" + v,
 		Attribute: a,
 		Value:     v,
 		Fqn:       string(fqn),
@@ -961,39 +958,39 @@ func mockValueFor(fqn autoconfigure.AttributeValue) *policy.Value {
 		switch fqn.Value() {
 		case "INT":
 			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: GBR_KAS}
+			p.Grants[0] = &policy.KeyAccessServer{Uri: lasUk}
 		case "HCS":
 			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: HCS_USA_KAS}
+			p.Grants[0] = &policy.KeyAccessServer{Uri: kasUsHcs}
 		case "SI":
 			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: SI_USA_KAS}
+			p.Grants[0] = &policy.KeyAccessServer{Uri: kasUsSI}
 		}
 
 	case REL:
 		switch fqn.Value() {
 		case "FVEY":
 			p.Grants = make([]*policy.KeyAccessServer, 5)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: AUS_KAS}
-			p.Grants[1] = &policy.KeyAccessServer{Uri: CAN_KAS}
-			p.Grants[2] = &policy.KeyAccessServer{Uri: GBR_KAS}
-			p.Grants[3] = &policy.KeyAccessServer{Uri: NZL_KAS}
-			p.Grants[4] = &policy.KeyAccessServer{Uri: USA_KAS}
+			p.Grants[0] = &policy.KeyAccessServer{Uri: kasAu}
+			p.Grants[1] = &policy.KeyAccessServer{Uri: kasCa}
+			p.Grants[2] = &policy.KeyAccessServer{Uri: lasUk}
+			p.Grants[3] = &policy.KeyAccessServer{Uri: kasNz}
+			p.Grants[4] = &policy.KeyAccessServer{Uri: kasUs}
 		case "AUS":
 			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: AUS_KAS}
+			p.Grants[0] = &policy.KeyAccessServer{Uri: kasAu}
 		case "CAN":
 			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: CAN_KAS}
+			p.Grants[0] = &policy.KeyAccessServer{Uri: kasCa}
 		case "GBR":
 			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: GBR_KAS}
+			p.Grants[0] = &policy.KeyAccessServer{Uri: lasUk}
 		case "NZL":
 			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: NZL_KAS}
+			p.Grants[0] = &policy.KeyAccessServer{Uri: kasNz}
 		case "USA":
 			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: USA_KAS}
+			p.Grants[0] = &policy.KeyAccessServer{Uri: kasUs}
 		}
 	}
 	return &p

@@ -514,7 +514,7 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithRuleAndNameAndReorderin
 	}
 
 	// name, rule, order updates respected
-	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UpdateAttributeRequest{
+	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UnsafeUpdateAttributeRequest{
 		Id:          createdAttr.GetId(),
 		Name:        newName,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
@@ -567,7 +567,7 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithRule() {
 	s.NotNil(got)
 	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF, got.GetRule())
 
-	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UpdateAttributeRequest{
+	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UnsafeUpdateAttributeRequest{
 		Id:   createdAttr.GetId(),
 		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 	})
@@ -602,7 +602,7 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithNewName() {
 	s.NotEqual("", originalFqn)
 
 	// update with a new name
-	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UpdateAttributeRequest{
+	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UnsafeUpdateAttributeRequest{
 		Id:   createdAttr.GetId(),
 		Name: newName,
 	})
@@ -671,7 +671,7 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_NormalizesCasing() {
 	s.Equal("banana_pudding", got.GetName())
 	s.Contains(got.GetFqn(), "banana_pudding")
 
-	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UpdateAttributeRequest{
+	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UnsafeUpdateAttributeRequest{
 		Id:   created.GetId(),
 		Name: "STRAWBERRY_SHORTCAKE",
 	})
@@ -703,7 +703,7 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_ReplaceValuesOrder() {
 	for i, v := range created.GetValues() {
 		reversed[len(created.GetValues())-i-1] = v.GetId()
 	}
-	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UpdateAttributeRequest{
+	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UnsafeUpdateAttributeRequest{
 		Id:          created.GetId(),
 		ValuesOrder: reversed,
 	})

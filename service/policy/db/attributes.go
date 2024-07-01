@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -511,9 +512,6 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 		return nil, err
 	}
 
-	// Update the FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeID: id})
-
 	// Add values
 	var values []*policy.Value
 	for _, v := range r.GetValues() {
@@ -523,6 +521,16 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 			return nil, err
 		}
 		values = append(values, value)
+	}
+
+	// Update the FQNs
+	namespaceID := r.GetNamespaceId()
+	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id})
+	slog.Debug("upserted fqn with new attribute definition", slog.Any("fqn", fqn))
+
+	for _, v := range values {
+		fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id, valueID: v.GetId()})
+		slog.Debug("upserted fqn with new attribute value on new definition create", slog.Any("fqn", fqn))
 	}
 
 	a := &policy.Attribute{
@@ -539,29 +547,84 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	return a, nil
 }
 
-// TODO: uncomment this and consume when unsafe protos/service is implemented [https://github.com/opentdf/platform/issues/115]
-// func unsafeUpdateAttributeSql(id string, updateName string, updateRule string, replaceValuesOrder []string, metadata []byte) (string, []interface{}, error) {
-// 	t := Tables.Attributes
-// 	sb := db.NewStatementBuilder().Update(t.Name())
+func unsafeUpdateAttributeSQL(id string, updateName string, updateRule string, replaceValuesOrder []string) (string, []interface{}, error) {
+	t := Tables.Attributes
+	sb := db.NewStatementBuilder().Update(t.Name())
 
-// 	if updateName != "" {
-// 		sb = sb.Set("name", updateName)
-// 	}
-// 	if updateRule != "" {
-// 		sb = sb.Set("rule", updateRule)
-// 	}
-// 	// validation should happen before calling that:
-// 	// 1) replaceValuesOrder should be the same length as the column's current array length
-// 	// 2) replaceValuesOrder should contain all children value id's of this attribute
-// 	if len(replaceValuesOrder) > 0 {
-// 		sb = sb.Set("values_order", replaceValuesOrder)
-// 	}
-// 	if metadata != nil {
-// 		sb = sb.Set("metadata", metadata)
-// 	}
+	if updateName != "" {
+		sb = sb.Set("name", updateName)
+	}
+	if updateRule != "" {
+		sb = sb.Set("rule", updateRule)
+	}
+	if len(replaceValuesOrder) > 0 {
+		sb = sb.Set("values_order", replaceValuesOrder)
+	}
 
-// 	return sb.Where(sq.Eq{t.Field("id"): id}).ToSql()
-// }
+	return sb.Where(sq.Eq{t.Field("id"): id}).
+		ToSql()
+}
+
+func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.UpdateAttributeRequest) (*policy.Attribute, error) {
+	id := r.GetId()
+	before, err := c.GetAttribute(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate that the values_order contains all the children value id's of this attribute
+	lenExistingValues := len(before.GetValues())
+	lenNewValues := len(r.GetValuesOrder())
+	if lenNewValues > 0 {
+		if lenExistingValues != lenNewValues {
+			return nil, fmt.Errorf("values_order can only be updated with current attribute values: %w", db.ErrForeignKeyViolation)
+		}
+		// check if all the children value id's of this attribute are in the values_order
+		for _, v := range before.GetValues() {
+			found := false
+			for _, vo := range r.GetValuesOrder() {
+				if v.GetId() == vo {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return nil, fmt.Errorf("values_order can only be updated with current attribute values: %w", db.ErrForeignKeyViolation)
+			}
+		}
+	}
+
+	// Handle case where rule is not actually being updated
+	rule := ""
+	if r.GetRule() != policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED {
+		rule = attributesRuleTypeEnumTransformIn(r.GetRule().String())
+	}
+
+	sql, args, err := unsafeUpdateAttributeSQL(id, strings.ToLower(r.GetName()), rule, r.GetValuesOrder())
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.Exec(ctx, sql, args)
+	if err != nil {
+		return nil, err
+	}
+
+	// Upsert all the FQNs with the definition name mutation
+	if r.GetName() != "" {
+		namespaceID := before.GetNamespace().GetId()
+		fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id})
+		slog.Debug("upserted attribute fqn with new definition name", slog.Any("fqn", fqn))
+		if len(before.GetValues()) > 0 {
+			for _, v := range before.GetValues() {
+				fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id, valueID: v.GetId()})
+				slog.Debug("upserted attribute value fqn with new definition name", slog.Any("fqn", fqn))
+			}
+		}
+	}
+
+	return c.GetAttribute(ctx, id)
+}
 
 func safeUpdateAttributeSQL(id string, metadata []byte) (string, []interface{}, error) {
 	t := Tables.Attributes
@@ -601,9 +664,6 @@ func (c PolicyDBClient) UpdateAttribute(ctx context.Context, id string, r *attri
 		return nil, err
 	}
 
-	// Update the FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeID: id})
-
 	return &policy.Attribute{
 		Id: id,
 	}, nil
@@ -631,33 +691,64 @@ func (c PolicyDBClient) DeactivateAttribute(ctx context.Context, id string) (*po
 	return c.GetAttribute(ctx, id)
 }
 
-func deleteAttributeSQL(id string) (string, []interface{}, error) {
+func unsafeReactivateAttributeSQL(id string) (string, []interface{}, error) {
 	t := Tables.Attributes
 	return db.NewStatementBuilder().
-		Delete(t.Name()).
+		Update(t.Name()).
+		Set("active", true).
 		Where(sq.Eq{t.Field("id"): id}).
+		Suffix("RETURNING \"id\"").
 		ToSql()
 }
 
-func (c PolicyDBClient) DeleteAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
-	// get attribute before deleting
-	a, err := c.GetAttribute(ctx, id)
+func (c PolicyDBClient) UnsafeReactivateAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
+	sql, args, err := unsafeReactivateAttributeSQL(id)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	sql, args, err := deleteAttributeSQL(id)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
 	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 
-	// return the attribute before deleting
-	return a, nil
+	return c.GetAttribute(ctx, id)
 }
+
+func unsafeDeleteAttributeSQL(id string) (string, []interface{}, error) {
+	t := Tables.Attributes
+	return db.NewStatementBuilder().
+		Delete(t.Name()).
+		Where(sq.Eq{t.Field("id"): id}).
+		Suffix("RETURNING \"id\"").
+		ToSql()
+}
+
+func (c PolicyDBClient) UnsafeDeleteAttribute(ctx context.Context, existing *policy.Attribute, fqn string) (*policy.Attribute, error) {
+	if existing == nil {
+		return nil, fmt.Errorf("attribute not found: %w", db.ErrNotFound)
+	}
+	id := existing.GetId()
+
+	if existing.GetFqn() != fqn {
+		return nil, fmt.Errorf("fqn mismatch: %w", db.ErrNotFound)
+	}
+	sql, args, err := unsafeDeleteAttributeSQL(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.Exec(ctx, sql, args); err != nil {
+		return nil, err
+	}
+
+	return &policy.Attribute{
+		Id: id,
+	}, nil
+}
+
+///
+/// Key Access Server assignments
+///
 
 func assignKeyAccessServerToAttributeSQL(attributeID, keyAccessServerID string) (string, []interface{}, error) {
 	t := Tables.AttributeKeyAccessGrants

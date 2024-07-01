@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -506,12 +508,44 @@ func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 		}
 	}
 
-	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: r.GetId()})
-
 	return &policy.Value{
 		Id: r.GetId(),
 	}, nil
+}
+
+func unsafeUpdateAttributeValueSQL(id string, value string) (string, []interface{}, error) {
+	t := Tables.AttributeValues
+	return db.NewStatementBuilder().
+		Update(t.Name()).
+		Set("value", value).
+		Where(sq.Eq{t.Field("id"): id}).
+		Suffix("RETURNING \"id\"").
+		ToSql()
+}
+
+func (c PolicyDBClient) UnsafeUpdateAttributeValue(ctx context.Context, r *unsafe.UpdateAttributeValueRequest) (*policy.Value, error) {
+	id := r.GetId()
+	val := strings.ToLower(r.GetValue())
+	sql, args, err := unsafeUpdateAttributeValueSQL(id, val)
+	if err != nil {
+		if db.IsQueryBuilderSetClauseError(err) {
+			return &policy.Value{
+				Id: id,
+			}, nil
+		}
+		return nil, err
+	}
+
+	err = c.Exec(ctx, sql, args)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update FQN
+	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: id})
+	slog.Debug("upserted fqn for unsafely updated value", slog.String("id", id), slog.String("value", r.GetValue()), slog.String("fqn", fqn))
+
+	return c.GetAttributeValue(ctx, id)
 }
 
 func deactivateAttributeValueSQL(id string) (string, []interface{}, error) {
@@ -536,7 +570,29 @@ func (c PolicyDBClient) DeactivateAttributeValue(ctx context.Context, id string)
 	return c.GetAttributeValue(ctx, id)
 }
 
-func deleteAttributeValueSQL(id string) (string, []interface{}, error) {
+func unsafeReactivateAttributeValueSQL(id string) (string, []interface{}, error) {
+	t := Tables.AttributeValues
+	return db.NewStatementBuilder().
+		Update(t.Name()).
+		Set("active", true).
+		Where(sq.Eq{t.Field("id"): id}).
+		Suffix("RETURNING \"id\"").
+		ToSql()
+}
+
+func (c PolicyDBClient) UnsafeReactivateAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
+	sql, args, err := unsafeReactivateAttributeValueSQL(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.Exec(ctx, sql, args); err != nil {
+		return nil, err
+	}
+	return c.GetAttributeValue(ctx, id)
+}
+
+func unsafeDeleteAttributeValueSQL(id string) (string, []interface{}, error) {
 	t := Tables.AttributeValues
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
@@ -544,13 +600,15 @@ func deleteAttributeValueSQL(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c PolicyDBClient) DeleteAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
-	prev, err := c.GetAttributeValue(ctx, id)
-	if err != nil {
-		return nil, err
+func (c PolicyDBClient) UnsafeDeleteAttributeValue(ctx context.Context, toDelete *policy.Value, r *unsafe.DeleteAttributeValueRequest) (*policy.Value, error) {
+	id := r.GetId()
+	fqn := r.GetFqn()
+
+	if fqn != toDelete.GetFqn() {
+		return nil, fmt.Errorf("fqn mismatch [%s]: %w", fqn, db.ErrNotFound)
 	}
 
-	sql, args, err := deleteAttributeValueSQL(id)
+	sql, args, err := unsafeDeleteAttributeValueSQL(id)
 	if err != nil {
 		return nil, err
 	}
@@ -559,7 +617,9 @@ func (c PolicyDBClient) DeleteAttributeValue(ctx context.Context, id string) (*p
 		return nil, err
 	}
 
-	return prev, nil
+	return &policy.Value{
+		Id: id,
+	}, nil
 }
 
 func assignKeyAccessServerToValueSQL(valueID, keyAccessServerID string) (string, []interface{}, error) {

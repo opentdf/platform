@@ -45,35 +45,35 @@ var defaultPolicy = `
 ## gRPC routes
 p,	role:org-admin,		policy.*,																*,			allow
 p,	role:org-admin,		kasregistry.*,													*,			allow
-p,	role:org-admin,		kas.AccessService/Rewrap, 			            *,			allow
+p,	role:org-admin,		kas.AccessService/Rewrap, 			        *,			allow
+p,  role:org-admin,   authorization.*,                        *,      allow
 ## HTTP routes
 p,	role:org-admin,		/attributes*,														*,			allow
 p,	role:org-admin,		/namespaces*,														*,			allow
 p,	role:org-admin,		/subject-mappings*,											*,			allow
 p,	role:org-admin,		/resource-mappings*,										*,			allow
 p,	role:org-admin,		/key-access-servers*,										*,			allow
-p,	role:org-admin, 	/kas/v2/rewrap,						  		*,      allow
-p,	role:org-admin,		/unsafe*,										*,			allow
+p,	role:org-admin, 	/kas/v2/rewrap,						  		        *,      allow
+p,	role:org-admin,		/unsafe*,										            *,			allow
 
 # Role: Admin
 ## gRPC routes
-p,	role:admin,		policy.*,																		*,			allow
-p,	role:admin,		kasregistry.*,															*,			allow
-p,	role:admin,		kas.AccessService/Info,					            *,			allow
-p,	role:admin,		kas.AccessService/Rewrap, 			            *,			allow
+p,	role:admin,		    policy.*,																*,			allow
+p,	role:admin,		    kasregistry.*,													*,			allow
+p,	role:admin,		    kas.AccessService/Rewrap, 			        *,			allow
+p,  role:admin,   authorization.*,                        *,      allow
 ## HTTP routes
 p,	role:admin,		/attributes*,																*,			allow
 p,	role:admin,		/namespaces*,																*,			allow
 p,	role:admin,		/subject-mappings*,													*,			allow
 p,	role:admin,		/resource-mappings*,												*,			allow
 p,	role:admin,		/key-access-servers*,												*,			allow
-p,	role:admin,		/kas/v2/rewrap,						  				*,      allow
+p,	role:admin,		/kas/v2/rewrap,						  				        *,      allow
 
 ## Role: Standard
 ## gRPC routes
 p,	role:standard,		policy.*,																read,			allow
 p,	role:standard,		kasregistry.*,													read,			allow
-p,	role:standard,		kas.AccessService/Info,		 		             *,			allow
 p,	role:standard,    kas.AccessService/Rewrap, 			           *,			allow
 ## HTTP routes
 p,	role:standard,		/attributes*,														read,			allow
@@ -87,10 +87,13 @@ p,	role:standard,		/entityresolution/resolve,							write,  	allow
 # Public routes
 ## gRPC routes
 ## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)
-p,	role:unknown,			entityresolution.EntityResolutionService.ResolveEntities,										write,		allow
+p,	role:unknown,			entityresolution.EntityResolutionService.ResolveEntities,					write,		allow
+p,	role:unknown,     kas.AccessService/Rewrap, 			                                  write,	  allow
 ## HTTP routes
 ## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)
-p,	role:unknown,			/entityresolution/resolve,										write,		allow
+p,	role:unknown,			/entityresolution/resolve,							  write,		allow
+p,	role:unknown,		  /kas/v2/rewrap,													  write,		allow
+
 `
 
 var defaultModel = `

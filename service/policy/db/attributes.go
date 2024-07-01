@@ -30,7 +30,7 @@ func attributesRuleTypeEnumTransformOut(value string) policy.AttributeRuleTypeEn
 	return policy.AttributeRuleTypeEnum(policy.AttributeRuleTypeEnum_value[AttributeRuleTypeEnumPrefix+value])
 }
 
-func attributesValuesProtojson(valuesJSON []byte) ([]*policy.Value, error) {
+func attributesValuesProtojson(valuesJSON []byte, attrFqn sql.NullString) ([]*policy.Value, error) {
 	var (
 		raw    []json.RawMessage
 		values []*policy.Value
@@ -45,6 +45,9 @@ func attributesValuesProtojson(valuesJSON []byte) ([]*policy.Value, error) {
 		err := protojson.Unmarshal(r, value)
 		if err != nil {
 			return nil, fmt.Errorf("error unmarshaling a value: %w", err)
+		}
+		if attrFqn.Valid && value.GetFqn() == "" {
+			value.Fqn = fmt.Sprintf("%s/value/%s", attrFqn.String, value.GetValue())
 		}
 		values = append(values, value)
 	}
@@ -227,7 +230,7 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 	}
 	var v []*policy.Value
 	if valuesJSON != nil {
-		v, err = attributesValuesProtojson(valuesJSON)
+		v, err = attributesValuesProtojson(valuesJSON, fqn)
 		if err != nil {
 			slog.Error("could not unmarshal values", slog.String("error", err.Error()))
 			return nil, err
@@ -242,13 +245,19 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 		}
 	}
 
+	ns := &policy.Namespace{
+		Id:   namespaceID,
+		Name: namespaceName,
+		Fqn:  fmt.Sprintf("https://%s", namespaceName),
+	}
+
 	attr := &policy.Attribute{
 		Id:        id,
 		Name:      name,
 		Rule:      attributesRuleTypeEnumTransformOut(rule),
 		Active:    &wrapperspb.BoolValue{Value: active},
 		Metadata:  m,
-		Namespace: &policy.Namespace{Id: namespaceID, Name: namespaceName},
+		Namespace: ns,
 		Grants:    k,
 		Fqn:       fqn.String,
 	}

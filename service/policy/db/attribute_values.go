@@ -54,7 +54,7 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 	if err := row.Scan(fields...); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	} else if membersJSON != nil {
-		members, err = attributesValuesProtojson(membersJSON)
+		members, err = attributesValuesProtojson(membersJSON, fqn)
 		if err != nil {
 			return nil, err
 		}

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.5](https://github.com/opentdf/platform/compare/protocol/go/v0.2.4...protocol/go/v0.2.5) (2024-07-01)
+
+
+### Features
+
+* **policy:** add unsafe attribute RPC db connectivity  ([#1022](https://github.com/opentdf/platform/issues/1022)) ([fbc02f3](https://github.com/opentdf/platform/commit/fbc02f34f3c3ae663b83944132f7dfd6897f6271))
+
 ## [0.2.4](https://github.com/opentdf/platform/compare/protocol/go/v0.2.3...protocol/go/v0.2.4) (2024-06-18)
 
 

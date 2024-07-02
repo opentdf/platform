@@ -199,6 +199,8 @@ jobs:
       - run: test/tdf-roundtrips.bats
       - name: create roundtrip test data and run tests
         run: go test ./service/rttests -v
+      - name: owasp zap api check
+        
 
   image:
     name: image build

@@ -1003,7 +1003,7 @@ type FakeAttributes struct {
 func (f *FakeAttributes) GetAttributeValuesByFqns(_ context.Context, in *attributespb.GetAttributeValuesByFqnsRequest) (*attributespb.GetAttributeValuesByFqnsResponse, error) {
 	r := make(map[string]*attributespb.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 	for _, fqn := range in.GetFqns() {
-		av, err := autoconfigure.NewAttributeValue(fqn)
+		av, err := autoconfigure.NewAttributeValueFQN(fqn)
 		if err != nil {
 			slog.Error("invalid fqn", "notfqn", fqn, "error", err)
 			return nil, status.New(codes.InvalidArgument, fmt.Sprintf("invalid attribute fqn [%s]", fqn)).Err()

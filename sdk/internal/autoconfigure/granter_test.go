@@ -142,7 +142,7 @@ func TestAttributeInstanceFromURL(t *testing.T) {
 		{"numberdef", "http://e/attr/1/value/one", "http://e", "1", "one"},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
-			a, err := NewAttributeValue(tc.u)
+			a, err := NewAttributeValueFQN(tc.u)
 			require.NoError(t, err)
 			assert.Equal(t, tc.auth, a.Authority())
 			assert.Equal(t, tc.name, a.Name())

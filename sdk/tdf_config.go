@@ -105,7 +105,7 @@ func WithDataAttributes(attributes ...string) TDFOption {
 	return func(c *TDFConfig) error {
 		c.attributeValues = nil
 		for _, a := range attributes {
-			v, err := autoconfigure.NewAttributeValue(a)
+			v, err := autoconfigure.NewAttributeValueFQN(a)
 			if err != nil {
 				return err
 			}
@@ -126,7 +126,7 @@ func WithAttributes(attributes ...*policy.Value) TDFOption {
 		c.attributeValues = make([]*policy.Value, len(attributes))
 		for i, a := range attributes {
 			c.attributeValues[i] = a
-			afqn, err := autoconfigure.NewAttributeValue(a.GetFqn())
+			afqn, err := autoconfigure.NewAttributeValueFQN(a.GetFqn())
 			if err != nil {
 				// TODO: update service to validate and encode FQNs properly
 				return err

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/sdk/internal/autoconfigure"
 )
 
@@ -58,6 +59,7 @@ type TDFConfig struct {
 	segmentIntegrityAlgorithm IntegrityAlgorithm
 	assertions                []Assertion //nolint:unused // TODO
 	attributes                []autoconfigure.AttributeValue
+	attributeValues           []*policy.Value
 	kasInfoList               []KASInfo
 	splitPlan                 []autoconfigure.SplitStep
 }
@@ -101,12 +103,35 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 // WithDataAttributes appends the given data attributes to the bound policy
 func WithDataAttributes(attributes ...string) TDFOption {
 	return func(c *TDFConfig) error {
+		c.attributeValues = nil
 		for _, a := range attributes {
 			v, err := autoconfigure.NewAttributeValue(a)
 			if err != nil {
 				return err
 			}
 			c.attributes = append(c.attributes, v)
+		}
+		return nil
+	}
+}
+
+// WithAttributes appends the given data attributes to the bound policy.
+// Unlike `WithDataAttributes`, this will not trigger an attribute definition lookup
+// during autoconfigure. That is, to use autoconfigure in an 'offline' context,
+// you must first store the relevant attribute information locally and load
+// it to the `CreateTDF` method with this option.
+func WithAttributes(attributes ...*policy.Value) TDFOption {
+	return func(c *TDFConfig) error {
+		c.attributes = make([]autoconfigure.AttributeValue, len(attributes))
+		c.attributeValues = make([]*policy.Value, len(attributes))
+		for i, a := range attributes {
+			c.attributeValues[i] = a
+			afqn, err := autoconfigure.NewAttributeValue(a.GetFqn())
+			if err != nil {
+				// TODO: update service to validate and encode FQNs properly
+				return err
+			}
+			c.attributes[i] = afqn
 		}
 		return nil
 	}

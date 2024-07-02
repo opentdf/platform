@@ -565,7 +565,7 @@ func unsafeUpdateAttributeSQL(id string, updateName string, updateRule string, r
 		ToSql()
 }
 
-func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.UpdateAttributeRequest) (*policy.Attribute, error) {
+func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.UnsafeUpdateAttributeRequest) (*policy.Attribute, error) {
 	id := r.GetId()
 	before, err := c.GetAttribute(ctx, id)
 	if err != nil {

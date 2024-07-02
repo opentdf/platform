@@ -359,7 +359,7 @@ func (s *AttributeValuesSuite) Test_UnsafeUpdateAttributeValue() {
 	s.NotNil(created)
 
 	// update with changes
-	updatedWithChange, err := s.db.PolicyClient.UnsafeUpdateAttributeValue(s.ctx, &unsafe.UpdateAttributeValueRequest{
+	updatedWithChange, err := s.db.PolicyClient.UnsafeUpdateAttributeValue(s.ctx, &unsafe.UnsafeUpdateAttributeValueRequest{
 		Id:    created.GetId(),
 		Value: "new_value",
 	})
@@ -411,7 +411,7 @@ func (s *AttributeValuesSuite) Test_UnsafeUpdateAttributeValue() {
 }
 
 func (s *AttributeValuesSuite) Test_UnsafeUpdateAttributeValue_WithInvalidId_Fails() {
-	updated, err := s.db.PolicyClient.UnsafeUpdateAttributeValue(s.ctx, &unsafe.UpdateAttributeValueRequest{
+	updated, err := s.db.PolicyClient.UnsafeUpdateAttributeValue(s.ctx, &unsafe.UnsafeUpdateAttributeValueRequest{
 		Id:    absentAttributeValueUUID,
 		Value: "new_value",
 	})
@@ -433,7 +433,7 @@ func (s *AttributeValuesSuite) Test_UnsafeUpdateAttributeValue_CasingNormalized(
 	s.Equal("created", got.GetValue())
 
 	// update with changes
-	updatedWithChange, err := s.db.PolicyClient.UnsafeUpdateAttributeValue(s.ctx, &unsafe.UpdateAttributeValueRequest{
+	updatedWithChange, err := s.db.PolicyClient.UnsafeUpdateAttributeValue(s.ctx, &unsafe.UnsafeUpdateAttributeValueRequest{
 		Id:    created.GetId(),
 		Value: "NEW_VALUE_UPPER_CASE",
 	})
@@ -462,7 +462,7 @@ func (s *AttributeValuesSuite) Test_UnsafeDeleteAttributeValue() {
 	s.NotNil(got)
 
 	// delete it
-	req := &unsafe.DeleteAttributeValueRequest{
+	req := &unsafe.UnsafeDeleteAttributeValueRequest{
 		Id:  created.GetId(),
 		Fqn: got.GetFqn(),
 	}
@@ -502,7 +502,7 @@ func (s *AttributeValuesSuite) Test_UnsafeDeleteAttribute_WrongFqn_Fails() {
 	got, _ := s.db.PolicyClient.GetAttributeValue(s.ctx, created.GetId())
 	s.NotNil(got)
 
-	req := &unsafe.DeleteAttributeValueRequest{
+	req := &unsafe.UnsafeDeleteAttributeValueRequest{
 		Id: created.GetId(),
 		// wrong namespace
 		Fqn: "https://example.com/attr/attr1/value/delete_test",

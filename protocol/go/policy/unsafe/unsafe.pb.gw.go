@@ -32,11 +32,11 @@ var _ = utilities.NewDoubleArray
 var _ = metadata.Join
 
 var (
-	filter_UnsafeService_UpdateNamespace_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_UnsafeService_UnsafeUpdateNamespace_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
-func request_UnsafeService_UpdateNamespace_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateNamespaceRequest
+func request_UnsafeService_UnsafeUpdateNamespace_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UnsafeUpdateNamespaceRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -59,17 +59,17 @@ func request_UnsafeService_UpdateNamespace_0(ctx context.Context, marshaler runt
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_UpdateNamespace_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_UnsafeUpdateNamespace_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.UpdateNamespace(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.UnsafeUpdateNamespace(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_UnsafeService_UpdateNamespace_0(ctx context.Context, marshaler runtime.Marshaler, server UnsafeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateNamespaceRequest
+func local_request_UnsafeService_UnsafeUpdateNamespace_0(ctx context.Context, marshaler runtime.Marshaler, server UnsafeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UnsafeUpdateNamespaceRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -92,17 +92,17 @@ func local_request_UnsafeService_UpdateNamespace_0(ctx context.Context, marshale
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_UpdateNamespace_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_UnsafeUpdateNamespace_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := server.UpdateNamespace(ctx, &protoReq)
+	msg, err := server.UnsafeUpdateNamespace(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-func request_UnsafeService_ReactivateNamespace_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ReactivateNamespaceRequest
+func request_UnsafeService_UnsafeReactivateNamespace_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UnsafeReactivateNamespaceRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -122,13 +122,13 @@ func request_UnsafeService_ReactivateNamespace_0(ctx context.Context, marshaler 
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := client.ReactivateNamespace(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.UnsafeReactivateNamespace(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_UnsafeService_ReactivateNamespace_0(ctx context.Context, marshaler runtime.Marshaler, server UnsafeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ReactivateNamespaceRequest
+func local_request_UnsafeService_UnsafeReactivateNamespace_0(ctx context.Context, marshaler runtime.Marshaler, server UnsafeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UnsafeReactivateNamespaceRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -148,17 +148,17 @@ func local_request_UnsafeService_ReactivateNamespace_0(ctx context.Context, mars
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := server.ReactivateNamespace(ctx, &protoReq)
+	msg, err := server.UnsafeReactivateNamespace(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
 var (
-	filter_UnsafeService_DeleteNamespace_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_UnsafeService_UnsafeDeleteNamespace_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
-func request_UnsafeService_DeleteNamespace_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteNamespaceRequest
+func request_UnsafeService_UnsafeDeleteNamespace_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UnsafeDeleteNamespaceRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -181,17 +181,17 @@ func request_UnsafeService_DeleteNamespace_0(ctx context.Context, marshaler runt
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_DeleteNamespace_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_UnsafeDeleteNamespace_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.DeleteNamespace(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.UnsafeDeleteNamespace(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_UnsafeService_DeleteNamespace_0(ctx context.Context, marshaler runtime.Marshaler, server UnsafeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteNamespaceRequest
+func local_request_UnsafeService_UnsafeDeleteNamespace_0(ctx context.Context, marshaler runtime.Marshaler, server UnsafeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UnsafeDeleteNamespaceRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -214,21 +214,21 @@ func local_request_UnsafeService_DeleteNamespace_0(ctx context.Context, marshale
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_DeleteNamespace_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_UnsafeDeleteNamespace_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := server.DeleteNamespace(ctx, &protoReq)
+	msg, err := server.UnsafeDeleteNamespace(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
 var (
-	filter_UnsafeService_UpdateAttribute_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_UnsafeService_UnsafeUpdateAttribute_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
-func request_UnsafeService_UpdateAttribute_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateAttributeRequest
+func request_UnsafeService_UnsafeUpdateAttribute_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UnsafeUpdateAttributeRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -251,17 +251,17 @@ func request_UnsafeService_UpdateAttribute_0(ctx context.Context, marshaler runt
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_UpdateAttribute_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_UnsafeUpdateAttribute_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.UpdateAttribute(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.UnsafeUpdateAttribute(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_UnsafeService_UpdateAttribute_0(ctx context.Context, marshaler runtime.Marshaler, server UnsafeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateAttributeRequest
+func local_request_UnsafeService_UnsafeUpdateAttribute_0(ctx context.Context, marshaler runtime.Marshaler, server UnsafeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UnsafeUpdateAttributeRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -284,17 +284,17 @@ func local_request_UnsafeService_UpdateAttribute_0(ctx context.Context, marshale
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_UpdateAttribute_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_UnsafeUpdateAttribute_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := server.UpdateAttribute(ctx, &protoReq)
+	msg, err := server.UnsafeUpdateAttribute(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-func request_UnsafeService_ReactivateAttribute_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ReactivateAttributeRequest
+func request_UnsafeService_UnsafeReactivateAttribute_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UnsafeReactivateAttributeRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -314,13 +314,13 @@ func request_UnsafeService_ReactivateAttribute_0(ctx context.Context, marshaler 
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := client.ReactivateAttribute(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.UnsafeReactivateAttribute(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_UnsafeService_ReactivateAttribute_0(ctx context.Context, marshaler runtime.Marshaler, server UnsafeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ReactivateAttributeRequest
+func local_request_UnsafeService_UnsafeReactivateAttribute_0(ctx context.Context, marshaler runtime.Marshaler, server UnsafeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UnsafeReactivateAttributeRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -340,17 +340,17 @@ func local_request_UnsafeService_ReactivateAttribute_0(ctx context.Context, mars
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := server.ReactivateAttribute(ctx, &protoReq)
+	msg, err := server.UnsafeReactivateAttribute(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
 var (
-	filter_UnsafeService_DeleteAttribute_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_UnsafeService_UnsafeDeleteAttribute_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
-func request_UnsafeService_DeleteAttribute_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteAttributeRequest
+func request_UnsafeService_UnsafeDeleteAttribute_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UnsafeDeleteAttributeRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -373,17 +373,17 @@ func request_UnsafeService_DeleteAttribute_0(ctx context.Context, marshaler runt
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_DeleteAttribute_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_UnsafeDeleteAttribute_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.DeleteAttribute(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.UnsafeDeleteAttribute(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_UnsafeService_DeleteAttribute_0(ctx context.Context, marshaler runtime.Marshaler, server UnsafeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteAttributeRequest
+func local_request_UnsafeService_UnsafeDeleteAttribute_0(ctx context.Context, marshaler runtime.Marshaler, server UnsafeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UnsafeDeleteAttributeRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -406,21 +406,21 @@ func local_request_UnsafeService_DeleteAttribute_0(ctx context.Context, marshale
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_DeleteAttribute_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_UnsafeDeleteAttribute_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := server.DeleteAttribute(ctx, &protoReq)
+	msg, err := server.UnsafeDeleteAttribute(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
 var (
-	filter_UnsafeService_UpdateAttributeValue_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_UnsafeService_UnsafeUpdateAttributeValue_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
-func request_UnsafeService_UpdateAttributeValue_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateAttributeValueRequest
+func request_UnsafeService_UnsafeUpdateAttributeValue_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UnsafeUpdateAttributeValueRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -443,17 +443,17 @@ func request_UnsafeService_UpdateAttributeValue_0(ctx context.Context, marshaler
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_UpdateAttributeValue_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_UnsafeUpdateAttributeValue_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.UpdateAttributeValue(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.UnsafeUpdateAttributeValue(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_UnsafeService_UpdateAttributeValue_0(ctx context.Context, marshaler runtime.Marshaler, server UnsafeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateAttributeValueRequest
+func local_request_UnsafeService_UnsafeUpdateAttributeValue_0(ctx context.Context, marshaler runtime.Marshaler, server UnsafeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UnsafeUpdateAttributeValueRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -476,17 +476,17 @@ func local_request_UnsafeService_UpdateAttributeValue_0(ctx context.Context, mar
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_UpdateAttributeValue_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_UnsafeUpdateAttributeValue_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := server.UpdateAttributeValue(ctx, &protoReq)
+	msg, err := server.UnsafeUpdateAttributeValue(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
-func request_UnsafeService_ReactivateAttributeValue_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ReactivateAttributeValueRequest
+func request_UnsafeService_UnsafeReactivateAttributeValue_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UnsafeReactivateAttributeValueRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -506,13 +506,13 @@ func request_UnsafeService_ReactivateAttributeValue_0(ctx context.Context, marsh
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := client.ReactivateAttributeValue(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.UnsafeReactivateAttributeValue(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_UnsafeService_ReactivateAttributeValue_0(ctx context.Context, marshaler runtime.Marshaler, server UnsafeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ReactivateAttributeValueRequest
+func local_request_UnsafeService_UnsafeReactivateAttributeValue_0(ctx context.Context, marshaler runtime.Marshaler, server UnsafeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UnsafeReactivateAttributeValueRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -532,17 +532,17 @@ func local_request_UnsafeService_ReactivateAttributeValue_0(ctx context.Context,
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 
-	msg, err := server.ReactivateAttributeValue(ctx, &protoReq)
+	msg, err := server.UnsafeReactivateAttributeValue(ctx, &protoReq)
 	return msg, metadata, err
 
 }
 
 var (
-	filter_UnsafeService_DeleteAttributeValue_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_UnsafeService_UnsafeDeleteAttributeValue_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
-func request_UnsafeService_DeleteAttributeValue_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteAttributeValueRequest
+func request_UnsafeService_UnsafeDeleteAttributeValue_0(ctx context.Context, marshaler runtime.Marshaler, client UnsafeServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UnsafeDeleteAttributeValueRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -565,17 +565,17 @@ func request_UnsafeService_DeleteAttributeValue_0(ctx context.Context, marshaler
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_DeleteAttributeValue_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_UnsafeDeleteAttributeValue_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.DeleteAttributeValue(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.UnsafeDeleteAttributeValue(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_UnsafeService_DeleteAttributeValue_0(ctx context.Context, marshaler runtime.Marshaler, server UnsafeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteAttributeValueRequest
+func local_request_UnsafeService_UnsafeDeleteAttributeValue_0(ctx context.Context, marshaler runtime.Marshaler, server UnsafeServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq UnsafeDeleteAttributeValueRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -598,11 +598,11 @@ func local_request_UnsafeService_DeleteAttributeValue_0(ctx context.Context, mar
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_DeleteAttributeValue_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_UnsafeService_UnsafeDeleteAttributeValue_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := server.DeleteAttributeValue(ctx, &protoReq)
+	msg, err := server.UnsafeDeleteAttributeValue(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -613,7 +613,7 @@ func local_request_UnsafeService_DeleteAttributeValue_0(ctx context.Context, mar
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterUnsafeServiceHandlerFromEndpoint instead.
 func RegisterUnsafeServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server UnsafeServiceServer) error {
 
-	mux.Handle("PATCH", pattern_UnsafeService_UpdateNamespace_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("PATCH", pattern_UnsafeService_UnsafeUpdateNamespace_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -621,12 +621,12 @@ func RegisterUnsafeServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UpdateNamespace", runtime.WithHTTPPathPattern("/unsafe/namespaces/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UnsafeUpdateNamespace", runtime.WithHTTPPathPattern("/unsafe/namespaces/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_UnsafeService_UpdateNamespace_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_UnsafeService_UnsafeUpdateNamespace_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -634,11 +634,11 @@ func RegisterUnsafeServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			return
 		}
 
-		forward_UnsafeService_UpdateNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UnsafeService_UnsafeUpdateNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_UnsafeService_ReactivateNamespace_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_UnsafeService_UnsafeReactivateNamespace_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -646,12 +646,12 @@ func RegisterUnsafeServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.unsafe.UnsafeService/ReactivateNamespace", runtime.WithHTTPPathPattern("/unsafe/namespaces/{id}/reactivate"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UnsafeReactivateNamespace", runtime.WithHTTPPathPattern("/unsafe/namespaces/{id}/reactivate"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_UnsafeService_ReactivateNamespace_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_UnsafeService_UnsafeReactivateNamespace_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -659,11 +659,11 @@ func RegisterUnsafeServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			return
 		}
 
-		forward_UnsafeService_ReactivateNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UnsafeService_UnsafeReactivateNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_UnsafeService_DeleteNamespace_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_UnsafeService_UnsafeDeleteNamespace_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -671,12 +671,12 @@ func RegisterUnsafeServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.unsafe.UnsafeService/DeleteNamespace", runtime.WithHTTPPathPattern("/unsafe/namespaces/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UnsafeDeleteNamespace", runtime.WithHTTPPathPattern("/unsafe/namespaces/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_UnsafeService_DeleteNamespace_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_UnsafeService_UnsafeDeleteNamespace_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -684,11 +684,11 @@ func RegisterUnsafeServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			return
 		}
 
-		forward_UnsafeService_DeleteNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UnsafeService_UnsafeDeleteNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("PATCH", pattern_UnsafeService_UpdateAttribute_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("PATCH", pattern_UnsafeService_UnsafeUpdateAttribute_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -696,12 +696,12 @@ func RegisterUnsafeServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UpdateAttribute", runtime.WithHTTPPathPattern("/unsafe/attributes/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UnsafeUpdateAttribute", runtime.WithHTTPPathPattern("/unsafe/attributes/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_UnsafeService_UpdateAttribute_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_UnsafeService_UnsafeUpdateAttribute_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -709,11 +709,11 @@ func RegisterUnsafeServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			return
 		}
 
-		forward_UnsafeService_UpdateAttribute_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UnsafeService_UnsafeUpdateAttribute_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_UnsafeService_ReactivateAttribute_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_UnsafeService_UnsafeReactivateAttribute_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -721,12 +721,12 @@ func RegisterUnsafeServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.unsafe.UnsafeService/ReactivateAttribute", runtime.WithHTTPPathPattern("/unsafe/attributes/{id}/reactivate"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UnsafeReactivateAttribute", runtime.WithHTTPPathPattern("/unsafe/attributes/{id}/reactivate"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_UnsafeService_ReactivateAttribute_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_UnsafeService_UnsafeReactivateAttribute_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -734,11 +734,11 @@ func RegisterUnsafeServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			return
 		}
 
-		forward_UnsafeService_ReactivateAttribute_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UnsafeService_UnsafeReactivateAttribute_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_UnsafeService_DeleteAttribute_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_UnsafeService_UnsafeDeleteAttribute_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -746,12 +746,12 @@ func RegisterUnsafeServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.unsafe.UnsafeService/DeleteAttribute", runtime.WithHTTPPathPattern("/unsafe/attributes/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UnsafeDeleteAttribute", runtime.WithHTTPPathPattern("/unsafe/attributes/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_UnsafeService_DeleteAttribute_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_UnsafeService_UnsafeDeleteAttribute_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -759,11 +759,11 @@ func RegisterUnsafeServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			return
 		}
 
-		forward_UnsafeService_DeleteAttribute_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UnsafeService_UnsafeDeleteAttribute_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("PATCH", pattern_UnsafeService_UpdateAttributeValue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("PATCH", pattern_UnsafeService_UnsafeUpdateAttributeValue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -771,12 +771,12 @@ func RegisterUnsafeServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UpdateAttributeValue", runtime.WithHTTPPathPattern("/unsafe/attributes/values/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UnsafeUpdateAttributeValue", runtime.WithHTTPPathPattern("/unsafe/attributes/values/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_UnsafeService_UpdateAttributeValue_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_UnsafeService_UnsafeUpdateAttributeValue_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -784,11 +784,11 @@ func RegisterUnsafeServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			return
 		}
 
-		forward_UnsafeService_UpdateAttributeValue_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UnsafeService_UnsafeUpdateAttributeValue_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_UnsafeService_ReactivateAttributeValue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_UnsafeService_UnsafeReactivateAttributeValue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -796,12 +796,12 @@ func RegisterUnsafeServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.unsafe.UnsafeService/ReactivateAttributeValue", runtime.WithHTTPPathPattern("/unsafe/attributes/values/{id}/reactivate"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UnsafeReactivateAttributeValue", runtime.WithHTTPPathPattern("/unsafe/attributes/values/{id}/reactivate"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_UnsafeService_ReactivateAttributeValue_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_UnsafeService_UnsafeReactivateAttributeValue_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -809,11 +809,11 @@ func RegisterUnsafeServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			return
 		}
 
-		forward_UnsafeService_ReactivateAttributeValue_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UnsafeService_UnsafeReactivateAttributeValue_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_UnsafeService_DeleteAttributeValue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_UnsafeService_UnsafeDeleteAttributeValue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -821,12 +821,12 @@ func RegisterUnsafeServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.unsafe.UnsafeService/DeleteAttributeValue", runtime.WithHTTPPathPattern("/unsafe/attributes/values/{id}"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UnsafeDeleteAttributeValue", runtime.WithHTTPPathPattern("/unsafe/attributes/values/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_UnsafeService_DeleteAttributeValue_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_UnsafeService_UnsafeDeleteAttributeValue_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -834,7 +834,7 @@ func RegisterUnsafeServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			return
 		}
 
-		forward_UnsafeService_DeleteAttributeValue_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UnsafeService_UnsafeDeleteAttributeValue_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -879,201 +879,201 @@ func RegisterUnsafeServiceHandler(ctx context.Context, mux *runtime.ServeMux, co
 // "UnsafeServiceClient" to call the correct interceptors.
 func RegisterUnsafeServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client UnsafeServiceClient) error {
 
-	mux.Handle("PATCH", pattern_UnsafeService_UpdateNamespace_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("PATCH", pattern_UnsafeService_UnsafeUpdateNamespace_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UpdateNamespace", runtime.WithHTTPPathPattern("/unsafe/namespaces/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UnsafeUpdateNamespace", runtime.WithHTTPPathPattern("/unsafe/namespaces/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_UnsafeService_UpdateNamespace_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_UnsafeService_UnsafeUpdateNamespace_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_UnsafeService_UpdateNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UnsafeService_UnsafeUpdateNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_UnsafeService_ReactivateNamespace_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_UnsafeService_UnsafeReactivateNamespace_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.unsafe.UnsafeService/ReactivateNamespace", runtime.WithHTTPPathPattern("/unsafe/namespaces/{id}/reactivate"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UnsafeReactivateNamespace", runtime.WithHTTPPathPattern("/unsafe/namespaces/{id}/reactivate"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_UnsafeService_ReactivateNamespace_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_UnsafeService_UnsafeReactivateNamespace_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_UnsafeService_ReactivateNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UnsafeService_UnsafeReactivateNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_UnsafeService_DeleteNamespace_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_UnsafeService_UnsafeDeleteNamespace_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.unsafe.UnsafeService/DeleteNamespace", runtime.WithHTTPPathPattern("/unsafe/namespaces/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UnsafeDeleteNamespace", runtime.WithHTTPPathPattern("/unsafe/namespaces/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_UnsafeService_DeleteNamespace_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_UnsafeService_UnsafeDeleteNamespace_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_UnsafeService_DeleteNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UnsafeService_UnsafeDeleteNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("PATCH", pattern_UnsafeService_UpdateAttribute_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("PATCH", pattern_UnsafeService_UnsafeUpdateAttribute_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UpdateAttribute", runtime.WithHTTPPathPattern("/unsafe/attributes/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UnsafeUpdateAttribute", runtime.WithHTTPPathPattern("/unsafe/attributes/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_UnsafeService_UpdateAttribute_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_UnsafeService_UnsafeUpdateAttribute_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_UnsafeService_UpdateAttribute_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UnsafeService_UnsafeUpdateAttribute_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_UnsafeService_ReactivateAttribute_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_UnsafeService_UnsafeReactivateAttribute_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.unsafe.UnsafeService/ReactivateAttribute", runtime.WithHTTPPathPattern("/unsafe/attributes/{id}/reactivate"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UnsafeReactivateAttribute", runtime.WithHTTPPathPattern("/unsafe/attributes/{id}/reactivate"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_UnsafeService_ReactivateAttribute_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_UnsafeService_UnsafeReactivateAttribute_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_UnsafeService_ReactivateAttribute_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UnsafeService_UnsafeReactivateAttribute_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_UnsafeService_DeleteAttribute_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_UnsafeService_UnsafeDeleteAttribute_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.unsafe.UnsafeService/DeleteAttribute", runtime.WithHTTPPathPattern("/unsafe/attributes/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UnsafeDeleteAttribute", runtime.WithHTTPPathPattern("/unsafe/attributes/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_UnsafeService_DeleteAttribute_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_UnsafeService_UnsafeDeleteAttribute_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_UnsafeService_DeleteAttribute_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UnsafeService_UnsafeDeleteAttribute_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("PATCH", pattern_UnsafeService_UpdateAttributeValue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("PATCH", pattern_UnsafeService_UnsafeUpdateAttributeValue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UpdateAttributeValue", runtime.WithHTTPPathPattern("/unsafe/attributes/values/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UnsafeUpdateAttributeValue", runtime.WithHTTPPathPattern("/unsafe/attributes/values/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_UnsafeService_UpdateAttributeValue_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_UnsafeService_UnsafeUpdateAttributeValue_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_UnsafeService_UpdateAttributeValue_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UnsafeService_UnsafeUpdateAttributeValue_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_UnsafeService_ReactivateAttributeValue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_UnsafeService_UnsafeReactivateAttributeValue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.unsafe.UnsafeService/ReactivateAttributeValue", runtime.WithHTTPPathPattern("/unsafe/attributes/values/{id}/reactivate"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UnsafeReactivateAttributeValue", runtime.WithHTTPPathPattern("/unsafe/attributes/values/{id}/reactivate"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_UnsafeService_ReactivateAttributeValue_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_UnsafeService_UnsafeReactivateAttributeValue_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_UnsafeService_ReactivateAttributeValue_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UnsafeService_UnsafeReactivateAttributeValue_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("DELETE", pattern_UnsafeService_DeleteAttributeValue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_UnsafeService_UnsafeDeleteAttributeValue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.unsafe.UnsafeService/DeleteAttributeValue", runtime.WithHTTPPathPattern("/unsafe/attributes/values/{id}"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.unsafe.UnsafeService/UnsafeDeleteAttributeValue", runtime.WithHTTPPathPattern("/unsafe/attributes/values/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_UnsafeService_DeleteAttributeValue_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_UnsafeService_UnsafeDeleteAttributeValue_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_UnsafeService_DeleteAttributeValue_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_UnsafeService_UnsafeDeleteAttributeValue_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1081,41 +1081,41 @@ func RegisterUnsafeServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 }
 
 var (
-	pattern_UnsafeService_UpdateNamespace_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"unsafe", "namespaces", "id"}, ""))
+	pattern_UnsafeService_UnsafeUpdateNamespace_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"unsafe", "namespaces", "id"}, ""))
 
-	pattern_UnsafeService_ReactivateNamespace_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"unsafe", "namespaces", "id", "reactivate"}, ""))
+	pattern_UnsafeService_UnsafeReactivateNamespace_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"unsafe", "namespaces", "id", "reactivate"}, ""))
 
-	pattern_UnsafeService_DeleteNamespace_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"unsafe", "namespaces", "id"}, ""))
+	pattern_UnsafeService_UnsafeDeleteNamespace_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"unsafe", "namespaces", "id"}, ""))
 
-	pattern_UnsafeService_UpdateAttribute_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"unsafe", "attributes", "id"}, ""))
+	pattern_UnsafeService_UnsafeUpdateAttribute_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"unsafe", "attributes", "id"}, ""))
 
-	pattern_UnsafeService_ReactivateAttribute_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"unsafe", "attributes", "id", "reactivate"}, ""))
+	pattern_UnsafeService_UnsafeReactivateAttribute_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"unsafe", "attributes", "id", "reactivate"}, ""))
 
-	pattern_UnsafeService_DeleteAttribute_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"unsafe", "attributes", "id"}, ""))
+	pattern_UnsafeService_UnsafeDeleteAttribute_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"unsafe", "attributes", "id"}, ""))
 
-	pattern_UnsafeService_UpdateAttributeValue_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"unsafe", "attributes", "values", "id"}, ""))
+	pattern_UnsafeService_UnsafeUpdateAttributeValue_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"unsafe", "attributes", "values", "id"}, ""))
 
-	pattern_UnsafeService_ReactivateAttributeValue_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"unsafe", "attributes", "values", "id", "reactivate"}, ""))
+	pattern_UnsafeService_UnsafeReactivateAttributeValue_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"unsafe", "attributes", "values", "id", "reactivate"}, ""))
 
-	pattern_UnsafeService_DeleteAttributeValue_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"unsafe", "attributes", "values", "id"}, ""))
+	pattern_UnsafeService_UnsafeDeleteAttributeValue_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"unsafe", "attributes", "values", "id"}, ""))
 )
 
 var (
-	forward_UnsafeService_UpdateNamespace_0 = runtime.ForwardResponseMessage
+	forward_UnsafeService_UnsafeUpdateNamespace_0 = runtime.ForwardResponseMessage
 
-	forward_UnsafeService_ReactivateNamespace_0 = runtime.ForwardResponseMessage
+	forward_UnsafeService_UnsafeReactivateNamespace_0 = runtime.ForwardResponseMessage
 
-	forward_UnsafeService_DeleteNamespace_0 = runtime.ForwardResponseMessage
+	forward_UnsafeService_UnsafeDeleteNamespace_0 = runtime.ForwardResponseMessage
 
-	forward_UnsafeService_UpdateAttribute_0 = runtime.ForwardResponseMessage
+	forward_UnsafeService_UnsafeUpdateAttribute_0 = runtime.ForwardResponseMessage
 
-	forward_UnsafeService_ReactivateAttribute_0 = runtime.ForwardResponseMessage
+	forward_UnsafeService_UnsafeReactivateAttribute_0 = runtime.ForwardResponseMessage
 
-	forward_UnsafeService_DeleteAttribute_0 = runtime.ForwardResponseMessage
+	forward_UnsafeService_UnsafeDeleteAttribute_0 = runtime.ForwardResponseMessage
 
-	forward_UnsafeService_UpdateAttributeValue_0 = runtime.ForwardResponseMessage
+	forward_UnsafeService_UnsafeUpdateAttributeValue_0 = runtime.ForwardResponseMessage
 
-	forward_UnsafeService_ReactivateAttributeValue_0 = runtime.ForwardResponseMessage
+	forward_UnsafeService_UnsafeReactivateAttributeValue_0 = runtime.ForwardResponseMessage
 
-	forward_UnsafeService_DeleteAttributeValue_0 = runtime.ForwardResponseMessage
+	forward_UnsafeService_UnsafeDeleteAttributeValue_0 = runtime.ForwardResponseMessage
 )

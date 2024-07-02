@@ -59,7 +59,8 @@ p,	role:org-admin,		/unsafe*,										            *,			allow
 
 # Role: Admin
 ## gRPC routes
-p,	role:admin,		    policy.*,																*,			allow
+p,	role:admin,		    policy.*,																read,			allow
+p,	role:admin,		    policy.*,																write,			allow
 p,	role:admin,		    kasregistry.*,													*,			allow
 p,	role:admin,		    kas.AccessService/Rewrap, 			        *,			allow
 p,  role:admin,   authorization.*,                        *,      allow
@@ -73,7 +74,6 @@ p,	role:admin,		/kas/v2/rewrap,						  				        *,      allow
 
 ## Role: Standard
 ## gRPC routes
-p,  role:standard,		policy.unsafe.*,													 *,			deny
 p,	role:standard,		policy.*,																read,			allow
 p,	role:standard,		kasregistry.*,													read,			allow
 p,	role:standard,    kas.AccessService/Rewrap, 			           *,			allow

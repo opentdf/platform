@@ -424,7 +424,7 @@ func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 	fqn = strings.ToLower(fqn)
 	opts := attributesSelectOptions{
 		withAttributeValues: true,
-		withKeyAccessGrants: false,
+		withKeyAccessGrants: true,
 	}
 	if strings.Contains(fqn, "/value/") {
 		opts.withOneValueByFqn = fqn

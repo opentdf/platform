@@ -53,7 +53,7 @@ type tdfTest struct {
 	checksum         string
 	mimeType         string
 	splitPlan        []autoconfigure.SplitStep
-	policy           []autoconfigure.AttributeValue
+	policy           []autoconfigure.AttributeValueFQN
 	expectedPlanSize int
 }
 
@@ -614,7 +614,7 @@ func (s *TDFSuite) Test_Autoconfigure() {
 			fileSize:         5,
 			tdfFileSize:      1733,
 			checksum:         "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			policy:           []autoconfigure.AttributeValue{clsAllowed},
+			policy:           []autoconfigure.AttributeValueFQN{clsAllowed},
 			expectedPlanSize: 1,
 		},
 		{
@@ -622,7 +622,7 @@ func (s *TDFSuite) Test_Autoconfigure() {
 			fileSize:         5,
 			tdfFileSize:      2517,
 			checksum:         "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			policy:           []autoconfigure.AttributeValue{rel2aus, rel2usa},
+			policy:           []autoconfigure.AttributeValueFQN{rel2aus, rel2usa},
 			expectedPlanSize: 2,
 		},
 	} {
@@ -891,24 +891,24 @@ const (
 	kasUsSI   = "https://si.kas.us/"
 	authority = "https://virtru.com/"
 
-	CLS autoconfigure.AttributeName = "https://virtru.com/attr/Classification"
-	N2K autoconfigure.AttributeName = "https://virtru.com/attr/Need%20to%20Know"
-	REL autoconfigure.AttributeName = "https://virtru.com/attr/Releasable%20To"
+	CLS autoconfigure.AttributeNameFQN = "https://virtru.com/attr/Classification"
+	N2K autoconfigure.AttributeNameFQN = "https://virtru.com/attr/Need%20to%20Know"
+	REL autoconfigure.AttributeNameFQN = "https://virtru.com/attr/Releasable%20To"
 
-	clsAllowed autoconfigure.AttributeValue = "https://virtru.com/attr/Classification/value/Allowed"
-	clsConf    autoconfigure.AttributeValue = "https://virtru.com/attr/Classification/value/Confidential"
-	clsSec     autoconfigure.AttributeValue = "https://virtru.com/attr/Classification/value/Secret"
-	clsTS      autoconfigure.AttributeValue = "https://virtru.com/attr/Classification/value/Top%20Secret"
+	clsAllowed autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Classification/value/Allowed"
+	clsConf    autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Classification/value/Confidential"
+	clsSec     autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Classification/value/Secret"
+	clsTS      autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Classification/value/Top%20Secret"
 
-	rel25eye autoconfigure.AttributeValue = "https://virtru.com/attr/Releasable%20To/value/FVEY"
-	rel2aus  autoconfigure.AttributeValue = "https://virtru.com/attr/Releasable%20To/value/AUS"
-	rel2can  autoconfigure.AttributeValue = "https://virtru.com/attr/Releasable%20To/value/CAN"
-	rel2gbr  autoconfigure.AttributeValue = "https://virtru.com/attr/Releasable%20To/value/GBR"
-	rel2nzl  autoconfigure.AttributeValue = "https://virtru.com/attr/Releasable%20To/value/NZL"
-	rel2usa  autoconfigure.AttributeValue = "https://virtru.com/attr/Releasable%20To/value/USA"
+	rel25eye autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/FVEY"
+	rel2aus  autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/AUS"
+	rel2can  autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/CAN"
+	rel2gbr  autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/GBR"
+	rel2nzl  autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/NZL"
+	rel2usa  autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/USA"
 )
 
-func mockAttributeFor(fqn autoconfigure.AttributeName) *policy.Attribute {
+func mockAttributeFor(fqn autoconfigure.AttributeNameFQN) *policy.Attribute {
 	ns := policy.Namespace{
 		Id:   "v",
 		Name: "virtru.com",
@@ -942,7 +942,7 @@ func mockAttributeFor(fqn autoconfigure.AttributeName) *policy.Attribute {
 	}
 	return nil
 }
-func mockValueFor(fqn autoconfigure.AttributeValue) *policy.Value {
+func mockValueFor(fqn autoconfigure.AttributeValueFQN) *policy.Value {
 	an := fqn.Prefix()
 	a := mockAttributeFor(an)
 	v := fqn.Value()

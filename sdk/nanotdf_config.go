@@ -20,7 +20,7 @@ import (
 type NanoTDFConfig struct {
 	keyPair      ocrypto.ECKeyPair
 	kasPublicKey *ecdh.PublicKey
-	attributes   []autoconfigure.AttributeValue
+	attributes   []autoconfigure.AttributeValueFQN
 	cipher       CipherMode
 	kasURL       ResourceLocator
 	sigCfg       signatureConfig
@@ -63,7 +63,7 @@ func (config *NanoTDFConfig) SetKasURL(url string) error {
 
 // SetAttributes - set the attributes to be used for this nanoTDF
 func (config *NanoTDFConfig) SetAttributes(attributes []string) error {
-	config.attributes = make([]autoconfigure.AttributeValue, len(attributes))
+	config.attributes = make([]autoconfigure.AttributeValueFQN, len(attributes))
 	for i, a := range attributes {
 		v, err := autoconfigure.NewAttributeValue(a)
 		if err != nil {

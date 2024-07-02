@@ -29,12 +29,12 @@ type SplitStep struct {
 }
 
 // Utility type to represent an FQN for an attribute.
-type AttributeName string
+type AttributeNameFQN string
 
 // Utility type to represent an FQN for an attribute value.
-type AttributeValue string
+type AttributeValueFQN string
 
-func NewAttributeValue(u string) (AttributeValue, error) {
+func NewAttributeValue(u string) (AttributeValueFQN, error) {
 	re := regexp.MustCompile(`^(https?://[\w./]+)/attr/(\S*)/value/(\S*)$`)
 	m := re.FindStringSubmatch(u)
 	if len(m[0]) == 0 {
@@ -50,13 +50,13 @@ func NewAttributeValue(u string) (AttributeValue, error) {
 		return "", fmt.Errorf("invalid attribute url; error in value [%s]", m[3])
 	}
 
-	return AttributeValue(u), nil
+	return AttributeValueFQN(u), nil
 }
 
 // Structure capable of generating a split plan from a given set of data tags.
 type Granter struct {
-	policy []AttributeValue
-	grants map[AttributeValue]*keyAccessGrant
+	policy []AttributeValueFQN
+	grants map[AttributeValueFQN]*keyAccessGrant
 }
 
 type keyAccessGrant struct {
@@ -64,7 +64,7 @@ type keyAccessGrant struct {
 	kases []string
 }
 
-func (r Granter) addGrant(fqn AttributeValue, kas string, attr *policy.Attribute) {
+func (r Granter) addGrant(fqn AttributeValueFQN, kas string, attr *policy.Attribute) {
 	if _, ok := r.grants[fqn]; ok {
 		r.grants[fqn].kases = append(r.grants[fqn].kases, kas)
 	} else {
@@ -72,7 +72,7 @@ func (r Granter) addGrant(fqn AttributeValue, kas string, attr *policy.Attribute
 	}
 }
 
-func (r Granter) addAllGrants(fqn AttributeValue, gs []*policy.KeyAccessServer, attr *policy.Attribute) {
+func (r Granter) addAllGrants(fqn AttributeValueFQN, gs []*policy.KeyAccessServer, attr *policy.Attribute) {
 	for _, g := range gs {
 		if g != nil {
 			r.addGrant(fqn, g.GetUri(), attr)
@@ -85,12 +85,12 @@ func (r Granter) addAllGrants(fqn AttributeValue, gs []*policy.KeyAccessServer, 
 	}
 }
 
-func (r Granter) byAttribute(fqn AttributeValue) *keyAccessGrant {
+func (r Granter) byAttribute(fqn AttributeValueFQN) *keyAccessGrant {
 	return r.grants[fqn]
 }
 
 // Gets a list of directory of KAS grants for a list of attribute FQNs
-func NewGranterFromService(ctx context.Context, as attributes.AttributesServiceClient, fqns ...AttributeValue) (Granter, error) {
+func NewGranterFromService(ctx context.Context, as attributes.AttributesServiceClient, fqns ...AttributeValueFQN) (Granter, error) {
 	fqnsStr := make([]string, len(fqns))
 	for i, v := range fqns {
 		fqnsStr[i] = string(v)
@@ -109,10 +109,10 @@ func NewGranterFromService(ctx context.Context, as attributes.AttributesServiceC
 
 	grants := Granter{
 		policy: fqns,
-		grants: make(map[AttributeValue]*keyAccessGrant),
+		grants: make(map[AttributeValueFQN]*keyAccessGrant),
 	}
 	for fqns, pair := range av.GetFqnAttributeValues() {
-		fqn := AttributeValue(fqns)
+		fqn := AttributeValueFQN(fqns)
 		def := pair.GetAttribute()
 		if def != nil {
 			grants.addAllGrants(fqn, def.GetGrants(), def)
@@ -131,11 +131,11 @@ func NewGranterFromService(ctx context.Context, as attributes.AttributesServiceC
 // Unlike `NewGranterFromService`, this works offline.
 func NewGranterFromAttributes(attrs ...*policy.Value) (Granter, error) {
 	grants := Granter{
-		grants: make(map[AttributeValue]*keyAccessGrant),
-		policy: make([]AttributeValue, len(attrs)),
+		grants: make(map[AttributeValueFQN]*keyAccessGrant),
+		policy: make([]AttributeValueFQN, len(attrs)),
 	}
 	for i, v := range attrs {
-		fqn := AttributeValue(v.GetFqn())
+		fqn := AttributeValueFQN(v.GetFqn())
 		grants.policy[i] = fqn
 		def := v.GetAttribute()
 		if def == nil {
@@ -148,7 +148,7 @@ func NewGranterFromAttributes(attrs ...*policy.Value) (Granter, error) {
 	return grants, nil
 }
 
-func (a AttributeValue) Authority() string {
+func (a AttributeValueFQN) Authority() string {
 	re := regexp.MustCompile(`^(https?://[\w./]+)/attr/\S*/value/\S*$`)
 	m := re.FindStringSubmatch(string(a))
 	if m == nil {
@@ -157,16 +157,16 @@ func (a AttributeValue) Authority() string {
 	return m[1]
 }
 
-func (a AttributeValue) Prefix() AttributeName {
+func (a AttributeValueFQN) Prefix() AttributeNameFQN {
 	re := regexp.MustCompile(`^(https?://[\w./]+/attr/\S*)/value/\S*$`)
 	m := re.FindStringSubmatch(string(a))
 	if m == nil {
 		panic("invalid attributeInstance")
 	}
-	return AttributeName(m[1])
+	return AttributeNameFQN(m[1])
 }
 
-func (a AttributeValue) Value() string {
+func (a AttributeValueFQN) Value() string {
 	re := regexp.MustCompile(`^https?://[\w./]+/attr/\S*/value/(\S*)$`)
 	m := re.FindStringSubmatch(string(a))
 	if m == nil {
@@ -179,7 +179,7 @@ func (a AttributeValue) Value() string {
 	return v
 }
 
-func (a AttributeValue) Name() string {
+func (a AttributeValueFQN) Name() string {
 	re := regexp.MustCompile(`^https?://[\w./]+/attr/(\S*)/value/\S*$`)
 	m := re.FindStringSubmatch(string(a))
 	if m == nil {
@@ -192,23 +192,23 @@ func (a AttributeValue) Name() string {
 	return v
 }
 
-func (a AttributeName) Select(v string) AttributeValue {
-	return AttributeValue(fmt.Sprintf("%s/value/%s", a, url.PathEscape(v)))
+func (a AttributeNameFQN) Select(v string) AttributeValueFQN {
+	return AttributeValueFQN(fmt.Sprintf("%s/value/%s", a, url.PathEscape(v)))
 }
 
-func (a AttributeName) Prefix() string {
+func (a AttributeNameFQN) Prefix() string {
 	return string(a)
 }
 
 type AttributeService struct {
-	dict map[AttributeName]*policy.Attribute
+	dict map[AttributeNameFQN]*policy.Attribute
 }
 
 func (s *AttributeService) Put(ad *policy.Attribute) error {
 	if s.dict == nil {
-		s.dict = make(map[AttributeName]*policy.Attribute)
+		s.dict = make(map[AttributeNameFQN]*policy.Attribute)
 	}
-	prefix := AttributeName(ad.GetFqn())
+	prefix := AttributeNameFQN(ad.GetFqn())
 	if _, exists := s.dict[prefix]; exists {
 		return fmt.Errorf("ad prefix already found [%s]", prefix)
 	}
@@ -217,7 +217,7 @@ func (s *AttributeService) Put(ad *policy.Attribute) error {
 }
 
 // Given an attribute without a value (everything before /value/...), get the definition
-func (s *AttributeService) Get(prefix AttributeName) (*policy.Attribute, error) {
+func (s *AttributeService) Get(prefix AttributeNameFQN) (*policy.Attribute, error) {
 	ad, exists := s.dict[prefix]
 	if !exists {
 		return nil, fmt.Errorf("[404] Unknown attribute type: [%s], not in [%v]", prefix, s.dict)
@@ -227,7 +227,7 @@ func (s *AttributeService) Get(prefix AttributeName) (*policy.Attribute, error) 
 
 type singleAttributeClause struct {
 	def    *policy.Attribute
-	values []AttributeValue
+	values []AttributeValueFQN
 }
 
 type attributeBooleanExpression struct {
@@ -292,15 +292,15 @@ func (r Granter) Plan(defaultKas string, genSplitID func() string) ([]SplitStep,
 }
 
 func (r Granter) constructAttributeBoolean() *attributeBooleanExpression {
-	prefixes := make(map[AttributeName]*singleAttributeClause)
-	sortedPrefixes := make([]AttributeName, 0)
+	prefixes := make(map[AttributeNameFQN]*singleAttributeClause)
+	sortedPrefixes := make([]AttributeNameFQN, 0)
 	for _, aP := range r.policy {
 		a := aP
 		p := a.Prefix()
 		if clause, ok := prefixes[p]; ok {
 			clause.values = append(clause.values, a)
 		} else if kag := r.byAttribute(a); kag != nil {
-			prefixes[p] = &singleAttributeClause{kag.attr, []AttributeValue{a}}
+			prefixes[p] = &singleAttributeClause{kag.attr, []AttributeValueFQN{a}}
 			sortedPrefixes = append(sortedPrefixes, p)
 		}
 	}

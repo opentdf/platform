@@ -431,7 +431,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 }
 
 // create policy object
-func createPolicyObject(attributes []autoconfigure.AttributeValue) (PolicyObject, error) {
+func createPolicyObject(attributes []autoconfigure.AttributeValueFQN) (PolicyObject, error) {
 	uuidObj, err := uuid.NewUUID()
 	if err != nil {
 		return PolicyObject{}, fmt.Errorf("uuid.NewUUID failed: %w", err)

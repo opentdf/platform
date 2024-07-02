@@ -20,28 +20,28 @@ const (
 	kasUsSA   = "http://si.kas.us/"
 	authority = "https://virtru.com/"
 
-	CLS AttributeName = "https://virtru.com/attr/Classification"
-	N2K AttributeName = "https://virtru.com/attr/Need%20to%20Know"
-	REL AttributeName = "https://virtru.com/attr/Releasable%20To"
+	CLS AttributeNameFQN = "https://virtru.com/attr/Classification"
+	N2K AttributeNameFQN = "https://virtru.com/attr/Need%20to%20Know"
+	REL AttributeNameFQN = "https://virtru.com/attr/Releasable%20To"
 
-	clsA  AttributeValue = "https://virtru.com/attr/Classification/value/Allowed"
-	clsC  AttributeValue = "https://virtru.com/attr/Classification/value/Confidential"
-	clsS  AttributeValue = "https://virtru.com/attr/Classification/value/Secret"
-	clsTS AttributeValue = "https://virtru.com/attr/Classification/value/Top%20Secret"
+	clsA  AttributeValueFQN = "https://virtru.com/attr/Classification/value/Allowed"
+	clsC  AttributeValueFQN = "https://virtru.com/attr/Classification/value/Confidential"
+	clsS  AttributeValueFQN = "https://virtru.com/attr/Classification/value/Secret"
+	clsTS AttributeValueFQN = "https://virtru.com/attr/Classification/value/Top%20Secret"
 
-	n2kHCS AttributeValue = "https://virtru.com/attr/Need%20to%20Know/value/HCS"
-	n2kInt AttributeValue = "https://virtru.com/attr/Need%20to%20Know/value/INT"
-	n2kSI  AttributeValue = "https://virtru.com/attr/Need%20to%20Know/value/SI"
+	n2kHCS AttributeValueFQN = "https://virtru.com/attr/Need%20to%20Know/value/HCS"
+	n2kInt AttributeValueFQN = "https://virtru.com/attr/Need%20to%20Know/value/INT"
+	n2kSI  AttributeValueFQN = "https://virtru.com/attr/Need%20to%20Know/value/SI"
 
-	rel25eye AttributeValue = "https://virtru.com/attr/Releasable%20To/value/FVEY"
-	rel2aus  AttributeValue = "https://virtru.com/attr/Releasable%20To/value/AUS"
-	rel2can  AttributeValue = "https://virtru.com/attr/Releasable%20To/value/CAN"
-	rel2gbr  AttributeValue = "https://virtru.com/attr/Releasable%20To/value/GBR"
-	rel2nzl  AttributeValue = "https://virtru.com/attr/Releasable%20To/value/NZL"
-	rel2usa  AttributeValue = "https://virtru.com/attr/Releasable%20To/value/USA"
+	rel25eye AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/FVEY"
+	rel2aus  AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/AUS"
+	rel2can  AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/CAN"
+	rel2gbr  AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/GBR"
+	rel2nzl  AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/NZL"
+	rel2usa  AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/USA"
 )
 
-func mockAttributeFor(fqn AttributeName) *policy.Attribute {
+func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 	ns := policy.Namespace{
 		Id:   "v",
 		Name: "virtru.com",
@@ -75,7 +75,7 @@ func mockAttributeFor(fqn AttributeName) *policy.Attribute {
 	}
 	return nil
 }
-func mockValueFor(fqn AttributeValue) *policy.Value {
+func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 	an := fqn.Prefix()
 	a := mockAttributeFor(an)
 	v := fqn.Value()
@@ -151,7 +151,7 @@ func TestAttributeInstanceFromURL(t *testing.T) {
 	}
 }
 
-func valuesToPolicy(p ...AttributeValue) []*policy.Value {
+func valuesToPolicy(p ...AttributeValueFQN) []*policy.Value {
 	v := make([]*policy.Value, len(p))
 	for i, ai := range p {
 		v[i] = mockValueFor(ai)
@@ -162,15 +162,15 @@ func valuesToPolicy(p ...AttributeValue) []*policy.Value {
 func TestConfigurationServicePutGet(t *testing.T) {
 	for _, tc := range []struct {
 		n      string
-		policy []AttributeValue
+		policy []AttributeValueFQN
 		size   int
 		kases  []string
 	}{
-		{"default", []AttributeValue{clsA}, 1, []string{}},
-		{"one-country", []AttributeValue{rel2gbr}, 1, []string{kasUk}},
-		{"two-country", []AttributeValue{rel2gbr, rel2nzl}, 2, []string{kasUk, kasNz}},
-		{"with-default", []AttributeValue{clsA, rel2gbr}, 2, []string{kasUk}},
-		{"need-to-know", []AttributeValue{clsTS, rel2usa, n2kSI}, 3, []string{kasUs, kasUsSA}},
+		{"default", []AttributeValueFQN{clsA}, 1, []string{}},
+		{"one-country", []AttributeValueFQN{rel2gbr}, 1, []string{kasUk}},
+		{"two-country", []AttributeValueFQN{rel2gbr, rel2nzl}, 2, []string{kasUk, kasNz}},
+		{"with-default", []AttributeValueFQN{clsA, rel2gbr}, 2, []string{kasUk}},
+		{"need-to-know", []AttributeValueFQN{clsTS, rel2usa, n2kSI}, 3, []string{kasUs, kasUsSA}},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
 			v := valuesToPolicy(tc.policy...)
@@ -193,13 +193,13 @@ func TestConfigurationServicePutGet(t *testing.T) {
 func TestReasonerConstructAttributeBoolean(t *testing.T) {
 	for _, tc := range []struct {
 		n                   string
-		policy              []AttributeValue
+		policy              []AttributeValueFQN
 		ats, keyed, reduced string
 		plan                []SplitStep
 	}{
 		{
 			"one actual with default",
-			[]AttributeValue{clsS, rel2can},
+			[]AttributeValueFQN{clsS, rel2can},
 			"https://virtru.com/attr/Classification/value/Secret&https://virtru.com/attr/Releasable%20To/value/CAN",
 			"[DEFAULT]&(http://kas.ca/)",
 			"(http://kas.ca/)",
@@ -207,7 +207,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		},
 		{
 			"one defaulted attr",
-			[]AttributeValue{clsS},
+			[]AttributeValueFQN{clsS},
 			"https://virtru.com/attr/Classification/value/Secret",
 			"[DEFAULT]",
 			"",
@@ -215,7 +215,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		},
 		{
 			"empty policy",
-			[]AttributeValue{},
+			[]AttributeValueFQN{},
 			"∅",
 			"",
 			"",
@@ -223,7 +223,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		},
 		{
 			"simple with all three ops",
-			[]AttributeValue{clsS, rel2gbr, n2kInt},
+			[]AttributeValueFQN{clsS, rel2gbr, n2kInt},
 			"https://virtru.com/attr/Classification/value/Secret&https://virtru.com/attr/Releasable%20To/value/GBR&https://virtru.com/attr/Need%20to%20Know/value/INT",
 			"[DEFAULT]&(http://kas.uk/)&(http://kas.uk/)",
 			"(http://kas.uk/)",
@@ -231,7 +231,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		},
 		{
 			"compartments",
-			[]AttributeValue{clsS, rel2gbr, rel2usa, n2kHCS, n2kSI},
+			[]AttributeValueFQN{clsS, rel2gbr, rel2usa, n2kHCS, n2kSI},
 			"https://virtru.com/attr/Classification/value/Secret&https://virtru.com/attr/Releasable%20To/value/{GBR,USA}&https://virtru.com/attr/Need%20to%20Know/value/{HCS,SI}",
 			"[DEFAULT]&(http://kas.uk/⋁http://kas.us/)&(http://hcs.kas.us/⋀http://si.kas.us/)",
 			"(http://kas.uk/⋁http://kas.us/)&(http://hcs.kas.us/)&(http://si.kas.us/)",

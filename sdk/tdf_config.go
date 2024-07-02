@@ -58,7 +58,7 @@ type TDFConfig struct {
 	integrityAlgorithm        IntegrityAlgorithm
 	segmentIntegrityAlgorithm IntegrityAlgorithm
 	assertions                []Assertion //nolint:unused // TODO
-	attributes                []autoconfigure.AttributeValue
+	attributes                []autoconfigure.AttributeValueFQN
 	attributeValues           []*policy.Value
 	kasInfoList               []KASInfo
 	splitPlan                 []autoconfigure.SplitStep
@@ -122,7 +122,7 @@ func WithDataAttributes(attributes ...string) TDFOption {
 // it to the `CreateTDF` method with this option.
 func WithAttributes(attributes ...*policy.Value) TDFOption {
 	return func(c *TDFConfig) error {
-		c.attributes = make([]autoconfigure.AttributeValue, len(attributes))
+		c.attributes = make([]autoconfigure.AttributeValueFQN, len(attributes))
 		c.attributeValues = make([]*policy.Value, len(attributes))
 		for i, a := range attributes {
 			c.attributeValues[i] = a

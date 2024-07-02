@@ -11,7 +11,6 @@ import (
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/logger"
-	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/internal/server"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
 )
@@ -61,13 +60,6 @@ func Start(f ...StartOptions) error {
 
 	logger.Debug("config loaded", slog.Any("config", conf))
 
-	logger.Info("starting opa engine")
-	eng, err := opa.NewEngine(conf.OPA)
-	if err != nil {
-		return fmt.Errorf("could not start opa engine: %w", err)
-	}
-	defer eng.Stop(ctx)
-
 	// Required services
 	conf.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
 
@@ -113,7 +105,7 @@ func Start(f ...StartOptions) error {
 	defer client.Close()
 
 	logger.Info("starting services")
-	closeServices, services, err := startServices(ctx, *conf, otdf, eng, client, logger)
+	closeServices, services, err := startServices(ctx, *conf, otdf, client, logger)
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)

@@ -52,13 +52,16 @@ proto-generate:
 	buf generate service
 	buf generate service --template buf.gen.grpc.docs.yaml
 	buf generate service --template buf.gen.openapi.docs.yaml
-	
+
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.grpc.docs.yaml
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.openapi.docs.yaml
 
 test:
 	for m in $(HAND_MODS); do (cd $$m && go test ./... -race) || exit 1; done
+
+bench:
+	for m in $(HAND_MODS); do (cd $$m && go test -bench ./... -benchmem) || exit 1; done
 
 clean:
 	for m in $(MODS); do (cd $$m && go clean) || exit 1; done

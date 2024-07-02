@@ -13,7 +13,28 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// Subject Mapping evaluation tests
+// SubjectSet Benchmark
+func BenchmarkEvaluateSubjectSet(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := subjectmappingbuiltin.EvaluateSubjectSet(&subjectSet1, flattenedEntity1)
+		if err != nil {
+			b.Error(err)
+		}
+	}
+}
+
+// SubjectMappings Benchmark
+func BenchmarkEvaluateSubjectMappings(b *testing.B) {
+	additionalProps, _ := structpb.NewStruct(entity1)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput1, []*entityresolution.EntityRepresentation{{AdditionalProps: []*structpb.Struct{additionalProps}}})
+		if err != nil {
+			b.Error(err)
+		}
+	}
+}
 
 // evaluate condition IN
 var inCondition1 policy.Condition = policy.Condition{

@@ -2,9 +2,8 @@ package auth
 
 import (
 	"fmt"
-	"strings"
-
 	"log/slog"
+	"strings"
 
 	"github.com/casbin/casbin/v2"
 	casbinModel "github.com/casbin/casbin/v2/model"
@@ -13,8 +12,10 @@ import (
 	"github.com/opentdf/platform/service/pkg/util"
 )
 
-var rolePrefix = "role:"
-var defaultRole = "unknown"
+var (
+	rolePrefix  = "role:"
+	defaultRole = "unknown"
+)
 
 var defaultRoleClaim = "realm_access.roles"
 
@@ -72,6 +73,7 @@ p,	role:admin,		/kas/v2/rewrap,						  				        *,      allow
 
 ## Role: Standard
 ## gRPC routes
+p,  role:standard,		policy.unsafe.*,													 *,			deny
 p,	role:standard,		policy.*,																read,			allow
 p,	role:standard,		kasregistry.*,													read,			allow
 p,	role:standard,    kas.AccessService/Rewrap, 			           *,			allow

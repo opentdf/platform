@@ -65,7 +65,7 @@ func (config *NanoTDFConfig) SetKasURL(url string) error {
 func (config *NanoTDFConfig) SetAttributes(attributes []string) error {
 	config.attributes = make([]autoconfigure.AttributeValueFQN, len(attributes))
 	for i, a := range attributes {
-		v, err := autoconfigure.NewAttributeValue(a)
+		v, err := autoconfigure.NewAttributeValueFQN(a)
 		if err != nil {
 			return err
 		}
@@ -83,7 +83,7 @@ func (config *NanoTDFConfig) EnableECDSAPolicyBinding() {
 func WithNanoDataAttributes(attributes ...string) NanoTDFOption {
 	return func(c *NanoTDFConfig) error {
 		for _, a := range attributes {
-			v, err := autoconfigure.NewAttributeValue(a)
+			v, err := autoconfigure.NewAttributeValueFQN(a)
 			if err != nil {
 				return err
 			}

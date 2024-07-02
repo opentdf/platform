@@ -34,7 +34,21 @@ type AttributeNameFQN string
 // Utility type to represent an FQN for an attribute value.
 type AttributeValueFQN string
 
-func NewAttributeValue(u string) (AttributeValueFQN, error) {
+func NewAttributeNameFQN(u string) (AttributeNameFQN, error) {
+	re := regexp.MustCompile(`^(https?://[\w./]+)/attr/([^/\s)$`)
+	m := re.FindStringSubmatch(u)
+	if len(m[0]) == 0 {
+		return "", errors.New("invalid attribute url")
+	}
+
+	_, err := url.PathUnescape(m[2])
+	if err != nil {
+		return "", fmt.Errorf("invalid attribute url; error in name [%s]", m[2])
+	}
+	return AttributeNameFQN(u), nil
+}
+
+func NewAttributeValueFQN(u string) (AttributeValueFQN, error) {
 	re := regexp.MustCompile(`^(https?://[\w./]+)/attr/(\S*)/value/(\S*)$`)
 	m := re.FindStringSubmatch(u)
 	if len(m[0]) == 0 {
@@ -111,8 +125,11 @@ func NewGranterFromService(ctx context.Context, as attributes.AttributesServiceC
 		policy: fqns,
 		grants: make(map[AttributeValueFQN]*keyAccessGrant),
 	}
-	for fqns, pair := range av.GetFqnAttributeValues() {
-		fqn := AttributeValueFQN(fqns)
+	for fqnstr, pair := range av.GetFqnAttributeValues() {
+		fqn, err := NewAttributeValueFQN(fqnstr)
+		if err != nil {
+			return grants, err
+		}
 		def := pair.GetAttribute()
 		if def != nil {
 			grants.addAllGrants(fqn, def.GetGrants(), def)
@@ -135,7 +152,10 @@ func NewGranterFromAttributes(attrs ...*policy.Value) (Granter, error) {
 		policy: make([]AttributeValueFQN, len(attrs)),
 	}
 	for i, v := range attrs {
-		fqn := AttributeValueFQN(v.GetFqn())
+		fqn, err := NewAttributeValueFQN(v.GetFqn())
+		if err != nil {
+			return grants, err
+		}
 		grants.policy[i] = fqn
 		def := v.GetAttribute()
 		if def == nil {
@@ -208,7 +228,10 @@ func (s *AttributeService) Put(ad *policy.Attribute) error {
 	if s.dict == nil {
 		s.dict = make(map[AttributeNameFQN]*policy.Attribute)
 	}
-	prefix := AttributeNameFQN(ad.GetFqn())
+	prefix, err := NewAttributeNameFQN(ad.GetFqn())
+	if err != nil {
+		return err
+	}
 	if _, exists := s.dict[prefix]; exists {
 		return fmt.Errorf("ad prefix already found [%s]", prefix)
 	}

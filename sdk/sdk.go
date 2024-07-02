@@ -21,6 +21,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/sdk/auth"
@@ -51,6 +52,7 @@ type SDK struct {
 	ResourceMapping         resourcemapping.ResourceMappingServiceClient
 	SubjectMapping          subjectmapping.SubjectMappingServiceClient
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
+	Unsafe                  unsafe.UnsafeServiceClient
 	Authorization           authorization.AuthorizationServiceClient
 	EntityResoution         entityresolution.EntityResolutionServiceClient
 	wellknownConfiguration  wellknownconfiguration.WellKnownServiceClient
@@ -153,6 +155,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		Namespaces:              namespaces.NewNamespaceServiceClient(selectConn(cfg.policyConn, defaultConn)),
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(selectConn(cfg.policyConn, defaultConn)),
 		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(selectConn(cfg.policyConn, defaultConn)),
+		Unsafe:                  unsafe.NewUnsafeServiceClient(selectConn(cfg.policyConn, defaultConn)),
 		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(selectConn(cfg.policyConn, defaultConn)),
 		Authorization:           authorization.NewAuthorizationServiceClient(selectConn(cfg.authorizationConn, defaultConn)),
 		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(selectConn(cfg.entityresolutionConn, defaultConn)),
@@ -272,7 +275,6 @@ func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfiguration, err
 	wellKnownConfig := wellknownconfiguration.NewWellKnownServiceClient(conn)
 
 	response, err := wellKnownConfig.GetWellKnownConfiguration(context.Background(), &req)
-
 	if err != nil {
 		return nil, errors.Join(errors.New("unable to retrieve config information, and none was provided"), err)
 	}

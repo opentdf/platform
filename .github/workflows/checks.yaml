@@ -221,7 +221,7 @@ jobs:
       - uses: bufbuild/buf-lint-action@06f9dd823d873146471cfaaf108a993fe00e5325
         with:
           input: service
-      - uses: bufbuild/buf-breaking-action@35c243d7f2a909b1d4e40399b348a7fdab27d78d
+      - uses: bufbuild/buf-breaking-action@c57b3d842a5c3f3b454756ef65305a50a587c5ba
         with:
           input: service
           against: "https://github.com/opentdf/platform.git#branch=main,subdir=service"

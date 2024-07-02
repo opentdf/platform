@@ -391,3 +391,20 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		s.Equal(test.allowed, allowed)
 	}
 }
+
+func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies() {
+	enforcer, err := NewCasbinEnforcer(CasbinConfig{})
+	s.Require().NoError(err)
+	_, tok := s.newTokWithDefaultClaim(true, false, false)
+	allowed, err := enforcer.Enforce(tok, "policy.attributes.DoSomething", "read")
+	s.Require().NoError(err)
+	s.True(allowed)
+
+	ok, err := enforcer.ExtendDefaultPolicy([][]string{{"org-admin", "policy.attributes.DoSomething", "read"}})
+	s.Require().NoError(err)
+	s.True(ok)
+
+	allowed, err = enforcer.Enforce(tok, "policy.attributes.DoSomething", "read")
+	s.Require().NoError(err)
+	s.True(allowed)
+}

@@ -538,6 +538,15 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	s.Equal(dpopJWK.N(), dpopJWKFromRequest.N())
 }
 
+func (s *AuthSuite) Test_AddAuthzPolicies() {
+	ok, err := s.auth.ExtendAuthzDefaultPolicy([][]string{
+		{"role:admin", "/path", "*", "allow"},
+		{"role:standard", "/path2", "read", "deny"},
+	})
+	s.Require().NoError(err)
+	s.True(ok)
+}
+
 func makeDPoPToken(t *testing.T, tc dpopTestCase) string {
 	jtiBytes := make([]byte, sdkauth.JTILength)
 	_, err := rand.Read(jtiBytes)

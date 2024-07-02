@@ -190,6 +190,10 @@ func normalizeURL(o string, u *url.URL) string {
 	return ou.String()
 }
 
+func (a *Authentication) ExtendAuthzDefaultPolicy(policies [][]string) (bool, error) {
+	return a.enforcer.ExtendDefaultPolicy(policies)
+}
+
 // verifyTokenHandler is a http handler that verifies the token
 func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

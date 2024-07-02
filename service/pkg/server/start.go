@@ -81,6 +81,23 @@ func Start(f ...StartOptions) error {
 	}
 	defer otdf.Stop()
 
+	// Append the authz policies
+	if len(startConfig.authzPolicyExtension) > 0 {
+		if otdf.AuthN == nil {
+			logger.Error("issue adding authz policies", slog.String("error", "authn not enabled"))
+		} else {
+			ok, err := otdf.AuthN.ExtendAuthzDefaultPolicy(startConfig.authzPolicyExtension)
+			if err != nil {
+				logger.Error("issue adding authz policies", slog.String("error", err.Error()))
+				return fmt.Errorf("issue adding authz policies: %w", err)
+			}
+			if !ok {
+				logger.Error("issue adding authz policies", slog.String("error", "could not add policies"))
+				return fmt.Errorf("issue adding authz policies: could not add policies")
+			}
+		}
+	}
+
 	logger.Info("registering services")
 	if err := registerServices(); err != nil {
 		logger.Error("issue registering services", slog.String("error", err.Error()))

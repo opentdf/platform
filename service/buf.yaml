@@ -9,6 +9,8 @@ breaking:
     - PACKAGE
     - WIRE_JSON
     - WIRE
+  ignore:
+    - policy/unsafe/unsafe.proto
 lint:
   allow_comment_ignores: true
   use:

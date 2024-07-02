@@ -19,15 +19,15 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	UnsafeService_UpdateNamespace_FullMethodName          = "/policy.unsafe.UnsafeService/UpdateNamespace"
-	UnsafeService_ReactivateNamespace_FullMethodName      = "/policy.unsafe.UnsafeService/ReactivateNamespace"
-	UnsafeService_DeleteNamespace_FullMethodName          = "/policy.unsafe.UnsafeService/DeleteNamespace"
-	UnsafeService_UpdateAttribute_FullMethodName          = "/policy.unsafe.UnsafeService/UpdateAttribute"
-	UnsafeService_ReactivateAttribute_FullMethodName      = "/policy.unsafe.UnsafeService/ReactivateAttribute"
-	UnsafeService_DeleteAttribute_FullMethodName          = "/policy.unsafe.UnsafeService/DeleteAttribute"
-	UnsafeService_UpdateAttributeValue_FullMethodName     = "/policy.unsafe.UnsafeService/UpdateAttributeValue"
-	UnsafeService_ReactivateAttributeValue_FullMethodName = "/policy.unsafe.UnsafeService/ReactivateAttributeValue"
-	UnsafeService_DeleteAttributeValue_FullMethodName     = "/policy.unsafe.UnsafeService/DeleteAttributeValue"
+	UnsafeService_UnsafeUpdateNamespace_FullMethodName          = "/policy.unsafe.UnsafeService/UnsafeUpdateNamespace"
+	UnsafeService_UnsafeReactivateNamespace_FullMethodName      = "/policy.unsafe.UnsafeService/UnsafeReactivateNamespace"
+	UnsafeService_UnsafeDeleteNamespace_FullMethodName          = "/policy.unsafe.UnsafeService/UnsafeDeleteNamespace"
+	UnsafeService_UnsafeUpdateAttribute_FullMethodName          = "/policy.unsafe.UnsafeService/UnsafeUpdateAttribute"
+	UnsafeService_UnsafeReactivateAttribute_FullMethodName      = "/policy.unsafe.UnsafeService/UnsafeReactivateAttribute"
+	UnsafeService_UnsafeDeleteAttribute_FullMethodName          = "/policy.unsafe.UnsafeService/UnsafeDeleteAttribute"
+	UnsafeService_UnsafeUpdateAttributeValue_FullMethodName     = "/policy.unsafe.UnsafeService/UnsafeUpdateAttributeValue"
+	UnsafeService_UnsafeReactivateAttributeValue_FullMethodName = "/policy.unsafe.UnsafeService/UnsafeReactivateAttributeValue"
+	UnsafeService_UnsafeDeleteAttributeValue_FullMethodName     = "/policy.unsafe.UnsafeService/UnsafeDeleteAttributeValue"
 )
 
 // UnsafeServiceClient is the client API for UnsafeService service.
@@ -37,21 +37,21 @@ type UnsafeServiceClient interface {
 	// --------------------------------------*
 	// Namespace RPCs
 	// ---------------------------------------
-	UpdateNamespace(ctx context.Context, in *UpdateNamespaceRequest, opts ...grpc.CallOption) (*UpdateNamespaceResponse, error)
-	ReactivateNamespace(ctx context.Context, in *ReactivateNamespaceRequest, opts ...grpc.CallOption) (*ReactivateNamespaceResponse, error)
-	DeleteNamespace(ctx context.Context, in *DeleteNamespaceRequest, opts ...grpc.CallOption) (*DeleteNamespaceResponse, error)
+	UnsafeUpdateNamespace(ctx context.Context, in *UnsafeUpdateNamespaceRequest, opts ...grpc.CallOption) (*UnsafeUpdateNamespaceResponse, error)
+	UnsafeReactivateNamespace(ctx context.Context, in *UnsafeReactivateNamespaceRequest, opts ...grpc.CallOption) (*UnsafeReactivateNamespaceResponse, error)
+	UnsafeDeleteNamespace(ctx context.Context, in *UnsafeDeleteNamespaceRequest, opts ...grpc.CallOption) (*UnsafeDeleteNamespaceResponse, error)
 	// --------------------------------------*
 	// Attribute RPCs
 	// ---------------------------------------
-	UpdateAttribute(ctx context.Context, in *UpdateAttributeRequest, opts ...grpc.CallOption) (*UpdateAttributeResponse, error)
-	ReactivateAttribute(ctx context.Context, in *ReactivateAttributeRequest, opts ...grpc.CallOption) (*ReactivateAttributeResponse, error)
-	DeleteAttribute(ctx context.Context, in *DeleteAttributeRequest, opts ...grpc.CallOption) (*DeleteAttributeResponse, error)
+	UnsafeUpdateAttribute(ctx context.Context, in *UnsafeUpdateAttributeRequest, opts ...grpc.CallOption) (*UnsafeUpdateAttributeResponse, error)
+	UnsafeReactivateAttribute(ctx context.Context, in *UnsafeReactivateAttributeRequest, opts ...grpc.CallOption) (*UnsafeReactivateAttributeResponse, error)
+	UnsafeDeleteAttribute(ctx context.Context, in *UnsafeDeleteAttributeRequest, opts ...grpc.CallOption) (*UnsafeDeleteAttributeResponse, error)
 	// --------------------------------------*
 	// Value RPCs
 	// ---------------------------------------
-	UpdateAttributeValue(ctx context.Context, in *UpdateAttributeValueRequest, opts ...grpc.CallOption) (*UpdateAttributeValueResponse, error)
-	ReactivateAttributeValue(ctx context.Context, in *ReactivateAttributeValueRequest, opts ...grpc.CallOption) (*ReactivateAttributeValueResponse, error)
-	DeleteAttributeValue(ctx context.Context, in *DeleteAttributeValueRequest, opts ...grpc.CallOption) (*DeleteAttributeValueResponse, error)
+	UnsafeUpdateAttributeValue(ctx context.Context, in *UnsafeUpdateAttributeValueRequest, opts ...grpc.CallOption) (*UnsafeUpdateAttributeValueResponse, error)
+	UnsafeReactivateAttributeValue(ctx context.Context, in *UnsafeReactivateAttributeValueRequest, opts ...grpc.CallOption) (*UnsafeReactivateAttributeValueResponse, error)
+	UnsafeDeleteAttributeValue(ctx context.Context, in *UnsafeDeleteAttributeValueRequest, opts ...grpc.CallOption) (*UnsafeDeleteAttributeValueResponse, error)
 }
 
 type unsafeServiceClient struct {
@@ -62,81 +62,81 @@ func NewUnsafeServiceClient(cc grpc.ClientConnInterface) UnsafeServiceClient {
 	return &unsafeServiceClient{cc}
 }
 
-func (c *unsafeServiceClient) UpdateNamespace(ctx context.Context, in *UpdateNamespaceRequest, opts ...grpc.CallOption) (*UpdateNamespaceResponse, error) {
-	out := new(UpdateNamespaceResponse)
-	err := c.cc.Invoke(ctx, UnsafeService_UpdateNamespace_FullMethodName, in, out, opts...)
+func (c *unsafeServiceClient) UnsafeUpdateNamespace(ctx context.Context, in *UnsafeUpdateNamespaceRequest, opts ...grpc.CallOption) (*UnsafeUpdateNamespaceResponse, error) {
+	out := new(UnsafeUpdateNamespaceResponse)
+	err := c.cc.Invoke(ctx, UnsafeService_UnsafeUpdateNamespace_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *unsafeServiceClient) ReactivateNamespace(ctx context.Context, in *ReactivateNamespaceRequest, opts ...grpc.CallOption) (*ReactivateNamespaceResponse, error) {
-	out := new(ReactivateNamespaceResponse)
-	err := c.cc.Invoke(ctx, UnsafeService_ReactivateNamespace_FullMethodName, in, out, opts...)
+func (c *unsafeServiceClient) UnsafeReactivateNamespace(ctx context.Context, in *UnsafeReactivateNamespaceRequest, opts ...grpc.CallOption) (*UnsafeReactivateNamespaceResponse, error) {
+	out := new(UnsafeReactivateNamespaceResponse)
+	err := c.cc.Invoke(ctx, UnsafeService_UnsafeReactivateNamespace_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *unsafeServiceClient) DeleteNamespace(ctx context.Context, in *DeleteNamespaceRequest, opts ...grpc.CallOption) (*DeleteNamespaceResponse, error) {
-	out := new(DeleteNamespaceResponse)
-	err := c.cc.Invoke(ctx, UnsafeService_DeleteNamespace_FullMethodName, in, out, opts...)
+func (c *unsafeServiceClient) UnsafeDeleteNamespace(ctx context.Context, in *UnsafeDeleteNamespaceRequest, opts ...grpc.CallOption) (*UnsafeDeleteNamespaceResponse, error) {
+	out := new(UnsafeDeleteNamespaceResponse)
+	err := c.cc.Invoke(ctx, UnsafeService_UnsafeDeleteNamespace_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *unsafeServiceClient) UpdateAttribute(ctx context.Context, in *UpdateAttributeRequest, opts ...grpc.CallOption) (*UpdateAttributeResponse, error) {
-	out := new(UpdateAttributeResponse)
-	err := c.cc.Invoke(ctx, UnsafeService_UpdateAttribute_FullMethodName, in, out, opts...)
+func (c *unsafeServiceClient) UnsafeUpdateAttribute(ctx context.Context, in *UnsafeUpdateAttributeRequest, opts ...grpc.CallOption) (*UnsafeUpdateAttributeResponse, error) {
+	out := new(UnsafeUpdateAttributeResponse)
+	err := c.cc.Invoke(ctx, UnsafeService_UnsafeUpdateAttribute_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *unsafeServiceClient) ReactivateAttribute(ctx context.Context, in *ReactivateAttributeRequest, opts ...grpc.CallOption) (*ReactivateAttributeResponse, error) {
-	out := new(ReactivateAttributeResponse)
-	err := c.cc.Invoke(ctx, UnsafeService_ReactivateAttribute_FullMethodName, in, out, opts...)
+func (c *unsafeServiceClient) UnsafeReactivateAttribute(ctx context.Context, in *UnsafeReactivateAttributeRequest, opts ...grpc.CallOption) (*UnsafeReactivateAttributeResponse, error) {
+	out := new(UnsafeReactivateAttributeResponse)
+	err := c.cc.Invoke(ctx, UnsafeService_UnsafeReactivateAttribute_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *unsafeServiceClient) DeleteAttribute(ctx context.Context, in *DeleteAttributeRequest, opts ...grpc.CallOption) (*DeleteAttributeResponse, error) {
-	out := new(DeleteAttributeResponse)
-	err := c.cc.Invoke(ctx, UnsafeService_DeleteAttribute_FullMethodName, in, out, opts...)
+func (c *unsafeServiceClient) UnsafeDeleteAttribute(ctx context.Context, in *UnsafeDeleteAttributeRequest, opts ...grpc.CallOption) (*UnsafeDeleteAttributeResponse, error) {
+	out := new(UnsafeDeleteAttributeResponse)
+	err := c.cc.Invoke(ctx, UnsafeService_UnsafeDeleteAttribute_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *unsafeServiceClient) UpdateAttributeValue(ctx context.Context, in *UpdateAttributeValueRequest, opts ...grpc.CallOption) (*UpdateAttributeValueResponse, error) {
-	out := new(UpdateAttributeValueResponse)
-	err := c.cc.Invoke(ctx, UnsafeService_UpdateAttributeValue_FullMethodName, in, out, opts...)
+func (c *unsafeServiceClient) UnsafeUpdateAttributeValue(ctx context.Context, in *UnsafeUpdateAttributeValueRequest, opts ...grpc.CallOption) (*UnsafeUpdateAttributeValueResponse, error) {
+	out := new(UnsafeUpdateAttributeValueResponse)
+	err := c.cc.Invoke(ctx, UnsafeService_UnsafeUpdateAttributeValue_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *unsafeServiceClient) ReactivateAttributeValue(ctx context.Context, in *ReactivateAttributeValueRequest, opts ...grpc.CallOption) (*ReactivateAttributeValueResponse, error) {
-	out := new(ReactivateAttributeValueResponse)
-	err := c.cc.Invoke(ctx, UnsafeService_ReactivateAttributeValue_FullMethodName, in, out, opts...)
+func (c *unsafeServiceClient) UnsafeReactivateAttributeValue(ctx context.Context, in *UnsafeReactivateAttributeValueRequest, opts ...grpc.CallOption) (*UnsafeReactivateAttributeValueResponse, error) {
+	out := new(UnsafeReactivateAttributeValueResponse)
+	err := c.cc.Invoke(ctx, UnsafeService_UnsafeReactivateAttributeValue_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *unsafeServiceClient) DeleteAttributeValue(ctx context.Context, in *DeleteAttributeValueRequest, opts ...grpc.CallOption) (*DeleteAttributeValueResponse, error) {
-	out := new(DeleteAttributeValueResponse)
-	err := c.cc.Invoke(ctx, UnsafeService_DeleteAttributeValue_FullMethodName, in, out, opts...)
+func (c *unsafeServiceClient) UnsafeDeleteAttributeValue(ctx context.Context, in *UnsafeDeleteAttributeValueRequest, opts ...grpc.CallOption) (*UnsafeDeleteAttributeValueResponse, error) {
+	out := new(UnsafeDeleteAttributeValueResponse)
+	err := c.cc.Invoke(ctx, UnsafeService_UnsafeDeleteAttributeValue_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -150,21 +150,21 @@ type UnsafeServiceServer interface {
 	// --------------------------------------*
 	// Namespace RPCs
 	// ---------------------------------------
-	UpdateNamespace(context.Context, *UpdateNamespaceRequest) (*UpdateNamespaceResponse, error)
-	ReactivateNamespace(context.Context, *ReactivateNamespaceRequest) (*ReactivateNamespaceResponse, error)
-	DeleteNamespace(context.Context, *DeleteNamespaceRequest) (*DeleteNamespaceResponse, error)
+	UnsafeUpdateNamespace(context.Context, *UnsafeUpdateNamespaceRequest) (*UnsafeUpdateNamespaceResponse, error)
+	UnsafeReactivateNamespace(context.Context, *UnsafeReactivateNamespaceRequest) (*UnsafeReactivateNamespaceResponse, error)
+	UnsafeDeleteNamespace(context.Context, *UnsafeDeleteNamespaceRequest) (*UnsafeDeleteNamespaceResponse, error)
 	// --------------------------------------*
 	// Attribute RPCs
 	// ---------------------------------------
-	UpdateAttribute(context.Context, *UpdateAttributeRequest) (*UpdateAttributeResponse, error)
-	ReactivateAttribute(context.Context, *ReactivateAttributeRequest) (*ReactivateAttributeResponse, error)
-	DeleteAttribute(context.Context, *DeleteAttributeRequest) (*DeleteAttributeResponse, error)
+	UnsafeUpdateAttribute(context.Context, *UnsafeUpdateAttributeRequest) (*UnsafeUpdateAttributeResponse, error)
+	UnsafeReactivateAttribute(context.Context, *UnsafeReactivateAttributeRequest) (*UnsafeReactivateAttributeResponse, error)
+	UnsafeDeleteAttribute(context.Context, *UnsafeDeleteAttributeRequest) (*UnsafeDeleteAttributeResponse, error)
 	// --------------------------------------*
 	// Value RPCs
 	// ---------------------------------------
-	UpdateAttributeValue(context.Context, *UpdateAttributeValueRequest) (*UpdateAttributeValueResponse, error)
-	ReactivateAttributeValue(context.Context, *ReactivateAttributeValueRequest) (*ReactivateAttributeValueResponse, error)
-	DeleteAttributeValue(context.Context, *DeleteAttributeValueRequest) (*DeleteAttributeValueResponse, error)
+	UnsafeUpdateAttributeValue(context.Context, *UnsafeUpdateAttributeValueRequest) (*UnsafeUpdateAttributeValueResponse, error)
+	UnsafeReactivateAttributeValue(context.Context, *UnsafeReactivateAttributeValueRequest) (*UnsafeReactivateAttributeValueResponse, error)
+	UnsafeDeleteAttributeValue(context.Context, *UnsafeDeleteAttributeValueRequest) (*UnsafeDeleteAttributeValueResponse, error)
 	mustEmbedUnimplementedUnsafeServiceServer()
 }
 
@@ -172,32 +172,32 @@ type UnsafeServiceServer interface {
 type UnimplementedUnsafeServiceServer struct {
 }
 
-func (UnimplementedUnsafeServiceServer) UpdateNamespace(context.Context, *UpdateNamespaceRequest) (*UpdateNamespaceResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateNamespace not implemented")
+func (UnimplementedUnsafeServiceServer) UnsafeUpdateNamespace(context.Context, *UnsafeUpdateNamespaceRequest) (*UnsafeUpdateNamespaceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnsafeUpdateNamespace not implemented")
 }
-func (UnimplementedUnsafeServiceServer) ReactivateNamespace(context.Context, *ReactivateNamespaceRequest) (*ReactivateNamespaceResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReactivateNamespace not implemented")
+func (UnimplementedUnsafeServiceServer) UnsafeReactivateNamespace(context.Context, *UnsafeReactivateNamespaceRequest) (*UnsafeReactivateNamespaceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnsafeReactivateNamespace not implemented")
 }
-func (UnimplementedUnsafeServiceServer) DeleteNamespace(context.Context, *DeleteNamespaceRequest) (*DeleteNamespaceResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteNamespace not implemented")
+func (UnimplementedUnsafeServiceServer) UnsafeDeleteNamespace(context.Context, *UnsafeDeleteNamespaceRequest) (*UnsafeDeleteNamespaceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnsafeDeleteNamespace not implemented")
 }
-func (UnimplementedUnsafeServiceServer) UpdateAttribute(context.Context, *UpdateAttributeRequest) (*UpdateAttributeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateAttribute not implemented")
+func (UnimplementedUnsafeServiceServer) UnsafeUpdateAttribute(context.Context, *UnsafeUpdateAttributeRequest) (*UnsafeUpdateAttributeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnsafeUpdateAttribute not implemented")
 }
-func (UnimplementedUnsafeServiceServer) ReactivateAttribute(context.Context, *ReactivateAttributeRequest) (*ReactivateAttributeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReactivateAttribute not implemented")
+func (UnimplementedUnsafeServiceServer) UnsafeReactivateAttribute(context.Context, *UnsafeReactivateAttributeRequest) (*UnsafeReactivateAttributeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnsafeReactivateAttribute not implemented")
 }
-func (UnimplementedUnsafeServiceServer) DeleteAttribute(context.Context, *DeleteAttributeRequest) (*DeleteAttributeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteAttribute not implemented")
+func (UnimplementedUnsafeServiceServer) UnsafeDeleteAttribute(context.Context, *UnsafeDeleteAttributeRequest) (*UnsafeDeleteAttributeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnsafeDeleteAttribute not implemented")
 }
-func (UnimplementedUnsafeServiceServer) UpdateAttributeValue(context.Context, *UpdateAttributeValueRequest) (*UpdateAttributeValueResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateAttributeValue not implemented")
+func (UnimplementedUnsafeServiceServer) UnsafeUpdateAttributeValue(context.Context, *UnsafeUpdateAttributeValueRequest) (*UnsafeUpdateAttributeValueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnsafeUpdateAttributeValue not implemented")
 }
-func (UnimplementedUnsafeServiceServer) ReactivateAttributeValue(context.Context, *ReactivateAttributeValueRequest) (*ReactivateAttributeValueResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReactivateAttributeValue not implemented")
+func (UnimplementedUnsafeServiceServer) UnsafeReactivateAttributeValue(context.Context, *UnsafeReactivateAttributeValueRequest) (*UnsafeReactivateAttributeValueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnsafeReactivateAttributeValue not implemented")
 }
-func (UnimplementedUnsafeServiceServer) DeleteAttributeValue(context.Context, *DeleteAttributeValueRequest) (*DeleteAttributeValueResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteAttributeValue not implemented")
+func (UnimplementedUnsafeServiceServer) UnsafeDeleteAttributeValue(context.Context, *UnsafeDeleteAttributeValueRequest) (*UnsafeDeleteAttributeValueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnsafeDeleteAttributeValue not implemented")
 }
 func (UnimplementedUnsafeServiceServer) mustEmbedUnimplementedUnsafeServiceServer() {}
 
@@ -212,164 +212,164 @@ func RegisterUnsafeServiceServer(s grpc.ServiceRegistrar, srv UnsafeServiceServe
 	s.RegisterService(&UnsafeService_ServiceDesc, srv)
 }
 
-func _UnsafeService_UpdateNamespace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateNamespaceRequest)
+func _UnsafeService_UnsafeUpdateNamespace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnsafeUpdateNamespaceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(UnsafeServiceServer).UpdateNamespace(ctx, in)
+		return srv.(UnsafeServiceServer).UnsafeUpdateNamespace(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: UnsafeService_UpdateNamespace_FullMethodName,
+		FullMethod: UnsafeService_UnsafeUpdateNamespace_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UnsafeServiceServer).UpdateNamespace(ctx, req.(*UpdateNamespaceRequest))
+		return srv.(UnsafeServiceServer).UnsafeUpdateNamespace(ctx, req.(*UnsafeUpdateNamespaceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UnsafeService_ReactivateNamespace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReactivateNamespaceRequest)
+func _UnsafeService_UnsafeReactivateNamespace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnsafeReactivateNamespaceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(UnsafeServiceServer).ReactivateNamespace(ctx, in)
+		return srv.(UnsafeServiceServer).UnsafeReactivateNamespace(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: UnsafeService_ReactivateNamespace_FullMethodName,
+		FullMethod: UnsafeService_UnsafeReactivateNamespace_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UnsafeServiceServer).ReactivateNamespace(ctx, req.(*ReactivateNamespaceRequest))
+		return srv.(UnsafeServiceServer).UnsafeReactivateNamespace(ctx, req.(*UnsafeReactivateNamespaceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UnsafeService_DeleteNamespace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteNamespaceRequest)
+func _UnsafeService_UnsafeDeleteNamespace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnsafeDeleteNamespaceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(UnsafeServiceServer).DeleteNamespace(ctx, in)
+		return srv.(UnsafeServiceServer).UnsafeDeleteNamespace(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: UnsafeService_DeleteNamespace_FullMethodName,
+		FullMethod: UnsafeService_UnsafeDeleteNamespace_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UnsafeServiceServer).DeleteNamespace(ctx, req.(*DeleteNamespaceRequest))
+		return srv.(UnsafeServiceServer).UnsafeDeleteNamespace(ctx, req.(*UnsafeDeleteNamespaceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UnsafeService_UpdateAttribute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateAttributeRequest)
+func _UnsafeService_UnsafeUpdateAttribute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnsafeUpdateAttributeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(UnsafeServiceServer).UpdateAttribute(ctx, in)
+		return srv.(UnsafeServiceServer).UnsafeUpdateAttribute(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: UnsafeService_UpdateAttribute_FullMethodName,
+		FullMethod: UnsafeService_UnsafeUpdateAttribute_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UnsafeServiceServer).UpdateAttribute(ctx, req.(*UpdateAttributeRequest))
+		return srv.(UnsafeServiceServer).UnsafeUpdateAttribute(ctx, req.(*UnsafeUpdateAttributeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UnsafeService_ReactivateAttribute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReactivateAttributeRequest)
+func _UnsafeService_UnsafeReactivateAttribute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnsafeReactivateAttributeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(UnsafeServiceServer).ReactivateAttribute(ctx, in)
+		return srv.(UnsafeServiceServer).UnsafeReactivateAttribute(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: UnsafeService_ReactivateAttribute_FullMethodName,
+		FullMethod: UnsafeService_UnsafeReactivateAttribute_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UnsafeServiceServer).ReactivateAttribute(ctx, req.(*ReactivateAttributeRequest))
+		return srv.(UnsafeServiceServer).UnsafeReactivateAttribute(ctx, req.(*UnsafeReactivateAttributeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UnsafeService_DeleteAttribute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteAttributeRequest)
+func _UnsafeService_UnsafeDeleteAttribute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnsafeDeleteAttributeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(UnsafeServiceServer).DeleteAttribute(ctx, in)
+		return srv.(UnsafeServiceServer).UnsafeDeleteAttribute(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: UnsafeService_DeleteAttribute_FullMethodName,
+		FullMethod: UnsafeService_UnsafeDeleteAttribute_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UnsafeServiceServer).DeleteAttribute(ctx, req.(*DeleteAttributeRequest))
+		return srv.(UnsafeServiceServer).UnsafeDeleteAttribute(ctx, req.(*UnsafeDeleteAttributeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UnsafeService_UpdateAttributeValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateAttributeValueRequest)
+func _UnsafeService_UnsafeUpdateAttributeValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnsafeUpdateAttributeValueRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(UnsafeServiceServer).UpdateAttributeValue(ctx, in)
+		return srv.(UnsafeServiceServer).UnsafeUpdateAttributeValue(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: UnsafeService_UpdateAttributeValue_FullMethodName,
+		FullMethod: UnsafeService_UnsafeUpdateAttributeValue_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UnsafeServiceServer).UpdateAttributeValue(ctx, req.(*UpdateAttributeValueRequest))
+		return srv.(UnsafeServiceServer).UnsafeUpdateAttributeValue(ctx, req.(*UnsafeUpdateAttributeValueRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UnsafeService_ReactivateAttributeValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReactivateAttributeValueRequest)
+func _UnsafeService_UnsafeReactivateAttributeValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnsafeReactivateAttributeValueRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(UnsafeServiceServer).ReactivateAttributeValue(ctx, in)
+		return srv.(UnsafeServiceServer).UnsafeReactivateAttributeValue(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: UnsafeService_ReactivateAttributeValue_FullMethodName,
+		FullMethod: UnsafeService_UnsafeReactivateAttributeValue_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UnsafeServiceServer).ReactivateAttributeValue(ctx, req.(*ReactivateAttributeValueRequest))
+		return srv.(UnsafeServiceServer).UnsafeReactivateAttributeValue(ctx, req.(*UnsafeReactivateAttributeValueRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UnsafeService_DeleteAttributeValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteAttributeValueRequest)
+func _UnsafeService_UnsafeDeleteAttributeValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnsafeDeleteAttributeValueRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(UnsafeServiceServer).DeleteAttributeValue(ctx, in)
+		return srv.(UnsafeServiceServer).UnsafeDeleteAttributeValue(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: UnsafeService_DeleteAttributeValue_FullMethodName,
+		FullMethod: UnsafeService_UnsafeDeleteAttributeValue_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UnsafeServiceServer).DeleteAttributeValue(ctx, req.(*DeleteAttributeValueRequest))
+		return srv.(UnsafeServiceServer).UnsafeDeleteAttributeValue(ctx, req.(*UnsafeDeleteAttributeValueRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -382,40 +382,40 @@ var UnsafeService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*UnsafeServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "UpdateNamespace",
-			Handler:    _UnsafeService_UpdateNamespace_Handler,
+			MethodName: "UnsafeUpdateNamespace",
+			Handler:    _UnsafeService_UnsafeUpdateNamespace_Handler,
 		},
 		{
-			MethodName: "ReactivateNamespace",
-			Handler:    _UnsafeService_ReactivateNamespace_Handler,
+			MethodName: "UnsafeReactivateNamespace",
+			Handler:    _UnsafeService_UnsafeReactivateNamespace_Handler,
 		},
 		{
-			MethodName: "DeleteNamespace",
-			Handler:    _UnsafeService_DeleteNamespace_Handler,
+			MethodName: "UnsafeDeleteNamespace",
+			Handler:    _UnsafeService_UnsafeDeleteNamespace_Handler,
 		},
 		{
-			MethodName: "UpdateAttribute",
-			Handler:    _UnsafeService_UpdateAttribute_Handler,
+			MethodName: "UnsafeUpdateAttribute",
+			Handler:    _UnsafeService_UnsafeUpdateAttribute_Handler,
 		},
 		{
-			MethodName: "ReactivateAttribute",
-			Handler:    _UnsafeService_ReactivateAttribute_Handler,
+			MethodName: "UnsafeReactivateAttribute",
+			Handler:    _UnsafeService_UnsafeReactivateAttribute_Handler,
 		},
 		{
-			MethodName: "DeleteAttribute",
-			Handler:    _UnsafeService_DeleteAttribute_Handler,
+			MethodName: "UnsafeDeleteAttribute",
+			Handler:    _UnsafeService_UnsafeDeleteAttribute_Handler,
 		},
 		{
-			MethodName: "UpdateAttributeValue",
-			Handler:    _UnsafeService_UpdateAttributeValue_Handler,
+			MethodName: "UnsafeUpdateAttributeValue",
+			Handler:    _UnsafeService_UnsafeUpdateAttributeValue_Handler,
 		},
 		{
-			MethodName: "ReactivateAttributeValue",
-			Handler:    _UnsafeService_ReactivateAttributeValue_Handler,
+			MethodName: "UnsafeReactivateAttributeValue",
+			Handler:    _UnsafeService_UnsafeReactivateAttributeValue_Handler,
 		},
 		{
-			MethodName: "DeleteAttributeValue",
-			Handler:    _UnsafeService_DeleteAttributeValue_Handler,
+			MethodName: "UnsafeDeleteAttributeValue",
+			Handler:    _UnsafeService_UnsafeDeleteAttributeValue_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

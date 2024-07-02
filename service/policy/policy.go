@@ -10,7 +10,7 @@ import (
 	"github.com/opentdf/platform/service/policy/namespaces"
 	"github.com/opentdf/platform/service/policy/resourcemapping"
 	"github.com/opentdf/platform/service/policy/subjectmapping"
-	// "github.com/opentdf/platform/service/policy/unsafe"
+	"github.com/opentdf/platform/service/policy/unsafe"
 )
 
 var Migrations *embed.FS
@@ -33,7 +33,7 @@ func NewRegistrations() []serviceregistry.Registration {
 		resourcemapping.NewRegistration(),
 		subjectmapping.NewRegistration(),
 		kasregistry.NewRegistration(),
-		// unsafe.NewRegistration(),
+		unsafe.NewRegistration(),
 	} {
 		r.Namespace = namespace
 		r.DB = dbRegister

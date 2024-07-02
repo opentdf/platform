@@ -111,12 +111,7 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, id string) (*policy.Na
 		return nil, err
 	}
 
-	n, err := hydrateNamespaceItem(row, opts)
-	if err != nil {
-		return nil, err
-	}
-
-	return n, nil
+	return hydrateNamespaceItem(row, opts)
 }
 
 func listNamespacesSQL(opts namespaceSelectOptions) (string, []interface{}, error) {

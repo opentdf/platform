@@ -72,7 +72,7 @@ jobs:
           - lib/fixtures
           - lib/flattening
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
         with:
           fetch-depth: 0
       - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
@@ -141,7 +141,7 @@ jobs:
         crypto:
           - standard
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
       - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
         with:
           go-version: "1.22.3"
@@ -204,7 +204,7 @@ jobs:
     name: image build
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v5.1.0
         with:
@@ -216,7 +216,7 @@ jobs:
     name: Protocol Buffer Lint and Gencode Up-to-date check
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
       - uses: bufbuild/buf-setup-action@dde0b9351db90fbf78e345f41a57de8514bf1091
       - uses: bufbuild/buf-lint-action@044d13acb1f155179c606aaa2e53aea304d22058
         with:
@@ -267,7 +267,7 @@ jobs:
     name: license check
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
       - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
         with:
           go-version: "1.22.4"

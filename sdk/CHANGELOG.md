@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.9](https://github.com/opentdf/platform/compare/sdk/v0.2.8...sdk/v0.2.9) (2024-07-02)
+
+
+### Features
+
+* **sdk:** support unsafe policy service in SDK ([#1076](https://github.com/opentdf/platform/issues/1076)) ([ca88554](https://github.com/opentdf/platform/commit/ca88554098c6330c3bd5d0c72386b8036fd32434))
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1070](https://github.com/opentdf/platform/issues/1070)) ([4ca372c](https://github.com/opentdf/platform/commit/4ca372c71eb2460a0b3d5791119a9a42a91aa1ee))
+* Issue [#1008](https://github.com/opentdf/platform/issues/1008) : Use exchange info's TLS Configuration for cert based auth ([#1043](https://github.com/opentdf/platform/issues/1043)) ([93d8f70](https://github.com/opentdf/platform/commit/93d8f70750d181e0818911e5b317c9d85044623b))
+
 ## [0.2.8](https://github.com/opentdf/platform/compare/sdk/v0.2.7...sdk/v0.2.8) (2024-06-24)
 
 

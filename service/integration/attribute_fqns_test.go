@@ -9,6 +9,7 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -174,6 +175,76 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrFqn() {
 	s.Equal(attr.GetName(), attrFixture.Name)
 	s.Equal(attr.GetRule().String(), fmt.Sprintf("ATTRIBUTE_RULE_TYPE_ENUM_%s", attrFixture.Rule))
 	s.Equal(attr.GetActive().GetValue(), attrFixture.Active)
+}
+
+func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Definitions() {
+	// create attribute under fixture namespace id
+	n := s.f.GetNamespaceKey("example.org")
+	a, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: n.ID,
+		Name:        "attr_with_grants",
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"value1", "value2"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(a)
+
+	// create a new kas registration
+	remoteKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri: "https://example.org/kas",
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Remote{
+				Remote: "https://example.org/kas",
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(remoteKAS)
+
+	// make a first grant association
+	grant, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, &attributes.AttributeKeyAccessServer{
+		KeyAccessServerId: remoteKAS.GetId(),
+		AttributeId:       a.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(grant)
+
+	// create a second kas registration and grant it
+	localKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri: "https://example.org/kas2",
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Local{
+				Local: "local_key",
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(localKAS)
+
+	grant2, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, &attributes.AttributeKeyAccessServer{
+		KeyAccessServerId: localKAS.GetId(),
+		AttributeId:       a.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(grant2)
+
+	// get the attribute by the fqn of the attribute definition
+	got, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, "https://example.org/attr/attr_with_grants")
+	s.Require().NoError(err)
+	s.NotNil(got)
+
+	// ensure the attribute has the grants
+	s.Len(got.GetGrants(), 2)
+	grantIDs := []string{remoteKAS.GetId(), localKAS.GetId()}
+	s.Contains(grantIDs, got.GetGrants()[0].GetId())
+	s.Contains(grantIDs, got.GetGrants()[1].GetId())
+	s.NotEqual(got.GetGrants()[0].GetId(), got.GetGrants()[1].GetId())
+
+	// get the attribute by the fqn of one of its values and ensure the grants are present
+	got, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, "https://example.org/attr/attr_with_grants/value/value1")
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Len(got.GetGrants(), 2)
 }
 
 // Test multiple get attributes by multiple fqns

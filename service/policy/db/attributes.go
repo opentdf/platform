@@ -103,24 +103,15 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		selectFields = append(selectFields, t.Field("values_order"), valueSelect)
 	}
 	if opts.withKeyAccessGrants {
-		selectFields = append(selectFields, "JSON_AGG("+
-			"JSON_BUILD_OBJECT("+
-			"'id', "+avt.Field("id")+", "+
-			"'value', "+avt.Field("value")+","+
-			"'members', "+avt.Field("members")+","+
-			"'grants', ("+
-			"SELECT JSON_AGG("+
-			"JSON_BUILD_OBJECT("+
-			"'id', kas.id, "+
-			"'uri', kas.uri, "+
-			"'public_key', kas.public_key"+
-			")"+
-			") "+
-			"FROM "+Tables.KeyAccessServerRegistry.Name()+" kas "+
-			"JOIN "+Tables.AttributeValueKeyAccessGrants.Name()+" avkag ON avkag.key_access_server_id = kas.id "+
-			"WHERE avkag.attribute_value_id = "+avt.Field("id")+
-			")"+
-			")) AS grants")
+		// query the attribute definition KAS grants
+		selectFields = append(selectFields,
+			"JSON_AGG("+
+				"DISTINCT JSONB_BUILD_OBJECT("+
+				"'id',"+Tables.KeyAccessServerRegistry.Field("id")+", "+
+				"'uri',"+Tables.KeyAccessServerRegistry.Field("uri")+", "+
+				"'public_key',"+Tables.KeyAccessServerRegistry.Field("public_key")+
+				")) AS grants",
+		)
 	}
 	if opts.withFqn {
 		selectFields = append(selectFields, fqnt.Field("fqn"))
@@ -144,8 +135,9 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		sb = sb.LeftJoin(subQuery)
 	}
 	if opts.withKeyAccessGrants {
-		sb = sb.LeftJoin(Tables.AttributeKeyAccessGrants.Name() + " ON " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).
-			LeftJoin(Tables.KeyAccessServerRegistry.Name() + " ON " + Tables.KeyAccessServerRegistry.Field("id") + " = " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".key_access_server_id")
+		sb = sb.
+			LeftJoin(Tables.AttributeKeyAccessGrants.Name() + " ON " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).
+			LeftJoin(Tables.KeyAccessServerRegistry.Name() + " ON " + Tables.KeyAccessServerRegistry.Field("id") + " = " + Tables.AttributeKeyAccessGrants.Field("key_access_server_id"))
 	}
 	if opts.withFqn {
 		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id") +

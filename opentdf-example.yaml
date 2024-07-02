@@ -52,6 +52,7 @@ server:
       #  p, role:org-admin, policy:subject-mappings, *, *, allow
       #  p, role:org-admin, policy:resource-mappings, *, *, allow
       #  p, role:org-admin, policy:kas-registry, *, *, allow
+      #  p, role:org-admin, policy:unsafe, *, *, allow
       ## Custom model (see https://casbin.org/docs/syntax-for-models/)
       model: #|
       #  [request_definition]

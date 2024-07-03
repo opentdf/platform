@@ -545,6 +545,7 @@ func (s *AuthSuite) Test_AddAuthzPolicies() {
 	})
 	s.Require().NoError(err)
 	s.True(ok)
+	s.False(s.auth.enforcer.isDefaultPolicy)
 }
 
 func makeDPoPToken(t *testing.T, tc dpopTestCase) string {

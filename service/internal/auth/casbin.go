@@ -152,7 +152,7 @@ func NewCasbinEnforcer(c CasbinConfig) (*Enforcer, error) {
 		isDefaultModel = true
 	}
 	isDefaultPolicy := false
-	if c.Csv != "" {
+	if c.Csv == "" {
 		c.Csv = defaultPolicy
 		isDefaultPolicy = true
 	}
@@ -200,11 +200,11 @@ func NewCasbinEnforcer(c CasbinConfig) (*Enforcer, error) {
 }
 
 // Extend the default policy
-func (e *Enforcer) ExtendDefaultPolicy(policies [][]string) (bool, error) {
+func (e *Enforcer) ExtendDefaultPolicy(policies [][]string) error {
 	if !e.isDefaultPolicy {
 		// don't error out, just log a warning
-		slog.Warn("policies not added because they are not the default")
-		return false, nil
+		slog.Warn("default authz policy could not be not extended because policies are not the default", slog.Any("unextended_policies", policies))
+		return nil
 	}
 
 	policy := defaultPolicy
@@ -215,10 +215,10 @@ func (e *Enforcer) ExtendDefaultPolicy(policies [][]string) (bool, error) {
 	// load the new policy
 	e.SetAdapter(stringadapter.NewAdapter(policy))
 	if err := e.Enforcer.LoadPolicy(); err != nil {
-		return false, fmt.Errorf("failed to load policy: %w", err)
+		return fmt.Errorf("failed to load policy: %w", err)
 	}
 
-	return true, nil
+	return nil
 }
 
 // casbinEnforce is a helper function to enforce the policy with casbin

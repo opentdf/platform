@@ -3,11 +3,11 @@ package server
 type StartOptions func(StartConfig) StartConfig
 
 type StartConfig struct {
-	ConfigKey             string
-	ConfigFile            string
-	WaitForShutdownSignal bool
-	PublicRoutes          []string
-	authzPolicyExtension  [][]string
+	ConfigKey                   string
+	ConfigFile                  string
+	WaitForShutdownSignal       bool
+	PublicRoutes                []string
+	authzDefaultPolicyExtension [][]string
 }
 
 // Deprecated: Use WithConfigKey
@@ -46,9 +46,9 @@ func WithPublicRoutes(routes []string) StartOptions {
 	}
 }
 
-func WithAuthZPolicyExtension(policies [][]string) StartOptions {
+func WithAuthZDefaultPolicyExtension(policies [][]string) StartOptions {
 	return func(c StartConfig) StartConfig {
-		c.authzPolicyExtension = policies
+		c.authzDefaultPolicyExtension = policies
 		return c
 	}
 }

@@ -221,6 +221,7 @@ func (e *Enforcer) ExtendDefaultPolicy(policies [][]string) error {
 	if err := e.Enforcer.LoadPolicy(); err != nil {
 		return fmt.Errorf("failed to load extended default policy: %w", err)
 	}
+	e.isDefaultPolicy = false
 
 	return nil
 }

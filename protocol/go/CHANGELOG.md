@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.7](https://github.com/opentdf/platform/compare/protocol/go/v0.2.6...protocol/go/v0.2.7) (2024-07-03)
+
+
+### Bug Fixes
+
+* **policy:** unsafe service attribute update should allow empty names for PATCH-style API ([#1094](https://github.com/opentdf/platform/issues/1094)) ([3c56d0f](https://github.com/opentdf/platform/commit/3c56d0f4ebbda81bf6ca6924176885d93faed48b))
+
 ## [0.2.6](https://github.com/opentdf/platform/compare/protocol/go/v0.2.5...protocol/go/v0.2.6) (2024-07-02)
 
 

@@ -55,7 +55,7 @@ func (s *AuthnCasbinSuite) buildTokenRoles(orgAdmin bool, admin bool, standard b
 	return roles
 }
 
-func (s *AuthnCasbinSuite) newTokWithDefaultClaim(orgAdmin bool, admin bool, standard bool) (jwt.Token) {
+func (s *AuthnCasbinSuite) newTokWithDefaultClaim(orgAdmin bool, admin bool, standard bool) jwt.Token {
 	tok := jwt.New()
 	tokenRoles := s.buildTokenRoles(orgAdmin, admin, standard, nil)
 	if err := tok.Set("realm_access", map[string]interface{}{"roles": tokenRoles}); err != nil {

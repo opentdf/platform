@@ -75,8 +75,8 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 	fqnt := Tables.AttrFqn
 	smT := Tables.SubjectMappings
 	scsT := Tables.SubjectConditionSet
-	// akt := Tables.AttributeKeyAccessGrants
-	// avkt := Tables.AttributeKeyAccessGrants
+	akagt := Tables.AttributeKeyAccessGrants
+	// avkagt := Tables.AttributeValueKeyAccessGrants
 	selectFields := []string{
 		t.Field("id"),
 		t.Field("name"),
@@ -86,6 +86,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		t.Field("active"),
 		nt.Field("name"),
 	}
+
 	if opts.withAttributeValues || opts.withOneValueByFqn != "" {
 		valueSelect := "JSON_AGG(" +
 			"JSON_BUILD_OBJECT(" +
@@ -105,12 +106,12 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 	if opts.withKeyAccessGrants {
 		// query the attribute definition KAS grants
 		selectFields = append(selectFields,
-			"JSON_AGG("+
+			"JSONB_AGG("+
 				"DISTINCT JSONB_BUILD_OBJECT("+
 				"'id',"+Tables.KeyAccessServerRegistry.Field("id")+", "+
 				"'uri',"+Tables.KeyAccessServerRegistry.Field("uri")+", "+
 				"'public_key',"+Tables.KeyAccessServerRegistry.Field("public_key")+
-				")) AS grants",
+				")) FILTER (WHERE "+akagt.Field("attribute_definition_id")+" IS NOT NULL) AS grants",
 		)
 	}
 	if opts.withFqn {
@@ -136,13 +137,14 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 	}
 	if opts.withKeyAccessGrants {
 		sb = sb.
-			LeftJoin(Tables.AttributeKeyAccessGrants.Name() + " ON " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).
-			LeftJoin(Tables.KeyAccessServerRegistry.Name() + " ON " + Tables.KeyAccessServerRegistry.Field("id") + " = " + Tables.AttributeKeyAccessGrants.Field("key_access_server_id"))
+			LeftJoin(akagt.Name() + " ON " + akagt.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).
+			LeftJoin(Tables.KeyAccessServerRegistry.Name() + " ON " + Tables.KeyAccessServerRegistry.Field("id") + " = " + akagt.Field("key_access_server_id"))
 	}
 	if opts.withFqn {
 		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id") +
 			" AND " + fqnt.Field("value_id") + " IS NULL")
 	}
+
 	if opts.withOneValueByFqn != "" {
 		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id")).
 			LeftJoin("(SELECT " +
@@ -435,6 +437,7 @@ func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 
 	attribute, err := attributesHydrateItem(row, opts)
 	if err != nil {
+		fmt.Println("\n\nSQL: ", sql, "\n\n")
 		slog.Error("could not hydrate item", slog.String("fqn", fqn), slog.String("error", err.Error()))
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

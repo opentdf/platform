@@ -260,87 +260,87 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Definition
 	s.Len(got.GetGrants(), 2)
 }
 
-// func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Values() {
-// 	// create attribute under fixture namespace id
-// 	n := s.f.GetNamespaceKey("example.org")
-// 	a, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-// 		NamespaceId: n.ID,
-// 		Name:        "attr_with_values_grants",
-// 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-// 		Values:      []string{"value1", "value2"},
-// 	})
-// 	s.Require().NoError(err)
-// 	s.NotNil(a)
-// 	valueFirstID := a.GetValues()[0].GetId()
-// 	valueSecondID := a.GetValues()[1].GetId()
+func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Values() {
+	// create attribute under fixture namespace id
+	n := s.f.GetNamespaceKey("example.org")
+	a, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: n.ID,
+		Name:        "attr_with_values_grants",
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"value1", "value2"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(a)
+	valueFirstID := a.GetValues()[0].GetId()
+	valueSecondID := a.GetValues()[1].GetId()
 
-// 	// create a new kas registration
-// 	remoteKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
-// 		Uri: "https://testing.org/kas",
-// 		PublicKey: &policy.PublicKey{
-// 			PublicKey: &policy.PublicKey_Remote{
-// 				Remote: "https://testing.org/kas",
-// 			},
-// 		},
-// 	})
-// 	s.Require().NoError(err)
-// 	s.NotNil(remoteKAS)
+	// create a new kas registration
+	remoteKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri: "https://testing.org/kas",
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Remote{
+				Remote: "https://testing.org/kas",
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(remoteKAS)
 
-// 	// make a grant association to the first value
-// 	grant, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, &attributes.ValueKeyAccessServer{
-// 		KeyAccessServerId: remoteKAS.GetId(),
-// 		ValueId:           valueFirstID,
-// 	})
-// 	s.Require().NoError(err)
-// 	s.NotNil(grant)
+	// make a grant association to the first value
+	grant, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, &attributes.ValueKeyAccessServer{
+		KeyAccessServerId: remoteKAS.GetId(),
+		ValueId:           valueFirstID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(grant)
 
-// 	// create a second kas registration and grant it to the second value
-// 	localKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
-// 		Uri: "https://testing.org/kas2",
-// 		PublicKey: &policy.PublicKey{
-// 			PublicKey: &policy.PublicKey_Local{
-// 				Local: "local_key",
-// 			},
-// 		},
-// 	})
-// 	s.Require().NoError(err)
-// 	s.NotNil(localKAS)
+	// create a second kas registration and grant it to the second value
+	localKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri: "https://testing.org/kas2",
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Local{
+				Local: "local_key",
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(localKAS)
 
-// 	grant2, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, &attributes.ValueKeyAccessServer{
-// 		KeyAccessServerId: localKAS.GetId(),
-// 		ValueId:           valueSecondID,
-// 	})
-// 	s.Require().NoError(err)
-// 	s.NotNil(grant2)
+	grant2, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, &attributes.ValueKeyAccessServer{
+		KeyAccessServerId: localKAS.GetId(),
+		ValueId:           valueSecondID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(grant2)
 
-// 	// get the attribute by the fqn of the attribute definition
-// 	got, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, "https://example.org/attr/attr_with_grants")
-// 	s.Require().NoError(err)
-// 	s.NotNil(got)
+	// get the attribute by the fqn of the attribute definition
+	got, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, "https://example.org/attr/attr_with_values_grants")
+	s.Require().NoError(err)
+	s.NotNil(got)
 
-// 	// ensure the attribute has no definition grants
-// 	s.Len(got.GetGrants(), 0)
+	// ensure the attribute has no definition grants
+	s.Len(got.GetGrants(), 0)
 
-// 	// get the attribute by the fqn of one of its values and ensure the grants are present
-// 	got, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, "https://example.org/attr/attr_with_grants/value/value1")
-// 	s.Require().NoError(err)
-// 	s.NotNil(got)
-// 	s.Len(got.GetValues(), 2)
-// 	s.Len(got.GetGrants(), 0)
+	// get the attribute by the fqn of one of its values and ensure the grants are present
+	// got, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, "https://example.org/attr/attr_with_grants/value/value1")
+	// s.Require().NoError(err)
+	// s.NotNil(got)
+	// s.Len(got.GetValues(), 2)
+	// s.Len(got.GetGrants(), 0)
 
-// 	for _, v := range got.GetValues() {
-// 		switch v.GetId() {
-// 		case valueFirstID:
-// 			s.Len(v.GetGrants(), 1)
-// 			s.Equal(remoteKAS.GetId(), v.GetGrants()[0].GetId())
-// 		case valueSecondID:
-// 			s.Len(v.GetGrants(), 1)
-// 			s.Equal(localKAS.GetId(), v.GetGrants()[0].GetId())
-// 		default:
-// 			s.Fail("unexpected value", v)
-// 		}
-// 	}
-// }
+	// for _, v := range got.GetValues() {
+	// 	switch v.GetId() {
+	// 	case valueFirstID:
+	// 		s.Len(v.GetGrants(), 1)
+	// 		s.Equal(remoteKAS.GetId(), v.GetGrants()[0].GetId())
+	// 	case valueSecondID:
+	// 		s.Len(v.GetGrants(), 1)
+	// 		s.Equal(localKAS.GetId(), v.GetGrants()[0].GetId())
+	// 	default:
+	// 		s.Fail("unexpected value", v)
+	// 	}
+	// }
+}
 
 // Test multiple get attributes by multiple fqns
 func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {

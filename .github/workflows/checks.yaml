@@ -217,11 +217,11 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
-      - uses: bufbuild/buf-setup-action@dde0b9351db90fbf78e345f41a57de8514bf1091
-      - uses: bufbuild/buf-lint-action@044d13acb1f155179c606aaa2e53aea304d22058
+      - uses: bufbuild/buf-setup-action@35c243d7f2a909b1d4e40399b348a7fdab27d78d
+      - uses: bufbuild/buf-lint-action@06f9dd823d873146471cfaaf108a993fe00e5325
         with:
           input: service
-      - uses: bufbuild/buf-breaking-action@a074e988ee34efcd4927079e79c611f428354c01
+      - uses: bufbuild/buf-breaking-action@c57b3d842a5c3f3b454756ef65305a50a587c5ba
         with:
           input: service
           against: "https://github.com/opentdf/platform.git#branch=main,subdir=service"

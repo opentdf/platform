@@ -64,11 +64,12 @@ message UnsafeUpdateAttributeRequest {
   // WARNING!! 
   // Updating the name of an Attribute will retroactively alter access to existing TDFs of the old and new Attribute name.
   string name = 2 [
+    (buf.validate.field).required = false,
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
       id: "attribute_name_format",
       message: "Attribute name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute name will be normalized to lower case.",
-      expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+      expression: "size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true"
     }
   ];
   // WARNING!! 

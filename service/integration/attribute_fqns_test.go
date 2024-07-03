@@ -319,14 +319,14 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Values() {
 	s.NotNil(got)
 
 	// ensure the attribute has no definition grants
-	s.Len(got.GetGrants(), 0)
+	s.Empty(got.GetGrants())
 
 	// get the attribute by the fqn of one of its values and ensure the grants are present
 	got, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, "https://example.org/attr/attr_with_values_grants/value/value1")
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Len(got.GetValues(), 2)
-	s.Len(got.GetGrants(), 0)
+	s.Empty(got.GetGrants())
 
 	for _, v := range got.GetValues() {
 		switch v.GetId() {

@@ -322,24 +322,24 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Values() {
 	s.Len(got.GetGrants(), 0)
 
 	// get the attribute by the fqn of one of its values and ensure the grants are present
-	// got, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, "https://example.org/attr/attr_with_grants/value/value1")
-	// s.Require().NoError(err)
-	// s.NotNil(got)
-	// s.Len(got.GetValues(), 2)
-	// s.Len(got.GetGrants(), 0)
+	got, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, "https://example.org/attr/attr_with_values_grants/value/value1")
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Len(got.GetValues(), 2)
+	s.Len(got.GetGrants(), 0)
 
-	// for _, v := range got.GetValues() {
-	// 	switch v.GetId() {
-	// 	case valueFirstID:
-	// 		s.Len(v.GetGrants(), 1)
-	// 		s.Equal(remoteKAS.GetId(), v.GetGrants()[0].GetId())
-	// 	case valueSecondID:
-	// 		s.Len(v.GetGrants(), 1)
-	// 		s.Equal(localKAS.GetId(), v.GetGrants()[0].GetId())
-	// 	default:
-	// 		s.Fail("unexpected value", v)
-	// 	}
-	// }
+	for _, v := range got.GetValues() {
+		switch v.GetId() {
+		case valueFirstID:
+			s.Require().Len(v.GetGrants(), 1)
+			s.Equal(remoteKAS.GetId(), v.GetGrants()[0].GetId())
+		case valueSecondID:
+			s.Require().Len(v.GetGrants(), 1)
+			s.Equal(localKAS.GetId(), v.GetGrants()[0].GetId())
+		default:
+			s.Fail("unexpected value", v)
+		}
+	}
 }
 
 // Test multiple get attributes by multiple fqns

@@ -75,8 +75,8 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 	fqnt := Tables.AttrFqn
 	smT := Tables.SubjectMappings
 	scsT := Tables.SubjectConditionSet
-	// akt := Tables.AttributeKeyAccessGrants
-	// avkt := Tables.AttributeKeyAccessGrants
+	akagt := Tables.AttributeKeyAccessGrants
+	avkagt := Tables.AttributeValueKeyAccessGrants
 	selectFields := []string{
 		t.Field("id"),
 		t.Field("name"),
@@ -86,7 +86,9 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		t.Field("active"),
 		nt.Field("name"),
 	}
-	if opts.withAttributeValues || opts.withOneValueByFqn != "" {
+
+	shouldGetValues := opts.withAttributeValues || opts.withOneValueByFqn != "" || opts.withFqn
+	if shouldGetValues {
 		valueSelect := "JSON_AGG(" +
 			"JSON_BUILD_OBJECT(" +
 			"'id', avt.id," +
@@ -97,30 +99,22 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		// include the subject mapping / subject condition set for each value
 		if opts.withOneValueByFqn != "" {
 			valueSelect += ", 'fqn', val_sm_fqn_join.fqn, " +
-				"'subject_mappings', sub_maps_arr"
+				"'subject_mappings', sub_maps_arr, " +
+				"'grants', val_grants_arr"
 		}
 		valueSelect += ")) AS values"
 		selectFields = append(selectFields, t.Field("values_order"), valueSelect)
 	}
 	if opts.withKeyAccessGrants {
-		selectFields = append(selectFields, "JSON_AGG("+
-			"JSON_BUILD_OBJECT("+
-			"'id', "+avt.Field("id")+", "+
-			"'value', "+avt.Field("value")+","+
-			"'members', "+avt.Field("members")+","+
-			"'grants', ("+
-			"SELECT JSON_AGG("+
-			"JSON_BUILD_OBJECT("+
-			"'id', kas.id, "+
-			"'uri', kas.uri, "+
-			"'public_key', kas.public_key"+
-			")"+
-			") "+
-			"FROM "+Tables.KeyAccessServerRegistry.Name()+" kas "+
-			"JOIN "+Tables.AttributeValueKeyAccessGrants.Name()+" avkag ON avkag.key_access_server_id = kas.id "+
-			"WHERE avkag.attribute_value_id = "+avt.Field("id")+
-			")"+
-			")) AS grants")
+		// query the attribute definition KAS grants
+		selectFields = append(selectFields,
+			"JSONB_AGG("+
+				"DISTINCT JSONB_BUILD_OBJECT("+
+				"'id',"+Tables.KeyAccessServerRegistry.Field("id")+", "+
+				"'uri',"+Tables.KeyAccessServerRegistry.Field("uri")+", "+
+				"'public_key',"+Tables.KeyAccessServerRegistry.Field("public_key")+
+				")) FILTER (WHERE "+akagt.Field("attribute_definition_id")+" IS NOT NULL) AS grants",
+		)
 	}
 	if opts.withFqn {
 		selectFields = append(selectFields, fqnt.Field("fqn"))
@@ -129,14 +123,23 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 	sb := db.NewStatementBuilder().Select(selectFields...).
 		LeftJoin(nt.Name() + " ON " + nt.Field("id") + " = " + t.Field("namespace_id"))
 
-	if opts.withAttributeValues {
+	if shouldGetValues {
 		subQuery := "(SELECT av.id, av.value, av.active, COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
 			"'id', vmv.id, " +
 			"'value', vmv.value, " +
 			"'active', vmv.active, " +
 			"'members', vmv.members || ARRAY[]::UUID[], " +
 			"'attribute', JSON_BUILD_OBJECT(" +
-			"'id', vmv.attribute_definition_id ))) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members, av.attribute_definition_id FROM " + avt.Name() + " av LEFT JOIN " + Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id LEFT JOIN " + avt.Name() + " vmv ON vm.member_id = vmv.id "
+			"'id', vmv.attribute_definition_id ))) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members, " +
+			"JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(" +
+			"'id', vkas.id," +
+			"'uri', vkas.uri," +
+			"'public_key', vkas.public_key " +
+			")) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr, " +
+			"av.attribute_definition_id FROM " + avt.Name() + " av " +
+			"LEFT JOIN " + avkagt.Name() + " avg ON av.id = avg.attribute_value_id " +
+			"LEFT JOIN " + Tables.KeyAccessServerRegistry.Name() + " vkas ON avg.key_access_server_id = vkas.id " +
+			"LEFT JOIN " + Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id LEFT JOIN " + avt.Name() + " vmv ON vm.member_id = vmv.id "
 		if opts.withOneValueByFqn != "" {
 			subQuery += "WHERE av.active = true "
 		}
@@ -144,13 +147,15 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		sb = sb.LeftJoin(subQuery)
 	}
 	if opts.withKeyAccessGrants {
-		sb = sb.LeftJoin(Tables.AttributeKeyAccessGrants.Name() + " ON " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).
-			LeftJoin(Tables.KeyAccessServerRegistry.Name() + " ON " + Tables.KeyAccessServerRegistry.Field("id") + " = " + Tables.AttributeKeyAccessGrants.WithoutSchema().Name() + ".key_access_server_id")
+		sb = sb.
+			LeftJoin(akagt.Name() + " ON " + akagt.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).
+			LeftJoin(Tables.KeyAccessServerRegistry.Name() + " ON " + Tables.KeyAccessServerRegistry.Field("id") + " = " + akagt.Field("key_access_server_id"))
 	}
 	if opts.withFqn {
 		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id") +
 			" AND " + fqnt.Field("value_id") + " IS NULL")
 	}
+
 	if opts.withOneValueByFqn != "" {
 		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id")).
 			LeftJoin("(SELECT " +
@@ -206,7 +211,8 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 	)
 
 	fields := []interface{}{&id, &name, &rule, &metadataJSON, &namespaceID, &active, &namespaceName}
-	if opts.withAttributeValues || opts.withOneValueByFqn != "" {
+	shouldGetValues := opts.withAttributeValues || opts.withOneValueByFqn != "" || opts.withFqn
+	if shouldGetValues {
 		fields = append(fields, &valuesOrder, &valuesJSON)
 	}
 	if opts.withKeyAccessGrants {
@@ -424,7 +430,7 @@ func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 	fqn = strings.ToLower(fqn)
 	opts := attributesSelectOptions{
 		withAttributeValues: true,
-		withKeyAccessGrants: false,
+		withKeyAccessGrants: true,
 	}
 	if strings.Contains(fqn, "/value/") {
 		opts.withOneValueByFqn = fqn
@@ -565,7 +571,7 @@ func unsafeUpdateAttributeSQL(id string, updateName string, updateRule string, r
 		ToSql()
 }
 
-func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.UpdateAttributeRequest) (*policy.Attribute, error) {
+func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.UnsafeUpdateAttributeRequest) (*policy.Attribute, error) {
 	id := r.GetId()
 	before, err := c.GetAttribute(ctx, id)
 	if err != nil {

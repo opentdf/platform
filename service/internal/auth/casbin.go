@@ -212,10 +212,14 @@ func (e *Enforcer) ExtendDefaultPolicy(policies [][]string) error {
 		policy += "\n" + strings.Join(policies[p], ",")
 	}
 
-	// load the new policy
+	// Reset adapter, save it, and load the new policy
+	// Note: string adapters do not auto-save [https://casbin.org/docs/adapters/#:~:text=and%20embed.FS-,NOTE,-If%20casbin.NewEnforcer]
 	e.SetAdapter(stringadapter.NewAdapter(policy))
+	if err := e.SavePolicy(); err != nil {
+		return fmt.Errorf("failed to save extended default policy: %w", err)
+	}
 	if err := e.Enforcer.LoadPolicy(); err != nil {
-		return fmt.Errorf("failed to load policy: %w", err)
+		return fmt.Errorf("failed to load extended default policy: %w", err)
 	}
 
 	return nil

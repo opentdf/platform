@@ -144,42 +144,63 @@ func NewCasbinEnforcer(c CasbinConfig) (*Enforcer, error) {
 	// if err != nil {
 	// 	return nil, err
 	// }
-	mStr := defaultModel
-	isDefaultModel := true
-	if c.Model != "" {
-		mStr = c.Model
-		isDefaultModel = false
+
+	// Set Casbin config defaults if not provided
+	isDefaultModel := false
+	if c.Model == "" {
+		c.Model = defaultModel
+		isDefaultModel = true
 	}
-	pStr := defaultPolicy
-	isDefaultPolicy := true
+	isDefaultPolicy := false
 	if c.Csv != "" {
-		pStr = c.Csv
-		isDefaultPolicy = false
+		c.Csv = defaultPolicy
+		isDefaultPolicy = true
+	}
+	policyString := c.Csv
+
+	isDefaultRoleClaim := false
+	if c.RoleClaim == "" {
+		isDefaultRoleClaim = true
+		c.RoleClaim = defaultRoleClaim
 	}
 
-	slog.Debug("creating casbin enforcer", slog.Any("config", c))
+	isDefaultRoleMap := false
+	if len(c.RoleMap) == 0 {
+		isDefaultRoleMap = true
+		c.RoleMap = defaultRoleMap
+	}
 
-	m, err := casbinModel.NewModelFromString(mStr)
+	slog.Debug("creating casbin enforcer",
+		slog.Any("config", c),
+		slog.Bool("isDefaultModel", isDefaultModel),
+		slog.Bool("isDefaultPolicy", isDefaultPolicy),
+		slog.Bool("isDefaultRoleMap", isDefaultRoleMap),
+		slog.Bool("isDefaultRoleClaim", isDefaultRoleClaim),
+	)
+
+	m, err := casbinModel.NewModelFromString(c.Model)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create casbin model: %w", err)
 	}
-	a := stringadapter.NewAdapter(pStr)
+	a := stringadapter.NewAdapter(policyString)
 	e, err := casbin.NewEnforcer(m, a)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create casbin enforcer: %w", err)
 	}
 
 	return &Enforcer{
-		Enforcer:        e,
-		Config:          c,
-		Policy:          pStr,
-		isDefaultPolicy: isDefaultPolicy,
-		isDefaultModel:  isDefaultModel,
+		Enforcer:           e,
+		Config:             c,
+		Policy:             policyString,
+		isDefaultPolicy:    isDefaultPolicy,
+		isDefaultModel:     isDefaultModel,
+		isDefaultRoleClaim: isDefaultRoleClaim,
+		isDefaultRoleMap:   isDefaultRoleMap,
 	}, nil
 }
 
 // Extend the default policy
-func (e *Enforcer) ExtendDefaultPolicy(policies [][]string) (ok bool, err error) {
+func (e *Enforcer) ExtendDefaultPolicy(policies [][]string) (bool, error) {
 	if !e.isDefaultPolicy {
 		// don't error out, just log a warning
 		slog.Warn("policies not added because they are not the default")
@@ -249,15 +270,8 @@ func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 	slog.Debug("extracting roles from token", slog.Any("token", t))
 	roles := []string{}
 
-	roleClaim := defaultRoleClaim
-	if e.Config.RoleClaim != "" {
-		roleClaim = e.Config.RoleClaim
-	}
-
-	roleMap := defaultRoleMap
-	if len(e.Config.RoleMap) > 0 {
-		roleMap = e.Config.RoleMap
-	}
+	roleClaim := e.Config.RoleClaim
+	roleMap := e.Config.RoleMap
 
 	selectors := strings.Split(roleClaim, ".")
 	claim, exists := t.Get(selectors[0])

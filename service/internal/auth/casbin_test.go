@@ -55,13 +55,13 @@ func (s *AuthnCasbinSuite) buildTokenRoles(orgAdmin bool, admin bool, standard b
 	return roles
 }
 
-func (s *AuthnCasbinSuite) newTokWithDefaultClaim(orgAdmin bool, admin bool, standard bool) (string, jwt.Token) {
+func (s *AuthnCasbinSuite) newTokWithDefaultClaim(orgAdmin bool, admin bool, standard bool) (jwt.Token) {
 	tok := jwt.New()
 	tokenRoles := s.buildTokenRoles(orgAdmin, admin, standard, nil)
 	if err := tok.Set("realm_access", map[string]interface{}{"roles": tokenRoles}); err != nil {
 		s.T().Fatal(err)
 	}
-	return "", tok
+	return tok
 }
 
 func (s *AuthnCasbinSuite) newTokenWithCustomClaim(orgAdmin bool, admin bool, standard bool) (string, jwt.Token) {
@@ -318,7 +318,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		slog.Info("running test w/ default claim", slog.String("name", name))
 		enforcer, err := NewCasbinEnforcer(CasbinConfig{})
 		s.Require().NoError(err)
-		_, tok := s.newTokWithDefaultClaim(test.roles[0], test.roles[1], test.roles[2])
+		tok := s.newTokWithDefaultClaim(test.roles[0], test.roles[1], test.roles[2])
 		allowed, err := enforcer.Enforce(tok, test.resource, test.action)
 		if !test.allowed {
 			s.Require().Error(err)
@@ -395,7 +395,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies() {
 	enforcer, err := NewCasbinEnforcer(CasbinConfig{})
 	s.Require().NoError(err)
-	_, tok := s.newTokWithDefaultClaim(true, false, false)
+	tok := s.newTokWithDefaultClaim(true, false, false)
 	allowed, err := enforcer.Enforce(tok, "policy.attributes.DoSomething", "read")
 	s.Require().NoError(err)
 	s.True(allowed)

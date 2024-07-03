@@ -53,12 +53,19 @@ func NewEngine(config Config) (*Engine, error) {
 	logger := AdapterSlogger{
 		logger: asl,
 	}
+
+	var consoleLogger opalog.Logger
+	if logger.GetLevel() <= opalog.Debug {
+		consoleLogger = nil
+	} else {
+		consoleLogger = &logger
+	}
 	slog.Debug("plugging in plugins")
 	subjectmappingbuiltin.SubjectMappingBuiltin()
 	opa, err := sdk.New(context.Background(), sdk.Options{
 		Config:        bytes.NewReader(bConfig),
 		Logger:        &logger,
-		ConsoleLogger: &logger,
+		ConsoleLogger: consoleLogger,
 		ID:            "opentdf",
 		Ready:         nil,
 		Store:         nil,

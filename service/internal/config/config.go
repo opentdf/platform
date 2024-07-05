@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log"
 	"log/slog"
 	"os"
 	"reflect"
@@ -100,7 +101,7 @@ func (c *Config) LogValue() slog.Value {
 	redactedInterface := util.RedactSensitiveData(c, sensitiveKeys)
 	redactedConfig, ok := redactedInterface.(*Config) // Direct type assertion
 	if !ok {
-		fmt.Println("Error asserting redacted configuration to *Config type")
+		log.Println("Error asserting redacted configuration to *Config type")
 		redactedConfig = c
 	}
 

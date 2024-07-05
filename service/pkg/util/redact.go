@@ -7,13 +7,13 @@ import (
 )
 
 func RedactSensitiveData(i interface{}, sensitiveFields []string) interface{} {
-	fmt.Println("sensitiveFields: ", sensitiveFields)
 	v := reflect.ValueOf(i)
 	redacted := redact(v, sensitiveFields)
 	return redacted.Interface()
 }
 
 func redact(v reflect.Value, sensitiveFields []string) reflect.Value {
+	//nolint:exhaustive // default case covers other type
 	switch v.Kind() {
 	case reflect.Ptr:
 		if v.IsNil() {
@@ -73,6 +73,7 @@ func contains(slice []string, item string) bool {
 
 func StructToString(v reflect.Value) string {
 	var b strings.Builder
+	//nolint:exhaustive // default case covers other type
 	switch v.Kind() {
 	case reflect.Ptr:
 		if v.IsNil() {

@@ -108,6 +108,12 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_ContainsKASGrants() {
 	s.Require().NoError(err)
 	s.NotNil(createdValue)
 
+	// ensure it has no grants
+	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Empty(got.GetGrants())
+
 	fixtureKeyAccessServerID = s.f.GetKasRegistryKey("key_access_server_1").ID
 	assignment := &attributes.ValueKeyAccessServer{
 		ValueId:           createdValue.GetId(),
@@ -118,7 +124,7 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_ContainsKASGrants() {
 	s.NotNil(grant)
 
 	// get the value and ensure it contains the grants
-	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.GetId())
+	got, err = s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(createdValue.GetId(), got.GetId())

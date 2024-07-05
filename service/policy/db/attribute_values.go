@@ -57,7 +57,8 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 	if opts.withKeyAccessGrants {
 		fields = append(fields, &grants)
 	}
-	if err := row.Scan(fields...); err != nil {
+	err := row.Scan(fields...)
+	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	} else if membersJSON != nil {
 		members, err = attributesValuesProtojson(membersJSON, fqn)
@@ -73,11 +74,21 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 		}
 	}
 
+	var k []*policy.KeyAccessServer
+	if grants != nil {
+		k, err = db.KeyAccessServerProtoJSON(grants)
+		if err != nil {
+			slog.Error("could not unmarshal key access grants", slog.String("error", err.Error()))
+			return nil, err
+		}
+	}
+
 	v := &policy.Value{
 		Id:       id,
 		Value:    value,
 		Active:   &wrapperspb.BoolValue{Value: active},
 		Members:  members,
+		Grants:   k,
 		Metadata: m,
 		Attribute: &policy.Attribute{
 			Id: attributeID,

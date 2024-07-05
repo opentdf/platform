@@ -19,12 +19,13 @@ import (
 )
 
 type Config struct {
-	DevMode  bool                                     `mapstructure:"dev_mode"`
-	DB       db.Config                                `yaml:"db"`
-	OPA      opa.Config                               `yaml:"opa"`
-	Server   server.Config                            `yaml:"server"`
-	Logger   logger.Config                            `yaml:"logger"`
-	Services map[string]serviceregistry.ServiceConfig `yaml:"services" default:"{\"policy\": {\"enabled\": true}, \"health\": {\"enabled\": true}, \"authorization\": {\"enabled\": true}, \"wellknown\": {\"enabled\": true}, \"kas\": {\"enabled\": true}, \"entityresolution\": {\"enabled\": true}}"`
+	DevMode       bool                                     `mapstructure:"dev_mode"`
+	DB            db.Config                                `yaml:"db"`
+	OPA           opa.Config                               `yaml:"opa"`
+	Server        server.Config                            `yaml:"server"`
+	Logger        logger.Config                            `yaml:"logger"`
+	SensitiveKeys map[string]bool                          `yaml:"sensitiveKeys"`
+	Services      map[string]serviceregistry.ServiceConfig `yaml:"services" default:"{\"policy\": {\"enabled\": true}, \"health\": {\"enabled\": true}, \"authorization\": {\"enabled\": true}, \"wellknown\": {\"enabled\": true}, \"kas\": {\"enabled\": true}, \"entityresolution\": {\"enabled\": true}}"`
 }
 
 type Error string
@@ -89,7 +90,20 @@ func LoadConfig(key string, file string) (*Config, error) {
 }
 
 func (c *Config) LogValue() slog.Value {
-	redactedConfig := util.RedactSensitiveData(c)
+	var sensitiveKeys []string
+	for key, value := range c.SensitiveKeys {
+		if value {
+			sensitiveKeys = append(sensitiveKeys, key)
+		}
+	}
+
+	redactedInterface := util.RedactSensitiveData(c, sensitiveKeys)
+	redactedConfig, ok := redactedInterface.(*Config) // Direct type assertion
+	if !ok {
+		fmt.Println("Error asserting redacted configuration to *Config type")
+		redactedConfig = c
+	}
+
 	var values []slog.Attr
 	v := reflect.ValueOf(redactedConfig).Elem()
 	t := v.Type()

@@ -118,3 +118,6 @@ server:
   port: 8080
 opa:
   embedded: true # Only for local development
+sensitiveKeys:
+  clientsecret: true
+  password: true

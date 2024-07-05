@@ -6,48 +6,55 @@ import (
 	"strings"
 )
 
-func RedactSensitiveData(i interface{}) interface{} {
+func RedactSensitiveData(i interface{}, sensitiveFields []string) interface{} {
+	fmt.Println("sensitiveFields: ", sensitiveFields)
 	v := reflect.ValueOf(i)
-	redacted := redact(v)
+	redacted := redact(v, sensitiveFields)
 	return redacted.Interface()
 }
 
-func redact(v reflect.Value) reflect.Value {
-	//nolint:exhaustive // default case covers other type
+func redact(v reflect.Value, sensitiveFields []string) reflect.Value {
 	switch v.Kind() {
 	case reflect.Ptr:
 		if v.IsNil() {
 			return v
 		}
 		redacted := reflect.New(v.Elem().Type())
-		redacted.Elem().Set(redact(v.Elem()))
+		redacted.Elem().Set(redact(v.Elem(), sensitiveFields))
 		return redacted
 	case reflect.Struct:
 		redacted := reflect.New(v.Type()).Elem()
 		for i := 0; i < v.NumField(); i++ {
-			field := v.Field(i)
 			fieldType := v.Type().Field(i)
-			tag := fieldType.Tag.Get("secret")
-			if tag == "true" {
-				// Redact sensitive fields
+			if fieldType.Name == "SensitiveKeys" {
+				redacted.Field(i).Set(v.Field(i))
+				continue
+			}
+			field := v.Field(i)
+			if fieldType.Type.Kind() == reflect.String && contains(sensitiveFields, fieldType.Name) {
 				redacted.Field(i).SetString("***")
 			} else {
-				// Recursively redact nested fields
-				redacted.Field(i).Set(redact(field))
+				redacted.Field(i).Set(redact(field, sensitiveFields))
 			}
 		}
 		return redacted
 	case reflect.Map:
 		redacted := reflect.MakeMap(v.Type())
 		for _, key := range v.MapKeys() {
-			val := v.MapIndex(key)
-			redacted.SetMapIndex(key, redact(val))
+			originalVal := v.MapIndex(key)
+			var redactedVal reflect.Value
+			if key.Kind() == reflect.String && contains(sensitiveFields, key.String()) {
+				redactedVal = reflect.ValueOf("***")
+			} else {
+				redactedVal = redact(originalVal, sensitiveFields)
+			}
+			redacted.SetMapIndex(key, redactedVal)
 		}
 		return redacted
 	case reflect.Slice:
 		redacted := reflect.MakeSlice(v.Type(), v.Len(), v.Cap())
 		for i := 0; i < v.Len(); i++ {
-			redacted.Index(i).Set(redact(v.Index(i)))
+			redacted.Index(i).Set(redact(v.Index(i), sensitiveFields))
 		}
 		return redacted
 	default:
@@ -55,9 +62,17 @@ func redact(v reflect.Value) reflect.Value {
 	}
 }
 
+func contains(slice []string, item string) bool {
+	for _, a := range slice {
+		if strings.EqualFold(a, item) {
+			return true
+		}
+	}
+	return false
+}
+
 func StructToString(v reflect.Value) string {
 	var b strings.Builder
-	//nolint:exhaustive // default case covers other type
 	switch v.Kind() {
 	case reflect.Ptr:
 		if v.IsNil() {

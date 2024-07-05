@@ -19,9 +19,9 @@ import (
 )
 
 type attributeValueSelectOptions struct {
-	state   string
-	withFqn bool
-	// withKeyAccessGrants  bool
+	state               string
+	withFqn             bool
+	withKeyAccessGrants bool
 	// withSubjectMappings  bool
 	// withResourceMappings bool
 
@@ -38,6 +38,7 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 		membersJSON  []byte
 		metadataJSON []byte
 		attributeID  string
+		grants       []byte
 		fqn          sql.NullString
 		members      []*policy.Value
 	)
@@ -52,6 +53,9 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 
 	if opts.withFqn {
 		fields = append(fields, &fqn)
+	}
+	if opts.withKeyAccessGrants {
+		fields = append(fields, &grants)
 	}
 	if err := row.Scan(fields...); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -218,6 +222,8 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 func getAttributeValueSQL(id string, opts attributeValueSelectOptions) (string, []interface{}, error) {
 	t := Tables.AttributeValues
 	fqnT := Tables.AttrFqn
+	avkagT := Tables.AttributeValueKeyAccessGrants
+	kasrT := Tables.KeyAccessServerRegistry
 	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
 		"'id', vmv.id, " +
 		"'value', vmv.value, " +
@@ -241,6 +247,16 @@ func getAttributeValueSQL(id string, opts attributeValueSelectOptions) (string, 
 	if opts.withFqn {
 		fields = append(fields, "MAX(fqn2.fqn) AS fqn")
 	}
+	if opts.withKeyAccessGrants {
+		fields = append(fields,
+			"JSONB_AGG("+
+				"DISTINCT JSONB_BUILD_OBJECT("+
+				"'id',"+kasrT.Field("id")+", "+
+				"'uri',"+kasrT.Field("uri")+", "+
+				"'public_key',"+kasrT.Field("public_key")+
+				")) FILTER (WHERE "+avkagT.Field("attribute_value_id")+" IS NOT NULL) AS grants",
+		)
+	}
 
 	sb := db.NewStatementBuilder().
 		Select(fields...).
@@ -256,12 +272,16 @@ func getAttributeValueSQL(id string, opts attributeValueSelectOptions) (string, 
 		sb = sb.LeftJoin(fqnT.Name() + " AS fqn1 ON " + "fqn1.value_id" + " = " + "vmv.id")
 		sb = sb.LeftJoin(fqnT.Name() + " AS fqn2 ON " + "fqn2.value_id" + " = " + "av.id")
 	}
+	if opts.withKeyAccessGrants {
+		sb = sb.LeftJoin(avkagT.Name() + " ON " + avkagT.WithoutSchema().Name() + ".attribute_value_id = av.id")
+		sb = sb.LeftJoin(kasrT.Name() + " ON " + kasrT.Field("id") + " = " + avkagT.Field("key_access_server_id"))
+	}
 
 	return sb.Where(sq.Eq{"av.id": id}).GroupBy("av.id").ToSql()
 }
 
 func (c PolicyDBClient) GetAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
-	opts := attributeValueSelectOptions{withFqn: true}
+	opts := attributeValueSelectOptions{withFqn: true, withKeyAccessGrants: true}
 	sql, args, err := getAttributeValueSQL(id, opts)
 	if err != nil {
 		return nil, err

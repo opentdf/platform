@@ -120,6 +120,11 @@ type Enforcer struct {
 	*casbin.Enforcer
 	Config CasbinConfig
 	Policy string
+
+	isDefaultRoleClaim bool
+	isDefaultRoleMap   bool
+	isDefaultPolicy    bool
+	isDefaultModel     bool
 }
 
 type casbinSubject struct {
@@ -140,12 +145,16 @@ func NewCasbinEnforcer(c CasbinConfig) (*Enforcer, error) {
 	// 	return nil, err
 	// }
 	mStr := defaultModel
+	isDefaultModel := true
 	if c.Model != "" {
 		mStr = c.Model
+		isDefaultModel = false
 	}
 	pStr := defaultPolicy
+	isDefaultPolicy := true
 	if c.Csv != "" {
 		pStr = c.Csv
+		isDefaultPolicy = false
 	}
 
 	slog.Debug("creating casbin enforcer", slog.Any("config", c))
@@ -161,15 +170,39 @@ func NewCasbinEnforcer(c CasbinConfig) (*Enforcer, error) {
 	}
 
 	return &Enforcer{
-		Enforcer: e,
-		Config:   c,
-		Policy:   pStr,
+		Enforcer:        e,
+		Config:          c,
+		Policy:          pStr,
+		isDefaultPolicy: isDefaultPolicy,
+		isDefaultModel:  isDefaultModel,
 	}, nil
+}
+
+// Extend the default policy
+func (e *Enforcer) ExtendDefaultPolicy(policies [][]string) (ok bool, err error) {
+	if !e.isDefaultPolicy {
+		// don't error out, just log a warning
+		slog.Warn("policies not added because they are not the default")
+		return false, nil
+	}
+
+	policy := defaultPolicy
+	for p := range policies {
+		policy += "\n" + strings.Join(policies[p], ",")
+	}
+
+	// load the new policy
+	e.SetAdapter(stringadapter.NewAdapter(policy))
+	if err := e.Enforcer.LoadPolicy(); err != nil {
+		return false, fmt.Errorf("failed to load policy: %w", err)
+	}
+
+	return true, nil
 }
 
 // casbinEnforce is a helper function to enforce the policy with casbin
 // TODO implement a common type so this can be used for both http and grpc
-func (e Enforcer) Enforce(token jwt.Token, resource, action string) (bool, error) {
+func (e *Enforcer) Enforce(token jwt.Token, resource, action string) (bool, error) {
 	var err error
 	permDeniedError := fmt.Errorf("permission denied")
 
@@ -202,7 +235,7 @@ func (e Enforcer) Enforce(token jwt.Token, resource, action string) (bool, error
 	return true, nil
 }
 
-func (e Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
+func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
 	slog.Debug("building subject from token", slog.Any("token", t))
 	roles := e.extractRolesFromToken(t)
 
@@ -212,7 +245,7 @@ func (e Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
 	}
 }
 
-func (e Enforcer) extractRolesFromToken(t jwt.Token) []string {
+func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 	slog.Debug("extracting roles from token", slog.Any("token", t))
 	roles := []string{}
 

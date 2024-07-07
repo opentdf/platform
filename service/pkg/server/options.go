@@ -7,6 +7,7 @@ type StartConfig struct {
 	ConfigFile            string
 	WaitForShutdownSignal bool
 	PublicRoutes          []string
+	authzPolicyExtension  [][]string
 }
 
 // Deprecated: Use WithConfigKey
@@ -41,6 +42,13 @@ func WithWaitForShutdownSignal() StartOptions {
 func WithPublicRoutes(routes []string) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.PublicRoutes = routes
+		return c
+	}
+}
+
+func WithAuthZPolicyExtension(policies [][]string) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.authzPolicyExtension = policies
 		return c
 	}
 }

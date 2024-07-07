@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
@@ -322,6 +323,49 @@ func (s *AttributesSuite) Test_GetAttribute_Deactivated_Succeeds() {
 	s.Equal(deactivated.ID, gotAttr.GetId())
 	s.Equal(deactivated.Name, gotAttr.GetName())
 	s.False(gotAttr.GetActive().GetValue())
+}
+
+func (s *AttributesSuite) Test_GetAttribute_ContainsKASGrants() {
+	// create an attribute
+	attr := &attributes.CreateAttributeRequest{
+		Name:        "test__get_attribute_contains_kas_grants",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
+
+	// create a KAS
+	kas := &kasregistry.CreateKeyAccessServerRequest{
+		Uri: "https://example.com/kas",
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Remote{
+				Remote: "https://example.com/kas/key/1",
+			},
+		},
+	}
+	createdKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kas)
+	s.Require().NoError(err)
+	s.NotNil(createdKAS)
+
+	// create a grant for the KAS
+	assignment := &attributes.AttributeKeyAccessServer{
+		AttributeId:       createdAttr.GetId(),
+		KeyAccessServerId: createdKAS.GetId(),
+	}
+
+	createdGrant, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, assignment)
+	s.Require().NoError(err)
+	s.NotNil(createdGrant)
+
+	// get the attribute & ensure it contains the grant
+	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(gotAttr)
+
+	s.Len(gotAttr.GetGrants(), 1)
+	s.Equal(createdKAS.GetId(), gotAttr.GetGrants()[0].GetId())
 }
 
 func (s *AttributesSuite) Test_ListAttribute() {

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -13,8 +14,9 @@ import (
 )
 
 var (
-	rolePrefix  = "role:"
-	defaultRole = "unknown"
+	ErrPolicyMalformed = errors.New("malformed authz policy")
+	rolePrefix         = "role:"
+	defaultRole        = "unknown"
 )
 
 var defaultRoleClaim = "realm_access.roles"
@@ -207,18 +209,28 @@ func (e *Enforcer) ExtendDefaultPolicy(policies [][]string) error {
 		return nil
 	}
 
-	policy := defaultPolicy
+	policy := strings.TrimSpace(defaultPolicy)
+	policy += "\n\n## Extended Policies"
 	for p := range policies {
-		policy += "\n" + strings.Join(policies[p], ",")
+		pol := policies[p]
+		polCsv := strings.Join(policies[p], ", ")
+		if len(pol) < 5 {
+			return fmt.Errorf("policy missing one of 'p, subject, resource, action, effect', pol: [%s] %w", polCsv, ErrPolicyMalformed)
+		}
+		if pol[0] != "p" {
+			return fmt.Errorf("policy must be prefixed with 'p', pol: [%s] %w", polCsv, ErrPolicyMalformed)
+		}
+		if !strings.HasPrefix(pol[1], rolePrefix) {
+			return fmt.Errorf("policy must contain default role prefix, pol: [%s] %w", polCsv, ErrPolicyMalformed)
+		}
+		policy += "\n" + polCsv
 	}
+	policy += "\n"
 
-	// Reset adapter, save it, and load the new policy
-	// Note: string adapters do not auto-save [https://casbin.org/docs/adapters/#:~:text=and%20embed.FS-,NOTE,-If%20casbin.NewEnforcer]
-	e.SetAdapter(stringadapter.NewAdapter(policy))
-	if err := e.SavePolicy(); err != nil {
-		return fmt.Errorf("failed to save extended default policy: %w", err)
-	}
-	if err := e.Enforcer.LoadPolicy(); err != nil {
+	// Load up new adapter then load the new policy
+	a := stringadapter.NewAdapter(policy)
+	e.SetAdapter(a)
+	if err := e.LoadPolicy(); err != nil {
 		return fmt.Errorf("failed to load extended default policy: %w", err)
 	}
 	e.isDefaultPolicy = false

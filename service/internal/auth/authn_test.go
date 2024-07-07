@@ -540,8 +540,8 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 
 func (s *AuthSuite) Test_AddAuthzPolicies() {
 	err := s.auth.ExtendAuthzDefaultPolicy([][]string{
-		{"role:admin", "/path", "*", "allow"},
-		{"role:standard", "/path2", "read", "deny"},
+		{"p","role:admin", "/path", "*", "allow"},
+		{"p","role:standard", "/path2", "read", "deny"},
 	})
 	s.Require().NoError(err)
 	s.False(s.auth.enforcer.isDefaultPolicy)

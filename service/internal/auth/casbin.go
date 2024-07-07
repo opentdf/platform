@@ -14,9 +14,10 @@ import (
 )
 
 var (
-	ErrPolicyMalformed = errors.New("malformed authz policy")
-	rolePrefix         = "role:"
-	defaultRole        = "unknown"
+	ErrPolicyMalformed    = errors.New("malformed authz policy")
+	rolePrefix            = "role:"
+	defaultRole           = "unknown"
+	defaultPolicyPartsLen = 5
 )
 
 var defaultRoleClaim = "realm_access.roles"
@@ -214,7 +215,7 @@ func (e *Enforcer) ExtendDefaultPolicy(policies [][]string) error {
 	for p := range policies {
 		pol := policies[p]
 		polCsv := strings.Join(policies[p], ", ")
-		if len(pol) < 5 {
+		if len(pol) < defaultPolicyPartsLen {
 			return fmt.Errorf("policy missing one of 'p, subject, resource, action, effect', pol: [%s] %w", polCsv, ErrPolicyMalformed)
 		}
 		if pol[0] != "p" {

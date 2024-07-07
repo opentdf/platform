@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -13,8 +14,10 @@ import (
 )
 
 var (
-	rolePrefix  = "role:"
-	defaultRole = "unknown"
+	ErrPolicyMalformed    = errors.New("malformed authz policy")
+	rolePrefix            = "role:"
+	defaultRole           = "unknown"
+	defaultPolicyPartsLen = 5
 )
 
 var defaultRoleClaim = "realm_access.roles"
@@ -120,6 +123,11 @@ type Enforcer struct {
 	*casbin.Enforcer
 	Config CasbinConfig
 	Policy string
+
+	isDefaultRoleClaim bool
+	isDefaultRoleMap   bool
+	isDefaultPolicy    bool
+	isDefaultModel     bool
 }
 
 type casbinSubject struct {
@@ -139,37 +147,101 @@ func NewCasbinEnforcer(c CasbinConfig) (*Enforcer, error) {
 	// if err != nil {
 	// 	return nil, err
 	// }
-	mStr := defaultModel
-	if c.Model != "" {
-		mStr = c.Model
+
+	// Set Casbin config defaults if not provided
+	isDefaultModel := false
+	if c.Model == "" {
+		c.Model = defaultModel
+		isDefaultModel = true
 	}
-	pStr := defaultPolicy
-	if c.Csv != "" {
-		pStr = c.Csv
+	isDefaultPolicy := false
+	if c.Csv == "" {
+		c.Csv = defaultPolicy
+		isDefaultPolicy = true
+	}
+	policyString := c.Csv
+
+	isDefaultRoleClaim := false
+	if c.RoleClaim == "" {
+		isDefaultRoleClaim = true
+		c.RoleClaim = defaultRoleClaim
 	}
 
-	slog.Debug("creating casbin enforcer", slog.Any("config", c))
+	isDefaultRoleMap := false
+	if len(c.RoleMap) == 0 {
+		isDefaultRoleMap = true
+		c.RoleMap = defaultRoleMap
+	}
 
-	m, err := casbinModel.NewModelFromString(mStr)
+	slog.Debug("creating casbin enforcer",
+		slog.Any("config", c),
+		slog.Bool("isDefaultModel", isDefaultModel),
+		slog.Bool("isDefaultPolicy", isDefaultPolicy),
+		slog.Bool("isDefaultRoleMap", isDefaultRoleMap),
+		slog.Bool("isDefaultRoleClaim", isDefaultRoleClaim),
+	)
+
+	m, err := casbinModel.NewModelFromString(c.Model)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create casbin model: %w", err)
 	}
-	a := stringadapter.NewAdapter(pStr)
+	a := stringadapter.NewAdapter(policyString)
 	e, err := casbin.NewEnforcer(m, a)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create casbin enforcer: %w", err)
 	}
 
 	return &Enforcer{
-		Enforcer: e,
-		Config:   c,
-		Policy:   pStr,
+		Enforcer:           e,
+		Config:             c,
+		Policy:             policyString,
+		isDefaultPolicy:    isDefaultPolicy,
+		isDefaultModel:     isDefaultModel,
+		isDefaultRoleClaim: isDefaultRoleClaim,
+		isDefaultRoleMap:   isDefaultRoleMap,
 	}, nil
+}
+
+// Extend the default policy
+func (e *Enforcer) ExtendDefaultPolicy(policies [][]string) error {
+	if !e.isDefaultPolicy {
+		// don't error out, just log a warning
+		slog.Warn("default authz policy could not be not extended because policies are not the default", slog.Any("unextended_policies", policies))
+		return nil
+	}
+
+	policy := strings.TrimSpace(defaultPolicy)
+	policy += "\n\n## Extended Policies"
+	for p := range policies {
+		pol := policies[p]
+		polCsv := strings.Join(policies[p], ", ")
+		if len(pol) < defaultPolicyPartsLen {
+			return fmt.Errorf("policy missing one of 'p, subject, resource, action, effect', pol: [%s] %w", polCsv, ErrPolicyMalformed)
+		}
+		if pol[0] != "p" {
+			return fmt.Errorf("policy must be prefixed with 'p', pol: [%s] %w", polCsv, ErrPolicyMalformed)
+		}
+		if !strings.HasPrefix(pol[1], rolePrefix) {
+			return fmt.Errorf("policy must contain default role prefix, pol: [%s] %w", polCsv, ErrPolicyMalformed)
+		}
+		policy += "\n" + polCsv
+	}
+	policy += "\n"
+
+	// Load up new adapter then load the new policy
+	a := stringadapter.NewAdapter(policy)
+	e.SetAdapter(a)
+	if err := e.LoadPolicy(); err != nil {
+		return fmt.Errorf("failed to load extended default policy: %w", err)
+	}
+	e.isDefaultPolicy = false
+
+	return nil
 }
 
 // casbinEnforce is a helper function to enforce the policy with casbin
 // TODO implement a common type so this can be used for both http and grpc
-func (e Enforcer) Enforce(token jwt.Token, resource, action string) (bool, error) {
+func (e *Enforcer) Enforce(token jwt.Token, resource, action string) (bool, error) {
 	var err error
 	permDeniedError := fmt.Errorf("permission denied")
 
@@ -202,7 +274,7 @@ func (e Enforcer) Enforce(token jwt.Token, resource, action string) (bool, error
 	return true, nil
 }
 
-func (e Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
+func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
 	slog.Debug("building subject from token", slog.Any("token", t))
 	roles := e.extractRolesFromToken(t)
 
@@ -212,19 +284,12 @@ func (e Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
 	}
 }
 
-func (e Enforcer) extractRolesFromToken(t jwt.Token) []string {
+func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 	slog.Debug("extracting roles from token", slog.Any("token", t))
 	roles := []string{}
 
-	roleClaim := defaultRoleClaim
-	if e.Config.RoleClaim != "" {
-		roleClaim = e.Config.RoleClaim
-	}
-
-	roleMap := defaultRoleMap
-	if len(e.Config.RoleMap) > 0 {
-		roleMap = e.Config.RoleMap
-	}
+	roleClaim := e.Config.RoleClaim
+	roleMap := e.Config.RoleMap
 
 	selectors := strings.Split(roleClaim, ".")
 	claim, exists := t.Get(selectors[0])

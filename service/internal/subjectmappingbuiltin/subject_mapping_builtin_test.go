@@ -93,14 +93,14 @@ func Test_EvaluateConditionNOTINFalse(t *testing.T) {
 // evaluate condition CONTAINS
 var containsCondition1 = policy.Condition{
 	SubjectExternalSelectorValue: ".attributes.testing[]",
-	Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_CONTAINS,
+	Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS,
 	SubjectExternalValues:        []string{"option"},
 }
 
 // evaluate condition CONTAINS
 var containsCondition2 = policy.Condition{
 	SubjectExternalSelectorValue: ".attributes.testing[]",
-	Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_CONTAINS,
+	Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS,
 	SubjectExternalValues:        []string{"not-an-option"},
 }
 

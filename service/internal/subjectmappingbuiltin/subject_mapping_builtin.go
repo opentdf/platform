@@ -232,7 +232,7 @@ func EvaluateCondition(condition *policy.Condition, entity flattening.Flattened)
 		if notInResult {
 			result = true
 		}
-	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_CONTAINS:
+	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS:
 		// slog.Debug("the operator is CONTAINS")
 		for _, possibleValue := range condition.GetSubjectExternalValues() {
 			// slog.Debug("possible value", "", possibleValue)

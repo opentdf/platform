@@ -103,9 +103,12 @@ message Action {
 // buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
 enum SubjectMappingOperatorEnum {
   SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED = 0;
+  // operator that returns true if a value in a list matches the string
   SUBJECT_MAPPING_OPERATOR_ENUM_IN = 1;
+  // operator that returns true if a value is not in a list that is matched by string
   SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN = 2;
-  SUBJECT_MAPPING_OPERATOR_ENUM_CONTAINS = 3;
+  // operator that returns true if a value in a list contains the substring
+  SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS = 3;
 }
 
 // buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package

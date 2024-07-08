@@ -669,9 +669,10 @@
         "SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED",
         "SUBJECT_MAPPING_OPERATOR_ENUM_IN",
         "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN",
-        "SUBJECT_MAPPING_OPERATOR_ENUM_CONTAINS"
+        "SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS"
       ],
       "default": "SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED",
+      "description": "- SUBJECT_MAPPING_OPERATOR_ENUM_IN: operator that returns true if a value in a list matches the string\n - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN: operator that returns true if a value is not in a list that is matched by string\n - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS: operator that returns true if a value in a list contains the substring",
       "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
     },
     "policySubjectProperty": {

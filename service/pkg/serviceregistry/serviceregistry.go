@@ -15,17 +15,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-// ServiceConfig is a struct that holds the configuration for a service and used for the global
-// config rollup powered by Viper (https://github.com/spf13/viper)
-type ServiceConfig struct {
-	Enabled    bool                   `yaml:"enabled"`
-	Remote     RemoteServiceConfig    `yaml:"remote"`
-	ExtraProps map[string]interface{} `json:"-" mapstructure:",remain"`
-}
-
-type RemoteServiceConfig struct {
-	Endpoint string `yaml:"endpoint"`
-}
+type ServiceConfig map[string]any
 
 // RegistrationParams is a struct that holds the parameters needed to register a service
 // with the service registry. These parameters are passed to the RegisterFunc function defined

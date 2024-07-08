@@ -12,17 +12,25 @@ import (
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
-	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/pkg/util"
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	DevMode  bool                                     `mapstructure:"dev_mode"`
-	DB       db.Config                                `yaml:"db"`
-	Server   server.Config                            `yaml:"server"`
-	Logger   logger.Config                            `yaml:"logger"`
-	Services map[string]serviceregistry.ServiceConfig `yaml:"services" default:"{\"policy\": {\"enabled\": true}, \"health\": {\"enabled\": true}, \"authorization\": {\"enabled\": true}, \"wellknown\": {\"enabled\": true}, \"kas\": {\"enabled\": true}, \"entityresolution\": {\"enabled\": true}}"`
+	DevMode bool          `mapstructure:"dev_mode"`
+	DB      db.Config     `yaml:"db"`
+	Server  server.Config `yaml:"server"`
+	Logger  logger.Config `yaml:"logger"`
+	// Defines which services to run
+	Mode       string         `mapsctructure:"mode"`
+	RemoteCore RemoteCoreInfo `mapstructure:"remote_core"`
+	Services   map[string]any `mapstructure:"services"`
+}
+
+type RemoteCoreInfo struct {
+	Endpoint     string `mapstructure:"endpoint"`
+	ClientID     string `mapstructure:"client_id"`
+	ClientSecret string `mapstructure:"client_secret"`
 }
 
 type Error string

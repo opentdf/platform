@@ -88,14 +88,14 @@ type Authentication struct {
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
-func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger, wellknownRegistration func(namespace string, config any) error) (*Authentication, error) {
+func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, wellknownRegistration func(namespace string, config any) error) (*Authentication, error) {
 	a := &Authentication{
 		enforceDPoP: cfg.EnforceDPoP,
-		logger:      logr,
+		logger:      logger,
 	}
 
 	// validate the configuration
-	if err := cfg.validateAuthNConfig(); err != nil {
+	if err := cfg.validateAuthNConfig(a.logger); err != nil {
 		return nil, err
 	}
 
@@ -103,7 +103,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger, well
 
 	// Build new cache
 	// Discover OIDC Configuration
-	oidcConfig, err := DiscoverOIDCConfiguration(ctx, cfg.Issuer)
+	oidcConfig, err := DiscoverOIDCConfiguration(ctx, cfg.Issuer, a.logger)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger, well
 
 	cacheInterval, err := time.ParseDuration(cfg.CacheRefresh)
 	if err != nil {
-		logr.ErrorContext(ctx, fmt.Sprintf("Invalid cache_refresh_interval [%s]", cfg.CacheRefresh), "err", err)
+		logger.ErrorContext(ctx, fmt.Sprintf("Invalid cache_refresh_interval [%s]", cfg.CacheRefresh), "err", err)
 		cacheInterval = refreshInterval
 	}
 
@@ -129,7 +129,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger, well
 	casbinConfig := CasbinConfig{
 		PolicyConfig: cfg.Policy,
 	}
-	logr.Info("initializing casbin enforcer")
+	logger.Info("initializing casbin enforcer")
 	if a.enforcer, err = NewCasbinEnforcer(casbinConfig, a.logger); err != nil {
 		return nil, fmt.Errorf("failed to initialize casbin enforcer: %w", err)
 	}
@@ -151,7 +151,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger, well
 
 	// Try an register oidc issuer to wellknown service but don't return an error if it fails
 	if err := wellknownRegistration("platform_issuer", cfg.Issuer); err != nil {
-		logr.Warn("failed to register platform issuer", slog.String("error", err.Error()))
+		logger.Warn("failed to register platform issuer", slog.String("error", err.Error()))
 	}
 
 	var oidcConfigMap map[string]any
@@ -167,7 +167,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger, well
 	}
 
 	if err := wellknownRegistration("idp", oidcConfigMap); err != nil {
-		logr.Warn("failed to register platform idp information", slog.String("error", err.Error()))
+		logger.Warn("failed to register platform idp information", slog.String("error", err.Error()))
 	}
 
 	return a, nil

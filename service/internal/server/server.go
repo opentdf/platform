@@ -93,6 +93,8 @@ type OpenTDFServer struct {
 	GRPCServer     *grpc.Server
 	GRPCInProcess  *inProcessServer
 	CryptoProvider security.CryptoProvider
+
+	logger *logger.Logger
 }
 
 /*
@@ -106,7 +108,7 @@ type inProcessServer struct {
 	srv *grpc.Server
 }
 
-func NewOpenTDFServer(config Config, logr *logger.Logger) (*OpenTDFServer, error) {
+func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, error) {
 	var (
 		authN *auth.Authentication
 		err   error
@@ -118,19 +120,19 @@ func NewOpenTDFServer(config Config, logr *logger.Logger) (*OpenTDFServer, error
 		authN, err = auth.NewAuthenticator(
 			context.Background(),
 			config.Auth,
-			logr,
+			logger,
 			config.WellKnownConfigRegister,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
 		}
-		logr.Debug("authentication interceptor enabled")
+		logger.Debug("authentication interceptor enabled")
 	} else {
-		logr.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
+		logger.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
 	// Create grpc server and in process grpc server
-	grpcServer, err := newGrpcServer(config, authN)
+	grpcServer, err := newGrpcServer(config, authN, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create grpc server: %w", err)
 	}
@@ -143,7 +145,7 @@ func NewOpenTDFServer(config Config, logr *logger.Logger) (*OpenTDFServer, error
 	mux := runtime.NewServeMux(
 		runtime.WithHealthzEndpoint(healthpb.NewHealthClient(grpcIPCServer.Conn())),
 	)
-	httpServer, err := newHTTPServer(config, mux, authN, grpcServer)
+	httpServer, err := newHTTPServer(config, mux, authN, grpcServer, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http server: %w", err)
 	}
@@ -154,10 +156,11 @@ func NewOpenTDFServer(config Config, logr *logger.Logger) (*OpenTDFServer, error
 		HTTPServer:    httpServer,
 		GRPCServer:    grpcServer,
 		GRPCInProcess: grpcIPCServer,
+		logger:        logger,
 	}
 
 	// Create crypto provider
-	logr.Info("creating crypto provider", slog.String("type", config.CryptoProvider.Type))
+	logger.Info("creating crypto provider", slog.String("type", config.CryptoProvider.Type))
 	o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
 	if err != nil {
 		return nil, fmt.Errorf("security.NewCryptoProvider: %w", err)
@@ -167,7 +170,7 @@ func NewOpenTDFServer(config Config, logr *logger.Logger) (*OpenTDFServer, error
 }
 
 // newHTTPServer creates a new http server with the given handler and grpc server
-func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Server) (*http.Server, error) {
+func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Server, l *logger.Logger) (*http.Server, error) {
 	var err error
 	var tc *tls.Config
 
@@ -176,7 +179,7 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 	if c.Auth.Enabled {
 		h = a.MuxHandler(h)
 	} else {
-		slog.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
+		l.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
 	// CORS
@@ -202,7 +205,7 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 	}
 
 	// Add grpc handler
-	h2 := httpGrpcHandlerFunc(h, g)
+	h2 := httpGrpcHandlerFunc(h, g, l)
 
 	if !c.TLS.Enabled {
 		h2 = h2c.NewHandler(h2, &http2.Server{})
@@ -223,9 +226,9 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 }
 
 // httpGrpcHandlerFunc returns a http.Handler that delegates to the grpc server if the request is a grpc request
-func httpGrpcHandlerFunc(h http.Handler, g *grpc.Server) http.Handler {
+func httpGrpcHandlerFunc(h http.Handler, g *grpc.Server, l *logger.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		slog.Debug("grpc handler func", slog.Int("proto_major", r.ProtoMajor), slog.String("content_type", r.Header.Get("Content-Type")))
+		l.Debug("grpc handler func", slog.Int("proto_major", r.ProtoMajor), slog.String("content_type", r.Header.Get("Content-Type")))
 		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
 			g.ServeHTTP(w, r)
 		} else {
@@ -253,14 +256,14 @@ func newGrpcInProcessServer() *grpc.Server {
 }
 
 // newGrpcServer creates a new grpc server with the given config and authN interceptor
-func newGrpcServer(c Config, a *auth.Authentication) (*grpc.Server, error) {
+func newGrpcServer(c Config, a *auth.Authentication, logger *logger.Logger) (*grpc.Server, error) {
 	var i []grpc.UnaryServerInterceptor
 	var o []grpc.ServerOption
 
 	// Enable proto validation
 	validator, err := protovalidate.New()
 	if err != nil {
-		slog.Warn("failed to create proto validator", slog.String("error", err.Error()))
+		logger.Warn("failed to create proto validator", slog.String("error", err.Error()))
 	}
 
 	// Add Audit Unary Server Interceptor
@@ -269,7 +272,7 @@ func newGrpcServer(c Config, a *auth.Authentication) (*grpc.Server, error) {
 	if c.Auth.Enabled {
 		i = append(i, a.UnaryServerInterceptor)
 	} else {
-		slog.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
+		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
 	}
 
 	// Add tls creds if tls is not nil
@@ -314,18 +317,18 @@ func (s OpenTDFServer) Start() {
 }
 
 func (s OpenTDFServer) Stop() {
-	slog.Info("shutting down http server")
+	s.logger.Info("shutting down http server")
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout*time.Second)
 	defer cancel()
 	if err := s.HTTPServer.Shutdown(ctx); err != nil {
-		slog.Error("failed to shutdown http server", slog.String("error", err.Error()))
+		s.logger.Error("failed to shutdown http server", slog.String("error", err.Error()))
 		return
 	}
 
-	slog.Info("shutting down in process grpc server")
+	s.logger.Info("shutting down in process grpc server")
 	s.GRPCInProcess.srv.GracefulStop()
 
-	slog.Info("shutdown complete")
+	s.logger.Info("shutdown complete")
 }
 
 func (s inProcessServer) GetGrpcServer() *grpc.Server {
@@ -355,9 +358,9 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 }
 
 func (s OpenTDFServer) startInProcessGrpcServer() {
-	slog.Info("starting in process grpc server")
+	s.logger.Info("starting in process grpc server")
 	if err := s.GRPCInProcess.srv.Serve(s.GRPCInProcess.ln); err != nil {
-		slog.Error("failed to serve in process grpc", slog.String("error", err.Error()))
+		s.logger.Error("failed to serve in process grpc", slog.String("error", err.Error()))
 		panic(err)
 	}
 }
@@ -366,15 +369,15 @@ func (s OpenTDFServer) startHTTPServer() {
 	var err error
 
 	if s.HTTPServer.TLSConfig != nil {
-		slog.Info("starting https server", "address", s.HTTPServer.Addr)
+		s.logger.Info("starting https server", "address", s.HTTPServer.Addr)
 		err = s.HTTPServer.ListenAndServeTLS("", "")
 	} else {
-		slog.Info("starting http server", "address", s.HTTPServer.Addr)
+		s.logger.Info("starting http server", "address", s.HTTPServer.Addr)
 		err = s.HTTPServer.ListenAndServe()
 	}
 
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		slog.Error("failed to serve http", slog.String("error", err.Error()))
+		s.logger.Error("failed to serve http", slog.String("error", err.Error()))
 		return
 	}
 }

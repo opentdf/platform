@@ -18,12 +18,12 @@
   "paths": {
     "/unsafe/attributes/values/{id}": {
       "delete": {
-        "operationId": "UnsafeService_DeleteAttributeValue",
+        "operationId": "UnsafeService_UnsafeDeleteAttributeValue",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/unsafeDeleteAttributeValueResponse"
+              "$ref": "#/definitions/unsafeUnsafeDeleteAttributeValueResponse"
             }
           },
           "default": {
@@ -55,12 +55,12 @@
       },
       "patch": {
         "summary": "--------------------------------------*\nValue RPCs\n---------------------------------------",
-        "operationId": "UnsafeService_UpdateAttributeValue",
+        "operationId": "UnsafeService_UnsafeUpdateAttributeValue",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/policyunsafeUpdateAttributeValueResponse"
+              "$ref": "#/definitions/unsafeUnsafeUpdateAttributeValueResponse"
             }
           },
           "default": {
@@ -91,12 +91,12 @@
     },
     "/unsafe/attributes/values/{id}/reactivate": {
       "post": {
-        "operationId": "UnsafeService_ReactivateAttributeValue",
+        "operationId": "UnsafeService_UnsafeReactivateAttributeValue",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/unsafeReactivateAttributeValueResponse"
+              "$ref": "#/definitions/unsafeUnsafeReactivateAttributeValueResponse"
             }
           },
           "default": {
@@ -121,12 +121,12 @@
     },
     "/unsafe/attributes/{id}": {
       "delete": {
-        "operationId": "UnsafeService_DeleteAttribute",
+        "operationId": "UnsafeService_UnsafeDeleteAttribute",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/unsafeDeleteAttributeResponse"
+              "$ref": "#/definitions/unsafeUnsafeDeleteAttributeResponse"
             }
           },
           "default": {
@@ -158,12 +158,12 @@
       },
       "patch": {
         "summary": "--------------------------------------*\nAttribute RPCs\n---------------------------------------",
-        "operationId": "UnsafeService_UpdateAttribute",
+        "operationId": "UnsafeService_UnsafeUpdateAttribute",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/policyunsafeUpdateAttributeResponse"
+              "$ref": "#/definitions/unsafeUnsafeUpdateAttributeResponse"
             }
           },
           "default": {
@@ -201,6 +201,17 @@
               "ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY"
             ],
             "default": "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED"
+          },
+          {
+            "name": "valuesOrder",
+            "description": "WARNING!!\nUnsafe reordering requires the full list of values in the new order they should be stored. Updating the order of values in a HIERARCHY-rule Attribute Definition\nwill retroactively alter access to existing TDFs containing those values. Replacing values on an attribute in place is not supported; values can be unsafely deleted\ndeleted, created, and unsafely re-ordered as necessary.",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
           }
         ],
         "tags": [
@@ -210,12 +221,12 @@
     },
     "/unsafe/attributes/{id}/reactivate": {
       "post": {
-        "operationId": "UnsafeService_ReactivateAttribute",
+        "operationId": "UnsafeService_UnsafeReactivateAttribute",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/unsafeReactivateAttributeResponse"
+              "$ref": "#/definitions/unsafeUnsafeReactivateAttributeResponse"
             }
           },
           "default": {
@@ -240,12 +251,12 @@
     },
     "/unsafe/namespaces/{id}": {
       "delete": {
-        "operationId": "UnsafeService_DeleteNamespace",
+        "operationId": "UnsafeService_UnsafeDeleteNamespace",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/unsafeDeleteNamespaceResponse"
+              "$ref": "#/definitions/unsafeUnsafeDeleteNamespaceResponse"
             }
           },
           "default": {
@@ -277,12 +288,12 @@
       },
       "patch": {
         "summary": "--------------------------------------*\nNamespace RPCs\n---------------------------------------",
-        "operationId": "UnsafeService_UpdateNamespace",
+        "operationId": "UnsafeService_UnsafeUpdateNamespace",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/policyunsafeUpdateNamespaceResponse"
+              "$ref": "#/definitions/unsafeUnsafeUpdateNamespaceResponse"
             }
           },
           "default": {
@@ -314,12 +325,12 @@
     },
     "/unsafe/namespaces/{id}/reactivate": {
       "post": {
-        "operationId": "UnsafeService_ReactivateNamespace",
+        "operationId": "UnsafeService_UnsafeReactivateNamespace",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/unsafeReactivateNamespaceResponse"
+              "$ref": "#/definitions/unsafeUnsafeReactivateNamespaceResponse"
             }
           },
           "default": {
@@ -672,30 +683,6 @@
         }
       }
     },
-    "policyunsafeUpdateAttributeResponse": {
-      "type": "object",
-      "properties": {
-        "attribute": {
-          "$ref": "#/definitions/policyAttribute"
-        }
-      }
-    },
-    "policyunsafeUpdateAttributeValueResponse": {
-      "type": "object",
-      "properties": {
-        "value": {
-          "$ref": "#/definitions/policyValue"
-        }
-      }
-    },
-    "policyunsafeUpdateNamespaceResponse": {
-      "type": "object",
-      "properties": {
-        "namespace": {
-          "$ref": "#/definitions/policyNamespace"
-        }
-      }
-    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -726,7 +713,7 @@
         }
       }
     },
-    "unsafeDeleteAttributeResponse": {
+    "unsafeUnsafeDeleteAttributeResponse": {
       "type": "object",
       "properties": {
         "attribute": {
@@ -734,7 +721,7 @@
         }
       }
     },
-    "unsafeDeleteAttributeValueResponse": {
+    "unsafeUnsafeDeleteAttributeValueResponse": {
       "type": "object",
       "properties": {
         "value": {
@@ -742,7 +729,7 @@
         }
       }
     },
-    "unsafeDeleteNamespaceResponse": {
+    "unsafeUnsafeDeleteNamespaceResponse": {
       "type": "object",
       "properties": {
         "namespace": {
@@ -750,7 +737,7 @@
         }
       }
     },
-    "unsafeReactivateAttributeResponse": {
+    "unsafeUnsafeReactivateAttributeResponse": {
       "type": "object",
       "properties": {
         "attribute": {
@@ -758,7 +745,7 @@
         }
       }
     },
-    "unsafeReactivateAttributeValueResponse": {
+    "unsafeUnsafeReactivateAttributeValueResponse": {
       "type": "object",
       "properties": {
         "value": {
@@ -766,7 +753,31 @@
         }
       }
     },
-    "unsafeReactivateNamespaceResponse": {
+    "unsafeUnsafeReactivateNamespaceResponse": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "$ref": "#/definitions/policyNamespace"
+        }
+      }
+    },
+    "unsafeUnsafeUpdateAttributeResponse": {
+      "type": "object",
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/policyAttribute"
+        }
+      }
+    },
+    "unsafeUnsafeUpdateAttributeValueResponse": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "$ref": "#/definitions/policyValue"
+        }
+      }
+    },
+    "unsafeUnsafeUpdateNamespaceResponse": {
       "type": "object",
       "properties": {
         "namespace": {

@@ -6,7 +6,6 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -38,8 +37,8 @@ func NewRegistration() serviceregistry.Registration {
 // Unsafe Namespace RPCs
 //
 
-func (s *UnsafeService) UpdateNamespace(ctx context.Context, req *unsafe.UpdateNamespaceRequest) (*unsafe.UpdateNamespaceResponse, error) {
-	rsp := &unsafe.UpdateNamespaceResponse{}
+func (s *UnsafeService) UnsafeUpdateNamespace(ctx context.Context, req *unsafe.UnsafeUpdateNamespaceRequest) (*unsafe.UnsafeUpdateNamespaceResponse, error) {
+	rsp := &unsafe.UnsafeUpdateNamespaceResponse{}
 
 	_, err := s.dbClient.GetNamespace(ctx, req.GetId())
 	if err != nil {
@@ -55,8 +54,8 @@ func (s *UnsafeService) UpdateNamespace(ctx context.Context, req *unsafe.UpdateN
 	return rsp, nil
 }
 
-func (s *UnsafeService) ReactivateNamespace(ctx context.Context, req *unsafe.ReactivateNamespaceRequest) (*unsafe.ReactivateNamespaceResponse, error) {
-	rsp := &unsafe.ReactivateNamespaceResponse{}
+func (s *UnsafeService) UnsafeReactivateNamespace(ctx context.Context, req *unsafe.UnsafeReactivateNamespaceRequest) (*unsafe.UnsafeReactivateNamespaceResponse, error) {
+	rsp := &unsafe.UnsafeReactivateNamespaceResponse{}
 
 	_, err := s.dbClient.GetNamespace(ctx, req.GetId())
 	if err != nil {
@@ -72,20 +71,15 @@ func (s *UnsafeService) ReactivateNamespace(ctx context.Context, req *unsafe.Rea
 	return rsp, nil
 }
 
-func (s *UnsafeService) DeleteNamespace(ctx context.Context, req *unsafe.DeleteNamespaceRequest) (*unsafe.DeleteNamespaceResponse, error) {
-	rsp := &unsafe.DeleteNamespaceResponse{}
+func (s *UnsafeService) UnsafeDeleteNamespace(ctx context.Context, req *unsafe.UnsafeDeleteNamespaceRequest) (*unsafe.UnsafeDeleteNamespaceResponse, error) {
+	rsp := &unsafe.UnsafeDeleteNamespaceResponse{}
 
 	existing, err := s.dbClient.GetNamespace(ctx, req.GetId())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
 	}
 
-	// validate the provided namespace FQN is a match for the provided namespace ID
-	if existing.GetFqn() != req.GetFqn() {
-		return nil, db.StatusifyError(db.ErrNotFound, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()), slog.String("fqn", req.GetFqn()))
-	}
-
-	deleted, err := s.dbClient.UnsafeDeleteNamespace(ctx, req.GetId())
+	deleted, err := s.dbClient.UnsafeDeleteNamespace(ctx, existing, req.GetFqn())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
 	}
@@ -99,114 +93,109 @@ func (s *UnsafeService) DeleteNamespace(ctx context.Context, req *unsafe.DeleteN
 // Unsafe Attribute Definition RPCs
 //
 
-func (s *UnsafeService) UpdateAttribute(_ context.Context, req *unsafe.UpdateAttributeRequest) (*unsafe.UpdateAttributeResponse, error) {
-	// _, err := s.dbClient.GetAttribute(ctx, req.GetId())
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
-	// }
+func (s *UnsafeService) UnsafeUpdateAttribute(ctx context.Context, req *unsafe.UnsafeUpdateAttributeRequest) (*unsafe.UnsafeUpdateAttributeResponse, error) {
+	rsp := &unsafe.UnsafeUpdateAttributeResponse{}
 
-	// item, err := s.dbClient.UnsafeUpdateAttribute(ctx, req.GetId(), req)
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("attribute", req.String()))
-	// }
+	_, err := s.dbClient.GetAttribute(ctx, req.GetId())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+	}
 
-	return &unsafe.UpdateAttributeResponse{
-		Attribute: &policy.Attribute{
-			Id: req.GetId(), // stubbed
-		},
-	}, nil
+	item, err := s.dbClient.UnsafeUpdateAttribute(ctx, req)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("attribute", req.String()))
+	}
+
+	rsp.Attribute = item
+
+	return rsp, nil
 }
 
-func (s *UnsafeService) ReactivateAttribute(_ context.Context, req *unsafe.ReactivateAttributeRequest) (*unsafe.ReactivateAttributeResponse, error) {
-	// _, err := s.dbClient.GetAttribute(ctx, req.GetId())
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
-	// }
+func (s *UnsafeService) UnsafeReactivateAttribute(ctx context.Context, req *unsafe.UnsafeReactivateAttributeRequest) (*unsafe.UnsafeReactivateAttributeResponse, error) {
+	rsp := &unsafe.UnsafeReactivateAttributeResponse{}
 
-	// item, err := s.dbClient.UnsafeReactivateAttribute(ctx, req.GetId())
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()))
-	// }
+	_, err := s.dbClient.GetAttribute(ctx, req.GetId())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+	}
 
-	return &unsafe.ReactivateAttributeResponse{
-		Attribute: &policy.Attribute{
-			Id: req.GetId(), // stubbed
-		},
-	}, nil
+	item, err := s.dbClient.UnsafeReactivateAttribute(ctx, req.GetId())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()))
+	}
+
+	rsp.Attribute = item
+
+	return rsp, nil
 }
 
-func (s *UnsafeService) DeleteAttribute(_ context.Context, req *unsafe.DeleteAttributeRequest) (*unsafe.DeleteAttributeResponse, error) {
-	// _, err := s.dbClient.GetAttribute(ctx, req.GetId())
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
-	// }
+func (s *UnsafeService) UnsafeDeleteAttribute(ctx context.Context, req *unsafe.UnsafeDeleteAttributeRequest) (*unsafe.UnsafeDeleteAttributeResponse, error) {
+	rsp := &unsafe.UnsafeDeleteAttributeResponse{}
 
-	// err = s.dbClient.UnsafeDeleteAttribute(ctx, req.GetId())
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextDeleteFailed, slog.String("id", req.GetId()))
-	// }
+	existing, err := s.dbClient.GetAttribute(ctx, req.GetId())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+	}
 
-	return &unsafe.DeleteAttributeResponse{
-		Attribute: &policy.Attribute{
-			Id: req.GetId(), // stubbed
-		},
-	}, nil
+	deleted, err := s.dbClient.UnsafeDeleteAttribute(ctx, existing, req.GetFqn())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
+	}
+
+	rsp.Attribute = deleted
+
+	return rsp, nil
 }
 
 //
 // Unsafe Attribute Value RPCs
 //
 
-func (s *UnsafeService) UpdateAttributeValue(_ context.Context, req *unsafe.UpdateAttributeValueRequest) (*unsafe.UpdateAttributeValueResponse, error) {
-	// _, err := s.dbClient.GetAttributeValue(ctx, req.GetId())
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
-	// }
+func (s *UnsafeService) UnsafeUpdateAttributeValue(ctx context.Context, req *unsafe.UnsafeUpdateAttributeValueRequest) (*unsafe.UnsafeUpdateAttributeValueResponse, error) {
+	rsp := &unsafe.UnsafeUpdateAttributeValueResponse{}
+	_, err := s.dbClient.GetAttributeValue(ctx, req.GetId())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+	}
 
-	// item, err := s.dbClient.UnsafeUpdateAttributeValue(ctx, req.GetId(), req)
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("attribute_value", req.String()))
-	// }
+	item, err := s.dbClient.UnsafeUpdateAttributeValue(ctx, req)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("attribute_value", req.String()))
+	}
 
-	return &unsafe.UpdateAttributeValueResponse{
-		Value: &policy.Value{
-			Id: req.GetId(), // stubbed
-		},
-	}, nil
+	rsp.Value = item
+	return rsp, nil
 }
 
-func (s *UnsafeService) ReactivateAttributeValue(_ context.Context, req *unsafe.ReactivateAttributeValueRequest) (*unsafe.ReactivateAttributeValueResponse, error) {
-	// _, err := s.dbClient.GetAttributeValue(ctx, req.GetId())
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
-	// }
+func (s *UnsafeService) UnsafeReactivateAttributeValue(ctx context.Context, req *unsafe.UnsafeReactivateAttributeValueRequest) (*unsafe.UnsafeReactivateAttributeValueResponse, error) {
+	rsp := &unsafe.UnsafeReactivateAttributeValueResponse{}
 
-	// item, err := s.dbClient.UnsafeReactivateAttributeValue(ctx, req.GetId())
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()))
-	// }
+	_, err := s.dbClient.GetAttributeValue(ctx, req.GetId())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+	}
 
-	return &unsafe.ReactivateAttributeValueResponse{
-		Value: &policy.Value{
-			Id: req.GetId(), // stubbed
-		},
-	}, nil
+	item, err := s.dbClient.UnsafeReactivateAttributeValue(ctx, req.GetId())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()))
+	}
+
+	rsp.Value = item
+	return rsp, nil
 }
 
-func (s *UnsafeService) DeleteAttributeValue(_ context.Context, req *unsafe.DeleteAttributeValueRequest) (*unsafe.DeleteAttributeValueResponse, error) {
-	// _, err := s.dbClient.GetAttributeValue(ctx, req.GetId())
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
-	// }
+func (s *UnsafeService) UnsafeDeleteAttributeValue(ctx context.Context, req *unsafe.UnsafeDeleteAttributeValueRequest) (*unsafe.UnsafeDeleteAttributeValueResponse, error) {
+	rsp := &unsafe.UnsafeDeleteAttributeValueResponse{}
+	existing, err := s.dbClient.GetAttributeValue(ctx, req.GetId())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+	}
 
-	// err = s.dbClient.UnsafeDeleteAttributeValue(ctx, req.GetId())
-	// if err != nil {
-	// 	return nil, db.StatusifyError(err, db.ErrTextDeleteFailed, slog.String("id", req.GetId()))
-	// }
+	deleted, err := s.dbClient.UnsafeDeleteAttributeValue(ctx, existing, req)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
+	}
 
-	return &unsafe.DeleteAttributeValueResponse{
-		Value: &policy.Value{
-			Id: req.GetId(), // stubbed
-		},
-	}, nil
+	rsp.Value = deleted
+	return rsp, nil
 }

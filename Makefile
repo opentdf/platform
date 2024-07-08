@@ -17,9 +17,9 @@ all: toolcheck clean build lint license test
 toolcheck:
 	@echo "Checking for required tools..."
 	@which buf > /dev/null || (echo "buf not found, please install it from https://docs.buf.build/installation" && exit 1)
-	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.58.1'" && exit 1)
+	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1'" && exit 1)
 	@which protoc-gen-doc > /dev/null || (echo "protoc-gen-doc not found, run 'go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1'" && exit 1)
-	@golangci-lint --version | grep "version v\?1.5[89]" > /dev/null || (echo "golangci-lint version must be v1.58 or later [$$(golangci-lint --version)]" && exit 1)
+	@golangci-lint --version | grep "version v\?1.59" > /dev/null || (echo "golangci-lint version must be v1.59 or later [$$(golangci-lint --version)]" && exit 1)
 	@which goimports >/dev/null || (echo "goimports not found, run 'go install golang.org/x/tools/cmd/goimports@latest'")
 
 fix: tidy fmt
@@ -52,13 +52,16 @@ proto-generate:
 	buf generate service
 	buf generate service --template buf.gen.grpc.docs.yaml
 	buf generate service --template buf.gen.openapi.docs.yaml
-	
+
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.grpc.docs.yaml
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.openapi.docs.yaml
 
 test:
 	for m in $(HAND_MODS); do (cd $$m && go test ./... -race) || exit 1; done
+
+bench:
+	for m in $(HAND_MODS); do (cd $$m && go test -bench ./... -benchmem) || exit 1; done
 
 clean:
 	for m in $(MODS); do (cd $$m && go clean) || exit 1; done

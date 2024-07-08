@@ -127,14 +127,16 @@ linters:
     - asciicheck # checks that your code does not contain non-ASCII identifiers
     - bidichk # checks for dangerous unicode character sequences
     - bodyclose # checks whether HTTP response body is closed successfully
+    - canonicalheader
     - containedctx # Containedctx is a linter that detects struct contained context.Context field.
     - contextcheck # checks the function whether use a non-inherited context
-    #- copyloopvar # checks for copying a loop variable to a function literal (1.57)
+    # - copyloopvar # checks for copying a loop variable to a function literal (requires go 1.22)
     - durationcheck # checks for two durations multiplied together
     - errname # checks that sentinel errors are prefixed with the Err and error types are suffixed with the Error
     - errorlint # finds code that will cause problems with the error wrapping scheme introduced in Go 1.13
     - exhaustive # checks exhaustiveness of enum switch statements
     - exportloopref # checks for pointers to enclosing loop variables
+    # - fatcontext
     - forbidigo # forbids identifiers
     - forcetypeassert # finds forced type assertions
     - gocheckcompilerdirectives # validates go compiler directive comments (//go:)
@@ -145,6 +147,7 @@ linters:
     - gomodguard # allow and block lists linter for direct Go module dependencies. This is different from depguard where there are different block types for example version constraints and module recommendations
     - goprintffuncname # checks that printf-like functions are named with f at the end
     - gosec # inspects source code for security problems
+    # - intrange # checks for range over int (requires go 1.22)
     - loggercheck # checks key value pairs for common logger libraries (kitlog,klog,logr,zap)
     - makezero # finds slice declarations with non-zero initial length
     - mnd # detects magic numbers

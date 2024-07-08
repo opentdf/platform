@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -11,15 +12,16 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type attributeValueSelectOptions struct {
-	state   string
-	withFqn bool
-	// withKeyAccessGrants  bool
+	state               string
+	withFqn             bool
+	withKeyAccessGrants bool
 	// withSubjectMappings  bool
 	// withResourceMappings bool
 
@@ -36,6 +38,7 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 		membersJSON  []byte
 		metadataJSON []byte
 		attributeID  string
+		grants       []byte
 		fqn          sql.NullString
 		members      []*policy.Value
 	)
@@ -51,10 +54,14 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 	if opts.withFqn {
 		fields = append(fields, &fqn)
 	}
-	if err := row.Scan(fields...); err != nil {
+	if opts.withKeyAccessGrants {
+		fields = append(fields, &grants)
+	}
+	err := row.Scan(fields...)
+	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	} else if membersJSON != nil {
-		members, err = attributesValuesProtojson(membersJSON)
+		members, err = attributesValuesProtojson(membersJSON, fqn)
 		if err != nil {
 			return nil, err
 		}
@@ -67,11 +74,21 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 		}
 	}
 
+	var k []*policy.KeyAccessServer
+	if grants != nil {
+		k, err = db.KeyAccessServerProtoJSON(grants)
+		if err != nil {
+			slog.Error("could not unmarshal key access grants", slog.String("error", err.Error()))
+			return nil, err
+		}
+	}
+
 	v := &policy.Value{
 		Id:       id,
 		Value:    value,
 		Active:   &wrapperspb.BoolValue{Value: active},
 		Members:  members,
+		Grants:   k,
 		Metadata: m,
 		Attribute: &policy.Attribute{
 			Id: attributeID,
@@ -160,7 +177,6 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		value,
 		metadataJSON,
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +214,10 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 	}
 
 	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: id})
+	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: id})
+	if fqn != "" {
+		slog.Debug("created new attribute value FQN", slog.String("value_id", id), slog.String("value", value), slog.String("fqn", fqn))
+	}
 
 	rV := &policy.Value{
 		Id:        id,
@@ -214,6 +233,8 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 func getAttributeValueSQL(id string, opts attributeValueSelectOptions) (string, []interface{}, error) {
 	t := Tables.AttributeValues
 	fqnT := Tables.AttrFqn
+	avkagT := Tables.AttributeValueKeyAccessGrants
+	kasrT := Tables.KeyAccessServerRegistry
 	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
 		"'id', vmv.id, " +
 		"'value', vmv.value, " +
@@ -237,6 +258,16 @@ func getAttributeValueSQL(id string, opts attributeValueSelectOptions) (string, 
 	if opts.withFqn {
 		fields = append(fields, "MAX(fqn2.fqn) AS fqn")
 	}
+	if opts.withKeyAccessGrants {
+		fields = append(fields,
+			"JSONB_AGG("+
+				"DISTINCT JSONB_BUILD_OBJECT("+
+				"'id',"+kasrT.Field("id")+", "+
+				"'uri',"+kasrT.Field("uri")+", "+
+				"'public_key',"+kasrT.Field("public_key")+
+				")) FILTER (WHERE "+avkagT.Field("attribute_value_id")+" IS NOT NULL) AS grants",
+		)
+	}
 
 	sb := db.NewStatementBuilder().
 		Select(fields...).
@@ -252,12 +283,16 @@ func getAttributeValueSQL(id string, opts attributeValueSelectOptions) (string, 
 		sb = sb.LeftJoin(fqnT.Name() + " AS fqn1 ON " + "fqn1.value_id" + " = " + "vmv.id")
 		sb = sb.LeftJoin(fqnT.Name() + " AS fqn2 ON " + "fqn2.value_id" + " = " + "av.id")
 	}
+	if opts.withKeyAccessGrants {
+		sb = sb.LeftJoin(avkagT.Name() + " ON " + avkagT.WithoutSchema().Name() + ".attribute_value_id = av.id")
+		sb = sb.LeftJoin(kasrT.Name() + " ON " + kasrT.Field("id") + " = " + avkagT.Field("key_access_server_id"))
+	}
 
 	return sb.Where(sq.Eq{"av.id": id}).GroupBy("av.id").ToSql()
 }
 
 func (c PolicyDBClient) GetAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
-	opts := attributeValueSelectOptions{withFqn: true}
+	opts := attributeValueSelectOptions{withFqn: true, withKeyAccessGrants: true}
 	sql, args, err := getAttributeValueSQL(id, opts)
 	if err != nil {
 		return nil, err
@@ -504,12 +539,44 @@ func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 		}
 	}
 
-	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: r.GetId()})
-
 	return &policy.Value{
 		Id: r.GetId(),
 	}, nil
+}
+
+func unsafeUpdateAttributeValueSQL(id string, value string) (string, []interface{}, error) {
+	t := Tables.AttributeValues
+	return db.NewStatementBuilder().
+		Update(t.Name()).
+		Set("value", value).
+		Where(sq.Eq{t.Field("id"): id}).
+		Suffix("RETURNING \"id\"").
+		ToSql()
+}
+
+func (c PolicyDBClient) UnsafeUpdateAttributeValue(ctx context.Context, r *unsafe.UnsafeUpdateAttributeValueRequest) (*policy.Value, error) {
+	id := r.GetId()
+	val := strings.ToLower(r.GetValue())
+	sql, args, err := unsafeUpdateAttributeValueSQL(id, val)
+	if err != nil {
+		if db.IsQueryBuilderSetClauseError(err) {
+			return &policy.Value{
+				Id: id,
+			}, nil
+		}
+		return nil, err
+	}
+
+	err = c.Exec(ctx, sql, args)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update FQN
+	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: id})
+	slog.Debug("upserted fqn for unsafely updated value", slog.String("id", id), slog.String("value", r.GetValue()), slog.String("fqn", fqn))
+
+	return c.GetAttributeValue(ctx, id)
 }
 
 func deactivateAttributeValueSQL(id string) (string, []interface{}, error) {
@@ -534,7 +601,29 @@ func (c PolicyDBClient) DeactivateAttributeValue(ctx context.Context, id string)
 	return c.GetAttributeValue(ctx, id)
 }
 
-func deleteAttributeValueSQL(id string) (string, []interface{}, error) {
+func unsafeReactivateAttributeValueSQL(id string) (string, []interface{}, error) {
+	t := Tables.AttributeValues
+	return db.NewStatementBuilder().
+		Update(t.Name()).
+		Set("active", true).
+		Where(sq.Eq{t.Field("id"): id}).
+		Suffix("RETURNING \"id\"").
+		ToSql()
+}
+
+func (c PolicyDBClient) UnsafeReactivateAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
+	sql, args, err := unsafeReactivateAttributeValueSQL(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.Exec(ctx, sql, args); err != nil {
+		return nil, err
+	}
+	return c.GetAttributeValue(ctx, id)
+}
+
+func unsafeDeleteAttributeValueSQL(id string) (string, []interface{}, error) {
 	t := Tables.AttributeValues
 	return db.NewStatementBuilder().
 		Delete(t.Name()).
@@ -542,13 +631,15 @@ func deleteAttributeValueSQL(id string) (string, []interface{}, error) {
 		ToSql()
 }
 
-func (c PolicyDBClient) DeleteAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
-	prev, err := c.GetAttributeValue(ctx, id)
-	if err != nil {
-		return nil, err
+func (c PolicyDBClient) UnsafeDeleteAttributeValue(ctx context.Context, toDelete *policy.Value, r *unsafe.UnsafeDeleteAttributeValueRequest) (*policy.Value, error) {
+	id := r.GetId()
+	fqn := r.GetFqn()
+
+	if fqn != toDelete.GetFqn() {
+		return nil, fmt.Errorf("fqn mismatch [%s]: %w", fqn, db.ErrNotFound)
 	}
 
-	sql, args, err := deleteAttributeValueSQL(id)
+	sql, args, err := unsafeDeleteAttributeValueSQL(id)
 	if err != nil {
 		return nil, err
 	}
@@ -557,7 +648,9 @@ func (c PolicyDBClient) DeleteAttributeValue(ctx context.Context, id string) (*p
 		return nil, err
 	}
 
-	return prev, nil
+	return &policy.Value{
+		Id: id,
+	}, nil
 }
 
 func assignKeyAccessServerToValueSQL(valueID, keyAccessServerID string) (string, []interface{}, error) {

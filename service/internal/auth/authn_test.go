@@ -57,12 +57,7 @@ type FakeAccessServiceServer struct {
 	kas.UnimplementedAccessServiceServer
 }
 
-func (f *FakeAccessServiceServer) Info(ctx context.Context, _ *kas.InfoRequest) (*kas.InfoResponse, error) {
-	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		f.accessToken = md.Get("authorization")
-		f.dpopKey = GetJWKFromContext(ctx)
-	}
-
+func (f *FakeAccessServiceServer) Info(context.Context, *kas.InfoRequest) (*kas.InfoResponse, error) {
 	return &kas.InfoResponse{}, nil
 }
 
@@ -74,7 +69,11 @@ func (f *FakeAccessServiceServer) LegacyPublicKey(context.Context, *kas.LegacyPu
 	return &wrapperspb.StringValue{}, nil
 }
 
-func (f *FakeAccessServiceServer) Rewrap(context.Context, *kas.RewrapRequest) (*kas.RewrapResponse, error) {
+func (f *FakeAccessServiceServer) Rewrap(ctx context.Context, _ *kas.RewrapRequest) (*kas.RewrapResponse, error) {
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		f.accessToken = md.Get("authorization")
+		f.dpopKey = GetJWKFromContext(ctx)
+	}
 	return &kas.RewrapResponse{}, nil
 }
 
@@ -454,7 +453,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 
 	client := kas.NewAccessServiceClient(conn)
 
-	_, err = client.Info(context.Background(), &kas.InfoRequest{})
+	_, err = client.Rewrap(context.Background(), &kas.RewrapRequest{})
 	s.Require().NoError(err)
 	s.NotNil(fakeServer.dpopKey)
 	dpopJWKFromRequest, ok := fakeServer.dpopKey.(jwk.RSAPublicKey)
@@ -509,7 +508,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 		MinVersion: tls.VersionTLS12,
 	})
 	s.Require().NoError(err)
-	req.Header.Set("authorization", fmt.Sprintf("Bearer %s", signedTok))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", signedTok))
 	dpopTok, err := addingInterceptor.GetDPoPToken(server.URL+"/attributes", "GET", string(signedTok))
 	s.Require().NoError(err)
 	req.Header.Set("DPoP", dpopTok)
@@ -537,6 +536,15 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	s.Equal(dpopJWK.Algorithm(), dpopJWKFromRequest.Algorithm())
 	s.Equal(dpopJWK.E(), dpopJWKFromRequest.E())
 	s.Equal(dpopJWK.N(), dpopJWKFromRequest.N())
+}
+
+func (s *AuthSuite) Test_AddAuthzPolicies() {
+	err := s.auth.ExtendAuthzDefaultPolicy([][]string{
+		{"p", "role:admin", "/path", "*", "allow"},
+		{"p", "role:standard", "/path2", "read", "deny"},
+	})
+	s.Require().NoError(err)
+	s.False(s.auth.enforcer.isDefaultPolicy)
 }
 
 func makeDPoPToken(t *testing.T, tc dpopTestCase) string {

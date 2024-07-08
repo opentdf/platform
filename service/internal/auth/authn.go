@@ -49,6 +49,7 @@ var (
 		// KAS Public Key Endpoints
 		"/kas.AccessService/PublicKey",
 		"/kas.AccessService/LegacyPublicKey",
+		"/kas.AccessService/Info",
 		"/kas/kas_public_key",
 		"/kas/v2/kas_public_key",
 		// HealthZ
@@ -189,6 +190,10 @@ func normalizeURL(o string, u *url.URL) string {
 	return ou.String()
 }
 
+func (a *Authentication) ExtendAuthzDefaultPolicy(policies [][]string) error {
+	return a.enforcer.ExtendDefaultPolicy(policies)
+}
+
 // verifyTokenHandler is a http handler that verifies the token
 func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -216,7 +221,6 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			u: normalizeURL(origin, r.URL),
 			m: r.Method,
 		}, r.Header["Dpop"])
-
 		if err != nil {
 			a.logger.WarnContext(r.Context(), "failed to validate token", slog.String("error", err.Error()))
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
@@ -322,9 +326,7 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 
 // checkToken is a helper function to verify the token.
 func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo receiverInfo, dpopHeader []string) (jwt.Token, context.Context, error) {
-	var (
-		tokenRaw string
-	)
+	var tokenRaw string
 
 	// If we don't get a DPoP/Bearer token type, we can't proceed
 	switch {
@@ -343,7 +345,6 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		jwt.WithIssuer(a.oidcConfiguration.Issuer),
 		jwt.WithAudience(a.oidcConfiguration.Audience),
 	)
-
 	if err != nil {
 		return nil, nil, err
 	}

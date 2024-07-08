@@ -131,7 +131,7 @@ func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest, logger logger.
 	}
 
 	// get dpop public key from context
-	dpopJWK := auth.GetJWKFromContext(ctx)
+	dpopJWK := auth.GetJWKFromContext(ctx, &logger)
 
 	var err error
 	var rbString string
@@ -225,10 +225,10 @@ func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byt
 	return &policy, nil
 }
 
-func getEntityInfo(ctx context.Context, logger logger.Logger) (*entityInfo, error) {
+func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, error) {
 	var info = new(entityInfo)
 
-	token := auth.GetAccessTokenFromContext(ctx)
+	token := auth.GetAccessTokenFromContext(ctx, logger)
 	if token == nil {
 		return nil, err401("missing access token")
 	}
@@ -244,7 +244,7 @@ func getEntityInfo(ctx context.Context, logger logger.Logger) (*entityInfo, erro
 		logger.WarnContext(ctx, "missing sub")
 	}
 
-	info.Token = auth.GetRawAccessTokenFromContext(ctx)
+	info.Token = auth.GetRawAccessTokenFromContext(ctx, logger)
 
 	return info, nil
 }
@@ -258,7 +258,7 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 		return nil, err
 	}
 
-	entityInfo, err := getEntityInfo(ctx, *p.Logger)
+	entityInfo, err := getEntityInfo(ctx, p.Logger)
 	if err != nil {
 		p.Logger.DebugContext(ctx, "no entity info", "err", err)
 		return nil, err

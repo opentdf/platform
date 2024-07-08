@@ -371,7 +371,7 @@ func Test_SignedRequestBody_When_Bad_Signature_Expect_Failure(t *testing.T) {
 
 func Test_GetEntityInfo_When_Missing_MD_Expect_Error(t *testing.T) {
 	ctx := context.Background()
-	_, err := getEntityInfo(ctx, *logger.CreateTestLogger())
+	_, err := getEntityInfo(ctx, logger.CreateTestLogger())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing")
 }
@@ -380,7 +380,7 @@ func Test_GetEntityInfo_When_Authorization_MD_Missing_Expect_Error(t *testing.T)
 	ctx := context.Background()
 	ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{"token": "test"}))
 
-	_, err := getEntityInfo(ctx, *logger.CreateTestLogger())
+	_, err := getEntityInfo(ctx, logger.CreateTestLogger())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing")
 }
@@ -389,7 +389,7 @@ func Test_GetEntityInfo_When_Authorization_MD_Invalid_Expect_Error(t *testing.T)
 	ctx := context.Background()
 	ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{"authorization": "pop test"}))
 
-	_, err := getEntityInfo(ctx, *logger.CreateTestLogger())
+	_, err := getEntityInfo(ctx, logger.CreateTestLogger())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing")
 }

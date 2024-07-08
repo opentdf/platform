@@ -105,6 +105,7 @@ enum SubjectMappingOperatorEnum {
   SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED = 0;
   SUBJECT_MAPPING_OPERATOR_ENUM_IN = 1;
   SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN = 2;
+  SUBJECT_MAPPING_OPERATOR_ENUM_CONTAINS = 3;
 }
 
 // buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
@@ -143,7 +144,7 @@ message SubjectMapping {
 
 /**
   A Condition defines a rule of <the value at the flattened 'selector value' location> <operator> <subject external values>
-    
+
   Example:  Subjects with a field selected by the flattened selector "'.division'" and a value of "Accounting" or "Marketing":
    {
      "subject_external_selector_value": "'.division'",

@@ -614,7 +614,8 @@
       "enum": [
         "SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED",
         "SUBJECT_MAPPING_OPERATOR_ENUM_IN",
-        "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN"
+        "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN",
+        "SUBJECT_MAPPING_OPERATOR_ENUM_CONTAINS"
       ],
       "default": "SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED",
       "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"

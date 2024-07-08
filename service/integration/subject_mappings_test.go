@@ -539,6 +539,31 @@ func (s *SubjectMappingsSuite) TestCreateSubjectConditionSet() {
 	s.NotNil(scs)
 }
 
+func (s *SubjectMappingsSuite) TestCreateSubjectConditionSetContains() {
+	newConditionSet := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: ".someField[1]",
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_CONTAINS,
+								SubjectExternalValues:        []string{"some_partial_value"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	scs, err := s.db.PolicyClient.CreateSubjectConditionSet(context.Background(), newConditionSet)
+	s.Require().NoError(err)
+	s.NotNil(scs)
+}
+
 func (s *SubjectMappingsSuite) TestGetSubjectConditionSet_ById() {
 	fixture := s.f.GetSubjectConditionSetKey("subject_condition_set1")
 

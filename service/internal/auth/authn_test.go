@@ -508,7 +508,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 		MinVersion: tls.VersionTLS12,
 	})
 	s.Require().NoError(err)
-	req.Header.Set("authorization", fmt.Sprintf("Bearer %s", signedTok))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", signedTok))
 	dpopTok, err := addingInterceptor.GetDPoPToken(server.URL+"/attributes", "GET", string(signedTok))
 	s.Require().NoError(err)
 	req.Header.Set("DPoP", dpopTok)

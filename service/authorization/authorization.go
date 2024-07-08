@@ -58,9 +58,10 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &authorization.AuthorizationService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			// default ERS endpoint
-			as := &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, logger: srp.Logger}
+			logger := srp.Logger
+			as := &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, logger: logger}
 			if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
-				slog.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
+				logger.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
 			}
 
 			authZCfg := Config{
@@ -74,9 +75,9 @@ func NewRegistration() serviceregistry.Registration {
 			}
 
 			config := clientcredentials.Config{ClientID: authZCfg.ClientID, ClientSecret: authZCfg.ClientSecret, TokenURL: authZCfg.TokenEndpoint}
-			slog.Debug("authorization service client config", slog.Any("config", config))
+			logger.Debug("authorization service client config", slog.Any("config", config))
 			newTokenSource := oauth2.ReuseTokenSourceWithExpiry(nil, config.TokenSource(context.Background()), tokenExpiryDelay)
-			slog.Debug("authorization service token source created", slog.Any("token_source", newTokenSource))
+			logger.Debug("authorization service token source created", slog.Any("token_source", newTokenSource))
 
 			as.ersURL = authZCfg.ERSURL
 			as.tokenSource = &newTokenSource
@@ -94,7 +95,7 @@ func NewRegistration() serviceregistry.Registration {
 
 // TODO: Not sure what we want to check here?
 func (as AuthorizationService) IsReady(ctx context.Context) error {
-	slog.DebugContext(ctx, "checking readiness of authorization service")
+	as.logger.DebugContext(ctx, "checking readiness of authorization service")
 	return nil
 }
 
@@ -127,7 +128,7 @@ func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *au
 	for _, tdr := range req.GetDecisionRequests() {
 		ecResp, err := as.sdk.EntityResoution.CreateEntityChainFromJwt(ctx, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: tdr.GetTokens()})
 		if err != nil {
-			slog.Error("Error calling ERS to get entity chains from jwts")
+			as.logger.Error("Error calling ERS to get entity chains from jwts")
 			return nil, err
 		}
 
@@ -139,8 +140,8 @@ func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *au
 		})
 	}
 
-	// slog.Debug("Calling GetDecisions from GetDecisionsByToken")
-	// slog.Debug("GetDecisions Input", "input", decisionsRequests)
+	// as.logger.Debug("Calling GetDecisions from GetDecisionsByToken")
+	// as.logger.Debug("GetDecisions Input", "input", decisionsRequests)
 
 	resp, err := as.GetDecisions(ctx, &authorization.GetDecisionsRequest{
 		DecisionRequests: decisionsRequests,
@@ -233,7 +234,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				entityAttrValues := make(map[string][]string)
 
 				if len(entities) == 0 || len(allPertinentFqnsRA.GetAttributeValueFqns()) == 0 {
-					slog.WarnContext(ctx, "Empty entity list and/or entity data attribute list")
+					as.logger.WarnContext(ctx, "Empty entity list and/or entity data attribute list")
 				} else {
 					ecEntitlements, err := retrieveEntitlements(ctx, &req, as)
 					if err != nil {
@@ -342,7 +343,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			for _, val := range attr.GetValues() {
 				fqn, err := fqnBuilder(ns, an, val.GetValue())
 				if err != nil {
-					slog.Error("Error building attribute fqn for ", "attr", attr, "value", val)
+					as.logger.Error("Error building attribute fqn for ", "attr", attr, "value", val)
 					return nil, err
 				}
 				attributeFqns = append(attributeFqns, fqn)
@@ -371,14 +372,14 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		// get the client auth token
 		authToken, err := (*as.tokenSource).Token()
 		if err != nil {
-			slog.Error("failed to get client auth token in GetEntitlements", slog.String("error", err.Error()))
+			as.logger.Error("failed to get client auth token in GetEntitlements", slog.String("error", err.Error()))
 			return nil, fmt.Errorf("failed to get client auth token in GetEntitlements: %w", err)
 		}
 		// OPA
 		in, err := entitlements.OpaInput(entity, subjectMappings, as.ersURL, authToken.AccessToken)
 		if err != nil {
-			slog.Error("failed to build OPA input", slog.Any("entity", entity), slog.String("error", err.Error()))
-			slog.Debug("authToken", "authToken", authToken) // only log token in debug mode
+			as.logger.Error("failed to build OPA input", slog.Any("entity", entity), slog.String("error", err.Error()))
+			as.logger.Debug("authToken", "authToken", authToken) // only log token in debug mode
 			return nil, fmt.Errorf("failed to build OPA input in GetEntitlements: %w", err)
 		}
 		as.logger.DebugContext(ctx, "entitlements", "entity_id", entity.GetId(), "input", fmt.Sprintf("%+v", in))

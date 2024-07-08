@@ -87,6 +87,7 @@ type CORSConfig struct {
 }
 
 type OpenTDFServer struct {
+	AuthN          *auth.Authentication
 	Mux            *runtime.ServeMux
 	HTTPServer     *http.Server
 	GRPCServer     *grpc.Server
@@ -148,6 +149,7 @@ func NewOpenTDFServer(config Config, logr *logger.Logger) (*OpenTDFServer, error
 	}
 
 	o := OpenTDFServer{
+		AuthN:         authN,
 		Mux:           mux,
 		HTTPServer:    httpServer,
 		GRPCServer:    grpcServer,

@@ -397,6 +397,7 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.At
 	opts := attributesSelectOptions{
 		withFqn:             true,
 		withAttributeValues: true,
+		withKeyAccessGrants: true,
 	}
 	sql, args, err := getAttributeSQL(id, opts)
 	if err != nil {

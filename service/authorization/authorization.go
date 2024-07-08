@@ -254,7 +254,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				}
 
 				// call access-pdp
-				accessPDP := access.NewPdp()
+				accessPDP := access.NewPdp(as.logger)
 				decisions, err := accessPDP.DetermineAccess(
 					ctx,
 					attrVals,

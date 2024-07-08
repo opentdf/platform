@@ -200,7 +200,11 @@ jobs:
       - name: create roundtrip test data and run tests
         run: go test ./service/rttests -v
       - name: owasp zap api check
-        
+        uses: zaproxy/action-api-scan@v0.7.0
+        with:
+          format: openapi
+          target: 'docs/openapi/kas/kas.swagger.json'
+          cmd_options: '-O localhost:8080'
 
   image:
     name: image build

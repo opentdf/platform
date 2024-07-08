@@ -36,17 +36,8 @@ func mockRetrieveEntitlements(ctx context.Context, _ *authorization.GetEntitleme
 	return &entitlementsResponse, nil
 }
 
-func createTestLogger() (*logger.Logger, error) {
-	logger, err := logger.NewLogger(logger.Config{Level: "debug", Output: "stdout", Type: "json"})
-	if err != nil {
-		return nil, err
-	}
-	return logger, nil
-}
-
 func Test_GetDecisionsAllOf_Pass(t *testing.T) {
-	logger, err := createTestLogger()
-	require.NoError(t, err)
+	logger := logger.CreateTestLogger()
 
 	retrieveAttributeDefinitions = mockRetrieveAttributeDefinitions
 	retrieveEntitlements = mockRetrieveEntitlements
@@ -172,8 +163,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 }
 
 func Test_GetDecisions_AllOf_Fail(t *testing.T) {
-	logger, err := createTestLogger()
-	require.NoError(t, err)
+	logger := logger.CreateTestLogger()
 
 	retrieveAttributeDefinitions = mockRetrieveAttributeDefinitions
 	retrieveEntitlements = mockRetrieveEntitlements

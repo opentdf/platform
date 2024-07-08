@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -64,6 +65,14 @@ const authPrivClientJwt = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI0O
 const implicitPrivClientJwt = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI0OXRmSjByRUo4c0YzUjJ3Yi05eENHVXhYUEQ4RTZldmNsRG1hZ05EM3lBIn0.eyJleHAiOjE3MTUwOTM4MzgsImlhdCI6MTcxNTA5MjkzOCwiYXV0aF90aW1lIjoxNzE1MDkyOTM4LCJqdGkiOiI0ZWIzY2I1OS05ZDRhLTQwNjctYmI0YS1iMjNjNDVhMDIyYTIiLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojg4ODgvYXV0aC9yZWFsbXMvb3BlbnRkZiIsImF1ZCI6WyJodHRwOi8vbG9jYWxob3N0Ojg4ODgiLCJyZWFsbS1tYW5hZ2VtZW50IiwiYWNjb3VudCJdLCJzdWIiOiIyZTZjMTU4MC1jZmQzLTQzYWItYjE3My1mNmMzYmY4ZmY0ZTIiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJ0ZGYtZW50aXR5LXJlc29sdXRpb24iLCJzZXNzaW9uX3N0YXRlIjoiYmE1OWFmOTgtNmE3YS00YjRhLTliOTItODU1M2ZkM2EwMTNjIiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6W10sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvcGVudGRmLW9yZy1hZG1pbiIsImRlZmF1bHQtcm9sZXMtb3BlbnRkZiIsIm9mZmxpbmVfYWNjZXNzIiwidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJ0ZGYtZW50aXR5LXJlc29sdXRpb24iOnsicm9sZXMiOlsiZW50aXR5LXJlc29sdXRpb24tdGVzdC1yb2xlIl19LCJyZWFsbS1tYW5hZ2VtZW50Ijp7InJvbGVzIjpbInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJxdWVyeS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIiwicXVlcnktdXNlcnMiXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJzaWQiOiJiYTU5YWY5OC02YTdhLTRiNGEtOWI5Mi04NTUzZmQzYTAxM2MiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsIm5hbWUiOiJzYW1wbGUgdXNlciIsInByZWZlcnJlZF91c2VybmFtZSI6InNhbXBsZS11c2VyIiwiZ2l2ZW5fbmFtZSI6InNhbXBsZSIsImZhbWlseV9uYW1lIjoidXNlciIsImVtYWlsIjoic2FtcGxldXNlckBzYW1wbGUuY29tIn0.KQasyQ-f9KBRWRDXg4NikiHlragVil1nlYTQ8czPKku_uncpHZb7PMJhyPrwy72mwC10EJMpBIWGDVRfRjBRHxdzIbjozcGg3vusX748NMiDSlF4KoB5Fz-qExszcszEP5Qm_fvMRFcW7m9RPW9St1aaHcjAOW5Vee9ACJI56YffgqrTn1xp7ha2Z2X8d_NJfJOFdP3cqgxjR7DV5RezkDLRPfxHwJLk3anavSuDScXIO1w1C6AlTUQFVQUEX0DKZIt-RbzKcd6HWBfyDvHUSlfodEI_diWQIL1hEfrBXV6ThuhTqhrghHyIbb2e-zoC20arjMAK0Tr7hMAY4acxgQ"
 const implicitPubClientJwt = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI0OXRmSjByRUo4c0YzUjJ3Yi05eENHVXhYUEQ4RTZldmNsRG1hZ05EM3lBIn0.eyJleHAiOjE3MTUxNTE0MTMsImlhdCI6MTcxNTE1MDUxMywiYXV0aF90aW1lIjoxNzE1MTUwNTEzLCJqdGkiOiJlYTRmOGZiYS01ZjljLTRiMzQtYmU1ZC1jNTk2ZGI4YzNlYzkiLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojg4ODgvYXV0aC9yZWFsbXMvb3BlbnRkZiIsImF1ZCI6WyJodHRwOi8vbG9jYWxob3N0Ojg4ODgiLCJ0ZGYtZW50aXR5LXJlc29sdXRpb24iLCJyZWFsbS1tYW5hZ2VtZW50IiwiYWNjb3VudCJdLCJzdWIiOiIyZTZjMTU4MC1jZmQzLTQzYWItYjE3My1mNmMzYmY4ZmY0ZTIiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJ0ZGYtZW50aXR5LXJlc29sdXRpb24tcHVibGljIiwic2Vzc2lvbl9zdGF0ZSI6ImRlM2U2ZDc1LTI3ODItNDg4NS1iYzU4LTU0MmJmYzEzNWNkNSIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOltdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsib3BlbnRkZi1vcmctYWRtaW4iLCJkZWZhdWx0LXJvbGVzLW9wZW50ZGYiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsidGRmLWVudGl0eS1yZXNvbHV0aW9uIjp7InJvbGVzIjpbImVudGl0eS1yZXNvbHV0aW9uLXRlc3Qtcm9sZSJdfSwicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LXVzZXJzIiwidmlldy1jbGllbnRzIiwicXVlcnktY2xpZW50cyIsInF1ZXJ5LWdyb3VwcyIsInF1ZXJ5LXVzZXJzIl19LCJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIiwic2lkIjoiZGUzZTZkNzUtMjc4Mi00ODg1LWJjNTgtNTQyYmZjMTM1Y2Q1IiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJuYW1lIjoic2FtcGxlIHVzZXIiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzYW1wbGUtdXNlciIsImdpdmVuX25hbWUiOiJzYW1wbGUiLCJmYW1pbHlfbmFtZSI6InVzZXIiLCJlbWFpbCI6InNhbXBsZXVzZXJAc2FtcGxlLmNvbSJ9.jH60V3ZkuiN6cuEmbRTspnxyOvQs_wNkgoBw9IEZ8E8yGzXDayouduxEd_O-DG6vjT4KPDxGC2lA0V4i-ke7KChkZhRYLkaSuqt2hTlKoLXotepJPq8GBlXhWjCmFMqaXEB8lMAlAEoCT7CWmg03eTBGzwynj0S4rjMuOj6TLf3HIIN0DP7bgtG9uIc0Ah_mTVJ4L6Y5yjv6LC9bMZ7YNpUIkFn-CZTudquxHkLYgxHgaRAfELBvmS5xn0pTrpIfZSdYQK7hGhjhm9fUg4J06Pg6QW-xZe1U7awyNl7pOeeGQ2lVTo1CWrAlOz9lAmzKzAwQakEOMXFxAjJeHsXTWg"
 const tokenExchangeJwt = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiIsImtpZCI6ImE1NThkYzg0NzYzNDVjY2QyZWFhNjEzNjg4YmI2YTNkIn0.eyJleHAiOjE3MTU3OTA5MTAsImlhdCI6MTcxNTc5MDYxMCwianRpIjoiNjEyOTI2NzQtMDhmOS00ZmQ1LTk3Y2MtZDg3M2RhODRkZjllIiwiaXNzIjoiaHR0cHM6Ly9sb2NhbC1kc3AudmlydHJ1LmNvbTo4NDQzL2F1dGgvcmVhbG1zL29wZW50ZGYiLCJhdWQiOlsiaHR0cDovL2xvY2FsaG9zdDo4MDgwIiwiYWNjb3VudCIsIm9wZW50ZGYtc2RrIl0sInN1YiI6ImU2ZWI0YWU1LThjMDUtNDI3NC04ZmExLTFmMGY1ZmJjY2JkZiIsInR5cCI6IkJlYXJlciIsImF6cCI6Im9wZW50ZGYiLCJzZXNzaW9uX3N0YXRlIjoiZTQ0YzMxNWMtNjk5Yy00NGFkLTk2NDUtNmRkMmIyMjgzN2JlIiwiYWNyIjoiMSIsInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvcGVudGRmLXJlYWRvbmx5IiwiZGVmYXVsdC1yb2xlcy1vcGVudGRmIiwib2ZmbGluZV9hY2Nlc3MiLCJ1bWFfYXV0aG9yaXphdGlvbiJdfSwicmVzb3VyY2VfYWNjZXNzIjp7ImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJzaWQiOiJlNDRjMzE1Yy02OTljLTQ0YWQtOTY0NS02ZGQyYjIyODM3YmUiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsInByZWZlcnJlZF91c2VybmFtZSI6InNlcnZpY2UtYWNjb3VudC1vcGVudGRmLXNkayJ9.dmAulsUNfdPXVyWmVPsbGqaztshyHTD-m2hh1l2hmhwuNISJZjON0e1kXNxYXRLABr_PJzIpGYQCXz98yxOyiw"
+
+func testLogger(t *testing.T) *logger.Logger {
+	logger, err := logger.NewLogger(logger.Config{Level: "debug", Output: "stdout", Type: "json"})
+	if err != nil {
+		t.Error()
+	}
+	return logger
+}
 
 func testKeycloakConfig(server *httptest.Server) keycloak.KeycloakConfig {
 	return keycloak.KeycloakConfig{
@@ -131,7 +140,7 @@ func Test_KCEntityResolutionByClientId(t *testing.T) {
 	defer server.Close()
 	var kcconfig = testKeycloakConfig(server)
 
-	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig, testLogger(t))
 
 	require.NoError(t, reserr)
 	_ = json.NewEncoder(os.Stdout).Encode(&resp)
@@ -158,7 +167,7 @@ func Test_KCEntityResolutionByEmail(t *testing.T) {
 	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig, testLogger(t))
 
 	require.NoError(t, reserr)
 
@@ -196,7 +205,7 @@ func Test_KCEntityResolutionByUsername(t *testing.T) {
 	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig, testLogger(t))
 
 	require.NoError(t, reserr)
 
@@ -238,7 +247,7 @@ func Test_KCEntityResolutionByGroupEmail(t *testing.T) {
 	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig, testLogger(t))
 
 	require.NoError(t, reserr)
 
@@ -276,7 +285,7 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig, testLogger(t))
 
 	require.Error(t, reserr)
 	assert.Equal(t, &entityresolution.ResolveEntitiesResponse{}, &resp)
@@ -295,7 +304,7 @@ func Test_JwtClientAndUsernameClientCredentials(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: clientCredentialsJwt}}
 
-	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, testLogger(t))
 
 	require.NoError(t, reserr)
 
@@ -314,7 +323,7 @@ func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: passwordPubClientJwt}}
 
-	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, testLogger(t))
 
 	require.NoError(t, reserr)
 
@@ -334,7 +343,7 @@ func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: passwordPrivClientJwt}}
 
-	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, testLogger(t))
 
 	require.NoError(t, reserr)
 
@@ -354,7 +363,7 @@ func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: authPubClientJwt}}
 
-	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, testLogger(t))
 
 	require.NoError(t, reserr)
 
@@ -374,7 +383,7 @@ func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: authPrivClientJwt}}
 
-	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, testLogger(t))
 
 	require.NoError(t, reserr)
 
@@ -394,7 +403,7 @@ func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: implicitPubClientJwt}}
 
-	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, testLogger(t))
 
 	require.NoError(t, reserr)
 
@@ -414,7 +423,7 @@ func Test_JwtClientAndUsernameImplicitPriv(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: implicitPrivClientJwt}}
 
-	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, testLogger(t))
 
 	require.NoError(t, reserr)
 
@@ -437,7 +446,7 @@ func Test_JwtClientAndClientTokenExchange(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: tokenExchangeJwt}}
 
-	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, testLogger(t))
 
 	require.NoError(t, reserr)
 
@@ -460,7 +469,7 @@ func Test_JwtMultiple(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: tokenExchangeJwt, Id: "tok1"}, {Jwt: authPrivClientJwt, Id: "tok2"}}
 
-	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, testLogger(t))
 
 	require.NoError(t, reserr)
 

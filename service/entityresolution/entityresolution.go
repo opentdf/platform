@@ -40,12 +40,12 @@ func NewRegistration() serviceregistry.Registration {
 
 func (s EntityResolutionService) ResolveEntities(ctx context.Context, req *entityresolution.ResolveEntitiesRequest) (*entityresolution.ResolveEntitiesResponse, error) {
 	s.logger.Debug("request", "", req)
-	resp, err := keycloak.EntityResolution(ctx, req, s.idpConfig)
+	resp, err := keycloak.EntityResolution(ctx, req, s.idpConfig, s.logger)
 	return &resp, err
 }
 
 func (s EntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *entityresolution.CreateEntityChainFromJwtRequest) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
 	s.logger.Debug("request", "", req)
-	resp, err := keycloak.CreateEntityChainFromJwt(ctx, req, s.idpConfig)
+	resp, err := keycloak.CreateEntityChainFromJwt(ctx, req, s.idpConfig, s.logger)
 	return &resp, err
 }

@@ -66,8 +66,8 @@ func getAccessTokenRequest(tokenEndpoint, dpopNonce string, scopes []string, cli
 		return nil, err
 	}
 	req.Header.Set("dpop", dpop)
-	req.Header.Set("accept", "application/json")
-	req.Header.Set("content-type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	formData := url.Values{}
 	formData.Set("grant_type", "client_credentials")
@@ -298,7 +298,7 @@ func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce strin
 		return nil, err
 	}
 	req.Header.Set("dpop", dpop)
-	req.Header.Set("accept", "application/json")
+	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	err = setClientAuth(clientCredentials, &data, req, tokenEndpoint)
 	if err != nil {
@@ -345,7 +345,7 @@ func getCertExchangeRequest(ctx context.Context, tokenEndpoint string, clientCre
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("accept", "application/json")
+	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("dpop", dpop)
 	if err = setClientAuth(clientCredentials, &data, req, tokenEndpoint); err != nil {

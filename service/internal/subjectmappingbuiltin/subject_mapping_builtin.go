@@ -239,7 +239,7 @@ func EvaluateCondition(condition *policy.Condition, entity flattening.Flattened)
 			for _, mappedValue := range mappedValues {
 				mappedValueStr := fmt.Sprintf("%v", mappedValue)
 				// slog.Debug("comparing values: ", "possible=", possibleValue, "mapped=", mappedValueStr)
-				if strings.Contains(possibleValue, mappedValueStr) {
+				if strings.Contains(mappedValueStr, possibleValue) {
 					result = true
 					break
 				}

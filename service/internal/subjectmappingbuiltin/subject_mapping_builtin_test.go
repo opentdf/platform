@@ -90,11 +90,18 @@ func Test_EvaluateConditionNOTINFalse(t *testing.T) {
 	assert.False(t, res)
 }
 
-// evaluate condition CONTAINS
+// evaluate condition CONTAINS both in list
 var containsCondition1 = policy.Condition{
 	SubjectExternalSelectorValue: ".attributes.testing[]",
 	Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS,
 	SubjectExternalValues:        []string{"option"},
+}
+
+// evaluate condition CONTAINS one in list which is 4
+var containsCondition4 = policy.Condition{
+	SubjectExternalSelectorValue: ".attributes.testing[]",
+	Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS,
+	SubjectExternalValues:        []string{"4"},
 }
 
 // evaluate condition CONTAINS
@@ -104,8 +111,13 @@ var containsCondition2 = policy.Condition{
 	SubjectExternalValues:        []string{"not-an-option"},
 }
 
-func Test_EvaluateConditionCONTAINSTrue(t *testing.T) {
+func Test_EvaluateConditionCONTAINSAllTrue(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateCondition(&containsCondition1, flattenedEntity2)
+	require.NoError(t, err)
+	assert.True(t, res)
+}
+func Test_EvaluateConditionCONTAINSAnyTrue(t *testing.T) {
+	res, err := subjectmappingbuiltin.EvaluateCondition(&containsCondition4, flattenedEntity3)
 	require.NoError(t, err)
 	assert.True(t, res)
 }

@@ -549,7 +549,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectConditionSetContains() {
 						Conditions: []*policy.Condition{
 							{
 								SubjectExternalSelectorValue: ".someField[1]",
-								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_CONTAINS,
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS,
 								SubjectExternalValues:        []string{"some_partial_value"},
 							},
 						},

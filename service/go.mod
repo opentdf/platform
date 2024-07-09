@@ -10,6 +10,7 @@ require (
 	github.com/casbin/casbin/v2 v2.84.0
 	github.com/creasty/defaults v1.7.0
 	github.com/go-chi/cors v1.2.1
+	github.com/go-playground/validator/v10 v10.22.0
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1
@@ -59,7 +60,6 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.22.0 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/tidwall/gjson v1.17.1 // indirect

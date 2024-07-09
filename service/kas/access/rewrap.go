@@ -15,7 +15,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 
@@ -276,14 +275,14 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 	if body.Algorithm == "ec:secp256r1" {
 		rsp, err := p.nanoTDFRewrap(ctx, body, entityInfo)
 		if err != nil {
-			slog.ErrorContext(ctx, "rewrap nano", "err", err)
+			p.Logger.ErrorContext(ctx, "rewrap nano", "err", err)
 		}
 		p.Logger.DebugContext(ctx, "rewrap nano", "rsp", rsp)
 		return rsp, err
 	}
 	rsp, err := p.tdf3Rewrap(ctx, body, entityInfo)
 	if err != nil {
-		slog.ErrorContext(ctx, "rewrap tdf3", "err", err)
+		p.Logger.ErrorContext(ctx, "rewrap tdf3", "err", err)
 	}
 	return rsp, err
 }

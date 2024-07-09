@@ -15,6 +15,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -191,7 +192,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 	return sb.GroupBy(g...)
 }
 
-func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.Attribute, error) {
+func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions, logger *logger.Logger) (*policy.Attribute, error) {
 	if opts.withKeyAccessGrants {
 		opts.withAttributeValues = true
 	}
@@ -230,7 +231,7 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 	m := &common.Metadata{}
 	if metadataJSON != nil {
 		if err := protojson.Unmarshal(metadataJSON, m); err != nil {
-			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
+			logger.Error("could not unmarshal metadata", slog.String("error", err.Error()))
 			return nil, err
 		}
 	}
@@ -238,7 +239,7 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 	if valuesJSON != nil {
 		v, err = attributesValuesProtojson(valuesJSON, fqn)
 		if err != nil {
-			slog.Error("could not unmarshal values", slog.String("error", err.Error()))
+			logger.Error("could not unmarshal values", slog.String("error", err.Error()))
 			return nil, err
 		}
 	}
@@ -246,7 +247,7 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 	if grants != nil {
 		k, err = db.KeyAccessServerProtoJSON(grants)
 		if err != nil {
-			slog.Error("could not unmarshal key access grants", slog.String("error", err.Error()))
+			logger.Error("could not unmarshal key access grants", slog.String("error", err.Error()))
 			return nil, err
 		}
 	}
@@ -282,7 +283,7 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 			}
 			// If all values are active, the order should be correct and the number of values should match the count of ordered ids.
 			if mismatchedCount && !value.GetActive().GetValue() {
-				slog.Warn("attribute's values order and number of values do not match - DB is in potentially bad state", slog.String("attribute definition id", id), slog.Any("expected values order", valuesOrder), slog.Any("retrieved values", v))
+				logger.Warn("attribute's values order and number of values do not match - DB is in potentially bad state", slog.String("attribute definition id", id), slog.Any("expected values order", valuesOrder), slog.Any("retrieved values", v))
 			}
 		}
 	}
@@ -291,10 +292,10 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions) (*policy.A
 	return attr, nil
 }
 
-func attributesHydrateList(rows pgx.Rows, opts attributesSelectOptions) ([]*policy.Attribute, error) {
+func attributesHydrateList(rows pgx.Rows, opts attributesSelectOptions, logger *logger.Logger) ([]*policy.Attribute, error) {
 	list := make([]*policy.Attribute, 0)
 	for rows.Next() {
-		attr, err := attributesHydrateItem(rows, opts)
+		attr, err := attributesHydrateItem(rows, opts, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -340,7 +341,7 @@ func (c PolicyDBClient) ListAllAttributes(ctx context.Context, state string, nam
 	if err != nil {
 		return nil, err
 	}
-	slog.Debug("list all attributes", slog.String("sql", sql), slog.Any("args", args))
+	c.logger.Debug("list all attributes", slog.String("sql", sql), slog.Any("args", args))
 
 	rows, err := c.Query(ctx, sql, args)
 	if err != nil {
@@ -348,9 +349,9 @@ func (c PolicyDBClient) ListAllAttributes(ctx context.Context, state string, nam
 	}
 	defer rows.Close()
 
-	list, err := attributesHydrateList(rows, opts)
+	list, err := attributesHydrateList(rows, opts, c.logger)
 	if err != nil {
-		slog.Error("could not hydrate list", slog.String("error", err.Error()))
+		c.logger.Error("could not hydrate list", slog.String("error", err.Error()))
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
@@ -376,11 +377,11 @@ func (c PolicyDBClient) ListAllAttributesWithout(ctx context.Context, state stri
 	}
 	defer rows.Close()
 
-	list, err := attributesHydrateList(rows, opts)
+	list, err := attributesHydrateList(rows, opts, c.logger)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-	slog.Debug("list", slog.Any("list", list))
+	c.logger.Debug("list", slog.Any("list", list))
 
 	return list, nil
 }
@@ -409,9 +410,9 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.At
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	attribute, err := attributesHydrateItem(row, opts)
+	attribute, err := attributesHydrateItem(row, opts, c.logger)
 	if err != nil {
-		slog.Error("could not hydrate item", slog.String("attributeId", id), slog.String("error", err.Error()))
+		c.logger.Error("could not hydrate item", slog.String("attributeId", id), slog.String("error", err.Error()))
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
@@ -448,9 +449,9 @@ func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	attribute, err := attributesHydrateItem(row, opts)
+	attribute, err := attributesHydrateItem(row, opts, c.logger)
 	if err != nil {
-		slog.Error("could not hydrate item", slog.String("fqn", fqn), slog.String("error", err.Error()))
+		c.logger.Error("could not hydrate item", slog.String("fqn", fqn), slog.String("error", err.Error()))
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 	return attribute, nil
@@ -477,7 +478,7 @@ func (c PolicyDBClient) GetAttributesByNamespace(ctx context.Context, namespaceI
 	}
 	defer rows.Close()
 
-	list, err := attributesHydrateList(rows, opts)
+	list, err := attributesHydrateList(rows, opts, c.logger)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -515,7 +516,7 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err = unmarshalMetadata(metadataJSON, metadata); err != nil {
+	if err = unmarshalMetadata(metadataJSON, metadata, c.logger); err != nil {
 		return nil, err
 	}
 
@@ -533,11 +534,11 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	// Update the FQNs
 	namespaceID := r.GetNamespaceId()
 	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id})
-	slog.Debug("upserted fqn with new attribute definition", slog.Any("fqn", fqn))
+	c.logger.Debug("upserted fqn with new attribute definition", slog.Any("fqn", fqn))
 
 	for _, v := range values {
 		fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id, valueID: v.GetId()})
-		slog.Debug("upserted fqn with new attribute value on new definition create", slog.Any("fqn", fqn))
+		c.logger.Debug("upserted fqn with new attribute value on new definition create", slog.Any("fqn", fqn))
 	}
 
 	a := &policy.Attribute{
@@ -621,11 +622,11 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 	if r.GetName() != "" {
 		namespaceID := before.GetNamespace().GetId()
 		fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id})
-		slog.Debug("upserted attribute fqn with new definition name", slog.Any("fqn", fqn))
+		c.logger.Debug("upserted attribute fqn with new definition name", slog.Any("fqn", fqn))
 		if len(before.GetValues()) > 0 {
 			for _, v := range before.GetValues() {
 				fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id, valueID: v.GetId()})
-				slog.Debug("upserted attribute value fqn with new definition name", slog.Any("fqn", fqn))
+				c.logger.Debug("upserted attribute value fqn with new definition name", slog.Any("fqn", fqn))
 			}
 		}
 	}

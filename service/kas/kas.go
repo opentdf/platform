@@ -45,7 +45,7 @@ func NewRegistration() serviceregistry.Registration {
 						kid = srp.OTDF.CryptoProvider.FindKID(alg)
 					}
 					if kid == "" {
-						slog.Warn("no known key for alg", "algorithm", alg)
+						srp.Logger.Warn("no known key for alg", "algorithm", alg)
 						return
 					}
 					kasCfg.Keyring = append(kasCfg.Keyring, access.CurrentKeyFor{
@@ -73,7 +73,7 @@ func NewRegistration() serviceregistry.Registration {
 			}
 
 			if err := srp.RegisterReadinessCheck("kas", p.IsReady); err != nil {
-				slog.Error("failed to register kas readiness check", slog.String("error", err.Error()))
+				srp.Logger.Error("failed to register kas readiness check", slog.String("error", err.Error()))
 			}
 
 			return &p, func(ctx context.Context, mux *runtime.ServeMux, server any) error {

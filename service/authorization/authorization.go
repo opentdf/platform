@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/creasty/defaults"
+	"github.com/go-playground/validator/v10"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-policy-agent/opa/rego"
@@ -43,13 +44,13 @@ type AuthorizationService struct { //nolint:revive // AuthorizationService is a 
 
 type Config struct {
 	// Entity Resolution Service URL
-	ERSURL string `mapstructure:"ersurl" default:"http://localhost:8080/entityresolution/resolve"`
+	ERSURL string `mapstructure:"ersurl" validate:"required,http_url"`
 	// OAuth Client ID
-	ClientID string `mapstructure:"clientid" default:"tdf-authorization-svc"`
+	ClientID string `mapstructure:"clientid" validate:"required"`
 	// OAuth Client secret
-	ClientSecret string `mapstructure:"clientsecret" default:"secret"`
+	ClientSecret string `mapstructure:"clientsecret" validate:"required"`
 	// OAuth token endpoint
-	TokenEndpoint string `mapstructure:"tokenendpoint" default:"http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"`
+	TokenEndpoint string `mapstructure:"tokenendpoint" validate:"required,http_url"`
 	// Custom Rego Policy To Load
 	Rego CustomRego `mapstructure:"rego"`
 }
@@ -79,13 +80,26 @@ func NewRegistration() serviceregistry.Registration {
 				slog.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
 			}
 
-			// Load Defaults
 			if err := defaults.Set(authZCfg); err != nil {
 				panic(fmt.Errorf("failed to set defaults for authorization service config: %w", err))
 			}
 
 			if err := mapstructure.Decode(srp.Config.ExtraProps, &authZCfg); err != nil {
 				panic(fmt.Errorf("invalid auth svc cfg [%v] %w", srp.Config.ExtraProps, err))
+			}
+
+			// Validate Config
+			validate := validator.New(validator.WithRequiredStructEnabled())
+			if err := validate.Struct(authZCfg); err != nil {
+				if _, ok := err.(*validator.InvalidValidationError); ok {
+					slog.Error("error validating authorization service config", slog.String("error", err.Error()))
+					panic(fmt.Errorf("error validating authorization service config: %w", err))
+				}
+
+				for _, err := range err.(validator.ValidationErrors) {
+					slog.Error("error validating authorization service config", slog.String("error", err.Error()))
+					panic(fmt.Errorf("error validating authorization service config: %w", err))
+				}
 			}
 
 			slog.Debug("authorization service config", slog.Any("config", authZCfg))

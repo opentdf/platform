@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
+	"slices"
 	"strings"
 
 	"github.com/Nerzal/gocloak/v13"
@@ -14,6 +16,7 @@ import (
 	"github.com/opentdf/platform/service/internal/logger"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -28,12 +31,18 @@ const UsernameConditionalSelector = "client_id"
 const serviceAccountUsernamePrefix = "service-account-"
 
 type KeycloakConfig struct {
-	URL            string `json:"url"`
-	Realm          string `json:"realm"`
-	ClientID       string `json:"clientid"`
-	ClientSecret   string `json:"clientsecret"`
-	LegacyKeycloak bool   `json:"legacykeycloak" default:"false"`
-	SubGroups      bool   `json:"subgroups" default:"false"`
+	URL                 string              `json:"url"`
+	Realm               string              `json:"realm"`
+	ClientID            string              `json:"clientid"`
+	ClientSecret        string              `json:"clientsecret"`
+	LegacyKeycloak      bool                `json:"legacykeycloak" default:"false"`
+	SubGroups           bool                `json:"subgroups" default:"false"`
+	UnknownEntityConfig UnknownEntityConfig `json:"unknownentities" default:"false"`
+}
+
+type UnknownEntityConfig struct {
+	Enabled     bool     `json:"enabled"`
+	EntityTypes []string `json:"entitytypes"`
 }
 
 type KeyCloakConnector struct {
@@ -108,6 +117,14 @@ func EntityResolution(ctx context.Context,
 				}
 				jsonEntities = append(jsonEntities, mystruct)
 			}
+			if len(clients) == 0 {
+				// convert entity to json
+				entityStruct, err := entityToStructPb(ident)
+				if err != nil {
+					return entityresolution.ResolveEntitiesResponse{}, err
+				}
+				jsonEntities = append(jsonEntities, &entityStruct)
+			}
 			resolvedEntities = append(
 				resolvedEntities,
 				&entityresolution.EntityRepresentation{
@@ -124,6 +141,7 @@ func EntityResolution(ctx context.Context,
 			getUserParams = gocloak.GetUsersParams{Username: func() *string { t := ident.GetUserName(); return &t }(), Exact: &exactMatch}
 		}
 
+		var jsonEntities []*structpb.Struct
 		users, err := connector.client.GetUsers(ctx, connector.token.AccessToken, kcConfig.Realm, getUserParams)
 		switch {
 		case err != nil:
@@ -177,12 +195,30 @@ func EntityResolution(ctx context.Context,
 						entityNotFoundErr = entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrTextGetRetrievalFailed, Entity: ident.String()}
 					}
 					logger.Error(entityNotFoundErr.String())
-					return entityresolution.ResolveEntitiesResponse{}, errors.New(entityNotFoundErr.String())
+					if kcConfig.UnknownEntityConfig.Enabled &&
+						(slices.Contains(kcConfig.UnknownEntityConfig.EntityTypes, "emailAddress") ||
+							slices.Contains(kcConfig.UnknownEntityConfig.EntityTypes, "userName")) {
+						// user not found -- add json entity to resp instead
+						entityStruct, err := entityToStructPb(ident)
+						if err != nil {
+							return entityresolution.ResolveEntitiesResponse{}, err
+						}
+						jsonEntities = append(jsonEntities, &entityStruct)
+					} else {
+						return entityresolution.ResolveEntitiesResponse{}, status.Error(codes.Code(entityNotFoundErr.Code), entityNotFoundErr.Message)
+					}
 				}
+			} else if (ident.GetUserName() != "") && kcConfig.UnknownEntityConfig.Enabled && slices.Contains(kcConfig.UnknownEntityConfig.EntityTypes, "userName") {
+				// user not found -- add json entity to resp instead
+				entityStruct, err := entityToStructPb(ident)
+				if err != nil {
+					return entityresolution.ResolveEntitiesResponse{}, err
+				}
+				jsonEntities = append(jsonEntities, &entityStruct)
 			}
+
 		}
 
-		var jsonEntities []*structpb.Struct
 		for _, er := range keycloakEntities {
 			json, err := typeToGenericJSONMap(er, logger)
 			if err != nil {
@@ -367,4 +403,21 @@ func getServiceAccountClient(ctx context.Context, username string, kcConfig Keyc
 	}
 
 	return "", nil
+}
+
+func entityToStructPb(ident *authorization.Entity) (structpb.Struct, error) {
+	entityBytes, err := protojson.Marshal(ident)
+	if err != nil {
+		slog.Error(err.Error())
+		return structpb.Struct{},
+			status.Error(codes.Internal, ErrTextCreationFailed)
+	}
+	var entityStruct structpb.Struct
+	err = entityStruct.UnmarshalJSON(entityBytes)
+	if err != nil {
+		slog.Error("Error making struct!", "error", err)
+		return structpb.Struct{},
+			status.Error(codes.Internal, ErrTextCreationFailed)
+	}
+	return entityStruct, nil
 }

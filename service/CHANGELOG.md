@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.10](https://github.com/opentdf/platform/compare/service/v0.4.9...service/v0.4.10) (2024-07-09)
+
+
+### Features
+
+* **core:** CONTAINS SubjectMapping Operator ([#1109](https://github.com/opentdf/platform/issues/1109)) ([65cd4af](https://github.com/opentdf/platform/commit/65cd4af366d2d6d17ad72157d5d4d31f6620cc1f))
+* **core:** extend authz policy ([#1105](https://github.com/opentdf/platform/issues/1105)) ([b6bf259](https://github.com/opentdf/platform/commit/b6bf259dd20ee02d4f365722f83194d174869e3f)), closes [#1104](https://github.com/opentdf/platform/issues/1104)
+
+
+### Bug Fixes
+
+* **authz:** move opa out of startup call ([#1048](https://github.com/opentdf/platform/issues/1048)) ([3a0e71a](https://github.com/opentdf/platform/commit/3a0e71a903da5de38b1b5aa95b471cc638814c2e))
+* **core:** Autobump service ([#1119](https://github.com/opentdf/platform/issues/1119)) ([bce17e0](https://github.com/opentdf/platform/commit/bce17e0bcd734c52d1cda5c8aca9d842d870dabd))
+* **policy:** ensure get requests of attributes and values contain any KAS grants ([#1101](https://github.com/opentdf/platform/issues/1101)) ([87172c9](https://github.com/opentdf/platform/commit/87172c9e4198448b74a310025070848e771bf425))
+
 ## [0.4.9](https://github.com/opentdf/platform/compare/service/v0.4.8...service/v0.4.9) (2024-07-03)
 
 

@@ -21,9 +21,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 'Setup Go'
-        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491
+        uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
         with:
-          go-version: '1.22.2'
+          go-version: '1.22.5'
           check-latest: false
           cache-dependency-path: |
             service/go.sum
@@ -38,7 +38,7 @@ jobs:
         run: go tool cover -func=coverage.out
 
       - name: 'Archive Golang Test Results'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: code-coverage-report
           path: coverage.*
@@ -59,12 +59,12 @@ jobs:
           fetch-depth: 0
 
       - name: 'Download Code Coverage Report'
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: code-coverage-report
 
       - name: 'SonarCloud Scan'
-        uses: SonarSource/sonarcloud-github-action@49e6cd3b187936a73b8280d59ffd9da69df63ec9 #v2.1.1
+        uses: SonarSource/sonarcloud-github-action@4006f663ecaf1f8093e8e4abb9227f6041f52216 #v2.2.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

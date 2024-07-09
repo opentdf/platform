@@ -26,6 +26,7 @@ type KeyAccess struct {
 	WrappedKey        string `json:"wrappedKey"`
 	PolicyBinding     string `json:"policyBinding"`
 	EncryptedMetadata string `json:"encryptedMetadata,omitempty"`
+	KID               string `json:"kid,omitempty"`
 }
 
 type Method struct {

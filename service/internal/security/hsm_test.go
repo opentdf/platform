@@ -1,3 +1,5 @@
+//go:build opentdf.hsm
+
 package security
 
 import (
@@ -49,7 +51,7 @@ func hsmInitSlot() {
 
 func TestNewWithoutPIN(t *testing.T) {
 	var c HSMConfig
-	s, err := New(c.WithLabel("dev-token"))
+	s, err := NewHSM(c.WithLabel("dev-token"))
 	maybeSkip(t, err)
 	var perr pkcs11.Error
 	if errors.As(err, &perr) {
@@ -62,7 +64,7 @@ func TestNewWithoutPIN(t *testing.T) {
 
 func TestNewWithIncorrectPIN(t *testing.T) {
 	var c HSMConfig
-	s, err := New(c.WithLabel("dev-token").WithPIN("1234567"))
+	s, err := NewHSM(c.WithLabel("dev-token").WithPIN("1234567"))
 	maybeSkip(t, err)
 	var perr pkcs11.Error
 	if errors.As(err, &perr) {
@@ -106,7 +108,7 @@ func TestDecryptOAEPUnsupportedRSAFailure(t *testing.T) {
 		sh:  sessionHandle,
 	}
 
-	decrypted, err := session.RSADecrypt(crypto.BLAKE2b_384, "unknown", "sample label", []byte("sample ciphertext"))
+	decrypted, err := session.RSADecrypt(crypto.BLAKE2b_384, "", "sample label", []byte("sample ciphertext"))
 
 	t.Log(err)
 	t.Log(decrypted)

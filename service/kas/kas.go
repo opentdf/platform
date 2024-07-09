@@ -3,11 +3,14 @@ package kas
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"strings"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/mitchellh/mapstructure"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/kas/access"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 )
@@ -28,12 +31,51 @@ func NewRegistration() serviceregistry.Registration {
 				panic(fmt.Errorf("invalid kas address [%s] %w", kasURLString, err))
 			}
 
+			var kasCfg access.KASConfig
+			if err := mapstructure.Decode(srp.Config.ExtraProps, &kasCfg); err != nil {
+				panic(fmt.Errorf("invalid kas cfg [%v] %w", srp.Config.ExtraProps, err))
+			}
+
+			switch {
+			case kasCfg.ECCertID != "" && len(kasCfg.Keyring) > 0:
+				panic("invalid kas cfg: please specify keyring or eccertid, not both")
+			case len(kasCfg.Keyring) == 0:
+				deprecatedOrDefault := func(kid, alg string) {
+					if kid == "" {
+						kid = srp.OTDF.CryptoProvider.FindKID(alg)
+					}
+					if kid == "" {
+						slog.Warn("no known key for alg", "algorithm", alg)
+						return
+					}
+					kasCfg.Keyring = append(kasCfg.Keyring, access.CurrentKeyFor{
+						Algorithm: alg,
+						KID:       kid,
+					})
+					kasCfg.Keyring = append(kasCfg.Keyring, access.CurrentKeyFor{
+						Algorithm: alg,
+						KID:       kid,
+						Legacy:    true,
+					})
+				}
+				deprecatedOrDefault(kasCfg.ECCertID, security.AlgorithmECP256R1)
+				deprecatedOrDefault(kasCfg.RSACertID, security.AlgorithmRSA2048)
+			}
+
 			p := access.Provider{
 				URI:            *kasURI,
 				AttributeSvc:   nil,
 				CryptoProvider: srp.OTDF.CryptoProvider,
 				SDK:            srp.SDK,
+				Logger:         srp.Logger,
+				Config:         &srp.Config,
+				KASConfig:      kasCfg,
 			}
+
+			if err := srp.RegisterReadinessCheck("kas", p.IsReady); err != nil {
+				slog.Error("failed to register kas readiness check", slog.String("error", err.Error()))
+			}
+
 			return &p, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				kas, ok := server.(*access.Provider)
 				if !ok {

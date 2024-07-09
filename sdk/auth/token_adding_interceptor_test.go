@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"net"
@@ -47,7 +48,9 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 		accessToken: "thisisafakeaccesstoken",
 	}
 	server := FakeAccessServiceServer{}
-	oo := NewTokenAddingInterceptor(&ts)
+	oo := NewTokenAddingInterceptor(&ts, &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	})
 
 	client, stop := runServer(context.Background(), &server, oo)
 	defer stop()
@@ -114,18 +117,20 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 	}
 }
 
-func Test_InvalidCredentials_StillSendMessage(t *testing.T) {
-	ts := FakeTokenSource{key: nil}
+func Test_InvalidCredentials_DoesNotSendMessage(t *testing.T) {
+	ts := FakeTokenSource{key: nil, accessToken: ""}
 	server := FakeAccessServiceServer{}
-	oo := NewTokenAddingInterceptor(&ts)
+	oo := NewTokenAddingInterceptor(&ts, &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	})
 
 	client, stop := runServer(context.Background(), &server, oo)
 	defer stop()
 
 	_, err := client.Info(context.Background(), &kas.InfoRequest{})
 
-	if err != nil {
-		t.Fatalf("got an error when sending the message")
+	if err == nil {
+		t.Fatalf("should not have sent message because the token source returned an error")
 	}
 }
 
@@ -163,7 +168,10 @@ type FakeTokenSource struct {
 	accessToken string
 }
 
-func (fts *FakeTokenSource) AccessToken() (AccessToken, error) {
+func (fts *FakeTokenSource) AccessToken(context.Context, *http.Client) (AccessToken, error) {
+	if fts.accessToken == "" {
+		return "", errors.New("no token to provide")
+	}
 	return AccessToken(fts.accessToken), nil
 }
 func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, error) {
@@ -172,6 +180,7 @@ func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, 
 	}
 	return f(fts.key)
 }
+
 func runServer(ctx context.Context, //nolint:ireturn // this is pretty concrete
 	f *FakeAccessServiceServer, oo TokenAddingInterceptor) (kas.AccessServiceClient, func()) {
 	buffer := 1024 * 1024

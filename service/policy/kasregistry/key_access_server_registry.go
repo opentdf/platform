@@ -2,27 +2,34 @@ package kasregistry
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	kasr "github.com/opentdf/platform/protocol/go/policy/kasregistry"
-	"github.com/opentdf/platform/service/internal/db"
+	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/internal/logger/audit"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
 type KeyAccessServerRegistry struct {
 	kasr.UnimplementedKeyAccessServerRegistryServiceServer
-	dbClient *policydb.PolicyDBClient
+	dbClient policydb.PolicyDBClient
+	logger   *logger.Logger
 }
 
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
-		Namespace:   "policy",
 		ServiceDesc: &kasr.KeyAccessServerRegistryService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &KeyAccessServerRegistry{dbClient: policydb.NewClient(*srp.DBClient)}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
-				return kasr.RegisterKeyAccessServerRegistryServiceHandlerServer(ctx, mux, s.(kasr.KeyAccessServerRegistryServiceServer))
+			return &KeyAccessServerRegistry{dbClient: policydb.NewClient(srp.DBClient), logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
+				srv, ok := s.(kasr.KeyAccessServerRegistryServiceServer)
+				if !ok {
+					return fmt.Errorf("argument is not of type kasr.KeyAccessServerRegistryServiceServer")
+				}
+				return kasr.RegisterKeyAccessServerRegistryServiceHandlerServer(ctx, mux, srv)
 			}
 		},
 	}
@@ -31,12 +38,21 @@ func NewRegistration() serviceregistry.Registration {
 func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 	req *kasr.CreateKeyAccessServerRequest,
 ) (*kasr.CreateKeyAccessServerResponse, error) {
-	slog.Debug("creating key access server")
+	s.logger.Debug("creating key access server")
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypeKasRegistry,
+	}
 
 	ks, err := s.dbClient.CreateKeyAccessServer(ctx, req)
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("keyAccessServer", req.String()))
 	}
+
+	auditParams.ObjectID = ks.GetId()
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &kasr.CreateKeyAccessServerResponse{
 		KeyAccessServer: ks,
@@ -44,7 +60,7 @@ func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 }
 
 func (s KeyAccessServerRegistry) ListKeyAccessServers(ctx context.Context,
-	req *kasr.ListKeyAccessServersRequest,
+	_ *kasr.ListKeyAccessServersRequest,
 ) (*kasr.ListKeyAccessServersResponse, error) {
 	keyAccessServers, err := s.dbClient.ListKeyAccessServers(ctx)
 	if err != nil {
@@ -72,22 +88,59 @@ func (s KeyAccessServerRegistry) GetKeyAccessServer(ctx context.Context,
 func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
 	req *kasr.UpdateKeyAccessServerRequest,
 ) (*kasr.UpdateKeyAccessServerResponse, error) {
-	k, err := s.dbClient.UpdateKeyAccessServer(ctx, req.GetId(), req)
+	kasID := req.GetId()
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeKasRegistry,
+		ObjectID:   kasID,
+	}
+
+	originalKAS, err := s.dbClient.GetKeyAccessServer(ctx, kasID)
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", kasID))
+	}
+
+	item, err := s.dbClient.UpdateKeyAccessServer(ctx, kasID, req)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("keyAccessServer", req.String()))
 	}
+
+	// UpdateKeyAccessServer only returns the ID of the updated KAS, so we need to
+	// fetch the updated KAS to compute the audit diff
+	updatedKAS, err := s.dbClient.GetKeyAccessServer(ctx, kasID)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", kasID))
+	}
+
+	auditParams.Original = originalKAS
+	auditParams.Updated = updatedKAS
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
 	return &kasr.UpdateKeyAccessServerResponse{
-		KeyAccessServer: k,
+		KeyAccessServer: item,
 	}, nil
 }
 
 func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
 	req *kasr.DeleteKeyAccessServerRequest,
 ) (*kasr.DeleteKeyAccessServerResponse, error) {
+	kasID := req.GetId()
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeKasRegistry,
+		ObjectID:   kasID,
+	}
+
 	keyAccessServer, err := s.dbClient.DeleteKeyAccessServer(ctx, req.GetId())
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	return &kasr.DeleteKeyAccessServerResponse{
 		KeyAccessServer: keyAccessServer,
 	}, nil

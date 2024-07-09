@@ -3,7 +3,7 @@
 The `opentdf` services can use hardware security modules (HSMs)
 to protect access to high value private key data,
 notably KAS private keys used for long lived identity of the server.
-The servcies can use PKCS #11 bindings to communicate with a system or network HSM.
+The services can use PKCS #11 bindings to communicate with a system or network HSM.
 To configure a development environment,
 we use [softHSM](https://github.com/opendnssec/SoftHSMv2).
 
@@ -15,6 +15,7 @@ On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 
 1. Start with a configuration the enables HSM: `cp opentdf-with-hsm.yaml opentdf.yaml`
 2. Initialize temporary keys and load them: `.github/scripts/init-temp-keys.sh --hsm`
+3. Build or run using the `--tags=opentdf.hsm` flag set.
 
 ### Detailed Configuration
 

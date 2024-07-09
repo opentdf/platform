@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -25,6 +26,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
@@ -55,21 +57,23 @@ type FakeAccessServiceServer struct {
 	kas.UnimplementedAccessServiceServer
 }
 
-func (f *FakeAccessServiceServer) Info(ctx context.Context, _ *kas.InfoRequest) (*kas.InfoResponse, error) {
+func (f *FakeAccessServiceServer) Info(context.Context, *kas.InfoRequest) (*kas.InfoResponse, error) {
+	return &kas.InfoResponse{}, nil
+}
+
+func (f *FakeAccessServiceServer) PublicKey(context.Context, *kas.PublicKeyRequest) (*kas.PublicKeyResponse, error) {
+	return &kas.PublicKeyResponse{}, status.Error(codes.Unauthenticated, "no public key for you")
+}
+
+func (f *FakeAccessServiceServer) LegacyPublicKey(context.Context, *kas.LegacyPublicKeyRequest) (*wrapperspb.StringValue, error) {
+	return &wrapperspb.StringValue{}, nil
+}
+
+func (f *FakeAccessServiceServer) Rewrap(ctx context.Context, _ *kas.RewrapRequest) (*kas.RewrapResponse, error) {
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
 		f.accessToken = md.Get("authorization")
 		f.dpopKey = GetJWKFromContext(ctx)
 	}
-
-	return &kas.InfoResponse{}, nil
-}
-func (f *FakeAccessServiceServer) PublicKey(context.Context, *kas.PublicKeyRequest) (*kas.PublicKeyResponse, error) {
-	return &kas.PublicKeyResponse{}, status.Error(codes.Unauthenticated, "no public key for you")
-}
-func (f *FakeAccessServiceServer) LegacyPublicKey(context.Context, *kas.LegacyPublicKeyRequest) (*wrapperspb.StringValue, error) {
-	return &wrapperspb.StringValue{}, nil
-}
-func (f *FakeAccessServiceServer) Rewrap(context.Context, *kas.RewrapRequest) (*kas.RewrapResponse, error) {
 	return &kas.RewrapResponse{}, nil
 }
 
@@ -78,9 +82,10 @@ type FakeTokenSource struct {
 	accessToken string
 }
 
-func (fts *FakeTokenSource) AccessToken() (sdkauth.AccessToken, error) {
+func (fts *FakeTokenSource) AccessToken(context.Context, *http.Client) (sdkauth.AccessToken, error) {
 	return sdkauth.AccessToken(fts.accessToken), nil
 }
+
 func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	if fts.key == nil {
 		return nil, errors.New("no such key")
@@ -91,6 +96,7 @@ func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, 
 func (fake FakeAccessTokenSource) AccessToken() (sdkauth.AccessToken, error) {
 	return sdkauth.AccessToken(fake.accessToken), nil
 }
+
 func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	return tokenMaker(fake.dpopKey)
 }
@@ -129,7 +135,7 @@ func (s *AuthSuite) SetupTest() {
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if r.URL.Path == "/.well-known/openid-configuration" {
-			_, err := w.Write([]byte(fmt.Sprintf(`{"jwks_uri": "%s/jwks"}`, s.server.URL)))
+			_, err := w.Write([]byte(fmt.Sprintf(`{"issuer":"%s","jwks_uri": "%s/jwks"}`, s.server.URL, s.server.URL)))
 			if err != nil {
 				panic(err)
 			}
@@ -151,8 +157,23 @@ func (s *AuthSuite) SetupTest() {
 				Issuer:      s.server.URL,
 				Audience:    "test",
 			},
-			PublicRoutes: []string{"/public", "/public2/*", "/public3/static", "/static/*", "/static/*/*"},
-		})
+			PublicRoutes: []string{
+				"/public",
+				"/public2/*",
+				"/public3/static",
+				"/static/*",
+				"/static/*/*",
+				"/static-doublestar/**",
+				"/static-doublestar2/**/*",
+				"/static-doublestar3/*/**",
+				"/static-doublestar4/x/**",
+			},
+		},
+		&logger.Logger{
+			Logger: slog.New(slog.Default().Handler()),
+		},
+		func(_ string, _ any) error { return nil },
+	)
 
 	s.Require().NoError(err)
 
@@ -213,7 +234,7 @@ func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missin
 		FullMethod: "/test",
 	}, nil)
 	s.Require().Error(err)
-	s.ErrorIs(err, status.Error(codes.Unauthenticated, "missing authorization header"))
+	s.Require().ErrorIs(err, status.Error(codes.Unauthenticated, "missing authorization header"))
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
@@ -233,7 +254,7 @@ func (s *AuthSuite) Test_CheckToken_When_Missing_Issuer_Expect_Error() {
 
 	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().Error(err)
-	s.Equal("missing issuer", err.Error())
+	s.Equal("\"iss\" not satisfied: claim \"iss\" does not exist", err.Error())
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
@@ -248,7 +269,7 @@ func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
 
 	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().Error(err)
-	s.Equal("invalid issuer", err.Error())
+	s.Contains(err.Error(), "\"iss\" not satisfied: values do not match")
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Audience_Missing_Expect_Error() {
@@ -357,10 +378,14 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/different/path", "", time.Now(), "incorrect `htu` claim in DPoP JWT"},
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POSTERS", "/a/path", "", time.Now(), "incorrect `htm` claim in DPoP JWT"},
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "bad ath", time.Now(), "incorrect `ath` claim in DPoP JWT"},
-		{otherKeyPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(),
-			"the `jkt` from the DPoP JWT didn't match the thumbprint from the access token"},
-		{dpopPublic, dpopKey, signedTokWithNoCNF, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(),
-			"missing `cnf` claim in access token"},
+		{
+			otherKeyPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(),
+			"the `jkt` from the DPoP JWT didn't match the thumbprint from the access token",
+		},
+		{
+			dpopPublic, dpopKey, signedTokWithNoCNF, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(),
+			"missing `cnf` claim in access token",
+		},
 	}
 
 	for _, testCase := range testCases {
@@ -392,7 +417,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 	s.Require().NoError(tok.Set("iss", s.server.URL))
 	s.Require().NoError(tok.Set("aud", "test"))
 	s.Require().NoError(tok.Set("cid", "client2"))
-	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-readonly"}}))
+	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-standard"}}))
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
 	s.Require().NoError(err)
 	cnf := map[string]string{"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)}
@@ -418,6 +443,8 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 	addingInterceptor := sdkauth.NewTokenAddingInterceptor(&FakeTokenSource{
 		key:         dpopKey,
 		accessToken: string(signedTok),
+	}, &tls.Config{
+		MinVersion: tls.VersionTLS12,
 	})
 
 	conn, _ := grpc.DialContext(context.Background(), "", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
@@ -426,7 +453,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 
 	client := kas.NewAccessServiceClient(conn)
 
-	_, err = client.Info(context.Background(), &kas.InfoRequest{})
+	_, err = client.Rewrap(context.Background(), &kas.RewrapRequest{})
 	s.Require().NoError(err)
 	s.NotNil(fakeServer.dpopKey)
 	dpopJWKFromRequest, ok := fakeServer.dpopKey.(jwk.RSAPublicKey)
@@ -453,7 +480,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	s.Require().NoError(tok.Set("iss", s.server.URL))
 	s.Require().NoError(tok.Set("aud", "test"))
 	s.Require().NoError(tok.Set("cid", "client2"))
-	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-readonly"}}))
+	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-standard"}}))
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
 	s.Require().NoError(err)
 	cnf := map[string]string{"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)}
@@ -477,10 +504,12 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	addingInterceptor := sdkauth.NewTokenAddingInterceptor(&FakeTokenSource{
 		key:         dpopKey,
 		accessToken: string(signedTok),
+	}, &tls.Config{
+		MinVersion: tls.VersionTLS12,
 	})
 	s.Require().NoError(err)
-	req.Header.Set("authorization", fmt.Sprintf("Bearer %s", signedTok))
-	dpopTok, err := addingInterceptor.GetDPoPToken("/attributes", "GET", string(signedTok))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", signedTok))
+	dpopTok, err := addingInterceptor.GetDPoPToken(server.URL+"/attributes", "GET", string(signedTok))
 	s.Require().NoError(err)
 	req.Header.Set("DPoP", dpopTok)
 
@@ -507,6 +536,15 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	s.Equal(dpopJWK.Algorithm(), dpopJWKFromRequest.Algorithm())
 	s.Equal(dpopJWK.E(), dpopJWKFromRequest.E())
 	s.Equal(dpopJWK.N(), dpopJWKFromRequest.N())
+}
+
+func (s *AuthSuite) Test_AddAuthzPolicies() {
+	err := s.auth.ExtendAuthzDefaultPolicy([][]string{
+		{"p", "role:admin", "/path", "*", "allow"},
+		{"p", "role:standard", "/path2", "read", "deny"},
+	})
+	s.Require().NoError(err)
+	s.False(s.auth.enforcer.isDefaultPolicy)
 }
 
 func makeDPoPToken(t *testing.T, tc dpopTestCase) string {
@@ -552,7 +590,6 @@ func makeDPoPToken(t *testing.T, tc dpopTestCase) string {
 	}
 
 	dpopTok, err := b.Build()
-
 	if err != nil {
 		t.Fatalf("error creating dpop jwt: %v", err)
 	}
@@ -573,7 +610,11 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	}
 	config := Config{}
 	config.AuthNConfig = authnConfig
-	auth, err := NewAuthenticator(context.Background(), config)
+	auth, err := NewAuthenticator(context.Background(), config, &logger.Logger{
+		Logger: slog.New(slog.Default().Handler()),
+	},
+		func(_ string, _ any) error { return nil },
+	)
 
 	s.Require().NoError(err)
 
@@ -600,6 +641,11 @@ func (s *AuthSuite) Test_PublicPath_Matches() {
 	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2/")))
 	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static/test")))
 	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static/test/next")))
+
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static-doublestar/test")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static-doublestar2/test/next")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static-doublestar3/test/next")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static-doublestar4/x/test/next")))
 
 	// Failing routes
 	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public3/")))

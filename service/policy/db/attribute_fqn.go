@@ -10,15 +10,15 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/service/internal/db"
+	"github.com/opentdf/platform/service/pkg/db"
 )
 
 // These values are optional, but at least one must be set. The other values will be derived from
 // the set values.
 type attrFqnUpsertOptions struct {
-	namespaceId string
-	attributeId string
-	valueId     string
+	namespaceID string
+	attributeID string
+	valueID     string
 }
 
 // This logic is a bit complex. What we are trying to achieve is to upsert the fqn based on the
@@ -28,7 +28,7 @@ type attrFqnUpsertOptions struct {
 // 1. namespaceId
 // 2. namespaceId, attributeId
 // 3. namespaceId, attributeId, valueId
-func upsertAttrFqnSql(namespaceId string, attributeId string, valueId string) (string, []interface{}, error) {
+func upsertAttrFqnSQL(namespaceID string, attributeID string, valueID string) (string, []interface{}, error) {
 	t := Tables.AttrFqn
 	nT := Tables.Namespaces
 	adT := Tables.Attributes
@@ -38,22 +38,23 @@ func upsertAttrFqnSql(namespaceId string, attributeId string, valueId string) (s
 	var subQ squirrel.SelectBuilder
 	// Since we are creating relationships we don't need to know the namespaceId when given the
 	// valueId. This is because the valueId is unique across all namespaces.
-	if valueId != "" {
+	switch {
+	case valueID != "":
 		subQ = sb.Select("n.id", "ad.id", "av.id", "CONCAT('https://', n.name, '/attr/', ad.name, '/value/', av.value) AS fqn").
 			From(nT.Name()+" n").
 			Join(adT.Name()+" ad ON ad.namespace_id = n.id").
 			Join(avT.Name()+" av ON av.attribute_definition_id = ad.id").
-			Where("av.id = ?", valueId)
-	} else if attributeId != "" {
+			Where("av.id = ?", valueID)
+	case attributeID != "":
 		subQ = sb.Select("n.id", "ad.id", "NULL", "CONCAT('https://', n.name, '/attr/', ad.name) AS fqn").
 			From(nT.Name()+" n").
 			Join(adT.Name()+" ad ON ad.namespace_id = n.id").
-			Where("ad.id = ?", attributeId)
-	} else if namespaceId != "" {
+			Where("ad.id = ?", attributeID)
+	case namespaceID != "":
 		subQ = sb.Select("n.id", "NULL", "NULL", "CONCAT('https://', n.name) AS fqn").
 			From(nT.Name()+" n").
-			Where("n.id = ?", namespaceId)
-	} else {
+			Where("n.id = ?", namespaceID)
+	default:
 		return "", nil, fmt.Errorf("at least one of namespaceId, attributeId, or valueId must be set")
 	}
 
@@ -68,7 +69,7 @@ func upsertAttrFqnSql(namespaceId string, attributeId string, valueId string) (s
 
 // This is a side effect -- errors will be swallowed and the fqn will be returned as an empty string
 func (c *PolicyDBClient) upsertAttrFqn(ctx context.Context, opts attrFqnUpsertOptions) string {
-	sql, args, err := upsertAttrFqnSql(opts.namespaceId, opts.attributeId, opts.valueId)
+	sql, args, err := upsertAttrFqnSQL(opts.namespaceID, opts.attributeID, opts.valueID)
 	if err != nil {
 		slog.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
 		return ""
@@ -91,17 +92,17 @@ func (c *PolicyDBClient) upsertAttrFqn(ctx context.Context, opts attrFqnUpsertOp
 }
 
 // AttrFqnReindex will reindex all namespace, attribute, and attribute_value FQNs
-func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns // Used to initializze an anonymous struct
+func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns // Used to initialize an anonymous struct
 	Namespaces []struct {
-		Id  string
+		ID  string
 		Fqn string
 	}
 	Attributes []struct {
-		Id  string
+		ID  string
 		Fqn string
 	}
 	Values []struct {
-		Id  string
+		ID  string
 		Fqn string
 	}
 },
@@ -127,49 +128,55 @@ func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns 
 	// Reindex all namespaces
 	for _, n := range ns {
 		res.Namespaces = append(res.Namespaces, struct {
-			Id  string
+			ID  string
 			Fqn string
-		}{Id: n.GetId(), Fqn: c.upsertAttrFqn(context.Background(), attrFqnUpsertOptions{namespaceId: n.GetId()})})
+		}{ID: n.GetId(), Fqn: c.upsertAttrFqn(context.Background(), attrFqnUpsertOptions{namespaceID: n.GetId()})})
 	}
 
 	// Reindex all attributes
 	for _, a := range attrs {
 		res.Attributes = append(res.Attributes, struct {
-			Id  string
+			ID  string
 			Fqn string
-		}{Id: a.GetId(), Fqn: c.upsertAttrFqn(context.Background(), attrFqnUpsertOptions{attributeId: a.GetId()})})
+		}{ID: a.GetId(), Fqn: c.upsertAttrFqn(context.Background(), attrFqnUpsertOptions{attributeID: a.GetId()})})
 	}
 
 	// Reindex all attribute values
 	for _, av := range values {
 		res.Values = append(res.Values, struct {
-			Id  string
+			ID  string
 			Fqn string
-		}{Id: av.GetId(), Fqn: c.upsertAttrFqn(context.Background(), attrFqnUpsertOptions{valueId: av.GetId()})})
+		}{ID: av.GetId(), Fqn: c.upsertAttrFqn(context.Background(), attrFqnUpsertOptions{valueID: av.GetId()})})
 	}
 
 	return res
 }
 
-func filterValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy.Value) {
-	val := strings.Split(fqn, "/value/")[1]
+func prepareValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy.Value) {
+	split := strings.Split(fqn, "/value/")
+	val := split[1]
+	attrFqn := split[0]
+	var unaltered *policy.Value
 	for i, v := range values {
 		if v.GetValue() == val {
-			unaltered := &policy.Value{
+			unaltered = &policy.Value{
 				Id:              v.GetId(),
 				Value:           v.GetValue(),
 				Members:         v.GetMembers(),
 				Grants:          v.GetGrants(),
-				Fqn:             v.GetFqn(),
+				Fqn:             fqn,
 				Active:          v.GetActive(),
 				SubjectMappings: v.GetSubjectMappings(),
 				Metadata:        v.GetMetadata(),
 			}
 			values[i].SubjectMappings = nil
-			return values, unaltered
+		}
+		// ensure all values have FQNs
+		if values[i].GetFqn() == "" {
+			values[i].Fqn = attrFqn + "/value/" + v.GetValue()
 		}
 	}
-	return values, nil
+	return values, unaltered
 }
 
 func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attributes.GetAttributeValuesByFqnsRequest) (map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
@@ -178,6 +185,8 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 	}
 	list := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, len(r.GetFqns()))
 	for _, fqn := range r.GetFqns() {
+		// normalize to lower case
+		fqn = strings.ToLower(fqn)
 		// ensure the FQN corresponds to an attribute value and not a definition or namespace alone
 		if !strings.Contains(fqn, "/value/") {
 			return nil, db.ErrFqnMissingValue
@@ -187,10 +196,10 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 			slog.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))
 			return nil, err
 		}
-		filtered, selected := filterValues(attr.GetValues(), fqn)
+		filtered, selected := prepareValues(attr.GetValues(), fqn)
 		if selected == nil {
 			slog.Error("could not find value for FQN", slog.String("fqn", fqn))
-			return nil, fmt.Errorf("could not find value for FQN: %s", fqn)
+			return nil, fmt.Errorf("could not find value for FQN [%s] %w", fqn, db.ErrNotFound)
 		}
 		attr.Values = filtered
 		list[fqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{

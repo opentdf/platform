@@ -18,43 +18,8 @@ import (
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-)
-
-var (
-	config = security.Config{
-		Type: "hsm",
-		HSMConfig: security.HSMConfig{
-			Enabled:    true,
-			ModulePath: "",
-			PIN:        "12345",
-			SlotID:     0,
-			SlotLabel:  "dev-token",
-			Keys: map[string]security.KeyInfo{
-				"rsa": {
-					Name:  "rsa",
-					Label: "development-rsa-kas",
-				},
-				"ec": {
-					Name:  "ec",
-					Label: "development-ec-kas",
-				},
-			},
-		},
-		StandardConfig: security.StandardConfig{
-			RSAKeys: map[string]security.StandardKeyInfo{
-				"rsa": {
-					PrivateKeyPath: "kas-private.pem",
-					PublicKeyPath:  "kas-cert.pem",
-				},
-			},
-			ECKeys: map[string]security.StandardKeyInfo{
-				"ec": {
-					PrivateKeyPath: "kas-ec-private.pem",
-					PublicKeyPath:  "kas-ec-cert.pem",
-				},
-			},
-		},
-	}
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // Skips if not in CI and failure due to library missing
@@ -139,19 +104,17 @@ func TestError(t *testing.T) {
 
 const hostname = "localhost"
 
-func TestCertificateHandlerEmpty(t *testing.T) {
-	config.HSMConfig.Keys = map[string]security.KeyInfo{
-		"rsa": {},
-		"ec":  {},
+func TestStandardCertificateHandlerEmpty(t *testing.T) {
+	configStandard := security.Config{
+		Type: "standard",
 	}
-	hsmSession := mustNewCryptoProvider(t, config)
-	defer hsmSession.Close()
+	c := mustNewCryptoProvider(t, configStandard)
+	defer c.Close()
 	kasURI := urlHost(t)
 
 	kas := Provider{
 		URI:            *kasURI,
-		CryptoProvider: hsmSession,
-		OIDCVerifier:   nil,
+		CryptoProvider: c,
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Fmt: "pkcs8"})
@@ -159,12 +122,12 @@ func TestCertificateHandlerEmpty(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-func mustNewCryptoProvider(t *testing.T, config security.Config) security.CryptoProvider {
-	hsmSession, err := security.NewCryptoProvider(config)
+func mustNewCryptoProvider(t *testing.T, configStandard security.Config) security.CryptoProvider {
+	c, err := security.NewCryptoProvider(configStandard)
 	maybeSkip(t, err)
 	require.NoError(t, err)
-	require.NotNil(t, hsmSession)
-	return hsmSession
+	require.NotNil(t, c)
+	return c
 }
 
 func urlHost(t *testing.T) *url.URL {
@@ -173,24 +136,144 @@ func urlHost(t *testing.T) *url.URL {
 	return url
 }
 
-func TestCertificateHandlerWithEc256(t *testing.T) {
-	config.HSMConfig.Keys = map[string]security.KeyInfo{
-		"rsa": {
-			Name:  "rsa",
-			Label: "development-rsa-kas",
-		},
-		"ec": {
-			Name:  "ec",
-			Label: "development-ec-kas",
+func TestStandardPublicKeyHandlerV2(t *testing.T) {
+	configStandard := security.Config{
+		Type: "standard",
+		StandardConfig: security.StandardConfig{
+			RSAKeys: map[string]security.StandardKeyInfo{
+				"rsa": {
+					PrivateKeyPath: "./testdata/access-provider-000-private.pem",
+					PublicKeyPath:  "./testdata/access-provider-000-certificate.pem",
+				},
+			},
 		},
 	}
-	hsmSession := mustNewCryptoProvider(t, config)
-	defer hsmSession.Close()
+	c := mustNewCryptoProvider(t, configStandard)
+	defer c.Close()
 	kasURI := urlHost(t)
 	kas := Provider{
 		URI:            *kasURI,
-		CryptoProvider: hsmSession,
-		OIDCVerifier:   nil,
+		CryptoProvider: c,
+		KASConfig: KASConfig{
+			Keyring: []CurrentKeyFor{
+				{
+					Algorithm: security.AlgorithmRSA2048,
+					KID:       "rsa",
+				},
+			},
+		},
+	}
+
+	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Contains(t, result.GetPublicKey(), "BEGIN PUBLIC KEY")
+}
+
+func TestStandardPublicKeyHandlerV2Failure(t *testing.T) {
+	configStandard := security.Config{
+		Type: "standard",
+	}
+	c := mustNewCryptoProvider(t, configStandard)
+	defer c.Close()
+	kasURI := urlHost(t)
+	kas := Provider{
+		URI:            *kasURI,
+		CryptoProvider: c,
+	}
+
+	k, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{})
+	assert.Nil(t, k)
+	require.Error(t, err)
+}
+
+func TestStandardPublicKeyHandlerV2NotFound(t *testing.T) {
+	configStandard := security.Config{
+		Type: "standard",
+		StandardConfig: security.StandardConfig{
+			RSAKeys: map[string]security.StandardKeyInfo{
+				"rsa": {
+					PrivateKeyPath: "./testdata/access-provider-000-private.pem",
+					PublicKeyPath:  "./testdata/access-provider-000-certificate.pem",
+				},
+			},
+		},
+	}
+	c := mustNewCryptoProvider(t, configStandard)
+	defer c.Close()
+	kasURI := urlHost(t)
+	kas := Provider{
+		URI:            *kasURI,
+		CryptoProvider: c,
+	}
+
+	k, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{
+		Algorithm: "algorithm:unknown",
+	})
+	assert.Nil(t, k)
+	require.Error(t, err)
+	status, ok := status.FromError(err)
+	assert.True(t, ok)
+	assert.Equal(t, codes.NotFound, status.Code())
+}
+
+func TestStandardPublicKeyHandlerV2WithJwk(t *testing.T) {
+	configStandard := security.Config{
+		Type: "standard",
+		StandardConfig: security.StandardConfig{
+			RSAKeys: map[string]security.StandardKeyInfo{
+				"rsa": {
+					PrivateKeyPath: "./testdata/access-provider-000-private.pem",
+					PublicKeyPath:  "./testdata/access-provider-000-certificate.pem",
+				},
+			},
+		},
+	}
+	c := mustNewCryptoProvider(t, configStandard)
+	defer c.Close()
+	kasURI := urlHost(t)
+	kas := Provider{
+		URI:            *kasURI,
+		CryptoProvider: c,
+		KASConfig: KASConfig{
+			Keyring: []CurrentKeyFor{
+				{
+					Algorithm: security.AlgorithmRSA2048,
+					KID:       "rsa",
+				},
+			},
+		},
+	}
+
+	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{
+		Algorithm: "rsa:2048",
+		V:         "2",
+		Fmt:       "jwk",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Contains(t, result.GetPublicKey(), "\"kty\"")
+}
+
+func TestStandardCertificateHandlerWithEc256(t *testing.T) {
+	t.Skip("EC Not yet implemented")
+	configStandard := security.Config{
+		Type: "standard",
+		StandardConfig: security.StandardConfig{
+			ECKeys: map[string]security.StandardKeyInfo{
+				"ec": {
+					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
+					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+				},
+			},
+		},
+	}
+	c := mustNewCryptoProvider(t, configStandard)
+	defer c.Close()
+	kasURI := urlHost(t)
+	kas := Provider{
+		URI:            *kasURI,
+		CryptoProvider: c,
 	}
 
 	result, err := kas.LegacyPublicKey(context.Background(), &kaspb.LegacyPublicKeyRequest{Algorithm: "ec:secp256r1"})
@@ -199,24 +282,25 @@ func TestCertificateHandlerWithEc256(t *testing.T) {
 	assert.Contains(t, result.GetValue(), "BEGIN PUBLIC KEY")
 }
 
-func TestPublicKeyHandlerWithEc256(t *testing.T) {
-	config.HSMConfig.Keys = map[string]security.KeyInfo{
-		"rsa": {
-			Name:  "rsa",
-			Label: "development-rsa-kas",
-		},
-		"ec": {
-			Name:  "ec",
-			Label: "development-ec-kas",
+func TestStandardPublicKeyHandlerWithEc256(t *testing.T) {
+	t.Skip("EC Not yet implemented")
+	configStandard := security.Config{
+		Type: "standard",
+		StandardConfig: security.StandardConfig{
+			ECKeys: map[string]security.StandardKeyInfo{
+				"ec": {
+					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
+					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+				},
+			},
 		},
 	}
-	hsmSession := mustNewCryptoProvider(t, config)
-	defer hsmSession.Close()
+	c := mustNewCryptoProvider(t, configStandard)
+	defer c.Close()
 	kasURI := urlHost(t)
 	kas := Provider{
 		URI:            *kasURI,
-		CryptoProvider: hsmSession,
-		OIDCVerifier:   nil,
+		CryptoProvider: c,
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "ec:secp256r1"})
@@ -225,68 +309,25 @@ func TestPublicKeyHandlerWithEc256(t *testing.T) {
 	assert.Contains(t, result.GetPublicKey(), "BEGIN PUBLIC KEY")
 }
 
-func TestPublicKeyHandlerV2(t *testing.T) {
-	config.HSMConfig.Keys = map[string]security.KeyInfo{
-		"rsa": {
-			Name:  "rsa",
-			Label: "development-rsa-kas",
-		},
-		"ec": {
-			Name:  "ec",
-			Label: "development-ec-kas",
+func TestStandardPublicKeyHandlerV2WithEc256(t *testing.T) {
+	t.Skip("EC Not yet implemented")
+	configStandard := security.Config{
+		Type: "standard",
+		StandardConfig: security.StandardConfig{
+			ECKeys: map[string]security.StandardKeyInfo{
+				"ec": {
+					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
+					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+				},
+			},
 		},
 	}
-	hsmSession := mustNewCryptoProvider(t, config)
-	defer hsmSession.Close()
+	c := mustNewCryptoProvider(t, configStandard)
+	defer c.Close()
 	kasURI := urlHost(t)
 	kas := Provider{
 		URI:            *kasURI,
-		CryptoProvider: hsmSession,
-		OIDCVerifier:   nil,
-	}
-
-	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "rsa"})
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	assert.Contains(t, result.GetPublicKey(), "BEGIN PUBLIC KEY")
-}
-
-func TestPublicKeyHandlerV2Failure(t *testing.T) {
-	config.HSMConfig.Keys = map[string]security.KeyInfo{
-		"rsa": {},
-		"ec":  {},
-	}
-	hsmSession := mustNewCryptoProvider(t, config)
-	defer hsmSession.Close()
-	kasURI := urlHost(t)
-	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: hsmSession,
-		OIDCVerifier:   nil,
-	}
-
-	_, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "rsa"})
-	assert.Error(t, err)
-}
-
-func TestPublicKeyHandlerV2WithEc256(t *testing.T) {
-	config.HSMConfig.Keys = map[string]security.KeyInfo{
-		"rsa": {
-			Name:  "rsa",
-			Label: "development-rsa-kas",
-		},
-		"ec": {
-			Name:  "ec",
-			Label: "development-ec-kas",
-		},
-	}
-	hsmSession := mustNewCryptoProvider(t, config)
-	defer hsmSession.Close()
-	kasURI := urlHost(t)
-	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: hsmSession,
-		OIDCVerifier:   nil,
+		CryptoProvider: c,
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "ec:secp256r1",
@@ -294,34 +335,4 @@ func TestPublicKeyHandlerV2WithEc256(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Contains(t, result.GetPublicKey(), "BEGIN PUBLIC KEY")
-}
-
-func TestPublicKeyHandlerV2WithJwk(t *testing.T) {
-	config.HSMConfig.Keys = map[string]security.KeyInfo{
-		"rsa": {
-			Name:  "rsa",
-			Label: "development-rsa-kas",
-		},
-		"ec": {
-			Name:  "ec",
-			Label: "development-ec-kas",
-		},
-	}
-	hsmSession := mustNewCryptoProvider(t, config)
-	defer hsmSession.Close()
-	kasURI := urlHost(t)
-	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: hsmSession,
-		OIDCVerifier:   nil,
-	}
-
-	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{
-		Algorithm: "rsa",
-		V:         "2",
-		Fmt:       "jwk",
-	})
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	assert.Contains(t, result.GetPublicKey(), "\"kty\"")
 }

@@ -1,5 +1,116 @@
 # Changelog
 
+## [0.2.9](https://github.com/opentdf/platform/compare/sdk/v0.2.8...sdk/v0.2.9) (2024-07-02)
+
+
+### Features
+
+* **sdk:** support unsafe policy service in SDK ([#1076](https://github.com/opentdf/platform/issues/1076)) ([ca88554](https://github.com/opentdf/platform/commit/ca88554098c6330c3bd5d0c72386b8036fd32434))
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1070](https://github.com/opentdf/platform/issues/1070)) ([4ca372c](https://github.com/opentdf/platform/commit/4ca372c71eb2460a0b3d5791119a9a42a91aa1ee))
+* Issue [#1008](https://github.com/opentdf/platform/issues/1008) : Use exchange info's TLS Configuration for cert based auth ([#1043](https://github.com/opentdf/platform/issues/1043)) ([93d8f70](https://github.com/opentdf/platform/commit/93d8f70750d181e0818911e5b317c9d85044623b))
+
+## [0.2.8](https://github.com/opentdf/platform/compare/sdk/v0.2.7...sdk/v0.2.8) (2024-06-24)
+
+
+### Features
+
+* Audit GetDecisions ([#976](https://github.com/opentdf/platform/issues/976)) ([55bdfeb](https://github.com/opentdf/platform/commit/55bdfeb4dd4a846d244febd23825ced38e8e91b1))
+* **core:** New cryptoProvider config ([#939](https://github.com/opentdf/platform/issues/939)) ([8150623](https://github.com/opentdf/platform/commit/81506237e2e640af34df8c745b71c3f20358d5a4))
+
+
+### Bug Fixes
+
+* **core:** Update to lib/fixtures 0.2.7 ([#1017](https://github.com/opentdf/platform/issues/1017)) ([dbae6ff](https://github.com/opentdf/platform/commit/dbae6ff10aadbfc805d9acef8440a7930f3c684e))
+* **core:** Updates to protos 0.2.4 ([#1014](https://github.com/opentdf/platform/issues/1014)) ([43e11a3](https://github.com/opentdf/platform/commit/43e11a34c47c76fe2845d0a9d60a686ea394c131))
+
+## [0.2.7](https://github.com/opentdf/platform/compare/sdk/v0.2.6...sdk/v0.2.7) (2024-06-10)
+
+
+### Bug Fixes
+
+* **sdk:** convert platform endpoint to grpc dial format ([#941](https://github.com/opentdf/platform/issues/941)) ([3a72a54](https://github.com/opentdf/platform/commit/3a72a54a31d35d31dfcc13ac6e716d68c9c909d1))
+
+## [0.2.6](https://github.com/opentdf/platform/compare/sdk/v0.2.5...sdk/v0.2.6) (2024-06-04)
+
+
+### Bug Fixes
+
+* **core:** Bumps lib/fixtures ([#932](https://github.com/opentdf/platform/issues/932)) ([18586f9](https://github.com/opentdf/platform/commit/18586f9c96421ac63ddc4bb904604cbb8bdbed8c))
+* **core:** update default casbin auth policy ([#927](https://github.com/opentdf/platform/issues/927)) ([c354fdb](https://github.com/opentdf/platform/commit/c354fdb118af4e4a222f3c65fcbf5de581d08bee))
+
+## [0.2.5](https://github.com/opentdf/platform/compare/sdk/v0.2.4...sdk/v0.2.5) (2024-06-03)
+
+
+### Features
+
+* **sdk:** leverage platform wellknown configuration endpoint ([#895](https://github.com/opentdf/platform/issues/895)) ([53b3f42](https://github.com/opentdf/platform/commit/53b3f4231501c6e6ea54ee002c7420436bb44000))
+* **sdk:** Support for ECDSA policy binding on both KAS and SDK ([#877](https://github.com/opentdf/platform/issues/877)) ([7baf039](https://github.com/opentdf/platform/commit/7baf03928eb3d29f615359860f9217a69b51c1fe))
+
+
+### Bug Fixes
+
+* **sdk:** bump ocrypto to 0.1.5 ([#912](https://github.com/opentdf/platform/issues/912)) ([6de799b](https://github.com/opentdf/platform/commit/6de799bc848b974120254575d3c211c553c2e2c0))
+
+## [0.2.4](https://github.com/opentdf/platform/compare/sdk/v0.2.3...sdk/v0.2.4) (2024-05-30)
+
+
+### Features
+
+* **core:** Allow app specified session keys ([#882](https://github.com/opentdf/platform/issues/882)) ([529fb0e](https://github.com/opentdf/platform/commit/529fb0ec775eca93f8cdd83388eba950a5e81bba))
+* **sdk:** Adds Option to Pass in RSA Keys to SDK ([#867](https://github.com/opentdf/platform/issues/867)) ([739a828](https://github.com/opentdf/platform/commit/739a828a65c4d4448dcb77c12d2bbae7cd18a060))
+* **sdk:** PLAT-3082 nanotdf encrypt ([#744](https://github.com/opentdf/platform/issues/744)) ([6c82536](https://github.com/opentdf/platform/commit/6c8253689ec65e68c2114750c10c501423cbe03c))
+
+
+### Bug Fixes
+
+* **sdk:** if we encounter an error getting an access token then don't make the request ([#872](https://github.com/opentdf/platform/issues/872)) ([19188d5](https://github.com/opentdf/platform/commit/19188d5f713b3cca3c9f4568cf58cc54c86bd262))
+
+## [0.2.3](https://github.com/opentdf/platform/compare/sdk/v0.2.2...sdk/v0.2.3) (2024-05-21)
+
+
+### Features
+
+* **authz:** Handle jwts as entity chains in decision requests ([#759](https://github.com/opentdf/platform/issues/759)) ([65612e0](https://github.com/opentdf/platform/commit/65612e08b418eb17c9576903c002685daed21ec1))
+* **sdk:** Allow setting TDF mime type ([#797](https://github.com/opentdf/platform/issues/797)) ([97926a1](https://github.com/opentdf/platform/commit/97926a1c323f95bbc96b82acce00c1d2bd6eb378))
+
+
+### Bug Fixes
+
+* bump internal versions ([#840](https://github.com/opentdf/platform/issues/840)) ([8f45f18](https://github.com/opentdf/platform/commit/8f45f184eaa2512fd0633c4afaf9f148d415cb74))
+
+## [0.2.2](https://github.com/opentdf/platform/compare/sdk/v0.2.1...sdk/v0.2.2) (2024-05-15)
+
+
+### Bug Fixes
+
+* **core:** Updates logs statements to log errors ([#796](https://github.com/opentdf/platform/issues/796)) ([7a3379b](https://github.com/opentdf/platform/commit/7a3379b6878562e4958e61516335e912716588b7))
+* **sdk:** Reduces sdk go requirement to 1.21 ([#795](https://github.com/opentdf/platform/issues/795)) ([6baee80](https://github.com/opentdf/platform/commit/6baee801f7189aac95e6bf0235eeeca57fbc9bd2))
+
+## [0.2.1](https://github.com/opentdf/platform/compare/sdk/v0.2.0...sdk/v0.2.1) (2024-05-10)
+
+
+### Features
+
+* **sdk:** Adds TLS Certificate Exchange Flow  ([#667](https://github.com/opentdf/platform/issues/667)) ([0e59213](https://github.com/opentdf/platform/commit/0e59213e127e8b6a0b071a04f3ce380907fe494e))
+* **sdk:** insecure plaintext and skip verify conn ([#670](https://github.com/opentdf/platform/issues/670)) ([5c94d02](https://github.com/opentdf/platform/commit/5c94d027478314d703bf70885d6a80cdde585542))
+
+
+### Bug Fixes
+
+* **core:** Fix Lint ([#714](https://github.com/opentdf/platform/issues/714)) ([2b0cb09](https://github.com/opentdf/platform/commit/2b0cb099784110d2f812b050222d07fa5a22eafe)), closes [#701](https://github.com/opentdf/platform/issues/701)
+* **core:** Fix several misspellings  ([#738](https://github.com/opentdf/platform/issues/738)) ([8d61db3](https://github.com/opentdf/platform/commit/8d61db343fd68291f80686496fec47b08aaf4746))
+
+## [0.2.0](https://github.com/opentdf/platform/compare/sdk/v0.1.0...sdk/v0.2.0) (2024-04-26)
+
+
+### Features
+
+* **policy:** move key access server registry under policy ([#655](https://github.com/opentdf/platform/issues/655)) ([7b63394](https://github.com/opentdf/platform/commit/7b633942cc5b929122b9f765a5f35cb7b4dd391f))
+
 ## [0.1.0](https://github.com/opentdf/platform/compare/sdk-v0.1.0...sdk/v0.1.0) (2024-04-22)
 
 

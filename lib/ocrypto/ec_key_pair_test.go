@@ -1,6 +1,7 @@
 package ocrypto
 
 import (
+	"crypto/sha256"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -63,6 +64,63 @@ func TestECKeyPair(t *testing.T) {
 		_, err := NewECKeyPair(modeBad)
 		if err == nil {
 			t.Fatalf("did not fail as expected: NewECKeyPair(%d): %v", modeBad, err)
+		}
+	}
+}
+
+func TestNanoTDFRewrapKeyGenerate(t *testing.T) {
+	kasECKeyPair, err := NewECKeyPair(ECCModeSecp256r1)
+	require.NoError(t, err, "fail on NewECKeyPair")
+
+	kasPubKeyAsPem, err := kasECKeyPair.PublicKeyInPemFormat()
+	require.NoError(t, err, "fail to generate ec public key in pem format")
+
+	kasPrivateKeyAsPem, err := kasECKeyPair.PrivateKeyInPemFormat()
+	require.NoError(t, err, "fail to generate ec private key in pem format")
+
+	sdkECKeyPair, err := NewECKeyPair(ECCModeSecp256r1)
+	require.NoError(t, err, "fail on NewECKeyPair")
+
+	sdkPubKeyAsPem, err := sdkECKeyPair.PublicKeyInPemFormat()
+	require.NoError(t, err, "fail to generate ec public key in pem format")
+
+	sdkPrivateKeyAsPem, err := sdkECKeyPair.PrivateKeyInPemFormat()
+	require.NoError(t, err, "fail to generate ec private key in pem format")
+
+	kasECDHKey, err := ComputeECDHKey([]byte(kasPrivateKeyAsPem), []byte(sdkPubKeyAsPem))
+	require.NoError(t, err, "fail to calculate ecdh key")
+
+	// slat
+	digest := sha256.New()
+	digest.Write([]byte("L1L"))
+
+	kasSymmetricKey, err := CalculateHKDF(digest.Sum(nil), kasECDHKey)
+	require.NoError(t, err, "fail to calculate HKDF key")
+
+	sdkECDHKey, err := ComputeECDHKey([]byte(sdkPrivateKeyAsPem), []byte(kasPubKeyAsPem))
+	require.NoError(t, err, "fail to calculate ecdh key")
+
+	sdkSymmetricKey, err := CalculateHKDF(digest.Sum(nil), sdkECDHKey)
+	require.NoError(t, err, "fail to calculate HKDF key")
+
+	if string(kasSymmetricKey) != string(sdkSymmetricKey) {
+		t.Fatalf("symmetric keys on both kas and sdk should be same kas:%s sdk:%s",
+			string(kasSymmetricKey), string(sdkSymmetricKey))
+	}
+}
+
+func TestECDSASignature(t *testing.T) {
+	digest := CalculateSHA256([]byte("Virtru"))
+	for _, cvurve := range []ECCMode{ECCModeSecp256r1, ECCModeSecp384r1, ECCModeSecp521r1} {
+		ecKeyPair, err := NewECKeyPair(cvurve)
+		require.NoError(t, err, "fail on NewECKeyPair")
+
+		rBytes, sBytes, err := ComputeECDSASig(digest, ecKeyPair.PrivateKey)
+		require.NoError(t, err, "fail on ComputeECDSASig")
+
+		verify := VerifyECDSASig(digest, rBytes, sBytes, &ecKeyPair.PrivateKey.PublicKey)
+		if verify == false {
+			t.Fatalf("Fail to verify ECDSA Signature")
 		}
 	}
 }

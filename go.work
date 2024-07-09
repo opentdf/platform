@@ -1,9 +1,10 @@
-go 1.22
+go 1.22.5
 
 use (
 	./examples
+	./lib/fixtures
 	./lib/ocrypto
-        ./lib/fixtures
+	./lib/flattening
 	./protocol/go
 	./sdk
 	./service

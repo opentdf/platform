@@ -122,9 +122,10 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	opentdfSdkClientID := "opentdf-sdk"
 	opentdfOrgAdminRoleName := "opentdf-org-admin"
 	opentdfAdminRoleName := "opentdf-admin"
-	opentdfReadonlyRoleName := "opentdf-readonly"
+	opentdfStandardRoleName := "opentdf-standard"
 	testingOnlyRoleName := "opentdf-testing-role"
 	opentdfERSClientID := "tdf-entity-resolution"
+	opentdfAuthorizationClientID := "tdf-authorization-svc"
 	realmMangementClientName := "realm-management"
 
 	protocolMappers := []gocloak.ProtocolMapperRepresentation{
@@ -154,7 +155,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	}
 
 	// Create Roles
-	roles := []string{opentdfOrgAdminRoleName, opentdfAdminRoleName, opentdfReadonlyRoleName, testingOnlyRoleName}
+	roles := []string{opentdfOrgAdminRoleName, opentdfAdminRoleName, opentdfStandardRoleName, testingOnlyRoleName}
 	for _, role := range roles {
 		_, err := client.CreateRealmRole(ctx, token.AccessToken, kcConnectParams.Realm, gocloak.Role{
 			Name: gocloak.StringP(role),
@@ -174,7 +175,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	// Get the roles
 	var opentdfOrgAdminRole *gocloak.Role
 	// var opentdfAdminRole *gocloak.Role
-	var opentdfReadonlyRole *gocloak.Role
+	var opentdfStandardRole *gocloak.Role
 	var testingOnlyRole *gocloak.Role
 	realmRoles, err := client.GetRealmRoles(ctx, token.AccessToken, kcConnectParams.Realm, gocloak.GetRoleParams{
 		Search: gocloak.StringP("opentdf"),
@@ -190,8 +191,8 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 			opentdfOrgAdminRole = role
 		// case opentdfAdminRoleName:
 		// 	opentdfAdminRole = role
-		case opentdfReadonlyRoleName:
-			opentdfReadonlyRole = role
+		case opentdfStandardRoleName:
+			opentdfStandardRole = role
 		case testingOnlyRoleName:
 			testingOnlyRole = role
 		}
@@ -244,12 +245,13 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		ClientID: gocloak.StringP(opentdfSdkClientID),
 		Enabled:  gocloak.BoolP(true),
 		// OptionalClientScopes:    &[]string{"testscope"},
-		Name:                    gocloak.StringP(opentdfSdkClientID),
-		ServiceAccountsEnabled:  gocloak.BoolP(true),
-		ClientAuthenticatorType: gocloak.StringP("client-secret"),
-		Secret:                  gocloak.StringP("secret"),
-		ProtocolMappers:         &protocolMappers,
-	}, []gocloak.Role{*opentdfReadonlyRole, *testingOnlyRole}, nil)
+		Name:                      gocloak.StringP(opentdfSdkClientID),
+		ServiceAccountsEnabled:    gocloak.BoolP(true),
+		ClientAuthenticatorType:   gocloak.StringP("client-secret"),
+		Secret:                    gocloak.StringP("secret"),
+		DirectAccessGrantsEnabled: gocloak.BoolP(true),
+		ProtocolMappers:           &protocolMappers,
+	}, []gocloak.Role{*opentdfStandardRole, *testingOnlyRole}, nil)
 	if err != nil {
 		return err
 	}
@@ -289,6 +291,20 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		return err
 	}
 
+	// Create TDF Authorization Svc Client
+	_, err = createClient(ctx, client, token, &kcConnectParams, gocloak.Client{
+		ClientID:                gocloak.StringP(opentdfAuthorizationClientID),
+		Enabled:                 gocloak.BoolP(true),
+		Name:                    gocloak.StringP(opentdfAuthorizationClientID),
+		ServiceAccountsEnabled:  gocloak.BoolP(true),
+		ClientAuthenticatorType: gocloak.StringP("client-secret"),
+		Secret:                  gocloak.StringP("secret"),
+		ProtocolMappers:         &protocolMappers,
+	}, nil, nil)
+	if err != nil {
+		return err
+	}
+
 	// opentdfSdkClientNumericId, err := getIDOfClient(ctx, client, token, &kcConnectParams, &opentdfClientId)
 	// if err != nil {
 	// 	slog.Error(fmt.Sprintf("Error getting the SDK id: %s", err))
@@ -310,6 +326,9 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 
 	// Create token exchange opentdf->opentdf sdk
 	if err := createTokenExchange(ctx, &kcConnectParams, opentdfClientID, opentdfSdkClientID); err != nil {
+		return err
+	}
+	if err := createCertExchange(ctx, &kcConnectParams, "x509-auth-flow", opentdfSdkClientID); err != nil {
 		return err
 	}
 
@@ -447,8 +466,17 @@ func createRealm(ctx context.Context, kcConnectParams KeycloakConnectParams, rea
 
 	// Create realm
 	r, err := client.GetRealm(ctx, token.AccessToken, *realm.Realm)
-	if err != nil {
-		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
+	var kcErr *gocloak.APIError
+	if errors.As(err, &kcErr) {
+		switch kcErr.Code {
+		case http.StatusNotFound:
+			// yes
+		case http.StatusConflict:
+			slog.Info(fmt.Sprintf("⏭️ %s realm already exists, skipping create", *realm.Realm))
+		default:
+			return err
+		}
+	} else if err != nil {
 		if kcErr.Code == http.StatusConflict {
 			slog.Info(fmt.Sprintf("⏭️ %s realm already exists, skipping create", *realm.Realm))
 		} else if kcErr.Code != http.StatusNotFound {
@@ -456,33 +484,34 @@ func createRealm(ctx context.Context, kcConnectParams KeycloakConnectParams, rea
 		}
 	}
 
-	if r == nil { //nolint:nestif // realm doesnt already exist
+	if r == nil {
 		if _, err := client.CreateRealm(ctx, token.AccessToken, realm); err != nil {
 			return err
 		}
 		slog.Info("✅ Realm created", slog.String("realm", *realm.Realm))
-
-		// update realm users profile via upconfig
-		realmProfileURL := fmt.Sprintf("%s/admin/realms/%s/users/profile", kcConnectParams.BasePath, *realm.Realm)
-		realmUserProfileResp, err := client.GetRequestWithBearerAuth(ctx, token.AccessToken).Get(realmProfileURL)
-		if err != nil {
-			slog.Error("Error retrieving realm users profile ", slog.String("realm", *realm.Realm))
-			return err
-		}
-		var upConfig map[string]interface{}
-		err = json.Unmarshal([]byte(realmUserProfileResp.String()), &upConfig)
-		if err != nil {
-			return err
-		}
-		upConfig["unmanagedAttributePolicy"] = "ENABLED"
-		_, err = client.GetRequestWithBearerAuth(ctx, token.AccessToken).SetBody(upConfig).Put(realmProfileURL)
-		if err != nil {
-			return err
-		}
-		slog.Info("✅ Realm Users Profile Updated", slog.String("realm", *realm.Realm))
 	} else {
 		slog.Info("⏭️  Realm already exists", slog.String("realm", *realm.Realm))
 	}
+
+	// update realm users profile via upconfig
+	realmProfileURL := fmt.Sprintf("%s/admin/realms/%s/users/profile", kcConnectParams.BasePath, *realm.Realm)
+	realmUserProfileResp, err := client.GetRequestWithBearerAuth(ctx, token.AccessToken).Get(realmProfileURL)
+	if err != nil {
+		slog.Error("Error retrieving realm users profile ", slog.String("realm", *realm.Realm))
+		return err
+	}
+	var upConfig map[string]interface{}
+	err = json.Unmarshal([]byte(realmUserProfileResp.String()), &upConfig)
+	if err != nil {
+		return err
+	}
+	upConfig["unmanagedAttributePolicy"] = "ENABLED"
+	_, err = client.GetRequestWithBearerAuth(ctx, token.AccessToken).SetBody(upConfig).Put(realmProfileURL)
+	if err != nil {
+		return err
+	}
+	slog.Info("✅ Realm Users Profile Updated", slog.String("realm", *realm.Realm))
+
 	return nil
 }
 
@@ -574,42 +603,43 @@ func createClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.J
 		slog.Info(fmt.Sprintf("✅ Client created: client id = %s, client identifier=%s", clientID, longClientID))
 	}
 
-	// Get service account user
-	user, err := client.GetClientServiceAccount(ctx, token.AccessToken, connectParams.Realm, longClientID)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Error getting service account user for client %s : %s", clientID, err))
-		return "", err
-	}
-	slog.Info(fmt.Sprintf("ℹ️  Service account user for client %s : %s", clientID, *user.Username))
-
-	if realmRoles != nil {
-		slog.Info(fmt.Sprintf("Adding realm roles to client %s via service account %s", longClientID, *user.Username))
-		if err := client.AddRealmRoleToUser(ctx, token.AccessToken, connectParams.Realm, *user.ID, realmRoles); err != nil {
-			for _, role := range realmRoles {
-				slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
-			}
+	// if the client is not public
+	if newClient.ServiceAccountsEnabled != nil && *newClient.ServiceAccountsEnabled { //nolint:nestif // have to handle the different cases
+		// Get service account user
+		user, err := client.GetClientServiceAccount(ctx, token.AccessToken, connectParams.Realm, longClientID)
+		if err != nil {
+			slog.Error(fmt.Sprintf("Error getting service account user for client %s : %s", clientID, err))
 			return "", err
 		}
-		for _, role := range realmRoles {
-			slog.Info(fmt.Sprintf("✅ Realm Role %s added to client %s", *role.Name, longClientID))
-		}
-	}
-	if clientRoles != nil {
-		slog.Info(fmt.Sprintf("Adding client roles to client %s via service account %s", longClientID, *user.Username))
-		for clientIDRole, roles := range clientRoles {
-			if err := client.AddClientRolesToUser(ctx, token.AccessToken, connectParams.Realm, clientIDRole, *user.ID, roles); err != nil {
-				for _, role := range roles {
+		slog.Info(fmt.Sprintf("ℹ️  Service account user for client %s : %s", clientID, *user.Username))
+
+		if realmRoles != nil {
+			slog.Info(fmt.Sprintf("Adding realm roles to client %s via service account %s", longClientID, *user.Username))
+			if err := client.AddRealmRoleToUser(ctx, token.AccessToken, connectParams.Realm, *user.ID, realmRoles); err != nil {
+				for _, role := range realmRoles {
 					slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
 				}
 				return "", err
 			}
-			for _, role := range roles {
-				slog.Info(fmt.Sprintf("✅ Client Role %s added to client %s", *role.Name, longClientID))
+			for _, role := range realmRoles {
+				slog.Info(fmt.Sprintf("✅ Realm Role %s added to client %s", *role.Name, longClientID))
 			}
 		}
-
+		if clientRoles != nil {
+			slog.Info(fmt.Sprintf("Adding client roles to client %s via service account %s", longClientID, *user.Username))
+			for clientIDRole, roles := range clientRoles {
+				if err := client.AddClientRolesToUser(ctx, token.AccessToken, connectParams.Realm, clientIDRole, *user.ID, roles); err != nil {
+					for _, role := range roles {
+						slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
+					}
+					return "", err
+				}
+				for _, role := range roles {
+					slog.Info(fmt.Sprintf("✅ Client Role %s added to client %s", *role.Name, longClientID))
+				}
+			}
+		}
 	}
-
 	return longClientID, nil
 }
 
@@ -827,8 +857,148 @@ func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectPara
 	}
 	if err := client.UpdatePermissionScope(ctx, token.AccessToken, connectParams.Realm,
 		*realmManagementClientID, tokenExchangePolicyScopePermissionID, permissionScopePolicyRepresentation); err != nil {
-		slog.Error("Error creating permission scope : %s", err)
+		slog.Error("Error creating permission scope", "error", err)
 		return err
 	}
+	return nil
+}
+
+func createCertExchange(ctx context.Context, connectParams *KeycloakConnectParams, topLevelFlowName, clientID string) error {
+	client, token, err := keycloakLogin(ctx, connectParams)
+	if err != nil {
+		return err
+	}
+
+	providerID := "basic-flow"
+	builtIn := false
+	topLevel := true
+	desc := "X509 Direct Grant Flow"
+
+	if err := client.CreateAuthenticationFlow(ctx, token.AccessToken, connectParams.Realm,
+		gocloak.AuthenticationFlowRepresentation{
+			Alias:       &topLevelFlowName,
+			ProviderID:  &providerID,
+			BuiltIn:     &builtIn,
+			Description: &desc,
+			TopLevel:    &topLevel,
+		}); err != nil {
+		switch kcErrCode(err) {
+		case http.StatusConflict:
+			slog.Warn(fmt.Sprintf("⏭️  authentication flow %s already exists; skipping remainder of cert exchange creation", topLevelFlowName))
+			return nil
+		default:
+			slog.Error(fmt.Sprintf("Error create realm certificate authentication flow: %s", err))
+			return err
+		}
+	}
+
+	provider := "direct-grant-auth-x509-username"
+	if err := client.CreateAuthenticationExecution(ctx, token.AccessToken, connectParams.Realm,
+		topLevelFlowName, gocloak.CreateAuthenticationExecutionRepresentation{
+			Provider: &provider,
+		}); err != nil {
+		slog.Error(fmt.Sprintf("Error create realm management policy: %s", err))
+		return err
+	}
+
+	authExecutions, err := client.GetAuthenticationExecutions(ctx, token.AccessToken, connectParams.Realm, topLevelFlowName)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error gettings executions %s", err))
+		return err
+	}
+	if len(authExecutions) != 1 {
+		err = fmt.Errorf("expected a single flow execution for %s", topLevelFlowName)
+		slog.Error("Error setting up authentication flow", "error", err)
+		return err
+	}
+
+	requiredRequirement := "REQUIRED"
+	execution := authExecutions[0]
+	executionConfig := make(map[string]any)
+	executionConfig["alias"] = fmt.Sprintf("%s X509 Validate Username", topLevelFlowName)
+	config := make(map[string]any)
+	config["x509-cert-auth.mapping-source-selection"] = "Subject's Common Name"
+	config["x509-cert-auth.canonical-dn-enabled"] = false
+	config["x509-cert-auth.serialnumber-hex-enabled"] = false
+	config["x509-cert-auth.regular-expression"] = "CN=(.*?)(?:,|$)"
+	config["x509-cert-auth.mapper-selection"] = "Username or Email"
+	config["x509-cert-auth.timestamp-validation-enabled"] = true
+	config["x509-cert-auth.crl-checking-enabled"] = false
+	config["x509-cert-auth.crldp-checking-enabled"] = false
+	config["x509-cert-auth.ocsp-checking-enabled"] = false
+	config["x509-cert-auth.ocsp-fail-open"] = false
+	config["x509-cert-auth.ocsp-responder-uri"] = ""
+	config["x509-cert-auth.ocsp-responder-certificate"] = ""
+	config["x509-cert-auth.keyusage"] = ""
+	config["x509-cert-auth.extendedkeyusage"] = ""
+	config["x509-cert-auth.confirmation-page-disallowed"] = false
+	config["x509-cert-auth.revalidate-certificate-enabled"] = false
+	config["x509-cert-auth.certificate-policy"] = ""
+	config["x509-cert-auth.certificate-policy-mode"] = "All"
+	executionConfig["config"] = config
+	if err := updateExecutionConfig(ctx, client, execution, connectParams, token.AccessToken, executionConfig); err != nil {
+		slog.Error(fmt.Sprintf("Error updating x509 auth flow configs %s : %s", clientID, err))
+		return err
+	}
+
+	execution.Requirement = &requiredRequirement
+	if err := client.UpdateAuthenticationExecution(ctx, token.AccessToken, connectParams.Realm, topLevelFlowName, *execution); err != nil {
+		slog.Error(fmt.Sprintf("Error updating x509 auth flow requjirement %s : %s", clientID, err))
+		return err
+	}
+
+	authFlows, err := client.GetAuthenticationFlows(ctx, token.AccessToken, connectParams.Realm)
+	if err != nil {
+		return err
+	}
+	var flowID *string
+	for _, flow := range authFlows {
+		if flow.Alias != nil && *flow.Alias == topLevelFlowName {
+			flowID = flow.ID
+			break
+		}
+	}
+	if flowID == nil {
+		return fmt.Errorf("could not find flow %s despite making it", topLevelFlowName)
+	}
+
+	clients, err := client.GetClients(ctx, token.AccessToken, connectParams.Realm, gocloak.GetClientsParams{ClientID: gocloak.StringP(clientID)})
+	if err != nil {
+		return err
+	}
+	if len(clients) != 1 {
+		return fmt.Errorf("could not find client")
+	}
+	updatedClient := clients[0]
+
+	flowBindings := make(map[string]string)
+	flowBindings["direct_grant"] = *flowID
+	updatedClient.AuthenticationFlowBindingOverrides = &flowBindings
+	if err := client.UpdateClient(ctx, token.AccessToken, connectParams.Realm, *updatedClient); err != nil {
+		slog.Error(fmt.Sprintf("Error updating client auth flow binding overrides %s : %s", clientID, err))
+		return err
+	}
+
+	slog.Info(fmt.Sprintf("✅ Created Cert Exchange Authentication %s", *flowID))
+
+	return nil
+}
+
+// updateExecutionConfig Posts an authentication execution config (body) to keycloak for a given execution
+func updateExecutionConfig(ctx context.Context, client *gocloak.GoCloak, execution *gocloak.ModifyAuthenticationExecutionRepresentation,
+	connectParams *KeycloakConnectParams, accessToken string, body interface{},
+) error {
+	updateURL := fmt.Sprintf("%s/admin/realms/%s/authentication/executions/%s/config", connectParams.BasePath,
+		connectParams.Realm, *execution.ID)
+	resp, respErr := client.GetRequestWithBearerAuth(ctx, accessToken).SetBody(body).
+		Post(updateURL)
+	if respErr != nil {
+		return respErr
+	}
+	statusCode := resp.RawResponse.StatusCode
+	if statusCode != http.StatusCreated {
+		return fmt.Errorf("received %d response to configuration request", statusCode)
+	}
+
 	return nil
 }

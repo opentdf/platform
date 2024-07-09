@@ -166,6 +166,7 @@ message DeactivateAttributeValueResponse {
 
 message GetAttributeValuesByFqnsRequest {
   // Required
+  // Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
   repeated string fqns = 1 [(buf.validate.field).required = true];
   policy.AttributeValueSelector with_value = 2 [(buf.validate.field).required = true];
 }
@@ -174,7 +175,7 @@ message GetAttributeValuesByFqnsResponse {
     policy.Attribute attribute = 1;
     policy.Value value = 2;
   }
-  // map of fqns to complete attributes and the one selected value
+  // map of FQNs to complete attributes and the one selected value
   map<string, AttributeAndValue> fqn_attribute_values = 1;
 }
 

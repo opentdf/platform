@@ -1,16 +1,17 @@
 package sdk
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
 	"testing"
-
-	"google.golang.org/grpc"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
+	"google.golang.org/grpc"
 )
 
 type FakeAccessTokenSource struct {
@@ -19,7 +20,7 @@ type FakeAccessTokenSource struct {
 	accessToken    string
 }
 
-func (fake FakeAccessTokenSource) AccessToken() (auth.AccessToken, error) {
+func (fake FakeAccessTokenSource) AccessToken(context.Context, *http.Client) (auth.AccessToken, error) {
 	return auth.AccessToken(fake.accessToken), nil
 }
 func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
@@ -49,7 +50,12 @@ func getTokenSource(t *testing.T) FakeAccessTokenSource {
 func TestCreatingRequest(t *testing.T) {
 	var dialOption []grpc.DialOption
 	tokenSource := getTokenSource(t)
-	client, err := newKASClient(dialOption, tokenSource)
+	kasKey, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
+	if err != nil {
+		t.Fatalf("error creating RSA Key: %v", err)
+	}
+
+	client, err := newKASClient(dialOption, tokenSource, kasKey)
 	if err != nil {
 		t.Fatalf("error setting KASClient: %v", err)
 	}

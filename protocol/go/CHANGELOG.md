@@ -1,5 +1,82 @@
 # Changelog
 
+## [0.2.7](https://github.com/opentdf/platform/compare/protocol/go/v0.2.6...protocol/go/v0.2.7) (2024-07-03)
+
+
+### Bug Fixes
+
+* **policy:** unsafe service attribute update should allow empty names for PATCH-style API ([#1094](https://github.com/opentdf/platform/issues/1094)) ([3c56d0f](https://github.com/opentdf/platform/commit/3c56d0f4ebbda81bf6ca6924176885d93faed48b))
+
+## [0.2.6](https://github.com/opentdf/platform/compare/protocol/go/v0.2.5...protocol/go/v0.2.6) (2024-07-02)
+
+
+### Features
+
+* **policy:** register unsafe service in platform ([#1066](https://github.com/opentdf/platform/issues/1066)) ([b7796cd](https://github.com/opentdf/platform/commit/b7796cdbe3b16903ac83033c8d99495aa10c8e2c))
+
+## [0.2.5](https://github.com/opentdf/platform/compare/protocol/go/v0.2.4...protocol/go/v0.2.5) (2024-07-02)
+
+
+### Features
+
+* **policy:** add unsafe attribute RPC db connectivity  ([#1022](https://github.com/opentdf/platform/issues/1022)) ([fbc02f3](https://github.com/opentdf/platform/commit/fbc02f34f3c3ae663b83944132f7dfd6897f6271))
+
+
+### Bug Fixes
+
+* **policy:** rename unsafe rpcs for aligned casbin action determination ([#1067](https://github.com/opentdf/platform/issues/1067)) ([7861e4a](https://github.com/opentdf/platform/commit/7861e4a5092ee702565b6cd152fd592f3c19435f))
+
+## [0.2.4](https://github.com/opentdf/platform/compare/protocol/go/v0.2.3...protocol/go/v0.2.4) (2024-06-18)
+
+
+### Features
+
+* **core:** New cryptoProvider config ([#939](https://github.com/opentdf/platform/issues/939)) ([8150623](https://github.com/opentdf/platform/commit/81506237e2e640af34df8c745b71c3f20358d5a4))
+* **policy:** add unsafe service protos and unsafe service proto Go gencode ([#1003](https://github.com/opentdf/platform/issues/1003)) ([55cc045](https://github.com/opentdf/platform/commit/55cc0459f8e5594765cecf62c3e2a1adff40a565))
+
+
+### Bug Fixes
+
+* **core:** policy resource-mappings fix doc drift in proto comments ([#980](https://github.com/opentdf/platform/issues/980)) ([09ab763](https://github.com/opentdf/platform/commit/09ab763263d092653bbded294895dcc08d03bdb2))
+
+## [0.2.3](https://github.com/opentdf/platform/compare/protocol/go/v0.2.2...protocol/go/v0.2.3) (2024-05-17)
+
+
+### Features
+
+* **authz:** Handle jwts as entity chains in decision requests ([#759](https://github.com/opentdf/platform/issues/759)) ([65612e0](https://github.com/opentdf/platform/commit/65612e08b418eb17c9576903c002685daed21ec1))
+
+
+### Bug Fixes
+
+* **policy:** make resource-mappings update patch instead of put in RESTful gateway ([#824](https://github.com/opentdf/platform/issues/824)) ([1878bb5](https://github.com/opentdf/platform/commit/1878bb55fb17419487e6c8add6d363469e364923)), closes [#313](https://github.com/opentdf/platform/issues/313)
+
+## [0.2.2](https://github.com/opentdf/platform/compare/protocol/go/v0.2.1...protocol/go/v0.2.2) (2024-05-13)
+
+
+### Bug Fixes
+
+* **core:** Bump libs patch version ([#779](https://github.com/opentdf/platform/issues/779)) ([3b68dea](https://github.com/opentdf/platform/commit/3b68dea867609071047554a6a7697becaaee2805))
+
+## [0.2.1](https://github.com/opentdf/platform/compare/protocol/go/v0.2.0...protocol/go/v0.2.1) (2024-05-07)
+
+
+### Features
+
+* **ers:** Create entity resolution service, replace idp plugin ([#660](https://github.com/opentdf/platform/issues/660)) ([ff44112](https://github.com/opentdf/platform/commit/ff441128a4b2ef97c3f739ee3f6f42be273b31dc))
+
+
+### Bug Fixes
+
+* **policy:** normalize FQN lookup to lower case ([#668](https://github.com/opentdf/platform/issues/668)) ([cd8a875](https://github.com/opentdf/platform/commit/cd8a8750e2a87cb65bc6c8815d8db131dca4f02d)), closes [#669](https://github.com/opentdf/platform/issues/669)
+
+## [0.2.0](https://github.com/opentdf/platform/compare/protocol/go/v0.1.0...protocol/go/v0.2.0) (2024-04-25)
+
+
+### Features
+
+* **policy:** move key access server registry under policy ([#655](https://github.com/opentdf/platform/issues/655)) ([7b63394](https://github.com/opentdf/platform/commit/7b633942cc5b929122b9f765a5f35cb7b4dd391f))
+
 ## [0.1.0](https://github.com/opentdf/platform/compare/protocol/go-v0.1.0...protocol/go/v0.1.0) (2024-04-22)
 
 

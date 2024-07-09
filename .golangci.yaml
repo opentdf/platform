@@ -9,6 +9,8 @@ linters-settings:
     # Such cases aren't reported by default.
     # Default: false
     check-type-assertions: true
+    # https://github.com/golangci/golangci-lint/issues/4743
+    ignore: ''
 
   exhaustive:
     # Program elements to check for exhaustiveness.
@@ -31,7 +33,7 @@ linters-settings:
         # Default: true
         skipRecvDeref: false
 
-  gomnd:
+  mnd:
     # List of function patterns to exclude from analysis.
     # Values always ignored: `time.Date`,
     # `strconv.FormatInt`, `strconv.FormatUint`, `strconv.FormatFloat`,
@@ -125,15 +127,16 @@ linters:
     - asciicheck # checks that your code does not contain non-ASCII identifiers
     - bidichk # checks for dangerous unicode character sequences
     - bodyclose # checks whether HTTP response body is closed successfully
+    - canonicalheader
     - containedctx # Containedctx is a linter that detects struct contained context.Context field.
     - contextcheck # checks the function whether use a non-inherited context
-    #- copyloopvar # checks for copying a loop variable to a function literal (1.57)
+    # - copyloopvar # checks for copying a loop variable to a function literal (requires go 1.22)
     - durationcheck # checks for two durations multiplied together
     - errname # checks that sentinel errors are prefixed with the Err and error types are suffixed with the Error
     - errorlint # finds code that will cause problems with the error wrapping scheme introduced in Go 1.13
-    - execinquery # checks query string in Query function which reads your Go src files and warning it finds
     - exhaustive # checks exhaustiveness of enum switch statements
     - exportloopref # checks for pointers to enclosing loop variables
+    # - fatcontext
     - forbidigo # forbids identifiers
     - forcetypeassert # finds forced type assertions
     - gocheckcompilerdirectives # validates go compiler directive comments (//go:)
@@ -141,12 +144,13 @@ linters:
     - gocritic # provides diagnostics that check for bugs, performance and style issues
     - gofmt # checks whether code was gofmt-ed
     - goimports # in addition to fixing imports, goimports also formats your code in the same style as gofmt
-    - gomnd # detects magic numbers
     - gomodguard # allow and block lists linter for direct Go module dependencies. This is different from depguard where there are different block types for example version constraints and module recommendations
     - goprintffuncname # checks that printf-like functions are named with f at the end
     - gosec # inspects source code for security problems
+    # - intrange # checks for range over int (requires go 1.22)
     - loggercheck # checks key value pairs for common logger libraries (kitlog,klog,logr,zap)
     - makezero # finds slice declarations with non-zero initial length
+    - mnd # detects magic numbers
     - musttag # enforces field tags in (un)marshaled structs
     - nakedret # finds naked returns in functions greater than a specified function length
     - nestif # reports deeply nested if statements

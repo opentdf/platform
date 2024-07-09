@@ -11,7 +11,11 @@ func Dotnotation(m map[string]interface{}, key string) interface{} {
 		if m[k] == nil {
 			return nil
 		}
-		m = m[k].(map[string]interface{})
+		var ok bool
+		m, ok = m[k].(map[string]interface{})
+		if !ok {
+			return nil
+		}
 	}
 	return nil
 }

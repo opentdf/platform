@@ -5,6 +5,9 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -29,9 +32,10 @@ import (
 
 type OAuthSuite struct {
 	suite.Suite
-	dpopJWK           jwk.Key
-	keycloakContainer tc.Container
-	keycloakEndpoint  string
+	dpopJWK               jwk.Key
+	keycloakContainer     tc.Container
+	keycloakEndpoint      string
+	keycloakHTTPSEndpoint string
 }
 
 func TestOAuthTestSuite(t *testing.T) {
@@ -53,13 +57,66 @@ func (s *OAuthSuite) SetupSuite() {
 	s.dpopJWK = dpopJWK
 	ctx := context.Background()
 
-	keycloak, idpEndpoint := setupKeycloak(ctx, s.T())
+	keycloak, idpEndpoint, idpHTTPSEndpoint := setupKeycloak(ctx, s.T())
 	s.keycloakContainer = keycloak
 	s.keycloakEndpoint = idpEndpoint
+	s.keycloakHTTPSEndpoint = idpHTTPSEndpoint
 }
 
 func (s *OAuthSuite) TearDownSuite() {
 	_ = s.keycloakContainer.Terminate(context.Background())
+}
+
+//go:embed testdata/keycloak-ca.pem
+var ca []byte
+
+func (s *OAuthSuite) TestCertExchangeFromKeycloak() {
+	clientCredentials := ClientCredentials{
+		ClientID:   "opentdf-sdk",
+		ClientAuth: "secret",
+	}
+	cert, err := tls.LoadX509KeyPair("testdata/sampleuser.crt", "testdata/sampleuser.key")
+	rootCAs, _ := x509.SystemCertPool()
+	rootCAs.AppendCertsFromPEM(ca)
+	s.Require().NoError(err)
+	tlsConfig := tls.Config{
+		MinVersion:   tls.VersionTLS12,
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      rootCAs,
+	}
+	exhcangeInfo := CertExchangeInfo{TLSConfig: &tlsConfig, Audience: []string{"opentdf-sdk"}}
+
+	tok, err := DoCertExchange(
+		context.Background(),
+		s.keycloakHTTPSEndpoint,
+		exhcangeInfo,
+		clientCredentials,
+		s.dpopJWK)
+	s.Require().NoError(err)
+
+	tokenDetails, err := jwt.ParseString(tok.AccessToken, jwt.WithVerify(false))
+	s.Require().NoError(err)
+
+	cnfClaim, ok := tokenDetails.Get("cnf")
+	s.Require().True(ok)
+	cnfClaimsMap, ok := cnfClaim.(map[string]interface{})
+	s.Require().True(ok)
+	idpKeyFingerprint, ok := cnfClaimsMap["jkt"].(string)
+	s.Require().True(ok)
+	s.Require().NotEmpty(idpKeyFingerprint)
+	pk, err := s.dpopJWK.PublicKey()
+	s.Require().NoError(err)
+	hash, err := pk.Thumbprint(crypto.SHA256)
+	s.Require().NoError(err)
+
+	expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
+	s.Equal(expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
+	s.Greaterf(tok.ExpiresIn, int64(0), "invalid expiration is before current time: %v", tok)
+	s.Falsef(tok.Expired(), "got a token that is currently expired: %v", tok)
+
+	name, ok := tokenDetails.Get("name")
+	s.Require().True(ok)
+	s.Equal("sample user", name, "got unexpected name")
 }
 
 func (s *OAuthSuite) TestGettingAccessTokenFromKeycloak() {
@@ -69,10 +126,12 @@ func (s *OAuthSuite) TestGettingAccessTokenFromKeycloak() {
 	}
 
 	tok, err := GetAccessToken(
+		http.DefaultClient,
 		s.keycloakEndpoint,
 		[]string{"testscope"},
 		clientCredentials,
 		s.dpopJWK)
+
 	s.Require().NoError(err)
 
 	tokenDetails, err := jwt.ParseString(tok.AccessToken, jwt.WithVerify(false))
@@ -101,7 +160,7 @@ func (s *OAuthSuite) TestGettingAccessTokenFromKeycloak() {
 	s.Greaterf(tok.ExpiresIn, int64(0), "invalid expiration is before current time: %v", tok)
 	s.Falsef(tok.Expired(), "got a token that is currently expired: %v", tok)
 
-	// verify that we got a token that has the opentdf-readonly role, which only the sdk client has
+	// verify that we got a token that has the opentdf-standard role, which only the sdk client has
 	ra, ok := tokenDetails.Get("realm_access")
 	s.Require().True(ok)
 	raMap, ok := ra.(map[string]interface{})
@@ -110,7 +169,7 @@ func (s *OAuthSuite) TestGettingAccessTokenFromKeycloak() {
 	s.Require().True(ok)
 	rolesList, ok := roles.([]interface{})
 	s.Require().True(ok)
-	s.Require().True(slices.Contains(rolesList, "opentdf-readonly"), "missing the `opentdf-readonly` role")
+	s.Require().True(slices.Contains(rolesList, "opentdf-standard"), "missing the `opentdf-standard` role")
 }
 
 func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
@@ -122,6 +181,7 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 	}
 
 	subjectToken, err := GetAccessToken(
+		http.DefaultClient,
 		s.keycloakEndpoint,
 		[]string{"testscope"},
 		clientCredentials,
@@ -138,7 +198,7 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 		Audience:     []string{"opentdf-sdk"},
 	}
 
-	exchangedTok, err := DoTokenExchange(ctx, s.keycloakEndpoint, []string{}, exchangeCredentials, tokenExchange, s.dpopJWK)
+	exchangedTok, err := DoTokenExchange(ctx, http.DefaultClient, s.keycloakEndpoint, []string{}, exchangeCredentials, tokenExchange, s.dpopJWK)
 	s.Require().NoError(err)
 
 	tokenDetails, err := jwt.ParseString(exchangedTok.AccessToken, jwt.WithVerify(false))
@@ -161,7 +221,7 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 	s.Greaterf(subjectToken.ExpiresIn, int64(0), "invalid expiration is before current time: %v", subjectToken)
 	s.Falsef(subjectToken.Expired(), "got a token that is currently expired: %v", subjectToken)
 
-	// verify that we got a token that has the opentdf-readonly role, which only the sdk client has
+	// verify that we got a token that has the opentdf-standard role, which only the sdk client has
 	ra, ok := tokenDetails.Get("realm_access")
 	s.Require().True(ok)
 	raMap, ok := ra.(map[string]interface{})
@@ -170,7 +230,7 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 	s.Require().True(ok)
 	rolesList, ok := roles.([]interface{})
 	s.Require().True(ok)
-	s.Require().True(slices.Contains(rolesList, "opentdf-readonly"), "missing the `opentdf-readonly` role")
+	s.Require().True(slices.Contains(rolesList, "opentdf-standard"), "missing the `opentdf-standard` role")
 
 	// verify that the calling client is the authorized party
 	azpClaim, ok := tokenDetails.Get("azp")
@@ -188,7 +248,7 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 func (s *OAuthSuite) TestClientSecretNoNonce() {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		s.Equal("/token", r.URL.Path)
-		s.Require().NoError(r.ParseForm())
+		s.NoError(r.ParseForm())
 
 		validateBasicAuth(r, s.T())
 		extractDPoPToken(r, s.T())
@@ -197,14 +257,14 @@ func (s *OAuthSuite) TestClientSecretNoNonce() {
 			Issuer("example.org/fake").
 			IssuedAt(time.Now()).
 			Build()
-		s.Require().NoError(err)
+		s.NoError(err)
 
 		responseBytes, err := json.Marshal(tok)
-		s.Require().NoError(err, "error writing response")
+		s.NoError(err, "error writing response")
 
-		w.Header().Add("content-type", "application/json")
+		w.Header().Add("Content-Type", "application/json")
 		_, err = w.Write(responseBytes)
-		s.Require().NoError(err)
+		s.NoError(err)
 	}))
 	defer server.Close()
 
@@ -212,7 +272,7 @@ func (s *OAuthSuite) TestClientSecretNoNonce() {
 		ClientID:   "theclient",
 		ClientAuth: "thesecret",
 	}
-	_, err := GetAccessToken(server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, s.dpopJWK)
+	_, err := GetAccessToken(http.DefaultClient, server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, s.dpopJWK)
 	s.Require().NoError(err, "didn't get a token back from the IdP")
 }
 
@@ -223,7 +283,7 @@ func (s *OAuthSuite) TestClientSecretWithNonce() {
 		timesCalled++
 		s.Equal("/token", r.URL.Path, "surprise http request to mock oauth service")
 		err := r.ParseForm()
-		s.Require().NoError(err, "error parsing oauth request")
+		s.NoError(err, "error parsing oauth request")
 
 		validateBasicAuth(r, s.T())
 
@@ -231,7 +291,7 @@ func (s *OAuthSuite) TestClientSecretWithNonce() {
 			w.Header().Add("DPoP-Nonce", "dfdffdfddf")
 			w.WriteHeader(http.StatusBadRequest)
 			_, err := w.Write([]byte{})
-			s.Require().NoError(err, "error writing response")
+			s.NoError(err, "error writing response")
 			return
 		} else if timesCalled > 2 {
 			s.T().Logf("made more than two calls to the server: %d", timesCalled)
@@ -264,10 +324,10 @@ func (s *OAuthSuite) TestClientSecretWithNonce() {
 			s.T().Errorf("error writing response: %v", err)
 		}
 
-		w.Header().Add("content-type", "application/json")
+		w.Header().Add("Content-Type", "application/json")
 		l, err := w.Write(responseBytes)
-		s.Equal(len(responseBytes), l)
-		s.Require().NoError(err)
+		s.Len(responseBytes, l)
+		s.NoError(err)
 	}))
 	defer server.Close()
 
@@ -275,7 +335,7 @@ func (s *OAuthSuite) TestClientSecretWithNonce() {
 		ClientID:   "theclient",
 		ClientAuth: "thesecret",
 	}
-	_, err := GetAccessToken(server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, s.dpopJWK)
+	_, err := GetAccessToken(http.DefaultClient, server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, s.dpopJWK)
 	if err != nil {
 		s.T().Errorf("didn't get a token back from the IdP: %v", err)
 	}
@@ -340,7 +400,7 @@ func (s *OAuthSuite) TestSignedJWTWithNonce() {
 		if r.URL.Path != "/token" {
 			s.T().Errorf("Expected to request '/token', got: %s", r.URL.Path)
 		}
-		s.Require().NoError(r.ParseForm())
+		s.NoError(r.ParseForm())
 
 		validateClientAssertionAuth(r, s.T(), getURL, "theclient", clientPublicKey)
 
@@ -381,10 +441,10 @@ func (s *OAuthSuite) TestSignedJWTWithNonce() {
 			s.T().Errorf("error writing response: %v", err)
 		}
 
-		w.Header().Add("content-type", "application/json")
+		w.Header().Add("Content-Type", "application/json")
 		l, err := w.Write(responseBytes)
-		s.Equal(len(responseBytes), l)
-		s.Require().NoError(err)
+		s.Len(responseBytes, l)
+		s.NoError(err)
 	}))
 	defer server.Close()
 
@@ -395,7 +455,7 @@ func (s *OAuthSuite) TestSignedJWTWithNonce() {
 
 	url = server.URL + "/token"
 
-	_, err = GetAccessToken(url, []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
+	_, err = GetAccessToken(http.DefaultClient, url, []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
 	if err != nil {
 		s.T().Errorf("didn't get a token back from the IdP: %v", err)
 	}
@@ -477,16 +537,31 @@ func extractDPoPToken(r *http.Request, t *testing.T) jwt.Token {
 	return clientTok
 }
 
-func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string) {
+func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string, string) {
 	containerReq := tc.ContainerRequest{
 		Image:        "ghcr.io/opentdf/keycloak:sha-8a6d35a",
-		ExposedPorts: []string{"8082/tcp"},
-		Cmd:          []string{"start-dev", "--http-port=8082", "--features=preview"},
-		Files:        []tc.ContainerFile{},
-		Env: map[string]string{
-			"KEYCLOAK_ADMIN":          "admin",
-			"KEYCLOAK_ADMIN_PASSWORD": "admin",
+		ExposedPorts: []string{"8082/tcp", "8083/tcp"},
+		Cmd: []string{"start-dev", "--http-port=8082", "--https-port=8083", "--features=preview", "--verbose",
+			"-Djavax.net.ssl.trustStorePassword=password", "-Djavax.net.ssl.HostnameVerifier=AllowAll",
+			"-Djavax.net.debug=ssl",
+			"-Djavax.net.ssl.trustStore=/truststore/truststore.jks",
+			"--spi-truststore-file-hostname-verification-policy=ANY",
 		},
+		Files: []tc.ContainerFile{
+			{HostFilePath: "testdata/ca.jks", ContainerFilePath: "/truststore/truststore.jks", FileMode: int64(0o777)},
+			{HostFilePath: "testdata/localhost.crt", ContainerFilePath: "/etc/x509/tls/localhost.crt", FileMode: int64(0o777)},
+			{HostFilePath: "testdata/localhost.key", ContainerFilePath: "/etc/x509/tls/localhost.key", FileMode: int64(0o777)},
+		},
+		Env: map[string]string{
+			"KEYCLOAK_ADMIN":                "admin",
+			"KEYCLOAK_ADMIN_PASSWORD":       "admin",
+			"KC_HTTPS_KEY_STORE_PASSWORD":   "password",
+			"KC_HTTPS_KEY_STORE_FILE":       "/truststore/truststore.jks",
+			"KC_HTTPS_CERTIFICATE_FILE":     "/etc/x509/tls/localhost.crt",
+			"KC_HTTPS_CERTIFICATE_KEY_FILE": "/etc/x509/tls/localhost.key",
+			"KC_HTTPS_CLIENT_AUTH":          "request",
+		},
+
 		WaitingFor: wait.ForLog("Running the server"),
 	}
 
@@ -509,6 +584,9 @@ func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string) {
 	port, _ := keycloak.MappedPort(ctx, "8082")
 	keycloakBase := fmt.Sprintf("http://localhost:%s", port.Port())
 
+	httpPort, _ := keycloak.MappedPort(ctx, "8083")
+	keycloakHTTPSBase := fmt.Sprintf("https://localhost:%s", httpPort.Port())
+
 	realm := "test"
 
 	connectParams := fixtures.KeycloakConnectParams{
@@ -523,5 +601,5 @@ func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string) {
 	err = fixtures.SetupKeycloak(ctx, connectParams)
 	require.NoError(t, err)
 
-	return keycloak, keycloakBase + "/realms/" + realm + "/protocol/openid-connect/token"
+	return keycloak, keycloakBase + "/realms/" + realm + "/protocol/openid-connect/token", keycloakHTTPSBase + "/realms/" + realm + "/protocol/openid-connect/token"
 }

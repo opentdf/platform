@@ -14,7 +14,7 @@ Response Body Messages are located in [messages](messages)
 
 Run mock server:
 ```shell
-docker-compose up
+docker compose up
 ```
 
 # Examples:

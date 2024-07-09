@@ -1,34 +1,29 @@
 package security
 
-import "crypto"
+import (
+	"crypto"
+	"crypto/elliptic"
+)
 
-type Config struct {
-	Type string `yaml:"type" default:"standard"`
-	// HSMConfig is the configuration for the HSM
-	HSMConfig HSMConfig `yaml:"hsm,omitempty" mapstructure:"hsm"`
-	// StandardConfig is the configuration for the standard key provider
-	StandardConfig StandardConfig `yaml:"standard,omitempty" mapstructure:"standard"`
-}
+const (
+	// Key agreement along P-256
+	AlgorithmECP256R1 = "ec:secp256r1"
+	// Used for encryption with RSA of the KAO
+	AlgorithmRSA2048 = "rsa:2048"
+)
 
 type CryptoProvider interface {
+	// Gets some KID associated with a given algorithm.
+	// Returns empty string if none are found.
+	FindKID(alg string) string
 	RSAPublicKey(keyID string) (string, error)
 	RSAPublicKeyAsJSON(keyID string) (string, error)
 	RSADecrypt(hash crypto.Hash, keyID string, keyLabel string, ciphertext []byte) ([]byte, error)
 
 	ECPublicKey(keyID string) (string, error)
-	GenerateNanoTDFSymmetricKey(ephemeralPublicKeyBytes []byte) ([]byte, error)
-	GenerateEphemeralKasKeys() (PrivateKeyEC, []byte, error)
-	GenerateNanoTDFSessionKey(privateKeyHandle PrivateKeyEC, ephemeralPublicKey []byte) ([]byte, error)
+	ECCertificate(keyID string) (string, error)
+	GenerateNanoTDFSymmetricKey(kasKID string, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error)
+	GenerateEphemeralKasKeys() (any, []byte, error)
+	GenerateNanoTDFSessionKey(privateKeyHandle any, ephemeralPublicKey []byte) ([]byte, error)
 	Close()
-}
-
-func NewCryptoProvider(cfg Config) (CryptoProvider, error) {
-	switch cfg.Type {
-	case "hsm":
-		return New(&cfg.HSMConfig)
-	case "standard":
-		return NewStandardCrypto(cfg.StandardConfig)
-	default:
-		return NewStandardCrypto(cfg.StandardConfig)
-	}
 }

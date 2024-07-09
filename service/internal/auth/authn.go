@@ -5,19 +5,23 @@ import (
 	"crypto"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
-	"path/filepath"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/bmatcuk/doublestar"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+
+	sdkAudit "github.com/opentdf/platform/sdk/audit"
+	"github.com/opentdf/platform/service/internal/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -25,24 +29,35 @@ import (
 )
 
 const (
-	dpopJWKContextKey = authContextKey("dpop-jwk")
+	authnContextKey = authContextKey("dpop-jwk")
 )
 
 type authContextKey string
 
+type authContext struct {
+	key         jwk.Key
+	accessToken jwt.Token
+	rawToken    string
+}
+
 var (
 	// Set of allowed public endpoints that do not require authentication
 	allowedPublicEndpoints = [...]string{
-		"/grpc.health.v1.Health/Check",
+		// Well Known Configuration Endpoints
 		"/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration",
-		"/kas.AccessService/PublicKey",
-		"/healthz",
 		"/.well-known/opentdf-configuration",
+		// KAS Public Key Endpoints
+		"/kas.AccessService/PublicKey",
+		"/kas.AccessService/LegacyPublicKey",
+		"/kas.AccessService/Info",
 		"/kas/kas_public_key",
 		"/kas/v2/kas_public_key",
+		// HealthZ
+		"/healthz",
+		"/grpc.health.v1.Health/Check",
 	}
 	// only asymmetric algorithms and no 'none'
-	allowedSignatureAlgorithms = map[jwa.SignatureAlgorithm]bool{
+	allowedSignatureAlgorithms = map[jwa.SignatureAlgorithm]bool{ //nolint:exhaustive // only asymmetric algorithms
 		jwa.RS256: true,
 		jwa.RS384: true,
 		jwa.RS512: true,
@@ -60,29 +75,31 @@ const refreshInterval = 15 * time.Minute
 // Authentication holds a jwks cache and information about the openid configuration
 type Authentication struct {
 	enforceDPoP bool
-	// cache holds the jwks cache
-	cache *jwk.Cache
-	// openidConfigurations holds the openid configuration for each issuer
-	oidcConfigurations map[string]AuthNConfig
+	// keySet holds a cached key set
+	cachedKeySet jwk.Set
+	// openidConfigurations holds the openid configuration for the issuer
+	oidcConfiguration AuthNConfig
 	// Casbin enforcer
 	enforcer *Enforcer
 	// Public Routes HTTP & gRPC
 	publicRoutes []string
+	// Custom Logger
+	logger *logger.Logger
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
-func NewAuthenticator(ctx context.Context, cfg Config) (*Authentication, error) {
+func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger, wellknownRegistration func(namespace string, config any) error) (*Authentication, error) {
 	a := &Authentication{
 		enforceDPoP: cfg.EnforceDPoP,
+		logger:      logr,
 	}
-	a.oidcConfigurations = make(map[string]AuthNConfig)
 
 	// validate the configuration
 	if err := cfg.validateAuthNConfig(); err != nil {
 		return nil, err
 	}
 
-	a.cache = jwk.NewCache(ctx)
+	cache := jwk.NewCache(ctx)
 
 	// Build new cache
 	// Discover OIDC Configuration
@@ -91,38 +108,67 @@ func NewAuthenticator(ctx context.Context, cfg Config) (*Authentication, error) 
 		return nil, err
 	}
 
-	cfg.OIDCConfiguration = *oidcConfig
+	// If the issuer is different from the one in the configuration, update the configuration
+	// This could happen if we are hitting an internal endpoint. Example we might point to https://keycloak.opentdf.svc/realms/opentdf
+	// but the external facing issuer is https://keycloak.opentdf.local/realms/opentdf
+	if oidcConfig.Issuer != cfg.Issuer {
+		cfg.Issuer = oidcConfig.Issuer
+	}
 
 	cacheInterval, err := time.ParseDuration(cfg.CacheRefresh)
 	if err != nil {
-		slog.ErrorContext(ctx, fmt.Sprintf("Invalid cache_refresh_interval [%s]", cfg.CacheRefresh), "err", err)
+		logr.ErrorContext(ctx, fmt.Sprintf("Invalid cache_refresh_interval [%s]", cfg.CacheRefresh), "err", err)
 		cacheInterval = refreshInterval
 	}
 
 	// Register the jwks_uri with the cache
-	if err := a.cache.Register(cfg.JwksURI, jwk.WithMinRefreshInterval(cacheInterval)); err != nil {
+	if err := cache.Register(oidcConfig.JwksURI, jwk.WithMinRefreshInterval(cacheInterval)); err != nil {
 		return nil, err
 	}
 
 	casbinConfig := CasbinConfig{
 		PolicyConfig: cfg.Policy,
 	}
-	slog.Info("initializing casbin enforcer")
+	logr.Info("initializing casbin enforcer")
 	if a.enforcer, err = NewCasbinEnforcer(casbinConfig); err != nil {
 		return nil, fmt.Errorf("failed to initialize casbin enforcer: %w", err)
 	}
 
 	// Need to refresh the cache to verify jwks is available
-	_, err = a.cache.Refresh(ctx, cfg.JwksURI)
+	_, err = cache.Refresh(ctx, oidcConfig.JwksURI)
 	if err != nil {
 		return nil, err
 	}
+
+	// Set the cache
+	a.cachedKeySet = jwk.NewCachedSet(cache, oidcConfig.JwksURI)
 
 	// Combine public routes
 	a.publicRoutes = append(a.publicRoutes, cfg.PublicRoutes...)
 	a.publicRoutes = append(a.publicRoutes, allowedPublicEndpoints[:]...)
 
-	a.oidcConfigurations[cfg.Issuer] = cfg.AuthNConfig
+	a.oidcConfiguration = cfg.AuthNConfig
+
+	// Try an register oidc issuer to wellknown service but don't return an error if it fails
+	if err := wellknownRegistration("platform_issuer", cfg.Issuer); err != nil {
+		logr.Warn("failed to register platform issuer", slog.String("error", err.Error()))
+	}
+
+	var oidcConfigMap map[string]any
+
+	// Create a map of the oidc configuration
+	oidcConfigBytes, err := json.Marshal(oidcConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(oidcConfigBytes, &oidcConfigMap); err != nil {
+		return nil, err
+	}
+
+	if err := wellknownRegistration("idp", oidcConfigMap); err != nil {
+		logr.Warn("failed to register platform idp information", slog.String("error", err.Error()))
+	}
 
 	return a, nil
 }
@@ -144,10 +190,14 @@ func normalizeURL(o string, u *url.URL) string {
 	return ou.String()
 }
 
+func (a *Authentication) ExtendAuthzDefaultPolicy(policies [][]string) error {
+	return a.enforcer.ExtendDefaultPolicy(policies)
+}
+
 // verifyTokenHandler is a http handler that verifies the token
 func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(r.URL.Path)) {
+		if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(r.URL.Path)) { //nolint:contextcheck // There is no way to pass a context here
 			handler.ServeHTTP(w, r)
 			return
 		}
@@ -159,19 +209,26 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 		origin := r.Header.Get("Origin")
-		tok, newCtx, err := a.checkToken(r.Context(), header, receiverInfo{
+		if origin == "" {
+			origin = r.Host
+			if r.TLS != nil {
+				origin = "https://" + strings.TrimSuffix(origin, ":443")
+			} else {
+				origin = "http://" + strings.TrimSuffix(origin, ":80")
+			}
+		}
+		accessTok, ctxWithJWK, err := a.checkToken(r.Context(), header, receiverInfo{
 			u: normalizeURL(origin, r.URL),
 			m: r.Method,
 		}, r.Header["Dpop"])
-
 		if err != nil {
-			slog.WarnContext(r.Context(), "failed to validate token", slog.String("error", err.Error()))
+			a.logger.WarnContext(r.Context(), "failed to validate token", slog.String("error", err.Error()))
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
 			return
 		}
 
 		// Check if the token is allowed to access the resource
-		action := ""
+		var action string
 		switch r.Method {
 		case http.MethodGet:
 			action = "read"
@@ -182,28 +239,28 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		default:
 			action = "unsafe"
 		}
-		if allow, err := a.enforcer.Enforce(tok, r.URL.Path, action); err != nil {
+		if allow, err := a.enforcer.Enforce(accessTok, r.URL.Path, action); err != nil {
 			if err.Error() == "permission denied" {
-				slog.WarnContext(r.Context(), "permission denied", slog.String("azp", tok.Subject()), slog.String("error", err.Error()))
+				a.logger.WarnContext(r.Context(), "permission denied", slog.String("azp", accessTok.Subject()), slog.String("error", err.Error()))
 				http.Error(w, "permission denied", http.StatusForbidden)
 				return
 			}
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		} else if !allow {
-			slog.WarnContext(r.Context(), "permission denied", slog.String("azp", tok.Subject()))
+			a.logger.WarnContext(r.Context(), "permission denied", slog.String("azp", accessTok.Subject()))
 			http.Error(w, "permission denied", http.StatusForbidden)
 			return
 		}
 
-		handler.ServeHTTP(w, r.WithContext(newCtx))
+		handler.ServeHTTP(w, r.WithContext(ctxWithJWK))
 	})
 }
 
 // UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
 func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-	// Allow health checks to pass through
-	if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(info.FullMethod)) {
+	// Allow health checks and other public routes to pass through
+	if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(info.FullMethod)) { //nolint:contextcheck // There is no way to pass a context here
 		return handler(ctx, req)
 	}
 
@@ -224,16 +281,17 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 	// parse the rpc method
 	p := strings.Split(info.FullMethod, "/")
 	resource := p[1] + "/" + p[2]
-	action := ""
-	if strings.HasPrefix(p[2], "List") || strings.HasPrefix(p[2], "Get") {
+	var action string
+	switch {
+	case strings.HasPrefix(p[2], "List") || strings.HasPrefix(p[2], "Get"):
 		action = "read"
-	} else if strings.HasPrefix(p[2], "Create") || strings.HasPrefix(p[2], "Update") {
+	case strings.HasPrefix(p[2], "Create") || strings.HasPrefix(p[2], "Update"):
 		action = "write"
-	} else if strings.HasPrefix(p[2], "Delete") {
+	case strings.HasPrefix(p[2], "Delete"):
 		action = "delete"
-	} else if strings.HasPrefix(p[2], "Unsafe") {
+	case strings.HasPrefix(p[2], "Unsafe"):
 		action = "unsafe"
-	} else {
+	default:
 		action = "other"
 	}
 
@@ -247,19 +305,19 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 		md["dpop"],
 	)
 	if err != nil {
-		slog.Warn("failed to validate token", slog.String("error", err.Error()))
+		a.logger.Warn("failed to validate token", slog.String("error", err.Error()))
 		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
 	}
 
 	// Check if the token is allowed to access the resource
 	if allowed, err := a.enforcer.Enforce(token, resource, action); err != nil {
 		if err.Error() == "permission denied" {
-			slog.Warn("permission denied", slog.String("azp", token.Subject()), slog.String("error", err.Error()))
+			a.logger.Warn("permission denied", slog.String("azp", token.Subject()), slog.String("error", err.Error()))
 			return nil, status.Errorf(codes.PermissionDenied, "permission denied")
 		}
 		return nil, err
 	} else if !allowed {
-		slog.Warn("permission denied", slog.String("azp", token.Subject()))
+		a.logger.Warn("permission denied", slog.String("azp", token.Subject()))
 		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
 	}
 
@@ -268,9 +326,7 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 
 // checkToken is a helper function to verify the token.
 func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo receiverInfo, dpopHeader []string) (jwt.Token, context.Context, error) {
-	var (
-		tokenRaw string
-	)
+	var tokenRaw string
 
 	// If we don't get a DPoP/Bearer token type, we can't proceed
 	switch {
@@ -282,71 +338,81 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		return nil, nil, fmt.Errorf("not of type bearer or dpop")
 	}
 
-	// We have to get iss from the token first to verify the signature
-	unverifiedToken, err := jwt.Parse([]byte(tokenRaw), jwt.WithVerify(false))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Get issuer from unverified token
-	issuer := unverifiedToken.Issuer()
-	if issuer == "" {
-		return nil, nil, fmt.Errorf("missing issuer")
-	}
-
-	// Get the openid configuration for the issuer
-	// Because we get an interface we need to cast it to a string
-	// and jwx expects it as a string so we should never hit this error if the token is valid
-	oidc, exists := a.oidcConfigurations[issuer]
-	if !exists {
-		return nil, nil, fmt.Errorf("invalid issuer")
-	}
-
-	// Get key set from cache that matches the jwks_uri
-	keySet, err := a.cache.Get(ctx, oidc.JwksURI)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get jwks from cache")
-	}
-
 	// Now we verify the token signature
 	accessToken, err := jwt.Parse([]byte(tokenRaw),
-		jwt.WithKeySet(keySet),
+		jwt.WithKeySet(a.cachedKeySet),
 		jwt.WithValidate(true),
-		jwt.WithIssuer(issuer),
-		jwt.WithAudience(oidc.Audience),
+		jwt.WithIssuer(a.oidcConfiguration.Issuer),
+		jwt.WithAudience(a.oidcConfiguration.Audience),
 	)
-
 	if err != nil {
 		return nil, nil, err
+	}
+
+	// Get actor ID (sub) from unverified token for audit and add to context
+	// Only set the actor ID if it is not already defined
+	existingActorID := ctx.Value(sdkAudit.ActorIDContextKey)
+	if existingActorID == nil {
+		actorID := accessToken.Subject()
+		ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, actorID)
 	}
 
 	_, tokenHasCNF := accessToken.Get("cnf")
 	if !tokenHasCNF && !a.enforceDPoP {
 		// this condition is not quite tight because it's possible that the `cnf` claim may
 		// come from token introspection
+		ctx = ContextWithAuthNInfo(ctx, nil, accessToken, tokenRaw)
 		return accessToken, ctx, nil
 	}
 	key, err := validateDPoP(accessToken, tokenRaw, dpopInfo, dpopHeader)
 	if err != nil {
 		return nil, nil, err
 	}
-	return accessToken, ContextWithJWK(ctx, key), nil
+	ctx = ContextWithAuthNInfo(ctx, key, accessToken, tokenRaw)
+	return accessToken, ctx, nil
 }
 
-func ContextWithJWK(ctx context.Context, key jwk.Key) context.Context {
-	return context.WithValue(ctx, dpopJWKContextKey, key)
+func ContextWithAuthNInfo(ctx context.Context, key jwk.Key, accessToken jwt.Token, raw string) context.Context {
+	return context.WithValue(ctx, authnContextKey, &authContext{
+		key,
+		accessToken,
+		raw,
+	})
 }
 
-func GetJWKFromContext(ctx context.Context) jwk.Key {
-	key := ctx.Value(dpopJWKContextKey)
+func getContextDetails(ctx context.Context) *authContext {
+	key := ctx.Value(authnContextKey)
 	if key == nil {
 		return nil
 	}
-	if jwk, ok := key.(jwk.Key); ok {
-		return jwk
+	if c, ok := key.(*authContext); ok {
+		return c
 	}
 
-	panic("got something that is not a jwk.Key from the JWK context")
+	// We should probably return an error here?
+	slog.ErrorContext(ctx, "invalid authContext")
+	return nil
+}
+
+func GetJWKFromContext(ctx context.Context) jwk.Key {
+	if c := getContextDetails(ctx); c != nil {
+		return c.key
+	}
+	return nil
+}
+
+func GetAccessTokenFromContext(ctx context.Context) jwt.Token {
+	if c := getContextDetails(ctx); c != nil {
+		return c.accessToken
+	}
+	return nil
+}
+
+func GetRawAccessTokenFromContext(ctx context.Context) string {
+	if c := getContextDetails(ctx); c != nil {
+		return c.rawToken
+	}
+	return ""
 }
 
 func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiverInfo, headers []string) (jwk.Key, error) {
@@ -377,7 +443,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 
 	dpop, err := jws.Parse([]byte(dpopHeader))
 	if err != nil {
-		slog.Error("error parsing JWT: %w", err)
+		slog.Error("error parsing JWT", "error", err)
 		return nil, fmt.Errorf("invalid DPoP JWT")
 	}
 	if len(dpop.Signatures()) != 1 {
@@ -400,7 +466,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 
 	isPrivate, err := jwk.IsPrivateKey(dpopKey)
 	if err != nil {
-		slog.Error("error checking if key is private", err)
+		slog.Error("error checking if key is private", "error", err)
 		return nil, fmt.Errorf("invalid DPoP key specified")
 	}
 
@@ -410,7 +476,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
 	if err != nil {
-		slog.Error("error computing thumbprint for key", err)
+		slog.Error("error computing thumbprint for key", "error", err)
 		return nil, fmt.Errorf("couldn't compute thumbprint for key in `jwk` in DPoP JWT")
 	}
 
@@ -422,9 +488,8 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 	// at this point we have the right key because its thumbprint matches the `jkt` claim
 	// in the validated access token
 	dpopToken, err := jwt.Parse([]byte(dpopHeader), jwt.WithKey(protectedHeaders.Algorithm(), dpopKey))
-
 	if err != nil {
-		slog.Error("error validating DPoP JWT", err)
+		slog.Error("error validating DPoP JWT", "error", err)
 		return nil, fmt.Errorf("failed to verify signature on DPoP JWT")
 	}
 
@@ -443,7 +508,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 	}
 
 	if htm != dpopInfo.m {
-		return nil, fmt.Errorf("incorrect `htm` claim in DPoP JWT; should match [%v]", dpopInfo.m)
+		return nil, fmt.Errorf("incorrect `htm` claim in DPoP JWT; received [%v], but should match [%v]", htm, dpopInfo.m)
 	}
 
 	htu, ok := dpopToken.Get("htu")
@@ -452,7 +517,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 	}
 
 	if htu != dpopInfo.u {
-		return nil, fmt.Errorf("incorrect `htu` claim in DPoP JWT; should match %v", dpopInfo.u)
+		return nil, fmt.Errorf("incorrect `htu` claim in DPoP JWT; received [%v], but should match [%v]", htu, dpopInfo.u)
 	}
 
 	ath, ok := dpopToken.Get("ath")
@@ -470,12 +535,12 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 
 func (a Authentication) isPublicRoute(path string) func(string) bool {
 	return func(route string) bool {
-		matched, err := filepath.Match(route, path)
+		matched, err := doublestar.Match(route, path)
 		if err != nil {
-			slog.Warn("error matching route", slog.String("route", route), slog.String("path", path), slog.String("error", err.Error()))
+			a.logger.Warn("error matching route", slog.String("route", route), slog.String("path", path), slog.String("error", err.Error()))
 			return false
 		}
-		slog.Debug("matching route", slog.String("route", route), slog.String("path", path), slog.Bool("matched", matched))
+		a.logger.Trace("matching route", slog.String("route", route), slog.String("path", path), slog.Bool("matched", matched))
 		return matched
 	}
 }

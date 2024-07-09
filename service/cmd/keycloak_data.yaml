@@ -1,11 +1,11 @@
 baseUrl: &baseUrl http://localhost:8888
+serverBaseUrl: &serverBaseUrl http://localhost:8080
 customAudMapper: &customAudMapper
   name: audience-mapper
   protocol: openid-connect
   protocolMapper: oidc-audience-mapper
   config:
-    included.client.audience: *baseUrl
-    included.custom.audience: custom_audience
+    included.custom.audience: *serverBaseUrl
     access.token.claim: "true"
     id.token.claim: "true"
 realms:
@@ -15,7 +15,7 @@ realms:
     custom_realm_roles:
       - name: opentdf-org-admin
       - name: opentdf-admin
-      - name: opentdf-readonly
+      - name: opentdf-standard
     custom_client_roles:
       tdf-entity-resolution:
         - name: entity-resolution-test-role
@@ -46,7 +46,7 @@ realms:
           protocolMappers:
             - *customAudMapper
         sa_realm_roles: 
-          - opentdf-readonly
+          - opentdf-standard
       - client:
           clientID: tdf-entity-resolution
           enabled: true
@@ -62,6 +62,15 @@ realms:
             - query-clients
             - view-users
             - query-users
+      - client:
+          clientID: tdf-authorization-svc
+          enabled: true
+          name: tdf-authorization-svc
+          serviceAccountsEnabled: true
+          clientAuthenticatorType: client-secret
+          secret: secret
+          protocolMappers:
+            - *customAudMapper
     users:
       - username: sample-user
         enabled: true

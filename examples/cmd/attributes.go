@@ -19,8 +19,7 @@ var AttributesExampleCmd = &cobra.Command{
 	Use:   "attributes",
 	Short: "Example usage for attributes service",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		examplesConfig := *(cmd.Context().Value(RootConfigKey).(*ExampleConfig))
-		return attributesExample(&examplesConfig)
+		return attributesExample()
 	},
 }
 
@@ -28,8 +27,8 @@ func init() {
 	ExamplesCmd.AddCommand(AttributesExampleCmd)
 }
 
-func attributesExample(examplesConfig *ExampleConfig) error {
-	s, err := sdk.New(examplesConfig.PlatformEndpoint, sdk.WithInsecureConn())
+func attributesExample() error {
+	s, err := sdk.New(platformEndpoint, sdk.WithInsecurePlaintextConn())
 	if err != nil {
 		slog.Error("could not connect", slog.String("error", err.Error()))
 		return err

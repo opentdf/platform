@@ -1,8 +1,14 @@
 package sdk
 
 import (
+	"crypto/rsa"
+	"crypto/tls"
+
+	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/oauth"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -10,25 +16,58 @@ type Option func(*config)
 
 // Internal config struct for building SDK options.
 type config struct {
-	tls               grpc.DialOption
-	clientCredentials *oauth.ClientCredentials
-	tokenExchange     *oauth.TokenExchangeInfo
-	tokenEndpoint     string
-	scopes            []string
-	authConfig        *AuthConfig
-	policyConn        *grpc.ClientConn
-	authorizationConn *grpc.ClientConn
-	extraDialOptions  []grpc.DialOption
+	dialOption              grpc.DialOption
+	tlsConfig               *tls.Config
+	clientCredentials       *oauth.ClientCredentials
+	tokenExchange           *oauth.TokenExchangeInfo
+	tokenEndpoint           string
+	scopes                  []string
+	policyConn              *grpc.ClientConn
+	authorizationConn       *grpc.ClientConn
+	entityresolutionConn    *grpc.ClientConn
+	extraDialOptions        []grpc.DialOption
+	certExchange            *oauth.CertExchangeInfo
+	wellknownConn           *grpc.ClientConn
+	platformConfiguration   PlatformConfiguration
+	kasSessionKey           *ocrypto.RsaKeyPair
+	dpopKey                 *ocrypto.RsaKeyPair
+	ipc                     bool
+	tdfFeatures             tdfFeatures
+	customAccessTokenSource auth.AccessTokenSource
 }
+
+// Options specific to TDF protocol features
+type tdfFeatures struct {
+	// For backward compatibility, don't store the KID in the KAO.
+	noKID bool
+}
+
+type PlatformConfiguration map[string]interface{}
 
 func (c *config) build() []grpc.DialOption {
-	return []grpc.DialOption{c.tls}
+	return []grpc.DialOption{c.dialOption}
 }
 
-// WithInsecureConn returns an Option that sets up an http connection.
-func WithInsecureConn() Option {
+// WithInsecureSkipVerifyConn returns an Option that sets up HTTPS connection without verification.
+func WithInsecureSkipVerifyConn() Option {
 	return func(c *config) {
-		c.tls = grpc.WithTransportCredentials(insecure.NewCredentials())
+		tlsConfig := &tls.Config{
+			MinVersion:         tls.VersionTLS12,
+			InsecureSkipVerify: true, // #nosec G402
+		}
+		c.dialOption = grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig))
+		// used by http client
+		c.tlsConfig = tlsConfig
+	}
+}
+
+// WithInsecurePlaintextConn returns an Option that sets up HTTP connection sent in the clear.
+func WithInsecurePlaintextConn() Option {
+	return func(c *config) {
+		c.dialOption = grpc.WithTransportCredentials(insecure.NewCredentials())
+		// used by http client
+		// FIXME anything to do here
+		c.tlsConfig = &tls.Config{}
 	}
 }
 
@@ -40,19 +79,23 @@ func WithClientCredentials(clientID, clientSecret string, scopes []string) Optio
 	}
 }
 
-// When we implement service discovery using a .well-known endpoint this option may become deprecated
+func WithTLSCredentials(tls *tls.Config, audience []string) Option {
+	return func(c *config) {
+		c.certExchange = &oauth.CertExchangeInfo{TLSConfig: tls, Audience: audience}
+	}
+}
+
+// WithTokenEndpoint When we implement service discovery using a .well-known endpoint this option may become deprecated
+// Deprecated: SDK will discover the token endpoint from the platform configuration
 func WithTokenEndpoint(tokenEndpoint string) Option {
 	return func(c *config) {
 		c.tokenEndpoint = tokenEndpoint
 	}
 }
 
-// temporary option to allow the for token exchange and the
-// use of REST-ful KASs. this will likely change as we
-// make these options more robust
-func WithAuthConfig(authConfig AuthConfig) Option {
+func withCustomAccessTokenSource(a auth.AccessTokenSource) Option {
 	return func(c *config) {
-		c.authConfig = &authConfig
+		c.customAccessTokenSource = a
 	}
 }
 
@@ -65,6 +108,12 @@ func WithCustomPolicyConnection(conn *grpc.ClientConn) Option {
 func WithCustomAuthorizationConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
 		c.authorizationConn = conn
+	}
+}
+
+func WithCustomEntityResolutionConnection(conn *grpc.ClientConn) Option {
+	return func(c *config) {
+		c.entityresolutionConn = conn
 	}
 }
 
@@ -82,5 +131,55 @@ func WithTokenExchange(subjectToken string, audience []string) Option {
 func WithExtraDialOptions(dialOptions ...grpc.DialOption) Option {
 	return func(c *config) {
 		c.extraDialOptions = dialOptions
+	}
+}
+
+// The session key pair is used to encrypt responses from KAS for a given session
+// and can be reused across an entire session.
+// Please use with caution.
+func WithSessionEncryptionRSA(key *rsa.PrivateKey) Option {
+	return func(c *config) {
+		okey := ocrypto.FromRSA(key)
+		c.kasSessionKey = &okey
+	}
+}
+
+// The DPoP key pair is used to implement sender constrained tokens from the identity provider,
+// and should be associated with the lifetime of a session for a given identity.
+// Please use with caution.
+func WithSessionSignerRSA(key *rsa.PrivateKey) Option {
+	return func(c *config) {
+		okey := ocrypto.FromRSA(key)
+		c.dpopKey = &okey
+	}
+}
+
+func WithCustomWellknownConnection(conn *grpc.ClientConn) Option {
+	return func(c *config) {
+		c.wellknownConn = conn
+	}
+}
+
+// WithPlatformConfiguration allows you to override the remote platform configuration
+// Use this option with caution, as it may lead to unexpected behavior
+func WithPlatformConfiguration(platformConfiguration PlatformConfiguration) Option {
+	return func(c *config) {
+		c.platformConfiguration = platformConfiguration
+	}
+}
+
+// WithIPC returns an Option that indicates the SDK should use IPC for communication
+// this will allow the platform endpoint to be an empty string
+func WithIPC() Option {
+	return func(c *config) {
+		c.ipc = true
+	}
+}
+
+// WithNoKIDInKAO disables storing the KID in the KAO. This allows generating
+// TDF files that are compatible with legacy file formats (no KID).
+func WithNoKIDInKAO() Option {
+	return func(c *config) {
+		c.tdfFeatures.noKID = true
 	}
 }

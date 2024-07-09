@@ -25,7 +25,7 @@ type Config struct {
 	OPA           opa.Config                               `yaml:"opa"`
 	Server        server.Config                            `yaml:"server"`
 	Logger        logger.Config                            `yaml:"logger"`
-	SensitiveKeys map[string]bool                          `yaml:"sensitiveKeys"`
+	SensitiveKeys []string                                 `yaml:"sensitiveKeys"`
 	Services      map[string]serviceregistry.ServiceConfig `yaml:"services" default:"{\"policy\": {\"enabled\": true}, \"health\": {\"enabled\": true}, \"authorization\": {\"enabled\": true}, \"wellknown\": {\"enabled\": true}, \"kas\": {\"enabled\": true}, \"entityresolution\": {\"enabled\": true}}"`
 }
 
@@ -91,12 +91,7 @@ func LoadConfig(key string, file string) (*Config, error) {
 }
 
 func (c *Config) LogValue() slog.Value {
-	var sensitiveKeys []string
-	for key, value := range c.SensitiveKeys {
-		if value {
-			sensitiveKeys = append(sensitiveKeys, key)
-		}
-	}
+	var sensitiveKeys = c.SensitiveKeys
 
 	redactedInterface := util.RedactSensitiveData(c, sensitiveKeys)
 	redactedConfig, ok := redactedInterface.(*Config) // Direct type assertion

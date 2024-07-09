@@ -119,5 +119,5 @@ server:
 opa:
   embedded: true # Only for local development
 sensitiveKeys:
-  clientsecret: true
-  password: true
+  - clientsecret
+  - password

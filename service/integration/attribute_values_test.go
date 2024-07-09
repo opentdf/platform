@@ -98,6 +98,40 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_NotFound() {
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
+func (s *AttributeValuesSuite) Test_GetAttributeValue_ContainsKASGrants() {
+	// create a value with KAS grants
+	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
+	value := &attributes.CreateAttributeValueRequest{
+		Value: "kas_grants_test",
+	}
+	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.ID, value)
+	s.Require().NoError(err)
+	s.NotNil(createdValue)
+
+	// ensure it has no grants
+	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Empty(got.GetGrants())
+
+	fixtureKeyAccessServerID = s.f.GetKasRegistryKey("key_access_server_1").ID
+	assignment := &attributes.ValueKeyAccessServer{
+		ValueId:           createdValue.GetId(),
+		KeyAccessServerId: fixtureKeyAccessServerID,
+	}
+	grant, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, assignment)
+	s.Require().NoError(err)
+	s.NotNil(grant)
+
+	// get the value and ensure it contains the grants
+	got, err = s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(createdValue.GetId(), got.GetId())
+	s.Len(got.GetGrants(), 1)
+	s.Equal(fixtureKeyAccessServerID, got.GetGrants()[0].GetId())
+}
+
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_SetsActiveStateTrueByDefault() {
 	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
 

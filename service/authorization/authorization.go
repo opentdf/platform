@@ -5,15 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strconv"
+	"os"
 	"strings"
-	"time"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
+	"github.com/creasty/defaults"
+	"github.com/go-playground/validator/v10"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/mitchellh/mapstructure"
-	"github.com/open-policy-agent/opa/metrics"
-	"github.com/open-policy-agent/opa/profiler"
-	opaSdk "github.com/open-policy-agent/opa/sdk"
+	"github.com/open-policy-agent/opa/rego"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -23,31 +25,41 @@ import (
 	"github.com/opentdf/platform/service/internal/entitlements"
 	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/logger/audit"
-	"github.com/opentdf/platform/service/internal/opa"
+	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"github.com/opentdf/platform/service/policies"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
 )
 
 type AuthorizationService struct { //nolint:revive // AuthorizationService is a valid name for this struct
 	authorization.UnimplementedAuthorizationServiceServer
-	eng         *opa.Engine
 	sdk         *otdf.SDK
-	ersURL      string
+	config      Config
 	logger      *logger.Logger
 	tokenSource *oauth2.TokenSource
+	eval        rego.PreparedEvalQuery
 }
 
 type Config struct {
 	// Entity Resolution Service URL
-	ERSURL string `mapstructure:"ersurl"`
+	ERSURL string `mapstructure:"ersurl" validate:"required,http_url"`
 	// OAuth Client ID
-	ClientID string `mapstructure:"clientid"`
+	ClientID string `mapstructure:"clientid" validate:"required"`
 	// OAuth Client secret
-	ClientSecret string `mapstructure:"clientsecret"`
+	ClientSecret string `mapstructure:"clientsecret" validate:"required"`
 	// OAuth token endpoint
-	TokenEndpoint string `mapstructure:"tokenendpoint"`
+	TokenEndpoint string `mapstructure:"tokenendpoint" validate:"required,http_url"`
+	// Custom Rego Policy To Load
+	Rego CustomRego `mapstructure:"rego"`
+}
+
+type CustomRego struct {
+	// Path to Rego file
+	Path string `mapstructure:"path"`
+	// Rego Query
+	Query string `mapstructure:"query" default:"data.opentdf.entitlements.attributes"`
 }
 
 const tokenExpiryDelay = 100
@@ -57,28 +69,76 @@ func NewRegistration() serviceregistry.Registration {
 		Namespace:   "authorization",
 		ServiceDesc: &authorization.AuthorizationService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
+			var (
+				err             error
+				entitlementRego []byte
+				authZCfg        = new(Config)
+			)
 			// default ERS endpoint
-			as := &AuthorizationService{eng: srp.Engine, sdk: srp.SDK, logger: srp.Logger}
+			as := &AuthorizationService{sdk: srp.SDK, logger: srp.Logger}
 			if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
 				slog.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
 			}
 
-			authZCfg := Config{
-				ERSURL:        "http://localhost:8080/entityresolution/resolve",
-				ClientID:      "tdf-authorization-svc",
-				ClientSecret:  "secret",
-				TokenEndpoint: "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token",
+			if err := defaults.Set(authZCfg); err != nil {
+				panic(fmt.Errorf("failed to set defaults for authorization service config: %w", err))
 			}
+
 			if err := mapstructure.Decode(srp.Config.ExtraProps, &authZCfg); err != nil {
 				panic(fmt.Errorf("invalid auth svc cfg [%v] %w", srp.Config.ExtraProps, err))
 			}
 
-			config := clientcredentials.Config{ClientID: authZCfg.ClientID, ClientSecret: authZCfg.ClientSecret, TokenURL: authZCfg.TokenEndpoint}
-			slog.Debug("authorization service client config", slog.Any("config", config))
-			newTokenSource := oauth2.ReuseTokenSourceWithExpiry(nil, config.TokenSource(context.Background()), tokenExpiryDelay)
-			slog.Debug("authorization service token source created", slog.Any("token_source", newTokenSource))
+			// Validate Config
+			validate := validator.New(validator.WithRequiredStructEnabled())
+			if err := validate.Struct(authZCfg); err != nil {
+				var invalidValidationError *validator.InvalidValidationError
+				if errors.As(err, &invalidValidationError) {
+					slog.Error("error validating authorization service config", slog.String("error", err.Error()))
+					panic(fmt.Errorf("error validating authorization service config: %w", err))
+				}
 
-			as.ersURL = authZCfg.ERSURL
+				var validationErrors validator.ValidationErrors
+				if errors.As(err, &validationErrors) {
+					for _, err := range validationErrors {
+						slog.Error("error validating authorization service config", slog.String("error", err.Error()))
+						panic(fmt.Errorf("error validating authorization service config: %w", err))
+					}
+				}
+			}
+
+			slog.Debug("authorization service config", slog.Any("config", authZCfg))
+
+			// Build Rego PreparedEvalQuery
+
+			// Load rego from embedded file or custom path
+			if authZCfg.Rego.Path != "" {
+				entitlementRego, err = os.ReadFile(authZCfg.Rego.Path)
+				if err != nil {
+					panic(fmt.Errorf("failed to read custom entitlements.rego file: %w", err))
+				}
+			} else {
+				entitlementRego, err = policies.EntitlementsRego.ReadFile("entitlements/entitlements.rego")
+				if err != nil {
+					panic(fmt.Errorf("failed to read entitlements.rego file: %w", err))
+				}
+			}
+
+			// Register builtin
+			subjectmappingbuiltin.SubjectMappingBuiltin()
+
+			as.eval, err = rego.New(
+				rego.Query(authZCfg.Rego.Query),
+				rego.Module("entitlements.rego", string(entitlementRego)),
+				rego.StrictBuiltinErrors(true),
+			).PrepareForEval(context.Background())
+			if err != nil {
+				panic(fmt.Errorf("failed to prepare entitlements.rego for eval: %w", err))
+			}
+
+			clientCredsConfig := clientcredentials.Config{ClientID: authZCfg.ClientID, ClientSecret: authZCfg.ClientSecret, TokenURL: authZCfg.TokenEndpoint}
+			newTokenSource := oauth2.ReuseTokenSourceWithExpiry(nil, clientCredsConfig.TokenSource(context.Background()), tokenExpiryDelay)
+
+			as.config = *authZCfg
 			as.tokenSource = &newTokenSource
 
 			return as, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
@@ -138,9 +198,6 @@ func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *au
 			ResourceAttributes: tdr.GetResourceAttributes(),
 		})
 	}
-
-	// slog.Debug("Calling GetDecisions from GetDecisionsByToken")
-	// slog.Debug("GetDecisions Input", "input", decisionsRequests)
 
 	resp, err := as.GetDecisions(ctx, &authorization.GetDecisionsRequest{
 		DecisionRequests: decisionsRequests,
@@ -333,19 +390,13 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		// TODO: Reomve and use MatchSubjectMappings instead later in the flow
 		listAttributeResp, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{})
 		if err != nil {
-			return nil, err
+			as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
+			return nil, status.Error(codes.Internal, "failed to list attributes")
 		}
 		var attributeFqns []string
 		for _, attr := range listAttributeResp.GetAttributes() {
-			ns := attr.GetNamespace().GetName()
-			an := attr.GetName()
 			for _, val := range attr.GetValues() {
-				fqn, err := fqnBuilder(ns, an, val.GetValue())
-				if err != nil {
-					slog.Error("Error building attribute fqn for ", "attr", attr, "value", val)
-					return nil, err
-				}
-				attributeFqns = append(attributeFqns, fqn)
+				attributeFqns = append(attributeFqns, val.GetFqn())
 			}
 		}
 		request.Fqns = attributeFqns
@@ -355,84 +406,87 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	}
 	avf, err := as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &request)
 	if err != nil {
-		return nil, err
+		as.logger.ErrorContext(ctx, "failed to get attribute values by fqns", slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, "failed to get attribute values by fqns")
 	}
 	subjectMappings := avf.GetFqnAttributeValues()
 	as.logger.DebugContext(ctx, "retrieved from subject mappings service", slog.Any("subject_mappings: ", subjectMappings))
+	// TODO: this could probably be moved to proto validation https://github.com/opentdf/platform/issues/1057
 	if req.Entities == nil {
 		as.logger.ErrorContext(ctx, "requires entities")
-		return nil, errors.New("entity chain is required")
+		return nil, status.Error(codes.InvalidArgument, "requires entities")
 	}
 	rsp := &authorization.GetEntitlementsResponse{
 		Entitlements: make([]*authorization.EntityEntitlements, len(req.GetEntities())),
 	}
-	for i, entity := range req.GetEntities() {
+	for idx, entity := range req.GetEntities() {
 		// TODO: change this and the opa to take a bulk request and not have to call opa for each entity
 		// get the client auth token
 		authToken, err := (*as.tokenSource).Token()
 		if err != nil {
-			slog.Error("failed to get client auth token in GetEntitlements", slog.String("error", err.Error()))
-			return nil, fmt.Errorf("failed to get client auth token in GetEntitlements: %w", err)
+			as.logger.ErrorContext(ctx, "failed to get client auth token in GetEntitlements", slog.String("error", err.Error()))
+			return nil, status.Error(codes.Internal, "failed to get client auth token in GetEntitlements")
 		}
-		// OPA
-		in, err := entitlements.OpaInput(entity, subjectMappings, as.ersURL, authToken.AccessToken)
+
+		in, err := entitlements.OpaInput(entity, subjectMappings, as.config.ERSURL, authToken.AccessToken)
 		if err != nil {
-			slog.Error("failed to build OPA input", slog.Any("entity", entity), slog.String("error", err.Error()))
-			slog.Debug("authToken", "authToken", authToken) // only log token in debug mode
-			return nil, fmt.Errorf("failed to build OPA input in GetEntitlements: %w", err)
+			as.logger.ErrorContext(ctx, "failed to build rego input", slog.Any("entity", entity), slog.String("error", err.Error()))
+			return nil, status.Error(codes.Internal, "failed to build rego input")
 		}
 		as.logger.DebugContext(ctx, "entitlements", "entity_id", entity.GetId(), "input", fmt.Sprintf("%+v", in))
-		// uncomment for debugging
-		// if slog.Default().Enabled(ctx, slog.LevelDebug) {
-		//	_ = json.NewEncoder(os.Stdout).Encode(in)
-		// }
-		options := opaSdk.DecisionOptions{
-			Now:                 time.Now(),
-			Path:                "opentdf/entitlements/attributes", // change to /resolve_entities to get output of idp_plugin
-			Input:               in,
-			NDBCache:            nil,
-			StrictBuiltinErrors: true,
-			Tracer:              nil,
-			Metrics:             metrics.New(),
-			Profiler:            profiler.New(),
-			Instrument:          true,
-			DecisionID:          fmt.Sprintf("%-v", req.String()),
-		}
-		decision, err := as.eng.Decision(ctx, options)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get decision from OPA Engine in GetEntitlements: %w", err)
-		}
-		// uncomment for debugging
-		// if slog.Default().Enabled(ctx, slog.LevelDebug) {
-		//	_ = json.NewEncoder(os.Stdout).Encode(decision.Result)
-		// }
 
-		// if the output is a string, it is an error
-		resultError, ok := decision.Result.(string)
-		if ok {
-			as.logger.DebugContext(ctx, "not ok", "entity_id", entity.GetId(), "decision.Result", fmt.Sprintf("%+v", resultError))
-			return nil, errors.New(resultError)
+		results, err := as.eval.Eval(ctx,
+			rego.EvalInput(in),
+		)
+		if err != nil {
+			return nil, status.Error(codes.Internal, "failed to evaluate entitlements policy")
 		}
-		results, ok := decision.Result.([]interface{})
-		if !ok {
-			as.logger.DebugContext(ctx, "not ok", "entity_id", entity.GetId(), "decision.Result", fmt.Sprintf("%+v", decision.Result))
-			return nil, err
+
+		// If we get no results and no error then we assume that the entity is not entitled to anything
+		if len(results) == 0 {
+			as.logger.DebugContext(ctx, "no entitlement results", slog.String("entity_id", entity.GetId()))
+			return rsp, nil
 		}
-		as.logger.DebugContext(ctx, "opa results", "entity_id", entity.GetId(), "results", fmt.Sprintf("%+v", results))
-		saa := make([]string, len(results))
-		for k, v := range results {
-			str, okk := v.(string)
-			if !okk {
-				as.logger.DebugContext(ctx, "not ok", slog.String("entity_id", entity.GetId()), slog.String(strconv.Itoa(k), fmt.Sprintf("%+v", v)))
+
+		// I am not sure how we would end up with multiple results but lets return an empty entitlement set for now
+		if len(results) > 1 {
+			as.logger.WarnContext(ctx, "multiple entitlement results", slog.String("entity_id", entity.GetId()), slog.String("results", fmt.Sprintf("%+v", results)))
+			return rsp, nil
+		}
+
+		// If we get no expressions then we assume that the entity is not entitled to anything
+		if len(results[0].Expressions) == 0 {
+			as.logger.WarnContext(ctx, "no entitlement expressions", slog.String("entity_id", entity.GetId()), slog.String("results", fmt.Sprintf("%+v", results)))
+			return rsp, nil
+		}
+
+		// Check to maksure if the value is a list. Good validation if someone customizes the rego policy
+		resultsEntitlements, valueListOk := results[0].Expressions[0].Value.([]interface{})
+		if !valueListOk {
+			as.logger.ErrorContext(ctx, "entitlements is not an array", slog.String("entity_id", entity.GetId()), slog.String("value", fmt.Sprintf("%+v", resultsEntitlements...)))
+			return rsp, nil
+		}
+		// Build array with length of results
+		var entitlements = make([]string, len(resultsEntitlements))
+
+		// Build entitlements list
+		for valueIDX, value := range resultsEntitlements {
+			entitlement, valueOK := value.(string)
+			// If value is not okay skip adding to entitlements
+			if !valueOK {
+				as.logger.WarnContext(ctx, "issue with adding entitlement", slog.String("entity_id", entity.GetId()), slog.String("entitlement", entitlement))
+				continue
 			}
-			saa[k] = str
+			// Add entitlement to entitlements array
+			entitlements[valueIDX] = entitlement
 		}
-		rsp.Entitlements[i] = &authorization.EntityEntitlements{
+		// Update the entity with its entitlements
+		rsp.Entitlements[idx] = &authorization.EntityEntitlements{
 			EntityId:           entity.GetId(),
-			AttributeValueFqns: saa,
+			AttributeValueFqns: entitlements,
 		}
 	}
-	as.logger.DebugContext(ctx, "opa", "rsp", fmt.Sprintf("%+v", rsp))
+
 	return rsp, nil
 }
 

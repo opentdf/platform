@@ -17,9 +17,9 @@ all: toolcheck clean build lint license test
 toolcheck:
 	@echo "Checking for required tools..."
 	@which buf > /dev/null || (echo "buf not found, please install it from https://docs.buf.build/installation" && exit 1)
-	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.58.1'" && exit 1)
+	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1'" && exit 1)
 	@which protoc-gen-doc > /dev/null || (echo "protoc-gen-doc not found, run 'go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1'" && exit 1)
-	@golangci-lint --version | grep "version v\?1.5[89]" > /dev/null || (echo "golangci-lint version must be v1.58 or later [$$(golangci-lint --version)]" && exit 1)
+	@golangci-lint --version | grep "version v\?1.59" > /dev/null || (echo "golangci-lint version must be v1.59 or later [$$(golangci-lint --version)]" && exit 1)
 	@which goimports >/dev/null || (echo "goimports not found, run 'go install golang.org/x/tools/cmd/goimports@latest'")
 
 fix: tidy fmt
@@ -31,7 +31,7 @@ tidy:
 	for m in $(HAND_MODS); do (cd $$m && go mod tidy) || exit 1; done
 
 license:
-	for m in $(HAND_MODS); do (cd $$m && go-licenses check --disallowed_types=forbidden --include_tests ./) || exit 1; done
+	for m in $(HAND_MODS); do (cd $$m && go run github.com/google/go-licenses@v1.6.0 check --disallowed_types=forbidden --include_tests ./) || exit 1; done
 
 lint: proto-lint go-lint
 

@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -67,8 +66,7 @@ I099IoRfC5djHUYYLMU/VkOIHuPC3sb7J65pSN26eR8bTMVNagk187V/xNwUuvkf
 wVyElqp317Ksz+GtTIc+DE6oryxK3tZd4hrj9fXT4KiJvQ4pcRjpePgH7B8=
 -----END CERTIFICATE-----`
 
-//nolint:gochecknoglobals // Mock value
-var mockKasPrivateKey = `-----BEGIN PRIVATE KEY-----
+	mockRSAPrivateKey1 = `-----BEGIN PRIVATE KEY-----
 MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDOpiotrvV2i5h6
 clHMzDGgh3h/kMa0LoGx2OkDPd8jogycUh7pgE5GNiN2lpSmFkjxwYMXnyrwr9Ex
 yczBWJ7sRGDCDaQg5fjVUIloZ8FJVbn+sEcfQ9iX6vmI9/S++oGK79QM3V8M8cp4
@@ -96,6 +94,7 @@ tUpDs+/wZvcmfsFd8xC5mMUN0DatAVzVAUI95+tQaWU3Uj+bqHq0lC6Wy2VceG0D
 D+7EicjdGFN/2WVPXiYX1fblkxasZY+wChYBrPLjA9g0qOzzmXbRBph5QxDuQjJ6
 qcddVKB624a93ZBssn7OivnR
 -----END PRIVATE KEY-----`
+)
 
 var testHarnesses = []tdfTest{ //nolint:gochecknoglobals // requires for testing tdf
 	{
@@ -229,7 +228,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 
 	assertions := []Assertion{
 		{
-			Id:           "assertion1",
+			ID:           "assertion1",
 			Type:         handlingAssertion.String(),
 			Scope:        trustedDataObj.String(),
 			AppliedState: unencrypted.String(),
@@ -239,7 +238,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 			},
 		},
 		{
-			Id:           "assertion2",
+			ID:           "assertion2",
 			Type:         baseAssertion.String(),
 			Scope:        trustedDataObj.String(),
 			AppliedState: unencrypted.String(),
@@ -254,7 +253,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		},
 	}
 
-	expectedTdfSize := int64(2069)
+	expectedTdfSize := int64(2577)
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
 	{
@@ -336,99 +335,6 @@ func (s *TDFSuite) Test_SimpleTDF() {
 	}
 
 	_ = os.Remove(tdfFilename)
-}
-
-func TestSimpleUnencryptedTDF(t *testing.T) {
-	serverURL, closer, sdk := runKas()
-	defer closer()
-
-	assertions := []Assertion{
-		{
-			Id:           "assertion1",
-			Type:         handlingAssertion.String(),
-			Scope:        trustedDataObj.String(),
-			AppliedState: unencrypted.String(),
-			Statement: Statement{
-				Format: Base64BinaryStatement.String(),
-				Value:  "ICAgIDxlZGoOkVkaD4=",
-			},
-		},
-	}
-
-	expectedTdfSize := int64(2069)
-	tdfFilename := "secure-text.tdf"
-	plainText := "Virtru"
-	{
-		kasURLs := []KASInfo{
-			{
-				URL:       serverURL,
-				PublicKey: "",
-			},
-		}
-
-		inBuf := bytes.NewBufferString(plainText)
-		bufReader := bytes.NewReader(inBuf.Bytes())
-
-		fileWriter, err := os.Create(tdfFilename)
-		if err != nil {
-			t.Fatalf("os.CreateTDF failed: %v", err)
-		}
-		defer func(fileWriter *os.File) {
-			err := fileWriter.Close()
-			if err != nil {
-				t.Fatalf("Fail to close the file: %v", err)
-			}
-		}(fileWriter)
-
-		tdfObj, err := sdk.CreateTDF(fileWriter, bufReader,
-			WithKasInformation(kasURLs...),
-			WithAssertions(assertions...),
-			WithAssertionSigningKey(mockKasPrivateKey),
-			WithAssertionVerifyKey(mockKasPublicKey),
-			WithUnencryptedTDF())
-		if err != nil {
-			t.Fatalf("tdf.CreateTDF failed: %v", err)
-		}
-
-		if math.Abs(float64(tdfObj.size-expectedTdfSize)) > 1.01*float64(expectedTdfSize) {
-			t.Errorf("tdf size test failed expected %v, got %v", tdfObj.size, expectedTdfSize)
-		}
-	}
-
-	// test reader
-	{
-		readSeeker, err := os.Open(tdfFilename)
-		if err != nil {
-			t.Fatalf("Fail to open archive file:%s %v", tdfFilename, err)
-		}
-
-		defer func(readSeeker *os.File) {
-			err := readSeeker.Close()
-			if err != nil {
-				t.Fatalf("Fail to close archive file:%v", err)
-			}
-		}(readSeeker)
-
-		buf := make([]byte, 8)
-
-		r, err := sdk.LoadTDF(readSeeker)
-		if err != nil {
-			t.Fatalf("Fail to create reader:%v", err)
-		}
-
-		offset := 2
-		n, err := r.ReadAt(buf, int64(offset))
-		if err != nil && errors.Is(err, io.EOF) != true {
-			t.Fatalf("Fail to read from reader:%v", err)
-		}
-
-		expectedPlainTxt := plainText[offset : offset+n]
-		if string(buf[:n]) != expectedPlainTxt {
-			t.Errorf("decrypt test failed expected %v, got %v", expectedPlainTxt, string(buf))
-		}
-	}
-
-	//_ = os.Remove(tdfFilename)
 }
 
 func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing tdf

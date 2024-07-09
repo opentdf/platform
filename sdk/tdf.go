@@ -48,6 +48,7 @@ const (
 	kSplitKeyType           = "split"
 	kGCMCipherAlgorithm     = "AES-256-GCM"
 	kGMACPayloadLength      = 16
+	kAssertionHash          = "assertionHash"
 	kClientPublicKey        = "clientPublicKey"
 	kSignedRequestToken     = "signedRequestToken"
 	kKasURL                 = "url"
@@ -126,12 +127,8 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 		totalSegments = 1
 	}
 
-	payloadSize := inputSize
-	if tdfConfig.enableEncryption {
-		payloadSize = inputSize + (totalSegments * (gcmIvSize + aesBlockSize))
-	}
-
 	encryptedSegmentSize := segmentSize + gcmIvSize + aesBlockSize
+	payloadSize := inputSize + (totalSegments * (gcmIvSize + aesBlockSize))
 	tdfWriter := archive.NewTDFWriter(writer)
 
 	err = tdfWriter.SetPayloadSize(payloadSize)
@@ -157,43 +154,26 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 			return nil, fmt.Errorf("io.ReadSeeker.Read size mismatch")
 		}
 
-		var segmentInfo Segment
-		if tdfConfig.enableEncryption {
-			cipherData, err := tdfObject.aesGcm.Encrypt(readBuf.Bytes()[:readSize])
-			if err != nil {
-				return nil, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
-			}
+		cipherData, err := tdfObject.aesGcm.Encrypt(readBuf.Bytes()[:readSize])
+		if err != nil {
+			return nil, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
+		}
 
-			err = tdfWriter.AppendPayload(cipherData)
-			if err != nil {
-				return nil, fmt.Errorf("io.writer.Write failed: %w", err)
-			}
+		err = tdfWriter.AppendPayload(cipherData)
+		if err != nil {
+			return nil, fmt.Errorf("io.writer.Write failed: %w", err)
+		}
 
-			segmentSig, err := calculateSignature(cipherData, tdfObject.payloadKey[:], tdfConfig.segmentIntegrityAlgorithm)
-			if err != nil {
-				return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
-			}
+		segmentSig, err := calculateSignature(cipherData, tdfObject.payloadKey[:], tdfConfig.segmentIntegrityAlgorithm)
+		if err != nil {
+			return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
+		}
 
-			aggregateHash += segmentSig
-			segmentInfo = Segment{
-				Hash:          string(ocrypto.Base64Encode([]byte(segmentSig))),
-				Size:          readSize,
-				EncryptedSize: int64(len(cipherData)),
-			}
-		} else {
-			err = tdfWriter.AppendPayload(readBuf.Bytes()[:readSize])
-			if err != nil {
-				return nil, fmt.Errorf("io.writer.Write failed: %w", err)
-			}
-
-			segmentHash := ocrypto.SHA256AsHex(readBuf.Bytes()[:readSize])
-			aggregateHash += string(segmentHash)
-
-			segmentInfo = Segment{
-				Hash:          string(segmentHash),
-				Size:          readSize,
-				EncryptedSize: readSize,
-			}
+		aggregateHash += segmentSig
+		segmentInfo := Segment{
+			Hash:          string(ocrypto.Base64Encode([]byte(segmentSig))),
+			Size:          readSize,
+			EncryptedSize: int64(len(cipherData)),
 		}
 
 		tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments =
@@ -237,42 +217,36 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 	tdfObject.manifest.Payload.Protocol = tdfAsZip
 	tdfObject.manifest.Payload.Type = tdfZipReference
 	tdfObject.manifest.Payload.URL = archive.TDFPayloadFileName
-	tdfObject.manifest.Payload.IsEncrypted = tdfConfig.enableEncryption
+	tdfObject.manifest.Payload.IsEncrypted = true
 
 	var signedAssertion []Assertion
 	for _, assertion := range tdfConfig.assertions {
-
 		if assertion.Type != handlingAssertion.String() {
 			continue
 		}
 
-		assertionJson, err := json.Marshal(assertion)
+		assertionJSON, err := json.Marshal(assertion)
 		if err != nil {
 			return nil, fmt.Errorf("json.Marshal failed:%w", err)
 		}
 
-		transformedJson, err := jcs.Transform(assertionJson)
+		transformedJSON, err := jcs.Transform(assertionJSON)
 		if err != nil {
 			return nil, fmt.Errorf("jcs.Transform failed:%w", err)
 		}
 
-		hashOfAssertion := ocrypto.SHA256AsHex(transformedJson)
+		hashOfAssertion := ocrypto.SHA256AsHex(transformedJSON)
 		completeHash := aggregateHash + string(hashOfAssertion)
-		base64Hash, err := ocrypto.Base64Decode([]byte(completeHash))
+		encoded := ocrypto.Base64Encode([]byte(completeHash))
+
+		// Create the token
+		token := jwt.New()
+		err = token.Set(kAssertionHash, string(encoded))
 		if err != nil {
-			return nil, fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
+			return nil, fmt.Errorf("jwt.Set: %w", err)
 		}
 
-		token, err := jwt.NewBuilder().
-			Claim("assertionHash", base64Hash).
-			Build()
-
-		signingKey, err := ocrypto.PemToRSAPrivate(tdfConfig.assertionSigningKey)
-		if err != nil {
-			return nil, fmt.Errorf("ocrypto.PemToRSAPrivate: %w", err)
-		}
-
-		signedToken, err := jwt.Sign(token, jwt.WithKey(jwa.RS256, signingKey))
+		signedToken, err := jwt.Sign(token, jwt.WithKey(jwa.HS256, tdfObject.payloadKey[:]))
 		if err != nil {
 			return nil, fmt.Errorf("jwt.Sign: %w", err)
 		}
@@ -733,7 +707,17 @@ func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit // Better readab
 		}
 	}
 
-	res, err := validateRootSignature(r.manifest, payloadKey[:])
+	aggregateHash := &bytes.Buffer{}
+	for _, segment := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
+		decodedHash, err := ocrypto.Base64Decode([]byte(segment.Hash))
+		if err != nil {
+			return fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
+		}
+
+		aggregateHash.Write(decodedHash)
+	}
+
+	res, err := validateRootSignature(r.manifest, aggregateHash.Bytes(), payloadKey[:])
 	if err != nil {
 		return fmt.Errorf("splitKey.validateRootSignature failed: %w", err)
 	}
@@ -747,6 +731,47 @@ func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit // Better readab
 
 	if segSize != encryptedSegSize-(gcmIvSize+aesBlockSize) {
 		return errSegSizeMismatch
+	}
+
+	// Validate assertions
+	for _, assertion := range r.manifest.Assertions {
+		if assertion.Type != handlingAssertion.String() {
+			continue
+		}
+
+		parsedBinding, err := jwt.ParseString(assertion.Binding.Signature, jwt.WithKey(jwa.HS256, payloadKey[:]))
+		if err != nil {
+			return fmt.Errorf("jwt.Parse: %w", err)
+		}
+
+		claims := parsedBinding.PrivateClaims()
+		assertionHashInBinding := claims[kAssertionHash]
+		assertionHash, ok := assertionHashInBinding.(string)
+		if !ok {
+			return errors.New("assertion hash missing in jwt")
+		}
+
+		// clear out the binding
+		assertion.Binding.Method = ""
+		assertion.Binding.Signature = ""
+
+		assertionJSON, err := json.Marshal(assertion)
+		if err != nil {
+			return fmt.Errorf("json.Marshal failed:%w", err)
+		}
+
+		transformedJSON, err := jcs.Transform(assertionJSON)
+		if err != nil {
+			return fmt.Errorf("jcs.Transform failed:%w", err)
+		}
+
+		hashOfAssertion := ocrypto.SHA256AsHex(transformedJSON)
+		completeHash := aggregateHash.String() + string(hashOfAssertion)
+		base64Hash := ocrypto.Base64Encode([]byte(completeHash))
+
+		if assertionHash != string(base64Hash) {
+			return fmt.Errorf("failed integrity check on assertion hash")
+		}
 	}
 
 	var payloadSize int64
@@ -781,26 +806,16 @@ func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm) (str
 }
 
 // validate the root signature
-func validateRootSignature(manifest Manifest, secret []byte) (bool, error) {
+func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (bool, error) {
 	rootSigAlg := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm
 	rootSigValue := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature
-
-	aggregateHash := &bytes.Buffer{}
-	for _, segment := range manifest.EncryptionInformation.IntegrityInformation.Segments {
-		decodedHash, err := ocrypto.Base64Decode([]byte(segment.Hash))
-		if err != nil {
-			return false, fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
-		}
-
-		aggregateHash.Write(decodedHash)
-	}
 
 	sigAlg := HS256
 	if strings.EqualFold(gmacIntegrityAlgorithm, rootSigAlg) {
 		sigAlg = GMAC
 	}
 
-	sig, err := calculateSignature(aggregateHash.Bytes(), secret, sigAlg)
+	sig, err := calculateSignature(aggregateHash, secret, sigAlg)
 	if err != nil {
 		return false, fmt.Errorf("splitkey.getSignature failed:%w", err)
 	}

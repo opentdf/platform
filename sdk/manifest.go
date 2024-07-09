@@ -63,7 +63,7 @@ type Binding struct {
 }
 
 type Assertion struct {
-	Id           string    `json:"id"`
+	ID           string    `json:"id"`
 	Type         string    `json:"type"`
 	Scope        string    `json:"scope"`
 	AppliedState string    `json:"appliesToState,omitempty"`

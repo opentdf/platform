@@ -55,8 +55,6 @@ type TDFConfig struct {
 	assertions                []Assertion
 	attributes                []string
 	kasInfoList               []KASInfo
-	assertionSigningKey       string
-	assertionVerifyKey        string
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -149,30 +147,6 @@ func WithAssertions(assertionList ...Assertion) TDFOption {
 		newAssertions := make([]Assertion, 0)
 		newAssertions = append(newAssertions, assertionList...)
 		c.assertions = newAssertions
-		return nil
-	}
-}
-
-// WithAssertionSigningKey  returns an Option that add assertion signing key to TDF.
-func WithAssertionSigningKey(rsaPrivateKeyInPem string) TDFOption {
-	return func(c *TDFConfig) error {
-		c.assertionSigningKey = rsaPrivateKeyInPem
-		return nil
-	}
-}
-
-// WithAssertionVerifyKey  returns an Option that add assertion verify key to TDF.
-func WithAssertionVerifyKey(rsaPublicKeyInPem string) TDFOption {
-	return func(c *TDFConfig) error {
-		c.assertionVerifyKey = rsaPublicKeyInPem
-		return nil
-	}
-}
-
-// WithUnencryptedTDF returns an Option that disables encryption to TDF.
-func WithUnencryptedTDF() TDFOption {
-	return func(c *TDFConfig) error {
-		c.enableEncryption = false
 		return nil
 	}
 }

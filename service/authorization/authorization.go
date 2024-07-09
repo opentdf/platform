@@ -91,14 +91,18 @@ func NewRegistration() serviceregistry.Registration {
 			// Validate Config
 			validate := validator.New(validator.WithRequiredStructEnabled())
 			if err := validate.Struct(authZCfg); err != nil {
-				if _, ok := err.(*validator.InvalidValidationError); ok {
+				var invalidValidationError *validator.InvalidValidationError
+				if errors.As(err, &invalidValidationError) {
 					slog.Error("error validating authorization service config", slog.String("error", err.Error()))
 					panic(fmt.Errorf("error validating authorization service config: %w", err))
 				}
 
-				for _, err := range err.(validator.ValidationErrors) {
-					slog.Error("error validating authorization service config", slog.String("error", err.Error()))
-					panic(fmt.Errorf("error validating authorization service config: %w", err))
+				var validationErrors validator.ValidationErrors
+				if errors.As(err, &validationErrors) {
+					for _, err := range validationErrors {
+						slog.Error("error validating authorization service config", slog.String("error", err.Error()))
+						panic(fmt.Errorf("error validating authorization service config: %w", err))
+					}
 				}
 			}
 

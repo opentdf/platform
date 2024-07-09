@@ -419,6 +419,10 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			return nil, err
 		}
 		as.logger.DebugContext(ctx, "opa results", "entity_id", entity.GetId(), "results", fmt.Sprintf("%+v", results))
+		// TODO if a hierarchy attribute is entitled then add the lower entitlements
+		// iterate over results, match with string in `avf`
+		// check attribute if ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY
+		// iterate over values if match, then add the attribute values following the match (order is guaranteed)
 		saa := make([]string, len(results))
 		for k, v := range results {
 			str, okk := v.(string)

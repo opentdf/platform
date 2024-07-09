@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"net/http/pprof"
+
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/go-chi/cors"
 	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
@@ -33,10 +35,9 @@ import (
 )
 
 const (
-	writeTimeoutSeconds = 5
-	readTimeoutSeconds  = 10
-	shutdownTimeout     = 5
-	maxAge              = 300
+	writeTimeout    time.Duration = 5 * time.Second
+	readTimeout     time.Duration = 10 * time.Second
+	shutdownTimeout time.Duration = 5 * time.Second
 )
 
 type Error string
@@ -56,6 +57,8 @@ type Config struct {
 	// Port to listen on
 	Port int    `yaml:"port" default:"8080"`
 	Host string `yaml:"host,omitempty"`
+	// Enable pprof
+	EnablePprof bool `mapstructure:"enable_pprof" default:"false"`
 }
 
 // GRPC Server specific configurations
@@ -168,8 +171,11 @@ func NewOpenTDFServer(config Config, logr *logger.Logger) (*OpenTDFServer, error
 
 // newHTTPServer creates a new http server with the given handler and grpc server
 func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Server) (*http.Server, error) {
-	var err error
-	var tc *tls.Config
+	var (
+		err                  error
+		tc                   *tls.Config
+		writeTimeoutOverride = writeTimeout
+	)
 
 	// Add authN interceptor
 	// This is needed because we are leveraging RegisterXServiceHandlerServer instead of RegisterXServiceHandlerFromEndpoint
@@ -201,6 +207,13 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 		}).Handler(h)
 	}
 
+	// Enable pprof
+	if c.EnablePprof {
+		h = pprofHandler(h)
+		// Need to extend write timeout to collect pprof data.
+		writeTimeoutOverride = 30 * time.Second //nolint:mnd // easier to read that we are overriding the default
+	}
+
 	// Add grpc handler
 	h2 := httpGrpcHandlerFunc(h, g)
 
@@ -215,11 +228,33 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 
 	return &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", c.Host, c.Port),
-		WriteTimeout: writeTimeoutSeconds * time.Second,
-		ReadTimeout:  readTimeoutSeconds * time.Second,
+		WriteTimeout: writeTimeoutOverride,
+		ReadTimeout:  readTimeout,
 		Handler:      h2,
 		TLSConfig:    tc,
 	}, nil
+}
+
+// ppprof handler
+func pprofHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/debug/pprof/") {
+			switch r.URL.Path {
+			case "/debug/pprof/cmdline":
+				pprof.Cmdline(w, r)
+			case "/debug/pprof/profile":
+				pprof.Profile(w, r)
+			case "/debug/pprof/symbol":
+				pprof.Symbol(w, r)
+			case "/debug/pprof/trace":
+				pprof.Trace(w, r)
+			default:
+				pprof.Index(w, r)
+			}
+		} else {
+			h.ServeHTTP(w, r)
+		}
+	})
 }
 
 // httpGrpcHandlerFunc returns a http.Handler that delegates to the grpc server if the request is a grpc request
@@ -315,7 +350,7 @@ func (s OpenTDFServer) Start() {
 
 func (s OpenTDFServer) Stop() {
 	slog.Info("shutting down http server")
-	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	if err := s.HTTPServer.Shutdown(ctx); err != nil {
 		slog.Error("failed to shutdown http server", slog.String("error", err.Error()))

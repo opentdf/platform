@@ -13,6 +13,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/archive"
 	"github.com/opentdf/platform/sdk/internal/autoconfigure"
@@ -100,6 +102,54 @@ func (s SDK) defaultKas(c *TDFConfig) string {
 	return ""
 }
 
+func (s SDK) hydratedDataAttributesFrom(ctx context.Context, c *TDFConfig) ([]*policy.Value, error) {
+	policyCache := make(map[autoconfigure.AttributeValueFQN]*policy.Value)
+	values := make([]*policy.Value, len(c.attributes), 0)
+	toLookUp := make([]string, 0)
+	for _, v := range c.attributeCache {
+		fqn, err := autoconfigure.NewAttributeValueFQN(v.GetFqn())
+		if err != nil {
+			return nil, err
+		}
+		policyCache[fqn] = v
+	}
+	for _, fqn := range c.attributes {
+		if _, ok := policyCache[fqn]; !ok {
+			toLookUp = append(toLookUp, string(fqn))
+		}
+	}
+
+	av, err :=
+		s.Attributes.GetAttributeValuesByFqns(ctx, &attributes.GetAttributeValuesByFqnsRequest{
+			Fqns: toLookUp,
+			WithValue: &policy.AttributeValueSelector{
+				WithKeyAccessGrants: true,
+			},
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	for fqnstr, pair := range av.GetFqnAttributeValues() {
+		fqn, err := autoconfigure.NewAttributeValueFQN(fqnstr)
+		if err != nil {
+			return nil, err
+		}
+		v := pair.GetValue()
+		policyCache[fqn] = v
+	}
+
+	for _, fqn := range c.attributes {
+		v, ok := policyCache[fqn]
+		if !ok {
+			return nil, fmt.Errorf("unable to define [%s]", fqn)
+		}
+		values = append(values, v)
+	}
+
+	return values, nil
+}
+
 // CreateTDF reads plain text from the given reader and saves it to the writer, subject to the given options
 func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll // Better readability keeping it as is
 	inputSize, err := reader.Seek(0, io.SeekEnd)
@@ -122,12 +172,12 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	}
 
 	if tdfConfig.autoconfigure {
-		var g autoconfigure.Granter
-		if len(tdfConfig.attributeValues) > 0 {
-			g, err = autoconfigure.NewGranterFromAttributes(tdfConfig.attributeValues...)
-		} else {
-			g, err = autoconfigure.NewGranterFromService(ctx, s.Attributes, tdfConfig.attributes...)
+		attrs, err := s.hydratedDataAttributesFrom(ctx, tdfConfig)
+		if err != nil {
+			return nil, err
 		}
+
+		g, err := autoconfigure.NewGranterFromAttributes(attrs...)
 		if err != nil {
 			return nil, err
 		}

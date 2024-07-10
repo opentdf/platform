@@ -59,7 +59,7 @@ type TDFConfig struct {
 	segmentIntegrityAlgorithm IntegrityAlgorithm
 	assertions                []Assertion //nolint:unused // TODO
 	attributes                []autoconfigure.AttributeValueFQN
-	attributeValues           []*policy.Value
+	attributeCache            []*policy.Value
 	kasInfoList               []KASInfo
 	splitPlan                 []autoconfigure.SplitStep
 }
@@ -102,37 +102,34 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 }
 
 // WithDataAttributes appends the given data attributes to the bound policy
-func WithDataAttributes(attributes ...string) TDFOption {
+// Attributes may be passed in as an attribute URL string (fully qualified name),
+// or as a pointer to a policy.Value.
+// If you wish to avoid policy definition lookups, prefer to use the Value objects.
+// These can be acquired using the sdk's `Attributes` client.
+func WithDataAttributes(attributes ...any) TDFOption {
 	return func(c *TDFConfig) error {
-		c.attributeValues = nil
 		for _, a := range attributes {
-			v, err := autoconfigure.NewAttributeValueFQN(a)
-			if err != nil {
-				return err
+			switch t := a.(type) {
+			case string:
+				v, err := autoconfigure.NewAttributeValueFQN(a.(string))
+				if err != nil {
+					return err
+				}
+				c.attributes = append(c.attributes, v)
+			case autoconfigure.AttributeValueFQN:
+				c.attributes = append(c.attributes, a.(autoconfigure.AttributeValueFQN))
+			case *policy.Value:
+				v := a.(*policy.Value)
+				afqn, err := autoconfigure.NewAttributeValueFQN(v.GetFqn())
+				if err != nil {
+					// TODO: update service to validate and encode FQNs properly
+					return err
+				}
+				c.attributes = append(c.attributes, afqn)
+				c.attributeCache = append(c.attributeCache, v)
+			default:
+				return fmt.Errorf("%w: type [%v]", autoconfigure.ErrInvalid, t)
 			}
-			c.attributes = append(c.attributes, v)
-		}
-		return nil
-	}
-}
-
-// WithAttributes appends the given data attributes to the bound policy.
-// Unlike `WithDataAttributes`, this will not trigger an attribute definition lookup
-// during autoconfigure. That is, to use autoconfigure in an 'offline' context,
-// you must first store the relevant attribute information locally and load
-// it to the `CreateTDF` method with this option.
-func WithAttributes(attributes ...*policy.Value) TDFOption {
-	return func(c *TDFConfig) error {
-		c.attributes = make([]autoconfigure.AttributeValueFQN, len(attributes))
-		c.attributeValues = make([]*policy.Value, len(attributes))
-		for i, a := range attributes {
-			c.attributeValues[i] = a
-			afqn, err := autoconfigure.NewAttributeValueFQN(a.GetFqn())
-			if err != nil {
-				// TODO: update service to validate and encode FQNs properly
-				return err
-			}
-			c.attributes[i] = afqn
 		}
 		return nil
 	}

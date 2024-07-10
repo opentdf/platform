@@ -10,6 +10,7 @@ import (
 	casbinModel "github.com/casbin/casbin/v2/model"
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/pkg/util"
 )
 
@@ -123,6 +124,7 @@ type Enforcer struct {
 	*casbin.Enforcer
 	Config CasbinConfig
 	Policy string
+	logger *logger.Logger
 
 	isDefaultRoleClaim bool
 	isDefaultRoleMap   bool
@@ -140,7 +142,7 @@ type CasbinConfig struct {
 }
 
 // newCasbinEnforcer creates a new casbin enforcer
-func NewCasbinEnforcer(c CasbinConfig) (*Enforcer, error) {
+func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error) {
 	// TODO implement the sqlx adapter
 	// sqlx := sqlx.NewDb(d, "pgx")
 	// ca, err := sqlxadapter.NewAdapter(sqlx, "auth_casbin")
@@ -173,7 +175,7 @@ func NewCasbinEnforcer(c CasbinConfig) (*Enforcer, error) {
 		c.RoleMap = defaultRoleMap
 	}
 
-	slog.Debug("creating casbin enforcer",
+	logger.Debug("creating casbin enforcer",
 		slog.Any("config", c),
 		slog.Bool("isDefaultModel", isDefaultModel),
 		slog.Bool("isDefaultPolicy", isDefaultPolicy),
@@ -199,6 +201,7 @@ func NewCasbinEnforcer(c CasbinConfig) (*Enforcer, error) {
 		isDefaultModel:     isDefaultModel,
 		isDefaultRoleClaim: isDefaultRoleClaim,
 		isDefaultRoleMap:   isDefaultRoleMap,
+		logger:             logger,
 	}, nil
 }
 
@@ -206,7 +209,7 @@ func NewCasbinEnforcer(c CasbinConfig) (*Enforcer, error) {
 func (e *Enforcer) ExtendDefaultPolicy(policies [][]string) error {
 	if !e.isDefaultPolicy {
 		// don't error out, just log a warning
-		slog.Warn("default authz policy could not be not extended because policies are not the default", slog.Any("unextended_policies", policies))
+		e.logger.Warn("default authz policy could not be not extended because policies are not the default", slog.Any("unextended_policies", policies))
 		return nil
 	}
 
@@ -250,17 +253,17 @@ func (e *Enforcer) Enforce(token jwt.Token, resource, action string) (bool, erro
 
 	if len(s.Roles) == 0 {
 		sub := rolePrefix + defaultRole
-		slog.Info("enforcing policy", slog.Any("subject", sub), slog.String("resource", resource), slog.String("action", action))
+		e.logger.Info("enforcing policy", slog.Any("subject", sub), slog.String("resource", resource), slog.String("action", action))
 		return e.Enforcer.Enforce(sub, resource, action)
 	}
 
 	allowed := false
 	for _, role := range s.Roles {
 		sub := rolePrefix + role
-		slog.Info("enforcing policy", slog.String("subject", sub), slog.String("resource", resource), slog.String("action", action))
+		e.logger.Info("enforcing policy", slog.String("subject", sub), slog.String("resource", resource), slog.String("action", action))
 		allowed, err = e.Enforcer.Enforce(sub, resource, action)
 		if err != nil {
-			slog.Error("failed to enforce policy", slog.String("error", err.Error()))
+			e.logger.Error("failed to enforce policy", slog.String("error", err.Error()))
 			continue
 		}
 		if allowed {
@@ -275,7 +278,7 @@ func (e *Enforcer) Enforce(token jwt.Token, resource, action string) (bool, erro
 }
 
 func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
-	slog.Debug("building subject from token", slog.Any("token", t))
+	e.logger.Debug("building subject from token", slog.Any("token", t))
 	roles := e.extractRolesFromToken(t)
 
 	return casbinSubject{
@@ -285,7 +288,7 @@ func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
 }
 
 func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
-	slog.Debug("extracting roles from token", slog.Any("token", t))
+	e.logger.Debug("extracting roles from token", slog.Any("token", t))
 	roles := []string{}
 
 	roleClaim := e.Config.RoleClaim
@@ -294,20 +297,20 @@ func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 	selectors := strings.Split(roleClaim, ".")
 	claim, exists := t.Get(selectors[0])
 	if !exists {
-		slog.Warn("claim not found", slog.String("claim", roleClaim), slog.Any("token", t))
+		e.logger.Warn("claim not found", slog.String("claim", roleClaim), slog.Any("token", t))
 		return nil
 	}
-	slog.Debug("root claim found", slog.String("claim", roleClaim), slog.Any("claims", claim))
+	e.logger.Debug("root claim found", slog.String("claim", roleClaim), slog.Any("claims", claim))
 	// use dotnotation if the claim is nested
 	if len(selectors) > 1 {
 		claimMap, ok := claim.(map[string]interface{})
 		if !ok {
-			slog.Warn("claim is not of type map[string]interface{}", slog.String("claim", roleClaim), slog.Any("claims", claim))
+			e.logger.Warn("claim is not of type map[string]interface{}", slog.String("claim", roleClaim), slog.Any("claims", claim))
 			return nil
 		}
 		claim = util.Dotnotation(claimMap, strings.Join(selectors[1:], "."))
 		if claim == nil {
-			slog.Warn("claim not found", slog.String("claim", roleClaim), slog.Any("claims", claim))
+			e.logger.Warn("claim not found", slog.String("claim", roleClaim), slog.Any("claims", claim))
 			return nil
 		}
 	}
@@ -323,7 +326,7 @@ func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 			}
 		}
 	default:
-		slog.Warn("could not get claim type", slog.String("selector", roleClaim), slog.Any("claims", claim))
+		e.logger.Warn("could not get claim type", slog.String("selector", roleClaim), slog.Any("claims", claim))
 		return nil
 	}
 
@@ -331,7 +334,7 @@ func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 	filtered := []string{}
 	for _, r := range roles {
 		for m, rr := range roleMap {
-			slog.Debug("checking role", slog.String("role", r), slog.String("map", m))
+			e.logger.Debug("checking role", slog.String("role", r), slog.String("map", m))
 			// if the role is in the map, add the mapped role to the filtered list
 			if r == rr {
 				filtered = append(filtered, m)

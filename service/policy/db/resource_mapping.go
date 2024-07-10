@@ -9,15 +9,16 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-func resourceMappingHydrateList(rows pgx.Rows) ([]*policy.ResourceMapping, error) {
+func resourceMappingHydrateList(rows pgx.Rows, logger *logger.Logger) ([]*policy.ResourceMapping, error) {
 	var list []*policy.ResourceMapping
 
 	for rows.Next() {
-		rm, err := resourceMappingHydrateItem(rows)
+		rm, err := resourceMappingHydrateItem(rows, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -26,7 +27,7 @@ func resourceMappingHydrateList(rows pgx.Rows) ([]*policy.ResourceMapping, error
 	return list, nil
 }
 
-func resourceMappingHydrateItem(row pgx.Row) (*policy.ResourceMapping, error) {
+func resourceMappingHydrateItem(row pgx.Row, logger *logger.Logger) (*policy.ResourceMapping, error) {
 	var (
 		id                 string
 		metadataJSON       []byte
@@ -55,7 +56,7 @@ func resourceMappingHydrateItem(row pgx.Row) (*policy.ResourceMapping, error) {
 
 	if attributeValueJSON != nil {
 		if err := protojson.Unmarshal(attributeValueJSON, attributeValue); err != nil {
-			slog.Error("failed to unmarshal attribute value", slog.String("error", err.Error()), slog.String("attribute value JSON", string(attributeValueJSON)))
+			logger.Error("failed to unmarshal attribute value", slog.String("error", err.Error()), slog.String("attribute value JSON", string(attributeValueJSON)))
 			return nil, err
 		}
 	}
@@ -138,11 +139,11 @@ func (c PolicyDBClient) CreateResourceMapping(ctx context.Context, r *resourcema
 
 	av, err := c.GetAttributeValue(ctx, r.GetAttributeValueId())
 	if err != nil {
-		slog.Error("failed to get attribute value", "id", r.GetAttributeValueId(), "err", err)
+		c.logger.Error("failed to get attribute value", "id", r.GetAttributeValueId(), "err", err)
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err = unmarshalMetadata(metadataJSON, metadata); err != nil {
+	if err = unmarshalMetadata(metadataJSON, metadata, c.logger); err != nil {
 		return nil, err
 	}
 
@@ -173,7 +174,7 @@ func (c PolicyDBClient) GetResourceMapping(ctx context.Context, id string) (*pol
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	rm, err := resourceMappingHydrateItem(row)
+	rm, err := resourceMappingHydrateItem(row, c.logger)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -199,7 +200,7 @@ func (c PolicyDBClient) ListResourceMappings(ctx context.Context) ([]*policy.Res
 	}
 	defer rows.Close()
 
-	list, err := resourceMappingHydrateList(rows)
+	list, err := resourceMappingHydrateList(rows, c.logger)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

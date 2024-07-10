@@ -2,7 +2,8 @@ package auth
 
 import (
 	"fmt"
-	"log/slog"
+
+	"github.com/opentdf/platform/service/internal/logger"
 )
 
 // AuthConfig pulls AuthN and AuthZ together
@@ -29,7 +30,7 @@ type PolicyConfig struct {
 	Model     string            `yaml:"model" json:"model"`
 }
 
-func (c AuthNConfig) validateAuthNConfig() error {
+func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
 	if c.Issuer == "" {
 		return fmt.Errorf("config Auth.Issuer is required")
 	}
@@ -39,7 +40,7 @@ func (c AuthNConfig) validateAuthNConfig() error {
 	}
 
 	if !c.EnforceDPoP {
-		slog.Warn("config Auth.EnforceDPoP is false. DPoP will not be enforced.")
+		logger.Warn("config Auth.EnforceDPoP is false. DPoP will not be enforced.")
 	}
 
 	return nil

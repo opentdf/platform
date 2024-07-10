@@ -14,6 +14,10 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 )
 
+var (
+	ErrInvalid = errors.New("invalid type")
+)
+
 // Attribute rule types: operators!
 const (
 	hierarchy   = "hierarchy"
@@ -31,40 +35,114 @@ type SplitStep struct {
 // Utility type to represent an FQN for an attribute.
 type AttributeNameFQN string
 
-// Utility type to represent an FQN for an attribute value.
-type AttributeValueFQN string
-
 func NewAttributeNameFQN(u string) (AttributeNameFQN, error) {
-	re := regexp.MustCompile(`^(https?://[\w./]+)/attr/([^/\s)$`)
+	re := regexp.MustCompile(`^(https?://[\w./]+)/attr/([^/\s]*)$`)
 	m := re.FindStringSubmatch(u)
-	if len(m[0]) == 0 {
-		return "", errors.New("invalid attribute url")
+	if len(m) < 3 || len(m[0]) == 0 {
+		return "", fmt.Errorf("%w: attribute regex fail", ErrInvalid)
 	}
 
 	_, err := url.PathUnescape(m[2])
 	if err != nil {
-		return "", fmt.Errorf("invalid attribute url; error in name [%s]", m[2])
+		return "", fmt.Errorf("%w: error in attribute name [%s]", ErrInvalid, m[2])
 	}
 	return AttributeNameFQN(u), nil
 }
 
+func (a AttributeNameFQN) Select(v string) AttributeValueFQN {
+	return AttributeValueFQN(fmt.Sprintf("%s/value/%s", a, url.PathEscape(v)))
+}
+
+func (a AttributeNameFQN) Prefix() string {
+	return string(a)
+}
+
+func (a AttributeNameFQN) Authority() string {
+	re := regexp.MustCompile(`^(https?://[\w./]+)/attr/[^/\s]*$`)
+	m := re.FindStringSubmatch(string(a))
+	if m == nil {
+		panic(ErrInvalid)
+	}
+	return m[1]
+}
+
+func (a AttributeNameFQN) Name() string {
+	re := regexp.MustCompile(`^https?://[\w./]+/attr/([^/\s]*)$`)
+	m := re.FindStringSubmatch(string(a))
+	if m == nil {
+		panic("invalid attribute")
+	}
+	v, err := url.PathUnescape(m[1])
+	if err != nil {
+		panic(ErrInvalid)
+	}
+	return v
+}
+
+// Utility type to represent an FQN for an attribute value.
+type AttributeValueFQN string
+
 func NewAttributeValueFQN(u string) (AttributeValueFQN, error) {
 	re := regexp.MustCompile(`^(https?://[\w./]+)/attr/(\S*)/value/(\S*)$`)
 	m := re.FindStringSubmatch(u)
-	if len(m[0]) == 0 {
-		return "", errors.New("invalid attribute url")
+	if len(m) < 4 || len(m[0]) == 0 {
+		return "", fmt.Errorf("%w: attribute regex fail for [%s]", ErrInvalid, u)
 	}
 
 	_, err := url.PathUnescape(m[2])
 	if err != nil {
-		return "", fmt.Errorf("invalid attribute url; error in name [%s]", m[2])
+		return "", fmt.Errorf("%w: error in attribute name [%s]", ErrInvalid, m[2])
 	}
 	_, err = url.PathUnescape(m[3])
 	if err != nil {
-		return "", fmt.Errorf("invalid attribute url; error in value [%s]", m[3])
+		return "", fmt.Errorf("%w: error in attribute value [%s]", ErrInvalid, m[3])
 	}
 
 	return AttributeValueFQN(u), nil
+}
+
+func (a AttributeValueFQN) Authority() string {
+	re := regexp.MustCompile(`^(https?://[\w./]+)/attr/\S*/value/\S*$`)
+	m := re.FindStringSubmatch(string(a))
+	if m == nil {
+		panic(ErrInvalid)
+	}
+	return m[1]
+}
+
+func (a AttributeValueFQN) Prefix() AttributeNameFQN {
+	re := regexp.MustCompile(`^(https?://[\w./]+/attr/\S*)/value/\S*$`)
+	m := re.FindStringSubmatch(string(a))
+	if m == nil {
+		panic(ErrInvalid)
+	}
+	return AttributeNameFQN(m[1])
+}
+
+func (a AttributeValueFQN) Value() string {
+	re := regexp.MustCompile(`^https?://[\w./]+/attr/\S*/value/(\S*)$`)
+	m := re.FindStringSubmatch(string(a))
+	if m == nil {
+		panic(ErrInvalid)
+	}
+	v, err := url.PathUnescape(m[1])
+	if err != nil {
+		panic(ErrInvalid)
+	}
+	return v
+}
+
+func (a AttributeValueFQN) Name() string {
+	re := regexp.MustCompile(`^https?://[\w./]+/attr/(\S*)/value/\S*$`)
+	m := re.FindStringSubmatch(string(a))
+	if m == nil {
+		panic("invalid attributeInstance")
+	}
+	v, err := url.PathUnescape(m[1])
+	if err != nil {
+		panic("invalid attributeInstance")
+	}
+	return v
 }
 
 // Structure capable of generating a split plan from a given set of data tags.
@@ -166,58 +244,6 @@ func NewGranterFromAttributes(attrs ...*policy.Value) (Granter, error) {
 	}
 
 	return grants, nil
-}
-
-func (a AttributeValueFQN) Authority() string {
-	re := regexp.MustCompile(`^(https?://[\w./]+)/attr/\S*/value/\S*$`)
-	m := re.FindStringSubmatch(string(a))
-	if m == nil {
-		panic("invalid attributeInstance")
-	}
-	return m[1]
-}
-
-func (a AttributeValueFQN) Prefix() AttributeNameFQN {
-	re := regexp.MustCompile(`^(https?://[\w./]+/attr/\S*)/value/\S*$`)
-	m := re.FindStringSubmatch(string(a))
-	if m == nil {
-		panic("invalid attributeInstance")
-	}
-	return AttributeNameFQN(m[1])
-}
-
-func (a AttributeValueFQN) Value() string {
-	re := regexp.MustCompile(`^https?://[\w./]+/attr/\S*/value/(\S*)$`)
-	m := re.FindStringSubmatch(string(a))
-	if m == nil {
-		panic("invalid attributeInstance")
-	}
-	v, err := url.PathUnescape(m[1])
-	if err != nil {
-		panic("invalid attributeInstance")
-	}
-	return v
-}
-
-func (a AttributeValueFQN) Name() string {
-	re := regexp.MustCompile(`^https?://[\w./]+/attr/(\S*)/value/\S*$`)
-	m := re.FindStringSubmatch(string(a))
-	if m == nil {
-		panic("invalid attributeInstance")
-	}
-	v, err := url.PathUnescape(m[1])
-	if err != nil {
-		panic("invalid attributeInstance")
-	}
-	return v
-}
-
-func (a AttributeNameFQN) Select(v string) AttributeValueFQN {
-	return AttributeValueFQN(fmt.Sprintf("%s/value/%s", a, url.PathEscape(v)))
-}
-
-func (a AttributeNameFQN) Prefix() string {
-	return string(a)
 }
 
 type AttributeService struct {

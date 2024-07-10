@@ -131,7 +131,45 @@ func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 	return &p
 }
 
-func TestAttributeInstanceFromURL(t *testing.T) {
+func TestAttributeFromURL(t *testing.T) {
+	for _, tc := range []struct {
+		n, u       string
+		auth, name string
+	}{
+		{"letter", "http://e/attr/a", "http://e", "a"},
+		{"number", "http://e/attr/1", "http://e", "1"},
+		{"emoji", "http://e/attr/%F0%9F%98%81", "http://e", "😁"},
+	} {
+		t.Run(tc.n, func(t *testing.T) {
+			a, err := NewAttributeNameFQN(tc.u)
+			require.NoError(t, err)
+			assert.Equal(t, tc.auth, a.Authority())
+			assert.Equal(t, tc.name, a.Name())
+		})
+	}
+}
+
+func TestAttributeFromMalformedURL(t *testing.T) {
+	for _, tc := range []struct {
+		n, u string
+	}{
+		{"no name", "http://e/attr"},
+		{"invalid prefix 1", "hxxp://e/attr/a"},
+		{"invalid prefix 2", "e/attr/a"},
+		{"invalid prefix 3", "file://e/attr/a"},
+		{"invalid prefix 4", "http:///attr/a"},
+		{"bad encoding", "https://a/attr/%😁"},
+		{"with value", "http://e/attr/a/value/b"},
+	} {
+		t.Run(tc.n, func(t *testing.T) {
+			a, err := NewAttributeNameFQN(tc.u)
+			require.ErrorIs(t, err, ErrInvalid)
+			assert.Equal(t, "", string(a))
+		})
+	}
+}
+
+func TestAttributeValueFromURL(t *testing.T) {
 	for _, tc := range []struct {
 		n, u              string
 		auth, name, value string
@@ -140,6 +178,7 @@ func TestAttributeInstanceFromURL(t *testing.T) {
 		{"space", "http://e/attr/a/value/%20", "http://e", "a", " "},
 		{"emoji", "http://e/attr/a/value/%F0%9F%98%81", "http://e", "a", "😁"},
 		{"numberdef", "http://e/attr/1/value/one", "http://e", "1", "one"},
+		{"valuevalue", "http://e/attr/value/value/one", "http://e", "value", "one"},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
 			a, err := NewAttributeValueFQN(tc.u)
@@ -147,6 +186,24 @@ func TestAttributeInstanceFromURL(t *testing.T) {
 			assert.Equal(t, tc.auth, a.Authority())
 			assert.Equal(t, tc.name, a.Name())
 			assert.Equal(t, tc.value, a.Value())
+		})
+	}
+}
+
+func TestAttributeValueFromMalformedURL(t *testing.T) {
+	for _, tc := range []struct {
+		n, u string
+	}{
+		{"no name", "http://e/attr/value/1"},
+		{"no value", "http://e/attr/who/value"},
+		{"invalid prefix 1", "hxxp://e/attr/a/value/1"},
+		{"invalid prefix 2", "e/attr/a/a/value/1"},
+		{"bad encoding", "https://a/attr/emoji/value/%😁"},
+	} {
+		t.Run(tc.n, func(t *testing.T) {
+			a, err := NewAttributeValueFQN(tc.u)
+			require.ErrorIs(t, err, ErrInvalid)
+			assert.Equal(t, "", string(a))
 		})
 	}
 }

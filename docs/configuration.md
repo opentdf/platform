@@ -175,7 +175,7 @@ services:
 | --------- | ------------------------ | ------- |
 | `enabled` | Enable the Authorization | `true`  |
 | `ersurl`  | The location to the entity resolution service | |
-| `clientd` | Client Credentials Client ID | |
+| `clientid` | Client Credentials Client ID | |
 | `clientsecret` | Client Credentials Secret | |
 | `tokenendpoint` | OAuth 2 Token Endpoint (Will be removed at a later time) | |
 | `rego.path` | Path to rego policy file | Leverages embedded rego policy |

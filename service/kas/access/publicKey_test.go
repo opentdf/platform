@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -115,6 +116,7 @@ func TestStandardCertificateHandlerEmpty(t *testing.T) {
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: c,
+		Logger:         logger.CreateTestLogger(),
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Fmt: "pkcs8"})

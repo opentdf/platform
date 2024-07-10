@@ -38,12 +38,12 @@ func NewCertExchangeTokenSource(info oauth.CertExchangeInfo, credentials oauth.C
 	return &exchangeSource, nil
 }
 
-func (c *CertExchangeTokenSource) AccessToken(ctx context.Context, client *http.Client) (auth.AccessToken, error) {
+func (c *CertExchangeTokenSource) AccessToken(ctx context.Context, _ *http.Client) (auth.AccessToken, error) {
 	c.tokenMutex.Lock()
 	defer c.tokenMutex.Unlock()
 
 	if c.token == nil || c.token.Expired() {
-		tok, err := oauth.DoCertExchange(ctx, client, c.IdpEndpoint, c.info, c.credentials, c.key)
+		tok, err := oauth.DoCertExchange(ctx, c.IdpEndpoint, c.info, c.credentials, c.key)
 		if err != nil {
 			return "", err
 		}

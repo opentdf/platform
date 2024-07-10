@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -11,7 +12,6 @@ import (
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/logger"
-	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/internal/server"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
 )
@@ -61,13 +61,6 @@ func Start(f ...StartOptions) error {
 
 	logger.Debug("config loaded", slog.Any("config", conf))
 
-	logger.Info("starting opa engine")
-	eng, err := opa.NewEngine(conf.OPA)
-	if err != nil {
-		return fmt.Errorf("could not start opa engine: %w", err)
-	}
-	defer eng.Stop(ctx)
-
 	// Required services
 	conf.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
 
@@ -80,6 +73,20 @@ func Start(f ...StartOptions) error {
 		return fmt.Errorf("issue creating opentdf server: %w", err)
 	}
 	defer otdf.Stop()
+
+	// Append the authz policies
+	if len(startConfig.authzDefaultPolicyExtension) > 0 {
+		if otdf.AuthN == nil {
+			err := errors.New("authn not enabled")
+			logger.Error("issue adding authz policies", "error", err)
+			return fmt.Errorf("issue adding authz policies: %w", err)
+		}
+		err := otdf.AuthN.ExtendAuthzDefaultPolicy(startConfig.authzDefaultPolicyExtension)
+		if err != nil {
+			logger.Error("issue adding authz policies", slog.String("error", err.Error()))
+			return fmt.Errorf("issue adding authz policies: %w", err)
+		}
+	}
 
 	logger.Info("registering services")
 	if err := registerServices(); err != nil {
@@ -113,7 +120,7 @@ func Start(f ...StartOptions) error {
 	defer client.Close()
 
 	logger.Info("starting services")
-	closeServices, services, err := startServices(ctx, *conf, otdf, eng, client, logger)
+	closeServices, services, err := startServices(ctx, *conf, otdf, client, logger)
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)

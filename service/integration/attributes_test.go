@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -11,7 +12,9 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	policydb "github.com/opentdf/platform/service/policy/db"
@@ -214,11 +217,6 @@ func (s *AttributesSuite) Test_CreateAttribute_WithInvalidRuleFails() {
 	s.Nil(createdAttr)
 }
 
-func (s *AttributesSuite) Test_UnsafeUpdateAttribute_ReplaceValuesOrder() {
-	// TODO: write test when unsafe behaviors are implemented [https://github.com/opentdf/platform/issues/115]
-	s.T().Skip("Unsafe service behaviors not yet implemented.")
-}
-
 func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 	values := []string{"first", "second", "third", "fourth"}
 	attr := &attributes.CreateAttributeRequest{
@@ -327,6 +325,49 @@ func (s *AttributesSuite) Test_GetAttribute_Deactivated_Succeeds() {
 	s.False(gotAttr.GetActive().GetValue())
 }
 
+func (s *AttributesSuite) Test_GetAttribute_ContainsKASGrants() {
+	// create an attribute
+	attr := &attributes.CreateAttributeRequest{
+		Name:        "test__get_attribute_contains_kas_grants",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
+
+	// create a KAS
+	kas := &kasregistry.CreateKeyAccessServerRequest{
+		Uri: "https://example.com/kas",
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Remote{
+				Remote: "https://example.com/kas/key/1",
+			},
+		},
+	}
+	createdKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kas)
+	s.Require().NoError(err)
+	s.NotNil(createdKAS)
+
+	// create a grant for the KAS
+	assignment := &attributes.AttributeKeyAccessServer{
+		AttributeId:       createdAttr.GetId(),
+		KeyAccessServerId: createdKAS.GetId(),
+	}
+
+	createdGrant, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, assignment)
+	s.Require().NoError(err)
+	s.NotNil(createdGrant)
+
+	// get the attribute & ensure it contains the grant
+	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(gotAttr)
+
+	s.Len(gotAttr.GetGrants(), 1)
+	s.Equal(createdKAS.GetId(), gotAttr.GetGrants()[0].GetId())
+}
+
 func (s *AttributesSuite) Test_ListAttribute() {
 	fixtures := s.getAttributeFixtures()
 
@@ -344,6 +385,39 @@ func (s *AttributesSuite) Test_ListAttribute() {
 			}
 		}
 		s.True(found)
+	}
+}
+
+func (s *AttributesSuite) Test_ListAttribute_FqnsIncluded() {
+	// create an attribute
+	attr := &attributes.CreateAttributeRequest{
+		Name:        "list_attribute_fqns_new_attr",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values:      []string{"value1", "value2", "value3"},
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
+
+	list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateActive, fixtureNamespaceID)
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	for _, a := range list {
+		// attr fqn
+		s.NotEqual("", a.GetFqn())
+		s.Equal(fmt.Sprintf("https://%s/attr/%s", a.GetNamespace().GetName(), a.GetName()), a.GetFqn())
+
+		// namespace fqn
+		s.NotEqual("", a.GetNamespace().GetFqn())
+		s.Equal(fmt.Sprintf("https://%s", a.GetNamespace().GetName()), a.GetNamespace().GetFqn())
+
+		// value fqns
+		for _, v := range a.GetValues() {
+			s.NotEqual("", v.GetFqn())
+			s.Equal(fmt.Sprintf("https://%s/attr/%s/value/%s", a.GetNamespace().GetName(), a.GetName(), v.GetValue()), v.GetFqn())
+		}
 	}
 }
 
@@ -457,72 +531,323 @@ func (s *AttributesSuite) Test_UpdateAttribute_WithInvalidIdFails() {
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
-func (s *AttributesSuite) Test_UpdateAttribute_NamespaceIsImmutableOnUpdate() {
-	s.T().Skip("Defunct test: not possible to test update in this way; check request struct for validation instead.")
-	original := &attributes.CreateAttributeRequest{
-		Name:        "test__update_attribute_namespace_immutable",
-		NamespaceId: s.f.GetNamespaceKey("example.com").ID,
-		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
-	}
-	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, original)
-	s.Require().NoError(err)
-	s.NotNil(createdAttr)
-
-	// should error on attempt to change namespace
-	update := &attributes.UpdateAttributeRequest{}
-	resp, err := s.db.PolicyClient.UpdateAttribute(s.ctx, createdAttr.GetId(), update)
-	s.Require().Error(err)
-	s.Nil(resp)
-	s.Require().ErrorIs(err, db.ErrRestrictViolation)
-
-	// validate namespace should not have been changed
-	updated, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
-	s.Require().NoError(err)
-	s.NotNil(updated)
-	s.Equal(original.GetNamespaceId(), updated.GetNamespace().GetId())
-}
-
-func (s *AttributesSuite) Test_UpdateAttributeWithSameNameAndNamespaceConflictFails() {
-	s.T().Skip("Defunct test: not possible to test update in this way; check request struct for validation instead.")
-	fixtureData := s.f.GetAttributeKey("example.org/attr/attr3")
-	original := &attributes.CreateAttributeRequest{
-		Name:        "test__update_attribute_with_same_name_and_namespace",
-		NamespaceId: fixtureData.NamespaceID,
-		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-	}
-	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, original)
-	s.Require().NoError(err)
-	s.NotNil(createdAttr)
-
-	conflict := &attributes.UpdateAttributeRequest{}
-	resp, err := s.db.PolicyClient.UpdateAttribute(s.ctx, fixtureData.ID, conflict)
-	s.Require().Error(err)
-	s.Nil(resp)
-	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
-}
-
-func (s *AttributesSuite) Test_DeleteAttribute() {
+func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithRuleAndNameAndReordering() {
+	originalName := "test__update_attribute_with_rule_and_name_and_reordering"
+	newName := "updated_hello"
+	namespaceID := s.f.GetNamespaceKey("example.org").ID
+	values := []string{"abc", "def", "xyz", "testing"}
 	attr := &attributes.CreateAttributeRequest{
-		Name:        "test__delete_attribute",
-		NamespaceId: fixtureNamespaceID,
-		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
+		Name:        originalName,
+		NamespaceId: namespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values:      values,
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
 	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 
-	deleted, err := s.db.PolicyClient.DeleteAttribute(s.ctx, createdAttr.GetId())
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	nsName := got.GetNamespace().GetName()
+	updatedVals := []string{"def", "abc", "testing", "xyz"}
+	updatedValIDs := make([]string, len(values))
+	for i, v := range got.GetValues() {
+		idx := slices.Index(updatedVals, v.GetValue())
+		updatedValIDs[i] = got.GetValues()[idx].GetId()
+	}
+
+	// name, rule, order updates respected
+	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UnsafeUpdateAttributeRequest{
+		Id:          createdAttr.GetId(),
+		Name:        newName,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		ValuesOrder: updatedValIDs,
+	})
+	s.Require().NoError(err)
+	s.NotNil(updated)
+	s.Equal(newName, updated.GetName())
+	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, updated.GetRule())
+
+	// name, rule, order updates respected and fqn is updated
+	updated, err = s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(updated)
+	s.Equal(newName, updated.GetName())
+	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, updated.GetRule())
+	s.Equal(fmt.Sprintf("https://%s/attr/%s", nsName, updated.GetName()), updated.GetFqn())
+	s.Len(updated.GetValues(), len(values))
+
+	// values reflect new updated name and requested update order
+	for i, v := range updated.GetValues() {
+		s.Equal(updatedVals[i], v.GetValue())
+		fqn := fmt.Sprintf("https://%s/attr/%s/value/%s", nsName, newName, v.GetValue())
+
+		val, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+			Fqns: []string{fqn},
+			WithValue: &policy.AttributeValueSelector{
+				WithSubjectMaps: true,
+			},
+		})
+		s.Require().NoError(err)
+		s.NotNil(val)
+		s.Len(val, 1)
+		s.Equal(v.GetId(), val[fqn].GetValue().GetId())
+	}
+}
+
+func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithRule() {
+	attr := &attributes.CreateAttributeRequest{
+		Name:        "test__update_attribute_with_rule",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
+
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF, got.GetRule())
+
+	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UnsafeUpdateAttributeRequest{
+		Id:   createdAttr.GetId(),
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+	})
+	s.Require().NoError(err)
+	s.NotNil(updated)
+	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, updated.GetRule())
+
+	updated, err = s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(updated)
+	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, updated.GetRule())
+}
+
+func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithNewName() {
+	originalName := "test__update_attribute_with_new_name"
+	newName := originalName + "updated"
+	attr := &attributes.CreateAttributeRequest{
+		Name:        originalName,
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values:      []string{"abc", "def"},
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
+
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+
+	originalFqn := got.GetFqn()
+	s.NotEqual("", originalFqn)
+
+	// update with a new name
+	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UnsafeUpdateAttributeRequest{
+		Id:   createdAttr.GetId(),
+		Name: newName,
+	})
+	s.Require().NoError(err)
+	s.NotNil(updated)
+	s.Equal(newName, updated.GetName())
+	s.NotEqual(originalFqn, updated.GetFqn())
+
+	updated, err = s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(updated)
+
+	// ensure the fqn has changed
+	s.Equal(fmt.Sprintf("https://%s/attr/%s", got.GetNamespace().GetName(), updated.GetName()), updated.GetFqn())
+
+	// ensure the name change is reflected
+	s.Equal(newName, updated.GetName())
+
+	// ensure everything else is unchanged
+	s.Equal(got.GetRule(), updated.GetRule())
+	s.Len(updated.GetValues(), 2)
+	s.True(updated.GetActive().GetValue())
+
+	// values are able to be looked up by fqn with new updated name
+	fqns := []string{
+		fmt.Sprintf("https://%s/attr/%s/value/%s", got.GetNamespace().GetName(), updated.GetName(), updated.GetValues()[0].GetValue()),
+		fmt.Sprintf("https://%s/attr/%s/value/%s", got.GetNamespace().GetName(), updated.GetName(), updated.GetValues()[1].GetValue()),
+	}
+	req := &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: fqns,
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	}
+	retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(retrieved)
+	s.Len(retrieved, 2)
+
+	val, err := s.db.PolicyClient.GetAttributeValue(s.ctx, updated.GetValues()[0].GetId())
+	s.Require().NoError(err)
+	s.NotNil(val)
+	s.Equal(fqns[0], val.GetFqn())
+	s.Contains(val.GetFqn(), updated.GetName())
+
+	val, err = s.db.PolicyClient.GetAttributeValue(s.ctx, updated.GetValues()[1].GetId())
+	s.Require().NoError(err)
+	s.NotNil(val)
+	s.Equal(fqns[1], val.GetFqn())
+	s.Contains(val.GetFqn(), updated.GetName())
+}
+
+func (s *AttributesSuite) Test_UnsafeUpdateAttribute_NormalizesCasing() {
+	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "BANANA_PUDDING",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values:      []string{"fig", "jam"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal("banana_pudding", got.GetName())
+	s.Contains(got.GetFqn(), "banana_pudding")
+
+	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UnsafeUpdateAttributeRequest{
+		Id:   created.GetId(),
+		Name: "STRAWBERRY_SHORTCAKE",
+	})
+	s.Require().NoError(err)
+	s.NotNil(updated)
+	s.Equal("strawberry_shortcake", updated.GetName())
+
+	got, err = s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal("strawberry_shortcake", got.GetName())
+	s.Contains(got.GetFqn(), "strawberry_shortcake")
+}
+
+func (s *AttributesSuite) Test_UnsafeUpdateAttribute_ReplaceValuesOrder() {
+	toCreate := &attributes.CreateAttributeRequest{
+		Name:        "test__unsafe_update_attribute_replace_values_order",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		Values:      []string{"first", "second", "third"},
+	}
+	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, toCreate)
+	s.Require().NoError(err)
+	s.NotNil(created)
+	s.Len(created.GetValues(), 3)
+
+	// reverse values order
+	reversed := make([]string, len(created.GetValues()))
+	for i, v := range created.GetValues() {
+		reversed[len(created.GetValues())-i-1] = v.GetId()
+	}
+	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UnsafeUpdateAttributeRequest{
+		Id:          created.GetId(),
+		ValuesOrder: reversed,
+	})
+	s.Require().NoError(err)
+	s.NotNil(updated)
+	s.Len(updated.GetValues(), 3)
+
+	// get attribute and ensure the order of the values is preserved and successfully reversed
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Len(got.GetValues(), 3)
+	for i, v := range got.GetValues() {
+		s.Equal(reversed[i], v.GetId())
+	}
+}
+
+func (s *AttributesSuite) Test_UnsafeDeleteAttribute() {
+	name := "test__delete_attribute"
+	attr := &attributes.CreateAttributeRequest{
+		Name:        name,
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
+		Values:      []string{"value1", "value2", "value3"},
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
+
+	got, _ := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+
+	deleted, err := s.db.PolicyClient.UnsafeDeleteAttribute(s.ctx, got, got.GetFqn())
 	s.Require().NoError(err)
 	s.NotNil(deleted)
 
-	// should not exist anymore
+	// attribute should not exist anymore
 	resp, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
 	s.Require().Error(err)
 	s.Nil(resp)
+
+	// values should not exist anymore (cascade delete)
+	for _, v := range createdAttr.GetValues() {
+		resp, err := s.db.PolicyClient.GetAttributeValue(s.ctx, v.GetId())
+		s.Require().Error(err)
+		s.Nil(resp)
+	}
+
+	// namespace should still exist unaffected
+	ns, err := s.db.PolicyClient.GetNamespace(s.ctx, fixtureNamespaceID)
+	s.Require().NoError(err)
+	s.NotNil(ns)
+	s.NotEqual("", ns.GetId())
+
+	// attribute should not be listed anymore
+	list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateAny, fixtureNamespaceID)
+	s.Require().NoError(err)
+	s.NotNil(list)
+	for _, l := range list {
+		s.NotEqual(createdAttr.GetId(), l.GetId())
+	}
+
+	// attr fqn should not be found
+	fqn := fmt.Sprintf("https://%s/attr/%s", ns.GetName(), name)
+	resp, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, fqn)
+	s.Require().Error(err)
+	s.Nil(resp)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+
+	// value fqns should be deleted and not found
+	for _, v := range got.GetValues() {
+		fqns := []string{fmt.Sprintf("https://%s/attr/%s/value/%s", ns.GetName(), name, v.GetValue())}
+		req := &attributes.GetAttributeValuesByFqnsRequest{
+			Fqns: fqns,
+			WithValue: &policy.AttributeValueSelector{
+				WithSubjectMaps: true,
+			},
+		}
+		retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, req)
+		s.Require().Error(err)
+		s.Nil(retrieved)
+		s.Require().ErrorIs(err, db.ErrNotFound)
+	}
+
+	// should be able to create attribute of same name as deleted
+	createdAttr, err = s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
 }
 
-func (s *AttributesSuite) Test_DeleteAttribute_WithInvalidIdFails() {
-	deleted, err := s.db.PolicyClient.DeleteAttribute(s.ctx, nonExistentAttrID)
+func (s *AttributesSuite) Test_UnsafeDeleteAttribute_WithBadFqnFails() {
+	created, _ := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test__delete_attribute_with_bad_fqn",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	got, _ := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+	s.NotNil(got)
+	s.NotEqual("", got.GetFqn())
+
+	deleted, err := s.db.PolicyClient.UnsafeDeleteAttribute(s.ctx, got, "bad_fqn")
 	s.Require().Error(err)
 	s.Nil(deleted)
 	s.Require().ErrorIs(err, db.ErrNotFound)
@@ -697,6 +1022,56 @@ func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_ToValues_Get() {
 	s.Require().NoError(err)
 	s.NotNil(gotVal)
 	s.False(gotVal.GetActive().GetValue())
+}
+
+func (s *AttributesSuite) Test_UnsafeReactivateAttribute() {
+	// create an attribute
+	attr := &attributes.CreateAttributeRequest{
+		Name:        "test__unsafe_reactivate_attribute",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values:      []string{"aa", "bb", "cc"},
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
+
+	// deactivate the attribute
+	deactivatedAttr, err := s.db.PolicyClient.DeactivateAttribute(s.ctx, createdAttr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(deactivatedAttr)
+	s.False(deactivatedAttr.GetActive().GetValue())
+
+	// reactivate the attribute
+	reactivatedAttr, err := s.db.PolicyClient.UnsafeReactivateAttribute(s.ctx, createdAttr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(reactivatedAttr)
+
+	// found to be active
+	activated, err := s.db.PolicyClient.GetAttribute(s.ctx, reactivatedAttr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(activated)
+	s.True(activated.GetActive().GetValue())
+
+	// found in successive lookup by fqn
+	activated, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, activated.GetFqn())
+	s.Require().NoError(err)
+	s.NotNil(activated)
+
+	// ensure the values are still inactive
+	for _, v := range reactivatedAttr.GetValues() {
+		got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, v.GetId())
+		s.Require().NoError(err)
+		s.NotNil(got)
+		s.False(got.GetActive().GetValue())
+	}
+}
+
+func (s *AttributesSuite) Test_UnsafeReactivateAttribute_WithInvalidIdFails() {
+	reactivatedAttr, err := s.db.PolicyClient.UnsafeReactivateAttribute(s.ctx, nonExistentAttrID)
+	s.Require().Error(err)
+	s.Nil(reactivatedAttr)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Error_When_Attribute_Not_Found() {

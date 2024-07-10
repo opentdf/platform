@@ -11,7 +11,6 @@ import (
 	"github.com/opentdf/platform/service/health"
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/logger"
-	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/kas"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -39,7 +38,7 @@ func registerServices() error {
 	return nil
 }
 
-func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFServer, eng *opa.Engine, client *sdk.SDK, logger *logger.Logger) (func(), []serviceregistry.Service, error) {
+func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFServer, client *sdk.SDK, logger *logger.Logger) (func(), []serviceregistry.Service, error) {
 	// CloseServices is a function that will close all registered services
 	closeServices := func() {
 		logger.Info("stopping services")
@@ -67,14 +66,16 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 			continue
 		}
 
-		// Use a single database client per namespace
+		// Use a single database client per namespace and run migrations once per namespace
 		var d *db.Client
+		runMigrations := cfg.DB.RunMigrations
 
 		for _, r := range registers {
-			s, err := startService(ctx, cfg, r, otdf, eng, client, d, logger)
+			s, db, err := startService(ctx, &cfg, r, otdf, client, d, &runMigrations, logger)
 			if err != nil {
 				return closeServices, services, err
 			}
+			d = db
 			services = append(services, s)
 		}
 	}
@@ -82,46 +83,64 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 	return closeServices, services, nil
 }
 
-func startService(ctx context.Context, cfg config.Config, s serviceregistry.Service, otdf *server.OpenTDFServer, eng *opa.Engine, client *sdk.SDK, d *db.Client, logger *logger.Logger) (serviceregistry.Service, error) {
-	// Create the database client if required
+func startService(
+	ctx context.Context,
+	cfg *config.Config,
+	s serviceregistry.Service,
+	otdf *server.OpenTDFServer,
+	client *sdk.SDK,
+	d *db.Client,
+	runMigrations *bool,
+	logger *logger.Logger,
+) (serviceregistry.Service, *db.Client, error) {
+	// Create the database client only if required
 	if s.DB.Required && d == nil {
 		var err error
 
-		// Conditionally set the db client if the service requires it
-		// Currently, we are dynamically registering namespaces and don't offer the ability to apply
-		// config at the NS layer. This poses a problem where services under a NS want to share a
-		// database connection.
-		// TODO: this should be reassessed with how we handle registering a single namespace
 		logger.Info("creating database client", slog.String("namespace", s.Namespace))
-		// Make sure we only create a single db client per namespace
 		d, err = db.New(ctx, cfg.DB,
 			db.WithService(s.Namespace),
 			db.WithMigrations(s.DB.Migrations),
 		)
 		if err != nil {
-			return s, fmt.Errorf("issue creating database client for %s: %w", s.Namespace, err)
+			return s, d, fmt.Errorf("issue creating database client for %s: %w", s.Namespace, err)
 		}
 	}
 
-	// Run migrations if required
-	if cfg.DB.RunMigrations && d != nil {
-		if s.DB.Migrations == nil {
-			return s, fmt.Errorf("migrations FS is required when runMigrations is enabled")
-		}
-
+	// Run migrations IFF a service requires it and they're configured to run but haven't run yet
+	shouldRun := s.DB.Required && *runMigrations
+	if shouldRun {
 		logger.Info("running database migrations")
 		appliedMigrations, err := d.RunMigrations(ctx, s.DB.Migrations)
 		if err != nil {
-			return s, fmt.Errorf("issue running database migrations: %w", err)
+			return s, d, fmt.Errorf("issue running database migrations: %w", err)
 		}
 		logger.Info("database migrations complete",
 			slog.Int("applied", appliedMigrations),
 		)
-	} else {
+		// Only run migrations once
+		*runMigrations = false
+	}
+
+	if !shouldRun {
+		requiredAlreadyRan := s.DB.Required && cfg.DB.RunMigrations && !*runMigrations
+		noDBRequired := !s.DB.Required
+		migrationsDisabled := !cfg.DB.RunMigrations
+
+		reason := "undetermined"
+		if requiredAlreadyRan { //nolint:gocritic // This is more readable than a switch
+			reason = "required migrations already ran"
+		} else if noDBRequired {
+			reason = "service does not require a database"
+		} else if migrationsDisabled {
+			reason = "migrations are disabled"
+		}
+
 		logger.Info("skipping migrations",
 			slog.String("namespace", s.Namespace),
-			slog.String("reason", "runMigrations is false"),
-			slog.Bool("runMigrations", false),
+			slog.String("service", s.ServiceDesc.ServiceName),
+			slog.Bool("configured runMigrations", cfg.DB.RunMigrations),
+			slog.String("reason", reason),
 		)
 	}
 
@@ -130,7 +149,6 @@ func startService(ctx context.Context, cfg config.Config, s serviceregistry.Serv
 		Config:                 cfg.Services[s.Namespace],
 		OTDF:                   otdf,
 		DBClient:               d,
-		Engine:                 eng,
 		SDK:                    client,
 		WellKnownConfig:        wellknown.RegisterConfiguration,
 		RegisterReadinessCheck: health.RegisterReadinessCheck,
@@ -146,7 +164,7 @@ func startService(ctx context.Context, cfg config.Config, s serviceregistry.Serv
 	// Register the service with the gRPC gateway
 	if err := handler(ctx, otdf.Mux, impl); err != nil {
 		logger.Error("failed to start service", slog.String("namespace", s.Namespace), slog.String("error", err.Error()))
-		return s, err
+		return s, d, err
 	}
 
 	logger.Info("started service", slog.String("namespace", s.Namespace), slog.String("service", s.ServiceDesc.ServiceName))
@@ -158,5 +176,5 @@ func startService(ctx context.Context, cfg config.Config, s serviceregistry.Serv
 			d.Close()
 		}
 	}
-	return s, nil
+	return s, d, nil
 }

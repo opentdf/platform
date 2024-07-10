@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
@@ -136,7 +137,7 @@ func EvaluateSubjectSet(subjectSet *policy.SubjectSet, entity flattening.Flatten
 			return false, err
 		}
 		// update the subject condition set result
-		// and togethor with previous condition group results
+		// and together with previous condition group results
 		subjectSetConditionResult = subjectSetConditionResult && conditionGroupResult
 		// if one condition group fails, subject condition set fails
 		if !subjectSetConditionResult {
@@ -230,6 +231,22 @@ func EvaluateCondition(condition *policy.Condition, entity flattening.Flattened)
 		}
 		if notInResult {
 			result = true
+		}
+	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS:
+		// slog.Debug("the operator is CONTAINS")
+		for _, possibleValue := range condition.GetSubjectExternalValues() {
+			// slog.Debug("possible value", "", possibleValue)
+			for _, mappedValue := range mappedValues {
+				mappedValueStr := fmt.Sprintf("%v", mappedValue)
+				// slog.Debug("comparing values: ", "possible=", possibleValue, "mapped=", mappedValueStr)
+				if strings.Contains(mappedValueStr, possibleValue) {
+					result = true
+					break
+				}
+			}
+			if result {
+				break
+			}
 		}
 	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED:
 		// unspecified subject mapping operator

@@ -75,6 +75,20 @@ type Config struct {
 	MigrationsFS     *embed.FS
 }
 
+/*
+A wrapper around a pgxpool.Pool and sql.DB reference.
+
+Each service should have a single instance of the Client to share a connection pool,
+schema (driven by the service namespace), and an embedded file system for migrations.
+
+The 'search_path' is set to the schema on connection to the database.
+
+If the database config 'runMigrations' is set to true, the client will run migrations on startup,
+once per namespace (as there should only be one embedded migrations FS per namespace).
+
+Multiple pools, schemas, or migrations per service are not supported. Multiple databases per
+PostgreSQL instance or multiple PostgreSQL servers per platform instance are not supported.
+*/
 type Client struct {
 	Pgx    PgxIface
 	config Config
@@ -102,6 +116,7 @@ func New(ctx context.Context, config Config, o ...OptsFunc) (*Client, error) {
 		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
 	}
 
+	slog.Info("opening new database pool", slog.String("schema", config.Schema))
 	pool, err := pgxpool.NewWithConfig(ctx, dbConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pgxpool: %w", err)
@@ -117,6 +132,13 @@ func New(ctx context.Context, config Config, o ...OptsFunc) (*Client, error) {
 		}
 	}
 
+	// Set the Client search_path to the schema
+	q := fmt.Sprintf("SET search_path TO %s", config.Schema)
+	if _, err := c.Pgx.Exec(ctx, q); err != nil {
+		return nil, fmt.Errorf("failed to SET search_path for db Client schema to [%s]: %w", config.Schema, err)
+	}
+
+	slog.Info("successfully set database client search_path", slog.String("schema", config.Schema))
 	return &c, nil
 }
 

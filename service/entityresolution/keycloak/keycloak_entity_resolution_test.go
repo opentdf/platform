@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -131,7 +132,7 @@ func Test_KCEntityResolutionByClientId(t *testing.T) {
 	defer server.Close()
 	var kcconfig = testKeycloakConfig(server)
 
-	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 	_ = json.NewEncoder(os.Stdout).Encode(&resp)
@@ -158,7 +159,7 @@ func Test_KCEntityResolutionByEmail(t *testing.T) {
 	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -196,7 +197,7 @@ func Test_KCEntityResolutionByUsername(t *testing.T) {
 	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -238,7 +239,7 @@ func Test_KCEntityResolutionByGroupEmail(t *testing.T) {
 	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -276,7 +277,7 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig)
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig, logger.CreateTestLogger())
 
 	require.Error(t, reserr)
 	assert.Equal(t, &entityresolution.ResolveEntitiesResponse{}, &resp)
@@ -295,7 +296,7 @@ func Test_JwtClientAndUsernameClientCredentials(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: clientCredentialsJwt}}
 
-	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -314,7 +315,7 @@ func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: passwordPubClientJwt}}
 
-	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -334,7 +335,7 @@ func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: passwordPrivClientJwt}}
 
-	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -354,7 +355,7 @@ func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: authPubClientJwt}}
 
-	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -374,7 +375,7 @@ func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: authPrivClientJwt}}
 
-	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -394,7 +395,7 @@ func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: implicitPubClientJwt}}
 
-	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -414,7 +415,7 @@ func Test_JwtClientAndUsernameImplicitPriv(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: implicitPrivClientJwt}}
 
-	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -437,7 +438,7 @@ func Test_JwtClientAndClientTokenExchange(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: tokenExchangeJwt}}
 
-	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -460,7 +461,7 @@ func Test_JwtMultiple(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: tokenExchangeJwt, Id: "tok1"}, {Jwt: authPrivClientJwt, Id: "tok2"}}
 
-	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig)
+	var resp, reserr = keycloak.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 

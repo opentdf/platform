@@ -110,8 +110,8 @@ github.com/opentdf/platform/lib/fixtures v0.2.7 h1:2LxWmLBBISONVJnVDH8yMsV72VHQy
 github.com/opentdf/platform/lib/fixtures v0.2.7/go.mod h1:8yCSe+oUzW9jbM573r9qgE68rjwDMNzktObiGVsO/W8=
 github.com/opentdf/platform/lib/ocrypto v0.1.5 h1:Gv5dAmZEVQeD9w1Fg9fix8gdZIsPDHJ96jG9GdtnYhc=
 github.com/opentdf/platform/lib/ocrypto v0.1.5/go.mod h1:ne+l8Q922OdzA0xesK3XJmfECBnn5vLSGYU3/3OhiHM=
-github.com/opentdf/platform/protocol/go v0.2.4 h1:MZwqAKDfA9H/HfbpketN+9jiRJhZz0qhsVfMF5U32aw=
-github.com/opentdf/platform/protocol/go v0.2.4/go.mod h1:+0cC+8+x0/qZ65W/NlMp+VATsT6wUlTbPnyl62qlc+M=
+github.com/opentdf/platform/protocol/go v0.2.8 h1:8FYI2s11EeBEL7kisFvWExVZSq2jNHyQI9k4KD6tcyc=
+github.com/opentdf/platform/protocol/go v0.2.8/go.mod h1:+0cC+8+x0/qZ65W/NlMp+VATsT6wUlTbPnyl62qlc+M=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
@@ -152,8 +152,6 @@ github.com/tklauser/go-sysconf v0.3.12 h1:0QaGUFOdQaIVdPgfITYzaTegZvdCjmYO52cSFA
 github.com/tklauser/go-sysconf v0.3.12/go.mod h1:Ho14jnntGE1fpdOqQEEaiKRpvIavV0hSfmBq8nJbHYI=
 github.com/tklauser/numcpus v0.6.1 h1:ng9scYS7az0Bk4OZLvrNXNSAO2Pxr1XXRAPyjhIx+Fk=
 github.com/tklauser/numcpus v0.6.1/go.mod h1:1XfjsgE2zo8GVw7POkMbHENHzVg3GzmoZ9fESEdAacY=
-github.com/wiremock/go-wiremock v1.9.0 h1:9xcU4/IoEfgCaH4TGhQTtiQyBh2eMtu9JB6ppWduK+E=
-github.com/wiremock/go-wiremock v1.9.0/go.mod h1:/uvO0XFheyy8XetvQqm4TbNQRsGPlByeNegzLzvXs0c=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=

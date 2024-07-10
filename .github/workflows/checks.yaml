@@ -72,12 +72,12 @@ jobs:
           - lib/fixtures
           - lib/flattening
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
         with:
           fetch-depth: 0
       - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
         with:
-          go-version: "1.22.3"
+          go-version: "1.22.5"
           check-latest: false
           cache-dependency-path: |
             examples/go.sum
@@ -101,7 +101,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@a4f60bb28d35aeee14e6880718e0c85ff1882e64
         with:
-          version: v1.58
+          version: v1.59
           working-directory: ${{ matrix.directory }}
           skip-cache: true
           args: --out-format=colored-line-number
@@ -141,10 +141,10 @@ jobs:
         crypto:
           - standard
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
       - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
         with:
-          go-version: "1.22.3"
+          go-version: "1.22.5"
           check-latest: false
           cache-dependency-path: |
             service/go.sum
@@ -199,12 +199,22 @@ jobs:
       - run: test/tdf-roundtrips.bats
       - name: create roundtrip test data and run tests
         run: go test ./service/rttests -v
+      - name: enable staic entitlements rego policy
+        run: yq eval '.services.authorization.rego.path = "./test/rego/static-entitlements.rego"' -i opentdf.yaml
+      - run: sleep 30
+      - name: validate static rego policy
+        run: test/rego/static-entitlements.bats
+      - name: enable custom entity rego policy
+        run: yq eval '.services.authorization.rego.path = "./test/rego/custom-entity.rego"' -i opentdf.yaml
+      - run: sleep 30
+      - name: validate custom entity rego policy
+        run: test/rego/custom-entity.bats
 
   image:
     name: image build
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v5.1.0
         with:
@@ -216,18 +226,18 @@ jobs:
     name: Protocol Buffer Lint and Gencode Up-to-date check
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      - uses: bufbuild/buf-setup-action@dde0b9351db90fbf78e345f41a57de8514bf1091
-      - uses: bufbuild/buf-lint-action@044d13acb1f155179c606aaa2e53aea304d22058
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: bufbuild/buf-setup-action@35c243d7f2a909b1d4e40399b348a7fdab27d78d
+      - uses: bufbuild/buf-lint-action@06f9dd823d873146471cfaaf108a993fe00e5325
         with:
           input: service
-      - uses: bufbuild/buf-breaking-action@a074e988ee34efcd4927079e79c611f428354c01
+      - uses: bufbuild/buf-breaking-action@c57b3d842a5c3f3b454756ef65305a50a587c5ba
         with:
           input: service
           against: "https://github.com/opentdf/platform.git#branch=main,subdir=service"
       - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
         with:
-          go-version: "1.22.3"
+          go-version: "1.22.5"
           check-latest: false
           cache-dependency-path: |
             service/go.sum
@@ -267,10 +277,10 @@ jobs:
     name: license check
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
       - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
         with:
-          go-version: "1.22.4"
+          go-version: "1.22.5"
           check-latest: false
           cache: false
       - name: install go-licenses

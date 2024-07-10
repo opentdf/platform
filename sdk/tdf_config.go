@@ -28,15 +28,22 @@ const (
 
 // KASInfo contains Key Access Server information.
 type KASInfo struct {
-	// URL of the KAS server``
+	// URL of the KAS server
 	URL string
-	// Public key can be empty. If it is empty, the public key will be fetched from the KAS server.
+	// Public key can be empty.
+	// If it is empty, the public key will be fetched from the KAS server.
 	PublicKey string
 	// Key identifier associated with the given key, if present.
 	KID string
+	// The algorithm associated with this key
+	Algorithm string
 }
 
 type TDFOption func(*TDFConfig) error
+
+type splitStep struct {
+	kas, splitID string
+}
 
 // TDFConfig Internal config struct for building TDF options.
 type TDFConfig struct {
@@ -52,10 +59,10 @@ type TDFConfig struct {
 	assertions                []Assertion //nolint:unused // TODO
 	attributes                []string
 	kasInfoList               []KASInfo
+	splitPlan                 []splitStep
 }
 
-// NewTDFConfig CreateTDF a new instance of a tdf config.
-func NewTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
+func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 	rsaKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
@@ -101,12 +108,25 @@ func WithDataAttributes(attributes ...string) TDFOption {
 
 // WithKasInformation adds all the kas urls and their corresponding public keys
 // that is required to create and read the tdf.
+// For writing TDFs, this is optional, but adding it can bypass key lookup.
+// For reading TDFs, this is the list of allowed KASes to contact for key rewrap.
+//
+// During creation, if the public key is set, the kas will not be contacted for the latest key.
+// Please make sure to set the KID if the PublicKey is set to include a KID in any key wrappers.
 func WithKasInformation(kasInfoList ...KASInfo) TDFOption {
 	return func(c *TDFConfig) error {
 		newKasInfos := make([]KASInfo, 0)
 		newKasInfos = append(newKasInfos, kasInfoList...)
 		c.kasInfoList = newKasInfos
 
+		return nil
+	}
+}
+
+func withSplitPlan(p ...splitStep) TDFOption {
+	return func(c *TDFConfig) error {
+		c.splitPlan = make([]splitStep, len(p))
+		copy(c.splitPlan, p)
 		return nil
 	}
 }

@@ -88,11 +88,6 @@ func (s *OAuthSuite) TestCertExchangeFromKeycloak() {
 
 	tok, err := DoCertExchange(
 		context.Background(),
-		&http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tlsConfig,
-			},
-		},
 		s.keycloakHTTPSEndpoint,
 		exhcangeInfo,
 		clientCredentials,
@@ -253,7 +248,7 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 func (s *OAuthSuite) TestClientSecretNoNonce() {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		s.Equal("/token", r.URL.Path)
-		s.Require().NoError(r.ParseForm())
+		s.NoError(r.ParseForm())
 
 		validateBasicAuth(r, s.T())
 		extractDPoPToken(r, s.T())
@@ -262,14 +257,14 @@ func (s *OAuthSuite) TestClientSecretNoNonce() {
 			Issuer("example.org/fake").
 			IssuedAt(time.Now()).
 			Build()
-		s.Require().NoError(err)
+		s.NoError(err)
 
 		responseBytes, err := json.Marshal(tok)
-		s.Require().NoError(err, "error writing response")
+		s.NoError(err, "error writing response")
 
-		w.Header().Add("content-type", "application/json")
+		w.Header().Add("Content-Type", "application/json")
 		_, err = w.Write(responseBytes)
-		s.Require().NoError(err)
+		s.NoError(err)
 	}))
 	defer server.Close()
 
@@ -288,7 +283,7 @@ func (s *OAuthSuite) TestClientSecretWithNonce() {
 		timesCalled++
 		s.Equal("/token", r.URL.Path, "surprise http request to mock oauth service")
 		err := r.ParseForm()
-		s.Require().NoError(err, "error parsing oauth request")
+		s.NoError(err, "error parsing oauth request")
 
 		validateBasicAuth(r, s.T())
 
@@ -296,7 +291,7 @@ func (s *OAuthSuite) TestClientSecretWithNonce() {
 			w.Header().Add("DPoP-Nonce", "dfdffdfddf")
 			w.WriteHeader(http.StatusBadRequest)
 			_, err := w.Write([]byte{})
-			s.Require().NoError(err, "error writing response")
+			s.NoError(err, "error writing response")
 			return
 		} else if timesCalled > 2 {
 			s.T().Logf("made more than two calls to the server: %d", timesCalled)
@@ -329,10 +324,10 @@ func (s *OAuthSuite) TestClientSecretWithNonce() {
 			s.T().Errorf("error writing response: %v", err)
 		}
 
-		w.Header().Add("content-type", "application/json")
+		w.Header().Add("Content-Type", "application/json")
 		l, err := w.Write(responseBytes)
 		s.Len(responseBytes, l)
-		s.Require().NoError(err)
+		s.NoError(err)
 	}))
 	defer server.Close()
 
@@ -405,7 +400,7 @@ func (s *OAuthSuite) TestSignedJWTWithNonce() {
 		if r.URL.Path != "/token" {
 			s.T().Errorf("Expected to request '/token', got: %s", r.URL.Path)
 		}
-		s.Require().NoError(r.ParseForm())
+		s.NoError(r.ParseForm())
 
 		validateClientAssertionAuth(r, s.T(), getURL, "theclient", clientPublicKey)
 
@@ -446,10 +441,10 @@ func (s *OAuthSuite) TestSignedJWTWithNonce() {
 			s.T().Errorf("error writing response: %v", err)
 		}
 
-		w.Header().Add("content-type", "application/json")
+		w.Header().Add("Content-Type", "application/json")
 		l, err := w.Write(responseBytes)
 		s.Len(responseBytes, l)
-		s.Require().NoError(err)
+		s.NoError(err)
 	}))
 	defer server.Close()
 

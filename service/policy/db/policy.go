@@ -2,6 +2,7 @@ package db
 
 import (
 	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 )
 
@@ -14,6 +15,7 @@ const (
 
 type PolicyDBClient struct {
 	*db.Client
+	logger *logger.Logger
 }
 
 var (
@@ -44,7 +46,7 @@ var Tables struct {
 	KeyAccessServerRegistry       db.Table
 }
 
-func NewClient(c *db.Client) PolicyDBClient {
+func NewClient(c *db.Client, logger *logger.Logger) PolicyDBClient {
 	t := db.NewTable(c.Schema())
 	Tables.Attributes = t(TableAttributes)
 	Tables.AttributeValues = t(TableAttributeValues)
@@ -58,7 +60,7 @@ func NewClient(c *db.Client) PolicyDBClient {
 	Tables.SubjectConditionSet = t(TableSubjectConditionSet)
 	Tables.KeyAccessServerRegistry = t(TableKeyAccessServerRegistry)
 
-	return PolicyDBClient{c}
+	return PolicyDBClient{c, logger}
 }
 
 func GetDBStateTypeTransformedEnum(state common.ActiveStateEnum) string {

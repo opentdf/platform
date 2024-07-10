@@ -13,7 +13,28 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// Subject Mapping evaluation tests
+// SubjectSet Benchmark
+func BenchmarkEvaluateSubjectSet(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := subjectmappingbuiltin.EvaluateSubjectSet(&subjectSet1, flattenedEntity1)
+		if err != nil {
+			b.Error(err)
+		}
+	}
+}
+
+// SubjectMappings Benchmark
+func BenchmarkEvaluateSubjectMappings(b *testing.B) {
+	additionalProps, _ := structpb.NewStruct(entity1)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput1, []*entityresolution.EntityRepresentation{{AdditionalProps: []*structpb.Struct{additionalProps}}})
+		if err != nil {
+			b.Error(err)
+		}
+	}
+}
 
 // evaluate condition IN
 var inCondition1 policy.Condition = policy.Condition{
@@ -65,6 +86,43 @@ func Test_EvaluateConditionNOTINTrue(t *testing.T) {
 }
 func Test_EvaluateConditionNOTINFalse(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateCondition(&notInCondition2, flattenedEntity1)
+	require.NoError(t, err)
+	assert.False(t, res)
+}
+
+// evaluate condition CONTAINS both in list
+var containsCondition1 = policy.Condition{
+	SubjectExternalSelectorValue: ".attributes.testing[]",
+	Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS,
+	SubjectExternalValues:        []string{"option"},
+}
+
+// evaluate condition CONTAINS one in list which is 4
+var containsCondition4 = policy.Condition{
+	SubjectExternalSelectorValue: ".attributes.testing[]",
+	Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS,
+	SubjectExternalValues:        []string{"4"},
+}
+
+// evaluate condition CONTAINS
+var containsCondition2 = policy.Condition{
+	SubjectExternalSelectorValue: ".attributes.testing[]",
+	Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS,
+	SubjectExternalValues:        []string{"not-an-option"},
+}
+
+func Test_EvaluateConditionCONTAINSAllTrue(t *testing.T) {
+	res, err := subjectmappingbuiltin.EvaluateCondition(&containsCondition1, flattenedEntity2)
+	require.NoError(t, err)
+	assert.True(t, res)
+}
+func Test_EvaluateConditionCONTAINSAnyTrue(t *testing.T) {
+	res, err := subjectmappingbuiltin.EvaluateCondition(&containsCondition4, flattenedEntity3)
+	require.NoError(t, err)
+	assert.True(t, res)
+}
+func Test_EvaluateConditionCONTAINSFalse(t *testing.T) {
+	res, err := subjectmappingbuiltin.EvaluateCondition(&containsCondition2, flattenedEntity1)
 	require.NoError(t, err)
 	assert.False(t, res)
 }

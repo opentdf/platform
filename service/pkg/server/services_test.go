@@ -147,7 +147,7 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 				Enabled: false,
 			},
 		},
-	}, otdf, nil, nil, logger)
+	}, otdf, nil, logger)
 	require.NoError(t, err)
 	require.NotNil(t, cF)
 	assert.Lenf(t, services, 2, "expected 2 services enabled, got %d", len(services))

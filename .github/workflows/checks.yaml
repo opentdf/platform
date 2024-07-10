@@ -199,6 +199,16 @@ jobs:
       - run: test/tdf-roundtrips.bats
       - name: create roundtrip test data and run tests
         run: go test ./service/rttests -v
+      - name: enable staic entitlements rego policy
+        run: yq eval '.services.authorization.rego.path = "./test/rego/static-entitlements.rego"' -i opentdf.yaml
+      - run: sleep 30
+      - name: validate static rego policy
+        run: test/rego/static-entitlements.bats
+      - name: enable custom entity rego policy
+        run: yq eval '.services.authorization.rego.path = "./test/rego/custom-entity.rego"' -i opentdf.yaml
+      - run: sleep 30
+      - name: validate custom entity rego policy
+        run: test/rego/custom-entity.bats
 
   image:
     name: image build

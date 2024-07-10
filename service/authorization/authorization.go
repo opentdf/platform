@@ -449,7 +449,9 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 				if attrDef.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
 					// add the following fqn in the hierarchy
 					isFollowing := false
-					for _, followingAttrVal := range attrDef.GetValues() {
+					attrVals := attrDef.GetValues()
+					for i := len(attrVals) - 1; i >= 0; i-- {
+						followingAttrVal := attrVals[i]
 						if isFollowing {
 							saa = append(saa, followingAttrVal.Fqn)
 						} else {

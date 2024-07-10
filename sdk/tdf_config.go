@@ -81,6 +81,7 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 	}
 
 	c := &TDFConfig{
+		autoconfigure:             true,
 		tdfPrivateKey:             privateKey,
 		tdfPublicKey:              publicKey,
 		defaultSegmentSize:        defaultSegmentSize,
@@ -186,12 +187,13 @@ func WithSegmentSize(size int64) TDFOption {
 	}
 }
 
-// WithAutoconfigure enables inferring KAS info for encrypt from data attributes
+// WithAutoconfigure toggles inferring KAS info for encrypt from data attributes.
 // This will use the Attributes service to look up key access grants.
 // These are KAS URLs associated with attributes.
-func WithAutoconfigure() TDFOption {
+// Defaults to enabled.
+func WithAutoconfigure(enable bool) TDFOption {
 	return func(c *TDFConfig) error {
-		c.autoconfigure = true
+		c.autoconfigure = enable
 		c.splitPlan = nil
 		return nil
 	}

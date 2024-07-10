@@ -312,7 +312,7 @@ func (e attributeBooleanExpression) String() string {
 	return sb.String()
 }
 
-func (r Granter) Plan(defaultKas string, genSplitID func() string) ([]SplitStep, error) {
+func (r Granter) Plan(defaultKas []string, genSplitID func() string) ([]SplitStep, error) {
 	b := r.constructAttributeBoolean()
 	k, err := r.insertKeysForAttribute(*b)
 	if err != nil {
@@ -322,10 +322,19 @@ func (r Granter) Plan(defaultKas string, genSplitID func() string) ([]SplitStep,
 	k = k.reduce()
 	l := k.Len()
 	if l == 0 {
-		if defaultKas == "" {
+		// default behavior: split key accross all default kases
+		switch len(defaultKas) {
+		case 0:
 			return nil, fmt.Errorf("no default KAS specified; required for grantless plans")
+		case 1:
+			return []SplitStep{{KAS: defaultKas[0]}}, nil
+		default:
+			p := make([]SplitStep, 0, len(defaultKas))
+			for _, kas := range defaultKas {
+				p = append(p, SplitStep{KAS: kas, SplitID: genSplitID()})
+			}
+			return p, nil
 		}
-		return []SplitStep{{KAS: defaultKas}}, nil
 	}
 	p := make([]SplitStep, 0, l)
 	for _, v := range k.values {

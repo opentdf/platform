@@ -91,13 +91,20 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 	return s.CreateTDFContext(context.Background(), writer, reader, opts...)
 }
 
-func (s SDK) defaultKas(c *TDFConfig) string {
+func (s SDK) defaultKas(c *TDFConfig) []string {
+	allk := make([]string, 0, len(c.kasInfoList))
+	defk := make([]string, 0)
 	for _, k := range c.kasInfoList {
-		if k.Default || len(c.kasInfoList) == 1 {
-			return k.URL
+		if k.Default {
+			defk = append(defk, k.URL)
+		} else if len(defk) == 0 {
+			allk = append(allk, k.URL)
 		}
 	}
-	return ""
+	if len(defk) == 0 {
+		return allk
+	}
+	return defk
 }
 
 // CreateTDF reads plain text from the given reader and saves it to the writer, subject to the given options

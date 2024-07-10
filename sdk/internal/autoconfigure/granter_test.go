@@ -251,12 +251,14 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 	for _, tc := range []struct {
 		n                   string
 		policy              []AttributeValueFQN
+		defaults            []string
 		ats, keyed, reduced string
 		plan                []SplitStep
 	}{
 		{
 			"one actual with default",
 			[]AttributeValueFQN{clsS, rel2can},
+			[]string{kasUs},
 			"https://virtru.com/attr/Classification/value/Secret&https://virtru.com/attr/Releasable%20To/value/CAN",
 			"[DEFAULT]&(http://kas.ca/)",
 			"(http://kas.ca/)",
@@ -265,6 +267,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		{
 			"one defaulted attr",
 			[]AttributeValueFQN{clsS},
+			[]string{kasUs},
 			"https://virtru.com/attr/Classification/value/Secret",
 			"[DEFAULT]",
 			"",
@@ -273,14 +276,25 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		{
 			"empty policy",
 			[]AttributeValueFQN{},
+			[]string{kasUs},
 			"∅",
 			"",
 			"",
 			[]SplitStep{{kasUs, ""}},
 		},
 		{
+			"old school splits",
+			[]AttributeValueFQN{},
+			[]string{kasAu, kasCa, kasUs},
+			"∅",
+			"",
+			"",
+			[]SplitStep{{kasAu, "1"}, {kasCa, "2"}, {kasUs, "3"}},
+		},
+		{
 			"simple with all three ops",
 			[]AttributeValueFQN{clsS, rel2gbr, n2kInt},
+			[]string{kasUs},
 			"https://virtru.com/attr/Classification/value/Secret&https://virtru.com/attr/Releasable%20To/value/GBR&https://virtru.com/attr/Need%20to%20Know/value/INT",
 			"[DEFAULT]&(http://kas.uk/)&(http://kas.uk/)",
 			"(http://kas.uk/)",
@@ -289,6 +303,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		{
 			"compartments",
 			[]AttributeValueFQN{clsS, rel2gbr, rel2usa, n2kHCS, n2kSI},
+			[]string{kasUs},
 			"https://virtru.com/attr/Classification/value/Secret&https://virtru.com/attr/Releasable%20To/value/{GBR,USA}&https://virtru.com/attr/Need%20to%20Know/value/{HCS,SI}",
 			"[DEFAULT]&(http://kas.uk/⋁http://kas.us/)&(http://hcs.kas.us/⋀http://si.kas.us/)",
 			"(http://kas.uk/⋁http://kas.us/)&(http://hcs.kas.us/)&(http://si.kas.us/)",
@@ -310,7 +325,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			assert.Equal(t, tc.reduced, r.String())
 
 			i := 0
-			plan, err := reasoner.Plan(kasUs, func() string {
+			plan, err := reasoner.Plan(tc.defaults, func() string {
 				i++
 				return fmt.Sprintf("%d", i)
 			})

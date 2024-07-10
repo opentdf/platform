@@ -5,7 +5,7 @@
 
 @test "examples: roundtrip Z-TDF" {
   echo "[INFO] create a tdf3 format file"
-  run go run ./examples encrypt --autoconfigure false "Hello Zero Trust"
+  run go run ./examples encrypt --autoconfigure=false "Hello Zero Trust"
   echo "[INFO] echoing output; if successful, this is just the manifest"
   echo "$output"
 
@@ -22,7 +22,7 @@
 
 @test "examples: roundtrip nanoTDF" {
   echo "[INFO] creating nanotdf file"
-  go run ./examples encrypt --autoconfigure false -o sensitive.txt.ntdf --nano "Hello NanoTDF"
+  go run ./examples encrypt --autoconfigure=false -o sensitive.txt.ntdf --nano "Hello NanoTDF"
 
   echo "[INFO] decrypting nanotdf..."
   go run ./examples decrypt sensitive.txt.ntdf
@@ -34,8 +34,8 @@
   [ $(grpcurl -plaintext "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
 
   echo "[INFO] encrypting samples"
-  go run ./examples encrypt --autoconfigure false -o sensitive-with-no-kid.txt.tdf --no-kid-in-kao "Hello Legacy"
-  go run ./examples encrypt --autoconfigure false -o sensitive-with-kid.txt.tdf "Hello with Key Identifier"
+  go run ./examples encrypt --autoconfigure=false -o sensitive-with-no-kid.txt.tdf --no-kid-in-kao "Hello Legacy"
+  go run ./examples encrypt --autoconfigure=false -o sensitive-with-kid.txt.tdf "Hello with Key Identifier"
 
   echo "[INFO] decrypting..."
   go run ./examples decrypt sensitive-with-no-kid.txt.tdf | grep "Hello Legacy"
@@ -59,8 +59,8 @@
   [ $(grpcurl -plaintext "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
 
   echo "[INFO] encrypting samples"
-  go run ./examples encrypt --autoconfigure false -o sensitive-with-no-kid.txt.tdf --no-kid-in-kao "Hello Legacy"
-  go run ./examples encrypt --autoconfigure false -o sensitive-with-kid.txt.tdf "Hello with Key Identifier"
+  go run ./examples encrypt --autoconfigure=false -o sensitive-with-no-kid.txt.tdf --no-kid-in-kao "Hello Legacy"
+  go run ./examples encrypt --autoconfigure=false -o sensitive-with-kid.txt.tdf "Hello with Key Identifier"
 
   echo "[INFO] decrypting..."
   go run ./examples decrypt sensitive-with-no-kid.txt.tdf | grep "Hello Legacy"

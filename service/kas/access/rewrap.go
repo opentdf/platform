@@ -264,10 +264,6 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 		return nil, err
 	}
 
-	if !strings.HasPrefix(body.KeyAccess.URL, p.URI.String()) {
-		p.Logger.InfoContext(ctx, "mismatched key access url", "keyAccessURL", body.KeyAccess.URL, "kasURL", p.URI.String())
-	}
-
 	if body.Algorithm == "" {
 		p.Logger.DebugContext(ctx, "default rewrap algorithm")
 		body.Algorithm = "rsa:2048"

@@ -402,6 +402,7 @@ func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing 
 				readSeeker,
 				WithKasInformation(kasInfoList...),
 				WithSegmentSize(readAtTest.segmentSize),
+				WithAutoconfigure(false),
 			)
 			s.Require().NoError(err)
 
@@ -697,11 +698,11 @@ func (s *TDFSuite) testEncrypt(sdk *SDK, kasInfoList []KASInfo, plainTextFilenam
 		for i := 0; i < len(da); i++ {
 			da[i] = string(test.policy[i])
 		}
-		encryptOpts = append(encryptOpts, WithAutoconfigure(), WithDataAttributes(da...))
+		encryptOpts = append(encryptOpts, WithDataAttributes(da...))
 	case len(test.splitPlan) == 0:
-		encryptOpts = append(encryptOpts, withSplitPlan(autoconfigure.SplitStep{KAS: kasInfoList[0].URL, SplitID: ""}))
+		encryptOpts = append(encryptOpts, WithAutoconfigure(false), withSplitPlan(autoconfigure.SplitStep{KAS: kasInfoList[0].URL, SplitID: ""}))
 	default:
-		encryptOpts = append(encryptOpts, withSplitPlan(test.splitPlan...))
+		encryptOpts = append(encryptOpts, WithAutoconfigure(false), withSplitPlan(test.splitPlan...))
 	}
 
 	tdfObj, err := sdk.CreateTDF(fileWriter, readSeeker, encryptOpts...)

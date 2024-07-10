@@ -419,23 +419,54 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			return nil, err
 		}
 		as.logger.DebugContext(ctx, "opa results", "entity_id", entity.GetId(), "results", fmt.Sprintf("%+v", results))
-		// TODO if a hierarchy attribute is entitled then add the lower entitlements
-		// iterate over results, match with string in `avf`
-		// check attribute if ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY
-		// iterate over values if match, then add the attribute values following the match (order is guaranteed)
+		// map for attributes for optional comprehensive
+		attributesMap := make(map[string]*policy.Attribute)
+		// subject attributes
 		saa := make([]string, len(results))
 		for k, v := range results {
-			str, okk := v.(string)
+			fqnStr, okk := v.(string)
 			if !okk {
 				as.logger.DebugContext(ctx, "not ok", slog.String("entity_id", entity.GetId()), slog.String(strconv.Itoa(k), fmt.Sprintf("%+v", v)))
 			}
-			saa[k] = str
+			saa[k] = fqnStr
+			// if comprehensive and a hierarchy attribute is entitled then add the lower entitlements
+			if req.GetWithComprehensive() {
+				// load attributesMap
+				if len(attributesMap) == 0 {
+					// Go through all attribute definitions
+					attrDefs := avf.GetFqnAttributeValues()
+					for _, attrDef := range attrDefs {
+						for _, attrVal := range attrDef.GetAttribute().GetValues() {
+							attributesMap[attrVal.GetFqn()] = attrDef.GetAttribute()
+						}
+					}
+				}
+				attrDef := attributesMap[fqnStr]
+				if attrDef == nil {
+					as.logger.Warn("no attribute definition found for entity", "fqn", fqnStr)
+					break
+				}
+				if attrDef.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+					// add the following fqn in the hierarchy
+					isFollowing := false
+					for _, followingAttrVal := range attrDef.GetValues() {
+						if isFollowing {
+							saa = append(saa, followingAttrVal.Fqn)
+						} else {
+							// if fqn match, then rest are added case they are following (order guaranteed)
+							isFollowing = followingAttrVal.GetFqn() == fqnStr
+						}
+					}
+					break
+				}
+			}
 		}
 		rsp.Entitlements[i] = &authorization.EntityEntitlements{
 			EntityId:           entity.GetId(),
 			AttributeValueFqns: saa,
 		}
 	}
+
 	as.logger.DebugContext(ctx, "opa", "rsp", fmt.Sprintf("%+v", rsp))
 	return rsp, nil
 }

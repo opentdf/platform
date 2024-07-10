@@ -208,6 +208,7 @@ func TestStandardPublicKeyHandlerV2NotFound(t *testing.T) {
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: c,
+		Logger:         logger.CreateTestLogger(),
 	}
 
 	k, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{

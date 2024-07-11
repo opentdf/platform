@@ -3,7 +3,6 @@ package entityresolution_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -18,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const tokenResp string = `
@@ -282,7 +282,7 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 	require.Error(t, reserr)
 	assert.Equal(t, &entityresolution.ResolveEntitiesResponse{}, &resp)
 	var entityNotFound = entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: keycloak.ErrTextGetRetrievalFailed, Entity: "random@sample.org"}
-	var expectedError = errors.New(entityNotFound.String())
+	var expectedError = status.Error(codes.Code(entityNotFound.GetCode()), entityNotFound.GetMessage())
 	assert.Equal(t, expectedError, reserr)
 }
 

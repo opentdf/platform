@@ -108,3 +108,12 @@ func (l *Logger) Trace(msg string, args ...any) {
 func (l *Logger) TraceContext(ctx context.Context, msg string, args ...any) {
 	l.Log(ctx, LevelTrace, msg, args...)
 }
+
+func CreateTestLogger() *Logger {
+	logger, _ := NewLogger(Config{
+		Level:  "debug",
+		Output: "stdout",
+		Type:   "json",
+	})
+	return logger
+}

@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -30,7 +31,7 @@ type attributeValueSelectOptions struct {
 	// withAttributeNamespace       bool
 }
 
-func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*policy.Value, error) {
+func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions, logger *logger.Logger) (*policy.Value, error) {
 	var (
 		id           string
 		value        string
@@ -78,7 +79,7 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 	if grants != nil {
 		k, err = db.KeyAccessServerProtoJSON(grants)
 		if err != nil {
-			slog.Error("could not unmarshal key access grants", slog.String("error", err.Error()))
+			logger.Error("could not unmarshal key access grants", slog.String("error", err.Error()))
 			return nil, err
 		}
 	}
@@ -98,10 +99,10 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions) (*
 	return v, nil
 }
 
-func attributeValueHydrateItems(rows pgx.Rows, opts attributeValueSelectOptions) ([]*policy.Value, error) {
+func attributeValueHydrateItems(rows pgx.Rows, opts attributeValueSelectOptions, logger *logger.Logger) ([]*policy.Value, error) {
 	list := make([]*policy.Value, 0)
 	for rows.Next() {
-		v, err := attributeValueHydrateItem(rows, opts)
+		v, err := attributeValueHydrateItem(rows, opts, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -209,14 +210,14 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		members = append(members, attr)
 	}
 
-	if err = unmarshalMetadata(metadataJSON, metadata); err != nil {
+	if err = unmarshalMetadata(metadataJSON, metadata, c.logger); err != nil {
 		return nil, err
 	}
 
 	// Update FQN
 	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: id})
 	if fqn != "" {
-		slog.Debug("created new attribute value FQN", slog.String("value_id", id), slog.String("value", value), slog.String("fqn", fqn))
+		c.logger.Debug("created new attribute value FQN", slog.String("value_id", id), slog.String("value", value), slog.String("fqn", fqn))
 	}
 
 	rV := &policy.Value{
@@ -300,13 +301,13 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, id string) (*poli
 
 	row, err := c.QueryRow(ctx, sql, args)
 	if err != nil {
-		slog.Error("error getting attribute value", slog.String("id", id), slog.String("sql", sql), slog.String("error", err.Error()))
+		c.logger.Error("error getting attribute value", slog.String("id", id), slog.String("sql", sql), slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	a, err := attributeValueHydrateItem(row, opts)
+	a, err := attributeValueHydrateItem(row, opts, c.logger)
 	if err != nil {
-		slog.Error("error hydrating attribute value", slog.String("id", id), slog.String("sql", sql), slog.String("error", err.Error()))
+		c.logger.Error("error hydrating attribute value", slog.String("id", id), slog.String("sql", sql), slog.String("error", err.Error()))
 		return nil, err
 	}
 	return a, nil
@@ -380,7 +381,7 @@ func (c PolicyDBClient) ListAttributeValues(ctx context.Context, attributeID str
 		return nil, err
 	}
 	defer rows.Close()
-	return attributeValueHydrateItems(rows, opts)
+	return attributeValueHydrateItems(rows, opts, c.logger)
 }
 
 func listAllAttributeValuesSQL(opts attributeValueSelectOptions) (string, []interface{}, error) {
@@ -442,7 +443,7 @@ func (c PolicyDBClient) ListAllAttributeValues(ctx context.Context, state string
 		return nil, err
 	}
 	defer rows.Close()
-	return attributeValueHydrateItems(rows, opts)
+	return attributeValueHydrateItems(rows, opts, c.logger)
 }
 
 func updateAttributeValueSQL(
@@ -574,7 +575,7 @@ func (c PolicyDBClient) UnsafeUpdateAttributeValue(ctx context.Context, r *unsaf
 
 	// Update FQN
 	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: id})
-	slog.Debug("upserted fqn for unsafely updated value", slog.String("id", id), slog.String("value", r.GetValue()), slog.String("fqn", fqn))
+	c.logger.Debug("upserted fqn for unsafely updated value", slog.String("id", id), slog.String("value", r.GetValue()), slog.String("fqn", fqn))
 
 	return c.GetAttributeValue(ctx, id)
 }

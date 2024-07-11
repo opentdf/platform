@@ -7,6 +7,7 @@ import (
 
 	"github.com/casbin/casbin/v2/model"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -101,7 +102,7 @@ func (s *AuthnCasbinSuite) Test_NewEnforcerWithDefaults() {
 	if err != nil {
 		s.T().Fatal(err)
 	}
-	enforcer, err := NewCasbinEnforcer(CasbinConfig{})
+	enforcer, err := NewCasbinEnforcer(CasbinConfig{}, logger.CreateTestLogger())
 
 	s.Require().NoError(err)
 	s.NotNil(enforcer)
@@ -126,7 +127,7 @@ func (s *AuthnCasbinSuite) Test_NewEnforcerWithCustomModel() {
 			`,
 			Csv: "p, role:unknown, res, act, allow",
 		},
-	})
+	}, logger.CreateTestLogger())
 	s.Require().NoError(err)
 	s.NotNil(enforcer)
 
@@ -147,7 +148,7 @@ func (s *AuthnCasbinSuite) Test_NewEnforcerWithBadCustomModel() {
 			Model: "p, sub, obj, act",
 			Csv:   "xxxx",
 		},
-	})
+	}, logger.CreateTestLogger())
 	s.Require().ErrorContains(err, "failed to create casbin model")
 	s.Nil(enforcer)
 }
@@ -316,7 +317,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		name := fmt.Sprintf("%s **%s** be allowed to _%s_ %s resource", actor, should, test.action, test.resource)
 
 		slog.Info("running test w/ default claim", slog.String("name", name))
-		enforcer, err := NewCasbinEnforcer(CasbinConfig{})
+		enforcer, err := NewCasbinEnforcer(CasbinConfig{}, logger.CreateTestLogger())
 		s.Require().NoError(err)
 		tok := s.newTokWithDefaultClaim(test.roles[0], test.roles[1], test.roles[2])
 		allowed, err := enforcer.Enforce(tok, test.resource, test.action)
@@ -332,7 +333,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 			PolicyConfig: PolicyConfig{
 				RoleClaim: "test.test_roles.roles",
 			},
-		})
+		}, logger.CreateTestLogger())
 		s.Require().NoError(err)
 		_, tok = s.newTokenWithCustomClaim(test.roles[0], test.roles[1], test.roles[2])
 		allowed, err = enforcer.Enforce(tok, test.resource, test.action)
@@ -352,7 +353,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 					"standard":  "test-standard",
 				},
 			},
-		})
+		}, logger.CreateTestLogger())
 		s.Require().NoError(err)
 		_, tok = s.newTokenWithCustomRoleMap(test.roles[0], test.roles[1], test.roles[2])
 		allowed, err = enforcer.Enforce(tok, test.resource, test.action)
@@ -379,7 +380,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 				RoleClaim: "client_id",
 				RoleMap:   roleMap,
 			},
-		})
+		}, logger.CreateTestLogger())
 		s.Require().NoError(err)
 		_, tok = s.newTokenWithCilentID()
 		allowed, err = enforcer.Enforce(tok, test.resource, test.action)
@@ -393,7 +394,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 }
 
 func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies() {
-	enforcer, err := NewCasbinEnforcer(CasbinConfig{})
+	enforcer, err := NewCasbinEnforcer(CasbinConfig{}, logger.CreateTestLogger())
 	s.Require().NoError(err)
 	tok := s.newTokWithDefaultClaim(true, false, false)
 
@@ -434,7 +435,7 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies() {
 }
 
 func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MalformedErrors() {
-	enforcer, err := NewCasbinEnforcer(CasbinConfig{})
+	enforcer, err := NewCasbinEnforcer(CasbinConfig{}, logger.CreateTestLogger())
 	s.Require().NoError(err)
 	tok := s.newTokWithDefaultClaim(true, false, false)
 	allowed, err := enforcer.Enforce(tok, "policy.attributes.DoSomething", "read")

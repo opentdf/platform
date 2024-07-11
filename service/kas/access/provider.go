@@ -2,7 +2,6 @@ package access
 
 import (
 	"context"
-	"log/slog"
 	"net/url"
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
@@ -48,6 +47,6 @@ type CurrentKeyFor struct {
 
 func (p *Provider) IsReady(ctx context.Context) error {
 	// TODO: Not sure what we want to check here?
-	slog.DebugContext(ctx, "checking readiness of kas service")
+	p.Logger.DebugContext(ctx, "checking readiness of kas service")
 	return nil
 }

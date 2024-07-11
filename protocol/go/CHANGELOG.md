@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.8](https://github.com/opentdf/platform/compare/protocol/go/v0.2.7...protocol/go/v0.2.8) (2024-07-09)
+
+
+### Features
+
+* **core:** CONTAINS SubjectMapping Operator ([#1109](https://github.com/opentdf/platform/issues/1109)) ([65cd4af](https://github.com/opentdf/platform/commit/65cd4af366d2d6d17ad72157d5d4d31f6620cc1f))
+
 ## [0.2.7](https://github.com/opentdf/platform/compare/protocol/go/v0.2.6...protocol/go/v0.2.7) (2024-07-03)
 
 

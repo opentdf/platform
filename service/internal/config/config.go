@@ -10,7 +10,6 @@ import (
 
 	"github.com/creasty/defaults"
 	"github.com/opentdf/platform/service/internal/logger"
-	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -21,7 +20,6 @@ import (
 type Config struct {
 	DevMode  bool                                     `mapstructure:"dev_mode"`
 	DB       db.Config                                `yaml:"db"`
-	OPA      opa.Config                               `yaml:"opa"`
 	Server   server.Config                            `yaml:"server"`
 	Logger   logger.Config                            `yaml:"logger"`
 	Services map[string]serviceregistry.ServiceConfig `yaml:"services" default:"{\"policy\": {\"enabled\": true}, \"health\": {\"enabled\": true}, \"authorization\": {\"enabled\": true}, \"wellknown\": {\"enabled\": true}, \"kas\": {\"enabled\": true}, \"entityresolution\": {\"enabled\": true}}"`

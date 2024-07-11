@@ -193,16 +193,6 @@ func entityPublicKey(t *testing.T) *rsa.PublicKey {
 	return pubKey
 }
 
-func createTestLogger(t *testing.T) logger.Logger {
-	l, err := logger.NewLogger(logger.Config{
-		Level:  "debug",
-		Type:   "json",
-		Output: "stdout",
-	})
-	require.NoError(t, err)
-	return *l
-}
-
 func keyAccessWrappedRaw(t *testing.T) KeyAccess {
 	policyBytes := fauxPolicyBytes(t)
 	asym, err := ocrypto.NewAsymEncryption(rsaPublicAlt)
@@ -210,9 +200,8 @@ func keyAccessWrappedRaw(t *testing.T) KeyAccess {
 	wrappedKey, err := asym.Encrypt([]byte(plainKey))
 	require.NoError(t, err, "rewrap: encryptWithPublicKey failed")
 
-	logger := createTestLogger(t)
-	require.NoError(t, err)
-	bindingBytes, err := generateHMACDigest(context.Background(), policyBytes, []byte(plainKey), logger)
+	logger := logger.CreateTestLogger()
+	bindingBytes, err := generateHMACDigest(context.Background(), policyBytes, []byte(plainKey), *logger)
 	require.NoError(t, err)
 
 	dst := make([]byte, hex.EncodedLen(len(bindingBytes)))
@@ -328,14 +317,14 @@ func TestParseAndVerifyRequest(t *testing.T) {
 			md := metadata.New(map[string]string{"token": bearer})
 			ctx = metadata.NewIncomingContext(ctx, md)
 
-			logger := createTestLogger(t)
+			logger := logger.CreateTestLogger()
 
 			verified, err := extractSRTBody(
 				ctx,
 				&kaspb.RewrapRequest{
 					SignedRequestToken: string(tt.body),
 				},
-				logger,
+				*logger,
 			)
 			slog.Info("verify repspponse", "v", verified, "e", err)
 			if tt.goodDPoP {
@@ -343,7 +332,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 				require.NotNil(t, verified, "unable to load request body")
 				require.NotNil(t, verified.ClientPublicKey, "unable to load public key")
 
-				policy, err := verifyAndParsePolicy(context.Background(), verified, []byte(plainKey), logger)
+				policy, err := verifyAndParsePolicy(context.Background(), verified, []byte(plainKey), *logger)
 				if tt.polite {
 					require.NoError(t, err, "failed to verify policy body=[%v]", tt.body)
 					assert.Len(t, policy.Body.DataAttributes, 2, "incorrect policy body=[%v]", policy.Body)
@@ -374,7 +363,7 @@ func Test_SignedRequestBody_When_Bad_Signature_Expect_Failure(t *testing.T) {
 		&kaspb.RewrapRequest{
 			SignedRequestToken: string(makeRewrapBody(t, fauxPolicyBytes(t))),
 		},
-		createTestLogger(t),
+		*logger.CreateTestLogger(),
 	)
 	require.Error(t, err)
 	require.Nil(t, verified)
@@ -382,7 +371,7 @@ func Test_SignedRequestBody_When_Bad_Signature_Expect_Failure(t *testing.T) {
 
 func Test_GetEntityInfo_When_Missing_MD_Expect_Error(t *testing.T) {
 	ctx := context.Background()
-	_, err := getEntityInfo(ctx, createTestLogger(t))
+	_, err := getEntityInfo(ctx, logger.CreateTestLogger())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing")
 }
@@ -391,7 +380,7 @@ func Test_GetEntityInfo_When_Authorization_MD_Missing_Expect_Error(t *testing.T)
 	ctx := context.Background()
 	ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{"token": "test"}))
 
-	_, err := getEntityInfo(ctx, createTestLogger(t))
+	_, err := getEntityInfo(ctx, logger.CreateTestLogger())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing")
 }
@@ -400,7 +389,7 @@ func Test_GetEntityInfo_When_Authorization_MD_Invalid_Expect_Error(t *testing.T)
 	ctx := context.Background()
 	ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{"authorization": "pop test"}))
 
-	_, err := getEntityInfo(ctx, createTestLogger(t))
+	_, err := getEntityInfo(ctx, logger.CreateTestLogger())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing")
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/opentdf/platform/service/internal/config"
+	"github.com/opentdf/platform/service/internal/logger"
 
 	"github.com/opentdf/platform/service/pkg/db"
 	policydb "github.com/opentdf/platform/service/policy/db"
@@ -26,10 +27,21 @@ func NewDBInterface(cfg config.Config) DBInterface {
 		slog.Error("issue creating database client", slog.String("error", err.Error()))
 		panic(err)
 	}
+
+	logger, err := logger.NewLogger(logger.Config{
+		Level:  cfg.Logger.Level,
+		Output: cfg.Logger.Output,
+		Type:   cfg.Logger.Type,
+	})
+	if err != nil {
+		slog.Error("issue creating logger", slog.String("error", err.Error()))
+		panic(err)
+	}
+
 	return DBInterface{
 		Client:       c,
 		Schema:       config.Schema,
-		PolicyClient: policydb.NewClient(c),
+		PolicyClient: policydb.NewClient(c, logger),
 	}
 }
 

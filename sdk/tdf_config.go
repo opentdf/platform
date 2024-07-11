@@ -41,6 +41,10 @@ type KASInfo struct {
 
 type TDFOption func(*TDFConfig) error
 
+type splitStep struct {
+	kas, splitID string
+}
+
 // TDFConfig Internal config struct for building TDF options.
 type TDFConfig struct {
 	defaultSegmentSize        int64
@@ -55,6 +59,7 @@ type TDFConfig struct {
 	assertions                []Assertion //nolint:unused // TODO
 	attributes                []string
 	kasInfoList               []KASInfo
+	splitPlan                 []splitStep
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -114,6 +119,14 @@ func WithKasInformation(kasInfoList ...KASInfo) TDFOption {
 		newKasInfos = append(newKasInfos, kasInfoList...)
 		c.kasInfoList = newKasInfos
 
+		return nil
+	}
+}
+
+func withSplitPlan(p ...splitStep) TDFOption {
+	return func(c *TDFConfig) error {
+		c.splitPlan = make([]splitStep, len(p))
+		copy(c.splitPlan, p)
 		return nil
 	}
 }

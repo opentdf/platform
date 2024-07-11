@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.9](https://github.com/opentdf/platform/compare/protocol/go/v0.2.8...protocol/go/v0.2.9) (2024-07-11)
+
+
+### Features
+
+* **core:** GetEntitlements with_comprehensive_hierarchy ([#1121](https://github.com/opentdf/platform/issues/1121)) ([ac85bf7](https://github.com/opentdf/platform/commit/ac85bf7aef6c9a00bfa0900f6ff3533059ab4bc8)), closes [#1054](https://github.com/opentdf/platform/issues/1054)
+
 ## [0.2.8](https://github.com/opentdf/platform/compare/protocol/go/v0.2.7...protocol/go/v0.2.8) (2024-07-09)
 
 

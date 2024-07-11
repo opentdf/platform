@@ -40,7 +40,7 @@ func main() {
   _, err := s.CreateTDF(
     ciphertext,
     plaintext,
-    sdk.WithAttributes("https://example.com/attr/Classification/value/Open"),
+    sdk.WithDataAttributes("https://example.com/attr/Classification/value/Open"),
   )
   if err != nil {
     panic(err)

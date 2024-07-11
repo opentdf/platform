@@ -116,12 +116,12 @@ func WithDataAttributes(attributes ...string) TDFOption {
 	}
 }
 
-// WithAttributes appends the given data attributes to the bound policy.
+// WithDataAttributeValues appends the given data attributes to the bound policy.
 // Unlike `WithDataAttributes`, this will not trigger an attribute definition lookup
 // during autoconfigure. That is, to use autoconfigure in an 'offline' context,
 // you must first store the relevant attribute information locally and load
 // it to the `CreateTDF` method with this option.
-func WithAttributes(attributes ...*policy.Value) TDFOption {
+func WithDataAttributeValues(attributes ...*policy.Value) TDFOption {
 	return func(c *TDFConfig) error {
 		c.attributes = make([]autoconfigure.AttributeValueFQN, len(attributes))
 		c.attributeValues = make([]*policy.Value, len(attributes))

@@ -28,7 +28,7 @@ openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=kas" -days 365 \
     -keyout kas-private.pem -out kas-cert.pem
 openssl ecparam -name prime256v1 >ecparams.tmp
 openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -days 365 \
-     -keyout kas-ec-private.pem -out kas-ec-cert.pem
+     -keyout kas-secp256r1-private.pem -out kas-ec-cert.pem
 ```
 
 To enable HSM, you must have a working `PKCS #11` library on your system.
@@ -52,10 +52,10 @@ pkcs11-tool --module $OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH \
 
 pkcs11-tool --module $OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH \
             --login --pin ${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN} \
-            --write-object ec-private.pem --type privkey \
+            --write-object kas-secp256r1-private.pem --type privkey \
             --label kas-ec
 pkcs11-tool --module $OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH \
             --login --pin ${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN} \
-            --write-object ec-cert.pem --type cert \
+            --write-object kas-ec-cert.pem --type cert \
             --label kas-ec
 ```

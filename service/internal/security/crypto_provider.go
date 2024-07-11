@@ -6,9 +6,13 @@ import (
 )
 
 const (
-	// Key agreement along P-256
+	// AlgorithmECP256R1 Key agreement along P-256
 	AlgorithmECP256R1 = "ec:secp256r1"
-	// Used for encryption with RSA of the KAO
+	// AlgorithmECP384R1 Key agreement along P-384
+	AlgorithmECP384R1 = "ec:secp384r1"
+	// AlgorithmECP521R1 Key agreement along P-512
+	AlgorithmECP521R1 = "ec:secp521r1"
+	// AlgorithmRSA2048 Used for encryption with RSA of the KAO
 	AlgorithmRSA2048 = "rsa:2048"
 )
 
@@ -20,10 +24,10 @@ type CryptoProvider interface {
 	RSAPublicKeyAsJSON(keyID string) (string, error)
 	RSADecrypt(hash crypto.Hash, keyID string, keyLabel string, ciphertext []byte) ([]byte, error)
 
-	ECPublicKey(keyID string) (string, error)
-	ECCertificate(keyID string) (string, error)
+	ECPublicKey(keyID string, curveName string) (string, error)
+	ECCertificate(keyID string, curveName string) (string, error)
 	GenerateNanoTDFSymmetricKey(kasKID string, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error)
-	GenerateEphemeralKasKeys() (any, []byte, error)
+	GenerateEphemeralKasKeys(curve elliptic.Curve) (any, []byte, error)
 	GenerateNanoTDFSessionKey(privateKeyHandle any, ephemeralPublicKey []byte) ([]byte, error)
 	Close()
 }

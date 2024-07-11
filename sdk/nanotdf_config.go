@@ -32,7 +32,6 @@ type NanoTDFOption func(*NanoTDFConfig) error
 
 // NewNanoTDFConfig - Create a new instance of a nanoTDF config
 func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
-	// TODO FIXME - how to pass in mode value and use here before 'c' is initialized?
 	newECKeyPair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
@@ -77,6 +76,17 @@ func (config *NanoTDFConfig) SetAttributes(attributes []string) error {
 // EnableECDSAPolicyBinding enable ecdsa policy binding
 func (config *NanoTDFConfig) EnableECDSAPolicyBinding() {
 	config.bindCfg.useEcdsaBinding = true
+}
+
+// SetECCMode - set the elliptical curve to be used for this nanoTDF
+func (config *NanoTDFConfig) SetECCMode(ecMode ocrypto.ECCMode) error {
+	newECKeyPair, err := ocrypto.NewECKeyPair(ecMode)
+	if err != nil {
+		return fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
+	}
+	config.bindCfg.eccMode = ecMode
+	config.keyPair = newECKeyPair
+	return nil
 }
 
 // WithNanoDataAttributes appends the given data attributes to the bound policy

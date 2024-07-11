@@ -17,6 +17,16 @@ services:
       - kid: e1
         alg: ec:secp256r1
         legacy: true
+      - kid: e2
+        alg: ec:secp384r1
+      - kid: e2
+        alg: ec:secp384r1
+        legacy: true
+      - kid: e3
+        alg: ec:secp521r1
+      - kid: e3
+        alg: ec:secp521r1
+        legacy: true
       - kid: r1
         alg: rsa:2048
       - kid: r1
@@ -49,7 +59,7 @@ server:
     issuer: http://localhost:8888/auth/realms/opentdf
     policy:
       ## Default policy for all requests
-      default: #"role:standard"
+      default: #"role:readonly"
       ## Dot notation is used to access nested claims (i.e. realm_access.roles)
       claim: # realm_access.roles
       ## Maps the external role to the opentdf role
@@ -124,4 +134,12 @@ server:
           alg: ec:secp256r1
           private: kas-ec-private.pem
           cert: kas-ec-cert.pem
+        - kid: e2
+          alg: ec:secp384r1
+          private: kas-secp384r1-private.pem
+          cert: kas-secp384r1-cert.pem
+        - kid: e3
+          alg: ec:secp521r1
+          private: kas-secp521r1-private.pem
+          cert: kas-secp521r1-cert.pem
   port: 8080

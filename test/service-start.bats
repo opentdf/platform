@@ -62,6 +62,21 @@
   [ $(jq -r .kid <<<"${output}") = e1 ]
 }
 
+@test "REST: new public key endpoint (ec384)" {
+  run curl -s --show-error --fail-with-body --insecure "localhost:8080/kas/v2/kas_public_key?algorithm=ec:secp384r1"
+  echo "$output"
+
+  # Is public key
+  p=$(jq -r .publicKey <<<"${output}")
+  [[ "$p" = "-----BEGIN PUBLIC KEY"-----* ]]
+
+  # Is an EC P384r1 curve
+  printf '%s\n' "$p" | openssl asn1parse | grep secp384r1
+
+  # Has expected kid
+  [ $(jq -r .kid <<<"${output}") = e2 ]
+}
+
 @test "REST: public key endpoint (unknown algorithm)" {
   run curl -o /dev/null -s -w "%{http_code}" "localhost:8080/kas/v2/kas_public_key?algorithm=invalid"
   echo "$output"
@@ -69,7 +84,7 @@
 }
 
 @test "gRPC: public key endpoint (unknown algorithm)" {
-  run grpcurl -d '{"algorithm":"invalid"}' -plaintext "localhost:8080" "kas.AccessService/PublicKey" 
+  run grpcurl -d '{"algorithm":"invalid"}' -plaintext "localhost:8080" "kas.AccessService/PublicKey"
   echo "$output"
   [[ $output = *NotFound* ]]
 }

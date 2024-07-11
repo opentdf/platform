@@ -634,7 +634,7 @@ func (h *HSMSession) GenerateNanoTDFSessionKey(
 	return derivedKey, nil
 }
 
-func (h *HSMSession) GenerateEphemeralKasKeys() (any, []byte, error) {
+func (h *HSMSession) GenerateEphemeralKasKeys(_ elliptic.Curve) (any, []byte, error) {
 	pubKeyTemplate := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
@@ -712,7 +712,7 @@ func (h *HSMSession) RSAPublicKeyAsJSON(kid string) (string, error) {
 	return string(jsonPublicKey), nil
 }
 
-func (h *HSMSession) ECPublicKey(kid string) (string, error) {
+func (h *HSMSession) ECPublicKey(kid string, _ string) (string, error) {
 	ec, ok := h.keysByKID[kid]
 	if !ok || ec.Algorithm != AlgorithmECP256R1 || ec.PublicKey == nil {
 		return "", ErrCertNotFound
@@ -754,7 +754,7 @@ func (h *HSMSession) RSADecrypt(hash crypto.Hash, kid string, keyLabel string, c
 	return decrypt, nil
 }
 
-func (h *HSMSession) ECCertificate(kid string) (string, error) {
+func (h *HSMSession) ECCertificate(kid string, _ string) (string, error) {
 	k, ok := h.keysByKID[kid]
 	if !ok || k.Algorithm != AlgorithmECP256R1 || k.Certificate == nil {
 		return "", ErrCertNotFound

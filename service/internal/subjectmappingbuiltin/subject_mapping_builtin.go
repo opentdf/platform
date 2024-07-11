@@ -90,6 +90,7 @@ func EvaluateSubjectMappings(attributeMappings map[string]*attributes.GetAttribu
 	entitlements := []string{}
 	for _, entity := range jsonEntities {
 		flattenedEntity, err := flattening.Flatten(entity.AsMap())
+		slog.Debug("flattened entity", slog.Any("entity", flattenedEntity))
 		if err != nil {
 			return nil, fmt.Errorf("failure to flatten entity in subject mapping builtin: %w", err)
 		}
@@ -125,6 +126,7 @@ func EvaluateSubjectMappings(attributeMappings map[string]*attributes.GetAttribu
 	for k := range entitlementsSet {
 		entitlements = append(entitlements, k)
 	}
+	slog.Debug("subject mapping result", slog.Any("entitlements", entitlements))
 	return entitlements, nil
 }
 

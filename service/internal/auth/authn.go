@@ -544,3 +544,7 @@ func (a Authentication) isPublicRoute(path string) func(string) bool {
 		return matched
 	}
 }
+
+func (a Authentication) GetIssuer() string {
+	return a.oidcConfiguration.Issuer
+}

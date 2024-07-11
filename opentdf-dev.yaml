@@ -29,7 +29,6 @@ services:
     ersurl: http://localhost:8080/entityresolution/resolve
     clientid: tdf-authorization-svc
     clientsecret: secret
-    tokenendpoint: http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token
   entityresolution:
     enabled: true
     url: http://localhost:8888/auth

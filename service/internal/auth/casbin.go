@@ -60,6 +60,8 @@ p,	role:org-admin,		/resource-mappings*,										*,			allow
 p,	role:org-admin,		/key-access-servers*,										*,			allow
 p,	role:org-admin, 	/kas/v2/rewrap,						  		        *,      allow
 p,	role:org-admin,		/unsafe*,										            *,			allow
+p,	role:org-admin,			/entityresolution/resolve,							  write,		allow
+
 
 # Role: Admin
 ## gRPC routes

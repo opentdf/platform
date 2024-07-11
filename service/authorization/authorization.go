@@ -22,6 +22,7 @@ import (
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/access"
+	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/entitlements"
 	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/logger/audit"
@@ -50,7 +51,7 @@ type Config struct {
 	// OAuth Client secret
 	ClientSecret string `mapstructure:"clientsecret" validate:"required"`
 	// OAuth token endpoint
-	TokenEndpoint string `mapstructure:"tokenendpoint" validate:"required,http_url"`
+	tokenEndpoint string
 	// Custom Rego Policy To Load
 	Rego CustomRego `mapstructure:"rego"`
 }
@@ -109,6 +110,15 @@ func NewRegistration() serviceregistry.Registration {
 				}
 			}
 
+			// Get Token Endpoint
+			oidcCfg, err := auth.DiscoverOIDCConfiguration(context.Background(), srp.OTDF.AuthN.GetIssuer(), srp.Logger)
+			if err != nil {
+				logger.Error("failed to discover OIDC configuration", slog.String("error", err.Error()))
+				panic(fmt.Errorf("failed to discover OIDC configuration: %w", err))
+			}
+
+			authZCfg.tokenEndpoint = oidcCfg.TokenEndpoint
+
 			logger.Debug("authorization service config", slog.Any("config", authZCfg))
 
 			// Build Rego PreparedEvalQuery
@@ -138,7 +148,7 @@ func NewRegistration() serviceregistry.Registration {
 				panic(fmt.Errorf("failed to prepare entitlements.rego for eval: %w", err))
 			}
 
-			clientCredsConfig := clientcredentials.Config{ClientID: authZCfg.ClientID, ClientSecret: authZCfg.ClientSecret, TokenURL: authZCfg.TokenEndpoint}
+			clientCredsConfig := clientcredentials.Config{ClientID: authZCfg.ClientID, ClientSecret: authZCfg.ClientSecret, TokenURL: authZCfg.tokenEndpoint}
 			newTokenSource := oauth2.ReuseTokenSourceWithExpiry(nil, clientCredsConfig.TokenSource(context.Background()), tokenExpiryDelay)
 
 			as.config = *authZCfg
@@ -436,7 +446,8 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			as.logger.ErrorContext(ctx, "failed to build rego input", slog.Any("entity", entity), slog.String("error", err.Error()))
 			return nil, status.Error(codes.Internal, "failed to build rego input")
 		}
-		as.logger.DebugContext(ctx, "entitlements", "entity_id", entity.GetId(), "input", fmt.Sprintf("%+v", in))
+
+		as.logger.DebugContext(ctx, "entitlements", slog.String("entity_id", entity.GetId()), slog.Any("input", in))
 
 		results, err := as.eval.Eval(ctx,
 			rego.EvalInput(in),
@@ -447,7 +458,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 
 		// If we get no results and no error then we assume that the entity is not entitled to anything
 		if len(results) == 0 {
-			as.logger.DebugContext(ctx, "no entitlement results", slog.String("entity_id", entity.GetId()))
+			as.logger.WarnContext(ctx, "no entitlement results", slog.String("entity_id", entity.GetId()))
 			return rsp, nil
 		}
 
@@ -466,10 +477,11 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		// Check to maksure if the value is a list. Good validation if someone customizes the rego policy
 		resultsEntitlements, valueListOk := results[0].Expressions[0].Value.([]interface{})
 		if !valueListOk {
-			as.logger.ErrorContext(ctx, "entitlements is not an array", slog.String("entity_id", entity.GetId()), slog.String("value", fmt.Sprintf("%+v", resultsEntitlements...)))
+			as.logger.ErrorContext(ctx, "entitlements is not an array", slog.String("entity_id", entity.GetId()), slog.Any("result", results[0].Expressions[0].Value))
 			return rsp, nil
 		}
 		// Build array with length of results
+		as.logger.DebugContext(ctx, "entitlements", slog.String("entity_id", entity.GetId()), slog.Any("entitlements", resultsEntitlements))
 		var entitlements = make([]string, len(resultsEntitlements))
 
 		// Build entitlements list

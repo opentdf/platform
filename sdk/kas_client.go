@@ -327,7 +327,7 @@ func (c *kasKeyCache) store(ki KASInfo) {
 	c.c[cacheKey] = timeStampedKASInfo{ki, time.Now()}
 }
 
-func (s SDK) getPublicKey(url, algorithm string) (*KASInfo, error) {
+func (s SDK) getPublicKey(ctx context.Context, url, algorithm string) (*KASInfo, error) {
 	if cachedValue := s.kasKeyCache.get(url, algorithm); nil != cachedValue {
 		return cachedValue, nil
 	}
@@ -341,7 +341,6 @@ func (s SDK) getPublicKey(url, algorithm string) (*KASInfo, error) {
 	}
 	defer conn.Close()
 
-	ctx := context.Background()
 	serviceClient := kas.NewAccessServiceClient(conn)
 
 	req := kas.PublicKeyRequest{

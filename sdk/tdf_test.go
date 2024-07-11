@@ -19,8 +19,13 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/policy"
+	attributespb "github.com/opentdf/platform/protocol/go/policy/attributes"
 	wellknownpb "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
+	"github.com/opentdf/platform/sdk/internal/autoconfigure"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -42,12 +47,14 @@ const (
 )
 
 type tdfTest struct {
-	n           string
-	fileSize    int64
-	tdfFileSize float64
-	checksum    string
-	mimeType    string
-	splitPlan   []splitStep
+	n                string
+	fileSize         int64
+	tdfFileSize      float64
+	checksum         string
+	mimeType         string
+	splitPlan        []autoconfigure.SplitStep
+	policy           []autoconfigure.AttributeValueFQN
+	expectedPlanSize int
 }
 
 const (
@@ -542,10 +549,10 @@ func (s *TDFSuite) Test_KeySplits() {
 			fileSize:    5,
 			tdfFileSize: 2664,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			splitPlan: []splitStep{
-				{"https://a.kas/", "a"},
-				{"https://b.kas/", "a"},
-				{"https://c.kas/", "a"},
+			splitPlan: []autoconfigure.SplitStep{
+				{KAS: "https://a.kas/", SplitID: "a"},
+				{KAS: "https://b.kas/", SplitID: "a"},
+				{KAS: `https://c.kas/`, SplitID: "a"},
 			},
 		},
 		{
@@ -553,10 +560,10 @@ func (s *TDFSuite) Test_KeySplits() {
 			fileSize:    5,
 			tdfFileSize: 2664,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			splitPlan: []splitStep{
-				{"https://a.kas/", "a"},
-				{"https://b.kas/", "b"},
-				{"https://c.kas/", "c"},
+			splitPlan: []autoconfigure.SplitStep{
+				{KAS: "https://a.kas/", SplitID: "a"},
+				{KAS: "https://b.kas/", SplitID: "b"},
+				{KAS: "https://c.kas/", SplitID: "c"},
 			},
 		},
 		{
@@ -564,11 +571,11 @@ func (s *TDFSuite) Test_KeySplits() {
 			fileSize:    5,
 			tdfFileSize: 3211,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			splitPlan: []splitStep{
-				{"https://a.kas/", "a"},
-				{"https://b.kas/", "a"},
-				{"https://b.kas/", "b"},
-				{"https://c.kas/", "b"},
+			splitPlan: []autoconfigure.SplitStep{
+				{KAS: "https://a.kas/", SplitID: "a"},
+				{KAS: "https://b.kas/", SplitID: "a"},
+				{KAS: "https://b.kas/", SplitID: "b"},
+				{KAS: "https://c.kas/", SplitID: "b"},
 			},
 		},
 	} {
@@ -591,8 +598,52 @@ func (s *TDFSuite) Test_KeySplits() {
 
 			// test encrypt
 			tdo := s.testEncrypt(s.sdk, kasInfoList, plaintTextFileName, tdfFileName, test)
-			s.Equal(test.splitPlan[0].kas, tdo.manifest.EncryptionInformation.KeyAccessObjs[0].KasURL)
+			s.Equal(test.splitPlan[0].KAS, tdo.manifest.EncryptionInformation.KeyAccessObjs[0].KasURL)
 			s.Len(tdo.manifest.EncryptionInformation.KeyAccessObjs, len(test.splitPlan))
+
+			// test decrypt with reader
+			s.testDecryptWithReader(s.sdk, tdfFileName, decryptedTdfFileName, test)
+		})
+	}
+}
+
+func (s *TDFSuite) Test_Autoconfigure() {
+	for index, test := range []tdfTest{
+		{
+			n:                "ac-default",
+			fileSize:         5,
+			tdfFileSize:      1733,
+			checksum:         "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
+			policy:           []autoconfigure.AttributeValueFQN{clsAllowed},
+			expectedPlanSize: 1,
+		},
+		{
+			n:                "ac-relto",
+			fileSize:         5,
+			tdfFileSize:      2517,
+			checksum:         "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
+			policy:           []autoconfigure.AttributeValueFQN{rel2aus, rel2usa},
+			expectedPlanSize: 2,
+		},
+	} {
+		s.Run(test.n, func() {
+			plaintTextFileName := test.n + "-" + strconv.Itoa(index) + ".txt"
+			tdfFileName := plaintTextFileName + ".tdf"
+			decryptedTdfFileName := tdfFileName + ".txt"
+
+			kasInfoList := make([]KASInfo, 1)
+			kasInfoList[0] = s.kases[0].KASInfo
+			kasInfoList[0].PublicKey = ""
+			kasInfoList[0].Default = true
+
+			defer func() {
+				_ = os.Remove(plaintTextFileName)
+				_ = os.Remove(tdfFileName)
+			}()
+
+			// test encrypt
+			tdo := s.testEncrypt(s.sdk, kasInfoList, plaintTextFileName, tdfFileName, test)
+			s.Len(tdo.manifest.EncryptionInformation.KeyAccessObjs, test.expectedPlanSize)
 
 			// test decrypt with reader
 			s.testDecryptWithReader(s.sdk, tdfFileName, decryptedTdfFileName, test)
@@ -640,9 +691,16 @@ func (s *TDFSuite) testEncrypt(sdk *SDK, kasInfoList []KASInfo, plainTextFilenam
 	if test.mimeType != "" {
 		encryptOpts = append(encryptOpts, WithMimeType(test.mimeType))
 	}
-	if len(test.splitPlan) == 0 {
-		encryptOpts = append(encryptOpts, withSplitPlan(splitStep{kasInfoList[0].URL, ""}))
-	} else {
+	switch {
+	case len(test.policy) > 0:
+		da := make([]string, len(test.policy))
+		for i := 0; i < len(da); i++ {
+			da[i] = string(test.policy[i])
+		}
+		encryptOpts = append(encryptOpts, WithDataAttributes(da...))
+	case len(test.splitPlan) == 0:
+		encryptOpts = append(encryptOpts, withSplitPlan(autoconfigure.SplitStep{KAS: kasInfoList[0].URL, SplitID: ""}))
+	default:
 		encryptOpts = append(encryptOpts, withSplitPlan(test.splitPlan...))
 	}
 
@@ -737,6 +795,7 @@ func (s *TDFSuite) startBackend() {
 	}
 
 	fwk := &FakeWellKnown{v: wellknownCfg}
+	fa := &FakeAttributes{}
 
 	listeners := make(map[string]*bufconn.Listener)
 	dialer := func(ctx context.Context, host string) (net.Conn, error) {
@@ -749,7 +808,7 @@ func (s *TDFSuite) startBackend() {
 		return l.Dial()
 	}
 
-	s.kases = make([]FakeKas, 4)
+	s.kases = make([]FakeKas, 9)
 
 	for i, ki := range []struct {
 		url, private, public string
@@ -758,6 +817,11 @@ func (s *TDFSuite) startBackend() {
 		{"https://a.kas/", mockRSAPrivateKey1, mockRSAPublicKey1},
 		{"https://b.kas/", mockRSAPrivateKey2, mockRSAPublicKey2},
 		{"https://c.kas/", mockRSAPrivateKey3, mockRSAPublicKey3},
+		{kasAu, mockRSAPrivateKey1, mockRSAPublicKey1},
+		{kasCa, mockRSAPrivateKey2, mockRSAPublicKey2},
+		{lasUk, mockRSAPrivateKey2, mockRSAPublicKey2},
+		{kasNz, mockRSAPrivateKey3, mockRSAPublicKey3},
+		{kasUs, mockRSAPrivateKey1, mockRSAPublicKey1},
 	} {
 		grpcListener := bufconn.Listen(1024 * 1024)
 		url, err := url.Parse(ki.url)
@@ -780,6 +844,7 @@ func (s *TDFSuite) startBackend() {
 			URL: ki.url, PublicKey: ki.public, KID: "r1", Algorithm: "rsa:2048"},
 			legakeys: map[string]keyInfo{},
 		}
+		attributespb.RegisterAttributesServiceServer(grpcServer, fa)
 		kaspb.RegisterAccessServiceServer(grpcServer, &s.kases[i])
 		wellknownpb.RegisterWellKnownServiceServer(grpcServer, fwk)
 		go func() {
@@ -814,6 +879,142 @@ func (f *FakeWellKnown) GetWellKnownConfiguration(_ context.Context, _ *wellknow
 	return &wellknownpb.GetWellKnownConfigurationResponse{
 		Configuration: cfg,
 	}, nil
+}
+
+const (
+	kasAu     = "https://kas.au/"
+	kasCa     = "https://kas.ca/"
+	lasUk     = "https://kas.uk/"
+	kasNz     = "https://kas.nz/"
+	kasUs     = "https://kas.us/"
+	kasUsHcs  = "https://hcs.kas.us/"
+	kasUsSI   = "https://si.kas.us/"
+	authority = "https://virtru.com/"
+
+	CLS autoconfigure.AttributeNameFQN = "https://virtru.com/attr/Classification"
+	N2K autoconfigure.AttributeNameFQN = "https://virtru.com/attr/Need%20to%20Know"
+	REL autoconfigure.AttributeNameFQN = "https://virtru.com/attr/Releasable%20To"
+
+	clsAllowed autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Classification/value/Allowed"
+	clsConf    autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Classification/value/Confidential"
+	clsSec     autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Classification/value/Secret"
+	clsTS      autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Classification/value/Top%20Secret"
+
+	rel25eye autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/FVEY"
+	rel2aus  autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/AUS"
+	rel2can  autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/CAN"
+	rel2gbr  autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/GBR"
+	rel2nzl  autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/NZL"
+	rel2usa  autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/USA"
+)
+
+func mockAttributeFor(fqn autoconfigure.AttributeNameFQN) *policy.Attribute {
+	ns := policy.Namespace{
+		Id:   "v",
+		Name: "virtru.com",
+		Fqn:  "https://virtru.com",
+	}
+	switch fqn {
+	case CLS:
+		return &policy.Attribute{
+			Id:        "CLS",
+			Namespace: &ns,
+			Name:      "Classification",
+			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			Fqn:       string(fqn),
+		}
+	case N2K:
+		return &policy.Attribute{
+			Id:        "N2K",
+			Namespace: &ns,
+			Name:      "Need to Know",
+			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+			Fqn:       string(fqn),
+		}
+	case REL:
+		return &policy.Attribute{
+			Id:        "REL",
+			Namespace: &ns,
+			Name:      "Releasable To",
+			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Fqn:       string(fqn),
+		}
+	}
+	return nil
+}
+func mockValueFor(fqn autoconfigure.AttributeValueFQN) *policy.Value {
+	an := fqn.Prefix()
+	a := mockAttributeFor(an)
+	v := fqn.Value()
+	p := policy.Value{
+		Id:        a.GetId() + ":" + v,
+		Attribute: a,
+		Value:     v,
+		Fqn:       string(fqn),
+	}
+
+	switch an {
+	case N2K:
+		switch fqn.Value() {
+		case "INT":
+			p.Grants = make([]*policy.KeyAccessServer, 1)
+			p.Grants[0] = &policy.KeyAccessServer{Uri: lasUk}
+		case "HCS":
+			p.Grants = make([]*policy.KeyAccessServer, 1)
+			p.Grants[0] = &policy.KeyAccessServer{Uri: kasUsHcs}
+		case "SI":
+			p.Grants = make([]*policy.KeyAccessServer, 1)
+			p.Grants[0] = &policy.KeyAccessServer{Uri: kasUsSI}
+		}
+
+	case REL:
+		switch fqn.Value() {
+		case "FVEY":
+			p.Grants = make([]*policy.KeyAccessServer, 5)
+			p.Grants[0] = &policy.KeyAccessServer{Uri: kasAu}
+			p.Grants[1] = &policy.KeyAccessServer{Uri: kasCa}
+			p.Grants[2] = &policy.KeyAccessServer{Uri: lasUk}
+			p.Grants[3] = &policy.KeyAccessServer{Uri: kasNz}
+			p.Grants[4] = &policy.KeyAccessServer{Uri: kasUs}
+		case "AUS":
+			p.Grants = make([]*policy.KeyAccessServer, 1)
+			p.Grants[0] = &policy.KeyAccessServer{Uri: kasAu}
+		case "CAN":
+			p.Grants = make([]*policy.KeyAccessServer, 1)
+			p.Grants[0] = &policy.KeyAccessServer{Uri: kasCa}
+		case "GBR":
+			p.Grants = make([]*policy.KeyAccessServer, 1)
+			p.Grants[0] = &policy.KeyAccessServer{Uri: lasUk}
+		case "NZL":
+			p.Grants = make([]*policy.KeyAccessServer, 1)
+			p.Grants[0] = &policy.KeyAccessServer{Uri: kasNz}
+		case "USA":
+			p.Grants = make([]*policy.KeyAccessServer, 1)
+			p.Grants[0] = &policy.KeyAccessServer{Uri: kasUs}
+		}
+	}
+	return &p
+}
+
+type FakeAttributes struct {
+	attributespb.UnimplementedAttributesServiceServer
+}
+
+func (f *FakeAttributes) GetAttributeValuesByFqns(_ context.Context, in *attributespb.GetAttributeValuesByFqnsRequest) (*attributespb.GetAttributeValuesByFqnsResponse, error) {
+	r := make(map[string]*attributespb.GetAttributeValuesByFqnsResponse_AttributeAndValue)
+	for _, fqn := range in.GetFqns() {
+		av, err := autoconfigure.NewAttributeValueFQN(fqn)
+		if err != nil {
+			slog.Error("invalid fqn", "notfqn", fqn, "error", err)
+			return nil, status.New(codes.InvalidArgument, fmt.Sprintf("invalid attribute fqn [%s]", fqn)).Err()
+		}
+		v := mockValueFor(av)
+		r[fqn] = &attributespb.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+			Attribute: v.GetAttribute(),
+			Value:     v,
+		}
+	}
+	return &attributespb.GetAttributeValuesByFqnsResponse{FqnAttributeValues: r}, nil
 }
 
 type FakeKas struct {

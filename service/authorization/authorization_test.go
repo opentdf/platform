@@ -37,15 +37,12 @@ func mockRetrieveEntitlements(ctx context.Context, _ *authorization.GetEntitleme
 }
 
 func TestGetComprehensiveHierarchy(t *testing.T) {
-
 	as := &AuthorizationService{
 		logger: logger.CreateTestLogger(),
 	}
-
 	avf := attr.GetAttributeValuesByFqnsResponse{
 		FqnAttributeValues: nil,
 	}
-
 	tests := []struct {
 		name            string
 		attributesMap   map[string]*policy.Attribute
@@ -104,14 +101,8 @@ func TestGetComprehensiveHierarchy(t *testing.T) {
 			expectedResult:  []string{"ent0", "ent2", "ent3"},
 		},
 	}
-
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			keys := []string{}
-
-			for k := range tc.attributesMap {
-				keys = append(keys, k)
-			}
 			result := getComprehensiveHierarchy(
 				tc.attributesMap,
 				&avf,
@@ -119,7 +110,6 @@ func TestGetComprehensiveHierarchy(t *testing.T) {
 				as,
 				tc.currentEntitles,
 			)
-
 			assert.Equal(t, tc.expectedResult, result)
 		})
 	}

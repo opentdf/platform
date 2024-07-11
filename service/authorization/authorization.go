@@ -484,7 +484,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 				continue
 			}
 			// if comprehensive and a hierarchy attribute is entitled then add the lower entitlements
-			if req.GetWithComprehensiveHierarchy() { //nolint:nestif // here for performance
+			if req.GetWithComprehensiveHierarchy() {
 				entitlements = getComprehensiveHierarchy(attributesMap, avf, entitlement, as, entitlements)
 			}
 			// Add entitlement to entitlements array

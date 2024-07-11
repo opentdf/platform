@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.11](https://github.com/opentdf/platform/compare/sdk/v0.2.10...sdk/v0.2.11) (2024-07-11)
+
+
+### Features
+
+* **sdk:** Support custom key splits ([#1038](https://github.com/opentdf/platform/issues/1038)) ([685d8b5](https://github.com/opentdf/platform/commit/685d8b5d7b609744eb6623c52efb27cb40fbc36c))
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1132](https://github.com/opentdf/platform/issues/1132)) ([da9145c](https://github.com/opentdf/platform/commit/da9145cce0738293281f6fba84d81dc221fc4e6f))
+
 ## [0.2.10](https://github.com/opentdf/platform/compare/sdk/v0.2.9...sdk/v0.2.10) (2024-07-09)
 
 

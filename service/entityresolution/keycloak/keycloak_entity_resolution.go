@@ -44,8 +44,8 @@ type InferredIdentityConfig struct {
 }
 
 type EntityImpliedFrom struct {
-	Email    bool
-	Username bool
+	Email    bool `json:"email,omitempty"`
+	Username bool `json:"username,omitempty"`
 }
 
 type KeyCloakConnector struct {

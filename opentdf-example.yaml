@@ -22,9 +22,12 @@ services:
     clientsecret: "secret"
     realm: "opentdf"
     legacykeycloak: true
-    unknownentities:
-      enabled: true
-      entitytypes: [emailAddress, userName, clientId]
+    unknown:
+      entities:
+        from:
+          email: true
+          username: true
+
   authorization:
     enabled: true
     ersurl: http://localhost:8080/entityresolution/resolve

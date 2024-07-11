@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"slices"
 	"strings"
 
 	"github.com/Nerzal/gocloak/v13"
@@ -31,18 +30,25 @@ const UsernameConditionalSelector = "client_id"
 const serviceAccountUsernamePrefix = "service-account-"
 
 type KeycloakConfig struct {
-	URL                 string              `json:"url"`
-	Realm               string              `json:"realm"`
-	ClientID            string              `json:"clientid"`
-	ClientSecret        string              `json:"clientsecret"`
-	LegacyKeycloak      bool                `json:"legacykeycloak" default:"false"`
-	SubGroups           bool                `json:"subgroups" default:"false"`
-	UnknownEntityConfig UnknownEntityConfig `json:"unknownentities" default:"false"`
+	URL            string        `json:"url"`
+	Realm          string        `json:"realm"`
+	ClientID       string        `json:"clientid"`
+	ClientSecret   string        `json:"clientsecret"`
+	LegacyKeycloak bool          `json:"legacykeycloak" default:"false"`
+	SubGroups      bool          `json:"subgroups" default:"false"`
+	Unknown        UnknownConfig `json:"unknown,omitempty"`
+}
+
+type UnknownConfig struct {
+	Entities UnknownEntityConfig `json:"entities,omitempty"`
 }
 
 type UnknownEntityConfig struct {
-	Enabled     bool     `json:"enabled"`
-	EntityTypes []string `json:"entitytypes"`
+	From ImpliedFrom
+}
+type ImpliedFrom struct {
+	Email    bool
+	Username bool
 }
 
 type KeyCloakConnector struct {
@@ -195,9 +201,7 @@ func EntityResolution(ctx context.Context,
 						entityNotFoundErr = entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrTextGetRetrievalFailed, Entity: ident.String()}
 					}
 					logger.Error(entityNotFoundErr.String())
-					if kcConfig.UnknownEntityConfig.Enabled &&
-						(slices.Contains(kcConfig.UnknownEntityConfig.EntityTypes, "emailAddress") ||
-							slices.Contains(kcConfig.UnknownEntityConfig.EntityTypes, "userName")) {
+					if kcConfig.Unknown.Entities.From.Email || kcConfig.Unknown.Entities.From.Username {
 						// user not found -- add json entity to resp instead
 						entityStruct, err := entityToStructPb(ident)
 						if err != nil {
@@ -208,7 +212,7 @@ func EntityResolution(ctx context.Context,
 						return entityresolution.ResolveEntitiesResponse{}, status.Error(codes.Code(entityNotFoundErr.GetCode()), entityNotFoundErr.GetMessage())
 					}
 				}
-			} else if (ident.GetUserName() != "") && kcConfig.UnknownEntityConfig.Enabled && slices.Contains(kcConfig.UnknownEntityConfig.EntityTypes, "userName") {
+			} else if (ident.GetUserName() != "") && kcConfig.Unknown.Entities.From.Username {
 				// user not found -- add json entity to resp instead
 				entityStruct, err := entityToStructPb(ident)
 				if err != nil {

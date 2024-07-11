@@ -37,9 +37,11 @@ services:
     clientsecret: 'secret'
     realm: 'opentdf'
     legacykeycloak: true
-    unknownentities:
-      enabled: true
-      entitytypes: [emailAddress, userName, clientId]
+    unknown:
+      entities:
+        types:
+            email: true
+            username: true
 server:
   auth:
     enabled: true

@@ -26,7 +26,6 @@ services:
       from:
         email: true
         username: true
-
   authorization:
     enabled: true
     ersurl: http://localhost:8080/entityresolution/resolve

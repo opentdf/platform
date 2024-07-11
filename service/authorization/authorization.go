@@ -472,12 +472,6 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		as.logger.DebugContext(ctx, "opa results", "entity_id", entity.GetId(), "results", fmt.Sprintf("%+v", results))
 		// map for attributes for optional comprehensive
 		attributesMap := make(map[string]*policy.Attribute)
-		// subject attributes
-		saa := make([]string, len(results))
-		for k, v := range results {
-			fqnStr, okk := v.(string)
-			if !okk {
-				as.logger.DebugContext(ctx, "not ok", slog.String("entity_id", entity.GetId()), slog.String(strconv.Itoa(k), fmt.Sprintf("%+v", v)))
 		// Build array with length of results
 		var entitlements = make([]string, len(resultsEntitlements))
 
@@ -489,7 +483,6 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 				as.logger.WarnContext(ctx, "issue with adding entitlement", slog.String("entity_id", entity.GetId()), slog.String("entitlement", entitlement))
 				continue
 			}
-			saa[k] = fqnStr
 			// if comprehensive and a hierarchy attribute is entitled then add the lower entitlements
 			if req.GetWithComprehensiveHierarchy() { //nolint:nestif // here for performance
 				// load attributesMap
@@ -502,9 +495,9 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 						}
 					}
 				}
-				attrDef := attributesMap[fqnStr]
+				attrDef := attributesMap[entitlement]
 				if attrDef == nil {
-					as.logger.Warn("no attribute definition found for entity", "fqn", fqnStr)
+					as.logger.Warn("no attribute definition found for entity", "fqn", entitlement)
 					break
 				}
 				if attrDef.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
@@ -512,12 +505,12 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 					isFollowing := false
 					for _, followingAttrVal := range attrDef.GetValues() {
 						if isFollowing {
-							saa = append(saa, followingAttrVal.GetFqn()) //nolint:makezero // performance, optional case unknown if slice will append
+							entitlements = append(entitlements, followingAttrVal.GetFqn())
 						} else {
 							// if fqn match, then rest are added
 							// order is determined by creation order
 							// creation order is guaranteed unless unsafe operations used
-							isFollowing = followingAttrVal.GetFqn() == fqnStr
+							isFollowing = followingAttrVal.GetFqn() == entitlement
 						}
 					}
 				}

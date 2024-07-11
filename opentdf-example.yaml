@@ -22,11 +22,10 @@ services:
     clientsecret: "secret"
     realm: "opentdf"
     legacykeycloak: true
-    unknown:
-      entities:
-        from:
-          email: true
-          username: true
+    inferid:
+      from:
+        email: true
+        username: true
 
   authorization:
     enabled: true

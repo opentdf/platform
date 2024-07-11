@@ -30,23 +30,20 @@ const UsernameConditionalSelector = "client_id"
 const serviceAccountUsernamePrefix = "service-account-"
 
 type KeycloakConfig struct {
-	URL            string        `json:"url"`
-	Realm          string        `json:"realm"`
-	ClientID       string        `json:"clientid"`
-	ClientSecret   string        `json:"clientsecret"`
-	LegacyKeycloak bool          `json:"legacykeycloak" default:"false"`
-	SubGroups      bool          `json:"subgroups" default:"false"`
-	Unknown        UnknownConfig `json:"unknown,omitempty"`
+	URL            string                 `json:"url"`
+	Realm          string                 `json:"realm"`
+	ClientID       string                 `json:"clientid"`
+	ClientSecret   string                 `json:"clientsecret"`
+	LegacyKeycloak bool                   `json:"legacykeycloak" default:"false"`
+	SubGroups      bool                   `json:"subgroups" default:"false"`
+	InferID        InferredIdentityConfig `json:"inferid,omitempty"`
 }
 
-type UnknownConfig struct {
-	Entities UnknownEntityConfig `json:"entities,omitempty"`
+type InferredIdentityConfig struct {
+	From EntityImpliedFrom `json:"from,omitempty"`
 }
 
-type UnknownEntityConfig struct {
-	From ImpliedFrom
-}
-type ImpliedFrom struct {
+type EntityImpliedFrom struct {
 	Email    bool
 	Username bool
 }
@@ -201,7 +198,7 @@ func EntityResolution(ctx context.Context,
 						entityNotFoundErr = entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrTextGetRetrievalFailed, Entity: ident.String()}
 					}
 					logger.Error(entityNotFoundErr.String())
-					if kcConfig.Unknown.Entities.From.Email || kcConfig.Unknown.Entities.From.Username {
+					if kcConfig.InferID.From.Email || kcConfig.InferID.From.Username {
 						// user not found -- add json entity to resp instead
 						entityStruct, err := entityToStructPb(ident)
 						if err != nil {
@@ -212,7 +209,7 @@ func EntityResolution(ctx context.Context,
 						return entityresolution.ResolveEntitiesResponse{}, status.Error(codes.Code(entityNotFoundErr.GetCode()), entityNotFoundErr.GetMessage())
 					}
 				}
-			} else if (ident.GetUserName() != "") && kcConfig.Unknown.Entities.From.Username {
+			} else if (ident.GetUserName() != "") && kcConfig.InferID.From.Username {
 				// user not found -- add json entity to resp instead
 				entityStruct, err := entityToStructPb(ident)
 				if err != nil {

@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/opentdf/platform/lib/ocrypto v0.1.5
-	github.com/opentdf/platform/protocol/go v0.2.8
+	github.com/opentdf/platform/protocol/go v0.2.9
 	github.com/opentdf/platform/sdk v0.2.10
 	github.com/spf13/cobra v1.8.0
 	google.golang.org/grpc v1.62.1

@@ -44,6 +44,7 @@ type InferredIdentityConfig struct {
 }
 
 type EntityImpliedFrom struct {
+	ClientID bool `json:"clientid,omitempty"`
 	Email    bool `json:"email,omitempty"`
 	Username bool `json:"username,omitempty"`
 }
@@ -120,7 +121,7 @@ func EntityResolution(ctx context.Context,
 				}
 				jsonEntities = append(jsonEntities, mystruct)
 			}
-			if len(clients) == 0 {
+			if len(clients) == 0 && kcConfig.InferID.From.ClientID {
 				// convert entity to json
 				entityStruct, err := entityToStructPb(ident)
 				if err != nil {

@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0](https://github.com/opentdf/platform/compare/sdk/v0.2.11...sdk/v0.3.0) (2024-07-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **sdk:** Autoconfigure with grants ([#1051](https://github.com/opentdf/platform/issues/1051))
+
+### Features
+
+* **sdk:** Autoconfigure with grants ([#1051](https://github.com/opentdf/platform/issues/1051)) ([588b862](https://github.com/opentdf/platform/commit/588b862d9d258ccac2761e41edda04ea77270187))
+
 ## [0.2.11](https://github.com/opentdf/platform/compare/sdk/v0.2.10...sdk/v0.2.11) (2024-07-11)
 
 

@@ -182,7 +182,7 @@ message GetEntitlementsRequest {
   // optional attribute fqn as a scope
   optional ResourceAttribute scope = 2;
   // optional parameter to return a full list of entitlements - returns lower hierarchy attributes
-  optional bool with_comprehensive = 3;
+  optional bool with_comprehensive_hierarchy = 3;
 }
 
 message EntityEntitlements {

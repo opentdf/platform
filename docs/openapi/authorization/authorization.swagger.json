@@ -73,7 +73,7 @@
             "collectionFormat": "multi"
           },
           {
-            "name": "withComprehensive",
+            "name": "withComprehensiveHierarchy",
             "description": "optional parameter to return a full list of entitlements - returns lower hierarchy attributes",
             "in": "query",
             "required": false,

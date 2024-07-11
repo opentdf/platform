@@ -430,7 +430,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			}
 			saa[k] = fqnStr
 			// if comprehensive and a hierarchy attribute is entitled then add the lower entitlements
-			if req.GetWithComprehensive() {
+			if req.GetWithComprehensiveHierarchy() { //nolint:nestif // here for performance
 				// load attributesMap
 				if len(attributesMap) == 0 {
 					// Go through all attribute definitions
@@ -451,7 +451,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 					isFollowing := false
 					for _, followingAttrVal := range attrDef.GetValues() {
 						if isFollowing {
-							saa = append(saa, followingAttrVal.Fqn)
+							saa = append(saa, followingAttrVal.GetFqn()) //nolint:makezero // performance, optional case unknown if slice will append
 						} else {
 							// if fqn match, then rest are added
 							// order is determined by creation order
@@ -459,7 +459,6 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 							isFollowing = followingAttrVal.GetFqn() == fqnStr
 						}
 					}
-					break
 				}
 			}
 		}

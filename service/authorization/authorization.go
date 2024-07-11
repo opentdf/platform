@@ -485,35 +485,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			}
 			// if comprehensive and a hierarchy attribute is entitled then add the lower entitlements
 			if req.GetWithComprehensiveHierarchy() { //nolint:nestif // here for performance
-				// load attributesMap
-				if len(attributesMap) == 0 {
-					// Go through all attribute definitions
-					attrDefs := avf.GetFqnAttributeValues()
-					for _, attrDef := range attrDefs {
-						for _, attrVal := range attrDef.GetAttribute().GetValues() {
-							attributesMap[attrVal.GetFqn()] = attrDef.GetAttribute()
-						}
-					}
-				}
-				attrDef := attributesMap[entitlement]
-				if attrDef == nil {
-					as.logger.Warn("no attribute definition found for entity", "fqn", entitlement)
-					break
-				}
-				if attrDef.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
-					// add the following fqn in the hierarchy
-					isFollowing := false
-					for _, followingAttrVal := range attrDef.GetValues() {
-						if isFollowing {
-							entitlements = append(entitlements, followingAttrVal.GetFqn())
-						} else {
-							// if fqn match, then rest are added
-							// order is determined by creation order
-							// creation order is guaranteed unless unsafe operations used
-							isFollowing = followingAttrVal.GetFqn() == entitlement
-						}
-					}
-				}
+				entitlements = getComprehensiveHierarchy(attributesMap, avf, entitlement, as, entitlements)
 			}
 			// Add entitlement to entitlements array
 			entitlements[valueIDX] = entitlement
@@ -526,6 +498,39 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	}
 
 	return rsp, nil
+}
+
+func getComprehensiveHierarchy(attributesMap map[string]*policy.Attribute, avf *attr.GetAttributeValuesByFqnsResponse, entitlement string, as *AuthorizationService, entitlements []string) []string {
+	// load attributesMap
+	if len(attributesMap) == 0 {
+		// Go through all attribute definitions
+		attrDefs := avf.GetFqnAttributeValues()
+		for _, attrDef := range attrDefs {
+			for _, attrVal := range attrDef.GetAttribute().GetValues() {
+				attributesMap[attrVal.GetFqn()] = attrDef.GetAttribute()
+			}
+		}
+	}
+	attrDef := attributesMap[entitlement]
+	if attrDef == nil {
+		as.logger.Warn("no attribute definition found for entity", "fqn", entitlement)
+		return entitlements
+	}
+	if attrDef.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+		// add the following fqn in the hierarchy
+		isFollowing := false
+		for _, followingAttrVal := range attrDef.GetValues() {
+			if isFollowing {
+				entitlements = append(entitlements, followingAttrVal.GetFqn())
+			} else {
+				// if fqn match, then rest are added
+				// order is determined by creation order
+				// creation order is guaranteed unless unsafe operations used
+				isFollowing = followingAttrVal.GetFqn() == entitlement
+			}
+		}
+	}
+	return entitlements
 }
 
 // Build an fqn from a namespace, attribute name, and value

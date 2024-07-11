@@ -36,6 +36,95 @@ func mockRetrieveEntitlements(ctx context.Context, _ *authorization.GetEntitleme
 	return &entitlementsResponse, nil
 }
 
+func TestGetComprehensiveHierarchy(t *testing.T) {
+
+	as := &AuthorizationService{
+		logger: logger.CreateTestLogger(),
+	}
+
+	avf := attr.GetAttributeValuesByFqnsResponse{
+		FqnAttributeValues: nil,
+	}
+
+	tests := []struct {
+		name            string
+		attributesMap   map[string]*policy.Attribute
+		entitlement     string
+		currentEntitles []string
+		expectedResult  []string
+	}{
+		{
+			name:            "NoAttributes",
+			attributesMap:   map[string]*policy.Attribute{},
+			entitlement:     "ent1",
+			currentEntitles: []string{},
+			expectedResult:  []string{},
+		},
+		{
+			name: "OneAttribute",
+			attributesMap: map[string]*policy.Attribute{
+				"ent1": {
+					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+					Values: []*policy.Value{
+						{Fqn: "ent1"},
+						{Fqn: "ent2"},
+					},
+				},
+				"ent0": {
+					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+					Values: []*policy.Value{
+						{Fqn: "ent0v0"},
+					},
+				},
+			},
+			entitlement:     "ent1",
+			currentEntitles: []string{"ent0", "ent1"},
+			expectedResult:  []string{"ent0", "ent1", "ent2"},
+		},
+		{
+			name: "MultipleAttributes",
+			attributesMap: map[string]*policy.Attribute{
+				"ent2": {
+					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+					Values: []*policy.Value{
+						{Fqn: "ent1"},
+						{Fqn: "ent2"},
+						{Fqn: "ent3"},
+					},
+				},
+				"ent0": {
+					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+					Values: []*policy.Value{
+						{Fqn: "ent0v0"},
+					},
+				},
+			},
+			entitlement:     "ent2",
+			currentEntitles: []string{"ent0", "ent2"},
+			expectedResult:  []string{"ent0", "ent2", "ent3"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			keys := []string{}
+
+			for k := range tc.attributesMap {
+				keys = append(keys, k)
+			}
+			result := getComprehensiveHierarchy(
+				tc.attributesMap,
+				&avf,
+				tc.entitlement,
+				as,
+				tc.currentEntitles,
+			)
+
+			assert.Equal(t, tc.expectedResult, result)
+		})
+	}
+}
+
 func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	logger := logger.CreateTestLogger()
 

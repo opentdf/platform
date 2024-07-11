@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 	"strings"
 
 	"github.com/Nerzal/gocloak/v13"
@@ -125,7 +124,8 @@ func EntityResolution(ctx context.Context,
 				// convert entity to json
 				entityStruct, err := entityToStructPb(ident)
 				if err != nil {
-					return entityresolution.ResolveEntitiesResponse{}, err
+					logger.Error("unable to make entity struct", "error", err)
+					return entityresolution.ResolveEntitiesResponse{}, status.Error(codes.Internal, ErrTextCreationFailed)
 				}
 				jsonEntities = append(jsonEntities, entityStruct)
 			}
@@ -203,7 +203,8 @@ func EntityResolution(ctx context.Context,
 						// user not found -- add json entity to resp instead
 						entityStruct, err := entityToStructPb(ident)
 						if err != nil {
-							return entityresolution.ResolveEntitiesResponse{}, err
+							logger.Error("unable to make entity struct from email or username", "error", err)
+							return entityresolution.ResolveEntitiesResponse{}, status.Error(codes.Internal, ErrTextCreationFailed)
 						}
 						jsonEntities = append(jsonEntities, entityStruct)
 					} else {
@@ -214,7 +215,8 @@ func EntityResolution(ctx context.Context,
 				// user not found -- add json entity to resp instead
 				entityStruct, err := entityToStructPb(ident)
 				if err != nil {
-					return entityresolution.ResolveEntitiesResponse{}, err
+					logger.Error("unable to make entity struct from username", "error", err)
+					return entityresolution.ResolveEntitiesResponse{}, status.Error(codes.Internal, ErrTextCreationFailed)
 				}
 				jsonEntities = append(jsonEntities, entityStruct)
 			}
@@ -409,16 +411,12 @@ func getServiceAccountClient(ctx context.Context, username string, kcConfig Keyc
 func entityToStructPb(ident *authorization.Entity) (*structpb.Struct, error) {
 	entityBytes, err := protojson.Marshal(ident)
 	if err != nil {
-		slog.Error(err.Error())
-		return &structpb.Struct{},
-			status.Error(codes.Internal, ErrTextCreationFailed)
+		return nil, err
 	}
 	var entityStruct structpb.Struct
 	err = entityStruct.UnmarshalJSON(entityBytes)
 	if err != nil {
-		slog.Error("Error making struct!", "error", err)
-		return &structpb.Struct{},
-			status.Error(codes.Internal, ErrTextCreationFailed)
+		return nil, err
 	}
 	return &entityStruct, nil
 }

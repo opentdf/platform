@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.11](https://github.com/opentdf/platform/compare/service/v0.4.10...service/v0.4.11) (2024-07-11)
+
+
+### Features
+
+* **authz:** Keycloak ERS ability to handle clients, users, and emails that dont exist ([#1113](https://github.com/opentdf/platform/issues/1113)) ([4a17f18](https://github.com/opentdf/platform/commit/4a17f18171ee8c557b85118d56a2428482bc6a56))
+* **core:** GetEntitlements with_comprehensive_hierarchy ([#1121](https://github.com/opentdf/platform/issues/1121)) ([ac85bf7](https://github.com/opentdf/platform/commit/ac85bf7aef6c9a00bfa0900f6ff3533059ab4bc8)), closes [#1054](https://github.com/opentdf/platform/issues/1054)
+* **sdk:** Support custom key splits ([#1038](https://github.com/opentdf/platform/issues/1038)) ([685d8b5](https://github.com/opentdf/platform/commit/685d8b5d7b609744eb6623c52efb27cb40fbc36c))
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1133](https://github.com/opentdf/platform/issues/1133)) ([1a1a64f](https://github.com/opentdf/platform/commit/1a1a64f9511a38ccbc516ad0d6710cccaf9cf741))
+* **core:** Autobump service ([#1136](https://github.com/opentdf/platform/issues/1136)) ([baaee4d](https://github.com/opentdf/platform/commit/baaee4df1c8b0b06e0a456267e0dc6ec657b0980))
+* **core:** Autobump service ([#1139](https://github.com/opentdf/platform/issues/1139)) ([7da3cb9](https://github.com/opentdf/platform/commit/7da3cb9e3061a560aa254d557109969024d32bdb))
+* **kas:** remove unused hostname check ([#1123](https://github.com/opentdf/platform/issues/1123)) ([2909700](https://github.com/opentdf/platform/commit/2909700a67c191bf6d3008219e79a4339a8d592d))
+
 ## [0.4.10](https://github.com/opentdf/platform/compare/service/v0.4.9...service/v0.4.10) (2024-07-09)
 
 

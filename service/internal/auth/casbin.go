@@ -253,24 +253,25 @@ func (e *Enforcer) Enforce(token jwt.Token, resource, action string) (bool, erro
 
 	if len(s.Roles) == 0 {
 		sub := rolePrefix + defaultRole
-		e.logger.Info("enforcing policy", slog.Any("subject", sub), slog.String("resource", resource), slog.String("action", action))
+		e.logger.Debug("enforcing policy", slog.Any("subject", sub), slog.String("resource", resource), slog.String("action", action))
 		return e.Enforcer.Enforce(sub, resource, action)
 	}
 
 	allowed := false
 	for _, role := range s.Roles {
 		sub := rolePrefix + role
-		e.logger.Info("enforcing policy", slog.String("subject", sub), slog.String("resource", resource), slog.String("action", action))
 		allowed, err = e.Enforcer.Enforce(sub, resource, action)
 		if err != nil {
-			e.logger.Error("failed to enforce policy", slog.String("error", err.Error()))
+			e.logger.Error("enforce by role error", slog.String("subject", sub), slog.String("resource", resource), slog.String("action", action), slog.String("error", err.Error()))
 			continue
 		}
 		if allowed {
+			e.logger.Debug("allowed by policy", slog.String("subject", sub), slog.String("resource", resource), slog.String("action", action))
 			break
 		}
 	}
 	if !allowed {
+		e.logger.Debug("permission denied by policy", slog.Any("roles", s.Roles), slog.String("resource", resource), slog.String("action", action))
 		return false, permDeniedError
 	}
 
@@ -334,7 +335,6 @@ func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 	filtered := []string{}
 	for _, r := range roles {
 		for m, rr := range roleMap {
-			e.logger.Debug("checking role", slog.String("role", r), slog.String("map", m))
 			// if the role is in the map, add the mapped role to the filtered list
 			if r == rr {
 				filtered = append(filtered, m)
@@ -345,6 +345,7 @@ func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 	if len(filtered) == 0 {
 		filtered = append(filtered, defaultRole)
 	}
+	e.logger.Debug("roles found for", slog.Any("roles", filtered), slog.Any("claims", claim))
 
 	return filtered
 }

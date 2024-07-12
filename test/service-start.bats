@@ -69,6 +69,6 @@
 @test "gRPC: attributes example" {
   run go run ./examples --creds opentdf:secret attributes
   echo "$output"
-  [[ $output = *listing namespaces* ]]
+  [ $output = *listing namespaces* ]
   [ $status = 0 ]
 }

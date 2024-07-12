@@ -1,22 +1,13 @@
 # OpenTDF Data Security SDK
 
-A Go implementation of the OpenTDF protocol, and access library for services
-included in the Data Security Platform.
+This SDK provides a library with Go implementation of the OpenTDF protocol,
+and remote service access to a core ABAC Data Security Platform.
 
-Note: if you are consuming the SDK as a submodule you may need to add replace directives as follows:
+## Configuring Attributes
 
-```go
-replace (
-  github.com/opentdf/platform/service => ./opentdf/service
-	github.com/opentdf/platform/lib/fixtures => ./opentdf/lib/fixtures
-	github.com/opentdf/platform/protocol/go => ./opentdf/protocol/go
-	github.com/opentdf/platform/lib/ocrypto => ./opentdf/lib/ocrypto
-	github.com/opentdf/platform/sdk => ./opentdf/sdk
-	github.com/opentdf/platform/service => ./opentdf/service
-)
-```
+l
 
-## Quick Start of the Go SDK
+## Creating and Reading ZTDF files
 
 ```go
 package main
@@ -27,7 +18,6 @@ import "io"
 import "os"
 import "strings"
 import "github.com/opentdf/platform/sdk"
-
 
 func main() {
   s, _ := sdk.New(

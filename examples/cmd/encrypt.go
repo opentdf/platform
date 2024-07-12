@@ -56,7 +56,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create new offline client
-	client, err := sdk.New(platformEndpoint, opts...)
+	client, err := newSDK()
 	if err != nil {
 		return err
 	}

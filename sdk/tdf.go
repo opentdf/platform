@@ -132,7 +132,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		var g autoconfigure.Granter
 		if len(tdfConfig.attributeValues) > 0 {
 			g, err = autoconfigure.NewGranterFromAttributes(tdfConfig.attributeValues...)
-		} else {
+		} else if len(tdfConfig.attributes) > 0 {
 			g, err = autoconfigure.NewGranterFromService(ctx, s.Attributes, tdfConfig.attributes...)
 		}
 		if err != nil {

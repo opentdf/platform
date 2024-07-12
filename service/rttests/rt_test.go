@@ -39,6 +39,7 @@ var attributesToMap = []string{
 	"https://example.com/attr/cards/value/queen"}
 
 var successAttributeSets = [][]string{
+	{},
 	{"https://example.com/attr/language/value/english"},
 	{"https://example.com/attr/color/value/red"},
 	{"https://example.com/attr/color/value/red", "https://example.com/attr/color/value/green"},

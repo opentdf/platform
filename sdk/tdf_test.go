@@ -482,6 +482,7 @@ func (s *TDFSuite) Test_TDF() {
 				kasInfoList[i].PublicKey = ""
 			}
 			kasInfoList[0].PublicKey = ""
+			kasInfoList[0].Default = true
 
 			defer func() {
 				// Remove the test files
@@ -698,9 +699,7 @@ func (s *TDFSuite) testEncrypt(sdk *SDK, kasInfoList []KASInfo, plainTextFilenam
 			da[i] = string(test.policy[i])
 		}
 		encryptOpts = append(encryptOpts, WithDataAttributes(da...))
-	case len(test.splitPlan) == 0:
-		encryptOpts = append(encryptOpts, withSplitPlan(autoconfigure.SplitStep{KAS: kasInfoList[0].URL, SplitID: ""}))
-	default:
+	case len(test.splitPlan) > 0:
 		encryptOpts = append(encryptOpts, withSplitPlan(test.splitPlan...))
 	}
 

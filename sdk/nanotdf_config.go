@@ -30,7 +30,7 @@ type NanoTDFConfig struct {
 type NanoTDFOption func(*NanoTDFConfig) error
 
 // NewNanoTDFConfig - Create a new instance of a nanoTDF config
-func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
+func (s SDK) newNanoTDFConfig(opt ...NanoTDFOption) (*NanoTDFConfig, error) {
 	// TODO FIXME - how to pass in mode value and use here before 'c' is initialized?
 	newECKeyPair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
 	if err != nil {
@@ -50,6 +50,13 @@ func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
 			signatureMode: ocrypto.ECCModeSecp256r1,
 			cipher:        cipherModeAes256gcm96Bit,
 		},
+	}
+
+	for _, o := range opt {
+		err = o(c)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return c, nil
@@ -79,8 +86,8 @@ func WithNanoDataAttributes(attributes ...string) NanoTDFOption {
 }
 
 type NanoKASInfo struct {
-	kasPublicKeyPem string
-	kasURL          string
+	KasPublicKeyPem string
+	KasURL          string
 }
 
 // WithNanoKasInformation adds the first kas url and its corresponding public key
@@ -90,14 +97,17 @@ func WithNanoKasInformation(kasInfoList ...NanoKASInfo) NanoTDFOption {
 	return func(c *NanoTDFConfig) error {
 		newKasInfos := make([]NanoKASInfo, 0)
 		newKasInfos = append(newKasInfos, kasInfoList...)
-		err := c.kasURL.setURL(newKasInfos[0].kasURL)
+		err := c.kasURL.setURL(newKasInfos[0].KasURL)
 		if err != nil {
 			return err
 		}
-		c.kasPublicKey, err = ocrypto.ECPubKeyFromPem([]byte(newKasInfos[0].kasPublicKeyPem))
-		if err != nil {
-			return err
+		if newKasInfos[0].KasPublicKeyPem != "" {
+			c.kasPublicKey, err = ocrypto.ECPubKeyFromPem([]byte(newKasInfos[0].KasPublicKeyPem))
+			if err != nil {
+				return err
+			}
 		}
+
 		return nil
 	}
 }

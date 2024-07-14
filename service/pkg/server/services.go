@@ -98,7 +98,7 @@ func startService(
 		var err error
 
 		logger.Info("creating database client", slog.String("namespace", s.Namespace))
-		d, err = db.New(ctx, cfg.DB,
+		d, err = db.New(ctx, cfg.DB, cfg.Logger,
 			db.WithService(s.Namespace),
 			db.WithMigrations(s.DB.Migrations),
 		)

@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/opentdf/platform/service/internal/logger"
 )
 
 type Table struct {
@@ -91,6 +92,7 @@ PostgreSQL instance or multiple PostgreSQL servers per platform instance are not
 */
 type Client struct {
 	Pgx    PgxIface
+	Logger *logger.Logger
 	config Config
 
 	// This is the stdlib connection that is used for transactions
@@ -102,7 +104,7 @@ Connections and pools seems to be pulled in from env vars
 We should be able to tell the platform how to run
 */
 
-func New(ctx context.Context, config Config, o ...OptsFunc) (*Client, error) {
+func New(ctx context.Context, config Config, logCfg logger.Config, o ...OptsFunc) (*Client, error) {
 	for _, f := range o {
 		config = f(config)
 	}
@@ -110,6 +112,17 @@ func New(ctx context.Context, config Config, o ...OptsFunc) (*Client, error) {
 	c := Client{
 		config: config,
 	}
+
+	// use default logging config
+	l, err := logger.NewLogger(logger.Config{
+		Output: logCfg.Output,
+		Type:   logCfg.Type,
+		Level:  logCfg.Level,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create logger: %w", err)
+	}
+	c.Logger = l
 
 	dbConfig, err := config.buildConfig()
 	if err != nil {
@@ -164,13 +177,13 @@ func (c Config) buildConfig() (*pgxpool.Config, error) {
 
 // Common function for all queryRow calls
 func (c Client) QueryRow(ctx context.Context, sql string, args []interface{}) (pgx.Row, error) {
-	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
+	c.Logger.Trace("sql", slog.String("sql", sql), slog.Any("args", args))
 	return c.Pgx.QueryRow(ctx, sql, args...), nil
 }
 
 // Common function for all query calls
 func (c Client) Query(ctx context.Context, sql string, args []interface{}) (pgx.Rows, error) {
-	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
+	c.Logger.Trace("sql", slog.String("sql", sql), slog.Any("args", args))
 	r, e := c.Pgx.Query(ctx, sql, args...)
 	if e != nil {
 		return nil, WrapIfKnownInvalidQueryErr(e)
@@ -183,7 +196,7 @@ func (c Client) Query(ctx context.Context, sql string, args []interface{}) (pgx.
 
 // Common function for all exec calls
 func (c Client) Exec(ctx context.Context, sql string, args []interface{}) error {
-	slog.Debug("sql", slog.String("sql", sql), slog.Any("args", args))
+	c.Logger.Trace("sql", slog.String("sql", sql), slog.Any("args", args))
 	tag, err := c.Pgx.Exec(ctx, sql, args...)
 	if err != nil {
 		return WrapIfKnownInvalidQueryErr(err)

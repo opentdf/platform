@@ -302,6 +302,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidMember_Fails
 	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 
 	attrDef = s.f.GetAttributeKey("example.net/attr/attr3")
+	//nolint:staticcheck // SA1019: removing all references to members in later release
 	value.Members[0] = "not a uuid"
 	createdValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.ID, value)
 	s.Nil(createdValue)

@@ -121,7 +121,7 @@ func New(ctx context.Context, config Config, logCfg logger.Config, o ...OptsFunc
 	if err != nil {
 		return nil, fmt.Errorf("failed to create logger: %w", err)
 	}
-	c.Logger = l
+	c.Logger = l.With("schema", config.Schema)
 
 	dbConfig, err := config.buildConfig()
 	if err != nil {

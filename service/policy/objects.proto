@@ -64,8 +64,8 @@ message Value {
 
   string value = 3;
 
-  // list of attribute values that this value is related to (attribute group)
-  repeated Value members = 4;
+  // deprecated members on values []
+  reserved 4;
 
   // list of key access servers
   repeated KeyAccessServer grants = 5;

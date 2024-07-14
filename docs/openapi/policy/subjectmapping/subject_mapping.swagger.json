@@ -714,14 +714,6 @@
         "value": {
           "type": "string"
         },
-        "members": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/policyValue"
-          },
-          "title": "list of attribute values that this value is related to (attribute group)"
-        },
         "grants": {
           "type": "array",
           "items": {

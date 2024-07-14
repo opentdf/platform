@@ -64,8 +64,9 @@ message Value {
 
   string value = 3;
 
-  // deprecated members on values []
+  // deprecated members on values 
   reserved 4;
+  reserved "members";
 
   // list of key access servers
   repeated KeyAccessServer grants = 5;

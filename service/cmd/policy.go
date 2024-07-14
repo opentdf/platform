@@ -68,7 +68,7 @@ func policyDBClient(conf *config.Config) (policydb.PolicyDBClient, error) {
 	if !strings.HasSuffix(conf.DB.Schema, "_policy") {
 		conf.DB.Schema += "_policy"
 	}
-	dbClient, err := db.New(context.Background(), conf.DB, db.WithMigrations(policy.Migrations))
+	dbClient, err := db.New(context.Background(), conf.DB, conf.Logger, db.WithMigrations(policy.Migrations))
 	if err != nil {
 		//nolint:wrapcheck // we want to return the error as is. the start command will wrap it
 		return policydb.PolicyDBClient{}, err

@@ -110,34 +110,6 @@ func attributeValueHydrateItems(rows pgx.Rows, opts attributeValueSelectOptions,
 /// CRUD
 ///
 
-func addMemberSQL(valueID string, memberID string) (string, []interface{}, error) {
-	t := Tables.ValueMembers
-	return db.NewStatementBuilder().
-		Insert(t.Name()).
-		Columns(
-			"value_id",
-			"member_id",
-		).
-		Values(
-			valueID,
-			memberID,
-		).
-		Suffix("RETURNING id").
-		ToSql()
-}
-
-func removeMemberSQL(valueID string, memberID string) (string, []interface{}, error) {
-	t := Tables.ValueMembers
-	return db.NewStatementBuilder().
-		Delete(t.Name()).
-		Where(sq.Eq{
-			t.Field("value_id"):  valueID,
-			t.Field("member_id"): memberID,
-		}).
-		Suffix("RETURNING id").
-		ToSql()
-}
-
 func createAttributeValueSQL(
 	attributeID string,
 	value string,
@@ -184,27 +156,6 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	var members []*policy.Value
-
-	// Add members
-	for _, member := range v.GetMembers() {
-		var vmID string
-		memberSQL, memberArgs, memberErr := addMemberSQL(id, member)
-		if memberErr != nil {
-			return nil, memberErr
-		}
-		if r, err := c.QueryRow(ctx, memberSQL, memberArgs); err != nil {
-			return nil, err
-		} else if err := r.Scan(&vmID); err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
-		}
-		attr, memberErr := c.GetAttributeValue(ctx, member)
-		if memberErr != nil {
-			return nil, memberErr
-		}
-		members = append(members, attr)
-	}
-
 	if err = unmarshalMetadata(metadataJSON, metadata, c.logger); err != nil {
 		return nil, err
 	}
@@ -219,7 +170,6 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		Id:        id,
 		Attribute: &policy.Attribute{Id: attributeID},
 		Value:     value,
-		// Members:   members,
 		Metadata:  metadata,
 		Active:    &wrapperspb.BoolValue{Value: true},
 	}
@@ -480,59 +430,8 @@ func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 		return nil, err
 	}
 
-	// prev, err := c.GetAttributeValue(ctx, r.GetId())
-	// if err != nil {
-	// 	return nil, err
-	// }
-
 	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
-	}
-	prevMembersSet := map[string]bool{}
-
-	// for _, member := range prev.GetMembers() {
-	// 	prevMembersSet[member.GetId()] = true
-	// }
-
-	membersSet := map[string]bool{}
-	for _, member := range r.GetMembers() {
-		membersSet[member] = true
-	}
-
-	toRemove := map[string]bool{}
-	toAdd := map[string]bool{}
-
-	for member := range prevMembersSet {
-		if _, ok := membersSet[member]; !ok {
-			toRemove[member] = true
-		}
-	}
-
-	for member := range membersSet {
-		if _, ok := prevMembersSet[member]; !ok {
-			toAdd[member] = true
-		}
-	}
-
-	// Remove members
-	for member := range toRemove {
-		sql, args, err = removeMemberSQL(r.GetId(), member)
-		if err != nil {
-			return nil, err
-		}
-		if err := c.Exec(ctx, sql, args); err != nil {
-			return nil, err
-		}
-	}
-
-	for member := range toAdd {
-		sql, args, err = addMemberSQL(r.GetId(), member)
-		if err != nil {
-			return nil, err
-		}
-		if err := c.Exec(ctx, sql, args); err != nil {
-			return nil, err
-		}
 	}
 
 	return &policy.Value{

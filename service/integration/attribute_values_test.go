@@ -203,34 +203,6 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_
 	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
 
-func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidMember_Fails() {
-	attrDef := s.f.GetAttributeKey("example.net/attr/attr2")
-	metadata := &common.MetadataMutable{
-		Labels: map[string]string{
-			"name": "testing create with members",
-		},
-	}
-
-	value := &attributes.CreateAttributeValueRequest{
-		Value: "value3",
-		Members: []string{
-			absentAttributeValueUUID,
-		},
-		Metadata: metadata,
-	}
-	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.ID, value)
-	s.Nil(createdValue)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
-
-	attrDef = s.f.GetAttributeKey("example.net/attr/attr3")
-	value.Members[0] = "not a uuid"
-	createdValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.ID, value)
-	s.Nil(createdValue)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
-}
-
 func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 	fixedLabel := "fixed label"
 	updateLabel := "update label"

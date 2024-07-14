@@ -134,7 +134,7 @@ message CreateAttributeValueRequest {
   ];
 
   // Optional
-  repeated string members = 3;
+  repeated string members = 3  [deprecated = true];
 
   // Common metadata
   common.MetadataMutable metadata = 100;
@@ -147,7 +147,7 @@ message UpdateAttributeValueRequest {
   string id = 1 [(buf.validate.field).required = true];
 
   // Optional
-  repeated string members = 4;
+  repeated string members = 4  [deprecated = true];
 
   // Common metadata
   common.MetadataMutable metadata = 100;

@@ -192,6 +192,7 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 	var members []*policy.Value
 
 	// Add members
+	//nolint:staticcheck // SA1019: removing all references to members in later release
 	for _, member := range v.GetMembers() {
 		var vmID string
 		memberSQL, memberArgs, memberErr := addMemberSQL(id, member)
@@ -495,11 +496,13 @@ func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 	}
 	prevMembersSet := map[string]bool{}
 
+	//nolint:staticcheck // SA1019: removing all references to members in later release
 	for _, member := range prev.GetMembers() {
 		prevMembersSet[member.GetId()] = true
 	}
 
 	membersSet := map[string]bool{}
+	//nolint:staticcheck // SA1019: removing all references to members in later release
 	for _, member := range r.GetMembers() {
 		membersSet[member] = true
 	}

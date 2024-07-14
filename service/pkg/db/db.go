@@ -113,7 +113,6 @@ func New(ctx context.Context, config Config, logCfg logger.Config, o ...OptsFunc
 		config: config,
 	}
 
-	// use default logging config
 	l, err := logger.NewLogger(logger.Config{
 		Output: logCfg.Output,
 		Type:   logCfg.Type,

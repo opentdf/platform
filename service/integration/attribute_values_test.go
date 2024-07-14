@@ -3,7 +3,6 @@ package integration
 import (
 	"context"
 	"log/slog"
-	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -62,12 +61,10 @@ func (s *AttributeValuesSuite) Test_ListAttributeValues() {
 		if item.GetId() == f1.ID {
 			s.Equal(f1.ID, item.GetId())
 			s.Equal(f1.Value, item.GetValue())
-			s.Equal(len(f1.Members), len(item.GetMembers()))
 			// s.Equal(f1.AttributeDefinitionId, item.AttributeId)
 		} else if item.GetId() == f2.ID {
 			s.Equal(f2.ID, item.GetId())
 			s.Equal(f2.Value, item.GetValue())
-			s.Equal(len(f2.Members), len(item.GetMembers()))
 			// s.Equal(f2.AttributeDefinitionId, item.AttributeId)
 		}
 	}
@@ -81,7 +78,6 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue() {
 
 	s.Equal(f.ID, v.GetId())
 	s.Equal(f.Value, v.GetValue())
-	s.Equal(len(f.Members), len(v.GetMembers()))
 	// s.Equal(f.AttributeDefinitionId, v.AttributeId)
 	s.Equal("https://example.com/attr/attr1/value/value1", v.GetFqn())
 	metadata := v.GetMetadata()
@@ -170,7 +166,6 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_Deactivated_Succeeds() {
 	s.NotNil(got)
 	s.Equal(inactive.ID, got.GetId())
 	s.Equal(inactive.Value, got.GetValue())
-	s.Equal(len(inactive.Members), len(got.GetMembers()))
 	s.False(got.GetActive().GetValue())
 }
 
@@ -195,71 +190,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_NoMembers_Succeeds() {
 	s.NotNil(got)
 	s.Equal(createdValue.GetId(), got.GetId())
 	s.Equal(createdValue.GetValue(), got.GetValue())
-	s.Equal(len(createdValue.GetMembers()), len(got.GetMembers()))
 	s.EqualValues(createdValue.GetMetadata().GetLabels(), got.GetMetadata().GetLabels())
-}
-
-func equalMembers(t *testing.T, v1 *policy.Value, v2 *policy.Value, withFqn bool) {
-	m1 := v1.GetMembers()
-	m2 := v2.GetMembers()
-	sort.Slice(m1, func(x, y int) bool {
-		return m1[x].GetId() < m1[y].GetId()
-	})
-	sort.Slice(m2, func(x, y int) bool {
-		return m2[x].GetId() < m2[y].GetId()
-	})
-	for idx := range m1 {
-		assert.Equal(t, m1[idx].GetId(), m2[idx].GetId())
-		assert.Equal(t, m1[idx].GetValue(), m2[idx].GetValue())
-		if withFqn {
-			assert.Equal(t, m1[idx].GetFqn(), m2[idx].GetFqn())
-		}
-		assert.Equal(t, m1[idx].GetActive().GetValue(), m2[idx].GetActive().GetValue())
-	}
-}
-
-func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() {
-	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
-	metadata := &common.MetadataMutable{
-		Labels: map[string]string{
-			"name": "testing create with members",
-		},
-	}
-
-	value := &attributes.CreateAttributeValueRequest{
-		Value: "value3",
-		Members: []string{
-			s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").ID,
-			s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID,
-		},
-		Metadata: metadata,
-	}
-	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.ID, value)
-	s.Require().NoError(err)
-	s.NotNil(createdValue)
-
-	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.GetId())
-	s.Require().NoError(err)
-	s.NotNil(got)
-	s.Equal(createdValue.GetId(), got.GetId())
-	s.Equal(createdValue.GetValue(), got.GetValue())
-	s.EqualValues(createdValue.GetMetadata().GetLabels(), got.GetMetadata().GetLabels())
-	s.Equal(len(createdValue.GetMembers()), len(got.GetMembers()))
-
-	s.NotEmpty(got.GetMembers())
-	equalMembers(s.T(), createdValue, got, true)
-
-	// members must exist
-	createdValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.ID, &attributes.CreateAttributeValueRequest{
-		Value: "value4",
-		Members: []string{
-			absentAttributeValueUUID,
-		},
-	},
-	)
-	s.Require().Error(err)
-	s.Nil(createdValue)
-	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_Fails() {

@@ -41,7 +41,7 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions, lo
 		attributeID  string
 		grants       []byte
 		fqn          sql.NullString
-		members      []*policy.Value
+		// members      []*policy.Value
 	)
 	fields := []interface{}{
 		&id,
@@ -61,11 +61,6 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions, lo
 	err := row.Scan(fields...)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	} else if membersJSON != nil {
-		members, err = attributesValuesProtojson(membersJSON, fqn)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	m := &common.Metadata{}
@@ -88,7 +83,7 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions, lo
 		Id:       id,
 		Value:    value,
 		Active:   &wrapperspb.BoolValue{Value: active},
-		Members:  members,
+		// Members:  members,
 		Grants:   k,
 		Metadata: m,
 		Attribute: &policy.Attribute{
@@ -224,7 +219,7 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		Id:        id,
 		Attribute: &policy.Attribute{Id: attributeID},
 		Value:     value,
-		Members:   members,
+		// Members:   members,
 		Metadata:  metadata,
 		Active:    &wrapperspb.BoolValue{Value: true},
 	}
@@ -485,19 +480,19 @@ func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 		return nil, err
 	}
 
-	prev, err := c.GetAttributeValue(ctx, r.GetId())
-	if err != nil {
-		return nil, err
-	}
+	// prev, err := c.GetAttributeValue(ctx, r.GetId())
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 	prevMembersSet := map[string]bool{}
 
-	for _, member := range prev.GetMembers() {
-		prevMembersSet[member.GetId()] = true
-	}
+	// for _, member := range prev.GetMembers() {
+	// 	prevMembersSet[member.GetId()] = true
+	// }
 
 	membersSet := map[string]bool{}
 	for _, member := range r.GetMembers() {

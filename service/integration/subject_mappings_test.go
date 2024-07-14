@@ -376,8 +376,6 @@ func (s *SubjectMappingsSuite) TestGetSubjectMapping() {
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(fixture.AttributeValueID, got.GetId())
-	s.NotEmpty(got.GetMembers())
-	equalMembers(s.T(), got, sm.GetAttributeValue(), false)
 	metadata := sm.GetMetadata()
 	createdAt := metadata.GetCreatedAt()
 	updatedAt := metadata.GetUpdatedAt()

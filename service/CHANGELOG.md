@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.12](https://github.com/opentdf/platform/compare/service/v0.4.11...service/v0.4.12) (2024-07-14)
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1148](https://github.com/opentdf/platform/issues/1148)) ([efd8d30](https://github.com/opentdf/platform/commit/efd8d30975140ecee1e08e031d0a4dc00f4d57ec))
+* **core:** Autobump service ([#1156](https://github.com/opentdf/platform/issues/1156)) ([00c05b4](https://github.com/opentdf/platform/commit/00c05b49a7f4b7257f7ac66924936a14be5efd13))
+* **core:** Autobump service ([#1159](https://github.com/opentdf/platform/issues/1159)) ([943c7dd](https://github.com/opentdf/platform/commit/943c7ddaf3e0cbb3b9a086df07f292bf636abf57))
+* **core:** Fix autoconfigure with no attributes ([#1141](https://github.com/opentdf/platform/issues/1141)) ([76c2a95](https://github.com/opentdf/platform/commit/76c2a95ad7e0c9c57ebde6b101a908fc32fcd539))
+* **core:** Reduce casbin logs verbosity ([#1144](https://github.com/opentdf/platform/issues/1144)) ([3e77441](https://github.com/opentdf/platform/commit/3e77441b594b6022cb2fb3c8962f8595566baefe))
+* **policy:** mark value members as deprecated within protos ([#1152](https://github.com/opentdf/platform/issues/1152)) ([d18c889](https://github.com/opentdf/platform/commit/d18c8893cdd73344021de638e2d92859a320eed4))
+* **policy:** move policy sql logs to trace level to reduce noise ([#1150](https://github.com/opentdf/platform/issues/1150)) ([b0e6ed3](https://github.com/opentdf/platform/commit/b0e6ed395c9c08790b0ecb9d665f5fbb5d976e7f))
+
 ## [0.4.11](https://github.com/opentdf/platform/compare/service/v0.4.10...service/v0.4.11) (2024-07-11)
 
 

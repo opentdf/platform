@@ -162,6 +162,7 @@ func prepareValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy
 			unaltered = &policy.Value{
 				Id:              v.GetId(),
 				Value:           v.GetValue(),
+				//nolint:staticcheck // SA1019: removing all references to members in later release
 				Members:         v.GetMembers(),
 				Grants:          v.GetGrants(),
 				Fqn:             fqn,

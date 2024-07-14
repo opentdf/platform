@@ -41,7 +41,6 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions, lo
 		attributeID  string
 		grants       []byte
 		fqn          sql.NullString
-		// members      []*policy.Value
 	)
 	fields := []interface{}{
 		&id,
@@ -83,7 +82,6 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions, lo
 		Id:       id,
 		Value:    value,
 		Active:   &wrapperspb.BoolValue{Value: active},
-		// Members:  members,
 		Grants:   k,
 		Metadata: m,
 		Attribute: &policy.Attribute{

@@ -259,6 +259,14 @@ func valuesToPolicy(p ...AttributeValueFQN) []*policy.Value {
 	return v
 }
 
+func policyToStringKeys(policy []AttributeValueFQN) []string {
+	s := make([]string, len(policy))
+	for i := 0; i < len(s); i++ {
+		s[i] = policy[i].key
+	}
+	return s
+}
+
 func TestConfigurationServicePutGet(t *testing.T) {
 	for _, tc := range []struct {
 		n      string
@@ -277,7 +285,7 @@ func TestConfigurationServicePutGet(t *testing.T) {
 			grants, err := NewGranterFromAttributes(v...)
 			require.NoError(t, err)
 			assert.Len(t, grants.grants, tc.size)
-			assert.Subset(t, tc.policy, maps.Keys(grants.grants))
+			assert.Subset(t, policyToStringKeys(tc.policy), maps.Keys(grants.grants))
 			actualKases := make(map[string]bool)
 			for _, g := range grants.grants {
 				require.NotNil(t, g)

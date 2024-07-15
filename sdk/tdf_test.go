@@ -314,6 +314,57 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		s.Require().NoError(err)
 		s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 32.0)
 	}
+
+	// test meta data
+	{
+		readSeeker, err := os.Open(tdfFilename)
+		s.Require().NoError(err)
+
+		defer func(readSeeker *os.File) {
+			err := readSeeker.Close()
+			s.Require().NoError(err)
+		}(readSeeker)
+
+		r, err := s.sdk.LoadTDF(readSeeker)
+		s.Require().NoError(err)
+
+		unencryptedMetaData, err := r.UnencryptedMetadata()
+		s.Require().NoError(err)
+
+		s.EqualValues(metaData, unencryptedMetaData)
+
+		dataAttributes, err := r.DataAttributes()
+		s.Require().NoError(err)
+
+		s.Equal(attributes, dataAttributes)
+	}
+
+	// test reader
+	{
+		readSeeker, err := os.Open(tdfFilename)
+		s.Require().NoError(err)
+
+		defer func(readSeeker *os.File) {
+			err := readSeeker.Close()
+			s.Require().NoError(err)
+		}(readSeeker)
+
+		buf := make([]byte, 8)
+
+		r, err := s.sdk.LoadTDF(readSeeker)
+		s.Require().NoError(err)
+
+		offset := 2
+		n, err := r.ReadAt(buf, int64(offset))
+		if err != nil {
+			s.Require().ErrorIs(err, io.EOF)
+		}
+
+		expectedPlainTxt := plainText[offset : offset+n]
+		s.Equal(expectedPlainTxt, string(buf[:n]))
+	}
+
+	_ = os.Remove(tdfFilename)
 }
 
 func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing tdf

@@ -566,30 +566,6 @@ func Test_KCEntityResolutionNotFoundNotInferUsername(t *testing.T) {
 	}, nil, nil, nil, nil)
 	defer server.Close()
 
-	// var validBody []*authorization.Entity
-	// validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_ClientId{ClientId: "random"}})
-
-	// var kcconfig = testKeycloakConfigInferID(server)
-
-	// var ctxb = context.Background()
-
-	// var req = entityresolution.ResolveEntitiesRequest{}
-	// req.Entities = validBody
-
-	// var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig, logger.CreateTestLogger())
-
-	// require.NoError(t, reserr)
-
-	// var entityRepresentations = resp.GetEntityRepresentations()
-	// assert.NotNil(t, entityRepresentations)
-	// assert.Len(t, entityRepresentations, 1)
-
-	// assert.Equal(t, "1234", entityRepresentations[0].GetOriginalId())
-	// assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 1)
-	// var propMap = entityRepresentations[0].GetAdditionalProps()[0].AsMap()
-	// assert.Equal(t, "random", propMap["clientId"])
-	// assert.Equal(t, "1234", propMap["id"])
-
 	var validBody []*authorization.Entity
 	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_UserName{UserName: "randomuser"}})
 

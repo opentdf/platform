@@ -24,7 +24,7 @@ func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		ServiceDesc: &resourcemapping.ResourceMappingService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &ResourceMappingService{dbClient: policydb.NewClient(srp.DBClient), logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
+			return &ResourceMappingService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
 				server, ok := s.(resourcemapping.ResourceMappingServiceServer)
 				if !ok {
 					return fmt.Errorf("failed to assert server as resourcemapping.ResourceMappingServiceServer")

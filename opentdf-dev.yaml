@@ -37,6 +37,10 @@ services:
     clientsecret: 'secret'
     realm: 'opentdf'
     legacykeycloak: true
+    inferid:
+      from:
+        email: true
+        username: true
 server:
   auth:
     enabled: true
@@ -121,5 +125,3 @@ server:
           private: kas-ec-private.pem
           cert: kas-ec-cert.pem
   port: 8080
-opa:
-  embedded: true # Only for local development

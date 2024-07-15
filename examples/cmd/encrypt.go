@@ -15,6 +15,7 @@ import (
 
 var (
 	nanoFormat           bool
+	autoconfigure        bool
 	noKIDInKAO           bool
 	outputName           string
 	joinedDataAttributes string
@@ -29,6 +30,7 @@ func init() {
 	}
 	encryptCmd.Flags().StringVarP(&joinedDataAttributes, "data-attributes", "a", "https://example.com/attr/attr1/value/value1", "space separated list of data attributes")
 	encryptCmd.Flags().BoolVar(&nanoFormat, "nano", false, "Output in nanoTDF format")
+	encryptCmd.Flags().BoolVar(&autoconfigure, "autoconfigure", true, "Use attribute grants to select kases")
 	encryptCmd.Flags().BoolVar(&noKIDInKAO, "no-kid-in-kao", false, "[deprecated] Disable storing key identifiers in TDF KAOs")
 	encryptCmd.Flags().StringVarP(&outputName, "output", "o", "sensitive.txt.tdf", "name or path of output file; - for stdout")
 
@@ -54,7 +56,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create new offline client
-	client, err := sdk.New(platformEndpoint, opts...)
+	client, err := newSDK()
 	if err != nil {
 		return err
 	}
@@ -76,6 +78,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 
 	if !nanoFormat {
 		tdf, err := client.CreateTDF(out, in,
+			sdk.WithAutoconfigure(autoconfigure),
 			sdk.WithDataAttributes(attributes...),
 			sdk.WithKasInformation(
 				sdk.KASInfo{

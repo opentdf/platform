@@ -22,6 +22,10 @@ services:
     clientsecret: "secret"
     realm: "opentdf"
     legacykeycloak: true
+    inferid:
+      from:
+        email: true
+        username: true
   authorization:
     enabled: true
     ersurl: http://localhost:8080/entityresolution/resolve
@@ -110,5 +114,3 @@ server:
           private: /keys/kas-ec-private.pem
           cert: /keys/kas-ec-cert.pem
   port: 8080
-opa:
-  embedded: true # Only for local development

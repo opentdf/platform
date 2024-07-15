@@ -71,23 +71,23 @@ func upsertAttrFqnSQL(namespaceID string, attributeID string, valueID string) (s
 func (c *PolicyDBClient) upsertAttrFqn(ctx context.Context, opts attrFqnUpsertOptions) string {
 	sql, args, err := upsertAttrFqnSQL(opts.namespaceID, opts.attributeID, opts.valueID)
 	if err != nil {
-		slog.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
+		c.logger.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
 		return ""
 	}
 
 	r, err := c.QueryRow(ctx, sql, args)
 	if err != nil {
-		slog.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
+		c.logger.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
 		return ""
 	}
 
 	var fqn string
 	if err := r.Scan(&fqn); err != nil {
-		slog.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
+		c.logger.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
 		return ""
 	}
 
-	slog.Debug("updated FQN", slog.String("fqn", fqn), slog.Any("opts", opts))
+	c.logger.Debug("updated FQN", slog.String("fqn", fqn), slog.Any("opts", opts))
 	return fqn
 }
 
@@ -160,8 +160,9 @@ func prepareValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy
 	for i, v := range values {
 		if v.GetValue() == val {
 			unaltered = &policy.Value{
-				Id:              v.GetId(),
-				Value:           v.GetValue(),
+				Id:    v.GetId(),
+				Value: v.GetValue(),
+				//nolint:staticcheck // SA1019: removing all references to members in later release
 				Members:         v.GetMembers(),
 				Grants:          v.GetGrants(),
 				Fqn:             fqn,
@@ -193,12 +194,12 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 		}
 		attr, err := c.GetAttributeByFqn(ctx, fqn)
 		if err != nil {
-			slog.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))
+			c.logger.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))
 			return nil, err
 		}
 		filtered, selected := prepareValues(attr.GetValues(), fqn)
 		if selected == nil {
-			slog.Error("could not find value for FQN", slog.String("fqn", fqn))
+			c.logger.Error("could not find value for FQN", slog.String("fqn", fqn))
 			return nil, fmt.Errorf("could not find value for FQN [%s] %w", fqn, db.ErrNotFound)
 		}
 		attr.Values = filtered

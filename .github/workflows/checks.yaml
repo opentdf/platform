@@ -197,6 +197,7 @@ jobs:
         uses: bats-core/bats-action@2.0.0
       - run: test/service-start.bats
       - run: test/tdf-roundtrips.bats
+      - run: test/policy-service.bats
       - name: create roundtrip test data and run tests
         run: go test ./service/rttests -v
       - name: enable staic entitlements rego policy

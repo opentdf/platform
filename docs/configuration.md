@@ -125,21 +125,6 @@ db:
   runMigration: false
 ```
 
-## OPA Configuration
-
-| Field      | Description                                                                                    | Default          |
-| ---------- | ---------------------------------------------------------------------------------------------- | ---------------- |
-| `embedded` | Whether to use the embedded OPA Bundle server or not. This is only used for local development. | `false`          |
-| `path`     | The path to the OPA configuration file.                                                        | `./opa/opa.yaml` |
-
-Example:
-
-```yaml
-opa:
-  embedded: true # Only for local development
-  path: ./opa/opa.yaml
-```
-
 ## Services Configuration
 
 ### Key Access Server (KAS)
@@ -189,3 +174,9 @@ services:
 | Field     | Description              | Default |
 | --------- | ------------------------ | ------- |
 | `enabled` | Enable the Authorization | `true`  |
+| `ersurl`  | The location to the entity resolution service | |
+| `clientid` | Client Credentials Client ID | |
+| `clientsecret` | Client Credentials Secret | |
+| `tokenendpoint` | OAuth 2 Token Endpoint (Will be removed at a later time) | |
+| `rego.path` | Path to rego policy file | Leverages embedded rego policy |
+| `rego.query` | Rego query to execute in policy | `data.opentdf.entitlements.attributes` |

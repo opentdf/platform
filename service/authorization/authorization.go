@@ -74,10 +74,13 @@ func NewRegistration() serviceregistry.Registration {
 				entitlementRego []byte
 				authZCfg        = new(Config)
 			)
+
+			logger := srp.Logger
+
 			// default ERS endpoint
-			as := &AuthorizationService{sdk: srp.SDK, logger: srp.Logger}
+			as := &AuthorizationService{sdk: srp.SDK, logger: logger}
 			if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
-				slog.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
+				logger.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
 			}
 
 			if err := defaults.Set(authZCfg); err != nil {
@@ -93,20 +96,20 @@ func NewRegistration() serviceregistry.Registration {
 			if err := validate.Struct(authZCfg); err != nil {
 				var invalidValidationError *validator.InvalidValidationError
 				if errors.As(err, &invalidValidationError) {
-					slog.Error("error validating authorization service config", slog.String("error", err.Error()))
+					logger.Error("error validating authorization service config", slog.String("error", err.Error()))
 					panic(fmt.Errorf("error validating authorization service config: %w", err))
 				}
 
 				var validationErrors validator.ValidationErrors
 				if errors.As(err, &validationErrors) {
 					for _, err := range validationErrors {
-						slog.Error("error validating authorization service config", slog.String("error", err.Error()))
+						logger.Error("error validating authorization service config", slog.String("error", err.Error()))
 						panic(fmt.Errorf("error validating authorization service config: %w", err))
 					}
 				}
 			}
 
-			slog.Debug("authorization service config", slog.Any("config", authZCfg))
+			logger.Debug("authorization service config", slog.Any("config", authZCfg))
 
 			// Build Rego PreparedEvalQuery
 
@@ -154,7 +157,7 @@ func NewRegistration() serviceregistry.Registration {
 
 // TODO: Not sure what we want to check here?
 func (as AuthorizationService) IsReady(ctx context.Context) error {
-	slog.DebugContext(ctx, "checking readiness of authorization service")
+	as.logger.DebugContext(ctx, "checking readiness of authorization service")
 	return nil
 }
 
@@ -187,7 +190,7 @@ func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *au
 	for _, tdr := range req.GetDecisionRequests() {
 		ecResp, err := as.sdk.EntityResoution.CreateEntityChainFromJwt(ctx, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: tdr.GetTokens()})
 		if err != nil {
-			slog.Error("Error calling ERS to get entity chains from jwts")
+			as.logger.Error("Error calling ERS to get entity chains from jwts")
 			return nil, err
 		}
 
@@ -290,7 +293,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				entityAttrValues := make(map[string][]string)
 
 				if len(entities) == 0 || len(allPertinentFqnsRA.GetAttributeValueFqns()) == 0 {
-					slog.WarnContext(ctx, "Empty entity list and/or entity data attribute list")
+					as.logger.WarnContext(ctx, "Empty entity list and/or entity data attribute list")
 				} else {
 					ecEntitlements, err := retrieveEntitlements(ctx, &req, as)
 					if err != nil {
@@ -310,7 +313,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				}
 
 				// call access-pdp
-				accessPDP := access.NewPdp()
+				accessPDP := access.NewPdp(as.logger)
 				decisions, err := accessPDP.DetermineAccess(
 					ctx,
 					attrVals,
@@ -466,6 +469,9 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			as.logger.ErrorContext(ctx, "entitlements is not an array", slog.String("entity_id", entity.GetId()), slog.String("value", fmt.Sprintf("%+v", resultsEntitlements...)))
 			return rsp, nil
 		}
+		as.logger.DebugContext(ctx, "opa results", "entity_id", entity.GetId(), "results", fmt.Sprintf("%+v", results))
+		// map for attributes for optional comprehensive
+		attributesMap := make(map[string]*policy.Attribute)
 		// Build array with length of results
 		var entitlements = make([]string, len(resultsEntitlements))
 
@@ -476,6 +482,10 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			if !valueOK {
 				as.logger.WarnContext(ctx, "issue with adding entitlement", slog.String("entity_id", entity.GetId()), slog.String("entitlement", entitlement))
 				continue
+			}
+			// if comprehensive and a hierarchy attribute is entitled then add the lower entitlements
+			if req.GetWithComprehensiveHierarchy() {
+				entitlements = getComprehensiveHierarchy(attributesMap, avf, entitlement, as, entitlements)
 			}
 			// Add entitlement to entitlements array
 			entitlements[valueIDX] = entitlement
@@ -488,6 +498,39 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	}
 
 	return rsp, nil
+}
+
+func getComprehensiveHierarchy(attributesMap map[string]*policy.Attribute, avf *attr.GetAttributeValuesByFqnsResponse, entitlement string, as *AuthorizationService, entitlements []string) []string {
+	// load attributesMap
+	if len(attributesMap) == 0 {
+		// Go through all attribute definitions
+		attrDefs := avf.GetFqnAttributeValues()
+		for _, attrDef := range attrDefs {
+			for _, attrVal := range attrDef.GetAttribute().GetValues() {
+				attributesMap[attrVal.GetFqn()] = attrDef.GetAttribute()
+			}
+		}
+	}
+	attrDef := attributesMap[entitlement]
+	if attrDef == nil {
+		as.logger.Warn("no attribute definition found for entity", "fqn", entitlement)
+		return entitlements
+	}
+	if attrDef.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+		// add the following fqn in the hierarchy
+		isFollowing := false
+		for _, followingAttrVal := range attrDef.GetValues() {
+			if isFollowing {
+				entitlements = append(entitlements, followingAttrVal.GetFqn())
+			} else {
+				// if fqn match, then rest are added
+				// order is determined by creation order
+				// creation order is guaranteed unless unsafe operations used
+				isFollowing = followingAttrVal.GetFqn() == entitlement
+			}
+		}
+	}
+	return entitlements
 }
 
 // Build an fqn from a namespace, attribute name, and value

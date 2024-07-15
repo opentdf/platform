@@ -72,7 +72,7 @@ func (f *FakeAccessServiceServer) LegacyPublicKey(context.Context, *kas.LegacyPu
 func (f *FakeAccessServiceServer) Rewrap(ctx context.Context, _ *kas.RewrapRequest) (*kas.RewrapResponse, error) {
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
 		f.accessToken = md.Get("authorization")
-		f.dpopKey = GetJWKFromContext(ctx)
+		f.dpopKey = GetJWKFromContext(ctx, logger.CreateTestLogger())
 	}
 	return &kas.RewrapResponse{}, nil
 }
@@ -495,7 +495,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 		timeout <- ""
 	}()
 	server := httptest.NewServer(s.auth.MuxHandler(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
-		jwkChan <- GetJWKFromContext(req.Context())
+		jwkChan <- GetJWKFromContext(req.Context(), logger.CreateTestLogger())
 	})))
 	defer server.Close()
 
@@ -630,7 +630,7 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 
 	_, ctx, err := auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().NoError(err)
-	s.Require().Nil(GetJWKFromContext(ctx))
+	s.Require().Nil(GetJWKFromContext(ctx, logger.CreateTestLogger()))
 }
 
 func (s *AuthSuite) Test_PublicPath_Matches() {

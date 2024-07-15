@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.3.2](https://github.com/opentdf/platform/compare/sdk/v0.3.1...sdk/v0.3.2) (2024-07-14)
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1155](https://github.com/opentdf/platform/issues/1155)) ([9f5608c](https://github.com/opentdf/platform/commit/9f5608cc62938c58078a2916856fa6bf473aea32))
+
+## [0.3.1](https://github.com/opentdf/platform/compare/sdk/v0.3.0...sdk/v0.3.1) (2024-07-12)
+
+
+### Bug Fixes
+
+* **core:** Fix autoconfigure with no attributes ([#1141](https://github.com/opentdf/platform/issues/1141)) ([76c2a95](https://github.com/opentdf/platform/commit/76c2a95ad7e0c9c57ebde6b101a908fc32fcd539))
+
+## [0.3.0](https://github.com/opentdf/platform/compare/sdk/v0.2.11...sdk/v0.3.0) (2024-07-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **sdk:** Autoconfigure with grants ([#1051](https://github.com/opentdf/platform/issues/1051))
+
+### Features
+
+* **sdk:** Autoconfigure with grants ([#1051](https://github.com/opentdf/platform/issues/1051)) ([588b862](https://github.com/opentdf/platform/commit/588b862d9d258ccac2761e41edda04ea77270187))
+
+## [0.2.11](https://github.com/opentdf/platform/compare/sdk/v0.2.10...sdk/v0.2.11) (2024-07-11)
+
+
+### Features
+
+* **sdk:** Support custom key splits ([#1038](https://github.com/opentdf/platform/issues/1038)) ([685d8b5](https://github.com/opentdf/platform/commit/685d8b5d7b609744eb6623c52efb27cb40fbc36c))
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1132](https://github.com/opentdf/platform/issues/1132)) ([da9145c](https://github.com/opentdf/platform/commit/da9145cce0738293281f6fba84d81dc221fc4e6f))
+
 ## [0.2.10](https://github.com/opentdf/platform/compare/sdk/v0.2.9...sdk/v0.2.10) (2024-07-09)
 
 

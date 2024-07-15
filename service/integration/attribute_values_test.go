@@ -62,11 +62,13 @@ func (s *AttributeValuesSuite) Test_ListAttributeValues() {
 		if item.GetId() == f1.ID {
 			s.Equal(f1.ID, item.GetId())
 			s.Equal(f1.Value, item.GetValue())
+			//nolint:staticcheck // SA1019: removing all references to members in later release
 			s.Equal(len(f1.Members), len(item.GetMembers()))
 			// s.Equal(f1.AttributeDefinitionId, item.AttributeId)
 		} else if item.GetId() == f2.ID {
 			s.Equal(f2.ID, item.GetId())
 			s.Equal(f2.Value, item.GetValue())
+			//nolint:staticcheck // SA1019: removing all references to members in later release
 			s.Equal(len(f2.Members), len(item.GetMembers()))
 			// s.Equal(f2.AttributeDefinitionId, item.AttributeId)
 		}
@@ -81,6 +83,7 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue() {
 
 	s.Equal(f.ID, v.GetId())
 	s.Equal(f.Value, v.GetValue())
+	//nolint:staticcheck // SA1019: removing all references to members in later release
 	s.Equal(len(f.Members), len(v.GetMembers()))
 	// s.Equal(f.AttributeDefinitionId, v.AttributeId)
 	s.Equal("https://example.com/attr/attr1/value/value1", v.GetFqn())
@@ -170,6 +173,7 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_Deactivated_Succeeds() {
 	s.NotNil(got)
 	s.Equal(inactive.ID, got.GetId())
 	s.Equal(inactive.Value, got.GetValue())
+	//nolint:staticcheck // SA1019: removing all references to members in later release
 	s.Equal(len(inactive.Members), len(got.GetMembers()))
 	s.False(got.GetActive().GetValue())
 }
@@ -195,12 +199,15 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_NoMembers_Succeeds() {
 	s.NotNil(got)
 	s.Equal(createdValue.GetId(), got.GetId())
 	s.Equal(createdValue.GetValue(), got.GetValue())
+	//nolint:staticcheck // SA1019: removing all references to members in later release
 	s.Equal(len(createdValue.GetMembers()), len(got.GetMembers()))
 	s.EqualValues(createdValue.GetMetadata().GetLabels(), got.GetMetadata().GetLabels())
 }
 
 func equalMembers(t *testing.T, v1 *policy.Value, v2 *policy.Value, withFqn bool) {
+	//nolint:staticcheck // SA1019: removing all references to members in later release
 	m1 := v1.GetMembers()
+	//nolint:staticcheck // SA1019: removing all references to members in later release
 	m2 := v2.GetMembers()
 	sort.Slice(m1, func(x, y int) bool {
 		return m1[x].GetId() < m1[y].GetId()
@@ -244,8 +251,10 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithMembers_Succeeds() 
 	s.Equal(createdValue.GetId(), got.GetId())
 	s.Equal(createdValue.GetValue(), got.GetValue())
 	s.EqualValues(createdValue.GetMetadata().GetLabels(), got.GetMetadata().GetLabels())
+	//nolint:staticcheck // SA1019: removing all references to members in later release
 	s.Equal(len(createdValue.GetMembers()), len(got.GetMembers()))
 
+	//nolint:staticcheck // SA1019: removing all references to members in later release
 	s.NotEmpty(got.GetMembers())
 	equalMembers(s.T(), createdValue, got, true)
 
@@ -293,6 +302,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidMember_Fails
 	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 
 	attrDef = s.f.GetAttributeKey("example.net/attr/attr3")
+	//nolint:staticcheck // SA1019: removing all references to members in later release
 	value.Members[0] = "not a uuid"
 	createdValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.ID, value)
 	s.Nil(createdValue)

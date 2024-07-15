@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/sdk/internal/autoconfigure"
 )
 
 const (
@@ -37,12 +39,15 @@ type KASInfo struct {
 	KID string
 	// The algorithm associated with this key
 	Algorithm string
+	// If this KAS should be used as the default for 'encrypt' calls
+	Default bool
 }
 
 type TDFOption func(*TDFConfig) error
 
 // TDFConfig Internal config struct for building TDF options.
 type TDFConfig struct {
+	autoconfigure             bool
 	defaultSegmentSize        int64
 	enableEncryption          bool
 	tdfFormat                 TDFFormat
@@ -53,8 +58,10 @@ type TDFConfig struct {
 	integrityAlgorithm        IntegrityAlgorithm
 	segmentIntegrityAlgorithm IntegrityAlgorithm
 	assertions                []Assertion
-	attributes                []string
+	attributes                []autoconfigure.AttributeValueFQN
+	attributeValues           []*policy.Value
 	kasInfoList               []KASInfo
+	splitPlan                 []autoconfigure.SplitStep
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -74,6 +81,7 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 	}
 
 	c := &TDFConfig{
+		autoconfigure:             true,
 		tdfPrivateKey:             privateKey,
 		tdfPublicKey:              publicKey,
 		defaultSegmentSize:        defaultSegmentSize,
@@ -96,7 +104,36 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 // WithDataAttributes appends the given data attributes to the bound policy
 func WithDataAttributes(attributes ...string) TDFOption {
 	return func(c *TDFConfig) error {
-		c.attributes = append(c.attributes, attributes...)
+		c.attributeValues = nil
+		for _, a := range attributes {
+			v, err := autoconfigure.NewAttributeValueFQN(a)
+			if err != nil {
+				return err
+			}
+			c.attributes = append(c.attributes, v)
+		}
+		return nil
+	}
+}
+
+// WithDataAttributeValues appends the given data attributes to the bound policy.
+// Unlike `WithDataAttributes`, this will not trigger an attribute definition lookup
+// during autoconfigure. That is, to use autoconfigure in an 'offline' context,
+// you must first store the relevant attribute information locally and load
+// it to the `CreateTDF` method with this option.
+func WithDataAttributeValues(attributes ...*policy.Value) TDFOption {
+	return func(c *TDFConfig) error {
+		c.attributes = make([]autoconfigure.AttributeValueFQN, len(attributes))
+		c.attributeValues = make([]*policy.Value, len(attributes))
+		for i, a := range attributes {
+			c.attributeValues[i] = a
+			afqn, err := autoconfigure.NewAttributeValueFQN(a.GetFqn())
+			if err != nil {
+				// TODO: update service to validate and encode FQNs properly
+				return err
+			}
+			c.attributes[i] = afqn
+		}
 		return nil
 	}
 }
@@ -114,6 +151,15 @@ func WithKasInformation(kasInfoList ...KASInfo) TDFOption {
 		newKasInfos = append(newKasInfos, kasInfoList...)
 		c.kasInfoList = newKasInfos
 
+		return nil
+	}
+}
+
+func withSplitPlan(p ...autoconfigure.SplitStep) TDFOption {
+	return func(c *TDFConfig) error {
+		c.splitPlan = make([]autoconfigure.SplitStep, len(p))
+		copy(c.splitPlan, p)
+		c.autoconfigure = false
 		return nil
 	}
 }
@@ -147,6 +193,18 @@ func WithAssertions(assertionList ...Assertion) TDFOption {
 		newAssertions := make([]Assertion, 0)
 		newAssertions = append(newAssertions, assertionList...)
 		c.assertions = newAssertions
+		return nil
+	}
+}
+
+// WithAutoconfigure toggles inferring KAS info for encrypt from data attributes.
+// This will use the Attributes service to look up key access grants.
+// These are KAS URLs associated with attributes.
+// Defaults to enabled.
+func WithAutoconfigure(enable bool) TDFOption {
+	return func(c *TDFConfig) error {
+		c.autoconfigure = enable
+		c.splitPlan = nil
 		return nil
 	}
 }

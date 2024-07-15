@@ -88,14 +88,14 @@ type Authentication struct {
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
-func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger, wellknownRegistration func(namespace string, config any) error) (*Authentication, error) {
+func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, wellknownRegistration func(namespace string, config any) error) (*Authentication, error) {
 	a := &Authentication{
 		enforceDPoP: cfg.EnforceDPoP,
-		logger:      logr,
+		logger:      logger,
 	}
 
 	// validate the configuration
-	if err := cfg.validateAuthNConfig(); err != nil {
+	if err := cfg.validateAuthNConfig(a.logger); err != nil {
 		return nil, err
 	}
 
@@ -103,7 +103,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger, well
 
 	// Build new cache
 	// Discover OIDC Configuration
-	oidcConfig, err := DiscoverOIDCConfiguration(ctx, cfg.Issuer)
+	oidcConfig, err := DiscoverOIDCConfiguration(ctx, cfg.Issuer, a.logger)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger, well
 
 	cacheInterval, err := time.ParseDuration(cfg.CacheRefresh)
 	if err != nil {
-		logr.ErrorContext(ctx, fmt.Sprintf("Invalid cache_refresh_interval [%s]", cfg.CacheRefresh), "err", err)
+		logger.ErrorContext(ctx, fmt.Sprintf("Invalid cache_refresh_interval [%s]", cfg.CacheRefresh), "err", err)
 		cacheInterval = refreshInterval
 	}
 
@@ -129,8 +129,8 @@ func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger, well
 	casbinConfig := CasbinConfig{
 		PolicyConfig: cfg.Policy,
 	}
-	logr.Info("initializing casbin enforcer")
-	if a.enforcer, err = NewCasbinEnforcer(casbinConfig); err != nil {
+	logger.Info("initializing casbin enforcer")
+	if a.enforcer, err = NewCasbinEnforcer(casbinConfig, a.logger); err != nil {
 		return nil, fmt.Errorf("failed to initialize casbin enforcer: %w", err)
 	}
 
@@ -151,7 +151,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger, well
 
 	// Try an register oidc issuer to wellknown service but don't return an error if it fails
 	if err := wellknownRegistration("platform_issuer", cfg.Issuer); err != nil {
-		logr.Warn("failed to register platform issuer", slog.String("error", err.Error()))
+		logger.Warn("failed to register platform issuer", slog.String("error", err.Error()))
 	}
 
 	var oidcConfigMap map[string]any
@@ -167,7 +167,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logr *logger.Logger, well
 	}
 
 	if err := wellknownRegistration("idp", oidcConfigMap); err != nil {
-		logr.Warn("failed to register platform idp information", slog.String("error", err.Error()))
+		logger.Warn("failed to register platform idp information", slog.String("error", err.Error()))
 	}
 
 	return a, nil
@@ -364,7 +364,7 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		ctx = ContextWithAuthNInfo(ctx, nil, accessToken, tokenRaw)
 		return accessToken, ctx, nil
 	}
-	key, err := validateDPoP(accessToken, tokenRaw, dpopInfo, dpopHeader)
+	key, err := validateDPoP(accessToken, tokenRaw, dpopInfo, dpopHeader, a.logger)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -380,7 +380,7 @@ func ContextWithAuthNInfo(ctx context.Context, key jwk.Key, accessToken jwt.Toke
 	})
 }
 
-func getContextDetails(ctx context.Context) *authContext {
+func getContextDetails(ctx context.Context, l *logger.Logger) *authContext {
 	key := ctx.Value(authnContextKey)
 	if key == nil {
 		return nil
@@ -390,32 +390,32 @@ func getContextDetails(ctx context.Context) *authContext {
 	}
 
 	// We should probably return an error here?
-	slog.ErrorContext(ctx, "invalid authContext")
+	l.ErrorContext(ctx, "invalid authContext")
 	return nil
 }
 
-func GetJWKFromContext(ctx context.Context) jwk.Key {
-	if c := getContextDetails(ctx); c != nil {
+func GetJWKFromContext(ctx context.Context, l *logger.Logger) jwk.Key {
+	if c := getContextDetails(ctx, l); c != nil {
 		return c.key
 	}
 	return nil
 }
 
-func GetAccessTokenFromContext(ctx context.Context) jwt.Token {
-	if c := getContextDetails(ctx); c != nil {
+func GetAccessTokenFromContext(ctx context.Context, l *logger.Logger) jwt.Token {
+	if c := getContextDetails(ctx, l); c != nil {
 		return c.accessToken
 	}
 	return nil
 }
 
-func GetRawAccessTokenFromContext(ctx context.Context) string {
-	if c := getContextDetails(ctx); c != nil {
+func GetRawAccessTokenFromContext(ctx context.Context, l *logger.Logger) string {
+	if c := getContextDetails(ctx, l); c != nil {
 		return c.rawToken
 	}
 	return ""
 }
 
-func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiverInfo, headers []string) (jwk.Key, error) {
+func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiverInfo, headers []string, logger *logger.Logger) (jwk.Key, error) {
 	if len(headers) != 1 {
 		return nil, fmt.Errorf("got %d dpop headers, should have 1", len(headers))
 	}
@@ -443,7 +443,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 
 	dpop, err := jws.Parse([]byte(dpopHeader))
 	if err != nil {
-		slog.Error("error parsing JWT", "error", err)
+		logger.Error("error parsing JWT", "error", err)
 		return nil, fmt.Errorf("invalid DPoP JWT")
 	}
 	if len(dpop.Signatures()) != 1 {
@@ -466,7 +466,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 
 	isPrivate, err := jwk.IsPrivateKey(dpopKey)
 	if err != nil {
-		slog.Error("error checking if key is private", "error", err)
+		logger.Error("error checking if key is private", "error", err)
 		return nil, fmt.Errorf("invalid DPoP key specified")
 	}
 
@@ -476,7 +476,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
 	if err != nil {
-		slog.Error("error computing thumbprint for key", "error", err)
+		logger.Error("error computing thumbprint for key", "error", err)
 		return nil, fmt.Errorf("couldn't compute thumbprint for key in `jwk` in DPoP JWT")
 	}
 
@@ -489,7 +489,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 	// in the validated access token
 	dpopToken, err := jwt.Parse([]byte(dpopHeader), jwt.WithKey(protectedHeaders.Algorithm(), dpopKey))
 	if err != nil {
-		slog.Error("error validating DPoP JWT", "error", err)
+		logger.Error("error validating DPoP JWT", "error", err)
 		return nil, fmt.Errorf("failed to verify signature on DPoP JWT")
 	}
 

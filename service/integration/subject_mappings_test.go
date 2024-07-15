@@ -376,6 +376,7 @@ func (s *SubjectMappingsSuite) TestGetSubjectMapping() {
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(fixture.AttributeValueID, got.GetId())
+	//nolint:staticcheck // SA1019: removing all references to members in later release
 	s.NotEmpty(got.GetMembers())
 	equalMembers(s.T(), got, sm.GetAttributeValue(), false)
 	metadata := sm.GetMetadata()

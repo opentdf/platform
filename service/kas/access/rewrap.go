@@ -15,7 +15,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 
@@ -131,7 +130,7 @@ func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest, logger logger.
 	}
 
 	// get dpop public key from context
-	dpopJWK := auth.GetJWKFromContext(ctx)
+	dpopJWK := auth.GetJWKFromContext(ctx, &logger)
 
 	var err error
 	var rbString string
@@ -225,10 +224,10 @@ func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byt
 	return &policy, nil
 }
 
-func getEntityInfo(ctx context.Context, logger logger.Logger) (*entityInfo, error) {
+func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, error) {
 	var info = new(entityInfo)
 
-	token := auth.GetAccessTokenFromContext(ctx)
+	token := auth.GetAccessTokenFromContext(ctx, logger)
 	if token == nil {
 		return nil, err401("missing access token")
 	}
@@ -244,7 +243,7 @@ func getEntityInfo(ctx context.Context, logger logger.Logger) (*entityInfo, erro
 		logger.WarnContext(ctx, "missing sub")
 	}
 
-	info.Token = auth.GetRawAccessTokenFromContext(ctx)
+	info.Token = auth.GetRawAccessTokenFromContext(ctx, logger)
 
 	return info, nil
 }
@@ -258,14 +257,10 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 		return nil, err
 	}
 
-	entityInfo, err := getEntityInfo(ctx, *p.Logger)
+	entityInfo, err := getEntityInfo(ctx, p.Logger)
 	if err != nil {
 		p.Logger.DebugContext(ctx, "no entity info", "err", err)
 		return nil, err
-	}
-
-	if !strings.HasPrefix(body.KeyAccess.URL, p.URI.String()) {
-		p.Logger.InfoContext(ctx, "mismatched key access url", "keyAccessURL", body.KeyAccess.URL, "kasURL", p.URI.String())
 	}
 
 	if body.Algorithm == "" {
@@ -276,14 +271,14 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 	if body.Algorithm == "ec:secp256r1" {
 		rsp, err := p.nanoTDFRewrap(ctx, body, entityInfo)
 		if err != nil {
-			slog.ErrorContext(ctx, "rewrap nano", "err", err)
+			p.Logger.ErrorContext(ctx, "rewrap nano", "err", err)
 		}
 		p.Logger.DebugContext(ctx, "rewrap nano", "rsp", rsp)
 		return rsp, err
 	}
 	rsp, err := p.tdf3Rewrap(ctx, body, entityInfo)
 	if err != nil {
-		slog.ErrorContext(ctx, "rewrap tdf3", "err", err)
+		p.Logger.ErrorContext(ctx, "rewrap tdf3", "err", err)
 	}
 	return rsp, err
 }
@@ -349,7 +344,6 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 	}
 
 	if !access {
-		p.Logger.WarnContext(ctx, "Access Denied; no reason given")
 		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
 		return nil, err403("forbidden")
 	}

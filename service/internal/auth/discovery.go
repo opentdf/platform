@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+
+	"github.com/opentdf/platform/service/internal/logger"
 )
 
 const (
@@ -27,8 +29,8 @@ type OIDCConfiguration struct {
 }
 
 // DiscoverOPENIDConfiguration discovers the openid configuration for the issuer provided
-func DiscoverOIDCConfiguration(ctx context.Context, issuer string) (*OIDCConfiguration, error) {
-	slog.DebugContext(ctx, "discovering openid configuration", slog.String("issuer", issuer))
+func DiscoverOIDCConfiguration(ctx context.Context, issuer string, logger *logger.Logger) (*OIDCConfiguration, error) {
+	logger.DebugContext(ctx, "discovering openid configuration", slog.String("issuer", issuer))
 	url := fmt.Sprintf("%s%s", issuer, DiscoveryPath)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {

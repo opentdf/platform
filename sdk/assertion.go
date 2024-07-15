@@ -17,7 +17,6 @@ type Scope uint
 
 const (
 	trustedDataObj Scope = iota
-	payload
 	explicit
 )
 

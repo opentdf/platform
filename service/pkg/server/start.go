@@ -35,7 +35,7 @@ func Start(f ...StartOptions) error {
 
 	slog.Info("starting opentdf services")
 
-	slog.Info("loading configuration")
+	slog.Debug("loading configuration")
 	conf, err := config.LoadConfig(startConfig.ConfigKey, startConfig.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("could not load config: %w", err)
@@ -50,7 +50,7 @@ func Start(f ...StartOptions) error {
 		conf.Server.Auth.PublicRoutes = startConfig.PublicRoutes
 	}
 
-	slog.Info("starting logger")
+	slog.Debug("starting logger")
 	logger, err := logger.NewLogger(conf.Logger)
 	if err != nil {
 		return fmt.Errorf("could not start logger: %w", err)
@@ -65,7 +65,7 @@ func Start(f ...StartOptions) error {
 	conf.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
 
 	// Create new server for grpc & http. Also will support in process grpc potentially too
-	logger.Info("init opentdf server")
+	logger.Debug("init opentdf server")
 	conf.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
 	otdf, err := server.NewOpenTDFServer(conf.Server, logger)
 	if err != nil {
@@ -88,7 +88,7 @@ func Start(f ...StartOptions) error {
 		}
 	}
 
-	logger.Info("registering services")
+	logger.Debug("registering services")
 	if err := registerServices(); err != nil {
 		logger.Error("issue registering services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue registering services: %w", err)

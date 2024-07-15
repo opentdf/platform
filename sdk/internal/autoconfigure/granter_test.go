@@ -38,7 +38,7 @@ var (
 	n2kSI, _  = NewAttributeValueFQN("https://virtru.com/attr/Need%20to%20Know/value/SI")
 
 	// rel25eye, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/FVEY")
-	rel2aus, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/AUS")
+	// rel2aus, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/AUS")
 	rel2can, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/CAN")
 	rel2gbr, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/GBR")
 	rel2nzl, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/NZL")
@@ -78,11 +78,6 @@ func spongeCase(s string) string {
 	return sb.String()
 }
 
-func messUpA(t *testing.T, a AttributeNameFQN) AttributeNameFQN {
-	n, err := NewAttributeNameFQN(spongeCase(a.String()))
-	require.NoError(t, err)
-	return n
-}
 func messUpV(t *testing.T, a AttributeValueFQN) AttributeValueFQN {
 	n, err := NewAttributeValueFQN(spongeCase(a.String()))
 	require.NoError(t, err)

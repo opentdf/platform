@@ -897,16 +897,9 @@ var (
 	REL, _ = autoconfigure.NewAttributeNameFQN("https://virtru.com/attr/Releasable%20To")
 
 	clsAllowed, _ = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Allowed")
-	clsConf, _    = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Confidential")
-	clsSec, _     = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Secret")
-	clsTS, _      = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Top%20Secret")
 
-	rel25eye, _ = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/FVEY")
-	rel2aus, _  = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/AUS")
-	rel2can, _  = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/CAN")
-	rel2gbr, _  = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/GBR")
-	rel2nzl, _  = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/NZL")
-	rel2usa, _  = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/USA")
+	rel2aus, _ = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/AUS")
+	rel2usa, _ = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/USA")
 )
 
 func mockAttributeFor(fqn autoconfigure.AttributeNameFQN) *policy.Attribute {

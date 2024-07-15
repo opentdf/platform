@@ -696,7 +696,7 @@ func (s *TDFSuite) testEncrypt(sdk *SDK, kasInfoList []KASInfo, plainTextFilenam
 	case len(test.policy) > 0:
 		da := make([]string, len(test.policy))
 		for i := 0; i < len(da); i++ {
-			da[i] = string(test.policy[i])
+			da[i] = test.policy[i].String()
 		}
 		encryptOpts = append(encryptOpts, WithDataAttributes(da...))
 	case len(test.splitPlan) > 0:
@@ -889,22 +889,24 @@ const (
 	kasUsHcs  = "https://hcs.kas.us/"
 	kasUsSI   = "https://si.kas.us/"
 	authority = "https://virtru.com/"
+)
 
-	CLS autoconfigure.AttributeNameFQN = "https://virtru.com/attr/Classification"
-	N2K autoconfigure.AttributeNameFQN = "https://virtru.com/attr/Need%20to%20Know"
-	REL autoconfigure.AttributeNameFQN = "https://virtru.com/attr/Releasable%20To"
+var (
+	CLS, _ = autoconfigure.NewAttributeNameFQN("https://virtru.com/attr/Classification")
+	N2K, _ = autoconfigure.NewAttributeNameFQN("https://virtru.com/attr/Need%20to%20Know")
+	REL, _ = autoconfigure.NewAttributeNameFQN("https://virtru.com/attr/Releasable%20To")
 
-	clsAllowed autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Classification/value/Allowed"
-	clsConf    autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Classification/value/Confidential"
-	clsSec     autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Classification/value/Secret"
-	clsTS      autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Classification/value/Top%20Secret"
+	clsAllowed, _ = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Allowed")
+	clsConf, _    = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Confidential")
+	clsSec, _     = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Secret")
+	clsTS, _      = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Top%20Secret")
 
-	rel25eye autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/FVEY"
-	rel2aus  autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/AUS"
-	rel2can  autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/CAN"
-	rel2gbr  autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/GBR"
-	rel2nzl  autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/NZL"
-	rel2usa  autoconfigure.AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/USA"
+	rel25eye, _ = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/FVEY")
+	rel2aus, _  = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/AUS")
+	rel2can, _  = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/CAN")
+	rel2gbr, _  = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/GBR")
+	rel2nzl, _  = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/NZL")
+	rel2usa, _  = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/USA")
 )
 
 func mockAttributeFor(fqn autoconfigure.AttributeNameFQN) *policy.Attribute {
@@ -920,7 +922,7 @@ func mockAttributeFor(fqn autoconfigure.AttributeNameFQN) *policy.Attribute {
 			Namespace: &ns,
 			Name:      "Classification",
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
-			Fqn:       string(fqn),
+			Fqn:       fqn.String(),
 		}
 	case N2K:
 		return &policy.Attribute{
@@ -928,7 +930,7 @@ func mockAttributeFor(fqn autoconfigure.AttributeNameFQN) *policy.Attribute {
 			Namespace: &ns,
 			Name:      "Need to Know",
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
-			Fqn:       string(fqn),
+			Fqn:       fqn.String(),
 		}
 	case REL:
 		return &policy.Attribute{
@@ -936,7 +938,7 @@ func mockAttributeFor(fqn autoconfigure.AttributeNameFQN) *policy.Attribute {
 			Namespace: &ns,
 			Name:      "Releasable To",
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-			Fqn:       string(fqn),
+			Fqn:       fqn.String(),
 		}
 	}
 	return nil
@@ -949,7 +951,7 @@ func mockValueFor(fqn autoconfigure.AttributeValueFQN) *policy.Value {
 		Id:        a.GetId() + ":" + v,
 		Attribute: a,
 		Value:     v,
-		Fqn:       string(fqn),
+		Fqn:       fqn.String(),
 	}
 
 	switch an {

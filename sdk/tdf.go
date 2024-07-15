@@ -449,7 +449,7 @@ func createPolicyObject(attributes []autoconfigure.AttributeValueFQN) (PolicyObj
 
 	for _, attribute := range attributes {
 		attributeObj := attributeObject{}
-		attributeObj.Attribute = string(attribute)
+		attributeObj.Attribute = attribute.String()
 		policyObj.Body.DataAttributes = append(policyObj.Body.DataAttributes, attributeObj)
 		policyObj.Body.Dissem = make([]string, 0)
 	}

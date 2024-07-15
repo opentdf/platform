@@ -2,6 +2,8 @@ package autoconfigure
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -19,27 +21,73 @@ const (
 	kasUsHCS  = "http://hcs.kas.us/"
 	kasUsSA   = "http://si.kas.us/"
 	authority = "https://virtru.com/"
-
-	CLS AttributeNameFQN = "https://virtru.com/attr/Classification"
-	N2K AttributeNameFQN = "https://virtru.com/attr/Need%20to%20Know"
-	REL AttributeNameFQN = "https://virtru.com/attr/Releasable%20To"
-
-	clsA  AttributeValueFQN = "https://virtru.com/attr/Classification/value/Allowed"
-	clsC  AttributeValueFQN = "https://virtru.com/attr/Classification/value/Confidential"
-	clsS  AttributeValueFQN = "https://virtru.com/attr/Classification/value/Secret"
-	clsTS AttributeValueFQN = "https://virtru.com/attr/Classification/value/Top%20Secret"
-
-	n2kHCS AttributeValueFQN = "https://virtru.com/attr/Need%20to%20Know/value/HCS"
-	n2kInt AttributeValueFQN = "https://virtru.com/attr/Need%20to%20Know/value/INT"
-	n2kSI  AttributeValueFQN = "https://virtru.com/attr/Need%20to%20Know/value/SI"
-
-	rel25eye AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/FVEY"
-	rel2aus  AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/AUS"
-	rel2can  AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/CAN"
-	rel2gbr  AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/GBR"
-	rel2nzl  AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/NZL"
-	rel2usa  AttributeValueFQN = "https://virtru.com/attr/Releasable%20To/value/USA"
 )
+
+var (
+	CLS, _ = NewAttributeNameFQN("https://virtru.com/attr/Classification")
+	N2K, _ = NewAttributeNameFQN("https://virtru.com/attr/Need%20to%20Know")
+	REL, _ = NewAttributeNameFQN("https://virtru.com/attr/Releasable%20To")
+
+	clsA, _ = NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Allowed")
+	// clsC, _  = NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Confidential")
+	clsS, _  = NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Secret")
+	clsTS, _ = NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Top%20Secret")
+
+	n2kHCS, _ = NewAttributeValueFQN("https://virtru.com/attr/Need%20to%20Know/value/HCS")
+	n2kInt, _ = NewAttributeValueFQN("https://virtru.com/attr/Need%20to%20Know/value/INT")
+	n2kSI, _  = NewAttributeValueFQN("https://virtru.com/attr/Need%20to%20Know/value/SI")
+
+	// rel25eye, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/FVEY")
+	rel2aus, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/AUS")
+	rel2can, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/CAN")
+	rel2gbr, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/GBR")
+	rel2nzl, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/NZL")
+	rel2usa, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/USA")
+)
+
+func spongeCase(s string) string {
+	re := regexp.MustCompile(`^(https?://[\w./]+/attr/)([^/]*)(/value/)?(\S*)?$`)
+	m := re.FindStringSubmatch(s)
+	if m == nil {
+		panic(ErrInvalid)
+	}
+
+	var sb strings.Builder
+	sb.WriteString(m[1])
+	n := m[2]
+	for i := 0; i < len(n); i++ {
+		sub := n[i : i+1]
+		if i&1 == 1 {
+			sb.WriteString(strings.ToUpper(sub))
+		} else {
+			sb.WriteString(sub)
+		}
+	}
+	if len(m) > 3 {
+		sb.WriteString(m[3])
+		v := m[4]
+		for i := 0; i < len(v); i++ {
+			sub := v[i : i+1]
+			if i&1 == 1 {
+				sb.WriteString(sub)
+			} else {
+				sb.WriteString(strings.ToUpper(sub))
+			}
+		}
+	}
+	return sb.String()
+}
+
+func messUpA(t *testing.T, a AttributeNameFQN) AttributeNameFQN {
+	n, err := NewAttributeNameFQN(spongeCase(a.String()))
+	require.NoError(t, err)
+	return n
+}
+func messUpV(t *testing.T, a AttributeValueFQN) AttributeValueFQN {
+	n, err := NewAttributeValueFQN(spongeCase(a.String()))
+	require.NoError(t, err)
+	return n
+}
 
 func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 	ns := policy.Namespace{
@@ -47,30 +95,30 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 		Name: "virtru.com",
 		Fqn:  "https://virtru.com",
 	}
-	switch fqn {
-	case CLS:
+	switch fqn.key {
+	case CLS.key:
 		return &policy.Attribute{
 			Id:        "CLS",
 			Namespace: &ns,
 			Name:      "Classification",
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
-			Fqn:       string(fqn),
+			Fqn:       fqn.String(),
 		}
-	case N2K:
+	case N2K.key:
 		return &policy.Attribute{
 			Id:        "N2K",
 			Namespace: &ns,
 			Name:      "Need to Know",
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
-			Fqn:       string(fqn),
+			Fqn:       fqn.String(),
 		}
-	case REL:
+	case REL.key:
 		return &policy.Attribute{
 			Id:        "REL",
 			Namespace: &ns,
 			Name:      "Releasable To",
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-			Fqn:       string(fqn),
+			Fqn:       fqn.String(),
 		}
 	}
 	return nil
@@ -83,12 +131,12 @@ func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 		Id:        a.GetId() + ":" + v,
 		Attribute: a,
 		Value:     v,
-		Fqn:       string(fqn),
+		Fqn:       fqn.String(),
 	}
 
-	switch an {
-	case N2K:
-		switch fqn.Value() {
+	switch an.key {
+	case N2K.key:
+		switch strings.ToUpper(fqn.Value()) {
 		case "INT":
 			p.Grants = make([]*policy.KeyAccessServer, 1)
 			p.Grants[0] = &policy.KeyAccessServer{Uri: kasUk}
@@ -100,8 +148,8 @@ func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 			p.Grants[0] = &policy.KeyAccessServer{Uri: kasUsSA}
 		}
 
-	case REL:
-		switch fqn.Value() {
+	case REL.key:
+		switch strings.ToUpper(fqn.Value()) {
 		case "FVEY":
 			p.Grants = make([]*policy.KeyAccessServer, 5)
 			p.Grants[0] = &policy.KeyAccessServer{Uri: kasAu}
@@ -125,7 +173,7 @@ func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 			p.Grants = make([]*policy.KeyAccessServer, 1)
 			p.Grants[0] = &policy.KeyAccessServer{Uri: kasUs}
 		}
-	case CLS:
+	case CLS.key:
 		// defaults only
 	}
 	return &p
@@ -164,7 +212,7 @@ func TestAttributeFromMalformedURL(t *testing.T) {
 		t.Run(tc.n, func(t *testing.T) {
 			a, err := NewAttributeNameFQN(tc.u)
 			require.ErrorIs(t, err, ErrInvalid)
-			assert.Equal(t, "", string(a))
+			assert.Equal(t, "", a.String())
 		})
 	}
 }
@@ -203,7 +251,7 @@ func TestAttributeValueFromMalformedURL(t *testing.T) {
 		t.Run(tc.n, func(t *testing.T) {
 			a, err := NewAttributeValueFQN(tc.u)
 			require.ErrorIs(t, err, ErrInvalid)
-			assert.Equal(t, "", string(a))
+			assert.Equal(t, "", a.String())
 		})
 	}
 }
@@ -309,13 +357,22 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"(http://kas.uk/⋁http://kas.us/)&(http://hcs.kas.us/)&(http://si.kas.us/)",
 			[]SplitStep{{kasUk, "1"}, {kasUs, "1"}, {kasUsHCS, "2"}, {kasUsSA, "3"}},
 		},
+		{
+			"compartments - case insensitive",
+			[]AttributeValueFQN{messUpV(t, clsS), messUpV(t, rel2gbr), messUpV(t, rel2usa), messUpV(t, n2kHCS), messUpV(t, n2kSI)},
+			[]string{kasUs},
+			"https://virtru.com/attr/Classification/value/Secret&https://virtru.com/attr/Releasable%20To/value/{GBR,USA}&https://virtru.com/attr/Need%20to%20Know/value/{HCS,SI}",
+			"[DEFAULT]&(http://kas.uk/⋁http://kas.us/)&(http://hcs.kas.us/⋀http://si.kas.us/)",
+			"(http://kas.uk/⋁http://kas.us/)&(http://hcs.kas.us/)&(http://si.kas.us/)",
+			[]SplitStep{{kasUk, "1"}, {kasUs, "1"}, {kasUsHCS, "2"}, {kasUsSA, "3"}},
+		},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
 			reasoner, err := NewGranterFromAttributes(valuesToPolicy(tc.policy...)...)
 			require.NoError(t, err)
 
 			actualAB := reasoner.constructAttributeBoolean()
-			assert.Equal(t, tc.ats, actualAB.String())
+			assert.Equal(t, strings.ToLower(tc.ats), strings.ToLower(actualAB.String()))
 
 			actualKeyed, err := reasoner.insertKeysForAttribute(*actualAB)
 			require.NoError(t, err)

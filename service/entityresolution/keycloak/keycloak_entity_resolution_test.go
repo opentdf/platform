@@ -76,6 +76,22 @@ func testKeycloakConfig(server *httptest.Server) keycloak.KeycloakConfig {
 	}
 }
 
+func testKeycloakConfigInferID(server *httptest.Server) keycloak.KeycloakConfig {
+	return keycloak.KeycloakConfig{
+		URL:            server.URL,
+		ClientID:       "c1",
+		ClientSecret:   "cs",
+		Realm:          "tdf",
+		LegacyKeycloak: false,
+		InferID: keycloak.InferredIdentityConfig{
+			From: keycloak.EntityImpliedFrom{
+				Email:    true,
+				ClientID: true,
+			},
+		},
+	}
+}
+
 func testServerResp(t *testing.T, w http.ResponseWriter, r *http.Request, k string, reqRespMap map[string]string) {
 	i, ok := reqRespMap[k]
 	if ok == true {
@@ -473,4 +489,98 @@ func Test_JwtMultiple(t *testing.T) {
 	assert.Len(t, resp.GetEntityChains()[1].GetEntities(), 2)
 	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[1].GetEntities()[0].GetClientId())
 	assert.Equal(t, "sample-user", resp.GetEntityChains()[1].GetEntities()[1].GetUserName())
+}
+
+func Test_KCEntityResolutionNotFoundInferEmail(t *testing.T) {
+	server := testServer(t, map[string]string{
+		"email=random%40sample.org&exact=true": "[]",
+	}, map[string]string{
+		"search=random%40sample.org": "[]",
+	}, map[string]string{
+		"group1-uuid": groupResp,
+	}, map[string]string{
+		"group1-uuid": groupSubmemberResp,
+	}, nil)
+	defer server.Close()
+
+	var validBody []*authorization.Entity
+	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_EmailAddress{EmailAddress: "random@sample.org"}})
+
+	var kcconfig = testKeycloakConfigInferID(server)
+
+	var ctxb = context.Background()
+
+	var req = entityresolution.ResolveEntitiesRequest{}
+	req.Entities = validBody
+
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig, logger.CreateTestLogger())
+
+	require.NoError(t, reserr)
+
+	var entityRepresentations = resp.GetEntityRepresentations()
+	assert.NotNil(t, entityRepresentations)
+	assert.Len(t, entityRepresentations, 1)
+
+	assert.Equal(t, "1234", entityRepresentations[0].GetOriginalId())
+	assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 1)
+	var propMap = entityRepresentations[0].GetAdditionalProps()[0].AsMap()
+	assert.Equal(t, "random@sample.org", propMap["emailAddress"])
+	assert.Equal(t, "1234", propMap["id"])
+}
+
+func Test_KCEntityResolutionNotFoundInferClientId(t *testing.T) {
+	csqr := map[string]string{
+		"clientId=random": "[]",
+	}
+	server := testServer(t, nil, nil, nil, nil, csqr)
+	defer server.Close()
+
+	var validBody []*authorization.Entity
+	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_ClientId{ClientId: "random"}})
+
+	var kcconfig = testKeycloakConfigInferID(server)
+
+	var ctxb = context.Background()
+
+	var req = entityresolution.ResolveEntitiesRequest{}
+	req.Entities = validBody
+
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig, logger.CreateTestLogger())
+
+	require.NoError(t, reserr)
+
+	var entityRepresentations = resp.GetEntityRepresentations()
+	assert.NotNil(t, entityRepresentations)
+	assert.Len(t, entityRepresentations, 1)
+
+	assert.Equal(t, "1234", entityRepresentations[0].GetOriginalId())
+	assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 1)
+	var propMap = entityRepresentations[0].GetAdditionalProps()[0].AsMap()
+	assert.Equal(t, "random", propMap["clientId"])
+	assert.Equal(t, "1234", propMap["id"])
+}
+
+func Test_KCEntityResolutionNotFoundNotInferUsername(t *testing.T) {
+	server := testServer(t, map[string]string{
+		"exact=true&username=randomuser": "[]",
+	}, nil, nil, nil, nil)
+	defer server.Close()
+
+	var validBody []*authorization.Entity
+	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_UserName{UserName: "randomuser"}})
+
+	var kcconfig = testKeycloakConfigInferID(server)
+
+	var ctxb = context.Background()
+
+	var req = entityresolution.ResolveEntitiesRequest{}
+	req.Entities = validBody
+
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig, logger.CreateTestLogger())
+
+	require.Error(t, reserr)
+	assert.Equal(t, &entityresolution.ResolveEntitiesResponse{}, &resp)
+	var entityNotFound = entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: keycloak.ErrTextGetRetrievalFailed, Entity: "randomuser"}
+	var expectedError = status.Error(codes.Code(entityNotFound.GetCode()), entityNotFound.GetMessage())
+	assert.Equal(t, expectedError, reserr)
 }

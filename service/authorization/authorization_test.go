@@ -38,7 +38,7 @@ func mockRetrieveEntitlements(ctx context.Context, _ *authorization.GetEntitleme
 	return &entitlementsResponse, nil
 }
 
-func mockExecuteRego(pq rego.PreparedEvalQuery, ctx context.Context, options ...rego.EvalOption) (rego.ResultSet, error) {
+func mockExecuteRego(ctx context.Context, _ rego.PreparedEvalQuery, options ...rego.EvalOption) (rego.ResultSet, error) {
 	slog.DebugContext(ctx, "Using mocked rego execution")
 	return regoResponse, nil
 }

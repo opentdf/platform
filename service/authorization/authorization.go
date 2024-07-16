@@ -166,7 +166,8 @@ var retrieveEntitlements = func(ctx context.Context, req *authorization.GetEntit
 	return as.GetEntitlements(ctx, req)
 }
 
-var executeRego = func(pq rego.PreparedEvalQuery, ctx context.Context, options ...rego.EvalOption) (rego.ResultSet, error) {
+// abstracted into variable for mocking in tests
+var executeRego = func(ctx context.Context, pq rego.PreparedEvalQuery, options ...rego.EvalOption) (rego.ResultSet, error) {
 	return pq.Eval(ctx, options...)
 }
 
@@ -424,7 +425,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		}
 		as.logger.DebugContext(ctx, "entitlements", "entity_id", entity.GetId(), "input", fmt.Sprintf("%+v", in))
 
-		results, err := executeRego(as.eval, ctx, rego.EvalInput(in))
+		results, err := executeRego(ctx, as.eval, rego.EvalInput(in))
 		if err != nil {
 			return nil, status.Error(codes.Internal, "failed to evaluate entitlements policy")
 		}
@@ -484,7 +485,6 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	return rsp, nil
 }
 
-// abstracted into variable for mocking in tests
 func retrieveAttributeDefinitions(ctx context.Context, ra *authorization.ResourceAttribute, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	attrFqns := ra.GetAttributeValueFqns()
 	if len(attrFqns) == 0 {

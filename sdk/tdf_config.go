@@ -141,7 +141,6 @@ func WithDataAttributeValues(attributes ...*policy.Value) TDFOption {
 // WithKasInformation adds all the kas urls and their corresponding public keys
 // that is required to create and read the tdf.
 // For writing TDFs, this is optional, but adding it can bypass key lookup.
-// For reading TDFs, this is the list of allowed KASes to contact for key rewrap.
 //
 // During creation, if the public key is set, the kas will not be contacted for the latest key.
 // Please make sure to set the KID if the PublicKey is set to include a KID in any key wrappers.

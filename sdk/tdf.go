@@ -91,7 +91,7 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 	return s.CreateTDFContext(context.Background(), writer, reader, opts...)
 }
 
-func (s SDK) defaultKas(c *TDFConfig) []string {
+func (s SDK) defaultKases(c *TDFConfig) []string {
 	allk := make([]string, 0, len(c.kasInfoList))
 	defk := make([]string, 0)
 	for _, k := range c.kasInfoList {
@@ -139,7 +139,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			return nil, err
 		}
 
-		dk := s.defaultKas(tdfConfig)
+		dk := s.defaultKases(tdfConfig)
 		tdfConfig.splitPlan, err = g.Plan(dk, func() string {
 			return uuid.New().String()
 		})
@@ -286,8 +286,8 @@ func (r *Reader) Manifest() Manifest {
 // prepare the manifest for TDF
 func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFConfig) error { //nolint:funlen,gocognit // Better readability keeping it as is
 	manifest := Manifest{}
-	if len(tdfConfig.kasInfoList) == 0 {
-		return errInvalidKasInfo
+	if len(tdfConfig.splitPlan) == 0 && len(tdfConfig.kasInfoList) == 0 {
+		return fmt.Errorf("%w: no key access template specified or inferred", errInvalidKasInfo)
 	}
 
 	manifest.EncryptionInformation.KeyAccessType = kSplitKeyType
@@ -303,7 +303,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 	}
 
 	base64PolicyObject := ocrypto.Base64Encode(policyObjectAsStr)
-	symKeys := make([][]byte, 0, len(tdfConfig.kasInfoList))
+	symKeys := make([][]byte, 0)
 	latestKASInfo := make(map[string]KASInfo)
 	if len(tdfConfig.splitPlan) == 0 {
 		// Default split plan: Split keys across all kases
@@ -331,6 +331,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 
 	for _, splitInfo := range tdfConfig.splitPlan {
 		// Public key was passed in with kasInfoList
+		// TODO first look up in attribute information / add to split plan?
 		ki, ok := latestKASInfo[splitInfo.KAS]
 		if !ok || ki.PublicKey == "" {
 			k, err := s.getPublicKey(ctx, splitInfo.KAS, "rsa:2048")

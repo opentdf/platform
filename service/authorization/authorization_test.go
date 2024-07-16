@@ -2,10 +2,13 @@ package authorization
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"testing"
+	"time"
 
+	"github.com/open-policy-agent/opa/rego"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -13,27 +16,103 @@ import (
 	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/oauth2"
+	"google.golang.org/grpc"
 )
 
 var (
 	entitlementsResponse             authorization.GetEntitlementsResponse
 	getAttributesByValueFqnsResponse attr.GetAttributeValuesByFqnsResponse
+	listAttributeResp                attr.ListAttributesResponse
+	regoResponse                     rego.ResultSet
 	mockNamespace                    = "www.example.org"
 	mockAttrName                     = "foo"
 	mockAttrValue1                   = "value1"
 	mockAttrValue2                   = "value2"
 	mockFqn1                         = fmt.Sprintf("https://%s/attr/%s/value/%s", mockNamespace, mockAttrName, mockAttrValue1)
 	mockFqn2                         = fmt.Sprintf("https://%s/attr/%s/value/%s", mockNamespace, mockAttrName, mockAttrValue2)
+	listAttributesCalled             = false
 )
-
-func mockRetrieveAttributeDefinitions(ctx context.Context, _ *authorization.ResourceAttribute, _ *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
-	slog.DebugContext(ctx, "Using mocked GetAttributeValuesByFqns: "+getAttributesByValueFqnsResponse.String())
-	return getAttributesByValueFqnsResponse.GetFqnAttributeValues(), nil
-}
 
 func mockRetrieveEntitlements(ctx context.Context, _ *authorization.GetEntitlementsRequest, _ *AuthorizationService) (*authorization.GetEntitlementsResponse, error) {
 	slog.DebugContext(ctx, "Using mocked GetEntitlements: "+entitlementsResponse.String())
 	return &entitlementsResponse, nil
+}
+
+func mockExecuteRego(pq rego.PreparedEvalQuery, ctx context.Context, options ...rego.EvalOption) (rego.ResultSet, error) {
+	slog.DebugContext(ctx, "Using mocked rego execution")
+	return regoResponse, nil
+}
+
+type myAttributesClient struct{}
+
+func (m *myAttributesClient) ListAttributes(ctx context.Context, in *attr.ListAttributesRequest, opts ...grpc.CallOption) (*attr.ListAttributesResponse, error) {
+	return &listAttributeResp, nil
+}
+func (m *myAttributesClient) GetAttributeValuesByFqns(ctx context.Context, in *attr.GetAttributeValuesByFqnsRequest, opts ...grpc.CallOption) (*attr.GetAttributeValuesByFqnsResponse, error) {
+	return &getAttributesByValueFqnsResponse, nil
+}
+func (c *myAttributesClient) ListAttributeValues(ctx context.Context, in *attr.ListAttributeValuesRequest, opts ...grpc.CallOption) (*attr.ListAttributeValuesResponse, error) {
+	out := new(attr.ListAttributeValuesResponse)
+	return out, nil
+}
+func (c *myAttributesClient) GetAttribute(ctx context.Context, in *attr.GetAttributeRequest, opts ...grpc.CallOption) (*attr.GetAttributeResponse, error) {
+	out := new(attr.GetAttributeResponse)
+	return out, nil
+}
+func (c *myAttributesClient) CreateAttribute(ctx context.Context, in *attr.CreateAttributeRequest, opts ...grpc.CallOption) (*attr.CreateAttributeResponse, error) {
+	out := new(attr.CreateAttributeResponse)
+	return out, nil
+}
+
+func (c *myAttributesClient) UpdateAttribute(ctx context.Context, in *attr.UpdateAttributeRequest, opts ...grpc.CallOption) (*attr.UpdateAttributeResponse, error) {
+	out := new(attr.UpdateAttributeResponse)
+	return out, nil
+}
+
+func (c *myAttributesClient) DeactivateAttribute(ctx context.Context, in *attr.DeactivateAttributeRequest, opts ...grpc.CallOption) (*attr.DeactivateAttributeResponse, error) {
+	out := new(attr.DeactivateAttributeResponse)
+	return out, nil
+}
+
+func (c *myAttributesClient) GetAttributeValue(ctx context.Context, in *attr.GetAttributeValueRequest, opts ...grpc.CallOption) (*attr.GetAttributeValueResponse, error) {
+	out := new(attr.GetAttributeValueResponse)
+	return out, nil
+}
+
+func (c *myAttributesClient) CreateAttributeValue(ctx context.Context, in *attr.CreateAttributeValueRequest, opts ...grpc.CallOption) (*attr.CreateAttributeValueResponse, error) {
+	out := new(attr.CreateAttributeValueResponse)
+	return out, nil
+}
+
+func (c *myAttributesClient) UpdateAttributeValue(ctx context.Context, in *attr.UpdateAttributeValueRequest, opts ...grpc.CallOption) (*attr.UpdateAttributeValueResponse, error) {
+	out := new(attr.UpdateAttributeValueResponse)
+	return out, nil
+}
+
+func (c *myAttributesClient) DeactivateAttributeValue(ctx context.Context, in *attr.DeactivateAttributeValueRequest, opts ...grpc.CallOption) (*attr.DeactivateAttributeValueResponse, error) {
+	out := new(attr.DeactivateAttributeValueResponse)
+	return out, nil
+}
+
+func (c *myAttributesClient) AssignKeyAccessServerToAttribute(ctx context.Context, in *attr.AssignKeyAccessServerToAttributeRequest, opts ...grpc.CallOption) (*attr.AssignKeyAccessServerToAttributeResponse, error) {
+	out := new(attr.AssignKeyAccessServerToAttributeResponse)
+	return out, nil
+}
+
+func (c *myAttributesClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, in *attr.RemoveKeyAccessServerFromAttributeRequest, opts ...grpc.CallOption) (*attr.RemoveKeyAccessServerFromAttributeResponse, error) {
+	out := new(attr.RemoveKeyAccessServerFromAttributeResponse)
+	return out, nil
+}
+
+func (c *myAttributesClient) AssignKeyAccessServerToValue(ctx context.Context, in *attr.AssignKeyAccessServerToValueRequest, opts ...grpc.CallOption) (*attr.AssignKeyAccessServerToValueResponse, error) {
+	out := new(attr.AssignKeyAccessServerToValueResponse)
+	return out, nil
+}
+
+func (c *myAttributesClient) RemoveKeyAccessServerFromValue(ctx context.Context, in *attr.RemoveKeyAccessServerFromValueRequest, opts ...grpc.CallOption) (*attr.RemoveKeyAccessServerFromValueResponse, error) {
+	out := new(attr.RemoveKeyAccessServerFromValueResponse)
+	return out, nil
 }
 
 func TestGetComprehensiveHierarchy(t *testing.T) {
@@ -118,7 +197,6 @@ func TestGetComprehensiveHierarchy(t *testing.T) {
 func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	logger := logger.CreateTestLogger()
 
-	retrieveAttributeDefinitions = mockRetrieveAttributeDefinitions
 	retrieveEntitlements = mockRetrieveEntitlements
 
 	// set entitlementsResponse and getAttributesByValueFqnsResponse
@@ -167,7 +245,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 		},
 	}}
 
-	as := AuthorizationService{logger: logger}
+	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{Attributes: &myAttributesClient{}}}
 	retrieveEntitlements = mockRetrieveEntitlements
 	ctxb := context.Background()
 
@@ -244,7 +322,6 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 	logger := logger.CreateTestLogger()
 
-	retrieveAttributeDefinitions = mockRetrieveAttributeDefinitions
 	retrieveEntitlements = mockRetrieveEntitlements
 
 	// set entitlementsResponse and getAttributesByValueFqnsResponse
@@ -306,7 +383,7 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 		},
 	}}
 
-	as := AuthorizationService{logger: logger}
+	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{Attributes: &myAttributesClient{}}}
 	ctxb := context.Background()
 
 	resp, err := as.GetDecisions(ctxb, &req)
@@ -320,4 +397,278 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 	slog.Debug(resp.String())
 	assert.Len(t, resp.GetDecisionResponses(), 1)
 	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.GetDecisionResponses()[0].GetDecision())
+}
+
+func Test_GetEntitlementsSimple(t *testing.T) {
+	logger := logger.CreateTestLogger()
+	executeRego = mockExecuteRego
+	regoResponse = rego.ResultSet{
+		{Expressions: []*rego.ExpressionValue{
+			{Value: []interface{}{"https://www.example.org/attr/foo/value/value1"}},
+		}},
+	}
+
+	listAttributeResp = attr.ListAttributesResponse{}
+	attrDef := policy.Attribute{
+		Name: mockAttrName,
+		Namespace: &policy.Namespace{
+			Name: mockNamespace,
+		},
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values: []*policy.Value{
+			{
+				Value: mockAttrValue1,
+			},
+			{
+				Value: mockAttrValue2,
+			},
+		},
+	}
+	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{FqnAttributeValues: map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+		"https://www.example.org/attr/foo/value/value1": {
+			Attribute: &attrDef,
+			Value: &policy.Value{
+				Fqn: mockFqn1,
+			},
+		},
+	}}
+	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
+		AccessToken: "AccessToken",
+		Expiry:      time.Now().Add(1 * time.Hour),
+	})
+	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{Attributes: &myAttributesClient{}}, tokenSource: &testTokenSource}
+
+	ctxb := context.Background()
+	req := authorization.GetEntitlementsRequest{
+		Entities: []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}}},
+		Scope:    &authorization.ResourceAttribute{AttributeValueFqns: []string{"https://www.example.org/attr/foo/value/value1"}},
+	}
+
+	resp, err := as.GetEntitlements(ctxb, &req)
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Len(t, resp.GetEntitlements(), 1)
+	assert.Equal(t, resp.GetEntitlements()[0].GetEntityId(), "e1")
+	assert.Equal(t, resp.GetEntitlements()[0].GetAttributeValueFqns(), []string{"https://www.example.org/attr/foo/value/value1"})
+}
+
+func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
+	logger := logger.CreateTestLogger()
+	executeRego = mockExecuteRego
+	regoResponse = rego.ResultSet{
+		{Expressions: []*rego.ExpressionValue{
+			{Value: []interface{}{"https://www.example.org/attr/foo/value/value1"}},
+		}},
+	}
+
+	listAttributeResp = attr.ListAttributesResponse{}
+	attrDef := policy.Attribute{
+		Name: mockAttrName,
+		Namespace: &policy.Namespace{
+			Name: mockNamespace,
+		},
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		Values: []*policy.Value{
+			{
+				Value: mockAttrValue1,
+				Fqn:   mockFqn1,
+			},
+			{
+				Value: mockAttrValue2,
+				Fqn:   mockFqn2,
+			},
+		},
+	}
+	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{FqnAttributeValues: map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+		"https://www.example.org/attr/foo/value/value1": {
+			Attribute: &attrDef,
+			Value: &policy.Value{
+				Fqn: mockFqn1,
+			},
+		},
+	}}
+	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
+		AccessToken: "AccessToken",
+		Expiry:      time.Now().Add(1 * time.Hour),
+	})
+	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{Attributes: &myAttributesClient{}}, tokenSource: &testTokenSource}
+
+	ctxb := context.Background()
+	withHierarchy := true
+	req := authorization.GetEntitlementsRequest{
+		Entities:                   []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}}},
+		Scope:                      &authorization.ResourceAttribute{AttributeValueFqns: []string{"https://www.example.org/attr/foo/value/value1"}},
+		WithComprehensiveHierarchy: &withHierarchy,
+	}
+
+	resp, err := as.GetEntitlements(ctxb, &req)
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Len(t, resp.GetEntitlements(), 1)
+	assert.Equal(t, "e1", resp.GetEntitlements()[0].GetEntityId())
+	assert.Equal(t, []string{"https://www.example.org/attr/foo/value/value1", "https://www.example.org/attr/foo/value/value2"}, resp.GetEntitlements()[0].GetAttributeValueFqns())
+}
+
+func TestFqnBuilder(t *testing.T) {
+	tests := []struct {
+		name           string
+		n              string
+		a              string
+		v              string
+		expectedResult string
+		expectedError  error
+	}{
+		{
+			name:           "FullFqn",
+			n:              "namespace1.com",
+			a:              "attribute1",
+			v:              "value1",
+			expectedResult: "https://namespace1.com/attr/attribute1/value/value1",
+			expectedError:  nil,
+		},
+		{
+			name:           "EmptyValue",
+			n:              "namespace1.com",
+			a:              "attribute1",
+			v:              "",
+			expectedResult: "https://namespace1.com/attr/attribute1",
+			expectedError:  nil,
+		},
+		{
+			name:           "EmptyAttribute",
+			n:              "namespace1.com",
+			a:              "",
+			v:              "",
+			expectedResult: "https://namespace1.com",
+			expectedError:  nil,
+		},
+		{
+			name:           "EmptyNamespace",
+			n:              "",
+			a:              "attribute1",
+			v:              "value1",
+			expectedResult: "",
+			expectedError:  errors.New("invalid FQN, unable to build fqn"),
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := fqnBuilder(
+				tc.n,
+				tc.a,
+				tc.v,
+			)
+			assert.Equal(t, tc.expectedResult, result)
+			assert.Equal(t, tc.expectedError, err)
+		})
+	}
+}
+
+func TestPopulateAttrFqns(t *testing.T) {
+	tests := []struct {
+		name           string
+		attrDefs       []*policy.Attribute
+		expectedResult []*policy.Attribute
+		expectedError  error
+	}{
+		{
+			name: "OneAttributeOneValue",
+			attrDefs: []*policy.Attribute{
+				{Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name: "attribute1",
+					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+					Values: []*policy.Value{
+						{Value: "value1"},
+					}},
+			},
+			expectedResult: []*policy.Attribute{
+				{Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name: "attribute1",
+					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+					Values: []*policy.Value{
+						{Value: "value1", Fqn: "https://namespace1.com/attr/attribute1/value/value1"},
+					}},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "OneAttributeTwoValue",
+			attrDefs: []*policy.Attribute{
+				{Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name: "attribute1",
+					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+					Values: []*policy.Value{
+						{Value: "value1"}, {Value: "value2"},
+					}},
+			},
+			expectedResult: []*policy.Attribute{
+				{Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name: "attribute1",
+					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+					Values: []*policy.Value{
+						{Value: "value1", Fqn: "https://namespace1.com/attr/attribute1/value/value1"},
+						{Value: "value2", Fqn: "https://namespace1.com/attr/attribute1/value/value2"},
+					}},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "TwoAttributeTwoValue",
+			attrDefs: []*policy.Attribute{
+				{Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name: "attribute1",
+					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+					Values: []*policy.Value{
+						{Value: "value1"}, {Value: "value2"},
+					}},
+				{Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name: "attribute2",
+					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+					Values: []*policy.Value{
+						{Value: "value1"}, {Value: "value2"},
+					}},
+			},
+			expectedResult: []*policy.Attribute{
+				{Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name: "attribute1",
+					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+					Values: []*policy.Value{
+						{Value: "value1", Fqn: "https://namespace1.com/attr/attribute1/value/value1"},
+						{Value: "value2", Fqn: "https://namespace1.com/attr/attribute1/value/value2"},
+					}},
+				{Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name: "attribute2",
+					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+					Values: []*policy.Value{
+						{Value: "value1", Fqn: "https://namespace1.com/attr/attribute2/value/value1"},
+						{Value: "value2", Fqn: "https://namespace1.com/attr/attribute2/value/value2"},
+					}},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "ErrorFqn",
+			attrDefs: []*policy.Attribute{
+				{Namespace: &policy.Namespace{Name: ""},
+					Name: "attribute1",
+					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+					Values: []*policy.Value{
+						{Value: "value1"},
+					}},
+			},
+			expectedResult: nil,
+			expectedError:  errors.New("invalid FQN, unable to build fqn"),
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := populateAttrDefValueFqns(
+				tc.attrDefs,
+			)
+			assert.Equal(t, tc.expectedResult, result)
+			assert.Equal(t, tc.expectedError, err)
+		})
+	}
 }

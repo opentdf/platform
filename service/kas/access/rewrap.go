@@ -344,7 +344,6 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 	}
 
 	if !access {
-		p.Logger.WarnContext(ctx, "Access Denied; no reason given")
 		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
 		return nil, err403("forbidden")
 	}

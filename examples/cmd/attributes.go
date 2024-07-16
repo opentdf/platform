@@ -8,7 +8,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
-	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -28,7 +27,7 @@ func init() {
 }
 
 func attributesExample() error {
-	s, err := sdk.New(platformEndpoint, sdk.WithInsecurePlaintextConn())
+	s, err := newSDK()
 	if err != nil {
 		slog.Error("could not connect", slog.String("error", err.Error()))
 		return err
@@ -52,7 +51,7 @@ func attributesExample() error {
 	if exampleNamespace == nil {
 		slog.Info("creating new namespace")
 		resp, err := s.Namespaces.CreateNamespace(context.Background(), &namespaces.CreateNamespaceRequest{
-			Name: "example",
+			Name: "example.io",
 		})
 		if err != nil {
 			return err

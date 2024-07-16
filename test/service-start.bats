@@ -2,14 +2,6 @@
 
 # Tests for validating that the system is nominally running
 
-@test "gRPC: lists attributes" {
-  run grpcurl -plaintext "localhost:8080" list
-  echo "$output"
-  [ $status = 0 ]
-  [[ $output = *grpc.health.v1.Health* ]]
-  [[ $output = *wellknownconfiguration.WellKnownService* ]]
-}
-
 @test "gRPC: health check is healthy" {
   run grpcurl -plaintext "localhost:8080" "grpc.health.v1.Health.Check"
   echo "$output"

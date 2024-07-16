@@ -31,7 +31,6 @@ var (
 	mockAttrValue2                   = "value2"
 	mockFqn1                         = fmt.Sprintf("https://%s/attr/%s/value/%s", mockNamespace, mockAttrName, mockAttrValue1)
 	mockFqn2                         = fmt.Sprintf("https://%s/attr/%s/value/%s", mockNamespace, mockAttrName, mockAttrValue2)
-	listAttributesCalled             = false
 )
 
 func mockRetrieveEntitlements(ctx context.Context, _ *authorization.GetEntitlementsRequest, _ *AuthorizationService) (*authorization.GetEntitlementsResponse, error) {
@@ -46,71 +45,71 @@ func mockExecuteRego(pq rego.PreparedEvalQuery, ctx context.Context, options ...
 
 type myAttributesClient struct{}
 
-func (m *myAttributesClient) ListAttributes(ctx context.Context, in *attr.ListAttributesRequest, opts ...grpc.CallOption) (*attr.ListAttributesResponse, error) {
+func (m *myAttributesClient) ListAttributes(_ context.Context, _ *attr.ListAttributesRequest, _ ...grpc.CallOption) (*attr.ListAttributesResponse, error) {
 	return &listAttributeResp, nil
 }
-func (m *myAttributesClient) GetAttributeValuesByFqns(ctx context.Context, in *attr.GetAttributeValuesByFqnsRequest, opts ...grpc.CallOption) (*attr.GetAttributeValuesByFqnsResponse, error) {
+func (m *myAttributesClient) GetAttributeValuesByFqns(_ context.Context, _ *attr.GetAttributeValuesByFqnsRequest, _ ...grpc.CallOption) (*attr.GetAttributeValuesByFqnsResponse, error) {
 	return &getAttributesByValueFqnsResponse, nil
 }
-func (c *myAttributesClient) ListAttributeValues(ctx context.Context, in *attr.ListAttributeValuesRequest, opts ...grpc.CallOption) (*attr.ListAttributeValuesResponse, error) {
+func (m *myAttributesClient) ListAttributeValues(_ context.Context, _ *attr.ListAttributeValuesRequest, _ ...grpc.CallOption) (*attr.ListAttributeValuesResponse, error) {
 	out := new(attr.ListAttributeValuesResponse)
 	return out, nil
 }
-func (c *myAttributesClient) GetAttribute(ctx context.Context, in *attr.GetAttributeRequest, opts ...grpc.CallOption) (*attr.GetAttributeResponse, error) {
+func (m *myAttributesClient) GetAttribute(_ context.Context, _ *attr.GetAttributeRequest, _ ...grpc.CallOption) (*attr.GetAttributeResponse, error) {
 	out := new(attr.GetAttributeResponse)
 	return out, nil
 }
-func (c *myAttributesClient) CreateAttribute(ctx context.Context, in *attr.CreateAttributeRequest, opts ...grpc.CallOption) (*attr.CreateAttributeResponse, error) {
+func (m *myAttributesClient) CreateAttribute(_ context.Context, _ *attr.CreateAttributeRequest, _ ...grpc.CallOption) (*attr.CreateAttributeResponse, error) {
 	out := new(attr.CreateAttributeResponse)
 	return out, nil
 }
 
-func (c *myAttributesClient) UpdateAttribute(ctx context.Context, in *attr.UpdateAttributeRequest, opts ...grpc.CallOption) (*attr.UpdateAttributeResponse, error) {
+func (m *myAttributesClient) UpdateAttribute(_ context.Context, _ *attr.UpdateAttributeRequest, _ ...grpc.CallOption) (*attr.UpdateAttributeResponse, error) {
 	out := new(attr.UpdateAttributeResponse)
 	return out, nil
 }
 
-func (c *myAttributesClient) DeactivateAttribute(ctx context.Context, in *attr.DeactivateAttributeRequest, opts ...grpc.CallOption) (*attr.DeactivateAttributeResponse, error) {
+func (m *myAttributesClient) DeactivateAttribute(_ context.Context, _ *attr.DeactivateAttributeRequest, _ ...grpc.CallOption) (*attr.DeactivateAttributeResponse, error) {
 	out := new(attr.DeactivateAttributeResponse)
 	return out, nil
 }
 
-func (c *myAttributesClient) GetAttributeValue(ctx context.Context, in *attr.GetAttributeValueRequest, opts ...grpc.CallOption) (*attr.GetAttributeValueResponse, error) {
+func (m *myAttributesClient) GetAttributeValue(_ context.Context, _ *attr.GetAttributeValueRequest, _ ...grpc.CallOption) (*attr.GetAttributeValueResponse, error) {
 	out := new(attr.GetAttributeValueResponse)
 	return out, nil
 }
 
-func (c *myAttributesClient) CreateAttributeValue(ctx context.Context, in *attr.CreateAttributeValueRequest, opts ...grpc.CallOption) (*attr.CreateAttributeValueResponse, error) {
+func (m *myAttributesClient) CreateAttributeValue(_ context.Context, _ *attr.CreateAttributeValueRequest, _ ...grpc.CallOption) (*attr.CreateAttributeValueResponse, error) {
 	out := new(attr.CreateAttributeValueResponse)
 	return out, nil
 }
 
-func (c *myAttributesClient) UpdateAttributeValue(ctx context.Context, in *attr.UpdateAttributeValueRequest, opts ...grpc.CallOption) (*attr.UpdateAttributeValueResponse, error) {
+func (m *myAttributesClient) UpdateAttributeValue(_ context.Context, _ *attr.UpdateAttributeValueRequest, _ ...grpc.CallOption) (*attr.UpdateAttributeValueResponse, error) {
 	out := new(attr.UpdateAttributeValueResponse)
 	return out, nil
 }
 
-func (c *myAttributesClient) DeactivateAttributeValue(ctx context.Context, in *attr.DeactivateAttributeValueRequest, opts ...grpc.CallOption) (*attr.DeactivateAttributeValueResponse, error) {
+func (m *myAttributesClient) DeactivateAttributeValue(_ context.Context, _ *attr.DeactivateAttributeValueRequest, _ ...grpc.CallOption) (*attr.DeactivateAttributeValueResponse, error) {
 	out := new(attr.DeactivateAttributeValueResponse)
 	return out, nil
 }
 
-func (c *myAttributesClient) AssignKeyAccessServerToAttribute(ctx context.Context, in *attr.AssignKeyAccessServerToAttributeRequest, opts ...grpc.CallOption) (*attr.AssignKeyAccessServerToAttributeResponse, error) {
+func (m *myAttributesClient) AssignKeyAccessServerToAttribute(_ context.Context, _ *attr.AssignKeyAccessServerToAttributeRequest, _ ...grpc.CallOption) (*attr.AssignKeyAccessServerToAttributeResponse, error) {
 	out := new(attr.AssignKeyAccessServerToAttributeResponse)
 	return out, nil
 }
 
-func (c *myAttributesClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, in *attr.RemoveKeyAccessServerFromAttributeRequest, opts ...grpc.CallOption) (*attr.RemoveKeyAccessServerFromAttributeResponse, error) {
+func (m *myAttributesClient) RemoveKeyAccessServerFromAttribute(_ context.Context, _ *attr.RemoveKeyAccessServerFromAttributeRequest, _ ...grpc.CallOption) (*attr.RemoveKeyAccessServerFromAttributeResponse, error) {
 	out := new(attr.RemoveKeyAccessServerFromAttributeResponse)
 	return out, nil
 }
 
-func (c *myAttributesClient) AssignKeyAccessServerToValue(ctx context.Context, in *attr.AssignKeyAccessServerToValueRequest, opts ...grpc.CallOption) (*attr.AssignKeyAccessServerToValueResponse, error) {
+func (m *myAttributesClient) AssignKeyAccessServerToValue(_ context.Context, _ *attr.AssignKeyAccessServerToValueRequest, _ ...grpc.CallOption) (*attr.AssignKeyAccessServerToValueResponse, error) {
 	out := new(attr.AssignKeyAccessServerToValueResponse)
 	return out, nil
 }
 
-func (c *myAttributesClient) RemoveKeyAccessServerFromValue(ctx context.Context, in *attr.RemoveKeyAccessServerFromValueRequest, opts ...grpc.CallOption) (*attr.RemoveKeyAccessServerFromValueResponse, error) {
+func (m *myAttributesClient) RemoveKeyAccessServerFromValue(_ context.Context, _ *attr.RemoveKeyAccessServerFromValueRequest, _ ...grpc.CallOption) (*attr.RemoveKeyAccessServerFromValueResponse, error) {
 	out := new(attr.RemoveKeyAccessServerFromValueResponse)
 	return out, nil
 }
@@ -449,8 +448,8 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.Len(t, resp.GetEntitlements(), 1)
-	assert.Equal(t, resp.GetEntitlements()[0].GetEntityId(), "e1")
-	assert.Equal(t, resp.GetEntitlements()[0].GetAttributeValueFqns(), []string{"https://www.example.org/attr/foo/value/value1"})
+	assert.Equal(t, "e1", resp.GetEntitlements()[0].GetEntityId())
+	assert.Equal(t, []string{"https://www.example.org/attr/foo/value/value1"}, resp.GetEntitlements()[0].GetAttributeValueFqns())
 }
 
 func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {

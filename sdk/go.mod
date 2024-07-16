@@ -4,6 +4,7 @@ go 1.21
 
 require (
 	github.com/google/uuid v1.6.0
+	github.com/gowebpki/jcs v1.0.1
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/opentdf/platform/lib/fixtures v0.2.7
@@ -14,7 +15,6 @@ require (
 	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225
 	google.golang.org/grpc v1.62.1
 	google.golang.org/protobuf v1.33.0
-	github.com/gowebpki/jcs v1.0.1
 )
 
 require (

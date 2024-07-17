@@ -55,7 +55,7 @@ func (s SDK) initializeNanoTDFConfig() (*NanoTDFConfig, error) {
 }
 
 // NewNanoTDFConfig - Create a new instance of a nanoTDF config
-// Deprecated: Use newNanoTDFConfig instead
+// Deprecated: Use NanoTDFOptions with CreateNanoTDFOpts
 func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
 	return s.initializeNanoTDFConfig()
 }

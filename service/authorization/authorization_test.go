@@ -21,10 +21,8 @@ import (
 )
 
 var (
-	entitlementsResponse             authorization.GetEntitlementsResponse
 	getAttributesByValueFqnsResponse attr.GetAttributeValuesByFqnsResponse
 	listAttributeResp                attr.ListAttributesResponse
-	regoResponse                     rego.ResultSet
 	mockNamespace                    = "www.example.org"
 	mockAttrName                     = "foo"
 	mockAttrValue1                   = "value1"
@@ -32,16 +30,6 @@ var (
 	mockFqn1                         = fmt.Sprintf("https://%s/attr/%s/value/%s", mockNamespace, mockAttrName, mockAttrValue1)
 	mockFqn2                         = fmt.Sprintf("https://%s/attr/%s/value/%s", mockNamespace, mockAttrName, mockAttrValue2)
 )
-
-func mockRetrieveEntitlements(ctx context.Context, _ *authorization.GetEntitlementsRequest, _ *AuthorizationService) (*authorization.GetEntitlementsResponse, error) {
-	slog.DebugContext(ctx, "Using mocked GetEntitlements: "+entitlementsResponse.String())
-	return &entitlementsResponse, nil
-}
-
-func mockExecuteRego(ctx context.Context, _ rego.PreparedEvalQuery, _ ...rego.EvalOption) (rego.ResultSet, error) {
-	slog.DebugContext(ctx, "Using mocked rego execution")
-	return regoResponse, nil
-}
 
 type myAttributesClient struct{}
 
@@ -63,52 +51,42 @@ func (m *myAttributesClient) CreateAttribute(_ context.Context, _ *attr.CreateAt
 	out := new(attr.CreateAttributeResponse)
 	return out, nil
 }
-
 func (m *myAttributesClient) UpdateAttribute(_ context.Context, _ *attr.UpdateAttributeRequest, _ ...grpc.CallOption) (*attr.UpdateAttributeResponse, error) {
 	out := new(attr.UpdateAttributeResponse)
 	return out, nil
 }
-
 func (m *myAttributesClient) DeactivateAttribute(_ context.Context, _ *attr.DeactivateAttributeRequest, _ ...grpc.CallOption) (*attr.DeactivateAttributeResponse, error) {
 	out := new(attr.DeactivateAttributeResponse)
 	return out, nil
 }
-
 func (m *myAttributesClient) GetAttributeValue(_ context.Context, _ *attr.GetAttributeValueRequest, _ ...grpc.CallOption) (*attr.GetAttributeValueResponse, error) {
 	out := new(attr.GetAttributeValueResponse)
 	return out, nil
 }
-
 func (m *myAttributesClient) CreateAttributeValue(_ context.Context, _ *attr.CreateAttributeValueRequest, _ ...grpc.CallOption) (*attr.CreateAttributeValueResponse, error) {
 	out := new(attr.CreateAttributeValueResponse)
 	return out, nil
 }
-
 func (m *myAttributesClient) UpdateAttributeValue(_ context.Context, _ *attr.UpdateAttributeValueRequest, _ ...grpc.CallOption) (*attr.UpdateAttributeValueResponse, error) {
 	out := new(attr.UpdateAttributeValueResponse)
 	return out, nil
 }
-
 func (m *myAttributesClient) DeactivateAttributeValue(_ context.Context, _ *attr.DeactivateAttributeValueRequest, _ ...grpc.CallOption) (*attr.DeactivateAttributeValueResponse, error) {
 	out := new(attr.DeactivateAttributeValueResponse)
 	return out, nil
 }
-
 func (m *myAttributesClient) AssignKeyAccessServerToAttribute(_ context.Context, _ *attr.AssignKeyAccessServerToAttributeRequest, _ ...grpc.CallOption) (*attr.AssignKeyAccessServerToAttributeResponse, error) {
 	out := new(attr.AssignKeyAccessServerToAttributeResponse)
 	return out, nil
 }
-
 func (m *myAttributesClient) RemoveKeyAccessServerFromAttribute(_ context.Context, _ *attr.RemoveKeyAccessServerFromAttributeRequest, _ ...grpc.CallOption) (*attr.RemoveKeyAccessServerFromAttributeResponse, error) {
 	out := new(attr.RemoveKeyAccessServerFromAttributeResponse)
 	return out, nil
 }
-
 func (m *myAttributesClient) AssignKeyAccessServerToValue(_ context.Context, _ *attr.AssignKeyAccessServerToValueRequest, _ ...grpc.CallOption) (*attr.AssignKeyAccessServerToValueResponse, error) {
 	out := new(attr.AssignKeyAccessServerToValueResponse)
 	return out, nil
 }
-
 func (m *myAttributesClient) RemoveKeyAccessServerFromValue(_ context.Context, _ *attr.RemoveKeyAccessServerFromValueRequest, _ ...grpc.CallOption) (*attr.RemoveKeyAccessServerFromValueResponse, error) {
 	out := new(attr.RemoveKeyAccessServerFromValueResponse)
 	return out, nil
@@ -196,15 +174,9 @@ func TestGetComprehensiveHierarchy(t *testing.T) {
 func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	logger := logger.CreateTestLogger()
 
-	retrieveEntitlements = mockRetrieveEntitlements
-
 	// set entitlementsResponse and getAttributesByValueFqnsResponse
-	entitlementsResponse = authorization.GetEntitlementsResponse{Entitlements: []*authorization.EntityEntitlements{
-		{
-			EntityId:           "e1",
-			AttributeValueFqns: []string{mockFqn1},
-		},
-	}}
+	listAttributeResp = attr.ListAttributesResponse{}
+
 	attrDef := policy.Attribute{
 		Name: mockAttrName,
 		Namespace: &policy.Namespace{
@@ -226,6 +198,24 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 		},
 	}}
 
+	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
+		AccessToken: "AccessToken",
+		Expiry:      time.Now().Add(1 * time.Hour),
+	})
+
+	ctxb := context.Background()
+
+	testrego := rego.New(
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = ["https://www.example.org/attr/foo/value/value1"] { true }`,
+		))
+
+	// Run evaluation.
+	prepared, err := testrego.PrepareForEval(ctxb)
+	require.NoError(t, err)
+
 	// set the request
 	req := authorization.GetDecisionsRequest{DecisionRequests: []*authorization.DecisionRequest{
 		{
@@ -244,9 +234,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 		},
 	}}
 
-	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{Attributes: &myAttributesClient{}}}
-	retrieveEntitlements = mockRetrieveEntitlements
-	ctxb := context.Background()
+	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{Attributes: &myAttributesClient{}}, tokenSource: &testTokenSource, eval: prepared}
 
 	resp, err := as.GetDecisions(ctxb, &req)
 
@@ -258,17 +246,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	assert.Len(t, resp.GetDecisionResponses(), 1)
 	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.GetDecisionResponses()[0].GetDecision())
 
-	// run again with two attribute values throughout
-	entitlementsResponse = authorization.GetEntitlementsResponse{Entitlements: []*authorization.EntityEntitlements{
-		{
-			EntityId:           "e1",
-			AttributeValueFqns: []string{mockFqn1},
-		},
-		{
-			EntityId:           "e999",
-			AttributeValueFqns: []string{mockFqn1},
-		},
-	}}
+	//run again with two attribute values throughout
 	// set the request
 	req = authorization.GetDecisionsRequest{DecisionRequests: []*authorization.DecisionRequest{
 		{
@@ -309,31 +287,29 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 			Fqn: mockFqn2,
 		},
 	}
-	entitlementsResponse.Entitlements[0].AttributeValueFqns = []string{mockFqn1, mockFqn2}
+	testrego = rego.New(
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = ["https://www.example.org/attr/foo/value/value1", "https://www.example.org/attr/foo/value/value2"] { true }`,
+		))
+
+	// Run evaluation.
+	prepared, err = testrego.PrepareForEval(ctxb)
+	require.NoError(t, err)
+
+	as.eval = prepared
 
 	resp, err = as.GetDecisions(ctxb, &req)
 	require.NoError(t, err)
 	assert.Len(t, resp.GetDecisionResponses(), 2)
-	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.GetDecisionResponses()[0].GetDecision())
-	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.GetDecisionResponses()[1].GetDecision())
+	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.GetDecisionResponses()[0].GetDecision())
+	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.GetDecisionResponses()[1].GetDecision())
 }
 
 func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 	logger := logger.CreateTestLogger()
 
-	retrieveEntitlements = mockRetrieveEntitlements
-
-	// set entitlementsResponse and getAttributesByValueFqnsResponse
-	entitlementsResponse = authorization.GetEntitlementsResponse{Entitlements: []*authorization.EntityEntitlements{
-		{
-			EntityId:           "e1",
-			AttributeValueFqns: []string{mockFqn1},
-		},
-		{
-			EntityId:           "e999",
-			AttributeValueFqns: []string{mockFqn1},
-		},
-	}}
 	attrDef := policy.Attribute{
 		Name: mockAttrName,
 		Namespace: &policy.Namespace{
@@ -382,8 +358,25 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 		},
 	}}
 
-	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{Attributes: &myAttributesClient{}}}
+	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
+		AccessToken: "AccessToken",
+		Expiry:      time.Now().Add(1 * time.Hour),
+	})
+
 	ctxb := context.Background()
+
+	testrego := rego.New(
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = ["https://www.example.org/attr/foo/value/value1"] { true }`,
+		))
+
+	// Run evaluation.
+	prepared, err := testrego.PrepareForEval(ctxb)
+	require.NoError(t, err)
+
+	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{Attributes: &myAttributesClient{}}, tokenSource: &testTokenSource, eval: prepared}
 
 	resp, err := as.GetDecisions(ctxb, &req)
 
@@ -393,19 +386,13 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 	// NOTE: there should be two decision responses, one for each data attribute value, but authorization service
 	// only responds with one permit/deny at the moment
 	// entitlements only contain the first FQN, so we have a deny decision
-	slog.Debug(resp.String())
+	as.logger.Debug(resp.String())
 	assert.Len(t, resp.GetDecisionResponses(), 1)
 	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.GetDecisionResponses()[0].GetDecision())
 }
 
 func Test_GetEntitlementsSimple(t *testing.T) {
 	logger := logger.CreateTestLogger()
-	executeRego = mockExecuteRego
-	regoResponse = rego.ResultSet{
-		{Expressions: []*rego.ExpressionValue{
-			{Value: []interface{}{"https://www.example.org/attr/foo/value/value1"}},
-		}},
-	}
 
 	listAttributeResp = attr.ListAttributesResponse{}
 	attrDef := policy.Attribute{
@@ -435,9 +422,22 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 		AccessToken: "AccessToken",
 		Expiry:      time.Now().Add(1 * time.Hour),
 	})
-	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{Attributes: &myAttributesClient{}}, tokenSource: &testTokenSource}
 
 	ctxb := context.Background()
+
+	rego := rego.New(
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = ["https://www.example.org/attr/foo/value/value1"] { true }`,
+		))
+
+	// Run evaluation.
+	prepared, err := rego.PrepareForEval(ctxb)
+	require.NoError(t, err)
+
+	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{Attributes: &myAttributesClient{}}, tokenSource: &testTokenSource, eval: prepared}
+
 	req := authorization.GetEntitlementsRequest{
 		Entities: []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}}},
 		Scope:    &authorization.ResourceAttribute{AttributeValueFqns: []string{"https://www.example.org/attr/foo/value/value1"}},
@@ -454,12 +454,6 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 
 func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 	logger := logger.CreateTestLogger()
-	executeRego = mockExecuteRego
-	regoResponse = rego.ResultSet{
-		{Expressions: []*rego.ExpressionValue{
-			{Value: []interface{}{"https://www.example.org/attr/foo/value/value1"}},
-		}},
-	}
 
 	listAttributeResp = attr.ListAttributesResponse{}
 	attrDef := policy.Attribute{
@@ -491,9 +485,21 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 		AccessToken: "AccessToken",
 		Expiry:      time.Now().Add(1 * time.Hour),
 	})
-	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{Attributes: &myAttributesClient{}}, tokenSource: &testTokenSource}
 
 	ctxb := context.Background()
+
+	rego := rego.New(
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = ["https://www.example.org/attr/foo/value/value1"] { true }`,
+		))
+
+	// Run evaluation.
+	prepared, err := rego.PrepareForEval(ctxb)
+	require.NoError(t, err)
+	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{Attributes: &myAttributesClient{}}, tokenSource: &testTokenSource, eval: prepared}
+
 	withHierarchy := true
 	req := authorization.GetEntitlementsRequest{
 		Entities:                   []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}}},

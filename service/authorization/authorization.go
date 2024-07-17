@@ -161,16 +161,6 @@ func (as AuthorizationService) IsReady(ctx context.Context) error {
 	return nil
 }
 
-// abstracted into variable for mocking in tests
-var retrieveEntitlements = func(ctx context.Context, req *authorization.GetEntitlementsRequest, as *AuthorizationService) (*authorization.GetEntitlementsResponse, error) {
-	return as.GetEntitlements(ctx, req)
-}
-
-// abstracted into variable for mocking in tests
-var executeRego = func(ctx context.Context, pq rego.PreparedEvalQuery, options ...rego.EvalOption) (rego.ResultSet, error) {
-	return pq.Eval(ctx, options...)
-}
-
 func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *authorization.GetDecisionsByTokenRequest) (*authorization.GetDecisionsByTokenResponse, error) {
 	var decisionsRequests = []*authorization.DecisionRequest{}
 	// for each token decision request
@@ -282,7 +272,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				if len(entities) == 0 || len(allPertinentFqnsRA.GetAttributeValueFqns()) == 0 {
 					as.logger.WarnContext(ctx, "Empty entity list and/or entity data attribute list")
 				} else {
-					ecEntitlements, err := retrieveEntitlements(ctx, &req, as)
+					ecEntitlements, err := as.GetEntitlements(ctx, &req)
 					if err != nil {
 						// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
 						return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("extra", "getEntitlements request failed"))
@@ -425,7 +415,9 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		}
 		as.logger.DebugContext(ctx, "entitlements", "entity_id", entity.GetId(), "input", fmt.Sprintf("%+v", in))
 
-		results, err := executeRego(ctx, as.eval, rego.EvalInput(in))
+		results, err := as.eval.Eval(ctx,
+			rego.EvalInput(in),
+		)
 		if err != nil {
 			return nil, status.Error(codes.Internal, "failed to evaluate entitlements policy")
 		}

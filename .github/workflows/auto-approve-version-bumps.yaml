@@ -8,6 +8,9 @@ jobs:
     permissions:
       pull-requests: write
     steps:
+      - run: |
+          echo "actor: ${{ github.actor }}"
+          echo "title: ${{ github.event.pull_request.title }}"
       - uses: hmarr/auto-approve-action@v4
         if: |
           github.actor == 'opentdf-automation' &&

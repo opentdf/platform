@@ -31,65 +31,16 @@ var (
 	mockFqn2                         = fmt.Sprintf("https://%s/attr/%s/value/%s", mockNamespace, mockAttrName, mockAttrValue2)
 )
 
-type myAttributesClient struct{}
+type myAttributesClient struct {
+	attr.AttributesServiceClient
+}
 
-func (m *myAttributesClient) ListAttributes(_ context.Context, _ *attr.ListAttributesRequest, _ ...grpc.CallOption) (*attr.ListAttributesResponse, error) {
+func (*myAttributesClient) ListAttributes(_ context.Context, _ *attr.ListAttributesRequest, _ ...grpc.CallOption) (*attr.ListAttributesResponse, error) {
 	return &listAttributeResp, nil
 }
-func (m *myAttributesClient) GetAttributeValuesByFqns(_ context.Context, _ *attr.GetAttributeValuesByFqnsRequest, _ ...grpc.CallOption) (*attr.GetAttributeValuesByFqnsResponse, error) {
+
+func (*myAttributesClient) GetAttributeValuesByFqns(_ context.Context, _ *attr.GetAttributeValuesByFqnsRequest, _ ...grpc.CallOption) (*attr.GetAttributeValuesByFqnsResponse, error) {
 	return &getAttributesByValueFqnsResponse, nil
-}
-func (m *myAttributesClient) ListAttributeValues(_ context.Context, _ *attr.ListAttributeValuesRequest, _ ...grpc.CallOption) (*attr.ListAttributeValuesResponse, error) {
-	out := new(attr.ListAttributeValuesResponse)
-	return out, nil
-}
-func (m *myAttributesClient) GetAttribute(_ context.Context, _ *attr.GetAttributeRequest, _ ...grpc.CallOption) (*attr.GetAttributeResponse, error) {
-	out := new(attr.GetAttributeResponse)
-	return out, nil
-}
-func (m *myAttributesClient) CreateAttribute(_ context.Context, _ *attr.CreateAttributeRequest, _ ...grpc.CallOption) (*attr.CreateAttributeResponse, error) {
-	out := new(attr.CreateAttributeResponse)
-	return out, nil
-}
-func (m *myAttributesClient) UpdateAttribute(_ context.Context, _ *attr.UpdateAttributeRequest, _ ...grpc.CallOption) (*attr.UpdateAttributeResponse, error) {
-	out := new(attr.UpdateAttributeResponse)
-	return out, nil
-}
-func (m *myAttributesClient) DeactivateAttribute(_ context.Context, _ *attr.DeactivateAttributeRequest, _ ...grpc.CallOption) (*attr.DeactivateAttributeResponse, error) {
-	out := new(attr.DeactivateAttributeResponse)
-	return out, nil
-}
-func (m *myAttributesClient) GetAttributeValue(_ context.Context, _ *attr.GetAttributeValueRequest, _ ...grpc.CallOption) (*attr.GetAttributeValueResponse, error) {
-	out := new(attr.GetAttributeValueResponse)
-	return out, nil
-}
-func (m *myAttributesClient) CreateAttributeValue(_ context.Context, _ *attr.CreateAttributeValueRequest, _ ...grpc.CallOption) (*attr.CreateAttributeValueResponse, error) {
-	out := new(attr.CreateAttributeValueResponse)
-	return out, nil
-}
-func (m *myAttributesClient) UpdateAttributeValue(_ context.Context, _ *attr.UpdateAttributeValueRequest, _ ...grpc.CallOption) (*attr.UpdateAttributeValueResponse, error) {
-	out := new(attr.UpdateAttributeValueResponse)
-	return out, nil
-}
-func (m *myAttributesClient) DeactivateAttributeValue(_ context.Context, _ *attr.DeactivateAttributeValueRequest, _ ...grpc.CallOption) (*attr.DeactivateAttributeValueResponse, error) {
-	out := new(attr.DeactivateAttributeValueResponse)
-	return out, nil
-}
-func (m *myAttributesClient) AssignKeyAccessServerToAttribute(_ context.Context, _ *attr.AssignKeyAccessServerToAttributeRequest, _ ...grpc.CallOption) (*attr.AssignKeyAccessServerToAttributeResponse, error) {
-	out := new(attr.AssignKeyAccessServerToAttributeResponse)
-	return out, nil
-}
-func (m *myAttributesClient) RemoveKeyAccessServerFromAttribute(_ context.Context, _ *attr.RemoveKeyAccessServerFromAttributeRequest, _ ...grpc.CallOption) (*attr.RemoveKeyAccessServerFromAttributeResponse, error) {
-	out := new(attr.RemoveKeyAccessServerFromAttributeResponse)
-	return out, nil
-}
-func (m *myAttributesClient) AssignKeyAccessServerToValue(_ context.Context, _ *attr.AssignKeyAccessServerToValueRequest, _ ...grpc.CallOption) (*attr.AssignKeyAccessServerToValueResponse, error) {
-	out := new(attr.AssignKeyAccessServerToValueResponse)
-	return out, nil
-}
-func (m *myAttributesClient) RemoveKeyAccessServerFromValue(_ context.Context, _ *attr.RemoveKeyAccessServerFromValueRequest, _ ...grpc.CallOption) (*attr.RemoveKeyAccessServerFromValueResponse, error) {
-	out := new(attr.RemoveKeyAccessServerFromValueResponse)
-	return out, nil
 }
 
 func TestGetComprehensiveHierarchy(t *testing.T) {
@@ -580,87 +531,105 @@ func TestPopulateAttrFqns(t *testing.T) {
 		{
 			name: "OneAttributeOneValue",
 			attrDefs: []*policy.Attribute{
-				{Namespace: &policy.Namespace{Name: "namespace1.com"},
-					Name: "attribute1",
-					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+				{
+					Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name:      "attribute1",
+					Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 					Values: []*policy.Value{
 						{Value: "value1"},
-					}},
+					},
+				},
 			},
 			expectedResult: []*policy.Attribute{
-				{Namespace: &policy.Namespace{Name: "namespace1.com"},
-					Name: "attribute1",
-					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+				{
+					Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name:      "attribute1",
+					Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 					Values: []*policy.Value{
 						{Value: "value1", Fqn: "https://namespace1.com/attr/attribute1/value/value1"},
-					}},
+					},
+				},
 			},
 			expectedError: nil,
 		},
 		{
 			name: "OneAttributeTwoValue",
 			attrDefs: []*policy.Attribute{
-				{Namespace: &policy.Namespace{Name: "namespace1.com"},
-					Name: "attribute1",
-					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+				{
+					Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name:      "attribute1",
+					Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 					Values: []*policy.Value{
 						{Value: "value1"}, {Value: "value2"},
-					}},
+					},
+				},
 			},
 			expectedResult: []*policy.Attribute{
-				{Namespace: &policy.Namespace{Name: "namespace1.com"},
-					Name: "attribute1",
-					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+				{
+					Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name:      "attribute1",
+					Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 					Values: []*policy.Value{
 						{Value: "value1", Fqn: "https://namespace1.com/attr/attribute1/value/value1"},
 						{Value: "value2", Fqn: "https://namespace1.com/attr/attribute1/value/value2"},
-					}},
+					},
+				},
 			},
 			expectedError: nil,
 		},
 		{
 			name: "TwoAttributeTwoValue",
 			attrDefs: []*policy.Attribute{
-				{Namespace: &policy.Namespace{Name: "namespace1.com"},
-					Name: "attribute1",
-					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+				{
+					Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name:      "attribute1",
+					Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 					Values: []*policy.Value{
 						{Value: "value1"}, {Value: "value2"},
-					}},
-				{Namespace: &policy.Namespace{Name: "namespace1.com"},
-					Name: "attribute2",
-					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+					},
+				},
+				{
+					Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name:      "attribute2",
+					Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 					Values: []*policy.Value{
 						{Value: "value1"}, {Value: "value2"},
-					}},
+					},
+				},
 			},
 			expectedResult: []*policy.Attribute{
-				{Namespace: &policy.Namespace{Name: "namespace1.com"},
-					Name: "attribute1",
-					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+				{
+					Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name:      "attribute1",
+					Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 					Values: []*policy.Value{
 						{Value: "value1", Fqn: "https://namespace1.com/attr/attribute1/value/value1"},
 						{Value: "value2", Fqn: "https://namespace1.com/attr/attribute1/value/value2"},
-					}},
-				{Namespace: &policy.Namespace{Name: "namespace1.com"},
-					Name: "attribute2",
-					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+					},
+				},
+				{
+					Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name:      "attribute2",
+					Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 					Values: []*policy.Value{
 						{Value: "value1", Fqn: "https://namespace1.com/attr/attribute2/value/value1"},
 						{Value: "value2", Fqn: "https://namespace1.com/attr/attribute2/value/value2"},
-					}},
+					},
+				},
 			},
 			expectedError: nil,
 		},
 		{
 			name: "ErrorFqn",
 			attrDefs: []*policy.Attribute{
-				{Namespace: &policy.Namespace{Name: ""},
-					Name: "attribute1",
-					Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+				{
+					Namespace: &policy.Namespace{Name: ""},
+					Name:      "attribute1",
+					Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 					Values: []*policy.Value{
 						{Value: "value1"},
-					}},
+					},
+				},
 			},
 			expectedResult: nil,
 			expectedError:  errors.New("invalid FQN, unable to build fqn"),

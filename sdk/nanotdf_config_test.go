@@ -3,7 +3,7 @@ package sdk
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestNanoTDFConfig1 - Create a new config, verify that the config contains valid PEMs for the key pair
@@ -67,8 +67,8 @@ func TestNewNanoTDFConfigWithMultipleOptions(t *testing.T) {
 		return nil
 	}
 	config, err := s.newNanoTDFConfig(optionOne, optionTwo)
-	assert.NoError(t, err)
-	assert.NotNil(t, config)
-	assert.Equal(t, cipherModeAes256gcm96Bit, config.cipher)
-	assert.True(t, config.bindCfg.useEcdsaBinding)
+	require.NoError(t, err)
+	require.NotNil(t, config)
+	require.Equal(t, cipherModeAes256gcm96Bit, config.cipher)
+	require.True(t, config.bindCfg.useEcdsaBinding)
 }

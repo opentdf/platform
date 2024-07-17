@@ -96,7 +96,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		}
 		cmd.Println(string(manifestJSON))
 	} else {
-		_, err = client.CreateNanoTDF(out, in,
+		_, err = client.CreateNanoTDFOpts(out, in,
 			sdk.WithNanoDataAttributes(attributes...),
 			sdk.WithECDSAPolicyBinding(),
 			sdk.WithNanoKasInformation(

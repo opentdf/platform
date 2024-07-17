@@ -30,12 +30,10 @@ type NanoTDFConfig struct {
 
 type NanoTDFOption func(*NanoTDFConfig) error
 
-// NewNanoTDFConfig - Create a new instance of a nanoTDF config
-func (s SDK) newNanoTDFConfig(opt ...NanoTDFOption) (*NanoTDFConfig, error) {
-	// TODO FIXME - how to pass in mode value and use here before 'c' is initialized?
+func (s SDK) initializeNanoTDFConfig() (*NanoTDFConfig, error) {
 	newECKeyPair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
 	if err != nil {
-		return nil, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
+		return nil, fmt.Errorf("ocrypto.NewECKeyPair failed: %w", err)
 	}
 
 	c := &NanoTDFConfig{
@@ -51,6 +49,22 @@ func (s SDK) newNanoTDFConfig(opt ...NanoTDFOption) (*NanoTDFConfig, error) {
 			signatureMode: ocrypto.ECCModeSecp256r1,
 			cipher:        cipherModeAes256gcm96Bit,
 		},
+	}
+
+	return c, nil
+}
+
+// NewNanoTDFConfig - Create a new instance of a nanoTDF config
+// Deprecated: Use newNanoTDFConfig instead
+func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
+	return s.initializeNanoTDFConfig()
+}
+
+// newNanoTDFConfig - Create a new instance of a nanoTDF config
+func (s SDK) newNanoTDFConfig(opt ...NanoTDFOption) (*NanoTDFConfig, error) {
+	c, err := s.initializeNanoTDFConfig()
+	if err != nil {
+		return nil, err
 	}
 
 	for _, o := range opt {

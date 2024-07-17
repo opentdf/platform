@@ -174,7 +174,6 @@ func TestGetComprehensiveHierarchy(t *testing.T) {
 func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	logger := logger.CreateTestLogger()
 
-	// set entitlementsResponse and getAttributesByValueFqnsResponse
 	listAttributeResp = attr.ListAttributesResponse{}
 
 	attrDef := policy.Attribute{
@@ -246,7 +245,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	assert.Len(t, resp.GetDecisionResponses(), 1)
 	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.GetDecisionResponses()[0].GetDecision())
 
-	//run again with two attribute values throughout
+	// run again with two attribute values throughout
 	// set the request
 	req = authorization.GetDecisionsRequest{DecisionRequests: []*authorization.DecisionRequest{
 		{

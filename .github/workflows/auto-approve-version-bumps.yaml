@@ -17,7 +17,7 @@ jobs:
             echo "Found $bad_files files that are not go.mod or go.sum. Will not auto approve."
             exit 0
           fi
-          echo "Only go.mod and go.sum files found.Continuing Workflow."
+          echo "Only go.mod and go.sum files found. Continuing Workflow."
       - uses: hmarr/auto-approve-action@v4
         if: |
           github.actor == 'opentdf-automation' &&

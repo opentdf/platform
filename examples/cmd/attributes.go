@@ -22,6 +22,7 @@ var (
 	ns         string
 	attr       string
 	kas        string
+	longformat bool
 	rule       string
 	values     string
 	unsafeBool bool
@@ -54,7 +55,7 @@ func init() {
 			return listAttributes(cmd)
 		},
 	}
-
+	list.Flags().BoolVarP(&longformat, "long", "l", false, "include details")
 	list.Flags().StringVarP(&ns, "namespace", "N", "", "space separated namespace uris to search")
 	attributes.AddCommand(list)
 
@@ -77,7 +78,7 @@ func init() {
 func listAttributes(cmd *cobra.Command) error {
 	s, err := newSDK()
 	if err != nil {
-		slog.Error("could not connect", slog.String("error", err.Error()))
+		slog.Error("could not connect", slog.Any("error", err))
 		return err
 	}
 	defer s.Close()
@@ -112,9 +113,17 @@ func listAttributes(cmd *cobra.Command) error {
 		}
 		slog.Info(fmt.Sprintf("found %d attributes in namespace", len(lsr.GetAttributes())), "ns", n)
 		for _, a := range lsr.GetAttributes() {
-			fmt.Printf("%s\n", a.GetFqn())
+			if longformat {
+				fmt.Printf("%s\t%s\n", a.GetFqn(), a.GetId())
+			} else {
+				fmt.Printf("%s\n", a.GetFqn())
+			}
 			for _, v := range a.GetValues() {
-				fmt.Printf("\t%s\n", v.GetFqn())
+				if longformat {
+					fmt.Printf("\t%s\t%s\n", v.GetFqn(), v.GetId())
+				} else {
+					fmt.Printf("\t%s\n", v.GetFqn())
+				}
 			}
 		}
 	}
@@ -188,7 +197,7 @@ func addNamespace(ctx context.Context, s *sdk.SDK, u string) (string, error) {
 func addAttribute(cmd *cobra.Command) error {
 	s, err := newSDK()
 	if err != nil {
-		slog.Error("newSDK", slog.String("error", err.Error()))
+		slog.Error("newSDK", slog.Any("error", err))
 		return err
 	}
 	defer s.Close()

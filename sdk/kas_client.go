@@ -96,7 +96,7 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, keyAccess KeyAccess, 
 func (k *KASClient) unwrap(ctx context.Context, keyAccess KeyAccess, policy string) ([]byte, error) {
 	response, err := k.makeRewrapRequest(ctx, keyAccess, policy)
 	if err != nil {
-		return nil, fmt.Errorf("error making request to kas: %w", err)
+		return nil, fmt.Errorf("error making rewrap request to kas: %w", err)
 	}
 
 	key, err := k.asymDecryption.Decrypt(response.GetEntityWrappedKey())
@@ -198,7 +198,7 @@ func (k *KASClient) unwrapNanoTDF(ctx context.Context, header string, kasURL str
 
 	response, err := k.makeNanoTDFRewrapRequest(ctx, header, kasURL, publicKeyAsPem)
 	if err != nil {
-		return nil, fmt.Errorf("error making request to kas: %w", err)
+		return nil, fmt.Errorf("error making nano rewrap request to kas: %w", err)
 	}
 
 	sessionKey, err := ocrypto.ComputeECDHKey([]byte(privateKeyAsPem), []byte(response.GetSessionPublicKey()))

@@ -1,0 +1,17 @@
+name: Auto Approve Version Bumps
+
+on: pull_request_target
+
+jobs:
+  auto-approve-version-bumps:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - run: |
+          echo "actor: ${{ github.actor }}"
+          echo "title: ${{ github.event.pull_request.title }}"
+      - uses: hmarr/auto-approve-action@v4
+        if: |
+          github.actor == 'opentdf-automation' &&
+          startsWith(github.event.pull_request.title, 'fix(core): Autobump'

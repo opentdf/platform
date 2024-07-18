@@ -23,7 +23,7 @@ var AuthorizationExampleCmd = &cobra.Command{
 func authorizationExamples() error {
 	s, err := sdk.New(platformEndpoint, sdk.WithInsecurePlaintextConn())
 	if err != nil {
-		slog.Error("could not connect", slog.String("error", err.Error()))
+		slog.Error("could not connect", slog.Any("error", err))
 		return err
 	}
 	defer s.Close()

@@ -93,7 +93,7 @@ func init() {
 	}
 	unassign.Flags().StringVarP(&attr, "attr", "a", "", "attribute prefix, e.g. https://name.space/attr/name")
 	unassign.Flags().StringVarP(&kas, "kas", "k", "", "which kas to assign")
-	unassign.Flags().StringVarP(&values, "values", "v", "", "any attibute values to include; if empty, applies to all")
+	unassign.Flags().StringVarP(&values, "values", "v", "", "any attribute values to include; if empty, applies to all")
 	attributes.AddCommand(unassign)
 
 	ExamplesCmd.AddCommand(attributes)

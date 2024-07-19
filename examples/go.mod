@@ -7,7 +7,6 @@ require (
 	github.com/opentdf/platform/protocol/go v0.2.10
 	github.com/opentdf/platform/sdk v0.3.2
 	github.com/spf13/cobra v1.8.0
-	google.golang.org/grpc v1.62.1
 	google.golang.org/protobuf v1.33.0
 )
 
@@ -37,5 +36,6 @@ require (
 	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240311173647-c811ad7063a7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240311173647-c811ad7063a7 // indirect
+	google.golang.org/grpc v1.62.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

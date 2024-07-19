@@ -82,21 +82,23 @@ func (q *Queries) GetKeyAccessServer(ctx context.Context, id string) (GetKeyAcce
 
 const listKeyAccessServers = `-- name: ListKeyAccessServers :many
 
-SELECT id, uri, public_key, created_at, updated_at, metadata FROM key_access_servers
+SELECT id, uri, public_key,
+JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+FROM key_access_servers
 `
 
 type ListKeyAccessServersRow struct {
-	ID        string             `json:"id"`
-	Uri       string             `json:"uri"`
-	PublicKey []byte             `json:"public_key"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
-	Metadata  []byte             `json:"metadata"`
+	ID        string `json:"id"`
+	Uri       string `json:"uri"`
+	PublicKey []byte `json:"public_key"`
+	Metadata  []byte `json:"metadata"`
 }
 
 // KEY ACCESS SERVERS
 //
-//	SELECT id, uri, public_key, created_at, updated_at, metadata FROM key_access_servers
+//	SELECT id, uri, public_key,
+//	JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+//	FROM key_access_servers
 func (q *Queries) ListKeyAccessServers(ctx context.Context) ([]ListKeyAccessServersRow, error) {
 	rows, err := q.db.Query(ctx, listKeyAccessServers)
 	if err != nil {
@@ -110,8 +112,6 @@ func (q *Queries) ListKeyAccessServers(ctx context.Context) ([]ListKeyAccessServ
 			&i.ID,
 			&i.Uri,
 			&i.PublicKey,
-			&i.CreatedAt,
-			&i.UpdatedAt,
 			&i.Metadata,
 		); err != nil {
 			return nil, err

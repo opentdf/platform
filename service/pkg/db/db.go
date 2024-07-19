@@ -175,13 +175,13 @@ func (c Config) buildConfig() (*pgxpool.Config, error) {
 }
 
 // Common function for all queryRow calls
-func (c Client) QueryRow(ctx context.Context, sql string, args []interface{}) (pgx.Row, error) {
+func (c Client) QueryRow(ctx context.Context, sql string, args ...interface{}) (pgx.Row) {
 	c.Logger.TraceContext(ctx, "sql", slog.String("sql", sql), slog.Any("args", args))
-	return c.Pgx.QueryRow(ctx, sql, args...), nil
+	return c.Pgx.QueryRow(ctx, sql, args...)
 }
 
 // Common function for all query calls
-func (c Client) Query(ctx context.Context, sql string, args []interface{}) (pgx.Rows, error) {
+func (c Client) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
 	c.Logger.TraceContext(ctx, "sql", slog.String("sql", sql), slog.Any("args", args))
 	r, e := c.Pgx.Query(ctx, sql, args...)
 	if e != nil {
@@ -194,18 +194,18 @@ func (c Client) Query(ctx context.Context, sql string, args []interface{}) (pgx.
 }
 
 // Common function for all exec calls
-func (c Client) Exec(ctx context.Context, sql string, args []interface{}) error {
+func (c Client) Exec(ctx context.Context, sql string, args ...interface{}) (pgconn.CommandTag, error) {
 	c.Logger.TraceContext(ctx, "sql", slog.String("sql", sql), slog.Any("args", args))
 	tag, err := c.Pgx.Exec(ctx, sql, args...)
 	if err != nil {
-		return WrapIfKnownInvalidQueryErr(err)
+		return tag, WrapIfKnownInvalidQueryErr(err)
 	}
 
 	if tag.RowsAffected() == 0 {
-		return WrapIfKnownInvalidQueryErr(pgx.ErrNoRows)
+		return tag, WrapIfKnownInvalidQueryErr(pgx.ErrNoRows)
 	}
 
-	return nil
+	return tag, nil
 }
 
 //

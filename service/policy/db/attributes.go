@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -343,7 +344,7 @@ func (c PolicyDBClient) ListAllAttributes(ctx context.Context, state string, nam
 	}
 	c.logger.Debug("list all attributes", slog.String("sql", sql), slog.Any("args", args))
 
-	rows, err := c.Query(ctx, sql, args)
+	rows, err := c.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -371,7 +372,7 @@ func (c PolicyDBClient) ListAllAttributesWithout(ctx context.Context, state stri
 		return nil, err
 	}
 
-	rows, err := c.Query(ctx, sql, args)
+	rows, err := c.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -405,9 +406,9 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.At
 		return nil, err
 	}
 
-	row, err := c.QueryRow(ctx, sql, args)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	row := c.QueryRow(ctx, sql, args...)
+	if row == nil {
+		return nil, errors.New("failed to get attribute")
 	}
 
 	attribute, err := attributesHydrateItem(row, opts, c.logger)
@@ -444,9 +445,9 @@ func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 		return nil, err
 	}
 
-	row, err := c.QueryRow(ctx, sql, args)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	row := c.QueryRow(ctx, sql, args...)
+	if row == nil {
+		return nil, errors.New("failed to get attribute by FQN")
 	}
 
 	attribute, err := attributesHydrateItem(row, opts, c.logger)
@@ -472,7 +473,7 @@ func (c PolicyDBClient) GetAttributesByNamespace(ctx context.Context, namespaceI
 		return nil, err
 	}
 
-	rows, err := c.Query(ctx, sql, args)
+	rows, err := c.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -510,7 +511,7 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	}
 
 	var id string
-	if r, err := c.QueryRow(ctx, sql, args); err != nil {
+	if r := c.QueryRow(ctx, sql, args...); r == nil {
 		return nil, err
 	} else if err := r.Scan(&id, &metadataJSON); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -613,7 +614,7 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 		return nil, err
 	}
 
-	err = c.Exec(ctx, sql, args)
+	_, err = c.Exec(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -668,7 +669,7 @@ func (c PolicyDBClient) UpdateAttribute(ctx context.Context, id string, r *attri
 		return nil, err
 	}
 
-	if err := c.Exec(ctx, sql, args); err != nil {
+	if _, err := c.Exec(ctx, sql, args...); err != nil {
 		return nil, err
 	}
 
@@ -693,7 +694,7 @@ func (c PolicyDBClient) DeactivateAttribute(ctx context.Context, id string) (*po
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err := c.Exec(ctx, sql, args); err != nil {
+	if _, err := c.Exec(ctx, sql, args...); err != nil {
 		return nil, err
 	}
 	return c.GetAttribute(ctx, id)
@@ -715,7 +716,7 @@ func (c PolicyDBClient) UnsafeReactivateAttribute(ctx context.Context, id string
 		return nil, err
 	}
 
-	if err := c.Exec(ctx, sql, args); err != nil {
+	if _, err := c.Exec(ctx, sql, args...); err != nil {
 		return nil, err
 	}
 
@@ -745,7 +746,7 @@ func (c PolicyDBClient) UnsafeDeleteAttribute(ctx context.Context, existing *pol
 		return nil, err
 	}
 
-	if err := c.Exec(ctx, sql, args); err != nil {
+	if _, err := c.Exec(ctx, sql, args...); err != nil {
 		return nil, err
 	}
 
@@ -773,7 +774,7 @@ func (c PolicyDBClient) AssignKeyAccessServerToAttribute(ctx context.Context, k 
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err := c.Exec(ctx, sql, args); err != nil {
+	if _, err := c.Exec(ctx, sql, args...); err != nil {
 		return nil, err
 	}
 
@@ -795,7 +796,7 @@ func (c PolicyDBClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, 
 		return nil, err
 	}
 
-	if err := c.Exec(ctx, sql, args); err != nil {
+	if _, err := c.Exec(ctx, sql, args...); err != nil {
 		return nil, err
 	}
 

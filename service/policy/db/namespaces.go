@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -107,9 +108,9 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, id string) (*policy.Na
 		return nil, err
 	}
 
-	row, err := c.QueryRow(ctx, sql, args)
-	if err != nil {
-		return nil, err
+	row := c.QueryRow(ctx, sql, args...)
+	if row == nil {
+		return nil, errors.New("failed to get namespace")
 	}
 
 	return hydrateNamespaceItem(row, opts, c.logger)
@@ -155,7 +156,7 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, state string) ([]*po
 		return nil, err
 	}
 
-	rows, err := c.Query(ctx, sql, args)
+	rows, err := c.Query(ctx, sql, args...)
 	if err != nil {
 		c.logger.Error("error listing namespaces", slog.String("sql", sql), slog.String("error", err.Error()))
 		return nil, err
@@ -194,10 +195,10 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 	}
 
 	var id string
-	if r, e := c.QueryRow(ctx, sql, args); e != nil {
-		return nil, e
-	} else if e = r.Scan(&id, &metadataJSON); e != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(e)
+	if r := c.QueryRow(ctx, sql, args...); r == nil {
+		return nil, errors.New("failed to create namespace")
+	} else if err = r.Scan(&id, &metadataJSON); err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	if err = unmarshalMetadata(metadataJSON, m, c.logger); err != nil {
@@ -253,7 +254,7 @@ func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *names
 		return nil, err
 	}
 
-	if err := c.Exec(ctx, sql, args); err != nil {
+	if _, err := c.Exec(ctx, sql, args...); err != nil {
 		return nil, err
 	}
 
@@ -283,9 +284,9 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 		return nil, err
 	}
 
-	row, err := c.QueryRow(ctx, sql, args)
-	if err != nil {
-		return nil, err
+	row := c.QueryRow(ctx, sql, args...)
+	if row == nil {
+		return nil, errors.New("failed to unsafely update namespace")
 	}
 
 	// Update all FQNs that may contain the namespace name
@@ -341,7 +342,7 @@ func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*po
 		return nil, err
 	}
 
-	if e := c.Exec(ctx, sql, args); e != nil {
+	if _, e := c.Exec(ctx, sql, args...); e != nil {
 		return nil, e
 	}
 	return c.GetNamespace(ctx, id)
@@ -362,7 +363,7 @@ func (c PolicyDBClient) UnsafeReactivateNamespace(ctx context.Context, id string
 		return nil, err
 	}
 
-	if e := c.Exec(ctx, sql, args); e != nil {
+	if _, e := c.Exec(ctx, sql, args...); e != nil {
 		return nil, e
 	}
 	return c.GetNamespace(ctx, id)
@@ -391,7 +392,7 @@ func (c PolicyDBClient) UnsafeDeleteNamespace(ctx context.Context, existing *pol
 		return nil, err
 	}
 
-	if err := c.Exec(ctx, sql, args); err != nil {
+	if _, err := c.Exec(ctx, sql, args...); err != nil {
 		return nil, err
 	}
 

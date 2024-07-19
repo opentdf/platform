@@ -1,10 +1,10 @@
 -- KEY ACCESS SERVERS
 
 -- name: ListKeyAccessServers :many
-SELECT id, uri, public_key, metadata FROM key_access_servers;
+SELECT id, uri, public_key, created_at, updated_at, metadata FROM key_access_servers;
 
 -- name: GetKeyAccessServer :one
-SELECT id, uri, public_key, metadata FROM key_access_servers WHERE id = $1;
+SELECT id, uri, public_key, created_at, updated_at, metadata FROM key_access_servers WHERE id = $1;
 
 -- name: CreateKeyAccessServer :one
 INSERT INTO key_access_servers (uri, public_key, metadata)

@@ -11,6 +11,17 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+func setMetadataTimestampLabels(metadata *common.Metadata, createdAt, updatedAt pgtype.Timestamptz) {
+	if metadata == nil {
+		metadata = new(common.Metadata)
+	}
+	if metadata.GetLabels() == nil {
+		metadata.Labels = make(map[string]string)
+	}
+	metadata.Labels["created_at"] = createdAt.Time.String()
+	metadata.Labels["updated_at"] = updatedAt.Time.String()
+}
+
 func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context) ([]*policy.KeyAccessServer, error) {
 	list, err := c.Queries.ListKeyAccessServers(ctx)
 	if err != nil {
@@ -34,6 +45,7 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context) ([]*policy.Key
 				return nil, err
 			}
 		}
+		setMetadataTimestampLabels(metadata, kas.CreatedAt, kas.UpdatedAt)
 
 		keyAccessServer.Id = kas.ID
 		keyAccessServer.Uri = kas.Uri

@@ -84,11 +84,18 @@ func (s *KasRegistrySuite) Test_GetKeyAccessServer() {
 	s.Equal(localFixture.PubKey.Local, local.GetPublicKey().GetLocal())
 }
 
-func (s *KasRegistrySuite) Test_GetKeyAccessServerWithNonExistentIdFails() {
+func (s *KasRegistrySuite) Test_GetKeyAccessServer_WithNonExistentId_Fails() {
 	resp, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, nonExistentKasRegistryID)
 	s.Require().Error(err)
 	s.Nil(resp)
 	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *KasRegistrySuite) Test_GetKeyAccessServer_WithInvalidID_Fails() {
+	resp, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, "hello")
+	s.Require().Error(err)
+	s.Nil(resp)
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
 }
 
 func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Remote() {

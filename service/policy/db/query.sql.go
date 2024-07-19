@@ -8,7 +8,6 @@ package db
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -29,9 +28,9 @@ type CreateKeyAccessServerParams struct {
 //	INSERT INTO key_access_servers (uri, public_key, metadata)
 //	VALUES ($1, $2, $3)
 //	RETURNING id
-func (q *Queries) CreateKeyAccessServer(ctx context.Context, arg CreateKeyAccessServerParams) (uuid.UUID, error) {
+func (q *Queries) CreateKeyAccessServer(ctx context.Context, arg CreateKeyAccessServerParams) (string, error) {
 	row := q.db.QueryRow(ctx, createKeyAccessServer, arg.Uri, arg.PublicKey, arg.Metadata)
-	var id uuid.UUID
+	var id string
 	err := row.Scan(&id)
 	return id, err
 }
@@ -43,7 +42,7 @@ DELETE FROM key_access_servers WHERE id = $1
 // DeleteKeyAccessServer
 //
 //	DELETE FROM key_access_servers WHERE id = $1
-func (q *Queries) DeleteKeyAccessServer(ctx context.Context, id uuid.UUID) (int64, error) {
+func (q *Queries) DeleteKeyAccessServer(ctx context.Context, id string) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteKeyAccessServer, id)
 	if err != nil {
 		return 0, err
@@ -56,16 +55,16 @@ SELECT id, uri, public_key, metadata FROM key_access_servers WHERE id = $1
 `
 
 type GetKeyAccessServerRow struct {
-	ID        uuid.UUID `json:"id"`
-	Uri       string    `json:"uri"`
-	PublicKey []byte    `json:"public_key"`
-	Metadata  []byte    `json:"metadata"`
+	ID        string `json:"id"`
+	Uri       string `json:"uri"`
+	PublicKey []byte `json:"public_key"`
+	Metadata  []byte `json:"metadata"`
 }
 
 // GetKeyAccessServer
 //
 //	SELECT id, uri, public_key, metadata FROM key_access_servers WHERE id = $1
-func (q *Queries) GetKeyAccessServer(ctx context.Context, id uuid.UUID) (GetKeyAccessServerRow, error) {
+func (q *Queries) GetKeyAccessServer(ctx context.Context, id string) (GetKeyAccessServerRow, error) {
 	row := q.db.QueryRow(ctx, getKeyAccessServer, id)
 	var i GetKeyAccessServerRow
 	err := row.Scan(
@@ -83,10 +82,10 @@ SELECT id, uri, public_key, metadata FROM key_access_servers
 `
 
 type ListKeyAccessServersRow struct {
-	ID        uuid.UUID `json:"id"`
-	Uri       string    `json:"uri"`
-	PublicKey []byte    `json:"public_key"`
-	Metadata  []byte    `json:"metadata"`
+	ID        string `json:"id"`
+	Uri       string `json:"uri"`
+	PublicKey []byte `json:"public_key"`
+	Metadata  []byte `json:"metadata"`
 }
 
 // KEY ACCESS SERVERS
@@ -128,7 +127,7 @@ RETURNING id
 `
 
 type UpdateKeyAccessServerParams struct {
-	ID        uuid.UUID   `json:"id"`
+	ID        string      `json:"id"`
 	Uri       pgtype.Text `json:"uri"`
 	PublicKey []byte      `json:"public_key"`
 	Metadata  []byte      `json:"metadata"`
@@ -143,14 +142,14 @@ type UpdateKeyAccessServerParams struct {
 //	    metadata = coalesce($4, metadata)
 //	WHERE id = $1
 //	RETURNING id
-func (q *Queries) UpdateKeyAccessServer(ctx context.Context, arg UpdateKeyAccessServerParams) (uuid.UUID, error) {
+func (q *Queries) UpdateKeyAccessServer(ctx context.Context, arg UpdateKeyAccessServerParams) (string, error) {
 	row := q.db.QueryRow(ctx, updateKeyAccessServer,
 		arg.ID,
 		arg.Uri,
 		arg.PublicKey,
 		arg.Metadata,
 	)
-	var id uuid.UUID
+	var id string
 	err := row.Scan(&id)
 	return id, err
 }

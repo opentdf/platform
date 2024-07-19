@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -36,7 +35,7 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context) ([]*policy.Key
 			}
 		}
 
-		keyAccessServer.Id = kas.ID.String()
+		keyAccessServer.Id = kas.ID
 		keyAccessServer.Uri = kas.Uri
 		keyAccessServer.PublicKey = publicKey
 		keyAccessServer.Metadata = metadata
@@ -48,11 +47,7 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context) ([]*policy.Key
 }
 
 func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, id string) (*policy.KeyAccessServer, error) {
-	uuid, err := uuid.Parse(id)
-	if err != nil {
-		return nil, db.ErrUUIDInvalid
-	}
-	kas, err := c.Queries.GetKeyAccessServer(ctx, uuid)
+	kas, err := c.Queries.GetKeyAccessServer(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -73,7 +68,7 @@ func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, id string) (*pol
 	}
 
 	return &policy.KeyAccessServer{
-		Id:        kas.ID.String(),
+		Id:        kas.ID,
 		Uri:       kas.Uri,
 		Metadata:  metadata,
 		PublicKey: publicKey,
@@ -101,7 +96,7 @@ func (c PolicyDBClient) CreateKeyAccessServer(ctx context.Context, r *kasregistr
 	}
 
 	return &policy.KeyAccessServer{
-		Id: createdID.String(),
+		Id: createdID,
 	}, nil
 }
 
@@ -126,11 +121,6 @@ func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r 
 		}
 	}
 
-	uuid, err := uuid.Parse(id)
-	if err != nil {
-		return nil, db.ErrUUIDInvalid
-	}
-
 	uri := pgtype.Text{
 		String: r.GetUri(),
 	}
@@ -139,7 +129,7 @@ func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r 
 	}
 
 	createdID, err := c.Queries.UpdateKeyAccessServer(ctx, UpdateKeyAccessServerParams{
-		ID:        uuid,
+		ID:        id,
 		Uri:       uri,
 		PublicKey: publicKeyJSON,
 		Metadata:  metadataJSON,
@@ -149,17 +139,12 @@ func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r 
 	}
 
 	return &policy.KeyAccessServer{
-		Id: createdID.String(),
+		Id: createdID,
 	}, nil
 }
 
 func (c PolicyDBClient) DeleteKeyAccessServer(ctx context.Context, id string) (*policy.KeyAccessServer, error) {
-	uuid, err := uuid.Parse(id)
-	if err != nil {
-		return nil, db.ErrUUIDInvalid
-	}
-
-	count, err := c.Queries.DeleteKeyAccessServer(ctx, uuid)
+	count, err := c.Queries.DeleteKeyAccessServer(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

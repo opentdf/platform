@@ -1,4 +1,4 @@
-version: "2"
+version: '2'
 sql:
   - engine: postgresql
     queries: query.sql
@@ -14,5 +14,4 @@ sql:
         overrides:
           - db_type: uuid
             go_type:
-              import: github.com/google/uuid
-              type: UUID
+              type: string

@@ -8,7 +8,6 @@ import (
 	"database/sql/driver"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -57,24 +56,24 @@ func (ns NullAttributeDefinitionRule) Value() (driver.Value, error) {
 }
 
 type AttributeDefinition struct {
-	ID          uuid.UUID               `json:"id"`
-	NamespaceID uuid.UUID               `json:"namespace_id"`
+	ID          string                  `json:"id"`
+	NamespaceID string                  `json:"namespace_id"`
 	Name        string                  `json:"name"`
 	Rule        AttributeDefinitionRule `json:"rule"`
 	Metadata    []byte                  `json:"metadata"`
 	Active      bool                    `json:"active"`
 	CreatedAt   pgtype.Timestamptz      `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz      `json:"updated_at"`
-	ValuesOrder []uuid.UUID             `json:"values_order"`
+	ValuesOrder []string                `json:"values_order"`
 }
 
 type AttributeDefinitionKeyAccessGrant struct {
-	AttributeDefinitionID uuid.UUID `json:"attribute_definition_id"`
-	KeyAccessServerID     uuid.UUID `json:"key_access_server_id"`
+	AttributeDefinitionID string `json:"attribute_definition_id"`
+	KeyAccessServerID     string `json:"key_access_server_id"`
 }
 
 type AttributeFqn struct {
-	ID          uuid.UUID   `json:"id"`
+	ID          string      `json:"id"`
 	NamespaceID pgtype.UUID `json:"namespace_id"`
 	AttributeID pgtype.UUID `json:"attribute_id"`
 	ValueID     pgtype.UUID `json:"value_id"`
@@ -82,7 +81,7 @@ type AttributeFqn struct {
 }
 
 type AttributeNamespace struct {
-	ID        uuid.UUID          `json:"id"`
+	ID        string             `json:"id"`
 	Name      string             `json:"name"`
 	Active    bool               `json:"active"`
 	Metadata  []byte             `json:"metadata"`
@@ -91,10 +90,10 @@ type AttributeNamespace struct {
 }
 
 type AttributeValue struct {
-	ID                    uuid.UUID          `json:"id"`
-	AttributeDefinitionID uuid.UUID          `json:"attribute_definition_id"`
+	ID                    string             `json:"id"`
+	AttributeDefinitionID string             `json:"attribute_definition_id"`
 	Value                 string             `json:"value"`
-	Members               []uuid.UUID        `json:"members"`
+	Members               []string           `json:"members"`
 	Metadata              []byte             `json:"metadata"`
 	Active                bool               `json:"active"`
 	CreatedAt             pgtype.Timestamptz `json:"created_at"`
@@ -102,18 +101,18 @@ type AttributeValue struct {
 }
 
 type AttributeValueKeyAccessGrant struct {
-	AttributeValueID  uuid.UUID `json:"attribute_value_id"`
-	KeyAccessServerID uuid.UUID `json:"key_access_server_id"`
+	AttributeValueID  string `json:"attribute_value_id"`
+	KeyAccessServerID string `json:"key_access_server_id"`
 }
 
 type AttributeValueMember struct {
-	ID       uuid.UUID `json:"id"`
-	ValueID  uuid.UUID `json:"value_id"`
-	MemberID uuid.UUID `json:"member_id"`
+	ID       string `json:"id"`
+	ValueID  string `json:"value_id"`
+	MemberID string `json:"member_id"`
 }
 
 type KeyAccessServer struct {
-	ID        uuid.UUID          `json:"id"`
+	ID        string             `json:"id"`
 	Uri       string             `json:"uri"`
 	PublicKey []byte             `json:"public_key"`
 	Metadata  []byte             `json:"metadata"`
@@ -134,8 +133,8 @@ type Resource struct {
 }
 
 type ResourceMapping struct {
-	ID               uuid.UUID          `json:"id"`
-	AttributeValueID uuid.UUID          `json:"attribute_value_id"`
+	ID               string             `json:"id"`
+	AttributeValueID string             `json:"attribute_value_id"`
 	Terms            []string           `json:"terms"`
 	Metadata         []byte             `json:"metadata"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
@@ -143,7 +142,7 @@ type ResourceMapping struct {
 }
 
 type SubjectConditionSet struct {
-	ID        uuid.UUID          `json:"id"`
+	ID        string             `json:"id"`
 	Condition []byte             `json:"condition"`
 	Metadata  []byte             `json:"metadata"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
@@ -151,8 +150,8 @@ type SubjectConditionSet struct {
 }
 
 type SubjectMapping struct {
-	ID                    uuid.UUID          `json:"id"`
-	AttributeValueID      uuid.UUID          `json:"attribute_value_id"`
+	ID                    string             `json:"id"`
+	AttributeValueID      string             `json:"attribute_value_id"`
 	Metadata              []byte             `json:"metadata"`
 	CreatedAt             pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt             pgtype.Timestamptz `json:"updated_at"`

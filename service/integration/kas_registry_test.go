@@ -115,6 +115,30 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Remote() {
 	s.NotEqual("", r.GetId())
 }
 
+func (s *KasRegistrySuite) Test_CreateKeyAccessServer_UriConflict_Fails() {
+	uri := "testingCreationConflict.com"
+	pubKey := &policy.PublicKey{
+		PublicKey: &policy.PublicKey_Remote{
+			Remote: "https://something.somewhere/key",
+		},
+	}
+
+	kasRegistry := &kasregistry.CreateKeyAccessServerRequest{
+		Uri:       uri,
+		PublicKey: pubKey,
+	}
+	k, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
+	s.Require().NoError(err)
+	s.NotNil(k)
+	s.NotEqual("", k.GetId())
+
+	// try to create another KAS with the same URI
+	k, err = s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
+	s.Nil(k)
+}
+
 func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Local() {
 	metadata := &common.MetadataMutable{
 		Labels: map[string]string{
@@ -145,9 +169,9 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 	updatedLabel := "true"
 	newLabel := "new label"
 
-	uri := "testingUpdateWithRemoteKey.com"
+	uri := "beforeURI_everything.com"
 	pubKeyRemote := "https://remote.com/key"
-	updatedURI := "updatedUri.com"
+	updatedURI := "afterURI_everything.com"
 	updatedPubKeyRemote := "https://remote2.com/key"
 
 	// create a test KAS
@@ -201,7 +225,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 }
 
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Metadata_DoesNotAlterOtherValues() {
-	uri := "testingUpdateMetadata.com"
+	uri := "before_metadata_only.com"
 	pubKeyRemote := "https://remote.com/key"
 
 	// create a test KAS
@@ -240,9 +264,9 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Metadata_DoesNotAlterOther
 }
 
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Uri_DoesNotAlterOtherValues() {
-	uri := "testingUpdateUri.com"
+	uri := "before_uri_only.com"
 	pubKeyRemote := "https://remote.com/key"
-	updatedURI := "updatingUri.com"
+	updatedURI := "after_uri_only.com"
 
 	// create a test KAS
 	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
@@ -276,7 +300,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Uri_DoesNotAlterOtherValue
 
 // the same test but only altering the key
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOtherValues() {
-	uri := "testingUpdateKey.com"
+	uri := "before_pubkey_only.com"
 	pubKeyRemote := "https://remote.com/key"
 	updatedPubKeyLocal := "my_key"
 

@@ -3,8 +3,8 @@ package db
 import (
 	"context"
 
-	sq "github.com/Masterminds/squirrel"
-	"github.com/jackc/pgx/v5"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
@@ -12,133 +12,72 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-func keyAccessServerSelect() sq.SelectBuilder {
-	return db.NewStatementBuilder().
-		Select(
-			"id",
-			"uri",
-			"public_key",
-			"metadata",
-		)
-}
-
-func listAllKeyAccessServersSQL() (string, []interface{}, error) {
-	return keyAccessServerSelect().
-		From(Tables.KeyAccessServerRegistry.Name()).
-		ToSql()
-}
-
 func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context) ([]*policy.KeyAccessServer, error) {
-	sql, args, err := listAllKeyAccessServersSQL()
+	list, err := c.Queries.ListKeyAccessServers(ctx)
 	if err != nil {
 		return nil, err
 	}
+	keyAccessServers := make([]*policy.KeyAccessServer, len(list))
 
-	rows, err := c.Query(ctx, sql, args)
-	if err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var keyAccessServers []*policy.KeyAccessServer
-
-	var (
-		id            string
-		uri           string
-		publicKeyJSON []byte
-		metadataJSON  []byte
-	)
-
-	_, err = pgx.ForEachRow(rows, []any{&id, &uri, &publicKeyJSON, &metadataJSON}, func() error {
+	for i, kas := range list {
 		var (
 			keyAccessServer = new(policy.KeyAccessServer)
 			publicKey       = new(policy.PublicKey)
 			metadata        = new(common.Metadata)
 		)
 
-		if err := protojson.Unmarshal(publicKeyJSON, publicKey); err != nil {
-			return err
+		if err := protojson.Unmarshal(kas.PublicKey, publicKey); err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
 		}
 
-		if metadataJSON != nil {
-			if err := protojson.Unmarshal(metadataJSON, metadata); err != nil {
-				return err
+		if kas.Metadata != nil {
+			if err := protojson.Unmarshal(kas.Metadata, metadata); err != nil {
+				return nil, db.WrapIfKnownInvalidQueryErr(err)
 			}
 		}
 
-		keyAccessServer.Id = id
-		keyAccessServer.Uri = uri
+		keyAccessServer.Id = kas.ID.String()
+		keyAccessServer.Uri = kas.Uri
 		keyAccessServer.PublicKey = publicKey
 		keyAccessServer.Metadata = metadata
 
-		keyAccessServers = append(keyAccessServers, keyAccessServer)
-
-		return nil
-	})
-	if err != nil {
-		return nil, err
+		keyAccessServers[i] = keyAccessServer
 	}
 
 	return keyAccessServers, nil
 }
 
-func getKeyAccessServerSQL(id string) (string, []interface{}, error) {
-	return keyAccessServerSelect().
-		Where(sq.Eq{"id": id}).
-		From(Tables.KeyAccessServerRegistry.Name()).
-		ToSql()
-}
-
 func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, id string) (*policy.KeyAccessServer, error) {
-	sql, args, err := getKeyAccessServerSQL(id)
+	uuid, err := uuid.Parse(id)
 	if err != nil {
-		return nil, err
+		return nil, db.ErrUUIDInvalid
 	}
-
-	row, err := c.QueryRow(ctx, sql, args)
-	if err != nil {
-		return nil, err
-	}
-
-	var (
-		uri           string
-		publicKeyJSON []byte
-		publicKey     = new(policy.PublicKey)
-		metadataJSON  []byte
-		metadata      = new(common.Metadata)
-	)
-	err = row.Scan(&id, &uri, &publicKeyJSON, &metadataJSON)
+	kas, err := c.Queries.GetKeyAccessServer(ctx, uuid)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err := protojson.Unmarshal(publicKeyJSON, publicKey); err != nil {
+	var (
+		publicKey = new(policy.PublicKey)
+		metadata  = new(common.Metadata)
+	)
+
+	if err := protojson.Unmarshal(kas.PublicKey, publicKey); err != nil {
 		return nil, err
 	}
 
-	if metadataJSON != nil {
-		if err := protojson.Unmarshal(metadataJSON, metadata); err != nil {
+	if kas.Metadata != nil {
+		if err := protojson.Unmarshal(kas.Metadata, metadata); err != nil {
 			return nil, err
 		}
 	}
 
 	return &policy.KeyAccessServer{
+		Id:        kas.ID.String(),
+		Uri:       kas.Uri,
 		Metadata:  metadata,
-		Id:        id,
-		Uri:       uri,
 		PublicKey: publicKey,
 	}, nil
-}
-
-func createKeyAccessServerSQL(uri string, publicKey, metadata []byte) (string, []interface{}, error) {
-	return db.NewStatementBuilder().
-		Insert(Tables.KeyAccessServerRegistry.Name()).
-		Columns("uri", "public_key", "metadata").
-		Values(uri, publicKey, metadata).
-		Suffix("RETURNING \"id\"").
-		ToSql()
 }
 
 func (c PolicyDBClient) CreateKeyAccessServer(ctx context.Context, r *kasregistry.CreateKeyAccessServerRequest) (*policy.KeyAccessServer, error) {
@@ -152,44 +91,18 @@ func (c PolicyDBClient) CreateKeyAccessServer(ctx context.Context, r *kasregistr
 		return nil, err
 	}
 
-	sql, args, err := createKeyAccessServerSQL(r.GetUri(), pkBytes, metadataBytes)
+	createdID, err := c.Queries.CreateKeyAccessServer(ctx, CreateKeyAccessServerParams{
+		Uri:       r.GetUri(),
+		PublicKey: pkBytes,
+		Metadata:  metadataBytes,
+	})
 	if err != nil {
-		return nil, err
-	}
-
-	row, err := c.QueryRow(ctx, sql, args)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get ID of new resource
-	var id string
-	if err = row.Scan(&id); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	return &policy.KeyAccessServer{
-		Id: id,
+		Id: createdID.String(),
 	}, nil
-}
-
-func updateKeyAccessServerSQL(id, uri string, publicKey, metadata []byte) (string, []interface{}, error) {
-	sb := db.NewStatementBuilder().
-		Update(Tables.KeyAccessServerRegistry.Name())
-
-	if uri != "" {
-		sb = sb.Set("uri", uri)
-	}
-
-	if publicKey != nil {
-		sb = sb.Set("public_key", publicKey)
-	}
-
-	if metadata != nil {
-		sb = sb.Set("metadata", metadata)
-	}
-
-	return sb.Where(sq.Eq{"id": id}).ToSql()
 }
 
 func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r *kasregistry.UpdateKeyAccessServerRequest) (*policy.KeyAccessServer, error) {
@@ -213,43 +126,48 @@ func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r 
 		}
 	}
 
-	sql, args, err := updateKeyAccessServerSQL(id, r.GetUri(), publicKeyJSON, metadataJSON)
-	if db.IsQueryBuilderSetClauseError(err) {
-		return &policy.KeyAccessServer{
-			Id: id,
-		}, nil
-	}
+	uuid, err := uuid.Parse(id)
 	if err != nil {
-		return nil, err
+		return nil, db.ErrUUIDInvalid
 	}
 
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
+	uri := pgtype.Text{
+		String: r.GetUri(),
+	}
+	if r.GetUri() != "" {
+		uri.Valid = true
+	}
+
+	createdID, err := c.Queries.UpdateKeyAccessServer(ctx, UpdateKeyAccessServerParams{
+		ID:        uuid,
+		Uri:       uri,
+		PublicKey: publicKeyJSON,
+		Metadata:  metadataJSON,
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	return &policy.KeyAccessServer{
-		Id: id,
+		Id: createdID.String(),
 	}, nil
 }
 
-func deleteKeyAccessServerSQL(id string) (string, []interface{}, error) {
-	return db.NewStatementBuilder().
-		Delete(Tables.KeyAccessServerRegistry.Name()).
-		Where(sq.Eq{"id": id}).
-		ToSql()
-}
-
 func (c PolicyDBClient) DeleteKeyAccessServer(ctx context.Context, id string) (*policy.KeyAccessServer, error) {
-	sql, args, err := deleteKeyAccessServerSQL(id)
+	uuid, err := uuid.Parse(id)
 	if err != nil {
-		return nil, err
+		return nil, db.ErrUUIDInvalid
 	}
 
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
+	count, err := c.Queries.DeleteKeyAccessServer(ctx, uuid)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
 	}
 
-	// return the attribute before deleting
+	// return the KAS that was deleted
 	return &policy.KeyAccessServer{
 		Id: id,
 	}, nil

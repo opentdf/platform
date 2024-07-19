@@ -27,12 +27,12 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context) ([]*policy.Key
 		)
 
 		if err := protojson.Unmarshal(kas.PublicKey, publicKey); err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
+			return nil, err
 		}
 
 		if kas.Metadata != nil {
 			if err := protojson.Unmarshal(kas.Metadata, metadata); err != nil {
-				return nil, db.WrapIfKnownInvalidQueryErr(err)
+				return nil, err
 			}
 		}
 

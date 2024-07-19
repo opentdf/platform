@@ -350,7 +350,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOthe
 	s.Equal("unchanged label", got.GetMetadata().GetLabels()["unchanged"])
 }
 
-func (s *KasRegistrySuite) Test_UpdateKeyAccessServerWithNonExistentIdFails() {
+func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_WithNonExistentId_Fails() {
 	pubKey := &policy.PublicKey{
 		PublicKey: &policy.PublicKey_Local{
 			Local: "this_is_a_local_key",
@@ -364,6 +364,13 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServerWithNonExistentIdFails() {
 	s.Require().Error(err)
 	s.Nil(resp)
 	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_WithInvalidID_Fails() {
+	resp, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, "not-a-uuid")
+	s.Require().Error(err)
+	s.Nil(resp)
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
 }
 
 func (s *KasRegistrySuite) Test_DeleteKeyAccessServer() {
@@ -392,11 +399,18 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer() {
 	s.Nil(resp)
 }
 
-func (s *KasRegistrySuite) Test_DeleteKeyAccessServerWithNonExistentIdFails() {
+func (s *KasRegistrySuite) Test_DeleteKeyAccessServer_WithNonExistentId_Fails() {
 	resp, err := s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, nonExistentKasRegistryID)
 	s.Require().Error(err)
 	s.Nil(resp)
 	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *KasRegistrySuite) Test_DeleteKeyAccessServer_WithInvalidId_Fails() {
+	resp, err := s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, "definitely-not-a-uuid")
+	s.Require().Error(err)
+	s.Nil(resp)
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
 }
 
 func TestKasRegistrySuite(t *testing.T) {

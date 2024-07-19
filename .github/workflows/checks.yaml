@@ -200,7 +200,7 @@ jobs:
       - run: test/policy-service.bats
       - name: create roundtrip test data and run tests
         run: go test ./service/rttests -v
-      - name: enable staic entitlements rego policy
+      - name: enable static entitlements rego policy
         run: yq eval '.services.authorization.rego.path = "./test/rego/static-entitlements.rego"' -i opentdf.yaml
       - run: sleep 30
       - name: validate static rego policy

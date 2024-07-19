@@ -295,9 +295,9 @@ func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjec
 	}
 
 	var id string
-	r := c.QueryRow(ctx, sql, args...)
-	if r == nil {
-		return nil, errors.New("failed to create subject condition set")
+	r, err := c.QueryRow(ctx, sql, args)
+	if err != nil {
+		return nil, err
 	}
 	if err = r.Scan(&id, &metadataJSON); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -326,9 +326,9 @@ func (c PolicyDBClient) GetSubjectConditionSet(ctx context.Context, id string) (
 		return nil, err
 	}
 
-	row := c.QueryRow(ctx, sql, args...)
-	if row == nil {
-		return nil, errors.New("failed to get subject condition set")
+	row, err := c.QueryRow(ctx, sql, args)
+	if err != nil {
+		return nil, err
 	}
 
 	return subjectConditionSetHydrateItem(row, c.logger)
@@ -347,7 +347,7 @@ func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context) ([]*policy
 		return nil, err
 	}
 
-	rows, err := c.Query(ctx, sql, args...)
+	rows, err := c.Query(ctx, sql, args)
 	if err != nil {
 		return nil, err
 	}
@@ -412,7 +412,7 @@ func (c PolicyDBClient) UpdateSubjectConditionSet(ctx context.Context, r *subjec
 		return nil, err
 	}
 
-	if _, err := c.Exec(ctx, sql, args...); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 
@@ -437,7 +437,7 @@ func (c PolicyDBClient) DeleteSubjectConditionSet(ctx context.Context, id string
 		return nil, err
 	}
 
-	if _, err := c.Exec(ctx, sql, args...); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 
@@ -519,8 +519,8 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 	}
 
 	var id string
-	if r := c.QueryRow(ctx, sql, args...); r == nil {
-		return nil, errors.New("failed to create subject mapping")
+	if r, err := c.QueryRow(ctx, sql, args); err != nil {
+		return nil, err
 	} else if err := r.Scan(&id, &metadataJSON); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -554,9 +554,9 @@ func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*poli
 		return nil, err
 	}
 
-	row := c.QueryRow(ctx, sql, args...)
-	if row == nil {
-		return nil, errors.New("failed to get subject mapping")
+	row, err := c.QueryRow(ctx, sql, args)
+	if err != nil {
+		return nil, err
 	}
 
 	return subjectMappingHydrateItem(row, c.logger)
@@ -575,7 +575,7 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context) ([]*policy.Subj
 		return nil, err
 	}
 
-	rows, err := c.Query(ctx, sql, args...)
+	rows, err := c.Query(ctx, sql, args)
 	if err != nil {
 		return nil, err
 	}
@@ -648,7 +648,7 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 		return nil, err
 	}
 
-	if _, err := c.Exec(ctx, sql, args...); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 
@@ -673,7 +673,7 @@ func (c PolicyDBClient) DeleteSubjectMapping(ctx context.Context, id string) (*p
 		return nil, err
 	}
 
-	if _, err := c.Exec(ctx, sql, args...); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 
@@ -770,7 +770,7 @@ func (c PolicyDBClient) GetMatchedSubjectMappings(ctx context.Context, propertie
 		return nil, err
 	}
 
-	rows, err := c.Query(ctx, sql, args...)
+	rows, err := c.Query(ctx, sql, args)
 	c.logger.Debug("executed SQL for subject entitlements", slog.Any("properties", properties), slog.String("sql", sql), slog.Any("args", args), slog.Any("rows", rows), slog.Any("error", err))
 	if err != nil {
 		return nil, err

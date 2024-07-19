@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
@@ -128,9 +127,9 @@ func (c PolicyDBClient) CreateResourceMapping(ctx context.Context, r *resourcema
 		return nil, err
 	}
 
-	row := c.QueryRow(ctx, sql, args...)
-	if row == nil {
-		return nil, errors.New("failed to create resource mapping")
+	row, err := c.QueryRow(ctx, sql, args)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	var id string
@@ -170,9 +169,9 @@ func (c PolicyDBClient) GetResourceMapping(ctx context.Context, id string) (*pol
 		return nil, err
 	}
 
-	row := c.QueryRow(ctx, sql, args...)
-	if row == nil {
-		return nil, errors.New("failed to get resource mapping")
+	row, err := c.QueryRow(ctx, sql, args)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	rm, err := resourceMappingHydrateItem(row, c.logger)
@@ -195,7 +194,7 @@ func (c PolicyDBClient) ListResourceMappings(ctx context.Context) ([]*policy.Res
 		return nil, err
 	}
 
-	rows, err := c.Query(ctx, sql, args...)
+	rows, err := c.Query(ctx, sql, args)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -258,7 +257,7 @@ func (c PolicyDBClient) UpdateResourceMapping(ctx context.Context, id string, r 
 		return nil, err
 	}
 
-	if _, err := c.Exec(ctx, sql, args...); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 
@@ -286,7 +285,7 @@ func (c PolicyDBClient) DeleteResourceMapping(ctx context.Context, id string) (*
 		return nil, err
 	}
 
-	if _, err := c.Exec(ctx, sql, args...); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 

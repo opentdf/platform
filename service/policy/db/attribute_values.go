@@ -183,7 +183,7 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 	}
 
 	var id string
-	if r := c.QueryRow(ctx, sql, args...); r == nil {
+	if r, err := c.QueryRow(ctx, sql, args); err != nil {
 		return nil, err
 	} else if err := r.Scan(&id, &metadataJSON); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -199,7 +199,7 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		if memberErr != nil {
 			return nil, memberErr
 		}
-		if r := c.QueryRow(ctx, memberSQL, memberArgs...); r == nil {
+		if r, err := c.QueryRow(ctx, memberSQL, memberArgs); err != nil {
 			return nil, err
 		} else if err := r.Scan(&vmID); err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -300,9 +300,9 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, id string) (*poli
 		return nil, err
 	}
 
-	row := c.QueryRow(ctx, sql, args...)
-	if row == nil {
-		c.logger.Error("error getting attribute value", slog.String("id", id), slog.String("sql", sql))
+	row, err := c.QueryRow(ctx, sql, args)
+	if err != nil {
+		c.logger.Error("error getting attribute value", slog.String("id", id), slog.String("sql", sql), slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -377,7 +377,7 @@ func (c PolicyDBClient) ListAttributeValues(ctx context.Context, attributeID str
 		return nil, err
 	}
 
-	rows, err := c.Query(ctx, sql, args...)
+	rows, err := c.Query(ctx, sql, args)
 	if err != nil {
 		return nil, err
 	}
@@ -439,7 +439,7 @@ func (c PolicyDBClient) ListAllAttributeValues(ctx context.Context, state string
 		return nil, err
 	}
 
-	rows, err := c.Query(ctx, sql, args...)
+	rows, err := c.Query(ctx, sql, args)
 	if err != nil {
 		return nil, err
 	}
@@ -491,7 +491,7 @@ func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 		return nil, err
 	}
 
-	if _, err := c.Exec(ctx, sql, args...); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 	prevMembersSet := map[string]bool{}
@@ -528,7 +528,7 @@ func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 		if err != nil {
 			return nil, err
 		}
-		if _, err := c.Exec(ctx, sql, args...); err != nil {
+		if err := c.Exec(ctx, sql, args); err != nil {
 			return nil, err
 		}
 	}
@@ -538,7 +538,7 @@ func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 		if err != nil {
 			return nil, err
 		}
-		if _, err := c.Exec(ctx, sql, args...); err != nil {
+		if err := c.Exec(ctx, sql, args); err != nil {
 			return nil, err
 		}
 	}
@@ -571,7 +571,7 @@ func (c PolicyDBClient) UnsafeUpdateAttributeValue(ctx context.Context, r *unsaf
 		return nil, err
 	}
 
-	_, err = c.Exec(ctx, sql, args...)
+	err = c.Exec(ctx, sql, args)
 	if err != nil {
 		return nil, err
 	}
@@ -599,7 +599,7 @@ func (c PolicyDBClient) DeactivateAttributeValue(ctx context.Context, id string)
 		return nil, err
 	}
 
-	if _, err := c.Exec(ctx, sql, args...); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 	return c.GetAttributeValue(ctx, id)
@@ -621,7 +621,7 @@ func (c PolicyDBClient) UnsafeReactivateAttributeValue(ctx context.Context, id s
 		return nil, err
 	}
 
-	if _, err := c.Exec(ctx, sql, args...); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 	return c.GetAttributeValue(ctx, id)
@@ -648,7 +648,7 @@ func (c PolicyDBClient) UnsafeDeleteAttributeValue(ctx context.Context, toDelete
 		return nil, err
 	}
 
-	if _, err := c.Exec(ctx, sql, args...); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 
@@ -672,7 +672,7 @@ func (c PolicyDBClient) AssignKeyAccessServerToValue(ctx context.Context, k *att
 		return nil, err
 	}
 
-	if _, err := c.Exec(ctx, sql, args...); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 
@@ -694,7 +694,7 @@ func (c PolicyDBClient) RemoveKeyAccessServerFromValue(ctx context.Context, k *a
 		return nil, err
 	}
 
-	if _, err := c.Exec(ctx, sql, args...); err != nil {
+	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
 	}
 

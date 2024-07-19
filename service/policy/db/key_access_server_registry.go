@@ -54,7 +54,7 @@ func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, id string) (*pol
 	}
 	kas, err := c.Queries.GetKeyAccessServer(ctx, uuid)
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	var (
@@ -97,7 +97,7 @@ func (c PolicyDBClient) CreateKeyAccessServer(ctx context.Context, r *kasregistr
 		Metadata:  metadataBytes,
 	})
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	return &policy.KeyAccessServer{
@@ -145,7 +145,7 @@ func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r 
 		Metadata:  metadataJSON,
 	})
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	return &policy.KeyAccessServer{
@@ -161,7 +161,7 @@ func (c PolicyDBClient) DeleteKeyAccessServer(ctx context.Context, id string) (*
 
 	count, err := c.Queries.DeleteKeyAccessServer(ctx, uuid)
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound

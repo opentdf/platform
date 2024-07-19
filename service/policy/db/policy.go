@@ -61,7 +61,7 @@ func NewClient(c *db.Client, logger *logger.Logger) PolicyDBClient {
 	Tables.SubjectConditionSet = t(TableSubjectConditionSet)
 	Tables.KeyAccessServerRegistry = t(TableKeyAccessServerRegistry)
 
-	return PolicyDBClient{c, logger, New(c)}
+	return PolicyDBClient{c, logger, New(c.Pgx)}
 }
 
 func GetDBStateTypeTransformedEnum(state common.ActiveStateEnum) string {

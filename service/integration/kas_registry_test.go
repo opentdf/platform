@@ -199,6 +199,10 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 	s.Require().NoError(err)
 	s.NotNil(created)
 
+	initialGot, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(initialGot)
+
 	// update it with new values and metadata
 	updated, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, created.GetId(), &kasregistry.UpdateKeyAccessServerRequest{
 		Uri: updatedURI,
@@ -229,6 +233,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 	s.Equal(fixedLabel, got.GetMetadata().GetLabels()["fixed"])
 	s.Equal(updatedLabel, got.GetMetadata().GetLabels()["update"])
 	s.Equal(newLabel, got.GetMetadata().GetLabels()["new"])
+	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(initialGot.Metadata.CreatedAt.AsTime()))
 }
 
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Metadata_DoesNotAlterOtherValues() {

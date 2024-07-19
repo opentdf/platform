@@ -53,7 +53,7 @@ func init() {
 			return assignAttribute(cmd, true)
 		},
 	}
-	assign.Flags().StringVarP(&attr, "attr", "a", "", "attribute prefix, e.g. http://name.space/attr/name")
+	assign.Flags().StringVarP(&attr, "attr", "a", "", "attribute prefix, e.g. https://name.space/attr/name")
 	assign.Flags().StringVarP(&kas, "kas", "k", "", "which kas to assign")
 	assign.Flags().StringVarP(&values, "values", "v", "", "any attibute values to include; if empty, applies to all")
 	attributes.AddCommand(assign)

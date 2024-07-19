@@ -90,7 +90,7 @@ func listKases(cmd *cobra.Command) error {
 	return nil
 }
 
-func upsertKAS(ctx context.Context, s *sdk.SDK, uri string, pk *policy.PublicKey) (string, error) {
+func upsertKasRegistration(ctx context.Context, s *sdk.SDK, uri string, pk *policy.PublicKey) (string, error) {
 	r, err := s.KeyAccessServerRegistry.ListKeyAccessServers(ctx, &kasregistry.ListKeyAccessServersRequest{})
 	if err != nil {
 		slog.Error("ListKeyAccessServers", "err", err)
@@ -153,7 +153,7 @@ func updateKas(cmd *cobra.Command) error {
 		}
 	}
 
-	kasid, err := upsertKAS(cmd.Context(), s, kas, pk)
+	kasid, err := upsertKasRegistration(cmd.Context(), s, kas, pk)
 	if err != nil {
 		return err
 	}

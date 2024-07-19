@@ -360,7 +360,7 @@ func assignAttribute(cmd *cobra.Command, assign bool) error {
 	var kasids []string
 	switch {
 	case kas != "":
-		kasid, err := upsertKAS(cmd.Context(), s, kas, nil)
+		kasid, err := upsertKasRegistration(cmd.Context(), s, kas, nil)
 		if err != nil {
 			return err
 		}

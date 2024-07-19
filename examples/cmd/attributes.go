@@ -55,7 +55,7 @@ func init() {
 	}
 	assign.Flags().StringVarP(&attr, "attr", "a", "", "attribute prefix, e.g. https://name.space/attr/name")
 	assign.Flags().StringVarP(&kas, "kas", "k", "", "which kas to assign")
-	assign.Flags().StringVarP(&values, "values", "v", "", "any attibute values to include; if empty, applies to all")
+	assign.Flags().StringVarP(&values, "values", "v", "", "any attribute values to include; if empty, applies to all")
 	attributes.AddCommand(assign)
 
 	list := &cobra.Command{

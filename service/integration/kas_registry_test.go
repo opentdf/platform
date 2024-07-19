@@ -233,7 +233,9 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 	s.Equal(fixedLabel, got.GetMetadata().GetLabels()["fixed"])
 	s.Equal(updatedLabel, got.GetMetadata().GetLabels()["update"])
 	s.Equal(newLabel, got.GetMetadata().GetLabels()["new"])
-	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(initialGot.Metadata.CreatedAt.AsTime()))
+	creationTime := initialGot.GetMetadata().GetCreatedAt().AsTime()
+	updatedTime := got.GetMetadata().GetUpdatedAt().AsTime()
+	s.True(updatedTime.After(creationTime))
 }
 
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Metadata_DoesNotAlterOtherValues() {

@@ -156,6 +156,8 @@ func (s *AuthSuite) SetupTest() {
 				EnforceDPoP: true,
 				Issuer:      s.server.URL,
 				Audience:    "test",
+				DPoPSkew:    time.Hour,
+				TokenSkew:   time.Minute,
 			},
 			PublicRoutes: []string{
 				"/public",
@@ -378,6 +380,7 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/different/path", "", time.Now(), "incorrect `htu` claim in DPoP JWT"},
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POSTERS", "/a/path", "", time.Now(), "incorrect `htm` claim in DPoP JWT"},
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "bad ath", time.Now(), "incorrect `ath` claim in DPoP JWT"},
+		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "bad iat", time.Now().Add(2 * time.Hour), "\"iat\" not satisfied"},
 		{
 			otherKeyPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(),
 			"the `jkt` from the DPoP JWT didn't match the thumbprint from the access token",
@@ -389,19 +392,21 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 	}
 
 	for _, testCase := range testCases {
-		dpopToken := makeDPoPToken(s.T(), testCase)
-		_, _, err = s.auth.checkToken(
-			context.Background(),
-			[]string{fmt.Sprintf("DPoP %s", string(testCase.accessToken))},
-			receiverInfo{
-				u: "/a/path",
-				m: http.MethodPost,
-			},
-			[]string{dpopToken},
-		)
+		s.Run(testCase.errorMessage, func() {
+			dpopToken := makeDPoPToken(s.T(), testCase)
+			_, _, err = s.auth.checkToken(
+				context.Background(),
+				[]string{fmt.Sprintf("DPoP %s", string(testCase.accessToken))},
+				receiverInfo{
+					u: "/a/path",
+					m: http.MethodPost,
+				},
+				[]string{dpopToken},
+			)
 
-		s.Require().Error(err)
-		s.Contains(err.Error(), testCase.errorMessage)
+			s.Require().Error(err)
+			s.Contains(err.Error(), testCase.errorMessage)
+		})
 	}
 }
 

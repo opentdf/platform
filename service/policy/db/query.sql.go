@@ -51,21 +51,23 @@ func (q *Queries) DeleteKeyAccessServer(ctx context.Context, id string) (int64, 
 }
 
 const getKeyAccessServer = `-- name: GetKeyAccessServer :one
-SELECT id, uri, public_key, created_at, updated_at, metadata FROM key_access_servers WHERE id = $1
+SELECT id, uri, public_key,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+FROM key_access_servers WHERE id = $1
 `
 
 type GetKeyAccessServerRow struct {
-	ID        string             `json:"id"`
-	Uri       string             `json:"uri"`
-	PublicKey []byte             `json:"public_key"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
-	Metadata  []byte             `json:"metadata"`
+	ID        string `json:"id"`
+	Uri       string `json:"uri"`
+	PublicKey []byte `json:"public_key"`
+	Metadata  []byte `json:"metadata"`
 }
 
 // GetKeyAccessServer
 //
-//	SELECT id, uri, public_key, created_at, updated_at, metadata FROM key_access_servers WHERE id = $1
+//	SELECT id, uri, public_key,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+//	FROM key_access_servers WHERE id = $1
 func (q *Queries) GetKeyAccessServer(ctx context.Context, id string) (GetKeyAccessServerRow, error) {
 	row := q.db.QueryRow(ctx, getKeyAccessServer, id)
 	var i GetKeyAccessServerRow
@@ -73,8 +75,6 @@ func (q *Queries) GetKeyAccessServer(ctx context.Context, id string) (GetKeyAcce
 		&i.ID,
 		&i.Uri,
 		&i.PublicKey,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 		&i.Metadata,
 	)
 	return i, err
@@ -83,7 +83,7 @@ func (q *Queries) GetKeyAccessServer(ctx context.Context, id string) (GetKeyAcce
 const listKeyAccessServers = `-- name: ListKeyAccessServers :many
 
 SELECT id, uri, public_key,
-JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
 FROM key_access_servers
 `
 
@@ -97,7 +97,7 @@ type ListKeyAccessServersRow struct {
 // KEY ACCESS SERVERS
 //
 //	SELECT id, uri, public_key,
-//	JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
 //	FROM key_access_servers
 func (q *Queries) ListKeyAccessServers(ctx context.Context) ([]ListKeyAccessServersRow, error) {
 	rows, err := q.db.Query(ctx, listKeyAccessServers)

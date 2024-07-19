@@ -14,4 +14,4 @@ jobs:
       - uses: hmarr/auto-approve-action@v4
         if: |
           github.actor == 'opentdf-automation' &&
-          startsWith(github.event.pull_request.title, 'fix(core): Autobump'
+          startsWith(github.event.pull_request.title, 'fix(core): Autobump')

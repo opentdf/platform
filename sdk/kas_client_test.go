@@ -61,11 +61,14 @@ func TestCreatingRequest(t *testing.T) {
 	}
 
 	keyAccess := KeyAccess{
-		KeyType:           "type1",
-		KasURL:            "https://kas.example.org",
-		Protocol:          "protocol one",
-		WrappedKey:        "wrapped",
-		PolicyBinding:     "bound",
+		KeyType:    "type1",
+		KasURL:     "https://kas.example.org",
+		Protocol:   "protocol one",
+		WrappedKey: "wrapped",
+		PolicyBinding: Pb{
+			Alg:  "alg",
+			Hash: "hash",
+		},
 		EncryptedMetadata: "encrypted",
 	}
 

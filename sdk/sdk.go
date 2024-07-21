@@ -267,18 +267,7 @@ func (s SDK) Conn() *grpc.ClientConn {
 	return s.conn
 }
 
-// Detects whether or not the reader is a valid TDF. It first checks if it can "open" it
-// Then attempts to extract a manifest, then finally it validates the manifest using the json schema
-// If any of the checks fail, it will return false.
-//
-// Something to keep in mind is that if we make updates to the schema, such as making certain fields
-// 'required', older TDF versions will fail despite being valid. So each time we release an update to
-// the TDF spec, we'll need to include the respective schema in the schema directory, then update this code
-// to validate against all previously known schema versions.
-
-// Types
-
-// Define the custom type
+// TDF Types
 type TdfType int
 
 const (
@@ -309,6 +298,15 @@ func GetTdfType(reader io.ReadSeeker) TdfType {
 
 //go:embed schema/manifest.schema.json
 var manifestSchema []byte
+
+// Detects whether, or not the reader is a valid TDF. It first checks if it can "open" it
+// Then attempts to extract a manifest, then finally it validates the manifest using the json schema
+// If any of the checks fail, it will return false.
+//
+// Something to keep in mind is that if we make updates to the schema, such as making certain fields
+// 'required', older TDF versions will fail despite being valid. So each time we release an update to
+// the TDF spec, we'll need to include the respective schema in the schema directory, then update this code
+// to validate against all previously known schema versions.
 
 func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 	// create tdf reader

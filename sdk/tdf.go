@@ -486,6 +486,28 @@ func (s SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
 	}, nil
 }
 
+func (s SDK) IsValidTdf(reader io.ReadSeeker) (bool, error) {
+	// create tdf reader
+	tdfReader, err := archive.NewTDFReader(reader)
+	if err != nil {
+		return false, fmt.Errorf("archive.NewTDFReader failed: %w", err)
+	}
+
+	manifest, err := tdfReader.Manifest()
+	if err != nil {
+		return false, fmt.Errorf("tdfReader.Manifest failed: %w", err)
+	}
+
+	manifestObj := &Manifest{}
+	err = json.Unmarshal([]byte(manifest), manifestObj)
+
+	if err != nil {
+		return false, fmt.Errorf("json.Unmarshal failed:%w", err)
+	}
+
+	return true, nil
+}
+
 // Do any network based operations required.
 // This allows making the requests cancellable
 func (r *Reader) Init(ctx context.Context) error {

@@ -1,0 +1,232 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.com/manifest.schema.json",
+    "title": "manifest",
+    "description": "TDF manifest in JSON",
+    "type": "object",
+    "properties": {
+      "payload": {
+        "type": "object",
+        "description": "An object which contains information describing the payload.",
+        "properties": {
+          "type": {
+            "description": "Describes the type of payload is associated with the TDF.",
+            "type": "string"
+          },
+          "url": {
+            "description": "URL which points to payload. For reference types, with the default ZIP protocol, the URL would point to a local file within the zip.",
+            "type": "string"
+          },
+          "protocol": {
+            "description": "The payload protocol. Default is zip."
+          },
+          "isEncrypted": {
+            "description": "Designates whether or not the payload is encrypted, or cleartext.",
+            "type": "boolean"
+          },
+          "mimeType": {
+            "description": "Specifies the type of file that is encrypted. Default is `application/octet-stream`.",
+            "type": "string"
+          },
+          "tdf_spec_version": {
+            "description": "Semver version number of the TDF spec.",
+            "type": "string"
+          }
+        },
+        "required": ["type", "url", "protocol", "isEncrypted","mimeType", "tdf_spec_version"]
+      },
+      "encryptionInformation": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "Designates the type of key access protocol was used. Default, is split.",
+            "type": "string"
+          },
+          "keyAccess": {
+            "description": "An array of keyAccess objects which are used to retrieve keys from one, or more Key Access Services",
+            "type": "array",
+            "items": {
+              "description": "A key access object",
+              "type": "object",
+              "properties": {
+                "type": {
+                  "description": "The type of key access object.",
+                  "type": "string",
+                  "enum": ["wrapped", "remote"]
+                },
+                "url": {
+                  "description": "A fully qualified URL pointing to a key access service responsible for managing access to the encryption keys.",
+                  "type": "string"
+                },
+                "protocol": {
+                  "description": "The protocol to be used for managing key access.",
+                  "type": "string",
+                  "enum": ["kas"]
+                },
+                "wrappedKey": {
+                  "description": "The symmetric key used to encrypt the payload. It has been encrypted using the public key of the KAS, then base64 encoded.",
+                  "type": "string"
+                },
+                "sid": {
+                  "description": "A unique identifier for a single key split. In some complex policies, multiple key access objects may exist that share a specific key split. Using a splitId allows software to more efficiently operate by not reusing key material unnecessarily. ",
+                  "type": "string"
+                },
+                "kid": {
+                  "description": "A UUID for the specific keypair used for wrapping the symmetric key.",
+                  "type": "string"
+                },
+                "policyBinding": {
+                  "description": "Object describing the policyBinding. Contains a hash, and an algorithm used.",
+                  "type": "object",
+                  "properties": {
+                    "alg": {
+                      "description": "The policy binding algorithm used to generate the hash.",
+                      "type": "string"
+                    },
+                    "hash": {
+                      "description": "This contains a keyed hash that will provide cryptographic integrity on the policy object, such that it cannot be modified or copied to another TDF, without invalidating the binding. Specifically, you would have to have access to the key in order to overwrite the policy.",
+                      "type": "string"
+                    }
+                  }
+                  ,"required": ["alg", "hash"]
+                },
+                "encryptedMetadata": {
+                  "description": "Metadata associated with the TDF, and the request. The contents of the metadata are freeform, and are used to pass information from the client, and any plugins that may be in use by the KAS. The metadata stored here should not be used for primary access decisions. Base64.",
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["type", "url", "protocol", "wrappedKey","sid", "kid", "policyBinding"]
+          },
+          "method": {
+            "type": "object",
+            "properties": {
+              "algorithm": {
+                "description": "Algorithm used to encrypt the payload",
+                "type": "string"
+              },
+              "isStreamable": {
+                "description": "Designates whether or not the payload is streamable.",
+                "type": "boolean"
+              }
+            },
+            "required": ["algorithm", "isStreamable"]
+          },
+          "integrityInformation": {
+            "type": "object",
+            "properties": {
+              "rootSignature": {
+                "type": "object",
+                "properties": {
+                  "alg": {
+                    "description": "Algorithm used to generate the root signature of the payload",
+                    "type": "string"
+                  },
+                  "sig": {
+                    "description": "The payload signature",
+                    "type": "string"
+                  }
+                }
+              },
+              "segmentSizeDefault": {
+                "description": "Default size of a encryption segment",
+                "type": "number"
+              },
+              "segmentHashAlg": {
+                "description": "Algorithm used to generate segment hashes",
+                "type": "string"
+              },
+              "segments": {
+                "description": "An array of segment objects. Allows for the possibility of assuring integrity over file segments, in addition to the entire payload. Useful for streaming.",
+                "type": "array",
+                "items": {
+                  "description": "Segment object. Contains information necessary to validate integrity over a specific byte range of a payload.",
+                  "type": "object",
+                  "properties": {
+                    "hash": {
+                      "description": "Generated hash using the segment hashing algorithm specified in the parent object.",
+                      "type": "string"
+                    },
+                    "segmentSize": {
+                      "description": "The size of the segment prior to its encryption. Optional field only specified if it differs from the 'segmentSizeDefault', specified above.",
+                      "type": "number"
+                    },
+                    "encryptedSegmentSize": {
+                      "description": "The size of the segment once it has been encrypted.",
+                      "type": "number"
+                    }
+                  }
+                }
+              },
+              "encryptedSegmentSizeDefault": {
+                "description": "Default size of an encrypted segment. TODO: Is this necessary??",
+                "type": "number"
+              }
+            },
+            "required": ["rootSignature", "segmentSizeDefault", "segments", "encryptedSegmentSizeDefault"]
+          },
+          "policy": {
+            "description": "Base64 encoded policy object",
+            "type": "string"
+          }
+        }
+      },
+      "assertions": {
+        "type": "array",
+        "description": "An array of objects used to express metadata about the objects in the scope attribute of the assertion. An assertion also supports metadata about the assertion statement for the purposes of indicating any handling instructions pertinent to the statement itself. Also supports encrypted statements and binding the statement with objects in its scope.",
+        "items": {
+          "type": "object",
+          "description": "A single assertion",
+          "properties": {
+            "id": {
+              "description": "A unique local identifier used for binding and signing purposes. Not guaranteed to be unique across multiple TDOs but must be unique within a single instance.",
+              "type": "string"
+            },
+            "type": {
+              "description": "Describes the type of assertion ('handling' or 'other').",
+              "type": "string"
+            },
+            "scope": {
+              "description": "An enumeration of the object to which the assertion applies ('tdo' or 'payload').",
+              "type": "string"
+            },
+            "appliesToState": {
+              "description": "Used to indicate if the statement metadata applies to 'encrypted' or 'unencrypted' data.",
+              "type": "string"
+            },
+            "statement": {
+              "description": "Intended for access, rights, and/or handling instructions that apply to the scope of the assertion.",
+              "type": "object",
+              "properties": {
+                "format": {
+                  "description": "Describes the payload content encoding format ('xml-structured', 'base64binary', 'string').",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "Payload content encoded in the format specified.",
+                  "type": ["string", "object"]
+                }
+              }
+            },
+            "binding": {
+              "description": "Object describing the assertionBinding. Contains a hash, and an algorithm used.",
+              "type": "object",
+              "properties": {
+                "method": {
+                  "description": "The assertion binding method used encode the signature. Default is 'jws'",
+                  "type": "string"
+                },
+                "signature": {
+                  "description": "This contains a keyed hash that will provide cryptographic integrity on the assertion object, such that it cannot be modified or copied to another TDF, without invalidating the binding. Specifically, you would have to have access to the key in order to overwrite the policy.",
+                  "type": "string"
+                }
+              },
+              "required": ["method", "signature"]
+            }
+          },
+          "required": ["id", "type", "scope", "appliesToState", "statement"]
+        }
+      }
+    },
+    "required": ["payload", "encryptionInformation", "assertions"]
+  }

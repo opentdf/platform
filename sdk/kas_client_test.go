@@ -65,7 +65,7 @@ func TestCreatingRequest(t *testing.T) {
 		KasURL:     "https://kas.example.org",
 		Protocol:   "protocol one",
 		WrappedKey: "wrapped",
-		PolicyBinding: Pb{
+		PolicyBinding: PolicyBinding{
 			Alg:  "alg",
 			Hash: "hash",
 		},

@@ -328,7 +328,7 @@ func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 
 	if err != nil {
 		fmt.Println("Could not validate manifest.json")
-		return false, fmt.Errorf("Could not validate JSON", err)
+		return false, fmt.Errorf("Could not validate JSON ")
 	}
 
 	if !result.Valid() {

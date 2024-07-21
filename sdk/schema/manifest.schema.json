@@ -33,7 +33,7 @@
             "type": "string"
           }
         },
-        "required": ["type", "url", "protocol", "isEncrypted","mimeType", "tdf_spec_version"]
+        "required": ["type", "url", "protocol", "isEncrypted","mimeType"]
       },
       "encryptionInformation": {
         "type": "object",
@@ -228,5 +228,5 @@
         }
       }
     },
-    "required": ["payload", "encryptionInformation", "assertions"]
+    "required": ["payload", "encryptionInformation"]
   }

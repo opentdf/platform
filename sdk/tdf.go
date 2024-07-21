@@ -3,10 +3,12 @@ package sdk
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/xeipuuv/gojsonschema"
 	"io"
 	"math"
 	"strings"
@@ -490,6 +492,17 @@ func (s SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
 	}, nil
 }
 
+//go:embed schema/manifest.schema.json
+var manifestSchema []byte
+
+// Detects whether or not the reader is a valid TDF. It first checks if it can "open" it
+// Then attempts to extract a manifest, then finally it validates the manifest using the json schema
+// If any of the checks fail, it will return false.
+//
+// Something to keep in mind is that if we make updates to the schema, such as making certain fields
+// 'required', older TDF versions will fail despite being valid. So each time we release an update to
+// the TDF spec, we'll need to include the respective schema in the schema directory, then update this code
+// to validate against all previously known schema versions.
 func (s SDK) IsValidTdf(reader io.ReadSeeker) (bool, error) {
 	// create tdf reader
 	tdfReader, err := archive.NewTDFReader(reader)
@@ -502,11 +515,19 @@ func (s SDK) IsValidTdf(reader io.ReadSeeker) (bool, error) {
 		return false, fmt.Errorf("tdfReader.Manifest failed: %w", err)
 	}
 
-	manifestObj := &Manifest{}
-	err = json.Unmarshal([]byte(manifest), manifestObj)
+	// Convert the embedded data to a string
+	manifestSchemaString := string(manifestSchema)
+	loader := gojsonschema.NewStringLoader(manifestSchemaString)
+	manifestStringLoader := gojsonschema.NewStringLoader(manifest)
+	result, err := gojsonschema.Validate(loader, manifestStringLoader)
 
 	if err != nil {
-		return false, fmt.Errorf("json.Unmarshal failed:%w", err)
+		fmt.Println("Could not validate manifest.json")
+		return false, fmt.Errorf("Could not validate JSON", err)
+	}
+
+	if !result.Valid() {
+		return false, fmt.Errorf("Manifest was not valid")
 	}
 
 	return true, nil

@@ -14,11 +14,12 @@ import (
 )
 
 var (
-	nanoFormat     bool
-	autoconfigure  bool
-	noKIDInKAO     bool
-	outputName     string
-	dataAttributes []string
+	nanoFormat        bool
+	autoconfigure     bool
+	noKIDInKAO        bool
+	debugLogging      bool
+	encryptOutputName string
+	dataAttributes    []string
 )
 
 func init() {
@@ -30,9 +31,10 @@ func init() {
 	}
 	encryptCmd.Flags().StringSliceVarP(&dataAttributes, "data-attributes", "a", []string{}, "space separated list of data attributes")
 	encryptCmd.Flags().BoolVar(&nanoFormat, "nano", false, "Output in nanoTDF format")
+	encryptCmd.Flags().BoolVar(&debugLogging, "debug", false, "Include additional debug logging")
 	encryptCmd.Flags().BoolVar(&autoconfigure, "autoconfigure", true, "Use attribute grants to select kases")
 	encryptCmd.Flags().BoolVar(&noKIDInKAO, "no-kid-in-kao", false, "[deprecated] Disable storing key identifiers in TDF KAOs")
-	encryptCmd.Flags().StringVarP(&outputName, "output", "o", "sensitive.txt.tdf", "name or path of output file; - for stdout")
+	encryptCmd.Flags().StringVarP(&encryptOutputName, "output", "o", "sensitive.txt.tdf", "name or path of output file; - for stdout")
 
 	ExamplesCmd.AddCommand(&encryptCmd)
 }
@@ -62,14 +64,14 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	out := os.Stdout
-	if outputName != "-" {
-		out, err = os.Create(outputName)
+	if encryptOutputName != "-" {
+		out, err = os.Create(encryptOutputName)
 		if err != nil {
 			return err
 		}
 	}
 	defer func() {
-		if outputName != "-" {
+		if encryptOutputName != "-" {
 			out.Close()
 		}
 	}()
@@ -94,7 +96,10 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		cmd.Println(string(manifestJSON))
+		if debugLogging {
+			cmd.Println(string(manifestJSON))
+		}
+
 	} else {
 		nanoTDFConfig, err := client.NewNanoTDFConfig()
 		if err != nil {
@@ -112,8 +117,8 @@ func encrypt(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		if outputName != "-" {
-			err = cat(cmd, outputName)
+		if encryptOutputName != "-" {
+			err = cat(cmd, encryptOutputName)
 			if err != nil {
 				return err
 			}
@@ -134,7 +139,9 @@ func cat(cmd *cobra.Command, nTdfFile string) error {
 		return err
 	}
 
-	cmd.Println(string(ocrypto.Base64Encode(buf.Bytes())))
+	if debugLogging {
+		cmd.Println(string(ocrypto.Base64Encode(buf.Bytes())))
+	}
 
 	return nil
 }

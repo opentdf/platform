@@ -9,6 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var decryptOutputName string
+
 func init() {
 	var decryptCmd = &cobra.Command{
 		Use:   "decrypt",
@@ -16,7 +18,7 @@ func init() {
 		RunE:  decrypt,
 		Args:  cobra.MinimumNArgs(1),
 	}
-	decryptCmd.Flags().StringVarP(&outputName, "output", "o", "-", "name or path of output file; - for stdout")
+	decryptCmd.Flags().StringVarP(&decryptOutputName, "output", "o", "-", "name or path of output file; - for stdout")
 	ExamplesCmd.AddCommand(decryptCmd)
 }
 
@@ -57,14 +59,14 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	out := os.Stdout
-	if outputName != "-" {
-		out, err = os.Create(outputName)
+	if decryptOutputName != "-" {
+		out, err = os.Create(decryptOutputName)
 		if err != nil {
 			return err
 		}
 	}
 	defer func() {
-		if outputName != "-" {
+		if decryptOutputName != "-" {
 			out.Close()
 		}
 	}()

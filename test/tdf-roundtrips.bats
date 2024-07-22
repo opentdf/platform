@@ -5,7 +5,7 @@
 
 @test "examples: roundtrip Z-TDF" {
   echo "[INFO] create a tdf3 format file"
-  run go run ./examples encrypt --autoconfigure=false "Hello Zero Trust"
+  run go run ./examples encrypt --autoconfigure=false --debug "Hello Zero Trust"
   echo "[INFO] echoing output; if successful, this is just the manifest"
   echo "$output"
 

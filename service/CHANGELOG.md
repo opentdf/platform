@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.13](https://github.com/opentdf/platform/compare/service/v0.4.12...service/v0.4.13) (2024-07-22)
+
+
+### Features
+
+* **core:** Adds authn time skew config ([#1175](https://github.com/opentdf/platform/issues/1175)) ([adde7c4](https://github.com/opentdf/platform/commit/adde7c48645575cbe57e76b0deb50e6c9b11d192))
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1192](https://github.com/opentdf/platform/issues/1192)) ([dbae4ff](https://github.com/opentdf/platform/commit/dbae4ff4cd4ff53841d123d5086b7fded79efd95))
+* fixed policy binding type ([#1184](https://github.com/opentdf/platform/issues/1184)) ([9800a32](https://github.com/opentdf/platform/commit/9800a32c8d9d83458403e2f87720f7882461fc32))
+
 ## [0.4.12](https://github.com/opentdf/platform/compare/service/v0.4.11...service/v0.4.12) (2024-07-14)
 
 

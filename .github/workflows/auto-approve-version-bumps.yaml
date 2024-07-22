@@ -23,6 +23,6 @@ jobs:
           fi
       - uses: hmarr/auto-approve-action@v4
         if: |
-          github.actor == 'opentdf-automation' &&
+          github.actor == 'opentdf-automation[bot]' &&
           startsWith(github.event.pull_request.title, 'fix(core): Autobump' &&
           outputs.bad_files_found != 'true'

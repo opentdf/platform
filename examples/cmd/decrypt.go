@@ -16,7 +16,7 @@ func init() {
 		RunE:  decrypt,
 		Args:  cobra.MinimumNArgs(1),
 	}
-	decryptCmd.Flags().StringVarP(&outputName, "output", "o", "sensitive.txt", "name or path of output file; - for stdout")
+	decryptCmd.Flags().StringVarP(&outputName, "output", "o", "-", "name or path of output file; - for stdout")
 	ExamplesCmd.AddCommand(decryptCmd)
 }
 

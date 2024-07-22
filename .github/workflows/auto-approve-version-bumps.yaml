@@ -15,7 +15,7 @@ jobs:
           bad_files=$(gh pr view --json files | jq '[.files[].path | select(endswith("go.mod") or endswith("go.sum") | not)] | length')
           if [ "$bad_files" -ne 0 ]; then
             echo "Found $bad_files files that are not go.mod or go.sum. Will not auto approve."
-            exit 0
+            exit 1
           fi
           echo "Only go.mod and go.sum files found. Continuing Workflow."
       - uses: hmarr/auto-approve-action@v4

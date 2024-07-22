@@ -327,12 +327,12 @@ func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 	result, err := gojsonschema.Validate(loader, manifestStringLoader)
 
 	if err != nil {
-		fmt.Println("Could not validate manifest.json")
-		return false, fmt.Errorf("Could not validate JSON ")
+		errors.New("could not validate manifest.json")
+		return false, errors.New("Could not validate JSON ")
 	}
 
 	if !result.Valid() {
-		return false, fmt.Errorf("Manifest was not valid")
+		return false, errors.New("manifest was not valid")
 	}
 
 	return true, nil

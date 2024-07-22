@@ -413,7 +413,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 	// extract the policy
 	policy, err := extractNanoPolicy(symmetricKey, header)
 	if err != nil {
-		return nil, fmt.Errorf("error extracting policy: %w", err)
+		return nil, fmt.Errorf("Error extracting policy: %w", err)
 	}
 
 	// check the policy binding

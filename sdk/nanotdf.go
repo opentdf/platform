@@ -689,8 +689,9 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	// compute kid from kasPublicKey -or- use new endpoint that provides kid JWKS
 	kidHash := sha256.Sum256([]byte(kasPublicKey))
 	kidHex := hex.EncodeToString(kidHash[:])
+	slog.Debug("kasPublicKey", slog.String("fingerprint", kidHex))
 	// FIXME for now, it will be hardcoded to match opentdf.yaml
-	kasURLKid, err := addQueryParamToURL(kasURL, "kid", kidHex)
+	kasURLKid, err := addQueryParamToURL(kasURL, "kid", "e0")
 	if err != nil {
 		return 0, fmt.Errorf("addQueryParamToURL failed: %w", err)
 	}

@@ -10,7 +10,6 @@ jobs:
     steps:
       - run: |
           echo "actor: ${{ github.actor }}"
-          echo "title: ${{ github.event.pull_request.title }}"
       - id: bad-files
         run: |
           bad_files=$(gh pr view --json files | jq '[.files[].path | select(endswith("go.mod") or endswith("go.sum") | not)] | length')

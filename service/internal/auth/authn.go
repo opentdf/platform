@@ -222,7 +222,6 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			m: r.Method,
 		}, r.Header["Dpop"])
 		if err != nil {
-			a.logger.WarnContext(r.Context(), "failed to validate token", slog.String("error", err.Error()))
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
 			return
 		}
@@ -305,7 +304,6 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 		md["dpop"],
 	)
 	if err != nil {
-		a.logger.Warn("failed to validate token", slog.String("error", err.Error()))
 		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
 	}
 
@@ -335,6 +333,7 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 	case strings.HasPrefix(authHeader[0], "Bearer "):
 		tokenRaw = strings.TrimPrefix(authHeader[0], "Bearer ")
 	default:
+		a.logger.Warn("failed to validate authentication header: not of type bearer or dpop", slog.String("header", authHeader[0]))
 		return nil, nil, fmt.Errorf("not of type bearer or dpop")
 	}
 
@@ -344,8 +343,10 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		jwt.WithValidate(true),
 		jwt.WithIssuer(a.oidcConfiguration.Issuer),
 		jwt.WithAudience(a.oidcConfiguration.Audience),
+		jwt.WithAcceptableSkew(a.oidcConfiguration.TokenSkew),
 	)
 	if err != nil {
+		a.logger.Warn("failed to validate auth token", slog.String("token", tokenRaw), slog.Any("err", err))
 		return nil, nil, err
 	}
 
@@ -364,8 +365,9 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		ctx = ContextWithAuthNInfo(ctx, nil, accessToken, tokenRaw)
 		return accessToken, ctx, nil
 	}
-	key, err := validateDPoP(accessToken, tokenRaw, dpopInfo, dpopHeader, a.logger)
+	key, err := a.validateDPoP(accessToken, tokenRaw, dpopInfo, dpopHeader)
 	if err != nil {
+		a.logger.Warn("failed to validate dpop", slog.String("token", tokenRaw), slog.Any("err", err))
 		return nil, nil, err
 	}
 	ctx = ContextWithAuthNInfo(ctx, key, accessToken, tokenRaw)
@@ -415,7 +417,7 @@ func GetRawAccessTokenFromContext(ctx context.Context, l *logger.Logger) string 
 	return ""
 }
 
-func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiverInfo, headers []string, logger *logger.Logger) (jwk.Key, error) {
+func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiverInfo, headers []string) (jwk.Key, error) {
 	if len(headers) != 1 {
 		return nil, fmt.Errorf("got %d dpop headers, should have 1", len(headers))
 	}
@@ -443,7 +445,6 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 
 	dpop, err := jws.Parse([]byte(dpopHeader))
 	if err != nil {
-		logger.Error("error parsing JWT", "error", err)
 		return nil, fmt.Errorf("invalid DPoP JWT")
 	}
 	if len(dpop.Signatures()) != 1 {
@@ -466,8 +467,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 
 	isPrivate, err := jwk.IsPrivateKey(dpopKey)
 	if err != nil {
-		logger.Error("error checking if key is private", "error", err)
-		return nil, fmt.Errorf("invalid DPoP key specified")
+		return nil, fmt.Errorf("invalid DPoP key field: %w", err)
 	}
 
 	if isPrivate {
@@ -476,8 +476,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
 	if err != nil {
-		logger.Error("error computing thumbprint for key", "error", err)
-		return nil, fmt.Errorf("couldn't compute thumbprint for key in `jwk` in DPoP JWT")
+		return nil, fmt.Errorf("couldn't compute thumbprint for key in `jwk` in DPoP JWT: %w", err)
 	}
 
 	thumbprintStr := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)
@@ -489,8 +488,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 	// in the validated access token
 	dpopToken, err := jwt.Parse([]byte(dpopHeader), jwt.WithKey(protectedHeaders.Algorithm(), dpopKey))
 	if err != nil {
-		logger.Error("error validating DPoP JWT", "error", err)
-		return nil, fmt.Errorf("failed to verify signature on DPoP JWT")
+		return nil, fmt.Errorf("failed to verify signature on DPoP JWT: %w", err)
 	}
 
 	issuedAt := dpopToken.IssuedAt()
@@ -498,7 +496,7 @@ func validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiver
 		return nil, fmt.Errorf("missing `iat` claim in the DPoP JWT")
 	}
 
-	if issuedAt.Add(time.Hour).Before(time.Now()) {
+	if issuedAt.Add(a.oidcConfiguration.DPoPSkew).Before(time.Now()) {
 		return nil, fmt.Errorf("the DPoP JWT has expired")
 	}
 

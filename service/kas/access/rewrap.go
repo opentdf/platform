@@ -345,9 +345,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 	}
 
 	access, err := canAccess(ctx, tok, *policy, p.SDK, *p.Logger)
-	if err != nil {
-		return nil, err400("bad request")
-	}
+
 	// Audit the TDF3 Rewrap
 	kasPolicy := ConvertToAuditKasPolicy(*policy)
 

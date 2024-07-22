@@ -6,11 +6,13 @@ import (
 	"crypto/elliptic"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"net/url"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/kas"
@@ -62,6 +64,10 @@ type NanoTDFHeader struct {
 	gmacPolicyBinding   []byte
 	ecdsaPolicyBindingR []byte
 	ecdsaPolicyBindingS []byte
+}
+
+func (header *NanoTDFHeader) GetKasUrl() ResourceLocator {
+	return header.kasURL
 }
 
 // GetCipher -- get the cipher from the nano tdf header
@@ -669,7 +675,7 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 		return 0, errors.New("exceeds max size for nano tdf")
 	}
 
-	kasURL, err := config.kasURL.getURL()
+	kasURL, err := config.kasURL.GetURL()
 	if err != nil {
 		return 0, fmt.Errorf("config.kasURL failed:%w", err)
 	}
@@ -678,8 +684,18 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	if err != nil {
 		return 0, fmt.Errorf("getECPublicKey failed:%w", err)
 	}
-
 	slog.Debug("CreateNanoTDF", slog.String("header size", kasPublicKey))
+
+	// compute kid from kasPublicKey -or- use new endpoint that provides kid JWKS
+	kidHash := sha256.Sum256([]byte(kasPublicKey))
+	kidHex := hex.EncodeToString(kidHash[:])
+	// FIXME for now, it will be hardcoded to match opentdf.yaml
+	kasURLKid, err := addQueryParamToURL(kasURL, "kid", kidHex)
+	if err != nil {
+		return 0, fmt.Errorf("addQueryParamToURL failed: %w", err)
+	}
+	// update KAS URL with kid
+	config.kasURL.setURL(kasURLKid)
 
 	config.kasPublicKey, err = ocrypto.ECPubKeyFromPem([]byte(kasPublicKey))
 	if err != nil {
@@ -770,7 +786,7 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
-	kasURL, err := header.kasURL.getURL()
+	kasURL, err := header.kasURL.GetURL()
 	if err != nil {
 		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
@@ -888,4 +904,16 @@ func versionSalt() []byte {
 	digest := sha256.New()
 	digest.Write([]byte(kNanoTDFMagicStringAndVersion))
 	return digest.Sum(nil)
+}
+
+// addQueryParamToURL - Adds a query parameter to a given URL
+func addQueryParamToURL(baseURL, paramKey, paramValue string) (string, error) {
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return "", fmt.Errorf("url parse failed:%w", err)
+	}
+	query := u.Query()
+	query.Set(paramKey, paramValue)
+	u.RawQuery = query.Encode()
+	return u.String(), nil
 }

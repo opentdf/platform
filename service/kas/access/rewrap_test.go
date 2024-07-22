@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
-	"fmt"
 	"log/slog"
 	"testing"
 
@@ -284,7 +283,6 @@ func makeRewrapBody(t *testing.T, policy []byte, policyBindingAsString bool) []b
 	}
 	bodyData, err := json.Marshal(mockBody)
 
-	fmt.Println(bodyData)
 	require.NoError(t, err)
 	tok := jwt.New()
 	err = tok.Set("requestBody", string(bodyData))

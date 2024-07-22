@@ -16,6 +16,7 @@ func init() {
 		RunE:  decrypt,
 		Args:  cobra.MinimumNArgs(1),
 	}
+	decryptCmd.Flags().StringVarP(&outputName, "output", "o", "sensitive.txt", "name or path of output file; - for stdout")
 	ExamplesCmd.AddCommand(decryptCmd)
 }
 
@@ -55,6 +56,19 @@ func decrypt(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	out := os.Stdout
+	if outputName != "-" {
+		out, err = os.Create(outputName)
+		if err != nil {
+			return err
+		}
+	}
+	defer func() {
+		if outputName != "-" {
+			out.Close()
+		}
+	}()
+
 	if !isNano {
 		tdfreader, err := client.LoadTDF(file)
 		if err != nil {
@@ -62,12 +76,12 @@ func decrypt(cmd *cobra.Command, args []string) error {
 		}
 
 		//Print decrypted string
-		_, err = io.Copy(os.Stdout, tdfreader)
+		_, err = io.Copy(out, tdfreader)
 		if err != nil && err != io.EOF {
 			return err
 		}
 	} else {
-		_, err = client.ReadNanoTDF(os.Stdout, file)
+		_, err = client.ReadNanoTDF(out, file)
 		if err != nil {
 			return err
 		}

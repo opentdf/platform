@@ -222,7 +222,8 @@ type signatureConfig struct {
 }
 
 type policyInfo struct {
-	body PolicyBody
+	body   PolicyBody
+	pkaCfg PolicyKeyAccess
 	//	binding *eccSignature
 }
 
@@ -752,6 +753,11 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	if err != nil {
 		return 0, fmt.Errorf("ocrypto.ECPubKeyFromPem failed: %w", err)
 	}
+	kasPublicKeyECDSA, err := ocrypto.ECPubKeyFromPemECDSA([]byte(kasPublicKey))
+	if err != nil {
+		return 0, fmt.Errorf("ocrypto.ECPubKeyFromPem failed: %w", err)
+	}
+	config.policy.pkaCfg.PublicKeyBytes, err = ocrypto.CompressedECPublicKey(config.bindCfg.eccMode, *kasPublicKeyECDSA)
 
 	// Create nano tdf header
 	key, totalSize, err := writeNanoTDFHeader(writer, config)

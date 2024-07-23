@@ -217,6 +217,42 @@ func VerifyECDSASig(digest, r, s []byte, pubKey *ecdsa.PublicKey) bool {
 	return ecdsa.Verify(pubKey, digest, rAsBigInt, sAsBigInt)
 }
 
+// ECPubKeyFromPemECDSA generate ec public from pem format
+func ECPubKeyFromPemECDSA(pemECPubKey []byte) (*ecdsa.PublicKey, error) {
+	block, _ := pem.Decode(pemECPubKey)
+	if block == nil {
+		return nil, fmt.Errorf("failed to parse PEM formatted public key")
+	}
+
+	var pub any
+	if strings.Contains(string(pemECPubKey), "BEGIN CERTIFICATE") {
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("x509.ParseCertificate failed: %w", err)
+		}
+
+		var ok bool
+		if pub, ok = cert.PublicKey.(*ecdsa.PublicKey); !ok {
+			return nil, fmt.Errorf("failed to parse PEM formatted public key")
+		}
+	} else {
+		var err error
+		pub, err = x509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("x509.ParsePKIXPublicKey failed: %w", err)
+		}
+	}
+
+	switch pub := pub.(type) {
+	case *ecdsa.PublicKey:
+		return pub, nil
+	default:
+		break
+	}
+
+	return nil, fmt.Errorf("not an ec PEM formatted public key")
+}
+
 // ECPubKeyFromPem generate ec public from pem format
 func ECPubKeyFromPem(pemECPubKey []byte) (*ecdh.PublicKey, error) {
 	block, _ := pem.Decode(pemECPubKey)

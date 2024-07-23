@@ -1,6 +1,7 @@
 package access
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/rsa"
@@ -33,6 +34,20 @@ func (p Provider) lookupKid(ctx context.Context, algorithm string) (string, erro
 	}
 	p.Logger.WarnContext(ctx, "no (non-legacy) key for requested algorithm", "algorithm", algorithm)
 	return "", errors.Join(ErrConfig, status.Error(codes.NotFound, "no default key for algorithm"))
+}
+
+func (p Provider) lookupKidByPublicKey(ctx context.Context, publicKey []byte) (string, error) {
+	if len(p.KASConfig.Keyring) == 0 {
+		p.Logger.WarnContext(ctx, "no default keys found", "publicKey", publicKey)
+		return "", errors.Join(ErrConfig, status.Error(codes.NotFound, "no default keys configured"))
+	}
+	for _, k := range p.KASConfig.Keyring {
+		if bytes.Compare(k.PublicKeyBytes, publicKey) == 0 {
+			return k.KID, nil
+		}
+	}
+	p.Logger.WarnContext(ctx, "no (non-legacy) key for requested algorithm", "publicKey", publicKey)
+	return "", errors.Join(ErrConfig, status.Error(codes.NotFound, "no default key for publicKey"))
 }
 
 func (p Provider) LegacyPublicKey(ctx context.Context, in *kaspb.LegacyPublicKeyRequest) (*wrapperspb.StringValue, error) {

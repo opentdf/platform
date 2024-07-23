@@ -3,6 +3,7 @@ package sdk
 import (
 	"encoding/binary"
 	"errors"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"io"
 )
 
@@ -43,7 +44,7 @@ type PolicyBody struct {
 // }
 
 // readPolicyBody - helper function to decode input data into a PolicyBody object
-func (pb *PolicyBody) readPolicyBody(reader io.Reader) error {
+func (pb *PolicyBody) readPolicyBody(reader io.Reader, eccMode ocrypto.ECCMode) error {
 	var mode policyType
 	if err := binary.Read(reader, binary.BigEndian, &mode); err != nil {
 		return err
@@ -59,7 +60,7 @@ func (pb *PolicyBody) readPolicyBody(reader io.Reader) error {
 	case policyTypeEmbeddedPolicyEncrypted:
 	case policyTypeEmbeddedPolicyEncryptedPolicyKeyAccess:
 		var ep embeddedPolicy
-		if err := ep.readEmbeddedPolicy(reader); err != nil {
+		if err := ep.readEmbeddedPolicy(reader, eccMode); err != nil {
 			return errors.Join(ErrNanoTDFHeaderRead, err)
 		}
 		pb.ep = ep

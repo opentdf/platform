@@ -40,6 +40,8 @@ type KASConfig struct {
 type CurrentKeyFor struct {
 	Algorithm string `mapstructure:"alg"`
 	KID       string `mapstructure:"kid"`
+	// PublicKeyBytes represents the compressed public key in the form of a byte slice.
+	PublicKeyBytes []byte `mapstructure:"public_key"`
 	// Indicates that the key should not be serves by default,
 	// but instead is allowed for legacy reasons on decrypt (rewrap) only
 	Legacy bool `mapstructure:"legacy"`

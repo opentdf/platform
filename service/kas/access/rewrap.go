@@ -369,13 +369,6 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 }
 
 func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
-	// TODO Lookup KID from request content
-	// Should this be in the locator or somewhere else?
-	kid, err := p.lookupKid(ctx, security.AlgorithmECP256R1)
-	if err != nil {
-		p.Logger.WarnContext(ctx, "failure to find default kid for ec", "err", err)
-		return nil, err400("bad request")
-	}
 	headerReader := bytes.NewReader(body.KeyAccess.Header)
 
 	header, _, err := sdk.NewNanoTDFHeaderFromReader(headerReader)
@@ -386,6 +379,13 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 	ecCurve, err := header.ECCurve()
 	if err != nil {
 		return nil, fmt.Errorf("ECCurve failed: %w", err)
+	}
+
+	// Lookup KID from Policy Key Access
+	kid, err := p.lookupKidByPublicKey(ctx, header.PolicyKeyAccess.PublicKeyBytes)
+	if err != nil {
+		p.Logger.WarnContext(ctx, "failure to find default kid for ec", "err", err)
+		return nil, err400("bad request")
 	}
 
 	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(kid, header.EphemeralKey, ecCurve)

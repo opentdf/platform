@@ -30,6 +30,30 @@ type ECKeyPair struct {
 	PrivateKey *ecdsa.PrivateKey
 }
 
+// GetECCompressedKeyLengthFromECCMode returns the length of the compressed key
+// for a given ECC mode. The function first obtains the elliptic curve using the
+// GetECCurveFromECCMode function. It then calculates the length of the elliptic curve
+// coordinate in bytes. Finally, it calculates the length of the compressed key, which
+// includes the type indicator byte and the coordinate byte.
+//
+// The compressed form of the key is 1 byte for the type indicator plus the length of
+// the coordinate, which is equal to the elliptic curve's bit size divided by 8.
+func GetECCompressedKeyLengthFromECCMode(mode ECCMode) (int, error) {
+	c, err := GetECCurveFromECCMode(mode)
+	if err != nil {
+		return 0, err
+	}
+
+	// Get the length of coordinate in bytes
+	pointSize := (c.Params().BitSize + 7) / 8
+	// The compressed form of the key is 1 byte for the type indicator and then
+	// 2 coordinates, each of length pointSize.
+	// But in the compressed form, we only have one coordinate plus the type byte.
+	compressedKeySize := 1 + pointSize
+
+	return compressedKeySize, nil
+}
+
 // GetECCurveFromECCMode return elliptic curve from ecc mode
 func GetECCurveFromECCMode(mode ECCMode) (elliptic.Curve, error) {
 	var c elliptic.Curve

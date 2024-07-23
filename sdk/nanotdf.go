@@ -54,14 +54,16 @@ const (
   ********************************* Header*************************/
 
 type NanoTDFHeader struct {
-	kasURL              ResourceLocator
-	bindCfg             bindingConfig
-	sigCfg              signatureConfig
-	EphemeralKey        []byte
-	EncryptedPolicyBody []byte
-	gmacPolicyBinding   []byte
-	ecdsaPolicyBindingR []byte
-	ecdsaPolicyBindingS []byte
+	kasURL               ResourceLocator
+	bindCfg              bindingConfig
+	sigCfg               signatureConfig
+	EphemeralKey         []byte
+	EncryptedPolicyBody  []byte
+	PolicyKeyAccessBytes []byte
+	gmacPolicyBinding    []byte
+	ecdsaPolicyBindingR  []byte
+	ecdsaPolicyBindingS  []byte
+	PolicyKeyAccess
 }
 
 // GetCipher -- get the cipher from the nano tdf header
@@ -101,10 +103,43 @@ func (header *NanoTDFHeader) VerifyPolicyBinding() (bool, error) {
 
 // ============================================================================================================
 
+type PolicyKeyAccess struct {
+	ResourceLocator ResourceLocator
+	PublicKeyBytes  []byte
+}
+
+func (pka PolicyKeyAccess) writePolicyKeyAccess(writer io.Writer) error {
+	err := pka.ResourceLocator.writeResourceLocator(writer)
+	if err != nil {
+		return err
+	}
+	if _, err := writer.Write(pka.PublicKeyBytes); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (pka PolicyKeyAccess) readPolicyKeyAccess(reader io.Reader, eccMode ocrypto.ECCMode) error {
+	err := pka.ResourceLocator.readResourceLocator(reader)
+	if err != nil {
+		return errors.Join(ErrNanoTDFHeaderRead, err)
+	}
+	lengthPublicKey, err := ocrypto.GetECCompressedKeyLengthFromECCMode(eccMode)
+	if err != nil {
+		return errors.Join(ErrNanoTDFHeaderRead, err)
+	}
+	if err := binary.Read(reader, binary.BigEndian, lengthPublicKey); err != nil {
+		return errors.Join(ErrNanoTDFHeaderRead, err)
+	}
+	return nil
+}
+
 // embeddedPolicy - policy for data that is stored locally within the nanoTDF
 type embeddedPolicy struct {
-	lengthBody uint16
-	body       []byte
+	lengthBody           uint16
+	body                 []byte
+	policyKeyAccessBytes []byte
+	PolicyKeyAccess
 }
 
 // getLength - size in bytes of the serialized content of this object
@@ -133,11 +168,17 @@ func (ep embeddedPolicy) writeEmbeddedPolicy(writer io.Writer) error {
 	}
 	slog.Debug("writeEmbeddedPolicy", slog.Uint64("policy body", uint64(len(ep.body))))
 
+	err := ep.PolicyKeyAccess.writePolicyKeyAccess(writer)
+	if err != nil {
+		return err
+	}
+	slog.Debug("writeEmbeddedPolicy", slog.Uint64("policy key access", uint64(len(ep.policyKeyAccessBytes))))
+
 	return nil
 }
 
 // readEmbeddedPolicy - reads an embeddedPolicy from the supplied reader
-func (ep *embeddedPolicy) readEmbeddedPolicy(reader io.Reader) error {
+func (ep *embeddedPolicy) readEmbeddedPolicy(reader io.Reader, eccMode ocrypto.ECCMode) error {
 	if err := binary.Read(reader, binary.BigEndian, &ep.lengthBody); err != nil {
 		return errors.Join(ErrNanoTDFHeaderRead, err)
 	}
@@ -146,6 +187,11 @@ func (ep *embeddedPolicy) readEmbeddedPolicy(reader io.Reader) error {
 		return errors.Join(ErrNanoTDFHeaderRead, err)
 	}
 	ep.body = body
+	// PolicyKeyAccess
+	err := ep.readPolicyKeyAccess(reader, eccMode)
+	if err != nil {
+		return errors.Join(ErrNanoTDFHeaderRead, err)
+	}
 	return nil
 }
 
@@ -570,8 +616,8 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	}
 	size += uint32(l)
 
-	if oneBytes[0] != uint8(policyTypeEmbeddedPolicyEncrypted) {
-		return header, 0, fmt.Errorf(" current implementation only support embedded policy type")
+	if oneBytes[0] != uint8(policyTypeEmbeddedPolicyEncryptedPolicyKeyAccess) {
+		return header, 0, fmt.Errorf(" current implementation only support embedded policy encrypted with policy key access")
 	}
 
 	// read policy length
@@ -594,6 +640,27 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
 	}
 	size += uint32(l)
+
+	// Policy Key Access
+	// read resource locator
+	pkaResourceLocator, err := NewResourceLocatorFromReader(reader)
+	if err != nil {
+		return header, 0, fmt.Errorf("call to NewResourceLocatorFromReader failed :%w", err)
+	}
+	size += uint32(pkaResourceLocator.getLength())
+	// The size of the public key is determined by the ECC Mode.
+	eccModeLength, err := ocrypto.GetECCompressedKeyLengthFromECCMode(header.bindCfg.eccMode)
+	// read public key
+	publicKeyBytes := make([]byte, eccModeLength)
+	l, err = reader.Read(publicKeyBytes)
+	if err != nil {
+		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
+	}
+	size += uint32(l)
+	header.PolicyKeyAccess = PolicyKeyAccess{
+		ResourceLocator: *pkaResourceLocator,
+		PublicKeyBytes:  publicKeyBytes,
+	}
 
 	// read policy binding
 	if header.bindCfg.useEcdsaBinding { //nolint:nestif // todo: subfunction

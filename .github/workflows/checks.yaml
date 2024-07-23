@@ -274,6 +274,7 @@ jobs:
       - integration
       - license
       - pr
+      - platform-xtest
     runs-on: ubuntu-latest
     if: always()
     steps:

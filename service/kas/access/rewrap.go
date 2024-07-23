@@ -348,7 +348,6 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 
 	// Audit the TDF3 Rewrap
 	kasPolicy := ConvertToAuditKasPolicy(*policy)
-
 	policyBinding, _ := extractPolicyBinding(body.KeyAccess.PolicyBinding)
 
 	auditEventParams := audit.RewrapAuditEventParams{

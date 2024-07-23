@@ -401,8 +401,12 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 		symKeys = append(symKeys, symKey)
 
 		// policy binding
-		policyBinding := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(symKey, base64PolicyObject))
-		pbstring := string(ocrypto.Base64Encode([]byte(policyBinding)))
+		policyBindingHash := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(symKey, base64PolicyObject))
+		pbstring := string(ocrypto.Base64Encode([]byte(policyBindingHash)))
+		policyBinding := PolicyBinding{
+			Alg:  "HS256",
+			Hash: pbstring,
+		}
 
 		// encrypted metadata
 		// add meta data
@@ -452,7 +456,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 				KasURL:            kasInfo.URL,
 				KID:               kasInfo.KID,
 				Protocol:          kKasProtocol,
-				PolicyBinding:     pbstring,
+				PolicyBinding:     policyBinding,
 				EncryptedMetadata: encryptedMetadata,
 				SplitID:           splitID,
 				WrappedKey:        string(ocrypto.Base64Encode(wrappedKey)),
@@ -494,7 +498,7 @@ func createPolicyObject(attributes []autoconfigure.AttributeValueFQN) (PolicyObj
 
 	for _, attribute := range attributes {
 		attributeObj := attributeObject{}
-		attributeObj.Attribute = string(attribute)
+		attributeObj.Attribute = attribute.String()
 		policyObj.Body.DataAttributes = append(policyObj.Body.DataAttributes, attributeObj)
 		policyObj.Body.Dissem = make([]string, 0)
 	}
@@ -633,8 +637,6 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 	defaultSegmentSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
 	var start = math.Floor(float64(offset) / float64(defaultSegmentSize))
 	var end = math.Ceil(float64(offset+int64(len(buf))) / float64(defaultSegmentSize))
-
-	// slog.Debug("Invoked ReadAt", slog.Int("bufsize", len(buf)), slog.Int("offset", int(offset)))
 
 	firstSegment := int64(start)
 	lastSegment := int64(end)

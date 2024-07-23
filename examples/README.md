@@ -12,7 +12,7 @@ go build
 ```
 
 ```shell
-./examples attributes
+./examples attributes ls
 ```
 
 Examples:

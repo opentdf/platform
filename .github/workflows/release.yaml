@@ -117,5 +117,6 @@ jobs:
           git restore .
           git pull origin update-go-mods-for-${{ matrix.path }}
           gh pr create -B main -H update-go-mods-for-${{ matrix.path }} --fill
+          gh pr merge --auto --squash
         env:
           GITHUB_TOKEN: "${{ steps.generate_token.outputs.token }}"

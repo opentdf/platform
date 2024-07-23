@@ -13,6 +13,7 @@ type Policy struct {
 type PolicyBody struct {
 	DataAttributes []Attribute `json:"dataAttributes"`
 	Dissem         []string    `json:"dissem"`
+	KeyIdentifier  string      `json:"kid"`
 }
 
 // Audit helper methods

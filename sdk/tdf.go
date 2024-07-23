@@ -440,6 +440,11 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 
 // create policy object
 func createPolicyObject(attributes []autoconfigure.AttributeValueFQN) (PolicyObject, error) {
+	return createPolicyObjectKid(attributes, "")
+}
+
+// create policy object with kid
+func createPolicyObjectKid(attributes []autoconfigure.AttributeValueFQN, kid string) (PolicyObject, error) {
 	uuidObj, err := uuid.NewUUID()
 	if err != nil {
 		return PolicyObject{}, fmt.Errorf("uuid.NewUUID failed: %w", err)
@@ -452,9 +457,11 @@ func createPolicyObject(attributes []autoconfigure.AttributeValueFQN) (PolicyObj
 		attributeObj := attributeObject{}
 		attributeObj.Attribute = attribute.String()
 		policyObj.Body.DataAttributes = append(policyObj.Body.DataAttributes, attributeObj)
-		policyObj.Body.Dissem = make([]string, 0)
 	}
-
+	policyObj.Body.Dissem = make([]string, 0)
+	if kid != "" {
+		policyObj.Body.KeyIdentifier = kid
+	}
 	return policyObj, nil
 }
 

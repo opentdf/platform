@@ -369,13 +369,6 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 }
 
 func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
-	// TODO Lookup KID from request content
-	// Should this be in the locator or somewhere else?
-	kid, err := p.lookupKid(ctx, security.AlgorithmECP256R1)
-	if err != nil {
-		p.Logger.WarnContext(ctx, "failure to find default kid for ec", "err", err)
-		return nil, err400("bad request")
-	}
 	headerReader := bytes.NewReader(body.KeyAccess.Header)
 
 	header, _, err := sdk.NewNanoTDFHeaderFromReader(headerReader)
@@ -388,16 +381,21 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		return nil, fmt.Errorf("ECCurve failed: %w", err)
 	}
 
+	// FIXME add support for Embedded Policy (Encrypted w/Policy Key Access)
+	// https://github.com/opentdf/spec/blob/main/schema/nanotdf/README.md#342323-optional-policy-key-access
+	kid := "e0"
 	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(kid, header.EphemeralKey, ecCurve)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
 	}
 
-	// extract the policy
+	// extract the Encrypted policy
 	policy, err := extractNanoPolicy(symmetricKey, header)
 	if err != nil {
 		return nil, fmt.Errorf("Error extracting policy: %w", err)
 	}
+	// TODO Lookup KID from policy
+	// policy.Body.KeyIdentifier
 
 	// check the policy binding
 	verify, err := header.VerifyPolicyBinding()

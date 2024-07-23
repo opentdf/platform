@@ -18,14 +18,15 @@ import (
 // ============================================================================================================
 
 type NanoTDFConfig struct {
-	keyPair      ocrypto.ECKeyPair
-	kasPublicKey *ecdh.PublicKey
-	attributes   []autoconfigure.AttributeValueFQN
-	cipher       CipherMode
-	kasURL       ResourceLocator
-	sigCfg       signatureConfig
-	policy       policyInfo
-	bindCfg      bindingConfig
+	keyPair        ocrypto.ECKeyPair
+	kasPublicKey   *ecdh.PublicKey
+	kasPublicKeyID string
+	attributes     []autoconfigure.AttributeValueFQN
+	cipher         CipherMode
+	kasURL         ResourceLocator
+	sigCfg         signatureConfig
+	policy         policyInfo
+	bindCfg        bindingConfig
 }
 
 type NanoTDFOption func(*NanoTDFConfig) error

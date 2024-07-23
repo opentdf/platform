@@ -224,7 +224,7 @@ jobs:
           push: false
 
   platform-xtest:
-    needs: platform-roundtrip
+    needs: integration
     uses: opentdf/tests/.github/workflows/xtest.yml@feat/go-js-cross-sdk-testing
     with:
       platform-ref: ${{ github.ref }}

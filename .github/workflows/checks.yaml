@@ -223,6 +223,12 @@ jobs:
           file: ./Dockerfile
           push: false
 
+  platform-xtest:
+    needs: platform-roundtrip
+    uses: opentdf/tests/.github/workflows/xtest.yml@feat/go-js-cross-sdk-testing
+    with:
+      platform-ref: ${{ github.ref }}
+
   buflint:
     name: Protocol Buffer Lint and Gencode Up-to-date check
     runs-on: ubuntu-22.04

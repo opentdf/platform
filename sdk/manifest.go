@@ -20,7 +20,6 @@ type IntegrityInformation struct {
 }
 
 type KeyAccess struct {
- policy-binding-fix
 	KeyType           string      `json:"type"`
 	KasURL            string      `json:"url"`
 	Protocol          string      `json:"protocol"`

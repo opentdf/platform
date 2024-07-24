@@ -259,9 +259,6 @@ func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *names
 		return nil, err
 	}
 
-	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
-
 	return &policy.Namespace{
 		Id: id,
 	}, nil

@@ -1,12 +1,6 @@
 #!/usr/bin/env bats
 
-@test "gRPC: lists attributes" {
-  run grpcurl -plaintext "localhost:8080" list
-  echo "$output"
-  [ $status = 0 ]
-  [[ $output = *grpc.health.v1.Health* ]]
-  [[ $output = *wellknownconfiguration.WellKnownService* ]]
-}
+# Tests for validating that the system is nominally running
 
 @test "gRPC: health check is healthy" {
   run grpcurl -plaintext "localhost:8080" "grpc.health.v1.Health.Check"
@@ -25,6 +19,9 @@
 
   # Is an RSA key
   printf '%s\n' "$p" | openssl asn1parse | grep rsaEncryption
+
+  # Has expected kid
+  [ $(jq -r .kid <<<"${output}") = r1 ]
 }
 
 @test "REST: new public key endpoint (no algorithm)" {
@@ -37,6 +34,9 @@
 
   # Is an RSA key
   printf '%s\n' "$p" | openssl asn1parse | grep rsaEncryption
+
+  # Has expected kid
+  [ $(jq -r .kid <<<"${output}") = r1 ]
 }
 
 @test "REST: new public key endpoint (ec)" {
@@ -49,6 +49,9 @@
 
   # Is an EC P256r1 curve
   printf '%s\n' "$p" | openssl asn1parse | grep prime256v1
+
+  # Has expected kid
+  [ $(jq -r .kid <<<"${output}") = e1 ]
 }
 
 @test "REST: public key endpoint (unknown algorithm)" {
@@ -61,10 +64,4 @@
   run grpcurl -d '{"algorithm":"invalid"}' -plaintext "localhost:8080" "kas.AccessService/PublicKey" 
   echo "$output"
   [[ $output = *NotFound* ]]
-}
-
-@test "examples: roundtrip" {
-  go run ./examples encrypt "Hello Virtru"
-  go run ./examples decrypt sensitive.txt.tdf
-  go run ./examples decrypt sensitive.txt.tdf | grep "Hello Virtru"
 }

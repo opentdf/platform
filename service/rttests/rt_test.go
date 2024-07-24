@@ -15,7 +15,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/sdk"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -39,6 +39,7 @@ var attributesToMap = []string{
 	"https://example.com/attr/cards/value/queen"}
 
 var successAttributeSets = [][]string{
+	{},
 	{"https://example.com/attr/language/value/english"},
 	{"https://example.com/attr/color/value/red"},
 	{"https://example.com/attr/color/value/red", "https://example.com/attr/color/value/green"},
@@ -84,55 +85,66 @@ func Test_RoundTrips(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping roundtrip tests, they require the server to be up and running")
 	}
-
-	config := newTestConfig()
-	slog.Info("Test config", "", &config)
-
-	err := CreateTestData(&config)
-	require.NoError(t, err)
-
-	err = RunRoundtripTests(&config)
-	require.NoError(t, err)
+	suite.Run(t, new(RoundtripSuite))
 }
 
-func RunRoundtripTests(testConfig *TestConfig) error {
+type RoundtripSuite struct {
+	suite.Suite
+	TestConfig
+}
+
+func (s *RoundtripSuite) SetupSuite() {
+	s.TestConfig = newTestConfig()
+	slog.Info("Test config", "", s.TestConfig)
+
+	err := s.CreateTestData()
+	s.Require().NoError(err)
+}
+
+func (s *RoundtripSuite) Tests() {
 	// success tests
-	for _, attributes := range successAttributeSets {
-		slog.Info("success roundtrip for ", "attributes", attributes)
-		err := roundtrip(testConfig, attributes, false)
-		if err != nil {
-			return err
-		}
+	for i, attributes := range successAttributeSets {
+		n := fmt.Sprintf("success roundtrip %d", i)
+		s.Run(n, func() {
+			filename := fmt.Sprintf("test-success-%d.tdf", i)
+			plaintext := "Running a roundtrip test!"
+			err := encrypt(&s.TestConfig, plaintext, attributes, filename)
+			s.Require().NoError(err)
+			err = decrypt(&s.TestConfig, filename, plaintext)
+			s.NoError(err)
+		})
 	}
 
 	// failure tests
-	for _, attributes := range failureAttributeSets {
-		slog.Info("failutre roundtrip for ", "attributes", attributes)
-		err := roundtrip(testConfig, attributes, true)
-		if err != nil {
-			return err
-		}
+	for i, attributes := range failureAttributeSets {
+		n := fmt.Sprintf("failure roundtrip %d", i)
+		s.Run(n, func() {
+			filename := fmt.Sprintf("test-failure-%d.tdf", i)
+			plaintext := "Running a roundtrip test!"
+			err := encrypt(&s.TestConfig, plaintext, attributes, filename)
+			s.Require().NoError(err)
+			err = decrypt(&s.TestConfig, filename, plaintext)
+			s.ErrorContains(err, "PermissionDenied")
+		})
 	}
-
-	return nil
 }
 
-func CreateTestData(testConfig *TestConfig) error {
-	s, err := sdk.New(testConfig.PlatformEndpoint,
+func (s *RoundtripSuite) CreateTestData() error {
+	sdk, err := sdk.New(s.TestConfig.PlatformEndpoint,
 		sdk.WithInsecurePlaintextConn(),
-		sdk.WithClientCredentials(testConfig.ClientID,
-			testConfig.ClientSecret, nil),
+		sdk.WithClientCredentials(s.TestConfig.ClientID,
+			s.TestConfig.ClientSecret, nil),
 	)
 	if err != nil {
 		slog.Error("could not connect", slog.String("error", err.Error()))
 		return err
 	}
-	defer s.Close()
+	defer sdk.Close()
 
 	// create namespace example.com
 	var exampleNamespace *policy.Namespace
 	slog.Info("listing namespaces")
-	listResp, err := s.Namespaces.ListNamespaces(context.Background(), &namespaces.ListNamespacesRequest{})
+	listResp, err := sdk.Namespaces.ListNamespaces(context.Background(), &namespaces.ListNamespacesRequest{})
 	if err != nil {
 		return err
 	}
@@ -146,7 +158,7 @@ func CreateTestData(testConfig *TestConfig) error {
 
 	if exampleNamespace == nil {
 		slog.Info("creating new namespace")
-		resp, err := s.Namespaces.CreateNamespace(context.Background(), &namespaces.CreateNamespaceRequest{
+		resp, err := sdk.Namespaces.CreateNamespace(context.Background(), &namespaces.CreateNamespaceRequest{
 			Name: "example.com",
 		})
 		if err != nil {
@@ -159,7 +171,7 @@ func CreateTestData(testConfig *TestConfig) error {
 
 	// Create the attributes
 	slog.Info("creating attribute language with allOf rule")
-	_, err = s.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
+	_, err = sdk.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Name:        "language",
 		NamespaceId: exampleNamespace.GetId(),
 		Rule:        *policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF.Enum(),
@@ -181,7 +193,7 @@ func CreateTestData(testConfig *TestConfig) error {
 	}
 
 	slog.Info("creating attribute color with anyOf rule")
-	_, err = s.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
+	_, err = sdk.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Name:        "color",
 		NamespaceId: exampleNamespace.GetId(),
 		Rule:        *policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF.Enum(),
@@ -203,7 +215,7 @@ func CreateTestData(testConfig *TestConfig) error {
 	}
 
 	slog.Info("creating attribute cards with hierarchy rule")
-	_, err = s.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
+	_, err = sdk.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Name:        "cards",
 		NamespaceId: exampleNamespace.GetId(),
 		Rule:        *policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY.Enum(),
@@ -226,7 +238,7 @@ func CreateTestData(testConfig *TestConfig) error {
 
 	slog.Info("##################################\n#######################################")
 
-	allAttr, err := s.Attributes.ListAttributes(context.Background(), &attributes.ListAttributesRequest{})
+	allAttr, err := sdk.Attributes.ListAttributes(context.Background(), &attributes.ListAttributesRequest{})
 	if err != nil {
 		slog.Error("could not list attributes", slog.String("error", err.Error()))
 		return err
@@ -237,7 +249,7 @@ func CreateTestData(testConfig *TestConfig) error {
 
 	// get the attribute ids for the values were mapping to the client
 	var attributeValueIDs []string
-	fqnResp, err := s.Attributes.GetAttributeValuesByFqns(context.Background(), &attributes.GetAttributeValuesByFqnsRequest{
+	fqnResp, err := sdk.Attributes.GetAttributeValuesByFqns(context.Background(), &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns:      attributesToMap,
 		WithValue: &policy.AttributeValueSelector{},
 	})
@@ -250,9 +262,9 @@ func CreateTestData(testConfig *TestConfig) error {
 	}
 
 	// create subject mappings
-	slog.Info("creating subject mappings for client " + testConfig.ClientID)
+	slog.Info("creating subject mappings for client " + s.TestConfig.ClientID)
 	for _, attributeID := range attributeValueIDs {
-		_, err = s.SubjectMapping.CreateSubjectMapping(context.Background(), &subjectmapping.CreateSubjectMappingRequest{
+		_, err = sdk.SubjectMapping.CreateSubjectMapping(context.Background(), &subjectmapping.CreateSubjectMappingRequest{
 			AttributeValueId: attributeID,
 			Actions: []*policy.Action{{Value: &policy.Action_Standard{
 				Standard: policy.Action_STANDARD_ACTION_DECRYPT,
@@ -267,7 +279,7 @@ func CreateTestData(testConfig *TestConfig) error {
 						{Conditions: []*policy.Condition{{
 							SubjectExternalSelectorValue: ".clientId",
 							Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-							SubjectExternalValues:        []string{testConfig.ClientID},
+							SubjectExternalValues:        []string{s.TestConfig.ClientID},
 						}},
 							BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
 						},
@@ -287,34 +299,13 @@ func CreateTestData(testConfig *TestConfig) error {
 		}
 	}
 
-	allSubMaps, err := s.SubjectMapping.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{})
+	allSubMaps, err := sdk.SubjectMapping.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{})
 	if err != nil {
 		slog.Error("could not list subject mappings", slog.String("error", err.Error()))
 		return err
 	}
 	slog.Info(fmt.Sprintf("list subject mappings response: %s", protojson.Format(allSubMaps)))
 
-	return nil
-}
-
-func roundtrip(testConfig *TestConfig, attributes []string, failure bool) error {
-	const filename = "test-success.tdf"
-	const plaintext = "Running a roundtrip test!"
-	err := encrypt(testConfig, plaintext, attributes, filename)
-	if err != nil {
-		return err
-	}
-	err = decrypt(testConfig, filename, plaintext)
-	if failure {
-		if err == nil {
-			return errors.New("decrypt passed but was expected to fail")
-		}
-		if !(strings.Contains(err.Error(), "PermissionDenied")) {
-			return err
-		}
-	} else if err != nil {
-		return err
-	}
 	return nil
 }
 

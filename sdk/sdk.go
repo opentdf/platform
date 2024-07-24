@@ -21,13 +21,17 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
+	"github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/sdk/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
 const (
+	// Failure while connecting to a service.
+	// Check your configuration and/or retry.
 	ErrGrpcDialFailed            = Error("failed to dial grpc endpoint")
 	ErrShutdownFailed            = Error("failed to shutdown sdk")
 	ErrPlatformConfigFailed      = Error("failed to retrieve platform configuration")
@@ -41,18 +45,19 @@ func (c Error) Error() string {
 }
 
 type SDK struct {
+	config
+	*kasKeyCache
 	conn                    *grpc.ClientConn
 	dialOptions             []grpc.DialOption
-	kasSessionKey           ocrypto.RsaKeyPair
 	tokenSource             auth.AccessTokenSource
 	Namespaces              namespaces.NamespaceServiceClient
 	Attributes              attributes.AttributesServiceClient
 	ResourceMapping         resourcemapping.ResourceMappingServiceClient
 	SubjectMapping          subjectmapping.SubjectMappingServiceClient
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
+	Unsafe                  unsafe.UnsafeServiceClient
 	Authorization           authorization.AuthorizationServiceClient
 	EntityResoution         entityresolution.EntityResolutionServiceClient
-	platformConfiguration   PlatformConfiguration
 	wellknownConfiguration  wellknownconfiguration.WellKnownServiceClient
 }
 
@@ -120,14 +125,21 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		}
 	}
 
+	var uci []grpc.UnaryClientInterceptor
+
 	accessTokenSource, err := buildIDPTokenSource(cfg)
 	if err != nil {
 		return nil, err
 	}
 	if accessTokenSource != nil {
 		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource, cfg.tlsConfig)
-		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(interceptor.AddCredentials))
+		uci = append(uci, interceptor.AddCredentials)
 	}
+
+	// Add request ID interceptor
+	uci = append(uci, audit.MetadataAddingClientInterceptor)
+
+	dialOptions = append(dialOptions, grpc.WithChainUnaryInterceptor(uci...))
 
 	if platformEndpoint != "" {
 		var err error
@@ -138,15 +150,16 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 
 	return &SDK{
+		config:                  *cfg,
+		kasKeyCache:             newKasKeyCache(),
 		conn:                    defaultConn,
 		dialOptions:             dialOptions,
 		tokenSource:             accessTokenSource,
-		kasSessionKey:           *cfg.kasSessionKey,
-		platformConfiguration:   cfg.platformConfiguration,
 		Attributes:              attributes.NewAttributesServiceClient(selectConn(cfg.policyConn, defaultConn)),
 		Namespaces:              namespaces.NewNamespaceServiceClient(selectConn(cfg.policyConn, defaultConn)),
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(selectConn(cfg.policyConn, defaultConn)),
 		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(selectConn(cfg.policyConn, defaultConn)),
+		Unsafe:                  unsafe.NewUnsafeServiceClient(selectConn(cfg.policyConn, defaultConn)),
 		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(selectConn(cfg.policyConn, defaultConn)),
 		Authorization:           authorization.NewAuthorizationServiceClient(selectConn(cfg.authorizationConn, defaultConn)),
 		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(selectConn(cfg.entityresolutionConn, defaultConn)),
@@ -182,6 +195,10 @@ func SanitizePlatformEndpoint(e string) (string, error) {
 }
 
 func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
+	if c.customAccessTokenSource != nil {
+		return c.customAccessTokenSource, nil
+	}
+
 	if (c.clientCredentials == nil) != (c.tokenEndpoint == "") {
 		return nil, errors.New("either both or neither of client credentials and token endpoint must be specified")
 	}
@@ -262,7 +279,6 @@ func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfiguration, err
 	wellKnownConfig := wellknownconfiguration.NewWellKnownServiceClient(conn)
 
 	response, err := wellKnownConfig.GetWellKnownConfiguration(context.Background(), &req)
-
 	if err != nil {
 		return nil, errors.Join(errors.New("unable to retrieve config information, and none was provided"), err)
 	}

@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,7 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/archive"
+	"github.com/opentdf/platform/sdk/internal/autoconfigure"
 	"google.golang.org/grpc"
 )
 
@@ -59,6 +61,7 @@ const (
 	kGmacIntegrityAlgorithm = "GMAC"
 )
 
+// Loads and reads ZTDF files
 type Reader struct {
 	tokenSource         auth.AccessTokenSource
 	dialOptions         []grpc.DialOption
@@ -79,8 +82,33 @@ type TDFObject struct {
 	payloadKey [kKeySize]byte
 }
 
+func (t TDFObject) Size() int64 {
+	return t.size
+}
+
 // CreateTDF reads plain text from the given reader and saves it to the writer, subject to the given options
-func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll // Better readability keeping it as is
+func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) {
+	return s.CreateTDFContext(context.Background(), writer, reader, opts...)
+}
+
+func (s SDK) defaultKases(c *TDFConfig) []string {
+	allk := make([]string, 0, len(c.kasInfoList))
+	defk := make([]string, 0)
+	for _, k := range c.kasInfoList {
+		if k.Default {
+			defk = append(defk, k.URL)
+		} else if len(defk) == 0 {
+			allk = append(allk, k.URL)
+		}
+	}
+	if len(defk) == 0 {
+		return allk
+	}
+	return defk
+}
+
+// CreateTDF reads plain text from the given reader and saves it to the writer, subject to the given options
+func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll // Better readability keeping it as is
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
@@ -95,19 +123,33 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
-	tdfConfig, err := NewTDFConfig(opts...)
+	tdfConfig, err := newTDFConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
 	}
 
-	// How do we want to handle different dial options for different KAS servers?
-	err = fillInPublicKeys(tdfConfig.kasInfoList, s.dialOptions...)
-	if err != nil {
-		return nil, err
+	if tdfConfig.autoconfigure {
+		var g autoconfigure.Granter
+		if len(tdfConfig.attributeValues) > 0 {
+			g, err = autoconfigure.NewGranterFromAttributes(tdfConfig.attributeValues...)
+		} else if len(tdfConfig.attributes) > 0 {
+			g, err = autoconfigure.NewGranterFromService(ctx, s.Attributes, tdfConfig.attributes...)
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		dk := s.defaultKases(tdfConfig)
+		tdfConfig.splitPlan, err = g.Plan(dk, func() string {
+			return uuid.New().String()
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	tdfObject := &TDFObject{}
-	err = tdfObject.prepareManifest(*tdfConfig)
+	err = s.prepareManifest(ctx, tdfObject, *tdfConfig)
 	if err != nil {
 		return nil, fmt.Errorf("fail to create a new split key: %w", err)
 	}
@@ -242,10 +284,10 @@ func (r *Reader) Manifest() Manifest {
 }
 
 // prepare the manifest for TDF
-func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen,gocognit // Better readability keeping it as is
+func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFConfig) error { //nolint:funlen,gocognit // Better readability keeping it as is
 	manifest := Manifest{}
-	if len(tdfConfig.kasInfoList) == 0 {
-		return errInvalidKasInfo
+	if len(tdfConfig.splitPlan) == 0 && len(tdfConfig.kasInfoList) == 0 {
+		return fmt.Errorf("%w: no key access template specified or inferred", errInvalidKasInfo)
 	}
 
 	manifest.EncryptionInformation.KeyAccessType = kSplitKeyType
@@ -261,53 +303,84 @@ func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen
 	}
 
 	base64PolicyObject := ocrypto.Base64Encode(policyObjectAsStr)
-	symKeys := make([][]byte, 0, len(tdfConfig.kasInfoList))
-	for _, kasInfo := range tdfConfig.kasInfoList {
-		if len(kasInfo.PublicKey) == 0 {
-			return errKasPubKeyMissing
+	symKeys := make([][]byte, 0)
+	latestKASInfo := make(map[string]KASInfo)
+	if len(tdfConfig.splitPlan) == 0 {
+		// Default split plan: Split keys across all kases
+		tdfConfig.splitPlan = make([]autoconfigure.SplitStep, len(tdfConfig.kasInfoList))
+		for i, kasInfo := range tdfConfig.kasInfoList {
+			tdfConfig.splitPlan[i].KAS = kasInfo.URL
+			if len(tdfConfig.kasInfoList) > 1 {
+				tdfConfig.splitPlan[i].SplitID = fmt.Sprintf("s-%d", i)
+			}
+			if kasInfo.PublicKey != "" {
+				latestKASInfo[kasInfo.URL] = kasInfo
+			}
 		}
+	}
+	// Seed anything passed in manually
+	for _, kasInfo := range tdfConfig.kasInfoList {
+		if kasInfo.PublicKey != "" {
+			latestKASInfo[kasInfo.URL] = kasInfo
+		}
+	}
 
+	// split plan: restructure by conjunctions
+	conjunction := make(map[string][]KASInfo)
+	var splitIDs []string
+
+	for _, splitInfo := range tdfConfig.splitPlan {
+		// Public key was passed in with kasInfoList
+		// TODO first look up in attribute information / add to split plan?
+		ki, ok := latestKASInfo[splitInfo.KAS]
+		if !ok || ki.PublicKey == "" {
+			k, err := s.getPublicKey(ctx, splitInfo.KAS, "rsa:2048")
+			if err != nil {
+				return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", splitInfo.KAS, err)
+			}
+			latestKASInfo[splitInfo.KAS] = *k
+			ki = *k
+		}
+		if _, ok = conjunction[splitInfo.SplitID]; ok {
+			conjunction[splitInfo.SplitID] = append(conjunction[splitInfo.SplitID], ki)
+		} else {
+			conjunction[splitInfo.SplitID] = []KASInfo{ki}
+			splitIDs = append(splitIDs, splitInfo.SplitID)
+		}
+	}
+
+	for _, splitID := range splitIDs {
 		symKey, err := ocrypto.RandomBytes(kKeySize)
 		if err != nil {
 			return fmt.Errorf("ocrypto.RandomBytes failed:%w", err)
 		}
+		symKeys = append(symKeys, symKey)
 
-		keyAccess := KeyAccess{}
-		keyAccess.KeyType = kWrapped
-		keyAccess.KasURL = kasInfo.URL
-		keyAccess.Protocol = kKasProtocol
-
-		// add policyBinding
-		policyBinding := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(symKey, base64PolicyObject))
-		keyAccess.PolicyBinding = string(ocrypto.Base64Encode([]byte(policyBinding)))
-
-		// wrap the key with kas public key
-		asymEncrypt, err := ocrypto.NewAsymEncryption(kasInfo.PublicKey)
-		if err != nil {
-			return fmt.Errorf("ocrypto.NewAsymEncryption failed:%w", err)
+		// policy binding
+		policyBindingHash := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(symKey, base64PolicyObject))
+		pbstring := string(ocrypto.Base64Encode([]byte(policyBindingHash)))
+		policyBinding := PolicyBinding{
+			Alg:  "HS256",
+			Hash: pbstring,
 		}
 
-		wrappedKey, err := asymEncrypt.Encrypt(symKey)
-		if err != nil {
-			return fmt.Errorf("ocrypto.AsymEncryption.encrypt failed:%w", err)
-		}
-		keyAccess.WrappedKey = string(ocrypto.Base64Encode(wrappedKey))
-
+		// encrypted metadata
 		// add meta data
+		var encryptedMetadata string
 		if len(tdfConfig.metaData) > 0 {
 			gcm, err := ocrypto.NewAESGcm(symKey)
 			if err != nil {
 				return fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
 			}
 
-			encryptedMetaData, err := gcm.Encrypt([]byte(tdfConfig.metaData))
+			emb, err := gcm.Encrypt([]byte(tdfConfig.metaData))
 			if err != nil {
 				return fmt.Errorf("ocrypto.AesGcm.encrypt failed:%w", err)
 			}
 
-			iv := encryptedMetaData[:ocrypto.GcmStandardNonceSize]
+			iv := emb[:ocrypto.GcmStandardNonceSize]
 			metadata := EncryptedMetadata{
-				Cipher: string(ocrypto.Base64Encode(encryptedMetaData)),
+				Cipher: string(ocrypto.Base64Encode(emb)),
 				Iv:     string(ocrypto.Base64Encode(iv)),
 			}
 
@@ -315,12 +388,38 @@ func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen
 			if err != nil {
 				return fmt.Errorf(" json.Marshal failed:%w", err)
 			}
-
-			keyAccess.EncryptedMetadata = string(ocrypto.Base64Encode(metadataJSON))
+			encryptedMetadata = string(ocrypto.Base64Encode(metadataJSON))
 		}
 
-		symKeys = append(symKeys, symKey)
-		manifest.EncryptionInformation.KeyAccessObjs = append(manifest.EncryptionInformation.KeyAccessObjs, keyAccess)
+		for _, kasInfo := range conjunction[splitID] {
+			if len(kasInfo.PublicKey) == 0 {
+				return errKasPubKeyMissing
+			}
+
+			// wrap the key with kas public key
+			asymEncrypt, err := ocrypto.NewAsymEncryption(kasInfo.PublicKey)
+			if err != nil {
+				return fmt.Errorf("ocrypto.NewAsymEncryption failed:%w", err)
+			}
+
+			wrappedKey, err := asymEncrypt.Encrypt(symKey)
+			if err != nil {
+				return fmt.Errorf("ocrypto.AsymEncryption.encrypt failed:%w", err)
+			}
+
+			keyAccess := KeyAccess{
+				KeyType:           kWrapped,
+				KasURL:            kasInfo.URL,
+				KID:               kasInfo.KID,
+				Protocol:          kKasProtocol,
+				PolicyBinding:     policyBinding,
+				EncryptedMetadata: encryptedMetadata,
+				SplitID:           splitID,
+				WrappedKey:        string(ocrypto.Base64Encode(wrappedKey)),
+			}
+
+			manifest.EncryptionInformation.KeyAccessObjs = append(manifest.EncryptionInformation.KeyAccessObjs, keyAccess)
+		}
 	}
 
 	manifest.EncryptionInformation.Policy = string(base64PolicyObject)
@@ -344,7 +443,7 @@ func (t *TDFObject) prepareManifest(tdfConfig TDFConfig) error { //nolint:funlen
 }
 
 // create policy object
-func createPolicyObject(attributes []string) (PolicyObject, error) {
+func createPolicyObject(attributes []autoconfigure.AttributeValueFQN) (PolicyObject, error) {
 	uuidObj, err := uuid.NewUUID()
 	if err != nil {
 		return PolicyObject{}, fmt.Errorf("uuid.NewUUID failed: %w", err)
@@ -355,7 +454,7 @@ func createPolicyObject(attributes []string) (PolicyObject, error) {
 
 	for _, attribute := range attributes {
 		attributeObj := attributeObject{}
-		attributeObj.Attribute = attribute
+		attributeObj.Attribute = attribute.String()
 		policyObj.Body.DataAttributes = append(policyObj.Body.DataAttributes, attributeObj)
 		policyObj.Body.Dissem = make([]string, 0)
 	}
@@ -387,8 +486,17 @@ func (s SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
 		dialOptions:   s.dialOptions,
 		tdfReader:     tdfReader,
 		manifest:      *manifestObj,
-		kasSessionKey: s.kasSessionKey,
+		kasSessionKey: *s.config.kasSessionKey,
 	}, nil
+}
+
+// Do any network based operations required.
+// This allows making the requests cancellable
+func (r *Reader) Init(ctx context.Context) error {
+	if r.payloadKey != nil {
+		return nil
+	}
+	return r.doPayloadKeyUnwrap(ctx)
 }
 
 // Read reads up to len(p) bytes into p. It returns the number of bytes
@@ -396,7 +504,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
 // io.EOF error when the stream ends.
 func (r *Reader) Read(p []byte) (int, error) {
 	if r.payloadKey == nil {
-		err := r.doPayloadKeyUnwrap()
+		err := r.doPayloadKeyUnwrap(context.Background())
 		if err != nil {
 			return 0, fmt.Errorf("reader.Read failed: %w", err)
 		}
@@ -411,7 +519,7 @@ func (r *Reader) Read(p []byte) (int, error) {
 // when an error occurs. This implements the io.WriterTo interface.
 func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 	if r.payloadKey == nil {
-		err := r.doPayloadKeyUnwrap()
+		err := r.doPayloadKeyUnwrap(context.Background())
 		if err != nil {
 			return 0, fmt.Errorf("reader.WriteTo failed: %w", err)
 		}
@@ -472,7 +580,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 // NOTE: For larger tdf sizes use sdk.GetTDFPayload for better performance
 func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen, gocognit // Better readability keeping it as is for now
 	if r.payloadKey == nil {
-		err := r.doPayloadKeyUnwrap()
+		err := r.doPayloadKeyUnwrap(context.Background())
 		if err != nil {
 			return 0, fmt.Errorf("reader.ReadAt failed: %w", err)
 		}
@@ -485,8 +593,6 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 	defaultSegmentSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
 	var start = math.Floor(float64(offset) / float64(defaultSegmentSize))
 	var end = math.Ceil(float64(offset+int64(len(buf))) / float64(defaultSegmentSize))
-
-	// slog.Debug("Invoked ReadAt", slog.Int("bufsize", len(buf)), slog.Int("offset", int(offset)))
 
 	firstSegment := int64(start)
 	lastSegment := int64(end)
@@ -567,7 +673,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 // UnencryptedMetadata return decrypted metadata in manifest.
 func (r *Reader) UnencryptedMetadata() ([]byte, error) {
 	if r.payloadKey == nil {
-		err := r.doPayloadKeyUnwrap()
+		err := r.doPayloadKeyUnwrap(context.Background())
 		if err != nil {
 			return nil, fmt.Errorf("reader.UnencryptedMetadata failed: %w", err)
 		}
@@ -616,23 +722,45 @@ func (r *Reader) DataAttributes() ([]string, error) {
 }
 
 // Unwraps the payload key, if possible, using the access service
-func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit // Better readability keeping it as is
+func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocognit // Better readability keeping it as is
 	var unencryptedMetadata []byte
 	var payloadKey [kKeySize]byte
+	knownSplits := make(map[string]bool)
+	foundSplits := make(map[string]bool)
+	skippedSplits := make(map[autoconfigure.SplitStep]error)
+	mixedSplits := len(r.manifest.KeyAccessObjs) > 1 && r.manifest.KeyAccessObjs[0].SplitID != ""
+
 	for _, keyAccessObj := range r.manifest.EncryptionInformation.KeyAccessObjs {
 		client, err := newKASClient(r.dialOptions, r.tokenSource, r.kasSessionKey)
 		if err != nil {
 			return fmt.Errorf("newKASClient failed:%w", err)
 		}
 
-		wrappedKey, err := client.unwrap(keyAccessObj, r.manifest.EncryptionInformation.Policy)
-		if err != nil {
-			return fmt.Errorf("doPayloadKeyUnwrap splitKey.rewrap failed: %w", err)
+		ss := autoconfigure.SplitStep{KAS: keyAccessObj.KasURL, SplitID: keyAccessObj.SplitID}
+
+		var wrappedKey []byte
+		if !mixedSplits {
+			wrappedKey, err = client.unwrap(ctx, keyAccessObj, r.manifest.EncryptionInformation.Policy)
+			if err != nil {
+				return fmt.Errorf("doPayloadKeyUnwrap splitKey.rewrap failed: %w", err)
+			}
+		} else {
+			knownSplits[ss.SplitID] = true
+			if foundSplits[ss.SplitID] {
+				// already found
+				continue
+			}
+			wrappedKey, err = client.unwrap(ctx, keyAccessObj, r.manifest.EncryptionInformation.Policy)
+			if err != nil {
+				skippedSplits[ss] = fmt.Errorf("kao unwrap failed for %v: %w", ss, err)
+				continue
+			}
 		}
 
 		for keyByteIndex, keyByte := range wrappedKey {
 			payloadKey[keyByteIndex] ^= keyByte
 		}
+		foundSplits[ss.SplitID] = true
 
 		if len(keyAccessObj.EncryptedMetadata) != 0 {
 			gcm, err := ocrypto.NewAESGcm(wrappedKey)
@@ -660,6 +788,15 @@ func (r *Reader) doPayloadKeyUnwrap() error { //nolint:gocognit // Better readab
 
 			unencryptedMetadata = metaData
 		}
+	}
+
+	if mixedSplits && len(knownSplits) > len(foundSplits) {
+		v := make([]error, 1, len(skippedSplits))
+		v[0] = fmt.Errorf("splitKey.unable to reconstruct split key: %v", skippedSplits)
+		for _, e := range skippedSplits {
+			v = append(v, e)
+		}
+		return errors.Join(v...)
 	}
 
 	res, err := validateRootSignature(r.manifest, payloadKey[:])
@@ -739,20 +876,4 @@ func validateRootSignature(manifest Manifest, secret []byte) (bool, error) {
 	}
 
 	return false, nil
-}
-
-func fillInPublicKeys(kasInfos []KASInfo, opts ...grpc.DialOption) error {
-	for idx, kasInfo := range kasInfos {
-		if kasInfo.PublicKey != "" {
-			continue
-		}
-
-		publicKey, err := getPublicKey(kasInfo, opts...)
-		if err != nil {
-			return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", kasInfo.URL, err)
-		}
-
-		kasInfos[idx].PublicKey = publicKey
-	}
-	return nil
 }

@@ -4,10 +4,9 @@ go 1.21
 
 require (
 	github.com/opentdf/platform/lib/ocrypto v0.1.5
-	github.com/opentdf/platform/protocol/go v0.2.3
-	github.com/opentdf/platform/sdk v0.2.6
+	github.com/opentdf/platform/protocol/go v0.2.10
+	github.com/opentdf/platform/sdk v0.3.3
 	github.com/spf13/cobra v1.8.0
-	google.golang.org/grpc v1.62.1
 	google.golang.org/protobuf v1.33.0
 )
 
@@ -18,6 +17,7 @@ require (
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.2 // indirect
@@ -36,5 +36,6 @@ require (
 	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240311173647-c811ad7063a7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240311173647-c811ad7063a7 // indirect
+	google.golang.org/grpc v1.62.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

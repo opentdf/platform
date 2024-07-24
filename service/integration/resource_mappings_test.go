@@ -126,6 +126,7 @@ func (s *ResourceMappingsSuite) Test_GetResourceMapping() {
 		s.Equal(testMapping.Terms, mapping.GetTerms())
 		av, err := s.db.PolicyClient.GetAttributeValue(s.ctx, testMapping.AttributeValueID)
 		s.Require().NoError(err)
+		//nolint:staticcheck // SA1019: removing all references to members in later release
 		if len(av.GetMembers()) > 0 {
 			testedMembers = true
 		}

@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/oauth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -15,22 +16,30 @@ type Option func(*config)
 
 // Internal config struct for building SDK options.
 type config struct {
-	dialOption            grpc.DialOption
-	tlsConfig             *tls.Config
-	clientCredentials     *oauth.ClientCredentials
-	tokenExchange         *oauth.TokenExchangeInfo
-	tokenEndpoint         string
-	scopes                []string
-	policyConn            *grpc.ClientConn
-	authorizationConn     *grpc.ClientConn
-	entityresolutionConn  *grpc.ClientConn
-	extraDialOptions      []grpc.DialOption
-	certExchange          *oauth.CertExchangeInfo
-	wellknownConn         *grpc.ClientConn
-	platformConfiguration PlatformConfiguration
-	kasSessionKey         *ocrypto.RsaKeyPair
-	dpopKey               *ocrypto.RsaKeyPair
-	ipc                   bool
+	dialOption              grpc.DialOption
+	tlsConfig               *tls.Config
+	clientCredentials       *oauth.ClientCredentials
+	tokenExchange           *oauth.TokenExchangeInfo
+	tokenEndpoint           string
+	scopes                  []string
+	policyConn              *grpc.ClientConn
+	authorizationConn       *grpc.ClientConn
+	entityresolutionConn    *grpc.ClientConn
+	extraDialOptions        []grpc.DialOption
+	certExchange            *oauth.CertExchangeInfo
+	wellknownConn           *grpc.ClientConn
+	platformConfiguration   PlatformConfiguration
+	kasSessionKey           *ocrypto.RsaKeyPair
+	dpopKey                 *ocrypto.RsaKeyPair
+	ipc                     bool
+	tdfFeatures             tdfFeatures
+	customAccessTokenSource auth.AccessTokenSource
+}
+
+// Options specific to TDF protocol features
+type tdfFeatures struct {
+	// For backward compatibility, don't store the KID in the KAO.
+	noKID bool
 }
 
 type PlatformConfiguration map[string]interface{}
@@ -81,6 +90,12 @@ func WithTLSCredentials(tls *tls.Config, audience []string) Option {
 func WithTokenEndpoint(tokenEndpoint string) Option {
 	return func(c *config) {
 		c.tokenEndpoint = tokenEndpoint
+	}
+}
+
+func withCustomAccessTokenSource(a auth.AccessTokenSource) Option {
+	return func(c *config) {
+		c.customAccessTokenSource = a
 	}
 }
 
@@ -158,5 +173,13 @@ func WithPlatformConfiguration(platformConfiguration PlatformConfiguration) Opti
 func WithIPC() Option {
 	return func(c *config) {
 		c.ipc = true
+	}
+}
+
+// WithNoKIDInKAO disables storing the KID in the KAO. This allows generating
+// TDF files that are compatible with legacy file formats (no KID).
+func WithNoKIDInKAO() Option {
+	return func(c *config) {
+		c.tdfFeatures.noKID = true
 	}
 }

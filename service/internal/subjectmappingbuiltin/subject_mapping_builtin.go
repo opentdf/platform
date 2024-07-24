@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/open-policy-agent/opa/types"
+	"github.com/opentdf/platform/lib/flattening"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -86,13 +89,17 @@ func EvaluateSubjectMappings(attributeMappings map[string]*attributes.GetAttribu
 	var entitlementsSet = make(map[string]bool)
 	entitlements := []string{}
 	for _, entity := range jsonEntities {
+		flattenedEntity, err := flattening.Flatten(entity.AsMap())
+		if err != nil {
+			return nil, fmt.Errorf("failure to flatten entity in subject mapping builtin: %w", err)
+		}
 		for attr, mapping := range attributeMappings {
 			// subject mapping results or-ed togethor
 			mappingResult := false
 			for _, subjectMapping := range mapping.GetValue().GetSubjectMappings() {
 				subjectMappingResult := true
 				for _, subjectSet := range subjectMapping.GetSubjectConditionSet().GetSubjectSets() {
-					subjectSetConditionResult, err := EvaluateSubjectSet(subjectSet, entity.AsMap())
+					subjectSetConditionResult, err := EvaluateSubjectSet(subjectSet, flattenedEntity)
 					if err != nil {
 						return nil, err
 					}
@@ -121,7 +128,7 @@ func EvaluateSubjectMappings(attributeMappings map[string]*attributes.GetAttribu
 	return entitlements, nil
 }
 
-func EvaluateSubjectSet(subjectSet *policy.SubjectSet, entity map[string]any) (bool, error) {
+func EvaluateSubjectSet(subjectSet *policy.SubjectSet, entity flattening.Flattened) (bool, error) {
 	// condition groups anded togethor
 	subjectSetConditionResult := true
 	for _, conditionGroup := range subjectSet.GetConditionGroups() {
@@ -130,7 +137,7 @@ func EvaluateSubjectSet(subjectSet *policy.SubjectSet, entity map[string]any) (b
 			return false, err
 		}
 		// update the subject condition set result
-		// and togethor with previous condition group results
+		// and together with previous condition group results
 		subjectSetConditionResult = subjectSetConditionResult && conditionGroupResult
 		// if one condition group fails, subject condition set fails
 		if !subjectSetConditionResult {
@@ -140,7 +147,7 @@ func EvaluateSubjectSet(subjectSet *policy.SubjectSet, entity map[string]any) (b
 	return subjectSetConditionResult, nil
 }
 
-func EvaluateConditionGroup(conditionGroup *policy.ConditionGroup, entity map[string]any) (bool, error) {
+func EvaluateConditionGroup(conditionGroup *policy.ConditionGroup, entity flattening.Flattened) (bool, error) {
 	// get boolean operator for condition group
 	var conditionGroupResult bool
 	switch conditionGroup.GetBooleanOperator() {
@@ -186,11 +193,8 @@ ConditionEval:
 	return conditionGroupResult, nil
 }
 
-func EvaluateCondition(condition *policy.Condition, entity map[string]any) (bool, error) {
-	mappedValues, err := ExecuteQuery(entity, condition.GetSubjectExternalSelectorValue())
-	if err != nil {
-		return false, err
-	}
+func EvaluateCondition(condition *policy.Condition, entity flattening.Flattened) (bool, error) {
+	mappedValues := flattening.GetFromFlattened(entity, condition.GetSubjectExternalSelectorValue())
 	// slog.Debug("mapped values", "", mappedValues)
 	result := false
 	switch condition.GetOperator() {
@@ -227,6 +231,22 @@ func EvaluateCondition(condition *policy.Condition, entity map[string]any) (bool
 		}
 		if notInResult {
 			result = true
+		}
+	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS:
+		// slog.Debug("the operator is CONTAINS")
+		for _, possibleValue := range condition.GetSubjectExternalValues() {
+			// slog.Debug("possible value", "", possibleValue)
+			for _, mappedValue := range mappedValues {
+				mappedValueStr := fmt.Sprintf("%v", mappedValue)
+				// slog.Debug("comparing values: ", "possible=", possibleValue, "mapped=", mappedValueStr)
+				if strings.Contains(mappedValueStr, possibleValue) {
+					result = true
+					break
+				}
+			}
+			if result {
+				break
+			}
 		}
 	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED:
 		// unspecified subject mapping operator

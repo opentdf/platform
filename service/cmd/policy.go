@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/opentdf/platform/service/internal/config"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/policy"
 	policydb "github.com/opentdf/platform/service/policy/db"
@@ -67,12 +68,22 @@ func policyDBClient(conf *config.Config) (policydb.PolicyDBClient, error) {
 	if !strings.HasSuffix(conf.DB.Schema, "_policy") {
 		conf.DB.Schema += "_policy"
 	}
-	dbClient, err := db.New(context.Background(), conf.DB, db.WithMigrations(policy.Migrations))
+	dbClient, err := db.New(context.Background(), conf.DB, conf.Logger, db.WithMigrations(policy.Migrations))
 	if err != nil {
 		//nolint:wrapcheck // we want to return the error as is. the start command will wrap it
 		return policydb.PolicyDBClient{}, err
 	}
-	return policydb.NewClient(dbClient), nil
+
+	logger, err := logger.NewLogger(logger.Config{
+		Level:  conf.Logger.Level,
+		Output: conf.Logger.Output,
+		Type:   conf.Logger.Type,
+	})
+	if err != nil {
+		return policydb.PolicyDBClient{}, err
+	}
+
+	return policydb.NewClient(dbClient, logger), nil
 }
 
 func init() {

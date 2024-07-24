@@ -1,0 +1,27 @@
+name: Auto Approve Version Bumps
+
+on: pull_request_target
+
+jobs:
+  auto-approve-version-bumps:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - run: |
+          echo "actor: ${{ github.actor }}"
+      - id: bad-files
+        run: |
+          bad_files=$(gh pr view --json files | jq '[.files[].path | select(endswith("go.mod") or endswith("go.sum") | not)] | length')
+          if [ "$bad_files" -ne 0 ]; then
+            echo "Found $bad_files files that are not go.mod or go.sum. Will not auto approve."
+            echo "bad_files_found=true" >> $GITHUB_ENV
+          else
+            echo "bad_files_found=false" >> $GITHUB_ENV
+            echo "Only go.mod and go.sum files found. Continuing Workflow."
+          fi
+      - uses: hmarr/auto-approve-action@v4
+        if: |
+          github.actor == 'opentdf-automation[bot]' &&
+          startsWith(github.event.pull_request.title, 'fix(core): Autobump') &&
+          env.bad_files_found != 'true'

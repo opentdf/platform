@@ -1,5 +1,65 @@
 # Changelog
 
+## [0.2.10](https://github.com/opentdf/platform/compare/protocol/go/v0.2.9...protocol/go/v0.2.10) (2024-07-14)
+
+
+### Bug Fixes
+
+* **policy:** mark value members as deprecated within protos ([#1152](https://github.com/opentdf/platform/issues/1152)) ([d18c889](https://github.com/opentdf/platform/commit/d18c8893cdd73344021de638e2d92859a320eed4))
+
+## [0.2.9](https://github.com/opentdf/platform/compare/protocol/go/v0.2.8...protocol/go/v0.2.9) (2024-07-11)
+
+
+### Features
+
+* **core:** GetEntitlements with_comprehensive_hierarchy ([#1121](https://github.com/opentdf/platform/issues/1121)) ([ac85bf7](https://github.com/opentdf/platform/commit/ac85bf7aef6c9a00bfa0900f6ff3533059ab4bc8)), closes [#1054](https://github.com/opentdf/platform/issues/1054)
+
+## [0.2.8](https://github.com/opentdf/platform/compare/protocol/go/v0.2.7...protocol/go/v0.2.8) (2024-07-09)
+
+
+### Features
+
+* **core:** CONTAINS SubjectMapping Operator ([#1109](https://github.com/opentdf/platform/issues/1109)) ([65cd4af](https://github.com/opentdf/platform/commit/65cd4af366d2d6d17ad72157d5d4d31f6620cc1f))
+
+## [0.2.7](https://github.com/opentdf/platform/compare/protocol/go/v0.2.6...protocol/go/v0.2.7) (2024-07-03)
+
+
+### Bug Fixes
+
+* **policy:** unsafe service attribute update should allow empty names for PATCH-style API ([#1094](https://github.com/opentdf/platform/issues/1094)) ([3c56d0f](https://github.com/opentdf/platform/commit/3c56d0f4ebbda81bf6ca6924176885d93faed48b))
+
+## [0.2.6](https://github.com/opentdf/platform/compare/protocol/go/v0.2.5...protocol/go/v0.2.6) (2024-07-02)
+
+
+### Features
+
+* **policy:** register unsafe service in platform ([#1066](https://github.com/opentdf/platform/issues/1066)) ([b7796cd](https://github.com/opentdf/platform/commit/b7796cdbe3b16903ac83033c8d99495aa10c8e2c))
+
+## [0.2.5](https://github.com/opentdf/platform/compare/protocol/go/v0.2.4...protocol/go/v0.2.5) (2024-07-02)
+
+
+### Features
+
+* **policy:** add unsafe attribute RPC db connectivity  ([#1022](https://github.com/opentdf/platform/issues/1022)) ([fbc02f3](https://github.com/opentdf/platform/commit/fbc02f34f3c3ae663b83944132f7dfd6897f6271))
+
+
+### Bug Fixes
+
+* **policy:** rename unsafe rpcs for aligned casbin action determination ([#1067](https://github.com/opentdf/platform/issues/1067)) ([7861e4a](https://github.com/opentdf/platform/commit/7861e4a5092ee702565b6cd152fd592f3c19435f))
+
+## [0.2.4](https://github.com/opentdf/platform/compare/protocol/go/v0.2.3...protocol/go/v0.2.4) (2024-06-18)
+
+
+### Features
+
+* **core:** New cryptoProvider config ([#939](https://github.com/opentdf/platform/issues/939)) ([8150623](https://github.com/opentdf/platform/commit/81506237e2e640af34df8c745b71c3f20358d5a4))
+* **policy:** add unsafe service protos and unsafe service proto Go gencode ([#1003](https://github.com/opentdf/platform/issues/1003)) ([55cc045](https://github.com/opentdf/platform/commit/55cc0459f8e5594765cecf62c3e2a1adff40a565))
+
+
+### Bug Fixes
+
+* **core:** policy resource-mappings fix doc drift in proto comments ([#980](https://github.com/opentdf/platform/issues/980)) ([09ab763](https://github.com/opentdf/platform/commit/09ab763263d092653bbded294895dcc08d03bdb2))
+
 ## [0.2.3](https://github.com/opentdf/platform/compare/protocol/go/v0.2.2...protocol/go/v0.2.3) (2024-05-17)
 
 

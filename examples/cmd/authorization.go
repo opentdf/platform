@@ -16,15 +16,14 @@ var AuthorizationExampleCmd = &cobra.Command{
 	Use:   "authorization",
 	Short: "Example usage for authorization service",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		examplesConfig := *(cmd.Context().Value(RootConfigKey).(*ExampleConfig))
-		return authorizationExamples(&examplesConfig)
+		return authorizationExamples()
 	},
 }
 
-func authorizationExamples(examplesConfig *ExampleConfig) error {
-	s, err := sdk.New(examplesConfig.PlatformEndpoint, sdk.WithInsecurePlaintextConn())
+func authorizationExamples() error {
+	s, err := sdk.New(platformEndpoint, sdk.WithInsecurePlaintextConn())
 	if err != nil {
-		slog.Error("could not connect", slog.String("error", err.Error()))
+		slog.Error("could not connect", slog.Any("error", err))
 		return err
 	}
 	defer s.Close()

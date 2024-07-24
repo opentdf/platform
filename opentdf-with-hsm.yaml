@@ -11,6 +11,8 @@ logger:
 services:
   kas:
     enabled: true
+    eccertid: e1
+    rsacertid: r1
   policy:
     enabled: true
   entityresolution:
@@ -55,6 +57,7 @@ server:
       #  p, role:org-admin, policy:subject-mappings, *, *, allow
       #  p, role:org-admin, policy:resource-mappings, *, *, allow
       #  p, role:org-admin, policy:kas-registry, *, *, allow
+      #  p, role:org-admin, policy:unsafe, *, *, allow
       ## Custom model (see https://casbin.org/docs/syntax-for-models/)
       model: #|
       #  [request_definition]
@@ -106,10 +109,12 @@ server:
       pin: "12345"
       slotlabel: "dev-token"
       keys:
-        rsa:
-          label: development-rsa-kas
-        ec:
-          label: development-ec-kas
+        - kid: r1
+          alg: rsa:2048
+          private: development-rsa-kas
+        - kid: e1
+          alg: ec:secp256r1
+          private: development-ec-kas
   port: 8080
 opa:
   embedded: true # Only for local development

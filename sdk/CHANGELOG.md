@@ -1,5 +1,94 @@
 # Changelog
 
+## [0.3.4](https://github.com/opentdf/platform/compare/sdk/v0.3.3...sdk/v0.3.4) (2024-07-23)
+
+
+### Bug Fixes
+
+* policy binding fix ([#1198](https://github.com/opentdf/platform/issues/1198)) ([6bf8e74](https://github.com/opentdf/platform/commit/6bf8e747885c05ea6a23db707e778b16239abe0a))
+
+## [0.3.3](https://github.com/opentdf/platform/compare/sdk/v0.3.2...sdk/v0.3.3) (2024-07-22)
+
+
+### Bug Fixes
+
+* fixed policy binding type ([#1184](https://github.com/opentdf/platform/issues/1184)) ([9800a32](https://github.com/opentdf/platform/commit/9800a32c8d9d83458403e2f87720f7882461fc32))
+* **sdk:** Allow empty kas info list ([#1161](https://github.com/opentdf/platform/issues/1161)) ([dd6db8e](https://github.com/opentdf/platform/commit/dd6db8e370142be647aba12f00f466ea6d680297))
+* **sdk:** Remove case sensitivity of attr values ([#1160](https://github.com/opentdf/platform/issues/1160)) ([21d73f6](https://github.com/opentdf/platform/commit/21d73f6b6af88ecdfeb17c1db3fbfbb88cde89b5))
+
+## [0.3.2](https://github.com/opentdf/platform/compare/sdk/v0.3.1...sdk/v0.3.2) (2024-07-14)
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1155](https://github.com/opentdf/platform/issues/1155)) ([9f5608c](https://github.com/opentdf/platform/commit/9f5608cc62938c58078a2916856fa6bf473aea32))
+
+## [0.3.1](https://github.com/opentdf/platform/compare/sdk/v0.3.0...sdk/v0.3.1) (2024-07-12)
+
+
+### Bug Fixes
+
+* **core:** Fix autoconfigure with no attributes ([#1141](https://github.com/opentdf/platform/issues/1141)) ([76c2a95](https://github.com/opentdf/platform/commit/76c2a95ad7e0c9c57ebde6b101a908fc32fcd539))
+
+## [0.3.0](https://github.com/opentdf/platform/compare/sdk/v0.2.11...sdk/v0.3.0) (2024-07-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **sdk:** Autoconfigure with grants ([#1051](https://github.com/opentdf/platform/issues/1051))
+
+### Features
+
+* **sdk:** Autoconfigure with grants ([#1051](https://github.com/opentdf/platform/issues/1051)) ([588b862](https://github.com/opentdf/platform/commit/588b862d9d258ccac2761e41edda04ea77270187))
+
+## [0.2.11](https://github.com/opentdf/platform/compare/sdk/v0.2.10...sdk/v0.2.11) (2024-07-11)
+
+
+### Features
+
+* **sdk:** Support custom key splits ([#1038](https://github.com/opentdf/platform/issues/1038)) ([685d8b5](https://github.com/opentdf/platform/commit/685d8b5d7b609744eb6623c52efb27cb40fbc36c))
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1132](https://github.com/opentdf/platform/issues/1132)) ([da9145c](https://github.com/opentdf/platform/commit/da9145cce0738293281f6fba84d81dc221fc4e6f))
+
+## [0.2.10](https://github.com/opentdf/platform/compare/sdk/v0.2.9...sdk/v0.2.10) (2024-07-09)
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1083](https://github.com/opentdf/platform/issues/1083)) ([604fc2b](https://github.com/opentdf/platform/commit/604fc2b769768498bf4187381e14d0bb8e4bafbd))
+* **core:** Autobump sdk ([#1098](https://github.com/opentdf/platform/issues/1098)) ([c7cafed](https://github.com/opentdf/platform/commit/c7cafedf89823facb5c7dc096995a457a2829cd2))
+* **core:** Autobump sdk ([#1115](https://github.com/opentdf/platform/issues/1115)) ([04ad338](https://github.com/opentdf/platform/commit/04ad3385a4d91af0a7d4b8e31ec4a0e7142c9415))
+
+## [0.2.9](https://github.com/opentdf/platform/compare/sdk/v0.2.8...sdk/v0.2.9) (2024-07-02)
+
+
+### Features
+
+* **sdk:** support unsafe policy service in SDK ([#1076](https://github.com/opentdf/platform/issues/1076)) ([ca88554](https://github.com/opentdf/platform/commit/ca88554098c6330c3bd5d0c72386b8036fd32434))
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1070](https://github.com/opentdf/platform/issues/1070)) ([4ca372c](https://github.com/opentdf/platform/commit/4ca372c71eb2460a0b3d5791119a9a42a91aa1ee))
+* Issue [#1008](https://github.com/opentdf/platform/issues/1008) : Use exchange info's TLS Configuration for cert based auth ([#1043](https://github.com/opentdf/platform/issues/1043)) ([93d8f70](https://github.com/opentdf/platform/commit/93d8f70750d181e0818911e5b317c9d85044623b))
+
+## [0.2.8](https://github.com/opentdf/platform/compare/sdk/v0.2.7...sdk/v0.2.8) (2024-06-24)
+
+
+### Features
+
+* Audit GetDecisions ([#976](https://github.com/opentdf/platform/issues/976)) ([55bdfeb](https://github.com/opentdf/platform/commit/55bdfeb4dd4a846d244febd23825ced38e8e91b1))
+* **core:** New cryptoProvider config ([#939](https://github.com/opentdf/platform/issues/939)) ([8150623](https://github.com/opentdf/platform/commit/81506237e2e640af34df8c745b71c3f20358d5a4))
+
+
+### Bug Fixes
+
+* **core:** Update to lib/fixtures 0.2.7 ([#1017](https://github.com/opentdf/platform/issues/1017)) ([dbae6ff](https://github.com/opentdf/platform/commit/dbae6ff10aadbfc805d9acef8440a7930f3c684e))
+* **core:** Updates to protos 0.2.4 ([#1014](https://github.com/opentdf/platform/issues/1014)) ([43e11a3](https://github.com/opentdf/platform/commit/43e11a34c47c76fe2845d0a9d60a686ea394c131))
+
 ## [0.2.7](https://github.com/opentdf/platform/compare/sdk/v0.2.6...sdk/v0.2.7) (2024-06-10)
 
 

@@ -5,42 +5,23 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
+	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/wI2L/jsondiff"
-)
-
-type auditContextKey string
-
-// Header Values
-const (
-	UserAgentHeaderKey = "user-agent"
-)
-
-// Context Keys
-const (
-	UserAgentContextKey auditContextKey = "user-agent"
-	RequestIDContextKey auditContextKey = "request-id"
-	ActorIDContextKey   auditContextKey = "actor-id"
-)
-
-// Action Results
-const (
-	ActionResultSuccess = "success"
-	ActionResultError   = "error"
 )
 
 // Common Strings
 const (
-	DefaultNone = "None"
+	defaultNone = "None"
 )
 
 // event
 type EventObject struct {
-	Object        auditEventObject  `json:"object"`
-	Action        eventAction       `json:"action"`
-	Owner         EventOwner        `json:"owner"`
-	Actor         auditEventActor   `json:"actor"`
-	EventMetaData map[string]string `json:"eventMetaData"`
-	ClientInfo    eventClientInfo   `json:"clientInfo"`
+	Object        auditEventObject `json:"object"`
+	Action        eventAction      `json:"action"`
+	Owner         EventOwner       `json:"owner"`
+	Actor         auditEventActor  `json:"actor"`
+	EventMetaData interface{}      `json:"eventMetaData"`
+	ClientInfo    eventClientInfo  `json:"clientInfo"`
 
 	Diff      []DiffEntry `json:"diff,omitempty"`
 	RequestID uuid.UUID   `json:"requestId"`
@@ -51,21 +32,21 @@ type EventObject struct {
 type auditEventObject struct {
 	Type       ObjectType            `json:"type"`
 	ID         string                `json:"id"`
-	Name       string                `json:"name"`
-	Attributes eventObjectAttributes `json:"attributes"`
+	Name       string                `json:"name,omitempty"`
+	Attributes eventObjectAttributes `json:"attributes,omitempty"`
 }
 
 // event.object.attributes
 type eventObjectAttributes struct {
 	Assertions  []string `json:"assertions"`
 	Attrs       []string `json:"attrs"`
-	Permissions []string `json:"permissions"`
+	Permissions []string `json:"permissions,omitempty"`
 }
 
 // event.action
 type eventAction struct {
-	Type   ActionType `json:"type"`
-	Result string     `json:"result"`
+	Type   ActionType   `json:"type"`
+	Result ActionResult `json:"result"`
 }
 
 // event.owner
@@ -76,8 +57,8 @@ type EventOwner struct {
 
 // event.actor
 type auditEventActor struct {
-	ID         string            `json:"id"`
-	Attributes map[string]string `json:"attributes"`
+	ID         string        `json:"id"`
+	Attributes []interface{} `json:"attributes"`
 }
 
 // event.clientInfo
@@ -94,38 +75,50 @@ type ContextData struct {
 	ActorID   string
 }
 
+// Gets relevant audit data from the context object.
 func GetAuditDataFromContext(ctx context.Context) ContextData {
 	// Extract the request ID from context
-	requestID, requestIDOk := ctx.Value(RequestIDContextKey).(uuid.UUID)
-	if !requestIDOk {
+
+	requestIDString, _ := ctx.Value(sdkAudit.RequestIDContextKey).(string)
+
+	requestID, err := uuid.Parse(requestIDString)
+	if err != nil {
 		requestID = uuid.Nil
-	}
-
-	// Extract user agent from context
-	userAgent, userAgentOK := ctx.Value(UserAgentContextKey).(string)
-	if !userAgentOK {
-		userAgent = DefaultNone
-	}
-
-	// Extract actor ID from context
-	actorID, actorIDOK := ctx.Value(ActorIDContextKey).(string)
-	if !actorIDOK || actorID == "" {
-		actorID = DefaultNone
-	}
-
-	// Extract request IP from context
-	requestIPString := DefaultNone
-	requestIP, ipOK := realip.FromContext(ctx)
-	if ipOK {
-		requestIPString = requestIP.String()
 	}
 
 	return ContextData{
 		RequestID: requestID,
-		UserAgent: userAgent,
-		RequestIP: requestIPString,
-		ActorID:   actorID,
+		UserAgent: getContextValue(ctx, sdkAudit.UserAgentContextKey),
+		RequestIP: getRequestIPFromContext(ctx),
+		ActorID:   getContextValue(ctx, sdkAudit.ActorIDContextKey),
 	}
+}
+
+// Gets a value from the context. If the value is not present or is an empty
+// string, it returns the default value.
+func getContextValue(ctx context.Context, key sdkAudit.ContextKey) string {
+	value, ok := ctx.Value(key).(string)
+	if !ok || value == "" {
+		return defaultNone
+	}
+	return value
+}
+
+// Gets the request IP from the context. It first checks the context key, as we
+// can pass the custom X-Forwarded-Request-IP header for internal requests. If
+// that is not present, it falls back to the realip package.
+func getRequestIPFromContext(ctx context.Context) string {
+	requestIPFromContextKey, isOK := ctx.Value(sdkAudit.RequestIPContextKey).(string)
+	if isOK {
+		return requestIPFromContextKey
+	}
+
+	requestIPFromRealip, ipOK := realip.FromContext(ctx)
+	if ipOK {
+		return requestIPFromRealip.String()
+	}
+
+	return defaultNone
 }
 
 // Audit requires an "owner" field but that doesn't apply in the context of the

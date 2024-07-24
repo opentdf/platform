@@ -67,7 +67,7 @@ func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTo
 }
 
 // there is no connection caching as of now
-func (k *KASClient) makeRewrapRequest(keyAccess KeyAccess, policy string) (*kas.RewrapResponse, error) {
+func (k *KASClient) makeRewrapRequest(ctx context.Context, keyAccess KeyAccess, policy string) (*kas.RewrapResponse, error) {
 	rewrapRequest, err := k.getRewrapRequest(keyAccess, policy)
 	if err != nil {
 		return nil, err
@@ -83,7 +83,6 @@ func (k *KASClient) makeRewrapRequest(keyAccess KeyAccess, policy string) (*kas.
 	}
 	defer conn.Close()
 
-	ctx := context.Background()
 	serviceClient := kas.NewAccessServiceClient(conn)
 
 	response, err := serviceClient.Rewrap(ctx, rewrapRequest)
@@ -94,8 +93,8 @@ func (k *KASClient) makeRewrapRequest(keyAccess KeyAccess, policy string) (*kas.
 	return response, nil
 }
 
-func (k *KASClient) unwrap(keyAccess KeyAccess, policy string) ([]byte, error) {
-	response, err := k.makeRewrapRequest(keyAccess, policy)
+func (k *KASClient) unwrap(ctx context.Context, keyAccess KeyAccess, policy string) ([]byte, error) {
+	response, err := k.makeRewrapRequest(ctx, keyAccess, policy)
 	if err != nil {
 		return nil, fmt.Errorf("error making request to kas: %w", err)
 	}
@@ -156,7 +155,7 @@ func (k *KASClient) getNanoTDFRewrapRequest(header string, kasURL string, pubKey
 	return &rewrapRequest, nil
 }
 
-func (k *KASClient) makeNanoTDFRewrapRequest(header string, kasURL string, pubKey string) (*kas.RewrapResponse, error) {
+func (k *KASClient) makeNanoTDFRewrapRequest(ctx context.Context, header string, kasURL string, pubKey string) (*kas.RewrapResponse, error) {
 	rewrapRequest, err := k.getNanoTDFRewrapRequest(header, kasURL, pubKey)
 	if err != nil {
 		return nil, err
@@ -172,7 +171,6 @@ func (k *KASClient) makeNanoTDFRewrapRequest(header string, kasURL string, pubKe
 	}
 	defer conn.Close()
 
-	ctx := context.Background()
 	serviceClient := kas.NewAccessServiceClient(conn)
 
 	response, err := serviceClient.Rewrap(ctx, rewrapRequest)
@@ -183,7 +181,7 @@ func (k *KASClient) makeNanoTDFRewrapRequest(header string, kasURL string, pubKe
 	return response, nil
 }
 
-func (k *KASClient) unwrapNanoTDF(header string, kasURL string) ([]byte, error) {
+func (k *KASClient) unwrapNanoTDF(ctx context.Context, header string, kasURL string) ([]byte, error) {
 	keypair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewECKeyPair failed :%w", err)
@@ -199,7 +197,7 @@ func (k *KASClient) unwrapNanoTDF(header string, kasURL string) ([]byte, error) 
 		return nil, fmt.Errorf("ocrypto.NewECKeyPair.PrivateKeyInPemFormat failed :%w", err)
 	}
 
-	response, err := k.makeNanoTDFRewrapRequest(header, kasURL, publicKeyAsPem)
+	response, err := k.makeNanoTDFRewrapRequest(ctx, header, kasURL, publicKeyAsPem)
 	if err != nil {
 		return nil, fmt.Errorf("error making request to kas: %w", err)
 	}
@@ -287,26 +285,87 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 	return &rewrapRequest, nil
 }
 
-func getPublicKey(kasInfo KASInfo, opts ...grpc.DialOption) (string, error) {
-	req := kas.PublicKeyRequest{}
-	grpcAddress, err := getGRPCAddress(kasInfo.URL)
-	if err != nil {
-		return "", err
+type kasKeyRequest struct {
+	url, algorithm string
+}
+
+type timeStampedKASInfo struct {
+	KASInfo
+	time.Time
+}
+
+// Caches the most recent key info for a given KAS URL and algorithm
+type kasKeyCache struct {
+	c map[kasKeyRequest]timeStampedKASInfo
+}
+
+func newKasKeyCache() *kasKeyCache {
+	return &kasKeyCache{make(map[kasKeyRequest]timeStampedKASInfo)}
+}
+
+func (c *kasKeyCache) clear() {
+	c.c = make(map[kasKeyRequest]timeStampedKASInfo)
+}
+
+func (c *kasKeyCache) get(url, algorithm string) *KASInfo {
+	cacheKey := kasKeyRequest{url, algorithm}
+	now := time.Now()
+	cv, ok := c.c[cacheKey]
+	if !ok {
+		return nil
 	}
-	conn, err := grpc.Dial(grpcAddress, opts...)
+	ago := now.Add(-1 * time.Hour)
+	if ago.After(cv.Time) {
+		delete(c.c, cacheKey)
+		return nil
+	}
+	return &cv.KASInfo
+}
+
+func (c *kasKeyCache) store(ki KASInfo) {
+	cacheKey := kasKeyRequest{ki.URL, ki.Algorithm}
+	c.c[cacheKey] = timeStampedKASInfo{ki, time.Now()}
+}
+
+func (s SDK) getPublicKey(ctx context.Context, url, algorithm string) (*KASInfo, error) {
+	if cachedValue := s.kasKeyCache.get(url, algorithm); nil != cachedValue {
+		return cachedValue, nil
+	}
+	grpcAddress, err := getGRPCAddress(url)
 	if err != nil {
-		return "", fmt.Errorf("error connecting to grpc service at %s: %w", kasInfo.URL, err)
+		return nil, err
+	}
+	conn, err := grpc.Dial(grpcAddress, s.dialOptions...)
+	if err != nil {
+		return nil, fmt.Errorf("error connecting to grpc service at %s: %w", url, err)
 	}
 	defer conn.Close()
 
-	ctx := context.Background()
 	serviceClient := kas.NewAccessServiceClient(conn)
 
+	req := kas.PublicKeyRequest{
+		Algorithm: algorithm,
+	}
+	if s.config.tdfFeatures.noKID {
+		req.V = "1"
+	}
 	resp, err := serviceClient.PublicKey(ctx, &req)
 
 	if err != nil {
-		return "", fmt.Errorf("error making request to KAS: %w", err)
+		return nil, fmt.Errorf("error making request to KAS: %w", err)
 	}
 
-	return resp.GetPublicKey(), nil
+	kid := resp.GetKid()
+	if s.config.tdfFeatures.noKID {
+		kid = ""
+	}
+
+	ki := KASInfo{
+		URL:       url,
+		Algorithm: algorithm,
+		KID:       kid,
+		PublicKey: resp.GetPublicKey(),
+	}
+	s.kasKeyCache.store(ki)
+	return &ki, nil
 }

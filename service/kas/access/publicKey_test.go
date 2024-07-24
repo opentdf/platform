@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -115,6 +116,7 @@ func TestStandardCertificateHandlerEmpty(t *testing.T) {
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: c,
+		Logger:         logger.CreateTestLogger(),
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Fmt: "pkcs8"})
@@ -154,6 +156,14 @@ func TestStandardPublicKeyHandlerV2(t *testing.T) {
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: c,
+		KASConfig: KASConfig{
+			Keyring: []CurrentKeyFor{
+				{
+					Algorithm: security.AlgorithmRSA2048,
+					KID:       "rsa",
+				},
+			},
+		},
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{})
@@ -172,6 +182,7 @@ func TestStandardPublicKeyHandlerV2Failure(t *testing.T) {
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: c,
+		Logger:         logger.CreateTestLogger(),
 	}
 
 	k, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{})
@@ -197,6 +208,7 @@ func TestStandardPublicKeyHandlerV2NotFound(t *testing.T) {
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: c,
+		Logger:         logger.CreateTestLogger(),
 	}
 
 	k, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{
@@ -227,6 +239,14 @@ func TestStandardPublicKeyHandlerV2WithJwk(t *testing.T) {
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: c,
+		KASConfig: KASConfig{
+			Keyring: []CurrentKeyFor{
+				{
+					Algorithm: security.AlgorithmRSA2048,
+					KID:       "rsa",
+				},
+			},
+		},
 	}
 
 	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{

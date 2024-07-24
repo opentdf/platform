@@ -11,6 +11,17 @@ logger:
 services:
   kas:
     enabled: true
+    keyring:
+      - kid: e1
+        alg: ec:secp256r1
+      - kid: e1
+        alg: ec:secp256r1
+        legacy: true
+      - kid: r1
+        alg: rsa:2048
+      - kid: r1
+        alg: rsa:2048
+        legacy: true
   policy:
     enabled: true
   authorization:
@@ -22,15 +33,19 @@ services:
   entityresolution:
     enabled: true
     url: http://localhost:8888/auth
-    clientid: "tdf-entity-resolution"
-    clientsecret: "secret"
-    realm: "opentdf"
+    clientid: 'tdf-entity-resolution'
+    clientsecret: 'secret'
+    realm: 'opentdf'
     legacykeycloak: true
+    inferid:
+      from:
+        email: true
+        username: true
 server:
   auth:
     enabled: true
     enforceDPoP: false
-    audience: "http://localhost:8080"
+    audience: 'http://localhost:8080'
     issuer: http://localhost:8888/auth/realms/opentdf
     policy:
       ## Default policy for all requests
@@ -50,6 +65,7 @@ server:
       #  p, role:org-admin, policy:subject-mappings, *, *, allow
       #  p, role:org-admin, policy:resource-mappings, *, *, allow
       #  p, role:org-admin, policy:kas-registry, *, *, allow
+      #  p, role:org-admin, policy:unsafe, *, *, allow
 
       ## Custom model (see https://casbin.org/docs/syntax-for-models/)
       model: #|
@@ -70,8 +86,8 @@ server:
   cors:
     enabled: false
     # '*' to allow any origin or a specific domain like 'https://yourdomain.com'
-    allowedorigins: 
-      - "*"
+    allowedorigins:
+      - '*'
     # List of methods. Examples: 'GET,POST,PUT'
     allowedmethods:
       - GET
@@ -86,6 +102,7 @@ server:
       - Authorization
       - Content-Type
       - X-CSRF-Token
+      - X-Request-ID
     # List of response headers that browsers are allowed to access
     exposedheaders:
       - Link
@@ -98,17 +115,13 @@ server:
   cryptoProvider:
     type: standard
     standard:
-      rsa:
-        123:
-          private_key_path: kas-private.pem
-          public_key_path: kas-cert.pem
-        456:
-          private_key_path: kas-private.pem
-          public_key_path: kas-cert.pem
-      ec:
-        123:
-          private_key_path: kas-ec-private.pem
-          public_key_path: kas-ec-cert.pem
+      keys:
+        - kid: r1
+          alg: rsa:2048
+          private: kas-private.pem
+          cert: kas-cert.pem
+        - kid: e1
+          alg: ec:secp256r1
+          private: kas-ec-private.pem
+          cert: kas-ec-cert.pem
   port: 8080
-opa:
-  embedded: true # Only for local development

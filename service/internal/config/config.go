@@ -5,20 +5,21 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"reflect"
 	"strings"
 
 	"github.com/creasty/defaults"
 	"github.com/opentdf/platform/service/internal/logger"
-	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"github.com/opentdf/platform/service/pkg/util"
 	"github.com/spf13/viper"
 )
 
 type Config struct {
+	DevMode  bool                                     `mapstructure:"dev_mode"`
 	DB       db.Config                                `yaml:"db"`
-	OPA      opa.Config                               `yaml:"opa"`
 	Server   server.Config                            `yaml:"server"`
 	Logger   logger.Config                            `yaml:"logger"`
 	Services map[string]serviceregistry.ServiceConfig `yaml:"services" default:"{\"policy\": {\"enabled\": true}, \"health\": {\"enabled\": true}, \"authorization\": {\"enabled\": true}, \"wellknown\": {\"enabled\": true}, \"kas\": {\"enabled\": true}, \"entityresolution\": {\"enabled\": true}}"`
@@ -83,4 +84,22 @@ func LoadConfig(key string, file string) (*Config, error) {
 	}
 
 	return config, nil
+}
+
+func (c *Config) LogValue() slog.Value {
+	redactedConfig := util.RedactSensitiveData(c)
+	var values []slog.Attr
+	v := reflect.ValueOf(redactedConfig).Elem()
+	t := v.Type()
+
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		fieldType := t.Field(i)
+		key := fieldType.Tag.Get("yaml")
+		if key == "" {
+			key = fieldType.Name
+		}
+		values = append(values, slog.String(key, util.StructToString(field)))
+	}
+	return slog.GroupValue(values...)
 }

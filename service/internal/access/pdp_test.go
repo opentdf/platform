@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -108,7 +109,7 @@ func Test_AccessPDP_AnyOf_Pass(t *testing.T) {
 		mockExtraneousValueFqn,
 	}
 
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -139,7 +140,7 @@ func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
 		mockExtraneousValueFqn,
 	}
 
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -169,7 +170,7 @@ func Test_AccessPDP_AnyOf_FailMissingAttr(t *testing.T) {
 		mockExtraneousValueFqn,
 	}
 
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -198,7 +199,7 @@ func Test_AccessPDP_AnyOf_FailAttrWrongNamespace(t *testing.T) {
 	val1 := mockAttrDefinitions[0].GetValues()[0].GetValue()
 	mockEntityAttrs[mockEntityID] = []string{fqnBuilder("otherrandomnamespace.com", name, val1), mockExtraneousValueFqn}
 
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -225,7 +226,7 @@ func Test_AccessPDP_AnyOf_NoEntityAttributes_Fails(t *testing.T) {
 	mockEntityAttrs := map[string][]string{}
 	mockEntityAttrs[mockEntityID] = []string{}
 
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -253,7 +254,7 @@ func Test_AccessPDP_AnyOf_NoDataAttributes_NoDecisions(t *testing.T) {
 		mockExtraneousValueFqn,
 	}
 
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -301,7 +302,7 @@ func Test_AccessPDP_AnyOf_AllEntitiesFilteredOutOfDataAttributeComparison_NoDeci
 		fqn1, fqn2,
 	}
 
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -336,7 +337,7 @@ func Test_AccessPDP_AllOf_Pass(t *testing.T) {
 		mockExtraneousValueFqn,
 	}
 
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -364,7 +365,7 @@ func Test_AccessPDP_AllOf_FailMissingValue(t *testing.T) {
 		fqnBuilder(mockAttrDefinitions[0].GetNamespace().GetName(), mockAttrDefinitions[0].GetName(), "otherValue"),
 	}
 
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -393,7 +394,7 @@ func Test_AccessPDP_AllOf_FailMissingAttr(t *testing.T) {
 		fqnBuilder("dank.org", "noop", "randomVal"),
 		fqnBuilder("somewhere.com", "hello", "world"),
 	}
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -425,7 +426,7 @@ func Test_AccessPDP_AllOf_FailAttrWrongNamespace(t *testing.T) {
 		mockExtraneousValueFqn,
 	}
 
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -459,7 +460,7 @@ func Test_AccessPDP_Hierarchy_Pass(t *testing.T) {
 		mockExtraneousValueFqn,
 	}
 
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -493,7 +494,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
 		mockExtraneousValueFqn,
 	}
 
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -521,7 +522,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueAndDataValuesBothLowest(t *testing.
 		fqnBuilder(ns, name, lowValue.GetValue()),
 	}
 
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -554,7 +555,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
 		mockExtraneousValueFqn,
 	}
 
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -587,7 +588,7 @@ func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
 		mockExtraneousValueFqn,
 	}
 
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -618,7 +619,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
 		mockExtraneousValueFqn,
 	}
 
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -650,7 +651,7 @@ func Test_AccessPDP_Hierarchy_FailDataValueNotInOrder(t *testing.T) {
 		mockExtraneousValueFqn,
 	}
 
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -685,7 +686,7 @@ func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T
 		mockExtraneousValueFqn,
 	}
 
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -712,7 +713,7 @@ func Test_AccessPDP_Hierarchy_FailWithWrongNamespace(t *testing.T) {
 		mockExtraneousValueFqn,
 	}
 
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -745,7 +746,7 @@ func Test_AccessPDP_Hierarchy_FailWithMixedKnownAndUnknownEntityOrder(t *testing
 		mockExtraneousValueFqn,
 	}
 
-	accessPDP := NewPdp()
+	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
 		ctx.Background(),
 		mockDataAttrs,
@@ -770,7 +771,7 @@ func Test_GetFqnToDefinitionMap(t *testing.T) {
 		&simpleHierarchyAttribute,
 	}
 
-	fqnToDefinitionMap, err := GetFqnToDefinitionMap(mockAttrDefinitions)
+	fqnToDefinitionMap, err := GetFqnToDefinitionMap(mockAttrDefinitions, logger.CreateTestLogger())
 	require.NoError(t, err)
 
 	for _, attrDef := range mockAttrDefinitions {
@@ -785,7 +786,7 @@ func Test_GetFqnToDefinitionMap_SucceedsWithDuplicateDefinitions(t *testing.T) {
 		&simpleAnyOfAttribute,
 	}
 
-	fqnToDefinitionMap, err := GetFqnToDefinitionMap(mockAttrDefinitions)
+	fqnToDefinitionMap, err := GetFqnToDefinitionMap(mockAttrDefinitions, logger.CreateTestLogger())
 	require.NoError(t, err)
 	expectedFqn := fqnBuilder(mockAttrDefinitions[0].GetNamespace().GetName(), mockAttrDefinitions[0].GetName(), "")
 	v, ok := fqnToDefinitionMap[expectedFqn]
@@ -1104,9 +1105,9 @@ func Test_GetIsValueFoundInFqnValuesSet(t *testing.T) {
 	}
 
 	for i, v := range values {
-		assert.Equal(t, v.expected, getIsValueFoundInFqnValuesSet(v.val, fqnsList))
+		assert.Equal(t, v.expected, getIsValueFoundInFqnValuesSet(v.val, fqnsList, logger.CreateTestLogger()))
 		if i == 3 {
-			assert.False(t, getIsValueFoundInFqnValuesSet(v.val, fqnsList[:3]))
+			assert.False(t, getIsValueFoundInFqnValuesSet(v.val, fqnsList[:3], logger.CreateTestLogger()))
 		}
 	}
 }
@@ -1142,7 +1143,7 @@ func Test_GetOrderOfValue(t *testing.T) {
 	}
 
 	for i := range values {
-		got, err := getOrderOfValue(values, values[i])
+		got, err := getOrderOfValue(values, values[i], logger.CreateTestLogger())
 		require.NoError(t, err)
 		assert.Equal(t, i, got)
 	}
@@ -1150,7 +1151,7 @@ func Test_GetOrderOfValue(t *testing.T) {
 	// test with a value that doesn't exist in the list
 	idx, err := getOrderOfValue(values, &policy.Value{
 		Value: "unknownValue",
-	})
+	}, logger.CreateTestLogger())
 	require.NoError(t, err)
 	assert.Equal(t, -1, idx)
 }
@@ -1180,7 +1181,7 @@ func Test_GetOrderOfValue_FailsCorrectly(t *testing.T) {
 
 	for _, v := range bad {
 		order := []*policy.Value{v, good}
-		got, err := getOrderOfValue(order, good)
+		got, err := getOrderOfValue(order, good, logger.CreateTestLogger())
 		require.Error(t, err)
 		assert.Equal(t, -1, got)
 	}
@@ -1188,7 +1189,7 @@ func Test_GetOrderOfValue_FailsCorrectly(t *testing.T) {
 	// test with a value that doesn't exist in the list
 	idx, err := getOrderOfValue(append(bad, good), &policy.Value{
 		Value: "unknownValue",
-	})
+	}, logger.CreateTestLogger())
 	require.Error(t, err)
 	assert.Equal(t, -1, idx)
 }

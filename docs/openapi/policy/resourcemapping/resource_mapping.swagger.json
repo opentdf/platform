@@ -18,8 +18,6 @@
   "paths": {
     "/resource-mappings": {
       "get": {
-        "summary": "Request Example:\n- empty body",
-        "description": "Response Example:\n{\n\"resource_mappings\": [\n{\n\"terms\": [\n\"TOPSECRET\",\n\"TS\",\n],\n\"id\": \"3c649464-95b4-4fe0-a09c-ca4b1fecbb0e\",\n\"metadata\": {\n\"labels\": [],\n\"created_at\": {\n\"seconds\": \"1706103276\",\n\"nanos\": 510718000\n},\n\"updated_at\": {\n\"seconds\": \"1706107873\",\n\"nanos\": 399786000\n},\n\"description\": \"\"\n},\n\"attribute_value\": {\n\"members\": [],\n\"id\": \"f0d1d4f6-bff9-45fd-8170-607b6b559349\",\n\"metadata\": null,\n\"attribute_id\": \"\",\n\"value\": \"value1\"\n}\n}\n]\n}",
         "operationId": "ResourceMappingService_ListResourceMappings",
         "responses": {
           "200": {
@@ -40,8 +38,6 @@
         ]
       },
       "post": {
-        "summary": "Request Example:\n{\n\"resource_mapping\": {\n\"attribute_value_id\": \"f0d1d4f6-bff9-45fd-8170-607b6b559349\",\n\"terms\": [\n\"TOPSECRET\",\n\"TS\",\n]\n}\n}",
-        "description": "Response Example:\n{\n\"resource_mapping\": {\n\"terms\": [\n\"TOPSECRET\",\n\"TS\",\n],\n\"id\": \"3c649464-95b4-4fe0-a09c-ca4b1fecbb0e\",\n\"metadata\": {\n\"labels\": [],\n\"created_at\": {\n\"seconds\": \"1706103276\",\n\"nanos\": 510718000\n},\n\"updated_at\": {\n\"seconds\": \"1706107873\",\n\"nanos\": 399786000\n},\n\"description\": \"\"\n},\n\"attribute_value\": {\n\"members\": [],\n\"id\": \"f0d1d4f6-bff9-45fd-8170-607b6b559349\",\n\"metadata\": null,\n\"attribute_id\": \"\",\n\"value\": \"value1\"\n}\n}\n}",
         "operationId": "ResourceMappingService_CreateResourceMapping",
         "responses": {
           "200": {
@@ -75,8 +71,6 @@
     },
     "/resource-mappings/{id}": {
       "get": {
-        "summary": "Request Example:\n{\n\"id\": \"3c649464-95b4-4fe0-a09c-ca4b1fecbb0e\"\n}",
-        "description": "Response Example:\n{\n\"resource_mapping\": {\n\"terms\": [\n\"TOPSECRET\",\n\"TS\",\n],\n\"id\": \"3c649464-95b4-4fe0-a09c-ca4b1fecbb0e\",\n\"metadata\": {\n\"labels\": [],\n\"created_at\": {\n\"seconds\": \"1706103276\",\n\"nanos\": 510718000\n},\n\"updated_at\": {\n\"seconds\": \"1706107873\",\n\"nanos\": 399786000\n},\n\"description\": \"\"\n},\n\"attribute_value\": {\n\"members\": [],\n\"id\": \"f0d1d4f6-bff9-45fd-8170-607b6b559349\",\n\"metadata\": null,\n\"attribute_id\": \"\",\n\"value\": \"value1\"\n}\n}\n}",
         "operationId": "ResourceMappingService_GetResourceMapping",
         "responses": {
           "200": {
@@ -105,8 +99,6 @@
         ]
       },
       "delete": {
-        "summary": "Request Example:\n{\n\"id\": \"3c649464-95b4-4fe0-a09c-ca4b1fecbb0e\"\n}",
-        "description": "Response Example:\n{\n\"resource_mapping\": {\n\"terms\": [\n\"TOPSECRET\",\n\"TS\",\n],\n\"id\": \"3c649464-95b4-4fe0-a09c-ca4b1fecbb0e\",\n\"metadata\": {\n\"labels\": [],\n\"created_at\": {\n\"seconds\": \"1706103276\",\n\"nanos\": 510718000\n},\n\"updated_at\": {\n\"seconds\": \"1706107873\",\n\"nanos\": 399786000\n},\n\"description\": \"\"\n},\n\"attribute_value\": {\n\"members\": [],\n\"id\": \"f0d1d4f6-bff9-45fd-8170-607b6b559349\",\n\"metadata\": null,\n\"attribute_id\": \"\",\n\"value\": \"value1\"\n}\n}\n}",
         "operationId": "ResourceMappingService_DeleteResourceMapping",
         "responses": {
           "200": {
@@ -135,8 +127,6 @@
         ]
       },
       "patch": {
-        "summary": "Request Example:\n{\n\"id\": \"3c649464-95b4-4fe0-a09c-ca4b1fecbb0e\",\n\"resource_mapping\": {\n\"attribute_value_id\": \"f0d1d4f6-bff9-45fd-8170-607b6b559349\",\n\"terms\": [\n\"TOPSECRET\",\n\"TS\",\n\"NEWTERM\"\n]\n}\n}",
-        "description": "Response Example:\n{\n\"resource_mapping\": {\n\"terms\": [\n\"TOPSECRET\",\n\"TS\",\n],\n\"id\": \"3c649464-95b4-4fe0-a09c-ca4b1fecbb0e\",\n\"metadata\": {\n\"labels\": [],\n\"created_at\": {\n\"seconds\": \"1706103276\",\n\"nanos\": 510718000\n},\n\"updated_at\": {\n\"seconds\": \"1706107873\",\n\"nanos\": 399786000\n},\n\"description\": \"\"\n},\n\"attribute_value\": {\n\"members\": [],\n\"id\": \"f0d1d4f6-bff9-45fd-8170-607b6b559349\",\n\"metadata\": null,\n\"attribute_id\": \"\",\n\"value\": \"value1\"\n}\n}\n}",
         "operationId": "ResourceMappingService_UpdateResourceMapping",
         "responses": {
           "200": {
@@ -497,9 +487,11 @@
       "enum": [
         "SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED",
         "SUBJECT_MAPPING_OPERATOR_ENUM_IN",
-        "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN"
+        "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN",
+        "SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS"
       ],
       "default": "SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED",
+      "description": "- SUBJECT_MAPPING_OPERATOR_ENUM_IN: operator that returns true if a value in a list matches the string\n - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN: operator that returns true if a value is not in a list that is matched by string\n - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS: operator that returns true if a value in a list contains the substring",
       "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
     },
     "policySubjectSet": {
@@ -534,8 +526,7 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/policyValue"
-          },
-          "title": "list of attribute values that this value is related to (attribute group)"
+          }
         },
         "grants": {
           "type": "array",

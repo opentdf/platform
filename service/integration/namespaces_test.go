@@ -210,39 +210,6 @@ func (s *NamespacesSuite) Test_UpdateNamespace_DoesNotExist_ShouldFail() {
 	s.Nil(ns)
 }
 
-func (s *NamespacesSuite) Test_DeleteNamespace() {
-	testData := s.getActiveNamespaceFixtures()
-
-	// Deletion should fail when the namespace is referenced as FK in attribute(s)
-	for _, ns := range testData {
-		deleted, err := s.db.PolicyClient.DeleteNamespace(s.ctx, ns.ID)
-		s.Require().Error(err)
-		s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
-		s.Nil(deleted)
-	}
-
-	// Deletion should succeed when NOT referenced as FK in attribute(s)
-	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "deleting-namespace.com"})
-	s.Require().NoError(err)
-	s.NotEqual("", n)
-
-	deleted, err := s.db.PolicyClient.DeleteNamespace(s.ctx, n.GetId())
-	s.Require().NoError(err)
-	s.NotNil(deleted)
-
-	// Deleted namespace should not be found on List
-	gotNamespaces, err := s.db.PolicyClient.ListNamespaces(s.ctx, policydb.StateActive)
-	s.Require().NoError(err)
-	s.NotNil(gotNamespaces)
-	for _, ns := range gotNamespaces {
-		s.NotEqual(n.GetId(), ns.GetId())
-	}
-
-	// Deleted namespace should not be found on Get
-	_, err = s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
-	s.Require().Error(err)
-}
-
 func (s *NamespacesSuite) Test_DeactivateNamespace() {
 	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "deactivating-namespace.com"})
 	s.Require().NoError(err)
@@ -430,18 +397,6 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_Cascades_ToAttributesAndValue
 	s.False(gotVal.GetActive().GetValue())
 }
 
-func (s *NamespacesSuite) Test_DeleteNamespace_DoesNotExist_ShouldFail() {
-	ns, err := s.db.PolicyClient.DeleteNamespace(s.ctx, nonExistentNamespaceID)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrNotFound)
-	s.Nil(ns)
-
-	ns, err = s.db.PolicyClient.DeleteNamespace(s.ctx, nonExistentNamespaceID)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrNotFound)
-	s.Nil(ns)
-}
-
 func (s *NamespacesSuite) Test_DeactivateNamespace_DoesNotExist_ShouldFail() {
 	ns, err := s.db.PolicyClient.DeactivateNamespace(s.ctx, nonExistentNamespaceID)
 	s.Require().Error(err)
@@ -476,6 +431,333 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_AllAttributesDeactivated() {
 	for _, attr := range attrs {
 		s.False(attr.GetActive().GetValue())
 	}
+}
+
+func (s *NamespacesSuite) Test_UnsafeDeleteNamespace_Cascades() {
+	// create namespace, with an attribute and values
+	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "deleting-namespace.com"})
+	s.Require().NoError(err)
+	s.NotNil(n)
+
+	attr := &attributes.CreateAttributeRequest{
+		Name:        "test__deleting-attribute",
+		NamespaceId: n.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
+
+	val := &attributes.CreateAttributeValueRequest{
+		Value: "test__deleting-value",
+	}
+	createdVal, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, createdAttr.GetId(), val)
+	s.Require().NoError(err)
+	s.NotNil(createdVal)
+
+	val = &attributes.CreateAttributeValueRequest{
+		Value: "test__deleting-value-2",
+	}
+	createdVal2, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, createdAttr.GetId(), val)
+	s.Require().NoError(err)
+	s.NotNil(createdVal2)
+
+	existing, _ := s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
+
+	// delete the namespace
+	deleted, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, existing, existing.GetFqn())
+	s.Require().NoError(err)
+	s.NotNil(deleted)
+
+	// Deleted namespace should not be found on GET
+	ns, err := s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(ns)
+
+	// Deleted attribute should not be found on GET
+	a, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(a)
+
+	// Deleted values should not be found on GET
+	v, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdVal.GetId())
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(v)
+	v, err = s.db.PolicyClient.GetAttributeValue(s.ctx, createdVal2.GetId())
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(v)
+}
+
+func (s *NamespacesSuite) Test_UnsafeDeleteNamespace_ShouldBeAbleToRecreateDeletedNamespace() {
+	// create namespace
+	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "deleting-namespace.com"})
+	s.Require().NoError(err)
+	s.NotNil(n)
+
+	got, _ := s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
+
+	// delete the namespace
+	_, err = s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, got, got.GetFqn())
+	s.Require().NoError(err)
+
+	// create the namespace again
+	n, err = s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "deleting-namespace.com"})
+	s.Require().NoError(err)
+	s.NotNil(n)
+}
+
+func (s *NamespacesSuite) Test_UnsafeDeleteNamespace_DoesNotExist_ShouldFail() {
+	ns, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, &policy.Namespace{}, "does.not.exist")
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(ns)
+
+	created, _ := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "deletingns.com"})
+	s.NotNil(created)
+	got, _ := s.db.PolicyClient.GetNamespace(s.ctx, created.GetId())
+	s.NotNil(got)
+	s.NotEqual("", got.GetFqn())
+
+	ns, err = s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, got, "https://bad.fqn")
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(ns)
+}
+
+func (s *NamespacesSuite) Test_UnsafeReactivateNamespace_SetsActiveStatusOfNamespace() {
+	// create a namespace
+	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "reactivating-namespace.com"})
+	s.Require().NoError(err)
+	s.NotNil(n)
+
+	// deactivate the namespace
+	_, err = s.db.PolicyClient.DeactivateNamespace(s.ctx, n.GetId())
+	s.Require().NoError(err)
+
+	// test that it's deactivated
+	deactivated, err := s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
+	s.Require().NoError(err)
+	s.NotNil(deactivated)
+	s.False(deactivated.GetActive().GetValue())
+
+	// reactivate the namespace
+	reactivated, err := s.db.PolicyClient.UnsafeReactivateNamespace(s.ctx, n.GetId())
+	s.Require().NoError(err)
+	s.NotNil(reactivated)
+
+	// test that it's active
+	active, err := s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
+	s.Require().NoError(err)
+	s.NotNil(active)
+	s.True(active.GetActive().GetValue())
+
+	// test that the namespace is found in the list of active namespaces
+	gotNamespaces, err := s.db.PolicyClient.ListNamespaces(s.ctx, policydb.StateActive)
+	s.Require().NoError(err)
+	s.NotNil(gotNamespaces)
+	found := false
+	for _, ns := range gotNamespaces {
+		if n.GetId() == ns.GetId() {
+			found = true
+			break
+		}
+	}
+	s.True(found)
+
+	// test that the namespace is not found in the list of inactive namespaces
+	gotNamespaces, err = s.db.PolicyClient.ListNamespaces(s.ctx, policydb.StateInactive)
+	s.Require().NoError(err)
+	s.NotNil(gotNamespaces)
+	found = false
+	for _, ns := range gotNamespaces {
+		if n.GetId() == ns.GetId() {
+			found = true
+			break
+		}
+	}
+	s.False(found)
+}
+
+func (s *NamespacesSuite) Test_UnsafeReactivateNamespace_DoesNotExist_ShouldFail() {
+	ns, err := s.db.PolicyClient.UnsafeReactivateNamespace(s.ctx, nonExistentNamespaceID)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(ns)
+
+	ns, err = s.db.PolicyClient.UnsafeReactivateNamespace(s.ctx, nonExistentNamespaceID)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(ns)
+}
+
+func (s *NamespacesSuite) Test_UnsafeReactivateNamespace_ShouldNotReactivateChildren() {
+	// create a namespace
+	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "reactivating-ns.io"})
+	s.Require().NoError(err)
+	s.NotNil(n)
+
+	// create an attribute definition
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "reactivating-attr",
+		NamespaceId: n.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	s.NotNil(attr)
+
+	// create a value for the attribute definition
+	val, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attr.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: "reactivating-val",
+	})
+	s.Require().NoError(err)
+	s.NotNil(val)
+
+	// deactivate the namespace
+	_, err = s.db.PolicyClient.DeactivateNamespace(s.ctx, n.GetId())
+	s.Require().NoError(err)
+
+	// ensure all are inactive
+	deactivatedNs, err := s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
+	s.Require().NoError(err)
+	s.NotNil(deactivatedNs)
+	s.False(deactivatedNs.GetActive().GetValue())
+
+	deactivatedAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, attr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(deactivatedAttr)
+	s.False(deactivatedAttr.GetActive().GetValue())
+
+	deactivatedVal, err := s.db.PolicyClient.GetAttributeValue(s.ctx, val.GetId())
+	s.Require().NoError(err)
+	s.NotNil(deactivatedVal)
+	s.False(deactivatedVal.GetActive().GetValue())
+
+	// reactivate the namespace
+	_, err = s.db.PolicyClient.UnsafeReactivateNamespace(s.ctx, n.GetId())
+	s.Require().NoError(err)
+
+	// ensure the namespace is active
+	reactivatedNs, err := s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
+	s.Require().NoError(err)
+	s.NotNil(reactivatedNs)
+	s.True(reactivatedNs.GetActive().GetValue())
+
+	// ensure the attribute definition is still inactive
+	reactivatedAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, attr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(reactivatedAttr)
+	s.False(reactivatedAttr.GetActive().GetValue())
+
+	// ensure the values are still inactive
+	reactivatedVal, err := s.db.PolicyClient.GetAttributeValue(s.ctx, val.GetId())
+	s.Require().NoError(err)
+	s.NotNil(reactivatedVal)
+	s.False(reactivatedVal.GetActive().GetValue())
+}
+
+func (s *NamespacesSuite) Test_UnsafeUpdateNamespace() {
+	name := "unsafe.gov"
+	after := "hello.world"
+	created, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	updated, err := s.db.PolicyClient.UnsafeUpdateNamespace(s.ctx, created.GetId(), after)
+	s.Require().NoError(err)
+	s.NotNil(updated)
+	s.Equal(created.GetId(), updated.GetId())
+	s.True(updated.GetActive().GetValue())
+	s.Equal(after, updated.GetName())
+	createdTime := created.GetMetadata().GetCreatedAt().AsTime()
+	updatedTime := updated.GetMetadata().GetUpdatedAt().AsTime()
+	s.True(createdTime.Before(updatedTime))
+
+	got, err := s.db.PolicyClient.GetNamespace(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal("https://"+after, got.GetFqn())
+
+	// should be able to create original name after unsafely updating
+	recreated, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})
+	s.Require().NoError(err)
+	s.NotNil(recreated)
+	s.NotEqual(created.GetId(), recreated.GetId())
+}
+
+// validate a namespace with a definition and values are all lookupable by fqn
+func (s *NamespacesSuite) Test_UnsafeUpdateNamespace_CascadesInFqns() {
+	// create a namespace
+	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "updating-namespace.io"})
+	s.Require().NoError(err)
+	s.NotNil(n)
+
+	// create an attribute under that namespace
+	attr := &attributes.CreateAttributeRequest{
+		Name:        "test__updating-attr",
+		NamespaceId: n.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"test_val1"},
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
+	createdAttr, _ = s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	createdVal := createdAttr.GetValues()[0]
+
+	// update the namespace
+	updated, err := s.db.PolicyClient.UnsafeUpdateNamespace(s.ctx, n.GetId(), "updated.ca")
+	s.Require().NoError(err)
+	s.NotNil(updated)
+
+	// ensure the namespace has the proper fqn
+	gotNs, err := s.db.PolicyClient.GetNamespace(s.ctx, updated.GetId())
+	s.Require().NoError(err)
+	s.NotNil(gotNs)
+	s.Equal("https://updated.ca", gotNs.GetFqn())
+
+	// ensure the attribute has the proper fqn
+	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(gotAttr)
+	s.Equal("https://updated.ca/attr/test__updating-attr", gotAttr.GetFqn())
+
+	// ensure the value has the proper fqn
+	gotVal, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdVal.GetId())
+	s.Require().NoError(err)
+	s.NotNil(gotVal)
+	s.Equal("https://updated.ca/attr/test__updating-attr/value/test_val1", gotVal.GetFqn())
+}
+
+func (s *NamespacesSuite) Test_UnsafeUpdateNamespace_DoesNotExist_ShouldFail() {
+	ns, err := s.db.PolicyClient.UnsafeUpdateNamespace(s.ctx, nonExistentNamespaceID, "does.not.exist")
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(ns)
+}
+
+func (s *NamespacesSuite) Test_UnsafeUpdateNamespace_NormalizeCasing() {
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "TeStInG-XYZ.com"})
+	s.Require().NoError(err)
+	s.NotNil(ns)
+
+	got, _ := s.db.PolicyClient.GetNamespace(s.ctx, ns.GetId())
+	s.NotNil(got)
+	s.Equal("testing-xyz.com", got.GetName())
+
+	updated, err := s.db.PolicyClient.UnsafeUpdateNamespace(s.ctx, ns.GetId(), "HELLOWORLD.COM")
+	s.Require().NoError(err)
+	s.NotNil(updated)
+	s.Equal("helloworld.com", updated.GetName())
+
+	got, _ = s.db.PolicyClient.GetNamespace(s.ctx, ns.GetId())
+	s.NotNil(got)
+	s.Equal("helloworld.com", got.GetName())
+	s.Contains(got.GetFqn(), "helloworld.com")
+	s.Equal("https://helloworld.com", got.GetFqn())
 }
 
 func TestNamespacesSuite(t *testing.T) {

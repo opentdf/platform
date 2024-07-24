@@ -17,7 +17,7 @@ jobs:
     steps:
       - name: Generate a token
         id: generate_token
-        uses: actions/create-github-app-token@7bfa3a4717ef143a604ee0a99d859b8886a96d00 # v1.9.3
+        uses: actions/create-github-app-token@31c86eb3b33c9b601a1f60f98dcbfd1d70f379b4 # v1.10.3
         with:
           app-id: "${{ secrets.APP_ID }}"
           private-key: "${{ secrets.AUTOMATION_KEY }}"
@@ -34,6 +34,11 @@ jobs:
             case "$x" in
               lib/ocrypto)
                 echo "TO_UPDATE=['examples','sdk','service']">>"$GITHUB_OUTPUT"
+                ;;
+              lib/flattening)
+                # currently nothing downstream
+                # TODO: uncomment when services updates
+                # echo "TO_UPDATE=['service']">>"$GITHUB_OUTPUT"
                 ;;
               lib/fixtures)
                 echo "TO_UPDATE=['sdk','service']">>"$GITHUB_OUTPUT"
@@ -67,7 +72,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
         with:
           fetch-depth: 0
       - run: |
@@ -75,9 +80,12 @@ jobs:
           git push -f -u origin update-go-mods-for-${{matrix.path}}
           cd ${{matrix.path}}
           for x in ${{join(fromJson(needs.release-please.outputs.paths_released), ' ')}}; do
-            pkg=github.com/opentdf/platform/${x}
+            export pkg=github.com/opentdf/platform/${x}
+            if go mod edit --json | jq -e '.Replace[] | select(.Old.Path == env.pkg)'; then
+              go mod edit --dropreplace=$pkg
+            fi
             echo "Should we update [${pkg}] in [${{ matrix.path }}]?"
-            if grep "$pkg"<go.mod; then
+            if go mod edit --json | jq -e '.Require[] | select(.Path == env.pkg)'; then
               ver=$(jq -r .\[\"${x}\"\] < "${GITHUB_WORKSPACE}/.release-please-manifest.json")
               echo "go get ${pkg}@v${ver}"
               go get "${pkg}@v${ver}"
@@ -100,7 +108,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Generate a token
         id: generate_token
-        uses: actions/create-github-app-token@7bfa3a4717ef143a604ee0a99d859b8886a96d00 # v1.9.3
+        uses: actions/create-github-app-token@31c86eb3b33c9b601a1f60f98dcbfd1d70f379b4 # v1.10.3
         with:
           app-id: "${{ secrets.APP_ID }}"
           private-key: "${{ secrets.AUTOMATION_KEY }}"
@@ -109,5 +117,6 @@ jobs:
           git restore .
           git pull origin update-go-mods-for-${{ matrix.path }}
           gh pr create -B main -H update-go-mods-for-${{ matrix.path }} --fill
+          gh pr merge --auto --squash
         env:
           GITHUB_TOKEN: "${{ steps.generate_token.outputs.token }}"

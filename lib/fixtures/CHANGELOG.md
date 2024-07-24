@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.7](https://github.com/opentdf/platform/compare/lib/fixtures/v0.2.6...lib/fixtures/v0.2.7) (2024-06-20)
+
+
+### Bug Fixes
+
+* **ci:** Ensure unmanaged attributes is enabled during kc provisioning ([#1002](https://github.com/opentdf/platform/issues/1002)) ([58393ef](https://github.com/opentdf/platform/commit/58393efce711dc9ee2df14c78ab65b02c23aaded))
+
 ## [0.2.6](https://github.com/opentdf/platform/compare/lib/fixtures/v0.2.5...lib/fixtures/v0.2.6) (2024-06-04)
 
 

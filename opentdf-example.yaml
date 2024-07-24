@@ -11,6 +11,8 @@ db:
 services:
   kas:
     enabled: true
+    eccertid: e1
+    rsacertid: r1
   policy:
     enabled: true
   entityresolution:
@@ -20,6 +22,10 @@ services:
     clientsecret: "secret"
     realm: "opentdf"
     legacykeycloak: true
+    inferid:
+      from:
+        email: true
+        username: true
   authorization:
     enabled: true
     ersurl: http://localhost:8080/entityresolution/resolve
@@ -50,6 +56,7 @@ server:
       #  p, role:org-admin, policy:subject-mappings, *, *, allow
       #  p, role:org-admin, policy:resource-mappings, *, *, allow
       #  p, role:org-admin, policy:kas-registry, *, *, allow
+      #  p, role:org-admin, policy:unsafe, *, *, allow
       ## Custom model (see https://casbin.org/docs/syntax-for-models/)
       model: #|
       #  [request_definition]
@@ -97,17 +104,13 @@ server:
   cryptoProvider:
     type: standard
     standard:
-      rsa:
-        123:
-          private_key_path: /keys/kas-private.pem
-          public_key_path: /keys/kas-cert.pem
-        456:
-          private_key_path: /keys/kas-private.pem
-          public_key_path: /keys/kas-cert.pem
-      ec:
-        123:
-          private_key_path: /keys/kas-ec-private.pem
-          public_key_path: /keys/kas-ec-cert.pem
+      keys:
+        - kid: r1
+          alg: rsa:2048
+          private: /keys/kas-private.pem
+          cert: /keys/kas-cert.pem
+        - kid: e1
+          alg: ec:secp256r1
+          private: /keys/kas-ec-private.pem
+          cert: /keys/kas-ec-cert.pem
   port: 8080
-opa:
-  embedded: true # Only for local development

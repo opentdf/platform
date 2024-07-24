@@ -376,6 +376,7 @@ func (s *SubjectMappingsSuite) TestGetSubjectMapping() {
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(fixture.AttributeValueID, got.GetId())
+	//nolint:staticcheck // SA1019: removing all references to members in later release
 	s.NotEmpty(got.GetMembers())
 	equalMembers(s.T(), got, sm.GetAttributeValue(), false)
 	metadata := sm.GetMetadata()
@@ -526,6 +527,31 @@ func (s *SubjectMappingsSuite) TestCreateSubjectConditionSet() {
 								SubjectExternalSelectorValue: ".someField[1]",
 								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN,
 								SubjectExternalValues:        []string{"some_value"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	scs, err := s.db.PolicyClient.CreateSubjectConditionSet(context.Background(), newConditionSet)
+	s.Require().NoError(err)
+	s.NotNil(scs)
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectConditionSetContains() {
+	newConditionSet := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: ".someField[1]",
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS,
+								SubjectExternalValues:        []string{"some_partial_value"},
 							},
 						},
 					},

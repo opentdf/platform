@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.15](https://github.com/opentdf/platform/compare/service/v0.4.14...service/v0.4.15) (2024-07-24)
+
+
+### Bug Fixes
+
+* **core:** set more reasonable message sizes via config ([#1207](https://github.com/opentdf/platform/issues/1207)) ([3e08cba](https://github.com/opentdf/platform/commit/3e08cba232ad5485ff38ad8c095ce2deec55980b))
+
 ## [0.4.14](https://github.com/opentdf/platform/compare/service/v0.4.13...service/v0.4.14) (2024-07-24)
 
 

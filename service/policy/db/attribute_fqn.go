@@ -169,15 +169,15 @@ func prepareValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy
 				SubjectMappings: v.GetSubjectMappings(),
 				Metadata:        v.GetMetadata(),
 			}
-			println("v.GetFqn(): ", v.GetFqn())
-			println("fqn: ", fqn)
+			// println("v.GetFqn(): ", v.GetFqn())
+			// println("fqn: ", fqn)
 			values[i].SubjectMappings = nil
 
 		}
 		// ensure all values have FQNs
 		if values[i].GetFqn() == "" {
-			// values[i].Fqn = attrFqn + "/value/" + v.GetValue()
-			println("would replace: ", attrFqn+"/value/"+v.GetValue())
+			values[i].Fqn = attrFqn + "/value/" + v.GetValue()
+			// println("would replace: ", attrFqn+"/value/"+v.GetValue())
 		}
 	}
 	return values, unaltered
@@ -200,12 +200,16 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 			slog.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))
 			return nil, err
 		}
+		println("Before preparing values")
 		filtered, selected := prepareValues(attr.GetValues(), fqn)
+		println("After preparing values")
 		if selected == nil {
 			slog.Error("could not find value for FQN", slog.String("fqn", fqn))
 			return nil, fmt.Errorf("could not find value for FQN: %s", fqn)
 		}
+		println("Before assigning values")
 		attr.Values = filtered
+		println("After assigning values")
 		list[fqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 			Attribute: attr,
 			Value:     selected,

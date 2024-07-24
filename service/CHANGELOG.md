@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.14](https://github.com/opentdf/platform/compare/service/v0.4.13...service/v0.4.14) (2024-07-24)
+
+
+### Bug Fixes
+
+* **core:** increase internal grpc message size limit ([#1205](https://github.com/opentdf/platform/issues/1205)) ([1442b59](https://github.com/opentdf/platform/commit/1442b592be8616649451ba64427f045c82ba6668))
+
 ## [0.4.13](https://github.com/opentdf/platform/compare/service/v0.4.12...service/v0.4.13) (2024-07-22)
 
 

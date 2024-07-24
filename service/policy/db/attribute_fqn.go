@@ -155,7 +155,7 @@ func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns 
 func prepareValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy.Value) {
 	split := strings.Split(fqn, "/value/")
 	val := split[1]
-	// attrFqn := split[0]
+	attrFqn := split[0]
 	var unaltered *policy.Value
 	for i, v := range values {
 		if v.GetValue() == val {
@@ -173,9 +173,9 @@ func prepareValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy
 			values[i].SubjectMappings = nil
 		}
 		// ensure all values have FQNs
-		// if values[i].GetFqn() == "" {
-		// 	values[i].Fqn = attrFqn + "/value/" + v.GetValue()
-		// }
+		if values[i].GetFqn() == "" {
+			values[i].Fqn = attrFqn + "/value/" + v.GetValue()
+		}
 	}
 	return values, unaltered
 }
@@ -199,14 +199,18 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 		}
 		filtered, selected := prepareValues(attr.GetValues(), fqn)
 		if selected == nil {
+			println("selected is nil")
 			c.logger.Error("could not find value for FQN", slog.String("fqn", fqn))
 			return nil, fmt.Errorf("could not find value for FQN [%s] %w", fqn, db.ErrNotFound)
 		}
+		println("selected is not nil")
 		attr.Values = filtered
+		println("values assigned to attribute")
 		list[fqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 			Attribute: attr,
 			Value:     selected,
 		}
+		println("list assigned")
 	}
 	return list, nil
 }

@@ -155,7 +155,7 @@ func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns 
 func prepareValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy.Value) {
 	split := strings.Split(fqn, "/value/")
 	val := split[1]
-	// attrFqn := split[0]
+	attrFqn := split[0]
 	var unaltered *policy.Value
 	for i, v := range values {
 		if v.GetValue() == val {
@@ -164,18 +164,20 @@ func prepareValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy
 				Value:           v.GetValue(),
 				Members:         v.GetMembers(),
 				Grants:          v.GetGrants(),
-				Fqn:             v.GetFqn(),
+				Fqn:             fqn,
 				Active:          v.GetActive(),
 				SubjectMappings: v.GetSubjectMappings(),
 				Metadata:        v.GetMetadata(),
 			}
+			println("fqn: ", fqn)
 			values[i].SubjectMappings = nil
 
 		}
 		// ensure all values have FQNs
-		// if values[i].GetFqn() == "" {
-		// 	values[i].Fqn = attrFqn + "/value/" + v.GetValue()
-		// }
+		if values[i].GetFqn() == "" {
+			// values[i].Fqn = attrFqn + "/value/" + v.GetValue()
+			println("would replace: ", attrFqn+"/value/"+v.GetValue())
+		}
 	}
 	return values, unaltered
 }

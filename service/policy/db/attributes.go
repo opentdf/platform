@@ -511,9 +511,6 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 		return nil, err
 	}
 
-	// Update the FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeID: id})
-
 	// Add values
 	var values []*policy.Value
 	for _, v := range r.GetValues() {
@@ -523,6 +520,16 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 			return nil, err
 		}
 		values = append(values, value)
+	}
+
+	// Update the FQNs
+	namespaceID := r.GetNamespaceId()
+	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id})
+	slog.Debug("upserted fqn with new attribute definition", slog.Any("fqn", fqn))
+
+	for _, v := range values {
+		fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id, valueID: v.GetId()})
+		slog.Debug("upserted fqn with new attribute value on new definition create", slog.Any("fqn", fqn))
 	}
 
 	a := &policy.Attribute{

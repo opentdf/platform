@@ -164,7 +164,7 @@ func prepareValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy
 				Value:           v.GetValue(),
 				Members:         v.GetMembers(),
 				Grants:          v.GetGrants(),
-				Fqn:             fqn,
+				Fqn:             v.GetFqn(),
 				Active:          v.GetActive(),
 				SubjectMappings: v.GetSubjectMappings(),
 				Metadata:        v.GetMetadata(),

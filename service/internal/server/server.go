@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"net"
 	"net/http"
 	"net/netip"
@@ -377,6 +378,7 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingClientInterceptor)
 
 	defaultOptions := []grpc.DialOption{
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt64), grpc.MaxCallSendMsgSize(math.MaxInt64)),
 		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
 			conn, err := s.ln.Dial()
 			if err != nil {

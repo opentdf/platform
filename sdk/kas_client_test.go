@@ -61,11 +61,14 @@ func TestCreatingRequest(t *testing.T) {
 	}
 
 	keyAccess := KeyAccess{
-		KeyType:           "type1",
-		KasURL:            "https://kas.example.org",
-		Protocol:          "protocol one",
-		WrappedKey:        "wrapped",
-		PolicyBinding:     "bound",
+		KeyType:    "type1",
+		KasURL:     "https://kas.example.org",
+		Protocol:   "protocol one",
+		WrappedKey: "wrapped",
+		PolicyBinding: PolicyBinding{
+			Alg:  "HS256",
+			Hash: "somehash",
+		},
 		EncryptedMetadata: "encrypted",
 	}
 
@@ -107,6 +110,7 @@ func TestCreatingRequest(t *testing.T) {
 	}
 
 	requestKeyAccess, _ := requestBody["keyAccess"].(map[string]interface{})
+	policyBinding, _ := requestKeyAccess["policyBinding"].(map[string]interface{})
 
 	if requestKeyAccess["url"] != "https://kas.example.org" {
 		t.Fatalf("incorrect kasURL")
@@ -120,7 +124,10 @@ func TestCreatingRequest(t *testing.T) {
 	if requestKeyAccess["wrappedKey"] != "wrapped" {
 		t.Fatalf("incorrect wrapped key")
 	}
-	if requestKeyAccess["policyBinding"] != "bound" {
+	if policyBinding["alg"] != "HS256" {
+		t.Fatalf("incorrect policy binding")
+	}
+	if policyBinding["hash"] != "somehash" {
 		t.Fatalf("incorrect policy binding")
 	}
 	if requestKeyAccess["encryptedMetadata"] != "encrypted" {

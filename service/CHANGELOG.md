@@ -1,5 +1,100 @@
 # Changelog
 
+## [0.4.13](https://github.com/opentdf/platform/compare/service/v0.4.12...service/v0.4.13) (2024-07-22)
+
+
+### Features
+
+* **core:** Adds authn time skew config ([#1175](https://github.com/opentdf/platform/issues/1175)) ([adde7c4](https://github.com/opentdf/platform/commit/adde7c48645575cbe57e76b0deb50e6c9b11d192))
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1192](https://github.com/opentdf/platform/issues/1192)) ([dbae4ff](https://github.com/opentdf/platform/commit/dbae4ff4cd4ff53841d123d5086b7fded79efd95))
+* fixed policy binding type ([#1184](https://github.com/opentdf/platform/issues/1184)) ([9800a32](https://github.com/opentdf/platform/commit/9800a32c8d9d83458403e2f87720f7882461fc32))
+
+## [0.4.12](https://github.com/opentdf/platform/compare/service/v0.4.11...service/v0.4.12) (2024-07-14)
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1148](https://github.com/opentdf/platform/issues/1148)) ([efd8d30](https://github.com/opentdf/platform/commit/efd8d30975140ecee1e08e031d0a4dc00f4d57ec))
+* **core:** Autobump service ([#1156](https://github.com/opentdf/platform/issues/1156)) ([00c05b4](https://github.com/opentdf/platform/commit/00c05b49a7f4b7257f7ac66924936a14be5efd13))
+* **core:** Autobump service ([#1159](https://github.com/opentdf/platform/issues/1159)) ([943c7dd](https://github.com/opentdf/platform/commit/943c7ddaf3e0cbb3b9a086df07f292bf636abf57))
+* **core:** Fix autoconfigure with no attributes ([#1141](https://github.com/opentdf/platform/issues/1141)) ([76c2a95](https://github.com/opentdf/platform/commit/76c2a95ad7e0c9c57ebde6b101a908fc32fcd539))
+* **core:** Reduce casbin logs verbosity ([#1144](https://github.com/opentdf/platform/issues/1144)) ([3e77441](https://github.com/opentdf/platform/commit/3e77441b594b6022cb2fb3c8962f8595566baefe))
+* **policy:** mark value members as deprecated within protos ([#1152](https://github.com/opentdf/platform/issues/1152)) ([d18c889](https://github.com/opentdf/platform/commit/d18c8893cdd73344021de638e2d92859a320eed4))
+* **policy:** move policy sql logs to trace level to reduce noise ([#1150](https://github.com/opentdf/platform/issues/1150)) ([b0e6ed3](https://github.com/opentdf/platform/commit/b0e6ed395c9c08790b0ecb9d665f5fbb5d976e7f))
+
+## [0.4.11](https://github.com/opentdf/platform/compare/service/v0.4.10...service/v0.4.11) (2024-07-11)
+
+
+### Features
+
+* **authz:** Keycloak ERS ability to handle clients, users, and emails that dont exist ([#1113](https://github.com/opentdf/platform/issues/1113)) ([4a17f18](https://github.com/opentdf/platform/commit/4a17f18171ee8c557b85118d56a2428482bc6a56))
+* **core:** GetEntitlements with_comprehensive_hierarchy ([#1121](https://github.com/opentdf/platform/issues/1121)) ([ac85bf7](https://github.com/opentdf/platform/commit/ac85bf7aef6c9a00bfa0900f6ff3533059ab4bc8)), closes [#1054](https://github.com/opentdf/platform/issues/1054)
+* **sdk:** Support custom key splits ([#1038](https://github.com/opentdf/platform/issues/1038)) ([685d8b5](https://github.com/opentdf/platform/commit/685d8b5d7b609744eb6623c52efb27cb40fbc36c))
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1133](https://github.com/opentdf/platform/issues/1133)) ([1a1a64f](https://github.com/opentdf/platform/commit/1a1a64f9511a38ccbc516ad0d6710cccaf9cf741))
+* **core:** Autobump service ([#1136](https://github.com/opentdf/platform/issues/1136)) ([baaee4d](https://github.com/opentdf/platform/commit/baaee4df1c8b0b06e0a456267e0dc6ec657b0980))
+* **core:** Autobump service ([#1139](https://github.com/opentdf/platform/issues/1139)) ([7da3cb9](https://github.com/opentdf/platform/commit/7da3cb9e3061a560aa254d557109969024d32bdb))
+* **kas:** remove unused hostname check ([#1123](https://github.com/opentdf/platform/issues/1123)) ([2909700](https://github.com/opentdf/platform/commit/2909700a67c191bf6d3008219e79a4339a8d592d))
+
+## [0.4.10](https://github.com/opentdf/platform/compare/service/v0.4.9...service/v0.4.10) (2024-07-09)
+
+
+### Features
+
+* **core:** CONTAINS SubjectMapping Operator ([#1109](https://github.com/opentdf/platform/issues/1109)) ([65cd4af](https://github.com/opentdf/platform/commit/65cd4af366d2d6d17ad72157d5d4d31f6620cc1f))
+* **core:** extend authz policy ([#1105](https://github.com/opentdf/platform/issues/1105)) ([b6bf259](https://github.com/opentdf/platform/commit/b6bf259dd20ee02d4f365722f83194d174869e3f)), closes [#1104](https://github.com/opentdf/platform/issues/1104)
+
+
+### Bug Fixes
+
+* **authz:** move opa out of startup call ([#1048](https://github.com/opentdf/platform/issues/1048)) ([3a0e71a](https://github.com/opentdf/platform/commit/3a0e71a903da5de38b1b5aa95b471cc638814c2e))
+* **core:** Autobump service ([#1119](https://github.com/opentdf/platform/issues/1119)) ([bce17e0](https://github.com/opentdf/platform/commit/bce17e0bcd734c52d1cda5c8aca9d842d870dabd))
+* **policy:** ensure get requests of attributes and values contain any KAS grants ([#1101](https://github.com/opentdf/platform/issues/1101)) ([87172c9](https://github.com/opentdf/platform/commit/87172c9e4198448b74a310025070848e771bf425))
+
+## [0.4.9](https://github.com/opentdf/platform/compare/service/v0.4.8...service/v0.4.9) (2024-07-03)
+
+
+### Features
+
+* **policy:** add support for key access grants returned ([#1077](https://github.com/opentdf/platform/issues/1077)) ([06050a5](https://github.com/opentdf/platform/commit/06050a5224527c6b248c1c6a840e44fdfbce826c))
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1099](https://github.com/opentdf/platform/issues/1099)) ([d4e1aa2](https://github.com/opentdf/platform/commit/d4e1aa253bf7abcaaa8cc93463f66f030aace099))
+* **policy:** unsafe service attribute update should allow empty names for PATCH-style API ([#1094](https://github.com/opentdf/platform/issues/1094)) ([3c56d0f](https://github.com/opentdf/platform/commit/3c56d0f4ebbda81bf6ca6924176885d93faed48b))
+
+## [0.4.8](https://github.com/opentdf/platform/compare/service/v0.4.7...service/v0.4.8) (2024-07-02)
+
+
+### Features
+
+* **policy:** add index to fqn column in attribute_fqns table ([#1035](https://github.com/opentdf/platform/issues/1035)) ([1b0cf38](https://github.com/opentdf/platform/commit/1b0cf38542aee3d2b1c8ab9f77e3adab582415ad)), closes [#1053](https://github.com/opentdf/platform/issues/1053)
+* **policy:** add unsafe attribute RPC db connectivity  ([#1022](https://github.com/opentdf/platform/issues/1022)) ([fbc02f3](https://github.com/opentdf/platform/commit/fbc02f34f3c3ae663b83944132f7dfd6897f6271))
+* **policy:** attribute values unsafe actions db connectivity ([#1030](https://github.com/opentdf/platform/issues/1030)) ([4a30426](https://github.com/opentdf/platform/commit/4a3042625d0d08951bc36053ba053dc44fcffe99))
+* **policy:** register unsafe service in platform ([#1066](https://github.com/opentdf/platform/issues/1066)) ([b7796cd](https://github.com/opentdf/platform/commit/b7796cdbe3b16903ac83033c8d99495aa10c8e2c))
+
+
+### Bug Fixes
+
+* **authz:** Return deny on GetDecision if resource attribute lookup returns not found ([#962](https://github.com/opentdf/platform/issues/962)) ([7dea640](https://github.com/opentdf/platform/commit/7dea6407322b5e625ee2810dfcf407c010d9996f))
+* **core:** Autobump service ([#1072](https://github.com/opentdf/platform/issues/1072)) ([409df67](https://github.com/opentdf/platform/commit/409df678b481ce1fc1c542417cbe3ae67b96d565))
+* **core:** Autobump service ([#1079](https://github.com/opentdf/platform/issues/1079)) ([10138d2](https://github.com/opentdf/platform/commit/10138d25afa210dc45838d66a888365d4da6960d))
+* **core:** Autobump service ([#1084](https://github.com/opentdf/platform/issues/1084)) ([968883e](https://github.com/opentdf/platform/commit/968883ee6413d25476f41eff7a69b3b1201e1fa6))
+* **core:** database clients pooling improvements ([#1047](https://github.com/opentdf/platform/issues/1047)) ([8193cec](https://github.com/opentdf/platform/commit/8193cec8c4d1be2b471fa606b6a24cc1644320e7))
+* **core:** swap out internal issuer for external issuer endpoint ([#1027](https://github.com/opentdf/platform/issues/1027)) ([c3828d0](https://github.com/opentdf/platform/commit/c3828d088a3483b78079cd257b4237291cf7b6f0))
+* **core:** update casbin policy to allow authorization service ([#1041](https://github.com/opentdf/platform/issues/1041)) ([552e970](https://github.com/opentdf/platform/commit/552e9703f99ea0ce8de083f504cbf85959483049))
+* **policy:** provide ns and val fqns back on list attributes response ([#1050](https://github.com/opentdf/platform/issues/1050)) ([1be04f6](https://github.com/opentdf/platform/commit/1be04f6355cc753f8bc0ad98b7c6e7e5c3535c79)), closes [#1052](https://github.com/opentdf/platform/issues/1052)
+* **policy:** rename unsafe rpcs for aligned casbin action determination ([#1067](https://github.com/opentdf/platform/issues/1067)) ([7861e4a](https://github.com/opentdf/platform/commit/7861e4a5092ee702565b6cd152fd592f3c19435f))
+* **policy:** run migrations on db only once for all policy services ([#1040](https://github.com/opentdf/platform/issues/1040)) ([db4f06f](https://github.com/opentdf/platform/commit/db4f06fdb9314747d9a95a5a09f974d86a1f0f29))
+
 ## [0.4.7](https://github.com/opentdf/platform/compare/service/v0.4.6...service/v0.4.7) (2024-06-24)
 
 

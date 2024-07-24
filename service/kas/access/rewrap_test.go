@@ -193,32 +193,35 @@ func entityPublicKey(t *testing.T) *rsa.PublicKey {
 	return pubKey
 }
 
-func createTestLogger(t *testing.T) logger.Logger {
-	l, err := logger.NewLogger(logger.Config{
-		Level:  "debug",
-		Type:   "json",
-		Output: "stdout",
-	})
-	require.NoError(t, err)
-	return *l
+type PolicyBinding struct {
+	Alg  string `json:"alg"`
+	Hash string `json:"hash"`
 }
 
-func keyAccessWrappedRaw(t *testing.T) KeyAccess {
+func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) KeyAccess {
 	policyBytes := fauxPolicyBytes(t)
 	asym, err := ocrypto.NewAsymEncryption(rsaPublicAlt)
 	require.NoError(t, err, "rewrap: NewAsymEncryption failed")
 	wrappedKey, err := asym.Encrypt([]byte(plainKey))
 	require.NoError(t, err, "rewrap: encryptWithPublicKey failed")
 
-	logger := createTestLogger(t)
-	require.NoError(t, err)
-	bindingBytes, err := generateHMACDigest(context.Background(), policyBytes, []byte(plainKey), logger)
+	logger := logger.CreateTestLogger()
+	bindingBytes, err := generateHMACDigest(context.Background(), policyBytes, []byte(plainKey), *logger)
 	require.NoError(t, err)
 
 	dst := make([]byte, hex.EncodedLen(len(bindingBytes)))
 	hex.Encode(dst, bindingBytes)
-	policyBinding := base64.StdEncoding.EncodeToString(dst)
-	slog.Debug("Generated binding", "binding", bindingBytes, "encodedBinding", policyBinding)
+
+	var policyBinding interface{}
+
+	if policyBindingAsString {
+		policyBinding = base64.StdEncoding.EncodeToString(dst)
+	} else {
+		policyBinding = PolicyBinding{
+			Alg:  "HS256",
+			Hash: base64.StdEncoding.EncodeToString(dst),
+		}
+	}
 
 	return KeyAccess{
 		Type:          "wrapped",
@@ -232,7 +235,6 @@ func keyAccessWrappedRaw(t *testing.T) KeyAccess {
 type RSAPublicKey rsa.PublicKey
 
 func (publicKey *RSAPublicKey) VerifySignature(_ context.Context, raw string) ([]byte, error) {
-	slog.Debug("Verifying key")
 	tok, err := jws.Verify([]byte(raw), jws.WithKey(jwa.RS256, rsa.PublicKey(*publicKey)))
 	if err != nil {
 		slog.Error("jws.Verify fail", "raw", raw)
@@ -273,13 +275,14 @@ func jwtWrongKey(t *testing.T) []byte {
 	return signedMockJWT(t, entityPrivateKey(t))
 }
 
-func makeRewrapBody(t *testing.T, policy []byte) []byte {
+func makeRewrapBody(t *testing.T, policy []byte, policyBindingAsString bool) []byte {
 	mockBody := RequestBody{
-		KeyAccess:       keyAccessWrappedRaw(t),
+		KeyAccess:       keyAccessWrappedRaw(t, policyBindingAsString),
 		Policy:          string(policy),
 		ClientPublicKey: rsaPublicAlt,
 	}
 	bodyData, err := json.Marshal(mockBody)
+
 	require.NoError(t, err)
 	tok := jwt.New()
 	err = tok.Set("requestBody", string(bodyData))
@@ -291,20 +294,22 @@ func makeRewrapBody(t *testing.T, policy []byte) []byte {
 }
 
 func TestParseAndVerifyRequest(t *testing.T) {
-	srt := makeRewrapBody(t, fauxPolicyBytes(t))
-	badPolicySrt := makeRewrapBody(t, emptyPolicyBytes())
+	srt := makeRewrapBody(t, fauxPolicyBytes(t), false)
+	srt2 := makeRewrapBody(t, fauxPolicyBytes(t), true)
+	badPolicySrt := makeRewrapBody(t, emptyPolicyBytes(), true)
 
 	var tests = []struct {
-		name     string
-		body     []byte
-		goodDPoP bool
-		polite   bool
-		addDPoP  bool
+		name        string
+		body        []byte
+		goodDPoP    bool
+		shouldError bool
+		addDPoP     bool
 	}{
-		{"good", srt, true, true, true},
-		{"different policy", badPolicySrt, true, false, true},
-		{"no dpop token included", srt, true, true, false},
-		{"wrong dpop token included", srt, false, true, true},
+		{"good w/ string policy binding", srt, true, false, true},
+		{"good w/ object policy binding", srt2, true, false, true},
+		{"different policy", badPolicySrt, true, true, true},
+		{"no dpop token included", srt, true, false, false},
+		{"wrong dpop token included", srt, false, false, true},
 	}
 	// The execution loop
 	for _, tt := range tests {
@@ -328,23 +333,22 @@ func TestParseAndVerifyRequest(t *testing.T) {
 			md := metadata.New(map[string]string{"token": bearer})
 			ctx = metadata.NewIncomingContext(ctx, md)
 
-			logger := createTestLogger(t)
+			logger := logger.CreateTestLogger()
 
 			verified, err := extractSRTBody(
 				ctx,
 				&kaspb.RewrapRequest{
 					SignedRequestToken: string(tt.body),
 				},
-				logger,
+				*logger,
 			)
-			slog.Info("verify repspponse", "v", verified, "e", err)
 			if tt.goodDPoP {
 				require.NoError(t, err, "failed to parse srt=[%s], tok=[%s]", tt.body, bearer)
 				require.NotNil(t, verified, "unable to load request body")
 				require.NotNil(t, verified.ClientPublicKey, "unable to load public key")
 
-				policy, err := verifyAndParsePolicy(context.Background(), verified, []byte(plainKey), logger)
-				if tt.polite {
+				policy, err := verifyAndParsePolicy(context.Background(), verified, []byte(plainKey), *logger)
+				if !tt.shouldError {
 					require.NoError(t, err, "failed to verify policy body=[%v]", tt.body)
 					assert.Len(t, policy.Body.DataAttributes, 2, "incorrect policy body=[%v]", policy.Body)
 				} else {
@@ -372,9 +376,9 @@ func Test_SignedRequestBody_When_Bad_Signature_Expect_Failure(t *testing.T) {
 	verified, err := extractSRTBody(
 		ctx,
 		&kaspb.RewrapRequest{
-			SignedRequestToken: string(makeRewrapBody(t, fauxPolicyBytes(t))),
+			SignedRequestToken: string(makeRewrapBody(t, fauxPolicyBytes(t), false)),
 		},
-		createTestLogger(t),
+		*logger.CreateTestLogger(),
 	)
 	require.Error(t, err)
 	require.Nil(t, verified)
@@ -382,7 +386,7 @@ func Test_SignedRequestBody_When_Bad_Signature_Expect_Failure(t *testing.T) {
 
 func Test_GetEntityInfo_When_Missing_MD_Expect_Error(t *testing.T) {
 	ctx := context.Background()
-	_, err := getEntityInfo(ctx, createTestLogger(t))
+	_, err := getEntityInfo(ctx, logger.CreateTestLogger())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing")
 }
@@ -391,7 +395,7 @@ func Test_GetEntityInfo_When_Authorization_MD_Missing_Expect_Error(t *testing.T)
 	ctx := context.Background()
 	ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{"token": "test"}))
 
-	_, err := getEntityInfo(ctx, createTestLogger(t))
+	_, err := getEntityInfo(ctx, logger.CreateTestLogger())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing")
 }
@@ -400,7 +404,7 @@ func Test_GetEntityInfo_When_Authorization_MD_Invalid_Expect_Error(t *testing.T)
 	ctx := context.Background()
 	ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{"authorization": "pop test"}))
 
-	_, err := getEntityInfo(ctx, createTestLogger(t))
+	_, err := getEntityInfo(ctx, logger.CreateTestLogger())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing")
 }

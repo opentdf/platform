@@ -10,7 +10,6 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/logger"
-	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/grpc"
@@ -40,9 +39,6 @@ type RegistrationParams struct {
 	// DBClient is the database client that can be used to interact with the database. This client
 	// is scoped to the service namespace and will not be shared with other service namespaces.
 	DBClient *db.Client
-	// Engine is the OPA engine that can be used to interact with the OPA server. Generally, the
-	// only service that needs to interact with OPA is the authorization service.
-	Engine *opa.Engine
 	// SDK is the OpenTDF SDK that can be used to interact with the OpenTDF SDK. This is useful for
 	// gRPC Inter Process Communication (IPC) between services. This ensures the services are
 	// communicating with each other by contract as well as supporting the various deployment models

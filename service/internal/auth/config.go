@@ -2,7 +2,9 @@ package auth
 
 import (
 	"fmt"
-	"log/slog"
+	"time"
+
+	"github.com/opentdf/platform/service/internal/logger"
 )
 
 // AuthConfig pulls AuthN and AuthZ together
@@ -14,11 +16,13 @@ type Config struct {
 
 // AuthNConfig is the configuration need for the platform to validate tokens
 type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
-	EnforceDPoP  bool         `yaml:"enforceDPoP" json:"enforceDPoP" mapstructure:"enforceDPoP" default:"false"`
-	Issuer       string       `yaml:"issuer" json:"issuer"`
-	Audience     string       `yaml:"audience" json:"audience"`
-	Policy       PolicyConfig `yaml:"policy" json:"policy" mapstructure:"policy"`
-	CacheRefresh string       `mapstructure:"cache_refresh_interval"`
+	EnforceDPoP  bool          `yaml:"enforceDPoP" json:"enforceDPoP" mapstructure:"enforceDPoP" default:"false"`
+	Issuer       string        `yaml:"issuer" json:"issuer"`
+	Audience     string        `yaml:"audience" json:"audience"`
+	Policy       PolicyConfig  `yaml:"policy" json:"policy" mapstructure:"policy"`
+	CacheRefresh string        `mapstructure:"cache_refresh_interval"`
+	DPoPSkew     time.Duration `mapstructure:"dpopskew" default:"1h"`
+	TokenSkew    time.Duration `mapstructure:"skew" default:"1m"`
 }
 
 type PolicyConfig struct {
@@ -29,7 +33,7 @@ type PolicyConfig struct {
 	Model     string            `yaml:"model" json:"model"`
 }
 
-func (c AuthNConfig) validateAuthNConfig() error {
+func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
 	if c.Issuer == "" {
 		return fmt.Errorf("config Auth.Issuer is required")
 	}
@@ -39,7 +43,7 @@ func (c AuthNConfig) validateAuthNConfig() error {
 	}
 
 	if !c.EnforceDPoP {
-		slog.Warn("config Auth.EnforceDPoP is false. DPoP will not be enforced.")
+		logger.Warn("config Auth.EnforceDPoP is false. DPoP will not be enforced.")
 	}
 
 	return nil

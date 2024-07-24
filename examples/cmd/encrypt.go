@@ -14,10 +14,11 @@ import (
 )
 
 var (
-	nanoFormat           bool
-	noKIDInKAO           bool
-	outputName           string
-	joinedDataAttributes string
+	nanoFormat     bool
+	autoconfigure  bool
+	noKIDInKAO     bool
+	outputName     string
+	dataAttributes []string
 )
 
 func init() {
@@ -27,8 +28,9 @@ func init() {
 		RunE:  encrypt,
 		Args:  cobra.MinimumNArgs(1),
 	}
-	encryptCmd.Flags().StringVarP(&joinedDataAttributes, "data-attributes", "a", "https://example.com/attr/attr1/value/value1", "space separated list of data attributes")
+	encryptCmd.Flags().StringSliceVarP(&dataAttributes, "data-attributes", "a", []string{"https://example.com/attr/attr1/value/value1"}, "space separated list of data attributes")
 	encryptCmd.Flags().BoolVar(&nanoFormat, "nano", false, "Output in nanoTDF format")
+	encryptCmd.Flags().BoolVar(&autoconfigure, "autoconfigure", true, "Use attribute grants to select kases")
 	encryptCmd.Flags().BoolVar(&noKIDInKAO, "no-kid-in-kao", false, "[deprecated] Disable storing key identifiers in TDF KAOs")
 	encryptCmd.Flags().StringVarP(&outputName, "output", "o", "sensitive.txt.tdf", "name or path of output file; - for stdout")
 
@@ -54,7 +56,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create new offline client
-	client, err := sdk.New(platformEndpoint, opts...)
+	client, err := newSDK()
 	if err != nil {
 		return err
 	}
@@ -72,17 +74,18 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
-	attributes := strings.Split(joinedDataAttributes, " ")
-
 	if !nanoFormat {
-		tdf, err := client.CreateTDF(out, in,
-			sdk.WithDataAttributes(attributes...),
-			sdk.WithKasInformation(
+		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...)}
+		if !autoconfigure {
+			opts = append(opts, sdk.WithAutoconfigure(autoconfigure))
+			opts = append(opts, sdk.WithKasInformation(
 				sdk.KASInfo{
 					// examples assume insecure http
 					URL:       fmt.Sprintf("http://%s", platformEndpoint),
 					PublicKey: "",
 				}))
+		}
+		tdf, err := client.CreateTDF(out, in, opts...)
 		if err != nil {
 			return err
 		}
@@ -97,7 +100,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		nanoTDFConfig.SetAttributes(attributes)
+		nanoTDFConfig.SetAttributes(dataAttributes)
 		nanoTDFConfig.EnableECDSAPolicyBinding()
 		err = nanoTDFConfig.SetKasURL(fmt.Sprintf("http://%s/kas", platformEndpoint))
 		if err != nil {

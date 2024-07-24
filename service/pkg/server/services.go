@@ -11,7 +11,6 @@ import (
 	"github.com/opentdf/platform/service/health"
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/logger"
-	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/kas"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -39,7 +38,7 @@ func registerServices() error {
 	return nil
 }
 
-func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFServer, eng *opa.Engine, client *sdk.SDK, logger *logger.Logger) (func(), []serviceregistry.Service, error) {
+func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFServer, client *sdk.SDK, logger *logger.Logger) (func(), []serviceregistry.Service, error) {
 	// CloseServices is a function that will close all registered services
 	closeServices := func() {
 		logger.Info("stopping services")
@@ -72,7 +71,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 		runMigrations := cfg.DB.RunMigrations
 
 		for _, r := range registers {
-			s, db, err := startService(ctx, &cfg, r, otdf, eng, client, d, &runMigrations, logger)
+			s, db, err := startService(ctx, &cfg, r, otdf, client, d, &runMigrations, logger)
 			if err != nil {
 				return closeServices, services, err
 			}
@@ -89,7 +88,6 @@ func startService(
 	cfg *config.Config,
 	s serviceregistry.Service,
 	otdf *server.OpenTDFServer,
-	eng *opa.Engine,
 	client *sdk.SDK,
 	d *db.Client,
 	runMigrations *bool,
@@ -100,7 +98,7 @@ func startService(
 		var err error
 
 		logger.Info("creating database client", slog.String("namespace", s.Namespace))
-		d, err = db.New(ctx, cfg.DB,
+		d, err = db.New(ctx, cfg.DB, cfg.Logger,
 			db.WithService(s.Namespace),
 			db.WithMigrations(s.DB.Migrations),
 		)
@@ -151,7 +149,6 @@ func startService(
 		Config:                 cfg.Services[s.Namespace],
 		OTDF:                   otdf,
 		DBClient:               d,
-		Engine:                 eng,
 		SDK:                    client,
 		WellKnownConfig:        wellknown.RegisterConfiguration,
 		RegisterReadinessCheck: health.RegisterReadinessCheck,

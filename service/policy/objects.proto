@@ -64,8 +64,7 @@ message Value {
 
   string value = 3;
 
-  // list of attribute values that this value is related to (attribute group)
-  repeated Value members = 4;
+  repeated Value members = 4 [deprecated = true];
 
   // list of key access servers
   repeated KeyAccessServer grants = 5;
@@ -103,8 +102,12 @@ message Action {
 // buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
 enum SubjectMappingOperatorEnum {
   SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED = 0;
+  // operator that returns true if a value in a list matches the string
   SUBJECT_MAPPING_OPERATOR_ENUM_IN = 1;
+  // operator that returns true if a value is not in a list that is matched by string
   SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN = 2;
+  // operator that returns true if a value in a list contains the substring
+  SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS = 3;
 }
 
 // buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
@@ -143,7 +146,7 @@ message SubjectMapping {
 
 /**
   A Condition defines a rule of <the value at the flattened 'selector value' location> <operator> <subject external values>
-    
+
   Example:  Subjects with a field selected by the flattened selector "'.division'" and a value of "Accounting" or "Marketing":
    {
      "subject_external_selector_value": "'.division'",

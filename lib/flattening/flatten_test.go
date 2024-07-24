@@ -7,6 +7,45 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func BenchmarkFlattenMap(b *testing.B) {
+	simpleInput := map[string]interface{}{
+		"a": "aa",
+		"b": 2,
+		"c": 3.1,
+		"d": false,
+	}
+	for n := 0; n < b.N; n++ {
+		_, _ = Flatten(simpleInput)
+	}
+}
+
+func BenchmarkFlattenMapWithinMap(b *testing.B) {
+	simpleInput := map[string]interface{}{
+		"a": "aa",
+		"submap": map[string]interface{}{
+			"b": 2,
+			"c": 3.1,
+			"d": false,
+		},
+	}
+	for n := 0; n < b.N; n++ {
+		_, _ = Flatten(simpleInput)
+	}
+}
+
+func BenchmarkGetFromFlattened(b *testing.B) {
+	flatInput := Flattened{
+		Items: []Item{
+			{Key: ".a", Value: "aa"},
+			// rest of the Items
+		},
+	}
+	queryString := ".a"
+	for n := 0; n < b.N; n++ {
+		_ = GetFromFlattened(flatInput, queryString)
+	}
+}
+
 func TestSimpleMap(t *testing.T) {
 	simpleInput := map[string]interface{}{
 		"a": "aa",

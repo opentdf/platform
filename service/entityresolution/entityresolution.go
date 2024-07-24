@@ -3,17 +3,18 @@ package entityresolution
 import (
 	"context"
 	"encoding/json"
-	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 )
 
 type EntityResolutionService struct { //nolint:revive // allow for simple naming
 	entityresolution.UnimplementedEntityResolutionServiceServer
 	idpConfig keycloak.KeycloakConfig
+	logger    *logger.Logger
 }
 
 func NewRegistration() serviceregistry.Registration {
@@ -30,7 +31,7 @@ func NewRegistration() serviceregistry.Registration {
 			if err != nil {
 				panic(err)
 			}
-			return &EntityResolutionService{idpConfig: inputIdpConfig}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			return &EntityResolutionService{idpConfig: inputIdpConfig, logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				return entityresolution.RegisterEntityResolutionServiceHandlerServer(ctx, mux, server.(entityresolution.EntityResolutionServiceServer)) //nolint:forcetypeassert // allow type assert, following other services
 			}
 		},
@@ -38,13 +39,13 @@ func NewRegistration() serviceregistry.Registration {
 }
 
 func (s EntityResolutionService) ResolveEntities(ctx context.Context, req *entityresolution.ResolveEntitiesRequest) (*entityresolution.ResolveEntitiesResponse, error) {
-	slog.Debug("request", "", req)
-	resp, err := keycloak.EntityResolution(ctx, req, s.idpConfig)
+	s.logger.Debug("request", "", req)
+	resp, err := keycloak.EntityResolution(ctx, req, s.idpConfig, s.logger)
 	return &resp, err
 }
 
 func (s EntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *entityresolution.CreateEntityChainFromJwtRequest) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
-	slog.Debug("request", "", req)
-	resp, err := keycloak.CreateEntityChainFromJwt(ctx, req, s.idpConfig)
+	s.logger.Debug("request", "", req)
+	resp, err := keycloak.CreateEntityChainFromJwt(ctx, req, s.idpConfig, s.logger)
 	return &resp, err
 }

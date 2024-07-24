@@ -71,28 +71,28 @@ func upsertAttrFqnSQL(namespaceID string, attributeID string, valueID string) (s
 func (c *PolicyDBClient) upsertAttrFqn(ctx context.Context, opts attrFqnUpsertOptions) string {
 	sql, args, err := upsertAttrFqnSQL(opts.namespaceID, opts.attributeID, opts.valueID)
 	if err != nil {
-		slog.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
+		c.logger.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
 		return ""
 	}
 
 	r, err := c.QueryRow(ctx, sql, args)
 	if err != nil {
-		slog.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
+		c.logger.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
 		return ""
 	}
 
 	var fqn string
 	if err := r.Scan(&fqn); err != nil {
-		slog.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
+		c.logger.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
 		return ""
 	}
 
-	slog.Debug("updated FQN", slog.String("fqn", fqn), slog.Any("opts", opts))
+	c.logger.Debug("updated FQN", slog.String("fqn", fqn), slog.Any("opts", opts))
 	return fqn
 }
 
 // AttrFqnReindex will reindex all namespace, attribute, and attribute_value FQNs
-func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns // Used to initializze an anonymous struct
+func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns // Used to initialize an anonymous struct
 	Namespaces []struct {
 		ID  string
 		Fqn string
@@ -160,8 +160,9 @@ func prepareValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy
 	for i, v := range values {
 		if v.GetValue() == val {
 			unaltered = &policy.Value{
-				Id:              v.GetId(),
-				Value:           v.GetValue(),
+				Id:    v.GetId(),
+				Value: v.GetValue(),
+				//nolint:staticcheck // SA1019: removing all references to members in later release
 				Members:         v.GetMembers(),
 				Grants:          v.GetGrants(),
 				Fqn:             fqn,
@@ -169,16 +170,12 @@ func prepareValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy
 				SubjectMappings: v.GetSubjectMappings(),
 				Metadata:        v.GetMetadata(),
 			}
-			// println("v.GetFqn(): ", v.GetFqn())
-			// println("fqn: ", fqn)
 			values[i].SubjectMappings = nil
-
 		}
 		// ensure all values have FQNs
-		if values[i].GetFqn() == "" {
-			values[i].Fqn = attrFqn + "/value/" + v.GetValue()
-			// println("would replace: ", attrFqn+"/value/"+v.GetValue())
-		}
+		// if values[i].GetFqn() == "" {
+		// 	values[i].Fqn = attrFqn + "/value/" + v.GetValue()
+		// }
 	}
 	return values, unaltered
 }
@@ -197,19 +194,15 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 		}
 		attr, err := c.GetAttributeByFqn(ctx, fqn)
 		if err != nil {
-			slog.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))
+			c.logger.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))
 			return nil, err
 		}
-		println("Before preparing values")
 		filtered, selected := prepareValues(attr.GetValues(), fqn)
-		println("After preparing values")
 		if selected == nil {
-			slog.Error("could not find value for FQN", slog.String("fqn", fqn))
-			return nil, fmt.Errorf("could not find value for FQN: %s", fqn)
+			c.logger.Error("could not find value for FQN", slog.String("fqn", fqn))
+			return nil, fmt.Errorf("could not find value for FQN [%s] %w", fqn, db.ErrNotFound)
 		}
-		println("Before assigning values")
 		attr.Values = filtered
-		println("After assigning values")
 		list[fqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 			Attribute: attr,
 			Value:     selected,

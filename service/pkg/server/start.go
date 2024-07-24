@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -11,7 +12,6 @@ import (
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/logger"
-	"github.com/opentdf/platform/service/internal/opa"
 	"github.com/opentdf/platform/service/internal/server"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
 )
@@ -35,7 +35,7 @@ func Start(f ...StartOptions) error {
 
 	slog.Info("starting opentdf services")
 
-	slog.Info("loading configuration")
+	slog.Debug("loading configuration")
 	conf, err := config.LoadConfig(startConfig.ConfigKey, startConfig.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("could not load config: %w", err)
@@ -50,7 +50,7 @@ func Start(f ...StartOptions) error {
 		conf.Server.Auth.PublicRoutes = startConfig.PublicRoutes
 	}
 
-	slog.Info("starting logger")
+	slog.Debug("starting logger")
 	logger, err := logger.NewLogger(conf.Logger)
 	if err != nil {
 		return fmt.Errorf("could not start logger: %w", err)
@@ -61,18 +61,11 @@ func Start(f ...StartOptions) error {
 
 	logger.Debug("config loaded", slog.Any("config", conf))
 
-	logger.Info("starting opa engine")
-	eng, err := opa.NewEngine(conf.OPA)
-	if err != nil {
-		return fmt.Errorf("could not start opa engine: %w", err)
-	}
-	defer eng.Stop(ctx)
-
 	// Required services
 	conf.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
 
 	// Create new server for grpc & http. Also will support in process grpc potentially too
-	logger.Info("init opentdf server")
+	logger.Debug("init opentdf server")
 	conf.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
 	otdf, err := server.NewOpenTDFServer(conf.Server, logger)
 	if err != nil {
@@ -81,7 +74,21 @@ func Start(f ...StartOptions) error {
 	}
 	defer otdf.Stop()
 
-	logger.Info("registering services")
+	// Append the authz policies
+	if len(startConfig.authzDefaultPolicyExtension) > 0 {
+		if otdf.AuthN == nil {
+			err := errors.New("authn not enabled")
+			logger.Error("issue adding authz policies", "error", err)
+			return fmt.Errorf("issue adding authz policies: %w", err)
+		}
+		err := otdf.AuthN.ExtendAuthzDefaultPolicy(startConfig.authzDefaultPolicyExtension)
+		if err != nil {
+			logger.Error("issue adding authz policies", slog.String("error", err.Error()))
+			return fmt.Errorf("issue adding authz policies: %w", err)
+		}
+	}
+
+	logger.Debug("registering services")
 	if err := registerServices(); err != nil {
 		logger.Error("issue registering services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue registering services: %w", err)
@@ -113,7 +120,7 @@ func Start(f ...StartOptions) error {
 	defer client.Close()
 
 	logger.Info("starting services")
-	closeServices, services, err := startServices(ctx, *conf, otdf, eng, client, logger)
+	closeServices, services, err := startServices(ctx, *conf, otdf, client, logger)
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)

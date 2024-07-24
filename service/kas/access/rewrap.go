@@ -15,7 +15,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 
@@ -131,7 +130,7 @@ func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest, logger logger.
 	}
 
 	// get dpop public key from context
-	dpopJWK := auth.GetJWKFromContext(ctx)
+	dpopJWK := auth.GetJWKFromContext(ctx, &logger)
 
 	var err error
 	var rbString string
@@ -189,15 +188,34 @@ func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest, logger logger.
 		return nil, err400("clientPublicKey unsupported type")
 	}
 }
-
+func extractPolicyBinding(policyBinding interface{}) (string, error) {
+	switch v := policyBinding.(type) {
+	case string:
+		return v, nil
+	case map[string]interface{}:
+		if hash, ok := v["hash"].(string); ok {
+			return hash, nil
+		}
+		return "", fmt.Errorf("invalid policy binding object, missing 'hash' field")
+	default:
+		return "", fmt.Errorf("unsupported policy binding type")
+	}
+}
 func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byte, logger logger.Logger) (*Policy, error) {
 	actualHMAC, err := generateHMACDigest(ctx, []byte(requestBody.Policy), k, logger)
 	if err != nil {
 		logger.WarnContext(ctx, "unable to generate policy hmac", "err", err)
 		return nil, err400("bad request")
 	}
-	expectedHMAC := make([]byte, base64.StdEncoding.DecodedLen(len(requestBody.KeyAccess.PolicyBinding)))
-	n, err := base64.StdEncoding.Decode(expectedHMAC, []byte(requestBody.KeyAccess.PolicyBinding))
+
+	policyBinding, err := extractPolicyBinding(requestBody.KeyAccess.PolicyBinding)
+	if err != nil {
+		logger.WarnContext(ctx, "invalid policy binding", "err", err)
+		return nil, err400("bad request")
+	}
+
+	expectedHMAC := make([]byte, base64.StdEncoding.DecodedLen(len(policyBinding)))
+	n, err := base64.StdEncoding.Decode(expectedHMAC, []byte(policyBinding))
 	if err == nil {
 		n, err = hex.Decode(expectedHMAC, expectedHMAC[:n])
 	}
@@ -207,7 +225,7 @@ func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byt
 		return nil, err400("bad request")
 	}
 	if !hmac.Equal(actualHMAC, expectedHMAC) {
-		logger.WarnContext(ctx, "policy hmac mismatch", "actual", actualHMAC, "expected", expectedHMAC, "policyBinding", requestBody.KeyAccess.PolicyBinding)
+		logger.WarnContext(ctx, "policy hmac mismatch", "actual", actualHMAC, "expected", expectedHMAC, "policyBinding", policyBinding)
 		return nil, err400("bad request")
 	}
 	sDecPolicy, err := base64.StdEncoding.DecodeString(requestBody.Policy)
@@ -225,10 +243,10 @@ func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byt
 	return &policy, nil
 }
 
-func getEntityInfo(ctx context.Context, logger logger.Logger) (*entityInfo, error) {
+func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, error) {
 	var info = new(entityInfo)
 
-	token := auth.GetAccessTokenFromContext(ctx)
+	token := auth.GetAccessTokenFromContext(ctx, logger)
 	if token == nil {
 		return nil, err401("missing access token")
 	}
@@ -244,7 +262,7 @@ func getEntityInfo(ctx context.Context, logger logger.Logger) (*entityInfo, erro
 		logger.WarnContext(ctx, "missing sub")
 	}
 
-	info.Token = auth.GetRawAccessTokenFromContext(ctx)
+	info.Token = auth.GetRawAccessTokenFromContext(ctx, logger)
 
 	return info, nil
 }
@@ -258,14 +276,10 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 		return nil, err
 	}
 
-	entityInfo, err := getEntityInfo(ctx, *p.Logger)
+	entityInfo, err := getEntityInfo(ctx, p.Logger)
 	if err != nil {
 		p.Logger.DebugContext(ctx, "no entity info", "err", err)
 		return nil, err
-	}
-
-	if !strings.HasPrefix(body.KeyAccess.URL, p.URI.String()) {
-		p.Logger.InfoContext(ctx, "mismatched key access url", "keyAccessURL", body.KeyAccess.URL, "kasURL", p.URI.String())
 	}
 
 	if body.Algorithm == "" {
@@ -276,14 +290,14 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 	if body.Algorithm == "ec:secp256r1" {
 		rsp, err := p.nanoTDFRewrap(ctx, body, entityInfo)
 		if err != nil {
-			slog.ErrorContext(ctx, "rewrap nano", "err", err)
+			p.Logger.ErrorContext(ctx, "rewrap nano", "err", err)
 		}
 		p.Logger.DebugContext(ctx, "rewrap nano", "rsp", rsp)
 		return rsp, err
 	}
 	rsp, err := p.tdf3Rewrap(ctx, body, entityInfo)
 	if err != nil {
-		slog.ErrorContext(ctx, "rewrap tdf3", "err", err)
+		p.Logger.ErrorContext(ctx, "rewrap tdf3", "err", err)
 	}
 	return rsp, err
 }
@@ -334,12 +348,15 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 
 	// Audit the TDF3 Rewrap
 	kasPolicy := ConvertToAuditKasPolicy(*policy)
+
+	policyBinding, _ := extractPolicyBinding(body.KeyAccess.PolicyBinding)
+
 	auditEventParams := audit.RewrapAuditEventParams{
 		Policy:        kasPolicy,
 		IsSuccess:     access,
 		TDFFormat:     "tdf3",
 		Algorithm:     body.Algorithm,
-		PolicyBinding: body.KeyAccess.PolicyBinding,
+		PolicyBinding: policyBinding,
 	}
 
 	if err != nil {
@@ -349,7 +366,6 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 	}
 
 	if !access {
-		p.Logger.WarnContext(ctx, "Access Denied; no reason given")
 		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
 		return nil, err403("forbidden")
 	}

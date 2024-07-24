@@ -4,6 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/service/internal/logger"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -23,10 +24,10 @@ func constructMetadata(table string, isJSON bool) string {
 
 var createSuffix = "RETURNING id, " + constructMetadata("", false)
 
-func unmarshalMetadata(metadataJSON []byte, m *common.Metadata) error {
+func unmarshalMetadata(metadataJSON []byte, m *common.Metadata, logger *logger.Logger) error {
 	if metadataJSON != nil {
 		if err := protojson.Unmarshal(metadataJSON, m); err != nil {
-			slog.Error("could not unmarshal metadata", slog.String("error", err.Error()))
+			logger.Error("could not unmarshal metadata", slog.String("error", err.Error()))
 			return err
 		}
 	}

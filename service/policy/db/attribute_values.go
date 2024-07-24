@@ -503,9 +503,6 @@ func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 		}
 	}
 
-	// Update FQN
-	c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: r.GetId()})
-
 	return &policy.Value{
 		Id: r.GetId(),
 	}, nil

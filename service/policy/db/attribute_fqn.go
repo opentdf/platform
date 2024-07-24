@@ -169,6 +169,7 @@ func prepareValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy
 				SubjectMappings: v.GetSubjectMappings(),
 				Metadata:        v.GetMetadata(),
 			}
+			println("v.GetFqn(): ", v.GetFqn())
 			println("fqn: ", fqn)
 			values[i].SubjectMappings = nil
 

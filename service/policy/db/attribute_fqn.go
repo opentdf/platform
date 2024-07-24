@@ -152,25 +152,31 @@ func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns 
 	return res
 }
 
-func filterValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy.Value) {
-	val := strings.Split(fqn, "/value/")[1]
+func prepareValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy.Value) {
+	split := strings.Split(fqn, "/value/")
+	val := split[1]
+	attrFqn := split[0]
+	var unaltered *policy.Value
 	for i, v := range values {
 		if v.GetValue() == val {
-			unaltered := &policy.Value{
+			unaltered = &policy.Value{
 				Id:              v.GetId(),
 				Value:           v.GetValue(),
 				Members:         v.GetMembers(),
 				Grants:          v.GetGrants(),
-				Fqn:             v.GetFqn(),
+				Fqn:             fqn,
 				Active:          v.GetActive(),
 				SubjectMappings: v.GetSubjectMappings(),
 				Metadata:        v.GetMetadata(),
 			}
 			values[i].SubjectMappings = nil
-			return values, unaltered
+		}
+		// ensure all values have FQNs
+		if values[i].GetFqn() == "" {
+			values[i].Fqn = attrFqn + "/value/" + v.GetValue()
 		}
 	}
-	return values, nil
+	return values, unaltered
 }
 
 func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attributes.GetAttributeValuesByFqnsRequest) (map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
@@ -190,7 +196,7 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 			slog.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))
 			return nil, err
 		}
-		filtered, selected := filterValues(attr.GetValues(), fqn)
+		filtered, selected := prepareValues(attr.GetValues(), fqn)
 		if selected == nil {
 			slog.Error("could not find value for FQN", slog.String("fqn", fqn))
 			return nil, fmt.Errorf("could not find value for FQN: %s", fqn)

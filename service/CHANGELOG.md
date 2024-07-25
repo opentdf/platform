@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.16](https://github.com/opentdf/platform/compare/service/v0.4.15...service/v0.4.16) (2024-07-25)
+
+
+### Bug Fixes
+
+* log request body on debug ([#1211](https://github.com/opentdf/platform/issues/1211)) ([d2906f0](https://github.com/opentdf/platform/commit/d2906f0e911bb161164a01fbefd8a43db903148a))
+
 ## [0.4.15](https://github.com/opentdf/platform/compare/service/v0.4.14...service/v0.4.15) (2024-07-24)
 
 

@@ -1,6 +1,7 @@
 package security
 
 const (
+	ErrKIDNotFound         = Error("kid not found")
 	ErrCertNotFound        = Error("not found")
 	ErrCertificateEncode   = Error("certificate encode error")
 	ErrPublicKeyMarshal    = Error("public key marshal error")

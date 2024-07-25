@@ -40,9 +40,13 @@ func NewRegistration() serviceregistry.Registration {
 			case kasCfg.ECCertID != "" && len(kasCfg.Keyring) > 0:
 				panic("invalid kas cfg: please specify keyring or eccertid, not both")
 			case len(kasCfg.Keyring) == 0:
-				deprecatedOrDefault := func(kid, alg string) {
+				deprecatedOrDefault := func(kid security.KID, alg security.Algorithm) {
 					if kid == "" {
-						kid = srp.OTDF.CryptoProvider.FindKID(alg)
+						kid, err = srp.OTDF.CryptoProvider.FindKID(alg)
+						if err != nil {
+							srp.Logger.Warn("no known KID for alg", "algorithm", alg)
+							return
+						}
 					}
 					if kid == "" {
 						srp.Logger.Warn("no known key for alg", "algorithm", alg)
@@ -51,15 +55,11 @@ func NewRegistration() serviceregistry.Registration {
 					kasCfg.Keyring = append(kasCfg.Keyring, access.CurrentKeyFor{
 						Algorithm: alg,
 						KID:       kid,
-					})
-					kasCfg.Keyring = append(kasCfg.Keyring, access.CurrentKeyFor{
-						Algorithm: alg,
-						KID:       kid,
 						Legacy:    true,
 					})
 				}
-				deprecatedOrDefault(kasCfg.ECCertID, security.AlgorithmECP256R1)
-				deprecatedOrDefault(kasCfg.RSACertID, security.AlgorithmRSA2048)
+				deprecatedOrDefault(security.KID(kasCfg.ECCertID), security.AlgorithmECP256R1)
+				deprecatedOrDefault(security.KID(kasCfg.RSACertID), security.AlgorithmRSA2048)
 			}
 
 			p := access.Provider{

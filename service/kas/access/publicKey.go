@@ -21,7 +21,7 @@ const (
 	ErrPublicKeyMarshal  = Error("public key marshal error")
 )
 
-func (p Provider) lookupKid(ctx context.Context, algorithm string) (string, error) {
+func (p Provider) lookupKid(ctx context.Context, algorithm security.Algorithm) (security.KID, error) {
 	if len(p.KASConfig.Keyring) == 0 {
 		p.Logger.WarnContext(ctx, "no default keys found", "algorithm", algorithm)
 		return "", errors.Join(ErrConfig, status.Error(codes.NotFound, "no default keys configured"))
@@ -29,14 +29,17 @@ func (p Provider) lookupKid(ctx context.Context, algorithm string) (string, erro
 
 	for _, k := range p.KASConfig.Keyring {
 		if k.Algorithm == algorithm && !k.Legacy {
-			return k.KID, nil
+			return security.KID(k.KID), nil
 		}
 	}
 	p.Logger.WarnContext(ctx, "no (non-legacy) key for requested algorithm", "algorithm", algorithm)
 	return "", errors.Join(ErrConfig, status.Error(codes.NotFound, "no default key for algorithm"))
 }
 
-func (p Provider) lookupKidByPublicKey(ctx context.Context, publicKey []byte) (string, error) {
+// lookupKidByPublicKey looks up the KID by comparing the provided public key bytes
+// with the public key bytes of the keys in the key ring. If a match is found, the KID
+// is returned. Otherwise, a warning message is logged and an error is returned.
+func (p Provider) lookupKidByPublicKey(ctx context.Context, publicKey []byte) (security.KID, error) {
 	if len(p.KASConfig.Keyring) == 0 {
 		p.Logger.WarnContext(ctx, "no default keys found", "publicKey", publicKey)
 		return "", errors.Join(ErrConfig, status.Error(codes.NotFound, "no default keys configured"))
@@ -51,7 +54,7 @@ func (p Provider) lookupKidByPublicKey(ctx context.Context, publicKey []byte) (s
 }
 
 func (p Provider) LegacyPublicKey(ctx context.Context, in *kaspb.LegacyPublicKeyRequest) (*wrapperspb.StringValue, error) {
-	algorithm := in.GetAlgorithm()
+	algorithm := security.Algorithm(in.GetAlgorithm())
 	if algorithm == "" {
 		algorithm = security.AlgorithmRSA2048
 	}
@@ -87,7 +90,7 @@ func (p Provider) LegacyPublicKey(ctx context.Context, in *kaspb.LegacyPublicKey
 }
 
 func (p Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*kaspb.PublicKeyResponse, error) {
-	algorithm := in.GetAlgorithm()
+	algorithm := security.Algorithm(in.GetAlgorithm())
 	if algorithm == "" {
 		algorithm = security.AlgorithmRSA2048
 	}
@@ -97,7 +100,7 @@ func (p Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*k
 		return nil, err
 	}
 
-	r := func(value, kid string, err error) (*kaspb.PublicKeyResponse, error) {
+	r := func(value string, kid security.KID, err error) (*kaspb.PublicKeyResponse, error) {
 		if errors.Is(err, security.ErrCertNotFound) {
 			p.Logger.ErrorContext(ctx, "no key found for", "err", err, "kid", kid, "algorithm", algorithm, "fmt", fmt)
 			return nil, errors.Join(err, status.Error(codes.NotFound, "no such key"))
@@ -109,7 +112,7 @@ func (p Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*k
 			p.Logger.WarnContext(ctx, "hiding kid in public key response for legacy client", "kid", kid, "v", in.GetV())
 			return &kaspb.PublicKeyResponse{PublicKey: value}, nil
 		}
-		return &kaspb.PublicKeyResponse{PublicKey: value, Kid: kid}, nil
+		return &kaspb.PublicKeyResponse{PublicKey: value, Kid: string(kid)}, nil
 	}
 
 	switch algorithm {

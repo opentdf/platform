@@ -9,9 +9,11 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"math/big"
 	"net/url"
 	"os"
+	"reflect"
 	"testing"
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
@@ -138,11 +140,86 @@ func urlHost(t *testing.T) *url.URL {
 	return url
 }
 
+func TestProviderLookupKidByPublicKey(t *testing.T) {
+	logger := logger.CreateTestLogger()
+	cryptoProvider, err := security.NewCryptoProvider(security.Config{
+		Type:           "",
+		StandardConfig: security.StandardConfig{},
+	})
+	require.NoError(t, err)
+	provider := Provider{
+		Logger:         logger,
+		CryptoProvider: cryptoProvider,
+		Config:         &serviceregistry.ServiceConfig{},
+		KASConfig: KASConfig{
+			Keyring: []CurrentKeyFor{
+				{
+					KID:            "key1",
+					PublicKeyBytes: []byte("public1"),
+				},
+				{
+					KID:            "key2",
+					PublicKeyBytes: []byte("public2"),
+				},
+			},
+		},
+	}
+	ctx := context.Background()
+
+	type args struct {
+		ctx       context.Context
+		publicKey []byte
+	}
+	tests := []struct {
+		name    string
+		p       Provider
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{
+			"testCase1",
+			provider,
+			args{ctx, []byte("public1")},
+			"key1",
+			false,
+		},
+		{
+			"testCase2",
+			provider,
+			args{ctx, []byte("public2")},
+			"key2",
+			false,
+		},
+		{
+			"no_key",
+			provider,
+			args{ctx, []byte("public3")},
+			"",
+			true,
+		},
+
+		// Add more test cases as needed
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.p.lookupKidByPublicKey(tt.args.ctx, tt.args.publicKey)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Provider.lookupKidByPublicKey() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Provider.lookupKidByPublicKey() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestStandardPublicKeyHandlerV2(t *testing.T) {
 	configStandard := security.Config{
 		Type: "standard",
 		StandardConfig: security.StandardConfig{
-			RSAKeys: map[string]security.StandardKeyInfo{
+			RSAKeys: map[security.KID]security.StandardKeyInfo{
 				"rsa": {
 					PrivateKeyPath: "./testdata/access-provider-000-private.pem",
 					PublicKeyPath:  "./testdata/access-provider-000-certificate.pem",
@@ -194,7 +271,7 @@ func TestStandardPublicKeyHandlerV2NotFound(t *testing.T) {
 	configStandard := security.Config{
 		Type: "standard",
 		StandardConfig: security.StandardConfig{
-			RSAKeys: map[string]security.StandardKeyInfo{
+			RSAKeys: map[security.KID]security.StandardKeyInfo{
 				"rsa": {
 					PrivateKeyPath: "./testdata/access-provider-000-private.pem",
 					PublicKeyPath:  "./testdata/access-provider-000-certificate.pem",

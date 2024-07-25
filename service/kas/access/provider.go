@@ -38,8 +38,8 @@ type KASConfig struct {
 
 // Specifies the preferred/default key for a given algorithm type.
 type CurrentKeyFor struct {
-	Algorithm string `mapstructure:"alg"`
-	KID       string `mapstructure:"kid"`
+	Algorithm security.Algorithm `mapstructure:"alg"`
+	KID       security.KID       `mapstructure:"kid"`
 	// PublicKeyBytes represents the compressed public key in the form of a byte slice.
 	PublicKeyBytes []byte `mapstructure:"public_key"`
 	// Indicates that the key should not be serves by default,

@@ -284,9 +284,9 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 }
 
 func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
-	var kidsToCheck []string
+	var kidsToCheck []security.KID
 	if body.KeyAccess.KID != "" {
-		kidsToCheck = []string{body.KeyAccess.KID}
+		kidsToCheck = []security.KID{security.KID(body.KeyAccess.KID)}
 	} else {
 		p.Logger.InfoContext(ctx, "kid free kao")
 		for _, k := range p.KASConfig.Keyring {

@@ -101,8 +101,8 @@ func (rl *ResourceLocator) setURL(url string) error {
 	return errors.New("unsupported protocol: " + url)
 }
 
-// getURL - Retrieve a fully qualified protocol+body URL string from a ResourceLocator struct
-func (rl ResourceLocator) getURL() (string, error) {
+// GetURL - Retrieve a fully qualified protocol+body URL string from a ResourceLocator struct
+func (rl ResourceLocator) GetURL() (string, error) {
 	if rl.protocol == urlProtocolHTTPS {
 		return kPrefixHTTPS + rl.body, nil
 	}

@@ -76,19 +76,25 @@
                   "type": "string"
                 },
                 "policyBinding": {
-                  "description": "Object describing the policyBinding. Contains a hash, and an algorithm used.",
-                  "type": "object",
-                  "properties": {
-                    "alg": {
-                      "description": "The policy binding algorithm used to generate the hash.",
+                  "description": "Object describing the policyBinding. Contains a hash, and an algorithm used. May also be a string, with just the hash. In that case default to HS256.",
+                  "oneOf": [
+                    {
                       "type": "string"
-                    },
-                    "hash": {
-                      "description": "This contains a keyed hash that will provide cryptographic integrity on the policy object, such that it cannot be modified or copied to another TDF, without invalidating the binding. Specifically, you would have to have access to the key in order to overwrite the policy.",
-                      "type": "string"
+                    },{
+                      "type": "object",
+                      "properties": {
+                        "alg": {
+                          "description": "The policy binding algorithm used to generate the hash.",
+                          "type": "string"
+                        },
+                        "hash": {
+                          "description": "This contains a keyed hash that will provide cryptographic integrity on the policy object, such that it cannot be modified or copied to another TDF, without invalidating the binding. Specifically, you would have to have access to the key in order to overwrite the policy.",
+                          "type": "string"
+                        }
+                      }
+                      ,"required": ["alg", "hash"]
                     }
-                  }
-                  ,"required": ["alg", "hash"]
+                  ]
                 },
                 "encryptedMetadata": {
                   "description": "Metadata associated with the TDF, and the request. The contents of the metadata are freeform, and are used to pass information from the client, and any plugins that may be in use by the KAS. The metadata stored here should not be used for primary access decisions. Base64.",

@@ -353,6 +353,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 	if err != nil {
 		return nil, err
 	}
+
 	auditEventParams := audit.RewrapAuditEventParams{
 		Policy:        kasPolicy,
 		IsSuccess:     access,

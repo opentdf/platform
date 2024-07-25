@@ -228,7 +228,7 @@ jobs:
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       # use commit instead of ref so we can "go get" specific sdk version
-      platform-ref: ${{ github.sha }}
+      platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
   buflint:
     name: Protocol Buffer Lint and Gencode Up-to-date check

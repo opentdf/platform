@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/opentdf/platform/service/internal/logger/audit"
+	"github.com/opentdf/platform/service/logger/audit"
 )
 
 type Logger struct {

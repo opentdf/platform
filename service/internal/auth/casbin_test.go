@@ -7,7 +7,7 @@ import (
 
 	"github.com/casbin/casbin/v2/model"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/suite"
 )
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.4](https://github.com/opentdf/platform/compare/sdk/v0.3.3...sdk/v0.3.4) (2024-07-23)
+
+
+### Bug Fixes
+
+* policy binding fix ([#1198](https://github.com/opentdf/platform/issues/1198)) ([6bf8e74](https://github.com/opentdf/platform/commit/6bf8e747885c05ea6a23db707e778b16239abe0a))
+
 ## [0.3.3](https://github.com/opentdf/platform/compare/sdk/v0.3.2...sdk/v0.3.3) (2024-07-22)
 
 

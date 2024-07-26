@@ -15,6 +15,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -161,6 +162,7 @@ func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest, logger logger.
 		logger.WarnContext(ctx, "invalid request body")
 		return nil, err400("invalid request body")
 	}
+	logger.DebugContext(ctx, "extracted request body", slog.Any("requestBody", requestBody))
 
 	logger.DebugContext(ctx, "extract public key", "requestBody.ClientPublicKey", requestBody.ClientPublicKey)
 	block, _ := pem.Decode([]byte(requestBody.ClientPublicKey))

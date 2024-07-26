@@ -19,7 +19,7 @@ services:
     clientid: "tdf-entity-resolution"
     clientsecret: "secret"
     realm: "opentdf"
-    legacylocalhost: true
+    legacykeycloak: true
   authorization:
     enabled: true
     ersurl: http://localhost:8080/entityresolution/resolve

@@ -15,7 +15,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"net/url"
 	"strings"
 	"time"
 
@@ -377,24 +376,15 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
 	}
 	// Lookup KID from nano header
-	kasUrlString, err := header.GetKasUrl().GetURL()
+	kid, err := header.GetKasUrl().GetIdentifier()
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse NanoTDF.kasUrl header: %w", err)
+		// legacy nano with KID
+		kid, err = p.lookupKid(ctx, security.AlgorithmECP256R1)
+		if err != nil {
+			p.Logger.WarnContext(ctx, "failure to find default kid for ec", "err", err)
+			return nil, err400("bad request")
+		}
 	}
-	if kasUrlString == "" {
-		return nil, err400("kasUrl not present in header")
-	}
-	kasUrl, err := url.Parse(kasUrlString)
-	if err != nil {
-		return nil, fmt.Errorf("error when parsing kasUrl: %v", err)
-	}
-
-	query := kasUrl.Query()
-	if len(query) == 0 {
-		return nil, err400("no query parameters found in kasUrl")
-	}
-
-	kid := query.Get("kid")
 	if kid == "" {
 		p.Logger.WarnContext(ctx, "failure to find kid in kasUrl")
 		return nil, err400("bad request")

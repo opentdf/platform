@@ -156,7 +156,6 @@ func (k *KASClient) getNanoTDFRewrapRequest(header string, kasURL string, pubKey
 }
 
 func (k *KASClient) makeNanoTDFRewrapRequest(ctx context.Context, header string, kasURL string, pubKey string) (*kas.RewrapResponse, error) {
-
 	rewrapRequest, err := k.getNanoTDFRewrapRequest(header, kasURL, pubKey)
 	if err != nil {
 		return nil, err
@@ -242,11 +241,6 @@ func getGRPCAddress(kasURL string) (string, error) {
 	if port == "" {
 		port = "443"
 	}
-
-	// if kid query parameter then remove it
-	queries := parsedURL.Query()
-	queries.Del("kid")
-	parsedURL.RawQuery = queries.Encode()
 
 	return net.JoinHostPort(parsedURL.Hostname(), port), nil
 }

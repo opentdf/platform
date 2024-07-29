@@ -116,6 +116,17 @@ func (rl *ResourceLocator) setURLWithIdentifier(url string, identifier string) e
 	return errors.New("unsupported protocol with identifier: " + url)
 }
 
+// GetIdentifier - identifier is returned if the correct protocol enum is set else error
+func (rl ResourceLocator) GetIdentifier() (string, error) {
+	if rl.protocol == urlProtocolHTTPSID8B || rl.protocol == urlProtocolHTTPSID32B || rl.protocol == urlProtocolHTTPSID8B {
+		return rl.identifier, nil
+	}
+	if rl.protocol == urlProtocolHTTP {
+		return kPrefixHTTP + rl.body, nil
+	}
+	return "", fmt.Errorf("unsupported identifer protocol: %d", rl.protocol)
+}
+
 // setURL - Store a fully qualified protocol+body string into a ResourceLocator as a protocol value and a body string
 func (rl *ResourceLocator) setURL(url string) error {
 	lowerURL := strings.ToLower(url)

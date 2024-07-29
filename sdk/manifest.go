@@ -76,6 +76,7 @@ type PolicyObject struct {
 	Body struct {
 		DataAttributes []attributeObject `json:"dataAttributes"`
 		Dissem         []string          `json:"dissem"`
+		KeyIdentifier  string            `json:"kid"`
 	} `json:"body"`
 }
 

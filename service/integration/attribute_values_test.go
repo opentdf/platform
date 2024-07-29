@@ -169,7 +169,7 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_Deactivated_Succeeds() {
 	s.False(got.GetActive().GetValue())
 }
 
-func (s *AttributeValuesSuite) Test_CreateAttributeValue_NoMembers_Succeeds() {
+func (s *AttributeValuesSuite) Test_CreateAttributeValue_Succeeds() {
 	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
 	metadata := &common.MetadataMutable{
 		Labels: map[string]string{
@@ -178,7 +178,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_NoMembers_Succeeds() {
 	}
 
 	value := &attributes.CreateAttributeValueRequest{
-		Value:    "value create with members test value",
+		Value:    "value_create_success",
 		Metadata: metadata,
 	}
 	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.ID, value)

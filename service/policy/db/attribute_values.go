@@ -36,7 +36,6 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions, lo
 		id           string
 		value        string
 		active       bool
-		membersJSON  []byte
 		metadataJSON []byte
 		attributeID  string
 		grants       []byte
@@ -46,7 +45,6 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions, lo
 		&id,
 		&value,
 		&active,
-		&membersJSON,
 		&metadataJSON,
 		&attributeID,
 	}
@@ -179,28 +177,16 @@ func getAttributeValueSQL(id string, opts attributeValueSelectOptions) (string, 
 	fqnT := Tables.AttrFqn
 	avkagT := Tables.AttributeValueKeyAccessGrants
 	kasrT := Tables.KeyAccessServerRegistry
-	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
-		"'id', vmv.id, " +
-		"'value', vmv.value, " +
-		"'active', vmv.active, " +
-		"'members', vmv.members || ARRAY[]::UUID[], " +
-		constructMetadata("vmv", true) +
-		"'attribute', JSON_BUILD_OBJECT(" +
-		"'id', vmv.attribute_definition_id )"
-	if opts.withFqn {
-		members += ", 'fqn', " + "fqn1.fqn"
-	}
-	members += ")) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members" //nolint:goconst // SQL query
+
 	fields := []string{
 		"av.id",
 		"av.value",
 		"av.active",
-		members,
 		constructMetadata("av", false),
 		"av.attribute_definition_id",
 	}
 	if opts.withFqn {
-		fields = append(fields, "MAX(fqn2.fqn) AS fqn")
+		fields = append(fields, fqnT.Field("fqn"))
 	}
 	if opts.withKeyAccessGrants {
 		fields = append(fields,
@@ -217,15 +203,8 @@ func getAttributeValueSQL(id string, opts attributeValueSelectOptions) (string, 
 		Select(fields...).
 		From(t.Name() + " av")
 
-	// join members
-	sb = sb.LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id")
-
-	// join attribute values
-	sb = sb.LeftJoin(t.Name() + " vmv ON vm.member_id = vmv.id")
-
 	if opts.withFqn {
-		sb = sb.LeftJoin(fqnT.Name() + " AS fqn1 ON " + "fqn1.value_id" + " = " + "vmv.id")
-		sb = sb.LeftJoin(fqnT.Name() + " AS fqn2 ON " + "fqn2.value_id" + " = " + "av.id")
+		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = av.id")
 	}
 	if opts.withKeyAccessGrants {
 		sb = sb.LeftJoin(avkagT.Name() + " ON " + avkagT.WithoutSchema().Name() + ".attribute_value_id = av.id")
@@ -258,43 +237,23 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, id string) (*poli
 
 func listAttributeValuesSQL(attributeID string, opts attributeValueSelectOptions) (string, []interface{}, error) {
 	t := Tables.AttributeValues
-	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
-		"'id', vmv.id, " +
-		"'value', vmv.value, " +
-		"'active', vmv.active, " +
-		"'members', vmv.members || ARRAY[]::UUID[], " +
-		constructMetadata("vmv", true) +
-		"'attribute', JSON_BUILD_OBJECT(" +
-		"'id', vmv.attribute_definition_id )"
-	if opts.withFqn {
-		members += ", 'fqn', " + "fqn1.fqn"
-	}
-	members += ")) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members"
+	fqnT := Tables.AttrFqn
 	fields := []string{
 		"av.id",
 		"av.value",
 		"av.active",
-		members,
 		constructMetadata("av", false),
 		"av.attribute_definition_id",
 	}
 	if opts.withFqn {
-		fields = append(fields, "MAX(fqn2.fqn) AS fqn")
+		fields = append(fields, fqnT.Field("fqn"))
 	}
 
 	sb := db.NewStatementBuilder().
 		Select(fields...)
 
-	// join members
-	sb = sb.LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id")
-
-	// join attribute values
-	sb = sb.LeftJoin(t.Name() + " vmv ON vm.member_id = vmv.id")
-
 	if opts.withFqn {
-		fqnT := Tables.AttrFqn
-		sb = sb.LeftJoin(fqnT.Name() + " AS fqn1 ON " + "fqn1.value_id" + " = " + "vmv.id")
-		sb = sb.LeftJoin(fqnT.Name() + " AS fqn2 ON " + "fqn2.value_id" + " = " + "av.id")
+		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = av.id")
 	}
 
 	sb = sb.GroupBy("av.id")
@@ -329,42 +288,22 @@ func (c PolicyDBClient) ListAttributeValues(ctx context.Context, attributeID str
 
 func listAllAttributeValuesSQL(opts attributeValueSelectOptions) (string, []interface{}, error) {
 	t := Tables.AttributeValues
-	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
-		"'id', vmv.id, " +
-		"'value', vmv.value, " +
-		"'active', vmv.active, " +
-		"'members', vmv.members || ARRAY[]::UUID[], " +
-		constructMetadata("vmv", true) +
-		"'attribute', JSON_BUILD_OBJECT(" +
-		"'id', vmv.attribute_definition_id )"
-	if opts.withFqn {
-		members += ", 'fqn', " + "fqn1.fqn"
-	}
-	members += ")) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members"
+	fqnT := Tables.AttrFqn
 	fields := []string{
 		"av.id",
 		"av.value",
 		"av.active",
-		members,
 		constructMetadata("av", false),
 		"av.attribute_definition_id",
 	}
 	if opts.withFqn {
-		fields = append(fields, "MAX(fqn2.fqn) AS fqn")
+		fields = append(fields, fqnT.Field("fqn"))
 	}
 	sb := db.NewStatementBuilder().
 		Select(fields...)
 
-	// join members
-	sb = sb.LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id")
-
-	// join attribute values
-	sb = sb.LeftJoin(t.Name() + " vmv ON vm.member_id = vmv.id")
-
 	if opts.withFqn {
-		fqnT := Tables.AttrFqn
-		sb = sb.LeftJoin(fqnT.Name() + " AS fqn1 ON " + "fqn1.value_id" + " = " + "vmv.id")
-		sb = sb.LeftJoin(fqnT.Name() + " AS fqn2 ON " + "fqn2.value_id" + " = " + "av.id")
+		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = av.id")
 	}
 
 	sb = sb.GroupBy("av.id")

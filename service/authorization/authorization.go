@@ -161,29 +161,6 @@ func (as AuthorizationService) IsReady(ctx context.Context) error {
 	return nil
 }
 
-// abstracted into variable for mocking in tests
-var retrieveAttributeDefinitions = func(ctx context.Context, ra *authorization.ResourceAttribute, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
-	attrFqns := ra.GetAttributeValueFqns()
-	if len(attrFqns) == 0 {
-		return make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue), nil
-	}
-	resp, err := sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: false,
-		},
-		Fqns: attrFqns,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return resp.GetFqnAttributeValues(), nil
-}
-
-// abstracted into variable for mocking in tests
-var retrieveEntitlements = func(ctx context.Context, req *authorization.GetEntitlementsRequest, as *AuthorizationService) (*authorization.GetEntitlementsResponse, error) {
-	return as.GetEntitlements(ctx, req)
-}
-
 func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *authorization.GetDecisionsByTokenRequest) (*authorization.GetDecisionsByTokenResponse, error) {
 	var decisionsRequests = []*authorization.DecisionRequest{}
 	// for each token decision request
@@ -295,7 +272,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				if len(entities) == 0 || len(allPertinentFqnsRA.GetAttributeValueFqns()) == 0 {
 					as.logger.WarnContext(ctx, "Empty entity list and/or entity data attribute list")
 				} else {
-					ecEntitlements, err := retrieveEntitlements(ctx, &req, as)
+					ecEntitlements, err := as.GetEntitlements(ctx, &req)
 					if err != nil {
 						// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
 						return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("extra", "getEntitlements request failed"))
@@ -498,6 +475,23 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	}
 
 	return rsp, nil
+}
+
+func retrieveAttributeDefinitions(ctx context.Context, ra *authorization.ResourceAttribute, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
+	attrFqns := ra.GetAttributeValueFqns()
+	if len(attrFqns) == 0 {
+		return make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue), nil
+	}
+	resp, err := sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: false,
+		},
+		Fqns: attrFqns,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp.GetFqnAttributeValues(), nil
 }
 
 func getComprehensiveHierarchy(attributesMap map[string]*policy.Attribute, avf *attr.GetAttributeValuesByFqnsResponse, entitlement string, as *AuthorizationService, entitlements []string) []string {

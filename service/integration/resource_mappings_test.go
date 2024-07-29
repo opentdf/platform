@@ -123,7 +123,6 @@ func (s *ResourceMappingsSuite) Test_GetResourceMapping() {
 		s.Equal(testMapping.ID, mapping.GetId())
 		s.Equal(testMapping.AttributeValueID, mapping.GetAttributeValue().GetId())
 		s.Equal(testMapping.Terms, mapping.GetTerms())
-
 		metadata := mapping.GetMetadata()
 		createdAt := metadata.GetCreatedAt()
 		updatedAt := metadata.GetUpdatedAt()

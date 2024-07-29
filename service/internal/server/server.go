@@ -65,6 +65,9 @@ type Config struct {
 type GRPCConfig struct {
 	// Enable reflection for grpc server (default: true)
 	ReflectionEnabled bool `yaml:"reflectionEnabled" default:"true"`
+
+	MaxCallRecvMsgSizeBytes int `yaml:"maxCallRecvMsgSize" default:"4194304"` // 4MB = 4 * 1024 * 1024 = 4194304
+	MaxCallSendMsgSizeBytes int `yaml:"maxCallSendMsgSize" default:"4194304"` // 4MB = 4 * 1024 * 1024 = 4194304
 }
 
 // TLS Configuration for the server
@@ -109,6 +112,9 @@ https://github.com/valyala/fasthttp/blob/master/fasthttputil/inmemory_listener.g
 type inProcessServer struct {
 	ln  *fasthttputil.InmemoryListener
 	srv *grpc.Server
+
+	maxCallRecvMsgSize int
+	maxCallSendMsgSize int
 }
 
 func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, error) {
@@ -140,8 +146,10 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 		return nil, fmt.Errorf("failed to create grpc server: %w", err)
 	}
 	grpcIPCServer := &inProcessServer{
-		ln:  fasthttputil.NewInmemoryListener(),
-		srv: newGrpcInProcessServer(),
+		ln:                 fasthttputil.NewInmemoryListener(),
+		srv:                newGrpcInProcessServer(),
+		maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
+		maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
 	}
 
 	// Create http server
@@ -377,6 +385,10 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingClientInterceptor)
 
 	defaultOptions := []grpc.DialOption{
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(s.maxCallRecvMsgSize),
+			grpc.MaxCallSendMsgSize(s.maxCallSendMsgSize),
+		),
 		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
 			conn, err := s.ln.Dial()
 			if err != nil {

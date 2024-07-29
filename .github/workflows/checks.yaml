@@ -200,7 +200,7 @@ jobs:
       - run: test/policy-service.bats
       - name: create roundtrip test data and run tests
         run: go test ./service/rttests -v
-      - name: enable staic entitlements rego policy
+      - name: enable static entitlements rego policy
         run: yq eval '.services.authorization.rego.path = "./test/rego/static-entitlements.rego"' -i opentdf.yaml
       - run: sleep 30
       - name: validate static rego policy
@@ -217,11 +217,18 @@ jobs:
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
       - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v5.1.0
+      - uses: docker/build-push-action@v6.3.0
         with:
           context: .
           file: ./Dockerfile
           push: false
+
+  platform-xtest:
+    needs: integration
+    uses: opentdf/tests/.github/workflows/xtest.yml@main
+    with:
+      # use commit instead of ref so we can "go get" specific sdk version
+      platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
   buflint:
     name: Protocol Buffer Lint and Gencode Up-to-date check
@@ -268,6 +275,7 @@ jobs:
       - integration
       - license
       - pr
+      - platform-xtest
     runs-on: ubuntu-latest
     if: always()
     steps:

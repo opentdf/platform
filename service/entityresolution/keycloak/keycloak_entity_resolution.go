@@ -211,14 +211,19 @@ func EntityResolution(ctx context.Context,
 						return entityresolution.ResolveEntitiesResponse{}, status.Error(codes.Code(entityNotFoundErr.GetCode()), entityNotFoundErr.GetMessage())
 					}
 				}
-			} else if (ident.GetUserName() != "") && kcConfig.InferID.From.Username {
-				// user not found -- add json entity to resp instead
-				entityStruct, err := entityToStructPb(ident)
-				if err != nil {
-					logger.Error("unable to make entity struct from username", "error", err)
-					return entityresolution.ResolveEntitiesResponse{}, status.Error(codes.Internal, ErrTextCreationFailed)
+			} else if ident.GetUserName() != "" {
+				if kcConfig.InferID.From.Username {
+					// user not found -- add json entity to resp instead
+					entityStruct, err := entityToStructPb(ident)
+					if err != nil {
+						logger.Error("unable to make entity struct from username", "error", err)
+						return entityresolution.ResolveEntitiesResponse{}, status.Error(codes.Internal, ErrTextCreationFailed)
+					}
+					jsonEntities = append(jsonEntities, entityStruct)
+				} else {
+					entityNotFoundErr := entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrTextGetRetrievalFailed, Entity: ident.GetUserName()}
+					return entityresolution.ResolveEntitiesResponse{}, status.Error(codes.Code(entityNotFoundErr.GetCode()), entityNotFoundErr.GetMessage())
 				}
-				jsonEntities = append(jsonEntities, entityStruct)
 			}
 		}
 

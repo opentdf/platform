@@ -10,28 +10,28 @@ import (
 type AssertionType uint
 
 const (
-	handlingAssertion AssertionType = iota + 1
-	baseAssertion
+	HandlingAssertion AssertionType = iota + 1
+	BaseAssertion
 )
 
 var (
-	AssertionTypeName = map[uint8]string{
+	assertionTypeName = map[uint8]string{
 		1: "Handling",
 		2: "Base",
 	}
-	AssertionTypeValue = map[string]uint8{
+	assertionTypeValue = map[string]uint8{
 		"Handling": 1,
 		"Base":     2,
 	}
 )
 
 func (a AssertionType) String() string {
-	return AssertionTypeName[uint8(a)]
+	return assertionTypeName[uint8(a)]
 }
 
 func ParseAssertionType(a string) (AssertionType, error) {
 	a = strings.TrimSpace(a)
-	value, ok := AssertionTypeValue[a]
+	value, ok := assertionTypeValue[a]
 	if !ok {
 		return AssertionType(0), fmt.Errorf("%q is not a valid assertion type", a)
 	}
@@ -58,18 +58,18 @@ func (a *AssertionType) UnmarshalJSON(data []byte) error {
 type Scope uint
 
 const (
-	trustedDataObj Scope = iota + 1
-	paylaod
-	explicit
+	TrustedDataObj Scope = iota + 1
+	Paylaod
+	Explicit
 )
 
 var (
-	ScopeName = map[uint8]string{
+	scopeName = map[uint8]string{
 		1: "TDO",
 		2: "PAYL",
 		3: "EXPLICIT",
 	}
-	ScopeValue = map[string]uint8{
+	scopeValue = map[string]uint8{
 		"TDO":      1,
 		"PAYL":     2,
 		"EXPLICIT": 3,
@@ -77,12 +77,12 @@ var (
 )
 
 func (s Scope) String() string {
-	return ScopeName[uint8(s)]
+	return scopeName[uint8(s)]
 }
 
 func ParseScope(s string) (Scope, error) {
 	s = strings.TrimSpace(s)
-	value, ok := ScopeValue[s]
+	value, ok := scopeValue[s]
 	if !ok {
 		return Scope(0), fmt.Errorf("%q is not a valid sechma", s)
 	}
@@ -109,28 +109,28 @@ func (s *Scope) UnmarshalJSON(data []byte) error {
 type AppliesToState uint
 
 const (
-	encrypted AppliesToState = iota + 1
-	unencrypted
+	Encrypted AppliesToState = iota + 1
+	Unencrypted
 )
 
 var (
-	AppliesToStateName = map[uint8]string{
+	appliesToStateName = map[uint8]string{
 		1: "encrypted",
 		2: "unencrypted",
 	}
-	AppliesToStateValue = map[string]uint8{
+	appliesToStateValue = map[string]uint8{
 		"encrypted":   1,
 		"unencrypted": 2,
 	}
 )
 
 func (a AppliesToState) String() string {
-	return AppliesToStateName[uint8(a)]
+	return appliesToStateName[uint8(a)]
 }
 
 func ParseAppliesToState(a string) (AppliesToState, error) {
 	a = strings.TrimSpace(strings.ToLower(a))
-	value, ok := AppliesToStateValue[a]
+	value, ok := appliesToStateValue[a]
 	if !ok {
 		return AppliesToState(0), fmt.Errorf("%q is not a valid applies to state", a)
 	}
@@ -158,17 +158,17 @@ type Schema uint
 
 const (
 	JSON Schema = iota + 1
-	xml
-	text
+	XML
+	Text
 )
 
 var (
-	SchemaName = map[uint8]string{
+	schemaName = map[uint8]string{
 		1: "urn:nato:stanag:5636:A:1:elements:json",
 		2: "XML",
 		3: "Text",
 	}
-	SchemaValue = map[string]uint8{
+	schemaValue = map[string]uint8{
 		"urn:nato:stanag:5636:A:1:elements:json": 1,
 		"XML":                                    2,
 		"Text":                                   3,
@@ -176,12 +176,12 @@ var (
 )
 
 func (s Schema) String() string {
-	return SchemaName[uint8(s)]
+	return schemaName[uint8(s)]
 }
 
 func ParseSchema(s string) (Schema, error) {
 	s = strings.TrimSpace(s)
-	value, ok := SchemaValue[s]
+	value, ok := schemaValue[s]
 	if !ok {
 		return Schema(0), fmt.Errorf("%q is not a valid sechma", s)
 	}
@@ -218,7 +218,7 @@ const (
 )
 
 var (
-	StatementFormatName = map[uint8]string{
+	statementFormatName = map[uint8]string{
 		1: "ReferenceStatement",
 		2: "StructuredStatement",
 		3: "StringStatement",
@@ -227,7 +227,7 @@ var (
 		6: "HandlingStatement",
 		7: "StringType",
 	}
-	StatementFormatValue = map[string]uint8{
+	statementFormatValue = map[string]uint8{
 		"ReferenceStatement":    1,
 		"StructuredStatement":   2,
 		"StringStatement":       3,
@@ -239,12 +239,12 @@ var (
 )
 
 func (s StatementFormat) String() string {
-	return StatementFormatName[uint8(s)]
+	return statementFormatName[uint8(s)]
 }
 
 func ParseStatementFormat(s string) (StatementFormat, error) {
 	s = strings.TrimSpace(s)
-	value, ok := StatementFormatValue[s]
+	value, ok := statementFormatValue[s]
 	if !ok {
 		return StatementFormat(0), fmt.Errorf("%q is not a valid sechma", s)
 	}

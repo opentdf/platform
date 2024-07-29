@@ -260,20 +260,20 @@ func (s *TDFSuite) Test_SimpleTDF() {
 	assertions := []Assertion{
 		{
 			ID:             "assertion1",
-			Type:           handlingAssertion,
-			Scope:          trustedDataObj,
-			AppliesToState: unencrypted,
+			Type:           HandlingAssertion,
+			Scope:          TrustedDataObj,
+			AppliesToState: Unencrypted,
 			Statement: Statement{
 				Format: Base64BinaryStatement,
-				Schema: text,
+				Schema: Text,
 				Value:  "ICAgIDxlZGoOkVkaD4=",
 			},
 		},
 		{
 			ID:             "assertion2",
-			Type:           handlingAssertion,
-			Scope:          trustedDataObj,
-			AppliesToState: unencrypted,
+			Type:           HandlingAssertion,
+			Scope:          TrustedDataObj,
+			AppliesToState: Unencrypted,
 			Statement: Statement{
 				Format: StringStatement,
 				Schema: JSON,

@@ -263,9 +263,13 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 	var signedAssertion []Assertion
 	for _, assertion := range tdfConfig.assertions {
-		if assertion.Type != handlingAssertion.String() {
+		if assertion.Type != handlingAssertion {
 			continue
 		}
+
+		// clear out the binding
+		assertion.Binding.Method = ""
+		assertion.Binding.Signature = ""
 
 		assertionJSON, err := json.Marshal(assertion)
 		if err != nil {
@@ -871,7 +875,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 
 	// Validate assertions
 	for _, assertion := range r.manifest.Assertions {
-		if assertion.Type != handlingAssertion.String() {
+		if assertion.Type != handlingAssertion {
 			continue
 		}
 

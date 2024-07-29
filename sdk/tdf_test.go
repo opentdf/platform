@@ -252,29 +252,32 @@ func TestTDF(t *testing.T) {
 func (s *TDFSuite) Test_SimpleTDF() {
 	metaData := []byte(`{"displayName" : "openTDF go sdk"}`)
 	attributes := []string{
+
 		"https://example.com/attr/Classification/value/S",
 		"https://example.com/attr/Classification/value/X",
 	}
 
 	assertions := []Assertion{
 		{
-			ID:           "assertion1",
-			Type:         handlingAssertion.String(),
-			Scope:        trustedDataObj.String(),
-			AppliedState: unencrypted.String(),
+			ID:             "assertion1",
+			Type:           handlingAssertion,
+			Scope:          trustedDataObj,
+			AppliesToState: unencrypted,
 			Statement: Statement{
-				Format: Base64BinaryStatement.String(),
+				Format: Base64BinaryStatement,
+				Schema: text,
 				Value:  "ICAgIDxlZGoOkVkaD4=",
 			},
 		},
 		{
-			ID:           "assertion2",
-			Type:         baseAssertion.String(),
-			Scope:        trustedDataObj.String(),
-			AppliedState: unencrypted.String(),
+			ID:             "assertion2",
+			Type:           handlingAssertion,
+			Scope:          trustedDataObj,
+			AppliesToState: unencrypted,
 			Statement: Statement{
-				Format: Base64BinaryStatement.String(),
-				Value:  "ICAgIDxlZGoOkVkaD4=",
+				Format: StringStatement,
+				Schema: JSON,
+				Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
 			},
 			Binding: Binding{
 				Method:    JWT.String(),
@@ -283,7 +286,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		},
 	}
 
-	expectedTdfSize := int64(2577)
+	expectedTdfSize := int64(3215)
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
 	{

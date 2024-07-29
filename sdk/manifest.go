@@ -59,8 +59,9 @@ type EncryptionInformation struct {
 }
 
 type Statement struct {
-	Format string `json:"format,omitempty"`
-	Value  string `json:"value,omitempty"`
+	Format StatementFormat `json:"format,omitempty"`
+	Schema Schema          `json:"schema,omitempty"`
+	Value  string          `json:"value,omitempty"`
 }
 
 type Binding struct {
@@ -69,12 +70,12 @@ type Binding struct {
 }
 
 type Assertion struct {
-	ID           string    `json:"id"`
-	Type         string    `json:"type"`
-	Scope        string    `json:"scope"`
-	AppliedState string    `json:"appliesToState,omitempty"`
-	Statement    Statement `json:"statement"`
-	Binding      Binding   `json:"binding"`
+	ID             string         `json:"id"`
+	Type           AssertionType  `json:"type"`
+	Scope          Scope          `json:"scope"`
+	AppliesToState AppliesToState `json:"appliesToState,omitempty"`
+	Statement      Statement      `json:"statement"`
+	Binding        Binding        `json:"binding"`
 }
 
 type Manifest struct {

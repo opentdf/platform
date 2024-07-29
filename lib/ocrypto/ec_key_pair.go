@@ -30,6 +30,30 @@ type ECKeyPair struct {
 	PrivateKey *ecdsa.PrivateKey
 }
 
+// GetECCompressedKeyLengthFromECCMode returns the length of the compressed key
+// for a given ECC mode. The function first obtains the elliptic curve using the
+// GetECCurveFromECCMode function. It then calculates the length of the elliptic curve
+// coordinate in bytes. Finally, it calculates the length of the compressed key, which
+// includes the type indicator byte and the coordinate byte.
+//
+// The compressed form of the key is 1 byte for the type indicator plus the length of
+// the coordinate, which is equal to the elliptic curve's bit size divided by 8.
+func GetECCompressedKeyLengthFromECCMode(mode ECCMode) (int, error) {
+	c, err := GetECCurveFromECCMode(mode)
+	if err != nil {
+		return 0, err
+	}
+
+	// Get the length of coordinate in bytes
+	pointSize := (c.Params().BitSize + 7) / 8
+	// The compressed form of the key is 1 byte for the type indicator and then
+	// 2 coordinates, each of length pointSize.
+	// But in the compressed form, we only have one coordinate plus the type byte.
+	compressedKeySize := 1 + pointSize
+
+	return compressedKeySize, nil
+}
+
 // GetECCurveFromECCMode return elliptic curve from ecc mode
 func GetECCurveFromECCMode(mode ECCMode) (elliptic.Curve, error) {
 	var c elliptic.Curve
@@ -191,6 +215,42 @@ func VerifyECDSASig(digest, r, s []byte, pubKey *ecdsa.PublicKey) bool {
 	sAsBigInt.SetBytes(s)
 
 	return ecdsa.Verify(pubKey, digest, rAsBigInt, sAsBigInt)
+}
+
+// ECPubKeyFromPemECDSA generate ec public from pem format
+func ECPubKeyFromPemECDSA(pemECPubKey []byte) (*ecdsa.PublicKey, error) {
+	block, _ := pem.Decode(pemECPubKey)
+	if block == nil {
+		return nil, fmt.Errorf("failed to parse PEM formatted public key")
+	}
+
+	var pub any
+	if strings.Contains(string(pemECPubKey), "BEGIN CERTIFICATE") {
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("x509.ParseCertificate failed: %w", err)
+		}
+
+		var ok bool
+		if pub, ok = cert.PublicKey.(*ecdsa.PublicKey); !ok {
+			return nil, fmt.Errorf("failed to parse PEM formatted public key")
+		}
+	} else {
+		var err error
+		pub, err = x509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("x509.ParsePKIXPublicKey failed: %w", err)
+		}
+	}
+
+	switch pub := pub.(type) {
+	case *ecdsa.PublicKey:
+		return pub, nil
+	default:
+		break
+	}
+
+	return nil, fmt.Errorf("not an ec PEM formatted public key")
 }
 
 // ECPubKeyFromPem generate ec public from pem format

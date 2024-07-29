@@ -9,13 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"log/slog"
-	"net/url"
-
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"google.golang.org/grpc"
+	"io"
+	"log/slog"
 )
 
 // ============================================================================================================
@@ -687,12 +685,11 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 
 	// kid from kasPublicKey endpoint
 	slog.Debug("kasPublicKey", slog.String("kid", kid))
-	kasURLKid, err := addQueryParamToURL(kasURL, "kid", kid)
-	if err != nil {
-		return 0, fmt.Errorf("addQueryParamToURL failed: %w", err)
-	}
 	// update KAS URL with kid
-	config.kasURL.setURL(kasURLKid)
+	err = config.kasURL.setURLWithIdentifier(kasURL, kid)
+	if err != nil {
+		return 0, fmt.Errorf("getECPublicKey setURLWithIdentifier failed:%w", err)
+	}
 
 	config.kasPublicKey, err = ocrypto.ECPubKeyFromPem([]byte(kasPublicKey))
 	if err != nil {
@@ -901,16 +898,4 @@ func versionSalt() []byte {
 	digest := sha256.New()
 	digest.Write([]byte(kNanoTDFMagicStringAndVersion))
 	return digest.Sum(nil)
-}
-
-// addQueryParamToURL - Adds a query parameter to a given URL
-func addQueryParamToURL(baseURL, paramKey, paramValue string) (string, error) {
-	u, err := url.Parse(baseURL)
-	if err != nil {
-		return "", fmt.Errorf("url parse failed:%w", err)
-	}
-	query := u.Query()
-	query.Set(paramKey, paramValue)
-	u.RawQuery = query.Encode()
-	return u.String(), nil
 }

@@ -20,18 +20,30 @@ import (
 // ResourceLocator - structure to contain a protocol + body comprising an URL
 type ResourceLocator struct {
 	protocol urlProtocol // See urlProtocol values below
-	body     string      // Body of url
+	// body URL without protocol scheme
+	body string
+	// identifier unique to this URL
+	identifier string
 }
 
 // urlProtocol - shorthand for protocol prefix on fully qualified url
+// also specifies the optional resource identifier - current usage is a key identifier
 type urlProtocol uint8
 
 const (
-	kMaxBodyLen      int         = 255
+	kMaxBodyLen       int = 255
+	kMaxIdentifierLen int = 32
+	// kPrefixHTTPS identifier field is size of 0 bytes (not present)
 	kPrefixHTTPS     string      = "https://"
 	kPrefixHTTP      string      = "http://"
 	urlProtocolHTTP  urlProtocol = 0
 	urlProtocolHTTPS urlProtocol = 1
+	// urlProtocolHTTPSID2B identifier field is size of 2 bytes
+	urlProtocolHTTPSID2B urlProtocol = 33
+	// urlProtocolHTTPSID8B identifier field is size of 8 bytes
+	urlProtocolHTTPSID8B urlProtocol = 129
+	// urlProtocolHTTPSID32B identifier field is size of 32 bytes
+	urlProtocolHTTPSID32B urlProtocol = 241
 	// urlProtocolShared urlProtocol = 255 // TODO - how is this handled/parsed/rendered?
 )
 
@@ -74,7 +86,34 @@ func NewResourceLocatorFromReader(reader io.Reader) (*ResourceLocator, error) {
 
 // getLength - return the serialized length (in bytes) of this object
 func (rl ResourceLocator) getLength() uint16 {
-	return uint16(1 /* protocol byte */ + 1 /* length byte */ + len(rl.body))
+	return uint16(1 /* protocol byte */ + 1 /* length byte */ + len(rl.body) + len(rl.identifier))
+}
+
+// setURL - Store a fully qualified protocol+body string into a ResourceLocator as a protocol value and a body string
+func (rl *ResourceLocator) setURLWithIdentifier(url string, identifier string) error {
+	lowerURL := strings.ToLower(url)
+	if strings.HasPrefix(lowerURL, kPrefixHTTPS) {
+		urlBody := url[len(kPrefixHTTPS):]
+		if len(urlBody) > kMaxBodyLen {
+			return errors.New("URL too long")
+		}
+		identifierLen := len(identifier)
+		if identifierLen > kMaxIdentifierLen {
+			return errors.New("identifier too long")
+		}
+		if identifierLen <= 2 {
+			rl.protocol = urlProtocolHTTPSID2B
+		} else if identifierLen <= 8 {
+			rl.protocol = urlProtocolHTTPSID8B
+		} else if identifierLen <= 32 {
+			rl.protocol = urlProtocolHTTPSID32B
+		}
+		rl.protocol = urlProtocolHTTPS
+		rl.body = urlBody
+		rl.identifier = identifier
+		return nil
+	}
+	return errors.New("unsupported protocol with identifier: " + url)
 }
 
 // setURL - Store a fully qualified protocol+body string into a ResourceLocator as a protocol value and a body string

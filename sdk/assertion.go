@@ -16,12 +16,12 @@ const (
 
 var (
 	assertionTypeName = map[uint8]string{
-		1: "handling",
-		2: "other",
+		uint8(HandlingAssertion): "handling",
+		uint8(BaseAssertion):     "other",
 	}
 	assertionTypeValue = map[string]uint8{
-		"handling": 1,
-		"other":    2,
+		"handling": uint8(HandlingAssertion),
+		"other":    uint8(BaseAssertion),
 	}
 )
 
@@ -64,12 +64,12 @@ const (
 
 var (
 	scopeName = map[uint8]string{
-		1: "tdo",
-		2: "payload",
+		uint8(TrustedDataObj): "tdo",
+		uint8(Paylaod):        "payload",
 	}
 	scopeValue = map[string]uint8{
-		"tdo":     1,
-		"payload": 2,
+		"tdo":     uint8(TrustedDataObj),
+		"payload": uint8(Paylaod),
 	}
 )
 
@@ -112,12 +112,12 @@ const (
 
 var (
 	appliesToStateName = map[uint8]string{
-		1: "encrypted",
-		2: "unencrypted",
+		uint8(Encrypted):   "encrypted",
+		uint8(Unencrypted): "unencrypted",
 	}
 	appliesToStateValue = map[string]uint8{
-		"encrypted":   1,
-		"unencrypted": 2,
+		"encrypted":   uint8(Encrypted),
+		"unencrypted": uint8(Unencrypted),
 	}
 )
 

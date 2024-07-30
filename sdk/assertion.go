@@ -271,25 +271,25 @@ func (s *StatementFormat) UnmarshalJSON(data []byte) error {
 type BindingMethod uint
 
 const (
-	JWT BindingMethod = iota + 1
+	JWS BindingMethod = iota + 1
 )
 
 var (
-	BindingMethodName = map[uint8]string{
-		1: "jwt",
+	bindingMethodName = map[uint8]string{
+		1: "jws",
 	}
-	BindingMethodValue = map[string]uint8{
-		"jwt": 1,
+	bindingMethodValue = map[string]uint8{
+		"jws": 1,
 	}
 )
 
 func (b BindingMethod) String() string {
-	return BindingMethodName[uint8(b)]
+	return bindingMethodName[uint8(b)]
 }
 
 func ParseBindingMethod(b string) (BindingMethod, error) {
 	b = strings.TrimSpace(strings.ToLower(b))
-	value, ok := BindingMethodValue[b]
+	value, ok := bindingMethodValue[b]
 	if !ok {
 		return BindingMethod(0), fmt.Errorf("%q is not a valid sechma", b)
 	}

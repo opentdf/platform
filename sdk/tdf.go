@@ -297,7 +297,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			return nil, fmt.Errorf("jwt.Sign: %w", err)
 		}
 
-		assertion.Binding.Method = JWT.String()
+		assertion.Binding.Method = JWS.String()
 		assertion.Binding.Signature = string(signedToken)
 
 		signedAssertion = append(signedAssertion, assertion)

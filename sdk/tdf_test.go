@@ -280,7 +280,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 				Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
 			},
 			Binding: Binding{
-				Method:    JWT.String(),
+				Method:    JWS.String(),
 				Signature: "ICAgIDxlZGoOkVkaD4=",
 			},
 		},

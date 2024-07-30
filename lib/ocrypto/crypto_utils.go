@@ -3,12 +3,9 @@ package ocrypto
 import (
 	"crypto/hmac"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/pem"
 	"fmt"
 )
 
@@ -76,26 +73,4 @@ func RandomBytes(size int) ([]byte, error) {
 	}
 
 	return data, nil
-}
-
-// PemToRSAPrivate Convert pem formatted key to  ASN.1 DER form
-func PemToRSAPrivate(privateKeyInPem string) (*rsa.PrivateKey, error) {
-	block, _ := pem.Decode([]byte(privateKeyInPem))
-	if block == nil {
-		return nil, fmt.Errorf("failed to parse PEM formatted private key")
-	}
-
-	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("x509.ParsePKCS8PrivateKey failed: %w", err)
-	}
-
-	switch privateKey := priv.(type) {
-	case *rsa.PrivateKey:
-		return privateKey, nil
-	default:
-		break
-	}
-
-	return nil, fmt.Errorf("not an rsa PEM formatted private key")
 }

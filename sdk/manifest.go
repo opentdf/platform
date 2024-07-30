@@ -59,9 +59,9 @@ type EncryptionInformation struct {
 }
 
 type Statement struct {
-	Format StatementFormat `json:"format,omitempty"`
-	Schema Schema          `json:"schema,omitempty"`
-	Value  string          `json:"value,omitempty"`
+	Format string `json:"format,omitempty"`
+	Schema string `json:"schema,omitempty"`
+	Value  string `json:"value,omitempty"`
 }
 
 type Binding struct {

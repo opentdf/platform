@@ -33,6 +33,8 @@ import (
 	"golang.org/x/oauth2/clientcredentials"
 )
 
+const EntityIDPrefix string = "entity_idx_"
+
 type AuthorizationService struct { //nolint:revive // AuthorizationService is a valid name for this struct
 	authorization.UnimplementedAuthorizationServiceServer
 	sdk         *otdf.SDK
@@ -400,69 +402,72 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		Entitlements: make([]*authorization.EntityEntitlements, len(req.GetEntities())),
 	}
 
-	// // call ERS on all entities
-	// ersResp, err := as.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{Entities: req.Entities})
-	// if err != nil {
-	// 	as.logger.Error("Error calling ERS to get entity chains from jwts")
-	// 	return nil, err
-	// }
+	// call ERS on all entities
+	ersResp, err := as.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{Entities: req.Entities})
+	if err != nil {
+		as.logger.Error("Error calling ERS to get entity chains from jwts")
+		return nil, err
+	}
 
-	// // call rego on all entities
+	// call rego on all entities
+	in, err := entitlements.OpaInput(subjectMappings, ersResp)
+	if err != nil {
+		as.logger.ErrorContext(ctx, "failed to build rego input", slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, "failed to build rego input")
+	}
+	as.logger.DebugContext(ctx, "entitlements", "input", fmt.Sprintf("%+v", in))
+
+	results, err := as.eval.Eval(ctx,
+		rego.EvalInput(in),
+	)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to evaluate entitlements policy")
+	}
+	// If we get no results and no error then we assume that the entity is not entitled to anything
+	if len(results) == 0 {
+		as.logger.DebugContext(ctx, "no entitlement results")
+		return rsp, nil
+	}
+
+	// I am not sure how we would end up with multiple results but lets return an empty entitlement set for now
+	if len(results) > 1 {
+		as.logger.WarnContext(ctx, "multiple entitlement results", slog.String("results", fmt.Sprintf("%+v", results)))
+		return rsp, nil
+	}
+
+	// If we get no expressions then we assume that the entity is not entitled to anything
+	if len(results[0].Expressions) == 0 {
+		as.logger.WarnContext(ctx, "no entitlement expressions", slog.String("results", fmt.Sprintf("%+v", results)))
+		return rsp, nil
+	}
+
+	resultsEntitlements, entitlementsMapOk := results[0].Expressions[0].Value.(map[string]interface{})
+	if !entitlementsMapOk {
+		as.logger.ErrorContext(ctx, "entitlements is not a map[string]interface", slog.String("value", fmt.Sprintf("%+v", resultsEntitlements)))
+		return rsp, nil
+	}
+	as.logger.DebugContext(ctx, "opa results", "results", fmt.Sprintf("%+v", results))
 
 	for idx, entity := range req.GetEntities() {
-		// TODO: change this and the opa to take a bulk request and not have to call opa for each entity
-		// get the client auth token
-		ersResp, err := as.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{Entities: []*authorization.Entity{entity}})
-		if err != nil {
-			as.logger.Error("Error calling ERS to get entity chains from jwts")
-			return nil, err
+		// Ensure the entity has an ID
+		entity_id := entity.GetId()
+		if entity_id == "" {
+			entity_id = EntityIDPrefix + fmt.Sprint(idx)
 		}
-		in, err := entitlements.OpaInput(subjectMappings, ersResp)
-		if err != nil {
-			as.logger.ErrorContext(ctx, "failed to build rego input", slog.Any("entity", entity), slog.String("error", err.Error()))
-			return nil, status.Error(codes.Internal, "failed to build rego input")
-		}
-		as.logger.DebugContext(ctx, "entitlements", "entity_id", entity.GetId(), "input", fmt.Sprintf("%+v", in))
-
-		results, err := as.eval.Eval(ctx,
-			rego.EvalInput(in),
-		)
-		if err != nil {
-			return nil, status.Error(codes.Internal, "failed to evaluate entitlements policy")
-		}
-
-		// If we get no results and no error then we assume that the entity is not entitled to anything
-		if len(results) == 0 {
-			as.logger.DebugContext(ctx, "no entitlement results", slog.String("entity_id", entity.GetId()))
-			return rsp, nil
-		}
-
-		// I am not sure how we would end up with multiple results but lets return an empty entitlement set for now
-		if len(results) > 1 {
-			as.logger.WarnContext(ctx, "multiple entitlement results", slog.String("entity_id", entity.GetId()), slog.String("results", fmt.Sprintf("%+v", results)))
-			return rsp, nil
-		}
-
-		// If we get no expressions then we assume that the entity is not entitled to anything
-		if len(results[0].Expressions) == 0 {
-			as.logger.WarnContext(ctx, "no entitlement expressions", slog.String("entity_id", entity.GetId()), slog.String("results", fmt.Sprintf("%+v", results)))
-			return rsp, nil
-		}
-
 		// Check to maksure if the value is a list. Good validation if someone customizes the rego policy
-		resultsEntitlements, valueListOk := results[0].Expressions[0].Value.([]interface{})
+		entityEntitlements, valueListOk := resultsEntitlements[entity_id].([]interface{})
 		if !valueListOk {
-			as.logger.ErrorContext(ctx, "entitlements is not an array", slog.String("entity_id", entity.GetId()), slog.String("value", fmt.Sprintf("%+v", resultsEntitlements...)))
+			as.logger.ErrorContext(ctx, "entitlements is not a map[string]interface", slog.String("value", fmt.Sprintf("%+v", resultsEntitlements)))
 			return rsp, nil
 		}
-		as.logger.DebugContext(ctx, "opa results", "entity_id", entity.GetId(), "results", fmt.Sprintf("%+v", results))
+
 		// map for attributes for optional comprehensive
 		attributesMap := make(map[string]*policy.Attribute)
 		// Build array with length of results
-		var entitlements = make([]string, len(resultsEntitlements))
+		var entitlements = make([]string, len(entityEntitlements))
 
 		// Build entitlements list
-		for valueIDX, value := range resultsEntitlements {
+		for valueIDX, value := range entityEntitlements {
 			entitlement, valueOK := value.(string)
 			// If value is not okay skip adding to entitlements
 			if !valueOK {

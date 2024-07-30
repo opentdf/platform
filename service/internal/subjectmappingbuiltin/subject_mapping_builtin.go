@@ -58,7 +58,7 @@ func SubjectMappingBuiltin() {
 		}
 
 		// do the mapping evaluation
-		res, err := EvaluateSubjectMappings(attributeMappings, entityRepresentations.GetEntityRepresentations())
+		res, err := EvaluateSubjectMappingMultipleEntities(attributeMappings, entityRepresentations.GetEntityRepresentations())
 		if err != nil {
 			return nil, err
 		}
@@ -79,10 +79,23 @@ func SubjectMappingBuiltin() {
 	)
 }
 
-func EvaluateSubjectMappings(attributeMappings map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, entityRepresentations []*entityresolution.EntityRepresentation) ([]string, error) {
+func EvaluateSubjectMappingMultipleEntities(attributeMappings map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, entityRepresentations []*entityresolution.EntityRepresentation) (map[string][]string, error) {
+	results := make(map[string][]string)
+	for _, er := range entityRepresentations {
+		entitlements, err := EvaluateSubjectMappings(attributeMappings, er)
+		if err != nil {
+			return nil, err
+		}
+		results[er.GetOriginalId()] = entitlements
+	}
+
+	return results, nil
+}
+
+func EvaluateSubjectMappings(attributeMappings map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, entityRepresentation *entityresolution.EntityRepresentation) ([]string, error) {
 	// for now just look at first entity
 	// We only provide one input to ERS to resolve
-	jsonEntities := entityRepresentations[0].GetAdditionalProps()
+	jsonEntities := entityRepresentation.GetAdditionalProps()
 	var entitlementsSet = make(map[string]bool)
 	entitlements := []string{}
 	for _, entity := range jsonEntities {

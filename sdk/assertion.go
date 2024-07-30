@@ -16,12 +16,12 @@ const (
 
 var (
 	assertionTypeName = map[uint8]string{
-		1: "Handling",
-		2: "Base",
+		1: "handling",
+		2: "other",
 	}
 	assertionTypeValue = map[string]uint8{
-		"Handling": 1,
-		"Base":     2,
+		"handling": 1,
+		"other":    2,
 	}
 )
 
@@ -60,19 +60,16 @@ type Scope uint
 const (
 	TrustedDataObj Scope = iota + 1
 	Paylaod
-	Explicit
 )
 
 var (
 	scopeName = map[uint8]string{
-		1: "TDO",
-		2: "PAYL",
-		3: "EXPLICIT",
+		1: "tdo",
+		2: "payload",
 	}
 	scopeValue = map[string]uint8{
-		"TDO":      1,
-		"PAYL":     2,
-		"EXPLICIT": 3,
+		"tdo":     1,
+		"payload": 2,
 	}
 )
 
@@ -165,13 +162,13 @@ const (
 var (
 	schemaName = map[uint8]string{
 		1: "urn:nato:stanag:5636:A:1:elements:json",
-		2: "XML",
-		3: "Text",
+		2: "xml",
+		3: "text",
 	}
 	schemaValue = map[string]uint8{
 		"urn:nato:stanag:5636:A:1:elements:json": 1,
-		"XML":                                    2,
-		"Text":                                   3,
+		"xml":                                    2,
+		"text":                                   3,
 	}
 )
 
@@ -208,33 +205,21 @@ func (s *Schema) UnmarshalJSON(data []byte) error {
 type StatementFormat uint
 
 const (
-	ReferenceStatement StatementFormat = iota + 1
-	StructuredStatement
-	StringStatement
-	Base64BinaryStatement
-	XMLBase64
-	HandlingStatement
-	StringType
+	XMLStructured StatementFormat = iota + 1
+	Base64Binary
+	String
 )
 
 var (
 	statementFormatName = map[uint8]string{
-		1: "ReferenceStatement",
-		2: "StructuredStatement",
-		3: "StringStatement",
-		4: "Base64BinaryStatement",
-		5: "XMLBase64",
-		6: "HandlingStatement",
-		7: "StringType",
+		1: "xml-structured",
+		2: "base64binary",
+		3: "string",
 	}
 	statementFormatValue = map[string]uint8{
-		"ReferenceStatement":    1,
-		"StructuredStatement":   2,
-		"StringStatement":       3,
-		"Base64BinaryStatement": 4,
-		"XMLBase64":             5,
-		"HandlingStatement":     6,
-		"StringType":            7,
+		"xml-structured": 1,
+		"base64binary":   2,
+		"string":         3,
 	}
 )
 

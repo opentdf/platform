@@ -264,7 +264,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 			Scope:          TrustedDataObj,
 			AppliesToState: Unencrypted,
 			Statement: Statement{
-				Format: Base64BinaryStatement,
+				Format: Base64Binary,
 				Schema: Text,
 				Value:  "ICAgIDxlZGoOkVkaD4=",
 			},
@@ -275,7 +275,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 			Scope:          TrustedDataObj,
 			AppliesToState: Unencrypted,
 			Statement: Statement{
-				Format: StringStatement,
+				Format: String,
 				Schema: JSON,
 				Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
 			},

@@ -403,7 +403,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	}
 
 	// call ERS on all entities
-	ersResp, err := as.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{Entities: req.Entities})
+	ersResp, err := as.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{Entities: req.GetEntities()})
 	if err != nil {
 		as.logger.Error("Error calling ERS to get entity chains from jwts")
 		return nil, err
@@ -450,12 +450,12 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 
 	for idx, entity := range req.GetEntities() {
 		// Ensure the entity has an ID
-		entity_id := entity.GetId()
-		if entity_id == "" {
-			entity_id = EntityIDPrefix + fmt.Sprint(idx)
+		entityID := entity.GetId()
+		if entityID == "" {
+			entityID = EntityIDPrefix + fmt.Sprint(idx)
 		}
 		// Check to maksure if the value is a list. Good validation if someone customizes the rego policy
-		entityEntitlements, valueListOk := resultsEntitlements[entity_id].([]interface{})
+		entityEntitlements, valueListOk := resultsEntitlements[entityID].([]interface{})
 		if !valueListOk {
 			as.logger.ErrorContext(ctx, "entitlements is not a map[string]interface", slog.String("value", fmt.Sprintf("%+v", resultsEntitlements)))
 			return rsp, nil

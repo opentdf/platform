@@ -132,14 +132,14 @@ func EntityResolution(ctx context.Context,
 				jsonEntities = append(jsonEntities, entityStruct)
 			}
 			// make sure the id field is populated
-			originialId := ident.GetId()
-			if originialId == "" {
-				originialId = auth.EntityIDPrefix + fmt.Sprint(idx)
+			originialID := ident.GetId()
+			if originialID == "" {
+				originialID = auth.EntityIDPrefix + fmt.Sprint(idx)
 			}
 			resolvedEntities = append(
 				resolvedEntities,
 				&entityresolution.EntityRepresentation{
-					OriginalId:      originialId,
+					OriginalId:      originialID,
 					AdditionalProps: jsonEntities,
 				},
 			)
@@ -248,14 +248,14 @@ func EntityResolution(ctx context.Context,
 			jsonEntities = append(jsonEntities, mystruct)
 		}
 		// make sure the id field is populated
-		originialId := ident.GetId()
-		if originialId == "" {
-			originialId = auth.EntityIDPrefix + fmt.Sprint(idx)
+		originialID := ident.GetId()
+		if originialID == "" {
+			originialID = auth.EntityIDPrefix + fmt.Sprint(idx)
 		}
 		resolvedEntities = append(
 			resolvedEntities,
 			&entityresolution.EntityRepresentation{
-				OriginalId:      originialId,
+				OriginalId:      originialID,
 				AdditionalProps: jsonEntities},
 		)
 		logger.Debug("Entities", "resolved", fmt.Sprintf("%+v", resolvedEntities))

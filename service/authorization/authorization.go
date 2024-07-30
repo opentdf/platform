@@ -399,16 +399,25 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	rsp := &authorization.GetEntitlementsResponse{
 		Entitlements: make([]*authorization.EntityEntitlements, len(req.GetEntities())),
 	}
+
+	// // call ERS on all entities
+	// ersResp, err := as.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{Entities: req.Entities})
+	// if err != nil {
+	// 	as.logger.Error("Error calling ERS to get entity chains from jwts")
+	// 	return nil, err
+	// }
+
+	// // call rego on all entities
+
 	for idx, entity := range req.GetEntities() {
 		// TODO: change this and the opa to take a bulk request and not have to call opa for each entity
 		// get the client auth token
-		authToken, err := (*as.tokenSource).Token()
+		ersResp, err := as.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{Entities: []*authorization.Entity{entity}})
 		if err != nil {
-			as.logger.ErrorContext(ctx, "failed to get client auth token in GetEntitlements", slog.String("error", err.Error()))
-			return nil, status.Error(codes.Internal, "failed to get client auth token in GetEntitlements")
+			as.logger.Error("Error calling ERS to get entity chains from jwts")
+			return nil, err
 		}
-
-		in, err := entitlements.OpaInput(entity, subjectMappings, as.config.ERSURL, authToken.AccessToken)
+		in, err := entitlements.OpaInput(subjectMappings, ersResp)
 		if err != nil {
 			as.logger.ErrorContext(ctx, "failed to build rego input", slog.Any("entity", entity), slog.String("error", err.Error()))
 			return nil, status.Error(codes.Internal, "failed to build rego input")

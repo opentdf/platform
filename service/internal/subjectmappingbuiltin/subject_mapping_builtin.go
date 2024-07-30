@@ -30,20 +30,17 @@ func SubjectMappingBuiltin() {
 		// input handling
 		var attributeMappingsMap map[string]string
 		var attributeMappings = map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{}
-		var entityRepresentationsMap map[string]interface{}
+		var entityRepresentationsString string
 		var entityRepresentations entityresolution.ResolveEntitiesResponse
 
 		if err := ast.As(a.Value, &attributeMappingsMap); err != nil {
 			return nil, err
-		} else if err := ast.As(b.Value, &entityRepresentationsMap); err != nil {
+		} else if err := ast.As(b.Value, &entityRepresentationsString); err != nil {
 			return nil, err
 		}
 
-		entityRepresentationsBytes, err := json.Marshal(entityRepresentationsMap)
-		if err != nil {
-			return nil, err
-		}
-		err = protojson.Unmarshal(entityRepresentationsBytes, &entityRepresentations)
+		entityRepresentationsBytes := []byte(entityRepresentationsString)
+		err := protojson.Unmarshal(entityRepresentationsBytes, &entityRepresentations)
 		if err != nil {
 			return nil, err
 		}

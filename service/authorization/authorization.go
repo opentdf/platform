@@ -405,7 +405,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	// call ERS on all entities
 	ersResp, err := as.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{Entities: req.GetEntities()})
 	if err != nil {
-		as.logger.Error("Error calling ERS to get entity chains from jwts")
+		as.logger.ErrorContext(ctx, "error calling ERS to resolve entities", "entities", req.GetEntities())
 		return nil, err
 	}
 

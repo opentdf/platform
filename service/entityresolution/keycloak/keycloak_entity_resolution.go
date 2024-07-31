@@ -87,7 +87,6 @@ func EntityResolution(ctx context.Context,
 
 	var resolvedEntities []*entityresolution.EntityRepresentation
 	logger.Debug("EntityResolution invoked", "payload", payload)
-	logger.Debug("EntityResolution invoked", "payload", len(payload))
 
 	for idx, ident := range payload {
 		logger.Debug("Lookup", "entity", ident.GetEntityType())

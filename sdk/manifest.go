@@ -81,7 +81,7 @@ type Assertion struct {
 type Manifest struct {
 	EncryptionInformation `json:"encryptionInformation"`
 	Payload               `json:"payload"`
-	Assertions            []Assertion `json:"assertions"`
+	Assertions            []Assertion `json:"assertions,omitempty"`
 }
 
 type attributeObject struct {

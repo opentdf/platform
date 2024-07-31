@@ -36,7 +36,7 @@ func TestNanoTDFPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fullURL, err := pb2.rp.url.getURL()
+	fullURL, err := pb2.rp.url.GetURL()
 	if err != nil {
 		t.Fatal(err)
 	}

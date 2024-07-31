@@ -24,7 +24,7 @@ entity := {
             }
           }
         ],
-        "originalId": "custome-entity"
+        "originalId": "custom-rego"
       }
     ]
 		

@@ -263,7 +263,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 	var signedAssertion []Assertion
 	for _, assertion := range tdfConfig.assertions {
-		if assertion.Type != HandlingAssertion {
+		if assertion.Type != BaseAssertion {
 			continue
 		}
 
@@ -875,7 +875,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 
 	// Validate assertions
 	for _, assertion := range r.manifest.Assertions {
-		if assertion.Type != HandlingAssertion {
+		if assertion.Type != BaseAssertion {
 			continue
 		}
 

@@ -686,10 +686,13 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 
 	// kid from kasPublicKey endpoint
 	slog.Debug("kasPublicKey", slog.String("kid", kid))
-	// update KAS URL with kid
-	err = config.kasURL.setURLWithIdentifier(kasURL, kid)
-	if err != nil {
-		return 0, fmt.Errorf("getECPublicKey setURLWithIdentifier failed:%w", err)
+
+	// update KAS URL with kid if set
+	if kid != "" {
+		err = config.kasURL.setURLWithIdentifier(kasURL, kid)
+		if err != nil {
+			return 0, fmt.Errorf("getECPublicKey setURLWithIdentifier failed:%w", err)
+		}
 	}
 
 	config.kasPublicKey, err = ocrypto.ECPubKeyFromPem([]byte(kasPublicKey))

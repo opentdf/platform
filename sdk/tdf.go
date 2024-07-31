@@ -728,7 +728,6 @@ OUTPUTS:
   - error - If an error occurred while processing
 */
 func (r *Reader) PayloadKey() ([]byte, error) {
-
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap(context.Background())
 		if err != nil {
@@ -737,7 +736,6 @@ func (r *Reader) PayloadKey() ([]byte, error) {
 	}
 
 	return r.payloadKey, nil
-
 }
 
 // Unwraps the payload key, if possible, using the access service

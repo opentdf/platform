@@ -312,8 +312,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 
 		payloadKey, err := r.PayloadKey()
 		s.Require().NoError(err)
-		s.Equal(len(payloadKey), kKeySize)
-
+		s.Equal(kKeySize, len(payloadKey))
 	}
 
 	// test reader

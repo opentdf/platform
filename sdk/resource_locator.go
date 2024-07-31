@@ -113,6 +113,28 @@ func (rl *ResourceLocator) setURLWithIdentifier(url string, identifier string) e
 		rl.identifier = identifier
 		return nil
 	}
+	if strings.HasPrefix(lowerURL, kPrefixHTTP) {
+		urlBody := url[len(kPrefixHTTP):]
+		if len(urlBody) > kMaxBodyLen {
+			return errors.New("URL too long")
+		}
+		identifierLen := len(identifier)
+		switch {
+		case identifierLen == 0:
+			rl.protocol = urlProtocolHTTP | NoIdentifier
+		case identifierLen >= 1 && identifierLen <= 2:
+			rl.protocol = urlProtocolHTTP | TwoByteIdentifier
+		case identifierLen >= 3 && identifierLen <= 8:
+			rl.protocol = urlProtocolHTTP | EightByteIdentifier
+		case identifierLen >= 9 && identifierLen <= 32:
+			rl.protocol = urlProtocolHTTP | ThirtyTwoByteIdentifier
+		default:
+			return fmt.Errorf("unsupported identifier length: %d", identifierLen)
+		}
+		rl.body = urlBody
+		rl.identifier = identifier
+		return nil
+	}
 	return errors.New("unsupported protocol with identifier: " + url)
 }
 

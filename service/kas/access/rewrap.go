@@ -376,7 +376,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
 	}
 	// Lookup KID from nano header
-	kid, err := header.GetKasUrl().GetIdentifier()
+	kid, err := header.GetKasURL().GetIdentifier()
 	if err != nil {
 		// legacy nano with KID
 		kid, err = p.lookupKid(ctx, security.AlgorithmECP256R1)

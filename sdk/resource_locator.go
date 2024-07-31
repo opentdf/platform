@@ -202,19 +202,19 @@ func (rl *ResourceLocator) readResourceLocator(reader io.Reader) error {
 	case NoIdentifier, urlProtocolHTTPS:
 		// noop
 	case TwoByteIdentifier:
-		identifier := make([]byte, 2) //nolint:mnd
+		identifier := make([]byte, 2) //nolint:mnd // 2 bytes
 		if err := binary.Read(reader, binary.BigEndian, &identifier); err != nil {
 			return errors.New("Error reading ResourceLocator identifier value: " + err.Error())
 		}
 		rl.identifier = string(identifier)
 	case EightByteIdentifier:
-		identifier := make([]byte, 8) //nolint:mnd
+		identifier := make([]byte, 8) //nolint:mnd // 8 bytes
 		if err := binary.Read(reader, binary.BigEndian, &identifier); err != nil {
 			return errors.New("Error reading ResourceLocator identifier value: " + err.Error())
 		}
 		rl.identifier = string(identifier)
 	case ThirtyTwoByteIdentifier:
-		identifier := make([]byte, 32) //nolint:mnd
+		identifier := make([]byte, 32) //nolint:mnd // 32 bytes
 		if err := binary.Read(reader, binary.BigEndian, &identifier); err != nil {
 			return errors.New("Error reading ResourceLocator identifier value: " + err.Error())
 		}

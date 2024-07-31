@@ -64,7 +64,7 @@ type NanoTDFHeader struct {
 	ecdsaPolicyBindingS []byte
 }
 
-func (header *NanoTDFHeader) GetKasUrl() ResourceLocator {
+func (header *NanoTDFHeader) GetKasURL() ResourceLocator {
 	return header.kasURL
 }
 

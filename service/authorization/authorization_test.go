@@ -51,10 +51,10 @@ type myERSClient struct {
 	entityresolution.EntityResolutionServiceClient
 }
 
-func (*myERSClient) CreateEntityChainFromJwt(ctx context.Context, in *entityresolution.CreateEntityChainFromJwtRequest, opts ...grpc.CallOption) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
+func (*myERSClient) CreateEntityChainFromJwt(_ context.Context, _ *entityresolution.CreateEntityChainFromJwtRequest, _ ...grpc.CallOption) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
 	return &createEntityChainResp, nil
 }
-func (*myERSClient) ResolveEntities(ctx context.Context, in *entityresolution.ResolveEntitiesRequest, opts ...grpc.CallOption) (*entityresolution.ResolveEntitiesResponse, error) {
+func (*myERSClient) ResolveEntities(_ context.Context, _ *entityresolution.ResolveEntitiesRequest, _ ...grpc.CallOption) (*entityresolution.ResolveEntitiesResponse, error) {
 	return &resolveEntitiesResp, nil
 }
 

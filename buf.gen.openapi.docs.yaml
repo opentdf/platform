@@ -10,3 +10,5 @@ managed:
 plugins:
   - plugin: buf.build/grpc-ecosystem/openapiv2:v2.18.1
     out: docs/openapi
+  - plugin: buf.build/bufbuild/validate-go
+    out: protocol/go

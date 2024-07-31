@@ -37,8 +37,8 @@ const (
 	kPrefixHTTP      string         = "http://"
 	urlProtocolHTTP  protocolHeader = 0x0
 	urlProtocolHTTPS protocolHeader = 0x1
-	//urlProtocolUnreserved   protocolHeader = 0x2
-	//urlProtocolSharedResDir protocolHeader = 0xf
+	// urlProtocolUnreserved   protocolHeader = 0x2
+	// urlProtocolSharedResDir protocolHeader = 0xf
 
 	NoIdentifier            protocolHeader = 0 << 4
 	TwoByteIdentifier       protocolHeader = 1 << 4
@@ -110,7 +110,7 @@ func (rl *ResourceLocator) setURLWithIdentifier(url string, identifier string) e
 			return fmt.Errorf("unsupported identifier length: %d", identifierLen)
 		}
 		rl.body = urlBody
-		rl.identifier = string(identifier)
+		rl.identifier = identifier
 		return nil
 	}
 	return errors.New("unsupported protocol with identifier: " + url)
@@ -120,7 +120,7 @@ func (rl *ResourceLocator) setURLWithIdentifier(url string, identifier string) e
 func (rl ResourceLocator) GetIdentifier() (string, error) {
 	// read the identifier if it exists
 	switch rl.protocol & 0xf0 {
-	case NoIdentifier:
+	case NoIdentifier, urlProtocolHTTPS:
 		return "", fmt.Errorf("no resource locator identifer: %d", rl.protocol)
 	case TwoByteIdentifier, EightByteIdentifier, ThirtyTwoByteIdentifier:
 		return rl.identifier, nil
@@ -199,28 +199,28 @@ func (rl *ResourceLocator) readResourceLocator(reader io.Reader) error {
 	rl.body = string(body) // TODO - normalize to lowercase?
 	// read the identifier if it exists
 	switch rl.protocol & 0xf0 {
-	case NoIdentifier:
+	case NoIdentifier, urlProtocolHTTPS:
 		// noop
 	case TwoByteIdentifier:
-		identifier := make([]byte, 2)
+		identifier := make([]byte, 2) //nolint:mnd
 		if err := binary.Read(reader, binary.BigEndian, &identifier); err != nil {
 			return errors.New("Error reading ResourceLocator identifier value: " + err.Error())
 		}
 		rl.identifier = string(identifier)
 	case EightByteIdentifier:
-		identifier := make([]byte, 8)
+		identifier := make([]byte, 8) //nolint:mnd
 		if err := binary.Read(reader, binary.BigEndian, &identifier); err != nil {
 			return errors.New("Error reading ResourceLocator identifier value: " + err.Error())
 		}
 		rl.identifier = string(identifier)
 	case ThirtyTwoByteIdentifier:
-		identifier := make([]byte, 32)
+		identifier := make([]byte, 32) //nolint:mnd
 		if err := binary.Read(reader, binary.BigEndian, &identifier); err != nil {
 			return errors.New("Error reading ResourceLocator identifier value: " + err.Error())
 		}
 		rl.identifier = string(identifier)
 	default:
-		return errors.New("unsupported identifer protocol: " + strconv.Itoa(int(rl.protocol)))
+		return errors.New("unsupported identifier protocol: " + strconv.Itoa(int(rl.protocol)))
 	}
 	return nil
 }

@@ -1,7 +1,6 @@
 package sdk_test
 
 import (
-	"github.com/opentdf/platform/sdk"
 	"reflect"
 	"testing"
 
@@ -9,6 +8,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	"github.com/opentdf/platform/sdk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -19,32 +19,31 @@ import (
 
 // ResourceLocator - structure to contain a protocol + body comprising an URL
 type ResourceLocator struct {
-	protocol urlProtocol // See urlProtocol values below
+	protocol protocolHeader // See protocolHeader values below
 	// body URL without protocol scheme
 	body string
 	// identifier unique to this URL
 	identifier string
 }
 
-// urlProtocol - shorthand for protocol prefix on fully qualified url
+// protocolHeader - shorthand for protocol prefix on fully qualified url
 // also specifies the optional resource identifier - current usage is a key identifier
-type urlProtocol uint8
+type protocolHeader uint8
 
 const (
-	kMaxBodyLen       int = 255
-	kMaxIdentifierLen int = 32
+	kMaxBodyLen int = 255
 	// kPrefixHTTPS identifier field is size of 0 bytes (not present)
-	kPrefixHTTPS     string      = "https://"
-	kPrefixHTTP      string      = "http://"
-	urlProtocolHTTP  urlProtocol = 0
-	urlProtocolHTTPS urlProtocol = 1
-	// urlProtocolHTTPSID2B identifier field is size of 2 bytes
-	urlProtocolHTTPSID2B urlProtocol = 33
-	// urlProtocolHTTPSID8B identifier field is size of 8 bytes
-	urlProtocolHTTPSID8B urlProtocol = 129
-	// urlProtocolHTTPSID32B identifier field is size of 32 bytes
-	urlProtocolHTTPSID32B urlProtocol = 241
-	// urlProtocolShared urlProtocol = 255 // TODO - how is this handled/parsed/rendered?
+	kPrefixHTTPS     string         = "https://"
+	kPrefixHTTP      string         = "http://"
+	urlProtocolHTTP  protocolHeader = 0x0
+	urlProtocolHTTPS protocolHeader = 0x1
+	//urlProtocolUnreserved   protocolHeader = 0x2
+	//urlProtocolSharedResDir protocolHeader = 0xf
+
+	NoIdentifier            protocolHeader = 0 << 4
+	TwoByteIdentifier       protocolHeader = 1 << 4
+	EightByteIdentifier     protocolHeader = 2 << 4
+	ThirtyTwoByteIdentifier protocolHeader = 3 << 4
 )
 
 func NewResourceLocator(url string) (*ResourceLocator, error) {
@@ -66,7 +65,7 @@ func NewResourceLocatorFromReader(reader io.Reader) (*ResourceLocator, error) {
 	if err != nil {
 		return rl, err
 	}
-	rl.protocol = urlProtocol(oneByte[0])
+	rl.protocol = protocolHeader(oneByte[0])
 
 	_, err = reader.Read(oneByte)
 	if err != nil {
@@ -98,19 +97,20 @@ func (rl *ResourceLocator) setURLWithIdentifier(url string, identifier string) e
 			return errors.New("URL too long")
 		}
 		identifierLen := len(identifier)
-		if identifierLen > kMaxIdentifierLen {
-			return errors.New("identifier too long")
+		switch {
+		case identifierLen == 0:
+			rl.protocol = urlProtocolHTTPS | NoIdentifier
+		case identifierLen >= 1 && identifierLen <= 2:
+			rl.protocol = urlProtocolHTTPS | TwoByteIdentifier
+		case identifierLen >= 3 && identifierLen <= 8:
+			rl.protocol = urlProtocolHTTPS | EightByteIdentifier
+		case identifierLen >= 9 && identifierLen <= 32:
+			rl.protocol = urlProtocolHTTPS | ThirtyTwoByteIdentifier
+		default:
+			return fmt.Errorf("unsupported identifier length: %d", identifierLen)
 		}
-		if identifierLen <= 2 {
-			rl.protocol = urlProtocolHTTPSID2B
-		} else if identifierLen <= 8 {
-			rl.protocol = urlProtocolHTTPSID8B
-		} else if identifierLen <= 32 {
-			rl.protocol = urlProtocolHTTPSID32B
-		}
-		rl.protocol = urlProtocolHTTPS
 		rl.body = urlBody
-		rl.identifier = identifier
+		rl.identifier = string(identifier)
 		return nil
 	}
 	return errors.New("unsupported protocol with identifier: " + url)
@@ -118,11 +118,12 @@ func (rl *ResourceLocator) setURLWithIdentifier(url string, identifier string) e
 
 // GetIdentifier - identifier is returned if the correct protocol enum is set else error
 func (rl ResourceLocator) GetIdentifier() (string, error) {
-	if rl.protocol == urlProtocolHTTPSID8B || rl.protocol == urlProtocolHTTPSID32B || rl.protocol == urlProtocolHTTPSID8B {
+	// read the identifier if it exists
+	switch rl.protocol & 0xf0 {
+	case NoIdentifier:
+		return "", fmt.Errorf("no resource locator identifer: %d", rl.protocol)
+	case TwoByteIdentifier, EightByteIdentifier, ThirtyTwoByteIdentifier:
 		return rl.identifier, nil
-	}
-	if rl.protocol == urlProtocolHTTP {
-		return kPrefixHTTP + rl.body, nil
 	}
 	return "", fmt.Errorf("unsupported identifer protocol: %d", rl.protocol)
 }
@@ -196,5 +197,30 @@ func (rl *ResourceLocator) readResourceLocator(reader io.Reader) error {
 		return errors.Join(Error("Error reading ResourceLocator body value"), err)
 	}
 	rl.body = string(body) // TODO - normalize to lowercase?
+	// read the identifier if it exists
+	switch rl.protocol & 0xf0 {
+	case NoIdentifier:
+		// noop
+	case TwoByteIdentifier:
+		identifier := make([]byte, 2)
+		if err := binary.Read(reader, binary.BigEndian, &identifier); err != nil {
+			return errors.New("Error reading ResourceLocator identifier value: " + err.Error())
+		}
+		rl.identifier = string(identifier)
+	case EightByteIdentifier:
+		identifier := make([]byte, 8)
+		if err := binary.Read(reader, binary.BigEndian, &identifier); err != nil {
+			return errors.New("Error reading ResourceLocator identifier value: " + err.Error())
+		}
+		rl.identifier = string(identifier)
+	case ThirtyTwoByteIdentifier:
+		identifier := make([]byte, 32)
+		if err := binary.Read(reader, binary.BigEndian, &identifier); err != nil {
+			return errors.New("Error reading ResourceLocator identifier value: " + err.Error())
+		}
+		rl.identifier = string(identifier)
+	default:
+		return errors.New("unsupported identifer protocol: " + strconv.Itoa(int(rl.protocol)))
+	}
 	return nil
 }

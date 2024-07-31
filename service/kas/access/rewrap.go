@@ -385,10 +385,6 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 			return nil, err400("bad request")
 		}
 	}
-	if kid == "" {
-		p.Logger.WarnContext(ctx, "failure to find kid in kasUrl")
-		return nil, err400("bad request")
-	}
 
 	ecCurve, err := header.ECCurve()
 	if err != nil {

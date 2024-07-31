@@ -176,13 +176,16 @@ func (rl *ResourceLocator) setURL(url string) error {
 
 // GetURL - Retrieve a fully qualified protocol+body URL string from a ResourceLocator struct
 func (rl ResourceLocator) GetURL() (string, error) {
-	if rl.protocol == urlProtocolHTTPS {
+	switch rl.protocol & 0xF { // use bitwise AND to get first 4 bits
+	case urlProtocolHTTPS:
 		return kPrefixHTTPS + rl.body, nil
-	}
-	if rl.protocol == urlProtocolHTTP {
+	case urlProtocolHTTP:
 		return kPrefixHTTP + rl.body, nil
+	case TwoByteIdentifier, EightByteIdentifier, ThirtyTwoByteIdentifier:
+		return "", fmt.Errorf("unsupported protocol: %d", rl.protocol)
+	default:
+		return "", fmt.Errorf("unsupported protocol: %d", rl.protocol)
 	}
-	return "", fmt.Errorf("unsupported protocol: %d", rl.protocol)
 }
 
 // writeResourceLocator - writes the content of the resource locator to the supplied writer

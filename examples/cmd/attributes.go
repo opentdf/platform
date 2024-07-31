@@ -46,6 +46,18 @@ func init() {
 	add.Flags().StringVarP(&values, "values", "v", "", "list of attribute values")
 	attributes.AddCommand(add)
 
+	assign := &cobra.Command{
+		Use:  "assign",
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return assignAttribute(cmd, true)
+		},
+	}
+	assign.Flags().StringVarP(&attr, "attr", "a", "", "attribute prefix, e.g. https://name.space/attr/name")
+	assign.Flags().StringVarP(&kas, "kas", "k", "", "which kas to assign")
+	assign.Flags().StringVarP(&values, "values", "v", "", "any attribute values to include; if empty, applies to all")
+	attributes.AddCommand(assign)
+
 	list := &cobra.Command{
 		Use:     "list",
 		Args:    cobra.NoArgs,
@@ -71,6 +83,18 @@ func init() {
 	remove.Flags().StringVarP(&values, "values", "v", "", "list of attribute values to remove; if absent, removes all")
 	remove.Flags().BoolVarP(&unsafeBool, "unsafe", "f", false, "delete for real; otherwise deactivate (soft delete)")
 	attributes.AddCommand(remove)
+
+	unassign := &cobra.Command{
+		Use:  "unassign",
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return assignAttribute(cmd, false)
+		},
+	}
+	unassign.Flags().StringVarP(&attr, "attr", "a", "", "attribute prefix, e.g. https://name.space/attr/name")
+	unassign.Flags().StringVarP(&kas, "kas", "k", "", "which kas to assign")
+	unassign.Flags().StringVarP(&values, "values", "v", "", "any attribute values to include; if empty, applies to all")
+	attributes.AddCommand(unassign)
 
 	ExamplesCmd.AddCommand(attributes)
 }
@@ -232,7 +256,7 @@ func addAttribute(cmd *cobra.Command) error {
 func removeAttribute(cmd *cobra.Command) error {
 	s, err := newSDK()
 	if err != nil {
-		slog.Error("could not connect", slog.String("error", err.Error()))
+		slog.Error("could not connect", "err", err)
 		return err
 	}
 	defer s.Close()
@@ -298,6 +322,135 @@ func removeAttribute(cmd *cobra.Command) error {
 					return err
 				}
 				slog.Info("deactivated attribute value", "attr", attr, "value", v, "resp", r)
+			}
+		}
+	}
+	return nil
+}
+
+func assignAttribute(cmd *cobra.Command, assign bool) error {
+	s, err := newSDK()
+	if err != nil {
+		slog.Error("could not connect", "err", err)
+		return err
+	}
+	defer s.Close()
+
+	are := regexp.MustCompile(`^(https?://[\w./]+)/attr/([^/\s]*)$`)
+	m := are.FindStringSubmatch(attr)
+	if len(m) < 3 || len(m[0]) == 0 {
+		return fmt.Errorf("not a valid attribute fqn [%s]", attr)
+	}
+	auth := m[1]
+	nsu, err := nsuuid(cmd.Context(), s, auth)
+	if errors.Is(err, ErrNotFound) {
+		nsu, err = addNamespace(cmd.Context(), s, auth)
+	}
+	if err != nil {
+		return err
+	}
+
+	auuid, err := attruuid(cmd.Context(), s, nsu, attr)
+	if err != nil {
+		return err
+	}
+
+	kasById := make(map[string]string)
+
+	var kasids []string
+	switch {
+	case kas != "":
+		kasid, err := upsertKasRegistration(cmd.Context(), s, kas, nil)
+		if err != nil {
+			return err
+		}
+		kasids = append(kasids, kasid)
+		kasById[kasid] = kas
+	case assign:
+		return fmt.Errorf("assign must take a `--kas` parameter")
+	case values == "":
+		// look up all kasids associated with the attribute
+		ar, err := s.Attributes.GetAttribute(cmd.Context(), &attributes.GetAttributeRequest{Id: auuid})
+		if err != nil {
+			return err
+		}
+		for _, b := range ar.Attribute.GetGrants() {
+			kasids = append(kasids, b.GetId())
+			kasById[b.GetId()] = b.GetUri()
+		}
+	default:
+		// look up all kasids associated with the value
+		if strings.Index(values, " ") >= 0 {
+			return fmt.Errorf("TODO: unassign from multiple values at a time")
+		}
+		avu, err := avuuid(cmd.Context(), s, auuid, values)
+		if err != nil {
+			return err
+		}
+		ar, err := s.Attributes.GetAttributeValue(cmd.Context(), &attributes.GetAttributeValueRequest{Id: avu})
+		if err != nil {
+			return err
+		}
+		for _, b := range ar.GetValue().GetGrants() {
+			kasids = append(kasids, b.GetId())
+			kasById[b.GetId()] = b.GetUri()
+		}
+	}
+
+	for _, kasid := range kasids {
+		if values == "" {
+			if assign {
+				r, err := s.Attributes.AssignKeyAccessServerToAttribute(cmd.Context(), &attributes.AssignKeyAccessServerToAttributeRequest{
+					AttributeKeyAccessServer: &attributes.AttributeKeyAccessServer{
+						AttributeId:       auuid,
+						KeyAccessServerId: kasid,
+					},
+				})
+				if err != nil {
+					return err
+				}
+				cmd.Printf("successfully assigned all of [%s] to [%s] (binding [%v])\n", attr, kasById[kasid], *r.GetAttributeKeyAccessServer())
+			} else {
+				r, err := s.Attributes.RemoveKeyAccessServerFromAttribute(cmd.Context(), &attributes.RemoveKeyAccessServerFromAttributeRequest{
+					AttributeKeyAccessServer: &attributes.AttributeKeyAccessServer{
+						AttributeId:       auuid,
+						KeyAccessServerId: kasid,
+					},
+				})
+				if err != nil {
+					return err
+				}
+				cmd.Printf("successfully unassigned [%s] from [%s] (binding %v)\n", attr, kasById[kasid], *r.GetAttributeKeyAccessServer())
+			}
+		} else {
+			for _, v := range strings.Split(values, " ") {
+				avu, err := avuuid(cmd.Context(), s, auuid, v)
+				if err != nil {
+					return err
+				}
+				if assign {
+					r, err := s.Attributes.AssignKeyAccessServerToValue(cmd.Context(), &attributes.AssignKeyAccessServerToValueRequest{
+						ValueKeyAccessServer: &attributes.ValueKeyAccessServer{
+							ValueId:           avu,
+							KeyAccessServerId: kasid,
+						},
+					})
+					if err != nil {
+						return err
+					}
+					cmd.Printf("successfully assigned [%s] to [%s] (binding [%v])\n", attr, kasById[kasid], *r.GetValueKeyAccessServer())
+				} else {
+					r, err := s.Attributes.RemoveKeyAccessServerFromValue(cmd.Context(), &attributes.RemoveKeyAccessServerFromValueRequest{
+						ValueKeyAccessServer: &attributes.ValueKeyAccessServer{
+							ValueId:           avu,
+							KeyAccessServerId: kasid,
+						},
+					})
+					if err != nil {
+						return err
+					}
+					cmd.Printf("successfully unassigned [%s] from [%s] (binding [%v])\n", attr, kasById[kasid], *r.GetValueKeyAccessServer())
+				}
 			}
 		}
 	}

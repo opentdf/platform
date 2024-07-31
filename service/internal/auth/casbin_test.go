@@ -375,7 +375,12 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 			roleMap["standard"] = "test"
 		}
 
-		enforcer, err = NewCasbinEnforcer(CasbinConfig{}, logger.CreateTestLogger())
+		enforcer, err = NewCasbinEnforcer(CasbinConfig{
+			PolicyConfig: PolicyConfig{
+				RoleClaim: "client_id",
+				RoleMap:   roleMap,
+			},
+		}, logger.CreateTestLogger())
 		s.Require().NoError(err)
 		_, tok = s.newTokenWithCilentID()
 		allowed, err = enforcer.Enforce(tok, test.resource, test.action)

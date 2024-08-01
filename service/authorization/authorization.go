@@ -406,7 +406,9 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		as.logger.ErrorContext(ctx, "failed to get attribute values by fqns", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to get attribute values by fqns")
 	}
+	start = time.Now()
 	subjectMappings := avf.GetFqnAttributeValues()
+	stopwatch = append(stopwatch, map[string]time.Duration{"Assign Subject Mappings": time.Since(start)})
 	as.logger.DebugContext(ctx, "retrieved from subject mappings service", slog.Any("subject_mappings: ", subjectMappings))
 	// TODO: this could probably be moved to proto validation https://github.com/opentdf/platform/issues/1057
 	if req.Entities == nil {
@@ -424,12 +426,13 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			as.logger.ErrorContext(ctx, "failed to get client auth token in GetEntitlements", slog.String("error", err.Error()))
 			return nil, status.Error(codes.Internal, "failed to get client auth token in GetEntitlements")
 		}
-
+		start = time.Now()
 		in, err := entitlements.OpaInput(entity, subjectMappings, as.config.ERSURL, authToken.AccessToken)
 		if err != nil {
 			as.logger.ErrorContext(ctx, "failed to build rego input", slog.Any("entity", entity), slog.String("error", err.Error()))
 			return nil, status.Error(codes.Internal, "failed to build rego input")
 		}
+		stopwatch = append(stopwatch, map[string]time.Duration{"Build OPA Input": time.Since(start)})
 		// as.logger.DebugContext(ctx, "entitlements", "entity_id", entity.GetId(), "input", fmt.Sprintf("%+v", in))
 		start = time.Now()
 		results, err := as.eval.Eval(ctx,

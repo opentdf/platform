@@ -143,8 +143,11 @@ func (rl ResourceLocator) GetIdentifier() (string, error) {
 	// read the identifier if it exists
 	switch rl.protocol & 0xf0 {
 	case NoIdentifier, urlProtocolHTTPS:
-		return "", fmt.Errorf("no resource locator identifer: %d", rl.protocol)
+		return "", fmt.Errorf("legacy resource locator identifer: %d", rl.protocol)
 	case TwoByteIdentifier, EightByteIdentifier, ThirtyTwoByteIdentifier:
+		if rl.identifier == "" {
+			return "", fmt.Errorf("no resource locator identifer: %d", rl.protocol)
+		}
 		return rl.identifier, nil
 	}
 	return "", fmt.Errorf("unsupported identifer protocol: %d", rl.protocol)

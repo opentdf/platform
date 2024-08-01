@@ -410,15 +410,17 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	lap = time.Now()
 	subjectMappings := avf.GetFqnAttributeValues()
 	stopwatch = append(stopwatch, map[string][]time.Duration{"Assign Subject Mappings": {time.Since(lap), time.Since(start)}})
-	as.logger.DebugContext(ctx, "retrieved from subject mappings service", slog.Any("subject_mappings: ", subjectMappings))
+	// as.logger.DebugContext(ctx, "retrieved from subject mappings service", slog.Any("subject_mappings: ", subjectMappings))
 	// TODO: this could probably be moved to proto validation https://github.com/opentdf/platform/issues/1057
 	if req.Entities == nil {
 		as.logger.ErrorContext(ctx, "requires entities")
 		return nil, status.Error(codes.InvalidArgument, "requires entities")
 	}
+	lap = time.Now()
 	rsp := &authorization.GetEntitlementsResponse{
 		Entitlements: make([]*authorization.EntityEntitlements, len(req.GetEntities())),
 	}
+	stopwatch = append(stopwatch, map[string][]time.Duration{"Allocate GetEntitlementsResponse": {time.Since(lap), time.Since(start)}})
 	for idx, entity := range req.GetEntities() {
 		// TODO: change this and the opa to take a bulk request and not have to call opa for each entity
 		// get the client auth token

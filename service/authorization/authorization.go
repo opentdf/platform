@@ -366,7 +366,10 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	// }
 	// pprof.StartCPUProfile(f)
 	// defer pprof.StopCPUProfile()
-	start := time.Now()
+	var (
+		start time.Time
+		// end   time.Time
+	)
 	stopwatch := []map[string]time.Duration{}
 	as.logger.DebugContext(ctx, "getting entitlements")
 	request := attr.GetAttributeValuesByFqnsRequest{
@@ -378,6 +381,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	// https://github.com/opentdf/platform/issues/365
 	if req.GetScope() == nil {
 		// TODO: Reomve and use MatchSubjectMappings instead later in the flow
+		start = time.Now()
 		listAttributeResp, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{})
 		if err != nil {
 			as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
@@ -395,6 +399,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		// get subject mappings
 		request.Fqns = req.GetScope().GetAttributeValueFqns()
 	}
+	start = time.Now()
 	avf, err := as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &request)
 	stopwatch = append(stopwatch, map[string]time.Duration{"GetAttributeValuesByFqns": time.Since(start)})
 	if err != nil {
@@ -426,7 +431,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			return nil, status.Error(codes.Internal, "failed to build rego input")
 		}
 		// as.logger.DebugContext(ctx, "entitlements", "entity_id", entity.GetId(), "input", fmt.Sprintf("%+v", in))
-
+		start = time.Now()
 		results, err := as.eval.Eval(ctx,
 			rego.EvalInput(in),
 		)

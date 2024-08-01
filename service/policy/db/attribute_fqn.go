@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -192,12 +193,16 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 		if !strings.Contains(fqn, "/value/") {
 			return nil, db.ErrFqnMissingValue
 		}
+		start := time.Now()
 		attr, err := c.GetAttributeByFqn(ctx, fqn)
 		if err != nil {
 			c.logger.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))
 			return nil, err
 		}
+		c.logger.Debug("GetEntitlements: Get Attr by FQN", slog.String("fqn", fqn), slog.Duration("duration", time.Since(start)))
+		start = time.Now()
 		filtered, selected := prepareValues(attr.GetValues(), fqn)
+		c.logger.Debug("GetEntitlements: prepareValues", slog.String("fqn", fqn), slog.Duration("duration", time.Since(start)))
 		if selected == nil {
 			c.logger.Error("could not find value for FQN", slog.String("fqn", fqn))
 			return nil, fmt.Errorf("could not find value for FQN [%s] %w", fqn, db.ErrNotFound)

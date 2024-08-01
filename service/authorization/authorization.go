@@ -413,7 +413,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			as.logger.ErrorContext(ctx, "failed to build rego input", slog.Any("entity", entity), slog.String("error", err.Error()))
 			return nil, status.Error(codes.Internal, "failed to build rego input")
 		}
-		as.logger.DebugContext(ctx, "entitlements", "entity_id", entity.GetId(), "input", fmt.Sprintf("%+v", in))
+		// as.logger.DebugContext(ctx, "entitlements", "entity_id", entity.GetId(), "input", fmt.Sprintf("%+v", in))
 
 		results, err := as.eval.Eval(ctx,
 			rego.EvalInput(in),

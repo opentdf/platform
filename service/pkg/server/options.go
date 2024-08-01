@@ -1,5 +1,9 @@
 package server
 
+import (
+	"github.com/opentdf/platform/service/pkg/serviceregistry"
+)
+
 type StartOptions func(StartConfig) StartConfig
 
 type StartConfig struct {
@@ -8,6 +12,8 @@ type StartConfig struct {
 	WaitForShutdownSignal       bool
 	PublicRoutes                []string
 	authzDefaultPolicyExtension [][]string
+	extraCoreServices           []serviceregistry.Registration
+	extraServices               []serviceregistry.Registration
 }
 
 // Deprecated: Use WithConfigKey
@@ -49,6 +55,20 @@ func WithPublicRoutes(routes []string) StartOptions {
 func WithAuthZDefaultPolicyExtension(policies [][]string) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.authzDefaultPolicyExtension = policies
+		return c
+	}
+}
+
+func WithCoreServices(services ...serviceregistry.Registration) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.extraCoreServices = append(c.extraCoreServices, services...)
+		return c
+	}
+}
+
+func WithServices(services ...serviceregistry.Registration) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.extraServices = append(c.extraServices, services...)
 		return c
 	}
 }

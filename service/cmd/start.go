@@ -12,13 +12,14 @@ func init() {
 		RunE:  start,
 	}
 	startCmd.SilenceUsage = true
+	startCmd.Flags().String("mode", "all", "Mode to run the platform in")
+
 	rootCmd.AddCommand(&startCmd)
 }
 
 func start(cmd *cobra.Command, _ []string) error {
 	configFile, _ := cmd.Flags().GetString(configFileFlag)
 	configKey, _ := cmd.Flags().GetString(configKeyFlag)
-
 	return server.Start(
 		server.WithWaitForShutdownSignal(),
 		server.WithConfigFile(configFile),

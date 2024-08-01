@@ -32,8 +32,8 @@ func NewRegistration() serviceregistry.Registration {
 			}
 
 			var kasCfg access.KASConfig
-			if err := mapstructure.Decode(srp.Config.ExtraProps, &kasCfg); err != nil {
-				panic(fmt.Errorf("invalid kas cfg [%v] %w", srp.Config.ExtraProps, err))
+			if err := mapstructure.Decode(srp.Config, &kasCfg); err != nil {
+				panic(fmt.Errorf("invalid kas cfg [%v] %w", srp.Config, err))
 			}
 
 			switch {
@@ -68,7 +68,6 @@ func NewRegistration() serviceregistry.Registration {
 				CryptoProvider: srp.OTDF.CryptoProvider,
 				SDK:            srp.SDK,
 				Logger:         srp.Logger,
-				Config:         &srp.Config,
 				KASConfig:      kasCfg,
 			}
 

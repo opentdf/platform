@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"log/slog"
+	"slices"
 
 	"github.com/opentdf/platform/sdk"
 
@@ -76,37 +77,124 @@ type DBRegister struct {
 
 // Service is a struct that holds the registration information for a service as well as the state
 // of the service within the instance of the platform.
-type Service struct {
+type service struct {
 	Registration
+	impl       any
+	handleFunc HandlerServer
 	// Started is a flag that indicates whether the service has been started
 	Started bool
 	// Close is a function that can be called to close the service
 	Close func()
 }
 
-type ServiceMap map[string]Service
-type NamespaceMap map[string]ServiceMap
+// Start the service
+func (s *service) Start(params RegistrationParams) error {
+	if s.Started {
+		return fmt.Errorf("service already started")
+	}
+
+	if s.DB.Required && !params.DBClient.RanMigrations() && params.DBClient.MigrationsEnabled() {
+		appliedMigrations, err := params.DBClient.RunMigrations(context.Background(), s.DB.Migrations)
+		if err != nil {
+			return fmt.Errorf("issue running database migrations: %w", err)
+		}
+		params.Logger.Info("database migrations complete",
+			slog.Int("applied", appliedMigrations),
+		)
+	} else {
+		requiredAlreadyRan := s.DB.Required && params.DBClient.MigrationsEnabled() && params.DBClient.RanMigrations()
+		noDBRequired := !s.DB.Required
+		migrationsDisabled := (s.DB.Required && !params.DBClient.MigrationsEnabled())
+
+		reason := "undetermined"
+		switch {
+		case requiredAlreadyRan: //nolint:gocritic // This is more readable than a switch
+			reason = "required migrations already ran"
+		case noDBRequired:
+			reason = "service does not require a database"
+		case migrationsDisabled:
+			reason = "migrations are disabled"
+		}
+
+		params.Logger.Info("skipping migrations",
+			slog.String("namespace", s.Namespace),
+			slog.String("service", s.ServiceDesc.ServiceName),
+			slog.Bool("configured runMigrations", migrationsDisabled),
+			slog.String("reason", reason),
+		)
+	}
+
+	s.impl, s.handleFunc = s.RegisterFunc(params)
+
+	s.Started = true
+	return nil
+}
+
+func (s *service) RegisterGRPCServer(server *grpc.Server) error {
+	if s.impl == nil {
+		return fmt.Errorf("service did not register an implementation")
+	}
+	server.RegisterService(s.ServiceDesc, s.impl)
+	return nil
+}
+
+func (s *service) RegisterHTTPServer(ctx context.Context, mux *runtime.ServeMux) error {
+	if s.handleFunc == nil {
+		return fmt.Errorf("service did not register a handler")
+	}
+	return s.handleFunc(ctx, mux, s.impl)
+}
+
+type namespace struct {
+	Mode     string
+	Services []service
+}
+
+type Registry map[string]namespace
 
 // RegisteredServices is a map of namespaces to services
 // TODO remove the global variable and move towards a more functional approach
-var RegisteredServices NamespaceMap
+
+func NewServiceRegistry() Registry {
+	return make(Registry)
+}
+
+func (reg Registry) RegisterCoreService(r Registration) error {
+	return reg.RegisterService(r, "core")
+}
 
 // RegisterService is a function that registers a service with the service registry.
-func RegisterService(r Registration) error {
-	if RegisteredServices == nil {
-		RegisteredServices = make(NamespaceMap, 0)
+func (reg Registry) RegisterService(r Registration, mode string) error {
+	// Can't directly modify structs within a map, so we need to copy the namespace
+	copyNamespace := reg[r.Namespace]
+	copyNamespace.Mode = mode
+	if copyNamespace.Services == nil {
+		copyNamespace.Services = make([]service, 0)
 	}
-	if RegisteredServices[r.Namespace] == nil {
-		RegisteredServices[r.Namespace] = make(ServiceMap, 0)
-	}
+	found := slices.ContainsFunc(reg[r.Namespace].Services, func(s service) bool {
+		return s.ServiceDesc.ServiceName == r.ServiceDesc.ServiceName
+	})
 
-	if RegisteredServices[r.Namespace][r.ServiceDesc.ServiceName].RegisterFunc != nil {
+	if found {
 		return fmt.Errorf("service already registered namespace:%s service:%s", r.Namespace, r.ServiceDesc.ServiceName)
 	}
 
 	slog.Info("registered service", slog.String("namespace", r.Namespace), slog.String("service", r.ServiceDesc.ServiceName))
-	RegisteredServices[r.Namespace][r.ServiceDesc.ServiceName] = Service{
+	copyNamespace.Services = append(copyNamespace.Services, service{
 		Registration: r,
-	}
+	})
+
+	reg[r.Namespace] = copyNamespace
 	return nil
+}
+
+func (reg Registry) Shutdown() {
+	for name, ns := range reg {
+		for _, svc := range ns.Services {
+			if svc.Close != nil && svc.Started {
+				slog.Info("stopping service", slog.String("namespace", name), slog.String("service", svc.ServiceDesc.ServiceName))
+				svc.Close()
+			}
+		}
+	}
 }

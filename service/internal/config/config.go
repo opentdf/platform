@@ -12,23 +12,25 @@ import (
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
+	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/pkg/util"
 	"github.com/spf13/viper"
 )
 
 type Config struct {
 	DevMode bool          `mapstructure:"dev_mode"`
-	DB      db.Config     `yaml:"db"`
-	Server  server.Config `yaml:"server"`
-	Logger  logger.Config `yaml:"logger"`
+	DB      db.Config     `mapstructure:"db"`
+	Server  server.Config `mapstructure:"server"`
+	Logger  logger.Config `mapstructure:"logger"`
 	// Defines which services to run
-	Mode       string         `mapsctructure:"mode"`
-	RemoteCore RemoteCoreInfo `mapstructure:"remote_core"`
-	Services   map[string]any `mapstructure:"services"`
+	Mode      []string                                 `mapsctructure:"mode"`
+	SDKConfig SDKConfig                                `mapstructure:"sdk_config"`
+	Services  map[string]serviceregistry.ServiceConfig `mapstructure:"services"`
 }
 
-type RemoteCoreInfo struct {
+type SDKConfig struct {
 	Endpoint     string `mapstructure:"endpoint"`
+	Plaintext    bool   `mapstructure:"plaintext" default:"false"`
 	ClientID     string `mapstructure:"client_id"`
 	ClientSecret string `mapstructure:"client_secret"`
 }

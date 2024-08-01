@@ -11,6 +11,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
+	auth "github.com/opentdf/platform/service/authorization"
 	"github.com/opentdf/platform/service/internal/logger"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -87,7 +88,7 @@ func EntityResolution(ctx context.Context,
 	var resolvedEntities []*entityresolution.EntityRepresentation
 	logger.Debug("EntityResolution invoked", "payload", payload)
 
-	for _, ident := range payload {
+	for idx, ident := range payload {
 		logger.Debug("Lookup", "entity", ident.GetEntityType())
 		var keycloakEntities []*gocloak.User
 		var getUserParams gocloak.GetUsersParams
@@ -129,16 +130,19 @@ func EntityResolution(ctx context.Context,
 				}
 				jsonEntities = append(jsonEntities, entityStruct)
 			}
+			// make sure the id field is populated
+			originialID := ident.GetId()
+			if originialID == "" {
+				originialID = auth.EntityIDPrefix + fmt.Sprint(idx)
+			}
 			resolvedEntities = append(
 				resolvedEntities,
 				&entityresolution.EntityRepresentation{
-					OriginalId:      ident.GetId(),
+					OriginalId:      originialID,
 					AdditionalProps: jsonEntities,
 				},
 			)
-			return entityresolution.ResolveEntitiesResponse{
-				EntityRepresentations: resolvedEntities,
-			}, nil
+			continue
 		case *authorization.Entity_EmailAddress:
 			getUserParams = gocloak.GetUsersParams{Email: func() *string { t := ident.GetEmailAddress(); return &t }(), Exact: &exactMatch}
 		case *authorization.Entity_UserName:
@@ -242,11 +246,15 @@ func EntityResolution(ctx context.Context,
 			}
 			jsonEntities = append(jsonEntities, mystruct)
 		}
-
+		// make sure the id field is populated
+		originialID := ident.GetId()
+		if originialID == "" {
+			originialID = auth.EntityIDPrefix + fmt.Sprint(idx)
+		}
 		resolvedEntities = append(
 			resolvedEntities,
 			&entityresolution.EntityRepresentation{
-				OriginalId:      ident.GetId(),
+				OriginalId:      originialID,
 				AdditionalProps: jsonEntities},
 		)
 		logger.Debug("Entities", "resolved", fmt.Sprintf("%+v", resolvedEntities))

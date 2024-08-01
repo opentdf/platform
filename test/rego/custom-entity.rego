@@ -24,14 +24,14 @@ entity := {
             }
           }
         ],
-        "originalId": "custome-entity"
+        "originalId": "custom-rego"
       }
     ]
 		
 	}
 
 get_entitlements(entity) := res if {
-    res := subjectmapping.resolve(input.attribute_mappings, entity)
+    res := subjectmapping.resolve(input.attribute_mappings, json.marshal(entity))
 }
 
 attributes := get_entitlements(entity)

@@ -366,11 +366,12 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	// }
 	// pprof.StartCPUProfile(f)
 	// defer pprof.StopCPUProfile()
+	start := time.Now()
 	var (
-		start time.Time
+		lap time.Time
 		// end   time.Time
 	)
-	stopwatch := []map[string]time.Duration{}
+	stopwatch := []map[string][]time.Duration{}
 	as.logger.DebugContext(ctx, "getting entitlements")
 	request := attr.GetAttributeValuesByFqnsRequest{
 		WithValue: &policy.AttributeValueSelector{
@@ -387,7 +388,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
 			return nil, status.Error(codes.Internal, "failed to list attributes")
 		}
-		stopwatch = append(stopwatch, map[string]time.Duration{"ListAttributes": time.Since(start)})
+		stopwatch = append(stopwatch, map[string][]time.Duration{"ListAttributes": {time.Since(lap), time.Since(start)}})
 		var attributeFqns []string
 		for _, attr := range listAttributeResp.GetAttributes() {
 			for _, val := range attr.GetValues() {
@@ -401,14 +402,14 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	}
 	start = time.Now()
 	avf, err := as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &request)
-	stopwatch = append(stopwatch, map[string]time.Duration{"GetAttributeValuesByFqns": time.Since(start)})
+	stopwatch = append(stopwatch, map[string][]time.Duration{"GetAttributeValuesByFqns": {time.Since(lap), time.Since(start)}})
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to get attribute values by fqns", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to get attribute values by fqns")
 	}
 	start = time.Now()
 	subjectMappings := avf.GetFqnAttributeValues()
-	stopwatch = append(stopwatch, map[string]time.Duration{"Assign Subject Mappings": time.Since(start)})
+	stopwatch = append(stopwatch, map[string][]time.Duration{"Assign Subject Mappings": {time.Since(lap), time.Since(start)}})
 	as.logger.DebugContext(ctx, "retrieved from subject mappings service", slog.Any("subject_mappings: ", subjectMappings))
 	// TODO: this could probably be moved to proto validation https://github.com/opentdf/platform/issues/1057
 	if req.Entities == nil {
@@ -432,13 +433,13 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			as.logger.ErrorContext(ctx, "failed to build rego input", slog.Any("entity", entity), slog.String("error", err.Error()))
 			return nil, status.Error(codes.Internal, "failed to build rego input")
 		}
-		stopwatch = append(stopwatch, map[string]time.Duration{"Build OPA Input": time.Since(start)})
+		stopwatch = append(stopwatch, map[string][]time.Duration{"Build OPA Input": {time.Since(lap), time.Since(start)}})
 		// as.logger.DebugContext(ctx, "entitlements", "entity_id", entity.GetId(), "input", fmt.Sprintf("%+v", in))
 		start = time.Now()
 		results, err := as.eval.Eval(ctx,
 			rego.EvalInput(in),
 		)
-		stopwatch = append(stopwatch, map[string]time.Duration{"Eval OPA": time.Since(start)})
+		stopwatch = append(stopwatch, map[string][]time.Duration{"Eval OPA": {time.Since(lap), time.Since(start)}})
 		if err != nil {
 			return nil, status.Error(codes.Internal, "failed to evaluate entitlements policy")
 		}
@@ -496,7 +497,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	}
 	for _, sw := range stopwatch {
 		for k, v := range sw {
-			as.logger.Debug(k, slog.Any("duration", v))
+			as.logger.Debug(k, slog.Any("lap: ", v[0]), slog.Any("since start: ", v[1]))
 		}
 	}
 

@@ -382,7 +382,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	// https://github.com/opentdf/platform/issues/365
 	if req.GetScope() == nil {
 		// TODO: Reomve and use MatchSubjectMappings instead later in the flow
-		start = time.Now()
+		lap = time.Now()
 		listAttributeResp, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{})
 		if err != nil {
 			as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
@@ -400,14 +400,14 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		// get subject mappings
 		request.Fqns = req.GetScope().GetAttributeValueFqns()
 	}
-	start = time.Now()
+	lap = time.Now()
 	avf, err := as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &request)
 	stopwatch = append(stopwatch, map[string][]time.Duration{"GetAttributeValuesByFqns": {time.Since(lap), time.Since(start)}})
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to get attribute values by fqns", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to get attribute values by fqns")
 	}
-	start = time.Now()
+	lap = time.Now()
 	subjectMappings := avf.GetFqnAttributeValues()
 	stopwatch = append(stopwatch, map[string][]time.Duration{"Assign Subject Mappings": {time.Since(lap), time.Since(start)}})
 	as.logger.DebugContext(ctx, "retrieved from subject mappings service", slog.Any("subject_mappings: ", subjectMappings))
@@ -427,7 +427,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			as.logger.ErrorContext(ctx, "failed to get client auth token in GetEntitlements", slog.String("error", err.Error()))
 			return nil, status.Error(codes.Internal, "failed to get client auth token in GetEntitlements")
 		}
-		start = time.Now()
+		lap = time.Now()
 		in, err := entitlements.OpaInput(entity, subjectMappings, as.config.ERSURL, authToken.AccessToken)
 		if err != nil {
 			as.logger.ErrorContext(ctx, "failed to build rego input", slog.Any("entity", entity), slog.String("error", err.Error()))
@@ -435,7 +435,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		}
 		stopwatch = append(stopwatch, map[string][]time.Duration{"Build OPA Input": {time.Since(lap), time.Since(start)}})
 		// as.logger.DebugContext(ctx, "entitlements", "entity_id", entity.GetId(), "input", fmt.Sprintf("%+v", in))
-		start = time.Now()
+		lap = time.Now()
 		results, err := as.eval.Eval(ctx,
 			rego.EvalInput(in),
 		)

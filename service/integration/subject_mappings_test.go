@@ -790,7 +790,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_ChangeOperator() {
 	s.NotNil(created)
 
 	// update the subject condition set
-	new := []*policy.SubjectSet{
+	newSS := []*policy.SubjectSet{
 		{
 			ConditionGroups: []*policy.ConditionGroup{
 				{
@@ -808,7 +808,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_ChangeOperator() {
 	}
 
 	update := &subjectmapping.UpdateSubjectConditionSetRequest{
-		SubjectSets: new,
+		SubjectSets: newSS,
 		Id:          created.GetId(),
 	}
 	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(context.Background(), update)

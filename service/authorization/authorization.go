@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"runtime/pprof"
 	"strings"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -359,13 +359,15 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 }
 
 func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
-	f, err := os.Create("platform.prof")
-	if err != nil {
-		slog.Error("error creating profile file", "error", err)
-		return nil, err
-	}
-	pprof.StartCPUProfile(f)
-	defer pprof.StopCPUProfile()
+	// f, err := os.Create("platform.prof")
+	// if err != nil {
+	// 	slog.Error("error creating profile file", "error", err)
+	// 	return nil, err
+	// }
+	// pprof.StartCPUProfile(f)
+	// defer pprof.StopCPUProfile()
+	start := time.Now()
+	stopwatch := []map[string]time.Duration{}
 	as.logger.DebugContext(ctx, "getting entitlements")
 	request := attr.GetAttributeValuesByFqnsRequest{
 		WithValue: &policy.AttributeValueSelector{
@@ -381,6 +383,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
 			return nil, status.Error(codes.Internal, "failed to list attributes")
 		}
+		stopwatch = append(stopwatch, map[string]time.Duration{"ListAttributes": time.Since(start)})
 		var attributeFqns []string
 		for _, attr := range listAttributeResp.GetAttributes() {
 			for _, val := range attr.GetValues() {
@@ -393,6 +396,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		request.Fqns = req.GetScope().GetAttributeValueFqns()
 	}
 	avf, err := as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &request)
+	stopwatch = append(stopwatch, map[string]time.Duration{"GetAttributeValuesByFqns": time.Since(start)})
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to get attribute values by fqns", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to get attribute values by fqns")
@@ -426,6 +430,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		results, err := as.eval.Eval(ctx,
 			rego.EvalInput(in),
 		)
+		stopwatch = append(stopwatch, map[string]time.Duration{"Eval OPA": time.Since(start)})
 		if err != nil {
 			return nil, status.Error(codes.Internal, "failed to evaluate entitlements policy")
 		}
@@ -479,6 +484,11 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		rsp.Entitlements[idx] = &authorization.EntityEntitlements{
 			EntityId:           entity.GetId(),
 			AttributeValueFqns: entitlements,
+		}
+	}
+	for _, sw := range stopwatch {
+		for k, v := range sw {
+			as.logger.Debug(k, slog.Any("duration", v))
 		}
 	}
 

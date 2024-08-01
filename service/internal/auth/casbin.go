@@ -215,9 +215,8 @@ func (e *Enforcer) ExtendDefaultPolicy(policies [][]string) error {
 
 	policy := strings.TrimSpace(defaultPolicy)
 	policy += "\n\n## Extended Policies"
-	for p := range policies {
-		pol := policies[p]
-		polCsv := strings.Join(policies[p], ", ")
+	for _, pol := range policies {
+		polCsv := strings.Join(pol, ", ")
 		if len(pol) < defaultPolicyPartsLen {
 			return fmt.Errorf("policy missing one of 'p, subject, resource, action, effect', pol: [%s] %w", polCsv, ErrPolicyMalformed)
 		}

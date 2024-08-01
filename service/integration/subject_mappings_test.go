@@ -819,7 +819,11 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_ChangeOperator() {
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
-	s.Equal(policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS, got.GetSubjectSets()[0].GetConditionGroups()[0].GetConditions()[0].GetOperator())
+	condition := got.GetSubjectSets()[0].GetConditionGroups()[0].GetConditions()[0]
+	s.Equal(policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS, condition.GetOperator())
+	s.Equal(".someField[1]", condition.GetSubjectExternalSelectorValue())
+	s.Len(condition.GetSubjectExternalValues(), 1)
+	s.Equal("some_partial_value", condition.GetSubjectExternalValues()[0])
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NonExistentId_Fails() {

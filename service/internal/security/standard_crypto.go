@@ -367,7 +367,7 @@ func (s StandardCrypto) GenerateNanoTDFSymmetricKey(kasKID string, ephemeralPubl
 	}
 	ec, ok := k.(StandardECCrypto)
 	if !ok {
-		return nil, ErrKeyPairInfoNotFoundMalformed
+		return nil, ErrKeyPairInfoMalformed
 	}
 
 	symmetricKey, err := ocrypto.ComputeECDHKey([]byte(ec.ecPrivateKeyPem), ephemeralECDSAPublicKeyPEM)

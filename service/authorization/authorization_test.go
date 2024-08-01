@@ -10,6 +10,7 @@ import (
 
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
 	otdf "github.com/opentdf/platform/sdk"
@@ -18,11 +19,14 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 var (
 	getAttributesByValueFqnsResponse attr.GetAttributeValuesByFqnsResponse
 	listAttributeResp                attr.ListAttributesResponse
+	createEntityChainResp            entityresolution.CreateEntityChainFromJwtResponse
+	resolveEntitiesResp              entityresolution.ResolveEntitiesResponse
 	mockNamespace                    = "www.example.org"
 	mockAttrName                     = "foo"
 	mockAttrValue1                   = "value1"
@@ -41,6 +45,17 @@ func (*myAttributesClient) ListAttributes(_ context.Context, _ *attr.ListAttribu
 
 func (*myAttributesClient) GetAttributeValuesByFqns(_ context.Context, _ *attr.GetAttributeValuesByFqnsRequest, _ ...grpc.CallOption) (*attr.GetAttributeValuesByFqnsResponse, error) {
 	return &getAttributesByValueFqnsResponse, nil
+}
+
+type myERSClient struct {
+	entityresolution.EntityResolutionServiceClient
+}
+
+func (*myERSClient) CreateEntityChainFromJwt(_ context.Context, _ *entityresolution.CreateEntityChainFromJwtRequest, _ ...grpc.CallOption) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
+	return &createEntityChainResp, nil
+}
+func (*myERSClient) ResolveEntities(_ context.Context, _ *entityresolution.ResolveEntitiesRequest, _ ...grpc.CallOption) (*entityresolution.ResolveEntitiesResponse, error) {
+	return &resolveEntitiesResp, nil
 }
 
 func TestGetComprehensiveHierarchy(t *testing.T) {
@@ -147,6 +162,20 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 			},
 		},
 	}}
+	userRepresentation := map[string]interface{}{
+		"A": "B",
+		"C": "D",
+	}
+	userStruct, _ := structpb.NewStruct(userRepresentation)
+	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
+		EntityRepresentations: []*entityresolution.EntityRepresentation{{
+			OriginalId: "e1",
+			AdditionalProps: []*structpb.Struct{
+				userStruct,
+			},
+		},
+		},
+	}
 
 	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
 		AccessToken: "AccessToken",
@@ -159,7 +188,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
 			`package example
-			p = ["https://www.example.org/attr/foo/value/value1"] { true }`,
+			p = {"e1":["https://www.example.org/attr/foo/value/value1"]} { true }`,
 		))
 
 	// Run evaluation.
@@ -184,7 +213,9 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 		},
 	}}
 
-	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{Attributes: &myAttributesClient{}}, tokenSource: &testTokenSource, eval: prepared}
+	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
+		Attributes: &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		tokenSource: &testTokenSource, eval: prepared}
 
 	resp, err := as.GetDecisions(ctxb, &req)
 
@@ -224,7 +255,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 				},
 			},
 			ResourceAttributes: []*authorization.ResourceAttribute{
-				{AttributeValueFqns: []string{mockFqn1}},
+				{AttributeValueFqns: []string{mockFqn1, mockFqn2}},
 			},
 		},
 	}}
@@ -241,7 +272,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
 			`package example
-			p = ["https://www.example.org/attr/foo/value/value1", "https://www.example.org/attr/foo/value/value2"] { true }`,
+			p = {"e1": ["https://www.example.org/attr/foo/value/value1", "https://www.example.org/attr/foo/value/value2"]} { true }`,
 		))
 
 	// Run evaluation.
@@ -289,6 +320,20 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 			},
 		},
 	}}
+	userRepresentation := map[string]interface{}{
+		"A": "B",
+		"C": "D",
+	}
+	userStruct, _ := structpb.NewStruct(userRepresentation)
+	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
+		EntityRepresentations: []*entityresolution.EntityRepresentation{{
+			OriginalId: "e1",
+			AdditionalProps: []*structpb.Struct{
+				userStruct,
+			},
+		},
+		},
+	}
 
 	// set the request
 	req := authorization.GetDecisionsRequest{DecisionRequests: []*authorization.DecisionRequest{
@@ -319,14 +364,16 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
 			`package example
-			p = ["https://www.example.org/attr/foo/value/value1"] { true }`,
+			p = {"e1": ["https://www.example.org/attr/foo/value/value1"]} { true }`,
 		))
 
 	// Run evaluation.
 	prepared, err := testrego.PrepareForEval(ctxb)
 	require.NoError(t, err)
 
-	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{Attributes: &myAttributesClient{}}, tokenSource: &testTokenSource, eval: prepared}
+	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
+		Attributes: &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		tokenSource: &testTokenSource, eval: prepared}
 
 	resp, err := as.GetDecisions(ctxb, &req)
 
@@ -368,6 +415,20 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 			},
 		},
 	}}
+	userRepresentation := map[string]interface{}{
+		"A": "B",
+		"C": "D",
+	}
+	userStruct, _ := structpb.NewStruct(userRepresentation)
+	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
+		EntityRepresentations: []*entityresolution.EntityRepresentation{{
+			OriginalId: "e1",
+			AdditionalProps: []*structpb.Struct{
+				userStruct,
+			},
+		},
+		},
+	}
 	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
 		AccessToken: "AccessToken",
 		Expiry:      time.Now().Add(1 * time.Hour),
@@ -379,14 +440,16 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
 			`package example
-			p = ["https://www.example.org/attr/foo/value/value1"] { true }`,
+			p = {"e1":["https://www.example.org/attr/foo/value/value1"]} { true }`,
 		))
 
 	// Run evaluation.
 	prepared, err := rego.PrepareForEval(ctxb)
 	require.NoError(t, err)
 
-	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{Attributes: &myAttributesClient{}}, tokenSource: &testTokenSource, eval: prepared}
+	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
+		Attributes: &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		tokenSource: &testTokenSource, eval: prepared}
 
 	req := authorization.GetEntitlementsRequest{
 		Entities: []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}}},
@@ -431,6 +494,20 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 			},
 		},
 	}}
+	userRepresentation := map[string]interface{}{
+		"A": "B",
+		"C": "D",
+	}
+	userStruct, _ := structpb.NewStruct(userRepresentation)
+	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
+		EntityRepresentations: []*entityresolution.EntityRepresentation{{
+			OriginalId: "e1",
+			AdditionalProps: []*structpb.Struct{
+				userStruct,
+			},
+		},
+		},
+	}
 	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
 		AccessToken: "AccessToken",
 		Expiry:      time.Now().Add(1 * time.Hour),
@@ -442,13 +519,15 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
 			`package example
-			p = ["https://www.example.org/attr/foo/value/value1"] { true }`,
+			p = {"e1":["https://www.example.org/attr/foo/value/value1"]} { true }`,
 		))
 
 	// Run evaluation.
 	prepared, err := rego.PrepareForEval(ctxb)
 	require.NoError(t, err)
-	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{Attributes: &myAttributesClient{}}, tokenSource: &testTokenSource, eval: prepared}
+	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
+		Attributes: &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		tokenSource: &testTokenSource, eval: prepared}
 
 	withHierarchy := true
 	req := authorization.GetEntitlementsRequest{

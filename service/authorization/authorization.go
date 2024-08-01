@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"runtime/pprof"
 	"strings"
 
 	"google.golang.org/grpc/codes"
@@ -358,6 +359,13 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 }
 
 func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
+	f, err := os.Create("platform.prof")
+	if err != nil {
+		slog.Error("error creating profile file", "error", err)
+		return nil, err
+	}
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
 	as.logger.DebugContext(ctx, "getting entitlements")
 	request := attr.GetAttributeValuesByFqnsRequest{
 		WithValue: &policy.AttributeValueSelector{

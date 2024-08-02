@@ -203,7 +203,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 				{
 					Id: "ec1",
 					Entities: []*authorization.Entity{
-						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}},
+						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_ENTITY_SUBJECT},
 					},
 				},
 			},
@@ -236,7 +236,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 				{
 					Id: "ec1",
 					Entities: []*authorization.Entity{
-						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}},
+						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_ENTITY_SUBJECT},
 					},
 				},
 			},
@@ -250,7 +250,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 				{
 					Id: "ec1",
 					Entities: []*authorization.Entity{
-						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}},
+						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_ENTITY_SUBJECT},
 					},
 				},
 			},
@@ -343,7 +343,7 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 				{
 					Id: "ec1",
 					Entities: []*authorization.Entity{
-						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}},
+						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_ENTITY_SUBJECT},
 					},
 				},
 			},
@@ -452,7 +452,7 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 		tokenSource: &testTokenSource, eval: prepared}
 
 	req := authorization.GetEntitlementsRequest{
-		Entities: []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}}},
+		Entities: []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}, Category: authorization.Entity_ENTITY_ENVIRONMENT}},
 		Scope:    &authorization.ResourceAttribute{AttributeValueFqns: []string{"https://www.example.org/attr/foo/value/value1"}},
 	}
 
@@ -531,7 +531,7 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 
 	withHierarchy := true
 	req := authorization.GetEntitlementsRequest{
-		Entities:                   []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}}},
+		Entities:                   []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}, Category: authorization.Entity_ENTITY_ENVIRONMENT}},
 		Scope:                      &authorization.ResourceAttribute{AttributeValueFqns: []string{"https://www.example.org/attr/foo/value/value1"}},
 		WithComprehensiveHierarchy: &withHierarchy,
 	}

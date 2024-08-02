@@ -357,7 +357,10 @@ func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtStrin
 	if !okCast {
 		return nil, errors.New("error casting extracted value to string")
 	}
-	entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_ClientId{ClientId: extractedValueCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+	entities = append(entities, &authorization.Entity{
+		EntityType: &authorization.Entity_ClientId{ClientId: extractedValueCasted},
+		Id:         fmt.Sprintf("jwtentity-%d", entityID),
+		Category:   authorization.Entity_ENTITY_ENVIRONMENT})
 	entityID++
 
 	// extract preferred_username if client isnt present
@@ -379,13 +382,22 @@ func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtStrin
 				return nil, err
 			}
 			if clientid != "" {
-				entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_ClientId{ClientId: clientid}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+				entities = append(entities, &authorization.Entity{
+					EntityType: &authorization.Entity_ClientId{ClientId: clientid},
+					Id:         fmt.Sprintf("jwtentity-%d", entityID),
+					Category:   authorization.Entity_ENTITY_SUBJECT})
 			} else {
 				// if the returned clientId is empty, no client found, its not a serive account proceed with username
-				entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+				entities = append(entities, &authorization.Entity{
+					EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted},
+					Id:         fmt.Sprintf("jwtentity-%d", entityID),
+					Category:   authorization.Entity_ENTITY_SUBJECT})
 			}
 		} else {
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+			entities = append(entities, &authorization.Entity{
+				EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted},
+				Id:         fmt.Sprintf("jwtentity-%d", entityID),
+				Category:   authorization.Entity_ENTITY_SUBJECT})
 		}
 	} else {
 		logger.Debug("Did not find conditional value " + UsernameConditionalSelector + " in jwt, proceed")

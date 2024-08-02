@@ -35,11 +35,13 @@ func authorizationExamples() error {
 
 	// model two groups of entities; user bob and user alice
 	entityChains := []*authorization.EntityChain{{
-		Id:       "ec1", // ec1 is an arbitrary tracking id to match results to request
-		Entities: []*authorization.Entity{{EntityType: &authorization.Entity_EmailAddress{EmailAddress: "bob@example.org"}}},
+		Id: "ec1", // ec1 is an arbitrary tracking id to match results to request
+		Entities: []*authorization.Entity{{EntityType: &authorization.Entity_EmailAddress{EmailAddress: "bob@example.org"},
+			Category: authorization.Entity_ENTITY_SUBJECT}},
 	}, {
-		Id:       "ec2", // ec2 is an arbitrary tracking id to match results to request
-		Entities: []*authorization.Entity{{EntityType: &authorization.Entity_UserName{UserName: "alice@example.org"}}},
+		Id: "ec2", // ec2 is an arbitrary tracking id to match results to request
+		Entities: []*authorization.Entity{{EntityType: &authorization.Entity_UserName{UserName: "alice@example.org"},
+			Category: authorization.Entity_ENTITY_SUBJECT}},
 	}}
 
 	// TODO Get attribute value ids

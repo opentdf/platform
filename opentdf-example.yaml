@@ -8,15 +8,12 @@ db:
 #   port: 5432
 #   user: postgres
 #   password: changeme
+# mode: all 
 services:
   kas:
-    enabled: true
     eccertid: e1
     rsacertid: r1
-  policy:
-    enabled: true
   entityresolution:
-    enabled: true
     url: http://keycloak:8888/auth
     clientid: "tdf-entity-resolution"
     clientsecret: "secret"
@@ -27,7 +24,6 @@ services:
         email: true
         username: true
   authorization:
-    enabled: true
     ersurl: http://localhost:8080/entityresolution/resolve
     clientid: tdf-authorization-svc
     clientsecret: secret

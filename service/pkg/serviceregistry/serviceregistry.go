@@ -101,28 +101,29 @@ func (s *service) Start(params RegistrationParams) error {
 		params.Logger.Info("database migrations complete",
 			slog.Int("applied", appliedMigrations),
 		)
-	} else {
-		requiredAlreadyRan := s.DB.Required && params.DBClient.MigrationsEnabled() && params.DBClient.RanMigrations()
-		noDBRequired := !s.DB.Required
-		migrationsDisabled := (s.DB.Required && !params.DBClient.MigrationsEnabled())
-
-		reason := "undetermined"
-		switch {
-		case requiredAlreadyRan: //nolint:gocritic // This is more readable than a switch
-			reason = "required migrations already ran"
-		case noDBRequired:
-			reason = "service does not require a database"
-		case migrationsDisabled:
-			reason = "migrations are disabled"
-		}
-
-		params.Logger.Info("skipping migrations",
-			slog.String("namespace", s.Namespace),
-			slog.String("service", s.ServiceDesc.ServiceName),
-			slog.Bool("configured runMigrations", migrationsDisabled),
-			slog.String("reason", reason),
-		)
 	}
+	// else {
+	// 	requiredAlreadyRan := s.DB.Required && params.DBClient.MigrationsEnabled() && params.DBClient.RanMigrations()
+	// 	noDBRequired := !s.DB.Required
+	// 	migrationsDisabled := (s.DB.Required && !params.DBClient.MigrationsEnabled())
+
+	// 	reason := "undetermined"
+	// 	switch {
+	// 	case requiredAlreadyRan: //nolint:gocritic // This is more readable than a switch
+	// 		reason = "required migrations already ran"
+	// 	case noDBRequired:
+	// 		reason = "service does not require a database"
+	// 	case migrationsDisabled:
+	// 		reason = "migrations are disabled"
+	// 	}
+
+	// 	params.Logger.Info("skipping migrations",
+	// 		slog.String("namespace", s.Namespace),
+	// 		slog.String("service", s.ServiceDesc.ServiceName),
+	// 		slog.Bool("configured runMigrations", migrationsDisabled),
+	// 		slog.String("reason", reason),
+	// 	)
+	// }
 
 	s.impl, s.handleFunc = s.RegisterFunc(params)
 
@@ -197,4 +198,19 @@ func (reg Registry) Shutdown() {
 			}
 		}
 	}
+}
+
+func (reg Registry) GetService(namespace string, serviceName string) *service {
+	ns, ok := reg[namespace]
+	if !ok {
+		return nil
+	}
+
+	for _, svc := range ns.Services {
+		if svc.ServiceDesc.ServiceName == serviceName {
+			return &svc
+		}
+	}
+
+	return nil
 }

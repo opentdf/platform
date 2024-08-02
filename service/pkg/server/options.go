@@ -14,6 +14,7 @@ type StartConfig struct {
 	authzDefaultPolicyExtension [][]string
 	extraCoreServices           []serviceregistry.Registration
 	extraServices               []serviceregistry.Registration
+	mode                        []string
 }
 
 // Deprecated: Use WithConfigKey

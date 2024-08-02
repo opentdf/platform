@@ -85,7 +85,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 			}
 			return strings.EqualFold(m, namespace.Mode)
 		})
-		fmt.Println(modeEnabled, namespace.Mode)
+
 		if !modeEnabled {
 			logger.Info("skipping namespace", slog.String("namespace", ns), slog.String("mode", namespace.Mode))
 			continue
@@ -94,8 +94,8 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 		svcLogger := logger.With("namespace", ns)
 
 		// Create new service logger
-		var svcDBClient *db.Client
 		for _, svc := range namespace.Services {
+			var svcDBClient *db.Client
 
 			// Get new db client if needed
 			if svc.DB.Required && svcDBClient == nil {
@@ -134,7 +134,10 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				"service running",
 				slog.String("namespace", ns),
 				slog.String("service", svc.ServiceDesc.ServiceName),
-				slog.Bool("database", svc.DB.Required),
+				slog.Group("database",
+					slog.Any("required", svcDBClient == nil),
+					slog.Any("migrationStatus", determineStatusOfMigration(svcDBClient)),
+				),
 			)
 
 		}
@@ -156,4 +159,22 @@ func newServiceDBClient(ctx context.Context, logCfg logger.Config, dbCfg db.Conf
 	}
 
 	return client, nil
+}
+
+func determineStatusOfMigration(client *db.Client) string {
+	required := (client != nil)
+	requiredAlreadyRan := required && client.MigrationsEnabled() && client.RanMigrations()
+	noDBRequired := !required
+	migrationsDisabled := (required && !client.MigrationsEnabled())
+
+	reason := "undetermined"
+	switch {
+	case requiredAlreadyRan: //nolint:gocritic // This is more readable than a switch
+		reason = "required migrations already ran"
+	case noDBRequired:
+		reason = "service does not require a database"
+	case migrationsDisabled:
+		reason = "migrations are disabled"
+	}
+	return reason
 }

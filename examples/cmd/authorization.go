@@ -37,11 +37,11 @@ func authorizationExamples() error {
 	entityChains := []*authorization.EntityChain{{
 		Id: "ec1", // ec1 is an arbitrary tracking id to match results to request
 		Entities: []*authorization.Entity{{EntityType: &authorization.Entity_EmailAddress{EmailAddress: "bob@example.org"},
-			Category: authorization.Entity_ENTITY_SUBJECT}},
+			Category: authorization.Entity_CATEGORY_SUBJECT}},
 	}, {
 		Id: "ec2", // ec2 is an arbitrary tracking id to match results to request
 		Entities: []*authorization.Entity{{EntityType: &authorization.Entity_UserName{UserName: "alice@example.org"},
-			Category: authorization.Entity_ENTITY_SUBJECT}},
+			Category: authorization.Entity_CATEGORY_SUBJECT}},
 	}}
 
 	// TODO Get attribute value ids

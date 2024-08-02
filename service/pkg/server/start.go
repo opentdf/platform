@@ -88,7 +88,7 @@ func Start(f ...StartOptions) error {
 		}
 	}
 
-	//Initialize the service registry
+	// Initialize the service registry
 	logger.Debug("initializing service registry")
 	svcRegistry := serviceregistry.NewServiceRegistry()
 	defer svcRegistry.Shutdown()

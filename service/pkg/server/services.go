@@ -93,10 +93,10 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 
 		svcLogger := logger.With("namespace", ns)
 
+		var svcDBClient *db.Client
+
 		// Create new service logger
 		for _, svc := range namespace.Services {
-			var svcDBClient *db.Client
-
 			// Get new db client if needed
 			if svc.DB.Required && svcDBClient == nil {
 				var err error
@@ -106,7 +106,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				}
 			}
 
-			err := svc.Start(serviceregistry.RegistrationParams{
+			err := svc.Start(ctx, serviceregistry.RegistrationParams{
 				Config:                 cfg.Services[svc.Namespace],
 				Logger:                 svcLogger,
 				DBClient:               svcDBClient,
@@ -119,10 +119,14 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				return err
 			}
 			// Register the service with the gRPC server
-			svc.RegisterGRPCServer(otdf.GRPCServer)
+			if err := svc.RegisterGRPCServer(otdf.GRPCServer); err != nil {
+				return err
+			}
 
 			// Register the service with in process gRPC server
-			svc.RegisterGRPCServer(otdf.GRPCInProcess.GetGrpcServer())
+			if err := svc.RegisterGRPCServer(otdf.GRPCInProcess.GetGrpcServer()); err != nil {
+				return err
+			}
 
 			// Register the service with the gRPC gateway
 			if err := svc.RegisterHTTPServer(ctx, otdf.Mux); err != nil {
@@ -135,11 +139,10 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				slog.String("namespace", ns),
 				slog.String("service", svc.ServiceDesc.ServiceName),
 				slog.Group("database",
-					slog.Any("required", svcDBClient == nil),
+					slog.Any("required", svcDBClient != nil),
 					slog.Any("migrationStatus", determineStatusOfMigration(svcDBClient)),
 				),
 			)
-
 		}
 	}
 
@@ -169,7 +172,7 @@ func determineStatusOfMigration(client *db.Client) string {
 
 	reason := "undetermined"
 	switch {
-	case requiredAlreadyRan: //nolint:gocritic // This is more readable than a switch
+	case requiredAlreadyRan:
 		reason = "required migrations already ran"
 	case noDBRequired:
 		reason = "service does not require a database"

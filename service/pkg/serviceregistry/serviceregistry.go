@@ -88,13 +88,13 @@ type service struct {
 }
 
 // Start the service
-func (s *service) Start(params RegistrationParams) error {
+func (s *service) Start(ctx context.Context, params RegistrationParams) error {
 	if s.Started {
 		return fmt.Errorf("service already started")
 	}
 
 	if s.DB.Required && !params.DBClient.RanMigrations() && params.DBClient.MigrationsEnabled() {
-		appliedMigrations, err := params.DBClient.RunMigrations(context.Background(), s.DB.Migrations)
+		appliedMigrations, err := params.DBClient.RunMigrations(ctx, s.DB.Migrations)
 		if err != nil {
 			return fmt.Errorf("issue running database migrations: %w", err)
 		}
@@ -102,28 +102,6 @@ func (s *service) Start(params RegistrationParams) error {
 			slog.Int("applied", appliedMigrations),
 		)
 	}
-	// else {
-	// 	requiredAlreadyRan := s.DB.Required && params.DBClient.MigrationsEnabled() && params.DBClient.RanMigrations()
-	// 	noDBRequired := !s.DB.Required
-	// 	migrationsDisabled := (s.DB.Required && !params.DBClient.MigrationsEnabled())
-
-	// 	reason := "undetermined"
-	// 	switch {
-	// 	case requiredAlreadyRan: //nolint:gocritic // This is more readable than a switch
-	// 		reason = "required migrations already ran"
-	// 	case noDBRequired:
-	// 		reason = "service does not require a database"
-	// 	case migrationsDisabled:
-	// 		reason = "migrations are disabled"
-	// 	}
-
-	// 	params.Logger.Info("skipping migrations",
-	// 		slog.String("namespace", s.Namespace),
-	// 		slog.String("service", s.ServiceDesc.ServiceName),
-	// 		slog.Bool("configured runMigrations", migrationsDisabled),
-	// 		slog.String("reason", reason),
-	// 	)
-	// }
 
 	s.impl, s.handleFunc = s.RegisterFunc(params)
 

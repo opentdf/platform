@@ -93,7 +93,6 @@ type AttributeValue struct {
 	ID                    string             `json:"id"`
 	AttributeDefinitionID string             `json:"attribute_definition_id"`
 	Value                 string             `json:"value"`
-	Members               []string           `json:"members"`
 	Metadata              []byte             `json:"metadata"`
 	Active                bool               `json:"active"`
 	CreatedAt             pgtype.Timestamptz `json:"created_at"`
@@ -103,12 +102,6 @@ type AttributeValue struct {
 type AttributeValueKeyAccessGrant struct {
 	AttributeValueID  string `json:"attribute_value_id"`
 	KeyAccessServerID string `json:"key_access_server_id"`
-}
-
-type AttributeValueMember struct {
-	ID       string `json:"id"`
-	ValueID  string `json:"value_id"`
-	MemberID string `json:"member_id"`
 }
 
 type KeyAccessServer struct {

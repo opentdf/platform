@@ -29,7 +29,7 @@ func BenchmarkEvaluateSubjectMappings(b *testing.B) {
 	additionalProps, _ := structpb.NewStruct(entity1)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput1, []*entityresolution.EntityRepresentation{{AdditionalProps: []*structpb.Struct{additionalProps}}})
+		_, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput1, &entityresolution.EntityRepresentation{AdditionalProps: []*structpb.Struct{additionalProps}})
 		if err != nil {
 			b.Error(err)
 		}
@@ -231,7 +231,7 @@ var subjectMappingInput1 map[string]*attributes.GetAttributeValuesByFqnsResponse
 func Test_EvaluateAttributeMappingSimpleTrue(t *testing.T) {
 	additionalProps, err := structpb.NewStruct(entity1)
 	require.NoError(t, err)
-	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput1, []*entityresolution.EntityRepresentation{{AdditionalProps: []*structpb.Struct{additionalProps}}})
+	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput1, &entityresolution.EntityRepresentation{AdditionalProps: []*structpb.Struct{additionalProps}})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"https://demo.org/attr/hello/value/world"}, res)
 }
@@ -255,7 +255,7 @@ var subjectMappingInput2 map[string]*attributes.GetAttributeValuesByFqnsResponse
 func Test_EvaluateAttributeMappingSimpleFalse(t *testing.T) {
 	additionalProps, err := structpb.NewStruct(entity1)
 	require.NoError(t, err)
-	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput2, []*entityresolution.EntityRepresentation{{AdditionalProps: []*structpb.Struct{additionalProps}}})
+	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput2, &entityresolution.EntityRepresentation{AdditionalProps: []*structpb.Struct{additionalProps}})
 	require.NoError(t, err)
 	assert.Equal(t, []string{}, res)
 }
@@ -293,7 +293,7 @@ var subjectMappingInput3 map[string]*attributes.GetAttributeValuesByFqnsResponse
 func Test_EvaluateAttributeMappingTwoAttributes(t *testing.T) {
 	additionalProps, err := structpb.NewStruct(entity1)
 	require.NoError(t, err)
-	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput3, []*entityresolution.EntityRepresentation{{AdditionalProps: []*structpb.Struct{additionalProps}}})
+	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput3, &entityresolution.EntityRepresentation{AdditionalProps: []*structpb.Struct{additionalProps}})
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"https://demo.org/attr/hello/value/world", "https://demo.org/attr/hi/value/there"}, res)
 }
@@ -330,7 +330,7 @@ var subjectMappingInput4 map[string]*attributes.GetAttributeValuesByFqnsResponse
 func Test_EvaluateAttributeMappingTwoAttributesOnlySecond(t *testing.T) {
 	additionalProps, err := structpb.NewStruct(entity1)
 	require.NoError(t, err)
-	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput4, []*entityresolution.EntityRepresentation{{AdditionalProps: []*structpb.Struct{additionalProps}}})
+	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput4, &entityresolution.EntityRepresentation{AdditionalProps: []*structpb.Struct{additionalProps}})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"https://demo.org/attr/hi/value/there"}, res)
 }
@@ -362,7 +362,7 @@ var subjectMappingInput5 map[string]*attributes.GetAttributeValuesByFqnsResponse
 func Test_EvaluateAttributeMappingTwoMappingsBothTrue(t *testing.T) {
 	additionalProps, err := structpb.NewStruct(entity1)
 	require.NoError(t, err)
-	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput5, []*entityresolution.EntityRepresentation{{AdditionalProps: []*structpb.Struct{additionalProps}}})
+	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput5, &entityresolution.EntityRepresentation{AdditionalProps: []*structpb.Struct{additionalProps}})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"https://demo.org/attr/hello/value/world"}, res)
 }
@@ -394,7 +394,7 @@ var subjectMappingInput6 map[string]*attributes.GetAttributeValuesByFqnsResponse
 func Test_EvaluateAttributeMappingTwoMappingsBothFalse(t *testing.T) {
 	additionalProps, err := structpb.NewStruct(entity1)
 	require.NoError(t, err)
-	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput6, []*entityresolution.EntityRepresentation{{AdditionalProps: []*structpb.Struct{additionalProps}}})
+	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput6, &entityresolution.EntityRepresentation{AdditionalProps: []*structpb.Struct{additionalProps}})
 	require.NoError(t, err)
 	assert.Equal(t, []string{}, res)
 }
@@ -426,7 +426,7 @@ var subjectMappingInput7 map[string]*attributes.GetAttributeValuesByFqnsResponse
 func Test_EvaluateAttributeMappingTwoMappingsFirstTrueSecondFalse(t *testing.T) {
 	additionalProps, err := structpb.NewStruct(entity1)
 	require.NoError(t, err)
-	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput7, []*entityresolution.EntityRepresentation{{AdditionalProps: []*structpb.Struct{additionalProps}}})
+	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput7, &entityresolution.EntityRepresentation{AdditionalProps: []*structpb.Struct{additionalProps}})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"https://demo.org/attr/hello/value/world"}, res)
 }
@@ -458,7 +458,7 @@ var subjectMappingInput8 map[string]*attributes.GetAttributeValuesByFqnsResponse
 func Test_EvaluateAttributeMappingTwoMappingsFirstFalseSecondTrue(t *testing.T) {
 	additionalProps, err := structpb.NewStruct(entity1)
 	require.NoError(t, err)
-	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput8, []*entityresolution.EntityRepresentation{{AdditionalProps: []*structpb.Struct{additionalProps}}})
+	res, err := subjectmappingbuiltin.EvaluateSubjectMappings(subjectMappingInput8, &entityresolution.EntityRepresentation{AdditionalProps: []*structpb.Struct{additionalProps}})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"https://demo.org/attr/hello/value/world"}, res)
 }

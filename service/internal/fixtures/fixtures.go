@@ -40,10 +40,10 @@ type FixtureDataAttributeKeyAccessServer struct {
 }
 
 type FixtureDataAttributeValue struct {
-	ID                    string   `yaml:"id"`
-	AttributeDefinitionID string   `yaml:"attribute_definition_id"`
-	Value                 string   `yaml:"value"`
-	Active                bool     `yaml:"active"`
+	ID                    string `yaml:"id"`
+	AttributeDefinitionID string `yaml:"attribute_definition_id"`
+	Value                 string `yaml:"value"`
+	Active                bool   `yaml:"active"`
 }
 
 type FixtureDataValueMember struct {

@@ -326,9 +326,9 @@ func Test_JwtClientAndUsernameClientCredentials(t *testing.T) {
 	assert.Len(t, resp.GetEntityChains(), 1)
 	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
 	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
-	assert.Equal(t, authorization.Entity_ENTITY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
+	assert.Equal(t, authorization.Entity_CATEGORY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
 	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[0].GetEntities()[1].GetClientId())
-	assert.Equal(t, authorization.Entity_ENTITY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
+	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
 }
 
 func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
@@ -348,9 +348,9 @@ func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
 	assert.Len(t, resp.GetEntityChains(), 1)
 	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
 	assert.Equal(t, "tdf-entity-resolution-public", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
-	assert.Equal(t, authorization.Entity_ENTITY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
+	assert.Equal(t, authorization.Entity_CATEGORY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
 	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].GetEntities()[1].GetUserName())
-	assert.Equal(t, authorization.Entity_ENTITY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
+	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
 }
 
 func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
@@ -370,9 +370,9 @@ func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
 	assert.Len(t, resp.GetEntityChains(), 1)
 	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
 	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
-	assert.Equal(t, authorization.Entity_ENTITY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
+	assert.Equal(t, authorization.Entity_CATEGORY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
 	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].GetEntities()[1].GetUserName())
-	assert.Equal(t, authorization.Entity_ENTITY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
+	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
 }
 
 func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
@@ -392,9 +392,9 @@ func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
 	assert.Len(t, resp.GetEntityChains(), 1)
 	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
 	assert.Equal(t, "tdf-entity-resolution-public", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
-	assert.Equal(t, authorization.Entity_ENTITY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
+	assert.Equal(t, authorization.Entity_CATEGORY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
 	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].GetEntities()[1].GetUserName())
-	assert.Equal(t, authorization.Entity_ENTITY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
+	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
 }
 
 func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
@@ -414,9 +414,9 @@ func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
 	assert.Len(t, resp.GetEntityChains(), 1)
 	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
 	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
-	assert.Equal(t, authorization.Entity_ENTITY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
+	assert.Equal(t, authorization.Entity_CATEGORY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
 	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].GetEntities()[1].GetUserName())
-	assert.Equal(t, authorization.Entity_ENTITY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
+	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
 }
 
 func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
@@ -436,9 +436,9 @@ func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
 	assert.Len(t, resp.GetEntityChains(), 1)
 	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
 	assert.Equal(t, "tdf-entity-resolution-public", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
-	assert.Equal(t, authorization.Entity_ENTITY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
+	assert.Equal(t, authorization.Entity_CATEGORY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
 	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].GetEntities()[1].GetUserName())
-	assert.Equal(t, authorization.Entity_ENTITY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
+	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
 }
 
 func Test_JwtClientAndUsernameImplicitPriv(t *testing.T) {
@@ -458,9 +458,9 @@ func Test_JwtClientAndUsernameImplicitPriv(t *testing.T) {
 	assert.Len(t, resp.GetEntityChains(), 1)
 	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
 	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
-	assert.Equal(t, authorization.Entity_ENTITY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
+	assert.Equal(t, authorization.Entity_CATEGORY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
 	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].GetEntities()[1].GetUserName())
-	assert.Equal(t, authorization.Entity_ENTITY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
+	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
 }
 
 func Test_JwtClientAndClientTokenExchange(t *testing.T) {
@@ -483,9 +483,9 @@ func Test_JwtClientAndClientTokenExchange(t *testing.T) {
 	assert.Len(t, resp.GetEntityChains(), 1)
 	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
 	assert.Equal(t, "opentdf", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
-	assert.Equal(t, authorization.Entity_ENTITY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
+	assert.Equal(t, authorization.Entity_CATEGORY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
 	assert.Equal(t, "opentdf-sdk", resp.GetEntityChains()[0].GetEntities()[1].GetClientId())
-	assert.Equal(t, authorization.Entity_ENTITY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
+	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
 }
 
 func Test_JwtMultiple(t *testing.T) {
@@ -508,15 +508,15 @@ func Test_JwtMultiple(t *testing.T) {
 	assert.Len(t, resp.GetEntityChains(), 2)
 	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
 	assert.Equal(t, "opentdf", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
-	assert.Equal(t, authorization.Entity_ENTITY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
+	assert.Equal(t, authorization.Entity_CATEGORY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
 	assert.Equal(t, "opentdf-sdk", resp.GetEntityChains()[0].GetEntities()[1].GetClientId())
-	assert.Equal(t, authorization.Entity_ENTITY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
+	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
 
 	assert.Len(t, resp.GetEntityChains()[1].GetEntities(), 2)
 	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[1].GetEntities()[0].GetClientId())
-	assert.Equal(t, authorization.Entity_ENTITY_ENVIRONMENT, resp.GetEntityChains()[1].GetEntities()[0].GetCategory())
+	assert.Equal(t, authorization.Entity_CATEGORY_ENVIRONMENT, resp.GetEntityChains()[1].GetEntities()[0].GetCategory())
 	assert.Equal(t, "sample-user", resp.GetEntityChains()[1].GetEntities()[1].GetUserName())
-	assert.Equal(t, authorization.Entity_ENTITY_SUBJECT, resp.GetEntityChains()[1].GetEntities()[1].GetCategory())
+	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[1].GetEntities()[1].GetCategory())
 }
 
 func Test_KCEntityResolutionNotFoundInferEmail(t *testing.T) {

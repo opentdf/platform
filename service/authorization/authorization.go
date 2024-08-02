@@ -275,6 +275,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				// Entitlements for sbuject entities in chain
 				subjectEntityAttrValues := make(map[string][]string)
 
+				//nolint:nestif // handle empty entity / attr list
 				if len(entities) == 0 || len(allPertinentFqnsRA.GetAttributeValueFqns()) == 0 {
 					as.logger.WarnContext(ctx, "Empty entity list and/or entity data attribute list")
 				} else {
@@ -298,12 +299,11 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 						entityCategory := entities[idx].GetCategory()
 
 						// If entity type unspecified, include in access decision to err on the side of caution
-						if entityCategory == authorization.Entity_ENTITY_SUBJECT || entityCategory == authorization.Entity_ENTITY_UNSPECIFIED {
+						if entityCategory == authorization.Entity_CATEGORY_SUBJECT || entityCategory == authorization.Entity_CATEGORY_UNSPECIFIED {
 							subjectEntityAttrValues[entityID] = e.GetAttributeValueFqns()
 						} else {
 							envEntityAttrValues[entityID] = e.GetAttributeValueFqns()
 						}
-
 					}
 				}
 

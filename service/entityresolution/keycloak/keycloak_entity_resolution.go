@@ -359,7 +359,7 @@ func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtStrin
 	entities = append(entities, &authorization.Entity{
 		EntityType: &authorization.Entity_ClientId{ClientId: extractedValueCasted},
 		Id:         fmt.Sprintf("jwtentity-%d", entityID),
-		Category:   authorization.Entity_ENTITY_ENVIRONMENT})
+		Category:   authorization.Entity_CATEGORY_ENVIRONMENT})
 	entityID++
 
 	extractedValueUsername, okExp := claims[UsernameJwtSelector]
@@ -381,19 +381,19 @@ func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtStrin
 			entities = append(entities, &authorization.Entity{
 				EntityType: &authorization.Entity_ClientId{ClientId: clientid},
 				Id:         fmt.Sprintf("jwtentity-%d", entityID),
-				Category:   authorization.Entity_ENTITY_SUBJECT})
+				Category:   authorization.Entity_CATEGORY_SUBJECT})
 		} else {
 			// if the returned clientId is empty, no client found, its not a serive account proceed with username
 			entities = append(entities, &authorization.Entity{
 				EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted},
 				Id:         fmt.Sprintf("jwtentity-%d", entityID),
-				Category:   authorization.Entity_ENTITY_SUBJECT})
+				Category:   authorization.Entity_CATEGORY_SUBJECT})
 		}
 	} else {
 		entities = append(entities, &authorization.Entity{
 			EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted},
 			Id:         fmt.Sprintf("jwtentity-%d", entityID),
-			Category:   authorization.Entity_ENTITY_SUBJECT})
+			Category:   authorization.Entity_CATEGORY_SUBJECT})
 	}
 
 	return entities, nil

@@ -131,11 +131,11 @@
     "EntityCategory": {
       "type": "string",
       "enum": [
-        "ENTITY_UNSPECIFIED",
-        "ENTITY_SUBJECT",
-        "ENTITY_ENVIRONMENT"
+        "CATEGORY_UNSPECIFIED",
+        "CATEGORY_SUBJECT",
+        "CATEGORY_ENVIRONMENT"
       ],
-      "default": "ENTITY_UNSPECIFIED"
+      "default": "CATEGORY_UNSPECIFIED"
     },
     "authorizationDecisionRequest": {
       "type": "object",

@@ -28,9 +28,9 @@ message Entity {
     string client_id = 8;
   }
   enum Category {
-    ENTITY_UNSPECIFIED = 0;
-    ENTITY_SUBJECT = 1;
-    ENTITY_ENVIRONMENT = 2;
+    CATEGORY_UNSPECIFIED = 0;
+    CATEGORY_SUBJECT = 1;
+    CATEGORY_ENVIRONMENT = 2;
   }
   Category category = 9;
 }

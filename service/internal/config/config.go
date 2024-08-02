@@ -23,7 +23,7 @@ type Config struct {
 	Server  server.Config `mapstructure:"server"`
 	Logger  logger.Config `mapstructure:"logger"`
 	// Defines which services to run
-	Mode      []string                                 `mapstructure:"mode"`
+	Mode      []string                                 `mapstructure:"mode" default:"[\"all\"]"`
 	SDKConfig SDKConfig                                `mapstructure:"sdk_config"`
 	Services  map[string]serviceregistry.ServiceConfig `mapstructure:"services"`
 }

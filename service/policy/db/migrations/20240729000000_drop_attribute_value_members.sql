@@ -3,6 +3,8 @@
 
 DROP TABLE IF EXISTS attribute_value_members;
 
+ALTER TABLE attribute_values DROP COLUMN members;
+
 -- +goose StatementEnd
 
 -- +goose Down
@@ -15,5 +17,7 @@ CREATE TABLE IF NOT EXISTS attribute_value_members
     member_id UUID NOT NULL REFERENCES attribute_values(id) ON DELETE CASCADE,
     UNIQUE (value_id, member_id)
 );
+
+ALTER TABLE attribute_values ADD COLUMN members UUID[];
 
 -- +goose StatementEnd

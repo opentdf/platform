@@ -5,8 +5,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const modeFlagKey = "mode"
-
 func init() {
 	startCmd := cobra.Command{
 		Use:   "start",

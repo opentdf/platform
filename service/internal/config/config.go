@@ -23,7 +23,7 @@ type Config struct {
 	Server  server.Config `mapstructure:"server"`
 	Logger  logger.Config `mapstructure:"logger"`
 	// Defines which services to run
-	Mode      []string                                 `mapsctructure:"mode"`
+	Mode      []string                                 `mapstructure:"mode"`
 	SDKConfig SDKConfig                                `mapstructure:"sdk_config"`
 	Services  map[string]serviceregistry.ServiceConfig `mapstructure:"services"`
 }
@@ -48,8 +48,9 @@ const (
 )
 
 // LoadConfig Load config with viper.
-func LoadConfig(key string, file string) (*Config, error) {
+func LoadConfig(key, file string) (*Config, error) {
 	config := &Config{}
+
 	homedir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, errors.Join(err, ErrLoadingConfig)

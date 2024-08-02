@@ -25,7 +25,6 @@ const ErrTextNotFound = "resource not found"
 
 const ClientJwtSelector = "azp"
 const UsernameJwtSelector = "preferred_username"
-const UsernameConditionalSelector = "client_id"
 
 const serviceAccountUsernamePrefix = "service-account-"
 
@@ -363,44 +362,38 @@ func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtStrin
 		Category:   authorization.Entity_ENTITY_ENVIRONMENT})
 	entityID++
 
-	// extract preferred_username if client isnt present
-	_, okExtractConditional := claims[UsernameConditionalSelector]
-	if !okExtractConditional { //nolint:nestif // this case has many possible outcomes to handle
-		extractedValueUsername, okExp := claims[UsernameJwtSelector]
-		if !okExp {
-			return nil, errors.New("error extracting selector " + UsernameJwtSelector + " from jwt")
-		}
-		extractedValueUsernameCasted, okUsernameCast := extractedValueUsername.(string)
-		if !okUsernameCast {
-			return nil, errors.New("error casting extracted value to string")
-		}
+	extractedValueUsername, okExp := claims[UsernameJwtSelector]
+	if !okExp {
+		return nil, errors.New("error extracting selector " + UsernameJwtSelector + " from jwt")
+	}
+	extractedValueUsernameCasted, okUsernameCast := extractedValueUsername.(string)
+	if !okUsernameCast {
+		return nil, errors.New("error casting extracted value to string")
+	}
 
-		// double check for service account
-		if strings.HasPrefix(extractedValueUsernameCasted, serviceAccountUsernamePrefix) {
-			clientid, err := getServiceAccountClient(ctx, extractedValueUsernameCasted, kcConfig, logger)
-			if err != nil {
-				return nil, err
-			}
-			if clientid != "" {
-				entities = append(entities, &authorization.Entity{
-					EntityType: &authorization.Entity_ClientId{ClientId: clientid},
-					Id:         fmt.Sprintf("jwtentity-%d", entityID),
-					Category:   authorization.Entity_ENTITY_SUBJECT})
-			} else {
-				// if the returned clientId is empty, no client found, its not a serive account proceed with username
-				entities = append(entities, &authorization.Entity{
-					EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted},
-					Id:         fmt.Sprintf("jwtentity-%d", entityID),
-					Category:   authorization.Entity_ENTITY_SUBJECT})
-			}
+	// double check for service account
+	if strings.HasPrefix(extractedValueUsernameCasted, serviceAccountUsernamePrefix) {
+		clientid, err := getServiceAccountClient(ctx, extractedValueUsernameCasted, kcConfig, logger)
+		if err != nil {
+			return nil, err
+		}
+		if clientid != "" {
+			entities = append(entities, &authorization.Entity{
+				EntityType: &authorization.Entity_ClientId{ClientId: clientid},
+				Id:         fmt.Sprintf("jwtentity-%d", entityID),
+				Category:   authorization.Entity_ENTITY_SUBJECT})
 		} else {
+			// if the returned clientId is empty, no client found, its not a serive account proceed with username
 			entities = append(entities, &authorization.Entity{
 				EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted},
 				Id:         fmt.Sprintf("jwtentity-%d", entityID),
 				Category:   authorization.Entity_ENTITY_SUBJECT})
 		}
 	} else {
-		logger.Debug("Did not find conditional value " + UsernameConditionalSelector + " in jwt, proceed")
+		entities = append(entities, &authorization.Entity{
+			EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted},
+			Id:         fmt.Sprintf("jwtentity-%d", entityID),
+			Category:   authorization.Entity_ENTITY_SUBJECT})
 	}
 
 	return entities, nil

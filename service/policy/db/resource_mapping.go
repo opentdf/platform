@@ -78,7 +78,7 @@ func resourceMappingSelect() sq.SelectBuilder {
 		t.Field("terms"),
 		"JSON_BUILD_OBJECT("+
 			"'id', av.id,"+
-			"'value', av.value,"+
+			"'value', av.value "+
 			") AS attribute_value",
 	).
 		LeftJoin(at.Name() + " av ON " + t.Field("attribute_value_id") + " = " + "av.id").

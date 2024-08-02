@@ -43,7 +43,6 @@ func (s *ResourceMappingsSuite) getResourceMappingFixtures() []fixtures.FixtureD
 		s.f.GetResourceMappingKey("resource_mapping_to_attribute_value1"),
 		s.f.GetResourceMappingKey("resource_mapping_to_attribute_value2"),
 		s.f.GetResourceMappingKey("resource_mapping_to_attribute_value3"),
-		s.f.GetResourceMappingKey("resource_mapping_to_attribute_value4"),
 	}
 }
 

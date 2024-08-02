@@ -205,6 +205,7 @@ func getAttributeValueSQL(id string, opts attributeValueSelectOptions) (string, 
 
 	if opts.withFqn {
 		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = av.id")
+		sb = sb.GroupBy(fqnT.WithoutSchema().Field("fqn"))
 	}
 	if opts.withKeyAccessGrants {
 		sb = sb.LeftJoin(avkagT.Name() + " ON " + avkagT.WithoutSchema().Name() + ".attribute_value_id = av.id")
@@ -254,6 +255,7 @@ func listAttributeValuesSQL(attributeID string, opts attributeValueSelectOptions
 
 	if opts.withFqn {
 		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = av.id")
+		sb = sb.GroupBy(fqnT.WithoutSchema().Field("fqn"))
 	}
 
 	sb = sb.GroupBy("av.id")
@@ -304,6 +306,7 @@ func listAllAttributeValuesSQL(opts attributeValueSelectOptions) (string, []inte
 
 	if opts.withFqn {
 		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = av.id")
+		sb = sb.GroupBy(fqnT.WithoutSchema().Field("fqn"))
 	}
 
 	sb = sb.GroupBy("av.id")

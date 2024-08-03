@@ -26,12 +26,14 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/m-mizutani/masq"
 	"github.com/opentdf/platform/service/logger/audit"
 )
 
 type Logger struct {
 	*slog.Logger
-	Audit *audit.Logger
+	Audit  *audit.Logger
+	masqer func(groups []string, a slog.Attr) slog.Attr
 }
 
 type Config struct {
@@ -45,7 +47,8 @@ const (
 )
 
 func NewLogger(config Config) (*Logger, error) {
-	var logger *slog.Logger
+	var sLogger *slog.Logger
+	var logger = new(Logger)
 
 	w, err := getWriter(config)
 	if err != nil {
@@ -61,15 +64,15 @@ func NewLogger(config Config) (*Logger, error) {
 	case "json":
 		j := slog.NewJSONHandler(w, &slog.HandlerOptions{
 			Level:       level,
-			ReplaceAttr: audit.ReplaceAttrAuditLevel,
+			ReplaceAttr: logger.replaceAttrChain,
 		})
-		logger = slog.New(j)
+		sLogger = slog.New(j)
 	case "text":
 		t := slog.NewTextHandler(w, &slog.HandlerOptions{
 			Level:       level,
-			ReplaceAttr: audit.ReplaceAttrAuditLevel,
+			ReplaceAttr: logger.replaceAttrChain,
 		})
-		logger = slog.New(t)
+		sLogger = slog.New(t)
 	default:
 		return nil, fmt.Errorf("invalid logger type: %s", config.Type)
 	}
@@ -83,10 +86,15 @@ func NewLogger(config Config) (*Logger, error) {
 	auditLoggerBase := slog.New(auditLoggerHandler)
 	auditLogger := audit.CreateAuditLogger(*auditLoggerBase)
 
-	return &Logger{
-		Logger: logger,
-		Audit:  auditLogger,
-	}, nil
+	masqer := masq.New(
+		masq.WithTag("secret"),
+	)
+
+	logger.Logger = sLogger
+	logger.Audit = auditLogger
+	logger.masqer = masqer
+
+	return logger, nil
 }
 
 func (l *Logger) With(key string, value string) *Logger {
@@ -135,4 +143,10 @@ func CreateTestLogger() *Logger {
 		Type:   "json",
 	})
 	return logger
+}
+
+func (l *Logger) replaceAttrChain(groups []string, a slog.Attr) slog.Attr {
+	attr := audit.ReplaceAttrAuditLevel(groups, a)
+
+	return l.masqer(groups, attr)
 }

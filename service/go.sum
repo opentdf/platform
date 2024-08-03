@@ -228,6 +228,10 @@ github.com/libsql/sqlite-antlr4-parser v0.0.0-20230802215326-5cb5bb604475 h1:6Pf
 github.com/libsql/sqlite-antlr4-parser v0.0.0-20230802215326-5cb5bb604475/go.mod h1:20nXSmcf0nAscrzqsXeC2/tA3KkV2eCiJqYuyAgl+ss=
 github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 h1:6E+4a0GO5zZEnZ81pIr0yLvtUWk2if982qA3F3QD6H4=
 github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0/go.mod h1:zJYVVT2jmtg6P3p1VtQj7WsuWi/y4VnjVBn7F8KPB3I=
+github.com/m-mizutani/gt v0.0.7 h1:wKESp5LWdKpKMySX4Rf05iXYUGtoQ3aI7xOO9VVHAoY=
+github.com/m-mizutani/gt v0.0.7/go.mod h1:0MPYSfGBLmYjTduzADVmIqD58ELQ5IfBFiK/f0FmB3k=
+github.com/m-mizutani/masq v0.1.8 h1:sXTOtdVpWNpi4H+FxA5vyvs5HzqMjjYqNkL1JNjvS10=
+github.com/m-mizutani/masq v0.1.8/go.mod h1:H8jy743m5h+niZ1ByiZfPnLNnXzb7Khr/K59vT15f18=
 github.com/magiconair/properties v1.8.7 h1:IeQXZAiQcpL9mgcAe1Nu6cX9LLw6ExEHKjN0VQdvPDY=
 github.com/magiconair/properties v1.8.7/go.mod h1:Dhd985XPs7jluiymwWYZ0G4Z61jb3vdS329zhj2hYo0=
 github.com/marcboeker/go-duckdb v1.5.6 h1:5+hLUXRuKlqARcnW4jSsyhCwBRlu4FGjM0UTf2Yq5fw=

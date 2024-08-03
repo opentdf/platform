@@ -147,6 +147,11 @@ func Start(f ...StartOptions) error {
 		return errors.New("mode is not all or core, but no sdk config provided")
 	}
 
+	// If client credentials are provided, use them
+	if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
+		sdkOptions = append(sdkOptions, sdk.WithClientCredentials(cfg.SDKConfig.ClientID, cfg.SDKConfig.ClientSecret, nil))
+	}
+
 	// If the mode is all, use IPC for the SDK client
 	if slices.Contains(cfg.Mode, "all") || slices.Contains(cfg.Mode, "core") {
 		// Use IPC for the SDK client
@@ -162,7 +167,6 @@ func Start(f ...StartOptions) error {
 		}
 	} else {
 		// Use the provided SDK config
-		sdkOptions = append(sdkOptions, sdk.WithClientCredentials(cfg.SDKConfig.ClientID, cfg.SDKConfig.ClientSecret, nil))
 		if cfg.SDKConfig.Plaintext {
 			sdkOptions = append(sdkOptions, sdk.WithInsecurePlaintextConn())
 		}

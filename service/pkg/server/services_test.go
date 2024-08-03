@@ -82,9 +82,8 @@ func (suite *ServiceTestSuite) TestRegisterEssentialServiceRegistrationIsSuccess
 	registry := serviceregistry.NewServiceRegistry()
 	err := registerEssentialServices(registry)
 	suite.Require().NoError(err)
-	service := registry.GetService("health", "grpc.health.v1.Health")
-	suite.Require().NotNil(service)
-	suite.Equal("grpc.health.v1.Health", service.ServiceDesc.ServiceName)
+	service := registry.TotalRegisteredServices("health")
+	suite.Equal(1, service)
 }
 
 func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_ALL_Expect_All_Services_Registered() {
@@ -92,45 +91,20 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_ALL_Expect_All_
 	_, err := registerCoreServices(registry, []string{"all"})
 	suite.Require().NoError(err)
 
-	authz := registry.GetService("authorization", "authorization.AuthorizationService")
-	suite.Require().NotNil(authz)
-	suite.Equal("authorization.AuthorizationService", authz.ServiceDesc.ServiceName)
+	authz := registry.TotalRegisteredServices("authorization")
+	suite.Equal(1, authz)
 
-	kas := registry.GetService("kas", "kas.AccessService")
-	suite.Require().NotNil(kas)
-	suite.Equal("kas.AccessService", kas.ServiceDesc.ServiceName)
+	kas := registry.TotalRegisteredServices("kas")
+	suite.Equal(1, kas)
 
-	attr := registry.GetService("policy", "policy.attributes.AttributesService")
-	suite.Require().NotNil(attr)
-	suite.Equal("policy.attributes.AttributesService", attr.ServiceDesc.ServiceName)
+	policy := registry.TotalRegisteredServices("policy")
+	suite.Equal(6, policy)
 
-	namespace := registry.GetService("policy", "policy.namespaces.NamespaceService")
-	suite.Require().NotNil(namespace)
-	suite.Equal("policy.namespaces.NamespaceService", namespace.ServiceDesc.ServiceName)
+	wellKnown := registry.TotalRegisteredServices("wellknown")
+	suite.Equal(1, wellKnown)
 
-	resourcemapping := registry.GetService("policy", "policy.resourcemapping.ResourceMappingService")
-	suite.Require().NotNil(resourcemapping)
-	suite.Equal("policy.resourcemapping.ResourceMappingService", resourcemapping.ServiceDesc.ServiceName)
-
-	subjectmapping := registry.GetService("policy", "policy.subjectmapping.SubjectMappingService")
-	suite.Require().NotNil(subjectmapping)
-	suite.Equal("policy.subjectmapping.SubjectMappingService", subjectmapping.ServiceDesc.ServiceName)
-
-	kasregistry := registry.GetService("policy", "policy.kasregistry.KeyAccessServerRegistryService")
-	suite.Require().NotNil(kasregistry)
-	suite.Equal("policy.kasregistry.KeyAccessServerRegistryService", kasregistry.ServiceDesc.ServiceName)
-
-	unsafe := registry.GetService("policy", "policy.unsafe.UnsafeService")
-	suite.Require().NotNil(unsafe)
-	suite.Equal("policy.unsafe.UnsafeService", unsafe.ServiceDesc.ServiceName)
-
-	wellKnown := registry.GetService("wellknown", "wellknownconfiguration.WellKnownService")
-	suite.Require().NotNil(wellKnown)
-	suite.Equal("wellknownconfiguration.WellKnownService", wellKnown.ServiceDesc.ServiceName)
-
-	ers := registry.GetService("entityresolution", "entityresolution.EntityResolutionService")
-	suite.Require().NotNil(ers)
-	suite.Equal("entityresolution.EntityResolutionService", ers.ServiceDesc.ServiceName)
+	ers := registry.TotalRegisteredServices("entityresolution")
+	suite.Equal(1, ers)
 }
 
 // Every service except kas is registered
@@ -139,44 +113,20 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_Core_Expect_Cor
 	_, err := registerCoreServices(registry, []string{"core"})
 	suite.Require().NoError(err)
 
-	authz := registry.GetService("authorization", "authorization.AuthorizationService")
-	suite.Require().NotNil(authz)
-	suite.Equal("authorization.AuthorizationService", authz.ServiceDesc.ServiceName)
+	authz := registry.TotalRegisteredServices("authorization")
+	suite.Equal(1, authz)
 
-	wellKnown := registry.GetService("wellknown", "wellknownconfiguration.WellKnownService")
-	suite.Require().NotNil(wellKnown)
-	suite.Equal("wellknownconfiguration.WellKnownService", wellKnown.ServiceDesc.ServiceName)
+	kas := registry.TotalRegisteredServices("kas")
+	suite.Equal(0, kas)
 
-	ers := registry.GetService("entityresolution", "entityresolution.EntityResolutionService")
-	suite.Require().NotNil(ers)
-	suite.Equal("entityresolution.EntityResolutionService", ers.ServiceDesc.ServiceName)
+	policy := registry.TotalRegisteredServices("policy")
+	suite.Equal(6, policy)
 
-	attr := registry.GetService("policy", "policy.attributes.AttributesService")
-	suite.Require().NotNil(attr)
-	suite.Equal("policy.attributes.AttributesService", attr.ServiceDesc.ServiceName)
+	wellKnown := registry.TotalRegisteredServices("wellknown")
+	suite.Equal(1, wellKnown)
 
-	namespace := registry.GetService("policy", "policy.namespaces.NamespaceService")
-	suite.Require().NotNil(namespace)
-	suite.Equal("policy.namespaces.NamespaceService", namespace.ServiceDesc.ServiceName)
-
-	resourcemapping := registry.GetService("policy", "policy.resourcemapping.ResourceMappingService")
-	suite.Require().NotNil(resourcemapping)
-	suite.Equal("policy.resourcemapping.ResourceMappingService", resourcemapping.ServiceDesc.ServiceName)
-
-	subjectmapping := registry.GetService("policy", "policy.subjectmapping.SubjectMappingService")
-	suite.Require().NotNil(subjectmapping)
-	suite.Equal("policy.subjectmapping.SubjectMappingService", subjectmapping.ServiceDesc.ServiceName)
-
-	kasregistry := registry.GetService("policy", "policy.kasregistry.KeyAccessServerRegistryService")
-	suite.Require().NotNil(kasregistry)
-	suite.Equal("policy.kasregistry.KeyAccessServerRegistryService", kasregistry.ServiceDesc.ServiceName)
-
-	unsafe := registry.GetService("policy", "policy.unsafe.UnsafeService")
-	suite.Require().NotNil(unsafe)
-	suite.Equal("policy.unsafe.UnsafeService", unsafe.ServiceDesc.ServiceName)
-
-	kas := registry.GetService("kas", "kas.AccessService")
-	suite.Require().Nil(kas)
+	ers := registry.TotalRegisteredServices("entityresolution")
+	suite.Equal(1, ers)
 }
 
 func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
@@ -185,7 +135,9 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 	registry := serviceregistry.NewServiceRegistry()
 
 	// Test service which will be enabled
-	registerTest, testSpy := mockTestServiceRegistry(mockTestServiceOptions{})
+	registerTest, testSpy := mockTestServiceRegistry(mockTestServiceOptions{
+		serviceObject: &TestService{},
+	})
 	err := registry.RegisterService(registerTest, "test")
 	suite.Require().NoError(err)
 

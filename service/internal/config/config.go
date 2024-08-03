@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/creasty/defaults"
+	"github.com/go-playground/validator/v10"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -29,10 +30,11 @@ type Config struct {
 }
 
 type SDKConfig struct {
-	Endpoint     string `mapstructure:"endpoint"`
-	Plaintext    bool   `mapstructure:"plaintext" default:"false"`
-	ClientID     string `mapstructure:"client_id"`
-	ClientSecret string `mapstructure:"client_secret"`
+	Endpoint  string `mapstructure:"endpoint"`
+	Plaintext bool   `mapstructure:"plaintext" default:"false" validate:"boolean"`
+	// ClientID and ClientSecret are used for client credentials grant. They are required together.
+	ClientID     string `mapstructure:"client_id" validate:"required_with=ClientSecret"`
+	ClientSecret string `mapstructure:"client_secret" validate:"required_with=ClientID"`
 }
 
 type Error string
@@ -91,6 +93,13 @@ func LoadConfig(key, file string) (*Config, error) {
 
 	err = v.Unmarshal(config)
 	if err != nil {
+		return nil, errors.Join(err, ErrUnmarshallingConfig)
+	}
+
+	// Validate Config
+	validate := validator.New()
+
+	if err := validate.Struct(config); err != nil {
 		return nil, errors.Join(err, ErrUnmarshallingConfig)
 	}
 

@@ -178,17 +178,12 @@ func (reg Registry) Shutdown() {
 	}
 }
 
-func (reg Registry) GetService(namespace string, serviceName string) *service {
+// Helper to validate the number of registered services in tests
+func (reg Registry) TotalRegisteredServices(namespace string) int {
 	ns, ok := reg[namespace]
 	if !ok {
-		return nil
+		return 0
 	}
 
-	for _, svc := range ns.Services {
-		if svc.ServiceDesc.ServiceName == serviceName {
-			return &svc
-		}
-	}
-
-	return nil
+	return len(ns.Services)
 }

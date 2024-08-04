@@ -18,22 +18,45 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Config represents the configuration settings for the service.
 type Config struct {
-	DevMode bool          `mapstructure:"dev_mode"`
-	DB      db.Config     `mapstructure:"db"`
-	Server  server.Config `mapstructure:"server"`
-	Logger  logger.Config `mapstructure:"logger"`
-	// Defines which services to run
-	Mode      []string                                 `mapstructure:"mode" default:"[\"all\"]"`
-	SDKConfig SDKConfig                                `mapstructure:"sdk_config"`
-	Services  map[string]serviceregistry.ServiceConfig `mapstructure:"services"`
+	// DevMode specifies whether the service is running in development mode.
+	DevMode bool `mapstructure:"dev_mode"`
+
+	// DB represents the configuration settings for the database.
+	DB db.Config `mapstructure:"db"`
+
+	// Server represents the configuration settings for the server.
+	Server server.Config `mapstructure:"server"`
+
+	// Logger represents the configuration settings for the logger.
+	Logger logger.Config `mapstructure:"logger"`
+
+	// Mode specifies which services to run.
+	// By default, it runs all services.
+	Mode []string `mapstructure:"mode" default:"[\"all\"]"`
+
+	// SDKConfig represents the configuration settings for the SDK.
+	SDKConfig SDKConfig `mapstructure:"sdk_config"`
+
+	// Services represents the configuration settings for the services.
+	Services map[string]serviceregistry.ServiceConfig `mapstructure:"services"`
 }
 
+// SDKConfig represents the configuration for the SDK.
 type SDKConfig struct {
-	Endpoint  string `mapstructure:"endpoint"`
-	Plaintext bool   `mapstructure:"plaintext" default:"false" validate:"boolean"`
-	// ClientID and ClientSecret are used for client credentials grant. They are required together.
-	ClientID     string `mapstructure:"client_id" validate:"required_with=ClientSecret"`
+	// Endpoint is the URL of the Core Platform endpoint.
+	Endpoint string `mapstructure:"endpoint"`
+
+	// Plaintext specifies whether the SDK should use plaintext communication.
+	Plaintext bool `mapstructure:"plaintext" default:"false" validate:"boolean"`
+
+	// ClientID is the client ID used for client credentials grant.
+	// It is required together with ClientSecret.
+	ClientID string `mapstructure:"client_id" validate:"required_with=ClientSecret"`
+
+	// ClientSecret is the client secret used for client credentials grant.
+	// It is required together with ClientID.
 	ClientSecret string `mapstructure:"client_secret" validate:"required_with=ClientID"`
 }
 
@@ -57,12 +80,7 @@ func LoadConfig(key, file string) (*Config, error) {
 	if err != nil {
 		return nil, errors.Join(err, ErrLoadingConfig)
 	}
-	// uncommment to debug config loading,
-	// issue is the loglevel directive is in the config yaml
-	// t := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-	// 	Level: slog.LevelDebug,
-	// })
-	// v := viper.NewWithOptions(viper.WithLogger(slog.New(t)))
+
 	v := viper.NewWithOptions(viper.WithLogger(slog.Default()))
 	v.AddConfigPath(fmt.Sprintf("%s/."+key, homedir))
 	v.AddConfigPath("." + key)

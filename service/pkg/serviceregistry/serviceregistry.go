@@ -87,7 +87,8 @@ type service struct {
 	Close func()
 }
 
-// Start the service
+// Start starts the service and performs necessary initialization steps.
+// It returns an error if the service is already started or if there is an issue running database migrations.
 func (s *service) Start(ctx context.Context, params RegistrationParams) error {
 	if s.Started {
 		return fmt.Errorf("service already started")
@@ -109,6 +110,9 @@ func (s *service) Start(ctx context.Context, params RegistrationParams) error {
 	return nil
 }
 
+// RegisterGRPCServer registers the gRPC server with the service implementation.
+// It checks if the service implementation is registered and then registers the service with the server.
+// It returns an error if the service implementation is not registered.
 func (s *service) RegisterGRPCServer(server *grpc.Server) error {
 	if s.impl == nil {
 		return fmt.Errorf("service did not register an implementation")
@@ -117,6 +121,9 @@ func (s *service) RegisterGRPCServer(server *grpc.Server) error {
 	return nil
 }
 
+// RegisterHTTPServer registers an HTTP server with the service.
+// It takes a context, a ServeMux, and an implementation function as parameters.
+// If the service did not register a handler, it returns an error.
 func (s *service) RegisterHTTPServer(ctx context.Context, mux *runtime.ServeMux) error {
 	if s.handleFunc == nil {
 		return fmt.Errorf("service did not register a handler")
@@ -124,25 +131,33 @@ func (s *service) RegisterHTTPServer(ctx context.Context, mux *runtime.ServeMux)
 	return s.handleFunc(ctx, mux, s.impl)
 }
 
+// namespace represents a namespace in the service registry.
 type namespace struct {
 	Mode     string
 	Services []service
 }
 
+// Registry represents a map of service namespaces.
 type Registry map[string]namespace
 
-// RegisteredServices is a map of namespaces to services
-// TODO remove the global variable and move towards a more functional approach
-
+// NewServiceRegistry creates a new instance of the service registry.
 func NewServiceRegistry() Registry {
 	return make(Registry)
 }
 
+// RegisterCoreService registers a core service with the given registration information.
+// It calls the RegisterService method of the Registry instance with the provided registration and service type "core".
+// Returns an error if the registration fails.
 func (reg Registry) RegisterCoreService(r Registration) error {
 	return reg.RegisterService(r, "core")
 }
 
-// RegisterService is a function that registers a service with the service registry.
+// RegisterService registers a service in the service registry.
+// It takes a Registration object and a mode string as parameters.
+// The Registration object contains information about the service to be registered,
+// such as the namespace and service description.
+// The mode string specifies the mode in which the service should be registered.
+// It returns an error if the service is already registered in the specified namespace.
 func (reg Registry) RegisterService(r Registration, mode string) error {
 	// Can't directly modify structs within a map, so we need to copy the namespace
 	copyNamespace := reg[r.Namespace]
@@ -167,6 +182,10 @@ func (reg Registry) RegisterService(r Registration, mode string) error {
 	return nil
 }
 
+// Shutdown stops all the services in the service registry.
+// It iterates over each namespace and service in the registry,
+// checks if the service has a Close method and if it has been started,
+// and then calls the Close method to stop the service.
 func (reg Registry) Shutdown() {
 	for name, ns := range reg {
 		for _, svc := range ns.Services {
@@ -178,7 +197,8 @@ func (reg Registry) Shutdown() {
 	}
 }
 
-// Helper to validate the number of registered services in tests
+// TotalRegisteredServices returns the total number of registered services in the given namespace.
+// If the namespace does not exist, it returns 0.
 func (reg Registry) TotalRegisteredServices(namespace string) int {
 	ns, ok := reg[namespace]
 	if !ok {

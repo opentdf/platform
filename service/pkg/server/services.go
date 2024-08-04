@@ -22,7 +22,8 @@ import (
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
 )
 
-// We always want to register the essential services. Even if only a pep like kas is running.
+// registerEssentialServices registers the essential services to the given service registry.
+// It takes a serviceregistry.Registry as input and returns an error if registration fails.
 func registerEssentialServices(reg serviceregistry.Registry) error {
 	essentialServices := []serviceregistry.Registration{
 		health.NewRegistration(),
@@ -36,11 +37,14 @@ func registerEssentialServices(reg serviceregistry.Registry) error {
 	return nil
 }
 
+// registerCoreServices registers the core services based on the provided mode.
+// It returns the list of registered services and any error encountered during registration.
 func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string, error) {
 	var (
 		services           []serviceregistry.Registration
 		registeredServices []string
 	)
+
 	for _, m := range mode {
 		switch m {
 		case "all":
@@ -67,18 +71,26 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 			continue
 		}
 	}
+
 	// Register the services
 	for _, s := range services {
 		if err := reg.RegisterCoreService(s); err != nil {
 			return nil, err //nolint:wrapcheck // We are all friends here
 		}
 	}
+
 	return registeredServices, nil
 }
 
+// startServices iterates through the registered namespaces and starts the services
+// based on the configuration and namespace mode. It creates a new service logger
+// and a database client if required. It registers the services with the gRPC server,
+// in-process gRPC server, and gRPC gateway. Finally, it logs the status of each service.
 func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFServer, client *sdk.SDK, logger *logger.Logger, reg serviceregistry.Registry) error {
 	// Iterate through the registered namespaces
 	for ns, namespace := range reg {
+		// modeEnabled checks if the mode is enabled based on the configuration and namespace mode.
+		// It returns true if the mode is "all" or "essential" in the configuration, or if it matches the namespace mode.
 		modeEnabled := slices.ContainsFunc(cfg.Mode, func(m string) bool {
 			if strings.EqualFold(m, "all") || strings.EqualFold(m, "essential") {
 				return true
@@ -86,6 +98,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 			return strings.EqualFold(m, namespace.Mode)
 		})
 
+		// Skip the namespace if the mode is not enabled
 		if !modeEnabled {
 			logger.Info("skipping namespace", slog.String("namespace", ns), slog.String("mode", namespace.Mode))
 			continue
@@ -97,8 +110,9 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 
 		// Create new service logger
 		for _, svc := range namespace.Services {
-			// Get new db client if needed
+			// Get new db client if it is required and not already created
 			if svc.DB.Required && svcDBClient == nil {
+				logger.Debug("creating database client", slog.String("namespace", ns))
 				var err error
 				svcDBClient, err = newServiceDBClient(ctx, cfg.Logger, cfg.DB, ns, svc.DB.Migrations)
 				if err != nil {
@@ -149,10 +163,12 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 	return nil
 }
 
+// newServiceDBClient creates a new database client for the specified namespace.
+// It initializes the client with the provided context, logger configuration, database configuration,
+// namespace, and migrations. It returns the created client and any error encountered during creation.
 func newServiceDBClient(ctx context.Context, logCfg logger.Config, dbCfg db.Config, ns string, migrations *embed.FS) (*db.Client, error) {
 	var err error
 
-	slog.Info("creating database client", slog.String("namespace", ns))
 	client, err := db.New(ctx, dbCfg, logCfg,
 		db.WithService(ns),
 		db.WithMigrations(migrations),
@@ -164,6 +180,10 @@ func newServiceDBClient(ctx context.Context, logCfg logger.Config, dbCfg db.Conf
 	return client, nil
 }
 
+// determineStatusOfMigration determines the status of the migration based on the provided client.
+// It checks if the client is required, if the required migrations have already been ran,
+// if the service does not require a database, or if the migrations are disabled.
+// It returns a string indicating the reason for the determined status.
 func determineStatusOfMigration(client *db.Client) string {
 	required := (client != nil)
 	requiredAlreadyRan := required && client.MigrationsEnabled() && client.RanMigrations()

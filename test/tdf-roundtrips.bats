@@ -22,7 +22,7 @@
 
 @test "examples: roundtrip nanoTDF" {
   echo "[INFO] creating nanotdf file"
-  go run ./examples encrypt --autoconfigure=false -o sensitive.txt.ntdf --nano "Hello NanoTDF"
+  go run ./examples encrypt --autoconfigure=false -o sensitive.txt.ntdf --nano --no-kid-in-nano "Hello NanoTDF"
 
   echo "[INFO] decrypting nanotdf..."
   go run ./examples decrypt sensitive.txt.ntdf

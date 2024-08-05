@@ -27,8 +27,7 @@ RUN make opentdf
 
 FROM builder as tester
 
-RUN apt-get update -y && apt-get install -y softhsm opensc openssl
-RUN /scripts/hsm-init-temporary-keys.sh
+RUN /app/opentdf keys init
 
 RUN make test
 

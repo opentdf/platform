@@ -41,10 +41,10 @@ const (
 	// urlProtocolUnreserved   protocolHeader = 0x2
 	urlProtocolSharedRes protocolHeader = 0xf
 
-	NoIdentifier            protocolHeader = 0 << 4
-	TwoByteIdentifier       protocolHeader = 1 << 4
-	EightByteIdentifier     protocolHeader = 2 << 4
-	ThirtyTwoByteIdentifier protocolHeader = 3 << 4
+	identifierNone   protocolHeader = 0 << 4
+	identifier2Byte  protocolHeader = 1 << 4
+	identifier8Byte  protocolHeader = 2 << 4
+	identifier32Byte protocolHeader = 3 << 4
 )
 
 func NewResourceLocator(url string) (*ResourceLocator, error) {
@@ -100,13 +100,13 @@ func (rl *ResourceLocator) setURLWithIdentifier(url string, identifier string) e
 		identifierLen := len(identifier)
 		switch {
 		case identifierLen == 0:
-			rl.protocol = urlProtocolHTTPS | NoIdentifier
+			rl.protocol = urlProtocolHTTPS | identifierNone
 		case identifierLen >= 1 && identifierLen <= 2:
-			rl.protocol = urlProtocolHTTPS | TwoByteIdentifier
+			rl.protocol = urlProtocolHTTPS | identifier2Byte
 		case identifierLen >= 3 && identifierLen <= 8:
-			rl.protocol = urlProtocolHTTPS | EightByteIdentifier
+			rl.protocol = urlProtocolHTTPS | identifier8Byte
 		case identifierLen >= 9 && identifierLen <= 32:
-			rl.protocol = urlProtocolHTTPS | ThirtyTwoByteIdentifier
+			rl.protocol = urlProtocolHTTPS | identifier32Byte
 		default:
 			return fmt.Errorf("unsupported identifier length: %d", identifierLen)
 		}
@@ -122,13 +122,13 @@ func (rl *ResourceLocator) setURLWithIdentifier(url string, identifier string) e
 		identifierLen := len(identifier)
 		switch {
 		case identifierLen == 0:
-			rl.protocol = urlProtocolHTTP | NoIdentifier
+			rl.protocol = urlProtocolHTTP | identifierNone
 		case identifierLen >= 1 && identifierLen <= 2:
-			rl.protocol = urlProtocolHTTP | TwoByteIdentifier
+			rl.protocol = urlProtocolHTTP | identifier2Byte
 		case identifierLen >= 3 && identifierLen <= 8:
-			rl.protocol = urlProtocolHTTP | EightByteIdentifier
+			rl.protocol = urlProtocolHTTP | identifier8Byte
 		case identifierLen >= 9 && identifierLen <= 32:
-			rl.protocol = urlProtocolHTTP | ThirtyTwoByteIdentifier
+			rl.protocol = urlProtocolHTTP | identifier32Byte
 		default:
 			return fmt.Errorf("unsupported identifier length: %d", identifierLen)
 		}
@@ -143,9 +143,9 @@ func (rl *ResourceLocator) setURLWithIdentifier(url string, identifier string) e
 func (rl ResourceLocator) GetIdentifier() (string, error) {
 	// read the identifier if it exists
 	switch rl.protocol & 0xf0 {
-	case NoIdentifier, urlProtocolHTTPS:
+	case identifierNone, urlProtocolHTTPS, urlProtocolSharedRes:
 		return "", fmt.Errorf("legacy resource locator identifer: %d", rl.protocol)
-	case TwoByteIdentifier, EightByteIdentifier, ThirtyTwoByteIdentifier:
+	case identifier2Byte, identifier8Byte, identifier32Byte:
 		if rl.identifier == "" {
 			return "", fmt.Errorf("no resource locator identifer: %d", rl.protocol)
 		}
@@ -181,7 +181,7 @@ func (rl *ResourceLocator) setURL(url string) error {
 // GetURL - Retrieve a fully qualified protocol+body URL string from a ResourceLocator struct
 func (rl ResourceLocator) GetURL() (string, error) {
 	switch rl.protocol & 0xF { // use bitwise AND to get first 4 bits
-	case urlProtocolHTTPS:
+	case urlProtocolHTTPS, identifier2Byte, identifier8Byte, identifier32Byte:
 		return kPrefixHTTPS + rl.body, nil
 	case urlProtocolHTTP:
 		return kPrefixHTTP + rl.body, nil
@@ -228,21 +228,21 @@ func (rl *ResourceLocator) readResourceLocator(reader io.Reader) error {
 	rl.body = string(body) // TODO - normalize to lowercase?
 	// read the identifier if it exists
 	switch rl.protocol & 0xf0 {
-	case NoIdentifier, urlProtocolHTTPS:
+	case identifierNone, urlProtocolHTTPS, urlProtocolSharedRes:
 		// noop
-	case TwoByteIdentifier:
+	case identifier2Byte:
 		identifier := make([]byte, 2) //nolint:mnd // 2 bytes
 		if err := binary.Read(reader, binary.BigEndian, &identifier); err != nil {
 			return errors.New("Error reading ResourceLocator identifier value: " + err.Error())
 		}
 		rl.identifier = string(identifier)
-	case EightByteIdentifier:
+	case identifier8Byte:
 		identifier := make([]byte, 8) //nolint:mnd // 8 bytes
 		if err := binary.Read(reader, binary.BigEndian, &identifier); err != nil {
 			return errors.New("Error reading ResourceLocator identifier value: " + err.Error())
 		}
 		rl.identifier = string(identifier)
-	case ThirtyTwoByteIdentifier:
+	case identifier32Byte:
 		identifier := make([]byte, 32) //nolint:mnd // 32 bytes
 		if err := binary.Read(reader, binary.BigEndian, &identifier); err != nil {
 			return errors.New("Error reading ResourceLocator identifier value: " + err.Error())

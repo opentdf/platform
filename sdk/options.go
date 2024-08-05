@@ -190,6 +190,6 @@ func WithNoKIDInKAO() Option {
 // This allows generating NanoTDF files that are compatible with legacy file formats (no KID).
 func WithNoKIDInNano() Option {
 	return func(c *config) {
-		c.tdfFeatures.noKID = true
+		c.tdfFeatures.noNanoKID = true
 	}
 }

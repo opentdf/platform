@@ -57,9 +57,8 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		opts = append(opts, sdk.WithNoKIDInKAO())
 	}
 
-	if noKIDInKAO {
+	if noKIDInNano {
 		opts = append(opts, sdk.WithNoKIDInNano())
-
 	}
 
 	// Create new offline client

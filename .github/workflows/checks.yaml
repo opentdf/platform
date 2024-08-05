@@ -103,6 +103,9 @@ jobs:
               }
               const result = await github.graphql(query, variables)
               
+              core.debug(JSON.stringify(result));
+
+
               if (result.repository.pullRequest.closingIssuesReferences.edges.length === 0) {
                 const comments = result.repository.pullRequest.comments.edges;
                 for (const comment of comments) {
@@ -134,8 +137,9 @@ jobs:
                     }
                   }
                 }`;
+                
                 const createCommentVariables = {
-                  id: context.issue.number,
+                  id: context.issue.id,
                   body: body
                 }
                 await github.graphql(createCommentMutation, createCommentVariables)

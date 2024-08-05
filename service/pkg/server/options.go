@@ -62,8 +62,7 @@ func WithPublicRoutes(routes []string) StartOptions {
 // Example:
 //
 //	opentdf.WithAuthZDefaultPolicyExtension([][]string{
-//				buildEndpointAuthzPolicy("org-admin", "pep*", "*", true),
-//				buildEndpointAuthzPolicy("standard", "shared.*", "read", true),
+//				{"p","role:org-admin", "pep*", "*","allow"),
 //			}),
 func WithAuthZDefaultPolicyExtension(policies [][]string) StartOptions {
 	return func(c StartConfig) StartConfig {

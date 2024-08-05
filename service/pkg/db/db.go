@@ -14,7 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
-	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/logger"
 )
 
 type Table struct {

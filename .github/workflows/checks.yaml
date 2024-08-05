@@ -366,6 +366,7 @@ jobs:
       - license
       - pr
       - platform-xtest
+      - associated-issue
     runs-on: ubuntu-latest
     if: always()
     steps:

@@ -1,3 +1,22 @@
+// The logger and it's sub-package audit are exposed publicly.
+// Subsequent follow up work will require publicly exposing a generalized audit
+// method that will accept struct of the following form:
+
+// type EventObject struct {
+// 	Object        auditEventObject `json:"object"`
+// 	Action        eventAction      `json:"action"`
+// 	Owner         EventOwner       `json:"owner"`
+// 	Actor         auditEventActor  `json:"actor"`
+// 	EventMetaData interface{}      `json:"eventMetaData"`
+// 	ClientInfo    eventClientInfo  `json:"clientInfo"`
+
+// 	Diff      []DiffEntry `json:"diff,omitempty"`
+// 	RequestID uuid.UUID   `json:"requestId"`
+// 	Timestamp string      `json:"timestamp"`
+// }
+
+// Defined here: platform/service/internal/logger/audit/utils.go
+
 package logger
 
 import (

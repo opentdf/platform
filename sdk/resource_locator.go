@@ -35,10 +35,11 @@ const (
 	// kPrefixHTTPS identifier field is size of 0 bytes (not present)
 	kPrefixHTTPS     string         = "https://"
 	kPrefixHTTP      string         = "http://"
+	kSuffixShared    string         = ":"
 	urlProtocolHTTP  protocolHeader = 0x0
 	urlProtocolHTTPS protocolHeader = 0x1
 	// urlProtocolUnreserved   protocolHeader = 0x2
-	// urlProtocolSharedResDir protocolHeader = 0xf
+	urlProtocolSharedRes protocolHeader = 0xf
 
 	NoIdentifier            protocolHeader = 0 << 4
 	TwoByteIdentifier       protocolHeader = 1 << 4
@@ -184,8 +185,8 @@ func (rl ResourceLocator) GetURL() (string, error) {
 		return kPrefixHTTPS + rl.body, nil
 	case urlProtocolHTTP:
 		return kPrefixHTTP + rl.body, nil
-	case TwoByteIdentifier, EightByteIdentifier, ThirtyTwoByteIdentifier:
-		return "", fmt.Errorf("unsupported protocol: %d", rl.protocol)
+	case urlProtocolSharedRes:
+		return rl.body + kSuffixShared, nil
 	default:
 		return "", fmt.Errorf("unsupported protocol: %d", rl.protocol)
 	}

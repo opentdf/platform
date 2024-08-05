@@ -58,11 +58,11 @@ func attributesValuesProtojson(valuesJSON []byte, attrFqn sql.NullString) ([]*po
 type attributesSelectOptions struct {
 	withAttributeValues bool
 	withKeyAccessGrants bool
-	// withFqn and withOneValueByFqn are mutually exclusive
-	withFqn           bool
-	withOneValueByFqn string
-	state             string
-	namespace         string
+	// withFqn and withValuesByFqns are mutually exclusive
+	withFqn          bool
+	withValuesByFqns []string
+	state            string
+	namespace        string
 }
 
 func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
@@ -88,7 +88,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		nt.Field("name"),
 	}
 
-	shouldGetValues := opts.withAttributeValues || opts.withOneValueByFqn != "" || opts.withFqn
+	shouldGetValues := opts.withAttributeValues || len(opts.withValuesByFqns) != 0 || opts.withFqn
 	if shouldGetValues {
 		valueSelect := "JSON_AGG(" +
 			"JSON_BUILD_OBJECT(" +
@@ -98,7 +98,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			"'active', avt.active"
 
 		// include the subject mapping / subject condition set for each value
-		if opts.withOneValueByFqn != "" {
+		if len(opts.withValuesByFqns) != 0 {
 			valueSelect += ", 'fqn', val_sm_fqn_join.fqn, " +
 				"'subject_mappings', sub_maps_arr, " +
 				"'grants', val_grants_arr"
@@ -141,7 +141,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			"LEFT JOIN " + avkagt.Name() + " avg ON av.id = avg.attribute_value_id " +
 			"LEFT JOIN " + Tables.KeyAccessServerRegistry.Name() + " vkas ON avg.key_access_server_id = vkas.id " +
 			"LEFT JOIN " + Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id LEFT JOIN " + avt.Name() + " vmv ON vm.member_id = vmv.id "
-		if opts.withOneValueByFqn != "" {
+		if len(opts.withValuesByFqns) != 0 {
 			subQuery += "WHERE av.active = true "
 		}
 		subQuery += "GROUP BY av.id) avt ON avt.attribute_definition_id = " + t.Field("id")
@@ -157,7 +157,13 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			" AND " + fqnt.Field("value_id") + " IS NULL")
 	}
 
-	if opts.withOneValueByFqn != "" {
+	if len(opts.withValuesByFqns) != 0 {
+		fqns := []string{}
+		for _, fqn := range opts.withValuesByFqns {
+			fqns = append(fqns, "'"+fqn+"'")
+		}
+		fqnsStr := strings.Join(fqns, ",")
+		fqnsStr = "(" + fqnsStr + ")"
 		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id")).
 			LeftJoin("(SELECT " +
 				avt.Field("id") + " AS av_id," +
@@ -176,7 +182,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 				"LEFT JOIN " + avt.Name() + " ON " + smT.Field("attribute_value_id") + " = " + avt.Field("id") + " " +
 				"LEFT JOIN " + scsT.Name() + " ON " + smT.Field("subject_condition_set_id") + " = " + scsT.Field("id") + " " +
 				"INNER JOIN " + fqnt.Name() + " AS inner_fqns ON " + avt.Field("id") + " = inner_fqns.value_id " +
-				"WHERE inner_fqns.fqn = '" + opts.withOneValueByFqn + "' " +
+				"WHERE inner_fqns.fqn IN " + fqnsStr + " " +
 				"AND " + avt.Field("active") + " = true " +
 				"GROUP BY " + avt.Field("id") + ", inner_fqns.fqn " +
 				") AS val_sm_fqn_join ON " + "avt.id" + " = val_sm_fqn_join.av_id " +
@@ -212,7 +218,7 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions, logger *lo
 	)
 
 	fields := []interface{}{&id, &name, &rule, &metadataJSON, &namespaceID, &active, &namespaceName}
-	shouldGetValues := opts.withAttributeValues || opts.withOneValueByFqn != "" || opts.withFqn
+	shouldGetValues := opts.withAttributeValues || len(opts.withValuesByFqns) != 0 || opts.withFqn
 	if shouldGetValues {
 		fields = append(fields, &valuesOrder, &valuesJSON)
 	}
@@ -420,41 +426,93 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.At
 }
 
 // Get attribute by fqn, ensuring the attribute definition and namespace are both active
-func getAttributeByFqnSQL(fqn string, opts attributesSelectOptions) (string, []interface{}, error) {
+func getAttributesByFqnsSQL(fqns []string, opts attributesSelectOptions) (string, []interface{}, error) {
 	return attributesSelect(opts).
-		Where(sq.Eq{Tables.AttrFqn.Field("fqn"): fqn, Tables.Attributes.Field("active"): true, Tables.Namespaces.Field("active"): true}).
+		Where(sq.Eq{Tables.AttrFqn.Field("fqn"): fqns, Tables.Attributes.Field("active"): true, Tables.Namespaces.Field("active"): true}).
 		From(Tables.Attributes.Name()).
 		ToSql()
 }
 
-func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*policy.Attribute, error) {
-	// normalize to lower case
-	fqn = strings.ToLower(fqn)
+func (c PolicyDBClient) GetAttributesByFqns(ctx context.Context, fqns []string) ([]*policy.Attribute, error) {
 	opts := attributesSelectOptions{
 		withAttributeValues: true,
 		withKeyAccessGrants: true,
 	}
-	if strings.Contains(fqn, "/value/") {
-		opts.withOneValueByFqn = fqn
-	} else {
-		opts.withFqn = true
+	fqnMap := map[string]bool{}
+	for i, fqn := range fqns {
+		// ensure the FQN corresponds to an attribute value and not a definition or namespace alone
+		if !strings.Contains(fqn, "/value/") {
+			return nil, db.ErrFqnMissingValue
+		}
+		// normalize to lower case
+		fqns[i] = strings.ToLower(fqn)
+		fqnMap[fqns[i]] = true
 	}
-	sql, args, err := getAttributeByFqnSQL(fqn, opts)
+	opts.withValuesByFqns = fqns
+	sql, args, err := getAttributesByFqnsSQL(fqns, opts)
 	if err != nil {
 		return nil, err
 	}
-
-	row, err := c.QueryRow(ctx, sql, args)
+	// println("TEST_sql", sql)
+	rows, err := c.Query(ctx, sql, args)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	attribute, err := attributesHydrateItem(row, opts, c.logger)
+	attributes, err := attributesHydrateList(rows, opts, c.logger)
 	if err != nil {
-		c.logger.Error("could not hydrate item", slog.String("fqn", fqn), slog.String("error", err.Error()))
+		// c.logger.Error("could not hydrate item", slog.String("fqns", strings.Join(fqns, ",")), slog.String("error", err.Error()))
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-	return attribute, nil
+	// println("TEST_attribute", attributes[0].String())
+	// println("TEST_fqn", fqns[0])
+	// // Sort the attributes by the order of the FQNs
+	// attributesMap := make(map[string]*policy.Attribute)
+	// for _, a := range attributes {
+	// 	attributesMap[a.GetFqn()] = a
+	// }
+	// attributez := make([]*policy.Attribute, 0)
+	// for _, fqn := range fqns {
+	// 	if a, ok := attributesMap[fqn]; ok {
+	// 		attributez = append(attributez, a)
+	// 	}
+	// }
+	println("num of attrs: ", len(attributes))
+	attributesMap := make(map[string]*policy.Attribute)
+	for _, a := range attributes {
+		for v_idx, v := range a.GetValues() {
+			if v.GetFqn() != "" {
+				attributesMap[v.GetFqn()] = a
+			} else {
+				missingFqn := a.GetNamespace().GetFqn() + "/attr/" + a.GetName() + "/value/" + v.GetValue()
+				println("Missing FQN", missingFqn)
+				println("a.Id", a.Id)
+				println("a.Name", a.Name)
+				println("a.Fqn", a.Fqn)
+				println("a.Namespace", a.Namespace.String())
+				if fqnMap[missingFqn] {
+					v.Fqn = missingFqn
+					a.Values[v_idx] = v
+					a.Fqn = strings.Split(missingFqn, "/value/")[0]
+					println("FOUND MISSING FQN", missingFqn)
+					attributesMap[missingFqn] = a
+				}
+
+			}
+		}
+	}
+	attributes = make([]*policy.Attribute, 0)
+	for _, fqn := range fqns {
+		if a, ok := attributesMap[fqn]; ok {
+			if strings.Contains(fqn, "unclassified") {
+				println("Adding attribute to fqn", fqn, a.String()) // a.String()
+			}
+			attributes = append(attributes, a)
+		}
+	}
+	println("len of attributes: ", len(attributes), "len of fqns: ", len(fqns))
+
+	return attributes, nil
 }
 
 func getAttributesByNamespaceSQL(namespaceID string, opts attributesSelectOptions) (string, []interface{}, error) {

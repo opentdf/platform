@@ -159,6 +159,9 @@ func prepareValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy
 	attrFqn := split[0]
 	var unaltered *policy.Value
 	for i, v := range values {
+		// if strings.Contains(v.String(), "unclassified") {
+		// 	println("from fqn val: ", val, "from attr val: ", v.Value)
+		// }
 		if v.GetValue() == val {
 			unaltered = &policy.Value{
 				Id:    v.GetId(),
@@ -185,33 +188,56 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 	if r.Fqns == nil || r.GetWithValue() == nil {
 		return nil, errors.Join(db.ErrMissingValue, errors.New("error: one or more FQNs and a WithValue selector must be provided"))
 	}
-	list := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, len(r.GetFqns()))
-	for _, fqn := range r.GetFqns() {
-		// normalize to lower case
-		fqn = strings.ToLower(fqn)
-		// ensure the FQN corresponds to an attribute value and not a definition or namespace alone
-		if !strings.Contains(fqn, "/value/") {
-			return nil, db.ErrFqnMissingValue
-		}
-		start := time.Now()
-		attr, err := c.GetAttributeByFqn(ctx, fqn)
-		if err != nil {
-			c.logger.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))
-			return nil, err
-		}
-		c.logger.Debug("GetEntitlements: Get Attr by FQN", slog.String("fqn", fqn), slog.Duration("duration", time.Since(start)))
-		start = time.Now()
-		filtered, selected := prepareValues(attr.GetValues(), fqn)
-		c.logger.Debug("GetEntitlements: prepareValues", slog.String("fqn", fqn), slog.Duration("duration", time.Since(start)))
+	fqns := r.GetFqns()
+	list := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, len(fqns))
+	start := time.Now()
+	attrs, err := c.GetAttributesByFqns(ctx, fqns)
+	println("GetAttributesByFqns: ", time.Since(start).Seconds())
+	if err != nil {
+		// c.logger.Error("could not get attributes by FQNs", slog.String("fqns", strings.Join(fqns, ",")), slog.String("error", err.Error()))
+		return nil, err
+	}
+	start = time.Now()
+	for idx, fqn := range fqns {
+		// if fqn == "https://demo.com/attr/classification/value/unclassified" {
+		// for _, val := range attrs[idx].GetValues() {
+		// 	println("value from attr val: ", val.Value, "fqn from attr val: ", val.Fqn)
+		// }
+		now := time.Now()
+		filtered, selected := prepareValues(attrs[idx].GetValues(), fqn)
+		println("single value prep: ", time.Since(now).Seconds())
 		if selected == nil {
 			c.logger.Error("could not find value for FQN", slog.String("fqn", fqn))
 			return nil, fmt.Errorf("could not find value for FQN [%s] %w", fqn, db.ErrNotFound)
 		}
-		attr.Values = filtered
+		attrs[idx].Values = filtered
 		list[fqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
-			Attribute: attr,
+			Attribute: attrs[idx],
 			Value:     selected,
 		}
 	}
+	println("preparing values: ", time.Since(start).Seconds())
+	// }
+	// for idx, fqn := range fqns {
+	// 	// start := time.Now()
+	// 	// attr, err := c.GetAttributesByFqns(ctx, fqns)
+	// 	// if err != nil {
+	// 	// 	c.logger.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))
+	// 	// 	return nil, err
+	// 	// }
+	// 	// c.logger.Debug("GetEntitlements: Get Attr by FQN", slog.String("fqn", fqn), slog.Duration("duration", time.Since(start)))
+	// 	// start = time.Now()
+	// 	filtered, selected := prepareValues(attrs[idx].GetValues(), fqn)
+	// 	// c.logger.Debug("GetEntitlements: prepareValues", slog.String("fqn", fqn), slog.Duration("duration", time.Since(start)))
+	// 	if selected == nil {
+	// 		c.logger.Error("could not find value for FQN", slog.String("fqn", fqn))
+	// 		return nil, fmt.Errorf("could not find value for FQN [%s] %w", fqn, db.ErrNotFound)
+	// 	}
+	// 	attrs[idx].Values = filtered
+	// 	list[fqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+	// 		Attribute: attrs[idx],
+	// 		Value:     selected,
+	// 	}
+	// }
 	return list, nil
 }

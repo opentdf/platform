@@ -56,6 +56,42 @@ jobs:
             authz
             examples
 
+  associated-issue:
+      name: Issue Accociated with Pull Request
+      if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name)
+      runs-on: ubuntu-22.04
+      permissions:
+        pull-requests: read
+      steps:
+        - uses: actions/github-script@v5
+          with:
+            github-token: ${{ secrets.GITHUB_TOKEN }}
+            script: |
+              const query = `query ($owner: String!, $name: String!, $number: Int!) {
+                repository(owner: $owner, name: $name) {
+                  pullRequest(number: $number) {
+                    id
+                    closingIssuesReferences(first: 50) {
+                      edges {
+                        node {
+                          id
+                          body
+                          number
+                          title
+                        }
+                      }
+                    }
+                  }
+                }
+              }`;
+              const variables = {
+                owner: context.repo.owner,
+                name: context.repo.repo,
+                number: context.issue.number
+              }
+              const result = await github.graphql(query, variables)
+              console.log(result)
+
   go:
     runs-on: ubuntu-22.04
     permissions:

@@ -140,7 +140,7 @@ jobs:
                 }`;
                 
                 const createCommentVariables = {
-                  id: context.payload.pull_request.node_id,
+                  id: result.repository.pullRequest.id,
                   body: body
                 }
                 await github.graphql(createCommentMutation, createCommentVariables)

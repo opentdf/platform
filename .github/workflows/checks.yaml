@@ -61,7 +61,7 @@ jobs:
       if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name)
       runs-on: ubuntu-22.04
       permissions:
-        pull-requests: read
+        pull-requests: write
       steps:
         - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
           with:
@@ -81,6 +81,18 @@ jobs:
                         }
                       }
                     }
+                    comments(last: 100) {
+                      edges {
+                        node {
+                          id
+                          body
+                          author {
+                            login
+                          }
+                          isMinimized
+                        }
+                      }
+                    }
                   }
                 }
               }`;
@@ -92,8 +104,43 @@ jobs:
               const result = await github.graphql(query, variables)
               
               if (result.repository.pullRequest.closingIssuesReferences.edges.length === 0) {
-                core.setFailed('No issue associated with this pull request');
+                const comments = data.repository.pullRequest.comments.edges;
+                for (const comment of comments) {
+                  // Minimize the previous comment if one exists
+                  if (comment.node.author.login === 'github-actions[bot]' && !comment.node.isMinimized) && comment.body.match(/<!-- associated-issue-action -->/) {
+                    const minimizeCommentMutation = `mutation minimizeComment($id: ID!) {
+                      minimizeComment(input: { subjectId: $id, classifier: OUTDATED }) {
+                        minimizedComment {
+                          isMinimized
+                        }
+                      }
+                    }`;
+                    const minimizeCommentVariables = {
+                      id: comment.node.id
+                    }
+                    await github.graphql(minimizeCommentMutation, minimizeCommentVariables)
+                  }
+                }
+                const body = `
+                > [!WARNING] 
+                > This pull request does not reference any issues. Please add a reference to an issue in the body of the pull request description.
+                <!-- associated-issue-action -->`;
+                const createCommentMutation = `mutation createComment($id: ID!, $body: String!) {
+                  addComment(input: { subjectId: $id, body: $body }) {
+                    commentEdge {
+                      node {
+                        id
+                      }
+                    }
+                  }
+                }`;
+                const createCommentVariables = {
+                  id: context.issue.node.id,
+                  body: body
+                }
+                await github.graphql(createCommentMutation, createCommentVariables)
               }
+              core.setFailed('This pull request does not reference any issues. Please add a reference to an issue in the body of the pull request description.');
   go:
     runs-on: ubuntu-22.04
     permissions:

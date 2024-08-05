@@ -230,6 +230,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.JWK"><span class="badge">M</span>JWK</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.JWKSet"><span class="badge">M</span>JWKSet</a>
+                </li>
+              
+                <li>
                   <a href="#policy.KasPublicKey"><span class="badge">M</span>KasPublicKey</a>
                 </li>
               
@@ -243,6 +251,10 @@
               
                 <li>
                   <a href="#policy.Namespace"><span class="badge">M</span>Namespace</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.OtherPrimeInfo"><span class="badge">M</span>OtherPrimeInfo</a>
                 </li>
               
                 <li>
@@ -1546,6 +1558,196 @@
 
         
       
+        <h3 id="policy.JWK">JWK</h3>
+        <p>Protocol buffer approximation of a JSON web key: https://datatracker.ietf.org/doc/html/rfc7517</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>kty</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Key type, as defined in JWA https://datatracker.ietf.org/doc/html/rfc7518 </p></td>
+                </tr>
+              
+                <tr>
+                  <td>use</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Either `sig` or `enc`, if present. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_ops</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Valid operations, e.g. `sign`, `verify`, `encrypt`, etc. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>alg</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kid</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>FIXME: Can this be an `any`? </p></td>
+                </tr>
+              
+                <tr>
+                  <td>x5u</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>x.509 URL parameter </p></td>
+                </tr>
+              
+                <tr>
+                  <td>x5c</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>x.509 cert chain parameter </p></td>
+                </tr>
+              
+                <tr>
+                  <td>x5t</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>x.509 sha-1 thumbprint </p></td>
+                </tr>
+              
+                <tr>
+                  <td>x5ts256</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>x.509 sha-256 thumbprint </p></td>
+                </tr>
+              
+                <tr>
+                  <td>e</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>RSA parameters: https://datatracker.ietf.org/doc/html/rfc7518#section-6.3
+Exponent of an RSA Public Key </p></td>
+                </tr>
+              
+                <tr>
+                  <td>n</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Modulus of an RSA Public Key </p></td>
+                </tr>
+              
+                <tr>
+                  <td>d</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>RSA private key parameter (private exponent)
+OR Elliptic Curve Private Key parameter (ECC Private Key) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>p</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>RSA private key parameter (First Prime Factor) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>q</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>RSA private key parameter (Second Prime Factor) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>dp</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>RSA private key parameter (First Factor CRT Exponent) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>dq</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>RSA private key parameter (Second Factor CRT Exponent) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>qi</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>RSA private key parameter (First CRT Coefficient) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>oth</td>
+                  <td><a href="#policy.OtherPrimeInfo">OtherPrimeInfo</a></td>
+                  <td>repeated</td>
+                  <td><p>RSA private key parameter (Other Primes Info) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>crv</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Elliptic Curve Key parameter (Curve) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>x</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Elliptic Curve Key parameter (X Coordinate) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>y</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Elliptic Curve Key parameter (Y Coordinate) </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.JWKSet">JWKSet</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>keys</td>
+                  <td><a href="#policy.JWK">JWK</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.KasPublicKey">KasPublicKey</h3>
         <p>A KAS public key and some associated metadata for further identifcation</p>
 
@@ -1575,7 +1777,7 @@
                   <td><a href="#policy.KasPublicKeyAlgEnum">KasPublicKeyAlgEnum</a></td>
                   <td></td>
                   <td><p>A known algorithm type with any additional parameters encoded.
-To start, these may be `rsa:2048` for encrypting ZTDF files and 
+To start, these may be `rsa:2048` for encrypting ZTDF files and
 `ec:secp256r1` for nanoTDF, but more formats may be added as needed. </p></td>
                 </tr>
               
@@ -1714,6 +1916,44 @@ To start, these may be `rsa:2048` for encrypting ZTDF files and
 
         
       
+        <h3 id="policy.OtherPrimeInfo">OtherPrimeInfo</h3>
+        <p>RSA private key prime information</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>r</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>RSA private key parameter (Other Prime Factor) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>d</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>RSA private key parameter (Factor CRT Exponent) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>t</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>RSA private key parameter (Factor CRT Coefficient) </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.PublicKey">PublicKey</h3>
         <p></p>
 
@@ -1743,6 +1983,13 @@ To start, these may be `rsa:2048` for encrypting ZTDF files and
                   <td><a href="#policy.KasPublicKeySet">KasPublicKeySet</a></td>
                   <td></td>
                   <td><p>public key with additional information. Current preferred version </p></td>
+                </tr>
+              
+                <tr>
+                  <td>set</td>
+                  <td><a href="#policy.JWKSet">JWKSet</a></td>
+                  <td></td>
+                  <td><p>Multiple keys with key ids </p></td>
                 </tr>
               
             </tbody>

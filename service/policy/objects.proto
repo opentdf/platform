@@ -262,9 +262,9 @@ message KeyAccessServer {
   string id = 1;
   // Address of a KAS instance
   string uri = 2 [(buf.validate.field).cel = {
-      id: "uri_format",
-      message: "URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
-      expression: "this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')"
+    id: "uri_format"
+    message: "URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes."
+    expression: "this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')"
   }];
   PublicKey public_key = 3;
 
@@ -289,7 +289,7 @@ message KasPublicKey {
   string kid = 2;
 
   // A known algorithm type with any additional parameters encoded.
-  // To start, these may be `rsa:2048` for encrypting ZTDF files and 
+  // To start, these may be `rsa:2048` for encrypting ZTDF files and
   // `ec:secp256r1` for nanoTDF, but more formats may be added as needed.
   KasPublicKeyAlgEnum alg = 3;
 }
@@ -309,11 +309,99 @@ message PublicKey {
     }];
 
     // public key; PEM of RSA public key; prefer `cached`
-    string local = 2 [
-      deprecated = true
-    ];
+    string local = 2 [deprecated = true];
 
     // public key with additional information. Current preferred version
     KasPublicKeySet cached = 3;
+
+    // Multiple keys with key ids
+    JWKSet set = 4;
   }
+}
+
+// RSA private key prime information
+message OtherPrimeInfo {
+  // RSA private key parameter (Other Prime Factor)
+  string r = 1;
+
+  // RSA private key parameter (Factor CRT Exponent)
+  string d = 2;
+
+  // RSA private key parameter (Factor CRT Coefficient)
+  string t = 3;
+}
+
+// Protocol buffer approximation of a JSON web key: https://datatracker.ietf.org/doc/html/rfc7517
+message JWK {
+  // Key type, as defined in JWA https://datatracker.ietf.org/doc/html/rfc7518
+  string kty = 1;
+
+  // Either `sig` or `enc`, if present.
+  string use = 2;
+
+  // Valid operations, e.g. `sign`, `verify`, `encrypt`, etc.
+  string key_ops = 3;
+
+  string alg = 4;
+
+  // FIXME: Can this be an `any`?
+  string kid = 5;
+
+  // x.509 URL parameter
+  string x5u = 6;
+
+  // x.509 cert chain parameter
+  repeated string x5c = 7;
+
+  // x.509 sha-1 thumbprint
+  string x5t = 8;
+
+  // x.509 sha-256 thumbprint
+  string x5ts256 = 9 [json_name = "x5t#s256"];
+
+  // RSA parameters: https://datatracker.ietf.org/doc/html/rfc7518#section-6.3
+  // Exponent of an RSA Public Key
+  string e = 10;
+
+  // Modulus of an RSA Public Key
+  string n = 11;
+
+  // RSA private key parameter (private exponent)
+  // OR Elliptic Curve Private Key parameter (ECC Private Key)
+  string d = 12;
+
+  // RSA private key parameter (First Prime Factor)
+  string p = 13;
+
+  // RSA private key parameter (Second Prime Factor)
+  string q = 14;
+
+  // RSA private key parameter (First Factor CRT Exponent)
+  string dp = 15;
+
+  // RSA private key parameter (Second Factor CRT Exponent)
+  string dq = 16;
+
+  // RSA private key parameter (First CRT Coefficient)
+  string qi = 17;
+
+  // RSA private key parameter (Other Primes Info)
+  repeated OtherPrimeInfo oth = 18;
+
+  reserved 19, 20;
+
+  // Elliptic Curve Key parameter (Curve)
+  string crv = 21;
+
+  // Elliptic Curve Key parameter (X Coordinate)
+  string x = 22;
+
+  // Elliptic Curve Key parameter (Y Coordinate)
+  string y = 23;
+
+  reserved 24 to 30;
+}
+
+message JWKSet {
+  repeated JWK keys = 1;
 }

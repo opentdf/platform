@@ -65,7 +65,6 @@ jobs:
       steps:
         - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
           with:
-            github-token: ${{ secrets.GITHUB_TOKEN }}
             script: |
               core.debug(JSON.stringify(context));
               const query = `query ($owner: String!, $name: String!, $number: Int!) {

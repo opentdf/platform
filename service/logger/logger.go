@@ -1,6 +1,6 @@
 // The logger and it's sub-package audit are exposed publicly.
 // Subsequent follow up work will require publicly exposing a generalized audit
-// method that will accept struct of the following form:
+// method that will accept a struct of the following form:
 
 // type EventObject struct {
 // 	Object        auditEventObject `json:"object"`

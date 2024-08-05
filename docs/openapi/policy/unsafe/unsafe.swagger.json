@@ -505,6 +505,62 @@
       },
       "title": "A collection of Conditions evaluated by the boolean_operator provided"
     },
+    "policyJWK": {
+      "type": "object",
+      "properties": {
+        "kty": {
+          "type": "string",
+          "title": "Key type, as defined in JWA https://datatracker.ietf.org/doc/html/rfc7518"
+        },
+        "use": {
+          "type": "string",
+          "description": "Either `sig` or `enc`, if present."
+        },
+        "keyOps": {
+          "type": "string",
+          "description": "Valid operations, e.g. `sign`, `verify`, `encrypt`, etc."
+        },
+        "alg": {
+          "type": "string"
+        },
+        "kid": {
+          "type": "string",
+          "title": "FIXME: Can this be an `any`?"
+        },
+        "x5u": {
+          "type": "string",
+          "title": "x.509 URL parameter"
+        },
+        "x5c": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "x.509 cert chain parameter"
+        },
+        "x5t": {
+          "type": "string",
+          "title": "x.509 sha-1 thumbprint"
+        },
+        "x5ts256": {
+          "type": "string",
+          "title": "x.509 sha-256 thumbprint"
+        }
+      },
+      "title": "Protocol buffer approximation of a JSON web key: https://datatracker.ietf.org/doc/html/rfc7517"
+    },
+    "policyJWKSet": {
+      "type": "object",
+      "properties": {
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyJWK"
+          }
+        }
+      }
+    },
     "policyKeyAccessServer": {
       "type": "object",
       "properties": {
@@ -558,6 +614,10 @@
         "local": {
           "type": "string",
           "title": "public key - optional since can also be retrieved via url"
+        },
+        "set": {
+          "$ref": "#/definitions/policyJWKSet",
+          "title": "Multiple keys with key ids"
         }
       }
     },

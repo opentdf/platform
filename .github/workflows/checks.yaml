@@ -144,8 +144,8 @@ jobs:
                 body: body
               }
               await github.graphql(createCommentMutation, createCommentVariables)
+              core.setFailed('This pull request does not reference any issues. Please add a reference to an issue in the body of the pull request description.');
             }
-            core.setFailed('This pull request does not reference any issues. Please add a reference to an issue in the body of the pull request description.');
   go:
     runs-on: ubuntu-22.04
     permissions:

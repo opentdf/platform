@@ -104,7 +104,7 @@ jobs:
               const result = await github.graphql(query, variables)
               
               if (result.repository.pullRequest.closingIssuesReferences.edges.length === 0) {
-                const comments = data.repository.pullRequest.comments.edges;
+                const comments = result.repository.pullRequest.comments.edges;
                 for (const comment of comments) {
                   // Minimize the previous comment if one exists
                   if (comment.node.author.login === 'github-actions[bot]' && !comment.node.isMinimized && comment.body.match(/<!-- associated-issue-action -->/)) {

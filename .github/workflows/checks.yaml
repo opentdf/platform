@@ -110,7 +110,7 @@ jobs:
               for (const comment of comments) {
                 // Minimize the previous comment if one exists
                 console.debug(comment);
-                if (comment.node.author.login === 'github-actions[bot]' && !comment.node.isMinimized && comment.body.match(/<!-- associated-issue-action -->/)) {
+                if (comment.node.author.login === 'github-actions[bot]' && !comment.node.isMinimized && comment.body.match(/<!-- associated-issue-action -->/) != null) {
                   const minimizeCommentMutation = `mutation minimizeComment($id: ID!) {
                     minimizeComment(input: { subjectId: $id, classifier: OUTDATED }) {
                       minimizedComment {

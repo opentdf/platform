@@ -58,7 +58,9 @@ jobs:
 
   associated-issue:
     name: Issue Accociated with Pull Request
-    if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name)
+    if: |
+      contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name) &&
+      !contains(fromJSON('["dependabot[bot]", "opentdf-automation[bot]"]'), github.actor)
     runs-on: ubuntu-22.04
     permissions:
       pull-requests: write

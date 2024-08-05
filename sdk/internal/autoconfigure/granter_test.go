@@ -182,6 +182,7 @@ func TestAttributeFromURL(t *testing.T) {
 		{"letter", "http://e/attr/a", "http://e", "a"},
 		{"number", "http://e/attr/1", "http://e", "1"},
 		{"emoji", "http://e/attr/%F0%9F%98%81", "http://e", "😁"},
+		{"dash", "http://a-b.com/attr/b-c", "http://a-b.com", "b-c"},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
 			a, err := NewAttributeNameFQN(tc.u)
@@ -222,6 +223,7 @@ func TestAttributeValueFromURL(t *testing.T) {
 		{"emoji", "http://e/attr/a/value/%F0%9F%98%81", "http://e", "a", "😁"},
 		{"numberdef", "http://e/attr/1/value/one", "http://e", "1", "one"},
 		{"valuevalue", "http://e/attr/value/value/one", "http://e", "value", "one"},
+		{"dash", "http://a-b.com/attr/b-c/value/c-d", "http://a-b.com", "b-c", "c-d"},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
 			a, err := NewAttributeValueFQN(tc.u)

@@ -317,7 +317,7 @@ jobs:
 
   platform-xtest:
     needs: integration
-    uses: opentdf/tests/.github/workflows/xtest.yml@main
+    uses: opentdf/tests/.github/workflows/xtest.yml@add-replace-directive
     with:
       # use commit instead of ref so we can "go get" specific sdk version
       platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}

@@ -23,7 +23,7 @@ require (
 	github.com/opentdf/platform/lib/flattening v0.1.1
 	github.com/opentdf/platform/lib/ocrypto v0.1.5
 	github.com/opentdf/platform/protocol/go v0.2.10
-	github.com/opentdf/platform/sdk v0.3.2
+	github.com/opentdf/platform/sdk v0.3.4
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
@@ -53,7 +53,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
 	github.com/distribution/reference v0.5.0 // indirect
-	github.com/docker/docker v25.0.5+incompatible // indirect
+	github.com/docker/docker v26.1.4+incompatible // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -62,6 +62,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
+	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/tidwall/gjson v1.17.1 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect

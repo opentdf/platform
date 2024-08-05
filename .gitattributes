@@ -2,3 +2,5 @@ protocol/go/** linguist-generated=true
 sdkjava/src/main/java/** linguist-generated=true
 docs/grpc/** linguist-generated=true
 docs/openapi/** linguist-generated=true
+service/policy/db/*.sql.go linguist-generated=true
+service/policy/db/models.go linguist-generated=true

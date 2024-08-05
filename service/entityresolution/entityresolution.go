@@ -7,7 +7,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak"
-	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 )
 

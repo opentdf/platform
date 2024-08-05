@@ -15,6 +15,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -27,9 +28,9 @@ import (
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/auth"
-	"github.com/opentdf/platform/service/internal/logger"
-	"github.com/opentdf/platform/service/internal/logger/audit"
 	"github.com/opentdf/platform/service/internal/security"
+	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -161,6 +162,7 @@ func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest, logger logger.
 		logger.WarnContext(ctx, "invalid request body")
 		return nil, err400("invalid request body")
 	}
+	logger.DebugContext(ctx, "extracted request body", slog.Any("requestBody", requestBody))
 
 	logger.DebugContext(ctx, "extract public key", "requestBody.ClientPublicKey", requestBody.ClientPublicKey)
 	block, _ := pem.Decode([]byte(requestBody.ClientPublicKey))
@@ -188,15 +190,34 @@ func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest, logger logger.
 		return nil, err400("clientPublicKey unsupported type")
 	}
 }
-
+func extractPolicyBinding(policyBinding interface{}) (string, error) {
+	switch v := policyBinding.(type) {
+	case string:
+		return v, nil
+	case map[string]interface{}:
+		if hash, ok := v["hash"].(string); ok {
+			return hash, nil
+		}
+		return "", fmt.Errorf("invalid policy binding object, missing 'hash' field")
+	default:
+		return "", fmt.Errorf("unsupported policy binding type")
+	}
+}
 func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byte, logger logger.Logger) (*Policy, error) {
 	actualHMAC, err := generateHMACDigest(ctx, []byte(requestBody.Policy), k, logger)
 	if err != nil {
 		logger.WarnContext(ctx, "unable to generate policy hmac", "err", err)
 		return nil, err400("bad request")
 	}
-	expectedHMAC := make([]byte, base64.StdEncoding.DecodedLen(len(requestBody.KeyAccess.PolicyBinding)))
-	n, err := base64.StdEncoding.Decode(expectedHMAC, []byte(requestBody.KeyAccess.PolicyBinding))
+
+	policyBinding, err := extractPolicyBinding(requestBody.KeyAccess.PolicyBinding)
+	if err != nil {
+		logger.WarnContext(ctx, "invalid policy binding", "err", err)
+		return nil, err400("bad request")
+	}
+
+	expectedHMAC := make([]byte, base64.StdEncoding.DecodedLen(len(policyBinding)))
+	n, err := base64.StdEncoding.Decode(expectedHMAC, []byte(policyBinding))
 	if err == nil {
 		n, err = hex.Decode(expectedHMAC, expectedHMAC[:n])
 	}
@@ -206,7 +227,7 @@ func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byt
 		return nil, err400("bad request")
 	}
 	if !hmac.Equal(actualHMAC, expectedHMAC) {
-		logger.WarnContext(ctx, "policy hmac mismatch", "actual", actualHMAC, "expected", expectedHMAC, "policyBinding", requestBody.KeyAccess.PolicyBinding)
+		logger.WarnContext(ctx, "policy hmac mismatch", "actual", actualHMAC, "expected", expectedHMAC, "policyBinding", policyBinding)
 		return nil, err400("bad request")
 	}
 	sDecPolicy, err := base64.StdEncoding.DecodeString(requestBody.Policy)
@@ -329,12 +350,15 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 
 	// Audit the TDF3 Rewrap
 	kasPolicy := ConvertToAuditKasPolicy(*policy)
+
+	policyBinding, _ := extractPolicyBinding(body.KeyAccess.PolicyBinding)
+
 	auditEventParams := audit.RewrapAuditEventParams{
 		Policy:        kasPolicy,
 		IsSuccess:     access,
 		TDFFormat:     "tdf3",
 		Algorithm:     body.Algorithm,
-		PolicyBinding: body.KeyAccess.PolicyBinding,
+		PolicyBinding: policyBinding,
 	}
 
 	if err != nil {

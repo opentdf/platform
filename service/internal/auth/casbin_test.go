@@ -7,7 +7,7 @@ import (
 
 	"github.com/casbin/casbin/v2/model"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -432,6 +432,60 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies() {
 	allowed, err = enforcer.Enforce(tok, "new.service.DoSomething", "write")
 	s.Require().Error(err)
 	s.False(allowed)
+}
+
+func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MultipleExtensions() {
+	enforcer, err := NewCasbinEnforcer(CasbinConfig{}, logger.CreateTestLogger())
+	s.Require().NoError(err)
+
+	// Org-admin role
+	err = enforcer.ExtendDefaultPolicy([][]string{
+		{"p", "role:org-admin", "new.service.*", "*", "allow"},
+		{"p", "role:admin", "new.hello.*", "*", "allow"},
+	})
+	s.Require().NoError(err)
+
+	orgAdminTok := s.newTokWithDefaultClaim(true, false, false)
+	adminTok := s.newTokWithDefaultClaim(false, true, false)
+	standardTok := s.newTokWithDefaultClaim(false, false, true)
+	cases := []struct {
+		tok             jwt.Token
+		expectedAllowed bool
+		resource        string
+		action          string
+	}{
+		// original default policy still evaluates correctly
+		{orgAdminTok, true, "policy.attributes.CreateAttribute", "write"},
+		// both new policies are evaluated correctly
+		{orgAdminTok, true, "new.service.ActionableObject", "read"},
+		{orgAdminTok, true, "new.service.ActionableObject", "write"},
+		{orgAdminTok, false, "new.hello.World", "read"},
+		{orgAdminTok, false, "new.hello.World", "write"},
+		{orgAdminTok, false, "new.hello.SomethingElse", "read"},
+		{orgAdminTok, false, "new.hello.SomethingElse", "write"},
+		{adminTok, false, "new.service.ActionableObject", "read"},
+		{adminTok, false, "new.service.ActionableObject", "write"},
+		{adminTok, true, "new.hello.World", "read"},
+		{adminTok, true, "new.hello.World", "write"},
+		{adminTok, true, "new.hello.SomethingElse", "read"},
+		{adminTok, true, "new.hello.SomethingElse", "write"},
+		{standardTok, false, "new.service.ActionableObject", "read"},
+		{standardTok, false, "new.service.ActionableObject", "write"},
+		{standardTok, false, "new.hello.World", "read"},
+		{standardTok, false, "new.hello.World", "write"},
+		{standardTok, false, "new.hello.SomethingElse", "read"},
+		{standardTok, false, "new.hello.SomethingElse", "write"},
+	}
+
+	for _, c := range cases {
+		allowed, err := enforcer.Enforce(c.tok, c.resource, c.action)
+		if !c.expectedAllowed {
+			s.Require().Error(err)
+		} else {
+			s.Require().NoError(err)
+		}
+		s.Equal(c.expectedAllowed, allowed)
+	}
 }
 
 func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MalformedErrors() {

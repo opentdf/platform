@@ -4,8 +4,15 @@
 # Notably, tests both 'ztdf' and 'nano' formats.
 
 @test "examples: roundtrip Z-TDF" {
+  # TODO: add subject mapping here to remove reliance on `provision fixtures`
+  echo "[INFO] configure attribute with grant for local kas"
+  go run ./examples --creds opentdf:secret kas add --kas http://localhost:8080 --public-key "$(<${BATS_TEST_DIRNAME}/../kas-cert.pem)"
+  go run ./examples --creds opentdf:secret attributes unassign -a https://example.com/attr/attr1 -v value1
+  go run ./examples --creds opentdf:secret attributes unassign -a https://example.com/attr/attr1
+  go run ./examples --creds opentdf:secret attributes assign -a https://example.com/attr/attr1 -v value1 -k http://localhost:8080
+
   echo "[INFO] create a tdf3 format file"
-  run go run ./examples encrypt --autoconfigure=false "Hello Zero Trust"
+  run go run ./examples encrypt "Hello Zero Trust"
   echo "[INFO] echoing output; if successful, this is just the manifest"
   echo "$output"
 
@@ -22,7 +29,7 @@
 
 @test "examples: roundtrip nanoTDF" {
   echo "[INFO] creating nanotdf file"
-  go run ./examples encrypt --autoconfigure=false -o sensitive.txt.ntdf --nano --no-kid-in-nano "Hello NanoTDF"
+  go run ./examples encrypt -o sensitive.txt.ntdf --nano --no-kid-in-nano "Hello NanoTDF"
 
   echo "[INFO] decrypting nanotdf..."
   go run ./examples decrypt sensitive.txt.ntdf

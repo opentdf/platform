@@ -208,7 +208,7 @@ jobs:
           echo "log.level = DEBUG" >> softhsm2.conf
           echo "SOFTHSM2_CONF=$(pwd)/softhsm2.conf" >> "$GITHUB_ENV"
       - if: matrix.directory == 'service'
-        run: .github/scripts/init-temp-keys.sh --hsm
+        run: go run ./service keys init
       - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
       - if: matrix.directory == 'service'

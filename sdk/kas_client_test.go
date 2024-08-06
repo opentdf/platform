@@ -66,8 +66,11 @@ func TestCreatingRequest(t *testing.T) {
 		Protocol:   "protocol one",
 		WrappedKey: "wrapped",
 		PolicyBinding: PolicyBinding{
+			Alg:  "alg",
+			Hash: "hash",
 			Alg:  "HS256",
 			Hash: "somehash",
+
 		},
 		EncryptedMetadata: "encrypted",
 	}

@@ -76,15 +76,15 @@ func encrypt(cmd *cobra.Command, args []string) error {
 
 	if !nanoFormat {
 		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...)}
-		if !autoconfigure {
-			opts = append(opts, sdk.WithAutoconfigure(autoconfigure))
-			opts = append(opts, sdk.WithKasInformation(
-				sdk.KASInfo{
-					// examples assume insecure http
-					URL:       fmt.Sprintf("http://%s", platformEndpoint),
-					PublicKey: "",
-				}))
-		}
+		//if !autoconfigure {
+		opts = append(opts, sdk.WithAutoconfigure(false))
+		opts = append(opts, sdk.WithKasInformation(
+			sdk.KASInfo{
+				// examples assume insecure http
+				URL:       fmt.Sprintf("http://%s", platformEndpoint),
+				PublicKey: "",
+			}))
+		//}
 		tdf, err := client.CreateTDF(out, in, opts...)
 		if err != nil {
 			return err

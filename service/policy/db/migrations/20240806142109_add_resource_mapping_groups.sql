@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS resource_mapping_groups (
     UNIQUE(namespace_id, name)
 );
 
-ALTER TABLE resource_mappings ADD COLUMN group_id UUID REFERENCES resource_mapping_groups(id);
+ALTER TABLE resource_mappings ADD COLUMN group_id UUID REFERENCES resource_mapping_groups(id) ON DELETE SET NULL;
 
 -- +goose StatementEnd
 

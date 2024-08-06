@@ -35,6 +35,32 @@ func (q *Queries) CreateKeyAccessServer(ctx context.Context, arg CreateKeyAccess
 	return id, err
 }
 
+const createResourceMappingGroup = `-- name: CreateResourceMappingGroup :one
+
+INSERT INTO resource_mapping_groups (namespace_id, name)
+VALUES ($1, $2)
+RETURNING id
+`
+
+type CreateResourceMappingGroupParams struct {
+	NamespaceID string `json:"namespace_id"`
+	Name        string `json:"name"`
+}
+
+// --------------------------------------------------------------
+// RESOURCE MAPPING GROUPS
+// --------------------------------------------------------------
+//
+//	INSERT INTO resource_mapping_groups (namespace_id, name)
+//	VALUES ($1, $2)
+//	RETURNING id
+func (q *Queries) CreateResourceMappingGroup(ctx context.Context, arg CreateResourceMappingGroupParams) (string, error) {
+	row := q.db.QueryRow(ctx, createResourceMappingGroup, arg.NamespaceID, arg.Name)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
 const deleteKeyAccessServer = `-- name: DeleteKeyAccessServer :execrows
 DELETE FROM key_access_servers WHERE id = $1
 `
@@ -44,6 +70,21 @@ DELETE FROM key_access_servers WHERE id = $1
 //	DELETE FROM key_access_servers WHERE id = $1
 func (q *Queries) DeleteKeyAccessServer(ctx context.Context, id string) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteKeyAccessServer, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteResourceMappingGroup = `-- name: DeleteResourceMappingGroup :execrows
+DELETE FROM resource_mapping_groups WHERE id = $1
+`
+
+// DeleteResourceMappingGroup
+//
+//	DELETE FROM resource_mapping_groups WHERE id = $1
+func (q *Queries) DeleteResourceMappingGroup(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteResourceMappingGroup, id)
 	if err != nil {
 		return 0, err
 	}
@@ -94,7 +135,9 @@ type ListKeyAccessServersRow struct {
 	Metadata  []byte `json:"metadata"`
 }
 
+// --------------------------------------------------------------
 // KEY ACCESS SERVERS
+// --------------------------------------------------------------
 //
 //	SELECT id, uri, public_key,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
@@ -157,6 +200,35 @@ func (q *Queries) UpdateKeyAccessServer(ctx context.Context, arg UpdateKeyAccess
 		arg.PublicKey,
 		arg.Metadata,
 	)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const updateResourceMappingGroup = `-- name: UpdateResourceMappingGroup :one
+UPDATE resource_mapping_groups
+SET
+    -- assuming name is the only modifiable field
+    name = coalesce($2, name)
+WHERE id = $1
+RETURNING id
+`
+
+type UpdateResourceMappingGroupParams struct {
+	ID   string      `json:"id"`
+	Name pgtype.Text `json:"name"`
+}
+
+// UpdateResourceMappingGroup
+//
+//	UPDATE resource_mapping_groups
+//	SET
+//	    -- assuming name is the only modifiable field
+//	    name = coalesce($2, name)
+//	WHERE id = $1
+//	RETURNING id
+func (q *Queries) UpdateResourceMappingGroup(ctx context.Context, arg UpdateResourceMappingGroupParams) (string, error) {
+	row := q.db.QueryRow(ctx, updateResourceMappingGroup, arg.ID, arg.Name)
 	var id string
 	err := row.Scan(&id)
 	return id, err

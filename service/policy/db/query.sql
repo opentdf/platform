@@ -1,4 +1,6 @@
+---------------------------------------------------------------- 
 -- KEY ACCESS SERVERS
+----------------------------------------------------------------
 
 -- name: ListKeyAccessServers :many
 SELECT id, uri, public_key,
@@ -27,3 +29,22 @@ RETURNING id;
 -- name: DeleteKeyAccessServer :execrows
 DELETE FROM key_access_servers WHERE id = $1;
 
+---------------------------------------------------------------- 
+-- RESOURCE MAPPING GROUPS
+----------------------------------------------------------------
+
+-- name: CreateResourceMappingGroup :one
+INSERT INTO resource_mapping_groups (namespace_id, name)
+VALUES ($1, $2)
+RETURNING id;
+
+-- name: UpdateResourceMappingGroup :one
+UPDATE resource_mapping_groups
+SET
+    -- assuming name is the only modifiable field
+    name = coalesce(sqlc.narg('name'), name)
+WHERE id = $1
+RETURNING id;
+
+-- name: DeleteResourceMappingGroup :execrows
+DELETE FROM resource_mapping_groups WHERE id = $1;

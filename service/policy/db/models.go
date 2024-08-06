@@ -139,6 +139,13 @@ type ResourceMapping struct {
 	Metadata         []byte             `json:"metadata"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	GroupID          pgtype.UUID        `json:"group_id"`
+}
+
+type ResourceMappingGroup struct {
+	ID          string `json:"id"`
+	NamespaceID string `json:"namespace_id"`
+	Name        string `json:"name"`
 }
 
 type SubjectConditionSet struct {

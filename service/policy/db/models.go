@@ -120,18 +120,6 @@ type KeyAccessServer struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
-type Resource struct {
-	ID          int32       `json:"id"`
-	Name        string      `json:"name"`
-	Namespace   string      `json:"namespace"`
-	Version     int32       `json:"version"`
-	Fqn         pgtype.Text `json:"fqn"`
-	Labels      []byte      `json:"labels"`
-	Description pgtype.Text `json:"description"`
-	Policytype  string      `json:"policytype"`
-	Resource    []byte      `json:"resource"`
-}
-
 type ResourceMapping struct {
 	ID               string             `json:"id"`
 	AttributeValueID string             `json:"attribute_value_id"`

@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 
--- Add comments to every column and table
+-- Remove the 'resources' table that was never used in platform 2.0 and should be removed
 
 DROP TABLE IF EXISTS resources;
 

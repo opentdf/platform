@@ -438,7 +438,7 @@ func (c PolicyDBClient) GetAttributesByFqns(ctx context.Context, fqns []string) 
 		withAttributeValues: true,
 		withKeyAccessGrants: true,
 	}
-	fqnMap := map[string]bool{}
+	// fqnMap := map[string]bool{}
 	for i, fqn := range fqns {
 		// ensure the FQN corresponds to an attribute value and not a definition or namespace alone
 		if !strings.Contains(fqn, "/value/") {
@@ -446,7 +446,7 @@ func (c PolicyDBClient) GetAttributesByFqns(ctx context.Context, fqns []string) 
 		}
 		// normalize to lower case
 		fqns[i] = strings.ToLower(fqn)
-		fqnMap[fqns[i]] = true
+		// fqnMap[fqns[i]] = true
 	}
 	opts.withValuesByFqns = fqns
 	sql, args, err := getAttributesByFqnsSQL(fqns, opts)
@@ -477,40 +477,40 @@ func (c PolicyDBClient) GetAttributesByFqns(ctx context.Context, fqns []string) 
 	// 		attributez = append(attributez, a)
 	// 	}
 	// }
-	println("num of attrs: ", len(attributes))
-	attributesMap := make(map[string]*policy.Attribute)
-	for _, a := range attributes {
-		for v_idx, v := range a.GetValues() {
-			if v.GetFqn() != "" {
-				attributesMap[v.GetFqn()] = a
-			} else {
-				missingFqn := a.GetNamespace().GetFqn() + "/attr/" + a.GetName() + "/value/" + v.GetValue()
-				println("Missing FQN", missingFqn)
-				println("a.Id", a.Id)
-				println("a.Name", a.Name)
-				println("a.Fqn", a.Fqn)
-				println("a.Namespace", a.Namespace.String())
-				if fqnMap[missingFqn] {
-					v.Fqn = missingFqn
-					a.Values[v_idx] = v
-					a.Fqn = strings.Split(missingFqn, "/value/")[0]
-					println("FOUND MISSING FQN", missingFqn)
-					attributesMap[missingFqn] = a
-				}
+	// println("num of attrs: ", len(attributes))
+	// attributesMap := make(map[string]*policy.Attribute)
+	// for _, a := range attributes {
+	// 	for v_idx, v := range a.GetValues() {
+	// 		if v.GetFqn() != "" {
+	// 			attributesMap[v.GetFqn()] = a
+	// 		} else {
+	// 			missingFqn := a.GetNamespace().GetFqn() + "/attr/" + a.GetName() + "/value/" + v.GetValue()
+	// 			println("Missing FQN", missingFqn)
+	// 			println("a.Id", a.Id)
+	// 			println("a.Name", a.Name)
+	// 			println("a.Fqn", a.Fqn)
+	// 			println("a.Namespace", a.Namespace.String())
+	// 			if fqnMap[missingFqn] {
+	// 				v.Fqn = missingFqn
+	// 				a.Values[v_idx] = v
+	// 				a.Fqn = strings.Split(missingFqn, "/value/")[0]
+	// 				println("FOUND MISSING FQN", missingFqn)
+	// 				attributesMap[missingFqn] = a
+	// 			}
 
-			}
-		}
-	}
-	attributes = make([]*policy.Attribute, 0)
-	for _, fqn := range fqns {
-		if a, ok := attributesMap[fqn]; ok {
-			if strings.Contains(fqn, "unclassified") {
-				println("Adding attribute to fqn", fqn, a.String()) // a.String()
-			}
-			attributes = append(attributes, a)
-		}
-	}
-	println("len of attributes: ", len(attributes), "len of fqns: ", len(fqns))
+	// 		}
+	// 	}
+	// }
+	// attributes = make([]*policy.Attribute, 0)
+	// for _, fqn := range fqns {
+	// 	if a, ok := attributesMap[fqn]; ok {
+	// 		if strings.Contains(fqn, "unclassified") {
+	// 			println("Adding attribute to fqn", fqn, a.String()) // a.String()
+	// 		}
+	// 		attributes = append(attributes, a)
+	// 	}
+	// }
+	// println("len of attributes: ", len(attributes), "len of fqns: ", len(fqns))
 
 	return attributes, nil
 }

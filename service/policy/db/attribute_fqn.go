@@ -197,26 +197,82 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 		// c.logger.Error("could not get attributes by FQNs", slog.String("fqns", strings.Join(fqns, ",")), slog.String("error", err.Error()))
 		return nil, err
 	}
-	start = time.Now()
-	for idx, fqn := range fqns {
-		// if fqn == "https://demo.com/attr/classification/value/unclassified" {
-		// for _, val := range attrs[idx].GetValues() {
-		// 	println("value from attr val: ", val.Value, "fqn from attr val: ", val.Fqn)
-		// }
-		now := time.Now()
-		filtered, selected := prepareValues(attrs[idx].GetValues(), fqn)
-		println("single value prep: ", time.Since(now).Seconds())
-		if selected == nil {
-			c.logger.Error("could not find value for FQN", slog.String("fqn", fqn))
-			return nil, fmt.Errorf("could not find value for FQN [%s] %w", fqn, db.ErrNotFound)
-		}
-		attrs[idx].Values = filtered
-		list[fqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
-			Attribute: attrs[idx],
-			Value:     selected,
+	fqnMap := map[string]bool{}
+	for _, fqn := range fqns {
+		fqnMap[fqn] = true
+	}
+	for _, attr := range attrs {
+		for _, val := range attr.GetValues() {
+			fqn := val.GetFqn()
+			if fqn == "" {
+				// a.GetNamespace().GetFqn() + "/attr/" + a.GetName() + "/value/" + v.GetValue()
+				fqn = attr.GetNamespace().GetFqn() + "/attr/" + attr.GetName() + "/value/" + val.GetValue()
+			}
+			if fqn == "" {
+				println("FQN still missing")
+			}
+			if fqnMap[fqn] {
+				v := &policy.Value{
+					Id:              val.GetId(),
+					Value:           val.GetValue(),
+					Members:         val.GetMembers(),
+					Grants:          val.GetGrants(),
+					Fqn:             fqn,
+					Active:          val.GetActive(),
+					SubjectMappings: val.GetSubjectMappings(),
+					Metadata:        val.GetMetadata(),
+				}
+
+				a := &policy.Attribute{
+					Id:        attr.GetId(),
+					Namespace: attr.GetNamespace(),
+					Name:      attr.GetName(),
+					Rule:      attr.GetRule(),
+					Values:    attr.GetValues(),
+					Grants:    attr.GetGrants(),
+					Fqn:       attr.GetFqn(),
+					Active:    attr.GetActive(),
+					Metadata:  attr.GetMetadata(),
+				}
+				for ai, av := range a.GetValues() {
+					if av.GetFqn() == "" {
+						av.Fqn = a.GetNamespace().GetFqn() + "/attr/" + a.GetName() + "/value/" + av.GetValue()
+						av.SubjectMappings = nil
+						a.Values[ai] = av
+					}
+				}
+				// val.Fqn = fqn
+				// attr.Values[idx].Fqn = fqn
+				// attr.Values[idx].SubjectMappings = nil
+				list[fqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+					Attribute: a,
+					Value:     v,
+				}
+			} else {
+				println("FQN not in list")
+			}
 		}
 	}
-	println("preparing values: ", time.Since(start).Seconds())
+	// start = time.Now()
+	// for idx, fqn := range fqns {
+	// 	// if fqn == "https://demo.com/attr/classification/value/unclassified" {
+	// 	// for _, val := range attrs[idx].GetValues() {
+	// 	// 	println("value from attr val: ", val.Value, "fqn from attr val: ", val.Fqn)
+	// 	// }
+	// 	now := time.Now()
+	// 	filtered, selected := prepareValues(attrs[idx].GetValues(), fqn)
+	// 	println("single value prep: ", time.Since(now).Seconds())
+	// 	if selected == nil {
+	// 		c.logger.Error("could not find value for FQN", slog.String("fqn", fqn))
+	// 		return nil, fmt.Errorf("could not find value for FQN [%s] %w", fqn, db.ErrNotFound)
+	// 	}
+	// 	attrs[idx].Values = filtered
+	// 	list[fqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+	// 		Attribute: attrs[idx],
+	// 		Value:     selected,
+	// 	}
+	// }
+	// println("preparing values: ", time.Since(start).Seconds())
 	// }
 	// for idx, fqn := range fqns {
 	// 	// start := time.Now()

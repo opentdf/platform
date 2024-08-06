@@ -21,7 +21,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
-	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"

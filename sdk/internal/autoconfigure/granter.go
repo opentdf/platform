@@ -38,7 +38,7 @@ type AttributeNameFQN struct {
 }
 
 func NewAttributeNameFQN(u string) (AttributeNameFQN, error) {
-	re := regexp.MustCompile(`^(https?://[\w./]+)/attr/([^/\s]*)$`)
+	re := regexp.MustCompile(`^(https?://[\w./-]+)/attr/([^/\s]*)$`)
 	m := re.FindStringSubmatch(u)
 	if len(m) < 3 || len(m[0]) == 0 {
 		return AttributeNameFQN{}, fmt.Errorf("%w: attribute regex fail", ErrInvalid)
@@ -65,7 +65,7 @@ func (a AttributeNameFQN) Prefix() string {
 }
 
 func (a AttributeNameFQN) Authority() string {
-	re := regexp.MustCompile(`^(https?://[\w./]+)/attr/[^/\s]*$`)
+	re := regexp.MustCompile(`^(https?://[\w./-]+)/attr/[^/\s]*$`)
 	m := re.FindStringSubmatch(a.url)
 	if m == nil {
 		panic(ErrInvalid)
@@ -74,7 +74,7 @@ func (a AttributeNameFQN) Authority() string {
 }
 
 func (a AttributeNameFQN) Name() string {
-	re := regexp.MustCompile(`^https?://[\w./]+/attr/([^/\s]*)$`)
+	re := regexp.MustCompile(`^https?://[\w./-]+/attr/([^/\s]*)$`)
 	m := re.FindStringSubmatch(a.url)
 	if m == nil {
 		panic("invalid attribute")
@@ -92,7 +92,7 @@ type AttributeValueFQN struct {
 }
 
 func NewAttributeValueFQN(u string) (AttributeValueFQN, error) {
-	re := regexp.MustCompile(`^(https?://[\w./]+)/attr/(\S*)/value/(\S*)$`)
+	re := regexp.MustCompile(`^(https?://[\w./-]+)/attr/(\S*)/value/(\S*)$`)
 	m := re.FindStringSubmatch(u)
 	if len(m) < 4 || len(m[0]) == 0 {
 		return AttributeValueFQN{}, fmt.Errorf("%w: attribute regex fail for [%s]", ErrInvalid, u)
@@ -115,7 +115,7 @@ func (a AttributeValueFQN) String() string {
 }
 
 func (a AttributeValueFQN) Authority() string {
-	re := regexp.MustCompile(`^(https?://[\w./]+)/attr/\S*/value/\S*$`)
+	re := regexp.MustCompile(`^(https?://[\w./-]+)/attr/\S*/value/\S*$`)
 	m := re.FindStringSubmatch(a.url)
 	if m == nil {
 		panic(ErrInvalid)
@@ -124,7 +124,7 @@ func (a AttributeValueFQN) Authority() string {
 }
 
 func (a AttributeValueFQN) Prefix() AttributeNameFQN {
-	re := regexp.MustCompile(`^(https?://[\w./]+/attr/\S*)/value/\S*$`)
+	re := regexp.MustCompile(`^(https?://[\w./-]+/attr/\S*)/value/\S*$`)
 	m := re.FindStringSubmatch(a.url)
 	if m == nil {
 		panic(ErrInvalid)
@@ -137,7 +137,7 @@ func (a AttributeValueFQN) Prefix() AttributeNameFQN {
 }
 
 func (a AttributeValueFQN) Value() string {
-	re := regexp.MustCompile(`^https?://[\w./]+/attr/\S*/value/(\S*)$`)
+	re := regexp.MustCompile(`^https?://[\w./-]+/attr/\S*/value/(\S*)$`)
 	m := re.FindStringSubmatch(a.String())
 	if m == nil {
 		panic(ErrInvalid)
@@ -150,7 +150,7 @@ func (a AttributeValueFQN) Value() string {
 }
 
 func (a AttributeValueFQN) Name() string {
-	re := regexp.MustCompile(`^https?://[\w./]+/attr/(\S*)/value/\S*$`)
+	re := regexp.MustCompile(`^https?://[\w./-]+/attr/(\S*)/value/\S*$`)
 	m := re.FindStringSubmatch(a.url)
 	if m == nil {
 		panic("invalid attributeInstance")

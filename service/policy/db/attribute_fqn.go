@@ -5,12 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
+	"sort"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/pkg/db"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // These values are optional, but at least one must be set. The other values will be derived from
@@ -185,7 +188,17 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 		return nil, errors.Join(db.ErrMissingValue, errors.New("error: one or more FQNs and a WithValue selector must be provided"))
 	}
 	list := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, len(r.GetFqns()))
-	for _, fqn := range r.GetFqns() {
+	// attrMap := map[string]*policy.Attribute{}
+	fqns := r.GetFqns()
+	// for idx, fqn := range fqns {
+	// 	attrMap[fqn] = attrs[idx]
+	// }
+	// sort fqns by alphabetical order
+	sort.Strings(fqns)
+
+	jsonStr := "["
+
+	for i, fqn := range fqns {
 		// normalize to lower case
 		fqn = strings.ToLower(fqn)
 		// ensure the FQN corresponds to an attribute value and not a definition or namespace alone
@@ -197,6 +210,18 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 			c.logger.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))
 			return nil, err
 		}
+		suffix := ","
+		if i == len(fqns)-1 {
+			suffix = ""
+		}
+		// attr := attrMap[fqn]
+		attrStr, err := protojson.Marshal(attr)
+		if err != nil {
+			c.logger.Error("could not marshal attribute", slog.String("fqn", fqn), slog.String("error", err.Error()))
+			return nil, err
+		}
+
+		jsonStr += fmt.Sprintf("{\"fqn\": \"%s\", \"attr\": %s}%s", fqn, attrStr, suffix)
 		filtered, selected := prepareValues(attr.GetValues(), fqn)
 		if selected == nil {
 			c.logger.Error("could not find value for FQN", slog.String("fqn", fqn))
@@ -207,6 +232,13 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 			Attribute: attr,
 			Value:     selected,
 		}
+	}
+
+	jsonStr += "]"
+	println("jsonStr: ", jsonStr)
+	err := os.WriteFile("/Users/ksuchak/platform/entitlements.json", []byte(jsonStr), 0644)
+	if err != nil {
+		println("could not write to file: ", err)
 	}
 	return list, nil
 }

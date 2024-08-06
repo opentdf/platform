@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -237,13 +238,25 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 				for ai, av := range a.GetValues() {
 					if av.GetFqn() == "" {
 						av.Fqn = a.GetNamespace().GetFqn() + "/attr/" + a.GetName() + "/value/" + av.GetValue()
-						av.SubjectMappings = nil
-						a.Values[ai] = av
 					}
+					// av.SubjectMappings = nil
+					a.Values[ai] = av
+				}
+				if a.GetFqn() == "" {
+					a.Fqn = a.GetNamespace().GetFqn() + "/attr/" + a.GetName()
 				}
 				// val.Fqn = fqn
 				// attr.Values[idx].Fqn = fqn
 				// attr.Values[idx].SubjectMappings = nil
+				// if fqn == "https://demo.com/attr/needtoknow/value/aaa" {
+				if slices.Contains([]string{
+					"https://demo.com/attr/needtoknow/value/aaa",
+					// "https://demo.com/attr/relto/value/fvey",
+					// "https://demo.com/attr/relto/value/nato",
+				}, fqn) {
+					println(fqn)
+					println("v: ", v.String(), "a: ", a.String())
+				}
 				list[fqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 					Attribute: a,
 					Value:     v,

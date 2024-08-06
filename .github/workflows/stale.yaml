@@ -13,4 +13,5 @@ jobs:
       - uses: actions/stale@28ca1036281a5e5922ead5184a1bbf96e5fc984e
         with:
           days-before-stale: 120
+	 # negative number means they will never be closed automatically [https://github.com/actions/stale#days-before-close]
           days-before-close: -1

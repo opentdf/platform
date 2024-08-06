@@ -53,8 +53,6 @@ type CustomRego struct {
 	Query string `mapstructure:"query" default:"data.opentdf.entitlements.attributes"`
 }
 
-const tokenExpiryDelay = 100
-
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		Namespace:   "authorization",

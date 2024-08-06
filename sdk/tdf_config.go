@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -43,6 +44,101 @@ type KASInfo struct {
 	Default bool
 }
 
+type AssertionSigningKeyType uint
+
+const (
+	AssertionSigningKeyRS256PubKey AssertionSigningKeyType = iota + 1
+	AssertionSigningKeyRS256PriKey
+	AssertionSigningKeyHS256PayloadKey
+	AssertionSigningKeyHS256UserDefined
+)
+
+var (
+	assertionSigningKeyTypeName = map[uint8]string{
+		uint8(AssertionSigningKeyRS256PubKey):      "RS256PublicKey",
+		uint8(AssertionSigningKeyRS256PriKey):      "RS256PrivateKey",
+		uint8(AssertionSigningKeyHS256PayloadKey):  "HS256PayloadKey",
+		uint8(AssertionSigningKeyHS256UserDefined): "HS256UserDefined",
+	}
+	assertionSigningKeyTypeValue = map[string]uint8{
+		"RS256PublicKey":   uint8(AssertionSigningKeyRS256PubKey),
+		"RS256PrivateKey":  uint8(AssertionSigningKeyRS256PriKey),
+		"HS256PayloadKey":  uint8(AssertionSigningKeyHS256PayloadKey),
+		"HS256UserDefined": uint8(AssertionSigningKeyHS256UserDefined),
+	}
+)
+
+func (a AssertionSigningKeyType) String() string {
+	return assertionSigningKeyTypeName[uint8(a)]
+}
+
+func ParseAssertionSigningKeyType(a string) (AssertionSigningKeyType, error) {
+	a = strings.TrimSpace(a)
+	value, ok := assertionSigningKeyTypeValue[a]
+	if !ok {
+		return AssertionSigningKeyType(0), fmt.Errorf("%q is not a valid assertion signing key type", a)
+	}
+	return AssertionSigningKeyType(value), nil
+}
+
+type TDFAssertionOption func(*AssertionConfig) error
+
+type AssertionConfig struct {
+	keyType AssertionSigningKeyType
+	payload []byte // If the type
+}
+
+func newAssertionConfig(opt ...TDFAssertionOption) (*AssertionConfig, error) {
+	c := &AssertionConfig{
+		keyType: AssertionSigningKeyHS256PayloadKey,
+		payload: nil,
+	}
+
+	for _, o := range opt {
+		err := o(c)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return c, nil
+}
+
+// WithRS256PrivateKey returns an Option that add RS250 private key for signing assertion.
+func WithRS256PrivateKey(publicKey []byte) TDFAssertionOption {
+	return func(a *AssertionConfig) error {
+		a.keyType = AssertionSigningKeyRS256PriKey
+		a.payload = publicKey
+		return nil
+	}
+}
+
+// WithRS256PublicKey returns an Option that add RS250 public key for verifying assertion.
+func WithRS256PublicKey(privateKey []byte) TDFAssertionOption {
+	return func(a *AssertionConfig) error {
+		a.keyType = AssertionSigningKeyRS256PubKey
+		a.payload = privateKey
+		return nil
+	}
+}
+
+// WithHS256PayloadKey returns an Option that use HS256 payload key for signing and verifying assertion.
+func WithHS256PayloadKey() TDFAssertionOption {
+	return func(a *AssertionConfig) error {
+		a.keyType = AssertionSigningKeyRS256PubKey
+		a.payload = nil
+		return nil
+	}
+}
+
+// WithHS256UserDefinedKey returns an Option that add HS256 key for signing and verifying assertion.
+func WithHS256UserDefinedKey(key []byte) TDFAssertionOption {
+	return func(a *AssertionConfig) error {
+		a.keyType = AssertionSigningKeyHS256UserDefined
+		a.payload = key
+		return nil
+	}
+}
+
 type TDFOption func(*TDFConfig) error
 
 // TDFConfig Internal config struct for building TDF options.
@@ -58,6 +154,7 @@ type TDFConfig struct {
 	integrityAlgorithm        IntegrityAlgorithm
 	segmentIntegrityAlgorithm IntegrityAlgorithm
 	assertions                []Assertion
+	assertionConfig           AssertionConfig
 	attributes                []autoconfigure.AttributeValueFQN
 	attributeValues           []*policy.Value
 	kasInfoList               []KASInfo
@@ -204,6 +301,14 @@ func WithAutoconfigure(enable bool) TDFOption {
 	return func(c *TDFConfig) error {
 		c.autoconfigure = enable
 		c.splitPlan = nil
+		return nil
+	}
+}
+
+// WithAssertionConfig returns an Option that set the assertion configuration.
+func WithAssertionConfig(assertionConfig AssertionConfig) TDFOption {
+	return func(c *TDFConfig) error {
+		c.assertionConfig = assertionConfig
 		return nil
 	}
 }

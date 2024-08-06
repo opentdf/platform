@@ -3,11 +3,15 @@ package sdk
 import (
 	"bytes"
 	"context"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"strings"
 
@@ -23,16 +27,17 @@ import (
 )
 
 var (
-	errFileTooLarge            = errors.New("tdf: can't create tdf larger than 64gb")
-	errRootSigValidation       = errors.New("tdf: failed integrity check on root signature")
-	errSegSizeMismatch         = errors.New("tdf: mismatch encrypted segment size in manifest")
-	errTDFReaderFailed         = errors.New("tdf: fail to read bytes from TDFReader")
-	errWriteFailed             = errors.New("tdf: io.writer fail to write all bytes")
-	errSegSigValidation        = errors.New("tdf: failed integrity check on segment hash")
-	errTDFPayloadReadFail      = errors.New("tdf: fail to read payload from tdf")
-	errInvalidKasInfo          = errors.New("tdf: kas information is missing")
-	errKasPubKeyMissing        = errors.New("tdf: kas public key is missing")
-	errTDFPayloadInvalidOffset = errors.New("sdk.Reader.ReadAt: negative offset")
+	errFileTooLarge               = errors.New("tdf: can't create tdf larger than 64gb")
+	errRootSigValidation          = errors.New("tdf: failed integrity check on root signature")
+	errSegSizeMismatch            = errors.New("tdf: mismatch encrypted segment size in manifest")
+	errTDFReaderFailed            = errors.New("tdf: fail to read bytes from TDFReader")
+	errWriteFailed                = errors.New("tdf: io.writer fail to write all bytes")
+	errSegSigValidation           = errors.New("tdf: failed integrity check on segment hash")
+	errTDFPayloadReadFail         = errors.New("tdf: fail to read payload from tdf")
+	errInvalidKasInfo             = errors.New("tdf: kas information is missing")
+	errKasPubKeyMissing           = errors.New("tdf: kas public key is missing")
+	errTDFPayloadInvalidOffset    = errors.New("sdk.Reader.ReadAt: negative offset")
+	errInvalidAssertionBindingKey = errors.New("tdf:: invalid key type for assertion binding")
 )
 
 const (
@@ -50,6 +55,7 @@ const (
 	kSplitKeyType           = "split"
 	kGCMCipherAlgorithm     = "AES-256-GCM"
 	kGMACPayloadLength      = 16
+	kAssertionSignature     = "assertionSig"
 	kAssertionHash          = "assertionHash"
 	kClientPublicKey        = "clientPublicKey"
 	kSignedRequestToken     = "signedRequestToken"
@@ -77,6 +83,7 @@ type Reader struct {
 	payloadSize         int64
 	payloadKey          []byte
 	kasSessionKey       ocrypto.RsaKeyPair
+	assertionConfig     AssertionConfig
 }
 
 type TDFObject struct {
@@ -111,7 +118,7 @@ func (s SDK) defaultKases(c *TDFConfig) []string {
 	return defk
 }
 
-// CreateTDF reads plain text from the given reader and saves it to the writer, subject to the given options
+// CreateTDFContext reads plain text from the given reader and saves it to the writer, subject to the given options
 func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll // Better readability keeping it as is
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
@@ -287,14 +294,48 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 		// Create the token
 		token := jwt.New()
-		err = token.Set(kAssertionHash, string(encoded))
+
+		err = token.Set(kAssertionSignature, string(encoded))
 		if err != nil {
 			return nil, fmt.Errorf("jwt.Set: %w", err)
 		}
 
-		signedToken, err := jwt.Sign(token, jwt.WithKey(jwa.HS256, tdfObject.payloadKey[:]))
+		err = token.Set(kAssertionHash, string(hashOfAssertion))
 		if err != nil {
-			return nil, fmt.Errorf("jwt.Sign: %w", err)
+			return nil, fmt.Errorf("jwt.Set: %w", err)
+		}
+
+		var signedToken []byte
+		if tdfConfig.assertionConfig.keyType == AssertionSigningKeyHS256PayloadKey {
+			signedToken, err = jwt.Sign(token, jwt.WithKey(jwa.HS256, tdfObject.payloadKey[:]))
+			if err != nil {
+				return nil, fmt.Errorf("jwt.Sign: %w", err)
+			}
+		} else if tdfConfig.assertionConfig.keyType == AssertionSigningKeyHS256UserDefined {
+			signedToken, err = jwt.Sign(token, jwt.WithKey(jwa.HS256, tdfConfig.assertionConfig.payload))
+			if err != nil {
+				return nil, fmt.Errorf("jwt.Sign: %w", err)
+			}
+		} else if tdfConfig.assertionConfig.keyType == AssertionSigningKeyRS256PriKey {
+
+			// Decode the PEM data
+			block, _ := pem.Decode(tdfConfig.assertionConfig.payload)
+			if block == nil {
+				return nil, errors.New("failed to parse PEM formatted private key")
+			}
+
+			// Parse the key
+			privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse private key: %w", err)
+			}
+
+			signedToken, err = jwt.Sign(token, jwt.WithKey(jwa.RS256, privateKey))
+			if err != nil {
+				return nil, fmt.Errorf("jwt.Sign: %w", err)
+			}
+		} else {
+			return nil, errInvalidAssertionBindingKey
 		}
 
 		assertion.Binding.Method = JWS.String()
@@ -511,11 +552,16 @@ func createPolicyObject(attributes []autoconfigure.AttributeValueFQN) (PolicyObj
 }
 
 // LoadTDF loads the tdf and prepare for reading the payload from TDF
-func (s SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
+func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFAssertionOption) (*Reader, error) {
 	// create tdf reader
 	tdfReader, err := archive.NewTDFReader(reader)
 	if err != nil {
 		return nil, fmt.Errorf("archive.NewTDFReader failed: %w", err)
+	}
+
+	tdfAssertionConfig, err := newAssertionConfig(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("newAssertionConfig failed: %w", err)
 	}
 
 	manifest, err := tdfReader.Manifest()
@@ -530,11 +576,12 @@ func (s SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
 	}
 
 	return &Reader{
-		tokenSource:   s.tokenSource,
-		dialOptions:   s.dialOptions,
-		tdfReader:     tdfReader,
-		manifest:      *manifestObj,
-		kasSessionKey: *s.config.kasSessionKey,
+		tokenSource:     s.tokenSource,
+		dialOptions:     s.dialOptions,
+		tdfReader:       tdfReader,
+		manifest:        *manifestObj,
+		kasSessionKey:   *s.config.kasSessionKey,
+		assertionConfig: *tdfAssertionConfig,
 	}, nil
 }
 
@@ -879,14 +926,59 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 			continue
 		}
 
-		parsedBinding, err := jwt.ParseString(assertion.Binding.Signature, jwt.WithKey(jwa.HS256, payloadKey[:]))
-		if err != nil {
-			return fmt.Errorf("jwt.Parse: %w", err)
+		var claims map[string]interface{}
+		if r.assertionConfig.keyType == AssertionSigningKeyHS256PayloadKey {
+			parsedBinding, err := jwt.ParseString(assertion.Binding.Signature, jwt.WithKey(jwa.HS256, payloadKey[:]))
+			if err != nil {
+				return fmt.Errorf("jwt.Parse: %w", err)
+			}
+
+			claims = parsedBinding.PrivateClaims()
+		} else if r.assertionConfig.keyType == AssertionSigningKeyHS256UserDefined {
+			parsedBinding, err := jwt.ParseString(assertion.Binding.Signature, jwt.WithKey(jwa.HS256, r.assertionConfig.payload))
+			if err != nil {
+				return fmt.Errorf("jwt.Parse: %w", err)
+			}
+
+			claims = parsedBinding.PrivateClaims()
+		} else if r.assertionConfig.keyType == AssertionSigningKeyRS256PubKey {
+			// Decode PEM block
+			block, _ := pem.Decode(r.assertionConfig.payload)
+			if block == nil {
+				return errors.New("failed to parse PEM block containing the public key")
+			}
+
+			// Parse the public key
+			pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+			if err != nil {
+				return fmt.Errorf("failed to parse DER encoded public key: %w", err)
+			}
+
+			// Convert to RSA public key
+			rsaKey, ok := pub.(*rsa.PublicKey)
+			if !ok {
+				log.Fatal("not an RSA public key")
+			}
+
+			parsedBinding, err := jwt.ParseString(assertion.Binding.Signature, jwt.WithKey(jwa.RS256, rsaKey))
+			if err != nil {
+				return fmt.Errorf("jwt.Parse: %w", err)
+			}
+
+			claims = parsedBinding.PrivateClaims()
+
+		} else {
+			return errInvalidAssertionBindingKey
 		}
 
-		claims := parsedBinding.PrivateClaims()
-		assertionHashInBinding := claims[kAssertionHash]
-		assertionHash, ok := assertionHashInBinding.(string)
+		assertionSigInClaims := claims[kAssertionSignature]
+		assertionSig, ok := assertionSigInClaims.(string)
+		if !ok {
+			return errors.New("assertion signature missing in jwt")
+		}
+
+		assertionHashInClaims := claims[kAssertionHash]
+		assertionHash, ok := assertionHashInClaims.(string)
 		if !ok {
 			return errors.New("assertion hash missing in jwt")
 		}
@@ -909,8 +1001,12 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		completeHash := aggregateHash.String() + string(hashOfAssertion)
 		base64Hash := ocrypto.Base64Encode([]byte(completeHash))
 
-		if assertionHash != string(base64Hash) {
-			return fmt.Errorf("failed integrity check on assertion hash")
+		if string(hashOfAssertion) != assertionHash {
+			return fmt.Errorf("assertion hash missmatch")
+		}
+
+		if assertionSig != string(base64Hash) {
+			return fmt.Errorf("failed integrity check on assertion signature")
 		}
 	}
 

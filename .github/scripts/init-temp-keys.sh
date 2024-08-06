@@ -64,7 +64,7 @@ if [ "$opt_hsm" = true ]; then
   pkcs11-tool --module "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_MODULEPATH}" --login --show-info --list-objects --pin "${OPENTDF_SERVER_CRYPTOPROVIDER_HSM_PIN}"
 fi
 
-if ! go run github.com/opentdf/platform/service keys init -o="$opt_output" "--verbose=${opt_verbose}"; then
+if ! go run github.com/opentdf/platform/service keys init -o="$opt_output" $( [ "$opt_verbose" == true ] && printf %s '-v' ); then
     echo "[ERROR] keys init failed"
     exit 1
 fi

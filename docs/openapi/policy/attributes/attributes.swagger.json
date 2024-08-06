@@ -1038,9 +1038,61 @@
           "type": "string",
           "title": "x.509 sha-1 thumbprint"
         },
-        "x5ts256": {
+        "x5t#s256": {
           "type": "string",
           "title": "x.509 sha-256 thumbprint"
+        },
+        "e": {
+          "type": "string",
+          "title": "RSA parameters: https://datatracker.ietf.org/doc/html/rfc7518#section-6.3\nExponent of an RSA Public Key"
+        },
+        "n": {
+          "type": "string",
+          "title": "Modulus of an RSA Public Key"
+        },
+        "d": {
+          "type": "string",
+          "title": "RSA private key parameter (private exponent)\nOR Elliptic Curve Private Key parameter (ECC Private Key)"
+        },
+        "p": {
+          "type": "string",
+          "title": "RSA private key parameter (First Prime Factor)"
+        },
+        "q": {
+          "type": "string",
+          "title": "RSA private key parameter (Second Prime Factor)"
+        },
+        "dp": {
+          "type": "string",
+          "title": "RSA private key parameter (First Factor CRT Exponent)"
+        },
+        "dq": {
+          "type": "string",
+          "title": "RSA private key parameter (Second Factor CRT Exponent)"
+        },
+        "qi": {
+          "type": "string",
+          "title": "RSA private key parameter (First CRT Coefficient)"
+        },
+        "oth": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyOtherPrimeInfo"
+          },
+          "title": "RSA private key parameter (Other Primes Info)"
+        },
+        "crv": {
+          "type": "string",
+          "title": "Elliptic Curve Key parameter (Curve)"
+        },
+        "x": {
+          "type": "string",
+          "title": "Elliptic Curve Key parameter (X Coordinate)"
+        },
+        "y": {
+          "type": "string",
+          "title": "Elliptic Curve Key parameter (Y Coordinate)"
         }
       },
       "title": "Protocol buffer approximation of a JSON web key: https://datatracker.ietf.org/doc/html/rfc7517"
@@ -1099,6 +1151,24 @@
           "$ref": "#/definitions/commonMetadata"
         }
       }
+    },
+    "policyOtherPrimeInfo": {
+      "type": "object",
+      "properties": {
+        "r": {
+          "type": "string",
+          "title": "RSA private key parameter (Other Prime Factor)"
+        },
+        "d": {
+          "type": "string",
+          "title": "RSA private key parameter (Factor CRT Exponent)"
+        },
+        "t": {
+          "type": "string",
+          "title": "RSA private key parameter (Factor CRT Coefficient)"
+        }
+      },
+      "title": "RSA private key prime information"
     },
     "policyPublicKey": {
       "type": "object",

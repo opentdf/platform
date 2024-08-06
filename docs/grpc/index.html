@@ -246,6 +246,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.OtherPrimeInfo"><span class="badge">M</span>OtherPrimeInfo</a>
+                </li>
+              
+                <li>
                   <a href="#policy.PublicKey"><span class="badge">M</span>PublicKey</a>
                 </li>
               
@@ -1515,6 +1519,92 @@
                   <td><p>x.509 sha-256 thumbprint </p></td>
                 </tr>
               
+                <tr>
+                  <td>e</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>RSA parameters: https://datatracker.ietf.org/doc/html/rfc7518#section-6.3
+Exponent of an RSA Public Key </p></td>
+                </tr>
+              
+                <tr>
+                  <td>n</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Modulus of an RSA Public Key </p></td>
+                </tr>
+              
+                <tr>
+                  <td>d</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>RSA private key parameter (private exponent)
+OR Elliptic Curve Private Key parameter (ECC Private Key) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>p</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>RSA private key parameter (First Prime Factor) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>q</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>RSA private key parameter (Second Prime Factor) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>dp</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>RSA private key parameter (First Factor CRT Exponent) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>dq</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>RSA private key parameter (Second Factor CRT Exponent) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>qi</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>RSA private key parameter (First CRT Coefficient) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>oth</td>
+                  <td><a href="#policy.OtherPrimeInfo">OtherPrimeInfo</a></td>
+                  <td>repeated</td>
+                  <td><p>RSA private key parameter (Other Primes Info) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>crv</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Elliptic Curve Key parameter (Curve) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>x</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Elliptic Curve Key parameter (X Coordinate) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>y</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Elliptic Curve Key parameter (Y Coordinate) </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -1634,6 +1724,44 @@
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.OtherPrimeInfo">OtherPrimeInfo</h3>
+        <p>RSA private key prime information</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>r</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>RSA private key parameter (Other Prime Factor) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>d</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>RSA private key parameter (Factor CRT Exponent) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>t</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>RSA private key parameter (Factor CRT Coefficient) </p></td>
                 </tr>
               
             </tbody>

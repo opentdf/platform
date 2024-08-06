@@ -21,6 +21,8 @@ const (
 )
 
 type StandardConfig struct {
+	// A jwk set of private keys
+	Set  string        `mapstructure:"set"`
 	Keys []KeyPairInfo `mapstructure:"keys"`
 	// Deprecated
 	RSAKeys map[string]StandardKeyInfo `yaml:"rsa,omitempty" mapstructure:"rsa"`
@@ -73,6 +75,8 @@ type StandardCrypto struct {
 // NewStandardCrypto Create a new instance of standard crypto
 func NewStandardCrypto(cfg StandardConfig) (*StandardCrypto, error) {
 	switch {
+	case cfg.Set != "":
+		return loadKeySet(cfg.Set)
 	case len(cfg.Keys) > 0 && len(cfg.RSAKeys)+len(cfg.ECKeys) > 0:
 		return nil, errors.New("please specify `keys` only; remove deprecated `rsa` and `ec` fields from cfg")
 	case len(cfg.Keys) > 0:
@@ -80,6 +84,18 @@ func NewStandardCrypto(cfg StandardConfig) (*StandardCrypto, error) {
 	default:
 		return loadDeprecatedKeys(cfg.RSAKeys, cfg.ECKeys)
 	}
+}
+
+func loadKeySet(f string) (*StandardCrypto, error) {
+	jwksBytes, err := os.ReadFile(f)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read jwk set [%s]: %w", f, err)
+	}
+	jwksPriv := jwk.NewSet()
+	if err := json.Unmarshal(jwksBytes, jwksPriv); err != nil {
+		return nil, fmt.Errorf("failed to parse jwk set [%s]: %w", f, err)
+	}
+
 }
 
 func loadKeys(ks []KeyPairInfo) (*StandardCrypto, error) {
@@ -194,7 +210,7 @@ func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]St
 		}
 		keys[AlgorithmECP256R1][id] = StandardECCrypto{
 			KeyPairInfo: KeyPairInfo{
-				Algorithm:   AlgorithmRSA2048,
+				Algorithm:   AlgorithmECP256R1,
 				KID:         id,
 				Private:     kasInfo.PrivateKeyPath,
 				Certificate: kasInfo.PublicKeyPath,

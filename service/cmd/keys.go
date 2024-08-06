@@ -58,7 +58,7 @@ func CertTemplate() (*x509.Certificate, error) {
 	return &tmpl, nil
 }
 
-func storeKeyPair(pub, priv any, privateFile, publicFile string) error {
+func storeKeyPair(priv, pub any, privateFile, publicFile string) error {
 	privateBytes, err := x509.MarshalPKCS8PrivateKey(priv)
 	if err != nil {
 		return fmt.Errorf("unable to marshal private key [%w]", err)
@@ -108,7 +108,7 @@ func keysInit() error {
 	if err != nil {
 		return fmt.Errorf("unable to generate rsa key [%w]", err)
 	}
-	if err := storeKeyPair(keyRSA.Public(), keyRSA, output+"/kas-private.pem", output+"/kas-cert.pem"); err != nil {
+	if err := storeKeyPair(keyRSA, keyRSA.Public(), output+"/kas-private.pem", output+"/kas-cert.pem"); err != nil {
 		return err
 	}
 
@@ -118,7 +118,7 @@ func keysInit() error {
 	if err != nil {
 		return fmt.Errorf("failed to generate ECDSA private key [%w]", err)
 	}
-	if err := storeKeyPair(keyEC.Public(), keyEC, output+"/kas-ec-private.pem", output+"/kas-ec-cert.pem"); err != nil {
+	if err := storeKeyPair(keyEC, keyEC.Public(), output+"/kas-ec-private.pem", output+"/kas-ec-cert.pem"); err != nil {
 		return err
 	}
 

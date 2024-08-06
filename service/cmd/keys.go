@@ -30,7 +30,7 @@ func init() {
 	initCmd := &cobra.Command{
 		Use:  "init",
 		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return keysInit()
 		},
 	}
@@ -42,8 +42,7 @@ func init() {
 }
 
 func CertTemplate() (*x509.Certificate, error) {
-	// generate a random serial number (a real cert authority would have some logic behind this)
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128) //nolint:mnd // random 16 byte serial number
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate serial number [%w]", err)
@@ -53,13 +52,13 @@ func CertTemplate() (*x509.Certificate, error) {
 		SerialNumber:          serialNumber,
 		Subject:               pkix.Name{CommonName: "kas"},
 		NotBefore:             time.Now(),
-		NotAfter:              time.Now().Add(time.Hour * 24 * 30 * 365), // a year or so
+		NotAfter:              time.Now().Add(time.Hour * 24 * 30 * 365), //nolint:mnd // About a year to expire
 		BasicConstraintsValid: true,
 	}
 	return &tmpl, nil
 }
 
-func storeKeyPair(pub, priv any, private_file, public_file string) error {
+func storeKeyPair(pub, priv any, privateFile, publicFile string) error {
 	privateBytes, err := x509.MarshalPKCS8PrivateKey(priv)
 	if err != nil {
 		return fmt.Errorf("unable to marshal private key [%w]", err)
@@ -70,7 +69,7 @@ func storeKeyPair(pub, priv any, private_file, public_file string) error {
 			Bytes: privateBytes,
 		},
 	)
-	if err := os.WriteFile(private_file, keyPEM, 0600); err != nil {
+	if err := os.WriteFile(privateFile, keyPEM, 0o400); err != nil {
 		return fmt.Errorf("unable to store key [%w]", err)
 	}
 
@@ -95,7 +94,7 @@ func storeKeyPair(pub, priv any, private_file, public_file string) error {
 		},
 	)
 
-	if err := os.WriteFile(public_file, pubPEM, 0666); err != nil {
+	if err := os.WriteFile(publicFile, pubPEM, 0o400); err != nil {
 		return fmt.Errorf("unable to store rsa public key [%w]", err)
 	}
 	return nil
@@ -105,7 +104,7 @@ func keysInit() error {
 	// openssl req -x509 -nodes -newkey RSA:2048
 	//  -subj "/CN=kas" -keyout "$opt_output/kas-private.pem" -out "$opt_output/kas-cert.pem" -days 365
 	// Generate RSA key.
-	keyRSA, err := rsa.GenerateKey(rand.Reader, 2048)
+	keyRSA, err := rsa.GenerateKey(rand.Reader, 2048) //nolint:mnd // 256 byte key
 	if err != nil {
 		return fmt.Errorf("unable to generate rsa key [%w]", err)
 	}
@@ -117,7 +116,7 @@ func keysInit() error {
 	// openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout "$opt_output/kas-ec-private.pem" -out "$opt_output/kas-ec-cert.pem" -days 365
 	keyEC, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		return fmt.Errorf("failed to generate new ECDSA private key: %s\n", err)
+		return fmt.Errorf("failed to generate ECDSA private key [%w]", err)
 	}
 	if err := storeKeyPair(keyEC.Public(), keyEC, output+"/kas-ec-private.pem", output+"/kas-ec-cert.pem"); err != nil {
 		return err

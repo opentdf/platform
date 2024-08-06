@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/pkg/db"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // These values are optional, but at least one must be set. The other values will be derived from
@@ -198,21 +201,97 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 		return nil, err
 	}
 	start = time.Now()
+	attrMap := map[string]*policy.Attribute{}
+	for idx, fqn := range fqns {
+		attrMap[fqn] = attrs[idx]
+	}
+	// sort fqns by alphabetical order
+	sort.Strings(fqns)
+
+	jsonStr := "["
+	for i, fqn := range fqns {
+		suffix := ","
+		if i == len(fqns)-1 {
+			suffix = ""
+		}
+		// attr := attrMap[fqn]
+		attr, err := protojson.Marshal(attrMap[fqn])
+		if err != nil {
+			c.logger.Error("could not marshal attribute", slog.String("fqn", fqn), slog.String("error", err.Error()))
+			return nil, err
+		}
+
+		jsonStr += fmt.Sprintf("{\"fqn\": \"%s\", \"attr\": %s}%s", fqn, attr, suffix)
+	}
+	jsonStr += "]"
+	println("jsonStr: ", jsonStr)
+	err = os.WriteFile("/Users/ksuchak/platform/test_entitlements.json", []byte(jsonStr), 0644)
+	if err != nil {
+		println("could not write to file: ", err)
+	}
+	// f, err := os.Create("test_entitlements.json")
+	// if err != nil {
+	// 	println("could not create file: ", err)
+	// }
+	// _, err = f.WriteString(jsonStr)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// f.Close()
+
+	// for _, fqn := range fqns {
+	// 	println(fqn)
+	// }
+	println(len(attrs))
 	for idx, fqn := range fqns {
 		// if fqn == "https://demo.com/attr/classification/value/unclassified" {
 		// for _, val := range attrs[idx].GetValues() {
 		// 	println("value from attr val: ", val.Value, "fqn from attr val: ", val.Fqn)
 		// }
+		attr := attrs[idx]
+		// attrJson, err := protojson.Marshal(attrs[idx])
+		// if err != nil {
+		// 	c.logger.Error("could not marshal attribute", slog.String("fqn", fqn), slog.String("error", err.Error()))
+		// 	return nil, err
+		// }
+		// attr := &policy.Attribute{}
+		// if err := protojson.Unmarshal(attrJson, attr); err != nil {
+		// 	c.logger.Error("could not unmarshal attribute", slog.String("fqn", fqn), slog.String("error", err.Error()))
+		// 	return nil, err
+		// }
+		// attr := &policy.Attribute{
+		// 	Id:        attrs[idx].GetId(),
+		// 	Namespace: attrs[idx].GetNamespace(),
+		// 	Name:      attrs[idx].GetName(),
+		// 	Rule:      attrs[idx].GetRule(),
+		// 	Values:    attrs[idx].GetValues(),
+		// 	Grants:    attrs[idx].GetGrants(),
+		// 	Fqn:       attrs[idx].GetFqn(),
+		// 	Active:    attrs[idx].GetActive(),
+		// 	Metadata:  attrs[idx].GetMetadata(),
+		// }
+		// for i, val := range attr.GetValues() {
+		// 	attr.Values[i] = &policy.Value{
+		// 		Id:              val.GetId(),
+		// 		Value:           val.GetValue(),
+		// 		Members:         val.GetMembers(),
+		// 		Grants:          val.GetGrants(),
+		// 		Fqn:             val.GetFqn(),
+		// 		Active:          val.GetActive(),
+		// 		SubjectMappings: val.GetSubjectMappings(),
+		// 		Metadata:        val.GetMetadata(),
+		// 	}
+		// }
 		now := time.Now()
-		filtered, selected := prepareValues(attrs[idx].GetValues(), fqn)
+		filtered, selected := prepareValues(attr.GetValues(), fqn)
 		println("single value prep: ", time.Since(now).Seconds())
 		if selected == nil {
 			c.logger.Error("could not find value for FQN", slog.String("fqn", fqn))
 			return nil, fmt.Errorf("could not find value for FQN [%s] %w", fqn, db.ErrNotFound)
 		}
-		attrs[idx].Values = filtered
+		attr.Values = filtered
 		list[fqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
-			Attribute: attrs[idx],
+			Attribute: attr,
 			Value:     selected,
 		}
 	}

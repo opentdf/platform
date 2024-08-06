@@ -8,7 +8,14 @@ CREATE TABLE IF NOT EXISTS resource_mapping_groups (
     UNIQUE(namespace_id, name)
 );
 
+COMMENT ON TABLE resource_mapping_groups IS 'Table to store the groups of resource mappings by unique namespace and group name combinations';
+COMMENT ON COLUMN resource_mapping_groups.id IS 'Primary key for the table';
+COMMENT ON COLUMN resource_mapping_groups.namespace_id IS 'Foreign key to the namespace of the attribute';
+COMMENT ON COLUMN resource_mapping_groups.name IS 'Name for the group of resource mappings';
+
 ALTER TABLE resource_mappings ADD COLUMN group_id UUID REFERENCES resource_mapping_groups(id) ON DELETE SET NULL;
+
+COMMENT ON COLUMN resource_mappings.group_id IS 'Foreign key to the parent group of the resource mapping';
 
 -- +goose StatementEnd
 

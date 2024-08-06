@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.4.17](https://github.com/opentdf/platform/compare/service/v0.4.16...service/v0.4.17) (2024-08-06)
+
+
+### Features
+
+* **authz:** Move ERS call out of rego and include all entities in requests ([#1228](https://github.com/opentdf/platform/issues/1228)) ([cdcca79](https://github.com/opentdf/platform/commit/cdcca79484da1be58687d7ce6bae930a3eae7b21))
+* **core:** MIC-934 Moves logger out of internal folder ([#1219](https://github.com/opentdf/platform/issues/1219)) ([0576813](https://github.com/opentdf/platform/commit/05768134db300a06ea2d687f8cec583ef7598fb6))
+* **policy:** add support for sqlc within policy db queries ([#1185](https://github.com/opentdf/platform/issues/1185)) ([5aef245](https://github.com/opentdf/platform/commit/5aef245720cb417a51622ffd1276f57163319c6d)), closes [#561](https://github.com/opentdf/platform/issues/561)
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1202](https://github.com/opentdf/platform/issues/1202)) ([98d6d8b](https://github.com/opentdf/platform/commit/98d6d8b84bc72a2d92e7b93dca9f6fa395aaac2e))
+* **core:** bump github.com/docker/docker from 25.0.5+incompatible to 26.1.4+incompatible in /service ([#1223](https://github.com/opentdf/platform/issues/1223)) ([937c967](https://github.com/opentdf/platform/commit/937c9675daa7da848223577adf939f721e5a773e))
+* **core:** drop unused/deprecated resources table & add comments to policy DB ([#1258](https://github.com/opentdf/platform/issues/1258)) ([bb084aa](https://github.com/opentdf/platform/commit/bb084aad4ac5da071afbe5467b571c2b28227773))
+* **core:** improve casbin ExtendDefaultPolicy and add test ([#1234](https://github.com/opentdf/platform/issues/1234)) ([cc15f25](https://github.com/opentdf/platform/commit/cc15f25af2c3e839d7ad45283b7bd298a80e8728))
+* **core:** policy subject mapping integration test addition for 'contains' operator ([#1244](https://github.com/opentdf/platform/issues/1244)) ([f8becb8](https://github.com/opentdf/platform/commit/f8becb8911a0d4e9726245ebc51d902cf11e0dd0))
+
 ## [0.4.16](https://github.com/opentdf/platform/compare/service/v0.4.15...service/v0.4.16) (2024-07-25)
 
 

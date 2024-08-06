@@ -2,16 +2,23 @@ package security
 
 import (
 	"crypto"
+	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/big"
 	"os"
+	"time"
 
+	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/lib/ocrypto"
 )
@@ -22,7 +29,9 @@ const (
 
 type StandardConfig struct {
 	// A jwk set of private keys
-	Set  string        `mapstructure:"set"`
+	Set string `mapstructure:"set"`
+
+	// Deprecated
 	Keys []KeyPairInfo `mapstructure:"keys"`
 	// Deprecated
 	RSAKeys map[string]StandardKeyInfo `yaml:"rsa,omitempty" mapstructure:"rsa"`
@@ -86,16 +95,123 @@ func NewStandardCrypto(cfg StandardConfig) (*StandardCrypto, error) {
 	}
 }
 
-func loadKeySet(f string) (*StandardCrypto, error) {
+func unmarshalKeySet(f string) (jwk.Set, error) {
 	jwksBytes, err := os.ReadFile(f)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read jwk set [%s]: %w", f, err)
 	}
-	jwksPriv := jwk.NewSet()
-	if err := json.Unmarshal(jwksBytes, jwksPriv); err != nil {
+	jwks := jwk.NewSet()
+	if err := json.Unmarshal(jwksBytes, jwks); err != nil {
 		return nil, fmt.Errorf("failed to parse jwk set [%s]: %w", f, err)
 	}
+	return jwks, nil
+}
 
+func certTemplate() (*x509.Certificate, error) {
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128) //nolint:mnd // random 16 byte serial number
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate serial number [%w]", err)
+	}
+
+	tmpl := x509.Certificate{
+		SerialNumber:          serialNumber,
+		Subject:               pkix.Name{CommonName: "kas"},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(time.Hour * 24 * 30 * 365), //nolint:mnd // About a year to expire
+		BasicConstraintsValid: true,
+	}
+	return &tmpl, nil
+}
+
+func loadKeySet(privPath string) (*StandardCrypto, error) {
+	keys := make(map[string]keylist)
+	privSet, err := unmarshalKeySet(privPath)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < privSet.Len(); i++ {
+		k, ok := privSet.Key(i)
+		if !ok {
+			return nil, fmt.Errorf("invalid jwk set [%s]", privPath)
+		}
+		var alg string
+		var keyInfo any
+		switch k.KeyType() {
+		case "EC":
+			var ecK ecdsa.PrivateKey
+			err := k.Raw(&ecK)
+			if err != nil {
+				return nil, fmt.Errorf("invalid ec jwk item kid=[%s] found in [%s]: [%w]", k.KeyID(), privPath, err)
+			}
+			privateBytes, err := x509.MarshalPKCS8PrivateKey(&ecK)
+			if err != nil {
+				return nil, fmt.Errorf("unable to marshal ec private key kid=[%s] found in [%s]: [%w]", k.KeyID(), privPath, err)
+			}
+			privatePEM := pem.EncodeToMemory(
+				&pem.Block{
+					Type:  "PRIVATE KEY",
+					Bytes: privateBytes,
+				},
+			)
+
+			certTemplate, err := certTemplate()
+			if err != nil {
+				return nil, fmt.Errorf("unable to create cert template [%w]", err)
+			}
+			pubBytes, err := x509.CreateCertificate(rand.Reader, certTemplate, certTemplate, &ecK.PublicKey, &ecK)
+			if err != nil {
+				return nil, fmt.Errorf("unable to create cert [%w]", err)
+			}
+			_, err = x509.ParseCertificate(pubBytes)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse cert [%w]", err)
+			}
+			// Encode public key to PKCS#1 ASN.1 PEM.
+			pubPEM := pem.EncodeToMemory(
+				&pem.Block{
+					Type:  "CERTIFICATE",
+					Bytes: pubBytes,
+				},
+			)
+
+			keyInfo = StandardECCrypto{
+				KeyPairInfo: KeyPairInfo{
+					KID: k.KeyID(),
+				},
+				ecPrivateKeyPem:  string(privatePEM),
+				ecCertificatePEM: string(pubPEM),
+			}
+			if v, ok := k.Get("crv"); !ok || v.(jwa.EllipticCurveAlgorithm) != "P-256" {
+				return nil, fmt.Errorf("unsupported curve for kid=[%s], crv=[%s]", k.KeyID(), v)
+			}
+			alg = "ec:secp256r1"
+		case "RSA":
+			var rsaK rsa.PrivateKey
+			err := k.Raw(&rsaK)
+			if err != nil {
+				return nil, fmt.Errorf("invalid rsa jwk item kid=[%s] found in [%s]: [%w]", k.KeyID(), privPath, err)
+			}
+			keyInfo = StandardRSACrypto{
+				KeyPairInfo: KeyPairInfo{
+					KID: k.KeyID(),
+				},
+				asymDecryption: ocrypto.AsymDecryption{PrivateKey: &rsaK},
+				asymEncryption: ocrypto.AsymEncryption{PublicKey: &rsaK.PublicKey},
+			}
+			alg = fmt.Sprintf("rsa:%d", rsaK.N.BitLen())
+		default:
+			return nil, fmt.Errorf("invalid key: type [%s], kid [%s]", k.KeyType(), k.KeyID())
+		}
+		if _, ok := keys[alg]; !ok {
+			keys[alg] = make(map[string]any)
+		}
+		slog.Debug("cryptoprovider: registered", "alg", alg, "kid", k.KeyID())
+		keys[alg][k.KeyID()] = keyInfo
+	}
+	return &StandardCrypto{
+		keys: keys,
+	}, nil
 }
 
 func loadKeys(ks []KeyPairInfo) (*StandardCrypto, error) {

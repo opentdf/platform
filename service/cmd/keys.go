@@ -167,10 +167,10 @@ func keysInit() error {
 	}
 
 	// Store jwk sets kas-public-jwk-set.json and kas-private-jwk-set.json
-	if err := storeJSON(output+"/kas-public-jwk-set.json", jwksPub, 0666); err != nil {
+	if err := storeJSON(output+"/kas-public-jwk-set.json", jwksPub, 0o600); err != nil {
 		return err
 	}
-	if err := storeJSON(output+"/kas-private-jwk-set.json", jwksPriv, 0660); err != nil {
+	if err := storeJSON(output+"/kas-private-jwk-set.json", jwksPriv, 0o600); err != nil {
 		return err
 	}
 

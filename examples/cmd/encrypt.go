@@ -17,7 +17,7 @@ var (
 	nanoFormat     bool
 	autoconfigure  bool
 	noKIDInKAO     bool
-	noKIDInNano    bool
+	KIDInNano      bool
 	outputName     string
 	dataAttributes []string
 )
@@ -33,7 +33,7 @@ func init() {
 	encryptCmd.Flags().BoolVar(&nanoFormat, "nano", false, "Output in nanoTDF format")
 	encryptCmd.Flags().BoolVar(&autoconfigure, "autoconfigure", true, "Use attribute grants to select kases")
 	encryptCmd.Flags().BoolVar(&noKIDInKAO, "no-kid-in-kao", false, "[deprecated] Disable storing key identifiers in TDF KAOs")
-	encryptCmd.Flags().BoolVar(&noKIDInNano, "no-kid-in-nano", false, "[deprecated] Disable storing key identifiers in TDF KAOs")
+	encryptCmd.Flags().BoolVar(&KIDInNano, "kid-in-nano", false, "Enable storing key identifiers in nanoTDF KAS ResourceLocator")
 	encryptCmd.Flags().StringVarP(&outputName, "output", "o", "sensitive.txt.tdf", "name or path of output file; - for stdout")
 
 	ExamplesCmd.AddCommand(&encryptCmd)
@@ -57,8 +57,8 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		opts = append(opts, sdk.WithNoKIDInKAO())
 	}
 
-	if noKIDInNano {
-		opts = append(opts, sdk.WithNoKIDInNano())
+	if KIDInNano {
+		opts = append(opts, sdk.WithKIDInNano())
 	}
 
 	// Create new offline client

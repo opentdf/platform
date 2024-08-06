@@ -29,11 +29,14 @@
 
 @test "examples: roundtrip nanoTDF" {
   echo "[INFO] creating nanotdf file"
-  go run ./examples encrypt -o sensitive.txt.ntdf --nano --no-kid-in-nano "Hello NanoTDF"
+  go run ./examples encrypt -o sensitive.txt.ntdf --nano "Hello NanoTDF"
+  go run ./examples encrypt -o sensitive-kid.txt.ntdf --nano --kid-in-nano "Hello NanoTDF KID"
 
   echo "[INFO] decrypting nanotdf..."
   go run ./examples decrypt sensitive.txt.ntdf
   go run ./examples decrypt sensitive.txt.ntdf | grep "Hello NanoTDF"
+  go run ./examples decrypt sensitive-kid.txt.ntdf
+  go run ./examples decrypt sensitive-kid.txt.ntdf | grep "Hello NanoTDF KID"
 }
 
 @test "examples: legacy key support Z-TDF" {

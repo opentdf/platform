@@ -11,8 +11,8 @@ import (
 
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/config"
-	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/server"
+	"github.com/opentdf/platform/service/logger"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
 )
 

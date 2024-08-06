@@ -29,30 +29,19 @@ import (
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/policies"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/clientcredentials"
 )
 
 const EntityIDPrefix string = "entity_idx_"
 
 type AuthorizationService struct { //nolint:revive // AuthorizationService is a valid name for this struct
 	authorization.UnimplementedAuthorizationServiceServer
-	sdk         *otdf.SDK
-	config      Config
-	logger      *logger.Logger
-	tokenSource *oauth2.TokenSource
-	eval        rego.PreparedEvalQuery
+	sdk    *otdf.SDK
+	config Config
+	logger *logger.Logger
+	eval   rego.PreparedEvalQuery
 }
 
 type Config struct {
-	// Entity Resolution Service URL
-	ERSURL string `mapstructure:"ersurl" validate:"required,http_url"`
-	// OAuth Client ID
-	ClientID string `mapstructure:"clientid" validate:"required"`
-	// OAuth Client secret
-	ClientSecret string `mapstructure:"clientsecret" validate:"required"`
-	// OAuth token endpoint
-	TokenEndpoint string `mapstructure:"tokenendpoint" validate:"required,http_url"`
 	// Custom Rego Policy To Load
 	Rego CustomRego `mapstructure:"rego"`
 }
@@ -140,11 +129,7 @@ func NewRegistration() serviceregistry.Registration {
 				panic(fmt.Errorf("failed to prepare entitlements.rego for eval: %w", err))
 			}
 
-			clientCredsConfig := clientcredentials.Config{ClientID: authZCfg.ClientID, ClientSecret: authZCfg.ClientSecret, TokenURL: authZCfg.TokenEndpoint}
-			newTokenSource := oauth2.ReuseTokenSourceWithExpiry(nil, clientCredsConfig.TokenSource(context.Background()), tokenExpiryDelay)
-
 			as.config = *authZCfg
-			as.tokenSource = &newTokenSource
 
 			return as, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				authServer, okAuth := server.(authorization.AuthorizationServiceServer)

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"testing"
-	"time"
 
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/opentdf/platform/protocol/go/authorization"
@@ -17,7 +16,6 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -177,11 +175,6 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 		},
 	}
 
-	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
-		AccessToken: "AccessToken",
-		Expiry:      time.Now().Add(1 * time.Hour),
-	})
-
 	ctxb := context.Background()
 
 	testrego := rego.New(
@@ -215,7 +208,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 
 	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
 		Attributes: &myAttributesClient{}, EntityResoution: &myERSClient{}},
-		tokenSource: &testTokenSource, eval: prepared}
+		eval: prepared}
 
 	resp, err := as.GetDecisions(ctxb, &req)
 
@@ -353,11 +346,6 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 		},
 	}}
 
-	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
-		AccessToken: "AccessToken",
-		Expiry:      time.Now().Add(1 * time.Hour),
-	})
-
 	ctxb := context.Background()
 
 	testrego := rego.New(
@@ -373,7 +361,7 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 
 	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
 		Attributes: &myAttributesClient{}, EntityResoution: &myERSClient{}},
-		tokenSource: &testTokenSource, eval: prepared}
+		eval: prepared}
 
 	resp, err := as.GetDecisions(ctxb, &req)
 
@@ -429,10 +417,6 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 		},
 		},
 	}
-	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
-		AccessToken: "AccessToken",
-		Expiry:      time.Now().Add(1 * time.Hour),
-	})
 
 	ctxb := context.Background()
 
@@ -449,7 +433,7 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 
 	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
 		Attributes: &myAttributesClient{}, EntityResoution: &myERSClient{}},
-		tokenSource: &testTokenSource, eval: prepared}
+		eval: prepared}
 
 	req := authorization.GetEntitlementsRequest{
 		Entities: []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}}},
@@ -508,10 +492,6 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 		},
 		},
 	}
-	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
-		AccessToken: "AccessToken",
-		Expiry:      time.Now().Add(1 * time.Hour),
-	})
 
 	ctxb := context.Background()
 
@@ -527,7 +507,7 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 	require.NoError(t, err)
 	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
 		Attributes: &myAttributesClient{}, EntityResoution: &myERSClient{}},
-		tokenSource: &testTokenSource, eval: prepared}
+		eval: prepared}
 
 	withHierarchy := true
 	req := authorization.GetEntitlementsRequest{

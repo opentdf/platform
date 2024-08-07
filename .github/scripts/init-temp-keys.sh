@@ -54,17 +54,4 @@ openssl x509 -req -in keys/localhost.req -CA keys/keycloak-ca.pem  -CAkey keys/k
 openssl req -new -nodes -newkey rsa:2048 -keyout keys/sampleuser.key -out keys/sampleuser.req -batch -subj "/CN=sampleuser"
 openssl x509 -req -in keys/sampleuser.req -CA keys/keycloak-ca.pem  -CAkey keys/keycloak-ca-private.pem -CAcreateserial -out keys/sampleuser.crt -days 3650
 
-openssl pkcs12 -export -in keys/keycloak-ca.pem -inkey keys/keycloak-ca-private.pem -out keys/ca.p12 -nodes -passout pass:password
-docker run \
-    -v $(pwd)/keys:/keys \
-    --entrypoint keytool \
-    --user $(id -u):$(id -g) \
-    cgr.dev/chainguard/keycloak@sha256:37895558d2e0e93ffff75da5900f9ae7e79ec6d1c390b18b2ecea6cee45ec26f \
-    -importkeystore \
-    -srckeystore /keys/ca.p12 \
-    -srcstoretype PKCS12 \
-    -destkeystore /keys/ca.jks \
-    -deststoretype JKS \
-    -srcstorepass "password" \
-    -deststorepass "password" \
-    -noprompt
+openssl pkcs12 -export -in keys/keycloak-ca.pem -inkey keys/keycloak-ca-private.pem -out keys/ca.p12 -keypbe NONE -certpbe NONE -passout pass:

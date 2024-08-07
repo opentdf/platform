@@ -55,53 +55,84 @@ func (ns NullAttributeDefinitionRule) Value() (driver.Value, error) {
 	return string(ns.AttributeDefinitionRule), nil
 }
 
+// Table to store the definitions of attributes
 type AttributeDefinition struct {
-	ID          string                  `json:"id"`
-	NamespaceID string                  `json:"namespace_id"`
-	Name        string                  `json:"name"`
-	Rule        AttributeDefinitionRule `json:"rule"`
-	Metadata    []byte                  `json:"metadata"`
-	Active      bool                    `json:"active"`
-	CreatedAt   pgtype.Timestamptz      `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz      `json:"updated_at"`
-	ValuesOrder []string                `json:"values_order"`
-}
-
-type AttributeDefinitionKeyAccessGrant struct {
-	AttributeDefinitionID string `json:"attribute_definition_id"`
-	KeyAccessServerID     string `json:"key_access_server_id"`
-}
-
-type AttributeFqn struct {
-	ID          string      `json:"id"`
-	NamespaceID pgtype.UUID `json:"namespace_id"`
-	AttributeID pgtype.UUID `json:"attribute_id"`
-	ValueID     pgtype.UUID `json:"value_id"`
-	Fqn         string      `json:"fqn"`
-}
-
-type AttributeNamespace struct {
-	ID        string             `json:"id"`
-	Name      string             `json:"name"`
+	// Primary key for the table
+	ID string `json:"id"`
+	// Foreign key to the parent namespace of the attribute definition
+	NamespaceID string `json:"namespace_id"`
+	// Name of the attribute (i.e. organization or classification), unique within the namespace
+	Name string `json:"name"`
+	// Rule for the attribute (see protos for options)
+	Rule AttributeDefinitionRule `json:"rule"`
+	// Metadata for the attribute definition (see protos for structure)
+	Metadata []byte `json:"metadata"`
+	// Active/Inactive state
 	Active    bool               `json:"active"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	// Order of value ids for the attribute (important for hierarchy rule)
+	ValuesOrder []string `json:"values_order"`
+}
+
+// Table to store the grants of key access servers (KASs) to attribute definitions
+type AttributeDefinitionKeyAccessGrant struct {
+	// Foreign key to the attribute definition
+	AttributeDefinitionID string `json:"attribute_definition_id"`
+	// Foreign key to the KAS registration
+	KeyAccessServerID string `json:"key_access_server_id"`
+}
+
+// Table to store the fully qualified names of attributes for reverse lookup at their object IDs
+type AttributeFqn struct {
+	// Primary key for the table
+	ID string `json:"id"`
+	// Foreign key to the namespace of the attribute
+	NamespaceID pgtype.UUID `json:"namespace_id"`
+	// Foreign key to the attribute definition
+	AttributeID pgtype.UUID `json:"attribute_id"`
+	// Foreign key to the attribute value
+	ValueID pgtype.UUID `json:"value_id"`
+	// Fully qualified name of the attribute (i.e. https://<namespace>/attr/<attribute name>/value/<value>)
+	Fqn string `json:"fqn"`
+}
+
+// Table to store the parent namespaces of platform policy attributes and related policy objects
+type AttributeNamespace struct {
+	// Primary key for the table
+	ID string `json:"id"`
+	// Name of the namespace (i.e. example.com)
+	Name string `json:"name"`
+	// Active/Inactive state
+	Active bool `json:"active"`
+	// Metadata for the namespace (see protos for structure)
 	Metadata  []byte             `json:"metadata"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+// Table to store the values of attributes
 type AttributeValue struct {
-	ID                    string             `json:"id"`
-	AttributeDefinitionID string             `json:"attribute_definition_id"`
-	Value                 string             `json:"value"`
-	Members               []string           `json:"members"`
-	Metadata              []byte             `json:"metadata"`
-	Active                bool               `json:"active"`
-	CreatedAt             pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt             pgtype.Timestamptz `json:"updated_at"`
+	// Primary key for the table
+	ID string `json:"id"`
+	// Foreign key to the parent attribute definition
+	AttributeDefinitionID string `json:"attribute_definition_id"`
+	// Value of the attribute (i.e. "manager" or "admin" on an attribute for titles), unique within the definition
+	Value   string   `json:"value"`
+	Members []string `json:"members"`
+	// Metadata for the attribute value (see protos for structure)
+	Metadata []byte `json:"metadata"`
+	// Active/Inactive state
+	Active    bool               `json:"active"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+// Table to store the grants of key access servers (KASs) to attribute values
 type AttributeValueKeyAccessGrant struct {
-	AttributeValueID  string `json:"attribute_value_id"`
+	// Foreign key to the attribute value
+	AttributeValueID string `json:"attribute_value_id"`
+	// Foreign key to the KAS registration
 	KeyAccessServerID string `json:"key_access_server_id"`
 }
 
@@ -111,50 +142,70 @@ type AttributeValueMember struct {
 	MemberID string `json:"member_id"`
 }
 
+// Table to store the known registrations of key access servers (KASs)
 type KeyAccessServer struct {
-	ID        string             `json:"id"`
-	Uri       string             `json:"uri"`
-	PublicKey []byte             `json:"public_key"`
+	// Primary key for the table
+	ID string `json:"id"`
+	// URI of the KAS
+	Uri string `json:"uri"`
+	// Public key of the KAS (see protos for structure/options)
+	PublicKey []byte `json:"public_key"`
+	// Metadata for the KAS (see protos for structure)
 	Metadata  []byte             `json:"metadata"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
-type Resource struct {
-	ID          int32       `json:"id"`
-	Name        string      `json:"name"`
-	Namespace   string      `json:"namespace"`
-	Version     int32       `json:"version"`
-	Fqn         pgtype.Text `json:"fqn"`
-	Labels      []byte      `json:"labels"`
-	Description pgtype.Text `json:"description"`
-	Policytype  string      `json:"policytype"`
-	Resource    []byte      `json:"resource"`
-}
-
+// Table to store associated terms that should map resource data to attribute values
 type ResourceMapping struct {
-	ID               string             `json:"id"`
-	AttributeValueID string             `json:"attribute_value_id"`
-	Terms            []string           `json:"terms"`
-	Metadata         []byte             `json:"metadata"`
-	CreatedAt        pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	// Primary key for the table
+	ID string `json:"id"`
+	// Foreign key to the attribute value
+	AttributeValueID string `json:"attribute_value_id"`
+	// Terms to match against resource data (i.e. translations "roi", "rey", or "kung" in a terms list could map to the value "/attr/card/value/king")
+	Terms []string `json:"terms"`
+	// Metadata for the resource mapping (see protos for structure)
+	Metadata  []byte             `json:"metadata"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	// Foreign key to the parent group of the resource mapping (optional, a resource mapping may not be in a group)
+	GroupID pgtype.UUID `json:"group_id"`
 }
 
+// Table to store the groups of resource mappings by unique namespace and group name combinations
+type ResourceMappingGroup struct {
+	// Primary key for the table
+	ID string `json:"id"`
+	// Foreign key to the namespace of the attribute
+	NamespaceID string `json:"namespace_id"`
+	// Name for the group of resource mappings
+	Name string `json:"name"`
+}
+
+// Table to store sets of conditions that logically entitle subject entity representations to attribute values via a subject mapping
 type SubjectConditionSet struct {
-	ID        string             `json:"id"`
-	Condition []byte             `json:"condition"`
+	// Primary key for the table
+	ID string `json:"id"`
+	// Conditions that must be met for the subject entity to be entitled to the attribute value (see protos for JSON structure)
+	Condition []byte `json:"condition"`
+	// Metadata for the condition set (see protos for structure)
 	Metadata  []byte             `json:"metadata"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+// Table to store conditions that logically entitle subject entity representations to attribute values
 type SubjectMapping struct {
-	ID                    string             `json:"id"`
-	AttributeValueID      string             `json:"attribute_value_id"`
-	Metadata              []byte             `json:"metadata"`
-	CreatedAt             pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt             pgtype.Timestamptz `json:"updated_at"`
-	SubjectConditionSetID pgtype.UUID        `json:"subject_condition_set_id"`
-	Actions               []byte             `json:"actions"`
+	// Primary key for the table
+	ID string `json:"id"`
+	// Foreign key to the attribute value
+	AttributeValueID string `json:"attribute_value_id"`
+	// Metadata for the subject mapping (see protos for structure)
+	Metadata  []byte             `json:"metadata"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	// Foreign key to the condition set that entitles the subject entity to the attribute value
+	SubjectConditionSetID pgtype.UUID `json:"subject_condition_set_id"`
+	// Actions that the subject entity can perform on the attribute value (see protos for details)
+	Actions []byte `json:"actions"`
 }

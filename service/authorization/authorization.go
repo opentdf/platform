@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -20,6 +21,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/access"
 	"github.com/opentdf/platform/service/internal/entitlements"
@@ -359,40 +361,127 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 	return rsp, nil
 }
 
+func GetSubjectMappingsLookup(subjectMappings []*policy.SubjectMapping) map[string][]*policy.SubjectMapping {
+	lookup := make(map[string][]*policy.SubjectMapping)
+	// println("SubjectMappings: ", len(subjectMappings))
+	// println(subjectMappings[0].String())
+	for _, sm := range subjectMappings {
+		// add check val is not nil
+		val := sm.AttributeValue
+		// add check fqn exists
+		// lookup[val.Fqn] = append(lookup[val.Fqn], sm)
+		// add check id exists
+		lookup[val.Id] = append(lookup[val.Id], sm)
+	}
+	return lookup
+}
+
 func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
 	as.logger.DebugContext(ctx, "getting entitlements")
-	request := attr.GetAttributeValuesByFqnsRequest{
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
+	// request := attr.GetAttributeValuesByFqnsRequest{
+	// 	WithValue: &policy.AttributeValueSelector{
+	// 		WithSubjectMaps: true,
+	// 	},
+	// }
+	start := time.Now()
+	listAttributeResp, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{})
+	if err != nil {
+		as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, "failed to list attributes")
+	}
+	slog.DebugContext(ctx, "list attributes", slog.String("duration", time.Since(start).String()))
+	start = time.Now()
+	listSubjectMappings, err := as.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{})
+	if err != nil {
+		as.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, "failed to list subject mappings")
+	}
+	slog.DebugContext(ctx, "list subject mappings", slog.String("duration", time.Since(start).String()))
+	start = time.Now()
+	subjectMappingLookup := GetSubjectMappingsLookup(listSubjectMappings.GetSubjectMappings())
+	slog.DebugContext(ctx, "create subject mapping lookup", slog.String("duration", time.Since(start).String()))
+	fqnLookup := make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue)
+	attrs := listAttributeResp.GetAttributes()
+	start = time.Now()
+	for i, a := range attrs {
+		for j := range a.GetValues() {
+			attrs[i].Values[j].SubjectMappings = nil
+			attrs[i].Values[j].Attribute = nil
+			attrs[i].Values[j].Metadata = nil
+		}
+		attrs[i].Metadata = nil
+		attrs[i].Grants = nil
+		attrs[i].Namespace = nil
+		// attrs[i].Values = nil
+	}
+	slog.DebugContext(ctx, "clear subject mappings", slog.String("duration", time.Since(start).String()))
+	start = time.Now()
+	for _, a := range attrs {
+		for _, v := range a.GetValues() {
+			// Check if the value has a subject mapping
+			if subjectMappings, ok := subjectMappingLookup[v.GetId()]; ok {
+				println("Adding subject mappings to value: ", v.GetFqn())
+				v.SubjectMappings = subjectMappings
+				for i := range v.SubjectMappings {
+					v.SubjectMappings[i].AttributeValue = nil
+				}
+				values := []*policy.Value{v}
+				if a.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+					println(v.GetFqn(), " is a hierarchy attribute")
+					values = a.GetValues()
+				}
+				new_a := &policy.Attribute{
+					Id:        a.GetId(),
+					Namespace: a.GetNamespace(),
+					Name:      a.GetName(),
+					Rule:      a.GetRule(),
+					Values:    values,
+					Grants:    a.GetGrants(),
+					Fqn:       a.GetFqn(),
+					Active:    a.GetActive(),
+					Metadata:  a.GetMetadata(),
+				}
+
+				fqnLookup[v.GetFqn()] = &attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+					Attribute: new_a,
+					Value:     v,
+				}
+
+			} else {
+				println("Subject mapping not found for value: ", v.GetFqn())
+			}
+		}
+	}
+	slog.DebugContext(ctx, "add subject mappings to values", slog.String("duration", time.Since(start).String()))
+	avf := &attr.GetAttributeValuesByFqnsResponse{
+		FqnAttributeValues: fqnLookup,
 	}
 	// Lack of scope has impacts on performance
 	// https://github.com/opentdf/platform/issues/365
-	if req.GetScope() == nil {
-		// TODO: Reomve and use MatchSubjectMappings instead later in the flow
-		listAttributeResp, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{})
-		if err != nil {
-			as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
-			return nil, status.Error(codes.Internal, "failed to list attributes")
-		}
-		var attributeFqns []string
-		for _, attr := range listAttributeResp.GetAttributes() {
-			for _, val := range attr.GetValues() {
-				attributeFqns = append(attributeFqns, val.GetFqn())
-			}
-		}
-		request.Fqns = attributeFqns
-	} else {
-		// get subject mappings
-		request.Fqns = req.GetScope().GetAttributeValueFqns()
-	}
-	avf, err := as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &request)
-	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to get attribute values by fqns", slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, "failed to get attribute values by fqns")
-	}
+	// if req.GetScope() == nil {
+	// 	// TODO: Reomve and use MatchSubjectMappings instead later in the flow
+	// 	if err != nil {
+	// 		as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
+	// 		return nil, status.Error(codes.Internal, "failed to list attributes")
+	// 	}
+	// 	var attributeFqns []string
+	// 	for _, attr := range listAttributeResp.GetAttributes() {
+	// 		for _, val := range attr.GetValues() {
+	// 			attributeFqns = append(attributeFqns, val.GetFqn())
+	// 		}
+	// 	}
+	// 	request.Fqns = attributeFqns
+	// } else {
+	// 	// get subject mappings
+	// 	request.Fqns = req.GetScope().GetAttributeValueFqns()
+	// }
+	// avf, err := as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &request)
+	// if err != nil {
+	// 	as.logger.ErrorContext(ctx, "failed to get attribute values by fqns", slog.String("error", err.Error()))
+	// 	return nil, status.Error(codes.Internal, "failed to get attribute values by fqns")
+	// }
 	subjectMappings := avf.GetFqnAttributeValues()
-	as.logger.DebugContext(ctx, "retrieved from subject mappings service", slog.Any("subject_mappings: ", subjectMappings))
+	// as.logger.DebugContext(ctx, "retrieved from subject mappings service", slog.Any("subject_mappings: ", subjectMappings))
 	// TODO: this could probably be moved to proto validation https://github.com/opentdf/platform/issues/1057
 	if req.Entities == nil {
 		as.logger.ErrorContext(ctx, "requires entities")
@@ -403,23 +492,30 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	}
 
 	// call ERS on all entities
+	start = time.Now()
 	ersResp, err := as.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{Entities: req.GetEntities()})
 	if err != nil {
 		as.logger.ErrorContext(ctx, "error calling ERS to resolve entities", "entities", req.GetEntities())
 		return nil, err
 	}
+	slog.DebugContext(ctx, "resolve entities", slog.String("duration", time.Since(start).String()))
 
 	// call rego on all entities
+	start = time.Now()
 	in, err := entitlements.OpaInput(subjectMappings, ersResp)
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to build rego input", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to build rego input")
 	}
-	as.logger.DebugContext(ctx, "entitlements", "input", fmt.Sprintf("%+v", in))
-
+	slog.DebugContext(ctx, "build rego input", slog.String("duration", time.Since(start).String()))
+	start = time.Now()
+	// as.logger.DebugContext(ctx, "entitlements", "input", fmt.Sprintf("%+v", in))
+	slog.DebugContext(ctx, "log rego input", slog.String("duration", time.Since(start).String()))
+	start = time.Now()
 	results, err := as.eval.Eval(ctx,
 		rego.EvalInput(in),
 	)
+	slog.DebugContext(ctx, "eval rego", slog.String("duration", time.Since(start).String()))
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to evaluate entitlements policy")
 	}
@@ -446,8 +542,10 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		as.logger.ErrorContext(ctx, "entitlements is not a map[string]interface", slog.String("value", fmt.Sprintf("%+v", resultsEntitlements)))
 		return rsp, nil
 	}
+	start = time.Now()
 	as.logger.DebugContext(ctx, "opa results", "results", fmt.Sprintf("%+v", results))
-
+	slog.DebugContext(ctx, "log opa results", slog.String("duration", time.Since(start).String()))
+	start = time.Now()
 	for idx, entity := range req.GetEntities() {
 		// Ensure the entity has an ID
 		entityID := entity.GetId()
@@ -487,6 +585,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			AttributeValueFqns: entitlements,
 		}
 	}
+	slog.DebugContext(ctx, "build entity entitlements", slog.String("duration", time.Since(start).String()))
 
 	return rsp, nil
 }

@@ -10,7 +10,7 @@ import (
 	casbinModel "github.com/casbin/casbin/v2/model"
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/util"
 )
 
@@ -215,9 +215,8 @@ func (e *Enforcer) ExtendDefaultPolicy(policies [][]string) error {
 
 	policy := strings.TrimSpace(defaultPolicy)
 	policy += "\n\n## Extended Policies"
-	for p := range policies {
-		pol := policies[p]
-		polCsv := strings.Join(policies[p], ", ")
+	for _, pol := range policies {
+		polCsv := strings.Join(pol, ", ")
 		if len(pol) < defaultPolicyPartsLen {
 			return fmt.Errorf("policy missing one of 'p, subject, resource, action, effect', pol: [%s] %w", polCsv, ErrPolicyMalformed)
 		}

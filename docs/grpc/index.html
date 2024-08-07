@@ -652,6 +652,33 @@
         
           
           <li>
+            <a href="#policy%2fconditions.proto">policy/conditions.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#policy.ConditionSet"><span class="badge">M</span>ConditionSet</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.Conditional"><span class="badge">M</span>Conditional</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.SingleCondition"><span class="badge">M</span>SingleCondition</a>
+                </li>
+              
+              
+                <li>
+                  <a href="#policy.ConditionalOperatorEnum"><span class="badge">E</span>ConditionalOperatorEnum</a>
+                </li>
+              
+              
+              
+            </ul>
+          </li>
+        
+          
+          <li>
             <a href="#policy%2fkasregistry%2fkey_access_server_registry.proto">policy/kasregistry/key_access_server_registry.proto</a>
             <ul>
               
@@ -4775,6 +4802,155 @@ Attribute &lt;&gt; Key Access Server RPCs
           </table>
           
         
+    
+      
+      <div class="file-heading">
+        <h2 id="policy/conditions.proto">policy/conditions.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="policy.ConditionSet">ConditionSet</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>conditions</td>
+                  <td><a href="#policy.Conditional">Conditional</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>boolean_operator</td>
+                  <td><a href="#policy.ConditionBooleanTypeEnum">ConditionBooleanTypeEnum</a></td>
+                  <td></td>
+                  <td><p>the boolean evaluation type across the conditions </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.Conditional">Conditional</h3>
+        <p>either a nested ConditionSet or Conditions</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>condition</td>
+                  <td><a href="#policy.SingleCondition">SingleCondition</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>condition_set</td>
+                  <td><a href="#policy.ConditionSet">ConditionSet</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.SingleCondition">SingleCondition</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>subject_external_selector_value</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>a selector for a field value on a flattened Entity Representation (such as from idP/LDAP) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>operator</td>
+                  <td><a href="#policy.ConditionalOperatorEnum">ConditionalOperatorEnum</a></td>
+                  <td></td>
+                  <td><p>the evaluation operator of relation </p></td>
+                </tr>
+              
+                <tr>
+                  <td>subject_external_values</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>list of comparison values for the result of applying the subject_external_selector_value on a flattened Entity Representation (Subject), evaluated by the operator </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+
+      
+        <h3 id="policy.ConditionalOperatorEnum">ConditionalOperatorEnum</h3>
+        <p>buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>CONDITIONAL_OPERATOR_ENUM_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CONDITIONAL_OPERATOR_ENUM_IN</td>
+                <td>1</td>
+                <td><p>operator that returns true if a value in a list matches the string</p></td>
+              </tr>
+            
+              <tr>
+                <td>CONDITIONAL_OPERATOR_ENUM_NOT_IN</td>
+                <td>2</td>
+                <td><p>operator that returns true if a value is not in a list that is matched by string</p></td>
+              </tr>
+            
+              <tr>
+                <td>CONDITIONAL_OPERATOR_ENUM_IN_CONTAINS</td>
+                <td>3</td>
+                <td><p>operator that returns true if a value in a list contains the substring</p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+
+      
+
+      
     
       
       <div class="file-heading">

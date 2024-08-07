@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package policy;
+
+import "buf/validate/validate.proto";
+import "policy/objects.proto"; 
+
+message SingleCondition {
+  // a selector for a field value on a flattened Entity Representation (such as from idP/LDAP)
+  string subject_external_selector_value = 1;
+
+  // the evaluation operator of relation
+  ConditionalOperatorEnum operator = 2 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
+
+  // list of comparison values for the result of applying the subject_external_selector_value on a flattened Entity Representation (Subject), evaluated by the operator
+  repeated string subject_external_values = 3;
+}
+
+// either a nested ConditionSet or Conditions
+message Conditional {
+  oneof conditional {
+    SingleCondition condition = 1;
+    ConditionSet condition_set = 2;
+  }
+}
+
+message ConditionSet {
+  repeated Conditional conditions = 1;
+
+  // the boolean evaluation type across the conditions
+  policy.ConditionBooleanTypeEnum boolean_operator = 2 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
+
+}
+
+// buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package
+enum ConditionalOperatorEnum {
+  CONDITIONAL_OPERATOR_ENUM_UNSPECIFIED = 0;
+  // operator that returns true if a value in a list matches the string
+  CONDITIONAL_OPERATOR_ENUM_IN = 1;
+  // operator that returns true if a value is not in a list that is matched by string
+  CONDITIONAL_OPERATOR_ENUM_NOT_IN = 2;
+  // operator that returns true if a value in a list contains the substring
+  CONDITIONAL_OPERATOR_ENUM_IN_CONTAINS = 3;
+}

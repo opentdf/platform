@@ -118,8 +118,7 @@ type AttributeValue struct {
 	// Foreign key to the parent attribute definition
 	AttributeDefinitionID string `json:"attribute_definition_id"`
 	// Value of the attribute (i.e. "manager" or "admin" on an attribute for titles), unique within the definition
-	Value   string   `json:"value"`
-	Members []string `json:"members"`
+	Value string `json:"value"`
 	// Metadata for the attribute value (see protos for structure)
 	Metadata []byte `json:"metadata"`
 	// Active/Inactive state
@@ -134,12 +133,6 @@ type AttributeValueKeyAccessGrant struct {
 	AttributeValueID string `json:"attribute_value_id"`
 	// Foreign key to the KAS registration
 	KeyAccessServerID string `json:"key_access_server_id"`
-}
-
-type AttributeValueMember struct {
-	ID       string `json:"id"`
-	ValueID  string `json:"value_id"`
-	MemberID string `json:"member_id"`
 }
 
 // Table to store the known registrations of key access servers (KASs)

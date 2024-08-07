@@ -94,7 +94,6 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			"JSON_BUILD_OBJECT(" +
 			"'id', avt.id," +
 			"'value', avt.value," +
-			"'members', avt.members," +
 			"'active', avt.active"
 
 		// include the subject mapping / subject condition set for each value
@@ -125,13 +124,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		LeftJoin(nt.Name() + " ON " + nt.Field("id") + " = " + t.Field("namespace_id"))
 
 	if shouldGetValues {
-		subQuery := "(SELECT av.id, av.value, av.active, COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
-			"'id', vmv.id, " +
-			"'value', vmv.value, " +
-			"'active', vmv.active, " +
-			"'members', vmv.members || ARRAY[]::UUID[], " +
-			"'attribute', JSON_BUILD_OBJECT(" +
-			"'id', vmv.attribute_definition_id ))) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members, " +
+		subQuery := "(SELECT av.id, av.value, av.active, " +
 			"JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(" +
 			"'id', vkas.id," +
 			"'uri', vkas.uri," +
@@ -139,8 +132,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			")) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr, " +
 			"av.attribute_definition_id FROM " + avt.Name() + " av " +
 			"LEFT JOIN " + avkagt.Name() + " avg ON av.id = avg.attribute_value_id " +
-			"LEFT JOIN " + Tables.KeyAccessServerRegistry.Name() + " vkas ON avg.key_access_server_id = vkas.id " +
-			"LEFT JOIN " + Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id LEFT JOIN " + avt.Name() + " vmv ON vm.member_id = vmv.id "
+			"LEFT JOIN " + Tables.KeyAccessServerRegistry.Name() + " vkas ON avg.key_access_server_id = vkas.id "
 		if opts.withOneValueByFqn != "" {
 			subQuery += "WHERE av.active = true "
 		}

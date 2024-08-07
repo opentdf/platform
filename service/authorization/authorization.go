@@ -373,6 +373,15 @@ func makeSubMapsByValLookup(subjectMappings []*policy.SubjectMapping) map[string
 	return lookup
 }
 
+func attachSubMapsToVals(values []*policy.Value, subMapsByVal map[string][]*policy.SubjectMapping) []*policy.Value {
+	for i, v := range values {
+		if subjectMappings, ok := subMapsByVal[v.GetId()]; ok {
+			values[i].SubjectMappings = subjectMappings
+		}
+	}
+	return values
+}
+
 func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
 	as.logger.DebugContext(ctx, "getting entitlements")
 	attrsRes, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{})
@@ -385,42 +394,43 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		as.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to list subject mappings")
 	}
+
+	scope := req.GetScope()
+	scopeMap := make(map[string]bool)
+	for _, fqn := range scope.GetAttributeValueFqns() {
+		scopeMap[fqn] = true
+	}
 	subMapsByVal := makeSubMapsByValLookup(subMapsRes.GetSubjectMappings())
+
 	fqnAttrVals := make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 	attrs := attrsRes.GetAttributes()
 	start := time.Now()
-	for _, a := range attrs {
-		for _, v := range a.GetValues() {
-			// Check if the value has a subject mapping
-			if subjectMappings, ok := subMapsByVal[v.GetId()]; ok {
-				v.SubjectMappings = subjectMappings
-				for i := range v.SubjectMappings {
-					v.SubjectMappings[i].AttributeValue = nil
-				}
-				values := []*policy.Value{v}
-				if a.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
-					println(v.GetFqn(), " is a hierarchy attribute")
-					// TODO: make sure all values have subject mappings
-					values = a.GetValues()
-				}
-				new_a := &policy.Attribute{
-					Id:        a.GetId(),
-					Namespace: a.GetNamespace(),
-					Name:      a.GetName(),
-					Rule:      a.GetRule(),
-					Values:    values,
-					Grants:    a.GetGrants(),
-					Fqn:       a.GetFqn(),
-					Active:    a.GetActive(),
-					Metadata:  a.GetMetadata(),
-				}
-				// TODO: if scope defined then only add fqn values that are in the scope
-				fqnAttrVals[v.GetFqn()] = &attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
-					Attribute: new_a,
-					Value:     v,
-				}
-			} else {
-				slog.DebugContext(ctx, "Subject mapping not found for value", slog.String("value", v.GetFqn()))
+	for i, a := range attrs {
+		attrs[i].Values = attachSubMapsToVals(a.GetValues(), subMapsByVal)
+		for _, v := range attrs[i].Values {
+			valFqn := v.GetFqn()
+			if !(scope == nil || scopeMap[valFqn]) {
+				continue
+			}
+			values := []*policy.Value{v}
+			if a.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+				values = attrs[i].Values
+			}
+			newAttr := &policy.Attribute{
+				Id: a.GetId(),
+				// Namespace: a.GetNamespace(),
+				Name:   a.GetName(),
+				Rule:   a.GetRule(),
+				Values: values,
+				// Grants:    a.GetGrants(),
+				Fqn:    a.GetFqn(),
+				Active: a.GetActive(),
+				// Metadata: a.GetMetadata(),
+			}
+
+			fqnAttrVals[v.GetFqn()] = &attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+				Attribute: newAttr,
+				Value:     v,
 			}
 		}
 	}

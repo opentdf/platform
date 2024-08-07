@@ -392,7 +392,6 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		for _, v := range a.GetValues() {
 			// Check if the value has a subject mapping
 			if subjectMappings, ok := subMapsByVal[v.GetId()]; ok {
-				println("Adding subject mappings to value: ", v.GetFqn())
 				v.SubjectMappings = subjectMappings
 				for i := range v.SubjectMappings {
 					v.SubjectMappings[i].AttributeValue = nil
@@ -419,9 +418,8 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 					Attribute: new_a,
 					Value:     v,
 				}
-
 			} else {
-				println("Subject mapping not found for value: ", v.GetFqn())
+				slog.DebugContext(ctx, "Subject mapping not found for value", slog.String("value", v.GetFqn()))
 			}
 		}
 	}
@@ -430,7 +428,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		FqnAttributeValues: fqnAttrVals,
 	}
 	subjectMappings := avf.GetFqnAttributeValues()
-	// as.logger.DebugContext(ctx, "retrieved from subject mappings service", slog.Any("subject_mappings: ", subjectMappings))
+	as.logger.DebugContext(ctx, fmt.Sprintf("retrieved %d subject mappings", len(subjectMappings)))
 	// TODO: this could probably be moved to proto validation https://github.com/opentdf/platform/issues/1057
 	if req.Entities == nil {
 		as.logger.ErrorContext(ctx, "requires entities")

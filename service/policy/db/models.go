@@ -168,7 +168,7 @@ type ResourceMapping struct {
 	Metadata  []byte             `json:"metadata"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
-	// Foreign key to the parent group of the resource mapping
+	// Foreign key to the parent group of the resource mapping (optional, a resource mapping may not be in a group)
 	GroupID pgtype.UUID `json:"group_id"`
 }
 

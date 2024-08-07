@@ -3,7 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS resource_mapping_groups (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    namespace_id UUID NOT NULL REFERENCES attribute_namespaces(id),
+    namespace_id UUID NOT NULL REFERENCES attribute_namespaces(id) ON DELETE CASCADE,
     name VARCHAR NOT NULL,
     UNIQUE(namespace_id, name)
 );
@@ -15,7 +15,7 @@ COMMENT ON COLUMN resource_mapping_groups.name IS 'Name for the group of resourc
 
 ALTER TABLE resource_mappings ADD COLUMN group_id UUID REFERENCES resource_mapping_groups(id) ON DELETE SET NULL;
 
-COMMENT ON COLUMN resource_mappings.group_id IS 'Foreign key to the parent group of the resource mapping';
+COMMENT ON COLUMN resource_mappings.group_id IS 'Foreign key to the parent group of the resource mapping (optional, a resource mapping may not be in a group)';
 
 -- +goose StatementEnd
 

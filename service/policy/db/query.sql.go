@@ -119,15 +119,12 @@ func (q *Queries) GetKeyAccessServer(ctx context.Context, id string) (GetKeyAcce
 }
 
 const getResourceMappingGroup = `-- name: GetResourceMappingGroup :one
-
 SELECT id, namespace_id, name
 FROM resource_mapping_groups
 WHERE id = $1
 `
 
-// --------------------------------------------------------------
-// RESOURCE MAPPING GROUPS
-// --------------------------------------------------------------
+// GetResourceMappingGroup
 //
 //	SELECT id, namespace_id, name
 //	FROM resource_mapping_groups
@@ -175,6 +172,38 @@ func (q *Queries) ListKeyAccessServers(ctx context.Context) ([]ListKeyAccessServ
 			&i.PublicKey,
 			&i.Metadata,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listResourceMappingGroups = `-- name: ListResourceMappingGroups :many
+
+SELECT id, namespace_id, name
+FROM resource_mapping_groups
+`
+
+// --------------------------------------------------------------
+// RESOURCE MAPPING GROUPS
+// --------------------------------------------------------------
+//
+//	SELECT id, namespace_id, name
+//	FROM resource_mapping_groups
+func (q *Queries) ListResourceMappingGroups(ctx context.Context) ([]ResourceMappingGroup, error) {
+	rows, err := q.db.Query(ctx, listResourceMappingGroups)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ResourceMappingGroup
+	for rows.Next() {
+		var i ResourceMappingGroup
+		if err := rows.Scan(&i.ID, &i.NamespaceID, &i.Name); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

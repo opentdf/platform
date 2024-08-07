@@ -198,15 +198,6 @@ func subjectMappingHydrateItem(row pgx.Row, logger *logger.Logger) (*policy.Subj
 		&scsJSON,
 		&attributeValueJSON,
 	)
-	// logger.Debug(
-	// 	"subjectMappingHydrateItem",
-	// 	slog.Any("row", row),
-	// 	slog.String("id", id),
-	// 	slog.String("actionsJSON", string(actionsJSON)),
-	// 	slog.String("metadataJSON", string(metadataJSON)),
-	// 	slog.String("scsJSON", string(scsJSON)),
-	// 	slog.String("attributeValueJSON", string(attributeValueJSON)),
-	// )
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

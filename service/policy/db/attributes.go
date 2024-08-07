@@ -464,6 +464,25 @@ func (c PolicyDBClient) GetAttributesByFqns(ctx context.Context, fqns []string) 
 		// c.logger.Error("could not hydrate item", slog.String("fqns", strings.Join(fqns, ",")), slog.String("error", err.Error()))
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
+
+	for i, a := range attributes {
+		if a.Name == "needtoknow" {
+			for _, v := range a.Values {
+				if v.Value == "aaa" {
+					sM := ""
+					for _, sm := range v.SubjectMappings {
+						sM += sm.String()
+					}
+					println("subjectMapping: ", sM)
+				}
+			}
+		}
+		attributes[i], err = c.GetAttribute(ctx, a.Id)
+		if err != nil {
+			return nil, err
+		}
+	}
+	println("LEN: ", len(attributes))
 	// println("TEST_attribute", attributes[0].String())
 	// println("TEST_fqn", fqns[0])
 	// // Sort the attributes by the order of the FQNs

@@ -41,7 +41,7 @@ RETURNING id;
 -- name: UpdateResourceMappingGroup :one
 UPDATE resource_mapping_groups
 SET
-    -- assuming name is the only modifiable field
+    namespace_id = coalesce(sqlc.narg('namespace_id'), namespace_id),
     name = coalesce(sqlc.narg('name'), name)
 WHERE id = $1
 RETURNING id;

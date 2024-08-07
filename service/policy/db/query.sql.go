@@ -208,27 +208,28 @@ func (q *Queries) UpdateKeyAccessServer(ctx context.Context, arg UpdateKeyAccess
 const updateResourceMappingGroup = `-- name: UpdateResourceMappingGroup :one
 UPDATE resource_mapping_groups
 SET
-    -- assuming name is the only modifiable field
-    name = coalesce($2, name)
+    namespace_id = coalesce($2, namespace_id),
+    name = coalesce($3, name)
 WHERE id = $1
 RETURNING id
 `
 
 type UpdateResourceMappingGroupParams struct {
-	ID   string      `json:"id"`
-	Name pgtype.Text `json:"name"`
+	ID          string      `json:"id"`
+	NamespaceID pgtype.UUID `json:"namespace_id"`
+	Name        pgtype.Text `json:"name"`
 }
 
 // UpdateResourceMappingGroup
 //
 //	UPDATE resource_mapping_groups
 //	SET
-//	    -- assuming name is the only modifiable field
-//	    name = coalesce($2, name)
+//	    namespace_id = coalesce($2, namespace_id),
+//	    name = coalesce($3, name)
 //	WHERE id = $1
 //	RETURNING id
 func (q *Queries) UpdateResourceMappingGroup(ctx context.Context, arg UpdateResourceMappingGroupParams) (string, error) {
-	row := q.db.QueryRow(ctx, updateResourceMappingGroup, arg.ID, arg.Name)
+	row := q.db.QueryRow(ctx, updateResourceMappingGroup, arg.ID, arg.NamespaceID, arg.Name)
 	var id string
 	err := row.Scan(&id)
 	return id, err

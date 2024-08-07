@@ -6,16 +6,15 @@ services:
     volumes:
     - ./keys/localhost.crt:/etc/x509/tls/localhost.crt
     - ./keys/localhost.key:/etc/x509/tls/localhost.key
-    - ./keys/ca.p12:/truststore/truststore.pfx
+    - ./keys/ca.p12:/truststore/truststore.p12
     # This is kc 24.0.1 with opentdf protocol mapper on board
     image: cgr.dev/chainguard/keycloak@sha256:37895558d2e0e93ffff75da5900f9ae7e79ec6d1c390b18b2ecea6cee45ec26f
     restart: always
     command:
     - "start-dev"
     - "--verbose"
-    - "-Djavax.net.ssl.trustStorePassword=password"
     - "-Djavax.net.ssl.HostnameVerifier=AllowAll"
-    - "-Djavax.net.ssl.trustStore=/truststore/truststore.jks"
+    - "--truststore-paths=/truststore/truststore.p12"
     - "--spi-truststore-file-hostname-verification-policy=ANY"
     environment:
       KC_PROXY: edge

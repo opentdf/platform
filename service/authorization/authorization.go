@@ -374,39 +374,20 @@ func makeSubMapsByValLookup(subjectMappings []*policy.SubjectMapping) map[string
 
 func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
 	as.logger.DebugContext(ctx, "getting entitlements")
-	start := time.Now()
 	attrsRes, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{})
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to list attributes")
 	}
-	slog.DebugContext(ctx, "list attributes", slog.String("duration", time.Since(start).String()))
-	start = time.Now()
 	subMapsRes, err := as.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{})
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to list subject mappings")
 	}
-	slog.DebugContext(ctx, "list subject mappings", slog.String("duration", time.Since(start).String()))
-	start = time.Now()
 	subMapsByVal := makeSubMapsByValLookup(subMapsRes.GetSubjectMappings())
-	slog.DebugContext(ctx, "create subject mapping lookup", slog.String("duration", time.Since(start).String()))
 	fqnAttrVals := make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 	attrs := attrsRes.GetAttributes()
-	start = time.Now()
-	// for i, a := range attrs {
-	// 	for j := range a.GetValues() {
-	// 		attrs[i].Values[j].SubjectMappings = nil
-	// 		attrs[i].Values[j].Attribute = nil
-	// 		attrs[i].Values[j].Metadata = nil
-	// 	}
-	// 	attrs[i].Metadata = nil
-	// 	attrs[i].Grants = nil
-	// 	attrs[i].Namespace = nil
-	// 	// attrs[i].Values = nil
-	// }
-	slog.DebugContext(ctx, "clear subject mappings", slog.String("duration", time.Since(start).String()))
-	start = time.Now()
+	start := time.Now()
 	for _, a := range attrs {
 		for _, v := range a.GetValues() {
 			// Check if the value has a subject mapping
@@ -448,30 +429,6 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	avf := &attr.GetAttributeValuesByFqnsResponse{
 		FqnAttributeValues: fqnAttrVals,
 	}
-	// Lack of scope has impacts on performance
-	// https://github.com/opentdf/platform/issues/365
-	// if req.GetScope() == nil {
-	// 	// TODO: Reomve and use MatchSubjectMappings instead later in the flow
-	// 	if err != nil {
-	// 		as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
-	// 		return nil, status.Error(codes.Internal, "failed to list attributes")
-	// 	}
-	// 	var attributeFqns []string
-	// 	for _, attr := range listAttributeResp.GetAttributes() {
-	// 		for _, val := range attr.GetValues() {
-	// 			attributeFqns = append(attributeFqns, val.GetFqn())
-	// 		}
-	// 	}
-	// 	request.Fqns = attributeFqns
-	// } else {
-	// 	// get subject mappings
-	// 	request.Fqns = req.GetScope().GetAttributeValueFqns()
-	// }
-	// avf, err := as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &request)
-	// if err != nil {
-	// 	as.logger.ErrorContext(ctx, "failed to get attribute values by fqns", slog.String("error", err.Error()))
-	// 	return nil, status.Error(codes.Internal, "failed to get attribute values by fqns")
-	// }
 	subjectMappings := avf.GetFqnAttributeValues()
 	// as.logger.DebugContext(ctx, "retrieved from subject mappings service", slog.Any("subject_mappings: ", subjectMappings))
 	// TODO: this could probably be moved to proto validation https://github.com/opentdf/platform/issues/1057

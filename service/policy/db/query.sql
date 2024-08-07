@@ -33,6 +33,11 @@ DELETE FROM key_access_servers WHERE id = $1;
 -- RESOURCE MAPPING GROUPS
 ----------------------------------------------------------------
 
+-- name: GetResourceMappingGroup :one
+SELECT id, namespace_id, name
+FROM resource_mapping_groups
+WHERE id = $1;
+
 -- name: CreateResourceMappingGroup :one
 INSERT INTO resource_mapping_groups (namespace_id, name)
 VALUES ($1, $2)

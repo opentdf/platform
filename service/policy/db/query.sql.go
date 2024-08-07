@@ -36,7 +36,6 @@ func (q *Queries) CreateKeyAccessServer(ctx context.Context, arg CreateKeyAccess
 }
 
 const createResourceMappingGroup = `-- name: CreateResourceMappingGroup :one
-
 INSERT INTO resource_mapping_groups (namespace_id, name)
 VALUES ($1, $2)
 RETURNING id
@@ -47,9 +46,7 @@ type CreateResourceMappingGroupParams struct {
 	Name        string `json:"name"`
 }
 
-// --------------------------------------------------------------
-// RESOURCE MAPPING GROUPS
-// --------------------------------------------------------------
+// CreateResourceMappingGroup
 //
 //	INSERT INTO resource_mapping_groups (namespace_id, name)
 //	VALUES ($1, $2)
@@ -118,6 +115,27 @@ func (q *Queries) GetKeyAccessServer(ctx context.Context, id string) (GetKeyAcce
 		&i.PublicKey,
 		&i.Metadata,
 	)
+	return i, err
+}
+
+const getResourceMappingGroup = `-- name: GetResourceMappingGroup :one
+
+SELECT id, namespace_id, name
+FROM resource_mapping_groups
+WHERE id = $1
+`
+
+// --------------------------------------------------------------
+// RESOURCE MAPPING GROUPS
+// --------------------------------------------------------------
+//
+//	SELECT id, namespace_id, name
+//	FROM resource_mapping_groups
+//	WHERE id = $1
+func (q *Queries) GetResourceMappingGroup(ctx context.Context, id string) (ResourceMappingGroup, error) {
+	row := q.db.QueryRow(ctx, getResourceMappingGroup, id)
+	var i ResourceMappingGroup
+	err := row.Scan(&i.ID, &i.NamespaceID, &i.Name)
 	return i, err
 }
 

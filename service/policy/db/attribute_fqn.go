@@ -180,6 +180,36 @@ func prepareValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy
 	return values, unaltered
 }
 
+func (c *PolicyDBClient) GetAttributesByFqns(ctx context.Context, r *attributes.GetAttributesByFqnsRequest) (map[string]*policy.Attribute, error) {
+	if r.Fqns == nil || r.GetWithValue() == nil {
+		return nil, errors.Join(db.ErrMissingValue, errors.New("error: one or more FQNs and a WithValue selector must be provided"))
+	}
+	list := make(map[string]*policy.Attribute, len(r.GetFqns()))
+	for _, fqn := range r.GetFqns() {
+		// normalize to lower case
+		fqn = strings.ToLower(fqn)
+		// ensure the FQN corresponds to an attribute and no value
+		if !strings.Contains(fqn, "/attr/") || strings.Contains(fqn, "/value/") {
+			return nil, db.ErrFqnMissingValue
+		}
+		attr, err := c.GetAttributeByFqnWithSubjectMappings(ctx, fqn)
+		c.logger.Info("attribute", "", attr)
+		if err != nil {
+			c.logger.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))
+			return nil, err
+		}
+		for i, v := range attr.GetValues() {
+			// ensure all values have FQNs
+			if attr.Values[i].GetFqn() == "" {
+				attr.Values[i].Fqn = fqn + "/value/" + v.GetValue()
+			}
+			c.logger.Info("subjmappings", "", v.GetSubjectMappings())
+		}
+		list[fqn] = attr
+	}
+	return list, nil
+}
+
 func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attributes.GetAttributeValuesByFqnsRequest) (map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	if r.Fqns == nil || r.GetWithValue() == nil {
 		return nil, errors.Join(db.ErrMissingValue, errors.New("error: one or more FQNs and a WithValue selector must be provided"))
@@ -198,6 +228,7 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 			return nil, err
 		}
 		filtered, selected := prepareValues(attr.GetValues(), fqn)
+		c.logger.Info("selected", "", selected)
 		if selected == nil {
 			c.logger.Error("could not find value for FQN", slog.String("fqn", fqn))
 			return nil, fmt.Errorf("could not find value for FQN [%s] %w", fqn, db.ErrNotFound)

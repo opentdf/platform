@@ -589,6 +589,18 @@
                 </li>
               
                 <li>
+                  <a href="#policy.attributes.GetAttributesByFqnsRequest"><span class="badge">M</span>GetAttributesByFqnsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.GetAttributesByFqnsResponse"><span class="badge">M</span>GetAttributesByFqnsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.GetAttributesByFqnsResponse.FqnAttributesEntry"><span class="badge">M</span>GetAttributesByFqnsResponse.FqnAttributesEntry</a>
+                </li>
+              
+                <li>
                   <a href="#policy.attributes.ListAttributeValuesRequest"><span class="badge">M</span>ListAttributeValuesRequest</a>
                 </li>
               
@@ -4089,6 +4101,93 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
 
         
       
+        <h3 id="policy.attributes.GetAttributesByFqnsRequest">GetAttributesByFqnsRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqns</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>Required
+Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&lt;attribute_name&gt;/value/&lt;value_name&gt;), normalized to lower case. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>with_value</td>
+                  <td><a href="#policy.AttributeDefinitionSelector">policy.AttributeDefinitionSelector</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.GetAttributesByFqnsResponse">GetAttributesByFqnsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqn_attributes</td>
+                  <td><a href="#policy.attributes.GetAttributesByFqnsResponse.FqnAttributesEntry">GetAttributesByFqnsResponse.FqnAttributesEntry</a></td>
+                  <td>repeated</td>
+                  <td><p>map of FQNs to complete attributes and the one selected value </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.GetAttributesByFqnsResponse.FqnAttributesEntry">GetAttributesByFqnsResponse.FqnAttributesEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#policy.Attribute">policy.Attribute</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.attributes.ListAttributeValuesRequest">ListAttributeValuesRequest</h3>
         <p></p>
 
@@ -4523,6 +4622,13 @@ Attribute RPCs
               </tr>
             
               <tr>
+                <td>GetAttributesByFqns</td>
+                <td><a href="#policy.attributes.GetAttributesByFqnsRequest">GetAttributesByFqnsRequest</a></td>
+                <td><a href="#policy.attributes.GetAttributesByFqnsResponse">GetAttributesByFqnsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
                 <td>CreateAttribute</td>
                 <td><a href="#policy.attributes.CreateAttributeRequest">CreateAttributeRequest</a></td>
                 <td><a href="#policy.attributes.CreateAttributeResponse">CreateAttributeResponse</a></td>
@@ -4655,6 +4761,16 @@ Attribute &lt;&gt; Key Access Server RPCs
               
               <tr>
                 <td>GetAttributeValuesByFqns</td>
+                <td>GET</td>
+                <td>/attributes/*/values/fqn</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetAttributesByFqns</td>
                 <td>GET</td>
                 <td>/attributes/*/fqn</td>
                 <td></td>

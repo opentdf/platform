@@ -179,6 +179,17 @@ message GetAttributeValuesByFqnsResponse {
   map<string, AttributeAndValue> fqn_attribute_values = 1;
 }
 
+message GetAttributesByFqnsRequest {
+  // Required
+  // Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
+  repeated string fqns = 1 [(buf.validate.field).required = true];
+  policy.AttributeDefinitionSelector with_value = 2 [(buf.validate.field).required = true];
+}
+message GetAttributesByFqnsResponse {
+  // map of FQNs to complete attributes and the one selected value
+  map<string, policy.Attribute> fqn_attributes = 1;
+}
+
 /*
    Assign Key Access Server to Attribute and Value
 */
@@ -233,6 +244,9 @@ service AttributesService {
     option (google.api.http) = {get: "/attributes/{id}"};
   }
   rpc GetAttributeValuesByFqns(GetAttributeValuesByFqnsRequest) returns (GetAttributeValuesByFqnsResponse) {
+    option (google.api.http) = {get: "/attributes/*/values/fqn"};
+  }
+  rpc GetAttributesByFqns(GetAttributesByFqnsRequest) returns (GetAttributesByFqnsResponse) {
     option (google.api.http) = {get: "/attributes/*/fqn"};
   }
 

@@ -94,6 +94,109 @@
     },
     "/attributes/*/fqn": {
       "get": {
+        "operationId": "AttributesService_GetAttributesByFqns",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/attributesGetAttributesByFqnsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "fqns",
+            "description": "Required\nFully Qualified Names of attribute values (i.e. https://\u003cnamespace\u003e/attr/\u003cattribute_name\u003e/value/\u003cvalue_name\u003e), normalized to lower case.",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "withValue.withKeyAccessGrants",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "withValue.withValues.withKeyAccessGrants",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "withValue.withValues.withSubjectMaps",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "withValue.withValues.withResourceMaps",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      }
+    },
+    "/attributes/*/values": {
+      "get": {
+        "operationId": "AttributesService_ListAttributeValues",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/attributesListAttributeValuesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "attributeId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "state",
+            "description": "ACTIVE by default when not specified",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "ACTIVE_STATE_ENUM_UNSPECIFIED",
+              "ACTIVE_STATE_ENUM_ACTIVE",
+              "ACTIVE_STATE_ENUM_INACTIVE",
+              "ACTIVE_STATE_ENUM_ANY"
+            ],
+            "default": "ACTIVE_STATE_ENUM_UNSPECIFIED"
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      }
+    },
+    "/attributes/*/values/fqn": {
+      "get": {
         "operationId": "AttributesService_GetAttributeValuesByFqns",
         "responses": {
           "200": {
@@ -144,50 +247,6 @@
             "in": "query",
             "required": false,
             "type": "boolean"
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/*/values": {
-      "get": {
-        "operationId": "AttributesService_ListAttributeValues",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesListAttributeValuesResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "attributeId",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "state",
-            "description": "ACTIVE by default when not specified",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "enum": [
-              "ACTIVE_STATE_ENUM_UNSPECIFIED",
-              "ACTIVE_STATE_ENUM_ACTIVE",
-              "ACTIVE_STATE_ENUM_INACTIVE",
-              "ACTIVE_STATE_ENUM_ANY"
-            ],
-            "default": "ACTIVE_STATE_ENUM_UNSPECIFIED"
           }
         ],
         "tags": [
@@ -733,6 +792,18 @@
         }
       }
     },
+    "attributesGetAttributesByFqnsResponse": {
+      "type": "object",
+      "properties": {
+        "fqnAttributes": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/policyAttribute"
+          },
+          "title": "map of FQNs to complete attributes and the one selected value"
+        }
+      }
+    },
     "attributesListAttributeValuesResponse": {
       "type": "object",
       "properties": {
@@ -910,6 +981,37 @@
         "metadata": {
           "$ref": "#/definitions/commonMetadata",
           "title": "Common metadata"
+        }
+      }
+    },
+    "policyAttributeDefinitionSelector": {
+      "type": "object",
+      "properties": {
+        "withKeyAccessGrants": {
+          "type": "boolean"
+        },
+        "withNamespace": {
+          "$ref": "#/definitions/policyAttributeDefinitionSelectorNamespaceSelector"
+        },
+        "withValues": {
+          "$ref": "#/definitions/policyAttributeDefinitionSelectorValueSelector"
+        }
+      }
+    },
+    "policyAttributeDefinitionSelectorNamespaceSelector": {
+      "type": "object"
+    },
+    "policyAttributeDefinitionSelectorValueSelector": {
+      "type": "object",
+      "properties": {
+        "withKeyAccessGrants": {
+          "type": "boolean"
+        },
+        "withSubjectMaps": {
+          "type": "boolean"
+        },
+        "withResourceMaps": {
+          "type": "boolean"
         }
       }
     },

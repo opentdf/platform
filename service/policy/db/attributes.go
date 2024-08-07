@@ -61,6 +61,7 @@ type attributesSelectOptions struct {
 	// withFqn and withOneValueByFqn are mutually exclusive
 	withFqn           bool
 	withOneValueByFqn string
+	withSubjectMaps   bool
 	state             string
 	namespace         string
 }
@@ -98,10 +99,13 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			"'active', avt.active"
 
 		// include the subject mapping / subject condition set for each value
-		if opts.withOneValueByFqn != "" {
-			valueSelect += ", 'fqn', val_sm_fqn_join.fqn, " +
-				"'subject_mappings', sub_maps_arr, " +
-				"'grants', val_grants_arr"
+		if opts.withOneValueByFqn != "" || opts.withSubjectMaps {
+			valueSelect += ", 'subject_mappings', sub_maps_arr"
+			if opts.withOneValueByFqn != "" {
+				valueSelect += ", 'fqn', val_sm_fqn_join.fqn, " +
+					"'grants', val_grants_arr"
+			}
+
 		}
 		valueSelect += ")) AS values"
 		selectFields = append(selectFields, t.Field("values_order"), valueSelect)
@@ -141,7 +145,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			"LEFT JOIN " + avkagt.Name() + " avg ON av.id = avg.attribute_value_id " +
 			"LEFT JOIN " + Tables.KeyAccessServerRegistry.Name() + " vkas ON avg.key_access_server_id = vkas.id " +
 			"LEFT JOIN " + Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id LEFT JOIN " + avt.Name() + " vmv ON vm.member_id = vmv.id "
-		if opts.withOneValueByFqn != "" {
+		if opts.withOneValueByFqn != "" || opts.withSubjectMaps {
 			subQuery += "WHERE av.active = true "
 		}
 		subQuery += "GROUP BY av.id) avt ON avt.attribute_definition_id = " + t.Field("id")
@@ -153,11 +157,35 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			LeftJoin(Tables.KeyAccessServerRegistry.Name() + " ON " + Tables.KeyAccessServerRegistry.Field("id") + " = " + akagt.Field("key_access_server_id"))
 	}
 	if opts.withFqn {
-		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id") +
-			" AND " + fqnt.Field("value_id") + " IS NULL")
+		sb = sb.LeftJoin(fqnt.Name() + " fqnt ON " + "fqnt.attribute_id" + " = " + t.Field("id") +
+			" AND " + "fqnt.value_id" + " IS NULL")
 	}
 
-	if opts.withOneValueByFqn != "" {
+	if opts.withSubjectMaps {
+		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id")).
+			LeftJoin("(SELECT " +
+				avt.Field("id") + " AS av_id," +
+				"JSON_AGG(JSON_BUILD_OBJECT(" +
+				"'id', " + smT.Field("id") + "," +
+				"'actions', " + smT.Field("actions") + "," +
+				constructMetadata(smT.Name(), true) +
+				"'subject_condition_set', JSON_BUILD_OBJECT(" +
+				"'id', " + scsT.Field("id") + "," +
+				constructMetadata(scsT.Name(), true) +
+				"'subject_sets', " + scsT.Field("condition") +
+				")" +
+				")) AS sub_maps_arr " +
+				", inner_fqns.fqn AS fqn " +
+				"FROM " + smT.Name() + " " +
+				"LEFT JOIN " + avt.Name() + " ON " + smT.Field("attribute_value_id") + " = " + avt.Field("id") + " " +
+				"LEFT JOIN " + scsT.Name() + " ON " + smT.Field("subject_condition_set_id") + " = " + scsT.Field("id") + " " +
+				"INNER JOIN " + fqnt.Name() + " AS inner_fqns ON " + avt.Field("id") + " = inner_fqns.value_id " +
+				"WHERE " + avt.Field("active") + " = true " +
+				"GROUP BY " + avt.Field("id") + ", inner_fqns.fqn " +
+				") AS val_sm_fqn_join ON " + "avt.id" + " = val_sm_fqn_join.av_id " +
+				"AND " + "avt.id" + " = " + fqnt.Field("value_id"),
+			)
+	} else if opts.withOneValueByFqn != "" {
 		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id")).
 			LeftJoin("(SELECT " +
 				avt.Field("id") + " AS av_id," +
@@ -188,7 +216,6 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 	if opts.withFqn {
 		g = append(g, fqnt.Field("fqn"))
 	}
-
 	return sb.GroupBy(g...)
 }
 
@@ -428,11 +455,24 @@ func getAttributeByFqnSQL(fqn string, opts attributesSelectOptions) (string, []i
 }
 
 func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*policy.Attribute, error) {
+	attr, err := c.getAttributeByFqn(ctx, fqn, false)
+	return attr, err
+}
+
+func (c PolicyDBClient) GetAttributeByFqnWithSubjectMappings(ctx context.Context, fqn string) (*policy.Attribute, error) {
+	attr, err := c.getAttributeByFqn(ctx, fqn, true)
+	return attr, err
+}
+
+func (c PolicyDBClient) getAttributeByFqn(ctx context.Context, fqn string, sm bool) (*policy.Attribute, error) {
 	// normalize to lower case
 	fqn = strings.ToLower(fqn)
 	opts := attributesSelectOptions{
 		withAttributeValues: true,
 		withKeyAccessGrants: true,
+	}
+	if sm {
+		opts.withSubjectMaps = true
 	}
 	if strings.Contains(fqn, "/value/") {
 		opts.withOneValueByFqn = fqn
@@ -440,6 +480,7 @@ func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 		opts.withFqn = true
 	}
 	sql, args, err := getAttributeByFqnSQL(fqn, opts)
+	c.logger.Info("sql, ", "", sql)
 	if err != nil {
 		return nil, err
 	}

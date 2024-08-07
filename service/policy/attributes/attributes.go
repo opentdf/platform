@@ -105,6 +105,20 @@ func (s *AttributesService) GetAttributeValuesByFqns(ctx context.Context,
 	return rsp, nil
 }
 
+func (s *AttributesService) GetAttributesByFqns(ctx context.Context,
+	req *attributes.GetAttributesByFqnsRequest,
+) (*attributes.GetAttributesByFqnsResponse, error) {
+	rsp := &attributes.GetAttributesByFqnsResponse{}
+
+	fqnsToAttributes, err := s.dbClient.GetAttributesByFqns(ctx, req)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("fqns", fmt.Sprintf("%v", req.GetFqns())))
+	}
+	rsp.FqnAttributes = fqnsToAttributes
+
+	return rsp, nil
+}
+
 func (s *AttributesService) UpdateAttribute(ctx context.Context,
 	req *attributes.UpdateAttributeRequest,
 ) (*attributes.UpdateAttributeResponse, error) {

@@ -1,6 +1,9 @@
 #!/usr/bin/env bats
 
-# Running locally (shared backend)
+# Tests for creating and reading TDF files that wrap their keys with multiple kases.
+#
+# Running locally (shared backend):
+#
 # ```sh
 # docker compose up
 # go run ./service provision keycloak
@@ -9,6 +12,20 @@
 # <opentdf.yaml >opentdf-beta.yaml yq e '(.server.port = 8282) | (.services.authorization.ersurl = "http://localhost:8282/entityresolution/resolve")'
 # go run ./service --config-file ./opentdf-beta.yaml start
 # ```
+#
+# Running locally (separate backends):
+# To use:
+# ```
+# docker compose -f tests/double-compose.yaml up &
+# go run ./service --config-file=test/opentdf-a.yaml --config-key=opentdf-a provision keycloak -e http://localhost:18888/auth
+# go run ./service --config-file=test/opentdf-a.yaml --config-key=opentdf-a provision fixtures
+# go run ./service --config-file=test/opentdf-b.yaml --config-key=opentdf-b provision keycloak -e http://localhost:18888/auth
+# go run ./service --config-file=test/opentdf-b.yaml --config-key=opentdf-b provision fixtures
+# 
+# go run ./service --config-file=test/opentdf-a.yaml --config-key=opentdf-a start
+# go run ./service --config-file=test/opentdf-b.yaml --config-key=opentdf-b start
+# ```
+
 
 @test "examples: two kas (shared key) file" {
   # TODO: add subject mapping here to remove reliance on `provision fixtures`

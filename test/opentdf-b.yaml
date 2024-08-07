@@ -1,0 +1,58 @@
+logger:
+  level: debug
+  type: text
+  output: stdout
+db:
+  port: 25432
+services:
+  kas:
+    enabled: true
+    keyring:
+      - kid: e1
+        alg: ec:secp256r1
+      - kid: e1
+        alg: ec:secp256r1
+        legacy: true
+      - kid: r1
+        alg: rsa:2048
+      - kid: r1
+        alg: rsa:2048
+        legacy: true
+  policy:
+    enabled: true
+  authorization:
+    enabled: true
+    ersurl: http://localhost:28080/entityresolution/resolve
+    clientid: tdf-authorization-svc
+    clientsecret: secret
+    tokenendpoint: http://localhost:28888/auth/realms/opentdf/protocol/openid-connect/token
+  entityresolution:
+    enabled: true
+    url: http://localhost:28888/auth
+    clientid: 'tdf-entity-resolution'
+    clientsecret: 'secret'
+    realm: 'opentdf'
+    legacykeycloak: true
+    inferid:
+      from:
+        email: true
+        username: true
+server:
+  auth:
+    enabled: true
+    enforceDPoP: false
+    audience: 'http://localhost:28080'
+    issuer: http://localhost:28888/auth/realms/opentdf
+  cryptoProvider:
+    type: standard
+    standard:
+      keys:
+        - kid: r1
+          alg: rsa:2048
+          private: kas-private.pem
+          cert: kas-cert.pem
+        - kid: e1
+          alg: ec:secp256r1
+          private: kas-ec-private.pem
+          cert: kas-ec-cert.pem
+  port: 28080

@@ -5,6 +5,11 @@ env:
 
 on:
   pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - edited
   push:
     branches:
       - main
@@ -149,6 +154,7 @@ jobs:
               core.setFailed('This pull request does not reference any issues. Please add a reference to an issue in the body of the pull request description.');
             }
   go:
+    if: github.event.action != 'edited'
     runs-on: ubuntu-22.04
     permissions:
       checks: write
@@ -226,6 +232,7 @@ jobs:
         if: env.IS_RELEASE_BRANCH == 'false'
 
   integration:
+    if: github.event.action != 'edited'
     name: integration tests
     runs-on: ubuntu-22.04
     strategy:
@@ -304,6 +311,7 @@ jobs:
         run: test/rego/custom-entity.bats
 
   image:
+    if: github.event.action != 'edited'
     name: image build
     runs-on: ubuntu-22.04
     steps:
@@ -316,6 +324,7 @@ jobs:
           push: false
 
   platform-xtest:
+    if: github.event.action != 'edited'
     needs: integration
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
@@ -323,6 +332,7 @@ jobs:
       platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
   buflint:
+    if: github.event.action != 'edited'
     name: Protocol Buffer Lint and Gencode Up-to-date check
     runs-on: ubuntu-22.04
     steps:
@@ -376,6 +386,7 @@ jobs:
         run: echo "Failed due to ${{ contains(needs.*.result, 'failure') }}" && exit 1
 
   license:
+    if: github.event.action != 'edited'
     name: license check
     runs-on: ubuntu-22.04
     steps:

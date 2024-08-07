@@ -28,10 +28,6 @@ services:
         username: true
   authorization:
     enabled: true
-    ersurl: http://localhost:8080/entityresolution/resolve
-    clientid: tdf-authorization-svc
-    clientsecret: secret
-    tokenendpoint: http://keycloak:8888/auth/realms/opentdf/protocol/openid-connect/token
 server:
   auth:
     enabled: true

@@ -31,7 +31,6 @@ require (
 	github.com/testcontainers/testcontainers-go v0.30.0
 	github.com/valyala/fasthttp v1.52.0
 	github.com/wI2L/jsondiff v0.5.2
-	golang.org/x/oauth2 v0.20.0
 	google.golang.org/grpc v1.63.2
 	google.golang.org/protobuf v1.34.1
 	gopkg.in/yaml.v2 v2.4.0

@@ -364,10 +364,11 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 func makeSubMapsByValLookup(subjectMappings []*policy.SubjectMapping) map[string][]*policy.SubjectMapping {
 	lookup := make(map[string][]*policy.SubjectMapping)
 	for _, sm := range subjectMappings {
-		// TODO: add check val is not nil
-		val := sm.AttributeValue
-		// TODO: add check id exists
-		lookup[val.Id] = append(lookup[val.Id], sm)
+		val := sm.GetAttributeValue()
+		id := val.GetId()
+		if id != "" {
+			lookup[id] = append(lookup[id], sm)
+		}
 	}
 	return lookup
 }

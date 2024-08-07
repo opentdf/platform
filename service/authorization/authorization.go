@@ -361,16 +361,12 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 	return rsp, nil
 }
 
-func GetSubjectMappingsLookup(subjectMappings []*policy.SubjectMapping) map[string][]*policy.SubjectMapping {
+func makeSubMapsByValLookup(subjectMappings []*policy.SubjectMapping) map[string][]*policy.SubjectMapping {
 	lookup := make(map[string][]*policy.SubjectMapping)
-	// println("SubjectMappings: ", len(subjectMappings))
-	// println(subjectMappings[0].String())
 	for _, sm := range subjectMappings {
-		// add check val is not nil
+		// TODO: add check val is not nil
 		val := sm.AttributeValue
-		// add check fqn exists
-		// lookup[val.Fqn] = append(lookup[val.Fqn], sm)
-		// add check id exists
+		// TODO: add check id exists
 		lookup[val.Id] = append(lookup[val.Id], sm)
 	}
 	return lookup
@@ -378,48 +374,43 @@ func GetSubjectMappingsLookup(subjectMappings []*policy.SubjectMapping) map[stri
 
 func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
 	as.logger.DebugContext(ctx, "getting entitlements")
-	// request := attr.GetAttributeValuesByFqnsRequest{
-	// 	WithValue: &policy.AttributeValueSelector{
-	// 		WithSubjectMaps: true,
-	// 	},
-	// }
 	start := time.Now()
-	listAttributeResp, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{})
+	attrsRes, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{})
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to list attributes")
 	}
 	slog.DebugContext(ctx, "list attributes", slog.String("duration", time.Since(start).String()))
 	start = time.Now()
-	listSubjectMappings, err := as.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{})
+	subMapsRes, err := as.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{})
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to list subject mappings")
 	}
 	slog.DebugContext(ctx, "list subject mappings", slog.String("duration", time.Since(start).String()))
 	start = time.Now()
-	subjectMappingLookup := GetSubjectMappingsLookup(listSubjectMappings.GetSubjectMappings())
+	subMapsByVal := makeSubMapsByValLookup(subMapsRes.GetSubjectMappings())
 	slog.DebugContext(ctx, "create subject mapping lookup", slog.String("duration", time.Since(start).String()))
-	fqnLookup := make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue)
-	attrs := listAttributeResp.GetAttributes()
+	fqnAttrVals := make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue)
+	attrs := attrsRes.GetAttributes()
 	start = time.Now()
-	for i, a := range attrs {
-		for j := range a.GetValues() {
-			attrs[i].Values[j].SubjectMappings = nil
-			attrs[i].Values[j].Attribute = nil
-			attrs[i].Values[j].Metadata = nil
-		}
-		attrs[i].Metadata = nil
-		attrs[i].Grants = nil
-		attrs[i].Namespace = nil
-		// attrs[i].Values = nil
-	}
+	// for i, a := range attrs {
+	// 	for j := range a.GetValues() {
+	// 		attrs[i].Values[j].SubjectMappings = nil
+	// 		attrs[i].Values[j].Attribute = nil
+	// 		attrs[i].Values[j].Metadata = nil
+	// 	}
+	// 	attrs[i].Metadata = nil
+	// 	attrs[i].Grants = nil
+	// 	attrs[i].Namespace = nil
+	// 	// attrs[i].Values = nil
+	// }
 	slog.DebugContext(ctx, "clear subject mappings", slog.String("duration", time.Since(start).String()))
 	start = time.Now()
 	for _, a := range attrs {
 		for _, v := range a.GetValues() {
 			// Check if the value has a subject mapping
-			if subjectMappings, ok := subjectMappingLookup[v.GetId()]; ok {
+			if subjectMappings, ok := subMapsByVal[v.GetId()]; ok {
 				println("Adding subject mappings to value: ", v.GetFqn())
 				v.SubjectMappings = subjectMappings
 				for i := range v.SubjectMappings {
@@ -428,6 +419,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 				values := []*policy.Value{v}
 				if a.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
 					println(v.GetFqn(), " is a hierarchy attribute")
+					// TODO: make sure all values have subject mappings
 					values = a.GetValues()
 				}
 				new_a := &policy.Attribute{
@@ -441,8 +433,8 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 					Active:    a.GetActive(),
 					Metadata:  a.GetMetadata(),
 				}
-
-				fqnLookup[v.GetFqn()] = &attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+				// TODO: if scope defined then only add fqn values that are in the scope
+				fqnAttrVals[v.GetFqn()] = &attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 					Attribute: new_a,
 					Value:     v,
 				}
@@ -454,7 +446,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	}
 	slog.DebugContext(ctx, "add subject mappings to values", slog.String("duration", time.Since(start).String()))
 	avf := &attr.GetAttributeValuesByFqnsResponse{
-		FqnAttributeValues: fqnLookup,
+		FqnAttributeValues: fqnAttrVals,
 	}
 	// Lack of scope has impacts on performance
 	// https://github.com/opentdf/platform/issues/365

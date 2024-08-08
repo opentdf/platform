@@ -372,7 +372,7 @@ func makeSubMapsByValLookup(subjectMappings []*policy.SubjectMapping) map[string
 	return lookup
 }
 
-func attachSubMapsToVals(values []*policy.Value, subMapsByVal map[string][]*policy.SubjectMapping) []*policy.Value {
+func updateValsWithSubMaps(values []*policy.Value, subMapsByVal map[string][]*policy.SubjectMapping) []*policy.Value {
 	for i, v := range values {
 		if subjectMappings, ok := subMapsByVal[v.GetId()]; ok {
 			values[i].SubjectMappings = subjectMappings
@@ -400,13 +400,13 @@ func updateValsByFqnLookup(attribute *policy.Attribute, scopeMap map[string]bool
 func makeValsByFqnsLookup(attrs []*policy.Attribute, subMapsByVal map[string][]*policy.SubjectMapping, scopeMap map[string]bool) map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue {
 	fqnAttrVals := make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 	for i := range attrs {
-		attrs[i].Values = attachSubMapsToVals(attrs[i].GetValues(), subMapsByVal)
+		attrs[i].Values = updateValsWithSubMaps(attrs[i].GetValues(), subMapsByVal)
 		fqnAttrVals = updateValsByFqnLookup(attrs[i], scopeMap, fqnAttrVals)
 	}
 	return fqnAttrVals
 }
 
-func createScopeMap(scope *authorization.ResourceAttribute) map[string]bool {
+func makeScopeMap(scope *authorization.ResourceAttribute) map[string]bool {
 	if scope == nil {
 		return nil
 	}
@@ -429,7 +429,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		as.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to list subject mappings")
 	}
-	scopeMap := createScopeMap(req.GetScope())
+	scopeMap := makeScopeMap(req.GetScope())
 	subMapsByVal := makeSubMapsByValLookup(subMapsRes.GetSubjectMappings())
 	attrs := attrsRes.GetAttributes()
 	fqnAttrVals := makeValsByFqnsLookup(attrs, subMapsByVal, scopeMap)

@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -382,7 +381,7 @@ func attachSubMapsToVals(values []*policy.Value, subMapsByVal map[string][]*poli
 	return values
 }
 
-func addToValsByFqnLookup(a *policy.Attribute, scopeMap map[string]bool, fqnAttrVals map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue) map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue {
+func updateValsByFqnLookup(a *policy.Attribute, scopeMap map[string]bool, fqnAttrVals map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue) map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue {
 	rule := a.GetRule()
 	for _, v := range a.Values {
 		valFqn := v.GetFqn()
@@ -411,7 +410,7 @@ func makeValsByFqnsLookup(attrs []*policy.Attribute, subMapsByVal map[string][]*
 	fqnAttrVals := make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 	for i := range attrs {
 		attrs[i].Values = attachSubMapsToVals(attrs[i].GetValues(), subMapsByVal)
-		fqnAttrVals = addToValsByFqnLookup(attrs[i], scopeMap, fqnAttrVals)
+		fqnAttrVals = updateValsByFqnLookup(attrs[i], scopeMap, fqnAttrVals)
 	}
 	return fqnAttrVals
 }
@@ -439,13 +438,10 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		as.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to list subject mappings")
 	}
-
 	scopeMap := createScopeMap(req.GetScope())
 	subMapsByVal := makeSubMapsByValLookup(subMapsRes.GetSubjectMappings())
 	attrs := attrsRes.GetAttributes()
-	start := time.Now()
 	fqnAttrVals := makeValsByFqnsLookup(attrs, subMapsByVal, scopeMap)
-	slog.DebugContext(ctx, "add subject mappings to values", slog.String("duration", time.Since(start).String()))
 	avf := &attr.GetAttributeValuesByFqnsResponse{
 		FqnAttributeValues: fqnAttrVals,
 	}
@@ -461,30 +457,22 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	}
 
 	// call ERS on all entities
-	start = time.Now()
 	ersResp, err := as.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{Entities: req.GetEntities()})
 	if err != nil {
 		as.logger.ErrorContext(ctx, "error calling ERS to resolve entities", "entities", req.GetEntities())
 		return nil, err
 	}
-	slog.DebugContext(ctx, "resolve entities", slog.String("duration", time.Since(start).String()))
 
 	// call rego on all entities
-	start = time.Now()
 	in, err := entitlements.OpaInput(subjectMappings, ersResp)
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to build rego input", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to build rego input")
 	}
-	slog.DebugContext(ctx, "build rego input", slog.String("duration", time.Since(start).String()))
-	start = time.Now()
-	// as.logger.DebugContext(ctx, "entitlements", "input", fmt.Sprintf("%+v", in))
-	slog.DebugContext(ctx, "log rego input", slog.String("duration", time.Since(start).String()))
-	start = time.Now()
+
 	results, err := as.eval.Eval(ctx,
 		rego.EvalInput(in),
 	)
-	slog.DebugContext(ctx, "eval rego", slog.String("duration", time.Since(start).String()))
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to evaluate entitlements policy")
 	}
@@ -511,10 +499,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		as.logger.ErrorContext(ctx, "entitlements is not a map[string]interface", slog.String("value", fmt.Sprintf("%+v", resultsEntitlements)))
 		return rsp, nil
 	}
-	start = time.Now()
 	as.logger.DebugContext(ctx, "opa results", "results", fmt.Sprintf("%+v", results))
-	slog.DebugContext(ctx, "log opa results", slog.String("duration", time.Since(start).String()))
-	start = time.Now()
 	for idx, entity := range req.GetEntities() {
 		// Ensure the entity has an ID
 		entityID := entity.GetId()
@@ -554,7 +539,6 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 			AttributeValueFqns: entitlements,
 		}
 	}
-	slog.DebugContext(ctx, "build entity entitlements", slog.String("duration", time.Since(start).String()))
 
 	return rsp, nil
 }

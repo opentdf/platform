@@ -383,7 +383,8 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 	require.NoError(t, err)
 
 	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
-		Attributes: &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		SubjectMapping: &mySubjectMappingClient{},
+		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
 		tokenSource: &testTokenSource, eval: prepared}
 
 	resp, err := as.GetDecisions(ctxb, &req)

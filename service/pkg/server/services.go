@@ -70,7 +70,7 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 			if err := reg.RegisterService(kas.NewRegistration(), "kas"); err != nil {
 				return nil, err //nolint:wrapcheck // We are all friends here
 			}
-			registeredServices = append(registeredServices, "kas")
+			return registeredServices, nil
 		default:
 			continue
 		}

@@ -384,24 +384,15 @@ func attachSubMapsToVals(values []*policy.Value, subMapsByVal map[string][]*poli
 func updateValsByFqnLookup(attribute *policy.Attribute, scopeMap map[string]bool, fqnAttrVals map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue) map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue {
 	rule := attribute.GetRule()
 	for _, v := range attribute.GetValues() {
-		valFqn := v.GetFqn()
-		if !(scopeMap == nil || scopeMap[valFqn]) {
+		if !(scopeMap == nil || scopeMap[v.GetFqn()]) {
 			continue
 		}
 		values := []*policy.Value{v}
-
 		if rule == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
 			values = attribute.GetValues()
 		}
-		a := &policy.Attribute{
-			Rule:   rule,
-			Values: values,
-		}
-
-		fqnAttrVals[v.GetFqn()] = &attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
-			Attribute: a,
-			Value:     v,
-		}
+		a := &policy.Attribute{Rule: rule, Values: values}
+		fqnAttrVals[v.GetFqn()] = &attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{Attribute: a, Value: v}
 	}
 	return fqnAttrVals
 }

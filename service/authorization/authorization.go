@@ -362,11 +362,14 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 
 // makeSubMapsByValLookup creates a lookup map of subject mappings by attribute value ID.
 func makeSubMapsByValLookup(subjectMappings []*policy.SubjectMapping) map[string][]*policy.SubjectMapping {
+	// map keys will be attribute value IDs
 	lookup := make(map[string][]*policy.SubjectMapping)
 	for _, sm := range subjectMappings {
 		val := sm.GetAttributeValue()
 		id := val.GetId()
+		// if attribute value ID exists
 		if id != "" {
+			// append the subject mapping to the slice of subject mappings for the attribute value ID
 			lookup[id] = append(lookup[id], sm)
 		}
 	}
@@ -376,7 +379,9 @@ func makeSubMapsByValLookup(subjectMappings []*policy.SubjectMapping) map[string
 // updateValsWithSubMaps updates the subject mappings of values using the lookup map.
 func updateValsWithSubMaps(values []*policy.Value, subMapsByVal map[string][]*policy.SubjectMapping) []*policy.Value {
 	for i, v := range values {
+		// if subject mappings exist for the value
 		if subjectMappings, ok := subMapsByVal[v.GetId()]; ok {
+			// update the subject mappings of the value
 			values[i].SubjectMappings = subjectMappings
 		}
 	}
@@ -387,13 +392,20 @@ func updateValsWithSubMaps(values []*policy.Value, subMapsByVal map[string][]*po
 func updateValsByFqnLookup(attribute *policy.Attribute, scopeMap map[string]bool, fqnAttrVals map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue) map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue {
 	rule := attribute.GetRule()
 	for _, v := range attribute.GetValues() {
+		// if scope exists and current attribute value FQN is not in scope
 		if !(scopeMap == nil || scopeMap[v.GetFqn()]) {
+			// skip
 			continue
 		}
+		// trim attribute values (by default only keep single value relevant to FQN)
+		// This is key to minimizing the rego query size.
 		values := []*policy.Value{v}
 		if rule == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+			// restore ALL attribute values if attribute rule is hierarchical
+			// This is key to honoring comprehensive hierarchy.
 			values = attribute.GetValues()
 		}
+		// only clone relevant fields for attribute
 		a := &policy.Attribute{Rule: rule, Values: values}
 		fqnAttrVals[v.GetFqn()] = &attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{Attribute: a, Value: v}
 	}
@@ -404,7 +416,9 @@ func updateValsByFqnLookup(attribute *policy.Attribute, scopeMap map[string]bool
 func makeValsByFqnsLookup(attrs []*policy.Attribute, subMapsByVal map[string][]*policy.SubjectMapping, scopeMap map[string]bool) map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue {
 	fqnAttrVals := make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 	for i := range attrs {
+		// add subject mappings to attribute values
 		attrs[i].Values = updateValsWithSubMaps(attrs[i].GetValues(), subMapsByVal)
+		// update the lookup map with attribute values by FQN
 		fqnAttrVals = updateValsByFqnLookup(attrs[i], scopeMap, fqnAttrVals)
 	}
 	return fqnAttrVals
@@ -412,10 +426,12 @@ func makeValsByFqnsLookup(attrs []*policy.Attribute, subMapsByVal map[string][]*
 
 // makeScopeMap creates a map of attribute value FQNs.
 func makeScopeMap(scope *authorization.ResourceAttribute) map[string]bool {
+	// if scope not defined, return nil pointer
 	if scope == nil {
 		return nil
 	}
 	scopeMap := make(map[string]bool)
+	// add attribute value FQNs from scope to the map
 	for _, fqn := range scope.GetAttributeValueFqns() {
 		scopeMap[fqn] = true
 	}
@@ -434,10 +450,12 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		as.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to list subject mappings")
 	}
+	// create a lookup map of attribute value FQNs (based on request scope)
 	scopeMap := makeScopeMap(req.GetScope())
+	// create a lookup map of subject mappings by attribute value ID
 	subMapsByVal := makeSubMapsByValLookup(subMapsRes.GetSubjectMappings())
-	attrs := attrsRes.GetAttributes()
-	fqnAttrVals := makeValsByFqnsLookup(attrs, subMapsByVal, scopeMap)
+	// create a lookup map of attribute values by FQN (for rego query)
+	fqnAttrVals := makeValsByFqnsLookup(attrsRes.GetAttributes(), subMapsByVal, scopeMap)
 	avf := &attr.GetAttributeValuesByFqnsResponse{
 		FqnAttributeValues: fqnAttrVals,
 	}

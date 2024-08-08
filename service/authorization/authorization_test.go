@@ -224,7 +224,8 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	}}
 
 	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
-		Attributes: &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		SubjectMapping: &mySubjectMappingClient{},
+		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
 		tokenSource: &testTokenSource, eval: prepared}
 
 	resp, err := as.GetDecisions(ctxb, &req)
@@ -537,7 +538,8 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 	prepared, err := rego.PrepareForEval(ctxb)
 	require.NoError(t, err)
 	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
-		Attributes: &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		SubjectMapping: &mySubjectMappingClient{},
+		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
 		tokenSource: &testTokenSource, eval: prepared}
 
 	withHierarchy := true

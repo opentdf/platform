@@ -67,6 +67,10 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 		case "kas":
 			registeredServices = append(registeredServices, "kas")
 			services = append(services, kas.NewRegistration())
+			if err := reg.RegisterService(kas.NewRegistration(), "kas"); err != nil {
+				return nil, err //nolint:wrapcheck // We are all friends here
+			}
+			registeredServices = append(registeredServices, "kas")
 		default:
 			continue
 		}

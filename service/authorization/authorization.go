@@ -360,6 +360,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 	return rsp, nil
 }
 
+// makeSubMapsByValLookup creates a lookup map of subject mappings by attribute value ID.
 func makeSubMapsByValLookup(subjectMappings []*policy.SubjectMapping) map[string][]*policy.SubjectMapping {
 	lookup := make(map[string][]*policy.SubjectMapping)
 	for _, sm := range subjectMappings {
@@ -372,6 +373,7 @@ func makeSubMapsByValLookup(subjectMappings []*policy.SubjectMapping) map[string
 	return lookup
 }
 
+// updateValsWithSubMaps updates the subject mappings of values using the lookup map.
 func updateValsWithSubMaps(values []*policy.Value, subMapsByVal map[string][]*policy.SubjectMapping) []*policy.Value {
 	for i, v := range values {
 		if subjectMappings, ok := subMapsByVal[v.GetId()]; ok {
@@ -381,6 +383,7 @@ func updateValsWithSubMaps(values []*policy.Value, subMapsByVal map[string][]*po
 	return values
 }
 
+// updateValsByFqnLookup updates the lookup map with attribute values by FQN.
 func updateValsByFqnLookup(attribute *policy.Attribute, scopeMap map[string]bool, fqnAttrVals map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue) map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue {
 	rule := attribute.GetRule()
 	for _, v := range attribute.GetValues() {
@@ -397,6 +400,7 @@ func updateValsByFqnLookup(attribute *policy.Attribute, scopeMap map[string]bool
 	return fqnAttrVals
 }
 
+// makeValsByFqnsLookup creates a lookup map of attribute values by FQN.
 func makeValsByFqnsLookup(attrs []*policy.Attribute, subMapsByVal map[string][]*policy.SubjectMapping, scopeMap map[string]bool) map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue {
 	fqnAttrVals := make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 	for i := range attrs {
@@ -406,6 +410,7 @@ func makeValsByFqnsLookup(attrs []*policy.Attribute, subMapsByVal map[string][]*
 	return fqnAttrVals
 }
 
+// makeScopeMap creates a map of attribute value FQNs.
 func makeScopeMap(scope *authorization.ResourceAttribute) map[string]bool {
 	if scope == nil {
 		return nil

@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
+	sm "github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
@@ -25,6 +26,7 @@ import (
 var (
 	getAttributesByValueFqnsResponse attr.GetAttributeValuesByFqnsResponse
 	listAttributeResp                attr.ListAttributesResponse
+	listSubjectMappings              sm.ListSubjectMappingsResponse
 	createEntityChainResp            entityresolution.CreateEntityChainFromJwtResponse
 	resolveEntitiesResp              entityresolution.ResolveEntitiesResponse
 	mockNamespace                    = "www.example.org"
@@ -49,6 +51,14 @@ func (*myAttributesClient) GetAttributeValuesByFqns(_ context.Context, _ *attr.G
 
 type myERSClient struct {
 	entityresolution.EntityResolutionServiceClient
+}
+
+type mySubjectMappingClient struct {
+	sm.SubjectMappingServiceClient
+}
+
+func (*mySubjectMappingClient) ListSubjectMappings(_ context.Context, _ *sm.ListSubjectMappingsRequest, _ ...grpc.CallOption) (*sm.ListSubjectMappingsResponse, error) {
+	return &listSubjectMappings, nil
 }
 
 func (*myERSClient) CreateEntityChainFromJwt(_ context.Context, _ *entityresolution.CreateEntityChainFromJwtRequest, _ ...grpc.CallOption) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
@@ -448,7 +458,8 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 	require.NoError(t, err)
 
 	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
-		Attributes: &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		SubjectMapping: &mySubjectMappingClient{},
+		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
 		tokenSource: &testTokenSource, eval: prepared}
 
 	req := authorization.GetEntitlementsRequest{

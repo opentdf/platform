@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/service/policy/kasregistry"
 	"github.com/opentdf/platform/service/policy/namespaces"
 	"github.com/opentdf/platform/service/policy/resourcemapping"
+	"github.com/opentdf/platform/service/policy/resourcemappinggroup"
 	"github.com/opentdf/platform/service/policy/subjectmapping"
 	"github.com/opentdf/platform/service/policy/unsafe"
 )
@@ -34,6 +35,7 @@ func NewRegistrations() []serviceregistry.Registration {
 		subjectmapping.NewRegistration(),
 		kasregistry.NewRegistration(),
 		unsafe.NewRegistration(),
+		resourcemappinggroup.NewRegistration(),
 	} {
 		r.Namespace = namespace
 		r.DB = dbRegister

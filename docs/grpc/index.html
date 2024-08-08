@@ -246,6 +246,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.ResourceMappingGroup"><span class="badge">M</span>ResourceMappingGroup</a>
+                </li>
+              
+                <li>
                   <a href="#policy.SubjectConditionSet"><span class="badge">M</span>SubjectConditionSet</a>
                 </li>
               
@@ -810,6 +814,61 @@
               
                 <li>
                   <a href="#policy.resourcemapping.ResourceMappingService"><span class="badge">S</span>ResourceMappingService</a>
+                </li>
+              
+            </ul>
+          </li>
+        
+          
+          <li>
+            <a href="#policy%2fresourcemappinggroup%2fresource_mapping_group.proto">policy/resourcemappinggroup/resource_mapping_group.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#policy.resourcemappinggroup.CreateResourceMappingGroupRequest"><span class="badge">M</span>CreateResourceMappingGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemappinggroup.CreateResourceMappingGroupResponse"><span class="badge">M</span>CreateResourceMappingGroupResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemappinggroup.DeleteResourceMappingGroupRequest"><span class="badge">M</span>DeleteResourceMappingGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemappinggroup.DeleteResourceMappingGroupResponse"><span class="badge">M</span>DeleteResourceMappingGroupResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemappinggroup.GetResourceMappingGroupRequest"><span class="badge">M</span>GetResourceMappingGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemappinggroup.GetResourceMappingGroupResponse"><span class="badge">M</span>GetResourceMappingGroupResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemappinggroup.ListResourceMappingGroupsRequest"><span class="badge">M</span>ListResourceMappingGroupsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemappinggroup.ListResourceMappingGroupsResponse"><span class="badge">M</span>ListResourceMappingGroupsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemappinggroup.UpdateResourceMappingGroupRequest"><span class="badge">M</span>UpdateResourceMappingGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemappinggroup.UpdateResourceMappingGroupResponse"><span class="badge">M</span>UpdateResourceMappingGroupResponse</a>
+                </li>
+              
+              
+              
+              
+                <li>
+                  <a href="#policy.resourcemappinggroup.ResourceMappingGroupService"><span class="badge">S</span>ResourceMappingGroupService</a>
                 </li>
               
             </ul>
@@ -1597,6 +1656,51 @@
                   <td>terms</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>group</td>
+                  <td><a href="#policy.ResourceMappingGroup">ResourceMappingGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.ResourceMappingGroup">ResourceMappingGroup</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               
@@ -5928,6 +6032,379 @@ Attribute &lt;&gt; Key Access Server RPCs
                 <td>DeleteResourceMapping</td>
                 <td>DELETE</td>
                 <td>/resource-mappings/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+            </tbody>
+          </table>
+          
+        
+    
+      
+      <div class="file-heading">
+        <h2 id="policy/resourcemappinggroup/resource_mapping_group.proto">policy/resourcemappinggroup/resource_mapping_group.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="policy.resourcemappinggroup.CreateResourceMappingGroupRequest">CreateResourceMappingGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemappinggroup.CreateResourceMappingGroupResponse">CreateResourceMappingGroupResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>resource_mapping_group</td>
+                  <td><a href="#policy.ResourceMappingGroup">policy.ResourceMappingGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemappinggroup.DeleteResourceMappingGroupRequest">DeleteResourceMappingGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemappinggroup.DeleteResourceMappingGroupResponse">DeleteResourceMappingGroupResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>resource_mapping_group</td>
+                  <td><a href="#policy.ResourceMappingGroup">policy.ResourceMappingGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemappinggroup.GetResourceMappingGroupRequest">GetResourceMappingGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemappinggroup.GetResourceMappingGroupResponse">GetResourceMappingGroupResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>resource_mapping_group</td>
+                  <td><a href="#policy.ResourceMappingGroup">policy.ResourceMappingGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemappinggroup.ListResourceMappingGroupsRequest">ListResourceMappingGroupsRequest</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="policy.resourcemappinggroup.ListResourceMappingGroupsResponse">ListResourceMappingGroupsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>resource_mapping_groups</td>
+                  <td><a href="#policy.ResourceMappingGroup">policy.ResourceMappingGroup</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemappinggroup.UpdateResourceMappingGroupRequest">UpdateResourceMappingGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemappinggroup.UpdateResourceMappingGroupResponse">UpdateResourceMappingGroupResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>resource_mapping_group</td>
+                  <td><a href="#policy.ResourceMappingGroup">policy.ResourceMappingGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+
+      
+
+      
+
+      
+        <h3 id="policy.resourcemappinggroup.ResourceMappingGroupService">ResourceMappingGroupService</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>ListResourceMappingGroups</td>
+                <td><a href="#policy.resourcemappinggroup.ListResourceMappingGroupsRequest">ListResourceMappingGroupsRequest</a></td>
+                <td><a href="#policy.resourcemappinggroup.ListResourceMappingGroupsResponse">ListResourceMappingGroupsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetResourceMappingGroup</td>
+                <td><a href="#policy.resourcemappinggroup.GetResourceMappingGroupRequest">GetResourceMappingGroupRequest</a></td>
+                <td><a href="#policy.resourcemappinggroup.GetResourceMappingGroupResponse">GetResourceMappingGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CreateResourceMappingGroup</td>
+                <td><a href="#policy.resourcemappinggroup.CreateResourceMappingGroupRequest">CreateResourceMappingGroupRequest</a></td>
+                <td><a href="#policy.resourcemappinggroup.CreateResourceMappingGroupResponse">CreateResourceMappingGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>UpdateResourceMappingGroup</td>
+                <td><a href="#policy.resourcemappinggroup.UpdateResourceMappingGroupRequest">UpdateResourceMappingGroupRequest</a></td>
+                <td><a href="#policy.resourcemappinggroup.UpdateResourceMappingGroupResponse">UpdateResourceMappingGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>DeleteResourceMappingGroup</td>
+                <td><a href="#policy.resourcemappinggroup.DeleteResourceMappingGroupRequest">DeleteResourceMappingGroupRequest</a></td>
+                <td><a href="#policy.resourcemappinggroup.DeleteResourceMappingGroupResponse">DeleteResourceMappingGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+
+        
+          
+          
+          <h4>Methods with HTTP bindings</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Method</td>
+                <td>Pattern</td>
+                <td>Body</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              
+              
+              <tr>
+                <td>ListResourceMappingGroups</td>
+                <td>GET</td>
+                <td>/resource-mapping-groups</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetResourceMappingGroup</td>
+                <td>GET</td>
+                <td>/resource-mapping-groups/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>CreateResourceMappingGroup</td>
+                <td>POST</td>
+                <td>/resource-mapping-groups</td>
+                <td>*</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>UpdateResourceMappingGroup</td>
+                <td>PATCH</td>
+                <td>/resource-mapping-groups/{id}</td>
+                <td>*</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>DeleteResourceMappingGroup</td>
+                <td>DELETE</td>
+                <td>/resource-mapping-groups/{id}</td>
                 <td></td>
               </tr>
               

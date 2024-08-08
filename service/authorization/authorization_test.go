@@ -480,8 +480,6 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 
 func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 	logger := logger.CreateTestLogger()
-
-	listAttributeResp = attr.ListAttributesResponse{}
 	attrDef := policy.Attribute{
 		Name: mockAttrName,
 		Namespace: &policy.Namespace{
@@ -499,6 +497,7 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 			},
 		},
 	}
+	listAttributeResp.Attributes = []*policy.Attribute{&attrDef}
 	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{FqnAttributeValues: map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 		"https://www.example.org/attr/foo/value/value1": {
 			Attribute: &attrDef,

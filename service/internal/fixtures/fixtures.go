@@ -99,6 +99,12 @@ type FixtureDataKasRegistry struct {
 	} `yaml:"public_key" json:"public_key"`
 }
 
+type FixtureDataResourceMappingGroup struct {
+	ID          string `yaml:"id"`
+	NamespaceId string `yaml:"namespace_id"`
+	Name        string `yaml:"name"`
+}
+
 type FixtureData struct {
 	Namespaces struct {
 		Metadata FixtureMetadata                 `yaml:"metadata"`
@@ -134,6 +140,10 @@ type FixtureData struct {
 		Metadata FixtureMetadata                   `yaml:"metadata"`
 		Data     map[string]FixtureDataValueMember `yaml:"data"`
 	} `yaml:"attribute_value_members"`
+	ResourceMappingGroups struct {
+		Metadata FixtureMetadata                            `yaml:"metadata"`
+		Data     map[string]FixtureDataResourceMappingGroup `yaml:"data"`
+	} `yaml:"resource_mapping_groups"`
 }
 
 func LoadFixtureData(file string) {
@@ -231,6 +241,15 @@ func (f *Fixtures) GetKasRegistryKey(key string) FixtureDataKasRegistry {
 	return kasr
 }
 
+func (f *Fixtures) GetResourceMappingGroupKey(key string) FixtureDataResourceMappingGroup {
+	rmGroup, ok := fixtureData.ResourceMappingGroups.Data[key]
+	if !ok || rmGroup.ID == "" {
+		slog.Error("could not find resource-mapping-groups", slog.String("id", key))
+		panic("could not find resource-mapping-group fixture: " + key)
+	}
+	return rmGroup
+}
+
 func (f *Fixtures) Provision() {
 	slog.Info("📦 running migrations in schema", slog.String("schema", f.db.Schema))
 	_, err := f.db.Client.RunMigrations(context.Background(), policy.Migrations)
@@ -258,6 +277,8 @@ func (f *Fixtures) Provision() {
 	akas := f.provisionAttributeKeyAccessServer()
 	slog.Info("📦 provisioning attribute value key access server data")
 	avkas := f.provisionAttributeValueKeyAccessServer()
+	slog.Info("📦 provisioning resource mapping group data")
+	rmGroup := f.provisionResourceMappingGroups()
 
 	slog.Info("📦 provisioned fixtures data",
 		slog.Int64("namespaces", n),
@@ -270,6 +291,7 @@ func (f *Fixtures) Provision() {
 		slog.Int64("kas_registry", kas),
 		slog.Int64("attribute_key_access_server", akas),
 		slog.Int64("attribute_value_key_access_server", avkas),
+		slog.Int64("resource_mapping_groups", rmGroup),
 	)
 	slog.Info("📚 indexing FQNs for fixtures")
 	f.db.PolicyClient.AttrFqnReindex()
@@ -427,6 +449,18 @@ func (f *Fixtures) provisionAttributeValueKeyAccessServer() int64 {
 		})
 	}
 	return f.provision("attribute_value_key_access_grants", []string{"attribute_value_id", "key_access_server_id"}, values)
+}
+
+func (f *Fixtures) provisionResourceMappingGroups() int64 {
+	values := make([][]string, 0, len(fixtureData.ResourceMappingGroups.Data))
+	for _, d := range fixtureData.ResourceMappingGroups.Data {
+		values = append(values, []string{
+			f.db.StringWrap(d.ID),
+			f.db.StringWrap(d.NamespaceId),
+			f.db.StringWrap(d.Name),
+		})
+	}
+	return f.provision(fixtureData.ResourceMappingGroups.Metadata.TableName, fixtureData.ResourceMappingGroups.Metadata.Columns, values)
 }
 
 func (f *Fixtures) provision(t string, c []string, v [][]string) int64 {

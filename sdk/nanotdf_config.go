@@ -58,6 +58,11 @@ func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
 
 // SetKasURL - set the URL of the KAS endpoint to be used for this nanoTDF
 func (config *NanoTDFConfig) SetKasURL(url string) error {
+	// Policy Key is the KAS Key
+	err := config.policy.pkaCfg.ResourceLocator.setURL(url)
+	if err != nil {
+		return err
+	}
 	return config.kasURL.setURL(url)
 }
 

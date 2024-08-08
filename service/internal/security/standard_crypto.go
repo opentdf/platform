@@ -23,16 +23,16 @@ const (
 type StandardConfig struct {
 	Keys []KeyPairInfo `mapstructure:"keys"`
 	// Deprecated
-	RSAKeys map[string]StandardKeyInfo `yaml:"rsa,omitempty" mapstructure:"rsa"`
+	RSAKeys map[KID]StandardKeyInfo `yaml:"rsa,omitempty" mapstructure:"rsa"`
 	// Deprecated
-	ECKeys map[string]StandardKeyInfo `yaml:"ec,omitempty" mapstructure:"ec"`
+	ECKeys map[KID]StandardKeyInfo `yaml:"ec,omitempty" mapstructure:"ec"`
 }
 
 type KeyPairInfo struct {
 	// Valid algorithm. May be able to be derived from Private but it is better to just say it.
-	Algorithm string `mapstructure:"alg"`
+	Algorithm Algorithm `mapstructure:"alg"`
 	// Key identifier. Should be short
-	KID string `mapstructure:"kid"`
+	KID KID `mapstructure:"kid"`
 	// Implementation specific locator for private key;
 	// for 'standard' crypto service this is the path to a PEM file
 	Private string `mapstructure:"private"`
@@ -63,11 +63,11 @@ type StandardECCrypto struct {
 }
 
 // List of keys by identifier
-type keylist map[string]any
+type keylist map[KID]any
 
 type StandardCrypto struct {
-	// Lists of keys first sorted by algorithm
-	keys map[string]keylist
+	// Map of Lists of keys first sorted by algorithm
+	keys map[Algorithm]keylist
 }
 
 // NewStandardCrypto Create a new instance of standard crypto
@@ -83,17 +83,17 @@ func NewStandardCrypto(cfg StandardConfig) (*StandardCrypto, error) {
 }
 
 func loadKeys(ks []KeyPairInfo) (*StandardCrypto, error) {
-	keys := make(map[string]keylist)
+	keys := make(map[Algorithm]keylist)
 	for _, k := range ks {
 		slog.Info("crypto cfg loading", "id", k.KID, "alg", k.Algorithm)
-		if _, ok := keys[k.Algorithm]; !ok {
-			keys[k.Algorithm] = make(map[string]any)
+		if _, ok := keys[Algorithm(k.Algorithm)]; !ok {
+			keys[Algorithm(k.Algorithm)] = make(map[KID]any)
 		}
 		loadedKey, err := loadKey(k)
 		if err != nil {
 			return nil, err
 		}
-		keys[k.Algorithm][k.KID] = loadedKey
+		keys[Algorithm(k.Algorithm)][KID(k.KID)] = loadedKey
 	}
 	return &StandardCrypto{
 		keys: keys,
@@ -112,7 +112,7 @@ func loadKey(k KeyPairInfo) (any, error) {
 			return nil, fmt.Errorf("failed to read certificate file [%s]: %w", k.Certificate, err)
 		}
 	}
-	switch k.Algorithm {
+	switch Algorithm(k.Algorithm) {
 	case AlgorithmECP256R1:
 		return StandardECCrypto{
 			KeyPairInfo:      k,
@@ -134,18 +134,18 @@ func loadKey(k KeyPairInfo) (any, error) {
 			asymEncryption: asymEncryption,
 		}, nil
 	default:
-		return nil, errors.New("unsupported algorithm [" + k.Algorithm + "]")
+		return nil, errors.New(string("unsupported algorithm [" + k.Algorithm + "]"))
 	}
 }
 
-func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]StandardKeyInfo) (*StandardCrypto, error) {
-	keys := make(map[string]keylist)
+func loadDeprecatedKeys(rsaKeys map[KID]StandardKeyInfo, ecKeys map[KID]StandardKeyInfo) (*StandardCrypto, error) {
+	keys := make(map[Algorithm]keylist)
 
 	if len(ecKeys) > 0 {
-		keys[AlgorithmECP256R1] = make(map[string]any)
+		keys[AlgorithmECP256R1] = make(map[KID]any)
 	}
 	if len(rsaKeys) > 0 {
-		keys[AlgorithmRSA2048] = make(map[string]any)
+		keys[AlgorithmRSA2048] = make(map[KID]any)
 	}
 
 	for id, kasInfo := range rsaKeys {
@@ -209,16 +209,16 @@ func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]St
 	}, nil
 }
 
-func (s StandardCrypto) FindKID(alg string) string {
+func (s StandardCrypto) FindKID(alg Algorithm) (KID, error) {
 	if ks, ok := s.keys[alg]; ok && len(ks) > 0 {
 		for kid := range ks {
-			return kid
+			return kid, nil
 		}
 	}
-	return ""
+	return "", ErrKIDNotFound
 }
 
-func (s StandardCrypto) RSAPublicKey(kid string) (string, error) {
+func (s StandardCrypto) RSAPublicKey(kid KID) (string, error) {
 	rsaKeys, ok := s.keys[AlgorithmRSA2048]
 	if !ok || len(rsaKeys) == 0 {
 		return "", ErrCertNotFound
@@ -240,7 +240,7 @@ func (s StandardCrypto) RSAPublicKey(kid string) (string, error) {
 	return pem, nil
 }
 
-func (s StandardCrypto) ECCertificate(kid string) (string, error) {
+func (s StandardCrypto) ECCertificate(kid KID) (string, error) {
 	ecKeys, ok := s.keys[AlgorithmECP256R1]
 	if !ok || len(ecKeys) == 0 {
 		return "", ErrCertNotFound
@@ -256,7 +256,7 @@ func (s StandardCrypto) ECCertificate(kid string) (string, error) {
 	return ec.ecCertificatePEM, nil
 }
 
-func (s StandardCrypto) ECPublicKey(kid string) (string, error) {
+func (s StandardCrypto) ECPublicKey(kid KID) (string, error) {
 	ecKeys, ok := s.keys[AlgorithmECP256R1]
 	if !ok || len(ecKeys) == 0 {
 		return "", ErrCertNotFound
@@ -292,7 +292,7 @@ func (s StandardCrypto) ECPublicKey(kid string) (string, error) {
 	return string(pemBytes), nil
 }
 
-func (s StandardCrypto) RSADecrypt(_ crypto.Hash, kid string, _ string, ciphertext []byte) ([]byte, error) {
+func (s StandardCrypto) RSADecrypt(_ crypto.Hash, kid KID, _ string, ciphertext []byte) ([]byte, error) {
 	rsaKeys, ok := s.keys[AlgorithmRSA2048]
 	if !ok || len(rsaKeys) == 0 {
 		return nil, ErrCertNotFound
@@ -314,7 +314,7 @@ func (s StandardCrypto) RSADecrypt(_ crypto.Hash, kid string, _ string, cipherte
 	return data, nil
 }
 
-func (s StandardCrypto) RSAPublicKeyAsJSON(kid string) (string, error) {
+func (s StandardCrypto) RSAPublicKeyAsJSON(kid KID) (string, error) {
 	rsaKeys, ok := s.keys[AlgorithmRSA2048]
 	if !ok || len(rsaKeys) == 0 {
 		return "", ErrCertNotFound
@@ -341,7 +341,7 @@ func (s StandardCrypto) RSAPublicKeyAsJSON(kid string) (string, error) {
 	return string(jsonPublicKey), nil
 }
 
-func (s StandardCrypto) GenerateNanoTDFSymmetricKey(kasKID string, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error) {
+func (s StandardCrypto) GenerateNanoTDFSymmetricKey(kasKID KID, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error) {
 	ephemeralECDSAPublicKey, err := ocrypto.UncompressECPubKey(curve, ephemeralPublicKeyBytes)
 	if err != nil {
 		return nil, err

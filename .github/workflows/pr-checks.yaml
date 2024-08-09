@@ -7,6 +7,11 @@ on:
       - synchronize
       - reopened
       - edited
+  merge_group:
+    branches:
+      - main
+    types:
+      - checks_requested
 
 jobs:
   pull-reqeust-checks:
@@ -19,6 +24,7 @@ jobs:
       - if: contains(needs.*.result, 'failure')
         run: echo "Failed due to ${{ contains(needs.*.result, 'failure') }}" && exit 1
   title-validation:
+    if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name)
     name: Validate PR title
     runs-on: ubuntu-22.04
     permissions:
@@ -59,6 +65,7 @@ jobs:
             examples
 
   associated-issue:
+    if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name)
     name: Issue Accociated with Pull Request
     if: |
       !contains(fromJSON('["dependabot[bot]", "opentdf-automation[bot]"]'), github.actor)

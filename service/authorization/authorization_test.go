@@ -479,7 +479,8 @@ func Test_GetDecisionsAllOfWithEnvironmental_Pass(t *testing.T) {
 	}}
 
 	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
-		Attributes: &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		SubjectMapping: &mySubjectMappingClient{},
+		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
 		tokenSource: &testTokenSource, eval: prepared}
 
 	resp, err := as.GetDecisions(ctxb, &req)

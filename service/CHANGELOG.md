@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.18](https://github.com/opentdf/platform/compare/service/v0.4.17...service/v0.4.18) (2024-08-09)
+
+
+### Features
+
+* **core:** Simplifies support for kidless clients ([#1272](https://github.com/opentdf/platform/issues/1272)) ([dedeb32](https://github.com/opentdf/platform/commit/dedeb3253421870c11300345a1fb6ce8d00fcf6f))
+* **policy:** 1256 resource mapping groups db support ([#1270](https://github.com/opentdf/platform/issues/1270)) ([c020e9b](https://github.com/opentdf/platform/commit/c020e9bba2d0fa930d9e4d368e2956116ed356c6))
+
 ## [0.4.17](https://github.com/opentdf/platform/compare/service/v0.4.16...service/v0.4.17) (2024-08-06)
 
 

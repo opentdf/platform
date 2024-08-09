@@ -147,9 +147,9 @@ message CreateAttributeValueResponse {
 message UpdateAttributeValueRequest {
   string id = 1 [(buf.validate.field).required = true];
 
-  // Optional
-  reserved 4;
+  // Deprecated
   reserved "members";
+  reserved 4;
 
   // Common metadata
   common.MetadataMutable metadata = 100;

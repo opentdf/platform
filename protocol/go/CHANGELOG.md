@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.11](https://github.com/opentdf/platform/compare/protocol/go/v0.2.10...protocol/go/v0.2.11) (2024-08-09)
+
+
+### Bug Fixes
+
+* **core:** bump golang.org/x/net from 0.22.0 to 0.23.0 in /protocol/go ([#627](https://github.com/opentdf/platform/issues/627)) ([6008320](https://github.com/opentdf/platform/commit/60083203f34ad75a6618e4aeaee05caddd6b0fe6))
+
 ## [0.2.10](https://github.com/opentdf/platform/compare/protocol/go/v0.2.9...protocol/go/v0.2.10) (2024-07-14)
 
 

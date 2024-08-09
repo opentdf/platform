@@ -18,6 +18,7 @@ services:
     - "-Djavax.net.ssl.trustStore=/truststore/truststore.jks"
     - "--spi-truststore-file-hostname-verification-policy=ANY"
     environment:
+      KC_PROXY: edge
       KC_HTTP_RELATIVE_PATH: /auth
       KC_DB_VENDOR: postgres
       KC_DB_URL_HOST: keycloakdb
@@ -33,7 +34,7 @@ services:
       KC_HTTPS_PORT: "8443"
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: changeme
-      KC_HOSTNAME_URL: http://localhost:8888/auth
+      #KC_HOSTNAME_URL: http://localhost:8888/auth
       KC_FEATURES: "preview,token-exchange"
       KC_HEALTH_ENABLED: "true"
       KC_HTTPS_KEY_STORE_PASSWORD: "password"

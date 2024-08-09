@@ -12,6 +12,7 @@ func init() {
 		RunE:  start,
 	}
 	startCmd.SilenceUsage = true
+
 	rootCmd.AddCommand(&startCmd)
 }
 

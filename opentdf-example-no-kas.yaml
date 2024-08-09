@@ -1,3 +1,4 @@
+mode: core
 logger:
   level: debug
   type: text
@@ -8,11 +9,6 @@ logger:
 #   port: 5432
 #   user: postgres
 #   password: changeme
-services:
-  kas:
-    enabled: false
-  policy:
-    enabled: true
 server:
   auth:
     enabled: false

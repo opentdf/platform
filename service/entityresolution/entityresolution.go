@@ -23,7 +23,7 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &entityresolution.EntityResolutionService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			var inputIdpConfig keycloak.KeycloakConfig
-			confJSON, err := json.Marshal(srp.Config.ExtraProps)
+			confJSON, err := json.Marshal(srp.Config)
 			if err != nil {
 				panic(err)
 			}

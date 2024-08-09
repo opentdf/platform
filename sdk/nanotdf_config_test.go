@@ -2,6 +2,8 @@ package sdk
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 // TestNanoTDFConfig1 - Create a new config, verify that the config contains valid PEMs for the key pair
@@ -52,4 +54,21 @@ func TestNanoTDFConfig2(t *testing.T) {
 	if readKasURL != kasURL {
 		t.Fatalf("expect %s, got %s", kasURL, readKasURL)
 	}
+}
+
+func TestNewNanoTDFConfigWithMultipleOptions(t *testing.T) {
+	s := SDK{}
+	optionOne := func(c *NanoTDFConfig) error {
+		c.cipher = cipherModeAes256gcm96Bit
+		return nil
+	}
+	optionTwo := func(c *NanoTDFConfig) error {
+		c.bindCfg.useEcdsaBinding = true
+		return nil
+	}
+	config, err := s.newNanoTDFConfig(optionOne, optionTwo)
+	require.NoError(t, err)
+	require.NotNil(t, config)
+	require.Equal(t, cipherModeAes256gcm96Bit, config.cipher)
+	require.True(t, config.bindCfg.useEcdsaBinding)
 }

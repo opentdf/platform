@@ -20,7 +20,6 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	AccessService_Info_FullMethodName            = "/kas.AccessService/Info"
 	AccessService_PublicKey_FullMethodName       = "/kas.AccessService/PublicKey"
 	AccessService_LegacyPublicKey_FullMethodName = "/kas.AccessService/LegacyPublicKey"
 	AccessService_Rewrap_FullMethodName          = "/kas.AccessService/Rewrap"
@@ -30,8 +29,6 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AccessServiceClient interface {
-	// Get the current version of the service
-	Info(ctx context.Context, in *InfoRequest, opts ...grpc.CallOption) (*InfoResponse, error)
 	PublicKey(ctx context.Context, in *PublicKeyRequest, opts ...grpc.CallOption) (*PublicKeyResponse, error)
 	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
 	LegacyPublicKey(ctx context.Context, in *LegacyPublicKeyRequest, opts ...grpc.CallOption) (*wrapperspb.StringValue, error)
@@ -44,15 +41,6 @@ type accessServiceClient struct {
 
 func NewAccessServiceClient(cc grpc.ClientConnInterface) AccessServiceClient {
 	return &accessServiceClient{cc}
-}
-
-func (c *accessServiceClient) Info(ctx context.Context, in *InfoRequest, opts ...grpc.CallOption) (*InfoResponse, error) {
-	out := new(InfoResponse)
-	err := c.cc.Invoke(ctx, AccessService_Info_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *accessServiceClient) PublicKey(ctx context.Context, in *PublicKeyRequest, opts ...grpc.CallOption) (*PublicKeyResponse, error) {
@@ -86,8 +74,6 @@ func (c *accessServiceClient) Rewrap(ctx context.Context, in *RewrapRequest, opt
 // All implementations must embed UnimplementedAccessServiceServer
 // for forward compatibility
 type AccessServiceServer interface {
-	// Get the current version of the service
-	Info(context.Context, *InfoRequest) (*InfoResponse, error)
 	PublicKey(context.Context, *PublicKeyRequest) (*PublicKeyResponse, error)
 	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
 	LegacyPublicKey(context.Context, *LegacyPublicKeyRequest) (*wrapperspb.StringValue, error)
@@ -99,9 +85,6 @@ type AccessServiceServer interface {
 type UnimplementedAccessServiceServer struct {
 }
 
-func (UnimplementedAccessServiceServer) Info(context.Context, *InfoRequest) (*InfoResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Info not implemented")
-}
 func (UnimplementedAccessServiceServer) PublicKey(context.Context, *PublicKeyRequest) (*PublicKeyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PublicKey not implemented")
 }
@@ -122,24 +105,6 @@ type UnsafeAccessServiceServer interface {
 
 func RegisterAccessServiceServer(s grpc.ServiceRegistrar, srv AccessServiceServer) {
 	s.RegisterService(&AccessService_ServiceDesc, srv)
-}
-
-func _AccessService_Info_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(InfoRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AccessServiceServer).Info(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AccessService_Info_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccessServiceServer).Info(ctx, req.(*InfoRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _AccessService_PublicKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -203,10 +168,6 @@ var AccessService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "kas.AccessService",
 	HandlerType: (*AccessServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Info",
-			Handler:    _AccessService_Info_Handler,
-		},
 		{
 			MethodName: "PublicKey",
 			Handler:    _AccessService_PublicKey_Handler,

@@ -20,29 +20,6 @@
     "application/json"
   ],
   "paths": {
-    "/kas": {
-      "get": {
-        "summary": "Get the current version of the service",
-        "operationId": "AccessService_Info",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/kasInfoResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "tags": [
-          "AccessService"
-        ]
-      }
-    },
     "/kas/kas_public_key": {
       "get": {
         "summary": "buf:lint:ignore RPC_RESPONSE_STANDARD_NAME",
@@ -153,15 +130,6 @@
     }
   },
   "definitions": {
-    "kasInfoResponse": {
-      "type": "object",
-      "properties": {
-        "version": {
-          "type": "string"
-        }
-      },
-      "title": "Service application level metadata"
-    },
     "kasPublicKeyResponse": {
       "type": "object",
       "properties": {

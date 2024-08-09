@@ -658,3 +658,27 @@ func (s *AuthSuite) Test_PublicPath_Matches() {
 	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/private")))
 	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2/test/fail")))
 }
+
+func (s *AuthSuite) Test_GetAction() {
+	cases := []struct{
+		method string
+		expected string
+	}{
+		{"GetSomething", ActionRead},
+		{"CreateSomething", ActionWrite},
+		{"UpdateSomething", ActionWrite},
+		{"AssignSomething", ActionWrite},
+		{"DeleteSomething", ActionDelete},
+		{"RemoveSomething", ActionDelete},
+		{"DeactivateSomething", ActionDelete},
+		{"ListSomething", ActionRead},
+		{"UnsafeDelete", ActionUnsafe},
+		{"UnsafeUpdate", ActionUnsafe},
+		{"UnsafeActivate", ActionUnsafe},
+		{"UnsafeReactivate", ActionUnsafe},
+		{"DoSomething", ActionOther},
+	}
+	for _, c := range cases {
+		s.Equal(c.expected, getAction(c.method))
+	}
+}

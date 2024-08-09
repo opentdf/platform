@@ -145,21 +145,21 @@ message SubjectMapping {
 }
 
 /**
-  A Condition defines a rule of <the value at the flattened 'selector value' location> <operator> <subject external values>
+   A Condition defines a rule of <the value at the flattened 'selector value' location> <operator> <subject external values>
 
-  Example:  Subjects with a field selected by the flattened selector "'.division'" and a value of "Accounting" or "Marketing":
-   {
-     "subject_external_selector_value": "'.division'",
-     "operator": "SUBJECT_MAPPING_OPERATOR_ENUM_IN",
-     "subject_external_values" : ["Accounting", "Marketing"]
-   }
+   Example:  Subjects with a field selected by the flattened selector "'.division'" and a value of "Accounting" or "Marketing":
+    {
+      "subject_external_selector_value": "'.division'",
+      "operator": "SUBJECT_MAPPING_OPERATOR_ENUM_IN",
+      "subject_external_values" : ["Accounting", "Marketing"]
+    }
 
-   Example: Subjects that are not part of the Fantastic Four according to their alias field:
-   {
-     "subject_external_selector_value": "'.data[0].alias'",
-     "operator": "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN",
-     "subject_external_values" : ["mister_fantastic", "the_thing", "human_torch", "invisible_woman"]
-   }
+    Example: Subjects that are not part of the Fantastic Four according to their alias field:
+    {
+      "subject_external_selector_value": "'.data[0].alias'",
+      "operator": "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN",
+      "subject_external_values" : ["mister_fantastic", "the_thing", "human_torch", "invisible_woman"]
+    }
 */
 message Condition {
   // a selector for a field value on a flattened Entity Representation (such as from idP/LDAP)
@@ -249,12 +249,102 @@ message PublicKey {
   oneof public_key {
     // kas public key url - optional since can also be retrieved via public key
     string remote = 1 [(buf.validate.field).cel = {
-      id: "uri_format",
-      message: "URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
+      id: "uri_format"
+      message: "URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes."
       expression: "this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')"
     }];
 
     // public key - optional since can also be retrieved via url
     string local = 2;
+
+    // Multiple keys with key ids
+    JWKSet set = 3;
   }
+}
+
+// RSA private key prime information
+message OtherPrimeInfo {
+  // RSA private key parameter (Other Prime Factor)
+  string r = 1;
+
+  // RSA private key parameter (Factor CRT Exponent)
+  string d = 2;
+
+  // RSA private key parameter (Factor CRT Coefficient)
+  string t = 3;
+}
+
+// Protocol buffer approximation of a JSON web key: https://datatracker.ietf.org/doc/html/rfc7517
+message JWK {
+  // Key type, as defined in JWA https://datatracker.ietf.org/doc/html/rfc7518
+  string kty = 1;
+
+  // Either `sig` or `enc`, if present.
+  string use = 2;
+
+  // Valid operations, e.g. `sign`, `verify`, `encrypt`, etc.
+  string key_ops = 3;
+
+  string alg = 4;
+
+  // FIXME: Can this be an `any`?
+  string kid = 5;
+
+  // x.509 URL parameter
+  string x5u = 6;
+
+  // x.509 cert chain parameter
+  repeated string x5c = 7;
+
+  // x.509 sha-1 thumbprint
+  string x5t = 8;
+
+  // x.509 sha-256 thumbprint
+  string x5ts256 = 9 [json_name = "x5t#s256"];
+
+  // RSA parameters: https://datatracker.ietf.org/doc/html/rfc7518#section-6.3
+  // Exponent of an RSA Public Key
+  string e = 10;
+
+  // Modulus of an RSA Public Key
+  string n = 11;
+
+  // RSA private key parameter (private exponent)
+  // OR Elliptic Curve Private Key parameter (ECC Private Key)
+  string d = 12;
+
+  // RSA private key parameter (First Prime Factor)
+  string p = 13;
+
+  // RSA private key parameter (Second Prime Factor)
+  string q = 14;
+
+  // RSA private key parameter (First Factor CRT Exponent)
+  string dp = 15;
+
+  // RSA private key parameter (Second Factor CRT Exponent)
+  string dq = 16;
+
+  // RSA private key parameter (First CRT Coefficient)
+  string qi = 17;
+
+  // RSA private key parameter (Other Primes Info)
+  repeated OtherPrimeInfo oth = 18;
+
+  reserved 19, 20;
+
+  // Elliptic Curve Key parameter (Curve)
+  string crv = 21;
+
+  // Elliptic Curve Key parameter (X Coordinate)
+  string x = 22;
+
+  // Elliptic Curve Key parameter (Y Coordinate)
+  string y = 23;
+
+  reserved 24 to 30;
+}
+
+message JWKSet {
+  repeated JWK keys = 1;
 }

@@ -239,7 +239,7 @@ jobs:
       - license
       - platform-xtest
     runs-on: ubuntu-22.04
-    if: always()
+    if: ${{ !cancelled() }}
     steps:
       - if: contains(needs.*.result, 'failure')
         run: echo "Failed due to ${{ contains(needs.*.result, 'failure') }}" && exit 1

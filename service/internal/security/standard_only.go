@@ -1,5 +1,3 @@
-//go:build !opentdf.hsm
-
 package security
 
 import "log/slog"
@@ -13,12 +11,14 @@ type Config struct {
 func NewCryptoProvider(cfg Config) (CryptoProvider, error) {
 	switch cfg.Type {
 	case "hsm":
-		// To enable HSM, compile with `go build --tags=opentdf.hsm ...service`
-		slog.Error("not compiled with `opentdf.hsm` flag set; hsm functionality disabled")
+		slog.Error("opentdf hsm mode has been removed")
 		return nil, ErrHSMNotFound
 	case "standard":
 		return NewStandardCrypto(cfg.StandardConfig)
 	default:
+		if cfg.Type != "" {
+			slog.Warn("unsupported crypto type", "crypto.type", cfg.Type)
+		}
 		return NewStandardCrypto(cfg.StandardConfig)
 	}
 }

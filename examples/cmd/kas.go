@@ -90,6 +90,13 @@ func listKases(cmd *cobra.Command) error {
 	return nil
 }
 
+func secureVariant(u string) string {
+	if u[:5] == "http:" {
+		return "https" + u[4:]
+	}
+	return u
+}
+
 func upsertKasRegistration(ctx context.Context, s *sdk.SDK, uri string, pk *policy.PublicKey) (string, error) {
 	r, err := s.KeyAccessServerRegistry.ListKeyAccessServers(ctx, &kasregistry.ListKeyAccessServersRequest{})
 	if err != nil {
@@ -123,7 +130,7 @@ func upsertKasRegistration(ctx context.Context, s *sdk.SDK, uri string, pk *poli
 	if pk == nil {
 		pk = new(policy.PublicKey)
 		pk.PublicKey = &policy.PublicKey_Remote{
-			Remote: uri + "/v2/kas_public_key",
+			Remote: secureVariant(uri) + "/v2/kas_public_key",
 		}
 	}
 	ur, err := s.KeyAccessServerRegistry.CreateKeyAccessServer(ctx, &kasregistry.CreateKeyAccessServerRequest{
@@ -131,7 +138,7 @@ func upsertKasRegistration(ctx context.Context, s *sdk.SDK, uri string, pk *poli
 		PublicKey: pk,
 	})
 	if err != nil {
-		slog.Error("CreateKeyAccessServer", "uri", uri, "publicKey", uri+"/v2/kas_public_key")
+		slog.Error("CreateKeyAccessServer", "uri", uri, "publicKey.remote", pk.GetRemote(), "publicKey.local", pk.GetLocal())
 		return "", err
 	}
 	return ur.KeyAccessServer.GetId(), nil

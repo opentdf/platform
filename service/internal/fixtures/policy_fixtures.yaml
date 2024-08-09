@@ -217,6 +217,7 @@ subject_mappings:
   data:
     subject_mapping_subject_attribute1:
       id: 812fab35-9aa4-4e73-bf22-c96638d58ea4
+      # example.com/attr/attr1/value/value1
       attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
       # subject_condition_set1
       subject_condition_set_id: b3903282-06f9-41a4-924a-7b8eb43dffe0
@@ -273,6 +274,16 @@ subject_mappings:
       actions:
         - standard: STANDARD_ACTION_TRANSMIT
         - standard: STANDARD_ACTION_DECRYPT
+
+    subject_mapping_sdk_attribute2:
+      id: 3BF02A31-3078-4F9D-90EA-C2EC2A33CA90
+      # example.com/attr/attr1/value/value2:
+      attribute_value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
+      # subject_condition_sdk_client
+      subject_condition_set_id: 86621a00-b63e-42e9-bea5-40ba52d98ede
+      actions:
+        - standard: STANDARD_ACTION_DECRYPT
+
 
 subject_condition_set:
   metadata:

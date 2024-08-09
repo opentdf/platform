@@ -17,6 +17,8 @@ import (
 	"github.com/opentdf/platform/sdk/internal/archive"
 	"github.com/opentdf/platform/sdk/internal/autoconfigure"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var (
@@ -136,6 +138,10 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			g, err = autoconfigure.NewGranterFromService(ctx, s.Attributes, tdfConfig.attributes...)
 		}
 		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				// One or more attribute was not found
+				return nil, errors.Join(err, ErrInvalidAttributes)
+			}
 			return nil, err
 		}
 

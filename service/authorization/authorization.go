@@ -207,7 +207,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 			if err != nil {
 				// if attribute an FQN does not exist
 				// return deny for all entity chains aginst this RA set and continue to next
-				if errors.Is(err, db.StatusifyError(db.ErrNotFound, "")) {
+				if errors.Is(err, db.ErrNotFound) {
 					for _, ec := range dr.GetEntityChains() {
 						decisionResp := &authorization.DecisionResponse{
 							Decision:      authorization.DecisionResponse_DECISION_DENY,

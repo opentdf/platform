@@ -33,9 +33,11 @@ const (
 	// Failure while connecting to a service.
 	// Check your configuration and/or retry.
 	ErrGrpcDialFailed            = Error("failed to dial grpc endpoint")
-	ErrShutdownFailed            = Error("failed to shutdown sdk")
+	ErrInvalidAttributes         = Error("one or more attributes is invalid or undefined")
+	ErrParseFailed               = Error("invalid file syntax or structure")
 	ErrPlatformConfigFailed      = Error("failed to retrieve platform configuration")
 	ErrPlatformEndpointMalformed = Error("platform endpoint is malformed")
+	ErrShutdownFailed            = Error("failed to shutdown sdk")
 )
 
 type Error string

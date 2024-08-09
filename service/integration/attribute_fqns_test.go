@@ -722,6 +722,7 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithDeactivatedNa
 	s.Require().NoError(err)
 
 	// get the attribute by the value fqn for v1
+	var nfe db.NotFoundError
 	v, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: []string{fqnBuilder(ns.GetName(), attr.GetName(), v1.GetValue())},
 		WithValue: &policy.AttributeValueSelector{
@@ -731,6 +732,8 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithDeactivatedNa
 	s.Require().Error(err)
 	s.Nil(v)
 	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorAs(err, &nfe)
+	s.Contains(nfe.What, "https://test_fqn_namespace.co/attr/test_attr/value/value1")
 
 	// get the attribute by the value fqn for v2
 	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
@@ -742,6 +745,8 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithDeactivatedNa
 	s.Require().Error(err)
 	s.Nil(v)
 	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorAs(err, &nfe)
+	s.Contains(nfe.What, "https://test_fqn_namespace.co/attr/test_attr/value/value2")
 }
 
 func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithDeactivatedAttributeDefinition() {

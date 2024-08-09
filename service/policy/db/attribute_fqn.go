@@ -193,6 +193,9 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 		attr, err := c.GetAttributeByFqn(ctx, fqn)
 		if err != nil {
 			c.logger.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))
+			if errors.Is(err, db.ErrNotFound) {
+				return nil, errors.Join(db.NotFoundError{What: []string{fqn}}, err)
+			}
 			return nil, err
 		}
 		filtered, selected := prepareValues(attr.GetValues(), fqn)

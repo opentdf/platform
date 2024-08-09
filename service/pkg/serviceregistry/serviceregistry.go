@@ -121,6 +121,8 @@ func (s *Service) RegisterGRPCServer(server *grpc.Server) error {
 	return nil
 }
 
+// Deprecated: RegisterHTTPServer is deprecated and should not be used going forward.
+// We will be looking onto other alternatives like bufconnect to replace this.
 // RegisterHTTPServer registers an HTTP server with the service.
 // It takes a context, a ServeMux, and an implementation function as parameters.
 // If the service did not register a handler, it returns an error.

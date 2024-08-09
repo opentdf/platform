@@ -22,6 +22,19 @@ import (
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
 )
 
+const (
+	modeALL       = "all"
+	modeCore      = "core"
+	modeKAS       = "kas"
+	modeEssential = "essential"
+
+	serviceKAS              = "kas"
+	servicePolicy           = "policy"
+	serviceWellKnown        = "wellknown"
+	serviceEntityResolution = "entityresolution"
+	serviceAuthorization    = "authorization"
+)
+
 // registerEssentialServices registers the essential services to the given service registry.
 // It takes a serviceregistry.Registry as input and returns an error if registration fails.
 func registerEssentialServices(reg serviceregistry.Registry) error {
@@ -30,7 +43,7 @@ func registerEssentialServices(reg serviceregistry.Registry) error {
 	}
 	// Register the essential services
 	for _, s := range essentialServices {
-		if err := reg.RegisterService(s, "essential"); err != nil {
+		if err := reg.RegisterService(s, modeEssential); err != nil {
 			return err //nolint:wrapcheck // We are all friends here
 		}
 	}
@@ -48,7 +61,7 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 	for _, m := range mode {
 		switch m {
 		case "all":
-			registeredServices = append(registeredServices, []string{"policy", "authorization", "kas", "wellknown", "entityresolution"}...)
+			registeredServices = append(registeredServices, []string{servicePolicy, serviceAuthorization, serviceKAS, serviceWellKnown, serviceEntityResolution}...)
 			services = append(services, []serviceregistry.Registration{
 				authorization.NewRegistration(),
 				kas.NewRegistration(),
@@ -57,7 +70,7 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 			}...)
 			services = append(services, policy.NewRegistrations()...)
 		case "core":
-			registeredServices = append(registeredServices, []string{"policy", "authorization", "wellknown"}...)
+			registeredServices = append(registeredServices, []string{servicePolicy, serviceAuthorization, serviceWellKnown}...)
 			services = append(services, []serviceregistry.Registration{
 				entityresolution.NewRegistration(),
 				authorization.NewRegistration(),
@@ -66,8 +79,8 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 			services = append(services, policy.NewRegistrations()...)
 		case "kas":
 			// If the mode is "kas", register only the KAS service
-			registeredServices = append(registeredServices, "kas")
-			if err := reg.RegisterService(kas.NewRegistration(), "kas"); err != nil {
+			registeredServices = append(registeredServices, serviceKAS)
+			if err := reg.RegisterService(kas.NewRegistration(), modeKAS); err != nil {
 				return nil, err //nolint:wrapcheck // We are all friends here
 			}
 		default:
@@ -95,7 +108,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 		// modeEnabled checks if the mode is enabled based on the configuration and namespace mode.
 		// It returns true if the mode is "all" or "essential" in the configuration, or if it matches the namespace mode.
 		modeEnabled := slices.ContainsFunc(cfg.Mode, func(m string) bool {
-			if strings.EqualFold(m, "all") || strings.EqualFold(namespace.Mode, "essential") {
+			if strings.EqualFold(m, modeALL) || strings.EqualFold(namespace.Mode, modeEssential) {
 				return true
 			}
 			return strings.EqualFold(m, namespace.Mode)

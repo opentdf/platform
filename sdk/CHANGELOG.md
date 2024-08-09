@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.5](https://github.com/opentdf/platform/compare/sdk/v0.3.4...sdk/v0.3.5) (2024-08-09)
+
+
+### Bug Fixes
+
+* **sdk:** Allow hyphens in attr namespaces ([#1250](https://github.com/opentdf/platform/issues/1250)) ([a034bd5](https://github.com/opentdf/platform/commit/a034bd5f605f4aef94533312adcb7ab0fe9bbdd2))
+
 ## [0.3.4](https://github.com/opentdf/platform/compare/sdk/v0.3.3...sdk/v0.3.4) (2024-07-23)
 
 

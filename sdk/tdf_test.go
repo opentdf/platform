@@ -393,6 +393,100 @@ func (s *TDFSuite) Test_SimpleTDF() {
 	_ = os.Remove(tdfFilename)
 }
 
+func (s *TDFSuite) Test_SimpleTDFWithNoAssertionKey() {
+
+	metaData := []byte(`{"displayName" : "openTDF go sdk"}`)
+	attributes := []string{
+
+		"https://example.com/attr/Classification/value/S",
+		"https://example.com/attr/Classification/value/X",
+	}
+
+	assertions := []Assertion{
+		{
+			ID:             "assertion1",
+			Type:           BaseAssertion,
+			Scope:          TrustedDataObj,
+			AppliesToState: Unencrypted,
+			Statement: Statement{
+				Format: "base64binary",
+				Schema: "text",
+				Value:  "ICAgIDxlZGoOkVkaD4=",
+			},
+		},
+		{
+			ID:             "assertion2",
+			Type:           BaseAssertion,
+			Scope:          TrustedDataObj,
+			AppliesToState: Unencrypted,
+			Statement: Statement{
+				Format: "json",
+				Schema: "urn:nato:stanag:5636:A:1:elements:json",
+				Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
+			},
+		},
+	}
+
+	expectedTdfSize := int64(3407)
+	tdfFilename := "secure-text.tdf"
+	plainText := "Virtru"
+	{
+		kasURLs := []KASInfo{
+			{
+				URL:       "https://a.kas/",
+				PublicKey: "",
+			},
+		}
+
+		inBuf := bytes.NewBufferString(plainText)
+		bufReader := bytes.NewReader(inBuf.Bytes())
+
+		fileWriter, err := os.Create(tdfFilename)
+		s.Require().NoError(err)
+
+		defer func(fileWriter *os.File) {
+			err := fileWriter.Close()
+			s.Require().NoError(err)
+		}(fileWriter)
+
+		tdfObj, err := s.sdk.CreateTDF(fileWriter, bufReader,
+			WithKasInformation(kasURLs...),
+			WithMetaData(string(metaData)),
+			WithDataAttributes(attributes...),
+			WithAssertions(assertions...))
+
+		s.Require().NoError(err)
+		s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 32.0)
+	}
+
+	// test reader
+	{
+		readSeeker, err := os.Open(tdfFilename)
+		s.Require().NoError(err)
+
+		defer func(readSeeker *os.File) {
+			err := readSeeker.Close()
+			s.Require().NoError(err)
+		}(readSeeker)
+
+		buf := make([]byte, 8)
+
+		r, err := s.sdk.LoadTDF(readSeeker)
+		s.Require().NoError(err)
+
+		offset := 2
+		n, err := r.ReadAt(buf, int64(offset))
+		if err != nil {
+			s.Require().ErrorIs(err, io.EOF)
+		}
+
+		expectedPlainTxt := plainText[offset : offset+n]
+		s.Equal(expectedPlainTxt, string(buf[:n]))
+	}
+
+	_ = os.Remove(tdfFilename)
+}
+
 func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing tdf
 	for _, test := range []partialReadTdfTest{ //nolint:gochecknoglobals // requires for testing tdf
 		{

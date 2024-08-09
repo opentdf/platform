@@ -40,11 +40,10 @@ type FixtureDataAttributeKeyAccessServer struct {
 }
 
 type FixtureDataAttributeValue struct {
-	ID                    string   `yaml:"id"`
-	AttributeDefinitionID string   `yaml:"attribute_definition_id"`
-	Value                 string   `yaml:"value"`
-	Members               []string `yaml:"members"`
-	Active                bool     `yaml:"active"`
+	ID                    string `yaml:"id"`
+	AttributeDefinitionID string `yaml:"attribute_definition_id"`
+	Value                 string `yaml:"value"`
+	Active                bool   `yaml:"active"`
 }
 
 type FixtureDataValueMember struct {
@@ -130,10 +129,6 @@ type FixtureData struct {
 		Metadata FixtureMetadata                   `yaml:"metadata"`
 		Data     map[string]FixtureDataKasRegistry `yaml:"data"`
 	} `yaml:"kas_registry"`
-	ValueMembers struct {
-		Metadata FixtureMetadata                   `yaml:"metadata"`
-		Data     map[string]FixtureDataValueMember `yaml:"data"`
-	} `yaml:"attribute_value_members"`
 }
 
 func LoadFixtureData(file string) {
@@ -187,14 +182,6 @@ func (f *Fixtures) GetAttributeValueKey(key string) FixtureDataAttributeValue {
 	return av
 }
 
-func (f *Fixtures) GetValueMemberKey(key string) FixtureDataValueMember {
-	if fixtureData.ValueMembers.Data[key].ID == "" {
-		slog.Error("could not find value-members", slog.String("id", key))
-		panic("could not find value-members")
-	}
-	return fixtureData.ValueMembers.Data[key]
-}
-
 func (f *Fixtures) GetSubjectMappingKey(key string) FixtureDataSubjectMapping {
 	sm, ok := fixtureData.SubjectMappings.Data[key]
 	if !ok || sm.ID == "" {
@@ -244,8 +231,6 @@ func (f *Fixtures) Provision() {
 	a := f.provisionAttribute()
 	slog.Info("📦 provisioning attribute value data")
 	aV := f.provisionAttributeValues()
-	slog.Info("📦 provisioning value member data")
-	vM := f.provisionValueMembers()
 	slog.Info("📦 provisioning subject condition set data")
 	sc := f.provisionSubjectConditionSet()
 	slog.Info("📦 provisioning subject mapping data")
@@ -263,7 +248,6 @@ func (f *Fixtures) Provision() {
 		slog.Int64("namespaces", n),
 		slog.Int64("attributes", a),
 		slog.Int64("attribute_values", aV),
-		slog.Int64("attribute_value_members", vM),
 		slog.Int64("subject_mappings", sM),
 		slog.Int64("subject_condition_set", sc),
 		slog.Int64("resource_mappings", rM),
@@ -319,23 +303,10 @@ func (f *Fixtures) provisionAttributeValues() int64 {
 			f.db.StringWrap(d.ID),
 			f.db.StringWrap(d.AttributeDefinitionID),
 			f.db.StringWrap(d.Value),
-			f.db.UUIDArrayWrap(d.Members),
 			f.db.BoolWrap(d.Active),
 		})
 	}
 	return f.provision(fixtureData.AttributeValues.Metadata.TableName, fixtureData.AttributeValues.Metadata.Columns, values)
-}
-
-func (f *Fixtures) provisionValueMembers() int64 {
-	values := make([][]string, 0, len(fixtureData.ValueMembers.Data))
-	for _, d := range fixtureData.ValueMembers.Data {
-		values = append(values, []string{
-			f.db.StringWrap(d.ID),
-			f.db.StringWrap(d.ValueID),
-			f.db.StringWrap(d.MemberID),
-		})
-	}
-	return f.provision(fixtureData.ValueMembers.Metadata.TableName, fixtureData.ValueMembers.Metadata.Columns, values)
 }
 
 func (f *Fixtures) provisionSubjectConditionSet() int64 {

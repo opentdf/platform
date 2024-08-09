@@ -149,12 +149,6 @@ func subjectMappingSelect() sq.SelectBuilder {
 	scsT := Tables.SubjectConditionSet
 	adT := Tables.Attributes
 	nsT := Tables.Namespaces
-	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
-		"'id', vmv.id, " +
-		"'value', vmv.value, " +
-		"'active', vmv.active, " +
-		"'members', vmv.members || ARRAY[]::UUID[] " +
-		")) FILTER (WHERE vmv.id IS NOT NULL ), '[]')"
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
 		t.Field("actions"),
@@ -167,13 +161,10 @@ func subjectMappingSelect() sq.SelectBuilder {
 		"JSON_BUILD_OBJECT("+
 			"'id', av.id,"+
 			"'value', av.value,"+
-			"'members', "+members+","+
 			"'active', av.active"+
 			") AS attribute_value",
 	).
 		LeftJoin(avT.Name() + " av ON " + t.Field("attribute_value_id") + " = " + "av.id").
-		LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id").
-		LeftJoin(avT.Name() + " vmv ON vm.member_id = vmv.id").
 		LeftJoin(adT.Name() + " ad ON av.attribute_definition_id = ad.id").
 		LeftJoin(nsT.Name() + " ns ON ad.namespace_id = ns.id").
 		GroupBy("av.id").

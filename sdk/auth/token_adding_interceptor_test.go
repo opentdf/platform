@@ -102,7 +102,7 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 		t.Fatalf("we got a bad method: %v", method)
 	}
 
-	if path, _ := parsedToken.Get("htu"); path != "/kas.AccessService/Info" {
+	if path, _ := parsedToken.Get("htu"); path != "/kas.AccessService/PublicKey" {
 		t.Fatalf("we got a bad method: %v", path)
 	}
 

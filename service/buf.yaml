@@ -9,10 +9,7 @@ breaking:
     - PACKAGE
     - WIRE_JSON
     - WIRE
-  ignore:
-    # Ignore breaking changes temporarily to pass CI for removal of members in attribute values (reserved indexes for compatibility)
-    - policy/objects.proto
-    - policy/attributes/attributes.proto
+  # ignore: # Docs: https://buf.build/docs/configuration/v1/buf-yaml#default-values
 lint:
   allow_comment_ignores: true
   use:

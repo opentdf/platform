@@ -65,11 +65,11 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 			}...)
 			services = append(services, policy.NewRegistrations()...)
 		case "kas":
+			// If the mode is "kas", register only the KAS service
 			registeredServices = append(registeredServices, "kas")
 			if err := reg.RegisterService(kas.NewRegistration(), "kas"); err != nil {
 				return nil, err //nolint:wrapcheck // We are all friends here
 			}
-			return registeredServices, nil
 		default:
 			continue
 		}
@@ -95,7 +95,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 		// modeEnabled checks if the mode is enabled based on the configuration and namespace mode.
 		// It returns true if the mode is "all" or "essential" in the configuration, or if it matches the namespace mode.
 		modeEnabled := slices.ContainsFunc(cfg.Mode, func(m string) bool {
-			if strings.EqualFold(m, "all") || strings.EqualFold(m, "essential") {
+			if strings.EqualFold(m, "all") || strings.EqualFold(namespace.Mode, "essential") {
 				return true
 			}
 			return strings.EqualFold(m, namespace.Mode)

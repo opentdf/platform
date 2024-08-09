@@ -77,7 +77,7 @@ type DBRegister struct {
 
 // Service is a struct that holds the registration information for a service as well as the state
 // of the service within the instance of the platform.
-type service struct {
+type Service struct {
 	Registration
 	impl       any
 	handleFunc HandlerServer
@@ -89,7 +89,7 @@ type service struct {
 
 // Start starts the service and performs necessary initialization steps.
 // It returns an error if the service is already started or if there is an issue running database migrations.
-func (s *service) Start(ctx context.Context, params RegistrationParams) error {
+func (s *Service) Start(ctx context.Context, params RegistrationParams) error {
 	if s.Started {
 		return fmt.Errorf("service already started")
 	}
@@ -113,7 +113,7 @@ func (s *service) Start(ctx context.Context, params RegistrationParams) error {
 // RegisterGRPCServer registers the gRPC server with the service implementation.
 // It checks if the service implementation is registered and then registers the service with the server.
 // It returns an error if the service implementation is not registered.
-func (s *service) RegisterGRPCServer(server *grpc.Server) error {
+func (s *Service) RegisterGRPCServer(server *grpc.Server) error {
 	if s.impl == nil {
 		return fmt.Errorf("service did not register an implementation")
 	}
@@ -124,7 +124,7 @@ func (s *service) RegisterGRPCServer(server *grpc.Server) error {
 // RegisterHTTPServer registers an HTTP server with the service.
 // It takes a context, a ServeMux, and an implementation function as parameters.
 // If the service did not register a handler, it returns an error.
-func (s *service) RegisterHTTPServer(ctx context.Context, mux *runtime.ServeMux) error {
+func (s *Service) RegisterHTTPServer(ctx context.Context, mux *runtime.ServeMux) error {
 	if s.handleFunc == nil {
 		return fmt.Errorf("service did not register a handler")
 	}
@@ -132,13 +132,13 @@ func (s *service) RegisterHTTPServer(ctx context.Context, mux *runtime.ServeMux)
 }
 
 // namespace represents a namespace in the service registry.
-type namespace struct {
+type Namespace struct {
 	Mode     string
-	Services []service
+	Services []Service
 }
 
 // Registry represents a map of service namespaces.
-type Registry map[string]namespace
+type Registry map[string]Namespace
 
 // NewServiceRegistry creates a new instance of the service registry.
 func NewServiceRegistry() Registry {
@@ -163,9 +163,9 @@ func (reg Registry) RegisterService(r Registration, mode string) error {
 	copyNamespace := reg[r.Namespace]
 	copyNamespace.Mode = mode
 	if copyNamespace.Services == nil {
-		copyNamespace.Services = make([]service, 0)
+		copyNamespace.Services = make([]Service, 0)
 	}
-	found := slices.ContainsFunc(reg[r.Namespace].Services, func(s service) bool {
+	found := slices.ContainsFunc(reg[r.Namespace].Services, func(s Service) bool {
 		return s.ServiceDesc.ServiceName == r.ServiceDesc.ServiceName
 	})
 
@@ -174,7 +174,7 @@ func (reg Registry) RegisterService(r Registration, mode string) error {
 	}
 
 	slog.Info("registered service", slog.String("namespace", r.Namespace), slog.String("service", r.ServiceDesc.ServiceName))
-	copyNamespace.Services = append(copyNamespace.Services, service{
+	copyNamespace.Services = append(copyNamespace.Services, Service{
 		Registration: r,
 	})
 
@@ -197,13 +197,11 @@ func (reg Registry) Shutdown() {
 	}
 }
 
-// TotalRegisteredServices returns the total number of registered services in the given namespace.
-// If the namespace does not exist, it returns 0.
-func (reg Registry) TotalRegisteredServices(namespace string) int {
+// GetNamespace returns the namespace with the given name from the service registry.
+func (reg Registry) GetNamespace(namespace string) (Namespace, error) {
 	ns, ok := reg[namespace]
 	if !ok {
-		return 0
+		return Namespace{}, fmt.Errorf("namespace not found: %s", namespace)
 	}
-
-	return len(ns.Services)
+	return ns, nil
 }

@@ -299,7 +299,41 @@
         ]
       }
     },
-    "/attributes/keyaccessserver/assign": {
+    "/attributes/keyaccessserver/grants": {
+      "delete": {
+        "operationId": "AttributesService_RemoveKeyAccessServerFromAttribute",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/attributesRemoveKeyAccessServerFromAttributeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "attributeKeyAccessServer.attributeId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "attributeKeyAccessServer.keyAccessServerId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      },
       "post": {
         "summary": "--------------------------------------*\nAttribute \u003c\u003e Key Access Server RPCs\n---------------------------------------",
         "operationId": "AttributesService_AssignKeyAccessServerToAttribute",
@@ -332,14 +366,14 @@
         ]
       }
     },
-    "/attributes/keyaccessserver/remove": {
-      "post": {
-        "operationId": "AttributesService_RemoveKeyAccessServerFromAttribute",
+    "/attributes/values/keyaccessserver/grants": {
+      "delete": {
+        "operationId": "AttributesService_RemoveKeyAccessServerFromValue",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/attributesRemoveKeyAccessServerFromAttributeResponse"
+              "$ref": "#/definitions/attributesRemoveKeyAccessServerFromValueResponse"
             }
           },
           "default": {
@@ -351,20 +385,22 @@
         },
         "parameters": [
           {
-            "name": "attributeKeyAccessServer",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/attributesAttributeKeyAccessServer"
-            }
+            "name": "valueKeyAccessServer.valueId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "valueKeyAccessServer.keyAccessServerId",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
           "AttributesService"
         ]
-      }
-    },
-    "/attributes/values/keyaccessserver/assign": {
+      },
       "post": {
         "operationId": "AttributesService_AssignKeyAccessServerToValue",
         "responses": {
@@ -372,38 +408,6 @@
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/attributesAssignKeyAccessServerToValueResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "valueKeyAccessServer",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/attributesValueKeyAccessServer"
-            }
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/values/keyaccessserver/remove": {
-      "post": {
-        "operationId": "AttributesService_RemoveKeyAccessServerFromValue",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesRemoveKeyAccessServerFromValueResponse"
             }
           },
           "default": {

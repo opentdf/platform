@@ -45,7 +45,7 @@ func TestNanoTDFConfig2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	readKasURL, err := conf.kasURL.getURL()
+	readKasURL, err := conf.kasURL.GetURL()
 	if err != nil {
 		t.Fatal(err)
 	}

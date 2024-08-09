@@ -40,6 +40,8 @@ type config struct {
 type tdfFeatures struct {
 	// For backward compatibility, don't store the KID in the KAO.
 	noKID bool
+	// nanoKID For backward compatibility, don't store the KID in the KAS ResourceLocator.
+	nanoKID bool
 }
 
 type PlatformConfiguration map[string]interface{}
@@ -181,5 +183,13 @@ func WithIPC() Option {
 func WithNoKIDInKAO() Option {
 	return func(c *config) {
 		c.tdfFeatures.noKID = true
+	}
+}
+
+// WithKIDInNano disables storing the KID in the KAS ResourceLocator.
+// This allows generating NanoTDF files that are compatible with legacy file formats (no KID).
+func WithKIDInNano() Option {
+	return func(c *config) {
+		c.tdfFeatures.nanoKID = false
 	}
 }

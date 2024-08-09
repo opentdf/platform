@@ -64,6 +64,10 @@ type NanoTDFHeader struct {
 	ecdsaPolicyBindingS []byte
 }
 
+func (header *NanoTDFHeader) GetKasURL() ResourceLocator {
+	return header.kasURL
+}
+
 // GetCipher -- get the cipher from the nano tdf header
 func (header *NanoTDFHeader) GetCipher() CipherMode {
 	return header.sigCfg.cipher
@@ -669,17 +673,27 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 		return 0, errors.New("exceeds max size for nano tdf")
 	}
 
-	kasURL, err := config.kasURL.getURL()
+	kasURL, err := config.kasURL.GetURL()
 	if err != nil {
 		return 0, fmt.Errorf("config.kasURL failed:%w", err)
 	}
 
-	kasPublicKey, err := getECPublicKey(kasURL, s.dialOptions...)
+	kasPublicKey, kid, err := getECPublicKeyKid(kasURL, s.dialOptions...)
 	if err != nil {
 		return 0, fmt.Errorf("getECPublicKey failed:%w", err)
 	}
-
 	slog.Debug("CreateNanoTDF", slog.String("header size", kasPublicKey))
+
+	// kid from kasPublicKey endpoint
+	slog.Debug("kasPublicKey", slog.String("kid", kid))
+
+	// update KAS URL with kid if set
+	if kid != "" && !s.tdfFeatures.noKID {
+		err = config.kasURL.setURLWithIdentifier(kasURL, kid)
+		if err != nil {
+			return 0, fmt.Errorf("getECPublicKey setURLWithIdentifier failed:%w", err)
+		}
+	}
 
 	config.kasPublicKey, err = ocrypto.ECPubKeyFromPem([]byte(kasPublicKey))
 	if err != nil {
@@ -770,7 +784,7 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
-	kasURL, err := header.kasURL.getURL()
+	kasURL, err := header.kasURL.GetURL()
 	if err != nil {
 		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
@@ -845,17 +859,17 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 	return uint32(writeLen), nil
 }
 
-// getECPublicKey - Contact the specified KAS and get its public key
-func getECPublicKey(kasURL string, opts ...grpc.DialOption) (string, error) {
+// getECPublicKeyKid - Contact the specified KAS and get its public key
+func getECPublicKeyKid(kasURL string, opts ...grpc.DialOption) (string, string, error) {
 	req := kas.PublicKeyRequest{}
 	req.Algorithm = "ec:secp256r1"
 	grpcAddress, err := getGRPCAddress(kasURL)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	conn, err := grpc.Dial(grpcAddress, opts...)
 	if err != nil {
-		return "", fmt.Errorf("error connecting to grpc service at %s: %w", kasURL, err)
+		return "", "", fmt.Errorf("error connecting to grpc service at %s: %w", kasURL, err)
 	}
 	defer conn.Close()
 
@@ -865,10 +879,10 @@ func getECPublicKey(kasURL string, opts ...grpc.DialOption) (string, error) {
 	resp, err := serviceClient.PublicKey(ctx, &req)
 
 	if err != nil {
-		return "", fmt.Errorf("error making request to KAS: %w", err)
+		return "", "", fmt.Errorf("error making request to KAS: %w", err)
 	}
 
-	return resp.GetPublicKey(), nil
+	return resp.GetPublicKey(), resp.GetKid(), nil
 }
 
 type requestBody struct {

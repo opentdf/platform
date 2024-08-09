@@ -76,6 +76,7 @@ type Assertion struct {
 	AppliesToState AppliesToState `json:"appliesToState,omitempty"`
 	Statement      Statement      `json:"statement"`
 	Binding        Binding        `json:"binding"`
+	SigningKey     `json:"-"`
 }
 
 type Manifest struct {

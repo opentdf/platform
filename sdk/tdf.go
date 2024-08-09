@@ -3,15 +3,11 @@ package sdk
 import (
 	"bytes"
 	"context"
-	"crypto/rsa"
-	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"strings"
 
@@ -37,7 +33,8 @@ var (
 	errInvalidKasInfo             = errors.New("tdf: kas information is missing")
 	errKasPubKeyMissing           = errors.New("tdf: kas public key is missing")
 	errTDFPayloadInvalidOffset    = errors.New("sdk.Reader.ReadAt: negative offset")
-	errInvalidAssertionBindingKey = errors.New("tdf:: invalid key type for assertion binding")
+	errInvalidAssertionBindingKey = errors.New("tdf: invalid key type for assertion binding")
+	errAssertionKeyMissing        = errors.New("tdf: assertion key is missing to verify the binding")
 )
 
 const (
@@ -306,36 +303,33 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		}
 
 		var signedToken []byte
-		if tdfConfig.assertionConfig.keyType == AssertionSigningKeyHS256PayloadKey {
+		if assertion.SigningKey == nil {
 			signedToken, err = jwt.Sign(token, jwt.WithKey(jwa.HS256, tdfObject.payloadKey[:]))
-			if err != nil {
-				return nil, fmt.Errorf("jwt.Sign: %w", err)
-			}
-		} else if tdfConfig.assertionConfig.keyType == AssertionSigningKeyHS256UserDefined {
-			signedToken, err = jwt.Sign(token, jwt.WithKey(jwa.HS256, tdfConfig.assertionConfig.payload))
-			if err != nil {
-				return nil, fmt.Errorf("jwt.Sign: %w", err)
-			}
-		} else if tdfConfig.assertionConfig.keyType == AssertionSigningKeyRS256PriKey {
 
-			// Decode the PEM data
-			block, _ := pem.Decode(tdfConfig.assertionConfig.payload)
-			if block == nil {
-				return nil, errors.New("failed to parse PEM formatted private key")
-			}
-
-			// Parse the key
-			privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse private key: %w", err)
-			}
-
-			signedToken, err = jwt.Sign(token, jwt.WithKey(jwa.RS256, privateKey))
 			if err != nil {
 				return nil, fmt.Errorf("jwt.Sign: %w", err)
 			}
 		} else {
-			return nil, errInvalidAssertionBindingKey
+			signingKeyConfig, err := newAssertionKey(assertion.SigningKey)
+			if err != nil {
+				return nil, fmt.Errorf("newAssertionKey failed: %w", err)
+			}
+
+			if signingKeyConfig.alg == AssertionKeyAlgHS256 {
+				signedToken, err = jwt.Sign(token, jwt.WithKey(jwa.HS256, signingKeyConfig.key))
+
+				if err != nil {
+					return nil, fmt.Errorf("jwt.Sign: %w", err)
+				}
+			} else if signingKeyConfig.alg == AssertionKeyAlgRS256 {
+				signedToken, err = jwt.Sign(token, jwt.WithKey(jwa.RS256, signingKeyConfig.key))
+				if err != nil {
+					return nil, fmt.Errorf("jwt.Sign: %w", err)
+				}
+
+			} else {
+				return nil, errInvalidAssertionBindingKey
+			}
 		}
 
 		assertion.Binding.Method = JWS.String()
@@ -927,48 +921,54 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		}
 
 		var claims map[string]interface{}
-		if r.assertionConfig.keyType == AssertionSigningKeyHS256PayloadKey {
+		if r.assertionConfig.defaultVerificationKey == nil && r.assertionConfig.keys == nil {
 			parsedBinding, err := jwt.ParseString(assertion.Binding.Signature, jwt.WithKey(jwa.HS256, payloadKey[:]))
 			if err != nil {
 				return fmt.Errorf("jwt.Parse: %w", err)
 			}
 
 			claims = parsedBinding.PrivateClaims()
-		} else if r.assertionConfig.keyType == AssertionSigningKeyHS256UserDefined {
-			parsedBinding, err := jwt.ParseString(assertion.Binding.Signature, jwt.WithKey(jwa.HS256, r.assertionConfig.payload))
-			if err != nil {
-				return fmt.Errorf("jwt.Parse: %w", err)
-			}
-
-			claims = parsedBinding.PrivateClaims()
-		} else if r.assertionConfig.keyType == AssertionSigningKeyRS256PubKey {
-			// Decode PEM block
-			block, _ := pem.Decode(r.assertionConfig.payload)
-			if block == nil {
-				return errors.New("failed to parse PEM block containing the public key")
-			}
-
-			// Parse the public key
-			pub, err := x509.ParsePKIXPublicKey(block.Bytes)
-			if err != nil {
-				return fmt.Errorf("failed to parse DER encoded public key: %w", err)
-			}
-
-			// Convert to RSA public key
-			rsaKey, ok := pub.(*rsa.PublicKey)
-			if !ok {
-				log.Fatal("not an RSA public key")
-			}
-
-			parsedBinding, err := jwt.ParseString(assertion.Binding.Signature, jwt.WithKey(jwa.RS256, rsaKey))
-			if err != nil {
-				return fmt.Errorf("jwt.Parse: %w", err)
-			}
-
-			claims = parsedBinding.PrivateClaims()
-
 		} else {
-			return errInvalidAssertionBindingKey
+
+			var verifyKey *AssertionKey
+			if r.assertionConfig.defaultVerificationKey != nil {
+				var err error
+				verifyKey, err = newAssertionKey(r.assertionConfig.defaultVerificationKey)
+				if err != nil {
+					return fmt.Errorf("newAssertionKey failed: %w", err)
+				}
+			} else { // key for each assertion-id
+				for _, key := range r.assertionConfig.keys {
+					if key.ID == assertion.ID {
+						var err error
+						verifyKey, err = newAssertionKey(key.VerificationKey)
+						if err != nil {
+							return fmt.Errorf("jwt.Parse: %w", err)
+						}
+						break
+					}
+				}
+			}
+
+			if verifyKey == nil {
+				return errInvalidAssertionBindingKey
+			}
+
+			var alg jwa.KeyAlgorithm
+			if verifyKey.alg == AssertionKeyAlgHS256 {
+				alg = jwa.HS256
+			} else if verifyKey.alg == AssertionKeyAlgRS256 {
+				alg = jwa.RS256
+			} else {
+				return errInvalidAssertionBindingKey
+			}
+
+			parsedBinding, err := jwt.ParseString(assertion.Binding.Signature, jwt.WithKey(alg, verifyKey.key))
+			if err != nil {
+				return fmt.Errorf("jwt.Parse: %w", err)
+			}
+
+			claims = parsedBinding.PrivateClaims()
 		}
 
 		assertionSigInClaims := claims[kAssertionSignature]

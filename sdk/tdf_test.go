@@ -3,6 +3,8 @@ package sdk
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -251,50 +253,19 @@ func TestTDF(t *testing.T) {
 
 func (s *TDFSuite) Test_SimpleTDF() {
 
-	rs256PublicKey := `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzVlu/mChXOC4zTW+DNFp
-U59+iyjwA8L9Ws+fPrjVuDJNDGNEc9uKt56oaOtCxZWswx8XdtUPsBudZ3Z/p2GH
-YZu+uNLqrQkh6y93WYgLe0sTX6u5t2Qo4v07IwzzekrDsR3Kd/wWqZ7Bo8x7mOb8
-PN0MxXqE7r5dYSjvEwHg0Se6mMNC6S2Nq3nDwvsibd5VKglN5wb34WuhBKrsop9F
-Z50nrUnnDbJVIeFmbij3HBY19U6nqf0a/hWYkvaPPaXKv+pZHXBzxRI4XESoNZ6k
-AZ1aKgoT0u2k4uuFNOQoLWC4Wp2I1xzwo7AT1wlHKdyhKP+focG/grm2Phh5Zh6g
-GQIDAQAB
------END PUBLIC KEY-----`
-
-	rs256PrivateKey := `-----BEGIN RSA PRIVATE KEY-----
-MIIEowIBAAKCAQEAzVlu/mChXOC4zTW+DNFpU59+iyjwA8L9Ws+fPrjVuDJNDGNE
-c9uKt56oaOtCxZWswx8XdtUPsBudZ3Z/p2GHYZu+uNLqrQkh6y93WYgLe0sTX6u5
-t2Qo4v07IwzzekrDsR3Kd/wWqZ7Bo8x7mOb8PN0MxXqE7r5dYSjvEwHg0Se6mMNC
-6S2Nq3nDwvsibd5VKglN5wb34WuhBKrsop9FZ50nrUnnDbJVIeFmbij3HBY19U6n
-qf0a/hWYkvaPPaXKv+pZHXBzxRI4XESoNZ6kAZ1aKgoT0u2k4uuFNOQoLWC4Wp2I
-1xzwo7AT1wlHKdyhKP+focG/grm2Phh5Zh6gGQIDAQABAoIBAAqD9ecY06qJ52y6
-v8ywPJCHrlc59XB737VyxFjV5jvUd5WWz76PE39rpHwa8ARmMb6cLPts1azS/TB7
-JPZRTDl3XEDirBnISfBdMeNn0A60PX28sXnuqxlUll6pHx64DWVYfTG/uvlco9Xb
-dsjRq0ECoNDMAVqobOe4zOVQR07uflUS7DoFaISFtluO3FZJ6nBMpy7+b83yNgh2
-ol4NWpi+Oz1cZqqfLLCjq4qzN15sF1aSTWZmcLVIG9S1WmxBevL9XCu0mVVgHv9F
-H2Yilguw4xcHcWHxtoDbhcpCgM+XiDMWJ0kMGs/Lp4EdI9SF3f2isXJKeWTk23Hc
-NQmeI7ECgYEA+FSGjpBZ+kydeIIxuzudQ4BjpltKpCusc3/JY0bUNVufulVsEKZs
-EcVF8TqoTk7Z6vqB3/rIiKjn/NlmVW6A9T56lOxQjHh6w7457FKlQLHZ+nUsUOB6
-yfHBEKs3Xo0BQrvsEmDhDqJS7VvwHzt5v1aKe5EcFTCup8MfAtV+lS8CgYEA07ES
-MWBUcy9lYW4oThae/fc32U7kY9o1Q0i4bxDA8a3yv8IT17LOGKiOUtirhjKUCN6a
-b8E4TRcs6cZJzuSCkW1GVVmlxjHvTZuXf4dJAwYBGiT1h6WgSOVqonnJPDGWF78p
-gEltUujEB+jk6FacDcxNi21pRkmiEVMHlT5N3TcCgYB4NRJdeGrVyrh/WSaRp63c
-uw2BvbdH+QwlbLojoGmg2pVbMXZ6KNUvVPsiZm6KWYkLQfAUZ+UiogCKWQI8YJ10
-GaZk6G+lT7y9fBu11dvAkVce8hFdpQxLLQdz9i17S25My4Le8p5+4vyZgWOe+r9Y
-a5/laLzbVRF2i/E7AfWgaQKBgG/IzlGSi6WzfnZ/g/sQSO7VEAHJfiMYRA3+pZ3I
-nApDD6+g3XeGbPxqbZVj4tdfd/pjCew/fOqAdXARDEKbOjNvH7fMOhS5o6M4qTxn
-hO96yTQ0Fg+GL2iu9KtNYi1OBfMON+0NWRRx46pFmjLyIT/MBZq9sNyz30gErzlp
-CBbrAoGBANR3KHw4wtrtLrK1lG8lmE8/KZ3C1YqJc2HTt+brQdqFxEd044IGvxFR
-A4sHyqMlJt8hQF3quigyI65SbeXfuAkeDR4es6rhy0eVMRXx6B2k3ZBX06ZEYc28
-qRSuLDjJPp1/SPWNvH2AHTLw0p7QEfam7jbyg+k3ZFkl++kEATox
------END RSA PRIVATE KEY-----`
-
 	metaData := []byte(`{"displayName" : "openTDF go sdk"}`)
 	attributes := []string{
 
 		"https://example.com/attr/Classification/value/S",
 		"https://example.com/attr/Classification/value/X",
 	}
+
+	hs256Key := make([]byte, 32)
+	_, err := rand.Read(hs256Key)
+	s.Require().NoError(err)
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, tdf3KeySize)
+	s.Require().NoError(err)
 
 	assertions := []Assertion{
 		{
@@ -307,6 +278,7 @@ qRSuLDjJPp1/SPWNvH2AHTLw0p7QEfam7jbyg+k3ZFkl++kEATox
 				Schema: "text",
 				Value:  "ICAgIDxlZGoOkVkaD4=",
 			},
+			SigningKey: WithSigningKey(AssertionKeyAlgHS256, hs256Key),
 		},
 		{
 			ID:             "assertion2",
@@ -318,14 +290,11 @@ qRSuLDjJPp1/SPWNvH2AHTLw0p7QEfam7jbyg+k3ZFkl++kEATox
 				Schema: "urn:nato:stanag:5636:A:1:elements:json",
 				Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
 			},
-			Binding: Binding{
-				Method:    JWS.String(),
-				Signature: "ICAgIDxlZGoOkVkaD4=",
-			},
+			SigningKey: WithSigningKey(AssertionKeyAlgRS256, privateKey),
 		},
 	}
 
-	expectedTdfSize := int64(4005)
+	expectedTdfSize := int64(3706)
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
 	{
@@ -351,14 +320,24 @@ qRSuLDjJPp1/SPWNvH2AHTLw0p7QEfam7jbyg+k3ZFkl++kEATox
 			WithKasInformation(kasURLs...),
 			WithMetaData(string(metaData)),
 			WithDataAttributes(attributes...),
-			WithAssertions(assertions...),
-			WithAssertionConfig(AssertionConfig{
-				keyType: AssertionSigningKeyRS256PriKey,
-				payload: []byte(rs256PrivateKey),
-			}))
+			WithAssertions(assertions...))
 
 		s.Require().NoError(err)
 		s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 32.0)
+	}
+
+	assertionConfig := AssertionConfig{
+		defaultVerificationKey: nil,
+		keys: []PerAssertionKey{
+			{
+				ID:              "assertion1",
+				VerificationKey: WithSigningKey(AssertionKeyAlgHS256, hs256Key),
+			},
+			{
+				ID:              "assertion2",
+				VerificationKey: WithSigningKey(AssertionKeyAlgRS256, privateKey.PublicKey),
+			},
+		},
 	}
 
 	// test meta data
@@ -371,7 +350,8 @@ qRSuLDjJPp1/SPWNvH2AHTLw0p7QEfam7jbyg+k3ZFkl++kEATox
 			s.Require().NoError(err)
 		}(readSeeker)
 
-		r, err := s.sdk.LoadTDF(readSeeker, WithRS256PublicKey([]byte(rs256PublicKey)))
+		r, err := s.sdk.LoadTDF(readSeeker, WithAssertionConfig(assertionConfig))
+
 		s.Require().NoError(err)
 
 		unencryptedMetaData, err := r.UnencryptedMetadata()
@@ -397,7 +377,7 @@ qRSuLDjJPp1/SPWNvH2AHTLw0p7QEfam7jbyg+k3ZFkl++kEATox
 
 		buf := make([]byte, 8)
 
-		r, err := s.sdk.LoadTDF(readSeeker, WithRS256PublicKey([]byte(rs256PublicKey)))
+		r, err := s.sdk.LoadTDF(readSeeker, WithAssertionConfig(assertionConfig))
 		s.Require().NoError(err)
 
 		offset := 2

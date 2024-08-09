@@ -6,6 +6,103 @@ import (
 	"strings"
 )
 
+type TDFAssertionOption func(*AssertionConfig) error
+
+type PerAssertionKey struct {
+	ID              string
+	VerificationKey SigningKey
+}
+
+type AssertionConfig struct {
+	defaultVerificationKey SigningKey
+	keys                   []PerAssertionKey
+}
+
+func newAssertionConfig(opt ...TDFAssertionOption) (*AssertionConfig, error) {
+	c := &AssertionConfig{
+		defaultVerificationKey: nil,
+		keys:                   nil,
+	}
+
+	for _, o := range opt {
+		err := o(c)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return c, nil
+}
+
+// WithAssertionConfig returns an Option that set the assertion configuration.
+func WithAssertionConfig(assertionConfig AssertionConfig) TDFAssertionOption {
+	return func(c *AssertionConfig) error {
+		c.defaultVerificationKey = assertionConfig.defaultVerificationKey
+		c.keys = assertionConfig.keys
+		return nil
+	}
+}
+
+type AssertionKeyAlg uint
+
+const (
+	AssertionKeyAlgRS256 AssertionKeyAlg = iota + 1
+	AssertionKeyAlgHS256
+)
+
+var (
+	assertionKeyAlgName = map[uint8]string{
+		uint8(AssertionKeyAlgRS256): "RS256",
+		uint8(AssertionKeyAlgHS256): "HS256",
+	}
+	assertionKeyAlgValue = map[string]uint8{
+		"RS256": uint8(AssertionKeyAlgRS256),
+		"HS256": uint8(AssertionKeyAlgHS256),
+	}
+)
+
+func (a AssertionKeyAlg) String() string {
+	return assertionKeyAlgName[uint8(a)]
+}
+
+func ParseAAssertionKeyAlg(a string) (AssertionKeyAlg, error) {
+	a = strings.TrimSpace(a)
+	value, ok := assertionKeyAlgValue[a]
+	if !ok {
+		return AssertionKeyAlg(0), fmt.Errorf("%q is not a valid assertion signing key type", a)
+	}
+	return AssertionKeyAlg(value), nil
+}
+
+type SigningKey func(*AssertionKey) error
+
+type AssertionKey struct {
+	alg AssertionKeyAlg
+	key interface{}
+}
+
+func newAssertionKey(opt ...SigningKey) (*AssertionKey, error) {
+	c := &AssertionKey{
+		alg: AssertionKeyAlgHS256,
+		key: nil,
+	}
+
+	for _, o := range opt {
+		err := o(c)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return c, nil
+}
+
+func WithSigningKey(alg AssertionKeyAlg, key interface{}) SigningKey {
+	return func(a *AssertionKey) error {
+		a.alg = alg
+		a.key = key
+		return nil
+	}
+}
+
 // AssertionType - Custom type to hold value for the assertion ranging from 0-1
 type AssertionType uint
 

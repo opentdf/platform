@@ -161,6 +161,18 @@ type ResourceMapping struct {
 	Metadata  []byte             `json:"metadata"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	// Foreign key to the parent group of the resource mapping (optional, a resource mapping may not be in a group)
+	GroupID pgtype.UUID `json:"group_id"`
+}
+
+// Table to store the groups of resource mappings by unique namespace and group name combinations
+type ResourceMappingGroup struct {
+	// Primary key for the table
+	ID string `json:"id"`
+	// Foreign key to the namespace of the attribute
+	NamespaceID string `json:"namespace_id"`
+	// Name for the group of resource mappings
+	Name string `json:"name"`
 }
 
 // Table to store sets of conditions that logically entitle subject entity representations to attribute values via a subject mapping

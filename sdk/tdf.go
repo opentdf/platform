@@ -12,9 +12,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/gowebpki/jcs"
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/archive"
@@ -80,7 +77,7 @@ type Reader struct {
 	payloadSize         int64
 	payloadKey          []byte
 	kasSessionKey       ocrypto.RsaKeyPair
-	assertionConfig     AssertionConfig
+	config              TDFReaderConfig
 }
 
 type TDFObject struct {
@@ -271,71 +268,41 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			continue
 		}
 
-		// clear out the binding
-		assertion.Binding.Method = ""
-		assertion.Binding.Signature = ""
+		// Store a temporary assertion
+		tmpAssertion := Assertion{}
 
-		assertionJSON, err := json.Marshal(assertion)
+		tmpAssertion.ID = assertion.ID
+		tmpAssertion.Type = assertion.Type
+		tmpAssertion.Scope = assertion.Scope
+		tmpAssertion.Statement = assertion.Statement
+		tmpAssertion.AppliesToState = assertion.AppliesToState
+
+		hashOfAssertion, err := tmpAssertion.GetHash()
 		if err != nil {
-			return nil, fmt.Errorf("json.Marshal failed:%w", err)
+			return nil, err
 		}
 
-		transformedJSON, err := jcs.Transform(assertionJSON)
-		if err != nil {
-			return nil, fmt.Errorf("jcs.Transform failed:%w", err)
+		var completeHashBuilder strings.Builder
+		completeHashBuilder.WriteString(aggregateHash)
+		completeHashBuilder.Write(hashOfAssertion)
+
+		encoded := ocrypto.Base64Encode([]byte(completeHashBuilder.String()))
+
+		var assertionSigningKey = AssertionKey{}
+
+		// Set default to HS256 and payload key
+		assertionSigningKey.Alg = AssertionKeyAlgHS256
+		assertionSigningKey.Key = tdfObject.payloadKey[:]
+
+		if !assertion.SigningKey.IsEmpty() {
+			assertionSigningKey = assertion.SigningKey
 		}
 
-		hashOfAssertion := ocrypto.SHA256AsHex(transformedJSON)
-		completeHash := aggregateHash + string(hashOfAssertion)
-		encoded := ocrypto.Base64Encode([]byte(completeHash))
-
-		// Create the token
-		token := jwt.New()
-
-		err = token.Set(kAssertionSignature, string(encoded))
-		if err != nil {
-			return nil, fmt.Errorf("jwt.Set: %w", err)
+		if err := tmpAssertion.Sign(string(hashOfAssertion), string(encoded), assertionSigningKey); err != nil {
+			return nil, errors.Join(fmt.Errorf("failed to sign assertion"), err)
 		}
 
-		err = token.Set(kAssertionHash, string(hashOfAssertion))
-		if err != nil {
-			return nil, fmt.Errorf("jwt.Set: %w", err)
-		}
-
-		var signedToken []byte
-		if assertion.SigningKey == nil {
-			signedToken, err = jwt.Sign(token, jwt.WithKey(jwa.HS256, tdfObject.payloadKey[:]))
-
-			if err != nil {
-				return nil, fmt.Errorf("jwt.Sign: %w", err)
-			}
-		} else {
-			signingKeyConfig, err := newAssertionKey(assertion.SigningKey)
-			if err != nil {
-				return nil, fmt.Errorf("newAssertionKey failed: %w", err)
-			}
-
-			if signingKeyConfig.alg == AssertionKeyAlgHS256 {
-				signedToken, err = jwt.Sign(token, jwt.WithKey(jwa.HS256, signingKeyConfig.key))
-
-				if err != nil {
-					return nil, fmt.Errorf("jwt.Sign: %w", err)
-				}
-			} else if signingKeyConfig.alg == AssertionKeyAlgRS256 {
-				signedToken, err = jwt.Sign(token, jwt.WithKey(jwa.RS256, signingKeyConfig.key))
-				if err != nil {
-					return nil, fmt.Errorf("jwt.Sign: %w", err)
-				}
-
-			} else {
-				return nil, errInvalidAssertionBindingKey
-			}
-		}
-
-		assertion.Binding.Method = JWS.String()
-		assertion.Binding.Signature = string(signedToken)
-
-		signedAssertion = append(signedAssertion, assertion)
+		signedAssertion = append(signedAssertion, tmpAssertion)
 	}
 
 	tdfObject.manifest.Assertions = signedAssertion
@@ -546,14 +513,14 @@ func createPolicyObject(attributes []autoconfigure.AttributeValueFQN) (PolicyObj
 }
 
 // LoadTDF loads the tdf and prepare for reading the payload from TDF
-func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFAssertionOption) (*Reader, error) {
+func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, error) {
 	// create tdf reader
 	tdfReader, err := archive.NewTDFReader(reader)
 	if err != nil {
 		return nil, fmt.Errorf("archive.NewTDFReader failed: %w", err)
 	}
 
-	tdfAssertionConfig, err := newAssertionConfig(opts...)
+	config, err := newTDFReaderConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("newAssertionConfig failed: %w", err)
 	}
@@ -570,12 +537,12 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFAssertionOption) (*Reader,
 	}
 
 	return &Reader{
-		tokenSource:     s.tokenSource,
-		dialOptions:     s.dialOptions,
-		tdfReader:       tdfReader,
-		manifest:        *manifestObj,
-		kasSessionKey:   *s.config.kasSessionKey,
-		assertionConfig: *tdfAssertionConfig,
+		tokenSource:   s.tokenSource,
+		dialOptions:   s.dialOptions,
+		tdfReader:     tdfReader,
+		manifest:      *manifestObj,
+		kasSessionKey: *s.config.kasSessionKey,
+		config:        *config,
 	}, nil
 }
 
@@ -919,87 +886,39 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		if assertion.Type != BaseAssertion {
 			continue
 		}
+		assertionKey := AssertionKey{}
+		// Set default to HS256
+		assertionKey.Alg = AssertionKeyAlgHS256
+		assertionKey.Key = payloadKey[:]
 
-		var claims map[string]interface{}
-		if r.assertionConfig.defaultVerificationKey == nil && r.assertionConfig.keys == nil {
-			parsedBinding, err := jwt.ParseString(assertion.Binding.Signature, jwt.WithKey(jwa.HS256, payloadKey[:]))
+		if !r.config.AssertionVerificationKeys.IsEmpty() {
+			// Look up the key for the assertion
+			foundKey, err := r.config.AssertionVerificationKeys.Get(assertion.ID)
+
 			if err != nil {
-				return fmt.Errorf("jwt.Parse: %w", err)
-			}
-
-			claims = parsedBinding.PrivateClaims()
-		} else {
-
-			var verifyKey *AssertionKey
-			if r.assertionConfig.defaultVerificationKey != nil {
-				var err error
-				verifyKey, err = newAssertionKey(r.assertionConfig.defaultVerificationKey)
-				if err != nil {
-					return fmt.Errorf("newAssertionKey failed: %w", err)
-				}
-			} else { // key for each assertion-id
-				for _, key := range r.assertionConfig.keys {
-					if key.ID == assertion.ID {
-						var err error
-						verifyKey, err = newAssertionKey(key.VerificationKey)
-						if err != nil {
-							return fmt.Errorf("jwt.Parse: %w", err)
-						}
-						break
-					}
-				}
-			}
-
-			if verifyKey == nil {
-				return errInvalidAssertionBindingKey
-			}
-
-			var alg jwa.KeyAlgorithm
-			if verifyKey.alg == AssertionKeyAlgHS256 {
-				alg = jwa.HS256
-			} else if verifyKey.alg == AssertionKeyAlgRS256 {
-				alg = jwa.RS256
+				return err
 			} else {
-				return errInvalidAssertionBindingKey
+				assertionKey.Alg = foundKey.Alg
+				assertionKey.Key = foundKey.Key
 			}
-
-			parsedBinding, err := jwt.ParseString(assertion.Binding.Signature, jwt.WithKey(alg, verifyKey.key))
-			if err != nil {
-				return fmt.Errorf("jwt.Parse: %w", err)
-			}
-
-			claims = parsedBinding.PrivateClaims()
 		}
 
-		assertionSigInClaims := claims[kAssertionSignature]
-		assertionSig, ok := assertionSigInClaims.(string)
-		if !ok {
-			return errors.New("assertion signature missing in jwt")
-		}
-
-		assertionHashInClaims := claims[kAssertionHash]
-		assertionHash, ok := assertionHashInClaims.(string)
-		if !ok {
-			return errors.New("assertion hash missing in jwt")
-		}
-
-		// clear out the binding
-		assertion.Binding.Method = ""
-		assertion.Binding.Signature = ""
-
-		assertionJSON, err := json.Marshal(assertion)
+		assertionHash, assertionSig, err := assertion.Verify(assertionKey)
 		if err != nil {
-			return fmt.Errorf("json.Marshal failed:%w", err)
+			return errors.Join(err, fmt.Errorf("assertion verification failed"))
 		}
 
-		transformedJSON, err := jcs.Transform(assertionJSON)
+		// Get the hash of the assertion
+		hashOfAssertion, err := assertion.GetHash()
 		if err != nil {
-			return fmt.Errorf("jcs.Transform failed:%w", err)
+			return errors.Join(err, fmt.Errorf("failed to get hash of assertion"))
 		}
 
-		hashOfAssertion := ocrypto.SHA256AsHex(transformedJSON)
-		completeHash := aggregateHash.String() + string(hashOfAssertion)
-		base64Hash := ocrypto.Base64Encode([]byte(completeHash))
+		var completeHashBuilder bytes.Buffer
+		completeHashBuilder.Write(aggregateHash.Bytes())
+		completeHashBuilder.Write(hashOfAssertion)
+
+		base64Hash := ocrypto.Base64Encode(completeHashBuilder.Bytes())
 
 		if string(hashOfAssertion) != assertionHash {
 			return fmt.Errorf("assertion hash missmatch")

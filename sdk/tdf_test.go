@@ -267,7 +267,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 	privateKey, err := rsa.GenerateKey(rand.Reader, tdf3KeySize)
 	s.Require().NoError(err)
 
-	assertions := []Assertion{
+	assertions := []AssertionConfig{
 		{
 			ID:             "assertion1",
 			Type:           BaseAssertion,
@@ -278,7 +278,10 @@ func (s *TDFSuite) Test_SimpleTDF() {
 				Schema: "text",
 				Value:  "ICAgIDxlZGoOkVkaD4=",
 			},
-			SigningKey: WithSigningKey(AssertionKeyAlgHS256, hs256Key),
+			SigningKey: AssertionKey{
+				Alg: AssertionKeyAlgHS256,
+				Key: hs256Key,
+			},
 		},
 		{
 			ID:             "assertion2",
@@ -290,7 +293,10 @@ func (s *TDFSuite) Test_SimpleTDF() {
 				Schema: "urn:nato:stanag:5636:A:1:elements:json",
 				Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
 			},
-			SigningKey: WithSigningKey(AssertionKeyAlgRS256, privateKey),
+			SigningKey: AssertionKey{
+				Alg: AssertionKeyAlgRS256,
+				Key: privateKey,
+			},
 		},
 	}
 
@@ -320,22 +326,23 @@ func (s *TDFSuite) Test_SimpleTDF() {
 			WithKasInformation(kasURLs...),
 			WithMetaData(string(metaData)),
 			WithDataAttributes(attributes...),
-			WithAssertions(assertions...))
+			WithAssertions(assertions...),
+		)
 
 		s.Require().NoError(err)
 		s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 32.0)
 	}
 
-	assertionConfig := AssertionConfig{
-		defaultVerificationKey: nil,
-		keys: []PerAssertionKey{
-			{
-				ID:              "assertion1",
-				VerificationKey: WithSigningKey(AssertionKeyAlgHS256, hs256Key),
+	assertionVerificationKeys := AssertionVerificationKeys{
+		// defaultVerificationKey: nil,
+		Keys: map[string]AssertionKey{
+			"assertion1": {
+				Alg: AssertionKeyAlgHS256,
+				Key: hs256Key,
 			},
-			{
-				ID:              "assertion2",
-				VerificationKey: WithSigningKey(AssertionKeyAlgRS256, privateKey.PublicKey),
+			"assertion2": {
+				Alg: AssertionKeyAlgRS256,
+				Key: privateKey.PublicKey,
 			},
 		},
 	}
@@ -350,7 +357,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 			s.Require().NoError(err)
 		}(readSeeker)
 
-		r, err := s.sdk.LoadTDF(readSeeker, WithAssertionConfig(assertionConfig))
+		r, err := s.sdk.LoadTDF(readSeeker, WithAssertionVerificationKeys(assertionVerificationKeys))
 
 		s.Require().NoError(err)
 
@@ -377,7 +384,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 
 		buf := make([]byte, 8)
 
-		r, err := s.sdk.LoadTDF(readSeeker, WithAssertionConfig(assertionConfig))
+		r, err := s.sdk.LoadTDF(readSeeker, WithAssertionVerificationKeys(assertionVerificationKeys))
 		s.Require().NoError(err)
 
 		offset := 2
@@ -402,7 +409,7 @@ func (s *TDFSuite) Test_SimpleTDFWithNoAssertionKey() {
 		"https://example.com/attr/Classification/value/X",
 	}
 
-	assertions := []Assertion{
+	assertions := []AssertionConfig{
 		{
 			ID:             "assertion1",
 			Type:           BaseAssertion,

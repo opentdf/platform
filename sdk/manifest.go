@@ -58,27 +58,6 @@ type EncryptionInformation struct {
 	IntegrityInformation `json:"integrityInformation"`
 }
 
-type Statement struct {
-	Format string `json:"format,omitempty"`
-	Schema string `json:"schema,omitempty"`
-	Value  string `json:"value,omitempty"`
-}
-
-type Binding struct {
-	Method    string `json:"method,omitempty"`
-	Signature string `json:"signature,omitempty"`
-}
-
-type Assertion struct {
-	ID             string         `json:"id"`
-	Type           AssertionType  `json:"type"`
-	Scope          Scope          `json:"scope"`
-	AppliesToState AppliesToState `json:"appliesToState,omitempty"`
-	Statement      Statement      `json:"statement"`
-	Binding        Binding        `json:"binding"`
-	SigningKey     `json:"-"`
-}
-
 type Manifest struct {
 	EncryptionInformation `json:"encryptionInformation"`
 	Payload               `json:"payload"`

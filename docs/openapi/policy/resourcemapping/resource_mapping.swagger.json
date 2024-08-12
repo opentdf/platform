@@ -538,13 +538,6 @@
         "value": {
           "type": "string"
         },
-        "members": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/policyValue"
-          }
-        },
         "grants": {
           "type": "array",
           "items": {

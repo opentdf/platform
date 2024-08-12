@@ -9,6 +9,7 @@ breaking:
     - PACKAGE
     - WIRE_JSON
     - WIRE
+  # ignore: # Docs: https://buf.build/docs/configuration/v1/buf-yaml#default-values
 lint:
   allow_comment_ignores: true
   use:

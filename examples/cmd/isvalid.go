@@ -3,9 +3,10 @@ package cmd
 import (
 	"bytes"
 	"encoding/base64"
+	"io"
+
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 func init() {

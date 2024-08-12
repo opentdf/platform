@@ -189,9 +189,7 @@ func WithSegmentSize(size int64) TDFOption {
 // WithAssertions returns an Option that add assertions to TDF.
 func WithAssertions(assertionList ...AssertionConfig) TDFOption {
 	return func(c *TDFConfig) error {
-		newAssertions := make([]AssertionConfig, 0)
-		newAssertions = append(newAssertions, assertionList...)
-		c.assertions = newAssertions
+		c.assertions = append(c.assertions, assertionList...)
 		return nil
 	}
 }

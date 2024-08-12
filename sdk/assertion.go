@@ -18,7 +18,7 @@ type AssertionConfig struct {
 	Scope          Scope          `validate:"required"`
 	AppliesToState AppliesToState `validate:"required"`
 	Statement      Statement
-	SigningKey     AssertionKey `validate:"optional"`
+	SigningKey     AssertionKey
 }
 
 type Assertion struct {

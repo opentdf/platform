@@ -18,6 +18,7 @@ message Entity {
   string id = 1; // ephemeral id for tracking between request and response
   // Standard entity types supported by the platform
   oneof entity_type {
+    // one of the entity options must be set
     string email_address = 2;
     string user_name = 3;
     string remote_claims_url = 4;
@@ -26,6 +27,12 @@ message Entity {
     EntityCustom custom = 7;
     string client_id = 8;
   }
+  enum Category {
+    CATEGORY_UNSPECIFIED = 0;
+    CATEGORY_SUBJECT = 1;
+    CATEGORY_ENVIRONMENT = 2;
+  }
+  Category category = 9;
 }
 
 // Entity type for custom entities beyond the standard types

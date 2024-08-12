@@ -60,6 +60,8 @@ func NewRegistration() serviceregistry.Registration {
 				}
 				deprecatedOrDefault(kasCfg.ECCertID, security.AlgorithmECP256R1)
 				deprecatedOrDefault(kasCfg.RSACertID, security.AlgorithmRSA2048)
+			default:
+				kasCfg.Keyring = append(kasCfg.Keyring, inferLegacyKeys(kasCfg.Keyring)...)
 			}
 
 			p := access.Provider{
@@ -84,4 +86,20 @@ func NewRegistration() serviceregistry.Registration {
 			}
 		},
 	}
+}
+
+// If there exists *any* legacy keys, returns empty list.
+// Otherwise, create a copy with legacy=true for all values
+func inferLegacyKeys(keys []access.CurrentKeyFor) []access.CurrentKeyFor {
+	for _, k := range keys {
+		if k.Legacy {
+			return nil
+		}
+	}
+	l := make([]access.CurrentKeyFor, len(keys))
+	for i, k := range keys {
+		l[i] = k
+		l[i].Legacy = true
+	}
+	return l
 }

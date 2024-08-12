@@ -15,22 +15,13 @@ on:
 
 jobs:
   pull-reqeust-checks:
-    needs:
-      - title-validation
-      - associated-issue
-    runs-on: ubuntu-22.04
-    if: ${{ !cancelled() }}
-    steps:
-      - if: contains(needs.*.result, 'failure')
-        run: echo "Failed due to ${{ contains(needs.*.result, 'failure') }}" && exit 1
-  title-validation:
-    if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name)
-    name: Validate PR title
-    runs-on: ubuntu-22.04
     permissions:
-      pull-requests: read
+      pull-requests: write
+    runs-on: ubuntu-22.04
     steps:
-      - uses: amannn/action-semantic-pull-request@cfb60706e18bc85e8aec535e3c577abe8f70378e
+      - name: "Conventional Commits"
+        id: conventional-commits
+        uses: amannn/action-semantic-pull-request@cfb60706e18bc85e8aec535e3c577abe8f70378e
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -63,17 +54,10 @@ jobs:
             kas
             authz
             examples
-
-  associated-issue:
-    name: Issue Accociated with Pull Request
-    if: |
-      contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name) &&
-      !contains(fromJSON('["dependabot[bot]", "opentdf-automation[bot]"]'), github.actor)
-    runs-on: ubuntu-22.04
-    permissions:
-      pull-requests: write
-    steps:
-      - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+      - name: "Issue Accociated with Pull Request"
+        id: issue-associated
+        if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name) && !contains(fromJSON('["dependabot[bot]", "opentdf-automation[bot]"]'), github.actor)
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         with:
           script: |
             core.debug(JSON.stringify(context));
@@ -156,3 +140,4 @@ jobs:
               await github.graphql(createCommentMutation, createCommentVariables)
               core.setFailed('This pull request does not reference any issues. Please add a reference to an issue in the body of the pull request description.');
             }
+    

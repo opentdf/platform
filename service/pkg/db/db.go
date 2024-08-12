@@ -91,10 +91,10 @@ Multiple pools, schemas, or migrations per service are not supported. Multiple d
 PostgreSQL instance or multiple PostgreSQL servers per platform instance are not supported.
 */
 type Client struct {
-	Pgx    PgxIface
-	Logger *logger.Logger
-	config Config
-
+	Pgx           PgxIface
+	Logger        *logger.Logger
+	config        Config
+	ranMigrations bool
 	// This is the stdlib connection that is used for transactions
 	SQLDB *sql.DB
 }

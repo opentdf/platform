@@ -145,6 +145,7 @@ const (
 	Paylaod        Scope = "payload"
 )
 
+// String returns the string representation of the scope.
 func (s Scope) String() string {
 	return string(s)
 }

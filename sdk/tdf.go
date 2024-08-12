@@ -20,18 +20,16 @@ import (
 )
 
 var (
-	errFileTooLarge               = errors.New("tdf: can't create tdf larger than 64gb")
-	errRootSigValidation          = errors.New("tdf: failed integrity check on root signature")
-	errSegSizeMismatch            = errors.New("tdf: mismatch encrypted segment size in manifest")
-	errTDFReaderFailed            = errors.New("tdf: fail to read bytes from TDFReader")
-	errWriteFailed                = errors.New("tdf: io.writer fail to write all bytes")
-	errSegSigValidation           = errors.New("tdf: failed integrity check on segment hash")
-	errTDFPayloadReadFail         = errors.New("tdf: fail to read payload from tdf")
-	errInvalidKasInfo             = errors.New("tdf: kas information is missing")
-	errKasPubKeyMissing           = errors.New("tdf: kas public key is missing")
-	errTDFPayloadInvalidOffset    = errors.New("sdk.Reader.ReadAt: negative offset")
-	errInvalidAssertionBindingKey = errors.New("tdf: invalid key type for assertion binding")
-	errAssertionKeyMissing        = errors.New("tdf: assertion key is missing to verify the binding")
+	errFileTooLarge            = errors.New("tdf: can't create tdf larger than 64gb")
+	errRootSigValidation       = errors.New("tdf: failed integrity check on root signature")
+	errSegSizeMismatch         = errors.New("tdf: mismatch encrypted segment size in manifest")
+	errTDFReaderFailed         = errors.New("tdf: fail to read bytes from TDFReader")
+	errWriteFailed             = errors.New("tdf: io.writer fail to write all bytes")
+	errSegSigValidation        = errors.New("tdf: failed integrity check on segment hash")
+	errTDFPayloadReadFail      = errors.New("tdf: fail to read payload from tdf")
+	errInvalidKasInfo          = errors.New("tdf: kas information is missing")
+	errKasPubKeyMissing        = errors.New("tdf: kas public key is missing")
+	errTDFPayloadInvalidOffset = errors.New("sdk.Reader.ReadAt: negative offset")
 )
 
 const (
@@ -897,11 +895,9 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 
 			if err != nil {
 				return err
-			} else {
-				if !foundKey.IsEmpty() {
-					assertionKey.Alg = foundKey.Alg
-					assertionKey.Key = foundKey.Key
-				}
+			} else if !foundKey.IsEmpty() {
+				assertionKey.Alg = foundKey.Alg
+				assertionKey.Key = foundKey.Key
 			}
 		}
 

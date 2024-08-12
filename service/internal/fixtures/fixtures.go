@@ -135,10 +135,6 @@ type FixtureData struct {
 		Metadata FixtureMetadata                   `yaml:"metadata"`
 		Data     map[string]FixtureDataKasRegistry `yaml:"data"`
 	} `yaml:"kas_registry"`
-	ValueMembers struct {
-		Metadata FixtureMetadata                   `yaml:"metadata"`
-		Data     map[string]FixtureDataValueMember `yaml:"data"`
-	} `yaml:"attribute_value_members"`
 	ResourceMappingGroups struct {
 		Metadata FixtureMetadata                            `yaml:"metadata"`
 		Data     map[string]FixtureDataResourceMappingGroup `yaml:"data"`

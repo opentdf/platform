@@ -267,19 +267,20 @@ func (s SDK) Conn() *grpc.ClientConn {
 	return s.conn
 }
 
-// TDF Types
-type TdfType int
+type TdfType string
 
 const (
-	Invalid TdfType = iota
-	Nano
-	Standard
+	Invalid  TdfType = "Invalid"
+	Nano     TdfType = "Nano"
+	Standard TdfType = "Standard"
 )
 
-// String method to make the custom type printable
-func (bt TdfType) String() string {
-	return [...]string{"Invalid", "Nano", "Standard"}[bt]
+// String returns the string representation of the applies to state.
+func (t TdfType) String() string {
+	return string(t)
 }
+
+// String method to make the custom type printable
 func GetTdfType(reader io.ReadSeeker) TdfType {
 	isValidNanoTdf, _ := IsValidNanoTdf(reader)
 

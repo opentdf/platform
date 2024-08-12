@@ -72,6 +72,12 @@ To get started with the OpenTDF platform make sure you are running the same Go v
 <!-- markdownlint-disable MD034 github embedded sourcecode -->
 https://github.com/opentdf/platform/blob/main/service/go.mod#L3
 
+Generate development keys/certs for the platform infrastructure.
+
+```sh
+./.github/scripts/init-temp-keys.sh
+```
+
 Start the required infrastructure with [compose-spec](https://compose-spec.io).
 
 ```sh
@@ -79,19 +85,16 @@ Start the required infrastructure with [compose-spec](https://compose-spec.io).
 docker compose -f docker-compose.yaml up
 ```
 
-Copy the configuration file from the example and update it with your own values.
+Copy the development configuration file from the example and update it with your own values (if necessary, not common).
 
 ```sh
-cp opentdf-example.yaml opentdf.yaml
+cp opentdf-dev.yaml opentdf.yaml
 ```
 
-Provision default configurations.
+Provision keycloak with the default configuration.
 
 ```sh
-# Provision keycloak with the default configuration.
 go run ./service provision keycloak
-# Generate the temporary keys for KAS
-./.github/scripts/init-temp-keys.sh
 ```
 
 Run the OpenTDF platform service.

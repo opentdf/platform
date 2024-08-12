@@ -43,8 +43,8 @@ func (c PolicyDBClient) GetResourceMappingGroup(ctx context.Context, id string) 
 
 func (c PolicyDBClient) CreateResourceMappingGroup(ctx context.Context, r *resourcemappinggroup.CreateResourceMappingGroupRequest) (*policy.ResourceMappingGroup, error) {
 	createdId, err := c.Queries.CreateResourceMappingGroup(ctx, CreateResourceMappingGroupParams{
-		NamespaceID: r.NamespaceId,
-		Name:        r.Name,
+		NamespaceID: r.GetNamespaceId(),
+		Name:        r.GetName(),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -56,12 +56,12 @@ func (c PolicyDBClient) CreateResourceMappingGroup(ctx context.Context, r *resou
 }
 
 func (c PolicyDBClient) UpdateResourceMappingGroup(ctx context.Context, id string, r *resourcemappinggroup.UpdateResourceMappingGroupRequest) (*policy.ResourceMappingGroup, error) {
-	namespaceId := r.GetNamespaceId()
+	namespaceID := r.GetNamespaceId()
 	var bytes [16]byte
-	copy(bytes[:], namespaceId)
-	pgNamespaceId := pgtype.UUID{
+	copy(bytes[:], namespaceID)
+	pgNamespaceID := pgtype.UUID{
 		Bytes: bytes,
-		Valid: namespaceId != "",
+		Valid: namespaceID != "",
 	}
 
 	name := r.GetName()
@@ -70,9 +70,9 @@ func (c PolicyDBClient) UpdateResourceMappingGroup(ctx context.Context, id strin
 		Valid:  name != "",
 	}
 
-	createdId, err := c.Queries.UpdateResourceMappingGroup(ctx, UpdateResourceMappingGroupParams{
+	createdID, err := c.Queries.UpdateResourceMappingGroup(ctx, UpdateResourceMappingGroupParams{
 		ID:          id,
-		NamespaceID: pgNamespaceId,
+		NamespaceID: pgNamespaceID,
 		Name:        pgName,
 	})
 	if err != nil {
@@ -80,7 +80,7 @@ func (c PolicyDBClient) UpdateResourceMappingGroup(ctx context.Context, id strin
 	}
 
 	return &policy.ResourceMappingGroup{
-		Id: createdId,
+		Id: createdID,
 	}, nil
 }
 

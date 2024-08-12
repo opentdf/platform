@@ -101,7 +101,7 @@ type FixtureDataKasRegistry struct {
 
 type FixtureDataResourceMappingGroup struct {
 	ID          string `yaml:"id"`
-	NamespaceId string `yaml:"namespace_id"`
+	NamespaceID string `yaml:"namespace_id"`
 	Name        string `yaml:"name"`
 }
 
@@ -456,7 +456,7 @@ func (f *Fixtures) provisionResourceMappingGroups() int64 {
 	for _, d := range fixtureData.ResourceMappingGroups.Data {
 		values = append(values, []string{
 			f.db.StringWrap(d.ID),
-			f.db.StringWrap(d.NamespaceId),
+			f.db.StringWrap(d.NamespaceID),
 			f.db.StringWrap(d.Name),
 		})
 	}

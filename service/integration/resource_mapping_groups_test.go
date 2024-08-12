@@ -81,7 +81,7 @@ func (s *ResourceMappingGroupsSuite) Test_GetResourceMappingGroup() {
 	s.Require().NoError(err)
 	s.NotNil(rmGroup)
 	s.Equal(testRmGroup.ID, rmGroup.GetId())
-	s.Equal(testRmGroup.NamespaceId, rmGroup.GetNamespaceId())
+	s.Equal(testRmGroup.NamespaceID, rmGroup.GetNamespaceId())
 	s.Equal(testRmGroup.Name, rmGroup.GetName())
 }
 
@@ -138,8 +138,8 @@ func (s *ResourceMappingGroupsSuite) Test_UpdateResourceMappingGroup() {
 	s.Require().NoError(err)
 	s.NotNil(updatedRmGroup)
 	s.Equal(rmGroup.GetId(), updatedRmGroup.GetId())
-	s.Equal(updateReq.NamespaceId, updatedRmGroup.GetNamespaceId())
-	s.Equal(updateReq.Name, updatedRmGroup.GetName())
+	s.Equal(updateReq.GetNamespaceId(), updatedRmGroup.GetNamespaceId())
+	s.Equal(updateReq.GetName(), updatedRmGroup.GetName())
 }
 
 func (s *ResourceMappingGroupsSuite) Test_DeleteResourceMappingGroup() {

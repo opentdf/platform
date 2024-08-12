@@ -118,8 +118,7 @@ type AttributeValue struct {
 	// Foreign key to the parent attribute definition
 	AttributeDefinitionID string `json:"attribute_definition_id"`
 	// Value of the attribute (i.e. "manager" or "admin" on an attribute for titles), unique within the definition
-	Value   string   `json:"value"`
-	Members []string `json:"members"`
+	Value string `json:"value"`
 	// Metadata for the attribute value (see protos for structure)
 	Metadata []byte `json:"metadata"`
 	// Active/Inactive state
@@ -134,12 +133,6 @@ type AttributeValueKeyAccessGrant struct {
 	AttributeValueID string `json:"attribute_value_id"`
 	// Foreign key to the KAS registration
 	KeyAccessServerID string `json:"key_access_server_id"`
-}
-
-type AttributeValueMember struct {
-	ID       string `json:"id"`
-	ValueID  string `json:"value_id"`
-	MemberID string `json:"member_id"`
 }
 
 // Table to store the known registrations of key access servers (KASs)
@@ -168,6 +161,18 @@ type ResourceMapping struct {
 	Metadata  []byte             `json:"metadata"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	// Foreign key to the parent group of the resource mapping (optional, a resource mapping may not be in a group)
+	GroupID pgtype.UUID `json:"group_id"`
+}
+
+// Table to store the groups of resource mappings by unique namespace and group name combinations
+type ResourceMappingGroup struct {
+	// Primary key for the table
+	ID string `json:"id"`
+	// Foreign key to the namespace of the attribute
+	NamespaceID string `json:"namespace_id"`
+	// Name for the group of resource mappings
+	Name string `json:"name"`
 }
 
 // Table to store sets of conditions that logically entitle subject entity representations to attribute values via a subject mapping

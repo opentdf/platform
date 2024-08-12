@@ -254,8 +254,13 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 
 				auditECEntitlements := make([]audit.EntityChainEntitlement, 0)
 				auditEntityDecisions := make([]audit.EntityDecision, 0)
-				entityAttrValues := make(map[string][]string)
 
+				// Entitlements for environment entites in chain
+				envEntityAttrValues := make(map[string][]string)
+				// Entitlements for sbuject entities in chain
+				subjectEntityAttrValues := make(map[string][]string)
+
+				//nolint:nestif // handle empty entity / attr list
 				if len(entities) == 0 || len(allPertinentFqnsRA.GetAttributeValueFqns()) == 0 {
 					as.logger.WarnContext(ctx, "Empty entity list and/or entity data attribute list")
 				} else {
@@ -267,12 +272,23 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 
 					// TODO this might cause errors if multiple entities dont have ids
 					// currently just adding each entity returned to same list
-					for _, e := range ecEntitlements.GetEntitlements() {
+					for idx, e := range ecEntitlements.GetEntitlements() {
+						entityID := e.GetEntityId()
+						if entityID == "" {
+							entityID = EntityIDPrefix + fmt.Sprint(idx)
+						}
 						auditECEntitlements = append(auditECEntitlements, audit.EntityChainEntitlement{
-							EntityID:                 e.GetEntityId(),
+							EntityID:                 entityID,
 							AttributeValueReferences: e.GetAttributeValueFqns(),
 						})
-						entityAttrValues[e.GetEntityId()] = e.GetAttributeValueFqns()
+						entityCategory := entities[idx].GetCategory()
+
+						// If entity type unspecified, include in access decision to err on the side of caution
+						if entityCategory == authorization.Entity_CATEGORY_SUBJECT || entityCategory == authorization.Entity_CATEGORY_UNSPECIFIED {
+							subjectEntityAttrValues[entityID] = e.GetAttributeValueFqns()
+						} else {
+							envEntityAttrValues[entityID] = e.GetAttributeValueFqns()
+						}
 					}
 				}
 
@@ -281,7 +297,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				decisions, err := accessPDP.DetermineAccess(
 					ctx,
 					attrVals,
-					entityAttrValues,
+					subjectEntityAttrValues,
 					attrDefs,
 				)
 				if err != nil {
@@ -299,7 +315,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 					}
 
 					// Add entity decision to audit list
-					entityEntitlementFqns := entityAttrValues[entityID]
+					entityEntitlementFqns := subjectEntityAttrValues[entityID]
 					if entityEntitlementFqns == nil {
 						entityEntitlementFqns = []string{}
 					}

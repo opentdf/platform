@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"fmt"
+
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/sdk/internal/autoconfigure"
@@ -56,8 +57,7 @@ type TDFConfig struct {
 	mimeType                  string
 	integrityAlgorithm        IntegrityAlgorithm
 	segmentIntegrityAlgorithm IntegrityAlgorithm
-	assertions                []Assertion
-	assertionConfig           AssertionConfig
+	assertions                []AssertionConfig
 	attributes                []autoconfigure.AttributeValueFQN
 	attributeValues           []*policy.Value
 	kasInfoList               []KASInfo
@@ -186,12 +186,10 @@ func WithSegmentSize(size int64) TDFOption {
 	}
 }
 
-// WithAssertions  returns an Option that add assertions to TDF.
-func WithAssertions(assertionList ...Assertion) TDFOption {
+// WithAssertions returns an Option that add assertions to TDF.
+func WithAssertions(assertionList ...AssertionConfig) TDFOption {
 	return func(c *TDFConfig) error {
-		newAssertions := make([]Assertion, 0)
-		newAssertions = append(newAssertions, assertionList...)
-		c.assertions = newAssertions
+		c.assertions = append(c.assertions, assertionList...)
 		return nil
 	}
 }
@@ -204,6 +202,32 @@ func WithAutoconfigure(enable bool) TDFOption {
 	return func(c *TDFConfig) error {
 		c.autoconfigure = enable
 		c.splitPlan = nil
+		return nil
+	}
+}
+
+type TDFReaderOption func(*TDFReaderConfig) error
+
+type TDFReaderConfig struct {
+	// Optional Map of Assertion Verification Keys
+	AssertionVerificationKeys AssertionVerificationKeys
+}
+
+func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
+	c := &TDFReaderConfig{}
+	for _, o := range opt {
+		err := o(c)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return c, nil
+}
+
+func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.AssertionVerificationKeys = keys
 		return nil
 	}
 }

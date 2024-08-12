@@ -1,26 +1,32 @@
 package autoconfigure
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/maps"
+	"google.golang.org/grpc"
 )
 
 const (
-	kasAu     = "http://kas.au/"
-	kasCa     = "http://kas.ca/"
-	kasUk     = "http://kas.uk/"
-	kasNz     = "http://kas.nz/"
-	kasUs     = "http://kas.us/"
-	kasUsHCS  = "http://hcs.kas.us/"
-	kasUsSA   = "http://si.kas.us/"
-	authority = "https://virtru.com/"
+	kasAu               = "http://kas.au/"
+	kasCa               = "http://kas.ca/"
+	kasUk               = "http://kas.uk/"
+	kasNz               = "http://kas.nz/"
+	kasUs               = "http://kas.us/"
+	kasUsHCS            = "http://hcs.kas.us/"
+	kasUsSA             = "http://si.kas.us/"
+	authority           = "https://virtru.com/"
+	otherAuth           = "https://other.com/"
+	specifiedKas        = "https://attr.kas.com/"
+	evenMoreSpecificKas = "https://value.kas.com/"
 )
 
 var (
@@ -43,6 +49,14 @@ var (
 	rel2gbr, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/GBR")
 	rel2nzl, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/NZL")
 	rel2usa, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/USA")
+
+	// attributes to test specificity of kas grants
+	UNSPECKED, _ = NewAttributeNameFQN("https://other.com/attr/unspecified")
+	SPECKED, _   = NewAttributeNameFQN("https://other.com/attr/specified")
+	uns2uns, _   = NewAttributeValueFQN("https://other.com/attr/unspecified/value/unspecked")
+	uns2spk, _   = NewAttributeValueFQN("https://other.com/attr/unspecified/value/specked")
+	spk2uns, _   = NewAttributeValueFQN("https://other.com/attr/specified/value/unspecked")
+	spk2spk, _   = NewAttributeValueFQN("https://other.com/attr/specified/value/specked")
 )
 
 func spongeCase(s string) string {
@@ -85,16 +99,21 @@ func messUpV(t *testing.T, a AttributeValueFQN) AttributeValueFQN {
 }
 
 func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
-	ns := policy.Namespace{
+	nsOne := policy.Namespace{
 		Id:   "v",
 		Name: "virtru.com",
 		Fqn:  "https://virtru.com",
+	}
+	nsTwo := policy.Namespace{
+		Id:   "o",
+		Name: "other.com",
+		Fqn:  "https://other.com",
 	}
 	switch fqn.key {
 	case CLS.key:
 		return &policy.Attribute{
 			Id:        "CLS",
-			Namespace: &ns,
+			Namespace: &nsOne,
 			Name:      "Classification",
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 			Fqn:       fqn.String(),
@@ -102,7 +121,7 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 	case N2K.key:
 		return &policy.Attribute{
 			Id:        "N2K",
-			Namespace: &ns,
+			Namespace: &nsOne,
 			Name:      "Need to Know",
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 			Fqn:       fqn.String(),
@@ -110,8 +129,27 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 	case REL.key:
 		return &policy.Attribute{
 			Id:        "REL",
-			Namespace: &ns,
+			Namespace: &nsOne,
 			Name:      "Releasable To",
+			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Fqn:       fqn.String(),
+		}
+	case SPECKED.key:
+		g := make([]*policy.KeyAccessServer, 1)
+		g[0] = &policy.KeyAccessServer{Uri: specifiedKas}
+		return &policy.Attribute{
+			Id:        "SPK",
+			Namespace: &nsTwo,
+			Name:      "unspecified",
+			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Fqn:       fqn.String(),
+			Grants:    g,
+		}
+	case UNSPECKED.key:
+		return &policy.Attribute{
+			Id:        "UNS",
+			Namespace: &nsTwo,
+			Name:      "specified",
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 			Fqn:       fqn.String(),
 		}
@@ -170,6 +208,13 @@ func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 		}
 	case CLS.key:
 		// defaults only
+	case SPECKED.key:
+		fallthrough
+	case UNSPECKED.key:
+		if strings.ToLower(fqn.Value()) == "specked" {
+			p.Grants = make([]*policy.KeyAccessServer, 1)
+			p.Grants[0] = &policy.KeyAccessServer{Uri: evenMoreSpecificKas}
+		}
 	}
 	return &p
 }
@@ -393,6 +438,113 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			})
 			require.NoError(t, err)
 			assert.Equal(t, tc.plan, plan)
+		})
+	}
+}
+
+var (
+	listAttributeResp attributes.ListAttributesResponse
+)
+
+type mockAttributesClient struct {
+	attributes.AttributesServiceClient
+}
+
+func (*mockAttributesClient) ListAttributes(_ context.Context, _ *attributes.ListAttributesRequest, _ ...grpc.CallOption) (*attributes.ListAttributesResponse, error) {
+	return &listAttributeResp, nil
+}
+
+func (*mockAttributesClient) GetAttributeValuesByFqns(_ context.Context, req *attributes.GetAttributeValuesByFqnsRequest, _ ...grpc.CallOption) (*attributes.GetAttributeValuesByFqnsResponse, error) {
+	av := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue)
+	for _, v := range req.GetFqns() {
+		vfqn, err := NewAttributeValueFQN(v)
+		if err != nil {
+			return nil, err
+		}
+		val := mockValueFor(vfqn)
+		av[v] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+			Attribute: val.GetAttribute(),
+			Value:     val,
+		}
+	}
+
+	return &attributes.GetAttributeValuesByFqnsResponse{
+		FqnAttributeValues: av,
+	}, nil
+}
+
+func TestReasonerSpecificity(t *testing.T) {
+	for _, tc := range []struct {
+		n        string
+		policy   []AttributeValueFQN
+		defaults []string
+		plan     []SplitStep
+	}{
+		{
+			"uns/uns => default",
+			[]AttributeValueFQN{uns2uns},
+			[]string{kasUs},
+			[]SplitStep{{kasUs, ""}},
+		},
+		{
+			"uns/spk => spk",
+			[]AttributeValueFQN{uns2spk},
+			[]string{kasUs},
+			[]SplitStep{{evenMoreSpecificKas, ""}},
+		},
+		{
+			"spk/uns => spk",
+			[]AttributeValueFQN{spk2uns},
+			[]string{kasUs},
+			[]SplitStep{{specifiedKas, ""}},
+		},
+		{
+			"spk/spk => value.spk",
+			[]AttributeValueFQN{spk2spk},
+			[]string{kasUs},
+			[]SplitStep{{evenMoreSpecificKas, ""}},
+		},
+		{
+			"spk/spk & spk/uns => value.spk || attr.spk",
+			[]AttributeValueFQN{spk2spk, spk2uns},
+			[]string{kasUs},
+			[]SplitStep{{evenMoreSpecificKas, "1"}, {specifiedKas, "1"}},
+		},
+		{
+			"spk/uns & spk/spk => value.spk || attr.spk",
+			[]AttributeValueFQN{spk2spk, spk2uns},
+			[]string{kasUs},
+			[]SplitStep{{specifiedKas, "1"}, {evenMoreSpecificKas, "1"}},
+		},
+		{
+			"uns/spk & uns/uns => spk",
+			[]AttributeValueFQN{uns2spk, uns2uns},
+			[]string{kasUs},
+			[]SplitStep{{evenMoreSpecificKas, ""}},
+		},
+		{
+			"uns/uns & uns/spk => spk",
+			[]AttributeValueFQN{uns2spk, uns2uns},
+			[]string{kasUs},
+			[]SplitStep{{evenMoreSpecificKas, ""}},
+		},
+		{
+			"uns/uns & spk/spk => spk",
+			[]AttributeValueFQN{uns2spk, uns2uns},
+			[]string{kasUs},
+			[]SplitStep{{evenMoreSpecificKas, ""}},
+		},
+	} {
+		t.Run(tc.n, func(t *testing.T) {
+			reasoner, err := NewGranterFromService(context.Background(), &mockAttributesClient{}, tc.policy...)
+			require.NoError(t, err)
+			i := 0
+			plan, err := reasoner.Plan(tc.defaults, func() string {
+				i++
+				return fmt.Sprintf("%d", i)
+			})
+			require.NoError(t, err)
+			assert.ElementsMatch(t, tc.plan, plan)
 		})
 	}
 }

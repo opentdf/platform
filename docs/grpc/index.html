@@ -597,14 +597,6 @@
                 </li>
               
                 <li>
-                  <a href="#policy.attributes.GrantedPolicyObject"><span class="badge">M</span>GrantedPolicyObject</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.attributes.KeyAccessServerGrants"><span class="badge">M</span>KeyAccessServerGrants</a>
-                </li>
-              
-                <li>
                   <a href="#policy.attributes.ListAttributeValuesRequest"><span class="badge">M</span>ListAttributeValuesRequest</a>
                 </li>
               
@@ -618,14 +610,6 @@
               
                 <li>
                   <a href="#policy.attributes.ListAttributesResponse"><span class="badge">M</span>ListAttributesResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.attributes.ListKeyAccessServerGrantsRequest"><span class="badge">M</span>ListKeyAccessServerGrantsRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.attributes.ListKeyAccessServerGrantsResponse"><span class="badge">M</span>ListKeyAccessServerGrantsResponse</a>
                 </li>
               
                 <li>
@@ -701,6 +685,22 @@
               
                 <li>
                   <a href="#policy.kasregistry.GetKeyAccessServerResponse"><span class="badge">M</span>GetKeyAccessServerResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.GrantedPolicyObject"><span class="badge">M</span>GrantedPolicyObject</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.KeyAccessServerGrants"><span class="badge">M</span>KeyAccessServerGrants</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.ListKeyAccessServerGrantsRequest"><span class="badge">M</span>ListKeyAccessServerGrantsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.ListKeyAccessServerGrantsResponse"><span class="badge">M</span>ListKeyAccessServerGrantsResponse</a>
                 </li>
               
                 <li>
@@ -4121,82 +4121,6 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
 
         
       
-        <h3 id="policy.attributes.GrantedPolicyObject">GrantedPolicyObject</h3>
-        <p>Can be namespace, attribute definition, or value</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>fqn</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.attributes.KeyAccessServerGrants">KeyAccessServerGrants</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>key_access_server</td>
-                  <td><a href="#policy.KeyAccessServer">policy.KeyAccessServer</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>namespace_grants</td>
-                  <td><a href="#policy.attributes.GrantedPolicyObject">GrantedPolicyObject</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>attribute_grants</td>
-                  <td><a href="#policy.attributes.GrantedPolicyObject">GrantedPolicyObject</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>value_grants</td>
-                  <td><a href="#policy.attributes.GrantedPolicyObject">GrantedPolicyObject</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="policy.attributes.ListAttributeValuesRequest">ListAttributeValuesRequest</h3>
         <p></p>
 
@@ -4296,63 +4220,6 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
                 <tr>
                   <td>attributes</td>
                   <td><a href="#policy.Attribute">policy.Attribute</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.attributes.ListKeyAccessServerGrantsRequest">ListKeyAccessServerGrantsRequest</h3>
-        <p>LIST of KAS Grants returns flat response of grants to all policy objects. It does not</p><p>employ selectors for grants to specific policy objects or build the attribute tree relation.</p><p>If grants to a known namespace, attribute, or value are needed, use the respective</p><p>GET request to the specific policy object.</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>kas_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Optional
-Filter LIST by either ID or URI of a registered Key Access Server.
-If neither is provided, grants from all registered KASs to policy attribute objects are returned. </p></td>
-                </tr>
-              
-                <tr>
-                  <td>kas_uri</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.attributes.ListKeyAccessServerGrantsResponse">ListKeyAccessServerGrantsResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>grants</td>
-                  <td><a href="#policy.attributes.KeyAccessServerGrants">KeyAccessServerGrants</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
@@ -5078,6 +4945,139 @@ Attribute &lt;&gt; Key Access Server RPCs
 
         
       
+        <h3 id="policy.kasregistry.GrantedPolicyObject">GrantedPolicyObject</h3>
+        <p>Can be namespace, attribute definition, or value</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.KeyAccessServerGrants">KeyAccessServerGrants</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_access_server</td>
+                  <td><a href="#policy.KeyAccessServer">policy.KeyAccessServer</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_grants</td>
+                  <td><a href="#policy.kasregistry.GrantedPolicyObject">GrantedPolicyObject</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_grants</td>
+                  <td><a href="#policy.kasregistry.GrantedPolicyObject">GrantedPolicyObject</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value_grants</td>
+                  <td><a href="#policy.kasregistry.GrantedPolicyObject">GrantedPolicyObject</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.ListKeyAccessServerGrantsRequest">ListKeyAccessServerGrantsRequest</h3>
+        <p>LIST of KAS Grants returns flat response of grants to all policy objects. It does not</p><p>employ selectors for grants to specific policy objects or build the attribute tree relation.</p><p>If grants to a known namespace, attribute, or value are needed, use the respective</p><p>GET request to the specific policy object.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>kas_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+Filter LIST by either ID or URI of a registered Key Access Server.
+If neither is provided, grants from all registered KASs to policy attribute objects are returned. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.ListKeyAccessServerGrantsResponse">ListKeyAccessServerGrantsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>grants</td>
+                  <td><a href="#policy.kasregistry.KeyAccessServerGrants">KeyAccessServerGrants</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.kasregistry.ListKeyAccessServersRequest">ListKeyAccessServersRequest</h3>
         <p></p>
 
@@ -5234,6 +5234,13 @@ Attribute &lt;&gt; Key Access Server RPCs
                 <td><p></p></td>
               </tr>
             
+              <tr>
+                <td>ListKeyAccessServerGrants</td>
+                <td><a href="#policy.kasregistry.ListKeyAccessServerGrantsRequest">ListKeyAccessServerGrantsRequest</a></td>
+                <td><a href="#policy.kasregistry.ListKeyAccessServerGrantsResponse">ListKeyAccessServerGrantsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
           </tbody>
         </table>
 
@@ -5298,6 +5305,16 @@ Attribute &lt;&gt; Key Access Server RPCs
                 <td>DeleteKeyAccessServer</td>
                 <td>DELETE</td>
                 <td>/key-access-servers/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>ListKeyAccessServerGrants</td>
+                <td>GET</td>
+                <td>/key-access-servers/grants</td>
                 <td></td>
               </tr>
               

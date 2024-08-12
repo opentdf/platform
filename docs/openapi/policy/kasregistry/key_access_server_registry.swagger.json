@@ -68,6 +68,43 @@
         ]
       }
     },
+    "/key-access-servers/grants": {
+      "get": {
+        "operationId": "KeyAccessServerRegistryService_ListKeyAccessServerGrants",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kasregistryListKeyAccessServerGrantsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "kasId",
+            "description": "Optional\nFilter LIST by either ID or URI of a registered Key Access Server.\nIf neither is provided, grants from all registered KASs to policy attribute objects are returned.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "kasUri",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "KeyAccessServerRegistryService"
+        ]
+      }
+    },
     "/key-access-servers/{id}": {
       "get": {
         "operationId": "KeyAccessServerRegistryService_GetKeyAccessServer",
@@ -262,6 +299,59 @@
       "properties": {
         "keyAccessServer": {
           "$ref": "#/definitions/policyKeyAccessServer"
+        }
+      }
+    },
+    "kasregistryGrantedPolicyObject": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "fqn": {
+          "type": "string"
+        }
+      },
+      "title": "Can be namespace, attribute definition, or value"
+    },
+    "kasregistryKeyAccessServerGrants": {
+      "type": "object",
+      "properties": {
+        "keyAccessServer": {
+          "$ref": "#/definitions/policyKeyAccessServer"
+        },
+        "namespaceGrants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kasregistryGrantedPolicyObject"
+          }
+        },
+        "attributeGrants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kasregistryGrantedPolicyObject"
+          }
+        },
+        "valueGrants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kasregistryGrantedPolicyObject"
+          }
+        }
+      }
+    },
+    "kasregistryListKeyAccessServerGrantsResponse": {
+      "type": "object",
+      "properties": {
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kasregistryKeyAccessServerGrants"
+          }
         }
       }
     },

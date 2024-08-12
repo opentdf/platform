@@ -90,8 +90,8 @@ func NewRegistration() serviceregistry.Registration {
 				panic(fmt.Errorf("failed to set defaults for authorization service config: %w", err))
 			}
 
-			if err := mapstructure.Decode(srp.Config.ExtraProps, &authZCfg); err != nil {
-				panic(fmt.Errorf("invalid auth svc cfg [%v] %w", srp.Config.ExtraProps, err))
+			if err := mapstructure.Decode(srp.Config, &authZCfg); err != nil {
+				panic(fmt.Errorf("invalid auth svc cfg [%v] %w", srp.Config, err))
 			}
 
 			// Validate Config

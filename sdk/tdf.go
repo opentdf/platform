@@ -3,7 +3,6 @@ package sdk
 import (
 	"bytes"
 	"context"
-	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"

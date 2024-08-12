@@ -68,18 +68,8 @@ jobs:
           working-directory: ${{ matrix.directory }}
           skip-cache: true
           args: --out-format=colored-line-number
-      - name: Install softHSM
-        if: matrix.directory == 'service'
-        run: |-
-          sudo apt-get install -y softhsm opensc openssl
-          sudo chmod +x /etc/softhsm
-          sudo chmod +r /etc/softhsm/softhsm2.conf
-          mkdir -p $(pwd)/.tmp/tokens
-          echo "directories.tokendir = $(pwd)/.tmp/tokens" > softhsm2.conf
-          echo "log.level = DEBUG" >> softhsm2.conf
-          echo "SOFTHSM2_CONF=$(pwd)/softhsm2.conf" >> "$GITHUB_ENV"
       - if: matrix.directory == 'service'
-        run: .github/scripts/init-temp-keys.sh --hsm
+        run: .github/scripts/init-temp-keys.sh
       - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
       - if: matrix.directory == 'service'
@@ -99,10 +89,6 @@ jobs:
   integration:
     name: integration tests
     runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        crypto:
-          - standard
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
       - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
@@ -118,38 +104,23 @@ jobs:
         run: ./.github/scripts/work-init.sh
       - run: go mod download
       - run: go mod verify
-      - name: Install softHSM
-        if: matrix.crypto == 'hsm'
-        run: |-
-          sudo apt-get install -y softhsm opensc openssl
-          sudo chmod +x /etc/softhsm
-          sudo chmod +r /etc/softhsm/softhsm2.conf
-          mkdir -p $(pwd)/.tmp/tokens
-          echo "directories.tokendir = $(pwd)/.tmp/tokens" > softhsm2.conf
-          echo "log.level = DEBUG" >> softhsm2.conf
-          echo "SOFTHSM2_CONF=$(pwd)/softhsm2.conf" >> "$GITHUB_ENV"
-      - run: |
-          .github/scripts/init-temp-keys.sh --hsm
-          cp opentdf-with-hsm.yaml opentdf.yaml
-        if: matrix.crypto == 'hsm'
       - run: |
           .github/scripts/init-temp-keys.sh
           cp opentdf-dev.yaml opentdf.yaml
-        if: matrix.crypto == 'standard'
       - name: Added Trusted Certs
         run: |
           sudo chmod -R 777 ./keys
           sudo apt-get install -y ca-certificates
           sudo cp ./keys/localhost.crt /usr/local/share/ca-certificates
           sudo update-ca-certificates
-      - run: docker compose up -d --wait --wait-timeout 240
+      - run: docker compose up -d --wait --wait-timeout 240 || (docker compose logs && exit 1)
       - run: go run ./service provision keycloak
       - run: go run ./service provision fixtures
       - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
         name: start server in background
         with:
           run: >
-            go build -o opentdf ${{ matrix.crypto == 'hsm' && '--tags=opentdf.hsm' || '' }} -v service/main.go
+            go build -o opentdf -v service/main.go
             && .github/scripts/watch.sh opentdf.yaml ./opentdf start
           wait-on: |
             tcp:localhost:8080

@@ -42,7 +42,7 @@ func (c PolicyDBClient) GetResourceMappingGroup(ctx context.Context, id string) 
 }
 
 func (c PolicyDBClient) CreateResourceMappingGroup(ctx context.Context, r *resourcemappinggroup.CreateResourceMappingGroupRequest) (*policy.ResourceMappingGroup, error) {
-	createdId, err := c.Queries.CreateResourceMappingGroup(ctx, CreateResourceMappingGroupParams{
+	createdID, err := c.Queries.CreateResourceMappingGroup(ctx, CreateResourceMappingGroupParams{
 		NamespaceID: r.GetNamespaceId(),
 		Name:        r.GetName(),
 	})
@@ -51,7 +51,7 @@ func (c PolicyDBClient) CreateResourceMappingGroup(ctx context.Context, r *resou
 	}
 
 	return &policy.ResourceMappingGroup{
-		Id: createdId,
+		Id: createdID,
 	}, nil
 }
 

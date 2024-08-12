@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.5](https://github.com/opentdf/platform/compare/sdk/v0.3.4...sdk/v0.3.5) (2024-08-12)
+
+
+### Features
+
+* Adds IsValidTDF function - needs tests ([#1188](https://github.com/opentdf/platform/issues/1188)) ([4750195](https://github.com/opentdf/platform/commit/4750195f39e7771073d76b1a735bf1ac1bfe0668))
+* **sdk:** add assertion to tdf3 ([#575](https://github.com/opentdf/platform/issues/575)) ([5bbce71](https://github.com/opentdf/platform/commit/5bbce7141ba2a6f168f7743f9c6d03a1e23d56e5))
+* **sdk:** Allow for payload key retrieval. ([#1230](https://github.com/opentdf/platform/issues/1230)) ([c3423fc](https://github.com/opentdf/platform/commit/c3423fceb39d7a8f7a9a30d1bb817f264180b830))
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1313](https://github.com/opentdf/platform/issues/1313)) ([0eda439](https://github.com/opentdf/platform/commit/0eda43951aa0530ddd1d078a6172ddbb15462579))
+* **kas:** Regenerate protos and fix tests from info rpc removal ([#1291](https://github.com/opentdf/platform/issues/1291)) ([91a2fe6](https://github.com/opentdf/platform/commit/91a2fe65c63aa5ac6ca2f058dbc0c29ca2a26536))
+* **sdk:** Allow hyphens in attr namespaces ([#1250](https://github.com/opentdf/platform/issues/1250)) ([a034bd5](https://github.com/opentdf/platform/commit/a034bd5f605f4aef94533312adcb7ab0fe9bbdd2))
+
 ## [0.3.4](https://github.com/opentdf/platform/compare/sdk/v0.3.3...sdk/v0.3.4) (2024-07-23)
 
 

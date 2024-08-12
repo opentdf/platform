@@ -246,6 +246,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.ResourceMappingGroup"><span class="badge">M</span>ResourceMappingGroup</a>
+                </li>
+              
+                <li>
                   <a href="#policy.SubjectConditionSet"><span class="badge">M</span>SubjectConditionSet</a>
                 </li>
               
@@ -1618,6 +1622,51 @@
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>group</td>
+                  <td><a href="#policy.ResourceMappingGroup">ResourceMappingGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.ResourceMappingGroup">ResourceMappingGroup</h3>
+        <p>Resource Mapping Groups are namespaced collections of Resource Mappings associated under a common group name.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>the namespace containing the group of resource mappings </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>the common name for the group of resource mappings, which must be unique per namespace </p></td>
                 </tr>
               
             </tbody>

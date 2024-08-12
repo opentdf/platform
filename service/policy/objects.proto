@@ -222,6 +222,19 @@ message SubjectProperty {
 }
 
 /*
+   Resource Mapping Groups are namespaced collections of Resource Mappings associated under a common group name.
+*/
+message ResourceMappingGroup {
+  string id = 1;
+
+  // the namespace containing the group of resource mappings
+  string namespace_id = 2 [(buf.validate.field).required = true];
+
+  // the common name for the group of resource mappings, which must be unique per namespace
+  string name = 3 [(buf.validate.field).required = true];
+}
+
+/*
    Resource Mappings (aka Access Control Resource Encodings aka ACRE) are structures supporting the mapping of Resources and Attribute Values
 */
 message ResourceMapping {
@@ -232,6 +245,8 @@ message ResourceMapping {
   policy.Value attribute_value = 3 [(buf.validate.field).required = true];
 
   repeated string terms = 4;
+
+  ResourceMappingGroup group = 5;
 }
 
 /*

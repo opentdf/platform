@@ -430,9 +430,26 @@
           "items": {
             "type": "string"
           }
+        },
+        "group": {
+          "$ref": "#/definitions/policyResourceMappingGroup"
         }
       },
       "title": "Resource Mappings (aka Access Control Resource Encodings aka ACRE) are structures supporting the mapping of Resources and Attribute Values"
+    },
+    "policyResourceMappingGroup": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "namespaceId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
     },
     "policySubjectConditionSet": {
       "type": "object",

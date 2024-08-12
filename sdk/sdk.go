@@ -7,15 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/opentdf/platform/sdk/internal/archive"
-	"github.com/xeipuuv/gojsonschema"
-	"io"
-	"log/slog"
-	"net"
-	"net/http"
-	"net/url"
-	"regexp"
-
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
@@ -28,8 +19,16 @@ import (
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/sdk/auth"
+	"github.com/opentdf/platform/sdk/internal/archive"
+	"github.com/xeipuuv/gojsonschema"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"io"
+	"log/slog"
+	"net"
+	"net/http"
+	"net/url"
+	"regexp"
 )
 
 const (

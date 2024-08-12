@@ -719,7 +719,8 @@ func (r *Reader) DataAttributes() ([]string, error) {
 }
 
 /*
-*
+*WARNING:* Using this function is unsafe since KAS will no longer be able to prevent access to the key.
+
 Retrieve the payload key, either from performing an unwrap or from a previous unwrap,
 and write it to a user buffer.
 
@@ -727,7 +728,7 @@ OUTPUTS:
   - []byte - Byte array containing the DEK.
   - error - If an error occurred while processing
 */
-func (r *Reader) PayloadKey() ([]byte, error) {
+func (r *Reader) UnsafePayloadKeyRetrieval() ([]byte, error) {
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap(context.Background())
 		if err != nil {

@@ -58,11 +58,10 @@ type TDFConfig struct {
 	integrityAlgorithm        IntegrityAlgorithm
 	segmentIntegrityAlgorithm IntegrityAlgorithm
 	assertions                []AssertionConfig
-	// assertionSigningKey       *AssertionSigningKey
-	attributes      []autoconfigure.AttributeValueFQN
-	attributeValues []*policy.Value
-	kasInfoList     []KASInfo
-	splitPlan       []autoconfigure.SplitStep
+	attributes                []autoconfigure.AttributeValueFQN
+	attributeValues           []*policy.Value
+	kasInfoList               []KASInfo
+	splitPlan                 []autoconfigure.SplitStep
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -187,7 +186,7 @@ func WithSegmentSize(size int64) TDFOption {
 	}
 }
 
-// WithAssertions  returns an Option that add assertions to TDF.
+// WithAssertions returns an Option that add assertions to TDF.
 func WithAssertions(assertionList ...AssertionConfig) TDFOption {
 	return func(c *TDFConfig) error {
 		newAssertions := make([]AssertionConfig, 0)
@@ -196,17 +195,6 @@ func WithAssertions(assertionList ...AssertionConfig) TDFOption {
 		return nil
 	}
 }
-
-// func WithAssertionSigningKey(alg AssertionKeyAlg, key interface{}) TDFOption {
-// 	return func(c *TDFConfig) error {
-// 		ask := &AssertionSigningKey{
-// 			alg: alg,
-// 			key: key,
-// 		}
-// 		c.assertionSigningKey = ask
-// 		return nil
-// 	}
-// }
 
 // WithAutoconfigure toggles inferring KAS info for encrypt from data attributes.
 // This will use the Attributes service to look up key access grants.

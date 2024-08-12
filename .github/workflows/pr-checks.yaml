@@ -14,7 +14,7 @@ on:
       - checks_requested
 
 jobs:
-  pull-reqeust-checks:
+  pull-request-checks:
     permissions:
       pull-requests: write
     runs-on: ubuntu-22.04

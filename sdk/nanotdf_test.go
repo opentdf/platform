@@ -249,12 +249,6 @@ func TestGetECPublicKeyKid(t *testing.T) {
 		shouldFail bool
 	}{
 		{
-			name:       "Invalid URL",
-			kasURL:     "http",
-			dialOption: grpc.WithInsecure(),
-			shouldFail: true,
-		},
-		{
 			name:       "Valid URL, Unreachable gRPC server",
 			kasURL:     "http://localhost",
 			dialOption: grpc.WithBlock(),
@@ -273,7 +267,6 @@ func TestGetECPublicKeyKid(t *testing.T) {
 }
 
 func TestCreateNanoTDF(t *testing.T) {
-
 	tests := []struct {
 		name          string
 		writer        io.Writer

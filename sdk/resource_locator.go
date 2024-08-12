@@ -38,7 +38,7 @@ const (
 	urlProtocolHTTP  protocolHeader = 0x0
 	urlProtocolHTTPS protocolHeader = 0x1
 	// urlProtocolUnreserved   protocolHeader = 0x2
-	//urlProtocolSharedRes protocolHeader = 0xf
+	// urlProtocolSharedRes protocolHeader = 0xf
 
 	identifierNone   protocolHeader = 0 << 4
 	identifier2Byte  protocolHeader = 1 << 4
@@ -206,6 +206,8 @@ func (rl ResourceLocator) writeResourceLocator(writer io.Writer) error {
 	return nil
 }
 
+const protocolSharedRes = 0x4
+
 // readResourceLocator - read the encoded protocol and body string into a ResourceLocator
 func (rl *ResourceLocator) readResourceLocator(reader io.Reader) error {
 	if err := binary.Read(reader, binary.BigEndian, &rl.protocol); err != nil {
@@ -245,6 +247,8 @@ func (rl *ResourceLocator) readResourceLocator(reader io.Reader) error {
 			return errors.New("Error reading ResourceLocator identifier value: " + err.Error())
 		}
 		rl.identifier = string(identifier)
+	case protocolSharedRes:
+		// noop for legacy relative file references
 	default:
 		return errors.New("unsupported identifier protocol: " + strconv.Itoa(int(rl.protocol)))
 	}

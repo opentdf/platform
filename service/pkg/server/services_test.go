@@ -117,7 +117,6 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_ALL_Expect_All_
 	suite.Require().NoError(err)
 	suite.Len(ers.Services, 1)
 	suite.Equal(modeCore, ers.Mode)
-
 }
 
 // Every service except kas is registered

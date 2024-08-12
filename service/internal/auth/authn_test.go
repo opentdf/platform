@@ -660,8 +660,8 @@ func (s *AuthSuite) Test_PublicPath_Matches() {
 }
 
 func (s *AuthSuite) Test_GetAction() {
-	cases := []struct{
-		method string
+	cases := []struct {
+		method   string
 		expected string
 	}{
 		{"GetSomething", ActionRead},

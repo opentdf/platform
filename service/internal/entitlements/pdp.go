@@ -1,14 +1,12 @@
 package entitlements
 
 import (
-	"encoding/json"
-
-	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-func OpaInput(entity *authorization.Entity, sms map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, ersURL string, authToken string) (map[string]interface{}, error) {
+func OpaInput(sms map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, ersResponse *entityresolution.ResolveEntitiesResponse) (map[string]interface{}, error) {
 	// OPA wants this as a generic map[string]interface{} and will not handle
 	// deserializing to concrete structs
 	inputUnstructured := make(map[string]interface{})
@@ -25,21 +23,11 @@ func OpaInput(entity *authorization.Entity, sms map[string]*attributes.GetAttrib
 	}
 	inputUnstructured["attribute_mappings"] = smsJSON
 
-	// Entity
-	// convert entity to map[string]string
-	eaJSON, err := protojson.Marshal(entity)
+	ersRespBytes, err := protojson.Marshal(ersResponse)
 	if err != nil {
 		return nil, err
 	}
-	var eaMap map[string]string
-	err = json.Unmarshal(eaJSON, &eaMap)
-	if err != nil {
-		return nil, err
-	}
-
-	inputUnstructured["entity"] = eaMap
-	inputUnstructured["ers_url"] = ersURL
-	inputUnstructured["auth_token"] = authToken
+	inputUnstructured["ers_response"] = string(ersRespBytes)
 
 	return inputUnstructured, nil
 }

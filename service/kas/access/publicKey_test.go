@@ -15,8 +15,8 @@ import (
 	"testing"
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
-	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/security"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"

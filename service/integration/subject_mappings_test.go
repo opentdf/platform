@@ -376,9 +376,6 @@ func (s *SubjectMappingsSuite) TestGetSubjectMapping() {
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(fixture.AttributeValueID, got.GetId())
-	//nolint:staticcheck // SA1019: removing all references to members in later release
-	s.NotEmpty(got.GetMembers())
-	equalMembers(s.T(), got, sm.GetAttributeValue(), false)
 	metadata := sm.GetMetadata()
 	createdAt := metadata.GetCreatedAt()
 	updatedAt := metadata.GetUpdatedAt()
@@ -763,6 +760,67 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_AllAllowedFields() 
 	s.Equal(len(ss), len(got.GetSubjectSets()))
 	s.Equal(ss[0].GetConditionGroups()[0].GetConditions()[0].GetSubjectExternalSelectorValue(), got.GetSubjectSets()[0].GetConditionGroups()[0].GetConditions()[0].GetSubjectExternalSelectorValue())
 	s.Equal(metadata.GetLabels()["key_example"], got.GetMetadata().GetLabels()["key_example"])
+}
+
+func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_ChangeOperator() {
+	newConditionSet := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: ".someField[1]",
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN,
+								SubjectExternalValues:        []string{"some_value"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	created, err := s.db.PolicyClient.CreateSubjectConditionSet(context.Background(), newConditionSet)
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	// update the subject condition set
+	newSS := []*policy.SubjectSet{
+		{
+			ConditionGroups: []*policy.ConditionGroup{
+				{
+					BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+					Conditions: []*policy.Condition{
+						{
+							SubjectExternalSelectorValue: ".someField[1]",
+							Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS,
+							SubjectExternalValues:        []string{"some_partial_value"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	update := &subjectmapping.UpdateSubjectConditionSetRequest{
+		SubjectSets: newSS,
+		Id:          created.GetId(),
+	}
+	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(context.Background(), update)
+	s.Require().NoError(err)
+	s.NotNil(updated)
+
+	got, err := s.db.PolicyClient.GetSubjectConditionSet(context.Background(), created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(created.GetId(), got.GetId())
+	condition := got.GetSubjectSets()[0].GetConditionGroups()[0].GetConditions()[0]
+	s.Equal(policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS, condition.GetOperator())
+	s.Equal(".someField[1]", condition.GetSubjectExternalSelectorValue())
+	s.Len(condition.GetSubjectExternalValues(), 1)
+	s.Equal("some_partial_value", condition.GetSubjectExternalValues()[0])
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NonExistentId_Fails() {

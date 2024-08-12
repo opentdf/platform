@@ -20,10 +20,8 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -55,7 +53,7 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 	client, stop := runServer(context.Background(), &server, oo)
 	defer stop()
 
-	_, err = client.Info(context.Background(), &kas.InfoRequest{})
+	_, err = client.PublicKey(context.Background(), &kas.PublicKeyRequest{})
 	if err != nil {
 		t.Fatalf("error making call: %v", err)
 	}
@@ -104,7 +102,7 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 		t.Fatalf("we got a bad method: %v", method)
 	}
 
-	if path, _ := parsedToken.Get("htu"); path != "/kas.AccessService/Info" {
+	if path, _ := parsedToken.Get("htu"); path != "/kas.AccessService/PublicKey" {
 		t.Fatalf("we got a bad method: %v", path)
 	}
 
@@ -127,7 +125,7 @@ func Test_InvalidCredentials_DoesNotSendMessage(t *testing.T) {
 	client, stop := runServer(context.Background(), &server, oo)
 	defer stop()
 
-	_, err := client.Info(context.Background(), &kas.InfoRequest{})
+	_, err := client.PublicKey(context.Background(), &kas.PublicKeyRequest{})
 
 	if err == nil {
 		t.Fatalf("should not have sent message because the token source returned an error")
@@ -141,7 +139,7 @@ type FakeAccessServiceServer struct {
 	kas.UnimplementedAccessServiceServer
 }
 
-func (f *FakeAccessServiceServer) Info(ctx context.Context, _ *kas.InfoRequest) (*kas.InfoResponse, error) {
+func (f *FakeAccessServiceServer) PublicKey(ctx context.Context, _ *kas.PublicKeyRequest) (*kas.PublicKeyResponse, error) {
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
 		f.accessToken = md.Get("authorization")
 		f.dpopToken = md.Get("dpop")
@@ -151,11 +149,9 @@ func (f *FakeAccessServiceServer) Info(ctx context.Context, _ *kas.InfoRequest) 
 	if !ok {
 		f.dpopKey = nil
 	}
-	return &kas.InfoResponse{}, nil
+	return &kas.PublicKeyResponse{}, nil
 }
-func (f *FakeAccessServiceServer) PublicKey(context.Context, *kas.PublicKeyRequest) (*kas.PublicKeyResponse, error) {
-	return &kas.PublicKeyResponse{}, status.Error(codes.Unauthenticated, "no public key for you")
-}
+
 func (f *FakeAccessServiceServer) LegacyPublicKey(context.Context, *kas.LegacyPublicKeyRequest) (*wrapperspb.StringValue, error) {
 	return &wrapperspb.StringValue{}, nil
 }

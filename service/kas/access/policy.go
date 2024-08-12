@@ -2,7 +2,7 @@ package access
 
 import (
 	"github.com/google/uuid"
-	"github.com/opentdf/platform/service/internal/logger/audit"
+	"github.com/opentdf/platform/service/logger/audit"
 )
 
 type Policy struct {

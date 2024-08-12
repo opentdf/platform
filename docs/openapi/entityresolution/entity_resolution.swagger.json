@@ -82,6 +82,15 @@
     }
   },
   "definitions": {
+    "EntityCategory": {
+      "type": "string",
+      "enum": [
+        "CATEGORY_UNSPECIFIED",
+        "CATEGORY_SUBJECT",
+        "CATEGORY_ENVIRONMENT"
+      ],
+      "default": "CATEGORY_UNSPECIFIED"
+    },
     "authorizationEntity": {
       "type": "object",
       "properties": {
@@ -90,7 +99,8 @@
           "title": "ephemeral id for tracking between request and response"
         },
         "emailAddress": {
-          "type": "string"
+          "type": "string",
+          "title": "one of the entity options must be set"
         },
         "userName": {
           "type": "string"
@@ -109,6 +119,9 @@
         },
         "clientId": {
           "type": "string"
+        },
+        "category": {
+          "$ref": "#/definitions/EntityCategory"
         }
       },
       "title": "PE (Person Entity) or NPE (Non-Person Entity)"

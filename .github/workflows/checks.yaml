@@ -56,6 +56,98 @@ jobs:
             authz
             examples
 
+  associated-issue:
+    name: Issue Accociated with Pull Request
+    if: |
+      contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name) &&
+      !contains(fromJSON('["dependabot[bot]", "opentdf-automation[bot]"]'), github.actor)
+    runs-on: ubuntu-22.04
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            core.debug(JSON.stringify(context));
+            const query = `query ($owner: String!, $name: String!, $number: Int!) {
+              repository(owner: $owner, name: $name) {
+                pullRequest(number: $number) {
+                  id
+                  closingIssuesReferences(first: 50) {
+                    edges {
+                      node {
+                        id
+                        body
+                        number
+                        title
+                      }
+                    }
+                  }
+                  comments(last: 100) {
+                    edges {
+                      node {
+                        id
+                        body
+                        author {
+                          login
+                        }
+                        isMinimized
+                      }
+                    }
+                  }
+                }
+              }
+            }`;
+            const variables = {
+              owner: context.repo.owner,
+              name: context.repo.repo,
+              number: context.issue.number
+            }
+            const result = await github.graphql(query, variables)
+            
+            core.debug(JSON.stringify(result));
+
+            if (result.repository.pullRequest.closingIssuesReferences.edges.length === 0) {
+              const comments = result.repository.pullRequest.comments.edges;
+              for (const comment of comments) {
+                // Minimize the previous comment if one exists
+                console.debug(comment);
+                console.debug(comment.node.body.match(/<!-- associated-issue-action -->/g) != null);
+                if (comment.node.author.login === 'github-actions' && !comment.node.isMinimized && comment.node.body.match(/<!-- associated-issue-action -->/g) != null) {
+                  const minimizeCommentMutation = `mutation minimizeComment($id: ID!) {
+                    minimizeComment(input: { subjectId: $id, classifier: OUTDATED }) {
+                      minimizedComment {
+                        isMinimized
+                      }
+                    }
+                  }`;
+                  const minimizeCommentVariables = {
+                    id: comment.node.id
+                  }
+                  await github.graphql(minimizeCommentMutation, minimizeCommentVariables)
+                }
+              }
+              const body = `
+              > [!WARNING] 
+              > This pull request does not reference any issues. Please add a reference to an issue in the body of the pull request description.
+              <!-- associated-issue-action -->`;
+              const createCommentMutation = `mutation createComment($id: ID!, $body: String!) {
+                addComment(input: { subjectId: $id, body: $body }) {
+                  commentEdge {
+                    node {
+                      id
+                    }
+                  }
+                }
+              }`;
+              
+              const createCommentVariables = {
+                id: result.repository.pullRequest.id,
+                body: body
+              }
+              await github.graphql(createCommentMutation, createCommentVariables)
+              core.setFailed('This pull request does not reference any issues. Please add a reference to an issue in the body of the pull request description.');
+            }
   go:
     runs-on: ubuntu-22.04
     permissions:
@@ -223,12 +315,19 @@ jobs:
           file: ./Dockerfile
           push: false
 
+  platform-xtest:
+    needs: integration
+    uses: opentdf/tests/.github/workflows/xtest.yml@main
+    with:
+      # use commit instead of ref so we can "go get" specific sdk version
+      platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
   buflint:
     name: Protocol Buffer Lint and Gencode Up-to-date check
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
-      - uses: bufbuild/buf-setup-action@35c243d7f2a909b1d4e40399b348a7fdab27d78d
+      - uses: bufbuild/buf-setup-action@aceb106d2419c4cff48863df90161d92decb8591
       - uses: bufbuild/buf-lint-action@06f9dd823d873146471cfaaf108a993fe00e5325
         with:
           input: service
@@ -268,6 +367,8 @@ jobs:
       - integration
       - license
       - pr
+      - platform-xtest
+      - associated-issue
     runs-on: ubuntu-latest
     if: always()
     steps:

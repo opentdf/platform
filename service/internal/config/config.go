@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/creasty/defaults"
-	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/server"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/pkg/util"

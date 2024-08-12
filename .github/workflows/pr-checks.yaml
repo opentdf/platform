@@ -40,6 +40,7 @@ jobs:
           #   - main: used for automated releases
           #   - core: related to any core need such as the core service or monorepo
           #   - ci: anything related to ci
+          #   - deps: dependency update
           #   - docs: anything related solely to documentation
           #   - sdk: related to sdk changes in the /sdk directory
           #   - policy: related to policy service changes (i.e. /service/policy)
@@ -49,6 +50,7 @@ jobs:
             main
             core
             ci
+            deps
             docs
             sdk
             policy

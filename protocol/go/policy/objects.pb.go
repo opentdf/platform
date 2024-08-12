@@ -1027,14 +1027,17 @@ func (x *SubjectProperty) GetExternalValue() string {
 	return ""
 }
 
+// Resource Mapping Groups are namespaced collections of Resource Mappings associated under a common group name.
 type ResourceMappingGroup struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id          string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// the namespace containing the group of resource mappings
 	NamespaceId string `protobuf:"bytes,2,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
-	Name        string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// the common name for the group of resource mappings, which must be unique per namespace
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 }
 
 func (x *ResourceMappingGroup) Reset() {

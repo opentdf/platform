@@ -444,12 +444,15 @@
           "type": "string"
         },
         "namespaceId": {
-          "type": "string"
+          "type": "string",
+          "title": "the namespace containing the group of resource mappings"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "title": "the common name for the group of resource mappings, which must be unique per namespace"
         }
-      }
+      },
+      "description": "Resource Mapping Groups are namespaced collections of Resource Mappings associated under a common group name."
     },
     "policySubjectConditionSet": {
       "type": "object",

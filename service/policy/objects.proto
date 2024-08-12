@@ -221,11 +221,16 @@ message SubjectProperty {
   string external_value = 2 [(buf.validate.field).required = true];
 }
 
+/*
+   Resource Mapping Groups are namespaced collections of Resource Mappings associated under a common group name.
+*/
 message ResourceMappingGroup {
   string id = 1;
 
+  // the namespace containing the group of resource mappings
   string namespace_id = 2 [(buf.validate.field).required = true];
 
+  // the common name for the group of resource mappings, which must be unique per namespace
   string name = 3 [(buf.validate.field).required = true];
 }
 

@@ -3,6 +3,7 @@ package sdk
 import (
 	"bytes"
 	"encoding/gob"
+	"errors"
 	"io"
 	"os"
 	"testing"
@@ -237,5 +238,98 @@ func NotTestCreateNanoTDF(t *testing.T) {
 	_, err = s.CreateNanoTDF(io.Writer(outfile), io.ReadSeeker(infile), config)
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestGetECPublicKeyKid(t *testing.T) {
+	var tests = []struct {
+		name       string
+		kasURL     string
+		dialOption grpc.DialOption
+		shouldFail bool
+	}{
+		{
+			name:       "Invalid URL",
+			kasURL:     "http",
+			dialOption: grpc.WithInsecure(),
+			shouldFail: true,
+		},
+		{
+			name:       "Valid URL, Unreachable gRPC server",
+			kasURL:     "http://localhost",
+			dialOption: grpc.WithBlock(),
+			shouldFail: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, _, err := getECPublicKeyKid(test.kasURL, test.dialOption)
+			if (err != nil) != test.shouldFail {
+				t.Errorf("Error does not match the expected outcome. Error: %v", err)
+			}
+		})
+	}
+}
+
+func TestCreateNanoTDF(t *testing.T) {
+
+	tests := []struct {
+		name          string
+		writer        io.Writer
+		reader        io.Reader
+		config        NanoTDFConfig
+		expectedError error
+	}{
+		{
+			name:          "Nil writer",
+			writer:        nil,
+			reader:        bytes.NewReader([]byte("test data")),
+			config:        NanoTDFConfig{},
+			expectedError: errors.New("writer is nil"),
+		},
+		{
+			name:          "Nil reader",
+			writer:        new(bytes.Buffer),
+			reader:        nil,
+			config:        NanoTDFConfig{},
+			expectedError: errors.New("reader is nil"),
+		},
+		{
+			name:          "Empty NanoTDFConfig",
+			writer:        new(bytes.Buffer),
+			reader:        bytes.NewReader([]byte("test data")),
+			config:        NanoTDFConfig{},
+			expectedError: errors.New("config.kasUrl is empty"),
+		},
+		{
+			name:   "KAS Identifier NanoTDFConfig",
+			writer: new(bytes.Buffer),
+			reader: bytes.NewReader([]byte("test data")),
+			config: NanoTDFConfig{
+				kasURL: ResourceLocator{
+					protocol:   1,
+					body:       "kas.com",
+					identifier: "e0",
+				},
+			},
+			expectedError: errors.New("getECPublicKey failed:error connecting to grpc service at https://kas.com: grpc: no transport security set (use grpc.WithTransportCredentials(insecure.NewCredentials()) explicitly or set credentials)"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var s SDK
+			_, err := s.CreateNanoTDF(tt.writer, tt.reader, tt.config)
+			if err != nil {
+				if tt.expectedError == nil {
+					t.Errorf("unexpected error: %v", err)
+				} else if err.Error() != tt.expectedError.Error() {
+					t.Errorf("expected error: %v, got: %v", tt.expectedError, err)
+				}
+			} else if tt.expectedError != nil {
+				t.Errorf("expected error: %v, got nil", tt.expectedError)
+			}
+		})
 	}
 }

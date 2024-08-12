@@ -662,6 +662,12 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 
 // CreateNanoTDF - reads plain text from the given reader and saves it to the writer, subject to the given options
 func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFConfig) (uint32, error) {
+	if writer == nil {
+		return 0, fmt.Errorf("writer is nil")
+	}
+	if reader == nil {
+		return 0, fmt.Errorf("reader is nil")
+	}
 	var totalSize uint32
 	buf := bytes.Buffer{}
 	size, err := buf.ReadFrom(reader)
@@ -677,7 +683,9 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	if err != nil {
 		return 0, fmt.Errorf("config.kasURL failed:%w", err)
 	}
-
+	if kasURL == "https://" || kasURL == "http://" {
+		return 0, errors.New("config.kasUrl is empty")
+	}
 	kasPublicKey, kid, err := getECPublicKeyKid(kasURL, s.dialOptions...)
 	if err != nil {
 		return 0, fmt.Errorf("getECPublicKey failed:%w", err)

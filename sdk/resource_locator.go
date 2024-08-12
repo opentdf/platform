@@ -35,11 +35,10 @@ const (
 	// kPrefixHTTPS identifier field is size of 0 bytes (not present)
 	kPrefixHTTPS     string         = "https://"
 	kPrefixHTTP      string         = "http://"
-	kSuffixShared    string         = ":"
 	urlProtocolHTTP  protocolHeader = 0x0
 	urlProtocolHTTPS protocolHeader = 0x1
 	// urlProtocolUnreserved   protocolHeader = 0x2
-	urlProtocolSharedRes protocolHeader = 0xf
+	//urlProtocolSharedRes protocolHeader = 0xf
 
 	identifierNone   protocolHeader = 0 << 4
 	identifier2Byte  protocolHeader = 1 << 4
@@ -143,7 +142,7 @@ func (rl *ResourceLocator) setURLWithIdentifier(url string, identifier string) e
 func (rl ResourceLocator) GetIdentifier() (string, error) {
 	// read the identifier if it exists
 	switch rl.protocol & 0xf0 {
-	case identifierNone, urlProtocolHTTPS, urlProtocolSharedRes:
+	case identifierNone, urlProtocolHTTPS:
 		return "", fmt.Errorf("legacy resource locator identifer: %d", rl.protocol)
 	case identifier2Byte, identifier8Byte, identifier32Byte:
 		if rl.identifier == "" {
@@ -185,8 +184,6 @@ func (rl ResourceLocator) GetURL() (string, error) {
 		return kPrefixHTTPS + rl.body, nil
 	case urlProtocolHTTP:
 		return kPrefixHTTP + rl.body, nil
-	case urlProtocolSharedRes:
-		return rl.body + kSuffixShared, nil
 	default:
 		return "", fmt.Errorf("unsupported protocol: %d", rl.protocol)
 	}
@@ -228,7 +225,7 @@ func (rl *ResourceLocator) readResourceLocator(reader io.Reader) error {
 	rl.body = string(body) // TODO - normalize to lowercase?
 	// read the identifier if it exists
 	switch rl.protocol & 0xf0 {
-	case identifierNone, urlProtocolHTTPS, urlProtocolSharedRes:
+	case identifierNone, urlProtocolHTTPS:
 		// noop
 	case identifier2Byte:
 		identifier := make([]byte, 2) //nolint:mnd // 2 bytes

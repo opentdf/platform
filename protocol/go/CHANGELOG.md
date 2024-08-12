@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.11](https://github.com/opentdf/platform/compare/protocol/go/v0.2.10...protocol/go/v0.2.11) (2024-08-12)
+
+
+### Features
+
+* **authz:** Typed Entities ([#1249](https://github.com/opentdf/platform/issues/1249)) ([cfab3ad](https://github.com/opentdf/platform/commit/cfab3ad8a72f3a2f1a28ccca988459ddcdcbd7f6))
+* **policy:** 1277 add Resource Mapping Group to objects proto ([#1309](https://github.com/opentdf/platform/issues/1309)) ([514f1b8](https://github.com/opentdf/platform/commit/514f1b8e2d6c56056a8258e144380974b1f84d1b)), closes [#1277](https://github.com/opentdf/platform/issues/1277)
+
+
+### Bug Fixes
+
+* **core:** bump golang.org/x/net from 0.22.0 to 0.23.0 in /protocol/go ([#627](https://github.com/opentdf/platform/issues/627)) ([6008320](https://github.com/opentdf/platform/commit/60083203f34ad75a6618e4aeaee05caddd6b0fe6))
+* **kas:** Regenerate protos and fix tests from info rpc removal ([#1291](https://github.com/opentdf/platform/issues/1291)) ([91a2fe6](https://github.com/opentdf/platform/commit/91a2fe65c63aa5ac6ca2f058dbc0c29ca2a26536))
+* **policy:** deprecates and reserves value members from value object in protos ([#1151](https://github.com/opentdf/platform/issues/1151)) ([07fcc9e](https://github.com/opentdf/platform/commit/07fcc9ec93f00beeb863e67d0ca1465c783c2a54))
+
 ## [0.2.10](https://github.com/opentdf/platform/compare/protocol/go/v0.2.9...protocol/go/v0.2.10) (2024-07-14)
 
 

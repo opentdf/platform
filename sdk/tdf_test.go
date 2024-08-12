@@ -258,7 +258,6 @@ func TestTDF(t *testing.T) {
 }
 
 func (s *TDFSuite) Test_SimpleTDF() {
-
 	metaData := []byte(`{"displayName" : "openTDF go sdk"}`)
 	attributes := []string{
 
@@ -352,7 +351,6 @@ func (s *TDFSuite) Test_SimpleTDF() {
 }
 
 func (s *TDFSuite) Test_TDFWithAssertion() {
-
 	hs256Key := make([]byte, 32)
 	_, err := rand.Read(hs256Key)
 	s.Require().NoError(err)
@@ -575,7 +573,6 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 		}
 		_ = os.Remove(tdfFilename)
 	}
-
 }
 
 func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing tdf

@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -758,6 +759,43 @@ func (s *NamespacesSuite) Test_UnsafeUpdateNamespace_NormalizeCasing() {
 	s.Equal("helloworld.com", got.GetName())
 	s.Contains(got.GetFqn(), "helloworld.com")
 	s.Equal("https://helloworld.com", got.GetFqn())
+}
+
+/*
+	Key Access Server Grant Assignments (KAS Grants)
+*/
+
+func (s *NamespacesSuite) Test_AssignKASGrant() {
+	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "kas-namespace.com"})
+	s.Require().NoError(err)
+	s.NotNil(n)
+
+	pubKey := &policy.PublicKey{
+		PublicKey: &policy.PublicKey_Remote{
+			Remote: "https://remote.com/key",
+		},
+	}
+	kasRegistry := &kasregistry.CreateKeyAccessServerRequest{
+		Uri:       "kas.uri/ns",
+		PublicKey: pubKey,
+	}
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
+	s.Require().NoError(err)
+	s.NotNil(kas)
+
+	// create a grant
+	grant, err := s.db.PolicyClient.AssignKeyAccessServerToNamespace(s.ctx, policydb.AssignKeyAccessServerToNamespaceParams{
+		NamespaceID:       n.GetId(),
+		KeyAccessServerID: kas.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(grant)
+
+	// get the namespace and verify the grant is present
+	got, err := s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	
 }
 
 func TestNamespacesSuite(t *testing.T) {

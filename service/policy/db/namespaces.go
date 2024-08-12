@@ -262,6 +262,9 @@ func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *names
 	}, nil
 }
 
+/*
+UNSAFE OPERATIONS
+*/
 func unsafeUpdateNamespaceSQL(id string, name string) (string, []interface{}, error) {
 	t := Tables.Namespaces
 	return db.NewStatementBuilder().

@@ -11,6 +11,30 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const assignKeyAccessServerToNamespace = `-- name: AssignKeyAccessServerToNamespace :execrows
+INSERT INTO attribute_namespace_key_access_grants
+(namespace_id, key_access_server_id)
+VALUES ($1, $2)
+`
+
+type AssignKeyAccessServerToNamespaceParams struct {
+	NamespaceID       string `json:"namespace_id"`
+	KeyAccessServerID string `json:"key_access_server_id"`
+}
+
+// AssignKeyAccessServerToNamespace
+//
+//	INSERT INTO attribute_namespace_key_access_grants
+//	(namespace_id, key_access_server_id)
+//	VALUES ($1, $2)
+func (q *Queries) AssignKeyAccessServerToNamespace(ctx context.Context, arg AssignKeyAccessServerToNamespaceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, assignKeyAccessServerToNamespace, arg.NamespaceID, arg.KeyAccessServerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const createKeyAccessServer = `-- name: CreateKeyAccessServer :one
 INSERT INTO key_access_servers (uri, public_key, metadata)
 VALUES ($1, $2, $3)
@@ -118,6 +142,57 @@ func (q *Queries) GetKeyAccessServer(ctx context.Context, id string) (GetKeyAcce
 	return i, err
 }
 
+const getNamespace = `-- name: GetNamespace :one
+
+SELECT ns.id, ns.name, ns.active,
+    attribute_fqns.fqn as fqn,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
+    JSONB_AGG(DISTINCT JSON_BUILD_OBJECT('id', kas.id, 'uri', kas.uri, 'public_key', kas.public_key)) FILTER (WHERE ankg.namespace_id IS NOT NULL) as grants
+FROM attribute_namespaces ns
+LEFT JOIN attribute_namespace_key_access_grants ankg ON ankg.namespace_id = ns.id
+LEFT JOIN key_access_servers kas ON kas.id = ankg.key_access_server_id
+LEFT JOIN attribute_fqns ON attribute_fqns.namespace_id = ns.id
+WHERE ns.id = $1
+AND attribute_fqns.attribute_id IS NULL AND attribute_fqns.value_id IS NULL
+`
+
+type GetNamespaceRow struct {
+	ID       string      `json:"id"`
+	Name     string      `json:"name"`
+	Active   bool        `json:"active"`
+	Fqn      pgtype.Text `json:"fqn"`
+	Metadata []byte      `json:"metadata"`
+	Grants   []byte      `json:"grants"`
+}
+
+// --------------------------------------------------------------
+// NAMESPACES
+// --------------------------------------------------------------
+//
+//	SELECT ns.id, ns.name, ns.active,
+//	    attribute_fqns.fqn as fqn,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
+//	    JSONB_AGG(DISTINCT JSON_BUILD_OBJECT('id', kas.id, 'uri', kas.uri, 'public_key', kas.public_key)) FILTER (WHERE ankg.namespace_id IS NOT NULL) as grants
+//	FROM attribute_namespaces ns
+//	LEFT JOIN attribute_namespace_key_access_grants ankg ON ankg.namespace_id = ns.id
+//	LEFT JOIN key_access_servers kas ON kas.id = ankg.key_access_server_id
+//	LEFT JOIN attribute_fqns ON attribute_fqns.namespace_id = ns.id
+//	WHERE ns.id = $1
+//	AND attribute_fqns.attribute_id IS NULL AND attribute_fqns.value_id IS NULL
+func (q *Queries) GetNamespace(ctx context.Context, id string) (GetNamespaceRow, error) {
+	row := q.db.QueryRow(ctx, getNamespace, id)
+	var i GetNamespaceRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Active,
+		&i.Fqn,
+		&i.Metadata,
+		&i.Grants,
+	)
+	return i, err
+}
+
 const getResourceMappingGroup = `-- name: GetResourceMappingGroup :one
 SELECT id, namespace_id, name
 FROM resource_mapping_groups
@@ -212,6 +287,30 @@ func (q *Queries) ListResourceMappingGroups(ctx context.Context) ([]ResourceMapp
 		return nil, err
 	}
 	return items, nil
+}
+
+const removeKeyAccessServerFromNamespace = `-- name: RemoveKeyAccessServerFromNamespace :execrows
+DELETE FROM attribute_namespace_key_access_grants
+WHERE namespace_id = $1 AND key_access_server_id = $2
+IS TRUE RETURNING namespace_id, key_access_server_id
+`
+
+type RemoveKeyAccessServerFromNamespaceParams struct {
+	NamespaceID       string `json:"namespace_id"`
+	KeyAccessServerID string `json:"key_access_server_id"`
+}
+
+// RemoveKeyAccessServerFromNamespace
+//
+//	DELETE FROM attribute_namespace_key_access_grants
+//	WHERE namespace_id = $1 AND key_access_server_id = $2
+//	IS TRUE RETURNING namespace_id, key_access_server_id
+func (q *Queries) RemoveKeyAccessServerFromNamespace(ctx context.Context, arg RemoveKeyAccessServerFromNamespaceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removeKeyAccessServerFromNamespace, arg.NamespaceID, arg.KeyAccessServerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateKeyAccessServer = `-- name: UpdateKeyAccessServer :one

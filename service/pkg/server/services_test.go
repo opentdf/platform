@@ -105,7 +105,7 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_ALL_Expect_All_
 
 	policy, err := registry.GetNamespace(servicePolicy)
 	suite.Require().NoError(err)
-	suite.Len(policy.Services, 6)
+	suite.Len(policy.Services, 7)
 	suite.Equal(modeCore, policy.Mode)
 
 	wellKnown, err := registry.GetNamespace(serviceWellKnown)
@@ -117,6 +117,8 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_ALL_Expect_All_
 	suite.Require().NoError(err)
 	suite.Len(ers.Services, 1)
 	suite.Equal(modeCore, ers.Mode)
+
+	
 }
 
 // Every service except kas is registered
@@ -136,7 +138,7 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_Core_Expect_Cor
 
 	policy, err := registry.GetNamespace(servicePolicy)
 	suite.Require().NoError(err)
-	suite.Len(policy.Services, 6)
+	suite.Len(policy.Services, 7)
 	suite.Equal(modeCore, policy.Mode)
 
 	wellKnown, err := registry.GetNamespace(serviceWellKnown)
@@ -168,7 +170,7 @@ func (suite *ServiceTestSuite) Test_RegisterServices_In_Mode_Core_Plus_Kas_Expec
 
 	policy, err := registry.GetNamespace(servicePolicy)
 	suite.Require().NoError(err)
-	suite.Len(policy.Services, 6)
+	suite.Len(policy.Services, 7)
 	suite.Equal(modeCore, policy.Mode)
 
 	wellKnown, err := registry.GetNamespace(serviceWellKnown)

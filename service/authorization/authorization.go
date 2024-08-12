@@ -20,6 +20,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/access"
 	"github.com/opentdf/platform/service/internal/entitlements"
@@ -89,8 +90,8 @@ func NewRegistration() serviceregistry.Registration {
 				panic(fmt.Errorf("failed to set defaults for authorization service config: %w", err))
 			}
 
-			if err := mapstructure.Decode(srp.Config.ExtraProps, &authZCfg); err != nil {
-				panic(fmt.Errorf("invalid auth svc cfg [%v] %w", srp.Config.ExtraProps, err))
+			if err := mapstructure.Decode(srp.Config, &authZCfg); err != nil {
+				panic(fmt.Errorf("invalid auth svc cfg [%v] %w", srp.Config, err))
 			}
 
 			// Validate Config
@@ -269,8 +270,13 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 
 				auditECEntitlements := make([]audit.EntityChainEntitlement, 0)
 				auditEntityDecisions := make([]audit.EntityDecision, 0)
-				entityAttrValues := make(map[string][]string)
 
+				// Entitlements for environment entites in chain
+				envEntityAttrValues := make(map[string][]string)
+				// Entitlements for sbuject entities in chain
+				subjectEntityAttrValues := make(map[string][]string)
+
+				//nolint:nestif // handle empty entity / attr list
 				if len(entities) == 0 || len(allPertinentFqnsRA.GetAttributeValueFqns()) == 0 {
 					as.logger.WarnContext(ctx, "Empty entity list and/or entity data attribute list")
 				} else {
@@ -282,12 +288,23 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 
 					// TODO this might cause errors if multiple entities dont have ids
 					// currently just adding each entity returned to same list
-					for _, e := range ecEntitlements.GetEntitlements() {
+					for idx, e := range ecEntitlements.GetEntitlements() {
+						entityID := e.GetEntityId()
+						if entityID == "" {
+							entityID = EntityIDPrefix + fmt.Sprint(idx)
+						}
 						auditECEntitlements = append(auditECEntitlements, audit.EntityChainEntitlement{
-							EntityID:                 e.GetEntityId(),
+							EntityID:                 entityID,
 							AttributeValueReferences: e.GetAttributeValueFqns(),
 						})
-						entityAttrValues[e.GetEntityId()] = e.GetAttributeValueFqns()
+						entityCategory := entities[idx].GetCategory()
+
+						// If entity type unspecified, include in access decision to err on the side of caution
+						if entityCategory == authorization.Entity_CATEGORY_SUBJECT || entityCategory == authorization.Entity_CATEGORY_UNSPECIFIED {
+							subjectEntityAttrValues[entityID] = e.GetAttributeValueFqns()
+						} else {
+							envEntityAttrValues[entityID] = e.GetAttributeValueFqns()
+						}
 					}
 				}
 
@@ -296,7 +313,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				decisions, err := accessPDP.DetermineAccess(
 					ctx,
 					attrVals,
-					entityAttrValues,
+					subjectEntityAttrValues,
 					attrDefs,
 				)
 				if err != nil {
@@ -314,7 +331,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 					}
 
 					// Add entity decision to audit list
-					entityEntitlementFqns := entityAttrValues[entityID]
+					entityEntitlementFqns := subjectEntityAttrValues[entityID]
 					if entityEntitlementFqns == nil {
 						entityEntitlementFqns = []string{}
 					}
@@ -359,40 +376,107 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 	return rsp, nil
 }
 
+// makeSubMapsByValLookup creates a lookup map of subject mappings by attribute value ID.
+func makeSubMapsByValLookup(subjectMappings []*policy.SubjectMapping) map[string][]*policy.SubjectMapping {
+	// map keys will be attribute value IDs
+	lookup := make(map[string][]*policy.SubjectMapping)
+	for _, sm := range subjectMappings {
+		val := sm.GetAttributeValue()
+		id := val.GetId()
+		// if attribute value ID exists
+		if id != "" {
+			// append the subject mapping to the slice of subject mappings for the attribute value ID
+			lookup[id] = append(lookup[id], sm)
+		}
+	}
+	return lookup
+}
+
+// updateValsWithSubMaps updates the subject mappings of values using the lookup map.
+func updateValsWithSubMaps(values []*policy.Value, subMapsByVal map[string][]*policy.SubjectMapping) []*policy.Value {
+	for i, v := range values {
+		// if subject mappings exist for the value
+		if subjectMappings, ok := subMapsByVal[v.GetId()]; ok {
+			// update the subject mappings of the value
+			values[i].SubjectMappings = subjectMappings
+		}
+	}
+	return values
+}
+
+// updateValsByFqnLookup updates the lookup map with attribute values by FQN.
+func updateValsByFqnLookup(attribute *policy.Attribute, scopeMap map[string]bool, fqnAttrVals map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue) map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue {
+	rule := attribute.GetRule()
+	for _, v := range attribute.GetValues() {
+		// if scope exists and current attribute value FQN is not in scope
+		if !(scopeMap == nil || scopeMap[v.GetFqn()]) {
+			// skip
+			continue
+		}
+		// trim attribute values (by default only keep single value relevant to FQN)
+		// This is key to minimizing the rego query size.
+		values := []*policy.Value{v}
+		if rule == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+			// restore ALL attribute values if attribute rule is hierarchical
+			// This is key to honoring comprehensive hierarchy.
+			values = attribute.GetValues()
+		}
+		// only clone relevant fields for attribute
+		a := &policy.Attribute{Rule: rule, Values: values}
+		fqnAttrVals[v.GetFqn()] = &attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{Attribute: a, Value: v}
+	}
+	return fqnAttrVals
+}
+
+// makeValsByFqnsLookup creates a lookup map of attribute values by FQN.
+func makeValsByFqnsLookup(attrs []*policy.Attribute, subMapsByVal map[string][]*policy.SubjectMapping, scopeMap map[string]bool) map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue {
+	fqnAttrVals := make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue)
+	for i := range attrs {
+		// add subject mappings to attribute values
+		attrs[i].Values = updateValsWithSubMaps(attrs[i].GetValues(), subMapsByVal)
+		// update the lookup map with attribute values by FQN
+		fqnAttrVals = updateValsByFqnLookup(attrs[i], scopeMap, fqnAttrVals)
+	}
+	return fqnAttrVals
+}
+
+// makeScopeMap creates a map of attribute value FQNs.
+func makeScopeMap(scope *authorization.ResourceAttribute) map[string]bool {
+	// if scope not defined, return nil pointer
+	if scope == nil {
+		return nil
+	}
+	scopeMap := make(map[string]bool)
+	// add attribute value FQNs from scope to the map
+	for _, fqn := range scope.GetAttributeValueFqns() {
+		scopeMap[fqn] = true
+	}
+	return scopeMap
+}
+
 func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
 	as.logger.DebugContext(ctx, "getting entitlements")
-	request := attr.GetAttributeValuesByFqnsRequest{
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
-	}
-	// Lack of scope has impacts on performance
-	// https://github.com/opentdf/platform/issues/365
-	if req.GetScope() == nil {
-		// TODO: Reomve and use MatchSubjectMappings instead later in the flow
-		listAttributeResp, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{})
-		if err != nil {
-			as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
-			return nil, status.Error(codes.Internal, "failed to list attributes")
-		}
-		var attributeFqns []string
-		for _, attr := range listAttributeResp.GetAttributes() {
-			for _, val := range attr.GetValues() {
-				attributeFqns = append(attributeFqns, val.GetFqn())
-			}
-		}
-		request.Fqns = attributeFqns
-	} else {
-		// get subject mappings
-		request.Fqns = req.GetScope().GetAttributeValueFqns()
-	}
-	avf, err := as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &request)
+	attrsRes, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{})
 	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to get attribute values by fqns", slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, "failed to get attribute values by fqns")
+		as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, "failed to list attributes")
+	}
+	subMapsRes, err := as.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{})
+	if err != nil {
+		as.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, "failed to list subject mappings")
+	}
+	// create a lookup map of attribute value FQNs (based on request scope)
+	scopeMap := makeScopeMap(req.GetScope())
+	// create a lookup map of subject mappings by attribute value ID
+	subMapsByVal := makeSubMapsByValLookup(subMapsRes.GetSubjectMappings())
+	// create a lookup map of attribute values by FQN (for rego query)
+	fqnAttrVals := makeValsByFqnsLookup(attrsRes.GetAttributes(), subMapsByVal, scopeMap)
+	avf := &attr.GetAttributeValuesByFqnsResponse{
+		FqnAttributeValues: fqnAttrVals,
 	}
 	subjectMappings := avf.GetFqnAttributeValues()
-	as.logger.DebugContext(ctx, "retrieved from subject mappings service", slog.Any("subject_mappings: ", subjectMappings))
+	as.logger.DebugContext(ctx, fmt.Sprintf("retrieved %d subject mappings", len(subjectMappings)))
 	// TODO: this could probably be moved to proto validation https://github.com/opentdf/platform/issues/1057
 	if req.Entities == nil {
 		as.logger.ErrorContext(ctx, "requires entities")
@@ -415,7 +499,6 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		as.logger.ErrorContext(ctx, "failed to build rego input", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to build rego input")
 	}
-	as.logger.DebugContext(ctx, "entitlements", "input", fmt.Sprintf("%+v", in))
 
 	results, err := as.eval.Eval(ctx,
 		rego.EvalInput(in),
@@ -447,7 +530,6 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		return rsp, nil
 	}
 	as.logger.DebugContext(ctx, "opa results", "results", fmt.Sprintf("%+v", results))
-
 	for idx, entity := range req.GetEntities() {
 		// Ensure the entity has an ID
 		entityID := entity.GetId()

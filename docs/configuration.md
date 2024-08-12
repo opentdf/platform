@@ -129,12 +129,12 @@ db:
 
 ### Key Access Server (KAS)
 
-| Field              | Description                                                                     | Default |
-| ------------------ | ------------------------------------------------------------------------------- | ------- |
-| `enabled`          | Enable the Key Access Server                                                    | `true`  |
-| `keyring.*.kid`    | Which key id this is binding                                                    |         |
-| `keyring.*.alg`    | (Optional) Associated algorithm. (Allows reusing KID with different algorithms) |         |
-| `keyring.*.legacy` | When loading a TDF with no key identifier, this key may be used.                | `false` |
+| Field              | Description                                                                     | Default  |
+| ------------------ | ------------------------------------------------------------------------------- | -------- |
+| `enabled`          | Enable the Key Access Server                                                    | `true`   |
+| `keyring.*.kid`    | Which key id this is binding                                                    |          |
+| `keyring.*.alg`    | (Optional) Associated algorithm. (Allows reusing KID with different algorithms) |          |
+| `keyring.*.legacy` | Indicates this may be used for TDFs with no key ID; default if all unspecified. | inferred |
 
 Example:
 

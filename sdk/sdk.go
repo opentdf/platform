@@ -3,6 +3,7 @@ package sdk
 import (
 	"context"
 	"crypto/tls"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,6 +26,8 @@ import (
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/sdk/auth"
+	"github.com/opentdf/platform/sdk/internal/archive"
+	"github.com/xeipuuv/gojsonschema"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -262,6 +265,86 @@ func (s SDK) Close() error {
 // Conn returns the underlying grpc.ClientConn.
 func (s SDK) Conn() *grpc.ClientConn {
 	return s.conn
+}
+
+type TdfType string
+
+const (
+	Invalid  TdfType = "Invalid"
+	Nano     TdfType = "Nano"
+	Standard TdfType = "Standard"
+)
+
+// String returns the string representation of the applies to state.
+func (t TdfType) String() string {
+	return string(t)
+}
+
+// String method to make the custom type printable
+func GetTdfType(reader io.ReadSeeker) TdfType {
+	isValidNanoTdf, _ := IsValidNanoTdf(reader)
+
+	if isValidNanoTdf {
+		return Nano
+	}
+
+	isValidStandardTdf, _ := IsValidTdf(reader)
+
+	if isValidStandardTdf {
+		return Standard
+	}
+
+	return Invalid
+}
+
+//go:embed schema/manifest.schema.json
+var manifestSchema []byte
+
+// Detects whether, or not the reader is a valid TDF. It first checks if it can "open" it
+// Then attempts to extract a manifest, then finally it validates the manifest using the json schema
+// If any of the checks fail, it will return false.
+//
+// Something to keep in mind is that if we make updates to the schema, such as making certain fields
+// 'required', older TDF versions will fail despite being valid. So each time we release an update to
+// the TDF spec, we'll need to include the respective schema in the schema directory, then update this code
+// to validate against all previously known schema versions.
+
+func IsValidTdf(reader io.ReadSeeker) (bool, error) {
+	// create tdf reader
+	tdfReader, err := archive.NewTDFReader(reader)
+	if err != nil {
+		return false, fmt.Errorf("archive.NewTDFReader failed: %w", err)
+	}
+
+	manifest, err := tdfReader.Manifest()
+	if err != nil {
+		return false, fmt.Errorf("tdfReader.Manifest failed: %w", err)
+	}
+
+	// Convert the embedded data to a string
+	manifestSchemaString := string(manifestSchema)
+	loader := gojsonschema.NewStringLoader(manifestSchemaString)
+	manifestStringLoader := gojsonschema.NewStringLoader(manifest)
+	result, err := gojsonschema.Validate(loader, manifestStringLoader)
+
+	if err != nil {
+		return false, errors.New("could not validate manifest.json")
+	}
+
+	if !result.Valid() {
+		return false, errors.New("manifest was not valid")
+	}
+
+	return true, nil
+}
+
+func IsValidNanoTdf(reader io.ReadSeeker) (bool, error) {
+	_, _, err := NewNanoTDFHeaderFromReader(reader)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func fetchPlatformConfiguration(platformEndpoint string, dialOptions []grpc.DialOption) (PlatformConfiguration, error) {

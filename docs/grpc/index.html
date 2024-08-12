@@ -246,6 +246,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.ResourceMappingGroup"><span class="badge">M</span>ResourceMappingGroup</a>
+                </li>
+              
+                <li>
                   <a href="#policy.SubjectConditionSet"><span class="badge">M</span>SubjectConditionSet</a>
                 </li>
               
@@ -355,6 +359,10 @@
               
                 <li>
                   <a href="#authorization.DecisionResponse.Decision"><span class="badge">E</span>DecisionResponse.Decision</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.Entity.Category"><span class="badge">E</span>Entity.Category</a>
                 </li>
               
               
@@ -1600,6 +1608,51 @@
                   <td><p> </p></td>
                 </tr>
               
+                <tr>
+                  <td>group</td>
+                  <td><a href="#policy.ResourceMappingGroup">ResourceMappingGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.ResourceMappingGroup">ResourceMappingGroup</h3>
+        <p>Resource Mapping Groups are namespaced collections of Resource Mappings associated under a common group name.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>the namespace containing the group of resource mappings </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>the common name for the group of resource mappings, which must be unique per namespace </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -1784,13 +1837,6 @@
                 </tr>
               
                 <tr>
-                  <td>members</td>
-                  <td><a href="#policy.Value">Value</a></td>
-                  <td>repeated</td>
-                  <td><p><strong>Deprecated.</strong>  </p></td>
-                </tr>
-              
-                <tr>
                   <td>grants</td>
                   <td><a href="#policy.KeyAccessServer">KeyAccessServer</a></td>
                   <td>repeated</td>
@@ -1828,27 +1874,6 @@
             </tbody>
           </table>
 
-          
-            
-            
-            <h4>Fields with deprecated option</h4>
-            <table>
-              <thead>
-                <tr>
-                  <td>Name</td>
-                  <td>Option</td>
-                </tr>
-              </thead>
-              <tbody>
-              
-                <tr>
-                  <td>members</td>
-                  <td><p>true</p></td>
-                </tr>
-              
-              </tbody>
-            </table>
-            
           
 
         
@@ -2106,7 +2131,7 @@
                   <td>email_address</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>one of the entity options must be set </p></td>
                 </tr>
               
                 <tr>
@@ -2147,6 +2172,13 @@
                 <tr>
                   <td>client_id</td>
                   <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>category</td>
+                  <td><a href="#authorization.Entity.Category">Entity.Category</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -2526,6 +2558,35 @@
             
               <tr>
                 <td>DECISION_PERMIT</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+        <h3 id="authorization.Entity.Category">Entity.Category</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>CATEGORY_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CATEGORY_SUBJECT</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CATEGORY_ENVIRONMENT</td>
                 <td>2</td>
                 <td><p></p></td>
               </tr>
@@ -3115,13 +3176,6 @@
           <tbody>
             
               <tr>
-                <td>Info</td>
-                <td><a href="#kas.InfoRequest">InfoRequest</a></td>
-                <td><a href="#kas.InfoResponse">InfoResponse</a></td>
-                <td><p>Get the current version of the service</p></td>
-              </tr>
-            
-              <tr>
                 <td>PublicKey</td>
                 <td><a href="#kas.PublicKeyRequest">PublicKeyRequest</a></td>
                 <td><a href="#kas.PublicKeyResponse">PublicKeyResponse</a></td>
@@ -3159,16 +3213,6 @@
               </tr>
             </thead>
             <tbody>
-            
-              
-              
-              <tr>
-                <td>Info</td>
-                <td>GET</td>
-                <td>/kas</td>
-                <td></td>
-              </tr>
-              
             
               
               
@@ -3714,13 +3758,6 @@ The stored attribute value will be normalized to lower case. </p></td>
                 </tr>
               
                 <tr>
-                  <td>members</td>
-                  <td><a href="#string">string</a></td>
-                  <td>repeated</td>
-                  <td><p><strong>Deprecated.</strong> Optional </p></td>
-                </tr>
-              
-                <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
@@ -3730,27 +3767,6 @@ The stored attribute value will be normalized to lower case. </p></td>
             </tbody>
           </table>
 
-          
-            
-            
-            <h4>Fields with deprecated option</h4>
-            <table>
-              <thead>
-                <tr>
-                  <td>Name</td>
-                  <td>Option</td>
-                </tr>
-              </thead>
-              <tbody>
-              
-                <tr>
-                  <td>members</td>
-                  <td><p>true</p></td>
-                </tr>
-              
-              </tbody>
-            </table>
-            
           
 
         
@@ -4375,13 +4391,6 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
                 </tr>
               
                 <tr>
-                  <td>members</td>
-                  <td><a href="#string">string</a></td>
-                  <td>repeated</td>
-                  <td><p><strong>Deprecated.</strong> Optional </p></td>
-                </tr>
-              
-                <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
@@ -4398,27 +4407,6 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
             </tbody>
           </table>
 
-          
-            
-            
-            <h4>Fields with deprecated option</h4>
-            <table>
-              <thead>
-                <tr>
-                  <td>Name</td>
-                  <td>Option</td>
-                </tr>
-              </thead>
-              <tbody>
-              
-                <tr>
-                  <td>members</td>
-                  <td><p>true</p></td>
-                </tr>
-              
-              </tbody>
-            </table>
-            
           
 
         

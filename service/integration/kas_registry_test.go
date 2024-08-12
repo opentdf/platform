@@ -421,7 +421,7 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer_WithInvalidId_Fails() {
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
 }
 
-func (s *AttributesSuite) Test_ListKeyAccessServerGrantsByKasId() {
+func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasId() {
 	// create an attribute
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__list_key_access_server_grants_by_kas_id",
@@ -454,14 +454,14 @@ func (s *AttributesSuite) Test_ListKeyAccessServerGrantsByKasId() {
 	}
 }
 
-func (s *AttributesSuite) Test_ListKeyAccessServerGrantsByKasId_NoResultsIfNotFound() {
+func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasId_NoResultsIfNotFound() {
 	// list grants by KAS ID
 	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrantsByKasId(s.ctx, nonExistentKasRegistryID)
 	s.Require().NoError(err)
 	s.Nil(listedGrants)
 }
 
-func (s *AttributesSuite) Test_ListKeyAccessServerGrantsByKasUri() {
+func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasUri() {
 	fixtureKAS := s.f.GetKasRegistryKey("key_access_server_1")
 
 	// create an attribute
@@ -494,14 +494,14 @@ func (s *AttributesSuite) Test_ListKeyAccessServerGrantsByKasUri() {
 	}
 }
 
-func (s *AttributesSuite) Test_ListKeyAccessServerGrantsByKasUri_NoResultsIfNotFound() {
+func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasUri_NoResultsIfNotFound() {
 	// list grants by KAS ID
 	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrantsByKasUri(s.ctx, "https://notfound.com/kas/uri")
 	s.Require().NoError(err)
 	s.Nil(listedGrants)
 }
 
-func (s *AttributesSuite) Test_ListAllKeyAccessServerGrants() {
+func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {
 	// create a KAS
 	kas := &kasregistry.CreateKeyAccessServerRequest{
 		Uri: "https://listingkasgrants.com/kas/uri",

@@ -579,6 +579,196 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 	}
 }
 
+func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
+	hs256Key := make([]byte, 32)
+	_, err := rand.Read(hs256Key)
+	s.Require().NoError(err)
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, tdf3KeySize)
+	s.Require().NoError(err)
+
+	defaultKey := AssertionKey{
+		Alg: AssertionKeyAlgHS256,
+		Key: hs256Key,
+	}
+
+	for _, test := range []assertionTests{ //nolint:gochecknoglobals // requires for testing tdf
+		{
+			assertions: []AssertionConfig{
+				{
+					ID:             "assertion1",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "base64binary",
+						Schema: "text",
+						Value:  "ICAgIDxlZGoOkVkaD4=",
+					},
+					SigningKey: defaultKey,
+				},
+				{
+					ID:             "assertion2",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "json",
+						Schema: "urn:nato:stanag:5636:A:1:elements:json",
+						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
+					},
+					SigningKey: defaultKey,
+				},
+			},
+			expectedSize: 2896,
+		},
+		{
+			assertions: []AssertionConfig{
+				{
+					ID:             "assertion1",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "base64binary",
+						Schema: "text",
+						Value:  "ICAgIDxlZGoOkVkaD4=",
+					},
+					SigningKey: AssertionKey{
+						Alg: AssertionKeyAlgHS256,
+						Key: hs256Key,
+					},
+				},
+				{
+					ID:             "assertion2",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "json",
+						Schema: "urn:nato:stanag:5636:A:1:elements:json",
+						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
+					},
+					SigningKey: AssertionKey{
+						Alg: AssertionKeyAlgRS256,
+						Key: privateKey,
+					},
+				},
+			},
+			assertionVerificationKeys: &AssertionVerificationKeys{
+				// defaultVerificationKey: nil,
+				Keys: map[string]AssertionKey{
+					"assertion1": {
+						Alg: AssertionKeyAlgRS256,
+						Key: privateKey.PublicKey,
+					},
+					"assertion2": {
+						Alg: AssertionKeyAlgHS256,
+						Key: hs256Key,
+					},
+				},
+			},
+			expectedSize: 3195,
+		},
+		{
+			assertions: []AssertionConfig{
+				{
+					ID:             "assertion1",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "base64binary",
+						Schema: "text",
+						Value:  "ICAgIDxlZGoOkVkaD4=",
+					},
+					SigningKey: AssertionKey{
+						Alg: AssertionKeyAlgHS256,
+						Key: hs256Key,
+					},
+				},
+				{
+					ID:             "assertion2",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "json",
+						Schema: "urn:nato:stanag:5636:A:1:elements:json",
+						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
+					},
+				},
+			},
+			assertionVerificationKeys: &AssertionVerificationKeys{
+				Keys: map[string]AssertionKey{
+					"assertion1": {
+						Alg: AssertionKeyAlgHS256,
+						Key: hs256Key,
+					},
+				},
+			},
+			expectedSize: 2896,
+		},
+	} {
+		expectedTdfSize := test.expectedSize
+		tdfFilename := "secure-text.tdf"
+		plainText := "Virtru"
+		{
+			kasURLs := []KASInfo{
+				{
+					URL:       "https://a.kas/",
+					PublicKey: "",
+				},
+			}
+
+			inBuf := bytes.NewBufferString(plainText)
+			bufReader := bytes.NewReader(inBuf.Bytes())
+
+			fileWriter, err := os.Create(tdfFilename)
+			s.Require().NoError(err)
+
+			defer func(fileWriter *os.File) {
+				err := fileWriter.Close()
+				s.Require().NoError(err)
+			}(fileWriter)
+
+			tdfObj, err := s.sdk.CreateTDF(fileWriter, bufReader,
+				WithKasInformation(kasURLs...),
+				WithAssertions(test.assertions...))
+
+			s.Require().NoError(err)
+			s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 32.0)
+		}
+
+		// test reader
+		{
+			readSeeker, err := os.Open(tdfFilename)
+			s.Require().NoError(err)
+
+			defer func(readSeeker *os.File) {
+				err := readSeeker.Close()
+				s.Require().NoError(err)
+			}(readSeeker)
+
+			buf := make([]byte, 8)
+
+			var r *Reader
+			if test.assertionVerificationKeys == nil {
+				r, err = s.sdk.LoadTDF(readSeeker)
+			} else {
+				r, err = s.sdk.LoadTDF(readSeeker, WithAssertionVerificationKeys(*test.assertionVerificationKeys))
+			}
+			s.Require().NoError(err)
+
+			offset := 2
+			_, err = r.ReadAt(buf, int64(offset))
+			s.Require().Error(err)
+		}
+		_ = os.Remove(tdfFilename)
+	}
+
+}
+
 func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing tdf
 	for _, test := range []partialReadTdfTest{ //nolint:gochecknoglobals // requires for testing tdf
 		{

@@ -898,8 +898,10 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 			if err != nil {
 				return err
 			} else {
-				assertionKey.Alg = foundKey.Alg
-				assertionKey.Key = foundKey.Key
+				if !foundKey.IsEmpty() {
+					assertionKey.Alg = foundKey.Alg
+					assertionKey.Key = foundKey.Key
+				}
 			}
 		}
 

@@ -221,7 +221,7 @@ func (k AssertionVerificationKeys) Get(assertionID string) (AssertionKey, error)
 		return key, nil
 	}
 	if k.DefaultKey.IsEmpty() {
-		return AssertionKey{}, fmt.Errorf("default key not set and key not found for assertion ID %q", assertionID)
+		return AssertionKey{}, nil
 	}
 	return k.DefaultKey, nil
 }

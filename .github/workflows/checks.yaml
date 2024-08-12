@@ -5,6 +5,10 @@ env:
 
 on:
   pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
   push:
     branches:
       - main
@@ -15,139 +19,6 @@ on:
       - checks_requested
 
 jobs:
-  pr:
-    name: Validate PR title
-    if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name)
-    runs-on: ubuntu-22.04
-    permissions:
-      pull-requests: read
-    steps:
-      - uses: amannn/action-semantic-pull-request@cfb60706e18bc85e8aec535e3c577abe8f70378e
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          # Types include:
-          #   - fix: fixes
-          #   - feat: features and enhancements
-          #   - chore: non-feature or enhancement (i.e. docs, ci, linting, automated, etc)
-          types: |
-            fix
-            feat
-            chore
-            refactor
-            revert
-          # Scopes include:
-          #   - main: used for automated releases
-          #   - core: related to any core need such as the core service or monorepo
-          #   - ci: anything related to ci
-          #   - docs: anything related solely to documentation
-          #   - sdk: related to sdk changes in the /sdk directory
-          #   - policy: related to policy service changes (i.e. /service/policy)
-          #   - kas: related to key access service changes (i.e. /service/kas)
-          #   - authz: related to the authorization service changes (i.e. /service/authorization)
-          scopes: |
-            main
-            core
-            ci
-            docs
-            sdk
-            policy
-            kas
-            authz
-            examples
-
-  associated-issue:
-    name: Issue Accociated with Pull Request
-    if: |
-      contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name) &&
-      !contains(fromJSON('["dependabot[bot]", "opentdf-automation[bot]"]'), github.actor)
-    runs-on: ubuntu-22.04
-    permissions:
-      pull-requests: write
-    steps:
-      - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
-        with:
-          script: |
-            core.debug(JSON.stringify(context));
-            const query = `query ($owner: String!, $name: String!, $number: Int!) {
-              repository(owner: $owner, name: $name) {
-                pullRequest(number: $number) {
-                  id
-                  closingIssuesReferences(first: 50) {
-                    edges {
-                      node {
-                        id
-                        body
-                        number
-                        title
-                      }
-                    }
-                  }
-                  comments(last: 100) {
-                    edges {
-                      node {
-                        id
-                        body
-                        author {
-                          login
-                        }
-                        isMinimized
-                      }
-                    }
-                  }
-                }
-              }
-            }`;
-            const variables = {
-              owner: context.repo.owner,
-              name: context.repo.repo,
-              number: context.issue.number
-            }
-            const result = await github.graphql(query, variables)
-            
-            core.debug(JSON.stringify(result));
-
-            if (result.repository.pullRequest.closingIssuesReferences.edges.length === 0) {
-              const comments = result.repository.pullRequest.comments.edges;
-              for (const comment of comments) {
-                // Minimize the previous comment if one exists
-                console.debug(comment);
-                console.debug(comment.node.body.match(/<!-- associated-issue-action -->/g) != null);
-                if (comment.node.author.login === 'github-actions' && !comment.node.isMinimized && comment.node.body.match(/<!-- associated-issue-action -->/g) != null) {
-                  const minimizeCommentMutation = `mutation minimizeComment($id: ID!) {
-                    minimizeComment(input: { subjectId: $id, classifier: OUTDATED }) {
-                      minimizedComment {
-                        isMinimized
-                      }
-                    }
-                  }`;
-                  const minimizeCommentVariables = {
-                    id: comment.node.id
-                  }
-                  await github.graphql(minimizeCommentMutation, minimizeCommentVariables)
-                }
-              }
-              const body = `
-              > [!WARNING] 
-              > This pull request does not reference any issues. Please add a reference to an issue in the body of the pull request description.
-              <!-- associated-issue-action -->`;
-              const createCommentMutation = `mutation createComment($id: ID!, $body: String!) {
-                addComment(input: { subjectId: $id, body: $body }) {
-                  commentEdge {
-                    node {
-                      id
-                    }
-                  }
-                }
-              }`;
-              
-              const createCommentVariables = {
-                id: result.repository.pullRequest.id,
-                body: body
-              }
-              await github.graphql(createCommentMutation, createCommentVariables)
-              core.setFailed('This pull request does not reference any issues. Please add a reference to an issue in the body of the pull request description.');
-            }
   go:
     runs-on: ubuntu-22.04
     permissions:
@@ -197,18 +68,8 @@ jobs:
           working-directory: ${{ matrix.directory }}
           skip-cache: true
           args: --out-format=colored-line-number
-      - name: Install softHSM
-        if: matrix.directory == 'service'
-        run: |-
-          sudo apt-get install -y softhsm opensc openssl
-          sudo chmod +x /etc/softhsm
-          sudo chmod +r /etc/softhsm/softhsm2.conf
-          mkdir -p $(pwd)/.tmp/tokens
-          echo "directories.tokendir = $(pwd)/.tmp/tokens" > softhsm2.conf
-          echo "log.level = DEBUG" >> softhsm2.conf
-          echo "SOFTHSM2_CONF=$(pwd)/softhsm2.conf" >> "$GITHUB_ENV"
       - if: matrix.directory == 'service'
-        run: .github/scripts/init-temp-keys.sh --hsm
+        run: .github/scripts/init-temp-keys.sh
       - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
       - if: matrix.directory == 'service'
@@ -228,10 +89,6 @@ jobs:
   integration:
     name: integration tests
     runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        crypto:
-          - standard
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
       - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
@@ -247,38 +104,23 @@ jobs:
         run: ./.github/scripts/work-init.sh
       - run: go mod download
       - run: go mod verify
-      - name: Install softHSM
-        if: matrix.crypto == 'hsm'
-        run: |-
-          sudo apt-get install -y softhsm opensc openssl
-          sudo chmod +x /etc/softhsm
-          sudo chmod +r /etc/softhsm/softhsm2.conf
-          mkdir -p $(pwd)/.tmp/tokens
-          echo "directories.tokendir = $(pwd)/.tmp/tokens" > softhsm2.conf
-          echo "log.level = DEBUG" >> softhsm2.conf
-          echo "SOFTHSM2_CONF=$(pwd)/softhsm2.conf" >> "$GITHUB_ENV"
-      - run: |
-          .github/scripts/init-temp-keys.sh --hsm
-          cp opentdf-with-hsm.yaml opentdf.yaml
-        if: matrix.crypto == 'hsm'
       - run: |
           .github/scripts/init-temp-keys.sh
           cp opentdf-dev.yaml opentdf.yaml
-        if: matrix.crypto == 'standard'
       - name: Added Trusted Certs
         run: |
           sudo chmod -R 777 ./keys
           sudo apt-get install -y ca-certificates
           sudo cp ./keys/localhost.crt /usr/local/share/ca-certificates
           sudo update-ca-certificates
-      - run: docker compose up -d --wait --wait-timeout 240
+      - run: docker compose up -d --wait --wait-timeout 240 || (docker compose logs && exit 1)
       - run: go run ./service provision keycloak
       - run: go run ./service provision fixtures
       - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
         name: start server in background
         with:
           run: >
-            go build -o opentdf ${{ matrix.crypto == 'hsm' && '--tags=opentdf.hsm' || '' }} -v service/main.go
+            go build -o opentdf -v service/main.go
             && .github/scripts/watch.sh opentdf.yaml ./opentdf start
           wait-on: |
             tcp:localhost:8080
@@ -366,11 +208,9 @@ jobs:
       - image
       - integration
       - license
-      - pr
       - platform-xtest
-      - associated-issue
-    runs-on: ubuntu-latest
-    if: always()
+    runs-on: ubuntu-22.04
+    if: ${{ !cancelled() }}
     steps:
       - if: contains(needs.*.result, 'failure')
         run: echo "Failed due to ${{ contains(needs.*.result, 'failure') }}" && exit 1

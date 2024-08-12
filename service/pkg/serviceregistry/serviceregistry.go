@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"log/slog"
+	"slices"
 
 	"github.com/opentdf/platform/sdk"
 
@@ -15,17 +16,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-// ServiceConfig is a struct that holds the configuration for a service and used for the global
-// config rollup powered by Viper (https://github.com/spf13/viper)
-type ServiceConfig struct {
-	Enabled    bool                   `yaml:"enabled"`
-	Remote     RemoteServiceConfig    `yaml:"remote"`
-	ExtraProps map[string]interface{} `json:"-" mapstructure:",remain"`
-}
-
-type RemoteServiceConfig struct {
-	Endpoint string `yaml:"endpoint"`
-}
+type ServiceConfig map[string]any
 
 // RegistrationParams is a struct that holds the parameters needed to register a service
 // with the service registry. These parameters are passed to the RegisterFunc function defined
@@ -88,35 +79,131 @@ type DBRegister struct {
 // of the service within the instance of the platform.
 type Service struct {
 	Registration
+	impl       any
+	handleFunc HandlerServer
 	// Started is a flag that indicates whether the service has been started
 	Started bool
 	// Close is a function that can be called to close the service
 	Close func()
 }
 
-type ServiceMap map[string]Service
-type NamespaceMap map[string]ServiceMap
-
-// RegisteredServices is a map of namespaces to services
-// TODO remove the global variable and move towards a more functional approach
-var RegisteredServices NamespaceMap
-
-// RegisterService is a function that registers a service with the service registry.
-func RegisterService(r Registration) error {
-	if RegisteredServices == nil {
-		RegisteredServices = make(NamespaceMap, 0)
-	}
-	if RegisteredServices[r.Namespace] == nil {
-		RegisteredServices[r.Namespace] = make(ServiceMap, 0)
+// Start starts the service and performs necessary initialization steps.
+// It returns an error if the service is already started or if there is an issue running database migrations.
+func (s *Service) Start(ctx context.Context, params RegistrationParams) error {
+	if s.Started {
+		return fmt.Errorf("service already started")
 	}
 
-	if RegisteredServices[r.Namespace][r.ServiceDesc.ServiceName].RegisterFunc != nil {
+	if s.DB.Required && !params.DBClient.RanMigrations() && params.DBClient.MigrationsEnabled() {
+		appliedMigrations, err := params.DBClient.RunMigrations(ctx, s.DB.Migrations)
+		if err != nil {
+			return fmt.Errorf("issue running database migrations: %w", err)
+		}
+		params.Logger.Info("database migrations complete",
+			slog.Int("applied", appliedMigrations),
+		)
+	}
+
+	s.impl, s.handleFunc = s.RegisterFunc(params)
+
+	s.Started = true
+	return nil
+}
+
+// RegisterGRPCServer registers the gRPC server with the service implementation.
+// It checks if the service implementation is registered and then registers the service with the server.
+// It returns an error if the service implementation is not registered.
+func (s *Service) RegisterGRPCServer(server *grpc.Server) error {
+	if s.impl == nil {
+		return fmt.Errorf("service did not register an implementation")
+	}
+	server.RegisterService(s.ServiceDesc, s.impl)
+	return nil
+}
+
+// Deprecated: RegisterHTTPServer is deprecated and should not be used going forward.
+// We will be looking onto other alternatives like bufconnect to replace this.
+// RegisterHTTPServer registers an HTTP server with the service.
+// It takes a context, a ServeMux, and an implementation function as parameters.
+// If the service did not register a handler, it returns an error.
+func (s *Service) RegisterHTTPServer(ctx context.Context, mux *runtime.ServeMux) error {
+	if s.handleFunc == nil {
+		return fmt.Errorf("service did not register a handler")
+	}
+	return s.handleFunc(ctx, mux, s.impl)
+}
+
+// namespace represents a namespace in the service registry.
+type Namespace struct {
+	Mode     string
+	Services []Service
+}
+
+// Registry represents a map of service namespaces.
+type Registry map[string]Namespace
+
+// NewServiceRegistry creates a new instance of the service registry.
+func NewServiceRegistry() Registry {
+	return make(Registry)
+}
+
+// RegisterCoreService registers a core service with the given registration information.
+// It calls the RegisterService method of the Registry instance with the provided registration and service type "core".
+// Returns an error if the registration fails.
+func (reg Registry) RegisterCoreService(r Registration) error {
+	return reg.RegisterService(r, "core")
+}
+
+// RegisterService registers a service in the service registry.
+// It takes a Registration object and a mode string as parameters.
+// The Registration object contains information about the service to be registered,
+// such as the namespace and service description.
+// The mode string specifies the mode in which the service should be registered.
+// It returns an error if the service is already registered in the specified namespace.
+func (reg Registry) RegisterService(r Registration, mode string) error {
+	// Can't directly modify structs within a map, so we need to copy the namespace
+	copyNamespace := reg[r.Namespace]
+	copyNamespace.Mode = mode
+	if copyNamespace.Services == nil {
+		copyNamespace.Services = make([]Service, 0)
+	}
+	found := slices.ContainsFunc(reg[r.Namespace].Services, func(s Service) bool {
+		return s.ServiceDesc.ServiceName == r.ServiceDesc.ServiceName
+	})
+
+	if found {
 		return fmt.Errorf("service already registered namespace:%s service:%s", r.Namespace, r.ServiceDesc.ServiceName)
 	}
 
 	slog.Info("registered service", slog.String("namespace", r.Namespace), slog.String("service", r.ServiceDesc.ServiceName))
-	RegisteredServices[r.Namespace][r.ServiceDesc.ServiceName] = Service{
+	copyNamespace.Services = append(copyNamespace.Services, Service{
 		Registration: r,
-	}
+	})
+
+	reg[r.Namespace] = copyNamespace
 	return nil
+}
+
+// Shutdown stops all the services in the service registry.
+// It iterates over each namespace and service in the registry,
+// checks if the service has a Close method and if it has been started,
+// and then calls the Close method to stop the service.
+func (reg Registry) Shutdown() {
+	for name, ns := range reg {
+		for _, svc := range ns.Services {
+			if svc.Close != nil && svc.Started {
+				slog.Info("stopping service", slog.String("namespace", name), slog.String("service", svc.ServiceDesc.ServiceName))
+				svc.Close()
+			}
+		}
+	}
+}
+
+// GetNamespace returns the namespace with the given name from the service registry.
+func (reg Registry) GetNamespace(namespace string) (Namespace, error) {
+	ns, ok := reg[namespace]
+	if !ok {
+		return Namespace{}, fmt.Errorf("namespace not found: %s", namespace)
+	}
+	return ns, nil
 }

@@ -1793,10 +1793,10 @@ func (x *RemoveKeyAccessServerFromValueResponse) GetValueKeyAccessServer() *Valu
 	return nil
 }
 
-// LIST of KAS Grants returns flat response of grants to all policy objects.
-// It does not employ selectors or build the attribute tree relation. If grants
-// to a known namespace, attribute, or value are needed, use the respective
-// Get request to the specific policy object.
+// LIST of KAS Grants returns flat response of grants to all policy objects. It does not
+// employ selectors for grants to specific policy objects or build the attribute tree relation.
+// If grants to a known namespace, attribute, or value are needed, use the respective
+// GET request to the specific policy object.
 type ListKeyAccessServerGrantsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

@@ -775,6 +775,27 @@ func (r *Reader) DataAttributes() ([]string, error) {
 	return attributes, nil
 }
 
+/*
+*WARNING:* Using this function is unsafe since KAS will no longer be able to prevent access to the key.
+
+Retrieve the payload key, either from performing an unwrap or from a previous unwrap,
+and write it to a user buffer.
+
+OUTPUTS:
+  - []byte - Byte array containing the DEK.
+  - error - If an error occurred while processing
+*/
+func (r *Reader) UnsafePayloadKeyRetrieval() ([]byte, error) {
+	if r.payloadKey == nil {
+		err := r.doPayloadKeyUnwrap(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("reader.PayloadKey failed: %w", err)
+		}
+	}
+
+	return r.payloadKey, nil
+}
+
 // Unwraps the payload key, if possible, using the access service
 func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocognit // Better readability keeping it as is
 	var unencryptedMetadata []byte

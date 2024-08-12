@@ -17,7 +17,6 @@ require (
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.5.5
 	github.com/lestrrat-go/jwx/v2 v2.0.21
-	github.com/miekg/pkcs11 v1.1.1
 	github.com/open-policy-agent/opa v0.63.0
 	github.com/opentdf/platform/lib/fixtures v0.2.7
 	github.com/opentdf/platform/lib/flattening v0.1.1
@@ -156,7 +155,7 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9 // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	golang.org/x/crypto v0.24.0
+	golang.org/x/crypto v0.24.0 // indirect
 	golang.org/x/net v0.26.0
 	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.21.0 // indirect

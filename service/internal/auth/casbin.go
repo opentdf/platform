@@ -91,6 +91,7 @@ p,	role:standard,		/key-access-servers*,										read,			allow
 p,	role:standard,		/kas/v2/rewrap,													write,		allow
 p,	role:standard,		/entityresolution/resolve,							write,  	allow
 
+
 # Public routes
 ## gRPC routes
 ## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)

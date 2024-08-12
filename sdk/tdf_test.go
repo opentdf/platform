@@ -766,7 +766,6 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 		}
 		_ = os.Remove(tdfFilename)
 	}
-
 }
 
 func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing tdf

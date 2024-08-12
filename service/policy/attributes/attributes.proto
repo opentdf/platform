@@ -12,30 +12,27 @@ import "policy/selectors.proto";
    Key Access Server Grants
 */
 
-// Replacing with AttributeKeyAccessServerGrant
-// Deprecated
 message AttributeKeyAccessServer {
   string attribute_id = 1;
   string key_access_server_id = 2;
 }
 
-// Replacing with ValueKeyAccessServerGrant
-// Deprecated
 message ValueKeyAccessServer {
   string value_id = 1;
   string key_access_server_id = 2;
 }
 
-message AttributeKeyAccessServerGrant {
-  string attribute_id = 1;
-  string attribute_fqn = 2;
-  KeyAccessServer key_access_server = 3;
+// Can be namespace, attribute definition, or value
+message GrantedPolicyObject {
+  string id = 1;
+  string fqn = 2;
 }
 
-message ValueKeyAccessServerGrant {
-  string value_id = 1;
-  string value_fqn = 2;
-  KeyAccessServer key_access_server = 3;
+message KeyAccessServerGrants {
+  KeyAccessServer key_access_server = 1;
+  repeated GrantedPolicyObject namespace_grants = 2;
+  repeated GrantedPolicyObject attribute_grants = 3;
+  repeated GrantedPolicyObject value_grants = 4;
 }
 
 /*
@@ -246,10 +243,7 @@ message ListKeyAccessServerGrantsRequest {
 }
 
 message ListKeyAccessServerGrantsResponse {
-  // index 1 is reserved for the outcome of ADR [https://github.com/opentdf/platform/issues/1296]
-  // repeated NamespaceKeyAccessServer namespace_grants = 1;
-  repeated AttributeKeyAccessServerGrant attribute_grants = 2;
-  repeated ValueKeyAccessServerGrant value_grants = 3;
+  repeated KeyAccessServerGrants grants = 1;
 }
 
 ///

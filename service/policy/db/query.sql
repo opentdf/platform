@@ -30,6 +30,42 @@ RETURNING id;
 DELETE FROM key_access_servers WHERE id = $1;
 
 ---------------------------------------------------------------- 
+-- ATTRIBUTES
+----------------------------------------------------------------
+
+-- name: ListKeyAccessServerGrantsByKasUri :many
+SELECT kas.id AS kas_id, kas.uri AS kas_uri, kas.public_key AS kas_public_key,
+       JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) as kas_metadata,
+       ARRAY_AGG(DISTINCT attrkag.attribute_definition_id) as attribute_grant_ids,
+       ARRAY_AGG(DISTINCT valkag.attribute_value_id) as value_grant_ids
+FROM key_access_servers kas
+LEFT JOIN attribute_definition_key_access_grants attrkag ON kas.id = attrkag.key_access_server_id
+LEFT JOIN attribute_value_key_access_grants valkag ON kas.id = valkag.key_access_server_id
+WHERE kas.uri = $1
+GROUP BY kas.id;
+
+-- name: ListKeyAccessServerGrantsByKasId :many
+SELECT kas.id AS kas_id, kas.uri AS kas_uri, kas.public_key AS kas_public_key,
+       JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) as kas_metadata,
+       ARRAY_AGG(DISTINCT attrkag.attribute_definition_id) as attribute_grant_ids,
+       ARRAY_AGG(DISTINCT valkag.attribute_value_id) as value_grant_ids
+FROM key_access_servers kas
+LEFT JOIN attribute_definition_key_access_grants attrkag ON kas.id = attrkag.key_access_server_id
+LEFT JOIN attribute_value_key_access_grants valkag ON kas.id = valkag.key_access_server_id
+WHERE kas.id = $1
+GROUP BY kas.id;
+
+-- name: ListAllKeyAccessServerGrants :many
+SELECT kas.id AS kas_id, kas.uri AS kas_uri, kas.public_key AS kas_public_key,
+       JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) as kas_metadata,
+       ARRAY_AGG(DISTINCT attrkag.attribute_definition_id) as attribute_grant_ids,
+       ARRAY_AGG(DISTINCT valkag.attribute_value_id) as value_grant_ids
+FROM key_access_servers kas
+LEFT JOIN attribute_definition_key_access_grants attrkag ON kas.id = attrkag.key_access_server_id
+LEFT JOIN attribute_value_key_access_grants valkag ON kas.id = valkag.key_access_server_id
+GROUP BY kas.id;
+
+---------------------------------------------------------------- 
 -- RESOURCE MAPPING GROUPS
 ----------------------------------------------------------------
 

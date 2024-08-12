@@ -94,7 +94,7 @@ func TestNew_ShouldNotValidateBadNanoTdf(t *testing.T) {
 
 	require.NoError(t, err)
 	// Decode the base64 string
-	isValid, err := sdk.IsValidNanoTdf(in)
+	isValid, _ := sdk.IsValidNanoTdf(in)
 	// Error is ok here, as it acts as a sort of reason for the nanotdf not being valid
 	assert.False(t, isValid)
 }
@@ -106,6 +106,8 @@ func TestNew_ShouldValidateStandardTdf(t *testing.T) {
 
 	in := bytes.NewReader(goodDecodedData)
 	isValid, err := sdk.IsValidTdf(in)
+	require.NoError(t, err)
+
 	assert.True(t, isValid)
 }
 
@@ -117,7 +119,7 @@ func TestNew_ShouldNotValidateBadStandardTdf(t *testing.T) {
 
 	require.NoError(t, err)
 	// Decode the base64 string
-	isValid, err := sdk.IsValidTdf(in)
+	isValid, _ := sdk.IsValidTdf(in)
 	// Error is ok here, as it acts as a sort of reason for the nanotdf not being valid
 	assert.False(t, isValid)
 }

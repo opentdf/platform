@@ -310,7 +310,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 
 		s.Equal(attributes, dataAttributes)
 
-		payloadKey, err := r.PayloadKey()
+		payloadKey, err := r.UnsafePayloadKeyRetrieval()
 		s.Require().NoError(err)
 		s.Len(payloadKey, kKeySize)
 	}

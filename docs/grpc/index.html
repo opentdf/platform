@@ -357,6 +357,10 @@
                   <a href="#authorization.DecisionResponse.Decision"><span class="badge">E</span>DecisionResponse.Decision</a>
                 </li>
               
+                <li>
+                  <a href="#authorization.Entity.Category"><span class="badge">E</span>Entity.Category</a>
+                </li>
+              
               
               
                 <li>
@@ -1784,13 +1788,6 @@
                 </tr>
               
                 <tr>
-                  <td>members</td>
-                  <td><a href="#policy.Value">Value</a></td>
-                  <td>repeated</td>
-                  <td><p>list of attribute values that this value is related to (attribute group) </p></td>
-                </tr>
-              
-                <tr>
                   <td>grants</td>
                   <td><a href="#policy.KeyAccessServer">KeyAccessServer</a></td>
                   <td>repeated</td>
@@ -2085,7 +2082,7 @@
                   <td>email_address</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>one of the entity options must be set </p></td>
                 </tr>
               
                 <tr>
@@ -2126,6 +2123,13 @@
                 <tr>
                   <td>client_id</td>
                   <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>category</td>
+                  <td><a href="#authorization.Entity.Category">Entity.Category</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -2505,6 +2509,35 @@
             
               <tr>
                 <td>DECISION_PERMIT</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+        <h3 id="authorization.Entity.Category">Entity.Category</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>CATEGORY_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CATEGORY_SUBJECT</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CATEGORY_ENVIRONMENT</td>
                 <td>2</td>
                 <td><p></p></td>
               </tr>
@@ -3094,13 +3127,6 @@
           <tbody>
             
               <tr>
-                <td>Info</td>
-                <td><a href="#kas.InfoRequest">InfoRequest</a></td>
-                <td><a href="#kas.InfoResponse">InfoResponse</a></td>
-                <td><p>Get the current version of the service</p></td>
-              </tr>
-            
-              <tr>
                 <td>PublicKey</td>
                 <td><a href="#kas.PublicKeyRequest">PublicKeyRequest</a></td>
                 <td><a href="#kas.PublicKeyResponse">PublicKeyResponse</a></td>
@@ -3138,16 +3164,6 @@
               </tr>
             </thead>
             <tbody>
-            
-              
-              
-              <tr>
-                <td>Info</td>
-                <td>GET</td>
-                <td>/kas</td>
-                <td></td>
-              </tr>
-              
             
               
               
@@ -3690,13 +3706,6 @@ The stored attribute value will be normalized to lower case. </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>members</td>
-                  <td><a href="#string">string</a></td>
-                  <td>repeated</td>
-                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>
@@ -4330,13 +4339,6 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>members</td>
-                  <td><a href="#string">string</a></td>
-                  <td>repeated</td>
-                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>

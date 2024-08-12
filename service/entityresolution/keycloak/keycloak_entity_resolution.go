@@ -11,7 +11,8 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
-	"github.com/opentdf/platform/service/internal/logger"
+	auth "github.com/opentdf/platform/service/authorization"
+	"github.com/opentdf/platform/service/logger"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -24,7 +25,6 @@ const ErrTextNotFound = "resource not found"
 
 const ClientJwtSelector = "azp"
 const UsernameJwtSelector = "preferred_username"
-const UsernameConditionalSelector = "client_id"
 
 const serviceAccountUsernamePrefix = "service-account-"
 
@@ -87,7 +87,7 @@ func EntityResolution(ctx context.Context,
 	var resolvedEntities []*entityresolution.EntityRepresentation
 	logger.Debug("EntityResolution invoked", "payload", payload)
 
-	for _, ident := range payload {
+	for idx, ident := range payload {
 		logger.Debug("Lookup", "entity", ident.GetEntityType())
 		var keycloakEntities []*gocloak.User
 		var getUserParams gocloak.GetUsersParams
@@ -129,16 +129,19 @@ func EntityResolution(ctx context.Context,
 				}
 				jsonEntities = append(jsonEntities, entityStruct)
 			}
+			// make sure the id field is populated
+			originialID := ident.GetId()
+			if originialID == "" {
+				originialID = auth.EntityIDPrefix + fmt.Sprint(idx)
+			}
 			resolvedEntities = append(
 				resolvedEntities,
 				&entityresolution.EntityRepresentation{
-					OriginalId:      ident.GetId(),
+					OriginalId:      originialID,
 					AdditionalProps: jsonEntities,
 				},
 			)
-			return entityresolution.ResolveEntitiesResponse{
-				EntityRepresentations: resolvedEntities,
-			}, nil
+			continue
 		case *authorization.Entity_EmailAddress:
 			getUserParams = gocloak.GetUsersParams{Email: func() *string { t := ident.GetEmailAddress(); return &t }(), Exact: &exactMatch}
 		case *authorization.Entity_UserName:
@@ -211,14 +214,19 @@ func EntityResolution(ctx context.Context,
 						return entityresolution.ResolveEntitiesResponse{}, status.Error(codes.Code(entityNotFoundErr.GetCode()), entityNotFoundErr.GetMessage())
 					}
 				}
-			} else if (ident.GetUserName() != "") && kcConfig.InferID.From.Username {
-				// user not found -- add json entity to resp instead
-				entityStruct, err := entityToStructPb(ident)
-				if err != nil {
-					logger.Error("unable to make entity struct from username", "error", err)
-					return entityresolution.ResolveEntitiesResponse{}, status.Error(codes.Internal, ErrTextCreationFailed)
+			} else if ident.GetUserName() != "" {
+				if kcConfig.InferID.From.Username {
+					// user not found -- add json entity to resp instead
+					entityStruct, err := entityToStructPb(ident)
+					if err != nil {
+						logger.Error("unable to make entity struct from username", "error", err)
+						return entityresolution.ResolveEntitiesResponse{}, status.Error(codes.Internal, ErrTextCreationFailed)
+					}
+					jsonEntities = append(jsonEntities, entityStruct)
+				} else {
+					entityNotFoundErr := entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrTextGetRetrievalFailed, Entity: ident.GetUserName()}
+					return entityresolution.ResolveEntitiesResponse{}, status.Error(codes.Code(entityNotFoundErr.GetCode()), entityNotFoundErr.GetMessage())
 				}
-				jsonEntities = append(jsonEntities, entityStruct)
 			}
 		}
 
@@ -237,11 +245,15 @@ func EntityResolution(ctx context.Context,
 			}
 			jsonEntities = append(jsonEntities, mystruct)
 		}
-
+		// make sure the id field is populated
+		originialID := ident.GetId()
+		if originialID == "" {
+			originialID = auth.EntityIDPrefix + fmt.Sprint(idx)
+		}
 		resolvedEntities = append(
 			resolvedEntities,
 			&entityresolution.EntityRepresentation{
-				OriginalId:      ident.GetId(),
+				OriginalId:      originialID,
 				AdditionalProps: jsonEntities},
 		)
 		logger.Debug("Entities", "resolved", fmt.Sprintf("%+v", resolvedEntities))
@@ -344,38 +356,44 @@ func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtStrin
 	if !okCast {
 		return nil, errors.New("error casting extracted value to string")
 	}
-	entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_ClientId{ClientId: extractedValueCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+	entities = append(entities, &authorization.Entity{
+		EntityType: &authorization.Entity_ClientId{ClientId: extractedValueCasted},
+		Id:         fmt.Sprintf("jwtentity-%d", entityID),
+		Category:   authorization.Entity_CATEGORY_ENVIRONMENT})
 	entityID++
 
-	// extract preferred_username if client isnt present
-	_, okExtractConditional := claims[UsernameConditionalSelector]
-	if !okExtractConditional { //nolint:nestif // this case has many possible outcomes to handle
-		extractedValueUsername, okExp := claims[UsernameJwtSelector]
-		if !okExp {
-			return nil, errors.New("error extracting selector " + UsernameJwtSelector + " from jwt")
-		}
-		extractedValueUsernameCasted, okUsernameCast := extractedValueUsername.(string)
-		if !okUsernameCast {
-			return nil, errors.New("error casting extracted value to string")
-		}
+	extractedValueUsername, okExp := claims[UsernameJwtSelector]
+	if !okExp {
+		return nil, errors.New("error extracting selector " + UsernameJwtSelector + " from jwt")
+	}
+	extractedValueUsernameCasted, okUsernameCast := extractedValueUsername.(string)
+	if !okUsernameCast {
+		return nil, errors.New("error casting extracted value to string")
+	}
 
-		// double check for service account
-		if strings.HasPrefix(extractedValueUsernameCasted, serviceAccountUsernamePrefix) {
-			clientid, err := getServiceAccountClient(ctx, extractedValueUsernameCasted, kcConfig, logger)
-			if err != nil {
-				return nil, err
-			}
-			if clientid != "" {
-				entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_ClientId{ClientId: clientid}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
-			} else {
-				// if the returned clientId is empty, no client found, its not a serive account proceed with username
-				entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
-			}
+	// double check for service account
+	if strings.HasPrefix(extractedValueUsernameCasted, serviceAccountUsernamePrefix) {
+		clientid, err := getServiceAccountClient(ctx, extractedValueUsernameCasted, kcConfig, logger)
+		if err != nil {
+			return nil, err
+		}
+		if clientid != "" {
+			entities = append(entities, &authorization.Entity{
+				EntityType: &authorization.Entity_ClientId{ClientId: clientid},
+				Id:         fmt.Sprintf("jwtentity-%d", entityID),
+				Category:   authorization.Entity_CATEGORY_SUBJECT})
 		} else {
-			entities = append(entities, &authorization.Entity{EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted}, Id: fmt.Sprintf("jwtentity-%d", entityID)})
+			// if the returned clientId is empty, no client found, its not a serive account proceed with username
+			entities = append(entities, &authorization.Entity{
+				EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted},
+				Id:         fmt.Sprintf("jwtentity-%d", entityID),
+				Category:   authorization.Entity_CATEGORY_SUBJECT})
 		}
 	} else {
-		logger.Debug("Did not find conditional value " + UsernameConditionalSelector + " in jwt, proceed")
+		entities = append(entities, &authorization.Entity{
+			EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted},
+			Id:         fmt.Sprintf("jwtentity-%d", entityID),
+			Category:   authorization.Entity_CATEGORY_SUBJECT})
 	}
 
 	return entities, nil

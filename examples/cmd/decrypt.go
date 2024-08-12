@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
 )
 
@@ -28,11 +27,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	tdfFile := args[0]
 
 	// Create new client
-	client, err := sdk.New(platformEndpoint,
-		sdk.WithInsecurePlaintextConn(),
-		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
-		sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
-	)
+	client, err := newSDK()
 	if err != nil {
 		return err
 	}

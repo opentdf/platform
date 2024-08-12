@@ -10,7 +10,7 @@ import (
 	casbinModel "github.com/casbin/casbin/v2/model"
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/util"
 )
 
@@ -95,11 +95,11 @@ p,	role:standard,		/entityresolution/resolve,							write,  	allow
 ## gRPC routes
 ## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)
 p,	role:unknown,			entityresolution.EntityResolutionService.ResolveEntities,					write,		allow
-p,	role:unknown,     kas.AccessService/Rewrap, 			                                  write,	  allow
+p,	role:unknown,     kas.AccessService/Rewrap, 			                                  *,	  allow
 ## HTTP routes
 ## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)
 p,	role:unknown,			/entityresolution/resolve,							  write,		allow
-p,	role:unknown,		  /kas/v2/rewrap,													  write,		allow
+p,	role:unknown,		  /kas/v2/rewrap,													  *,		allow
 
 `
 
@@ -215,9 +215,8 @@ func (e *Enforcer) ExtendDefaultPolicy(policies [][]string) error {
 
 	policy := strings.TrimSpace(defaultPolicy)
 	policy += "\n\n## Extended Policies"
-	for p := range policies {
-		pol := policies[p]
-		polCsv := strings.Join(policies[p], ", ")
+	for _, pol := range policies {
+		polCsv := strings.Join(pol, ", ")
 		if len(pol) < defaultPolicyPartsLen {
 			return fmt.Errorf("policy missing one of 'p, subject, resource, action, effect', pol: [%s] %w", polCsv, ErrPolicyMalformed)
 		}
@@ -253,24 +252,25 @@ func (e *Enforcer) Enforce(token jwt.Token, resource, action string) (bool, erro
 
 	if len(s.Roles) == 0 {
 		sub := rolePrefix + defaultRole
-		e.logger.Info("enforcing policy", slog.Any("subject", sub), slog.String("resource", resource), slog.String("action", action))
+		e.logger.Debug("enforcing policy", slog.Any("subject", sub), slog.String("resource", resource), slog.String("action", action))
 		return e.Enforcer.Enforce(sub, resource, action)
 	}
 
 	allowed := false
 	for _, role := range s.Roles {
 		sub := rolePrefix + role
-		e.logger.Info("enforcing policy", slog.String("subject", sub), slog.String("resource", resource), slog.String("action", action))
 		allowed, err = e.Enforcer.Enforce(sub, resource, action)
 		if err != nil {
-			e.logger.Error("failed to enforce policy", slog.String("error", err.Error()))
+			e.logger.Error("enforce by role error", slog.String("subject", sub), slog.String("resource", resource), slog.String("action", action), slog.String("error", err.Error()))
 			continue
 		}
 		if allowed {
+			e.logger.Debug("allowed by policy", slog.String("subject", sub), slog.String("resource", resource), slog.String("action", action))
 			break
 		}
 	}
 	if !allowed {
+		e.logger.Debug("permission denied by policy", slog.Any("roles", s.Roles), slog.String("resource", resource), slog.String("action", action))
 		return false, permDeniedError
 	}
 
@@ -334,7 +334,6 @@ func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 	filtered := []string{}
 	for _, r := range roles {
 		for m, rr := range roleMap {
-			e.logger.Debug("checking role", slog.String("role", r), slog.String("map", m))
 			// if the role is in the map, add the mapped role to the filtered list
 			if r == rr {
 				filtered = append(filtered, m)
@@ -345,6 +344,7 @@ func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 	if len(filtered) == 0 {
 		filtered = append(filtered, defaultRole)
 	}
+	e.logger.Debug("roles found for", slog.Any("roles", filtered), slog.Any("claims", claim))
 
 	return filtered
 }

@@ -91,7 +91,7 @@ func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption
 	return s.CreateTDFContext(context.Background(), writer, reader, opts...)
 }
 
-func (s SDK) defaultKas(c *TDFConfig) []string {
+func (s SDK) defaultKases(c *TDFConfig) []string {
 	allk := make([]string, 0, len(c.kasInfoList))
 	defk := make([]string, 0)
 	for _, k := range c.kasInfoList {
@@ -132,14 +132,14 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		var g autoconfigure.Granter
 		if len(tdfConfig.attributeValues) > 0 {
 			g, err = autoconfigure.NewGranterFromAttributes(tdfConfig.attributeValues...)
-		} else {
+		} else if len(tdfConfig.attributes) > 0 {
 			g, err = autoconfigure.NewGranterFromService(ctx, s.Attributes, tdfConfig.attributes...)
 		}
 		if err != nil {
 			return nil, err
 		}
 
-		dk := s.defaultKas(tdfConfig)
+		dk := s.defaultKases(tdfConfig)
 		tdfConfig.splitPlan, err = g.Plan(dk, func() string {
 			return uuid.New().String()
 		})
@@ -286,8 +286,8 @@ func (r *Reader) Manifest() Manifest {
 // prepare the manifest for TDF
 func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFConfig) error { //nolint:funlen,gocognit // Better readability keeping it as is
 	manifest := Manifest{}
-	if len(tdfConfig.kasInfoList) == 0 {
-		return errInvalidKasInfo
+	if len(tdfConfig.splitPlan) == 0 && len(tdfConfig.kasInfoList) == 0 {
+		return fmt.Errorf("%w: no key access template specified or inferred", errInvalidKasInfo)
 	}
 
 	manifest.EncryptionInformation.KeyAccessType = kSplitKeyType
@@ -303,7 +303,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 	}
 
 	base64PolicyObject := ocrypto.Base64Encode(policyObjectAsStr)
-	symKeys := make([][]byte, 0, len(tdfConfig.kasInfoList))
+	symKeys := make([][]byte, 0)
 	latestKASInfo := make(map[string]KASInfo)
 	if len(tdfConfig.splitPlan) == 0 {
 		// Default split plan: Split keys across all kases
@@ -331,6 +331,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 
 	for _, splitInfo := range tdfConfig.splitPlan {
 		// Public key was passed in with kasInfoList
+		// TODO first look up in attribute information / add to split plan?
 		ki, ok := latestKASInfo[splitInfo.KAS]
 		if !ok || ki.PublicKey == "" {
 			k, err := s.getPublicKey(ctx, splitInfo.KAS, "rsa:2048")
@@ -356,8 +357,12 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 		symKeys = append(symKeys, symKey)
 
 		// policy binding
-		policyBinding := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(symKey, base64PolicyObject))
-		pbstring := string(ocrypto.Base64Encode([]byte(policyBinding)))
+		policyBindingHash := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(symKey, base64PolicyObject))
+		pbstring := string(ocrypto.Base64Encode([]byte(policyBindingHash)))
+		policyBinding := PolicyBinding{
+			Alg:  "HS256",
+			Hash: pbstring,
+		}
 
 		// encrypted metadata
 		// add meta data
@@ -407,7 +412,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 				KasURL:            kasInfo.URL,
 				KID:               kasInfo.KID,
 				Protocol:          kKasProtocol,
-				PolicyBinding:     pbstring,
+				PolicyBinding:     policyBinding,
 				EncryptedMetadata: encryptedMetadata,
 				SplitID:           splitID,
 				WrappedKey:        string(ocrypto.Base64Encode(wrappedKey)),
@@ -449,7 +454,7 @@ func createPolicyObject(attributes []autoconfigure.AttributeValueFQN) (PolicyObj
 
 	for _, attribute := range attributes {
 		attributeObj := attributeObject{}
-		attributeObj.Attribute = string(attribute)
+		attributeObj.Attribute = attribute.String()
 		policyObj.Body.DataAttributes = append(policyObj.Body.DataAttributes, attributeObj)
 		policyObj.Body.Dissem = make([]string, 0)
 	}
@@ -588,8 +593,6 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 	defaultSegmentSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
 	var start = math.Floor(float64(offset) / float64(defaultSegmentSize))
 	var end = math.Ceil(float64(offset+int64(len(buf))) / float64(defaultSegmentSize))
-
-	// slog.Debug("Invoked ReadAt", slog.Int("bufsize", len(buf)), slog.Int("offset", int(offset)))
 
 	firstSegment := int64(start)
 	lastSegment := int64(end)

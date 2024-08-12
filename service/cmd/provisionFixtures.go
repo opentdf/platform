@@ -43,7 +43,7 @@ You can clear/recycle your database with 'docker compose down' and 'docker compo
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
 
-			dbClient, err := db.New(context.Background(), cfg.DB)
+			dbClient, err := db.New(context.Background(), cfg.DB, cfg.Logger)
 			if err != nil {
 				panic(fmt.Errorf("issue creating database client: %w", err))
 			}

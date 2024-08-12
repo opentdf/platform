@@ -33,33 +33,40 @@ type SplitStep struct {
 }
 
 // Utility type to represent an FQN for an attribute.
-type AttributeNameFQN string
+type AttributeNameFQN struct {
+	url, key string
+}
 
 func NewAttributeNameFQN(u string) (AttributeNameFQN, error) {
-	re := regexp.MustCompile(`^(https?://[\w./]+)/attr/([^/\s]*)$`)
+	re := regexp.MustCompile(`^(https?://[\w./-]+)/attr/([^/\s]*)$`)
 	m := re.FindStringSubmatch(u)
 	if len(m) < 3 || len(m[0]) == 0 {
-		return "", fmt.Errorf("%w: attribute regex fail", ErrInvalid)
+		return AttributeNameFQN{}, fmt.Errorf("%w: attribute regex fail", ErrInvalid)
 	}
 
 	_, err := url.PathUnescape(m[2])
 	if err != nil {
-		return "", fmt.Errorf("%w: error in attribute name [%s]", ErrInvalid, m[2])
+		return AttributeNameFQN{}, fmt.Errorf("%w: error in attribute name [%s]", ErrInvalid, m[2])
 	}
-	return AttributeNameFQN(u), nil
+	return AttributeNameFQN{u, strings.ToLower(u)}, nil
+}
+
+func (a AttributeNameFQN) String() string {
+	return a.url
 }
 
 func (a AttributeNameFQN) Select(v string) AttributeValueFQN {
-	return AttributeValueFQN(fmt.Sprintf("%s/value/%s", a, url.PathEscape(v)))
+	u := fmt.Sprintf("%s/value/%s", a.url, url.PathEscape(v))
+	return AttributeValueFQN{u, strings.ToLower(u)}
 }
 
 func (a AttributeNameFQN) Prefix() string {
-	return string(a)
+	return a.url
 }
 
 func (a AttributeNameFQN) Authority() string {
-	re := regexp.MustCompile(`^(https?://[\w./]+)/attr/[^/\s]*$`)
-	m := re.FindStringSubmatch(string(a))
+	re := regexp.MustCompile(`^(https?://[\w./-]+)/attr/[^/\s]*$`)
+	m := re.FindStringSubmatch(a.url)
 	if m == nil {
 		panic(ErrInvalid)
 	}
@@ -67,8 +74,8 @@ func (a AttributeNameFQN) Authority() string {
 }
 
 func (a AttributeNameFQN) Name() string {
-	re := regexp.MustCompile(`^https?://[\w./]+/attr/([^/\s]*)$`)
-	m := re.FindStringSubmatch(string(a))
+	re := regexp.MustCompile(`^https?://[\w./-]+/attr/([^/\s]*)$`)
+	m := re.FindStringSubmatch(a.url)
 	if m == nil {
 		panic("invalid attribute")
 	}
@@ -80,30 +87,36 @@ func (a AttributeNameFQN) Name() string {
 }
 
 // Utility type to represent an FQN for an attribute value.
-type AttributeValueFQN string
+type AttributeValueFQN struct {
+	url, key string
+}
 
 func NewAttributeValueFQN(u string) (AttributeValueFQN, error) {
-	re := regexp.MustCompile(`^(https?://[\w./]+)/attr/(\S*)/value/(\S*)$`)
+	re := regexp.MustCompile(`^(https?://[\w./-]+)/attr/(\S*)/value/(\S*)$`)
 	m := re.FindStringSubmatch(u)
 	if len(m) < 4 || len(m[0]) == 0 {
-		return "", fmt.Errorf("%w: attribute regex fail for [%s]", ErrInvalid, u)
+		return AttributeValueFQN{}, fmt.Errorf("%w: attribute regex fail for [%s]", ErrInvalid, u)
 	}
 
 	_, err := url.PathUnescape(m[2])
 	if err != nil {
-		return "", fmt.Errorf("%w: error in attribute name [%s]", ErrInvalid, m[2])
+		return AttributeValueFQN{}, fmt.Errorf("%w: error in attribute name [%s]", ErrInvalid, m[2])
 	}
 	_, err = url.PathUnescape(m[3])
 	if err != nil {
-		return "", fmt.Errorf("%w: error in attribute value [%s]", ErrInvalid, m[3])
+		return AttributeValueFQN{}, fmt.Errorf("%w: error in attribute value [%s]", ErrInvalid, m[3])
 	}
 
-	return AttributeValueFQN(u), nil
+	return AttributeValueFQN{u, strings.ToLower(u)}, nil
+}
+
+func (a AttributeValueFQN) String() string {
+	return a.url
 }
 
 func (a AttributeValueFQN) Authority() string {
-	re := regexp.MustCompile(`^(https?://[\w./]+)/attr/\S*/value/\S*$`)
-	m := re.FindStringSubmatch(string(a))
+	re := regexp.MustCompile(`^(https?://[\w./-]+)/attr/\S*/value/\S*$`)
+	m := re.FindStringSubmatch(a.url)
 	if m == nil {
 		panic(ErrInvalid)
 	}
@@ -111,17 +124,21 @@ func (a AttributeValueFQN) Authority() string {
 }
 
 func (a AttributeValueFQN) Prefix() AttributeNameFQN {
-	re := regexp.MustCompile(`^(https?://[\w./]+/attr/\S*)/value/\S*$`)
-	m := re.FindStringSubmatch(string(a))
+	re := regexp.MustCompile(`^(https?://[\w./-]+/attr/\S*)/value/\S*$`)
+	m := re.FindStringSubmatch(a.url)
 	if m == nil {
 		panic(ErrInvalid)
 	}
-	return AttributeNameFQN(m[1])
+	p, err := NewAttributeNameFQN(m[1])
+	if err != nil {
+		panic(ErrInvalid)
+	}
+	return p
 }
 
 func (a AttributeValueFQN) Value() string {
-	re := regexp.MustCompile(`^https?://[\w./]+/attr/\S*/value/(\S*)$`)
-	m := re.FindStringSubmatch(string(a))
+	re := regexp.MustCompile(`^https?://[\w./-]+/attr/\S*/value/(\S*)$`)
+	m := re.FindStringSubmatch(a.String())
 	if m == nil {
 		panic(ErrInvalid)
 	}
@@ -133,8 +150,8 @@ func (a AttributeValueFQN) Value() string {
 }
 
 func (a AttributeValueFQN) Name() string {
-	re := regexp.MustCompile(`^https?://[\w./]+/attr/(\S*)/value/\S*$`)
-	m := re.FindStringSubmatch(string(a))
+	re := regexp.MustCompile(`^https?://[\w./-]+/attr/(\S*)/value/\S*$`)
+	m := re.FindStringSubmatch(a.url)
 	if m == nil {
 		panic("invalid attributeInstance")
 	}
@@ -148,7 +165,7 @@ func (a AttributeValueFQN) Name() string {
 // Structure capable of generating a split plan from a given set of data tags.
 type Granter struct {
 	policy []AttributeValueFQN
-	grants map[AttributeValueFQN]*keyAccessGrant
+	grants map[string]*keyAccessGrant
 }
 
 type keyAccessGrant struct {
@@ -157,10 +174,10 @@ type keyAccessGrant struct {
 }
 
 func (r Granter) addGrant(fqn AttributeValueFQN, kas string, attr *policy.Attribute) {
-	if _, ok := r.grants[fqn]; ok {
-		r.grants[fqn].kases = append(r.grants[fqn].kases, kas)
+	if _, ok := r.grants[fqn.key]; ok {
+		r.grants[fqn.key].kases = append(r.grants[fqn.key].kases, kas)
 	} else {
-		r.grants[fqn] = &keyAccessGrant{attr, []string{kas}}
+		r.grants[fqn.key] = &keyAccessGrant{attr, []string{kas}}
 	}
 }
 
@@ -171,21 +188,21 @@ func (r Granter) addAllGrants(fqn AttributeValueFQN, gs []*policy.KeyAccessServe
 		}
 	}
 	if len(gs) == 0 {
-		if _, ok := r.grants[fqn]; !ok {
-			r.grants[fqn] = &keyAccessGrant{attr, []string{}}
+		if _, ok := r.grants[fqn.key]; !ok {
+			r.grants[fqn.key] = &keyAccessGrant{attr, []string{}}
 		}
 	}
 }
 
 func (r Granter) byAttribute(fqn AttributeValueFQN) *keyAccessGrant {
-	return r.grants[fqn]
+	return r.grants[fqn.key]
 }
 
 // Gets a list of directory of KAS grants for a list of attribute FQNs
 func NewGranterFromService(ctx context.Context, as attributes.AttributesServiceClient, fqns ...AttributeValueFQN) (Granter, error) {
 	fqnsStr := make([]string, len(fqns))
 	for i, v := range fqns {
-		fqnsStr[i] = string(v)
+		fqnsStr[i] = v.String()
 	}
 
 	av, err :=
@@ -201,7 +218,7 @@ func NewGranterFromService(ctx context.Context, as attributes.AttributesServiceC
 
 	grants := Granter{
 		policy: fqns,
-		grants: make(map[AttributeValueFQN]*keyAccessGrant),
+		grants: make(map[string]*keyAccessGrant),
 	}
 	for fqnstr, pair := range av.GetFqnAttributeValues() {
 		fqn, err := NewAttributeValueFQN(fqnstr)
@@ -226,7 +243,7 @@ func NewGranterFromService(ctx context.Context, as attributes.AttributesServiceC
 // Unlike `NewGranterFromService`, this works offline.
 func NewGranterFromAttributes(attrs ...*policy.Value) (Granter, error) {
 	grants := Granter{
-		grants: make(map[AttributeValueFQN]*keyAccessGrant),
+		grants: make(map[string]*keyAccessGrant),
 		policy: make([]AttributeValueFQN, len(attrs)),
 	}
 	for i, v := range attrs {
@@ -296,7 +313,7 @@ func (e attributeBooleanExpression) String() string {
 		case 0:
 			sb.WriteString(clause.def.GetFqn())
 		case 1:
-			sb.WriteString(string(clause.values[0]))
+			sb.WriteString(clause.values[0].String())
 		default:
 			sb.WriteString(clause.def.GetFqn())
 			sb.WriteString("/value/{")
@@ -350,11 +367,11 @@ func (r Granter) Plan(defaultKas []string, genSplitID func() string) ([]SplitSte
 }
 
 func (r Granter) constructAttributeBoolean() *attributeBooleanExpression {
-	prefixes := make(map[AttributeNameFQN]*singleAttributeClause)
-	sortedPrefixes := make([]AttributeNameFQN, 0)
+	prefixes := make(map[string]*singleAttributeClause)
+	sortedPrefixes := make([]string, 0)
 	for _, aP := range r.policy {
 		a := aP
-		p := a.Prefix()
+		p := strings.ToLower(a.Prefix().String())
 		if clause, ok := prefixes[p]; ok {
 			clause.values = append(clause.values, a)
 		} else if kag := r.byAttribute(a); kag != nil {

@@ -7,7 +7,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak"
-	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 )
 
@@ -23,7 +23,7 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &entityresolution.EntityResolutionService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			var inputIdpConfig keycloak.KeycloakConfig
-			confJSON, err := json.Marshal(srp.Config.ExtraProps)
+			confJSON, err := json.Marshal(srp.Config)
 			if err != nil {
 				panic(err)
 			}

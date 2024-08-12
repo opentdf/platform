@@ -283,13 +283,6 @@
             "schema": {
               "type": "object",
               "properties": {
-                "members": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": "Optional"
-                },
                 "metadata": {
                   "$ref": "#/definitions/commonMetadataMutable",
                   "title": "Common metadata"
@@ -469,13 +462,6 @@
               "properties": {
                 "value": {
                   "type": "string"
-                },
-                "members": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": "Optional"
                 },
                 "metadata": {
                   "$ref": "#/definitions/commonMetadataMutable",
@@ -1143,14 +1129,6 @@
         },
         "value": {
           "type": "string"
-        },
-        "members": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/policyValue"
-          },
-          "title": "list of attribute values that this value is related to (attribute group)"
         },
         "grants": {
           "type": "array",

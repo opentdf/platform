@@ -13,7 +13,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak"
-	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -21,7 +21,7 @@ import (
 )
 
 const tokenResp string = `
-{ 
+{
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
   "token_type": "Bearer",
   "expires_in": 3600,
@@ -56,6 +56,10 @@ const byClientIDOpentdfSdkResp = `[
 {"id": "opentdfsdkclient", "clientId":"opentdf-sdk"}
 ]
 `
+const byClientIDTDFEntityResResp = `[
+{"id": "tdf-entity-resolution", "clientId":"tdf-entity-resolution"}
+]
+`
 
 const clientCredentialsJwt = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI0OXRmSjByRUo4c0YzUjJ3Yi05eENHVXhYUEQ4RTZldmNsRG1hZ05EM3lBIn0.eyJleHAiOjE3MTUwOTE2MDQsImlhdCI6MTcxNTA5MTMwNCwianRpIjoiMTE3MTYzMjYtNWQyNS00MjlmLWFjMDItNmU0MjE2OWFjMGJhIiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4ODg4L2F1dGgvcmVhbG1zL29wZW50ZGYiLCJhdWQiOlsiaHR0cDovL2xvY2FsaG9zdDo4ODg4IiwicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiOTljOWVlZDItOTM1Ni00ZjE2LWIwODQtZTgyZDczZjViN2QyIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoidGRmLWVudGl0eS1yZXNvbHV0aW9uIiwiYWNyIjoiMSIsInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJkZWZhdWx0LXJvbGVzLW9wZW50ZGYiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LXVzZXJzIiwidmlldy1jbGllbnRzIiwicXVlcnktY2xpZW50cyIsInF1ZXJ5LWdyb3VwcyIsInF1ZXJ5LXVzZXJzIl19LCJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6InByb2ZpbGUgZW1haWwiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsImNsaWVudEhvc3QiOiIxOTIuMTY4LjI0MC4xIiwicHJlZmVycmVkX3VzZXJuYW1lIjoic2VydmljZS1hY2NvdW50LXRkZi1lbnRpdHktcmVzb2x1dGlvbiIsImNsaWVudEFkZHJlc3MiOiIxOTIuMTY4LjI0MC4xIiwiY2xpZW50X2lkIjoidGRmLWVudGl0eS1yZXNvbHV0aW9uIn0.h29QLo-QvIc67KKqU_e1-x6G_o5YQccOyW9AthMdB7xhn9C1dBrcScytaWq1RfETPmnM8MXGezqN4OpXrYr-zbkHhq9ha0Ib-M1VJXNgA5sbgKW9JxGQyudmYPgn4fimDCJtAsXo7C-e3mYNm6DJS0zhGQ3msmjLTcHmIPzWlj7VjtPgKhYV75b7yr_yZNBdHjf3EZqfynU2sL8bKa1w7DYDNQve7ThtD4MeKLiuOQHa3_23dECs_ptvPVks7pLGgRKfgGHBC-KQuopjtxIhwkz2vOWRzugDl0aBJMHfwBajYhgZ2YRlV9dqSxmy8BOj4OEXuHbiyfIpY0rCRpSrGg"
 const passwordPubClientJwt = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI0OXRmSjByRUo4c0YzUjJ3Yi05eENHVXhYUEQ4RTZldmNsRG1hZ05EM3lBIn0.eyJleHAiOjE3MTUwOTE0ODAsImlhdCI6MTcxNTA5MTE4MCwianRpIjoiZmI5MmM2MTAtYmI0OC00ZDgyLTljZGQtOWFhZjllNzEyNzc3IiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4ODg4L2F1dGgvcmVhbG1zL29wZW50ZGYiLCJhdWQiOlsiaHR0cDovL2xvY2FsaG9zdDo4ODg4IiwidGRmLWVudGl0eS1yZXNvbHV0aW9uIiwicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiMmU2YzE1ODAtY2ZkMy00M2FiLWIxNzMtZjZjM2JmOGZmNGUyIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoidGRmLWVudGl0eS1yZXNvbHV0aW9uLXB1YmxpYyIsInNlc3Npb25fc3RhdGUiOiIzN2E3YjdiOS0xZmNlLTQxMmYtOTI1OS1lYzUxMTY3MGVhMGYiLCJhY3IiOiIxIiwiYWxsb3dlZC1vcmlnaW5zIjpbIi8qIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvcGVudGRmLW9yZy1hZG1pbiIsImRlZmF1bHQtcm9sZXMtb3BlbnRkZiIsIm9mZmxpbmVfYWNjZXNzIiwidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJ0ZGYtZW50aXR5LXJlc29sdXRpb24iOnsicm9sZXMiOlsiZW50aXR5LXJlc29sdXRpb24tdGVzdC1yb2xlIl19LCJyZWFsbS1tYW5hZ2VtZW50Ijp7InJvbGVzIjpbInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJxdWVyeS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIiwicXVlcnktdXNlcnMiXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoicHJvZmlsZSBlbWFpbCIsInNpZCI6IjM3YTdiN2I5LTFmY2UtNDEyZi05MjU5LWVjNTExNjcwZWEwZiIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwibmFtZSI6InNhbXBsZSB1c2VyIiwicHJlZmVycmVkX3VzZXJuYW1lIjoic2FtcGxlLXVzZXIiLCJnaXZlbl9uYW1lIjoic2FtcGxlIiwiZmFtaWx5X25hbWUiOiJ1c2VyIiwiZW1haWwiOiJzYW1wbGV1c2VyQHNhbXBsZS5jb20ifQ.Gd_OvPNY7UfY7sBKh55TcvWQHmAkYZ2Jb2VyK1lYgse9EBEa_y3uoepZYrGMGkmYdwApg4eauQjxzT_BZYVBc7u9ch3HY_IUuSh3A6FkDDXZIziByP63FYiI4vKTp0w7e2-oYAdaUTDJ1Y50-l_VvRWjdc4fqi-OKH4t8D1rlq0GJ-P7uOl44Ta43YdBMuXI146-eLqx_zLIC49Pg5Y7MD_Lv23QfGTHTP47ckUQueXoGegNLQNE9nPTuD6lNzHD5_MOqse4IKzoWVs_hs4S8SqVxVlN_ZWXkcGhPllfQtf1qxLyFm51eYH3LGxqyNbGr4nQc8djPV0yWqOTrg8IYQ"
@@ -73,6 +77,22 @@ func testKeycloakConfig(server *httptest.Server) keycloak.KeycloakConfig {
 		ClientSecret:   "cs",
 		Realm:          "tdf",
 		LegacyKeycloak: false,
+	}
+}
+
+func testKeycloakConfigInferID(server *httptest.Server) keycloak.KeycloakConfig {
+	return keycloak.KeycloakConfig{
+		URL:            server.URL,
+		ClientID:       "c1",
+		ClientSecret:   "cs",
+		Realm:          "tdf",
+		LegacyKeycloak: false,
+		InferID: keycloak.InferredIdentityConfig{
+			From: keycloak.EntityImpliedFrom{
+				Email:    true,
+				ClientID: true,
+			},
+		},
 	}
 }
 
@@ -287,7 +307,10 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 }
 
 func Test_JwtClientAndUsernameClientCredentials(t *testing.T) {
-	server := testServer(t, nil, nil, nil, nil, nil)
+	csqr := map[string]string{
+		"clientId=tdf-entity-resolution": byClientIDTDFEntityResResp,
+	}
+	server := testServer(t, nil, nil, nil, nil, csqr)
 	defer server.Close()
 
 	var kcconfig = testKeycloakConfig(server)
@@ -301,8 +324,11 @@ func Test_JwtClientAndUsernameClientCredentials(t *testing.T) {
 	require.NoError(t, reserr)
 
 	assert.Len(t, resp.GetEntityChains(), 1)
-	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 1)
+	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
 	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
+	assert.Equal(t, authorization.Entity_CATEGORY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
+	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[0].GetEntities()[1].GetClientId())
+	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
 }
 
 func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
@@ -322,7 +348,9 @@ func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
 	assert.Len(t, resp.GetEntityChains(), 1)
 	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
 	assert.Equal(t, "tdf-entity-resolution-public", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
+	assert.Equal(t, authorization.Entity_CATEGORY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
 	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].GetEntities()[1].GetUserName())
+	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
 }
 
 func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
@@ -342,7 +370,9 @@ func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
 	assert.Len(t, resp.GetEntityChains(), 1)
 	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
 	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
+	assert.Equal(t, authorization.Entity_CATEGORY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
 	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].GetEntities()[1].GetUserName())
+	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
 }
 
 func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
@@ -362,7 +392,9 @@ func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
 	assert.Len(t, resp.GetEntityChains(), 1)
 	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
 	assert.Equal(t, "tdf-entity-resolution-public", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
+	assert.Equal(t, authorization.Entity_CATEGORY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
 	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].GetEntities()[1].GetUserName())
+	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
 }
 
 func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
@@ -382,7 +414,9 @@ func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
 	assert.Len(t, resp.GetEntityChains(), 1)
 	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
 	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
+	assert.Equal(t, authorization.Entity_CATEGORY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
 	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].GetEntities()[1].GetUserName())
+	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
 }
 
 func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
@@ -402,7 +436,9 @@ func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
 	assert.Len(t, resp.GetEntityChains(), 1)
 	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
 	assert.Equal(t, "tdf-entity-resolution-public", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
+	assert.Equal(t, authorization.Entity_CATEGORY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
 	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].GetEntities()[1].GetUserName())
+	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
 }
 
 func Test_JwtClientAndUsernameImplicitPriv(t *testing.T) {
@@ -422,7 +458,9 @@ func Test_JwtClientAndUsernameImplicitPriv(t *testing.T) {
 	assert.Len(t, resp.GetEntityChains(), 1)
 	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
 	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
+	assert.Equal(t, authorization.Entity_CATEGORY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
 	assert.Equal(t, "sample-user", resp.GetEntityChains()[0].GetEntities()[1].GetUserName())
+	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
 }
 
 func Test_JwtClientAndClientTokenExchange(t *testing.T) {
@@ -445,7 +483,9 @@ func Test_JwtClientAndClientTokenExchange(t *testing.T) {
 	assert.Len(t, resp.GetEntityChains(), 1)
 	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
 	assert.Equal(t, "opentdf", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
+	assert.Equal(t, authorization.Entity_CATEGORY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
 	assert.Equal(t, "opentdf-sdk", resp.GetEntityChains()[0].GetEntities()[1].GetClientId())
+	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
 }
 
 func Test_JwtMultiple(t *testing.T) {
@@ -468,9 +508,107 @@ func Test_JwtMultiple(t *testing.T) {
 	assert.Len(t, resp.GetEntityChains(), 2)
 	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 2)
 	assert.Equal(t, "opentdf", resp.GetEntityChains()[0].GetEntities()[0].GetClientId())
+	assert.Equal(t, authorization.Entity_CATEGORY_ENVIRONMENT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
 	assert.Equal(t, "opentdf-sdk", resp.GetEntityChains()[0].GetEntities()[1].GetClientId())
+	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[1].GetCategory())
 
 	assert.Len(t, resp.GetEntityChains()[1].GetEntities(), 2)
 	assert.Equal(t, "tdf-entity-resolution", resp.GetEntityChains()[1].GetEntities()[0].GetClientId())
+	assert.Equal(t, authorization.Entity_CATEGORY_ENVIRONMENT, resp.GetEntityChains()[1].GetEntities()[0].GetCategory())
 	assert.Equal(t, "sample-user", resp.GetEntityChains()[1].GetEntities()[1].GetUserName())
+	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[1].GetEntities()[1].GetCategory())
+}
+
+func Test_KCEntityResolutionNotFoundInferEmail(t *testing.T) {
+	server := testServer(t, map[string]string{
+		"email=random%40sample.org&exact=true": "[]",
+	}, map[string]string{
+		"search=random%40sample.org": "[]",
+	}, map[string]string{
+		"group1-uuid": groupResp,
+	}, map[string]string{
+		"group1-uuid": groupSubmemberResp,
+	}, nil)
+	defer server.Close()
+
+	var validBody []*authorization.Entity
+	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_EmailAddress{EmailAddress: "random@sample.org"}})
+
+	var kcconfig = testKeycloakConfigInferID(server)
+
+	var ctxb = context.Background()
+
+	var req = entityresolution.ResolveEntitiesRequest{}
+	req.Entities = validBody
+
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig, logger.CreateTestLogger())
+
+	require.NoError(t, reserr)
+
+	var entityRepresentations = resp.GetEntityRepresentations()
+	assert.NotNil(t, entityRepresentations)
+	assert.Len(t, entityRepresentations, 1)
+
+	assert.Equal(t, "1234", entityRepresentations[0].GetOriginalId())
+	assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 1)
+	var propMap = entityRepresentations[0].GetAdditionalProps()[0].AsMap()
+	assert.Equal(t, "random@sample.org", propMap["emailAddress"])
+	assert.Equal(t, "1234", propMap["id"])
+}
+
+func Test_KCEntityResolutionNotFoundInferClientId(t *testing.T) {
+	csqr := map[string]string{
+		"clientId=random": "[]",
+	}
+	server := testServer(t, nil, nil, nil, nil, csqr)
+	defer server.Close()
+
+	var validBody []*authorization.Entity
+	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_ClientId{ClientId: "random"}})
+
+	var kcconfig = testKeycloakConfigInferID(server)
+
+	var ctxb = context.Background()
+
+	var req = entityresolution.ResolveEntitiesRequest{}
+	req.Entities = validBody
+
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig, logger.CreateTestLogger())
+
+	require.NoError(t, reserr)
+
+	var entityRepresentations = resp.GetEntityRepresentations()
+	assert.NotNil(t, entityRepresentations)
+	assert.Len(t, entityRepresentations, 1)
+
+	assert.Equal(t, "1234", entityRepresentations[0].GetOriginalId())
+	assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 1)
+	var propMap = entityRepresentations[0].GetAdditionalProps()[0].AsMap()
+	assert.Equal(t, "random", propMap["clientId"])
+	assert.Equal(t, "1234", propMap["id"])
+}
+
+func Test_KCEntityResolutionNotFoundNotInferUsername(t *testing.T) {
+	server := testServer(t, map[string]string{
+		"exact=true&username=randomuser": "[]",
+	}, nil, nil, nil, nil)
+	defer server.Close()
+
+	var validBody []*authorization.Entity
+	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_UserName{UserName: "randomuser"}})
+
+	var kcconfig = testKeycloakConfigInferID(server)
+
+	var ctxb = context.Background()
+
+	var req = entityresolution.ResolveEntitiesRequest{}
+	req.Entities = validBody
+
+	var resp, reserr = keycloak.EntityResolution(ctxb, &req, kcconfig, logger.CreateTestLogger())
+
+	require.Error(t, reserr)
+	assert.Equal(t, &entityresolution.ResolveEntitiesResponse{}, &resp)
+	var entityNotFound = entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: keycloak.ErrTextGetRetrievalFailed, Entity: "randomuser"}
+	var expectedError = status.Error(codes.Code(entityNotFound.GetCode()), entityNotFound.GetMessage())
+	assert.Equal(t, expectedError, reserr)
 }

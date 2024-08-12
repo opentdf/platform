@@ -2,22 +2,33 @@ package authorization
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"testing"
+	"time"
 
+	"github.com/open-policy-agent/opa/rego"
 	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
+	sm "github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdf "github.com/opentdf/platform/sdk"
-	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/oauth2"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 var (
-	entitlementsResponse             authorization.GetEntitlementsResponse
 	getAttributesByValueFqnsResponse attr.GetAttributeValuesByFqnsResponse
+	listAttributeResp                attr.ListAttributesResponse
+	listSubjectMappings              sm.ListSubjectMappingsResponse
+	createEntityChainResp            entityresolution.CreateEntityChainFromJwtResponse
+	resolveEntitiesResp              entityresolution.ResolveEntitiesResponse
 	mockNamespace                    = "www.example.org"
 	mockAttrName                     = "foo"
 	mockAttrValue1                   = "value1"
@@ -26,14 +37,35 @@ var (
 	mockFqn2                         = fmt.Sprintf("https://%s/attr/%s/value/%s", mockNamespace, mockAttrName, mockAttrValue2)
 )
 
-func mockRetrieveAttributeDefinitions(ctx context.Context, _ *authorization.ResourceAttribute, _ *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
-	slog.DebugContext(ctx, "Using mocked GetAttributeValuesByFqns: "+getAttributesByValueFqnsResponse.String())
-	return getAttributesByValueFqnsResponse.GetFqnAttributeValues(), nil
+type myAttributesClient struct {
+	attr.AttributesServiceClient
 }
 
-func mockRetrieveEntitlements(ctx context.Context, _ *authorization.GetEntitlementsRequest, _ *AuthorizationService) (*authorization.GetEntitlementsResponse, error) {
-	slog.DebugContext(ctx, "Using mocked GetEntitlements: "+entitlementsResponse.String())
-	return &entitlementsResponse, nil
+func (*myAttributesClient) ListAttributes(_ context.Context, _ *attr.ListAttributesRequest, _ ...grpc.CallOption) (*attr.ListAttributesResponse, error) {
+	return &listAttributeResp, nil
+}
+
+func (*myAttributesClient) GetAttributeValuesByFqns(_ context.Context, _ *attr.GetAttributeValuesByFqnsRequest, _ ...grpc.CallOption) (*attr.GetAttributeValuesByFqnsResponse, error) {
+	return &getAttributesByValueFqnsResponse, nil
+}
+
+type myERSClient struct {
+	entityresolution.EntityResolutionServiceClient
+}
+
+type mySubjectMappingClient struct {
+	sm.SubjectMappingServiceClient
+}
+
+func (*mySubjectMappingClient) ListSubjectMappings(_ context.Context, _ *sm.ListSubjectMappingsRequest, _ ...grpc.CallOption) (*sm.ListSubjectMappingsResponse, error) {
+	return &listSubjectMappings, nil
+}
+
+func (*myERSClient) CreateEntityChainFromJwt(_ context.Context, _ *entityresolution.CreateEntityChainFromJwtRequest, _ ...grpc.CallOption) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
+	return &createEntityChainResp, nil
+}
+func (*myERSClient) ResolveEntities(_ context.Context, _ *entityresolution.ResolveEntitiesRequest, _ ...grpc.CallOption) (*entityresolution.ResolveEntitiesResponse, error) {
+	return &resolveEntitiesResp, nil
 }
 
 func TestGetComprehensiveHierarchy(t *testing.T) {
@@ -118,16 +150,8 @@ func TestGetComprehensiveHierarchy(t *testing.T) {
 func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	logger := logger.CreateTestLogger()
 
-	retrieveAttributeDefinitions = mockRetrieveAttributeDefinitions
-	retrieveEntitlements = mockRetrieveEntitlements
+	listAttributeResp = attr.ListAttributesResponse{}
 
-	// set entitlementsResponse and getAttributesByValueFqnsResponse
-	entitlementsResponse = authorization.GetEntitlementsResponse{Entitlements: []*authorization.EntityEntitlements{
-		{
-			EntityId:           "e1",
-			AttributeValueFqns: []string{mockFqn1},
-		},
-	}}
 	attrDef := policy.Attribute{
 		Name: mockAttrName,
 		Namespace: &policy.Namespace{
@@ -148,6 +172,38 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 			},
 		},
 	}}
+	userRepresentation := map[string]interface{}{
+		"A": "B",
+		"C": "D",
+	}
+	userStruct, _ := structpb.NewStruct(userRepresentation)
+	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
+		EntityRepresentations: []*entityresolution.EntityRepresentation{{
+			OriginalId: "e1",
+			AdditionalProps: []*structpb.Struct{
+				userStruct,
+			},
+		},
+		},
+	}
+
+	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
+		AccessToken: "AccessToken",
+		Expiry:      time.Now().Add(1 * time.Hour),
+	})
+
+	ctxb := context.Background()
+
+	testrego := rego.New(
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = {"e1":["https://www.example.org/attr/foo/value/value1"]} { true }`,
+		))
+
+	// Run evaluation.
+	prepared, err := testrego.PrepareForEval(ctxb)
+	require.NoError(t, err)
 
 	// set the request
 	req := authorization.GetDecisionsRequest{DecisionRequests: []*authorization.DecisionRequest{
@@ -157,7 +213,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 				{
 					Id: "ec1",
 					Entities: []*authorization.Entity{
-						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}},
+						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
 					},
 				},
 			},
@@ -167,9 +223,10 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 		},
 	}}
 
-	as := AuthorizationService{logger: logger}
-	retrieveEntitlements = mockRetrieveEntitlements
-	ctxb := context.Background()
+	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
+		SubjectMapping: &mySubjectMappingClient{},
+		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		tokenSource: &testTokenSource, eval: prepared}
 
 	resp, err := as.GetDecisions(ctxb, &req)
 
@@ -182,16 +239,6 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.GetDecisionResponses()[0].GetDecision())
 
 	// run again with two attribute values throughout
-	entitlementsResponse = authorization.GetEntitlementsResponse{Entitlements: []*authorization.EntityEntitlements{
-		{
-			EntityId:           "e1",
-			AttributeValueFqns: []string{mockFqn1},
-		},
-		{
-			EntityId:           "e999",
-			AttributeValueFqns: []string{mockFqn1},
-		},
-	}}
 	// set the request
 	req = authorization.GetDecisionsRequest{DecisionRequests: []*authorization.DecisionRequest{
 		{
@@ -200,7 +247,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 				{
 					Id: "ec1",
 					Entities: []*authorization.Entity{
-						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}},
+						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
 					},
 				},
 			},
@@ -214,12 +261,12 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 				{
 					Id: "ec1",
 					Entities: []*authorization.Entity{
-						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}},
+						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
 					},
 				},
 			},
 			ResourceAttributes: []*authorization.ResourceAttribute{
-				{AttributeValueFqns: []string{mockFqn1}},
+				{AttributeValueFqns: []string{mockFqn1, mockFqn2}},
 			},
 		},
 	}}
@@ -232,32 +279,29 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 			Fqn: mockFqn2,
 		},
 	}
-	entitlementsResponse.Entitlements[0].AttributeValueFqns = []string{mockFqn1, mockFqn2}
+	testrego = rego.New(
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = {"e1": ["https://www.example.org/attr/foo/value/value1", "https://www.example.org/attr/foo/value/value2"]} { true }`,
+		))
+
+	// Run evaluation.
+	prepared, err = testrego.PrepareForEval(ctxb)
+	require.NoError(t, err)
+
+	as.eval = prepared
 
 	resp, err = as.GetDecisions(ctxb, &req)
 	require.NoError(t, err)
 	assert.Len(t, resp.GetDecisionResponses(), 2)
-	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.GetDecisionResponses()[0].GetDecision())
-	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.GetDecisionResponses()[1].GetDecision())
+	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.GetDecisionResponses()[0].GetDecision())
+	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.GetDecisionResponses()[1].GetDecision())
 }
 
 func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 	logger := logger.CreateTestLogger()
 
-	retrieveAttributeDefinitions = mockRetrieveAttributeDefinitions
-	retrieveEntitlements = mockRetrieveEntitlements
-
-	// set entitlementsResponse and getAttributesByValueFqnsResponse
-	entitlementsResponse = authorization.GetEntitlementsResponse{Entitlements: []*authorization.EntityEntitlements{
-		{
-			EntityId:           "e1",
-			AttributeValueFqns: []string{mockFqn1},
-		},
-		{
-			EntityId:           "e999",
-			AttributeValueFqns: []string{mockFqn1},
-		},
-	}}
 	attrDef := policy.Attribute{
 		Name: mockAttrName,
 		Namespace: &policy.Namespace{
@@ -287,6 +331,20 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 			},
 		},
 	}}
+	userRepresentation := map[string]interface{}{
+		"A": "B",
+		"C": "D",
+	}
+	userStruct, _ := structpb.NewStruct(userRepresentation)
+	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
+		EntityRepresentations: []*entityresolution.EntityRepresentation{{
+			OriginalId: "e1",
+			AdditionalProps: []*structpb.Struct{
+				userStruct,
+			},
+		},
+		},
+	}
 
 	// set the request
 	req := authorization.GetDecisionsRequest{DecisionRequests: []*authorization.DecisionRequest{
@@ -296,7 +354,7 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 				{
 					Id: "ec1",
 					Entities: []*authorization.Entity{
-						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}},
+						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
 					},
 				},
 			},
@@ -306,8 +364,28 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 		},
 	}}
 
-	as := AuthorizationService{logger: logger}
+	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
+		AccessToken: "AccessToken",
+		Expiry:      time.Now().Add(1 * time.Hour),
+	})
+
 	ctxb := context.Background()
+
+	testrego := rego.New(
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = {"e1": ["https://www.example.org/attr/foo/value/value1"]} { true }`,
+		))
+
+	// Run evaluation.
+	prepared, err := testrego.PrepareForEval(ctxb)
+	require.NoError(t, err)
+
+	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
+		SubjectMapping: &mySubjectMappingClient{},
+		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		tokenSource: &testTokenSource, eval: prepared}
 
 	resp, err := as.GetDecisions(ctxb, &req)
 
@@ -317,7 +395,533 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 	// NOTE: there should be two decision responses, one for each data attribute value, but authorization service
 	// only responds with one permit/deny at the moment
 	// entitlements only contain the first FQN, so we have a deny decision
+	as.logger.Debug(resp.String())
+	assert.Len(t, resp.GetDecisionResponses(), 1)
+	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.GetDecisionResponses()[0].GetDecision())
+}
+
+// Subject entitled and environment entity not entitled -- still pass
+func Test_GetDecisionsAllOfWithEnvironmental_Pass(t *testing.T) {
+	logger := logger.CreateTestLogger()
+
+	listAttributeResp = attr.ListAttributesResponse{}
+
+	attrDef := policy.Attribute{
+		Name: mockAttrName,
+		Namespace: &policy.Namespace{
+			Name: mockNamespace,
+		},
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values: []*policy.Value{
+			{
+				Value: mockAttrValue1,
+			},
+		},
+	}
+	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{FqnAttributeValues: map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+		"https://www.example.org/attr/foo/value/value1": {
+			Attribute: &attrDef,
+			Value: &policy.Value{
+				Fqn: mockFqn1,
+			},
+		},
+	}}
+	userRepresentation := map[string]interface{}{
+		"A": "B",
+		"C": "D",
+	}
+	userStruct, _ := structpb.NewStruct(userRepresentation)
+	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
+		EntityRepresentations: []*entityresolution.EntityRepresentation{{
+			OriginalId: "e1",
+			AdditionalProps: []*structpb.Struct{
+				userStruct,
+			},
+		},
+		},
+	}
+
+	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
+		AccessToken: "AccessToken",
+		Expiry:      time.Now().Add(1 * time.Hour),
+	})
+
+	ctxb := context.Background()
+
+	testrego := rego.New(
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = {"e2":["https://www.example.org/attr/foo/value/value1"], "e1":[]} { true }`,
+		))
+
+	// Run evaluation.
+	prepared, err := testrego.PrepareForEval(ctxb)
+	require.NoError(t, err)
+
+	// set the request
+	req := authorization.GetDecisionsRequest{DecisionRequests: []*authorization.DecisionRequest{
+		{
+			Actions: []*policy.Action{},
+			EntityChains: []*authorization.EntityChain{
+				{
+					Id: "ec1",
+					Entities: []*authorization.Entity{
+						{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "opentdf"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT},
+						{Id: "e2", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+					},
+				},
+			},
+			ResourceAttributes: []*authorization.ResourceAttribute{
+				{AttributeValueFqns: []string{mockFqn1}},
+			},
+		},
+	}}
+
+	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
+		SubjectMapping: &mySubjectMappingClient{},
+		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		tokenSource: &testTokenSource, eval: prepared}
+
+	resp, err := as.GetDecisions(ctxb, &req)
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	// one entitlement, one attribute value throughout
+	slog.Debug(resp.String())
+	assert.Len(t, resp.GetDecisionResponses(), 1)
+	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.GetDecisionResponses()[0].GetDecision())
+}
+
+// Subject not entitled and environment entity entitled -- still fail
+func Test_GetDecisionsAllOfWithEnvironmental_Fail(t *testing.T) {
+	logger := logger.CreateTestLogger()
+
+	listAttributeResp = attr.ListAttributesResponse{}
+
+	attrDef := policy.Attribute{
+		Name: mockAttrName,
+		Namespace: &policy.Namespace{
+			Name: mockNamespace,
+		},
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values: []*policy.Value{
+			{
+				Value: mockAttrValue1,
+			},
+		},
+	}
+	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{FqnAttributeValues: map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+		"https://www.example.org/attr/foo/value/value1": {
+			Attribute: &attrDef,
+			Value: &policy.Value{
+				Fqn: mockFqn1,
+			},
+		},
+	}}
+	userRepresentation := map[string]interface{}{
+		"A": "B",
+		"C": "D",
+	}
+	userStruct, _ := structpb.NewStruct(userRepresentation)
+	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
+		EntityRepresentations: []*entityresolution.EntityRepresentation{{
+			OriginalId: "e1",
+			AdditionalProps: []*structpb.Struct{
+				userStruct,
+			},
+		},
+		},
+	}
+
+	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
+		AccessToken: "AccessToken",
+		Expiry:      time.Now().Add(1 * time.Hour),
+	})
+
+	ctxb := context.Background()
+
+	testrego := rego.New(
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = {"e2":["https://www.example.org/attr/foo/value/value1"], "e1":[]} { true }`,
+		))
+
+	// Run evaluation.
+	prepared, err := testrego.PrepareForEval(ctxb)
+	require.NoError(t, err)
+
+	// set the request
+	req := authorization.GetDecisionsRequest{DecisionRequests: []*authorization.DecisionRequest{
+		{
+			Actions: []*policy.Action{},
+			EntityChains: []*authorization.EntityChain{
+				{
+					Id: "ec1",
+					Entities: []*authorization.Entity{
+						{Id: "e2", EntityType: &authorization.Entity_ClientId{ClientId: "opentdf"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT},
+						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+					},
+				},
+			},
+			ResourceAttributes: []*authorization.ResourceAttribute{
+				{AttributeValueFqns: []string{mockFqn1}},
+			},
+		},
+	}}
+
+	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
+		SubjectMapping: &mySubjectMappingClient{},
+		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		tokenSource: &testTokenSource, eval: prepared}
+
+	resp, err := as.GetDecisions(ctxb, &req)
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	// one entitlement, one attribute value throughout
 	slog.Debug(resp.String())
 	assert.Len(t, resp.GetDecisionResponses(), 1)
 	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.GetDecisionResponses()[0].GetDecision())
+}
+
+func Test_GetEntitlementsSimple(t *testing.T) {
+	logger := logger.CreateTestLogger()
+
+	listAttributeResp = attr.ListAttributesResponse{}
+	attrDef := policy.Attribute{
+		Name: mockAttrName,
+		Namespace: &policy.Namespace{
+			Name: mockNamespace,
+		},
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values: []*policy.Value{
+			{
+				Value: mockAttrValue1,
+			},
+			{
+				Value: mockAttrValue2,
+			},
+		},
+	}
+	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{FqnAttributeValues: map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+		"https://www.example.org/attr/foo/value/value1": {
+			Attribute: &attrDef,
+			Value: &policy.Value{
+				Fqn: mockFqn1,
+			},
+		},
+	}}
+	userRepresentation := map[string]interface{}{
+		"A": "B",
+		"C": "D",
+	}
+	userStruct, _ := structpb.NewStruct(userRepresentation)
+	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
+		EntityRepresentations: []*entityresolution.EntityRepresentation{{
+			OriginalId: "e1",
+			AdditionalProps: []*structpb.Struct{
+				userStruct,
+			},
+		},
+		},
+	}
+	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
+		AccessToken: "AccessToken",
+		Expiry:      time.Now().Add(1 * time.Hour),
+	})
+
+	ctxb := context.Background()
+
+	rego := rego.New(
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = {"e1":["https://www.example.org/attr/foo/value/value1"]} { true }`,
+		))
+
+	// Run evaluation.
+	prepared, err := rego.PrepareForEval(ctxb)
+	require.NoError(t, err)
+
+	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
+		SubjectMapping: &mySubjectMappingClient{},
+		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		tokenSource: &testTokenSource, eval: prepared}
+
+	req := authorization.GetEntitlementsRequest{
+		Entities: []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT}},
+		Scope:    &authorization.ResourceAttribute{AttributeValueFqns: []string{"https://www.example.org/attr/foo/value/value1"}},
+	}
+
+	resp, err := as.GetEntitlements(ctxb, &req)
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Len(t, resp.GetEntitlements(), 1)
+	assert.Equal(t, "e1", resp.GetEntitlements()[0].GetEntityId())
+	assert.Equal(t, []string{"https://www.example.org/attr/foo/value/value1"}, resp.GetEntitlements()[0].GetAttributeValueFqns())
+}
+
+func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
+	logger := logger.CreateTestLogger()
+	attrDef := policy.Attribute{
+		Name: mockAttrName,
+		Namespace: &policy.Namespace{
+			Name: mockNamespace,
+		},
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		Values: []*policy.Value{
+			{
+				Value: mockAttrValue1,
+				Fqn:   mockFqn1,
+			},
+			{
+				Value: mockAttrValue2,
+				Fqn:   mockFqn2,
+			},
+		},
+	}
+	listAttributeResp.Attributes = []*policy.Attribute{&attrDef}
+	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{FqnAttributeValues: map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+		"https://www.example.org/attr/foo/value/value1": {
+			Attribute: &attrDef,
+			Value: &policy.Value{
+				Fqn: mockFqn1,
+			},
+		},
+	}}
+	userRepresentation := map[string]interface{}{
+		"A": "B",
+		"C": "D",
+	}
+	userStruct, _ := structpb.NewStruct(userRepresentation)
+	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
+		EntityRepresentations: []*entityresolution.EntityRepresentation{{
+			OriginalId: "e1",
+			AdditionalProps: []*structpb.Struct{
+				userStruct,
+			},
+		},
+		},
+	}
+	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
+		AccessToken: "AccessToken",
+		Expiry:      time.Now().Add(1 * time.Hour),
+	})
+
+	ctxb := context.Background()
+
+	rego := rego.New(
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = {"e1":["https://www.example.org/attr/foo/value/value1"]} { true }`,
+		))
+
+	// Run evaluation.
+	prepared, err := rego.PrepareForEval(ctxb)
+	require.NoError(t, err)
+	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
+		SubjectMapping: &mySubjectMappingClient{},
+		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		tokenSource: &testTokenSource, eval: prepared}
+
+	withHierarchy := true
+	req := authorization.GetEntitlementsRequest{
+		Entities:                   []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT}},
+		Scope:                      &authorization.ResourceAttribute{AttributeValueFqns: []string{"https://www.example.org/attr/foo/value/value1"}},
+		WithComprehensiveHierarchy: &withHierarchy,
+	}
+
+	resp, err := as.GetEntitlements(ctxb, &req)
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Len(t, resp.GetEntitlements(), 1)
+	assert.Equal(t, "e1", resp.GetEntitlements()[0].GetEntityId())
+	assert.Equal(t, []string{"https://www.example.org/attr/foo/value/value1", "https://www.example.org/attr/foo/value/value2"}, resp.GetEntitlements()[0].GetAttributeValueFqns())
+}
+
+func TestFqnBuilder(t *testing.T) {
+	tests := []struct {
+		name           string
+		n              string
+		a              string
+		v              string
+		expectedResult string
+		expectedError  error
+	}{
+		{
+			name:           "FullFqn",
+			n:              "namespace1.com",
+			a:              "attribute1",
+			v:              "value1",
+			expectedResult: "https://namespace1.com/attr/attribute1/value/value1",
+			expectedError:  nil,
+		},
+		{
+			name:           "EmptyValue",
+			n:              "namespace1.com",
+			a:              "attribute1",
+			v:              "",
+			expectedResult: "https://namespace1.com/attr/attribute1",
+			expectedError:  nil,
+		},
+		{
+			name:           "EmptyAttribute",
+			n:              "namespace1.com",
+			a:              "",
+			v:              "",
+			expectedResult: "https://namespace1.com",
+			expectedError:  nil,
+		},
+		{
+			name:           "EmptyNamespace",
+			n:              "",
+			a:              "attribute1",
+			v:              "value1",
+			expectedResult: "",
+			expectedError:  errors.New("invalid FQN, unable to build fqn"),
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := fqnBuilder(
+				tc.n,
+				tc.a,
+				tc.v,
+			)
+			assert.Equal(t, tc.expectedResult, result)
+			assert.Equal(t, tc.expectedError, err)
+		})
+	}
+}
+
+func TestPopulateAttrFqns(t *testing.T) {
+	tests := []struct {
+		name           string
+		attrDefs       []*policy.Attribute
+		expectedResult []*policy.Attribute
+		expectedError  error
+	}{
+		{
+			name: "OneAttributeOneValue",
+			attrDefs: []*policy.Attribute{
+				{
+					Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name:      "attribute1",
+					Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+					Values: []*policy.Value{
+						{Value: "value1"},
+					},
+				},
+			},
+			expectedResult: []*policy.Attribute{
+				{
+					Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name:      "attribute1",
+					Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+					Values: []*policy.Value{
+						{Value: "value1", Fqn: "https://namespace1.com/attr/attribute1/value/value1"},
+					},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "OneAttributeTwoValue",
+			attrDefs: []*policy.Attribute{
+				{
+					Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name:      "attribute1",
+					Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+					Values: []*policy.Value{
+						{Value: "value1"}, {Value: "value2"},
+					},
+				},
+			},
+			expectedResult: []*policy.Attribute{
+				{
+					Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name:      "attribute1",
+					Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+					Values: []*policy.Value{
+						{Value: "value1", Fqn: "https://namespace1.com/attr/attribute1/value/value1"},
+						{Value: "value2", Fqn: "https://namespace1.com/attr/attribute1/value/value2"},
+					},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "TwoAttributeTwoValue",
+			attrDefs: []*policy.Attribute{
+				{
+					Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name:      "attribute1",
+					Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+					Values: []*policy.Value{
+						{Value: "value1"}, {Value: "value2"},
+					},
+				},
+				{
+					Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name:      "attribute2",
+					Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+					Values: []*policy.Value{
+						{Value: "value1"}, {Value: "value2"},
+					},
+				},
+			},
+			expectedResult: []*policy.Attribute{
+				{
+					Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name:      "attribute1",
+					Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+					Values: []*policy.Value{
+						{Value: "value1", Fqn: "https://namespace1.com/attr/attribute1/value/value1"},
+						{Value: "value2", Fqn: "https://namespace1.com/attr/attribute1/value/value2"},
+					},
+				},
+				{
+					Namespace: &policy.Namespace{Name: "namespace1.com"},
+					Name:      "attribute2",
+					Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+					Values: []*policy.Value{
+						{Value: "value1", Fqn: "https://namespace1.com/attr/attribute2/value/value1"},
+						{Value: "value2", Fqn: "https://namespace1.com/attr/attribute2/value/value2"},
+					},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "ErrorFqn",
+			attrDefs: []*policy.Attribute{
+				{
+					Namespace: &policy.Namespace{Name: ""},
+					Name:      "attribute1",
+					Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+					Values: []*policy.Value{
+						{Value: "value1"},
+					},
+				},
+			},
+			expectedResult: nil,
+			expectedError:  errors.New("invalid FQN, unable to build fqn"),
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := populateAttrDefValueFqns(
+				tc.attrDefs,
+			)
+			assert.Equal(t, tc.expectedResult, result)
+			assert.Equal(t, tc.expectedError, err)
+		})
+	}
 }

@@ -1,5 +1,70 @@
 # Changelog
 
+## [0.4.17](https://github.com/opentdf/platform/compare/service/v0.4.16...service/v0.4.17) (2024-08-06)
+
+
+### Features
+
+* **authz:** Move ERS call out of rego and include all entities in requests ([#1228](https://github.com/opentdf/platform/issues/1228)) ([cdcca79](https://github.com/opentdf/platform/commit/cdcca79484da1be58687d7ce6bae930a3eae7b21))
+* **core:** MIC-934 Moves logger out of internal folder ([#1219](https://github.com/opentdf/platform/issues/1219)) ([0576813](https://github.com/opentdf/platform/commit/05768134db300a06ea2d687f8cec583ef7598fb6))
+* **policy:** add support for sqlc within policy db queries ([#1185](https://github.com/opentdf/platform/issues/1185)) ([5aef245](https://github.com/opentdf/platform/commit/5aef245720cb417a51622ffd1276f57163319c6d)), closes [#561](https://github.com/opentdf/platform/issues/561)
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1202](https://github.com/opentdf/platform/issues/1202)) ([98d6d8b](https://github.com/opentdf/platform/commit/98d6d8b84bc72a2d92e7b93dca9f6fa395aaac2e))
+* **core:** bump github.com/docker/docker from 25.0.5+incompatible to 26.1.4+incompatible in /service ([#1223](https://github.com/opentdf/platform/issues/1223)) ([937c967](https://github.com/opentdf/platform/commit/937c9675daa7da848223577adf939f721e5a773e))
+* **core:** drop unused/deprecated resources table & add comments to policy DB ([#1258](https://github.com/opentdf/platform/issues/1258)) ([bb084aa](https://github.com/opentdf/platform/commit/bb084aad4ac5da071afbe5467b571c2b28227773))
+* **core:** improve casbin ExtendDefaultPolicy and add test ([#1234](https://github.com/opentdf/platform/issues/1234)) ([cc15f25](https://github.com/opentdf/platform/commit/cc15f25af2c3e839d7ad45283b7bd298a80e8728))
+* **core:** policy subject mapping integration test addition for 'contains' operator ([#1244](https://github.com/opentdf/platform/issues/1244)) ([f8becb8](https://github.com/opentdf/platform/commit/f8becb8911a0d4e9726245ebc51d902cf11e0dd0))
+
+## [0.4.16](https://github.com/opentdf/platform/compare/service/v0.4.15...service/v0.4.16) (2024-07-25)
+
+
+### Bug Fixes
+
+* log request body on debug ([#1211](https://github.com/opentdf/platform/issues/1211)) ([d2906f0](https://github.com/opentdf/platform/commit/d2906f0e911bb161164a01fbefd8a43db903148a))
+
+## [0.4.15](https://github.com/opentdf/platform/compare/service/v0.4.14...service/v0.4.15) (2024-07-24)
+
+
+### Bug Fixes
+
+* **core:** set more reasonable message sizes via config ([#1207](https://github.com/opentdf/platform/issues/1207)) ([3e08cba](https://github.com/opentdf/platform/commit/3e08cba232ad5485ff38ad8c095ce2deec55980b))
+
+## [0.4.14](https://github.com/opentdf/platform/compare/service/v0.4.13...service/v0.4.14) (2024-07-24)
+
+
+### Bug Fixes
+
+* **core:** increase internal grpc message size limit ([#1205](https://github.com/opentdf/platform/issues/1205)) ([1442b59](https://github.com/opentdf/platform/commit/1442b592be8616649451ba64427f045c82ba6668))
+
+## [0.4.13](https://github.com/opentdf/platform/compare/service/v0.4.12...service/v0.4.13) (2024-07-22)
+
+
+### Features
+
+* **core:** Adds authn time skew config ([#1175](https://github.com/opentdf/platform/issues/1175)) ([adde7c4](https://github.com/opentdf/platform/commit/adde7c48645575cbe57e76b0deb50e6c9b11d192))
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1192](https://github.com/opentdf/platform/issues/1192)) ([dbae4ff](https://github.com/opentdf/platform/commit/dbae4ff4cd4ff53841d123d5086b7fded79efd95))
+* fixed policy binding type ([#1184](https://github.com/opentdf/platform/issues/1184)) ([9800a32](https://github.com/opentdf/platform/commit/9800a32c8d9d83458403e2f87720f7882461fc32))
+
+## [0.4.12](https://github.com/opentdf/platform/compare/service/v0.4.11...service/v0.4.12) (2024-07-14)
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1148](https://github.com/opentdf/platform/issues/1148)) ([efd8d30](https://github.com/opentdf/platform/commit/efd8d30975140ecee1e08e031d0a4dc00f4d57ec))
+* **core:** Autobump service ([#1156](https://github.com/opentdf/platform/issues/1156)) ([00c05b4](https://github.com/opentdf/platform/commit/00c05b49a7f4b7257f7ac66924936a14be5efd13))
+* **core:** Autobump service ([#1159](https://github.com/opentdf/platform/issues/1159)) ([943c7dd](https://github.com/opentdf/platform/commit/943c7ddaf3e0cbb3b9a086df07f292bf636abf57))
+* **core:** Fix autoconfigure with no attributes ([#1141](https://github.com/opentdf/platform/issues/1141)) ([76c2a95](https://github.com/opentdf/platform/commit/76c2a95ad7e0c9c57ebde6b101a908fc32fcd539))
+* **core:** Reduce casbin logs verbosity ([#1144](https://github.com/opentdf/platform/issues/1144)) ([3e77441](https://github.com/opentdf/platform/commit/3e77441b594b6022cb2fb3c8962f8595566baefe))
+* **policy:** mark value members as deprecated within protos ([#1152](https://github.com/opentdf/platform/issues/1152)) ([d18c889](https://github.com/opentdf/platform/commit/d18c8893cdd73344021de638e2d92859a320eed4))
+* **policy:** move policy sql logs to trace level to reduce noise ([#1150](https://github.com/opentdf/platform/issues/1150)) ([b0e6ed3](https://github.com/opentdf/platform/commit/b0e6ed395c9c08790b0ecb9d665f5fbb5d976e7f))
+
 ## [0.4.11](https://github.com/opentdf/platform/compare/service/v0.4.10...service/v0.4.11) (2024-07-11)
 
 

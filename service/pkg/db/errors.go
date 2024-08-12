@@ -13,22 +13,16 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type DBError string //nolint:revive // DBError is a valid name for this type
-
-func (e DBError) Error() string {
-	return string(e)
-}
-
-const (
-	ErrUniqueConstraintViolation DBError = "ErrUniqueConstraintViolation: value must be unique"
-	ErrNotNullViolation          DBError = "ErrNotNullViolation: value cannot be null"
-	ErrForeignKeyViolation       DBError = "ErrForeignKeyViolation: value is referenced by another table"
-	ErrRestrictViolation         DBError = "ErrRestrictViolation: value cannot be deleted due to restriction"
-	ErrNotFound                  DBError = "ErrNotFound: value not found"
-	ErrEnumValueInvalid          DBError = "ErrEnumValueInvalid: not a valid enum value"
-	ErrUUIDInvalid               DBError = "ErrUUIDInvalid: value not a valid UUID"
-	ErrFqnMissingValue           DBError = "ErrFqnMissingValue: FQN must include a value"
-	ErrMissingValue              DBError = "ErrMissingValue: value must be included"
+var (
+	ErrUniqueConstraintViolation = errors.New("ErrUniqueConstraintViolation: value must be unique")
+	ErrNotNullViolation          = errors.New("ErrNotNullViolation: value cannot be null")
+	ErrForeignKeyViolation       = errors.New("ErrForeignKeyViolation: value is referenced by another table")
+	ErrRestrictViolation         = errors.New("ErrRestrictViolation: value cannot be deleted due to restriction")
+	ErrNotFound                  = errors.New("ErrNotFound: value not found")
+	ErrEnumValueInvalid          = errors.New("ErrEnumValueInvalid: not a valid enum value")
+	ErrUUIDInvalid               = errors.New("ErrUUIDInvalid: value not a valid UUID")
+	ErrFqnMissingValue           = errors.New("ErrFqnMissingValue: FQN must include a value")
+	ErrMissingValue              = errors.New("ErrMissingValue: value must be included")
 )
 
 // Get helpful error message for PostgreSQL violation

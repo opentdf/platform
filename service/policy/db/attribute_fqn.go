@@ -162,7 +162,6 @@ func prepareValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy
 			unaltered = &policy.Value{
 				Id:              v.GetId(),
 				Value:           v.GetValue(),
-				Members:         v.GetMembers(),
 				Grants:          v.GetGrants(),
 				Fqn:             fqn,
 				Active:          v.GetActive(),

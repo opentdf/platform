@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.10](https://github.com/opentdf/platform/compare/protocol/go/v0.2.9...protocol/go/v0.2.10) (2024-07-14)
+
+
+### Bug Fixes
+
+* **policy:** mark value members as deprecated within protos ([#1152](https://github.com/opentdf/platform/issues/1152)) ([d18c889](https://github.com/opentdf/platform/commit/d18c8893cdd73344021de638e2d92859a320eed4))
+
 ## [0.2.9](https://github.com/opentdf/platform/compare/protocol/go/v0.2.8...protocol/go/v0.2.9) (2024-07-11)
 
 

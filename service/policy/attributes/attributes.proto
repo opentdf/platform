@@ -182,7 +182,7 @@ message GetAttributeValuesByFqnsResponse {
 }
 
 /*
-   Assign Key Access Server to Attribute and Value
+   Assign Key Access Server (KAS Grant) to Attribute and Value
 */
 
 message AssignKeyAccessServerToAttributeRequest {

@@ -211,6 +211,346 @@ func (q *Queries) GetResourceMappingGroup(ctx context.Context, id string) (Resou
 	return i, err
 }
 
+const listAllKeyAccessServerGrants = `-- name: ListAllKeyAccessServerGrants :many
+SELECT 
+    kas.id AS kas_id, 
+    kas.uri AS kas_uri, 
+    kas.public_key AS kas_public_key,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+        'labels', kas.metadata -> 'labels', 
+        'created_at', kas.created_at, 
+        'updated_at', kas.updated_at
+    )) AS kas_metadata,
+    JSON_BUILD_OBJECT(
+        'attribute_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+            'id', attrkag.attribute_definition_id, 
+            'fqn', fqns_on_attr.fqn
+        )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL), '[]'),
+        'value_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+            'id', valkag.attribute_value_id, 
+            'fqn', fqns_on_vals.fqn
+        )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL), '[]')
+    ) AS grants
+FROM 
+    key_access_servers kas
+LEFT JOIN 
+    attribute_definition_key_access_grants attrkag 
+    ON kas.id = attrkag.key_access_server_id
+LEFT JOIN 
+    attribute_fqns fqns_on_attr 
+    ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id 
+    AND fqns_on_attr.value_id IS NULL
+LEFT JOIN 
+    attribute_value_key_access_grants valkag 
+    ON kas.id = valkag.key_access_server_id
+LEFT JOIN 
+    attribute_fqns fqns_on_vals 
+    ON valkag.attribute_value_id = fqns_on_vals.value_id
+GROUP BY 
+    kas.id
+`
+
+type ListAllKeyAccessServerGrantsRow struct {
+	KasID        string `json:"kas_id"`
+	KasUri       string `json:"kas_uri"`
+	KasPublicKey []byte `json:"kas_public_key"`
+	KasMetadata  []byte `json:"kas_metadata"`
+	Grants       []byte `json:"grants"`
+}
+
+// ListAllKeyAccessServerGrants
+//
+//	SELECT
+//	    kas.id AS kas_id,
+//	    kas.uri AS kas_uri,
+//	    kas.public_key AS kas_public_key,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+//	        'labels', kas.metadata -> 'labels',
+//	        'created_at', kas.created_at,
+//	        'updated_at', kas.updated_at
+//	    )) AS kas_metadata,
+//	    JSON_BUILD_OBJECT(
+//	        'attribute_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+//	            'id', attrkag.attribute_definition_id,
+//	            'fqn', fqns_on_attr.fqn
+//	        )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL), '[]'),
+//	        'value_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+//	            'id', valkag.attribute_value_id,
+//	            'fqn', fqns_on_vals.fqn
+//	        )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL), '[]')
+//	    ) AS grants
+//	FROM
+//	    key_access_servers kas
+//	LEFT JOIN
+//	    attribute_definition_key_access_grants attrkag
+//	    ON kas.id = attrkag.key_access_server_id
+//	LEFT JOIN
+//	    attribute_fqns fqns_on_attr
+//	    ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id
+//	    AND fqns_on_attr.value_id IS NULL
+//	LEFT JOIN
+//	    attribute_value_key_access_grants valkag
+//	    ON kas.id = valkag.key_access_server_id
+//	LEFT JOIN
+//	    attribute_fqns fqns_on_vals
+//	    ON valkag.attribute_value_id = fqns_on_vals.value_id
+//	GROUP BY
+//	    kas.id
+func (q *Queries) ListAllKeyAccessServerGrants(ctx context.Context) ([]ListAllKeyAccessServerGrantsRow, error) {
+	rows, err := q.db.Query(ctx, listAllKeyAccessServerGrants)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAllKeyAccessServerGrantsRow
+	for rows.Next() {
+		var i ListAllKeyAccessServerGrantsRow
+		if err := rows.Scan(
+			&i.KasID,
+			&i.KasUri,
+			&i.KasPublicKey,
+			&i.KasMetadata,
+			&i.Grants,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listKeyAccessServerGrantsByKasId = `-- name: ListKeyAccessServerGrantsByKasId :many
+SELECT 
+    kas.id AS kas_id, 
+    kas.uri AS kas_uri, 
+    kas.public_key AS kas_public_key,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+        'labels', kas.metadata -> 'labels', 
+        'created_at', kas.created_at, 
+        'updated_at', kas.updated_at
+    )) AS kas_metadata,
+    JSON_BUILD_OBJECT(
+        'attribute_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+            'id', attrkag.attribute_definition_id, 
+            'fqn', fqns_on_attr.fqn
+        )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL), '[]'),
+        'value_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+            'id', valkag.attribute_value_id, 
+            'fqn', fqns_on_vals.fqn
+        )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL), '[]')
+    ) AS grants
+FROM 
+    key_access_servers kas
+LEFT JOIN 
+    attribute_definition_key_access_grants attrkag 
+    ON kas.id = attrkag.key_access_server_id
+LEFT JOIN 
+    attribute_fqns fqns_on_attr 
+    ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id 
+    AND fqns_on_attr.value_id IS NULL
+LEFT JOIN 
+    attribute_value_key_access_grants valkag 
+    ON kas.id = valkag.key_access_server_id
+LEFT JOIN 
+    attribute_fqns fqns_on_vals 
+    ON valkag.attribute_value_id = fqns_on_vals.value_id
+WHERE kas.id = $1
+GROUP BY 
+    kas.id
+`
+
+type ListKeyAccessServerGrantsByKasIdRow struct {
+	KasID        string `json:"kas_id"`
+	KasUri       string `json:"kas_uri"`
+	KasPublicKey []byte `json:"kas_public_key"`
+	KasMetadata  []byte `json:"kas_metadata"`
+	Grants       []byte `json:"grants"`
+}
+
+// ListKeyAccessServerGrantsByKasId
+//
+//	SELECT
+//	    kas.id AS kas_id,
+//	    kas.uri AS kas_uri,
+//	    kas.public_key AS kas_public_key,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+//	        'labels', kas.metadata -> 'labels',
+//	        'created_at', kas.created_at,
+//	        'updated_at', kas.updated_at
+//	    )) AS kas_metadata,
+//	    JSON_BUILD_OBJECT(
+//	        'attribute_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+//	            'id', attrkag.attribute_definition_id,
+//	            'fqn', fqns_on_attr.fqn
+//	        )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL), '[]'),
+//	        'value_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+//	            'id', valkag.attribute_value_id,
+//	            'fqn', fqns_on_vals.fqn
+//	        )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL), '[]')
+//	    ) AS grants
+//	FROM
+//	    key_access_servers kas
+//	LEFT JOIN
+//	    attribute_definition_key_access_grants attrkag
+//	    ON kas.id = attrkag.key_access_server_id
+//	LEFT JOIN
+//	    attribute_fqns fqns_on_attr
+//	    ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id
+//	    AND fqns_on_attr.value_id IS NULL
+//	LEFT JOIN
+//	    attribute_value_key_access_grants valkag
+//	    ON kas.id = valkag.key_access_server_id
+//	LEFT JOIN
+//	    attribute_fqns fqns_on_vals
+//	    ON valkag.attribute_value_id = fqns_on_vals.value_id
+//	WHERE kas.id = $1
+//	GROUP BY
+//	    kas.id
+func (q *Queries) ListKeyAccessServerGrantsByKasId(ctx context.Context, id string) ([]ListKeyAccessServerGrantsByKasIdRow, error) {
+	rows, err := q.db.Query(ctx, listKeyAccessServerGrantsByKasId, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListKeyAccessServerGrantsByKasIdRow
+	for rows.Next() {
+		var i ListKeyAccessServerGrantsByKasIdRow
+		if err := rows.Scan(
+			&i.KasID,
+			&i.KasUri,
+			&i.KasPublicKey,
+			&i.KasMetadata,
+			&i.Grants,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listKeyAccessServerGrantsByKasUri = `-- name: ListKeyAccessServerGrantsByKasUri :many
+
+SELECT 
+    kas.id AS kas_id, 
+    kas.uri AS kas_uri, 
+    kas.public_key AS kas_public_key,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+        'labels', kas.metadata -> 'labels', 
+        'created_at', kas.created_at, 
+        'updated_at', kas.updated_at
+    )) AS kas_metadata,
+    JSON_BUILD_OBJECT(
+        'attribute_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+            'id', attrkag.attribute_definition_id, 
+            'fqn', fqns_on_attr.fqn
+        )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL), '[]'),
+        'value_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+            'id', valkag.attribute_value_id, 
+            'fqn', fqns_on_vals.fqn
+        )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL), '[]')
+    ) AS grants
+FROM 
+    key_access_servers kas
+LEFT JOIN 
+    attribute_definition_key_access_grants attrkag 
+    ON kas.id = attrkag.key_access_server_id
+LEFT JOIN 
+    attribute_fqns fqns_on_attr 
+    ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id 
+    AND fqns_on_attr.value_id IS NULL
+LEFT JOIN 
+    attribute_value_key_access_grants valkag 
+    ON kas.id = valkag.key_access_server_id
+LEFT JOIN 
+    attribute_fqns fqns_on_vals 
+    ON valkag.attribute_value_id = fqns_on_vals.value_id
+WHERE kas.uri = $1
+GROUP BY 
+    kas.id
+`
+
+type ListKeyAccessServerGrantsByKasUriRow struct {
+	KasID        string `json:"kas_id"`
+	KasUri       string `json:"kas_uri"`
+	KasPublicKey []byte `json:"kas_public_key"`
+	KasMetadata  []byte `json:"kas_metadata"`
+	Grants       []byte `json:"grants"`
+}
+
+// --------------------------------------------------------------
+// ATTRIBUTES
+// --------------------------------------------------------------
+//
+//	SELECT
+//	    kas.id AS kas_id,
+//	    kas.uri AS kas_uri,
+//	    kas.public_key AS kas_public_key,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+//	        'labels', kas.metadata -> 'labels',
+//	        'created_at', kas.created_at,
+//	        'updated_at', kas.updated_at
+//	    )) AS kas_metadata,
+//	    JSON_BUILD_OBJECT(
+//	        'attribute_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+//	            'id', attrkag.attribute_definition_id,
+//	            'fqn', fqns_on_attr.fqn
+//	        )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL), '[]'),
+//	        'value_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+//	            'id', valkag.attribute_value_id,
+//	            'fqn', fqns_on_vals.fqn
+//	        )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL), '[]')
+//	    ) AS grants
+//	FROM
+//	    key_access_servers kas
+//	LEFT JOIN
+//	    attribute_definition_key_access_grants attrkag
+//	    ON kas.id = attrkag.key_access_server_id
+//	LEFT JOIN
+//	    attribute_fqns fqns_on_attr
+//	    ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id
+//	    AND fqns_on_attr.value_id IS NULL
+//	LEFT JOIN
+//	    attribute_value_key_access_grants valkag
+//	    ON kas.id = valkag.key_access_server_id
+//	LEFT JOIN
+//	    attribute_fqns fqns_on_vals
+//	    ON valkag.attribute_value_id = fqns_on_vals.value_id
+//	WHERE kas.uri = $1
+//	GROUP BY
+//	    kas.id
+func (q *Queries) ListKeyAccessServerGrantsByKasUri(ctx context.Context, uri string) ([]ListKeyAccessServerGrantsByKasUriRow, error) {
+	rows, err := q.db.Query(ctx, listKeyAccessServerGrantsByKasUri, uri)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListKeyAccessServerGrantsByKasUriRow
+	for rows.Next() {
+		var i ListKeyAccessServerGrantsByKasUriRow
+		if err := rows.Scan(
+			&i.KasID,
+			&i.KasUri,
+			&i.KasPublicKey,
+			&i.KasMetadata,
+			&i.Grants,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listKeyAccessServers = `-- name: ListKeyAccessServers :many
 
 SELECT id, uri, public_key,

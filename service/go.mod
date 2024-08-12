@@ -21,8 +21,8 @@ require (
 	github.com/opentdf/platform/lib/fixtures v0.2.7
 	github.com/opentdf/platform/lib/flattening v0.1.1
 	github.com/opentdf/platform/lib/ocrypto v0.1.5
-	github.com/opentdf/platform/protocol/go v0.2.10
-	github.com/opentdf/platform/sdk v0.3.4
+	github.com/opentdf/platform/protocol/go v0.2.11
+	github.com/opentdf/platform/sdk v0.3.5
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
@@ -61,12 +61,14 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
+	github.com/gowebpki/jcs v1.0.1 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/tidwall/gjson v1.17.1 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
+	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 )
 
 require (

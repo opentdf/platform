@@ -8,7 +8,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"errors"
 	"math/big"
 	"net/url"
 	"os"
@@ -22,23 +21,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-// Skips if not in CI and failure due to library missing
-func maybeSkip(t *testing.T, err error) {
-	if os.Getenv("CI") != "" {
-		return
-	}
-	if errors.Is(err, security.ErrHSMNotFound) {
-		t.Skip(`WARNING Unable to load PKCS11 library
-
-		Please install a PKCS 11 library, such as
-
-			brew install softhsm
-
-
-		`)
-	}
-}
 
 func TestExportRsaPublicKeyAsPemStrSuccess(t *testing.T) {
 	mockKey := &rsa.PublicKey{
@@ -126,7 +108,6 @@ func TestStandardCertificateHandlerEmpty(t *testing.T) {
 
 func mustNewCryptoProvider(t *testing.T, configStandard security.Config) security.CryptoProvider {
 	c, err := security.NewCryptoProvider(configStandard)
-	maybeSkip(t, err)
 	require.NoError(t, err)
 	require.NotNil(t, c)
 	return c

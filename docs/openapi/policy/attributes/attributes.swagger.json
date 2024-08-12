@@ -631,7 +631,8 @@
         "keyAccessServerId": {
           "type": "string"
         }
-      }
+      },
+      "title": "Replacing with AttributeKeyAccessServerGrant\nDeprecated"
     },
     "attributesCreateAttributeRequest": {
       "type": "object",
@@ -784,7 +785,8 @@
         "keyAccessServerId": {
           "type": "string"
         }
-      }
+      },
+      "title": "Replacing with ValueKeyAccessServerGrant\nDeprecated"
     },
     "commonActiveStateEnum": {
       "type": "string",

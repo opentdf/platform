@@ -12,14 +12,30 @@ import "policy/selectors.proto";
    Key Access Server Grants
 */
 
+// Replacing with AttributeKeyAccessServerGrant
+// Deprecated
 message AttributeKeyAccessServer {
   string attribute_id = 1;
   string key_access_server_id = 2;
 }
 
+// Replacing with ValueKeyAccessServerGrant
+// Deprecated
 message ValueKeyAccessServer {
   string value_id = 1;
   string key_access_server_id = 2;
+}
+
+message AttributeKeyAccessServerGrant {
+  string attribute_id = 1;
+  string attribute_fqn = 2;
+  KeyAccessServer key_access_server = 3;
+}
+
+message ValueKeyAccessServerGrant {
+  string value_id = 1;
+  string value_fqn = 2;
+  KeyAccessServer key_access_server = 3;
 }
 
 /*
@@ -182,7 +198,7 @@ message GetAttributeValuesByFqnsResponse {
 }
 
 /*
-   Assign Key Access Server to Attribute and Value
+   Assign Key Access Server (KAS Grant) to Attribute and Value
 */
 
 message AssignKeyAccessServerToAttributeRequest {
@@ -215,6 +231,25 @@ message RemoveKeyAccessServerFromValueRequest {
 
 message RemoveKeyAccessServerFromValueResponse {
   ValueKeyAccessServer value_key_access_server = 1;
+}
+
+// LIST of KAS Grants returns flat response of grants to all policy objects.
+// It does not employ selectors or build the attribute tree relation. If grants
+// to a known namespace, attribute, or value are needed, use the respective
+// Get request to the specific policy object.
+message ListKeyAccessServerGrantsRequest {
+  // Optional
+  // Filter LIST by either ID or URI of a registered Key Access Server.
+  // If neither is provided, grants from all registered KASs to policy attribute objects are returned.
+  string kas_id = 1;
+  string kas_uri = 2;
+}
+
+message ListKeyAccessServerGrantsResponse {
+  // index 1 is reserved for the outcome of ADR [https://github.com/opentdf/platform/issues/1296]
+  // repeated NamespaceKeyAccessServer namespace_grants = 1;
+  repeated AttributeKeyAccessServerGrant attribute_grants = 2;
+  repeated ValueKeyAccessServerGrant value_grants = 3;
 }
 
 ///

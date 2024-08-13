@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 
@@ -510,42 +511,108 @@ func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {
 			PublicKey: &policy.PublicKey_Local{Local: "public"},
 		},
 	}
-	createdKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kas)
+	firstKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kas)
 	s.Require().NoError(err)
-	s.NotNil(createdKAS)
+	s.NotNil(firstKAS)
 
 	// create an attribute
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "test__list_all_key_access_server_grants",
 		NamespaceId: fixtureNamespaceID,
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values:      []string{"value1"},
 	}
 	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
 	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 
-	// add a KAS to the attribute
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	value := got.GetValues()[0]
+
+	// add first KAS to the attribute
 	aKas := &attributes.AttributeKeyAccessServer{
 		AttributeId:       createdAttr.GetId(),
-		KeyAccessServerId: createdKAS.GetId(),
+		KeyAccessServerId: firstKAS.GetId(),
 	}
 	createdGrant, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, aKas)
 	s.Require().NoError(err)
 	s.NotNil(createdGrant)
+
+	// add another KAS and grant it to the value
+	second := &kasregistry.CreateKeyAccessServerRequest{
+		Uri: "https://listingkasgrants.com/another/kas/uri",
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Local{Local: "public"},
+		},
+	}
+	secondKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, second)
+	s.Require().NoError(err)
+	s.NotNil(secondKAS)
+
+	// assign a grant of the second KAS to the value
+	bKas := &attributes.ValueKeyAccessServer{
+		ValueId:           value.GetId(),
+		KeyAccessServerId: secondKAS.GetId(),
+	}
+	valGrant, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, bKas)
+	s.Require().NoError(err)
+	s.NotNil(valGrant)
+
+	// grant each KAS to the namespace
+	nsKas := &namespaces.NamespaceKeyAccessServer{
+		NamespaceId:       fixtureNamespaceID,
+		KeyAccessServerId: firstKAS.GetId(),
+	}
+	nsGrant, err := s.db.PolicyClient.AssignKeyAccessServerToNamespace(s.ctx, nsKas)
+	s.Require().NoError(err)
+	s.NotNil(nsGrant)
+
+	nsAnotherKas := &namespaces.NamespaceKeyAccessServer{
+		NamespaceId:       fixtureNamespaceID,
+		KeyAccessServerId: secondKAS.GetId(),
+	}
+	nsAnotherGrant, err := s.db.PolicyClient.AssignKeyAccessServerToNamespace(s.ctx, nsAnotherKas)
+	s.Require().NoError(err)
+	s.NotNil(nsAnotherGrant)
 
 	// list all grants
 	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, "", "")
 	s.Require().NoError(err)
 	s.NotNil(listedGrants)
 	s.GreaterOrEqual(len(listedGrants), 1)
-	found := false
+
 	for _, g := range listedGrants {
-		if g.GetKeyAccessServer().GetId() == createdKAS.GetId() {
-			found = true
-			break
+		if g.GetKeyAccessServer().GetId() == firstKAS.GetId() {
+			// should have expected attribute grant
+			grantedAttrIds := make([]string, len(g.GetAttributeGrants()))
+			for i, a := range g.GetAttributeGrants() {
+				grantedAttrIds[i] = a.GetId()
+			}
+			s.Contains(grantedAttrIds, createdAttr.GetId())
+			// should have expected namespace grant
+			grantedNsIds := make([]string, len(g.GetNamespaceGrants()))
+			for i, n := range g.GetNamespaceGrants() {
+				grantedNsIds[i] = n.GetId()
+			}
+			s.Contains(grantedNsIds, fixtureNamespaceID)
+		}
+		if g.GetKeyAccessServer().GetId() == secondKAS.GetId() {
+			// should have expected value grant
+			grantedValIds := make([]string, len(g.GetValueGrants()))
+			for i, v := range g.GetValueGrants() {
+				grantedValIds[i] = v.GetId()
+			}
+			s.Contains(grantedValIds, value.GetId())
+			// should have expected namespace grant
+			grantedNsIds := make([]string, len(g.GetNamespaceGrants()))
+			for i, n := range g.GetNamespaceGrants() {
+				grantedNsIds[i] = n.GetId()
+			}
+			s.Contains(grantedNsIds, fixtureNamespaceID)
 		}
 	}
-	s.True(found)
 }
 
 func TestKasRegistrySuite(t *testing.T) {

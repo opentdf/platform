@@ -82,6 +82,11 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		opt(cfg)
 	}
 
+	// If IPC is enabled, we need to have a core connection
+	if cfg.ipc && cfg.coreConn == nil {
+		return nil, errors.New("core connection is required for IPC mode")
+	}
+
 	// If KAS session key is not provided, generate a new one
 	if cfg.kasSessionKey == nil {
 		key, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
@@ -96,6 +101,40 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	// Add extra grpc dial options if provided. This is useful during tests.
 	if len(cfg.extraDialOptions) > 0 {
 		dialOptions = append(dialOptions, cfg.extraDialOptions...)
+	}
+
+	// IF IPC is disabled we build a connection to the platform
+	if !cfg.ipc {
+		platformEndpoint, err = SanitizePlatformEndpoint(platformEndpoint)
+		if err != nil {
+			return nil, errors.Join(ErrPlatformEndpointMalformed, err)
+		}
+	}
+
+	// If platformConfiguration is not provided, fetch it from the platform
+	if cfg.platformConfiguration == nil { //nolint:nestif // Most of checks are for errors
+		var pcfg PlatformConfiguration
+		var err error
+
+		if cfg.ipc {
+			pcfg, err = getPlatformConfiguration(cfg.coreConn)
+			if err != nil {
+				return nil, errors.Join(ErrPlatformConfigFailed, err)
+			}
+		} else {
+			pcfg, err = fetchPlatformConfiguration(platformEndpoint, dialOptions)
+			if err != nil {
+				return nil, errors.Join(ErrPlatformConfigFailed, err)
+			}
+		}
+		cfg.platformConfiguration = pcfg
+
+		if cfg.tokenEndpoint == "" {
+			cfg.tokenEndpoint, err = getTokenEndpoint(*cfg)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	var uci []grpc.UnaryClientInterceptor
@@ -114,45 +153,13 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	dialOptions = append(dialOptions, grpc.WithChainUnaryInterceptor(uci...))
 
-	// IF IPC is disabled we build a connection to the platform
-	if !cfg.ipc {
-		platformEndpoint, err = SanitizePlatformEndpoint(platformEndpoint)
-		if err != nil {
-			return nil, errors.Join(ErrPlatformEndpointMalformed, err)
-		}
-
-		platformConn, err = grpc.Dial(platformEndpoint, dialOptions...)
-		if err != nil {
-			return nil, errors.Join(ErrGrpcDialFailed, err)
-		}
-	}
-
-	// If IPC is enabled, we need to have a core connection
-	if cfg.ipc && cfg.coreConn == nil {
-		return nil, errors.New("core connection is required for IPC mode")
-	}
-
 	// If coreConn is provided, use it as the platform connection
 	if cfg.coreConn != nil {
 		platformConn = cfg.coreConn
-	}
-
-	// If platformConfiguration is not provided, fetch it from the platform
-	if cfg.platformConfiguration == nil { //nolint:nestif // Most of checks are for errors
-		var pcfg PlatformConfiguration
-		var err error
-
-		pcfg, err = getPlatformConfiguration(platformConn)
+	} else {
+		platformConn, err = grpc.Dial(platformEndpoint, dialOptions...)
 		if err != nil {
-			return nil, errors.Join(ErrPlatformConfigFailed, err)
-		}
-		cfg.platformConfiguration = pcfg
-
-		if cfg.tokenEndpoint == "" {
-			cfg.tokenEndpoint, err = getTokenEndpoint(*cfg)
-			if err != nil {
-				return nil, err
-			}
+			return nil, errors.Join(ErrGrpcDialFailed, err)
 		}
 	}
 

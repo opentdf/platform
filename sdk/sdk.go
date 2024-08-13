@@ -66,8 +66,8 @@ type SDK struct {
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	var (
-		defaultConn *grpc.ClientConn // Connection to the platform if no other connection is provided
-		err         error
+		platformConn *grpc.ClientConn // Connection to the platform
+		err          error
 	)
 
 	// Set default options
@@ -82,13 +82,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		opt(cfg)
 	}
 
-	if !cfg.ipc {
-		platformEndpoint, err = SanitizePlatformEndpoint(platformEndpoint)
-		if err != nil {
-			return nil, errors.Join(ErrPlatformEndpointMalformed, err)
-		}
-	}
-
+	// If KAS session key is not provided, generate a new one
 	if cfg.kasSessionKey == nil {
 		key, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
 		if err != nil {
@@ -104,17 +98,51 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		dialOptions = append(dialOptions, cfg.extraDialOptions...)
 	}
 
+	var uci []grpc.UnaryClientInterceptor
+
+	// Add request ID interceptor
+	uci = append(uci, audit.MetadataAddingClientInterceptor)
+
+	accessTokenSource, err := buildIDPTokenSource(cfg)
+	if err != nil {
+		return nil, err
+	}
+	if accessTokenSource != nil {
+		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource, cfg.tlsConfig)
+		uci = append(uci, interceptor.AddCredentials)
+	}
+
+	dialOptions = append(dialOptions, grpc.WithChainUnaryInterceptor(uci...))
+
+	// IF IPC is disabled we build a connection to the platform
+	if !cfg.ipc {
+		platformEndpoint, err = SanitizePlatformEndpoint(platformEndpoint)
+		if err != nil {
+			return nil, errors.Join(ErrPlatformEndpointMalformed, err)
+		}
+
+		platformConn, err = grpc.Dial(platformEndpoint, dialOptions...)
+		if err != nil {
+			return nil, errors.Join(ErrGrpcDialFailed, err)
+		}
+	}
+
+	// If IPC is enabled, we need to have a core connection
+	if cfg.ipc && cfg.coreConn == nil {
+		return nil, errors.New("core connection is required for IPC mode")
+	}
+
+	// If coreConn is provided, use it as the platform connection
+	if cfg.coreConn != nil {
+		platformConn = cfg.coreConn
+	}
+
 	// If platformConfiguration is not provided, fetch it from the platform
-	if cfg.platformConfiguration == nil && platformEndpoint != "" { //nolint:nestif // Most of checks are for errors
+	if cfg.platformConfiguration == nil { //nolint:nestif // Most of checks are for errors
 		var pcfg PlatformConfiguration
 		var err error
 
-		if cfg.wellknownConn != nil {
-			pcfg, err = getPlatformConfiguration(cfg.wellknownConn)
-		} else {
-			pcfg, err = fetchPlatformConfiguration(platformEndpoint, dialOptions)
-		}
-
+		pcfg, err = getPlatformConfiguration(platformConn)
 		if err != nil {
 			return nil, errors.Join(ErrPlatformConfigFailed, err)
 		}
@@ -128,45 +156,21 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		}
 	}
 
-	var uci []grpc.UnaryClientInterceptor
-
-	accessTokenSource, err := buildIDPTokenSource(cfg)
-	if err != nil {
-		return nil, err
-	}
-	if accessTokenSource != nil {
-		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource, cfg.tlsConfig)
-		uci = append(uci, interceptor.AddCredentials)
-	}
-
-	// Add request ID interceptor
-	uci = append(uci, audit.MetadataAddingClientInterceptor)
-
-	dialOptions = append(dialOptions, grpc.WithChainUnaryInterceptor(uci...))
-
-	if platformEndpoint != "" {
-		var err error
-		defaultConn, err = grpc.Dial(platformEndpoint, dialOptions...)
-		if err != nil {
-			return nil, errors.Join(ErrGrpcDialFailed, err)
-		}
-	}
-
 	return &SDK{
 		config:                  *cfg,
 		kasKeyCache:             newKasKeyCache(),
-		conn:                    defaultConn,
+		conn:                    platformConn,
 		dialOptions:             dialOptions,
 		tokenSource:             accessTokenSource,
-		Attributes:              attributes.NewAttributesServiceClient(selectConn(cfg.policyConn, defaultConn)),
-		Namespaces:              namespaces.NewNamespaceServiceClient(selectConn(cfg.policyConn, defaultConn)),
-		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(selectConn(cfg.policyConn, defaultConn)),
-		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(selectConn(cfg.policyConn, defaultConn)),
-		Unsafe:                  unsafe.NewUnsafeServiceClient(selectConn(cfg.policyConn, defaultConn)),
-		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(selectConn(cfg.policyConn, defaultConn)),
-		Authorization:           authorization.NewAuthorizationServiceClient(selectConn(cfg.authorizationConn, defaultConn)),
-		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(selectConn(cfg.entityresolutionConn, defaultConn)),
-		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(selectConn(cfg.wellknownConn, defaultConn)),
+		Attributes:              attributes.NewAttributesServiceClient(platformConn),
+		Namespaces:              namespaces.NewNamespaceServiceClient(platformConn),
+		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(platformConn),
+		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(platformConn),
+		Unsafe:                  unsafe.NewUnsafeServiceClient(platformConn),
+		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(platformConn),
+		Authorization:           authorization.NewAuthorizationServiceClient(platformConn),
+		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(platformConn),
+		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(platformConn),
 	}, nil
 }
 
@@ -414,13 +418,4 @@ func getTokenEndpoint(c config) (string, error) {
 	}
 
 	return tokenEndpoint, nil
-}
-
-// selectConn returns the preferred connection if it is not nil, otherwise it returns the fallback connection
-// which is the default connection built to the platform.
-func selectConn(preferred, fallback *grpc.ClientConn) *grpc.ClientConn {
-	if preferred != nil {
-		return preferred
-	}
-	return fallback
 }

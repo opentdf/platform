@@ -22,18 +22,19 @@ type config struct {
 	tokenExchange           *oauth.TokenExchangeInfo
 	tokenEndpoint           string
 	scopes                  []string
-	policyConn              *grpc.ClientConn
-	authorizationConn       *grpc.ClientConn
-	entityresolutionConn    *grpc.ClientConn
+	policyConn              *grpc.ClientConn // Deprecated
+	authorizationConn       *grpc.ClientConn // Deprecated
+	entityresolutionConn    *grpc.ClientConn // Deprecated
 	extraDialOptions        []grpc.DialOption
 	certExchange            *oauth.CertExchangeInfo
-	wellknownConn           *grpc.ClientConn
+	wellknownConn           *grpc.ClientConn // Deprecated
 	platformConfiguration   PlatformConfiguration
 	kasSessionKey           *ocrypto.RsaKeyPair
 	dpopKey                 *ocrypto.RsaKeyPair
 	ipc                     bool
 	tdfFeatures             tdfFeatures
 	customAccessTokenSource auth.AccessTokenSource
+	coreConn                *grpc.ClientConn
 }
 
 // Options specific to TDF protocol features
@@ -99,18 +100,21 @@ func withCustomAccessTokenSource(a auth.AccessTokenSource) Option {
 	}
 }
 
+// Deprecated: Use WithCustomCoreConnection instead
 func WithCustomPolicyConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
 		c.policyConn = conn
 	}
 }
 
+// Deprecated: Use WithCustomCoreConnection instead
 func WithCustomAuthorizationConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
 		c.authorizationConn = conn
 	}
 }
 
+// Deprecated: Use WithCustomCoreConnection instead
 func WithCustomEntityResolutionConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
 		c.entityresolutionConn = conn
@@ -181,5 +185,12 @@ func WithIPC() Option {
 func WithNoKIDInKAO() Option {
 	return func(c *config) {
 		c.tdfFeatures.noKID = true
+	}
+}
+
+// WithCoreConnection returns an Option that sets up a connection to the core platform
+func WithCustomCoreConnection(conn *grpc.ClientConn) Option {
+	return func(c *config) {
+		c.coreConn = conn
 	}
 }

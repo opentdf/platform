@@ -159,6 +159,7 @@ func Start(f ...StartOptions) error {
 		sdkOptions = append(sdkOptions, sdk.WithCustomPolicyConnection(otdf.GRPCInProcess.Conn()))
 		sdkOptions = append(sdkOptions, sdk.WithCustomAuthorizationConnection(otdf.GRPCInProcess.Conn()))
 		sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(otdf.GRPCInProcess.Conn()))
+		sdkOptions = append(sdkOptions, sdk.WithCustomWellknownConnection(otdf.GRPCInProcess.Conn()))
 
 		client, err = sdk.New("", sdkOptions...)
 		if err != nil {

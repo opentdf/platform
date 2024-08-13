@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.6](https://github.com/opentdf/platform/compare/sdk/v0.3.5...sdk/v0.3.6) (2024-08-13)
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1336](https://github.com/opentdf/platform/issues/1336)) ([e55ac48](https://github.com/opentdf/platform/commit/e55ac484d64f81cb059268af58ceb3d9850da041))
+
 ## [0.3.5](https://github.com/opentdf/platform/compare/sdk/v0.3.4...sdk/v0.3.5) (2024-08-12)
 
 

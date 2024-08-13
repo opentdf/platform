@@ -18,6 +18,9 @@ message Namespace {
   google.protobuf.BoolValue active = 4;
 
   common.Metadata metadata = 5;
+
+  // KAS grants for the namespace
+  repeated KeyAccessServer grants = 6;
 }
 
 message Attribute {

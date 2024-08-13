@@ -842,6 +842,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.resourcemapping.GetResourceMappingGroupByFQNRequest"><span class="badge">M</span>GetResourceMappingGroupByFQNRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.GetResourceMappingGroupByFQNResponse"><span class="badge">M</span>GetResourceMappingGroupByFQNResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.resourcemapping.GetResourceMappingGroupRequest"><span class="badge">M</span>GetResourceMappingGroupRequest</a>
                 </li>
               
@@ -6154,6 +6162,54 @@ Namespace &lt;&gt; Key Access Server RPCs
 
         
       
+        <h3 id="policy.resourcemapping.GetResourceMappingGroupByFQNRequest">GetResourceMappingGroupByFQNRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemapping.GetResourceMappingGroupByFQNResponse">GetResourceMappingGroupByFQNResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>resource_mapping_group</td>
+                  <td><a href="#policy.ResourceMappingGroup">policy.ResourceMappingGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.resourcemapping.GetResourceMappingGroupRequest">GetResourceMappingGroupRequest</h3>
         <p></p>
 
@@ -6486,6 +6542,13 @@ Namespace &lt;&gt; Key Access Server RPCs
               </tr>
             
               <tr>
+                <td>GetResourceMappingGroupByFQN</td>
+                <td><a href="#policy.resourcemapping.GetResourceMappingGroupByFQNRequest">GetResourceMappingGroupByFQNRequest</a></td>
+                <td><a href="#policy.resourcemapping.GetResourceMappingGroupByFQNResponse">GetResourceMappingGroupByFQNResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
                 <td>CreateResourceMappingGroup</td>
                 <td><a href="#policy.resourcemapping.CreateResourceMappingGroupRequest">CreateResourceMappingGroupRequest</a></td>
                 <td><a href="#policy.resourcemapping.CreateResourceMappingGroupResponse">CreateResourceMappingGroupResponse</a></td>
@@ -6575,6 +6638,16 @@ Namespace &lt;&gt; Key Access Server RPCs
                 <td>GetResourceMappingGroup</td>
                 <td>GET</td>
                 <td>/resource-mapping-groups/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetResourceMappingGroupByFQN</td>
+                <td>GET</td>
+                <td>/resource-mapping-groups/fqn/{fqn}</td>
                 <td></td>
               </tr>
               

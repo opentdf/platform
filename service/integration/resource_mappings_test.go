@@ -109,6 +109,22 @@ func (s *ResourceMappingsSuite) Test_GetResourceMappingGroupWithUnknownIdFails()
 	s.Nil(rmGroup)
 }
 
+func (s *ResourceMappingsSuite) Test_GetResourceMappingByFQN() {
+	namespace := s.getExampleDotComNamespace()
+	group := s.f.GetResourceMappingGroupKey("example.com_ns_group_1")
+	fqn := fmt.Sprintf("https://%s/resm/%s", namespace.Name, group.Name)
+
+	req := &resourcemapping.GetResourceMappingGroupByFQNRequest{
+		Fqn: fqn,
+	}
+	gotGroup, err := s.db.PolicyClient.GetResourceMappingGroupByFQN(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(gotGroup)
+	s.Equal(group.ID, gotGroup.GetId())
+	s.Equal(group.NamespaceID, gotGroup.GetNamespaceId())
+	s.Equal(group.Name, gotGroup.GetName())
+}
+
 func (s *ResourceMappingsSuite) Test_CreateResourceMappingGroup() {
 	req := &resourcemapping.CreateResourceMappingGroupRequest{
 		NamespaceId: s.getExampleDotComNamespace().ID,

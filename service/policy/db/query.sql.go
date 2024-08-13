@@ -112,6 +112,31 @@ func (q *Queries) DeleteResourceMappingGroup(ctx context.Context, id string) (in
 	return result.RowsAffected(), nil
 }
 
+const findResourceMappingGroup = `-- name: FindResourceMappingGroup :one
+SELECT g.id, g.namespace_id, g.name
+FROM resource_mapping_groups g
+LEFT JOIN attribute_namespaces ns ON ns.id = g.namespace_id
+WHERE ns.name = LOWER($1) AND g.name = LOWER($2)
+`
+
+type FindResourceMappingGroupParams struct {
+	Namespace string `json:"namespace"`
+	Name      string `json:"name"`
+}
+
+// FindResourceMappingGroup
+//
+//	SELECT g.id, g.namespace_id, g.name
+//	FROM resource_mapping_groups g
+//	LEFT JOIN attribute_namespaces ns ON ns.id = g.namespace_id
+//	WHERE ns.name = LOWER($1) AND g.name = LOWER($2)
+func (q *Queries) FindResourceMappingGroup(ctx context.Context, arg FindResourceMappingGroupParams) (ResourceMappingGroup, error) {
+	row := q.db.QueryRow(ctx, findResourceMappingGroup, arg.Namespace, arg.Name)
+	var i ResourceMappingGroup
+	err := row.Scan(&i.ID, &i.NamespaceID, &i.Name)
+	return i, err
+}
+
 const getKeyAccessServer = `-- name: GetKeyAccessServer :one
 SELECT id, uri, public_key,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata

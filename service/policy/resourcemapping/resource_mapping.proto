@@ -26,6 +26,14 @@ message GetResourceMappingGroupResponse {
   ResourceMappingGroup resource_mapping_group = 1;
 }
 
+message GetResourceMappingGroupByFQNRequest {
+  string fqn = 1 [(buf.validate.field).required = true];
+}
+
+message GetResourceMappingGroupByFQNResponse {
+  ResourceMappingGroup resource_mapping_group = 1;
+}
+
 message CreateResourceMappingGroupRequest {
   string namespace_id = 1 [(buf.validate.field).required = true];
   string name = 2 [(buf.validate.field).required = true];
@@ -152,6 +160,10 @@ service ResourceMappingService {
 
   rpc GetResourceMappingGroup(GetResourceMappingGroupRequest) returns (GetResourceMappingGroupResponse) {
     option (google.api.http) = {get: "/resource-mapping-groups/{id}"};
+  }
+
+  rpc GetResourceMappingGroupByFQN(GetResourceMappingGroupByFQNRequest) returns (GetResourceMappingGroupByFQNResponse) {
+    option (google.api.http) = {get: "/resource-mapping-groups/fqn/{fqn}"};
   }
 
   rpc CreateResourceMappingGroup(CreateResourceMappingGroupRequest) returns (CreateResourceMappingGroupResponse) {

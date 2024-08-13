@@ -2,7 +2,9 @@ package db
 
 import (
 	"context"
+	"errors"
 	"log/slog"
+	"regexp"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
@@ -21,6 +23,9 @@ import (
 
  NOTE: uses sqlc instead of squirrel
 */
+
+// todo: this is very temporary, will be replaced with a more robust solution
+var validFQNRegex = regexp.MustCompile(`^(http|https):\/\/(\S+)\/resm\/(\S+)$`)
 
 func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context) ([]*policy.ResourceMappingGroup, error) {
 	list, err := c.Queries.ListResourceMappingGroups(ctx)
@@ -43,6 +48,31 @@ func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context) ([]*polic
 
 func (c PolicyDBClient) GetResourceMappingGroup(ctx context.Context, id string) (*policy.ResourceMappingGroup, error) {
 	rmGroup, err := c.Queries.GetResourceMappingGroup(ctx, id)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return &policy.ResourceMappingGroup{
+		Id:          rmGroup.ID,
+		NamespaceId: rmGroup.NamespaceID,
+		Name:        rmGroup.Name,
+	}, nil
+}
+
+func (c PolicyDBClient) GetResourceMappingGroupByFQN(ctx context.Context, r *resourcemapping.GetResourceMappingGroupByFQNRequest) (*policy.ResourceMappingGroup, error) {
+	// todo: cleanup later when we have an FQN parsing engine
+	matches := validFQNRegex.FindStringSubmatch(r.GetFqn())
+	if len(matches) < 3 {
+		// regex should have 3 matches if valid
+		return nil, errors.Join(db.ErrMissingValue, errors.New("error: valid FQN format of https://<namespace>/resm/<unique_name> must be provided"))
+	}
+
+	namespace, name := matches[2], matches[3]
+
+	rmGroup, err := c.Queries.FindResourceMappingGroup(ctx, FindResourceMappingGroupParams{
+		Namespace: namespace,
+		Name:      name,
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

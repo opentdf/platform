@@ -61,6 +61,17 @@ func (s ResourceMappingService) GetResourceMappingGroup(ctx context.Context, req
 	}, nil
 }
 
+func (s ResourceMappingService) GetResourceMappingGroupByFQN(ctx context.Context, req *resourcemapping.GetResourceMappingGroupByFQNRequest) (*resourcemapping.GetResourceMappingGroupByFQNResponse, error) {
+	rmGroup, err := s.dbClient.GetResourceMappingGroupByFQN(ctx, req)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("fqn", req.GetFqn()))
+	}
+
+	return &resourcemapping.GetResourceMappingGroupByFQNResponse{
+		ResourceMappingGroup: rmGroup,
+	}, nil
+}
+
 func (s ResourceMappingService) CreateResourceMappingGroup(ctx context.Context, req *resourcemapping.CreateResourceMappingGroupRequest) (*resourcemapping.CreateResourceMappingGroupResponse, error) {
 	rmGroup, err := s.dbClient.CreateResourceMappingGroup(ctx, req)
 	if err != nil {

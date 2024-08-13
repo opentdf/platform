@@ -36,6 +36,69 @@ func NewRegistration() serviceregistry.Registration {
 }
 
 /*
+	Resource Mapping Groups
+*/
+
+func (s ResourceMappingService) ListResourceMappingGroups(ctx context.Context, _ *resourcemapping.ListResourceMappingGroupsRequest) (*resourcemapping.ListResourceMappingGroupsResponse, error) {
+	rmGroups, err := s.dbClient.ListResourceMappingGroups(ctx)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
+	}
+
+	return &resourcemapping.ListResourceMappingGroupsResponse{
+		ResourceMappingGroups: rmGroups,
+	}, nil
+}
+
+func (s ResourceMappingService) GetResourceMappingGroup(ctx context.Context, req *resourcemapping.GetResourceMappingGroupRequest) (*resourcemapping.GetResourceMappingGroupResponse, error) {
+	rmGroup, err := s.dbClient.GetResourceMappingGroup(ctx, req.GetId())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+	}
+
+	return &resourcemapping.GetResourceMappingGroupResponse{
+		ResourceMappingGroup: rmGroup,
+	}, nil
+}
+
+func (s ResourceMappingService) CreateResourceMappingGroup(ctx context.Context, req *resourcemapping.CreateResourceMappingGroupRequest) (*resourcemapping.CreateResourceMappingGroupResponse, error) {
+	rmGroup, err := s.dbClient.CreateResourceMappingGroup(ctx, req)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("resourceMappingGroup", req.String()))
+	}
+
+	return &resourcemapping.CreateResourceMappingGroupResponse{
+		ResourceMappingGroup: rmGroup,
+	}, nil
+}
+
+func (s ResourceMappingService) UpdateResourceMappingGroup(ctx context.Context, req *resourcemapping.UpdateResourceMappingGroupRequest) (*resourcemapping.UpdateResourceMappingGroupResponse, error) {
+	id := req.GetId()
+
+	rmGroup, err := s.dbClient.UpdateResourceMappingGroup(ctx, id, req)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", id), slog.String("resourceMappingGroup", req.String()))
+	}
+
+	return &resourcemapping.UpdateResourceMappingGroupResponse{
+		ResourceMappingGroup: rmGroup,
+	}, nil
+}
+
+func (s ResourceMappingService) DeleteResourceMappingGroup(ctx context.Context, req *resourcemapping.DeleteResourceMappingGroupRequest) (*resourcemapping.DeleteResourceMappingGroupResponse, error) {
+	id := req.GetId()
+
+	rmGroup, err := s.dbClient.DeleteResourceMappingGroup(ctx, id)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", id))
+	}
+
+	return &resourcemapping.DeleteResourceMappingGroupResponse{
+		ResourceMappingGroup: rmGroup,
+	}, nil
+}
+
+/*
 	Resource Mappings
 */
 

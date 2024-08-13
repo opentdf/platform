@@ -790,11 +790,27 @@
             <ul>
               
                 <li>
+                  <a href="#policy.resourcemapping.CreateResourceMappingGroupRequest"><span class="badge">M</span>CreateResourceMappingGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.CreateResourceMappingGroupResponse"><span class="badge">M</span>CreateResourceMappingGroupResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.resourcemapping.CreateResourceMappingRequest"><span class="badge">M</span>CreateResourceMappingRequest</a>
                 </li>
               
                 <li>
                   <a href="#policy.resourcemapping.CreateResourceMappingResponse"><span class="badge">M</span>CreateResourceMappingResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.DeleteResourceMappingGroupRequest"><span class="badge">M</span>DeleteResourceMappingGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.DeleteResourceMappingGroupResponse"><span class="badge">M</span>DeleteResourceMappingGroupResponse</a>
                 </li>
               
                 <li>
@@ -806,6 +822,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.resourcemapping.GetResourceMappingGroupRequest"><span class="badge">M</span>GetResourceMappingGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.GetResourceMappingGroupResponse"><span class="badge">M</span>GetResourceMappingGroupResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.resourcemapping.GetResourceMappingRequest"><span class="badge">M</span>GetResourceMappingRequest</a>
                 </li>
               
@@ -814,11 +838,27 @@
                 </li>
               
                 <li>
+                  <a href="#policy.resourcemapping.ListResourceMappingGroupsRequest"><span class="badge">M</span>ListResourceMappingGroupsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.ListResourceMappingGroupsResponse"><span class="badge">M</span>ListResourceMappingGroupsResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.resourcemapping.ListResourceMappingsRequest"><span class="badge">M</span>ListResourceMappingsRequest</a>
                 </li>
               
                 <li>
                   <a href="#policy.resourcemapping.ListResourceMappingsResponse"><span class="badge">M</span>ListResourceMappingsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.UpdateResourceMappingGroupRequest"><span class="badge">M</span>UpdateResourceMappingGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.UpdateResourceMappingGroupResponse"><span class="badge">M</span>UpdateResourceMappingGroupResponse</a>
                 </li>
               
                 <li>
@@ -5704,6 +5744,61 @@ If neither is provided, grants from all registered KASs to policy attribute obje
       <p></p>
 
       
+        <h3 id="policy.resourcemapping.CreateResourceMappingGroupRequest">CreateResourceMappingGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemapping.CreateResourceMappingGroupResponse">CreateResourceMappingGroupResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>resource_mapping_group</td>
+                  <td><a href="#policy.ResourceMappingGroup">policy.ResourceMappingGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.resourcemapping.CreateResourceMappingRequest">CreateResourceMappingRequest</h3>
         <p>### Request</p><p>grpcurl -plaintext -d @ localhost:8080 policy.resourcemapping.ResourceMappingService/CreateResourceMapping <<EOM</p><p>{</p><p>"mapping": {</p><p>"name": "Classification",</p><p>"attribute_value_id": "12345678-1234-1234-1234-123456789012",</p><p>"terms": ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]</p><p>}</p><p>}</p><p>EOM</p><p>### Response</p><p>{</p><p>"mapping": {</p><p>"metadata": {</p><p>"id": "12345678-1234-1234-1234-123456789012",</p><p>"created_at": "2020-01-01T00:00:00Z",</p><p>"updated_at": "2020-01-01T00:00:00Z"</p><p>},</p><p>"name": "Classification",</p><p>"attribute_value_id": "12345678-1234-1234-1234-123456789012",</p><p>"terms": ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]</p><p>}</p><p>}</p>
 
@@ -5773,6 +5868,54 @@ If neither is provided, grants from all registered KASs to policy attribute obje
 
         
       
+        <h3 id="policy.resourcemapping.DeleteResourceMappingGroupRequest">DeleteResourceMappingGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemapping.DeleteResourceMappingGroupResponse">DeleteResourceMappingGroupResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>resource_mapping_group</td>
+                  <td><a href="#policy.ResourceMappingGroup">policy.ResourceMappingGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.resourcemapping.DeleteResourceMappingRequest">DeleteResourceMappingRequest</h3>
         <p></p>
 
@@ -5810,6 +5953,54 @@ If neither is provided, grants from all registered KASs to policy attribute obje
                 <tr>
                   <td>resource_mapping</td>
                   <td><a href="#policy.ResourceMapping">policy.ResourceMapping</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemapping.GetResourceMappingGroupRequest">GetResourceMappingGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemapping.GetResourceMappingGroupResponse">GetResourceMappingGroupResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>resource_mapping_group</td>
+                  <td><a href="#policy.ResourceMappingGroup">policy.ResourceMappingGroup</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -5869,6 +6060,37 @@ If neither is provided, grants from all registered KASs to policy attribute obje
 
         
       
+        <h3 id="policy.resourcemapping.ListResourceMappingGroupsRequest">ListResourceMappingGroupsRequest</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="policy.resourcemapping.ListResourceMappingGroupsResponse">ListResourceMappingGroupsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>resource_mapping_groups</td>
+                  <td><a href="#policy.ResourceMappingGroup">policy.ResourceMappingGroup</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.resourcemapping.ListResourceMappingsRequest">ListResourceMappingsRequest</h3>
         <p></p>
 
@@ -5890,6 +6112,68 @@ If neither is provided, grants from all registered KASs to policy attribute obje
                   <td>resource_mappings</td>
                   <td><a href="#policy.ResourceMapping">policy.ResourceMapping</a></td>
                   <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemapping.UpdateResourceMappingGroupRequest">UpdateResourceMappingGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemapping.UpdateResourceMappingGroupResponse">UpdateResourceMappingGroupResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>resource_mapping_group</td>
+                  <td><a href="#policy.ResourceMappingGroup">policy.ResourceMappingGroup</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               
@@ -5990,12 +6274,47 @@ If neither is provided, grants from all registered KASs to policy attribute obje
 
       
         <h3 id="policy.resourcemapping.ResourceMappingService">ResourceMappingService</h3>
-        <p></p>
+        <p>Resource Mapping Groups</p>
         <table class="enum-table">
           <thead>
             <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
           </thead>
           <tbody>
+            
+              <tr>
+                <td>ListResourceMappingGroups</td>
+                <td><a href="#policy.resourcemapping.ListResourceMappingGroupsRequest">ListResourceMappingGroupsRequest</a></td>
+                <td><a href="#policy.resourcemapping.ListResourceMappingGroupsResponse">ListResourceMappingGroupsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetResourceMappingGroup</td>
+                <td><a href="#policy.resourcemapping.GetResourceMappingGroupRequest">GetResourceMappingGroupRequest</a></td>
+                <td><a href="#policy.resourcemapping.GetResourceMappingGroupResponse">GetResourceMappingGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CreateResourceMappingGroup</td>
+                <td><a href="#policy.resourcemapping.CreateResourceMappingGroupRequest">CreateResourceMappingGroupRequest</a></td>
+                <td><a href="#policy.resourcemapping.CreateResourceMappingGroupResponse">CreateResourceMappingGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>UpdateResourceMappingGroup</td>
+                <td><a href="#policy.resourcemapping.UpdateResourceMappingGroupRequest">UpdateResourceMappingGroupRequest</a></td>
+                <td><a href="#policy.resourcemapping.UpdateResourceMappingGroupResponse">UpdateResourceMappingGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>DeleteResourceMappingGroup</td>
+                <td><a href="#policy.resourcemapping.DeleteResourceMappingGroupRequest">DeleteResourceMappingGroupRequest</a></td>
+                <td><a href="#policy.resourcemapping.DeleteResourceMappingGroupResponse">DeleteResourceMappingGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
             
               <tr>
                 <td>ListResourceMappings</td>
@@ -6049,6 +6368,56 @@ If neither is provided, grants from all registered KASs to policy attribute obje
               </tr>
             </thead>
             <tbody>
+            
+              
+              
+              <tr>
+                <td>ListResourceMappingGroups</td>
+                <td>GET</td>
+                <td>/resource-mapping-groups</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetResourceMappingGroup</td>
+                <td>GET</td>
+                <td>/resource-mapping-groups/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>CreateResourceMappingGroup</td>
+                <td>POST</td>
+                <td>/resource-mapping-groups</td>
+                <td>*</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>UpdateResourceMappingGroup</td>
+                <td>PATCH</td>
+                <td>/resource-mapping-groups/{id}</td>
+                <td>*</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>DeleteResourceMappingGroup</td>
+                <td>DELETE</td>
+                <td>/resource-mapping-groups/{id}</td>
+                <td></td>
+              </tr>
+              
             
               
               

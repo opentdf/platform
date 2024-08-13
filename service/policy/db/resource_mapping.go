@@ -5,7 +5,9 @@ import (
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
@@ -13,6 +15,106 @@ import (
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 )
+
+/*
+ Resource Mapping CRUD
+
+ NOTE: uses sqlc instead of squirrel
+*/
+
+func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context) ([]*policy.ResourceMappingGroup, error) {
+	list, err := c.Queries.ListResourceMappingGroups(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	resourceMappingGroups := make([]*policy.ResourceMappingGroup, len(list))
+
+	for i, rmGroup := range list {
+		resourceMappingGroups[i] = &policy.ResourceMappingGroup{
+			Id:          rmGroup.ID,
+			NamespaceId: rmGroup.NamespaceID,
+			Name:        rmGroup.Name,
+		}
+	}
+
+	return resourceMappingGroups, nil
+}
+
+func (c PolicyDBClient) GetResourceMappingGroup(ctx context.Context, id string) (*policy.ResourceMappingGroup, error) {
+	rmGroup, err := c.Queries.GetResourceMappingGroup(ctx, id)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return &policy.ResourceMappingGroup{
+		Id:          rmGroup.ID,
+		NamespaceId: rmGroup.NamespaceID,
+		Name:        rmGroup.Name,
+	}, nil
+}
+
+func (c PolicyDBClient) CreateResourceMappingGroup(ctx context.Context, r *resourcemapping.CreateResourceMappingGroupRequest) (*policy.ResourceMappingGroup, error) {
+	createdID, err := c.Queries.CreateResourceMappingGroup(ctx, CreateResourceMappingGroupParams{
+		NamespaceID: r.GetNamespaceId(),
+		Name:        r.GetName(),
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return &policy.ResourceMappingGroup{
+		Id: createdID,
+	}, nil
+}
+
+func (c PolicyDBClient) UpdateResourceMappingGroup(ctx context.Context, id string, r *resourcemapping.UpdateResourceMappingGroupRequest) (*policy.ResourceMappingGroup, error) {
+	uuidNamespaceId, err := uuid.Parse(r.GetNamespaceId())
+	pgNamespaceID := pgtype.UUID{
+		Bytes: [16]byte(uuidNamespaceId),
+		Valid: err == nil,
+	}
+
+	name := r.GetName()
+	pgName := pgtype.Text{
+		String: name,
+		Valid:  name != "",
+	}
+
+	updatedID, err := c.Queries.UpdateResourceMappingGroup(ctx, UpdateResourceMappingGroupParams{
+		ID:          id,
+		NamespaceID: pgNamespaceID,
+		Name:        pgName,
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return &policy.ResourceMappingGroup{
+		Id: updatedID,
+	}, nil
+}
+
+func (c PolicyDBClient) DeleteResourceMappingGroup(ctx context.Context, id string) (*policy.ResourceMappingGroup, error) {
+	count, err := c.Queries.DeleteResourceMappingGroup(ctx, id)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
+
+	return &policy.ResourceMappingGroup{
+		Id: id,
+	}, nil
+}
+
+/*
+ Resource Mapping CRUD
+
+ TODO: migrate from squirrel to sqlc
+*/
 
 func resourceMappingHydrateList(rows pgx.Rows, logger *logger.Logger) ([]*policy.ResourceMapping, error) {
 	var list []*policy.ResourceMapping
@@ -94,10 +196,6 @@ func resourceMappingSelect() sq.SelectBuilder {
 		GroupBy("av.id").
 		GroupBy(t.Field("id"))
 }
-
-/*
- Resource Mapping CRUD
-*/
 
 func createResourceMappingSQL(attributeValueID string, metadata []byte, terms []string, groupID string) (string, []interface{}, error) {
 	columns := []string{"attribute_value_id", "metadata", "terms"}

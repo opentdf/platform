@@ -9,6 +9,51 @@ import "common/common.proto";
 import "policy/objects.proto";
 
 /*
+   Resource Mapping Groups
+*/
+
+message ListResourceMappingGroupsRequest {}
+
+message ListResourceMappingGroupsResponse {
+  repeated ResourceMappingGroup resource_mapping_groups = 1;
+}
+
+message GetResourceMappingGroupRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+
+message GetResourceMappingGroupResponse {
+  ResourceMappingGroup resource_mapping_group = 1;
+}
+
+message CreateResourceMappingGroupRequest {
+  string namespace_id = 1 [(buf.validate.field).required = true];
+  string name = 2 [(buf.validate.field).required = true];
+}
+
+message CreateResourceMappingGroupResponse {
+  ResourceMappingGroup resource_mapping_group = 1;
+}
+
+message UpdateResourceMappingGroupRequest {
+  string id = 1 [(buf.validate.field).required = true];
+  string namespace_id = 2;
+  string name = 3;
+}
+
+message UpdateResourceMappingGroupResponse {
+  ResourceMappingGroup resource_mapping_group = 1;
+}
+
+message DeleteResourceMappingGroupRequest {
+  string id = 1 [(buf.validate.field).required = true];
+}
+
+message DeleteResourceMappingGroupResponse {
+  ResourceMappingGroup resource_mapping_group = 1;
+}
+
+/*
    Resource Mappings
 */
 
@@ -97,6 +142,40 @@ message DeleteResourceMappingResponse {
 }
 
 service ResourceMappingService {
+  /*
+     Resource Mapping Groups
+  */
+
+  rpc ListResourceMappingGroups(ListResourceMappingGroupsRequest) returns (ListResourceMappingGroupsResponse) {
+    option (google.api.http) = {get: "/resource-mapping-groups"};
+  }
+
+  rpc GetResourceMappingGroup(GetResourceMappingGroupRequest) returns (GetResourceMappingGroupResponse) {
+    option (google.api.http) = {get: "/resource-mapping-groups/{id}"};
+  }
+
+  rpc CreateResourceMappingGroup(CreateResourceMappingGroupRequest) returns (CreateResourceMappingGroupResponse) {
+    option (google.api.http) = {
+      post: "/resource-mapping-groups"
+      body: "*"
+    };
+  }
+
+  rpc UpdateResourceMappingGroup(UpdateResourceMappingGroupRequest) returns (UpdateResourceMappingGroupResponse) {
+    option (google.api.http) = {
+      patch: "/resource-mapping-groups/{id}"
+      body: "*"
+    };
+  }
+
+  rpc DeleteResourceMappingGroup(DeleteResourceMappingGroupRequest) returns (DeleteResourceMappingGroupResponse) {
+    option (google.api.http) = {delete: "/resource-mapping-groups/{id}"};
+  }
+
+  /*
+     Resource Mappings
+  */
+
   rpc ListResourceMappings(ListResourceMappingsRequest) returns (ListResourceMappingsResponse) {
     option (google.api.http) = {get: "/resource-mappings"};
   }

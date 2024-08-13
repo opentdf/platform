@@ -635,31 +635,31 @@ func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {
 	for _, g := range listedGrants {
 		if g.GetKeyAccessServer().GetId() == firstKAS.GetId() {
 			// should have expected attribute grant
-			grantedAttrIds := make([]string, len(g.GetAttributeGrants()))
+			grantedAttrIDs := make([]string, len(g.GetAttributeGrants()))
 			for i, a := range g.GetAttributeGrants() {
-				grantedAttrIds[i] = a.GetId()
+				grantedAttrIDs[i] = a.GetId()
 			}
-			s.Contains(grantedAttrIds, createdAttr.GetId())
+			s.Contains(grantedAttrIDs, createdAttr.GetId())
 			// should have expected namespace grant
-			grantedNsIds := make([]string, len(g.GetNamespaceGrants()))
+			grantedNsIDs := make([]string, len(g.GetNamespaceGrants()))
 			for i, n := range g.GetNamespaceGrants() {
-				grantedNsIds[i] = n.GetId()
+				grantedNsIDs[i] = n.GetId()
 			}
-			s.Contains(grantedNsIds, fixtureNamespaceID)
+			s.Contains(grantedNsIDs, fixtureNamespaceID)
 		}
 		if g.GetKeyAccessServer().GetId() == secondKAS.GetId() {
 			// should have expected value grant
-			grantedValIds := make([]string, len(g.GetValueGrants()))
+			grantedValIDs := make([]string, len(g.GetValueGrants()))
 			for i, v := range g.GetValueGrants() {
-				grantedValIds[i] = v.GetId()
+				grantedValIDs[i] = v.GetId()
 			}
-			s.Contains(grantedValIds, value.GetId())
+			s.Contains(grantedValIDs, value.GetId())
 			// should have expected namespace grant
-			grantedNsIds := make([]string, len(g.GetNamespaceGrants()))
+			grantedNsIDs := make([]string, len(g.GetNamespaceGrants()))
 			for i, n := range g.GetNamespaceGrants() {
-				grantedNsIds[i] = n.GetId()
+				grantedNsIDs[i] = n.GetId()
 			}
-			s.Contains(grantedNsIds, fixtureNamespaceID)
+			s.Contains(grantedNsIDs, fixtureNamespaceID)
 		}
 	}
 }

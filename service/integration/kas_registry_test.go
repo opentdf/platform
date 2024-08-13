@@ -433,26 +433,75 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasId() {
 	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 
-	fixtureKAS := s.f.GetKasRegistryKey("key_access_server_2")
+	// create a value
+	val := &attributes.CreateAttributeValueRequest{
+		AttributeId: createdAttr.GetId(),
+		Value:       "value2",
+	}
+	createdVal, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, createdAttr.GetId(), val)
+	s.Require().NoError(err)
+	s.NotNil(createdVal)
 
-	// add a KAS to the attribute
+	firstKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri: "https://firstkas.com/kas/uri",
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Local{Local: "public"},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(firstKAS)
+	firstKAS, _ = s.db.PolicyClient.GetKeyAccessServer(s.ctx, firstKAS.GetId())
+
+	otherKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri: "https://otherkas.com/kas/uri",
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Local{Local: "public"},
+		},
+	})
+	s.Require().NoError(err)
+	otherKAS, _ = s.db.PolicyClient.GetKeyAccessServer(s.ctx, otherKAS.GetId())
+
+	// assign a KAS to the attribute
 	aKas := &attributes.AttributeKeyAccessServer{
 		AttributeId:       createdAttr.GetId(),
-		KeyAccessServerId: fixtureKAS.ID,
+		KeyAccessServerId: firstKAS.GetId(),
 	}
 	createdGrant, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, aKas)
 	s.Require().NoError(err)
 	s.NotNil(createdGrant)
 
+	// assign a KAS to the value
+	bKas := &attributes.ValueKeyAccessServer{
+		ValueId:           createdVal.GetId(),
+		KeyAccessServerId: otherKAS.GetId(),
+	}
+	valGrant, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, bKas)
+	s.Require().NoError(err)
+	s.NotNil(valGrant)
+
 	// list grants by KAS ID
-	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, fixtureKAS.ID, "")
+	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, firstKAS.GetId(), "")
 	s.Require().NoError(err)
 	s.NotNil(listedGrants)
-	s.GreaterOrEqual(len(listedGrants), 1)
-	for _, g := range listedGrants {
-		s.Equal(fixtureKAS.ID, g.GetKeyAccessServer().GetId())
-		s.Equal(fixtureKAS.URI, g.GetKeyAccessServer().GetUri())
-	}
+	s.Len(listedGrants, 1)
+	g := listedGrants[0]
+	s.Equal(firstKAS.GetId(), g.GetKeyAccessServer().GetId())
+	s.Equal(firstKAS.GetUri(), g.GetKeyAccessServer().GetUri())
+	s.Len(g.GetAttributeGrants(), 1)
+	s.Empty(g.GetValueGrants())
+	s.Empty(g.GetNamespaceGrants())
+
+	// list grants by the other KAS ID
+	listedGrants, err = s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, otherKAS.GetId(), "")
+	s.Require().NoError(err)
+	s.NotNil(listedGrants)
+	s.Len(listedGrants, 1)
+	g = listedGrants[0]
+	s.Equal(otherKAS.GetId(), g.GetKeyAccessServer().GetId())
+	s.Equal(otherKAS.GetUri(), g.GetKeyAccessServer().GetUri())
+	s.Empty(g.GetAttributeGrants())
+	s.Len(g.GetValueGrants(), 1)
+	s.Empty(g.GetNamespaceGrants())
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasId_NoResultsIfNotFound() {

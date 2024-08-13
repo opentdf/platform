@@ -375,6 +375,31 @@ subject_condition_set:
                       - opentdf-sdk
 
 ##
+# Resource Mapping Groups
+#
+##
+resource_mapping_groups:
+  metadata:
+    table_name: resource_mapping_groups
+    columns:
+      - id
+      - namespace_id
+      - name
+  data:
+    example.com_ns_group_1:
+      id: 173bb45c-76ae-4993-a648-d9bc0bc05147
+      namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
+      name: example_group_1
+    example.com_ns_group_2:
+      id: 32d4df0c-8600-4b8d-89cf-801b61bc7abe
+      namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
+      name: example_group_2
+    example.com_ns_group_3:
+      id: 45f392f0-7d9e-4c73-9bf7-11bbd3bd40af
+      namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
+      name: example_group_3
+
+##
 # Resource Mappings
 #
 ##
@@ -385,6 +410,7 @@ resource_mappings:
       - id
       - attribute_value_id
       - terms
+      - group_id
   data:
     resource_mapping_to_attribute_value1:
       id: 02092d67-fffa-4030-9775-b5cd5d581e1f
@@ -392,16 +418,19 @@ resource_mappings:
       terms:
         - TS
         - TOPSECRET
+      group_id: 173bb45c-76ae-4993-a648-d9bc0bc05147
     resource_mapping_to_attribute_value2:
       id: b05d8d25-42ad-445d-b973-12b7561a7738
       attribute_value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
       terms:
         - test0
+      group_id: 173bb45c-76ae-4993-a648-d9bc0bc05147
     resource_mapping_to_attribute_value3:
       id: f4d76bfb-e1a1-4f7a-83f2-8e8433cf229f
       attribute_value_id: 04bd2657-de10-46bc-a88f-5d687de4816b
       terms:
         - helloworld
+      group_id: 173bb45c-76ae-4993-a648-d9bc0bc05147
 
 ##
 # KAS Registry (key access server registry)

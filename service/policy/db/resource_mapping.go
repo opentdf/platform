@@ -35,6 +35,7 @@ func resourceMappingHydrateItem(row pgx.Row, logger *logger.Logger) (*policy.Res
 		terms              []string
 		attributeValueJSON []byte
 		attributeValue     = new(policy.Value)
+		groupID            string
 	)
 
 	err := row.Scan(
@@ -42,6 +43,7 @@ func resourceMappingHydrateItem(row pgx.Row, logger *logger.Logger) (*policy.Res
 		&metadataJSON,
 		&terms,
 		&attributeValueJSON,
+		&groupID,
 	)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -61,12 +63,18 @@ func resourceMappingHydrateItem(row pgx.Row, logger *logger.Logger) (*policy.Res
 		}
 	}
 
-	return &policy.ResourceMapping{
+	rm := &policy.ResourceMapping{
 		Id:             id,
 		Metadata:       metadata,
 		AttributeValue: attributeValue,
 		Terms:          terms,
-	}, nil
+	}
+
+	if groupID != "" {
+		rm.Group = &policy.ResourceMappingGroup{Id: groupID}
+	}
+
+	return rm, nil
 }
 
 func resourceMappingSelect() sq.SelectBuilder {
@@ -80,6 +88,7 @@ func resourceMappingSelect() sq.SelectBuilder {
 			"'id', av.id,"+
 			"'value', av.value "+
 			") AS attribute_value",
+		"COALESCE("+t.Field("group_id")+"::TEXT, '') AS group_id",
 	).
 		LeftJoin(at.Name() + " av ON " + t.Field("attribute_value_id") + " = " + "av.id").
 		GroupBy("av.id").
@@ -90,19 +99,19 @@ func resourceMappingSelect() sq.SelectBuilder {
  Resource Mapping CRUD
 */
 
-func createResourceMappingSQL(attributeValueID string, metadata []byte, terms []string) (string, []interface{}, error) {
+func createResourceMappingSQL(attributeValueID string, metadata []byte, terms []string, groupID string) (string, []interface{}, error) {
+	columns := []string{"attribute_value_id", "metadata", "terms"}
+	values := []interface{}{attributeValueID, metadata, terms}
+
+	if groupID != "" {
+		columns = append(columns, "group_id")
+		values = append(values, groupID)
+	}
+
 	return db.NewStatementBuilder().
 		Insert(Tables.ResourceMappings.Name()).
-		Columns(
-			"attribute_value_id",
-			"metadata",
-			"terms",
-		).
-		Values(
-			attributeValueID,
-			metadata,
-			terms,
-		).
+		Columns(columns...).
+		Values(values...).
 		Suffix(createSuffix).
 		ToSql()
 }
@@ -113,7 +122,9 @@ func (c PolicyDBClient) CreateResourceMapping(ctx context.Context, r *resourcema
 		return nil, err
 	}
 
-	sql, args, err := createResourceMappingSQL(r.GetAttributeValueId(), metadataJSON, r.GetTerms())
+	groupID := r.GetGroupId()
+
+	sql, args, err := createResourceMappingSQL(r.GetAttributeValueId(), metadataJSON, r.GetTerms(), groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -138,12 +149,18 @@ func (c PolicyDBClient) CreateResourceMapping(ctx context.Context, r *resourcema
 		return nil, err
 	}
 
-	return &policy.ResourceMapping{
+	rm := &policy.ResourceMapping{
 		Id:             id,
 		Metadata:       metadata,
 		AttributeValue: av,
 		Terms:          r.GetTerms(),
-	}, nil
+	}
+
+	if groupID != "" {
+		rm.Group = &policy.ResourceMappingGroup{Id: groupID}
+	}
+
+	return rm, nil
 }
 
 func getResourceMappingSQL(id string) (string, []interface{}, error) {
@@ -199,7 +216,7 @@ func (c PolicyDBClient) ListResourceMappings(ctx context.Context) ([]*policy.Res
 	return list, nil
 }
 
-func updateResourceMappingSQL(id string, attributeValueID string, metadata []byte, terms []string) (string, []interface{}, error) {
+func updateResourceMappingSQL(id string, attributeValueID string, metadata []byte, terms []string, groupID string) (string, []interface{}, error) {
 	t := Tables.ResourceMappings
 	sb := db.NewStatementBuilder().
 		Update(t.Name())
@@ -214,6 +231,10 @@ func updateResourceMappingSQL(id string, attributeValueID string, metadata []byt
 
 	if terms != nil {
 		sb = sb.Set("terms", terms)
+	}
+
+	if groupID != "" {
+		sb = sb.Set("group_id", groupID)
 	}
 
 	return sb.
@@ -238,6 +259,7 @@ func (c PolicyDBClient) UpdateResourceMapping(ctx context.Context, id string, r 
 		r.GetAttributeValueId(),
 		metadataJSON,
 		r.GetTerms(),
+		r.GetGroupId(),
 	)
 	if db.IsQueryBuilderSetClauseError(err) {
 		return &policy.ResourceMapping{

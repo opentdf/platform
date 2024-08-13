@@ -14,7 +14,8 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-var nonExistentResourceMappingUUID = "45674556-8888-9999-9999-000001230000"
+var unknownResourceMappingID = "45674556-8888-9999-9999-000001230000"
+var unknownResourceMappingGroupID = "c70cad07-21b4-4cb1-9095-bce54615536a"
 
 type ResourceMappingsSuite struct {
 	suite.Suite
@@ -36,6 +37,10 @@ func (s *ResourceMappingsSuite) SetupSuite() {
 func (s *ResourceMappingsSuite) TearDownSuite() {
 	slog.Info("tearing down db.ResourceMappings test suite")
 	s.f.TearDown()
+}
+
+func (s *ResourceMappingsSuite) getResourcMappingGroupFixture() fixtures.FixtureDataResourceMappingGroup {
+	return s.f.GetResourceMappingGroupKey("example.com_ns_group_1")
 }
 
 func (s *ResourceMappingsSuite) getResourceMappingFixtures() []fixtures.FixtureDataResourceMapping {
@@ -62,6 +67,10 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMapping() {
 	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
 	s.Require().NoError(err)
 	s.NotNil(createdMapping)
+	s.Equal(mapping.GetAttributeValueId(), createdMapping.GetAttributeValue().GetId())
+	s.Equal(mapping.GetMetadata().GetLabels()["name"], createdMapping.GetMetadata().GetLabels()["name"])
+	s.Equal(mapping.GetTerms(), createdMapping.GetTerms())
+	s.Nil(createdMapping.GetGroup())
 }
 
 func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithUnknownAttributeValueFails() {
@@ -94,6 +103,38 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithEmptyTermsSucceeds
 	s.Empty(createdMapping.GetTerms())
 }
 
+func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithGroupIdSucceeds() {
+	metadata := &common.MetadataMutable{}
+
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	groupID := s.getResourcMappingGroupFixture().ID
+	mapping := &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrValue.ID,
+		Metadata:         metadata,
+		Terms:            []string{},
+		GroupId:          groupID,
+	}
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
+	s.Require().NoError(err)
+	s.NotNil(createdMapping)
+	s.Equal(groupID, createdMapping.GetGroup().GetId())
+}
+
+func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithUnknownGroupIdFails() {
+	metadata := &common.MetadataMutable{}
+
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	mapping := &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrValue.ID,
+		Metadata:         metadata,
+		Terms:            []string{},
+		GroupId:          unknownResourceMappingGroupID,
+	}
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
+	s.Require().Error(err)
+	s.Nil(createdMapping)
+}
+
 func (s *ResourceMappingsSuite) Test_ListResourceMappings() {
 	// make sure we can get all fixtures
 	testData := s.getResourceMappingFixtures()
@@ -122,6 +163,7 @@ func (s *ResourceMappingsSuite) Test_GetResourceMapping() {
 		s.Equal(testMapping.ID, mapping.GetId())
 		s.Equal(testMapping.AttributeValueID, mapping.GetAttributeValue().GetId())
 		s.Equal(testMapping.Terms, mapping.GetTerms())
+		s.Equal(testMapping.GroupID, mapping.GetGroup().GetId())
 		metadata := mapping.GetMetadata()
 		createdAt := metadata.GetCreatedAt()
 		updatedAt := metadata.GetUpdatedAt()
@@ -131,7 +173,7 @@ func (s *ResourceMappingsSuite) Test_GetResourceMapping() {
 }
 
 func (s *ResourceMappingsSuite) Test_GetResourceMappingWithUnknownIdFails() {
-	mapping, err := s.db.PolicyClient.GetResourceMapping(s.ctx, nonExistentResourceMappingUUID)
+	mapping, err := s.db.PolicyClient.GetResourceMapping(s.ctx, unknownResourceMappingID)
 	s.Require().Error(err)
 	s.Nil(mapping)
 	s.Require().ErrorIs(err, db.ErrNotFound)
@@ -145,6 +187,7 @@ func (s *ResourceMappingsSuite) Test_GetResourceMappingOfCreatedSucceeds() {
 		AttributeValueId: attrValue.ID,
 		Metadata:         metadata,
 		Terms:            []string{"term1", "term2"},
+		GroupId:          s.getResourcMappingGroupFixture().ID,
 	}
 	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
 	s.Require().NoError(err)
@@ -156,6 +199,7 @@ func (s *ResourceMappingsSuite) Test_GetResourceMappingOfCreatedSucceeds() {
 	s.Equal(createdMapping.GetId(), got.GetId())
 	s.Equal(createdMapping.GetAttributeValue().GetId(), got.GetAttributeValue().GetId())
 	s.Equal(createdMapping.GetTerms(), mapping.GetTerms())
+	s.Equal(createdMapping.GetGroup().GetId(), got.GetGroup().GetId())
 }
 
 func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
@@ -163,6 +207,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	updateLabel := "update label"
 	updatedLabel := "true"
 	newLabel := "new label"
+	groupID := s.getResourcMappingGroupFixture().ID
 
 	labels := map[string]string{
 		"fixed":  fixedLabel,
@@ -221,6 +266,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 			Labels: updateLabels,
 		},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
+		GroupId:                groupID,
 	})
 	s.Require().NoError(err)
 	s.NotNil(updateWithChange)
@@ -235,6 +281,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	s.Equal(updateTerms, got.GetTerms())
 	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
 	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
+	s.Equal(groupID, got.GetGroup().GetId())
 }
 
 func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {
@@ -252,7 +299,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {
 		AttributeValueId: createdMapping.GetAttributeValue().GetId(),
 		Terms:            []string{"asdf updated term1"},
 	}
-	updated, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, nonExistentResourceMappingUUID, updatedMapping)
+	updated, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, unknownResourceMappingID, updatedMapping)
 	s.Require().Error(err)
 	s.Nil(updated)
 	s.Require().ErrorIs(err, db.ErrNotFound)
@@ -284,6 +331,27 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownAttributeVa
 	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
 
+func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownGroupIdFails() {
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
+	mapping := &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrValue.ID,
+		Terms:            []string{"asdf qwerty"},
+	}
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
+	s.Require().NoError(err)
+	s.NotNil(createdMapping)
+
+	// update the created with new metadata, terms and unknown group ID
+	updatedMapping := &resourcemapping.UpdateResourceMappingRequest{
+		AttributeValueId: createdMapping.GetAttributeValue().GetId(),
+		Terms:            []string{"asdf updated term1"},
+		GroupId:          unknownResourceMappingGroupID,
+	}
+	updated, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, unknownResourceMappingID, updatedMapping)
+	s.Require().Error(err)
+	s.Nil(updated)
+}
+
 func (s *ResourceMappingsSuite) Test_DeleteResourceMapping() {
 	attrValue := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1")
 	mapping := &resourcemapping.CreateResourceMappingRequest{
@@ -304,7 +372,7 @@ func (s *ResourceMappingsSuite) Test_DeleteResourceMapping() {
 }
 
 func (s *ResourceMappingsSuite) Test_DeleteResourceMappingWithUnknownIdFails() {
-	deleted, err := s.db.PolicyClient.DeleteResourceMapping(s.ctx, nonExistentResourceMappingUUID)
+	deleted, err := s.db.PolicyClient.DeleteResourceMapping(s.ctx, unknownResourceMappingID)
 	s.Require().Error(err)
 	s.Nil(deleted)
 	s.Require().ErrorIs(err, db.ErrNotFound)

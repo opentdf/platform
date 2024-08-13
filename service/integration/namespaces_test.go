@@ -774,7 +774,7 @@ func (s *NamespacesSuite) Test_AssignKASGrant() {
 	got, err := s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
-	s.Len(got.GetGrants(), 0)
+	s.Empty(got.GetGrants())
 
 	pubKey := &policy.PublicKey{
 		PublicKey: &policy.PublicKey_Remote{
@@ -830,7 +830,7 @@ func (s *NamespacesSuite) Test_AssignKASGrant_FailsInvalidIds() {
 	})
 	s.Nil(grant)
 	s.Require().Error(err)
-	s.ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 
 	// kas doesn't exist
 	grant, err = s.db.PolicyClient.AssignKeyAccessServerToNamespace(s.ctx, &namespaces.NamespaceKeyAccessServer{
@@ -839,7 +839,7 @@ func (s *NamespacesSuite) Test_AssignKASGrant_FailsInvalidIds() {
 	})
 	s.Nil(grant)
 	s.Require().Error(err)
-	s.ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
 
 func (s *NamespacesSuite) Test_AssignKASGrant_FailsAlreadyAssigned() {
@@ -875,7 +875,7 @@ func (s *NamespacesSuite) Test_AssignKASGrant_FailsAlreadyAssigned() {
 	})
 	s.Nil(grant)
 	s.Require().Error(err)
-	s.ErrorIs(err, db.ErrUniqueConstraintViolation)
+	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
 }
 
 func (s *NamespacesSuite) Test_RemoveKASGrant() {
@@ -900,7 +900,7 @@ func (s *NamespacesSuite) Test_RemoveKASGrant() {
 	got, err := s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
-	s.Len(got.GetGrants(), 0)
+	s.Empty(got.GetGrants())
 
 	granted := &namespaces.NamespaceKeyAccessServer{
 		NamespaceId:       n.GetId(),
@@ -929,7 +929,7 @@ func (s *NamespacesSuite) Test_RemoveKASGrant() {
 	got, err = s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
-	s.Len(got.GetGrants(), 0)
+	s.Empty(got.GetGrants())
 }
 
 func (s *NamespacesSuite) Test_RemoveKASGrant_FailsInvalidIds() {
@@ -957,7 +957,7 @@ func (s *NamespacesSuite) Test_RemoveKASGrant_FailsInvalidIds() {
 	})
 	s.Nil(grant)
 	s.Require().Error(err)
-	s.ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 
 	// kas doesn't exist
 	grant, err = s.db.PolicyClient.RemoveKeyAccessServerFromNamespace(s.ctx, &namespaces.NamespaceKeyAccessServer{
@@ -966,7 +966,7 @@ func (s *NamespacesSuite) Test_RemoveKASGrant_FailsInvalidIds() {
 	})
 	s.Nil(grant)
 	s.Require().Error(err)
-	s.ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
 
 func (s *NamespacesSuite) Test_RemoveKASGrant_FailsAlreadyRemoved() {
@@ -1005,7 +1005,7 @@ func (s *NamespacesSuite) Test_RemoveKASGrant_FailsAlreadyRemoved() {
 	grant, err = s.db.PolicyClient.RemoveKeyAccessServerFromNamespace(s.ctx, granted)
 	s.Nil(grant)
 	s.Require().Error(err)
-	s.ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func TestNamespacesSuite(t *testing.T) {

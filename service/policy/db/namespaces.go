@@ -407,12 +407,15 @@ func (c PolicyDBClient) AssignKeyAccessServerToNamespace(ctx context.Context, k 
 }
 
 func (c PolicyDBClient) RemoveKeyAccessServerFromNamespace(ctx context.Context, k *namespaces.NamespaceKeyAccessServer) (*namespaces.NamespaceKeyAccessServer, error) {
-	_, err := c.Queries.RemoveKeyAccessServerFromNamespace(ctx, RemoveKeyAccessServerFromNamespaceParams{
+	count, err := c.Queries.RemoveKeyAccessServerFromNamespace(ctx, RemoveKeyAccessServerFromNamespaceParams{
 		NamespaceID:       k.GetNamespaceId(),
 		KeyAccessServerID: k.GetKeyAccessServerId(),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
 	}
 
 	return k, nil

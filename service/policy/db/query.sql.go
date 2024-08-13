@@ -644,7 +644,6 @@ func (q *Queries) ListResourceMappingGroups(ctx context.Context) ([]ResourceMapp
 const removeKeyAccessServerFromNamespace = `-- name: RemoveKeyAccessServerFromNamespace :execrows
 DELETE FROM attribute_namespace_key_access_grants
 WHERE namespace_id = $1 AND key_access_server_id = $2
-IS TRUE RETURNING namespace_id, key_access_server_id
 `
 
 type RemoveKeyAccessServerFromNamespaceParams struct {
@@ -656,7 +655,6 @@ type RemoveKeyAccessServerFromNamespaceParams struct {
 //
 //	DELETE FROM attribute_namespace_key_access_grants
 //	WHERE namespace_id = $1 AND key_access_server_id = $2
-//	IS TRUE RETURNING namespace_id, key_access_server_id
 func (q *Queries) RemoveKeyAccessServerFromNamespace(ctx context.Context, arg RemoveKeyAccessServerFromNamespaceParams) (int64, error) {
 	result, err := q.db.Exec(ctx, removeKeyAccessServerFromNamespace, arg.NamespaceID, arg.KeyAccessServerID)
 	if err != nil {

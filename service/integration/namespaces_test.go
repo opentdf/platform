@@ -957,7 +957,7 @@ func (s *NamespacesSuite) Test_RemoveKASGrant_FailsInvalidIds() {
 	})
 	s.Nil(grant)
 	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 
 	// kas doesn't exist
 	grant, err = s.db.PolicyClient.RemoveKeyAccessServerFromNamespace(s.ctx, &namespaces.NamespaceKeyAccessServer{
@@ -966,11 +966,11 @@ func (s *NamespacesSuite) Test_RemoveKASGrant_FailsInvalidIds() {
 	})
 	s.Nil(grant)
 	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *NamespacesSuite) Test_RemoveKASGrant_FailsAlreadyRemoved() {
-	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "kas-conflict.com"})
+	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "kas-conflict-removal.com"})
 	s.Require().NoError(err)
 	s.NotNil(n)
 
@@ -980,7 +980,7 @@ func (s *NamespacesSuite) Test_RemoveKASGrant_FailsAlreadyRemoved() {
 		},
 	}
 	kasRegistry := &kasregistry.CreateKeyAccessServerRequest{
-		Uri:       "kas.conflict/ns",
+		Uri:       "kas.conflictremoval/ns",
 		PublicKey: pubKey,
 	}
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)

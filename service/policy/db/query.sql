@@ -207,5 +207,4 @@ VALUES ($1, $2);
 
 -- name: RemoveKeyAccessServerFromNamespace :execrows
 DELETE FROM attribute_namespace_key_access_grants
-WHERE namespace_id = $1 AND key_access_server_id = $2
-IS TRUE RETURNING *;
+WHERE namespace_id = $1 AND key_access_server_id = $2;

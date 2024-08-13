@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.12](https://github.com/opentdf/platform/compare/protocol/go/v0.2.11...protocol/go/v0.2.12) (2024-08-13)
+
+
+### Features
+
+* **core:** further support in policy for namespace grants ([#1334](https://github.com/opentdf/platform/issues/1334)) ([d56231e](https://github.com/opentdf/platform/commit/d56231ea632c6072613c18cf1fcb9770cedf49e3))
+* **core:** policy support for LIST of kas grants (protos/db) ([#1317](https://github.com/opentdf/platform/issues/1317)) ([599fc56](https://github.com/opentdf/platform/commit/599fc56dbcc3ae8ff2f46584c9bae7c1619a590d))
+
 ## [0.2.11](https://github.com/opentdf/platform/compare/protocol/go/v0.2.10...protocol/go/v0.2.11) (2024-08-12)
 
 

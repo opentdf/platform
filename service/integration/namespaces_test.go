@@ -795,7 +795,6 @@ func (s *NamespacesSuite) Test_AssignKASGrant() {
 	got, err := s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
-	
 }
 
 func TestNamespacesSuite(t *testing.T) {

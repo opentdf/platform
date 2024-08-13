@@ -33,6 +33,7 @@ type config struct {
 	dpopKey                 *ocrypto.RsaKeyPair
 	ipc                     bool
 	tdfFeatures             tdfFeatures
+	nanoFeatures            nanoFeatures
 	customAccessTokenSource auth.AccessTokenSource
 }
 
@@ -40,8 +41,12 @@ type config struct {
 type tdfFeatures struct {
 	// For backward compatibility, don't store the KID in the KAO.
 	noKID bool
-	// nanoKID For backward compatibility, don't store the KID in the KAS ResourceLocator.
-	nanoKID bool
+}
+
+// Options specific to NanoTDF protocol features
+type nanoFeatures struct {
+	// noKID For backward compatibility, don't store the KID in the KAS ResourceLocator.
+	noKID bool
 }
 
 type PlatformConfiguration map[string]interface{}
@@ -186,10 +191,10 @@ func WithNoKIDInKAO() Option {
 	}
 }
 
-// WithKIDInNano disables storing the KID in the KAS ResourceLocator.
+// WithNoKIDInNano disables storing the KID in the KAS ResourceLocator.
 // This allows generating NanoTDF files that are compatible with legacy file formats (no KID).
-func WithKIDInNano() Option {
+func WithNoKIDInNano() Option {
 	return func(c *config) {
-		c.tdfFeatures.nanoKID = false
+		c.nanoFeatures.noKID = true
 	}
 }

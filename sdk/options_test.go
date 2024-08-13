@@ -7,10 +7,17 @@ import (
 func TestWithKIDInNano(t *testing.T) {
 	tests := []struct {
 		name string
+		kid  bool
 		want bool
 	}{
 		{
-			name: "nanoKID to be false",
+			name: "noKID to be true",
+			kid:  false,
+			want: true,
+		},
+		{
+			name: "noKID to be false",
+			kid:  true,
 			want: false,
 		},
 	}
@@ -19,11 +26,13 @@ func TestWithKIDInNano(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &config{}
 
-			option := WithKIDInNano()
-			option(c)
+			if !tt.kid {
+				option := WithNoKIDInNano()
+				option(c)
+			}
 
-			if c.tdfFeatures.nanoKID != tt.want {
-				t.Errorf("WithKIDInNano() = %v, want %v", c.tdfFeatures.nanoKID, tt.want)
+			if c.nanoFeatures.noKID != tt.want {
+				t.Errorf("WithKIDInNano() = %v, want %v", c.nanoFeatures.noKID, tt.want)
 			}
 		})
 	}

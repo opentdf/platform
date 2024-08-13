@@ -228,7 +228,7 @@ func (rl *ResourceLocator) readResourceLocator(reader io.Reader) error {
 	// read the identifier if it exists
 	switch rl.protocol & 0xf0 {
 	case identifierNone, urlProtocolHTTPS:
-		// noop
+		// noop and exhaustive for linter
 	case identifier2Byte:
 		identifier := make([]byte, 2) //nolint:mnd // 2 bytes
 		if err := binary.Read(reader, binary.BigEndian, &identifier); err != nil {

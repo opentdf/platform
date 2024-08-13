@@ -30,6 +30,21 @@ type ResourceLocator struct {
 // also specifies the optional resource identifier - current usage is a key identifier
 type protocolHeader uint8
 
+func (h protocolHeader) identifierLength() int {
+	switch h & 0xF0 { //nolint:nolintlint,exhaustive // overloaded
+	case identifierNone, urlProtocolHTTPS:
+		return identifierNoneLength
+	case identifier2Byte:
+		return identifier2ByteLength
+	case identifier8Byte:
+		return identifier8ByteLength
+	case identifier32Byte:
+		return identifier32ByteLength
+	default:
+		return 0
+	}
+}
+
 const (
 	kMaxBodyLen int = 255
 	// kPrefixHTTPS identifier field is size of 0 bytes (not present)
@@ -39,11 +54,16 @@ const (
 	urlProtocolHTTPS protocolHeader = 0x1
 	// urlProtocolUnreserved   protocolHeader = 0x2
 	// urlProtocolSharedRes protocolHeader = 0xf
-
+	// identifier
 	identifierNone   protocolHeader = 0 << 4
 	identifier2Byte  protocolHeader = 1 << 4
 	identifier8Byte  protocolHeader = 2 << 4
 	identifier32Byte protocolHeader = 3 << 4
+	// length
+	identifierNoneLength   int = 0
+	identifier2ByteLength  int = 2
+	identifier8ByteLength  int = 8
+	identifier32ByteLength int = 32
 )
 
 func NewResourceLocator(url string) (*ResourceLocator, error) {
@@ -71,7 +91,7 @@ func NewResourceLocatorFromReader(reader io.Reader) (*ResourceLocator, error) {
 	if err != nil {
 		return rl, err
 	}
-
+	// body
 	l := oneByte[0]
 	body := make([]byte, l)
 	_, err = reader.Read(body)
@@ -79,6 +99,12 @@ func NewResourceLocatorFromReader(reader io.Reader) (*ResourceLocator, error) {
 		return rl, err
 	}
 	rl.body = string(body)
+	// identifier
+	identifier := make([]byte, rl.protocol.identifierLength())
+	_, err = reader.Read(identifier)
+	if err != nil {
+		return rl, err
+	}
 
 	return rl, err
 }
@@ -119,20 +145,24 @@ func (rl *ResourceLocator) setURLWithIdentifier(url string, identifier string) e
 			return errors.New("URL too long")
 		}
 		identifierLen := len(identifier)
+		padding := ""
 		switch {
 		case identifierLen == 0:
 			rl.protocol = urlProtocolHTTP | identifierNone
-		case identifierLen >= 1 && identifierLen <= 2:
+		case identifierLen >= 1 && identifierLen <= identifier2ByteLength:
+			padding = strings.Repeat("\x00", identifier2ByteLength-identifierLen)
 			rl.protocol = urlProtocolHTTP | identifier2Byte
-		case identifierLen >= 3 && identifierLen <= 8:
+		case identifierLen >= 3 && identifierLen <= identifier8ByteLength:
+			padding = strings.Repeat("\x00", identifier8ByteLength-identifierLen)
 			rl.protocol = urlProtocolHTTP | identifier8Byte
-		case identifierLen >= 9 && identifierLen <= 32:
+		case identifierLen >= 9 && identifierLen <= identifier32ByteLength:
+			padding = strings.Repeat("\x00", identifier32ByteLength-identifierLen)
 			rl.protocol = urlProtocolHTTP | identifier32Byte
 		default:
 			return fmt.Errorf("unsupported identifier length: %d", identifierLen)
 		}
 		rl.body = urlBody
-		rl.identifier = identifier
+		rl.identifier = identifier + padding
 		return nil
 	}
 	return errors.New("unsupported protocol with identifier: " + url)

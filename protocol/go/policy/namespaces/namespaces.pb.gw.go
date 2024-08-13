@@ -257,6 +257,68 @@ func local_request_NamespaceService_DeactivateNamespace_0(ctx context.Context, m
 
 }
 
+func request_NamespaceService_AssignKeyAccessServerToNamespace_0(ctx context.Context, marshaler runtime.Marshaler, client NamespaceServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq AssignKeyAccessServerToNamespaceRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.NamespaceKeyAccessServer); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := client.AssignKeyAccessServerToNamespace(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_NamespaceService_AssignKeyAccessServerToNamespace_0(ctx context.Context, marshaler runtime.Marshaler, server NamespaceServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq AssignKeyAccessServerToNamespaceRequest
+	var metadata runtime.ServerMetadata
+
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.NamespaceKeyAccessServer); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.AssignKeyAccessServerToNamespace(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
+var (
+	filter_NamespaceService_RemoveKeyAccessServerFromNamespace_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
+func request_NamespaceService_RemoveKeyAccessServerFromNamespace_0(ctx context.Context, marshaler runtime.Marshaler, client NamespaceServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq RemoveKeyAccessServerFromNamespaceRequest
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NamespaceService_RemoveKeyAccessServerFromNamespace_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := client.RemoveKeyAccessServerFromNamespace(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_NamespaceService_RemoveKeyAccessServerFromNamespace_0(ctx context.Context, marshaler runtime.Marshaler, server NamespaceServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq RemoveKeyAccessServerFromNamespaceRequest
+	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NamespaceService_RemoveKeyAccessServerFromNamespace_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.RemoveKeyAccessServerFromNamespace(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
 // RegisterNamespaceServiceHandlerServer registers the http handlers for service NamespaceService to "mux".
 // UnaryRPC     :call NamespaceServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
@@ -385,6 +447,56 @@ func RegisterNamespaceServiceHandlerServer(ctx context.Context, mux *runtime.Ser
 		}
 
 		forward_NamespaceService_DeactivateNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("POST", pattern_NamespaceService_AssignKeyAccessServerToNamespace_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.namespaces.NamespaceService/AssignKeyAccessServerToNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces/keyaccessserver/grants"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NamespaceService_AssignKeyAccessServerToNamespace_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NamespaceService_AssignKeyAccessServerToNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("DELETE", pattern_NamespaceService_RemoveKeyAccessServerFromNamespace_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.namespaces.NamespaceService/RemoveKeyAccessServerFromNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces/keyaccessserver/grants"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_NamespaceService_RemoveKeyAccessServerFromNamespace_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NamespaceService_RemoveKeyAccessServerFromNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -539,6 +651,50 @@ func RegisterNamespaceServiceHandlerClient(ctx context.Context, mux *runtime.Ser
 
 	})
 
+	mux.Handle("POST", pattern_NamespaceService_AssignKeyAccessServerToNamespace_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.namespaces.NamespaceService/AssignKeyAccessServerToNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces/keyaccessserver/grants"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_NamespaceService_AssignKeyAccessServerToNamespace_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NamespaceService_AssignKeyAccessServerToNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("DELETE", pattern_NamespaceService_RemoveKeyAccessServerFromNamespace_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.namespaces.NamespaceService/RemoveKeyAccessServerFromNamespace", runtime.WithHTTPPathPattern("/attributes/namespaces/keyaccessserver/grants"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_NamespaceService_RemoveKeyAccessServerFromNamespace_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_NamespaceService_RemoveKeyAccessServerFromNamespace_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
 	return nil
 }
 
@@ -552,6 +708,10 @@ var (
 	pattern_NamespaceService_UpdateNamespace_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"attributes", "namespaces", "id"}, ""))
 
 	pattern_NamespaceService_DeactivateNamespace_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"attributes", "namespaces", "id"}, ""))
+
+	pattern_NamespaceService_AssignKeyAccessServerToNamespace_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"attributes", "namespaces", "keyaccessserver", "grants"}, ""))
+
+	pattern_NamespaceService_RemoveKeyAccessServerFromNamespace_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"attributes", "namespaces", "keyaccessserver", "grants"}, ""))
 )
 
 var (
@@ -564,4 +724,8 @@ var (
 	forward_NamespaceService_UpdateNamespace_0 = runtime.ForwardResponseMessage
 
 	forward_NamespaceService_DeactivateNamespace_0 = runtime.ForwardResponseMessage
+
+	forward_NamespaceService_AssignKeyAccessServerToNamespace_0 = runtime.ForwardResponseMessage
+
+	forward_NamespaceService_RemoveKeyAccessServerFromNamespace_0 = runtime.ForwardResponseMessage
 )

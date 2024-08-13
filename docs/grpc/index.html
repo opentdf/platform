@@ -246,6 +246,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.ResourceMappingGroup"><span class="badge">M</span>ResourceMappingGroup</a>
+                </li>
+              
+                <li>
                   <a href="#policy.SubjectConditionSet"><span class="badge">M</span>SubjectConditionSet</a>
                 </li>
               
@@ -684,6 +688,22 @@
                 </li>
               
                 <li>
+                  <a href="#policy.kasregistry.GrantedPolicyObject"><span class="badge">M</span>GrantedPolicyObject</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.KeyAccessServerGrants"><span class="badge">M</span>KeyAccessServerGrants</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.ListKeyAccessServerGrantsRequest"><span class="badge">M</span>ListKeyAccessServerGrantsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.ListKeyAccessServerGrantsResponse"><span class="badge">M</span>ListKeyAccessServerGrantsResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.kasregistry.ListKeyAccessServersRequest"><span class="badge">M</span>ListKeyAccessServersRequest</a>
                 </li>
               
@@ -715,6 +735,14 @@
             <ul>
               
                 <li>
+                  <a href="#policy.namespaces.AssignKeyAccessServerToNamespaceRequest"><span class="badge">M</span>AssignKeyAccessServerToNamespaceRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.namespaces.AssignKeyAccessServerToNamespaceResponse"><span class="badge">M</span>AssignKeyAccessServerToNamespaceResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.namespaces.CreateNamespaceRequest"><span class="badge">M</span>CreateNamespaceRequest</a>
                 </li>
               
@@ -744,6 +772,18 @@
               
                 <li>
                   <a href="#policy.namespaces.ListNamespacesResponse"><span class="badge">M</span>ListNamespacesResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.namespaces.NamespaceKeyAccessServer"><span class="badge">M</span>NamespaceKeyAccessServer</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.namespaces.RemoveKeyAccessServerFromNamespaceRequest"><span class="badge">M</span>RemoveKeyAccessServerFromNamespaceRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.namespaces.RemoveKeyAccessServerFromNamespaceResponse"><span class="badge">M</span>RemoveKeyAccessServerFromNamespaceResponse</a>
                 </li>
               
                 <li>
@@ -1528,6 +1568,13 @@
                   <td><p> </p></td>
                 </tr>
               
+                <tr>
+                  <td>grants</td>
+                  <td><a href="#policy.KeyAccessServer">KeyAccessServer</a></td>
+                  <td>repeated</td>
+                  <td><p>KAS grants for the namespace </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -1602,6 +1649,51 @@
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>group</td>
+                  <td><a href="#policy.ResourceMappingGroup">ResourceMappingGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.ResourceMappingGroup">ResourceMappingGroup</h3>
+        <p>Resource Mapping Groups are namespaced collections of Resource Mappings associated under a common group name.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>the namespace containing the group of resource mappings </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>the common name for the group of resource mappings, which must be unique per namespace </p></td>
                 </tr>
               
             </tbody>
@@ -4880,6 +4972,139 @@ Attribute &lt;&gt; Key Access Server RPCs
 
         
       
+        <h3 id="policy.kasregistry.GrantedPolicyObject">GrantedPolicyObject</h3>
+        <p>Can be namespace, attribute definition, or value</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.KeyAccessServerGrants">KeyAccessServerGrants</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_access_server</td>
+                  <td><a href="#policy.KeyAccessServer">policy.KeyAccessServer</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_grants</td>
+                  <td><a href="#policy.kasregistry.GrantedPolicyObject">GrantedPolicyObject</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_grants</td>
+                  <td><a href="#policy.kasregistry.GrantedPolicyObject">GrantedPolicyObject</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value_grants</td>
+                  <td><a href="#policy.kasregistry.GrantedPolicyObject">GrantedPolicyObject</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.ListKeyAccessServerGrantsRequest">ListKeyAccessServerGrantsRequest</h3>
+        <p>LIST of KAS Grants returns flat response of grants to all policy objects. It does not</p><p>employ selectors for grants to specific policy objects or build the attribute tree relation.</p><p>If grants to a known namespace, attribute, or value are needed, use the respective</p><p>GET request to the specific policy object.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>kas_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+Filter LIST by either ID or URI of a registered Key Access Server.
+If neither is provided, grants from all registered KASs to policy attribute objects are returned. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.ListKeyAccessServerGrantsResponse">ListKeyAccessServerGrantsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>grants</td>
+                  <td><a href="#policy.kasregistry.KeyAccessServerGrants">KeyAccessServerGrants</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.kasregistry.ListKeyAccessServersRequest">ListKeyAccessServersRequest</h3>
         <p></p>
 
@@ -5036,6 +5261,13 @@ Attribute &lt;&gt; Key Access Server RPCs
                 <td><p></p></td>
               </tr>
             
+              <tr>
+                <td>ListKeyAccessServerGrants</td>
+                <td><a href="#policy.kasregistry.ListKeyAccessServerGrantsRequest">ListKeyAccessServerGrantsRequest</a></td>
+                <td><a href="#policy.kasregistry.ListKeyAccessServerGrantsResponse">ListKeyAccessServerGrantsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
           </tbody>
         </table>
 
@@ -5104,6 +5336,16 @@ Attribute &lt;&gt; Key Access Server RPCs
               </tr>
               
             
+              
+              
+              <tr>
+                <td>ListKeyAccessServerGrants</td>
+                <td>GET</td>
+                <td>/key-access-servers/grants</td>
+                <td></td>
+              </tr>
+              
+            
             </tbody>
           </table>
           
@@ -5115,6 +5357,54 @@ Attribute &lt;&gt; Key Access Server RPCs
       </div>
       <p></p>
 
+      
+        <h3 id="policy.namespaces.AssignKeyAccessServerToNamespaceRequest">AssignKeyAccessServerToNamespaceRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_key_access_server</td>
+                  <td><a href="#policy.namespaces.NamespaceKeyAccessServer">NamespaceKeyAccessServer</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.namespaces.AssignKeyAccessServerToNamespaceResponse">AssignKeyAccessServerToNamespaceResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_key_access_server</td>
+                  <td><a href="#policy.namespaces.NamespaceKeyAccessServer">NamespaceKeyAccessServer</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
       
         <h3 id="policy.namespaces.CreateNamespaceRequest">CreateNamespaceRequest</h3>
         <p></p>
@@ -5298,6 +5588,85 @@ Attribute &lt;&gt; Key Access Server RPCs
 
         
       
+        <h3 id="policy.namespaces.NamespaceKeyAccessServer">NamespaceKeyAccessServer</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_access_server_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.namespaces.RemoveKeyAccessServerFromNamespaceRequest">RemoveKeyAccessServerFromNamespaceRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_key_access_server</td>
+                  <td><a href="#policy.namespaces.NamespaceKeyAccessServer">NamespaceKeyAccessServer</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.namespaces.RemoveKeyAccessServerFromNamespaceResponse">RemoveKeyAccessServerFromNamespaceResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_key_access_server</td>
+                  <td><a href="#policy.namespaces.NamespaceKeyAccessServer">NamespaceKeyAccessServer</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.namespaces.UpdateNamespaceRequest">UpdateNamespaceRequest</h3>
         <p></p>
 
@@ -5409,6 +5778,22 @@ Attribute &lt;&gt; Key Access Server RPCs
                 <td><p></p></td>
               </tr>
             
+              <tr>
+                <td>AssignKeyAccessServerToNamespace</td>
+                <td><a href="#policy.namespaces.AssignKeyAccessServerToNamespaceRequest">AssignKeyAccessServerToNamespaceRequest</a></td>
+                <td><a href="#policy.namespaces.AssignKeyAccessServerToNamespaceResponse">AssignKeyAccessServerToNamespaceResponse</a></td>
+                <td><p>--------------------------------------*
+Namespace &lt;&gt; Key Access Server RPCs
+---------------------------------------</p></td>
+              </tr>
+            
+              <tr>
+                <td>RemoveKeyAccessServerFromNamespace</td>
+                <td><a href="#policy.namespaces.RemoveKeyAccessServerFromNamespaceRequest">RemoveKeyAccessServerFromNamespaceRequest</a></td>
+                <td><a href="#policy.namespaces.RemoveKeyAccessServerFromNamespaceResponse">RemoveKeyAccessServerFromNamespaceResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
           </tbody>
         </table>
 
@@ -5473,6 +5858,26 @@ Attribute &lt;&gt; Key Access Server RPCs
                 <td>DeactivateNamespace</td>
                 <td>DELETE</td>
                 <td>/attributes/namespaces/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>AssignKeyAccessServerToNamespace</td>
+                <td>POST</td>
+                <td>/attributes/namespaces/keyaccessserver/grants</td>
+                <td>namespace_key_access_server</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>RemoveKeyAccessServerFromNamespace</td>
+                <td>DELETE</td>
+                <td>/attributes/namespaces/keyaccessserver/grants</td>
                 <td></td>
               </tr>
               

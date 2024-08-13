@@ -111,6 +111,14 @@ type AttributeNamespace struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+// Table to store the grants of key access servers (KASs) to attribute namespaces
+type AttributeNamespaceKeyAccessGrant struct {
+	// Foreign key to the namespace of the KAS grant
+	NamespaceID string `json:"namespace_id"`
+	// Foreign key to the KAS registration
+	KeyAccessServerID string `json:"key_access_server_id"`
+}
+
 // Table to store the values of attributes
 type AttributeValue struct {
 	// Primary key for the table

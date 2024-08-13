@@ -397,6 +397,14 @@
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata"
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKeyAccessServer"
+          },
+          "title": "KAS grants for the namespace"
         }
       }
     },
@@ -430,9 +438,29 @@
           "items": {
             "type": "string"
           }
+        },
+        "group": {
+          "$ref": "#/definitions/policyResourceMappingGroup"
         }
       },
       "title": "Resource Mappings (aka Access Control Resource Encodings aka ACRE) are structures supporting the mapping of Resources and Attribute Values"
+    },
+    "policyResourceMappingGroup": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "namespaceId": {
+          "type": "string",
+          "title": "the namespace containing the group of resource mappings"
+        },
+        "name": {
+          "type": "string",
+          "title": "the common name for the group of resource mappings, which must be unique per namespace"
+        }
+      },
+      "description": "Resource Mapping Groups are namespaced collections of Resource Mappings associated under a common group name."
     },
     "policySubjectConditionSet": {
       "type": "object",

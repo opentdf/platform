@@ -1031,6 +1031,14 @@
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata"
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKeyAccessServer"
+          },
+          "title": "KAS grants for the namespace"
         }
       }
     },

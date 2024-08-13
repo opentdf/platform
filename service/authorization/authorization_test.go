@@ -6,18 +6,17 @@ import (
 	"fmt"
 	"log/slog"
 	"testing"
-	"time"
 
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
+	sm "github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -25,6 +24,7 @@ import (
 var (
 	getAttributesByValueFqnsResponse attr.GetAttributeValuesByFqnsResponse
 	listAttributeResp                attr.ListAttributesResponse
+	listSubjectMappings              sm.ListSubjectMappingsResponse
 	createEntityChainResp            entityresolution.CreateEntityChainFromJwtResponse
 	resolveEntitiesResp              entityresolution.ResolveEntitiesResponse
 	mockNamespace                    = "www.example.org"
@@ -49,6 +49,14 @@ func (*myAttributesClient) GetAttributeValuesByFqns(_ context.Context, _ *attr.G
 
 type myERSClient struct {
 	entityresolution.EntityResolutionServiceClient
+}
+
+type mySubjectMappingClient struct {
+	sm.SubjectMappingServiceClient
+}
+
+func (*mySubjectMappingClient) ListSubjectMappings(_ context.Context, _ *sm.ListSubjectMappingsRequest, _ ...grpc.CallOption) (*sm.ListSubjectMappingsResponse, error) {
+	return &listSubjectMappings, nil
 }
 
 func (*myERSClient) CreateEntityChainFromJwt(_ context.Context, _ *entityresolution.CreateEntityChainFromJwtRequest, _ ...grpc.CallOption) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
@@ -177,11 +185,6 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 		},
 	}
 
-	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
-		AccessToken: "AccessToken",
-		Expiry:      time.Now().Add(1 * time.Hour),
-	})
-
 	ctxb := context.Background()
 
 	testrego := rego.New(
@@ -214,8 +217,9 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	}}
 
 	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
-		Attributes: &myAttributesClient{}, EntityResoution: &myERSClient{}},
-		tokenSource: &testTokenSource, eval: prepared}
+		SubjectMapping: &mySubjectMappingClient{},
+		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		eval: prepared}
 
 	resp, err := as.GetDecisions(ctxb, &req)
 
@@ -353,11 +357,6 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 		},
 	}}
 
-	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
-		AccessToken: "AccessToken",
-		Expiry:      time.Now().Add(1 * time.Hour),
-	})
-
 	ctxb := context.Background()
 
 	testrego := rego.New(
@@ -372,8 +371,9 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 	require.NoError(t, err)
 
 	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
-		Attributes: &myAttributesClient{}, EntityResoution: &myERSClient{}},
-		tokenSource: &testTokenSource, eval: prepared}
+		SubjectMapping: &mySubjectMappingClient{},
+		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		eval: prepared}
 
 	resp, err := as.GetDecisions(ctxb, &req)
 
@@ -429,11 +429,6 @@ func Test_GetDecisionsAllOfWithEnvironmental_Pass(t *testing.T) {
 		},
 	}
 
-	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
-		AccessToken: "AccessToken",
-		Expiry:      time.Now().Add(1 * time.Hour),
-	})
-
 	ctxb := context.Background()
 
 	testrego := rego.New(
@@ -467,8 +462,9 @@ func Test_GetDecisionsAllOfWithEnvironmental_Pass(t *testing.T) {
 	}}
 
 	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
-		Attributes: &myAttributesClient{}, EntityResoution: &myERSClient{}},
-		tokenSource: &testTokenSource, eval: prepared}
+		SubjectMapping: &mySubjectMappingClient{},
+		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		eval: prepared}
 
 	resp, err := as.GetDecisions(ctxb, &req)
 
@@ -522,11 +518,6 @@ func Test_GetDecisionsAllOfWithEnvironmental_Fail(t *testing.T) {
 		},
 	}
 
-	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
-		AccessToken: "AccessToken",
-		Expiry:      time.Now().Add(1 * time.Hour),
-	})
-
 	ctxb := context.Background()
 
 	testrego := rego.New(
@@ -560,8 +551,9 @@ func Test_GetDecisionsAllOfWithEnvironmental_Fail(t *testing.T) {
 	}}
 
 	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
-		Attributes: &myAttributesClient{}, EntityResoution: &myERSClient{}},
-		tokenSource: &testTokenSource, eval: prepared}
+		SubjectMapping: &mySubjectMappingClient{},
+		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		eval: prepared}
 
 	resp, err := as.GetDecisions(ctxb, &req)
 
@@ -615,10 +607,6 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 		},
 		},
 	}
-	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
-		AccessToken: "AccessToken",
-		Expiry:      time.Now().Add(1 * time.Hour),
-	})
 
 	ctxb := context.Background()
 
@@ -634,8 +622,9 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 	require.NoError(t, err)
 
 	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
-		Attributes: &myAttributesClient{}, EntityResoution: &myERSClient{}},
-		tokenSource: &testTokenSource, eval: prepared}
+		SubjectMapping: &mySubjectMappingClient{},
+		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		eval: prepared}
 
 	req := authorization.GetEntitlementsRequest{
 		Entities: []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT}},
@@ -653,8 +642,6 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 
 func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 	logger := logger.CreateTestLogger()
-
-	listAttributeResp = attr.ListAttributesResponse{}
 	attrDef := policy.Attribute{
 		Name: mockAttrName,
 		Namespace: &policy.Namespace{
@@ -672,6 +659,7 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 			},
 		},
 	}
+	listAttributeResp.Attributes = []*policy.Attribute{&attrDef}
 	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{FqnAttributeValues: map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 		"https://www.example.org/attr/foo/value/value1": {
 			Attribute: &attrDef,
@@ -694,10 +682,6 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 		},
 		},
 	}
-	testTokenSource := oauth2.StaticTokenSource(&oauth2.Token{
-		AccessToken: "AccessToken",
-		Expiry:      time.Now().Add(1 * time.Hour),
-	})
 
 	ctxb := context.Background()
 
@@ -712,8 +696,9 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 	prepared, err := rego.PrepareForEval(ctxb)
 	require.NoError(t, err)
 	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
-		Attributes: &myAttributesClient{}, EntityResoution: &myERSClient{}},
-		tokenSource: &testTokenSource, eval: prepared}
+		SubjectMapping: &mySubjectMappingClient{},
+		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		eval: prepared}
 
 	withHierarchy := true
 	req := authorization.GetEntitlementsRequest{

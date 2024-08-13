@@ -57,7 +57,7 @@ type TDFConfig struct {
 	mimeType                  string
 	integrityAlgorithm        IntegrityAlgorithm
 	segmentIntegrityAlgorithm IntegrityAlgorithm
-	assertions                []Assertion //nolint:unused // TODO
+	assertions                []AssertionConfig
 	attributes                []autoconfigure.AttributeValueFQN
 	attributeValues           []*policy.Value
 	kasInfoList               []KASInfo
@@ -186,6 +186,14 @@ func WithSegmentSize(size int64) TDFOption {
 	}
 }
 
+// WithAssertions returns an Option that add assertions to TDF.
+func WithAssertions(assertionList ...AssertionConfig) TDFOption {
+	return func(c *TDFConfig) error {
+		c.assertions = append(c.assertions, assertionList...)
+		return nil
+	}
+}
+
 // WithAutoconfigure toggles inferring KAS info for encrypt from data attributes.
 // This will use the Attributes service to look up key access grants.
 // These are KAS URLs associated with attributes.
@@ -194,6 +202,32 @@ func WithAutoconfigure(enable bool) TDFOption {
 	return func(c *TDFConfig) error {
 		c.autoconfigure = enable
 		c.splitPlan = nil
+		return nil
+	}
+}
+
+type TDFReaderOption func(*TDFReaderConfig) error
+
+type TDFReaderConfig struct {
+	// Optional Map of Assertion Verification Keys
+	AssertionVerificationKeys AssertionVerificationKeys
+}
+
+func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
+	c := &TDFReaderConfig{}
+	for _, o := range opt {
+		err := o(c)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return c, nil
+}
+
+func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.AssertionVerificationKeys = keys
 		return nil
 	}
 }

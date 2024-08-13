@@ -116,3 +116,84 @@ func TestGetIdentifier(t *testing.T) {
 		}
 	}
 }
+
+func TestProtocolHeaderIdentifierLength(t *testing.T) {
+	tests := []struct {
+		header protocolHeader
+		length int
+	}{
+		{urlProtocolHTTPS, identifierNoneLength},
+		{identifierNone, identifierNoneLength},
+		{identifier2Byte, identifier2ByteLength},
+		{identifier8Byte, identifier8ByteLength},
+		{identifier32Byte, identifier32ByteLength},
+		{protocolHeader(255), 0},
+	}
+
+	for _, test := range tests {
+		got := test.header.identifierLength()
+		if got != test.length {
+			t.Fatalf("expected length: %d, got %d", test.length, got)
+		}
+	}
+}
+
+func TestNewResourceLocatorWithIdentifierFromReader(t *testing.T) {
+	setupResourceLocator := func(url, identifier string) ([]byte, error) {
+		locator := ResourceLocator{}
+		if err := locator.setURLWithIdentifier(url, identifier); err != nil {
+			return nil, err
+		}
+		var buf bytes.Buffer
+		if err := locator.writeResourceLocator(&buf); err != nil {
+			return nil, err
+		}
+		return buf.Bytes(), nil
+	}
+	// 2 Bytes
+	t0Data, err := setupResourceLocator("https://example.com", "t0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 8 Bytes
+	t1Data, err := setupResourceLocator("https://example.com", "t1t1t1t1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 32 Bytes
+	t2Data, err := setupResourceLocator("https://example.com", "t2t2t2t2t2t2t2t2t2t2t2t2t2t2t2t2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 0 Bytes no identifier
+	t3Data, err := setupResourceLocator("https://example.com", "")
+	if err == nil {
+		// must error
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		data        []byte
+		expectBody  string
+		expectIdent string
+		expectError bool
+	}{
+		{t0Data, "example.com", "t0", false},
+		{t1Data, "example.com", "t1t1t1t1", false},
+		{t2Data, "example.com", "t2t2t2t2t2t2t2t2t2t2t2t2t2t2t2t2", false},
+		{t3Data, "example.com", "", true},
+	}
+
+	for _, test := range tests {
+		rl, err := NewResourceLocatorFromReader(bytes.NewReader(test.data))
+		if (err != nil) != test.expectError {
+			t.Fatalf("expected error: %v, got %v, error: %v", test.expectError, err != nil, err)
+		}
+		if !test.expectError && rl.body != test.expectBody {
+			t.Fatalf("expected body: %s, got %s", test.expectBody, rl.body)
+		}
+		if rl.identifier != test.expectIdent {
+			t.Fatalf("expected identifier: %s, got %s", test.expectIdent, rl.identifier)
+		}
+	}
+}

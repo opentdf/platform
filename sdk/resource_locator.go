@@ -105,7 +105,7 @@ func NewResourceLocatorFromReader(reader io.Reader) (*ResourceLocator, error) {
 	if err != nil {
 		return rl, err
 	}
-
+	rl.identifier = string(identifier)
 	return rl, err
 }
 
@@ -116,6 +116,9 @@ func (rl ResourceLocator) getLength() uint16 {
 
 // setURL - Store a fully qualified protocol+body string into a ResourceLocator as a protocol value and a body string
 func (rl *ResourceLocator) setURLWithIdentifier(url string, identifier string) error {
+	if identifier == "" {
+		return errors.New("identifier is empty")
+	}
 	lowerURL := strings.ToLower(url)
 	if strings.HasPrefix(lowerURL, kPrefixHTTPS) {
 		urlBody := url[len(kPrefixHTTPS):]
@@ -231,6 +234,12 @@ func (rl ResourceLocator) writeResourceLocator(writer io.Writer) error {
 
 	if _, err := writer.Write([]byte(rl.body)); err != nil {
 		return err
+	}
+	// identifier
+	if len(rl.identifier) > 0 {
+		if _, err := writer.Write([]byte(rl.identifier)); err != nil {
+			return err
+		}
 	}
 
 	return nil

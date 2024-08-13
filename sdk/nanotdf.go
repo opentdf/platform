@@ -697,7 +697,7 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	slog.Debug("kasPublicKey", slog.String("kid", kid))
 
 	// update KAS URL with kid if set
-	if kid != "" && !s.tdfFeatures.noKID {
+	if kid != "" && !s.nanoFeatures.noKID {
 		err = config.kasURL.setURLWithIdentifier(kasURL, kid)
 		if err != nil {
 			return 0, fmt.Errorf("getECPublicKey setURLWithIdentifier failed:%w", err)

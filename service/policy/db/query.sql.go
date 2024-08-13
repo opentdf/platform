@@ -268,7 +268,7 @@ LEFT JOIN
     attribute_fqns fqns_on_ns
     ON nskag.namespace_id = fqns_on_ns.namespace_id
 WHERE (NULLIF($1, '') IS NULL OR kas.id = $1::uuid)
-    OR (NULLIF($2, '') IS NULL OR kas.uri = $2::varchar)
+    AND (NULLIF($2, '') IS NULL OR kas.uri = $2::varchar)
 GROUP BY 
     kas.id
 `
@@ -335,7 +335,7 @@ type ListKeyAccessServerGrantsRow struct {
 //	    attribute_fqns fqns_on_ns
 //	    ON nskag.namespace_id = fqns_on_ns.namespace_id
 //	WHERE (NULLIF($1, '') IS NULL OR kas.id = $1::uuid)
-//	    OR (NULLIF($2, '') IS NULL OR kas.uri = $2::varchar)
+//	    AND (NULLIF($2, '') IS NULL OR kas.uri = $2::varchar)
 //	GROUP BY
 //	    kas.id
 func (q *Queries) ListKeyAccessServerGrants(ctx context.Context, arg ListKeyAccessServerGrantsParams) ([]ListKeyAccessServerGrantsRow, error) {

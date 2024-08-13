@@ -6,6 +6,7 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -79,4 +80,26 @@ func KeyAccessServerProtoJSON(keyAccessServerJSON []byte) ([]*policy.KeyAccessSe
 		keyAccessServers = append(keyAccessServers, &kas)
 	}
 	return keyAccessServers, nil
+}
+
+func GrantedPolicyObjectProtoJSON(grantsJSON []byte) ([]*kasregistry.GrantedPolicyObject, error) {
+	var (
+		policyObjectGrants []*kasregistry.GrantedPolicyObject
+		raw                []json.RawMessage
+	)
+	if grantsJSON == nil {
+		return nil, nil
+	}
+
+	if err := json.Unmarshal(grantsJSON, &raw); err != nil {
+		return nil, err
+	}
+	for _, r := range raw {
+		po := kasregistry.GrantedPolicyObject{}
+		if err := protojson.Unmarshal(r, &po); err != nil {
+			return nil, err
+		}
+		policyObjectGrants = append(policyObjectGrants, &po)
+	}
+	return policyObjectGrants, nil
 }

@@ -77,7 +77,7 @@ LEFT JOIN
     attribute_fqns fqns_on_ns
     ON nskag.namespace_id = fqns_on_ns.namespace_id
 WHERE (NULLIF(@kas_id, '') IS NULL OR kas.id = @kas_id::uuid)
-    OR (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri::varchar)
+    AND (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri::varchar)
 GROUP BY 
     kas.id;
 

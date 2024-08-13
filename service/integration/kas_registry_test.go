@@ -444,21 +444,21 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasId() {
 	s.NotNil(createdGrant)
 
 	// list grants by KAS ID
-	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrantsByKasId(s.ctx, fixtureKAS.ID)
+	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, fixtureKAS.ID, "")
 	s.Require().NoError(err)
 	s.NotNil(listedGrants)
 	s.GreaterOrEqual(len(listedGrants), 1)
 	for _, g := range listedGrants {
-		s.Equal(fixtureKAS.ID, g.KasID)
-		s.Equal(fixtureKAS.URI, g.KasUri)
+		s.Equal(fixtureKAS.ID, g.GetKeyAccessServer().GetId())
+		s.Equal(fixtureKAS.URI, g.GetKeyAccessServer().GetUri())
 	}
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasId_NoResultsIfNotFound() {
 	// list grants by KAS ID
-	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrantsByKasId(s.ctx, nonExistentKasRegistryID)
+	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, nonExistentKasRegistryID, "")
 	s.Require().NoError(err)
-	s.Nil(listedGrants)
+	s.Empty(listedGrants)
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasUri() {
@@ -484,21 +484,22 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasUri() {
 	s.NotNil(createdGrant)
 
 	// list grants by KAS URI
-	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrantsByKasUri(s.ctx, fixtureKAS.URI)
+	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, "", fixtureKAS.URI)
+
 	s.Require().NoError(err)
 	s.NotNil(listedGrants)
 	s.GreaterOrEqual(len(listedGrants), 1)
 	for _, g := range listedGrants {
-		s.Equal(fixtureKAS.ID, g.KasID)
-		s.Equal(fixtureKAS.URI, g.KasUri)
+		s.Equal(fixtureKAS.ID, g.GetKeyAccessServer().GetId())
+		s.Equal(fixtureKAS.URI, g.GetKeyAccessServer().GetUri())
 	}
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasUri_NoResultsIfNotFound() {
 	// list grants by KAS ID
-	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrantsByKasUri(s.ctx, "https://notfound.com/kas/uri")
+	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, "", "https://notfound.com/kas/uri")
 	s.Require().NoError(err)
-	s.Nil(listedGrants)
+	s.Empty(listedGrants)
 }
 
 func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {
@@ -533,13 +534,13 @@ func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {
 	s.NotNil(createdGrant)
 
 	// list all grants
-	listedGrants, err := s.db.PolicyClient.ListAllKeyAccessServerGrants(s.ctx)
+	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, "", "")
 	s.Require().NoError(err)
 	s.NotNil(listedGrants)
 	s.GreaterOrEqual(len(listedGrants), 1)
 	found := false
 	for _, g := range listedGrants {
-		if g.KasID == createdKAS.GetId() {
+		if g.GetKeyAccessServer().GetId() == createdKAS.GetId() {
 			found = true
 			break
 		}

@@ -147,14 +147,11 @@ const getNamespace = `-- name: GetNamespace :one
 SELECT ns.id, ns.name, ns.active,
     attribute_fqns.fqn as fqn,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
-    COALESCE(
-        JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
-            'id', kas.id, 
-            'uri', kas.uri, 
-            'public_key', kas.public_key
-        )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL), 
-        '[]'::jsonb
-    ) AS grants
+    JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
+        'id', kas.id, 
+        'uri', kas.uri, 
+        'public_key', kas.public_key
+    )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants
 FROM attribute_namespaces ns
 LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
 LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
@@ -171,7 +168,7 @@ type GetNamespaceRow struct {
 	Active   bool        `json:"active"`
 	Fqn      pgtype.Text `json:"fqn"`
 	Metadata []byte      `json:"metadata"`
-	Grants   interface{} `json:"grants"`
+	Grants   []byte      `json:"grants"`
 }
 
 // --------------------------------------------------------------
@@ -181,14 +178,11 @@ type GetNamespaceRow struct {
 //	SELECT ns.id, ns.name, ns.active,
 //	    attribute_fqns.fqn as fqn,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
-//	    COALESCE(
-//	        JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
-//	            'id', kas.id,
-//	            'uri', kas.uri,
-//	            'public_key', kas.public_key
-//	        )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL),
-//	        '[]'::jsonb
-//	    ) AS grants
+//	    JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
+//	        'id', kas.id,
+//	        'uri', kas.uri,
+//	        'public_key', kas.public_key
+//	    )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants
 //	FROM attribute_namespaces ns
 //	LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
 //	LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id

@@ -273,7 +273,9 @@ message KasPublicKey {
   // A unique string identifier for this key
   string kid = 2;
 
-  // A known algorithm type with any additional parameters encoded
+  // A known algorithm type with any additional parameters encoded.
+  // To start, these may be `rsa:2048` for encrypting ZTDF files and 
+  // `ec:secp256r1` for nanoTDF, but more formats may be added as needed.
   string alg = 3;
 }
 

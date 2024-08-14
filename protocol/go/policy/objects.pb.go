@@ -1266,7 +1266,9 @@ type KasPublicKey struct {
 	Pem string `protobuf:"bytes,1,opt,name=pem,proto3" json:"pem,omitempty"`
 	// A unique string identifier for this key
 	Kid string `protobuf:"bytes,2,opt,name=kid,proto3" json:"kid,omitempty"`
-	// A known algorithm type with any additional parameters encoded
+	// A known algorithm type with any additional parameters encoded.
+	// To start, these may be `rsa:2048` for encrypting ZTDF files and
+	// `ec:secp256r1` for nanoTDF, but more formats may be added as needed.
 	Alg string `protobuf:"bytes,3,opt,name=alg,proto3" json:"alg,omitempty"`
 }
 

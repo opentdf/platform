@@ -258,7 +258,11 @@ message ResourceMapping {
 message KeyAccessServer {
   string id = 1;
   // Address of a KAS instance
-  string uri = 2;
+  string uri = 2 [(buf.validate.field).cel = {
+      id: "uri_format",
+      message: "URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
+      expression: "this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')"
+  }];
   PublicKey public_key = 3;
 
   // Common metadata

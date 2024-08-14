@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/logger"
 )
 
 // AuthConfig pulls AuthN and AuthZ together

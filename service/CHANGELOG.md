@@ -1,5 +1,46 @@
 # Changelog
 
+## [0.4.18](https://github.com/opentdf/platform/compare/service/v0.4.17...service/v0.4.18) (2024-08-12)
+
+
+### Features
+
+* **authz:** Remove external ers configuration from authorization ([#1265](https://github.com/opentdf/platform/issues/1265)) ([aa925a8](https://github.com/opentdf/platform/commit/aa925a8ca1cb8cf3c971f2b0463f48444796b7b4))
+* **authz:** Typed Entities ([#1249](https://github.com/opentdf/platform/issues/1249)) ([cfab3ad](https://github.com/opentdf/platform/commit/cfab3ad8a72f3a2f1a28ccca988459ddcdcbd7f6))
+* **core:** ability to run a set of isolated services ([#1245](https://github.com/opentdf/platform/issues/1245)) ([aa5636a](https://github.com/opentdf/platform/commit/aa5636aff4b842215af4a02d2fea9b7b9397080f))
+* **core:** improve entitlements performance  ([#1271](https://github.com/opentdf/platform/issues/1271)) ([f6a1b26](https://github.com/opentdf/platform/commit/f6a1b2673695d2578bd497f223eebf190172da5e))
+* **core:** policy support for LIST of kas grants (protos/db) ([#1317](https://github.com/opentdf/platform/issues/1317)) ([599fc56](https://github.com/opentdf/platform/commit/599fc56dbcc3ae8ff2f46584c9bae7c1619a590d))
+* **core:** Simplifies support for kidless clients ([#1272](https://github.com/opentdf/platform/issues/1272)) ([dedeb32](https://github.com/opentdf/platform/commit/dedeb3253421870c11300345a1fb6ce8d00fcf6f))
+* **policy:** 1256 resource mapping groups db support ([#1270](https://github.com/opentdf/platform/issues/1270)) ([c020e9b](https://github.com/opentdf/platform/commit/c020e9bba2d0fa930d9e4d368e2956116ed356c6))
+* **policy:** 1277 add Resource Mapping Group to objects proto ([#1309](https://github.com/opentdf/platform/issues/1309)) ([514f1b8](https://github.com/opentdf/platform/commit/514f1b8e2d6c56056a8258e144380974b1f84d1b)), closes [#1277](https://github.com/opentdf/platform/issues/1277)
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1322](https://github.com/opentdf/platform/issues/1322)) ([9460fb5](https://github.com/opentdf/platform/commit/9460fb56058dadf7941aa316e2e6e89caab6e8af))
+* **core:** casbin policy should support assign/remove/deactivate rpc naming ([#1298](https://github.com/opentdf/platform/issues/1298)) ([288921b](https://github.com/opentdf/platform/commit/288921b2c852537ebb9134b95e67964dbc4ee2ad)), closes [#1303](https://github.com/opentdf/platform/issues/1303)
+* **core:** put back proto breaking change detection in CI ([#1292](https://github.com/opentdf/platform/issues/1292)) ([9921962](https://github.com/opentdf/platform/commit/9921962ca56954afe5e47bbc68f0461bc1dc28bf)), closes [#1293](https://github.com/opentdf/platform/issues/1293)
+* **core:** Update casbin policy for rewrap with unknown role ([#1305](https://github.com/opentdf/platform/issues/1305)) ([de5be3c](https://github.com/opentdf/platform/commit/de5be3cab6c18c8816677cbbed35913bb7090c51))
+* **policy:** deprecates and reserves value members from value object in protos ([#1151](https://github.com/opentdf/platform/issues/1151)) ([07fcc9e](https://github.com/opentdf/platform/commit/07fcc9ec93f00beeb863e67d0ca1465c783c2a54))
+
+## [0.4.17](https://github.com/opentdf/platform/compare/service/v0.4.16...service/v0.4.17) (2024-08-06)
+
+
+### Features
+
+* **authz:** Move ERS call out of rego and include all entities in requests ([#1228](https://github.com/opentdf/platform/issues/1228)) ([cdcca79](https://github.com/opentdf/platform/commit/cdcca79484da1be58687d7ce6bae930a3eae7b21))
+* **core:** MIC-934 Moves logger out of internal folder ([#1219](https://github.com/opentdf/platform/issues/1219)) ([0576813](https://github.com/opentdf/platform/commit/05768134db300a06ea2d687f8cec583ef7598fb6))
+* **policy:** add support for sqlc within policy db queries ([#1185](https://github.com/opentdf/platform/issues/1185)) ([5aef245](https://github.com/opentdf/platform/commit/5aef245720cb417a51622ffd1276f57163319c6d)), closes [#561](https://github.com/opentdf/platform/issues/561)
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1202](https://github.com/opentdf/platform/issues/1202)) ([98d6d8b](https://github.com/opentdf/platform/commit/98d6d8b84bc72a2d92e7b93dca9f6fa395aaac2e))
+* **core:** bump github.com/docker/docker from 25.0.5+incompatible to 26.1.4+incompatible in /service ([#1223](https://github.com/opentdf/platform/issues/1223)) ([937c967](https://github.com/opentdf/platform/commit/937c9675daa7da848223577adf939f721e5a773e))
+* **core:** drop unused/deprecated resources table & add comments to policy DB ([#1258](https://github.com/opentdf/platform/issues/1258)) ([bb084aa](https://github.com/opentdf/platform/commit/bb084aad4ac5da071afbe5467b571c2b28227773))
+* **core:** improve casbin ExtendDefaultPolicy and add test ([#1234](https://github.com/opentdf/platform/issues/1234)) ([cc15f25](https://github.com/opentdf/platform/commit/cc15f25af2c3e839d7ad45283b7bd298a80e8728))
+* **core:** policy subject mapping integration test addition for 'contains' operator ([#1244](https://github.com/opentdf/platform/issues/1244)) ([f8becb8](https://github.com/opentdf/platform/commit/f8becb8911a0d4e9726245ebc51d902cf11e0dd0))
+
 ## [0.4.16](https://github.com/opentdf/platform/compare/service/v0.4.15...service/v0.4.16) (2024-07-25)
 
 

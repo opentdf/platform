@@ -11,6 +11,30 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const assignKeyAccessServerToNamespace = `-- name: AssignKeyAccessServerToNamespace :execrows
+INSERT INTO attribute_namespace_key_access_grants
+(namespace_id, key_access_server_id)
+VALUES ($1, $2)
+`
+
+type AssignKeyAccessServerToNamespaceParams struct {
+	NamespaceID       string `json:"namespace_id"`
+	KeyAccessServerID string `json:"key_access_server_id"`
+}
+
+// AssignKeyAccessServerToNamespace
+//
+//	INSERT INTO attribute_namespace_key_access_grants
+//	(namespace_id, key_access_server_id)
+//	VALUES ($1, $2)
+func (q *Queries) AssignKeyAccessServerToNamespace(ctx context.Context, arg AssignKeyAccessServerToNamespaceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, assignKeyAccessServerToNamespace, arg.NamespaceID, arg.KeyAccessServerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const createKeyAccessServer = `-- name: CreateKeyAccessServer :one
 INSERT INTO key_access_servers (uri, public_key, metadata)
 VALUES ($1, $2, $3)
@@ -35,6 +59,29 @@ func (q *Queries) CreateKeyAccessServer(ctx context.Context, arg CreateKeyAccess
 	return id, err
 }
 
+const createResourceMappingGroup = `-- name: CreateResourceMappingGroup :one
+INSERT INTO resource_mapping_groups (namespace_id, name)
+VALUES ($1, $2)
+RETURNING id
+`
+
+type CreateResourceMappingGroupParams struct {
+	NamespaceID string `json:"namespace_id"`
+	Name        string `json:"name"`
+}
+
+// CreateResourceMappingGroup
+//
+//	INSERT INTO resource_mapping_groups (namespace_id, name)
+//	VALUES ($1, $2)
+//	RETURNING id
+func (q *Queries) CreateResourceMappingGroup(ctx context.Context, arg CreateResourceMappingGroupParams) (string, error) {
+	row := q.db.QueryRow(ctx, createResourceMappingGroup, arg.NamespaceID, arg.Name)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
 const deleteKeyAccessServer = `-- name: DeleteKeyAccessServer :execrows
 DELETE FROM key_access_servers WHERE id = $1
 `
@@ -44,6 +91,21 @@ DELETE FROM key_access_servers WHERE id = $1
 //	DELETE FROM key_access_servers WHERE id = $1
 func (q *Queries) DeleteKeyAccessServer(ctx context.Context, id string) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteKeyAccessServer, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteResourceMappingGroup = `-- name: DeleteResourceMappingGroup :execrows
+DELETE FROM resource_mapping_groups WHERE id = $1
+`
+
+// DeleteResourceMappingGroup
+//
+//	DELETE FROM resource_mapping_groups WHERE id = $1
+func (q *Queries) DeleteResourceMappingGroup(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteResourceMappingGroup, id)
 	if err != nil {
 		return 0, err
 	}
@@ -80,6 +142,427 @@ func (q *Queries) GetKeyAccessServer(ctx context.Context, id string) (GetKeyAcce
 	return i, err
 }
 
+const getNamespace = `-- name: GetNamespace :one
+
+SELECT ns.id, ns.name, ns.active,
+    attribute_fqns.fqn as fqn,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
+    JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
+        'id', kas.id, 
+        'uri', kas.uri, 
+        'public_key', kas.public_key
+    )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants
+FROM attribute_namespaces ns
+LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
+LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
+LEFT JOIN attribute_fqns ON attribute_fqns.namespace_id = ns.id
+WHERE ns.id = $1
+AND attribute_fqns.attribute_id IS NULL AND attribute_fqns.value_id IS NULL
+GROUP BY ns.id, 
+attribute_fqns.fqn
+`
+
+type GetNamespaceRow struct {
+	ID       string      `json:"id"`
+	Name     string      `json:"name"`
+	Active   bool        `json:"active"`
+	Fqn      pgtype.Text `json:"fqn"`
+	Metadata []byte      `json:"metadata"`
+	Grants   []byte      `json:"grants"`
+}
+
+// --------------------------------------------------------------
+// NAMESPACES
+// --------------------------------------------------------------
+//
+//	SELECT ns.id, ns.name, ns.active,
+//	    attribute_fqns.fqn as fqn,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
+//	    JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
+//	        'id', kas.id,
+//	        'uri', kas.uri,
+//	        'public_key', kas.public_key
+//	    )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants
+//	FROM attribute_namespaces ns
+//	LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
+//	LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
+//	LEFT JOIN attribute_fqns ON attribute_fqns.namespace_id = ns.id
+//	WHERE ns.id = $1
+//	AND attribute_fqns.attribute_id IS NULL AND attribute_fqns.value_id IS NULL
+//	GROUP BY ns.id,
+//	attribute_fqns.fqn
+func (q *Queries) GetNamespace(ctx context.Context, id string) (GetNamespaceRow, error) {
+	row := q.db.QueryRow(ctx, getNamespace, id)
+	var i GetNamespaceRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Active,
+		&i.Fqn,
+		&i.Metadata,
+		&i.Grants,
+	)
+	return i, err
+}
+
+const getResourceMappingGroup = `-- name: GetResourceMappingGroup :one
+SELECT id, namespace_id, name
+FROM resource_mapping_groups
+WHERE id = $1
+`
+
+// GetResourceMappingGroup
+//
+//	SELECT id, namespace_id, name
+//	FROM resource_mapping_groups
+//	WHERE id = $1
+func (q *Queries) GetResourceMappingGroup(ctx context.Context, id string) (ResourceMappingGroup, error) {
+	row := q.db.QueryRow(ctx, getResourceMappingGroup, id)
+	var i ResourceMappingGroup
+	err := row.Scan(&i.ID, &i.NamespaceID, &i.Name)
+	return i, err
+}
+
+const listAllKeyAccessServerGrants = `-- name: ListAllKeyAccessServerGrants :many
+SELECT 
+    kas.id AS kas_id, 
+    kas.uri AS kas_uri, 
+    kas.public_key AS kas_public_key,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+        'labels', kas.metadata -> 'labels', 
+        'created_at', kas.created_at, 
+        'updated_at', kas.updated_at
+    )) AS kas_metadata,
+    JSON_BUILD_OBJECT(
+        'attribute_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+            'id', attrkag.attribute_definition_id, 
+            'fqn', fqns_on_attr.fqn
+        )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL), '[]'),
+        'value_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+            'id', valkag.attribute_value_id, 
+            'fqn', fqns_on_vals.fqn
+        )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL), '[]')
+    ) AS grants
+FROM 
+    key_access_servers kas
+LEFT JOIN 
+    attribute_definition_key_access_grants attrkag 
+    ON kas.id = attrkag.key_access_server_id
+LEFT JOIN 
+    attribute_fqns fqns_on_attr 
+    ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id 
+    AND fqns_on_attr.value_id IS NULL
+LEFT JOIN 
+    attribute_value_key_access_grants valkag 
+    ON kas.id = valkag.key_access_server_id
+LEFT JOIN 
+    attribute_fqns fqns_on_vals 
+    ON valkag.attribute_value_id = fqns_on_vals.value_id
+GROUP BY 
+    kas.id
+`
+
+type ListAllKeyAccessServerGrantsRow struct {
+	KasID        string `json:"kas_id"`
+	KasUri       string `json:"kas_uri"`
+	KasPublicKey []byte `json:"kas_public_key"`
+	KasMetadata  []byte `json:"kas_metadata"`
+	Grants       []byte `json:"grants"`
+}
+
+// ListAllKeyAccessServerGrants
+//
+//	SELECT
+//	    kas.id AS kas_id,
+//	    kas.uri AS kas_uri,
+//	    kas.public_key AS kas_public_key,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+//	        'labels', kas.metadata -> 'labels',
+//	        'created_at', kas.created_at,
+//	        'updated_at', kas.updated_at
+//	    )) AS kas_metadata,
+//	    JSON_BUILD_OBJECT(
+//	        'attribute_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+//	            'id', attrkag.attribute_definition_id,
+//	            'fqn', fqns_on_attr.fqn
+//	        )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL), '[]'),
+//	        'value_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+//	            'id', valkag.attribute_value_id,
+//	            'fqn', fqns_on_vals.fqn
+//	        )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL), '[]')
+//	    ) AS grants
+//	FROM
+//	    key_access_servers kas
+//	LEFT JOIN
+//	    attribute_definition_key_access_grants attrkag
+//	    ON kas.id = attrkag.key_access_server_id
+//	LEFT JOIN
+//	    attribute_fqns fqns_on_attr
+//	    ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id
+//	    AND fqns_on_attr.value_id IS NULL
+//	LEFT JOIN
+//	    attribute_value_key_access_grants valkag
+//	    ON kas.id = valkag.key_access_server_id
+//	LEFT JOIN
+//	    attribute_fqns fqns_on_vals
+//	    ON valkag.attribute_value_id = fqns_on_vals.value_id
+//	GROUP BY
+//	    kas.id
+func (q *Queries) ListAllKeyAccessServerGrants(ctx context.Context) ([]ListAllKeyAccessServerGrantsRow, error) {
+	rows, err := q.db.Query(ctx, listAllKeyAccessServerGrants)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAllKeyAccessServerGrantsRow
+	for rows.Next() {
+		var i ListAllKeyAccessServerGrantsRow
+		if err := rows.Scan(
+			&i.KasID,
+			&i.KasUri,
+			&i.KasPublicKey,
+			&i.KasMetadata,
+			&i.Grants,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listKeyAccessServerGrantsByKasId = `-- name: ListKeyAccessServerGrantsByKasId :many
+SELECT 
+    kas.id AS kas_id, 
+    kas.uri AS kas_uri, 
+    kas.public_key AS kas_public_key,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+        'labels', kas.metadata -> 'labels', 
+        'created_at', kas.created_at, 
+        'updated_at', kas.updated_at
+    )) AS kas_metadata,
+    JSON_BUILD_OBJECT(
+        'attribute_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+            'id', attrkag.attribute_definition_id, 
+            'fqn', fqns_on_attr.fqn
+        )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL), '[]'),
+        'value_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+            'id', valkag.attribute_value_id, 
+            'fqn', fqns_on_vals.fqn
+        )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL), '[]')
+    ) AS grants
+FROM 
+    key_access_servers kas
+LEFT JOIN 
+    attribute_definition_key_access_grants attrkag 
+    ON kas.id = attrkag.key_access_server_id
+LEFT JOIN 
+    attribute_fqns fqns_on_attr 
+    ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id 
+    AND fqns_on_attr.value_id IS NULL
+LEFT JOIN 
+    attribute_value_key_access_grants valkag 
+    ON kas.id = valkag.key_access_server_id
+LEFT JOIN 
+    attribute_fqns fqns_on_vals 
+    ON valkag.attribute_value_id = fqns_on_vals.value_id
+WHERE kas.id = $1
+GROUP BY 
+    kas.id
+`
+
+type ListKeyAccessServerGrantsByKasIdRow struct {
+	KasID        string `json:"kas_id"`
+	KasUri       string `json:"kas_uri"`
+	KasPublicKey []byte `json:"kas_public_key"`
+	KasMetadata  []byte `json:"kas_metadata"`
+	Grants       []byte `json:"grants"`
+}
+
+// ListKeyAccessServerGrantsByKasId
+//
+//	SELECT
+//	    kas.id AS kas_id,
+//	    kas.uri AS kas_uri,
+//	    kas.public_key AS kas_public_key,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+//	        'labels', kas.metadata -> 'labels',
+//	        'created_at', kas.created_at,
+//	        'updated_at', kas.updated_at
+//	    )) AS kas_metadata,
+//	    JSON_BUILD_OBJECT(
+//	        'attribute_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+//	            'id', attrkag.attribute_definition_id,
+//	            'fqn', fqns_on_attr.fqn
+//	        )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL), '[]'),
+//	        'value_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+//	            'id', valkag.attribute_value_id,
+//	            'fqn', fqns_on_vals.fqn
+//	        )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL), '[]')
+//	    ) AS grants
+//	FROM
+//	    key_access_servers kas
+//	LEFT JOIN
+//	    attribute_definition_key_access_grants attrkag
+//	    ON kas.id = attrkag.key_access_server_id
+//	LEFT JOIN
+//	    attribute_fqns fqns_on_attr
+//	    ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id
+//	    AND fqns_on_attr.value_id IS NULL
+//	LEFT JOIN
+//	    attribute_value_key_access_grants valkag
+//	    ON kas.id = valkag.key_access_server_id
+//	LEFT JOIN
+//	    attribute_fqns fqns_on_vals
+//	    ON valkag.attribute_value_id = fqns_on_vals.value_id
+//	WHERE kas.id = $1
+//	GROUP BY
+//	    kas.id
+func (q *Queries) ListKeyAccessServerGrantsByKasId(ctx context.Context, id string) ([]ListKeyAccessServerGrantsByKasIdRow, error) {
+	rows, err := q.db.Query(ctx, listKeyAccessServerGrantsByKasId, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListKeyAccessServerGrantsByKasIdRow
+	for rows.Next() {
+		var i ListKeyAccessServerGrantsByKasIdRow
+		if err := rows.Scan(
+			&i.KasID,
+			&i.KasUri,
+			&i.KasPublicKey,
+			&i.KasMetadata,
+			&i.Grants,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listKeyAccessServerGrantsByKasUri = `-- name: ListKeyAccessServerGrantsByKasUri :many
+
+SELECT 
+    kas.id AS kas_id, 
+    kas.uri AS kas_uri, 
+    kas.public_key AS kas_public_key,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+        'labels', kas.metadata -> 'labels', 
+        'created_at', kas.created_at, 
+        'updated_at', kas.updated_at
+    )) AS kas_metadata,
+    JSON_BUILD_OBJECT(
+        'attribute_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+            'id', attrkag.attribute_definition_id, 
+            'fqn', fqns_on_attr.fqn
+        )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL), '[]'),
+        'value_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+            'id', valkag.attribute_value_id, 
+            'fqn', fqns_on_vals.fqn
+        )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL), '[]')
+    ) AS grants
+FROM 
+    key_access_servers kas
+LEFT JOIN 
+    attribute_definition_key_access_grants attrkag 
+    ON kas.id = attrkag.key_access_server_id
+LEFT JOIN 
+    attribute_fqns fqns_on_attr 
+    ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id 
+    AND fqns_on_attr.value_id IS NULL
+LEFT JOIN 
+    attribute_value_key_access_grants valkag 
+    ON kas.id = valkag.key_access_server_id
+LEFT JOIN 
+    attribute_fqns fqns_on_vals 
+    ON valkag.attribute_value_id = fqns_on_vals.value_id
+WHERE kas.uri = $1
+GROUP BY 
+    kas.id
+`
+
+type ListKeyAccessServerGrantsByKasUriRow struct {
+	KasID        string `json:"kas_id"`
+	KasUri       string `json:"kas_uri"`
+	KasPublicKey []byte `json:"kas_public_key"`
+	KasMetadata  []byte `json:"kas_metadata"`
+	Grants       []byte `json:"grants"`
+}
+
+// --------------------------------------------------------------
+// ATTRIBUTES
+// --------------------------------------------------------------
+//
+//	SELECT
+//	    kas.id AS kas_id,
+//	    kas.uri AS kas_uri,
+//	    kas.public_key AS kas_public_key,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+//	        'labels', kas.metadata -> 'labels',
+//	        'created_at', kas.created_at,
+//	        'updated_at', kas.updated_at
+//	    )) AS kas_metadata,
+//	    JSON_BUILD_OBJECT(
+//	        'attribute_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+//	            'id', attrkag.attribute_definition_id,
+//	            'fqn', fqns_on_attr.fqn
+//	        )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL), '[]'),
+//	        'value_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
+//	            'id', valkag.attribute_value_id,
+//	            'fqn', fqns_on_vals.fqn
+//	        )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL), '[]')
+//	    ) AS grants
+//	FROM
+//	    key_access_servers kas
+//	LEFT JOIN
+//	    attribute_definition_key_access_grants attrkag
+//	    ON kas.id = attrkag.key_access_server_id
+//	LEFT JOIN
+//	    attribute_fqns fqns_on_attr
+//	    ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id
+//	    AND fqns_on_attr.value_id IS NULL
+//	LEFT JOIN
+//	    attribute_value_key_access_grants valkag
+//	    ON kas.id = valkag.key_access_server_id
+//	LEFT JOIN
+//	    attribute_fqns fqns_on_vals
+//	    ON valkag.attribute_value_id = fqns_on_vals.value_id
+//	WHERE kas.uri = $1
+//	GROUP BY
+//	    kas.id
+func (q *Queries) ListKeyAccessServerGrantsByKasUri(ctx context.Context, uri string) ([]ListKeyAccessServerGrantsByKasUriRow, error) {
+	rows, err := q.db.Query(ctx, listKeyAccessServerGrantsByKasUri, uri)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListKeyAccessServerGrantsByKasUriRow
+	for rows.Next() {
+		var i ListKeyAccessServerGrantsByKasUriRow
+		if err := rows.Scan(
+			&i.KasID,
+			&i.KasUri,
+			&i.KasPublicKey,
+			&i.KasMetadata,
+			&i.Grants,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listKeyAccessServers = `-- name: ListKeyAccessServers :many
 
 SELECT id, uri, public_key,
@@ -94,7 +577,9 @@ type ListKeyAccessServersRow struct {
 	Metadata  []byte `json:"metadata"`
 }
 
+// --------------------------------------------------------------
 // KEY ACCESS SERVERS
+// --------------------------------------------------------------
 //
 //	SELECT id, uri, public_key,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
@@ -122,6 +607,60 @@ func (q *Queries) ListKeyAccessServers(ctx context.Context) ([]ListKeyAccessServ
 		return nil, err
 	}
 	return items, nil
+}
+
+const listResourceMappingGroups = `-- name: ListResourceMappingGroups :many
+
+SELECT id, namespace_id, name
+FROM resource_mapping_groups
+`
+
+// --------------------------------------------------------------
+// RESOURCE MAPPING GROUPS
+// --------------------------------------------------------------
+//
+//	SELECT id, namespace_id, name
+//	FROM resource_mapping_groups
+func (q *Queries) ListResourceMappingGroups(ctx context.Context) ([]ResourceMappingGroup, error) {
+	rows, err := q.db.Query(ctx, listResourceMappingGroups)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ResourceMappingGroup
+	for rows.Next() {
+		var i ResourceMappingGroup
+		if err := rows.Scan(&i.ID, &i.NamespaceID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const removeKeyAccessServerFromNamespace = `-- name: RemoveKeyAccessServerFromNamespace :execrows
+DELETE FROM attribute_namespace_key_access_grants
+WHERE namespace_id = $1 AND key_access_server_id = $2
+`
+
+type RemoveKeyAccessServerFromNamespaceParams struct {
+	NamespaceID       string `json:"namespace_id"`
+	KeyAccessServerID string `json:"key_access_server_id"`
+}
+
+// RemoveKeyAccessServerFromNamespace
+//
+//	DELETE FROM attribute_namespace_key_access_grants
+//	WHERE namespace_id = $1 AND key_access_server_id = $2
+func (q *Queries) RemoveKeyAccessServerFromNamespace(ctx context.Context, arg RemoveKeyAccessServerFromNamespaceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removeKeyAccessServerFromNamespace, arg.NamespaceID, arg.KeyAccessServerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateKeyAccessServer = `-- name: UpdateKeyAccessServer :one
@@ -157,6 +696,36 @@ func (q *Queries) UpdateKeyAccessServer(ctx context.Context, arg UpdateKeyAccess
 		arg.PublicKey,
 		arg.Metadata,
 	)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const updateResourceMappingGroup = `-- name: UpdateResourceMappingGroup :one
+UPDATE resource_mapping_groups
+SET
+    namespace_id = coalesce($2, namespace_id),
+    name = coalesce($3, name)
+WHERE id = $1
+RETURNING id
+`
+
+type UpdateResourceMappingGroupParams struct {
+	ID          string      `json:"id"`
+	NamespaceID pgtype.UUID `json:"namespace_id"`
+	Name        pgtype.Text `json:"name"`
+}
+
+// UpdateResourceMappingGroup
+//
+//	UPDATE resource_mapping_groups
+//	SET
+//	    namespace_id = coalesce($2, namespace_id),
+//	    name = coalesce($3, name)
+//	WHERE id = $1
+//	RETURNING id
+func (q *Queries) UpdateResourceMappingGroup(ctx context.Context, arg UpdateResourceMappingGroupParams) (string, error) {
+	row := q.db.QueryRow(ctx, updateResourceMappingGroup, arg.ID, arg.NamespaceID, arg.Name)
 	var id string
 	err := row.Scan(&id)
 	return id, err

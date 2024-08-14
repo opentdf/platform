@@ -1,0 +1,146 @@
+name: "Pull Request Checks"
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - edited
+  merge_group:
+    branches:
+      - main
+    types:
+      - checks_requested
+
+jobs:
+  pull-request-checks:
+    permissions:
+      pull-requests: write
+    runs-on: ubuntu-22.04
+    steps:
+      - name: "Conventional Commits"
+        if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name)
+        id: conventional-commits
+        uses: amannn/action-semantic-pull-request@cfb60706e18bc85e8aec535e3c577abe8f70378e
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Types include:
+          #   - fix: fixes
+          #   - feat: features and enhancements
+          #   - chore: non-feature or enhancement (i.e. docs, ci, linting, automated, etc)
+          types: |
+            fix
+            feat
+            chore
+            refactor
+            revert
+          # Scopes include:
+          #   - main: used for automated releases
+          #   - core: related to any core need such as the core service or monorepo
+          #   - ci: anything related to ci
+          #   - deps: dependency update
+          #   - docs: anything related solely to documentation
+          #   - sdk: related to sdk changes in the /sdk directory
+          #   - policy: related to policy service changes (i.e. /service/policy)
+          #   - kas: related to key access service changes (i.e. /service/kas)
+          #   - authz: related to the authorization service changes (i.e. /service/authorization)
+          scopes: |
+            main
+            core
+            ci
+            deps
+            docs
+            sdk
+            policy
+            kas
+            authz
+            examples
+      - name: "Issue Accociated with Pull Request"
+        id: issue-associated
+        if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name) && !contains(fromJSON('["dependabot[bot]", "opentdf-automation[bot]"]'), github.actor)
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            core.debug(JSON.stringify(context));
+            const query = `query ($owner: String!, $name: String!, $number: Int!) {
+              repository(owner: $owner, name: $name) {
+                pullRequest(number: $number) {
+                  id
+                  closingIssuesReferences(first: 50) {
+                    edges {
+                      node {
+                        id
+                        body
+                        number
+                        title
+                      }
+                    }
+                  }
+                  comments(last: 100) {
+                    edges {
+                      node {
+                        id
+                        body
+                        author {
+                          login
+                        }
+                        isMinimized
+                      }
+                    }
+                  }
+                }
+              }
+            }`;
+            const variables = {
+              owner: context.repo.owner,
+              name: context.repo.repo,
+              number: context.issue.number
+            }
+            const result = await github.graphql(query, variables)
+            
+            core.debug(JSON.stringify(result));
+
+            if (result.repository.pullRequest.closingIssuesReferences.edges.length === 0) {
+              const comments = result.repository.pullRequest.comments.edges;
+              for (const comment of comments) {
+                // Minimize the previous comment if one exists
+                console.debug(comment);
+                console.debug(comment.node.body.match(/<!-- associated-issue-action -->/g) != null);
+                if (comment.node.author.login === 'github-actions' && !comment.node.isMinimized && comment.node.body.match(/<!-- associated-issue-action -->/g) != null) {
+                  const minimizeCommentMutation = `mutation minimizeComment($id: ID!) {
+                    minimizeComment(input: { subjectId: $id, classifier: OUTDATED }) {
+                      minimizedComment {
+                        isMinimized
+                      }
+                    }
+                  }`;
+                  const minimizeCommentVariables = {
+                    id: comment.node.id
+                  }
+                  await github.graphql(minimizeCommentMutation, minimizeCommentVariables)
+                }
+              }
+              const body = `
+              > [!WARNING] 
+              > This pull request does not reference any issues. Please add a reference to an issue in the body of the pull request description.
+              <!-- associated-issue-action -->`;
+              const createCommentMutation = `mutation createComment($id: ID!, $body: String!) {
+                addComment(input: { subjectId: $id, body: $body }) {
+                  commentEdge {
+                    node {
+                      id
+                    }
+                  }
+                }
+              }`;
+              
+              const createCommentVariables = {
+                id: result.repository.pullRequest.id,
+                body: body
+              }
+              await github.graphql(createCommentMutation, createCommentVariables)
+              core.setFailed('This pull request does not reference any issues. Please add a reference to an issue in the body of the pull request description.');
+            }
+    

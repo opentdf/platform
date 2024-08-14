@@ -2,7 +2,7 @@ package db
 
 import (
 	"github.com/opentdf/platform/protocol/go/common"
-	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 )
 
@@ -22,7 +22,6 @@ type PolicyDBClient struct {
 var (
 	TableAttributes                    = "attribute_definitions"
 	TableAttributeValues               = "attribute_values"
-	TableValueMembers                  = "attribute_value_members"
 	TableNamespaces                    = "attribute_namespaces"
 	TableAttrFqn                       = "attribute_fqns"
 	TableAttributeKeyAccessGrants      = "attribute_definition_key_access_grants"
@@ -36,7 +35,6 @@ var (
 var Tables struct {
 	Attributes                    db.Table
 	AttributeValues               db.Table
-	ValueMembers                  db.Table
 	Namespaces                    db.Table
 	AttrFqn                       db.Table
 	AttributeKeyAccessGrants      db.Table
@@ -51,7 +49,6 @@ func NewClient(c *db.Client, logger *logger.Logger) PolicyDBClient {
 	t := db.NewTable(c.Schema())
 	Tables.Attributes = t(TableAttributes)
 	Tables.AttributeValues = t(TableAttributeValues)
-	Tables.ValueMembers = t(TableValueMembers)
 	Tables.Namespaces = t(TableNamespaces)
 	Tables.AttrFqn = t(TableAttrFqn)
 	Tables.AttributeKeyAccessGrants = t(TableAttributeKeyAccessGrants)

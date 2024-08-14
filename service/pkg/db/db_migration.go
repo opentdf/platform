@@ -86,7 +86,7 @@ func (c *Client) RunMigrations(ctx context.Context, migrations *embed.FS) (int, 
 			applied++
 		}
 	}
-
+	c.ranMigrations = true
 	slog.Info("migration up complete", slog.Any("post-op version", version))
 	return applied, nil
 }
@@ -122,4 +122,12 @@ func (c *Client) MigrationDown(ctx context.Context, migrations *embed.FS) error 
 
 	slog.Info("migration down complete ", slog.Any("post-op version", res.Source.Version))
 	return nil
+}
+
+func (c *Client) MigrationsEnabled() bool {
+	return c.config.RunMigrations
+}
+
+func (c *Client) RanMigrations() bool {
+	return c.ranMigrations
 }

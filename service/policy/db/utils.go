@@ -4,7 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/opentdf/platform/protocol/go/common"
-	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/logger"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 

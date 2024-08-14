@@ -599,6 +599,14 @@
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata"
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKeyAccessServer"
+          },
+          "title": "KAS grants for the namespace"
         }
       }
     },
@@ -713,13 +721,6 @@
         },
         "value": {
           "type": "string"
-        },
-        "members": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/policyValue"
-          }
         },
         "grants": {
           "type": "array",

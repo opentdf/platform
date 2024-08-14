@@ -21,7 +21,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
-	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -70,7 +70,14 @@ var (
 	}
 )
 
-const refreshInterval = 15 * time.Minute
+const (
+	refreshInterval = 15 * time.Minute
+	ActionRead      = "read"
+	ActionWrite     = "write"
+	ActionDelete    = "delete"
+	ActionUnsafe    = "unsafe"
+	ActionOther     = "other"
+)
 
 // Authentication holds a jwks cache and information about the openid configuration
 type Authentication struct {
@@ -230,13 +237,13 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		var action string
 		switch r.Method {
 		case http.MethodGet:
-			action = "read"
+			action = ActionRead
 		case http.MethodPost, http.MethodPut, http.MethodPatch:
-			action = "write"
+			action = ActionWrite
 		case http.MethodDelete:
-			action = "delete"
+			action = ActionDelete
 		default:
-			action = "unsafe"
+			action = ActionUnsafe
 		}
 		if allow, err := a.enforcer.Enforce(accessTok, r.URL.Path, action); err != nil {
 			if err.Error() == "permission denied" {
@@ -280,19 +287,7 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 	// parse the rpc method
 	p := strings.Split(info.FullMethod, "/")
 	resource := p[1] + "/" + p[2]
-	var action string
-	switch {
-	case strings.HasPrefix(p[2], "List") || strings.HasPrefix(p[2], "Get"):
-		action = "read"
-	case strings.HasPrefix(p[2], "Create") || strings.HasPrefix(p[2], "Update"):
-		action = "write"
-	case strings.HasPrefix(p[2], "Delete"):
-		action = "delete"
-	case strings.HasPrefix(p[2], "Unsafe"):
-		action = "unsafe"
-	default:
-		action = "other"
-	}
+	action := getAction(p[2])
 
 	token, newCtx, err := a.checkToken(
 		ctx,
@@ -320,6 +315,21 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 	}
 
 	return handler(newCtx, req)
+}
+
+// getAction returns the action based on the rpc name
+func getAction(method string) string {
+	switch {
+	case strings.HasPrefix(method, "List") || strings.HasPrefix(method, "Get"):
+		return ActionRead
+	case strings.HasPrefix(method, "Create") || strings.HasPrefix(method, "Update") || strings.HasPrefix(method, "Assign"):
+		return ActionWrite
+	case strings.HasPrefix(method, "Delete") || strings.HasPrefix(method, "Remove") || strings.HasPrefix(method, "Deactivate"):
+		return ActionDelete
+	case strings.HasPrefix(method, "Unsafe"):
+		return ActionUnsafe
+	}
+	return ActionOther
 }
 
 // checkToken is a helper function to verify the token.

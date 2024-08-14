@@ -14,8 +14,8 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/config"
-	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/server"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -90,10 +90,6 @@ func TestStartTestSuite(t *testing.T) {
 	suite.Run(t, new(StartTestSuite))
 }
 
-func (suite *StartTestSuite) BeforeTest(_, _ string) {
-	serviceregistry.RegisteredServices = make(serviceregistry.NamespaceMap)
-}
-
 func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Response() {
 	t := suite.T()
 	s, err := mockOpenTDFServer()
@@ -113,17 +109,17 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Res
 			return mux.HandlePath(http.MethodGet, "/healthz", t.TestHandler)
 		},
 	})
-	err = registerTestService()
-	require.NoError(t, err)
 
+	registry := serviceregistry.NewServiceRegistry()
+	err = registry.RegisterService(registerTestService, "test")
+	suite.Require().NoError(err)
 	// Start services with test service
-	_, _, err = startServices(context.Background(), config.Config{
+	err = startServices(context.Background(), config.Config{
+		Mode: []string{"all"},
 		Services: map[string]serviceregistry.ServiceConfig{
-			"test": {
-				Enabled: true,
-			},
+			"test": {},
 		},
-	}, s, nil, logger)
+	}, s, nil, logger, registry)
 	require.NoError(t, err)
 
 	s.Start()

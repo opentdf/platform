@@ -13,7 +13,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
-	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -36,18 +36,15 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions, lo
 		id           string
 		value        string
 		active       bool
-		membersJSON  []byte
 		metadataJSON []byte
 		attributeID  string
 		grants       []byte
 		fqn          sql.NullString
-		members      []*policy.Value
 	)
 	fields := []interface{}{
 		&id,
 		&value,
 		&active,
-		&membersJSON,
 		&metadataJSON,
 		&attributeID,
 	}
@@ -61,11 +58,6 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions, lo
 	err := row.Scan(fields...)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	} else if membersJSON != nil {
-		members, err = attributesValuesProtojson(membersJSON, fqn)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	m := &common.Metadata{}
@@ -88,7 +80,6 @@ func attributeValueHydrateItem(row pgx.Row, opts attributeValueSelectOptions, lo
 		Id:       id,
 		Value:    value,
 		Active:   &wrapperspb.BoolValue{Value: active},
-		Members:  members,
 		Grants:   k,
 		Metadata: m,
 		Attribute: &policy.Attribute{
@@ -114,34 +105,6 @@ func attributeValueHydrateItems(rows pgx.Rows, opts attributeValueSelectOptions,
 ///
 /// CRUD
 ///
-
-func addMemberSQL(valueID string, memberID string) (string, []interface{}, error) {
-	t := Tables.ValueMembers
-	return db.NewStatementBuilder().
-		Insert(t.Name()).
-		Columns(
-			"value_id",
-			"member_id",
-		).
-		Values(
-			valueID,
-			memberID,
-		).
-		Suffix("RETURNING id").
-		ToSql()
-}
-
-func removeMemberSQL(valueID string, memberID string) (string, []interface{}, error) {
-	t := Tables.ValueMembers
-	return db.NewStatementBuilder().
-		Delete(t.Name()).
-		Where(sq.Eq{
-			t.Field("value_id"):  valueID,
-			t.Field("member_id"): memberID,
-		}).
-		Suffix("RETURNING id").
-		ToSql()
-}
 
 func createAttributeValueSQL(
 	attributeID string,
@@ -189,28 +152,6 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	var members []*policy.Value
-
-	// Add members
-	//nolint:staticcheck // SA1019: removing all references to members in later release
-	for _, member := range v.GetMembers() {
-		var vmID string
-		memberSQL, memberArgs, memberErr := addMemberSQL(id, member)
-		if memberErr != nil {
-			return nil, memberErr
-		}
-		if r, err := c.QueryRow(ctx, memberSQL, memberArgs); err != nil {
-			return nil, err
-		} else if err := r.Scan(&vmID); err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
-		}
-		attr, memberErr := c.GetAttributeValue(ctx, member)
-		if memberErr != nil {
-			return nil, memberErr
-		}
-		members = append(members, attr)
-	}
-
 	if err = unmarshalMetadata(metadataJSON, metadata, c.logger); err != nil {
 		return nil, err
 	}
@@ -225,7 +166,6 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		Id:        id,
 		Attribute: &policy.Attribute{Id: attributeID},
 		Value:     value,
-		Members:   members,
 		Metadata:  metadata,
 		Active:    &wrapperspb.BoolValue{Value: true},
 	}
@@ -237,28 +177,16 @@ func getAttributeValueSQL(id string, opts attributeValueSelectOptions) (string, 
 	fqnT := Tables.AttrFqn
 	avkagT := Tables.AttributeValueKeyAccessGrants
 	kasrT := Tables.KeyAccessServerRegistry
-	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
-		"'id', vmv.id, " +
-		"'value', vmv.value, " +
-		"'active', vmv.active, " +
-		"'members', vmv.members || ARRAY[]::UUID[], " +
-		constructMetadata("vmv", true) +
-		"'attribute', JSON_BUILD_OBJECT(" +
-		"'id', vmv.attribute_definition_id )"
-	if opts.withFqn {
-		members += ", 'fqn', " + "fqn1.fqn"
-	}
-	members += ")) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members" //nolint:goconst // SQL query
+
 	fields := []string{
 		"av.id",
 		"av.value",
 		"av.active",
-		members,
 		constructMetadata("av", false),
 		"av.attribute_definition_id",
 	}
 	if opts.withFqn {
-		fields = append(fields, "MAX(fqn2.fqn) AS fqn")
+		fields = append(fields, fqnT.Field("fqn"))
 	}
 	if opts.withKeyAccessGrants {
 		fields = append(fields,
@@ -275,15 +203,9 @@ func getAttributeValueSQL(id string, opts attributeValueSelectOptions) (string, 
 		Select(fields...).
 		From(t.Name() + " av")
 
-	// join members
-	sb = sb.LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id")
-
-	// join attribute values
-	sb = sb.LeftJoin(t.Name() + " vmv ON vm.member_id = vmv.id")
-
 	if opts.withFqn {
-		sb = sb.LeftJoin(fqnT.Name() + " AS fqn1 ON " + "fqn1.value_id" + " = " + "vmv.id")
-		sb = sb.LeftJoin(fqnT.Name() + " AS fqn2 ON " + "fqn2.value_id" + " = " + "av.id")
+		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = av.id")
+		sb = sb.GroupBy(fqnT.WithoutSchema().Field("fqn"))
 	}
 	if opts.withKeyAccessGrants {
 		sb = sb.LeftJoin(avkagT.Name() + " ON " + avkagT.WithoutSchema().Name() + ".attribute_value_id = av.id")
@@ -316,43 +238,24 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, id string) (*poli
 
 func listAttributeValuesSQL(attributeID string, opts attributeValueSelectOptions) (string, []interface{}, error) {
 	t := Tables.AttributeValues
-	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
-		"'id', vmv.id, " +
-		"'value', vmv.value, " +
-		"'active', vmv.active, " +
-		"'members', vmv.members || ARRAY[]::UUID[], " +
-		constructMetadata("vmv", true) +
-		"'attribute', JSON_BUILD_OBJECT(" +
-		"'id', vmv.attribute_definition_id )"
-	if opts.withFqn {
-		members += ", 'fqn', " + "fqn1.fqn"
-	}
-	members += ")) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members"
+	fqnT := Tables.AttrFqn
 	fields := []string{
 		"av.id",
 		"av.value",
 		"av.active",
-		members,
 		constructMetadata("av", false),
 		"av.attribute_definition_id",
 	}
 	if opts.withFqn {
-		fields = append(fields, "MAX(fqn2.fqn) AS fqn")
+		fields = append(fields, fqnT.Field("fqn"))
 	}
 
 	sb := db.NewStatementBuilder().
 		Select(fields...)
 
-	// join members
-	sb = sb.LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id")
-
-	// join attribute values
-	sb = sb.LeftJoin(t.Name() + " vmv ON vm.member_id = vmv.id")
-
 	if opts.withFqn {
-		fqnT := Tables.AttrFqn
-		sb = sb.LeftJoin(fqnT.Name() + " AS fqn1 ON " + "fqn1.value_id" + " = " + "vmv.id")
-		sb = sb.LeftJoin(fqnT.Name() + " AS fqn2 ON " + "fqn2.value_id" + " = " + "av.id")
+		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = av.id")
+		sb = sb.GroupBy(fqnT.WithoutSchema().Field("fqn"))
 	}
 
 	sb = sb.GroupBy("av.id")
@@ -387,42 +290,23 @@ func (c PolicyDBClient) ListAttributeValues(ctx context.Context, attributeID str
 
 func listAllAttributeValuesSQL(opts attributeValueSelectOptions) (string, []interface{}, error) {
 	t := Tables.AttributeValues
-	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
-		"'id', vmv.id, " +
-		"'value', vmv.value, " +
-		"'active', vmv.active, " +
-		"'members', vmv.members || ARRAY[]::UUID[], " +
-		constructMetadata("vmv", true) +
-		"'attribute', JSON_BUILD_OBJECT(" +
-		"'id', vmv.attribute_definition_id )"
-	if opts.withFqn {
-		members += ", 'fqn', " + "fqn1.fqn"
-	}
-	members += ")) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members"
+	fqnT := Tables.AttrFqn
 	fields := []string{
 		"av.id",
 		"av.value",
 		"av.active",
-		members,
 		constructMetadata("av", false),
 		"av.attribute_definition_id",
 	}
 	if opts.withFqn {
-		fields = append(fields, "MAX(fqn2.fqn) AS fqn")
+		fields = append(fields, fqnT.Field("fqn"))
 	}
 	sb := db.NewStatementBuilder().
 		Select(fields...)
 
-	// join members
-	sb = sb.LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id")
-
-	// join attribute values
-	sb = sb.LeftJoin(t.Name() + " vmv ON vm.member_id = vmv.id")
-
 	if opts.withFqn {
-		fqnT := Tables.AttrFqn
-		sb = sb.LeftJoin(fqnT.Name() + " AS fqn1 ON " + "fqn1.value_id" + " = " + "vmv.id")
-		sb = sb.LeftJoin(fqnT.Name() + " AS fqn2 ON " + "fqn2.value_id" + " = " + "av.id")
+		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = av.id")
+		sb = sb.GroupBy(fqnT.WithoutSchema().Field("fqn"))
 	}
 
 	sb = sb.GroupBy("av.id")
@@ -486,61 +370,8 @@ func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 		return nil, err
 	}
 
-	prev, err := c.GetAttributeValue(ctx, r.GetId())
-	if err != nil {
-		return nil, err
-	}
-
 	if err := c.Exec(ctx, sql, args); err != nil {
 		return nil, err
-	}
-	prevMembersSet := map[string]bool{}
-
-	//nolint:staticcheck // SA1019: removing all references to members in later release
-	for _, member := range prev.GetMembers() {
-		prevMembersSet[member.GetId()] = true
-	}
-
-	membersSet := map[string]bool{}
-	//nolint:staticcheck // SA1019: removing all references to members in later release
-	for _, member := range r.GetMembers() {
-		membersSet[member] = true
-	}
-
-	toRemove := map[string]bool{}
-	toAdd := map[string]bool{}
-
-	for member := range prevMembersSet {
-		if _, ok := membersSet[member]; !ok {
-			toRemove[member] = true
-		}
-	}
-
-	for member := range membersSet {
-		if _, ok := prevMembersSet[member]; !ok {
-			toAdd[member] = true
-		}
-	}
-
-	// Remove members
-	for member := range toRemove {
-		sql, args, err = removeMemberSQL(r.GetId(), member)
-		if err != nil {
-			return nil, err
-		}
-		if err := c.Exec(ctx, sql, args); err != nil {
-			return nil, err
-		}
-	}
-
-	for member := range toAdd {
-		sql, args, err = addMemberSQL(r.GetId(), member)
-		if err != nil {
-			return nil, err
-		}
-		if err := c.Exec(ctx, sql, args); err != nil {
-			return nil, err
-		}
 	}
 
 	return &policy.Value{

@@ -10,7 +10,7 @@ import (
 	casbinModel "github.com/casbin/casbin/v2/model"
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/util"
 )
 
@@ -95,11 +95,11 @@ p,	role:standard,		/entityresolution/resolve,							write,  	allow
 ## gRPC routes
 ## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)
 p,	role:unknown,			entityresolution.EntityResolutionService.ResolveEntities,					write,		allow
-p,	role:unknown,     kas.AccessService/Rewrap, 			                                  write,	  allow
+p,	role:unknown,     kas.AccessService/Rewrap, 			                                  *,	  allow
 ## HTTP routes
 ## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)
 p,	role:unknown,			/entityresolution/resolve,							  write,		allow
-p,	role:unknown,		  /kas/v2/rewrap,													  write,		allow
+p,	role:unknown,		  /kas/v2/rewrap,													  *,		allow
 
 `
 

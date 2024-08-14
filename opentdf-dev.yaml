@@ -10,7 +10,6 @@ logger:
 #   password: changeme
 services:
   kas:
-    enabled: true
     keyring:
       - kid: e1
         alg: ec:secp256r1
@@ -22,16 +21,7 @@ services:
       - kid: r1
         alg: rsa:2048
         legacy: true
-  policy:
-    enabled: true
-  authorization:
-    enabled: true
-    ersurl: http://localhost:8080/entityresolution/resolve
-    clientid: tdf-authorization-svc
-    clientsecret: secret
-    tokenendpoint: http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token
   entityresolution:
-    enabled: true
     url: http://localhost:8888/auth
     clientid: 'tdf-entity-resolution'
     clientsecret: 'secret'

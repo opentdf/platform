@@ -26,7 +26,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
-	"github.com/opentdf/platform/service/internal/logger"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
@@ -657,4 +657,28 @@ func (s *AuthSuite) Test_PublicPath_Matches() {
 	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2")))
 	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/private")))
 	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2/test/fail")))
+}
+
+func (s *AuthSuite) Test_GetAction() {
+	cases := []struct {
+		method   string
+		expected string
+	}{
+		{"GetSomething", ActionRead},
+		{"CreateSomething", ActionWrite},
+		{"UpdateSomething", ActionWrite},
+		{"AssignSomething", ActionWrite},
+		{"DeleteSomething", ActionDelete},
+		{"RemoveSomething", ActionDelete},
+		{"DeactivateSomething", ActionDelete},
+		{"ListSomething", ActionRead},
+		{"UnsafeDelete", ActionUnsafe},
+		{"UnsafeUpdate", ActionUnsafe},
+		{"UnsafeActivate", ActionUnsafe},
+		{"UnsafeReactivate", ActionUnsafe},
+		{"DoSomething", ActionOther},
+	}
+	for _, c := range cases {
+		s.Equal(c.expected, getAction(c.method))
+	}
 }

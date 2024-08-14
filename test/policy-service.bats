@@ -43,6 +43,11 @@
   [[ $output = *"registered kas"* ]]
   [ $status = 0 ]
 
+  run go run ./examples --creds opentdf:secret kas add -k https://example.io --public-key MY_PUBLIC_KEY --kid my-public-key --algorithm rsa:2048
+  echo "$output"
+  [[ $output = *"registered kas"* ]]
+  [ $status = 0 ]
+
   run go run ./examples --creds opentdf:secret kas ls
   echo "$output"
   [[ $output = *"https://example.io"* ]]

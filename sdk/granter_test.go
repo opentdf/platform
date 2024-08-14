@@ -1,4 +1,4 @@
-package autoconfigure
+package sdk
 
 import (
 	"fmt"
@@ -13,13 +13,13 @@ import (
 )
 
 const (
-	kasAu     = "http://kas.au/"
-	kasCa     = "http://kas.ca/"
-	kasUk     = "http://kas.uk/"
-	kasNz     = "http://kas.nz/"
-	kasUs     = "http://kas.us/"
-	kasUsHCS  = "http://hcs.kas.us/"
-	kasUsSA   = "http://si.kas.us/"
+	kasAu     = "https://kas.au/"
+	kasCa     = "https://kas.ca/"
+	kasUk     = "https://kas.uk/"
+	kasNz     = "https://kas.nz/"
+	kasUs     = "https://kas.us/"
+	kasUsHCS  = "https://hcs.kas.us/"
+	kasUsSA   = "https://si.kas.us/"
 	authority = "https://virtru.com/"
 )
 
@@ -38,7 +38,7 @@ var (
 	n2kSI, _  = NewAttributeValueFQN("https://virtru.com/attr/Need%20to%20Know/value/SI")
 
 	// rel25eye, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/FVEY")
-	// rel2aus, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/AUS")
+	rel2aus, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/AUS")
 	rel2can, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/CAN")
 	rel2gbr, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/GBR")
 	rel2nzl, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/NZL")
@@ -284,7 +284,7 @@ func TestConfigurationServicePutGet(t *testing.T) {
 	} {
 		t.Run(tc.n, func(t *testing.T) {
 			v := valuesToPolicy(tc.policy...)
-			grants, err := NewGranterFromAttributes(v...)
+			grants, err := newGranterFromAttributes(v...)
 			require.NoError(t, err)
 			assert.Len(t, grants.grants, tc.size)
 			assert.Subset(t, policyToStringKeys(tc.policy), maps.Keys(grants.grants))
@@ -306,16 +306,16 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		policy              []AttributeValueFQN
 		defaults            []string
 		ats, keyed, reduced string
-		plan                []SplitStep
+		plan                []keySplitStep
 	}{
 		{
 			"one actual with default",
 			[]AttributeValueFQN{clsS, rel2can},
 			[]string{kasUs},
 			"https://virtru.com/attr/Classification/value/Secret&https://virtru.com/attr/Releasable%20To/value/CAN",
-			"[DEFAULT]&(http://kas.ca/)",
-			"(http://kas.ca/)",
-			[]SplitStep{{kasCa, ""}},
+			"[DEFAULT]&(https://kas.ca/)",
+			"(https://kas.ca/)",
+			[]keySplitStep{{kasCa, ""}},
 		},
 		{
 			"one defaulted attr",
@@ -324,7 +324,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"https://virtru.com/attr/Classification/value/Secret",
 			"[DEFAULT]",
 			"",
-			[]SplitStep{{kasUs, ""}},
+			[]keySplitStep{{kasUs, ""}},
 		},
 		{
 			"empty policy",
@@ -333,7 +333,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"∅",
 			"",
 			"",
-			[]SplitStep{{kasUs, ""}},
+			[]keySplitStep{{kasUs, ""}},
 		},
 		{
 			"old school splits",
@@ -342,38 +342,38 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"∅",
 			"",
 			"",
-			[]SplitStep{{kasAu, "1"}, {kasCa, "2"}, {kasUs, "3"}},
+			[]keySplitStep{{kasAu, "1"}, {kasCa, "2"}, {kasUs, "3"}},
 		},
 		{
 			"simple with all three ops",
 			[]AttributeValueFQN{clsS, rel2gbr, n2kInt},
 			[]string{kasUs},
 			"https://virtru.com/attr/Classification/value/Secret&https://virtru.com/attr/Releasable%20To/value/GBR&https://virtru.com/attr/Need%20to%20Know/value/INT",
-			"[DEFAULT]&(http://kas.uk/)&(http://kas.uk/)",
-			"(http://kas.uk/)",
-			[]SplitStep{{kasUk, ""}},
+			"[DEFAULT]&(https://kas.uk/)&(https://kas.uk/)",
+			"(https://kas.uk/)",
+			[]keySplitStep{{kasUk, ""}},
 		},
 		{
 			"compartments",
 			[]AttributeValueFQN{clsS, rel2gbr, rel2usa, n2kHCS, n2kSI},
 			[]string{kasUs},
 			"https://virtru.com/attr/Classification/value/Secret&https://virtru.com/attr/Releasable%20To/value/{GBR,USA}&https://virtru.com/attr/Need%20to%20Know/value/{HCS,SI}",
-			"[DEFAULT]&(http://kas.uk/⋁http://kas.us/)&(http://hcs.kas.us/⋀http://si.kas.us/)",
-			"(http://kas.uk/⋁http://kas.us/)&(http://hcs.kas.us/)&(http://si.kas.us/)",
-			[]SplitStep{{kasUk, "1"}, {kasUs, "1"}, {kasUsHCS, "2"}, {kasUsSA, "3"}},
+			"[DEFAULT]&(https://kas.uk/⋁https://kas.us/)&(https://hcs.kas.us/⋀https://si.kas.us/)",
+			"(https://kas.uk/⋁https://kas.us/)&(https://hcs.kas.us/)&(https://si.kas.us/)",
+			[]keySplitStep{{kasUk, "1"}, {kasUs, "1"}, {kasUsHCS, "2"}, {kasUsSA, "3"}},
 		},
 		{
 			"compartments - case insensitive",
 			[]AttributeValueFQN{messUpV(t, clsS), messUpV(t, rel2gbr), messUpV(t, rel2usa), messUpV(t, n2kHCS), messUpV(t, n2kSI)},
 			[]string{kasUs},
 			"https://virtru.com/attr/Classification/value/Secret&https://virtru.com/attr/Releasable%20To/value/{GBR,USA}&https://virtru.com/attr/Need%20to%20Know/value/{HCS,SI}",
-			"[DEFAULT]&(http://kas.uk/⋁http://kas.us/)&(http://hcs.kas.us/⋀http://si.kas.us/)",
-			"(http://kas.uk/⋁http://kas.us/)&(http://hcs.kas.us/)&(http://si.kas.us/)",
-			[]SplitStep{{kasUk, "1"}, {kasUs, "1"}, {kasUsHCS, "2"}, {kasUsSA, "3"}},
+			"[DEFAULT]&(https://kas.uk/⋁https://kas.us/)&(https://hcs.kas.us/⋀https://si.kas.us/)",
+			"(https://kas.uk/⋁https://kas.us/)&(https://hcs.kas.us/)&(https://si.kas.us/)",
+			[]keySplitStep{{kasUk, "1"}, {kasUs, "1"}, {kasUsHCS, "2"}, {kasUsSA, "3"}},
 		},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
-			reasoner, err := NewGranterFromAttributes(valuesToPolicy(tc.policy...)...)
+			reasoner, err := newGranterFromAttributes(valuesToPolicy(tc.policy...)...)
 			require.NoError(t, err)
 
 			actualAB := reasoner.constructAttributeBoolean()
@@ -387,7 +387,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			assert.Equal(t, tc.reduced, r.String())
 
 			i := 0
-			plan, err := reasoner.Plan(tc.defaults, func() string {
+			plan, err := reasoner.plan(tc.defaults, func() string {
 				i++
 				return fmt.Sprintf("%d", i)
 			})

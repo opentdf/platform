@@ -5,7 +5,6 @@ import (
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/sdk/internal/autoconfigure"
 )
 
 const (
@@ -58,10 +57,10 @@ type TDFConfig struct {
 	integrityAlgorithm        IntegrityAlgorithm
 	segmentIntegrityAlgorithm IntegrityAlgorithm
 	assertions                []AssertionConfig
-	attributes                []autoconfigure.AttributeValueFQN
+	attributes                []AttributeValueFQN
 	attributeValues           []*policy.Value
 	kasInfoList               []KASInfo
-	splitPlan                 []autoconfigure.SplitStep
+	splitPlan                 []keySplitStep
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -106,7 +105,7 @@ func WithDataAttributes(attributes ...string) TDFOption {
 	return func(c *TDFConfig) error {
 		c.attributeValues = nil
 		for _, a := range attributes {
-			v, err := autoconfigure.NewAttributeValueFQN(a)
+			v, err := NewAttributeValueFQN(a)
 			if err != nil {
 				return err
 			}
@@ -118,16 +117,16 @@ func WithDataAttributes(attributes ...string) TDFOption {
 
 // WithDataAttributeValues appends the given data attributes to the bound policy.
 // Unlike `WithDataAttributes`, this will not trigger an attribute definition lookup
-// during autoconfigure. That is, to use autoconfigure in an 'offline' context,
+// during  That is, to use autoconfigure in an 'offline' context,
 // you must first store the relevant attribute information locally and load
 // it to the `CreateTDF` method with this option.
 func WithDataAttributeValues(attributes ...*policy.Value) TDFOption {
 	return func(c *TDFConfig) error {
-		c.attributes = make([]autoconfigure.AttributeValueFQN, len(attributes))
+		c.attributes = make([]AttributeValueFQN, len(attributes))
 		c.attributeValues = make([]*policy.Value, len(attributes))
 		for i, a := range attributes {
 			c.attributeValues[i] = a
-			afqn, err := autoconfigure.NewAttributeValueFQN(a.GetFqn())
+			afqn, err := NewAttributeValueFQN(a.GetFqn())
 			if err != nil {
 				// TODO: update service to validate and encode FQNs properly
 				return err
@@ -154,9 +153,9 @@ func WithKasInformation(kasInfoList ...KASInfo) TDFOption {
 	}
 }
 
-func withSplitPlan(p ...autoconfigure.SplitStep) TDFOption {
+func withSplitPlan(p ...keySplitStep) TDFOption {
 	return func(c *TDFConfig) error {
-		c.splitPlan = make([]autoconfigure.SplitStep, len(p))
+		c.splitPlan = make([]keySplitStep, len(p))
 		copy(c.splitPlan, p)
 		c.autoconfigure = false
 		return nil

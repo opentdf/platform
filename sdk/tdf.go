@@ -15,7 +15,6 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/archive"
-	"github.com/opentdf/platform/sdk/internal/autoconfigure"
 	"google.golang.org/grpc"
 )
 
@@ -132,18 +131,18 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	}
 
 	if tdfConfig.autoconfigure {
-		var g autoconfigure.Granter
+		var g granter
 		if len(tdfConfig.attributeValues) > 0 {
-			g, err = autoconfigure.NewGranterFromAttributes(tdfConfig.attributeValues...)
+			g, err = newGranterFromAttributes(tdfConfig.attributeValues...)
 		} else if len(tdfConfig.attributes) > 0 {
-			g, err = autoconfigure.NewGranterFromService(ctx, s.Attributes, tdfConfig.attributes...)
+			g, err = newGranterFromService(ctx, s.Attributes, tdfConfig.attributes...)
 		}
 		if err != nil {
 			return nil, err
 		}
 
 		dk := s.defaultKases(tdfConfig)
-		tdfConfig.splitPlan, err = g.Plan(dk, func() string {
+		tdfConfig.splitPlan, err = g.plan(dk, func() string {
 			return uuid.New().String()
 		})
 		if err != nil {
@@ -355,7 +354,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 	latestKASInfo := make(map[string]KASInfo)
 	if len(tdfConfig.splitPlan) == 0 {
 		// Default split plan: Split keys across all kases
-		tdfConfig.splitPlan = make([]autoconfigure.SplitStep, len(tdfConfig.kasInfoList))
+		tdfConfig.splitPlan = make([]keySplitStep, len(tdfConfig.kasInfoList))
 		for i, kasInfo := range tdfConfig.kasInfoList {
 			tdfConfig.splitPlan[i].KAS = kasInfo.URL
 			if len(tdfConfig.kasInfoList) > 1 {
@@ -491,7 +490,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 }
 
 // create policy object
-func createPolicyObject(attributes []autoconfigure.AttributeValueFQN) (PolicyObject, error) {
+func createPolicyObject(attributes []AttributeValueFQN) (PolicyObject, error) {
 	uuidObj, err := uuid.NewUUID()
 	if err != nil {
 		return PolicyObject{}, fmt.Errorf("uuid.NewUUID failed: %w", err)
@@ -802,7 +801,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 	var payloadKey [kKeySize]byte
 	knownSplits := make(map[string]bool)
 	foundSplits := make(map[string]bool)
-	skippedSplits := make(map[autoconfigure.SplitStep]error)
+	skippedSplits := make(map[keySplitStep]error)
 	mixedSplits := len(r.manifest.KeyAccessObjs) > 1 && r.manifest.KeyAccessObjs[0].SplitID != ""
 
 	for _, keyAccessObj := range r.manifest.EncryptionInformation.KeyAccessObjs {
@@ -811,7 +810,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 			return fmt.Errorf("newKASClient failed:%w", err)
 		}
 
-		ss := autoconfigure.SplitStep{KAS: keyAccessObj.KasURL, SplitID: keyAccessObj.SplitID}
+		ss := keySplitStep{KAS: keyAccessObj.KasURL, SplitID: keyAccessObj.SplitID}
 
 		var wrappedKey []byte
 		if !mixedSplits {

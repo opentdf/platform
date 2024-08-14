@@ -196,9 +196,19 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 		l.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
+	// Enable pprof
+	if c.EnablePprof {
+		h = pprofHandler(h)
+		// Need to extend write timeout to collect pprof data.
+		writeTimeoutOverride = 30 * time.Second //nolint:mnd // easier to read that we are overriding the default
+	}
+
+	// Add grpc handler
+	h2 := httpGrpcHandlerFunc(h, g, l)
+
 	// CORS
 	if c.CORS.Enabled {
-		h = cors.New(cors.Options{
+		h2 = cors.New(cors.Options{
 			AllowOriginFunc: func(_ *http.Request, origin string) bool {
 				for _, allowedOrigin := range c.CORS.AllowedOrigins {
 					if allowedOrigin == "*" {
@@ -215,18 +225,8 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 			ExposedHeaders:   c.CORS.ExposedHeaders,
 			AllowCredentials: c.CORS.AllowCredentials,
 			MaxAge:           c.CORS.MaxAge,
-		}).Handler(h)
+		}).Handler(h2)
 	}
-
-	// Enable pprof
-	if c.EnablePprof {
-		h = pprofHandler(h)
-		// Need to extend write timeout to collect pprof data.
-		writeTimeoutOverride = 30 * time.Second //nolint:mnd // easier to read that we are overriding the default
-	}
-
-	// Add grpc handler
-	h2 := httpGrpcHandlerFunc(h, g, l)
 
 	if !c.TLS.Enabled {
 		h2 = h2c.NewHandler(h2, &http2.Server{})

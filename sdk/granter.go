@@ -199,7 +199,7 @@ func (r granter) byAttribute(fqn AttributeValueFQN) *keyAccessGrant {
 }
 
 // Gets a list of directory of KAS grants for a list of attribute FQNs
-func newGranterFromService(ctx context.Context, as attributes.AttributesServiceClient, fqns ...AttributeValueFQN) (granter, error) {
+func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as attributes.AttributesServiceClient, fqns ...AttributeValueFQN) (granter, error) {
 	fqnsStr := make([]string, len(fqns))
 	for i, v := range fqns {
 		fqnsStr[i] = v.String()
@@ -228,14 +228,33 @@ func newGranterFromService(ctx context.Context, as attributes.AttributesServiceC
 		def := pair.GetAttribute()
 		if def != nil {
 			grants.addAllGrants(fqn, def.GetGrants(), def)
+			storeKeysToCache(def.GetGrants(), keyCache)
 		}
 		v := pair.GetValue()
 		if v != nil {
 			grants.addAllGrants(fqn, v.GetGrants(), def)
+			storeKeysToCache(v.GetGrants(), keyCache)
 		}
 	}
 
 	return grants, nil
+}
+
+func storeKeysToCache(kases []*policy.KeyAccessServer, c *kasKeyCache) {
+	for _, kas := range kases {
+		if kas.GetPublicKey() == nil || kas.GetPublicKey().GetCached() == nil || kas.GetPublicKey().GetCached().GetKeys() == nil || len(kas.GetPublicKey().GetCached().GetKeys()) == 0 {
+			slog.Debug("no cached key in policy service", "kas", kas.GetUri())
+			continue
+		}
+		for _, ki := range kas.GetPublicKey().GetCached().GetKeys() {
+			c.store(KASInfo{
+				URL:       kas.GetUri(),
+				KID:       ki.GetKid(),
+				Algorithm: ki.GetAlg(),
+				PublicKey: ki.GetPem(),
+			})
+		}
+	}
 }
 
 // Given a policy (list of data attributes or tags),

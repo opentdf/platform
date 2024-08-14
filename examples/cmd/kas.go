@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var algorithm, key, keyIdentifier string
+var algorithm, kas, key, keyIdentifier string
 
 func init() {
 	kasc := &cobra.Command{

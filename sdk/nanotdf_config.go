@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/opentdf/platform/lib/ocrypto"
-	"github.com/opentdf/platform/sdk/internal/autoconfigure"
 )
 
 // ============================================================================================================
@@ -20,7 +19,7 @@ import (
 type NanoTDFConfig struct {
 	keyPair      ocrypto.ECKeyPair
 	kasPublicKey *ecdh.PublicKey
-	attributes   []autoconfigure.AttributeValueFQN
+	attributes   []AttributeValueFQN
 	cipher       CipherMode
 	kasURL       ResourceLocator
 	sigCfg       signatureConfig
@@ -63,9 +62,9 @@ func (config *NanoTDFConfig) SetKasURL(url string) error {
 
 // SetAttributes - set the attributes to be used for this nanoTDF
 func (config *NanoTDFConfig) SetAttributes(attributes []string) error {
-	config.attributes = make([]autoconfigure.AttributeValueFQN, len(attributes))
+	config.attributes = make([]AttributeValueFQN, len(attributes))
 	for i, a := range attributes {
-		v, err := autoconfigure.NewAttributeValueFQN(a)
+		v, err := NewAttributeValueFQN(a)
 		if err != nil {
 			return err
 		}
@@ -83,7 +82,7 @@ func (config *NanoTDFConfig) EnableECDSAPolicyBinding() {
 func WithNanoDataAttributes(attributes ...string) NanoTDFOption {
 	return func(c *NanoTDFConfig) error {
 		for _, a := range attributes {
-			v, err := autoconfigure.NewAttributeValueFQN(a)
+			v, err := NewAttributeValueFQN(a)
 			if err != nil {
 				return err
 			}

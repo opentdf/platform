@@ -21,10 +21,8 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
-	"github.com/opentdf/platform/protocol/go/policy"
 	attributespb "github.com/opentdf/platform/protocol/go/policy/attributes"
 	wellknownpb "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
-	"github.com/opentdf/platform/sdk/internal/autoconfigure"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -54,8 +52,8 @@ type tdfTest struct {
 	tdfFileSize      float64
 	checksum         string
 	mimeType         string
-	splitPlan        []autoconfigure.SplitStep
-	policy           []autoconfigure.AttributeValueFQN
+	splitPlan        []keySplitStep
+	policy           []AttributeValueFQN
 	expectedPlanSize int
 }
 
@@ -978,7 +976,7 @@ func (s *TDFSuite) Test_KeySplits() {
 			fileSize:    5,
 			tdfFileSize: 2664,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			splitPlan: []autoconfigure.SplitStep{
+			splitPlan: []keySplitStep{
 				{KAS: "https://a.kas/", SplitID: "a"},
 				{KAS: "https://b.kas/", SplitID: "a"},
 				{KAS: `https://c.kas/`, SplitID: "a"},
@@ -989,7 +987,7 @@ func (s *TDFSuite) Test_KeySplits() {
 			fileSize:    5,
 			tdfFileSize: 2664,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			splitPlan: []autoconfigure.SplitStep{
+			splitPlan: []keySplitStep{
 				{KAS: "https://a.kas/", SplitID: "a"},
 				{KAS: "https://b.kas/", SplitID: "b"},
 				{KAS: "https://c.kas/", SplitID: "c"},
@@ -1000,7 +998,7 @@ func (s *TDFSuite) Test_KeySplits() {
 			fileSize:    5,
 			tdfFileSize: 3211,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			splitPlan: []autoconfigure.SplitStep{
+			splitPlan: []keySplitStep{
 				{KAS: "https://a.kas/", SplitID: "a"},
 				{KAS: "https://b.kas/", SplitID: "a"},
 				{KAS: "https://b.kas/", SplitID: "b"},
@@ -1043,7 +1041,7 @@ func (s *TDFSuite) Test_Autoconfigure() {
 			fileSize:         5,
 			tdfFileSize:      1733,
 			checksum:         "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			policy:           []autoconfigure.AttributeValueFQN{clsAllowed},
+			policy:           []AttributeValueFQN{clsA},
 			expectedPlanSize: 1,
 		},
 		{
@@ -1051,7 +1049,7 @@ func (s *TDFSuite) Test_Autoconfigure() {
 			fileSize:         5,
 			tdfFileSize:      2517,
 			checksum:         "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			policy:           []autoconfigure.AttributeValueFQN{rel2aus, rel2usa},
+			policy:           []AttributeValueFQN{rel2aus, rel2usa},
 			expectedPlanSize: 2,
 		},
 	} {
@@ -1069,6 +1067,7 @@ func (s *TDFSuite) Test_Autoconfigure() {
 				_ = os.Remove(plaintTextFileName)
 				_ = os.Remove(tdfFileName)
 			}()
+			s.sdk.kasKeyCache.store(KASInfo{})
 
 			// test encrypt
 			tdo := s.testEncrypt(s.sdk, kasInfoList, plaintTextFileName, tdfFileName, test)
@@ -1248,7 +1247,7 @@ func (s *TDFSuite) startBackend() {
 		{"https://c.kas/", mockRSAPrivateKey3, mockRSAPublicKey3},
 		{kasAu, mockRSAPrivateKey1, mockRSAPublicKey1},
 		{kasCa, mockRSAPrivateKey2, mockRSAPublicKey2},
-		{lasUk, mockRSAPrivateKey2, mockRSAPublicKey2},
+		{kasUk, mockRSAPrivateKey2, mockRSAPublicKey2},
 		{kasNz, mockRSAPrivateKey3, mockRSAPublicKey3},
 		{kasUs, mockRSAPrivateKey1, mockRSAPublicKey1},
 	} {
@@ -1430,7 +1429,7 @@ type FakeAttributes struct {
 func (f *FakeAttributes) GetAttributeValuesByFqns(_ context.Context, in *attributespb.GetAttributeValuesByFqnsRequest) (*attributespb.GetAttributeValuesByFqnsResponse, error) {
 	r := make(map[string]*attributespb.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 	for _, fqn := range in.GetFqns() {
-		av, err := autoconfigure.NewAttributeValueFQN(fqn)
+		av, err := NewAttributeValueFQN(fqn)
 		if err != nil {
 			slog.Error("invalid fqn", "notfqn", fqn, "error", err)
 			return nil, status.New(codes.InvalidArgument, fmt.Sprintf("invalid attribute fqn [%s]", fqn)).Err()

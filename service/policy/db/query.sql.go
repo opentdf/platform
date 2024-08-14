@@ -112,6 +112,293 @@ func (q *Queries) DeleteResourceMappingGroup(ctx context.Context, id string) (in
 	return result.RowsAffected(), nil
 }
 
+const getAttributeByValueFqn = `-- name: GetAttributeByValueFqn :one
+WITH target_definition AS (
+    SELECT ad.id
+    FROM attribute_definitions ad
+    INNER JOIN attribute_fqns af ON af.attribute_id = ad.id
+    WHERE af.fqn = $1
+    LIMIT 1
+),
+active_attribute_values AS (
+    SELECT
+        av.id,
+        av.value,
+        av.active,
+        av.attribute_definition_id,
+        JSON_AGG(
+            DISTINCT JSONB_BUILD_OBJECT(
+                'id', vkas.id,
+                'uri', vkas.uri,
+                'public_key', vkas.public_key
+            )
+        ) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr
+    FROM
+        attribute_values av
+    LEFT JOIN attribute_value_key_access_grants avg ON av.id = avg.attribute_value_id
+    LEFT JOIN key_access_servers vkas ON avg.key_access_server_id = vkas.id
+    WHERE av.active = TRUE
+    AND av.attribute_definition_id = (SELECT id FROM target_definition)
+    GROUP BY av.id
+),
+namespace_fqn_cte AS (
+    SELECT anfqn.namespace_id, anfqn.fqn
+    FROM attribute_fqns anfqn
+    WHERE anfqn.attribute_id IS NULL AND anfqn.value_id IS NULL
+),
+namespace_grants_cte AS (
+    SELECT
+        ankag.namespace_id,
+        JSONB_AGG(
+            DISTINCT JSONB_BUILD_OBJECT(
+                'id', kas.id,
+                'uri', kas.uri,
+                'public_key', kas.public_key
+            )
+        ) AS grants
+    FROM
+        attribute_namespace_key_access_grants ankag
+    LEFT JOIN key_access_servers kas ON kas.id = ankag.key_access_server_id
+    GROUP BY ankag.namespace_id
+),
+subject_mappings_cte AS (
+    SELECT
+        av.id AS av_id,
+        JSON_AGG(
+            JSON_BUILD_OBJECT(
+                'id', sm.id,
+                'actions', sm.actions,
+                'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+                    'labels', sm.metadata -> 'labels',
+                    'created_at', sm.created_at,
+                    'updated_at', sm.updated_at
+                )),
+                'subject_condition_set', JSON_BUILD_OBJECT(
+                    'id', scs.id,
+                    'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+                        'labels', scs.metadata -> 'labels',
+                        'created_at', scs.created_at,
+                        'updated_at', scs.updated_at
+                    )),
+                    'subject_sets', scs.condition
+                )
+            )
+        ) AS sub_maps_arr
+    FROM
+        subject_mappings sm
+    LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
+    LEFT JOIN subject_condition_set scs ON sm.subject_condition_set_id = scs.id
+    WHERE av.active = TRUE
+    AND av.attribute_definition_id = (SELECT id FROM target_definition)
+    GROUP BY av.id
+)
+SELECT
+    ad.id,
+    ad.name,
+    ad.rule,
+    JSON_STRIP_NULLS(
+        JSON_BUILD_OBJECT(
+            'labels', ad.metadata -> 'labels',
+            'created_at', ad.created_at,
+            'updated_at', ad.updated_at
+        )
+    ) AS metadata,
+    ad.active,
+    JSON_BUILD_OBJECT(
+        'name', an.name,
+        'id', an.id,
+        'fqn', nfq.fqn,
+        'grants', n_grants.grants,
+        'active', an.active
+    ) AS namespace,
+    ad.values_order,
+    JSON_AGG(
+        JSON_BUILD_OBJECT(
+            'id', avt.id,
+            'value', avt.value,
+            'active', avt.active,
+            'fqn', af.fqn,
+            'subject_mappings', sm.sub_maps_arr,
+            'grants', avt.val_grants_arr
+        )
+    ) AS values
+FROM
+    attribute_definitions ad
+LEFT JOIN attribute_namespaces an ON an.id = ad.namespace_id
+LEFT JOIN active_attribute_values avt ON avt.attribute_definition_id = ad.id
+LEFT JOIN attribute_definition_key_access_grants adkag ON adkag.attribute_definition_id = ad.id
+LEFT JOIN key_access_servers kas ON kas.id = adkag.key_access_server_id
+LEFT JOIN attribute_fqns af ON af.value_id = avt.id
+LEFT JOIN namespace_fqn_cte nfq ON nfq.namespace_id = an.id
+LEFT JOIN namespace_grants_cte n_grants ON n_grants.namespace_id = an.id
+LEFT JOIN subject_mappings_cte sm ON avt.id = sm.av_id
+WHERE
+    ad.active = TRUE
+    AND ad.id = (SELECT id FROM target_definition)
+    AND an.active = TRUE
+GROUP BY
+    ad.id, an.id, nfq.fqn, n_grants.grants
+`
+
+type GetAttributeByValueFqnRow struct {
+	ID          string                  `json:"id"`
+	Name        string                  `json:"name"`
+	Rule        AttributeDefinitionRule `json:"rule"`
+	Metadata    []byte                  `json:"metadata"`
+	Active      bool                    `json:"active"`
+	Namespace   []byte                  `json:"namespace"`
+	ValuesOrder []string                `json:"values_order"`
+	Values      []byte                  `json:"values"`
+}
+
+// get the definition id for the provided definition or value fqn
+// get the active values with KAS grants under the attribute definition
+// get the namespace fqn for the attribute definition
+// get the grants for the attribute's namespace
+// get the subject mappings for the active values under the attribute definition
+// get the attribute definition and give structure to the result
+//
+//	WITH target_definition AS (
+//	    SELECT ad.id
+//	    FROM attribute_definitions ad
+//	    INNER JOIN attribute_fqns af ON af.attribute_id = ad.id
+//	    WHERE af.fqn = $1
+//	    LIMIT 1
+//	),
+//	active_attribute_values AS (
+//	    SELECT
+//	        av.id,
+//	        av.value,
+//	        av.active,
+//	        av.attribute_definition_id,
+//	        JSON_AGG(
+//	            DISTINCT JSONB_BUILD_OBJECT(
+//	                'id', vkas.id,
+//	                'uri', vkas.uri,
+//	                'public_key', vkas.public_key
+//	            )
+//	        ) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr
+//	    FROM
+//	        attribute_values av
+//	    LEFT JOIN attribute_value_key_access_grants avg ON av.id = avg.attribute_value_id
+//	    LEFT JOIN key_access_servers vkas ON avg.key_access_server_id = vkas.id
+//	    WHERE av.active = TRUE
+//	    AND av.attribute_definition_id = (SELECT id FROM target_definition)
+//	    GROUP BY av.id
+//	),
+//	namespace_fqn_cte AS (
+//	    SELECT anfqn.namespace_id, anfqn.fqn
+//	    FROM attribute_fqns anfqn
+//	    WHERE anfqn.attribute_id IS NULL AND anfqn.value_id IS NULL
+//	),
+//	namespace_grants_cte AS (
+//	    SELECT
+//	        ankag.namespace_id,
+//	        JSONB_AGG(
+//	            DISTINCT JSONB_BUILD_OBJECT(
+//	                'id', kas.id,
+//	                'uri', kas.uri,
+//	                'public_key', kas.public_key
+//	            )
+//	        ) AS grants
+//	    FROM
+//	        attribute_namespace_key_access_grants ankag
+//	    LEFT JOIN key_access_servers kas ON kas.id = ankag.key_access_server_id
+//	    GROUP BY ankag.namespace_id
+//	),
+//	subject_mappings_cte AS (
+//	    SELECT
+//	        av.id AS av_id,
+//	        JSON_AGG(
+//	            JSON_BUILD_OBJECT(
+//	                'id', sm.id,
+//	                'actions', sm.actions,
+//	                'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+//	                    'labels', sm.metadata -> 'labels',
+//	                    'created_at', sm.created_at,
+//	                    'updated_at', sm.updated_at
+//	                )),
+//	                'subject_condition_set', JSON_BUILD_OBJECT(
+//	                    'id', scs.id,
+//	                    'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+//	                        'labels', scs.metadata -> 'labels',
+//	                        'created_at', scs.created_at,
+//	                        'updated_at', scs.updated_at
+//	                    )),
+//	                    'subject_sets', scs.condition
+//	                )
+//	            )
+//	        ) AS sub_maps_arr
+//	    FROM
+//	        subject_mappings sm
+//	    LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
+//	    LEFT JOIN subject_condition_set scs ON sm.subject_condition_set_id = scs.id
+//	    WHERE av.active = TRUE
+//	    AND av.attribute_definition_id = (SELECT id FROM target_definition)
+//	    GROUP BY av.id
+//	)
+//	SELECT
+//	    ad.id,
+//	    ad.name,
+//	    ad.rule,
+//	    JSON_STRIP_NULLS(
+//	        JSON_BUILD_OBJECT(
+//	            'labels', ad.metadata -> 'labels',
+//	            'created_at', ad.created_at,
+//	            'updated_at', ad.updated_at
+//	        )
+//	    ) AS metadata,
+//	    ad.active,
+//	    JSON_BUILD_OBJECT(
+//	        'name', an.name,
+//	        'id', an.id,
+//	        'fqn', nfq.fqn,
+//	        'grants', n_grants.grants,
+//	        'active', an.active
+//	    ) AS namespace,
+//	    ad.values_order,
+//	    JSON_AGG(
+//	        JSON_BUILD_OBJECT(
+//	            'id', avt.id,
+//	            'value', avt.value,
+//	            'active', avt.active,
+//	            'fqn', af.fqn,
+//	            'subject_mappings', sm.sub_maps_arr,
+//	            'grants', avt.val_grants_arr
+//	        )
+//	    ) AS values
+//	FROM
+//	    attribute_definitions ad
+//	LEFT JOIN attribute_namespaces an ON an.id = ad.namespace_id
+//	LEFT JOIN active_attribute_values avt ON avt.attribute_definition_id = ad.id
+//	LEFT JOIN attribute_definition_key_access_grants adkag ON adkag.attribute_definition_id = ad.id
+//	LEFT JOIN key_access_servers kas ON kas.id = adkag.key_access_server_id
+//	LEFT JOIN attribute_fqns af ON af.value_id = avt.id
+//	LEFT JOIN namespace_fqn_cte nfq ON nfq.namespace_id = an.id
+//	LEFT JOIN namespace_grants_cte n_grants ON n_grants.namespace_id = an.id
+//	LEFT JOIN subject_mappings_cte sm ON avt.id = sm.av_id
+//	WHERE
+//	    ad.active = TRUE
+//	    AND ad.id = (SELECT id FROM target_definition)
+//	    AND an.active = TRUE
+//	GROUP BY
+//	    ad.id, an.id, nfq.fqn, n_grants.grants
+func (q *Queries) GetAttributeByValueFqn(ctx context.Context, fqn string) (GetAttributeByValueFqnRow, error) {
+	row := q.db.QueryRow(ctx, getAttributeByValueFqn, fqn)
+	var i GetAttributeByValueFqnRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Rule,
+		&i.Metadata,
+		&i.Active,
+		&i.Namespace,
+		&i.ValuesOrder,
+		&i.Values,
+	)
+	return i, err
+}
+
 const getKeyAccessServer = `-- name: GetKeyAccessServer :one
 SELECT id, uri, public_key,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata

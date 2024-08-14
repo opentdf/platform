@@ -240,6 +240,18 @@ func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as attrib
 	return grants, nil
 }
 
+func algProto2String(e policy.KasPublicKeyAlgEnum) string {
+	switch e {
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1:
+		return "ec:secp256r1"
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048:
+		return "rsa:2048"
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED:
+		return ""
+	}
+	return ""
+}
+
 func storeKeysToCache(kases []*policy.KeyAccessServer, c *kasKeyCache) {
 	for _, kas := range kases {
 		if kas.GetPublicKey() == nil || kas.GetPublicKey().GetCached() == nil || kas.GetPublicKey().GetCached().GetKeys() == nil || len(kas.GetPublicKey().GetCached().GetKeys()) == 0 {
@@ -250,7 +262,7 @@ func storeKeysToCache(kases []*policy.KeyAccessServer, c *kasKeyCache) {
 			c.store(KASInfo{
 				URL:       kas.GetUri(),
 				KID:       ki.GetKid(),
-				Algorithm: ki.GetAlg(),
+				Algorithm: algProto2String(ki.GetAlg()),
 				PublicKey: ki.GetPem(),
 			})
 		}

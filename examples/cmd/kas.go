@@ -141,6 +141,16 @@ func upsertKasRegistration(ctx context.Context, s *sdk.SDK, uri string, pk *poli
 	return ur.KeyAccessServer.GetId(), nil
 }
 
+func algString2Proto(a string) policy.KasPublicKeyAlgEnum {
+	switch strings.ToLower(a) {
+	case "ec:secp256r1":
+		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
+	case "rsa:2048":
+		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
+	}
+	return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
+}
+
 func updateKas(cmd *cobra.Command) error {
 	s, err := newSDK()
 	if err != nil {
@@ -163,7 +173,7 @@ func updateKas(cmd *cobra.Command) error {
 					{
 						Pem: key,
 						Kid: keyIdentifier,
-						Alg: algorithm,
+						Alg: algString2Proto(algorithm),
 					},
 				},
 			},

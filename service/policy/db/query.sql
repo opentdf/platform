@@ -81,13 +81,13 @@ WHERE (NULLIF(@kas_id, '') IS NULL OR kas.id = @kas_id::uuid)
 GROUP BY 
     kas.id;
 
--- name: GetAttributeByValueFqn :one
+-- name: GetAttributeByDefOrValueFqn :one
 -- get the attribute definition for the provided value or definition fqn
 WITH target_definition AS (
     SELECT ad.id
     FROM attribute_definitions ad
     INNER JOIN attribute_fqns af ON af.attribute_id = ad.id
-    WHERE af.fqn = $1
+    WHERE af.fqn = LOWER($1)
     LIMIT 1
 ),
 -- get the active values with KAS grants under the attribute definition
@@ -205,7 +205,14 @@ SELECT
             'grants', avt.val_grants_arr
         -- enforce order of values in response
         ) ORDER BY array_position(ad.values_order, avt.id)
-    ) AS values
+    ) AS values,
+    JSONB_AGG(
+        DISTINCT JSONB_BUILD_OBJECT(
+            'id', kas.id,
+            'uri', kas.uri,
+            'public_key', kas.public_key
+        )
+    ) FILTER (WHERE kas.id IS NOT NULL AND kas.uri IS NOT NULL AND kas.public_key IS NOT NULL) AS definition_grants
 FROM
     attribute_definitions ad
 LEFT JOIN attribute_namespaces an ON an.id = ad.namespace_id

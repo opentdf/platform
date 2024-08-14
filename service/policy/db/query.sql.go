@@ -112,12 +112,12 @@ func (q *Queries) DeleteResourceMappingGroup(ctx context.Context, id string) (in
 	return result.RowsAffected(), nil
 }
 
-const getAttributeByValueFqn = `-- name: GetAttributeByValueFqn :one
+const getAttributeByDefOrValueFqn = `-- name: GetAttributeByDefOrValueFqn :one
 WITH target_definition AS (
     SELECT ad.id
     FROM attribute_definitions ad
     INNER JOIN attribute_fqns af ON af.attribute_id = ad.id
-    WHERE af.fqn = $1
+    WHERE af.fqn = LOWER($1)
     LIMIT 1
 ),
 active_attribute_values AS (
@@ -229,7 +229,14 @@ SELECT
             'grants', avt.val_grants_arr
         -- enforce order of values in response
         ) ORDER BY array_position(ad.values_order, avt.id)
-    ) AS values
+    ) AS values,
+    JSONB_AGG(
+        DISTINCT JSONB_BUILD_OBJECT(
+            'id', kas.id,
+            'uri', kas.uri,
+            'public_key', kas.public_key
+        )
+    ) FILTER (WHERE kas.id IS NOT NULL AND kas.uri IS NOT NULL AND kas.public_key IS NOT NULL) AS definition_grants
 FROM
     attribute_definitions ad
 LEFT JOIN attribute_namespaces an ON an.id = ad.namespace_id
@@ -248,15 +255,16 @@ GROUP BY
     ad.id, an.id, nfq.fqn, n_grants.grants
 `
 
-type GetAttributeByValueFqnRow struct {
-	ID            string                  `json:"id"`
-	Name          string                  `json:"name"`
-	Rule          AttributeDefinitionRule `json:"rule"`
-	Metadata      []byte                  `json:"metadata"`
-	Active        bool                    `json:"active"`
-	Namespace     []byte                  `json:"namespace"`
-	DefinitionFqn string                  `json:"definition_fqn"`
-	Values        []byte                  `json:"values"`
+type GetAttributeByDefOrValueFqnRow struct {
+	ID               string                  `json:"id"`
+	Name             string                  `json:"name"`
+	Rule             AttributeDefinitionRule `json:"rule"`
+	Metadata         []byte                  `json:"metadata"`
+	Active           bool                    `json:"active"`
+	Namespace        []byte                  `json:"namespace"`
+	DefinitionFqn    string                  `json:"definition_fqn"`
+	Values           []byte                  `json:"values"`
+	DefinitionGrants []byte                  `json:"definition_grants"`
 }
 
 // get the attribute definition for the provided value or definition fqn
@@ -271,7 +279,7 @@ type GetAttributeByValueFqnRow struct {
 //	    SELECT ad.id
 //	    FROM attribute_definitions ad
 //	    INNER JOIN attribute_fqns af ON af.attribute_id = ad.id
-//	    WHERE af.fqn = $1
+//	    WHERE af.fqn = LOWER($1)
 //	    LIMIT 1
 //	),
 //	active_attribute_values AS (
@@ -383,7 +391,14 @@ type GetAttributeByValueFqnRow struct {
 //	            'grants', avt.val_grants_arr
 //	        -- enforce order of values in response
 //	        ) ORDER BY array_position(ad.values_order, avt.id)
-//	    ) AS values
+//	    ) AS values,
+//	    JSONB_AGG(
+//	        DISTINCT JSONB_BUILD_OBJECT(
+//	            'id', kas.id,
+//	            'uri', kas.uri,
+//	            'public_key', kas.public_key
+//	        )
+//	    ) FILTER (WHERE kas.id IS NOT NULL AND kas.uri IS NOT NULL AND kas.public_key IS NOT NULL) AS definition_grants
 //	FROM
 //	    attribute_definitions ad
 //	LEFT JOIN attribute_namespaces an ON an.id = ad.namespace_id
@@ -400,9 +415,9 @@ type GetAttributeByValueFqnRow struct {
 //	    AND an.active = TRUE
 //	GROUP BY
 //	    ad.id, an.id, nfq.fqn, n_grants.grants
-func (q *Queries) GetAttributeByValueFqn(ctx context.Context, fqn string) (GetAttributeByValueFqnRow, error) {
-	row := q.db.QueryRow(ctx, getAttributeByValueFqn, fqn)
-	var i GetAttributeByValueFqnRow
+func (q *Queries) GetAttributeByDefOrValueFqn(ctx context.Context, lower string) (GetAttributeByDefOrValueFqnRow, error) {
+	row := q.db.QueryRow(ctx, getAttributeByDefOrValueFqn, lower)
+	var i GetAttributeByDefOrValueFqnRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -412,6 +427,7 @@ func (q *Queries) GetAttributeByValueFqn(ctx context.Context, fqn string) (GetAt
 		&i.Namespace,
 		&i.DefinitionFqn,
 		&i.Values,
+		&i.DefinitionGrants,
 	)
 	return i, err
 }

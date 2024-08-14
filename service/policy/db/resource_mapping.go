@@ -25,7 +25,29 @@ import (
 */
 
 // todo: this is very temporary, will be replaced with a more robust solution
-var validFQNRegex = regexp.MustCompile(`^(http|https):\/\/(\S+)\/resm\/(\S+)$`)
+var validFQNRegex = regexp.MustCompile(`^(?:http|https):\/\/(?<namespace>\S+)\/resm\/(?<name>\S+)$`)
+
+type parsedFQN struct {
+	Namespace string
+	Name      string
+}
+
+// todo: move to a FQN parsing engine later
+func parseFQN(fqn string) (*parsedFQN, error) {
+	matches := validFQNRegex.FindStringSubmatch(fqn)
+	namespaceIdx := validFQNRegex.SubexpIndex("namespace")
+	nameIdx := validFQNRegex.SubexpIndex("name")
+	numMatches := len(matches)
+
+	if numMatches < namespaceIdx || numMatches < nameIdx {
+		return nil, errors.New("error: valid FQN format of https://<namespace>/resm/<unique_name> must be provided")
+	}
+
+	return &parsedFQN{
+		Namespace: matches[namespaceIdx],
+		Name:      matches[nameIdx],
+	}, nil
+}
 
 func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context) ([]*policy.ResourceMappingGroup, error) {
 	list, err := c.Queries.ListResourceMappingGroups(ctx)
@@ -60,18 +82,14 @@ func (c PolicyDBClient) GetResourceMappingGroup(ctx context.Context, id string) 
 }
 
 func (c PolicyDBClient) GetResourceMappingGroupByFQN(ctx context.Context, r *resourcemapping.GetResourceMappingGroupByFQNRequest) (*policy.ResourceMappingGroup, error) {
-	// todo: cleanup later when we have an FQN parsing engine
-	matches := validFQNRegex.FindStringSubmatch(r.GetFqn())
-	if len(matches) < 3 {
-		// regex should have 3 matches if valid
-		return nil, errors.Join(db.ErrMissingValue, errors.New("error: valid FQN format of https://<namespace>/resm/<unique_name> must be provided"))
+	parsedFQN, err := parseFQN(r.GetFqn())
+	if err != nil {
+		return nil, errors.Join(db.ErrMissingValue, err)
 	}
 
-	namespace, name := matches[2], matches[3]
-
 	rmGroup, err := c.Queries.FindResourceMappingGroup(ctx, FindResourceMappingGroupParams{
-		Namespace: namespace,
-		Name:      name,
+		Namespace: parsedFQN.Namespace,
+		Name:      parsedFQN.Name,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -99,9 +117,9 @@ func (c PolicyDBClient) CreateResourceMappingGroup(ctx context.Context, r *resou
 }
 
 func (c PolicyDBClient) UpdateResourceMappingGroup(ctx context.Context, id string, r *resourcemapping.UpdateResourceMappingGroupRequest) (*policy.ResourceMappingGroup, error) {
-	uuidNamespaceId, err := uuid.Parse(r.GetNamespaceId())
+	uuidNamespaceID, err := uuid.Parse(r.GetNamespaceId())
 	pgNamespaceID := pgtype.UUID{
-		Bytes: [16]byte(uuidNamespaceId),
+		Bytes: [16]byte(uuidNamespaceID),
 		Valid: err == nil,
 	}
 

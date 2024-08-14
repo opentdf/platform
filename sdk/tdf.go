@@ -135,7 +135,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		if len(tdfConfig.attributeValues) > 0 {
 			g, err = newGranterFromAttributes(tdfConfig.attributeValues...)
 		} else if len(tdfConfig.attributes) > 0 {
-			g, err = newGranterFromService(ctx, s.Attributes, tdfConfig.attributes...)
+			g, err = newGranterFromService(ctx, s.kasKeyCache, s.Attributes, tdfConfig.attributes...)
 		}
 		if err != nil {
 			return nil, err
@@ -440,7 +440,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 
 		for _, kasInfo := range conjunction[splitID] {
 			if len(kasInfo.PublicKey) == 0 {
-				return errKasPubKeyMissing
+				return fmt.Errorf("splitID:[%s], kas:[%s]: %w", splitID, kasInfo.URL, errKasPubKeyMissing)
 			}
 
 			// wrap the key with kas public key

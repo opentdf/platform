@@ -16,7 +16,7 @@
   [[ $output = *"listing namespaces"* ]]
   [ $status = 0 ]
 
-  run go run ./examples --creds opentdf:secret attributes add -a https://example.io/attr/IntellectualProperty -v "TradeSecret Proprietary BusinessSensitive Open" --rule hierarchy 
+  run go run ./examples --creds opentdf:secret attributes add -a https://example.io/attr/IntellectualProperty -v "TradeSecret,Proprietary,BusinessSensitive,Open" --rule hierarchy 
   echo "$output"
   [[ $output = *"created attribute"* ]]
   [ $status = 0 ]
@@ -71,7 +71,7 @@
   [[ $output = *"https://c.example.io"* ]]
   [ $status = 0 ]
 
-  go run ./examples --creds opentdf:secret attributes add -a https://grant.example.io/attr/test -v "a b c"
+  go run ./examples --creds opentdf:secret attributes add -a https://grant.example.io/attr/test -v "a,b,c"
 
   go run ./examples --creds opentdf:secret attributes assign -a https://grant.example.io/attr/test -v a -k https://a.example.io
   go run ./examples --creds opentdf:secret attributes assign -a https://grant.example.io/attr/test -v b -k https://b.example.io

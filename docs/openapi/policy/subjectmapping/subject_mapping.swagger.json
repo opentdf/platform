@@ -559,6 +559,37 @@
       },
       "title": "A collection of Conditions evaluated by the boolean_operator provided"
     },
+    "policyKasPublicKey": {
+      "type": "object",
+      "properties": {
+        "pem": {
+          "type": "string",
+          "title": "x509 ASN.1 content in PEM envelope, usually"
+        },
+        "kid": {
+          "type": "string",
+          "title": "A unique string identifier for this key"
+        },
+        "alg": {
+          "type": "string",
+          "title": "A known algorithm type with any additional parameters encoded"
+        }
+      },
+      "title": "A KAS public key and some associated metadata for further identifcation"
+    },
+    "policyKasPublicKeySet": {
+      "type": "object",
+      "properties": {
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKasPublicKey"
+          }
+        }
+      },
+      "title": "A list of known KAS public keys"
+    },
     "policyKeyAccessServer": {
       "type": "object",
       "properties": {
@@ -620,6 +651,10 @@
         "local": {
           "type": "string",
           "title": "public key - optional since can also be retrieved via url"
+        },
+        "cached": {
+          "$ref": "#/definitions/policyKasPublicKeySet",
+          "title": "public key with additional information. Current preferred version"
         }
       }
     },

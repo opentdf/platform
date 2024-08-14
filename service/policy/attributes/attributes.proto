@@ -286,29 +286,27 @@ service AttributesService {
    *---------------------------------------*/
   rpc AssignKeyAccessServerToAttribute(AssignKeyAccessServerToAttributeRequest) returns (AssignKeyAccessServerToAttributeResponse) {
     option (google.api.http) = {
-      post: "/attributes/keyaccessserver/assign"
+      post: "/attributes/keyaccessserver/grants"
       body: "attribute_key_access_server"
     };
   }
 
   rpc RemoveKeyAccessServerFromAttribute(RemoveKeyAccessServerFromAttributeRequest) returns (RemoveKeyAccessServerFromAttributeResponse) {
     option (google.api.http) = {
-      post: "/attributes/keyaccessserver/remove"
-      body: "attribute_key_access_server"
+      delete: "/attributes/keyaccessserver/grants"
     };
   }
 
   rpc AssignKeyAccessServerToValue(AssignKeyAccessServerToValueRequest) returns (AssignKeyAccessServerToValueResponse) {
     option (google.api.http) = {
-      post: "/attributes/values/keyaccessserver/assign"
+      post: "/attributes/values/keyaccessserver/grants"
       body: "value_key_access_server"
     };
   }
 
   rpc RemoveKeyAccessServerFromValue(RemoveKeyAccessServerFromValueRequest) returns (RemoveKeyAccessServerFromValueResponse) {
     option (google.api.http) = {
-      post: "/attributes/values/keyaccessserver/remove"
-      body: "value_key_access_server"
+      delete: "/attributes/values/keyaccessserver/grants"
     };
   }
 }

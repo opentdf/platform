@@ -291,6 +291,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.KasPublicKeyAlgEnum"><span class="badge">E</span>KasPublicKeyAlgEnum</a>
+                </li>
+              
+                <li>
                   <a href="#policy.SubjectMappingOperatorEnum"><span class="badge">E</span>SubjectMappingOperatorEnum</a>
                 </li>
               
@@ -1512,7 +1516,7 @@
               
                 <tr>
                   <td>alg</td>
-                  <td><a href="#string">string</a></td>
+                  <td><a href="#policy.KasPublicKeyAlgEnum">KasPublicKeyAlgEnum</a></td>
                   <td></td>
                   <td><p>A known algorithm type with any additional parameters encoded.
 To start, these may be `rsa:2048` for encrypting ZTDF files and 
@@ -2089,6 +2093,35 @@ To start, these may be `rsa:2048` for encrypting ZTDF files and
               <tr>
                 <td>CONDITION_BOOLEAN_TYPE_ENUM_OR</td>
                 <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+        <h3 id="policy.KasPublicKeyAlgEnum">KasPublicKeyAlgEnum</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1</td>
+                <td>5</td>
                 <td><p></p></td>
               </tr>
             

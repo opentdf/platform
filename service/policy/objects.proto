@@ -274,7 +274,7 @@ enum KasPublicKeyAlgEnum {
   KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048 = 1;
   reserved 2 to 4;
   KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1 = 5;
-  reserved 5 to 100;
+  reserved 6 to 100;
 }
 
 // A KAS public key and some associated metadata for further identifcation

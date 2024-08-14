@@ -82,7 +82,7 @@ GROUP BY
     kas.id;
 
 -- name: GetAttributeByValueFqn :one
--- get the definition id for the provided definition or value fqn
+-- get the attribute definition for the provided value or definition fqn
 WITH target_definition AS (
     SELECT ad.id
     FROM attribute_definitions ad
@@ -133,6 +133,14 @@ namespace_grants_cte AS (
         attribute_namespace_key_access_grants ankag
     LEFT JOIN key_access_servers kas ON kas.id = ankag.key_access_server_id
     GROUP BY ankag.namespace_id
+),
+-- get the definition fqn for the attribute definition (could have been provided a value fqn initially)
+target_definition_fqn_cte AS (
+    SELECT af.fqn
+    FROM attribute_fqns af
+    WHERE af.namespace_id = (SELECT namespace_id FROM attribute_definitions WHERE id = (SELECT id FROM target_definition))
+    AND af.attribute_id = (SELECT id FROM target_definition)
+    AND af.value_id IS NULL
 ),
 -- get the subject mappings for the active values under the attribute definition
 subject_mappings_cte AS (
@@ -186,7 +194,7 @@ SELECT
         'grants', n_grants.grants,
         'active', an.active
     ) AS namespace,
-    ad.values_order,
+    (SELECT fqn FROM target_definition_fqn_cte) AS definition_fqn,
     JSON_AGG(
         JSON_BUILD_OBJECT(
             'id', avt.id,
@@ -195,7 +203,8 @@ SELECT
             'fqn', af.fqn,
             'subject_mappings', sm.sub_maps_arr,
             'grants', avt.val_grants_arr
-        )
+        -- enforce order of values in response
+        ) ORDER BY array_position(ad.values_order, avt.id)
     ) AS values
 FROM
     attribute_definitions ad
@@ -213,7 +222,6 @@ WHERE
     AND an.active = TRUE
 GROUP BY
     ad.id, an.id, nfq.fqn, n_grants.grants;
-
 
 ---------------------------------------------------------------- 
 -- RESOURCE MAPPING GROUPS

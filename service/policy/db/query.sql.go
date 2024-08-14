@@ -161,6 +161,13 @@ namespace_grants_cte AS (
     LEFT JOIN key_access_servers kas ON kas.id = ankag.key_access_server_id
     GROUP BY ankag.namespace_id
 ),
+target_definition_fqn_cte AS (
+    SELECT af.fqn
+    FROM attribute_fqns af
+    WHERE af.namespace_id = (SELECT namespace_id FROM attribute_definitions WHERE id = (SELECT id FROM target_definition))
+    AND af.attribute_id = (SELECT id FROM target_definition)
+    AND af.value_id IS NULL
+),
 subject_mappings_cte AS (
     SELECT
         av.id AS av_id,
@@ -211,7 +218,7 @@ SELECT
         'grants', n_grants.grants,
         'active', an.active
     ) AS namespace,
-    ad.values_order,
+    (SELECT fqn FROM target_definition_fqn_cte) AS definition_fqn,
     JSON_AGG(
         JSON_BUILD_OBJECT(
             'id', avt.id,
@@ -220,7 +227,8 @@ SELECT
             'fqn', af.fqn,
             'subject_mappings', sm.sub_maps_arr,
             'grants', avt.val_grants_arr
-        )
+        -- enforce order of values in response
+        ) ORDER BY array_position(ad.values_order, avt.id)
     ) AS values
 FROM
     attribute_definitions ad
@@ -241,20 +249,21 @@ GROUP BY
 `
 
 type GetAttributeByValueFqnRow struct {
-	ID          string                  `json:"id"`
-	Name        string                  `json:"name"`
-	Rule        AttributeDefinitionRule `json:"rule"`
-	Metadata    []byte                  `json:"metadata"`
-	Active      bool                    `json:"active"`
-	Namespace   []byte                  `json:"namespace"`
-	ValuesOrder []string                `json:"values_order"`
-	Values      []byte                  `json:"values"`
+	ID            string                  `json:"id"`
+	Name          string                  `json:"name"`
+	Rule          AttributeDefinitionRule `json:"rule"`
+	Metadata      []byte                  `json:"metadata"`
+	Active        bool                    `json:"active"`
+	Namespace     []byte                  `json:"namespace"`
+	DefinitionFqn string                  `json:"definition_fqn"`
+	Values        []byte                  `json:"values"`
 }
 
-// get the definition id for the provided definition or value fqn
+// get the attribute definition for the provided value or definition fqn
 // get the active values with KAS grants under the attribute definition
 // get the namespace fqn for the attribute definition
 // get the grants for the attribute's namespace
+// get the definition fqn for the attribute definition (could have been provided a value fqn initially)
 // get the subject mappings for the active values under the attribute definition
 // get the attribute definition and give structure to the result
 //
@@ -306,6 +315,13 @@ type GetAttributeByValueFqnRow struct {
 //	    LEFT JOIN key_access_servers kas ON kas.id = ankag.key_access_server_id
 //	    GROUP BY ankag.namespace_id
 //	),
+//	target_definition_fqn_cte AS (
+//	    SELECT af.fqn
+//	    FROM attribute_fqns af
+//	    WHERE af.namespace_id = (SELECT namespace_id FROM attribute_definitions WHERE id = (SELECT id FROM target_definition))
+//	    AND af.attribute_id = (SELECT id FROM target_definition)
+//	    AND af.value_id IS NULL
+//	),
 //	subject_mappings_cte AS (
 //	    SELECT
 //	        av.id AS av_id,
@@ -356,7 +372,7 @@ type GetAttributeByValueFqnRow struct {
 //	        'grants', n_grants.grants,
 //	        'active', an.active
 //	    ) AS namespace,
-//	    ad.values_order,
+//	    (SELECT fqn FROM target_definition_fqn_cte) AS definition_fqn,
 //	    JSON_AGG(
 //	        JSON_BUILD_OBJECT(
 //	            'id', avt.id,
@@ -365,7 +381,8 @@ type GetAttributeByValueFqnRow struct {
 //	            'fqn', af.fqn,
 //	            'subject_mappings', sm.sub_maps_arr,
 //	            'grants', avt.val_grants_arr
-//	        )
+//	        -- enforce order of values in response
+//	        ) ORDER BY array_position(ad.values_order, avt.id)
 //	    ) AS values
 //	FROM
 //	    attribute_definitions ad
@@ -393,7 +410,7 @@ func (q *Queries) GetAttributeByValueFqn(ctx context.Context, fqn string) (GetAt
 		&i.Metadata,
 		&i.Active,
 		&i.Namespace,
-		&i.ValuesOrder,
+		&i.DefinitionFqn,
 		&i.Values,
 	)
 	return i, err

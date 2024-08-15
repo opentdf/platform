@@ -22,12 +22,8 @@ type config struct {
 	tokenExchange           *oauth.TokenExchangeInfo
 	tokenEndpoint           string
 	scopes                  []string
-	policyConn              *grpc.ClientConn // Deprecated
-	authorizationConn       *grpc.ClientConn // Deprecated
-	entityresolutionConn    *grpc.ClientConn // Deprecated
 	extraDialOptions        []grpc.DialOption
 	certExchange            *oauth.CertExchangeInfo
-	wellknownConn           *grpc.ClientConn // Deprecated
 	platformConfiguration   PlatformConfiguration
 	kasSessionKey           *ocrypto.RsaKeyPair
 	dpopKey                 *ocrypto.RsaKeyPair
@@ -103,21 +99,21 @@ func withCustomAccessTokenSource(a auth.AccessTokenSource) Option {
 // Deprecated: Use WithCustomCoreConnection instead
 func WithCustomPolicyConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
-		c.policyConn = conn
+		c.coreConn = conn
 	}
 }
 
 // Deprecated: Use WithCustomCoreConnection instead
 func WithCustomAuthorizationConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
-		c.authorizationConn = conn
+		c.coreConn = conn
 	}
 }
 
 // Deprecated: Use WithCustomCoreConnection instead
 func WithCustomEntityResolutionConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
-		c.entityresolutionConn = conn
+		c.coreConn = conn
 	}
 }
 
@@ -160,7 +156,7 @@ func WithSessionSignerRSA(key *rsa.PrivateKey) Option {
 
 func WithCustomWellknownConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
-		c.wellknownConn = conn
+		c.coreConn = conn
 	}
 }
 

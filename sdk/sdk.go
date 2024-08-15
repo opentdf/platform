@@ -116,8 +116,8 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		var pcfg PlatformConfiguration
 		var err error
 
-		if cfg.wellknownConn != nil {
-			pcfg, err = getPlatformConfiguration(cfg.wellknownConn) // Pick a connection until cfg.wellknownConn is removed
+		if cfg.coreConn != nil {
+			pcfg, err = getPlatformConfiguration(cfg.coreConn) // Pick a connection until cfg.wellknownConn is removed
 			if err != nil {
 				return nil, errors.Join(ErrPlatformConfigFailed, err)
 			}
@@ -168,15 +168,15 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		conn:                    platformConn,
 		dialOptions:             dialOptions,
 		tokenSource:             accessTokenSource,
-		Attributes:              attributes.NewAttributesServiceClient(selectConn(cfg.policyConn, platformConn)),
-		Namespaces:              namespaces.NewNamespaceServiceClient(selectConn(cfg.policyConn, platformConn)),
-		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(selectConn(cfg.policyConn, platformConn)),
-		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(selectConn(cfg.policyConn, platformConn)),
-		Unsafe:                  unsafe.NewUnsafeServiceClient(selectConn(cfg.policyConn, platformConn)),
-		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(selectConn(cfg.policyConn, platformConn)),
-		Authorization:           authorization.NewAuthorizationServiceClient(selectConn(cfg.authorizationConn, platformConn)),
-		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(selectConn(cfg.entityresolutionConn, platformConn)),
-		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(selectConn(cfg.wellknownConn, platformConn)),
+		Attributes:              attributes.NewAttributesServiceClient(platformConn),
+		Namespaces:              namespaces.NewNamespaceServiceClient(platformConn),
+		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(platformConn),
+		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(platformConn),
+		Unsafe:                  unsafe.NewUnsafeServiceClient(platformConn),
+		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(platformConn),
+		Authorization:           authorization.NewAuthorizationServiceClient(platformConn),
+		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(platformConn),
+		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(platformConn),
 	}, nil
 }
 
@@ -424,13 +424,4 @@ func getTokenEndpoint(c config) (string, error) {
 	}
 
 	return tokenEndpoint, nil
-}
-
-// selectConn returns the preferred connection if it is not nil, otherwise it returns the fallback connection
-// which is the default connection built to the platform.
-func selectConn(preferred, fallback *grpc.ClientConn) *grpc.ClientConn {
-	if preferred != nil {
-		return preferred
-	}
-	return fallback
 }

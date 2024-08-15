@@ -76,6 +76,10 @@ p,	role:admin,		/subject-mappings*,													*,			allow
 p,	role:admin,		/resource-mappings*,												*,			allow
 p,	role:admin,		/key-access-servers*,												*,			allow
 p,	role:admin,		/kas/v2/rewrap,						  				        *,      allow
+p,	role:admin,		/v1/entitlements,						  				        *,      allow
+p,	role:admin,		/v1/authorization,						  				        *,      allow
+p,	role:admin,		/v1/token/authorization,						  				        *,      allow
+
 
 ## Role: Standard
 ## gRPC routes

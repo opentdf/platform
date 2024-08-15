@@ -157,16 +157,16 @@ GROUP BY
 SELECT id, namespace_id, name
 FROM resource_mapping_groups;
 
+-- name: ListResourceMappingGroupsByAttrFQN :many
+SELECT g.id, g.namespace_id, g.name
+FROM resource_mapping_groups g
+LEFT JOIN attribute_fqns fqns ON g.namespace_id = fqns.namespace_id
+WHERE fqns.fqn = LOWER(@fqn);
+
 -- name: GetResourceMappingGroup :one
 SELECT id, namespace_id, name
 FROM resource_mapping_groups
 WHERE id = $1;
-
--- name: FindResourceMappingGroup :one
-SELECT g.id, g.namespace_id, g.name
-FROM resource_mapping_groups g
-LEFT JOIN attribute_namespaces ns ON ns.id = g.namespace_id
-WHERE ns.name = LOWER(sqlc.arg('namespace')) AND g.name = LOWER(sqlc.arg('name'));
 
 -- name: CreateResourceMappingGroup :one
 INSERT INTO resource_mapping_groups (namespace_id, name)

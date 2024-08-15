@@ -2,9 +2,7 @@ package db
 
 import (
 	"context"
-	"errors"
 	"log/slog"
-	"regexp"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
@@ -23,31 +21,6 @@ import (
 
  NOTE: uses sqlc instead of squirrel
 */
-
-// todo: this is very temporary, will be replaced with a more robust solution
-var validFQNRegex = regexp.MustCompile(`^(?:http|https):\/\/(?<namespace>\S+)\/resm\/(?<name>\S+)$`)
-
-type parsedFQN struct {
-	Namespace string
-	Name      string
-}
-
-// todo: move to a FQN parsing engine later
-func parseFQN(fqn string) (*parsedFQN, error) {
-	matches := validFQNRegex.FindStringSubmatch(fqn)
-	namespaceIdx := validFQNRegex.SubexpIndex("namespace")
-	nameIdx := validFQNRegex.SubexpIndex("name")
-	numMatches := len(matches)
-
-	if numMatches < namespaceIdx || numMatches < nameIdx {
-		return nil, errors.New("error: valid FQN format of https://<namespace>/resm/<unique_name> must be provided")
-	}
-
-	return &parsedFQN{
-		Namespace: matches[namespaceIdx],
-		Name:      matches[nameIdx],
-	}, nil
-}
 
 func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context) ([]*policy.ResourceMappingGroup, error) {
 	list, err := c.Queries.ListResourceMappingGroups(ctx)
@@ -68,29 +41,27 @@ func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context) ([]*polic
 	return resourceMappingGroups, nil
 }
 
-func (c PolicyDBClient) GetResourceMappingGroup(ctx context.Context, id string) (*policy.ResourceMappingGroup, error) {
-	rmGroup, err := c.Queries.GetResourceMappingGroup(ctx, id)
+func (c PolicyDBClient) ListResourceMappingGroupsByAttrFQN(ctx context.Context, fqn string) ([]*policy.ResourceMappingGroup, error) {
+	list, err := c.Queries.ListResourceMappingGroupsByAttrFQN(ctx, fqn)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
-	return &policy.ResourceMappingGroup{
-		Id:          rmGroup.ID,
-		NamespaceId: rmGroup.NamespaceID,
-		Name:        rmGroup.Name,
-	}, nil
+	resourceMappingGroups := make([]*policy.ResourceMappingGroup, len(list))
+
+	for i, rmGroup := range list {
+		resourceMappingGroups[i] = &policy.ResourceMappingGroup{
+			Id:          rmGroup.ID,
+			NamespaceId: rmGroup.NamespaceID,
+			Name:        rmGroup.Name,
+		}
+	}
+
+	return resourceMappingGroups, nil
 }
 
-func (c PolicyDBClient) GetResourceMappingGroupByFQN(ctx context.Context, r *resourcemapping.GetResourceMappingGroupByFQNRequest) (*policy.ResourceMappingGroup, error) {
-	parsedFQN, err := parseFQN(r.GetFqn())
-	if err != nil {
-		return nil, errors.Join(db.ErrMissingValue, err)
-	}
-
-	rmGroup, err := c.Queries.FindResourceMappingGroup(ctx, FindResourceMappingGroupParams{
-		Namespace: parsedFQN.Namespace,
-		Name:      parsedFQN.Name,
-	})
+func (c PolicyDBClient) GetResourceMappingGroup(ctx context.Context, id string) (*policy.ResourceMappingGroup, error) {
+	rmGroup, err := c.Queries.GetResourceMappingGroup(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

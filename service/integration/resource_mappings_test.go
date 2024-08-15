@@ -70,12 +70,6 @@ func (s *ResourceMappingsSuite) getResourceMappingFixtures() []fixtures.FixtureD
  Resource Mapping Groups
 */
 
-/* test cases
-- update
-- update with invalid namespace_id
-- update with duplicate namespace_id and name combo
-*/
-
 func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups() {
 	testData := s.getResourceMappingGroupFixtures()
 	rmGroups, err := s.db.PolicyClient.ListResourceMappingGroups(s.ctx)
@@ -93,6 +87,17 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups() {
 	}
 }
 
+func (s *ResourceMappingsSuite) Test_ListResourceMappingGroupsByAttrFQN() {
+	// seed the db with some mappings for attr value
+
+	// todo: use a real attribute fqn
+	rmGroups, err := s.db.PolicyClient.ListResourceMappingGroupsByAttrFQN(s.ctx, "example.com/attr/attr1")
+	s.Require().NoError(err)
+	s.NotNil(rmGroups)
+
+	// todo: loop through the rmGroups and verify they are the expected ones
+}
+
 func (s *ResourceMappingsSuite) Test_GetResourceMappingGroup() {
 	testRmGroup := s.f.GetResourceMappingGroupKey("example.com_ns_group_1")
 	rmGroup, err := s.db.PolicyClient.GetResourceMappingGroup(s.ctx, testRmGroup.ID)
@@ -107,22 +112,6 @@ func (s *ResourceMappingsSuite) Test_GetResourceMappingGroupWithUnknownIdFails()
 	rmGroup, err := s.db.PolicyClient.GetResourceMappingGroup(s.ctx, unknownResourceMappingGroupID)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(rmGroup)
-}
-
-func (s *ResourceMappingsSuite) Test_GetResourceMappingByFQN() {
-	namespace := s.getExampleDotComNamespace()
-	group := s.f.GetResourceMappingGroupKey("example.com_ns_group_1")
-	fqn := fmt.Sprintf("https://%s/resm/%s", namespace.Name, group.Name)
-
-	req := &resourcemapping.GetResourceMappingGroupByFQNRequest{
-		Fqn: fqn,
-	}
-	gotGroup, err := s.db.PolicyClient.GetResourceMappingGroupByFQN(s.ctx, req)
-	s.Require().NoError(err)
-	s.NotNil(gotGroup)
-	s.Equal(group.ID, gotGroup.GetId())
-	s.Equal(group.NamespaceID, gotGroup.GetNamespaceId())
-	s.Equal(group.Name, gotGroup.GetName())
 }
 
 func (s *ResourceMappingsSuite) Test_CreateResourceMappingGroup() {

@@ -585,9 +585,9 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_NamespaceG
 type bigSetup struct {
 	attrFqn         string
 	nsId            string
-	attrId          string
-	val1Id          string
-	val2Id          string
+	attrID          string
+	val1ID          string
+	val2ID          string
 	kasAssociations map[string]string
 }
 
@@ -612,9 +612,9 @@ func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
 	val2 := attr.GetValues()[1]
 
 	nsKasUri := fmt.Sprintf("https://testing_granted_ns.com/%s/kas", namespaceName)
-	attrKasUri := fmt.Sprintf("https://testing_granted_attr.com/%s/kas", namespaceName)
-	val1KasUri := fmt.Sprintf("https://testing_granted_val.com/%s/kas", namespaceName)
-	val2KasUri := fmt.Sprintf("https://testing_granted_val2.com/%s/kas", namespaceName)
+	attrKasURI := fmt.Sprintf("https://testing_granted_attr.com/%s/kas", namespaceName)
+	val1KasURI := fmt.Sprintf("https://testing_granted_val.com/%s/kas", namespaceName)
+	val2KasURI := fmt.Sprintf("https://testing_granted_val2.com/%s/kas", namespaceName)
 
 	kasAssociations := map[string]string{}
 	// create new KASes
@@ -623,9 +623,9 @@ func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
 		uri string
 	}{
 		{ns.GetId(), nsKasUri},
-		{attr.GetId(), attrKasUri},
-		{val1.GetId(), val1KasUri},
-		{val2.GetId(), val2KasUri},
+		{attr.GetId(), attrKasURI},
+		{val1.GetId(), val1KasURI},
+		{val2.GetId(), val2KasURI},
 	} {
 		kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
 			Uri: toAssociate.uri,
@@ -702,9 +702,9 @@ func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
 	return bigSetup{
 		attrFqn:         fmt.Sprintf("https://%s/attr/test_attr", namespaceName),
 		nsId:            ns.GetId(),
-		attrId:          attr.GetId(),
-		val1Id:          val1.GetId(),
-		val2Id:          val2.GetId(),
+		attrID:          attr.GetId(),
+		val1ID:          val1.GetId(),
+		val2ID:          val2.GetId(),
 		kasAssociations: kasAssociations,
 	}
 }
@@ -746,9 +746,9 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_AllIndividualFqnsSetOnResults(
 	s.True(strings.HasPrefix(got.GetFqn(), "https://"))
 	s.True(strings.Contains(got.GetFqn(), ns))
 	s.True(strings.Contains(got.GetFqn(), "attr/test_attr"))
-	s.True(got.GetNamespace().GetFqn() == fmt.Sprintf("https://%s", ns))
-	s.True(got.GetValues()[0].GetFqn() == fmt.Sprintf("%s/value/value1", setup.attrFqn))
-	s.True(got.GetValues()[1].GetFqn() == fmt.Sprintf("%s/value/value2", setup.attrFqn))
+	s.Equal(got.GetNamespace().GetFqn(), fmt.Sprintf("https://%s", ns))
+	s.Equal(got.GetValues()[0].GetFqn(), fmt.Sprintf("%s/value/value1", setup.attrFqn))
+	s.Equal(got.GetValues()[1].GetFqn(), fmt.Sprintf("%s/value/value2", setup.attrFqn))
 }
 
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_ProperOnAllObjects() {

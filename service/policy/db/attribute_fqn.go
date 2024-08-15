@@ -176,7 +176,7 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 				pair.Value = v
 			}
 		}
-		if pair.Value == nil {
+		if pair.GetValue() == nil {
 			c.logger.Error("could not find value for FQN", slog.String("fqn", fqn))
 			return nil, fmt.Errorf("could not find value for FQN [%s] %w", fqn, db.ErrNotFound)
 		}

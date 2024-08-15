@@ -441,6 +441,7 @@ const listResourceMappingGroups = `-- name: ListResourceMappingGroups :many
 
 SELECT id, namespace_id, name
 FROM resource_mapping_groups
+WHERE (NULLIF($1, '') IS NULL OR namespace_id = $1::uuid)
 `
 
 // --------------------------------------------------------------
@@ -449,8 +450,9 @@ FROM resource_mapping_groups
 //
 //	SELECT id, namespace_id, name
 //	FROM resource_mapping_groups
-func (q *Queries) ListResourceMappingGroups(ctx context.Context) ([]ResourceMappingGroup, error) {
-	rows, err := q.db.Query(ctx, listResourceMappingGroups)
+//	WHERE (NULLIF($1, '') IS NULL OR namespace_id = $1::uuid)
+func (q *Queries) ListResourceMappingGroups(ctx context.Context, namespaceID interface{}) ([]ResourceMappingGroup, error) {
+	rows, err := q.db.Query(ctx, listResourceMappingGroups, namespaceID)
 	if err != nil {
 		return nil, err
 	}

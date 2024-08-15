@@ -12,7 +12,9 @@ import "policy/objects.proto";
    Resource Mapping Groups
 */
 
-message ListResourceMappingGroupsRequest {}
+message ListResourceMappingGroupsRequest {
+  string namespace_id = 1;
+}
 
 message ListResourceMappingGroupsResponse {
   repeated ResourceMappingGroup resource_mapping_groups = 1;

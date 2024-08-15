@@ -88,7 +88,8 @@ GROUP BY
 
 -- name: ListResourceMappingGroups :many
 SELECT id, namespace_id, name
-FROM resource_mapping_groups;
+FROM resource_mapping_groups
+WHERE (NULLIF(@namespace_id, '') IS NULL OR namespace_id = @namespace_id::uuid);
 
 -- name: GetResourceMappingGroup :one
 SELECT id, namespace_id, name

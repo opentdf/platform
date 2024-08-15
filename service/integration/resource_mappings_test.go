@@ -54,7 +54,7 @@ func (s *ResourceMappingsSuite) getResourceMappingGroupFixtures() []fixtures.Fix
 	return []fixtures.FixtureDataResourceMappingGroup{
 		s.f.GetResourceMappingGroupKey("example.com_ns_group_1"),
 		s.f.GetResourceMappingGroupKey("example.com_ns_group_2"),
-		s.f.GetResourceMappingGroupKey("example.com_ns_group_3"),
+		s.f.GetResourceMappingGroupKey("scenario.com_ns_group_1"),
 	}
 }
 
@@ -72,7 +72,7 @@ func (s *ResourceMappingsSuite) getResourceMappingFixtures() []fixtures.FixtureD
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups() {
 	testData := s.getResourceMappingGroupFixtures()
-	rmGroups, err := s.db.PolicyClient.ListResourceMappingGroups(s.ctx)
+	rmGroups, err := s.db.PolicyClient.ListResourceMappingGroups(s.ctx, &resourcemapping.ListResourceMappingGroupsRequest{})
 	s.Require().NoError(err)
 	s.NotNil(rmGroups)
 	for _, testRmGroup := range testData {
@@ -85,6 +85,19 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups() {
 		}
 		s.True(found, fmt.Sprintf("expected to find resource mapping group %s", testRmGroup.ID))
 	}
+}
+
+func (s *ResourceMappingsSuite) Test_ListResourceMappingGroupsWithNamespaceIdSucceeds() {
+	scenarioDotComRmGroup := s.f.GetResourceMappingGroupKey("scenario.com_ns_group_1")
+	rmGroups, err := s.db.PolicyClient.ListResourceMappingGroups(s.ctx, &resourcemapping.ListResourceMappingGroupsRequest{
+		NamespaceId: scenarioDotComRmGroup.NamespaceID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(rmGroups)
+	s.Len(rmGroups, 1)
+	s.Equal(scenarioDotComRmGroup.ID, rmGroups[0].GetId())
+	s.Equal(scenarioDotComRmGroup.NamespaceID, rmGroups[0].GetNamespaceId())
+	s.Equal(scenarioDotComRmGroup.Name, rmGroups[0].GetName())
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappingGroupsByFqns() {

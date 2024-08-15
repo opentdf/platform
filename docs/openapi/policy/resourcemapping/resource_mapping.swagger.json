@@ -33,6 +33,14 @@
             }
           }
         },
+        "parameters": [
+          {
+            "name": "namespaceId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
         "tags": [
           "ResourceMappingService"
         ]

@@ -40,8 +40,8 @@ func NewRegistration() serviceregistry.Registration {
 	Resource Mapping Groups
 */
 
-func (s ResourceMappingService) ListResourceMappingGroups(ctx context.Context, _ *resourcemapping.ListResourceMappingGroupsRequest) (*resourcemapping.ListResourceMappingGroupsResponse, error) {
-	rmGroups, err := s.dbClient.ListResourceMappingGroups(ctx)
+func (s ResourceMappingService) ListResourceMappingGroups(ctx context.Context, req *resourcemapping.ListResourceMappingGroupsRequest) (*resourcemapping.ListResourceMappingGroupsResponse, error) {
+	rmGroups, err := s.dbClient.ListResourceMappingGroups(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}

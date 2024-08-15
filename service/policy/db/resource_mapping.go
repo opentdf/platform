@@ -24,8 +24,8 @@ import (
  NOTE: uses sqlc instead of squirrel
 */
 
-func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context) ([]*policy.ResourceMappingGroup, error) {
-	list, err := c.Queries.ListResourceMappingGroups(ctx)
+func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resourcemapping.ListResourceMappingGroupsRequest) ([]*policy.ResourceMappingGroup, error) {
+	list, err := c.Queries.ListResourceMappingGroups(ctx, r.GetNamespaceId())
 	if err != nil {
 		return nil, err
 	}

@@ -394,10 +394,10 @@ resource_mapping_groups:
       id: 32d4df0c-8600-4b8d-89cf-801b61bc7abe
       namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
       name: example_group_2
-    example.com_ns_group_3:
+    scenario.com_ns_group_1:
       id: 45f392f0-7d9e-4c73-9bf7-11bbd3bd40af
-      namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
-      name: example_group_3
+      namespace_id: 87ba60e1-da12-4889-95fd-267968bf0896
+      name: scenario_group_1
 
 ##
 # Resource Mappings

@@ -180,7 +180,9 @@ type ResourceMappingGroup struct {
 	// Foreign key to the namespace of the attribute
 	NamespaceID string `json:"namespace_id"`
 	// Name for the group of resource mappings
-	Name string `json:"name"`
+	Name      string             `json:"name"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 // Table to store sets of conditions that logically entitle subject entity representations to attribute values via a subject mapping

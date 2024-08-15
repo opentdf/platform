@@ -211,14 +211,20 @@ FROM resource_mapping_groups
 WHERE id = $1
 `
 
+type GetResourceMappingGroupRow struct {
+	ID          string `json:"id"`
+	NamespaceID string `json:"namespace_id"`
+	Name        string `json:"name"`
+}
+
 // GetResourceMappingGroup
 //
 //	SELECT id, namespace_id, name
 //	FROM resource_mapping_groups
 //	WHERE id = $1
-func (q *Queries) GetResourceMappingGroup(ctx context.Context, id string) (ResourceMappingGroup, error) {
+func (q *Queries) GetResourceMappingGroup(ctx context.Context, id string) (GetResourceMappingGroupRow, error) {
 	row := q.db.QueryRow(ctx, getResourceMappingGroup, id)
-	var i ResourceMappingGroup
+	var i GetResourceMappingGroupRow
 	err := row.Scan(&i.ID, &i.NamespaceID, &i.Name)
 	return i, err
 }
@@ -235,15 +241,21 @@ type GetResourceMappingGroupByFqnParams struct {
 	GroupName     string `json:"group_name"`
 }
 
+type GetResourceMappingGroupByFqnRow struct {
+	ID          string `json:"id"`
+	NamespaceID string `json:"namespace_id"`
+	Name        string `json:"name"`
+}
+
 // GetResourceMappingGroupByFqn
 //
 //	SELECT g.id, g.namespace_id, g.name
 //	FROM resource_mapping_groups g
 //	LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
 //	WHERE ns.name = LOWER($1) AND g.name = LOWER($2)
-func (q *Queries) GetResourceMappingGroupByFqn(ctx context.Context, arg GetResourceMappingGroupByFqnParams) (ResourceMappingGroup, error) {
+func (q *Queries) GetResourceMappingGroupByFqn(ctx context.Context, arg GetResourceMappingGroupByFqnParams) (GetResourceMappingGroupByFqnRow, error) {
 	row := q.db.QueryRow(ctx, getResourceMappingGroupByFqn, arg.NamespaceName, arg.GroupName)
-	var i ResourceMappingGroup
+	var i GetResourceMappingGroupByFqnRow
 	err := row.Scan(&i.ID, &i.NamespaceID, &i.Name)
 	return i, err
 }
@@ -444,6 +456,12 @@ FROM resource_mapping_groups
 WHERE (NULLIF($1, '') IS NULL OR namespace_id = $1::uuid)
 `
 
+type ListResourceMappingGroupsRow struct {
+	ID          string `json:"id"`
+	NamespaceID string `json:"namespace_id"`
+	Name        string `json:"name"`
+}
+
 // --------------------------------------------------------------
 // RESOURCE MAPPING GROUPS
 // --------------------------------------------------------------
@@ -451,15 +469,15 @@ WHERE (NULLIF($1, '') IS NULL OR namespace_id = $1::uuid)
 //	SELECT id, namespace_id, name
 //	FROM resource_mapping_groups
 //	WHERE (NULLIF($1, '') IS NULL OR namespace_id = $1::uuid)
-func (q *Queries) ListResourceMappingGroups(ctx context.Context, namespaceID interface{}) ([]ResourceMappingGroup, error) {
+func (q *Queries) ListResourceMappingGroups(ctx context.Context, namespaceID interface{}) ([]ListResourceMappingGroupsRow, error) {
 	rows, err := q.db.Query(ctx, listResourceMappingGroups, namespaceID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ResourceMappingGroup
+	var items []ListResourceMappingGroupsRow
 	for rows.Next() {
-		var i ResourceMappingGroup
+		var i ListResourceMappingGroupsRow
 		if err := rows.Scan(&i.ID, &i.NamespaceID, &i.Name); err != nil {
 			return nil, err
 		}

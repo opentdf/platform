@@ -450,7 +450,7 @@ func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 		Id:        fullAttr.ID,
 		Name:      fullAttr.Name,
 		Rule:      attributesRuleTypeEnumTransformOut(string(fullAttr.Rule)),
-		Fqn:       fqn,
+		Fqn:       fullAttr.DefinitionFqn,
 		Active:    &wrapperspb.BoolValue{Value: fullAttr.Active},
 		Grants:    grants,
 		Metadata:  m,

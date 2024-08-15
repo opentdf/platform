@@ -786,6 +786,40 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_ProperOnAl
 	val2Grant := val2.GetGrants()[0]
 	s.Equal(setup.kasAssociations[val2.GetId()], val2Grant.GetId())
 	s.Equal(fmt.Sprintf("https://testing_granted_val2.com/%s/kas", ns), val2Grant.GetUri())
+
+	// remove grants from all objects
+	_, err = s.db.PolicyClient.RemoveKeyAccessServerFromNamespace(s.ctx, &namespaces.NamespaceKeyAccessServer{
+		KeyAccessServerId: nsGrant.GetId(),
+		NamespaceId:       got.GetNamespace().GetId(),
+	})
+	s.Require().NoError(err)
+
+	_, err = s.db.PolicyClient.RemoveKeyAccessServerFromAttribute(s.ctx, &attributes.AttributeKeyAccessServer{
+		KeyAccessServerId: attrGrant.GetId(),
+		AttributeId:       got.GetId(),
+	})
+	s.Require().NoError(err)
+
+	_, err = s.db.PolicyClient.RemoveKeyAccessServerFromValue(s.ctx, &attributes.ValueKeyAccessServer{
+		KeyAccessServerId: val1Grant.GetId(),
+		ValueId:           val1.GetId(),
+	})
+	s.Require().NoError(err)
+
+	_, err = s.db.PolicyClient.RemoveKeyAccessServerFromValue(s.ctx, &attributes.ValueKeyAccessServer{
+		KeyAccessServerId: val2Grant.GetId(),
+		ValueId:           val2.GetId(),
+	})
+	s.Require().NoError(err)
+
+	// ensure the grants are removed from all objects
+	got, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, setup.attrFqn)
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Empty(got.GetNamespace().GetGrants())
+	s.Empty(got.GetGrants())
+	s.Empty(got.GetValues()[0].GetGrants())
+	s.Empty(got.GetValues()[1].GetGrants())
 }
 
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_SubjectMappingsOnAllValues() {

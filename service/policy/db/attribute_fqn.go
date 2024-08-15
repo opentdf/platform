@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/pkg/db"
 )
@@ -152,32 +151,6 @@ func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns 
 	return res
 }
 
-func prepareValues(values []*policy.Value, fqn string) ([]*policy.Value, *policy.Value) {
-	split := strings.Split(fqn, "/value/")
-	val := split[1]
-	attrFqn := split[0]
-	var unaltered *policy.Value
-	for i, v := range values {
-		if v.GetValue() == val {
-			unaltered = &policy.Value{
-				Id:              v.GetId(),
-				Value:           v.GetValue(),
-				Grants:          v.GetGrants(),
-				Fqn:             fqn,
-				Active:          v.GetActive(),
-				SubjectMappings: v.GetSubjectMappings(),
-				Metadata:        v.GetMetadata(),
-			}
-			values[i].SubjectMappings = nil
-		}
-		// ensure all values have FQNs
-		if values[i].GetFqn() == "" {
-			values[i].Fqn = attrFqn + "/value/" + v.GetValue()
-		}
-	}
-	return values, unaltered
-}
-
 func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attributes.GetAttributeValuesByFqnsRequest) (map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	if r.Fqns == nil || r.GetWithValue() == nil {
 		return nil, errors.Join(db.ErrMissingValue, errors.New("error: one or more FQNs and a WithValue selector must be provided"))
@@ -195,16 +168,19 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 			c.logger.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))
 			return nil, err
 		}
-		filtered, selected := prepareValues(attr.GetValues(), fqn)
-		if selected == nil {
+		pair := &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+			Attribute: attr,
+		}
+		for _, v := range attr.GetValues() {
+			if v.GetFqn() == fqn {
+				pair.Value = v
+			}
+		}
+		if pair.Value == nil {
 			c.logger.Error("could not find value for FQN", slog.String("fqn", fqn))
 			return nil, fmt.Errorf("could not find value for FQN [%s] %w", fqn, db.ErrNotFound)
 		}
-		attr.Values = filtered
-		list[fqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
-			Attribute: attr,
-			Value:     selected,
-		}
+		list[fqn] = pair
 	}
 	return list, nil
 }

@@ -584,7 +584,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_NamespaceG
 // kas uris granted to each are "https://testing_granted_<ns | attr | val1 | val1>.com/<ns>/kas",
 type bigSetup struct {
 	attrFqn         string
-	nsId            string
+	nsID            string
 	attrID          string
 	val1ID          string
 	val2ID          string
@@ -611,7 +611,7 @@ func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
 	val1 := attr.GetValues()[0]
 	val2 := attr.GetValues()[1]
 
-	nsKasUri := fmt.Sprintf("https://testing_granted_ns.com/%s/kas", namespaceName)
+	nsKasURI := fmt.Sprintf("https://testing_granted_ns.com/%s/kas", namespaceName)
 	attrKasURI := fmt.Sprintf("https://testing_granted_attr.com/%s/kas", namespaceName)
 	val1KasURI := fmt.Sprintf("https://testing_granted_val.com/%s/kas", namespaceName)
 	val2KasURI := fmt.Sprintf("https://testing_granted_val2.com/%s/kas", namespaceName)
@@ -622,7 +622,7 @@ func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
 		id  string
 		uri string
 	}{
-		{ns.GetId(), nsKasUri},
+		{ns.GetId(), nsKasURI},
 		{attr.GetId(), attrKasURI},
 		{val1.GetId(), val1KasURI},
 		{val2.GetId(), val2KasURI},
@@ -701,7 +701,7 @@ func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
 
 	return bigSetup{
 		attrFqn:         fmt.Sprintf("https://%s/attr/test_attr", namespaceName),
-		nsId:            ns.GetId(),
+		nsID:            ns.GetId(),
 		attrID:          attr.GetId(),
 		val1ID:          val1.GetId(),
 		val2ID:          val2.GetId(),

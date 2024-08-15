@@ -552,8 +552,8 @@ func (q *Queries) UpdateKeyAccessServer(ctx context.Context, arg UpdateKeyAccess
 const updateResourceMappingGroup = `-- name: UpdateResourceMappingGroup :one
 UPDATE resource_mapping_groups
 SET
-    namespace_id = coalesce($2, namespace_id),
-    name = coalesce($3, name)
+    namespace_id = COALESCE($2, namespace_id),
+    name = COALESCE($3, name)
 WHERE id = $1
 RETURNING id
 `
@@ -568,8 +568,8 @@ type UpdateResourceMappingGroupParams struct {
 //
 //	UPDATE resource_mapping_groups
 //	SET
-//	    namespace_id = coalesce($2, namespace_id),
-//	    name = coalesce($3, name)
+//	    namespace_id = COALESCE($2, namespace_id),
+//	    name = COALESCE($3, name)
 //	WHERE id = $1
 //	RETURNING id
 func (q *Queries) UpdateResourceMappingGroup(ctx context.Context, arg UpdateResourceMappingGroupParams) (string, error) {

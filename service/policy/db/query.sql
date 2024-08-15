@@ -110,8 +110,8 @@ RETURNING id;
 -- name: UpdateResourceMappingGroup :one
 UPDATE resource_mapping_groups
 SET
-    namespace_id = coalesce(sqlc.narg('namespace_id'), namespace_id),
-    name = coalesce(sqlc.narg('name'), name)
+    namespace_id = COALESCE(sqlc.narg('namespace_id'), namespace_id),
+    name = COALESCE(sqlc.narg('name'), name)
 WHERE id = $1
 RETURNING id;
 

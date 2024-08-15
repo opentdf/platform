@@ -35,10 +35,13 @@ import (
 const (
 	// Failure while connecting to a service.
 	// Check your configuration and/or retry.
-	ErrGrpcDialFailed            = Error("failed to dial grpc endpoint")
-	ErrShutdownFailed            = Error("failed to shutdown sdk")
-	ErrPlatformConfigFailed      = Error("failed to retrieve platform configuration")
-	ErrPlatformEndpointMalformed = Error("platform endpoint is malformed")
+	ErrGrpcDialFailed                = Error("failed to dial grpc endpoint")
+	ErrShutdownFailed                = Error("failed to shutdown sdk")
+	ErrPlatformConfigFailed          = Error("failed to retrieve platform configuration")
+	ErrPlatformEndpointMalformed     = Error("platform endpoint is malformed")
+	ErrPlatformIssuerNotFound        = Error("issuer not found in well-known idp configuration")
+	ErrPlatformAuthzEndpointNotFound = Error("authorization_endpoint not found in well-known idp configuration")
+	ErrPlatformTokenEndpointNotFound = Error("token_endpoint not found in well-known idp configuration")
 )
 
 type Error string
@@ -326,7 +329,6 @@ func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 	loader := gojsonschema.NewStringLoader(manifestSchemaString)
 	manifestStringLoader := gojsonschema.NewStringLoader(manifest)
 	result, err := gojsonschema.Validate(loader, manifestStringLoader)
-
 	if err != nil {
 		return false, errors.New("could not validate manifest.json")
 	}
@@ -373,10 +375,14 @@ func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfiguration, err
 
 // TODO: This should be moved to a separate package. We do discovery in ../service/internal/auth/discovery.go
 func getTokenEndpoint(c config) (string, error) {
-	issuerURL, ok := c.platformConfiguration["platform_issuer"].(string)
-
+	idpCfg, ok := c.platformConfiguration["idp"].(map[string]interface{})
 	if !ok {
-		return "", errors.New("platform_issuer is not set, or is not a string")
+		return "", errors.New("'idp' config not found in well-known configuration")
+	}
+
+	issuerURL, ok := idpCfg["issuer"].(string)
+	if !ok {
+		return "", errors.New("'idp' config 'issuer' is not set, or is not a string in well-known configuration")
 	}
 
 	oidcConfigURL := issuerURL + "/.well-known/openid-configuration"

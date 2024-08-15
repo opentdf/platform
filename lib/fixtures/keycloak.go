@@ -126,6 +126,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	testingOnlyRoleName := "opentdf-testing-role"
 	opentdfERSClientID := "tdf-entity-resolution"
 	opentdfAuthorizationClientID := "tdf-authorization-svc"
+	opentdfPublicClientID := "opentdf-public"
 	realmMangementClientName := "realm-management"
 
 	protocolMappers := []gocloak.ProtocolMapperRepresentation{
@@ -300,6 +301,21 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		ClientAuthenticatorType: gocloak.StringP("client-secret"),
 		Secret:                  gocloak.StringP("secret"),
 		ProtocolMappers:         &protocolMappers,
+	}, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	// Create OpenTDF Public Client
+	_, err = createClient(ctx, client, token, &kcConnectParams, gocloak.Client{
+		ClientID:        gocloak.StringP(opentdfPublicClientID),
+		Enabled:         gocloak.BoolP(true),
+		Name:            gocloak.StringP(opentdfPublicClientID),
+		PublicClient:    gocloak.BoolP(true),
+		ProtocolMappers: &protocolMappers,
+		// TODO: take via CLI arguments?
+		// Note: otdfctl CLI auth code flow runs from localhost:9000)
+		RedirectURIs: &[]string{"http://localhost:9000/*"},
 	}, nil, nil)
 	if err != nil {
 		return err

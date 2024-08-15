@@ -32,7 +32,11 @@ func GetMethods(i interface{}) []string {
 func TestNew_ShouldCreateSDK(t *testing.T) {
 	s, err := sdk.New(goodPlatformEndpoint,
 		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
-			"platform_issuer": "https://example.org",
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
 		}),
 		sdk.WithClientCredentials("myid", "mysecret", nil),
 		sdk.WithTokenEndpoint("https://example.org/token"),
@@ -41,13 +45,59 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 	require.NotNil(t, s)
 
 	// Check platform issuer
-	assert.Equal(t, "https://example.org", s.PlatformIssuer())
+	iss, err := s.PlatformIssuer()
+	assert.Equal(t, "https://example.org", iss)
+	assert.Nil(t, err)
+
+	// Check platform authz endpoint
+	authzEndpoint, err := s.PlatformAuthzEndpoint()
+	assert.Equal(t, "https://example.org/auth", authzEndpoint)
+	assert.Nil(t, err)
+
+	// Check platform token endpoint
+	tokenEndpoint, err := s.PlatformTokenEndpoint()
+	assert.Equal(t, "https://example.org/token", tokenEndpoint)
+	assert.Nil(t, err)
 
 	// check if the clients are available
 	assert.NotNil(t, s.Attributes)
 	assert.NotNil(t, s.ResourceMapping)
 	assert.NotNil(t, s.SubjectMapping)
 	assert.NotNil(t, s.KeyAccessServerRegistry)
+}
+
+func Test_PlatformConfiguration_BadCases(t *testing.T) {
+	assertions := func(t *testing.T, s *sdk.SDK) {
+		iss, err := s.PlatformIssuer()
+		assert.Equal(t, "", iss)
+		assert.ErrorIs(t, err, sdk.ErrPlatformIssuerNotFound)
+
+		authzEndpoint, err := s.PlatformAuthzEndpoint()
+		assert.Equal(t, "", authzEndpoint)
+		assert.ErrorIs(t, err, sdk.ErrPlatformAuthzEndpointNotFound)
+
+		tokenEndpoint, err := s.PlatformTokenEndpoint()
+		assert.Equal(t, "", tokenEndpoint)
+		assert.ErrorIs(t, err, sdk.ErrPlatformTokenEndpointNotFound)
+	}
+
+	noIdpValsSDK, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{},
+		}),
+	)
+	assert.NoError(t, err)
+	assert.NotNil(t, noIdpValsSDK)
+
+	assertions(t, noIdpValsSDK)
+
+	noIdpCfgSDK, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{}),
+	)
+	assert.NoError(t, err)
+	assert.NotNil(t, noIdpCfgSDK)
+
+	assertions(t, noIdpCfgSDK)
 }
 
 func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {

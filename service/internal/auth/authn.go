@@ -156,11 +156,6 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 
 	a.oidcConfiguration = cfg.AuthNConfig
 
-	// Try an register oidc issuer to wellknown service but don't return an error if it fails
-	if err := wellknownRegistration("platform_issuer", cfg.Issuer); err != nil {
-		logger.Warn("failed to register platform issuer", slog.String("error", err.Error()))
-	}
-
 	var oidcConfigMap map[string]any
 
 	// Create a map of the oidc configuration

@@ -18,6 +18,14 @@ message ListResourceMappingGroupsResponse {
   repeated ResourceMappingGroup resource_mapping_groups = 1;
 }
 
+message ListResourceMappingGroupsByFqnsRequest {
+  repeated string fqns = 1;
+}
+
+message ListResourceMappingGroupsByFqnsResponse {
+  map<string, ResourceMappingGroup> fqn_resource_mapping_groups = 1;
+}
+
 message GetResourceMappingGroupRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
@@ -148,6 +156,10 @@ service ResourceMappingService {
 
   rpc ListResourceMappingGroups(ListResourceMappingGroupsRequest) returns (ListResourceMappingGroupsResponse) {
     option (google.api.http) = {get: "/resource-mapping-groups"};
+  }
+
+  rpc ListResourceMappingGroupsByFqns(ListResourceMappingGroupsByFqnsRequest) returns (ListResourceMappingGroupsByFqnsResponse) {
+    option (google.api.http) = {get: "/resource-mapping-groups/fqns"};
   }
 
   rpc GetResourceMappingGroup(GetResourceMappingGroupRequest) returns (GetResourceMappingGroupResponse) {

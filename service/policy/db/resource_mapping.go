@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
@@ -13,6 +14,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
+	"github.com/opentdf/platform/service/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -39,6 +41,48 @@ func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context) ([]*polic
 	}
 
 	return resourceMappingGroups, nil
+}
+
+func (c PolicyDBClient) ListResourceMappingGroupsByFqns(ctx context.Context, fqns []string) (map[string]*policy.ResourceMappingGroup, error) {
+	resp := make(map[string]*policy.ResourceMappingGroup)
+	resultCount := 0
+
+	for _, fqn := range fqns {
+		parsedFQN, err := util.ParseResourceMappingGroupFqn(fqn)
+		if err != nil {
+			return nil, err
+		}
+
+		rmGroup, err := c.Queries.GetResourceMappingGroupByFqn(ctx, GetResourceMappingGroupByFqnParams{
+			NamespaceName: parsedFQN.Namespace,
+			GroupName:     parsedFQN.GroupName,
+		})
+		if err != nil {
+			dbErr := db.WrapIfKnownInvalidQueryErr(err)
+			if errors.Is(dbErr, db.ErrNotFound) {
+				// indicate FQN not found in response list
+				resp[fqn] = nil
+				continue
+			}
+
+			return nil, dbErr
+		}
+
+		resultCount++
+
+		resp[fqn] = &policy.ResourceMappingGroup{
+			Id:          rmGroup.ID,
+			NamespaceId: rmGroup.NamespaceID,
+			Name:        rmGroup.Name,
+		}
+	}
+
+	if resultCount == 0 {
+		// should return an error if none of the FQNs are found
+		return nil, db.ErrNotFound
+	}
+
+	return resp, nil
 }
 
 func (c PolicyDBClient) GetResourceMappingGroup(ctx context.Context, id string) (*policy.ResourceMappingGroup, error) {

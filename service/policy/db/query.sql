@@ -95,6 +95,12 @@ SELECT id, namespace_id, name
 FROM resource_mapping_groups
 WHERE id = $1;
 
+-- name: GetResourceMappingGroupByFqn :one
+SELECT g.id, g.namespace_id, g.name
+FROM resource_mapping_groups g
+LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
+WHERE ns.name = LOWER(@namespace_name) AND g.name = LOWER(@group_name);
+
 -- name: CreateResourceMappingGroup :one
 INSERT INTO resource_mapping_groups (namespace_id, name)
 VALUES ($1, $2)

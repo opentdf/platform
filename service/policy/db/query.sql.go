@@ -223,6 +223,31 @@ func (q *Queries) GetResourceMappingGroup(ctx context.Context, id string) (Resou
 	return i, err
 }
 
+const getResourceMappingGroupByFqn = `-- name: GetResourceMappingGroupByFqn :one
+SELECT g.id, g.namespace_id, g.name
+FROM resource_mapping_groups g
+LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
+WHERE ns.name = LOWER($1) AND g.name = LOWER($2)
+`
+
+type GetResourceMappingGroupByFqnParams struct {
+	NamespaceName string `json:"namespace_name"`
+	GroupName     string `json:"group_name"`
+}
+
+// GetResourceMappingGroupByFqn
+//
+//	SELECT g.id, g.namespace_id, g.name
+//	FROM resource_mapping_groups g
+//	LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
+//	WHERE ns.name = LOWER($1) AND g.name = LOWER($2)
+func (q *Queries) GetResourceMappingGroupByFqn(ctx context.Context, arg GetResourceMappingGroupByFqnParams) (ResourceMappingGroup, error) {
+	row := q.db.QueryRow(ctx, getResourceMappingGroupByFqn, arg.NamespaceName, arg.GroupName)
+	var i ResourceMappingGroup
+	err := row.Scan(&i.ID, &i.NamespaceID, &i.Name)
+	return i, err
+}
+
 const listKeyAccessServerGrants = `-- name: ListKeyAccessServerGrants :many
 
 SELECT 

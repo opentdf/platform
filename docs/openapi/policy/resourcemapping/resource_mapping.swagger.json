@@ -68,6 +68,40 @@
         ]
       }
     },
+    "/resource-mapping-groups/fqns": {
+      "get": {
+        "operationId": "ResourceMappingService_ListResourceMappingGroupsByFqns",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/resourcemappingListResourceMappingGroupsByFqnsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "fqns",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "ResourceMappingService"
+        ]
+      }
+    },
     "/resource-mapping-groups/{id}": {
       "get": {
         "operationId": "ResourceMappingService_GetResourceMappingGroup",
@@ -826,6 +860,17 @@
       "properties": {
         "resourceMapping": {
           "$ref": "#/definitions/policyResourceMapping"
+        }
+      }
+    },
+    "resourcemappingListResourceMappingGroupsByFqnsResponse": {
+      "type": "object",
+      "properties": {
+        "fqnResourceMappingGroups": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/policyResourceMappingGroup"
+          }
         }
       }
     },

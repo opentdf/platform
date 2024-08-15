@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
@@ -44,23 +45,29 @@ func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resour
 }
 
 func (c PolicyDBClient) ListResourceMappingGroupsByFqns(ctx context.Context, fqns []string) (map[string]*policy.ResourceMappingGroup, error) {
+	if (fqns == nil) || (len(fqns) == 0) {
+		return nil, fmt.Errorf("FQN list provided is empty")
+	}
+
 	resp := make(map[string]*policy.ResourceMappingGroup)
 	resultCount := 0
 
 	for _, fqn := range fqns {
-		parsedFQN, err := util.ParseResourceMappingGroupFqn(fqn)
+		parsedFqn, err := util.ParseResourceMappingGroupFqn(fqn)
 		if err != nil {
-			return nil, err
+			// FQN is not valid so ignore it and move to next
+			// invalid FQNs will not be included in the response
+			continue
 		}
 
 		rmGroup, err := c.Queries.GetResourceMappingGroupByFqn(ctx, GetResourceMappingGroupByFqnParams{
-			NamespaceName: parsedFQN.Namespace,
-			GroupName:     parsedFQN.GroupName,
+			NamespaceName: parsedFqn.Namespace,
+			GroupName:     parsedFqn.GroupName,
 		})
 		if err != nil {
 			dbErr := db.WrapIfKnownInvalidQueryErr(err)
 			if errors.Is(dbErr, db.ErrNotFound) {
-				// indicate FQN not found in response list
+				// FQN is valid but not in db, so indicate it was not found with nil value
 				resp[fqn] = nil
 				continue
 			}

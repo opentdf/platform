@@ -11,7 +11,6 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
-	"github.com/opentdf/platform/service/pkg/util"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
@@ -52,27 +51,11 @@ func (s ResourceMappingService) ListResourceMappingGroups(ctx context.Context, r
 }
 
 func (s ResourceMappingService) ListResourceMappingGroupsByFqns(ctx context.Context, req *resourcemapping.ListResourceMappingGroupsByFqnsRequest) (*resourcemapping.ListResourceMappingGroupsByFqnsResponse, error) {
-	reqFqns := req.GetFqns()
-	if (reqFqns == nil) || (len(reqFqns) == 0) {
-		// todo: determine appropriate error
-		return nil, db.StatusifyError(db.ErrFqnMissingValue, db.ErrTextFqnMissingValue)
-	}
+	fqns := req.GetFqns()
 
-	var validFQNs []string
-	for _, fqn := range reqFqns {
-		if util.IsValidResourceMappingGroupFqn(fqn) {
-			validFQNs = append(validFQNs, fqn)
-		}
-	}
-
-	if len(validFQNs) == 0 {
-		// todo: determine appropriate error
-		return nil, db.StatusifyError(db.ErrFqnMissingValue, db.ErrTextFqnMissingValue)
-	}
-
-	fqnRmGroupMap, err := s.dbClient.ListResourceMappingGroupsByFqns(ctx, validFQNs)
+	fqnRmGroupMap, err := s.dbClient.ListResourceMappingGroupsByFqns(ctx, fqns)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed, slog.Any("fqns", validFQNs))
+		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed, slog.Any("fqns", fqns))
 	}
 
 	return &resourcemapping.ListResourceMappingGroupsByFqnsResponse{

@@ -108,18 +108,18 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingGroupsByFqns() {
 	group1Fqn := fmt.Sprintf("https://%s/resm/%s", exampleDotComNs.Name, exampleDotComRmGroup1.Name)
 	group2Fqn := fmt.Sprintf("https://%s/resm/%s", exampleDotComNs.Name, exampleDotComRmGroup2.Name)
 
-	list, err := s.db.PolicyClient.ListResourceMappingGroupsByFqns(s.ctx, []string{group1Fqn, group2Fqn})
+	fqnRmGroupMap, err := s.db.PolicyClient.ListResourceMappingGroupsByFqns(s.ctx, []string{group1Fqn, group2Fqn})
 	s.Require().NoError(err)
-	s.NotNil(list)
+	s.NotNil(fqnRmGroupMap)
 
-	group1Resp, ok := list[group1Fqn]
+	group1Resp, ok := fqnRmGroupMap[group1Fqn]
 	s.True(ok)
 	s.NotNil(group1Resp)
 	s.Equal(exampleDotComRmGroup1.ID, group1Resp.GetId())
 	s.Equal(exampleDotComNs.ID, group1Resp.GetNamespaceId())
 	s.Equal(exampleDotComRmGroup1.Name, group1Resp.GetName())
 
-	group2Resp, ok := list[group2Fqn]
+	group2Resp, ok := fqnRmGroupMap[group2Fqn]
 	s.True(ok)
 	s.NotNil(group2Resp)
 	s.Equal(exampleDotComRmGroup2.ID, group2Resp.GetId())
@@ -127,23 +127,27 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingGroupsByFqns() {
 	s.Equal(exampleDotComRmGroup2.Name, group2Resp.GetName())
 }
 
-func (s *ResourceMappingsSuite) Test_ListResourceMappingGroupsByFqnsWithEmptyOrNilFqnsInRequestFails() {
-	_, err := s.db.PolicyClient.ListResourceMappingGroupsByFqns(s.ctx, nil)
+func (s *ResourceMappingsSuite) Test_ListResourceMappingGroupsByFqnsWithEmptyOrNilFqnsFails() {
+	fqnRmGroupMap, err := s.db.PolicyClient.ListResourceMappingGroupsByFqns(s.ctx, nil)
 	s.Require().Error(err)
+	s.Nil(fqnRmGroupMap)
 
-	_, err = s.db.PolicyClient.ListResourceMappingGroupsByFqns(s.ctx, []string{})
+	fqnRmGroupMap, err = s.db.PolicyClient.ListResourceMappingGroupsByFqns(s.ctx, []string{})
 	s.Require().Error(err)
+	s.Nil(fqnRmGroupMap)
 }
 
-func (s *ResourceMappingsSuite) Test_ListResourceMappingGroupsByFqnsWithInvalidFqnsInRequestFails() {
-	_, err := s.db.PolicyClient.ListResourceMappingGroupsByFqns(s.ctx, []string{"invalid_fqn"})
+func (s *ResourceMappingsSuite) Test_ListResourceMappingGroupsByFqnsWithInvalidFqnsFails() {
+	fqnRmGroupMap, err := s.db.PolicyClient.ListResourceMappingGroupsByFqns(s.ctx, []string{"invalid_fqn"})
 	s.Require().Error(err)
+	s.Nil(fqnRmGroupMap)
 }
 
-func (s *ResourceMappingsSuite) Test_ListResourceMappingGroupsByFqnsWithNoResultsForFqnsFails() {
+func (s *ResourceMappingsSuite) Test_ListResourceMappingGroupsByFqnsWithUnknownFqnsFails() {
 	unknownFqn := "https://unknown.com/resm/unknown_group"
-	_, err := s.db.PolicyClient.ListResourceMappingGroupsByFqns(s.ctx, []string{unknownFqn})
+	fqnRmGroupMap, err := s.db.PolicyClient.ListResourceMappingGroupsByFqns(s.ctx, []string{unknownFqn})
 	s.Require().Error(err)
+	s.Nil(fqnRmGroupMap)
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappingGroupsByFqnsWithKnownAndUnknownFqnsSucceeds() {
@@ -153,19 +157,42 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingGroupsByFqnsWithKnownAnd
 	group1Fqn := fmt.Sprintf("https://%s/resm/%s", exampleDotComNs.Name, exampleDotComRmGroup1.Name)
 	unknownFqn := "https://unknown.com/resm/unknown_group"
 
-	list, err := s.db.PolicyClient.ListResourceMappingGroupsByFqns(s.ctx, []string{group1Fqn, unknownFqn})
+	fqnRmGroupMap, err := s.db.PolicyClient.ListResourceMappingGroupsByFqns(s.ctx, []string{group1Fqn, unknownFqn})
 	s.Require().NoError(err)
-	s.NotNil(list)
+	s.NotNil(fqnRmGroupMap)
 
-	group1Resp, ok := list[group1Fqn]
+	group1Resp, ok := fqnRmGroupMap[group1Fqn]
 	s.True(ok)
 	s.NotNil(group1Resp)
 	s.Equal(exampleDotComRmGroup1.ID, group1Resp.GetId())
 	s.Equal(exampleDotComNs.ID, group1Resp.GetNamespaceId())
 	s.Equal(exampleDotComRmGroup1.Name, group1Resp.GetName())
 
-	unknownResp, ok := list[unknownFqn]
+	unknownResp, ok := fqnRmGroupMap[unknownFqn]
 	s.True(ok)
+	s.Nil(unknownResp)
+}
+
+func (s *ResourceMappingsSuite) Test_ListResourceMappingGroupsByFqnsWithKnownAndInvalidFqnsSucceeds() {
+	exampleDotComNs := s.getExampleDotComNamespace()
+	exampleDotComRmGroup1 := s.f.GetResourceMappingGroupKey("example.com_ns_group_1")
+
+	group1Fqn := fmt.Sprintf("https://%s/resm/%s", exampleDotComNs.Name, exampleDotComRmGroup1.Name)
+	invalidFqn := "invalid_fqn"
+
+	fqnRmGroupMap, err := s.db.PolicyClient.ListResourceMappingGroupsByFqns(s.ctx, []string{group1Fqn, invalidFqn})
+	s.Require().NoError(err)
+	s.NotNil(fqnRmGroupMap)
+
+	group1Resp, ok := fqnRmGroupMap[group1Fqn]
+	s.True(ok)
+	s.NotNil(group1Resp)
+	s.Equal(exampleDotComRmGroup1.ID, group1Resp.GetId())
+	s.Equal(exampleDotComNs.ID, group1Resp.GetNamespaceId())
+	s.Equal(exampleDotComRmGroup1.Name, group1Resp.GetName())
+
+	unknownResp, ok := fqnRmGroupMap[invalidFqn]
+	s.False(ok)
 	s.Nil(unknownResp)
 }
 

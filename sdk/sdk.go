@@ -116,8 +116,8 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		var pcfg PlatformConfiguration
 		var err error
 
-		if cfg.ipc {
-			pcfg, err = getPlatformConfiguration(selectConn(cfg.wellknownConn, cfg.coreConn)) // Pick a connection until cfg.wellknownConn is removed
+		if cfg.wellknownConn != nil {
+			pcfg, err = getPlatformConfiguration(cfg.wellknownConn) // Pick a connection until cfg.wellknownConn is removed
 			if err != nil {
 				return nil, errors.Join(ErrPlatformConfigFailed, err)
 			}

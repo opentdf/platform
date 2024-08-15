@@ -41,25 +41,6 @@ func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context) ([]*polic
 	return resourceMappingGroups, nil
 }
 
-func (c PolicyDBClient) ListResourceMappingGroupsByAttrFQN(ctx context.Context, fqn string) ([]*policy.ResourceMappingGroup, error) {
-	list, err := c.Queries.ListResourceMappingGroupsByAttrFQN(ctx, fqn)
-	if err != nil {
-		return nil, err
-	}
-
-	resourceMappingGroups := make([]*policy.ResourceMappingGroup, len(list))
-
-	for i, rmGroup := range list {
-		resourceMappingGroups[i] = &policy.ResourceMappingGroup{
-			Id:          rmGroup.ID,
-			NamespaceId: rmGroup.NamespaceID,
-			Name:        rmGroup.Name,
-		}
-	}
-
-	return resourceMappingGroups, nil
-}
-
 func (c PolicyDBClient) GetResourceMappingGroup(ctx context.Context, id string) (*policy.ResourceMappingGroup, error) {
 	rmGroup, err := c.Queries.GetResourceMappingGroup(ctx, id)
 	if err != nil {

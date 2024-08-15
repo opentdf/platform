@@ -68,67 +68,6 @@
         ]
       }
     },
-    "/resource-mapping-groups/attr-fqn/{fqn}": {
-      "get": {
-        "operationId": "ResourceMappingService_ListResourceMappingGroupsByAttrFQN",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/resourcemappingListResourceMappingGroupsByAttrFQNResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "fqn",
-            "description": "todo: add regex validation",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "ResourceMappingService"
-        ]
-      }
-    },
-    "/resource-mapping-groups/fqn/{fqn}": {
-      "get": {
-        "operationId": "ResourceMappingService_GetResourceMappingGroupByFQN",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/resourcemappingGetResourceMappingGroupByFQNResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "fqn",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "ResourceMappingService"
-        ]
-      }
-    },
     "/resource-mapping-groups/{id}": {
       "get": {
         "operationId": "ResourceMappingService_GetResourceMappingGroup",
@@ -874,14 +813,6 @@
         }
       }
     },
-    "resourcemappingGetResourceMappingGroupByFQNResponse": {
-      "type": "object",
-      "properties": {
-        "resourceMappingGroup": {
-          "$ref": "#/definitions/policyResourceMappingGroup"
-        }
-      }
-    },
     "resourcemappingGetResourceMappingGroupResponse": {
       "type": "object",
       "properties": {
@@ -895,18 +826,6 @@
       "properties": {
         "resourceMapping": {
           "$ref": "#/definitions/policyResourceMapping"
-        }
-      }
-    },
-    "resourcemappingListResourceMappingGroupsByAttrFQNResponse": {
-      "type": "object",
-      "properties": {
-        "resourceMappingGroups": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/policyResourceMappingGroup"
-          }
         }
       }
     },

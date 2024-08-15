@@ -90,12 +90,6 @@ GROUP BY
 SELECT id, namespace_id, name
 FROM resource_mapping_groups;
 
--- name: ListResourceMappingGroupsByAttrFQN :many
-SELECT g.id, g.namespace_id, g.name
-FROM resource_mapping_groups g
-LEFT JOIN attribute_fqns fqns ON g.namespace_id = fqns.namespace_id
-WHERE fqns.fqn = LOWER(@fqn);
-
 -- name: GetResourceMappingGroup :one
 SELECT id, namespace_id, name
 FROM resource_mapping_groups

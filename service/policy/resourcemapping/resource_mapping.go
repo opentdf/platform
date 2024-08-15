@@ -50,19 +50,6 @@ func (s ResourceMappingService) ListResourceMappingGroups(ctx context.Context, _
 	}, nil
 }
 
-func (s ResourceMappingService) ListResourceMappingGroupsByAttrFQN(ctx context.Context, req *resourcemapping.ListResourceMappingGroupsByAttrFQNRequest) (*resourcemapping.ListResourceMappingGroupsByAttrFQNResponse, error) {
-	// TODO: Add validation for full FQN value to proto
-
-	rmGroups, err := s.dbClient.ListResourceMappingGroupsByAttrFQN(ctx, req.GetFqn())
-	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed, slog.String("fqn", req.GetFqn()))
-	}
-
-	return &resourcemapping.ListResourceMappingGroupsByAttrFQNResponse{
-		ResourceMappingGroups: rmGroups,
-	}, nil
-}
-
 func (s ResourceMappingService) GetResourceMappingGroup(ctx context.Context, req *resourcemapping.GetResourceMappingGroupRequest) (*resourcemapping.GetResourceMappingGroupResponse, error) {
 	rmGroup, err := s.dbClient.GetResourceMappingGroup(ctx, req.GetId())
 	if err != nil {

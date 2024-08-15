@@ -444,39 +444,6 @@ func (q *Queries) ListResourceMappingGroups(ctx context.Context) ([]ResourceMapp
 	return items, nil
 }
 
-const listResourceMappingGroupsByAttrFQN = `-- name: ListResourceMappingGroupsByAttrFQN :many
-SELECT g.id, g.namespace_id, g.name
-FROM resource_mapping_groups g
-LEFT JOIN attribute_fqns fqns ON g.namespace_id = fqns.namespace_id
-WHERE fqns.fqn = LOWER($1)
-`
-
-// ListResourceMappingGroupsByAttrFQN
-//
-//	SELECT g.id, g.namespace_id, g.name
-//	FROM resource_mapping_groups g
-//	LEFT JOIN attribute_fqns fqns ON g.namespace_id = fqns.namespace_id
-//	WHERE fqns.fqn = LOWER($1)
-func (q *Queries) ListResourceMappingGroupsByAttrFQN(ctx context.Context, fqn string) ([]ResourceMappingGroup, error) {
-	rows, err := q.db.Query(ctx, listResourceMappingGroupsByAttrFQN, fqn)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ResourceMappingGroup
-	for rows.Next() {
-		var i ResourceMappingGroup
-		if err := rows.Scan(&i.ID, &i.NamespaceID, &i.Name); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const removeKeyAccessServerFromNamespace = `-- name: RemoveKeyAccessServerFromNamespace :execrows
 DELETE FROM attribute_namespace_key_access_grants
 WHERE namespace_id = $1 AND key_access_server_id = $2

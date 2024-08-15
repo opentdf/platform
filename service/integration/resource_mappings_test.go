@@ -87,17 +87,6 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups() {
 	}
 }
 
-func (s *ResourceMappingsSuite) Test_ListResourceMappingGroupsByAttrFQN() {
-	// seed the db with some mappings for attr value
-
-	// todo: use a real attribute fqn
-	rmGroups, err := s.db.PolicyClient.ListResourceMappingGroupsByAttrFQN(s.ctx, "example.com/attr/attr1")
-	s.Require().NoError(err)
-	s.NotNil(rmGroups)
-
-	// todo: loop through the rmGroups and verify they are the expected ones
-}
-
 func (s *ResourceMappingsSuite) Test_GetResourceMappingGroup() {
 	testRmGroup := s.f.GetResourceMappingGroupKey("example.com_ns_group_1")
 	rmGroup, err := s.db.PolicyClient.GetResourceMappingGroup(s.ctx, testRmGroup.ID)

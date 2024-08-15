@@ -112,7 +112,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 
 	// If platformConfiguration is not provided, fetch it from the platform
-	if cfg.platformConfiguration == nil { //nolint:nestif // Most of checks are for errors
+	if cfg.platformConfiguration == nil && !cfg.ipc { //nolint:nestif // Most of checks are for errors
 		var pcfg PlatformConfiguration
 		var err error
 
@@ -128,7 +128,6 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 			}
 		}
 		cfg.platformConfiguration = pcfg
-
 		if cfg.tokenEndpoint == "" {
 			cfg.tokenEndpoint, err = getTokenEndpoint(*cfg)
 			if err != nil {

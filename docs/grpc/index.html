@@ -230,6 +230,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.KasPublicKey"><span class="badge">M</span>KasPublicKey</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.KasPublicKeySet"><span class="badge">M</span>KasPublicKeySet</a>
+                </li>
+              
+                <li>
                   <a href="#policy.KeyAccessServer"><span class="badge">M</span>KeyAccessServer</a>
                 </li>
               
@@ -280,6 +288,10 @@
               
                 <li>
                   <a href="#policy.ConditionBooleanTypeEnum"><span class="badge">E</span>ConditionBooleanTypeEnum</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.KasPublicKeyAlgEnum"><span class="badge">E</span>KasPublicKeyAlgEnum</a>
                 </li>
               
                 <li>
@@ -1530,6 +1542,70 @@
 
         
       
+        <h3 id="policy.KasPublicKey">KasPublicKey</h3>
+        <p>A KAS public key and some associated metadata for further identifcation</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>pem</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>x509 ASN.1 content in PEM envelope, usually </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kid</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>A unique string identifier for this key </p></td>
+                </tr>
+              
+                <tr>
+                  <td>alg</td>
+                  <td><a href="#policy.KasPublicKeyAlgEnum">KasPublicKeyAlgEnum</a></td>
+                  <td></td>
+                  <td><p>A known algorithm type with any additional parameters encoded.
+To start, these may be `rsa:2048` for encrypting ZTDF files and 
+`ec:secp256r1` for nanoTDF, but more formats may be added as needed. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.KasPublicKeySet">KasPublicKeySet</h3>
+        <p>A list of known KAS public keys</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>keys</td>
+                  <td><a href="#policy.KasPublicKey">KasPublicKey</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.KeyAccessServer">KeyAccessServer</h3>
         <p>Key Access Server Registry</p>
 
@@ -1656,6 +1732,13 @@
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>public key - optional since can also be retrieved via url </p></td>
+                </tr>
+              
+                <tr>
+                  <td>cached</td>
+                  <td><a href="#policy.KasPublicKeySet">KasPublicKeySet</a></td>
+                  <td></td>
+                  <td><p>public key with additional information. Current preferred version </p></td>
                 </tr>
               
             </tbody>
@@ -2062,6 +2145,35 @@
               <tr>
                 <td>CONDITION_BOOLEAN_TYPE_ENUM_OR</td>
                 <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+        <h3 id="policy.KasPublicKeyAlgEnum">KasPublicKeyAlgEnum</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1</td>
+                <td>5</td>
                 <td><p></p></td>
               </tr>
             

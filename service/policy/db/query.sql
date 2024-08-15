@@ -33,7 +33,7 @@ DELETE FROM key_access_servers WHERE id = $1;
 -- ATTRIBUTES
 ----------------------------------------------------------------
 
--- name: ListKeyAccessServerGrantsByKasUri :many
+-- name: ListKeyAccessServerGrants :many
 SELECT 
     kas.id AS kas_id, 
     kas.uri AS kas_uri, 
@@ -43,16 +43,18 @@ SELECT
         'created_at', kas.created_at, 
         'updated_at', kas.updated_at
     )) AS kas_metadata,
-    JSON_BUILD_OBJECT(
-        'attribute_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
-            'id', attrkag.attribute_definition_id, 
-            'fqn', fqns_on_attr.fqn
-        )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL), '[]'),
-        'value_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
-            'id', valkag.attribute_value_id, 
-            'fqn', fqns_on_vals.fqn
-        )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL), '[]')
-    ) AS grants
+    json_agg(DISTINCT jsonb_build_object(
+        'id', attrkag.attribute_definition_id, 
+        'fqn', fqns_on_attr.fqn
+    )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL) AS attributes_grants,
+    json_agg(DISTINCT jsonb_build_object(
+        'id', valkag.attribute_value_id, 
+        'fqn', fqns_on_vals.fqn
+    )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL) AS values_grants,
+    json_agg(DISTINCT jsonb_build_object(
+        'id', nskag.namespace_id, 
+        'fqn', fqns_on_ns.fqn
+    )) FILTER (WHERE nskag.namespace_id IS NOT NULL) AS namespace_grants
 FROM 
     key_access_servers kas
 LEFT JOIN 
@@ -68,86 +70,17 @@ LEFT JOIN
 LEFT JOIN 
     attribute_fqns fqns_on_vals 
     ON valkag.attribute_value_id = fqns_on_vals.value_id
-WHERE kas.uri = $1
+LEFT JOIN
+    attribute_namespace_key_access_grants nskag
+    ON kas.id = nskag.key_access_server_id
+LEFT JOIN 
+    attribute_fqns fqns_on_ns
+    ON nskag.namespace_id = fqns_on_ns.namespace_id
+WHERE (NULLIF(@kas_id, '') IS NULL OR kas.id = @kas_id::uuid)
+    AND (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri::varchar)
 GROUP BY 
     kas.id;
 
--- name: ListKeyAccessServerGrantsByKasId :many
-SELECT 
-    kas.id AS kas_id, 
-    kas.uri AS kas_uri, 
-    kas.public_key AS kas_public_key,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
-        'labels', kas.metadata -> 'labels', 
-        'created_at', kas.created_at, 
-        'updated_at', kas.updated_at
-    )) AS kas_metadata,
-    JSON_BUILD_OBJECT(
-        'attribute_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
-            'id', attrkag.attribute_definition_id, 
-            'fqn', fqns_on_attr.fqn
-        )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL), '[]'),
-        'value_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
-            'id', valkag.attribute_value_id, 
-            'fqn', fqns_on_vals.fqn
-        )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL), '[]')
-    ) AS grants
-FROM 
-    key_access_servers kas
-LEFT JOIN 
-    attribute_definition_key_access_grants attrkag 
-    ON kas.id = attrkag.key_access_server_id
-LEFT JOIN 
-    attribute_fqns fqns_on_attr 
-    ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id 
-    AND fqns_on_attr.value_id IS NULL
-LEFT JOIN 
-    attribute_value_key_access_grants valkag 
-    ON kas.id = valkag.key_access_server_id
-LEFT JOIN 
-    attribute_fqns fqns_on_vals 
-    ON valkag.attribute_value_id = fqns_on_vals.value_id
-WHERE kas.id = $1
-GROUP BY 
-    kas.id;
-
--- name: ListAllKeyAccessServerGrants :many
-SELECT 
-    kas.id AS kas_id, 
-    kas.uri AS kas_uri, 
-    kas.public_key AS kas_public_key,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
-        'labels', kas.metadata -> 'labels', 
-        'created_at', kas.created_at, 
-        'updated_at', kas.updated_at
-    )) AS kas_metadata,
-    JSON_BUILD_OBJECT(
-        'attribute_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
-            'id', attrkag.attribute_definition_id, 
-            'fqn', fqns_on_attr.fqn
-        )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL), '[]'),
-        'value_grants', COALESCE(json_agg(DISTINCT jsonb_build_object(
-            'id', valkag.attribute_value_id, 
-            'fqn', fqns_on_vals.fqn
-        )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL), '[]')
-    ) AS grants
-FROM 
-    key_access_servers kas
-LEFT JOIN 
-    attribute_definition_key_access_grants attrkag 
-    ON kas.id = attrkag.key_access_server_id
-LEFT JOIN 
-    attribute_fqns fqns_on_attr 
-    ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id 
-    AND fqns_on_attr.value_id IS NULL
-LEFT JOIN 
-    attribute_value_key_access_grants valkag 
-    ON kas.id = valkag.key_access_server_id
-LEFT JOIN 
-    attribute_fqns fqns_on_vals 
-    ON valkag.attribute_value_id = fqns_on_vals.value_id
-GROUP BY 
-    kas.id;
 
 ---------------------------------------------------------------- 
 -- RESOURCE MAPPING GROUPS

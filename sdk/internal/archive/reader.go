@@ -232,12 +232,14 @@ func (reader Reader) ReadFileData(filename string, index int64, length int64) ([
 	return readBytes(reader.readSeeker, fileNameEntry.index+index, length)
 }
 
-// ReadAllFileData Return all the data of the file
+// ReadAllFileData Return all the data of the file if the file is available and below the specified size.
 // NOTE: Use this method for small file sizes.
-func (reader Reader) ReadAllFileData(filename string) ([]byte, error) {
+func (reader Reader) ReadAllFileData(filename string, maxSize int64) ([]byte, error) {
 	fileNameEntry, ok := reader.fileEntries[filename]
 	if !ok {
 		return nil, errZipFileNotFound
+	} else if fileNameEntry.length > maxSize {
+		return nil, fmt.Errorf("%s size too large: %vKB", filename, fileNameEntry.length/1024)
 	}
 
 	return readBytes(reader.readSeeker, fileNameEntry.index, fileNameEntry.length)

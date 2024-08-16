@@ -48,22 +48,22 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 	// Check platform issuer
 	iss, err := s.PlatformIssuer()
 	assert.Equal(t, "https://example.org", iss)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// Check platform authz endpoint
 	authzEndpoint, err := s.PlatformAuthzEndpoint()
 	assert.Equal(t, "https://example.org/auth", authzEndpoint)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// Check platform token endpoint
 	tokenEndpoint, err := s.PlatformTokenEndpoint()
 	assert.Equal(t, "https://example.org/token", tokenEndpoint)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// Check platform public client id
 	publicClientID, err := s.PlatformPublicClientID()
 	assert.Equal(t, "myclient", publicClientID)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// check if the clients are available
 	assert.NotNil(t, s.Attributes)
@@ -76,19 +76,19 @@ func Test_PlatformConfiguration_BadCases(t *testing.T) {
 	assertions := func(t *testing.T, s *sdk.SDK) {
 		iss, err := s.PlatformIssuer()
 		assert.Equal(t, "", iss)
-		assert.ErrorIs(t, err, sdk.ErrPlatformIssuerNotFound)
+		require.ErrorIs(t, err, sdk.ErrPlatformIssuerNotFound)
 
 		authzEndpoint, err := s.PlatformAuthzEndpoint()
 		assert.Equal(t, "", authzEndpoint)
-		assert.ErrorIs(t, err, sdk.ErrPlatformAuthzEndpointNotFound)
+		require.ErrorIs(t, err, sdk.ErrPlatformAuthzEndpointNotFound)
 
 		tokenEndpoint, err := s.PlatformTokenEndpoint()
 		assert.Equal(t, "", tokenEndpoint)
-		assert.ErrorIs(t, err, sdk.ErrPlatformTokenEndpointNotFound)
+		require.ErrorIs(t, err, sdk.ErrPlatformTokenEndpointNotFound)
 
 		publicClientID, err := s.PlatformPublicClientID()
 		assert.Equal(t, "", publicClientID)
-		assert.ErrorIs(t, err, sdk.ErrPlatformTokenEndpointNotFound)
+		require.ErrorIs(t, err, sdk.ErrPlatformTokenEndpointNotFound)
 	}
 
 	noIdpValsSDK, err := sdk.New(goodPlatformEndpoint,

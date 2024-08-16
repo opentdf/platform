@@ -7,7 +7,9 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 
@@ -418,6 +420,248 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer_WithInvalidId_Fails() {
 	s.Require().Error(err)
 	s.Nil(resp)
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasId() {
+	// create an attribute
+	attr := &attributes.CreateAttributeRequest{
+		Name:        "test__list_key_access_server_grants_by_kas_id",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
+
+	// create a value
+	val := &attributes.CreateAttributeValueRequest{
+		AttributeId: createdAttr.GetId(),
+		Value:       "value2",
+	}
+	createdVal, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, createdAttr.GetId(), val)
+	s.Require().NoError(err)
+	s.NotNil(createdVal)
+
+	firstKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri: "https://firstkas.com/kas/uri",
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Local{Local: "public"},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(firstKAS)
+	firstKAS, _ = s.db.PolicyClient.GetKeyAccessServer(s.ctx, firstKAS.GetId())
+
+	otherKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri: "https://otherkas.com/kas/uri",
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Local{Local: "public"},
+		},
+	})
+	s.Require().NoError(err)
+	otherKAS, _ = s.db.PolicyClient.GetKeyAccessServer(s.ctx, otherKAS.GetId())
+
+	// assign a KAS to the attribute
+	aKas := &attributes.AttributeKeyAccessServer{
+		AttributeId:       createdAttr.GetId(),
+		KeyAccessServerId: firstKAS.GetId(),
+	}
+	createdGrant, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, aKas)
+	s.Require().NoError(err)
+	s.NotNil(createdGrant)
+
+	// assign a KAS to the value
+	bKas := &attributes.ValueKeyAccessServer{
+		ValueId:           createdVal.GetId(),
+		KeyAccessServerId: otherKAS.GetId(),
+	}
+	valGrant, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, bKas)
+	s.Require().NoError(err)
+	s.NotNil(valGrant)
+
+	// list grants by KAS ID
+	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, firstKAS.GetId(), "")
+	s.Require().NoError(err)
+	s.NotNil(listedGrants)
+	s.Len(listedGrants, 1)
+	g := listedGrants[0]
+	s.Equal(firstKAS.GetId(), g.GetKeyAccessServer().GetId())
+	s.Equal(firstKAS.GetUri(), g.GetKeyAccessServer().GetUri())
+	s.Len(g.GetAttributeGrants(), 1)
+	s.Empty(g.GetValueGrants())
+	s.Empty(g.GetNamespaceGrants())
+
+	// list grants by the other KAS ID
+	listedGrants, err = s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, otherKAS.GetId(), "")
+	s.Require().NoError(err)
+	s.NotNil(listedGrants)
+	s.Len(listedGrants, 1)
+	g = listedGrants[0]
+	s.Equal(otherKAS.GetId(), g.GetKeyAccessServer().GetId())
+	s.Equal(otherKAS.GetUri(), g.GetKeyAccessServer().GetUri())
+	s.Empty(g.GetAttributeGrants())
+	s.Len(g.GetValueGrants(), 1)
+	s.Empty(g.GetNamespaceGrants())
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasId_NoResultsIfNotFound() {
+	// list grants by KAS ID
+	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, nonExistentKasRegistryID, "")
+	s.Require().NoError(err)
+	s.Empty(listedGrants)
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasUri() {
+	fixtureKAS := s.f.GetKasRegistryKey("key_access_server_1")
+
+	// create an attribute
+	attr := &attributes.CreateAttributeRequest{
+		Name:        "test__list_key_access_server_grants_by_kas_uri",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
+
+	// add a KAS to the attribute
+	aKas := &attributes.AttributeKeyAccessServer{
+		AttributeId:       createdAttr.GetId(),
+		KeyAccessServerId: fixtureKAS.ID,
+	}
+	createdGrant, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, aKas)
+	s.Require().NoError(err)
+	s.NotNil(createdGrant)
+
+	// list grants by KAS URI
+	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, "", fixtureKAS.URI)
+
+	s.Require().NoError(err)
+	s.NotNil(listedGrants)
+	s.GreaterOrEqual(len(listedGrants), 1)
+	for _, g := range listedGrants {
+		s.Equal(fixtureKAS.ID, g.GetKeyAccessServer().GetId())
+		s.Equal(fixtureKAS.URI, g.GetKeyAccessServer().GetUri())
+	}
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasUri_NoResultsIfNotFound() {
+	// list grants by KAS ID
+	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, "", "https://notfound.com/kas/uri")
+	s.Require().NoError(err)
+	s.Empty(listedGrants)
+}
+
+func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {
+	// create a KAS
+	kas := &kasregistry.CreateKeyAccessServerRequest{
+		Uri: "https://listingkasgrants.com/kas/uri",
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Local{Local: "public"},
+		},
+	}
+	firstKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kas)
+	s.Require().NoError(err)
+	s.NotNil(firstKAS)
+
+	// create an attribute
+	attr := &attributes.CreateAttributeRequest{
+		Name:        "test__list_all_key_access_server_grants",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values:      []string{"value1"},
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
+
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	value := got.GetValues()[0]
+
+	// add first KAS to the attribute
+	aKas := &attributes.AttributeKeyAccessServer{
+		AttributeId:       createdAttr.GetId(),
+		KeyAccessServerId: firstKAS.GetId(),
+	}
+	createdGrant, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, aKas)
+	s.Require().NoError(err)
+	s.NotNil(createdGrant)
+
+	// add another KAS and grant it to the value
+	second := &kasregistry.CreateKeyAccessServerRequest{
+		Uri: "https://listingkasgrants.com/another/kas/uri",
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Local{Local: "public"},
+		},
+	}
+	secondKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, second)
+	s.Require().NoError(err)
+	s.NotNil(secondKAS)
+
+	// assign a grant of the second KAS to the value
+	bKas := &attributes.ValueKeyAccessServer{
+		ValueId:           value.GetId(),
+		KeyAccessServerId: secondKAS.GetId(),
+	}
+	valGrant, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, bKas)
+	s.Require().NoError(err)
+	s.NotNil(valGrant)
+
+	// grant each KAS to the namespace
+	nsKas := &namespaces.NamespaceKeyAccessServer{
+		NamespaceId:       fixtureNamespaceID,
+		KeyAccessServerId: firstKAS.GetId(),
+	}
+	nsGrant, err := s.db.PolicyClient.AssignKeyAccessServerToNamespace(s.ctx, nsKas)
+	s.Require().NoError(err)
+	s.NotNil(nsGrant)
+
+	nsAnotherKas := &namespaces.NamespaceKeyAccessServer{
+		NamespaceId:       fixtureNamespaceID,
+		KeyAccessServerId: secondKAS.GetId(),
+	}
+	nsAnotherGrant, err := s.db.PolicyClient.AssignKeyAccessServerToNamespace(s.ctx, nsAnotherKas)
+	s.Require().NoError(err)
+	s.NotNil(nsAnotherGrant)
+
+	// list all grants
+	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, "", "")
+	s.Require().NoError(err)
+	s.NotNil(listedGrants)
+	s.GreaterOrEqual(len(listedGrants), 1)
+
+	for _, g := range listedGrants {
+		if g.GetKeyAccessServer().GetId() == firstKAS.GetId() {
+			// should have expected attribute grant
+			grantedAttrIDs := make([]string, len(g.GetAttributeGrants()))
+			for i, a := range g.GetAttributeGrants() {
+				grantedAttrIDs[i] = a.GetId()
+			}
+			s.Contains(grantedAttrIDs, createdAttr.GetId())
+			// should have expected namespace grant
+			grantedNsIDs := make([]string, len(g.GetNamespaceGrants()))
+			for i, n := range g.GetNamespaceGrants() {
+				grantedNsIDs[i] = n.GetId()
+			}
+			s.Contains(grantedNsIDs, fixtureNamespaceID)
+		}
+		if g.GetKeyAccessServer().GetId() == secondKAS.GetId() {
+			// should have expected value grant
+			grantedValIDs := make([]string, len(g.GetValueGrants()))
+			for i, v := range g.GetValueGrants() {
+				grantedValIDs[i] = v.GetId()
+			}
+			s.Contains(grantedValIDs, value.GetId())
+			// should have expected namespace grant
+			grantedNsIDs := make([]string, len(g.GetNamespaceGrants()))
+			for i, n := range g.GetNamespaceGrants() {
+				grantedNsIDs[i] = n.GetId()
+			}
+			s.Contains(grantedNsIDs, fixtureNamespaceID)
+		}
+	}
 }
 
 func TestKasRegistrySuite(t *testing.T) {

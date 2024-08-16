@@ -579,11 +579,18 @@ func local_request_AttributesService_AssignKeyAccessServerToAttribute_0(ctx cont
 
 }
 
+var (
+	filter_AttributesService_RemoveKeyAccessServerFromAttribute_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_AttributesService_RemoveKeyAccessServerFromAttribute_0(ctx context.Context, marshaler runtime.Marshaler, client AttributesServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq RemoveKeyAccessServerFromAttributeRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.AttributeKeyAccessServer); err != nil && err != io.EOF {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AttributesService_RemoveKeyAccessServerFromAttribute_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -596,7 +603,10 @@ func local_request_AttributesService_RemoveKeyAccessServerFromAttribute_0(ctx co
 	var protoReq RemoveKeyAccessServerFromAttributeRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.AttributeKeyAccessServer); err != nil && err != io.EOF {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AttributesService_RemoveKeyAccessServerFromAttribute_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -631,11 +641,18 @@ func local_request_AttributesService_AssignKeyAccessServerToValue_0(ctx context.
 
 }
 
+var (
+	filter_AttributesService_RemoveKeyAccessServerFromValue_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_AttributesService_RemoveKeyAccessServerFromValue_0(ctx context.Context, marshaler runtime.Marshaler, client AttributesServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq RemoveKeyAccessServerFromValueRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.ValueKeyAccessServer); err != nil && err != io.EOF {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AttributesService_RemoveKeyAccessServerFromValue_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -648,7 +665,10 @@ func local_request_AttributesService_RemoveKeyAccessServerFromValue_0(ctx contex
 	var protoReq RemoveKeyAccessServerFromValueRequest
 	var metadata runtime.ServerMetadata
 
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.ValueKeyAccessServer); err != nil && err != io.EOF {
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AttributesService_RemoveKeyAccessServerFromValue_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -946,7 +966,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/AssignKeyAccessServerToAttribute", runtime.WithHTTPPathPattern("/attributes/keyaccessserver/assign"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/AssignKeyAccessServerToAttribute", runtime.WithHTTPPathPattern("/attributes/keyaccessserver/grants"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -963,7 +983,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 
 	})
 
-	mux.Handle("POST", pattern_AttributesService_RemoveKeyAccessServerFromAttribute_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_AttributesService_RemoveKeyAccessServerFromAttribute_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -971,7 +991,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/RemoveKeyAccessServerFromAttribute", runtime.WithHTTPPathPattern("/attributes/keyaccessserver/remove"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/RemoveKeyAccessServerFromAttribute", runtime.WithHTTPPathPattern("/attributes/keyaccessserver/grants"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -996,7 +1016,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/AssignKeyAccessServerToValue", runtime.WithHTTPPathPattern("/attributes/values/keyaccessserver/assign"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/AssignKeyAccessServerToValue", runtime.WithHTTPPathPattern("/attributes/values/keyaccessserver/grants"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1013,7 +1033,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 
 	})
 
-	mux.Handle("POST", pattern_AttributesService_RemoveKeyAccessServerFromValue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_AttributesService_RemoveKeyAccessServerFromValue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -1021,7 +1041,7 @@ func RegisterAttributesServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/RemoveKeyAccessServerFromValue", runtime.WithHTTPPathPattern("/attributes/values/keyaccessserver/remove"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.attributes.AttributesService/RemoveKeyAccessServerFromValue", runtime.WithHTTPPathPattern("/attributes/values/keyaccessserver/grants"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1327,7 +1347,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/AssignKeyAccessServerToAttribute", runtime.WithHTTPPathPattern("/attributes/keyaccessserver/assign"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/AssignKeyAccessServerToAttribute", runtime.WithHTTPPathPattern("/attributes/keyaccessserver/grants"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1343,13 +1363,13 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 
 	})
 
-	mux.Handle("POST", pattern_AttributesService_RemoveKeyAccessServerFromAttribute_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_AttributesService_RemoveKeyAccessServerFromAttribute_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/RemoveKeyAccessServerFromAttribute", runtime.WithHTTPPathPattern("/attributes/keyaccessserver/remove"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/RemoveKeyAccessServerFromAttribute", runtime.WithHTTPPathPattern("/attributes/keyaccessserver/grants"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1371,7 +1391,7 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/AssignKeyAccessServerToValue", runtime.WithHTTPPathPattern("/attributes/values/keyaccessserver/assign"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/AssignKeyAccessServerToValue", runtime.WithHTTPPathPattern("/attributes/values/keyaccessserver/grants"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1387,13 +1407,13 @@ func RegisterAttributesServiceHandlerClient(ctx context.Context, mux *runtime.Se
 
 	})
 
-	mux.Handle("POST", pattern_AttributesService_RemoveKeyAccessServerFromValue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("DELETE", pattern_AttributesService_RemoveKeyAccessServerFromValue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/RemoveKeyAccessServerFromValue", runtime.WithHTTPPathPattern("/attributes/values/keyaccessserver/remove"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.attributes.AttributesService/RemoveKeyAccessServerFromValue", runtime.WithHTTPPathPattern("/attributes/values/keyaccessserver/grants"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1435,13 +1455,13 @@ var (
 
 	pattern_AttributesService_DeactivateAttributeValue_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"attributes", "values", "id"}, ""))
 
-	pattern_AttributesService_AssignKeyAccessServerToAttribute_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"attributes", "keyaccessserver", "assign"}, ""))
+	pattern_AttributesService_AssignKeyAccessServerToAttribute_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"attributes", "keyaccessserver", "grants"}, ""))
 
-	pattern_AttributesService_RemoveKeyAccessServerFromAttribute_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"attributes", "keyaccessserver", "remove"}, ""))
+	pattern_AttributesService_RemoveKeyAccessServerFromAttribute_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"attributes", "keyaccessserver", "grants"}, ""))
 
-	pattern_AttributesService_AssignKeyAccessServerToValue_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"attributes", "values", "keyaccessserver", "assign"}, ""))
+	pattern_AttributesService_AssignKeyAccessServerToValue_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"attributes", "values", "keyaccessserver", "grants"}, ""))
 
-	pattern_AttributesService_RemoveKeyAccessServerFromValue_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"attributes", "values", "keyaccessserver", "remove"}, ""))
+	pattern_AttributesService_RemoveKeyAccessServerFromValue_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"attributes", "values", "keyaccessserver", "grants"}, ""))
 )
 
 var (

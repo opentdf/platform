@@ -84,6 +84,73 @@
         ]
       }
     },
+    "/attributes/namespaces/keyaccessserver/grants": {
+      "delete": {
+        "operationId": "NamespaceService_RemoveKeyAccessServerFromNamespace",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/namespacesRemoveKeyAccessServerFromNamespaceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "namespaceKeyAccessServer.namespaceId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "namespaceKeyAccessServer.keyAccessServerId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "NamespaceService"
+        ]
+      },
+      "post": {
+        "summary": "--------------------------------------*\nNamespace \u003c\u003e Key Access Server RPCs\n---------------------------------------",
+        "operationId": "NamespaceService_AssignKeyAccessServerToNamespace",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/namespacesAssignKeyAccessServerToNamespaceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "namespaceKeyAccessServer",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/namespacesNamespaceKeyAccessServer"
+            }
+          }
+        ],
+        "tags": [
+          "NamespaceService"
+        ]
+      }
+    },
     "/attributes/namespaces/{id}": {
       "get": {
         "operationId": "NamespaceService_GetNamespace",
@@ -246,6 +313,14 @@
       "default": "METADATA_UPDATE_ENUM_UNSPECIFIED",
       "title": "- METADATA_UPDATE_ENUM_UNSPECIFIED: unspecified update type\n - METADATA_UPDATE_ENUM_EXTEND: only update the fields that are provided\n - METADATA_UPDATE_ENUM_REPLACE: replace the entire metadata with the provided metadata"
     },
+    "namespacesAssignKeyAccessServerToNamespaceResponse": {
+      "type": "object",
+      "properties": {
+        "namespaceKeyAccessServer": {
+          "$ref": "#/definitions/namespacesNamespaceKeyAccessServer"
+        }
+      }
+    },
     "namespacesCreateNamespaceRequest": {
       "type": "object",
       "properties": {
@@ -290,6 +365,25 @@
         }
       }
     },
+    "namespacesNamespaceKeyAccessServer": {
+      "type": "object",
+      "properties": {
+        "namespaceId": {
+          "type": "string"
+        },
+        "keyAccessServerId": {
+          "type": "string"
+        }
+      }
+    },
+    "namespacesRemoveKeyAccessServerFromNamespaceResponse": {
+      "type": "object",
+      "properties": {
+        "namespaceKeyAccessServer": {
+          "$ref": "#/definitions/namespacesNamespaceKeyAccessServer"
+        }
+      }
+    },
     "namespacesUpdateNamespaceResponse": {
       "type": "object",
       "properties": {
@@ -297,6 +391,66 @@
           "$ref": "#/definitions/policyNamespace"
         }
       }
+    },
+    "policyKasPublicKey": {
+      "type": "object",
+      "properties": {
+        "pem": {
+          "type": "string",
+          "title": "x509 ASN.1 content in PEM envelope, usually"
+        },
+        "kid": {
+          "type": "string",
+          "title": "A unique string identifier for this key"
+        },
+        "alg": {
+          "$ref": "#/definitions/policyKasPublicKeyAlgEnum",
+          "description": "A known algorithm type with any additional parameters encoded.\nTo start, these may be `rsa:2048` for encrypting ZTDF files and \n`ec:secp256r1` for nanoTDF, but more formats may be added as needed."
+        }
+      },
+      "title": "A KAS public key and some associated metadata for further identifcation"
+    },
+    "policyKasPublicKeyAlgEnum": {
+      "type": "string",
+      "enum": [
+        "KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED",
+        "KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048",
+        "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1"
+      ],
+      "default": "KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED"
+    },
+    "policyKasPublicKeySet": {
+      "type": "object",
+      "properties": {
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKasPublicKey"
+          }
+        }
+      },
+      "title": "A list of known KAS public keys"
+    },
+    "policyKeyAccessServer": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "uri": {
+          "type": "string",
+          "title": "Address of a KAS instance"
+        },
+        "publicKey": {
+          "$ref": "#/definitions/policyPublicKey"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
+        }
+      },
+      "title": "Key Access Server Registry"
     },
     "policyNamespace": {
       "type": "object",
@@ -318,6 +472,31 @@
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata"
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKeyAccessServer"
+          },
+          "title": "KAS grants for the namespace"
+        }
+      }
+    },
+    "policyPublicKey": {
+      "type": "object",
+      "properties": {
+        "remote": {
+          "type": "string",
+          "title": "kas public key url - optional since can also be retrieved via public key"
+        },
+        "local": {
+          "type": "string",
+          "title": "public key - optional since can also be retrieved via url"
+        },
+        "cached": {
+          "$ref": "#/definitions/policyKasPublicKeySet",
+          "title": "public key with additional information. Current preferred version"
         }
       }
     },

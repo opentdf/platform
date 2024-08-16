@@ -299,7 +299,41 @@
         ]
       }
     },
-    "/attributes/keyaccessserver/assign": {
+    "/attributes/keyaccessserver/grants": {
+      "delete": {
+        "operationId": "AttributesService_RemoveKeyAccessServerFromAttribute",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/attributesRemoveKeyAccessServerFromAttributeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "attributeKeyAccessServer.attributeId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "attributeKeyAccessServer.keyAccessServerId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      },
       "post": {
         "summary": "--------------------------------------*\nAttribute \u003c\u003e Key Access Server RPCs\n---------------------------------------",
         "operationId": "AttributesService_AssignKeyAccessServerToAttribute",
@@ -332,14 +366,14 @@
         ]
       }
     },
-    "/attributes/keyaccessserver/remove": {
-      "post": {
-        "operationId": "AttributesService_RemoveKeyAccessServerFromAttribute",
+    "/attributes/values/keyaccessserver/grants": {
+      "delete": {
+        "operationId": "AttributesService_RemoveKeyAccessServerFromValue",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/attributesRemoveKeyAccessServerFromAttributeResponse"
+              "$ref": "#/definitions/attributesRemoveKeyAccessServerFromValueResponse"
             }
           },
           "default": {
@@ -351,20 +385,22 @@
         },
         "parameters": [
           {
-            "name": "attributeKeyAccessServer",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/attributesAttributeKeyAccessServer"
-            }
+            "name": "valueKeyAccessServer.valueId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "valueKeyAccessServer.keyAccessServerId",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
           "AttributesService"
         ]
-      }
-    },
-    "/attributes/values/keyaccessserver/assign": {
+      },
       "post": {
         "operationId": "AttributesService_AssignKeyAccessServerToValue",
         "responses": {
@@ -372,38 +408,6 @@
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/attributesAssignKeyAccessServerToValueResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "valueKeyAccessServer",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/attributesValueKeyAccessServer"
-            }
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/values/keyaccessserver/remove": {
-      "post": {
-        "operationId": "AttributesService_RemoveKeyAccessServerFromValue",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesRemoveKeyAccessServerFromValueResponse"
             }
           },
           "default": {
@@ -987,6 +991,46 @@
       },
       "title": "A collection of Conditions evaluated by the boolean_operator provided"
     },
+    "policyKasPublicKey": {
+      "type": "object",
+      "properties": {
+        "pem": {
+          "type": "string",
+          "title": "x509 ASN.1 content in PEM envelope, usually"
+        },
+        "kid": {
+          "type": "string",
+          "title": "A unique string identifier for this key"
+        },
+        "alg": {
+          "$ref": "#/definitions/policyKasPublicKeyAlgEnum",
+          "description": "A known algorithm type with any additional parameters encoded.\nTo start, these may be `rsa:2048` for encrypting ZTDF files and \n`ec:secp256r1` for nanoTDF, but more formats may be added as needed."
+        }
+      },
+      "title": "A KAS public key and some associated metadata for further identifcation"
+    },
+    "policyKasPublicKeyAlgEnum": {
+      "type": "string",
+      "enum": [
+        "KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED",
+        "KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048",
+        "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1"
+      ],
+      "default": "KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED"
+    },
+    "policyKasPublicKeySet": {
+      "type": "object",
+      "properties": {
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKasPublicKey"
+          }
+        }
+      },
+      "title": "A list of known KAS public keys"
+    },
     "policyKeyAccessServer": {
       "type": "object",
       "properties": {
@@ -1027,6 +1071,14 @@
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata"
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKeyAccessServer"
+          },
+          "title": "KAS grants for the namespace"
         }
       }
     },
@@ -1040,6 +1092,10 @@
         "local": {
           "type": "string",
           "title": "public key - optional since can also be retrieved via url"
+        },
+        "cached": {
+          "$ref": "#/definitions/policyKasPublicKeySet",
+          "title": "public key with additional information. Current preferred version"
         }
       }
     },

@@ -13,7 +13,7 @@ type FullyQualifiedResourceMappingGroup struct {
 
 // protovalidate already validates the FQN format in the service request
 // for parsing purposes, we can just look for any non-whitespace characters
-// e.g. should be in format of "https://<namespace>/resm/<unique_name>"
+// e.g. should be in format of "https://<namespace>/resm/<group name>"
 var resourceMappingGroupFqnRegex = regexp.MustCompile(
 	`^https:\/\/(?<namespace>\S+)\/resm\/(?<name>\S+)$`,
 )
@@ -28,7 +28,7 @@ func ParseResourceMappingGroupFqn(fqn string) (*FullyQualifiedResourceMappingGro
 	groupNameIdx := resourceMappingGroupFqnRegex.SubexpIndex("name")
 
 	if numMatches < namespaceNameIdx || numMatches < groupNameIdx {
-		return nil, errors.New("error: valid FQN format of https://<namespace>/resm/<unique_name> must be provided")
+		return nil, errors.New("error: valid FQN format of https://<namespace>/resm/<group name> must be provided")
 	}
 
 	return &FullyQualifiedResourceMappingGroup{

@@ -13,6 +13,7 @@ const (
 	provKcUsernameFlag = "username"
 	provKcPasswordFlag = "password"
 	provKcRealmFlag    = "realm"
+	provKcFilenameFlag = "file"
 	provKcInsecure     = "insecure"
 )
 

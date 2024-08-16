@@ -4,10 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"net/url"
 	"regexp"
 
@@ -129,6 +131,12 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 			}
 		}
 		cfg.PlatformConfiguration = pcfg
+		if cfg.tokenEndpoint == "" {
+			cfg.tokenEndpoint, err = getTokenEndpoint(*cfg)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	var uci []grpc.UnaryClientInterceptor
@@ -368,4 +376,49 @@ func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfiguration, err
 	configuration := response.GetConfiguration()
 
 	return configuration.AsMap(), nil
+}
+
+// TODO: This should be moved to a separate package. We do discovery in ../service/internal/auth/discovery.go
+func getTokenEndpoint(c config) (string, error) {
+	issuerURL, ok := c.PlatformConfiguration["platform_issuer"].(string)
+
+	if !ok {
+		return "", errors.New("platform_issuer is not set, or is not a string")
+	}
+
+	oidcConfigURL := issuerURL + "/.well-known/openid-configuration"
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, oidcConfigURL, nil)
+	if err != nil {
+		return "", err
+	}
+
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: c.tlsConfig,
+		},
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var config map[string]interface{}
+
+	if err = json.Unmarshal(body, &config); err != nil {
+		return "", err
+	}
+	tokenEndpoint, ok := config["token_endpoint"].(string)
+	if !ok {
+		return "", errors.New("token_endpoint not found in well-known configuration")
+	}
+
+	return tokenEndpoint, nil
 }

@@ -244,7 +244,7 @@ SELECT id, namespace_id, name
 FROM resource_mapping_groups
 WHERE id = $1;
 
--- name: GetResourceMappingGroupByFqn :one
+-- name: GetResourceMappingGroupFullyQualified :one
 SELECT g.id, g.namespace_id, g.name
 FROM resource_mapping_groups g
 LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id

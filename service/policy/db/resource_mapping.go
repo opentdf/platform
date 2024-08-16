@@ -48,16 +48,16 @@ func (c PolicyDBClient) ListResourceMappingGroupsByFqns(ctx context.Context, fqn
 	resultCount := 0
 
 	for _, fqn := range fqns {
-		parsedFqn, err := util.ParseResourceMappingGroupFqn(fqn)
+		fullyQualifiedRmg, err := util.ParseResourceMappingGroupFqn(fqn)
 		if err != nil {
 			// invalid FQNs not included in the response - ignore and continue, but log for investigation
 			slog.WarnContext(ctx, "error parsing Resource Mapping Group FQN", slog.String("rmg_fqn", fqn))
 			continue
 		}
 
-		rmGroup, err := c.Queries.GetResourceMappingGroupByFqn(ctx, GetResourceMappingGroupByFqnParams{
-			NamespaceName: parsedFqn.Namespace,
-			GroupName:     parsedFqn.GroupName,
+		rmGroup, err := c.Queries.GetResourceMappingGroupFullyQualified(ctx, GetResourceMappingGroupFullyQualifiedParams{
+			NamespaceName: fullyQualifiedRmg.Namespace,
+			GroupName:     fullyQualifiedRmg.GroupName,
 		})
 		if err != nil {
 			dbErr := db.WrapIfKnownInvalidQueryErr(err)

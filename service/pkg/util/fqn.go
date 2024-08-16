@@ -5,38 +5,34 @@ import (
 	"regexp"
 )
 
-type ResourceMappingGroupFqn struct {
+type FullyQualifiedResourceMappingGroup struct {
+	Fqn       string
 	Namespace string
 	GroupName string
 }
 
-// todo: patterns stored in variables for future extensibility
-// - could expose the patterns if needed
-
-// todo: temporary -> current namespace pattern in create proto validator is not correct (e.g. "example.com" fails validation, but is valid)
-var namespacePattern = `\S+`
-
-var attrNamePattern = `[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?`
-
-var validResourceMappingGroupFqnRegex = regexp.MustCompile(
-	`^https:\/\/(?<namespace>` + namespacePattern + `)\/resm\/(?<name>` + attrNamePattern + `)$`,
+// protovalidate already validates the FQN format in the service request
+// for parsing purposes, we can just look for any non-whitespace characters
+// e.g. should be in format of "https://<namespace>/resm/<unique_name>"
+var resourceMappingGroupFqnRegex = regexp.MustCompile(
+	`^https:\/\/(?<namespace>\S+)\/resm\/(?<name>\S+)$`,
 )
 
 // todo: logic could be made more generic in the future to support multiple FQN formats
 // e.g. parse FQN for '/attr', '/value', '/resm' or some other method
-
-func ParseResourceMappingGroupFqn(fqn string) (*ResourceMappingGroupFqn, error) {
-	matches := validResourceMappingGroupFqnRegex.FindStringSubmatch(fqn)
+func ParseResourceMappingGroupFqn(fqn string) (*FullyQualifiedResourceMappingGroup, error) {
+	matches := resourceMappingGroupFqnRegex.FindStringSubmatch(fqn)
 	numMatches := len(matches)
 
-	namespaceNameIdx := validResourceMappingGroupFqnRegex.SubexpIndex("namespace")
-	groupNameIdx := validResourceMappingGroupFqnRegex.SubexpIndex("name")
+	namespaceNameIdx := resourceMappingGroupFqnRegex.SubexpIndex("namespace")
+	groupNameIdx := resourceMappingGroupFqnRegex.SubexpIndex("name")
 
 	if numMatches < namespaceNameIdx || numMatches < groupNameIdx {
 		return nil, errors.New("error: valid FQN format of https://<namespace>/resm/<unique_name> must be provided")
 	}
 
-	return &ResourceMappingGroupFqn{
+	return &FullyQualifiedResourceMappingGroup{
+		Fqn:       fqn,
 		Namespace: matches[namespaceNameIdx],
 		GroupName: matches[groupNameIdx],
 	}, nil

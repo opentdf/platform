@@ -549,33 +549,33 @@ func (q *Queries) GetResourceMappingGroup(ctx context.Context, id string) (GetRe
 	return i, err
 }
 
-const getResourceMappingGroupByFqn = `-- name: GetResourceMappingGroupByFqn :one
+const getResourceMappingGroupFullyQualified = `-- name: GetResourceMappingGroupFullyQualified :one
 SELECT g.id, g.namespace_id, g.name
 FROM resource_mapping_groups g
 LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
 WHERE ns.name = LOWER($1) AND g.name = LOWER($2)
 `
 
-type GetResourceMappingGroupByFqnParams struct {
+type GetResourceMappingGroupFullyQualifiedParams struct {
 	NamespaceName string `json:"namespace_name"`
 	GroupName     string `json:"group_name"`
 }
 
-type GetResourceMappingGroupByFqnRow struct {
+type GetResourceMappingGroupFullyQualifiedRow struct {
 	ID          string `json:"id"`
 	NamespaceID string `json:"namespace_id"`
 	Name        string `json:"name"`
 }
 
-// GetResourceMappingGroupByFqn
+// GetResourceMappingGroupFullyQualified
 //
 //	SELECT g.id, g.namespace_id, g.name
 //	FROM resource_mapping_groups g
 //	LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
 //	WHERE ns.name = LOWER($1) AND g.name = LOWER($2)
-func (q *Queries) GetResourceMappingGroupByFqn(ctx context.Context, arg GetResourceMappingGroupByFqnParams) (GetResourceMappingGroupByFqnRow, error) {
-	row := q.db.QueryRow(ctx, getResourceMappingGroupByFqn, arg.NamespaceName, arg.GroupName)
-	var i GetResourceMappingGroupByFqnRow
+func (q *Queries) GetResourceMappingGroupFullyQualified(ctx context.Context, arg GetResourceMappingGroupFullyQualifiedParams) (GetResourceMappingGroupFullyQualifiedRow, error) {
+	row := q.db.QueryRow(ctx, getResourceMappingGroupFullyQualified, arg.NamespaceName, arg.GroupName)
+	var i GetResourceMappingGroupFullyQualifiedRow
 	err := row.Scan(&i.ID, &i.NamespaceID, &i.Name)
 	return i, err
 }

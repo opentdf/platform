@@ -2,9 +2,9 @@ package entityresolution
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/mitchellh/mapstructure"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak"
 	"github.com/opentdf/platform/service/logger"
@@ -23,14 +23,13 @@ func NewRegistration() serviceregistry.Registration {
 		ServiceDesc: &entityresolution.EntityResolutionService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			var inputIdpConfig keycloak.KeycloakConfig
-			confJSON, err := json.Marshal(srp.Config)
-			if err != nil {
+
+			if err := mapstructure.Decode(srp.Config, &inputIdpConfig); err != nil {
 				panic(err)
 			}
-			err = json.Unmarshal(confJSON, &inputIdpConfig)
-			if err != nil {
-				panic(err)
-			}
+
+			srp.Logger.Debug("entity_resolution configuration", "config", inputIdpConfig)
+
 			return &EntityResolutionService{idpConfig: inputIdpConfig, logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 				return entityresolution.RegisterEntityResolutionServiceHandlerServer(ctx, mux, server.(entityresolution.EntityResolutionServiceServer)) //nolint:forcetypeassert // allow type assert, following other services
 			}

@@ -29,23 +29,23 @@ const UsernameJwtSelector = "preferred_username"
 const serviceAccountUsernamePrefix = "service-account-"
 
 type KeycloakConfig struct {
-	URL            string                 `json:"url"`
-	Realm          string                 `json:"realm"`
-	ClientID       string                 `json:"clientid"`
-	ClientSecret   string                 `json:"clientsecret"`
-	LegacyKeycloak bool                   `json:"legacykeycloak" default:"false"`
-	SubGroups      bool                   `json:"subgroups" default:"false"`
-	InferID        InferredIdentityConfig `json:"inferid,omitempty"`
+	URL            string                 `mapstructure:"url"`
+	Realm          string                 `mapstructure:"realm"`
+	ClientID       string                 `mapstructure:"clientid"`
+	ClientSecret   string                 `mapstructure:"clientsecret" masq:"secret"`
+	LegacyKeycloak bool                   `mapstructure:"legacykeycloak" default:"false"`
+	SubGroups      bool                   `mapstructure:"subgroups" default:"false"`
+	InferID        InferredIdentityConfig `mapstructure:"inferid,omitempty"`
 }
 
 type InferredIdentityConfig struct {
-	From EntityImpliedFrom `json:"from,omitempty"`
+	From EntityImpliedFrom `mapstructure:"from,omitempty"`
 }
 
 type EntityImpliedFrom struct {
-	ClientID bool `json:"clientid,omitempty"`
-	Email    bool `json:"email,omitempty"`
-	Username bool `json:"username,omitempty"`
+	ClientID bool `mapstructure:"clientid,omitempty"`
+	Email    bool `mapstructure:"email,omitempty"`
+	Username bool `mapstructure:"username,omitempty"`
 }
 
 type KeyCloakConnector struct {

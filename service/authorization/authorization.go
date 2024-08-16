@@ -102,7 +102,7 @@ func NewRegistration() serviceregistry.Registration {
 				}
 			}
 
-			logger.Debug("authorization service config", slog.Any("config", authZCfg))
+			logger.Debug("authorization service config", slog.Any("config", *authZCfg))
 
 			// Build Rego PreparedEvalQuery
 

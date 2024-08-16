@@ -76,6 +76,20 @@ type Config struct {
 	MigrationsFS     *embed.FS `mapstructure:"-"`
 }
 
+func (c Config) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("host", c.Host),
+		slog.Int("port", c.Port),
+		slog.String("database", c.Database),
+		slog.String("user", c.User),
+		slog.String("password", "[REDACTED]"),
+		slog.String("sslmode", c.SSLMode),
+		slog.String("schema", c.Schema),
+		slog.Bool("runMigrations", c.RunMigrations),
+		slog.Bool("verifyConnection", c.VerifyConnection),
+	)
+}
+
 /*
 A wrapper around a pgxpool.Pool and sql.DB reference.
 

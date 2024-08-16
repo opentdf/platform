@@ -61,6 +61,19 @@ type Config struct {
 	EnablePprof bool `mapstructure:"enable_pprof" default:"false"`
 }
 
+func (c Config) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.Any("auth", c.Auth),
+		slog.Any("grpc", c.GRPC),
+		slog.Any("cryptoProvider", c.CryptoProvider),
+		slog.Any("tls", c.TLS),
+		slog.Any("cors", c.CORS),
+		slog.Int("port", c.Port),
+		slog.String("host", c.Host),
+		slog.Bool("enablePprof", c.EnablePprof),
+	)
+}
+
 // GRPC Server specific configurations
 type GRPCConfig struct {
 	// Enable reflection for grpc server (default: true)

@@ -9,7 +9,6 @@ import (
 
 	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
-	"github.com/mitchellh/mapstructure"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -123,23 +122,15 @@ func LoadConfig(key, file string) (*Config, error) {
 	return config, nil
 }
 
+// LogValue returns a slog.Value representation of the config.
+// We exclude logging service configuration as it may contain sensitive information.
 func (c *Config) LogValue() slog.Value {
-	dbMap := make(map[string]interface{})
-	loggerMap := make(map[string]interface{})
-	serverMap := make(map[string]interface{})
-	sdkConfigMap := make(map[string]interface{})
-
-	mapstructure.Decode(c.DB, &dbMap)
-	mapstructure.Decode(c.Logger, &loggerMap)
-	mapstructure.Decode(c.Server, &serverMap)
-	mapstructure.Decode(c.SDKConfig, &sdkConfigMap)
-
 	return slog.GroupValue(
 		slog.Bool("dev_mode", c.DevMode),
-		slog.Any("db", dbMap),
-		slog.Any("logger", loggerMap),
+		slog.Any("db", c.DB),
+		slog.Any("logger", c.Logger),
 		slog.Any("mode", c.Mode),
-		slog.Any("sdk_config", sdkConfigMap),
-		slog.Any("server", serverMap),
+		slog.Any("sdk_config", c.SDKConfig),
+		slog.Any("server", c.Server),
 	)
 }

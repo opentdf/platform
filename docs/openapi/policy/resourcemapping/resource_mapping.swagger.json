@@ -36,6 +36,7 @@
         "parameters": [
           {
             "name": "namespaceId",
+            "description": "Optional",
             "in": "query",
             "required": false,
             "type": "string"
@@ -96,6 +97,7 @@
         "parameters": [
           {
             "name": "fqns",
+            "description": "Required\nStructure of the RM Group FQN is 'https://\u003cnamespace\u003e/resm/\u003cgroup name\u003e'",
             "in": "query",
             "required": false,
             "type": "array",
@@ -130,6 +132,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -158,6 +161,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -186,6 +190,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -198,7 +203,8 @@
               "type": "object",
               "properties": {
                 "namespaceId": {
-                  "type": "string"
+                  "type": "string",
+                  "title": "Optional"
                 },
                 "name": {
                   "type": "string"
@@ -285,6 +291,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -313,6 +320,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -836,7 +844,8 @@
       "type": "object",
       "properties": {
         "namespaceId": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         },
         "name": {
           "type": "string"

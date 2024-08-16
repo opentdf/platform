@@ -13,6 +13,7 @@ import "policy/objects.proto";
 */
 
 message ListResourceMappingGroupsRequest {
+  // Optional
   string namespace_id = 1;
 }
 
@@ -21,6 +22,8 @@ message ListResourceMappingGroupsResponse {
 }
 
 message ListResourceMappingGroupsByFqnsRequest {
+  // Required
+  // Structure of the RM Group FQN is 'https://<namespace>/resm/<group name>'
   repeated string fqns = 1;
 }
 
@@ -29,6 +32,7 @@ message ListResourceMappingGroupsByFqnsResponse {
 }
 
 message GetResourceMappingGroupRequest {
+  // Required
   string id = 1 [(buf.validate.field).required = true];
 }
 
@@ -37,7 +41,9 @@ message GetResourceMappingGroupResponse {
 }
 
 message CreateResourceMappingGroupRequest {
+  // Required
   string namespace_id = 1 [(buf.validate.field).required = true];
+
   string name = 2 [(buf.validate.field).required = true];
 }
 
@@ -46,8 +52,12 @@ message CreateResourceMappingGroupResponse {
 }
 
 message UpdateResourceMappingGroupRequest {
+  // Required
   string id = 1 [(buf.validate.field).required = true];
+
+  // Optional
   string namespace_id = 2;
+
   string name = 3;
 }
 
@@ -56,6 +66,7 @@ message UpdateResourceMappingGroupResponse {
 }
 
 message DeleteResourceMappingGroupRequest {
+  // Required
   string id = 1 [(buf.validate.field).required = true];
 }
 
@@ -74,6 +85,7 @@ message ListResourceMappingsResponse {
 }
 
 message GetResourceMappingRequest {
+  // Required
   string id = 1 [(buf.validate.field).required = true];
 }
 
@@ -145,6 +157,7 @@ message UpdateResourceMappingResponse {
 }
 
 message DeleteResourceMappingRequest {
+  // Required
   string id = 1 [(buf.validate.field).required = true];
 }
 message DeleteResourceMappingResponse {

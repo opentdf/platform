@@ -2,9 +2,15 @@ package sdk
 
 import "log/slog"
 
-
-
 func (s SDK) getIdpConfig() map[string]interface{} {
+	// This check is needed if we want to fetch platform configuration over ipc
+	if s.config.platformConfiguration == nil {
+		cfg, err := getPlatformConfiguration(s.conn)
+		if err != nil {
+			slog.Warn("failed to get platform configuration", slog.Any("error", err))
+		}
+		s.config.platformConfiguration = cfg
+	}
 	idpCfg, err := s.config.platformConfiguration["idp"].(map[string]interface{})
 	if !err {
 		slog.Warn("idp configuration not found in well-known configuration")

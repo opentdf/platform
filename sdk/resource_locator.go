@@ -226,7 +226,7 @@ func (rl *ResourceLocator) readResourceLocator(reader io.Reader) error {
 	if err := binary.Read(reader, binary.BigEndian, &rl.protocol); err != nil {
 		return errors.Join(Error("Error reading ResourceLocator protocol value"), err)
 	}
-	if (rl.protocol != urlProtocolHTTP) && (rl.protocol != urlProtocolHTTPS) { // TODO - support 'shared' protocol?
+	if (rl.protocol&0x0f != urlProtocolHTTP) && (rl.protocol&0x0f != urlProtocolHTTPS) {
 		return errors.New("Unsupported protocol: " + strconv.Itoa(int(rl.protocol)))
 	}
 	var lengthBody byte

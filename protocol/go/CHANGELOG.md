@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.13](https://github.com/opentdf/platform/compare/protocol/go/v0.2.12...protocol/go/v0.2.13) (2024-08-16)
+
+
+### Features
+
+* **core:** Adds key ids to kas registry ([#1347](https://github.com/opentdf/platform/issues/1347)) ([e6c76ee](https://github.com/opentdf/platform/commit/e6c76ee415e08ec8681ae4ff8fb9d5d04ea7d2bb))
+* **core:** validate kas uri ([#1351](https://github.com/opentdf/platform/issues/1351)) ([2b70931](https://github.com/opentdf/platform/commit/2b7093136f6af1b6a86e613c095cefe403c9a06c))
+
+
+### Bug Fixes
+
+* **core:** align policy kas grant assignments http gateway methods with actions ([#1299](https://github.com/opentdf/platform/issues/1299)) ([031c6ca](https://github.com/opentdf/platform/commit/031c6ca87b8e252a4254f10bfcc78b45e5111ed9))
+
 ## [0.2.12](https://github.com/opentdf/platform/compare/protocol/go/v0.2.11...protocol/go/v0.2.12) (2024-08-13)
 
 

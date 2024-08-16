@@ -16,13 +16,14 @@ type Config struct {
 
 // AuthNConfig is the configuration need for the platform to validate tokens
 type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
-	EnforceDPoP  bool          `yaml:"enforceDPoP" json:"enforceDPoP" mapstructure:"enforceDPoP" default:"false"`
-	Issuer       string        `yaml:"issuer" json:"issuer"`
-	Audience     string        `yaml:"audience" json:"audience"`
-	Policy       PolicyConfig  `yaml:"policy" json:"policy" mapstructure:"policy"`
-	CacheRefresh string        `mapstructure:"cache_refresh_interval"`
-	DPoPSkew     time.Duration `mapstructure:"dpopskew" default:"1h"`
-	TokenSkew    time.Duration `mapstructure:"skew" default:"1m"`
+	EnforceDPoP    bool          `yaml:"enforceDPoP" json:"enforceDPoP" mapstructure:"enforceDPoP" default:"false"`
+	Issuer         string        `yaml:"issuer" json:"issuer"`
+	Audience       string        `yaml:"audience" json:"audience"`
+	Policy         PolicyConfig  `yaml:"policy" json:"policy" mapstructure:"policy"`
+	CacheRefresh   string        `mapstructure:"cache_refresh_interval"`
+	DPoPSkew       time.Duration `mapstructure:"dpopskew" default:"1h"`
+	TokenSkew      time.Duration `mapstructure:"skew" default:"1m"`
+	PublicClientID string        `yaml:"public_client_id" json:"public_client_id,omitempty" mapstructure:"publicclientid"`
 }
 
 type PolicyConfig struct {
@@ -40,6 +41,10 @@ func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
 
 	if c.Audience == "" {
 		return fmt.Errorf("config Auth.Audience is required")
+	}
+
+	if c.PublicClientID == "" {
+		logger.Warn("config Auth.PublicClientID is empty and is required for discovery via well-known configuration.")
 	}
 
 	if !c.EnforceDPoP {

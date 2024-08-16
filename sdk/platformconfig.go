@@ -42,3 +42,13 @@ func (s SDK) PlatformTokenEndpoint() (string, error) {
 	}
 	return value, nil
 }
+
+func (s SDK) PlatformPublicClientID() (string, error) {
+	idpCfg := s.getIdpConfig()
+	value, ok := idpCfg["public_client_id"].(string)
+	if !ok {
+		slog.Warn("public_client_id not found in well-known idp configuration")
+		return "", ErrPlatformTokenEndpointNotFound
+	}
+	return value, nil
+}

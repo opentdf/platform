@@ -48,22 +48,22 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 	// Check platform issuer
 	iss, err := s.PlatformIssuer()
 	assert.Equal(t, "https://example.org", iss)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check platform authz endpoint
 	authzEndpoint, err := s.PlatformAuthzEndpoint()
 	assert.Equal(t, "https://example.org/auth", authzEndpoint)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check platform token endpoint
 	tokenEndpoint, err := s.PlatformTokenEndpoint()
 	assert.Equal(t, "https://example.org/token", tokenEndpoint)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check platform public client id
 	publicClientID, err := s.PlatformPublicClientID()
 	assert.Equal(t, "myclient", publicClientID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// check if the clients are available
 	assert.NotNil(t, s.Attributes)
@@ -96,7 +96,7 @@ func Test_PlatformConfiguration_BadCases(t *testing.T) {
 			"idp": map[string]interface{}{},
 		}),
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, noIdpValsSDK)
 
 	assertions(t, noIdpValsSDK)
@@ -104,7 +104,7 @@ func Test_PlatformConfiguration_BadCases(t *testing.T) {
 	noIdpCfgSDK, err := sdk.New(goodPlatformEndpoint,
 		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{}),
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, noIdpCfgSDK)
 
 	assertions(t, noIdpCfgSDK)

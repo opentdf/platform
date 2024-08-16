@@ -72,25 +72,16 @@ func resourceMappingHydrateItem(row pgx.Row, logger *logger.Logger) (*policy.Res
 func resourceMappingSelect() sq.SelectBuilder {
 	t := Tables.ResourceMappings
 	at := Tables.AttributeValues
-	members := "COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
-		"'id', vmv.id, " +
-		"'value', vmv.value, " +
-		"'active', vmv.active, " +
-		"'members', vmv.members || ARRAY[]::UUID[] " +
-		")) FILTER (WHERE vmv.id IS NOT NULL ), '[]')"
 	return db.NewStatementBuilder().Select(
 		t.Field("id"),
 		constructMetadata(t.Name(), false),
 		t.Field("terms"),
 		"JSON_BUILD_OBJECT("+
 			"'id', av.id,"+
-			"'value', av.value,"+
-			"'members', "+members+
+			"'value', av.value "+
 			") AS attribute_value",
 	).
 		LeftJoin(at.Name() + " av ON " + t.Field("attribute_value_id") + " = " + "av.id").
-		LeftJoin(Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id").
-		LeftJoin(at.Name() + " vmv ON vm.member_id = vmv.id").
 		GroupBy("av.id").
 		GroupBy(t.Field("id"))
 }

@@ -357,6 +357,46 @@
       },
       "title": "A collection of Conditions evaluated by the boolean_operator provided"
     },
+    "policyKasPublicKey": {
+      "type": "object",
+      "properties": {
+        "pem": {
+          "type": "string",
+          "title": "x509 ASN.1 content in PEM envelope, usually"
+        },
+        "kid": {
+          "type": "string",
+          "title": "A unique string identifier for this key"
+        },
+        "alg": {
+          "$ref": "#/definitions/policyKasPublicKeyAlgEnum",
+          "description": "A known algorithm type with any additional parameters encoded.\nTo start, these may be `rsa:2048` for encrypting ZTDF files and \n`ec:secp256r1` for nanoTDF, but more formats may be added as needed."
+        }
+      },
+      "title": "A KAS public key and some associated metadata for further identifcation"
+    },
+    "policyKasPublicKeyAlgEnum": {
+      "type": "string",
+      "enum": [
+        "KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED",
+        "KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048",
+        "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1"
+      ],
+      "default": "KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED"
+    },
+    "policyKasPublicKeySet": {
+      "type": "object",
+      "properties": {
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKasPublicKey"
+          }
+        }
+      },
+      "title": "A list of known KAS public keys"
+    },
     "policyKeyAccessServer": {
       "type": "object",
       "properties": {
@@ -397,6 +437,14 @@
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata"
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKeyAccessServer"
+          },
+          "title": "KAS grants for the namespace"
         }
       }
     },
@@ -410,6 +458,10 @@
         "local": {
           "type": "string",
           "title": "public key - optional since can also be retrieved via url"
+        },
+        "cached": {
+          "$ref": "#/definitions/policyKasPublicKeySet",
+          "title": "public key with additional information. Current preferred version"
         }
       }
     },
@@ -430,9 +482,29 @@
           "items": {
             "type": "string"
           }
+        },
+        "group": {
+          "$ref": "#/definitions/policyResourceMappingGroup"
         }
       },
       "title": "Resource Mappings (aka Access Control Resource Encodings aka ACRE) are structures supporting the mapping of Resources and Attribute Values"
+    },
+    "policyResourceMappingGroup": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "namespaceId": {
+          "type": "string",
+          "title": "the namespace containing the group of resource mappings"
+        },
+        "name": {
+          "type": "string",
+          "title": "the common name for the group of resource mappings, which must be unique per namespace"
+        }
+      },
+      "description": "Resource Mapping Groups are namespaced collections of Resource Mappings associated under a common group name."
     },
     "policySubjectConditionSet": {
       "type": "object",
@@ -520,13 +592,6 @@
         },
         "value": {
           "type": "string"
-        },
-        "members": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/policyValue"
-          }
         },
         "grants": {
           "type": "array",

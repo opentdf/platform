@@ -20,7 +20,7 @@ type FakeAccessServiceServer struct {
 	kas.UnimplementedAccessServiceServer
 }
 
-func (f *FakeAccessServiceServer) Info(ctx context.Context, _ *kas.InfoRequest) (*kas.InfoResponse, error) {
+func (f *FakeAccessServiceServer) PublicKey(ctx context.Context, _ *kas.PublicKeyRequest) (*kas.PublicKeyResponse, error) {
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
 		requestIDFromMetadata := md.Get(string(RequestIDHeaderKey))
 		if len(requestIDFromMetadata) > 0 {
@@ -37,7 +37,7 @@ func (f *FakeAccessServiceServer) Info(ctx context.Context, _ *kas.InfoRequest) 
 			f.actorID = actorIDFromMetadata[0]
 		}
 	}
-	return &kas.InfoResponse{}, nil
+	return &kas.PublicKeyResponse{}, nil
 }
 
 func TestAddingAuditMetadataToOutgoingRequest(t *testing.T) {
@@ -51,7 +51,7 @@ func TestAddingAuditMetadataToOutgoingRequest(t *testing.T) {
 	ctx = context.WithValue(ctx, RequestIDContextKey, contextRequestID)
 	ctx = context.WithValue(ctx, ActorIDContextKey, contextActorID)
 
-	_, err := client.Info(ctx, &kas.InfoRequest{})
+	_, err := client.PublicKey(ctx, &kas.PublicKeyRequest{})
 	if err != nil {
 		t.Fatalf("error making call: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestIsOKWithNoContextValues(t *testing.T) {
 	client, stop := runServer(context.Background(), &server)
 	defer stop()
 
-	_, err := client.Info(context.Background(), &kas.InfoRequest{})
+	_, err := client.PublicKey(context.Background(), &kas.PublicKeyRequest{})
 	if err != nil {
 		t.Fatalf("error making call: %v", err)
 	}

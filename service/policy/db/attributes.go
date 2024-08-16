@@ -94,7 +94,6 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			"JSON_BUILD_OBJECT(" +
 			"'id', avt.id," +
 			"'value', avt.value," +
-			"'members', avt.members," +
 			"'active', avt.active"
 
 		// include the subject mapping / subject condition set for each value
@@ -125,13 +124,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 		LeftJoin(nt.Name() + " ON " + nt.Field("id") + " = " + t.Field("namespace_id"))
 
 	if shouldGetValues {
-		subQuery := "(SELECT av.id, av.value, av.active, COALESCE(JSON_AGG(JSON_BUILD_OBJECT(" +
-			"'id', vmv.id, " +
-			"'value', vmv.value, " +
-			"'active', vmv.active, " +
-			"'members', vmv.members || ARRAY[]::UUID[], " +
-			"'attribute', JSON_BUILD_OBJECT(" +
-			"'id', vmv.attribute_definition_id ))) FILTER (WHERE vmv.id IS NOT NULL ), '[]') AS members, " +
+		subQuery := "(SELECT av.id, av.value, av.active, " +
 			"JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(" +
 			"'id', vkas.id," +
 			"'uri', vkas.uri," +
@@ -139,8 +132,7 @@ func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
 			")) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr, " +
 			"av.attribute_definition_id FROM " + avt.Name() + " av " +
 			"LEFT JOIN " + avkagt.Name() + " avg ON av.id = avg.attribute_value_id " +
-			"LEFT JOIN " + Tables.KeyAccessServerRegistry.Name() + " vkas ON avg.key_access_server_id = vkas.id " +
-			"LEFT JOIN " + Tables.ValueMembers.Name() + " vm ON av.id = vm.value_id LEFT JOIN " + avt.Name() + " vmv ON vm.member_id = vmv.id "
+			"LEFT JOIN " + Tables.KeyAccessServerRegistry.Name() + " vkas ON avg.key_access_server_id = vkas.id "
 		if opts.withOneValueByFqn != "" {
 			subQuery += "WHERE av.active = true "
 		}
@@ -419,42 +411,52 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.At
 	return attribute, nil
 }
 
-// Get attribute by fqn, ensuring the attribute definition and namespace are both active
-func getAttributeByFqnSQL(fqn string, opts attributesSelectOptions) (string, []interface{}, error) {
-	return attributesSelect(opts).
-		Where(sq.Eq{Tables.AttrFqn.Field("fqn"): fqn, Tables.Attributes.Field("active"): true, Tables.Namespaces.Field("active"): true}).
-		From(Tables.Attributes.Name()).
-		ToSql()
-}
-
 func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*policy.Attribute, error) {
-	// normalize to lower case
-	fqn = strings.ToLower(fqn)
-	opts := attributesSelectOptions{
-		withAttributeValues: true,
-		withKeyAccessGrants: true,
-	}
-	if strings.Contains(fqn, "/value/") {
-		opts.withOneValueByFqn = fqn
-	} else {
-		opts.withFqn = true
-	}
-	sql, args, err := getAttributeByFqnSQL(fqn, opts)
+	fullAttr, err := c.Queries.GetAttributeByDefOrValueFqn(ctx, fqn)
 	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	ns := new(policy.Namespace)
+	err = protojson.Unmarshal(fullAttr.Namespace, ns)
+	if err != nil {
+		c.logger.Error("could not unmarshal namespace", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	row, err := c.QueryRow(ctx, sql, args)
+	values, err := attributesValuesProtojson(fullAttr.Values, sql.NullString{Valid: false})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		c.logger.Error("could not unmarshal values", slog.String("error", err.Error()))
+		return nil, err
 	}
 
-	attribute, err := attributesHydrateItem(row, opts, c.logger)
-	if err != nil {
-		c.logger.Error("could not hydrate item", slog.String("fqn", fqn), slog.String("error", err.Error()))
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	m := new(common.Metadata)
+	if fullAttr.Metadata != nil {
+		err = unmarshalMetadata(fullAttr.Metadata, m, c.logger)
+		if err != nil {
+			c.logger.Error("could not unmarshal metadata", slog.String("error", err.Error()))
+			return nil, err
+		}
 	}
-	return attribute, nil
+	var grants []*policy.KeyAccessServer
+	if fullAttr.DefinitionGrants != nil {
+		grants, err = db.KeyAccessServerProtoJSON(fullAttr.DefinitionGrants)
+		if err != nil {
+			c.logger.Error("could not unmarshal grants", slog.String("error", err.Error()))
+			return nil, err
+		}
+	}
+	return &policy.Attribute{
+		Id:        fullAttr.ID,
+		Name:      fullAttr.Name,
+		Rule:      attributesRuleTypeEnumTransformOut(string(fullAttr.Rule)),
+		Fqn:       fullAttr.DefinitionFqn,
+		Active:    &wrapperspb.BoolValue{Value: fullAttr.Active},
+		Grants:    grants,
+		Metadata:  m,
+		Namespace: ns,
+		Values:    values,
+	}, nil
 }
 
 func getAttributesByNamespaceSQL(namespaceID string, opts attributesSelectOptions) (string, []interface{}, error) {

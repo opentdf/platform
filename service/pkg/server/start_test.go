@@ -90,10 +90,6 @@ func TestStartTestSuite(t *testing.T) {
 	suite.Run(t, new(StartTestSuite))
 }
 
-func (suite *StartTestSuite) BeforeTest(_, _ string) {
-	serviceregistry.RegisteredServices = make(serviceregistry.NamespaceMap)
-}
-
 func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Response() {
 	t := suite.T()
 	s, err := mockOpenTDFServer()
@@ -113,17 +109,17 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Res
 			return mux.HandlePath(http.MethodGet, "/healthz", t.TestHandler)
 		},
 	})
-	err = registerTestService()
-	require.NoError(t, err)
 
+	registry := serviceregistry.NewServiceRegistry()
+	err = registry.RegisterService(registerTestService, "test")
+	suite.Require().NoError(err)
 	// Start services with test service
-	_, _, err = startServices(context.Background(), config.Config{
+	err = startServices(context.Background(), config.Config{
+		Mode: []string{"all"},
 		Services: map[string]serviceregistry.ServiceConfig{
-			"test": {
-				Enabled: true,
-			},
+			"test": {},
 		},
-	}, s, nil, logger)
+	}, s, nil, logger, registry)
 	require.NoError(t, err)
 
 	s.Start()

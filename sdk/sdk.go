@@ -205,10 +205,6 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 		return c.customAccessTokenSource, nil
 	}
 
-	if (c.clientCredentials == nil) != (c.tokenEndpoint == "") {
-		return nil, errors.New("either both or neither of client credentials and token endpoint must be specified")
-	}
-
 	// at this point we have either both client credentials and a token endpoint or none of the above. if we don't have
 	// any just return a KAS client that can only get public keys
 	if c.clientCredentials == nil {

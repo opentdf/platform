@@ -79,33 +79,7 @@ func NewResourceLocator(url string) (*ResourceLocator, error) {
 
 func NewResourceLocatorFromReader(reader io.Reader) (*ResourceLocator, error) {
 	rl := &ResourceLocator{}
-	oneByte := make([]byte, 1)
-
-	_, err := reader.Read(oneByte)
-	if err != nil {
-		return rl, err
-	}
-	rl.protocol = protocolHeader(oneByte[0])
-
-	_, err = reader.Read(oneByte)
-	if err != nil {
-		return rl, err
-	}
-	// body
-	l := oneByte[0]
-	body := make([]byte, l)
-	_, err = reader.Read(body)
-	if err != nil {
-		return rl, err
-	}
-	rl.body = string(body)
-	// identifier
-	identifier := make([]byte, rl.protocol.identifierLength())
-	_, err = reader.Read(identifier)
-	if err != nil {
-		return rl, err
-	}
-	rl.identifier = string(identifier)
+	err := rl.readResourceLocator(reader)
 	return rl, err
 }
 
@@ -176,14 +150,14 @@ func (rl ResourceLocator) GetIdentifier() (string, error) {
 	// read the identifier if it exists
 	switch rl.protocol & 0xf0 {
 	case identifierNone, urlProtocolHTTPS:
-		return "", fmt.Errorf("legacy resource locator identifer: %d", rl.protocol)
+		return "", fmt.Errorf("legacy resource locator identifer: %x", rl.protocol)
 	case identifier2Byte, identifier8Byte, identifier32Byte:
 		if rl.identifier == "" {
 			return "", fmt.Errorf("no resource locator identifer: %d", rl.protocol)
 		}
 		return rl.identifier, nil
 	}
-	return "", fmt.Errorf("unsupported identifer protocol: %d", rl.protocol)
+	return "", fmt.Errorf("unsupported identifer protocol: %x", rl.protocol)
 }
 
 // setURL - Store a fully qualified protocol+body string into a ResourceLocator as a protocol value and a body string
@@ -218,7 +192,7 @@ func (rl ResourceLocator) GetURL() (string, error) {
 	case urlProtocolHTTP:
 		return kPrefixHTTP + rl.body, nil
 	default:
-		return "", fmt.Errorf("unsupported protocol: %d", rl.protocol)
+		return "", fmt.Errorf("unsupported protocol: %x", rl.protocol)
 	}
 }
 

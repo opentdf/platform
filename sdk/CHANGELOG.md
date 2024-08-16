@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.7](https://github.com/opentdf/platform/compare/sdk/v0.3.6...sdk/v0.3.7) (2024-08-16)
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1367](https://github.com/opentdf/platform/issues/1367)) ([689e719](https://github.com/opentdf/platform/commit/689e719d357e9626b4eb049fc530673decc163a8))
+* **sdk:** align sdk with platform modes ([#1328](https://github.com/opentdf/platform/issues/1328)) ([88ca6f7](https://github.com/opentdf/platform/commit/88ca6f7458930b753756606b670a5c36bddf818c))
+
 ## [0.3.6](https://github.com/opentdf/platform/compare/sdk/v0.3.5...sdk/v0.3.6) (2024-08-13)
 
 

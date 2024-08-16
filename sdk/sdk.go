@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -205,10 +204,9 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 		return c.customAccessTokenSource, nil
 	}
 
-	// at this point we have either both client credentials and a token endpoint or none of the above. if we don't have
-	// any just return a KAS client that can only get public keys
+	// If we don't have client-credentials, just return a KAS client that can only get public keys.
+	// There are uses for uncredentialed clients (i.e. consuming the well-known configuration).
 	if c.clientCredentials == nil {
-		slog.Info("no client credentials provided. GRPC requests to KAS and services will not be authenticated.")
 		return nil, nil //nolint:nilnil // not having credentials is not an error
 	}
 

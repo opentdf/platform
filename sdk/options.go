@@ -93,7 +93,7 @@ func WithTokenEndpoint(tokenEndpoint string) Option {
 	}
 }
 
-func withCustomAccessTokenSource(a auth.AccessTokenSource) Option {
+func WithCustomAccessTokenSource(a auth.AccessTokenSource) Option {
 	return func(c *config) {
 		c.customAccessTokenSource = a
 	}

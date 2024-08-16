@@ -1288,7 +1288,7 @@ func (s *TDFSuite) startBackend() {
 
 	sdk, err := New("localhost:65432",
 		WithClientCredentials("test", "test", nil),
-		withCustomAccessTokenSource(&ats),
+		WithCustomAccessTokenSource(&ats),
 		WithTokenEndpoint("http://localhost:65432/auth/token"),
 		WithInsecurePlaintextConn(),
 		WithExtraDialOptions(grpc.WithContextDialer(dialer)))

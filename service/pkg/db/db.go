@@ -63,17 +63,17 @@ type PgxIface interface {
 }
 
 type Config struct {
-	Host          string `yaml:"host" default:"localhost"`
-	Port          int    `yaml:"port" default:"5432"`
-	Database      string `yaml:"database" default:"opentdf"`
-	User          string `yaml:"user" default:"postgres"`
-	Password      string `yaml:"password" default:"changeme" masq:"secret"`
-	RunMigrations bool   `yaml:"runMigrations" default:"true"`
-	SSLMode       string `yaml:"sslmode" default:"prefer"`
-	Schema        string `yaml:"schema" default:"opentdf"`
+	Host          string `mapstructure:"host" default:"localhost"`
+	Port          int    `mapstructure:"port" default:"5432"`
+	Database      string `mapstructure:"database" default:"opentdf"`
+	User          string `mapstructure:"user" default:"postgres"`
+	Password      string `mapstructure:"password" default:"changeme" masq:"secret"`
+	RunMigrations bool   `mapstructure:"runMigrations" default:"true"`
+	SSLMode       string `mapstructure:"sslmode" default:"prefer"`
+	Schema        string `mapstructure:"schema" default:"opentdf"`
 
-	VerifyConnection bool `yaml:"verifyConnection" default:"true"`
-	MigrationsFS     *embed.FS
+	VerifyConnection bool      `mapstructure:"verifyConnection" default:"true"`
+	MigrationsFS     *embed.FS `mapstructure:"-"`
 }
 
 /*

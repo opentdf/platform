@@ -9,6 +9,7 @@ import (
 
 	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
+	"github.com/mitchellh/mapstructure"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -38,7 +39,7 @@ type Config struct {
 	SDKConfig SDKConfig `mapstructure:"sdk_config"`
 
 	// Services represents the configuration settings for the services.
-	Services map[string]serviceregistry.ServiceConfig `mapstructure:"services"`
+	Services map[string]serviceregistry.ServiceConfig `mapstructure:"services" masq:"secret"`
 }
 
 // SDKConfig represents the configuration for the SDK.
@@ -55,7 +56,7 @@ type SDKConfig struct {
 
 	// ClientSecret is the client secret used for client credentials grant.
 	// It is required together with ClientID.
-	ClientSecret string `mapstructure:"client_secret" validate:"required_with=ClientID"`
+	ClientSecret string `mapstructure:"client_secret" validate:"required_with=ClientID" masq:"secret"`
 }
 
 type Error string
@@ -122,20 +123,23 @@ func LoadConfig(key, file string) (*Config, error) {
 	return config, nil
 }
 
-// func (c *Config) LogValue() slog.Value {
-// 	redactedConfig := util.RedactSensitiveData(c)
-// 	var values []slog.Attr
-// 	v := reflect.ValueOf(redactedConfig).Elem()
-// 	t := v.Type()
+func (c *Config) LogValue() slog.Value {
+	dbMap := make(map[string]interface{})
+	loggerMap := make(map[string]interface{})
+	serverMap := make(map[string]interface{})
+	sdkConfigMap := make(map[string]interface{})
 
-// 	for i := 0; i < v.NumField(); i++ {
-// 		field := v.Field(i)
-// 		fieldType := t.Field(i)
-// 		key := fieldType.Tag.Get("yaml")
-// 		if key == "" {
-// 			key = fieldType.Name
-// 		}
-// 		values = append(values, slog.String(key, util.StructToString(field)))
-// 	}
-// 	return slog.GroupValue(values...)
-// }
+	mapstructure.Decode(c.DB, &dbMap)
+	mapstructure.Decode(c.Logger, &loggerMap)
+	mapstructure.Decode(c.Server, &serverMap)
+	mapstructure.Decode(c.SDKConfig, &sdkConfigMap)
+
+	return slog.GroupValue(
+		slog.Bool("dev_mode", c.DevMode),
+		slog.Any("db", dbMap),
+		slog.Any("logger", loggerMap),
+		slog.Any("mode", c.Mode),
+		slog.Any("sdk_config", sdkConfigMap),
+		slog.Any("server", serverMap),
+	)
+}

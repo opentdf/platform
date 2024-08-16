@@ -37,9 +37,9 @@ type Logger struct {
 }
 
 type Config struct {
-	Level  string `yaml:"level" default:"info"`
-	Output string `yaml:"output" default:"stdout"`
-	Type   string `yaml:"type" default:"json"`
+	Level  string `mapstructure:"level" default:"info"`
+	Output string `mapstructure:"output" default:"stdout"`
+	Type   string `mapstructure:"type" default:"json"`
 }
 
 const (

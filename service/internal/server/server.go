@@ -48,15 +48,15 @@ func (e Error) Error() string {
 
 // Configurations for the server
 type Config struct {
-	Auth                    auth.Config     `yaml:"auth"`
-	GRPC                    GRPCConfig      `yaml:"grpc"`
-	CryptoProvider          security.Config `yaml:"cryptoProvider"`
-	TLS                     TLSConfig       `yaml:"tls"`
-	CORS                    CORSConfig      `yaml:"cors"`
-	WellKnownConfigRegister func(namespace string, config any) error
+	Auth                    auth.Config                              `mapstructure:"auth"`
+	GRPC                    GRPCConfig                               `mapstructure:"grpc"`
+	CryptoProvider          security.Config                          `mapstructure:"cryptoProvider"`
+	TLS                     TLSConfig                                `mapstructure:"tls"`
+	CORS                    CORSConfig                               `mapstructure:"cors"`
+	WellKnownConfigRegister func(namespace string, config any) error `mapstructure:"-"`
 	// Port to listen on
-	Port int    `yaml:"port" default:"8080"`
-	Host string `yaml:"host,omitempty"`
+	Port int    `mapstructure:"port" default:"8080"`
+	Host string `mapstructure:"host,omitempty"`
 	// Enable pprof
 	EnablePprof bool `mapstructure:"enable_pprof" default:"false"`
 }
@@ -64,32 +64,32 @@ type Config struct {
 // GRPC Server specific configurations
 type GRPCConfig struct {
 	// Enable reflection for grpc server (default: true)
-	ReflectionEnabled bool `yaml:"reflectionEnabled" default:"true"`
+	ReflectionEnabled bool `mapstructure:"reflectionEnabled" default:"true"`
 
-	MaxCallRecvMsgSizeBytes int `yaml:"maxCallRecvMsgSize" default:"4194304"` // 4MB = 4 * 1024 * 1024 = 4194304
-	MaxCallSendMsgSizeBytes int `yaml:"maxCallSendMsgSize" default:"4194304"` // 4MB = 4 * 1024 * 1024 = 4194304
+	MaxCallRecvMsgSizeBytes int `mapstructure:"maxCallRecvMsgSize" default:"4194304"` // 4MB = 4 * 1024 * 1024 = 4194304
+	MaxCallSendMsgSizeBytes int `mapstructure:"maxCallSendMsgSize" default:"4194304"` // 4MB = 4 * 1024 * 1024 = 4194304
 }
 
 // TLS Configuration for the server
 type TLSConfig struct {
 	// Enable TLS for the server (default: false)
-	Enabled bool `yaml:"enabled" default:"false"`
+	Enabled bool `mapstructure:"enabled" default:"false"`
 	// Path to the certificate file
-	Cert string `yaml:"cert"`
+	Cert string `mapstructure:"cert"`
 	// Path to the key file
-	Key string `yaml:"key"`
+	Key string `mapstructure:"key"`
 }
 
 // CORS Configuration for the server
 type CORSConfig struct {
 	// Enable CORS for the server (default: true)
-	Enabled          bool     `yaml:"enabled" default:"true"`
-	AllowedOrigins   []string `yaml:"allowedorigins"`
-	AllowedMethods   []string `yaml:"allowedmethods"`
-	AllowedHeaders   []string `yaml:"allowedheaders"`
-	ExposedHeaders   []string `yaml:"exposedheaders"`
-	AllowCredentials bool     `yaml:"allowcredentials" default:"true"`
-	MaxAge           int      `yaml:"maxage" default:"3600"`
+	Enabled          bool     `mapstructure:"enabled" default:"true"`
+	AllowedOrigins   []string `mapstructure:"allowedorigins"`
+	AllowedMethods   []string `mapstructure:"allowedmethods"`
+	AllowedHeaders   []string `mapstructure:"allowedheaders"`
+	ExposedHeaders   []string `mapstructure:"exposedheaders"`
+	AllowCredentials bool     `mapstructure:"allowcredentials" default:"true"`
+	MaxAge           int      `mapstructure:"maxage" default:"3600"`
 }
 
 type OpenTDFServer struct {
@@ -271,7 +271,7 @@ func pprofHandler(h http.Handler) http.Handler {
 // httpGrpcHandlerFunc returns a http.Handler that delegates to the grpc server if the request is a grpc request
 func httpGrpcHandlerFunc(h http.Handler, g *grpc.Server, l *logger.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		l.Debug("grpc handler func", slog.Int("proto_major", r.ProtoMajor), slog.String("content_type", r.Header.Get("Content-Type")))
+		l.TraceContext(r.Context(), "grpc handler func", slog.Int("proto_major", r.ProtoMajor), slog.String("content_type", r.Header.Get("Content-Type")))
 		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
 			g.ServeHTTP(w, r)
 		} else {

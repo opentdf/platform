@@ -23,9 +23,9 @@ const (
 type StandardConfig struct {
 	Keys []KeyPairInfo `mapstructure:"keys"`
 	// Deprecated
-	RSAKeys map[string]StandardKeyInfo `yaml:"rsa,omitempty" mapstructure:"rsa"`
+	RSAKeys map[string]StandardKeyInfo `mapstructure:"rsa,omitempty"`
 	// Deprecated
-	ECKeys map[string]StandardKeyInfo `yaml:"ec,omitempty" mapstructure:"ec"`
+	ECKeys map[string]StandardKeyInfo `mapstructure:"ec,omitempty"`
 }
 
 type KeyPairInfo struct {
@@ -46,8 +46,8 @@ type KeyPairInfo struct {
 }
 
 type StandardKeyInfo struct {
-	PrivateKeyPath string `yaml:"private_key_path" mapstructure:"private_key_path"`
-	PublicKeyPath  string `yaml:"public_key_path" mapstructure:"public_key_path"`
+	PrivateKeyPath string `mapstructure:"private_key_path"`
+	PublicKeyPath  string `mapstructure:"public_key_path"`
 }
 
 type StandardRSACrypto struct {

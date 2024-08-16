@@ -24,7 +24,7 @@ type config struct {
 	scopes                  []string
 	extraDialOptions        []grpc.DialOption
 	certExchange            *oauth.CertExchangeInfo
-	platformConfiguration   PlatformConfiguration
+	PlatformConfiguration   PlatformConfiguration
 	kasSessionKey           *ocrypto.RsaKeyPair
 	dpopKey                 *ocrypto.RsaKeyPair
 	ipc                     bool
@@ -164,7 +164,7 @@ func WithCustomWellknownConnection(conn *grpc.ClientConn) Option {
 // Use this option with caution, as it may lead to unexpected behavior
 func WithPlatformConfiguration(platformConfiguration PlatformConfiguration) Option {
 	return func(c *config) {
-		c.platformConfiguration = platformConfiguration
+		c.PlatformConfiguration = platformConfiguration
 	}
 }
 

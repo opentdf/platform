@@ -150,21 +150,21 @@ message SubjectMapping {
 }
 
 /**
-  A Condition defines a rule of <the value at the flattened 'selector value' location> <operator> <subject external values>
+   A Condition defines a rule of <the value at the flattened 'selector value' location> <operator> <subject external values>
 
-  Example:  Subjects with a field selected by the flattened selector "'.division'" and a value of "Accounting" or "Marketing":
-   {
-     "subject_external_selector_value": "'.division'",
-     "operator": "SUBJECT_MAPPING_OPERATOR_ENUM_IN",
-     "subject_external_values" : ["Accounting", "Marketing"]
-   }
+   Example:  Subjects with a field selected by the flattened selector "'.division'" and a value of "Accounting" or "Marketing":
+    {
+      "subject_external_selector_value": "'.division'",
+      "operator": "SUBJECT_MAPPING_OPERATOR_ENUM_IN",
+      "subject_external_values" : ["Accounting", "Marketing"]
+    }
 
-   Example: Subjects that are not part of the Fantastic Four according to their alias field:
-   {
-     "subject_external_selector_value": "'.data[0].alias'",
-     "operator": "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN",
-     "subject_external_values" : ["mister_fantastic", "the_thing", "human_torch", "invisible_woman"]
-   }
+    Example: Subjects that are not part of the Fantastic Four according to their alias field:
+    {
+      "subject_external_selector_value": "'.data[0].alias'",
+      "operator": "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN",
+      "subject_external_values" : ["mister_fantastic", "the_thing", "human_torch", "invisible_woman"]
+    }
 */
 message Condition {
   // a selector for a field value on a flattened Entity Representation (such as from idP/LDAP)
@@ -269,16 +269,46 @@ message KeyAccessServer {
   common.Metadata metadata = 100;
 }
 
+enum KasPublicKeyAlgEnum {
+  KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED = 0;
+  KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048 = 1;
+  reserved 2 to 4;
+  KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1 = 5;
+  reserved 6 to 100;
+}
+
+// A KAS public key and some associated metadata for further identifcation
+message KasPublicKey {
+  // x509 ASN.1 content in PEM envelope, usually
+  string pem = 1;
+
+  // A unique string identifier for this key
+  string kid = 2;
+
+  // A known algorithm type with any additional parameters encoded.
+  // To start, these may be `rsa:2048` for encrypting ZTDF files and 
+  // `ec:secp256r1` for nanoTDF, but more formats may be added as needed.
+  KasPublicKeyAlgEnum alg = 3;
+}
+
+// A list of known KAS public keys
+message KasPublicKeySet {
+  repeated KasPublicKey keys = 1;
+}
+
 message PublicKey {
   oneof public_key {
     // kas public key url - optional since can also be retrieved via public key
     string remote = 1 [(buf.validate.field).cel = {
-      id: "uri_format",
-      message: "URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
+      id: "uri_format"
+      message: "URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes."
       expression: "this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')"
     }];
 
     // public key - optional since can also be retrieved via url
     string local = 2;
+
+    // public key with additional information. Current preferred version
+    KasPublicKeySet cached = 3;
   }
 }

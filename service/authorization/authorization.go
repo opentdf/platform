@@ -264,7 +264,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 
 				//nolint:nestif // handle empty entity / attr list
 				if len(entities) == 0 || len(allPertinentFqnsRA.GetAttributeValueFqns()) == 0 {
-					as.logger.WarnContext(ctx, "Empty entity list and/or entity data attribute list")
+					as.logger.WarnContext(ctx, "empty entity list and/or entity data attribute list")
 				} else {
 					ecEntitlements, err := as.GetEntitlements(ctx, &req)
 					if err != nil {
@@ -304,7 +304,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 				)
 				if err != nil {
 					// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
-					return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("extra", "DetermineAccess request to Access PDP failed"))
+					return nil, db.StatusifyError(errors.New("could not determine access"), "could not determine access", slog.String("error", err.Error()))
 				}
 				// check the decisions
 				decision := authorization.DecisionResponse_DECISION_PERMIT
@@ -500,22 +500,22 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 
 	// I am not sure how we would end up with multiple results but lets return an empty entitlement set for now
 	if len(results) > 1 {
-		as.logger.WarnContext(ctx, "multiple entitlement results", slog.String("results", fmt.Sprintf("%+v", results)))
+		as.logger.WarnContext(ctx, "multiple entitlement results", slog.Any("results", results))
 		return rsp, nil
 	}
 
 	// If we get no expressions then we assume that the entity is not entitled to anything
 	if len(results[0].Expressions) == 0 {
-		as.logger.WarnContext(ctx, "no entitlement expressions", slog.String("results", fmt.Sprintf("%+v", results)))
+		as.logger.WarnContext(ctx, "no entitlement expressions", slog.Any("results", results))
 		return rsp, nil
 	}
 
 	resultsEntitlements, entitlementsMapOk := results[0].Expressions[0].Value.(map[string]interface{})
 	if !entitlementsMapOk {
-		as.logger.ErrorContext(ctx, "entitlements is not a map[string]interface", slog.String("value", fmt.Sprintf("%+v", resultsEntitlements)))
+		as.logger.ErrorContext(ctx, "entitlements is not a map[string]interface", slog.Any("value", resultsEntitlements))
 		return rsp, nil
 	}
-	as.logger.DebugContext(ctx, "opa results", "results", fmt.Sprintf("%+v", results))
+	as.logger.DebugContext(ctx, "rego results", slog.Any("results", results))
 	for idx, entity := range req.GetEntities() {
 		// Ensure the entity has an ID
 		entityID := entity.GetId()
@@ -525,7 +525,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		// Check to maksure if the value is a list. Good validation if someone customizes the rego policy
 		entityEntitlements, valueListOk := resultsEntitlements[entityID].([]interface{})
 		if !valueListOk {
-			as.logger.ErrorContext(ctx, "entitlements is not a map[string]interface", slog.String("value", fmt.Sprintf("%+v", resultsEntitlements)))
+			as.logger.ErrorContext(ctx, "entitlements is not a map[string]interface", slog.Any("value", resultsEntitlements))
 			return rsp, nil
 		}
 

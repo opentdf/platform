@@ -9,7 +9,7 @@ import (
 
 // AuthConfig pulls AuthN and AuthZ together
 type Config struct {
-	Enabled      bool     `mapstructure:"enabled" default:"true" `
+	Enabled      bool     `mapstructure:"enabled" json:"enabled" default:"true" `
 	PublicRoutes []string `mapstructure:"-"`
 	AuthNConfig  `mapstructure:",squash"`
 }

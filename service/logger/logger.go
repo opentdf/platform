@@ -37,9 +37,9 @@ type Logger struct {
 }
 
 type Config struct {
-	Level  string `mapstructure:"level" default:"info"`
-	Output string `mapstructure:"output" default:"stdout"`
-	Type   string `mapstructure:"type" default:"json"`
+	Level  string `mapstructure:"level" json:"level" default:"info"`
+	Output string `mapstructure:"output" json:"output" default:"stdout"`
+	Type   string `mapstructure:"type" json:"type" default:"json"`
 }
 
 const (
@@ -145,6 +145,7 @@ func CreateTestLogger() *Logger {
 	return logger
 }
 
+// TODO: We can filter by keys if we need to in the future so they don't get proccessed by the masqer
 func (l *Logger) replaceAttrChain(groups []string, a slog.Attr) slog.Attr {
 	attr := audit.ReplaceAttrAuditLevel(groups, a)
 

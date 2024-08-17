@@ -8,11 +8,10 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"net/netip"
 	"strings"
 	"time"
-
-	"net/http/pprof"
 
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/go-chi/cors"
@@ -48,17 +47,17 @@ func (e Error) Error() string {
 
 // Configurations for the server
 type Config struct {
-	Auth                    auth.Config                              `mapstructure:"auth"`
-	GRPC                    GRPCConfig                               `mapstructure:"grpc"`
-	CryptoProvider          security.Config                          `mapstructure:"cryptoProvider"`
-	TLS                     TLSConfig                                `mapstructure:"tls"`
-	CORS                    CORSConfig                               `mapstructure:"cors"`
-	WellKnownConfigRegister func(namespace string, config any) error `mapstructure:"-"`
+	Auth                    auth.Config                              `mapstructure:"auth" json:"auth"`
+	GRPC                    GRPCConfig                               `mapstructure:"grpc" json:"grpc"`
+	CryptoProvider          security.Config                          `mapstructure:"cryptoProvider" json:"cryptoProvider"`
+	TLS                     TLSConfig                                `mapstructure:"tls" json:"tls"`
+	CORS                    CORSConfig                               `mapstructure:"cors" json:"cors"`
+	WellKnownConfigRegister func(namespace string, config any) error `mapstructure:"-" json:"-"`
 	// Port to listen on
-	Port int    `mapstructure:"port" default:"8080"`
-	Host string `mapstructure:"host,omitempty"`
+	Port int    `mapstructure:"port" json:"port" default:"8080"`
+	Host string `mapstructure:"host,omitempty" json:"host"`
 	// Enable pprof
-	EnablePprof bool `mapstructure:"enable_pprof" default:"false"`
+	EnablePprof bool `mapstructure:"enable_pprof" json:"enable_pprof" default:"false"`
 }
 
 func (c Config) LogValue() slog.Value {
@@ -77,32 +76,32 @@ func (c Config) LogValue() slog.Value {
 // GRPC Server specific configurations
 type GRPCConfig struct {
 	// Enable reflection for grpc server (default: true)
-	ReflectionEnabled bool `mapstructure:"reflectionEnabled" default:"true"`
+	ReflectionEnabled bool `mapstructure:"reflectionEnabled" json:"reflectionEnabled" default:"true"`
 
-	MaxCallRecvMsgSizeBytes int `mapstructure:"maxCallRecvMsgSize" default:"4194304"` // 4MB = 4 * 1024 * 1024 = 4194304
-	MaxCallSendMsgSizeBytes int `mapstructure:"maxCallSendMsgSize" default:"4194304"` // 4MB = 4 * 1024 * 1024 = 4194304
+	MaxCallRecvMsgSizeBytes int `mapstructure:"maxCallRecvMsgSize" json:"maxCallRecvMsgSize" default:"4194304"` // 4MB = 4 * 1024 * 1024 = 4194304
+	MaxCallSendMsgSizeBytes int `mapstructure:"maxCallSendMsgSize" json:"maxCallSendMsgSize" default:"4194304"` // 4MB = 4 * 1024 * 1024 = 4194304
 }
 
 // TLS Configuration for the server
 type TLSConfig struct {
 	// Enable TLS for the server (default: false)
-	Enabled bool `mapstructure:"enabled" default:"false"`
+	Enabled bool `mapstructure:"enabled" json:"enabled" default:"false"`
 	// Path to the certificate file
-	Cert string `mapstructure:"cert"`
+	Cert string `mapstructure:"cert" json:"cert"`
 	// Path to the key file
-	Key string `mapstructure:"key"`
+	Key string `mapstructure:"key" json:"key"`
 }
 
 // CORS Configuration for the server
 type CORSConfig struct {
 	// Enable CORS for the server (default: true)
-	Enabled          bool     `mapstructure:"enabled" default:"true"`
-	AllowedOrigins   []string `mapstructure:"allowedorigins"`
-	AllowedMethods   []string `mapstructure:"allowedmethods"`
-	AllowedHeaders   []string `mapstructure:"allowedheaders"`
-	ExposedHeaders   []string `mapstructure:"exposedheaders"`
-	AllowCredentials bool     `mapstructure:"allowcredentials" default:"true"`
-	MaxAge           int      `mapstructure:"maxage" default:"3600"`
+	Enabled          bool     `mapstructure:"enabled" json:"enabled" default:"true"`
+	AllowedOrigins   []string `mapstructure:"allowedorigins" json:"allowedorigins"`
+	AllowedMethods   []string `mapstructure:"allowedmethods" json:"allowedmethods"`
+	AllowedHeaders   []string `mapstructure:"allowedheaders" json:"allowedheaders"`
+	ExposedHeaders   []string `mapstructure:"exposedheaders" json:"exposedheaders"`
+	AllowCredentials bool     `mapstructure:"allowcredentials" json:"allowedcredentials" default:"true"`
+	MaxAge           int      `mapstructure:"maxage" json:"maxage" default:"3600"`
 }
 
 type OpenTDFServer struct {

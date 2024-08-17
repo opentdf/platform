@@ -3,9 +3,9 @@ package security
 import "log/slog"
 
 type Config struct {
-	Type string `mapstructure:"type" default:"standard"`
+	Type string `mapstructure:"type" json:"type" default:"standard"`
 	// StandardConfig is the configuration for the standard key provider
-	StandardConfig StandardConfig `mapstructure:"standard"`
+	StandardConfig StandardConfig `mapstructure:"standard" json:"standard"`
 }
 
 func NewCryptoProvider(cfg Config) (CryptoProvider, error) {

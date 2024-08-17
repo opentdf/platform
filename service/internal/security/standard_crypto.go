@@ -21,33 +21,33 @@ const (
 )
 
 type StandardConfig struct {
-	Keys []KeyPairInfo `mapstructure:"keys"`
+	Keys []KeyPairInfo `mapstructure:"keys" json:"keys"`
 	// Deprecated
-	RSAKeys map[string]StandardKeyInfo `mapstructure:"rsa,omitempty"`
+	RSAKeys map[string]StandardKeyInfo `mapstructure:"rsa,omitempty" json:"rsa,omitempty"`
 	// Deprecated
-	ECKeys map[string]StandardKeyInfo `mapstructure:"ec,omitempty"`
+	ECKeys map[string]StandardKeyInfo `mapstructure:"ec,omitempty" json:"ec,omitempty"`
 }
 
 type KeyPairInfo struct {
 	// Valid algorithm. May be able to be derived from Private but it is better to just say it.
-	Algorithm string `mapstructure:"alg"`
+	Algorithm string `mapstructure:"alg" json:"alg"`
 	// Key identifier. Should be short
-	KID string `mapstructure:"kid"`
+	KID string `mapstructure:"kid" json:"kid"`
 	// Implementation specific locator for private key;
 	// for 'standard' crypto service this is the path to a PEM file
-	Private string `mapstructure:"private"`
+	Private string `mapstructure:"private" json:"private"`
 	// Optional locator for the corresponding certificate.
 	// If not found, only public key (derivable from Private) is available.
-	Certificate string `mapstructure:"cert"`
+	Certificate string `mapstructure:"cert" json:"cert"`
 	// Optional enumeration of intended usages of keypair
-	Usage string `mapstructure:"usage"`
+	Usage string `mapstructure:"usage" json:"usage"`
 	// Optional long form description of key pair including purpose and life cycle information
-	Purpose string `mapstructure:"purpose"`
+	Purpose string `mapstructure:"purpose" json:"purpose"`
 }
 
 type StandardKeyInfo struct {
-	PrivateKeyPath string `mapstructure:"private_key_path"`
-	PublicKeyPath  string `mapstructure:"public_key_path"`
+	PrivateKeyPath string `mapstructure:"private_key_path" json:"private_key_path"`
+	PublicKeyPath  string `mapstructure:"public_key_path" json:"public_key_path"`
 }
 
 type StandardRSACrypto struct {

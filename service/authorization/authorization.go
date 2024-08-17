@@ -49,9 +49,9 @@ type Config struct {
 
 type CustomRego struct {
 	// Path to Rego file
-	Path string `mapstructure:"path"`
+	Path string `mapstructure:"path" json:"path"`
 	// Rego Query
-	Query string `mapstructure:"query" default:"data.opentdf.entitlements.attributes"`
+	Query string `mapstructure:"query" json:"query" default:"data.opentdf.entitlements.attributes"`
 }
 
 func NewRegistration() serviceregistry.Registration {
@@ -151,7 +151,7 @@ func (as AuthorizationService) IsReady(ctx context.Context) error {
 }
 
 func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *authorization.GetDecisionsByTokenRequest) (*authorization.GetDecisionsByTokenResponse, error) {
-	var decisionsRequests = []*authorization.DecisionRequest{}
+	decisionsRequests := []*authorization.DecisionRequest{}
 	// for each token decision request
 	for _, tdr := range req.GetDecisionRequests() {
 		ecResp, err := as.sdk.EntityResoution.CreateEntityChainFromJwt(ctx, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: tdr.GetTokens()})
@@ -171,7 +171,6 @@ func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *au
 	resp, err := as.GetDecisions(ctx, &authorization.GetDecisionsRequest{
 		DecisionRequests: decisionsRequests,
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -532,7 +531,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		// map for attributes for optional comprehensive
 		attributesMap := make(map[string]*policy.Attribute)
 		// Build array with length of results
-		var entitlements = make([]string, len(entityEntitlements))
+		entitlements := make([]string, len(entityEntitlements))
 
 		// Build entitlements list
 		for valueIDX, value := range entityEntitlements {

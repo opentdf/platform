@@ -19,43 +19,43 @@ import (
 // Config represents the configuration settings for the service.
 type Config struct {
 	// DevMode specifies whether the service is running in development mode.
-	DevMode bool `mapstructure:"dev_mode"`
+	DevMode bool `mapstructure:"dev_mode" json:"dev_mode"`
 
 	// DB represents the configuration settings for the database.
-	DB db.Config `mapstructure:"db"`
+	DB db.Config `mapstructure:"db" json:"db"`
 
 	// Server represents the configuration settings for the server.
-	Server server.Config `mapstructure:"server"`
+	Server server.Config `mapstructure:"server" json:"server"`
 
 	// Logger represents the configuration settings for the logger.
-	Logger logger.Config `mapstructure:"logger"`
+	Logger logger.Config `mapstructure:"logger" json:"logger"`
 
 	// Mode specifies which services to run.
 	// By default, it runs all services.
-	Mode []string `mapstructure:"mode" default:"[\"all\"]"`
+	Mode []string `mapstructure:"mode" json:"mode" default:"[\"all\"]"`
 
 	// SDKConfig represents the configuration settings for the SDK.
-	SDKConfig SDKConfig `mapstructure:"sdk_config"`
+	SDKConfig SDKConfig `mapstructure:"sdk_config" json:"sdk_config"`
 
 	// Services represents the configuration settings for the services.
-	Services map[string]serviceregistry.ServiceConfig `mapstructure:"services" masq:"secret"`
+	Services map[string]serviceregistry.ServiceConfig `mapstructure:"services"`
 }
 
 // SDKConfig represents the configuration for the SDK.
 type SDKConfig struct {
 	// Endpoint is the URL of the Core Platform endpoint.
-	Endpoint string `mapstructure:"endpoint"`
+	Endpoint string `mapstructure:"endpoint" json:"endpoint"`
 
 	// Plaintext specifies whether the SDK should use plaintext communication.
-	Plaintext bool `mapstructure:"plaintext" default:"false" validate:"boolean"`
+	Plaintext bool `mapstructure:"plaintext" json:"plaintext" default:"false" validate:"boolean"`
 
 	// ClientID is the client ID used for client credentials grant.
 	// It is required together with ClientSecret.
-	ClientID string `mapstructure:"client_id" validate:"required_with=ClientSecret"`
+	ClientID string `mapstructure:"client_id" json:"client_id" validate:"required_with=ClientSecret"`
 
 	// ClientSecret is the client secret used for client credentials grant.
 	// It is required together with ClientID.
-	ClientSecret string `mapstructure:"client_secret" validate:"required_with=ClientID" masq:"secret"`
+	ClientSecret string `mapstructure:"client_secret" json:"client_secret" validate:"required_with=ClientID" masq:"secret"`
 }
 
 type Error string

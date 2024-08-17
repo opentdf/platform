@@ -20,33 +20,37 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-const ErrTextCreationFailed = "resource creation failed"
-const ErrTextGetRetrievalFailed = "resource retrieval failed"
-const ErrTextNotFound = "resource not found"
+const (
+	ErrTextCreationFailed     = "resource creation failed"
+	ErrTextGetRetrievalFailed = "resource retrieval failed"
+	ErrTextNotFound           = "resource not found"
+)
 
-const ClientJwtSelector = "azp"
-const UsernameJwtSelector = "preferred_username"
+const (
+	ClientJwtSelector   = "azp"
+	UsernameJwtSelector = "preferred_username"
+)
 
 const serviceAccountUsernamePrefix = "service-account-"
 
 type KeycloakConfig struct {
-	URL            string                 `mapstructure:"url"`
-	Realm          string                 `mapstructure:"realm"`
-	ClientID       string                 `mapstructure:"clientid"`
-	ClientSecret   string                 `mapstructure:"clientsecret" masq:"secret"`
-	LegacyKeycloak bool                   `mapstructure:"legacykeycloak" default:"false"`
-	SubGroups      bool                   `mapstructure:"subgroups" default:"false"`
-	InferID        InferredIdentityConfig `mapstructure:"inferid,omitempty"`
+	URL            string                 `mapstructure:"url" json:"url"`
+	Realm          string                 `mapstructure:"realm" json:"realm"`
+	ClientID       string                 `mapstructure:"clientid" json:"clientid"`
+	ClientSecret   string                 `mapstructure:"clientsecret" json:"clientsecret" masq:"secret"`
+	LegacyKeycloak bool                   `mapstructure:"legacykeycloak" json:"legacykeycloak" default:"false"`
+	SubGroups      bool                   `mapstructure:"subgroups" json:"subgroups" default:"false"`
+	InferID        InferredIdentityConfig `mapstructure:"inferid,omitempty" json:"inferid,omitempty"`
 }
 
 type InferredIdentityConfig struct {
-	From EntityImpliedFrom `mapstructure:"from,omitempty"`
+	From EntityImpliedFrom `mapstructure:"from,omitempty" json:"from,omitempty"`
 }
 
 type EntityImpliedFrom struct {
-	ClientID bool `mapstructure:"clientid,omitempty"`
-	Email    bool `mapstructure:"email,omitempty"`
-	Username bool `mapstructure:"username,omitempty"`
+	ClientID bool `mapstructure:"clientid,omitempty" json:"clientid,omitempty"`
+	Email    bool `mapstructure:"email,omitempty" json:"email,omitempty"`
+	Username bool `mapstructure:"username,omitempty" json:"username,omitempty"`
 }
 
 type KeyCloakConnector struct {
@@ -60,7 +64,7 @@ func CreateEntityChainFromJwt(
 	kcConfig KeycloakConfig,
 	logger *logger.Logger,
 ) (entityresolution.CreateEntityChainFromJwtResponse, error) {
-	var entityChains = []*authorization.EntityChain{}
+	entityChains := []*authorization.EntityChain{}
 	// for each token in the tokens form an entity chain
 	for _, tok := range req.GetTokens() {
 		entities, err := getEntitiesFromToken(ctx, kcConfig, tok.GetJwt(), logger)
@@ -74,7 +78,8 @@ func CreateEntityChainFromJwt(
 }
 
 func EntityResolution(ctx context.Context,
-	req *entityresolution.ResolveEntitiesRequest, kcConfig KeycloakConfig, logger *logger.Logger) (entityresolution.ResolveEntitiesResponse, error) {
+	req *entityresolution.ResolveEntitiesRequest, kcConfig KeycloakConfig, logger *logger.Logger,
+) (entityresolution.ResolveEntitiesResponse, error) {
 	connector, err := getKCClient(ctx, kcConfig, logger)
 	if err != nil {
 		return entityresolution.ResolveEntitiesResponse{},
@@ -109,7 +114,7 @@ func EntityResolution(ctx context.Context,
 					return entityresolution.ResolveEntitiesResponse{},
 						status.Error(codes.Internal, ErrTextCreationFailed)
 				}
-				var mystruct, structErr = structpb.NewStruct(json)
+				mystruct, structErr := structpb.NewStruct(json)
 				if structErr != nil {
 					logger.Error("error making struct!", slog.String("error", structErr.Error()))
 					return entityresolution.ResolveEntitiesResponse{},
@@ -234,7 +239,7 @@ func EntityResolution(ctx context.Context,
 				return entityresolution.ResolveEntitiesResponse{},
 					status.Error(codes.Internal, ErrTextCreationFailed)
 			}
-			var mystruct, structErr = structpb.NewStruct(json)
+			mystruct, structErr := structpb.NewStruct(json)
 			if structErr != nil {
 				logger.Error("error making struct!", slog.Any("error", err))
 				return entityresolution.ResolveEntitiesResponse{},
@@ -251,7 +256,8 @@ func EntityResolution(ctx context.Context,
 			resolvedEntities,
 			&entityresolution.EntityRepresentation{
 				OriginalId:      originialID,
-				AdditionalProps: jsonEntities},
+				AdditionalProps: jsonEntities,
+			},
 		)
 		logger.Debug("entities", slog.Any("resolved", resolvedEntities))
 	}
@@ -341,8 +347,8 @@ func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtStrin
 	if err != nil {
 		return nil, errors.New("error getting claims from jwt")
 	}
-	var entities = []*authorization.Entity{}
-	var entityID = 0
+	entities := []*authorization.Entity{}
+	entityID := 0
 
 	// extract azp
 	extractedValue, okExtract := claims[ClientJwtSelector]
@@ -356,7 +362,8 @@ func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtStrin
 	entities = append(entities, &authorization.Entity{
 		EntityType: &authorization.Entity_ClientId{ClientId: extractedValueCasted},
 		Id:         fmt.Sprintf("jwtentity-%d", entityID),
-		Category:   authorization.Entity_CATEGORY_ENVIRONMENT})
+		Category:   authorization.Entity_CATEGORY_ENVIRONMENT,
+	})
 	entityID++
 
 	extractedValueUsername, okExp := claims[UsernameJwtSelector]
@@ -378,19 +385,22 @@ func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtStrin
 			entities = append(entities, &authorization.Entity{
 				EntityType: &authorization.Entity_ClientId{ClientId: clientid},
 				Id:         fmt.Sprintf("jwtentity-%d", entityID),
-				Category:   authorization.Entity_CATEGORY_SUBJECT})
+				Category:   authorization.Entity_CATEGORY_SUBJECT,
+			})
 		} else {
 			// if the returned clientId is empty, no client found, its not a serive account proceed with username
 			entities = append(entities, &authorization.Entity{
 				EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted},
 				Id:         fmt.Sprintf("jwtentity-%d", entityID),
-				Category:   authorization.Entity_CATEGORY_SUBJECT})
+				Category:   authorization.Entity_CATEGORY_SUBJECT,
+			})
 		}
 	} else {
 		entities = append(entities, &authorization.Entity{
 			EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted},
 			Id:         fmt.Sprintf("jwtentity-%d", entityID),
-			Category:   authorization.Entity_CATEGORY_SUBJECT})
+			Category:   authorization.Entity_CATEGORY_SUBJECT,
+		})
 	}
 
 	return entities, nil

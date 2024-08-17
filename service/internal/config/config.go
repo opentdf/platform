@@ -55,7 +55,7 @@ type SDKConfig struct {
 
 	// ClientSecret is the client secret used for client credentials grant.
 	// It is required together with ClientID.
-	ClientSecret string `mapstructure:"client_secret" json:"client_secret" validate:"required_with=ClientID" masq:"secret"`
+	ClientSecret string `mapstructure:"client_secret" json:"client_secret" validate:"required_with=ClientID"`
 }
 
 type Error string
@@ -132,5 +132,14 @@ func (c *Config) LogValue() slog.Value {
 		slog.Any("mode", c.Mode),
 		slog.Any("sdk_config", c.SDKConfig),
 		slog.Any("server", c.Server),
+	)
+}
+
+func (c SDKConfig) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("endpoint", c.Endpoint),
+		slog.Bool("plaintext", c.Plaintext),
+		slog.String("client_id", c.ClientID),
+		slog.String("client_secret", "[REDACTED]"),
 	)
 }

@@ -37,10 +37,22 @@ type KeycloakConfig struct {
 	URL            string                 `mapstructure:"url" json:"url"`
 	Realm          string                 `mapstructure:"realm" json:"realm"`
 	ClientID       string                 `mapstructure:"clientid" json:"clientid"`
-	ClientSecret   string                 `mapstructure:"clientsecret" json:"clientsecret" masq:"secret"`
+	ClientSecret   string                 `mapstructure:"clientsecret" json:"clientsecret"`
 	LegacyKeycloak bool                   `mapstructure:"legacykeycloak" json:"legacykeycloak" default:"false"`
 	SubGroups      bool                   `mapstructure:"subgroups" json:"subgroups" default:"false"`
 	InferID        InferredIdentityConfig `mapstructure:"inferid,omitempty" json:"inferid,omitempty"`
+}
+
+func (c KeycloakConfig) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("url", c.URL),
+		slog.String("realm", c.Realm),
+		slog.String("clientid", c.ClientID),
+		slog.String("clientsecret", "[REDACTED]"),
+		slog.Bool("legacykeycloak", c.LegacyKeycloak),
+		slog.Bool("subgroups", c.SubGroups),
+		slog.Any("inferid", c.InferID),
+	)
 }
 
 type InferredIdentityConfig struct {

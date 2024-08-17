@@ -1,6 +1,6 @@
 module github.com/opentdf/platform/service
 
-go 1.22
+go 1.21
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
@@ -17,7 +17,6 @@ require (
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.5.5
 	github.com/lestrrat-go/jwx/v2 v2.0.21
-	github.com/m-mizutani/masq v0.1.8
 	github.com/open-policy-agent/opa v0.63.0
 	github.com/opentdf/platform/lib/fixtures v0.2.7
 	github.com/opentdf/platform/lib/flattening v0.1.1

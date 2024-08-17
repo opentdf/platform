@@ -26,14 +26,12 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/m-mizutani/masq"
 	"github.com/opentdf/platform/service/logger/audit"
 )
 
 type Logger struct {
 	*slog.Logger
-	Audit  *audit.Logger
-	masqer func(groups []string, a slog.Attr) slog.Attr
+	Audit *audit.Logger
 }
 
 type Config struct {
@@ -48,7 +46,7 @@ const (
 
 func NewLogger(config Config) (*Logger, error) {
 	var sLogger *slog.Logger
-	var logger = new(Logger)
+	logger := new(Logger)
 
 	w, err := getWriter(config)
 	if err != nil {
@@ -86,13 +84,8 @@ func NewLogger(config Config) (*Logger, error) {
 	auditLoggerBase := slog.New(auditLoggerHandler)
 	auditLogger := audit.CreateAuditLogger(*auditLoggerBase)
 
-	masqer := masq.New(
-		masq.WithTag("secret"),
-	)
-
 	logger.Logger = sLogger
 	logger.Audit = auditLogger
-	logger.masqer = masqer
 
 	return logger, nil
 }
@@ -147,7 +140,5 @@ func CreateTestLogger() *Logger {
 
 // TODO: We can filter by keys if we need to in the future so they don't get proccessed by the masqer
 func (l *Logger) replaceAttrChain(groups []string, a slog.Attr) slog.Attr {
-	attr := audit.ReplaceAttrAuditLevel(groups, a)
-
-	return l.masqer(groups, attr)
+	return audit.ReplaceAttrAuditLevel(groups, a)
 }

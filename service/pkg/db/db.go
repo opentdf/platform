@@ -67,7 +67,7 @@ type Config struct {
 	Port          int    `mapstructure:"port" json:"port" default:"5432"`
 	Database      string `mapstructure:"database" json:"database" default:"opentdf"`
 	User          string `mapstructure:"user" json:"user" default:"postgres"`
-	Password      string `mapstructure:"password" json:"password" default:"changeme" masq:"secret"`
+	Password      string `mapstructure:"password" json:"password" default:"changeme"`
 	RunMigrations bool   `mapstructure:"runMigrations" json:"runMigrations" default:"true"`
 	SSLMode       string `mapstructure:"sslmode" json:"sslmode" default:"prefer"`
 	Schema        string `mapstructure:"schema" json:"schema" default:"opentdf"`

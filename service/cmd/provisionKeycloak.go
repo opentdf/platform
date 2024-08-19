@@ -68,8 +68,8 @@ var provisionKeycloakCmd = &cobra.Command{
 
 var provisionKeycloakFromConfigCmd = &cobra.Command{
 	Use: "keycloak-from-config",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("Command keycloak-from-config has been deprecated. Please use command 'keycloak' instead.")
+	RunE: func(_ *cobra.Command, _ []string) error {
+		slog.Info("Command keycloak-from-config has been deprecated. Please use command 'keycloak' instead.")
 		return nil
 	},
 }
@@ -91,7 +91,6 @@ func convert(i interface{}) interface{} {
 }
 
 func LoadKeycloakData(file string) {
-	fmt.Println("file", file)
 	yamlData := make(map[interface{}]interface{})
 
 	f, err := os.Open(file)

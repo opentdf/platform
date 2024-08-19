@@ -27,7 +27,7 @@ import (
 func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resourcemapping.ListResourceMappingGroupsRequest) ([]*policy.ResourceMappingGroup, error) {
 	list, err := c.Queries.ListResourceMappingGroups(ctx, r.GetNamespaceId())
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	resourceMappingGroups := make([]*policy.ResourceMappingGroup, len(list))

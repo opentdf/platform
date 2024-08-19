@@ -254,11 +254,12 @@ func algProto2String(e policy.KasPublicKeyAlgEnum) string {
 
 func storeKeysToCache(kases []*policy.KeyAccessServer, c *kasKeyCache) {
 	for _, kas := range kases {
-		if kas.GetPublicKey() == nil || kas.GetPublicKey().GetCached() == nil || kas.GetPublicKey().GetCached().GetKeys() == nil || len(kas.GetPublicKey().GetCached().GetKeys()) == 0 {
+		keys := kas.GetPublicKey().GetCached().GetKeys()
+		if len(keys) == 0 {
 			slog.Debug("no cached key in policy service", "kas", kas.GetUri())
 			continue
 		}
-		for _, ki := range kas.GetPublicKey().GetCached().GetKeys() {
+		for _, ki := range keys {
 			c.store(KASInfo{
 				URL:       kas.GetUri(),
 				KID:       ki.GetKid(),

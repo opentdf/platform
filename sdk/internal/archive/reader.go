@@ -238,8 +238,9 @@ func (reader Reader) ReadAllFileData(filename string, maxSize int64) ([]byte, er
 	fileNameEntry, ok := reader.fileEntries[filename]
 	if !ok {
 		return nil, errZipFileNotFound
-	} else if fileNameEntry.length > maxSize {
-		return nil, fmt.Errorf("%s size too large: %vKB", filename, fileNameEntry.length/1024)
+	}
+	if fileNameEntry.length > maxSize {
+		return nil, fmt.Errorf("%s size too large: %d KiB", filename, fileNameEntry.length/1024) //nolint:mnd // convert byte->kb
 	}
 
 	return readBytes(reader.readSeeker, fileNameEntry.index, fileNameEntry.length)

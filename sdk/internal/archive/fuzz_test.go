@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/base64"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func unverifiedBase64Bytes(str string) []byte {
@@ -131,8 +133,11 @@ func FuzzReader(f *testing.F) {
 		if err != nil {
 			return
 		}
-		for k, _ := range reader.fileEntries {
-			_, _ = reader.ReadAllFileData(k, 1024*1024*20 /* 20MB Limit */)
+		for k := range reader.fileEntries {
+			b, err := reader.ReadAllFileData(k, 1024*1024*20 /* 20MB Limit */)
+			if err != nil {
+				assert.Empty(t, b)
+			}
 		}
 	})
 }

@@ -3,10 +3,12 @@ package sdk
 import (
 	"bytes"
 	"encoding/base64"
-	"github.com/opentdf/platform/lib/ocrypto"
-	"github.com/stretchr/testify/require"
 	"io"
 	"testing"
+
+	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func writeBytes(writerFunc func(io.Writer) error) []byte {
@@ -80,7 +82,13 @@ func FuzzLoadTDF(f *testing.F) {
 		"AAAAABWAAAAMC5tYW5pZmVzdC5qc29uUEsFBgAAAAACAAIAdAAAAJUFAAAAAA=="))
 
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = sdk.LoadTDF(bytes.NewReader(data))
+		r, err := sdk.LoadTDF(bytes.NewReader(data))
+		if err != nil {
+			assert.Nil(t, r)
+			return
+		}
+		assert.NotNil(t, r)
+		// TODO fuzz r somewhat
 	})
 }
 
@@ -106,8 +114,21 @@ func FuzzReadPolicyBody(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		pb = &PolicyBody{}
-
-		_ = pb.readPolicyBody(bytes.NewReader(data))
+		err := pb.readPolicyBody(bytes.NewReader(data))
+		if err != nil {
+			assert.Zerof(t, *pb, "unexpected %v", *pb)
+			return
+		}
+		switch pb.mode {
+		case policyTypeRemotePolicy:
+			assert.Zero(t, pb.ep)
+			assert.NotZero(t, pb.rp)
+		case policyTypeEmbeddedPolicyEncrypted, policyTypeEmbeddedPolicyEncryptedPolicyKeyAccess, policyTypeEmbeddedPolicyPlainText:
+			assert.NotZero(t, pb.ep)
+			assert.Zero(t, pb.rp)
+		default:
+			assert.Fail(t, "undefined policy mode", "policy mode: [%d]", pb.mode)
+		}
 	})
 }
 
@@ -119,6 +140,11 @@ func FuzzNewResourceLocatorFromReader(f *testing.F) {
 	f.Add(writeBytes(rl.writeResourceLocator))
 
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = NewResourceLocatorFromReader(bytes.NewReader(data))
+		r, err := NewResourceLocatorFromReader(bytes.NewReader(data))
+		if err != nil {
+			assert.Nil(t, r)
+			return
+		}
+		require.NotNil(t, r)
 	})
 }

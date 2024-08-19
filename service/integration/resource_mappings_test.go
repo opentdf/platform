@@ -169,7 +169,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingGroupsByFqnsWithKnownAnd
 	s.Equal(exampleDotComRmGroup1.Name, group1Resp.GetName())
 
 	unknownResp, ok := fqnRmGroupMap[unknownFqn]
-	s.True(ok)
+	s.False(ok)
 	s.Nil(unknownResp)
 }
 

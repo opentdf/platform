@@ -290,7 +290,7 @@ func typeToGenericJSONMap[Marshalable any](inputStruct Marshalable, logger *logg
 	var genericMap map[string]interface{}
 	err = json.Unmarshal(tmpDoc, &genericMap)
 	if err != nil {
-		logger.Error("could not deserialize generic entitlement context JSON input document!", slog.Any("error", err))
+		logger.Error("could not deserialize generic entitlement context JSON input document!", slog.Error("error", err.Error()))
 		return nil, err
 	}
 

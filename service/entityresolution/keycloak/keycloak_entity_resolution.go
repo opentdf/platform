@@ -247,7 +247,7 @@ func EntityResolution(ctx context.Context,
 		for _, er := range keycloakEntities {
 			json, err := typeToGenericJSONMap(er, logger)
 			if err != nil {
-				logger.Error("error serializing entity representation!", slog.Any("error", err))
+				logger.Error("error serializing entity representation!", slog.String("error", err.Error()))
 				return entityresolution.ResolveEntitiesResponse{},
 					status.Error(codes.Internal, ErrTextCreationFailed)
 			}

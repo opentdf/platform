@@ -341,7 +341,7 @@ func expandGroup(ctx context.Context, groupID string, kcConnector *KeyCloakConne
 				entityRepresentations = append(entityRepresentations, user)
 			}
 		} else {
-			logger.Error("error getting group members", slog.Any("error", memberErr))
+			logger.Error("error getting group members", slog.String("error", memberErr.Error()))
 		}
 	} else {
 		logger.Error("error getting group", slog.String("error", err.Error()))

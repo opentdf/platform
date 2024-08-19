@@ -253,7 +253,7 @@ func EntityResolution(ctx context.Context,
 			}
 			mystruct, structErr := structpb.NewStruct(json)
 			if structErr != nil {
-				logger.Error("error making struct!", slog.Any("error", err))
+				logger.Error("error making struct!", slog.String("error", err.Error()))
 				return entityresolution.ResolveEntitiesResponse{},
 					status.Error(codes.Internal, ErrTextCreationFailed)
 			}

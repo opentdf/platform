@@ -50,19 +50,6 @@ func (s ResourceMappingService) ListResourceMappingGroups(ctx context.Context, r
 	}, nil
 }
 
-func (s ResourceMappingService) ListResourceMappingGroupsByFqns(ctx context.Context, req *resourcemapping.ListResourceMappingGroupsByFqnsRequest) (*resourcemapping.ListResourceMappingGroupsByFqnsResponse, error) {
-	fqns := req.GetFqns()
-
-	fqnRmGroupMap, err := s.dbClient.ListResourceMappingGroupsByFqns(ctx, fqns)
-	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed, slog.Any("fqns", fqns))
-	}
-
-	return &resourcemapping.ListResourceMappingGroupsByFqnsResponse{
-		FqnResourceMappingGroups: fqnRmGroupMap,
-	}, nil
-}
-
 func (s ResourceMappingService) GetResourceMappingGroup(ctx context.Context, req *resourcemapping.GetResourceMappingGroupRequest) (*resourcemapping.GetResourceMappingGroupResponse, error) {
 	rmGroup, err := s.dbClient.GetResourceMappingGroup(ctx, req.GetId())
 	if err != nil {
@@ -149,6 +136,19 @@ func (s ResourceMappingService) ListResourceMappings(ctx context.Context,
 
 	return &resourcemapping.ListResourceMappingsResponse{
 		ResourceMappings: resourceMappings,
+	}, nil
+}
+
+func (s ResourceMappingService) ListResourceMappingsByGroupFqns(ctx context.Context, req *resourcemapping.ListResourceMappingsByGroupFqnsRequest) (*resourcemapping.ListResourceMappingsByGroupFqnsResponse, error) {
+	fqns := req.GetFqns()
+
+	fqnRmGroupMap, err := s.dbClient.ListResourceMappingsByGroupFqns(ctx, fqns)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed, slog.Any("fqns", fqns))
+	}
+
+	return &resourcemapping.ListResourceMappingsByGroupFqnsResponse{
+		FqnResourceMappingGroups: fqnRmGroupMap,
 	}, nil
 }
 

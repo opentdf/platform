@@ -870,18 +870,6 @@
                 </li>
               
                 <li>
-                  <a href="#policy.resourcemapping.ListResourceMappingGroupsByFqnsRequest"><span class="badge">M</span>ListResourceMappingGroupsByFqnsRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.resourcemapping.ListResourceMappingGroupsByFqnsResponse"><span class="badge">M</span>ListResourceMappingGroupsByFqnsResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.resourcemapping.ListResourceMappingGroupsByFqnsResponse.FqnResourceMappingGroupsEntry"><span class="badge">M</span>ListResourceMappingGroupsByFqnsResponse.FqnResourceMappingGroupsEntry</a>
-                </li>
-              
-                <li>
                   <a href="#policy.resourcemapping.ListResourceMappingGroupsRequest"><span class="badge">M</span>ListResourceMappingGroupsRequest</a>
                 </li>
               
@@ -890,11 +878,27 @@
                 </li>
               
                 <li>
+                  <a href="#policy.resourcemapping.ListResourceMappingsByGroupFqnsRequest"><span class="badge">M</span>ListResourceMappingsByGroupFqnsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.ListResourceMappingsByGroupFqnsResponse"><span class="badge">M</span>ListResourceMappingsByGroupFqnsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.ListResourceMappingsByGroupFqnsResponse.FqnResourceMappingGroupsEntry"><span class="badge">M</span>ListResourceMappingsByGroupFqnsResponse.FqnResourceMappingGroupsEntry</a>
+                </li>
+              
+                <li>
                   <a href="#policy.resourcemapping.ListResourceMappingsRequest"><span class="badge">M</span>ListResourceMappingsRequest</a>
                 </li>
               
                 <li>
                   <a href="#policy.resourcemapping.ListResourceMappingsResponse"><span class="badge">M</span>ListResourceMappingsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.ResourceMappingsByGroup"><span class="badge">M</span>ResourceMappingsByGroup</a>
                 </li>
               
                 <li>
@@ -6374,86 +6378,6 @@ Namespace &lt;&gt; Key Access Server RPCs
 
         
       
-        <h3 id="policy.resourcemapping.ListResourceMappingGroupsByFqnsRequest">ListResourceMappingGroupsByFqnsRequest</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>fqns</td>
-                  <td><a href="#string">string</a></td>
-                  <td>repeated</td>
-                  <td><p>Required
-Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group name&gt;&#39; </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.resourcemapping.ListResourceMappingGroupsByFqnsResponse">ListResourceMappingGroupsByFqnsResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>fqn_resource_mapping_groups</td>
-                  <td><a href="#policy.resourcemapping.ListResourceMappingGroupsByFqnsResponse.FqnResourceMappingGroupsEntry">ListResourceMappingGroupsByFqnsResponse.FqnResourceMappingGroupsEntry</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.resourcemapping.ListResourceMappingGroupsByFqnsResponse.FqnResourceMappingGroupsEntry">ListResourceMappingGroupsByFqnsResponse.FqnResourceMappingGroupsEntry</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>key</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>value</td>
-                  <td><a href="#policy.ResourceMappingGroup">policy.ResourceMappingGroup</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="policy.resourcemapping.ListResourceMappingGroupsRequest">ListResourceMappingGroupsRequest</h3>
         <p></p>
 
@@ -6502,6 +6426,86 @@ Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group n
 
         
       
+        <h3 id="policy.resourcemapping.ListResourceMappingsByGroupFqnsRequest">ListResourceMappingsByGroupFqnsRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqns</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>Required
+Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group name&gt;&#39; </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemapping.ListResourceMappingsByGroupFqnsResponse">ListResourceMappingsByGroupFqnsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqn_resource_mapping_groups</td>
+                  <td><a href="#policy.resourcemapping.ListResourceMappingsByGroupFqnsResponse.FqnResourceMappingGroupsEntry">ListResourceMappingsByGroupFqnsResponse.FqnResourceMappingGroupsEntry</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemapping.ListResourceMappingsByGroupFqnsResponse.FqnResourceMappingGroupsEntry">ListResourceMappingsByGroupFqnsResponse.FqnResourceMappingGroupsEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#policy.resourcemapping.ResourceMappingsByGroup">ResourceMappingsByGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.resourcemapping.ListResourceMappingsRequest">ListResourceMappingsRequest</h3>
         <p></p>
 
@@ -6538,6 +6542,37 @@ Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group n
               
                 <tr>
                   <td>resource_mappings</td>
+                  <td><a href="#policy.ResourceMapping">policy.ResourceMapping</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemapping.ResourceMappingsByGroup">ResourceMappingsByGroup</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>group</td>
+                  <td><a href="#policy.ResourceMappingGroup">policy.ResourceMappingGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>mappings</td>
                   <td><a href="#policy.ResourceMapping">policy.ResourceMapping</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
@@ -6717,13 +6752,6 @@ Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group n
               </tr>
             
               <tr>
-                <td>ListResourceMappingGroupsByFqns</td>
-                <td><a href="#policy.resourcemapping.ListResourceMappingGroupsByFqnsRequest">ListResourceMappingGroupsByFqnsRequest</a></td>
-                <td><a href="#policy.resourcemapping.ListResourceMappingGroupsByFqnsResponse">ListResourceMappingGroupsByFqnsResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
                 <td>GetResourceMappingGroup</td>
                 <td><a href="#policy.resourcemapping.GetResourceMappingGroupRequest">GetResourceMappingGroupRequest</a></td>
                 <td><a href="#policy.resourcemapping.GetResourceMappingGroupResponse">GetResourceMappingGroupResponse</a></td>
@@ -6755,6 +6783,13 @@ Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group n
                 <td>ListResourceMappings</td>
                 <td><a href="#policy.resourcemapping.ListResourceMappingsRequest">ListResourceMappingsRequest</a></td>
                 <td><a href="#policy.resourcemapping.ListResourceMappingsResponse">ListResourceMappingsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ListResourceMappingsByGroupFqns</td>
+                <td><a href="#policy.resourcemapping.ListResourceMappingsByGroupFqnsRequest">ListResourceMappingsByGroupFqnsRequest</a></td>
+                <td><a href="#policy.resourcemapping.ListResourceMappingsByGroupFqnsResponse">ListResourceMappingsByGroupFqnsResponse</a></td>
                 <td><p></p></td>
               </tr>
             
@@ -6817,16 +6852,6 @@ Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group n
               
               
               <tr>
-                <td>ListResourceMappingGroupsByFqns</td>
-                <td>GET</td>
-                <td>/resource-mapping-groups/fqns</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
                 <td>GetResourceMappingGroup</td>
                 <td>GET</td>
                 <td>/resource-mapping-groups/{id}</td>
@@ -6870,6 +6895,16 @@ Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group n
                 <td>ListResourceMappings</td>
                 <td>GET</td>
                 <td>/resource-mappings</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>ListResourceMappingsByGroupFqns</td>
+                <td>GET</td>
+                <td>/resource-mappings/group-fqns</td>
                 <td></td>
               </tr>
               

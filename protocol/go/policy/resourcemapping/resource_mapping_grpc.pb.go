@@ -20,12 +20,12 @@ const _ = grpc.SupportPackageIsVersion7
 
 const (
 	ResourceMappingService_ListResourceMappingGroups_FullMethodName       = "/policy.resourcemapping.ResourceMappingService/ListResourceMappingGroups"
-	ResourceMappingService_ListResourceMappingGroupsByFqns_FullMethodName = "/policy.resourcemapping.ResourceMappingService/ListResourceMappingGroupsByFqns"
 	ResourceMappingService_GetResourceMappingGroup_FullMethodName         = "/policy.resourcemapping.ResourceMappingService/GetResourceMappingGroup"
 	ResourceMappingService_CreateResourceMappingGroup_FullMethodName      = "/policy.resourcemapping.ResourceMappingService/CreateResourceMappingGroup"
 	ResourceMappingService_UpdateResourceMappingGroup_FullMethodName      = "/policy.resourcemapping.ResourceMappingService/UpdateResourceMappingGroup"
 	ResourceMappingService_DeleteResourceMappingGroup_FullMethodName      = "/policy.resourcemapping.ResourceMappingService/DeleteResourceMappingGroup"
 	ResourceMappingService_ListResourceMappings_FullMethodName            = "/policy.resourcemapping.ResourceMappingService/ListResourceMappings"
+	ResourceMappingService_ListResourceMappingsByGroupFqns_FullMethodName = "/policy.resourcemapping.ResourceMappingService/ListResourceMappingsByGroupFqns"
 	ResourceMappingService_GetResourceMapping_FullMethodName              = "/policy.resourcemapping.ResourceMappingService/GetResourceMapping"
 	ResourceMappingService_CreateResourceMapping_FullMethodName           = "/policy.resourcemapping.ResourceMappingService/CreateResourceMapping"
 	ResourceMappingService_UpdateResourceMapping_FullMethodName           = "/policy.resourcemapping.ResourceMappingService/UpdateResourceMapping"
@@ -37,12 +37,12 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ResourceMappingServiceClient interface {
 	ListResourceMappingGroups(ctx context.Context, in *ListResourceMappingGroupsRequest, opts ...grpc.CallOption) (*ListResourceMappingGroupsResponse, error)
-	ListResourceMappingGroupsByFqns(ctx context.Context, in *ListResourceMappingGroupsByFqnsRequest, opts ...grpc.CallOption) (*ListResourceMappingGroupsByFqnsResponse, error)
 	GetResourceMappingGroup(ctx context.Context, in *GetResourceMappingGroupRequest, opts ...grpc.CallOption) (*GetResourceMappingGroupResponse, error)
 	CreateResourceMappingGroup(ctx context.Context, in *CreateResourceMappingGroupRequest, opts ...grpc.CallOption) (*CreateResourceMappingGroupResponse, error)
 	UpdateResourceMappingGroup(ctx context.Context, in *UpdateResourceMappingGroupRequest, opts ...grpc.CallOption) (*UpdateResourceMappingGroupResponse, error)
 	DeleteResourceMappingGroup(ctx context.Context, in *DeleteResourceMappingGroupRequest, opts ...grpc.CallOption) (*DeleteResourceMappingGroupResponse, error)
 	ListResourceMappings(ctx context.Context, in *ListResourceMappingsRequest, opts ...grpc.CallOption) (*ListResourceMappingsResponse, error)
+	ListResourceMappingsByGroupFqns(ctx context.Context, in *ListResourceMappingsByGroupFqnsRequest, opts ...grpc.CallOption) (*ListResourceMappingsByGroupFqnsResponse, error)
 	GetResourceMapping(ctx context.Context, in *GetResourceMappingRequest, opts ...grpc.CallOption) (*GetResourceMappingResponse, error)
 	CreateResourceMapping(ctx context.Context, in *CreateResourceMappingRequest, opts ...grpc.CallOption) (*CreateResourceMappingResponse, error)
 	UpdateResourceMapping(ctx context.Context, in *UpdateResourceMappingRequest, opts ...grpc.CallOption) (*UpdateResourceMappingResponse, error)
@@ -60,15 +60,6 @@ func NewResourceMappingServiceClient(cc grpc.ClientConnInterface) ResourceMappin
 func (c *resourceMappingServiceClient) ListResourceMappingGroups(ctx context.Context, in *ListResourceMappingGroupsRequest, opts ...grpc.CallOption) (*ListResourceMappingGroupsResponse, error) {
 	out := new(ListResourceMappingGroupsResponse)
 	err := c.cc.Invoke(ctx, ResourceMappingService_ListResourceMappingGroups_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *resourceMappingServiceClient) ListResourceMappingGroupsByFqns(ctx context.Context, in *ListResourceMappingGroupsByFqnsRequest, opts ...grpc.CallOption) (*ListResourceMappingGroupsByFqnsResponse, error) {
-	out := new(ListResourceMappingGroupsByFqnsResponse)
-	err := c.cc.Invoke(ctx, ResourceMappingService_ListResourceMappingGroupsByFqns_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -120,6 +111,15 @@ func (c *resourceMappingServiceClient) ListResourceMappings(ctx context.Context,
 	return out, nil
 }
 
+func (c *resourceMappingServiceClient) ListResourceMappingsByGroupFqns(ctx context.Context, in *ListResourceMappingsByGroupFqnsRequest, opts ...grpc.CallOption) (*ListResourceMappingsByGroupFqnsResponse, error) {
+	out := new(ListResourceMappingsByGroupFqnsResponse)
+	err := c.cc.Invoke(ctx, ResourceMappingService_ListResourceMappingsByGroupFqns_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *resourceMappingServiceClient) GetResourceMapping(ctx context.Context, in *GetResourceMappingRequest, opts ...grpc.CallOption) (*GetResourceMappingResponse, error) {
 	out := new(GetResourceMappingResponse)
 	err := c.cc.Invoke(ctx, ResourceMappingService_GetResourceMapping_FullMethodName, in, out, opts...)
@@ -161,12 +161,12 @@ func (c *resourceMappingServiceClient) DeleteResourceMapping(ctx context.Context
 // for forward compatibility
 type ResourceMappingServiceServer interface {
 	ListResourceMappingGroups(context.Context, *ListResourceMappingGroupsRequest) (*ListResourceMappingGroupsResponse, error)
-	ListResourceMappingGroupsByFqns(context.Context, *ListResourceMappingGroupsByFqnsRequest) (*ListResourceMappingGroupsByFqnsResponse, error)
 	GetResourceMappingGroup(context.Context, *GetResourceMappingGroupRequest) (*GetResourceMappingGroupResponse, error)
 	CreateResourceMappingGroup(context.Context, *CreateResourceMappingGroupRequest) (*CreateResourceMappingGroupResponse, error)
 	UpdateResourceMappingGroup(context.Context, *UpdateResourceMappingGroupRequest) (*UpdateResourceMappingGroupResponse, error)
 	DeleteResourceMappingGroup(context.Context, *DeleteResourceMappingGroupRequest) (*DeleteResourceMappingGroupResponse, error)
 	ListResourceMappings(context.Context, *ListResourceMappingsRequest) (*ListResourceMappingsResponse, error)
+	ListResourceMappingsByGroupFqns(context.Context, *ListResourceMappingsByGroupFqnsRequest) (*ListResourceMappingsByGroupFqnsResponse, error)
 	GetResourceMapping(context.Context, *GetResourceMappingRequest) (*GetResourceMappingResponse, error)
 	CreateResourceMapping(context.Context, *CreateResourceMappingRequest) (*CreateResourceMappingResponse, error)
 	UpdateResourceMapping(context.Context, *UpdateResourceMappingRequest) (*UpdateResourceMappingResponse, error)
@@ -180,9 +180,6 @@ type UnimplementedResourceMappingServiceServer struct {
 
 func (UnimplementedResourceMappingServiceServer) ListResourceMappingGroups(context.Context, *ListResourceMappingGroupsRequest) (*ListResourceMappingGroupsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListResourceMappingGroups not implemented")
-}
-func (UnimplementedResourceMappingServiceServer) ListResourceMappingGroupsByFqns(context.Context, *ListResourceMappingGroupsByFqnsRequest) (*ListResourceMappingGroupsByFqnsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListResourceMappingGroupsByFqns not implemented")
 }
 func (UnimplementedResourceMappingServiceServer) GetResourceMappingGroup(context.Context, *GetResourceMappingGroupRequest) (*GetResourceMappingGroupResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetResourceMappingGroup not implemented")
@@ -198,6 +195,9 @@ func (UnimplementedResourceMappingServiceServer) DeleteResourceMappingGroup(cont
 }
 func (UnimplementedResourceMappingServiceServer) ListResourceMappings(context.Context, *ListResourceMappingsRequest) (*ListResourceMappingsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListResourceMappings not implemented")
+}
+func (UnimplementedResourceMappingServiceServer) ListResourceMappingsByGroupFqns(context.Context, *ListResourceMappingsByGroupFqnsRequest) (*ListResourceMappingsByGroupFqnsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListResourceMappingsByGroupFqns not implemented")
 }
 func (UnimplementedResourceMappingServiceServer) GetResourceMapping(context.Context, *GetResourceMappingRequest) (*GetResourceMappingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetResourceMapping not implemented")
@@ -239,24 +239,6 @@ func _ResourceMappingService_ListResourceMappingGroups_Handler(srv interface{}, 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceMappingServiceServer).ListResourceMappingGroups(ctx, req.(*ListResourceMappingGroupsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ResourceMappingService_ListResourceMappingGroupsByFqns_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListResourceMappingGroupsByFqnsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ResourceMappingServiceServer).ListResourceMappingGroupsByFqns(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ResourceMappingService_ListResourceMappingGroupsByFqns_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourceMappingServiceServer).ListResourceMappingGroupsByFqns(ctx, req.(*ListResourceMappingGroupsByFqnsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -351,6 +333,24 @@ func _ResourceMappingService_ListResourceMappings_Handler(srv interface{}, ctx c
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResourceMappingService_ListResourceMappingsByGroupFqns_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListResourceMappingsByGroupFqnsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceMappingServiceServer).ListResourceMappingsByGroupFqns(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ResourceMappingService_ListResourceMappingsByGroupFqns_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceMappingServiceServer).ListResourceMappingsByGroupFqns(ctx, req.(*ListResourceMappingsByGroupFqnsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ResourceMappingService_GetResourceMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetResourceMappingRequest)
 	if err := dec(in); err != nil {
@@ -435,10 +435,6 @@ var ResourceMappingService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ResourceMappingService_ListResourceMappingGroups_Handler,
 		},
 		{
-			MethodName: "ListResourceMappingGroupsByFqns",
-			Handler:    _ResourceMappingService_ListResourceMappingGroupsByFqns_Handler,
-		},
-		{
 			MethodName: "GetResourceMappingGroup",
 			Handler:    _ResourceMappingService_GetResourceMappingGroup_Handler,
 		},
@@ -457,6 +453,10 @@ var ResourceMappingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListResourceMappings",
 			Handler:    _ResourceMappingService_ListResourceMappings_Handler,
+		},
+		{
+			MethodName: "ListResourceMappingsByGroupFqns",
+			Handler:    _ResourceMappingService_ListResourceMappingsByGroupFqns_Handler,
 		},
 		{
 			MethodName: "GetResourceMapping",

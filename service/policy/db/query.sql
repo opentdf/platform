@@ -244,12 +244,6 @@ SELECT id, namespace_id, name
 FROM resource_mapping_groups
 WHERE id = $1;
 
--- name: GetResourceMappingGroupFullyQualified :one
-SELECT g.id, g.namespace_id, g.name
-FROM resource_mapping_groups g
-LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
-WHERE ns.name = LOWER(@namespace_name) AND g.name = LOWER(@group_name);
-
 -- name: CreateResourceMappingGroup :one
 INSERT INTO resource_mapping_groups (namespace_id, name)
 VALUES ($1, $2)
@@ -265,6 +259,26 @@ RETURNING id;
 
 -- name: DeleteResourceMappingGroup :execrows
 DELETE FROM resource_mapping_groups WHERE id = $1;
+
+---------------------------------------------------------------- 
+-- RESOURCE MAPPING
+----------------------------------------------------------------
+
+-- name: ListResourceMappingsByFullyQualifiedGroup :many
+SELECT 
+    m.id,
+    m.attribute_value_id,
+    m.terms,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
+    -- sqlc needs TEXT cast here to be able to generate string properties in Go struct
+    -- has issues when using aliases for some reason, even on a varchar field like g.name
+    g.id::TEXT as group_id,
+    g.namespace_id::TEXT as group_namespace_id,
+    g.name::TEXT as group_name
+FROM resource_mappings m
+LEFT JOIN resource_mapping_groups g ON m.group_id = g.id
+LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
+WHERE ns.name = LOWER(@namespace_name) AND g.name = LOWER(@group_name);
 
 ---------------------------------------------------------------- 
 -- NAMESPACES

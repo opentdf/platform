@@ -51,7 +51,7 @@ func getValidator() *protovalidate.Validator {
 }
 
 func runFqnValidator(fqn string) error {
-	req := &resourcemapping.ListResourceMappingGroupsByFqnsRequest{
+	req := &resourcemapping.ListResourceMappingsByGroupFqnsRequest{
 		Fqns: []string{fqn},
 	}
 
@@ -59,22 +59,22 @@ func runFqnValidator(fqn string) error {
 	return err
 }
 
-func Test_ListResourceMappingGroupsByFqnsRequest_Valid_Succeeds(t *testing.T) {
+func Test_ListResourceMappingsByGroupFqnsRequest_Valid_Succeeds(t *testing.T) {
 	for _, fqn := range validFqns {
 		err := runFqnValidator(fqn)
 		require.NoError(t, err, "valid FQN failed: %s", fqn)
 	}
 }
 
-func Test_ListResourceMappingGroupsByFqnsRequest_Invalid_Fails(t *testing.T) {
+func Test_ListResourceMappingsByGroupFqnsRequest_Invalid_Fails(t *testing.T) {
 	for _, fqn := range invalidFqns {
 		err := runFqnValidator(fqn)
 		require.Error(t, err, "invalid FQN succeeded: %s", fqn)
 	}
 }
 
-func Test_ListResourceMappingGroupsByFqnsRequest_EmptyArray_Fails(t *testing.T) {
-	req := &resourcemapping.ListResourceMappingGroupsByFqnsRequest{
+func Test_ListResourceMappingsByGroupFqnsRequest_EmptyArray_Fails(t *testing.T) {
+	req := &resourcemapping.ListResourceMappingsByGroupFqnsRequest{
 		Fqns: []string{},
 	}
 
@@ -82,8 +82,8 @@ func Test_ListResourceMappingGroupsByFqnsRequest_EmptyArray_Fails(t *testing.T) 
 	require.Error(t, err)
 }
 
-func Test_ListResourceMappingGroupsByFqnsRequest_NilArray_Fails(t *testing.T) {
-	req := &resourcemapping.ListResourceMappingGroupsByFqnsRequest{
+func Test_ListResourceMappingsByGroupFqnsRequest_NilArray_Fails(t *testing.T) {
+	req := &resourcemapping.ListResourceMappingsByGroupFqnsRequest{
 		Fqns: nil,
 	}
 
@@ -91,8 +91,8 @@ func Test_ListResourceMappingGroupsByFqnsRequest_NilArray_Fails(t *testing.T) {
 	require.Error(t, err)
 }
 
-func Test_ListResourceMappingGroupsByFqnsRequest_AnyInvalid_Fails(t *testing.T) {
-	req := &resourcemapping.ListResourceMappingGroupsByFqnsRequest{
+func Test_ListResourceMappingsByGroupFqnsRequest_AnyInvalid_Fails(t *testing.T) {
+	req := &resourcemapping.ListResourceMappingsByGroupFqnsRequest{
 		Fqns: []string{
 			validFqns[0],
 			invalidFqns[0],
@@ -103,8 +103,8 @@ func Test_ListResourceMappingGroupsByFqnsRequest_AnyInvalid_Fails(t *testing.T) 
 	require.Error(t, err)
 }
 
-func Test_ListResourceMappingGroupsByFqnsRequest_AllValid_Succeeds(t *testing.T) {
-	req := &resourcemapping.ListResourceMappingGroupsByFqnsRequest{
+func Test_ListResourceMappingsByGroupFqnsRequest_AllValid_Succeeds(t *testing.T) {
+	req := &resourcemapping.ListResourceMappingsByGroupFqnsRequest{
 		Fqns: validFqns,
 	}
 

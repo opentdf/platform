@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
@@ -41,49 +40,6 @@ func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resour
 	}
 
 	return resourceMappingGroups, nil
-}
-
-func (c PolicyDBClient) ListResourceMappingGroupsByFqns(ctx context.Context, fqns []string) (map[string]*policy.ResourceMappingGroup, error) {
-	resp := make(map[string]*policy.ResourceMappingGroup)
-	resultCount := 0
-
-	for _, fqn := range fqns {
-		fullyQualifiedRmg, err := util.ParseResourceMappingGroupFqn(fqn)
-		if err != nil {
-			// invalid FQNs not included in the response - ignore and continue, but log for investigation
-			slog.DebugContext(ctx, "error parsing Resource Mapping Group FQN", slog.String("rmg_fqn", fqn))
-			continue
-		}
-
-		rmGroup, err := c.Queries.GetResourceMappingGroupFullyQualified(ctx, GetResourceMappingGroupFullyQualifiedParams{
-			NamespaceName: fullyQualifiedRmg.Namespace,
-			GroupName:     fullyQualifiedRmg.GroupName,
-		})
-		if err != nil {
-			dbErr := db.WrapIfKnownInvalidQueryErr(err)
-			if errors.Is(dbErr, db.ErrNotFound) {
-				// FQN is valid but not in db - ignore and continue
-				continue
-			}
-
-			return nil, dbErr
-		}
-
-		resultCount++
-
-		resp[fqn] = &policy.ResourceMappingGroup{
-			Id:          rmGroup.ID,
-			NamespaceId: rmGroup.NamespaceID,
-			Name:        rmGroup.Name,
-		}
-	}
-
-	if resultCount == 0 {
-		// should return an error if none of the FQNs are found
-		return nil, db.ErrNotFound
-	}
-
-	return resp, nil
 }
 
 func (c PolicyDBClient) GetResourceMappingGroup(ctx context.Context, id string) (*policy.ResourceMappingGroup, error) {
@@ -361,6 +317,72 @@ func (c PolicyDBClient) ListResourceMappings(ctx context.Context, r *resourcemap
 	}
 
 	return list, nil
+}
+
+// NOTE: uses sqlc instead of squirrel
+func (c PolicyDBClient) ListResourceMappingsByGroupFqns(ctx context.Context, fqns []string) (map[string]*resourcemapping.ResourceMappingsByGroup, error) {
+	resp := make(map[string]*resourcemapping.ResourceMappingsByGroup)
+	resultCount := 0
+
+	for _, fqn := range fqns {
+		fullyQualifiedGroup, err := util.ParseResourceMappingGroupFqn(fqn)
+		if err != nil {
+			// invalid FQNs not included in the response - ignore and continue, but log for investigation
+			slog.DebugContext(ctx, "error parsing Resource Mapping Group FQN", slog.String("rmg_fqn", fqn))
+			continue
+		}
+
+		rows, err := c.Queries.ListResourceMappingsByFullyQualifiedGroup(ctx, ListResourceMappingsByFullyQualifiedGroupParams{
+			NamespaceName: fullyQualifiedGroup.Namespace,
+			GroupName:     fullyQualifiedGroup.GroupName,
+		})
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+
+		if len(rows) == 0 {
+			// no rows found for this FQN - ignore and continue
+			continue
+		}
+
+		resultCount++
+
+		mappings := make([]*policy.ResourceMapping, len(rows))
+		for i, row := range rows {
+			metadata := new(common.Metadata)
+			if row.Metadata != nil {
+				if err := protojson.Unmarshal(row.Metadata, metadata); err != nil {
+					return nil, err
+				}
+			}
+
+			mappings[i] = &policy.ResourceMapping{
+				Id:             row.ID,
+				AttributeValue: &policy.Value{Id: row.AttributeValueID},
+				Terms:          row.Terms,
+				Metadata:       metadata,
+			}
+		}
+
+		mappingsByGroup := &resourcemapping.ResourceMappingsByGroup{
+			Group: &policy.ResourceMappingGroup{
+				// all rows will have the same group values, so we can just use the first row
+				Id:          rows[0].GroupID,
+				NamespaceId: rows[0].GroupNamespaceID,
+				Name:        rows[0].GroupName,
+			},
+			Mappings: mappings,
+		}
+
+		resp[fqn] = mappingsByGroup
+	}
+
+	if resultCount == 0 {
+		// should return an error if none of the FQNs are found
+		return nil, db.ErrNotFound
+	}
+
+	return resp, nil
 }
 
 func updateResourceMappingSQL(id string, attributeValueID string, metadata []byte, terms []string, groupID string) (string, []interface{}, error) {

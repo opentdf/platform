@@ -77,41 +77,6 @@
         ]
       }
     },
-    "/resource-mapping-groups/fqns": {
-      "get": {
-        "operationId": "ResourceMappingService_ListResourceMappingGroupsByFqns",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/resourcemappingListResourceMappingGroupsByFqnsResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "fqns",
-            "description": "Required\nStructure of the RM Group FQN is 'https://\u003cnamespace\u003e/resm/\u003cgroup name\u003e'",
-            "in": "query",
-            "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
-          }
-        ],
-        "tags": [
-          "ResourceMappingService"
-        ]
-      }
-    },
     "/resource-mapping-groups/{id}": {
       "get": {
         "operationId": "ResourceMappingService_GetResourceMappingGroup",
@@ -273,6 +238,41 @@
             "schema": {
               "$ref": "#/definitions/resourcemappingCreateResourceMappingRequest"
             }
+          }
+        ],
+        "tags": [
+          "ResourceMappingService"
+        ]
+      }
+    },
+    "/resource-mappings/group-fqns": {
+      "get": {
+        "operationId": "ResourceMappingService_ListResourceMappingsByGroupFqns",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/resourcemappingListResourceMappingsByGroupFqnsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "fqns",
+            "description": "Required\nStructure of the RM Group FQN is 'https://\u003cnamespace\u003e/resm/\u003cgroup name\u003e'",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
           }
         ],
         "tags": [
@@ -933,17 +933,6 @@
         }
       }
     },
-    "resourcemappingListResourceMappingGroupsByFqnsResponse": {
-      "type": "object",
-      "properties": {
-        "fqnResourceMappingGroups": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/policyResourceMappingGroup"
-          }
-        }
-      }
-    },
     "resourcemappingListResourceMappingGroupsResponse": {
       "type": "object",
       "properties": {
@@ -956,10 +945,36 @@
         }
       }
     },
+    "resourcemappingListResourceMappingsByGroupFqnsResponse": {
+      "type": "object",
+      "properties": {
+        "fqnResourceMappingGroups": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/resourcemappingResourceMappingsByGroup"
+          }
+        }
+      }
+    },
     "resourcemappingListResourceMappingsResponse": {
       "type": "object",
       "properties": {
         "resourceMappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyResourceMapping"
+          }
+        }
+      }
+    },
+    "resourcemappingResourceMappingsByGroup": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "$ref": "#/definitions/policyResourceMappingGroup"
+        },
+        "mappings": {
           "type": "array",
           "items": {
             "type": "object",

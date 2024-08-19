@@ -549,37 +549,6 @@ func (q *Queries) GetResourceMappingGroup(ctx context.Context, id string) (GetRe
 	return i, err
 }
 
-const getResourceMappingGroupFullyQualified = `-- name: GetResourceMappingGroupFullyQualified :one
-SELECT g.id, g.namespace_id, g.name
-FROM resource_mapping_groups g
-LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
-WHERE ns.name = LOWER($1) AND g.name = LOWER($2)
-`
-
-type GetResourceMappingGroupFullyQualifiedParams struct {
-	NamespaceName string `json:"namespace_name"`
-	GroupName     string `json:"group_name"`
-}
-
-type GetResourceMappingGroupFullyQualifiedRow struct {
-	ID          string `json:"id"`
-	NamespaceID string `json:"namespace_id"`
-	Name        string `json:"name"`
-}
-
-// GetResourceMappingGroupFullyQualified
-//
-//	SELECT g.id, g.namespace_id, g.name
-//	FROM resource_mapping_groups g
-//	LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
-//	WHERE ns.name = LOWER($1) AND g.name = LOWER($2)
-func (q *Queries) GetResourceMappingGroupFullyQualified(ctx context.Context, arg GetResourceMappingGroupFullyQualifiedParams) (GetResourceMappingGroupFullyQualifiedRow, error) {
-	row := q.db.QueryRow(ctx, getResourceMappingGroupFullyQualified, arg.NamespaceName, arg.GroupName)
-	var i GetResourceMappingGroupFullyQualifiedRow
-	err := row.Scan(&i.ID, &i.NamespaceID, &i.Name)
-	return i, err
-}
-
 const listKeyAccessServerGrants = `-- name: ListKeyAccessServerGrants :many
 
 SELECT 
@@ -799,6 +768,85 @@ func (q *Queries) ListResourceMappingGroups(ctx context.Context, namespaceID int
 	for rows.Next() {
 		var i ListResourceMappingGroupsRow
 		if err := rows.Scan(&i.ID, &i.NamespaceID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listResourceMappingsByFullyQualifiedGroup = `-- name: ListResourceMappingsByFullyQualifiedGroup :many
+
+SELECT 
+    m.id,
+    m.attribute_value_id,
+    m.terms,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
+    -- sqlc needs TEXT cast here to be able to generate string properties in Go struct
+    -- has issues when using aliases for some reason, even on a varchar field like g.name
+    g.id::TEXT as group_id,
+    g.namespace_id::TEXT as group_namespace_id,
+    g.name::TEXT as group_name
+FROM resource_mappings m
+LEFT JOIN resource_mapping_groups g ON m.group_id = g.id
+LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
+WHERE ns.name = LOWER($1) AND g.name = LOWER($2)
+`
+
+type ListResourceMappingsByFullyQualifiedGroupParams struct {
+	NamespaceName string `json:"namespace_name"`
+	GroupName     string `json:"group_name"`
+}
+
+type ListResourceMappingsByFullyQualifiedGroupRow struct {
+	ID               string   `json:"id"`
+	AttributeValueID string   `json:"attribute_value_id"`
+	Terms            []string `json:"terms"`
+	Metadata         []byte   `json:"metadata"`
+	GroupID          string   `json:"group_id"`
+	GroupNamespaceID string   `json:"group_namespace_id"`
+	GroupName        string   `json:"group_name"`
+}
+
+// --------------------------------------------------------------
+// RESOURCE MAPPING
+// --------------------------------------------------------------
+//
+//	SELECT
+//	    m.id,
+//	    m.attribute_value_id,
+//	    m.terms,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
+//	    -- sqlc needs TEXT cast here to be able to generate string properties in Go struct
+//	    -- has issues when using aliases for some reason, even on a varchar field like g.name
+//	    g.id::TEXT as group_id,
+//	    g.namespace_id::TEXT as group_namespace_id,
+//	    g.name::TEXT as group_name
+//	FROM resource_mappings m
+//	LEFT JOIN resource_mapping_groups g ON m.group_id = g.id
+//	LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
+//	WHERE ns.name = LOWER($1) AND g.name = LOWER($2)
+func (q *Queries) ListResourceMappingsByFullyQualifiedGroup(ctx context.Context, arg ListResourceMappingsByFullyQualifiedGroupParams) ([]ListResourceMappingsByFullyQualifiedGroupRow, error) {
+	rows, err := q.db.Query(ctx, listResourceMappingsByFullyQualifiedGroup, arg.NamespaceName, arg.GroupName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListResourceMappingsByFullyQualifiedGroupRow
+	for rows.Next() {
+		var i ListResourceMappingsByFullyQualifiedGroupRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.AttributeValueID,
+			&i.Terms,
+			&i.Metadata,
+			&i.GroupID,
+			&i.GroupNamespaceID,
+			&i.GroupName,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

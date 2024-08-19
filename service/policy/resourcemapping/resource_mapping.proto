@@ -21,27 +21,6 @@ message ListResourceMappingGroupsResponse {
   repeated ResourceMappingGroup resource_mapping_groups = 1;
 }
 
-message ListResourceMappingGroupsByFqnsRequest {
-  // Required
-  // Structure of the RM Group FQN is 'https://<namespace>/resm/<group name>'
-  repeated string fqns = 1 [(buf.validate.field).repeated = {
-    min_items: 1,
-    items: {
-      cel: [
-        {
-          id: "resourcemappinggroup_fqn",
-          message: "Resource Mapping Group FQN must be in the format 'https://<namespace>/resm/<group name>'",
-          expression: "this.matches('^https://([a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?\\\\.)+[a-zA-Z]{2,}/resm/[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
-        }
-      ]
-    },
-  }];
-}
-
-message ListResourceMappingGroupsByFqnsResponse {
-  map<string, ResourceMappingGroup> fqn_resource_mapping_groups = 1;
-}
-
 message GetResourceMappingGroupRequest {
   // Required
   string id = 1 [(buf.validate.field).required = true];
@@ -96,6 +75,32 @@ message ListResourceMappingsRequest {
 
 message ListResourceMappingsResponse {
   repeated policy.ResourceMapping resource_mappings = 1;
+}
+
+message ListResourceMappingsByGroupFqnsRequest {
+  // Required
+  // Structure of the RM Group FQN is 'https://<namespace>/resm/<group name>'
+  repeated string fqns = 1 [(buf.validate.field).repeated = {
+    min_items: 1,
+    items: {
+      cel: [
+        {
+          id: "resourcemappinggroup_fqn",
+          message: "Resource Mapping Group FQN must be in the format 'https://<namespace>/resm/<group name>'",
+          expression: "this.matches('^https://([a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?\\\\.)+[a-zA-Z]{2,}/resm/[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+        }
+      ]
+    },
+  }];
+}
+
+message ResourceMappingsByGroup {
+  policy.ResourceMappingGroup group = 1;
+  repeated policy.ResourceMapping mappings = 2;
+}
+
+message ListResourceMappingsByGroupFqnsResponse {
+  map<string, ResourceMappingsByGroup> fqn_resource_mapping_groups = 1;
 }
 
 message GetResourceMappingRequest {
@@ -187,10 +192,6 @@ service ResourceMappingService {
     option (google.api.http) = {get: "/resource-mapping-groups"};
   }
 
-  rpc ListResourceMappingGroupsByFqns(ListResourceMappingGroupsByFqnsRequest) returns (ListResourceMappingGroupsByFqnsResponse) {
-    option (google.api.http) = {get: "/resource-mapping-groups/fqns"};
-  }
-
   rpc GetResourceMappingGroup(GetResourceMappingGroupRequest) returns (GetResourceMappingGroupResponse) {
     option (google.api.http) = {get: "/resource-mapping-groups/{id}"};
   }
@@ -219,6 +220,10 @@ service ResourceMappingService {
 
   rpc ListResourceMappings(ListResourceMappingsRequest) returns (ListResourceMappingsResponse) {
     option (google.api.http) = {get: "/resource-mappings"};
+  }
+
+  rpc ListResourceMappingsByGroupFqns(ListResourceMappingsByGroupFqnsRequest) returns (ListResourceMappingsByGroupFqnsResponse) {
+    option (google.api.http) = {get: "/resource-mappings/group-fqns"};
   }
 
   rpc GetResourceMapping(GetResourceMappingRequest) returns (GetResourceMappingResponse) {

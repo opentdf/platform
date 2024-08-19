@@ -430,7 +430,7 @@ resource_mappings:
       attribute_value_id: 04bd2657-de10-46bc-a88f-5d687de4816b
       terms:
         - helloworld
-      group_id: 173bb45c-76ae-4993-a648-d9bc0bc05147
+      group_id: 45f392f0-7d9e-4c73-9bf7-11bbd3bd40af
 
 ##
 # KAS Registry (key access server registry)

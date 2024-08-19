@@ -16,6 +16,8 @@ type Option func(*config)
 
 // Internal config struct for building SDK options.
 type config struct {
+	// Platform configuration structure is subject to change. Consume via accessor methods.
+	PlatformConfiguration   PlatformConfiguration
 	dialOption              grpc.DialOption
 	tlsConfig               *tls.Config
 	clientCredentials       *oauth.ClientCredentials
@@ -24,7 +26,6 @@ type config struct {
 	scopes                  []string
 	extraDialOptions        []grpc.DialOption
 	certExchange            *oauth.CertExchangeInfo
-	platformConfiguration   PlatformConfiguration
 	kasSessionKey           *ocrypto.RsaKeyPair
 	dpopKey                 *ocrypto.RsaKeyPair
 	ipc                     bool
@@ -164,7 +165,7 @@ func WithCustomWellknownConnection(conn *grpc.ClientConn) Option {
 // Use this option with caution, as it may lead to unexpected behavior
 func WithPlatformConfiguration(platformConfiguration PlatformConfiguration) Option {
 	return func(c *config) {
-		c.platformConfiguration = platformConfiguration
+		c.PlatformConfiguration = platformConfiguration
 	}
 }
 

@@ -32,7 +32,12 @@ func GetMethods(i interface{}) []string {
 func TestNew_ShouldCreateSDK(t *testing.T) {
 	s, err := sdk.New(goodPlatformEndpoint,
 		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
-			"platform_issuer": "https://example.org",
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+				"public_client_id":       "myclient",
+			},
 		}),
 		sdk.WithClientCredentials("myid", "mysecret", nil),
 		sdk.WithTokenEndpoint("https://example.org/token"),
@@ -41,13 +46,68 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 	require.NotNil(t, s)
 
 	// Check platform issuer
-	assert.Equal(t, "https://example.org", s.PlatformIssuer())
+	iss, err := s.PlatformConfiguration.Issuer()
+	assert.Equal(t, "https://example.org", iss)
+	require.NoError(t, err)
+
+	// Check platform authz endpoint
+	authzEndpoint, err := s.PlatformConfiguration.AuthzEndpoint()
+	assert.Equal(t, "https://example.org/auth", authzEndpoint)
+	require.NoError(t, err)
+
+	// Check platform token endpoint
+	tokenEndpoint, err := s.PlatformConfiguration.TokenEndpoint()
+	assert.Equal(t, "https://example.org/token", tokenEndpoint)
+	require.NoError(t, err)
+
+	// Check platform public client id
+	publicClientID, err := s.PlatformConfiguration.PublicClientID()
+	assert.Equal(t, "myclient", publicClientID)
+	require.NoError(t, err)
 
 	// check if the clients are available
 	assert.NotNil(t, s.Attributes)
 	assert.NotNil(t, s.ResourceMapping)
 	assert.NotNil(t, s.SubjectMapping)
 	assert.NotNil(t, s.KeyAccessServerRegistry)
+}
+
+func Test_PlatformConfiguration_BadCases(t *testing.T) {
+	assertions := func(t *testing.T, s *sdk.SDK) {
+		iss, err := s.PlatformConfiguration.Issuer()
+		assert.Equal(t, "", iss)
+		require.ErrorIs(t, err, sdk.ErrPlatformIssuerNotFound)
+
+		authzEndpoint, err := s.PlatformConfiguration.AuthzEndpoint()
+		assert.Equal(t, "", authzEndpoint)
+		require.ErrorIs(t, err, sdk.ErrPlatformAuthzEndpointNotFound)
+
+		tokenEndpoint, err := s.PlatformConfiguration.TokenEndpoint()
+		assert.Equal(t, "", tokenEndpoint)
+		require.ErrorIs(t, err, sdk.ErrPlatformTokenEndpointNotFound)
+
+		publicClientID, err := s.PlatformConfiguration.PublicClientID()
+		assert.Equal(t, "", publicClientID)
+		require.ErrorIs(t, err, sdk.ErrPlatformTokenEndpointNotFound)
+	}
+
+	noIdpValsSDK, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{},
+		}),
+	)
+	require.NoError(t, err)
+	assert.NotNil(t, noIdpValsSDK)
+
+	assertions(t, noIdpValsSDK)
+
+	noIdpCfgSDK, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{}),
+	)
+	require.NoError(t, err)
+	assert.NotNil(t, noIdpCfgSDK)
+
+	assertions(t, noIdpCfgSDK)
 }
 
 func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {

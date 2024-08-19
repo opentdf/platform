@@ -260,7 +260,6 @@ func TestTDF(t *testing.T) {
 func (s *TDFSuite) Test_SimpleTDF() {
 	metaData := []byte(`{"displayName" : "openTDF go sdk"}`)
 	attributes := []string{
-
 		"https://example.com/attr/Classification/value/S",
 		"https://example.com/attr/Classification/value/X",
 	}
@@ -1218,7 +1217,9 @@ func (s *TDFSuite) startBackend() {
 			"health": map[string]interface{}{
 				"endpoint": "/healthz",
 			},
-			"platform_issuer": "http://localhost:65432/auth",
+			"idp": map[string]interface{}{
+				"issuer": "http://localhost:65432/auth",
+			},
 		},
 	}
 
@@ -1268,8 +1269,10 @@ func (s *TDFSuite) startBackend() {
 		listeners[origin] = grpcListener
 
 		grpcServer := grpc.NewServer()
-		s.kases[i] = FakeKas{s: s, privateKey: ki.private, KASInfo: KASInfo{
-			URL: ki.url, PublicKey: ki.public, KID: "r1", Algorithm: "rsa:2048"},
+		s.kases[i] = FakeKas{
+			s: s, privateKey: ki.private, KASInfo: KASInfo{
+				URL: ki.url, PublicKey: ki.public, KID: "r1", Algorithm: "rsa:2048",
+			},
 			legakeys: map[string]keyInfo{},
 		}
 		attributespb.RegisterAttributesServiceServer(grpcServer, fa)
@@ -1365,6 +1368,7 @@ func mockAttributeFor(fqn autoconfigure.AttributeNameFQN) *policy.Attribute {
 	}
 	return nil
 }
+
 func mockValueFor(fqn autoconfigure.AttributeValueFQN) *policy.Value {
 	an := fqn.Prefix()
 	a := mockAttributeFor(an)

@@ -225,11 +225,11 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 
 	if c.oauthAccessTokenSource != nil {
 		if c.dpopKey == nil {
-			rsaKeyPair, err := buildRSAKeyPair(dpopKeySize)
+			rsaKeyPair, err := ocrypto.NewRSAKeyPair(dpopKeySize)
 			if err != nil {
-				return nil, fmt.Errorf("error building RSA key pair for DPoP: %w", err)
+				return nil, fmt.Errorf("could not generate RSA Key: %w", err)
 			}
-			c.dpopKey = rsaKeyPair
+			c.dpopKey = &rsaKeyPair
 		}
 		return NewOAuthAccessTokenSource(c.oauthAccessTokenSource, c.tokenEndpoint, c.scopes, c.dpopKey)
 	}

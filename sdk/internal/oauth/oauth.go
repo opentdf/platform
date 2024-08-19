@@ -56,7 +56,7 @@ func (t Token) Expired() bool {
 	return time.Now().After(expirationTime.Add(-tokenExpirationBuffer))
 }
 
-func getAccessTokenRequestClientCredentials(tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, privateJWK *jwk.Key) (*http.Request, error) {
+func getAccessTokenRequest(tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, privateJWK *jwk.Key) (*http.Request, error) {
 	req, err := http.NewRequest(http.MethodPost, tokenEndpoint, nil) //nolint: noctx // TODO(#455): AccessToken methods should take contexts
 	if err != nil {
 		return nil, err
@@ -141,7 +141,7 @@ func getSignedToken(clientID, tokenEndpoint string, key jwk.Key) ([]byte, error)
 // missing this flow costs us a bit in efficiency (a round trip per access token) but this is
 // still correct because
 func GetAccessToken(client *http.Client, tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, dpopPrivateKey jwk.Key) (*Token, error) {
-	req, err := getAccessTokenRequestClientCredentials(tokenEndpoint, "", scopes, clientCredentials, &dpopPrivateKey)
+	req, err := getAccessTokenRequest(tokenEndpoint, "", scopes, clientCredentials, &dpopPrivateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func GetAccessToken(client *http.Client, tokenEndpoint string, scopes []string, 
 	defer resp.Body.Close()
 
 	if nonceHeader := resp.Header.Get("dpop-nonce"); nonceHeader != "" && resp.StatusCode == http.StatusBadRequest {
-		nonceReq, err := getAccessTokenRequestClientCredentials(tokenEndpoint, nonceHeader, scopes, clientCredentials, &dpopPrivateKey)
+		nonceReq, err := getAccessTokenRequest(tokenEndpoint, nonceHeader, scopes, clientCredentials, &dpopPrivateKey)
 		if err != nil {
 			return nil, err
 		}
@@ -173,7 +173,6 @@ func GetAccessToken(client *http.Client, tokenEndpoint string, scopes []string, 
 
 func processResponse(resp *http.Response) (*Token, error) {
 	respBytes, err := io.ReadAll(resp.Body)
-
 	if err != nil {
 		return nil, fmt.Errorf("error reading bytes from response: %w", err)
 	}

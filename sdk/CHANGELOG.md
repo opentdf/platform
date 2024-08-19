@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.8](https://github.com/opentdf/platform/compare/sdk/v0.3.7...sdk/v0.3.8) (2024-08-19)
+
+
+### Features
+
+* **sdk:** public client and other enhancements to well-known SDK functionality ([#1365](https://github.com/opentdf/platform/issues/1365)) ([3be50a4](https://github.com/opentdf/platform/commit/3be50a4ebf26680fad4ab46620cdfa82340a3da3))
+
 ## [0.3.7](https://github.com/opentdf/platform/compare/sdk/v0.3.6...sdk/v0.3.7) (2024-08-16)
 
 

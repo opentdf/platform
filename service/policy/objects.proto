@@ -307,7 +307,7 @@ message PublicKey {
 
     // public key; PEM of RSA public key; prefer `cached`
     string local = 2 [
-      deprecated = true,
+      deprecated = true
     ];
 
     // public key with additional information. Current preferred version

@@ -8,16 +8,16 @@ db:
 #   port: 5432
 #   user: postgres
 #   password: changeme
-# mode: all 
+# mode: all
 services:
   kas:
     eccertid: e1
     rsacertid: r1
   entityresolution:
     url: http://keycloak:8888/auth
-    clientid: "tdf-entity-resolution"
-    clientsecret: "secret"
-    realm: "opentdf"
+    clientid: 'tdf-entity-resolution'
+    clientsecret: 'secret'
+    realm: 'opentdf'
     legacykeycloak: true
     inferid:
       from:
@@ -27,8 +27,8 @@ server:
   auth:
     enabled: true
     enforceDPoP: false
-    publicclientid: "opentdf-public"
-    audience: "http://localhost:8080"
+    public_client_id: 'opentdf-public'
+    audience: 'http://localhost:8080'
     issuer: http://keycloak:8888/auth/realms/opentdf
     policy:
       ## Default policy for all requests
@@ -68,8 +68,8 @@ server:
   cors:
     enabled: false
     # '*' to allow any origin or a specific domain like 'https://yourdomain.com'
-    allowedorigins: 
-      - "*"
+    allowedorigins:
+      - '*'
     # List of methods. Examples: 'GET,POST,PUT'
     allowedmethods:
       - GET

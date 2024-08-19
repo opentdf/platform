@@ -13,14 +13,14 @@ server:
   auth:
     enabled: false
     enforceDPoP: false
-    publicclientid: "opentdf-public"
-    audience: "http://localhost:8080"
+    public_client_id: 'opentdf-public'
+    audience: 'http://localhost:8080'
     issuer: http://localhost:8888/auth/realms/tdf
   cors:
     enabled: false
     # '*' to allow any origin or a specific domain like 'https://yourdomain.com'
-    allowedorigins: 
-      - "*"
+    allowedorigins:
+      - '*'
     # List of methods. Examples: 'GET,POST,PUT'
     allowedmethods:
       - GET

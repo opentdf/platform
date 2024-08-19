@@ -23,7 +23,7 @@ type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
 	CacheRefresh   string        `mapstructure:"cache_refresh_interval"`
 	DPoPSkew       time.Duration `mapstructure:"dpopskew" default:"1h"`
 	TokenSkew      time.Duration `mapstructure:"skew" default:"1m"`
-	PublicClientID string        `yaml:"public_client_id" json:"public_client_id,omitempty" mapstructure:"publicclientid"`
+	PublicClientID string        `yaml:"public_client_id" json:"public_client_id,omitempty" mapstructure:"public_client_id"`
 }
 
 type PolicyConfig struct {

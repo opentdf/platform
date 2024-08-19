@@ -62,8 +62,7 @@ func (c PolicyDBClient) ListResourceMappingGroupsByFqns(ctx context.Context, fqn
 		if err != nil {
 			dbErr := db.WrapIfKnownInvalidQueryErr(err)
 			if errors.Is(dbErr, db.ErrNotFound) {
-				// FQN is valid but not in db, so indicate it was not found with nil value
-				resp[fqn] = nil
+				// FQN is valid but not in db - ignore and continue
 				continue
 			}
 

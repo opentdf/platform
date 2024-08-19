@@ -210,9 +210,28 @@ func SanitizePlatformEndpoint(e string) (string, error) {
 	return net.JoinHostPort(u.Hostname(), p), nil
 }
 
+func buildRSAKeyPair(size int) (*ocrypto.RsaKeyPair, error) {
+	rsaKeyPair, err := ocrypto.NewRSAKeyPair(size)
+	if err != nil {
+		return nil, fmt.Errorf("could not generate RSA Key: %w", err)
+	}
+	return &rsaKeyPair, nil
+}
+
 func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 	if c.customAccessTokenSource != nil {
 		return c.customAccessTokenSource, nil
+	}
+
+	if c.oauthAccessTokenSource != nil {
+		if c.dpopKey == nil {
+			rsaKeyPair, err := buildRSAKeyPair(dpopKeySize)
+			if err != nil {
+				return nil, fmt.Errorf("error building RSA key pair for DPoP: %w", err)
+			}
+			c.dpopKey = rsaKeyPair
+		}
+		return NewOAuthAccessTokenSource(c.oauthAccessTokenSource, c.tokenEndpoint, c.scopes, c.dpopKey)
 	}
 
 	// If we don't have client-credentials, just return a KAS client that can only get public keys.

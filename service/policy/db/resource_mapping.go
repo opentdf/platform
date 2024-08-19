@@ -332,15 +332,19 @@ func (c PolicyDBClient) GetResourceMapping(ctx context.Context, id string) (*pol
 	return rm, nil
 }
 
-func listResourceMappingsSQL() (string, []interface{}, error) {
+func listResourceMappingsSQL(groupID string) (string, []interface{}, error) {
 	t := Tables.ResourceMappings
-	return resourceMappingSelect().
-		From(t.Name()).
-		ToSql()
+	builder := resourceMappingSelect().From(t.Name())
+
+	if groupID != "" {
+		builder = builder.Where(sq.Eq{t.Field("group_id"): groupID})
+	}
+
+	return builder.ToSql()
 }
 
-func (c PolicyDBClient) ListResourceMappings(ctx context.Context) ([]*policy.ResourceMapping, error) {
-	sql, args, err := listResourceMappingsSQL()
+func (c PolicyDBClient) ListResourceMappings(ctx context.Context, r *resourcemapping.ListResourceMappingsRequest) ([]*policy.ResourceMapping, error) {
+	sql, args, err := listResourceMappingsSQL(r.GetGroupId())
 	if err != nil {
 		return nil, err
 	}

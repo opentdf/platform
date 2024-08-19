@@ -469,7 +469,8 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithUnknownGroupIdFail
 func (s *ResourceMappingsSuite) Test_ListResourceMappings() {
 	// make sure we can get all fixtures
 	testData := s.getResourceMappingFixtures()
-	mappings, err := s.db.PolicyClient.ListResourceMappings(s.ctx)
+	req := &resourcemapping.ListResourceMappingsRequest{}
+	mappings, err := s.db.PolicyClient.ListResourceMappings(s.ctx, req)
 	s.Require().NoError(err)
 	s.NotNil(mappings)
 	for _, testMapping := range testData {
@@ -481,6 +482,21 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings() {
 			}
 		}
 		s.True(found, fmt.Sprintf("expected to find mapping %s", testMapping.ID))
+	}
+}
+
+func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupId() {
+	req := &resourcemapping.ListResourceMappingsRequest{
+		GroupId: s.getResourceMappingGroupFixtures()[0].ID,
+	} 
+	mappings, err := s.db.PolicyClient.ListResourceMappings(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(mappings)
+	for _, mapping := range mappings {
+		expectedGroupID := req.GetGroupId()
+		actualGroupID := mapping.GetGroup().GetId()
+		s.Equal(expectedGroupID, actualGroupID,
+			fmt.Sprintf("expected group id %s, got %s", expectedGroupID, actualGroupID))
 	}
 }
 

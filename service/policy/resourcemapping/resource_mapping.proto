@@ -89,7 +89,10 @@ message DeleteResourceMappingGroupResponse {
    Resource Mappings
 */
 
-message ListResourceMappingsRequest {}
+message ListResourceMappingsRequest {
+  // Optional
+  string group_id = 1;
+}
 
 message ListResourceMappingsResponse {
   repeated policy.ResourceMapping resource_mappings = 1;

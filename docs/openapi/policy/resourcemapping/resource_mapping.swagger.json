@@ -235,6 +235,15 @@
             }
           }
         },
+        "parameters": [
+          {
+            "name": "groupId",
+            "description": "Optional",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
         "tags": [
           "ResourceMappingService"
         ]

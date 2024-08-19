@@ -140,9 +140,9 @@ func (s ResourceMappingService) CreateResourceMapping(ctx context.Context,
 }
 
 func (s ResourceMappingService) ListResourceMappings(ctx context.Context,
-	_ *resourcemapping.ListResourceMappingsRequest,
+	req *resourcemapping.ListResourceMappingsRequest,
 ) (*resourcemapping.ListResourceMappingsResponse, error) {
-	resourceMappings, err := s.dbClient.ListResourceMappings(ctx)
+	resourceMappings, err := s.dbClient.ListResourceMappings(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}

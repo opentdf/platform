@@ -118,6 +118,7 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 	}
 	return nil
 }
+
 func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 	an := fqn.Prefix()
 	a := mockAttributeFor(an)

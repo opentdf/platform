@@ -318,7 +318,7 @@ func getKCClient(ctx context.Context, kcConfig KeycloakConfig, logger *logger.Lo
 	// logger.Debug(kcConfig.Realm)
 	token, err := client.LoginClient(ctx, kcConfig.ClientID, kcConfig.ClientSecret, kcConfig.Realm)
 	if err != nil {
-		logger.Error("error connecting to keycloak!", slog.Any("error", err))
+		logger.Error("error connecting to keycloak!", slog.String("error", err.Error()))
 		return nil, err
 	}
 	keycloakConnector := KeyCloakConnector{token: token, client: client}

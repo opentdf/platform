@@ -67,10 +67,10 @@ server:
       #  m = g(r.sub, p.sub) && globOrRegexMatch(r.res, p.res) && globOrRegexMatch(r.act, p.act) && globOrRegexMatch(r.obj, p.obj)
   cors:
     enabled: false
-    # '*' to allow any origin or a specific domain like 'https://yourdomain.com'
+    # "*" to allow any origin or a specific domain like "https://yourdomain.com"
     allowedorigins:
       - '*'
-    # List of methods. Examples: 'GET,POST,PUT'
+    # List of methods. Examples: "GET,POST,PUT"
     allowedmethods:
       - GET
       - POST

@@ -283,14 +283,14 @@ func typeToGenericJSONMap[Marshalable any](inputStruct Marshalable, logger *logg
 	// For now, since we dont' know the "shape" of the entity/user record or representation we will get from a specific entity store,
 	tmpDoc, err := json.Marshal(inputStruct)
 	if err != nil {
-		logger.Error("error marshalling input type!", slog.Error("error", err.Error()))
+		logger.Error("error marshalling input type!", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	var genericMap map[string]interface{}
 	err = json.Unmarshal(tmpDoc, &genericMap)
 	if err != nil {
-		logger.Error("could not deserialize generic entitlement context JSON input document!", slog.Error("error", err.Error()))
+		logger.Error("could not deserialize generic entitlement context JSON input document!", slog.String("error", err.Error()))
 		return nil, err
 	}
 

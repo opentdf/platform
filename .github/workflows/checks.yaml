@@ -158,7 +158,6 @@ jobs:
           push: false
 
   platform-xtest:
-    needs: integration
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       # use commit instead of ref so we can "go get" specific sdk version

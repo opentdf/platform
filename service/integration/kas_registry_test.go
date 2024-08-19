@@ -322,7 +322,11 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOthe
 	pubKeyRemote := "https://remote.com/key"
 	updatedKeySet := &policy.KasPublicKeySet{
 		Keys: []*policy.KasPublicKey{
-			&policy.KasPublicKey{},
+			{
+				Pem: "some-pem-data",
+				Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048,
+				Kid: "r1",
+			},
 		},
 	}
 	updatedPubKey := &policy.PublicKey{

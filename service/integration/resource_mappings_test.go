@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"testing"
 	"time"
@@ -108,7 +107,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings() {
 				break
 			}
 		}
-		s.True(found, fmt.Sprintf("expected to find mapping %s", testMapping.ID))
+		s.True(found, "expected to find mapping %s", testMapping.ID)
 	}
 }
 

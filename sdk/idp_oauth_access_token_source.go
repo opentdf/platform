@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -15,40 +14,27 @@ import (
 
 // OAuthAccessTokenSource allow connecting to an IDP and obtain a DPoP bound access token
 type OAuthAccessTokenSource struct {
-	source           oauth2.TokenSource
-	idpTokenEndpoint url.URL
-	scopes           []string
-	dpopKey          jwk.Key
-	asymDecryption   ocrypto.AsymDecryption
-	dpopPEM          string
+	source         oauth2.TokenSource
+	scopes         []string
+	dpopKey        jwk.Key
+	asymDecryption ocrypto.AsymDecryption
+	dpopPEM        string
 }
 
 func NewOAuthAccessTokenSource(
 	source oauth2.TokenSource, idpTokenEndpoint string, scopes []string, key *ocrypto.RsaKeyPair,
 ) (*OAuthAccessTokenSource, error) {
-	endpoint, err := url.Parse(idpTokenEndpoint)
-	if err != nil {
-		return nil, fmt.Errorf("invalid url [%s]: %w", idpTokenEndpoint, err)
-	}
-	if key == nil {
-		key, err = buildRSAKeyPair(dpopKeySize)
-		if err != nil {
-			return nil, fmt.Errorf("error building RSA key pair for DPoP: %w", err)
-		}
-	}
-
 	dpopPublicKeyPEM, dpopKey, asymDecryption, err := getNewDPoPKey(key)
 	if err != nil {
 		return nil, err
 	}
 
 	tokenSource := OAuthAccessTokenSource{
-		source:           source,
-		idpTokenEndpoint: *endpoint,
-		scopes:           scopes,
-		asymDecryption:   *asymDecryption,
-		dpopKey:          dpopKey,
-		dpopPEM:          dpopPublicKeyPEM,
+		source:         source,
+		scopes:         scopes,
+		asymDecryption: *asymDecryption,
+		dpopKey:        dpopKey,
+		dpopPEM:        dpopPublicKeyPEM,
 	}
 
 	return &tokenSource, nil

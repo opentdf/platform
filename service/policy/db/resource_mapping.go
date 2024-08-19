@@ -51,7 +51,7 @@ func (c PolicyDBClient) ListResourceMappingGroupsByFqns(ctx context.Context, fqn
 		fullyQualifiedRmg, err := util.ParseResourceMappingGroupFqn(fqn)
 		if err != nil {
 			// invalid FQNs not included in the response - ignore and continue, but log for investigation
-			slog.WarnContext(ctx, "error parsing Resource Mapping Group FQN", slog.String("rmg_fqn", fqn))
+			slog.DebugContext(ctx, "error parsing Resource Mapping Group FQN", slog.String("rmg_fqn", fqn))
 			continue
 		}
 

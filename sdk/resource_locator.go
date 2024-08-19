@@ -132,18 +132,18 @@ func (rl ResourceLocator) writeResourceLocator(writer io.Writer) error {
 // readResourceLocator - read the encoded protocol and body string into a ResourceLocator
 func (rl *ResourceLocator) readResourceLocator(reader io.Reader) error {
 	if err := binary.Read(reader, binary.BigEndian, &rl.protocol); err != nil {
-		return errors.Join(Error("Error reading ResourceLocator protocol value"), err)
+		return errors.Join(ErrParseFailed, Error("error reading ResourceLocator protocol value"), ErrParseFailed, err)
 	}
 	if (rl.protocol != urlProtocolHTTP) && (rl.protocol != urlProtocolHTTPS) { // TODO - support 'shared' protocol?
 		return errors.New("Unsupported protocol: " + strconv.Itoa(int(rl.protocol)))
 	}
 	var lengthBody byte
 	if err := binary.Read(reader, binary.BigEndian, &lengthBody); err != nil {
-		return errors.Join(Error("Error reading ResourceLocator body length value"), err)
+		return errors.Join(ErrParseFailed, Error("Error reading ResourceLocator body length value"), err)
 	}
 	body := make([]byte, lengthBody)
 	if err := binary.Read(reader, binary.BigEndian, &body); err != nil {
-		return errors.Join(Error("Error reading ResourceLocator body value"), err)
+		return errors.Join(ErrParseFailed, Error("Error reading ResourceLocator body value"), err)
 	}
 	rl.body = string(body) // TODO - normalize to lowercase?
 	return nil

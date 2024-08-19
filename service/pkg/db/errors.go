@@ -25,6 +25,18 @@ var (
 	ErrMissingValue              = errors.New("ErrMissingValue: value must be included")
 )
 
+type NotFoundError struct {
+	What []string
+}
+
+func (e NotFoundError) Error() string {
+	return fmt.Sprintf("not found: %v", e.What)
+}
+
+func (e NotFoundError) Unwrap() error {
+	return ErrNotFound
+}
+
 // Get helpful error message for PostgreSQL violation
 func WrapIfKnownInvalidQueryErr(err error) error {
 	if e := isPgError(err); e != nil {

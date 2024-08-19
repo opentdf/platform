@@ -199,8 +199,8 @@ const (
 	cipherModeAes256gcm128Bit CipherMode = 5
 )
 
-const (
-	ErrNanoTDFHeaderRead = Error("nanoTDF read error")
+var (
+	ErrNanoTDFHeaderRead = fmt.Errorf("nanoTDF read error [%w]", ErrParseFailed)
 )
 
 // Binding config byte format

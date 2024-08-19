@@ -283,7 +283,7 @@ func typeToGenericJSONMap[Marshalable any](inputStruct Marshalable, logger *logg
 	// For now, since we dont' know the "shape" of the entity/user record or representation we will get from a specific entity store,
 	tmpDoc, err := json.Marshal(inputStruct)
 	if err != nil {
-		logger.Error("error marshalling input type!", slog.Any("error", err))
+		logger.Error("error marshalling input type!", slog.Error("error", err.Error()))
 		return nil, err
 	}
 

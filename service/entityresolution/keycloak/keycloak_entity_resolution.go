@@ -191,7 +191,7 @@ func EntityResolution(ctx context.Context,
 					return entityresolution.ResolveEntitiesResponse{},
 						status.Error(codes.Internal, ErrTextGetRetrievalFailed)
 				case len(groups) == 1:
-					logger.Info("group found for", slog.Any("entity", ident.String()))
+					logger.Info("group found for", slog.String("entity", ident.String()))
 					group := groups[0]
 					expandedRepresentations, exErr := expandGroup(ctx, *group.ID, connector, &kcConfig, logger)
 					if exErr != nil {

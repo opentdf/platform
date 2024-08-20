@@ -173,7 +173,6 @@ func GetAccessToken(client *http.Client, tokenEndpoint string, scopes []string, 
 
 func processResponse(resp *http.Response) (*Token, error) {
 	respBytes, err := io.ReadAll(resp.Body)
-
 	if err != nil {
 		return nil, fmt.Errorf("error reading bytes from response: %w", err)
 	}

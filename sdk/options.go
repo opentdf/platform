@@ -7,6 +7,7 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/oauth"
+	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -31,6 +32,7 @@ type config struct {
 	ipc                     bool
 	tdfFeatures             tdfFeatures
 	customAccessTokenSource auth.AccessTokenSource
+	oauthAccessTokenSource  oauth2.TokenSource
 	coreConn                *grpc.ClientConn
 }
 
@@ -94,6 +96,13 @@ func WithTokenEndpoint(tokenEndpoint string) Option {
 func withCustomAccessTokenSource(a auth.AccessTokenSource) Option {
 	return func(c *config) {
 		c.customAccessTokenSource = a
+	}
+}
+
+// WithOAuthAccessTokenSource directs the SDK to use a standard OAuth2 token source for authentication
+func WithOAuthAccessTokenSource(t oauth2.TokenSource) Option {
+	return func(c *config) {
+		c.oauthAccessTokenSource = t
 	}
 }
 

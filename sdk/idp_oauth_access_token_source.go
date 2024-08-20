@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -47,7 +46,8 @@ func (t *OAuthAccessTokenSource) AccessToken(_ context.Context, _ *http.Client) 
 		return "", fmt.Errorf("error getting access token: %w", err)
 	}
 
-	if tok.Expiry.Before(time.Now()) {
+	// Non-nil with AccessToken and not Expired
+	if !tok.Valid() {
 		return "", fmt.Errorf("access token expired. Please re-authenticate")
 		// TODO: refresh tokens if expired?
 	}

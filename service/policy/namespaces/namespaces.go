@@ -179,3 +179,43 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *namesp
 
 	return rsp, nil
 }
+
+func (ns NamespacesService) AssignKeyAccessServerToNamespace(ctx context.Context, req *namespaces.AssignKeyAccessServerToNamespaceRequest) (*namespaces.AssignKeyAccessServerToNamespaceResponse, error) {
+	grant := req.GetNamespaceKeyAccessServer()
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypeKasAttributeNamespaceAssignment,
+		ObjectID:   fmt.Sprintf("%s-%s", grant.GetNamespaceId(), grant.GetKeyAccessServerId()),
+	}
+
+	namespaceKas, err := ns.dbClient.AssignKeyAccessServerToNamespace(ctx, grant)
+	if err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("namespaceKas", grant.String()))
+	}
+	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	return &namespaces.AssignKeyAccessServerToNamespaceResponse{
+		NamespaceKeyAccessServer: namespaceKas,
+	}, nil
+}
+
+func (ns NamespacesService) RemoveKeyAccessServerFromNamespace(ctx context.Context, req *namespaces.RemoveKeyAccessServerFromNamespaceRequest) (*namespaces.RemoveKeyAccessServerFromNamespaceResponse, error) {
+	grant := req.GetNamespaceKeyAccessServer()
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeKasAttributeNamespaceAssignment,
+		ObjectID:   fmt.Sprintf("%s-%s", grant.GetNamespaceId(), grant.GetKeyAccessServerId()),
+	}
+
+	namespaceKas, err := ns.dbClient.RemoveKeyAccessServerFromNamespace(ctx, grant)
+	if err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("namespaceKas", grant.String()))
+	}
+	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	return &namespaces.RemoveKeyAccessServerFromNamespaceResponse{
+		NamespaceKeyAccessServer: namespaceKas,
+	}, nil
+}

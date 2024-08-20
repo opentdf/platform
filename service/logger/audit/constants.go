@@ -14,6 +14,7 @@ const (
 	ObjectTypeNamespace
 	ObjectTypeConditionSet
 	ObjectTypeKasRegistry
+	ObjectTypeKasAttributeNamespaceAssignment
 	ObjectTypeKasAttributeDefinitionAssignment
 	ObjectTypeKasAttributeValueAssignment
 	ObjectTypeKeyObject
@@ -29,6 +30,7 @@ func (ot ObjectType) String() string {
 		"namespace",
 		"condition_set",
 		"kas_registry",
+		"kas_attribute_namespace_assignment",
 		"kas_attribute_definition_assignment",
 		"kas_attribute_value_assignment",
 		"key_object",

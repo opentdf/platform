@@ -1,3 +1,4 @@
+mode: core
 logger:
   level: debug
   type: text
@@ -8,23 +9,19 @@ logger:
 #   port: 5432
 #   user: postgres
 #   password: changeme
-services:
-  kas:
-    enabled: false
-  policy:
-    enabled: true
 server:
   auth:
     enabled: false
     enforceDPoP: false
-    audience: "http://localhost:8080"
+    public_client_id: 'opentdf-public'
+    audience: 'http://localhost:8080'
     issuer: http://localhost:8888/auth/realms/tdf
   cors:
     enabled: false
-    # '*' to allow any origin or a specific domain like 'https://yourdomain.com'
-    allowedorigins: 
-      - "*"
-    # List of methods. Examples: 'GET,POST,PUT'
+    # "*" to allow any origin or a specific domain like "https://yourdomain.com"
+    allowedorigins:
+      - '*'
+    # List of methods. Examples: "GET,POST,PUT"
     allowedmethods:
       - GET
       - POST

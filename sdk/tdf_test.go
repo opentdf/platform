@@ -3,6 +3,8 @@ package sdk
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -19,10 +21,8 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
-	"github.com/opentdf/platform/protocol/go/policy"
 	attributespb "github.com/opentdf/platform/protocol/go/policy/attributes"
 	wellknownpb "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
-	"github.com/opentdf/platform/sdk/internal/autoconfigure"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -52,8 +52,8 @@ type tdfTest struct {
 	tdfFileSize      float64
 	checksum         string
 	mimeType         string
-	splitPlan        []autoconfigure.SplitStep
-	policy           []autoconfigure.AttributeValueFQN
+	splitPlan        []keySplitStep
+	policy           []AttributeValueFQN
 	expectedPlanSize int
 }
 
@@ -214,6 +214,12 @@ type partialReadTdfTest struct {
 	readAtTests []TestReadAt
 }
 
+type assertionTests struct {
+	assertions                []AssertionConfig
+	assertionVerificationKeys *AssertionVerificationKeys
+	expectedSize              int
+}
+
 const payload = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 var buffer []byte //nolint:gochecknoglobals // for testing
@@ -256,7 +262,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		"https://example.com/attr/Classification/value/X",
 	}
 
-	expectedTdfSize := int64(2069)
+	expectedTdfSize := int64(2095)
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
 	{
@@ -281,7 +287,8 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		tdfObj, err := s.sdk.CreateTDF(fileWriter, bufReader,
 			WithKasInformation(kasURLs...),
 			WithMetaData(string(metaData)),
-			WithDataAttributes(attributes...))
+			WithDataAttributes(attributes...),
+		)
 
 		s.Require().NoError(err)
 		s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 32.0)
@@ -298,6 +305,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		}(readSeeker)
 
 		r, err := s.sdk.LoadTDF(readSeeker)
+
 		s.Require().NoError(err)
 
 		unencryptedMetaData, err := r.UnencryptedMetadata()
@@ -309,6 +317,10 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		s.Require().NoError(err)
 
 		s.Equal(attributes, dataAttributes)
+
+		payloadKey, err := r.UnsafePayloadKeyRetrieval()
+		s.Require().NoError(err)
+		s.Len(payloadKey, kKeySize)
 	}
 
 	// test reader
@@ -337,6 +349,420 @@ func (s *TDFSuite) Test_SimpleTDF() {
 	}
 
 	_ = os.Remove(tdfFilename)
+}
+
+func (s *TDFSuite) Test_TDFWithAssertion() {
+	hs256Key := make([]byte, 32)
+	_, err := rand.Read(hs256Key)
+	s.Require().NoError(err)
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, tdf3KeySize)
+	s.Require().NoError(err)
+
+	defaultKey := AssertionKey{
+		Alg: AssertionKeyAlgHS256,
+		Key: hs256Key,
+	}
+
+	for _, test := range []assertionTests{ //nolint:gochecknoglobals // requires for testing tdf
+		{
+			assertions: []AssertionConfig{
+				{
+					ID:             "assertion1",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "base64binary",
+						Schema: "text",
+						Value:  "ICAgIDxlZGoOkVkaD4=",
+					},
+				},
+				{
+					ID:             "assertion2",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "json",
+						Schema: "urn:nato:stanag:5636:A:1:elements:json",
+						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
+					},
+				},
+			},
+			assertionVerificationKeys: nil,
+			expectedSize:              2896,
+		},
+		{
+			assertions: []AssertionConfig{
+				{
+					ID:             "assertion1",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "base64binary",
+						Schema: "text",
+						Value:  "ICAgIDxlZGoOkVkaD4=",
+					},
+					SigningKey: defaultKey,
+				},
+				{
+					ID:             "assertion2",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "json",
+						Schema: "urn:nato:stanag:5636:A:1:elements:json",
+						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
+					},
+					SigningKey: defaultKey,
+				},
+			},
+			assertionVerificationKeys: &AssertionVerificationKeys{
+				DefaultKey: defaultKey,
+			},
+			expectedSize: 2896,
+		},
+		{
+			assertions: []AssertionConfig{
+				{
+					ID:             "assertion1",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "base64binary",
+						Schema: "text",
+						Value:  "ICAgIDxlZGoOkVkaD4=",
+					},
+					SigningKey: AssertionKey{
+						Alg: AssertionKeyAlgHS256,
+						Key: hs256Key,
+					},
+				},
+				{
+					ID:             "assertion2",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "json",
+						Schema: "urn:nato:stanag:5636:A:1:elements:json",
+						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
+					},
+					SigningKey: AssertionKey{
+						Alg: AssertionKeyAlgRS256,
+						Key: privateKey,
+					},
+				},
+			},
+			assertionVerificationKeys: &AssertionVerificationKeys{
+				// defaultVerificationKey: nil,
+				Keys: map[string]AssertionKey{
+					"assertion1": {
+						Alg: AssertionKeyAlgHS256,
+						Key: hs256Key,
+					},
+					"assertion2": {
+						Alg: AssertionKeyAlgRS256,
+						Key: privateKey.PublicKey,
+					},
+				},
+			},
+			expectedSize: 3195,
+		},
+		{
+			assertions: []AssertionConfig{
+				{
+					ID:             "assertion1",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "base64binary",
+						Schema: "text",
+						Value:  "ICAgIDxlZGoOkVkaD4=",
+					},
+					SigningKey: AssertionKey{
+						Alg: AssertionKeyAlgHS256,
+						Key: hs256Key,
+					},
+				},
+				{
+					ID:             "assertion2",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "json",
+						Schema: "urn:nato:stanag:5636:A:1:elements:json",
+						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
+					},
+				},
+			},
+			assertionVerificationKeys: &AssertionVerificationKeys{
+				Keys: map[string]AssertionKey{
+					"assertion1": {
+						Alg: AssertionKeyAlgHS256,
+						Key: hs256Key,
+					},
+				},
+			},
+			expectedSize: 2896,
+		},
+	} {
+		expectedTdfSize := test.expectedSize
+		tdfFilename := "secure-text.tdf"
+		plainText := "Virtru"
+		{
+			kasURLs := []KASInfo{
+				{
+					URL:       "https://a.kas/",
+					PublicKey: "",
+				},
+			}
+
+			inBuf := bytes.NewBufferString(plainText)
+			bufReader := bytes.NewReader(inBuf.Bytes())
+
+			fileWriter, err := os.Create(tdfFilename)
+			s.Require().NoError(err)
+
+			defer func(fileWriter *os.File) {
+				err := fileWriter.Close()
+				s.Require().NoError(err)
+			}(fileWriter)
+
+			tdfObj, err := s.sdk.CreateTDF(fileWriter, bufReader,
+				WithKasInformation(kasURLs...),
+				WithAssertions(test.assertions...))
+
+			s.Require().NoError(err)
+			s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 32.0)
+		}
+
+		// test reader
+		{
+			readSeeker, err := os.Open(tdfFilename)
+			s.Require().NoError(err)
+
+			defer func(readSeeker *os.File) {
+				err := readSeeker.Close()
+				s.Require().NoError(err)
+			}(readSeeker)
+
+			buf := make([]byte, 8)
+
+			var r *Reader
+			if test.assertionVerificationKeys == nil {
+				r, err = s.sdk.LoadTDF(readSeeker)
+			} else {
+				r, err = s.sdk.LoadTDF(readSeeker, WithAssertionVerificationKeys(*test.assertionVerificationKeys))
+			}
+			s.Require().NoError(err)
+
+			offset := 2
+			n, err := r.ReadAt(buf, int64(offset))
+			if err != nil {
+				s.Require().ErrorIs(err, io.EOF)
+			}
+
+			expectedPlainTxt := plainText[offset : offset+n]
+			s.Equal(expectedPlainTxt, string(buf[:n]))
+		}
+		_ = os.Remove(tdfFilename)
+	}
+}
+
+func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
+	hs256Key := make([]byte, 32)
+	_, err := rand.Read(hs256Key)
+	s.Require().NoError(err)
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, tdf3KeySize)
+	s.Require().NoError(err)
+
+	defaultKey := AssertionKey{
+		Alg: AssertionKeyAlgHS256,
+		Key: hs256Key,
+	}
+
+	for _, test := range []assertionTests{ //nolint:gochecknoglobals // requires for testing tdf
+		{
+			assertions: []AssertionConfig{
+				{
+					ID:             "assertion1",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "base64binary",
+						Schema: "text",
+						Value:  "ICAgIDxlZGoOkVkaD4=",
+					},
+					SigningKey: defaultKey,
+				},
+				{
+					ID:             "assertion2",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "json",
+						Schema: "urn:nato:stanag:5636:A:1:elements:json",
+						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
+					},
+					SigningKey: defaultKey,
+				},
+			},
+			expectedSize: 2896,
+		},
+		{
+			assertions: []AssertionConfig{
+				{
+					ID:             "assertion1",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "base64binary",
+						Schema: "text",
+						Value:  "ICAgIDxlZGoOkVkaD4=",
+					},
+					SigningKey: AssertionKey{
+						Alg: AssertionKeyAlgHS256,
+						Key: hs256Key,
+					},
+				},
+				{
+					ID:             "assertion2",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "json",
+						Schema: "urn:nato:stanag:5636:A:1:elements:json",
+						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
+					},
+					SigningKey: AssertionKey{
+						Alg: AssertionKeyAlgRS256,
+						Key: privateKey,
+					},
+				},
+			},
+			assertionVerificationKeys: &AssertionVerificationKeys{
+				// defaultVerificationKey: nil,
+				Keys: map[string]AssertionKey{
+					"assertion1": {
+						Alg: AssertionKeyAlgRS256,
+						Key: privateKey.PublicKey,
+					},
+					"assertion2": {
+						Alg: AssertionKeyAlgHS256,
+						Key: hs256Key,
+					},
+				},
+			},
+			expectedSize: 3195,
+		},
+		{
+			assertions: []AssertionConfig{
+				{
+					ID:             "assertion1",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "base64binary",
+						Schema: "text",
+						Value:  "ICAgIDxlZGoOkVkaD4=",
+					},
+					SigningKey: AssertionKey{
+						Alg: AssertionKeyAlgHS256,
+						Key: hs256Key,
+					},
+				},
+				{
+					ID:             "assertion2",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "json",
+						Schema: "urn:nato:stanag:5636:A:1:elements:json",
+						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
+					},
+				},
+			},
+			assertionVerificationKeys: &AssertionVerificationKeys{
+				Keys: map[string]AssertionKey{
+					"assertion1": {
+						Alg: AssertionKeyAlgHS256,
+						Key: hs256Key,
+					},
+				},
+			},
+			expectedSize: 2896,
+		},
+	} {
+		expectedTdfSize := test.expectedSize
+		tdfFilename := "secure-text.tdf"
+		plainText := "Virtru"
+		{
+			kasURLs := []KASInfo{
+				{
+					URL:       "https://a.kas/",
+					PublicKey: "",
+				},
+			}
+
+			inBuf := bytes.NewBufferString(plainText)
+			bufReader := bytes.NewReader(inBuf.Bytes())
+
+			fileWriter, err := os.Create(tdfFilename)
+			s.Require().NoError(err)
+
+			defer func(fileWriter *os.File) {
+				err := fileWriter.Close()
+				s.Require().NoError(err)
+			}(fileWriter)
+
+			tdfObj, err := s.sdk.CreateTDF(fileWriter, bufReader,
+				WithKasInformation(kasURLs...),
+				WithAssertions(test.assertions...))
+
+			s.Require().NoError(err)
+			s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 32.0)
+		}
+
+		// test reader
+		{
+			readSeeker, err := os.Open(tdfFilename)
+			s.Require().NoError(err)
+
+			defer func(readSeeker *os.File) {
+				err := readSeeker.Close()
+				s.Require().NoError(err)
+			}(readSeeker)
+
+			buf := make([]byte, 8)
+
+			var r *Reader
+			if test.assertionVerificationKeys == nil {
+				r, err = s.sdk.LoadTDF(readSeeker)
+			} else {
+				r, err = s.sdk.LoadTDF(readSeeker, WithAssertionVerificationKeys(*test.assertionVerificationKeys))
+			}
+			s.Require().NoError(err)
+
+			offset := 2
+			_, err = r.ReadAt(buf, int64(offset))
+			s.Require().Error(err)
+		}
+		_ = os.Remove(tdfFilename)
+	}
 }
 
 func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing tdf
@@ -550,7 +976,7 @@ func (s *TDFSuite) Test_KeySplits() {
 			fileSize:    5,
 			tdfFileSize: 2664,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			splitPlan: []autoconfigure.SplitStep{
+			splitPlan: []keySplitStep{
 				{KAS: "https://a.kas/", SplitID: "a"},
 				{KAS: "https://b.kas/", SplitID: "a"},
 				{KAS: `https://c.kas/`, SplitID: "a"},
@@ -561,7 +987,7 @@ func (s *TDFSuite) Test_KeySplits() {
 			fileSize:    5,
 			tdfFileSize: 2664,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			splitPlan: []autoconfigure.SplitStep{
+			splitPlan: []keySplitStep{
 				{KAS: "https://a.kas/", SplitID: "a"},
 				{KAS: "https://b.kas/", SplitID: "b"},
 				{KAS: "https://c.kas/", SplitID: "c"},
@@ -572,7 +998,7 @@ func (s *TDFSuite) Test_KeySplits() {
 			fileSize:    5,
 			tdfFileSize: 3211,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			splitPlan: []autoconfigure.SplitStep{
+			splitPlan: []keySplitStep{
 				{KAS: "https://a.kas/", SplitID: "a"},
 				{KAS: "https://b.kas/", SplitID: "a"},
 				{KAS: "https://b.kas/", SplitID: "b"},
@@ -615,7 +1041,7 @@ func (s *TDFSuite) Test_Autoconfigure() {
 			fileSize:         5,
 			tdfFileSize:      1733,
 			checksum:         "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			policy:           []autoconfigure.AttributeValueFQN{clsAllowed},
+			policy:           []AttributeValueFQN{clsA},
 			expectedPlanSize: 1,
 		},
 		{
@@ -623,7 +1049,7 @@ func (s *TDFSuite) Test_Autoconfigure() {
 			fileSize:         5,
 			tdfFileSize:      2517,
 			checksum:         "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			policy:           []autoconfigure.AttributeValueFQN{rel2aus, rel2usa},
+			policy:           []AttributeValueFQN{rel2aus, rel2usa},
 			expectedPlanSize: 2,
 		},
 	} {
@@ -641,6 +1067,7 @@ func (s *TDFSuite) Test_Autoconfigure() {
 				_ = os.Remove(plaintTextFileName)
 				_ = os.Remove(tdfFileName)
 			}()
+			s.sdk.kasKeyCache.store(KASInfo{})
 
 			// test encrypt
 			tdo := s.testEncrypt(s.sdk, kasInfoList, plaintTextFileName, tdfFileName, test)
@@ -789,7 +1216,9 @@ func (s *TDFSuite) startBackend() {
 			"health": map[string]interface{}{
 				"endpoint": "/healthz",
 			},
-			"platform_issuer": "http://localhost:65432/auth",
+			"idp": map[string]interface{}{
+				"issuer": "http://localhost:65432/auth",
+			},
 		},
 	}
 
@@ -818,7 +1247,7 @@ func (s *TDFSuite) startBackend() {
 		{"https://c.kas/", mockRSAPrivateKey3, mockRSAPublicKey3},
 		{kasAu, mockRSAPrivateKey1, mockRSAPublicKey1},
 		{kasCa, mockRSAPrivateKey2, mockRSAPublicKey2},
-		{lasUk, mockRSAPrivateKey2, mockRSAPublicKey2},
+		{kasUk, mockRSAPrivateKey2, mockRSAPublicKey2},
 		{kasNz, mockRSAPrivateKey3, mockRSAPublicKey3},
 		{kasUs, mockRSAPrivateKey1, mockRSAPublicKey1},
 	} {
@@ -839,8 +1268,10 @@ func (s *TDFSuite) startBackend() {
 		listeners[origin] = grpcListener
 
 		grpcServer := grpc.NewServer()
-		s.kases[i] = FakeKas{s: s, privateKey: ki.private, KASInfo: KASInfo{
-			URL: ki.url, PublicKey: ki.public, KID: "r1", Algorithm: "rsa:2048"},
+		s.kases[i] = FakeKas{
+			s: s, privateKey: ki.private, KASInfo: KASInfo{
+				URL: ki.url, PublicKey: ki.public, KID: "r1", Algorithm: "rsa:2048",
+			},
 			legakeys: map[string]keyInfo{},
 		}
 		attributespb.RegisterAttributesServiceServer(grpcServer, fa)
@@ -880,116 +1311,6 @@ func (f *FakeWellKnown) GetWellKnownConfiguration(_ context.Context, _ *wellknow
 	}, nil
 }
 
-const (
-	kasAu     = "https://kas.au/"
-	kasCa     = "https://kas.ca/"
-	lasUk     = "https://kas.uk/"
-	kasNz     = "https://kas.nz/"
-	kasUs     = "https://kas.us/"
-	kasUsHcs  = "https://hcs.kas.us/"
-	kasUsSI   = "https://si.kas.us/"
-	authority = "https://virtru.com/"
-)
-
-var (
-	CLS, _ = autoconfigure.NewAttributeNameFQN("https://virtru.com/attr/Classification")
-	N2K, _ = autoconfigure.NewAttributeNameFQN("https://virtru.com/attr/Need%20to%20Know")
-	REL, _ = autoconfigure.NewAttributeNameFQN("https://virtru.com/attr/Releasable%20To")
-
-	clsAllowed, _ = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Allowed")
-
-	rel2aus, _ = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/AUS")
-	rel2usa, _ = autoconfigure.NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/USA")
-)
-
-func mockAttributeFor(fqn autoconfigure.AttributeNameFQN) *policy.Attribute {
-	ns := policy.Namespace{
-		Id:   "v",
-		Name: "virtru.com",
-		Fqn:  "https://virtru.com",
-	}
-	switch fqn {
-	case CLS:
-		return &policy.Attribute{
-			Id:        "CLS",
-			Namespace: &ns,
-			Name:      "Classification",
-			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
-			Fqn:       fqn.String(),
-		}
-	case N2K:
-		return &policy.Attribute{
-			Id:        "N2K",
-			Namespace: &ns,
-			Name:      "Need to Know",
-			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
-			Fqn:       fqn.String(),
-		}
-	case REL:
-		return &policy.Attribute{
-			Id:        "REL",
-			Namespace: &ns,
-			Name:      "Releasable To",
-			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-			Fqn:       fqn.String(),
-		}
-	}
-	return nil
-}
-func mockValueFor(fqn autoconfigure.AttributeValueFQN) *policy.Value {
-	an := fqn.Prefix()
-	a := mockAttributeFor(an)
-	v := fqn.Value()
-	p := policy.Value{
-		Id:        a.GetId() + ":" + v,
-		Attribute: a,
-		Value:     v,
-		Fqn:       fqn.String(),
-	}
-
-	switch an {
-	case N2K:
-		switch fqn.Value() {
-		case "INT":
-			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: lasUk}
-		case "HCS":
-			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: kasUsHcs}
-		case "SI":
-			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: kasUsSI}
-		}
-
-	case REL:
-		switch fqn.Value() {
-		case "FVEY":
-			p.Grants = make([]*policy.KeyAccessServer, 5)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: kasAu}
-			p.Grants[1] = &policy.KeyAccessServer{Uri: kasCa}
-			p.Grants[2] = &policy.KeyAccessServer{Uri: lasUk}
-			p.Grants[3] = &policy.KeyAccessServer{Uri: kasNz}
-			p.Grants[4] = &policy.KeyAccessServer{Uri: kasUs}
-		case "AUS":
-			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: kasAu}
-		case "CAN":
-			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: kasCa}
-		case "GBR":
-			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: lasUk}
-		case "NZL":
-			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: kasNz}
-		case "USA":
-			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: kasUs}
-		}
-	}
-	return &p
-}
-
 type FakeAttributes struct {
 	attributespb.UnimplementedAttributesServiceServer
 }
@@ -997,7 +1318,7 @@ type FakeAttributes struct {
 func (f *FakeAttributes) GetAttributeValuesByFqns(_ context.Context, in *attributespb.GetAttributeValuesByFqnsRequest) (*attributespb.GetAttributeValuesByFqnsResponse, error) {
 	r := make(map[string]*attributespb.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 	for _, fqn := range in.GetFqns() {
-		av, err := autoconfigure.NewAttributeValueFQN(fqn)
+		av, err := NewAttributeValueFQN(fqn)
 		if err != nil {
 			slog.Error("invalid fqn", "notfqn", fqn, "error", err)
 			return nil, status.New(codes.InvalidArgument, fmt.Sprintf("invalid attribute fqn [%s]", fqn)).Err()

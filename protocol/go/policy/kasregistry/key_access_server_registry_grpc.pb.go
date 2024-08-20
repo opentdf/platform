@@ -19,11 +19,12 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	KeyAccessServerRegistryService_ListKeyAccessServers_FullMethodName  = "/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers"
-	KeyAccessServerRegistryService_GetKeyAccessServer_FullMethodName    = "/policy.kasregistry.KeyAccessServerRegistryService/GetKeyAccessServer"
-	KeyAccessServerRegistryService_CreateKeyAccessServer_FullMethodName = "/policy.kasregistry.KeyAccessServerRegistryService/CreateKeyAccessServer"
-	KeyAccessServerRegistryService_UpdateKeyAccessServer_FullMethodName = "/policy.kasregistry.KeyAccessServerRegistryService/UpdateKeyAccessServer"
-	KeyAccessServerRegistryService_DeleteKeyAccessServer_FullMethodName = "/policy.kasregistry.KeyAccessServerRegistryService/DeleteKeyAccessServer"
+	KeyAccessServerRegistryService_ListKeyAccessServers_FullMethodName      = "/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers"
+	KeyAccessServerRegistryService_GetKeyAccessServer_FullMethodName        = "/policy.kasregistry.KeyAccessServerRegistryService/GetKeyAccessServer"
+	KeyAccessServerRegistryService_CreateKeyAccessServer_FullMethodName     = "/policy.kasregistry.KeyAccessServerRegistryService/CreateKeyAccessServer"
+	KeyAccessServerRegistryService_UpdateKeyAccessServer_FullMethodName     = "/policy.kasregistry.KeyAccessServerRegistryService/UpdateKeyAccessServer"
+	KeyAccessServerRegistryService_DeleteKeyAccessServer_FullMethodName     = "/policy.kasregistry.KeyAccessServerRegistryService/DeleteKeyAccessServer"
+	KeyAccessServerRegistryService_ListKeyAccessServerGrants_FullMethodName = "/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServerGrants"
 )
 
 // KeyAccessServerRegistryServiceClient is the client API for KeyAccessServerRegistryService service.
@@ -35,6 +36,7 @@ type KeyAccessServerRegistryServiceClient interface {
 	CreateKeyAccessServer(ctx context.Context, in *CreateKeyAccessServerRequest, opts ...grpc.CallOption) (*CreateKeyAccessServerResponse, error)
 	UpdateKeyAccessServer(ctx context.Context, in *UpdateKeyAccessServerRequest, opts ...grpc.CallOption) (*UpdateKeyAccessServerResponse, error)
 	DeleteKeyAccessServer(ctx context.Context, in *DeleteKeyAccessServerRequest, opts ...grpc.CallOption) (*DeleteKeyAccessServerResponse, error)
+	ListKeyAccessServerGrants(ctx context.Context, in *ListKeyAccessServerGrantsRequest, opts ...grpc.CallOption) (*ListKeyAccessServerGrantsResponse, error)
 }
 
 type keyAccessServerRegistryServiceClient struct {
@@ -90,6 +92,15 @@ func (c *keyAccessServerRegistryServiceClient) DeleteKeyAccessServer(ctx context
 	return out, nil
 }
 
+func (c *keyAccessServerRegistryServiceClient) ListKeyAccessServerGrants(ctx context.Context, in *ListKeyAccessServerGrantsRequest, opts ...grpc.CallOption) (*ListKeyAccessServerGrantsResponse, error) {
+	out := new(ListKeyAccessServerGrantsResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_ListKeyAccessServerGrants_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // KeyAccessServerRegistryServiceServer is the server API for KeyAccessServerRegistryService service.
 // All implementations must embed UnimplementedKeyAccessServerRegistryServiceServer
 // for forward compatibility
@@ -99,6 +110,7 @@ type KeyAccessServerRegistryServiceServer interface {
 	CreateKeyAccessServer(context.Context, *CreateKeyAccessServerRequest) (*CreateKeyAccessServerResponse, error)
 	UpdateKeyAccessServer(context.Context, *UpdateKeyAccessServerRequest) (*UpdateKeyAccessServerResponse, error)
 	DeleteKeyAccessServer(context.Context, *DeleteKeyAccessServerRequest) (*DeleteKeyAccessServerResponse, error)
+	ListKeyAccessServerGrants(context.Context, *ListKeyAccessServerGrantsRequest) (*ListKeyAccessServerGrantsResponse, error)
 	mustEmbedUnimplementedKeyAccessServerRegistryServiceServer()
 }
 
@@ -120,6 +132,9 @@ func (UnimplementedKeyAccessServerRegistryServiceServer) UpdateKeyAccessServer(c
 }
 func (UnimplementedKeyAccessServerRegistryServiceServer) DeleteKeyAccessServer(context.Context, *DeleteKeyAccessServerRequest) (*DeleteKeyAccessServerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteKeyAccessServer not implemented")
+}
+func (UnimplementedKeyAccessServerRegistryServiceServer) ListKeyAccessServerGrants(context.Context, *ListKeyAccessServerGrantsRequest) (*ListKeyAccessServerGrantsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListKeyAccessServerGrants not implemented")
 }
 func (UnimplementedKeyAccessServerRegistryServiceServer) mustEmbedUnimplementedKeyAccessServerRegistryServiceServer() {
 }
@@ -225,6 +240,24 @@ func _KeyAccessServerRegistryService_DeleteKeyAccessServer_Handler(srv interface
 	return interceptor(ctx, in, info, handler)
 }
 
+func _KeyAccessServerRegistryService_ListKeyAccessServerGrants_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListKeyAccessServerGrantsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyAccessServerRegistryServiceServer).ListKeyAccessServerGrants(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KeyAccessServerRegistryService_ListKeyAccessServerGrants_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyAccessServerRegistryServiceServer).ListKeyAccessServerGrants(ctx, req.(*ListKeyAccessServerGrantsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // KeyAccessServerRegistryService_ServiceDesc is the grpc.ServiceDesc for KeyAccessServerRegistryService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -251,6 +284,10 @@ var KeyAccessServerRegistryService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteKeyAccessServer",
 			Handler:    _KeyAccessServerRegistryService_DeleteKeyAccessServer_Handler,
+		},
+		{
+			MethodName: "ListKeyAccessServerGrants",
+			Handler:    _KeyAccessServerRegistryService_ListKeyAccessServerGrants_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

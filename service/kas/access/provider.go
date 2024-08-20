@@ -29,20 +29,20 @@ type Provider struct {
 
 type KASConfig struct {
 	// Which keys are currently the default.
-	Keyring []CurrentKeyFor `mapstructure:"keyring"`
+	Keyring []CurrentKeyFor `mapstructure:"keyring" json:"keyring"`
 	// Deprecated
-	ECCertID string `mapstructure:"eccertid"`
+	ECCertID string `mapstructure:"eccertid" json:"eccertid"`
 	// Deprecated
-	RSACertID string `mapstructure:"rsacertid"`
+	RSACertID string `mapstructure:"rsacertid" json:"rsacertid"`
 }
 
 // Specifies the preferred/default key for a given algorithm type.
 type CurrentKeyFor struct {
-	Algorithm string `mapstructure:"alg"`
-	KID       string `mapstructure:"kid"`
+	Algorithm string `mapstructure:"alg" json:"alg"`
+	KID       string `mapstructure:"kid" json:"kid"`
 	// Indicates that the key should not be serves by default,
 	// but instead is allowed for legacy reasons on decrypt (rewrap) only
-	Legacy bool `mapstructure:"legacy"`
+	Legacy bool `mapstructure:"legacy" json:"legacy"`
 }
 
 func (p *Provider) IsReady(ctx context.Context) error {

@@ -16,24 +16,22 @@ type Option func(*config)
 
 // Internal config struct for building SDK options.
 type config struct {
+	// Platform configuration structure is subject to change. Consume via accessor methods.
+	PlatformConfiguration   PlatformConfiguration
 	dialOption              grpc.DialOption
 	tlsConfig               *tls.Config
 	clientCredentials       *oauth.ClientCredentials
 	tokenExchange           *oauth.TokenExchangeInfo
 	tokenEndpoint           string
 	scopes                  []string
-	policyConn              *grpc.ClientConn
-	authorizationConn       *grpc.ClientConn
-	entityresolutionConn    *grpc.ClientConn
 	extraDialOptions        []grpc.DialOption
 	certExchange            *oauth.CertExchangeInfo
-	wellknownConn           *grpc.ClientConn
-	platformConfiguration   PlatformConfiguration
 	kasSessionKey           *ocrypto.RsaKeyPair
 	dpopKey                 *ocrypto.RsaKeyPair
 	ipc                     bool
 	tdfFeatures             tdfFeatures
 	customAccessTokenSource auth.AccessTokenSource
+	coreConn                *grpc.ClientConn
 }
 
 // Options specific to TDF protocol features
@@ -99,21 +97,24 @@ func withCustomAccessTokenSource(a auth.AccessTokenSource) Option {
 	}
 }
 
+// Deprecated: Use WithCustomCoreConnection instead
 func WithCustomPolicyConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
-		c.policyConn = conn
+		c.coreConn = conn
 	}
 }
 
+// Deprecated: Use WithCustomCoreConnection instead
 func WithCustomAuthorizationConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
-		c.authorizationConn = conn
+		c.coreConn = conn
 	}
 }
 
+// Deprecated: Use WithCustomCoreConnection instead
 func WithCustomEntityResolutionConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
-		c.entityresolutionConn = conn
+		c.coreConn = conn
 	}
 }
 
@@ -156,7 +157,7 @@ func WithSessionSignerRSA(key *rsa.PrivateKey) Option {
 
 func WithCustomWellknownConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
-		c.wellknownConn = conn
+		c.coreConn = conn
 	}
 }
 
@@ -164,7 +165,7 @@ func WithCustomWellknownConnection(conn *grpc.ClientConn) Option {
 // Use this option with caution, as it may lead to unexpected behavior
 func WithPlatformConfiguration(platformConfiguration PlatformConfiguration) Option {
 	return func(c *config) {
-		c.platformConfiguration = platformConfiguration
+		c.PlatformConfiguration = platformConfiguration
 	}
 }
 
@@ -181,5 +182,12 @@ func WithIPC() Option {
 func WithNoKIDInKAO() Option {
 	return func(c *config) {
 		c.tdfFeatures.noKID = true
+	}
+}
+
+// WithCoreConnection returns an Option that sets up a connection to the core platform
+func WithCustomCoreConnection(conn *grpc.ClientConn) Option {
+	return func(c *config) {
+		c.coreConn = conn
 	}
 }

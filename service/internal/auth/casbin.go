@@ -60,6 +60,9 @@ p,	role:org-admin,		/resource-mappings*,										*,			allow
 p,	role:org-admin,		/key-access-servers*,										*,			allow
 p,	role:org-admin, 	/kas/v2/rewrap,						  		        *,      allow
 p,	role:org-admin,		/unsafe*,										            *,			allow
+p,	role:org-admin,		/v1/entitlements,						  				        *,      allow
+p,	role:org-admin,		/v1/authorization,						  				        *,      allow
+p,	role:org-admin,		/v1/token/authorization,						  				        *,      allow
 
 # Role: Admin
 ## gRPC routes
@@ -76,6 +79,10 @@ p,	role:admin,		/subject-mappings*,													*,			allow
 p,	role:admin,		/resource-mappings*,												*,			allow
 p,	role:admin,		/key-access-servers*,												*,			allow
 p,	role:admin,		/kas/v2/rewrap,						  				        *,      allow
+p,	role:admin,		/v1/entitlements,						  				        *,      allow
+p,	role:admin,		/v1/authorization,						  				        *,      allow
+p,	role:admin,		/v1/token/authorization,						  				        *,      allow
+
 
 ## Role: Standard
 ## gRPC routes
@@ -95,11 +102,11 @@ p,	role:standard,		/entityresolution/resolve,							write,  	allow
 ## gRPC routes
 ## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)
 p,	role:unknown,			entityresolution.EntityResolutionService.ResolveEntities,					write,		allow
-p,	role:unknown,     kas.AccessService/Rewrap, 			                                  write,	  allow
+p,	role:unknown,     kas.AccessService/Rewrap, 			                                  *,	  allow
 ## HTTP routes
 ## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)
 p,	role:unknown,			/entityresolution/resolve,							  write,		allow
-p,	role:unknown,		  /kas/v2/rewrap,													  write,		allow
+p,	role:unknown,		  /kas/v2/rewrap,													  *,		allow
 
 `
 

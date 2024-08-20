@@ -145,3 +145,16 @@ func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
 		KeyAccessServer: keyAccessServer,
 	}, nil
 }
+
+func (s KeyAccessServerRegistry) ListKeyAccessServerGrants(ctx context.Context,
+	req *kasr.ListKeyAccessServerGrantsRequest,
+) (*kasr.ListKeyAccessServerGrantsResponse, error) {
+	keyAccessServerGrants, err := s.dbClient.ListKeyAccessServerGrants(ctx, req.GetKasId(), req.GetKasUri())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
+	}
+
+	return &kasr.ListKeyAccessServerGrantsResponse{
+		Grants: keyAccessServerGrants,
+	}, nil
+}

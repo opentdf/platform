@@ -52,6 +52,35 @@ message DeleteKeyAccessServerResponse {
   KeyAccessServer key_access_server = 1;
 }
 
+// Can be namespace, attribute definition, or value
+message GrantedPolicyObject {
+  string id = 1;
+  string fqn = 2;
+}
+
+message KeyAccessServerGrants {
+  KeyAccessServer key_access_server = 1;
+  repeated GrantedPolicyObject namespace_grants = 2;
+  repeated GrantedPolicyObject attribute_grants = 3;
+  repeated GrantedPolicyObject value_grants = 4;
+}
+
+// LIST of KAS Grants returns flat response of grants to all policy objects. It does not
+// employ selectors for grants to specific policy objects or build the attribute tree relation.
+// If grants to a known namespace, attribute, or value are needed, use the respective
+// GET request to the specific policy object.
+message ListKeyAccessServerGrantsRequest {
+  // Optional
+  // Filter LIST by either ID or URI of a registered Key Access Server.
+  // If neither is provided, grants from all registered KASs to policy attribute objects are returned.
+  string kas_id = 1;
+  string kas_uri = 2;
+}
+
+message ListKeyAccessServerGrantsResponse {
+  repeated KeyAccessServerGrants grants = 1;
+}
+
 service KeyAccessServerRegistryService {
   rpc ListKeyAccessServers(ListKeyAccessServersRequest) returns (ListKeyAccessServersResponse) {
     option (google.api.http) = {get: "/key-access-servers"};
@@ -77,5 +106,9 @@ service KeyAccessServerRegistryService {
 
   rpc DeleteKeyAccessServer(DeleteKeyAccessServerRequest) returns (DeleteKeyAccessServerResponse) {
     option (google.api.http) = {delete: "/key-access-servers/{id}"};
+  }
+
+  rpc ListKeyAccessServerGrants(ListKeyAccessServerGrantsRequest) returns (ListKeyAccessServerGrantsResponse) {
+    option (google.api.http) = {get: "/key-access-servers/grants"};
   }
 }

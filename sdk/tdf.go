@@ -15,7 +15,6 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/archive"
-	"github.com/opentdf/platform/sdk/internal/autoconfigure"
 	"google.golang.org/grpc"
 )
 
@@ -47,6 +46,8 @@ const (
 	kSplitKeyType           = "split"
 	kGCMCipherAlgorithm     = "AES-256-GCM"
 	kGMACPayloadLength      = 16
+	kAssertionSignature     = "assertionSig"
+	kAssertionHash          = "assertionHash"
 	kClientPublicKey        = "clientPublicKey"
 	kSignedRequestToken     = "signedRequestToken"
 	kKasURL                 = "url"
@@ -73,6 +74,7 @@ type Reader struct {
 	payloadSize         int64
 	payloadKey          []byte
 	kasSessionKey       ocrypto.RsaKeyPair
+	config              TDFReaderConfig
 }
 
 type TDFObject struct {
@@ -107,7 +109,7 @@ func (s SDK) defaultKases(c *TDFConfig) []string {
 	return defk
 }
 
-// CreateTDF reads plain text from the given reader and saves it to the writer, subject to the given options
+// CreateTDFContext reads plain text from the given reader and saves it to the writer, subject to the given options
 func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll // Better readability keeping it as is
 	inputSize, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
@@ -129,18 +131,18 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	}
 
 	if tdfConfig.autoconfigure {
-		var g autoconfigure.Granter
+		var g granter
 		if len(tdfConfig.attributeValues) > 0 {
-			g, err = autoconfigure.NewGranterFromAttributes(tdfConfig.attributeValues...)
+			g, err = newGranterFromAttributes(tdfConfig.attributeValues...)
 		} else if len(tdfConfig.attributes) > 0 {
-			g, err = autoconfigure.NewGranterFromService(ctx, s.Attributes, tdfConfig.attributes...)
+			g, err = newGranterFromService(ctx, s.kasKeyCache, s.Attributes, tdfConfig.attributes...)
 		}
 		if err != nil {
 			return nil, err
 		}
 
 		dk := s.defaultKases(tdfConfig)
-		tdfConfig.splitPlan, err = g.Plan(dk, func() string {
+		tdfConfig.splitPlan, err = g.plan(dk, func() string {
 			return uuid.New().String()
 		})
 		if err != nil {
@@ -257,6 +259,51 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	tdfObject.manifest.Payload.URL = archive.TDFPayloadFileName
 	tdfObject.manifest.Payload.IsEncrypted = true
 
+	var signedAssertion []Assertion
+	for _, assertion := range tdfConfig.assertions {
+		if assertion.Type != BaseAssertion {
+			continue
+		}
+
+		// Store a temporary assertion
+		tmpAssertion := Assertion{}
+
+		tmpAssertion.ID = assertion.ID
+		tmpAssertion.Type = assertion.Type
+		tmpAssertion.Scope = assertion.Scope
+		tmpAssertion.Statement = assertion.Statement
+		tmpAssertion.AppliesToState = assertion.AppliesToState
+
+		hashOfAssertion, err := tmpAssertion.GetHash()
+		if err != nil {
+			return nil, err
+		}
+
+		var completeHashBuilder strings.Builder
+		completeHashBuilder.WriteString(aggregateHash)
+		completeHashBuilder.Write(hashOfAssertion)
+
+		encoded := ocrypto.Base64Encode([]byte(completeHashBuilder.String()))
+
+		var assertionSigningKey = AssertionKey{}
+
+		// Set default to HS256 and payload key
+		assertionSigningKey.Alg = AssertionKeyAlgHS256
+		assertionSigningKey.Key = tdfObject.payloadKey[:]
+
+		if !assertion.SigningKey.IsEmpty() {
+			assertionSigningKey = assertion.SigningKey
+		}
+
+		if err := tmpAssertion.Sign(string(hashOfAssertion), string(encoded), assertionSigningKey); err != nil {
+			return nil, errors.Join(fmt.Errorf("failed to sign assertion"), err)
+		}
+
+		signedAssertion = append(signedAssertion, tmpAssertion)
+	}
+
+	tdfObject.manifest.Assertions = signedAssertion
+
 	manifestAsStr, err := json.Marshal(tdfObject.manifest)
 	if err != nil {
 		return nil, fmt.Errorf("json.Marshal failed:%w", err)
@@ -307,7 +354,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 	latestKASInfo := make(map[string]KASInfo)
 	if len(tdfConfig.splitPlan) == 0 {
 		// Default split plan: Split keys across all kases
-		tdfConfig.splitPlan = make([]autoconfigure.SplitStep, len(tdfConfig.kasInfoList))
+		tdfConfig.splitPlan = make([]keySplitStep, len(tdfConfig.kasInfoList))
 		for i, kasInfo := range tdfConfig.kasInfoList {
 			tdfConfig.splitPlan[i].KAS = kasInfo.URL
 			if len(tdfConfig.kasInfoList) > 1 {
@@ -393,7 +440,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 
 		for _, kasInfo := range conjunction[splitID] {
 			if len(kasInfo.PublicKey) == 0 {
-				return errKasPubKeyMissing
+				return fmt.Errorf("splitID:[%s], kas:[%s]: %w", splitID, kasInfo.URL, errKasPubKeyMissing)
 			}
 
 			// wrap the key with kas public key
@@ -443,7 +490,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 }
 
 // create policy object
-func createPolicyObject(attributes []autoconfigure.AttributeValueFQN) (PolicyObject, error) {
+func createPolicyObject(attributes []AttributeValueFQN) (PolicyObject, error) {
 	uuidObj, err := uuid.NewUUID()
 	if err != nil {
 		return PolicyObject{}, fmt.Errorf("uuid.NewUUID failed: %w", err)
@@ -463,11 +510,16 @@ func createPolicyObject(attributes []autoconfigure.AttributeValueFQN) (PolicyObj
 }
 
 // LoadTDF loads the tdf and prepare for reading the payload from TDF
-func (s SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
+func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, error) {
 	// create tdf reader
 	tdfReader, err := archive.NewTDFReader(reader)
 	if err != nil {
 		return nil, fmt.Errorf("archive.NewTDFReader failed: %w", err)
+	}
+
+	config, err := newTDFReaderConfig(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("newAssertionConfig failed: %w", err)
 	}
 
 	manifest, err := tdfReader.Manifest()
@@ -487,6 +539,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker) (*Reader, error) {
 		tdfReader:     tdfReader,
 		manifest:      *manifestObj,
 		kasSessionKey: *s.config.kasSessionKey,
+		config:        *config,
 	}, nil
 }
 
@@ -721,13 +774,34 @@ func (r *Reader) DataAttributes() ([]string, error) {
 	return attributes, nil
 }
 
+/*
+*WARNING:* Using this function is unsafe since KAS will no longer be able to prevent access to the key.
+
+Retrieve the payload key, either from performing an unwrap or from a previous unwrap,
+and write it to a user buffer.
+
+OUTPUTS:
+  - []byte - Byte array containing the DEK.
+  - error - If an error occurred while processing
+*/
+func (r *Reader) UnsafePayloadKeyRetrieval() ([]byte, error) {
+	if r.payloadKey == nil {
+		err := r.doPayloadKeyUnwrap(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("reader.PayloadKey failed: %w", err)
+		}
+	}
+
+	return r.payloadKey, nil
+}
+
 // Unwraps the payload key, if possible, using the access service
 func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocognit // Better readability keeping it as is
 	var unencryptedMetadata []byte
 	var payloadKey [kKeySize]byte
 	knownSplits := make(map[string]bool)
 	foundSplits := make(map[string]bool)
-	skippedSplits := make(map[autoconfigure.SplitStep]error)
+	skippedSplits := make(map[keySplitStep]error)
 	mixedSplits := len(r.manifest.KeyAccessObjs) > 1 && r.manifest.KeyAccessObjs[0].SplitID != ""
 
 	for _, keyAccessObj := range r.manifest.EncryptionInformation.KeyAccessObjs {
@@ -736,7 +810,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 			return fmt.Errorf("newKASClient failed:%w", err)
 		}
 
-		ss := autoconfigure.SplitStep{KAS: keyAccessObj.KasURL, SplitID: keyAccessObj.SplitID}
+		ss := keySplitStep{KAS: keyAccessObj.KasURL, SplitID: keyAccessObj.SplitID}
 
 		var wrappedKey []byte
 		if !mixedSplits {
@@ -799,7 +873,17 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		return errors.Join(v...)
 	}
 
-	res, err := validateRootSignature(r.manifest, payloadKey[:])
+	aggregateHash := &bytes.Buffer{}
+	for _, segment := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
+		decodedHash, err := ocrypto.Base64Decode([]byte(segment.Hash))
+		if err != nil {
+			return fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
+		}
+
+		aggregateHash.Write(decodedHash)
+	}
+
+	res, err := validateRootSignature(r.manifest, aggregateHash.Bytes(), payloadKey[:])
 	if err != nil {
 		return fmt.Errorf("splitKey.validateRootSignature failed: %w", err)
 	}
@@ -813,6 +897,54 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 
 	if segSize != encryptedSegSize-(gcmIvSize+aesBlockSize) {
 		return errSegSizeMismatch
+	}
+
+	// Validate assertions
+	for _, assertion := range r.manifest.Assertions {
+		if assertion.Type != BaseAssertion {
+			continue
+		}
+		assertionKey := AssertionKey{}
+		// Set default to HS256
+		assertionKey.Alg = AssertionKeyAlgHS256
+		assertionKey.Key = payloadKey[:]
+
+		if !r.config.AssertionVerificationKeys.IsEmpty() {
+			// Look up the key for the assertion
+			foundKey, err := r.config.AssertionVerificationKeys.Get(assertion.ID)
+
+			if err != nil {
+				return err
+			} else if !foundKey.IsEmpty() {
+				assertionKey.Alg = foundKey.Alg
+				assertionKey.Key = foundKey.Key
+			}
+		}
+
+		assertionHash, assertionSig, err := assertion.Verify(assertionKey)
+		if err != nil {
+			return errors.Join(err, fmt.Errorf("assertion verification failed"))
+		}
+
+		// Get the hash of the assertion
+		hashOfAssertion, err := assertion.GetHash()
+		if err != nil {
+			return errors.Join(err, fmt.Errorf("failed to get hash of assertion"))
+		}
+
+		var completeHashBuilder bytes.Buffer
+		completeHashBuilder.Write(aggregateHash.Bytes())
+		completeHashBuilder.Write(hashOfAssertion)
+
+		base64Hash := ocrypto.Base64Encode(completeHashBuilder.Bytes())
+
+		if string(hashOfAssertion) != assertionHash {
+			return fmt.Errorf("assertion hash missmatch")
+		}
+
+		if assertionSig != string(base64Hash) {
+			return fmt.Errorf("failed integrity check on assertion signature")
+		}
 	}
 
 	var payloadSize int64
@@ -847,26 +979,16 @@ func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm) (str
 }
 
 // validate the root signature
-func validateRootSignature(manifest Manifest, secret []byte) (bool, error) {
+func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (bool, error) {
 	rootSigAlg := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm
 	rootSigValue := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature
-
-	aggregateHash := &bytes.Buffer{}
-	for _, segment := range manifest.EncryptionInformation.IntegrityInformation.Segments {
-		decodedHash, err := ocrypto.Base64Decode([]byte(segment.Hash))
-		if err != nil {
-			return false, fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
-		}
-
-		aggregateHash.Write(decodedHash)
-	}
 
 	sigAlg := HS256
 	if strings.EqualFold(gmacIntegrityAlgorithm, rootSigAlg) {
 		sigAlg = GMAC
 	}
 
-	sig, err := calculateSignature(aggregateHash.Bytes(), secret, sigAlg)
+	sig, err := calculateSignature(aggregateHash, secret, sigAlg)
 	if err != nil {
 		return false, fmt.Errorf("splitkey.getSignature failed:%w", err)
 	}

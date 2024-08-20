@@ -27,14 +27,13 @@ RUN make opentdf
 
 FROM builder as tester
 
-RUN apt-get update -y && apt-get install -y softhsm opensc openssl
-RUN /scripts/hsm-init-temporary-keys.sh
+RUN apt-get update -y && apt-get install -y opensc openssl
+RUN /scripts/init-temp-keys.sh
 
 RUN make test
 
 FROM cgr.dev/chainguard/glibc-dynamic
 
 COPY --from=builder /app/opentdf /usr/bin/
-COPY --from=builder /usr/lib/softhsm/ /usr/lib/softhsm/
 
 CMD ["/usr/bin/opentdf"]

@@ -411,42 +411,52 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.At
 	return attribute, nil
 }
 
-// Get attribute by fqn, ensuring the attribute definition and namespace are both active
-func getAttributeByFqnSQL(fqn string, opts attributesSelectOptions) (string, []interface{}, error) {
-	return attributesSelect(opts).
-		Where(sq.Eq{Tables.AttrFqn.Field("fqn"): fqn, Tables.Attributes.Field("active"): true, Tables.Namespaces.Field("active"): true}).
-		From(Tables.Attributes.Name()).
-		ToSql()
-}
-
 func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*policy.Attribute, error) {
-	// normalize to lower case
-	fqn = strings.ToLower(fqn)
-	opts := attributesSelectOptions{
-		withAttributeValues: true,
-		withKeyAccessGrants: true,
-	}
-	if strings.Contains(fqn, "/value/") {
-		opts.withOneValueByFqn = fqn
-	} else {
-		opts.withFqn = true
-	}
-	sql, args, err := getAttributeByFqnSQL(fqn, opts)
+	fullAttr, err := c.Queries.GetAttributeByDefOrValueFqn(ctx, fqn)
 	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	ns := new(policy.Namespace)
+	err = protojson.Unmarshal(fullAttr.Namespace, ns)
+	if err != nil {
+		c.logger.Error("could not unmarshal namespace", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	row, err := c.QueryRow(ctx, sql, args)
+	values, err := attributesValuesProtojson(fullAttr.Values, sql.NullString{Valid: false})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		c.logger.Error("could not unmarshal values", slog.String("error", err.Error()))
+		return nil, err
 	}
 
-	attribute, err := attributesHydrateItem(row, opts, c.logger)
-	if err != nil {
-		c.logger.Error("could not hydrate item", slog.String("fqn", fqn), slog.String("error", err.Error()))
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	m := new(common.Metadata)
+	if fullAttr.Metadata != nil {
+		err = unmarshalMetadata(fullAttr.Metadata, m, c.logger)
+		if err != nil {
+			c.logger.Error("could not unmarshal metadata", slog.String("error", err.Error()))
+			return nil, err
+		}
 	}
-	return attribute, nil
+	var grants []*policy.KeyAccessServer
+	if fullAttr.DefinitionGrants != nil {
+		grants, err = db.KeyAccessServerProtoJSON(fullAttr.DefinitionGrants)
+		if err != nil {
+			c.logger.Error("could not unmarshal grants", slog.String("error", err.Error()))
+			return nil, err
+		}
+	}
+	return &policy.Attribute{
+		Id:        fullAttr.ID,
+		Name:      fullAttr.Name,
+		Rule:      attributesRuleTypeEnumTransformOut(string(fullAttr.Rule)),
+		Fqn:       fullAttr.DefinitionFqn,
+		Active:    &wrapperspb.BoolValue{Value: fullAttr.Active},
+		Grants:    grants,
+		Metadata:  m,
+		Namespace: ns,
+		Values:    values,
+	}, nil
 }
 
 func getAttributesByNamespaceSQL(namespaceID string, opts attributesSelectOptions) (string, []interface{}, error) {

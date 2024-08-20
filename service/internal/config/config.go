@@ -5,24 +5,57 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"reflect"
 	"strings"
 
 	"github.com/creasty/defaults"
+	"github.com/go-playground/validator/v10"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
-	"github.com/opentdf/platform/service/pkg/util"
 	"github.com/spf13/viper"
 )
 
+// Config represents the configuration settings for the service.
 type Config struct {
-	DevMode  bool                                     `mapstructure:"dev_mode"`
-	DB       db.Config                                `yaml:"db"`
-	Server   server.Config                            `yaml:"server"`
-	Logger   logger.Config                            `yaml:"logger"`
-	Services map[string]serviceregistry.ServiceConfig `yaml:"services" default:"{\"policy\": {\"enabled\": true}, \"health\": {\"enabled\": true}, \"authorization\": {\"enabled\": true}, \"wellknown\": {\"enabled\": true}, \"kas\": {\"enabled\": true}, \"entityresolution\": {\"enabled\": true}}"`
+	// DevMode specifies whether the service is running in development mode.
+	DevMode bool `mapstructure:"dev_mode" json:"dev_mode"`
+
+	// DB represents the configuration settings for the database.
+	DB db.Config `mapstructure:"db" json:"db"`
+
+	// Server represents the configuration settings for the server.
+	Server server.Config `mapstructure:"server" json:"server"`
+
+	// Logger represents the configuration settings for the logger.
+	Logger logger.Config `mapstructure:"logger" json:"logger"`
+
+	// Mode specifies which services to run.
+	// By default, it runs all services.
+	Mode []string `mapstructure:"mode" json:"mode" default:"[\"all\"]"`
+
+	// SDKConfig represents the configuration settings for the SDK.
+	SDKConfig SDKConfig `mapstructure:"sdk_config" json:"sdk_config"`
+
+	// Services represents the configuration settings for the services.
+	Services map[string]serviceregistry.ServiceConfig `mapstructure:"services"`
+}
+
+// SDKConfig represents the configuration for the SDK.
+type SDKConfig struct {
+	// Endpoint is the URL of the Core Platform endpoint.
+	Endpoint string `mapstructure:"endpoint" json:"endpoint"`
+
+	// Plaintext specifies whether the SDK should use plaintext communication.
+	Plaintext bool `mapstructure:"plaintext" json:"plaintext" default:"false" validate:"boolean"`
+
+	// ClientID is the client ID used for client credentials grant.
+	// It is required together with ClientSecret.
+	ClientID string `mapstructure:"client_id" json:"client_id" validate:"required_with=ClientSecret"`
+
+	// ClientSecret is the client secret used for client credentials grant.
+	// It is required together with ClientID.
+	ClientSecret string `mapstructure:"client_secret" json:"client_secret" validate:"required_with=ClientID"`
 }
 
 type Error string
@@ -38,18 +71,14 @@ const (
 )
 
 // LoadConfig Load config with viper.
-func LoadConfig(key string, file string) (*Config, error) {
+func LoadConfig(key, file string) (*Config, error) {
 	config := &Config{}
+
 	homedir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, errors.Join(err, ErrLoadingConfig)
 	}
-	// uncommment to debug config loading,
-	// issue is the loglevel directive is in the config yaml
-	// t := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-	// 	Level: slog.LevelDebug,
-	// })
-	// v := viper.NewWithOptions(viper.WithLogger(slog.New(t)))
+
 	v := viper.NewWithOptions(viper.WithLogger(slog.Default()))
 	v.AddConfigPath(fmt.Sprintf("%s/."+key, homedir))
 	v.AddConfigPath("." + key)
@@ -83,23 +112,34 @@ func LoadConfig(key string, file string) (*Config, error) {
 		return nil, errors.Join(err, ErrUnmarshallingConfig)
 	}
 
+	// Validate Config
+	validate := validator.New()
+
+	if err := validate.Struct(config); err != nil {
+		return nil, errors.Join(err, ErrUnmarshallingConfig)
+	}
+
 	return config, nil
 }
 
+// LogValue returns a slog.Value representation of the config.
+// We exclude logging service configuration as it may contain sensitive information.
 func (c *Config) LogValue() slog.Value {
-	redactedConfig := util.RedactSensitiveData(c)
-	var values []slog.Attr
-	v := reflect.ValueOf(redactedConfig).Elem()
-	t := v.Type()
+	return slog.GroupValue(
+		slog.Bool("dev_mode", c.DevMode),
+		slog.Any("db", c.DB),
+		slog.Any("logger", c.Logger),
+		slog.Any("mode", c.Mode),
+		slog.Any("sdk_config", c.SDKConfig),
+		slog.Any("server", c.Server),
+	)
+}
 
-	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i)
-		fieldType := t.Field(i)
-		key := fieldType.Tag.Get("yaml")
-		if key == "" {
-			key = fieldType.Name
-		}
-		values = append(values, slog.String(key, util.StructToString(field)))
-	}
-	return slog.GroupValue(values...)
+func (c SDKConfig) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("endpoint", c.Endpoint),
+		slog.Bool("plaintext", c.Plaintext),
+		slog.String("client_id", c.ClientID),
+		slog.String("client_secret", "[REDACTED]"),
+	)
 }

@@ -518,6 +518,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	var size uint32
 
 	magicNumber := make([]byte, len(kNanoTDFMagicStringAndVersion))
+
 	l, err := reader.Read(magicNumber)
 	if err != nil {
 		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
@@ -839,8 +840,6 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 	if err != nil {
 		return 0, err
 	}
-	// print(payloadLength)
-	// print(string(decryptedData))
 
 	return uint32(writeLen), nil
 }

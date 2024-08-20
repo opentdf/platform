@@ -5,7 +5,6 @@ import (
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/sdk/internal/autoconfigure"
 )
 
 const (
@@ -57,11 +56,11 @@ type TDFConfig struct {
 	mimeType                  string
 	integrityAlgorithm        IntegrityAlgorithm
 	segmentIntegrityAlgorithm IntegrityAlgorithm
-	assertions                []Assertion //nolint:unused // TODO
-	attributes                []autoconfigure.AttributeValueFQN
+	assertions                []AssertionConfig
+	attributes                []AttributeValueFQN
 	attributeValues           []*policy.Value
 	kasInfoList               []KASInfo
-	splitPlan                 []autoconfigure.SplitStep
+	splitPlan                 []keySplitStep
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -106,7 +105,7 @@ func WithDataAttributes(attributes ...string) TDFOption {
 	return func(c *TDFConfig) error {
 		c.attributeValues = nil
 		for _, a := range attributes {
-			v, err := autoconfigure.NewAttributeValueFQN(a)
+			v, err := NewAttributeValueFQN(a)
 			if err != nil {
 				return err
 			}
@@ -123,11 +122,11 @@ func WithDataAttributes(attributes ...string) TDFOption {
 // it to the `CreateTDF` method with this option.
 func WithDataAttributeValues(attributes ...*policy.Value) TDFOption {
 	return func(c *TDFConfig) error {
-		c.attributes = make([]autoconfigure.AttributeValueFQN, len(attributes))
+		c.attributes = make([]AttributeValueFQN, len(attributes))
 		c.attributeValues = make([]*policy.Value, len(attributes))
 		for i, a := range attributes {
 			c.attributeValues[i] = a
-			afqn, err := autoconfigure.NewAttributeValueFQN(a.GetFqn())
+			afqn, err := NewAttributeValueFQN(a.GetFqn())
 			if err != nil {
 				// TODO: update service to validate and encode FQNs properly
 				return err
@@ -154,9 +153,9 @@ func WithKasInformation(kasInfoList ...KASInfo) TDFOption {
 	}
 }
 
-func withSplitPlan(p ...autoconfigure.SplitStep) TDFOption {
+func withSplitPlan(p ...keySplitStep) TDFOption {
 	return func(c *TDFConfig) error {
-		c.splitPlan = make([]autoconfigure.SplitStep, len(p))
+		c.splitPlan = make([]keySplitStep, len(p))
 		copy(c.splitPlan, p)
 		c.autoconfigure = false
 		return nil
@@ -186,6 +185,14 @@ func WithSegmentSize(size int64) TDFOption {
 	}
 }
 
+// WithAssertions returns an Option that add assertions to TDF.
+func WithAssertions(assertionList ...AssertionConfig) TDFOption {
+	return func(c *TDFConfig) error {
+		c.assertions = append(c.assertions, assertionList...)
+		return nil
+	}
+}
+
 // WithAutoconfigure toggles inferring KAS info for encrypt from data attributes.
 // This will use the Attributes service to look up key access grants.
 // These are KAS URLs associated with attributes.
@@ -194,6 +201,32 @@ func WithAutoconfigure(enable bool) TDFOption {
 	return func(c *TDFConfig) error {
 		c.autoconfigure = enable
 		c.splitPlan = nil
+		return nil
+	}
+}
+
+type TDFReaderOption func(*TDFReaderConfig) error
+
+type TDFReaderConfig struct {
+	// Optional Map of Assertion Verification Keys
+	AssertionVerificationKeys AssertionVerificationKeys
+}
+
+func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
+	c := &TDFReaderConfig{}
+	for _, o := range opt {
+		err := o(c)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return c, nil
+}
+
+func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.AssertionVerificationKeys = keys
 		return nil
 	}
 }

@@ -19,11 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	NamespaceService_GetNamespace_FullMethodName        = "/policy.namespaces.NamespaceService/GetNamespace"
-	NamespaceService_ListNamespaces_FullMethodName      = "/policy.namespaces.NamespaceService/ListNamespaces"
-	NamespaceService_CreateNamespace_FullMethodName     = "/policy.namespaces.NamespaceService/CreateNamespace"
-	NamespaceService_UpdateNamespace_FullMethodName     = "/policy.namespaces.NamespaceService/UpdateNamespace"
-	NamespaceService_DeactivateNamespace_FullMethodName = "/policy.namespaces.NamespaceService/DeactivateNamespace"
+	NamespaceService_GetNamespace_FullMethodName                       = "/policy.namespaces.NamespaceService/GetNamespace"
+	NamespaceService_ListNamespaces_FullMethodName                     = "/policy.namespaces.NamespaceService/ListNamespaces"
+	NamespaceService_CreateNamespace_FullMethodName                    = "/policy.namespaces.NamespaceService/CreateNamespace"
+	NamespaceService_UpdateNamespace_FullMethodName                    = "/policy.namespaces.NamespaceService/UpdateNamespace"
+	NamespaceService_DeactivateNamespace_FullMethodName                = "/policy.namespaces.NamespaceService/DeactivateNamespace"
+	NamespaceService_AssignKeyAccessServerToNamespace_FullMethodName   = "/policy.namespaces.NamespaceService/AssignKeyAccessServerToNamespace"
+	NamespaceService_RemoveKeyAccessServerFromNamespace_FullMethodName = "/policy.namespaces.NamespaceService/RemoveKeyAccessServerFromNamespace"
 )
 
 // NamespaceServiceClient is the client API for NamespaceService service.
@@ -35,6 +37,11 @@ type NamespaceServiceClient interface {
 	CreateNamespace(ctx context.Context, in *CreateNamespaceRequest, opts ...grpc.CallOption) (*CreateNamespaceResponse, error)
 	UpdateNamespace(ctx context.Context, in *UpdateNamespaceRequest, opts ...grpc.CallOption) (*UpdateNamespaceResponse, error)
 	DeactivateNamespace(ctx context.Context, in *DeactivateNamespaceRequest, opts ...grpc.CallOption) (*DeactivateNamespaceResponse, error)
+	// --------------------------------------*
+	// Namespace <> Key Access Server RPCs
+	// ---------------------------------------
+	AssignKeyAccessServerToNamespace(ctx context.Context, in *AssignKeyAccessServerToNamespaceRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToNamespaceResponse, error)
+	RemoveKeyAccessServerFromNamespace(ctx context.Context, in *RemoveKeyAccessServerFromNamespaceRequest, opts ...grpc.CallOption) (*RemoveKeyAccessServerFromNamespaceResponse, error)
 }
 
 type namespaceServiceClient struct {
@@ -90,6 +97,24 @@ func (c *namespaceServiceClient) DeactivateNamespace(ctx context.Context, in *De
 	return out, nil
 }
 
+func (c *namespaceServiceClient) AssignKeyAccessServerToNamespace(ctx context.Context, in *AssignKeyAccessServerToNamespaceRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToNamespaceResponse, error) {
+	out := new(AssignKeyAccessServerToNamespaceResponse)
+	err := c.cc.Invoke(ctx, NamespaceService_AssignKeyAccessServerToNamespace_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *namespaceServiceClient) RemoveKeyAccessServerFromNamespace(ctx context.Context, in *RemoveKeyAccessServerFromNamespaceRequest, opts ...grpc.CallOption) (*RemoveKeyAccessServerFromNamespaceResponse, error) {
+	out := new(RemoveKeyAccessServerFromNamespaceResponse)
+	err := c.cc.Invoke(ctx, NamespaceService_RemoveKeyAccessServerFromNamespace_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NamespaceServiceServer is the server API for NamespaceService service.
 // All implementations must embed UnimplementedNamespaceServiceServer
 // for forward compatibility
@@ -99,6 +124,11 @@ type NamespaceServiceServer interface {
 	CreateNamespace(context.Context, *CreateNamespaceRequest) (*CreateNamespaceResponse, error)
 	UpdateNamespace(context.Context, *UpdateNamespaceRequest) (*UpdateNamespaceResponse, error)
 	DeactivateNamespace(context.Context, *DeactivateNamespaceRequest) (*DeactivateNamespaceResponse, error)
+	// --------------------------------------*
+	// Namespace <> Key Access Server RPCs
+	// ---------------------------------------
+	AssignKeyAccessServerToNamespace(context.Context, *AssignKeyAccessServerToNamespaceRequest) (*AssignKeyAccessServerToNamespaceResponse, error)
+	RemoveKeyAccessServerFromNamespace(context.Context, *RemoveKeyAccessServerFromNamespaceRequest) (*RemoveKeyAccessServerFromNamespaceResponse, error)
 	mustEmbedUnimplementedNamespaceServiceServer()
 }
 
@@ -120,6 +150,12 @@ func (UnimplementedNamespaceServiceServer) UpdateNamespace(context.Context, *Upd
 }
 func (UnimplementedNamespaceServiceServer) DeactivateNamespace(context.Context, *DeactivateNamespaceRequest) (*DeactivateNamespaceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeactivateNamespace not implemented")
+}
+func (UnimplementedNamespaceServiceServer) AssignKeyAccessServerToNamespace(context.Context, *AssignKeyAccessServerToNamespaceRequest) (*AssignKeyAccessServerToNamespaceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AssignKeyAccessServerToNamespace not implemented")
+}
+func (UnimplementedNamespaceServiceServer) RemoveKeyAccessServerFromNamespace(context.Context, *RemoveKeyAccessServerFromNamespaceRequest) (*RemoveKeyAccessServerFromNamespaceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveKeyAccessServerFromNamespace not implemented")
 }
 func (UnimplementedNamespaceServiceServer) mustEmbedUnimplementedNamespaceServiceServer() {}
 
@@ -224,6 +260,42 @@ func _NamespaceService_DeactivateNamespace_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NamespaceService_AssignKeyAccessServerToNamespace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AssignKeyAccessServerToNamespaceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NamespaceServiceServer).AssignKeyAccessServerToNamespace(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NamespaceService_AssignKeyAccessServerToNamespace_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NamespaceServiceServer).AssignKeyAccessServerToNamespace(ctx, req.(*AssignKeyAccessServerToNamespaceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NamespaceService_RemoveKeyAccessServerFromNamespace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveKeyAccessServerFromNamespaceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NamespaceServiceServer).RemoveKeyAccessServerFromNamespace(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NamespaceService_RemoveKeyAccessServerFromNamespace_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NamespaceServiceServer).RemoveKeyAccessServerFromNamespace(ctx, req.(*RemoveKeyAccessServerFromNamespaceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // NamespaceService_ServiceDesc is the grpc.ServiceDesc for NamespaceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -250,6 +322,14 @@ var NamespaceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeactivateNamespace",
 			Handler:    _NamespaceService_DeactivateNamespace_Handler,
+		},
+		{
+			MethodName: "AssignKeyAccessServerToNamespace",
+			Handler:    _NamespaceService_AssignKeyAccessServerToNamespace_Handler,
+		},
+		{
+			MethodName: "RemoveKeyAccessServerFromNamespace",
+			Handler:    _NamespaceService_RemoveKeyAccessServerFromNamespace_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

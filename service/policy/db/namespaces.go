@@ -72,47 +72,37 @@ func hydrateNamespaceItems(rows pgx.Rows, opts namespaceSelectOptions, logger *l
 	return list, nil
 }
 
-func getNamespaceSQL(id string, opts namespaceSelectOptions) (string, []interface{}, error) {
-	t := Tables.Namespaces
-	fqnT := Tables.AttrFqn
-	fields := []string{
-		t.Field("id"),
-		t.Field("name"),
-		t.Field("active"),
-		constructMetadata("", false),
-	}
-
-	if opts.withFqn {
-		fields = append(fields, fqnT.Field("fqn"))
-	}
-
-	sb := db.NewStatementBuilder().
-		Select(fields...).
-		From(t.Name())
-
-	if opts.withFqn {
-		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("namespace_id") + " = " + t.Field("id") +
-			" AND " + fqnT.Field("attribute_id") + " IS NULL")
-	}
-
-	return sb.
-		Where(sq.Eq{t.Field("id"): id}).
-		ToSql()
-}
-
 func (c PolicyDBClient) GetNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
-	opts := namespaceSelectOptions{withFqn: true}
-	sql, args, err := getNamespaceSQL(id, opts)
+	ns, err := c.Queries.GetNamespace(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	row, err := c.QueryRow(ctx, sql, args)
-	if err != nil {
-		return nil, err
+	m := &common.Metadata{}
+	if ns.Metadata != nil {
+		if err := protojson.Unmarshal(ns.Metadata, m); err != nil {
+			c.logger.Error("could not unmarshal metadata", slog.String("error", err.Error()))
+			return nil, err
+		}
 	}
 
-	return hydrateNamespaceItem(row, opts, c.logger)
+	var grants []*policy.KeyAccessServer
+	if ns.Grants != nil {
+		grants, err = db.KeyAccessServerProtoJSON(ns.Grants)
+		if err != nil {
+			c.logger.Error("could not unmarshal grants", slog.String("error", err.Error()))
+			return nil, err
+		}
+	}
+
+	return &policy.Namespace{
+		Id:       id,
+		Name:     ns.Name,
+		Active:   &wrapperspb.BoolValue{Value: ns.Active},
+		Grants:   grants,
+		Metadata: m,
+		Fqn:      ns.Fqn.String,
+	}, nil
 }
 
 func listNamespacesSQL(opts namespaceSelectOptions) (string, []interface{}, error) {
@@ -262,6 +252,9 @@ func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *names
 	}, nil
 }
 
+/*
+UNSAFE OPERATIONS
+*/
 func unsafeUpdateNamespaceSQL(id string, name string) (string, []interface{}, error) {
 	t := Tables.Namespaces
 	return db.NewStatementBuilder().
@@ -399,4 +392,31 @@ func (c PolicyDBClient) UnsafeDeleteNamespace(ctx context.Context, existing *pol
 	return &policy.Namespace{
 		Id: id,
 	}, nil
+}
+
+func (c PolicyDBClient) AssignKeyAccessServerToNamespace(ctx context.Context, k *namespaces.NamespaceKeyAccessServer) (*namespaces.NamespaceKeyAccessServer, error) {
+	_, err := c.Queries.AssignKeyAccessServerToNamespace(ctx, AssignKeyAccessServerToNamespaceParams{
+		NamespaceID:       k.GetNamespaceId(),
+		KeyAccessServerID: k.GetKeyAccessServerId(),
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return k, nil
+}
+
+func (c PolicyDBClient) RemoveKeyAccessServerFromNamespace(ctx context.Context, k *namespaces.NamespaceKeyAccessServer) (*namespaces.NamespaceKeyAccessServer, error) {
+	count, err := c.Queries.RemoveKeyAccessServerFromNamespace(ctx, RemoveKeyAccessServerFromNamespaceParams{
+		NamespaceID:       k.GetNamespaceId(),
+		KeyAccessServerID: k.GetKeyAccessServerId(),
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
+
+	return k, nil
 }

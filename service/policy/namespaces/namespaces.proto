@@ -9,6 +9,15 @@ import "common/common.proto";
 import "policy/objects.proto";
 
 /*
+    Key Access Server Grants
+*/
+
+message NamespaceKeyAccessServer {
+  string namespace_id = 1;
+  string key_access_server_id = 2;
+}
+
+/*
 
    Namespace Service Definitions
 
@@ -65,6 +74,27 @@ message DeactivateNamespaceRequest {
 }
 message DeactivateNamespaceResponse {}
 
+/*
+  Assign Key Access Server to Namespace
+*/
+
+
+message AssignKeyAccessServerToNamespaceRequest {
+  NamespaceKeyAccessServer namespace_key_access_server = 1;
+}
+
+message AssignKeyAccessServerToNamespaceResponse {
+  NamespaceKeyAccessServer namespace_key_access_server = 1;
+}
+
+message RemoveKeyAccessServerFromNamespaceRequest {
+  NamespaceKeyAccessServer namespace_key_access_server = 1;
+}
+
+message RemoveKeyAccessServerFromNamespaceResponse {
+  NamespaceKeyAccessServer namespace_key_access_server = 1;
+}
+
 service NamespaceService {
   rpc GetNamespace(GetNamespaceRequest) returns (GetNamespaceResponse) {
     option (google.api.http) = {get: "/attributes/namespaces/{id}"};
@@ -89,4 +119,21 @@ service NamespaceService {
   rpc DeactivateNamespace(DeactivateNamespaceRequest) returns (DeactivateNamespaceResponse) {
     option (google.api.http) = {delete: "/attributes/namespaces/{id}"};
   }
+
+   /*--------------------------------------*
+   * Namespace <> Key Access Server RPCs
+   *---------------------------------------*/
+  rpc AssignKeyAccessServerToNamespace(AssignKeyAccessServerToNamespaceRequest) returns (AssignKeyAccessServerToNamespaceResponse) {
+    option (google.api.http) = {
+      post: "/attributes/namespaces/keyaccessserver/grants"
+      body: "namespace_key_access_server"
+    };
+  }
+
+  rpc RemoveKeyAccessServerFromNamespace(RemoveKeyAccessServerFromNamespaceRequest) returns (RemoveKeyAccessServerFromNamespaceResponse) {
+    option (google.api.http) = {
+      delete: "/attributes/namespaces/keyaccessserver/grants"
+    };
+  }
 }
+

@@ -220,16 +220,16 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 		return nil, nil //nolint:nilnil // not having credentials is not an error
 	}
 
+	if c.certExchange != nil && c.tokenExchange != nil {
+		return nil, fmt.Errorf("cannot do both token exchange and certificate exchange")
+	}
+
 	if c.dpopKey == nil {
 		rsaKeyPair, err := ocrypto.NewRSAKeyPair(dpopKeySize)
 		if err != nil {
 			return nil, fmt.Errorf("could not generate RSA Key: %w", err)
 		}
 		c.dpopKey = &rsaKeyPair
-	}
-
-	if c.certExchange != nil && c.tokenExchange != nil {
-		return nil, fmt.Errorf("cannot do both token exchange and certificate exchange")
 	}
 
 	var ts auth.AccessTokenSource

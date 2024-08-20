@@ -422,7 +422,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqns() {
 	s.Equal(scenarioDotComGroup.NamespaceID, mappingsByGroup.GetGroup().GetNamespaceId())
 	s.Equal(scenarioDotComGroup.Name, mappingsByGroup.GetGroup().GetName())
 
-	s.Equal(len(mappingsByGroup.GetMappings()), 1)
+	s.Len(mappingsByGroup.GetMappings(), 1, "expected 1 mapping")
 	mapping := mappingsByGroup.GetMappings()[0]
 	s.Equal(scenarioDotComGroupMapping.ID, mapping.GetId())
 	s.Equal(scenarioDotComGroupMapping.AttributeValueID, mapping.GetAttributeValue().GetId())

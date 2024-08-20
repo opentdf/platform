@@ -305,8 +305,10 @@ message PublicKey {
       expression: "this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')"
     }];
 
-    // public key - optional since can also be retrieved via url
-    string local = 2;
+    // public key; PEM of RSA public key; prefer `cached`
+    string local = 2 [
+      deprecated = true
+    ];
 
     // public key with additional information. Current preferred version
     KasPublicKeySet cached = 3;

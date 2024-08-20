@@ -63,17 +63,31 @@ type PgxIface interface {
 }
 
 type Config struct {
-	Host          string `yaml:"host" default:"localhost"`
-	Port          int    `yaml:"port" default:"5432"`
-	Database      string `yaml:"database" default:"opentdf"`
-	User          string `yaml:"user" default:"postgres"`
-	Password      string `yaml:"password" default:"changeme" secret:"true"`
-	RunMigrations bool   `yaml:"runMigrations" default:"true"`
-	SSLMode       string `yaml:"sslmode" default:"prefer"`
-	Schema        string `yaml:"schema" default:"opentdf"`
+	Host          string `mapstructure:"host" json:"host" default:"localhost"`
+	Port          int    `mapstructure:"port" json:"port" default:"5432"`
+	Database      string `mapstructure:"database" json:"database" default:"opentdf"`
+	User          string `mapstructure:"user" json:"user" default:"postgres"`
+	Password      string `mapstructure:"password" json:"password" default:"changeme"`
+	RunMigrations bool   `mapstructure:"runMigrations" json:"runMigrations" default:"true"`
+	SSLMode       string `mapstructure:"sslmode" json:"sslmode" default:"prefer"`
+	Schema        string `mapstructure:"schema" json:"schema" default:"opentdf"`
 
-	VerifyConnection bool `yaml:"verifyConnection" default:"true"`
-	MigrationsFS     *embed.FS
+	VerifyConnection bool      `mapstructure:"verifyConnection" json:"verifyConnection" default:"true"`
+	MigrationsFS     *embed.FS `mapstructure:"-"`
+}
+
+func (c Config) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("host", c.Host),
+		slog.Int("port", c.Port),
+		slog.String("database", c.Database),
+		slog.String("user", c.User),
+		slog.String("password", "[REDACTED]"),
+		slog.String("sslmode", c.SSLMode),
+		slog.String("schema", c.Schema),
+		slog.Bool("runMigrations", c.RunMigrations),
+		slog.Bool("verifyConnection", c.VerifyConnection),
+	)
 }
 
 /*

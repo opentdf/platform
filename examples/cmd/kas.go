@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var key string
+var algorithm, kas, key, keyIdentifier string
 
 func init() {
 	kasc := &cobra.Command{
@@ -28,8 +28,12 @@ func init() {
 			return updateKas(cmd)
 		},
 	}
+	// Note we currently only store one pk at a time. must be fixed for nano tests
+	update.Flags().StringVarP(&algorithm, "algorithm", "", "", "algorithm used with the public key")
 	update.Flags().StringVarP(&kas, "kas", "k", "", "kas uri")
 	update.Flags().StringVarP(&key, "public-key", "", "", "public key value, e.g. $(<my-key.pem)")
+	update.Flags().StringVarP(&keyIdentifier, "kid", "", "", "key identifier used to uniquely identify a key across rotations")
+
 	kasc.AddCommand(update)
 
 	list := &cobra.Command{
@@ -137,6 +141,16 @@ func upsertKasRegistration(ctx context.Context, s *sdk.SDK, uri string, pk *poli
 	return ur.KeyAccessServer.GetId(), nil
 }
 
+func algString2Proto(a string) policy.KasPublicKeyAlgEnum {
+	switch strings.ToLower(a) {
+	case "ec:secp256r1":
+		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
+	case "rsa:2048":
+		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
+	}
+	return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
+}
+
 func updateKas(cmd *cobra.Command) error {
 	s, err := newSDK()
 	if err != nil {
@@ -146,7 +160,25 @@ func updateKas(cmd *cobra.Command) error {
 	defer s.Close()
 
 	var pk *policy.PublicKey
-	if key != "" {
+	switch {
+	case keyIdentifier != "":
+		if key == "" || algorithm == "" {
+			err := fmt.Errorf("if --kid is found, --public-key and --algorithm must also be specified")
+			return err
+		}
+		pk = new(policy.PublicKey)
+		pk.PublicKey = &policy.PublicKey_Cached{
+			Cached: &policy.KasPublicKeySet{
+				Keys: []*policy.KasPublicKey{
+					{
+						Pem: key,
+						Kid: keyIdentifier,
+						Alg: algString2Proto(algorithm),
+					},
+				},
+			},
+		}
+	case key != "":
 		pk = new(policy.PublicKey)
 		pk.PublicKey = &policy.PublicKey_Local{
 			Local: key,

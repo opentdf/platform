@@ -3,9 +3,9 @@ package security
 import "log/slog"
 
 type Config struct {
-	Type string `yaml:"type" default:"standard"`
+	Type string `mapstructure:"type" json:"type" default:"standard"`
 	// StandardConfig is the configuration for the standard key provider
-	StandardConfig StandardConfig `yaml:"standard,omitempty" mapstructure:"standard"`
+	StandardConfig StandardConfig `mapstructure:"standard" json:"standard"`
 }
 
 func NewCryptoProvider(cfg Config) (CryptoProvider, error) {

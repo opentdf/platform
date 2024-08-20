@@ -41,7 +41,7 @@ func NewOAuthAccessTokenSource(
 }
 
 // AccessToken use a pointer receiver so that the token state is shared
-func (t *OAuthAccessTokenSource) AccessToken(ctx context.Context, client *http.Client) (auth.AccessToken, error) {
+func (t *OAuthAccessTokenSource) AccessToken(_ context.Context, _ *http.Client) (auth.AccessToken, error) { // must satisfy auth.AccessTokenSource interface
 	tok, err := t.source.Token()
 	if err != nil {
 		return "", fmt.Errorf("error getting access token: %w", err)

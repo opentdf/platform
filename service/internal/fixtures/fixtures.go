@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 
+	policypb "github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/policy"
 	"gopkg.in/yaml.v2"
 )
@@ -100,8 +101,8 @@ type FixtureDataKasRegistry struct {
 	ID     string `yaml:"id"`
 	URI    string `yaml:"uri"`
 	PubKey struct {
-		Remote string `yaml:"remote" json:"remote,omitempty"`
-		Local  string `yaml:"local" json:"local,omitempty"`
+		Remote string                    `yaml:"remote" json:"remote,omitempty"`
+		Cached *policypb.KasPublicKeySet `yaml:"cached" json:"cached,omitempty"`
 	} `yaml:"public_key" json:"public_key"`
 }
 

@@ -59,7 +59,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers() {
 				if item.GetPublicKey().GetRemote() != "" {
 					s.Equal(fixture.PubKey.Remote, item.GetPublicKey().GetRemote())
 				} else {
-					s.Equal(fixture.PubKey.Local, item.GetPublicKey().GetLocal())
+					s.Equal(fixture.PubKey.Cached, item.GetPublicKey().GetCached())
 				}
 				s.Equal(fixture.URI, item.GetUri())
 			}
@@ -83,7 +83,7 @@ func (s *KasRegistrySuite) Test_GetKeyAccessServer() {
 	s.NotNil(local)
 	s.Equal(localFixture.ID, local.GetId())
 	s.Equal(localFixture.URI, local.GetUri())
-	s.Equal(localFixture.PubKey.Local, local.GetPublicKey().GetLocal())
+	s.Equal(localFixture.PubKey.Cached, local.GetPublicKey().GetCached())
 }
 
 func (s *KasRegistrySuite) Test_GetKeyAccessServer_WithNonExistentId_Fails() {
@@ -231,7 +231,8 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(updatedURI, got.GetUri())
 	s.Equal(updatedPubKeyRemote, got.GetPublicKey().GetRemote())
-	s.Zero(got.GetPublicKey().GetLocal())
+	s.Zero(got.GetPublicKey().GetLocal()) //nolint:staticcheck // deprecated but this is a test
+	s.Zero(got.GetPublicKey().GetCached())
 	s.Equal(fixedLabel, got.GetMetadata().GetLabels()["fixed"])
 	s.Equal(updatedLabel, got.GetMetadata().GetLabels()["update"])
 	s.Equal(newLabel, got.GetMetadata().GetLabels()["new"])
@@ -275,7 +276,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Metadata_DoesNotAlterOther
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(uri, got.GetUri())
 	s.Equal(pubKeyRemote, got.GetPublicKey().GetRemote())
-	s.Zero(got.GetPublicKey().GetLocal())
+	s.Zero(got.GetPublicKey().GetCached())
 	s.Equal("new label", got.GetMetadata().GetLabels()["new"])
 }
 
@@ -310,7 +311,8 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Uri_DoesNotAlterOtherValue
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(updatedURI, got.GetUri())
 	s.Equal(pubKeyRemote, got.GetPublicKey().GetRemote())
-	s.Zero(got.GetPublicKey().GetLocal())
+	s.Zero(got.GetPublicKey().GetLocal()) //nolint:staticcheck // deprecated but this is a test
+	s.Zero(got.GetPublicKey().GetCached())
 	s.Nil(got.GetMetadata().GetLabels())
 }
 
@@ -318,7 +320,20 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Uri_DoesNotAlterOtherValue
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOtherValues() {
 	uri := "before_pubkey_only.com"
 	pubKeyRemote := "https://remote.com/key"
-	updatedPubKeyLocal := "my_key"
+	updatedKeySet := &policy.KasPublicKeySet{
+		Keys: []*policy.KasPublicKey{
+			{
+				Pem: "some-pem-data",
+				Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048,
+				Kid: "r1",
+			},
+		},
+	}
+	updatedPubKey := &policy.PublicKey{
+		PublicKey: &policy.PublicKey_Cached{
+			Cached: updatedKeySet,
+		},
+	}
 
 	// create a test KAS
 	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
@@ -339,11 +354,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOthe
 
 	// update it with new key
 	updated, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, created.GetId(), &kasregistry.UpdateKeyAccessServerRequest{
-		PublicKey: &policy.PublicKey{
-			PublicKey: &policy.PublicKey_Local{
-				Local: updatedPubKeyLocal,
-			},
-		},
+		PublicKey: updatedPubKey,
 	})
 	s.Require().NoError(err)
 	s.NotNil(updated)
@@ -354,7 +365,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOthe
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(uri, got.GetUri())
-	s.Equal(updatedPubKeyLocal, got.GetPublicKey().GetLocal())
+	s.Equal(updatedKeySet, got.GetPublicKey().GetCached())
 	s.Zero(got.GetPublicKey().GetRemote())
 	s.Equal("unchanged label", got.GetMetadata().GetLabels()["unchanged"])
 }

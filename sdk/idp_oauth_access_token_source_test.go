@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
 )
 
@@ -24,7 +25,7 @@ func TestNewOAuthAccessTokenSource_Success(t *testing.T) {
 	tokenSource, err := NewOAuthAccessTokenSource(mockSource, mockScopes, &mockKey)
 
 	// Sanity Checks
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, tokenSource)
 	assert.Equal(t, mockSource, tokenSource.source)
 	assert.Equal(t, mockScopes, tokenSource.scopes)
@@ -34,10 +35,10 @@ func TestNewOAuthAccessTokenSource_Success(t *testing.T) {
 	assert.Equal(t, dpopKey, tokenSource.dpopKey)
 	// Interface checks
 	tok, err := tokenSource.AccessToken(context.Background(), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, tok, auth.AccessToken(mockToken))
 	made, err := tokenSource.MakeToken(func(jwk.Key) ([]byte, error) { return []byte(mockToken), nil })
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, made, []byte(mockToken))
 }
 
@@ -52,13 +53,13 @@ func TestNewOAuthAccessTokenSource_ExpiredToken(t *testing.T) {
 	tokenSource, err := NewOAuthAccessTokenSource(mockSource, mockScopes, &mockKey)
 
 	// Sanity Checks
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, tokenSource)
 	assert.Equal(t, mockSource, tokenSource.source)
 	// Interface checks
 	tok, err := tokenSource.AccessToken(context.Background(), nil)
-	assert.Error(t, err)
-	assert.ErrorIs(t, err, ErrAccessTokenInvalid)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrAccessTokenInvalid)
 	assert.Empty(t, tok)
 }
 
@@ -72,12 +73,12 @@ func TestNewOAuthAccessTokenSource_InvalidTokenSource(t *testing.T) {
 	tokenSource, err := NewOAuthAccessTokenSource(mockSource, mockScopes, &mockKey)
 
 	// Sanity Checks
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, tokenSource)
 	assert.Equal(t, mockSource, tokenSource.source)
 	// Interface checks
 	tok, err := tokenSource.AccessToken(context.Background(), nil)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Empty(t, tok)
 }
 
@@ -91,6 +92,6 @@ func TestNewOAuthAccessTokenSource_InvalidKey(t *testing.T) {
 	tokenSource, err := NewOAuthAccessTokenSource(mockSource, mockScopes, &badKey)
 
 	// Sanity Checks
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, tokenSource)
 }

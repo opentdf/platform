@@ -48,7 +48,7 @@ func (t *OAuthAccessTokenSource) AccessToken(_ context.Context, _ *http.Client) 
 
 	// Non-nil with AccessToken and not Expired
 	if !tok.Valid() {
-		return "", fmt.Errorf("access token expired. Please re-authenticate")
+		return "", ErrAccessTokenInvalid
 		// TODO: refresh tokens if expired?
 	}
 

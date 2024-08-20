@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.14](https://github.com/opentdf/platform/compare/protocol/go/v0.2.13...protocol/go/v0.2.14) (2024-08-20)
+
+
+### Features
+
+* **policy:** 1277 protos and service methods for Resource Mapping Groups operations ([#1343](https://github.com/opentdf/platform/issues/1343)) ([570f402](https://github.com/opentdf/platform/commit/570f4023183898212dcd007e5b42135ccf1d285a))
+* **sdk:** Load KAS keys from policy service ([#1346](https://github.com/opentdf/platform/issues/1346)) ([fe628a0](https://github.com/opentdf/platform/commit/fe628a013e41fb87585eb53a61988f822b40a71a))
+
 ## [0.2.13](https://github.com/opentdf/platform/compare/protocol/go/v0.2.12...protocol/go/v0.2.13) (2024-08-16)
 
 

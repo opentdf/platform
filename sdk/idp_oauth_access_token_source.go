@@ -22,7 +22,7 @@ type OAuthAccessTokenSource struct {
 }
 
 func NewOAuthAccessTokenSource(
-	source oauth2.TokenSource, idpTokenEndpoint string, scopes []string, key *ocrypto.RsaKeyPair,
+	source oauth2.TokenSource, scopes []string, key *ocrypto.RsaKeyPair,
 ) (*OAuthAccessTokenSource, error) {
 	dpopPublicKeyPEM, dpopKey, asymDecryption, err := getNewDPoPKey(key)
 	if err != nil {

@@ -210,38 +210,14 @@ func SanitizePlatformEndpoint(e string) (string, error) {
 	return net.JoinHostPort(u.Hostname(), p), nil
 }
 
-func buildRSAKeyPair(size int) (*ocrypto.RsaKeyPair, error) {
-	rsaKeyPair, err := ocrypto.NewRSAKeyPair(size)
-	if err != nil {
-		return nil, fmt.Errorf("could not generate RSA Key: %w", err)
-	}
-	return &rsaKeyPair, nil
-}
-
 func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 	if c.customAccessTokenSource != nil {
 		return c.customAccessTokenSource, nil
 	}
 
-	if c.oauthAccessTokenSource != nil {
-		if c.dpopKey == nil {
-			rsaKeyPair, err := ocrypto.NewRSAKeyPair(dpopKeySize)
-			if err != nil {
-				return nil, fmt.Errorf("could not generate RSA Key: %w", err)
-			}
-			c.dpopKey = &rsaKeyPair
-		}
-		return NewOAuthAccessTokenSource(c.oauthAccessTokenSource, c.tokenEndpoint, c.scopes, c.dpopKey)
-	}
-
-	// If we don't have client-credentials, just return a KAS client that can only get public keys.
 	// There are uses for uncredentialed clients (i.e. consuming the well-known configuration).
-	if c.clientCredentials == nil {
+	if c.clientCredentials == nil && c.oauthAccessTokenSource == nil {
 		return nil, nil //nolint:nilnil // not having credentials is not an error
-	}
-
-	if c.certExchange != nil && c.tokenExchange != nil {
-		return nil, fmt.Errorf("cannot do both token exchange and certificate exchange")
 	}
 
 	if c.dpopKey == nil {
@@ -252,10 +228,16 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 		c.dpopKey = &rsaKeyPair
 	}
 
+	if c.certExchange != nil && c.tokenExchange != nil {
+		return nil, fmt.Errorf("cannot do both token exchange and certificate exchange")
+	}
+
 	var ts auth.AccessTokenSource
 	var err error
 
 	switch {
+	case c.oauthAccessTokenSource != nil:
+		ts, err = NewOAuthAccessTokenSource(c.oauthAccessTokenSource, c.scopes, c.dpopKey)
 	case c.certExchange != nil:
 		ts, err = NewCertExchangeTokenSource(*c.certExchange, *c.clientCredentials, c.tokenEndpoint, c.dpopKey)
 	case c.tokenExchange != nil:

@@ -3,8 +3,8 @@ go 1.21
 use (
 	./examples
 	./lib/fixtures
-	./lib/ocrypto
 	./lib/flattening
+	./lib/ocrypto
 	./protocol/go
 	./sdk
 	./service

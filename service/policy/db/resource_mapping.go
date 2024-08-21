@@ -394,7 +394,7 @@ func (c PolicyDBClient) ListResourceMappingsByGroupFqns(ctx context.Context, fqn
 
 		// all rows will have the same group values, so just use first row for group object population
 		groupMetadata := new(common.Metadata)
-		if err := unmarshalMetadata(rows[0].Metadata, groupMetadata, c.logger); err != nil {
+		if err := unmarshalMetadata(rows[0].GroupMetadata, groupMetadata, c.logger); err != nil {
 			return nil, err
 		}
 		mappingsByGroup := &resourcemapping.ResourceMappingsByGroup{

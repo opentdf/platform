@@ -42,6 +42,7 @@ const (
 	ErrPlatformAuthzEndpointNotFound  = Error("authorization_endpoint not found in well-known idp configuration")
 	ErrPlatformTokenEndpointNotFound  = Error("token_endpoint not found in well-known idp configuration")
 	ErrPlatformPublicClientIDNotFound = Error("public_client_id not found in well-known idp configuration")
+	ErrAccessTokenInvalid             = Error("access token is invalid")
 )
 
 type Error string
@@ -215,9 +216,8 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 		return c.customAccessTokenSource, nil
 	}
 
-	// If we don't have client-credentials, just return a KAS client that can only get public keys.
 	// There are uses for uncredentialed clients (i.e. consuming the well-known configuration).
-	if c.clientCredentials == nil {
+	if c.clientCredentials == nil && c.oauthAccessTokenSource == nil {
 		return nil, nil //nolint:nilnil // not having credentials is not an error
 	}
 
@@ -237,6 +237,8 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 	var err error
 
 	switch {
+	case c.oauthAccessTokenSource != nil:
+		ts, err = NewOAuthAccessTokenSource(c.oauthAccessTokenSource, c.scopes, c.dpopKey)
 	case c.certExchange != nil:
 		ts, err = NewCertExchangeTokenSource(*c.certExchange, *c.clientCredentials, c.tokenEndpoint, c.dpopKey)
 	case c.tokenExchange != nil:

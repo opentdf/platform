@@ -15,7 +15,7 @@ import (
 func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context) ([]*policy.KeyAccessServer, error) {
 	list, err := c.Queries.ListKeyAccessServers(ctx)
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 	keyAccessServers := make([]*policy.KeyAccessServer, len(list))
 

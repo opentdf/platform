@@ -60,6 +60,9 @@ proto-generate:
 test:
 	for m in $(HAND_MODS); do (cd $$m && go test ./... -race) || exit 1; done
 
+fuzz:
+	cd sdk && go test ./... -fuzztime=2m
+
 bench:
 	for m in $(HAND_MODS); do (cd $$m && go test -bench ./... -benchmem) || exit 1; done
 

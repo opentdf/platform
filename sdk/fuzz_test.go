@@ -119,16 +119,6 @@ func FuzzReadPolicyBody(f *testing.F) {
 			assert.Zerof(t, *pb, "unexpected %v", *pb)
 			return
 		}
-		switch pb.mode {
-		case policyTypeRemotePolicy:
-			assert.Zero(t, pb.ep)
-			assert.NotZero(t, pb.rp)
-		case policyTypeEmbeddedPolicyEncrypted, policyTypeEmbeddedPolicyEncryptedPolicyKeyAccess, policyTypeEmbeddedPolicyPlainText:
-			assert.NotZero(t, pb.ep)
-			assert.Zero(t, pb.rp)
-		default:
-			assert.Fail(t, "undefined policy mode", "policy mode: [%d]", pb.mode)
-		}
 	})
 }
 

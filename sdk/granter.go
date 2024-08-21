@@ -230,10 +230,6 @@ func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as attrib
 		}
 		def := pair.GetAttribute()
 
-		if def != nil {
-			grants.addAllGrants(fqn, def.GetGrants(), def)
-			storeKeysToCache(def.GetGrants(), keyCache)
-		}
 		v := pair.GetValue()
 		valuesGranted := false
 		if v != nil {

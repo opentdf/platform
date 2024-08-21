@@ -264,6 +264,18 @@ DELETE FROM resource_mapping_groups WHERE id = $1;
 -- RESOURCE MAPPING
 ----------------------------------------------------------------
 
+-- name: ListResourceMappings :many
+SELECT
+    m.id,
+    JSON_BUILD_OBJECT('id', av.id, 'value', av.value) as attribute_value,
+    m.terms,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
+    COALESCE(m.group_id::TEXT, '')::TEXT as group_id
+FROM resource_mappings m 
+LEFT JOIN attribute_values av on m.attribute_value_id = av.id
+WHERE (NULLIF(@group_id, '') IS NULL OR m.group_id = @group_id::UUID)
+GROUP BY av.id, m.id;
+
 -- name: ListResourceMappingsByFullyQualifiedGroup :many
 SELECT 
     m.id,
@@ -279,6 +291,36 @@ FROM resource_mappings m
 LEFT JOIN resource_mapping_groups g ON m.group_id = g.id
 LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
 WHERE ns.name = LOWER(@namespace_name) AND g.name = LOWER(@group_name);
+
+-- name: GetResourceMapping :one
+SELECT
+    m.id,
+    JSON_BUILD_OBJECT('id', av.id, 'value', av.value) as attribute_value,
+    m.terms,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
+    COALESCE(m.group_id::TEXT, '')::TEXT as group_id
+FROM resource_mappings m 
+LEFT JOIN attribute_values av on m.attribute_value_id = av.id
+WHERE m.id = $1
+GROUP BY av.id, m.id;
+
+-- name: CreateResourceMapping :one
+INSERT INTO resource_mappings (attribute_value_id, terms, metadata, group_id)
+VALUES ($1, $2, $3, $4)
+RETURNING id, JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata;
+
+-- name: UpdateResourceMapping :one
+UPDATE resource_mappings
+SET
+    attribute_value_id = COALESCE(sqlc.narg('attribute_value_id'), attribute_value_id),
+    terms = COALESCE(sqlc.narg('terms'), terms),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata),
+    group_id = COALESCE(sqlc.narg('group_id'), group_id)
+WHERE id = $1
+RETURNING id;
+
+-- name: DeleteResourceMapping :execrows
+DELETE FROM resource_mappings WHERE id = $1;
 
 ---------------------------------------------------------------- 
 -- NAMESPACES

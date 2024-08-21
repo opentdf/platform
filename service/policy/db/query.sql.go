@@ -59,6 +59,41 @@ func (q *Queries) CreateKeyAccessServer(ctx context.Context, arg CreateKeyAccess
 	return id, err
 }
 
+const createResourceMapping = `-- name: CreateResourceMapping :one
+INSERT INTO resource_mappings (attribute_value_id, terms, metadata, group_id)
+VALUES ($1, $2, $3, $4)
+RETURNING id, JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+`
+
+type CreateResourceMappingParams struct {
+	AttributeValueID string      `json:"attribute_value_id"`
+	Terms            []string    `json:"terms"`
+	Metadata         []byte      `json:"metadata"`
+	GroupID          pgtype.UUID `json:"group_id"`
+}
+
+type CreateResourceMappingRow struct {
+	ID       string `json:"id"`
+	Metadata []byte `json:"metadata"`
+}
+
+// CreateResourceMapping
+//
+//	INSERT INTO resource_mappings (attribute_value_id, terms, metadata, group_id)
+//	VALUES ($1, $2, $3, $4)
+//	RETURNING id, JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+func (q *Queries) CreateResourceMapping(ctx context.Context, arg CreateResourceMappingParams) (CreateResourceMappingRow, error) {
+	row := q.db.QueryRow(ctx, createResourceMapping,
+		arg.AttributeValueID,
+		arg.Terms,
+		arg.Metadata,
+		arg.GroupID,
+	)
+	var i CreateResourceMappingRow
+	err := row.Scan(&i.ID, &i.Metadata)
+	return i, err
+}
+
 const createResourceMappingGroup = `-- name: CreateResourceMappingGroup :one
 INSERT INTO resource_mapping_groups (namespace_id, name)
 VALUES ($1, $2)
@@ -91,6 +126,21 @@ DELETE FROM key_access_servers WHERE id = $1
 //	DELETE FROM key_access_servers WHERE id = $1
 func (q *Queries) DeleteKeyAccessServer(ctx context.Context, id string) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteKeyAccessServer, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteResourceMapping = `-- name: DeleteResourceMapping :execrows
+DELETE FROM resource_mappings WHERE id = $1
+`
+
+// DeleteResourceMapping
+//
+//	DELETE FROM resource_mappings WHERE id = $1
+func (q *Queries) DeleteResourceMapping(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteResourceMapping, id)
 	if err != nil {
 		return 0, err
 	}
@@ -525,6 +575,52 @@ func (q *Queries) GetNamespace(ctx context.Context, id string) (GetNamespaceRow,
 	return i, err
 }
 
+const getResourceMapping = `-- name: GetResourceMapping :one
+SELECT
+    m.id,
+    JSON_BUILD_OBJECT('id', av.id, 'value', av.value) as attribute_value,
+    m.terms,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
+    COALESCE(m.group_id::TEXT, '')::TEXT as group_id
+FROM resource_mappings m 
+LEFT JOIN attribute_values av on m.attribute_value_id = av.id
+WHERE m.id = $1
+GROUP BY av.id, m.id
+`
+
+type GetResourceMappingRow struct {
+	ID             string   `json:"id"`
+	AttributeValue []byte   `json:"attribute_value"`
+	Terms          []string `json:"terms"`
+	Metadata       []byte   `json:"metadata"`
+	GroupID        string   `json:"group_id"`
+}
+
+// GetResourceMapping
+//
+//	SELECT
+//	    m.id,
+//	    JSON_BUILD_OBJECT('id', av.id, 'value', av.value) as attribute_value,
+//	    m.terms,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
+//	    COALESCE(m.group_id::TEXT, '')::TEXT as group_id
+//	FROM resource_mappings m
+//	LEFT JOIN attribute_values av on m.attribute_value_id = av.id
+//	WHERE m.id = $1
+//	GROUP BY av.id, m.id
+func (q *Queries) GetResourceMapping(ctx context.Context, id string) (GetResourceMappingRow, error) {
+	row := q.db.QueryRow(ctx, getResourceMapping, id)
+	var i GetResourceMappingRow
+	err := row.Scan(
+		&i.ID,
+		&i.AttributeValue,
+		&i.Terms,
+		&i.Metadata,
+		&i.GroupID,
+	)
+	return i, err
+}
+
 const getResourceMappingGroup = `-- name: GetResourceMappingGroup :one
 SELECT id, namespace_id, name
 FROM resource_mapping_groups
@@ -778,8 +874,69 @@ func (q *Queries) ListResourceMappingGroups(ctx context.Context, namespaceID int
 	return items, nil
 }
 
-const listResourceMappingsByFullyQualifiedGroup = `-- name: ListResourceMappingsByFullyQualifiedGroup :many
+const listResourceMappings = `-- name: ListResourceMappings :many
 
+SELECT
+    m.id,
+    JSON_BUILD_OBJECT('id', av.id, 'value', av.value) as attribute_value,
+    m.terms,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
+    COALESCE(m.group_id::TEXT, '')::TEXT as group_id
+FROM resource_mappings m 
+LEFT JOIN attribute_values av on m.attribute_value_id = av.id
+WHERE (NULLIF($1, '') IS NULL OR m.group_id = $1::UUID)
+GROUP BY av.id, m.id
+`
+
+type ListResourceMappingsRow struct {
+	ID             string   `json:"id"`
+	AttributeValue []byte   `json:"attribute_value"`
+	Terms          []string `json:"terms"`
+	Metadata       []byte   `json:"metadata"`
+	GroupID        string   `json:"group_id"`
+}
+
+// --------------------------------------------------------------
+// RESOURCE MAPPING
+// --------------------------------------------------------------
+//
+//	SELECT
+//	    m.id,
+//	    JSON_BUILD_OBJECT('id', av.id, 'value', av.value) as attribute_value,
+//	    m.terms,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
+//	    COALESCE(m.group_id::TEXT, '')::TEXT as group_id
+//	FROM resource_mappings m
+//	LEFT JOIN attribute_values av on m.attribute_value_id = av.id
+//	WHERE (NULLIF($1, '') IS NULL OR m.group_id = $1::UUID)
+//	GROUP BY av.id, m.id
+func (q *Queries) ListResourceMappings(ctx context.Context, groupID interface{}) ([]ListResourceMappingsRow, error) {
+	rows, err := q.db.Query(ctx, listResourceMappings, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListResourceMappingsRow
+	for rows.Next() {
+		var i ListResourceMappingsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.AttributeValue,
+			&i.Terms,
+			&i.Metadata,
+			&i.GroupID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listResourceMappingsByFullyQualifiedGroup = `-- name: ListResourceMappingsByFullyQualifiedGroup :many
 SELECT 
     m.id,
     m.attribute_value_id,
@@ -811,9 +968,7 @@ type ListResourceMappingsByFullyQualifiedGroupRow struct {
 	GroupName        string   `json:"group_name"`
 }
 
-// --------------------------------------------------------------
-// RESOURCE MAPPING
-// --------------------------------------------------------------
+// ListResourceMappingsByFullyQualifiedGroup
 //
 //	SELECT
 //	    m.id,
@@ -911,6 +1066,48 @@ func (q *Queries) UpdateKeyAccessServer(ctx context.Context, arg UpdateKeyAccess
 		arg.Uri,
 		arg.PublicKey,
 		arg.Metadata,
+	)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const updateResourceMapping = `-- name: UpdateResourceMapping :one
+UPDATE resource_mappings
+SET
+    attribute_value_id = COALESCE($2, attribute_value_id),
+    terms = COALESCE($3, terms),
+    metadata = COALESCE($4, metadata),
+    group_id = COALESCE($5, group_id)
+WHERE id = $1
+RETURNING id
+`
+
+type UpdateResourceMappingParams struct {
+	ID               string      `json:"id"`
+	AttributeValueID pgtype.UUID `json:"attribute_value_id"`
+	Terms            []string    `json:"terms"`
+	Metadata         []byte      `json:"metadata"`
+	GroupID          pgtype.UUID `json:"group_id"`
+}
+
+// UpdateResourceMapping
+//
+//	UPDATE resource_mappings
+//	SET
+//	    attribute_value_id = COALESCE($2, attribute_value_id),
+//	    terms = COALESCE($3, terms),
+//	    metadata = COALESCE($4, metadata),
+//	    group_id = COALESCE($5, group_id)
+//	WHERE id = $1
+//	RETURNING id
+func (q *Queries) UpdateResourceMapping(ctx context.Context, arg UpdateResourceMappingParams) (string, error) {
+	row := q.db.QueryRow(ctx, updateResourceMapping,
+		arg.ID,
+		arg.AttributeValueID,
+		arg.Terms,
+		arg.Metadata,
+		arg.GroupID,
 	)
 	var id string
 	err := row.Scan(&id)

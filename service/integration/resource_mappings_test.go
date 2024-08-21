@@ -14,7 +14,9 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-var nonExistentResourceMappingUUID = "45674556-8888-9999-9999-000001230000"
+var unknownNamespaceID = "64257d69-c007-4893-931a-434f1819a4f7"
+var unknownResourceMappingGroupID = "c70cad07-21b4-4cb1-9095-bce54615536a"
+var unknownResourceMappingID = "45674556-8888-9999-9999-000001230000"
 
 type ResourceMappingsSuite struct {
 	suite.Suite
@@ -38,6 +40,24 @@ func (s *ResourceMappingsSuite) TearDownSuite() {
 	s.f.TearDown()
 }
 
+func (s *ResourceMappingsSuite) getExampleDotComNamespace() *fixtures.FixtureDataNamespace {
+	namespace := s.f.GetNamespaceKey("example.com")
+	return &namespace
+}
+
+func (s *ResourceMappingsSuite) getScenarioDotComNamespace() *fixtures.FixtureDataNamespace {
+	namespace := s.f.GetNamespaceKey("scenario.com")
+	return &namespace
+}
+
+func (s *ResourceMappingsSuite) getResourceMappingGroupFixtures() []fixtures.FixtureDataResourceMappingGroup {
+	return []fixtures.FixtureDataResourceMappingGroup{
+		s.f.GetResourceMappingGroupKey("example.com_ns_group_1"),
+		s.f.GetResourceMappingGroupKey("example.com_ns_group_2"),
+		s.f.GetResourceMappingGroupKey("scenario.com_ns_group_1"),
+	}
+}
+
 func (s *ResourceMappingsSuite) getResourceMappingFixtures() []fixtures.FixtureDataResourceMapping {
 	return []fixtures.FixtureDataResourceMapping{
 		s.f.GetResourceMappingKey("resource_mapping_to_attribute_value1"),
@@ -45,6 +65,226 @@ func (s *ResourceMappingsSuite) getResourceMappingFixtures() []fixtures.FixtureD
 		s.f.GetResourceMappingKey("resource_mapping_to_attribute_value3"),
 	}
 }
+
+/*
+ Resource Mapping Groups
+*/
+
+func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups() {
+	testData := s.getResourceMappingGroupFixtures()
+	rmGroups, err := s.db.PolicyClient.ListResourceMappingGroups(s.ctx, &resourcemapping.ListResourceMappingGroupsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(rmGroups)
+	for _, testRmGroup := range testData {
+		found := false
+		for _, rmGroup := range rmGroups {
+			if testRmGroup.ID == rmGroup.GetId() {
+				found = true
+				break
+			}
+		}
+		s.True(found, fmt.Sprintf("expected to find resource mapping group %s", testRmGroup.ID))
+	}
+}
+
+func (s *ResourceMappingsSuite) Test_ListResourceMappingGroupsWithNamespaceIdSucceeds() {
+	scenarioDotComRmGroup := s.f.GetResourceMappingGroupKey("scenario.com_ns_group_1")
+	rmGroups, err := s.db.PolicyClient.ListResourceMappingGroups(s.ctx, &resourcemapping.ListResourceMappingGroupsRequest{
+		NamespaceId: scenarioDotComRmGroup.NamespaceID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(rmGroups)
+	s.Len(rmGroups, 1)
+	s.Equal(scenarioDotComRmGroup.ID, rmGroups[0].GetId())
+	s.Equal(scenarioDotComRmGroup.NamespaceID, rmGroups[0].GetNamespaceId())
+	s.Equal(scenarioDotComRmGroup.Name, rmGroups[0].GetName())
+}
+
+func (s *ResourceMappingsSuite) Test_GetResourceMappingGroup() {
+	testRmGroup := s.f.GetResourceMappingGroupKey("example.com_ns_group_1")
+	rmGroup, err := s.db.PolicyClient.GetResourceMappingGroup(s.ctx, testRmGroup.ID)
+	s.Require().NoError(err)
+	s.NotNil(rmGroup)
+	s.Equal(testRmGroup.ID, rmGroup.GetId())
+	s.Equal(testRmGroup.NamespaceID, rmGroup.GetNamespaceId())
+	s.Equal(testRmGroup.Name, rmGroup.GetName())
+}
+
+func (s *ResourceMappingsSuite) Test_GetResourceMappingGroupWithUnknownIdFails() {
+	rmGroup, err := s.db.PolicyClient.GetResourceMappingGroup(s.ctx, unknownResourceMappingGroupID)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(rmGroup)
+}
+
+func (s *ResourceMappingsSuite) Test_CreateResourceMappingGroup() {
+	req := &resourcemapping.CreateResourceMappingGroupRequest{
+		NamespaceId: s.getExampleDotComNamespace().ID,
+		Name:        "example.com_ns_new_group",
+	}
+	rmGroup, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(rmGroup)
+}
+
+func (s *ResourceMappingsSuite) Test_CreateResourceMappingGroupWithUnknownNamespaceIdFails() {
+	req := &resourcemapping.CreateResourceMappingGroupRequest{
+		NamespaceId: unknownNamespaceID,
+		Name:        "unknown_ns_new_group",
+	}
+	rmGroup, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, req)
+	s.Require().Error(err)
+	s.Nil(rmGroup)
+}
+
+func (s *ResourceMappingsSuite) Test_CreateResourceMappingGroupWithDuplicateNamespaceIdAndNameComboFails() {
+	name := "example.com_ns_dupe_group"
+	req := &resourcemapping.CreateResourceMappingGroupRequest{
+		NamespaceId: s.getExampleDotComNamespace().ID,
+		Name:        name,
+	}
+	rmGroup, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(rmGroup)
+
+	rmGroup, err = s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, req)
+	s.Require().Error(err)
+	s.Nil(rmGroup)
+}
+
+func (s *ResourceMappingsSuite) Test_UpdateResourceMappingGroup() {
+	req := &resourcemapping.CreateResourceMappingGroupRequest{
+		NamespaceId: s.getExampleDotComNamespace().ID,
+		Name:        "example.com_ns_group_created",
+	}
+	rmGroup, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(rmGroup)
+
+	updateReq := &resourcemapping.UpdateResourceMappingGroupRequest{
+		Id:          rmGroup.GetId(),
+		NamespaceId: s.getScenarioDotComNamespace().ID,
+		Name:        "example.com_ns_group_updated",
+	}
+	updatedRmGroup, err := s.db.PolicyClient.UpdateResourceMappingGroup(s.ctx, rmGroup.GetId(), updateReq)
+	s.Require().NoError(err)
+	s.NotNil(updatedRmGroup)
+
+	// get after update to verify db reflects changes made
+	gotUpdatedRmGroup, err := s.db.PolicyClient.GetResourceMappingGroup(s.ctx, updatedRmGroup.GetId())
+	s.Require().NoError(err)
+	s.NotNil(gotUpdatedRmGroup)
+	s.Equal(updateReq.GetNamespaceId(), gotUpdatedRmGroup.GetNamespaceId())
+	s.Equal(updateReq.GetName(), gotUpdatedRmGroup.GetName())
+}
+
+func (s *ResourceMappingsSuite) Test_UpdateResourceMappingGroupWithUnknownIdFails() {
+	req := &resourcemapping.CreateResourceMappingGroupRequest{
+		NamespaceId: s.getExampleDotComNamespace().ID,
+		Name:        "example.com_ns_group_created",
+	}
+	rmGroup, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(rmGroup)
+
+	updateReq := &resourcemapping.UpdateResourceMappingGroupRequest{
+		Id:          rmGroup.GetId(),
+		NamespaceId: unknownNamespaceID,
+		Name:        "example.com_ns_group_updated",
+	}
+	updatedRmGroup, err := s.db.PolicyClient.UpdateResourceMappingGroup(s.ctx, rmGroup.GetId(), updateReq)
+	s.Require().Error(err)
+	s.Nil(updatedRmGroup)
+}
+
+func (s *ResourceMappingsSuite) Test_UpdateResourceMappingGroupWithNamespaceIdOnlySucceeds() {
+	req := &resourcemapping.CreateResourceMappingGroupRequest{
+		NamespaceId: s.getExampleDotComNamespace().ID,
+		Name:        "example.com_ns_group_created",
+	}
+	rmGroup, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(rmGroup)
+
+	updateReq := &resourcemapping.UpdateResourceMappingGroupRequest{
+		Id:          rmGroup.GetId(),
+		NamespaceId: s.getScenarioDotComNamespace().ID,
+	}
+	updatedRmGroup, err := s.db.PolicyClient.UpdateResourceMappingGroup(s.ctx, rmGroup.GetId(), updateReq)
+	s.Require().NoError(err)
+	s.NotNil(updatedRmGroup)
+
+	// get after update to verify ONLY namespace id is updated
+	gotUpdatedRmGroup, err := s.db.PolicyClient.GetResourceMappingGroup(s.ctx, updatedRmGroup.GetId())
+	s.Require().NoError(err)
+	s.NotNil(gotUpdatedRmGroup)
+	s.Equal(updateReq.GetNamespaceId(), gotUpdatedRmGroup.GetNamespaceId())
+	s.Equal(req.GetName(), gotUpdatedRmGroup.GetName())
+}
+
+func (s *ResourceMappingsSuite) Test_UpdateResourceMappingGroupWithNameOnlySucceeds() {
+	req := &resourcemapping.CreateResourceMappingGroupRequest{
+		NamespaceId: s.getExampleDotComNamespace().ID,
+		Name:        "example.com_ns_group_created",
+	}
+	rmGroup, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(rmGroup)
+
+	updateReq := &resourcemapping.UpdateResourceMappingGroupRequest{
+		Id:   rmGroup.GetId(),
+		Name: "example.com_ns_group_updated",
+	}
+	updatedRmGroup, err := s.db.PolicyClient.UpdateResourceMappingGroup(s.ctx, rmGroup.GetId(), updateReq)
+	s.Require().NoError(err)
+	s.NotNil(updatedRmGroup)
+
+	// get after update to verify ONLY name is updated
+	gotUpdatedRmGroup, err := s.db.PolicyClient.GetResourceMappingGroup(s.ctx, updatedRmGroup.GetId())
+	s.Require().NoError(err)
+	s.NotNil(gotUpdatedRmGroup)
+	s.Equal(req.GetNamespaceId(), gotUpdatedRmGroup.GetNamespaceId())
+	s.Equal(updateReq.GetName(), gotUpdatedRmGroup.GetName())
+}
+
+func (s *ResourceMappingsSuite) Test_DeleteResourceMappingGroup() {
+	// create a group
+	group := &resourcemapping.CreateResourceMappingGroupRequest{
+		NamespaceId: s.getExampleDotComNamespace().ID,
+		Name:        "example.com_ns_group_to_delete",
+	}
+	createdGroup, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, group)
+	s.Require().NoError(err)
+	s.NotNil(createdGroup)
+
+	// create a mapping with the group
+	metadata := &common.MetadataMutable{}
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	mapping := &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrValue.ID,
+		Metadata:         metadata,
+		Terms:            []string{},
+		GroupId:          createdGroup.GetId(),
+	}
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
+	s.Require().NoError(err)
+	s.NotNil(createdMapping)
+
+	// delete the group
+	deletedGroup, err := s.db.PolicyClient.DeleteResourceMappingGroup(s.ctx, createdGroup.GetId())
+	s.Require().NoError(err)
+	s.NotNil(deletedGroup)
+	s.Equal(createdGroup.GetId(), deletedGroup.GetId())
+
+	// get the mapping to verify group id is cascade set to null
+	gotMapping, err := s.db.PolicyClient.GetResourceMapping(s.ctx, createdMapping.GetId())
+	s.Require().NoError(err)
+	s.NotNil(gotMapping)
+	s.Nil(gotMapping.GetGroup())
+}
+
+/*
+ Resource Mappings
+*/
 
 func (s *ResourceMappingsSuite) Test_CreateResourceMapping() {
 	metadata := &common.MetadataMutable{
@@ -62,6 +302,10 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMapping() {
 	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
 	s.Require().NoError(err)
 	s.NotNil(createdMapping)
+	s.Equal(mapping.GetAttributeValueId(), createdMapping.GetAttributeValue().GetId())
+	s.Equal(mapping.GetMetadata().GetLabels()["name"], createdMapping.GetMetadata().GetLabels()["name"])
+	s.Equal(mapping.GetTerms(), createdMapping.GetTerms())
+	s.Nil(createdMapping.GetGroup())
 }
 
 func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithUnknownAttributeValueFails() {
@@ -94,10 +338,43 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithEmptyTermsSucceeds
 	s.Empty(createdMapping.GetTerms())
 }
 
+func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithGroupIdSucceeds() {
+	metadata := &common.MetadataMutable{}
+
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	rmGroup := s.getResourceMappingGroupFixtures()[0]
+	mapping := &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrValue.ID,
+		Metadata:         metadata,
+		Terms:            []string{},
+		GroupId:          rmGroup.ID,
+	}
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
+	s.Require().NoError(err)
+	s.NotNil(createdMapping)
+	s.Equal(rmGroup.ID, createdMapping.GetGroup().GetId())
+}
+
+func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithUnknownGroupIdFails() {
+	metadata := &common.MetadataMutable{}
+
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	mapping := &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrValue.ID,
+		Metadata:         metadata,
+		Terms:            []string{},
+		GroupId:          unknownResourceMappingGroupID,
+	}
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
+	s.Require().Error(err)
+	s.Nil(createdMapping)
+}
+
 func (s *ResourceMappingsSuite) Test_ListResourceMappings() {
 	// make sure we can get all fixtures
 	testData := s.getResourceMappingFixtures()
-	mappings, err := s.db.PolicyClient.ListResourceMappings(s.ctx)
+	req := &resourcemapping.ListResourceMappingsRequest{}
+	mappings, err := s.db.PolicyClient.ListResourceMappings(s.ctx, req)
 	s.Require().NoError(err)
 	s.NotNil(mappings)
 	for _, testMapping := range testData {
@@ -112,6 +389,110 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings() {
 	}
 }
 
+func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupId() {
+	req := &resourcemapping.ListResourceMappingsRequest{
+		GroupId: s.getResourceMappingGroupFixtures()[0].ID,
+	}
+	mappings, err := s.db.PolicyClient.ListResourceMappings(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(mappings)
+	for _, mapping := range mappings {
+		expectedGroupID := req.GetGroupId()
+		actualGroupID := mapping.GetGroup().GetId()
+		s.Equal(expectedGroupID, actualGroupID,
+			fmt.Sprintf("expected group id %s, got %s", expectedGroupID, actualGroupID))
+	}
+}
+
+func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqns() {
+	scenarioDotComNs := s.getScenarioDotComNamespace()
+	scenarioDotComGroup := s.f.GetResourceMappingGroupKey("scenario.com_ns_group_1")
+	scenarioDotComGroupMapping := s.f.GetResourceMappingKey("resource_mapping_to_attribute_value3")
+
+	groupFqn := fmt.Sprintf("https://%s/resm/%s", scenarioDotComNs.Name, scenarioDotComGroup.Name)
+
+	fqnRmGroupMap, err := s.db.PolicyClient.ListResourceMappingsByGroupFqns(s.ctx, []string{groupFqn})
+	s.Require().NoError(err)
+	s.NotNil(fqnRmGroupMap)
+
+	mappingsByGroup, ok := fqnRmGroupMap[groupFqn]
+	s.True(ok)
+	s.NotNil(mappingsByGroup)
+	s.Equal(scenarioDotComGroup.ID, mappingsByGroup.GetGroup().GetId())
+	s.Equal(scenarioDotComGroup.NamespaceID, mappingsByGroup.GetGroup().GetNamespaceId())
+	s.Equal(scenarioDotComGroup.Name, mappingsByGroup.GetGroup().GetName())
+
+	s.Len(mappingsByGroup.GetMappings(), 1, "expected 1 mapping")
+	mapping := mappingsByGroup.GetMappings()[0]
+	s.Equal(scenarioDotComGroupMapping.ID, mapping.GetId())
+	s.Equal(scenarioDotComGroupMapping.AttributeValueID, mapping.GetAttributeValue().GetId())
+	s.Equal(scenarioDotComGroupMapping.Terms, mapping.GetTerms())
+	s.NotNil(mapping.GetMetadata())
+}
+
+func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqnsWithEmptyOrNilFqnsFails() {
+	fqnRmGroupMap, err := s.db.PolicyClient.ListResourceMappingsByGroupFqns(s.ctx, nil)
+	s.Require().Error(err)
+	s.Nil(fqnRmGroupMap)
+
+	fqnRmGroupMap, err = s.db.PolicyClient.ListResourceMappingsByGroupFqns(s.ctx, []string{})
+	s.Require().Error(err)
+	s.Nil(fqnRmGroupMap)
+}
+
+func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqnsWithInvalidFqnsFails() {
+	fqnRmGroupMap, err := s.db.PolicyClient.ListResourceMappingsByGroupFqns(s.ctx, []string{"invalid_fqn"})
+	s.Require().Error(err)
+	s.Nil(fqnRmGroupMap)
+}
+
+func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqnsWithUnknownFqnsFails() {
+	unknownFqn := "https://unknown.com/resm/unknown_group"
+	fqnRmGroupMap, err := s.db.PolicyClient.ListResourceMappingsByGroupFqns(s.ctx, []string{unknownFqn})
+	s.Require().Error(err)
+	s.Nil(fqnRmGroupMap)
+}
+
+func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqnsWithKnownAndUnknownFqnsSucceeds() {
+	exampleDotComNs := s.getExampleDotComNamespace()
+	exampleDotComRmGroup1 := s.f.GetResourceMappingGroupKey("example.com_ns_group_1")
+
+	group1Fqn := fmt.Sprintf("https://%s/resm/%s", exampleDotComNs.Name, exampleDotComRmGroup1.Name)
+	unknownFqn := "https://unknown.com/resm/unknown_group"
+
+	fqnRmGroupMap, err := s.db.PolicyClient.ListResourceMappingsByGroupFqns(s.ctx, []string{group1Fqn, unknownFqn})
+	s.Require().NoError(err)
+	s.NotNil(fqnRmGroupMap)
+
+	group1Resp, ok := fqnRmGroupMap[group1Fqn]
+	s.True(ok)
+	s.NotNil(group1Resp)
+
+	unknownResp, ok := fqnRmGroupMap[unknownFqn]
+	s.False(ok)
+	s.Nil(unknownResp)
+}
+
+func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqnsWithKnownAndInvalidFqnsSucceeds() {
+	exampleDotComNs := s.getExampleDotComNamespace()
+	exampleDotComRmGroup1 := s.f.GetResourceMappingGroupKey("example.com_ns_group_1")
+
+	group1Fqn := fmt.Sprintf("https://%s/resm/%s", exampleDotComNs.Name, exampleDotComRmGroup1.Name)
+	invalidFqn := "invalid_fqn"
+
+	fqnRmGroupMap, err := s.db.PolicyClient.ListResourceMappingsByGroupFqns(s.ctx, []string{group1Fqn, invalidFqn})
+	s.Require().NoError(err)
+	s.NotNil(fqnRmGroupMap)
+
+	group1Resp, ok := fqnRmGroupMap[group1Fqn]
+	s.True(ok)
+	s.NotNil(group1Resp)
+
+	unknownResp, ok := fqnRmGroupMap[invalidFqn]
+	s.False(ok)
+	s.Nil(unknownResp)
+}
+
 func (s *ResourceMappingsSuite) Test_GetResourceMapping() {
 	// make sure we can get all fixtures
 	testData := s.getResourceMappingFixtures()
@@ -122,6 +503,7 @@ func (s *ResourceMappingsSuite) Test_GetResourceMapping() {
 		s.Equal(testMapping.ID, mapping.GetId())
 		s.Equal(testMapping.AttributeValueID, mapping.GetAttributeValue().GetId())
 		s.Equal(testMapping.Terms, mapping.GetTerms())
+		s.Equal(testMapping.GroupID, mapping.GetGroup().GetId())
 		metadata := mapping.GetMetadata()
 		createdAt := metadata.GetCreatedAt()
 		updatedAt := metadata.GetUpdatedAt()
@@ -131,7 +513,7 @@ func (s *ResourceMappingsSuite) Test_GetResourceMapping() {
 }
 
 func (s *ResourceMappingsSuite) Test_GetResourceMappingWithUnknownIdFails() {
-	mapping, err := s.db.PolicyClient.GetResourceMapping(s.ctx, nonExistentResourceMappingUUID)
+	mapping, err := s.db.PolicyClient.GetResourceMapping(s.ctx, unknownResourceMappingID)
 	s.Require().Error(err)
 	s.Nil(mapping)
 	s.Require().ErrorIs(err, db.ErrNotFound)
@@ -141,10 +523,12 @@ func (s *ResourceMappingsSuite) Test_GetResourceMappingOfCreatedSucceeds() {
 	metadata := &common.MetadataMutable{}
 
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
+	rmGroup := s.getResourceMappingGroupFixtures()[0]
 	mapping := &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: attrValue.ID,
 		Metadata:         metadata,
 		Terms:            []string{"term1", "term2"},
+		GroupId:          rmGroup.ID,
 	}
 	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
 	s.Require().NoError(err)
@@ -156,6 +540,7 @@ func (s *ResourceMappingsSuite) Test_GetResourceMappingOfCreatedSucceeds() {
 	s.Equal(createdMapping.GetId(), got.GetId())
 	s.Equal(createdMapping.GetAttributeValue().GetId(), got.GetAttributeValue().GetId())
 	s.Equal(createdMapping.GetTerms(), mapping.GetTerms())
+	s.Equal(createdMapping.GetGroup().GetId(), got.GetGroup().GetId())
 }
 
 func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
@@ -163,6 +548,8 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	updateLabel := "update label"
 	updatedLabel := "true"
 	newLabel := "new label"
+
+	rmGroup := s.getResourceMappingGroupFixtures()[0]
 
 	labels := map[string]string{
 		"fixed":  fixedLabel,
@@ -221,6 +608,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 			Labels: updateLabels,
 		},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
+		GroupId:                rmGroup.ID,
 	})
 	s.Require().NoError(err)
 	s.NotNil(updateWithChange)
@@ -235,6 +623,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	s.Equal(updateTerms, got.GetTerms())
 	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
 	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
+	s.Equal(rmGroup.ID, got.GetGroup().GetId())
 }
 
 func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {
@@ -252,7 +641,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {
 		AttributeValueId: createdMapping.GetAttributeValue().GetId(),
 		Terms:            []string{"asdf updated term1"},
 	}
-	updated, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, nonExistentResourceMappingUUID, updatedMapping)
+	updated, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, unknownResourceMappingID, updatedMapping)
 	s.Require().Error(err)
 	s.Nil(updated)
 	s.Require().ErrorIs(err, db.ErrNotFound)
@@ -284,6 +673,27 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownAttributeVa
 	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
 
+func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownGroupIdFails() {
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
+	mapping := &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrValue.ID,
+		Terms:            []string{"asdf qwerty"},
+	}
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
+	s.Require().NoError(err)
+	s.NotNil(createdMapping)
+
+	// update the created with new metadata, terms and unknown group ID
+	updatedMapping := &resourcemapping.UpdateResourceMappingRequest{
+		AttributeValueId: createdMapping.GetAttributeValue().GetId(),
+		Terms:            []string{"asdf updated term1"},
+		GroupId:          unknownResourceMappingGroupID,
+	}
+	updated, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, unknownResourceMappingID, updatedMapping)
+	s.Require().Error(err)
+	s.Nil(updated)
+}
+
 func (s *ResourceMappingsSuite) Test_DeleteResourceMapping() {
 	attrValue := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1")
 	mapping := &resourcemapping.CreateResourceMappingRequest{
@@ -304,7 +714,7 @@ func (s *ResourceMappingsSuite) Test_DeleteResourceMapping() {
 }
 
 func (s *ResourceMappingsSuite) Test_DeleteResourceMappingWithUnknownIdFails() {
-	deleted, err := s.db.PolicyClient.DeleteResourceMapping(s.ctx, nonExistentResourceMappingUUID)
+	deleted, err := s.db.PolicyClient.DeleteResourceMapping(s.ctx, unknownResourceMappingID)
 	s.Require().Error(err)
 	s.Nil(deleted)
 	s.Require().ErrorIs(err, db.ErrNotFound)

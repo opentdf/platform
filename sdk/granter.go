@@ -281,7 +281,7 @@ func storeKeysToCache(kases []*policy.KeyAccessServer, c *kasKeyCache) {
 
 // Given a policy (list of data attributes or tags),
 // get a set of grants from attribute values to KASes.
-// Unlike `NewGranterFromService`, this works offline.
+// Unlike `newGranterFromService`, this works offline.
 func newGranterFromAttributes(attrs ...*policy.Value) (granter, error) {
 	grants := granter{
 		grants: make(map[string]*keyAccessGrant),

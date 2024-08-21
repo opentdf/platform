@@ -479,68 +479,68 @@ func TestReasonerSpecificity(t *testing.T) {
 		n        string
 		policy   []AttributeValueFQN
 		defaults []string
-		plan     []SplitStep
+		plan     []keySplitStep
 	}{
 		{
 			"uns/uns => default",
 			[]AttributeValueFQN{uns2uns},
 			[]string{kasUs},
-			[]SplitStep{{kasUs, ""}},
+			[]keySplitStep{{kasUs, ""}},
 		},
 		{
 			"uns/spk => spk",
 			[]AttributeValueFQN{uns2spk},
 			[]string{kasUs},
-			[]SplitStep{{evenMoreSpecificKas, ""}},
+			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
 			"spk/uns => spk",
 			[]AttributeValueFQN{spk2uns},
 			[]string{kasUs},
-			[]SplitStep{{specifiedKas, ""}},
+			[]keySplitStep{{specifiedKas, ""}},
 		},
 		{
 			"spk/spk => value.spk",
 			[]AttributeValueFQN{spk2spk},
 			[]string{kasUs},
-			[]SplitStep{{evenMoreSpecificKas, ""}},
+			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
 			"spk/spk & spk/uns => value.spk || attr.spk",
 			[]AttributeValueFQN{spk2spk, spk2uns},
 			[]string{kasUs},
-			[]SplitStep{{evenMoreSpecificKas, "1"}, {specifiedKas, "1"}},
+			[]keySplitStep{{evenMoreSpecificKas, "1"}, {specifiedKas, "1"}},
 		},
 		{
 			"spk/uns & spk/spk => value.spk || attr.spk",
 			[]AttributeValueFQN{spk2spk, spk2uns},
 			[]string{kasUs},
-			[]SplitStep{{specifiedKas, "1"}, {evenMoreSpecificKas, "1"}},
+			[]keySplitStep{{specifiedKas, "1"}, {evenMoreSpecificKas, "1"}},
 		},
 		{
 			"uns/spk & uns/uns => spk",
 			[]AttributeValueFQN{uns2spk, uns2uns},
 			[]string{kasUs},
-			[]SplitStep{{evenMoreSpecificKas, ""}},
+			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
 			"uns/uns & uns/spk => spk",
 			[]AttributeValueFQN{uns2spk, uns2uns},
 			[]string{kasUs},
-			[]SplitStep{{evenMoreSpecificKas, ""}},
+			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
 			"uns/uns & spk/spk => spk",
 			[]AttributeValueFQN{uns2spk, uns2uns},
 			[]string{kasUs},
-			[]SplitStep{{evenMoreSpecificKas, ""}},
+			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
-			reasoner, err := NewGranterFromService(context.Background(), &mockAttributesClient{}, tc.policy...)
+			reasoner, err := newGranterFromService(context.Background(), newKasKeyCache(), &mockAttributesClient{}, tc.policy...)
 			require.NoError(t, err)
 			i := 0
-			plan, err := reasoner.Plan(tc.defaults, func() string {
+			plan, err := reasoner.plan(tc.defaults, func() string {
 				i++
 				return fmt.Sprintf("%d", i)
 			})

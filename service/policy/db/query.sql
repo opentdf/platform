@@ -235,25 +235,28 @@ GROUP BY
 ----------------------------------------------------------------
 
 -- name: ListResourceMappingGroups :many
-SELECT id, namespace_id, name
+SELECT id, namespace_id, name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
 FROM resource_mapping_groups
 WHERE (NULLIF(@namespace_id, '') IS NULL OR namespace_id = @namespace_id::uuid);
 
 -- name: GetResourceMappingGroup :one
-SELECT id, namespace_id, name
+SELECT id, namespace_id, name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
 FROM resource_mapping_groups
 WHERE id = $1;
 
 -- name: CreateResourceMappingGroup :one
-INSERT INTO resource_mapping_groups (namespace_id, name)
-VALUES ($1, $2)
+INSERT INTO resource_mapping_groups (namespace_id, name, metadata)
+VALUES ($1, $2, $3)
 RETURNING id;
 
 -- name: UpdateResourceMappingGroup :one
 UPDATE resource_mapping_groups
 SET
     namespace_id = COALESCE(sqlc.narg('namespace_id'), namespace_id),
-    name = COALESCE(sqlc.narg('name'), name)
+    name = COALESCE(sqlc.narg('name'), name),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata)
 WHERE id = $1
 RETURNING id;
 

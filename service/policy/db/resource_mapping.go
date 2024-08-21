@@ -32,10 +32,16 @@ func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resour
 	resourceMappingGroups := make([]*policy.ResourceMappingGroup, len(list))
 
 	for i, rmGroup := range list {
+		metadata := new(common.Metadata)
+		if err := unmarshalMetadata(rmGroup.Metadata, metadata, c.logger); err != nil {
+			return nil, err
+		}
+
 		resourceMappingGroups[i] = &policy.ResourceMappingGroup{
 			Id:          rmGroup.ID,
 			NamespaceId: rmGroup.NamespaceID,
 			Name:        rmGroup.Name,
+			Metadata:    metadata,
 		}
 	}
 
@@ -48,17 +54,29 @@ func (c PolicyDBClient) GetResourceMappingGroup(ctx context.Context, id string) 
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
+	metadata := new(common.Metadata)
+	if err := unmarshalMetadata(rmGroup.Metadata, metadata, c.logger); err != nil {
+		return nil, err
+	}
+
 	return &policy.ResourceMappingGroup{
 		Id:          rmGroup.ID,
 		NamespaceId: rmGroup.NamespaceID,
 		Name:        rmGroup.Name,
+		Metadata:    metadata,
 	}, nil
 }
 
 func (c PolicyDBClient) CreateResourceMappingGroup(ctx context.Context, r *resourcemapping.CreateResourceMappingGroupRequest) (*policy.ResourceMappingGroup, error) {
+	metadataBytes, _, err := db.MarshalCreateMetadata(r.GetMetadata())
+	if err != nil {
+		return nil, err
+	}
+
 	createdID, err := c.Queries.CreateResourceMappingGroup(ctx, CreateResourceMappingGroupParams{
 		NamespaceID: r.GetNamespaceId(),
 		Name:        r.GetName(),
+		Metadata:    metadataBytes,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -82,10 +100,22 @@ func (c PolicyDBClient) UpdateResourceMappingGroup(ctx context.Context, id strin
 		Valid:  name != "",
 	}
 
+	metadataBytes, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
+		rmGroup, err := c.GetResourceMappingGroup(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		return rmGroup.GetMetadata(), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	updatedID, err := c.Queries.UpdateResourceMappingGroup(ctx, UpdateResourceMappingGroupParams{
 		ID:          id,
 		NamespaceID: pgNamespaceID,
 		Name:        pgName,
+		Metadata:    metadataBytes,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

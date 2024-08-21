@@ -16,13 +16,13 @@ import (
 )
 
 const (
-	kasAu               = "http://kas.au/"
-	kasCa               = "http://kas.ca/"
-	kasUk               = "http://kas.uk/"
-	kasNz               = "http://kas.nz/"
-	kasUs               = "http://kas.us/"
-	kasUsHCS            = "http://hcs.kas.us/"
-	kasUsSA             = "http://si.kas.us/"
+	kasAu               = "https://kas.au/"
+	kasCa               = "https://kas.ca/"
+	kasUk               = "https://kas.uk/"
+	kasNz               = "https://kas.nz/"
+	kasUs               = "https://kas.us/"
+	kasUsHCS            = "https://hcs.kas.us/"
+	kasUsSA             = "https://si.kas.us/"
 	authority           = "https://virtru.com/"
 	otherAuth           = "https://other.com/"
 	specifiedKas        = "https://attr.kas.com/"

@@ -181,17 +181,20 @@ func (r granter) addGrant(fqn AttributeValueFQN, kas string, attr *policy.Attrib
 	}
 }
 
-func (r granter) addAllGrants(fqn AttributeValueFQN, gs []*policy.KeyAccessServer, attr *policy.Attribute) {
+func (r granter) addAllGrants(fqn AttributeValueFQN, gs []*policy.KeyAccessServer, attr *policy.Attribute) bool {
+	ok := false
 	for _, g := range gs {
 		if g != nil {
 			r.addGrant(fqn, g.GetUri(), attr)
+			ok = true
 		}
 	}
 	if len(gs) == 0 {
-		if _, ok := r.grants[fqn.key]; !ok {
+		if _, present := r.grants[fqn.key]; !present {
 			r.grants[fqn.key] = &keyAccessGrant{attr, []string{}}
 		}
 	}
+	return ok
 }
 
 func (r granter) byAttribute(fqn AttributeValueFQN) *keyAccessGrant {
@@ -226,14 +229,19 @@ func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as attrib
 			return grants, err
 		}
 		def := pair.GetAttribute()
+
 		if def != nil {
-			grants.addAllGrants(fqn, def.GetGrants(), def)
 			storeKeysToCache(def.GetGrants(), keyCache)
 		}
 		v := pair.GetValue()
+		valuesGranted := false
 		if v != nil {
-			grants.addAllGrants(fqn, v.GetGrants(), def)
+			valuesGranted = grants.addAllGrants(fqn, v.GetGrants(), def)
 			storeKeysToCache(v.GetGrants(), keyCache)
+		}
+		// If no more specific grant was found, then add the value grants
+		if !valuesGranted && def != nil {
+			grants.addAllGrants(fqn, def.GetGrants(), def)
 		}
 	}
 
@@ -272,7 +280,7 @@ func storeKeysToCache(kases []*policy.KeyAccessServer, c *kasKeyCache) {
 
 // Given a policy (list of data attributes or tags),
 // get a set of grants from attribute values to KASes.
-// Unlike `NewGranterFromService`, this works offline.
+// Unlike `newGranterFromService`, this works offline.
 func newGranterFromAttributes(attrs ...*policy.Value) (granter, error) {
 	grants := granter{
 		grants: make(map[string]*keyAccessGrant),

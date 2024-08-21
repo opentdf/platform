@@ -181,7 +181,7 @@ func (r granter) addGrant(fqn AttributeValueFQN, kas string, attr *policy.Attrib
 	}
 }
 
-func (r Granter) addAllGrants(fqn AttributeValueFQN, gs []*policy.KeyAccessServer, attr *policy.Attribute) bool {
+func (r granter) addAllGrants(fqn AttributeValueFQN, gs []*policy.KeyAccessServer, attr *policy.Attribute) bool {
 	ok := false
 	for _, g := range gs {
 		if g != nil {

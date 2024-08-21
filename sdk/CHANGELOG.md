@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.10](https://github.com/opentdf/platform/compare/sdk/v0.3.9...sdk/v0.3.10) (2024-08-21)
+
+
+### Bug Fixes
+
+* **sdk:** 🔒 During read, limits TDF Manifest to 10MB  ([#1385](https://github.com/opentdf/platform/issues/1385)) ([cfeebce](https://github.com/opentdf/platform/commit/cfeebcedcaf1660cc73beb05abee5fa4d1431300))
+* **sdk:** let value grants override attr grants ([#1318](https://github.com/opentdf/platform/issues/1318)) ([77f1e11](https://github.com/opentdf/platform/commit/77f1e1140ffc134ce072ba2e79bd74426f8ee5f8))
+* **sdk:** well-known warning logs and public client id error ([#1415](https://github.com/opentdf/platform/issues/1415)) ([e6e76bf](https://github.com/opentdf/platform/commit/e6e76bf24a2e587817582ccb113d9e78a92b4060)), closes [#1414](https://github.com/opentdf/platform/issues/1414)
+
 ## [0.3.9](https://github.com/opentdf/platform/compare/sdk/v0.3.8...sdk/v0.3.9) (2024-08-20)
 
 

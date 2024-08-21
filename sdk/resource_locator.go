@@ -48,28 +48,11 @@ func NewResourceLocator(url string) (*ResourceLocator, error) {
 
 func NewResourceLocatorFromReader(reader io.Reader) (*ResourceLocator, error) {
 	rl := &ResourceLocator{}
-	oneByte := make([]byte, 1)
-
-	_, err := reader.Read(oneByte)
+	err := rl.readResourceLocator(reader)
 	if err != nil {
-		return rl, err
+		return nil, err
 	}
-	rl.protocol = urlProtocol(oneByte[0])
-
-	_, err = reader.Read(oneByte)
-	if err != nil {
-		return rl, err
-	}
-
-	l := oneByte[0]
-	body := make([]byte, l)
-	_, err = reader.Read(body)
-	if err != nil {
-		return rl, err
-	}
-	rl.body = string(body)
-
-	return rl, err
+	return rl, nil
 }
 
 // getLength - return the serialized length (in bytes) of this object

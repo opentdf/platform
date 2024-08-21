@@ -11,6 +11,7 @@ type TDFReader struct {
 const (
 	TDFManifestFileName = "0.manifest.json"
 	TDFPayloadFileName  = "0.payload"
+	manifestMaxSize     = 1024 * 1024 * 10 // 10 MB
 )
 
 // NewTDFReader Create tdf reader instance.
@@ -28,7 +29,7 @@ func NewTDFReader(readSeeker io.ReadSeeker) (TDFReader, error) {
 
 // Manifest Return the manifest of the tdf.
 func (tdfReader TDFReader) Manifest() (string, error) {
-	fileContent, err := tdfReader.archiveReader.ReadAllFileData(TDFManifestFileName)
+	fileContent, err := tdfReader.archiveReader.ReadAllFileData(TDFManifestFileName, manifestMaxSize)
 	if err != nil {
 		return "", err
 	}

@@ -88,7 +88,7 @@ func Test_PlatformConfiguration_BadCases(t *testing.T) {
 
 		publicClientID, err := s.PlatformConfiguration.PublicClientID()
 		assert.Equal(t, "", publicClientID)
-		require.ErrorIs(t, err, sdk.ErrPlatformTokenEndpointNotFound)
+		require.ErrorIs(t, err, sdk.ErrPlatformPublicClientIDNotFound)
 	}
 
 	noIdpValsSDK, err := sdk.New(goodPlatformEndpoint,

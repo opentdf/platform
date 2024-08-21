@@ -380,10 +380,8 @@ func (c PolicyDBClient) ListResourceMappingsByGroupFqns(ctx context.Context, fqn
 		mappings := make([]*policy.ResourceMapping, len(rows))
 		for i, row := range rows {
 			metadata := new(common.Metadata)
-			if row.Metadata != nil {
-				if err := protojson.Unmarshal(row.Metadata, metadata); err != nil {
-					return nil, err
-				}
+			if err := unmarshalMetadata(row.Metadata, metadata, c.logger); err != nil {
+				return nil, err
 			}
 
 			mappings[i] = &policy.ResourceMapping{
@@ -394,12 +392,17 @@ func (c PolicyDBClient) ListResourceMappingsByGroupFqns(ctx context.Context, fqn
 			}
 		}
 
+		// all rows will have the same group values, so just use first row for group object population
+		groupMetadata := new(common.Metadata)
+		if err := unmarshalMetadata(rows[0].Metadata, groupMetadata, c.logger); err != nil {
+			return nil, err
+		}
 		mappingsByGroup := &resourcemapping.ResourceMappingsByGroup{
 			Group: &policy.ResourceMappingGroup{
-				// all rows will have the same group values, so we can just use the first row
 				Id:          rows[0].GroupID,
 				NamespaceId: rows[0].GroupNamespaceID,
 				Name:        rows[0].GroupName,
+				Metadata:    groupMetadata,
 			},
 			Mappings: mappings,
 		}

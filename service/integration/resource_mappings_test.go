@@ -466,13 +466,22 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqns() {
 	s.Equal(scenarioDotComGroup.ID, mappingsByGroup.GetGroup().GetId())
 	s.Equal(scenarioDotComGroup.NamespaceID, mappingsByGroup.GetGroup().GetNamespaceId())
 	s.Equal(scenarioDotComGroup.Name, mappingsByGroup.GetGroup().GetName())
+	groupMetadata := mappingsByGroup.GetGroup().GetMetadata()
+	createdAt := groupMetadata.GetCreatedAt()
+	updatedAt := groupMetadata.GetUpdatedAt()
+	s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
+	s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
 
 	s.Len(mappingsByGroup.GetMappings(), 1, "expected 1 mapping")
 	mapping := mappingsByGroup.GetMappings()[0]
 	s.Equal(scenarioDotComGroupMapping.ID, mapping.GetId())
 	s.Equal(scenarioDotComGroupMapping.AttributeValueID, mapping.GetAttributeValue().GetId())
 	s.Equal(scenarioDotComGroupMapping.Terms, mapping.GetTerms())
-	s.NotNil(mapping.GetMetadata())
+	metadata := mapping.GetMetadata()
+	createdAt = metadata.GetCreatedAt()
+	updatedAt = metadata.GetUpdatedAt()
+	s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
+	s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqnsWithEmptyOrNilFqnsFails() {

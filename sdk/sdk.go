@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -35,10 +34,15 @@ import (
 const (
 	// Failure while connecting to a service.
 	// Check your configuration and/or retry.
-	ErrGrpcDialFailed            = Error("failed to dial grpc endpoint")
-	ErrShutdownFailed            = Error("failed to shutdown sdk")
-	ErrPlatformConfigFailed      = Error("failed to retrieve platform configuration")
-	ErrPlatformEndpointMalformed = Error("platform endpoint is malformed")
+	ErrGrpcDialFailed                 = Error("failed to dial grpc endpoint")
+	ErrShutdownFailed                 = Error("failed to shutdown sdk")
+	ErrPlatformConfigFailed           = Error("failed to retrieve platform configuration")
+	ErrPlatformEndpointMalformed      = Error("platform endpoint is malformed")
+	ErrPlatformIssuerNotFound         = Error("issuer not found in well-known idp configuration")
+	ErrPlatformAuthzEndpointNotFound  = Error("authorization_endpoint not found in well-known idp configuration")
+	ErrPlatformTokenEndpointNotFound  = Error("token_endpoint not found in well-known idp configuration")
+	ErrPlatformPublicClientIDNotFound = Error("public_client_id not found in well-known idp configuration")
+	ErrAccessTokenInvalid             = Error("access token is invalid")
 )
 
 type Error string
@@ -112,7 +116,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 
 	// If platformConfiguration is not provided, fetch it from the platform
-	if cfg.platformConfiguration == nil && !cfg.ipc { //nolint:nestif // Most of checks are for errors
+	if cfg.PlatformConfiguration == nil && !cfg.ipc { //nolint:nestif // Most of checks are for errors
 		var pcfg PlatformConfiguration
 		var err error
 
@@ -127,7 +131,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 				return nil, errors.Join(ErrPlatformConfigFailed, err)
 			}
 		}
-		cfg.platformConfiguration = pcfg
+		cfg.PlatformConfiguration = pcfg
 		if cfg.tokenEndpoint == "" {
 			cfg.tokenEndpoint, err = getTokenEndpoint(*cfg)
 			if err != nil {
@@ -212,14 +216,8 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 		return c.customAccessTokenSource, nil
 	}
 
-	if (c.clientCredentials == nil) != (c.tokenEndpoint == "") {
-		return nil, errors.New("either both or neither of client credentials and token endpoint must be specified")
-	}
-
-	// at this point we have either both client credentials and a token endpoint or none of the above. if we don't have
-	// any just return a KAS client that can only get public keys
-	if c.clientCredentials == nil {
-		slog.Info("no client credentials provided. GRPC requests to KAS and services will not be authenticated.")
+	// There are uses for uncredentialed clients (i.e. consuming the well-known configuration).
+	if c.clientCredentials == nil && c.oauthAccessTokenSource == nil {
 		return nil, nil //nolint:nilnil // not having credentials is not an error
 	}
 
@@ -239,6 +237,8 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 	var err error
 
 	switch {
+	case c.oauthAccessTokenSource != nil:
+		ts, err = NewOAuthAccessTokenSource(c.oauthAccessTokenSource, c.scopes, c.dpopKey)
 	case c.certExchange != nil:
 		ts, err = NewCertExchangeTokenSource(*c.certExchange, *c.clientCredentials, c.tokenEndpoint, c.dpopKey)
 	case c.tokenExchange != nil:
@@ -336,7 +336,6 @@ func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 	loader := gojsonschema.NewStringLoader(manifestSchemaString)
 	manifestStringLoader := gojsonschema.NewStringLoader(manifest)
 	result, err := gojsonschema.Validate(loader, manifestStringLoader)
-
 	if err != nil {
 		return false, errors.New("could not validate manifest.json")
 	}
@@ -383,7 +382,7 @@ func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfiguration, err
 
 // TODO: This should be moved to a separate package. We do discovery in ../service/internal/auth/discovery.go
 func getTokenEndpoint(c config) (string, error) {
-	issuerURL, ok := c.platformConfiguration["platform_issuer"].(string)
+	issuerURL, ok := c.PlatformConfiguration["platform_issuer"].(string)
 
 	if !ok {
 		return "", errors.New("platform_issuer is not set, or is not a string")

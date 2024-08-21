@@ -531,14 +531,20 @@ FROM resource_mapping_groups
 WHERE id = $1
 `
 
+type GetResourceMappingGroupRow struct {
+	ID          string `json:"id"`
+	NamespaceID string `json:"namespace_id"`
+	Name        string `json:"name"`
+}
+
 // GetResourceMappingGroup
 //
 //	SELECT id, namespace_id, name
 //	FROM resource_mapping_groups
 //	WHERE id = $1
-func (q *Queries) GetResourceMappingGroup(ctx context.Context, id string) (ResourceMappingGroup, error) {
+func (q *Queries) GetResourceMappingGroup(ctx context.Context, id string) (GetResourceMappingGroupRow, error) {
 	row := q.db.QueryRow(ctx, getResourceMappingGroup, id)
-	var i ResourceMappingGroup
+	var i GetResourceMappingGroupRow
 	err := row.Scan(&i.ID, &i.NamespaceID, &i.Name)
 	return i, err
 }
@@ -736,7 +742,14 @@ const listResourceMappingGroups = `-- name: ListResourceMappingGroups :many
 
 SELECT id, namespace_id, name
 FROM resource_mapping_groups
+WHERE (NULLIF($1, '') IS NULL OR namespace_id = $1::uuid)
 `
+
+type ListResourceMappingGroupsRow struct {
+	ID          string `json:"id"`
+	NamespaceID string `json:"namespace_id"`
+	Name        string `json:"name"`
+}
 
 // --------------------------------------------------------------
 // RESOURCE MAPPING GROUPS
@@ -744,16 +757,96 @@ FROM resource_mapping_groups
 //
 //	SELECT id, namespace_id, name
 //	FROM resource_mapping_groups
-func (q *Queries) ListResourceMappingGroups(ctx context.Context) ([]ResourceMappingGroup, error) {
-	rows, err := q.db.Query(ctx, listResourceMappingGroups)
+//	WHERE (NULLIF($1, '') IS NULL OR namespace_id = $1::uuid)
+func (q *Queries) ListResourceMappingGroups(ctx context.Context, namespaceID interface{}) ([]ListResourceMappingGroupsRow, error) {
+	rows, err := q.db.Query(ctx, listResourceMappingGroups, namespaceID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ResourceMappingGroup
+	var items []ListResourceMappingGroupsRow
 	for rows.Next() {
-		var i ResourceMappingGroup
+		var i ListResourceMappingGroupsRow
 		if err := rows.Scan(&i.ID, &i.NamespaceID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listResourceMappingsByFullyQualifiedGroup = `-- name: ListResourceMappingsByFullyQualifiedGroup :many
+
+SELECT 
+    m.id,
+    m.attribute_value_id,
+    m.terms,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
+    -- sqlc needs TEXT cast here to be able to generate string properties in Go struct
+    -- has issues when using aliases for some reason, even on a varchar field like g.name
+    g.id::TEXT as group_id,
+    g.namespace_id::TEXT as group_namespace_id,
+    g.name::TEXT as group_name
+FROM resource_mappings m
+LEFT JOIN resource_mapping_groups g ON m.group_id = g.id
+LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
+WHERE ns.name = LOWER($1) AND g.name = LOWER($2)
+`
+
+type ListResourceMappingsByFullyQualifiedGroupParams struct {
+	NamespaceName string `json:"namespace_name"`
+	GroupName     string `json:"group_name"`
+}
+
+type ListResourceMappingsByFullyQualifiedGroupRow struct {
+	ID               string   `json:"id"`
+	AttributeValueID string   `json:"attribute_value_id"`
+	Terms            []string `json:"terms"`
+	Metadata         []byte   `json:"metadata"`
+	GroupID          string   `json:"group_id"`
+	GroupNamespaceID string   `json:"group_namespace_id"`
+	GroupName        string   `json:"group_name"`
+}
+
+// --------------------------------------------------------------
+// RESOURCE MAPPING
+// --------------------------------------------------------------
+//
+//	SELECT
+//	    m.id,
+//	    m.attribute_value_id,
+//	    m.terms,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
+//	    -- sqlc needs TEXT cast here to be able to generate string properties in Go struct
+//	    -- has issues when using aliases for some reason, even on a varchar field like g.name
+//	    g.id::TEXT as group_id,
+//	    g.namespace_id::TEXT as group_namespace_id,
+//	    g.name::TEXT as group_name
+//	FROM resource_mappings m
+//	LEFT JOIN resource_mapping_groups g ON m.group_id = g.id
+//	LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
+//	WHERE ns.name = LOWER($1) AND g.name = LOWER($2)
+func (q *Queries) ListResourceMappingsByFullyQualifiedGroup(ctx context.Context, arg ListResourceMappingsByFullyQualifiedGroupParams) ([]ListResourceMappingsByFullyQualifiedGroupRow, error) {
+	rows, err := q.db.Query(ctx, listResourceMappingsByFullyQualifiedGroup, arg.NamespaceName, arg.GroupName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListResourceMappingsByFullyQualifiedGroupRow
+	for rows.Next() {
+		var i ListResourceMappingsByFullyQualifiedGroupRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.AttributeValueID,
+			&i.Terms,
+			&i.Metadata,
+			&i.GroupID,
+			&i.GroupNamespaceID,
+			&i.GroupName,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -827,8 +920,8 @@ func (q *Queries) UpdateKeyAccessServer(ctx context.Context, arg UpdateKeyAccess
 const updateResourceMappingGroup = `-- name: UpdateResourceMappingGroup :one
 UPDATE resource_mapping_groups
 SET
-    namespace_id = coalesce($2, namespace_id),
-    name = coalesce($3, name)
+    namespace_id = COALESCE($2, namespace_id),
+    name = COALESCE($3, name)
 WHERE id = $1
 RETURNING id
 `
@@ -843,8 +936,8 @@ type UpdateResourceMappingGroupParams struct {
 //
 //	UPDATE resource_mapping_groups
 //	SET
-//	    namespace_id = coalesce($2, namespace_id),
-//	    name = coalesce($3, name)
+//	    namespace_id = COALESCE($2, namespace_id),
+//	    name = COALESCE($3, name)
 //	WHERE id = $1
 //	RETURNING id
 func (q *Queries) UpdateResourceMappingGroup(ctx context.Context, arg UpdateResourceMappingGroupParams) (string, error) {

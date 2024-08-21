@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.3.9](https://github.com/opentdf/platform/compare/sdk/v0.3.8...sdk/v0.3.9) (2024-08-20)
+
+
+### Features
+
+* **sdk:** Load KAS keys from policy service ([#1346](https://github.com/opentdf/platform/issues/1346)) ([fe628a0](https://github.com/opentdf/platform/commit/fe628a013e41fb87585eb53a61988f822b40a71a))
+* **sdk:** support oauth2 tokensource with option ([#1394](https://github.com/opentdf/platform/issues/1394)) ([2886c0f](https://github.com/opentdf/platform/commit/2886c0ffa3807bbc6a2d4e9f0da7991a49d227fd)), closes [#1307](https://github.com/opentdf/platform/issues/1307)
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1402](https://github.com/opentdf/platform/issues/1402)) ([192e5e5](https://github.com/opentdf/platform/commit/192e5e5a5a2c8d4b5fec74b50a94f15abacc1db7))
+
+## [0.3.8](https://github.com/opentdf/platform/compare/sdk/v0.3.7...sdk/v0.3.8) (2024-08-19)
+
+
+### Features
+
+* **sdk:** public client and other enhancements to well-known SDK functionality ([#1365](https://github.com/opentdf/platform/issues/1365)) ([3be50a4](https://github.com/opentdf/platform/commit/3be50a4ebf26680fad4ab46620cdfa82340a3da3))
+
 ## [0.3.7](https://github.com/opentdf/platform/compare/sdk/v0.3.6...sdk/v0.3.7) (2024-08-16)
 
 

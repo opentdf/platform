@@ -140,7 +140,7 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 		return &policy.Attribute{
 			Id:        "SPK",
 			Namespace: &nsTwo,
-			Name:      "unspecified",
+			Name:      "specified",
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 			Fqn:       fqn.String(),
 			Grants:    g,
@@ -149,7 +149,7 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 		return &policy.Attribute{
 			Id:        "UNS",
 			Namespace: &nsTwo,
-			Name:      "specified",
+			Name:      "unspecified",
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 			Fqn:       fqn.String(),
 		}
@@ -482,55 +482,55 @@ func TestReasonerSpecificity(t *testing.T) {
 		plan     []keySplitStep
 	}{
 		{
-			"uns/uns => default",
+			"uns.uns => default",
 			[]AttributeValueFQN{uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{kasUs, ""}},
 		},
 		{
-			"uns/spk => spk",
+			"uns.spk => spk",
 			[]AttributeValueFQN{uns2spk},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
-			"spk/uns => spk",
+			"spk.uns => spk",
 			[]AttributeValueFQN{spk2uns},
 			[]string{kasUs},
 			[]keySplitStep{{specifiedKas, ""}},
 		},
 		{
-			"spk/spk => value.spk",
+			"spk.spk => value.spk",
 			[]AttributeValueFQN{spk2spk},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
-			"spk/spk & spk/uns => value.spk || attr.spk",
+			"spk.spk & spk.uns => value.spk || attr.spk",
 			[]AttributeValueFQN{spk2spk, spk2uns},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, "1"}, {specifiedKas, "1"}},
 		},
 		{
-			"spk/uns & spk/spk => value.spk || attr.spk",
+			"spk.uns & spk.spk => value.spk || attr.spk",
 			[]AttributeValueFQN{spk2spk, spk2uns},
 			[]string{kasUs},
 			[]keySplitStep{{specifiedKas, "1"}, {evenMoreSpecificKas, "1"}},
 		},
 		{
-			"uns/spk & uns/uns => spk",
+			"uns.spk & uns.uns => spk",
 			[]AttributeValueFQN{uns2spk, uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
-			"uns/uns & uns/spk => spk",
+			"uns.uns & uns.spk => spk",
 			[]AttributeValueFQN{uns2spk, uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
-			"uns/uns & spk/spk => spk",
+			"uns.uns & spk.spk => spk",
 			[]AttributeValueFQN{uns2spk, uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},

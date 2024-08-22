@@ -11,6 +11,28 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const assignKeyAccessServerToAttributeValue = `-- name: AssignKeyAccessServerToAttributeValue :execrows
+INSERT INTO attribute_value_key_access_grants (attribute_value_id, key_access_server_id)
+VALUES ($1, $2)
+`
+
+type AssignKeyAccessServerToAttributeValueParams struct {
+	AttributeValueID  string `json:"attribute_value_id"`
+	KeyAccessServerID string `json:"key_access_server_id"`
+}
+
+// AssignKeyAccessServerToAttributeValue
+//
+//	INSERT INTO attribute_value_key_access_grants (attribute_value_id, key_access_server_id)
+//	VALUES ($1, $2)
+func (q *Queries) AssignKeyAccessServerToAttributeValue(ctx context.Context, arg AssignKeyAccessServerToAttributeValueParams) (int64, error) {
+	result, err := q.db.Exec(ctx, assignKeyAccessServerToAttributeValue, arg.AttributeValueID, arg.KeyAccessServerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const assignKeyAccessServerToNamespace = `-- name: AssignKeyAccessServerToNamespace :execrows
 INSERT INTO attribute_namespace_key_access_grants
 (namespace_id, key_access_server_id)
@@ -115,6 +137,21 @@ func (q *Queries) CreateResourceMappingGroup(ctx context.Context, arg CreateReso
 	var id string
 	err := row.Scan(&id)
 	return id, err
+}
+
+const deleteAttributeValue = `-- name: DeleteAttributeValue :execrows
+DELETE FROM attribute_values WHERE id = $1
+`
+
+// DeleteAttributeValue
+//
+//	DELETE FROM attribute_values WHERE id = $1
+func (q *Queries) DeleteAttributeValue(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteAttributeValue, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteKeyAccessServer = `-- name: DeleteKeyAccessServer :execrows
@@ -892,6 +929,28 @@ func (q *Queries) ListResourceMappingsByFullyQualifiedGroup(ctx context.Context,
 	return items, nil
 }
 
+const removeKeyAccessServerFromAttributeValue = `-- name: RemoveKeyAccessServerFromAttributeValue :execrows
+DELETE FROM attribute_value_key_access_grants
+WHERE attribute_value_id = $1 AND key_access_server_id = $2
+`
+
+type RemoveKeyAccessServerFromAttributeValueParams struct {
+	AttributeValueID  string `json:"attribute_value_id"`
+	KeyAccessServerID string `json:"key_access_server_id"`
+}
+
+// RemoveKeyAccessServerFromAttributeValue
+//
+//	DELETE FROM attribute_value_key_access_grants
+//	WHERE attribute_value_id = $1 AND key_access_server_id = $2
+func (q *Queries) RemoveKeyAccessServerFromAttributeValue(ctx context.Context, arg RemoveKeyAccessServerFromAttributeValueParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removeKeyAccessServerFromAttributeValue, arg.AttributeValueID, arg.KeyAccessServerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const removeKeyAccessServerFromNamespace = `-- name: RemoveKeyAccessServerFromNamespace :execrows
 DELETE FROM attribute_namespace_key_access_grants
 WHERE namespace_id = $1 AND key_access_server_id = $2
@@ -912,6 +971,49 @@ func (q *Queries) RemoveKeyAccessServerFromNamespace(ctx context.Context, arg Re
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const updateAttributeValue = `-- name: UpdateAttributeValue :one
+UPDATE attribute_values
+SET
+    value = COALESCE(LOWER($2), value),
+    active = COALESCE($3, active),
+    metadata = COALESCE($4, metadata)
+WHERE id = $1
+RETURNING id, value
+`
+
+type UpdateAttributeValueParams struct {
+	ID       string      `json:"id"`
+	Value    pgtype.Text `json:"value"`
+	Active   pgtype.Bool `json:"active"`
+	Metadata []byte      `json:"metadata"`
+}
+
+type UpdateAttributeValueRow struct {
+	ID    string `json:"id"`
+	Value string `json:"value"`
+}
+
+// UpdateAttributeValue
+//
+//	UPDATE attribute_values
+//	SET
+//	    value = COALESCE(LOWER($2), value),
+//	    active = COALESCE($3, active),
+//	    metadata = COALESCE($4, metadata)
+//	WHERE id = $1
+//	RETURNING id, value
+func (q *Queries) UpdateAttributeValue(ctx context.Context, arg UpdateAttributeValueParams) (UpdateAttributeValueRow, error) {
+	row := q.db.QueryRow(ctx, updateAttributeValue,
+		arg.ID,
+		arg.Value,
+		arg.Active,
+		arg.Metadata,
+	)
+	var i UpdateAttributeValueRow
+	err := row.Scan(&i.ID, &i.Value)
+	return i, err
 }
 
 const updateKeyAccessServer = `-- name: UpdateKeyAccessServer :one

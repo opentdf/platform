@@ -5,10 +5,10 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -303,20 +303,6 @@ func (c PolicyDBClient) ListAllAttributeValues(ctx context.Context, state string
 	return attributeValueHydrateItems(rows, opts, c.logger)
 }
 
-func updateAttributeValueSQL(
-	id string,
-	metadata []byte,
-) (string, []interface{}, error) {
-	t := Tables.AttributeValues
-	sb := db.NewStatementBuilder().Update(t.Name())
-
-	if metadata != nil {
-		sb = sb.Set("metadata", metadata)
-	}
-
-	return sb.Where(sq.Eq{t.Field("id"): id}).ToSql()
-}
-
 func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.UpdateAttributeValueRequest) (*policy.Value, error) {
 	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		v, err := c.GetAttributeValue(ctx, r.GetId())
@@ -329,113 +315,72 @@ func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 		return nil, err
 	}
 
-	sql, args, err := updateAttributeValueSQL(
-		r.GetId(),
-		metadataJSON,
-	)
-	if db.IsQueryBuilderSetClauseError(err) {
-		return &policy.Value{
-			Id: r.GetId(),
-		}, nil
-	}
+	updatedAttrVal, err := c.Queries.UpdateAttributeValue(ctx, UpdateAttributeValueParams{
+		ID:       r.GetId(),
+		Metadata: metadataJSON,
+	})
 	if err != nil {
-		return nil, err
-	}
-
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	return &policy.Value{
-		Id: r.GetId(),
+		Id: updatedAttrVal.ID,
 	}, nil
 }
 
-func unsafeUpdateAttributeValueSQL(id string, value string) (string, []interface{}, error) {
-	t := Tables.AttributeValues
-	return db.NewStatementBuilder().
-		Update(t.Name()).
-		Set("value", value).
-		Where(sq.Eq{t.Field("id"): id}).
-		Suffix("RETURNING \"id\"").
-		ToSql()
-}
-
 func (c PolicyDBClient) UnsafeUpdateAttributeValue(ctx context.Context, r *unsafe.UnsafeUpdateAttributeValueRequest) (*policy.Value, error) {
-	id := r.GetId()
-	val := strings.ToLower(r.GetValue())
-	sql, args, err := unsafeUpdateAttributeValueSQL(id, val)
-	if err != nil {
-		if db.IsQueryBuilderSetClauseError(err) {
-			return &policy.Value{
-				Id: id,
-			}, nil
-		}
-		return nil, err
-	}
+	value := r.GetValue()
 
-	err = c.Exec(ctx, sql, args)
+	updatedAttrVal, err := c.Queries.UpdateAttributeValue(ctx, UpdateAttributeValueParams{
+		ID: r.GetId(),
+		Value: pgtype.Text{
+			String: value,
+			Valid:  value != "",
+		},
+	})
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	// Update FQN
-	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: id})
-	c.logger.Debug("upserted fqn for unsafely updated value", slog.String("id", id), slog.String("value", r.GetValue()), slog.String("fqn", fqn))
+	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: updatedAttrVal.ID})
+	c.logger.Debug("upserted fqn for unsafely updated value",
+		slog.String("id", updatedAttrVal.ID),
+		slog.String("value", updatedAttrVal.Value),
+		slog.String("fqn", fqn),
+	)
 
-	return c.GetAttributeValue(ctx, id)
-}
-
-func deactivateAttributeValueSQL(id string) (string, []interface{}, error) {
-	t := Tables.AttributeValues
-	return db.NewStatementBuilder().
-		Update(t.Name()).
-		Set("active", false).
-		Where(sq.Eq{t.Field("id"): id}).
-		Suffix("RETURNING \"id\"").
-		ToSql()
+	return c.GetAttributeValue(ctx, updatedAttrVal.ID)
 }
 
 func (c PolicyDBClient) DeactivateAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
-	sql, args, err := deactivateAttributeValueSQL(id)
+	updatedAttrVal, err := c.Queries.UpdateAttributeValue(ctx, UpdateAttributeValueParams{
+		ID: id,
+		Active: pgtype.Bool{
+			Bool:  false,
+			Valid: true,
+		},
+	})
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
-	}
-	return c.GetAttributeValue(ctx, id)
-}
-
-func unsafeReactivateAttributeValueSQL(id string) (string, []interface{}, error) {
-	t := Tables.AttributeValues
-	return db.NewStatementBuilder().
-		Update(t.Name()).
-		Set("active", true).
-		Where(sq.Eq{t.Field("id"): id}).
-		Suffix("RETURNING \"id\"").
-		ToSql()
+	return c.GetAttributeValue(ctx, updatedAttrVal.ID)
 }
 
 func (c PolicyDBClient) UnsafeReactivateAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
-	sql, args, err := unsafeReactivateAttributeValueSQL(id)
+	updatedAttrVal, err := c.Queries.UpdateAttributeValue(ctx, UpdateAttributeValueParams{
+		ID: id,
+		Active: pgtype.Bool{
+			Bool:  true,
+			Valid: true,
+		},
+	})
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
-	}
-	return c.GetAttributeValue(ctx, id)
-}
-
-func unsafeDeleteAttributeValueSQL(id string) (string, []interface{}, error) {
-	t := Tables.AttributeValues
-	return db.NewStatementBuilder().
-		Delete(t.Name()).
-		Where(sq.Eq{t.Field("id"): id}).
-		ToSql()
+	return c.GetAttributeValue(ctx, updatedAttrVal.ID)
 }
 
 func (c PolicyDBClient) UnsafeDeleteAttributeValue(ctx context.Context, toDelete *policy.Value, r *unsafe.UnsafeDeleteAttributeValueRequest) (*policy.Value, error) {
@@ -446,59 +391,42 @@ func (c PolicyDBClient) UnsafeDeleteAttributeValue(ctx context.Context, toDelete
 		return nil, fmt.Errorf("fqn mismatch [%s]: %w", fqn, db.ErrNotFound)
 	}
 
-	sql, args, err := unsafeDeleteAttributeValueSQL(id)
+	count, err := c.Queries.DeleteAttributeValue(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
+	if count == 0 {
+		return nil, db.ErrNotFound
 	}
 
 	return &policy.Value{
 		Id: id,
 	}, nil
-}
 
-func assignKeyAccessServerToValueSQL(valueID, keyAccessServerID string) (string, []interface{}, error) {
-	t := Tables.AttributeValueKeyAccessGrants
-	return db.NewStatementBuilder().
-		Insert(t.Name()).
-		Columns("attribute_value_id", "key_access_server_id").
-		Values(valueID, keyAccessServerID).
-		ToSql()
 }
 
 func (c PolicyDBClient) AssignKeyAccessServerToValue(ctx context.Context, k *attributes.ValueKeyAccessServer) (*attributes.ValueKeyAccessServer, error) {
-	sql, args, err := assignKeyAccessServerToValueSQL(k.GetValueId(), k.GetKeyAccessServerId())
+	_, err := c.Queries.AssignKeyAccessServerToAttributeValue(ctx, AssignKeyAccessServerToAttributeValueParams{
+		AttributeValueID:  k.GetValueId(),
+		KeyAccessServerID: k.GetKeyAccessServerId(),
+	})
 	if err != nil {
-		return nil, err
-	}
-
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	return k, nil
 }
 
-func removeKeyAccessServerFromValueSQL(valueID, keyAccessServerID string) (string, []interface{}, error) {
-	t := Tables.AttributeValueKeyAccessGrants
-	return db.NewStatementBuilder().
-		Delete(t.Name()).
-		Where(sq.Eq{t.Field("attribute_value_id"): valueID, t.Field("key_access_server_id"): keyAccessServerID}).
-		Suffix("IS TRUE RETURNING *").
-		ToSql()
-}
-
 func (c PolicyDBClient) RemoveKeyAccessServerFromValue(ctx context.Context, k *attributes.ValueKeyAccessServer) (*attributes.ValueKeyAccessServer, error) {
-	sql, args, err := removeKeyAccessServerFromValueSQL(k.GetValueId(), k.GetKeyAccessServerId())
+	count, err := c.Queries.RemoveKeyAccessServerFromAttributeValue(ctx, RemoveKeyAccessServerFromAttributeValueParams{
+		AttributeValueID:  k.GetValueId(),
+		KeyAccessServerID: k.GetKeyAccessServerId(),
+	})
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
+	if count == 0 {
+		return nil, db.ErrNotFound
 	}
 
 	return k, nil

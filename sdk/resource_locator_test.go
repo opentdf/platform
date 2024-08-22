@@ -65,7 +65,6 @@ func TestReadResourceLocator(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.n, func(t *testing.T) {
-
 			rl := &ResourceLocator{
 				protocol:   test.protocol,
 				body:       test.body,

@@ -106,70 +106,42 @@ func attributeValueHydrateItems(rows pgx.Rows, opts attributeValueSelectOptions,
 /// CRUD
 ///
 
-func createAttributeValueSQL(
-	attributeID string,
-	value string,
-	metadata []byte,
-) (string, []interface{}, error) {
-	t := Tables.AttributeValues
-	return db.NewStatementBuilder().
-		Insert(t.Name()).
-		Columns(
-			"attribute_definition_id",
-			"value",
-			"metadata",
-		).
-		Values(
-			attributeID,
-			value,
-			metadata,
-		).
-		Suffix(createSuffix).
-		ToSql()
-}
-
-func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID string, v *attributes.CreateAttributeValueRequest) (*policy.Value, error) {
-	metadataJSON, metadata, err := db.MarshalCreateMetadata(v.GetMetadata())
+func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID string, r *attributes.CreateAttributeValueRequest) (*policy.Value, error) {
+	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
 
-	value := strings.ToLower(v.GetValue())
-
-	sql, args, err := createAttributeValueSQL(
-		attributeID,
-		value,
-		metadataJSON,
-	)
+	createdAv, err := c.Queries.CreateAttributeValue(ctx, CreateAttributeValueParams{
+		AttributeDefinitionID: attributeID,
+		Value:                 r.GetValue(),
+		Metadata:              metadataJSON,
+	})
 	if err != nil {
-		return nil, err
-	}
-
-	var id string
-	if r, err := c.QueryRow(ctx, sql, args); err != nil {
-		return nil, err
-	} else if err := r.Scan(&id, &metadataJSON); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err = unmarshalMetadata(metadataJSON, metadata, c.logger); err != nil {
+	if err = unmarshalMetadata(createdAv.Metadata, metadata, c.logger); err != nil {
 		return nil, err
 	}
 
 	// Update FQN
-	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: id})
+	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: createdAv.ID})
 	if fqn != "" {
-		c.logger.Debug("created new attribute value FQN", slog.String("value_id", id), slog.String("value", value), slog.String("fqn", fqn))
+		c.logger.Debug("created new attribute value FQN",
+			slog.String("value_id", createdAv.ID),
+			slog.String("value", createdAv.Value),
+			slog.String("fqn", fqn),
+		)
 	}
 
-	rV := &policy.Value{
-		Id:        id,
+	return &policy.Value{
+		Id:        createdAv.ID,
 		Attribute: &policy.Attribute{Id: attributeID},
-		Value:     value,
+		Value:     createdAv.Value,
 		Metadata:  metadata,
 		Active:    &wrapperspb.BoolValue{Value: true},
-	}
-	return rV, nil
+	}, nil
 }
 
 func getAttributeValueSQL(id string, opts attributeValueSelectOptions) (string, []interface{}, error) {

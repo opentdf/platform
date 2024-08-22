@@ -231,6 +231,16 @@ GROUP BY
     ad.id, an.id, nfq.fqn, n_grants.grants;
 
 ---------------------------------------------------------------- 
+-- ATTRIBUTE VALUES
+----------------------------------------------------------------
+
+-- name: CreateAttributeValue :one
+INSERT INTO attribute_values (attribute_definition_id, value, metadata)
+VALUES (@attribute_definition_id, LOWER(@value), @metadata)
+RETURNING id, value,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata;
+
+---------------------------------------------------------------- 
 -- RESOURCE MAPPING GROUPS
 ----------------------------------------------------------------
 

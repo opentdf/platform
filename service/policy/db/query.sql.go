@@ -35,6 +35,41 @@ func (q *Queries) AssignKeyAccessServerToNamespace(ctx context.Context, arg Assi
 	return result.RowsAffected(), nil
 }
 
+const createAttributeValue = `-- name: CreateAttributeValue :one
+
+INSERT INTO attribute_values (attribute_definition_id, value, metadata)
+VALUES ($1, LOWER($2), $3)
+RETURNING id, value,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+`
+
+type CreateAttributeValueParams struct {
+	AttributeDefinitionID string `json:"attribute_definition_id"`
+	Value                 string `json:"value"`
+	Metadata              []byte `json:"metadata"`
+}
+
+type CreateAttributeValueRow struct {
+	ID       string `json:"id"`
+	Value    string `json:"value"`
+	Metadata []byte `json:"metadata"`
+}
+
+// --------------------------------------------------------------
+// ATTRIBUTE VALUES
+// --------------------------------------------------------------
+//
+//	INSERT INTO attribute_values (attribute_definition_id, value, metadata)
+//	VALUES ($1, LOWER($2), $3)
+//	RETURNING id, value,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+func (q *Queries) CreateAttributeValue(ctx context.Context, arg CreateAttributeValueParams) (CreateAttributeValueRow, error) {
+	row := q.db.QueryRow(ctx, createAttributeValue, arg.AttributeDefinitionID, arg.Value, arg.Metadata)
+	var i CreateAttributeValueRow
+	err := row.Scan(&i.ID, &i.Value, &i.Metadata)
+	return i, err
+}
+
 const createKeyAccessServer = `-- name: CreateKeyAccessServer :one
 INSERT INTO key_access_servers (uri, public_key, metadata)
 VALUES ($1, $2, $3)

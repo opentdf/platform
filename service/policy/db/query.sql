@@ -234,6 +234,23 @@ GROUP BY
 -- ATTRIBUTE VALUES
 ----------------------------------------------------------------
 
+-- name: ListAttributeValues :many
+
+SELECT
+    av.id,
+    av.value,
+    av.active,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
+    av.attribute_definition_id,
+    fqns.fqn
+FROM attribute_values av
+LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+WHERE (
+    (sqlc.narg('active')::BOOLEAN IS NULL OR av.active = sqlc.narg('active')) AND
+    (NULLIF(@attribute_definition_id, '') IS NULL OR av.attribute_definition_id = @attribute_definition_id::UUID)
+)
+GROUP BY av.id, fqns.fqn;
+
 -- name: GetAttributeValue :one
 SELECT
     av.id,

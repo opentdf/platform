@@ -502,7 +502,6 @@ func (q *Queries) GetAttributeByDefOrValueFqn(ctx context.Context, lower string)
 }
 
 const getAttributeValue = `-- name: GetAttributeValue :one
-
 SELECT
     av.id,
     av.value,
@@ -535,9 +534,7 @@ type GetAttributeValueRow struct {
 	Grants                []byte      `json:"grants"`
 }
 
-// --------------------------------------------------------------
-// ATTRIBUTE VALUES
-// --------------------------------------------------------------
+// GetAttributeValue
 //
 //	SELECT
 //	    av.id,
@@ -689,6 +686,84 @@ func (q *Queries) GetResourceMappingGroup(ctx context.Context, id string) (GetRe
 	var i GetResourceMappingGroupRow
 	err := row.Scan(&i.ID, &i.NamespaceID, &i.Name)
 	return i, err
+}
+
+const listAttributeValues = `-- name: ListAttributeValues :many
+
+
+SELECT
+    av.id,
+    av.value,
+    av.active,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
+    av.attribute_definition_id,
+    fqns.fqn
+FROM attribute_values av
+LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+WHERE (
+    ($1::BOOLEAN IS NULL OR av.active = $1) AND
+    (NULLIF($2, '') IS NULL OR av.attribute_definition_id = $2::UUID)
+)
+GROUP BY av.id, fqns.fqn
+`
+
+type ListAttributeValuesParams struct {
+	Active                pgtype.Bool `json:"active"`
+	AttributeDefinitionID interface{} `json:"attribute_definition_id"`
+}
+
+type ListAttributeValuesRow struct {
+	ID                    string      `json:"id"`
+	Value                 string      `json:"value"`
+	Active                bool        `json:"active"`
+	Metadata              []byte      `json:"metadata"`
+	AttributeDefinitionID string      `json:"attribute_definition_id"`
+	Fqn                   pgtype.Text `json:"fqn"`
+}
+
+// --------------------------------------------------------------
+// ATTRIBUTE VALUES
+// --------------------------------------------------------------
+//
+//	SELECT
+//	    av.id,
+//	    av.value,
+//	    av.active,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
+//	    av.attribute_definition_id,
+//	    fqns.fqn
+//	FROM attribute_values av
+//	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+//	WHERE (
+//	    ($1::BOOLEAN IS NULL OR av.active = $1) AND
+//	    (NULLIF($2, '') IS NULL OR av.attribute_definition_id = $2::UUID)
+//	)
+//	GROUP BY av.id, fqns.fqn
+func (q *Queries) ListAttributeValues(ctx context.Context, arg ListAttributeValuesParams) ([]ListAttributeValuesRow, error) {
+	rows, err := q.db.Query(ctx, listAttributeValues, arg.Active, arg.AttributeDefinitionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAttributeValuesRow
+	for rows.Next() {
+		var i ListAttributeValuesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Value,
+			&i.Active,
+			&i.Metadata,
+			&i.AttributeDefinitionID,
+			&i.Fqn,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listKeyAccessServerGrants = `-- name: ListKeyAccessServerGrants :many

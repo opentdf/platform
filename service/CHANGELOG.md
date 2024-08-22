@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.20](https://github.com/opentdf/platform/compare/service/v0.4.19...service/v0.4.20) (2024-08-22)
+
+
+### Bug Fixes
+
+* migration missing conditional ([#1424](https://github.com/opentdf/platform/issues/1424)) ([87efe8d](https://github.com/opentdf/platform/commit/87efe8da2b44d43f1f9ce1a4ea00097911de2e45)), closes [#1423](https://github.com/opentdf/platform/issues/1423)
+
 ## [0.4.19](https://github.com/opentdf/platform/compare/service/v0.4.18...service/v0.4.19) (2024-08-20)
 
 

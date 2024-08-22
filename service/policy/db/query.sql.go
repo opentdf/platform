@@ -59,6 +59,37 @@ func (q *Queries) CreateKeyAccessServer(ctx context.Context, arg CreateKeyAccess
 	return id, err
 }
 
+const createNamespace = `-- name: CreateNamespace :one
+INSERT INTO attribute_namespaces (name, metadata)
+VALUES (LOWER($1), $2)
+RETURNING id, name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+`
+
+type CreateNamespaceParams struct {
+	Name     string `json:"name"`
+	Metadata []byte `json:"metadata"`
+}
+
+type CreateNamespaceRow struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Metadata []byte `json:"metadata"`
+}
+
+// CreateNamespace
+//
+//	INSERT INTO attribute_namespaces (name, metadata)
+//	VALUES (LOWER($1), $2)
+//	RETURNING id, name,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+func (q *Queries) CreateNamespace(ctx context.Context, arg CreateNamespaceParams) (CreateNamespaceRow, error) {
+	row := q.db.QueryRow(ctx, createNamespace, arg.Name, arg.Metadata)
+	var i CreateNamespaceRow
+	err := row.Scan(&i.ID, &i.Name, &i.Metadata)
+	return i, err
+}
+
 const createResourceMappingGroup = `-- name: CreateResourceMappingGroup :one
 INSERT INTO resource_mapping_groups (namespace_id, name)
 VALUES ($1, $2)
@@ -91,6 +122,21 @@ DELETE FROM key_access_servers WHERE id = $1
 //	DELETE FROM key_access_servers WHERE id = $1
 func (q *Queries) DeleteKeyAccessServer(ctx context.Context, id string) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteKeyAccessServer, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteNamespace = `-- name: DeleteNamespace :execrows
+DELETE FROM attribute_namespaces WHERE id = $1
+`
+
+// DeleteNamespace
+//
+//	DELETE FROM attribute_namespaces WHERE id = $1
+func (q *Queries) DeleteNamespace(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteNamespace, id)
 	if err != nil {
 		return 0, err
 	}
@@ -915,6 +961,58 @@ func (q *Queries) UpdateKeyAccessServer(ctx context.Context, arg UpdateKeyAccess
 	var id string
 	err := row.Scan(&id)
 	return id, err
+}
+
+const updateNamespace = `-- name: UpdateNamespace :one
+UPDATE attribute_namespaces
+SET
+    name = COALESCE(LOWER($2), name),
+    active = COALESCE($3, active),
+    metadata = COALESCE($4, metadata)
+WHERE id = $1
+RETURNING id, name, active,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+`
+
+type UpdateNamespaceParams struct {
+	ID       string      `json:"id"`
+	Name     pgtype.Text `json:"name"`
+	Active   pgtype.Bool `json:"active"`
+	Metadata []byte      `json:"metadata"`
+}
+
+type UpdateNamespaceRow struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Active   bool   `json:"active"`
+	Metadata []byte `json:"metadata"`
+}
+
+// UpdateNamespace
+//
+//	UPDATE attribute_namespaces
+//	SET
+//	    name = COALESCE(LOWER($2), name),
+//	    active = COALESCE($3, active),
+//	    metadata = COALESCE($4, metadata)
+//	WHERE id = $1
+//	RETURNING id, name, active,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+func (q *Queries) UpdateNamespace(ctx context.Context, arg UpdateNamespaceParams) (UpdateNamespaceRow, error) {
+	row := q.db.QueryRow(ctx, updateNamespace,
+		arg.ID,
+		arg.Name,
+		arg.Active,
+		arg.Metadata,
+	)
+	var i UpdateNamespaceRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Active,
+		&i.Metadata,
+	)
+	return i, err
 }
 
 const updateResourceMappingGroup = `-- name: UpdateResourceMappingGroup :one

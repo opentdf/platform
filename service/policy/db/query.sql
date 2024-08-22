@@ -302,6 +302,25 @@ AND attribute_fqns.attribute_id IS NULL AND attribute_fqns.value_id IS NULL
 GROUP BY ns.id, 
 attribute_fqns.fqn;
 
+-- name: CreateNamespace :one
+INSERT INTO attribute_namespaces (name, metadata)
+VALUES (LOWER(@name), @metadata)
+RETURNING id, name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata;
+
+-- name: UpdateNamespace :one
+UPDATE attribute_namespaces
+SET
+    name = COALESCE(LOWER(sqlc.narg('name')), name),
+    active = COALESCE(sqlc.narg('active'), active),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata)
+WHERE id = $1
+RETURNING id, name, active,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata;
+
+-- name: DeleteNamespace :execrows
+DELETE FROM attribute_namespaces WHERE id = $1;
+
 -- name: AssignKeyAccessServerToNamespace :execrows
 INSERT INTO attribute_namespace_key_access_grants
 (namespace_id, key_access_server_id)

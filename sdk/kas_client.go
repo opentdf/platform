@@ -131,7 +131,6 @@ func (k *KASClient) getNanoTDFRewrapRequest(header string, kasURL string, pubKey
 		IssuedAt(time.Now()).
 		Expiration(time.Now().Add(secondsPerMinute * time.Second)).
 		Build()
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to create jwt: %w", err)
 	}
@@ -144,7 +143,6 @@ func (k *KASClient) getNanoTDFRewrapRequest(header string, kasURL string, pubKey
 
 		return signed, nil
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign the token: %w", err)
 	}
@@ -261,7 +259,6 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 		IssuedAt(time.Now()).
 		Expiration(time.Now().Add(secondsPerMinute * time.Second)).
 		Build()
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to create jwt: %w", err)
 	}
@@ -274,7 +271,6 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 
 		return signed, nil
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign the token: %w", err)
 	}
@@ -314,7 +310,7 @@ func (c *kasKeyCache) get(url, algorithm string) *KASInfo {
 	if !ok {
 		return nil
 	}
-	ago := now.Add(-1 * time.Hour)
+	ago := now.Add(-5 * time.Minute)
 	if ago.After(cv.Time) {
 		delete(c.c, cacheKey)
 		return nil
@@ -350,7 +346,6 @@ func (s SDK) getPublicKey(ctx context.Context, url, algorithm string) (*KASInfo,
 		req.V = "1"
 	}
 	resp, err := serviceClient.PublicKey(ctx, &req)
-
 	if err != nil {
 		return nil, fmt.Errorf("error making request to KAS: %w", err)
 	}

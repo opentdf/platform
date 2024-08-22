@@ -3,7 +3,7 @@
 
 DROP TABLE IF EXISTS attribute_value_members;
 
-ALTER TABLE attribute_values DROP COLUMN members;
+ALTER TABLE attribute_values DROP COLUMN IF EXISTS members;
 
 -- +goose StatementEnd
 

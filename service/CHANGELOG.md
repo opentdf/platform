@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.4.20](https://github.com/opentdf/platform/compare/service/v0.4.19...service/v0.4.20) (2024-08-22)
+
+
+### Bug Fixes
+
+* migration missing conditional ([#1424](https://github.com/opentdf/platform/issues/1424)) ([87efe8d](https://github.com/opentdf/platform/commit/87efe8da2b44d43f1f9ce1a4ea00097911de2e45)), closes [#1423](https://github.com/opentdf/platform/issues/1423)
+
+## [0.4.19](https://github.com/opentdf/platform/compare/service/v0.4.18...service/v0.4.19) (2024-08-20)
+
+
+### Features
+
+* **core:** add RPCs to namespaces service to handle assignment/removal of KAS grants ([#1344](https://github.com/opentdf/platform/issues/1344)) ([ee47d6c](https://github.com/opentdf/platform/commit/ee47d6cb4576108f0a85a325f41cd43182a2bc73))
+* **core:** Adds key ids to kas registry ([#1347](https://github.com/opentdf/platform/issues/1347)) ([e6c76ee](https://github.com/opentdf/platform/commit/e6c76ee415e08ec8681ae4ff8fb9d5d04ea7d2bb))
+* **core:** further support in policy for namespace grants ([#1334](https://github.com/opentdf/platform/issues/1334)) ([d56231e](https://github.com/opentdf/platform/commit/d56231ea632c6072613c18cf1fcb9770cedf49e3))
+* **core:** support grants to namespaces, definitions, and values in GetAttributeByValueFqns ([#1353](https://github.com/opentdf/platform/issues/1353)) ([42a3d74](https://github.com/opentdf/platform/commit/42a3d747f7271b3861ee210b621a5502b8f07174))
+* **core:** validate kas uri ([#1351](https://github.com/opentdf/platform/issues/1351)) ([2b70931](https://github.com/opentdf/platform/commit/2b7093136f6af1b6a86e613c095cefe403c9a06c))
+* **policy:** 1277 protos and service methods for Resource Mapping Groups operations ([#1343](https://github.com/opentdf/platform/issues/1343)) ([570f402](https://github.com/opentdf/platform/commit/570f4023183898212dcd007e5b42135ccf1d285a))
+* **sdk:** Load KAS keys from policy service ([#1346](https://github.com/opentdf/platform/issues/1346)) ([fe628a0](https://github.com/opentdf/platform/commit/fe628a013e41fb87585eb53a61988f822b40a71a))
+* **sdk:** public client and other enhancements to well-known SDK functionality ([#1365](https://github.com/opentdf/platform/issues/1365)) ([3be50a4](https://github.com/opentdf/platform/commit/3be50a4ebf26680fad4ab46620cdfa82340a3da3))
+
+
+### Bug Fixes
+
+* **authz:** Add http routes for authorization to casbin policy ([#1355](https://github.com/opentdf/platform/issues/1355)) ([3fbaf59](https://github.com/opentdf/platform/commit/3fbaf5968d795ccfb44bd59178a25df4df5eb798))
+* **core:** align keycloak provisioning in one command ([#1381](https://github.com/opentdf/platform/issues/1381)) ([c3611d2](https://github.com/opentdf/platform/commit/c3611d2bb3ebd3791de9eecdb97efb36ac43f19d)), closes [#1380](https://github.com/opentdf/platform/issues/1380)
+* **core:** align policy kas grant assignments http gateway methods with actions ([#1299](https://github.com/opentdf/platform/issues/1299)) ([031c6ca](https://github.com/opentdf/platform/commit/031c6ca87b8e252a4254f10bfcc78b45e5111ed9))
+* **core:** Autobump service ([#1340](https://github.com/opentdf/platform/issues/1340)) ([3414670](https://github.com/opentdf/platform/commit/341467051fc70fe84c627d5cea07f7b111ca0d08))
+* **core:** Autobump service ([#1369](https://github.com/opentdf/platform/issues/1369)) ([2ac2378](https://github.com/opentdf/platform/commit/2ac2378f5934066ff9ff22e782adf02baa68f797))
+* **core:** Autobump service ([#1403](https://github.com/opentdf/platform/issues/1403)) ([8084e3e](https://github.com/opentdf/platform/commit/8084e3e3b242f36617a5eba2839ab8aee1631287))
+* **core:** Autobump service ([#1405](https://github.com/opentdf/platform/issues/1405)) ([74a7f0c](https://github.com/opentdf/platform/commit/74a7f0c2daa988c3a505c9c027575cc00b6ac35a))
+* **core:** bump go version to 1.22 ([#1407](https://github.com/opentdf/platform/issues/1407)) ([c696cd1](https://github.com/opentdf/platform/commit/c696cd1144309f28226547ebe26a76259a8e88d3))
+* **core:** cleanup sensitive info being logged from configuration ([#1366](https://github.com/opentdf/platform/issues/1366)) ([2b6cf62](https://github.com/opentdf/platform/commit/2b6cf62941075eab30ab9ba71f17be09b05821b6))
+* **core:** policy kas grants list (filter params and namespace grants) ([#1342](https://github.com/opentdf/platform/issues/1342)) ([f18ba68](https://github.com/opentdf/platform/commit/f18ba683007a6fa9f3527238596d426931d81d85))
+* **core:** policy migrations timestamps merge order ([#1325](https://github.com/opentdf/platform/issues/1325)) ([2bf4290](https://github.com/opentdf/platform/commit/2bf4290b310097c4faf9556064e8a9666e084964))
+* **sdk:** align sdk with platform modes ([#1328](https://github.com/opentdf/platform/issues/1328)) ([88ca6f7](https://github.com/opentdf/platform/commit/88ca6f7458930b753756606b670a5c36bddf818c))
+
 ## [0.4.18](https://github.com/opentdf/platform/compare/service/v0.4.17...service/v0.4.18) (2024-08-12)
 
 

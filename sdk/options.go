@@ -7,6 +7,7 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/oauth"
+	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -16,6 +17,8 @@ type Option func(*config)
 
 // Internal config struct for building SDK options.
 type config struct {
+	// Platform configuration structure is subject to change. Consume via accessor methods.
+	PlatformConfiguration   PlatformConfiguration
 	dialOption              grpc.DialOption
 	tlsConfig               *tls.Config
 	clientCredentials       *oauth.ClientCredentials
@@ -24,13 +27,13 @@ type config struct {
 	scopes                  []string
 	extraDialOptions        []grpc.DialOption
 	certExchange            *oauth.CertExchangeInfo
-	platformConfiguration   PlatformConfiguration
 	kasSessionKey           *ocrypto.RsaKeyPair
 	dpopKey                 *ocrypto.RsaKeyPair
 	ipc                     bool
 	tdfFeatures             tdfFeatures
 	nanoFeatures            nanoFeatures
 	customAccessTokenSource auth.AccessTokenSource
+	oauthAccessTokenSource  oauth2.TokenSource
 	coreConn                *grpc.ClientConn
 }
 
@@ -103,6 +106,13 @@ func withCustomAccessTokenSource(a auth.AccessTokenSource) Option {
 	}
 }
 
+// WithOAuthAccessTokenSource directs the SDK to use a standard OAuth2 token source for authentication
+func WithOAuthAccessTokenSource(t oauth2.TokenSource) Option {
+	return func(c *config) {
+		c.oauthAccessTokenSource = t
+	}
+}
+
 // Deprecated: Use WithCustomCoreConnection instead
 func WithCustomPolicyConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
@@ -171,7 +181,7 @@ func WithCustomWellknownConnection(conn *grpc.ClientConn) Option {
 // Use this option with caution, as it may lead to unexpected behavior
 func WithPlatformConfiguration(platformConfiguration PlatformConfiguration) Option {
 	return func(c *config) {
-		c.platformConfiguration = platformConfiguration
+		c.PlatformConfiguration = platformConfiguration
 	}
 }
 

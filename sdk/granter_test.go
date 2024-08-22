@@ -1,26 +1,32 @@
-package autoconfigure
+package sdk
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/maps"
+	"google.golang.org/grpc"
 )
 
 const (
-	kasAu     = "http://kas.au/"
-	kasCa     = "http://kas.ca/"
-	kasUk     = "http://kas.uk/"
-	kasNz     = "http://kas.nz/"
-	kasUs     = "http://kas.us/"
-	kasUsHCS  = "http://hcs.kas.us/"
-	kasUsSA   = "http://si.kas.us/"
-	authority = "https://virtru.com/"
+	kasAu               = "https://kas.au/"
+	kasCa               = "https://kas.ca/"
+	kasUk               = "https://kas.uk/"
+	kasNz               = "https://kas.nz/"
+	kasUs               = "https://kas.us/"
+	kasUsHCS            = "https://hcs.kas.us/"
+	kasUsSA             = "https://si.kas.us/"
+	authority           = "https://virtru.com/"
+	otherAuth           = "https://other.com/"
+	specifiedKas        = "https://attr.kas.com/"
+	evenMoreSpecificKas = "https://value.kas.com/"
 )
 
 var (
@@ -38,11 +44,19 @@ var (
 	n2kSI, _  = NewAttributeValueFQN("https://virtru.com/attr/Need%20to%20Know/value/SI")
 
 	// rel25eye, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/FVEY")
-	// rel2aus, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/AUS")
+	rel2aus, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/AUS")
 	rel2can, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/CAN")
 	rel2gbr, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/GBR")
 	rel2nzl, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/NZL")
 	rel2usa, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/USA")
+
+	// attributes to test specificity of kas grants
+	UNSPECKED, _ = NewAttributeNameFQN("https://other.com/attr/unspecified")
+	SPECKED, _   = NewAttributeNameFQN("https://other.com/attr/specified")
+	uns2uns, _   = NewAttributeValueFQN("https://other.com/attr/unspecified/value/unspecked")
+	uns2spk, _   = NewAttributeValueFQN("https://other.com/attr/unspecified/value/specked")
+	spk2uns, _   = NewAttributeValueFQN("https://other.com/attr/specified/value/unspecked")
+	spk2spk, _   = NewAttributeValueFQN("https://other.com/attr/specified/value/specked")
 )
 
 func spongeCase(s string) string {
@@ -85,16 +99,21 @@ func messUpV(t *testing.T, a AttributeValueFQN) AttributeValueFQN {
 }
 
 func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
-	ns := policy.Namespace{
+	nsOne := policy.Namespace{
 		Id:   "v",
 		Name: "virtru.com",
 		Fqn:  "https://virtru.com",
+	}
+	nsTwo := policy.Namespace{
+		Id:   "o",
+		Name: "other.com",
+		Fqn:  "https://other.com",
 	}
 	switch fqn.key {
 	case CLS.key:
 		return &policy.Attribute{
 			Id:        "CLS",
-			Namespace: &ns,
+			Namespace: &nsOne,
 			Name:      "Classification",
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 			Fqn:       fqn.String(),
@@ -102,7 +121,7 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 	case N2K.key:
 		return &policy.Attribute{
 			Id:        "N2K",
-			Namespace: &ns,
+			Namespace: &nsOne,
 			Name:      "Need to Know",
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 			Fqn:       fqn.String(),
@@ -110,14 +129,34 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 	case REL.key:
 		return &policy.Attribute{
 			Id:        "REL",
-			Namespace: &ns,
+			Namespace: &nsOne,
 			Name:      "Releasable To",
+			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Fqn:       fqn.String(),
+		}
+	case SPECKED.key:
+		g := make([]*policy.KeyAccessServer, 1)
+		g[0] = &policy.KeyAccessServer{Uri: specifiedKas}
+		return &policy.Attribute{
+			Id:        "SPK",
+			Namespace: &nsTwo,
+			Name:      "specified",
+			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Fqn:       fqn.String(),
+			Grants:    g,
+		}
+	case UNSPECKED.key:
+		return &policy.Attribute{
+			Id:        "UNS",
+			Namespace: &nsTwo,
+			Name:      "unspecified",
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 			Fqn:       fqn.String(),
 		}
 	}
 	return nil
 }
+
 func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 	an := fqn.Prefix()
 	a := mockAttributeFor(an)
@@ -170,6 +209,13 @@ func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 		}
 	case CLS.key:
 		// defaults only
+	case SPECKED.key:
+		fallthrough
+	case UNSPECKED.key:
+		if strings.ToLower(fqn.Value()) == "specked" {
+			p.Grants = make([]*policy.KeyAccessServer, 1)
+			p.Grants[0] = &policy.KeyAccessServer{Uri: evenMoreSpecificKas}
+		}
 	}
 	return &p
 }
@@ -284,7 +330,7 @@ func TestConfigurationServicePutGet(t *testing.T) {
 	} {
 		t.Run(tc.n, func(t *testing.T) {
 			v := valuesToPolicy(tc.policy...)
-			grants, err := NewGranterFromAttributes(v...)
+			grants, err := newGranterFromAttributes(v...)
 			require.NoError(t, err)
 			assert.Len(t, grants.grants, tc.size)
 			assert.Subset(t, policyToStringKeys(tc.policy), maps.Keys(grants.grants))
@@ -306,16 +352,16 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		policy              []AttributeValueFQN
 		defaults            []string
 		ats, keyed, reduced string
-		plan                []SplitStep
+		plan                []keySplitStep
 	}{
 		{
 			"one actual with default",
 			[]AttributeValueFQN{clsS, rel2can},
 			[]string{kasUs},
 			"https://virtru.com/attr/Classification/value/Secret&https://virtru.com/attr/Releasable%20To/value/CAN",
-			"[DEFAULT]&(http://kas.ca/)",
-			"(http://kas.ca/)",
-			[]SplitStep{{kasCa, ""}},
+			"[DEFAULT]&(https://kas.ca/)",
+			"(https://kas.ca/)",
+			[]keySplitStep{{kasCa, ""}},
 		},
 		{
 			"one defaulted attr",
@@ -324,7 +370,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"https://virtru.com/attr/Classification/value/Secret",
 			"[DEFAULT]",
 			"",
-			[]SplitStep{{kasUs, ""}},
+			[]keySplitStep{{kasUs, ""}},
 		},
 		{
 			"empty policy",
@@ -333,7 +379,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"∅",
 			"",
 			"",
-			[]SplitStep{{kasUs, ""}},
+			[]keySplitStep{{kasUs, ""}},
 		},
 		{
 			"old school splits",
@@ -342,38 +388,38 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"∅",
 			"",
 			"",
-			[]SplitStep{{kasAu, "1"}, {kasCa, "2"}, {kasUs, "3"}},
+			[]keySplitStep{{kasAu, "1"}, {kasCa, "2"}, {kasUs, "3"}},
 		},
 		{
 			"simple with all three ops",
 			[]AttributeValueFQN{clsS, rel2gbr, n2kInt},
 			[]string{kasUs},
 			"https://virtru.com/attr/Classification/value/Secret&https://virtru.com/attr/Releasable%20To/value/GBR&https://virtru.com/attr/Need%20to%20Know/value/INT",
-			"[DEFAULT]&(http://kas.uk/)&(http://kas.uk/)",
-			"(http://kas.uk/)",
-			[]SplitStep{{kasUk, ""}},
+			"[DEFAULT]&(https://kas.uk/)&(https://kas.uk/)",
+			"(https://kas.uk/)",
+			[]keySplitStep{{kasUk, ""}},
 		},
 		{
 			"compartments",
 			[]AttributeValueFQN{clsS, rel2gbr, rel2usa, n2kHCS, n2kSI},
 			[]string{kasUs},
 			"https://virtru.com/attr/Classification/value/Secret&https://virtru.com/attr/Releasable%20To/value/{GBR,USA}&https://virtru.com/attr/Need%20to%20Know/value/{HCS,SI}",
-			"[DEFAULT]&(http://kas.uk/⋁http://kas.us/)&(http://hcs.kas.us/⋀http://si.kas.us/)",
-			"(http://kas.uk/⋁http://kas.us/)&(http://hcs.kas.us/)&(http://si.kas.us/)",
-			[]SplitStep{{kasUk, "1"}, {kasUs, "1"}, {kasUsHCS, "2"}, {kasUsSA, "3"}},
+			"[DEFAULT]&(https://kas.uk/⋁https://kas.us/)&(https://hcs.kas.us/⋀https://si.kas.us/)",
+			"(https://kas.uk/⋁https://kas.us/)&(https://hcs.kas.us/)&(https://si.kas.us/)",
+			[]keySplitStep{{kasUk, "1"}, {kasUs, "1"}, {kasUsHCS, "2"}, {kasUsSA, "3"}},
 		},
 		{
 			"compartments - case insensitive",
 			[]AttributeValueFQN{messUpV(t, clsS), messUpV(t, rel2gbr), messUpV(t, rel2usa), messUpV(t, n2kHCS), messUpV(t, n2kSI)},
 			[]string{kasUs},
 			"https://virtru.com/attr/Classification/value/Secret&https://virtru.com/attr/Releasable%20To/value/{GBR,USA}&https://virtru.com/attr/Need%20to%20Know/value/{HCS,SI}",
-			"[DEFAULT]&(http://kas.uk/⋁http://kas.us/)&(http://hcs.kas.us/⋀http://si.kas.us/)",
-			"(http://kas.uk/⋁http://kas.us/)&(http://hcs.kas.us/)&(http://si.kas.us/)",
-			[]SplitStep{{kasUk, "1"}, {kasUs, "1"}, {kasUsHCS, "2"}, {kasUsSA, "3"}},
+			"[DEFAULT]&(https://kas.uk/⋁https://kas.us/)&(https://hcs.kas.us/⋀https://si.kas.us/)",
+			"(https://kas.uk/⋁https://kas.us/)&(https://hcs.kas.us/)&(https://si.kas.us/)",
+			[]keySplitStep{{kasUk, "1"}, {kasUs, "1"}, {kasUsHCS, "2"}, {kasUsSA, "3"}},
 		},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
-			reasoner, err := NewGranterFromAttributes(valuesToPolicy(tc.policy...)...)
+			reasoner, err := newGranterFromAttributes(valuesToPolicy(tc.policy...)...)
 			require.NoError(t, err)
 
 			actualAB := reasoner.constructAttributeBoolean()
@@ -387,12 +433,119 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			assert.Equal(t, tc.reduced, r.String())
 
 			i := 0
-			plan, err := reasoner.Plan(tc.defaults, func() string {
+			plan, err := reasoner.plan(tc.defaults, func() string {
 				i++
 				return fmt.Sprintf("%d", i)
 			})
 			require.NoError(t, err)
 			assert.Equal(t, tc.plan, plan)
+		})
+	}
+}
+
+var (
+	listAttributeResp attributes.ListAttributesResponse
+)
+
+type mockAttributesClient struct {
+	attributes.AttributesServiceClient
+}
+
+func (*mockAttributesClient) ListAttributes(_ context.Context, _ *attributes.ListAttributesRequest, _ ...grpc.CallOption) (*attributes.ListAttributesResponse, error) {
+	return &listAttributeResp, nil
+}
+
+func (*mockAttributesClient) GetAttributeValuesByFqns(_ context.Context, req *attributes.GetAttributeValuesByFqnsRequest, _ ...grpc.CallOption) (*attributes.GetAttributeValuesByFqnsResponse, error) {
+	av := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue)
+	for _, v := range req.GetFqns() {
+		vfqn, err := NewAttributeValueFQN(v)
+		if err != nil {
+			return nil, err
+		}
+		val := mockValueFor(vfqn)
+		av[v] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+			Attribute: val.GetAttribute(),
+			Value:     val,
+		}
+	}
+
+	return &attributes.GetAttributeValuesByFqnsResponse{
+		FqnAttributeValues: av,
+	}, nil
+}
+
+func TestReasonerSpecificity(t *testing.T) {
+	for _, tc := range []struct {
+		n        string
+		policy   []AttributeValueFQN
+		defaults []string
+		plan     []keySplitStep
+	}{
+		{
+			"uns.uns => default",
+			[]AttributeValueFQN{uns2uns},
+			[]string{kasUs},
+			[]keySplitStep{{kasUs, ""}},
+		},
+		{
+			"uns.spk => spk",
+			[]AttributeValueFQN{uns2spk},
+			[]string{kasUs},
+			[]keySplitStep{{evenMoreSpecificKas, ""}},
+		},
+		{
+			"spk.uns => spk",
+			[]AttributeValueFQN{spk2uns},
+			[]string{kasUs},
+			[]keySplitStep{{specifiedKas, ""}},
+		},
+		{
+			"spk.spk => value.spk",
+			[]AttributeValueFQN{spk2spk},
+			[]string{kasUs},
+			[]keySplitStep{{evenMoreSpecificKas, ""}},
+		},
+		{
+			"spk.spk & spk.uns => value.spk || attr.spk",
+			[]AttributeValueFQN{spk2spk, spk2uns},
+			[]string{kasUs},
+			[]keySplitStep{{evenMoreSpecificKas, "1"}, {specifiedKas, "1"}},
+		},
+		{
+			"spk.uns & spk.spk => value.spk || attr.spk",
+			[]AttributeValueFQN{spk2spk, spk2uns},
+			[]string{kasUs},
+			[]keySplitStep{{specifiedKas, "1"}, {evenMoreSpecificKas, "1"}},
+		},
+		{
+			"uns.spk & uns.uns => spk",
+			[]AttributeValueFQN{uns2spk, uns2uns},
+			[]string{kasUs},
+			[]keySplitStep{{evenMoreSpecificKas, ""}},
+		},
+		{
+			"uns.uns & uns.spk => spk",
+			[]AttributeValueFQN{uns2spk, uns2uns},
+			[]string{kasUs},
+			[]keySplitStep{{evenMoreSpecificKas, ""}},
+		},
+		{
+			"uns.uns & spk.spk => spk",
+			[]AttributeValueFQN{uns2spk, uns2uns},
+			[]string{kasUs},
+			[]keySplitStep{{evenMoreSpecificKas, ""}},
+		},
+	} {
+		t.Run(tc.n, func(t *testing.T) {
+			reasoner, err := newGranterFromService(context.Background(), newKasKeyCache(), &mockAttributesClient{}, tc.policy...)
+			require.NoError(t, err)
+			i := 0
+			plan, err := reasoner.plan(tc.defaults, func() string {
+				i++
+				return fmt.Sprintf("%d", i)
+			})
+			require.NoError(t, err)
+			assert.ElementsMatch(t, tc.plan, plan)
 		})
 	}
 }

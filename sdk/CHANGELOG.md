@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.3.10](https://github.com/opentdf/platform/compare/sdk/v0.3.9...sdk/v0.3.10) (2024-08-21)
+
+
+### Bug Fixes
+
+* **sdk:** 🔒 During read, limits TDF Manifest to 10MB  ([#1385](https://github.com/opentdf/platform/issues/1385)) ([cfeebce](https://github.com/opentdf/platform/commit/cfeebcedcaf1660cc73beb05abee5fa4d1431300))
+* **sdk:** let value grants override attr grants ([#1318](https://github.com/opentdf/platform/issues/1318)) ([77f1e11](https://github.com/opentdf/platform/commit/77f1e1140ffc134ce072ba2e79bd74426f8ee5f8))
+* **sdk:** well-known warning logs and public client id error ([#1415](https://github.com/opentdf/platform/issues/1415)) ([e6e76bf](https://github.com/opentdf/platform/commit/e6e76bf24a2e587817582ccb113d9e78a92b4060)), closes [#1414](https://github.com/opentdf/platform/issues/1414)
+
+## [0.3.9](https://github.com/opentdf/platform/compare/sdk/v0.3.8...sdk/v0.3.9) (2024-08-20)
+
+
+### Features
+
+* **sdk:** Load KAS keys from policy service ([#1346](https://github.com/opentdf/platform/issues/1346)) ([fe628a0](https://github.com/opentdf/platform/commit/fe628a013e41fb87585eb53a61988f822b40a71a))
+* **sdk:** support oauth2 tokensource with option ([#1394](https://github.com/opentdf/platform/issues/1394)) ([2886c0f](https://github.com/opentdf/platform/commit/2886c0ffa3807bbc6a2d4e9f0da7991a49d227fd)), closes [#1307](https://github.com/opentdf/platform/issues/1307)
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1402](https://github.com/opentdf/platform/issues/1402)) ([192e5e5](https://github.com/opentdf/platform/commit/192e5e5a5a2c8d4b5fec74b50a94f15abacc1db7))
+
+## [0.3.8](https://github.com/opentdf/platform/compare/sdk/v0.3.7...sdk/v0.3.8) (2024-08-19)
+
+
+### Features
+
+* **sdk:** public client and other enhancements to well-known SDK functionality ([#1365](https://github.com/opentdf/platform/issues/1365)) ([3be50a4](https://github.com/opentdf/platform/commit/3be50a4ebf26680fad4ab46620cdfa82340a3da3))
+
+## [0.3.7](https://github.com/opentdf/platform/compare/sdk/v0.3.6...sdk/v0.3.7) (2024-08-16)
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1367](https://github.com/opentdf/platform/issues/1367)) ([689e719](https://github.com/opentdf/platform/commit/689e719d357e9626b4eb049fc530673decc163a8))
+* **sdk:** align sdk with platform modes ([#1328](https://github.com/opentdf/platform/issues/1328)) ([88ca6f7](https://github.com/opentdf/platform/commit/88ca6f7458930b753756606b670a5c36bddf818c))
+
 ## [0.3.6](https://github.com/opentdf/platform/compare/sdk/v0.3.5...sdk/v0.3.6) (2024-08-13)
 
 

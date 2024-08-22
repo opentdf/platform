@@ -73,6 +73,8 @@ func NewRegistration() serviceregistry.Registration {
 				KASConfig:      kasCfg,
 			}
 
+			srp.Logger.Debug("kas config", "config", kasCfg)
+
 			if err := srp.RegisterReadinessCheck("kas", p.IsReady); err != nil {
 				srp.Logger.Error("failed to register kas readiness check", slog.String("error", err.Error()))
 			}

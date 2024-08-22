@@ -80,7 +80,7 @@ func NewResourceLocator(url string) (*ResourceLocator, error) {
 func NewResourceLocatorFromReader(reader io.Reader) (*ResourceLocator, error) {
 	rl := &ResourceLocator{}
 	err := rl.readResourceLocator(reader)
-  
+
 	if err != nil {
 		return nil, err
 	}

@@ -58,7 +58,6 @@ func (q *Queries) AssignKeyAccessServerToNamespace(ctx context.Context, arg Assi
 }
 
 const createAttributeValue = `-- name: CreateAttributeValue :one
-
 INSERT INTO attribute_values (attribute_definition_id, value, metadata)
 VALUES ($1, LOWER($2), $3)
 RETURNING id, value,
@@ -77,9 +76,7 @@ type CreateAttributeValueRow struct {
 	Metadata []byte `json:"metadata"`
 }
 
-// --------------------------------------------------------------
-// ATTRIBUTE VALUES
-// --------------------------------------------------------------
+// CreateAttributeValue
 //
 //	INSERT INTO attribute_values (attribute_definition_id, value, metadata)
 //	VALUES ($1, LOWER($2), $3)
@@ -500,6 +497,79 @@ func (q *Queries) GetAttributeByDefOrValueFqn(ctx context.Context, lower string)
 		&i.DefinitionFqn,
 		&i.Values,
 		&i.DefinitionGrants,
+	)
+	return i, err
+}
+
+const getAttributeValue = `-- name: GetAttributeValue :one
+
+SELECT
+    av.id,
+    av.value,
+    av.active,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
+    av.attribute_definition_id,
+    fqns.fqn,
+    JSONB_AGG(
+        DISTINCT JSONB_BUILD_OBJECT(
+            'id', kas.id,
+            'uri', kas.uri,
+            'public_key', kas.public_key
+        )
+    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants
+FROM attribute_values av
+LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
+LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
+WHERE av.id = $1
+GROUP BY av.id, fqns.fqn
+`
+
+type GetAttributeValueRow struct {
+	ID                    string      `json:"id"`
+	Value                 string      `json:"value"`
+	Active                bool        `json:"active"`
+	Metadata              []byte      `json:"metadata"`
+	AttributeDefinitionID string      `json:"attribute_definition_id"`
+	Fqn                   pgtype.Text `json:"fqn"`
+	Grants                []byte      `json:"grants"`
+}
+
+// --------------------------------------------------------------
+// ATTRIBUTE VALUES
+// --------------------------------------------------------------
+//
+//	SELECT
+//	    av.id,
+//	    av.value,
+//	    av.active,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
+//	    av.attribute_definition_id,
+//	    fqns.fqn,
+//	    JSONB_AGG(
+//	        DISTINCT JSONB_BUILD_OBJECT(
+//	            'id', kas.id,
+//	            'uri', kas.uri,
+//	            'public_key', kas.public_key
+//	        )
+//	    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants
+//	FROM attribute_values av
+//	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+//	LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
+//	LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
+//	WHERE av.id = $1
+//	GROUP BY av.id, fqns.fqn
+func (q *Queries) GetAttributeValue(ctx context.Context, id string) (GetAttributeValueRow, error) {
+	row := q.db.QueryRow(ctx, getAttributeValue, id)
+	var i GetAttributeValueRow
+	err := row.Scan(
+		&i.ID,
+		&i.Value,
+		&i.Active,
+		&i.Metadata,
+		&i.AttributeDefinitionID,
+		&i.Fqn,
+		&i.Grants,
 	)
 	return i, err
 }

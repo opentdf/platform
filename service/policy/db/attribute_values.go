@@ -144,68 +144,37 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 	}, nil
 }
 
-func getAttributeValueSQL(id string, opts attributeValueSelectOptions) (string, []interface{}, error) {
-	t := Tables.AttributeValues
-	fqnT := Tables.AttrFqn
-	avkagT := Tables.AttributeValueKeyAccessGrants
-	kasrT := Tables.KeyAccessServerRegistry
-
-	fields := []string{
-		"av.id",
-		"av.value",
-		"av.active",
-		constructMetadata("av", false),
-		"av.attribute_definition_id",
-	}
-	if opts.withFqn {
-		fields = append(fields, fqnT.Field("fqn"))
-	}
-	if opts.withKeyAccessGrants {
-		fields = append(fields,
-			"JSONB_AGG("+
-				"DISTINCT JSONB_BUILD_OBJECT("+
-				"'id',"+kasrT.Field("id")+", "+
-				"'uri',"+kasrT.Field("uri")+", "+
-				"'public_key',"+kasrT.Field("public_key")+
-				")) FILTER (WHERE "+avkagT.Field("attribute_value_id")+" IS NOT NULL) AS grants",
-		)
-	}
-
-	sb := db.NewStatementBuilder().
-		Select(fields...).
-		From(t.Name() + " av")
-
-	if opts.withFqn {
-		sb = sb.LeftJoin(fqnT.Name() + " ON " + fqnT.Field("value_id") + " = av.id")
-		sb = sb.GroupBy(fqnT.WithoutSchema().Field("fqn"))
-	}
-	if opts.withKeyAccessGrants {
-		sb = sb.LeftJoin(avkagT.Name() + " ON " + avkagT.WithoutSchema().Name() + ".attribute_value_id = av.id")
-		sb = sb.LeftJoin(kasrT.Name() + " ON " + kasrT.Field("id") + " = " + avkagT.Field("key_access_server_id"))
-	}
-
-	return sb.Where(sq.Eq{"av.id": id}).GroupBy("av.id").ToSql()
-}
-
 func (c PolicyDBClient) GetAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
-	opts := attributeValueSelectOptions{withFqn: true, withKeyAccessGrants: true}
-	sql, args, err := getAttributeValueSQL(id, opts)
+	av, err := c.Queries.GetAttributeValue(ctx, id)
 	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	metadata := &common.Metadata{}
+	if err := unmarshalMetadata(av.Metadata, metadata, c.logger); err != nil {
 		return nil, err
 	}
 
-	row, err := c.QueryRow(ctx, sql, args)
-	if err != nil {
-		c.logger.Error("error getting attribute value", slog.String("id", id), slog.String("sql", sql), slog.String("error", err.Error()))
-		return nil, err
+	var grants []*policy.KeyAccessServer
+	if av.Grants != nil {
+		grants, err = db.KeyAccessServerProtoJSON(av.Grants)
+		if err != nil {
+			c.logger.ErrorContext(ctx, "could not unmarshal key access grants", slog.String("error", err.Error()))
+			return nil, err
+		}
 	}
 
-	a, err := attributeValueHydrateItem(row, opts, c.logger)
-	if err != nil {
-		c.logger.Error("error hydrating attribute value", slog.String("id", id), slog.String("sql", sql), slog.String("error", err.Error()))
-		return nil, err
-	}
-	return a, nil
+	return &policy.Value{
+		Id:       av.ID,
+		Value:    av.Value,
+		Active:   &wrapperspb.BoolValue{Value: av.Active},
+		Grants:   grants,
+		Metadata: metadata,
+		Attribute: &policy.Attribute{
+			Id: av.AttributeDefinitionID,
+		},
+		Fqn: av.Fqn.String,
+	}, nil
 }
 
 func listAttributeValuesSQL(attributeID string, opts attributeValueSelectOptions) (string, []interface{}, error) {

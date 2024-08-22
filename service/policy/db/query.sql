@@ -234,6 +234,28 @@ GROUP BY
 -- ATTRIBUTE VALUES
 ----------------------------------------------------------------
 
+-- name: GetAttributeValue :one
+SELECT
+    av.id,
+    av.value,
+    av.active,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
+    av.attribute_definition_id,
+    fqns.fqn,
+    JSONB_AGG(
+        DISTINCT JSONB_BUILD_OBJECT(
+            'id', kas.id,
+            'uri', kas.uri,
+            'public_key', kas.public_key
+        )
+    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants
+FROM attribute_values av
+LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
+LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
+WHERE av.id = $1
+GROUP BY av.id, fqns.fqn;
+
 -- name: CreateAttributeValue :one
 INSERT INTO attribute_values (attribute_definition_id, value, metadata)
 VALUES (@attribute_definition_id, LOWER(@value), @metadata)

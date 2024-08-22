@@ -261,10 +261,6 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 	var signedAssertion []Assertion
 	for _, assertion := range tdfConfig.assertions {
-		if assertion.Type != BaseAssertion {
-			continue
-		}
-
 		// Store a temporary assertion
 		tmpAssertion := Assertion{}
 
@@ -901,9 +897,6 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 
 	// Validate assertions
 	for _, assertion := range r.manifest.Assertions {
-		if assertion.Type != BaseAssertion {
-			continue
-		}
 		assertionKey := AssertionKey{}
 		// Set default to HS256
 		assertionKey.Alg = AssertionKeyAlgHS256

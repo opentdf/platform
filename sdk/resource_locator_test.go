@@ -46,95 +46,105 @@ func TestResourceLocatorBad(t *testing.T) {
 
 func TestReadResourceLocator(t *testing.T) {
 	tests := []struct {
+		n           string
 		protocol    protocolHeader
 		body        string
 		identifier  string
 		expectError bool
 	}{
-		{urlProtocolHTTP, "test.com", "", false},
-		{urlProtocolHTTPS, "test.com", "", false},
-		{urlProtocolHTTPS, "test.com", "id", false},
-		{urlProtocolHTTPS, "test.com", "id1234567890123456789012345678901", false},
-		{123, "test.com", "X", true},
-		{identifierNone, "test.com", "i0", false},
-		{identifier2Byte, "test.com", "X", true},
-		{identifier8Byte, "test.com", "X", true},
-		{identifier32Byte, "test.com", "X", true},
+		{"http plain", urlProtocolHTTP, "test.com", "", false},
+		{"https plain", urlProtocolHTTPS, "test.com", "", false},
+		{"https id2", urlProtocolHTTPS, "test.com", "id", false},
+		{"https id32", urlProtocolHTTPS, "test.com", "id1234567890123456789012345678901", false},
+		{"invalid protocol", 123, "test.com", "X", true},
+		{"unknown protocol id2", identifierNone, "test.com", "i0", false},
+		{"unknown protocol id2", identifier2Byte, "test.com", "X", true},
+		{"unknown protocol id8", identifier8Byte, "test.com", "X", true},
+		{"unknown protocol id32", identifier32Byte, "test.com", "X", true},
 	}
 
 	for _, test := range tests {
-		rl := &ResourceLocator{
-			protocol:   test.protocol,
-			body:       test.body,
-			identifier: test.identifier,
-		}
-		buff := bytes.Buffer{}
-		if err := rl.writeResourceLocator(&buff); err != nil {
-			t.Fatal(err)
-		}
-		err := rl.readResourceLocator(&buff)
-		if (err != nil) != test.expectError {
-			t.Fatalf("expected error: %v, got %v, error: %v", test.expectError, err != nil, err)
-		}
-		if err == nil && rl.body != test.body {
-			t.Fatalf("expected body: %s, got %s", test.body, rl.body)
-		}
-		if err == nil && rl.identifier != test.identifier {
-			t.Fatalf("expected identifier: %s, got %s", test.identifier, rl.identifier)
-		}
+		t.Run(test.n, func(t *testing.T) {
+
+			rl := &ResourceLocator{
+				protocol:   test.protocol,
+				body:       test.body,
+				identifier: test.identifier,
+			}
+			buff := bytes.Buffer{}
+			if err := rl.writeResourceLocator(&buff); err != nil {
+				t.Fatal(err)
+			}
+			err := rl.readResourceLocator(&buff)
+			if (err != nil) != test.expectError {
+				t.Fatalf("expected error: %v, got %v, error: %v", test.expectError, err != nil, err)
+			}
+			if err == nil && rl.body != test.body {
+				t.Fatalf("expected body: %s, got %s", test.body, rl.body)
+			}
+			if err == nil && rl.identifier != test.identifier {
+				t.Fatalf("expected identifier: %s, got %s", test.identifier, rl.identifier)
+			}
+		})
 	}
 }
 
 func TestGetIdentifier(t *testing.T) {
 	tests := []struct {
+		n           string
 		protocol    protocolHeader
 		identifier  string
 		expected    string
 		expectError bool
 	}{
-		{identifierNone, "testId", "", true},
-		{urlProtocolHTTPS, "testId", "", true},
-		{identifier2Byte, "", "", true},
-		{identifier8Byte, "", "", true},
-		{identifier32Byte, "", "", true},
-		{identifier2Byte, "testId", "testId", false},
-		{identifier8Byte, "testId", "testId", false},
-		{identifier32Byte, "testId", "testId", false},
+		{"none", identifierNone, "testId", "", true},
+		{"https lonely", urlProtocolHTTPS, "testId", "", true},
+		{"no id 2b", identifier2Byte, "", "", true},
+		{"no body 8b", identifier8Byte, "", "", true},
+		{"no body 32b", identifier32Byte, "", "", true},
+		{"ok 2b", identifier2Byte, "testId", "testId", false},
+		{"ok 8b", identifier8Byte, "testId", "testId", false},
+		{"ok 32b", identifier32Byte, "testId", "testId", false},
 	}
 
 	for _, test := range tests {
-		rl := &ResourceLocator{
-			protocol:   test.protocol,
-			identifier: test.identifier,
-		}
-		got, err := rl.GetIdentifier()
-		if (err != nil) != test.expectError {
-			t.Fatalf("expected error: %v, got %v, error: %v", test.expectError, err != nil, err)
-		}
-		if got != test.expected {
-			t.Fatalf("expected identifier: %s, got %s", test.expected, got)
-		}
+		t.Run(test.n, func(t *testing.T) {
+			rl := &ResourceLocator{
+				protocol:   test.protocol,
+				identifier: test.identifier,
+			}
+			got, err := rl.GetIdentifier()
+			if (err != nil) != test.expectError {
+				t.Fatalf("expected error: %v, got %v, error: %v", test.expectError, err != nil, err)
+			}
+			if got != test.expected {
+				t.Fatalf("expected identifier: %s, got %s", test.expected, got)
+			}
+		})
 	}
 }
 
 func TestProtocolHeaderIdentifierLength(t *testing.T) {
 	tests := []struct {
+		n      string
 		header protocolHeader
 		length int
 	}{
-		{urlProtocolHTTPS, identifierNoneLength},
-		{identifierNone, identifierNoneLength},
-		{identifier2Byte, identifier2ByteLength},
-		{identifier8Byte, identifier8ByteLength},
-		{identifier32Byte, identifier32ByteLength},
-		{protocolHeader(255), 0},
+		{"none-https", urlProtocolHTTPS, identifierNoneLength},
+		{"none-none", identifierNone, identifierNoneLength},
+		{"2b", identifier2Byte, identifier2ByteLength},
+		{"8b", identifier8Byte, identifier8ByteLength},
+		{"32b", identifier32Byte, identifier32ByteLength},
+		{"relative", protocolHeader(255), 0},
 	}
 
 	for _, test := range tests {
-		got := test.header.identifierLength()
-		if got != test.length {
-			t.Fatalf("expected length: %d, got %d", test.length, got)
-		}
+		t.Run(test.n, func(t *testing.T) {
+			got := test.header.identifierLength()
+			if got != test.length {
+				t.Fatalf("expected length: %d, got %d", test.length, got)
+			}
+		})
 	}
 }
 
@@ -173,27 +183,33 @@ func TestNewResourceLocatorWithIdentifierFromReader(t *testing.T) {
 	}
 
 	tests := []struct {
+		n           string
 		data        []byte
 		expectBody  string
 		expectIdent string
 		expectError bool
 	}{
-		{t0Data, "example.com", "t0", false},
-		{t1Data, "example.com", "t1t1t1t1", false},
-		{t2Data, "example.com", "t2t2t2t2t2t2t2t2t2t2t2t2t2t2t2t2", false},
-		{t3Data, "example.com", "", true},
+		{"id2", t0Data, "example.com", "t0", false},
+		{"id8", t1Data, "example.com", "t1t1t1t1", false},
+		{"id32", t2Data, "example.com", "t2t2t2t2t2t2t2t2t2t2t2t2t2t2t2t2", false},
+		{"id0", t3Data, "example.com", "", true},
 	}
 
 	for _, test := range tests {
-		rl, err := NewResourceLocatorFromReader(bytes.NewReader(test.data))
-		if (err != nil) != test.expectError {
-			t.Fatalf("expected error: %v, got %v, error: %v", test.expectError, err != nil, err)
-		}
-		if !test.expectError && rl.body != test.expectBody {
-			t.Fatalf("expected body: %s, got %s", test.expectBody, rl.body)
-		}
-		if rl.identifier != test.expectIdent {
-			t.Fatalf("expected identifier: %s, got %s", test.expectIdent, rl.identifier)
-		}
+		t.Run(test.n, func(t *testing.T) {
+			rl, err := NewResourceLocatorFromReader(bytes.NewReader(test.data))
+			if test.expectError {
+				if err == nil {
+					t.Fatalf("expected error, got %v", rl)
+				}
+				return
+			}
+			if rl.body != test.expectBody {
+				t.Fatalf("expected body: %s, got %s", test.expectBody, rl.body)
+			}
+			if rl.identifier != test.expectIdent {
+				t.Fatalf("expected identifier: %s, got %s", test.expectIdent, rl.identifier)
+			}
+		})
 	}
 }

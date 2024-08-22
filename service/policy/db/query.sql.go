@@ -509,7 +509,6 @@ func (q *Queries) GetKeyAccessServer(ctx context.Context, id string) (GetKeyAcce
 }
 
 const getNamespace = `-- name: GetNamespace :one
-
 SELECT ns.id, ns.name, ns.active,
     attribute_fqns.fqn as fqn,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
@@ -537,9 +536,7 @@ type GetNamespaceRow struct {
 	Grants   []byte      `json:"grants"`
 }
 
-// --------------------------------------------------------------
-// NAMESPACES
-// --------------------------------------------------------------
+// GetNamespace
 //
 //	SELECT ns.id, ns.name, ns.active,
 //	    attribute_fqns.fqn as fqn,
@@ -773,6 +770,66 @@ func (q *Queries) ListKeyAccessServers(ctx context.Context) ([]ListKeyAccessServ
 			&i.Uri,
 			&i.PublicKey,
 			&i.Metadata,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listNamespaces = `-- name: ListNamespaces :many
+
+SELECT
+    ns.id,
+    ns.name,
+    ns.active,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
+    fqns.fqn
+FROM attribute_namespaces ns
+LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
+WHERE ($1::BOOLEAN IS NULL OR ns.active = $1::BOOLEAN)
+`
+
+type ListNamespacesRow struct {
+	ID       string      `json:"id"`
+	Name     string      `json:"name"`
+	Active   bool        `json:"active"`
+	Metadata []byte      `json:"metadata"`
+	Fqn      pgtype.Text `json:"fqn"`
+}
+
+// --------------------------------------------------------------
+// NAMESPACES
+// --------------------------------------------------------------
+//
+//	SELECT
+//	    ns.id,
+//	    ns.name,
+//	    ns.active,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
+//	    fqns.fqn
+//	FROM attribute_namespaces ns
+//	LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
+//	WHERE ($1::BOOLEAN IS NULL OR ns.active = $1::BOOLEAN)
+func (q *Queries) ListNamespaces(ctx context.Context, active pgtype.Bool) ([]ListNamespacesRow, error) {
+	rows, err := q.db.Query(ctx, listNamespaces, active)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListNamespacesRow
+	for rows.Next() {
+		var i ListNamespacesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Active,
+			&i.Metadata,
+			&i.Fqn,
 		); err != nil {
 			return nil, err
 		}

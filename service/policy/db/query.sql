@@ -284,6 +284,17 @@ WHERE ns.name = LOWER(@namespace_name) AND g.name = LOWER(@group_name);
 -- NAMESPACES
 ----------------------------------------------------------------
 
+-- name: ListNamespaces :many
+SELECT
+    ns.id,
+    ns.name,
+    ns.active,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
+    fqns.fqn
+FROM attribute_namespaces ns
+LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
+WHERE (sqlc.narg('active')::BOOLEAN IS NULL OR ns.active = sqlc.narg('active')::BOOLEAN);
+
 -- name: GetNamespace :one
 SELECT ns.id, ns.name, ns.active,
     attribute_fqns.fqn as fqn,

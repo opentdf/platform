@@ -393,20 +393,25 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 }
 
 func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
-	// TODO Lookup KID from request content
-	// Should this be in the locator or somewhere else?
-	kid, err := p.lookupKid(ctx, security.AlgorithmECP256R1)
-	if err != nil {
-		p.Logger.WarnContext(ctx, "failure to find default kid for ec", "err", err)
-		return nil, err400("bad request")
-	}
 	headerReader := bytes.NewReader(body.KeyAccess.Header)
 
 	header, _, err := sdk.NewNanoTDFHeaderFromReader(headerReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
 	}
-
+	// Lookup KID from nano header
+	kid, err := header.GetKasURL().GetIdentifier()
+	if err != nil {
+		p.Logger.InfoContext(ctx, "nanoTDFRewrap GetIdentifier", "kid", kid, "err", err)
+		// legacy nano with KID
+		kid, err = p.lookupKid(ctx, security.AlgorithmECP256R1)
+		if err != nil {
+			p.Logger.ErrorContext(ctx, "failure to find default kid for ec", "err", err)
+			return nil, err400("bad request")
+		}
+		p.Logger.InfoContext(ctx, "nanoTDFRewrap lookupKid", "kid", kid)
+	}
+	p.Logger.InfoContext(ctx, "nanoTDFRewrap", "kid", kid)
 	ecCurve, err := header.ECCurve()
 	if err != nil {
 		return nil, fmt.Errorf("ECCurve failed: %w", err)

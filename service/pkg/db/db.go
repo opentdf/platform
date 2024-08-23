@@ -189,7 +189,7 @@ func (c Config) buildConfig() (*pgxpool.Config, error) {
 			slog.Error("failed to set database client search_path", slog.String("schema", c.Schema), slog.String("error", err.Error()))
 			return err
 		}
-		slog.Info("successfully set database client search_path", slog.String("schema", c.Schema))
+		slog.Debug("successfully set database client search_path", slog.String("schema", c.Schema))
 		return nil
 	}
 	return parsed, nil

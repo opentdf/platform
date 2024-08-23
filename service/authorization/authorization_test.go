@@ -700,7 +700,7 @@ func Test_GetEntitlementsFqnCasing(t *testing.T) {
 		Scope: &authorization.ResourceAttribute{AttributeValueFqns: []string{"https://www.example.org/attr/foo/value/VaLuE1"}},
 	}
 
-	for fqn := range MakeScopeMap(req.GetScope()) {
+	for fqn := range makeScopeMap(req.GetScope()) {
 		assert.Equal(t, fqn, strings.ToLower(fqn))
 	}
 

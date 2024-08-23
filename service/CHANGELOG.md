@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.21](https://github.com/opentdf/platform/compare/service/v0.4.20...service/v0.4.21) (2024-08-23)
+
+
+### Features
+
+* **core:** KID in NanoTDF KAS ResourceLocator borrowed from Protocol ([#1222](https://github.com/opentdf/platform/issues/1222)) ([e5ee4ef](https://github.com/opentdf/platform/commit/e5ee4efe91bffd9e0310daccf7217d6a797a7cc9))
+
+
+### Bug Fixes
+
+* **authz:** entitlements fqn casing ([#1446](https://github.com/opentdf/platform/issues/1446)) ([2ffc66b](https://github.com/opentdf/platform/commit/2ffc66b1810e095fbd4779f3e311d40d37b6f83b)), closes [#1359](https://github.com/opentdf/platform/issues/1359)
+* **core:** Autobump service ([#1417](https://github.com/opentdf/platform/issues/1417)) ([e6db378](https://github.com/opentdf/platform/commit/e6db378970657e0992199284a199e6099a6e4bf1))
+* **core:** Autobump service ([#1441](https://github.com/opentdf/platform/issues/1441)) ([e17deab](https://github.com/opentdf/platform/commit/e17deab15b5177145610ad1cd2048898bfc67c63))
+* **core:** Autobump service ([#1449](https://github.com/opentdf/platform/issues/1449)) ([7e443da](https://github.com/opentdf/platform/commit/7e443da08b424dfb239e9afadcbc4be4e4f32ac1))
+* **core:** case sensitivity in AccessPDP ([#1439](https://github.com/opentdf/platform/issues/1439)) ([aed7633](https://github.com/opentdf/platform/commit/aed7633190a3c120a0e67c0dc668abf25bc2a0f8)), closes [#1359](https://github.com/opentdf/platform/issues/1359)
+* **core:** policy db should use pool connection hook to set search_path ([#1443](https://github.com/opentdf/platform/issues/1443)) ([8501ff5](https://github.com/opentdf/platform/commit/8501ff5488a893d1aad3d24e73994a1556698b63))
+
 ## [0.4.20](https://github.com/opentdf/platform/compare/service/v0.4.19...service/v0.4.20) (2024-08-22)
 
 

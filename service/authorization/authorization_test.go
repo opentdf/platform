@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/open-policy-agent/opa/rego"
@@ -629,6 +630,78 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 	req := authorization.GetEntitlementsRequest{
 		Entities: []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT}},
 		Scope:    &authorization.ResourceAttribute{AttributeValueFqns: []string{"https://www.example.org/attr/foo/value/value1"}},
+	}
+
+	resp, err := as.GetEntitlements(ctxb, &req)
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Len(t, resp.GetEntitlements(), 1)
+	assert.Equal(t, "e1", resp.GetEntitlements()[0].GetEntityId())
+	assert.Equal(t, []string{"https://www.example.org/attr/foo/value/value1"}, resp.GetEntitlements()[0].GetAttributeValueFqns())
+}
+
+func Test_GetEntitlementsFqnCasing(t *testing.T) {
+	logger := logger.CreateTestLogger()
+
+	listAttributeResp = attr.ListAttributesResponse{}
+	attrDef := policy.Attribute{
+		Name: mockAttrName,
+		Namespace: &policy.Namespace{
+			Name: mockNamespace,
+		},
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values: []*policy.Value{
+			{
+				Value: mockAttrValue1,
+			},
+			{
+				Value: mockAttrValue2,
+			},
+		},
+	}
+	listAttributeResp.Attributes = []*policy.Attribute{&attrDef}
+	userRepresentation := map[string]interface{}{
+		"A": "B",
+		"C": "D",
+	}
+	userStruct, _ := structpb.NewStruct(userRepresentation)
+	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
+		EntityRepresentations: []*entityresolution.EntityRepresentation{{
+			OriginalId: "e1",
+			AdditionalProps: []*structpb.Struct{
+				userStruct,
+			},
+		},
+		},
+	}
+
+	ctxb := context.Background()
+
+	rego := rego.New(
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = {"e1":["https://www.example.org/attr/foo/value/value1"]} { true }`,
+		))
+
+	// Run evaluation.
+	prepared, err := rego.PrepareForEval(ctxb)
+	require.NoError(t, err)
+
+	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
+		SubjectMapping: &mySubjectMappingClient{},
+		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
+		eval: prepared}
+
+	req := authorization.GetEntitlementsRequest{
+		Entities: []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT}},
+		// Using mixed case here
+		Scope: &authorization.ResourceAttribute{AttributeValueFqns: []string{"https://www.example.org/attr/foo/value/VaLuE1"}},
+	}
+
+	for fqn := range makeScopeMap(req.GetScope()) {
+		assert.Equal(t, fqn, strings.ToLower(fqn))
 	}
 
 	resp, err := as.GetEntitlements(ctxb, &req)

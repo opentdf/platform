@@ -49,5 +49,7 @@ func Test_BuildConfig(t *testing.T) {
 		cfg, err := test.config.buildConfig()
 		require.NoError(t, err)
 		assert.Equal(t, test.want, cfg.ConnString())
+		// AfterConnect hook was defined when building
+		assert.NotNil(t, cfg.AfterConnect)
 	}
 }

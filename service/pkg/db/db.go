@@ -158,13 +158,6 @@ func New(ctx context.Context, config Config, logCfg logger.Config, o ...OptsFunc
 		}
 	}
 
-	// Set the Client search_path to the schema
-	q := fmt.Sprintf("SET search_path TO %s", config.Schema)
-	if _, err := c.Pgx.Exec(ctx, q); err != nil {
-		return nil, fmt.Errorf("failed to SET search_path for db Client schema to [%s]: %w", config.Schema, err)
-	}
-
-	slog.Info("successfully set database client search_path", slog.String("schema", config.Schema))
 	return &c, nil
 }
 
@@ -185,7 +178,21 @@ func (c Config) buildConfig() (*pgxpool.Config, error) {
 		c.Database,
 		c.SSLMode,
 	)
-	return pgxpool.ParseConfig(u)
+	parsed, err := pgxpool.ParseConfig(u)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
+	}
+	// Configure the search_path schema immediately on connection opening
+	parsed.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		_, err := conn.Exec(ctx, fmt.Sprintf("SET search_path TO %s", c.Schema))
+		if err != nil {
+			slog.Error("failed to set database client search_path", slog.String("schema", c.Schema), slog.String("error", err.Error()))
+			return err
+		}
+		slog.Debug("successfully set database client search_path", slog.String("schema", c.Schema))
+		return nil
+	}
+	return parsed, nil
 }
 
 // Common function for all queryRow calls

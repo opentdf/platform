@@ -376,7 +376,7 @@ func getIsValueFoundInFqnValuesSet(v *policy.Value, fqns []string, l *logger.Log
 		return false
 	}
 	for _, fqn := range fqns {
-		if valFqn == fqn {
+		if strings.EqualFold(valFqn, fqn) {
 			return true
 		}
 	}

@@ -434,7 +434,7 @@ func makeScopeMap(scope *authorization.ResourceAttribute) map[string]bool {
 	scopeMap := make(map[string]bool)
 	// add attribute value FQNs from scope to the map
 	for _, fqn := range scope.GetAttributeValueFqns() {
-		scopeMap[fqn] = true
+		scopeMap[strings.ToLower(fqn)] = true
 	}
 	return scopeMap
 }

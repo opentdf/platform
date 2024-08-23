@@ -33,53 +33,58 @@ DELETE FROM key_access_servers WHERE id = $1;
 -- ATTRIBUTES
 ----------------------------------------------------------------
 
--- name: ListKeyAccessServerGrants :many
-SELECT 
-    kas.id AS kas_id, 
-    kas.uri AS kas_uri, 
-    kas.public_key AS kas_public_key,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
-        'labels', kas.metadata -> 'labels', 
-        'created_at', kas.created_at, 
-        'updated_at', kas.updated_at
-    )) AS kas_metadata,
-    json_agg(DISTINCT jsonb_build_object(
-        'id', attrkag.attribute_definition_id, 
-        'fqn', fqns_on_attr.fqn
-    )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL) AS attributes_grants,
-    json_agg(DISTINCT jsonb_build_object(
-        'id', valkag.attribute_value_id, 
-        'fqn', fqns_on_vals.fqn
-    )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL) AS values_grants,
-    json_agg(DISTINCT jsonb_build_object(
-        'id', nskag.namespace_id, 
-        'fqn', fqns_on_ns.fqn
-    )) FILTER (WHERE nskag.namespace_id IS NOT NULL) AS namespace_grants
-FROM 
-    key_access_servers kas
-LEFT JOIN 
-    attribute_definition_key_access_grants attrkag 
-    ON kas.id = attrkag.key_access_server_id
-LEFT JOIN 
-    attribute_fqns fqns_on_attr 
-    ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id 
-    AND fqns_on_attr.value_id IS NULL
-LEFT JOIN 
-    attribute_value_key_access_grants valkag 
-    ON kas.id = valkag.key_access_server_id
-LEFT JOIN 
-    attribute_fqns fqns_on_vals 
-    ON valkag.attribute_value_id = fqns_on_vals.value_id
-LEFT JOIN
-    attribute_namespace_key_access_grants nskag
-    ON kas.id = nskag.key_access_server_id
-LEFT JOIN 
-    attribute_fqns fqns_on_ns
-    ON nskag.namespace_id = fqns_on_ns.namespace_id
-WHERE (NULLIF(@kas_id, '') IS NULL OR kas.id = @kas_id::uuid)
-    AND (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri::varchar)
-GROUP BY 
-    kas.id;
+-- name: ListAttributesDetail :many
+SELECT
+  ad.id,
+  ad.name as attribute_name,
+  ad.rule,
+  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ad.metadata -> 'labels', 'created_at', ad.created_at, 'updated_at', ad.updated_at)) AS metadata,
+  ad.namespace_id,
+  ad.active,
+  n.name as namespace_name,
+  ad.values_order,
+  JSON_AGG(JSON_BUILD_OBJECT('id', avt.id, 'value', avt.value, 'active', avt.active)) AS values,
+  fqns.fqn
+FROM attribute_definitions ad
+LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
+LEFT JOIN (
+  SELECT
+    av.id,
+    av.value,
+    av.active,
+    JSON_AGG(
+        DISTINCT JSONB_BUILD_OBJECT(
+            'id', vkas.id,
+            'uri', vkas.uri,
+            'public_key', vkas.public_key
+        )
+    ) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr,
+    av.attribute_definition_id
+  FROM attribute_values av
+  LEFT JOIN attribute_value_key_access_grants avg ON av.id = avg.attribute_value_id
+  LEFT JOIN key_access_servers vkas ON avg.key_access_server_id = vkas.id
+  GROUP BY av.id
+) avt ON avt.attribute_definition_id = ad.id
+LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
+WHERE
+    (sqlc.narg('active')::BOOLEAN IS NULL OR ad.active = sqlc.narg('active')) AND
+    (NULLIF(@namespace_id, '') IS NULL OR ad.namespace_id = @namespace_id::uuid) AND
+    (NULLIF(@namespace_name, '') IS NULL OR n.name = LOWER(@namespace_name))
+GROUP BY ad.id, n.name, fqns.fqn;
+
+-- name: ListAttributesSummary :many
+SELECT
+    ad.id,
+    ad.name as attribute_name,
+    ad.rule,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ad.metadata -> 'labels', 'created_at', ad.created_at, 'updated_at', ad.updated_at)) AS metadata,
+    ad.namespace_id,
+    ad.active,
+    n.name as namespace_name
+FROM attribute_definitions ad
+LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
+WHERE ad.namespace_id = $1
+GROUP BY ad.id, n.name;
 
 -- name: GetAttributeByDefOrValueFqn :one
 -- get the attribute definition for the provided value or definition fqn
@@ -230,6 +235,45 @@ WHERE
 GROUP BY
     ad.id, an.id, nfq.fqn, n_grants.grants;
 
+-- name: GetAttribute :one
+SELECT
+    ad.id,
+    ad.name as attribute_name,
+    ad.rule,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ad.metadata -> 'labels', 'created_at', ad.created_at, 'updated_at', ad.updated_at)) AS metadata,
+    ad.namespace_id,
+    ad.active,
+    n.name as namespace_name,
+    ad.values_order,
+    JSON_AGG(JSON_BUILD_OBJECT('id', avt.id, 'value', avt.value, 'active', avt.active)) AS values,
+    JSONB_AGG(
+        DISTINCT JSONB_BUILD_OBJECT(
+            'id', kas.id,
+            'uri', kas.uri,
+            'public_key', kas.public_key
+        )
+    ) FILTER (WHERE adkag.attribute_definition_id IS NOT NULL) AS grants,
+    fqns.fqn
+FROM attribute_definitions ad
+LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
+LEFT JOIN (
+    SELECT
+        av.id,
+        av.value,
+        av.active,
+        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT('id', vkas.id,'uri', vkas.uri,'public_key', vkas.public_key )) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr,
+        av.attribute_definition_id
+    FROM attribute_values av
+    LEFT JOIN attribute_value_key_access_grants avg ON av.id = avg.attribute_value_id
+    LEFT JOIN key_access_servers vkas ON avg.key_access_server_id = vkas.id
+    GROUP BY av.id
+) avt ON avt.attribute_definition_id = ad.id
+LEFT JOIN attribute_definition_key_access_grants adkag ON adkag.attribute_definition_id = ad.id
+LEFT JOIN key_access_servers kas ON kas.id = adkag.key_access_server_id
+LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
+WHERE ad.id = $1
+GROUP BY ad.id, n.name, fqns.fqn;
+
 -- name: CreateAttribute :one
 INSERT INTO attribute_definitions (namespace_id, name, rule, metadata)
 VALUES (@namespace_id, LOWER(@name), @rule, @metadata)
@@ -257,6 +301,54 @@ VALUES ($1, $2);
 -- name: RemoveKeyAccessServerFromAttribute :execrows
 DELETE FROM attribute_definition_key_access_grants
 WHERE attribute_definition_id = $1 AND key_access_server_id = $2;
+
+-- name: ListKeyAccessServerGrants :many
+SELECT 
+    kas.id AS kas_id, 
+    kas.uri AS kas_uri, 
+    kas.public_key AS kas_public_key,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+        'labels', kas.metadata -> 'labels', 
+        'created_at', kas.created_at, 
+        'updated_at', kas.updated_at
+    )) AS kas_metadata,
+    json_agg(DISTINCT jsonb_build_object(
+        'id', attrkag.attribute_definition_id, 
+        'fqn', fqns_on_attr.fqn
+    )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL) AS attributes_grants,
+    json_agg(DISTINCT jsonb_build_object(
+        'id', valkag.attribute_value_id, 
+        'fqn', fqns_on_vals.fqn
+    )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL) AS values_grants,
+    json_agg(DISTINCT jsonb_build_object(
+        'id', nskag.namespace_id, 
+        'fqn', fqns_on_ns.fqn
+    )) FILTER (WHERE nskag.namespace_id IS NOT NULL) AS namespace_grants
+FROM 
+    key_access_servers kas
+LEFT JOIN 
+    attribute_definition_key_access_grants attrkag 
+    ON kas.id = attrkag.key_access_server_id
+LEFT JOIN 
+    attribute_fqns fqns_on_attr 
+    ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id 
+    AND fqns_on_attr.value_id IS NULL
+LEFT JOIN 
+    attribute_value_key_access_grants valkag 
+    ON kas.id = valkag.key_access_server_id
+LEFT JOIN 
+    attribute_fqns fqns_on_vals 
+    ON valkag.attribute_value_id = fqns_on_vals.value_id
+LEFT JOIN
+    attribute_namespace_key_access_grants nskag
+    ON kas.id = nskag.key_access_server_id
+LEFT JOIN 
+    attribute_fqns fqns_on_ns
+    ON nskag.namespace_id = fqns_on_ns.namespace_id
+WHERE (NULLIF(@kas_id, '') IS NULL OR kas.id = @kas_id::uuid)
+    AND (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri::varchar)
+GROUP BY 
+    kas.id;
 
 ---------------------------------------------------------------- 
 -- RESOURCE MAPPING GROUPS

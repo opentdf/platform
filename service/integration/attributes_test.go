@@ -371,7 +371,7 @@ func (s *AttributesSuite) Test_GetAttribute_ContainsKASGrants() {
 func (s *AttributesSuite) Test_ListAttribute() {
 	fixtures := s.getAttributeFixtures()
 
-	list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateActive, "")
+	list, err := s.db.PolicyClient.ListAttributes(s.ctx, policydb.StateActive, "")
 	s.Require().NoError(err)
 	s.NotNil(list)
 
@@ -400,7 +400,7 @@ func (s *AttributesSuite) Test_ListAttribute_FqnsIncluded() {
 	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 
-	list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateActive, fixtureNamespaceID)
+	list, err := s.db.PolicyClient.ListAttributes(s.ctx, policydb.StateActive, fixtureNamespaceID)
 	s.Require().NoError(err)
 	s.NotNil(list)
 
@@ -429,7 +429,7 @@ func (s *AttributesSuite) Test_ListAttributesByNamespace() {
 	}
 	// list attributes by namespace id
 	for nsID := range namespaces {
-		list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateAny, nsID)
+		list, err := s.db.PolicyClient.ListAttributes(s.ctx, policydb.StateAny, nsID)
 		s.Require().NoError(err)
 		s.NotNil(list)
 		s.NotEmpty(list)
@@ -441,7 +441,7 @@ func (s *AttributesSuite) Test_ListAttributesByNamespace() {
 
 	// list attributes by namespace name
 	for _, nsName := range namespaces {
-		list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateAny, nsName)
+		list, err := s.db.PolicyClient.ListAttributes(s.ctx, policydb.StateAny, nsName)
 		s.Require().NoError(err)
 		s.NotNil(list)
 		s.NotEmpty(list)
@@ -802,7 +802,7 @@ func (s *AttributesSuite) Test_UnsafeDeleteAttribute() {
 	s.NotEqual("", ns.GetId())
 
 	// attribute should not be listed anymore
-	list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateAny, fixtureNamespaceID)
+	list, err := s.db.PolicyClient.ListAttributes(s.ctx, policydb.StateAny, fixtureNamespaceID)
 	s.Require().NoError(err)
 	s.NotNil(list)
 	for _, l := range list {
@@ -916,7 +916,7 @@ func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_List() {
 	}
 
 	listAttributes := func(state string) bool {
-		listedAttrs, err := s.db.PolicyClient.ListAllAttributes(s.ctx, state, "")
+		listedAttrs, err := s.db.PolicyClient.ListAttributes(s.ctx, state, "")
 		s.Require().NoError(err)
 		s.NotNil(listedAttrs)
 		for _, a := range listedAttrs {

@@ -68,7 +68,7 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 	s.logger.Debug("listing attribute definitions", slog.String("state", state))
 	rsp := &attributes.ListAttributesResponse{}
 
-	list, err := s.dbClient.ListAllAttributes(ctx, state, namespace)
+	list, err := s.dbClient.ListAttributes(ctx, state, namespace)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}

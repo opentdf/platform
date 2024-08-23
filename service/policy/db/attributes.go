@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"strings"
 
-	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -62,127 +61,6 @@ type attributesSelectOptions struct {
 	// withFqn and withOneValueByFqn are mutually exclusive
 	withFqn           bool
 	withOneValueByFqn string
-	state             string
-	namespace         string
-}
-
-func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
-	if opts.withKeyAccessGrants {
-		opts.withAttributeValues = true
-	}
-
-	t := Tables.Attributes
-	nt := Tables.Namespaces
-	avt := Tables.AttributeValues
-	fqnt := Tables.AttrFqn
-	smT := Tables.SubjectMappings
-	scsT := Tables.SubjectConditionSet
-	akagt := Tables.AttributeKeyAccessGrants
-	avkagt := Tables.AttributeValueKeyAccessGrants
-	selectFields := []string{
-		t.Field("id"),
-		t.Field("name"),
-		t.Field("rule"),
-		constructMetadata(t.Name(), false),
-		t.Field("namespace_id"),
-		t.Field("active"),
-		nt.Field("name"),
-	}
-
-	shouldGetValues := opts.withAttributeValues || opts.withOneValueByFqn != "" || opts.withFqn
-	if shouldGetValues {
-		valueSelect := "JSON_AGG(" +
-			"JSON_BUILD_OBJECT(" +
-			"'id', avt.id," +
-			"'value', avt.value," +
-			"'active', avt.active"
-
-		// include the subject mapping / subject condition set for each value
-		if opts.withOneValueByFqn != "" {
-			valueSelect += ", 'fqn', val_sm_fqn_join.fqn, " +
-				"'subject_mappings', sub_maps_arr, " +
-				"'grants', val_grants_arr"
-		}
-		valueSelect += ")) AS values"
-		selectFields = append(selectFields, t.Field("values_order"), valueSelect)
-	}
-	if opts.withKeyAccessGrants {
-		// query the attribute definition KAS grants
-		selectFields = append(selectFields,
-			"JSONB_AGG("+
-				"DISTINCT JSONB_BUILD_OBJECT("+
-				"'id',"+Tables.KeyAccessServerRegistry.Field("id")+", "+
-				"'uri',"+Tables.KeyAccessServerRegistry.Field("uri")+", "+
-				"'public_key',"+Tables.KeyAccessServerRegistry.Field("public_key")+
-				")) FILTER (WHERE "+akagt.Field("attribute_definition_id")+" IS NOT NULL) AS grants",
-		)
-	}
-	if opts.withFqn {
-		selectFields = append(selectFields, fqnt.Field("fqn"))
-	}
-
-	sb := db.NewStatementBuilder().Select(selectFields...).
-		LeftJoin(nt.Name() + " ON " + nt.Field("id") + " = " + t.Field("namespace_id"))
-
-	if shouldGetValues {
-		subQuery := "(SELECT av.id, av.value, av.active, " +
-			"JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(" +
-			"'id', vkas.id," +
-			"'uri', vkas.uri," +
-			"'public_key', vkas.public_key " +
-			")) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr, " +
-			"av.attribute_definition_id FROM " + avt.Name() + " av " +
-			"LEFT JOIN " + avkagt.Name() + " avg ON av.id = avg.attribute_value_id " +
-			"LEFT JOIN " + Tables.KeyAccessServerRegistry.Name() + " vkas ON avg.key_access_server_id = vkas.id "
-		if opts.withOneValueByFqn != "" {
-			subQuery += "WHERE av.active = true "
-		}
-		subQuery += "GROUP BY av.id) avt ON avt.attribute_definition_id = " + t.Field("id")
-		sb = sb.LeftJoin(subQuery)
-	}
-	if opts.withKeyAccessGrants {
-		sb = sb.
-			LeftJoin(akagt.Name() + " ON " + akagt.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).
-			LeftJoin(Tables.KeyAccessServerRegistry.Name() + " ON " + Tables.KeyAccessServerRegistry.Field("id") + " = " + akagt.Field("key_access_server_id"))
-	}
-	if opts.withFqn {
-		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id") +
-			" AND " + fqnt.Field("value_id") + " IS NULL")
-	}
-
-	if opts.withOneValueByFqn != "" {
-		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id")).
-			LeftJoin("(SELECT " +
-				avt.Field("id") + " AS av_id," +
-				"JSON_AGG(JSON_BUILD_OBJECT(" +
-				"'id', " + smT.Field("id") + "," +
-				"'actions', " + smT.Field("actions") + "," +
-				constructMetadata(smT.Name(), true) +
-				"'subject_condition_set', JSON_BUILD_OBJECT(" +
-				"'id', " + scsT.Field("id") + "," +
-				constructMetadata(scsT.Name(), true) +
-				"'subject_sets', " + scsT.Field("condition") +
-				")" +
-				")) AS sub_maps_arr " +
-				", inner_fqns.fqn AS fqn " +
-				"FROM " + smT.Name() + " " +
-				"LEFT JOIN " + avt.Name() + " ON " + smT.Field("attribute_value_id") + " = " + avt.Field("id") + " " +
-				"LEFT JOIN " + scsT.Name() + " ON " + smT.Field("subject_condition_set_id") + " = " + scsT.Field("id") + " " +
-				"INNER JOIN " + fqnt.Name() + " AS inner_fqns ON " + avt.Field("id") + " = inner_fqns.value_id " +
-				"WHERE inner_fqns.fqn = '" + opts.withOneValueByFqn + "' " +
-				"AND " + avt.Field("active") + " = true " +
-				"GROUP BY " + avt.Field("id") + ", inner_fqns.fqn " +
-				") AS val_sm_fqn_join ON " + "avt.id" + " = val_sm_fqn_join.av_id " +
-				"AND " + "avt.id" + " = " + fqnt.Field("value_id"),
-			)
-	}
-	g := []string{t.Field("id"), nt.Field("name")}
-
-	if opts.withFqn {
-		g = append(g, fqnt.Field("fqn"))
-	}
-
-	return sb.GroupBy(g...)
 }
 
 func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions, logger *logger.Logger) (*policy.Attribute, error) {
@@ -285,131 +163,181 @@ func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions, logger *lo
 	return attr, nil
 }
 
-func attributesHydrateList(rows pgx.Rows, opts attributesSelectOptions, logger *logger.Logger) ([]*policy.Attribute, error) {
-	list := make([]*policy.Attribute, 0)
-	for rows.Next() {
-		attr, err := attributesHydrateItem(rows, opts, logger)
-		if err != nil {
-			return nil, err
-		}
-		list = append(list, attr)
-	}
-	return list, nil
-}
-
 ///
 // CRUD operations
 ///
 
-func listAllAttributesSQL(opts attributesSelectOptions) (string, []interface{}, error) {
-	t := Tables.Attributes
-	sb := attributesSelect(opts).
-		From(t.Name())
+func (c PolicyDBClient) ListAttributes(ctx context.Context, state string, namespace string) ([]*policy.Attribute, error) {
+	var (
+		active = pgtype.Bool{
+			Valid: false,
+		}
+		namespaceID   = ""
+		namespaceName = ""
+	)
 
-	if opts.state != "" && opts.state != StateAny {
-		sb = sb.Where(sq.Eq{t.Field("active"): opts.state == StateActive})
-	}
-
-	if opts.namespace != "" {
-		_, err := uuid.Parse(opts.namespace)
-		if err == nil {
-			sb = sb.Where(sq.Eq{t.Field("namespace_id"): opts.namespace})
-		} else {
-			sb = sb.Where(sq.Eq{Tables.Namespaces.Field("name"): opts.namespace})
+	if state != "" && state != StateAny {
+		active = pgtype.Bool{
+			Bool:  state == StateActive,
+			Valid: true,
 		}
 	}
-	return sb.ToSql()
+
+	if namespace != "" {
+		if _, err := uuid.Parse(namespace); err == nil {
+			namespaceID = namespace
+		} else {
+			namespaceName = namespace
+		}
+	}
+
+	list, err := c.Queries.ListAttributesDetail(ctx, ListAttributesDetailParams{
+		Active:        active,
+		NamespaceID:   namespaceID,
+		NamespaceName: namespaceName,
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	policyAttributes := make([]*policy.Attribute, len(list))
+
+	for i, attr := range list {
+		metadata := &common.Metadata{}
+		if err := unmarshalMetadata(attr.Metadata, metadata, c.logger); err != nil {
+			return nil, err
+		}
+
+		var v []*policy.Value
+		if attr.Values != nil {
+			v, err = attributesValuesProtojson(attr.Values, sql.NullString(attr.Fqn))
+			if err != nil {
+				c.logger.ErrorContext(ctx, "could not unmarshal values", slog.String("error", err.Error()))
+				return nil, err
+			}
+		}
+
+		ns := &policy.Namespace{
+			Id:   attr.NamespaceID,
+			Name: attr.NamespaceName.String,
+			Fqn:  fmt.Sprintf("https://%s", attr.NamespaceName.String),
+		}
+
+		policyAttributes[i] = &policy.Attribute{
+			Id:        attr.ID,
+			Name:      attr.AttributeName,
+			Rule:      attributesRuleTypeEnumTransformOut(string(attr.Rule)),
+			Metadata:  metadata,
+			Namespace: ns,
+			Active:    &wrapperspb.BoolValue{Value: attr.Active},
+			Values:    nil,
+			Fqn:       attr.Fqn.String,
+		}
+
+		// Deactivations of individual values can unsync the order in the values_order column and the selected number of attribute values.
+		// In Go, int value 0 is not equal to 0, so check if they're not equal and more than 0 to check a potential count mismatch.
+		mismatchedCount := len(v) > 0 && len(attr.ValuesOrder) > 0 && len(attr.ValuesOrder) != len(v)
+
+		// sort the values according to the order
+		ordered := make([]*policy.Value, 0)
+		for _, order := range attr.ValuesOrder {
+			for _, value := range v {
+				if value.GetId() == order {
+					ordered = append(ordered, value)
+					break
+				}
+				// If all values are active, the order should be correct and the number of values should match the count of ordered ids.
+				if mismatchedCount && !value.GetActive().GetValue() {
+					c.logger.WarnContext(ctx, "attribute's values order and number of values do not match - DB is in potentially bad state",
+						slog.String("attribute definition id", attr.ID),
+						slog.Any("expected values order", attr.ValuesOrder),
+						slog.Any("retrieved values", v),
+					)
+				}
+			}
+		}
+
+		policyAttributes[i].Values = ordered
+	}
+
+	return policyAttributes, nil
 }
 
-func (c PolicyDBClient) ListAllAttributes(ctx context.Context, state string, namespace string) ([]*policy.Attribute, error) {
-	opts := attributesSelectOptions{
-		withAttributeValues: true,
-		withKeyAccessGrants: false,
-		withFqn:             true,
-		state:               state,
-		namespace:           namespace,
-	}
-
-	sql, args, err := listAllAttributesSQL(opts)
-	if err != nil {
-		return nil, err
-	}
-	c.logger.Debug("list all attributes", slog.String("sql", sql), slog.Any("args", args))
-
-	rows, err := c.Query(ctx, sql, args)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	defer rows.Close()
-
-	list, err := attributesHydrateList(rows, opts, c.logger)
-	if err != nil {
-		c.logger.Error("could not hydrate list", slog.String("error", err.Error()))
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	return list, nil
-}
-
-func (c PolicyDBClient) ListAllAttributesWithout(ctx context.Context, state string) ([]*policy.Attribute, error) {
-	opts := attributesSelectOptions{
-		withAttributeValues: false,
-		withKeyAccessGrants: false,
-		withFqn:             true,
-		state:               state,
-	}
-
-	sql, args, err := listAllAttributesSQL(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := c.Query(ctx, sql, args)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	defer rows.Close()
-
-	list, err := attributesHydrateList(rows, opts, c.logger)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	c.logger.Debug("list", slog.Any("list", list))
-
-	return list, nil
-}
-
-func getAttributeSQL(id string, opts attributesSelectOptions) (string, []interface{}, error) {
-	t := Tables.Attributes
-	return attributesSelect(opts).
-		Where(sq.Eq{t.Field("id"): id}).
-		From(t.Name()).
-		ToSql()
+func (c PolicyDBClient) ListAllAttributes(ctx context.Context) ([]*policy.Attribute, error) {
+	// call general List method with empty params to get all attributes
+	return c.ListAttributes(ctx, "", "")
 }
 
 func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
-	opts := attributesSelectOptions{
-		withFqn:             true,
-		withAttributeValues: true,
-		withKeyAccessGrants: true,
-	}
-	sql, args, err := getAttributeSQL(id, opts)
+	attr, err := c.Queries.GetAttribute(ctx, id)
 	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	metadata := &common.Metadata{}
+	if err := unmarshalMetadata(attr.Metadata, metadata, c.logger); err != nil {
 		return nil, err
 	}
 
-	row, err := c.QueryRow(ctx, sql, args)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	var v []*policy.Value
+	if attr.Values != nil {
+		v, err = attributesValuesProtojson(attr.Values, sql.NullString(attr.Fqn))
+		if err != nil {
+			c.logger.ErrorContext(ctx, "could not unmarshal values", slog.String("error", err.Error()))
+			return nil, err
+		}
+	}
+	var k []*policy.KeyAccessServer
+	if attr.Grants != nil {
+		k, err = db.KeyAccessServerProtoJSON(attr.Grants)
+		if err != nil {
+			c.logger.ErrorContext(ctx, "could not unmarshal key access grants", slog.String("error", err.Error()))
+			return nil, err
+		}
 	}
 
-	attribute, err := attributesHydrateItem(row, opts, c.logger)
-	if err != nil {
-		c.logger.Error("could not hydrate item", slog.String("attributeId", id), slog.String("error", err.Error()))
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	ns := &policy.Namespace{
+		Id:   attr.NamespaceID,
+		Name: attr.NamespaceName.String,
+		Fqn:  fmt.Sprintf("https://%s", attr.NamespaceName.String),
 	}
 
-	return attribute, nil
+	policyAttr := &policy.Attribute{
+		Id:        id,
+		Name:      attr.AttributeName,
+		Rule:      attributesRuleTypeEnumTransformOut(string(attr.Rule)),
+		Active:    &wrapperspb.BoolValue{Value: attr.Active},
+		Metadata:  metadata,
+		Namespace: ns,
+		Grants:    k,
+		Fqn:       attr.Fqn.String,
+	}
+
+	// Deactivations of individual values can unsync the order in the values_order column and the selected number of attribute values.
+	// In Go, int value 0 is not equal to 0, so check if they're not equal and more than 0 to check a potential count mismatch.
+	mismatchedCount := len(v) > 0 && len(attr.ValuesOrder) > 0 && len(attr.ValuesOrder) != len(v)
+
+	// sort the values according to the order
+	ordered := make([]*policy.Value, 0)
+	for _, order := range attr.ValuesOrder {
+		for _, value := range v {
+			if value.GetId() == order {
+				ordered = append(ordered, value)
+				break
+			}
+			// If all values are active, the order should be correct and the number of values should match the count of ordered ids.
+			if mismatchedCount && !value.GetActive().GetValue() {
+				c.logger.WarnContext(ctx, "attribute's values order and number of values do not match - DB is in potentially bad state",
+					slog.String("attribute definition id", id),
+					slog.Any("expected values order", attr.ValuesOrder),
+					slog.Any("retrieved values", v),
+				)
+			}
+		}
+	}
+	policyAttr.Values = ordered
+
+	return policyAttr, nil
 }
 
 func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*policy.Attribute, error) {
@@ -460,33 +388,37 @@ func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 	}, nil
 }
 
-func getAttributesByNamespaceSQL(namespaceID string, opts attributesSelectOptions) (string, []interface{}, error) {
-	t := Tables.Attributes
-	return attributesSelect(opts).
-		Where(sq.Eq{t.Field("namespace_id"): namespaceID}).
-		From(t.Name()).
-		ToSql()
-}
-
 func (c PolicyDBClient) GetAttributesByNamespace(ctx context.Context, namespaceID string) ([]*policy.Attribute, error) {
-	opts := attributesSelectOptions{}
-	sql, args, err := getAttributesByNamespaceSQL(namespaceID, opts)
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := c.Query(ctx, sql, args)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	defer rows.Close()
-
-	list, err := attributesHydrateList(rows, opts, c.logger)
+	list, err := c.Queries.ListAttributesSummary(ctx, namespaceID)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	return list, nil
+	policyAttributes := make([]*policy.Attribute, len(list))
+
+	for i, attr := range list {
+		metadata := &common.Metadata{}
+		if err := unmarshalMetadata(attr.Metadata, metadata, c.logger); err != nil {
+			return nil, err
+		}
+
+		ns := &policy.Namespace{
+			Id:   attr.NamespaceID,
+			Name: attr.NamespaceName.String,
+			Fqn:  fmt.Sprintf("https://%s", attr.NamespaceName.String),
+		}
+
+		policyAttributes[i] = &policy.Attribute{
+			Id:        attr.ID,
+			Name:      attr.AttributeName,
+			Rule:      attributesRuleTypeEnumTransformOut(string(attr.Rule)),
+			Metadata:  metadata,
+			Namespace: ns,
+			Active:    &wrapperspb.BoolValue{Value: attr.Active},
+		}
+	}
+
+	return policyAttributes, nil
 }
 
 func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.CreateAttributeRequest) (*policy.Attribute, error) {

@@ -113,7 +113,7 @@ func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns 
 	}
 
 	// Get all attributes
-	attrs, err := c.ListAllAttributesWithout(context.Background(), StateAny)
+	attrs, err := c.ListAllAttributes(context.Background())
 	if err != nil {
 		panic(fmt.Errorf("could not get attributes: %w", err))
 	}

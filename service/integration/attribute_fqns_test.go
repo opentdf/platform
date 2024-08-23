@@ -935,6 +935,102 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 	}
 }
 
+func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_NormalizesLowerCase() {
+	namespace := "TESTLOWERCASE.get"
+	attr := "test_attr"
+	value1 := "test_value"
+	value2 := "test_value_2"
+	upperNsFqn1 := fqnBuilder(namespace, attr, value1)
+	upperNsFqn2 := fqnBuilder(namespace, attr, value2)
+
+	// Create namespace
+	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: namespace,
+	})
+	s.Require().NoError(err)
+
+	// Create attribute
+	a, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: n.GetId(),
+		Name:        attr,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+	})
+	s.Require().NoError(err)
+
+	// Create attribute value1
+	v1, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: value1,
+	})
+	s.Require().NoError(err)
+
+	// Get attributes by fqns with a solo value
+	fqns := []string{upperNsFqn1}
+	attributeAndValue, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: fqns,
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	})
+	s.Require().NoError(err)
+
+	// Verify attribute1 is sole attribute
+	s.Len(attributeAndValue, 1)
+	// upper case not found
+	val, ok := attributeAndValue[upperNsFqn1]
+	s.False(ok)
+	s.Nil(val)
+	// lower case found
+	lower := strings.ToLower(upperNsFqn1)
+	val, ok = attributeAndValue[lower]
+	s.True(ok)
+	s.Equal(a.GetId(), val.GetAttribute().GetId())
+
+	s.Equal(v1.GetId(), val.GetAttribute().GetValues()[0].GetId())
+	s.Equal(v1.GetValue(), val.GetValue().GetValue())
+
+	s.Equal(v1.GetValue(), val.GetAttribute().GetValues()[0].GetValue())
+	s.Equal(v1.GetId(), val.GetValue().GetId())
+
+	// Create attribute value2
+	v2, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: value2,
+	})
+	s.Require().NoError(err)
+
+	// Get attributes by fqns with two values
+	fqns = []string{upperNsFqn1, upperNsFqn2}
+	attributeAndValue, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: fqns,
+		WithValue: &policy.AttributeValueSelector{
+			WithSubjectMaps: true,
+		},
+	})
+	s.Require().NoError(err)
+	s.Len(attributeAndValue, 2)
+
+	// upper case fqn not found
+	val, ok = attributeAndValue[upperNsFqn2]
+	s.False(ok)
+	s.Nil(val)
+	// lower case fqn found
+	val, ok = attributeAndValue[strings.ToLower(upperNsFqn2)]
+	s.True(ok)
+	s.Equal(a.GetId(), val.GetAttribute().GetId())
+
+	for _, v := range val.GetAttribute().GetValues() {
+		switch {
+		case v.GetId() == v1.GetId():
+			s.Equal(v1.GetId(), v.GetId())
+			s.Equal(v1.GetValue(), v.GetValue())
+		case v.GetId() == v2.GetId():
+			s.Equal(v2.GetId(), v.GetId())
+			s.Equal(v2.GetValue(), v.GetValue())
+		default:
+			s.Fail("unexpected value", v)
+		}
+	}
+}
+
 func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_AllValuesHaveProperFqns() {
 	namespace := "testing_multiple_fqns.properfqns"
 	attr := "test_attr"

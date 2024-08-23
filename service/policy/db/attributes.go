@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -55,106 +54,85 @@ func attributesValuesProtojson(valuesJSON []byte, attrFqn sql.NullString) ([]*po
 	return values, nil
 }
 
-type attributesSelectOptions struct {
-	withAttributeValues bool
-	withKeyAccessGrants bool
-	// withFqn and withOneValueByFqn are mutually exclusive
-	withFqn           bool
-	withOneValueByFqn string
+type attributeQueryRow struct {
+	id            string
+	name          string
+	rule          string
+	metadataJSON  []byte
+	namespaceID   string
+	active        bool
+	namespaceName string
+	valuesJSON    []byte
+	valuesOrder   []string
+	grants        []byte
+	fqn           sql.NullString
 }
 
-func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions, logger *logger.Logger) (*policy.Attribute, error) {
-	if opts.withKeyAccessGrants {
-		opts.withAttributeValues = true
-	}
-
-	var (
-		id            string
-		name          string
-		rule          string
-		metadataJSON  []byte
-		namespaceID   string
-		active        bool
-		namespaceName string
-		valuesJSON    []byte
-		valuesOrder   []string
-		grants        []byte
-		fqn           sql.NullString
-	)
-
-	fields := []interface{}{&id, &name, &rule, &metadataJSON, &namespaceID, &active, &namespaceName}
-	shouldGetValues := opts.withAttributeValues || opts.withOneValueByFqn != "" || opts.withFqn
-	if shouldGetValues {
-		fields = append(fields, &valuesOrder, &valuesJSON)
-	}
-	if opts.withKeyAccessGrants {
-		fields = append(fields, &grants)
-	}
-	if opts.withFqn {
-		fields = append(fields, &fqn)
-	}
-
-	err := row.Scan(fields...)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	m := &common.Metadata{}
-	if metadataJSON != nil {
-		if err := protojson.Unmarshal(metadataJSON, m); err != nil {
+func hydrateAttribute(row *attributeQueryRow, logger *logger.Logger) (*policy.Attribute, error) {
+	metadata := &common.Metadata{}
+	if row.metadataJSON != nil {
+		if err := protojson.Unmarshal(row.metadataJSON, metadata); err != nil {
 			logger.Error("could not unmarshal metadata", slog.String("error", err.Error()))
 			return nil, err
 		}
 	}
-	var v []*policy.Value
-	if valuesJSON != nil {
-		v, err = attributesValuesProtojson(valuesJSON, fqn)
+
+	var values []*policy.Value
+	if row.valuesJSON != nil {
+		v, err := attributesValuesProtojson(row.valuesJSON, row.fqn)
 		if err != nil {
 			logger.Error("could not unmarshal values", slog.String("error", err.Error()))
 			return nil, err
 		}
+		values = v
 	}
-	var k []*policy.KeyAccessServer
-	if grants != nil {
-		k, err = db.KeyAccessServerProtoJSON(grants)
+
+	var grants []*policy.KeyAccessServer
+	if row.grants != nil {
+		k, err := db.KeyAccessServerProtoJSON(row.grants)
 		if err != nil {
 			logger.Error("could not unmarshal key access grants", slog.String("error", err.Error()))
 			return nil, err
 		}
+		grants = k
 	}
 
 	ns := &policy.Namespace{
-		Id:   namespaceID,
-		Name: namespaceName,
-		Fqn:  fmt.Sprintf("https://%s", namespaceName),
+		Id:   row.namespaceID,
+		Name: row.namespaceName,
+		Fqn:  fmt.Sprintf("https://%s", row.namespaceName),
 	}
 
 	attr := &policy.Attribute{
-		Id:        id,
-		Name:      name,
-		Rule:      attributesRuleTypeEnumTransformOut(rule),
-		Active:    &wrapperspb.BoolValue{Value: active},
-		Metadata:  m,
+		Id:        row.id,
+		Name:      row.name,
+		Rule:      attributesRuleTypeEnumTransformOut(row.rule),
+		Active:    &wrapperspb.BoolValue{Value: row.active},
+		Metadata:  metadata,
 		Namespace: ns,
-		Grants:    k,
-		Fqn:       fqn.String,
+		Grants:    grants,
+		Fqn:       row.fqn.String,
 	}
 
 	// Deactivations of individual values can unsync the order in the values_order column and the selected number of attribute values.
 	// In Go, int value 0 is not equal to 0, so check if they're not equal and more than 0 to check a potential count mismatch.
-	mismatchedCount := len(v) > 0 && len(valuesOrder) > 0 && len(valuesOrder) != len(v)
+	mismatchedCount := len(values) > 0 && len(row.valuesOrder) > 0 && len(row.valuesOrder) != len(values)
 
 	// sort the values according to the order
 	ordered := make([]*policy.Value, 0)
-	for _, order := range valuesOrder {
-		for _, value := range v {
+	for _, order := range row.valuesOrder {
+		for _, value := range values {
 			if value.GetId() == order {
 				ordered = append(ordered, value)
 				break
 			}
 			// If all values are active, the order should be correct and the number of values should match the count of ordered ids.
 			if mismatchedCount && !value.GetActive().GetValue() {
-				logger.Warn("attribute's values order and number of values do not match - DB is in potentially bad state", slog.String("attribute definition id", id), slog.Any("expected values order", valuesOrder), slog.Any("retrieved values", v))
+				logger.Warn("attribute's values order and number of values do not match - DB is in potentially bad state",
+					slog.String("attribute definition id", row.id),
+					slog.Any("expected values order", row.valuesOrder),
+					slog.Any("retrieved values", value),
+				)
 			}
 		}
 	}
@@ -203,61 +181,21 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, state string, namesp
 	policyAttributes := make([]*policy.Attribute, len(list))
 
 	for i, attr := range list {
-		metadata := &common.Metadata{}
-		if err := unmarshalMetadata(attr.Metadata, metadata, c.logger); err != nil {
+		policyAttributes[i], err = hydrateAttribute(&attributeQueryRow{
+			id:            attr.ID,
+			name:          attr.AttributeName,
+			rule:          string(attr.Rule),
+			active:        attr.Active,
+			metadataJSON:  attr.Metadata,
+			namespaceID:   attr.NamespaceID,
+			namespaceName: attr.NamespaceName.String,
+			valuesJSON:    attr.Values,
+			valuesOrder:   attr.ValuesOrder,
+			fqn:           sql.NullString(attr.Fqn),
+		}, c.logger)
+		if err != nil {
 			return nil, err
 		}
-
-		var v []*policy.Value
-		if attr.Values != nil {
-			v, err = attributesValuesProtojson(attr.Values, sql.NullString(attr.Fqn))
-			if err != nil {
-				c.logger.ErrorContext(ctx, "could not unmarshal values", slog.String("error", err.Error()))
-				return nil, err
-			}
-		}
-
-		ns := &policy.Namespace{
-			Id:   attr.NamespaceID,
-			Name: attr.NamespaceName.String,
-			Fqn:  fmt.Sprintf("https://%s", attr.NamespaceName.String),
-		}
-
-		policyAttributes[i] = &policy.Attribute{
-			Id:        attr.ID,
-			Name:      attr.AttributeName,
-			Rule:      attributesRuleTypeEnumTransformOut(string(attr.Rule)),
-			Metadata:  metadata,
-			Namespace: ns,
-			Active:    &wrapperspb.BoolValue{Value: attr.Active},
-			Values:    nil,
-			Fqn:       attr.Fqn.String,
-		}
-
-		// Deactivations of individual values can unsync the order in the values_order column and the selected number of attribute values.
-		// In Go, int value 0 is not equal to 0, so check if they're not equal and more than 0 to check a potential count mismatch.
-		mismatchedCount := len(v) > 0 && len(attr.ValuesOrder) > 0 && len(attr.ValuesOrder) != len(v)
-
-		// sort the values according to the order
-		ordered := make([]*policy.Value, 0)
-		for _, order := range attr.ValuesOrder {
-			for _, value := range v {
-				if value.GetId() == order {
-					ordered = append(ordered, value)
-					break
-				}
-				// If all values are active, the order should be correct and the number of values should match the count of ordered ids.
-				if mismatchedCount && !value.GetActive().GetValue() {
-					c.logger.WarnContext(ctx, "attribute's values order and number of values do not match - DB is in potentially bad state",
-						slog.String("attribute definition id", attr.ID),
-						slog.Any("expected values order", attr.ValuesOrder),
-						slog.Any("retrieved values", v),
-					)
-				}
-			}
-		}
-
-		policyAttributes[i].Values = ordered
 	}
 
 	return policyAttributes, nil
@@ -274,72 +212,27 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.At
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	metadata := &common.Metadata{}
-	if err := unmarshalMetadata(attr.Metadata, metadata, c.logger); err != nil {
+	policyAttr, err := hydrateAttribute(&attributeQueryRow{
+		id:            attr.ID,
+		name:          attr.AttributeName,
+		rule:          string(attr.Rule),
+		active:        attr.Active,
+		metadataJSON:  attr.Metadata,
+		namespaceID:   attr.NamespaceID,
+		namespaceName: attr.NamespaceName.String,
+		valuesJSON:    attr.Values,
+		valuesOrder:   attr.ValuesOrder,
+		grants:        attr.Grants,
+		fqn:           sql.NullString(attr.Fqn),
+	}, c.logger)
+	if err != nil {
 		return nil, err
 	}
-
-	var v []*policy.Value
-	if attr.Values != nil {
-		v, err = attributesValuesProtojson(attr.Values, sql.NullString(attr.Fqn))
-		if err != nil {
-			c.logger.ErrorContext(ctx, "could not unmarshal values", slog.String("error", err.Error()))
-			return nil, err
-		}
-	}
-	var k []*policy.KeyAccessServer
-	if attr.Grants != nil {
-		k, err = db.KeyAccessServerProtoJSON(attr.Grants)
-		if err != nil {
-			c.logger.ErrorContext(ctx, "could not unmarshal key access grants", slog.String("error", err.Error()))
-			return nil, err
-		}
-	}
-
-	ns := &policy.Namespace{
-		Id:   attr.NamespaceID,
-		Name: attr.NamespaceName.String,
-		Fqn:  fmt.Sprintf("https://%s", attr.NamespaceName.String),
-	}
-
-	policyAttr := &policy.Attribute{
-		Id:        id,
-		Name:      attr.AttributeName,
-		Rule:      attributesRuleTypeEnumTransformOut(string(attr.Rule)),
-		Active:    &wrapperspb.BoolValue{Value: attr.Active},
-		Metadata:  metadata,
-		Namespace: ns,
-		Grants:    k,
-		Fqn:       attr.Fqn.String,
-	}
-
-	// Deactivations of individual values can unsync the order in the values_order column and the selected number of attribute values.
-	// In Go, int value 0 is not equal to 0, so check if they're not equal and more than 0 to check a potential count mismatch.
-	mismatchedCount := len(v) > 0 && len(attr.ValuesOrder) > 0 && len(attr.ValuesOrder) != len(v)
-
-	// sort the values according to the order
-	ordered := make([]*policy.Value, 0)
-	for _, order := range attr.ValuesOrder {
-		for _, value := range v {
-			if value.GetId() == order {
-				ordered = append(ordered, value)
-				break
-			}
-			// If all values are active, the order should be correct and the number of values should match the count of ordered ids.
-			if mismatchedCount && !value.GetActive().GetValue() {
-				c.logger.WarnContext(ctx, "attribute's values order and number of values do not match - DB is in potentially bad state",
-					slog.String("attribute definition id", id),
-					slog.Any("expected values order", attr.ValuesOrder),
-					slog.Any("retrieved values", v),
-				)
-			}
-		}
-	}
-	policyAttr.Values = ordered
 
 	return policyAttr, nil
 }
 
+// todo: test whether this method can use the hydrateAttribute helper?
 func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*policy.Attribute, error) {
 	fullAttr, err := c.Queries.GetAttributeByDefOrValueFqn(ctx, fqn)
 	if err != nil {
@@ -397,24 +290,17 @@ func (c PolicyDBClient) GetAttributesByNamespace(ctx context.Context, namespaceI
 	policyAttributes := make([]*policy.Attribute, len(list))
 
 	for i, attr := range list {
-		metadata := &common.Metadata{}
-		if err := unmarshalMetadata(attr.Metadata, metadata, c.logger); err != nil {
+		policyAttributes[i], err = hydrateAttribute(&attributeQueryRow{
+			id:            attr.ID,
+			name:          attr.AttributeName,
+			rule:          string(attr.Rule),
+			active:        attr.Active,
+			metadataJSON:  attr.Metadata,
+			namespaceID:   attr.NamespaceID,
+			namespaceName: attr.NamespaceName.String,
+		}, c.logger)
+		if err != nil {
 			return nil, err
-		}
-
-		ns := &policy.Namespace{
-			Id:   attr.NamespaceID,
-			Name: attr.NamespaceName.String,
-			Fqn:  fmt.Sprintf("https://%s", attr.NamespaceName.String),
-		}
-
-		policyAttributes[i] = &policy.Attribute{
-			Id:        attr.ID,
-			Name:      attr.AttributeName,
-			Rule:      attributesRuleTypeEnumTransformOut(string(attr.Rule)),
-			Metadata:  metadata,
-			Namespace: ns,
-			Active:    &wrapperspb.BoolValue{Value: attr.Active},
 		}
 	}
 

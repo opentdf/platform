@@ -11,6 +11,28 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const assignKeyAccessServerToAttribute = `-- name: AssignKeyAccessServerToAttribute :execrows
+INSERT INTO attribute_definition_key_access_grants (attribute_definition_id, key_access_server_id)
+VALUES ($1, $2)
+`
+
+type AssignKeyAccessServerToAttributeParams struct {
+	AttributeDefinitionID string `json:"attribute_definition_id"`
+	KeyAccessServerID     string `json:"key_access_server_id"`
+}
+
+// AssignKeyAccessServerToAttribute
+//
+//	INSERT INTO attribute_definition_key_access_grants (attribute_definition_id, key_access_server_id)
+//	VALUES ($1, $2)
+func (q *Queries) AssignKeyAccessServerToAttribute(ctx context.Context, arg AssignKeyAccessServerToAttributeParams) (int64, error) {
+	result, err := q.db.Exec(ctx, assignKeyAccessServerToAttribute, arg.AttributeDefinitionID, arg.KeyAccessServerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const assignKeyAccessServerToNamespace = `-- name: AssignKeyAccessServerToNamespace :execrows
 INSERT INTO attribute_namespace_key_access_grants
 (namespace_id, key_access_server_id)
@@ -33,6 +55,44 @@ func (q *Queries) AssignKeyAccessServerToNamespace(ctx context.Context, arg Assi
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const createAttribute = `-- name: CreateAttribute :one
+INSERT INTO attribute_definitions (namespace_id, name, rule, metadata)
+VALUES ($1, LOWER($2), $3, $4)
+RETURNING id, name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+`
+
+type CreateAttributeParams struct {
+	NamespaceID string                  `json:"namespace_id"`
+	Name        string                  `json:"name"`
+	Rule        AttributeDefinitionRule `json:"rule"`
+	Metadata    []byte                  `json:"metadata"`
+}
+
+type CreateAttributeRow struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Metadata []byte `json:"metadata"`
+}
+
+// CreateAttribute
+//
+//	INSERT INTO attribute_definitions (namespace_id, name, rule, metadata)
+//	VALUES ($1, LOWER($2), $3, $4)
+//	RETURNING id, name,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+func (q *Queries) CreateAttribute(ctx context.Context, arg CreateAttributeParams) (CreateAttributeRow, error) {
+	row := q.db.QueryRow(ctx, createAttribute,
+		arg.NamespaceID,
+		arg.Name,
+		arg.Rule,
+		arg.Metadata,
+	)
+	var i CreateAttributeRow
+	err := row.Scan(&i.ID, &i.Name, &i.Metadata)
+	return i, err
 }
 
 const createKeyAccessServer = `-- name: CreateKeyAccessServer :one
@@ -80,6 +140,21 @@ func (q *Queries) CreateResourceMappingGroup(ctx context.Context, arg CreateReso
 	var id string
 	err := row.Scan(&id)
 	return id, err
+}
+
+const deleteAttribute = `-- name: DeleteAttribute :execrows
+DELETE FROM attribute_definitions WHERE id = $1
+`
+
+// DeleteAttribute
+//
+//	DELETE FROM attribute_definitions WHERE id = $1
+func (q *Queries) DeleteAttribute(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteAttribute, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteKeyAccessServer = `-- name: DeleteKeyAccessServer :execrows
@@ -857,6 +932,28 @@ func (q *Queries) ListResourceMappingsByFullyQualifiedGroup(ctx context.Context,
 	return items, nil
 }
 
+const removeKeyAccessServerFromAttribute = `-- name: RemoveKeyAccessServerFromAttribute :execrows
+DELETE FROM attribute_definition_key_access_grants
+WHERE attribute_definition_id = $1 AND key_access_server_id = $2
+`
+
+type RemoveKeyAccessServerFromAttributeParams struct {
+	AttributeDefinitionID string `json:"attribute_definition_id"`
+	KeyAccessServerID     string `json:"key_access_server_id"`
+}
+
+// RemoveKeyAccessServerFromAttribute
+//
+//	DELETE FROM attribute_definition_key_access_grants
+//	WHERE attribute_definition_id = $1 AND key_access_server_id = $2
+func (q *Queries) RemoveKeyAccessServerFromAttribute(ctx context.Context, arg RemoveKeyAccessServerFromAttributeParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removeKeyAccessServerFromAttribute, arg.AttributeDefinitionID, arg.KeyAccessServerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const removeKeyAccessServerFromNamespace = `-- name: RemoveKeyAccessServerFromNamespace :execrows
 DELETE FROM attribute_namespace_key_access_grants
 WHERE namespace_id = $1 AND key_access_server_id = $2
@@ -877,6 +974,52 @@ func (q *Queries) RemoveKeyAccessServerFromNamespace(ctx context.Context, arg Re
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const updateAttribute = `-- name: UpdateAttribute :one
+UPDATE attribute_definitions
+SET
+    name = COALESCE(LOWER($2), name),
+    rule = COALESCE($3, rule),
+    values_order = COALESCE($4, values_order),
+    metadata = COALESCE($5, metadata),
+    active = COALESCE($6, active)
+WHERE id = $1
+RETURNING id
+`
+
+type UpdateAttributeParams struct {
+	ID          string                      `json:"id"`
+	Name        pgtype.Text                 `json:"name"`
+	Rule        NullAttributeDefinitionRule `json:"rule"`
+	ValuesOrder []string                    `json:"values_order"`
+	Metadata    []byte                      `json:"metadata"`
+	Active      pgtype.Bool                 `json:"active"`
+}
+
+// UpdateAttribute
+//
+//	UPDATE attribute_definitions
+//	SET
+//	    name = COALESCE(LOWER($2), name),
+//	    rule = COALESCE($3, rule),
+//	    values_order = COALESCE($4, values_order),
+//	    metadata = COALESCE($5, metadata),
+//	    active = COALESCE($6, active)
+//	WHERE id = $1
+//	RETURNING id
+func (q *Queries) UpdateAttribute(ctx context.Context, arg UpdateAttributeParams) (string, error) {
+	row := q.db.QueryRow(ctx, updateAttribute,
+		arg.ID,
+		arg.Name,
+		arg.Rule,
+		arg.ValuesOrder,
+		arg.Metadata,
+		arg.Active,
+	)
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }
 
 const updateKeyAccessServer = `-- name: UpdateKeyAccessServer :one

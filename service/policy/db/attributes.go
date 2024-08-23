@@ -11,6 +11,7 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -488,45 +489,36 @@ func (c PolicyDBClient) GetAttributesByNamespace(ctx context.Context, namespaceI
 	return list, nil
 }
 
-func createAttributeSQL(namespaceID string, name string, rule string, metadata []byte) (string, []interface{}, error) {
-	t := Tables.Attributes
-	return db.NewStatementBuilder().
-		Insert(t.Name()).
-		Columns("namespace_id", "name", "rule", "metadata").
-		Values(namespaceID, name, rule, metadata).
-		Suffix(createSuffix).
-		ToSql()
-}
-
 func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.CreateAttributeRequest) (*policy.Attribute, error) {
 	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
 
-	name := strings.ToLower(r.GetName())
+	ruleString := attributesRuleTypeEnumTransformIn(r.GetRule().String())
 
-	sql, args, err := createAttributeSQL(r.GetNamespaceId(), name, attributesRuleTypeEnumTransformIn(r.GetRule().String()), metadataJSON)
+	attr, err := c.Queries.CreateAttribute(ctx, CreateAttributeParams{
+		NamespaceID: r.GetNamespaceId(),
+		Name:        r.GetName(),
+		Rule:        AttributeDefinitionRule(ruleString),
+		Metadata:    metadataJSON,
+	})
 	if err != nil {
-		return nil, err
-	}
-
-	var id string
-	if r, err := c.QueryRow(ctx, sql, args); err != nil {
-		return nil, err
-	} else if err := r.Scan(&id, &metadataJSON); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err = unmarshalMetadata(metadataJSON, metadata, c.logger); err != nil {
+	if err = unmarshalMetadata(attr.Metadata, metadata, c.logger); err != nil {
 		return nil, err
 	}
 
 	// Add values
 	var values []*policy.Value
 	for _, v := range r.GetValues() {
-		req := &attributes.CreateAttributeValueRequest{AttributeId: id, Value: v}
-		value, err := c.CreateAttributeValue(ctx, id, req)
+		req := &attributes.CreateAttributeValueRequest{
+			AttributeId: attr.ID,
+			Value:       v,
+		}
+		value, err := c.CreateAttributeValue(ctx, attr.ID, req)
 		if err != nil {
 			return nil, err
 		}
@@ -535,17 +527,24 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 
 	// Update the FQNs
 	namespaceID := r.GetNamespaceId()
-	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id})
-	c.logger.Debug("upserted fqn with new attribute definition", slog.Any("fqn", fqn))
+	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{
+		namespaceID: namespaceID,
+		attributeID: attr.ID,
+	})
+	c.logger.DebugContext(ctx, "upserted fqn with new attribute definition", slog.Any("fqn", fqn))
 
 	for _, v := range values {
-		fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id, valueID: v.GetId()})
-		c.logger.Debug("upserted fqn with new attribute value on new definition create", slog.Any("fqn", fqn))
+		fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{
+			namespaceID: namespaceID,
+			attributeID: attr.ID,
+			valueID:     v.GetId(),
+		})
+		c.logger.DebugContext(ctx, "upserted fqn with new attribute value on new definition create", slog.Any("fqn", fqn))
 	}
 
 	a := &policy.Attribute{
-		Id:       id,
-		Name:     name,
+		Id:       attr.ID,
+		Name:     attr.Name,
 		Rule:     r.GetRule(),
 		Metadata: metadata,
 		Namespace: &policy.Namespace{
@@ -555,24 +554,6 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 		Values: values,
 	}
 	return a, nil
-}
-
-func unsafeUpdateAttributeSQL(id string, updateName string, updateRule string, replaceValuesOrder []string) (string, []interface{}, error) {
-	t := Tables.Attributes
-	sb := db.NewStatementBuilder().Update(t.Name())
-
-	if updateName != "" {
-		sb = sb.Set("name", updateName)
-	}
-	if updateRule != "" {
-		sb = sb.Set("rule", updateRule)
-	}
-	if len(replaceValuesOrder) > 0 {
-		sb = sb.Set("values_order", replaceValuesOrder)
-	}
-
-	return sb.Where(sq.Eq{t.Field("id"): id}).
-		ToSql()
 }
 
 func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.UnsafeUpdateAttributeRequest) (*policy.Attribute, error) {
@@ -605,46 +586,41 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 	}
 
 	// Handle case where rule is not actually being updated
-	rule := ""
+	ruleString := ""
 	if r.GetRule() != policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED {
-		rule = attributesRuleTypeEnumTransformIn(r.GetRule().String())
+		ruleString = attributesRuleTypeEnumTransformIn(r.GetRule().String())
 	}
 
-	sql, args, err := unsafeUpdateAttributeSQL(id, strings.ToLower(r.GetName()), rule, r.GetValuesOrder())
+	updatedID, err := c.Queries.UpdateAttribute(ctx, UpdateAttributeParams{
+		ID: id,
+		Name: pgtype.Text{
+			String: r.GetName(),
+			Valid:  r.GetName() != "",
+		},
+		Rule: NullAttributeDefinitionRule{
+			AttributeDefinitionRule: AttributeDefinitionRule(ruleString),
+			Valid:                   ruleString != "",
+		},
+		ValuesOrder: r.GetValuesOrder(),
+	})
 	if err != nil {
-		return nil, err
-	}
-
-	err = c.Exec(ctx, sql, args)
-	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	// Upsert all the FQNs with the definition name mutation
 	if r.GetName() != "" {
 		namespaceID := before.GetNamespace().GetId()
-		fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id})
+		fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: updatedID})
 		c.logger.Debug("upserted attribute fqn with new definition name", slog.Any("fqn", fqn))
 		if len(before.GetValues()) > 0 {
 			for _, v := range before.GetValues() {
-				fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id, valueID: v.GetId()})
+				fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: updatedID, valueID: v.GetId()})
 				c.logger.Debug("upserted attribute value fqn with new definition name", slog.Any("fqn", fqn))
 			}
 		}
 	}
 
-	return c.GetAttribute(ctx, id)
-}
-
-func safeUpdateAttributeSQL(id string, metadata []byte) (string, []interface{}, error) {
-	t := Tables.Attributes
-	sb := db.NewStatementBuilder().Update(t.Name())
-
-	if metadata != nil {
-		sb = sb.Set("metadata", metadata)
-	}
-
-	return sb.Where(sq.Eq{t.Field("id"): id}).ToSql()
+	return c.GetAttribute(ctx, updatedID)
 }
 
 func (c PolicyDBClient) UpdateAttribute(ctx context.Context, id string, r *attributes.UpdateAttributeRequest) (*policy.Attribute, error) {
@@ -660,95 +636,66 @@ func (c PolicyDBClient) UpdateAttribute(ctx context.Context, id string, r *attri
 		return nil, err
 	}
 
-	sql, args, err := safeUpdateAttributeSQL(id, metadataJSON)
-	if db.IsQueryBuilderSetClauseError(err) {
-		return &policy.Attribute{
-			Id: id,
-		}, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
-	}
-
-	return &policy.Attribute{
-		Id: id,
-	}, nil
-}
-
-func deactivateAttributeSQL(id string) (string, []interface{}, error) {
-	t := Tables.Attributes
-	return db.NewStatementBuilder().
-		Update(t.Name()).
-		Set("active", false).
-		Where(sq.Eq{t.Field("id"): id}).
-		Suffix("RETURNING \"id\"").
-		ToSql()
-}
-
-func (c PolicyDBClient) DeactivateAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
-	sql, args, err := deactivateAttributeSQL(id)
+	updatedID, err := c.Queries.UpdateAttribute(ctx, UpdateAttributeParams{
+		ID:       id,
+		Metadata: metadataJSON,
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
-	}
-	return c.GetAttribute(ctx, id)
+	return &policy.Attribute{
+		Id: updatedID,
+	}, nil
 }
 
-func unsafeReactivateAttributeSQL(id string) (string, []interface{}, error) {
-	t := Tables.Attributes
-	return db.NewStatementBuilder().
-		Update(t.Name()).
-		Set("active", true).
-		Where(sq.Eq{t.Field("id"): id}).
-		Suffix("RETURNING \"id\"").
-		ToSql()
+func (c PolicyDBClient) DeactivateAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
+	updatedID, err := c.Queries.UpdateAttribute(ctx, UpdateAttributeParams{
+		ID: id,
+		Active: pgtype.Bool{
+			Bool:  false,
+			Valid: true,
+		},
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return c.GetAttribute(ctx, updatedID)
 }
 
 func (c PolicyDBClient) UnsafeReactivateAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
-	sql, args, err := unsafeReactivateAttributeSQL(id)
+	updatedID, err := c.Queries.UpdateAttribute(ctx, UpdateAttributeParams{
+		ID: id,
+		Active: pgtype.Bool{
+			Bool:  true,
+			Valid: true,
+		},
+	})
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
-	}
-
-	return c.GetAttribute(ctx, id)
-}
-
-func unsafeDeleteAttributeSQL(id string) (string, []interface{}, error) {
-	t := Tables.Attributes
-	return db.NewStatementBuilder().
-		Delete(t.Name()).
-		Where(sq.Eq{t.Field("id"): id}).
-		Suffix("RETURNING \"id\"").
-		ToSql()
+	return c.GetAttribute(ctx, updatedID)
 }
 
 func (c PolicyDBClient) UnsafeDeleteAttribute(ctx context.Context, existing *policy.Attribute, fqn string) (*policy.Attribute, error) {
 	if existing == nil {
 		return nil, fmt.Errorf("attribute not found: %w", db.ErrNotFound)
 	}
-	id := existing.GetId()
 
 	if existing.GetFqn() != fqn {
 		return nil, fmt.Errorf("fqn mismatch: %w", db.ErrNotFound)
 	}
-	sql, args, err := unsafeDeleteAttributeSQL(id)
-	if err != nil {
-		return nil, err
-	}
 
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
+	id := existing.GetId()
+
+	count, err := c.Queries.DeleteAttribute(ctx, id)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
 	}
 
 	return &policy.Attribute{
@@ -760,45 +707,28 @@ func (c PolicyDBClient) UnsafeDeleteAttribute(ctx context.Context, existing *pol
 /// Key Access Server assignments
 ///
 
-func assignKeyAccessServerToAttributeSQL(attributeID, keyAccessServerID string) (string, []interface{}, error) {
-	t := Tables.AttributeKeyAccessGrants
-	return db.NewStatementBuilder().
-		Insert(t.Name()).
-		Columns("attribute_definition_id", "key_access_server_id").
-		Values(attributeID, keyAccessServerID).
-		ToSql()
-}
-
 func (c PolicyDBClient) AssignKeyAccessServerToAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
-	sql, args, err := assignKeyAccessServerToAttributeSQL(k.GetAttributeId(), k.GetKeyAccessServerId())
+	_, err := c.Queries.AssignKeyAccessServerToAttribute(ctx, AssignKeyAccessServerToAttributeParams{
+		AttributeDefinitionID: k.GetAttributeId(),
+		KeyAccessServerID:     k.GetKeyAccessServerId(),
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
 	}
 
 	return k, nil
 }
 
-func removeKeyAccessServerFromAttributeSQL(attributeID, keyAccessServerID string) (string, []interface{}, error) {
-	t := Tables.AttributeKeyAccessGrants
-	return db.NewStatementBuilder().
-		Delete(t.Name()).
-		Where(sq.Eq{"attribute_definition_id": attributeID, "key_access_server_id": keyAccessServerID}).
-		Suffix("IS TRUE RETURNING *").
-		ToSql()
-}
-
 func (c PolicyDBClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
-	sql, args, err := removeKeyAccessServerFromAttributeSQL(k.GetAttributeId(), k.GetKeyAccessServerId())
+	count, err := c.Queries.RemoveKeyAccessServerFromAttribute(ctx, RemoveKeyAccessServerFromAttributeParams{
+		AttributeDefinitionID: k.GetAttributeId(),
+		KeyAccessServerID:     k.GetKeyAccessServerId(),
+	})
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
+	if count == 0 {
+		return nil, db.ErrNotFound
 	}
 
 	return k, nil

@@ -230,6 +230,34 @@ WHERE
 GROUP BY
     ad.id, an.id, nfq.fqn, n_grants.grants;
 
+-- name: CreateAttribute :one
+INSERT INTO attribute_definitions (namespace_id, name, rule, metadata)
+VALUES (@namespace_id, LOWER(@name), @rule, @metadata)
+RETURNING id, name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata;
+
+-- name: UpdateAttribute :one
+UPDATE attribute_definitions
+SET
+    name = COALESCE(LOWER(sqlc.narg('name')), name),
+    rule = COALESCE(sqlc.narg('rule'), rule),
+    values_order = COALESCE(sqlc.narg('values_order'), values_order),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata),
+    active = COALESCE(sqlc.narg('active'), active)
+WHERE id = $1
+RETURNING id;
+
+-- name: DeleteAttribute :execrows
+DELETE FROM attribute_definitions WHERE id = $1;
+
+-- name: AssignKeyAccessServerToAttribute :execrows
+INSERT INTO attribute_definition_key_access_grants (attribute_definition_id, key_access_server_id)
+VALUES ($1, $2);
+
+-- name: RemoveKeyAccessServerFromAttribute :execrows
+DELETE FROM attribute_definition_key_access_grants
+WHERE attribute_definition_id = $1 AND key_access_server_id = $2;
+
 ---------------------------------------------------------------- 
 -- RESOURCE MAPPING GROUPS
 ----------------------------------------------------------------

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.11](https://github.com/opentdf/platform/compare/sdk/v0.3.10...sdk/v0.3.11) (2024-08-22)
+
+
+### Bug Fixes
+
+* **sdk:** set kas key cache ttl to 5 minutes ([#1428](https://github.com/opentdf/platform/issues/1428)) ([a9f63a9](https://github.com/opentdf/platform/commit/a9f63a9d53e1477cb5be315f595806a73f0c084e))
+* update to allow for using handling assertiongs ([#1431](https://github.com/opentdf/platform/issues/1431)) ([85d3167](https://github.com/opentdf/platform/commit/85d3167cc136a2d97a0f3f874d170f5cc3bc7369))
+
 ## [0.3.10](https://github.com/opentdf/platform/compare/sdk/v0.3.9...sdk/v0.3.10) (2024-08-21)
 
 

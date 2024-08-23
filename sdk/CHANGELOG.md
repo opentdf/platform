@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.12](https://github.com/opentdf/platform/compare/sdk/v0.3.11...sdk/v0.3.12) (2024-08-23)
+
+
+### Features
+
+* **core:** KID in NanoTDF KAS ResourceLocator borrowed from Protocol ([#1222](https://github.com/opentdf/platform/issues/1222)) ([e5ee4ef](https://github.com/opentdf/platform/commit/e5ee4efe91bffd9e0310daccf7217d6a797a7cc9))
+
 ## [0.3.11](https://github.com/opentdf/platform/compare/sdk/v0.3.10...sdk/v0.3.11) (2024-08-22)
 
 

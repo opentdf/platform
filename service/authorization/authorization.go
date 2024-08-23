@@ -425,8 +425,8 @@ func makeValsByFqnsLookup(attrs []*policy.Attribute, subMapsByVal map[string][]*
 	return fqnAttrVals
 }
 
-// makeScopeMap creates a map of attribute value FQNs.
-func makeScopeMap(scope *authorization.ResourceAttribute) map[string]bool {
+// MakeScopeMap creates a map of attribute value FQNs.
+func MakeScopeMap(scope *authorization.ResourceAttribute) map[string]bool {
 	// if scope not defined, return nil pointer
 	if scope == nil {
 		return nil
@@ -452,7 +452,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 		return nil, status.Error(codes.Internal, "failed to list subject mappings")
 	}
 	// create a lookup map of attribute value FQNs (based on request scope)
-	scopeMap := makeScopeMap(req.GetScope())
+	scopeMap := MakeScopeMap(req.GetScope())
 	// create a lookup map of subject mappings by attribute value ID
 	subMapsByVal := makeSubMapsByValLookup(subMapsRes.GetSubjectMappings())
 	// create a lookup map of attribute values by FQN (for rego query)

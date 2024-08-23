@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/open-policy-agent/opa/rego"
@@ -697,6 +698,10 @@ func Test_GetEntitlementsFqnCasing(t *testing.T) {
 		Entities: []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT}},
 		// Using mixed case here
 		Scope: &authorization.ResourceAttribute{AttributeValueFqns: []string{"https://www.example.org/attr/foo/value/VaLuE1"}},
+	}
+
+	for fqn := range MakeScopeMap(req.GetScope()) {
+		assert.Equal(t, fqn, strings.ToLower(fqn))
 	}
 
 	resp, err := as.GetEntitlements(ctxb, &req)

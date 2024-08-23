@@ -946,3 +946,120 @@ func (q *Queries) UpdateResourceMappingGroup(ctx context.Context, arg UpdateReso
 	err := row.Scan(&id)
 	return id, err
 }
+
+const upsertAttributeDefinitionFqn = `-- name: UpsertAttributeDefinitionFqn :one
+INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
+SELECT
+    n.id,
+    ad.id,
+    NULL,
+    CONCAT('https://', n.name, '/attr/', ad.name) AS fqn
+FROM attribute_namespaces n
+JOIN attribute_definitions ad ON n.id = ad.namespace_id
+WHERE ad.id = $1
+ON CONFLICT (namespace_id, attribute_id, value_id) 
+    DO UPDATE 
+        SET fqn = EXCLUDED.fqn
+RETURNING fqn
+`
+
+// UpsertAttributeDefinitionFqn
+//
+//	INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
+//	SELECT
+//	    n.id,
+//	    ad.id,
+//	    NULL,
+//	    CONCAT('https://', n.name, '/attr/', ad.name) AS fqn
+//	FROM attribute_namespaces n
+//	JOIN attribute_definitions ad ON n.id = ad.namespace_id
+//	WHERE ad.id = $1
+//	ON CONFLICT (namespace_id, attribute_id, value_id)
+//	    DO UPDATE
+//	        SET fqn = EXCLUDED.fqn
+//	RETURNING fqn
+func (q *Queries) UpsertAttributeDefinitionFqn(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, upsertAttributeDefinitionFqn, id)
+	var fqn string
+	err := row.Scan(&fqn)
+	return fqn, err
+}
+
+const upsertAttributeNamespaceFqn = `-- name: UpsertAttributeNamespaceFqn :one
+INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
+SELECT
+    n.id,
+    NULL,
+    NULL,
+    CONCAT('https://', n.name) AS fqn
+FROM attribute_namespaces n
+WHERE n.id = $1
+ON CONFLICT (namespace_id, attribute_id, value_id) 
+    DO UPDATE 
+        SET fqn = EXCLUDED.fqn
+RETURNING fqn
+`
+
+// UpsertAttributeNamespaceFqn
+//
+//	INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
+//	SELECT
+//	    n.id,
+//	    NULL,
+//	    NULL,
+//	    CONCAT('https://', n.name) AS fqn
+//	FROM attribute_namespaces n
+//	WHERE n.id = $1
+//	ON CONFLICT (namespace_id, attribute_id, value_id)
+//	    DO UPDATE
+//	        SET fqn = EXCLUDED.fqn
+//	RETURNING fqn
+func (q *Queries) UpsertAttributeNamespaceFqn(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, upsertAttributeNamespaceFqn, id)
+	var fqn string
+	err := row.Scan(&fqn)
+	return fqn, err
+}
+
+const upsertAttributeValueFqn = `-- name: UpsertAttributeValueFqn :one
+
+INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
+SELECT
+    n.id,
+    ad.id,
+    av.id,
+    CONCAT('https://', n.name, '/attr/', ad.name, '/value/', av.value) AS fqn
+FROM attribute_namespaces n
+JOIN attribute_definitions ad ON n.id = ad.namespace_id
+JOIN attribute_values av ON ad.id = av.attribute_definition_id
+WHERE av.id = $1
+ON CONFLICT (namespace_id, attribute_id, value_id) 
+    DO UPDATE 
+        SET fqn = EXCLUDED.fqn
+RETURNING fqn
+`
+
+// --------------------------------------------------------------
+// ATTRIBUTE FQN
+// --------------------------------------------------------------
+//
+//	INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
+//	SELECT
+//	    n.id,
+//	    ad.id,
+//	    av.id,
+//	    CONCAT('https://', n.name, '/attr/', ad.name, '/value/', av.value) AS fqn
+//	FROM attribute_namespaces n
+//	JOIN attribute_definitions ad ON n.id = ad.namespace_id
+//	JOIN attribute_values av ON ad.id = av.attribute_definition_id
+//	WHERE av.id = $1
+//	ON CONFLICT (namespace_id, attribute_id, value_id)
+//	    DO UPDATE
+//	        SET fqn = EXCLUDED.fqn
+//	RETURNING fqn
+func (q *Queries) UpsertAttributeValueFqn(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, upsertAttributeValueFqn, id)
+	var fqn string
+	err := row.Scan(&fqn)
+	return fqn, err
+}

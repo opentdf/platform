@@ -37,22 +37,10 @@ func (c *PolicyDBClient) upsertAttrFqn(ctx context.Context, opts attrFqnUpsertOp
 	switch {
 	case opts.valueID != "":
 		fqn, err = c.Queries.UpsertAttributeValueFqn(ctx, opts.valueID)
-		slog.InfoContext(ctx, ">>>>> upserted VALUE FQN",
-			slog.String("fqn", fqn),
-			slog.Any("error", err),
-		)
 	case opts.attributeID != "":
 		fqn, err = c.Queries.UpsertAttributeDefinitionFqn(ctx, opts.attributeID)
-		slog.InfoContext(ctx, ">>>>> upserting DEFINITION FQN",
-			slog.String("fqn", fqn),
-			slog.Any("error", err),
-		)
 	case opts.namespaceID != "":
 		fqn, err = c.Queries.UpsertAttributeNamespaceFqn(ctx, opts.namespaceID)
-		slog.InfoContext(ctx, ">>>>> upserting NAMESPACE FQN",
-			slog.String("fqn", fqn),
-			slog.Any("error", err),
-		)
 	default:
 		err = fmt.Errorf("at least one of namespaceId, attributeId, or valueId must be set")
 	}
@@ -63,8 +51,7 @@ func (c *PolicyDBClient) upsertAttrFqn(ctx context.Context, opts attrFqnUpsertOp
 		return ""
 	}
 
-	// todo: change to Debug after testing
-	c.logger.InfoContext(ctx, ">>>>>>> updated FQN", slog.String("fqn", fqn), slog.Any("opts", opts))
+	c.logger.DebugContext(ctx, "updated FQN", slog.String("fqn", fqn), slog.Any("opts", opts))
 	return fqn
 }
 

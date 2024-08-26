@@ -82,6 +82,73 @@ func (q *Queries) CreateResourceMappingGroup(ctx context.Context, arg CreateReso
 	return id, err
 }
 
+const createSubjectConditionSet = `-- name: CreateSubjectConditionSet :one
+INSERT INTO subject_condition_set (condition, metadata)
+VALUES ($1, $2)
+RETURNING id,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+`
+
+type CreateSubjectConditionSetParams struct {
+	Condition []byte `json:"condition"`
+	Metadata  []byte `json:"metadata"`
+}
+
+type CreateSubjectConditionSetRow struct {
+	ID       string `json:"id"`
+	Metadata []byte `json:"metadata"`
+}
+
+// CreateSubjectConditionSet
+//
+//	INSERT INTO subject_condition_set (condition, metadata)
+//	VALUES ($1, $2)
+//	RETURNING id,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+func (q *Queries) CreateSubjectConditionSet(ctx context.Context, arg CreateSubjectConditionSetParams) (CreateSubjectConditionSetRow, error) {
+	row := q.db.QueryRow(ctx, createSubjectConditionSet, arg.Condition, arg.Metadata)
+	var i CreateSubjectConditionSetRow
+	err := row.Scan(&i.ID, &i.Metadata)
+	return i, err
+}
+
+const createSubjectMapping = `-- name: CreateSubjectMapping :one
+INSERT INTO subject_mappings (attribute_value_id, actions, metadata, subject_condition_set_id)
+VALUES ($1, $2, $3, $4)
+RETURNING id,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+`
+
+type CreateSubjectMappingParams struct {
+	AttributeValueID      string      `json:"attribute_value_id"`
+	Actions               []byte      `json:"actions"`
+	Metadata              []byte      `json:"metadata"`
+	SubjectConditionSetID pgtype.UUID `json:"subject_condition_set_id"`
+}
+
+type CreateSubjectMappingRow struct {
+	ID       string `json:"id"`
+	Metadata []byte `json:"metadata"`
+}
+
+// CreateSubjectMapping
+//
+//	INSERT INTO subject_mappings (attribute_value_id, actions, metadata, subject_condition_set_id)
+//	VALUES ($1, $2, $3, $4)
+//	RETURNING id,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+func (q *Queries) CreateSubjectMapping(ctx context.Context, arg CreateSubjectMappingParams) (CreateSubjectMappingRow, error) {
+	row := q.db.QueryRow(ctx, createSubjectMapping,
+		arg.AttributeValueID,
+		arg.Actions,
+		arg.Metadata,
+		arg.SubjectConditionSetID,
+	)
+	var i CreateSubjectMappingRow
+	err := row.Scan(&i.ID, &i.Metadata)
+	return i, err
+}
+
 const deleteKeyAccessServer = `-- name: DeleteKeyAccessServer :execrows
 DELETE FROM key_access_servers WHERE id = $1
 `
@@ -106,6 +173,36 @@ DELETE FROM resource_mapping_groups WHERE id = $1
 //	DELETE FROM resource_mapping_groups WHERE id = $1
 func (q *Queries) DeleteResourceMappingGroup(ctx context.Context, id string) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteResourceMappingGroup, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteSubjectConditionSet = `-- name: DeleteSubjectConditionSet :execrows
+DELETE FROM subject_condition_set WHERE id = $1
+`
+
+// DeleteSubjectConditionSet
+//
+//	DELETE FROM subject_condition_set WHERE id = $1
+func (q *Queries) DeleteSubjectConditionSet(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteSubjectConditionSet, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteSubjectMapping = `-- name: DeleteSubjectMapping :execrows
+DELETE FROM subject_mappings WHERE id = $1
+`
+
+// DeleteSubjectMapping
+//
+//	DELETE FROM subject_mappings WHERE id = $1
+func (q *Queries) DeleteSubjectMapping(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteSubjectMapping, id)
 	if err != nil {
 		return 0, err
 	}
@@ -549,6 +646,96 @@ func (q *Queries) GetResourceMappingGroup(ctx context.Context, id string) (GetRe
 	return i, err
 }
 
+const getSubjectConditionSet = `-- name: GetSubjectConditionSet :one
+SELECT
+    id,
+    condition,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+FROM subject_condition_set
+WHERE id = $1
+`
+
+type GetSubjectConditionSetRow struct {
+	ID        string `json:"id"`
+	Condition []byte `json:"condition"`
+	Metadata  []byte `json:"metadata"`
+}
+
+// GetSubjectConditionSet
+//
+//	SELECT
+//	    id,
+//	    condition,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+//	FROM subject_condition_set
+//	WHERE id = $1
+func (q *Queries) GetSubjectConditionSet(ctx context.Context, id string) (GetSubjectConditionSetRow, error) {
+	row := q.db.QueryRow(ctx, getSubjectConditionSet, id)
+	var i GetSubjectConditionSetRow
+	err := row.Scan(&i.ID, &i.Condition, &i.Metadata)
+	return i, err
+}
+
+const getSubjectMapping = `-- name: GetSubjectMapping :one
+SELECT
+    sm.id,
+    sm.actions,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
+    JSON_BUILD_OBJECT(
+        'id', scs.id,
+        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', scs.metadata -> 'labels', 'created_at', scs.created_at, 'updated_at', scs.updated_at)),
+        'subject_sets', scs.condition
+    ) AS subject_condition_set,
+    JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active) AS attribute_value
+FROM subject_mappings sm
+LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
+LEFT JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+LEFT JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
+LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
+WHERE sm.id = $1
+GROUP BY av.id, sm.id, scs.id
+`
+
+type GetSubjectMappingRow struct {
+	ID                  string `json:"id"`
+	Actions             []byte `json:"actions"`
+	Metadata            []byte `json:"metadata"`
+	SubjectConditionSet []byte `json:"subject_condition_set"`
+	AttributeValue      []byte `json:"attribute_value"`
+}
+
+// GetSubjectMapping
+//
+//	SELECT
+//	    sm.id,
+//	    sm.actions,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
+//	    JSON_BUILD_OBJECT(
+//	        'id', scs.id,
+//	        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', scs.metadata -> 'labels', 'created_at', scs.created_at, 'updated_at', scs.updated_at)),
+//	        'subject_sets', scs.condition
+//	    ) AS subject_condition_set,
+//	    JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active) AS attribute_value
+//	FROM subject_mappings sm
+//	LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
+//	LEFT JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+//	LEFT JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
+//	LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
+//	WHERE sm.id = $1
+//	GROUP BY av.id, sm.id, scs.id
+func (q *Queries) GetSubjectMapping(ctx context.Context, id string) (GetSubjectMappingRow, error) {
+	row := q.db.QueryRow(ctx, getSubjectMapping, id)
+	var i GetSubjectMappingRow
+	err := row.Scan(
+		&i.ID,
+		&i.Actions,
+		&i.Metadata,
+		&i.SubjectConditionSet,
+		&i.AttributeValue,
+	)
+	return i, err
+}
+
 const listKeyAccessServerGrants = `-- name: ListKeyAccessServerGrants :many
 
 SELECT 
@@ -857,6 +1044,124 @@ func (q *Queries) ListResourceMappingsByFullyQualifiedGroup(ctx context.Context,
 	return items, nil
 }
 
+const listSubjectConditionSets = `-- name: ListSubjectConditionSets :many
+
+SELECT
+    id,
+    condition,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+FROM subject_condition_set
+`
+
+type ListSubjectConditionSetsRow struct {
+	ID        string `json:"id"`
+	Condition []byte `json:"condition"`
+	Metadata  []byte `json:"metadata"`
+}
+
+// --------------------------------------------------------------
+// SUBJECT CONDITION SETS
+// --------------------------------------------------------------
+//
+//	SELECT
+//	    id,
+//	    condition,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+//	FROM subject_condition_set
+func (q *Queries) ListSubjectConditionSets(ctx context.Context) ([]ListSubjectConditionSetsRow, error) {
+	rows, err := q.db.Query(ctx, listSubjectConditionSets)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSubjectConditionSetsRow
+	for rows.Next() {
+		var i ListSubjectConditionSetsRow
+		if err := rows.Scan(&i.ID, &i.Condition, &i.Metadata); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSubjectMappings = `-- name: ListSubjectMappings :many
+
+SELECT
+    sm.id,
+    sm.actions,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
+    JSON_BUILD_OBJECT(
+        'id', scs.id,
+        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', scs.metadata->'labels', 'created_at', scs.created_at, 'updated_at', scs.updated_at)),
+        'subject_sets', scs.condition
+    ) AS subject_condition_set,
+    JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active) AS attribute_value
+FROM subject_mappings sm
+LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
+LEFT JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+LEFT JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
+LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
+GROUP BY av.id, sm.id, scs.id
+`
+
+type ListSubjectMappingsRow struct {
+	ID                  string `json:"id"`
+	Actions             []byte `json:"actions"`
+	Metadata            []byte `json:"metadata"`
+	SubjectConditionSet []byte `json:"subject_condition_set"`
+	AttributeValue      []byte `json:"attribute_value"`
+}
+
+// --------------------------------------------------------------
+// SUBJECT MAPPINGS
+// --------------------------------------------------------------
+//
+//	SELECT
+//	    sm.id,
+//	    sm.actions,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
+//	    JSON_BUILD_OBJECT(
+//	        'id', scs.id,
+//	        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', scs.metadata->'labels', 'created_at', scs.created_at, 'updated_at', scs.updated_at)),
+//	        'subject_sets', scs.condition
+//	    ) AS subject_condition_set,
+//	    JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active) AS attribute_value
+//	FROM subject_mappings sm
+//	LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
+//	LEFT JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+//	LEFT JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
+//	LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
+//	GROUP BY av.id, sm.id, scs.id
+func (q *Queries) ListSubjectMappings(ctx context.Context) ([]ListSubjectMappingsRow, error) {
+	rows, err := q.db.Query(ctx, listSubjectMappings)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSubjectMappingsRow
+	for rows.Next() {
+		var i ListSubjectMappingsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Actions,
+			&i.Metadata,
+			&i.SubjectConditionSet,
+			&i.AttributeValue,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removeKeyAccessServerFromNamespace = `-- name: RemoveKeyAccessServerFromNamespace :execrows
 DELETE FROM attribute_namespace_key_access_grants
 WHERE namespace_id = $1 AND key_access_server_id = $2
@@ -942,6 +1247,74 @@ type UpdateResourceMappingGroupParams struct {
 //	RETURNING id
 func (q *Queries) UpdateResourceMappingGroup(ctx context.Context, arg UpdateResourceMappingGroupParams) (string, error) {
 	row := q.db.QueryRow(ctx, updateResourceMappingGroup, arg.ID, arg.NamespaceID, arg.Name)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const updateSubjectConditionSet = `-- name: UpdateSubjectConditionSet :one
+UPDATE subject_condition_set
+SET
+    condition = COALESCE($2, condition),
+    metadata = COALESCE($3, metadata)
+WHERE id = $1
+RETURNING id
+`
+
+type UpdateSubjectConditionSetParams struct {
+	ID        string `json:"id"`
+	Condition []byte `json:"condition"`
+	Metadata  []byte `json:"metadata"`
+}
+
+// UpdateSubjectConditionSet
+//
+//	UPDATE subject_condition_set
+//	SET
+//	    condition = COALESCE($2, condition),
+//	    metadata = COALESCE($3, metadata)
+//	WHERE id = $1
+//	RETURNING id
+func (q *Queries) UpdateSubjectConditionSet(ctx context.Context, arg UpdateSubjectConditionSetParams) (string, error) {
+	row := q.db.QueryRow(ctx, updateSubjectConditionSet, arg.ID, arg.Condition, arg.Metadata)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const updateSubjectMapping = `-- name: UpdateSubjectMapping :one
+UPDATE subject_mappings
+SET
+    actions = COALESCE($2, actions),
+    metadata = COALESCE($3, metadata),
+    subject_condition_set_id = COALESCE($4, subject_condition_set_id)
+WHERE id = $1
+RETURNING id
+`
+
+type UpdateSubjectMappingParams struct {
+	ID                    string      `json:"id"`
+	Actions               []byte      `json:"actions"`
+	Metadata              []byte      `json:"metadata"`
+	SubjectConditionSetID pgtype.UUID `json:"subject_condition_set_id"`
+}
+
+// UpdateSubjectMapping
+//
+//	UPDATE subject_mappings
+//	SET
+//	    actions = COALESCE($2, actions),
+//	    metadata = COALESCE($3, metadata),
+//	    subject_condition_set_id = COALESCE($4, subject_condition_set_id)
+//	WHERE id = $1
+//	RETURNING id
+func (q *Queries) UpdateSubjectMapping(ctx context.Context, arg UpdateSubjectMappingParams) (string, error) {
+	row := q.db.QueryRow(ctx, updateSubjectMapping,
+		arg.ID,
+		arg.Actions,
+		arg.Metadata,
+		arg.SubjectConditionSetID,
+	)
 	var id string
 	err := row.Scan(&id)
 	return id, err

@@ -7,7 +7,9 @@ import (
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
@@ -84,63 +86,6 @@ func unmarshalActionsProto(actionsJSON []byte, logger *logger.Logger) ([]*policy
 		actions = append(actions, &a)
 	}
 	return actions, nil
-}
-
-func subjectConditionSetSelect() sq.SelectBuilder {
-	t := Tables.SubjectConditionSet
-	return db.NewStatementBuilder().Select(
-		t.Field("id"),
-		constructMetadata("", false),
-		t.Field("condition"),
-	)
-}
-
-func subjectConditionSetHydrateItem(row pgx.Row, logger *logger.Logger) (*policy.SubjectConditionSet, error) {
-	var (
-		id        string
-		metadata  []byte
-		condition []byte
-	)
-
-	err := row.Scan(
-		&id,
-		&metadata,
-		&condition,
-	)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	m := &common.Metadata{}
-	if metadata != nil {
-		if err := protojson.Unmarshal(metadata, m); err != nil {
-			logger.Error("failed to unmarshal metadata", slog.String("error", err.Error()), slog.String("metadata JSON", string(metadata)))
-			return nil, err
-		}
-	}
-
-	ss, err := unmarshalSubjectSetsProto(condition, logger)
-	if err != nil {
-		return nil, err
-	}
-
-	return &policy.SubjectConditionSet{
-		Id:          id,
-		SubjectSets: ss,
-		Metadata:    m,
-	}, nil
-}
-
-func subjectConditionSetHydrateList(rows pgx.Rows, logger *logger.Logger) ([]*policy.SubjectConditionSet, error) {
-	list := make([]*policy.SubjectConditionSet, 0)
-	for rows.Next() {
-		s, err := subjectConditionSetHydrateItem(rows, logger)
-		if err != nil {
-			return nil, err
-		}
-		list = append(list, s)
-	}
-	return list, nil
 }
 
 func subjectMappingSelect() sq.SelectBuilder {
@@ -246,120 +191,95 @@ func subjectMappingHydrateList(rows pgx.Rows, logger *logger.Logger) ([]*policy.
 	return list, nil
 }
 
-func createSubjectConditionSetSQL(subjectSets []*policy.SubjectSet, metadataJSON []byte, logger *logger.Logger) (string, []interface{}, error) {
-	t := Tables.SubjectConditionSet
-	conditionJSON, err := marshalSubjectSetsProto(subjectSets)
-	if err != nil {
-		logger.Error("could not marshal subject sets", slog.String("error", err.Error()))
-		return "", nil, err
-	}
-
-	columns := []string{"condition", "metadata"}
-	values := []interface{}{conditionJSON, metadataJSON}
-	return db.NewStatementBuilder().
-		Insert(t.Name()).
-		Columns(columns...).
-		Values(values...).
-		Suffix(createSuffix).
-		ToSql()
-}
+/*
+	Subject Condition Sets
+*/
 
 // Creates a new subject condition set and returns the id of the created
 func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjectmapping.SubjectConditionSetCreate) (*policy.SubjectConditionSet, error) {
-	metadataJSON, m, err := db.MarshalCreateMetadata(s.GetMetadata())
+	conditionJSON, err := marshalSubjectSetsProto(s.GetSubjectSets())
+	if err != nil {
+		c.logger.ErrorContext(ctx, "could not marshal subject sets", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	metadataJSON, metadata, err := db.MarshalCreateMetadata(s.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
 
-	sql, args, err := createSubjectConditionSetSQL(s.GetSubjectSets(), metadataJSON, c.logger)
+	cs, err := c.Queries.CreateSubjectConditionSet(ctx, CreateSubjectConditionSetParams{
+		Condition: conditionJSON,
+		Metadata:  metadataJSON,
+	})
 	if err != nil {
-		return nil, err
-	}
-
-	var id string
-	r, err := c.QueryRow(ctx, sql, args)
-	if err != nil {
-		return nil, err
-	}
-	if err = r.Scan(&id, &metadataJSON); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err = unmarshalMetadata(metadataJSON, m, c.logger); err != nil {
+	if err = unmarshalMetadata(cs.Metadata, metadata, c.logger); err != nil {
+		return nil, err
+	}
+
+	return &policy.SubjectConditionSet{
+		Id:          cs.ID,
+		SubjectSets: s.GetSubjectSets(),
+		Metadata:    metadata,
+	}, nil
+}
+
+func (c PolicyDBClient) GetSubjectConditionSet(ctx context.Context, id string) (*policy.SubjectConditionSet, error) {
+	cs, err := c.Queries.GetSubjectConditionSet(ctx, id)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	metadata := &common.Metadata{}
+	if err = unmarshalMetadata(cs.Metadata, metadata, c.logger); err != nil {
+		return nil, err
+	}
+
+	sets, err := unmarshalSubjectSetsProto(cs.Condition, c.logger)
+	if err != nil {
 		return nil, err
 	}
 
 	return &policy.SubjectConditionSet{
 		Id:          id,
-		SubjectSets: s.GetSubjectSets(),
-		Metadata:    m,
+		SubjectSets: sets,
+		Metadata:    metadata,
 	}, nil
 }
 
-func getSubjectConditionSetSQL(id string) (string, []interface{}, error) {
-	t := Tables.SubjectConditionSet
-	return subjectConditionSetSelect().
-		From(t.Name()).Where(sq.Eq{t.Field("id"): id}).ToSql()
-}
-
-func (c PolicyDBClient) GetSubjectConditionSet(ctx context.Context, id string) (*policy.SubjectConditionSet, error) {
-	sql, args, err := getSubjectConditionSetSQL(id)
-	if err != nil {
-		return nil, err
-	}
-
-	row, err := c.QueryRow(ctx, sql, args)
-	if err != nil {
-		return nil, err
-	}
-
-	return subjectConditionSetHydrateItem(row, c.logger)
-}
-
-func listSubjectConditionSetsSQL() (string, []interface{}, error) {
-	t := Tables.SubjectConditionSet
-	return subjectConditionSetSelect().
-		From(t.Name()).
-		ToSql()
-}
-
 func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context) ([]*policy.SubjectConditionSet, error) {
-	sql, args, err := listSubjectConditionSetsSQL()
+	list, err := c.Queries.ListSubjectConditionSets(ctx)
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	rows, err := c.Query(ctx, sql, args)
-	if err != nil {
-		return nil, err
+	setList := make([]*policy.SubjectConditionSet, len(list))
+	for i, set := range list {
+		metadata := &common.Metadata{}
+		if err = unmarshalMetadata(set.Metadata, metadata, c.logger); err != nil {
+			return nil, err
+		}
+
+		sets, err := unmarshalSubjectSetsProto(set.Condition, c.logger)
+		if err != nil {
+			return nil, err
+		}
+
+		setList[i] = &policy.SubjectConditionSet{
+			Id:          set.ID,
+			SubjectSets: sets,
+			Metadata:    metadata,
+		}
 	}
-	defer rows.Close()
 
-	return subjectConditionSetHydrateList(rows, c.logger)
-}
-
-func updateSubjectConditionSetSQL(id string, metadata []byte, condition []byte) (string, []interface{}, error) {
-	t := Tables.SubjectConditionSet
-
-	sb := db.NewStatementBuilder().
-		Update(t.Name())
-
-	if metadata != nil {
-		sb = sb.Set("metadata", metadata)
-	}
-
-	if condition != nil {
-		sb = sb.Set("condition", condition)
-	}
-	return sb.
-		Where(sq.Eq{t.Field("id"): id}).
-		ToSql()
+	return setList, nil
 }
 
 // Mutates provided fields and returns id of the updated subject condition set
 func (c PolicyDBClient) UpdateSubjectConditionSet(ctx context.Context, r *subjectmapping.UpdateSubjectConditionSetRequest) (*policy.SubjectConditionSet, error) {
-	var condition []byte
-
 	// if extend we need to merge the metadata
 	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		scs, err := c.GetSubjectConditionSet(ctx, r.GetId())
@@ -372,55 +292,37 @@ func (c PolicyDBClient) UpdateSubjectConditionSet(ctx context.Context, r *subjec
 		return nil, err
 	}
 
+	var conditionJSON []byte
 	if r.SubjectSets != nil {
-		condition, err = marshalSubjectSetsProto(r.GetSubjectSets())
+		conditionJSON, err = marshalSubjectSetsProto(r.GetSubjectSets())
 		if err != nil {
-			c.logger.Error("failed to marshal subject sets", slog.String("error", err.Error()))
+			c.logger.ErrorContext(ctx, "failed to marshal subject sets", slog.String("error", err.Error()))
 			return nil, err
 		}
 	}
 
-	sql, args, err := updateSubjectConditionSetSQL(
-		r.GetId(),
-		metadataJSON,
-		condition,
-	)
-	if db.IsQueryBuilderSetClauseError(err) {
-		return &policy.SubjectConditionSet{
-			Id: r.GetId(),
-		}, nil
-	}
+	updatedID, err := c.Queries.UpdateSubjectConditionSet(ctx, UpdateSubjectConditionSetParams{
+		ID:        r.GetId(),
+		Condition: conditionJSON,
+		Metadata:  metadataJSON,
+	})
 	if err != nil {
-		return nil, err
-	}
-
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	return &policy.SubjectConditionSet{
-		Id: r.GetId(),
+		Id: updatedID,
 	}, nil
-}
-
-func deleteSubjectConditionSetSQL(id string) (string, []interface{}, error) {
-	t := Tables.SubjectConditionSet
-	return db.NewStatementBuilder().
-		Delete(t.Name()).
-		Where(sq.Eq{t.Field("id"): id}).
-		Suffix("RETURNING \"id\"").
-		ToSql()
 }
 
 // Deletes specified subject condition set and returns the id of the deleted
 func (c PolicyDBClient) DeleteSubjectConditionSet(ctx context.Context, id string) (*policy.SubjectConditionSet, error) {
-	sql, args, err := deleteSubjectConditionSetSQL(id)
+	count, err := c.Queries.DeleteSubjectConditionSet(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
+	if count == 0 {
+		return nil, db.ErrNotFound
 	}
 
 	return &policy.SubjectConditionSet{
@@ -428,29 +330,9 @@ func (c PolicyDBClient) DeleteSubjectConditionSet(ctx context.Context, id string
 	}, nil
 }
 
-func createSubjectMappingSQL(attributeValueID string, actions []byte, metadata []byte, subjectConditionSetID string) (string, []interface{}, error) {
-	t := Tables.SubjectMappings
-
-	columns := []string{
-		"attribute_value_id",
-		"actions",
-		"metadata",
-		"subject_condition_set_id",
-	}
-	values := []interface{}{
-		attributeValueID,
-		actions,
-		metadata,
-		subjectConditionSetID,
-	}
-
-	return db.NewStatementBuilder().
-		Insert(t.Name()).
-		Columns(columns...).
-		Values(values...).
-		Suffix(createSuffix).
-		ToSql()
-}
+/*
+	Subject Mappings
+*/
 
 // Creates a new subject mapping and returns the id of the created. If an existing subject condition set id is provided, it will be used.
 // If a new subject condition set is provided, it will be created. The existing subject condition set id takes precedence.
@@ -477,7 +359,7 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 		return nil, errors.Join(db.ErrMissingValue, errors.New("either an existing Subject Condition Set ID or a new Subject Condition Set is required when creating a subject mapping"))
 	}
 
-	metadataJSON, m, err := db.MarshalCreateMetadata(s.GetMetadata())
+	metadataJSON, metadata, err := db.MarshalCreateMetadata(s.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
@@ -489,108 +371,138 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 		return nil, err
 	}
 
-	// Create the subject mapping
-	sql, args, err := createSubjectMappingSQL(
-		s.GetAttributeValueId(),
-		actionsJSON,
-		metadataJSON,
-		scs.GetId(),
-	)
-	if err != nil {
-		return nil, err
+	uuidScsID, err := uuid.Parse(scs.GetId())
+	pgScsID := pgtype.UUID{
+		Bytes: [16]byte(uuidScsID),
+		Valid: err == nil,
 	}
 
-	var id string
-	if r, err := c.QueryRow(ctx, sql, args); err != nil {
-		return nil, err
-	} else if err := r.Scan(&id, &metadataJSON); err != nil {
+	sm, err := c.Queries.CreateSubjectMapping(ctx, CreateSubjectMappingParams{
+		AttributeValueID:      s.GetAttributeValueId(),
+		Actions:               actionsJSON,
+		Metadata:              metadataJSON,
+		SubjectConditionSetID: pgScsID,
+	})
+	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err = unmarshalMetadata(metadataJSON, m, c.logger); err != nil {
+	if err = unmarshalMetadata(sm.Metadata, metadata, c.logger); err != nil {
 		return nil, err
 	}
 
 	return &policy.SubjectMapping{
-		Id: id,
+		Id: sm.ID,
 		AttributeValue: &policy.Value{
 			Id: s.GetAttributeValueId(),
 		},
 		SubjectConditionSet: scs,
 		Actions:             s.GetActions(),
-		Metadata:            m,
+		Metadata:            metadata,
 	}, nil
 }
 
-func getSubjectMappingSQL(id string) (string, []interface{}, error) {
-	t := Tables.SubjectMappings
-	return subjectMappingSelect().
-		From(t.Name()).
-		Where(sq.Eq{t.Field("id"): id}).
-		ToSql()
-}
-
 func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*policy.SubjectMapping, error) {
-	sql, args, err := getSubjectMappingSQL(id)
+	sm, err := c.Queries.GetSubjectMapping(ctx, id)
 	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	metadata := &common.Metadata{}
+	if err = unmarshalMetadata(sm.Metadata, metadata, c.logger); err != nil {
 		return nil, err
 	}
 
-	row, err := c.QueryRow(ctx, sql, args)
-	if err != nil {
-		return nil, err
+	av := &policy.Value{}
+	if sm.AttributeValue != nil {
+		if err := protojson.Unmarshal(sm.AttributeValue, av); err != nil {
+			c.logger.ErrorContext(ctx, "failed to unmarshal attribute value",
+				slog.String("error", err.Error()),
+				slog.String("attribute value JSON", string(sm.AttributeValue)),
+			)
+			return nil, err
+		}
 	}
 
-	return subjectMappingHydrateItem(row, c.logger)
-}
+	a := []*policy.Action{}
+	if sm.Actions != nil {
+		if a, err = unmarshalActionsProto(sm.Actions, c.logger); err != nil {
+			return nil, err
+		}
+	}
 
-func listSubjectMappingsSQL() (string, []interface{}, error) {
-	t := Tables.SubjectMappings
-	return subjectMappingSelect().
-		From(t.Name()).
-		ToSql()
+	scs := policy.SubjectConditionSet{}
+	if sm.SubjectConditionSet != nil {
+		if err := protojson.Unmarshal(sm.SubjectConditionSet, &scs); err != nil {
+			c.logger.ErrorContext(ctx, "could not unmarshal subject condition set",
+				slog.String("error", err.Error()),
+				slog.String("subject condition set JSON", string(sm.SubjectConditionSet)),
+			)
+			return nil, err
+		}
+	}
+
+	return &policy.SubjectMapping{
+		Id:                  id,
+		Metadata:            metadata,
+		AttributeValue:      av,
+		SubjectConditionSet: &scs,
+		Actions:             a,
+	}, nil
 }
 
 func (c PolicyDBClient) ListSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
-	sql, args, err := listSubjectMappingsSQL()
+	list, err := c.Queries.ListSubjectMappings(ctx)
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	rows, err := c.Query(ctx, sql, args)
-	if err != nil {
-		return nil, err
+	mappings := make([]*policy.SubjectMapping, len(list))
+	for i, sm := range list {
+		metadata := &common.Metadata{}
+		if err = unmarshalMetadata(sm.Metadata, metadata, c.logger); err != nil {
+			return nil, err
+		}
+
+		av := &policy.Value{}
+		if sm.AttributeValue != nil {
+			if err := protojson.Unmarshal(sm.AttributeValue, av); err != nil {
+				c.logger.ErrorContext(ctx, "failed to unmarshal attribute value",
+					slog.String("error", err.Error()),
+					slog.String("attribute value JSON", string(sm.AttributeValue)),
+				)
+				return nil, err
+			}
+		}
+
+		a := []*policy.Action{}
+		if sm.Actions != nil {
+			if a, err = unmarshalActionsProto(sm.Actions, c.logger); err != nil {
+				return nil, err
+			}
+		}
+
+		scs := policy.SubjectConditionSet{}
+		if sm.SubjectConditionSet != nil {
+			if err := protojson.Unmarshal(sm.SubjectConditionSet, &scs); err != nil {
+				c.logger.ErrorContext(ctx, "could not unmarshal subject condition set",
+					slog.String("error", err.Error()),
+					slog.String("subject condition set JSON", string(sm.SubjectConditionSet)),
+				)
+				return nil, err
+			}
+		}
+
+		mappings[i] = &policy.SubjectMapping{
+			Id:                  sm.ID,
+			Metadata:            metadata,
+			AttributeValue:      av,
+			SubjectConditionSet: &scs,
+			Actions:             a,
+		}
 	}
-	defer rows.Close()
 
-	subjectMappings, err := subjectMappingHydrateList(rows, c.logger)
-	if err != nil {
-		return nil, err
-	}
-
-	return subjectMappings, nil
-}
-
-func updateSubjectMappingSQL(id string, metadataJSON []byte, subjectConditionSetID string, actionsJSON []byte) (string, []interface{}, error) {
-	t := Tables.SubjectMappings
-	sb := db.NewStatementBuilder().
-		Update(t.Name())
-
-	if metadataJSON != nil {
-		sb = sb.Set("metadata", metadataJSON)
-	}
-
-	if subjectConditionSetID != "" {
-		sb = sb.Set("subject_condition_set_id", subjectConditionSetID)
-	}
-
-	if actionsJSON != nil {
-		sb = sb.Set("actions", actionsJSON)
-	}
-
-	return sb.
-		Where(sq.Eq{t.Field("id"): id}).
-		ToSql()
+	return mappings, nil
 }
 
 // Mutates provided fields and returns id of the updated subject mapping
@@ -615,48 +527,35 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 		}
 	}
 
-	sql, args, err := updateSubjectMappingSQL(
-		r.GetId(),
-		metadataJSON,
-		r.GetSubjectConditionSetId(),
-		actionsJSON,
-	)
-	if db.IsQueryBuilderSetClauseError(err) {
-		return &policy.SubjectMapping{
-			Id: r.GetId(),
-		}, nil
-	}
-	if err != nil {
-		return nil, err
+	uuidScsID, err := uuid.Parse(r.GetSubjectConditionSetId())
+	pgScsID := pgtype.UUID{
+		Bytes: [16]byte(uuidScsID),
+		Valid: err == nil,
 	}
 
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
+	updatedID, err := c.Queries.UpdateSubjectMapping(ctx, UpdateSubjectMappingParams{
+		ID:                    r.GetId(),
+		Actions:               actionsJSON,
+		Metadata:              metadataJSON,
+		SubjectConditionSetID: pgScsID,
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	return &policy.SubjectMapping{
-		Id: r.GetId(),
+		Id: updatedID,
 	}, nil
-}
-
-func deleteSubjectMappingSQL(id string) (string, []interface{}, error) {
-	t := Tables.SubjectMappings
-	return db.NewStatementBuilder().
-		Delete(t.Name()).
-		Where(sq.Eq{t.Field("id"): id}).
-		Suffix("RETURNING \"id\"").
-		ToSql()
 }
 
 // Deletes specified subject mapping and returns the id of the deleted
 func (c PolicyDBClient) DeleteSubjectMapping(ctx context.Context, id string) (*policy.SubjectMapping, error) {
-	sql, args, err := deleteSubjectMappingSQL(id)
+	count, err := c.Queries.DeleteSubjectMapping(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
+	if count == 0 {
+		return nil, db.ErrNotFound
 	}
 
 	return &policy.SubjectMapping{

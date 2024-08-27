@@ -6,6 +6,8 @@ on:
   pull_request:
 
 jobs:
+  ci-checks:
+    uses: opentdf/platform/.github/workflows/checks.yaml@main
   flakiness-recovery:
     runs-on: ubuntu-22.04
     permissions:

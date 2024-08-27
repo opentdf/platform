@@ -85,12 +85,12 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, state string) ([]*po
 }
 
 func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.CreateNamespaceRequest) (*policy.Namespace, error) {
-	metadataJSON, m, err := db.MarshalCreateMetadata(r.GetMetadata())
+	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
 
-	ns, err := c.Queries.CreateNamespace(ctx, CreateNamespaceParams{
+	createdID, err := c.Queries.CreateNamespace(ctx, CreateNamespaceParams{
 		Name:     r.GetName(),
 		Metadata: metadataJSON,
 	})
@@ -98,20 +98,11 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err = unmarshalMetadata(ns.Metadata, m, c.logger); err != nil {
-		return nil, err
-	}
-
 	// Update FQN
-	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: ns.ID})
+	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: createdID})
 	c.logger.Debug("upserted fqn for created namespace", slog.Any("fqn", fqn))
 
-	return &policy.Namespace{
-		Id:       ns.ID,
-		Name:     ns.Name,
-		Active:   &wrapperspb.BoolValue{Value: true},
-		Metadata: m,
-	}, nil
+	return c.GetNamespace(ctx, createdID)
 }
 
 func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *namespaces.UpdateNamespaceRequest) (*policy.Namespace, error) {
@@ -130,24 +121,25 @@ func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *names
 		return nil, err
 	}
 
-	updatedNs, err := c.Queries.UpdateNamespace(ctx, UpdateNamespaceParams{
+	count, err := c.Queries.UpdateNamespace(ctx, UpdateNamespaceParams{
 		ID:       id,
 		Metadata: metadataJSON,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
 
-	return &policy.Namespace{
-		Id: updatedNs.ID,
-	}, nil
+	return c.GetNamespace(ctx, id)
 }
 
 /*
 UNSAFE OPERATIONS
 */
 func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, name string) (*policy.Namespace, error) {
-	updatedNs, err := c.Queries.UpdateNamespace(ctx, UpdateNamespaceParams{
+	count, err := c.Queries.UpdateNamespace(ctx, UpdateNamespaceParams{
 		ID: id,
 		Name: pgtype.Text{
 			String: name,
@@ -156,6 +148,9 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
 	}
 
 	// Update all FQNs that may contain the namespace name
@@ -175,17 +170,7 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 		}
 	}
 
-	metadata := &common.Metadata{}
-	if err = unmarshalMetadata(updatedNs.Metadata, metadata, c.logger); err != nil {
-		return nil, err
-	}
-
-	return &policy.Namespace{
-		Id:       updatedNs.ID,
-		Name:     updatedNs.Name,
-		Active:   &wrapperspb.BoolValue{Value: updatedNs.Active},
-		Metadata: metadata,
-	}, nil
+	return c.GetNamespace(ctx, id)
 }
 
 // todo: should be renamed to UnsafeDeactivateNamespace for consistency
@@ -207,7 +192,7 @@ func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*po
 		c.logger.Warn("deactivating the namespace with existed attributes can affect access to related data. Please be aware and proceed accordingly.")
 	}
 
-	_, err = c.Queries.UpdateNamespace(ctx, UpdateNamespaceParams{
+	count, err := c.Queries.UpdateNamespace(ctx, UpdateNamespaceParams{
 		ID: id,
 		Active: pgtype.Bool{
 			Bool:  false,
@@ -216,6 +201,9 @@ func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*po
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
 	}
 
 	return c.GetNamespace(ctx, id)
@@ -231,7 +219,7 @@ func (c PolicyDBClient) UnsafeReactivateNamespace(ctx context.Context, id string
 		c.logger.Warn("reactivating the namespace with existing attributes can affect access to related data. Please be aware and proceed accordingly.")
 	}
 
-	_, err = c.Queries.UpdateNamespace(ctx, UpdateNamespaceParams{
+	count, err := c.Queries.UpdateNamespace(ctx, UpdateNamespaceParams{
 		ID: id,
 		Active: pgtype.Bool{
 			Bool:  true,
@@ -240,6 +228,9 @@ func (c PolicyDBClient) UnsafeReactivateNamespace(ctx context.Context, id string
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
 	}
 
 	return c.GetNamespace(ctx, id)

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
@@ -124,17 +125,10 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", namespaceID))
 	}
 
-	item, err := ns.dbClient.UpdateNamespace(ctx, namespaceID, req)
-	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", namespaceID))
-	}
-
-	// UpdateNamespace only returns the ID of the updated namespace, so we need to
-	// fetch the updated namespace to compute the audit diff
-	updatedNamespace, err := ns.dbClient.GetNamespace(ctx, namespaceID)
+	updatedNamespace, err := ns.dbClient.UpdateNamespace(ctx, namespaceID, req)
 	if err != nil {
 		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", namespaceID))
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", namespaceID))
 	}
 
 	auditParams.Original = originalNamespace
@@ -142,7 +136,9 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces
 	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	ns.logger.Debug("updated namespace", slog.String("id", namespaceID))
 
-	rsp.Namespace = item
+	rsp.Namespace = &policy.Namespace{
+		Id: namespaceID,
+	}
 	return rsp, nil
 }
 
@@ -164,8 +160,6 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *namesp
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", namespaceID))
 	}
 
-	// DeactivateNamespace actually returns the full namespace object so we can
-	// use the result to compute the audit diff
 	updatedNamespace, err := ns.dbClient.DeactivateNamespace(ctx, namespaceID)
 	if err != nil {
 		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)

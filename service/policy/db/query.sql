@@ -296,8 +296,11 @@ LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id
 WHERE (sqlc.narg('active')::BOOLEAN IS NULL OR ns.active = sqlc.narg('active')::BOOLEAN);
 
 -- name: GetNamespace :one
-SELECT ns.id, ns.name, ns.active,
-    attribute_fqns.fqn as fqn,
+SELECT
+    ns.id,
+    ns.name,
+    ns.active,
+    fqns.fqn,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
     JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
         'id', kas.id, 
@@ -307,34 +310,28 @@ SELECT ns.id, ns.name, ns.active,
 FROM attribute_namespaces ns
 LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
 LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
-LEFT JOIN attribute_fqns ON attribute_fqns.namespace_id = ns.id
-WHERE ns.id = $1
-AND attribute_fqns.attribute_id IS NULL AND attribute_fqns.value_id IS NULL
-GROUP BY ns.id, 
-attribute_fqns.fqn;
+LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
+WHERE ns.id = $1 AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+GROUP BY ns.id, fqns.fqn;
 
 -- name: CreateNamespace :one
 INSERT INTO attribute_namespaces (name, metadata)
 VALUES (LOWER(@name), @metadata)
-RETURNING id, name,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata;
+RETURNING id;
 
--- name: UpdateNamespace :one
+-- name: UpdateNamespace :execrows
 UPDATE attribute_namespaces
 SET
     name = COALESCE(LOWER(sqlc.narg('name')), name),
     active = COALESCE(sqlc.narg('active'), active),
     metadata = COALESCE(sqlc.narg('metadata'), metadata)
-WHERE id = $1
-RETURNING id, name, active,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata;
+WHERE id = $1;
 
 -- name: DeleteNamespace :execrows
 DELETE FROM attribute_namespaces WHERE id = $1;
 
 -- name: AssignKeyAccessServerToNamespace :execrows
-INSERT INTO attribute_namespace_key_access_grants
-(namespace_id, key_access_server_id)
+INSERT INTO attribute_namespace_key_access_grants (namespace_id, key_access_server_id)
 VALUES ($1, $2);
 
 -- name: RemoveKeyAccessServerFromNamespace :execrows

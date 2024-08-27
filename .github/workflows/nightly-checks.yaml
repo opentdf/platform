@@ -7,7 +7,7 @@ on:
 
 jobs:
   ci-checks:
-    uses: opentdf/platform/.github/workflows/checks.yaml@main
+    uses: opentdf/platform/.github/workflows/checks.yaml@feat/nightly-checks
   flakiness-recovery:
     runs-on: ubuntu-22.04
     permissions:

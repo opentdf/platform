@@ -11,14 +11,14 @@ logger:
 services:
   kas:
     keyring:
-      - kid: e1
+      - kid: b5d03f31-457b-4fc4-aeb7-4716ec4eecf0
         alg: ec:secp256r1
-      - kid: e1
+      - kid: b5d03f31-457b-4fc4-aeb7-4716ec4eecf0
         alg: ec:secp256r1
         legacy: true
-      - kid: r1
+      - kid: 6085947b-a7d6-4c49-bfd7-6ba994d36c20
         alg: rsa:2048
-      - kid: r1
+      - kid: 6085947b-a7d6-4c49-bfd7-6ba994d36c20
         alg: rsa:2048
         legacy: true
   entityresolution:
@@ -106,12 +106,13 @@ server:
   cryptoProvider:
     type: standard
     standard:
+      # Note: Key IDs (kid) must be UUID v4
       keys:
-        - kid: r1
+        - kid: 6085947b-a7d6-4c49-bfd7-6ba994d36c20
           alg: rsa:2048
           private: kas-private.pem
           cert: kas-cert.pem
-        - kid: e1
+        - kid: b5d03f31-457b-4fc4-aeb7-4716ec4eecf0
           alg: ec:secp256r1
           private: kas-ec-private.pem
           cert: kas-ec-cert.pem

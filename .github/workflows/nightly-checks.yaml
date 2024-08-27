@@ -25,7 +25,6 @@ jobs:
             platform/protocol/go/go.sum
             platform/sdk/go.sum
             platform/service/go.sum
-        working-directory: .
       ######## SPIN UP PLATFORM/BACKEND #############
       - run: |
           ./.github/scripts/init-temp-keys.sh

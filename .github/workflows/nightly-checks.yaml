@@ -64,7 +64,7 @@ jobs:
           path: otdfctl
       - run: go build -o otdfctl
         working-directory: otdfctl
-      - run: cp otdfctl platform
+      - run: cp otdfctl ../platform
         working-directory: otdfctl
 
       ######## RUN TESTS #############

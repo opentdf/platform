@@ -227,7 +227,7 @@ func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byt
 		return nil, err400("bad request")
 	}
 	if !hmac.Equal(actualHMAC, expectedHMAC) {
-		logger.WarnContext(ctx, "policy hmac mismatch", "actual", actualHMAC, "expected", expectedHMAC, "policyBinding", policyBinding)
+		logger.WarnContext(ctx, "policy hmac mismatch", "policyBinding", policyBinding)
 		return nil, err400("bad request")
 	}
 	sDecPolicy, err := base64.StdEncoding.DecodeString(requestBody.Policy)
@@ -466,22 +466,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		return nil, err403("forbidden")
 	}
 
-	pub, ok := body.PublicKey.(*ecdsa.PublicKey)
-	if !ok {
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-		return nil, fmt.Errorf("failed to extract public key: %w", err)
-	}
-
-	// Convert public key to 65-bytes format
-	pubKeyBytes := make([]byte, 1+len(pub.X.Bytes())+len(pub.Y.Bytes()))
-	pubKeyBytes[0] = 0x4 // ID for uncompressed format
-	if copy(pubKeyBytes[1:33], pub.X.Bytes()) != 32 || copy(pubKeyBytes[33:], pub.Y.Bytes()) != 32 {
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-		return nil, fmt.Errorf("failed to serialize keypair: %v", pub)
-	}
-
 	privateKeyHandle, publicKeyHandle, err := p.CryptoProvider.GenerateEphemeralKasKeys()
-
 	if err != nil {
 		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
 		return nil, fmt.Errorf("failed to generate keypair: %w", err)

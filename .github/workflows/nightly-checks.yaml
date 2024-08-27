@@ -1,0 +1,103 @@
+name: 'Nightly Checks'
+
+on:
+  schedule:
+    - cron: '15 0 * * *'
+  pull_request:
+
+
+jobs:
+  otdfctl:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      ######## CHECKOUT/SETUP PLATFORM #############
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
+        with:
+          go-version-file: 'service/go.mod'
+          check-latest: false
+          cache-dependency-path: |
+            examples/go.sum
+            protocol/go/go.sum
+            sdk/go.sum
+            service/go.sum
+      
+      ######## CHECKOUT/BUILD 'otdfctl' #############
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+        with:
+          repository: opentdf/otdfctl
+          ref: main
+          fetch-depth: 0
+      - run: go build -o otdfctl
+      
+      ######## SPIN UP PLATFORM/BACKEND #############
+      - run: |
+          .github/scripts/init-temp-keys.sh
+          cp opentdf-dev.yaml opentdf.yaml
+        working-directory: .
+      - name: Added Trusted Certs
+        run: |
+          sudo chmod -R 777 ./keys
+          sudo apt-get install -y ca-certificates
+          sudo cp ./keys/localhost.crt /usr/local/share/ca-certificates
+          sudo update-ca-certificates
+        working-directory: .
+      - run: docker compose up -d --wait --wait-timeout 240
+        working-directory: .
+      - run: go run ./service provision keycloak
+        working-directory: .
+      - run: go run ./service provision fixtures
+        working-directory: .
+      - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
+        name: start server in background
+        with:
+          run: >
+            go build -o opentdf -v service/main.go
+            && .github/scripts/watch.sh opentdf.yaml ./opentdf start
+          wait-on: |
+            tcp:localhost:8080
+          log-output-if: true
+          wait-for: 90s
+          working-directory: .
+
+      ######## RUN TESTS #############
+      - run: |
+          # Randomly drop db connections to test CLI connectivity for 15 minutes total
+          start_time=$(date +%s)
+          postgresql_container_id=$(docker ps --filter "name=platform-opentdfdb-1" -q)
+
+          resource_subcommands=("attributes" "attributes namespaces" "attributes values" "subject-mappings" "resource-mappings" "kas-registry")
+
+          while true; do
+            docker restart $postgresql_container_id
+            # Randomly wait before running the otdfctl commands (between 1 and 10 seconds)
+            sleep $((RANDOM % 10 + 1))
+            
+            # Determine how many random otdfctl commands to run after the restart
+            num_runs=$((RANDOM % 5 + 1))  # Randomly choose to run between 1 and 5 times
+
+            for ((i=0; i<num_runs; i++)); do
+              random_subcommand=${resource_subcommands[$RANDOM % ${#resource_subcommands[@]}]}
+              
+              # Introduce random delay before each execution (between 1 and 4 seconds)
+              sleep $((RANDOM % 4 + 1))
+              
+              result=$(./otdfctl policy $random_subcommand list --with-client-creds '{"clientId":"opentdf","clientSecret":"secret"}' --host http://localhost:8080 | grep -i "success")
+              
+              if [ -z "$result" ]; then
+                echo "Failure: 'success' not found in output; CLI failed."
+                exit 1
+              fi
+            done
+            # Break if 15 minutes have passed (900 seconds)
+            current_time=$(date +%s)
+            elapsed_time=$((current_time - start_time))
+            
+            if [ $elapsed_time -ge 900 ]; then 
+              break
+            fi
+          done

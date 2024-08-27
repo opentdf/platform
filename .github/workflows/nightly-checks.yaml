@@ -7,7 +7,7 @@ on:
     - cron: '15 0 * * *'
 
 jobs:
-  flakiness-recovery:
+  db-flakiness-recovery:
     runs-on: ubuntu-22.04
     permissions:
       contents: read

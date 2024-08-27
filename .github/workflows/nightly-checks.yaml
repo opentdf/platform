@@ -5,7 +5,6 @@ on:
     - cron: '15 0 * * *'
   pull_request:
 
-
 jobs:
   otdfctl:
     runs-on: ubuntu-22.04
@@ -25,18 +24,10 @@ jobs:
             protocol/go/go.sum
             sdk/go.sum
             service/go.sum
-      
-      ######## CHECKOUT/BUILD 'otdfctl' #############
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
-        with:
-          repository: opentdf/otdfctl
-          ref: main
-          fetch-depth: 0
-      - run: go build -o otdfctl
-      
+
       ######## SPIN UP PLATFORM/BACKEND #############
       - run: |
-          .github/scripts/init-temp-keys.sh
+          ./.github/scripts/init-temp-keys.sh
           cp opentdf-dev.yaml opentdf.yaml
         working-directory: .
       - name: Added Trusted Certs
@@ -63,6 +54,14 @@ jobs:
           log-output-if: true
           wait-for: 90s
           working-directory: .
+
+      ######## CHECKOUT/BUILD 'otdfctl' #############
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+        with:
+          repository: opentdf/otdfctl
+          ref: main
+          fetch-depth: 0
+      - run: go build -o otdfctl
 
       ######## RUN TESTS #############
       - run: |

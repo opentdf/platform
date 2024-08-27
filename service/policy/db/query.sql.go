@@ -62,7 +62,7 @@ func (q *Queries) CreateKeyAccessServer(ctx context.Context, arg CreateKeyAccess
 const createResourceMapping = `-- name: CreateResourceMapping :one
 INSERT INTO resource_mappings (attribute_value_id, terms, metadata, group_id)
 VALUES ($1, $2, $3, $4)
-RETURNING id, JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+RETURNING id
 `
 
 type CreateResourceMappingParams struct {
@@ -72,26 +72,21 @@ type CreateResourceMappingParams struct {
 	GroupID          pgtype.UUID `json:"group_id"`
 }
 
-type CreateResourceMappingRow struct {
-	ID       string `json:"id"`
-	Metadata []byte `json:"metadata"`
-}
-
 // CreateResourceMapping
 //
 //	INSERT INTO resource_mappings (attribute_value_id, terms, metadata, group_id)
 //	VALUES ($1, $2, $3, $4)
-//	RETURNING id, JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-func (q *Queries) CreateResourceMapping(ctx context.Context, arg CreateResourceMappingParams) (CreateResourceMappingRow, error) {
+//	RETURNING id
+func (q *Queries) CreateResourceMapping(ctx context.Context, arg CreateResourceMappingParams) (string, error) {
 	row := q.db.QueryRow(ctx, createResourceMapping,
 		arg.AttributeValueID,
 		arg.Terms,
 		arg.Metadata,
 		arg.GroupID,
 	)
-	var i CreateResourceMappingRow
-	err := row.Scan(&i.ID, &i.Metadata)
-	return i, err
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }
 
 const createResourceMappingGroup = `-- name: CreateResourceMappingGroup :one
@@ -1072,7 +1067,7 @@ func (q *Queries) UpdateKeyAccessServer(ctx context.Context, arg UpdateKeyAccess
 	return id, err
 }
 
-const updateResourceMapping = `-- name: UpdateResourceMapping :one
+const updateResourceMapping = `-- name: UpdateResourceMapping :execrows
 UPDATE resource_mappings
 SET
     attribute_value_id = COALESCE($2, attribute_value_id),
@@ -1080,7 +1075,6 @@ SET
     metadata = COALESCE($4, metadata),
     group_id = COALESCE($5, group_id)
 WHERE id = $1
-RETURNING id
 `
 
 type UpdateResourceMappingParams struct {
@@ -1100,27 +1094,26 @@ type UpdateResourceMappingParams struct {
 //	    metadata = COALESCE($4, metadata),
 //	    group_id = COALESCE($5, group_id)
 //	WHERE id = $1
-//	RETURNING id
-func (q *Queries) UpdateResourceMapping(ctx context.Context, arg UpdateResourceMappingParams) (string, error) {
-	row := q.db.QueryRow(ctx, updateResourceMapping,
+func (q *Queries) UpdateResourceMapping(ctx context.Context, arg UpdateResourceMappingParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateResourceMapping,
 		arg.ID,
 		arg.AttributeValueID,
 		arg.Terms,
 		arg.Metadata,
 		arg.GroupID,
 	)
-	var id string
-	err := row.Scan(&id)
-	return id, err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
-const updateResourceMappingGroup = `-- name: UpdateResourceMappingGroup :one
+const updateResourceMappingGroup = `-- name: UpdateResourceMappingGroup :execrows
 UPDATE resource_mapping_groups
 SET
     namespace_id = COALESCE($2, namespace_id),
     name = COALESCE($3, name)
 WHERE id = $1
-RETURNING id
 `
 
 type UpdateResourceMappingGroupParams struct {
@@ -1136,10 +1129,10 @@ type UpdateResourceMappingGroupParams struct {
 //	    namespace_id = COALESCE($2, namespace_id),
 //	    name = COALESCE($3, name)
 //	WHERE id = $1
-//	RETURNING id
-func (q *Queries) UpdateResourceMappingGroup(ctx context.Context, arg UpdateResourceMappingGroupParams) (string, error) {
-	row := q.db.QueryRow(ctx, updateResourceMappingGroup, arg.ID, arg.NamespaceID, arg.Name)
-	var id string
-	err := row.Scan(&id)
-	return id, err
+func (q *Queries) UpdateResourceMappingGroup(ctx context.Context, arg UpdateResourceMappingGroupParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateResourceMappingGroup, arg.ID, arg.NamespaceID, arg.Name)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

@@ -14,9 +14,7 @@ import (
 )
 
 /*
- Resource Mapping CRUD
-
- NOTE: uses sqlc instead of squirrel
+	Resource Mapping CRUD
 */
 
 func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resourcemapping.ListResourceMappingGroupsRequest) ([]*policy.ResourceMappingGroup, error) {
@@ -60,16 +58,14 @@ func (c PolicyDBClient) CreateResourceMappingGroup(ctx context.Context, r *resou
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	return &policy.ResourceMappingGroup{
-		Id: createdID,
-	}, nil
+	return c.GetResourceMappingGroup(ctx, createdID)
 }
 
 func (c PolicyDBClient) UpdateResourceMappingGroup(ctx context.Context, id string, r *resourcemapping.UpdateResourceMappingGroupRequest) (*policy.ResourceMappingGroup, error) {
 	namespaceID := pgtypeUUIDFromString(r.GetNamespaceId())
 	name := r.GetName()
 
-	updatedID, err := c.Queries.UpdateResourceMappingGroup(ctx, UpdateResourceMappingGroupParams{
+	count, err := c.Queries.UpdateResourceMappingGroup(ctx, UpdateResourceMappingGroupParams{
 		ID:          id,
 		NamespaceID: namespaceID,
 		Name: pgtype.Text{
@@ -80,10 +76,11 @@ func (c PolicyDBClient) UpdateResourceMappingGroup(ctx context.Context, id strin
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
 
-	return &policy.ResourceMappingGroup{
-		Id: updatedID,
-	}, nil
+	return c.GetResourceMappingGroup(ctx, id)
 }
 
 func (c PolicyDBClient) DeleteResourceMappingGroup(ctx context.Context, id string) (*policy.ResourceMappingGroup, error) {
@@ -106,14 +103,14 @@ func (c PolicyDBClient) DeleteResourceMappingGroup(ctx context.Context, id strin
 */
 
 func (c PolicyDBClient) CreateResourceMapping(ctx context.Context, r *resourcemapping.CreateResourceMappingRequest) (*policy.ResourceMapping, error) {
-	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
+	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
 
 	groupID := pgtypeUUIDFromString(r.GetGroupId())
 
-	mapping, err := c.Queries.CreateResourceMapping(ctx, CreateResourceMappingParams{
+	createdID, err := c.Queries.CreateResourceMapping(ctx, CreateResourceMappingParams{
 		AttributeValueID: r.GetAttributeValueId(),
 		Terms:            r.GetTerms(),
 		Metadata:         metadataJSON,
@@ -123,28 +120,7 @@ func (c PolicyDBClient) CreateResourceMapping(ctx context.Context, r *resourcema
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	av, err := c.GetAttributeValue(ctx, r.GetAttributeValueId())
-	if err != nil {
-		c.logger.Error("failed to get attribute value", "id", r.GetAttributeValueId(), "err", err)
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	if err = unmarshalMetadata(mapping.Metadata, metadata, c.logger); err != nil {
-		return nil, err
-	}
-
-	policyRM := &policy.ResourceMapping{
-		Id:             mapping.ID,
-		Metadata:       metadata,
-		AttributeValue: av,
-		Terms:          r.GetTerms(),
-	}
-
-	if r.GetGroupId() != "" {
-		policyRM.Group = &policy.ResourceMappingGroup{Id: r.GetGroupId()}
-	}
-
-	return policyRM, nil
+	return c.GetResourceMapping(ctx, createdID)
 }
 
 func (c PolicyDBClient) GetResourceMapping(ctx context.Context, id string) (*policy.ResourceMapping, error) {
@@ -299,7 +275,7 @@ func (c PolicyDBClient) UpdateResourceMapping(ctx context.Context, id string, r 
 	attrValueID := pgtypeUUIDFromString(r.GetAttributeValueId())
 	groupID := pgtypeUUIDFromString(r.GetGroupId())
 
-	updatedID, err := c.Queries.UpdateResourceMapping(ctx, UpdateResourceMappingParams{
+	count, err := c.Queries.UpdateResourceMapping(ctx, UpdateResourceMappingParams{
 		ID:               id,
 		AttributeValueID: attrValueID,
 		Terms:            r.GetTerms(),
@@ -309,10 +285,11 @@ func (c PolicyDBClient) UpdateResourceMapping(ctx context.Context, id string, r 
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
 
-	return &policy.ResourceMapping{
-		Id: updatedID,
-	}, nil
+	return c.GetResourceMapping(ctx, id)
 }
 
 func (c PolicyDBClient) DeleteResourceMapping(ctx context.Context, id string) (*policy.ResourceMapping, error) {

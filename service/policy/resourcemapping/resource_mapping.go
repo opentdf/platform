@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
@@ -75,13 +76,15 @@ func (s ResourceMappingService) CreateResourceMappingGroup(ctx context.Context, 
 func (s ResourceMappingService) UpdateResourceMappingGroup(ctx context.Context, req *resourcemapping.UpdateResourceMappingGroupRequest) (*resourcemapping.UpdateResourceMappingGroupResponse, error) {
 	id := req.GetId()
 
-	rmGroup, err := s.dbClient.UpdateResourceMappingGroup(ctx, id, req)
+	_, err := s.dbClient.UpdateResourceMappingGroup(ctx, id, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", id), slog.String("resourceMappingGroup", req.String()))
 	}
 
 	return &resourcemapping.UpdateResourceMappingGroupResponse{
-		ResourceMappingGroup: rmGroup,
+		ResourceMappingGroup: &policy.ResourceMappingGroup{
+			Id: id,
+		},
 	}, nil
 }
 
@@ -182,22 +185,13 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
 
-	item, err := s.dbClient.UpdateResourceMapping(
-		ctx,
-		resourceMappingID,
-		req,
-	)
+	updatedRM, err := s.dbClient.UpdateResourceMapping(ctx, resourceMappingID, req)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("resourceMapping", req.String()))
-	}
-
-	// UpdateResourceMapping only returns the ID of the updated resource mapping
-	// so we need to fetch the updated resource mapping to compute the audit diff
-	updatedRM, err := s.dbClient.GetResourceMapping(ctx, resourceMappingID)
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed,
+			slog.String("id", req.GetId()),
+			slog.String("resourceMapping", req.String()),
+		)
 	}
 
 	auditParams.Original = originalRM
@@ -205,7 +199,9 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &resourcemapping.UpdateResourceMappingResponse{
-		ResourceMapping: item,
+		ResourceMapping: &policy.ResourceMapping{
+			Id: resourceMappingID,
+		},
 	}, nil
 }
 

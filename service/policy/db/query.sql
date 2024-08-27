@@ -249,13 +249,12 @@ INSERT INTO resource_mapping_groups (namespace_id, name)
 VALUES ($1, $2)
 RETURNING id;
 
--- name: UpdateResourceMappingGroup :one
+-- name: UpdateResourceMappingGroup :execrows
 UPDATE resource_mapping_groups
 SET
     namespace_id = COALESCE(sqlc.narg('namespace_id'), namespace_id),
     name = COALESCE(sqlc.narg('name'), name)
-WHERE id = $1
-RETURNING id;
+WHERE id = $1;
 
 -- name: DeleteResourceMappingGroup :execrows
 DELETE FROM resource_mapping_groups WHERE id = $1;
@@ -307,17 +306,16 @@ GROUP BY av.id, m.id;
 -- name: CreateResourceMapping :one
 INSERT INTO resource_mappings (attribute_value_id, terms, metadata, group_id)
 VALUES ($1, $2, $3, $4)
-RETURNING id, JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata;
+RETURNING id;
 
--- name: UpdateResourceMapping :one
+-- name: UpdateResourceMapping :execrows
 UPDATE resource_mappings
 SET
     attribute_value_id = COALESCE(sqlc.narg('attribute_value_id'), attribute_value_id),
     terms = COALESCE(sqlc.narg('terms'), terms),
     metadata = COALESCE(sqlc.narg('metadata'), metadata),
     group_id = COALESCE(sqlc.narg('group_id'), group_id)
-WHERE id = $1
-RETURNING id;
+WHERE id = $1;
 
 -- name: DeleteResourceMapping :execrows
 DELETE FROM resource_mappings WHERE id = $1;

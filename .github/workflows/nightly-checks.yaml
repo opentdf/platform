@@ -64,8 +64,10 @@ jobs:
           path: otdfctl
       - run: go build -o otdfctl
         working-directory: otdfctl
+      - run: cp otdfctl ../
+        working-directory: otdfctl
 
       ######## RUN TESTS #############
       - run: ./.github/scripts/connectivity-test.sh
         name: Flaky Connectivity Test
-        working-directory: otdfctl
+        working-directory: .

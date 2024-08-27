@@ -126,10 +126,11 @@ func (k *KASClient) getNanoTDFRewrapRequest(header string, kasURL string, pubKey
 		return nil, fmt.Errorf("Error marshaling request body: %w", err)
 	}
 
+	now := time.Now()
 	tok, err := jwt.NewBuilder().
 		Claim("requestBody", string(requestBodyJSON)).
-		IssuedAt(time.Now()).
-		Expiration(time.Now().Add(secondsPerMinute * time.Second)).
+		IssuedAt(now).
+		Expiration(now.Add(secondsPerMinute * time.Second)).
 		Build()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create jwt: %w", err)
@@ -254,10 +255,11 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 		return nil, fmt.Errorf("Error marshaling request body: %w", err)
 	}
 
+	now := time.Now()
 	tok, err := jwt.NewBuilder().
 		Claim("requestBody", string(requestBodyJSON)).
-		IssuedAt(time.Now()).
-		Expiration(time.Now().Add(secondsPerMinute * time.Second)).
+		IssuedAt(now).
+		Expiration(now.Add(secondsPerMinute * time.Second)).
 		Build()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create jwt: %w", err)

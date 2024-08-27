@@ -61,9 +61,11 @@ jobs:
           repository: opentdf/otdfctl
           ref: main
           fetch-depth: 0
+          path: otdfctl
       - run: go build -o otdfctl
+        working-directory: otdfctl
 
       ######## RUN TESTS #############
       - run: ./.github/scripts/connectivity-test.sh
         name: Flaky Connectivity Test
-        working-directory: .
+        working-directory: otdfctl

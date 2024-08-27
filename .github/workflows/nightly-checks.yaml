@@ -2,12 +2,11 @@ name: 'Nightly Checks'
 
 on:
   schedule:
+    # Run at 12:15 AM UTC (Scheduled actions are not guaranteed during times of high load like the top of the
+    # hour or 00:00. See discussion: https://github.com/orgs/community/discussions/27130)
     - cron: '15 0 * * *'
-  pull_request:
 
 jobs:
-  ci-checks:
-    uses: opentdf/platform/.github/workflows/checks.yaml@feat/nightly-checks
   flakiness-recovery:
     runs-on: ubuntu-22.04
     permissions:
@@ -73,3 +72,5 @@ jobs:
       - run: ./.github/scripts/connectivity-test.sh
         name: Flaky Connectivity Test
         working-directory: platform
+  ci-checks:
+    uses: opentdf/platform/.github/workflows/checks.yaml@main

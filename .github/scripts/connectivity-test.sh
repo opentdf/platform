@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # Randomly drop db connections to test CLI connectivity for 15 minutes total
 start_time=$(date +%s)
@@ -9,7 +9,7 @@ resource_subcommands=("attributes" "attributes namespaces" "subject-mappings" "r
 while true; do
     # Randomly wait before running the connectivity test (between 1 and 10 seconds)
     sleep $((RANDOM % 10 + 1))
-    
+
     echo "Restarting PostgreSQL container..."
     docker restart $postgresql_container_id
 

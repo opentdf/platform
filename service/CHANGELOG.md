@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.23](https://github.com/opentdf/platform/compare/service/v0.4.22...service/v0.4.23) (2024-08-27)
+
+
+### Bug Fixes
+
+* **core:** Fix flake in nano rewrap ([#1457](https://github.com/opentdf/platform/issues/1457)) ([45b0f90](https://github.com/opentdf/platform/commit/45b0f9000c56d2e76ae35f060eaa6b21ded5deca))
+* **main:** Fix deadlock when registering config with duplicate namespace ([#1462](https://github.com/opentdf/platform/issues/1462)) ([6266998](https://github.com/opentdf/platform/commit/6266998b9c17ba64e3396a3379f0d18548593215)), closes [#1461](https://github.com/opentdf/platform/issues/1461)
+
+## [0.4.22](https://github.com/opentdf/platform/compare/service/v0.4.21...service/v0.4.22) (2024-08-26)
+
+
+### Bug Fixes
+
+* **core:** Don't double encode key fixture ([#1453](https://github.com/opentdf/platform/issues/1453)) ([75f9bb4](https://github.com/opentdf/platform/commit/75f9bb4481eb93fc61954be118d0c16a69be5b94)), closes [#1454](https://github.com/opentdf/platform/issues/1454)
+* remove access token log even on failure ([#1452](https://github.com/opentdf/platform/issues/1452)) ([2add657](https://github.com/opentdf/platform/commit/2add657071a679335be8b41440c782883f28fa52))
+* stopped logging policy binding ([#1451](https://github.com/opentdf/platform/issues/1451)) ([309dafe](https://github.com/opentdf/platform/commit/309dafe0164a2f4d8125d3def0fbb2267d625d2d))
+
 ## [0.4.21](https://github.com/opentdf/platform/compare/service/v0.4.20...service/v0.4.21) (2024-08-23)
 
 

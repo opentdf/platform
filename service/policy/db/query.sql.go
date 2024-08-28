@@ -1028,7 +1028,7 @@ type UpdateNamespaceParams struct {
 	Metadata []byte      `json:"metadata"`
 }
 
-// UpdateNamespace
+// UpdateNamespace: both Safe and Unsafe Updates
 //
 //	UPDATE attribute_namespaces
 //	SET

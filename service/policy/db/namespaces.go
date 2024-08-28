@@ -173,7 +173,6 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 	return c.GetNamespace(ctx, id)
 }
 
-// todo: should be renamed to UnsafeDeactivateNamespace for consistency
 func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
 	attrs, err := c.GetAttributesByNamespace(ctx, id)
 	if err != nil {

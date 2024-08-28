@@ -319,6 +319,7 @@ INSERT INTO attribute_namespaces (name, metadata)
 VALUES (LOWER(@name), @metadata)
 RETURNING id;
 
+-- UpdateNamespace: both Safe and Unsafe Updates
 -- name: UpdateNamespace :execrows
 UPDATE attribute_namespaces
 SET

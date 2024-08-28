@@ -593,6 +593,7 @@ LEFT JOIN
 LEFT JOIN 
     attribute_fqns fqns_on_ns
     ON nskag.namespace_id = fqns_on_ns.namespace_id
+    AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
 WHERE (NULLIF($1, '') IS NULL OR kas.id = $1::uuid)
     AND (NULLIF($2, '') IS NULL OR kas.uri = $2::varchar)
 GROUP BY 
@@ -660,6 +661,7 @@ type ListKeyAccessServerGrantsRow struct {
 //	LEFT JOIN
 //	    attribute_fqns fqns_on_ns
 //	    ON nskag.namespace_id = fqns_on_ns.namespace_id
+//	    AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
 //	WHERE (NULLIF($1, '') IS NULL OR kas.id = $1::uuid)
 //	    AND (NULLIF($2, '') IS NULL OR kas.uri = $2::varchar)
 //	GROUP BY

@@ -59,7 +59,7 @@ func (q *Queries) CreateKeyAccessServer(ctx context.Context, arg CreateKeyAccess
 
 const createNamespace = `-- name: CreateNamespace :one
 INSERT INTO attribute_namespaces (name, metadata)
-VALUES (LOWER($1), $2)
+VALUES ($1, $2)
 RETURNING id
 `
 
@@ -71,7 +71,7 @@ type CreateNamespaceParams struct {
 // CreateNamespace
 //
 //	INSERT INTO attribute_namespaces (name, metadata)
-//	VALUES (LOWER($1), $2)
+//	VALUES ($1, $2)
 //	RETURNING id
 func (q *Queries) CreateNamespace(ctx context.Context, arg CreateNamespaceParams) (string, error) {
 	row := q.db.QueryRow(ctx, createNamespace, arg.Name, arg.Metadata)
@@ -1015,7 +1015,7 @@ func (q *Queries) UpdateKeyAccessServer(ctx context.Context, arg UpdateKeyAccess
 const updateNamespace = `-- name: UpdateNamespace :execrows
 UPDATE attribute_namespaces
 SET
-    name = COALESCE(LOWER($2), name),
+    name = COALESCE($2, name),
     active = COALESCE($3, active),
     metadata = COALESCE($4, metadata)
 WHERE id = $1
@@ -1032,7 +1032,7 @@ type UpdateNamespaceParams struct {
 //
 //	UPDATE attribute_namespaces
 //	SET
-//	    name = COALESCE(LOWER($2), name),
+//	    name = COALESCE($2, name),
 //	    active = COALESCE($3, active),
 //	    metadata = COALESCE($4, metadata)
 //	WHERE id = $1

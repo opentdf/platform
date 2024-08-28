@@ -316,14 +316,14 @@ GROUP BY ns.id, fqns.fqn;
 
 -- name: CreateNamespace :one
 INSERT INTO attribute_namespaces (name, metadata)
-VALUES (LOWER(@name), @metadata)
+VALUES ($1, $2)
 RETURNING id;
 
 -- UpdateNamespace: both Safe and Unsafe Updates
 -- name: UpdateNamespace :execrows
 UPDATE attribute_namespaces
 SET
-    name = COALESCE(LOWER(sqlc.narg('name')), name),
+    name = COALESCE(sqlc.narg('name'), name),
     active = COALESCE(sqlc.narg('active'), active),
     metadata = COALESCE(sqlc.narg('metadata'), metadata)
 WHERE id = $1;

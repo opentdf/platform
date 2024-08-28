@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
@@ -85,13 +86,14 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, state string) ([]*po
 }
 
 func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.CreateNamespaceRequest) (*policy.Namespace, error) {
-	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
+	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
+	name := strings.ToLower(r.GetName())
 
 	createdID, err := c.Queries.CreateNamespace(ctx, CreateNamespaceParams{
-		Name:     r.GetName(),
+		Name:     name,
 		Metadata: metadataJSON,
 	})
 	if err != nil {
@@ -102,12 +104,18 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: createdID})
 	c.logger.Debug("upserted fqn for created namespace", slog.Any("fqn", fqn))
 
-	return c.GetNamespace(ctx, createdID)
+	return &policy.Namespace{
+		Id:       createdID,
+		Name:     name,
+		Active:   &wrapperspb.BoolValue{Value: true},
+		Metadata: metadata,
+		Fqn:      fqn,
+	}, nil
 }
 
 func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *namespaces.UpdateNamespaceRequest) (*policy.Namespace, error) {
 	// if extend we need to merge the metadata
-	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
+	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		n, err := c.GetNamespace(ctx, id)
 		if err != nil {
 			return nil, err
@@ -132,7 +140,10 @@ func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *names
 		return nil, db.ErrNotFound
 	}
 
-	return c.GetNamespace(ctx, id)
+	return &policy.Namespace{
+		Id:       id,
+		Metadata: metadata,
+	}, nil
 }
 
 /*

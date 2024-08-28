@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policydb "github.com/opentdf/platform/service/policy/db"
+	"google.golang.org/protobuf/proto"
 )
 
 type NamespacesService struct { //nolint:revive // NamespacesService is a valid name
@@ -128,8 +129,11 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", namespaceID))
 	}
 
+	updatedNamespaceForAudit := proto.Clone(originalNamespace)
+	proto.Merge(updatedNamespaceForAudit, updatedNamespace)
+
 	auditParams.Original = originalNamespace
-	auditParams.Updated = updatedNamespace
+	auditParams.Updated = updatedNamespaceForAudit
 	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	ns.logger.Debug("updated namespace", slog.String("id", namespaceID))
 

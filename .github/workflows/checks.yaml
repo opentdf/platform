@@ -17,6 +17,7 @@ on:
       - main
     types:
       - checks_requested
+  workflow_call:
 
 jobs:
   go:

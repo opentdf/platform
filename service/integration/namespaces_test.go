@@ -186,6 +186,7 @@ func (s *NamespacesSuite) Test_UpdateNamespace() {
 	s.Require().NoError(err)
 	s.NotNil(updatedWithChange)
 	s.Equal(created.GetId(), updatedWithChange.GetId())
+	s.EqualValues(expectedLabels, updatedWithChange.GetMetadata().GetLabels())
 
 	got, err := s.db.PolicyClient.GetNamespace(s.ctx, created.GetId())
 	s.Require().NoError(err)
@@ -218,6 +219,7 @@ func (s *NamespacesSuite) Test_DeactivateNamespace() {
 	inactive, err := s.db.PolicyClient.DeactivateNamespace(s.ctx, n.GetId())
 	s.Require().NoError(err)
 	s.NotNil(inactive)
+	s.Equal(false, inactive.GetActive().GetValue())
 
 	// Deactivated namespace should not be found on List
 	gotNamespaces, err := s.db.PolicyClient.ListNamespaces(s.ctx, policydb.StateActive)

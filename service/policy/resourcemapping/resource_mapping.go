@@ -195,7 +195,28 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 	}
 
 	auditParams.Original = originalRM
-	auditParams.Updated = updatedRM
+
+	auditUpdatedRM := &policy.ResourceMapping{
+		Id:             originalRM.Id,
+		Metadata:       updatedRM.Metadata,
+		AttributeValue: originalRM.AttributeValue,
+		Terms:          originalRM.Terms,
+		Group:          originalRM.Group,
+	}
+
+	if updatedRM.AttributeValue != nil {
+		auditUpdatedRM.AttributeValue = updatedRM.AttributeValue
+	}
+
+	if updatedRM.Terms != nil {
+		auditUpdatedRM.Terms = updatedRM.Terms
+	}
+
+	if updatedRM.Group != nil {
+		auditUpdatedRM.Group = updatedRM.Group
+	}
+
+	auditParams.Updated = auditUpdatedRM
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &resourcemapping.UpdateResourceMappingResponse{

@@ -47,10 +47,18 @@ func unmarshalAttributeValue(attributeValueJSON []byte, av *policy.Value, logger
 	return nil
 }
 
-func pgtypeUUIDFromString(value string) pgtype.UUID {
-	uuidValue, err := uuid.Parse(value)
+func pgtypeUUID(s string) pgtype.UUID {
+	u, err := uuid.Parse(s)
+
 	return pgtype.UUID{
-		Bytes: [16]byte(uuidValue),
+		Bytes: [16]byte(u),
 		Valid: err == nil,
+	}
+}
+
+func pgtypeText(s string) pgtype.Text {
+	return pgtype.Text{
+		String: s,
+		Valid:  s != "",
 	}
 }

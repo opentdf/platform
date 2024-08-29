@@ -130,12 +130,12 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces
 
 	auditParams.Original = originalNamespace
 	auditParams.Updated = &policy.Namespace{
-		Id:       originalNamespace.Id,
-		Name:     originalNamespace.Name,
-		Active:   originalNamespace.Active,
-		Metadata: updatedNamespace.Metadata,
-		Fqn:      originalNamespace.Fqn,
-		Grants:   originalNamespace.Grants,
+		Id:       originalNamespace.GetId(),
+		Name:     originalNamespace.GetName(),
+		Active:   originalNamespace.GetActive(),
+		Metadata: updatedNamespace.GetMetadata(),
+		Fqn:      originalNamespace.GetFqn(),
+		Grants:   originalNamespace.GetGrants(),
 	}
 
 	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
@@ -173,12 +173,12 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *namesp
 
 	auditParams.Original = originalNamespace
 	auditParams.Updated = &policy.Namespace{
-		Id:       originalNamespace.Id,
-		Name:     originalNamespace.Name,
-		Active:   updatedNamespace.Active,
-		Metadata: originalNamespace.Metadata,
-		Fqn:      originalNamespace.Fqn,
-		Grants:   originalNamespace.Grants,
+		Id:       originalNamespace.GetId(),
+		Name:     originalNamespace.GetName(),
+		Active:   updatedNamespace.GetActive(),
+		Metadata: originalNamespace.GetMetadata(),
+		Fqn:      originalNamespace.GetFqn(),
+		Grants:   originalNamespace.GetGrants(),
 	}
 	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	ns.logger.Debug("soft-deleted namespace", slog.String("id", namespaceID))

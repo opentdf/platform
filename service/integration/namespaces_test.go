@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -159,19 +158,16 @@ func (s *NamespacesSuite) Test_UpdateNamespace() {
 		"update": updatedLabel,
 		"new":    newLabel,
 	}
-	start := time.Now().Add(-time.Second)
 	created, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
 		Name: "updating-namespace.com",
 		Metadata: &common.MetadataMutable{
 			Labels: labels,
 		},
 	})
-	end := time.Now().Add(time.Second)
 	metadata := created.GetMetadata()
-	createdAt := metadata.GetCreatedAt()
-	updatedAt := metadata.GetUpdatedAt()
-	s.True(createdAt.AsTime().After(start))
-	s.True(createdAt.AsTime().Before(end))
+	// only GET returns populated created/updated times
+	s.Nil(metadata.GetCreatedAt())
+	s.Nil(metadata.GetUpdatedAt())
 
 	s.Require().NoError(err)
 	s.NotNil(created)
@@ -196,7 +192,10 @@ func (s *NamespacesSuite) Test_UpdateNamespace() {
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
-	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
+	updatedMetadata := got.GetMetadata()
+	createdTime := metadata.GetCreatedAt().AsTime()
+	updatedTime := updatedMetadata.GetUpdatedAt().AsTime()
+	s.True(createdTime.Before(updatedTime))
 }
 
 func (s *NamespacesSuite) Test_UpdateNamespace_DoesNotExist_ShouldFail() {
@@ -671,16 +670,16 @@ func (s *NamespacesSuite) Test_UnsafeUpdateNamespace() {
 	s.Require().NoError(err)
 	s.NotNil(updated)
 	s.Equal(created.GetId(), updated.GetId())
-	s.True(updated.GetActive().GetValue())
 	s.Equal(after, updated.GetName())
-	createdTime := created.GetMetadata().GetCreatedAt().AsTime()
-	updatedTime := updated.GetMetadata().GetUpdatedAt().AsTime()
-	s.True(createdTime.Before(updatedTime))
 
 	got, err := s.db.PolicyClient.GetNamespace(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal("https://"+after, got.GetFqn())
+	s.True(got.GetActive().GetValue())
+	createdTime := created.GetMetadata().GetCreatedAt().AsTime()
+	updatedTime := got.GetMetadata().GetUpdatedAt().AsTime()
+	s.True(createdTime.Before(updatedTime))
 
 	// should be able to create original name after unsafely updating
 	recreated, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})

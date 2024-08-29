@@ -150,6 +150,8 @@ func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *names
 UNSAFE OPERATIONS
 */
 func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, name string) (*policy.Namespace, error) {
+	name = strings.ToLower(name)
+
 	count, err := c.Queries.UpdateNamespace(ctx, UpdateNamespaceParams{
 		ID: id,
 		Name: pgtype.Text{
@@ -181,7 +183,10 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 		}
 	}
 
-	return c.GetNamespace(ctx, id)
+	return &policy.Namespace{
+		Id:   id,
+		Name: name,
+	}, nil
 }
 
 func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
@@ -216,7 +221,10 @@ func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*po
 		return nil, db.ErrNotFound
 	}
 
-	return c.GetNamespace(ctx, id)
+	return &policy.Namespace{
+		Id:     id,
+		Active: &wrapperspb.BoolValue{Value: false},
+	}, nil
 }
 
 func (c PolicyDBClient) UnsafeReactivateNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
@@ -243,7 +251,10 @@ func (c PolicyDBClient) UnsafeReactivateNamespace(ctx context.Context, id string
 		return nil, db.ErrNotFound
 	}
 
-	return c.GetNamespace(ctx, id)
+	return &policy.Namespace{
+		Id:     id,
+		Active: &wrapperspb.BoolValue{Value: true},
+	}, nil
 }
 
 func (c PolicyDBClient) UnsafeDeleteNamespace(ctx context.Context, existing *policy.Namespace, fqn string) (*policy.Namespace, error) {

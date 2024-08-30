@@ -37,7 +37,6 @@ services:
       KC_FEATURES: "preview,token-exchange"
       KC_HEALTH_ENABLED: "true"
       KC_HTTPS_KEY_STORE_PASSWORD: "password"
-      KC_HTTPS_KEY_STORE_FILE: "/truststore/truststore.jks"
       KC_HTTPS_CERTIFICATE_FILE: "/etc/x509/tls/localhost.crt"
       KC_HTTPS_CERTIFICATE_KEY_FILE: "/etc/x509/tls/localhost.key"
       KC_HTTPS_CLIENT_AUTH: "request"

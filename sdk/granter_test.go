@@ -290,6 +290,9 @@ func TestAttributeValueFromMalformedURL(t *testing.T) {
 		{"invalid prefix 1", "hxxp://e/attr/a/value/1"},
 		{"invalid prefix 2", "e/attr/a/a/value/1"},
 		{"bad encoding", "https://a/attr/emoji/value/%😁"},
+		{"empty name", "http://e/attr//value/0"},
+		{"slash name", "http://e/attr///value/0"},
+		{"slash in name", "http://0/attr/0/0/value/0"},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
 			a, err := NewAttributeValueFQN(tc.u)

@@ -9,7 +9,6 @@ type StartOptions func(StartConfig) StartConfig
 type StartConfig struct {
 	ConfigKey                   string
 	ConfigFile                  string
-	WaitForShutdownSignal       bool
 	PublicRoutes                []string
 	authzDefaultPolicyExtension [][]string
 	extraCoreServices           []serviceregistry.Registration
@@ -36,14 +35,6 @@ func WithConfigFile(file string) StartOptions {
 func WithConfigKey(key string) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.ConfigKey = key
-		return c
-	}
-}
-
-// WithWaitForShutdownSignal option allows the server to wait for a shutdown signal before exiting.
-func WithWaitForShutdownSignal() StartOptions {
-	return func(c StartConfig) StartConfig {
-		c.WaitForShutdownSignal = true
 		return c
 	}
 }

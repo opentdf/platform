@@ -5,9 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/config"
@@ -186,18 +183,9 @@ func Start(f ...StartOptions) error {
 
 	// Start the server
 	logger.Info("starting opentdf")
-	otdf.Start()
-
-	if startConfig.WaitForShutdownSignal {
-		waitForShutdownSignal()
+	if err := otdf.Start(); err != nil {
+		return err
 	}
 
 	return nil
-}
-
-// waitForShutdownSignal blocks until a SIGINT or SIGTERM is received.
-func waitForShutdownSignal() {
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	<-sigs
 }

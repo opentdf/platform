@@ -364,11 +364,14 @@ func newGrpcServer(c Config, a *auth.Authentication, logger *logger.Logger) (*gr
 	return s, nil
 }
 
-func (s OpenTDFServer) Start() {
+func (s OpenTDFServer) Start() error {
 	// // Start Http Server
-	go s.startHTTPServer()
+	err := s.startHTTPServer()
+	if err != nil {
+		return err
+	}
 	// Start In Process Grpc Server
-	go s.startInProcessGrpcServer()
+	return s.startInProcessGrpcServer()
 }
 
 func (s OpenTDFServer) Stop() {
@@ -416,29 +419,46 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 	return conn
 }
 
-func (s OpenTDFServer) startInProcessGrpcServer() {
+func (s OpenTDFServer) startInProcessGrpcServer() error {
 	s.logger.Info("starting in process grpc server")
 	if err := s.GRPCInProcess.srv.Serve(s.GRPCInProcess.ln); err != nil {
 		s.logger.Error("failed to serve in process grpc", slog.String("error", err.Error()))
-		panic(err)
+		return err
 	}
+	return nil
 }
 
-func (s OpenTDFServer) startHTTPServer() {
+func (s OpenTDFServer) startHTTPServer() error {
+	addr := s.HTTPServer.Addr
+	if addr == "" {
+		if s.HTTPServer.TLSConfig != nil {
+			addr = ":https"
+		} else {
+			addr = ":http"
+		}
+	}
+
 	var err error
+
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	defer ln.Close()
 
 	if s.HTTPServer.TLSConfig != nil {
 		s.logger.Info("starting https server", "address", s.HTTPServer.Addr)
-		err = s.HTTPServer.ListenAndServeTLS("", "")
+		err = s.HTTPServer.ServeTLS(ln, "", "")
 	} else {
 		s.logger.Info("starting http server", "address", s.HTTPServer.Addr)
-		err = s.HTTPServer.ListenAndServe()
+		err = s.HTTPServer.Serve(ln)
 	}
 
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		s.logger.Error("failed to serve http", slog.String("error", err.Error()))
-		return
+		return err
 	}
+	return nil
 }
 
 func loadTLSConfig(config TLSConfig) (*tls.Config, error) {

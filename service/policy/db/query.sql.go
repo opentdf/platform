@@ -12,8 +12,7 @@ import (
 )
 
 const assignKeyAccessServerToNamespace = `-- name: AssignKeyAccessServerToNamespace :execrows
-INSERT INTO attribute_namespace_key_access_grants
-(namespace_id, key_access_server_id)
+INSERT INTO attribute_namespace_key_access_grants (namespace_id, key_access_server_id)
 VALUES ($1, $2)
 `
 
@@ -24,8 +23,7 @@ type AssignKeyAccessServerToNamespaceParams struct {
 
 // AssignKeyAccessServerToNamespace
 //
-//	INSERT INTO attribute_namespace_key_access_grants
-//	(namespace_id, key_access_server_id)
+//	INSERT INTO attribute_namespace_key_access_grants (namespace_id, key_access_server_id)
 //	VALUES ($1, $2)
 func (q *Queries) AssignKeyAccessServerToNamespace(ctx context.Context, arg AssignKeyAccessServerToNamespaceParams) (int64, error) {
 	result, err := q.db.Exec(ctx, assignKeyAccessServerToNamespace, arg.NamespaceID, arg.KeyAccessServerID)
@@ -54,6 +52,29 @@ type CreateKeyAccessServerParams struct {
 //	RETURNING id
 func (q *Queries) CreateKeyAccessServer(ctx context.Context, arg CreateKeyAccessServerParams) (string, error) {
 	row := q.db.QueryRow(ctx, createKeyAccessServer, arg.Uri, arg.PublicKey, arg.Metadata)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const createNamespace = `-- name: CreateNamespace :one
+INSERT INTO attribute_namespaces (name, metadata)
+VALUES ($1, $2)
+RETURNING id
+`
+
+type CreateNamespaceParams struct {
+	Name     string `json:"name"`
+	Metadata []byte `json:"metadata"`
+}
+
+// CreateNamespace
+//
+//	INSERT INTO attribute_namespaces (name, metadata)
+//	VALUES ($1, $2)
+//	RETURNING id
+func (q *Queries) CreateNamespace(ctx context.Context, arg CreateNamespaceParams) (string, error) {
+	row := q.db.QueryRow(ctx, createNamespace, arg.Name, arg.Metadata)
 	var id string
 	err := row.Scan(&id)
 	return id, err
@@ -91,6 +112,21 @@ DELETE FROM key_access_servers WHERE id = $1
 //	DELETE FROM key_access_servers WHERE id = $1
 func (q *Queries) DeleteKeyAccessServer(ctx context.Context, id string) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteKeyAccessServer, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteNamespace = `-- name: DeleteNamespace :execrows
+DELETE FROM attribute_namespaces WHERE id = $1
+`
+
+// DeleteNamespace
+//
+//	DELETE FROM attribute_namespaces WHERE id = $1
+func (q *Queries) DeleteNamespace(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteNamespace, id)
 	if err != nil {
 		return 0, err
 	}
@@ -463,9 +499,11 @@ func (q *Queries) GetKeyAccessServer(ctx context.Context, id string) (GetKeyAcce
 }
 
 const getNamespace = `-- name: GetNamespace :one
-
-SELECT ns.id, ns.name, ns.active,
-    attribute_fqns.fqn as fqn,
+SELECT
+    ns.id,
+    ns.name,
+    ns.active,
+    fqns.fqn,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
     JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
         'id', kas.id, 
@@ -475,11 +513,9 @@ SELECT ns.id, ns.name, ns.active,
 FROM attribute_namespaces ns
 LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
 LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
-LEFT JOIN attribute_fqns ON attribute_fqns.namespace_id = ns.id
-WHERE ns.id = $1
-AND attribute_fqns.attribute_id IS NULL AND attribute_fqns.value_id IS NULL
-GROUP BY ns.id, 
-attribute_fqns.fqn
+LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
+WHERE ns.id = $1 AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+GROUP BY ns.id, fqns.fqn
 `
 
 type GetNamespaceRow struct {
@@ -491,12 +527,13 @@ type GetNamespaceRow struct {
 	Grants   []byte      `json:"grants"`
 }
 
-// --------------------------------------------------------------
-// NAMESPACES
-// --------------------------------------------------------------
+// GetNamespace
 //
-//	SELECT ns.id, ns.name, ns.active,
-//	    attribute_fqns.fqn as fqn,
+//	SELECT
+//	    ns.id,
+//	    ns.name,
+//	    ns.active,
+//	    fqns.fqn,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
 //	    JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
 //	        'id', kas.id,
@@ -506,11 +543,9 @@ type GetNamespaceRow struct {
 //	FROM attribute_namespaces ns
 //	LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
 //	LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
-//	LEFT JOIN attribute_fqns ON attribute_fqns.namespace_id = ns.id
-//	WHERE ns.id = $1
-//	AND attribute_fqns.attribute_id IS NULL AND attribute_fqns.value_id IS NULL
-//	GROUP BY ns.id,
-//	attribute_fqns.fqn
+//	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
+//	WHERE ns.id = $1 AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+//	GROUP BY ns.id, fqns.fqn
 func (q *Queries) GetNamespace(ctx context.Context, id string) (GetNamespaceRow, error) {
 	row := q.db.QueryRow(ctx, getNamespace, id)
 	var i GetNamespaceRow
@@ -738,6 +773,66 @@ func (q *Queries) ListKeyAccessServers(ctx context.Context) ([]ListKeyAccessServ
 	return items, nil
 }
 
+const listNamespaces = `-- name: ListNamespaces :many
+
+SELECT
+    ns.id,
+    ns.name,
+    ns.active,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
+    fqns.fqn
+FROM attribute_namespaces ns
+LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
+WHERE ($1::BOOLEAN IS NULL OR ns.active = $1::BOOLEAN)
+`
+
+type ListNamespacesRow struct {
+	ID       string      `json:"id"`
+	Name     string      `json:"name"`
+	Active   bool        `json:"active"`
+	Metadata []byte      `json:"metadata"`
+	Fqn      pgtype.Text `json:"fqn"`
+}
+
+// --------------------------------------------------------------
+// NAMESPACES
+// --------------------------------------------------------------
+//
+//	SELECT
+//	    ns.id,
+//	    ns.name,
+//	    ns.active,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
+//	    fqns.fqn
+//	FROM attribute_namespaces ns
+//	LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
+//	WHERE ($1::BOOLEAN IS NULL OR ns.active = $1::BOOLEAN)
+func (q *Queries) ListNamespaces(ctx context.Context, active pgtype.Bool) ([]ListNamespacesRow, error) {
+	rows, err := q.db.Query(ctx, listNamespaces, active)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListNamespacesRow
+	for rows.Next() {
+		var i ListNamespacesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Active,
+			&i.Metadata,
+			&i.Fqn,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listResourceMappingGroups = `-- name: ListResourceMappingGroups :many
 
 SELECT id, namespace_id, name
@@ -915,6 +1010,43 @@ func (q *Queries) UpdateKeyAccessServer(ctx context.Context, arg UpdateKeyAccess
 	var id string
 	err := row.Scan(&id)
 	return id, err
+}
+
+const updateNamespace = `-- name: UpdateNamespace :execrows
+UPDATE attribute_namespaces
+SET
+    name = COALESCE($2, name),
+    active = COALESCE($3, active),
+    metadata = COALESCE($4, metadata)
+WHERE id = $1
+`
+
+type UpdateNamespaceParams struct {
+	ID       string      `json:"id"`
+	Name     pgtype.Text `json:"name"`
+	Active   pgtype.Bool `json:"active"`
+	Metadata []byte      `json:"metadata"`
+}
+
+// UpdateNamespace: both Safe and Unsafe Updates
+//
+//	UPDATE attribute_namespaces
+//	SET
+//	    name = COALESCE($2, name),
+//	    active = COALESCE($3, active),
+//	    metadata = COALESCE($4, metadata)
+//	WHERE id = $1
+func (q *Queries) UpdateNamespace(ctx context.Context, arg UpdateNamespaceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateNamespace,
+		arg.ID,
+		arg.Name,
+		arg.Active,
+		arg.Metadata,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateResourceMappingGroup = `-- name: UpdateResourceMappingGroup :one

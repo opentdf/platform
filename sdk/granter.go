@@ -27,14 +27,26 @@ const (
 	emptyTerm   = "DEFAULT"
 )
 
-// Represents a which KAS a split with the associated ID should shared with.
+// keySplitStep represents a which KAS a split with the associated ID should be shared with.
 type keySplitStep struct {
 	KAS, SplitID string
 }
 
-// Utility type to represent an FQN for an attribute.
+// AttributeNameFQN is a utility type to represent an FQN for an attribute.
 type AttributeNameFQN struct {
 	url, key string
+}
+
+func attributeURLPartsValid(parts []string) error {
+	for i, part := range parts {
+		if part == "" {
+			return fmt.Errorf("%w: empty url path parts are not allowed", ErrInvalid)
+		} else if i > 1 && // skip first two parts as they will have protocol slashes
+			strings.Contains(part, "/") {
+			return fmt.Errorf("%w: slash not allowed in name or values", ErrInvalid)
+		}
+	}
+	return nil
 }
 
 func NewAttributeNameFQN(u string) (AttributeNameFQN, error) {
@@ -48,6 +60,11 @@ func NewAttributeNameFQN(u string) (AttributeNameFQN, error) {
 	if err != nil {
 		return AttributeNameFQN{}, fmt.Errorf("%w: error in attribute name [%s]", ErrInvalid, m[2])
 	}
+
+	if err := attributeURLPartsValid(m); err != nil {
+		return AttributeNameFQN{}, err
+	}
+
 	return AttributeNameFQN{u, strings.ToLower(u)}, nil
 }
 
@@ -86,7 +103,7 @@ func (a AttributeNameFQN) Name() string {
 	return v
 }
 
-// Utility type to represent an FQN for an attribute value.
+// AttributeValueFQN is a utility type to represent an FQN for an attribute value.
 type AttributeValueFQN struct {
 	url, key string
 }
@@ -105,6 +122,10 @@ func NewAttributeValueFQN(u string) (AttributeValueFQN, error) {
 	_, err = url.PathUnescape(m[3])
 	if err != nil {
 		return AttributeValueFQN{}, fmt.Errorf("%w: error in attribute value [%s]", ErrInvalid, m[3])
+	}
+
+	if err := attributeURLPartsValid(m); err != nil {
+		return AttributeValueFQN{}, err
 	}
 
 	return AttributeValueFQN{u, strings.ToLower(u)}, nil
@@ -351,7 +372,7 @@ func (r granter) plan(defaultKas []string, genSplitID func() string) ([]keySplit
 	k = k.reduce()
 	l := k.Len()
 	if l == 0 {
-		// default behavior: split key accross all default kases
+		// default behavior: split key across all default kases
 		switch len(defaultKas) {
 		case 0:
 			return nil, fmt.Errorf("no default KAS specified; required for grantless plans")

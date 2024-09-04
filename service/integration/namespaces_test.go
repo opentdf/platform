@@ -15,7 +15,6 @@ import (
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	policydb "github.com/opentdf/platform/service/policy/db"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -371,9 +370,9 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_Cascades_List() {
 	}
 
 	for _, tableTest := range tests {
-		s.T().Run(tableTest.name, func(t *testing.T) {
+		s.Run(tableTest.name, func() {
 			found := tableTest.testFunc(tableTest.state)
-			assert.Equal(t, tableTest.isFound, found)
+			s.Equal(tableTest.isFound, found)
 		})
 	}
 }

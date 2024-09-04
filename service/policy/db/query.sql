@@ -258,8 +258,7 @@ SET
     namespace_id = COALESCE(sqlc.narg('namespace_id'), namespace_id),
     name = COALESCE(sqlc.narg('name'), name),
     metadata = COALESCE(sqlc.narg('metadata'), metadata)
-WHERE id = $1
-RETURNING id;
+WHERE id = $1;
 
 -- name: DeleteResourceMappingGroup :execrows
 DELETE FROM resource_mapping_groups WHERE id = $1;
@@ -295,7 +294,7 @@ SELECT
 FROM resource_mappings m
 LEFT JOIN resource_mapping_groups g ON m.group_id = g.id
 LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
-WHERE ns.name = LOWER(@namespace_name) AND g.name = LOWER(@group_name);
+WHERE ns.name = @namespace_name AND g.name = @group_name;
 
 -- name: GetResourceMapping :one
 SELECT

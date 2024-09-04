@@ -1060,7 +1060,7 @@ SELECT
 FROM resource_mappings m
 LEFT JOIN resource_mapping_groups g ON m.group_id = g.id
 LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
-WHERE ns.name = LOWER($1) AND g.name = LOWER($2)
+WHERE ns.name = $1 AND g.name = $2
 `
 
 type ListResourceMappingsByFullyQualifiedGroupParams struct {
@@ -1095,7 +1095,7 @@ type ListResourceMappingsByFullyQualifiedGroupRow struct {
 //	FROM resource_mappings m
 //	LEFT JOIN resource_mapping_groups g ON m.group_id = g.id
 //	LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
-//	WHERE ns.name = LOWER($1) AND g.name = LOWER($2)
+//	WHERE ns.name = $1 AND g.name = $2
 func (q *Queries) ListResourceMappingsByFullyQualifiedGroup(ctx context.Context, arg ListResourceMappingsByFullyQualifiedGroupParams) ([]ListResourceMappingsByFullyQualifiedGroupRow, error) {
 	rows, err := q.db.Query(ctx, listResourceMappingsByFullyQualifiedGroup, arg.NamespaceName, arg.GroupName)
 	if err != nil {
@@ -1270,7 +1270,6 @@ SET
     name = COALESCE($3, name),
     metadata = COALESCE($4, metadata)
 WHERE id = $1
-RETURNING id
 `
 
 type UpdateResourceMappingGroupParams struct {
@@ -1288,7 +1287,6 @@ type UpdateResourceMappingGroupParams struct {
 //	    name = COALESCE($3, name),
 //	    metadata = COALESCE($4, metadata)
 //	WHERE id = $1
-//	RETURNING id
 func (q *Queries) UpdateResourceMappingGroup(ctx context.Context, arg UpdateResourceMappingGroupParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateResourceMappingGroup,
 		arg.ID,

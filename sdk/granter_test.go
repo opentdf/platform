@@ -25,8 +25,10 @@ const (
 	kasUsSA             = "https://si.kas.us/"
 	authority           = "https://virtru.com/"
 	otherAuth           = "https://other.com/"
+	authWithGrants      = "https://hasgrants.com/"
 	specifiedKas        = "https://attr.kas.com/"
 	evenMoreSpecificKas = "https://value.kas.com/"
+	lessSpecificKas 	= "https://namespace.kas.com/"
 )
 
 var (
@@ -57,6 +59,15 @@ var (
 	uns2spk, _   = NewAttributeValueFQN("https://other.com/attr/unspecified/value/specked")
 	spk2uns, _   = NewAttributeValueFQN("https://other.com/attr/specified/value/unspecked")
 	spk2spk, _   = NewAttributeValueFQN("https://other.com/attr/specified/value/specked")
+
+
+	// with namsepace that has grants
+	SPK_UNSPECKED, _ = NewAttributeNameFQN("https://hasgrants.com/attr/unspecified")
+	SPK_SPECKED, _   = NewAttributeNameFQN("https://hasgrants.com/attr/specified")
+	spk2uns2uns, _   = NewAttributeValueFQN("https://hasgrants.com/attr/unspecified/value/unspecked")
+	spk2uns2spk, _   = NewAttributeValueFQN("https://hasgrants.com/attr/unspecified/value/specked")
+	spk2spk2uns, _   = NewAttributeValueFQN("https://hasgrants.com/attr/specified/value/unspecked")
+	spk2spk2spk, _   = NewAttributeValueFQN("https://hasgrants.com/attr/specified/value/specked")
 )
 
 func spongeCase(s string) string {
@@ -109,6 +120,14 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 		Name: "other.com",
 		Fqn:  "https://other.com",
 	}
+	// h := make([]*policy.KeyAccessServer, 1)
+	// h[0] = &policy.KeyAccessServer{Uri: lessSpecificKas}
+	nsThree := policy.Namespace{
+		Id:   "h",
+		Name: "hasgrants.com",
+		Fqn:  "https://hasgrants.com",
+		Grants: []*policy.KeyAccessServer{{Uri: lessSpecificKas}},
+	}
 	switch fqn.key {
 	case CLS.key:
 		return &policy.Attribute{
@@ -149,6 +168,25 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 		return &policy.Attribute{
 			Id:        "UNS",
 			Namespace: &nsTwo,
+			Name:      "unspecified",
+			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Fqn:       fqn.String(),
+		}
+	case SPK_SPECKED.key:
+		g := make([]*policy.KeyAccessServer, 1)
+		g[0] = &policy.KeyAccessServer{Uri: specifiedKas}
+		return &policy.Attribute{
+			Id:        "SPK",
+			Namespace: &nsThree,
+			Name:      "specified",
+			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Fqn:       fqn.String(),
+			Grants:    g,
+		}
+	case SPK_UNSPECKED.key:
+		return &policy.Attribute{
+			Id:        "UNS",
+			Namespace: &nsThree,
 			Name:      "unspecified",
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 			Fqn:       fqn.String(),
@@ -212,6 +250,13 @@ func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 	case SPECKED.key:
 		fallthrough
 	case UNSPECKED.key:
+		if strings.ToLower(fqn.Value()) == "specked" {
+			p.Grants = make([]*policy.KeyAccessServer, 1)
+			p.Grants[0] = &policy.KeyAccessServer{Uri: evenMoreSpecificKas}
+		}
+	case SPK_SPECKED.key:
+		fallthrough
+	case SPK_UNSPECKED.key:
 		if strings.ToLower(fqn.Value()) == "specked" {
 			p.Grants = make([]*policy.KeyAccessServer, 1)
 			p.Grants[0] = &policy.KeyAccessServer{Uri: evenMoreSpecificKas}
@@ -535,6 +580,118 @@ func TestReasonerSpecificity(t *testing.T) {
 		{
 			"uns.uns & spk.spk => spk",
 			[]AttributeValueFQN{uns2spk, uns2uns},
+			[]string{kasUs},
+			[]keySplitStep{{evenMoreSpecificKas, ""}},
+		},
+	} {
+		t.Run(tc.n, func(t *testing.T) {
+			reasoner, err := newGranterFromService(context.Background(), newKasKeyCache(), &mockAttributesClient{}, tc.policy...)
+			require.NoError(t, err)
+			i := 0
+			plan, err := reasoner.plan(tc.defaults, func() string {
+				i++
+				return fmt.Sprintf("%d", i)
+			})
+			require.NoError(t, err)
+			assert.ElementsMatch(t, tc.plan, plan)
+		})
+	}
+}
+
+func TestReasonerSpecificityWithNamespaces(t *testing.T) {
+	for _, tc := range []struct {
+		n        string
+		policy   []AttributeValueFQN
+		defaults []string
+		plan     []keySplitStep
+	}{
+		{
+			"uns.uns.uns => default",
+			[]AttributeValueFQN{uns2uns},
+			[]string{kasUs},
+			[]keySplitStep{{kasUs, ""}},
+		},
+		{
+			"spk.uns.uns => ns.spk",
+			[]AttributeValueFQN{spk2uns2uns},
+			[]string{kasUs},
+			[]keySplitStep{{lessSpecificKas, ""}},
+		},
+		{
+			"spk.uns.spk => value.spk",
+			[]AttributeValueFQN{spk2uns2spk},
+			[]string{kasUs},
+			[]keySplitStep{{evenMoreSpecificKas, ""}},
+		},
+		{
+			"spk.spk.uns => attr.spk",
+			[]AttributeValueFQN{spk2spk2uns},
+			[]string{kasUs},
+			[]keySplitStep{{specifiedKas, ""}},
+		},
+		{
+			"spk.spk.spk => value.spk",
+			[]AttributeValueFQN{spk2spk},
+			[]string{kasUs},
+			[]keySplitStep{{evenMoreSpecificKas, ""}},
+		},
+		{
+			"spk.spk.spk & spk.spk.uns => value.spk || attr.spk",
+			[]AttributeValueFQN{spk2spk2spk, spk2spk2uns},
+			[]string{kasUs},
+			[]keySplitStep{{evenMoreSpecificKas, "1"}, {specifiedKas, "1"}},
+		},
+		{
+			"spk.spk.uns & spk.uns.uns => attr.spk && ns.spk",
+			[]AttributeValueFQN{spk2spk2uns, spk2uns2uns},
+			[]string{kasUs},
+			[]keySplitStep{{specifiedKas, "1"}, {lessSpecificKas, "2"}},
+		},
+		{
+			"spk.spk.uns & spk.spk.spk => value.spk || attr.spk",
+			[]AttributeValueFQN{spk2spk2uns, spk2spk2spk},
+			[]string{kasUs},
+			[]keySplitStep{{evenMoreSpecificKas, "1"}, {specifiedKas, "1"}},
+		},
+		{
+			"spk.uns.uns & spk.spk.uns => attr.spk && ns.spk",
+			[]AttributeValueFQN{spk2uns2uns, spk2spk2uns},
+			[]string{kasUs},
+			[]keySplitStep{{lessSpecificKas, "1"}, {specifiedKas, "2"}},
+		},
+		{
+			"spk.uns.spk & spk.uns.uns => value.spk || ns.spk",
+			[]AttributeValueFQN{spk2uns2spk, spk2uns2uns},
+			[]string{kasUs},
+			[]keySplitStep{{evenMoreSpecificKas, "1"}, {lessSpecificKas, "1"}},
+		},
+		{
+			"spk.uns.uns & spk.uns.spk => value.spk || ns.spk",
+			[]AttributeValueFQN{spk2uns2uns, spk2uns2spk},
+			[]string{kasUs},
+			[]keySplitStep{{evenMoreSpecificKas, "1"}, {lessSpecificKas, "1"}},
+		},
+		{
+			"spk.uns.uns & uns.uns.uns => ns.spk",
+			[]AttributeValueFQN{spk2uns2uns, uns2uns},
+			[]string{kasUs},
+			[]keySplitStep{{lessSpecificKas, ""}},
+		},
+		{
+			"uns.uns.uns & spk.uns.uns => ns.spk",
+			[]AttributeValueFQN{uns2uns, spk2uns2uns},
+			[]string{kasUs},
+			[]keySplitStep{{lessSpecificKas, ""}},
+		},
+		{
+			"spk.uns.spk & uns.uns.uns => value.spk",
+			[]AttributeValueFQN{spk2uns2spk, uns2uns},
+			[]string{kasUs},
+			[]keySplitStep{{evenMoreSpecificKas, ""}},
+		},
+		{
+			"spk.spk.spk & uns.uns.uns => value.spk",
+			[]AttributeValueFQN{spk2spk2spk, uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},

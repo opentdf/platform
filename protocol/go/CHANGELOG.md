@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.15](https://github.com/opentdf/platform/compare/protocol/go/v0.2.14...protocol/go/v0.2.15) (2024-09-04)
+
+
+### Features
+
+* **policy:** 1398 add metadata support to Resource Mapping Groups ([#1412](https://github.com/opentdf/platform/issues/1412)) ([87b7b2f](https://github.com/opentdf/platform/commit/87b7b2ff6f7b39d34823ba926758fba25489c0a6))
+
 ## [0.2.14](https://github.com/opentdf/platform/compare/protocol/go/v0.2.13...protocol/go/v0.2.14) (2024-08-20)
 
 

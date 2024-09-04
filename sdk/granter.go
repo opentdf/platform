@@ -267,7 +267,7 @@ func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as attrib
 			storeKeysToCache(def.GetGrants(), keyCache)
 		}
 		if !valuesGranted && !attributesGranted && def.GetNamespace() != nil {
-			attributesGranted = grants.addAllGrants(fqn, def.GetNamespace().GetGrants(), def)
+			grants.addAllGrants(fqn, def.GetNamespace().GetGrants(), def)
 			storeKeysToCache(def.GetNamespace().GetGrants(), keyCache)
 		}
 	}

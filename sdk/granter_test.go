@@ -28,7 +28,7 @@ const (
 	authWithGrants      = "https://hasgrants.com/"
 	specifiedKas        = "https://attr.kas.com/"
 	evenMoreSpecificKas = "https://value.kas.com/"
-	lessSpecificKas 	= "https://namespace.kas.com/"
+	lessSpecificKas     = "https://namespace.kas.com/"
 )
 
 var (
@@ -60,14 +60,13 @@ var (
 	spk2uns, _   = NewAttributeValueFQN("https://other.com/attr/specified/value/unspecked")
 	spk2spk, _   = NewAttributeValueFQN("https://other.com/attr/specified/value/specked")
 
-
 	// with namsepace that has grants
-	SPK_UNSPECKED, _ = NewAttributeNameFQN("https://hasgrants.com/attr/unspecified")
-	SPK_SPECKED, _   = NewAttributeNameFQN("https://hasgrants.com/attr/specified")
-	spk2uns2uns, _   = NewAttributeValueFQN("https://hasgrants.com/attr/unspecified/value/unspecked")
-	spk2uns2spk, _   = NewAttributeValueFQN("https://hasgrants.com/attr/unspecified/value/specked")
-	spk2spk2uns, _   = NewAttributeValueFQN("https://hasgrants.com/attr/specified/value/unspecked")
-	spk2spk2spk, _   = NewAttributeValueFQN("https://hasgrants.com/attr/specified/value/specked")
+	SPKUNSPECKED, _ = NewAttributeNameFQN("https://hasgrants.com/attr/unspecified")
+	SPKSPECKED, _   = NewAttributeNameFQN("https://hasgrants.com/attr/specified")
+	spk2uns2uns, _  = NewAttributeValueFQN("https://hasgrants.com/attr/unspecified/value/unspecked")
+	spk2uns2spk, _  = NewAttributeValueFQN("https://hasgrants.com/attr/unspecified/value/specked")
+	spk2spk2uns, _  = NewAttributeValueFQN("https://hasgrants.com/attr/specified/value/unspecked")
+	spk2spk2spk, _  = NewAttributeValueFQN("https://hasgrants.com/attr/specified/value/specked")
 )
 
 func spongeCase(s string) string {
@@ -123,9 +122,9 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 	// h := make([]*policy.KeyAccessServer, 1)
 	// h[0] = &policy.KeyAccessServer{Uri: lessSpecificKas}
 	nsThree := policy.Namespace{
-		Id:   "h",
-		Name: "hasgrants.com",
-		Fqn:  "https://hasgrants.com",
+		Id:     "h",
+		Name:   "hasgrants.com",
+		Fqn:    "https://hasgrants.com",
 		Grants: []*policy.KeyAccessServer{{Uri: lessSpecificKas}},
 	}
 	switch fqn.key {
@@ -172,7 +171,7 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 			Fqn:       fqn.String(),
 		}
-	case SPK_SPECKED.key:
+	case SPKSPECKED.key:
 		g := make([]*policy.KeyAccessServer, 1)
 		g[0] = &policy.KeyAccessServer{Uri: specifiedKas}
 		return &policy.Attribute{
@@ -183,7 +182,7 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 			Fqn:       fqn.String(),
 			Grants:    g,
 		}
-	case SPK_UNSPECKED.key:
+	case SPKUNSPECKED.key:
 		return &policy.Attribute{
 			Id:        "UNS",
 			Namespace: &nsThree,
@@ -254,9 +253,9 @@ func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 			p.Grants = make([]*policy.KeyAccessServer, 1)
 			p.Grants[0] = &policy.KeyAccessServer{Uri: evenMoreSpecificKas}
 		}
-	case SPK_SPECKED.key:
+	case SPKSPECKED.key:
 		fallthrough
-	case SPK_UNSPECKED.key:
+	case SPKUNSPECKED.key:
 		if strings.ToLower(fqn.Value()) == "specked" {
 			p.Grants = make([]*policy.KeyAccessServer, 1)
 			p.Grants[0] = &policy.KeyAccessServer{Uri: evenMoreSpecificKas}

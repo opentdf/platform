@@ -1416,7 +1416,7 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_ActiveDef_Inactiv
 
 	// get the attribute by the value fqn for v1
 	retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
-		Fqns: []string{fqnBuilder(ns.GetName(), attr.GetName(), v1.GetValue())},
+		Fqns: []string{fqnBuilder(gotNs.GetName(), attr.GetName(), v1.GetValue())},
 		WithValue: &policy.AttributeValueSelector{
 			WithSubjectMaps: true,
 		},

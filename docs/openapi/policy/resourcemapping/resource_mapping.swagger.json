@@ -173,6 +173,13 @@
                 },
                 "name": {
                   "type": "string"
+                },
+                "metadata": {
+                  "$ref": "#/definitions/commonMetadataMutable",
+                  "title": "Common metadata"
+                },
+                "metadataUpdateBehavior": {
+                  "$ref": "#/definitions/commonMetadataUpdateEnum"
                 }
               }
             }
@@ -718,6 +725,10 @@
         "name": {
           "type": "string",
           "title": "the common name for the group of resource mappings, which must be unique per namespace"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
         }
       },
       "description": "Resource Mapping Groups are namespaced collections of Resource Mappings associated under a common group name."
@@ -858,6 +869,10 @@
         },
         "name": {
           "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadataMutable",
+          "title": "Common metadata"
         }
       }
     },

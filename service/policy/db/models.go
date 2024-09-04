@@ -183,6 +183,7 @@ type ResourceMappingGroup struct {
 	Name      string             `json:"name"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	Metadata  []byte             `json:"metadata"`
 }
 
 // Table to store sets of conditions that logically entitle subject entity representations to attribute values via a subject mapping

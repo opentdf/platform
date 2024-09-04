@@ -10,7 +10,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/util"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 /*
@@ -26,10 +25,16 @@ func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resour
 	resourceMappingGroups := make([]*policy.ResourceMappingGroup, len(list))
 
 	for i, rmGroup := range list {
+		metadata := new(common.Metadata)
+		if err := unmarshalMetadata(rmGroup.Metadata, metadata, c.logger); err != nil {
+			return nil, err
+		}
+
 		resourceMappingGroups[i] = &policy.ResourceMappingGroup{
 			Id:          rmGroup.ID,
 			NamespaceId: rmGroup.NamespaceID,
 			Name:        rmGroup.Name,
+			Metadata:    metadata,
 		}
 	}
 
@@ -42,10 +47,16 @@ func (c PolicyDBClient) GetResourceMappingGroup(ctx context.Context, id string) 
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
+	metadata := new(common.Metadata)
+	if err := unmarshalMetadata(rmGroup.Metadata, metadata, c.logger); err != nil {
+		return nil, err
+	}
+
 	return &policy.ResourceMappingGroup{
 		Id:          rmGroup.ID,
 		NamespaceId: rmGroup.NamespaceID,
 		Name:        rmGroup.Name,
+		Metadata:    metadata,
 	}, nil
 }
 
@@ -53,9 +64,15 @@ func (c PolicyDBClient) CreateResourceMappingGroup(ctx context.Context, r *resou
 	namespaceID := r.GetNamespaceId()
 	name := strings.ToLower(r.GetName())
 
+	metadataBytes, _, err := db.MarshalCreateMetadata(r.GetMetadata())
+	if err != nil {
+		return nil, err
+	}
+
 	createdID, err := c.Queries.CreateResourceMappingGroup(ctx, CreateResourceMappingGroupParams{
 		NamespaceID: namespaceID,
 		Name:        name,
+		Metadata:    metadataBytes,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -72,10 +89,22 @@ func (c PolicyDBClient) UpdateResourceMappingGroup(ctx context.Context, id strin
 	namespaceID := r.GetNamespaceId()
 	name := strings.ToLower(r.GetName())
 
+	metadataBytes, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
+		rmGroup, err := c.GetResourceMappingGroup(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		return rmGroup.GetMetadata(), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	count, err := c.Queries.UpdateResourceMappingGroup(ctx, UpdateResourceMappingGroupParams{
 		ID:          id,
 		NamespaceID: pgtypeUUID(namespaceID),
 		Name:        pgtypeText(name),
+		Metadata:    metadataBytes,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -245,10 +274,8 @@ func (c PolicyDBClient) ListResourceMappingsByGroupFqns(ctx context.Context, fqn
 		mappings := make([]*policy.ResourceMapping, len(rows))
 		for i, row := range rows {
 			metadata := new(common.Metadata)
-			if row.Metadata != nil {
-				if err := protojson.Unmarshal(row.Metadata, metadata); err != nil {
-					return nil, err
-				}
+			if err := unmarshalMetadata(row.Metadata, metadata, c.logger); err != nil {
+				return nil, err
 			}
 
 			mappings[i] = &policy.ResourceMapping{
@@ -259,12 +286,17 @@ func (c PolicyDBClient) ListResourceMappingsByGroupFqns(ctx context.Context, fqn
 			}
 		}
 
+		// all rows will have the same group values, so just use first row for group object population
+		groupMetadata := new(common.Metadata)
+		if err := unmarshalMetadata(rows[0].GroupMetadata, groupMetadata, c.logger); err != nil {
+			return nil, err
+		}
 		mappingsByGroup := &resourcemapping.ResourceMappingsByGroup{
 			Group: &policy.ResourceMappingGroup{
-				// all rows will have the same group values, so we can just use the first row
 				Id:          rows[0].GroupID,
 				NamespaceId: rows[0].GroupNamespaceID,
 				Name:        rows[0].GroupName,
+				Metadata:    groupMetadata,
 			},
 			Mappings: mappings,
 		}

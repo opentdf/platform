@@ -402,16 +402,16 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 	// Lookup KID from nano header
 	kid, err := header.GetKasURL().GetIdentifier()
 	if err != nil {
-		p.Logger.InfoContext(ctx, "nanoTDFRewrap GetIdentifier", "kid", kid, "err", err)
+		p.Logger.DebugContext(ctx, "nanoTDFRewrap GetIdentifier", "kid", kid, "err", err)
 		// legacy nano with KID
 		kid, err = p.lookupKid(ctx, security.AlgorithmECP256R1)
 		if err != nil {
 			p.Logger.ErrorContext(ctx, "failure to find default kid for ec", "err", err)
 			return nil, err400("bad request")
 		}
-		p.Logger.InfoContext(ctx, "nanoTDFRewrap lookupKid", "kid", kid)
+		p.Logger.DebugContext(ctx, "nanoTDFRewrap lookupKid", "kid", kid)
 	}
-	p.Logger.InfoContext(ctx, "nanoTDFRewrap", "kid", kid)
+	p.Logger.DebugContext(ctx, "nanoTDFRewrap", "kid", kid)
 	ecCurve, err := header.ECCurve()
 	if err != nil {
 		return nil, fmt.Errorf("ECCurve failed: %w", err)
@@ -466,22 +466,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		return nil, err403("forbidden")
 	}
 
-	pub, ok := body.PublicKey.(*ecdsa.PublicKey)
-	if !ok {
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-		return nil, fmt.Errorf("failed to extract public key: %w", err)
-	}
-
-	// Convert public key to 65-bytes format
-	pubKeyBytes := make([]byte, 1+len(pub.X.Bytes())+len(pub.Y.Bytes()))
-	pubKeyBytes[0] = 0x4 // ID for uncompressed format
-	if copy(pubKeyBytes[1:33], pub.X.Bytes()) != 32 || copy(pubKeyBytes[33:], pub.Y.Bytes()) != 32 {
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-		return nil, fmt.Errorf("failed to serialize keypair: %v", pub)
-	}
-
 	privateKeyHandle, publicKeyHandle, err := p.CryptoProvider.GenerateEphemeralKasKeys()
-
 	if err != nil {
 		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
 		return nil, fmt.Errorf("failed to generate keypair: %w", err)

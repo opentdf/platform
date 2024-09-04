@@ -21,6 +21,7 @@ func start(cmd *cobra.Command, _ []string) error {
 	configKey, _ := cmd.Flags().GetString(configKeyFlag)
 
 	return server.Start(
+		server.WithWaitForShutdownSignal(),
 		server.WithConfigFile(configFile),
 		server.WithConfigKey(configKey),
 	)

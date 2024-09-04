@@ -263,6 +263,7 @@ func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as attrib
 		// If no more specific grant was found, then add the value grants
 		if !valuesGranted && def != nil {
 			grants.addAllGrants(fqn, def.GetGrants(), def)
+			storeKeysToCache(def.GetGrants(), keyCache)
 		}
 	}
 

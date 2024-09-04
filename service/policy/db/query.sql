@@ -76,6 +76,7 @@ LEFT JOIN
 LEFT JOIN 
     attribute_fqns fqns_on_ns
     ON nskag.namespace_id = fqns_on_ns.namespace_id
+    AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
 WHERE (NULLIF(@kas_id, '') IS NULL OR kas.id = @kas_id::uuid)
     AND (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri::varchar)
 GROUP BY 
@@ -235,25 +236,28 @@ GROUP BY
 ----------------------------------------------------------------
 
 -- name: ListResourceMappingGroups :many
-SELECT id, namespace_id, name
+SELECT id, namespace_id, name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
 FROM resource_mapping_groups
 WHERE (NULLIF(@namespace_id, '') IS NULL OR namespace_id = @namespace_id::uuid);
 
 -- name: GetResourceMappingGroup :one
-SELECT id, namespace_id, name
+SELECT id, namespace_id, name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
 FROM resource_mapping_groups
 WHERE id = $1;
 
 -- name: CreateResourceMappingGroup :one
-INSERT INTO resource_mapping_groups (namespace_id, name)
-VALUES ($1, $2)
+INSERT INTO resource_mapping_groups (namespace_id, name, metadata)
+VALUES ($1, $2, $3)
 RETURNING id;
 
 -- name: UpdateResourceMappingGroup :one
 UPDATE resource_mapping_groups
 SET
     namespace_id = COALESCE(sqlc.narg('namespace_id'), namespace_id),
-    name = COALESCE(sqlc.narg('name'), name)
+    name = COALESCE(sqlc.narg('name'), name),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata)
 WHERE id = $1
 RETURNING id;
 
@@ -274,7 +278,8 @@ SELECT
     -- has issues when using aliases for some reason, even on a varchar field like g.name
     g.id::TEXT as group_id,
     g.namespace_id::TEXT as group_namespace_id,
-    g.name::TEXT as group_name
+    g.name::TEXT as group_name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', g.metadata -> 'labels', 'created_at', g.created_at, 'updated_at', g.updated_at)) as group_metadata
 FROM resource_mappings m
 LEFT JOIN resource_mapping_groups g ON m.group_id = g.id
 LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id

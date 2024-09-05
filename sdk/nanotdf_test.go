@@ -353,7 +353,7 @@ func TestCreateNanoTDF(t *testing.T) {
 			publicKeyFetcher: MockECPublicKeyFetcher{
 				MockPublicKey: validMockPublicKey,
 			},
-			expectedError: errors.New("writeNanoTDFHeader failed:AesGcm.EncryptWithIVAndTagSize failed:invalid auth tag size, expects 12 or 16"),
+			expectedError: errors.New("writeNanoTDFHeader failed:AesGcm.EncryptWithIVAndTagSize failed:invalid auth tag size, must be 12 to 16"),
 		},
 		{
 			name:   "Invalid Curve match P256-P384",

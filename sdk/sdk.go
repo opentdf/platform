@@ -13,8 +13,9 @@ import (
 	"net/url"
 	"regexp"
 
+	connect "connectrpc.com/connect"
 	"github.com/opentdf/platform/lib/ocrypto"
-	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/go/authorization/authorizationconnect"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -64,7 +65,7 @@ type SDK struct {
 	SubjectMapping          subjectmapping.SubjectMappingServiceClient
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
 	Unsafe                  unsafe.UnsafeServiceClient
-	Authorization           authorization.AuthorizationServiceClient
+	Authorization           authorizationconnect.AuthorizationServiceClient
 	EntityResoution         entityresolution.EntityResolutionServiceClient
 	wellknownConfiguration  wellknownconfiguration.WellKnownServiceClient
 }
@@ -167,6 +168,12 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		}
 	}
 
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: cfg.tlsConfig,
+		},
+	}
+
 	return &SDK{
 		config:                  *cfg,
 		kasKeyCache:             newKasKeyCache(),
@@ -179,7 +186,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(platformConn),
 		Unsafe:                  unsafe.NewUnsafeServiceClient(platformConn),
 		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(platformConn),
-		Authorization:           authorization.NewAuthorizationServiceClient(platformConn),
+		Authorization:           authorizationconnect.NewAuthorizationServiceClient(httpClient, platformEndpoint, connect.WithGRPC()),
 		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(platformConn),
 		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(platformConn),
 	}, nil

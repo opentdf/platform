@@ -1,0 +1,121 @@
+{
+  "entity_representations": [
+    {
+      "additional_props": [
+        {
+          "roles": [
+            "uma_protection",
+            "vice_president"
+          ]
+        },
+        {
+          "access": {
+            "configure": false,
+            "manage": false,
+            "view": true
+          },
+          "adminUrl": "",
+          "attributes": {
+            "backchannel.logout.revoke.offline.tokens": "false",
+            "backchannel.logout.session.required": "true",
+            "client.secret.creation.time": "1710873216",
+            "display.on.consent.screen": "false",
+            "oauth2.device.authorization.grant.enabled": "false",
+            "oidc.ciba.grant.enabled": "false"
+          },
+          "authenticationFlowBindingOverrides": {},
+          "authorizationServicesEnabled": true,
+          "baseUrl": "",
+          "bearerOnly": false,
+          "clientAuthenticatorType": "client-secret",
+          "clientId": "opentdf",
+          "consentRequired": false,
+          "defaultClientScopes": [
+            "web-origins",
+            "acr",
+            "profile",
+            "roles",
+            "email"
+          ],
+          "description": "",
+          "directAccessGrantsEnabled": true,
+          "enabled": true,
+          "frontchannelLogout": true,
+          "fullScopeAllowed": true,
+          "id": "485d5e66-23f7-47f6-9d37-3dbf20e493fb",
+          "implicitFlowEnabled": true,
+          "name": "",
+          "nodeReRegistrationTimeout": -1,
+          "notBefore": 0,
+          "optionalClientScopes": [
+            "address",
+            "phone",
+            "offline_access",
+            "microprofile-jwt"
+          ],
+          "protocol": "openid-connect",
+          "protocolMappers": [
+            {
+              "config": {
+                "access.token.claim": "true",
+                "claim.name": "client_id",
+                "id.token.claim": "true",
+                "introspection.token.claim": "true",
+                "jsonType.label": "String",
+                "user.session.note": "client_id"
+              },
+              "consentRequired": false,
+              "id": "296dc3bc-664b-49ce-9868-9a0152fc61e5",
+              "name": "Client ID",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-usersessionmodel-note-mapper"
+            },
+            {
+              "config": {
+                "access.token.claim": "true",
+                "claim.name": "clientHost",
+                "id.token.claim": "true",
+                "introspection.token.claim": "true",
+                "jsonType.label": "String",
+                "user.session.note": "clientHost"
+              },
+              "consentRequired": false,
+              "id": "16e0a65d-fcab-4110-86b1-dacc7e149456",
+              "name": "Client Host",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-usersessionmodel-note-mapper"
+            },
+            {
+              "config": {
+                "access.token.claim": "true",
+                "claim.name": "clientAddress",
+                "id.token.claim": "true",
+                "introspection.token.claim": "true",
+                "jsonType.label": "String",
+                "user.session.note": "clientAddress"
+              },
+              "consentRequired": false,
+              "id": "73d566d3-1ed4-4a69-ae1d-9310f8c815bb",
+              "name": "Client IP Address",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-usersessionmodel-note-mapper"
+            }
+          ],
+          "publicClient": false,
+          "redirectUris": [
+            "/*"
+          ],
+          "rootUrl": "",
+          "secret": "7iocVo2WBLIzPSaZtHZwCLL630L2V7lE",
+          "serviceAccountsEnabled": true,
+          "standardFlowEnabled": true,
+          "surrogateAuthRequired": false,
+          "webOrigins": [
+            "/*"
+          ]
+        }
+      ],
+      "original_id": "1234"
+    }
+  ]
+}

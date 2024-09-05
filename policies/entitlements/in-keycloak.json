@@ -1,0 +1,35 @@
+
+
+
+[additional_props:{fields:{key:\"access\" value:{struct_value:{fields:{key:\"impersonate\" value:{bool_value:false}} fields:{key:\"manage\" value:{bool_value:false}} fields:{key:\"manageGroupMembership\" value:{bool_value:false}} fields:{key:\"mapRoles\" value:{bool_value:false}} fields:{key:\"view\" value:{bool_value:true}}}}} fields:{key:\"attributes\" value:{struct_value:{fields:{key:\"fave_sport\" value:{list_value:{values:{string_value:\"futbol\"}}}} fields:{key:\"superhero_name\" value:{list_value:{values:{string_value:\"thor\"}}}}}}} fields:{key:\"createdTimestamp\" value:{number_value:1.710339863913e+12}} fields:{key:\"disableableCredentialTypes\" value:{list_value:{}}} fields:{key:\"email\" value:{string_value:\"a@a.af\"}} fields:{key:\"emailVerified\" value:{bool_value:true}} fields:{key:\"enabled\" value:{bool_value:true}} fields:{key:\"firstName\" value:{string_value:\"A\"}} fields:{key:\"id\" value:{string_value:\"e3d95832-b539-43b6-b6ac-b9c781e46735\"}} fields:{key:\"lastName\" value:{string_value:\"F\"}} fields:{key:\"requiredActions\" value:{list_value:{}}} fields:{key:\"totp\" value:{bool_value:false}} fields:{key:\"username\" value:{string_value:\"a@a.af\"}}} original_id:\"e1\"]
+
+
+map[entityRepresentations:[
+  map[additionalProps:[
+    map[
+      access:map[
+        impersonate:false
+        manage:false
+        manageGroupMembership:false
+        mapRoles:false
+        view:true
+      ]
+      attributes:map[
+        fave_sport:[futbol]
+        superhero_name:[thor]
+      ]
+      createdTimestamp:1710339863913
+      disableableCredentialTypes:[]
+      email:a@a.af emailVerified:true
+      enabled:true
+      firstName:A
+      id:e3d95832-b539-43b6-b6ac-b9c781e46735
+      lastName:F
+      requiredActions:[]
+      totp:false
+      username:a@a.af
+    ]
+  ] originalId:e1
+  ]
+]
+]

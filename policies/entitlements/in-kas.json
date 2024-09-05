@@ -1,0 +1,280 @@
+{
+  "attribute_mappings": {
+    "https://example.com/attr/attr1/value/value1": {
+      "attribute": {
+        "id": "6a261d68-0899-4e17-bb2f-124abba7c09c",
+        "namespace": {
+          "id": "8f1d8839-2851-4bf4-8bf4-5243dbfe517d",
+          "name": "example.com"
+        },
+        "name": "attr1",
+        "rule": 2,
+        "values": [
+          {
+            "id": "74babca6-016f-4f3e-a99b-4e46ea8d0fd8",
+            "value": "value1",
+            "fqn": "https://example.com/attr/attr1/value/value1",
+            "active": {
+              "value": true
+            }
+          },
+          {
+            "id": "2fe8dea1-3555-498c-afe9-99724f35f3d3",
+            "value": "value2",
+            "active": {
+              "value": true
+            }
+          }
+        ],
+        "active": {
+          "value": true
+        },
+        "metadata": {}
+      },
+      "value": {
+        "id": "74babca6-016f-4f3e-a99b-4e46ea8d0fd8",
+        "value": "value1",
+        "fqn": "https://example.com/attr/attr1/value/value1",
+        "active": {
+          "value": true
+        },
+        "subject_mappings": [
+          {
+            "id": "9d06c757-06b9-4713-8fbd-5ef007b1afe2",
+            "subject_condition_set": {
+              "id": "eaf866c0-327f-4826-846a-5041c3c22f06",
+              "subject_sets": [
+                {
+                  "condition_groups": [
+                    {
+                      "conditions": [
+                        {
+                          "subject_external_field": "fave_sport",
+                          "operator": 1,
+                          "subject_external_values": [
+                            "futbol",
+                            "soccer"
+                          ]
+                        },
+                        {
+                          "subject_external_field": "fave_dessert",
+                          "operator": 2,
+                          "subject_external_values": [
+                            "ice_cream"
+                          ]
+                        }
+                      ],
+                      "boolean_operator": 2
+                    },
+                    {
+                      "conditions": [
+                        {
+                          "subject_external_field": "department",
+                          "operator": 1,
+                          "subject_external_values": [
+                            "engineering"
+                          ]
+                        },
+                        {
+                          "subject_external_field": "role",
+                          "operator": 2,
+                          "subject_external_values": [
+                            "manager",
+                            "director",
+                            "vice_president"
+                          ]
+                        }
+                      ],
+                      "boolean_operator": 1
+                    }
+                  ]
+                }
+              ]
+            },
+            "actions": [
+              {
+                "Value": {
+                  "Standard": 2
+                }
+              },
+              {
+                "Value": {
+                  "Custom": "custom_action_1"
+                }
+              }
+            ]
+          },
+          {
+            "id": "3c623ede-df88-4906-8a78-ebdfacadcd57",
+            "subject_condition_set": {
+              "id": "3c623ede-df88-4906-8a78-ebdfacadcd57",
+              "subject_sets": [
+                {
+                  "condition_groups": [
+                    {
+                      "conditions": [
+                        {
+                          "subject_external_field": "some_field",
+                          "operator": 1,
+                          "subject_external_values": [
+                            "some_value"
+                          ]
+                        }
+                      ],
+                      "boolean_operator": 2
+                    }
+                  ]
+                }
+              ]
+            },
+            "actions": [
+              {
+                "Value": {
+                  "Standard": 1
+                }
+              }
+            ]
+          },
+          {
+            "id": "812fab35-9aa4-4e73-bf22-c96638d58ea4",
+            "subject_condition_set": {
+              "id": "b3903282-06f9-41a4-924a-7b8eb43dffe0",
+              "subject_sets": [
+                {
+                  "condition_groups": [
+                    {
+                      "conditions": [
+                        {
+                          "subject_external_field": "superhero_name",
+                          "operator": 1,
+                          "subject_external_values": [
+                            "thor",
+                            "captain_america"
+                          ]
+                        },
+                        {
+                          "subject_external_field": "superhero_group",
+                          "operator": 1,
+                          "subject_external_values": [
+                            "avengers"
+                          ]
+                        }
+                      ],
+                      "boolean_operator": 1
+                    }
+                  ]
+                }
+              ]
+            },
+            "actions": [
+              {
+                "Value": {
+                  "Standard": 1
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "https://example.com/attr/attr1/value/value2": {
+      "attribute": {
+        "id": "6a261d68-0899-4e17-bb2f-124abba7c09c",
+        "namespace": {
+          "id": "8f1d8839-2851-4bf4-8bf4-5243dbfe517d",
+          "name": "example.com"
+        },
+        "name": "attr1",
+        "rule": 2,
+        "values": [
+          {
+            "id": "74babca6-016f-4f3e-a99b-4e46ea8d0fd8",
+            "value": "value1",
+            "active": {
+              "value": true
+            }
+          },
+          {
+            "id": "2fe8dea1-3555-498c-afe9-99724f35f3d3",
+            "value": "value2",
+            "fqn": "https://example.com/attr/attr1/value/value2",
+            "active": {
+              "value": true
+            }
+          }
+        ],
+        "active": {
+          "value": true
+        },
+        "metadata": {}
+      },
+      "value": {
+        "id": "2fe8dea1-3555-498c-afe9-99724f35f3d3",
+        "value": "value2",
+        "fqn": "https://example.com/attr/attr1/value/value2",
+        "active": {
+          "value": true
+        },
+        "subject_mappings": [
+          {
+            "id": "e6a3f940-e24f-4383-8763-718a1a304948",
+            "subject_condition_set": {
+              "id": "798aacd2-abaf-4623-975e-3bb8ca43e318",
+              "subject_sets": [
+                {
+                  "condition_groups": [
+                    {
+                      "conditions": [
+                        {
+                          "subject_external_field": "department",
+                          "operator": 1,
+                          "subject_external_values": [
+                            "marketing",
+                            "sales"
+                          ]
+                        },
+                        {
+                          "subject_external_field": "role",
+                          "operator": 1,
+                          "subject_external_values": [
+                            "senior_vice_president",
+                            "vice_president",
+                            "director"
+                          ]
+                        }
+                      ],
+                      "boolean_operator": 1
+                    }
+                  ]
+                }
+              ]
+            },
+            "actions": [
+              {
+                "Value": {
+                  "Standard": 2
+                }
+              },
+              {
+                "Value": {
+                  "Standard": 1
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "entity": {
+    "id": "0",
+    "jwt": "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJqOW1hTVRaUDdBMG9qSVFYNkJiOTRIdVlYeW5fdC1RR0VJQjJ1akpheDI4In0.eyJleHAiOjE3MTExMTQ4NDAsImlhdCI6MTcxMTExNDU0MCwianRpIjoiMTA5ZjhkZDctNjczYy00NDI2LThhY2EtOTFkMjVlZjU1NGE3IiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4ODg4L2F1dGgvcmVhbG1zL3RkZiIsInN1YiI6IjQ4ZGU2MzRkLWMyZjAtNDhiZS04NjYxLTM4NTQ3ODMyNDAzNiIsInR5cCI6IkJlYXJlciIsImF6cCI6Im9wZW50ZGYiLCJhY3IiOiIxIiwiYWxsb3dlZC1vcmlnaW5zIjpbIi8qIl0sInJlc291cmNlX2FjY2VzcyI6eyJvcGVudGRmIjp7InJvbGVzIjpbIndyaXRlciJdfX0sInNjb3BlIjoicHJvZmlsZSBlbWFpbCBncm91cHMiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsImNsaWVudEhvc3QiOiIxOTIuMTY4LjY1LjEiLCJncm91cHMiOlsiL2VuZ2luZWVyaW5nIiwiL3Byb2plY3R4Il0sInByZWZlcnJlZF91c2VybmFtZSI6InNlcnZpY2UtYWNjb3VudC1vcGVudGRmIiwiY2xpZW50QWRkcmVzcyI6IjE5Mi4xNjguNjUuMSIsImNsaWVudF9pZCI6Im9wZW50ZGYifQ.FxbPmw92rgIJus6kbqQO5TcFMtut0Y69pBKPqhLXYF5jqHYeo83p5J4CxZ2iUS04tdnw6bpKF-PC6V_M-O_NCEAlBeCLWbsU8ccWM4847tRIML1xRGQELedqUv8KsgDroYQwLpG6J5mf7I5oCEQ4RZR6Njq30BIK0XbvrTkdV3YB4e9l56WIK2j_W5_v4p2L4PzflCsqLkF4d8t8Ggjc3yXV8j_HL1HVDwPIzShNdaZJduT1Bw_j6K9dZqxhTCJEOmie0seZenKySif4ruc5kDdXj-ePpRJYLq_yD_ViVgZWLldjvGwuaqNhKVugctkO14C4OgsHBjUeMHoO6luOTg"
+  },
+  "idp": {
+    "client": "tdf-entity-resolution-service",
+    "legacy": true,
+    "realm": "tdf",
+    "secret": "5Byk7Hh6l0E1hJDZfF8CQbG9vqh2FeIe",
+    "url": "http://localhost:8888"
+  }
+}

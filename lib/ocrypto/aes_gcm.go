@@ -68,7 +68,7 @@ func (aesGcm AesGcm) EncryptWithIVAndTagSize(iv, data []byte, authTagSize int) (
 		return nil, errors.New("invalid nonce size, expects GcmStandardNonceSize")
 	}
 	if authTagSize < 12 || authTagSize > 16 {
-		return nil, errors.New("invalid auth tag size, expects 12 or 16")
+		return nil, errors.New("invalid auth tag size, must be 12 to 16")
 	}
 
 	gcm, err := cipher.NewGCMWithTagSize(aesGcm.block, authTagSize)

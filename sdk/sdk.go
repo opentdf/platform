@@ -51,11 +51,17 @@ func (c Error) Error() string {
 	return string(c)
 }
 
+// ECPublicKeyFetcher is an interface that defines the method to fetch the EC Public Key and KID.
+type ECPublicKeyFetcher interface {
+	GetECPublicKeyKid(kasURL string, opts ...grpc.DialOption) (string, string, error)
+}
+
 type SDK struct {
 	config
 	*kasKeyCache
 	conn                    *grpc.ClientConn
 	dialOptions             []grpc.DialOption
+	ecPublicKeyFetcher      ECPublicKeyFetcher
 	tokenSource             auth.AccessTokenSource
 	Namespaces              namespaces.NamespaceServiceClient
 	Attributes              attributes.AttributesServiceClient
@@ -182,6 +188,13 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(platformConn),
 		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(platformConn),
 	}, nil
+}
+
+// RealECPublicKeyFetcher is the real implementation for fetching the EC Public Key Kid.
+type RealECPublicKeyFetcher struct{}
+
+func (r RealECPublicKeyFetcher) GetECPublicKeyKid(kasURL string, opts ...grpc.DialOption) (string, string, error) {
+	return getECPublicKeyKid(kasURL, opts...)
 }
 
 func SanitizePlatformEndpoint(e string) (string, error) {

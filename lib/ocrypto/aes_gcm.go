@@ -61,10 +61,14 @@ func (aesGcm AesGcm) EncryptWithIV(iv, data []byte) ([]byte, error) {
 }
 
 // EncryptWithIVAndTagSize encrypts data with symmetric key.
+// Tag sizes between 12 and 16 bytes are allowed.
 // NOTE: This method expects gcm standard nonce size(12) of iv.
 func (aesGcm AesGcm) EncryptWithIVAndTagSize(iv, data []byte, authTagSize int) ([]byte, error) {
 	if len(iv) != GcmStandardNonceSize {
 		return nil, errors.New("invalid nonce size, expects GcmStandardNonceSize")
+	}
+	if authTagSize < 12 || authTagSize > 16 {
+		return nil, errors.New("invalid auth tag size, expects 12 or 16")
 	}
 
 	gcm, err := cipher.NewGCMWithTagSize(aesGcm.block, authTagSize)

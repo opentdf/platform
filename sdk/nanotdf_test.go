@@ -266,37 +266,63 @@ func TestGetECPublicKeyKid(t *testing.T) {
 	}
 }
 
+// MockECPublicKeyFetcher is a mock implementation for testing purposes.
+type MockECPublicKeyFetcher struct {
+	MockPublicKey string
+	MockKID       string
+	MockError     error
+}
+
+func (m MockECPublicKeyFetcher) GetECPublicKeyKid(kasURL string, opts ...grpc.DialOption) (string, string, error) {
+	return m.MockPublicKey, m.MockKID, m.MockError
+}
+
 func TestCreateNanoTDF(t *testing.T) {
+	const InvalidMockPublicKey = "-----BEGIN PUBLIC KEY-----\n" +
+		"GARBAGE\n" +
+		"-----END PUBLIC KEY-----\n\n"
+	const ValidMockPublicKey = "-----BEGIN PUBLIC KEY-----\n" +
+		"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEMLUYYICsSIDQJ+XnrAsM3x3jdNf2\n" +
+		"wJhIy/958wUXewDgZ6No/ndUr3G36wDpZHtuYaBXsZoC4jIBxb4+9hALSw==\n" +
+		"-----END PUBLIC KEY-----\n\n"
+	const invalidKID = "012345678901234567890123456789012"
+	keyPairP256, _ := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
+	keyPairP384, _ := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp384r1)
+	keyPairP521, _ := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp521r1)
 	tests := []struct {
-		name          string
-		writer        io.Writer
-		reader        io.Reader
-		config        NanoTDFConfig
-		expectedError error
+		name             string
+		writer           io.Writer
+		reader           io.Reader
+		config           NanoTDFConfig
+		publicKeyFetcher MockECPublicKeyFetcher
+		expectedError    error
 	}{
 		{
-			name:          "Nil writer",
-			writer:        nil,
-			reader:        bytes.NewReader([]byte("test data")),
-			config:        NanoTDFConfig{},
-			expectedError: errors.New("writer is nil"),
+			name:             "Nil writer",
+			writer:           nil,
+			reader:           bytes.NewReader([]byte("test data")),
+			config:           NanoTDFConfig{},
+			publicKeyFetcher: MockECPublicKeyFetcher{},
+			expectedError:    errors.New("writer is nil"),
 		},
 		{
-			name:          "Nil reader",
-			writer:        new(bytes.Buffer),
-			reader:        nil,
-			config:        NanoTDFConfig{},
-			expectedError: errors.New("reader is nil"),
+			name:             "Nil reader",
+			writer:           new(bytes.Buffer),
+			reader:           nil,
+			config:           NanoTDFConfig{},
+			publicKeyFetcher: MockECPublicKeyFetcher{},
+			expectedError:    errors.New("reader is nil"),
 		},
 		{
-			name:          "Empty NanoTDFConfig",
-			writer:        new(bytes.Buffer),
-			reader:        bytes.NewReader([]byte("test data")),
-			config:        NanoTDFConfig{},
-			expectedError: errors.New("config.kasUrl is empty"),
+			name:             "Empty NanoTDFConfig",
+			writer:           new(bytes.Buffer),
+			reader:           bytes.NewReader([]byte("test data")),
+			config:           NanoTDFConfig{},
+			publicKeyFetcher: MockECPublicKeyFetcher{},
+			expectedError:    errors.New("config.kasUrl is empty"),
 		},
 		{
-			name:   "KAS Identifier NanoTDFConfig",
+			name:   "Invalid Public Key",
 			writer: new(bytes.Buffer),
 			reader: bytes.NewReader([]byte("test data")),
 			config: NanoTDFConfig{
@@ -306,13 +332,93 @@ func TestCreateNanoTDF(t *testing.T) {
 					identifier: "e0",
 				},
 			},
-			expectedError: errors.New("getECPublicKey failed:error connecting to grpc service at https://kas.com: grpc: no transport security set (use grpc.WithTransportCredentials(insecure.NewCredentials()) explicitly or set credentials)"),
+			publicKeyFetcher: MockECPublicKeyFetcher{
+				MockPublicKey: InvalidMockPublicKey,
+			},
+			expectedError: errors.New("ocrypto.ECPubKeyFromPem failed: failed to parse PEM formatted public key"),
+		},
+		{
+			name:   "Invalid Tag size P256",
+			writer: new(bytes.Buffer),
+			reader: bytes.NewReader([]byte("test data")),
+			config: NanoTDFConfig{
+				kasURL: ResourceLocator{
+					protocol:   1,
+					body:       "kas.com",
+					identifier: "e0",
+				},
+				cipher:  cipherModeAes256gcm64Bit,
+				keyPair: keyPairP256,
+			},
+			publicKeyFetcher: MockECPublicKeyFetcher{
+				MockPublicKey: ValidMockPublicKey,
+			},
+			expectedError: errors.New("writeNanoTDFHeader failed:AesGcm.EncryptWithIVAndTagSize failed:invalid auth tag size, expects 12 or 16"),
+		},
+		{
+			name:   "Invalid Curve match P256-P384",
+			writer: new(bytes.Buffer),
+			reader: bytes.NewReader([]byte("test data")),
+			config: NanoTDFConfig{
+				kasURL: ResourceLocator{
+					protocol:   1,
+					body:       "kas.com",
+					identifier: "e0",
+				},
+				keyPair: keyPairP384,
+			},
+			publicKeyFetcher: MockECPublicKeyFetcher{
+				MockPublicKey: ValidMockPublicKey,
+			},
+			expectedError: errors.New("writeNanoTDFHeader failed:ocrypto.ComputeECDHKeyFromEC failed:there was a problem deriving a shared ECDH key: crypto/ecdh: private key and public key curves do not match"),
+		},
+		{
+			name:   "Invalid Curve match P256-P521",
+			writer: new(bytes.Buffer),
+			reader: bytes.NewReader([]byte("test data")),
+			config: NanoTDFConfig{
+				kasURL: ResourceLocator{
+					protocol:   1,
+					body:       "kas.com",
+					identifier: "e0",
+				},
+				keyPair: keyPairP521,
+			},
+			publicKeyFetcher: MockECPublicKeyFetcher{
+				MockPublicKey: ValidMockPublicKey,
+			},
+			expectedError: errors.New("writeNanoTDFHeader failed:ocrypto.ComputeECDHKeyFromEC failed:there was a problem deriving a shared ECDH key: crypto/ecdh: private key and public key curves do not match"),
+		},
+		{
+			name:   "Invalid KID size",
+			writer: new(bytes.Buffer),
+			reader: bytes.NewReader([]byte("test data")),
+			config: NanoTDFConfig{
+				kasURL: ResourceLocator{
+					protocol:   1,
+					body:       "kas.com",
+					identifier: invalidKID,
+				},
+				sigCfg: signatureConfig{
+					hasSignature:  false,
+					signatureMode: 0,
+					cipher:        cipherModeAes256gcm96Bit,
+				},
+				keyPair: keyPairP256,
+			},
+			publicKeyFetcher: MockECPublicKeyFetcher{
+				MockPublicKey: ValidMockPublicKey,
+				MockKID:       invalidKID,
+			},
+			expectedError: errors.New("invalid KID: unsupported identifier length: 33"),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var s SDK
+			s := SDK{
+				ecPublicKeyFetcher: tt.publicKeyFetcher,
+			}
 			_, err := s.CreateNanoTDF(tt.writer, tt.reader, tt.config)
 			if err != nil {
 				if tt.expectedError == nil {

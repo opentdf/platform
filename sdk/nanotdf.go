@@ -195,6 +195,7 @@ type policyInfo struct {
 type CipherMode int
 
 const (
+	// cipherModeAes256gcm64Bit unsupported due to tag size less than 12
 	cipherModeAes256gcm64Bit  CipherMode = 0
 	cipherModeAes256gcm96Bit  CipherMode = 1
 	cipherModeAes256gcm104Bit CipherMode = 2
@@ -319,6 +320,7 @@ func getECCKeyLength(curve ocrypto.ECCMode) (uint8, error) {
 
 // auth tag size in bytes for different ciphers
 const (
+	// kCipher64AuthTagSize	unsupported due to tag size less than 12
 	kCipher64AuthTagSize  = 8
 	kCipher96AuthTagSize  = 12
 	kCipher104AuthTagSize = 13
@@ -431,14 +433,14 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	encoded := ocrypto.Base64Encode(symmetricKey)
 	slog.Debug("writeNanoTDFHeader", slog.String("symmetricKey", string(encoded)))
 
-	aesGcm, err := ocrypto.NewAESGcm(symmetricKey)
-	if err != nil {
-		return nil, 0, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
-	}
-
 	tagSize, err := SizeOfAuthTagForCipher(config.sigCfg.cipher)
 	if err != nil {
 		return nil, 0, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
+	}
+
+	aesGcm, err := ocrypto.NewAESGcm(symmetricKey)
+	if err != nil {
+		return nil, 0, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
 	}
 
 	const (
@@ -687,7 +689,7 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	if kasURL == "https://" || kasURL == "http://" {
 		return 0, errors.New("config.kasUrl is empty")
 	}
-	kasPublicKey, kid, err := getECPublicKeyKid(kasURL, s.dialOptions...)
+	kasPublicKey, kid, err := s.ecPublicKeyFetcher.GetECPublicKeyKid(kasURL, s.dialOptions...)
 	if err != nil {
 		return 0, fmt.Errorf("getECPublicKey failed:%w", err)
 	}
@@ -698,6 +700,11 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 
 	// update KAS URL with kid if set
 	if kid != "" && !s.nanoFeatures.noKID {
+		// check length
+		identifierLen := len(kid)
+		if identifierLen > 32 {
+			return 0, fmt.Errorf("invalid KID: unsupported identifier length: %d", identifierLen)
+		}
 		err = config.kasURL.setURLWithIdentifier(kasURL, kid)
 		if err != nil {
 			return 0, fmt.Errorf("getECPublicKey setURLWithIdentifier failed:%w", err)

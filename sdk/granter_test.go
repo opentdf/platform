@@ -521,6 +521,10 @@ func (*mockAttributesClient) GetAttributeValuesByFqns(_ context.Context, req *at
 	}, nil
 }
 
+// Tests titles are written in the form [{attr}.{value}] => [{resulting kas boolean exp}]
+// where the left hand side is the list of attributes passed in and the right
+// is the resulting split steps
+// Ex: grant.nogrant means that the attribute has a grant associated with it and the value does not
 func TestReasonerSpecificity(t *testing.T) {
 	for _, tc := range []struct {
 		n        string
@@ -529,55 +533,55 @@ func TestReasonerSpecificity(t *testing.T) {
 		plan     []keySplitStep
 	}{
 		{
-			"uns.uns => default",
+			"nogrant.nogrant => default",
 			[]AttributeValueFQN{uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{kasUs, ""}},
 		},
 		{
-			"uns.spk => spk",
+			"nogrant.grant => valueSpecificKas",
 			[]AttributeValueFQN{uns2spk},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
-			"spk.uns => spk",
+			"grant.noGrant => attrSpecificKas",
 			[]AttributeValueFQN{spk2uns},
 			[]string{kasUs},
 			[]keySplitStep{{specifiedKas, ""}},
 		},
 		{
-			"spk.spk => value.spk",
+			"grant.grant => valueSpecificKas",
 			[]AttributeValueFQN{spk2spk},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
-			"spk.spk & spk.uns => value.spk || attr.spk",
+			"grant.grant, grant.nogrant => valueSpecificKas || attrSpecificKas",
 			[]AttributeValueFQN{spk2spk, spk2uns},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, "1"}, {specifiedKas, "1"}},
 		},
 		{
-			"spk.uns & spk.spk => value.spk || attr.spk",
+			"grant.nogrant & grant.grant => valueSpecificKas || attrSpecificKas",
 			[]AttributeValueFQN{spk2spk, spk2uns},
 			[]string{kasUs},
 			[]keySplitStep{{specifiedKas, "1"}, {evenMoreSpecificKas, "1"}},
 		},
 		{
-			"uns.spk & uns.uns => spk",
+			"nogrant.grant & nogrant.nogrant => valueSpecificKas",
 			[]AttributeValueFQN{uns2spk, uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
-			"uns.uns & uns.spk => spk",
+			"nogrant.nogrant & nogrant.grant => valueSpecificKas",
 			[]AttributeValueFQN{uns2spk, uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
-			"uns.uns & spk.spk => spk",
+			"nogrant.nogrant & grant.grant => valueSpecificKas",
 			[]AttributeValueFQN{uns2spk, uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
@@ -597,6 +601,13 @@ func TestReasonerSpecificity(t *testing.T) {
 	}
 }
 
+// Tests titles are written in the form [{ns}.{attr}.{value}] => [{resulting kas boolean exp}]
+// where the left hand side is the list of attributes passed in and the right
+// is the resulting split steps
+// When the resulting kas exp has || it means the kases should have the same split step
+// When the resulting kas exp has && it means the kases should have different split steps
+// Ex: grant.grant.nogrant means that both the ns and attribute have
+// a grant associated with them and the value does not
 func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 	for _, tc := range []struct {
 		n        string
@@ -605,91 +616,91 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 		plan     []keySplitStep
 	}{
 		{
-			"uns.uns.uns => default",
+			"nogrant.nogrant.nogrant => default",
 			[]AttributeValueFQN{uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{kasUs, ""}},
 		},
 		{
-			"spk.uns.uns => ns.spk",
+			"grant.nogrant.nogrant => nsSpecificKas",
 			[]AttributeValueFQN{spk2uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{lessSpecificKas, ""}},
 		},
 		{
-			"spk.uns.spk => value.spk",
+			"grant.nogrant.grant => valueSpecificKas",
 			[]AttributeValueFQN{spk2uns2spk},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
-			"spk.spk.uns => attr.spk",
+			"grant.grant.nogrant => attrSpecificKas",
 			[]AttributeValueFQN{spk2spk2uns},
 			[]string{kasUs},
 			[]keySplitStep{{specifiedKas, ""}},
 		},
 		{
-			"spk.spk.spk => value.spk",
+			"grant.grant.grant => valueSpecificKas",
 			[]AttributeValueFQN{spk2spk},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
-			"spk.spk.spk & spk.spk.uns => value.spk || attr.spk",
+			"grant.grant.grant & grant.grant.nogrant => valueSpecificKas || attrSpecificKas",
 			[]AttributeValueFQN{spk2spk2spk, spk2spk2uns},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, "1"}, {specifiedKas, "1"}},
 		},
 		{
-			"spk.spk.uns & spk.uns.uns => attr.spk && ns.spk",
-			[]AttributeValueFQN{spk2spk2uns, spk2uns2uns},
-			[]string{kasUs},
-			[]keySplitStep{{specifiedKas, "1"}, {lessSpecificKas, "2"}},
-		},
-		{
-			"spk.spk.uns & spk.spk.spk => value.spk || attr.spk",
+			"grant.grant.nogrant & grant.grant.grant => valueSpecificKas || attrSpecificKas",
 			[]AttributeValueFQN{spk2spk2uns, spk2spk2spk},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, "1"}, {specifiedKas, "1"}},
 		},
 		{
-			"spk.uns.uns & spk.spk.uns => attr.spk && ns.spk",
+			"grant.grant.nogrant & grant.nogrant.nogrant => attrSpecificKas && nsSpecificKas",
+			[]AttributeValueFQN{spk2spk2uns, spk2uns2uns},
+			[]string{kasUs},
+			[]keySplitStep{{specifiedKas, "1"}, {lessSpecificKas, "2"}},
+		},
+		{
+			"grant.nogrant.nogrant & grant.grant.nogrant => attrSpecificKas && nsSpecificKas",
 			[]AttributeValueFQN{spk2uns2uns, spk2spk2uns},
 			[]string{kasUs},
 			[]keySplitStep{{lessSpecificKas, "1"}, {specifiedKas, "2"}},
 		},
 		{
-			"spk.uns.spk & spk.uns.uns => value.spk || ns.spk",
+			"grant.nogrant.grant & grant.nogrant.nogrant => valueSpecificKas || nsSpecificKas",
 			[]AttributeValueFQN{spk2uns2spk, spk2uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, "1"}, {lessSpecificKas, "1"}},
 		},
 		{
-			"spk.uns.uns & spk.uns.spk => value.spk || ns.spk",
+			"grant.nogrant.nogrant & grant.nogrant.grant => valueSpecificKas || nsSpecificKas",
 			[]AttributeValueFQN{spk2uns2uns, spk2uns2spk},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, "1"}, {lessSpecificKas, "1"}},
 		},
 		{
-			"spk.uns.uns & uns.uns.uns => ns.spk",
+			"grant.nogrant.nogrant & nogrant.nogrant.nogrant => nsSpecificKas",
 			[]AttributeValueFQN{spk2uns2uns, uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{lessSpecificKas, ""}},
 		},
 		{
-			"uns.uns.uns & spk.uns.uns => ns.spk",
+			"nogrant.nogrant.nogrant & grant.nogrant.nogrant => nsSpecificKas",
 			[]AttributeValueFQN{uns2uns, spk2uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{lessSpecificKas, ""}},
 		},
 		{
-			"spk.uns.spk & uns.uns.uns => value.spk",
+			"grant.nogrant.grant & nogrant.nogrant.nogrant => valueSpecificKas",
 			[]AttributeValueFQN{spk2uns2spk, uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
-			"spk.spk.spk & uns.uns.uns => value.spk",
+			"grant.grant.grant & nogrant.nogrant.nogrant => valueSpecificKas",
 			[]AttributeValueFQN{spk2spk2spk, uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},

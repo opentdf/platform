@@ -39,6 +39,7 @@ const (
 	kNanoTDFIvSize                = 3
 	kNanoTDFGMACLength            = 8
 	kNanoTDFMagicStringAndVersion = "L1L"
+	kNanoTDFKIDMaxLength          = 32
 )
 
 /******************************** Header**************************
@@ -689,6 +690,10 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	if kasURL == "https://" || kasURL == "http://" {
 		return 0, errors.New("config.kasUrl is empty")
 	}
+	if s.ecPublicKeyFetcher == nil {
+		// refactored for testability, if not set then use wrapper around getECPublicKeyKid
+		s.ecPublicKeyFetcher = EcPublicKeyFetcher{}
+	}
 	kasPublicKey, kid, err := s.ecPublicKeyFetcher.GetECPublicKeyKid(kasURL, s.dialOptions...)
 	if err != nil {
 		return 0, fmt.Errorf("getECPublicKey failed:%w", err)
@@ -702,7 +707,7 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	if kid != "" && !s.nanoFeatures.noKID {
 		// check length
 		identifierLen := len(kid)
-		if identifierLen > 32 {
+		if identifierLen > kNanoTDFKIDMaxLength {
 			return 0, fmt.Errorf("invalid KID: unsupported identifier length: %d", identifierLen)
 		}
 		err = config.kasURL.setURLWithIdentifier(kasURL, kid)

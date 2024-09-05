@@ -273,19 +273,19 @@ type MockECPublicKeyFetcher struct {
 	MockError     error
 }
 
-func (m MockECPublicKeyFetcher) GetECPublicKeyKid(kasURL string, opts ...grpc.DialOption) (string, string, error) {
+func (m MockECPublicKeyFetcher) GetECPublicKeyKid(_ string, _ ...grpc.DialOption) (string, string, error) {
 	return m.MockPublicKey, m.MockKID, m.MockError
 }
 
 func TestCreateNanoTDF(t *testing.T) {
-	const InvalidMockPublicKey = "-----BEGIN PUBLIC KEY-----\n" +
+	invalidMockPublicKey := "-----BEGIN PUBLIC KEY-----\n" +
 		"GARBAGE\n" +
 		"-----END PUBLIC KEY-----\n\n"
-	const ValidMockPublicKey = "-----BEGIN PUBLIC KEY-----\n" +
+	validMockPublicKey := "-----BEGIN PUBLIC KEY-----\n" +
 		"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEMLUYYICsSIDQJ+XnrAsM3x3jdNf2\n" +
 		"wJhIy/958wUXewDgZ6No/ndUr3G36wDpZHtuYaBXsZoC4jIBxb4+9hALSw==\n" +
 		"-----END PUBLIC KEY-----\n\n"
-	const invalidKID = "012345678901234567890123456789012"
+	invalidKID := "012345678901234567890123456789012"
 	keyPairP256, _ := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
 	keyPairP384, _ := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp384r1)
 	keyPairP521, _ := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp521r1)
@@ -333,7 +333,7 @@ func TestCreateNanoTDF(t *testing.T) {
 				},
 			},
 			publicKeyFetcher: MockECPublicKeyFetcher{
-				MockPublicKey: InvalidMockPublicKey,
+				MockPublicKey: invalidMockPublicKey,
 			},
 			expectedError: errors.New("ocrypto.ECPubKeyFromPem failed: failed to parse PEM formatted public key"),
 		},
@@ -351,7 +351,7 @@ func TestCreateNanoTDF(t *testing.T) {
 				keyPair: keyPairP256,
 			},
 			publicKeyFetcher: MockECPublicKeyFetcher{
-				MockPublicKey: ValidMockPublicKey,
+				MockPublicKey: validMockPublicKey,
 			},
 			expectedError: errors.New("writeNanoTDFHeader failed:AesGcm.EncryptWithIVAndTagSize failed:invalid auth tag size, expects 12 or 16"),
 		},
@@ -368,7 +368,7 @@ func TestCreateNanoTDF(t *testing.T) {
 				keyPair: keyPairP384,
 			},
 			publicKeyFetcher: MockECPublicKeyFetcher{
-				MockPublicKey: ValidMockPublicKey,
+				MockPublicKey: validMockPublicKey,
 			},
 			expectedError: errors.New("writeNanoTDFHeader failed:ocrypto.ComputeECDHKeyFromEC failed:there was a problem deriving a shared ECDH key: crypto/ecdh: private key and public key curves do not match"),
 		},
@@ -385,7 +385,7 @@ func TestCreateNanoTDF(t *testing.T) {
 				keyPair: keyPairP521,
 			},
 			publicKeyFetcher: MockECPublicKeyFetcher{
-				MockPublicKey: ValidMockPublicKey,
+				MockPublicKey: validMockPublicKey,
 			},
 			expectedError: errors.New("writeNanoTDFHeader failed:ocrypto.ComputeECDHKeyFromEC failed:there was a problem deriving a shared ECDH key: crypto/ecdh: private key and public key curves do not match"),
 		},
@@ -407,7 +407,7 @@ func TestCreateNanoTDF(t *testing.T) {
 				keyPair: keyPairP256,
 			},
 			publicKeyFetcher: MockECPublicKeyFetcher{
-				MockPublicKey: ValidMockPublicKey,
+				MockPublicKey: validMockPublicKey,
 				MockKID:       invalidKID,
 			},
 			expectedError: errors.New("invalid KID: unsupported identifier length: 33"),

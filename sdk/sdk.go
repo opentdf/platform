@@ -190,10 +190,10 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}, nil
 }
 
-// RealECPublicKeyFetcher is the real implementation for fetching the EC Public Key Kid.
-type RealECPublicKeyFetcher struct{}
+// EcPublicKeyFetcher is the real implementation for fetching the EC Public Key Kid.
+type EcPublicKeyFetcher struct{}
 
-func (r RealECPublicKeyFetcher) GetECPublicKeyKid(kasURL string, opts ...grpc.DialOption) (string, string, error) {
+func (r EcPublicKeyFetcher) GetECPublicKeyKid(kasURL string, opts ...grpc.DialOption) (string, string, error) {
 	return getECPublicKeyKid(kasURL, opts...)
 }
 

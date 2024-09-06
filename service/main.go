@@ -5,3 +5,7 @@ import "github.com/opentdf/platform/service/cmd"
 func main() {
 	cmd.Execute()
 }
+
+func trigger() {
+	return
+}

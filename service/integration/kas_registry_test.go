@@ -672,6 +672,7 @@ func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {
 			s.Len(g.GetValueGrants(), 1)
 			s.Equal(value.GetId(), g.GetValueGrants()[0].GetId())
 			s.Equal(valueFQN, g.GetValueGrants()[0].GetFqn())
+
 			// should have expected namespace grant
 			s.Len(g.GetNamespaceGrants(), 1)
 			s.Equal(createdNs.GetId(), g.GetNamespaceGrants()[0].GetId())

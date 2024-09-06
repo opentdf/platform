@@ -2,7 +2,10 @@ module github.com/opentdf/platform/sdk
 
 go 1.21
 
+replace github.com/opentdf/platform/protocol/go => ../protocol/go
+
 require (
+	connectrpc.com/connect v1.16.2
 	github.com/google/uuid v1.6.0
 	github.com/gowebpki/jcs v1.0.1
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
@@ -21,7 +24,6 @@ require (
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.33.0-20240221180331-f05a6f4403ce.1 // indirect
-	connectrpc.com/connect v1.16.2 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect

@@ -165,12 +165,11 @@ jobs:
       platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
   otdfctl-test:
-    runs-on: ubuntu-22.04
+    name: otdfctl e2e tests
+    runs-on: ubuntu-latest
     steps:
-      - name: otdfctl e2e tests
-        uses: opentdf/otdfctl/.github/workflows/end-to-end.yaml@feat/e2e-ci
+      - uses: opentdf/otdfctl/e2e@feat/e2e-ci
         with:
-          # test the current platform against 'otdfctl' main
           otdfctl-ref: 'main'
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
 

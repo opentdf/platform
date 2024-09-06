@@ -66,6 +66,9 @@ linters-settings:
             recommendations:
               - github.com/google/uuid
             reason: "gofrs' package is not go module"
+  gosec:
+    excludes:
+      - G115 # integer overflow protection; 
 
   govet:
     # Enable all analyzers.

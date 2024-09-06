@@ -662,7 +662,12 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 // ============================================================================================================
 
 // CreateNanoTDF - reads plain text from the given reader and saves it to the writer, subject to the given options
-func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFConfig) (uint32, error) {
+func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, opts ...NanoTDFOption) (uint32, error) {
+	config, err := newNanoTDFConfig(opts...)
+	if err != nil {
+		return 0, fmt.Errorf("NanoTDFOption failed: %w", err)
+	}
+
 	if writer == nil {
 		return 0, fmt.Errorf("writer is nil")
 	}
@@ -710,7 +715,7 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	}
 
 	// Create nano tdf header
-	key, totalSize, err := writeNanoTDFHeader(writer, config)
+	key, totalSize, err := writeNanoTDFHeader(writer, *config)
 	if err != nil {
 		return 0, fmt.Errorf("writeNanoTDFHeader failed:%w", err)
 	}

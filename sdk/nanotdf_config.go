@@ -29,9 +29,8 @@ type NanoTDFConfig struct {
 
 type NanoTDFOption func(*NanoTDFConfig) error
 
-// NewNanoTDFConfig - Create a new instance of a nanoTDF config
-func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
-	// TODO FIXME - how to pass in mode value and use here before 'c' is initialized?
+// newNanoTDFConfig - Create a new instance of a nanoTDF config
+func newNanoTDFConfig(opt ...NanoTDFOption) (*NanoTDFConfig, error) {
 	newECKeyPair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
@@ -52,41 +51,33 @@ func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
 		},
 	}
 
+	for _, o := range opt {
+		err := o(c)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return c, nil
 }
 
-// SetKasURL - set the URL of the KAS endpoint to be used for this nanoTDF
-func (config *NanoTDFConfig) SetKasURL(url string) error {
-	return config.kasURL.setURL(url)
-}
-
-// SetAttributes - set the attributes to be used for this nanoTDF
-func (config *NanoTDFConfig) SetAttributes(attributes []string) error {
-	config.attributes = make([]AttributeValueFQN, len(attributes))
-	for i, a := range attributes {
-		v, err := NewAttributeValueFQN(a)
-		if err != nil {
-			return err
-		}
-		config.attributes[i] = v
+// WithKasURL - set the URL of the KAS endpoint to be used for this nanoTDF
+func WithKasURL(url string) NanoTDFOption {
+	return func(c *NanoTDFConfig) error {
+		return c.kasURL.setURL(url)
 	}
-	return nil
-}
-
-// EnableECDSAPolicyBinding enable ecdsa policy binding
-func (config *NanoTDFConfig) EnableECDSAPolicyBinding() {
-	config.bindCfg.useEcdsaBinding = true
 }
 
 // WithNanoDataAttributes appends the given data attributes to the bound policy
-func WithNanoDataAttributes(attributes ...string) NanoTDFOption {
+func WithNanoDataAttributes(attributes []string) NanoTDFOption {
 	return func(c *NanoTDFConfig) error {
-		for _, a := range attributes {
+		c.attributes = make([]AttributeValueFQN, len(attributes))
+		for i, a := range attributes {
 			v, err := NewAttributeValueFQN(a)
 			if err != nil {
 				return err
 			}
-			c.attributes = append(c.attributes, v)
+			c.attributes[i] = v
 		}
 		return nil
 	}

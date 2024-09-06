@@ -6,8 +6,7 @@ import (
 
 // TestNanoTDFConfig1 - Create a new config, verify that the config contains valid PEMs for the key pair
 func TestNanoTDFConfig1(t *testing.T) {
-	var s SDK
-	conf, err := s.NewNanoTDFConfig()
+	conf, err := newNanoTDFConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,12 +34,7 @@ func TestNanoTDFConfig2(t *testing.T) {
 		kasURL = "https://test.virtru.com"
 	)
 
-	var s SDK
-	conf, err := s.NewNanoTDFConfig()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = conf.SetKasURL(kasURL)
+	conf, err := newNanoTDFConfig(WithKasURL(kasURL))
 	if err != nil {
 		t.Fatal(err)
 	}

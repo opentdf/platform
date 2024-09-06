@@ -170,7 +170,7 @@ jobs:
     steps:
       - uses: opentdf/otdfctl/e2e@feat/e2e-ci
         with:
-          # should test latest otdfctl 'main' against PR branch
+          # test latest otdfctl 'main' against PR branch
           otdfctl-ref: 'main'
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
 

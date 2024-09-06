@@ -166,13 +166,11 @@ jobs:
 
   otdfctl-test:
     name: otdfctl e2e tests
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: opentdf/otdfctl/.github/workflows/end-to-end.yaml@feat/e2e-ci
-        with:
-          # test the current platform against 'otdfctl' main
-          otdfctl-ref: 'main'
-          platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
+    uses: opentdf/otdfctl/.github/workflows/end-to-end.yaml@feat/e2e-ci
+      with:
+        # test the current platform against 'otdfctl' main
+        otdfctl-ref: 'main'
+        platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
   buflint:
     name: Protocol Buffer Lint and Gencode Up-to-date check

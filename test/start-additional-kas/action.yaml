@@ -7,13 +7,11 @@ description: 'After start-up-with-containers has run, run an additional KAS inst
 
 inputs:
   kas-port:
-    required: false
+    required: true
     description: 'The port for the additional KAS'
-    default: 8282
   kas-name:
-    required: false
+    required: true
     description: 'The name for the additional KAS'
-    default: 'beta'
 
 runs:
   using: 'composite'

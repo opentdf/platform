@@ -168,9 +168,9 @@ jobs:
     name: otdfctl e2e tests
     runs-on: ubuntu-latest
     steps:
-      - uses: opentdf/otdfctl/e2e@fix/e2e-workflow
+      - uses: opentdf/otdfctl/e2e@main
         with:
-          # test latest otdfctl 'main' against PR branch
+          # test latest otdfctl CLI 'main' against PR branch
           otdfctl-ref: 'main'
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
 

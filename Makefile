@@ -58,7 +58,7 @@ proto-generate:
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.openapi.docs.yaml
 
 policy-sql-gen:
-	@which sqlc > /dev/null || { echo echo "sqlc not found, please install it: https://docs.sqlc.dev/en/stable/overview/install.html"; exit 1; }
+	@which sqlc > /dev/null || { echo "sqlc not found, please install it: https://docs.sqlc.dev/en/stable/overview/install.html"; exit 1; }
 	sqlc generate -f service/policy/db/sqlc.yaml
 
 policy-erd-gen:

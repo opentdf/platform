@@ -221,6 +221,7 @@ jobs:
       - integration
       - license
       - platform-xtest
+      - otdfctl-test
     runs-on: ubuntu-22.04
     if: ${{ !cancelled() }}
     steps:

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/sdk"
@@ -59,18 +60,19 @@ func authorizationExamples() error {
 			{AttributeValueFqns: []string{tradeSecretAttributeValueFqn, openAttributeValueFqn}},
 		},
 	})
-
-	decisionRequest := &authorization.GetDecisionsRequest{DecisionRequests: drs}
-	slog.Info(fmt.Sprintf("Submitting decision request: %s", protojson.Format(decisionRequest)))
+	decisionReqMsg := &authorization.GetDecisionsRequest{DecisionRequests: drs}
+	decisionRequest := &connect.Request[authorization.GetDecisionsRequest]{Msg: decisionReqMsg}
+	slog.Info(fmt.Sprintf("Submitting decision request: %s", protojson.Format(decisionReqMsg)))
 	decisionResponse, err := s.Authorization.GetDecisions(context.Background(), decisionRequest)
+	decisionResMsg := decisionResponse.Msg
 	if err != nil {
 		return err
 	}
-	slog.Info(fmt.Sprintf("Received decision response: %s", protojson.Format(decisionResponse)))
+	slog.Info(fmt.Sprintf("Received decision response: %s", protojson.Format(decisionResMsg)))
 
 	// map response back to entity chain id
 	decisionsByEntityChain := make(map[string]*authorization.DecisionResponse)
-	for _, dr := range decisionResponse.DecisionResponses {
+	for _, dr := range decisionResMsg.DecisionResponses {
 		decisionsByEntityChain[dr.EntityChainId] = dr
 	}
 

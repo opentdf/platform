@@ -3,6 +3,7 @@ module github.com/opentdf/platform/service
 go 1.22
 
 require (
+	connectrpc.com/connect v1.16.2
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/Nerzal/gocloak/v13 v13.9.0
 	github.com/bmatcuk/doublestar v1.3.4

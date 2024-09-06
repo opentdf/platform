@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
 )
@@ -49,16 +50,18 @@ func (p *Provider) checkAttributes(ctx context.Context, dataAttrs []Attribute, e
 			},
 		},
 	}
-	dr, err := p.SDK.Authorization.GetDecisionsByToken(ctx, &in)
+	req := &connect.Request[authorization.GetDecisionsByTokenRequest]{Msg: &in}
+	dr, err := p.SDK.Authorization.GetDecisionsByToken(ctx, req)
+	drMsg := dr.Msg
 	if err != nil {
 		p.Logger.ErrorContext(ctx, "Error received from GetDecisionsByToken", "err", err)
 		return false, errors.Join(ErrDecisionUnexpected, err)
 	}
-	if len(dr.GetDecisionResponses()) != 1 {
-		p.Logger.ErrorContext(ctx, ErrDecisionCountUnexpected.Error(), "count", len(dr.GetDecisionResponses()))
+	if len(drMsg.GetDecisionResponses()) != 1 {
+		p.Logger.ErrorContext(ctx, ErrDecisionCountUnexpected.Error(), "count", len(drMsg.GetDecisionResponses()))
 		return false, ErrDecisionCountUnexpected
 	}
-	if dr.GetDecisionResponses()[0].GetDecision() == authorization.DecisionResponse_DECISION_PERMIT {
+	if drMsg.GetDecisionResponses()[0].GetDecision() == authorization.DecisionResponse_DECISION_PERMIT {
 		return true, nil
 	}
 	return false, nil

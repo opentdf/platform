@@ -1,0 +1,67 @@
+name: 'start-up-with-containers'
+
+description: 'Start the OpenTDF Platform with its containerized resources'
+
+inputs:
+  platform-ref:
+    required: false
+    description: 'The ref to check out for the platform'
+    default: 'main'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check out platform
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      with:
+        repository: opentdf/platform
+        # use a distinct path to avoid conflicts
+        path: otdf-test-platform
+        ref: ${{ inputs.platform-ref }}
+    - name: Set up go (platform's go version)
+      id: setup-go
+      uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
+      with:
+        go-version-file: 'platform/service/go.mod'
+        check-latest: false
+        cache-dependency-path: |
+          platform/service/go.sum
+          platform/protocol/go/go.sum
+          platform/sdk/go.sum
+    - name: Provide the platform with keys
+      shell: bash
+      run: |
+        .github/scripts/init-temp-keys.sh
+        cp opentdf-dev.yaml opentdf.yaml
+      working-directory: otdf-test-platform
+    - name: Trust the generated certs
+      shell: bash
+      run: |
+        sudo chmod -R 777 ./keys
+        sudo apt-get install -y ca-certificates
+        sudo cp ./keys/localhost.crt /usr/local/share/ca-certificates
+        sudo update-ca-certificates
+      working-directory: otdf-test-platform
+    - name: Spin up platform's containerized resources
+      shell: bash
+      run: docker compose up -d --wait --wait-timeout 240
+      working-directory: otdf-test-platform
+    - name: Provision realms/clients/users into idP
+      shell: bash
+      run: go run ./service provision keycloak
+      working-directory: otdf-test-platform
+    - name: Provision test fixture policy
+      shell: bash
+      run: go run ./service provision fixtures
+      working-directory: otdf-test-platform
+    - name: Start platform server in background
+      uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
+      with:
+        run: >
+          go build -o opentdf -v service/main.go
+          && .github/scripts/watch.sh opentdf.yaml ./opentdf start
+        wait-on: |
+          tcp:localhost:8080
+        log-output-if: true
+        wait-for: 90s
+        working-directory: otdf-test-platform

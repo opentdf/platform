@@ -1,4 +1,4 @@
-name: "Checks"
+name: 'Checks'
 
 env:
   IS_RELEASE_BRANCH: ${{ startsWith(github.head_ref, 'release-please-') }}
@@ -51,7 +51,7 @@ jobs:
       - if: env.IS_RELEASE_BRANCH == 'true'
         name: prevent depending on unreleased upstream changes
         run: ./.github/scripts/work-init.sh
-      - if:  github.head_ref == format('release-please--branches--main--components--{0}', matrix.directory)
+      - if: github.head_ref == format('release-please--branches--main--components--{0}', matrix.directory)
         name: prevent tagging with replace directives
         run: go mod edit --json | jq -e '.Replace | not'
         working-directory: ${{ matrix.directory }}
@@ -163,16 +163,16 @@ jobs:
     with:
       # use commit instead of ref so we can "go get" specific sdk version
       platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
-  
+
   otdfctl-test:
     name: otdfctl e2e tests
     runs-on: ubuntu-22.04
     steps:
       - uses: opentdf/otdfctl/.github/workflows/end-to-end.yaml@feat/e2e-ci
-      with:
-        # test the current platform against 'otdfctl' main
-        otdfctl-ref: 'main'
-        platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        with:
+          # test the current platform against 'otdfctl' main
+          otdfctl-ref: 'main'
+          platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
   buflint:
     name: Protocol Buffer Lint and Gencode Up-to-date check
@@ -188,7 +188,7 @@ jobs:
       - uses: bufbuild/buf-breaking-action@c57b3d842a5c3f3b454756ef65305a50a587c5ba
         with:
           input: service
-          against: "https://github.com/opentdf/platform.git#branch=main,subdir=service"
+          against: 'https://github.com/opentdf/platform.git#branch=main,subdir=service'
       - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
         with:
           go-version-file: 'service/go.mod'

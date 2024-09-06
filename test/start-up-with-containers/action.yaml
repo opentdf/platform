@@ -22,12 +22,12 @@ runs:
       id: setup-go
       uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
       with:
-        go-version-file: 'platform/service/go.mod'
+        go-version-file: 'otdf-test-platform/service/go.mod'
         check-latest: false
         cache-dependency-path: |
-          platform/service/go.sum
-          platform/protocol/go/go.sum
-          platform/sdk/go.sum
+          otdf-test-platform/service/go.sum
+          otdf-test-platform/protocol/go/go.sum
+          otdf-test-platform/sdk/go.sum
     - name: Provide the platform with keys
       shell: bash
       run: |

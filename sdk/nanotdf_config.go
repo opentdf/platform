@@ -65,10 +65,17 @@ func newNanoTDFConfig(opt ...NanoTDFOption) (*NanoTDFConfig, error) {
 func WithKasURL(url string) NanoTDFOption {
 	return func(c *NanoTDFConfig) error {
 		return c.kasURL.setURL(url)
+	}q
+}
+
+// WithKasURLAndIdentifier - set the URL of the KAS endpoint and the identifier to be used for this nanoTDF
+func WithKasURLAndIdentifier(url string, identifier string) NanoTDFOption {
+	return func(c *NanoTDFConfig) error {
+		return c.kasURL.setURLWithIdentifier(url, identifier)
 	}
 }
 
-// WithNanoDataAttributes appends the given data attributes to the bound policy
+// WithNanoDataAttributes appends the given data attributes to the bound policyq
 func WithNanoDataAttributes(attributes []string) NanoTDFOption {
 	return func(c *NanoTDFConfig) error {
 		c.attributes = make([]AttributeValueFQN, len(attributes))

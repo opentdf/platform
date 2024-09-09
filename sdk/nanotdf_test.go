@@ -191,15 +191,8 @@ func NotTestNanoTDFEncryptFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// TODO - populate config properly
 	var kasURL = "https://kas.virtru.com/kas"
-	var config NanoTDFConfig
-	err = config.kasURL.setURL(kasURL)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	outSize, err := s.CreateNanoTDF(io.Writer(outfile), io.ReadSeeker(infile), config)
+	outSize, err := s.CreateNanoTDF(io.Writer(outfile), io.ReadSeeker(infile), WithKasURL(kasURL))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,15 +220,8 @@ func NotTestCreateNanoTDF(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// TODO - populate config properly
 	var kasURL = "https://kas.virtru.com/kas"
-	var config NanoTDFConfig
-	err = config.kasURL.setURL(kasURL)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = s.CreateNanoTDF(io.Writer(outfile), io.ReadSeeker(infile), config)
+	_, err = s.CreateNanoTDF(io.Writer(outfile), io.ReadSeeker(infile), WithKasURL(kasURL))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -271,41 +257,35 @@ func TestCreateNanoTDF(t *testing.T) {
 		name          string
 		writer        io.Writer
 		reader        io.Reader
-		config        NanoTDFConfig
+		config        []NanoTDFOption
 		expectedError error
 	}{
 		{
 			name:          "Nil writer",
 			writer:        nil,
 			reader:        bytes.NewReader([]byte("test data")),
-			config:        NanoTDFConfig{},
+			config:        nil,
 			expectedError: errors.New("writer is nil"),
 		},
 		{
 			name:          "Nil reader",
 			writer:        new(bytes.Buffer),
 			reader:        nil,
-			config:        NanoTDFConfig{},
+			config:        nil,
 			expectedError: errors.New("reader is nil"),
 		},
 		{
 			name:          "Empty NanoTDFConfig",
 			writer:        new(bytes.Buffer),
 			reader:        bytes.NewReader([]byte("test data")),
-			config:        NanoTDFConfig{},
+			config:        nil,
 			expectedError: errors.New("config.kasUrl is empty"),
 		},
 		{
-			name:   "KAS Identifier NanoTDFConfig",
-			writer: new(bytes.Buffer),
-			reader: bytes.NewReader([]byte("test data")),
-			config: NanoTDFConfig{
-				kasURL: ResourceLocator{
-					protocol:   1,
-					body:       "kas.com",
-					identifier: "e0",
-				},
-			},
+			name:          "KAS Identifier NanoTDFConfig",
+			writer:        new(bytes.Buffer),
+			reader:        bytes.NewReader([]byte("test data")),
+			config:        []NanoTDFOption{WithKasURLAndIdentifier("https://kas.com", "e0")},
 			expectedError: errors.New("getECPublicKey failed:error connecting to grpc service at https://kas.com: grpc: no transport security set (use grpc.WithTransportCredentials(insecure.NewCredentials()) explicitly or set credentials)"),
 		},
 	}
@@ -313,7 +293,7 @@ func TestCreateNanoTDF(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var s SDK
-			_, err := s.CreateNanoTDF(tt.writer, tt.reader, tt.config)
+			_, err := s.CreateNanoTDF(tt.writer, tt.reader, tt.config...)
 			if err != nil {
 				if tt.expectedError == nil {
 					t.Errorf("unexpected error: %v", err)

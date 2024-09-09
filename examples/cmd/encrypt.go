@@ -102,8 +102,8 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		}
 		cmd.Println(string(manifestJSON))
 	} else {
-		_, err = client.CreateNanoTDF(out, in,
-			sdk.WithNanoDataAttributes(dataAttributes),
+		_, err = client.CreateNanoTDFOptions(out, in,
+			sdk.WithNanoDataAttributes(dataAttributes...),
 			sdk.WithECDSAPolicyBinding(),
 			sdk.WithKasURL(fmt.Sprintf("http://%s/kas", platformEndpoint)))
 		if err != nil {

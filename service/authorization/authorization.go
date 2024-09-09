@@ -8,15 +8,17 @@ import (
 	"os"
 	"strings"
 
+	"connectrpc.com/connect"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/go/authorization/authorizationconnect"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -54,6 +56,26 @@ type CustomRego struct {
 	Query string `mapstructure:"query" json:"query" default:"data.opentdf.entitlements.attributes"`
 }
 
+type AuthorizationServiceHandler struct {
+	authorizationconnect.UnimplementedAuthorizationServiceHandler
+	as *AuthorizationService
+}
+
+func (h *AuthorizationServiceHandler) GetDecisions(ctx context.Context, req *connect.Request[authorization.GetDecisionsRequest]) (*connect.Response[authorization.GetDecisionsResponse], error) {
+	res, err := h.as.GetDecisions(ctx, req.Msg)
+	return &connect.Response[authorization.GetDecisionsResponse]{Msg: res}, err
+}
+
+func (h *AuthorizationServiceHandler) GetDecisionsByToken(ctx context.Context, req *connect.Request[authorization.GetDecisionsByTokenRequest]) (*connect.Response[authorization.GetDecisionsByTokenResponse], error) {
+	res, err := h.as.GetDecisionsByToken(ctx, req.Msg)
+	return &connect.Response[authorization.GetDecisionsByTokenResponse]{Msg: res}, err
+}
+
+func (h *AuthorizationServiceHandler) GetEntitlements(ctx context.Context, req *connect.Request[authorization.GetEntitlementsRequest]) (*connect.Response[authorization.GetEntitlementsResponse], error) {
+	res, err := h.as.GetEntitlements(ctx, req.Msg)
+	return &connect.Response[authorization.GetEntitlementsResponse]{Msg: res}, err
+}
+
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		Namespace:   "authorization",
@@ -69,6 +91,8 @@ func NewRegistration() serviceregistry.Registration {
 
 			// default ERS endpoint
 			as := &AuthorizationService{sdk: srp.SDK, logger: logger}
+			newAs := &AuthorizationServiceHandler{as: as}
+			path, handler := authorizationconnect.NewAuthorizationServiceHandler(newAs)
 			if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
 				logger.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
 			}
@@ -132,14 +156,25 @@ func NewRegistration() serviceregistry.Registration {
 			}
 
 			as.config = *authZCfg
+			// mux.Handle(path, handler)
+			// return as, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+			// 	authServer, okAuth := server.(authorization.AuthorizationServiceServer)
+			// 	if !okAuth {
+			// 		return fmt.Errorf("failed to assert server type to authorization.AuthorizationServiceServer")
+			// 	}
 
-			return as, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				authServer, okAuth := server.(authorization.AuthorizationServiceServer)
-				if !okAuth {
-					return fmt.Errorf("failed to assert server type to authorization.AuthorizationServiceServer")
-				}
-				return authorization.RegisterAuthorizationServiceHandlerServer(ctx, mux, authServer)
+			// 	return authorization.RegisterAuthorizationServiceHandlerServer(ctx, mux, authServer)
+			// }
+			return newAs, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+				mux.Handle(path, handler)
+				// authServer, okAuth := server.(authorization.AuthorizationServiceServer)
+				// if !okAuth {
+				// 	return fmt.Errorf("failed to assert server type to authorization.AuthorizationServiceServer")
+				// }
+
+				// return authorization.RegisterAuthorizationServiceHandlerServer(ctx, mux, authServer)
 			}
+			// return as, &AuthorizationServiceHandler{as: as}
 		},
 	}
 }

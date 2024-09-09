@@ -1,0 +1,33 @@
+name: 'start-additional-kas'
+
+# This action relies on the start-up-with-containers action having already run.
+# Things like the working directory and configuration location are controlled by that action as predecessor.
+
+description: 'After start-up-with-containers has run, run an additional KAS instance'
+
+inputs:
+  kas-port:
+    required: true
+    description: 'The port for the additional KAS'
+  kas-name:
+    required: true
+    description: 'The name for the additional KAS'
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
+      name: Start another KAS server in background
+      with:
+        run: >
+          <opentdf.yaml >opentdf-${{ inputs.kas-name }}.yaml yq e '
+            (.server.port = ${{ inputs.kas-port }})
+            | (.mode = ["kas"])
+            | (.sdk_config = {"endpoint":"http://localhost:8080","plaintext":true,"client_id":"opentdf","client_secret":"secret"})
+          '
+          && .github/scripts/watch.sh opentdf-${{ inputs.kas-name }}.yaml ./opentdf --config-file ./opentdf-${{ inputs.kas-name }}.yaml start
+        wait-on: |
+          tcp:localhost:${{ inputs.kas-port }}
+        log-output-if: true
+        wait-for: 90s
+        working-directory: otdf-test-platform

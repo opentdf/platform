@@ -8,6 +8,11 @@ inputs:
     description: 'The ref to check out for the platform'
     default: 'main'
 
+outputs:
+  key-store-dir:
+    description: 'The directory containing the generated keys'
+    value: 'otdf-test-platform'
+
 runs:
   using: 'composite'
   steps:

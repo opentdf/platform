@@ -65,7 +65,7 @@ func newNanoTDFConfig(opt ...NanoTDFOption) (*NanoTDFConfig, error) {
 func WithKasURL(url string) NanoTDFOption {
 	return func(c *NanoTDFConfig) error {
 		return c.kasURL.setURL(url)
-	}q
+	}
 }
 
 // WithKasURLAndIdentifier - set the URL of the KAS endpoint and the identifier to be used for this nanoTDF

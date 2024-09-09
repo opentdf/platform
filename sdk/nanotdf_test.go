@@ -192,7 +192,7 @@ func NotTestNanoTDFEncryptFile(t *testing.T) {
 	}
 
 	var kasURL = "https://kas.virtru.com/kas"
-	outSize, err := s.CreateNanoTDF(io.Writer(outfile), io.ReadSeeker(infile), WithKasURL(kasURL))
+	outSize, err := s.CreateNanoTDFOptions(io.Writer(outfile), io.ReadSeeker(infile), WithKasURL(kasURL))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +221,7 @@ func NotTestCreateNanoTDF(t *testing.T) {
 	}
 
 	var kasURL = "https://kas.virtru.com/kas"
-	_, err = s.CreateNanoTDF(io.Writer(outfile), io.ReadSeeker(infile), WithKasURL(kasURL))
+	_, err = s.CreateNanoTDFOptions(io.Writer(outfile), io.ReadSeeker(infile), WithKasURL(kasURL))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -293,7 +293,7 @@ func TestCreateNanoTDF(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var s SDK
-			_, err := s.CreateNanoTDF(tt.writer, tt.reader, tt.config...)
+			_, err := s.CreateNanoTDFOptions(tt.writer, tt.reader, tt.config...)
 			if err != nil {
 				if tt.expectedError == nil {
 					t.Errorf("unexpected error: %v", err)

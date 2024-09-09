@@ -29,8 +29,12 @@ type NanoTDFConfig struct {
 
 type NanoTDFOption func(*NanoTDFConfig) error
 
-// newNanoTDFConfig - Create a new instance of a nanoTDF config
-func newNanoTDFConfig(opt ...NanoTDFOption) (*NanoTDFConfig, error) {
+// Deprecated: Prefer CreateNanoTDFOptions
+func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
+	return defaultNanoTDFConfig()
+}
+
+func defaultNanoTDFConfig() (*NanoTDFConfig, error) {
 	newECKeyPair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
@@ -50,6 +54,15 @@ func newNanoTDFConfig(opt ...NanoTDFOption) (*NanoTDFConfig, error) {
 			cipher:        cipherModeAes256gcm96Bit,
 		},
 	}
+	return c, nil
+}
+
+// newNanoTDFConfig - Create a new instance of a nanoTDF config
+func newNanoTDFConfig(opt ...NanoTDFOption) (*NanoTDFConfig, error) {
+	c, err := defaultNanoTDFConfig()
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
+	}
 
 	for _, o := range opt {
 		err := o(c)
@@ -59,6 +72,32 @@ func newNanoTDFConfig(opt ...NanoTDFOption) (*NanoTDFConfig, error) {
 	}
 
 	return c, nil
+}
+
+// SetKasURL - set the default URL of the KAS endpoint to be used for this nanoTDF
+// Deprecated: Use WithKasURL
+func (config *NanoTDFConfig) SetKasURL(url string) error {
+	return config.kasURL.setURL(url)
+}
+
+// SetAttributes - set the attributes to be used for this nanoTDF
+// Deprecated: Use WithDataAttributes
+func (config *NanoTDFConfig) SetAttributes(attributes []string) error {
+	config.attributes = make([]AttributeValueFQN, len(attributes))
+	for i, a := range attributes {
+		v, err := NewAttributeValueFQN(a)
+		if err != nil {
+			return err
+		}
+		config.attributes[i] = v
+	}
+	return nil
+}
+
+// EnableECDSAPolicyBinding enable ecdsa policy binding
+// Deprecated: Use WithECDSAPolicyBinding
+func (config *NanoTDFConfig) EnableECDSAPolicyBinding() {
+	config.bindCfg.useEcdsaBinding = true
 }
 
 // WithKasURL - set the URL of the KAS endpoint to be used for this nanoTDF
@@ -76,15 +115,14 @@ func WithKasURLAndIdentifier(url string, identifier string) NanoTDFOption {
 }
 
 // WithNanoDataAttributes appends the given data attributes to the bound policyq
-func WithNanoDataAttributes(attributes []string) NanoTDFOption {
+func WithNanoDataAttributes(attributes ...string) NanoTDFOption {
 	return func(c *NanoTDFConfig) error {
-		c.attributes = make([]AttributeValueFQN, len(attributes))
-		for i, a := range attributes {
+		for _, a := range attributes {
 			v, err := NewAttributeValueFQN(a)
 			if err != nil {
 				return err
 			}
-			c.attributes[i] = v
+			c.attributes = append(c.attributes, v)
 		}
 		return nil
 	}

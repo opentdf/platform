@@ -9,8 +9,8 @@ inputs:
     default: 'main'
 
 outputs:
-  key-store-dir:
-    description: 'The directory containing the generated keys'
+  platform-working-dir:
+    description: 'The working directory for the running platform instance'
     value: 'otdf-test-platform'
 
 runs:
@@ -40,10 +40,10 @@ runs:
     - name: Map the config to the keys
       shell: bash
       run: >-
-         <opentdf-dev.yaml >opentdf.yaml yq e '
-              (.services.kas.keyring = [{"kid":"ec1","alg":"ec:secp256r1"},{"kid":"r1","alg":"rsa:2048"}])
-              | (.server.cryptoProvider.standard.keys = [{"kid":"ec1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"r1","alg":"rsa:2048","private":"kas-private.pem","cert":"kas-cert.pem"}])
-            '
+        <opentdf-dev.yaml >opentdf.yaml yq e '
+             (.services.kas.keyring = [{"kid":"ec1","alg":"ec:secp256r1"},{"kid":"r1","alg":"rsa:2048"}])
+             | (.server.cryptoProvider.standard.keys = [{"kid":"ec1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"r1","alg":"rsa:2048","private":"kas-private.pem","cert":"kas-cert.pem"}])
+           '
       working-directory: otdf-test-platform
     - name: Trust the generated certs
       shell: bash

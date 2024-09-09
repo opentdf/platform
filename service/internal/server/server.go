@@ -107,6 +107,7 @@ type CORSConfig struct {
 type OpenTDFServer struct {
 	AuthN          *auth.Authentication
 	Mux            *runtime.ServeMux
+	Mux2           *http.ServeMux
 	HTTPServer     *http.Server
 	GRPCServer     *grpc.Server
 	GRPCInProcess  *inProcessServer
@@ -168,6 +169,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 	mux := runtime.NewServeMux(
 		runtime.WithHealthzEndpoint(healthpb.NewHealthClient(grpcIPCServer.Conn())),
 	)
+	mux2 := http.NewServeMux()
 	httpServer, err := newHTTPServer(config, mux, authN, grpcServer, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http server: %w", err)
@@ -176,6 +178,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 	o := OpenTDFServer{
 		AuthN:         authN,
 		Mux:           mux,
+		Mux2:          mux2,
 		HTTPServer:    httpServer,
 		GRPCServer:    grpcServer,
 		GRPCInProcess: grpcIPCServer,
@@ -240,6 +243,9 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 	// Add grpc handler
 	h2 := httpGrpcHandlerFunc(h, g, l)
 
+	// mux := http.NewServeMux()
+	// path, handler := authorizationconnect.NewAuthorizationServiceHandler(authorizationconnect.NewAuthorizationServiceClient())
+	// mux.Handle(path, handler)
 	if !c.TLS.Enabled {
 		h2 = h2c.NewHandler(h2, &http2.Server{})
 	} else {
@@ -279,6 +285,14 @@ func pprofHandler(h http.Handler) http.Handler {
 		}
 	})
 }
+
+// type AuthorizationServiceHandler struct {
+// 	authorizationconnect.UnimplementedAuthorizationServiceHandler
+// }
+
+// func (h *AuthorizationServiceHandler) GetDecisions(context.Context, *connect.Request[authorization.GetDecisionsRequest]) (*connect.Response[authorization.GetDecisionsResponse], error) {
+// 	return authorization.GetDecisions()
+// }
 
 // httpGrpcHandlerFunc returns a http.Handler that delegates to the grpc server if the request is a grpc request
 func httpGrpcHandlerFunc(h http.Handler, g *grpc.Server, l *logger.Logger) http.Handler {

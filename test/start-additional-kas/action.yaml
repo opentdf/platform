@@ -20,7 +20,7 @@ runs:
       name: Start another KAS server in background
       with:
         run: >
-          <opentdf.yaml >opentdf-${{ inputs.kas-name }}.yaml yq e '
+          <opentdf-dev.yaml >opentdf-${{ inputs.kas-name }}.yaml yq e '
             (.server.port = ${{ inputs.kas-port }})
             | (.mode = ["kas"])
             | (.sdk_config = {"endpoint":"http://localhost:8080","plaintext":true,"client_id":"opentdf","client_secret":"secret"})

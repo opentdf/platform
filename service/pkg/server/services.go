@@ -192,15 +192,6 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 	return nil
 }
 
-func tryExtractingServiceLoggerConfig(cfg serviceregistry.ServiceConfigWithLogger) (logger.Config, error) {
-	// var svcLoggerConfig logger.Config
-	// err := mapstructure.Decode(cfg, &svcLoggerConfig)
-	if cfg.Logger.Level != "" && cfg.Logger.Output != "" && cfg.Logger.Type != "" {
-		return cfg.Logger, nil
-	}
-	return cfg.Logger, fmt.Errorf("could not decode service logger config")
-}
-
 // newServiceDBClient creates a new database client for the specified namespace.
 // It initializes the client with the provided context, logger configuration, database configuration,
 // namespace, and migrations. It returns the created client and any error encountered during creation.

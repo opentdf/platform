@@ -87,6 +87,10 @@ type Service struct {
 	Close func()
 }
 
+func (s *Service) GetImpl() any {
+	return s.impl
+}
+
 // Start starts the service and performs necessary initialization steps.
 // It returns an error if the service is already started or if there is an issue running database migrations.
 func (s *Service) Start(ctx context.Context, params RegistrationParams) error {

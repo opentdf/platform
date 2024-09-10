@@ -9,7 +9,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/opentdf/platform/protocol/go/authorization/authorizationconnect"
 	"github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/service/authorization"
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
@@ -183,6 +185,15 @@ func Start(f ...StartOptions) error {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)
 	}
+	for i, s := range svcRegistry["authorization"].Services {
+		println("AUTH SERVICE: ", i, s.Namespace, s.ServiceDesc.ServiceName)
+	}
+	// println(svcRegistry["authorization"].Services[0].ServiceDesc.ServiceName)
+	as := svcRegistry["authorization"].Services[0].GetImpl().(authorization.AuthorizationService)
+	ash := &authorization.AuthorizationServiceHandler{Service: &as}
+	path, handler := authorizationconnect.NewAuthorizationServiceHandler(ash)
+	println("PATH: ", path)
+	otdf.HTTPServer.Handler = server.ConnectAuthHandler(handler, otdf.HTTPServer.Handler)
 
 	// Start the server
 	logger.Info("starting opentdf")

@@ -180,10 +180,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				logger.Error("failed to register service to grpc gateway", slog.String("namespace", ns), slog.String("error", err.Error()))
 				return err
 			}
-			// reg[svc.Namespace].Services[i].Impl = svc.Impl2
-			// reg[svc.Namespace].Services[i].Impl2 = svc.Impl2
 			reg[svc.Namespace].Services[i].Impl = s
-			// reg[svc.Namespace].Services[i].Impl2 = s
 
 			logger.Info(
 				"service running",

@@ -139,7 +139,6 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				}
 			}
 
-			logger.Trace("hello trace")
 			// If the service provides its own logging config, create a new logger for that service using that config
 			if extractedLogger, err := tryExtractingServiceLoggerConfig(cfg.Services[svc.Namespace]); err == nil {
 				slog.Debug("configuring logger")

@@ -527,60 +527,75 @@ func (*mockAttributesClient) GetAttributeValuesByFqns(_ context.Context, req *at
 // Ex: grant.nogrant means that the attribute has a grant associated with it and the value does not
 func TestReasonerSpecificity(t *testing.T) {
 	for _, tc := range []struct {
+		desc     string
 		n        string
 		policy   []AttributeValueFQN
 		defaults []string
 		plan     []keySplitStep
 	}{
 		{
+			"no grants on attr or value should result in split step with provided kas",
 			"nogrant.nogrant => default",
 			[]AttributeValueFQN{uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{kasUs, ""}},
 		},
 		{
+			"no grant on attr, grant on value should result in split step with value kas",
 			"nogrant.grant => valueSpecificKas",
 			[]AttributeValueFQN{uns2spk},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
+			"grant on attr, no grant on value should result in split step with attr kas",
 			"grant.noGrant => attrSpecificKas",
 			[]AttributeValueFQN{spk2uns},
 			[]string{kasUs},
 			[]keySplitStep{{specifiedKas, ""}},
 		},
 		{
+			"grant on attr, grant on value should result in split step with value kas",
 			"grant.grant => valueSpecificKas",
 			[]AttributeValueFQN{spk2spk},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
+			"two attributes, one with attr and val with grants, other with attr with grant and value without " +
+				"should result in two split steps with same splitid, one with value kas and one with attr kas",
 			"grant.grant, grant.nogrant => valueSpecificKas || attrSpecificKas",
 			[]AttributeValueFQN{spk2spk, spk2uns},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, "1"}, {specifiedKas, "1"}},
 		},
 		{
+			"two attributes, one with attr and val with grants, other with attr with grant and value without " +
+				"should result in two split steps with same splitid, one with value kas and one with attr kas",
 			"grant.nogrant & grant.grant => valueSpecificKas || attrSpecificKas",
 			[]AttributeValueFQN{spk2spk, spk2uns},
 			[]string{kasUs},
 			[]keySplitStep{{specifiedKas, "1"}, {evenMoreSpecificKas, "1"}},
 		},
 		{
+			"two attributes, one with attr without and val with grant, other with attr and val without " +
+				"should result in one split step with value kas",
 			"nogrant.grant & nogrant.nogrant => valueSpecificKas",
 			[]AttributeValueFQN{uns2spk, uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
+			"two attributes, one with attr without and val with grant, other with attr and val without " +
+				"should result in one split step with value kas",
 			"nogrant.nogrant & nogrant.grant => valueSpecificKas",
 			[]AttributeValueFQN{uns2spk, uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
+			"two attributes, one with attr and value with grants, other with attr and val without " +
+				"should result in one split step with value kas",
 			"nogrant.nogrant & grant.grant => valueSpecificKas",
 			[]AttributeValueFQN{uns2spk, uns2uns},
 			[]string{kasUs},
@@ -610,7 +625,7 @@ func TestReasonerSpecificity(t *testing.T) {
 // a grant associated with them and the value does not
 func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 	for _, tc := range []struct {
-		desc 	 string
+		desc     string
 		n        string
 		policy   []AttributeValueFQN
 		defaults []string
@@ -652,86 +667,86 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
-			"two attributes, same ns and attr with grants, one with value grants and one without"+
-			" should result in two split steps with the same splitid, one with attr kas "+
-			"and one with value kas",
+			"two attributes, same ns and attr with grants, one with value grants and one without" +
+				" should result in two split steps with the same splitid, one with attr kas " +
+				"and one with value kas",
 			"grant.grant.grant & grant.grant.nogrant => valueSpecificKas || attrSpecificKas",
 			[]AttributeValueFQN{spk2spk2spk, spk2spk2uns},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, "1"}, {specifiedKas, "1"}},
 		},
 		{
-			"two attributes, same ns and attr with grants, one with value grants and one without"+
-			" should result in two split steps with the same splitid, one with attr kas "+
-			"and one with value kas",
+			"two attributes, same ns and attr with grants, one with value grants and one without" +
+				" should result in two split steps with the same splitid, one with attr kas " +
+				"and one with value kas",
 			"grant.grant.nogrant & grant.grant.grant => valueSpecificKas || attrSpecificKas",
 			[]AttributeValueFQN{spk2spk2uns, spk2spk2spk},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, "1"}, {specifiedKas, "1"}},
 		},
 		{
-			"two attributes, same ns, one with attr with grant one without and both no val grants"+
-			" should result in two split steps with the diff splitids, one with attr kas "+
-			"and one with ns kas",
+			"two attributes, same ns, one with attr with grant one without and both no val grants" +
+				" should result in two split steps with the diff splitids, one with attr kas " +
+				"and one with ns kas",
 			"grant.grant.nogrant & grant.nogrant.nogrant => attrSpecificKas && nsSpecificKas",
 			[]AttributeValueFQN{spk2spk2uns, spk2uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{specifiedKas, "1"}, {lessSpecificKas, "2"}},
 		},
 		{
-			"two attributes, same ns, one with attr with grant one without and both no val grants"+
-			" should result in two split steps with the diff splitids, one with attr kas "+
-			"and one with ns kas",
+			"two attributes, same ns, one with attr with grant one without and both no val grants" +
+				" should result in two split steps with the diff splitids, one with attr kas " +
+				"and one with ns kas",
 			"grant.nogrant.nogrant & grant.grant.nogrant => attrSpecificKas && nsSpecificKas",
 			[]AttributeValueFQN{spk2uns2uns, spk2spk2uns},
 			[]string{kasUs},
 			[]keySplitStep{{lessSpecificKas, "1"}, {specifiedKas, "2"}},
 		},
 		{
-			"two attributes, same ns with grant, same attr without grant, one with val grant one without"+
-			" should result in two split steps with the same splitids, one with value kas "+
-			"and one with ns kas",
+			"two attributes, same ns with grant, same attr without grant, one with val grant one without" +
+				" should result in two split steps with the same splitids, one with value kas " +
+				"and one with ns kas",
 			"grant.nogrant.grant & grant.nogrant.nogrant => valueSpecificKas || nsSpecificKas",
 			[]AttributeValueFQN{spk2uns2spk, spk2uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, "1"}, {lessSpecificKas, "1"}},
 		},
 		{
-			"two attributes, same ns with grant, same attr without grant, one with val grant one without"+
-			" should result in two split steps with the same splitids, one with value kas "+
-			"and one with ns kas",
+			"two attributes, same ns with grant, same attr without grant, one with val grant one without" +
+				" should result in two split steps with the same splitids, one with value kas " +
+				"and one with ns kas",
 			"grant.nogrant.nogrant & grant.nogrant.grant => valueSpecificKas || nsSpecificKas",
 			[]AttributeValueFQN{spk2uns2uns, spk2uns2spk},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, "1"}, {lessSpecificKas, "1"}},
 		},
 		{
-			"two attributes, one with ns with grant and one without, both attrs and vals without grants,"+
-			" should result in one split step with the ns kas",
+			"two attributes, one with ns with grant and one without, both attrs and vals without grants," +
+				" should result in one split step with the ns kas",
 			"grant.nogrant.nogrant & nogrant.nogrant.nogrant => nsSpecificKas",
 			[]AttributeValueFQN{spk2uns2uns, uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{lessSpecificKas, ""}},
 		},
 		{
-			"two attributes, one with ns with grant and one without, both attrs and vals without grants,"+
-			" should result in one split step with the ns kas",
+			"two attributes, one with ns with grant and one without, both attrs and vals without grants," +
+				" should result in one split step with the ns kas",
 			"nogrant.nogrant.nogrant & grant.nogrant.nogrant => nsSpecificKas",
 			[]AttributeValueFQN{uns2uns, spk2uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{lessSpecificKas, ""}},
 		},
 		{
-			"two attributes, one with ns with grant and val with grant, one with ns, attr, and val without grant"+
-			" should result in one split step with the value kas",
+			"two attributes, one with ns with grant and val with grant, one with ns, attr, and val without grant" +
+				" should result in one split step with the value kas",
 			"grant.nogrant.grant & nogrant.nogrant.nogrant => valueSpecificKas",
 			[]AttributeValueFQN{spk2uns2spk, uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
-			"two attributes, one with ns with grant and val with grant, one with ns, attr, and val without grant"+
-			" should result in one split step with the value kas",
+			"two attributes, one with ns with grant and val with grant, one with ns, attr, and val without grant" +
+				" should result in one split step with the value kas",
 			"grant.grant.grant & nogrant.nogrant.nogrant => valueSpecificKas",
 			[]AttributeValueFQN{spk2spk2spk, uns2uns},
 			[]string{kasUs},

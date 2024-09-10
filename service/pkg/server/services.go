@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/authorization"
 	"github.com/opentdf/platform/service/entityresolution"
@@ -15,7 +16,6 @@ import (
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/kas"
-	"github.com/opentdf/platform/service/logger"
 	logging "github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -103,7 +103,7 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 // based on the configuration and namespace mode. It creates a new service logger
 // and a database client if required. It registers the services with the gRPC server,
 // in-process gRPC server, and gRPC gateway. Finally, it logs the status of each service.
-func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFServer, client *sdk.SDK, logger *logger.Logger, reg serviceregistry.Registry) error {
+func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFServer, client *sdk.SDK, logger *logging.Logger, reg serviceregistry.Registry) error {
 	// Iterate through the registered namespaces
 	for ns, namespace := range reg {
 		// modeEnabled checks if the mode is enabled based on the configuration and namespace mode.
@@ -139,10 +139,11 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				}
 			}
 
+			logger.Trace("hello trace")
 			// If the service provides its own logging config, create a new logger for that service using that config
-			if cfg.Services[svc.Namespace].Logger.Level != "" && cfg.Services[svc.Namespace].Logger.Output != "" && cfg.Services[svc.Namespace].Logger.Type != "" {
+			if extractedLogger, err := tryExtractingServiceLoggerConfig(cfg.Services[svc.Namespace]); err == nil {
 				slog.Debug("configuring logger")
-				newSvcLogger, err := logging.NewLogger(cfg.Services[svc.Namespace].Logger)
+				newSvcLogger, err := logging.NewLogger(extractedLogger)
 				if err != nil {
 					return fmt.Errorf("could not start logger: %w", err)
 				}
@@ -150,7 +151,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 			}
 
 			err := svc.Start(ctx, serviceregistry.RegistrationParams{
-				Config:                 cfg.Services[svc.Namespace].Extras,
+				Config:                 cfg.Services[svc.Namespace],
 				Logger:                 thisSvcLogger,
 				DBClient:               svcDBClient,
 				SDK:                    client,
@@ -192,10 +193,22 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 	return nil
 }
 
+func tryExtractingServiceLoggerConfig(cfg serviceregistry.ServiceConfig) (logging.Config, error) {
+	type ServiceConfigWithLogger struct {
+		Logger logging.Config `mapstructure:"logger" json:"logger,omitempty"`
+	}
+	var svcLoggerConfig ServiceConfigWithLogger
+	err := mapstructure.Decode(cfg, &svcLoggerConfig)
+	if err == nil && svcLoggerConfig.Logger.Level != "" && svcLoggerConfig.Logger.Output != "" && svcLoggerConfig.Logger.Type != "" {
+		return svcLoggerConfig.Logger, nil
+	}
+	return svcLoggerConfig.Logger, fmt.Errorf("could not decode service logger config: %w", err)
+}
+
 // newServiceDBClient creates a new database client for the specified namespace.
 // It initializes the client with the provided context, logger configuration, database configuration,
 // namespace, and migrations. It returns the created client and any error encountered during creation.
-func newServiceDBClient(ctx context.Context, logCfg logger.Config, dbCfg db.Config, ns string, migrations *embed.FS) (*db.Client, error) {
+func newServiceDBClient(ctx context.Context, logCfg logging.Config, dbCfg db.Config, ns string, migrations *embed.FS) (*db.Client, error) {
 	var err error
 
 	client, err := db.New(ctx, dbCfg, logCfg,

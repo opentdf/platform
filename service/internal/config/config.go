@@ -38,7 +38,7 @@ type Config struct {
 	SDKConfig SDKConfig `mapstructure:"sdk_config" json:"sdk_config"`
 
 	// Services represents the configuration settings for the services.
-	Services map[string]serviceregistry.ServiceConfigWithLogger `mapstructure:"services"`
+	Services map[string]serviceregistry.ServiceConfig `mapstructure:"services"`
 }
 
 // SDKConfig represents the configuration for the SDK.

@@ -16,6 +16,7 @@ import (
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/kas"
 	"github.com/opentdf/platform/service/logger"
+	logging "github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/policy"
@@ -126,6 +127,8 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 
 		// Create new service logger
 		for _, svc := range namespace.Services {
+			var thisSvcLogger = svcLogger
+
 			// Get new db client if it is required and not already created
 			if svc.DB.Required && svcDBClient == nil {
 				logger.Debug("creating database client", slog.String("namespace", ns))
@@ -136,9 +139,19 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				}
 			}
 
+			// If the service provides its own logging config, create a new logger for that service using that config
+			if cfg.Services[svc.Namespace].Logger.Level != "" && cfg.Services[svc.Namespace].Logger.Output != "" && cfg.Services[svc.Namespace].Logger.Type != "" {
+				slog.Debug("configuring logger")
+				newSvcLogger, err := logging.NewLogger(cfg.Services[svc.Namespace].Logger)
+				if err != nil {
+					return fmt.Errorf("could not start logger: %w", err)
+				}
+				thisSvcLogger = newSvcLogger.With("namespace", ns)
+			}
+
 			err := svc.Start(ctx, serviceregistry.RegistrationParams{
-				Config:                 cfg.Services[svc.Namespace],
-				Logger:                 svcLogger,
+				Config:                 cfg.Services[svc.Namespace].Extras,
+				Logger:                 thisSvcLogger,
 				DBClient:               svcDBClient,
 				SDK:                    client,
 				WellKnownConfig:        wellknown.RegisterConfiguration,
@@ -177,6 +190,15 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 	}
 
 	return nil
+}
+
+func tryExtractingServiceLoggerConfig(cfg serviceregistry.ServiceConfigWithLogger) (logger.Config, error) {
+	// var svcLoggerConfig logger.Config
+	// err := mapstructure.Decode(cfg, &svcLoggerConfig)
+	if cfg.Logger.Level != "" && cfg.Logger.Output != "" && cfg.Logger.Type != "" {
+		return cfg.Logger, nil
+	}
+	return cfg.Logger, fmt.Errorf("could not decode service logger config")
 }
 
 // newServiceDBClient creates a new database client for the specified namespace.

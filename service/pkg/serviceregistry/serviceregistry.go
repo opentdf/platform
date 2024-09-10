@@ -16,6 +16,11 @@ import (
 	"google.golang.org/grpc"
 )
 
+type ServiceConfigWithLogger struct {
+	Logger logger.Config  `mapstructure:"logger" json:"logger,omitempty"` // Optional field
+	Extras ServiceConfig `mapstructure:"-" json:"-"`                     // Dynamic field for the service config
+}
+
 type ServiceConfig map[string]any
 
 // RegistrationParams is a struct that holds the parameters needed to register a service

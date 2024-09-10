@@ -233,7 +233,7 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 		// 	Password:      "",
 		// 	RunMigrations: false,
 		// },
-		Services: map[string]serviceregistry.ServiceConfig{
+		Services: map[string]serviceregistry.ServiceConfigWithLogger{
 			"test":         {},
 			"test_with_db": {},
 			"foobar":       {},

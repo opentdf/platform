@@ -116,7 +116,7 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Res
 	// Start services with test service
 	err = startServices(context.Background(), config.Config{
 		Mode: []string{"all"},
-		Services: map[string]serviceregistry.ServiceConfig{
+		Services: map[string]serviceregistry.ServiceConfigWithLogger{
 			"test": {},
 		},
 	}, s, nil, logger, registry)

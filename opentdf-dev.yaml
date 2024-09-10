@@ -22,6 +22,10 @@ services:
         alg: rsa:2048
         legacy: true
   entityresolution:
+    logger:
+      level: info
+      type: text
+      output: stdout
     url: http://localhost:8888/auth
     clientid: 'tdf-entity-resolution'
     clientsecret: 'secret'

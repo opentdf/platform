@@ -39,6 +39,5 @@ func NewRegistrations() []serviceregistry.Registration {
 		r.DB = dbRegister
 		registrations = append(registrations, r)
 	}
-
 	return registrations
 }

@@ -186,7 +186,9 @@ func Start(f ...StartOptions) error {
 
 	// Start the server
 	logger.Info("starting opentdf")
-	otdf.Start()
+	if err := otdf.Start(); err != nil {
+		return err
+	}
 
 	if startConfig.WaitForShutdownSignal {
 		waitForShutdownSignal()

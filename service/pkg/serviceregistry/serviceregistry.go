@@ -79,7 +79,8 @@ type DBRegister struct {
 // of the service within the instance of the platform.
 type Service struct {
 	Registration
-	impl       any
+	Impl       any
+	Impl2      any
 	handleFunc HandlerServer
 	// Started is a flag that indicates whether the service has been started
 	Started bool
@@ -87,41 +88,51 @@ type Service struct {
 	Close func()
 }
 
-func (s *Service) GetImpl() any {
-	return s.impl
-}
+// func (s *Service) GetImpl() any {
+// 	return s.Impl
+// }
 
 // Start starts the service and performs necessary initialization steps.
 // It returns an error if the service is already started or if there is an issue running database migrations.
-func (s *Service) Start(ctx context.Context, params RegistrationParams) error {
+func (s *Service) Start(ctx context.Context, params RegistrationParams) (any, error) {
 	if s.Started {
-		return fmt.Errorf("service already started")
+		return nil, fmt.Errorf("service already started")
 	}
 
 	if s.DB.Required && !params.DBClient.RanMigrations() && params.DBClient.MigrationsEnabled() {
 		appliedMigrations, err := params.DBClient.RunMigrations(ctx, s.DB.Migrations)
 		if err != nil {
-			return fmt.Errorf("issue running database migrations: %w", err)
+			return nil, fmt.Errorf("issue running database migrations: %w", err)
 		}
 		params.Logger.Info("database migrations complete",
 			slog.Int("applied", appliedMigrations),
 		)
 	}
 
-	s.impl, s.handleFunc = s.RegisterFunc(params)
+	s.Impl, s.handleFunc = s.RegisterFunc(params)
+	s.Impl2 = s.Impl
+	println("SERVICE: ", s.ServiceDesc.ServiceName)
+	if s.ServiceDesc.ServiceName == "authorization.AuthorizationService" {
+		// assert that s.Impl is not nil
+		if s.Impl == nil {
+			return nil, fmt.Errorf("inside Service Start: failed to assert service type to authorization.AuthorizationService")
+		} else {
+			println("INSIDE SERVICE START [not nil]: ", s.ServiceDesc.ServiceName)
+		}
+	}
 
 	s.Started = true
-	return nil
+	return s.Impl, nil
 }
 
 // RegisterGRPCServer registers the gRPC server with the service implementation.
 // It checks if the service implementation is registered and then registers the service with the server.
 // It returns an error if the service implementation is not registered.
 func (s *Service) RegisterGRPCServer(server *grpc.Server) error {
-	if s.impl == nil {
+	if s.Impl == nil {
 		return fmt.Errorf("service did not register an implementation")
 	}
-	server.RegisterService(s.ServiceDesc, s.impl)
+	server.RegisterService(s.ServiceDesc, s.Impl)
 	return nil
 }
 
@@ -134,7 +145,7 @@ func (s *Service) RegisterHTTPServer(ctx context.Context, mux *runtime.ServeMux)
 	if s.handleFunc == nil {
 		return fmt.Errorf("service did not register a handler")
 	}
-	return s.handleFunc(ctx, mux, s.impl)
+	return s.handleFunc(ctx, mux, s.Impl)
 }
 
 // namespace represents a namespace in the service registry.

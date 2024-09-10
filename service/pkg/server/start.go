@@ -189,8 +189,18 @@ func Start(f ...StartOptions) error {
 		println("AUTH SERVICE: ", i, s.Namespace, s.ServiceDesc.ServiceName)
 	}
 	// println(svcRegistry["authorization"].Services[0].ServiceDesc.ServiceName)
-	as := svcRegistry["authorization"].Services[0].GetImpl().(authorization.AuthorizationService)
-	ash := &authorization.AuthorizationServiceHandler{Service: &as}
+	// test if svcRegistry["authorization"].Services[0].Impl is nil
+	if svcRegistry["authorization"].Services[0].Impl == nil {
+		return fmt.Errorf("authorization service is nil")
+	} else {
+		println("AUTH SERVICE IS NOT NIL")
+	}
+	as, ok := svcRegistry["authorization"].Services[0].Impl.(*authorization.AuthorizationService)
+	if !ok {
+		return fmt.Errorf("failed to assert service type to authorization.AuthorizationService")
+	}
+	// as, ok := svcRegistry["authorization"].Services[0].RegisterFunc()
+	ash := &authorization.AuthorizationServiceHandler{Service: as}
 	path, handler := authorizationconnect.NewAuthorizationServiceHandler(ash)
 	println("PATH: ", path)
 	otdf.HTTPServer.Handler = server.ConnectAuthHandler(handler, otdf.HTTPServer.Handler)

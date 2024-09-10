@@ -60,6 +60,7 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 	)
 
 	for _, m := range mode {
+		println("MODE", m)
 		switch m {
 		case "all":
 			registeredServices = append(registeredServices, []string{servicePolicy, serviceAuthorization, serviceKAS, serviceWellKnown, serviceEntityResolution}...)
@@ -140,7 +141,8 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 
 		var svcDBClient *db.Client
 
-		for _, svc := range namespace.Services {
+		// Create new service logger
+		for i, svc := range namespace.Services {
 			// Get new db client if it is required and not already created
 			if svc.DB.Required && svcDBClient == nil {
 				logger.Debug("creating database client", slog.String("namespace", ns))
@@ -151,7 +153,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				}
 			}
 
-			err = svc.Start(ctx, serviceregistry.RegistrationParams{
+			s, err := svc.Start(ctx, serviceregistry.RegistrationParams{
 				Config:                 cfg.Services[svc.Namespace],
 				Logger:                 svcLogger,
 				DBClient:               svcDBClient,
@@ -178,6 +180,10 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				logger.Error("failed to register service to grpc gateway", slog.String("namespace", ns), slog.String("error", err.Error()))
 				return err
 			}
+			// reg[svc.Namespace].Services[i].Impl = svc.Impl2
+			// reg[svc.Namespace].Services[i].Impl2 = svc.Impl2
+			reg[svc.Namespace].Services[i].Impl = s
+			// reg[svc.Namespace].Services[i].Impl2 = s
 
 			logger.Info(
 				"service running",

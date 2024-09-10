@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"connectrpc.com/connect"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/go/authorization/authorizationconnect"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -52,6 +54,26 @@ type CustomRego struct {
 	Path string `mapstructure:"path" json:"path"`
 	// Rego Query
 	Query string `mapstructure:"query" json:"query" default:"data.opentdf.entitlements.attributes"`
+}
+
+type AuthorizationServiceHandler struct {
+	authorizationconnect.UnimplementedAuthorizationServiceHandler
+	Service *AuthorizationService
+}
+
+func (h *AuthorizationServiceHandler) GetDecisions(ctx context.Context, req *connect.Request[authorization.GetDecisionsRequest]) (*connect.Response[authorization.GetDecisionsResponse], error) {
+	res, err := h.Service.GetDecisions(ctx, req.Msg)
+	return &connect.Response[authorization.GetDecisionsResponse]{Msg: res}, err
+}
+
+func (h *AuthorizationServiceHandler) GetDecisionsByToken(ctx context.Context, req *connect.Request[authorization.GetDecisionsByTokenRequest]) (*connect.Response[authorization.GetDecisionsByTokenResponse], error) {
+	res, err := h.Service.GetDecisionsByToken(ctx, req.Msg)
+	return &connect.Response[authorization.GetDecisionsByTokenResponse]{Msg: res}, err
+}
+
+func (h *AuthorizationServiceHandler) GetEntitlements(ctx context.Context, req *connect.Request[authorization.GetEntitlementsRequest]) (*connect.Response[authorization.GetEntitlementsResponse], error) {
+	res, err := h.Service.GetEntitlements(ctx, req.Msg)
+	return &connect.Response[authorization.GetEntitlementsResponse]{Msg: res}, err
 }
 
 func NewRegistration() serviceregistry.Registration {

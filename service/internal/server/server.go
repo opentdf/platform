@@ -280,6 +280,20 @@ func pprofHandler(h http.Handler) http.Handler {
 	})
 }
 
+func ConnectAuthHandler(authHandler http.Handler, defaultHandler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "uthorization") {
+			println("URL PATH: ", r.URL.Path)
+		}
+		if strings.Contains(r.URL.Path, "/authorization.AuthorizationService/") {
+			println("Serving Connect Auth Handler for ", r.URL.Path)
+			authHandler.ServeHTTP(w, r)
+		} else {
+			defaultHandler.ServeHTTP(w, r)
+		}
+	})
+}
+
 // httpGrpcHandlerFunc returns a http.Handler that delegates to the grpc server if the request is a grpc request
 func httpGrpcHandlerFunc(h http.Handler, g *grpc.Server, l *logger.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

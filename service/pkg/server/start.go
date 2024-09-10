@@ -190,11 +190,11 @@ func Start(f ...StartOptions) error {
 	}
 	// println(svcRegistry["authorization"].Services[0].ServiceDesc.ServiceName)
 	// test if svcRegistry["authorization"].Services[0].Impl is nil
-	if svcRegistry["authorization"].Services[0].Impl == nil {
-		return fmt.Errorf("authorization service is nil")
-	} else {
-		println("AUTH SERVICE IS NOT NIL")
-	}
+	// if svcRegistry["authorization"].Services[0].Impl == nil {
+	// 	return fmt.Errorf("authorization service is nil")
+	// } else {
+	// 	println("AUTH SERVICE IS NOT NIL")
+	// }
 	as, ok := svcRegistry["authorization"].Services[0].Impl.(*authorization.AuthorizationService)
 	if !ok {
 		return fmt.Errorf("failed to assert service type to authorization.AuthorizationService")

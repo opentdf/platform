@@ -110,16 +110,16 @@ func (s *Service) Start(ctx context.Context, params RegistrationParams) (any, er
 	}
 
 	s.Impl, s.handleFunc = s.RegisterFunc(params)
-	s.Impl2 = s.Impl
-	println("SERVICE: ", s.ServiceDesc.ServiceName)
-	if s.ServiceDesc.ServiceName == "authorization.AuthorizationService" {
-		// assert that s.Impl is not nil
-		if s.Impl == nil {
-			return nil, fmt.Errorf("inside Service Start: failed to assert service type to authorization.AuthorizationService")
-		} else {
-			println("INSIDE SERVICE START [not nil]: ", s.ServiceDesc.ServiceName)
-		}
-	}
+	// s.Impl2 = s.Impl
+	// println("SERVICE: ", s.ServiceDesc.ServiceName)
+	// if s.ServiceDesc.ServiceName == "authorization.AuthorizationService" {
+	// 	// assert that s.Impl is not nil
+	// 	if s.Impl == nil {
+	// 		return nil, fmt.Errorf("inside Service Start: failed to assert service type to authorization.AuthorizationService")
+	// 	} else {
+	// 		println("INSIDE SERVICE START [not nil]: ", s.ServiceDesc.ServiceName)
+	// 	}
+	// }
 
 	s.Started = true
 	return s.Impl, nil

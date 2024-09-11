@@ -199,11 +199,14 @@ func Start(f ...StartOptions) error {
 	if !ok {
 		return fmt.Errorf("failed to assert service type to authorization.AuthorizationService")
 	}
-	// as, ok := svcRegistry["authorization"].Services[0].RegisterFunc()
 	ash := &authorization.AuthorizationServiceHandler{Service: as}
 	path, handler := authorizationconnect.NewAuthorizationServiceHandler(ash)
 	println("PATH: ", path)
-	otdf.HTTPServer.Handler = server.ConnectAuthHandler(handler, otdf.HTTPServer.Handler)
+	tls := false
+	if otdf.HTTPServer.TLSConfig != nil {
+		tls = true
+	}
+	otdf.HTTPServer.Handler = server.ConnectAuthHandler(handler, otdf.HTTPServer.Handler, tls)
 
 	// Start the server
 	logger.Info("starting opentdf")

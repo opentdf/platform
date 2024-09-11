@@ -242,7 +242,7 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 	h2 := httpGrpcHandlerFunc(h, g, l)
 
 	if !c.TLS.Enabled {
-		h2 = h2c.NewHandler(h2, &http2.Server{})
+		// h2 = h2c.NewHandler(h2, &http2.Server{})
 	} else {
 		tc, err = loadTLSConfig(c.TLS)
 		if err != nil {
@@ -281,8 +281,8 @@ func pprofHandler(h http.Handler) http.Handler {
 	})
 }
 
-func ConnectAuthHandler(authHandler http.Handler, defaultHandler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func ConnectAuthHandler(authHandler http.Handler, defaultHandler http.Handler, tls bool) http.Handler {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		for k := range r.Header {
 			for _, v := range r.Header[k] {
 				fmt.Println(k, "value is", v)
@@ -300,7 +300,7 @@ func ConnectAuthHandler(authHandler http.Handler, defaultHandler http.Handler) h
 			println("URL PATH [AUTH!]: ", r.URL.Path)
 		} else {
 			println("URL PATH [NOT AUTH]: ", r.URL.Path)
-			println("request uri", r.PathValue("authorization"))
+			println("request uri", r.RequestURI)
 			// println()
 		}
 		if strings.Contains(r.URL.Path, "/authorization.AuthorizationService/") {
@@ -310,6 +310,10 @@ func ConnectAuthHandler(authHandler http.Handler, defaultHandler http.Handler) h
 			defaultHandler.ServeHTTP(w, r)
 		}
 	})
+	if !tls {
+		return h2c.NewHandler(handler, &http2.Server{})
+	}
+	return handler
 }
 
 // httpGrpcHandlerFunc returns a http.Handler that delegates to the grpc server if the request is a grpc request

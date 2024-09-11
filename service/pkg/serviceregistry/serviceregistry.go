@@ -80,17 +80,12 @@ type DBRegister struct {
 type Service struct {
 	Registration
 	Impl       any
-	Impl2      any
 	handleFunc HandlerServer
 	// Started is a flag that indicates whether the service has been started
 	Started bool
 	// Close is a function that can be called to close the service
 	Close func()
 }
-
-// func (s *Service) GetImpl() any {
-// 	return s.Impl
-// }
 
 // Start starts the service and performs necessary initialization steps.
 // It returns an error if the service is already started or if there is an issue running database migrations.
@@ -110,16 +105,6 @@ func (s *Service) Start(ctx context.Context, params RegistrationParams) (any, er
 	}
 
 	s.Impl, s.handleFunc = s.RegisterFunc(params)
-	// s.Impl2 = s.Impl
-	// println("SERVICE: ", s.ServiceDesc.ServiceName)
-	// if s.ServiceDesc.ServiceName == "authorization.AuthorizationService" {
-	// 	// assert that s.Impl is not nil
-	// 	if s.Impl == nil {
-	// 		return nil, fmt.Errorf("inside Service Start: failed to assert service type to authorization.AuthorizationService")
-	// 	} else {
-	// 		println("INSIDE SERVICE START [not nil]: ", s.ServiceDesc.ServiceName)
-	// 	}
-	// }
 
 	s.Started = true
 	return s.Impl, nil

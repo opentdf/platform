@@ -59,7 +59,6 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 	)
 
 	for _, m := range mode {
-		println("MODE", m)
 		switch m {
 		case "all":
 			registeredServices = append(registeredServices, []string{servicePolicy, serviceAuthorization, serviceKAS, serviceWellKnown, serviceEntityResolution}...)

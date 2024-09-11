@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log/slog"
 	"net"
 	"net/http"
@@ -283,25 +282,11 @@ func pprofHandler(h http.Handler) http.Handler {
 
 func ConnectAuthHandler(authHandler http.Handler, defaultHandler http.Handler, tls bool) http.Handler {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		for k := range r.Header {
-			for _, v := range r.Header[k] {
-				fmt.Println(k, "value is", v)
-			}
-		}
-		for k, v := range r.Header["Connect-Protocol-Version"] {
-			fmt.Println(k, "value is", v)
-		}
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			// handle error
-		}
-		println(string(body))
 		if strings.Contains(r.URL.Path, "uthorization") {
 			println("URL PATH [AUTH!]: ", r.URL.Path)
 		} else {
 			println("URL PATH [NOT AUTH]: ", r.URL.Path)
 			println("request uri", r.RequestURI)
-			// println()
 		}
 		if strings.Contains(r.URL.Path, "/authorization.AuthorizationService/") {
 			println("Serving Connect Auth Handler for ", r.URL.Path)

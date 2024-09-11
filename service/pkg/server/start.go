@@ -185,16 +185,7 @@ func Start(f ...StartOptions) error {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)
 	}
-	for i, s := range svcRegistry["authorization"].Services {
-		println("AUTH SERVICE: ", i, s.Namespace, s.ServiceDesc.ServiceName)
-	}
-	// println(svcRegistry["authorization"].Services[0].ServiceDesc.ServiceName)
-	// test if svcRegistry["authorization"].Services[0].Impl is nil
-	// if svcRegistry["authorization"].Services[0].Impl == nil {
-	// 	return fmt.Errorf("authorization service is nil")
-	// } else {
-	// 	println("AUTH SERVICE IS NOT NIL")
-	// }
+
 	as, ok := svcRegistry["authorization"].Services[0].Impl.(*authorization.AuthorizationService)
 	if !ok {
 		return fmt.Errorf("failed to assert service type to authorization.AuthorizationService")

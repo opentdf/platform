@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"sync"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"connectrpc.com/connect"
 	wellknown "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
+	"github.com/opentdf/platform/protocol/go/wellknownconfiguration/wellknownconfigurationconnect"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"google.golang.org/grpc/codes"
@@ -40,17 +42,16 @@ func NewRegistration() serviceregistry.Registration {
 		Namespace:   "wellknown",
 		ServiceDesc: &wellknown.WellKnownService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &WellKnownService{logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				if srv, ok := server.(wellknown.WellKnownServiceServer); ok {
-					return wellknown.RegisterWellKnownServiceHandlerServer(ctx, mux, srv)
-				}
-				return fmt.Errorf("failed to assert server as WellKnownServiceServer")
+			ws := &WellKnownService{logger: srp.Logger}
+			return ws, func(ctx context.Context, mux *http.ServeMux, server any) {
+				path, handler := wellknownconfigurationconnect.NewWellKnownServiceHandler(ws)
+				mux.Handle(path, handler)
 			}
 		},
 	}
 }
 
-func (s WellKnownService) GetWellKnownConfiguration(_ context.Context, _ *wellknown.GetWellKnownConfigurationRequest) (*wellknown.GetWellKnownConfigurationResponse, error) {
+func (s WellKnownService) GetWellKnownConfiguration(_ context.Context, _ *connect.Request[wellknown.GetWellKnownConfigurationRequest]) (*connect.Response[wellknown.GetWellKnownConfigurationResponse], error) {
 	rwMutex.RLock()
 	cfg, err := structpb.NewStruct(wellKnownConfiguration)
 	rwMutex.RUnlock()
@@ -58,8 +59,8 @@ func (s WellKnownService) GetWellKnownConfiguration(_ context.Context, _ *wellkn
 		s.logger.Error("failed to create struct for wellknown configuration", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to create struct for wellknown configuration")
 	}
-
-	return &wellknown.GetWellKnownConfigurationResponse{
+	rsp := &wellknown.GetWellKnownConfigurationResponse{
 		Configuration: cfg,
-	}, nil
+	}
+	return &connect.Response[wellknown.GetWellKnownConfigurationResponse]{Msg: rsp}, nil
 }

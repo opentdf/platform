@@ -3,8 +3,8 @@ package health
 import (
 	"context"
 	"log/slog"
+	"net/http"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"google.golang.org/grpc/codes"
@@ -32,8 +32,7 @@ func NewRegistration() serviceregistry.Registration {
 			if err != nil {
 				srp.Logger.Error("failed to set well-known config", slog.String("error", err.Error()))
 			}
-			return &HealthService{logger: srp.Logger}, func(_ context.Context, _ *runtime.ServeMux, _ any) error {
-				return nil
+			return &HealthService{logger: srp.Logger}, func(_ context.Context, _ *http.ServeMux, _ any) {
 			}
 		},
 	}

@@ -162,7 +162,6 @@ func (rl ResourceLocator) GetIdentifier() (string, error) {
 		}
 		// remove padding
 		cleanedIdentifier := strings.TrimRight(rl.identifier, "\x00")
-		cleanedIdentifier = strings.TrimLeft(cleanedIdentifier, "\x00")
 		return cleanedIdentifier, nil
 	}
 	return "", fmt.Errorf("unsupported identifer protocol: %x", rl.protocol)

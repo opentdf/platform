@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"strings"
 
@@ -14,7 +15,6 @@ import (
 
 	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/opentdf/platform/protocol/go/authorization"
@@ -155,12 +155,16 @@ func NewRegistration() serviceregistry.Registration {
 
 			as.config = *authZCfg
 
-			return as, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				authServer, okAuth := server.(authorization.AuthorizationServiceServer)
-				if !okAuth {
-					return fmt.Errorf("failed to assert server type to authorization.AuthorizationServiceServer")
-				}
-				return authorization.RegisterAuthorizationServiceHandlerServer(ctx, mux, authServer)
+			return as, func(ctx context.Context, mux *http.ServeMux, server any) error {
+				// authServer, okAuth := server.(authorization.AuthorizationServiceServer)
+				// if !okAuth {
+				// 	return fmt.Errorf("failed to assert server type to authorization.AuthorizationServiceServer")
+				// }
+				ash := &AuthorizationServiceHandler{Service: as}
+				path, handler := authorizationconnect.NewAuthorizationServiceHandler(ash)
+				mux.Handle(path, handler)
+				return nil
+				// return authorization.RegisterAuthorizationServiceHandlerServer(ctx, mux, authServer)
 			}
 		},
 	}

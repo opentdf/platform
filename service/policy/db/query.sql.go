@@ -34,8 +34,7 @@ func (q *Queries) AssignKeyAccessServerToAttributeValue(ctx context.Context, arg
 }
 
 const assignKeyAccessServerToNamespace = `-- name: AssignKeyAccessServerToNamespace :execrows
-INSERT INTO attribute_namespace_key_access_grants
-(namespace_id, key_access_server_id)
+INSERT INTO attribute_namespace_key_access_grants (namespace_id, key_access_server_id)
 VALUES ($1, $2)
 `
 
@@ -46,8 +45,7 @@ type AssignKeyAccessServerToNamespaceParams struct {
 
 // AssignKeyAccessServerToNamespace
 //
-//	INSERT INTO attribute_namespace_key_access_grants
-//	(namespace_id, key_access_server_id)
+//	INSERT INTO attribute_namespace_key_access_grants (namespace_id, key_access_server_id)
 //	VALUES ($1, $2)
 func (q *Queries) AssignKeyAccessServerToNamespace(ctx context.Context, arg AssignKeyAccessServerToNamespaceParams) (int64, error) {
 	result, err := q.db.Exec(ctx, assignKeyAccessServerToNamespace, arg.NamespaceID, arg.KeyAccessServerID)
@@ -113,24 +111,48 @@ func (q *Queries) CreateKeyAccessServer(ctx context.Context, arg CreateKeyAccess
 	return id, err
 }
 
-const createResourceMappingGroup = `-- name: CreateResourceMappingGroup :one
-INSERT INTO resource_mapping_groups (namespace_id, name)
+const createNamespace = `-- name: CreateNamespace :one
+INSERT INTO attribute_namespaces (name, metadata)
 VALUES ($1, $2)
+RETURNING id
+`
+
+type CreateNamespaceParams struct {
+	Name     string `json:"name"`
+	Metadata []byte `json:"metadata"`
+}
+
+// CreateNamespace
+//
+//	INSERT INTO attribute_namespaces (name, metadata)
+//	VALUES ($1, $2)
+//	RETURNING id
+func (q *Queries) CreateNamespace(ctx context.Context, arg CreateNamespaceParams) (string, error) {
+	row := q.db.QueryRow(ctx, createNamespace, arg.Name, arg.Metadata)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const createResourceMappingGroup = `-- name: CreateResourceMappingGroup :one
+INSERT INTO resource_mapping_groups (namespace_id, name, metadata)
+VALUES ($1, $2, $3)
 RETURNING id
 `
 
 type CreateResourceMappingGroupParams struct {
 	NamespaceID string `json:"namespace_id"`
 	Name        string `json:"name"`
+	Metadata    []byte `json:"metadata"`
 }
 
 // CreateResourceMappingGroup
 //
-//	INSERT INTO resource_mapping_groups (namespace_id, name)
-//	VALUES ($1, $2)
+//	INSERT INTO resource_mapping_groups (namespace_id, name, metadata)
+//	VALUES ($1, $2, $3)
 //	RETURNING id
 func (q *Queries) CreateResourceMappingGroup(ctx context.Context, arg CreateResourceMappingGroupParams) (string, error) {
-	row := q.db.QueryRow(ctx, createResourceMappingGroup, arg.NamespaceID, arg.Name)
+	row := q.db.QueryRow(ctx, createResourceMappingGroup, arg.NamespaceID, arg.Name, arg.Metadata)
 	var id string
 	err := row.Scan(&id)
 	return id, err
@@ -160,6 +182,21 @@ DELETE FROM key_access_servers WHERE id = $1
 //	DELETE FROM key_access_servers WHERE id = $1
 func (q *Queries) DeleteKeyAccessServer(ctx context.Context, id string) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteKeyAccessServer, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteNamespace = `-- name: DeleteNamespace :execrows
+DELETE FROM attribute_namespaces WHERE id = $1
+`
+
+// DeleteNamespace
+//
+//	DELETE FROM attribute_namespaces WHERE id = $1
+func (q *Queries) DeleteNamespace(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteNamespace, id)
 	if err != nil {
 		return 0, err
 	}
@@ -602,9 +639,11 @@ func (q *Queries) GetKeyAccessServer(ctx context.Context, id string) (GetKeyAcce
 }
 
 const getNamespace = `-- name: GetNamespace :one
-
-SELECT ns.id, ns.name, ns.active,
-    attribute_fqns.fqn as fqn,
+SELECT
+    ns.id,
+    ns.name,
+    ns.active,
+    fqns.fqn,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
     JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
         'id', kas.id, 
@@ -614,11 +653,9 @@ SELECT ns.id, ns.name, ns.active,
 FROM attribute_namespaces ns
 LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
 LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
-LEFT JOIN attribute_fqns ON attribute_fqns.namespace_id = ns.id
-WHERE ns.id = $1
-AND attribute_fqns.attribute_id IS NULL AND attribute_fqns.value_id IS NULL
-GROUP BY ns.id, 
-attribute_fqns.fqn
+LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
+WHERE ns.id = $1 AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+GROUP BY ns.id, fqns.fqn
 `
 
 type GetNamespaceRow struct {
@@ -630,12 +667,13 @@ type GetNamespaceRow struct {
 	Grants   []byte      `json:"grants"`
 }
 
-// --------------------------------------------------------------
-// NAMESPACES
-// --------------------------------------------------------------
+// GetNamespace
 //
-//	SELECT ns.id, ns.name, ns.active,
-//	    attribute_fqns.fqn as fqn,
+//	SELECT
+//	    ns.id,
+//	    ns.name,
+//	    ns.active,
+//	    fqns.fqn,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
 //	    JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
 //	        'id', kas.id,
@@ -645,11 +683,9 @@ type GetNamespaceRow struct {
 //	FROM attribute_namespaces ns
 //	LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
 //	LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
-//	LEFT JOIN attribute_fqns ON attribute_fqns.namespace_id = ns.id
-//	WHERE ns.id = $1
-//	AND attribute_fqns.attribute_id IS NULL AND attribute_fqns.value_id IS NULL
-//	GROUP BY ns.id,
-//	attribute_fqns.fqn
+//	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
+//	WHERE ns.id = $1 AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+//	GROUP BY ns.id, fqns.fqn
 func (q *Queries) GetNamespace(ctx context.Context, id string) (GetNamespaceRow, error) {
 	row := q.db.QueryRow(ctx, getNamespace, id)
 	var i GetNamespaceRow
@@ -665,7 +701,8 @@ func (q *Queries) GetNamespace(ctx context.Context, id string) (GetNamespaceRow,
 }
 
 const getResourceMappingGroup = `-- name: GetResourceMappingGroup :one
-SELECT id, namespace_id, name
+SELECT id, namespace_id, name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
 FROM resource_mapping_groups
 WHERE id = $1
 `
@@ -674,17 +711,24 @@ type GetResourceMappingGroupRow struct {
 	ID          string `json:"id"`
 	NamespaceID string `json:"namespace_id"`
 	Name        string `json:"name"`
+	Metadata    []byte `json:"metadata"`
 }
 
 // GetResourceMappingGroup
 //
-//	SELECT id, namespace_id, name
+//	SELECT id, namespace_id, name,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
 //	FROM resource_mapping_groups
 //	WHERE id = $1
 func (q *Queries) GetResourceMappingGroup(ctx context.Context, id string) (GetResourceMappingGroupRow, error) {
 	row := q.db.QueryRow(ctx, getResourceMappingGroup, id)
 	var i GetResourceMappingGroupRow
-	err := row.Scan(&i.ID, &i.NamespaceID, &i.Name)
+	err := row.Scan(
+		&i.ID,
+		&i.NamespaceID,
+		&i.Name,
+		&i.Metadata,
+	)
 	return i, err
 }
 
@@ -810,6 +854,7 @@ LEFT JOIN
 LEFT JOIN 
     attribute_fqns fqns_on_ns
     ON nskag.namespace_id = fqns_on_ns.namespace_id
+    AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
 WHERE (NULLIF($1, '') IS NULL OR kas.id = $1::uuid)
     AND (NULLIF($2, '') IS NULL OR kas.uri = $2::varchar)
 GROUP BY 
@@ -877,6 +922,7 @@ type ListKeyAccessServerGrantsRow struct {
 //	LEFT JOIN
 //	    attribute_fqns fqns_on_ns
 //	    ON nskag.namespace_id = fqns_on_ns.namespace_id
+//	    AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
 //	WHERE (NULLIF($1, '') IS NULL OR kas.id = $1::uuid)
 //	    AND (NULLIF($2, '') IS NULL OR kas.uri = $2::varchar)
 //	GROUP BY
@@ -955,9 +1001,70 @@ func (q *Queries) ListKeyAccessServers(ctx context.Context) ([]ListKeyAccessServ
 	return items, nil
 }
 
+const listNamespaces = `-- name: ListNamespaces :many
+
+SELECT
+    ns.id,
+    ns.name,
+    ns.active,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
+    fqns.fqn
+FROM attribute_namespaces ns
+LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
+WHERE ($1::BOOLEAN IS NULL OR ns.active = $1::BOOLEAN)
+`
+
+type ListNamespacesRow struct {
+	ID       string      `json:"id"`
+	Name     string      `json:"name"`
+	Active   bool        `json:"active"`
+	Metadata []byte      `json:"metadata"`
+	Fqn      pgtype.Text `json:"fqn"`
+}
+
+// --------------------------------------------------------------
+// NAMESPACES
+// --------------------------------------------------------------
+//
+//	SELECT
+//	    ns.id,
+//	    ns.name,
+//	    ns.active,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
+//	    fqns.fqn
+//	FROM attribute_namespaces ns
+//	LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
+//	WHERE ($1::BOOLEAN IS NULL OR ns.active = $1::BOOLEAN)
+func (q *Queries) ListNamespaces(ctx context.Context, active pgtype.Bool) ([]ListNamespacesRow, error) {
+	rows, err := q.db.Query(ctx, listNamespaces, active)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListNamespacesRow
+	for rows.Next() {
+		var i ListNamespacesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Active,
+			&i.Metadata,
+			&i.Fqn,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listResourceMappingGroups = `-- name: ListResourceMappingGroups :many
 
-SELECT id, namespace_id, name
+SELECT id, namespace_id, name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
 FROM resource_mapping_groups
 WHERE (NULLIF($1, '') IS NULL OR namespace_id = $1::uuid)
 `
@@ -966,13 +1073,15 @@ type ListResourceMappingGroupsRow struct {
 	ID          string `json:"id"`
 	NamespaceID string `json:"namespace_id"`
 	Name        string `json:"name"`
+	Metadata    []byte `json:"metadata"`
 }
 
 // --------------------------------------------------------------
 // RESOURCE MAPPING GROUPS
 // --------------------------------------------------------------
 //
-//	SELECT id, namespace_id, name
+//	SELECT id, namespace_id, name,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
 //	FROM resource_mapping_groups
 //	WHERE (NULLIF($1, '') IS NULL OR namespace_id = $1::uuid)
 func (q *Queries) ListResourceMappingGroups(ctx context.Context, namespaceID interface{}) ([]ListResourceMappingGroupsRow, error) {
@@ -984,7 +1093,12 @@ func (q *Queries) ListResourceMappingGroups(ctx context.Context, namespaceID int
 	var items []ListResourceMappingGroupsRow
 	for rows.Next() {
 		var i ListResourceMappingGroupsRow
-		if err := rows.Scan(&i.ID, &i.NamespaceID, &i.Name); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.NamespaceID,
+			&i.Name,
+			&i.Metadata,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1006,7 +1120,8 @@ SELECT
     -- has issues when using aliases for some reason, even on a varchar field like g.name
     g.id::TEXT as group_id,
     g.namespace_id::TEXT as group_namespace_id,
-    g.name::TEXT as group_name
+    g.name::TEXT as group_name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', g.metadata -> 'labels', 'created_at', g.created_at, 'updated_at', g.updated_at)) as group_metadata
 FROM resource_mappings m
 LEFT JOIN resource_mapping_groups g ON m.group_id = g.id
 LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
@@ -1026,6 +1141,7 @@ type ListResourceMappingsByFullyQualifiedGroupRow struct {
 	GroupID          string   `json:"group_id"`
 	GroupNamespaceID string   `json:"group_namespace_id"`
 	GroupName        string   `json:"group_name"`
+	GroupMetadata    []byte   `json:"group_metadata"`
 }
 
 // --------------------------------------------------------------
@@ -1041,7 +1157,8 @@ type ListResourceMappingsByFullyQualifiedGroupRow struct {
 //	    -- has issues when using aliases for some reason, even on a varchar field like g.name
 //	    g.id::TEXT as group_id,
 //	    g.namespace_id::TEXT as group_namespace_id,
-//	    g.name::TEXT as group_name
+//	    g.name::TEXT as group_name,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', g.metadata -> 'labels', 'created_at', g.created_at, 'updated_at', g.updated_at)) as group_metadata
 //	FROM resource_mappings m
 //	LEFT JOIN resource_mapping_groups g ON m.group_id = g.id
 //	LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
@@ -1063,6 +1180,7 @@ func (q *Queries) ListResourceMappingsByFullyQualifiedGroup(ctx context.Context,
 			&i.GroupID,
 			&i.GroupNamespaceID,
 			&i.GroupName,
+			&i.GroupMetadata,
 		); err != nil {
 			return nil, err
 		}
@@ -1199,11 +1317,49 @@ func (q *Queries) UpdateKeyAccessServer(ctx context.Context, arg UpdateKeyAccess
 	return id, err
 }
 
+const updateNamespace = `-- name: UpdateNamespace :execrows
+UPDATE attribute_namespaces
+SET
+    name = COALESCE($2, name),
+    active = COALESCE($3, active),
+    metadata = COALESCE($4, metadata)
+WHERE id = $1
+`
+
+type UpdateNamespaceParams struct {
+	ID       string      `json:"id"`
+	Name     pgtype.Text `json:"name"`
+	Active   pgtype.Bool `json:"active"`
+	Metadata []byte      `json:"metadata"`
+}
+
+// UpdateNamespace: both Safe and Unsafe Updates
+//
+//	UPDATE attribute_namespaces
+//	SET
+//	    name = COALESCE($2, name),
+//	    active = COALESCE($3, active),
+//	    metadata = COALESCE($4, metadata)
+//	WHERE id = $1
+func (q *Queries) UpdateNamespace(ctx context.Context, arg UpdateNamespaceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateNamespace,
+		arg.ID,
+		arg.Name,
+		arg.Active,
+		arg.Metadata,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const updateResourceMappingGroup = `-- name: UpdateResourceMappingGroup :one
 UPDATE resource_mapping_groups
 SET
     namespace_id = COALESCE($2, namespace_id),
-    name = COALESCE($3, name)
+    name = COALESCE($3, name),
+    metadata = COALESCE($4, metadata)
 WHERE id = $1
 RETURNING id
 `
@@ -1212,6 +1368,7 @@ type UpdateResourceMappingGroupParams struct {
 	ID          string      `json:"id"`
 	NamespaceID pgtype.UUID `json:"namespace_id"`
 	Name        pgtype.Text `json:"name"`
+	Metadata    []byte      `json:"metadata"`
 }
 
 // UpdateResourceMappingGroup
@@ -1219,11 +1376,17 @@ type UpdateResourceMappingGroupParams struct {
 //	UPDATE resource_mapping_groups
 //	SET
 //	    namespace_id = COALESCE($2, namespace_id),
-//	    name = COALESCE($3, name)
+//	    name = COALESCE($3, name),
+//	    metadata = COALESCE($4, metadata)
 //	WHERE id = $1
 //	RETURNING id
 func (q *Queries) UpdateResourceMappingGroup(ctx context.Context, arg UpdateResourceMappingGroupParams) (string, error) {
-	row := q.db.QueryRow(ctx, updateResourceMappingGroup, arg.ID, arg.NamespaceID, arg.Name)
+	row := q.db.QueryRow(ctx, updateResourceMappingGroup,
+		arg.ID,
+		arg.NamespaceID,
+		arg.Name,
+		arg.Metadata,
+	)
 	var id string
 	err := row.Scan(&id)
 	return id, err

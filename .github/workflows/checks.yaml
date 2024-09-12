@@ -1,4 +1,4 @@
-name: "Checks"
+name: 'Checks'
 
 env:
   IS_RELEASE_BRANCH: ${{ startsWith(github.head_ref, 'release-please-') }}
@@ -17,6 +17,7 @@ on:
       - main
     types:
       - checks_requested
+  workflow_call:
 
 jobs:
   go:
@@ -50,7 +51,7 @@ jobs:
       - if: env.IS_RELEASE_BRANCH == 'true'
         name: prevent depending on unreleased upstream changes
         run: ./.github/scripts/work-init.sh
-      - if:  github.head_ref == format('release-please--branches--main--components--{0}', matrix.directory)
+      - if: github.head_ref == format('release-please--branches--main--components--{0}', matrix.directory)
         name: prevent tagging with replace directives
         run: go mod edit --json | jq -e '.Replace | not'
         working-directory: ${{ matrix.directory }}
@@ -62,9 +63,9 @@ jobs:
         if: env.IS_RELEASE_BRANCH == 'true'
         working-directory: ${{ matrix.directory }}
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@a4f60bb28d35aeee14e6880718e0c85ff1882e64
+        uses: golangci/golangci-lint-action@aaa42aa0628b4ae2578232a66b541047968fac86
         with:
-          version: v1.59
+          version: v1.60
           working-directory: ${{ matrix.directory }}
           skip-cache: true
           args: --out-format=colored-line-number
@@ -163,6 +164,18 @@ jobs:
       # use commit instead of ref so we can "go get" specific sdk version
       platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
+  # test latest otdfctl CLI 'main' against platform PR branch
+  otdfctl-test:
+    name: otdfctl e2e tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: opentdf/platform/test/start-up-with-containers@main
+        with:
+          platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: opentdf/otdfctl/e2e@main
+        with:
+          otdfctl-ref: 'main'
+
   buflint:
     name: Protocol Buffer Lint and Gencode Up-to-date check
     runs-on: ubuntu-22.04
@@ -177,7 +190,7 @@ jobs:
       - uses: bufbuild/buf-breaking-action@c57b3d842a5c3f3b454756ef65305a50a587c5ba
         with:
           input: service
-          against: "https://github.com/opentdf/platform.git#branch=main,subdir=service"
+          against: 'https://github.com/opentdf/platform.git#branch=main,subdir=service'
       - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
         with:
           go-version-file: 'service/go.mod'
@@ -210,6 +223,7 @@ jobs:
       - integration
       - license
       - platform-xtest
+      - otdfctl-test
     runs-on: ubuntu-22.04
     if: ${{ !cancelled() }}
     steps:

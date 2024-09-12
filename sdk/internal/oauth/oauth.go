@@ -107,12 +107,13 @@ func setClientAuth(cc ClientCredentials, formData *url.Values, req *http.Request
 func getSignedToken(clientID, tokenEndpoint string, key jwk.Key) ([]byte, error) {
 	const tokenExpiration = 5 * time.Minute
 
+	now := time.Now()
 	tok, err := jwt.NewBuilder().
 		Issuer(clientID).
 		Subject(clientID).
 		Audience([]string{tokenEndpoint}).
-		IssuedAt(time.Now()).
-		Expiration(time.Now().Add(tokenExpiration)).
+		IssuedAt(now).
+		Expiration(now.Add(tokenExpiration)).
 		JwtID(uuid.NewString()).
 		Build()
 	if err != nil {

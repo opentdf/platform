@@ -111,7 +111,7 @@ func (s *OAuthSuite) TestCertExchangeFromKeycloak() {
 
 	expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
 	s.Equal(expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
-	s.Greaterf(tok.ExpiresIn, int64(0), "invalid expiration is before current time: %v", tok)
+	s.Positivef(tok.ExpiresIn, "invalid expiration is before current time: %v", tok)
 	s.Falsef(tok.Expired(), "got a token that is currently expired: %v", tok)
 
 	name, ok := tokenDetails.Get("name")
@@ -157,7 +157,7 @@ func (s *OAuthSuite) TestGettingAccessTokenFromKeycloak() {
 
 	expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
 	s.Equal(expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
-	s.Greaterf(tok.ExpiresIn, int64(0), "invalid expiration is before current time: %v", tok)
+	s.Positivef(tok.ExpiresIn, "invalid expiration is before current time: %v", tok)
 	s.Falsef(tok.Expired(), "got a token that is currently expired: %v", tok)
 
 	// verify that we got a token that has the opentdf-standard role, which only the sdk client has
@@ -218,7 +218,7 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 
 	expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
 	s.Equal(expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
-	s.Greaterf(subjectToken.ExpiresIn, int64(0), "invalid expiration is before current time: %v", subjectToken)
+	s.Positivef(subjectToken.ExpiresIn, "invalid expiration is before current time: %v", subjectToken)
 	s.Falsef(subjectToken.Expired(), "got a token that is currently expired: %v", subjectToken)
 
 	// verify that we got a token that has the opentdf-standard role, which only the sdk client has

@@ -358,7 +358,7 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		jwt.WithAcceptableSkew(a.oidcConfiguration.TokenSkew),
 	)
 	if err != nil {
-		a.logger.Warn("failed to validate auth token", slog.String("token", tokenRaw), slog.Any("err", err))
+		a.logger.Warn("failed to validate auth token", slog.String("err", err.Error()))
 		return nil, nil, err
 	}
 

@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -269,9 +270,9 @@ func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, err
 	return info, nil
 }
 
-func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
+func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.RewrapRequest]) (*connect.Response[kaspb.RewrapResponse], error) {
+	in := req.Msg
 	p.Logger.DebugContext(ctx, "REWRAP")
-
 	body, err := extractSRTBody(ctx, in, *p.Logger)
 	if err != nil {
 		p.Logger.DebugContext(ctx, "unverifiable srt", "err", err)
@@ -288,20 +289,21 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 		p.Logger.DebugContext(ctx, "default rewrap algorithm")
 		body.Algorithm = "rsa:2048"
 	}
-
-	if body.Algorithm == "ec:secp256r1" {
-		rsp, err := p.nanoTDFRewrap(ctx, body, entityInfo)
-		if err != nil {
-			p.Logger.ErrorContext(ctx, "rewrap nano", "err", err)
-		}
-		p.Logger.DebugContext(ctx, "rewrap nano", "rsp", rsp)
-		return rsp, err
+	rewrapFunc := p.tdf3Rewrap
+	logType := "tdf3"
+	isNano := body.Algorithm == "ec:secp256r1"
+	if isNano {
+		rewrapFunc = p.nanoTDFRewrap
+		logType = "nano"
 	}
-	rsp, err := p.tdf3Rewrap(ctx, body, entityInfo)
+	rsp, err := rewrapFunc(ctx, body, entityInfo)
 	if err != nil {
-		p.Logger.ErrorContext(ctx, "rewrap tdf3", "err", err)
+		p.Logger.ErrorContext(ctx, "rewrap "+logType, "err", err)
 	}
-	return rsp, err
+	if isNano {
+		p.Logger.DebugContext(ctx, "rewrap nano", "rsp", rsp)
+	}
+	return &connect.Response[kaspb.RewrapResponse]{Msg: rsp}, err
 }
 
 func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {

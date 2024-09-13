@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	"errors"
 
+	"connectrpc.com/connect"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/service/internal/security"
 	"google.golang.org/grpc/codes"
@@ -35,7 +36,8 @@ func (p Provider) lookupKid(ctx context.Context, algorithm string) (string, erro
 	return "", errors.Join(ErrConfig, status.Error(codes.NotFound, "no default key for algorithm"))
 }
 
-func (p Provider) LegacyPublicKey(ctx context.Context, in *kaspb.LegacyPublicKeyRequest) (*wrapperspb.StringValue, error) {
+func (p Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kaspb.LegacyPublicKeyRequest]) (*connect.Response[wrapperspb.StringValue], error) {
+	in := req.Msg
 	algorithm := in.GetAlgorithm()
 	if algorithm == "" {
 		algorithm = security.AlgorithmRSA2048
@@ -68,10 +70,12 @@ func (p Provider) LegacyPublicKey(ctx context.Context, in *kaspb.LegacyPublicKey
 	default:
 		return nil, errors.Join(ErrConfig, status.Error(codes.NotFound, "invalid algorithm"))
 	}
-	return &wrapperspb.StringValue{Value: pem}, nil
+	rsp := &wrapperspb.StringValue{Value: pem}
+	return &connect.Response[wrapperspb.StringValue]{Msg: rsp}, nil
 }
 
-func (p Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*kaspb.PublicKeyResponse, error) {
+func (p Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.PublicKeyRequest]) (*connect.Response[kaspb.PublicKeyResponse], error) {
+	in := req.Msg
 	algorithm := in.GetAlgorithm()
 	if algorithm == "" {
 		algorithm = security.AlgorithmRSA2048
@@ -82,7 +86,7 @@ func (p Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*k
 		return nil, err
 	}
 
-	r := func(value, kid string, err error) (*kaspb.PublicKeyResponse, error) {
+	r := func(value, kid string, err error) (*connect.Response[kaspb.PublicKeyResponse], error) {
 		if errors.Is(err, security.ErrCertNotFound) {
 			p.Logger.ErrorContext(ctx, "no key found for", "err", err, "kid", kid, "algorithm", algorithm, "fmt", fmt)
 			return nil, errors.Join(err, status.Error(codes.NotFound, "no such key"))
@@ -90,11 +94,14 @@ func (p Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*k
 			p.Logger.ErrorContext(ctx, "configuration error for key lookup", "err", err, "kid", kid, "algorithm", algorithm, "fmt", fmt)
 			return nil, errors.Join(ErrConfig, status.Error(codes.Internal, "configuration error"))
 		}
+		rsp := &connect.Response[kaspb.PublicKeyResponse]{Msg: &kaspb.PublicKeyResponse{PublicKey: value}}
+
 		if in.GetV() == "1" {
 			p.Logger.WarnContext(ctx, "hiding kid in public key response for legacy client", "kid", kid, "v", in.GetV())
-			return &kaspb.PublicKeyResponse{PublicKey: value}, nil
+			return rsp, nil
 		}
-		return &kaspb.PublicKeyResponse{PublicKey: value, Kid: kid}, nil
+		rsp.Msg.Kid = kid
+		return rsp, nil
 	}
 
 	switch algorithm {

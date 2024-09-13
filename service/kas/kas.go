@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"strings"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/mitchellh/mapstructure"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/kas/access"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -79,12 +80,9 @@ func NewRegistration() serviceregistry.Registration {
 				srp.Logger.Error("failed to register kas readiness check", slog.String("error", err.Error()))
 			}
 
-			return &p, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				kas, ok := server.(*access.Provider)
-				if !ok {
-					panic("invalid kas server object")
-				}
-				return kaspb.RegisterAccessServiceHandlerServer(ctx, mux, kas)
+			return &p, func(ctx context.Context, mux *http.ServeMux, server any) {
+				path, handler := kasconnect.NewAccessServiceHandler(&p)
+				mux.Handle(path, handler)
 			}
 		},
 	}

@@ -497,29 +497,29 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to evaluate entitlements policy")
 	}
-	connectRes := &connect.Response[authorization.GetEntitlementsResponse]{Msg: rsp}
+	res := &connect.Response[authorization.GetEntitlementsResponse]{Msg: rsp}
 	// If we get no results and no error then we assume that the entity is not entitled to anything
 	if len(results) == 0 {
 		as.logger.DebugContext(ctx, "no entitlement results")
-		return connectRes, nil
+		return res, nil
 	}
 
 	// I am not sure how we would end up with multiple results but lets return an empty entitlement set for now
 	if len(results) > 1 {
 		as.logger.WarnContext(ctx, "multiple entitlement results", slog.Any("results", results))
-		return connectRes, nil
+		return res, nil
 	}
 
 	// If we get no expressions then we assume that the entity is not entitled to anything
 	if len(results[0].Expressions) == 0 {
 		as.logger.WarnContext(ctx, "no entitlement expressions", slog.Any("results", results))
-		return connectRes, nil
+		return res, nil
 	}
 
 	resultsEntitlements, entitlementsMapOk := results[0].Expressions[0].Value.(map[string]interface{})
 	if !entitlementsMapOk {
 		as.logger.ErrorContext(ctx, "entitlements is not a map[string]interface", slog.Any("value", resultsEntitlements))
-		return connectRes, nil
+		return res, nil
 	}
 	as.logger.DebugContext(ctx, "rego results", slog.Any("results", results))
 	for idx, entity := range r.GetEntities() {
@@ -532,7 +532,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 		entityEntitlements, valueListOk := resultsEntitlements[entityID].([]interface{})
 		if !valueListOk {
 			as.logger.ErrorContext(ctx, "entitlements is not a map[string]interface", slog.Any("value", resultsEntitlements))
-			return connectRes, nil
+			return res, nil
 		}
 
 		// map for attributes for optional comprehensive
@@ -556,13 +556,13 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 			entitlements[valueIDX] = entitlement
 		}
 		// Update the entity with its entitlements
-		connectRes.Msg.Entitlements[idx] = &authorization.EntityEntitlements{
+		res.Msg.Entitlements[idx] = &authorization.EntityEntitlements{
 			EntityId:           entity.GetId(),
 			AttributeValueFqns: entitlements,
 		}
 	}
 
-	return connectRes, nil
+	return res, nil
 }
 
 func retrieveAttributeDefinitions(ctx context.Context, ra *authorization.ResourceAttribute, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {

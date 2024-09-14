@@ -141,7 +141,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 		var svcDBClient *db.Client
 
 		// Create new service logger
-		for i, svc := range namespace.Services {
+		for _, svc := range namespace.Services {
 			// Get new db client if it is required and not already created
 			if svc.DB.Required && svcDBClient == nil {
 				logger.Debug("creating database client", slog.String("namespace", ns))
@@ -152,7 +152,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				}
 			}
 
-			s, err := svc.Start(ctx, serviceregistry.RegistrationParams{
+			_, err := svc.Start(ctx, serviceregistry.RegistrationParams{
 				Config:                 cfg.Services[svc.Namespace],
 				Logger:                 svcLogger,
 				DBClient:               svcDBClient,
@@ -165,10 +165,10 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				return err
 			}
 
-			// // Register the service with in process gRPC server
-			// if err := svc.RegisterGRPCServer(otdf.GRPCInProcess.GetGrpcServer()); err != nil {
-			// 	return err
-			// }
+			// Register the service with in process gRPC server
+			if err := svc.RegisterHTTPServer(ctx, otdf.ConnectInProcessRPC.Mux); err != nil {
+				return err
+			}
 
 			// Register the service with the gRPC gateway
 			if err := svc.RegisterHTTPServer(ctx, otdf.Mux); err != nil { //nolint:staticcheck // This is deprecated for internal tracking

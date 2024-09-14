@@ -157,7 +157,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 	}
 
 	// Create grpc server and in process grpc server
-	grpcServer, err := newGrpcServer(config, authN, logger)
+	// grpcServer, err := newGrpcServer(config, authN, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create grpc server: %w", err)
 	}
@@ -174,13 +174,13 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 	// )
 	mux := http.NewServeMux()
 
-	httpServer, err := newHTTPServer(config, mux, authN, grpcServer, logger)
+	httpServer, err := newHTTPServer(config, mux, authN, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http server: %w", err)
 	}
-	inProcesMux := http.NewServeMux()
+	inProcessMux := http.NewServeMux()
 	connectInProcessRPC := &ConnectInProcessRPC{
-		Mux: inProcesMux,
+		Mux: inProcessMux,
 	}
 
 	o := OpenTDFServer{
@@ -203,7 +203,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 }
 
 // newHTTPServer creates a new http server with the given handler and grpc server
-func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Server, l *logger.Logger) (*http.Server, error) {
+func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, l *logger.Logger) (*http.Server, error) {
 	var (
 		err                  error
 		tc                   *tls.Config
@@ -248,7 +248,7 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 	}
 
 	// Add grpc handler
-	h2 := httpGrpcHandlerFunc(h, g, l)
+	h2 := httpGrpcHandlerFunc(h, l)
 
 	if !c.TLS.Enabled {
 		// h2 = h2c.NewHandler(h2, &http2.Server{})
@@ -312,11 +312,11 @@ func ConnectAuthHandler(authHandler http.Handler, defaultHandler http.Handler, t
 }
 
 // httpGrpcHandlerFunc returns a http.Handler that delegates to the grpc server if the request is a grpc request
-func httpGrpcHandlerFunc(h http.Handler, g *grpc.Server, l *logger.Logger) http.Handler {
+func httpGrpcHandlerFunc(h http.Handler, l *logger.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		l.TraceContext(r.Context(), "grpc handler func", slog.Int("proto_major", r.ProtoMajor), slog.String("content_type", r.Header.Get("Content-Type")))
 		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
-			g.ServeHTTP(w, r)
+			h.ServeHTTP(w, r)
 		} else {
 			h.ServeHTTP(w, r)
 		}

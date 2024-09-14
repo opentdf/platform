@@ -130,7 +130,8 @@ func (s *Service) RegisterHTTPServer(ctx context.Context, mux *http.ServeMux) er
 	if s.handleFunc == nil {
 		return fmt.Errorf("service did not register a handler")
 	}
-	return s.handleFunc(ctx, mux, s.Impl)
+	s.handleFunc(ctx, mux, s.Impl)
+	return nil
 }
 
 // namespace represents a namespace in the service registry.

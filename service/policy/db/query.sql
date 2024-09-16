@@ -276,18 +276,16 @@ GROUP BY av.id, fqns.fqn;
 
 -- name: CreateAttributeValue :one
 INSERT INTO attribute_values (attribute_definition_id, value, metadata)
-VALUES (@attribute_definition_id, LOWER(@value), @metadata)
-RETURNING id, value,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata;
+VALUES (@attribute_definition_id, @value, @metadata)
+RETURNING id;
 
--- name: UpdateAttributeValue :one
+-- name: UpdateAttributeValue :execrows
 UPDATE attribute_values
 SET
-    value = COALESCE(LOWER(sqlc.narg('value')), value),
+    value = COALESCE(sqlc.narg('value'), value),
     active = COALESCE(sqlc.narg('active'), active),
     metadata = COALESCE(sqlc.narg('metadata'), metadata)
-WHERE id = $1
-RETURNING id, value;
+WHERE id = $1;
 
 -- name: DeleteAttributeValue :execrows
 DELETE FROM attribute_values WHERE id = $1;

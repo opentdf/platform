@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
@@ -15,38 +16,36 @@ import (
 )
 
 func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID string, r *attributes.CreateAttributeValueRequest) (*policy.Value, error) {
+	value := strings.ToLower(r.GetValue())
+
 	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
 
-	createdAv, err := c.Queries.CreateAttributeValue(ctx, CreateAttributeValueParams{
+	createdID, err := c.Queries.CreateAttributeValue(ctx, CreateAttributeValueParams{
 		AttributeDefinitionID: attributeID,
-		Value:                 r.GetValue(),
+		Value:                 value,
 		Metadata:              metadataJSON,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err = unmarshalMetadata(createdAv.Metadata, metadata, c.logger); err != nil {
-		return nil, err
-	}
-
 	// Update FQN
-	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: createdAv.ID})
+	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: createdID})
 	if fqn != "" {
 		c.logger.Debug("created new attribute value FQN",
-			slog.String("value_id", createdAv.ID),
-			slog.String("value", createdAv.Value),
+			slog.String("value_id", createdID),
+			slog.String("value", value),
 			slog.String("fqn", fqn),
 		)
 	}
 
 	return &policy.Value{
-		Id:        createdAv.ID,
+		Id:        createdID,
 		Attribute: &policy.Attribute{Id: attributeID},
-		Value:     createdAv.Value,
+		Value:     value,
 		Metadata:  metadata,
 		Active:    &wrapperspb.BoolValue{Value: true},
 	}, nil
@@ -135,7 +134,7 @@ func (c PolicyDBClient) ListAllAttributeValues(ctx context.Context) ([]*policy.V
 }
 
 func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.UpdateAttributeValueRequest) (*policy.Value, error) {
-	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
+	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		v, err := c.GetAttributeValue(ctx, r.GetId())
 		if err != nil {
 			return nil, err
@@ -146,46 +145,54 @@ func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 		return nil, err
 	}
 
-	updatedAttrVal, err := c.Queries.UpdateAttributeValue(ctx, UpdateAttributeValueParams{
+	count, err := c.Queries.UpdateAttributeValue(ctx, UpdateAttributeValueParams{
 		ID:       r.GetId(),
 		Metadata: metadataJSON,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
 
 	return &policy.Value{
-		Id: updatedAttrVal.ID,
+		Id:       r.GetId(),
+		Metadata: metadata,
 	}, nil
 }
 
 func (c PolicyDBClient) UnsafeUpdateAttributeValue(ctx context.Context, r *unsafe.UnsafeUpdateAttributeValueRequest) (*policy.Value, error) {
-	value := r.GetValue()
+	id := r.GetId()
+	value := strings.ToLower(r.GetValue())
 
-	updatedAttrVal, err := c.Queries.UpdateAttributeValue(ctx, UpdateAttributeValueParams{
-		ID: r.GetId(),
-		Value: pgtype.Text{
-			String: value,
-			Valid:  value != "",
-		},
+	count, err := c.Queries.UpdateAttributeValue(ctx, UpdateAttributeValueParams{
+		ID:    r.GetId(),
+		Value: pgtypeText(value),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
 
 	// Update FQN
-	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: updatedAttrVal.ID})
+	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: id})
 	c.logger.Debug("upserted fqn for unsafely updated value",
-		slog.String("id", updatedAttrVal.ID),
-		slog.String("value", updatedAttrVal.Value),
+		slog.String("id", id),
+		slog.String("value", value),
 		slog.String("fqn", fqn),
 	)
 
-	return c.GetAttributeValue(ctx, updatedAttrVal.ID)
+	return &policy.Value{
+		Id:    id,
+		Value: value,
+	}, nil
 }
 
 func (c PolicyDBClient) DeactivateAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
-	updatedAttrVal, err := c.Queries.UpdateAttributeValue(ctx, UpdateAttributeValueParams{
+	count, err := c.Queries.UpdateAttributeValue(ctx, UpdateAttributeValueParams{
 		ID: id,
 		Active: pgtype.Bool{
 			Bool:  false,
@@ -195,12 +202,18 @@ func (c PolicyDBClient) DeactivateAttributeValue(ctx context.Context, id string)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
 
-	return c.GetAttributeValue(ctx, updatedAttrVal.ID)
+	return &policy.Value{
+		Id:     id,
+		Active: &wrapperspb.BoolValue{Value: false},
+	}, nil
 }
 
 func (c PolicyDBClient) UnsafeReactivateAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
-	updatedAttrVal, err := c.Queries.UpdateAttributeValue(ctx, UpdateAttributeValueParams{
+	count, err := c.Queries.UpdateAttributeValue(ctx, UpdateAttributeValueParams{
 		ID: id,
 		Active: pgtype.Bool{
 			Bool:  true,
@@ -210,8 +223,14 @@ func (c PolicyDBClient) UnsafeReactivateAttributeValue(ctx context.Context, id s
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
 
-	return c.GetAttributeValue(ctx, updatedAttrVal.ID)
+	return &policy.Value{
+		Id:     id,
+		Active: &wrapperspb.BoolValue{Value: true},
+	}, nil
 }
 
 func (c PolicyDBClient) UnsafeDeleteAttributeValue(ctx context.Context, toDelete *policy.Value, r *unsafe.UnsafeDeleteAttributeValueRequest) (*policy.Value, error) {

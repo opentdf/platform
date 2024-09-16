@@ -9,6 +9,7 @@ require (
 	github.com/bufbuild/protovalidate-go v0.6.0
 	github.com/casbin/casbin/v2 v2.84.0
 	github.com/creasty/defaults v1.7.0
+	github.com/evanphx/json-patch v0.5.2
 	github.com/go-chi/cors v1.2.1
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/google/uuid v1.6.0

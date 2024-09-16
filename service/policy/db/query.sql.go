@@ -57,9 +57,8 @@ func (q *Queries) AssignKeyAccessServerToNamespace(ctx context.Context, arg Assi
 
 const createAttributeValue = `-- name: CreateAttributeValue :one
 INSERT INTO attribute_values (attribute_definition_id, value, metadata)
-VALUES ($1, LOWER($2), $3)
-RETURNING id, value,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+VALUES ($1, $2, $3)
+RETURNING id
 `
 
 type CreateAttributeValueParams struct {
@@ -68,23 +67,16 @@ type CreateAttributeValueParams struct {
 	Metadata              []byte `json:"metadata"`
 }
 
-type CreateAttributeValueRow struct {
-	ID       string `json:"id"`
-	Value    string `json:"value"`
-	Metadata []byte `json:"metadata"`
-}
-
 // CreateAttributeValue
 //
 //	INSERT INTO attribute_values (attribute_definition_id, value, metadata)
-//	VALUES ($1, LOWER($2), $3)
-//	RETURNING id, value,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-func (q *Queries) CreateAttributeValue(ctx context.Context, arg CreateAttributeValueParams) (CreateAttributeValueRow, error) {
+//	VALUES ($1, $2, $3)
+//	RETURNING id
+func (q *Queries) CreateAttributeValue(ctx context.Context, arg CreateAttributeValueParams) (string, error) {
 	row := q.db.QueryRow(ctx, createAttributeValue, arg.AttributeDefinitionID, arg.Value, arg.Metadata)
-	var i CreateAttributeValueRow
-	err := row.Scan(&i.ID, &i.Value, &i.Metadata)
-	return i, err
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }
 
 const createKeyAccessServer = `-- name: CreateKeyAccessServer :one
@@ -1236,14 +1228,13 @@ func (q *Queries) RemoveKeyAccessServerFromNamespace(ctx context.Context, arg Re
 	return result.RowsAffected(), nil
 }
 
-const updateAttributeValue = `-- name: UpdateAttributeValue :one
+const updateAttributeValue = `-- name: UpdateAttributeValue :execrows
 UPDATE attribute_values
 SET
-    value = COALESCE(LOWER($2), value),
+    value = COALESCE($2, value),
     active = COALESCE($3, active),
     metadata = COALESCE($4, metadata)
 WHERE id = $1
-RETURNING id, value
 `
 
 type UpdateAttributeValueParams struct {
@@ -1253,30 +1244,25 @@ type UpdateAttributeValueParams struct {
 	Metadata []byte      `json:"metadata"`
 }
 
-type UpdateAttributeValueRow struct {
-	ID    string `json:"id"`
-	Value string `json:"value"`
-}
-
 // UpdateAttributeValue
 //
 //	UPDATE attribute_values
 //	SET
-//	    value = COALESCE(LOWER($2), value),
+//	    value = COALESCE($2, value),
 //	    active = COALESCE($3, active),
 //	    metadata = COALESCE($4, metadata)
 //	WHERE id = $1
-//	RETURNING id, value
-func (q *Queries) UpdateAttributeValue(ctx context.Context, arg UpdateAttributeValueParams) (UpdateAttributeValueRow, error) {
-	row := q.db.QueryRow(ctx, updateAttributeValue,
+func (q *Queries) UpdateAttributeValue(ctx context.Context, arg UpdateAttributeValueParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateAttributeValue,
 		arg.ID,
 		arg.Value,
 		arg.Active,
 		arg.Metadata,
 	)
-	var i UpdateAttributeValueRow
-	err := row.Scan(&i.ID, &i.Value)
-	return i, err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateKeyAccessServer = `-- name: UpdateKeyAccessServer :one

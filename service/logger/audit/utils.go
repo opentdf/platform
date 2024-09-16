@@ -2,7 +2,9 @@ package audit
 
 import (
 	"context"
+	"log/slog"
 
+	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
@@ -137,7 +139,17 @@ type DiffEntry struct {
 }
 
 func createJSONPatchDiff(original []byte, target []byte) ([]DiffEntry, error) {
-	patch, err := jsondiff.CompareJSON(original, target, jsondiff.Invertible())
+	slog.Info("Creating JSON patch diff", slog.String("original", string(original)), slog.String("target", string(target)))
+
+	modified, err := jsonpatch.MergePatch(original, target)
+	if err != nil {
+		return nil, err
+	}
+
+	patch, err := jsondiff.CompareJSON(original, modified,
+		jsondiff.Invertible(),
+		jsondiff.Ignores("/metadata/created_at", "/metadata/updated_at"),
+	)
 	diffArray := make([]DiffEntry, len(patch))
 	if err != nil {
 		return nil, err

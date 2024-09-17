@@ -868,6 +868,51 @@ func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing 
 	}
 }
 
+func (s *TDFSuite) Test_TDFReaderFail() {
+	kasInfoList := []KASInfo{
+		{
+			URL:       "http://localhost:65432/api/kas",
+			PublicKey: mockRSAPublicKey1,
+		},
+		{
+			URL:       "http://localhost:65432/api/kas",
+			PublicKey: mockRSAPublicKey1,
+		},
+	}
+	for _, test := range []struct {
+		name        string
+		optFunc     TDFOption
+		expectedErr string
+	}{
+		{
+			name: "segmentSizeTooSmall",
+			optFunc: func(c *TDFConfig) error {
+				c.defaultSegmentSize = 2
+				return nil
+			},
+			expectedErr: "segment size too small: 2",
+		},
+		{
+			name: "segmentSizeTooLarge",
+			optFunc: func(c *TDFConfig) error {
+				c.defaultSegmentSize = maxSegmentSize + 1
+				return nil
+			},
+			expectedErr: "segment size too large: 4194305",
+		},
+	} {
+		s.Run(test.name, func() {
+			_, err := s.sdk.CreateTDF(
+				&fakeWriter{},
+				bytes.NewReader([]byte{}),
+				WithKasInformation(kasInfoList...),
+				test.optFunc,
+			)
+			s.Require().EqualError(err, test.expectedErr)
+		})
+	}
+}
+
 func (s *TDFSuite) Test_TDF() {
 	for index, test := range []tdfTest{
 		{

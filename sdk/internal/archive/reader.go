@@ -225,7 +225,7 @@ func (reader Reader) ReadFileData(filename string, index int64, length int64) ([
 		return nil, errZipFileNotFound
 	}
 
-	if length > fileNameEntry.length {
+	if length < 0 || length > fileNameEntry.length {
 		return nil, errZipFileSizeError
 	}
 

@@ -110,17 +110,21 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 
 	// IF IPC is disabled we build a connection to the platform
-	if !cfg.ipc {
-		platformEndpoint, err = SanitizePlatformEndpoint(platformEndpoint)
-		if err != nil {
-			return nil, errors.Join(ErrPlatformEndpointMalformed, err)
-		}
-	}
+	// if !cfg.ipc {
+	// 	println("platformEndpoint before sanitization: ", platformEndpoint)
+	// 	platformEndpoint, err = SanitizePlatformEndpoint(platformEndpoint)
+	// 	println("platformEndpoint after sanitization: ", platformEndpoint)
+	// 	if err != nil {
+	// 		return nil, errors.Join(ErrPlatformEndpointMalformed, err)
+	// 	}
+	// }
 	httpClient := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: cfg.tlsConfig,
 		},
 	}
+	println("platformEndpointa", platformEndpoint)
+	// platformEndpoint = "http://localhost:8080"
 	wc := wellknownconfigurationconnect.NewWellKnownServiceClient(httpClient, platformEndpoint, connect.WithGRPC())
 
 	// If platformConfiguration is not provided, fetch it from the platform
@@ -371,9 +375,9 @@ func IsValidNanoTdf(reader io.ReadSeeker) (bool, error) {
 
 func getPlatformConfiguration(wc wellknownconfigurationconnect.WellKnownServiceClient) (PlatformConfiguration, error) {
 	req := &connect.Request[wellknownconfiguration.GetWellKnownConfigurationRequest]{Msg: &wellknownconfiguration.GetWellKnownConfigurationRequest{}}
-
 	response, err := wc.GetWellKnownConfiguration(context.Background(), req)
 	if err != nil {
+		println("getPlatformConfiguration HERE", err.Error())
 		return nil, errors.Join(errors.New("unable to retrieve config information, and none was provided"), err)
 	}
 	// Get token endpoint

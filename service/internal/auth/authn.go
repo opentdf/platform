@@ -214,6 +214,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		// Verify the token
 		header := r.Header["Authorization"]
 		if len(header) < 1 {
+			println("UNAUTH ERROR1")
 			http.Error(w, "missing authorization header", http.StatusUnauthorized)
 			return
 		}
@@ -283,6 +284,7 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 	// Verify the token
 	header := md["authorization"]
 	if len(header) < 1 {
+		println("UNAUTH ERROR2")
 		return nil, status.Error(codes.Unauthenticated, "missing authorization header")
 	}
 

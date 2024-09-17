@@ -213,7 +213,7 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, l *logger.L
 	// Add authN interceptor
 	// This is needed because we are leveraging RegisterXServiceHandlerServer instead of RegisterXServiceHandlerFromEndpoint
 	if c.Auth.Enabled {
-		h = a.MuxHandler(h)
+		// h = a.MuxHandler(h)
 	} else {
 		l.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}

@@ -377,7 +377,7 @@ func TestConfigurationServicePutGet(t *testing.T) {
 	} {
 		t.Run(tc.n, func(t *testing.T) {
 			v := valuesToPolicy(tc.policy...)
-			grants, err := newGranterFromAttributes(v...)
+			grants, err := newGranterFromAttributes(newKasKeyCache(), v...)
 			require.NoError(t, err)
 			assert.Len(t, grants.grants, tc.size)
 			assert.Subset(t, policyToStringKeys(tc.policy), maps.Keys(grants.grants))
@@ -447,6 +447,15 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			[]keySplitStep{{kasUk, ""}},
 		},
 		{
+			"simple with namespace",
+			[]AttributeValueFQN{clsS, spk2uns2uns},
+			[]string{kasUs},
+			"https://virtru.com/attr/Classification/value/Secret&https://hasgrants.com/attr/unspecified/value/unspecked",
+			"[DEFAULT]&(https://namespace.kas.com/)",
+			"(https://namespace.kas.com/)",
+			[]keySplitStep{{lessSpecificKas, ""}},
+		},
+		{
 			"compartments",
 			[]AttributeValueFQN{clsS, rel2gbr, rel2usa, n2kHCS, n2kSI},
 			[]string{kasUs},
@@ -466,7 +475,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
-			reasoner, err := newGranterFromAttributes(valuesToPolicy(tc.policy...)...)
+			reasoner, err := newGranterFromAttributes(newKasKeyCache(), valuesToPolicy(tc.policy...)...)
 			require.NoError(t, err)
 
 			actualAB := reasoner.constructAttributeBoolean()

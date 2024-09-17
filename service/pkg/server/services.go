@@ -143,7 +143,6 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 		var svcDBClient *db.Client
 
 		for _, svc := range namespace.Services {
-
 			// Get new db client if it is required and not already created
 			if svc.DB.Required && svcDBClient == nil {
 				logger.Debug("creating database client", slog.String("namespace", ns))

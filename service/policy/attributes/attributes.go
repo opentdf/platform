@@ -67,6 +67,7 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 func (s *AttributesService) ListAttributes(ctx context.Context,
 	req *connect.Request[attributes.ListAttributesRequest],
 ) (*connect.Response[attributes.ListAttributesResponse], error) {
+	println("ListAttributes: HERE")
 	r := req.Msg
 	state := policydb.GetDBStateTypeTransformedEnum(r.GetState())
 	namespace := r.GetNamespace()

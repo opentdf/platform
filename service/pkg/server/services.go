@@ -121,13 +121,28 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 			continue
 		}
 
-		svcLogger := logger.With("namespace", ns)
+		var svcLogger *logging.Logger
+		extractedLogLevel, err := tryExtractingServiceLoggerConfig(cfg.Services[ns])
+
+		// If ns has log_level in config, create new logger with that level
+		if err == nil {
+			if extractedLogLevel != cfg.Logger.Level {
+				slog.Debug("configuring logger")
+				var newLoggerConfig logging.Config = cfg.Logger
+				newLoggerConfig.Level = extractedLogLevel
+				newSvcLogger, err := logging.NewLogger(newLoggerConfig)
+				// only assign if logger successfully created
+				if err == nil {
+					svcLogger = newSvcLogger.With("namespace", ns)
+				}
+			}
+		} else {
+			svcLogger = logger.With("namespace", ns)
+		}
 
 		var svcDBClient *db.Client
 
-		// Create new service logger
 		for _, svc := range namespace.Services {
-			var thisSvcLogger = svcLogger
 
 			// Get new db client if it is required and not already created
 			if svc.DB.Required && svcDBClient == nil {
@@ -139,19 +154,9 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				}
 			}
 
-			// If the service provides its own logging config, create a new logger for that service using that config
-			if extractedLogger, err := tryExtractingServiceLoggerConfig(cfg.Services[svc.Namespace]); err == nil {
-				slog.Debug("configuring logger")
-				newSvcLogger, err := logging.NewLogger(extractedLogger)
-				if err != nil {
-					return fmt.Errorf("could not start logger: %w", err)
-				}
-				thisSvcLogger = newSvcLogger.With("namespace", ns)
-			}
-
-			err := svc.Start(ctx, serviceregistry.RegistrationParams{
+			err = svc.Start(ctx, serviceregistry.RegistrationParams{
 				Config:                 cfg.Services[svc.Namespace],
-				Logger:                 thisSvcLogger,
+				Logger:                 svcLogger,
 				DBClient:               svcDBClient,
 				SDK:                    client,
 				WellKnownConfig:        wellknown.RegisterConfiguration,
@@ -192,16 +197,16 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 	return nil
 }
 
-func tryExtractingServiceLoggerConfig(cfg serviceregistry.ServiceConfig) (logging.Config, error) {
+func tryExtractingServiceLoggerConfig(cfg serviceregistry.ServiceConfig) (string, error) {
 	type ServiceConfigWithLogger struct {
-		Logger logging.Config `mapstructure:"logger" json:"logger,omitempty"`
+		LogLevel string `mapstructure:"log_level" json:"log_level,omitempty"`
 	}
 	var svcLoggerConfig ServiceConfigWithLogger
 	err := mapstructure.Decode(cfg, &svcLoggerConfig)
-	if err == nil && svcLoggerConfig.Logger.Level != "" && svcLoggerConfig.Logger.Output != "" && svcLoggerConfig.Logger.Type != "" {
-		return svcLoggerConfig.Logger, nil
+	if err == nil && svcLoggerConfig.LogLevel != "" {
+		return svcLoggerConfig.LogLevel, nil
 	}
-	return svcLoggerConfig.Logger, fmt.Errorf("could not decode service logger config: %w", err)
+	return "", fmt.Errorf("could not decode service log level: %w", err)
 }
 
 // newServiceDBClient creates a new database client for the specified namespace.

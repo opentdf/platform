@@ -10,6 +10,8 @@ import (
 const (
 	tdf3KeySize        = 2048
 	defaultSegmentSize = 2 * 1024 * 1024 // 2mb
+	maxSegmentSize     = defaultSegmentSize * 2
+	minSegmentSize     = 16 * 1024
 	kasPublicKeyPath   = "/kas_public_key"
 )
 
@@ -177,8 +179,14 @@ func WithMimeType(mimeType string) TDFOption {
 	}
 }
 
-// WithSegmentSize returns an Option that set the default segment size to TDF.
+// WithSegmentSize returns an Option that set the default segment size within the TDF. Any excessively large or small
+// values will be replaced with a supported value.
 func WithSegmentSize(size int64) TDFOption {
+	if size > maxSegmentSize {
+		size = maxSegmentSize
+	} else if size < minSegmentSize {
+		size = minSegmentSize
+	}
 	return func(c *TDFConfig) error {
 		c.defaultSegmentSize = size
 		return nil

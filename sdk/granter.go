@@ -323,6 +323,10 @@ func newGranterFromAttributes(keyCache *kasKeyCache, attrs ...*policy.Value) (gr
 		if def == nil {
 			return granter{}, fmt.Errorf("no associated definition with value [%s]", fqn)
 		}
+		namespace := def.GetNamespace()
+		if namespace == nil {
+			return granter{}, fmt.Errorf("no associated namespace with definition [%s] from value [%s]", def.GetFqn(), fqn)
+		}
 
 		valuesGranted := false
 		attributesGranted := false
@@ -335,9 +339,9 @@ func newGranterFromAttributes(keyCache *kasKeyCache, attrs ...*policy.Value) (gr
 			attributesGranted = grants.addAllGrants(fqn, def.GetGrants(), def)
 			storeKeysToCache(def.GetGrants(), keyCache)
 		}
-		if !valuesGranted && !attributesGranted && def.GetNamespace() != nil {
-			grants.addAllGrants(fqn, def.GetNamespace().GetGrants(), def)
-			storeKeysToCache(def.GetNamespace().GetGrants(), keyCache)
+		if !valuesGranted && !attributesGranted {
+			grants.addAllGrants(fqn, namespace.GetGrants(), def)
+			storeKeysToCache(namespace.GetGrants(), keyCache)
 		}
 	}
 

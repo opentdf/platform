@@ -155,10 +155,14 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	if err != nil {
 		return nil, err
 	}
+	var addTokenInterceptor connect.Interceptor
 	if accessTokenSource != nil {
 		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource, cfg.tlsConfig)
+		addTokenInterceptor = interceptor.AddToken()
 		uci = append(uci, interceptor.AddCredentials)
 	}
+	interceptors := connect.WithInterceptors(addTokenInterceptor)
+	// interceptors = connect.WithInterceptors(interceptor.AddToken())
 
 	dialOptions = append(dialOptions, grpc.WithChainUnaryInterceptor(uci...))
 
@@ -178,16 +182,16 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		conn:                    platformConn,
 		dialOptions:             dialOptions,
 		tokenSource:             accessTokenSource,
-		Attributes:              attributesconnect.NewAttributesServiceClient(httpClient, platformEndpoint, connect.WithGRPC()),
-		Namespaces:              namespacesconnect.NewNamespaceServiceClient(httpClient, platformEndpoint, connect.WithGRPC()),
-		ResourceMapping:         resourcemappingconnect.NewResourceMappingServiceClient(httpClient, platformEndpoint, connect.WithGRPC()),
-		SubjectMapping:          subjectmappingconnect.NewSubjectMappingServiceClient(httpClient, platformEndpoint, connect.WithGRPC()),
-		Unsafe:                  unsafeconnect.NewUnsafeServiceClient(httpClient, platformEndpoint, connect.WithGRPC()),
-		KeyAccessServerRegistry: kasregistryconnect.NewKeyAccessServerRegistryServiceClient(httpClient, platformEndpoint, connect.WithGRPC()),
-		Authorization:           authorizationconnect.NewAuthorizationServiceClient(httpClient, platformEndpoint, connect.WithGRPC()),
-		EntityResoution:         entityresolutionconnect.NewEntityResolutionServiceClient(httpClient, platformEndpoint, connect.WithGRPC()),
-		// wellknownConfiguration:  wellknownconfigurationconnect.NewWellKnownServiceClient(httpClient, platformEndpoint, connect.WithGRPC()),
-		wellknownConfiguration: wc,
+		Attributes:              attributesconnect.NewAttributesServiceClient(httpClient, platformEndpoint, connect.WithGRPC(), interceptors),
+		Namespaces:              namespacesconnect.NewNamespaceServiceClient(httpClient, platformEndpoint, connect.WithGRPC(), interceptors),
+		ResourceMapping:         resourcemappingconnect.NewResourceMappingServiceClient(httpClient, platformEndpoint, connect.WithGRPC(), interceptors),
+		SubjectMapping:          subjectmappingconnect.NewSubjectMappingServiceClient(httpClient, platformEndpoint, connect.WithGRPC(), interceptors),
+		Unsafe:                  unsafeconnect.NewUnsafeServiceClient(httpClient, platformEndpoint, connect.WithGRPC(), interceptors),
+		KeyAccessServerRegistry: kasregistryconnect.NewKeyAccessServerRegistryServiceClient(httpClient, platformEndpoint, connect.WithGRPC(), interceptors),
+		Authorization:           authorizationconnect.NewAuthorizationServiceClient(httpClient, platformEndpoint, connect.WithGRPC(), interceptors),
+		EntityResoution:         entityresolutionconnect.NewEntityResolutionServiceClient(httpClient, platformEndpoint, connect.WithGRPC(), interceptors),
+		wellknownConfiguration:  wellknownconfigurationconnect.NewWellKnownServiceClient(httpClient, platformEndpoint, connect.WithGRPC(), interceptors),
+		// wellknownConfiguration: wc,
 	}, nil
 }
 

@@ -331,7 +331,7 @@ func newGranterFromAttributes(keyCache *kasKeyCache, attrs ...*policy.Value) (gr
 			storeKeysToCache(v.GetGrants(), keyCache)
 		}
 		// If no more specific grant was found, then add the value grants
-		if !valuesGranted && def != nil {
+		if !valuesGranted {
 			attributesGranted = grants.addAllGrants(fqn, def.GetGrants(), def)
 			storeKeysToCache(def.GetGrants(), keyCache)
 		}

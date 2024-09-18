@@ -157,6 +157,11 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	}
 
 	segmentSize := tdfConfig.defaultSegmentSize
+	if segmentSize > maxSegmentSize {
+		return nil, fmt.Errorf("segment size too large: %d", segmentSize)
+	} else if segmentSize < minSegmentSize {
+		return nil, fmt.Errorf("segment size too small: %d", segmentSize)
+	}
 	totalSegments := inputSize / segmentSize
 	if inputSize%segmentSize != 0 {
 		totalSegments++

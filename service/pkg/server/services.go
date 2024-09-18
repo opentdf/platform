@@ -121,7 +121,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 			continue
 		}
 
-		var svcLogger *logging.Logger
+		var svcLogger *logging.Logger = logger.With("namespace", ns)
 		extractedLogLevel, err := tryExtractingServiceLoggerConfig(cfg.Services[ns])
 
 		// If ns has log_level in config, create new logger with that level
@@ -136,8 +136,6 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 					svcLogger = newSvcLogger.With("namespace", ns)
 				}
 			}
-		} else {
-			svcLogger = logger.With("namespace", ns)
 		}
 
 		var svcDBClient *db.Client

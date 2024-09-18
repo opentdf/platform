@@ -326,8 +326,10 @@ func (c *kasKeyCache) store(ki KASInfo) {
 }
 
 func (s SDK) getPublicKey(ctx context.Context, url, algorithm string) (*KASInfo, error) {
-	if cachedValue := s.kasKeyCache.get(url, algorithm); nil != cachedValue {
-		return cachedValue, nil
+	if s.kasKeyCache != nil {
+		if cachedValue := s.kasKeyCache.get(url, algorithm); nil != cachedValue {
+			return cachedValue, nil
+		}
 	}
 	grpcAddress, err := getGRPCAddress(url)
 	if err != nil {
@@ -363,6 +365,8 @@ func (s SDK) getPublicKey(ctx context.Context, url, algorithm string) (*KASInfo,
 		KID:       kid,
 		PublicKey: resp.GetPublicKey(),
 	}
-	s.kasKeyCache.store(ki)
+	if s.kasKeyCache != nil {
+		s.kasKeyCache.store(ki)
+	}
 	return &ki, nil
 }

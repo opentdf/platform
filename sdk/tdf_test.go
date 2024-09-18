@@ -697,12 +697,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 				},
 			},
 			assertionVerificationKeys: &AssertionVerificationKeys{
-				Keys: map[string]AssertionKey{
-					"assertion1": {
-						Alg: AssertionKeyAlgHS256,
-						Key: hs256Key,
-					},
-				},
+				DefaultKey: defaultKey,
 			},
 			expectedSize: 2896,
 		},
@@ -760,6 +755,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 			offset := 2
 			_, err = r.ReadAt(buf, int64(offset))
 			s.Require().Error(err)
+			s.Require().NotErrorIs(err, io.EOF)
 		}
 		_ = os.Remove(tdfFilename)
 	}

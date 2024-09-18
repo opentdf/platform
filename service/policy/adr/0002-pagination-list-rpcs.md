@@ -1,12 +1,13 @@
 # Pagination in policy LIST RPCs
 
 ## Table of Contents
+
 - [Background](#background)
 - [Chosen Option](#chosen-option)
 - [Considered Options](#considered-options)
-    - [LIMIT + OFFSET](#limit--offset)
-    - [Keyset Pagination](#keyset-pagination)
-    - [Cursor Pagination](#cursor-pagination)
+  - [LIMIT + OFFSET](#limit--offset)
+  - [Keyset Pagination](#keyset-pagination)
+  - [Cursor Pagination](#cursor-pagination)
 
 ## Background
 
@@ -43,6 +44,10 @@ message ListRequest {
     int32 limit = 3; // default depends on type of policy object
     int32 offset = 4; // default: 0
 }
+message ListResponse {
+    // ...existing fields omitted
+    int32 total = 5; // indication of total available for pagination
+}
 ```
 
 ```sql
@@ -76,6 +81,11 @@ message ListRequest {
     // ...existing fields omitted
     int32 limit = 3; // default depends on type of policy object
     google.protobuf.Timestamp after = 4; // default: start_of_time
+    int32 total = 5; // indication of total that can be paginated through
+}
+message ListResponse {
+    // ...existing fields omitted
+    int32 total = 5; // indication of total available for pagination
 }
 ```
 
@@ -113,6 +123,7 @@ message ListResponse {
     // cursors are encoded by the server as base64'd 'created_at' timestamps
     string previous_cursor = 4;
     string next_cursor = 4;
+    int32 total = 5; // indication of total available for pagination
 }
 ```
 

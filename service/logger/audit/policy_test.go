@@ -38,10 +38,6 @@ func TestCreatePolicyEventHappyPath(t *testing.T) {
 		t.Fatalf("event action did not match expected: got %+v, want %+v", event.Action, expectedEventAction)
 	}
 
-	if !reflect.DeepEqual(event.Owner, CreateNilOwner()) {
-		t.Fatalf("event owner did not match expected: got %+v, want %+v", event.Owner, CreateNilOwner())
-	}
-
 	expectedEventActor := auditEventActor{
 		ID:         TestActorID,
 		Attributes: make([]interface{}, 0),

@@ -5,7 +5,6 @@
 // type EventObject struct {
 // 	Object        auditEventObject `json:"object"`
 // 	Action        eventAction      `json:"action"`
-// 	Owner         EventOwner       `json:"owner"`
 // 	Actor         auditEventActor  `json:"actor"`
 // 	EventMetaData interface{}      `json:"eventMetaData"`
 // 	ClientInfo    eventClientInfo  `json:"clientInfo"`

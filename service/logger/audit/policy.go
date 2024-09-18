@@ -57,8 +57,7 @@ func CreatePolicyEvent(ctx context.Context, isSuccess bool, params PolicyEventPa
 			ID:         auditDataFromContext.ActorID,
 			Attributes: make([]interface{}, 0),
 		},
-		Owner: CreateNilOwner(),
-		Diff:  diff,
+		Diff: diff,
 
 		ClientInfo: eventClientInfo{
 			Platform:  "policy",

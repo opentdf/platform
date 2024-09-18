@@ -33,6 +33,16 @@
             }
           }
         },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/authorizationGetDecisionsRequest"
+            }
+          }
+        ],
         "tags": [
           "AuthorizationService"
         ]
@@ -278,6 +288,18 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/authorizationDecisionResponse"
+          }
+        }
+      }
+    },
+    "authorizationGetDecisionsRequest": {
+      "type": "object",
+      "properties": {
+        "decisionRequests": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authorizationDecisionRequest"
           }
         }
       }

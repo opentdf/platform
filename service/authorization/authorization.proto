@@ -288,7 +288,10 @@ message GetDecisionsByTokenResponse {
 
 service AuthorizationService {
   rpc GetDecisions(GetDecisionsRequest) returns (GetDecisionsResponse) {
-    option (google.api.http) = {post: "/v1/authorization"};
+    option (google.api.http) = {
+      post: "/v1/authorization"
+      body: "*"
+    };
   }
   rpc GetDecisionsByToken(GetDecisionsByTokenRequest) returns (GetDecisionsByTokenResponse) {
     option (google.api.http) = {post: "/v1/token/authorization"};

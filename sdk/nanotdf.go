@@ -169,7 +169,6 @@ type remotePolicy struct {
 
 type bindingConfig struct {
 	useEcdsaBinding bool
-	padding         uint8
 	eccMode         ocrypto.ECCMode
 }
 
@@ -209,23 +208,21 @@ const (
 
 // Binding config byte format
 // ---------------------------------
-// | 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1 |
+// | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
 // ---------------------------------
-// | E | M | M | M | x | x | x | x |
+// | E | x | x | x | x | M | M | M |
 // ---------------------------------
-// bit 8 - use ECDSA
-// bit 5-7 - eccMode
-// bit 1-4 - padding
+// bit 7 - use ECDSA
+// bit 6-3 - reserved
+// bit 2-0 - ECC Curve enum
 
 // deserializeBindingCfg - read byte of binding config into bindingConfig struct
 func deserializeBindingCfg(b byte) bindingConfig {
 	cfg := bindingConfig{}
 	// Shift to low nybble test low bit
 	cfg.useEcdsaBinding = (b >> 7 & 0b00000001) == 1 //nolint:mnd // better readability as literal
-	// ignore padding
-	cfg.padding = 0
 	// shift to low nybble and use low 3 bits
-	cfg.eccMode = ocrypto.ECCMode((b >> 4) & 0b00000111) //nolint:mnd // better readability as literal
+	cfg.eccMode = ocrypto.ECCMode(b & 0b00000111) //nolint:mnd // better readability as literal
 
 	return cfg
 }
@@ -239,7 +236,7 @@ func serializeBindingCfg(bindCfg bindingConfig) byte {
 		bindSerial |= 0b10000000
 	}
 	// Mask value to low 3 bytes and shift to high nybble
-	bindSerial |= (byte(bindCfg.eccMode) & 0b00000111) << 4 //nolint:mnd // better readability as literal
+	bindSerial |= (byte(bindCfg.eccMode) & 0b00000111) //nolint:mnd // better readability as literal
 
 	return bindSerial
 }

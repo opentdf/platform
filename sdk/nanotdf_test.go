@@ -21,7 +21,7 @@ func nanoTDFEqual(a, b *NanoTDFHeader) bool {
 	}
 
 	// Compare binding field
-	if a.bindCfg.useEcdsaBinding != b.bindCfg.useEcdsaBinding || a.bindCfg.padding != b.bindCfg.padding || a.bindCfg.eccMode != b.bindCfg.eccMode {
+	if a.bindCfg.useEcdsaBinding != b.bindCfg.useEcdsaBinding || a.bindCfg.eccMode != b.bindCfg.eccMode {
 		return false
 	}
 
@@ -93,7 +93,6 @@ func NotTestReadNanoTDFHeader(t *testing.T) {
 		},
 		bindCfg: bindingConfig{
 			useEcdsaBinding: true,
-			padding:         0,
 			eccMode:         ocrypto.ECCModeSecp256r1,
 		},
 		sigCfg: signatureConfig{

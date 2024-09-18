@@ -328,21 +328,17 @@ func newGranterFromAttributes(keyCache *kasKeyCache, attrs ...*policy.Value) (gr
 			return granter{}, fmt.Errorf("no associated namespace with definition [%s] from value [%s]", def.GetFqn(), fqn)
 		}
 
-		valuesGranted := false
-		attributesGranted := false
-		if v != nil {
-			valuesGranted = grants.addAllGrants(fqn, v.GetGrants(), def)
+		if grants.addAllGrants(fqn, v.GetGrants(), def) {
 			storeKeysToCache(v.GetGrants(), keyCache)
+			continue
 		}
-		// If no more specific grant was found, then add the value grants
-		if !valuesGranted {
-			attributesGranted = grants.addAllGrants(fqn, def.GetGrants(), def)
+		// If no more specific grant was found, then add the attr grants
+		if grants.addAllGrants(fqn, def.GetGrants(), def) {
 			storeKeysToCache(def.GetGrants(), keyCache)
+			continue
 		}
-		if !valuesGranted && !attributesGranted {
-			grants.addAllGrants(fqn, namespace.GetGrants(), def)
-			storeKeysToCache(namespace.GetGrants(), keyCache)
-		}
+		grants.addAllGrants(fqn, namespace.GetGrants(), def)
+		storeKeysToCache(namespace.GetGrants(), keyCache)
 	}
 
 	return grants, nil

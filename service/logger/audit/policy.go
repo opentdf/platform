@@ -3,7 +3,11 @@ package audit
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"time"
+
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 type PolicyEventParams struct {
@@ -11,8 +15,8 @@ type PolicyEventParams struct {
 	ObjectID   string
 	ObjectType ObjectType
 
-	Original interface{}
-	Updated  interface{}
+	Original proto.Message
+	Updated  proto.Message
 }
 
 func CreatePolicyEvent(ctx context.Context, isSuccess bool, params PolicyEventParams) (*EventObject, error) {
@@ -23,28 +27,7 @@ func CreatePolicyEvent(ctx context.Context, isSuccess bool, params PolicyEventPa
 		auditEventActionResult = ActionResultSuccess
 	}
 
-	// Calculate the diff for update events
-	var diff []DiffEntry
-	if params.ActionType == ActionTypeUpdate && isSuccess {
-		// marshal interface to byte string
-		original, err := json.Marshal(params.Original)
-		if err != nil {
-			return nil, err
-		}
-
-		updated, err := json.Marshal(params.Updated)
-		if err != nil {
-			return nil, err
-		}
-
-		patchDiff, err := createJSONPatchDiff(original, updated)
-		if err != nil {
-			return nil, err
-		}
-		diff = patchDiff
-	}
-
-	return &EventObject{
+	auditEvent := &EventObject{
 		Object: auditEventObject{
 			Type: params.ObjectType,
 			ID:   params.ObjectID,
@@ -57,8 +40,6 @@ func CreatePolicyEvent(ctx context.Context, isSuccess bool, params PolicyEventPa
 			ID:         auditDataFromContext.ActorID,
 			Attributes: make([]interface{}, 0),
 		},
-		Diff: diff,
-
 		ClientInfo: eventClientInfo{
 			Platform:  "policy",
 			UserAgent: auditDataFromContext.UserAgent,
@@ -66,5 +47,53 @@ func CreatePolicyEvent(ctx context.Context, isSuccess bool, params PolicyEventPa
 		},
 		RequestID: auditDataFromContext.RequestID,
 		Timestamp: time.Now().Format(time.RFC3339),
-	}, nil
+	}
+
+	if params.Original != nil {
+		auditEventOriginal, err := marshallProtoToAuditObjectMap(params.Original)
+		if err != nil {
+			return nil, err
+		}
+		auditEvent.Original = auditEventOriginal
+
+		if params.Updated != nil {
+			auditEventUpdated, err := marshallProtoToAuditObjectMap(params.Updated)
+			if err != nil {
+				return nil, err
+			}
+
+			auditEvent.Updated = maps.Clone(auditEvent.Original)
+			maps.Copy(auditEvent.Updated, auditEventUpdated)
+		}
+	}
+
+	return auditEvent, nil
+}
+
+func marshallProtoToAuditObjectMap(protoMessage proto.Message) (map[string]interface{}, error) {
+	jsonData, err := protojson.Marshal(protoMessage)
+	if err != nil {
+		return nil, err
+	}
+
+	data := make(map[string]interface{})
+	err = json.Unmarshal(jsonData, &data)
+	if err != nil {
+		return nil, err
+	}
+
+	// remove metadata fields we don't care about for audit
+	if _, ok := data["metadata"]; ok {
+		metadata := data["metadata"].(map[string]interface{})
+
+		delete(metadata, "createdAt")
+		delete(metadata, "updatedAt")
+
+		// remove metadata entirely if created and updated at were the only fields
+		if len(metadata) == 0 {
+			delete(data, "metadata")
+		}
+	}
+
+	return data, nil
 }

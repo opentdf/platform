@@ -100,6 +100,7 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *namespaces
 	}
 
 	auditParams.ObjectID = n.GetId()
+	auditParams.Original = n
 	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	ns.logger.Debug("created new namespace", slog.String("name", req.GetName()))
@@ -132,14 +133,7 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces
 	}
 
 	auditParams.Original = originalNamespace
-	auditParams.Updated = &policy.Namespace{
-		Id:       originalNamespace.GetId(),
-		Name:     originalNamespace.GetName(),
-		Active:   originalNamespace.GetActive(),
-		Metadata: updatedNamespace.GetMetadata(),
-		Fqn:      originalNamespace.GetFqn(),
-		Grants:   originalNamespace.GetGrants(),
-	}
+	auditParams.Updated = updatedNamespace
 
 	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	ns.logger.Debug("updated namespace", slog.String("id", namespaceID))
@@ -175,14 +169,7 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *namesp
 	}
 
 	auditParams.Original = originalNamespace
-	auditParams.Updated = &policy.Namespace{
-		Id:       originalNamespace.GetId(),
-		Name:     originalNamespace.GetName(),
-		Active:   updatedNamespace.GetActive(),
-		Metadata: originalNamespace.GetMetadata(),
-		Fqn:      originalNamespace.GetFqn(),
-		Grants:   originalNamespace.GetGrants(),
-	}
+	auditParams.Updated = updatedNamespace
 	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	ns.logger.Debug("soft-deleted namespace", slog.String("id", namespaceID))
 

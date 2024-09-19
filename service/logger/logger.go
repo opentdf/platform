@@ -9,9 +9,10 @@
 // 	EventMetaData interface{}      `json:"eventMetaData"`
 // 	ClientInfo    eventClientInfo  `json:"clientInfo"`
 
-// 	Diff      []DiffEntry `json:"diff,omitempty"`
-// 	RequestID uuid.UUID   `json:"requestId"`
-// 	Timestamp string      `json:"timestamp"`
+// 	Original  map[string]interface{} `json:"original,omitempty"`
+// 	Updated   map[string]interface{} `json:"updated,omitempty"`
+// 	RequestID uuid.UUID              `json:"requestId"`
+// 	Timestamp string                 `json:"timestamp"`
 // }
 
 // Defined here: platform/service/internal/logger/audit/utils.go

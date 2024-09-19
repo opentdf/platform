@@ -85,12 +85,13 @@ var policyCRUDParams = PolicyEventParams{
 	ObjectID:   "test-object-id",
 	ObjectType: ObjectTypeKeyObject,
 
-	Original: map[string]string{
-		"key": "old-value",
-	},
-	Updated: map[string]string{
-		"key": "new-value",
-	},
+	// todo: make a sample proto to test with or use an existing one?
+	// Original: map[string]string{
+	// 	"key": "old-value",
+	// },
+	// Updated: map[string]string{
+	// 	"key": "new-value",
+	// },
 }
 
 func TestAuditRewrapSuccess(t *testing.T) {

@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
-	"github.com/wI2L/jsondiff"
 )
 
 // Common Strings
@@ -22,9 +21,10 @@ type EventObject struct {
 	EventMetaData interface{}      `json:"eventMetaData"`
 	ClientInfo    eventClientInfo  `json:"clientInfo"`
 
-	Diff      []DiffEntry `json:"diff,omitempty"`
-	RequestID uuid.UUID   `json:"requestId"`
-	Timestamp string      `json:"timestamp"`
+	Original  map[string]interface{} `json:"original,omitempty"`
+	Updated   map[string]interface{} `json:"updated,omitempty"`
+	RequestID uuid.UUID              `json:"requestId"`
+	Timestamp string                 `json:"timestamp"`
 }
 
 // event.object
@@ -112,28 +112,4 @@ func getRequestIPFromContext(ctx context.Context) string {
 	}
 
 	return defaultNone
-}
-
-type DiffEntry struct {
-	Type  string      `json:"op"`
-	Path  string      `json:"path"`
-	Value interface{} `json:"value,omitempty"`
-}
-
-func createJSONPatchDiff(original []byte, target []byte) ([]DiffEntry, error) {
-	patch, err := jsondiff.CompareJSON(original, target, jsondiff.Invertible())
-	diffArray := make([]DiffEntry, len(patch))
-	if err != nil {
-		return nil, err
-	}
-
-	for i, item := range patch {
-		diffArray[i] = DiffEntry{
-			Type:  item.Type,
-			Path:  item.Path,
-			Value: item.Value,
-		}
-	}
-
-	return diffArray, nil
 }

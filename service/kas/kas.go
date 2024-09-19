@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 
+	"connectrpc.com/connect"
 	"github.com/mitchellh/mapstructure"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
@@ -81,7 +82,9 @@ func NewRegistration() serviceregistry.Registration {
 			}
 
 			return &p, func(ctx context.Context, mux *http.ServeMux, server any) {
-				path, handler := kasconnect.NewAccessServiceHandler(&p)
+				// interceptor := srp.OTDF.AuthN.ConnectUnaryServerInterceptor()
+				interceptors := connect.WithInterceptors()
+				path, handler := kasconnect.NewAccessServiceHandler(&p, interceptors)
 				mux.Handle(path, handler)
 			}
 		},

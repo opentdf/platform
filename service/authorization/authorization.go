@@ -136,7 +136,9 @@ func NewRegistration() serviceregistry.Registration {
 			as.config = *authZCfg
 
 			return as, func(ctx context.Context, mux *http.ServeMux, server any) {
-				path, handler := authorizationconnect.NewAuthorizationServiceHandler(as)
+				// interceptor := srp.OTDF.AuthN.ConnectUnaryServerInterceptor()
+				interceptors := connect.WithInterceptors()
+				path, handler := authorizationconnect.NewAuthorizationServiceHandler(as, interceptors)
 				mux.Handle(path, handler)
 			}
 		},

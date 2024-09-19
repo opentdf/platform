@@ -28,7 +28,9 @@ func NewRegistration() serviceregistry.Registration {
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			ss := &SubjectMappingService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
 			return ss, func(ctx context.Context, mux *http.ServeMux, s any) {
-				path, handler := subjectmappingconnect.NewSubjectMappingServiceHandler(ss)
+				// interceptor := srp.OTDF.AuthN.ConnectUnaryServerInterceptor()
+				interceptors := connect.WithInterceptors()
+				path, handler := subjectmappingconnect.NewSubjectMappingServiceHandler(ss, interceptors)
 				mux.Handle(path, handler)
 			}
 		},

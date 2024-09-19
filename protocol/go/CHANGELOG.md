@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.16](https://github.com/opentdf/platform/compare/protocol/go/v0.2.15...protocol/go/v0.2.16) (2024-09-19)
+
+
+### Bug Fixes
+
+* **core:** Fix parsing /v1/authorization ([#1554](https://github.com/opentdf/platform/issues/1554)) ([b7d694d](https://github.com/opentdf/platform/commit/b7d694d5df3867f278007660c32acb72c868735e)), closes [#1553](https://github.com/opentdf/platform/issues/1553)
+
 ## [0.2.15](https://github.com/opentdf/platform/compare/protocol/go/v0.2.14...protocol/go/v0.2.15) (2024-09-04)
 
 

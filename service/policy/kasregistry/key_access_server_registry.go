@@ -27,7 +27,9 @@ func NewRegistration() serviceregistry.Registration {
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			kr := &KeyAccessServerRegistry{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
 			return kr, func(ctx context.Context, mux *http.ServeMux, s any) {
-				path, handler := kasregistryconnect.NewKeyAccessServerRegistryServiceHandler(kr)
+				// interceptor := srp.OTDF.AuthN.ConnectUnaryServerInterceptor()
+				interceptors := connect.WithInterceptors()
+				path, handler := kasregistryconnect.NewKeyAccessServerRegistryServiceHandler(kr, interceptors)
 				mux.Handle(path, handler)
 			}
 		},

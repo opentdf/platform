@@ -26,7 +26,9 @@ func NewRegistration() serviceregistry.Registration {
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			us := &UnsafeService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
 			return us, func(ctx context.Context, mux *http.ServeMux, server any) {
-				path, handler := unsafeconnect.NewUnsafeServiceHandler(us)
+				// interceptor := srp.OTDF.AuthN.ConnectUnaryServerInterceptor()
+				interceptors := connect.WithInterceptors()
+				path, handler := unsafeconnect.NewUnsafeServiceHandler(us, interceptors)
 				mux.Handle(path, handler)
 			}
 		},

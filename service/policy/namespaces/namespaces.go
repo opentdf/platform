@@ -34,7 +34,9 @@ func NewRegistration() serviceregistry.Registration {
 			}
 
 			return ns, func(ctx context.Context, mux *http.ServeMux, server any) {
-				path, handler := namespacesconnect.NewNamespaceServiceHandler(ns)
+				// interceptor := srp.OTDF.AuthN.ConnectUnaryServerInterceptor()
+				interceptors := connect.WithInterceptors()
+				path, handler := namespacesconnect.NewNamespaceServiceHandler(ns, interceptors)
 				mux.Handle(path, handler)
 			}
 		},

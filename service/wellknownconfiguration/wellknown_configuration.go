@@ -44,7 +44,9 @@ func NewRegistration() serviceregistry.Registration {
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
 			ws := &WellKnownService{logger: srp.Logger}
 			return ws, func(ctx context.Context, mux *http.ServeMux, server any) {
-				path, handler := wellknownconfigurationconnect.NewWellKnownServiceHandler(ws)
+				// interceptor := srp.OTDF.AuthN.ConnectUnaryServerInterceptor()
+				interceptors := connect.WithInterceptors()
+				path, handler := wellknownconfigurationconnect.NewWellKnownServiceHandler(ws, interceptors)
 				mux.Handle(path, handler)
 			}
 		},

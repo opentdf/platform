@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/bmatcuk/doublestar"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -264,6 +265,71 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 
 		handler.ServeHTTP(w, r.WithContext(ctxWithJWK))
 	})
+}
+
+func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptorFunc {
+	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
+		return connect.UnaryFunc(func(
+			ctx context.Context,
+			req connect.AnyRequest,
+		) (connect.AnyResponse, error) {
+			// Interceptor Logic
+			// Allow health checks and other public routes to pass through
+			if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(req.Spec().Procedure)) { //nolint:contextcheck // There is no way to pass a context here
+				return next(ctx, req)
+			}
+			// Get the metadata from the context
+			// The keys within metadata.MD are normalized to lowercase.
+			// See: https://godoc.org/google.golang.org/grpc/metadata#New
+			println("unary interceptor procedure: ", req.Spec().Procedure)
+			md, ok := metadata.FromIncomingContext(ctx)
+			if !ok {
+				println("connect server unauth error 1")
+				return nil, status.Error(codes.Unauthenticated, "missing metadata")
+			}
+
+			// Verify the token
+			header := md["authorization"]
+			if len(header) < 1 {
+				println("connect server unauth error 2")
+				return nil, status.Error(codes.Unauthenticated, "missing authorization header")
+			}
+
+			// parse the rpc method
+			p := strings.Split(req.Spec().Procedure, "/")
+			resource := p[1] + "/" + p[2]
+			action := getAction(p[2])
+
+			token, newCtx, err := a.checkToken(
+				ctx,
+				header,
+				receiverInfo{
+					u: req.Spec().Procedure,
+					m: http.MethodPost,
+				},
+				md["dpop"],
+			)
+
+			if err != nil {
+				return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
+			}
+
+			// Check if the token is allowed to access the resource
+			if allowed, err := a.enforcer.Enforce(token, resource, action); err != nil {
+				if err.Error() == "permission denied" {
+					a.logger.Warn("permission denied", slog.String("azp", token.Subject()), slog.String("error", err.Error()))
+					return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+				}
+				return nil, err
+			} else if !allowed {
+				a.logger.Warn("permission denied", slog.String("azp", token.Subject()))
+				return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+			}
+
+			return next(newCtx, req)
+		})
+	}
+	return connect.UnaryInterceptorFunc(interceptor)
 }
 
 // UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata

@@ -33,7 +33,9 @@ func NewRegistration() serviceregistry.Registration {
 			srp.Logger.Debug("entity_resolution configuration", "config", inputIdpConfig)
 			es := &EntityResolutionService{idpConfig: inputIdpConfig, logger: srp.Logger}
 			return es, func(ctx context.Context, mux *http.ServeMux, server any) {
-				path, handler := entityresolutionconnect.NewEntityResolutionServiceHandler(es)
+				// interceptor := srp.OTDF.AuthN.ConnectUnaryServerInterceptor()
+				interceptors := connect.WithInterceptors()
+				path, handler := entityresolutionconnect.NewEntityResolutionServiceHandler(es, interceptors)
 				mux.Handle(path, handler)
 			}
 		},

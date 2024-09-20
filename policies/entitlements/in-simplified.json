@@ -1,0 +1,60 @@
+{
+  "entity": {
+    "claims": [
+      "marketing",
+      "CoolTool",
+      "futbol"
+    ],
+    "id": "0"
+  },
+  "subject_mappings": [
+    {
+      "id": "1748761a-bd8c-4b23-8560-16ba7a181f19",
+      "attribute_value": {
+        "id": "c2140825-0969-44c9-8dd6-5d7e0a856b9c",
+        "value": "blue",
+        "active": {
+          "value": true
+        }
+      },
+      "subject_condition_set": {
+        "id": "10d03422-7eae-43b9-ac3b-d10400171858",
+        "subject_sets": [
+          {
+            "condition_groups": [
+              {
+                "conditions": [
+                  {
+                    "subject_external_field": "team_name",
+                    "operator": 1,
+                    "subject_external_values": [
+                      "CoolTool",
+                      "RadService",
+                      "ShinyThing"
+                    ]
+                  },
+                  {
+                    "subject_external_field": "org_name",
+                    "operator": 1,
+                    "subject_external_values": [
+                      "marketing"
+                    ]
+                  }
+                ],
+                "boolean_operator": 1
+              }
+            ]
+          }
+        ]
+      },
+      "actions": [
+        {
+          "Value": {
+            "Standard": 1
+          }
+        }
+      ],
+      "metadata": {}
+    }
+      ]
+}

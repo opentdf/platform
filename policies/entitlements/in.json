@@ -1,0 +1,222 @@
+{
+  "attribute_mappings": {
+    "https://example.com/attr/attr1/value/value1": {
+      "attribute": {
+        "id": "6a261d68-0899-4e17-bb2f-124abba7c09c",
+        "namespace": {
+          "id": "8f1d8839-2851-4bf4-8bf4-5243dbfe517d",
+          "name": "example.com"
+        },
+        "name": "attr1",
+        "rule": 2,
+        "values": [
+          {
+            "id": "74babca6-016f-4f3e-a99b-4e46ea8d0fd8",
+            "value": "value1",
+            "fqn": "https://example.com/attr/attr1/value/value1",
+            "active": {
+              "value": true
+            }
+          },
+          {
+            "id": "2fe8dea1-3555-498c-afe9-99724f35f3d3",
+            "value": "value2",
+            "members": [
+              "0fd363db-27b1-4210-b77b-8c82fe044d41",
+              "532e5957-28f7-466d-91e2-493e9431cd83"
+            ],
+            "active": {
+              "value": true
+            }
+          }
+        ],
+        "active": {
+          "value": true
+        },
+        "metadata": {}
+      },
+      "value": {
+        "id": "74babca6-016f-4f3e-a99b-4e46ea8d0fd8",
+        "value": "value1",
+        "fqn": "https://example.com/attr/attr1/value/value1",
+        "active": {
+          "value": true
+        },
+        "subject_mappings": [
+          {
+            "id": "9d06c757-06b9-4713-8fbd-5ef007b1afe2",
+            "subject_condition_set": {
+              "id": "eaf866c0-327f-4826-846a-5041c3c22f06",
+              "subject_sets": [
+                {
+                  "condition_groups": [
+                    {
+                      "conditions": [
+                        {
+                          "subject_external_field": "group",
+                          "operator": 1,
+                          "subject_external_values": [
+                            "mygroup"
+                          ]
+                        },
+                        {
+                          "subject_external_field": "role",
+                          "operator": 2,
+                          "subject_external_values": [
+                            "myrole"
+                          ]
+                        }
+                      ],
+                      "boolean_operator": 2
+                    },
+                    {
+                      "conditions": [
+                        {
+                          "subject_external_field": "department",
+                          "operator": 1,
+                          "subject_external_values": [
+                            "engineering"
+                          ]
+                        },
+                        {
+                          "subject_external_field": "role",
+                          "operator": 2,
+                          "subject_external_values": [
+                            "manager",
+                            "director",
+                            "vice_president"
+                          ]
+                        }
+                      ],
+                      "boolean_operator": 1
+                    }
+                  ]
+                }
+              ]
+            },
+            "actions": [
+              {
+                "Value": {
+                  "Standard": 2
+                }
+              },
+              {
+                "Value": {
+                  "Custom": "custom_action_1"
+                }
+              }
+            ]
+          },
+          {
+            "id": "3c623ede-df88-4906-8a78-ebdfacadcd57",
+            "subject_condition_set": {
+              "id": "3c623ede-df88-4906-8a78-ebdfacadcd57",
+              "subject_sets": [
+                {
+                  "condition_groups": [
+                    {
+                      "conditions": [
+                        {
+                          "subject_external_field": "some_field",
+                          "operator": 1,
+                          "subject_external_values": [
+                            "some_value"
+                          ]
+                        }
+                      ],
+                      "boolean_operator": 2
+                    }
+                  ]
+                }
+              ]
+            },
+            "actions": [
+              {
+                "Value": {
+                  "Standard": 1
+                }
+              }
+            ]
+          },
+          {
+            "id": "812fab35-9aa4-4e73-bf22-c96638d58ea4",
+            "subject_condition_set": {
+              "id": "b3903282-06f9-41a4-924a-7b8eb43dffe0",
+              "subject_sets": [
+                {
+                  "condition_groups": [
+                    {
+                      "conditions": [
+                        {
+                          "subject_external_field": "superhero_name",
+                          "operator": 1,
+                          "subject_external_values": [
+                            "thor",
+                            "captain_america"
+                          ]
+                        },
+                        {
+                          "subject_external_field": "superhero_group",
+                          "operator": 1,
+                          "subject_external_values": [
+                            "avengers"
+                          ]
+                        }
+                      ],
+                      "boolean_operator": 1
+                    }
+                  ]
+                }
+              ]
+            },
+            "actions": [
+              {
+                "Value": {
+                  "Standard": 1
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "entity": {
+    "id": "0"
+  },
+  "entityRepresentations": [
+    {
+      "additionalProps": [
+        {
+          "access": {
+            "impersonate": false,
+            "manage": false,
+            "manageGroupMembership": false,
+            "mapRoles": false,
+            "view": true
+          },
+          "attributes": {
+            "fave_sport": [
+              "futbol"
+            ],
+            "superhero_name": [
+              "thor"
+            ]
+          },
+          "createdTimestamp": 1710339863913,
+          "disableableCredentialTypes": [],
+          "email": "a@a.af",
+          "emailVerified": true,
+          "enabled": true,
+          "firstName": "A",
+          "id": "e3d95832-b539-43b6-b6ac-b9c781e46735",
+          "lastName": "F",
+          "requiredActions": [],
+          "totp": false,
+          "username": "a@a.af"
+        }
+      ],
+      "originalId": "e1"
+    }
+  ]
+}

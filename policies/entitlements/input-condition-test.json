@@ -1,0 +1,12 @@
+{
+  "payload": {
+    "groups": ["groupA"]
+  },
+  "condition": {
+    "subject_external_field": "groups",
+    "operator": 1,
+    "subject_external_values": [
+      "groupA"
+    ]
+  }
+}

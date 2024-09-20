@@ -1,0 +1,41 @@
+serve:
+  cookies:
+    same_site_mode: Lax
+
+urls:
+  self:
+    issuer: http://127.0.0.1:4444
+  consent: http://127.0.0.1:3000/consent
+  login: http://127.0.0.1:3000/login
+  logout: http://127.0.0.1:3000/logout
+
+secrets:
+  system:
+    - youReallyNeedToChangeThis
+
+oidc:
+  subject_identifiers:
+    supported_types:
+      - pairwise
+      - public
+    pairwise:
+      salt: youReallyNeedToChangeThis
+
+strategies:
+  ## access_token ##
+  #
+  # Defines access token type. jwt is a bad idea, see https://www.ory.sh/docs/hydra/advanced#json-web-tokens
+  #
+  # Default value: opaque
+  #
+  # One of:
+  # - opaque
+  # - jwt
+  #
+  # Set this value using environment variables on
+  # - Linux/macOS:
+  #    $ export STRATEGIES_ACCESS_TOKEN=<value>
+  # - Windows Command Line (CMD):
+  #    > set STRATEGIES_ACCESS_TOKEN=<value>
+  #
+  access_token: jwt

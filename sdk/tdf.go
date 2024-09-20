@@ -82,6 +82,7 @@ type TDFObject struct {
 	size       int64
 	aesGcm     ocrypto.AesGcm
 	payloadKey [kKeySize]byte
+	archive.Stats
 }
 
 func (t TDFObject) Size() int64 {
@@ -319,6 +320,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	if err != nil {
 		return nil, fmt.Errorf("TDFWriter.Finish failed:%w", err)
 	}
+	tdfObject.Stats = tdfWriter.Stats()
 
 	return tdfObject, nil
 }

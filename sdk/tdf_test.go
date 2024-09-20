@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -907,6 +908,67 @@ func (s *TDFSuite) Test_TDFReaderFail() {
 			s.Require().EqualError(err, test.expectedErr)
 		})
 	}
+}
+
+type sequenceReader struct {
+	sz int64
+	i  int64
+}
+
+func (r sequenceReader) Read(p []byte) (n int, err error) {
+	if r.sz < 0 || r.i < 0 {
+		return 0, errors.New("invalid state")
+	}
+	for j := 0; j < len(p); j++ {
+		if r.i >= r.sz {
+			return j, io.EOF
+		}
+		p[j] = uint8(r.i)
+		r.i = r.i + 1
+	}
+	return len(p), nil
+}
+
+func (r sequenceReader) Seek(offset int64, whence int) (int64, error) {
+	if r.sz < 0 || r.i < 0 {
+		return 0, errors.New("invalid state")
+	}
+	switch whence {
+	default:
+		return 0, errors.New("invalid whence")
+	case io.SeekStart:
+		r.i = offset
+	case io.SeekCurrent:
+		r.i += offset
+	case io.SeekEnd:
+		r.i += r.sz + offset
+	}
+	if r.i < 0 || r.sz < r.i {
+		return 0, errors.New("invalid seek")
+	}
+	return r.i, nil
+}
+
+func (s *TDFSuite) Test_ManifestSize() { //nolint:gocognit // requires for testing tdf
+	var csv strings.Builder
+	csv.WriteString("fileSize\tsegmentSize\tmanifestSize\n")
+	for fileSize := int64(1024); fileSize <= 1024*1024*1024*16; fileSize = fileSize << 1 {
+		for _, segmentSize := range []int64{1 << 21} {
+			readSeeker := sequenceReader{fileSize, 0}
+			tdf, err := s.sdk.CreateTDF(
+				io.Discard,
+				readSeeker,
+				WithKasInformation(KASInfo{
+					URL:       "http://localhost:65432/api/kas",
+					PublicKey: mockRSAPublicKey1,
+				}),
+				WithSegmentSize(segmentSize),
+			)
+			s.Require().NoError(err)
+			csv.WriteString(fmt.Sprintf("%d\t%d\t%d\n", fileSize, segmentSize, tdf.Stats.ManifestSize))
+		}
+	}
+	s.Equal("", csv.String())
 }
 
 func (s *TDFSuite) Test_TDF() {

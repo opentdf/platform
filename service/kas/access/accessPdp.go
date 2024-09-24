@@ -82,7 +82,7 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 		switch operator {
 		case "after": // temporal/value/after::2024-11-05T12:00:00Z
 			if len(operands) != oneOperand {
-				return false, fmt.Errorf("Invaild number of operands; 'before' operator expects one operand, %d received", len(operands))
+				return false, fmt.Errorf("invaild number of operands; 'before' operator expects one operand, %d received", len(operands))
 			}
 
 			afterTime, err := time.Parse(layout, operands[0])
@@ -97,7 +97,7 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 
 		case "before": // temporal/value/before::2024-11-05T12:00:00Z
 			if len(operands) != oneOperand {
-				return false, fmt.Errorf("Invaild number of operands; 'before' operator expects one operand, %d received", len(operands))
+				return false, fmt.Errorf("invaild number of operands; 'before' operator expects one operand, %d received", len(operands))
 			}
 			beforeTime, err := time.Parse(layout, operands[0])
 			if err != nil {
@@ -110,7 +110,7 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 			}
 		case "duration": // temporal/value/duration::2024-11-05T12:00:00Z::3600 (3600 seconds = 1 hour duration)
 			if len(operands) != twoOperands {
-				return false, fmt.Errorf("Invaild number of operands;'duration' operator expects two operands, %d received", len(operands))
+				return false, fmt.Errorf("invaild number of operands;'duration' operator expects two operands, %d received", len(operands))
 			}
 
 			startTime, err := time.Parse(layout, operands[0])
@@ -130,7 +130,7 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 			}
 		case "between": // temporal/value/between::2024-11-04T12:00:00Z::2024-11-05T12:00:00Z
 			if len(operands) != twoOperands {
-				return false, fmt.Errorf("Invaild number of operands;'between' operator expects two operands, %d received", len(operands))
+				return false, fmt.Errorf("invaild number of operands;'between' operator expects two operands, %d received", len(operands))
 			}
 			startTime, err := time.Parse(layout, operands[0])
 			if err != nil {

@@ -49,22 +49,26 @@ func parseTemporalAttribute(attribute string) (string, []string, error) {
 }
 
 /*
-If the temporal attribute is provided, validates the operators and their corresponding dates.
-Each operator checks specific conditions using ISO 8601 formatted datetime strings,
-such as "2024-11-05T12:00:00Z".
+Temporal Attribute:
+The access pdp validates the temporal operator and their provided operands.
+Each operand is a RFC 3339 formatted datetime string, such as "2024-11-05T12:00:00Z", or a duration in seconds.
 
-Expects attributes in the form `/temporal/value/<operator>::<operand1>::<operand2>...`
+Expected temporal attribute format: `/temporal/value/<operator>::<operand>::<...operand>`
 
-- 'after': Checks that the current time is after the provided datetime.
+  - 'after': Checks that the current time is after the provided datetime.
+    ex: temporal/value/after::2024-11-05T12:00:00Z
 
-- 'before': Checks that the current time is before the provided datetime.
+  - 'before': Checks that the current time is before the provided datetime.
+    ex: temporal/value/before::2024-11-05T12:00:00Z
 
-- 'duration': Checks that the current time falls within a duration starting at a specific datetime.
+  - 'duration': Checks that the current time is within the provided duration, in seconds, starting at the provided datetime.
+    ex: temporal/value/duration::2024-11-05T12:00:00Z::3600
 
-- 'between': Verifies that the current time is within a specific start and end datetime window.
+  - 'between': Checks that the current time is between the provided start datetime and end datetime.
+    ex: temporal/value/between::2024-11-04T12:00:00Z::2024-11-05T12:00:00Z
 */
 func checkTemporalConditions(ctx context.Context, attributes []string, logger logger.Logger) (bool, error) {
-	layout := time.RFC3339 // Support ISO 8601 datetime strings, e.g. "2024-11-05T12:00:00Z"
+	layout := time.RFC3339
 	currentTime := time.Now().UTC()
 
 	const (

@@ -104,7 +104,8 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 				return false, nil // Access denied
 			}
 		case "duration": // temporal/value/duration::2024-11-05T12:00:00Z::3600 (3600 seconds = 1 hour duration)
-			if len(operands) != 2 {
+			const expectedOperands = 2
+			if len(operands) != expectedOperands {
 				return false, fmt.Errorf("invalid operands for 'duration'")
 			}
 

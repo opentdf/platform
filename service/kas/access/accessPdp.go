@@ -61,7 +61,7 @@ Expects attributes in the form `/temporal/value/<operator>::<operand1>::<operand
 
 - 'duration': Checks that the current time falls within a duration starting at a specific datetime.
 
-- 'contains': Verifies that the current time is within a specific start and end datetime window.
+- 'between': Verifies that the current time is within a specific start and end datetime window.
 */
 func checkTemporalConditions(ctx context.Context, attributes []string, logger logger.Logger) (bool, error) {
 	layout := time.RFC3339 // Support ISO 8601 datetime strings, e.g. "2024-11-05T12:00:00Z"
@@ -128,18 +128,18 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 				logger.InfoContext(ctx, "Access denied: current time not within duration", "start", startTime, "end", endTime)
 				return false, nil // Access denied
 			}
-		case "contains": // temporal/value/contains::2024-11-04T12:00:00Z::2024-11-05T12:00:00Z
+		case "between": // temporal/value/between::2024-11-04T12:00:00Z::2024-11-05T12:00:00Z
 			if len(operands) != twoOperands {
-				return false, fmt.Errorf("invalid operands for 'contains'")
+				return false, fmt.Errorf("invalid operands for 'between'")
 			}
 			startTime, err := time.Parse(layout, operands[0])
 			if err != nil {
-				logger.ErrorContext(ctx, "Invalid 'contains' start time format", "startTime", operands[0])
+				logger.ErrorContext(ctx, "Invalid 'between' start time format", "startTime", operands[0])
 				return false, err
 			}
 			endTime, err := time.Parse(layout, operands[1])
 			if err != nil {
-				logger.ErrorContext(ctx, "Invalid 'contains' end time format", "endTime", operands[1])
+				logger.ErrorContext(ctx, "Invalid 'between' end time format", "endTime", operands[1])
 				return false, err
 			}
 			if currentTime.Before(startTime) || currentTime.After(endTime) {

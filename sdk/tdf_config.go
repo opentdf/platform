@@ -63,7 +63,11 @@ type TDFConfig struct {
 	attributeValues           []*policy.Value
 	kasInfoList               []KASInfo
 	splitPlan                 []keySplitStep
+	loc                       *LocationProvider
 }
+
+// Creator of JWSs of 'location' objects, or "" if none are found
+type LocationProvider func() (string, error)
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 	rsaKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
@@ -218,6 +222,7 @@ type TDFReaderOption func(*TDFReaderConfig) error
 type TDFReaderConfig struct {
 	// Optional Map of Assertion Verification Keys
 	AssertionVerificationKeys AssertionVerificationKeys
+	loc                       *LocationProvider
 }
 
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
@@ -235,6 +240,13 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		c.AssertionVerificationKeys = keys
+		return nil
+	}
+}
+
+func WithLocationProvider(loc LocationProvider) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.loc = &loc
 		return nil
 	}
 }

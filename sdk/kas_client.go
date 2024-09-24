@@ -31,6 +31,7 @@ type KASClient struct {
 	dialOptions        []grpc.DialOption
 	clientPublicKeyPEM string
 	asymDecryption     ocrypto.AsymDecryption
+	loc                *LocationProvider
 }
 
 // once the backend moves over we should use the same type that the golang backend uses here
@@ -40,9 +41,12 @@ type rewrapRequestBody struct {
 	Algorithm       string    `json:"algorithm,omitempty"`
 	ClientPublicKey string    `json:"clientPublicKey"`
 	SchemaVersion   string    `json:"schemaVersion,omitempty"`
+
+	// XXX Temporary for testing 'geo' functionality
+	Location string `json:"location,omitempty"`
 }
 
-func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, sessionKey ocrypto.RsaKeyPair) (*KASClient, error) {
+func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, sessionKey ocrypto.RsaKeyPair, loc *LocationProvider) (*KASClient, error) {
 	clientPublicKey, err := sessionKey.PublicKeyInPemFormat()
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
@@ -63,6 +67,7 @@ func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTo
 		dialOptions:        dialOptions,
 		clientPublicKeyPEM: clientPublicKey,
 		asymDecryption:     asymDecryption,
+		loc:                loc,
 	}, nil
 }
 
@@ -249,6 +254,9 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 		Policy:          policy,
 		KeyAccess:       keyAccess,
 		ClientPublicKey: k.clientPublicKeyPEM,
+	}
+	if k.loc != nil {
+		requestBody.Location = k.loc()
 	}
 	requestBodyJSON, err := json.Marshal(requestBody)
 	if err != nil {

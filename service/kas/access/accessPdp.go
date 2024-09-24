@@ -67,6 +67,10 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 	layout := time.RFC3339 // Support ISO 8601 datetime strings, e.g. "2024-11-05T12:00:00Z"
 	currentTime := time.Now().UTC()
 
+	expectedOperands := func(operands []string, expected int) bool {
+		return len(operands) == expected
+	}
+
 	for _, attr := range attributes {
 		operator, operands, err := parseTemporalAttribute(attr)
 		if err != nil {
@@ -76,7 +80,7 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 
 		switch operator {
 		case "after": // temporal/value/after::2024-11-05T12:00:00Z
-			if len(operands) != 1 {
+			if expectedOperands(operands, 2) {
 				return false, fmt.Errorf("invalid operands for 'after'")
 			}
 
@@ -91,7 +95,7 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 			}
 
 		case "before": // temporal/value/before::2024-11-05T12:00:00Z
-			if len(operands) != 1 {
+			if expectedOperands(operands, 1) {
 				return false, fmt.Errorf("invalid operands for 'before'")
 			}
 			beforeTime, err := time.Parse(layout, operands[0])
@@ -104,8 +108,7 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 				return false, nil // Access denied
 			}
 		case "duration": // temporal/value/duration::2024-11-05T12:00:00Z::3600 (3600 seconds = 1 hour duration)
-			const expectedOperands = 2
-			if len(operands) != expectedOperands {
+			if expectedOperands(operands, 2) {
 				return false, fmt.Errorf("invalid operands for 'duration'")
 			}
 
@@ -125,7 +128,7 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 				return false, nil // Access denied
 			}
 		case "contains": // temporal/value/contains::2024-11-04T12:00:00Z::2024-11-05T12:00:00Z
-			if len(operands) != 2 {
+			if expectedOperands(operands, 2) {
 				return false, fmt.Errorf("invalid operands for 'contains'")
 			}
 			startTime, err := time.Parse(layout, operands[0])

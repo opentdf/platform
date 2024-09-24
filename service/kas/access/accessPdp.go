@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -61,8 +60,8 @@ Expected temporal attribute format: `/temporal/value/<operator>::<operand>::<...
   - 'before': Checks that the current time is before the provided datetime.
     ex: temporal/value/before::2024-11-05T12:00:00Z
 
-  - 'duration': Checks that the current time is within the provided duration, in seconds, starting at the provided datetime.
-    ex: temporal/value/duration::2024-11-05T12:00:00Z::3600
+  - 'duration': Checks that the current time is within the provided duration, starting at the provided datetime.
+    ex: temporal/value/duration::2024-11-05T12:00:00Z::1h
 
   - 'between': Checks that the current time is between the provided start datetime and end datetime.
     ex: temporal/value/between::2024-11-04T12:00:00Z::2024-11-05T12:00:00Z
@@ -112,7 +111,7 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 				logger.InfoContext(ctx, "Access denied: current time is after allowed 'before' time", "notAfter", beforeTime)
 				return false, nil // Access denied
 			}
-		case "duration": // temporal/value/duration::2024-11-05T12:00:00Z::3600 (3600 seconds = 1 hour duration)
+		case "duration": // temporal/value/duration::2024-11-05T12:00:00Z::1h
 			if len(operands) != twoOperands {
 				return false, fmt.Errorf("invaild number of operands;'duration' operator expects two operands, %d received", len(operands))
 			}
@@ -122,12 +121,12 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 				logger.ErrorContext(ctx, "Invalid 'duration' start time format", "startTime", operands[0])
 				return false, err
 			}
-			durationSeconds, err := strconv.ParseInt(operands[1], 10, 64)
+			duration, err := time.ParseDuration(operands[1])
 			if err != nil {
-				logger.ErrorContext(ctx, "Invalid 'duration' seconds format", "durationSeconds", operands[1])
+				logger.ErrorContext(ctx, "Invalid 'duration' format", "duration", operands[1])
 				return false, err
 			}
-			endTime := startTime.Add(time.Duration(durationSeconds) * time.Second)
+			endTime := startTime.Add(duration)
 			if currentTime.Before(startTime) || currentTime.After(endTime) {
 				logger.InfoContext(ctx, "Access denied: current time not within duration", "start", startTime, "end", endTime)
 				return false, nil // Access denied

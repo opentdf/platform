@@ -1,6 +1,7 @@
-go 1.22
+go 1.22.3
 
 use (
+	./audit-log
 	./examples
 	./lib/fixtures
 	./lib/flattening

@@ -156,13 +156,13 @@ func isTemporalAttribute(uri string) bool {
 }
 
 func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent *authorization.Token, sdk *otdf.SDK, logger logger.Logger) (bool, error) {
-	// Check for /temporal attribute and validate
 	var temporalAttributes []string
 	ras := []*authorization.ResourceAttribute{{
 		AttributeValueFqns: make([]string, 0),
 	}}
-
+	
 	for _, attr := range dataAttrs {
+		// Check for /temporal attribute and validate
 		if isTemporalAttribute(attr.URI) {
 			temporalAttributes = append(temporalAttributes, attr.URI)
 		} else {
@@ -170,7 +170,13 @@ func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent *authorizat
 		}
 	}
 	if len(temporalAttributes) > 0 {
-		return checkTemporalConditions(ctx, temporalAttributes, logger)
+		isValid, err := checkTemporalConditions(ctx, temporalAttributes, logger)
+		if err != nil {
+			return false, err
+		}
+		if !isValid {
+			return false, nil
+		}
 	}
 
 	in := authorization.GetDecisionsByTokenRequest{

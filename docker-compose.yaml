@@ -79,3 +79,14 @@ services:
       retries: 10
     ports:
       - "5432:5432"
+  fluentd:
+    build:
+      context: .
+      dockerfile: Dockerfile.fluentd
+    volumes:
+      - ./fluent.conf:/fluentd/etc/fluent.conf
+      - ./logs:/fluentd/log  # Optional: Mount a directory for logs
+    ports:
+      - "24224:24224"
+    networks:
+      - default

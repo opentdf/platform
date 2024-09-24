@@ -3,6 +3,7 @@ package access
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -35,8 +36,30 @@ func (p *Provider) checkAttributes(ctx context.Context, dataAttrs []Attribute, e
 		AttributeValueFqns: make([]string, 0),
 	}}
 
+	validator := func(fqn string) (string, error) {
+		return fqn, nil
+	}
+	if p.GeoTDF.Prefix != "" {
+		validator = func(fqn string) (string, error) {
+			if !strings.HasPrefix(fqn, p.GeoTDF.Prefix) {
+				return fqn, nil
+			}
+			// A GeoTDF attribute! Check it for validity!
+			if err := p.checkGeoTDF(ctx, fqn); err != nil {
+				return "", err
+			}
+			return "", nil
+		}
+	}
+
 	for _, attr := range dataAttrs {
-		ras[0].AttributeValueFqns = append(ras[0].GetAttributeValueFqns(), attr.URI)
+		fqn, err := validator(attr.URI)
+		if err != nil {
+			return false, err
+		}
+		if fqn != "" {
+			ras[0].AttributeValueFqns = append(ras[0].GetAttributeValueFqns(), fqn)
+		}
 	}
 	in := authorization.GetDecisionsByTokenRequest{
 		DecisionRequests: []*authorization.TokenDecisionRequest{

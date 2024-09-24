@@ -34,6 +34,17 @@ type KASConfig struct {
 	ECCertID string `mapstructure:"eccertid" json:"eccertid"`
 	// Deprecated
 	RSACertID string `mapstructure:"rsacertid" json:"rsacertid"`
+
+	// Demos and experimental features. Do not use.
+	Experimental
+}
+
+type Experimental struct {
+	GeoTDF `mapstructure:"geotdf" json:"geotdf"`
+}
+
+type GeoTDF struct {
+	Prefix string `mapstructure:"prefix" json:"prefix"`
 }
 
 // Specifies the preferred/default key for a given algorithm type.

@@ -48,6 +48,9 @@ type RequestBody struct {
 	ClientPublicKey string      `json:"clientPublicKey"`
 	PublicKey       interface{} `json:"-"`
 	SchemaVersion   string      `json:"schemaVersion,omitempty"`
+
+	// XXX Temporary for testing 'geo' functionality
+	Location string `json:"location,omitempty"`
 }
 
 type entityInfo struct {
@@ -346,6 +349,13 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 		Jwt: entity.Token,
 	}
 
+	if p.GeoTDF.Prefix != "" && body.Location != "" {
+		l, err := p.parseLocation(ctx, body.Location)
+		if err != nil {
+			return nil, err
+		}
+		ctx = context.WithValue(ctx, ctxExperimentalGeoTDFKey, *l)
+	}
 	access, err := p.canAccess(ctx, tok, *policy)
 
 	// Audit the TDF3 Rewrap

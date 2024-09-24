@@ -39,7 +39,7 @@ func canAccess(ctx context.Context, token *authorization.Token, policy Policy, s
 func parseTemporalAttribute(attribute string) (operator string, operands []string, err error) {
 	// e.g. "temporal/value/after::2024-11-05T12:00:00Z"
 	parts := strings.Split(attribute, "::")
-	if len(parts) < 2 {
+	if len(parts) < 2 { // Temportal Attriubte must have at least 2 parts
 		return "", nil, fmt.Errorf("invalid temporal attribute format")
 	}
 	operator = parts[0]
@@ -160,7 +160,7 @@ func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent *authorizat
 	ras := []*authorization.ResourceAttribute{{
 		AttributeValueFqns: make([]string, 0),
 	}}
-	
+
 	for _, attr := range dataAttrs {
 		// Check for /temporal attribute and validate
 		if isTemporalAttribute(attr.URI) {

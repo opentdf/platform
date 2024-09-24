@@ -2,11 +2,19 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"os"
 
+	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
+)
+
+var (
+	latitude, longitude float64
 )
 
 func init() {
@@ -16,6 +24,8 @@ func init() {
 		RunE:  decrypt,
 		Args:  cobra.MinimumNArgs(1),
 	}
+	decryptCmd.Flags().Float64Var(&latitude, "geo-lat", math.NaN(), "Geographic latitude")
+	decryptCmd.Flags().Float64Var(&longitude, "geo-lng", math.NaN(), "Geographic longitude")
 	ExamplesCmd.AddCommand(decryptCmd)
 }
 
@@ -56,7 +66,20 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	if !isNano {
-		tdfreader, err := client.LoadTDF(file)
+		opts := []sdk.TDFReaderOption{} // Define opts as an empty slice of Option
+		if !math.IsNaN(latitude) || !math.IsNaN(longitude) {
+			if math.IsNaN(latitude) || math.IsNaN(longitude) {
+				return errors.New("both latitude and longitude must be provided")
+			}
+			opts = append(opts, sdk.WithLocationProvider(func() (string, error) {
+				b, err := json.Marshal(map[string]float64{"lat": latitude, "lng": longitude})
+				if err != nil {
+					return "", err
+				}
+				return base64.StdEncoding.EncodeToString(b), nil
+			}))
+		}
+		tdfreader, err := client.LoadTDF(file, opts...)
 		if err != nil {
 			return err
 		}

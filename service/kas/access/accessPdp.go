@@ -36,17 +36,16 @@ func canAccess(ctx context.Context, token *authorization.Token, policy Policy, s
 	return true, nil
 }
 
-func parseTemporalAttribute(attribute string) (operator string, operands []string, err error) {
+func parseTemporalAttribute(attribute string) (string, []string, error) {
 	// e.g. "temporal/value/after::2024-11-05T12:00:00Z"
 	const minParts = 2
 	parts := strings.Split(attribute, "::")
 	if len(parts) < minParts {
-		err = fmt.Errorf("invalid temporal attribute format")
-		return
+		return "", nil, fmt.Errorf("invalid temporal attribute format")
 	}
-	operator = parts[0]
-	operands = parts[1:]
-	return
+	operator := parts[0]
+	operands := parts[1:]
+	return operator, operands, nil
 }
 
 /*

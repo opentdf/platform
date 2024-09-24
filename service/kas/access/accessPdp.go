@@ -64,7 +64,7 @@ Expects attributes in the form `/temporal/value/<operator>::<operand1>::<operand
 - 'contains': Verifies that the current time is within a specific start and end datetime window.
 */
 func checkTemporalConditions(ctx context.Context, attributes []string, logger logger.Logger) (bool, error) {
-	layout := time.RFC3339 //Support ISO 8601 datetime strings, e.g. "2024-11-05T12:00:00Z"
+	layout := time.RFC3339 // Support ISO 8601 datetime strings, e.g. "2024-11-05T12:00:00Z"
 	currentTime := time.Now().UTC()
 
 	for _, attr := range attributes {

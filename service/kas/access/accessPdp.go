@@ -157,8 +157,7 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 }
 
 func isTemporalAttribute(uri string) bool {
-	const TemporalAttrURI = "/temporal/value/"
-	return strings.HasPrefix(uri, TemporalAttrURI)
+	return strings.HasPrefix(uri, "/temporal/value/")
 }
 
 func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent *authorization.Token, sdk *otdf.SDK, logger logger.Logger) (bool, error) {

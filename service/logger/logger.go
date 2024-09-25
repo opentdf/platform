@@ -65,13 +65,14 @@ func NewLogger(config Config) (*Logger, error) {
 			Level:       level,
 			ReplaceAttr: logger.replaceAttrChain,
 		})
-		sLogger = slog.New(j)
+
+		sLogger = tdflog.NewTDFLogger("http://localhost:8080", tdflog.WithDelegateHandler(j))
 	case "text":
 		t := slog.NewTextHandler(w, &slog.HandlerOptions{
 			Level:       level,
 			ReplaceAttr: logger.replaceAttrChain,
 		})
-		sLogger = slog.New(t)
+		sLogger = tdflog.NewTDFLogger("http://localhost:8080", tdflog.WithDelegateHandler(t))
 	default:
 		return nil, fmt.Errorf("invalid logger type: %s", config.Type)
 	}

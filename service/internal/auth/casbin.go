@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"audit-log/tdflog"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -295,7 +296,7 @@ func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
 }
 
 func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
-	e.logger.Debug("extracting roles from token", slog.Any("token", t))
+	e.logger.Debug("extracting roles from token", tdflog.Protect("token", t))
 	roles := []string{}
 
 	roleClaim := e.Config.RoleClaim

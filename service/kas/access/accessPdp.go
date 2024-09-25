@@ -40,14 +40,18 @@ func (p *Provider) checkAttributes(ctx context.Context, dataAttrs []Attribute, e
 		return fqn, nil
 	}
 	if p.GeoTDF.Prefix != "" {
+		p.Logger.InfoContext(ctx, "geotdf: validating attributes", "geo.prefix", p.GeoTDF.Prefix)
 		validator = func(fqn string) (string, error) {
 			if !strings.HasPrefix(fqn, p.GeoTDF.Prefix) {
+				p.Logger.InfoContext(ctx, "geotdf: prefix not found", "geo.prefix", p.GeoTDF.Prefix, "attr.val", fqn)
 				return fqn, nil
 			}
 			// A GeoTDF attribute! Check it for validity!
-			if err := p.checkGeoTDF(ctx, fqn); err != nil {
+			if err := p.checkGeoTDF(ctx, fqn[len(p.GeoTDF.Prefix):]); err != nil {
+				p.Logger.InfoContext(ctx, "geotdf: prefix check err found", "geo.prefix", p.GeoTDF.Prefix, "attr.val", fqn, "err", err)
 				return "", err
 			}
+			p.Logger.InfoContext(ctx, "geotdf: passed check", "geo.prefix", p.GeoTDF.Prefix, "attr.val", fqn)
 			return "", nil
 		}
 	}
@@ -55,6 +59,7 @@ func (p *Provider) checkAttributes(ctx context.Context, dataAttrs []Attribute, e
 	for _, attr := range dataAttrs {
 		fqn, err := validator(attr.URI)
 		if err != nil {
+			p.Logger.InfoContext(ctx, "geotdf: invalid attribute", "attr.fqn", attr.URI, "err", err)
 			return false, err
 		}
 		if fqn != "" {

@@ -63,7 +63,6 @@ type TDFConfig struct {
 	attributeValues           []*policy.Value
 	kasInfoList               []KASInfo
 	splitPlan                 []keySplitStep
-	loc                       *LocationProvider
 }
 
 // Creator of JWSs of 'location' objects, or "" if none are found
@@ -222,7 +221,7 @@ type TDFReaderOption func(*TDFReaderConfig) error
 type TDFReaderConfig struct {
 	// Optional Map of Assertion Verification Keys
 	AssertionVerificationKeys AssertionVerificationKeys
-	loc                       *LocationProvider
+	loc                       LocationProvider
 }
 
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
@@ -246,7 +245,7 @@ func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOpti
 
 func WithLocationProvider(loc LocationProvider) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
-		c.loc = &loc
+		c.loc = loc
 		return nil
 	}
 }

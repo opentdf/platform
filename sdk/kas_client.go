@@ -46,7 +46,7 @@ type rewrapRequestBody struct {
 	Location string `json:"location,omitempty"`
 }
 
-func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, sessionKey ocrypto.RsaKeyPair, loc *LocationProvider) (*KASClient, error) {
+func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, sessionKey ocrypto.RsaKeyPair, loc LocationProvider) (*KASClient, error) {
 	clientPublicKey, err := sessionKey.PublicKeyInPemFormat()
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)

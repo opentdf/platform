@@ -49,11 +49,11 @@ func parseTemporalAttribute(attribute string) (string, []string, error) {
 }
 
 /*
-If the temporal attribute is provided, validates the operators and their corresponding dates.
-Each operator checks specific conditions using ISO 8601 formatted datetime strings,
-such as "2024-11-05T12:00:00Z".
+If the temporal attribute is provided, this function validates the operators and their corresponding dates.
 
-Expects attributes in the form `/temporal/value/<operator>::<operand1>::<operand2>...`
+Each operator checks specific conditions using ISO 8601 formatted datetime strings (RFC 3339), such as "2024-11-05T12:00:00Z".
+
+Expected attribute format `/temporal/value/<operator>::<operand1>::<operand2>...`
 
 - 'after': Checks that the current time is after the provided datetime.
 
@@ -64,7 +64,7 @@ Expects attributes in the form `/temporal/value/<operator>::<operand1>::<operand
 - 'contains': Verifies that the current time is within a specific start and end datetime window.
 */
 func checkTemporalConditions(ctx context.Context, attributes []string, logger logger.Logger) (bool, error) {
-	layout := time.RFC3339 // Support ISO 8601 datetime strings, e.g. "2024-11-05T12:00:00Z"
+	layout := time.RFC3339 // Support ISO 8601 datetime strings, e.g. "2006-01-02T15:04:05Z07:00"
 	currentTime := time.Now().UTC()
 
 	const (
@@ -104,7 +104,7 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 				logger.InfoContext(ctx, "invalid 'before' datetime format", "value", operands[0])
 				return false, err
 			}
-			if currentTime.After(beforeTime) {
+			if currentTime.After(beforeTime) { //Should be exclusive of beforeTime
 				logger.InfoContext(ctx, "Access denied: current time is after allowed 'before' time", "notAfter", beforeTime)
 				return false, nil // Access denied
 			}

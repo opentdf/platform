@@ -297,6 +297,9 @@ service AuthorizationService {
     option (google.api.http) = {post: "/v1/token/authorization"};
   }
   rpc GetEntitlements(GetEntitlementsRequest) returns (GetEntitlementsResponse) {
-    option (google.api.http) = {post: "/v1/entitlements"};
+    option (google.api.http) = {
+      post: "/v1/entitlements",
+      body:"*"
+      };
   }
 }

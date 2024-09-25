@@ -2,6 +2,7 @@ package authorization
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -440,7 +441,12 @@ func makeScopeMap(scope *authorization.ResourceAttribute) map[string]bool {
 }
 
 func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
-	as.logger.DebugContext(ctx, "getting entitlements")
+	as.logger.DebugContext(ctx,"Preparing to retrieve entitlements")
+	as.logger.DebugContext(ctx, "getting entitlements with request", slog.String("Request Body", req.String()))
+
+	reqJSON, _ := json.Marshal(req)
+	as.logger.DebugContext(ctx, "getting entitlements", slog.String("Request Body", string(reqJSON)))
+
 	attrsRes, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{})
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
@@ -464,7 +470,12 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *author
 	as.logger.DebugContext(ctx, fmt.Sprintf("retrieved %d subject mappings", len(subjectMappings)))
 	// TODO: this could probably be moved to proto validation https://github.com/opentdf/platform/issues/1057
 	if req.Entities == nil {
-		as.logger.ErrorContext(ctx, "requires entities")
+		as.logger.ErrorContext(
+			ctx,
+			"invalid request: missing entities field in GetEntitlementsRequest",
+			slog.String("method", "GetEntitlements"),
+			slog.Any("request", req),
+		)
 		return nil, status.Error(codes.InvalidArgument, "requires entities")
 	}
 	rsp := &authorization.GetEntitlementsResponse{

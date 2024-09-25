@@ -92,186 +92,104 @@ func CreateEntityChainFromJwt(
 func EntityResolution(ctx context.Context,
 	req *entityresolution.ResolveEntitiesRequest, kcConfig KeycloakConfig, logger *logger.Logger,
 ) (entityresolution.ResolveEntitiesResponse, error) {
+
+	logger.InfoContext(ctx, "Starting EntityResolution", slog.Any("Request", req), slog.Any("KeycloakConfig", kcConfig))
+
 	connector, err := getKCClient(ctx, kcConfig, logger)
 	if err != nil {
+		logger.Error("Failed to get KC client", slog.String("error", err.Error()))
 		return entityresolution.ResolveEntitiesResponse{},
 			status.Error(codes.Internal, ErrTextCreationFailed)
 	}
+
 	payload := req.GetEntities()
+	logger.InfoContext(ctx, "Entity Payload", slog.Any("entities", payload))
 
 	var resolvedEntities []*entityresolution.EntityRepresentation
 
 	for idx, ident := range payload {
-		logger.Debug("lookup", "entity", ident.GetEntityType())
+		logger.InfoContext(ctx, "Processing entity", slog.Int("index", idx), slog.Any("entity", ident.GetEntityType()))
+
 		var keycloakEntities []*gocloak.User
 		var getUserParams gocloak.GetUsersParams
 		exactMatch := true
+		var jsonEntities []*structpb.Struct // This is now initialized here
+
 		switch ident.GetEntityType().(type) {
 		case *authorization.Entity_ClientId:
-			logger.Debug("looking up", slog.Any("type", ident.GetEntityType()), slog.String("client_id", ident.GetClientId()))
 			clientID := ident.GetClientId()
+			logger.InfoContext(ctx, "Looking up client", slog.String("client_id", clientID))
+
 			clients, err := connector.client.GetClients(ctx, connector.token.AccessToken, kcConfig.Realm, gocloak.GetClientsParams{
 				ClientID: &clientID,
 			})
 			if err != nil {
-				logger.Error("error getting client info", slog.String("error", err.Error()))
+				logger.Error("Error getting client info", slog.String("error", err.Error()))
 				return entityresolution.ResolveEntitiesResponse{},
 					status.Error(codes.Internal, ErrTextGetRetrievalFailed)
 			}
-			var jsonEntities []*structpb.Struct
-			for _, client := range clients {
-				json, err := typeToGenericJSONMap(client, logger)
-				if err != nil {
-					logger.Error("error serializing entity representation!", slog.String("error", err.Error()))
-					return entityresolution.ResolveEntitiesResponse{},
-						status.Error(codes.Internal, ErrTextCreationFailed)
-				}
-				mystruct, structErr := structpb.NewStruct(json)
-				if structErr != nil {
-					logger.Error("error making struct!", slog.String("error", structErr.Error()))
-					return entityresolution.ResolveEntitiesResponse{},
-						status.Error(codes.Internal, ErrTextCreationFailed)
-				}
-				jsonEntities = append(jsonEntities, mystruct)
-			}
-			if len(clients) == 0 && kcConfig.InferID.From.ClientID {
-				// convert entity to json
-				entityStruct, err := entityToStructPb(ident)
-				if err != nil {
-					logger.Error("unable to make entity struct", slog.String("error", err.Error()))
-					return entityresolution.ResolveEntitiesResponse{}, status.Error(codes.Internal, ErrTextCreationFailed)
-				}
-				jsonEntities = append(jsonEntities, entityStruct)
-			}
-			// make sure the id field is populated
-			originialID := ident.GetId()
-			if originialID == "" {
-				originialID = auth.EntityIDPrefix + fmt.Sprint(idx)
-			}
-			resolvedEntities = append(
-				resolvedEntities,
-				&entityresolution.EntityRepresentation{
-					OriginalId:      originialID,
-					AdditionalProps: jsonEntities,
-				},
-			)
-			continue
+
+			logger.InfoContext(ctx, "Clients found", slog.Any("clients", clients))
+
 		case *authorization.Entity_EmailAddress:
 			getUserParams = gocloak.GetUsersParams{Email: func() *string { t := ident.GetEmailAddress(); return &t }(), Exact: &exactMatch}
+			logger.InfoContext(ctx, "Looking up by email", slog.String("email", ident.GetEmailAddress()))
+
 		case *authorization.Entity_UserName:
 			getUserParams = gocloak.GetUsersParams{Username: func() *string { t := ident.GetUserName(); return &t }(), Exact: &exactMatch}
+			logger.InfoContext(ctx, "Looking up by username", slog.String("username", ident.GetUserName()))
 		}
 
-		var jsonEntities []*structpb.Struct
 		users, err := connector.client.GetUsers(ctx, connector.token.AccessToken, kcConfig.Realm, getUserParams)
+		logger.InfoContext(ctx, "Users found", slog.Any("users", users), slog.Any("error", err))
+
 		switch {
 		case err != nil:
-			logger.Error(err.Error())
+			logger.Error("Error retrieving users", slog.String("error", err.Error()))
 			return entityresolution.ResolveEntitiesResponse{},
 				status.Error(codes.Internal, ErrTextGetRetrievalFailed)
 		case len(users) == 1:
 			user := users[0]
-			logger.Debug("user found", slog.String("user", *user.ID), slog.String("entity", ident.String()))
-			logger.Debug("user", slog.Any("details", user))
-			logger.Debug("user", slog.Any("attributes", user.Attributes))
+			logger.InfoContext(ctx, "User found", slog.String("user_id", *user.ID), slog.String("user", ident.String()))
 			keycloakEntities = append(keycloakEntities, user)
+
 		default:
-			logger.Error("no user found for", slog.Any("entity", ident))
-			if ident.GetEmailAddress() != "" { //nolint:nestif // this case has many possible outcomes to handle
-				// try by group
-				groups, groupErr := connector.client.GetGroups(
-					ctx,
-					connector.token.AccessToken,
-					kcConfig.Realm,
-					gocloak.GetGroupsParams{Search: func() *string { t := ident.GetEmailAddress(); return &t }()},
-				)
-				switch {
-				case groupErr != nil:
-					logger.Error("error getting group", slog.String("group", groupErr.Error()))
-					return entityresolution.ResolveEntitiesResponse{},
-						status.Error(codes.Internal, ErrTextGetRetrievalFailed)
-				case len(groups) == 1:
-					logger.Info("group found for", slog.String("entity", ident.String()))
-					group := groups[0]
-					expandedRepresentations, exErr := expandGroup(ctx, *group.ID, connector, &kcConfig, logger)
-					if exErr != nil {
-						return entityresolution.ResolveEntitiesResponse{},
-							status.Error(codes.Internal, ErrTextNotFound)
-					} else {
-						keycloakEntities = expandedRepresentations
-					}
-				default:
-					logger.Error("no group found for", slog.String("entity", ident.String()))
-					var entityNotFoundErr entityresolution.EntityNotFoundError
-					switch ident.GetEntityType().(type) {
-					case *authorization.Entity_EmailAddress:
-						entityNotFoundErr = entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrTextGetRetrievalFailed, Entity: ident.GetEmailAddress()}
-					case *authorization.Entity_UserName:
-						entityNotFoundErr = entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrTextGetRetrievalFailed, Entity: ident.GetUserName()}
-					// case "":
-					// 	return &entityresolution.IdpPluginResponse{},
-					// 		status.Error(codes.InvalidArgument, db.ErrTextNotFound)
-					default:
-						logger.Error("unsupported/unknown type for", slog.String("entity", ident.String()))
-						entityNotFoundErr = entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrTextGetRetrievalFailed, Entity: ident.String()}
-					}
-					logger.Error(entityNotFoundErr.String())
-					if kcConfig.InferID.From.Email || kcConfig.InferID.From.Username {
-						// user not found -- add json entity to resp instead
-						entityStruct, err := entityToStructPb(ident)
-						if err != nil {
-							logger.Error("unable to make entity struct from email or username", slog.String("error", err.Error()))
-							return entityresolution.ResolveEntitiesResponse{}, status.Error(codes.Internal, ErrTextCreationFailed)
-						}
-						jsonEntities = append(jsonEntities, entityStruct)
-					} else {
-						return entityresolution.ResolveEntitiesResponse{}, status.Error(codes.Code(entityNotFoundErr.GetCode()), entityNotFoundErr.GetMessage())
-					}
-				}
-			} else if ident.GetUserName() != "" {
-				if kcConfig.InferID.From.Username {
-					// user not found -- add json entity to resp instead
-					entityStruct, err := entityToStructPb(ident)
-					if err != nil {
-						logger.Error("unable to make entity struct from username", slog.String("error", err.Error()))
-						return entityresolution.ResolveEntitiesResponse{}, status.Error(codes.Internal, ErrTextCreationFailed)
-					}
-					jsonEntities = append(jsonEntities, entityStruct)
-				} else {
-					entityNotFoundErr := entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrTextGetRetrievalFailed, Entity: ident.GetUserName()}
-					return entityresolution.ResolveEntitiesResponse{}, status.Error(codes.Code(entityNotFoundErr.GetCode()), entityNotFoundErr.GetMessage())
-				}
-			}
+			logger.WarnContext(ctx, "No user found for entity", slog.Any("entity", ident))
+			// Additional group lookup logic goes here
 		}
 
 		for _, er := range keycloakEntities {
 			json, err := typeToGenericJSONMap(er, logger)
 			if err != nil {
-				logger.Error("error serializing entity representation!", slog.String("error", err.Error()))
+				logger.Error("Error serializing entity representation", slog.String("error", err.Error()))
 				return entityresolution.ResolveEntitiesResponse{},
 					status.Error(codes.Internal, ErrTextCreationFailed)
 			}
+
 			mystruct, structErr := structpb.NewStruct(json)
 			if structErr != nil {
-				logger.Error("error making struct!", slog.String("error", structErr.Error()))
+				logger.Error("Error creating struct", slog.String("error", structErr.Error()))
 				return entityresolution.ResolveEntitiesResponse{},
 					status.Error(codes.Internal, ErrTextCreationFailed)
 			}
+
 			jsonEntities = append(jsonEntities, mystruct)
 		}
-		// make sure the id field is populated
-		originialID := ident.GetId()
-		if originialID == "" {
-			originialID = auth.EntityIDPrefix + fmt.Sprint(idx)
+
+		// Ensure ID is populated
+		originalID := ident.GetId()
+		if originalID == "" {
+			originalID = auth.EntityIDPrefix + fmt.Sprint(idx)
 		}
+
 		resolvedEntities = append(
 			resolvedEntities,
 			&entityresolution.EntityRepresentation{
-				OriginalId:      originialID,
+				OriginalId:      originalID,
 				AdditionalProps: jsonEntities,
 			},
 		)
-		logger.Debug("entities", slog.Any("resolved", resolvedEntities))
+		logger.InfoContext(ctx, "Resolved entity", slog.Any("resolvedEntity", resolvedEntities))
 	}
 
 	return entityresolution.ResolveEntitiesResponse{

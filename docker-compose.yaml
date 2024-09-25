@@ -1,70 +1,8 @@
 networks:
   default:
     name: opentdf_platform
+
 services:
-  # keycloak: **DO NOT COMMIT** -- Keycloak references will point to external KeyCloak instance
-  #   volumes:
-  #   - ./keys/localhost.crt:/etc/x509/tls/localhost.crt
-  #   - ./keys/localhost.key:/etc/x509/tls/localhost.key
-  #   - ./keys/ca.jks:/truststore/truststore.jks
-  #   # This is kc 24.0.1 with opentdf protocol mapper on board
-  #   image: cgr.dev/chainguard/keycloak@sha256:37895558d2e0e93ffff75da5900f9ae7e79ec6d1c390b18b2ecea6cee45ec26f
-  #   restart: always
-  #   command:
-  #   - "start-dev"
-  #   - "--verbose"
-  #   - "-Djavax.net.ssl.trustStorePassword=password"
-  #   - "-Djavax.net.ssl.HostnameVerifier=AllowAll"
-  #   - "-Djavax.net.ssl.trustStore=/truststore/truststore.jks"
-  #   - "--spi-truststore-file-hostname-verification-policy=ANY"
-  #   environment:
-  #     KC_PROXY: edge
-  #     KC_HTTP_RELATIVE_PATH: /auth
-  #     KC_DB_VENDOR: postgres
-  #     KC_DB_URL_HOST: keycloakdb
-  #     KC_DB_URL_PORT: 5432
-  #     KC_DB_URL_DATABASE: keycloak
-  #     KC_DB_USERNAME: keycloak
-  #     KC_DB_PASSWORD: changeme
-  #     KC_HOSTNAME_STRICT: "false"
-  #     KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
-  #     KC_HOSTNAME_STRICT_HTTPS: "false"
-  #     KC_HTTP_ENABLED: "true"
-  #     KC_HTTP_PORT: "8888"
-  #     KC_HTTPS_PORT: "8443"
-  #     KEYCLOAK_ADMIN: admin
-  #     KEYCLOAK_ADMIN_PASSWORD: changeme
-  #     KC_HOSTNAME_URL: http://keycloak:8888/auth
-  #     KC_FEATURES: "preview,token-exchange"
-  #     KC_HEALTH_ENABLED: "true"
-  #     KC_HTTPS_KEY_STORE_PASSWORD: "password"
-  #     KC_HTTPS_KEY_STORE_FILE: "/truststore/truststore.jks"
-  #     KC_HTTPS_CERTIFICATE_FILE: "/etc/x509/tls/localhost.crt"
-  #     KC_HTTPS_CERTIFICATE_KEY_FILE: "/etc/x509/tls/localhost.key"
-  #     KC_HTTPS_CLIENT_AUTH: "request"
-  #   ports:
-  #     - "8888:8888"
-  #     - "8443:8443"
-  #   healthcheck:
-  #     test: ['CMD-SHELL', '[ -f /tmp/HealthCheck.java ] || echo "public class HealthCheck { public static void main(String[] args) throws java.lang.Throwable { System.exit(java.net.HttpURLConnection.HTTP_OK == ((java.net.HttpURLConnection)new java.net.URL(args[0]).openConnection()).getResponseCode() ? 0 : 1); } }" > /tmp/HealthCheck.java && java /tmp/HealthCheck.java http://localhost:8888/auth/health/live']
-  #     interval: 5s
-  #     timeout: 10s
-  #     retries: 3
-  #     start_period: 2m
- 
-  # keycloakdb:
-  #   image: postgres:15-alpine
-  #   restart: always
-  #   user: postgres
-  #   environment:
-  #     POSTGRES_PASSWORD: changeme
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_DB: keycloak
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready"]
-  #     interval: 5s
-  #     timeout: 5s
-  #     retries: 10
   opentdfdb:
     image: postgres:15-alpine
     restart: always
@@ -80,3 +18,20 @@ services:
       retries: 10
     ports:
       - "5432:5432"
+
+  opentdf:
+    image: custom-opentdf:latest
+    restart: always
+    volumes:
+      - "./keys:/keys"  # Mount your keys directory
+      - "./opentdf.yaml:/home/nonroot/.opentdf/opentdf.yaml"  # Mount opentdf.yaml
+      - "./keys/local-dsp.virtru.com.pem:/usr/local/share/ca-certificates/ca.crt"  # Mount the cert file
+    networks:
+      - default
+    ports:
+      - "8080:8080"  # Expose the service on port 8080
+    environment:
+      SSL_CERT_DIR: "/usr/local/share/ca-certificates"  # Ensure the cert dir is set
+    entrypoint: ["/usr/bin/opentdf","start"]
+    extra_hosts:
+      - "local-dsp.virtru.com:192.168.1.195"  # Add custom host entries

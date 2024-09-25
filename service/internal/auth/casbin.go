@@ -257,6 +257,8 @@ func (e *Enforcer) Enforce(token jwt.Token, resource, action string) (bool, erro
 	// extract the role claim from the token
 	s := e.buildSubjectFromToken(token)
 
+	e.logger.Debug("roles extracted from token", slog.Any("roles", s.Roles))
+
 	if len(s.Roles) == 0 {
 		sub := rolePrefix + defaultRole
 		e.logger.Debug("enforcing policy", slog.Any("subject", sub), slog.String("resource", resource), slog.String("action", action))
@@ -266,6 +268,8 @@ func (e *Enforcer) Enforce(token jwt.Token, resource, action string) (bool, erro
 	allowed := false
 	for _, role := range s.Roles {
 		sub := rolePrefix + role
+		e.logger.Debug("attempting to enforce policy", slog.String("subject", sub), slog.String("resource", resource), slog.String("action", action))
+
 		allowed, err = e.Enforcer.Enforce(sub, resource, action)
 		if err != nil {
 			e.logger.Error("enforce by role error", slog.String("subject", sub), slog.String("resource", resource), slog.String("action", action), slog.String("error", err.Error()))
@@ -274,6 +278,8 @@ func (e *Enforcer) Enforce(token jwt.Token, resource, action string) (bool, erro
 		if allowed {
 			e.logger.Debug("allowed by policy", slog.String("subject", sub), slog.String("resource", resource), slog.String("action", action))
 			break
+		} else {
+			e.logger.Debug("policy denied", slog.String("subject", sub), slog.String("resource", resource), slog.String("action", action))
 		}
 	}
 	if !allowed {

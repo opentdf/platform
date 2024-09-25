@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -49,22 +48,26 @@ func parseTemporalAttribute(attribute string) (string, []string, error) {
 }
 
 /*
-If the temporal attribute is provided, this function validates the operators and their corresponding dates.
+Temporal Attribute:
+The access pdp validates the temporal operator and their provided operands.
+Each operand is a RFC 3339 formatted datetime string, such as "2024-11-05T12:00:00Z", or a duration in seconds.
 
-Each operator checks specific conditions using ISO 8601 formatted datetime strings (RFC 3339), such as "2024-11-05T12:00:00Z".
+Expected temporal attribute format: `/temporal/value/<operator>::<operand>::<...operand>`
 
-Expected attribute format `/temporal/value/<operator>::<operand1>::<operand2>...`
+  - 'after': Checks that the current time is after the provided datetime.
+    ex: temporal/value/after::2024-11-05T12:00:00Z
 
-- 'after': Checks that the current time is after the provided datetime.
+  - 'before': Checks that the current time is before the provided datetime.
+    ex: temporal/value/before::2024-11-05T12:00:00Z
 
-- 'before': Checks that the current time is before the provided datetime.
+  - 'duration': Checks that the current time is within the provided duration, starting at the provided datetime.
+    ex: temporal/value/duration::2024-11-05T12:00:00Z::1h
 
-- 'duration': Checks that the current time falls within a duration starting at a specific datetime.
-
-- 'contains': Verifies that the current time is within a specific start and end datetime window.
+  - 'between': Checks that the current time is between the provided start datetime and end datetime.
+    ex: temporal/value/between::2024-11-04T12:00:00Z::2024-11-05T12:00:00Z
 */
 func checkTemporalConditions(ctx context.Context, attributes []string, logger logger.Logger) (bool, error) {
-	layout := time.RFC3339 // Support ISO 8601 datetime strings, e.g. "2006-01-02T15:04:05Z07:00"
+	layout := time.RFC3339
 	currentTime := time.Now().UTC()
 
 	const (
@@ -82,73 +85,73 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 		switch operator {
 		case "after": // temporal/value/after::2024-11-05T12:00:00Z
 			if len(operands) != oneOperand {
-				return false, fmt.Errorf("invalid operands for 'after'")
+				return false, fmt.Errorf("temporal/after: invalid number of operands; operator expects one operand, %d received", len(operands))
 			}
-
 			afterTime, err := time.Parse(layout, operands[0])
 			if err != nil {
-				logger.ErrorContext(ctx, "invalid 'after' datetime format", "value", operands[0])
+				logger.ErrorContext(ctx, "temporal/after: invalid RFC3339 datetime format", "value", operands[0])
 				return false, err
 			}
-			if currentTime.Before(afterTime) {
-				logger.InfoContext(ctx, "Access denied: current time is before allowed 'after' time", "notBefore", afterTime)
+			if currentTime.Compare(afterTime) >= 0 {
+				logger.InfoContext(ctx, "temporal/after: access denied; current time is before 'after' time", "afterTime", afterTime)
 				return false, nil // Access denied
 			}
 
 		case "before": // temporal/value/before::2024-11-05T12:00:00Z
 			if len(operands) != oneOperand {
-				return false, fmt.Errorf("invalid operands for 'before'")
+				return false, fmt.Errorf("temporal/before: invalid number of operands; operator expects one operand, %d received", len(operands))
 			}
 			beforeTime, err := time.Parse(layout, operands[0])
 			if err != nil {
-				logger.InfoContext(ctx, "invalid 'before' datetime format", "value", operands[0])
+				logger.InfoContext(ctx, "temporal/before: invalid RFC3339 datetime format", "value", operands[0])
 				return false, err
 			}
-			if currentTime.After(beforeTime) { //Should be exclusive of beforeTime
-				logger.InfoContext(ctx, "Access denied: current time is after allowed 'before' time", "notAfter", beforeTime)
+			if currentTime.Compare(beforeTime) < 0 {
+				logger.InfoContext(ctx, "temporal/before: access denied; current time is after 'before' time", "beforeTime", beforeTime)
 				return false, nil // Access denied
-			}
-		case "duration": // temporal/value/duration::2024-11-05T12:00:00Z::3600 (3600 seconds = 1 hour duration)
-			if len(operands) != twoOperands {
-				return false, fmt.Errorf("invalid operands for 'duration'")
 			}
 
+		case "duration": // temporal/value/duration::2024-11-05T12:00:00Z::1h
+			if len(operands) != twoOperands {
+				return false, fmt.Errorf("temporal/duration: invalid number of operands; operator expects two operands, %d received", len(operands))
+			}
 			startTime, err := time.Parse(layout, operands[0])
 			if err != nil {
-				logger.ErrorContext(ctx, "Invalid 'duration' start time format", "startTime", operands[0])
+				logger.ErrorContext(ctx, "temporal/duration: invalid RFC3339 datetime format", "value", operands[0])
 				return false, err
 			}
-			durationSeconds, err := strconv.ParseInt(operands[1], 10, 64)
+			duration, err := time.ParseDuration(operands[1])
 			if err != nil {
-				logger.ErrorContext(ctx, "Invalid 'duration' seconds format", "durationSeconds", operands[1])
+				logger.ErrorContext(ctx, "temporal/duration: invalid duration format", "value", operands[1])
 				return false, err
 			}
-			endTime := startTime.Add(time.Duration(durationSeconds) * time.Second)
-			if currentTime.Before(startTime) || currentTime.After(endTime) {
-				logger.InfoContext(ctx, "Access denied: current time not within duration", "start", startTime, "end", endTime)
+			endTime := startTime.Add(duration)
+			if currentTime.Compare(startTime) >= 0 && currentTime.Compare(endTime) < 0 {
+				logger.InfoContext(ctx, "temporal/duration: access denied; current time is not within the time window", "start", startTime, "end", endTime)
 				return false, nil // Access denied
 			}
-		case "contains": // temporal/value/contains::2024-11-04T12:00:00Z::2024-11-05T12:00:00Z
+
+		case "between": // temporal/value/between::2024-11-04T12:00:00Z::2024-11-05T12:00:00Z
 			if len(operands) != twoOperands {
-				return false, fmt.Errorf("invalid operands for 'contains'")
+				return false, fmt.Errorf("temporal/between: invalid number of operands; operator expects two operands, %d received", len(operands))
 			}
 			startTime, err := time.Parse(layout, operands[0])
 			if err != nil {
-				logger.ErrorContext(ctx, "Invalid 'contains' start time format", "startTime", operands[0])
+				logger.ErrorContext(ctx, "temporal/between: invalid RFC3339 datetime format", "startTime", operands[0])
 				return false, err
 			}
 			endTime, err := time.Parse(layout, operands[1])
 			if err != nil {
-				logger.ErrorContext(ctx, "Invalid 'contains' end time format", "endTime", operands[1])
+				logger.ErrorContext(ctx, "temporal/between: invalid RFC3339 datetime format", "endTime", operands[1])
 				return false, err
 			}
-			if currentTime.Before(startTime) || currentTime.After(endTime) {
-				logger.InfoContext(ctx, "Access denied: current time not contained within time window", "start", startTime, "end", endTime)
+			if currentTime.Compare(startTime) >= 0 && currentTime.Compare(endTime) < 0 {
+				logger.InfoContext(ctx, "temporal/between: access denied; current time is not within the time window", "start", startTime, "end", endTime)
 				return false, nil
 			}
 
 		default:
-			return false, fmt.Errorf("unknown operator: %s", operator)
+			return false, fmt.Errorf("unknown temporal operator: %s", operator)
 		}
 	}
 	// Conditions satisfied, access granted

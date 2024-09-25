@@ -1,5 +1,5 @@
-baseUrl: &baseUrl http://localhost:8888
-serverBaseUrl: &serverBaseUrl http://localhost:8080
+baseUrl: &baseUrl http://local-dsp.virtru.com:8888
+serverBaseUrl: &serverBaseUrl http://local-dsp.virtru.com:8080
 customAudMapper: &customAudMapper
   name: audience-mapper
   protocol: openid-connect
@@ -78,7 +78,7 @@ realms:
           serviceAccountsEnabled: false
           publicClient: true
           redirectUris:
-            - 'http://localhost:9000/*' # otdfctl CLI tool
+            - 'http://local-dsp.virtru.com:9000/*' # otdfctl CLI tool
           protocolMappers:
             - *customAudMapper
     users:

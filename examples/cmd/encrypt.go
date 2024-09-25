@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -19,6 +20,8 @@ var (
 	noKIDInKAO     bool
 	noKIDInNano    bool
 	outputName     string
+	region         string
+	geotdfPrefix   string
 	dataAttributes []string
 )
 
@@ -35,6 +38,8 @@ func init() {
 	encryptCmd.Flags().BoolVar(&noKIDInKAO, "no-kid-in-kao", false, "[deprecated] Disable storing key identifiers in TDF KAOs")
 	encryptCmd.Flags().BoolVar(&noKIDInNano, "no-kid-in-nano", true, "Disable storing key identifiers in nanoTDF KAS ResourceLocator")
 	encryptCmd.Flags().StringVarP(&outputName, "output", "o", "sensitive.txt.tdf", "name or path of output file; - for stdout")
+	encryptCmd.Flags().StringVar(&region, "geo-region", "", "region for geoTDF encoding, if desired. e.g. --region=office")
+	encryptCmd.Flags().StringVar(&geotdfPrefix, "geo-prefix", "https://demo.com/attr/geospatial/value/WITHIN::", "FQN prefix for geofencing data attributes")
 
 	ExamplesCmd.AddCommand(&encryptCmd)
 }
@@ -81,6 +86,13 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	}()
 
 	if !nanoFormat {
+		if region != "" {
+			a, err := regionToDataAttribute(region)
+			if err != nil {
+				return err
+			}
+			dataAttributes = append(dataAttributes, a)
+		}
 		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...)}
 		if !autoconfigure {
 			opts = append(opts, sdk.WithAutoconfigure(autoconfigure))
@@ -126,6 +138,32 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		}
 	}
 	return nil
+}
+
+type Location struct {
+	Lat float64 `json:"lat"`
+	Lng float64 `json:"lng"`
+}
+
+func regionToDataAttribute(region string) (string, error) {
+	// Implement the function to return a data attribute based on the region
+	var l []Location
+	switch region {
+	default:
+		return "", fmt.Errorf("unknown region: %s", region)
+	case "office":
+		l = []Location{
+			{38.90034854189383, -77.04212675686254},
+			{38.90034852050663, -77.04186123377212},
+			{38.900838220852215, -77.04185361148076},
+			{38.90086633875238, -77.04223651735694},
+		}
+	}
+	rs, err := json.Marshal(l)
+	if err != nil {
+		return "", err
+	}
+	return geotdfPrefix + base64.StdEncoding.EncodeToString(rs), nil
 }
 
 func cat(cmd *cobra.Command, nTdfFile string) error {

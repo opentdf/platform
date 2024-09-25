@@ -354,7 +354,10 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 		if err != nil {
 			return nil, err
 		}
+		p.Logger.InfoContext(ctx, "geoTDF: location found", "location", l)
 		ctx = context.WithValue(ctx, ctxExperimentalGeoTDFKey, *l)
+	} else {
+		p.Logger.InfoContext(ctx, "geoTDF: not enabled")
 	}
 	access, err := p.canAccess(ctx, tok, *policy)
 

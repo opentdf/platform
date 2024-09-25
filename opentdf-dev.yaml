@@ -21,6 +21,9 @@ services:
       - kid: r1
         alg: rsa:2048
         legacy: true
+    experimental:
+      geotdf:
+        prefix: "https://demo.com/attr/geospatial/value/WITHIN::"
   entityresolution:
     log_level: info
     url: http://localhost:8888/auth

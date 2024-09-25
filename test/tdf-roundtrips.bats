@@ -27,6 +27,27 @@
   printf '%s\n' "$output" | grep "Hello Zero Trust"
 }
 
+@test "examples: roundtrip GeoTDF" {
+  run go run ./examples encrypt --autoconfigure=false --geo-region office -o sensitive-geofenced.txt.tdf "Hello GeoTDF"
+  echo "[INFO] echoing output; if successful, this is just the manifest"
+  echo "$output"
+
+  echo "[INFO] decrypting..."
+  run go run ./examples decrypt --geo-lat=38.90053717889471 --geo-lng=-77.04197833219943 sensitive-geofenced.txt.tdf
+  echo "$output"
+  printf '%s\n' "$output" | grep "Hello GeoTDF"
+
+  echo "[INFO] decrypt failure with no location..."
+  run go run ./examples decrypt sensitive-geofenced.txt.tdf
+  echo "$output"
+  [ $status != 0 ]
+
+  echo "[INFO] decrypt failure with wrong location..."
+  run go run ./examples decrypt  --geo-lat=38 --geo-lng=-77 sensitive-geofenced.txt.tdf
+  echo "$output"
+  [ $status != 0 ]
+}
+
 @test "examples: roundtrip Z-TDF with extra unnecessary, invalid kas" {
   # TODO: add subject mapping here to remove reliance on `provision fixtures`
   echo "[INFO] configure attribute with grant for local kas"
@@ -213,6 +234,9 @@ services:
       - kid: ${rsa_legacy_key}
         alg: rsa:2048
         legacy: true
+    experimental:
+      geotdf:
+        prefix: "https://demo.com/attr/geospatial/value/WITHIN::"
   policy:
     enabled: true
   authorization:

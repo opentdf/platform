@@ -1,6 +1,7 @@
 package server
 
 import (
+	"audit-log/tdflog"
 	"context"
 	"errors"
 	"fmt"
@@ -157,6 +158,7 @@ func Start(f ...StartOptions) error {
 		// Use IPC for the SDK client
 		sdkOptions = append(sdkOptions, sdk.WithIPC())
 		sdkOptions = append(sdkOptions, sdk.WithCustomCoreConnection(otdf.GRPCInProcess.Conn()))
+		sdkOptions = append(sdkOptions, sdk.WithInsecurePlaintextConn())
 
 		client, err = sdk.New("", sdkOptions...)
 		if err != nil {
@@ -175,6 +177,7 @@ func Start(f ...StartOptions) error {
 		}
 	}
 
+	tdflog.SetDefaultTDFClient(client)
 	defer client.Close()
 
 	logger.Info("starting services")

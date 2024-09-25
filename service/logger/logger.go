@@ -20,6 +20,7 @@
 package logger
 
 import (
+	"audit-log/tdflog"
 	"context"
 	"fmt"
 	"io"
@@ -76,12 +77,13 @@ func NewLogger(config Config) (*Logger, error) {
 	}
 
 	// Audit logger will always log at the AUDIT level and be JSON formatted
-	auditLoggerHandler := slog.NewJSONHandler(w, &slog.HandlerOptions{
+	auditLoggerHandlerDel := slog.NewJSONHandler(w, &slog.HandlerOptions{
 		Level:       audit.LevelAudit,
 		ReplaceAttr: audit.ReplaceAttrAuditLevel,
 	})
-
-	auditLoggerBase := slog.New(auditLoggerHandler)
+	
+	// TODO: remove this hard coding
+	auditLoggerBase := tdflog.NewTDFLogger("http://localhost:8080", tdflog.WithDelegateHandler(auditLoggerHandlerDel))
 	auditLogger := audit.CreateAuditLogger(*auditLoggerBase)
 
 	logger.Logger = sLogger

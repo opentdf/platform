@@ -1,6 +1,7 @@
 package audit
 
 import (
+	"audit-log/tdflog"
 	"context"
 
 	"github.com/google/uuid"
@@ -152,4 +153,18 @@ func createJSONPatchDiff(original []byte, target []byte) ([]DiffEntry, error) {
 	}
 
 	return diffArray, nil
+}
+
+func GetEventObjectLogAttributes(e *EventObject) []any {
+	return []any{
+		tdflog.Protect("object", e.Object),
+		"action", e.Action,
+		"owner", e.Owner,
+		"actor", e.Actor,
+		"eventMetaData", e.EventMetaData,
+		"clientInfo", e.ClientInfo,
+		"diff", e.Diff,
+		"requestId", e.RequestID,
+		"timeStamp", e.Timestamp,
+	}
 }

@@ -1,9 +1,7 @@
 package main
 
 import (
-
 	"audit-log/tdflog"
-
 	"github.com/opentdf/platform/sdk"
 )
 
@@ -14,7 +12,7 @@ func main() {
 		panic(err)
 	}
 
-	logger := tdflog.NewTDFLogger("http://localhost:8080", sdkClient, 
+	logger := tdflog.NewTDFLogger("http://localhost:8080", tdflog.WithSDK(sdkClient), 
 		tdflog.WithAttributeMap(map[string][]string{
 			"PII": {"http://example.com/attr/demo/value/pii"},
 			"HIPPA": {"http://example.com/attr/demo/value/hippa"},
@@ -35,5 +33,4 @@ func main() {
 	third.Info("simple third", tdflog.Protect("users-password", "password")) // THIRD PII
 
 	third.Info("everyone now!", tdflog.Protect("users-password", "password", "HIPPA")) // THIRD PII and HIPPA
-
 }

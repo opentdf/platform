@@ -70,12 +70,7 @@ func (a *Logger) rewrapBase(ctx context.Context, eventParams RewrapAuditEventPar
 		return
 	}
 
-	auditEventJSONBytes, err := json.Marshal(auditEvent)
-	if err != nil {
-		a.logger.ErrorContext(ctx, "error marshalling rewrap audit event", "err", err)
-	}
-
-	a.logger.Log(ctx, LevelAudit, string(auditEventJSONBytes))
+	a.logger.Log(ctx, LevelAudit, "rewrap audit event", GetEventObjectLogAttributes(auditEvent)...)
 }
 
 func (a *Logger) PolicyCRUDSuccess(ctx context.Context, eventParams PolicyEventParams) {

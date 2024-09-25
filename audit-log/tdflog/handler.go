@@ -1,11 +1,11 @@
-package tdflog 
+package tdflog
 
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
-	"strings"
 
 	"github.com/opentdf/platform/sdk"
 )
@@ -20,13 +20,13 @@ type tdfHandler struct {
 	delegate slog.Handler
 }
 
-func NewTDFHandler(sdk *sdk.SDK, platformEndpoint string, cfg *config) *tdfHandler {
+func NewTDFHandler(platformEndpoint string, cfg *config) *tdfHandler {
 	policy := []string{}
 	for _, a := range cfg.Attributes {
 		policy = append(policy, cfg.AttributeMap[a]...)
 	}
 
-	return &tdfHandler{level: cfg.Level, policy: policy, sdk: sdk, kasUrl: platformEndpoint, attributeMap: cfg.AttributeMap, delegate: cfg.Delegate}
+	return &tdfHandler{level: cfg.Level, policy: policy, sdk: cfg.SDK, kasUrl: platformEndpoint, attributeMap: cfg.AttributeMap, delegate: cfg.Delegate}
 }
 
 func (t *tdfHandler) Enabled(ctx context.Context, level slog.Level) bool {
@@ -76,10 +76,14 @@ func (t *tdfHandler) cleanAttrs(attrs []slog.Attr) []slog.Attr {
 		switch {
 		case isEncryptAttr(*a): 
 			err = t.encryptAttributes(a)
-			ret = append(ret, *a)
+			if err == nil {
+				ret = append(ret, *a) // error occured for encryption so do not emit attribute
+			}
 		case isAddAttr(*a):
 			attributes := getAttributes(a)
 			t.policy = append(t.policy, t.buildPolicy(attributes)...)
+		default:
+			ret = append(ret, *a)
 		}
 	}
 	if err != nil {
@@ -89,9 +93,17 @@ func (t *tdfHandler) cleanAttrs(attrs []slog.Attr) []slog.Attr {
 	return ret
 }
 func (t *tdfHandler) encryptAttributes(attr *slog.Attr) error {
-	stringVal := fmt.Sprintf("%v", attr.Value.Any())
+	client, err := t.getTDFClient()
+	if err != nil {
+		return err
+	}
+
+	stringVal, err := json.Marshal(attr.Value.Any())
+	if err != nil {
+		return fmt.Errorf("could not encrypt log attribute! error marshaling json: %w", err)
+	}
 	var encryptBuf bytes.Buffer
-	cfg, err := t.sdk.NewNanoTDFConfig()
+	cfg, err := client.NewNanoTDFConfig()
 	if err != nil {
 		return fmt.Errorf("could not encrypt log attribute! error creating nano tdf config: %w", err)
 	}
@@ -104,7 +116,7 @@ func (t *tdfHandler) encryptAttributes(attr *slog.Attr) error {
 		return fmt.Errorf("could not encrypt log attribute! error setting kas url: %w", err)
 	}
 
-	_, err = t.sdk.CreateNanoTDF(&encryptBuf, strings.NewReader(stringVal), *cfg)
+	_, err = client.CreateNanoTDF(&encryptBuf, bytes.NewReader(stringVal), *cfg)
 	if err != nil {
 		return fmt.Errorf("could not encrypt log attribute! error creating tdf: %w", err)
 	}
@@ -121,4 +133,14 @@ func (t *tdfHandler) buildPolicy(attributes []string) []string {
 		policy = append(policy, t.attributeMap[a]...)
 	}
 	return policy
+}
+
+func (t *tdfHandler) getTDFClient() (*sdk.SDK, error) {
+	defaultClient := DefaultTDFClient
+	if t.sdk == nil && defaultClient == nil {
+		return nil, fmt.Errorf("Please set TDF Client when creating logger!")
+	} else if t.sdk == nil {
+		return defaultClient, nil
+	}
+	return t.sdk, nil
 }

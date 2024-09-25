@@ -3,6 +3,7 @@ package tdflog
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -97,11 +98,6 @@ func (t *tdfHandler) encryptAttributes(attr *slog.Attr) error {
 	if err != nil {
 		return err
 	}
-
-	stringVal, err := json.Marshal(attr.Value.Any())
-	if err != nil {
-		return fmt.Errorf("could not encrypt log attribute! error marshaling json: %w", err)
-	}
 	var encryptBuf bytes.Buffer
 	cfg, err := client.NewNanoTDFConfig()
 	if err != nil {
@@ -116,13 +112,19 @@ func (t *tdfHandler) encryptAttributes(attr *slog.Attr) error {
 		return fmt.Errorf("could not encrypt log attribute! error setting kas url: %w", err)
 	}
 
+	stringVal, err := json.Marshal(attr.Value.Any())
+	if err != nil {
+		return fmt.Errorf("could not encrypt log attribute! error marshaling json: %w", err)
+	}
+
 	_, err = client.CreateNanoTDF(&encryptBuf, bytes.NewReader(stringVal), *cfg)
 	if err != nil {
 		return fmt.Errorf("could not encrypt log attribute! error creating tdf: %w", err)
 	}
 
 	encryptedData := encryptBuf.Bytes()
-	attr.Value = slog.AnyValue(encryptedData)
+	b64data := base64.RawStdEncoding.EncodeToString(encryptedData)
+	attr.Value = slog.AnyValue(b64data)
 	return nil
 }
 

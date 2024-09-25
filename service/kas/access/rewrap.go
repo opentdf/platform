@@ -77,6 +77,11 @@ func err403(s string) error {
 	return errors.Join(ErrUser, status.Error(codes.PermissionDenied, s))
 }
 
+func errLocation(s string, e ...error) error {
+	e = append(e, ErrUser, status.Error(codes.PermissionDenied, "location access denied: "+s))
+	return errors.Join(e...)
+}
+
 func generateHMACDigest(ctx context.Context, msg, key []byte, logger logger.Logger) ([]byte, error) {
 	mac := hmac.New(sha256.New, key)
 	_, err := mac.Write(msg)

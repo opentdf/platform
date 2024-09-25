@@ -25,6 +25,7 @@ type Provider struct {
 	Logger         *logger.Logger
 	Config         *serviceregistry.ServiceConfig
 	KASConfig
+	keyset
 }
 
 type KASConfig struct {
@@ -44,7 +45,8 @@ type Experimental struct {
 }
 
 type GeoTDF struct {
-	Prefix string `mapstructure:"prefix" json:"prefix"`
+	Prefix string                 `mapstructure:"prefix" json:"prefix"`
+	Keys   []security.KeyPairInfo `mapstructure:"keys" json:"keys"`
 }
 
 // Specifies the preferred/default key for a given algorithm type.

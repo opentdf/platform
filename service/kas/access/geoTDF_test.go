@@ -51,7 +51,7 @@ func TestProvider_parseLocation(t *testing.T) {
 		{"badLat", base64.StdEncoding.EncodeToString([]byte(`{"lat":10000,"lng":10}`)), "invalid"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			p := &Provider{}
+			p := &Provider{Logger: testLogger()}
 			got, err := p.parseLocation(context.Background(), tt.l)
 			require.ErrorContains(t, err, tt.e)
 			assert.Nil(t, got)
@@ -81,7 +81,7 @@ func TestProvider_parseRegion(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			p := &Provider{}
+			p := &Provider{Logger: testLogger()}
 			got, err := p.parseRegion(context.Background(), tt.l)
 			require.NoError(t, err)
 			require.NotNil(t, got)
@@ -105,7 +105,7 @@ func TestProvider_parseRegion(t *testing.T) {
 		{"badRegion", base64.StdEncoding.EncodeToString([]byte(`[{"lat":10,"lng":10},{"lat":0,"lng":0}]`)), "invalid region"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			p := &Provider{}
+			p := &Provider{Logger: testLogger()}
 			got, err := p.parseRegion(context.Background(), tt.l)
 			require.ErrorContains(t, err, tt.e)
 			assert.Nil(t, got)

@@ -210,21 +210,48 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 
 	// CORS
 	if c.CORS.Enabled {
+		l.Info("CORS is enabled",
+			"AllowedOrigins", c.CORS.AllowedOrigins,
+			"AllowedMethods", c.CORS.AllowedMethods,
+			"AllowedHeaders", c.CORS.AllowedHeaders,
+			"ExposedHeaders", c.CORS.ExposedHeaders,
+			"AllowCredentials", c.CORS.AllowCredentials,
+			"MaxAge", c.CORS.MaxAge,
+		)
+
 		h = cors.New(cors.Options{
-			AllowOriginFunc: func(_ *http.Request, origin string) bool {
+			AllowOriginFunc: func(req *http.Request, origin string) bool {
+				// Log the origin of the incoming request
+				l.Info("CORS request received", "Origin", origin, "RequestURI", req.RequestURI)
+
 				for _, allowedOrigin := range c.CORS.AllowedOrigins {
+					// Log the allowed origin being checked
+					l.Info("Checking allowed origin", "AllowedOrigin", allowedOrigin)
+
 					if allowedOrigin == "*" {
+						l.Info("CORS origin allowed", "Origin", origin)
 						return true
 					}
 					if strings.EqualFold(origin, allowedOrigin) {
+						l.Info("CORS origin matched", "Origin", origin, "AllowedOrigin", allowedOrigin)
 						return true
 					}
 				}
+				l.Warn("CORS origin denied", "Origin", origin)
 				return false
 			},
-			AllowedMethods:   c.CORS.AllowedMethods,
-			AllowedHeaders:   c.CORS.AllowedHeaders,
-			ExposedHeaders:   c.CORS.ExposedHeaders,
+			AllowedMethods: func() []string {
+				l.Info("Allowed methods for CORS", "Methods", c.CORS.AllowedMethods)
+				return c.CORS.AllowedMethods
+			}(),
+			AllowedHeaders: func() []string {
+				l.Info("Allowed headers for CORS", "Headers", c.CORS.AllowedHeaders)
+				return c.CORS.AllowedHeaders
+			}(),
+			ExposedHeaders: func() []string {
+				l.Info("Exposed headers for CORS", "Headers", c.CORS.ExposedHeaders)
+				return c.CORS.ExposedHeaders
+			}(),
 			AllowCredentials: c.CORS.AllowCredentials,
 			MaxAge:           c.CORS.MaxAge,
 		}).Handler(h)

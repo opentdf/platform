@@ -39,6 +39,7 @@ service/rttests/*.tdf
 coverage.out
 coverage.lcov
 sdk/nanotest1.ntdf
+Gemfile.lock
 
 *.zip
 sensitive.txt.tdf

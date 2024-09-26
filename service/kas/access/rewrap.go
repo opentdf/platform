@@ -454,36 +454,51 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		Algorithm: body.Algorithm,
 	}
 
+	isAudit := IsAuditRewrap(policy)
+
 	if err != nil {
 		p.Logger.WarnContext(ctx, "Could not perform access decision!", "err", err)
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
+
+		if !isAudit {
+			p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
+		}
 		return nil, err403("forbidden")
 	}
 
 	if !access {
 		p.Logger.WarnContext(ctx, "Access Denied; no reason given")
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
+		if !isAudit {
+			p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
+		}
 		return nil, err403("forbidden")
 	}
 
 	privateKeyHandle, publicKeyHandle, err := p.CryptoProvider.GenerateEphemeralKasKeys()
 	if err != nil {
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
+		if !isAudit {
+			p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
+		}
 		return nil, fmt.Errorf("failed to generate keypair: %w", err)
 	}
 	sessionKey, err := p.CryptoProvider.GenerateNanoTDFSessionKey(privateKeyHandle, []byte(body.ClientPublicKey))
 	if err != nil {
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
+		if !isAudit {
+			p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
+		}
 		return nil, fmt.Errorf("failed to generate session key: %w", err)
 	}
 
 	cipherText, err := wrapKeyAES(sessionKey, symmetricKey)
 	if err != nil {
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
+		if !isAudit {
+			p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
+		}
 		return nil, fmt.Errorf("failed to encrypt key: %w", err)
 	}
 
-	p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
+	if !isAudit {
+		p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
+	}
 
 	return &kaspb.RewrapResponse{
 		EntityWrappedKey: cipherText,
@@ -492,6 +507,17 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 	}, nil
 }
 
+func IsAuditRewrap(policy *Policy) bool {
+		fmt.Println("debug:", *policy)
+	for _, p := range policy.Body.DataAttributes {
+		fmt.Println("debug:", p.URI)
+		if p.URI == audit.LogAttribute {
+			return true
+		}
+	}
+	return false
+
+}
 func extractNanoPolicy(symmetricKey []byte, header sdk.NanoTDFHeader) (*Policy, error) {
 	gcm, err := ocrypto.NewAESGcm(symmetricKey)
 	if err != nil {

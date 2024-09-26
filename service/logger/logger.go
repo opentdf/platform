@@ -84,7 +84,11 @@ func NewLogger(config Config) (*Logger, error) {
 	})
 	
 	// TODO: remove this hard coding
-	auditLoggerBase := tdflog.NewTDFLogger("http://localhost:8080", tdflog.WithDelegateHandler(auditLoggerHandlerDel))
+	auditLoggerBase := tdflog.NewTDFLogger("http://localhost:8080", tdflog.WithDelegateHandler(auditLoggerHandlerDel),
+		tdflog.WithAttributeMap(map[string][]string{
+			"AUDIT": {audit.LogAttribute},
+		}),
+		tdflog.WithAttributes("AUDIT"))
 	auditLogger := audit.CreateAuditLogger(*auditLoggerBase)
 
 	logger.Logger = sLogger

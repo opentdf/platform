@@ -97,3 +97,7 @@ func (ar ActionResult) String() string {
 func (ar ActionResult) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ar.String())
 }
+
+const (
+	LogAttribute = "http://example.com/attr/audit/value/audit"
+)

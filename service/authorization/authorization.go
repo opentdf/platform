@@ -204,8 +204,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 			}
 
 			if len(filteredFQNs) == 0 {
-				as.logger.DebugContext(ctx, "no valid FQNs left after filtering")
-				continue
+				as.logger.DebugContext(ctx, "no valid FQNs left after filtering")				
 			}
 
 			ra.AttributeValueFqns = filteredFQNs

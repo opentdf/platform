@@ -871,7 +871,7 @@ func getECPublicKeyKid(kasURL string, opts ...grpc.DialOption) (string, string, 
 	if err != nil {
 		return "", "", err
 	}
-	conn, err := grpc.Dial(grpcAddress, opts...)
+	conn, err := grpc.NewClient(grpcAddress, opts...)
 	if err != nil {
 		return "", "", fmt.Errorf("error connecting to grpc service at %s: %w", kasURL, err)
 	}

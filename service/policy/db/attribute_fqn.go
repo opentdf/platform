@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
+	"log/slog"	
 	"strings"
 
 	"github.com/Masterminds/squirrel"
@@ -155,10 +155,18 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 	if r.Fqns == nil || r.GetWithValue() == nil {
 		return nil, errors.Join(db.ErrMissingValue, errors.New("error: one or more FQNs and a WithValue selector must be provided"))
 	}
+	
 	list := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, len(r.GetFqns()))
 	for _, fqn := range r.GetFqns() {
 		// normalize to lower case
 		fqn = strings.ToLower(fqn)
+
+		// Skip temporal FQNs
+		if strings.Contains(fqn,"temporal/") {
+			c.logger.Debug("skipping temporal FQN", slog.String("fqn", fqn))
+			continue
+		}
+
 		// ensure the FQN corresponds to an attribute value and not a definition or namespace alone
 		if !strings.Contains(fqn, "/value/") {
 			return nil, db.ErrFqnMissingValue

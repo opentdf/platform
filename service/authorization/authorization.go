@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
+	"os"	
 	"strings"
 
 	"google.golang.org/grpc/codes"
@@ -188,6 +188,27 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 	for _, dr := range req.GetDecisionRequests() {
 		for _, ra := range dr.GetResourceAttributes() {
 			as.logger.DebugContext(ctx, "getting resource attributes", slog.String("FQNs", strings.Join(ra.GetAttributeValueFqns(), ", ")))
+
+			filteredFQNs := []string{}
+			for _, fqn := range ra.GetAttributeValueFqns() {
+				if strings.Contains(fqn, "temporal/") {
+					// This FQN is part of the temporal attribute system, which can have dynamic or time-based values
+					// (e.g., /temporal/value/after::2024-11-05T12:00:00Z). Temporal attributes are handled separately
+					// by the accessPdp and do not require further processing here.
+					// Skipping these attributes avoids unnecessary handling as they do not affect other parts
+					// of the decision logic.
+					as.logger.DebugContext(ctx, "ignoring temporal FQN", slog.String("FQN", fqn))
+					continue
+				}
+				filteredFQNs = append(filteredFQNs, fqn)
+			}
+
+			if len(filteredFQNs) == 0 {
+				as.logger.DebugContext(ctx, "no valid FQNs left after filtering")
+				continue
+			}
+
+			ra.AttributeValueFqns = filteredFQNs
 
 			// get attribute definition/value combinations
 			dataAttrDefsAndVals, err := retrieveAttributeDefinitions(ctx, ra, as.sdk)
@@ -441,7 +462,7 @@ func makeScopeMap(scope *authorization.ResourceAttribute) map[string]bool {
 }
 
 func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
-	as.logger.DebugContext(ctx,"Preparing to retrieve entitlements")
+	as.logger.DebugContext(ctx, "Preparing to retrieve entitlements")
 	as.logger.DebugContext(ctx, "getting entitlements with request", slog.String("Request Body", req.String()))
 
 	reqJSON, _ := json.Marshal(req)

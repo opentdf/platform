@@ -42,7 +42,13 @@ func parseTemporalAttribute(attribute string) (string, []string, error) {
 	if len(parts) < minParts {
 		return "", nil, fmt.Errorf("invalid temporal attribute format")
 	}
-	operator := parts[0]
+	
+	operatorParts := strings.Split(parts[0], "/value/")
+	if len(operatorParts) < 2 {
+		return "", nil, fmt.Errorf("invalid temporal operator format in attribute")
+	}
+
+	operator := operatorParts[1]
 	operands := parts[1:]
 	return operator, operands, nil
 }
@@ -93,7 +99,7 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 				return false, err
 			}
 			if currentTime.Compare(afterTime) >= 0 {
-				logger.InfoContext(ctx, "temporal/after: access denied; current time is before 'after' time", "afterTime", afterTime)
+				logger.DebugContext(ctx, "temporal/after: access denied; current time is before 'after' time", "afterTime", afterTime)
 				return false, nil // Access denied
 			}
 
@@ -103,11 +109,11 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 			}
 			beforeTime, err := time.Parse(layout, operands[0])
 			if err != nil {
-				logger.InfoContext(ctx, "temporal/before: invalid RFC3339 datetime format", "value", operands[0])
+				logger.DebugContext(ctx, "temporal/before: invalid RFC3339 datetime format", "value", operands[0])
 				return false, err
 			}
 			if currentTime.Compare(beforeTime) < 0 {
-				logger.InfoContext(ctx, "temporal/before: access denied; current time is after 'before' time", "beforeTime", beforeTime)
+				logger.DebugContext(ctx, "temporal/before: access denied; current time is after 'before' time", "beforeTime", beforeTime)
 				return false, nil // Access denied
 			}
 
@@ -127,7 +133,7 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 			}
 			endTime := startTime.Add(duration)
 			if currentTime.Compare(startTime) >= 0 && currentTime.Compare(endTime) < 0 {
-				logger.InfoContext(ctx, "temporal/duration: access denied; current time is not within the time window", "start", startTime, "end", endTime)
+				logger.DebugContext(ctx, "temporal/duration: access denied; current time is not within the time window", "start", startTime, "end", endTime)
 				return false, nil // Access denied
 			}
 
@@ -146,7 +152,7 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 				return false, err
 			}
 			if currentTime.Compare(startTime) >= 0 && currentTime.Compare(endTime) < 0 {
-				logger.InfoContext(ctx, "temporal/between: access denied; current time is not within the time window", "start", startTime, "end", endTime)
+				logger.DebugContext(ctx, "temporal/between: access denied; current time is not within the time window", "start", startTime, "end", endTime)
 				return false, nil
 			}
 
@@ -155,12 +161,12 @@ func checkTemporalConditions(ctx context.Context, attributes []string, logger lo
 		}
 	}
 	// Conditions satisfied, access granted
-	logger.InfoContext(ctx, "Access granted: all temporal conditions met")
+	logger.DebugContext(ctx, "Access granted: all temporal conditions met")
 	return true, nil
 }
 
 func isTemporalAttribute(uri string) bool {
-	return strings.HasPrefix(uri, "/temporal/value/")
+	return strings.Contains(uri, "temporal/value/")
 }
 
 func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent *authorization.Token, sdk *otdf.SDK, logger logger.Logger) (bool, error) {
@@ -169,24 +175,36 @@ func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent *authorizat
 		AttributeValueFqns: make([]string, 0),
 	}}
 
+	// Iterate over data attributes and classify them as temporal or not
 	for _, attr := range dataAttrs {
 		// Check for /temporal attribute and validate
 		if isTemporalAttribute(attr.URI) {
 			temporalAttributes = append(temporalAttributes, attr.URI)
+			logger.DebugContext(ctx, "Found temporal attribute", "attribute", attr.URI)
 		} else {
 			ras[0].AttributeValueFqns = append(ras[0].GetAttributeValueFqns(), attr.URI)
+			logger.DebugContext(ctx, "Added non-temporal attribute to resource attributes", "attribute", attr.URI)
 		}
 	}
+
+	// Check if there are temporal conditions and validate them
 	if len(temporalAttributes) > 0 {
+		logger.DebugContext(ctx, "Checking temporal conditions", "attributes", temporalAttributes)
 		isValid, err := checkTemporalConditions(ctx, temporalAttributes, logger)
 		if err != nil {
+			logger.ErrorContext(ctx, "Error validating temporal conditions", "err", err)
 			return false, err
 		}
 		if !isValid {
+			logger.DebugContext(ctx, "Temporal conditions not met", "attributes", temporalAttributes)
 			return false, nil
 		}
 	}
 
+	// Log the constructed resource attributes before making the decisions request
+	logger.DebugContext(ctx, "Constructed resource attributes", "attributes", ras[0].GetAttributeValueFqns())
+
+	// Construct the decisions request
 	in := authorization.GetDecisionsByTokenRequest{
 		DecisionRequests: []*authorization.TokenDecisionRequest{
 			{
@@ -198,17 +216,31 @@ func checkAttributes(ctx context.Context, dataAttrs []Attribute, ent *authorizat
 			},
 		},
 	}
+
+	// Call the SDK to get the decisions by token
 	dr, err := sdk.Authorization.GetDecisionsByToken(ctx, &in)
 	if err != nil {
 		logger.ErrorContext(ctx, "Error received from GetDecisionsByToken", "err", err)
 		return false, errors.Join(ErrDecisionUnexpected, err)
 	}
+
+	// Check if we got exactly one decision response
 	if len(dr.GetDecisionResponses()) != 1 {
 		logger.ErrorContext(ctx, ErrDecisionCountUnexpected.Error(), "count", len(dr.GetDecisionResponses()))
 		return false, ErrDecisionCountUnexpected
 	}
+
+	// Log the decision response
+	logger.DebugContext(ctx, "Received decision response", "decision", dr.GetDecisionResponses()[0].GetDecision())
+
+	// Check if the decision is PERMIT
 	if dr.GetDecisionResponses()[0].GetDecision() == authorization.DecisionResponse_DECISION_PERMIT {
+		logger.DebugContext(ctx, "Access granted")
 		return true, nil
 	}
+
+	// Log if the decision is not PERMIT
+	logger.DebugContext(ctx, "Access denied")
 	return false, nil
 }
+

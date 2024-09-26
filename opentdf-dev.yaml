@@ -24,6 +24,21 @@ services:
     experimental:
       geotdf:
         prefix: "https://demo.com/attr/geospatial/value/WITHIN::"
+        keys:
+          - kid: geotdf01
+            alg: ES256
+            cert: |-
+              -----BEGIN CERTIFICATE-----
+              MIIBdzCCAR2gAwIBAgIUbWJopd91TKqY/BdRK6Py/r9ynhAwCgYIKoZIzj0EAwIw
+              ETEPMA0GA1UEAwwGZ2VvdGRmMB4XDTI0MDkyNjE2NDgyNVoXDTI1MDkyNjE2NDgy
+              NVowETEPMA0GA1UEAwwGZ2VvdGRmMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE
+              jDGdvQvz4RQIaXenGbS6KrUuMm9pzOp2t7z1c7OnlMz1L83Y4ncYlwl1KHgsfnbb
+              2d3wJkVLSw3xYuI/8PQKCqNTMFEwHQYDVR0OBBYEFFUdxg6SZSK0dEf9gLXsJdKj
+              GSpYMB8GA1UdIwQYMBaAFFUdxg6SZSK0dEf9gLXsJdKjGSpYMA8GA1UdEwEB/wQF
+              MAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIhAJtwNmV6IftbSlKrVUsNT73YJuoF0Kqu
+              mMG8fD5eyNj3AiBD4BD5TDaWjsWkJozvskqSGNlJYQtYraLxUeJHiWweRg==
+              -----END CERTIFICATE-----
+
   entityresolution:
     log_level: info
     url: http://localhost:8888/auth

@@ -41,11 +41,13 @@
   run go run ./examples decrypt sensitive-geofenced.txt.tdf
   echo "$output"
   [ $status != 0 ]
+  printf '%s\n' "$output" | grep "location access denied"
 
   echo "[INFO] decrypt failure with wrong location..."
   run go run ./examples decrypt  --geo-lat=38 --geo-lng=-77 sensitive-geofenced.txt.tdf
   echo "$output"
   [ $status != 0 ]
+  printf '%s\n' "$output" | grep "location access denied"
 }
 
 @test "examples: roundtrip Z-TDF with extra unnecessary, invalid kas" {

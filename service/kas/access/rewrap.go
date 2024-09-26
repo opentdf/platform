@@ -382,7 +382,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 	if err != nil {
 		p.Logger.WarnContext(ctx, "Could not perform access decision!", "err", err)
 		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-		return nil, err403("forbidden")
+		return nil, err
 	}
 
 	if !access {

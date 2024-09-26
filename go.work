@@ -1,4 +1,4 @@
-go 1.22
+go 1.22.0
 
 use (
 	./examples
@@ -8,4 +8,5 @@ use (
 	./protocol/go
 	./sdk
 	./service
+	./splunk_crypto_service
 )

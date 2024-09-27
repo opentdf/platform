@@ -40,6 +40,7 @@ func (p *Provider) checkGeoTDF(ctx context.Context, geoCoord string) error {
 
 	// test to see if r contains l
 	if r.ContainsPoint(s2.PointFromLatLng(l)) {
+		p.Logger.InfoContext(ctx, "geoTDF: region contains loc", "geotdf.region", r, "geotdf.loc", l)
 		return nil
 	}
 	return errLocation("user location not in region")

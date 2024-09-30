@@ -50,18 +50,17 @@ func CreatePolicyEvent(ctx context.Context, isSuccess bool, params PolicyEventPa
 	}
 
 	if params.Original != nil {
-		auditEventOriginal, err := marshallProtoToAuditObjectMap(params.Original)
+		auditEventOriginal, err := marshallProtoToAuditObject(params.Original)
 		if err != nil {
 			return nil, err
 		}
 		auditEvent.Original = auditEventOriginal
 
 		if params.Updated != nil {
-			auditEventUpdated, err := marshallProtoToAuditObjectMap(params.Updated)
+			auditEventUpdated, err := marshallProtoToAuditObject(params.Updated)
 			if err != nil {
 				return nil, err
 			}
-
 			auditEvent.Updated = maps.Clone(auditEvent.Original)
 			maps.Copy(auditEvent.Updated, auditEventUpdated)
 		}
@@ -70,7 +69,7 @@ func CreatePolicyEvent(ctx context.Context, isSuccess bool, params PolicyEventPa
 	return auditEvent, nil
 }
 
-func marshallProtoToAuditObjectMap(protoMessage proto.Message) (map[string]interface{}, error) {
+func marshallProtoToAuditObject(protoMessage proto.Message) (map[string]interface{}, error) {
 	jsonData, err := protojson.Marshal(protoMessage)
 	if err != nil {
 		return nil, err

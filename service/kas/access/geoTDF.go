@@ -60,6 +60,10 @@ func (p *Provider) parseRegion(_ context.Context, r string) (*s2.Loop, error) {
 		return nil, errLocation("empty or invalid region found in policy", err)
 	}
 	// map region to a list of s2.Point objects
+	return loopFromLocations(region...)
+}
+
+func loopFromLocations(region ...Location) (*s2.Loop, error) {
 	points := make([]s2.Point, len(region))
 	for i, loc := range region {
 		p, err := ll2point(loc.Lat, loc.Lng)

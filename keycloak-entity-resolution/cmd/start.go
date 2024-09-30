@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	keycloak "github.com/opentdf/platform/keycloak-ers/entityresolution"
@@ -17,24 +16,19 @@ import (
 	"golang.org/x/net/http2/h2c"
 
 	"github.com/opentdf/platform/protocol/go/entityresolution"
-	"github.com/opentdf/platform/service/logger"
 	logging "github.com/opentdf/platform/service/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"gopkg.in/yaml.v2"
 )
 
-const (
-	writeTimeout    time.Duration = 5 * time.Second
-	readTimeout     time.Duration = 10 * time.Second
-	shutdownTimeout time.Duration = 5 * time.Second
-)
-
 type Config struct {
 	GRPC GRPCConfig `mapstructure:"grpc" json:"grpc" yaml:"grpc"`
 	// Port to listen on
-	Port int    `mapstructure:"port" json:"port" yaml:"port" default:"8181"`
-	Host string `mapstructure:"host,omitempty" json:"host" yaml:"host"`
+	Port      int                     `mapstructure:"port" json:"port" yaml:"port" default:"8181"`
+	Host      string                  `mapstructure:"host,omitempty" json:"host" yaml:"host"`
+	ERSConfig keycloak.KeycloakConfig `mapstructure:"entityresolution" json:"entityresolution" yaml:"entityresolution"`
+	Logger    logging.Config          `mapstructure:"logger" json:"logger" yaml:"logger"`
 }
 
 type GRPCConfig struct {
@@ -45,7 +39,7 @@ type GRPCConfig struct {
 type KeycloakERS struct {
 	entityresolution.UnimplementedEntityResolutionServiceServer
 	idpConfig keycloak.KeycloakConfig
-	logger    *logger.Logger
+	logger    *logging.Logger
 }
 
 func (s KeycloakERS) ResolveEntities(ctx context.Context, req *entityresolution.ResolveEntitiesRequest) (*entityresolution.ResolveEntitiesResponse, error) {
@@ -59,15 +53,9 @@ func (s KeycloakERS) CreateEntityChainFromJwt(ctx context.Context, req *entityre
 }
 
 func Execute() {
-	// listener, err := net.Listen("tcp", ":8181")
-	// if err != nil {
-	// 	log.Fatalf("Failed to listen: %v", err)
-	// }
 
 	// CONFIGS
-
-	var inputIdpConfig keycloak.KeycloakConfig
-	var serverConfig Config
+	var configData Config
 
 	f, err := os.Open("config.yaml")
 	if err != nil {
@@ -79,34 +67,29 @@ func Execute() {
 		panic(fmt.Errorf("error reading YAML file: %s", err.Error()))
 	}
 
-	err = yaml.Unmarshal(fileData, &serverConfig)
+	err = yaml.Unmarshal(fileData, &configData)
 	if err != nil {
 		panic(fmt.Errorf("error unmarshaling yaml file %s", err.Error()))
 	}
 
-	err = yaml.Unmarshal(fileData, &inputIdpConfig)
-	if err != nil {
-		panic(fmt.Errorf("error unmarshaling yaml file %s", err.Error()))
-	}
-
-	// SERVER:
+	// SERVER
 	s := grpc.NewServer()
 
 	// Enable grpc reflection
-	if serverConfig.GRPC.ReflectionEnabled {
+	if configData.GRPC.ReflectionEnabled {
 		reflection.Register(s)
 	}
 
-	logger, err := logging.NewLogger(logging.Config{Level: "debug", Type: "text", Output: "stdout"})
+	logger, err := logging.NewLogger(configData.Logger)
 	if err != nil {
 		panic(fmt.Errorf("error creating logger %s", err.Error()))
 	}
 
-	logger.Debug("entity_resolution configuration", "config", inputIdpConfig)
-	logger.Debug("entity_resolution configuration", "config", serverConfig)
+	logger.Debug("entity resolution configuration", "config", configData)
 
-	svr := KeycloakERS{idpConfig: inputIdpConfig, logger: logger}
+	svr := KeycloakERS{idpConfig: configData.ERSConfig, logger: logger}
 
+	// Register gRPC service
 	entityresolution.RegisterEntityResolutionServiceServer(s, &svr)
 
 	// Create a gRPC-Gateway mux
@@ -129,8 +112,9 @@ func Execute() {
 
 	h2 := h2c.NewHandler(httphandler, &http2.Server{})
 
-	logger.Info("Serving gRPC and HTTP on " + fmt.Sprintf("%s:%d", serverConfig.Host, serverConfig.Port))
-	err = http.ListenAndServe(fmt.Sprintf("%s:%d", serverConfig.Host, serverConfig.Port), h2)
+	// START
+	logger.Info("Serving gRPC and HTTP on " + fmt.Sprintf("%s:%d", configData.Host, configData.Port))
+	err = http.ListenAndServe(fmt.Sprintf("%s:%d", configData.Host, configData.Port), h2)
 	if err != nil {
 		log.Fatalf("Failed to serve: %v", err)
 	}

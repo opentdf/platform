@@ -1,12 +1,17 @@
+logger:
+  level: debug
+  type: text
+  output: stdout
 port: 8181
 grpc:
   reflectionEnabled: true
-url: http://localhost:8888/auth
-clientid: "tdf-entity-resolution"
-clientsecret: "secret"
-realm: "opentdf"
-legacykeycloak: true
-inferid:
-  from:
-    email: true
-    username: true
+entityresolution:
+  url: http://localhost:8888/auth
+  clientid: "tdf-entity-resolution"
+  clientsecret: "secret"
+  realm: "opentdf"
+  legacykeycloak: true
+  inferid:
+    from:
+      email: true
+      username: true

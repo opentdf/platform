@@ -244,8 +244,14 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Definition
 	localKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
 		Uri: "https://example.org/kas2",
 		PublicKey: &policy.PublicKey{
-			PublicKey: &policy.PublicKey_Local{
-				Local: "local_key",
+			PublicKey: &policy.PublicKey_Cached{
+				Cached: &policy.KasPublicKeySet{
+					Keys: []*policy.KasPublicKey{
+						{
+							Pem: "local_key",
+						},
+					},
+				},
 			},
 		},
 	})
@@ -356,8 +362,14 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Values() {
 	localKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
 		Uri: "https://testing.io/kas2",
 		PublicKey: &policy.PublicKey{
-			PublicKey: &policy.PublicKey_Local{
-				Local: "local_key",
+			PublicKey: &policy.PublicKey_Cached{
+				Cached: &policy.KasPublicKeySet{
+					Keys: []*policy.KasPublicKey{
+						{
+							Pem: "local_key",
+						},
+					},
+				},
 			},
 		},
 	})
@@ -465,8 +477,14 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_DefAndValu
 	valKAS2, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
 		Uri: "https://testing.org/kas2",
 		PublicKey: &policy.PublicKey{
-			PublicKey: &policy.PublicKey_Local{
-				Local: "local_key",
+			PublicKey: &policy.PublicKey_Cached{
+				Cached: &policy.KasPublicKeySet{
+					Keys: []*policy.KasPublicKey{
+						{
+							Pem: "local_key",
+						},
+					},
+				},
 			},
 		},
 	})
@@ -484,8 +502,14 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_DefAndValu
 	defKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
 		Uri: "https://testing.org/kas3",
 		PublicKey: &policy.PublicKey{
-			PublicKey: &policy.PublicKey_Local{
-				Local: "local_key",
+			PublicKey: &policy.PublicKey_Cached{
+				Cached: &policy.KasPublicKeySet{
+					Keys: []*policy.KasPublicKey{
+						{
+							Pem: "local_key",
+						},
+					},
+				},
 			},
 		},
 	})

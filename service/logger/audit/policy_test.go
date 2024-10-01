@@ -13,9 +13,10 @@ import (
 
 var originalPolicyObject = &TestPolicyObject{
 	Id:         "1234",
-	PolicyUser: &TestPolicyObject_Username{Username: "test-username"},
-	Tags:       []string{"tag1", "tag2"},
 	Active:     &wrapperspb.BoolValue{Value: true},
+	Version:    TestPolicyObjectVersionEnum_TEST_POLICY_OBJECT_VERSION_ENUM_OLD,
+	Tags:       []string{"tag1", "tag2"},
+	PolicyUser: &TestPolicyObject_Username{Username: "test-username"},
 	Metadata: &common.Metadata{
 		CreatedAt: timestamppb.Now(),
 		UpdatedAt: timestamppb.Now(),
@@ -109,11 +110,12 @@ func Test_CreatePolicyEvent_WithOriginal(t *testing.T) {
 	require.Nil(t, event.Updated)
 
 	expected := map[string]interface{}{
-		"id":       "1234",
-		"username": "test-username",
+		"id":      "1234",
+		"active":  true,
+		"version": "TEST_POLICY_OBJECT_VERSION_ENUM_OLD",
 		// []interface{} must be used because json.Unmarshal returns []interface{} for JSON arrays
-		"tags":   []interface{}{"tag1", "tag2"},
-		"active": true,
+		"tags":     []interface{}{"tag1", "tag2"},
+		"username": "test-username",
 		"metadata": map[string]interface{}{
 			"labels": map[string]interface{}{"key": "value"},
 		},
@@ -122,28 +124,50 @@ func Test_CreatePolicyEvent_WithOriginal(t *testing.T) {
 		"event original did not match expected: got %+v expected %+v", event.Original, expected)
 }
 
-func Test_CreatePolicyEvent_WithUpdated_OneOfPropertyModified(t *testing.T) {
-	t.Skip("Revisit once audit strategy can handle auditing oneOf properties correctly")
-
+func Test_CreatePolicyEvent_WithUpdated_BoolPropertyModified(t *testing.T) {
 	params := PolicyEventParams{
 		ActionType: ActionTypeCreate,
 		ObjectID:   originalPolicyObject.Id,
 		ObjectType: ObjectTypeKeyObject,
 		Original:   originalPolicyObject,
 		Updated: &TestPolicyObject{
-			PolicyUser: &TestPolicyObject_User{User: &User{Id: "1234", Name: "test-user"}},
+			Active: &wrapperspb.BoolValue{Value: false},
 		},
 	}
 
 	expected := map[string]interface{}{
-		"id": "1234",
-		"user": map[string]interface{}{
-			"id":   "1234",
-			"name": "test-user",
-		},
+		"id":      "1234",
+		"active":  false,
+		"version": "TEST_POLICY_OBJECT_VERSION_ENUM_OLD",
 		// []interface{} must be used because json.Unmarshal returns []interface{} for JSON arrays
-		"tags":   []interface{}{"tag1", "tag2"},
-		"active": true,
+		"tags":     []interface{}{"tag1", "tag2"},
+		"username": "test-username",
+		"metadata": map[string]interface{}{
+			"labels": map[string]interface{}{"key": "value"},
+		},
+	}
+
+	runWithUpdatedTest(t, params, expected)
+}
+
+func Test_CreatePolicyEvent_WithUpdated_EnumPropertyModified(t *testing.T) {
+	params := PolicyEventParams{
+		ActionType: ActionTypeCreate,
+		ObjectID:   originalPolicyObject.Id,
+		ObjectType: ObjectTypeKeyObject,
+		Original:   originalPolicyObject,
+		Updated: &TestPolicyObject{
+			Version: TestPolicyObjectVersionEnum_TEST_POLICY_OBJECT_VERSION_ENUM_NEW,
+		},
+	}
+
+	expected := map[string]interface{}{
+		"id":      "1234",
+		"active":  true,
+		"version": "TEST_POLICY_OBJECT_VERSION_ENUM_NEW",
+		// []interface{} must be used because json.Unmarshal returns []interface{} for JSON arrays
+		"tags":     []interface{}{"tag1", "tag2"},
+		"username": "test-username",
 		"metadata": map[string]interface{}{
 			"labels": map[string]interface{}{"key": "value"},
 		},
@@ -164,11 +188,12 @@ func Test_CreatePolicyEvent_WithUpdated_ArrayPropertyModified(t *testing.T) {
 	}
 
 	expected := map[string]interface{}{
-		"id":       "1234",
-		"username": "test-username",
+		"id":      "1234",
+		"active":  true,
+		"version": "TEST_POLICY_OBJECT_VERSION_ENUM_OLD",
 		// []interface{} must be used because json.Unmarshal returns []interface{} for JSON arrays
-		"tags":   []interface{}{"single-tag"},
-		"active": true,
+		"tags":     []interface{}{"single-tag"},
+		"username": "test-username",
 		"metadata": map[string]interface{}{
 			"labels": map[string]interface{}{"key": "value"},
 		},
@@ -177,23 +202,29 @@ func Test_CreatePolicyEvent_WithUpdated_ArrayPropertyModified(t *testing.T) {
 	runWithUpdatedTest(t, params, expected)
 }
 
-func Test_CreatePolicyEvent_WithUpdated_BoolPropertyModified(t *testing.T) {
+func Test_CreatePolicyEvent_WithUpdated_OneOfPropertyModified(t *testing.T) {
+	t.Skip("Revisit once audit strategy can handle auditing oneOf properties correctly")
+
 	params := PolicyEventParams{
 		ActionType: ActionTypeCreate,
 		ObjectID:   originalPolicyObject.Id,
 		ObjectType: ObjectTypeKeyObject,
 		Original:   originalPolicyObject,
 		Updated: &TestPolicyObject{
-			Active: &wrapperspb.BoolValue{Value: false},
+			PolicyUser: &TestPolicyObject_User{User: &User{Id: "1234", Name: "test-user"}},
 		},
 	}
 
 	expected := map[string]interface{}{
-		"id":       "1234",
-		"username": "test-username",
+		"id":      "1234",
+		"active":  true,
+		"version": "TEST_POLICY_OBJECT_VERSION_ENUM_OLD",
 		// []interface{} must be used because json.Unmarshal returns []interface{} for JSON arrays
-		"tags":   []interface{}{"tag1", "tag2"},
-		"active": false,
+		"tags": []interface{}{"tag1", "tag2"},
+		"user": map[string]interface{}{
+			"id":   "1234",
+			"name": "test-user",
+		},
 		"metadata": map[string]interface{}{
 			"labels": map[string]interface{}{"key": "value"},
 		},
@@ -219,16 +250,14 @@ func Test_CreatePolicyEvent_WithUpdated_MetadataPropertyModified(t *testing.T) {
 	}
 
 	expected := map[string]interface{}{
-		"id":       "1234",
-		"username": "test-username",
+		"id":      "1234",
+		"active":  true,
+		"version": "TEST_POLICY_OBJECT_VERSION_ENUM_OLD",
 		// []interface{} must be used because json.Unmarshal returns []interface{} for JSON arrays
-		"tags":   []interface{}{"tag1", "tag2"},
-		"active": true,
+		"tags":     []interface{}{"tag1", "tag2"},
+		"username": "test-username",
 		"metadata": map[string]interface{}{
-			"labels": map[string]interface{}{
-				"newKey":  "newMe",
-				"another": "one",
-			},
+			"labels": map[string]interface{}{"newKey": "newMe", "another": "one"},
 		},
 	}
 

@@ -3,6 +3,14 @@ deps:
   - buf.build/bufbuild/protovalidate
   - buf.build/googleapis/googleapis
   - buf.build/grpc-ecosystem/grpc-gateway
+build:
+  # Audit logger tests use a test.proto file that should not be included in normal proto gen,
+  # so we exclude it here.  If the test.proto file ever needs to be modified, this
+  # block will need to be commented out before running `make proto-generate`. The generated 
+  # go file added in the protocol/go directory will need to be manually moved to the 
+  # ./logger/audit directory, and any generated files in the /docs directory for the test proto
+  # should be deleted. This process should be much simpler whenever we move to buf gen v2.
+  excludes: ["./logger/audit"]
 breaking:
   use:
     - FILE

@@ -5,6 +5,9 @@ package service.logger.audit;
 import "common/common.proto";
 import "google/protobuf/wrappers.proto";
 
+// This is a test proto message to test the functionality of the audit logger
+// and is excluded from normal proto generation. See the service/buf.yaml file 
+// for details on how to make changes to this proto file (which should be rare).
 message TestPolicyObject {
   string id = 1;
 

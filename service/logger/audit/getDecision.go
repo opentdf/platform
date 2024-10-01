@@ -66,7 +66,6 @@ func CreateGetDecisionEvent(ctx context.Context, params GetDecisionEventParams) 
 			Attributes: buildActorAttributes(params.EntityChainEntitlements),
 		},
 		EventMetaData: buildEventMetadata(params.EntityDecisions),
-		Owner:         CreateNilOwner(),
 		ClientInfo: eventClientInfo{
 			Platform:  "authorization",
 			UserAgent: auditDataFromContext.UserAgent,

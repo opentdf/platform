@@ -75,6 +75,7 @@ func (s ResourceMappingService) CreateResourceMappingGroup(ctx context.Context, 
 	}
 
 	auditParams.ObjectID = rmGroup.GetId()
+	auditParams.Original = rmGroup
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &resourcemapping.CreateResourceMappingGroupResponse{
@@ -199,6 +200,7 @@ func (s ResourceMappingService) CreateResourceMapping(ctx context.Context,
 	}
 
 	auditParams.ObjectID = rm.GetId()
+	auditParams.Original = rm
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &resourcemapping.CreateResourceMappingResponse{

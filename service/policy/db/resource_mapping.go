@@ -22,7 +22,7 @@ func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resour
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	resourceMappingGroups := make([]*policy.ResourceMappingGroup, len(list))
+	rmGroups := make([]*policy.ResourceMappingGroup, len(list))
 
 	for i, rmGroup := range list {
 		metadata := new(common.Metadata)
@@ -30,7 +30,7 @@ func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resour
 			return nil, err
 		}
 
-		resourceMappingGroups[i] = &policy.ResourceMappingGroup{
+		rmGroups[i] = &policy.ResourceMappingGroup{
 			Id:          rmGroup.ID,
 			NamespaceId: rmGroup.NamespaceID,
 			Name:        rmGroup.Name,
@@ -38,7 +38,7 @@ func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resour
 		}
 	}
 
-	return resourceMappingGroups, nil
+	return rmGroups, nil
 }
 
 func (c PolicyDBClient) GetResourceMappingGroup(ctx context.Context, id string) (*policy.ResourceMappingGroup, error) {
@@ -344,15 +344,12 @@ func (c PolicyDBClient) UpdateResourceMapping(ctx context.Context, id string, r 
 
 	rm := &policy.ResourceMapping{
 		Id:       id,
+		Terms:    terms,
 		Metadata: metadata,
 	}
 
 	if attributeValueID != "" {
 		rm.AttributeValue = &policy.Value{Id: attributeValueID}
-	}
-
-	if terms != nil {
-		rm.Terms = terms
 	}
 
 	if groupID != "" {

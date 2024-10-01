@@ -238,7 +238,6 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(updatedURI, got.GetUri())
 	s.Equal(updatedPubKeyRemote, got.GetPublicKey().GetRemote())
-	s.Zero(got.GetPublicKey().GetLocal()) //nolint:staticcheck // deprecated but this is a test
 	s.Zero(got.GetPublicKey().GetCached())
 	s.Equal(fixedLabel, got.GetMetadata().GetLabels()["fixed"])
 	s.Equal(updatedLabel, got.GetMetadata().GetLabels()["update"])
@@ -318,7 +317,6 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Uri_DoesNotAlterOtherValue
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(updatedURI, got.GetUri())
 	s.Equal(pubKeyRemote, got.GetPublicKey().GetRemote())
-	s.Zero(got.GetPublicKey().GetLocal()) //nolint:staticcheck // deprecated but this is a test
 	s.Zero(got.GetPublicKey().GetCached())
 	s.Nil(got.GetMetadata().GetLabels())
 }

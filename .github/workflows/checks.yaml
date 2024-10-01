@@ -25,10 +25,12 @@ on:
       - main
     types:
       - checks_requested
-    paths-ignore:
-      - '**/*.md'
-      - LICENSE
-      - CODEOWNERS
+    paths:
+      - '**'
+      - '!**/*.md'
+      - 'docs/**'
+      - '!LICENSE'
+      - '!CODEOWNERS'
   workflow_call:
 
 jobs:

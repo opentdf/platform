@@ -77,7 +77,7 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, keyAccess KeyAccess, 
 		return nil, err
 	}
 
-	conn, err := grpc.Dial(grpcAddress, k.dialOptions...)
+	conn, err := grpc.NewClient(grpcAddress, k.dialOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to sas: %w", err)
 	}
@@ -164,7 +164,7 @@ func (k *KASClient) makeNanoTDFRewrapRequest(ctx context.Context, header string,
 		return nil, err
 	}
 
-	conn, err := grpc.Dial(grpcAddress, k.dialOptions...)
+	conn, err := grpc.NewClient(grpcAddress, k.dialOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to kas: %w", err)
 	}
@@ -333,7 +333,7 @@ func (s SDK) getPublicKey(ctx context.Context, url, algorithm string) (*KASInfo,
 	if err != nil {
 		return nil, err
 	}
-	conn, err := grpc.Dial(grpcAddress, s.dialOptions...)
+	conn, err := grpc.NewClient(grpcAddress, s.dialOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to grpc service at %s: %w", url, err)
 	}

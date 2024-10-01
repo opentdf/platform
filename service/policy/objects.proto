@@ -300,6 +300,10 @@ message KasPublicKeySet {
 }
 
 message PublicKey {
+  // Deprecated
+  reserved "local";
+  reserved 2;
+
   oneof public_key {
     // kas public key url - optional since can also be retrieved via public key
     string remote = 1 [(buf.validate.field).cel = {

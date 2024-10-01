@@ -129,7 +129,7 @@ jobs:
           wait-for: 90s
       - run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.9
       - name: Setup Bats and bats libs
-        uses: bats-core/bats-action@2.0.0
+        uses: bats-core/bats-action@3.0.0
       - run: test/service-start.bats
       - run: test/tdf-roundtrips.bats
       - run: test/policy-service.bats
@@ -181,7 +181,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
-      - uses: bufbuild/buf-setup-action@aceb106d2419c4cff48863df90161d92decb8591
+      - uses: bufbuild/buf-setup-action@62ee92603c244ad0da98bab36a834a999a5329e6
         with:
           github_token: ${{ github.token }}
       - uses: bufbuild/buf-lint-action@06f9dd823d873146471cfaaf108a993fe00e5325

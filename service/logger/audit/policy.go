@@ -90,10 +90,9 @@ func marshallProtoToAuditObject(protoMessage proto.Message) (map[string]interfac
 		return nil, err
 	}
 
-	// remove metadata fields we don't care about for audit
-	if _, ok := data["metadata"]; ok {
-		metadata := data["metadata"].(map[string]interface{})
-
+	// if metadata property exists, remove fields we don't care about for audit
+	if metadata, ok := data["metadata"].(map[string]interface{}); ok {
+		// remove metadata fields we don't care about for audit
 		delete(metadata, "createdAt")
 		delete(metadata, "updatedAt")
 

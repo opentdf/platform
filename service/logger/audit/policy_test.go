@@ -26,7 +26,7 @@ var originalPolicyObject = &TestPolicyObject{
 
 func runWithUpdatedTest(t *testing.T, params PolicyEventParams, expectedAuditUpdatedObject map[string]interface{}) {
 	event, err := CreatePolicyEvent(createTestContext(), true, params)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.True(t,
 		reflect.DeepEqual(event.Updated, expectedAuditUpdatedObject),
 		"event.Updated did not match expected: got %+v expected %+v", event.Updated, expectedAuditUpdatedObject,
@@ -95,7 +95,7 @@ func Test_CreatePolicyEvent_HappyPath(t *testing.T) {
 func Test_CreatePolicyEvent_WithOriginal(t *testing.T) {
 	params := PolicyEventParams{
 		ActionType: ActionTypeCreate,
-		ObjectID:   originalPolicyObject.Id,
+		ObjectID:   originalPolicyObject.GetId(),
 		ObjectType: ObjectTypeKeyObject,
 		Original:   originalPolicyObject,
 	}
@@ -127,7 +127,7 @@ func Test_CreatePolicyEvent_WithOriginal(t *testing.T) {
 func Test_CreatePolicyEvent_WithUpdated_BoolPropertyModified(t *testing.T) {
 	params := PolicyEventParams{
 		ActionType: ActionTypeCreate,
-		ObjectID:   originalPolicyObject.Id,
+		ObjectID:   originalPolicyObject.GetId(),
 		ObjectType: ObjectTypeKeyObject,
 		Original:   originalPolicyObject,
 		Updated: &TestPolicyObject{
@@ -153,7 +153,7 @@ func Test_CreatePolicyEvent_WithUpdated_BoolPropertyModified(t *testing.T) {
 func Test_CreatePolicyEvent_WithUpdated_EnumPropertyModified(t *testing.T) {
 	params := PolicyEventParams{
 		ActionType: ActionTypeCreate,
-		ObjectID:   originalPolicyObject.Id,
+		ObjectID:   originalPolicyObject.GetId(),
 		ObjectType: ObjectTypeKeyObject,
 		Original:   originalPolicyObject,
 		Updated: &TestPolicyObject{
@@ -179,7 +179,7 @@ func Test_CreatePolicyEvent_WithUpdated_EnumPropertyModified(t *testing.T) {
 func Test_CreatePolicyEvent_WithUpdated_ArrayPropertyModified(t *testing.T) {
 	params := PolicyEventParams{
 		ActionType: ActionTypeCreate,
-		ObjectID:   originalPolicyObject.Id,
+		ObjectID:   originalPolicyObject.GetId(),
 		ObjectType: ObjectTypeKeyObject,
 		Original:   originalPolicyObject,
 		Updated: &TestPolicyObject{
@@ -207,7 +207,7 @@ func Test_CreatePolicyEvent_WithUpdated_OneOfPropertyModified(t *testing.T) {
 
 	params := PolicyEventParams{
 		ActionType: ActionTypeCreate,
-		ObjectID:   originalPolicyObject.Id,
+		ObjectID:   originalPolicyObject.GetId(),
 		ObjectType: ObjectTypeKeyObject,
 		Original:   originalPolicyObject,
 		Updated: &TestPolicyObject{
@@ -236,7 +236,7 @@ func Test_CreatePolicyEvent_WithUpdated_OneOfPropertyModified(t *testing.T) {
 func Test_CreatePolicyEvent_WithUpdated_MetadataPropertyModified(t *testing.T) {
 	params := PolicyEventParams{
 		ActionType: ActionTypeCreate,
-		ObjectID:   originalPolicyObject.Id,
+		ObjectID:   originalPolicyObject.GetId(),
 		ObjectType: ObjectTypeKeyObject,
 		Original:   originalPolicyObject,
 		Updated: &TestPolicyObject{

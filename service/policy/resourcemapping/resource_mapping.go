@@ -104,19 +104,7 @@ func (s ResourceMappingService) UpdateResourceMappingGroup(ctx context.Context, 
 	}
 
 	auditParams.Original = originalRmGroup
-	auditParamsUpdated := &policy.ResourceMappingGroup{
-		Id:          originalRmGroup.Id,
-		Metadata:    updatedRmGroup.GetMetadata(),
-		NamespaceId: originalRmGroup.GetNamespaceId(),
-		Name:        originalRmGroup.GetName(),
-	}
-	if updatedRmGroup.GetNamespaceId() != "" {
-		auditParamsUpdated.NamespaceId = updatedRmGroup.GetNamespaceId()
-	}
-	if updatedRmGroup.GetName() != "" {
-		auditParamsUpdated.Name = updatedRmGroup.GetName()
-	}
-	auditParams.Updated = auditParamsUpdated
+	auditParams.Updated = updatedRmGroup
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
@@ -245,23 +233,7 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 	}
 
 	auditParams.Original = originalRM
-	auditParamsUpdated := &policy.ResourceMapping{
-		Id:             originalRM.Id,
-		Metadata:       updatedRM.Metadata,
-		AttributeValue: originalRM.AttributeValue,
-		Terms:          originalRM.Terms,
-		Group:          originalRM.Group,
-	}
-	if updatedRM.AttributeValue != nil {
-		auditParamsUpdated.AttributeValue = updatedRM.AttributeValue
-	}
-	if updatedRM.Terms != nil {
-		auditParamsUpdated.Terms = updatedRM.Terms
-	}
-	if updatedRM.Group != nil {
-		auditParamsUpdated.Group = updatedRM.Group
-	}
-	auditParams.Updated = auditParamsUpdated
+	auditParams.Updated = updatedRM
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &resourcemapping.UpdateResourceMappingResponse{

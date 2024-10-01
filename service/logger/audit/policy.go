@@ -3,6 +3,7 @@ package audit
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"maps"
 	"time"
 
@@ -59,14 +60,14 @@ func CreatePolicyEvent(ctx context.Context, isSuccess bool, params PolicyEventPa
 	if params.Original != nil {
 		auditEventOriginal, err := marshallProtoToAuditObject(params.Original)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to marshal original audit object: %w", err)
 		}
 		auditEvent.Original = auditEventOriginal
 
 		if params.Updated != nil {
 			auditEventUpdated, err := marshallProtoToAuditObject(params.Updated)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to marshal updated audit object: %w", err)
 			}
 			// copy original state
 			auditEvent.Updated = maps.Clone(auditEvent.Original)

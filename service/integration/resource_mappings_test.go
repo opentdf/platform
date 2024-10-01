@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"testing"
-	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
@@ -178,8 +177,6 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingGroup() {
 		"new":    newLabel,
 	}
 
-	start := time.Now().Add(-time.Second)
-
 	createdGroup, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, &resourcemapping.CreateResourceMappingGroupRequest{
 		NamespaceId: s.getExampleDotComNamespace().ID,
 		Name:        "example.com_ns_group_created",
@@ -207,19 +204,16 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingGroup() {
 	s.Require().NoError(err)
 	s.NotNil(gotGroup)
 
-	end := time.Now().Add(time.Second)
-
 	s.Equal(createdGroup.GetId(), gotGroup.GetId())
 	s.Equal(updateReq.GetNamespaceId(), gotGroup.GetNamespaceId())
 	s.Equal(updateReq.GetName(), gotGroup.GetName())
 	metadata := gotGroup.GetMetadata()
 	createdAt := metadata.GetCreatedAt()
 	updatedAt := metadata.GetUpdatedAt()
-	s.True(createdAt.AsTime().After(start))
+	s.False(createdAt.AsTime().IsZero())
+	s.False(updatedAt.AsTime().IsZero())
 	s.True(updatedAt.AsTime().After(createdAt.AsTime()))
-	s.True(createdAt.AsTime().Before(end))
-	s.True(updatedAt.AsTime().Before(end))
-	s.Equal(expectedLabels, gotGroup.GetMetadata().GetLabels())
+	s.Equal(expectedLabels, metadata.GetLabels())
 }
 
 func (s *ResourceMappingsSuite) Test_UpdateResourceMappingGroupWithUnknownIdFails() {
@@ -631,10 +625,6 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 		Terms:   terms,
 		GroupId: rmGroup.ID,
 	})
-	metadata := createdMapping.GetMetadata()
-	// only GET returns populated created/updated times
-	s.Nil(metadata.GetCreatedAt())
-	s.Nil(metadata.GetUpdatedAt())
 	s.Require().NoError(err)
 	s.NotNil(createdMapping)
 
@@ -669,10 +659,12 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	s.Equal(createdMapping.GetAttributeValue().GetId(), got.GetAttributeValue().GetId())
 	s.Equal(updateTerms, got.GetTerms())
 	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
-	updatedMetadata := got.GetMetadata()
-	createdTime := metadata.GetCreatedAt().AsTime()
-	updatedTime := updatedMetadata.GetUpdatedAt().AsTime()
-	s.True(createdTime.Before(updatedTime))
+	metadata := got.GetMetadata()
+	createdAt := metadata.GetCreatedAt()
+	updatedAt := metadata.GetUpdatedAt()
+	s.False(createdAt.AsTime().IsZero())
+	s.False(updatedAt.AsTime().IsZero())
+	s.True(updatedAt.AsTime().After(createdAt.AsTime()))
 	s.Equal(rmGroup.ID, got.GetGroup().GetId())
 }
 

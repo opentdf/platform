@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/go-chi/cors"
 	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
@@ -104,8 +105,11 @@ type CORSConfig struct {
 
 type ConnectInProcessRPC struct {
 	Mux *http.ServeMux
-	// TODO
-	// Interceptors []...
+}
+
+type ConnectRPC struct {
+	Mux          *http.ServeMux
+	Interceptors []connect.Option
 }
 
 type OpenTDFServer struct {
@@ -114,6 +118,7 @@ type OpenTDFServer struct {
 	HTTPServer          *http.Server
 	GRPCInProcess       *inProcessServer
 	ConnectInProcessRPC *ConnectInProcessRPC
+	ConnectRPC          *ConnectRPC
 	CryptoProvider      security.CryptoProvider
 
 	logger *logger.Logger
@@ -139,6 +144,8 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 		err   error
 	)
 
+	interceptors := make([]connect.Option, 0)
+
 	// Add authN interceptor
 	// TODO Remove this conditional once we move to the hardening phase (https://github.com/opentdf/platform/issues/381)
 	if config.Auth.Enabled {
@@ -151,6 +158,8 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
 		}
+		// Add authN interceptor
+		interceptors = append(interceptors, connect.WithInterceptors(authN.ConnectUnaryServerInterceptor()))
 		logger.Debug("authentication interceptor enabled")
 	} else {
 		logger.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
@@ -172,9 +181,11 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 	// mux := runtime.NewServeMux(
 	// 	runtime.WithHealthzEndpoint(healthpb.NewHealthClient(grpcIPCServer.Conn())),
 	// )
-	mux := http.NewServeMux()
 
-	httpServer, err := newHTTPServer(config, mux, authN, logger)
+	connectMux := http.NewServeMux()
+	httpMux := http.NewServeMux()
+
+	httpServer, err := newHTTPServer(config, connectMux, httpMux, authN, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http server: %w", err)
 	}
@@ -183,12 +194,18 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 		Mux: inProcessMux,
 	}
 
+	connectRPC := &ConnectRPC{
+		Mux:          connectMux,
+		Interceptors: interceptors,
+	}
+
 	o := OpenTDFServer{
 		AuthN:               authN,
-		Mux:                 mux,
 		HTTPServer:          httpServer,
 		GRPCInProcess:       grpcIPCServer,
 		ConnectInProcessRPC: connectInProcessRPC,
+		ConnectRPC:          connectRPC,
+		Mux:                 httpMux,
 		logger:              logger,
 	}
 
@@ -203,20 +220,28 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 }
 
 // newHTTPServer creates a new http server with the given handler and grpc server
-func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, l *logger.Logger) (*http.Server, error) {
+func newHTTPServer(c Config, connectRPC http.Handler, httpHandler http.Handler, a *auth.Authentication, l *logger.Logger) (*http.Server, error) {
 	var (
 		err                  error
 		tc                   *tls.Config
 		writeTimeoutOverride = writeTimeout
 	)
 
+	mux := http.NewServeMux()
+
 	// Add authN interceptor
 	// This is needed because we are leveraging RegisterXServiceHandlerServer instead of RegisterXServiceHandlerFromEndpoint
 	if c.Auth.Enabled {
-		// h = a.MuxHandler(h)
+		httpHandler = a.MuxHandler(httpHandler)
 	} else {
 		l.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
+
+	// Combine connect and http mux
+	mux.Handle("/", connectRPC)
+	mux.Handle("/", httpHandler)
+
+	var h http.Handler = mux
 
 	// CORS
 	if c.CORS.Enabled {
@@ -251,7 +276,7 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, l *logger.L
 	h2 := httpGrpcHandlerFunc(h, l)
 
 	if !c.TLS.Enabled {
-		// h2 = h2c.NewHandler(h2, &http2.Server{})
+		h2 = h2c.NewHandler(h2, &http2.Server{})
 	} else {
 		tc, err = loadTLSConfig(c.TLS)
 		if err != nil {

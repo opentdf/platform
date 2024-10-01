@@ -418,7 +418,7 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 		grpc.WithChainUnaryInterceptor(clientInterceptors...),
 	}
 
-	conn, _ := grpc.Dial("", defaultOptions...)
+	conn, _ := grpc.NewClient("passthrough:///", defaultOptions...)
 	return conn
 }
 

@@ -50,7 +50,7 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 		MinVersion: tls.VersionTLS12,
 	})
 
-	client, stop := runServer(context.Background(), &server, oo)
+	client, stop := runServer(&server, oo)
 	defer stop()
 
 	_, err = client.PublicKey(context.Background(), &kas.PublicKeyRequest{})
@@ -122,7 +122,7 @@ func Test_InvalidCredentials_DoesNotSendMessage(t *testing.T) {
 		MinVersion: tls.VersionTLS12,
 	})
 
-	client, stop := runServer(context.Background(), &server, oo)
+	client, stop := runServer(&server, oo)
 	defer stop()
 
 	_, err := client.PublicKey(context.Background(), &kas.PublicKeyRequest{})
@@ -177,7 +177,7 @@ func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, 
 	return f(fts.key)
 }
 
-func runServer(ctx context.Context, //nolint:ireturn // this is pretty concrete
+func runServer( //nolint:ireturn // this is pretty concrete
 	f *FakeAccessServiceServer, oo TokenAddingInterceptor) (kas.AccessServiceClient, func()) {
 	buffer := 1024 * 1024
 	listener := bufconn.Listen(buffer)
@@ -190,9 +190,9 @@ func runServer(ctx context.Context, //nolint:ireturn // this is pretty concrete
 		}
 	}()
 
-	conn, _ := grpc.DialContext(ctx, "", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
+	conn, _ := grpc.NewClient("passthrough:///bufconn", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
 		return listener.Dial()
-	}), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock(), grpc.WithUnaryInterceptor(oo.AddCredentials))
+	}), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(oo.AddCredentials))
 
 	client := kas.NewAccessServiceClient(conn)
 

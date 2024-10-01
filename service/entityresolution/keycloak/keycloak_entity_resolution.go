@@ -113,7 +113,7 @@ func EntityResolution(ctx context.Context,
 		var keycloakEntities []*gocloak.User
 		var getUserParams gocloak.GetUsersParams
 		exactMatch := true
-		var jsonEntities []*structpb.Struct // This is now initialized here
+		var jsonEntities []*structpb.Struct
 
 		switch ident.GetEntityType().(type) {
 		case *authorization.Entity_ClientId:
@@ -155,7 +155,6 @@ func EntityResolution(ctx context.Context,
 
 		default:
 			logger.WarnContext(ctx, "No user found for entity", slog.Any("entity", ident))
-			// Additional group lookup logic goes here
 		}
 
 		for _, er := range keycloakEntities {

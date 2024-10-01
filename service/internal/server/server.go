@@ -220,12 +220,10 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 		)
 
 		h = cors.New(cors.Options{
-			AllowOriginFunc: func(req *http.Request, origin string) bool {
-				// Log the origin of the incoming request
+			AllowOriginFunc: func(req *http.Request, origin string) bool {				
 				l.Info("CORS request received", "Origin", origin, "RequestURI", req.RequestURI)
 
-				for _, allowedOrigin := range c.CORS.AllowedOrigins {
-					// Log the allowed origin being checked
+				for _, allowedOrigin := range c.CORS.AllowedOrigins {					
 					l.Info("Checking allowed origin", "AllowedOrigin", allowedOrigin)
 
 					if allowedOrigin == "*" {

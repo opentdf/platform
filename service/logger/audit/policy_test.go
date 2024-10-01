@@ -106,6 +106,7 @@ func Test_CreatePolicyEvent_WithOriginal(t *testing.T) {
 	}
 
 	require.NotNil(t, event.Original)
+	require.Nil(t, event.Updated)
 
 	expected := map[string]interface{}{
 		"id":       "1234",

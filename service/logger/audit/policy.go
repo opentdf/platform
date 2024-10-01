@@ -19,6 +19,13 @@ type PolicyEventParams struct {
 	Updated  proto.Message
 }
 
+/*
+	 TODO: Changes to oneOf proto properties are not yet audited correctly with the existing code.
+
+		The Updated event object will contain both the original and updated oneOf properties due to
+		the logic for merging maps within this function.  We will need to find a way to support them
+		correctly in the near future.
+*/
 func CreatePolicyEvent(ctx context.Context, isSuccess bool, params PolicyEventParams) (*EventObject, error) {
 	auditDataFromContext := GetAuditDataFromContext(ctx)
 
@@ -61,7 +68,9 @@ func CreatePolicyEvent(ctx context.Context, isSuccess bool, params PolicyEventPa
 			if err != nil {
 				return nil, err
 			}
+			// copy original state
 			auditEvent.Updated = maps.Clone(auditEvent.Original)
+			// merge changes from PolicyEventParams, overwriting properties existing in Updated object
 			maps.Copy(auditEvent.Updated, auditEventUpdated)
 		}
 	}

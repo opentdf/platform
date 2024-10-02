@@ -155,7 +155,7 @@ func privateKey(t *testing.T) *rsa.PrivateKey {
 	return k
 }
 
-func publicKey(t *testing.T) *rsa.PublicKey {
+func publicKeyTest(t *testing.T) *rsa.PublicKey {
 	b, rest := pem.Decode([]byte(rsaPublic))
 	require.NotNil(t, b)
 	assert.Empty(t, rest)
@@ -323,7 +323,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 				if tt.goodDPoP {
 					key, err = jwk.FromRaw(entityPublicKey(t))
 				} else {
-					key, err = jwk.FromRaw(publicKey(t))
+					key, err = jwk.FromRaw(publicKeyTest(t))
 				}
 				require.NoError(t, err, "couldn't get JWK from key")
 				err = key.Set(jwk.AlgorithmKey, jwa.RS256) // Check the error return value

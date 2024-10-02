@@ -81,7 +81,11 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					srp.Logger.Error("failed to register kas readiness check", slog.String("error", err.Error()))
 				}
 
-				return &p, func(ctx context.Context, mux *http.ServeMux, server any) {}
+				return &p, func(ctx context.Context, mux *http.ServeMux, server any) {
+					mux.HandleFunc(fmt.Sprintf("%s /kas/kas_public_key", http.MethodGet), p.LegacyPublicKeyHandler)
+					mux.HandleFunc(fmt.Sprintf("%s /kas/v2/kas_public_key", http.MethodGet), p.PublicKeyHandler)
+					mux.HandleFunc(fmt.Sprintf("%s /kas/v2/rewrap", http.MethodPost), p.RewrapHandler)
+				}
 			},
 			ConnectRPCFunc: kasconnect.NewAccessServiceHandler,
 		},

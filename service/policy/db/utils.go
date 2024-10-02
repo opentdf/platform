@@ -3,7 +3,6 @@ package db
 import (
 	"log/slog"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/service/logger"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -33,11 +32,4 @@ func unmarshalMetadata(metadataJSON []byte, m *common.Metadata, logger *logger.L
 		}
 	}
 	return nil
-}
-
-func pgtypeText(s string) pgtype.Text {
-	return pgtype.Text{
-		String: s,
-		Valid:  s != "",
-	}
 }

@@ -146,7 +146,9 @@ func (s ResourceMappingService) DeleteResourceMappingGroup(ctx context.Context, 
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	rsp := &resourcemapping.DeleteResourceMappingGroupResponse{
-		ResourceMappingGroup: rmGroup,
+		ResourceMappingGroup: &policy.ResourceMappingGroup{
+			Id: id,
+		},
 	}
 	return &connect.Response[resourcemapping.DeleteResourceMappingGroupResponse]{Msg: rsp}, nil
 }

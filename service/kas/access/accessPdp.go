@@ -49,25 +49,14 @@ func (p *Provider) checkAttributes(ctx context.Context, dataAttrs []Attribute, e
 			},
 		},
 	}
-<<<<<<< HEAD
-	req := &connect.Request[authorization.GetDecisionsByTokenRequest]{Msg: &in}
-	dr, err := p.SDK.Authorization.GetDecisionsByToken(ctx, req)
-	drMsg := dr.Msg
-=======
 
-	dr, err := sdk.Authorization.GetDecisionsByToken(context.TODO(), &in)
->>>>>>> 10c82f39 (save changes)
+	dr, err := p.SDK.Authorization.GetDecisionsByToken(context.TODO(), &in)
 	if err != nil {
 		p.Logger.ErrorContext(ctx, "Error received from GetDecisionsByToken", "err", err)
 		return false, errors.Join(ErrDecisionUnexpected, err)
 	}
-<<<<<<< HEAD
-	if len(drMsg.GetDecisionResponses()) != 1 {
-		p.Logger.ErrorContext(ctx, ErrDecisionCountUnexpected.Error(), "count", len(drMsg.GetDecisionResponses()))
-=======
 	if len(dr.GetDecisionResponses()) != 1 {
-		logger.ErrorContext(ctx, ErrDecisionCountUnexpected.Error(), "count", len(dr.GetDecisionResponses()))
->>>>>>> 10c82f39 (save changes)
+		p.Logger.ErrorContext(ctx, ErrDecisionCountUnexpected.Error(), "count", len(dr.GetDecisionResponses()))
 		return false, ErrDecisionCountUnexpected
 	}
 	if dr.GetDecisionResponses()[0].GetDecision() == authorization.DecisionResponse_DECISION_PERMIT {

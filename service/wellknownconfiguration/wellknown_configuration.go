@@ -52,7 +52,6 @@ func NewRegistration() *serviceregistry.Service[wellknownconfigurationconnect.We
 }
 
 func (s WellKnownService) GetWellKnownConfiguration(_ context.Context, _ *connect.Request[wellknown.GetWellKnownConfigurationRequest]) (*connect.Response[wellknown.GetWellKnownConfigurationResponse], error) {
-	println("GetWellKnownConfiguration: HERE")
 	rwMutex.RLock()
 	cfg, err := structpb.NewStruct(wellKnownConfiguration)
 	rwMutex.RUnlock()

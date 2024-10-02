@@ -236,7 +236,7 @@ func newHTTPServer(c Config, connectRPC http.Handler, httpHandler http.Handler, 
 
 	// Combine connect and http mux
 	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("URL PATH: ", r.URL.Path)
+		// fmt.Println("URL PATH: ", r.URL.Path)
 		contentType := r.Header.Get("Content-Type")
 		if slices.Contains([]string{
 			"application/grpc",
@@ -250,10 +250,10 @@ func newHTTPServer(c Config, connectRPC http.Handler, httpHandler http.Handler, 
 			"application/connect+proto",
 			"application/connect+json",
 		}, contentType) && r.Method == http.MethodPost {
-			fmt.Println("Serving Connect RPC Handler")
+			// fmt.Println("Serving Connect RPC Handler")
 			connectRPC.ServeHTTP(w, r)
 		} else {
-			fmt.Println("Serving HTTP Handler")
+			// fmt.Println("Serving HTTP Handler")
 			httpHandler.ServeHTTP(w, r)
 		}
 	})

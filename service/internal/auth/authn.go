@@ -215,7 +215,6 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		// Verify the token
 		header := r.Header["Authorization"]
 		if len(header) < 1 {
-			println("UNAUTH ERROR1")
 			http.Error(w, "missing authorization header", http.StatusUnauthorized)
 			return
 		}
@@ -281,7 +280,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			// Get the metadata from the context
 			// The keys within metadata.MD are normalized to lowercase.
 			// See: https://godoc.org/google.golang.org/grpc/metadata#New
-			println("unary interceptor procedure: ", req.Spec().Procedure)
+			// println("unary interceptor procedure: ", req.Spec().Procedure)
 			// md, ok := metadata.FromIncomingContext(ctx)
 			// if !ok {
 			// 	println("connect server unauth error 1")
@@ -293,7 +292,6 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 
 			header := req.Header()["Authorization"]
 			if len(header) < 1 {
-				println("connect server unauth error 2")
 				return nil, status.Error(codes.Unauthenticated, "missing authorization header")
 			}
 
@@ -351,7 +349,6 @@ func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, inf
 	// Verify the token
 	header := md["authorization"]
 	if len(header) < 1 {
-		println("UNAUTH ERROR2")
 		return nil, status.Error(codes.Unauthenticated, "missing authorization header")
 	}
 

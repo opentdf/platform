@@ -116,7 +116,6 @@ func (c PolicyDBClient) ListAttributeValues(ctx context.Context, attributeID str
 			Id:       av.ID,
 			Value:    av.Value,
 			Active:   &wrapperspb.BoolValue{Value: av.Active},
-			Grants:   []*policy.KeyAccessServer{},
 			Metadata: metadata,
 			Attribute: &policy.Attribute{
 				Id: av.AttributeDefinitionID,

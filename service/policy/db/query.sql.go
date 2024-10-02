@@ -1394,7 +1394,7 @@ type UpdateAttributeValueParams struct {
 	Metadata []byte      `json:"metadata"`
 }
 
-// UpdateAttributeValue
+// UpdateAttributeValue: Safe and Unsafe Updates both
 //
 //	UPDATE attribute_values
 //	SET

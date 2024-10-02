@@ -279,6 +279,7 @@ INSERT INTO attribute_values (attribute_definition_id, value, metadata)
 VALUES (@attribute_definition_id, @value, @metadata)
 RETURNING id;
 
+-- UpdateAttributeValue: Safe and Unsafe Updates both
 -- name: UpdateAttributeValue :execrows
 UPDATE attribute_values
 SET

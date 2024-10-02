@@ -58,7 +58,7 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, id string) (*poli
 	}
 
 	metadata := &common.Metadata{}
-	if err := unmarshalMetadata(av.Metadata, metadata, c.logger); err != nil {
+	if err := unmarshalMetadata(av.Metadata, metadata); err != nil {
 		return nil, err
 	}
 
@@ -108,7 +108,7 @@ func (c PolicyDBClient) ListAttributeValues(ctx context.Context, attributeID str
 
 	for i, av := range list {
 		metadata := &common.Metadata{}
-		if err := unmarshalMetadata(av.Metadata, metadata, c.logger); err != nil {
+		if err := unmarshalMetadata(av.Metadata, metadata); err != nil {
 			return nil, err
 		}
 

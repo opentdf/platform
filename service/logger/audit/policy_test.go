@@ -124,6 +124,32 @@ func Test_CreatePolicyEvent_WithOriginal(t *testing.T) {
 		"event original did not match expected: got %+v expected %+v", event.Original, expected)
 }
 
+func Test_CreatePolicyEvent_WithUpdated_StringPropertyModified(t *testing.T) {
+	params := PolicyEventParams{
+		ActionType: ActionTypeCreate,
+		ObjectID:   originalPolicyObject.GetId(),
+		ObjectType: ObjectTypeKeyObject,
+		Original:   originalPolicyObject,
+		Updated: &TestPolicyObject{
+			Id: "5678",
+		},
+	}
+
+	expected := map[string]interface{}{
+		"id":      "5678",
+		"active":  true,
+		"version": "TEST_POLICY_OBJECT_VERSION_ENUM_OLD",
+		// []interface{} must be used because json.Unmarshal returns []interface{} for JSON arrays
+		"tags":     []interface{}{"tag1", "tag2"},
+		"username": "test-username",
+		"metadata": map[string]interface{}{
+			"labels": map[string]interface{}{"key": "value"},
+		},
+	}
+
+	runWithUpdatedTest(t, params, expected)
+}
+
 func Test_CreatePolicyEvent_WithUpdated_BoolPropertyModified(t *testing.T) {
 	params := PolicyEventParams{
 		ActionType: ActionTypeCreate,
@@ -258,6 +284,48 @@ func Test_CreatePolicyEvent_WithUpdated_MetadataPropertyModified(t *testing.T) {
 		"username": "test-username",
 		"metadata": map[string]interface{}{
 			"labels": map[string]interface{}{"newKey": "newMe", "another": "one"},
+		},
+	}
+
+	runWithUpdatedTest(t, params, expected)
+}
+
+/*
+This test ensures that any nil values in the updated object returned from the DB layer
+are populated in the audit event updated object appropriately. For conditional updates,
+the DB layer returns the values received from the service layer request as-is, meaning
+that any optional properties not specified in the update request are returned from the DB
+layer as the appropriate zero value. The CreatePolicyEvent function should then use the
+value from the audit event original object to populate the updated object value.
+
+TODO: This will be simplified in the future by querying the DB for the updated state, so
+we can remove this test once that is implemented safely with transactions.
+*/
+func Test_CreatePolicyEvent_WithUpdated_ZeroValuePropertiesModified_UseOriginalPropertyValues(t *testing.T) {
+	params := PolicyEventParams{
+		ActionType: ActionTypeCreate,
+		ObjectID:   originalPolicyObject.GetId(),
+		ObjectType: ObjectTypeKeyObject,
+		Original:   originalPolicyObject,
+		Updated: &TestPolicyObject{
+			Id:         "",
+			Active:     nil,
+			Version:    TestPolicyObjectVersionEnum_TEST_POLICY_OBJECT_VERSION_ENUM_UNSPECIFIED,
+			Tags:       nil,
+			PolicyUser: nil,
+			Metadata:   nil,
+		},
+	}
+
+	expected := map[string]interface{}{
+		"id":      "1234",
+		"active":  true,
+		"version": "TEST_POLICY_OBJECT_VERSION_ENUM_OLD",
+		// []interface{} must be used because json.Unmarshal returns []interface{} for JSON arrays
+		"tags":     []interface{}{"tag1", "tag2"},
+		"username": "test-username",
+		"metadata": map[string]interface{}{
+			"labels": map[string]interface{}{"key": "value"},
 		},
 	}
 

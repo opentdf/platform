@@ -26,7 +26,7 @@ func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resour
 
 	for i, rmGroup := range list {
 		metadata := new(common.Metadata)
-		if err := unmarshalMetadata(rmGroup.Metadata, metadata, c.logger); err != nil {
+		if err := unmarshalMetadata(rmGroup.Metadata, metadata); err != nil {
 			return nil, err
 		}
 
@@ -48,7 +48,7 @@ func (c PolicyDBClient) GetResourceMappingGroup(ctx context.Context, id string) 
 	}
 
 	metadata := new(common.Metadata)
-	if err := unmarshalMetadata(rmGroup.Metadata, metadata, c.logger); err != nil {
+	if err := unmarshalMetadata(rmGroup.Metadata, metadata); err != nil {
 		return nil, err
 	}
 
@@ -154,11 +154,11 @@ func (c PolicyDBClient) ListResourceMappings(ctx context.Context, r *resourcemap
 			attributeValue = new(policy.Value)
 		)
 
-		if err = unmarshalMetadata(rm.Metadata, metadata, c.logger); err != nil {
+		if err = unmarshalMetadata(rm.Metadata, metadata); err != nil {
 			return nil, err
 		}
 
-		if err = unmarshalAttributeValue(rm.AttributeValue, attributeValue, c.logger); err != nil {
+		if err = unmarshalAttributeValue(rm.AttributeValue, attributeValue); err != nil {
 			return nil, err
 		}
 
@@ -209,7 +209,7 @@ func (c PolicyDBClient) ListResourceMappingsByGroupFqns(ctx context.Context, fqn
 		mappings := make([]*policy.ResourceMapping, len(rows))
 		for i, row := range rows {
 			metadata := new(common.Metadata)
-			if err := unmarshalMetadata(row.Metadata, metadata, c.logger); err != nil {
+			if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
 				return nil, err
 			}
 
@@ -223,7 +223,7 @@ func (c PolicyDBClient) ListResourceMappingsByGroupFqns(ctx context.Context, fqn
 
 		// all rows will have the same group values, so just use first row for group object population
 		groupMetadata := new(common.Metadata)
-		if err := unmarshalMetadata(rows[0].GroupMetadata, groupMetadata, c.logger); err != nil {
+		if err := unmarshalMetadata(rows[0].GroupMetadata, groupMetadata); err != nil {
 			return nil, err
 		}
 		mappingsByGroup := &resourcemapping.ResourceMappingsByGroup{
@@ -258,11 +258,11 @@ func (c PolicyDBClient) GetResourceMapping(ctx context.Context, id string) (*pol
 		attributeValue = new(policy.Value)
 	)
 
-	if err = unmarshalMetadata(rm.Metadata, metadata, c.logger); err != nil {
+	if err = unmarshalMetadata(rm.Metadata, metadata); err != nil {
 		return nil, err
 	}
 
-	if err = unmarshalAttributeValue(rm.AttributeValue, attributeValue, c.logger); err != nil {
+	if err = unmarshalAttributeValue(rm.AttributeValue, attributeValue); err != nil {
 		return nil, err
 	}
 

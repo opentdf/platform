@@ -1,13 +1,12 @@
 package db
 
 import (
-	"log/slog"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/service/logger"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -27,21 +26,19 @@ func constructMetadata(table string, isJSON bool) string {
 
 var createSuffix = "RETURNING id, " + constructMetadata("", false)
 
-func unmarshalMetadata(metadataJSON []byte, m *common.Metadata, logger *logger.Logger) error {
+func unmarshalMetadata(metadataJSON []byte, m *common.Metadata) error {
 	if metadataJSON != nil {
 		if err := protojson.Unmarshal(metadataJSON, m); err != nil {
-			logger.Error("failed to unmarshal metadata", slog.String("error", err.Error()), slog.String("metadataJSON", string(metadataJSON)))
-			return err
+			return fmt.Errorf("failed to unmarshal metadataJSON [%s]: %w", string(metadataJSON), err)
 		}
 	}
 	return nil
 }
 
-func unmarshalAttributeValue(attributeValueJSON []byte, av *policy.Value, logger *logger.Logger) error {
+func unmarshalAttributeValue(attributeValueJSON []byte, av *policy.Value) error {
 	if attributeValueJSON != nil {
 		if err := protojson.Unmarshal(attributeValueJSON, av); err != nil {
-			logger.Error("failed to unmarshal attribute value", slog.String("error", err.Error()), slog.String("attributeValueJSON", string(attributeValueJSON)))
-			return err
+			return fmt.Errorf("failed to unmarshal attributeValueJSON [%s]: %w", string(attributeValueJSON), err)
 		}
 	}
 	return nil

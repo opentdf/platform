@@ -152,7 +152,7 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err = unmarshalMetadata(metadataJSON, metadata, c.logger); err != nil {
+	if err = unmarshalMetadata(metadataJSON, metadata); err != nil {
 		return nil, err
 	}
 

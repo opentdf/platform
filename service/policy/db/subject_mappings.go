@@ -285,7 +285,7 @@ func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjec
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err = unmarshalMetadata(metadataJSON, m, c.logger); err != nil {
+	if err = unmarshalMetadata(metadataJSON, m); err != nil {
 		return nil, err
 	}
 
@@ -507,7 +507,7 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err = unmarshalMetadata(metadataJSON, m, c.logger); err != nil {
+	if err = unmarshalMetadata(metadataJSON, m); err != nil {
 		return nil, err
 	}
 

@@ -252,7 +252,6 @@ func (c PolicyDBClient) UnsafeDeleteAttributeValue(ctx context.Context, toDelete
 	return &policy.Value{
 		Id: id,
 	}, nil
-
 }
 
 func (c PolicyDBClient) AssignKeyAccessServerToValue(ctx context.Context, k *attributes.ValueKeyAccessServer) (*attributes.ValueKeyAccessServer, error) {

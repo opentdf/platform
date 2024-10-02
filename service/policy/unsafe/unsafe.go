@@ -28,7 +28,7 @@ func NewRegistration(ns string, dbregister serviceregistry.DBRegister) *servicer
 			ServiceDesc: &unsafe.UnsafeService_ServiceDesc,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (unsafeconnect.UnsafeServiceHandler, serviceregistry.HandlerServer) {
 				us := &UnsafeService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
-				return us, func(ctx context.Context, mux *http.ServeMux, server any) {}
+				return us, func(_ context.Context, _ *http.ServeMux, _ any) {}
 			},
 			ConnectRPCFunc: unsafeconnect.NewUnsafeServiceHandler,
 		},

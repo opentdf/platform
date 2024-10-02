@@ -44,7 +44,7 @@ func NewRegistration() *serviceregistry.Service[wellknownconfigurationconnect.We
 			ServiceDesc: &wellknown.WellKnownService_ServiceDesc,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (wellknownconfigurationconnect.WellKnownServiceHandler, serviceregistry.HandlerServer) {
 				ws := &WellKnownService{logger: srp.Logger}
-				return ws, func(ctx context.Context, mux *http.ServeMux, server any) {}
+				return ws, func(_ context.Context, _ *http.ServeMux, _ any) {}
 			},
 			ConnectRPCFunc: wellknownconfigurationconnect.NewWellKnownServiceHandler,
 		},

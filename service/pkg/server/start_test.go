@@ -107,7 +107,6 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Res
 				return // fmt.Errorf("Surprise! Not a TestService")
 			}
 			mux.HandleFunc(fmt.Sprintf("%s /healthz", http.MethodGet), t.TestHandler)
-			return // nil
 		},
 	})
 

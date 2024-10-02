@@ -36,7 +36,7 @@ func NewRegistration(ns string, dbregister serviceregistry.DBRegister) *servicer
 					srp.Logger.Error("failed to register policy readiness check", slog.String("error", err.Error()))
 				}
 
-				return ns, func(ctx context.Context, mux *http.ServeMux, server any) {}
+				return ns, func(_ context.Context, _ *http.ServeMux, _ any) {}
 			},
 			ConnectRPCFunc: namespacesconnect.NewNamespaceServiceHandler,
 		},

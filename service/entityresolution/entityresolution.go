@@ -33,7 +33,7 @@ func NewRegistration() *serviceregistry.Service[entityresolutionconnect.EntityRe
 
 				srp.Logger.Debug("entity_resolution configuration", "config", inputIdpConfig)
 				es := &EntityResolutionService{idpConfig: inputIdpConfig, logger: srp.Logger}
-				return es, func(ctx context.Context, mux *http.ServeMux, server any) {}
+				return es, func(_ context.Context, _ *http.ServeMux, _ any) {}
 			},
 			ConnectRPCFunc: entityresolutionconnect.NewEntityResolutionServiceHandler,
 		},

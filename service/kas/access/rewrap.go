@@ -363,7 +363,7 @@ func (p *Provider) RewrapHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(rspBytes)
+	w.Write(rspBytes) //nolint:errcheck // ignore error
 
 	return
 }

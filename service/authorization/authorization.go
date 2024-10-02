@@ -136,7 +136,7 @@ func NewRegistration() *serviceregistry.Service[authorizationconnect.Authorizati
 
 				as.config = *authZCfg
 
-				return as, func(ctx context.Context, mux *http.ServeMux, server any) {}
+				return as, func(_ context.Context, _ *http.ServeMux, _ any) {}
 			},
 			ConnectRPCFunc: authorizationconnect.NewAuthorizationServiceHandler,
 		},
@@ -150,7 +150,6 @@ func (as AuthorizationService) IsReady(ctx context.Context) error {
 }
 
 func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *connect.Request[authorization.GetDecisionsByTokenRequest]) (*connect.Response[authorization.GetDecisionsByTokenResponse], error) {
-	fmt.Println("GetDecisionsByToken: HERE")
 	r := req.Msg
 	decisionsRequests := []*authorization.DecisionRequest{}
 	// for each token decision request

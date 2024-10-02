@@ -29,7 +29,7 @@ func NewRegistration(ns string, dbregister serviceregistry.DBRegister) *servicer
 			ServiceDesc: &kasr.KeyAccessServerRegistryService_ServiceDesc,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasregistryconnect.KeyAccessServerRegistryServiceHandler, serviceregistry.HandlerServer) {
 				kr := &KeyAccessServerRegistry{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
-				return kr, func(ctx context.Context, mux *http.ServeMux, s any) {}
+				return kr, func(_ context.Context, _ *http.ServeMux, _ any) {}
 			},
 			ConnectRPCFunc: kasregistryconnect.NewKeyAccessServerRegistryServiceHandler,
 		},

@@ -30,7 +30,7 @@ func NewRegistration(ns string, dbregister serviceregistry.DBRegister) *servicer
 			ServiceDesc: &resourcemapping.ResourceMappingService_ServiceDesc,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (resourcemappingconnect.ResourceMappingServiceHandler, serviceregistry.HandlerServer) {
 				rs := &ResourceMappingService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
-				return rs, func(ctx context.Context, mux *http.ServeMux, s any) {}
+				return rs, func(_ context.Context, _ *http.ServeMux, _ any) {}
 			},
 			ConnectRPCFunc: resourcemappingconnect.NewResourceMappingServiceHandler,
 		},

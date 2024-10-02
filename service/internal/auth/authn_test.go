@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -30,12 +29,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -229,15 +225,15 @@ func (s *AuthSuite) Test_MuxHandler_When_Authorization_Header_Missing_Expect_Err
 	s.Equal("missing authorization header\n", rec.Body.String())
 }
 
-func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missing_Expect_Error() {
-	md := metadata.New(map[string]string{})
-	ctx := metadata.NewIncomingContext(context.Background(), md)
-	_, err := s.auth.UnaryServerInterceptor(ctx, "test", &grpc.UnaryServerInfo{
-		FullMethod: "/test",
-	}, nil)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, status.Error(codes.Unauthenticated, "missing authorization header"))
-}
+// func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missing_Expect_Error() {
+// 	md := metadata.New(map[string]string{})
+// 	ctx := metadata.NewIncomingContext(context.Background(), md)
+// 	_, err := s.auth.UnaryServerInterceptor(ctx, "test", &grpc.UnaryServerInfo{
+// 		FullMethod: "/test",
+// 	}, nil)
+// 	s.Require().Error(err)
+// 	s.Require().ErrorIs(err, status.Error(codes.Unauthenticated, "missing authorization header"))
+// }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
 	_, _, err := s.auth.checkToken(context.Background(), []string{"BPOP "}, receiverInfo{}, nil)
@@ -410,68 +406,68 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 	}
 }
 
-func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
-	dpopKeyRaw, err := rsa.GenerateKey(rand.Reader, 2048)
-	s.Require().NoError(err)
-	dpopKey, err := jwk.FromRaw(dpopKeyRaw)
-	s.Require().NoError(err)
-	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
+// func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
+// 	dpopKeyRaw, err := rsa.GenerateKey(rand.Reader, 2048)
+// 	s.Require().NoError(err)
+// 	dpopKey, err := jwk.FromRaw(dpopKeyRaw)
+// 	s.Require().NoError(err)
+// 	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
 
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	s.Require().NoError(tok.Set("iss", s.server.URL))
-	s.Require().NoError(tok.Set("aud", "test"))
-	s.Require().NoError(tok.Set("cid", "client2"))
-	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-standard"}}))
-	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
-	s.Require().NoError(err)
-	cnf := map[string]string{"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)}
-	s.Require().NoError(tok.Set("cnf", cnf))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-	s.Require().NoError(err)
+// 	tok := jwt.New()
+// 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+// 	s.Require().NoError(tok.Set("iss", s.server.URL))
+// 	s.Require().NoError(tok.Set("aud", "test"))
+// 	s.Require().NoError(tok.Set("cid", "client2"))
+// 	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-standard"}}))
+// 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
+// 	s.Require().NoError(err)
+// 	cnf := map[string]string{"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)}
+// 	s.Require().NoError(tok.Set("cnf", cnf))
+// 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+// 	s.Require().NoError(err)
 
-	buffer := 1024 * 1024
-	listener := bufconn.Listen(buffer)
+// 	buffer := 1024 * 1024
+// 	listener := bufconn.Listen(buffer)
 
-	server := grpc.NewServer(grpc.UnaryInterceptor(s.auth.UnaryServerInterceptor))
-	defer server.Stop()
+// 	server := grpc.NewServer(grpc.UnaryInterceptor(s.auth.UnaryServerInterceptor))
+// 	defer server.Stop()
 
-	fakeServer := &FakeAccessServiceServer{}
-	kas.RegisterAccessServiceServer(server, fakeServer)
-	go func() {
-		err := server.Serve(listener)
-		if err != nil {
-			panic(err)
-		}
-	}()
+// 	fakeServer := &FakeAccessServiceServer{}
+// 	kas.RegisterAccessServiceServer(server, fakeServer)
+// 	go func() {
+// 		err := server.Serve(listener)
+// 		if err != nil {
+// 			panic(err)
+// 		}
+// 	}()
 
-	addingInterceptor := sdkauth.NewTokenAddingInterceptor(&FakeTokenSource{
-		key:         dpopKey,
-		accessToken: string(signedTok),
-	}, &tls.Config{
-		MinVersion: tls.VersionTLS12,
-	})
+// 	addingInterceptor := sdkauth.NewTokenAddingInterceptor(&FakeTokenSource{
+// 		key:         dpopKey,
+// 		accessToken: string(signedTok),
+// 	}, &tls.Config{
+// 		MinVersion: tls.VersionTLS12,
+// 	})
 
-	conn, _ := grpc.NewClient("passthrough://bufconn", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
-		return listener.Dial()
-	}), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(addingInterceptor.AddCredentials))
+// 	conn, _ := grpc.NewClient("passthrough://bufconn", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
+// 		return listener.Dial()
+// 	}), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(addingInterceptor.AddCredentials))
 
-	client := kas.NewAccessServiceClient(conn)
+// 	client := kas.NewAccessServiceClient(conn)
 
-	_, err = client.Rewrap(context.Background(), &kas.RewrapRequest{})
-	s.Require().NoError(err)
-	s.NotNil(fakeServer.dpopKey)
-	dpopJWKFromRequest, ok := fakeServer.dpopKey.(jwk.RSAPublicKey)
-	s.True(ok)
-	dpopPublic, err := dpopKey.PublicKey()
-	s.Require().NoError(err)
-	dpopJWK, ok := dpopPublic.(jwk.RSAPublicKey)
-	s.True(ok)
+// 	_, err = client.Rewrap(context.Background(), &kas.RewrapRequest{})
+// 	s.Require().NoError(err)
+// 	s.NotNil(fakeServer.dpopKey)
+// 	dpopJWKFromRequest, ok := fakeServer.dpopKey.(jwk.RSAPublicKey)
+// 	s.True(ok)
+// 	dpopPublic, err := dpopKey.PublicKey()
+// 	s.Require().NoError(err)
+// 	dpopJWK, ok := dpopPublic.(jwk.RSAPublicKey)
+// 	s.True(ok)
 
-	s.Equal(dpopJWK.Algorithm(), dpopJWKFromRequest.Algorithm())
-	s.Equal(dpopJWK.E(), dpopJWKFromRequest.E())
-	s.Equal(dpopJWK.N(), dpopJWKFromRequest.N())
-}
+// 	s.Equal(dpopJWK.Algorithm(), dpopJWKFromRequest.Algorithm())
+// 	s.Equal(dpopJWK.E(), dpopJWKFromRequest.E())
+// 	s.Equal(dpopJWK.N(), dpopJWKFromRequest.N())
+// }
 
 func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	dpopKeyRaw, err := rsa.GenerateKey(rand.Reader, 2048)

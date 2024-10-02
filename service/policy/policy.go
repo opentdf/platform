@@ -27,15 +27,14 @@ func NewRegistrations() []serviceregistry.IService {
 		Migrations: Migrations,
 	}
 
-	for _, r := range []serviceregistry.IService{
+	registrations = append(registrations, []serviceregistry.IService{
 		attributes.NewRegistration(namespace, dbRegister),
 		namespaces.NewRegistration(namespace, dbRegister),
 		resourcemapping.NewRegistration(namespace, dbRegister),
 		subjectmapping.NewRegistration(namespace, dbRegister),
 		kasregistry.NewRegistration(namespace, dbRegister),
 		unsafe.NewRegistration(namespace, dbRegister),
-	} {
-		registrations = append(registrations, r)
-	}
+	}...)
+
 	return registrations
 }

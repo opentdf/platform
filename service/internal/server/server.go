@@ -9,29 +9,22 @@ import (
 	"net"
 	"net/http"
 	"net/http/pprof"
-	"net/netip"
 	"strings"
 	"time"
 
 	"connectrpc.com/connect"
 	"connectrpc.com/grpcreflect"
-	"github.com/bufbuild/protovalidate-go"
 	"github.com/go-chi/cors"
-	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
-	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
-	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/valyala/fasthttp/fasthttputil"
 	"golang.org/x/exp/slices"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/reflection"
 )
 
 const (
@@ -363,64 +356,10 @@ func newConnectRPCInProcessServer(mux *http.ServeMux) *http.Server {
 	// serverOptions = append(serverOptions, grpc.ChainUnaryInterceptor(interceptors...))
 	// return grpc.NewServer(serverOptions...)
 	return &http.Server{
-		WriteTimeout: time.Second * 30,
-		ReadTimeout:  time.Second * 30,
-		Handler:      h2c.NewHandler(mux, &http2.Server{}),
+		// WriteTimeout: time.Second * 30,
+		// ReadTimeout:  time.Second * 30,
+		Handler: h2c.NewHandler(mux, &http2.Server{}),
 	}
-}
-
-// newGrpcServer creates a new grpc server with the given config and authN interceptor
-func newGrpcServer(c Config, a *auth.Authentication, logger *logger.Logger) (*grpc.Server, error) {
-	var i []grpc.UnaryServerInterceptor
-	var o []grpc.ServerOption
-
-	// Enable proto validation
-	validator, err := protovalidate.New()
-	if err != nil {
-		logger.Warn("failed to create proto validator", slog.String("error", err.Error()))
-	}
-
-	// Add Audit Unary Server Interceptor
-	i = append(i, audit.ContextServerInterceptor)
-
-	if c.Auth.Enabled {
-		i = append(i, a.UnaryServerInterceptor)
-	} else {
-		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
-	}
-
-	// Add tls creds if tls is not nil
-	if c.TLS.Enabled {
-		c, err := loadTLSConfig(c.TLS)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load tls config: %w", err)
-		}
-		o = append(o, grpc.Creds(credentials.NewTLS(c)))
-	}
-
-	// Add proto validation interceptor
-	i = append(i, protovalidate_middleware.UnaryServerInterceptor(validator))
-
-	o = append(o, grpc.ChainUnaryInterceptor(
-		i...,
-	))
-
-	// Chain relaip interceptor
-	trustedPeers := []netip.Prefix{} // TODO: add this as a config option?
-	headers := []string{realip.XForwardedFor, realip.XRealIp}
-
-	o = append(o, grpc.ChainUnaryInterceptor(
-		realip.UnaryServerInterceptor(trustedPeers, headers),
-	))
-
-	s := grpc.NewServer(o...)
-
-	// Enable grpc reflection
-	if c.GRPC.ReflectionEnabled {
-		reflection.Register(s)
-	}
-
-	return s, nil
 }
 
 func (s OpenTDFServer) Start() error {

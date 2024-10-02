@@ -33,7 +33,6 @@ func mockTestServiceRegistry(opts mockTestServiceOptions) (serviceregistry.IServ
 		serviceName:        "TestService",
 		serviceHandlerType: (*interface{})(nil),
 		serviceHandler: func(_ context.Context, _ *http.ServeMux, _ any) {
-			return
 		},
 	}
 

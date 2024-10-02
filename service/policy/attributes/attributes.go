@@ -31,7 +31,7 @@ func NewRegistration(ns string, dbregister serviceregistry.DBRegister) *servicer
 			ServiceDesc: &attributes.AttributesService_ServiceDesc,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (attributesconnect.AttributesServiceHandler, serviceregistry.HandlerServer) {
 				as := &AttributesService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
-				return as, func(ctx context.Context, mux *http.ServeMux, server any) {}
+				return as, func(_ context.Context, _ *http.ServeMux, _ any) {}
 			},
 			ConnectRPCFunc: attributesconnect.NewAttributesServiceHandler,
 		},
@@ -69,7 +69,6 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 func (s *AttributesService) ListAttributes(ctx context.Context,
 	req *connect.Request[attributes.ListAttributesRequest],
 ) (*connect.Response[attributes.ListAttributesResponse], error) {
-	println("ListAttributes: HERE")
 	r := req.Msg
 	state := policydb.GetDBStateTypeTransformedEnum(r.GetState())
 	namespace := r.GetNamespace()

@@ -171,7 +171,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 			// }
 
 			// Register the service with the gRPC gateway
-			if err := svc.RegisterHTTPServer(ctx, otdf.Mux); err != nil { //nolint:staticcheck // This is deprecated for internal tracking
+			if err := svc.RegisterHTTPServer(ctx, otdf.Mux); err != nil {
 				logger.Error("did not register http mux handlers", slog.String("namespace", ns), slog.String("error", err.Error()))
 			}
 

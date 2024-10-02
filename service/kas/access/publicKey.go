@@ -62,7 +62,7 @@ func (p Provider) LegacyPublicKeyHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Write([]byte(pem))
+	w.Write([]byte(pem)) //nolint:errcheck // ignore error
 }
 
 func legacyPublicKey(ctx context.Context, p Provider, algorithm string) (string, error) {
@@ -148,6 +148,10 @@ func (p Provider) PublicKeyHandler(w http.ResponseWriter, r *http.Request) {
 
 	pem, err := publicKey(r.Context(), p, algorithm, fmt)
 	if err != nil {
+		if errors.Is(err, security.ErrCertNotFound) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -158,7 +162,7 @@ func (p Provider) PublicKeyHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Write(pubkeyByte)
+	w.Write(pubkeyByte) //nolint:errcheck // ignore error
 }
 
 func publicKey(ctx context.Context, p Provider, algorithm, fmt string) (string, error) {

@@ -48,6 +48,7 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		Value:     value,
 		Metadata:  metadata,
 		Active:    &wrapperspb.BoolValue{Value: true},
+		Fqn:       fqn,
 	}, nil
 }
 
@@ -130,8 +131,9 @@ func (c PolicyDBClient) ListAllAttributeValues(ctx context.Context) ([]*policy.V
 }
 
 func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.UpdateAttributeValueRequest) (*policy.Value, error) {
+	id := r.GetId()
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
-		v, err := c.GetAttributeValue(ctx, r.GetId())
+		v, err := c.GetAttributeValue(ctx, id)
 		if err != nil {
 			return nil, err
 		}
@@ -142,7 +144,7 @@ func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 	}
 
 	count, err := c.Queries.UpdateAttributeValue(ctx, UpdateAttributeValueParams{
-		ID:       r.GetId(),
+		ID:       id,
 		Metadata: metadataJSON,
 	})
 	if err != nil {
@@ -153,7 +155,7 @@ func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 	}
 
 	return &policy.Value{
-		Id:       r.GetId(),
+		Id:       id,
 		Metadata: metadata,
 	}, nil
 }
@@ -163,7 +165,7 @@ func (c PolicyDBClient) UnsafeUpdateAttributeValue(ctx context.Context, r *unsaf
 	value := strings.ToLower(r.GetValue())
 
 	count, err := c.Queries.UpdateAttributeValue(ctx, UpdateAttributeValueParams{
-		ID:    r.GetId(),
+		ID:    id,
 		Value: pgtypeText(value),
 	})
 	if err != nil {
@@ -184,6 +186,7 @@ func (c PolicyDBClient) UnsafeUpdateAttributeValue(ctx context.Context, r *unsaf
 	return &policy.Value{
 		Id:    id,
 		Value: value,
+		Fqn:   fqn,
 	}, nil
 }
 

@@ -216,7 +216,7 @@ func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjec
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err = unmarshalMetadata(cs.Metadata, metadata, c.logger); err != nil {
+	if err = unmarshalMetadata(cs.Metadata, metadata); err != nil {
 		return nil, err
 	}
 
@@ -234,7 +234,7 @@ func (c PolicyDBClient) GetSubjectConditionSet(ctx context.Context, id string) (
 	}
 
 	metadata := &common.Metadata{}
-	if err = unmarshalMetadata(cs.Metadata, metadata, c.logger); err != nil {
+	if err = unmarshalMetadata(cs.Metadata, metadata); err != nil {
 		return nil, err
 	}
 
@@ -259,7 +259,7 @@ func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context) ([]*policy
 	setList := make([]*policy.SubjectConditionSet, len(list))
 	for i, set := range list {
 		metadata := &common.Metadata{}
-		if err = unmarshalMetadata(set.Metadata, metadata, c.logger); err != nil {
+		if err = unmarshalMetadata(set.Metadata, metadata); err != nil {
 			return nil, err
 		}
 
@@ -387,7 +387,7 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err = unmarshalMetadata(sm.Metadata, metadata, c.logger); err != nil {
+	if err = unmarshalMetadata(metadataJSON, metadata); err != nil {
 		return nil, err
 	}
 
@@ -409,7 +409,7 @@ func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*poli
 	}
 
 	metadata := &common.Metadata{}
-	if err = unmarshalMetadata(sm.Metadata, metadata, c.logger); err != nil {
+	if err = unmarshalMetadata(sm.Metadata, metadata); err != nil {
 		return nil, err
 	}
 
@@ -460,7 +460,7 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context) ([]*policy.Subj
 	mappings := make([]*policy.SubjectMapping, len(list))
 	for i, sm := range list {
 		metadata := &common.Metadata{}
-		if err = unmarshalMetadata(sm.Metadata, metadata, c.logger); err != nil {
+		if err = unmarshalMetadata(sm.Metadata, metadata); err != nil {
 			return nil, err
 		}
 

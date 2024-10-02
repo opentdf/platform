@@ -308,3 +308,43 @@ func TestListNoIndexValueExtraction(t *testing.T) {
 	assert.NotNil(t, actualOutput)
 	assert.ElementsMatch(t, expectedOutput, actualOutput)
 }
+
+func TestFlattenInterfaceNoPanic(t *testing.T) {
+	testCases := []struct {
+		name  string
+		value interface{}
+	}{
+		{
+			name:  "nil",
+			value: nil,
+		},
+		{
+			name:  "intPtr",
+			value: new(int),
+		},
+		{
+			name:  "channel",
+			value: make(chan int),
+		},
+		{
+			name:  "func",
+			value: func() {},
+		},
+		{
+			name:  "interfaceValue",
+			value: interface{}(123),
+		},
+		{
+			name:  "interfaceEmptyValue",
+			value: interface{}(nil),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			require.NotPanics(t, func() {
+				_, _ = flattenInterface(tc.value)
+			})
+		})
+	}
+}

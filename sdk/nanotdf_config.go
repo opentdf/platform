@@ -41,7 +41,6 @@ func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
 		keyPair: newECKeyPair,
 		bindCfg: bindingConfig{
 			useEcdsaBinding: false,
-			padding:         0,
 			eccMode:         ocrypto.ECCModeSecp256r1,
 		},
 		cipher: kCipher96AuthTagSize,

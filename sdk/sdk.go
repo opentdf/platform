@@ -160,7 +160,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	if cfg.coreConn != nil {
 		platformConn = cfg.coreConn
 	} else {
-		platformConn, err = grpc.Dial(platformEndpoint, dialOptions...)
+		platformConn, err = grpc.NewClient(platformEndpoint, dialOptions...)
 		if err != nil {
 			return nil, errors.Join(ErrGrpcDialFailed, err)
 		}
@@ -357,7 +357,7 @@ func IsValidNanoTdf(reader io.ReadSeeker) (bool, error) {
 }
 
 func fetchPlatformConfiguration(platformEndpoint string, dialOptions []grpc.DialOption) (PlatformConfiguration, error) {
-	conn, err := grpc.Dial(platformEndpoint, dialOptions...)
+	conn, err := grpc.NewClient(platformEndpoint, dialOptions...)
 	if err != nil {
 		return nil, errors.Join(ErrGrpcDialFailed, err)
 	}

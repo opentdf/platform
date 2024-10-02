@@ -235,6 +235,9 @@ message ResourceMappingGroup {
 
   // the common name for the group of resource mappings, which must be unique per namespace
   string name = 3 [(buf.validate.field).required = true];
+
+  // Common metadata
+  common.Metadata metadata = 100;
 }
 
 /*

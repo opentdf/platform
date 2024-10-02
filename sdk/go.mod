@@ -2,8 +2,6 @@ module github.com/opentdf/platform/sdk
 
 go 1.21
 
-replace github.com/opentdf/platform/protocol/go => ../protocol/go
-
 require (
 	connectrpc.com/connect v1.16.2
 	github.com/google/uuid v1.6.0

@@ -4,14 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	"log/slog"
-
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/server"
@@ -22,10 +20,12 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type TestServiceService interface{}
-type TestService struct{}
+type (
+	TestServiceService interface{}
+	TestService        struct{}
+)
 
-func (t TestService) TestHandler(w http.ResponseWriter, _ *http.Request, _ map[string]string) {
+func (t TestService) TestHandler(w http.ResponseWriter, req *http.Request) {
 	_, err := w.Write([]byte("hello from test service!"))
 	if err != nil {
 		panic(err)
@@ -100,13 +100,14 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Res
 
 	// Register Test Service
 	registerTestService, _ := mockTestServiceRegistry(mockTestServiceOptions{
-		serviceObject: &TestService{},
-		serviceHandler: func(_ context.Context, mux *runtime.ServeMux, server any) error {
-			t, ok := server.(*TestService)
+		serviceObject: TestService{},
+		serviceHandler: func(_ context.Context, mux *http.ServeMux, server any) {
+			t, ok := server.(TestService)
 			if !ok {
-				return fmt.Errorf("Surprise! Not a TestService")
+				return // fmt.Errorf("Surprise! Not a TestService")
 			}
-			return mux.HandlePath(http.MethodGet, "/healthz", t.TestHandler)
+			mux.HandleFunc(fmt.Sprintf("%s /healthz", http.MethodGet), t.TestHandler)
+			return // nil
 		},
 	})
 

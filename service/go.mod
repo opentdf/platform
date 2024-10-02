@@ -37,6 +37,7 @@ require (
 )
 
 require (
+	connectrpc.com/grpchealth v1.3.0 // indirect
 	github.com/Microsoft/hcsshim v0.12.0 // indirect
 	github.com/OneOfOne/xxhash v1.2.8 // indirect
 	github.com/agnivade/levenshtein v1.1.1 // indirect

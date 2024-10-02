@@ -10,15 +10,11 @@ import (
 	"sort"
 	"strings"
 
-	connect "connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
 )
 
-var (
-	ErrInvalid = errors.New("invalid type")
-)
+var ErrInvalid = errors.New("invalid type")
 
 // Attribute rule types: operators!
 const (
@@ -225,20 +221,18 @@ func (r granter) byAttribute(fqn AttributeValueFQN) *keyAccessGrant {
 }
 
 // Gets a list of directory of KAS grants for a list of attribute FQNs
-func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as attributesconnect.AttributesServiceClient, fqns ...AttributeValueFQN) (granter, error) {
+func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as attributes.AttributesServiceClient, fqns ...AttributeValueFQN) (granter, error) {
 	fqnsStr := make([]string, len(fqns))
 	for i, v := range fqns {
 		fqnsStr[i] = v.String()
 	}
 
-	av, err :=
-		as.GetAttributeValuesByFqns(ctx, &connect.Request[attributes.GetAttributeValuesByFqnsRequest]{
-			Msg: &attributes.GetAttributeValuesByFqnsRequest{
-				Fqns: fqnsStr,
-				WithValue: &policy.AttributeValueSelector{
-					WithKeyAccessGrants: true,
-				},
-			}})
+	av, err := as.GetAttributeValuesByFqns(ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: fqnsStr,
+		WithValue: &policy.AttributeValueSelector{
+			WithKeyAccessGrants: true,
+		},
+	})
 	if err != nil {
 		return granter{}, err
 	}
@@ -247,7 +241,7 @@ func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as attrib
 		policy: fqns,
 		grants: make(map[string]*keyAccessGrant),
 	}
-	for fqnstr, pair := range av.Msg.GetFqnAttributeValues() {
+	for fqnstr, pair := range av.GetFqnAttributeValues() {
 		fqn, err := NewAttributeValueFQN(fqnstr)
 		if err != nil {
 			return grants, err

@@ -104,10 +104,6 @@ type CORSConfig struct {
 	MaxAge           int      `mapstructure:"maxage" json:"maxage" default:"3600"`
 }
 
-type ConnectInProcessRPC struct {
-	Mux *http.ServeMux
-}
-
 type ConnectRPC struct {
 	Mux          *http.ServeMux
 	Interceptors []connect.HandlerOption
@@ -118,7 +114,7 @@ type OpenTDFServer struct {
 	Mux                 *http.ServeMux
 	HTTPServer          *http.Server
 	GRPCInProcess       *inProcessServer
-	ConnectInProcessRPC *ConnectInProcessRPC
+	ConnectInProcessRPC *ConnectRPC
 	ConnectRPC          *ConnectRPC
 	CryptoProvider      security.CryptoProvider
 
@@ -171,9 +167,12 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to create grpc server: %w", err)
 	}
+
+	inProcessMux := http.NewServeMux()
+
 	grpcIPCServer := &inProcessServer{
 		ln:                 fasthttputil.NewInmemoryListener(),
-		srv:                newGrpcInProcessServer(),
+		srv:                newConnectRPCInProcessServer(inProcessMux),
 		maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
 		maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
 	}
@@ -190,8 +189,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http server: %w", err)
 	}
-	inProcessMux := http.NewServeMux()
-	connectInProcessRPC := &ConnectInProcessRPC{
+	connectInProcessRPC := &ConnectRPC{
 		Mux: inProcessMux,
 	}
 
@@ -255,6 +253,7 @@ func newHTTPServer(c Config, connectRPC http.Handler, httpHandler http.Handler, 
 			fmt.Println("Serving Connect RPC Handler")
 			connectRPC.ServeHTTP(w, r)
 		} else {
+			fmt.Println("Serving HTTP Handler")
 			httpHandler.ServeHTTP(w, r)
 		}
 	})
@@ -331,27 +330,6 @@ func pprofHandler(h http.Handler) http.Handler {
 	})
 }
 
-func ConnectAuthHandler(authHandler http.Handler, defaultHandler http.Handler, tls bool) http.Handler {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.Contains(r.URL.Path, "uthorization") {
-			println("URL PATH [AUTH!]: ", r.URL.Path)
-		} else {
-			println("URL PATH [NOT AUTH]: ", r.URL.Path)
-			println("request uri", r.RequestURI)
-		}
-		if strings.Contains(r.URL.Path, "/authorization.AuthorizationService/") {
-			println("Serving Connect Auth Handler for ", r.URL.Path)
-			authHandler.ServeHTTP(w, r)
-		} else {
-			defaultHandler.ServeHTTP(w, r)
-		}
-	})
-	if !tls {
-		return h2c.NewHandler(handler, &http2.Server{})
-	}
-	return handler
-}
-
 // httpGrpcHandlerFunc returns a http.Handler that delegates to the grpc server if the request is a grpc request
 func httpGrpcHandlerFunc(h http.Handler, l *logger.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -364,7 +342,7 @@ func httpGrpcHandlerFunc(h http.Handler, l *logger.Logger) http.Handler {
 	})
 }
 
-func newGrpcInProcessServer() *http.Server {
+func newConnectRPCInProcessServer(mux *http.ServeMux) *http.Server {
 	// mux := http.NewServeMux()
 
 	// var interceptors []grpc.UnaryServerInterceptor
@@ -382,7 +360,11 @@ func newGrpcInProcessServer() *http.Server {
 	// // Add interceptors to server options
 	// serverOptions = append(serverOptions, grpc.ChainUnaryInterceptor(interceptors...))
 	// return grpc.NewServer(serverOptions...)
-	return &http.Server{}
+	return &http.Server{
+		WriteTimeout: time.Second * 30,
+		ReadTimeout:  time.Second * 30,
+		Handler:      h2c.NewHandler(mux, &http2.Server{}),
+	}
 }
 
 // newGrpcServer creates a new grpc server with the given config and authN interceptor
@@ -499,9 +481,9 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 }
 
 func (s OpenTDFServer) startInProcessGrpcServer() {
-	s.logger.Info("starting in process grpc server")
+	s.logger.Info("starting in process connect-rpc server")
 	if err := s.GRPCInProcess.srv.Serve(s.GRPCInProcess.ln); err != nil {
-		s.logger.Error("failed to serve in process grpc", slog.String("error", err.Error()))
+		s.logger.Error("failed to serve in process connect-rpc", slog.String("error", err.Error()))
 		panic(err)
 	}
 }

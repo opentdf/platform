@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/sdk"
@@ -37,12 +36,16 @@ func authorizationExamples() error {
 	// model two groups of entities; user bob and user alice
 	entityChains := []*authorization.EntityChain{{
 		Id: "ec1", // ec1 is an arbitrary tracking id to match results to request
-		Entities: []*authorization.Entity{{EntityType: &authorization.Entity_EmailAddress{EmailAddress: "bob@example.org"},
-			Category: authorization.Entity_CATEGORY_SUBJECT}},
+		Entities: []*authorization.Entity{{
+			EntityType: &authorization.Entity_EmailAddress{EmailAddress: "bob@example.org"},
+			Category:   authorization.Entity_CATEGORY_SUBJECT,
+		}},
 	}, {
 		Id: "ec2", // ec2 is an arbitrary tracking id to match results to request
-		Entities: []*authorization.Entity{{EntityType: &authorization.Entity_UserName{UserName: "alice@example.org"},
-			Category: authorization.Entity_CATEGORY_SUBJECT}},
+		Entities: []*authorization.Entity{{
+			EntityType: &authorization.Entity_UserName{UserName: "alice@example.org"},
+			Category:   authorization.Entity_CATEGORY_SUBJECT,
+		}},
 	}}
 
 	// TODO Get attribute value ids
@@ -60,11 +63,10 @@ func authorizationExamples() error {
 			{AttributeValueFqns: []string{tradeSecretAttributeValueFqn, openAttributeValueFqn}},
 		},
 	})
-	decisionReqMsg := &authorization.GetDecisionsRequest{DecisionRequests: drs}
-	decisionRequest := &connect.Request[authorization.GetDecisionsRequest]{Msg: decisionReqMsg}
-	slog.Info(fmt.Sprintf("Submitting decision request: %s", protojson.Format(decisionReqMsg)))
+	decisionRequest := &authorization.GetDecisionsRequest{DecisionRequests: drs}
+	slog.Info(fmt.Sprintf("Submitting decision request: %s", protojson.Format(decisionRequest)))
 	decisionResponse, err := s.Authorization.GetDecisions(context.Background(), decisionRequest)
-	decisionResMsg := decisionResponse.Msg
+	decisionResMsg := decisionResponse
 	if err != nil {
 		return err
 	}

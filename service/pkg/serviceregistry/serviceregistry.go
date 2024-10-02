@@ -80,6 +80,8 @@ type DBRegister struct {
 }
 
 type IService interface {
+	IsDBRequired() bool
+	DBMigrations() *embed.FS
 	GetNamespace() string
 	GetServiceDesc() *grpc.ServiceDesc
 	Start(ctx context.Context, params RegistrationParams) (any, error)
@@ -111,7 +113,7 @@ type ServiceOptions[S any] struct {
 	ServiceDesc *grpc.ServiceDesc
 	// RegisterFunc is the function that will be called to register the service
 	RegisterFunc    RegisterFunc[S]
-	HttpHandlerFunc HandlerServer
+	httpHandlerFunc HandlerServer
 	// ConnectRPCServiceHandler is the function that will be called to register the service with the
 	ConnectRPCFunc func(S, ...connect.HandlerOption) (string, http.Handler)
 	// DB is optional and used to register the service with a database
@@ -137,6 +139,14 @@ func (s Service[S]) Shutdown() error {
 	return nil
 }
 
+func (s Service[S]) IsDBRequired() bool {
+	return s.DB.Required
+}
+
+func (s Service[S]) DBMigrations() *embed.FS {
+	return s.DB.Migrations
+}
+
 // Start starts the service and performs necessary initialization steps.
 // It returns an error if the service is already started or if there is an issue running database migrations.
 func (s *Service[S]) Start(ctx context.Context, params RegistrationParams) (any, error) {
@@ -154,7 +164,7 @@ func (s *Service[S]) Start(ctx context.Context, params RegistrationParams) (any,
 		)
 	}
 
-	s.Impl, s.HttpHandlerFunc = s.RegisterFunc(params)
+	s.Impl, s.httpHandlerFunc = s.RegisterFunc(params)
 
 	s.Started = true
 	return s.Impl, nil
@@ -177,10 +187,10 @@ func (s *Service[S]) Start(ctx context.Context, params RegistrationParams) (any,
 // It takes a context, a ServeMux, and an implementation function as parameters.
 // If the service did not register a handler, it returns an error.
 func (s Service[S]) RegisterHTTPServer(ctx context.Context, mux *http.ServeMux) error {
-	if s.HttpHandlerFunc == nil {
+	if s.httpHandlerFunc == nil {
 		return fmt.Errorf("service did not register a handler")
 	}
-	s.HttpHandlerFunc(ctx, mux, s.Impl)
+	s.httpHandlerFunc(ctx, mux, s.Impl)
 	return nil
 }
 
@@ -189,7 +199,7 @@ func (s Service[S]) RegisterConnectRPCServiceHandler(ctx context.Context, connec
 	if s.ConnectRPCFunc == nil {
 		return fmt.Errorf("service did not register a handler")
 	}
-	path, handler := s.ConnectRPCFunc(s.Impl)
+	path, handler := s.ConnectRPCFunc(s.Impl, connectRPC.Interceptors...)
 	connectRPC.Mux.Handle(path, handler)
 	return nil
 }

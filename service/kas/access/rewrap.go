@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strings"
 	"time"
 
@@ -119,16 +120,16 @@ func justRequestBody(ctx context.Context, token jwt.Token, logger logger.Logger)
 	return rbString, nil
 }
 
-func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest, logger logger.Logger) (*RequestBody, error) {
+func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRequest, logger logger.Logger) (*RequestBody, error) {
 	// First load legacy method for verifying SRT
 	// md, exists := metadata.FromIncomingContext(ctx)
 	// if !exists {
 	// 	logger.WarnContext(ctx, "missing metadata for srt validation")
 	// 	return nil, errors.New("missing metadata")
 	// }
-	// if vpk, ok := md["X-Virtrupubkey"]; ok && len(vpk) == 1 {
-	// 	logger.InfoContext(ctx, "Legacy Client: Processing X-Virtrupubkey")
-	// }
+	if vpk, ok := headers["X-Virtrupubkey"]; ok && len(vpk) == 1 {
+		logger.InfoContext(ctx, "Legacy Client: Processing X-Virtrupubkey")
+	}
 
 	// get dpop public key from context
 	dpopJWK := auth.GetJWKFromContext(ctx, &logger)
@@ -274,7 +275,7 @@ func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, err
 func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.RewrapRequest]) (*connect.Response[kaspb.RewrapResponse], error) {
 	in := req.Msg
 	p.Logger.DebugContext(ctx, "REWRAP")
-	body, err := extractSRTBody(ctx, in, *p.Logger)
+	body, err := extractSRTBody(ctx, req.Header(), in, *p.Logger)
 	if err != nil {
 		p.Logger.DebugContext(ctx, "unverifiable srt", "err", err)
 		return nil, err

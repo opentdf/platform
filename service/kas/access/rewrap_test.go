@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"log/slog"
+	"net/http"
 	"testing"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -298,7 +299,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 	srt2 := makeRewrapBody(t, fauxPolicyBytes(t), true)
 	badPolicySrt := makeRewrapBody(t, emptyPolicyBytes(), true)
 
-	var tests = []struct {
+	tests := []struct {
 		name        string
 		body        []byte
 		goodDPoP    bool
@@ -337,6 +338,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 
 			verified, err := extractSRTBody(
 				ctx,
+				http.Header{},
 				&kaspb.RewrapRequest{
 					SignedRequestToken: string(tt.body),
 				},
@@ -375,6 +377,7 @@ func Test_SignedRequestBody_When_Bad_Signature_Expect_Failure(t *testing.T) {
 
 	verified, err := extractSRTBody(
 		ctx,
+		http.Header{},
 		&kaspb.RewrapRequest{
 			SignedRequestToken: string(makeRewrapBody(t, fauxPolicyBytes(t), false)),
 		},

@@ -138,6 +138,7 @@ func NewRegistration() *serviceregistry.Service[authorizationconnect.Authorizati
 
 				return as, func(ctx context.Context, mux *http.ServeMux, server any) {}
 			},
+			ConnectRPCFunc: authorizationconnect.NewAuthorizationServiceHandler,
 		},
 	}
 }
@@ -149,12 +150,13 @@ func (as AuthorizationService) IsReady(ctx context.Context) error {
 }
 
 func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *connect.Request[authorization.GetDecisionsByTokenRequest]) (*connect.Response[authorization.GetDecisionsByTokenResponse], error) {
+	fmt.Println("GetDecisionsByToken: HERE")
 	r := req.Msg
 	decisionsRequests := []*authorization.DecisionRequest{}
 	// for each token decision request
 	for _, tdr := range r.GetDecisionRequests() {
-		ecResp, err := as.sdk.EntityResoution.CreateEntityChainFromJwt(ctx, &connect.Request[entityresolution.CreateEntityChainFromJwtRequest]{
-			Msg: &entityresolution.CreateEntityChainFromJwtRequest{Tokens: tdr.GetTokens()},
+		ecResp, err := as.sdk.EntityResoution.CreateEntityChainFromJwt(ctx, &entityresolution.CreateEntityChainFromJwtRequest{
+			Tokens: tdr.GetTokens(),
 		})
 		if err != nil {
 			as.logger.Error("Error calling ERS to get entity chains from jwts")
@@ -164,7 +166,7 @@ func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *co
 		// form a decision request for the token decision request
 		decisionsRequests = append(decisionsRequests, &authorization.DecisionRequest{
 			Actions:            tdr.GetActions(),
-			EntityChains:       ecResp.Msg.GetEntityChains(),
+			EntityChains:       ecResp.GetEntityChains(),
 			ResourceAttributes: tdr.GetResourceAttributes(),
 		})
 	}
@@ -449,12 +451,12 @@ func makeScopeMap(scope *authorization.ResourceAttribute) map[string]bool {
 func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connect.Request[authorization.GetEntitlementsRequest]) (*connect.Response[authorization.GetEntitlementsResponse], error) {
 	r := req.Msg
 	as.logger.DebugContext(ctx, "getting entitlements")
-	attrsRes, err := as.sdk.Attributes.ListAttributes(ctx, &connect.Request[attr.ListAttributesRequest]{Msg: &attr.ListAttributesRequest{}})
+	attrsRes, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{})
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to list attributes")
 	}
-	subMapsRes, err := as.sdk.SubjectMapping.ListSubjectMappings(ctx, &connect.Request[subjectmapping.ListSubjectMappingsRequest]{Msg: &subjectmapping.ListSubjectMappingsRequest{}})
+	subMapsRes, err := as.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{})
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to list subject mappings")
@@ -462,9 +464,9 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	// create a lookup map of attribute value FQNs (based on request scope)
 	scopeMap := makeScopeMap(r.GetScope())
 	// create a lookup map of subject mappings by attribute value ID
-	subMapsByVal := makeSubMapsByValLookup(subMapsRes.Msg.GetSubjectMappings())
+	subMapsByVal := makeSubMapsByValLookup(subMapsRes.GetSubjectMappings())
 	// create a lookup map of attribute values by FQN (for rego query)
-	fqnAttrVals := makeValsByFqnsLookup(attrsRes.Msg.GetAttributes(), subMapsByVal, scopeMap)
+	fqnAttrVals := makeValsByFqnsLookup(attrsRes.GetAttributes(), subMapsByVal, scopeMap)
 	avf := &attr.GetAttributeValuesByFqnsResponse{
 		FqnAttributeValues: fqnAttrVals,
 	}
@@ -480,16 +482,14 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	}
 
 	// call ERS on all entities
-	ersResp, err := as.sdk.EntityResoution.ResolveEntities(ctx, &connect.Request[entityresolution.ResolveEntitiesRequest]{
-		Msg: &entityresolution.ResolveEntitiesRequest{Entities: r.GetEntities()},
-	})
+	ersResp, err := as.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{Entities: r.GetEntities()})
 	if err != nil {
 		as.logger.ErrorContext(ctx, "error calling ERS to resolve entities", "entities", r.GetEntities())
 		return nil, err
 	}
 
 	// call rego on all entities
-	in, err := entitlements.OpaInput(subjectMappings, ersResp.Msg)
+	in, err := entitlements.OpaInput(subjectMappings, ersResp)
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to build rego input", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to build rego input")
@@ -574,16 +574,16 @@ func retrieveAttributeDefinitions(ctx context.Context, ra *authorization.Resourc
 	if len(attrFqns) == 0 {
 		return make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue), nil
 	}
-	resp, err := sdk.Attributes.GetAttributeValuesByFqns(ctx, &connect.Request[attr.GetAttributeValuesByFqnsRequest]{Msg: &attr.GetAttributeValuesByFqnsRequest{
+	resp, err := sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
 		WithValue: &policy.AttributeValueSelector{
 			WithSubjectMaps: false,
 		},
 		Fqns: attrFqns,
-	}})
+	})
 	if err != nil {
 		return nil, err
 	}
-	return resp.Msg.GetFqnAttributeValues(), nil
+	return resp.GetFqnAttributeValues(), nil
 }
 
 func getComprehensiveHierarchy(attributesMap map[string]*policy.Attribute, avf *attr.GetAttributeValuesByFqnsResponse, entitlement string, as *AuthorizationService, entitlements []string) []string {

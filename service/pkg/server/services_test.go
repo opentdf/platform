@@ -2,9 +2,9 @@ package server
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -22,18 +22,18 @@ type mockTestServiceOptions struct {
 	serviceName        string
 	serviceHandlerType any
 	serviceObject      any
-	serviceHandler     func(ctx context.Context, mux *runtime.ServeMux, server any) error
+	serviceHandler     func(ctx context.Context, mux *http.ServeMux, server any)
 	dbRegister         serviceregistry.DBRegister
 }
 
-func mockTestServiceRegistry(opts mockTestServiceOptions) (serviceregistry.Registration, *spyTestService) {
+func mockTestServiceRegistry(opts mockTestServiceOptions) (serviceregistry.IService, *spyTestService) {
 	spy := &spyTestService{}
 	mockTestServiceDefaults := mockTestServiceOptions{
 		namespace:          "test",
 		serviceName:        "TestService",
 		serviceHandlerType: (*interface{})(nil),
-		serviceHandler: func(_ context.Context, _ *runtime.ServeMux, _ any) error {
-			return nil
+		serviceHandler: func(_ context.Context, _ *http.ServeMux, _ any) {
+			return
 		},
 	}
 
@@ -52,21 +52,23 @@ func mockTestServiceRegistry(opts mockTestServiceOptions) (serviceregistry.Regis
 		serviceHandler = opts.serviceHandler
 	}
 
-	return serviceregistry.Registration{
-		Namespace: namespace,
-		ServiceDesc: &grpc.ServiceDesc{
-			ServiceName: serviceName,
-			HandlerType: serviceHandlerType,
-		},
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return opts.serviceObject, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				spy.wasCalled = true
-				spy.callParams = append(spy.callParams, srp, ctx, mux, server)
-				return serviceHandler(ctx, mux, server)
-			}
-		},
+	return &serviceregistry.Service[TestService]{
+		ServiceOptions: serviceregistry.ServiceOptions[TestService]{
+			Namespace: namespace,
+			ServiceDesc: &grpc.ServiceDesc{
+				ServiceName: serviceName,
+				HandlerType: serviceHandlerType,
+			},
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (TestService, serviceregistry.HandlerServer) {
+				return opts.serviceObject.(TestService), func(ctx context.Context, mux *http.ServeMux, server any) {
+					spy.wasCalled = true
+					spy.callParams = append(spy.callParams, srp, ctx, mux, server)
+					serviceHandler(ctx, mux, server)
+				}
+			},
 
-		DB: opts.dbRegister,
+			DB: opts.dbRegister,
+		},
 	}, spy
 }
 
@@ -189,7 +191,7 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 
 	// Test service which will be enabled
 	registerTest, testSpy := mockTestServiceRegistry(mockTestServiceOptions{
-		serviceObject: &TestService{},
+		serviceObject: TestService{},
 	})
 	err := registry.RegisterService(registerTest, "test")
 	suite.Require().NoError(err)

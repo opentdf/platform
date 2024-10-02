@@ -13,19 +13,17 @@ import (
 	"net/url"
 	"regexp"
 
-	connect "connectrpc.com/connect"
 	"github.com/opentdf/platform/lib/ocrypto"
-	"github.com/opentdf/platform/protocol/go/authorization/authorizationconnect"
-	"github.com/opentdf/platform/protocol/go/entityresolution/entityresolutionconnect"
+	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
-	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
-	"github.com/opentdf/platform/protocol/go/policy/namespaces/namespacesconnect"
-	"github.com/opentdf/platform/protocol/go/policy/resourcemapping/resourcemappingconnect"
-	"github.com/opentdf/platform/protocol/go/policy/subjectmapping/subjectmappingconnect"
-	"github.com/opentdf/platform/protocol/go/policy/unsafe/unsafeconnect"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
-	"github.com/opentdf/platform/protocol/go/wellknownconfiguration/wellknownconfigurationconnect"
 	"github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/archive"
@@ -60,15 +58,15 @@ type SDK struct {
 	conn                    *grpc.ClientConn
 	dialOptions             []grpc.DialOption
 	tokenSource             auth.AccessTokenSource
-	Namespaces              namespacesconnect.NamespaceServiceClient
-	Attributes              attributesconnect.AttributesServiceClient
-	ResourceMapping         resourcemappingconnect.ResourceMappingServiceClient
-	SubjectMapping          subjectmappingconnect.SubjectMappingServiceClient
-	KeyAccessServerRegistry kasregistryconnect.KeyAccessServerRegistryServiceClient
-	Unsafe                  unsafeconnect.UnsafeServiceClient
-	Authorization           authorizationconnect.AuthorizationServiceClient
-	EntityResoution         entityresolutionconnect.EntityResolutionServiceClient
-	wellknownConfiguration  wellknownconfigurationconnect.WellKnownServiceClient
+	Namespaces              namespaces.NamespaceServiceClient
+	Attributes              attributes.AttributesServiceClient
+	ResourceMapping         resourcemapping.ResourceMappingServiceClient
+	SubjectMapping          subjectmapping.SubjectMappingServiceClient
+	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
+	Unsafe                  unsafe.UnsafeServiceClient
+	Authorization           authorization.AuthorizationServiceClient
+	EntityResoution         entityresolution.EntityResolutionServiceClient
+	wellknownConfiguration  wellknownconfiguration.WellKnownServiceClient
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
@@ -111,33 +109,29 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 
 	// IF IPC is disabled we build a connection to the platform
-	// if !cfg.ipc {
-	// 	println("platformEndpoint before sanitization: ", platformEndpoint)
-	// 	platformEndpoint, err = SanitizePlatformEndpoint(platformEndpoint)
-	// 	println("platformEndpoint after sanitization: ", platformEndpoint)
-	// 	if err != nil {
-	// 		return nil, errors.Join(ErrPlatformEndpointMalformed, err)
-	// 	}
-	// }
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: cfg.tlsConfig,
-		},
+	if !cfg.ipc {
+		platformEndpoint, err = SanitizePlatformEndpoint(platformEndpoint)
+		if err != nil {
+			return nil, errors.Join(ErrPlatformEndpointMalformed, err)
+		}
 	}
-	println("platformEndpointa", platformEndpoint)
-	// platformEndpoint = "http://localhost:8080"
-	wc := wellknownconfigurationconnect.NewWellKnownServiceClient(httpClient, platformEndpoint, connect.WithGRPC())
 
 	// If platformConfiguration is not provided, fetch it from the platform
 	if cfg.PlatformConfiguration == nil && !cfg.ipc { //nolint:nestif // Most of checks are for errors
 		var pcfg PlatformConfiguration
 		var err error
 
-		pcfg, err = getPlatformConfiguration(wc) // Pick a connection until cfg.wellknownConn is removed
-		if err != nil {
-			return nil, errors.Join(ErrPlatformConfigFailed, err)
+		if cfg.coreConn != nil {
+			pcfg, err = getPlatformConfiguration(cfg.coreConn) // Pick a connection until cfg.wellknownConn is removed
+			if err != nil {
+				return nil, errors.Join(ErrPlatformConfigFailed, err)
+			}
+		} else {
+			pcfg, err = fetchPlatformConfiguration(platformEndpoint, dialOptions)
+			if err != nil {
+				return nil, errors.Join(ErrPlatformConfigFailed, err)
+			}
 		}
-
 		cfg.PlatformConfiguration = pcfg
 		if cfg.tokenEndpoint == "" {
 			cfg.tokenEndpoint, err = getTokenEndpoint(*cfg)
@@ -156,14 +150,10 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	if err != nil {
 		return nil, err
 	}
-	var addTokenInterceptor connect.Interceptor
 	if accessTokenSource != nil {
 		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource, cfg.tlsConfig)
-		addTokenInterceptor = interceptor.AddToken()
 		uci = append(uci, interceptor.AddCredentials)
 	}
-	interceptors := connect.WithInterceptors(addTokenInterceptor)
-	// interceptors = connect.WithInterceptors(interceptor.AddToken())
 
 	dialOptions = append(dialOptions, grpc.WithChainUnaryInterceptor(uci...))
 
@@ -183,15 +173,15 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		conn:                    platformConn,
 		dialOptions:             dialOptions,
 		tokenSource:             accessTokenSource,
-		Attributes:              attributesconnect.NewAttributesServiceClient(httpClient, platformEndpoint, connect.WithGRPC(), interceptors),
-		Namespaces:              namespacesconnect.NewNamespaceServiceClient(httpClient, platformEndpoint, connect.WithGRPC(), interceptors),
-		ResourceMapping:         resourcemappingconnect.NewResourceMappingServiceClient(httpClient, platformEndpoint, connect.WithGRPC(), interceptors),
-		SubjectMapping:          subjectmappingconnect.NewSubjectMappingServiceClient(httpClient, platformEndpoint, connect.WithGRPC(), interceptors),
-		Unsafe:                  unsafeconnect.NewUnsafeServiceClient(httpClient, platformEndpoint, connect.WithGRPC(), interceptors),
-		KeyAccessServerRegistry: kasregistryconnect.NewKeyAccessServerRegistryServiceClient(httpClient, platformEndpoint, connect.WithGRPC(), interceptors),
-		Authorization:           authorizationconnect.NewAuthorizationServiceClient(httpClient, platformEndpoint, connect.WithGRPC(), interceptors),
-		EntityResoution:         entityresolutionconnect.NewEntityResolutionServiceClient(httpClient, platformEndpoint, connect.WithGRPC(), interceptors),
-		wellknownConfiguration:  wellknownconfigurationconnect.NewWellKnownServiceClient(httpClient, platformEndpoint, connect.WithGRPC(), interceptors),
+		Attributes:              attributes.NewAttributesServiceClient(platformConn),
+		Namespaces:              namespaces.NewNamespaceServiceClient(platformConn),
+		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(platformConn),
+		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(platformConn),
+		Unsafe:                  unsafe.NewUnsafeServiceClient(platformConn),
+		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(platformConn),
+		Authorization:           authorization.NewAuthorizationServiceClient(platformConn),
+		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(platformConn),
+		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(platformConn),
 		// wellknownConfiguration: wc,
 	}, nil
 }
@@ -378,15 +368,16 @@ func fetchPlatformConfiguration(platformEndpoint string, dialOptions []grpc.Dial
 	return getPlatformConfiguration(conn)
 }
 
-func getPlatformConfiguration(wc wellknownconfigurationconnect.WellKnownServiceClient) (PlatformConfiguration, error) {
-	req := &connect.Request[wellknownconfiguration.GetWellKnownConfigurationRequest]{Msg: &wellknownconfiguration.GetWellKnownConfigurationRequest{}}
-	response, err := wc.GetWellKnownConfiguration(context.Background(), req)
+func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfiguration, error) {
+	req := wellknownconfiguration.GetWellKnownConfigurationRequest{}
+	wellKnownConfig := wellknownconfiguration.NewWellKnownServiceClient(conn)
+	response, err := wellKnownConfig.GetWellKnownConfiguration(context.Background(), &req)
 	if err != nil {
 		println("getPlatformConfiguration HERE", err.Error())
 		return nil, errors.Join(errors.New("unable to retrieve config information, and none was provided"), err)
 	}
 	// Get token endpoint
-	configuration := response.Msg.GetConfiguration()
+	configuration := response.GetConfiguration()
 
 	return configuration.AsMap(), nil
 }

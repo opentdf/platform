@@ -137,8 +137,7 @@ func (q *Queries) CreateResourceMappingGroup(ctx context.Context, arg CreateReso
 const createSubjectConditionSet = `-- name: CreateSubjectConditionSet :one
 INSERT INTO subject_condition_set (condition, metadata)
 VALUES ($1, $2)
-RETURNING id,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+RETURNING id
 `
 
 type CreateSubjectConditionSetParams struct {
@@ -146,29 +145,22 @@ type CreateSubjectConditionSetParams struct {
 	Metadata  []byte `json:"metadata"`
 }
 
-type CreateSubjectConditionSetRow struct {
-	ID       string `json:"id"`
-	Metadata []byte `json:"metadata"`
-}
-
 // CreateSubjectConditionSet
 //
 //	INSERT INTO subject_condition_set (condition, metadata)
 //	VALUES ($1, $2)
-//	RETURNING id,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-func (q *Queries) CreateSubjectConditionSet(ctx context.Context, arg CreateSubjectConditionSetParams) (CreateSubjectConditionSetRow, error) {
+//	RETURNING id
+func (q *Queries) CreateSubjectConditionSet(ctx context.Context, arg CreateSubjectConditionSetParams) (string, error) {
 	row := q.db.QueryRow(ctx, createSubjectConditionSet, arg.Condition, arg.Metadata)
-	var i CreateSubjectConditionSetRow
-	err := row.Scan(&i.ID, &i.Metadata)
-	return i, err
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }
 
 const createSubjectMapping = `-- name: CreateSubjectMapping :one
 INSERT INTO subject_mappings (attribute_value_id, actions, metadata, subject_condition_set_id)
 VALUES ($1, $2, $3, $4)
-RETURNING id,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+RETURNING id
 `
 
 type CreateSubjectMappingParams struct {
@@ -178,27 +170,21 @@ type CreateSubjectMappingParams struct {
 	SubjectConditionSetID pgtype.UUID `json:"subject_condition_set_id"`
 }
 
-type CreateSubjectMappingRow struct {
-	ID       string `json:"id"`
-	Metadata []byte `json:"metadata"`
-}
-
 // CreateSubjectMapping
 //
 //	INSERT INTO subject_mappings (attribute_value_id, actions, metadata, subject_condition_set_id)
 //	VALUES ($1, $2, $3, $4)
-//	RETURNING id,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-func (q *Queries) CreateSubjectMapping(ctx context.Context, arg CreateSubjectMappingParams) (CreateSubjectMappingRow, error) {
+//	RETURNING id
+func (q *Queries) CreateSubjectMapping(ctx context.Context, arg CreateSubjectMappingParams) (string, error) {
 	row := q.db.QueryRow(ctx, createSubjectMapping,
 		arg.AttributeValueID,
 		arg.Actions,
 		arg.Metadata,
 		arg.SubjectConditionSetID,
 	)
-	var i CreateSubjectMappingRow
-	err := row.Scan(&i.ID, &i.Metadata)
-	return i, err
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }
 
 const deleteKeyAccessServer = `-- name: DeleteKeyAccessServer :execrows
@@ -1605,6 +1591,72 @@ func (q *Queries) UpdateResourceMappingGroup(ctx context.Context, arg UpdateReso
 	return result.RowsAffected(), nil
 }
 
+const updateSubjectConditionSet = `-- name: UpdateSubjectConditionSet :execrows
+UPDATE subject_condition_set
+SET
+    condition = COALESCE($2, condition),
+    metadata = COALESCE($3, metadata)
+WHERE id = $1
+`
+
+type UpdateSubjectConditionSetParams struct {
+	ID        string `json:"id"`
+	Condition []byte `json:"condition"`
+	Metadata  []byte `json:"metadata"`
+}
+
+// UpdateSubjectConditionSet
+//
+//	UPDATE subject_condition_set
+//	SET
+//	    condition = COALESCE($2, condition),
+//	    metadata = COALESCE($3, metadata)
+//	WHERE id = $1
+func (q *Queries) UpdateSubjectConditionSet(ctx context.Context, arg UpdateSubjectConditionSetParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateSubjectConditionSet, arg.ID, arg.Condition, arg.Metadata)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updateSubjectMapping = `-- name: UpdateSubjectMapping :execrows
+UPDATE subject_mappings
+SET
+    actions = COALESCE($2, actions),
+    metadata = COALESCE($3, metadata),
+    subject_condition_set_id = COALESCE($4, subject_condition_set_id)
+WHERE id = $1
+`
+
+type UpdateSubjectMappingParams struct {
+	ID                    string      `json:"id"`
+	Actions               []byte      `json:"actions"`
+	Metadata              []byte      `json:"metadata"`
+	SubjectConditionSetID pgtype.UUID `json:"subject_condition_set_id"`
+}
+
+// UpdateSubjectMapping
+//
+//	UPDATE subject_mappings
+//	SET
+//	    actions = COALESCE($2, actions),
+//	    metadata = COALESCE($3, metadata),
+//	    subject_condition_set_id = COALESCE($4, subject_condition_set_id)
+//	WHERE id = $1
+func (q *Queries) UpdateSubjectMapping(ctx context.Context, arg UpdateSubjectMappingParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateSubjectMapping,
+		arg.ID,
+		arg.Actions,
+		arg.Metadata,
+		arg.SubjectConditionSetID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const upsertAttributeDefinitionFqn = `-- name: UpsertAttributeDefinitionFqn :one
 INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
 SELECT
@@ -1720,72 +1772,4 @@ func (q *Queries) UpsertAttributeValueFqn(ctx context.Context, id string) (strin
 	var fqn string
 	err := row.Scan(&fqn)
 	return fqn, err
-}
-
-const updateSubjectConditionSet = `-- name: UpdateSubjectConditionSet :one
-UPDATE subject_condition_set
-SET
-    condition = COALESCE($2, condition),
-    metadata = COALESCE($3, metadata)
-WHERE id = $1
-RETURNING id
-`
-
-type UpdateSubjectConditionSetParams struct {
-	ID        string `json:"id"`
-	Condition []byte `json:"condition"`
-	Metadata  []byte `json:"metadata"`
-}
-
-// UpdateSubjectConditionSet
-//
-//	UPDATE subject_condition_set
-//	SET
-//	    condition = COALESCE($2, condition),
-//	    metadata = COALESCE($3, metadata)
-//	WHERE id = $1
-//	RETURNING id
-func (q *Queries) UpdateSubjectConditionSet(ctx context.Context, arg UpdateSubjectConditionSetParams) (string, error) {
-	row := q.db.QueryRow(ctx, updateSubjectConditionSet, arg.ID, arg.Condition, arg.Metadata)
-	var id string
-	err := row.Scan(&id)
-	return id, err
-}
-
-const updateSubjectMapping = `-- name: UpdateSubjectMapping :one
-UPDATE subject_mappings
-SET
-    actions = COALESCE($2, actions),
-    metadata = COALESCE($3, metadata),
-    subject_condition_set_id = COALESCE($4, subject_condition_set_id)
-WHERE id = $1
-RETURNING id
-`
-
-type UpdateSubjectMappingParams struct {
-	ID                    string      `json:"id"`
-	Actions               []byte      `json:"actions"`
-	Metadata              []byte      `json:"metadata"`
-	SubjectConditionSetID pgtype.UUID `json:"subject_condition_set_id"`
-}
-
-// UpdateSubjectMapping
-//
-//	UPDATE subject_mappings
-//	SET
-//	    actions = COALESCE($2, actions),
-//	    metadata = COALESCE($3, metadata),
-//	    subject_condition_set_id = COALESCE($4, subject_condition_set_id)
-//	WHERE id = $1
-//	RETURNING id
-func (q *Queries) UpdateSubjectMapping(ctx context.Context, arg UpdateSubjectMappingParams) (string, error) {
-	row := q.db.QueryRow(ctx, updateSubjectMapping,
-		arg.ID,
-		arg.Actions,
-		arg.Metadata,
-		arg.SubjectConditionSetID,
-	)
-	var id string
-	err := row.Scan(&id)
-	return id, err
 }

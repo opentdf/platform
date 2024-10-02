@@ -455,16 +455,14 @@ WHERE id = $1;
 -- name: CreateSubjectConditionSet :one
 INSERT INTO subject_condition_set (condition, metadata)
 VALUES ($1, $2)
-RETURNING id,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata;
+RETURNING id;
 
--- name: UpdateSubjectConditionSet :one
+-- name: UpdateSubjectConditionSet :execrows
 UPDATE subject_condition_set
 SET
     condition = COALESCE(sqlc.narg('condition'), condition),
     metadata = COALESCE(sqlc.narg('metadata'), metadata)
-WHERE id = $1
-RETURNING id;
+WHERE id = $1;
 
 -- name: DeleteSubjectConditionSet :execrows
 DELETE FROM subject_condition_set WHERE id = $1;
@@ -513,17 +511,15 @@ GROUP BY av.id, sm.id, scs.id;
 -- name: CreateSubjectMapping :one
 INSERT INTO subject_mappings (attribute_value_id, actions, metadata, subject_condition_set_id)
 VALUES ($1, $2, $3, $4)
-RETURNING id,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata;
+RETURNING id;
 
--- name: UpdateSubjectMapping :one
+-- name: UpdateSubjectMapping :execrows
 UPDATE subject_mappings
 SET
     actions = COALESCE(sqlc.narg('actions'), actions),
     metadata = COALESCE(sqlc.narg('metadata'), metadata),
     subject_condition_set_id = COALESCE(sqlc.narg('subject_condition_set_id'), subject_condition_set_id)
-WHERE id = $1
-RETURNING id;
+WHERE id = $1;
 
 -- name: DeleteSubjectMapping :execrows
 DELETE FROM subject_mappings WHERE id = $1;

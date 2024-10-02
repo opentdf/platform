@@ -9,14 +9,28 @@ on:
       - opened
       - synchronize
       - reopened
+    paths-ignore:
+      - '**/*.md'
+      - LICENSE
+      - CODEOWNERS
   push:
     branches:
       - main
+    paths-ignore:
+      - '**/*.md'
+      - LICENSE
+      - CODEOWNERS
   merge_group:
     branches:
       - main
     types:
       - checks_requested
+    paths:
+      - '**'
+      - '!**/*.md'
+      - 'docs/**'
+      - '!LICENSE'
+      - '!CODEOWNERS'
   workflow_call:
 
 jobs:

@@ -274,20 +274,18 @@ func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *a
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", attributeID))
 	}
 
-	// DeactivateAttributeValue actually returns the entire attribute value so we
-	// can use it to compute the diff.
-	deactivated, err := s.dbClient.DeactivateAttributeValue(ctx, attributeID)
+	updated, err := s.dbClient.DeactivateAttributeValue(ctx, attributeID)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextDeactivationFailed, slog.String("id", attributeID))
 	}
 
 	auditParams.Original = original
-	auditParams.Updated = deactivated
+	auditParams.Updated = updated
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &attributes.DeactivateAttributeValueResponse{
-		Value: deactivated,
+		Value: updated,
 	}, nil
 }
 

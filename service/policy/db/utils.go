@@ -59,3 +59,10 @@ func pgtypeText(s string) pgtype.Text {
 		Valid:  s != "",
 	}
 }
+
+func pgtypeBool(b bool) pgtype.Bool {
+	return pgtype.Bool{
+		Bool:  b,
+		Valid: true,
+	}
+}

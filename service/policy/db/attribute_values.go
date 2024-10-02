@@ -90,10 +90,7 @@ func (c PolicyDBClient) ListAttributeValues(ctx context.Context, attributeID str
 	}
 
 	if state != "" && state != StateAny {
-		active = pgtype.Bool{
-			Bool:  state == StateActive,
-			Valid: true,
-		}
+		active = pgtypeBool(state == StateActive)
 	}
 
 	list, err := c.Queries.ListAttributeValues(ctx, ListAttributeValuesParams{
@@ -192,11 +189,8 @@ func (c PolicyDBClient) UnsafeUpdateAttributeValue(ctx context.Context, r *unsaf
 
 func (c PolicyDBClient) DeactivateAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
 	count, err := c.Queries.UpdateAttributeValue(ctx, UpdateAttributeValueParams{
-		ID: id,
-		Active: pgtype.Bool{
-			Bool:  false,
-			Valid: true,
-		},
+		ID:     id,
+		Active: pgtypeBool(false),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -213,11 +207,8 @@ func (c PolicyDBClient) DeactivateAttributeValue(ctx context.Context, id string)
 
 func (c PolicyDBClient) UnsafeReactivateAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
 	count, err := c.Queries.UpdateAttributeValue(ctx, UpdateAttributeValueParams{
-		ID: id,
-		Active: pgtype.Bool{
-			Bool:  true,
-			Valid: true,
-		},
+		ID:     id,
+		Active: pgtypeBool(true),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

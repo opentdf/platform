@@ -197,6 +197,7 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attri
 	}
 
 	auditParams.ObjectID = item.GetId()
+	auditParams.Original = item
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &attributes.CreateAttributeValueResponse{
@@ -250,15 +251,6 @@ func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *attri
 
 	auditParams.Original = original
 	auditParams.Updated = updated
-	// auditParams.Updated = &policy.Value{
-	// 	Id:        original.Id,
-	// 	Value:     original.Value,
-	// 	Active:    original.Active,
-	// 	Grants:    original.Grants,
-	// 	Metadata:  updated.Metadata,
-	// 	Attribute: original.Attribute,
-	// 	Fqn:       original.Fqn,
-	// }
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &attributes.UpdateAttributeValueResponse{

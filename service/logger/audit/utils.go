@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
-	"github.com/wI2L/jsondiff"
 )
 
 // Common Strings
@@ -18,14 +17,14 @@ const (
 type EventObject struct {
 	Object        auditEventObject `json:"object"`
 	Action        eventAction      `json:"action"`
-	Owner         EventOwner       `json:"owner"`
 	Actor         auditEventActor  `json:"actor"`
 	EventMetaData interface{}      `json:"eventMetaData"`
 	ClientInfo    eventClientInfo  `json:"clientInfo"`
 
-	Diff      []DiffEntry `json:"diff,omitempty"`
-	RequestID uuid.UUID   `json:"requestId"`
-	Timestamp string      `json:"timestamp"`
+	Original  map[string]interface{} `json:"original,omitempty"`
+	Updated   map[string]interface{} `json:"updated,omitempty"`
+	RequestID uuid.UUID              `json:"requestId"`
+	Timestamp string                 `json:"timestamp"`
 }
 
 // event.object
@@ -38,8 +37,8 @@ type auditEventObject struct {
 
 // event.object.attributes
 type eventObjectAttributes struct {
-	Assertions  []string `json:"assertions"`
-	Attrs       []string `json:"attrs"`
+	Assertions  []string `json:"assertions,omitempty"`
+	Attrs       []string `json:"attrs,omitempty"`
 	Permissions []string `json:"permissions,omitempty"`
 }
 
@@ -47,12 +46,6 @@ type eventObjectAttributes struct {
 type eventAction struct {
 	Type   ActionType   `json:"type"`
 	Result ActionResult `json:"result"`
-}
-
-// event.owner
-type EventOwner struct {
-	ID    uuid.UUID `json:"id"`
-	OrgID uuid.UUID `json:"orgId"`
 }
 
 // event.actor
@@ -119,37 +112,4 @@ func getRequestIPFromContext(ctx context.Context) string {
 	}
 
 	return defaultNone
-}
-
-// Audit requires an "owner" field but that doesn't apply in the context of the
-// platform. Therefore we just create a "nil" owner which has nil UUID fields.
-func CreateNilOwner() EventOwner {
-	return EventOwner{
-		ID:    uuid.Nil,
-		OrgID: uuid.Nil,
-	}
-}
-
-type DiffEntry struct {
-	Type  string      `json:"op"`
-	Path  string      `json:"path"`
-	Value interface{} `json:"value,omitempty"`
-}
-
-func createJSONPatchDiff(original []byte, target []byte) ([]DiffEntry, error) {
-	patch, err := jsondiff.CompareJSON(original, target, jsondiff.Invertible())
-	diffArray := make([]DiffEntry, len(patch))
-	if err != nil {
-		return nil, err
-	}
-
-	for i, item := range patch {
-		diffArray[i] = DiffEntry{
-			Type:  item.Type,
-			Path:  item.Path,
-			Value: item.Value,
-		}
-	}
-
-	return diffArray, nil
 }

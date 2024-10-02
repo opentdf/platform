@@ -1856,6 +1856,13 @@ To start, these may be `rsa:2048` for encrypting ZTDF files and
                   <td><p>the common name for the group of resource mappings, which must be unique per namespace </p></td>
                 </tr>
               
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -2883,7 +2890,7 @@ To start, these may be `rsa:2048` for encrypting ZTDF files and
                 <td>GetDecisions</td>
                 <td>POST</td>
                 <td>/v1/authorization</td>
-                <td></td>
+                <td>*</td>
               </tr>
               
             
@@ -2903,7 +2910,7 @@ To start, these may be `rsa:2048` for encrypting ZTDF files and
                 <td>GetEntitlements</td>
                 <td>POST</td>
                 <td>/v1/entitlements</td>
-                <td></td>
+                <td>*</td>
               </tr>
               
             
@@ -6107,6 +6114,13 @@ Namespace &lt;&gt; Key Access Server RPCs
                   <td><p> </p></td>
                 </tr>
               
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -6633,6 +6647,20 @@ Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group n
                 <tr>
                   <td>name</td>
                   <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata_update_behavior</td>
+                  <td><a href="#common.MetadataUpdateEnum">common.MetadataUpdateEnum</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>

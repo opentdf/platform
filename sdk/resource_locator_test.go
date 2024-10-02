@@ -164,6 +164,11 @@ func TestNewResourceLocatorWithIdentifierFromReader(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// 8 Bytes padded (4 bytes)
+	ffffData, err := setupResourceLocator("https://example.com", "ffff\u0000\u0000\u0000\u0000")
+	if err != nil {
+		t.Fatal(err)
+	}
 	// 8 Bytes
 	t1Data, err := setupResourceLocator("https://example.com", "t1t1t1t1")
 	if err != nil {
@@ -182,16 +187,18 @@ func TestNewResourceLocatorWithIdentifierFromReader(t *testing.T) {
 	}
 
 	tests := []struct {
-		n           string
-		data        []byte
-		expectBody  string
-		expectIdent string
-		expectError bool
+		n                string
+		data             []byte
+		expectBody       string
+		expectIdent      string
+		expectCleanIdent string
+		expectError      bool
 	}{
-		{"id2", t0Data, "example.com", "t0", false},
-		{"id8", t1Data, "example.com", "t1t1t1t1", false},
-		{"id32", t2Data, "example.com", "t2t2t2t2t2t2t2t2t2t2t2t2t2t2t2t2", false},
-		{"id0", t3Data, "example.com", "", true},
+		{"id2", t0Data, "example.com", "t0", "t0", false},
+		{"id4", ffffData, "example.com", "ffff\u0000\u0000\u0000\u0000", "ffff", false},
+		{"id8", t1Data, "example.com", "t1t1t1t1", "t1t1t1t1", false},
+		{"id32", t2Data, "example.com", "t2t2t2t2t2t2t2t2t2t2t2t2t2t2t2t2", "t2t2t2t2t2t2t2t2t2t2t2t2t2t2t2t2", false},
+		{"id0", t3Data, "example.com", "", "", true},
 	}
 
 	for _, test := range tests {
@@ -208,6 +215,10 @@ func TestNewResourceLocatorWithIdentifierFromReader(t *testing.T) {
 			}
 			if rl.identifier != test.expectIdent {
 				t.Fatalf("expected identifier: %s, got %s", test.expectIdent, rl.identifier)
+			}
+			cleanIdent, _ := rl.GetIdentifier()
+			if cleanIdent != test.expectCleanIdent {
+				t.Fatalf("expected identifier: %s, got %s", test.expectCleanIdent, rl.identifier)
 			}
 		})
 	}

@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.4.24](https://github.com/opentdf/platform/compare/service/v0.4.23...service/v0.4.24) (2024-10-01)
+
+
+### Features
+
+* **ci:** run otdfctl e2e tests within platform ([#1526](https://github.com/opentdf/platform/issues/1526)) ([8240645](https://github.com/opentdf/platform/commit/8240645270e1cd25001c6f40d4276093c6e3cb23)), closes [#1528](https://github.com/opentdf/platform/issues/1528)
+* **core:** Ability to add namespace level loggers ([#1537](https://github.com/opentdf/platform/issues/1537)) ([bd57070](https://github.com/opentdf/platform/commit/bd570702952092f05f84f2312a211aa753f3205e))
+* **policy:** 1370 add audit support for Resource Mapping Groups ([#1418](https://github.com/opentdf/platform/issues/1418)) ([57dc217](https://github.com/opentdf/platform/commit/57dc21788557f726362ce0fd0351cf6ea12fee2c)), closes [#1370](https://github.com/opentdf/platform/issues/1370)
+* **policy:** 1398 add metadata support to Resource Mapping Groups ([#1412](https://github.com/opentdf/platform/issues/1412)) ([87b7b2f](https://github.com/opentdf/platform/commit/87b7b2ff6f7b39d34823ba926758fba25489c0a6))
+* **policy:** 1426 tech debt migrate Namespace object queries to sqlc ([#1432](https://github.com/opentdf/platform/issues/1432)) ([6bde0ab](https://github.com/opentdf/platform/commit/6bde0abae4997af4ce9a3556d65d28fa322423e3)), closes [#1426](https://github.com/opentdf/platform/issues/1426)
+* **policy:** 1509 add readme on arch decisions of policy service ([#1508](https://github.com/opentdf/platform/issues/1508)) ([71b49ec](https://github.com/opentdf/platform/commit/71b49eca6e84185f85c97b7c490e8f9e89176764)), closes [#1509](https://github.com/opentdf/platform/issues/1509)
+* **policy:** 1552 implement recommended changes to audit process ([#1588](https://github.com/opentdf/platform/issues/1588)) ([aabc5cb](https://github.com/opentdf/platform/commit/aabc5cb58979e736657c0c6fd48ae7077e0def5f))
+* **policy:** generate policy ERD ([#1525](https://github.com/opentdf/platform/issues/1525)) ([8eb322b](https://github.com/opentdf/platform/commit/8eb322bddccd4eedcea87bfadb9cfd194e0d028f))
+
+
+### Bug Fixes
+
+* **core:** Add NanoTDF KID padding removal and update logging level ([#1466](https://github.com/opentdf/platform/issues/1466)) ([54de8f4](https://github.com/opentdf/platform/commit/54de8f4e0497e8c587eac06fb5418e9dc3b33e19)), closes [#1467](https://github.com/opentdf/platform/issues/1467)
+* **core:** Autobump service ([#1514](https://github.com/opentdf/platform/issues/1514)) ([2b9aa6d](https://github.com/opentdf/platform/commit/2b9aa6d7213ce8c940481bfc3578f672a8b2776b))
+* **core:** Autobump service ([#1599](https://github.com/opentdf/platform/issues/1599)) ([93646d7](https://github.com/opentdf/platform/commit/93646d7d2c4f4f09561501aa0013a46688da48f6))
+* **core:** Fix parsing /v1/authorization ([#1554](https://github.com/opentdf/platform/issues/1554)) ([b7d694d](https://github.com/opentdf/platform/commit/b7d694d5df3867f278007660c32acb72c868735e)), closes [#1553](https://github.com/opentdf/platform/issues/1553)
+* **core:** Fix POST /v1/entitlements body parsing ([#1574](https://github.com/opentdf/platform/issues/1574)) ([fcae7ef](https://github.com/opentdf/platform/commit/fcae7ef0eba2c43ab93f5a2815e7b3e1dec69364))
+* **core:** let service start fail if port not free ([#1504](https://github.com/opentdf/platform/issues/1504)) ([708d15d](https://github.com/opentdf/platform/commit/708d15d8d10fc7b253dd22f151ed765222737175))
+* **policy:** ensure LIST namespace grants excludes fqns for defs/vals ([#1478](https://github.com/opentdf/platform/issues/1478)) ([243c51c](https://github.com/opentdf/platform/commit/243c51c49b3ca323cabe1cbc07ac33272be38dfd))
+
+## [0.4.23](https://github.com/opentdf/platform/compare/service/v0.4.22...service/v0.4.23) (2024-08-27)
+
+
+### Bug Fixes
+
+* **core:** Fix flake in nano rewrap ([#1457](https://github.com/opentdf/platform/issues/1457)) ([45b0f90](https://github.com/opentdf/platform/commit/45b0f9000c56d2e76ae35f060eaa6b21ded5deca))
+* **main:** Fix deadlock when registering config with duplicate namespace ([#1462](https://github.com/opentdf/platform/issues/1462)) ([6266998](https://github.com/opentdf/platform/commit/6266998b9c17ba64e3396a3379f0d18548593215)), closes [#1461](https://github.com/opentdf/platform/issues/1461)
+
+## [0.4.22](https://github.com/opentdf/platform/compare/service/v0.4.21...service/v0.4.22) (2024-08-26)
+
+
+### Bug Fixes
+
+* **core:** Don't double encode key fixture ([#1453](https://github.com/opentdf/platform/issues/1453)) ([75f9bb4](https://github.com/opentdf/platform/commit/75f9bb4481eb93fc61954be118d0c16a69be5b94)), closes [#1454](https://github.com/opentdf/platform/issues/1454)
+* remove access token log even on failure ([#1452](https://github.com/opentdf/platform/issues/1452)) ([2add657](https://github.com/opentdf/platform/commit/2add657071a679335be8b41440c782883f28fa52))
+* stopped logging policy binding ([#1451](https://github.com/opentdf/platform/issues/1451)) ([309dafe](https://github.com/opentdf/platform/commit/309dafe0164a2f4d8125d3def0fbb2267d625d2d))
+
 ## [0.4.21](https://github.com/opentdf/platform/compare/service/v0.4.20...service/v0.4.21) (2024-08-23)
 
 

@@ -19,6 +19,7 @@ const (
 	ObjectTypeKasAttributeValueAssignment
 	ObjectTypeKeyObject
 	ObjectTypeEntityObject
+	ObjectTypeResourceMappingGroup
 )
 
 func (ot ObjectType) String() string {
@@ -35,6 +36,7 @@ func (ot ObjectType) String() string {
 		"kas_attribute_value_assignment",
 		"key_object",
 		"entity_object",
+		"resource_mapping_group",
 	}[ot]
 }
 

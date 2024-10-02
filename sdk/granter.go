@@ -308,7 +308,7 @@ func storeKeysToCache(kases []*policy.KeyAccessServer, c *kasKeyCache) {
 // Given a policy (list of data attributes or tags),
 // get a set of grants from attribute values to KASes.
 // Unlike `newGranterFromService`, this works offline.
-func newGranterFromAttributes(attrs ...*policy.Value) (granter, error) {
+func newGranterFromAttributes(keyCache *kasKeyCache, attrs ...*policy.Value) (granter, error) {
 	grants := granter{
 		grants: make(map[string]*keyAccessGrant),
 		policy: make([]AttributeValueFQN, len(attrs)),
@@ -323,8 +323,22 @@ func newGranterFromAttributes(attrs ...*policy.Value) (granter, error) {
 		if def == nil {
 			return granter{}, fmt.Errorf("no associated definition with value [%s]", fqn)
 		}
-		grants.addAllGrants(fqn, def.GetGrants(), def)
-		grants.addAllGrants(fqn, v.GetGrants(), def)
+		namespace := def.GetNamespace()
+		if namespace == nil {
+			return granter{}, fmt.Errorf("no associated namespace with definition [%s] from value [%s]", def.GetFqn(), fqn)
+		}
+
+		if grants.addAllGrants(fqn, v.GetGrants(), def) {
+			storeKeysToCache(v.GetGrants(), keyCache)
+			continue
+		}
+		// If no more specific grant was found, then add the attr grants
+		if grants.addAllGrants(fqn, def.GetGrants(), def) {
+			storeKeysToCache(def.GetGrants(), keyCache)
+			continue
+		}
+		grants.addAllGrants(fqn, namespace.GetGrants(), def)
+		storeKeysToCache(namespace.GetGrants(), keyCache)
 	}
 
 	return grants, nil

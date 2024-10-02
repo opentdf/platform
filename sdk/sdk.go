@@ -373,7 +373,7 @@ func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfiguration, err
 	wellKnownConfig := wellknownconfiguration.NewWellKnownServiceClient(conn)
 	response, err := wellKnownConfig.GetWellKnownConfiguration(context.Background(), &req)
 	if err != nil {
-		println("getPlatformConfiguration HERE", err.Error())
+		// println("getPlatformConfiguration HERE", err.Error())
 		return nil, errors.Join(errors.New("unable to retrieve config information, and none was provided"), err)
 	}
 	// Get token endpoint

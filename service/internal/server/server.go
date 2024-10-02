@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"connectrpc.com/grpcreflect"
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/go-chi/cors"
 	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
@@ -105,8 +106,9 @@ type CORSConfig struct {
 }
 
 type ConnectRPC struct {
-	Mux          *http.ServeMux
-	Interceptors []connect.HandlerOption
+	Mux               *http.ServeMux
+	Interceptors      []connect.HandlerOption
+	ServiceReflection []string
 }
 
 type OpenTDFServer struct {
@@ -422,6 +424,13 @@ func newGrpcServer(c Config, a *auth.Authentication, logger *logger.Logger) (*gr
 }
 
 func (s OpenTDFServer) Start() error {
+	// Add reflection api to connect-rpc
+	reflector := grpcreflect.NewStaticReflector(
+		s.ConnectRPC.ServiceReflection...,
+	)
+	s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
+	s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
+
 	// Start Http Server
 	ln, err := s.openHTTPServerPort()
 	if err != nil {

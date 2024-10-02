@@ -199,6 +199,7 @@ func (s Service[S]) RegisterConnectRPCServiceHandler(ctx context.Context, connec
 	if s.ConnectRPCFunc == nil {
 		return fmt.Errorf("service did not register a handler")
 	}
+	connectRPC.ServiceReflection = append(connectRPC.ServiceReflection, s.GetServiceDesc().ServiceName)
 	path, handler := s.ConnectRPCFunc(s.Impl, connectRPC.Interceptors...)
 	connectRPC.Mux.Handle(path, handler)
 	return nil

@@ -34,11 +34,18 @@ type Config struct {
 	// By default, it runs all services.
 	Mode []string `mapstructure:"mode" json:"mode" default:"[\"all\"]"`
 
+	// Remote services
+	ModeOptions ModeOptions `mapstructure:"modeoptions" json:"modeoptions"`
+
 	// SDKConfig represents the configuration settings for the SDK.
 	SDKConfig SDKConfig `mapstructure:"sdk_config" json:"sdk_config"`
 
 	// Services represents the configuration settings for the services.
 	Services map[string]serviceregistry.ServiceConfig `mapstructure:"services"`
+}
+
+type ModeOptions struct {
+	RemoteERSUrl string `mapstructure:"remoteERSUrl" json:"remoteERSUrl"`
 }
 
 // SDKConfig represents the configuration for the SDK.

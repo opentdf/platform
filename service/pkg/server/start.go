@@ -16,6 +16,8 @@ import (
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
 	"golang.org/x/exp/slices"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const devModeMessage = `
@@ -104,7 +106,7 @@ func Start(f ...StartOptions) error {
 
 	var registeredCoreServices []string
 
-	registeredCoreServices, err = registerCoreServices(svcRegistry, cfg.Mode)
+	registeredCoreServices, err = registerCoreServices(svcRegistry, cfg.Mode, cfg.ModeOptions)
 	if err != nil {
 		logger.Error("could not register core services", slog.String("error", err.Error()))
 		return fmt.Errorf("could not register core services: %w", err)
@@ -157,6 +159,14 @@ func Start(f ...StartOptions) error {
 		// Use IPC for the SDK client
 		sdkOptions = append(sdkOptions, sdk.WithIPC())
 		sdkOptions = append(sdkOptions, sdk.WithCustomCoreConnection(otdf.GRPCInProcess.Conn()))
+		if cfg.ModeOptions.RemoteERSUrl != "" {
+			conn, err := getNewGRPCConn(cfg.ModeOptions.RemoteERSUrl)
+			if err != nil {
+				logger.Error("issue connecting to remote ers", slog.String("error", err.Error()))
+				return fmt.Errorf("issue connecting to remote ers: %w", err)
+			}
+			sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(conn))
+		}
 
 		client, err = sdk.New("", sdkOptions...)
 		if err != nil {
@@ -195,6 +205,17 @@ func Start(f ...StartOptions) error {
 	}
 
 	return nil
+}
+
+func getNewGRPCConn(url string) (*grpc.ClientConn, error) {
+	defaultOptions := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+	conn, err := grpc.NewClient(url, defaultOptions...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to dial grpc server: %w", err)
+	}
+	return conn, nil
 }
 
 // waitForShutdownSignal blocks until a SIGINT or SIGTERM is received.

@@ -36,6 +36,17 @@ const (
 	serviceAuthorization    = "authorization"
 )
 
+var (
+	allIndividualServices  = []string{serviceAuthorization, serviceEntityResolution, serviceKAS, serviceWellKnown}
+	coreIndividualServices = []string{serviceAuthorization, serviceEntityResolution, serviceWellKnown}
+	registrationFunctions  = map[string](func() serviceregistry.Registration){
+		serviceKAS:              kas.NewRegistration,
+		serviceEntityResolution: entityresolution.NewRegistration,
+		serviceWellKnown:        wellknown.NewRegistration,
+		serviceAuthorization:    authorization.NewRegistration,
+	}
+)
+
 // registerEssentialServices registers the essential services to the given service registry.
 // It takes a serviceregistry.Registry as input and returns an error if registration fails.
 func registerEssentialServices(reg serviceregistry.Registry) error {
@@ -53,7 +64,7 @@ func registerEssentialServices(reg serviceregistry.Registry) error {
 
 // registerCoreServices registers the core services based on the provided mode.
 // It returns the list of registered services and any error encountered during registration.
-func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string, error) {
+func registerCoreServices(reg serviceregistry.Registry, mode []string, modeoptions config.ModeOptions) ([]string, error) {
 	var (
 		services           []serviceregistry.Registration
 		registeredServices []string
@@ -62,21 +73,22 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 	for _, m := range mode {
 		switch m {
 		case "all":
-			registeredServices = append(registeredServices, []string{servicePolicy, serviceAuthorization, serviceKAS, serviceWellKnown, serviceEntityResolution}...)
-			services = append(services, []serviceregistry.Registration{
-				authorization.NewRegistration(),
-				kas.NewRegistration(),
-				wellknown.NewRegistration(),
-				entityresolution.NewRegistration(),
-			}...)
+			for _, service := range allIndividualServices {
+				if service == serviceEntityResolution && modeoptions.RemoteERSUrl != "" {
+					continue
+				}
+				registeredServices = append(registeredServices, service)
+				services = append(services, registrationFunctions[service]())
+			}
 			services = append(services, policy.NewRegistrations()...)
 		case "core":
-			registeredServices = append(registeredServices, []string{servicePolicy, serviceAuthorization, serviceWellKnown}...)
-			services = append(services, []serviceregistry.Registration{
-				entityresolution.NewRegistration(),
-				authorization.NewRegistration(),
-				wellknown.NewRegistration(),
-			}...)
+			for _, service := range coreIndividualServices {
+				if service == serviceEntityResolution && modeoptions.RemoteERSUrl != "" {
+					continue
+				}
+				registeredServices = append(registeredServices, service)
+				services = append(services, registrationFunctions[service]())
+			}
 			services = append(services, policy.NewRegistrations()...)
 		case "kas":
 			// If the mode is "kas", register only the KAS service

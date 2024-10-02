@@ -20,17 +20,17 @@ type UnsafeService struct { //nolint:revive // UnsafeService is a valid name for
 	logger   *logger.Logger
 }
 
-func NewRegistration() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		ServiceDesc: &unsafe.UnsafeService_ServiceDesc,
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			us := &UnsafeService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
-			return us, func(ctx context.Context, mux *http.ServeMux, server any) {
-				// interceptor := srp.OTDF.AuthN.ConnectUnaryServerInterceptor()
-				interceptors := connect.WithInterceptors()
-				path, handler := unsafeconnect.NewUnsafeServiceHandler(us, interceptors)
-				mux.Handle(path, handler)
-			}
+func NewRegistration(ns string, dbregister serviceregistry.DBRegister) *serviceregistry.Service[unsafeconnect.UnsafeServiceHandler] {
+	return &serviceregistry.Service[unsafeconnect.UnsafeServiceHandler]{
+		ServiceOptions: serviceregistry.ServiceOptions[unsafeconnect.UnsafeServiceHandler]{
+			Namespace:   ns,
+			DB:          dbregister,
+			ServiceDesc: &unsafe.UnsafeService_ServiceDesc,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (unsafeconnect.UnsafeServiceHandler, serviceregistry.HandlerServer) {
+				us := &UnsafeService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
+				return us, func(ctx context.Context, mux *http.ServeMux, server any) {}
+			},
+			ConnectRPCFunc: unsafeconnect.NewUnsafeServiceHandler,
 		},
 	}
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/valyala/fasthttp/fasthttputil"
+	"golang.org/x/exp/slices"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
@@ -109,7 +110,7 @@ type ConnectInProcessRPC struct {
 
 type ConnectRPC struct {
 	Mux          *http.ServeMux
-	Interceptors []connect.Option
+	Interceptors []connect.HandlerOption
 }
 
 type OpenTDFServer struct {
@@ -144,7 +145,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 		err   error
 	)
 
-	interceptors := make([]connect.Option, 0)
+	interceptors := make([]connect.HandlerOption, 0)
 
 	// Add authN interceptor
 	// TODO Remove this conditional once we move to the hardening phase (https://github.com/opentdf/platform/issues/381)
@@ -227,8 +228,6 @@ func newHTTPServer(c Config, connectRPC http.Handler, httpHandler http.Handler, 
 		writeTimeoutOverride = writeTimeout
 	)
 
-	mux := http.NewServeMux()
-
 	// Add authN interceptor
 	// This is needed because we are leveraging RegisterXServiceHandlerServer instead of RegisterXServiceHandlerFromEndpoint
 	if c.Auth.Enabled {
@@ -238,10 +237,27 @@ func newHTTPServer(c Config, connectRPC http.Handler, httpHandler http.Handler, 
 	}
 
 	// Combine connect and http mux
-	mux.Handle("/", connectRPC)
-	mux.Handle("/", httpHandler)
-
-	var h http.Handler = mux
+	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("URL PATH: ", r.URL.Path)
+		contentType := r.Header.Get("Content-Type")
+		if slices.Contains([]string{
+			"application/grpc",
+			"application/grpc+proto",
+			"application/grpc+json",
+			"application/grpc-web",
+			"application/grpc-web+proto",
+			"application/grpc-web+json",
+			"application/proto",
+			// "application/json",
+			"application/connect+proto",
+			"application/connect+json",
+		}, contentType) && r.Method == http.MethodPost {
+			fmt.Println("Serving Connect RPC Handler")
+			connectRPC.ServeHTTP(w, r)
+		} else {
+			httpHandler.ServeHTTP(w, r)
+		}
+	})
 
 	// CORS
 	if c.CORS.Enabled {

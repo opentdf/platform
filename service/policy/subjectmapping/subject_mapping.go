@@ -22,17 +22,17 @@ type SubjectMappingService struct { //nolint:revive // SubjectMappingService is 
 	logger   *logger.Logger
 }
 
-func NewRegistration() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		ServiceDesc: &sm.SubjectMappingService_ServiceDesc,
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			ss := &SubjectMappingService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
-			return ss, func(ctx context.Context, mux *http.ServeMux, s any) {
-				// interceptor := srp.OTDF.AuthN.ConnectUnaryServerInterceptor()
-				interceptors := connect.WithInterceptors()
-				path, handler := subjectmappingconnect.NewSubjectMappingServiceHandler(ss, interceptors)
-				mux.Handle(path, handler)
-			}
+func NewRegistration(ns string, dbregister serviceregistry.DBRegister) *serviceregistry.Service[subjectmappingconnect.SubjectMappingServiceHandler] {
+	return &serviceregistry.Service[subjectmappingconnect.SubjectMappingServiceHandler]{
+		ServiceOptions: serviceregistry.ServiceOptions[subjectmappingconnect.SubjectMappingServiceHandler]{
+			Namespace:   ns,
+			DB:          dbregister,
+			ServiceDesc: &sm.SubjectMappingService_ServiceDesc,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (subjectmappingconnect.SubjectMappingServiceHandler, serviceregistry.HandlerServer) {
+				ss := &SubjectMappingService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
+				return ss, func(ctx context.Context, mux *http.ServeMux, s any) {}
+			},
+			ConnectRPCFunc: subjectmappingconnect.NewSubjectMappingServiceHandler,
 		},
 	}
 }

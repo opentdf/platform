@@ -23,22 +23,22 @@ type NamespacesService struct { //nolint:revive // NamespacesService is a valid 
 	logger   *logger.Logger
 }
 
-func NewRegistration() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		ServiceDesc: &namespaces.NamespaceService_ServiceDesc,
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			ns := &NamespacesService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
+func NewRegistration(ns string, dbregister serviceregistry.DBRegister) *serviceregistry.Service[namespacesconnect.NamespaceServiceHandler] {
+	return &serviceregistry.Service[namespacesconnect.NamespaceServiceHandler]{
+		ServiceOptions: serviceregistry.ServiceOptions[namespacesconnect.NamespaceServiceHandler]{
+			Namespace:   ns,
+			DB:          dbregister,
+			ServiceDesc: &namespaces.NamespaceService_ServiceDesc,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (namespacesconnect.NamespaceServiceHandler, serviceregistry.HandlerServer) {
+				ns := &NamespacesService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
 
-			if err := srp.RegisterReadinessCheck("policy", ns.IsReady); err != nil {
-				srp.Logger.Error("failed to register policy readiness check", slog.String("error", err.Error()))
-			}
+				if err := srp.RegisterReadinessCheck("policy", ns.IsReady); err != nil {
+					srp.Logger.Error("failed to register policy readiness check", slog.String("error", err.Error()))
+				}
 
-			return ns, func(ctx context.Context, mux *http.ServeMux, server any) {
-				// interceptor := srp.OTDF.AuthN.ConnectUnaryServerInterceptor()
-				interceptors := connect.WithInterceptors()
-				path, handler := namespacesconnect.NewNamespaceServiceHandler(ns, interceptors)
-				mux.Handle(path, handler)
-			}
+				return ns, func(ctx context.Context, mux *http.ServeMux, server any) {}
+			},
+			ConnectRPCFunc: namespacesconnect.NewNamespaceServiceHandler,
 		},
 	}
 }

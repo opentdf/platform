@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"google.golang.org/grpc/codes"
@@ -12,16 +13,14 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var (
-	serviceHealthChecks = make(map[string]func(context.Context) error)
-)
+var serviceHealthChecks = make(map[string]func(context.Context) error)
 
 type HealthService struct { //nolint:revive // HealthService is a valid name for this struct
 	healthpb.UnimplementedHealthServer
 	logger *logger.Logger
 }
 
-func NewRegistration() serviceregistry.Registration {
+func NewRegistration() *serviceregistry.Service[] {
 	return serviceregistry.Registration{
 		Namespace:   "health",
 		ServiceDesc: &healthpb.Health_ServiceDesc,
@@ -32,7 +31,7 @@ func NewRegistration() serviceregistry.Registration {
 			if err != nil {
 				srp.Logger.Error("failed to set well-known config", slog.String("error", err.Error()))
 			}
-			return &HealthService{logger: srp.Logger}, func(_ context.Context, _ *http.ServeMux, _ any) {
+			return &HealthService{logger: srp.Logger}, func(_ context.Context, _ *http.ServeMux, _ *server.ConnectRPC, _ any) {
 			}
 		},
 	}

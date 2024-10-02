@@ -282,14 +282,16 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			// The keys within metadata.MD are normalized to lowercase.
 			// See: https://godoc.org/google.golang.org/grpc/metadata#New
 			println("unary interceptor procedure: ", req.Spec().Procedure)
-			md, ok := metadata.FromIncomingContext(ctx)
-			if !ok {
-				println("connect server unauth error 1")
-				return nil, status.Error(codes.Unauthenticated, "missing metadata")
-			}
+			// md, ok := metadata.FromIncomingContext(ctx)
+			// if !ok {
+			// 	println("connect server unauth error 1")
+			// 	return nil, status.Error(codes.Unauthenticated, "missing metadata")
+			// }
 
 			// Verify the token
-			header := md["authorization"]
+			// header := md["authorization"]
+
+			header := req.Header()["Authorization"]
 			if len(header) < 1 {
 				println("connect server unauth error 2")
 				return nil, status.Error(codes.Unauthenticated, "missing authorization header")
@@ -307,9 +309,8 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 					u: req.Spec().Procedure,
 					m: http.MethodPost,
 				},
-				md["dpop"],
+				req.Header()["Dpop"],
 			)
-
 			if err != nil {
 				return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
 			}

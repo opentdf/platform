@@ -23,17 +23,17 @@ type AttributesService struct { //nolint:revive // AttributesService is a valid 
 	logger   *logger.Logger
 }
 
-func NewRegistration() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		ServiceDesc: &attributes.AttributesService_ServiceDesc,
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			as := &AttributesService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
-			return as, func(ctx context.Context, mux *http.ServeMux, server any) {
-				// interceptor := srp.OTDF.AuthN.ConnectUnaryServerInterceptor()
-				interceptors := connect.WithInterceptors()
-				path, handler := attributesconnect.NewAttributesServiceHandler(as, interceptors)
-				mux.Handle(path, handler)
-			}
+func NewRegistration(ns string, dbregister serviceregistry.DBRegister) *serviceregistry.Service[attributesconnect.AttributesServiceHandler] {
+	return &serviceregistry.Service[attributesconnect.AttributesServiceHandler]{
+		ServiceOptions: serviceregistry.ServiceOptions[attributesconnect.AttributesServiceHandler]{
+			Namespace:   ns,
+			DB:          dbregister,
+			ServiceDesc: &attributes.AttributesService_ServiceDesc,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (attributesconnect.AttributesServiceHandler, serviceregistry.HandlerServer) {
+				as := &AttributesService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
+				return as, func(ctx context.Context, mux *http.ServeMux, server any) {}
+			},
+			ConnectRPCFunc: attributesconnect.NewAttributesServiceHandler,
 		},
 	}
 }

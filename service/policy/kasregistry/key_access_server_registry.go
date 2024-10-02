@@ -21,17 +21,17 @@ type KeyAccessServerRegistry struct {
 	logger   *logger.Logger
 }
 
-func NewRegistration() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		ServiceDesc: &kasr.KeyAccessServerRegistryService_ServiceDesc,
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			kr := &KeyAccessServerRegistry{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
-			return kr, func(ctx context.Context, mux *http.ServeMux, s any) {
-				// interceptor := srp.OTDF.AuthN.ConnectUnaryServerInterceptor()
-				interceptors := connect.WithInterceptors()
-				path, handler := kasregistryconnect.NewKeyAccessServerRegistryServiceHandler(kr, interceptors)
-				mux.Handle(path, handler)
-			}
+func NewRegistration(ns string, dbregister serviceregistry.DBRegister) *serviceregistry.Service[kasregistryconnect.KeyAccessServerRegistryServiceHandler] {
+	return &serviceregistry.Service[kasregistryconnect.KeyAccessServerRegistryServiceHandler]{
+		ServiceOptions: serviceregistry.ServiceOptions[kasregistryconnect.KeyAccessServerRegistryServiceHandler]{
+			Namespace:   ns,
+			DB:          dbregister,
+			ServiceDesc: &kasr.KeyAccessServerRegistryService_ServiceDesc,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasregistryconnect.KeyAccessServerRegistryServiceHandler, serviceregistry.HandlerServer) {
+				kr := &KeyAccessServerRegistry{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
+				return kr, func(ctx context.Context, mux *http.ServeMux, s any) {}
+			},
+			ConnectRPCFunc: kasregistryconnect.NewKeyAccessServerRegistryServiceHandler,
 		},
 	}
 }

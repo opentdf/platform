@@ -22,17 +22,17 @@ type ResourceMappingService struct { //nolint:revive // ResourceMappingService i
 	logger   *logger.Logger
 }
 
-func NewRegistration() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		ServiceDesc: &resourcemapping.ResourceMappingService_ServiceDesc,
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			rs := &ResourceMappingService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
-			return rs, func(ctx context.Context, mux *http.ServeMux, s any) {
-				// interceptor := srp.OTDF.AuthN.ConnectUnaryServerInterceptor()
-				interceptors := connect.WithInterceptors()
-				path, handler := resourcemappingconnect.NewResourceMappingServiceHandler(rs, interceptors)
-				mux.Handle(path, handler)
-			}
+func NewRegistration(ns string, dbregister serviceregistry.DBRegister) *serviceregistry.Service[resourcemappingconnect.ResourceMappingServiceHandler] {
+	return &serviceregistry.Service[resourcemappingconnect.ResourceMappingServiceHandler]{
+		ServiceOptions: serviceregistry.ServiceOptions[resourcemappingconnect.ResourceMappingServiceHandler]{
+			Namespace:   ns,
+			DB:          dbregister,
+			ServiceDesc: &resourcemapping.ResourceMappingService_ServiceDesc,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (resourcemappingconnect.ResourceMappingServiceHandler, serviceregistry.HandlerServer) {
+				rs := &ResourceMappingService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
+				return rs, func(ctx context.Context, mux *http.ServeMux, s any) {}
+			},
+			ConnectRPCFunc: resourcemappingconnect.NewResourceMappingServiceHandler,
 		},
 	}
 }

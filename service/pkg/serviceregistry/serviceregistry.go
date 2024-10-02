@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"slices"
 
+	"connectrpc.com/connect"
 	"github.com/opentdf/platform/sdk"
 
 	"github.com/opentdf/platform/service/internal/server"
@@ -47,23 +48,26 @@ type RegistrationParams struct {
 	// ready to serve requests. This function should be called in the RegisterFunc function.
 	RegisterReadinessCheck func(namespace string, check func(context.Context) error) error
 }
-type HandlerServer func(ctx context.Context, mux *http.ServeMux, server any)
-type RegisterFunc func(RegistrationParams) (Impl any, HandlerServer HandlerServer)
+type (
+	HandlerServer       func(ctx context.Context, mux *http.ServeMux, server any)
+	RegisterFunc[S any] func(RegistrationParams) (Impl S, HandlerServer HandlerServer)
+)
 
 // Registration is a struct that holds the information needed to register a service
-type Registration struct {
-	// Namespace is the namespace of the service. One or more gRPC services can be registered under
-	// the same namespace.
-	Namespace string
-	// ServiceDesc is the gRPC service descriptor. For non-gRPC services, this can be mocked out,
-	// but at minimum, the ServiceName field must be set
-	ServiceDesc *grpc.ServiceDesc
-	// RegisterFunc is the function that will be called to register the service
-	RegisterFunc RegisterFunc
-
-	// DB is optional and used to register the service with a database
-	DB DBRegister
-}
+// type Registration[S any] struct {
+// 	// Namespace is the namespace of the service. One or more gRPC services can be registered under
+// 	// the same namespace.
+// 	Namespace string
+// 	// ServiceDesc is the gRPC service descriptor. For non-gRPC services, this can be mocked out,
+// 	// but at minimum, the ServiceName field must be set
+// 	ServiceDesc *grpc.ServiceDesc
+// 	// RegisterFunc is the function that will be called to register the service
+// 	RegisterFunc RegisterFunc
+// 	// ConnectRPCServiceHandler is the function that will be called to register the service with the
+// 	ConnectRPCFunc func(S, ...connect.HandlerOption) (string, http.Handler)
+// 	// DB is optional and used to register the service with a database
+// 	DB DBRegister
+// }
 
 // DBRegister is a struct that holds the information needed to register a service with a database
 type DBRegister struct {
@@ -75,21 +79,67 @@ type DBRegister struct {
 	Migrations *embed.FS
 }
 
+type IService interface {
+	GetNamespace() string
+	GetServiceDesc() *grpc.ServiceDesc
+	Start(ctx context.Context, params RegistrationParams) (any, error)
+	IsStarted() bool
+	Shutdown() error
+	RegisterHTTPServer(ctx context.Context, mux *http.ServeMux) error
+	RegisterConnectRPCServiceHandler(ctx context.Context, connectRPC *server.ConnectRPC) error
+}
+
 // Service is a struct that holds the registration information for a service as well as the state
 // of the service within the instance of the platform.
-type Service struct {
-	Registration
-	Impl       any
-	handleFunc HandlerServer
+type Service[S any] struct {
+	Impl S
+	// handleFunc HandlerServer
 	// Started is a flag that indicates whether the service has been started
 	Started bool
 	// Close is a function that can be called to close the service
 	Close func()
+	// Service Options
+	ServiceOptions[S]
+}
+
+type ServiceOptions[S any] struct {
+	// Namespace is the namespace of the service. One or more gRPC services can be registered under
+	// the same namespace.
+	Namespace string
+	// ServiceDesc is the gRPC service descriptor. For non-gRPC services, this can be mocked out,
+	// but at minimum, the ServiceName field must be set
+	ServiceDesc *grpc.ServiceDesc
+	// RegisterFunc is the function that will be called to register the service
+	RegisterFunc    RegisterFunc[S]
+	HttpHandlerFunc HandlerServer
+	// ConnectRPCServiceHandler is the function that will be called to register the service with the
+	ConnectRPCFunc func(S, ...connect.HandlerOption) (string, http.Handler)
+	// DB is optional and used to register the service with a database
+	DB DBRegister
+}
+
+func (s Service[S]) GetNamespace() string {
+	return s.Namespace
+}
+
+func (s Service[S]) GetServiceDesc() *grpc.ServiceDesc {
+	return s.ServiceDesc
+}
+
+func (s Service[S]) IsStarted() bool {
+	return s.Started
+}
+
+func (s Service[S]) Shutdown() error {
+	if s.Close != nil {
+		s.Close()
+	}
+	return nil
 }
 
 // Start starts the service and performs necessary initialization steps.
 // It returns an error if the service is already started or if there is an issue running database migrations.
-func (s *Service) Start(ctx context.Context, params RegistrationParams) (any, error) {
+func (s *Service[S]) Start(ctx context.Context, params RegistrationParams) (any, error) {
 	if s.Started {
 		return nil, fmt.Errorf("service already started")
 	}
@@ -104,7 +154,7 @@ func (s *Service) Start(ctx context.Context, params RegistrationParams) (any, er
 		)
 	}
 
-	s.Impl, s.handleFunc = s.RegisterFunc(params)
+	s.Impl, s.HttpHandlerFunc = s.RegisterFunc(params)
 
 	s.Started = true
 	return s.Impl, nil
@@ -113,31 +163,41 @@ func (s *Service) Start(ctx context.Context, params RegistrationParams) (any, er
 // RegisterGRPCServer registers the gRPC server with the service implementation.
 // It checks if the service implementation is registered and then registers the service with the server.
 // It returns an error if the service implementation is not registered.
-func (s *Service) RegisterGRPCServer(server *grpc.Server) error {
-	if s.Impl == nil {
-		return fmt.Errorf("service did not register an implementation")
-	}
-	server.RegisterService(s.ServiceDesc, s.Impl)
-	return nil
-}
+// func (s Service[S]) RegisterGRPCServer(server *grpc.Server) error {
+// 	if &s.Impl == nil {
+// 		return fmt.Errorf("service did not register an implementation")
+// 	}
+// 	server.RegisterService(&s.ServiceDesc, s.Impl)
+// 	return nil
+// }
 
 // Deprecated: RegisterHTTPServer is deprecated and should not be used going forward.
 // We will be looking onto other alternatives like bufconnect to replace this.
 // RegisterHTTPServer registers an HTTP server with the service.
 // It takes a context, a ServeMux, and an implementation function as parameters.
 // If the service did not register a handler, it returns an error.
-func (s *Service) RegisterHTTPServer(ctx context.Context, mux *http.ServeMux) error {
-	if s.handleFunc == nil {
+func (s Service[S]) RegisterHTTPServer(ctx context.Context, mux *http.ServeMux) error {
+	if s.HttpHandlerFunc == nil {
 		return fmt.Errorf("service did not register a handler")
 	}
-	s.handleFunc(ctx, mux, s.Impl)
+	s.HttpHandlerFunc(ctx, mux, s.Impl)
+	return nil
+}
+
+// RegisterConnectRPCServiceHandler registers a ConnectRPC service handler with the service.
+func (s Service[S]) RegisterConnectRPCServiceHandler(ctx context.Context, connectRPC *server.ConnectRPC) error {
+	if s.ConnectRPCFunc == nil {
+		return fmt.Errorf("service did not register a handler")
+	}
+	path, handler := s.ConnectRPCFunc(s.Impl)
+	connectRPC.Mux.Handle(path, handler)
 	return nil
 }
 
 // namespace represents a namespace in the service registry.
 type Namespace struct {
 	Mode     string
-	Services []Service
+	Services []IService
 }
 
 // Registry represents a map of service namespaces.
@@ -151,8 +211,8 @@ func NewServiceRegistry() Registry {
 // RegisterCoreService registers a core service with the given registration information.
 // It calls the RegisterService method of the Registry instance with the provided registration and service type "core".
 // Returns an error if the registration fails.
-func (reg Registry) RegisterCoreService(r Registration) error {
-	return reg.RegisterService(r, "core")
+func (reg Registry) RegisterCoreService(svc IService) error {
+	return reg.RegisterService(svc, "core")
 }
 
 // RegisterService registers a service in the service registry.
@@ -161,27 +221,25 @@ func (reg Registry) RegisterCoreService(r Registration) error {
 // such as the namespace and service description.
 // The mode string specifies the mode in which the service should be registered.
 // It returns an error if the service is already registered in the specified namespace.
-func (reg Registry) RegisterService(r Registration, mode string) error {
+func (reg Registry) RegisterService(svc IService, mode string) error {
 	// Can't directly modify structs within a map, so we need to copy the namespace
-	copyNamespace := reg[r.Namespace]
+	copyNamespace := reg[svc.GetNamespace()]
 	copyNamespace.Mode = mode
 	if copyNamespace.Services == nil {
-		copyNamespace.Services = make([]Service, 0)
+		copyNamespace.Services = make([]IService, 0)
 	}
-	found := slices.ContainsFunc(reg[r.Namespace].Services, func(s Service) bool {
-		return s.ServiceDesc.ServiceName == r.ServiceDesc.ServiceName
+	found := slices.ContainsFunc(reg[svc.GetNamespace()].Services, func(s IService) bool {
+		return s.GetServiceDesc().ServiceName == svc.GetServiceDesc().ServiceName
 	})
 
 	if found {
-		return fmt.Errorf("service already registered namespace:%s service:%s", r.Namespace, r.ServiceDesc.ServiceName)
+		return fmt.Errorf("service already registered namespace:%s service:%s", svc.GetNamespace(), svc.GetServiceDesc().ServiceName)
 	}
 
-	slog.Info("registered service", slog.String("namespace", r.Namespace), slog.String("service", r.ServiceDesc.ServiceName))
-	copyNamespace.Services = append(copyNamespace.Services, Service{
-		Registration: r,
-	})
+	slog.Info("registered service", slog.String("namespace", svc.GetNamespace()), slog.String("service", svc.GetServiceDesc().ServiceName))
+	copyNamespace.Services = append(copyNamespace.Services, svc)
 
-	reg[r.Namespace] = copyNamespace
+	reg[svc.GetNamespace()] = copyNamespace
 	return nil
 }
 
@@ -192,9 +250,9 @@ func (reg Registry) RegisterService(r Registration, mode string) error {
 func (reg Registry) Shutdown() {
 	for name, ns := range reg {
 		for _, svc := range ns.Services {
-			if svc.Close != nil && svc.Started {
-				slog.Info("stopping service", slog.String("namespace", name), slog.String("service", svc.ServiceDesc.ServiceName))
-				svc.Close()
+			if svc.IsStarted() {
+				slog.Info("stopping service", slog.String("namespace", name), slog.String("service", svc.GetServiceDesc().ServiceName))
+				svc.Shutdown()
 			}
 		}
 	}

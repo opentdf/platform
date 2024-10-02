@@ -33,7 +33,6 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -122,14 +121,14 @@ func justRequestBody(ctx context.Context, token jwt.Token, logger logger.Logger)
 
 func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest, logger logger.Logger) (*RequestBody, error) {
 	// First load legacy method for verifying SRT
-	md, exists := metadata.FromIncomingContext(ctx)
-	if !exists {
-		logger.WarnContext(ctx, "missing metadata for srt validation")
-		return nil, errors.New("missing metadata")
-	}
-	if vpk, ok := md["X-Virtrupubkey"]; ok && len(vpk) == 1 {
-		logger.InfoContext(ctx, "Legacy Client: Processing X-Virtrupubkey")
-	}
+	// md, exists := metadata.FromIncomingContext(ctx)
+	// if !exists {
+	// 	logger.WarnContext(ctx, "missing metadata for srt validation")
+	// 	return nil, errors.New("missing metadata")
+	// }
+	// if vpk, ok := md["X-Virtrupubkey"]; ok && len(vpk) == 1 {
+	// 	logger.InfoContext(ctx, "Legacy Client: Processing X-Virtrupubkey")
+	// }
 
 	// get dpop public key from context
 	dpopJWK := auth.GetJWKFromContext(ctx, &logger)
@@ -191,6 +190,7 @@ func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest, logger logger.
 		return nil, err400("clientPublicKey unsupported type")
 	}
 }
+
 func extractPolicyBinding(policyBinding interface{}) (string, error) {
 	switch v := policyBinding.(type) {
 	case string:
@@ -204,6 +204,7 @@ func extractPolicyBinding(policyBinding interface{}) (string, error) {
 		return "", fmt.Errorf("unsupported policy binding type")
 	}
 }
+
 func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byte, logger logger.Logger) (*Policy, error) {
 	actualHMAC, err := generateHMACDigest(ctx, []byte(requestBody.Policy), k, logger)
 	if err != nil {
@@ -247,7 +248,7 @@ func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byt
 }
 
 func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, error) {
-	var info = new(entityInfo)
+	info := new(entityInfo)
 
 	token := auth.GetAccessTokenFromContext(ctx, logger)
 	if token == nil {

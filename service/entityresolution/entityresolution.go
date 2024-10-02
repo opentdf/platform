@@ -19,25 +19,23 @@ type EntityResolutionService struct { //nolint:revive // allow for simple naming
 	logger    *logger.Logger
 }
 
-func NewRegistration() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		Namespace:   "entityresolution",
-		ServiceDesc: &entityresolution.EntityResolutionService_ServiceDesc,
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			var inputIdpConfig keycloak.KeycloakConfig
+func NewRegistration() *serviceregistry.Service[entityresolutionconnect.EntityResolutionServiceHandler] {
+	return &serviceregistry.Service[entityresolutionconnect.EntityResolutionServiceHandler]{
+		ServiceOptions: serviceregistry.ServiceOptions[entityresolutionconnect.EntityResolutionServiceHandler]{
+			Namespace:   "entityresolution",
+			ServiceDesc: &entityresolution.EntityResolutionService_ServiceDesc,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (entityresolutionconnect.EntityResolutionServiceHandler, serviceregistry.HandlerServer) {
+				var inputIdpConfig keycloak.KeycloakConfig
 
-			if err := mapstructure.Decode(srp.Config, &inputIdpConfig); err != nil {
-				panic(err)
-			}
+				if err := mapstructure.Decode(srp.Config, &inputIdpConfig); err != nil {
+					panic(err)
+				}
 
-			srp.Logger.Debug("entity_resolution configuration", "config", inputIdpConfig)
-			es := &EntityResolutionService{idpConfig: inputIdpConfig, logger: srp.Logger}
-			return es, func(ctx context.Context, mux *http.ServeMux, server any) {
-				// interceptor := srp.OTDF.AuthN.ConnectUnaryServerInterceptor()
-				interceptors := connect.WithInterceptors()
-				path, handler := entityresolutionconnect.NewEntityResolutionServiceHandler(es, interceptors)
-				mux.Handle(path, handler)
-			}
+				srp.Logger.Debug("entity_resolution configuration", "config", inputIdpConfig)
+				es := &EntityResolutionService{idpConfig: inputIdpConfig, logger: srp.Logger}
+				return es, func(ctx context.Context, mux *http.ServeMux, server any) {}
+			},
+			ConnectRPCFunc: entityresolutionconnect.NewEntityResolutionServiceHandler,
 		},
 	}
 }

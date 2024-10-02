@@ -37,18 +37,16 @@ func RegisterConfiguration(namespace string, config any) error {
 	return nil
 }
 
-func NewRegistration() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		Namespace:   "wellknown",
-		ServiceDesc: &wellknown.WellKnownService_ServiceDesc,
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			ws := &WellKnownService{logger: srp.Logger}
-			return ws, func(ctx context.Context, mux *http.ServeMux, server any) {
-				// interceptor := srp.OTDF.AuthN.ConnectUnaryServerInterceptor()
-				interceptors := connect.WithInterceptors()
-				path, handler := wellknownconfigurationconnect.NewWellKnownServiceHandler(ws, interceptors)
-				mux.Handle(path, handler)
-			}
+func NewRegistration() *serviceregistry.Service[wellknownconfigurationconnect.WellKnownServiceHandler] {
+	return &serviceregistry.Service[wellknownconfigurationconnect.WellKnownServiceHandler]{
+		ServiceOptions: serviceregistry.ServiceOptions[wellknownconfigurationconnect.WellKnownServiceHandler]{
+			Namespace:   "wellknown",
+			ServiceDesc: &wellknown.WellKnownService_ServiceDesc,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (wellknownconfigurationconnect.WellKnownServiceHandler, serviceregistry.HandlerServer) {
+				ws := &WellKnownService{logger: srp.Logger}
+				return ws, func(ctx context.Context, mux *http.ServeMux, server any) {}
+			},
+			ConnectRPCFunc: wellknownconfigurationconnect.NewWellKnownServiceHandler,
 		},
 	}
 }

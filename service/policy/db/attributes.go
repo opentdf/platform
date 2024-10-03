@@ -30,7 +30,7 @@ func attributesRuleTypeEnumTransformOut(value string) policy.AttributeRuleTypeEn
 	return policy.AttributeRuleTypeEnum(policy.AttributeRuleTypeEnum_value[AttributeRuleTypeEnumPrefix+value])
 }
 
-func attributesValuesProtojson(valuesJSON []byte, attrFqn sql.NullString) ([]*policy.Value, error) {
+func attributesValuesProtojson(valuesJSON []byte) ([]*policy.Value, error) {
 	var (
 		raw    []json.RawMessage
 		values []*policy.Value
@@ -46,9 +46,6 @@ func attributesValuesProtojson(valuesJSON []byte, attrFqn sql.NullString) ([]*po
 		if err != nil {
 			return nil, fmt.Errorf("error unmarshaling a value: %w", err)
 		}
-		if attrFqn.Valid && value.GetFqn() == "" {
-			value.Fqn = fmt.Sprintf("%s/value/%s", attrFqn.String, value.GetValue())
-		}
 		values = append(values, value)
 	}
 	return values, nil
@@ -63,23 +60,19 @@ type attributeQueryRow struct {
 	active        bool
 	namespaceName string
 	valuesJSON    []byte
-	valuesOrder   []string
 	grants        []byte
 	fqn           sql.NullString
 }
 
 func hydrateAttribute(row *attributeQueryRow, logger *logger.Logger) (*policy.Attribute, error) {
 	metadata := &common.Metadata{}
-	if row.metadataJSON != nil {
-		if err := protojson.Unmarshal(row.metadataJSON, metadata); err != nil {
-			logger.Error("could not unmarshal metadata", slog.String("error", err.Error()))
-			return nil, err
-		}
+	if err := unmarshalMetadata(row.metadataJSON, metadata); err != nil {
+		return nil, err
 	}
 
 	var values []*policy.Value
 	if row.valuesJSON != nil {
-		v, err := attributesValuesProtojson(row.valuesJSON, row.fqn)
+		v, err := attributesValuesProtojson(row.valuesJSON)
 		if err != nil {
 			logger.Error("could not unmarshal values", slog.String("error", err.Error()))
 			return nil, err
@@ -107,36 +100,13 @@ func hydrateAttribute(row *attributeQueryRow, logger *logger.Logger) (*policy.At
 		Id:        row.id,
 		Name:      row.name,
 		Rule:      attributesRuleTypeEnumTransformOut(row.rule),
+		Values:    values,
 		Active:    &wrapperspb.BoolValue{Value: row.active},
 		Metadata:  metadata,
 		Namespace: ns,
 		Grants:    grants,
 		Fqn:       row.fqn.String,
 	}
-
-	// Deactivations of individual values can unsync the order in the values_order column and the selected number of attribute values.
-	// In Go, int value 0 is not equal to 0, so check if they're not equal and more than 0 to check a potential count mismatch.
-	mismatchedCount := len(values) > 0 && len(row.valuesOrder) > 0 && len(row.valuesOrder) != len(values)
-
-	// sort the values according to the order
-	ordered := make([]*policy.Value, 0)
-	for _, order := range row.valuesOrder {
-		for _, value := range values {
-			if value.GetId() == order {
-				ordered = append(ordered, value)
-				break
-			}
-			// If all values are active, the order should be correct and the number of values should match the count of ordered ids.
-			if mismatchedCount && !value.GetActive().GetValue() {
-				logger.Warn("attribute's values order and number of values do not match - DB is in potentially bad state",
-					slog.String("attribute definition id", row.id),
-					slog.Any("expected values order", row.valuesOrder),
-					slog.Any("retrieved values", value),
-				)
-			}
-		}
-	}
-	attr.Values = ordered
 
 	return attr, nil
 }
@@ -155,17 +125,14 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, state string, namesp
 	)
 
 	if state != "" && state != StateAny {
-		active = pgtype.Bool{
-			Bool:  state == StateActive,
-			Valid: true,
-		}
+		active = pgtypeBool(state == StateActive)
 	}
 
 	if namespace != "" {
 		if _, err := uuid.Parse(namespace); err == nil {
 			namespaceID = namespace
 		} else {
-			namespaceName = namespace
+			namespaceName = strings.ToLower(namespace)
 		}
 	}
 
@@ -190,7 +157,6 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, state string, namesp
 			namespaceID:   attr.NamespaceID,
 			namespaceName: attr.NamespaceName.String,
 			valuesJSON:    attr.Values,
-			valuesOrder:   attr.ValuesOrder,
 			fqn:           sql.NullString(attr.Fqn),
 		}, c.logger)
 		if err != nil {
@@ -221,7 +187,6 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.At
 		namespaceID:   attr.NamespaceID,
 		namespaceName: attr.NamespaceName.String,
 		valuesJSON:    attr.Values,
-		valuesOrder:   attr.ValuesOrder,
 		grants:        attr.Grants,
 		fqn:           sql.NullString(attr.Fqn),
 	}, c.logger)
@@ -234,7 +199,7 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.At
 
 // todo: test whether this method can use the hydrateAttribute helper?
 func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*policy.Attribute, error) {
-	fullAttr, err := c.Queries.GetAttributeByDefOrValueFqn(ctx, fqn)
+	fullAttr, err := c.Queries.GetAttributeByDefOrValueFqn(ctx, strings.ToLower(fqn))
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -246,7 +211,7 @@ func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 		return nil, err
 	}
 
-	values, err := attributesValuesProtojson(fullAttr.Values, sql.NullString{Valid: false})
+	values, err := attributesValuesProtojson(fullAttr.Values)
 	if err != nil {
 		c.logger.Error("could not unmarshal values", slog.String("error", err.Error()))
 		return nil, err
@@ -308,6 +273,8 @@ func (c PolicyDBClient) GetAttributesByNamespace(ctx context.Context, namespaceI
 }
 
 func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.CreateAttributeRequest) (*policy.Attribute, error) {
+	name := strings.ToLower(r.GetName())
+	namespaceID := r.GetNamespaceId()
 	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
@@ -315,9 +282,9 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 
 	ruleString := attributesRuleTypeEnumTransformIn(r.GetRule().String())
 
-	attr, err := c.Queries.CreateAttribute(ctx, CreateAttributeParams{
-		NamespaceID: r.GetNamespaceId(),
-		Name:        r.GetName(),
+	createdID, err := c.Queries.CreateAttribute(ctx, CreateAttributeParams{
+		NamespaceID: namespaceID,
+		Name:        name,
 		Rule:        AttributeDefinitionRule(ruleString),
 		Metadata:    metadataJSON,
 	})
@@ -325,18 +292,14 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err = unmarshalMetadata(attr.Metadata, metadata); err != nil {
-		return nil, err
-	}
-
 	// Add values
 	var values []*policy.Value
 	for _, v := range r.GetValues() {
 		req := &attributes.CreateAttributeValueRequest{
-			AttributeId: attr.ID,
+			AttributeId: createdID,
 			Value:       v,
 		}
-		value, err := c.CreateAttributeValue(ctx, attr.ID, req)
+		value, err := c.CreateAttributeValue(ctx, createdID, req)
 		if err != nil {
 			return nil, err
 		}
@@ -344,29 +307,28 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	}
 
 	// Update the FQNs
-	namespaceID := r.GetNamespaceId()
 	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{
 		namespaceID: namespaceID,
-		attributeID: attr.ID,
+		attributeID: createdID,
 	})
 	c.logger.DebugContext(ctx, "upserted fqn with new attribute definition", slog.Any("fqn", fqn))
 
 	for _, v := range values {
 		fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{
 			namespaceID: namespaceID,
-			attributeID: attr.ID,
+			attributeID: createdID,
 			valueID:     v.GetId(),
 		})
 		c.logger.DebugContext(ctx, "upserted fqn with new attribute value on new definition create", slog.Any("fqn", fqn))
 	}
 
 	a := &policy.Attribute{
-		Id:       attr.ID,
-		Name:     attr.Name,
+		Id:       createdID,
+		Name:     name,
 		Rule:     r.GetRule(),
 		Metadata: metadata,
 		Namespace: &policy.Namespace{
-			Id: r.GetNamespaceId(),
+			Id: namespaceID,
 		},
 		Active: &wrapperspb.BoolValue{Value: true},
 		Values: values,
@@ -376,6 +338,8 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 
 func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.UnsafeUpdateAttributeRequest) (*policy.Attribute, error) {
 	id := r.GetId()
+	name := strings.ToLower(r.GetName())
+	rule := r.GetRule()
 	before, err := c.GetAttribute(ctx, id)
 	if err != nil {
 		return nil, err
@@ -405,16 +369,13 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 
 	// Handle case where rule is not actually being updated
 	ruleString := ""
-	if r.GetRule() != policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED {
-		ruleString = attributesRuleTypeEnumTransformIn(r.GetRule().String())
+	if rule != policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED {
+		ruleString = attributesRuleTypeEnumTransformIn(rule.String())
 	}
 
-	updatedID, err := c.Queries.UpdateAttribute(ctx, UpdateAttributeParams{
-		ID: id,
-		Name: pgtype.Text{
-			String: r.GetName(),
-			Valid:  r.GetName() != "",
-		},
+	count, err := c.Queries.UpdateAttribute(ctx, UpdateAttributeParams{
+		ID:   id,
+		Name: pgtypeText(name),
 		Rule: NullAttributeDefinitionRule{
 			AttributeDefinitionRule: AttributeDefinitionRule(ruleString),
 			Valid:                   ruleString != "",
@@ -424,26 +385,33 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
 
 	// Upsert all the FQNs with the definition name mutation
-	if r.GetName() != "" {
+	if name != "" {
 		namespaceID := before.GetNamespace().GetId()
-		fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: updatedID})
+		fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id})
 		c.logger.Debug("upserted attribute fqn with new definition name", slog.Any("fqn", fqn))
 		if len(before.GetValues()) > 0 {
 			for _, v := range before.GetValues() {
-				fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: updatedID, valueID: v.GetId()})
+				fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id, valueID: v.GetId()})
 				c.logger.Debug("upserted attribute value fqn with new definition name", slog.Any("fqn", fqn))
 			}
 		}
 	}
 
-	return c.GetAttribute(ctx, updatedID)
+	return &policy.Attribute{
+		Id:   id,
+		Name: name,
+		Rule: rule,
+	}, nil
 }
 
 func (c PolicyDBClient) UpdateAttribute(ctx context.Context, id string, r *attributes.UpdateAttributeRequest) (*policy.Attribute, error) {
 	// if extend we need to merge the metadata
-	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
+	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		a, err := c.GetAttribute(ctx, id)
 		if err != nil {
 			return nil, err
@@ -454,47 +422,57 @@ func (c PolicyDBClient) UpdateAttribute(ctx context.Context, id string, r *attri
 		return nil, err
 	}
 
-	updatedID, err := c.Queries.UpdateAttribute(ctx, UpdateAttributeParams{
+	count, err := c.Queries.UpdateAttribute(ctx, UpdateAttributeParams{
 		ID:       id,
 		Metadata: metadataJSON,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
 
 	return &policy.Attribute{
-		Id: updatedID,
+		Id:       id,
+		Metadata: metadata,
 	}, nil
 }
 
 func (c PolicyDBClient) DeactivateAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
-	updatedID, err := c.Queries.UpdateAttribute(ctx, UpdateAttributeParams{
-		ID: id,
-		Active: pgtype.Bool{
-			Bool:  false,
-			Valid: true,
-		},
+	count, err := c.Queries.UpdateAttribute(ctx, UpdateAttributeParams{
+		ID:     id,
+		Active: pgtypeBool(false),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
 
-	return c.GetAttribute(ctx, updatedID)
+	return &policy.Attribute{
+		Id:     id,
+		Active: &wrapperspb.BoolValue{Value: false},
+	}, nil
 }
 
 func (c PolicyDBClient) UnsafeReactivateAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
-	updatedID, err := c.Queries.UpdateAttribute(ctx, UpdateAttributeParams{
-		ID: id,
-		Active: pgtype.Bool{
-			Bool:  true,
-			Valid: true,
-		},
+	count, err := c.Queries.UpdateAttribute(ctx, UpdateAttributeParams{
+		ID:     id,
+		Active: pgtypeBool(true),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
 
-	return c.GetAttribute(ctx, updatedID)
+	return &policy.Attribute{
+		Id:     id,
+		Active: &wrapperspb.BoolValue{Value: true},
+	}, nil
 }
 
 func (c PolicyDBClient) UnsafeDeleteAttribute(ctx context.Context, existing *policy.Attribute, fqn string) (*policy.Attribute, error) {

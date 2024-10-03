@@ -7,7 +7,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -478,14 +477,7 @@ func (s *AttributesSuite) Test_UpdateAttribute() {
 			Labels: labels,
 		},
 	}
-	start := time.Now().Add(-time.Second)
 	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
-	end := time.Now().Add(time.Second)
-	metadata := created.GetMetadata()
-	updatedAt := metadata.GetUpdatedAt()
-	createdAt := metadata.GetCreatedAt()
-	s.True(createdAt.AsTime().After(start))
-	s.True(createdAt.AsTime().Before(end))
 	s.Require().NoError(err)
 	s.NotNil(created)
 
@@ -511,7 +503,12 @@ func (s *AttributesSuite) Test_UpdateAttribute() {
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
-	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
+	metadata := got.GetMetadata()
+	createdAt := metadata.GetCreatedAt()
+	updatedAt := metadata.GetUpdatedAt()
+	s.False(createdAt.AsTime().IsZero())
+	s.False(updatedAt.AsTime().IsZero())
+	s.True(updatedAt.AsTime().After(createdAt.AsTime()))
 }
 
 func (s *AttributesSuite) Test_UpdateAttribute_WithInvalidIdFails() {
@@ -752,7 +749,6 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_ReplaceValuesOrder() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(updated)
-	s.Len(updated.GetValues(), 3)
 
 	// get attribute and ensure the order of the values is preserved and successfully reversed
 	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())

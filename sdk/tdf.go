@@ -133,7 +133,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	if tdfConfig.autoconfigure {
 		var g granter
 		if len(tdfConfig.attributeValues) > 0 {
-			g, err = newGranterFromAttributes(tdfConfig.attributeValues...)
+			g, err = newGranterFromAttributes(s.kasKeyCache, tdfConfig.attributeValues...)
 		} else if len(tdfConfig.attributes) > 0 {
 			g, err = newGranterFromService(ctx, s.kasKeyCache, s.Attributes, tdfConfig.attributes...)
 		}

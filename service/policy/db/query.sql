@@ -30,6 +30,55 @@ RETURNING id;
 DELETE FROM key_access_servers WHERE id = $1;
 
 ---------------------------------------------------------------- 
+-- ATTRIBUTE FQN
+----------------------------------------------------------------
+
+-- name: UpsertAttributeValueFqn :one
+INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
+SELECT
+    n.id,
+    ad.id,
+    av.id,
+    CONCAT('https://', n.name, '/attr/', ad.name, '/value/', av.value) AS fqn
+FROM attribute_namespaces n
+JOIN attribute_definitions ad ON n.id = ad.namespace_id
+JOIN attribute_values av ON ad.id = av.attribute_definition_id
+WHERE av.id = $1
+ON CONFLICT (namespace_id, attribute_id, value_id) 
+    DO UPDATE 
+        SET fqn = EXCLUDED.fqn
+RETURNING fqn;
+
+-- name: UpsertAttributeDefinitionFqn :one
+INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
+SELECT
+    n.id,
+    ad.id,
+    NULL,
+    CONCAT('https://', n.name, '/attr/', ad.name) AS fqn
+FROM attribute_namespaces n
+JOIN attribute_definitions ad ON n.id = ad.namespace_id
+WHERE ad.id = $1
+ON CONFLICT (namespace_id, attribute_id, value_id) 
+    DO UPDATE 
+        SET fqn = EXCLUDED.fqn
+RETURNING fqn;
+
+-- name: UpsertAttributeNamespaceFqn :one
+INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
+SELECT
+    n.id,
+    NULL,
+    NULL,
+    CONCAT('https://', n.name) AS fqn
+FROM attribute_namespaces n
+WHERE n.id = $1
+ON CONFLICT (namespace_id, attribute_id, value_id) 
+    DO UPDATE 
+        SET fqn = EXCLUDED.fqn
+RETURNING fqn;
+
+---------------------------------------------------------------- 
 -- ATTRIBUTES
 ----------------------------------------------------------------
 
@@ -232,6 +281,74 @@ GROUP BY
     ad.id, an.id, nfq.fqn, n_grants.grants;
 
 ---------------------------------------------------------------- 
+-- ATTRIBUTE VALUES
+----------------------------------------------------------------
+
+-- name: ListAttributeValues :many
+
+SELECT
+    av.id,
+    av.value,
+    av.active,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
+    av.attribute_definition_id,
+    fqns.fqn
+FROM attribute_values av
+LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+WHERE (
+    (sqlc.narg('active')::BOOLEAN IS NULL OR av.active = sqlc.narg('active')) AND
+    (NULLIF(@attribute_definition_id, '') IS NULL OR av.attribute_definition_id = @attribute_definition_id::UUID)
+)
+GROUP BY av.id, fqns.fqn;
+
+-- name: GetAttributeValue :one
+SELECT
+    av.id,
+    av.value,
+    av.active,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
+    av.attribute_definition_id,
+    fqns.fqn,
+    JSONB_AGG(
+        DISTINCT JSONB_BUILD_OBJECT(
+            'id', kas.id,
+            'uri', kas.uri,
+            'public_key', kas.public_key
+        )
+    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants
+FROM attribute_values av
+LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
+LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
+WHERE av.id = $1
+GROUP BY av.id, fqns.fqn;
+
+-- name: CreateAttributeValue :one
+INSERT INTO attribute_values (attribute_definition_id, value, metadata)
+VALUES (@attribute_definition_id, @value, @metadata)
+RETURNING id;
+
+-- UpdateAttributeValue: Safe and Unsafe Updates both
+-- name: UpdateAttributeValue :execrows
+UPDATE attribute_values
+SET
+    value = COALESCE(sqlc.narg('value'), value),
+    active = COALESCE(sqlc.narg('active'), active),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata)
+WHERE id = $1;
+
+-- name: DeleteAttributeValue :execrows
+DELETE FROM attribute_values WHERE id = $1;
+
+-- name: AssignKeyAccessServerToAttributeValue :execrows
+INSERT INTO attribute_value_key_access_grants (attribute_value_id, key_access_server_id)
+VALUES ($1, $2);
+
+-- name: RemoveKeyAccessServerFromAttributeValue :execrows
+DELETE FROM attribute_value_key_access_grants
+WHERE attribute_value_id = $1 AND key_access_server_id = $2;
+
+---------------------------------------------------------------- 
 -- RESOURCE MAPPING GROUPS
 ----------------------------------------------------------------
 
@@ -252,14 +369,13 @@ INSERT INTO resource_mapping_groups (namespace_id, name, metadata)
 VALUES ($1, $2, $3)
 RETURNING id;
 
--- name: UpdateResourceMappingGroup :one
+-- name: UpdateResourceMappingGroup :execrows
 UPDATE resource_mapping_groups
 SET
     namespace_id = COALESCE(sqlc.narg('namespace_id'), namespace_id),
     name = COALESCE(sqlc.narg('name'), name),
     metadata = COALESCE(sqlc.narg('metadata'), metadata)
-WHERE id = $1
-RETURNING id;
+WHERE id = $1;
 
 -- name: DeleteResourceMappingGroup :execrows
 DELETE FROM resource_mapping_groups WHERE id = $1;
@@ -267,6 +383,18 @@ DELETE FROM resource_mapping_groups WHERE id = $1;
 ---------------------------------------------------------------- 
 -- RESOURCE MAPPING
 ----------------------------------------------------------------
+
+-- name: ListResourceMappings :many
+SELECT
+    m.id,
+    JSON_BUILD_OBJECT('id', av.id, 'value', av.value) as attribute_value,
+    m.terms,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
+    COALESCE(m.group_id::TEXT, '')::TEXT as group_id
+FROM resource_mappings m 
+LEFT JOIN attribute_values av on m.attribute_value_id = av.id
+WHERE (NULLIF(@group_id, '') IS NULL OR m.group_id = @group_id::UUID)
+GROUP BY av.id, m.id;
 
 -- name: ListResourceMappingsByFullyQualifiedGroup :many
 SELECT 
@@ -283,7 +411,36 @@ SELECT
 FROM resource_mappings m
 LEFT JOIN resource_mapping_groups g ON m.group_id = g.id
 LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
-WHERE ns.name = LOWER(@namespace_name) AND g.name = LOWER(@group_name);
+WHERE ns.name = @namespace_name AND g.name = @group_name;
+
+-- name: GetResourceMapping :one
+SELECT
+    m.id,
+    JSON_BUILD_OBJECT('id', av.id, 'value', av.value) as attribute_value,
+    m.terms,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
+    COALESCE(m.group_id::TEXT, '')::TEXT as group_id
+FROM resource_mappings m 
+LEFT JOIN attribute_values av on m.attribute_value_id = av.id
+WHERE m.id = $1
+GROUP BY av.id, m.id;
+
+-- name: CreateResourceMapping :one
+INSERT INTO resource_mappings (attribute_value_id, terms, metadata, group_id)
+VALUES ($1, $2, $3, $4)
+RETURNING id;
+
+-- name: UpdateResourceMapping :execrows
+UPDATE resource_mappings
+SET
+    attribute_value_id = COALESCE(sqlc.narg('attribute_value_id'), attribute_value_id),
+    terms = COALESCE(sqlc.narg('terms'), terms),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata),
+    group_id = COALESCE(sqlc.narg('group_id'), group_id)
+WHERE id = $1;
+
+-- name: DeleteResourceMapping :execrows
+DELETE FROM resource_mappings WHERE id = $1;
 
 ---------------------------------------------------------------- 
 -- NAMESPACES

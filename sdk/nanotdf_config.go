@@ -41,7 +41,6 @@ func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
 		keyPair: newECKeyPair,
 		bindCfg: bindingConfig{
 			useEcdsaBinding: false,
-			padding:         0,
 			eccMode:         ocrypto.ECCModeSecp256r1,
 		},
 		cipher: kCipher96AuthTagSize,
@@ -87,30 +86,6 @@ func WithNanoDataAttributes(attributes ...string) NanoTDFOption {
 				return err
 			}
 			c.attributes = append(c.attributes, v)
-		}
-		return nil
-	}
-}
-
-type NanoKASInfo struct {
-	kasPublicKeyPem string
-	kasURL          string
-}
-
-// WithNanoKasInformation adds the first kas url and its corresponding public key
-// that is required to create and read the nanotdf.  Note that only the first
-// entry is used, as multi-kas is not supported for nanotdf
-func WithNanoKasInformation(kasInfoList ...NanoKASInfo) NanoTDFOption {
-	return func(c *NanoTDFConfig) error {
-		newKasInfos := make([]NanoKASInfo, 0)
-		newKasInfos = append(newKasInfos, kasInfoList...)
-		err := c.kasURL.setURL(newKasInfos[0].kasURL)
-		if err != nil {
-			return err
-		}
-		c.kasPublicKey, err = ocrypto.ECPubKeyFromPem([]byte(newKasInfos[0].kasPublicKeyPem))
-		if err != nil {
-			return err
 		}
 		return nil
 	}

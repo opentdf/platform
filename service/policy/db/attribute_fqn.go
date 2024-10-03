@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/pkg/db"
 )
@@ -27,71 +26,37 @@ type attrFqnUpsertOptions struct {
 // 1. namespaceId
 // 2. namespaceId, attributeId
 // 3. namespaceId, attributeId, valueId
-func upsertAttrFqnSQL(namespaceID string, attributeID string, valueID string) (string, []interface{}, error) {
-	t := Tables.AttrFqn
-	nT := Tables.Namespaces
-	adT := Tables.Attributes
-	avT := Tables.AttributeValues
-
-	sb := db.NewStatementBuilder()
-	var subQ squirrel.SelectBuilder
-	// Since we are creating relationships we don't need to know the namespaceId when given the
-	// valueId. This is because the valueId is unique across all namespaces.
-	switch {
-	case valueID != "":
-		subQ = sb.Select("n.id", "ad.id", "av.id", "CONCAT('https://', n.name, '/attr/', ad.name, '/value/', av.value) AS fqn").
-			From(nT.Name()+" n").
-			Join(adT.Name()+" ad ON ad.namespace_id = n.id").
-			Join(avT.Name()+" av ON av.attribute_definition_id = ad.id").
-			Where("av.id = ?", valueID)
-	case attributeID != "":
-		subQ = sb.Select("n.id", "ad.id", "NULL", "CONCAT('https://', n.name, '/attr/', ad.name) AS fqn").
-			From(nT.Name()+" n").
-			Join(adT.Name()+" ad ON ad.namespace_id = n.id").
-			Where("ad.id = ?", attributeID)
-	case namespaceID != "":
-		subQ = sb.Select("n.id", "NULL", "NULL", "CONCAT('https://', n.name) AS fqn").
-			From(nT.Name()+" n").
-			Where("n.id = ?", namespaceID)
-	default:
-		return "", nil, fmt.Errorf("at least one of namespaceId, attributeId, or valueId must be set")
-	}
-
-	return db.NewStatementBuilder().
-		Insert(t.Name()).
-		Columns("namespace_id", "attribute_id", "value_id", "fqn").
-		Select(subQ).
-		Suffix("ON CONFLICT (namespace_id, attribute_id, value_id) DO UPDATE SET fqn = EXCLUDED.fqn" +
-			" RETURNING fqn").
-		ToSql()
-}
-
+//
 // This is a side effect -- errors will be swallowed and the fqn will be returned as an empty string
 func (c *PolicyDBClient) upsertAttrFqn(ctx context.Context, opts attrFqnUpsertOptions) string {
-	sql, args, err := upsertAttrFqnSQL(opts.namespaceID, opts.attributeID, opts.valueID)
+	var (
+		fqn string
+		err error
+	)
+
+	switch {
+	case opts.valueID != "":
+		fqn, err = c.Queries.UpsertAttributeValueFqn(ctx, opts.valueID)
+	case opts.attributeID != "":
+		fqn, err = c.Queries.UpsertAttributeDefinitionFqn(ctx, opts.attributeID)
+	case opts.namespaceID != "":
+		fqn, err = c.Queries.UpsertAttributeNamespaceFqn(ctx, opts.namespaceID)
+	default:
+		err = fmt.Errorf("at least one of namespaceId, attributeId, or valueId must be set")
+	}
+
 	if err != nil {
-		c.logger.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
+		wrappedErr := db.WrapIfKnownInvalidQueryErr(err)
+		c.logger.ErrorContext(ctx, "could not update FQN", slog.Any("opts", opts), slog.String("error", wrappedErr.Error()))
 		return ""
 	}
 
-	r, err := c.QueryRow(ctx, sql, args)
-	if err != nil {
-		c.logger.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
-		return ""
-	}
-
-	var fqn string
-	if err := r.Scan(&fqn); err != nil {
-		c.logger.Error("could not update FQN", slog.Any("opts", opts), slog.String("error", err.Error()))
-		return ""
-	}
-
-	c.logger.Debug("updated FQN", slog.String("fqn", fqn), slog.Any("opts", opts))
+	c.logger.DebugContext(ctx, "updated FQN", slog.String("fqn", fqn), slog.Any("opts", opts))
 	return fqn
 }
 
 // AttrFqnReindex will reindex all namespace, attribute, and attribute_value FQNs
-func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns // Used to initialize an anonymous struct
+func (c *PolicyDBClient) AttrFqnReindex(ctx context.Context) (res struct { //nolint:nonamedreturns // Used to initialize an anonymous struct
 	Namespaces []struct {
 		ID  string
 		Fqn string
@@ -107,19 +72,19 @@ func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns 
 },
 ) {
 	// Get all namespaces
-	ns, err := c.ListNamespaces(context.Background(), StateAny)
+	ns, err := c.ListNamespaces(ctx, StateAny)
 	if err != nil {
 		panic(fmt.Errorf("could not get namespaces: %w", err))
 	}
 
 	// Get all attributes
-	attrs, err := c.ListAllAttributesWithout(context.Background(), StateAny)
+	attrs, err := c.ListAllAttributesWithout(ctx, StateAny)
 	if err != nil {
 		panic(fmt.Errorf("could not get attributes: %w", err))
 	}
 
 	// Get all attribute values
-	values, err := c.ListAllAttributeValues(context.Background(), StateAny)
+	values, err := c.ListAllAttributeValues(ctx)
 	if err != nil {
 		panic(fmt.Errorf("could not get attribute values: %w", err))
 	}
@@ -129,7 +94,7 @@ func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns 
 		res.Namespaces = append(res.Namespaces, struct {
 			ID  string
 			Fqn string
-		}{ID: n.GetId(), Fqn: c.upsertAttrFqn(context.Background(), attrFqnUpsertOptions{namespaceID: n.GetId()})})
+		}{ID: n.GetId(), Fqn: c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: n.GetId()})})
 	}
 
 	// Reindex all attributes
@@ -137,7 +102,7 @@ func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns 
 		res.Attributes = append(res.Attributes, struct {
 			ID  string
 			Fqn string
-		}{ID: a.GetId(), Fqn: c.upsertAttrFqn(context.Background(), attrFqnUpsertOptions{attributeID: a.GetId()})})
+		}{ID: a.GetId(), Fqn: c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeID: a.GetId()})})
 	}
 
 	// Reindex all attribute values
@@ -145,7 +110,7 @@ func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns 
 		res.Values = append(res.Values, struct {
 			ID  string
 			Fqn string
-		}{ID: av.GetId(), Fqn: c.upsertAttrFqn(context.Background(), attrFqnUpsertOptions{valueID: av.GetId()})})
+		}{ID: av.GetId(), Fqn: c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: av.GetId()})})
 	}
 
 	return res

@@ -10,7 +10,10 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/sdk/auth"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
 
@@ -133,4 +136,47 @@ func TestCreatingRequest(t *testing.T) {
 	if requestKeyAccess["encryptedMetadata"] != "encrypted" {
 		t.Fatalf("incorrect encrypted metadata")
 	}
+}
+
+func Test_StoreKASKeys(t *testing.T) {
+	s, err := New("localhost:8080",
+		WithPlatformConfiguration(PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+				"public_client_id":       "myclient",
+			},
+		}),
+	)
+	require.NoError(t, err)
+
+	assert.Nil(t, s.kasKeyCache.get("https://localhost:8080", "ec:secp256r1"))
+	assert.Nil(t, s.kasKeyCache.get("https://localhost:8080", "rsa:2048"))
+
+	require.NoError(t, s.StoreKASKeys("https://localhost:8080", &policy.KasPublicKeySet{
+		Keys: []*policy.KasPublicKey{
+			{Pem: "sample", Kid: "e1", Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1},
+			{Pem: "sample", Kid: "r1", Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048},
+		},
+	}))
+	assert.Nil(t, s.kasKeyCache.get("https://nowhere", "alg:unknown"))
+	assert.Nil(t, s.kasKeyCache.get("https://localhost:8080", "alg:unknown"))
+	assert.Equal(t, "e1", s.kasKeyCache.get("https://localhost:8080", "ec:secp256r1").KID)
+	assert.Equal(t, "r1", s.kasKeyCache.get("https://localhost:8080", "rsa:2048").KID)
+
+	k1, err := s.getPublicKey(context.Background(), "https://localhost:8080", "ec:secp256r1")
+	require.NoError(t, err)
+	assert.Equal(t, &KASInfo{
+		URL:       "https://localhost:8080",
+		PublicKey: "sample",
+		KID:       "e1",
+		Algorithm: "ec:secp256r1",
+		Default:   false,
+	}, k1)
+
+	s.kasKeyCache = nil
+	k2, err := s.getPublicKey(context.Background(), "https://localhost:54321", "ec:secp256r1")
+	assert.Nil(t, k2)
+	require.ErrorContains(t, err, "error making request")
 }

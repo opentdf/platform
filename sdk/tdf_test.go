@@ -25,6 +25,7 @@ import (
 	wellknownpb "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -697,12 +698,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 				},
 			},
 			assertionVerificationKeys: &AssertionVerificationKeys{
-				Keys: map[string]AssertionKey{
-					"assertion1": {
-						Alg: AssertionKeyAlgHS256,
-						Key: hs256Key,
-					},
-				},
+				DefaultKey: defaultKey,
 			},
 			expectedSize: 2896,
 		},
@@ -760,6 +756,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 			offset := 2
 			_, err = r.ReadAt(buf, int64(offset))
 			s.Require().Error(err)
+			s.Require().NotErrorIs(err, io.EOF)
 		}
 		_ = os.Remove(tdfFilename)
 	}
@@ -1255,6 +1252,9 @@ func (s *TDFSuite) createFileName(buf []byte, filename string, size int64) {
 }
 
 func (s *TDFSuite) startBackend() {
+	defer resolver.SetDefaultScheme(resolver.GetDefaultScheme())
+	resolver.SetDefaultScheme("passthrough")
+
 	// Create a stub for wellknown
 	wellknownCfg := map[string]interface{}{
 		"configuration": map[string]interface{}{
@@ -1274,19 +1274,20 @@ func (s *TDFSuite) startBackend() {
 	dialer := func(ctx context.Context, host string) (net.Conn, error) {
 		l, ok := listeners[host]
 		if !ok {
-			slog.ErrorContext(ctx, "unable to dial host!", "ctx", ctx, "host", host)
+			slog.ErrorContext(ctx, "bufconn: unable to dial host!", "ctx", ctx, "host", host)
 			return nil, fmt.Errorf("unknown host [%s]", host)
 		}
-		slog.InfoContext(ctx, "dialing with custom dialer (local grpc)", "ctx", ctx, "host", host)
+		slog.InfoContext(ctx, "bufconn: dialing (local grpc)", "ctx", ctx, "host", host)
 		return l.Dial()
 	}
 
-	s.kases = make([]FakeKas, 9)
+	s.kases = make([]FakeKas, 10)
 
 	for i, ki := range []struct {
 		url, private, public string
 	}{
 		{"http://localhost:65432/", mockRSAPrivateKey1, mockRSAPublicKey1},
+		{"http://[::1]:65432/", mockRSAPrivateKey1, mockRSAPublicKey1},
 		{"https://a.kas/", mockRSAPrivateKey1, mockRSAPublicKey1},
 		{"https://b.kas/", mockRSAPrivateKey2, mockRSAPublicKey2},
 		{"https://c.kas/", mockRSAPrivateKey3, mockRSAPublicKey3},
@@ -1302,11 +1303,11 @@ func (s *TDFSuite) startBackend() {
 		var origin string
 		switch {
 		case url.Port() == "80":
-			origin = url.Hostname()
-		case url.Port() != "":
-			origin = url.Hostname() + ":" + url.Port()
+			origin = url.Host
 		case url.Scheme == "https":
-			origin = url.Hostname() + ":443"
+			origin = url.Host + ":443"
+		case url.Port() != "":
+			origin = url.Host
 		default:
 			origin = url.Hostname()
 		}

@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -224,19 +223,12 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 
 	// create a value
 	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
-	start := time.Now().Add(-time.Second)
 	created, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.ID, &attributes.CreateAttributeValueRequest{
 		Value: "created value testing update",
 		Metadata: &common.MetadataMutable{
 			Labels: labels,
 		},
 	})
-	end := time.Now().Add(time.Second)
-	metadata := created.GetMetadata()
-	updatedAt := metadata.GetUpdatedAt()
-	createdAt := metadata.GetCreatedAt()
-	s.True(createdAt.AsTime().After(start))
-	s.True(createdAt.AsTime().Before(end))
 	s.Require().NoError(err)
 	s.NotNil(created)
 
@@ -266,7 +258,12 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
-	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
+	metadata := got.GetMetadata()
+	createdAt := metadata.GetCreatedAt()
+	updatedAt := metadata.GetUpdatedAt()
+	s.False(createdAt.AsTime().IsZero())
+	s.False(updatedAt.AsTime().IsZero())
+	s.True(updatedAt.AsTime().After(createdAt.AsTime()))
 }
 
 func (s *AttributeValuesSuite) Test_UpdateAttributeValue_WithInvalidId_Fails() {

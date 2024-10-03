@@ -341,9 +341,9 @@ func newConnectRPCInProcessServer(mux *http.ServeMux) *http.Server {
 	// serverOptions = append(serverOptions, grpc.ChainUnaryInterceptor(interceptors...))
 	// return grpc.NewServer(serverOptions...)
 	return &http.Server{
-		// WriteTimeout: time.Second * 30,
-		// ReadTimeout:  time.Second * 30,
-		Handler: h2c.NewHandler(mux, &http2.Server{}),
+		WriteTimeout: time.Second * 30, //golint:mnd // 30 seconds is a reasonable timeout
+		ReadTimeout:  time.Second * 30, //golint:mnd // 30 seconds is a reasonable timeout
+		Handler:      h2c.NewHandler(mux, &http2.Server{}),
 	}
 }
 

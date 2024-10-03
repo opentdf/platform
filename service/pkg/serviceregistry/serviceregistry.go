@@ -195,7 +195,7 @@ func (s Service[S]) RegisterHTTPServer(ctx context.Context, mux *http.ServeMux) 
 }
 
 // RegisterConnectRPCServiceHandler registers a ConnectRPC service handler with the service.
-func (s Service[S]) RegisterConnectRPCServiceHandler(ctx context.Context, connectRPC *server.ConnectRPC) error {
+func (s Service[S]) RegisterConnectRPCServiceHandler(_ context.Context, connectRPC *server.ConnectRPC) error {
 	if s.ConnectRPCFunc == nil {
 		return fmt.Errorf("service did not register a handler")
 	}

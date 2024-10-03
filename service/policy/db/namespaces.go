@@ -69,7 +69,7 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, state string) ([]*po
 
 	for i, ns := range list {
 		metadata := &common.Metadata{}
-		if err = unmarshalMetadata(ns.Metadata, metadata, c.logger); err != nil {
+		if err = unmarshalMetadata(ns.Metadata, metadata); err != nil {
 			return nil, err
 		}
 

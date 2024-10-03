@@ -11,6 +11,28 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const assignKeyAccessServerToAttributeValue = `-- name: AssignKeyAccessServerToAttributeValue :execrows
+INSERT INTO attribute_value_key_access_grants (attribute_value_id, key_access_server_id)
+VALUES ($1, $2)
+`
+
+type AssignKeyAccessServerToAttributeValueParams struct {
+	AttributeValueID  string `json:"attribute_value_id"`
+	KeyAccessServerID string `json:"key_access_server_id"`
+}
+
+// AssignKeyAccessServerToAttributeValue
+//
+//	INSERT INTO attribute_value_key_access_grants (attribute_value_id, key_access_server_id)
+//	VALUES ($1, $2)
+func (q *Queries) AssignKeyAccessServerToAttributeValue(ctx context.Context, arg AssignKeyAccessServerToAttributeValueParams) (int64, error) {
+	result, err := q.db.Exec(ctx, assignKeyAccessServerToAttributeValue, arg.AttributeValueID, arg.KeyAccessServerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const assignKeyAccessServerToNamespace = `-- name: AssignKeyAccessServerToNamespace :execrows
 INSERT INTO attribute_namespace_key_access_grants (namespace_id, key_access_server_id)
 VALUES ($1, $2)
@@ -31,6 +53,30 @@ func (q *Queries) AssignKeyAccessServerToNamespace(ctx context.Context, arg Assi
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const createAttributeValue = `-- name: CreateAttributeValue :one
+INSERT INTO attribute_values (attribute_definition_id, value, metadata)
+VALUES ($1, $2, $3)
+RETURNING id
+`
+
+type CreateAttributeValueParams struct {
+	AttributeDefinitionID string `json:"attribute_definition_id"`
+	Value                 string `json:"value"`
+	Metadata              []byte `json:"metadata"`
+}
+
+// CreateAttributeValue
+//
+//	INSERT INTO attribute_values (attribute_definition_id, value, metadata)
+//	VALUES ($1, $2, $3)
+//	RETURNING id
+func (q *Queries) CreateAttributeValue(ctx context.Context, arg CreateAttributeValueParams) (string, error) {
+	row := q.db.QueryRow(ctx, createAttributeValue, arg.AttributeDefinitionID, arg.Value, arg.Metadata)
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }
 
 const createKeyAccessServer = `-- name: CreateKeyAccessServer :one
@@ -80,6 +126,36 @@ func (q *Queries) CreateNamespace(ctx context.Context, arg CreateNamespaceParams
 	return id, err
 }
 
+const createResourceMapping = `-- name: CreateResourceMapping :one
+INSERT INTO resource_mappings (attribute_value_id, terms, metadata, group_id)
+VALUES ($1, $2, $3, $4)
+RETURNING id
+`
+
+type CreateResourceMappingParams struct {
+	AttributeValueID string      `json:"attribute_value_id"`
+	Terms            []string    `json:"terms"`
+	Metadata         []byte      `json:"metadata"`
+	GroupID          pgtype.UUID `json:"group_id"`
+}
+
+// CreateResourceMapping
+//
+//	INSERT INTO resource_mappings (attribute_value_id, terms, metadata, group_id)
+//	VALUES ($1, $2, $3, $4)
+//	RETURNING id
+func (q *Queries) CreateResourceMapping(ctx context.Context, arg CreateResourceMappingParams) (string, error) {
+	row := q.db.QueryRow(ctx, createResourceMapping,
+		arg.AttributeValueID,
+		arg.Terms,
+		arg.Metadata,
+		arg.GroupID,
+	)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
 const createResourceMappingGroup = `-- name: CreateResourceMappingGroup :one
 INSERT INTO resource_mapping_groups (namespace_id, name, metadata)
 VALUES ($1, $2, $3)
@@ -102,6 +178,21 @@ func (q *Queries) CreateResourceMappingGroup(ctx context.Context, arg CreateReso
 	var id string
 	err := row.Scan(&id)
 	return id, err
+}
+
+const deleteAttributeValue = `-- name: DeleteAttributeValue :execrows
+DELETE FROM attribute_values WHERE id = $1
+`
+
+// DeleteAttributeValue
+//
+//	DELETE FROM attribute_values WHERE id = $1
+func (q *Queries) DeleteAttributeValue(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteAttributeValue, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteKeyAccessServer = `-- name: DeleteKeyAccessServer :execrows
@@ -128,6 +219,21 @@ DELETE FROM attribute_namespaces WHERE id = $1
 //	DELETE FROM attribute_namespaces WHERE id = $1
 func (q *Queries) DeleteNamespace(ctx context.Context, id string) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteNamespace, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteResourceMapping = `-- name: DeleteResourceMapping :execrows
+DELETE FROM resource_mappings WHERE id = $1
+`
+
+// DeleteResourceMapping
+//
+//	DELETE FROM resource_mappings WHERE id = $1
+func (q *Queries) DeleteResourceMapping(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteResourceMapping, id)
 	if err != nil {
 		return 0, err
 	}
@@ -469,6 +575,76 @@ func (q *Queries) GetAttributeByDefOrValueFqn(ctx context.Context, lower string)
 	return i, err
 }
 
+const getAttributeValue = `-- name: GetAttributeValue :one
+SELECT
+    av.id,
+    av.value,
+    av.active,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
+    av.attribute_definition_id,
+    fqns.fqn,
+    JSONB_AGG(
+        DISTINCT JSONB_BUILD_OBJECT(
+            'id', kas.id,
+            'uri', kas.uri,
+            'public_key', kas.public_key
+        )
+    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants
+FROM attribute_values av
+LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
+LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
+WHERE av.id = $1
+GROUP BY av.id, fqns.fqn
+`
+
+type GetAttributeValueRow struct {
+	ID                    string      `json:"id"`
+	Value                 string      `json:"value"`
+	Active                bool        `json:"active"`
+	Metadata              []byte      `json:"metadata"`
+	AttributeDefinitionID string      `json:"attribute_definition_id"`
+	Fqn                   pgtype.Text `json:"fqn"`
+	Grants                []byte      `json:"grants"`
+}
+
+// GetAttributeValue
+//
+//	SELECT
+//	    av.id,
+//	    av.value,
+//	    av.active,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
+//	    av.attribute_definition_id,
+//	    fqns.fqn,
+//	    JSONB_AGG(
+//	        DISTINCT JSONB_BUILD_OBJECT(
+//	            'id', kas.id,
+//	            'uri', kas.uri,
+//	            'public_key', kas.public_key
+//	        )
+//	    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants
+//	FROM attribute_values av
+//	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+//	LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
+//	LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
+//	WHERE av.id = $1
+//	GROUP BY av.id, fqns.fqn
+func (q *Queries) GetAttributeValue(ctx context.Context, id string) (GetAttributeValueRow, error) {
+	row := q.db.QueryRow(ctx, getAttributeValue, id)
+	var i GetAttributeValueRow
+	err := row.Scan(
+		&i.ID,
+		&i.Value,
+		&i.Active,
+		&i.Metadata,
+		&i.AttributeDefinitionID,
+		&i.Fqn,
+		&i.Grants,
+	)
+	return i, err
+}
+
 const getKeyAccessServer = `-- name: GetKeyAccessServer :one
 SELECT id, uri, public_key,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
@@ -561,6 +737,52 @@ func (q *Queries) GetNamespace(ctx context.Context, id string) (GetNamespaceRow,
 	return i, err
 }
 
+const getResourceMapping = `-- name: GetResourceMapping :one
+SELECT
+    m.id,
+    JSON_BUILD_OBJECT('id', av.id, 'value', av.value) as attribute_value,
+    m.terms,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
+    COALESCE(m.group_id::TEXT, '')::TEXT as group_id
+FROM resource_mappings m 
+LEFT JOIN attribute_values av on m.attribute_value_id = av.id
+WHERE m.id = $1
+GROUP BY av.id, m.id
+`
+
+type GetResourceMappingRow struct {
+	ID             string   `json:"id"`
+	AttributeValue []byte   `json:"attribute_value"`
+	Terms          []string `json:"terms"`
+	Metadata       []byte   `json:"metadata"`
+	GroupID        string   `json:"group_id"`
+}
+
+// GetResourceMapping
+//
+//	SELECT
+//	    m.id,
+//	    JSON_BUILD_OBJECT('id', av.id, 'value', av.value) as attribute_value,
+//	    m.terms,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
+//	    COALESCE(m.group_id::TEXT, '')::TEXT as group_id
+//	FROM resource_mappings m
+//	LEFT JOIN attribute_values av on m.attribute_value_id = av.id
+//	WHERE m.id = $1
+//	GROUP BY av.id, m.id
+func (q *Queries) GetResourceMapping(ctx context.Context, id string) (GetResourceMappingRow, error) {
+	row := q.db.QueryRow(ctx, getResourceMapping, id)
+	var i GetResourceMappingRow
+	err := row.Scan(
+		&i.ID,
+		&i.AttributeValue,
+		&i.Terms,
+		&i.Metadata,
+		&i.GroupID,
+	)
+	return i, err
+}
+
 const getResourceMappingGroup = `-- name: GetResourceMappingGroup :one
 SELECT id, namespace_id, name,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
@@ -591,6 +813,84 @@ func (q *Queries) GetResourceMappingGroup(ctx context.Context, id string) (GetRe
 		&i.Metadata,
 	)
 	return i, err
+}
+
+const listAttributeValues = `-- name: ListAttributeValues :many
+
+
+SELECT
+    av.id,
+    av.value,
+    av.active,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
+    av.attribute_definition_id,
+    fqns.fqn
+FROM attribute_values av
+LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+WHERE (
+    ($1::BOOLEAN IS NULL OR av.active = $1) AND
+    (NULLIF($2, '') IS NULL OR av.attribute_definition_id = $2::UUID)
+)
+GROUP BY av.id, fqns.fqn
+`
+
+type ListAttributeValuesParams struct {
+	Active                pgtype.Bool `json:"active"`
+	AttributeDefinitionID interface{} `json:"attribute_definition_id"`
+}
+
+type ListAttributeValuesRow struct {
+	ID                    string      `json:"id"`
+	Value                 string      `json:"value"`
+	Active                bool        `json:"active"`
+	Metadata              []byte      `json:"metadata"`
+	AttributeDefinitionID string      `json:"attribute_definition_id"`
+	Fqn                   pgtype.Text `json:"fqn"`
+}
+
+// --------------------------------------------------------------
+// ATTRIBUTE VALUES
+// --------------------------------------------------------------
+//
+//	SELECT
+//	    av.id,
+//	    av.value,
+//	    av.active,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
+//	    av.attribute_definition_id,
+//	    fqns.fqn
+//	FROM attribute_values av
+//	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+//	WHERE (
+//	    ($1::BOOLEAN IS NULL OR av.active = $1) AND
+//	    (NULLIF($2, '') IS NULL OR av.attribute_definition_id = $2::UUID)
+//	)
+//	GROUP BY av.id, fqns.fqn
+func (q *Queries) ListAttributeValues(ctx context.Context, arg ListAttributeValuesParams) ([]ListAttributeValuesRow, error) {
+	rows, err := q.db.Query(ctx, listAttributeValues, arg.Active, arg.AttributeDefinitionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAttributeValuesRow
+	for rows.Next() {
+		var i ListAttributeValuesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Value,
+			&i.Active,
+			&i.Metadata,
+			&i.AttributeDefinitionID,
+			&i.Fqn,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listKeyAccessServerGrants = `-- name: ListKeyAccessServerGrants :many
@@ -892,8 +1192,69 @@ func (q *Queries) ListResourceMappingGroups(ctx context.Context, namespaceID int
 	return items, nil
 }
 
-const listResourceMappingsByFullyQualifiedGroup = `-- name: ListResourceMappingsByFullyQualifiedGroup :many
+const listResourceMappings = `-- name: ListResourceMappings :many
 
+SELECT
+    m.id,
+    JSON_BUILD_OBJECT('id', av.id, 'value', av.value) as attribute_value,
+    m.terms,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
+    COALESCE(m.group_id::TEXT, '')::TEXT as group_id
+FROM resource_mappings m 
+LEFT JOIN attribute_values av on m.attribute_value_id = av.id
+WHERE (NULLIF($1, '') IS NULL OR m.group_id = $1::UUID)
+GROUP BY av.id, m.id
+`
+
+type ListResourceMappingsRow struct {
+	ID             string   `json:"id"`
+	AttributeValue []byte   `json:"attribute_value"`
+	Terms          []string `json:"terms"`
+	Metadata       []byte   `json:"metadata"`
+	GroupID        string   `json:"group_id"`
+}
+
+// --------------------------------------------------------------
+// RESOURCE MAPPING
+// --------------------------------------------------------------
+//
+//	SELECT
+//	    m.id,
+//	    JSON_BUILD_OBJECT('id', av.id, 'value', av.value) as attribute_value,
+//	    m.terms,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
+//	    COALESCE(m.group_id::TEXT, '')::TEXT as group_id
+//	FROM resource_mappings m
+//	LEFT JOIN attribute_values av on m.attribute_value_id = av.id
+//	WHERE (NULLIF($1, '') IS NULL OR m.group_id = $1::UUID)
+//	GROUP BY av.id, m.id
+func (q *Queries) ListResourceMappings(ctx context.Context, groupID interface{}) ([]ListResourceMappingsRow, error) {
+	rows, err := q.db.Query(ctx, listResourceMappings, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListResourceMappingsRow
+	for rows.Next() {
+		var i ListResourceMappingsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.AttributeValue,
+			&i.Terms,
+			&i.Metadata,
+			&i.GroupID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listResourceMappingsByFullyQualifiedGroup = `-- name: ListResourceMappingsByFullyQualifiedGroup :many
 SELECT 
     m.id,
     m.attribute_value_id,
@@ -908,7 +1269,7 @@ SELECT
 FROM resource_mappings m
 LEFT JOIN resource_mapping_groups g ON m.group_id = g.id
 LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
-WHERE ns.name = LOWER($1) AND g.name = LOWER($2)
+WHERE ns.name = $1 AND g.name = $2
 `
 
 type ListResourceMappingsByFullyQualifiedGroupParams struct {
@@ -927,9 +1288,7 @@ type ListResourceMappingsByFullyQualifiedGroupRow struct {
 	GroupMetadata    []byte   `json:"group_metadata"`
 }
 
-// --------------------------------------------------------------
-// RESOURCE MAPPING
-// --------------------------------------------------------------
+// ListResourceMappingsByFullyQualifiedGroup
 //
 //	SELECT
 //	    m.id,
@@ -945,7 +1304,7 @@ type ListResourceMappingsByFullyQualifiedGroupRow struct {
 //	FROM resource_mappings m
 //	LEFT JOIN resource_mapping_groups g ON m.group_id = g.id
 //	LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
-//	WHERE ns.name = LOWER($1) AND g.name = LOWER($2)
+//	WHERE ns.name = $1 AND g.name = $2
 func (q *Queries) ListResourceMappingsByFullyQualifiedGroup(ctx context.Context, arg ListResourceMappingsByFullyQualifiedGroupParams) ([]ListResourceMappingsByFullyQualifiedGroupRow, error) {
 	rows, err := q.db.Query(ctx, listResourceMappingsByFullyQualifiedGroup, arg.NamespaceName, arg.GroupName)
 	if err != nil {
@@ -975,6 +1334,28 @@ func (q *Queries) ListResourceMappingsByFullyQualifiedGroup(ctx context.Context,
 	return items, nil
 }
 
+const removeKeyAccessServerFromAttributeValue = `-- name: RemoveKeyAccessServerFromAttributeValue :execrows
+DELETE FROM attribute_value_key_access_grants
+WHERE attribute_value_id = $1 AND key_access_server_id = $2
+`
+
+type RemoveKeyAccessServerFromAttributeValueParams struct {
+	AttributeValueID  string `json:"attribute_value_id"`
+	KeyAccessServerID string `json:"key_access_server_id"`
+}
+
+// RemoveKeyAccessServerFromAttributeValue
+//
+//	DELETE FROM attribute_value_key_access_grants
+//	WHERE attribute_value_id = $1 AND key_access_server_id = $2
+func (q *Queries) RemoveKeyAccessServerFromAttributeValue(ctx context.Context, arg RemoveKeyAccessServerFromAttributeValueParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removeKeyAccessServerFromAttributeValue, arg.AttributeValueID, arg.KeyAccessServerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const removeKeyAccessServerFromNamespace = `-- name: RemoveKeyAccessServerFromNamespace :execrows
 DELETE FROM attribute_namespace_key_access_grants
 WHERE namespace_id = $1 AND key_access_server_id = $2
@@ -991,6 +1372,43 @@ type RemoveKeyAccessServerFromNamespaceParams struct {
 //	WHERE namespace_id = $1 AND key_access_server_id = $2
 func (q *Queries) RemoveKeyAccessServerFromNamespace(ctx context.Context, arg RemoveKeyAccessServerFromNamespaceParams) (int64, error) {
 	result, err := q.db.Exec(ctx, removeKeyAccessServerFromNamespace, arg.NamespaceID, arg.KeyAccessServerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updateAttributeValue = `-- name: UpdateAttributeValue :execrows
+UPDATE attribute_values
+SET
+    value = COALESCE($2, value),
+    active = COALESCE($3, active),
+    metadata = COALESCE($4, metadata)
+WHERE id = $1
+`
+
+type UpdateAttributeValueParams struct {
+	ID       string      `json:"id"`
+	Value    pgtype.Text `json:"value"`
+	Active   pgtype.Bool `json:"active"`
+	Metadata []byte      `json:"metadata"`
+}
+
+// UpdateAttributeValue: Safe and Unsafe Updates both
+//
+//	UPDATE attribute_values
+//	SET
+//	    value = COALESCE($2, value),
+//	    active = COALESCE($3, active),
+//	    metadata = COALESCE($4, metadata)
+//	WHERE id = $1
+func (q *Queries) UpdateAttributeValue(ctx context.Context, arg UpdateAttributeValueParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateAttributeValue,
+		arg.ID,
+		arg.Value,
+		arg.Active,
+		arg.Metadata,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -1072,14 +1490,54 @@ func (q *Queries) UpdateNamespace(ctx context.Context, arg UpdateNamespaceParams
 	return result.RowsAffected(), nil
 }
 
-const updateResourceMappingGroup = `-- name: UpdateResourceMappingGroup :one
+const updateResourceMapping = `-- name: UpdateResourceMapping :execrows
+UPDATE resource_mappings
+SET
+    attribute_value_id = COALESCE($2, attribute_value_id),
+    terms = COALESCE($3, terms),
+    metadata = COALESCE($4, metadata),
+    group_id = COALESCE($5, group_id)
+WHERE id = $1
+`
+
+type UpdateResourceMappingParams struct {
+	ID               string      `json:"id"`
+	AttributeValueID pgtype.UUID `json:"attribute_value_id"`
+	Terms            []string    `json:"terms"`
+	Metadata         []byte      `json:"metadata"`
+	GroupID          pgtype.UUID `json:"group_id"`
+}
+
+// UpdateResourceMapping
+//
+//	UPDATE resource_mappings
+//	SET
+//	    attribute_value_id = COALESCE($2, attribute_value_id),
+//	    terms = COALESCE($3, terms),
+//	    metadata = COALESCE($4, metadata),
+//	    group_id = COALESCE($5, group_id)
+//	WHERE id = $1
+func (q *Queries) UpdateResourceMapping(ctx context.Context, arg UpdateResourceMappingParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateResourceMapping,
+		arg.ID,
+		arg.AttributeValueID,
+		arg.Terms,
+		arg.Metadata,
+		arg.GroupID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updateResourceMappingGroup = `-- name: UpdateResourceMappingGroup :execrows
 UPDATE resource_mapping_groups
 SET
     namespace_id = COALESCE($2, namespace_id),
     name = COALESCE($3, name),
     metadata = COALESCE($4, metadata)
 WHERE id = $1
-RETURNING id
 `
 
 type UpdateResourceMappingGroupParams struct {
@@ -1097,15 +1555,132 @@ type UpdateResourceMappingGroupParams struct {
 //	    name = COALESCE($3, name),
 //	    metadata = COALESCE($4, metadata)
 //	WHERE id = $1
-//	RETURNING id
-func (q *Queries) UpdateResourceMappingGroup(ctx context.Context, arg UpdateResourceMappingGroupParams) (string, error) {
-	row := q.db.QueryRow(ctx, updateResourceMappingGroup,
+func (q *Queries) UpdateResourceMappingGroup(ctx context.Context, arg UpdateResourceMappingGroupParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateResourceMappingGroup,
 		arg.ID,
 		arg.NamespaceID,
 		arg.Name,
 		arg.Metadata,
 	)
-	var id string
-	err := row.Scan(&id)
-	return id, err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const upsertAttributeDefinitionFqn = `-- name: UpsertAttributeDefinitionFqn :one
+INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
+SELECT
+    n.id,
+    ad.id,
+    NULL,
+    CONCAT('https://', n.name, '/attr/', ad.name) AS fqn
+FROM attribute_namespaces n
+JOIN attribute_definitions ad ON n.id = ad.namespace_id
+WHERE ad.id = $1
+ON CONFLICT (namespace_id, attribute_id, value_id) 
+    DO UPDATE 
+        SET fqn = EXCLUDED.fqn
+RETURNING fqn
+`
+
+// UpsertAttributeDefinitionFqn
+//
+//	INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
+//	SELECT
+//	    n.id,
+//	    ad.id,
+//	    NULL,
+//	    CONCAT('https://', n.name, '/attr/', ad.name) AS fqn
+//	FROM attribute_namespaces n
+//	JOIN attribute_definitions ad ON n.id = ad.namespace_id
+//	WHERE ad.id = $1
+//	ON CONFLICT (namespace_id, attribute_id, value_id)
+//	    DO UPDATE
+//	        SET fqn = EXCLUDED.fqn
+//	RETURNING fqn
+func (q *Queries) UpsertAttributeDefinitionFqn(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, upsertAttributeDefinitionFqn, id)
+	var fqn string
+	err := row.Scan(&fqn)
+	return fqn, err
+}
+
+const upsertAttributeNamespaceFqn = `-- name: UpsertAttributeNamespaceFqn :one
+INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
+SELECT
+    n.id,
+    NULL,
+    NULL,
+    CONCAT('https://', n.name) AS fqn
+FROM attribute_namespaces n
+WHERE n.id = $1
+ON CONFLICT (namespace_id, attribute_id, value_id) 
+    DO UPDATE 
+        SET fqn = EXCLUDED.fqn
+RETURNING fqn
+`
+
+// UpsertAttributeNamespaceFqn
+//
+//	INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
+//	SELECT
+//	    n.id,
+//	    NULL,
+//	    NULL,
+//	    CONCAT('https://', n.name) AS fqn
+//	FROM attribute_namespaces n
+//	WHERE n.id = $1
+//	ON CONFLICT (namespace_id, attribute_id, value_id)
+//	    DO UPDATE
+//	        SET fqn = EXCLUDED.fqn
+//	RETURNING fqn
+func (q *Queries) UpsertAttributeNamespaceFqn(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, upsertAttributeNamespaceFqn, id)
+	var fqn string
+	err := row.Scan(&fqn)
+	return fqn, err
+}
+
+const upsertAttributeValueFqn = `-- name: UpsertAttributeValueFqn :one
+
+INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
+SELECT
+    n.id,
+    ad.id,
+    av.id,
+    CONCAT('https://', n.name, '/attr/', ad.name, '/value/', av.value) AS fqn
+FROM attribute_namespaces n
+JOIN attribute_definitions ad ON n.id = ad.namespace_id
+JOIN attribute_values av ON ad.id = av.attribute_definition_id
+WHERE av.id = $1
+ON CONFLICT (namespace_id, attribute_id, value_id) 
+    DO UPDATE 
+        SET fqn = EXCLUDED.fqn
+RETURNING fqn
+`
+
+// --------------------------------------------------------------
+// ATTRIBUTE FQN
+// --------------------------------------------------------------
+//
+//	INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
+//	SELECT
+//	    n.id,
+//	    ad.id,
+//	    av.id,
+//	    CONCAT('https://', n.name, '/attr/', ad.name, '/value/', av.value) AS fqn
+//	FROM attribute_namespaces n
+//	JOIN attribute_definitions ad ON n.id = ad.namespace_id
+//	JOIN attribute_values av ON ad.id = av.attribute_definition_id
+//	WHERE av.id = $1
+//	ON CONFLICT (namespace_id, attribute_id, value_id)
+//	    DO UPDATE
+//	        SET fqn = EXCLUDED.fqn
+//	RETURNING fqn
+func (q *Queries) UpsertAttributeValueFqn(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, upsertAttributeValueFqn, id)
+	var fqn string
+	err := row.Scan(&fqn)
+	return fqn, err
 }

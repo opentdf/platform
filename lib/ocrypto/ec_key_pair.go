@@ -51,6 +51,20 @@ func GetECCurveFromECCMode(mode ECCMode) (elliptic.Curve, error) {
 	return c, nil
 }
 
+func (mode ECCMode) String() string {
+	switch mode {
+	case ECCModeSecp256r1:
+		return "ec:secp256r1"
+	case ECCModeSecp384r1:
+		return "ec:secp384r1"
+	case ECCModeSecp521r1:
+		return "ec:secp521r1"
+	case ECCModeSecp256k1:
+		return "ec:secp256k1"
+	}
+	return "unspecified"
+}
+
 // NewECKeyPair Generates an EC key pair of the given bit size.
 func NewECKeyPair(mode ECCMode) (ECKeyPair, error) {
 	var c elliptic.Curve

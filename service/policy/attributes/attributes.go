@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
@@ -196,6 +197,7 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attri
 	}
 
 	auditParams.ObjectID = item.GetId()
+	auditParams.Original = item
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &attributes.CreateAttributeValueResponse{
@@ -241,17 +243,10 @@ func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *attri
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", attributeID))
 	}
 
-	item, err := s.dbClient.UpdateAttributeValue(ctx, req)
-	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("value", req.String()))
-	}
-
-	// UpdateAttributeValue only returns the attribute ID so we need to get the
-	// full attribute value to compute the diff.
-	updated, err := s.dbClient.GetAttributeValue(ctx, attributeID)
+	updated, err := s.dbClient.UpdateAttributeValue(ctx, req)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", attributeID))
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("value", req.String()))
 	}
 
 	auditParams.Original = original
@@ -259,7 +254,9 @@ func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *attri
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &attributes.UpdateAttributeValueResponse{
-		Value: item,
+		Value: &policy.Value{
+			Id: attributeID,
+		},
 	}, nil
 }
 
@@ -277,20 +274,18 @@ func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *a
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", attributeID))
 	}
 
-	// DeactivateAttributeValue actually returns the entire attribute value so we
-	// can use it to compute the diff.
-	deactivated, err := s.dbClient.DeactivateAttributeValue(ctx, attributeID)
+	updated, err := s.dbClient.DeactivateAttributeValue(ctx, attributeID)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextDeactivationFailed, slog.String("id", attributeID))
 	}
 
 	auditParams.Original = original
-	auditParams.Updated = deactivated
+	auditParams.Updated = updated
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &attributes.DeactivateAttributeValueResponse{
-		Value: deactivated,
+		Value: updated,
 	}, nil
 }
 

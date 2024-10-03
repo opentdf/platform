@@ -254,7 +254,7 @@ func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 
 	m := new(common.Metadata)
 	if fullAttr.Metadata != nil {
-		err = unmarshalMetadata(fullAttr.Metadata, m, c.logger)
+		err = unmarshalMetadata(fullAttr.Metadata, m)
 		if err != nil {
 			c.logger.Error("could not unmarshal metadata", slog.String("error", err.Error()))
 			return nil, err
@@ -325,7 +325,7 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if err = unmarshalMetadata(attr.Metadata, metadata, c.logger); err != nil {
+	if err = unmarshalMetadata(attr.Metadata, metadata); err != nil {
 		return nil, err
 	}
 

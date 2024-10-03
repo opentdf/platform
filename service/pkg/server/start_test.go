@@ -122,8 +122,7 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Res
 	}, s, nil, logger, registry)
 	require.NoError(t, err)
 
-	s.Start()
-
+	require.NoError(t, s.Start())
 	defer s.Stop()
 
 	var resp *http.Response

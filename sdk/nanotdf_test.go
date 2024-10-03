@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -21,7 +22,7 @@ func nanoTDFEqual(a, b *NanoTDFHeader) bool {
 	}
 
 	// Compare binding field
-	if a.bindCfg.useEcdsaBinding != b.bindCfg.useEcdsaBinding || a.bindCfg.padding != b.bindCfg.padding || a.bindCfg.eccMode != b.bindCfg.eccMode {
+	if a.bindCfg.useEcdsaBinding != b.bindCfg.useEcdsaBinding || a.bindCfg.eccMode != b.bindCfg.eccMode {
 		return false
 	}
 
@@ -93,7 +94,6 @@ func NotTestReadNanoTDFHeader(t *testing.T) {
 		},
 		bindCfg: bindingConfig{
 			useEcdsaBinding: true,
-			padding:         0,
 			eccMode:         ocrypto.ECCModeSecp256r1,
 		},
 		sigCfg: signatureConfig{
@@ -242,28 +242,8 @@ func NotTestCreateNanoTDF(t *testing.T) {
 }
 
 func TestGetECPublicKeyKid(t *testing.T) {
-	var tests = []struct {
-		name       string
-		kasURL     string
-		dialOption grpc.DialOption
-		shouldFail bool
-	}{
-		{
-			name:       "Valid URL, Unreachable gRPC server",
-			kasURL:     "http://localhost",
-			dialOption: grpc.WithBlock(),
-			shouldFail: true,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			_, _, err := getECPublicKeyKid(test.kasURL, test.dialOption)
-			if (err != nil) != test.shouldFail {
-				t.Errorf("Error does not match the expected outcome. Error: %v", err)
-			}
-		})
-	}
+	_, _, err := getECPublicKeyKid("http://localhost")
+	assert.ErrorContains(t, err, "error connecting")
 }
 
 func TestCreateNanoTDF(t *testing.T) {

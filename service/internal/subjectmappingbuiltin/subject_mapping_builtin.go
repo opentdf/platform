@@ -139,7 +139,7 @@ func EvaluateSubjectMappings(attributeMappings map[string]*attributes.GetAttribu
 }
 
 func EvaluateSubjectSet(subjectSet *policy.SubjectSet, entity flattening.Flattened) (bool, error) {
-	// condition groups anded togethor
+	// condition groups anded together
 	subjectSetConditionResult := true
 	for _, conditionGroup := range subjectSet.GetConditionGroups() {
 		conditionGroupResult, err := EvaluateConditionGroup(conditionGroup, entity)

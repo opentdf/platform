@@ -42,7 +42,7 @@ func (f *FakeAccessServiceServer) PublicKey(ctx context.Context, _ *kas.PublicKe
 
 func TestAddingAuditMetadataToOutgoingRequest(t *testing.T) {
 	server := FakeAccessServiceServer{}
-	client, stop := runServer(context.Background(), &server)
+	client, stop := runServer(&server)
 	defer stop()
 
 	contextRequestID := uuid.New()
@@ -67,7 +67,7 @@ func TestAddingAuditMetadataToOutgoingRequest(t *testing.T) {
 
 func TestIsOKWithNoContextValues(t *testing.T) {
 	server := FakeAccessServiceServer{}
-	client, stop := runServer(context.Background(), &server)
+	client, stop := runServer(&server)
 	defer stop()
 
 	_, err := client.PublicKey(context.Background(), &kas.PublicKeyRequest{})
@@ -85,7 +85,7 @@ func TestIsOKWithNoContextValues(t *testing.T) {
 	}
 }
 
-func runServer(ctx context.Context, f *FakeAccessServiceServer) (kas.AccessServiceClient, func()) {
+func runServer(f *FakeAccessServiceServer) (kas.AccessServiceClient, func()) {
 	buffer := 1024 * 1024
 	listener := bufconn.Listen(buffer)
 
@@ -98,9 +98,9 @@ func runServer(ctx context.Context, f *FakeAccessServiceServer) (kas.AccessServi
 		}
 	}()
 
-	conn, _ := grpc.DialContext(ctx, "", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
+	conn, _ := grpc.NewClient("passthrough:///bufconn", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
 		return listener.Dial()
-	}), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock(), grpc.WithUnaryInterceptor(MetadataAddingClientInterceptor))
+	}), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(MetadataAddingClientInterceptor))
 
 	client := kas.NewAccessServiceClient(conn)
 

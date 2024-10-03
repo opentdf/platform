@@ -35,6 +35,9 @@ message CreateResourceMappingGroupRequest {
   string namespace_id = 1 [(buf.validate.field).required = true];
 
   string name = 2 [(buf.validate.field).required = true];
+
+  // Common metadata
+  common.MetadataMutable metadata = 100;
 }
 
 message CreateResourceMappingGroupResponse {
@@ -49,6 +52,10 @@ message UpdateResourceMappingGroupRequest {
   string namespace_id = 2;
 
   string name = 3;
+
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
 }
 
 message UpdateResourceMappingGroupResponse {

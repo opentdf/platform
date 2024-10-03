@@ -150,6 +150,7 @@ func (rl *ResourceLocator) setURLWithIdentifier(url string, identifier string) e
 }
 
 // GetIdentifier - identifier is returned if the correct protocol enum is set else error
+// padding is removed unlike rl.identifier direct access
 func (rl ResourceLocator) GetIdentifier() (string, error) {
 	// read the identifier if it exists
 	switch rl.protocol & 0xf0 {
@@ -159,7 +160,9 @@ func (rl ResourceLocator) GetIdentifier() (string, error) {
 		if rl.identifier == "" {
 			return "", fmt.Errorf("no resource locator identifer: %d", rl.protocol)
 		}
-		return rl.identifier, nil
+		// remove padding
+		cleanedIdentifier := strings.TrimRight(rl.identifier, "\x00")
+		return cleanedIdentifier, nil
 	}
 	return "", fmt.Errorf("unsupported identifer protocol: %x", rl.protocol)
 }

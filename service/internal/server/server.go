@@ -1,10 +1,13 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"log/slog"
 	"net"
 	"net/http"
@@ -18,8 +21,8 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/security"
+	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
-	"github.com/valyala/fasthttp/fasthttputil"
 	"golang.org/x/exp/slices"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -123,8 +126,8 @@ https://github.com/heroku/x/blob/master/grpc/grpcserver/inprocess.go
 https://github.com/valyala/fasthttp/blob/master/fasthttputil/inmemory_listener.go
 */
 type inProcessServer struct {
-	ln  *fasthttputil.InmemoryListener
-	srv *http.Server
+	// ln  *fasthttputil.InmemoryListener
+	srv *memhttp.Server
 
 	maxCallRecvMsgSize int
 	maxCallSendMsgSize int
@@ -167,13 +170,43 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 
 	inProcessMux := http.NewServeMux()
 
+	inProcessMux2 := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Clone the request body (if any)
+		var bodyBytes []byte
+		if r.Body != nil {
+			bodyBytes, _ = ioutil.ReadAll(r.Body)
+		}
+
+		// Restore the io.ReadCloser to its original state
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+
+		// Log request details
+		log.Printf("Received request: %s %s", r.Method, r.URL)
+		log.Printf("Headers: %v", r.Header)
+		if len(bodyBytes) > 0 {
+			log.Printf("Body: %s", string(bodyBytes))
+		}
+
+		// Call the next handler
+		inProcessMux.ServeHTTP(w, r)
+	})
+
+	inProcessMux.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Serving Test Handler")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("hello world"))
+	})
+
+	// inProcessLN := fasthttputil.NewInmemoryListener()
+
+	inprocessMemHttp := memhttp.NewServer(inProcessMux2)
+
 	grpcIPCServer := &inProcessServer{
-		ln:                 fasthttputil.NewInmemoryListener(),
-		srv:                newConnectRPCInProcessServer(inProcessMux),
+		// ln:                 inProcessLN,
+		srv:                inprocessMemHttp, // newConnectRPCInProcessServer(inProcessMux2, inProcessLN.Addr().String()),
 		maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
 		maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
 	}
-
 	connectMux := http.NewServeMux()
 	httpMux := http.NewServeMux()
 
@@ -242,10 +275,10 @@ func newHTTPServer(c Config, connectRPC http.Handler, httpHandler http.Handler, 
 			"application/connect+proto",
 			"application/connect+json",
 		}, contentType) && r.Method == http.MethodPost {
-			// fmt.Println("Serving Connect RPC Handler")
+			fmt.Println("Serving Connect RPC Handler")
 			connectRPC.ServeHTTP(w, r)
 		} else {
-			// fmt.Println("Serving HTTP Handler")
+			fmt.Println("Serving HTTP Handler")
 			httpHandler.ServeHTTP(w, r)
 		}
 	})
@@ -319,7 +352,7 @@ func pprofHandler(h http.Handler) http.Handler {
 	})
 }
 
-func newConnectRPCInProcessServer(mux http.Handler) *http.Server {
+func newConnectRPCInProcessServer(mux http.Handler, addr string) *http.Server {
 	// mux := http.NewServeMux()
 
 	// var interceptors []grpc.UnaryServerInterceptor
@@ -338,9 +371,10 @@ func newConnectRPCInProcessServer(mux http.Handler) *http.Server {
 	// serverOptions = append(serverOptions, grpc.ChainUnaryInterceptor(interceptors...))
 	// return grpc.NewServer(serverOptions...)
 	return &http.Server{
-		WriteTimeout: time.Second * 30, //golint:mnd // 30 seconds is a reasonable timeout
-		ReadTimeout:  time.Second * 30, //golint:mnd // 30 seconds is a reasonable timeout
-		Handler:      h2c.NewHandler(mux, &http2.Server{}),
+		Addr: ":http",
+		// WriteTimeout: time.Second * 300, //golint:mnd // 30 seconds is a reasonable timeout
+		ReadHeaderTimeout: time.Second * 30, //golint:mnd // 30 seconds is a reasonable timeout
+		Handler:           h2c.NewHandler(mux, &http2.Server{}),
 	}
 }
 
@@ -352,6 +386,9 @@ func (s OpenTDFServer) Start() error {
 	s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
 	s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
 
+	s.ConnectInProcessRPC.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
+	s.ConnectInProcessRPC.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
+
 	// Start Http Server
 	ln, err := s.openHTTPServerPort()
 	if err != nil {
@@ -361,6 +398,58 @@ func (s OpenTDFServer) Start() error {
 
 	// Start In Process Grpc Server
 	go s.startInProcessGrpcServer()
+
+	// client := &http.Client{
+	// 	Transport: &http.Transport{
+	// 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+	// 			return s.GRPCInProcess.ln.Dial()
+	// 		},
+	// 	},
+	// 	Timeout: time.Second,
+	// }
+	// pbody, _ := protojson.Marshal(&attributes.ListAttributesRequest{})
+	// res, err := client.Get("http://.../test")
+	// // res, err := client.Post("http://..../policy.attributes.AttributesService/ListAttributes", "application/grpc", bytes.NewReader(pbody))
+	// if err != nil {
+	// 	log.Fatal(err.Error())
+	// }
+	// defer func() { _ = res.Body.Close() }()
+	// fmt.Printf("%v\n", res)
+	// b, err := io.ReadAll(res.Body)
+	// if err != nil {
+	// 	log.Fatal(err.Error())
+	// }
+	// println("length", len(b))
+	// respS := string(b)
+	// println(respS)
+
+	// connectclient := &http.Client{
+	// 	Transport: &http.Transport{
+	// 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+	// 			return s.GRPCInProcess.ln.Dial()
+	// 		},
+	// 	},
+	// 	Timeout: time.Second,
+	// }
+
+	// attrClient := attributesconnect.NewAttributesServiceClient(connectclient, "http://...", connect.WithGRPC())
+	// connectRes, err := attrClient.ListAttributes(context.Background(), &connect.Request[attributes.ListAttributesRequest]{})
+	// if err != nil {
+	// 	log.Fatal(err.Error())
+	// }
+	// fmt.Printf("Connect RPC: %v\n", connectRes)
+
+	// testSDK, err := sdk.New("", sdk.WithIPC(), sdk.WithCustomCoreConnection(s.GRPCInProcess.Conn()))
+	// if err != nil {
+	// 	log.Fatal(err.Error())
+	// }
+
+	// attrsResp, err := testSDK.Attributes.ListAttributes(context.Background(), &attributes.ListAttributesRequest{})
+	// if err != nil {
+	// 	log.Fatal(err.Error())
+	// }
+	// fmt.Sprintf("SDK: %v\n", attrsResp)
+
 	return nil
 }
 
@@ -380,9 +469,9 @@ func (s OpenTDFServer) Stop() {
 	s.logger.Info("shutdown complete")
 }
 
-func (s inProcessServer) GetGrpcServer() *http.Server {
-	return s.srv
-}
+// func (s inProcessServer) GetGrpcServer() *http.Server {
+// 	return s.srv
+// }
 
 func (s inProcessServer) Conn() *grpc.ClientConn {
 	// var clientInterceptors []grpc.UnaryClientInterceptor
@@ -397,18 +486,23 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 		// ),
 		// grpc.WithMaxCallAttempts(5),
 		// grpc.WithIdleTimeout(30 * time.Second),
-		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
-			conn, err := s.ln.Dial()
+		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			println("Dialing in process grpc server")
+			conn, err := s.srv.Listener.DialContext(ctx, "tcp", "http://localhost:8080")
 			if err != nil {
 				return nil, fmt.Errorf("failed to dial in process grpc server: %w", err)
 			}
 			return conn, nil
 		}),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		// grpc.WithConnectParams(grpc.ConnectParams{
+		// 	Backoff:           backoff.Config{MaxDelay: 5 * time.Second},
+		// 	MinConnectTimeout: 5 * time.Second,
+		// }),
 		// grpc.WithChainUnaryInterceptor(clientInterceptors...),
 	}
 
-	conn, err := grpc.NewClient("passthrough:///", defaultOptions...)
+	conn, err := grpc.NewClient("passthrough://", defaultOptions...)
 	if err != nil {
 		panic(err)
 	}
@@ -417,10 +511,10 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 
 func (s OpenTDFServer) startInProcessGrpcServer() {
 	s.logger.Info("starting in process connect-rpc server")
-	if err := s.GRPCInProcess.srv.Serve(s.GRPCInProcess.ln); err != nil {
-		s.logger.Error("failed to serve in process connect-rpc", slog.String("error", err.Error()))
-		panic(err)
-	}
+	// if err := s.GRPCInProcess.srv.Serve(s.GRPCInProcess.ln); err != nil {
+	// 	s.logger.Error("failed to serve in process connect-rpc", slog.String("error", err.Error()))
+	// 	panic(err)
+	// }
 }
 
 func (s OpenTDFServer) openHTTPServerPort() (net.Listener, error) {

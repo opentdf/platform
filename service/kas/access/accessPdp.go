@@ -3,8 +3,10 @@ package access
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
 )
@@ -50,10 +52,17 @@ func (p *Provider) checkAttributes(ctx context.Context, dataAttrs []Attribute, e
 			},
 		},
 	}
+
 	newCTX, cancel := context.WithTimeout(ctx, time.Second*60)
+	context.AfterFunc(newCTX, func() {
+		fmt.Println("Timeout")
+	})
 	defer cancel()
 	dr, err := p.SDK.Authorization.GetDecisionsByToken(newCTX, &in)
 	if err != nil {
+		fmt.Println(connect.CodeOf(err))
+		errCtx := context.Cause(newCTX)
+		p.Logger.ErrorContext(ctx, "Error received from GetDecisionsByToken", "err", errCtx)
 		p.Logger.ErrorContext(ctx, "Error received from GetDecisionsByToken", "err", err)
 		return false, errors.Join(ErrDecisionUnexpected, err)
 	}

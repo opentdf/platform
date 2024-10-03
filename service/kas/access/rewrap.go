@@ -364,8 +364,6 @@ func (p *Provider) RewrapHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(rspBytes) //nolint:errcheck // ignore error
-
-	return
 }
 
 func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {

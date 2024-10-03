@@ -25,7 +25,7 @@ type (
 	TestService        struct{}
 )
 
-func (t TestService) TestHandler(w http.ResponseWriter, req *http.Request) {
+func (t TestService) TestHandler(w http.ResponseWriter, _ *http.Request) {
 	_, err := w.Write([]byte("hello from test service!"))
 	if err != nil {
 		panic(err)

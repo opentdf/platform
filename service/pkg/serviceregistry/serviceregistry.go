@@ -263,7 +263,9 @@ func (reg Registry) Shutdown() {
 		for _, svc := range ns.Services {
 			if svc.IsStarted() {
 				slog.Info("stopping service", slog.String("namespace", name), slog.String("service", svc.GetServiceDesc().ServiceName))
-				svc.Shutdown()
+				if err := svc.Shutdown(); err != nil {
+					slog.Error("error stopping service", slog.String("namespace", name), slog.String("service", svc.GetServiceDesc().ServiceName), slog.String("error", err.Error()))
+				}
 			}
 		}
 	}

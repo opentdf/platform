@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -138,15 +139,15 @@ func (p Provider) PublicKeyHandler(w http.ResponseWriter, r *http.Request) {
 	if algorithm == "" {
 		algorithm = security.AlgorithmRSA2048
 	}
-	fmt := r.URL.Query().Get("fmt")
+	keyFormat := r.URL.Query().Get("fmt")
 
 	kid, err := p.lookupKid(r.Context(), algorithm)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("key not found with algorithm: %s", algorithm), http.StatusNotFound)
 		return
 	}
 
-	pem, err := publicKey(r.Context(), p, algorithm, fmt)
+	pem, err := publicKey(r.Context(), p, algorithm, keyFormat)
 	if err != nil {
 		if errors.Is(err, security.ErrCertNotFound) {
 			http.Error(w, err.Error(), http.StatusNotFound)

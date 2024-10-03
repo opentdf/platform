@@ -59,7 +59,12 @@ func mockTestServiceRegistry(opts mockTestServiceOptions) (serviceregistry.IServ
 				HandlerType: serviceHandlerType,
 			},
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (TestService, serviceregistry.HandlerServer) {
-				return opts.serviceObject.(TestService), func(ctx context.Context, mux *http.ServeMux, server any) {
+				var ts TestService
+				var ok bool
+				if ts, ok = opts.serviceObject.(TestService); !ok {
+					panic("serviceObject is not a TestService")
+				}
+				return ts, func(ctx context.Context, mux *http.ServeMux, server any) {
 					spy.wasCalled = true
 					spy.callParams = append(spy.callParams, srp, ctx, mux, server)
 					serviceHandler(ctx, mux, server)

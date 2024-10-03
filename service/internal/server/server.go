@@ -282,11 +282,8 @@ func newHTTPServer(c Config, connectRPC http.Handler, httpHandler http.Handler, 
 		writeTimeoutOverride = 30 * time.Second //nolint:mnd // easier to read that we are overriding the default
 	}
 
-	// Add grpc handler
-	h2 := httpGrpcHandlerFunc(h, l)
-
 	if !c.TLS.Enabled {
-		h2 = h2c.NewHandler(h2, &http2.Server{})
+		h = h2c.NewHandler(h, &http2.Server{})
 	} else {
 		tc, err = loadTLSConfig(c.TLS)
 		if err != nil {
@@ -298,7 +295,7 @@ func newHTTPServer(c Config, connectRPC http.Handler, httpHandler http.Handler, 
 		Addr:         fmt.Sprintf("%s:%d", c.Host, c.Port),
 		WriteTimeout: writeTimeoutOverride,
 		ReadTimeout:  readTimeout,
-		Handler:      h2,
+		Handler:      h,
 		TLSConfig:    tc,
 	}, nil
 }
@@ -319,18 +316,6 @@ func pprofHandler(h http.Handler) http.Handler {
 			default:
 				pprof.Index(w, r)
 			}
-		} else {
-			h.ServeHTTP(w, r)
-		}
-	})
-}
-
-// httpGrpcHandlerFunc returns a http.Handler that delegates to the grpc server if the request is a grpc request
-func httpGrpcHandlerFunc(h http.Handler, l *logger.Logger) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		l.TraceContext(r.Context(), "grpc handler func", slog.Int("proto_major", r.ProtoMajor), slog.String("content_type", r.Header.Get("Content-Type")))
-		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
-			h.ServeHTTP(w, r)
 		} else {
 			h.ServeHTTP(w, r)
 		}

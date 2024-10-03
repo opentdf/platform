@@ -366,7 +366,7 @@ func (s *AttributesSuite) Test_GetAttribute_ContainsKASGrants() {
 	s.Equal(createdKAS.GetId(), gotAttr.GetGrants()[0].GetId())
 }
 
-func (s *AttributesSuite) Test_ListAttribute() {
+func (s *AttributesSuite) Test_ListAttributes() {
 	fixtures := s.getAttributeFixtures()
 
 	list, err := s.db.PolicyClient.ListAttributes(s.ctx, policydb.StateActive, "")
@@ -386,7 +386,7 @@ func (s *AttributesSuite) Test_ListAttribute() {
 	}
 }
 
-func (s *AttributesSuite) Test_ListAttribute_FqnsIncluded() {
+func (s *AttributesSuite) Test_ListAttributes_FqnsIncluded() {
 	// create an attribute
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "list_attribute_fqns_new_attr",
@@ -419,7 +419,7 @@ func (s *AttributesSuite) Test_ListAttribute_FqnsIncluded() {
 	}
 }
 
-func (s *AttributesSuite) Test_ListAttributesByNamespace() {
+func (s *AttributesSuite) Test_ListAttributes_ByNamespaceIdOrName() {
 	// get all unique namespace_ids
 	namespaces := map[string]string{}
 	for _, f := range s.getAttributeFixtures() {
@@ -440,6 +440,18 @@ func (s *AttributesSuite) Test_ListAttributesByNamespace() {
 	// list attributes by namespace name
 	for _, nsName := range namespaces {
 		list, err := s.db.PolicyClient.ListAttributes(s.ctx, policydb.StateAny, nsName)
+		s.Require().NoError(err)
+		s.NotNil(list)
+		s.NotEmpty(list)
+		for _, l := range list {
+			s.Equal(nsName, l.GetNamespace().GetName())
+		}
+	}
+
+	// list attributes by namespace name with case insensitivity
+	for _, nsName := range namespaces {
+		upperNsName := strings.ToUpper(nsName)
+		list, err := s.db.PolicyClient.ListAttributes(s.ctx, policydb.StateAny, upperNsName)
 		s.Require().NoError(err)
 		s.NotNil(list)
 		s.NotEmpty(list)

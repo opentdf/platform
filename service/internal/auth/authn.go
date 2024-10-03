@@ -55,7 +55,6 @@ var (
 		// HealthZ
 		"/healthz",
 		"/grpc.health.v1.Health/Check",
-		"/policy.attributes.AttributesService/UpdateAttributeValue",
 	}
 	// only asymmetric algorithms and no 'none'
 	allowedSignatureAlgorithms = map[jwa.SignatureAlgorithm]bool{ //nolint:exhaustive // only asymmetric algorithms

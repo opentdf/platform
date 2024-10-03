@@ -56,7 +56,7 @@ func (c *PolicyDBClient) upsertAttrFqn(ctx context.Context, opts attrFqnUpsertOp
 }
 
 // AttrFqnReindex will reindex all namespace, attribute, and attribute_value FQNs
-func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns // Used to initialize an anonymous struct
+func (c *PolicyDBClient) AttrFqnReindex(ctx context.Context) (res struct { //nolint:nonamedreturns // Used to initialize an anonymous struct
 	Namespaces []struct {
 		ID  string
 		Fqn string
@@ -72,19 +72,19 @@ func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns 
 },
 ) {
 	// Get all namespaces
-	ns, err := c.ListNamespaces(context.Background(), StateAny)
+	ns, err := c.ListNamespaces(ctx, StateAny)
 	if err != nil {
 		panic(fmt.Errorf("could not get namespaces: %w", err))
 	}
 
 	// Get all attributes
-	attrs, err := c.ListAllAttributesWithout(context.Background(), StateAny)
+	attrs, err := c.ListAllAttributesWithout(ctx, StateAny)
 	if err != nil {
 		panic(fmt.Errorf("could not get attributes: %w", err))
 	}
 
 	// Get all attribute values
-	values, err := c.ListAllAttributeValues(context.Background(), StateAny)
+	values, err := c.ListAllAttributeValues(ctx)
 	if err != nil {
 		panic(fmt.Errorf("could not get attribute values: %w", err))
 	}
@@ -94,7 +94,7 @@ func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns 
 		res.Namespaces = append(res.Namespaces, struct {
 			ID  string
 			Fqn string
-		}{ID: n.GetId(), Fqn: c.upsertAttrFqn(context.Background(), attrFqnUpsertOptions{namespaceID: n.GetId()})})
+		}{ID: n.GetId(), Fqn: c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: n.GetId()})})
 	}
 
 	// Reindex all attributes
@@ -102,7 +102,7 @@ func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns 
 		res.Attributes = append(res.Attributes, struct {
 			ID  string
 			Fqn string
-		}{ID: a.GetId(), Fqn: c.upsertAttrFqn(context.Background(), attrFqnUpsertOptions{attributeID: a.GetId()})})
+		}{ID: a.GetId(), Fqn: c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeID: a.GetId()})})
 	}
 
 	// Reindex all attribute values
@@ -110,7 +110,7 @@ func (c *PolicyDBClient) AttrFqnReindex() (res struct { //nolint:nonamedreturns 
 		res.Values = append(res.Values, struct {
 			ID  string
 			Fqn string
-		}{ID: av.GetId(), Fqn: c.upsertAttrFqn(context.Background(), attrFqnUpsertOptions{valueID: av.GetId()})})
+		}{ID: av.GetId(), Fqn: c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: av.GetId()})})
 	}
 
 	return res

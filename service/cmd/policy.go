@@ -44,7 +44,7 @@ var (
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
 
-			res := dbClient.AttrFqnReindex()
+			res := dbClient.AttrFqnReindex(context.Background())
 			cmd.Print("Namespace FQNs reindexed:\n")
 			for _, r := range res.Namespaces {
 				cmd.Printf("\t%s: %s\n", r.ID, r.Fqn)

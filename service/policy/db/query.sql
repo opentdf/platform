@@ -281,6 +281,74 @@ GROUP BY
     ad.id, an.id, nfq.fqn, n_grants.grants;
 
 ---------------------------------------------------------------- 
+-- ATTRIBUTE VALUES
+----------------------------------------------------------------
+
+-- name: ListAttributeValues :many
+
+SELECT
+    av.id,
+    av.value,
+    av.active,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
+    av.attribute_definition_id,
+    fqns.fqn
+FROM attribute_values av
+LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+WHERE (
+    (sqlc.narg('active')::BOOLEAN IS NULL OR av.active = sqlc.narg('active')) AND
+    (NULLIF(@attribute_definition_id, '') IS NULL OR av.attribute_definition_id = @attribute_definition_id::UUID)
+)
+GROUP BY av.id, fqns.fqn;
+
+-- name: GetAttributeValue :one
+SELECT
+    av.id,
+    av.value,
+    av.active,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
+    av.attribute_definition_id,
+    fqns.fqn,
+    JSONB_AGG(
+        DISTINCT JSONB_BUILD_OBJECT(
+            'id', kas.id,
+            'uri', kas.uri,
+            'public_key', kas.public_key
+        )
+    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants
+FROM attribute_values av
+LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
+LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
+WHERE av.id = $1
+GROUP BY av.id, fqns.fqn;
+
+-- name: CreateAttributeValue :one
+INSERT INTO attribute_values (attribute_definition_id, value, metadata)
+VALUES (@attribute_definition_id, @value, @metadata)
+RETURNING id;
+
+-- UpdateAttributeValue: Safe and Unsafe Updates both
+-- name: UpdateAttributeValue :execrows
+UPDATE attribute_values
+SET
+    value = COALESCE(sqlc.narg('value'), value),
+    active = COALESCE(sqlc.narg('active'), active),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata)
+WHERE id = $1;
+
+-- name: DeleteAttributeValue :execrows
+DELETE FROM attribute_values WHERE id = $1;
+
+-- name: AssignKeyAccessServerToAttributeValue :execrows
+INSERT INTO attribute_value_key_access_grants (attribute_value_id, key_access_server_id)
+VALUES ($1, $2);
+
+-- name: RemoveKeyAccessServerFromAttributeValue :execrows
+DELETE FROM attribute_value_key_access_grants
+WHERE attribute_value_id = $1 AND key_access_server_id = $2;
+
+---------------------------------------------------------------- 
 -- RESOURCE MAPPING GROUPS
 ----------------------------------------------------------------
 

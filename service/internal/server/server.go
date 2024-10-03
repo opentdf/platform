@@ -14,6 +14,7 @@ import (
 
 	"connectrpc.com/connect"
 	"connectrpc.com/grpcreflect"
+	"connectrpc.com/validate"
 	"github.com/go-chi/cors"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
@@ -157,11 +158,13 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 		logger.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
-	// Create grpc server and in process grpc server
-	// grpcServer, err := newGrpcServer(config, authN, logger)
+	// Add protovalidate interceptor
+	vaidationInterceptor, err := validate.NewInterceptor()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create grpc server: %w", err)
+		return nil, fmt.Errorf("failed to create validation interceptor: %w", err)
 	}
+
+	interceptors = append(interceptors, connect.WithInterceptors(vaidationInterceptor))
 
 	inProcessMux := http.NewServeMux()
 
@@ -171,11 +174,6 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 		maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
 		maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
 	}
-
-	// Create http server
-	// mux := runtime.NewServeMux(
-	// 	runtime.WithHealthzEndpoint(healthpb.NewHealthClient(grpcIPCServer.Conn())),
-	// )
 
 	connectMux := http.NewServeMux()
 	httpMux := http.NewServeMux()

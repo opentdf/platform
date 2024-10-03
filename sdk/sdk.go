@@ -159,6 +159,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	// If coreConn is provided, use it as the platform connection
 	if cfg.coreConn != nil {
+		fmt.Println("coreConn is provided")
 		platformConn = cfg.coreConn
 	} else {
 		platformConn, err = grpc.NewClient(platformEndpoint, dialOptions...)

@@ -16,7 +16,6 @@ import (
 	"connectrpc.com/grpcreflect"
 	"connectrpc.com/validate"
 	"github.com/go-chi/cors"
-	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
@@ -320,7 +319,7 @@ func pprofHandler(h http.Handler) http.Handler {
 	})
 }
 
-func newConnectRPCInProcessServer(mux *http.ServeMux) *http.Server {
+func newConnectRPCInProcessServer(mux http.Handler) *http.Server {
 	// mux := http.NewServeMux()
 
 	// var interceptors []grpc.UnaryServerInterceptor
@@ -386,16 +385,18 @@ func (s inProcessServer) GetGrpcServer() *http.Server {
 }
 
 func (s inProcessServer) Conn() *grpc.ClientConn {
-	var clientInterceptors []grpc.UnaryClientInterceptor
+	// var clientInterceptors []grpc.UnaryClientInterceptor
 
 	// Add audit interceptor
-	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingClientInterceptor)
+	// clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingClientInterceptor)
 
 	defaultOptions := []grpc.DialOption{
-		grpc.WithDefaultCallOptions(
-			grpc.MaxCallRecvMsgSize(s.maxCallRecvMsgSize),
-			grpc.MaxCallSendMsgSize(s.maxCallSendMsgSize),
-		),
+		// grpc.WithDefaultCallOptions(
+		// 	grpc.MaxCallRecvMsgSize(s.maxCallRecvMsgSize),
+		// 	grpc.MaxCallSendMsgSize(s.maxCallSendMsgSize),
+		// ),
+		// grpc.WithMaxCallAttempts(5),
+		// grpc.WithIdleTimeout(30 * time.Second),
 		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
 			conn, err := s.ln.Dial()
 			if err != nil {
@@ -404,10 +405,13 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 			return conn, nil
 		}),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithChainUnaryInterceptor(clientInterceptors...),
+		// grpc.WithChainUnaryInterceptor(clientInterceptors...),
 	}
 
-	conn, _ := grpc.NewClient("passthrough:///", defaultOptions...)
+	conn, err := grpc.NewClient("passthrough:///", defaultOptions...)
+	if err != nil {
+		panic(err)
+	}
 	return conn
 }
 

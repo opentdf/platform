@@ -3,6 +3,7 @@ package access
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -49,8 +50,9 @@ func (p *Provider) checkAttributes(ctx context.Context, dataAttrs []Attribute, e
 			},
 		},
 	}
-
-	dr, err := p.SDK.Authorization.GetDecisionsByToken(ctx, &in)
+	newCTX, cancel := context.WithTimeout(ctx, time.Second*60)
+	defer cancel()
+	dr, err := p.SDK.Authorization.GetDecisionsByToken(newCTX, &in)
 	if err != nil {
 		p.Logger.ErrorContext(ctx, "Error received from GetDecisionsByToken", "err", err)
 		return false, errors.Join(ErrDecisionUnexpected, err)

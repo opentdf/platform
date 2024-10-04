@@ -279,7 +279,6 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	if err != nil {
 		return nil, err
 	}
-
 	ruleString := attributesRuleTypeEnumTransformIn(r.GetRule().String())
 
 	createdID, err := c.Queries.CreateAttribute(ctx, CreateAttributeParams{
@@ -332,6 +331,7 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 		},
 		Active: &wrapperspb.BoolValue{Value: true},
 		Values: values,
+		Fqn:    fqn,
 	}
 	return a, nil
 }
@@ -389,24 +389,27 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 		return nil, db.ErrNotFound
 	}
 
-	// Upsert all the FQNs with the definition name mutation
-	if name != "" {
-		namespaceID := before.GetNamespace().GetId()
-		fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id})
-		c.logger.Debug("upserted attribute fqn with new definition name", slog.Any("fqn", fqn))
-		if len(before.GetValues()) > 0 {
-			for _, v := range before.GetValues() {
-				fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id, valueID: v.GetId()})
-				c.logger.Debug("upserted attribute value fqn with new definition name", slog.Any("fqn", fqn))
-			}
-		}
-	}
-
-	return &policy.Attribute{
+	attribute := &policy.Attribute{
 		Id:   id,
 		Name: name,
 		Rule: rule,
-	}, nil
+	}
+
+	// Upsert all the FQNs with the definition name mutation
+	if name != "" {
+		namespaceID := before.GetNamespace().GetId()
+		attrFqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id})
+		c.logger.Debug("upserted attribute fqn with new definition name", slog.Any("fqn", attrFqn))
+		if len(before.GetValues()) > 0 {
+			for _, v := range before.GetValues() {
+				fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id, valueID: v.GetId()})
+				c.logger.Debug("upserted attribute value fqn with new definition name", slog.Any("fqn", fqn))
+			}
+		}
+		attribute.Fqn = attrFqn
+	}
+
+	return attribute, nil
 }
 
 func (c PolicyDBClient) UpdateAttribute(ctx context.Context, id string, r *attributes.UpdateAttributeRequest) (*policy.Attribute, error) {

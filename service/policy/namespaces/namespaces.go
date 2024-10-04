@@ -45,7 +45,7 @@ func NewRegistration() serviceregistry.Registration {
 // IsReady checks if the service is ready to serve requests.
 // Without a database connection, the service is not ready.
 func (ns NamespacesService) IsReady(ctx context.Context) error {
-	ns.logger.DebugContext(ctx, "checking readiness of namespaces service")
+	ns.logger.TraceContext(ctx, "checking readiness of namespaces service")
 	if err := ns.dbClient.SQLDB.PingContext(ctx); err != nil {
 		return err
 	}

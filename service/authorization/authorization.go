@@ -146,7 +146,7 @@ func NewRegistration() serviceregistry.Registration {
 
 // TODO: Not sure what we want to check here?
 func (as AuthorizationService) IsReady(ctx context.Context) error {
-	as.logger.DebugContext(ctx, "checking readiness of authorization service")
+	as.logger.TraceContext(ctx, "checking readiness of authorization service")
 	return nil
 }
 

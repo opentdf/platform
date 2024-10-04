@@ -197,7 +197,6 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.At
 	return policyAttr, nil
 }
 
-// todo: test whether this method can use the hydrateAttribute helper?
 func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*policy.Attribute, error) {
 	fullAttr, err := c.Queries.GetAttributeByDefOrValueFqn(ctx, strings.ToLower(fqn))
 	if err != nil {

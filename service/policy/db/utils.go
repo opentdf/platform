@@ -24,8 +24,6 @@ func constructMetadata(table string, isJSON bool) string {
 	return metadata
 }
 
-var createSuffix = "RETURNING id, " + constructMetadata("", false)
-
 func unmarshalMetadata(metadataJSON []byte, m *common.Metadata) error {
 	if metadataJSON != nil {
 		if err := protojson.Unmarshal(metadataJSON, m); err != nil {
@@ -39,6 +37,15 @@ func unmarshalAttributeValue(attributeValueJSON []byte, av *policy.Value) error 
 	if attributeValueJSON != nil {
 		if err := protojson.Unmarshal(attributeValueJSON, av); err != nil {
 			return fmt.Errorf("failed to unmarshal attributeValueJSON [%s]: %w", string(attributeValueJSON), err)
+		}
+	}
+	return nil
+}
+
+func unmarshalSubjectConditionSet(subjectConditionSetJSON []byte, scs *policy.SubjectConditionSet) error {
+	if subjectConditionSetJSON != nil {
+		if err := protojson.Unmarshal(subjectConditionSetJSON, scs); err != nil {
+			return fmt.Errorf("failed to unmarshal scsJSON [%s]: %w", string(subjectConditionSetJSON), err)
 		}
 	}
 	return nil

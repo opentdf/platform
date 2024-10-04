@@ -1302,15 +1302,15 @@ SELECT
         'created_at', kas.created_at, 
         'updated_at', kas.updated_at
     )) AS kas_metadata,
-    JSON_AGG(DISTINCT JSON_BUILD_OBJECT(
+    JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
         'id', attrkag.attribute_definition_id, 
         'fqn', fqns_on_attr.fqn
     )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL) AS attributes_grants,
-    JSON_AGG(DISTINCT JSON_BUILD_OBJECT(
+    JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
         'id', valkag.attribute_value_id, 
         'fqn', fqns_on_vals.fqn
     )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL) AS values_grants,
-    JSON_AGG(DISTINCT JSON_BUILD_OBJECT(
+    JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
         'id', nskag.namespace_id, 
         'fqn', fqns_on_ns.fqn
     )) FILTER (WHERE nskag.namespace_id IS NOT NULL) AS namespace_grants
@@ -1370,15 +1370,15 @@ type ListKeyAccessServerGrantsRow struct {
 //	        'created_at', kas.created_at,
 //	        'updated_at', kas.updated_at
 //	    )) AS kas_metadata,
-//	    JSON_AGG(DISTINCT JSON_BUILD_OBJECT(
+//	    JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
 //	        'id', attrkag.attribute_definition_id,
 //	        'fqn', fqns_on_attr.fqn
 //	    )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL) AS attributes_grants,
-//	    JSON_AGG(DISTINCT JSON_BUILD_OBJECT(
+//	    JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
 //	        'id', valkag.attribute_value_id,
 //	        'fqn', fqns_on_vals.fqn
 //	    )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL) AS values_grants,
-//	    JSON_AGG(DISTINCT JSON_BUILD_OBJECT(
+//	    JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
 //	        'id', nskag.namespace_id,
 //	        'fqn', fqns_on_ns.fqn
 //	    )) FILTER (WHERE nskag.namespace_id IS NOT NULL) AS namespace_grants

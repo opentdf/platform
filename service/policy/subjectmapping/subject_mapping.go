@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/platform/protocol/go/policy"
 	sm "github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
@@ -57,6 +58,7 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 	}
 
 	auditParams.ObjectID = sm.GetId()
+	auditParams.Original = sm
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.SubjectMapping = sm
@@ -107,31 +109,25 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 		ObjectID:   subjectMappingID,
 	}
 
-	originalSM, err := s.dbClient.GetSubjectMapping(ctx, subjectMappingID)
+	original, err := s.dbClient.GetSubjectMapping(ctx, subjectMappingID)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", subjectMappingID))
 	}
 
-	item, err := s.dbClient.UpdateSubjectMapping(ctx, req)
+	updated, err := s.dbClient.UpdateSubjectMapping(ctx, req)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("subjectMapping fields", req.String()))
 	}
 
-	// UpdateSubjectMapping returns only the ID of the subject mapping so we need
-	// to fetch the updated subject mapping to compute the diff for audit
-	updatedSM, err := s.dbClient.GetSubjectMapping(ctx, subjectMappingID)
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", subjectMappingID))
-	}
-
-	auditParams.Original = originalSM
-	auditParams.Updated = updatedSM
+	auditParams.Original = original
+	auditParams.Updated = updated
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-	rsp.SubjectMapping = item
+	rsp.SubjectMapping = &policy.SubjectMapping{
+		Id: subjectMappingID,
+	}
 	return rsp, nil
 }
 
@@ -148,7 +144,7 @@ func (s SubjectMappingService) DeleteSubjectMapping(ctx context.Context,
 		ObjectID:   subjectMappingID,
 	}
 
-	sm, err := s.dbClient.DeleteSubjectMapping(ctx, subjectMappingID)
+	_, err := s.dbClient.DeleteSubjectMapping(ctx, subjectMappingID)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", subjectMappingID))
@@ -156,7 +152,9 @@ func (s SubjectMappingService) DeleteSubjectMapping(ctx context.Context,
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-	rsp.SubjectMapping = sm
+	rsp.SubjectMapping = &policy.SubjectMapping{
+		Id: subjectMappingID,
+	}
 	return rsp, nil
 }
 
@@ -227,6 +225,7 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 	}
 
 	auditParams.ObjectID = conditionSet.GetId()
+	auditParams.Original = conditionSet
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.SubjectConditionSet = conditionSet
@@ -246,30 +245,25 @@ func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
 		ObjectID:   subjectConditionSetID,
 	}
 
-	originalConditionSet, err := s.dbClient.GetSubjectConditionSet(ctx, subjectConditionSetID)
+	original, err := s.dbClient.GetSubjectConditionSet(ctx, subjectConditionSetID)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", subjectConditionSetID))
 	}
 
-	item, err := s.dbClient.UpdateSubjectConditionSet(ctx, req)
+	updated, err := s.dbClient.UpdateSubjectConditionSet(ctx, req)
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("subjectConditionSet fields", req.String()))
 	}
 
-	// UpdateSubjectConditionSet returns only the ID of the subject condition set so we need
-	// to fetch the updated subject condition set to compute the diff for audit
-	updatedConditionSet, err := s.dbClient.GetSubjectConditionSet(ctx, subjectConditionSetID)
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", subjectConditionSetID))
-	}
-
-	auditParams.Original = originalConditionSet
-	auditParams.Updated = updatedConditionSet
+	auditParams.Original = original
+	auditParams.Updated = updated
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-	rsp.SubjectConditionSet = item
+	rsp.SubjectConditionSet = &policy.SubjectConditionSet{
+		Id: subjectConditionSetID,
+	}
 	return rsp, nil
 }
 
@@ -286,7 +280,7 @@ func (s SubjectMappingService) DeleteSubjectConditionSet(ctx context.Context,
 		ObjectID:   conditionSetID,
 	}
 
-	conditionSet, err := s.dbClient.DeleteSubjectConditionSet(ctx, conditionSetID)
+	_, err := s.dbClient.DeleteSubjectConditionSet(ctx, conditionSetID)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", conditionSetID))
@@ -294,6 +288,8 @@ func (s SubjectMappingService) DeleteSubjectConditionSet(ctx context.Context,
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-	rsp.SubjectConditionSet = conditionSet
+	rsp.SubjectConditionSet = &policy.SubjectConditionSet{
+		Id: conditionSetID,
+	}
 	return rsp, nil
 }

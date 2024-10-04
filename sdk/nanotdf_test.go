@@ -3,13 +3,13 @@ package sdk
 import (
 	"bytes"
 	"encoding/gob"
-	"errors"
 	"io"
 	"os"
 	"testing"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -241,39 +241,34 @@ func NotTestCreateNanoTDF(t *testing.T) {
 	}
 }
 
-func TestGetECPublicKeyKid(t *testing.T) {
-	_, _, err := getECPublicKeyKid("http://localhost")
-	assert.ErrorContains(t, err, "error connecting")
-}
-
 func TestCreateNanoTDF(t *testing.T) {
 	tests := []struct {
 		name          string
 		writer        io.Writer
 		reader        io.Reader
 		config        NanoTDFConfig
-		expectedError error
+		expectedError string
 	}{
 		{
 			name:          "Nil writer",
 			writer:        nil,
 			reader:        bytes.NewReader([]byte("test data")),
 			config:        NanoTDFConfig{},
-			expectedError: errors.New("writer is nil"),
+			expectedError: "writer is nil",
 		},
 		{
 			name:          "Nil reader",
 			writer:        new(bytes.Buffer),
 			reader:        nil,
 			config:        NanoTDFConfig{},
-			expectedError: errors.New("reader is nil"),
+			expectedError: "reader is nil",
 		},
 		{
 			name:          "Empty NanoTDFConfig",
 			writer:        new(bytes.Buffer),
 			reader:        bytes.NewReader([]byte("test data")),
 			config:        NanoTDFConfig{},
-			expectedError: errors.New("config.kasUrl is empty"),
+			expectedError: "config.kasUrl is empty",
 		},
 		{
 			name:   "KAS Identifier NanoTDFConfig",
@@ -286,23 +281,20 @@ func TestCreateNanoTDF(t *testing.T) {
 					identifier: "e0",
 				},
 			},
-			expectedError: errors.New("getECPublicKey failed:error connecting to grpc service at https://kas.com: grpc: no transport security set (use grpc.WithTransportCredentials(insecure.NewCredentials()) explicitly or set credentials)"),
+			expectedError: "error making request",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var s SDK
-			_, err := s.CreateNanoTDF(tt.writer, tt.reader, tt.config)
-			if err != nil {
-				if tt.expectedError == nil {
-					t.Errorf("unexpected error: %v", err)
-				} else if err.Error() != tt.expectedError.Error() {
-					t.Errorf("expected error: %v, got: %v", tt.expectedError, err)
-				}
-			} else if tt.expectedError != nil {
-				t.Errorf("expected error: %v, got nil", tt.expectedError)
+			s, err := New("localhost:8080", WithPlatformConfiguration(PlatformConfiguration{}))
+			require.NoError(t, err)
+			_, err = s.CreateNanoTDF(tt.writer, tt.reader, tt.config)
+			if tt.expectedError != "" {
+				assert.ErrorContains(t, err, tt.expectedError)
+				return
 			}
+			require.NoError(t, err)
 		})
 	}
 }

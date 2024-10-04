@@ -177,7 +177,8 @@ jobs:
     with:
       # use commit instead of ref so we can "go get" specific sdk version
       platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      otdfctl-ref: 'feature/deprecate-public-key-local'
+      otdfctl-ref: feature/deprecate-public-key-local
+      tests-ref: feature/deprecate-public-key-local
 
   # test latest otdfctl CLI 'main' against platform PR branch
   otdfctl-test:

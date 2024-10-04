@@ -460,6 +460,7 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context) ([]*policy.Subj
 // Mutates provided fields and returns id of the updated subject mapping
 func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapping.UpdateSubjectMappingRequest) (*policy.SubjectMapping, error) {
 	id := r.GetId()
+	subjectConditionSetID := r.GetSubjectConditionSetId()
 	actions := r.GetActions()
 	// if extend we need to merge the metadata
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
@@ -485,7 +486,7 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 		ID:                    id,
 		Actions:               actionsJSON,
 		Metadata:              metadataJSON,
-		SubjectConditionSetID: pgtypeUUID(r.GetSubjectConditionSetId()),
+		SubjectConditionSetID: pgtypeUUID(subjectConditionSetID),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -498,7 +499,9 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 		Id:       id,
 		Actions:  actions,
 		Metadata: metadata,
-		// todo: add SCS object
+		SubjectConditionSet: &policy.SubjectConditionSet{
+			Id: subjectConditionSetID,
+		},
 	}, nil
 }
 

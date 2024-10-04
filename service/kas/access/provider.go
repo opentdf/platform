@@ -47,6 +47,6 @@ type CurrentKeyFor struct {
 
 func (p *Provider) IsReady(ctx context.Context) error {
 	// TODO: Not sure what we want to check here?
-	p.Logger.DebugContext(ctx, "checking readiness of kas service")
+	p.Logger.TraceContext(ctx, "checking readiness of kas service")
 	return nil
 }

@@ -55,6 +55,7 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 	s.logger.Debug("created new attribute definition", slog.String("name", req.GetName()))
 
 	auditParams.ObjectID = item.GetId()
+	auditParams.Original = item
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.Attribute = item
@@ -69,7 +70,7 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 	s.logger.Debug("listing attribute definitions", slog.String("state", state))
 	rsp := &attributes.ListAttributesResponse{}
 
-	list, err := s.dbClient.ListAllAttributes(ctx, state, namespace)
+	list, err := s.dbClient.ListAttributes(ctx, state, namespace)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
@@ -124,25 +125,20 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", attributeID))
 	}
 
-	item, err := s.dbClient.UpdateAttribute(ctx, req.GetId(), req)
+	updated, err := s.dbClient.UpdateAttribute(ctx, attributeID, req)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("attribute", req.String()))
-	}
-
-	// Item above only contains the attribute ID so we need to get the full
-	// attribute definition to compute the diff.
-	updated, err := s.dbClient.GetAttribute(ctx, attributeID)
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", attributeID))
 	}
 
 	auditParams.Original = original
 	auditParams.Updated = updated
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-	rsp.Attribute = item
+	rsp.Attribute = &policy.Attribute{
+		Id: attributeID,
+	}
+
 	return rsp, nil
 }
 
@@ -158,25 +154,25 @@ func (s *AttributesService) DeactivateAttribute(ctx context.Context,
 		ObjectID:   attributeID,
 	}
 
-	originalAttribute, err := s.dbClient.GetAttribute(ctx, attributeID)
+	original, err := s.dbClient.GetAttribute(ctx, attributeID)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", attributeID))
 	}
 
-	// DeactivateAttribute actually returns the entire attribute so we can use it
-	// to compute the diff.
-	deactivatedAttribute, err := s.dbClient.DeactivateAttribute(ctx, attributeID)
+	updated, err := s.dbClient.DeactivateAttribute(ctx, attributeID)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextDeactivationFailed, slog.String("id", attributeID))
 	}
 
-	auditParams.Original = originalAttribute
-	auditParams.Updated = deactivatedAttribute
+	auditParams.Original = original
+	auditParams.Updated = updated
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-	rsp.Attribute = deactivatedAttribute
+	rsp.Attribute = &policy.Attribute{
+		Id: attributeID,
+	}
 	return rsp, nil
 }
 

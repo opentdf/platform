@@ -133,12 +133,11 @@ linters:
     - canonicalheader
     - containedctx # Containedctx is a linter that detects struct contained context.Context field.
     - contextcheck # checks the function whether use a non-inherited context
-    # - copyloopvar # checks for copying a loop variable to a function literal (requires go 1.22)
+    #- copyloopvar # checks for copying a loop variable to a function literal (requires go 1.22)
     - durationcheck # checks for two durations multiplied together
     - errname # checks that sentinel errors are prefixed with the Err and error types are suffixed with the Error
     - errorlint # finds code that will cause problems with the error wrapping scheme introduced in Go 1.13
     - exhaustive # checks exhaustiveness of enum switch statements
-    - exportloopref # checks for pointers to enclosing loop variables
     # - fatcontext
     - forbidigo # forbids identifiers
     - forcetypeassert # finds forced type assertions

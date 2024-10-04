@@ -23,9 +23,7 @@ import (
 
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/logger"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -277,18 +275,6 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(req.Spec().Procedure)) { //nolint:contextcheck // There is no way to pass a context here
 				return next(ctx, req)
 			}
-			// Get the metadata from the context
-			// The keys within metadata.MD are normalized to lowercase.
-			// See: https://godoc.org/google.golang.org/grpc/metadata#New
-			// println("unary interceptor procedure: ", req.Spec().Procedure)
-			// md, ok := metadata.FromIncomingContext(ctx)
-			// if !ok {
-			// 	println("connect server unauth error 1")
-			// 	return nil, status.Error(codes.Unauthenticated, "missing metadata")
-			// }
-
-			// Verify the token
-			// header := md["authorization"]
 
 			header := req.Header()["Authorization"]
 			if len(header) < 1 {
@@ -329,60 +315,6 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 		})
 	}
 	return connect.UnaryInterceptorFunc(interceptor)
-}
-
-// UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
-func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-	// Allow health checks and other public routes to pass through
-	if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(info.FullMethod)) { //nolint:contextcheck // There is no way to pass a context here
-		return handler(ctx, req)
-	}
-
-	// Get the metadata from the context
-	// The keys within metadata.MD are normalized to lowercase.
-	// See: https://godoc.org/google.golang.org/grpc/metadata#New
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return nil, status.Error(codes.Unauthenticated, "missing metadata")
-	}
-
-	// Verify the token
-	header := md["authorization"]
-	if len(header) < 1 {
-		return nil, status.Error(codes.Unauthenticated, "missing authorization header")
-	}
-
-	// parse the rpc method
-	p := strings.Split(info.FullMethod, "/")
-	resource := p[1] + "/" + p[2]
-	action := getAction(p[2])
-
-	token, newCtx, err := a.checkToken(
-		ctx,
-		header,
-		receiverInfo{
-			u: info.FullMethod,
-			m: http.MethodPost,
-		},
-		md["dpop"],
-	)
-	if err != nil {
-		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
-	}
-
-	// Check if the token is allowed to access the resource
-	if allowed, err := a.enforcer.Enforce(token, resource, action); err != nil {
-		if err.Error() == "permission denied" {
-			a.logger.Warn("permission denied", slog.String("azp", token.Subject()), slog.String("error", err.Error()))
-			return nil, status.Errorf(codes.PermissionDenied, "permission denied")
-		}
-		return nil, err
-	} else if !allowed {
-		a.logger.Warn("permission denied", slog.String("azp", token.Subject()))
-		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
-	}
-
-	return handler(newCtx, req)
 }
 
 // getAction returns the action based on the rpc name

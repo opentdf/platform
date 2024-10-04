@@ -175,12 +175,12 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				logger.Error("did not register http mux handlers", slog.String("namespace", ns), slog.String("error", err.Error()))
 			}
 
-			if err := svc.RegisterConnectRPCServiceHandler(ctx, otdf.ConnectRPC); err != nil {
+			if err := svc.RegisterConnectRPCServiceHandler(ctx, otdf.ConnectMux); err != nil {
 				logger.Error("did not register service to connect-rpc", slog.String("namespace", ns), slog.String("error", err.Error()))
 			}
 
 			// Register inprocess connect rpc
-			if err := svc.RegisterConnectRPCServiceHandler(ctx, otdf.ConnectInProcessRPC); err != nil {
+			if err := svc.RegisterConnectRPCServiceHandler(ctx, otdf.ConnectInProcessMux); err != nil {
 				logger.Error("did not register service to in-process connect-rpc", slog.String("namespace", ns), slog.String("error", err.Error()))
 			}
 

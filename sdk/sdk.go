@@ -159,7 +159,6 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	// If coreConn is provided, use it as the platform connection
 	if cfg.coreConn != nil {
-		fmt.Println("coreConn is provided")
 		platformConn = cfg.coreConn
 	} else {
 		platformConn, err = grpc.NewClient(platformEndpoint, dialOptions...)
@@ -183,7 +182,6 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		Authorization:           authorization.NewAuthorizationServiceClient(platformConn),
 		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(platformConn),
 		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(platformConn),
-		// wellknownConfiguration: wc,
 	}, nil
 }
 
@@ -374,7 +372,6 @@ func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfiguration, err
 	wellKnownConfig := wellknownconfiguration.NewWellKnownServiceClient(conn)
 	response, err := wellKnownConfig.GetWellKnownConfiguration(context.Background(), &req)
 	if err != nil {
-		// println("getPlatformConfiguration HERE", err.Error())
 		return nil, errors.Join(errors.New("unable to retrieve config information, and none was provided"), err)
 	}
 	// Get token endpoint

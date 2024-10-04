@@ -156,7 +156,7 @@ func Start(f ...StartOptions) error {
 	if slices.Contains(cfg.Mode, "all") || slices.Contains(cfg.Mode, "core") {
 		// Use IPC for the SDK client
 		sdkOptions = append(sdkOptions, sdk.WithIPC())
-		sdkOptions = append(sdkOptions, sdk.WithCustomCoreConnection(otdf.GRPCInProcess.Conn()))
+		sdkOptions = append(sdkOptions, sdk.WithCustomCoreConnection(otdf.ConnectInProcessServer.Conn()))
 
 		client, err = sdk.New("", sdkOptions...)
 		if err != nil {
@@ -183,19 +183,6 @@ func Start(f ...StartOptions) error {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)
 	}
-
-	// as, ok := svcRegistry["authorization"].Services[0].Impl.(*authorization.AuthorizationService)
-	// if !ok {
-	// 	return fmt.Errorf("failed to assert service type to authorization.AuthorizationService")
-	// }
-	// ash := &authorization.AuthorizationServiceHandler{Service: as}
-	// path, handler := authorizationconnect.NewAuthorizationServiceHandler(ash)
-	// println("PATH: ", path)
-	// tls := false
-	// if otdf.HTTPServer.TLSConfig != nil {
-	// 	tls = true
-	// }
-	// otdf.HTTPServer.Handler = server.ConnectAuthHandler(handler, otdf.HTTPServer.Handler, tls)
 
 	// Start the server
 	logger.Info("starting opentdf")

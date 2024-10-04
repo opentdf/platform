@@ -165,11 +165,6 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				return err
 			}
 
-			// Register the service with in process gRPC server
-			// if err := svc.RegisterHTTPServer(ctx, otdf.ConnectInProcessRPC.Mux, otdf.ConnectRPC); err != nil {
-			// 	return err
-			// }
-
 			// Register the service with the gRPC gateway
 			if err := svc.RegisterHTTPServer(ctx, otdf.Mux); err != nil {
 				logger.Error("did not register http mux handlers", slog.String("namespace", ns), slog.String("error", err.Error()))

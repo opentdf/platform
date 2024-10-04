@@ -73,7 +73,6 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 func (s *AttributesService) ListAttributes(ctx context.Context,
 	req *connect.Request[attributes.ListAttributesRequest],
 ) (*connect.Response[attributes.ListAttributesResponse], error) {
-	fmt.Println("ListAttributes")
 	r := req.Msg
 	state := policydb.GetDBStateTypeTransformedEnum(r.GetState())
 	namespace := r.GetNamespace()
@@ -156,7 +155,9 @@ func (s *AttributesService) GetAttributeValuesByFqnsHandler(w http.ResponseWrite
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(fqnsToAttributesBytes)
+	if _, err = w.Write(fqnsToAttributesBytes); err != nil {
+		s.logger.Error("failed to write attribute values by fqns", slog.String("error", err.Error()))
+	}
 }
 
 func (s *AttributesService) UpdateAttribute(ctx context.Context,

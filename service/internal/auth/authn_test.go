@@ -242,9 +242,6 @@ func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missin
 		return next(ctx, req)
 	})(context.Background(), req)
 
-	// _, err := s.auth.ConnectUnaryServerInterceptor().WrapUnary(connect.U)(ctx, "test", &grpc.UnaryServerInfo{
-	// 	FullMethod: "/test",
-	// }, nil)
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, status.Error(codes.Unauthenticated, "missing authorization header"))
 }

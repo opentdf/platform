@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
@@ -30,21 +31,19 @@ func marshalSubjectSetsProto(subjectSet []*policy.SubjectSet) ([]byte, error) {
 }
 
 // Helper to unmarshal SubjectSets from JSON (stored as JSONB in the database column)
-func unmarshalSubjectSetsProto(conditionJSON []byte, logger *logger.Logger) ([]*policy.SubjectSet, error) {
+func unmarshalSubjectSetsProto(conditionJSON []byte) ([]*policy.SubjectSet, error) {
 	var (
 		raw []json.RawMessage
 		ss  []*policy.SubjectSet
 	)
 	if err := json.Unmarshal(conditionJSON, &raw); err != nil {
-		logger.Error("failed to unmarshal subject sets", slog.String("error", err.Error()), slog.String("condition JSON", string(conditionJSON)))
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal subject sets array [%s]: %w", string(conditionJSON), err)
 	}
 
 	for _, r := range raw {
 		s := policy.SubjectSet{}
 		if err := protojson.Unmarshal(r, &s); err != nil {
-			logger.Error("failed to unmarshal subject set", slog.String("error", err.Error()), slog.String("subject set JSON", string(r)))
-			return nil, err
+			return nil, fmt.Errorf("failed to unmarshal subject set [%s]: %w", string(r), err)
 		}
 		ss = append(ss, &s)
 	}
@@ -65,21 +64,19 @@ func marshalActionsProto(actions []*policy.Action) ([]byte, error) {
 	return json.Marshal(raw)
 }
 
-func unmarshalActionsProto(actionsJSON []byte, logger *logger.Logger) ([]*policy.Action, error) {
+func unmarshalActionsProto(actionsJSON []byte) ([]*policy.Action, error) {
 	var (
 		raw     []json.RawMessage
 		actions []*policy.Action
 	)
 	if err := json.Unmarshal(actionsJSON, &raw); err != nil {
-		logger.Error("failed to unmarshal actions", slog.String("error", err.Error()), slog.String("actions JSON", string(actionsJSON)))
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal actions array [%s]: %w", string(actionsJSON), err)
 	}
 
 	for _, r := range raw {
 		a := policy.Action{}
 		if err := protojson.Unmarshal(r, &a); err != nil {
-			logger.Error("failed to unmarshal action", slog.String("error", err.Error()), slog.String("action JSON", string(r)))
-			return nil, err
+			return nil, fmt.Errorf("failed to unmarshal action [%s]: %w", string(r), err)
 		}
 		actions = append(actions, &a)
 	}
@@ -116,7 +113,7 @@ func subjectMappingSelect() sq.SelectBuilder {
 		GroupBy(scsT.Field("id"))
 }
 
-func subjectMappingHydrateItem(row pgx.Row, logger *logger.Logger) (*policy.SubjectMapping, error) {
+func subjectMappingHydrateItem(row pgx.Row) (*policy.SubjectMapping, error) {
 	var (
 		id                 string
 		actionsJSON        []byte
@@ -139,32 +136,28 @@ func subjectMappingHydrateItem(row pgx.Row, logger *logger.Logger) (*policy.Subj
 	m := &common.Metadata{}
 	if metadataJSON != nil {
 		if err := protojson.Unmarshal(metadataJSON, m); err != nil {
-			logger.Error("failed to unmarshal metadata", slog.String("error", err.Error()), slog.String("metadata JSON", string(metadataJSON)))
-			return nil, err
+			return nil, fmt.Errorf("failed to unmarshal metadata [%s]: %w", string(metadataJSON), err)
 		}
 	}
 
 	av := &policy.Value{}
 	if attributeValueJSON != nil {
 		if err := protojson.Unmarshal(attributeValueJSON, av); err != nil {
-			logger.Error("failed to unmarshal attribute value", slog.String("error", err.Error()), slog.String("attribute value JSON", string(attributeValueJSON)))
-			return nil, err
+			return nil, fmt.Errorf("failed to unmarshal attribute value [%s]: %w", string(attributeValueJSON), err)
 		}
 	}
 
 	a := []*policy.Action{}
 	if actionsJSON != nil {
-		if a, err = unmarshalActionsProto(actionsJSON, logger); err != nil {
-			logger.Error("could not unmarshal actions", slog.String("error", err.Error()), slog.String("actions JSON", string(actionsJSON)))
-			return nil, err
+		if a, err = unmarshalActionsProto(actionsJSON); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal actions [%s]: %w", string(actionsJSON), err)
 		}
 	}
 
 	scs := policy.SubjectConditionSet{}
 	if scsJSON != nil {
 		if err := protojson.Unmarshal(scsJSON, &scs); err != nil {
-			logger.Error("could not unmarshal subject condition set", slog.String("error", err.Error()), slog.String("subject condition set JSON", string(scsJSON)))
-			return nil, err
+			return nil, fmt.Errorf("failed to unmarshal subject condition set [%s]: %w", string(scsJSON), err)
 		}
 	}
 
@@ -177,10 +170,10 @@ func subjectMappingHydrateItem(row pgx.Row, logger *logger.Logger) (*policy.Subj
 	}, nil
 }
 
-func subjectMappingHydrateList(rows pgx.Rows, logger *logger.Logger) ([]*policy.SubjectMapping, error) {
+func subjectMappingHydrateList(rows pgx.Rows) ([]*policy.SubjectMapping, error) {
 	list := make([]*policy.SubjectMapping, 0)
 	for rows.Next() {
-		s, err := subjectMappingHydrateItem(rows, logger)
+		s, err := subjectMappingHydrateItem(rows)
 		if err != nil {
 			return nil, err
 		}
@@ -233,7 +226,7 @@ func (c PolicyDBClient) GetSubjectConditionSet(ctx context.Context, id string) (
 		return nil, err
 	}
 
-	sets, err := unmarshalSubjectSetsProto(cs.Condition, c.logger)
+	sets, err := unmarshalSubjectSetsProto(cs.Condition)
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +251,7 @@ func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context) ([]*policy
 			return nil, err
 		}
 
-		sets, err := unmarshalSubjectSetsProto(set.Condition, c.logger)
+		sets, err := unmarshalSubjectSetsProto(set.Condition)
 		if err != nil {
 			return nil, err
 		}
@@ -418,7 +411,7 @@ func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*poli
 
 	a := []*policy.Action{}
 	if sm.Actions != nil {
-		if a, err = unmarshalActionsProto(sm.Actions, c.logger); err != nil {
+		if a, err = unmarshalActionsProto(sm.Actions); err != nil {
 			return nil, err
 		}
 	}
@@ -469,7 +462,7 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context) ([]*policy.Subj
 
 		a := []*policy.Action{}
 		if sm.Actions != nil {
-			if a, err = unmarshalActionsProto(sm.Actions, c.logger); err != nil {
+			if a, err = unmarshalActionsProto(sm.Actions); err != nil {
 				return nil, err
 			}
 		}
@@ -652,5 +645,5 @@ func (c PolicyDBClient) GetMatchedSubjectMappings(ctx context.Context, propertie
 	}
 	defer rows.Close()
 
-	return subjectMappingHydrateList(rows, c.logger)
+	return subjectMappingHydrateList(rows)
 }

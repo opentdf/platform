@@ -14,7 +14,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
-	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -60,11 +59,11 @@ type attributeQueryRow struct {
 	active        bool
 	namespaceName string
 	valuesJSON    []byte
-	grants        []byte
+	grantsJSON    []byte
 	fqn           sql.NullString
 }
 
-func hydrateAttribute(row *attributeQueryRow, logger *logger.Logger) (*policy.Attribute, error) {
+func hydrateAttribute(row *attributeQueryRow) (*policy.Attribute, error) {
 	metadata := &common.Metadata{}
 	if err := unmarshalMetadata(row.metadataJSON, metadata); err != nil {
 		return nil, err
@@ -74,18 +73,16 @@ func hydrateAttribute(row *attributeQueryRow, logger *logger.Logger) (*policy.At
 	if row.valuesJSON != nil {
 		v, err := attributesValuesProtojson(row.valuesJSON)
 		if err != nil {
-			logger.Error("could not unmarshal values", slog.String("error", err.Error()))
-			return nil, err
+			return nil, fmt.Errorf("failed to unmarshal valuesJSON [%s]: %w", string(row.valuesJSON), err)
 		}
 		values = v
 	}
 
 	var grants []*policy.KeyAccessServer
-	if row.grants != nil {
-		k, err := db.KeyAccessServerProtoJSON(row.grants)
+	if row.grantsJSON != nil {
+		k, err := db.KeyAccessServerProtoJSON(row.grantsJSON)
 		if err != nil {
-			logger.Error("could not unmarshal key access grants", slog.String("error", err.Error()))
-			return nil, err
+			return nil, fmt.Errorf("failed to unmarshal grantsJSON [%s]: %w", string(row.grantsJSON), err)
 		}
 		grants = k
 	}
@@ -158,7 +155,7 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, state string, namesp
 			namespaceName: attr.NamespaceName.String,
 			valuesJSON:    attr.Values,
 			fqn:           sql.NullString(attr.Fqn),
-		}, c.logger)
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -187,9 +184,9 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.At
 		namespaceID:   attr.NamespaceID,
 		namespaceName: attr.NamespaceName.String,
 		valuesJSON:    attr.Values,
-		grants:        attr.Grants,
+		grantsJSON:    attr.Grants,
 		fqn:           sql.NullString(attr.Fqn),
-	}, c.logger)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -206,30 +203,26 @@ func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 	ns := new(policy.Namespace)
 	err = protojson.Unmarshal(fullAttr.Namespace, ns)
 	if err != nil {
-		c.logger.Error("could not unmarshal namespace", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal namespace [%s]: %w", string(fullAttr.Namespace), err)
 	}
 
 	values, err := attributesValuesProtojson(fullAttr.Values)
 	if err != nil {
-		c.logger.Error("could not unmarshal values", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal values [%s]: %w", string(fullAttr.Values), err)
 	}
 
 	m := new(common.Metadata)
 	if fullAttr.Metadata != nil {
 		err = unmarshalMetadata(fullAttr.Metadata, m)
 		if err != nil {
-			c.logger.Error("could not unmarshal metadata", slog.String("error", err.Error()))
-			return nil, err
+			return nil, fmt.Errorf("failed to unmarshal metadata [%s]: %w", string(fullAttr.Metadata), err)
 		}
 	}
 	var grants []*policy.KeyAccessServer
 	if fullAttr.DefinitionGrants != nil {
 		grants, err = db.KeyAccessServerProtoJSON(fullAttr.DefinitionGrants)
 		if err != nil {
-			c.logger.Error("could not unmarshal grants", slog.String("error", err.Error()))
-			return nil, err
+			return nil, fmt.Errorf("failed to unmarshal grants [%s]: %w", string(fullAttr.DefinitionGrants), err)
 		}
 	}
 	return &policy.Attribute{
@@ -262,7 +255,7 @@ func (c PolicyDBClient) GetAttributesByNamespace(ctx context.Context, namespaceI
 			metadataJSON:  attr.Metadata,
 			namespaceID:   attr.NamespaceID,
 			namespaceName: attr.NamespaceName.String,
-		}, c.logger)
+		})
 		if err != nil {
 			return nil, err
 		}

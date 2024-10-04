@@ -13,8 +13,6 @@ import (
 	"log/slog"
 
 	"github.com/opentdf/platform/lib/ocrypto"
-	"github.com/opentdf/platform/protocol/go/kas"
-	"google.golang.org/grpc"
 )
 
 // ============================================================================================================
@@ -684,24 +682,20 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	if kasURL == "https://" || kasURL == "http://" {
 		return 0, errors.New("config.kasUrl is empty")
 	}
-	kasPublicKey, kid, err := getECPublicKeyKid(kasURL, s.dialOptions...)
+	ki, err := s.getPublicKey(context.Background(), kasURL, config.bindCfg.eccMode.String())
 	if err != nil {
 		return 0, fmt.Errorf("getECPublicKey failed:%w", err)
 	}
-	slog.Debug("CreateNanoTDF", slog.String("header size", kasPublicKey))
-
-	// kid from kasPublicKey endpoint
-	slog.Debug("kasPublicKey", slog.String("kid", kid))
 
 	// update KAS URL with kid if set
-	if kid != "" && !s.nanoFeatures.noKID {
-		err = config.kasURL.setURLWithIdentifier(kasURL, kid)
+	if ki.KID != "" && !s.nanoFeatures.noKID {
+		err = config.kasURL.setURLWithIdentifier(kasURL, ki.KID)
 		if err != nil {
 			return 0, fmt.Errorf("getECPublicKey setURLWithIdentifier failed:%w", err)
 		}
 	}
 
-	config.kasPublicKey, err = ocrypto.ECPubKeyFromPem([]byte(kasPublicKey))
+	config.kasPublicKey, err = ocrypto.ECPubKeyFromPem([]byte(ki.PublicKey))
 	if err != nil {
 		return 0, fmt.Errorf("ocrypto.ECPubKeyFromPem failed: %w", err)
 	}
@@ -861,32 +855,6 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 	}
 
 	return uint32(writeLen), nil
-}
-
-// getECPublicKeyKid - Contact the specified KAS and get its public key
-func getECPublicKeyKid(kasURL string, opts ...grpc.DialOption) (string, string, error) {
-	req := kas.PublicKeyRequest{}
-	req.Algorithm = "ec:secp256r1"
-	grpcAddress, err := getGRPCAddress(kasURL)
-	if err != nil {
-		return "", "", err
-	}
-	conn, err := grpc.NewClient(grpcAddress, opts...)
-	if err != nil {
-		return "", "", fmt.Errorf("error connecting to grpc service at %s: %w", kasURL, err)
-	}
-	defer conn.Close()
-
-	ctx := context.Background()
-	serviceClient := kas.NewAccessServiceClient(conn)
-
-	resp, err := serviceClient.PublicKey(ctx, &req)
-
-	if err != nil {
-		return "", "", fmt.Errorf("error making request to KAS: %w", err)
-	}
-
-	return resp.GetPublicKey(), resp.GetKid(), nil
 }
 
 type requestBody struct {

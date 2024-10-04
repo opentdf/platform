@@ -2,6 +2,8 @@ package audit
 
 import (
 	"context"
+	"log/slog"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
@@ -27,12 +29,33 @@ type EventObject struct {
 	Timestamp string                 `json:"timestamp"`
 }
 
+func (e EventObject) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.Any("object", e.Object),
+		slog.Any("action", e.Action),
+		slog.Any("actor", e.Actor),
+		slog.Any("eventMetaData", e.EventMetaData),
+		slog.Any("clientInfo", e.ClientInfo),
+		slog.Any("original", e.Original),
+		slog.Any("updated", e.Updated),
+		slog.String("requestID", e.RequestID.String()),
+		slog.String("timestamp", e.Timestamp))
+}
+
 // event.object
 type auditEventObject struct {
 	Type       ObjectType            `json:"type"`
 	ID         string                `json:"id"`
 	Name       string                `json:"name,omitempty"`
 	Attributes eventObjectAttributes `json:"attributes,omitempty"`
+}
+
+func (e auditEventObject) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("type", e.Type.String()),
+		slog.String("id", e.ID),
+		slog.String("name", e.Name),
+		slog.Any("attributes", e.Attributes))
 }
 
 // event.object.attributes
@@ -42,16 +65,35 @@ type eventObjectAttributes struct {
 	Permissions []string `json:"permissions,omitempty"`
 }
 
+func (e eventObjectAttributes) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("assertions", strings.Join(e.Assertions, ",")),
+		slog.String("attrs", strings.Join(e.Attrs, ",")),
+		slog.String("permissions", strings.Join(e.Permissions, ",")))
+}
+
 // event.action
 type eventAction struct {
 	Type   ActionType   `json:"type"`
 	Result ActionResult `json:"result"`
 }
 
+func (e eventAction) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("type", e.Type.String()),
+		slog.String("result", e.Result.String()))
+}
+
 // event.actor
 type auditEventActor struct {
 	ID         string        `json:"id"`
 	Attributes []interface{} `json:"attributes"`
+}
+
+func (e auditEventActor) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("id", e.ID),
+		slog.Any("attributes", e.Attributes))
 }
 
 // event.clientInfo
@@ -61,11 +103,26 @@ type eventClientInfo struct {
 	RequestIP string `json:"requestIp"`
 }
 
+func (e eventClientInfo) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("userAgent", e.UserAgent),
+		slog.String("platform", e.Platform),
+		slog.String("requestIP", e.RequestIP))
+}
+
 type ContextData struct {
 	RequestID uuid.UUID
 	UserAgent string
 	RequestIP string
 	ActorID   string
+}
+
+func (c ContextData) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("requestID", c.RequestID.String()),
+		slog.String("userAgent", c.UserAgent),
+		slog.String("requestIP", c.RequestIP),
+		slog.String("actorID", c.ActorID))
 }
 
 // Gets relevant audit data from the context object.

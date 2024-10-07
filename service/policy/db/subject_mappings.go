@@ -182,7 +182,7 @@ func subjectMappingHydrateList(rows pgx.Rows) ([]*policy.SubjectMapping, error) 
 	Subject Condition Sets
 */
 
-// Creates a new subject condition set and returns the id of the created
+// Creates a new subject condition set and returns it
 func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjectmapping.SubjectConditionSetCreate) (*policy.SubjectConditionSet, error) {
 	subjectSets := s.GetSubjectSets()
 	conditionJSON, err := marshalSubjectSetsProto(subjectSets)
@@ -261,7 +261,7 @@ func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context) ([]*policy
 	return setList, nil
 }
 
-// Mutates provided fields and returns id of the updated subject condition set
+// Mutates provided fields and returns the updated subject condition set
 func (c PolicyDBClient) UpdateSubjectConditionSet(ctx context.Context, r *subjectmapping.UpdateSubjectConditionSetRequest) (*policy.SubjectConditionSet, error) {
 	id := r.GetId()
 	subjectSets := r.GetSubjectSets()
@@ -323,9 +323,12 @@ func (c PolicyDBClient) DeleteSubjectConditionSet(ctx context.Context, id string
 	Subject Mappings
 */
 
-// Creates a new subject mapping and returns the id of the created. If an existing subject condition set id is provided, it will be used.
+// Creates a new subject mapping and returns it. If an existing subject condition set id is provided, it will be used.
 // If a new subject condition set is provided, it will be created. The existing subject condition set id takes precedence.
 func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapping.CreateSubjectMappingRequest) (*policy.SubjectMapping, error) {
+	actions := s.GetActions()
+	attributeValueID := s.GetAttributeValueId()
+
 	var (
 		scs *policy.SubjectConditionSet
 		err error
@@ -353,16 +356,13 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 		return nil, err
 	}
 
-	if s.Actions == nil {
-		return nil, errors.Join(db.ErrMissingValue, errors.New("actions are required when creating a subject mapping"))
-	}
-	actionsJSON, err := marshalActionsProto(s.GetActions())
+	actionsJSON, err := marshalActionsProto(actions)
 	if err != nil {
 		return nil, err
 	}
 
 	createdID, err := c.Queries.CreateSubjectMapping(ctx, CreateSubjectMappingParams{
-		AttributeValueID:      s.GetAttributeValueId(),
+		AttributeValueID:      attributeValueID,
 		Actions:               actionsJSON,
 		Metadata:              metadataJSON,
 		SubjectConditionSetID: pgtypeUUID(scs.GetId()),
@@ -374,10 +374,10 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 	return &policy.SubjectMapping{
 		Id: createdID,
 		AttributeValue: &policy.Value{
-			Id: s.GetAttributeValueId(),
+			Id: attributeValueID,
 		},
 		SubjectConditionSet: scs,
-		Actions:             s.GetActions(),
+		Actions:             actions,
 		Metadata:            metadata,
 	}, nil
 }
@@ -457,7 +457,7 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context) ([]*policy.Subj
 	return mappings, nil
 }
 
-// Mutates provided fields and returns id of the updated subject mapping
+// Mutates provided fields and returns the updated subject mapping
 func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapping.UpdateSubjectMappingRequest) (*policy.SubjectMapping, error) {
 	id := r.GetId()
 	subjectConditionSetID := r.GetSubjectConditionSetId()

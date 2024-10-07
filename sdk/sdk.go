@@ -370,7 +370,6 @@ func fetchPlatformConfiguration(platformEndpoint string, dialOptions []grpc.Dial
 func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfiguration, error) {
 	req := wellknownconfiguration.GetWellKnownConfigurationRequest{}
 	wellKnownConfig := wellknownconfiguration.NewWellKnownServiceClient(conn)
-
 	response, err := wellKnownConfig.GetWellKnownConfiguration(context.Background(), &req)
 	if err != nil {
 		return nil, errors.Join(errors.New("unable to retrieve config information, and none was provided"), err)

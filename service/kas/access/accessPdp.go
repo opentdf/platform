@@ -49,6 +49,7 @@ func (p *Provider) checkAttributes(ctx context.Context, dataAttrs []Attribute, e
 			},
 		},
 	}
+
 	dr, err := p.SDK.Authorization.GetDecisionsByToken(ctx, &in)
 	if err != nil {
 		p.Logger.ErrorContext(ctx, "Error received from GetDecisionsByToken", "err", err)

@@ -14,9 +14,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 )
 
-var (
-	ErrInvalid = errors.New("invalid type")
-)
+var ErrInvalid = errors.New("invalid type")
 
 // Attribute rule types: operators!
 const (
@@ -229,13 +227,12 @@ func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as attrib
 		fqnsStr[i] = v.String()
 	}
 
-	av, err :=
-		as.GetAttributeValuesByFqns(ctx, &attributes.GetAttributeValuesByFqnsRequest{
-			Fqns: fqnsStr,
-			WithValue: &policy.AttributeValueSelector{
-				WithKeyAccessGrants: true,
-			},
-		})
+	av, err := as.GetAttributeValuesByFqns(ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: fqnsStr,
+		WithValue: &policy.AttributeValueSelector{
+			WithKeyAccessGrants: true,
+		},
+	})
 	if err != nil {
 		return granter{}, err
 	}

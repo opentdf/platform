@@ -2,6 +2,8 @@ module github.com/opentdf/platform/sdk
 
 go 1.21
 
+replace github.com/opentdf/platform/protocol/go => ../protocol/go
+
 require (
 	github.com/google/uuid v1.6.0
 	github.com/gowebpki/jcs v1.0.1

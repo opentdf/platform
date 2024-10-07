@@ -36,12 +36,16 @@ func authorizationExamples() error {
 	// model two groups of entities; user bob and user alice
 	entityChains := []*authorization.EntityChain{{
 		Id: "ec1", // ec1 is an arbitrary tracking id to match results to request
-		Entities: []*authorization.Entity{{EntityType: &authorization.Entity_EmailAddress{EmailAddress: "bob@example.org"},
-			Category: authorization.Entity_CATEGORY_SUBJECT}},
+		Entities: []*authorization.Entity{{
+			EntityType: &authorization.Entity_EmailAddress{EmailAddress: "bob@example.org"},
+			Category:   authorization.Entity_CATEGORY_SUBJECT,
+		}},
 	}, {
 		Id: "ec2", // ec2 is an arbitrary tracking id to match results to request
-		Entities: []*authorization.Entity{{EntityType: &authorization.Entity_UserName{UserName: "alice@example.org"},
-			Category: authorization.Entity_CATEGORY_SUBJECT}},
+		Entities: []*authorization.Entity{{
+			EntityType: &authorization.Entity_UserName{UserName: "alice@example.org"},
+			Category:   authorization.Entity_CATEGORY_SUBJECT,
+		}},
 	}}
 
 	// TODO Get attribute value ids
@@ -59,7 +63,6 @@ func authorizationExamples() error {
 			{AttributeValueFqns: []string{tradeSecretAttributeValueFqn, openAttributeValueFqn}},
 		},
 	})
-
 	decisionRequest := &authorization.GetDecisionsRequest{DecisionRequests: drs}
 	slog.Info(fmt.Sprintf("Submitting decision request: %s", protojson.Format(decisionRequest)))
 	decisionResponse, err := s.Authorization.GetDecisions(context.Background(), decisionRequest)
@@ -70,7 +73,7 @@ func authorizationExamples() error {
 
 	// map response back to entity chain id
 	decisionsByEntityChain := make(map[string]*authorization.DecisionResponse)
-	for _, dr := range decisionResponse.DecisionResponses {
+	for _, dr := range decisionResponse.GetDecisionResponses() {
 		decisionsByEntityChain[dr.EntityChainId] = dr
 	}
 

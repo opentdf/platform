@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"sync"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"connectrpc.com/connect"
 	wellknown "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
+	"github.com/opentdf/platform/protocol/go/wellknownconfiguration/wellknownconfigurationconnect"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"google.golang.org/grpc/codes"
@@ -35,22 +37,21 @@ func RegisterConfiguration(namespace string, config any) error {
 	return nil
 }
 
-func NewRegistration() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		Namespace:   "wellknown",
-		ServiceDesc: &wellknown.WellKnownService_ServiceDesc,
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &WellKnownService{logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				if srv, ok := server.(wellknown.WellKnownServiceServer); ok {
-					return wellknown.RegisterWellKnownServiceHandlerServer(ctx, mux, srv)
-				}
-				return fmt.Errorf("failed to assert server as WellKnownServiceServer")
-			}
+func NewRegistration() *serviceregistry.Service[wellknownconfigurationconnect.WellKnownServiceHandler] {
+	return &serviceregistry.Service[wellknownconfigurationconnect.WellKnownServiceHandler]{
+		ServiceOptions: serviceregistry.ServiceOptions[wellknownconfigurationconnect.WellKnownServiceHandler]{
+			Namespace:   "wellknown",
+			ServiceDesc: &wellknown.WellKnownService_ServiceDesc,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (wellknownconfigurationconnect.WellKnownServiceHandler, serviceregistry.HandlerServer) {
+				ws := &WellKnownService{logger: srp.Logger}
+				return ws, func(_ context.Context, _ *http.ServeMux, _ any) {}
+			},
+			ConnectRPCFunc: wellknownconfigurationconnect.NewWellKnownServiceHandler,
 		},
 	}
 }
 
-func (s WellKnownService) GetWellKnownConfiguration(_ context.Context, _ *wellknown.GetWellKnownConfigurationRequest) (*wellknown.GetWellKnownConfigurationResponse, error) {
+func (s WellKnownService) GetWellKnownConfiguration(_ context.Context, _ *connect.Request[wellknown.GetWellKnownConfigurationRequest]) (*connect.Response[wellknown.GetWellKnownConfigurationResponse], error) {
 	rwMutex.RLock()
 	cfg, err := structpb.NewStruct(wellKnownConfiguration)
 	rwMutex.RUnlock()
@@ -58,8 +59,8 @@ func (s WellKnownService) GetWellKnownConfiguration(_ context.Context, _ *wellkn
 		s.logger.Error("failed to create struct for wellknown configuration", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to create struct for wellknown configuration")
 	}
-
-	return &wellknown.GetWellKnownConfigurationResponse{
+	rsp := &wellknown.GetWellKnownConfigurationResponse{
 		Configuration: cfg,
-	}, nil
+	}
+	return &connect.Response[wellknown.GetWellKnownConfigurationResponse]{Msg: rsp}, nil
 }

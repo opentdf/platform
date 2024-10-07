@@ -5,8 +5,8 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/mitchellh/mapstructure"
+	keycloak "github.com/opentdf/platform/keycloak-ers/entityresolution"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
-	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 )

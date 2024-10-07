@@ -8,6 +8,7 @@ COPY sdk/ sdk/
 COPY lib/ocrypto lib/ocrypto
 COPY lib/flattening lib/flattening
 COPY lib/fixtures lib/fixtures
+COPY keycloak-entity-resolution/ keycloak-entity-resolution/
 COPY service/ service/
 COPY examples/ examples/
 COPY go.work go.work.sum ./

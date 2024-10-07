@@ -34,13 +34,13 @@ const (
 const serviceAccountUsernamePrefix = "service-account-"
 
 type KeycloakConfig struct {
-	URL            string                 `mapstructure:"url" json:"url"`
-	Realm          string                 `mapstructure:"realm" json:"realm"`
-	ClientID       string                 `mapstructure:"clientid" json:"clientid"`
-	ClientSecret   string                 `mapstructure:"clientsecret" json:"clientsecret"`
-	LegacyKeycloak bool                   `mapstructure:"legacykeycloak" json:"legacykeycloak" default:"false"`
-	SubGroups      bool                   `mapstructure:"subgroups" json:"subgroups" default:"false"`
-	InferID        InferredIdentityConfig `mapstructure:"inferid,omitempty" json:"inferid,omitempty"`
+	URL            string                 `mapstructure:"url" json:"url" yaml:"url"`
+	Realm          string                 `mapstructure:"realm" json:"realm" yaml:"realm"`
+	ClientID       string                 `mapstructure:"clientid" json:"clientid" yaml:"clientid"`
+	ClientSecret   string                 `mapstructure:"clientsecret" json:"clientsecret" yaml:"clientsecret"`
+	LegacyKeycloak bool                   `mapstructure:"legacykeycloak" json:"legacykeycloak" yaml:"legacykeycloak" default:"false"`
+	SubGroups      bool                   `mapstructure:"subgroups" json:"subgroups" yaml:"subgroups" default:"false"`
+	InferID        InferredIdentityConfig `mapstructure:"inferid,omitempty" json:"inferid,omitempty" yaml:"inferid,omitempty"`
 }
 
 func (c KeycloakConfig) LogValue() slog.Value {

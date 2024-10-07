@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	keycloak "github.com/opentdf/platform/keycloak-ers/entityresolution"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
-	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -11,7 +11,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/pkg/db"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -21,12 +20,9 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, id string) (*policy.Na
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	m := &common.Metadata{}
-	if ns.Metadata != nil {
-		if err := protojson.Unmarshal(ns.Metadata, m); err != nil {
-			c.logger.Error("could not unmarshal metadata", slog.String("error", err.Error()))
-			return nil, err
-		}
+	metadata := &common.Metadata{}
+	if err = unmarshalMetadata(ns.Metadata, metadata); err != nil {
+		return nil, err
 	}
 
 	var grants []*policy.KeyAccessServer
@@ -43,7 +39,7 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, id string) (*policy.Na
 		Name:     ns.Name,
 		Active:   &wrapperspb.BoolValue{Value: ns.Active},
 		Grants:   grants,
-		Metadata: m,
+		Metadata: metadata,
 		Fqn:      ns.Fqn.String,
 	}, nil
 }
@@ -83,11 +79,11 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, state string) ([]*po
 }
 
 func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.CreateNamespaceRequest) (*policy.Namespace, error) {
+	name := strings.ToLower(r.GetName())
 	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
-	name := strings.ToLower(r.GetName())
 
 	createdID, err := c.Queries.CreateNamespace(ctx, CreateNamespaceParams{
 		Name:     name,
@@ -199,7 +195,7 @@ func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*po
 	}
 
 	if !allAttrsDeactivated {
-		c.logger.Warn("deactivating the namespace with existed attributes can affect access to related data. Please be aware and proceed accordingly.")
+		c.logger.Warn("deactivating the namespace with existing attributes can affect access to related data. Please be aware and proceed accordingly.")
 	}
 
 	count, err := c.Queries.UpdateNamespace(ctx, UpdateNamespaceParams{

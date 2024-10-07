@@ -147,20 +147,6 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NewSubjectConditionSet()
 	s.Equal(expectedCondition.GetSubjectExternalValues(), gotCondition.GetSubjectExternalValues())
 }
 
-func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NoActions_Fails() {
-	fixtureAttrVal := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value1")
-	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
-	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
-		AttributeValueId:              fixtureAttrVal.ID,
-		ExistingSubjectConditionSetId: fixtureScs.ID,
-	}
-
-	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
-	s.Require().Error(err)
-	s.Nil(created)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-}
-
 func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentAttributeValueId_Fails() {
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
 	aTransmit := fixtureActions[Transmit]

@@ -17,7 +17,6 @@ import (
 	"github.com/go-chi/cors"
 	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/security"
@@ -29,7 +28,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -104,13 +102,19 @@ type CORSConfig struct {
 	MaxAge           int      `mapstructure:"maxage" json:"maxage" default:"3600"`
 }
 
+type ConnectInProcessRPC struct {
+	Mux *http.ServeMux
+	// TODO
+	// Interceptors []...
+}
+
 type OpenTDFServer struct {
-	AuthN          *auth.Authentication
-	Mux            *runtime.ServeMux
-	HTTPServer     *http.Server
-	GRPCServer     *grpc.Server
-	GRPCInProcess  *inProcessServer
-	CryptoProvider security.CryptoProvider
+	AuthN               *auth.Authentication
+	Mux                 *http.ServeMux
+	HTTPServer          *http.Server
+	GRPCInProcess       *inProcessServer
+	ConnectInProcessRPC *ConnectInProcessRPC
+	CryptoProvider      security.CryptoProvider
 
 	logger *logger.Logger
 }
@@ -123,7 +127,7 @@ https://github.com/valyala/fasthttp/blob/master/fasthttputil/inmemory_listener.g
 */
 type inProcessServer struct {
 	ln  *fasthttputil.InmemoryListener
-	srv *grpc.Server
+	srv *http.Server
 
 	maxCallRecvMsgSize int
 	maxCallSendMsgSize int
@@ -165,21 +169,27 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 	}
 
 	// Create http server
-	mux := runtime.NewServeMux(
-		runtime.WithHealthzEndpoint(healthpb.NewHealthClient(grpcIPCServer.Conn())),
-	)
+	// mux := runtime.NewServeMux(
+	// 	runtime.WithHealthzEndpoint(healthpb.NewHealthClient(grpcIPCServer.Conn())),
+	// )
+	mux := http.NewServeMux()
+
 	httpServer, err := newHTTPServer(config, mux, authN, grpcServer, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http server: %w", err)
 	}
+	inProcesMux := http.NewServeMux()
+	connectInProcessRPC := &ConnectInProcessRPC{
+		Mux: inProcesMux,
+	}
 
 	o := OpenTDFServer{
-		AuthN:         authN,
-		Mux:           mux,
-		HTTPServer:    httpServer,
-		GRPCServer:    grpcServer,
-		GRPCInProcess: grpcIPCServer,
-		logger:        logger,
+		AuthN:               authN,
+		Mux:                 mux,
+		HTTPServer:          httpServer,
+		GRPCInProcess:       grpcIPCServer,
+		ConnectInProcessRPC: connectInProcessRPC,
+		logger:              logger,
 	}
 
 	// Create crypto provider
@@ -313,22 +323,25 @@ func httpGrpcHandlerFunc(h http.Handler, g *grpc.Server, l *logger.Logger) http.
 	})
 }
 
-func newGrpcInProcessServer() *grpc.Server {
-	var interceptors []grpc.UnaryServerInterceptor
-	var serverOptions []grpc.ServerOption
+func newGrpcInProcessServer() *http.Server {
+	// mux := http.NewServeMux()
 
-	// Add audit to in process server
-	interceptors = append(interceptors, audit.ContextServerInterceptor)
+	// var interceptors []grpc.UnaryServerInterceptor
+	// var serverOptions []grpc.ServerOption
 
-	// FIXME: this should probably use existing IP address instead of local?
-	// Add RealIP interceptor to in process server
-	// trustedPeers := []netip.Prefix{} // TODO: add this as a config option?
-	// headers := []string{realip.XForwardedFor, realip.XRealIp}
-	// interceptors = append(interceptors, realip.UnaryServerInterceptor(trustedPeers, headers))
+	// // Add audit to in process server
+	// interceptors = append(interceptors, audit.ContextServerInterceptor)
 
-	// Add interceptors to server options
-	serverOptions = append(serverOptions, grpc.ChainUnaryInterceptor(interceptors...))
-	return grpc.NewServer(serverOptions...)
+	// // FIXME: this should probably use existing IP address instead of local?
+	// // Add RealIP interceptor to in process server
+	// // trustedPeers := []netip.Prefix{} // TODO: add this as a config option?
+	// // headers := []string{realip.XForwardedFor, realip.XRealIp}
+	// // interceptors = append(interceptors, realip.UnaryServerInterceptor(trustedPeers, headers))
+
+	// // Add interceptors to server options
+	// serverOptions = append(serverOptions, grpc.ChainUnaryInterceptor(interceptors...))
+	// return grpc.NewServer(serverOptions...)
+	return &http.Server{}
 }
 
 // newGrpcServer creates a new grpc server with the given config and authN interceptor
@@ -408,12 +421,13 @@ func (s OpenTDFServer) Stop() {
 	}
 
 	s.logger.Info("shutting down in process grpc server")
-	s.GRPCInProcess.srv.GracefulStop()
+	// TODO
+	// s.GRPCInProcess.srv.GracefulStop()
 
 	s.logger.Info("shutdown complete")
 }
 
-func (s inProcessServer) GetGrpcServer() *grpc.Server {
+func (s inProcessServer) GetGrpcServer() *http.Server {
 	return s.srv
 }
 

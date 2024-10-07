@@ -5,11 +5,11 @@ import (
 	"embed"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"slices"
 
 	"github.com/opentdf/platform/sdk"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -47,7 +47,7 @@ type RegistrationParams struct {
 	// ready to serve requests. This function should be called in the RegisterFunc function.
 	RegisterReadinessCheck func(namespace string, check func(context.Context) error) error
 }
-type HandlerServer func(ctx context.Context, mux *runtime.ServeMux, server any) error
+type HandlerServer func(ctx context.Context, mux *http.ServeMux, server any)
 type RegisterFunc func(RegistrationParams) (Impl any, HandlerServer HandlerServer)
 
 // Registration is a struct that holds the information needed to register a service
@@ -126,7 +126,7 @@ func (s *Service) RegisterGRPCServer(server *grpc.Server) error {
 // RegisterHTTPServer registers an HTTP server with the service.
 // It takes a context, a ServeMux, and an implementation function as parameters.
 // If the service did not register a handler, it returns an error.
-func (s *Service) RegisterHTTPServer(ctx context.Context, mux *runtime.ServeMux) error {
+func (s *Service) RegisterHTTPServer(ctx context.Context, mux *http.ServeMux) error {
 	if s.handleFunc == nil {
 		return fmt.Errorf("service did not register a handler")
 	}

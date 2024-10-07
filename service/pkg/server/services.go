@@ -164,22 +164,18 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 			if err != nil {
 				return err
 			}
-			// Register the service with the gRPC server
-			if err := svc.RegisterGRPCServer(otdf.GRPCServer); err != nil {
-				return err
-			}
 
-			// Register the service with in process gRPC server
-			if err := svc.RegisterGRPCServer(otdf.GRPCInProcess.GetGrpcServer()); err != nil {
-				return err
-			}
+			// // Register the service with in process gRPC server
+			// if err := svc.RegisterGRPCServer(otdf.GRPCInProcess.GetGrpcServer()); err != nil {
+			// 	return err
+			// }
 
 			// Register the service with the gRPC gateway
 			if err := svc.RegisterHTTPServer(ctx, otdf.Mux); err != nil { //nolint:staticcheck // This is deprecated for internal tracking
 				logger.Error("failed to register service to grpc gateway", slog.String("namespace", ns), slog.String("error", err.Error()))
 				return err
 			}
-			reg[svc.Namespace].Services[i].Impl = s
+			// reg[svc.Namespace].Services[i].Impl = s
 
 			logger.Info(
 				"service running",

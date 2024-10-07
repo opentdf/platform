@@ -9,9 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/opentdf/platform/protocol/go/authorization/authorizationconnect"
 	"github.com/opentdf/platform/sdk"
-	"github.com/opentdf/platform/service/authorization"
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
@@ -186,18 +184,18 @@ func Start(f ...StartOptions) error {
 		return fmt.Errorf("issue starting services: %w", err)
 	}
 
-	as, ok := svcRegistry["authorization"].Services[0].Impl.(*authorization.AuthorizationService)
-	if !ok {
-		return fmt.Errorf("failed to assert service type to authorization.AuthorizationService")
-	}
-	ash := &authorization.AuthorizationServiceHandler{Service: as}
-	path, handler := authorizationconnect.NewAuthorizationServiceHandler(ash)
-	println("PATH: ", path)
-	tls := false
-	if otdf.HTTPServer.TLSConfig != nil {
-		tls = true
-	}
-	otdf.HTTPServer.Handler = server.ConnectAuthHandler(handler, otdf.HTTPServer.Handler, tls)
+	// as, ok := svcRegistry["authorization"].Services[0].Impl.(*authorization.AuthorizationService)
+	// if !ok {
+	// 	return fmt.Errorf("failed to assert service type to authorization.AuthorizationService")
+	// }
+	// ash := &authorization.AuthorizationServiceHandler{Service: as}
+	// path, handler := authorizationconnect.NewAuthorizationServiceHandler(ash)
+	// println("PATH: ", path)
+	// tls := false
+	// if otdf.HTTPServer.TLSConfig != nil {
+	// 	tls = true
+	// }
+	// otdf.HTTPServer.Handler = server.ConnectAuthHandler(handler, otdf.HTTPServer.Handler, tls)
 
 	// Start the server
 	logger.Info("starting opentdf")

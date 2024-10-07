@@ -3,7 +3,6 @@ package audit
 import (
 	"context"
 	"log/slog"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
@@ -67,9 +66,9 @@ type eventObjectAttributes struct {
 
 func (e eventObjectAttributes) LogValue() slog.Value {
 	return slog.GroupValue(
-		slog.String("assertions", strings.Join(e.Assertions, ",")),
-		slog.String("attrs", strings.Join(e.Attrs, ",")),
-		slog.String("permissions", strings.Join(e.Permissions, ",")))
+		slog.Any("assertions", e.Assertions),
+		slog.Any("attrs", e.Attrs),
+		slog.Any("permissions", e.Permissions))
 }
 
 // event.action

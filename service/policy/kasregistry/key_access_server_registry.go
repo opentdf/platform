@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/platform/protocol/go/policy"
 	kasr "github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
@@ -52,6 +53,7 @@ func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 	}
 
 	auditParams.ObjectID = ks.GetId()
+	auditParams.Original = ks
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &kasr.CreateKeyAccessServerResponse{
@@ -96,32 +98,26 @@ func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
 		ObjectID:   kasID,
 	}
 
-	originalKAS, err := s.dbClient.GetKeyAccessServer(ctx, kasID)
+	original, err := s.dbClient.GetKeyAccessServer(ctx, kasID)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", kasID))
 	}
 
-	item, err := s.dbClient.UpdateKeyAccessServer(ctx, kasID, req)
+	updated, err := s.dbClient.UpdateKeyAccessServer(ctx, kasID, req)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("keyAccessServer", req.String()))
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", kasID), slog.String("keyAccessServer", req.String()))
 	}
 
-	// UpdateKeyAccessServer only returns the ID of the updated KAS, so we need to
-	// fetch the updated KAS to compute the audit diff
-	updatedKAS, err := s.dbClient.GetKeyAccessServer(ctx, kasID)
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", kasID))
-	}
-
-	auditParams.Original = originalKAS
-	auditParams.Updated = updatedKAS
+	auditParams.Original = original
+	auditParams.Updated = updated
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return &kasr.UpdateKeyAccessServerResponse{
-		KeyAccessServer: item,
+		KeyAccessServer: &policy.KeyAccessServer{
+			Id: kasID,
+		},
 	}, nil
 }
 
@@ -135,14 +131,17 @@ func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
 		ObjectID:   kasID,
 	}
 
-	keyAccessServer, err := s.dbClient.DeleteKeyAccessServer(ctx, req.GetId())
+	_, err := s.dbClient.DeleteKeyAccessServer(ctx, req.GetId())
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
 	}
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
 	return &kasr.DeleteKeyAccessServerResponse{
-		KeyAccessServer: keyAccessServer,
+		KeyAccessServer: &policy.KeyAccessServer{
+			Id: kasID,
+		},
 	}, nil
 }
 

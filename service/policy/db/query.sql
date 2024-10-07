@@ -59,21 +59,21 @@ FROM key_access_servers;
 -- name: GetKeyAccessServer :one
 SELECT id, uri, public_key,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-FROM key_access_servers WHERE id = $1;
+FROM key_access_servers
+WHERE id = $1;
 
 -- name: CreateKeyAccessServer :one
 INSERT INTO key_access_servers (uri, public_key, metadata)
 VALUES ($1, $2, $3)
 RETURNING id;
 
--- name: UpdateKeyAccessServer :one
+-- name: UpdateKeyAccessServer :execrows
 UPDATE key_access_servers
 SET 
-    uri = coalesce(sqlc.narg('uri'), uri),
-    public_key = coalesce(sqlc.narg('public_key'), public_key),
-    metadata = coalesce(sqlc.narg('metadata'), metadata)
-WHERE id = $1
-RETURNING id;
+    uri = COALESCE(sqlc.narg('uri'), uri),
+    public_key = COALESCE(sqlc.narg('public_key'), public_key),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata)
+WHERE id = $1;
 
 -- name: DeleteKeyAccessServer :execrows
 DELETE FROM key_access_servers WHERE id = $1;
@@ -631,3 +631,90 @@ VALUES ($1, $2);
 -- name: RemoveKeyAccessServerFromNamespace :execrows
 DELETE FROM attribute_namespace_key_access_grants
 WHERE namespace_id = $1 AND key_access_server_id = $2;
+
+---------------------------------------------------------------- 
+-- SUBJECT CONDITION SETS
+----------------------------------------------------------------
+
+-- name: ListSubjectConditionSets :many
+SELECT
+    id,
+    condition,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+FROM subject_condition_set;
+
+-- name: GetSubjectConditionSet :one
+SELECT
+    id,
+    condition,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+FROM subject_condition_set
+WHERE id = $1;
+
+-- name: CreateSubjectConditionSet :one
+INSERT INTO subject_condition_set (condition, metadata)
+VALUES ($1, $2)
+RETURNING id;
+
+-- name: UpdateSubjectConditionSet :execrows
+UPDATE subject_condition_set
+SET
+    condition = COALESCE(sqlc.narg('condition'), condition),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata)
+WHERE id = $1;
+
+-- name: DeleteSubjectConditionSet :execrows
+DELETE FROM subject_condition_set WHERE id = $1;
+
+---------------------------------------------------------------- 
+-- SUBJECT MAPPINGS
+----------------------------------------------------------------
+
+-- name: ListSubjectMappings :many
+SELECT
+    sm.id,
+    sm.actions,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
+    JSON_BUILD_OBJECT(
+        'id', scs.id,
+        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', scs.metadata->'labels', 'created_at', scs.created_at, 'updated_at', scs.updated_at)),
+        'subject_sets', scs.condition
+    ) AS subject_condition_set,
+    JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active) AS attribute_value
+FROM subject_mappings sm
+LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
+LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
+GROUP BY av.id, sm.id, scs.id;
+
+-- name: GetSubjectMapping :one
+SELECT
+    sm.id,
+    sm.actions,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
+    JSON_BUILD_OBJECT(
+        'id', scs.id,
+        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', scs.metadata -> 'labels', 'created_at', scs.created_at, 'updated_at', scs.updated_at)),
+        'subject_sets', scs.condition
+    ) AS subject_condition_set,
+    JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active) AS attribute_value
+FROM subject_mappings sm
+LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
+LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
+WHERE sm.id = $1
+GROUP BY av.id, sm.id, scs.id;
+
+-- name: CreateSubjectMapping :one
+INSERT INTO subject_mappings (attribute_value_id, actions, metadata, subject_condition_set_id)
+VALUES ($1, $2, $3, $4)
+RETURNING id;
+
+-- name: UpdateSubjectMapping :execrows
+UPDATE subject_mappings
+SET
+    actions = COALESCE(sqlc.narg('actions'), actions),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata),
+    subject_condition_set_id = COALESCE(sqlc.narg('subject_condition_set_id'), subject_condition_set_id)
+WHERE id = $1;
+
+-- name: DeleteSubjectMapping :execrows
+DELETE FROM subject_mappings WHERE id = $1;

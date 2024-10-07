@@ -683,8 +683,6 @@ SELECT
     JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active) AS attribute_value
 FROM subject_mappings sm
 LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
-LEFT JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
-LEFT JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
 LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
 GROUP BY av.id, sm.id, scs.id;
 
@@ -701,8 +699,6 @@ SELECT
     JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active) AS attribute_value
 FROM subject_mappings sm
 LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
-LEFT JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
-LEFT JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
 LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
 WHERE sm.id = $1
 GROUP BY av.id, sm.id, scs.id;

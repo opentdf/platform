@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/pprof"
+	"regexp"
 	"strings"
 	"time"
 
@@ -20,7 +21,9 @@ import (
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/internal/server/memhttp"
+	"github.com/opentdf/platform/service/internal/server/realip"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	"golang.org/x/exp/slices"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -135,6 +138,9 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 
 	interceptors := make([]connect.HandlerOption, 0)
 
+	// Real IP Interceptor
+	interceptors = append(interceptors, connect.WithInterceptors(realip.ConnectRealIPUnaryInterceptor()))
+
 	// Add authN interceptor
 	// TODO Remove this conditional once we move to the hardening phase (https://github.com/opentdf/platform/issues/381)
 	if config.Auth.Enabled {
@@ -160,7 +166,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 		return nil, fmt.Errorf("failed to create validation interceptor: %w", err)
 	}
 
-	interceptors = append(interceptors, connect.WithInterceptors(vaidationInterceptor))
+	interceptors = append(interceptors, connect.WithInterceptors(vaidationInterceptor, audit.ContextServerInterceptor()))
 
 	// Mux for in process connect server
 	inProcessMux := http.NewServeMux()
@@ -172,7 +178,8 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 	}
 
 	connectInProcessRPC := &ConnectRPC{
-		Mux: inProcessMux,
+		Mux:          inProcessMux,
+		Interceptors: []connect.HandlerOption{connect.WithInterceptors(vaidationInterceptor, audit.ContextServerInterceptor())},
 	}
 
 	// Mux for Connect RPC
@@ -227,7 +234,10 @@ func newHTTPServer(c Config, connectRPC http.Handler, httpHandler http.Handler, 
 		l.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
+	rpcPathRegex := regexp.MustCompile(`^/[\w\.]+\.[\w\.]+/[\w]+$`)
+
 	// Combine connect and http mux
+	// This is needed until we phase out deprecated endpoints
 	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		contentType := r.Header.Get("Content-Type")
 		if slices.Contains([]string{
@@ -238,10 +248,10 @@ func newHTTPServer(c Config, connectRPC http.Handler, httpHandler http.Handler, 
 			"application/grpc-web+proto",
 			"application/grpc-web+json",
 			"application/proto",
-			// "application/json",
+			"application/json",
 			"application/connect+proto",
 			"application/connect+json",
-		}, contentType) && r.Method == http.MethodPost {
+		}, contentType) && r.Method == http.MethodPost && rpcPathRegex.MatchString(r.URL.Path) {
 			connectRPC.ServeHTTP(w, r)
 		} else {
 			httpHandler.ServeHTTP(w, r)
@@ -369,15 +379,13 @@ func (s OpenTDFServer) Stop() {
 	}
 
 	s.logger.Info("shutting down in process grpc server")
-	// TODO
-	// s.GRPCInProcess.srv.GracefulStop()
+	if err := s.ConnectInProcessServer.srv.Shutdown(ctx); err != nil {
+		s.logger.Error("failed to shutdown in process grpc server", slog.String("error", err.Error()))
+		return
+	}
 
 	s.logger.Info("shutdown complete")
 }
-
-// func (s inProcessServer) GetGrpcServer() *http.Server {
-// 	return s.srv
-// }
 
 func (s inProcessServer) Conn() *grpc.ClientConn {
 	var clientInterceptors []grpc.UnaryClientInterceptor

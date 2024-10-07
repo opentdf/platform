@@ -124,11 +124,6 @@ func justRequestBody(ctx context.Context, token jwt.Token, logger logger.Logger)
 
 func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRequest, logger logger.Logger) (*RequestBody, error) {
 	// First load legacy method for verifying SRT
-	// md, exists := metadata.FromIncomingContext(ctx)
-	// if !exists {
-	// 	logger.WarnContext(ctx, "missing metadata for srt validation")
-	// 	return nil, errors.New("missing metadata")
-	// }
 	if vpk, ok := headers["X-Virtrupubkey"]; ok && len(vpk) == 1 {
 		logger.InfoContext(ctx, "Legacy Client: Processing X-Virtrupubkey")
 	}

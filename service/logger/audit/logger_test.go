@@ -307,7 +307,7 @@ func TestGetDecision(t *testing.T) {
 	params := GetDecisionEventParams{
 		Decision: GetDecisionResultPermit,
 		EntityChainEntitlements: []EntityChainEntitlement{
-			{EntityID: "test-entity-id", EntityCatagory: authorization.Entity_CATEGORY_ENVIRONMENT, AttributeValueReferences: []string{"test-attribute-value-reference"}},
+			{EntityID: "test-entity-id", EntityCatagory: authorization.Entity_CATEGORY_ENVIRONMENT.String(), AttributeValueReferences: []string{"test-attribute-value-reference"}},
 		},
 		EntityChainID: "test-entity-chain-id",
 		EntityDecisions: []EntityDecision{
@@ -368,7 +368,7 @@ func TestGetDecision(t *testing.T) {
 		ActionResultSuccess,
 		params.EntityChainID,
 		params.EntityChainEntitlements[0].EntityID,
-		params.EntityChainEntitlements[0].EntityCatagory.String(),
+		params.EntityChainEntitlements[0].EntityCatagory,
 		params.EntityChainEntitlements[0].AttributeValueReferences,
 		params.EntityDecisions[0].EntityID,
 		params.EntityDecisions[0].Decision,

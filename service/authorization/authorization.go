@@ -281,7 +281,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 						entityCategory := entities[idx].GetCategory()
 						auditECEntitlements = append(auditECEntitlements, audit.EntityChainEntitlement{
 							EntityID:                 entityID,
-							EntityCatagory:           entityCategory,
+							EntityCatagory:           entityCategory.String(),
 							AttributeValueReferences: e.GetAttributeValueFqns(),
 						})
 

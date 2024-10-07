@@ -59,21 +59,21 @@ FROM key_access_servers;
 -- name: GetKeyAccessServer :one
 SELECT id, uri, public_key,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-FROM key_access_servers WHERE id = $1;
+FROM key_access_servers
+WHERE id = $1;
 
 -- name: CreateKeyAccessServer :one
 INSERT INTO key_access_servers (uri, public_key, metadata)
 VALUES ($1, $2, $3)
 RETURNING id;
 
--- name: UpdateKeyAccessServer :one
+-- name: UpdateKeyAccessServer :execrows
 UPDATE key_access_servers
 SET 
-    uri = coalesce(sqlc.narg('uri'), uri),
-    public_key = coalesce(sqlc.narg('public_key'), public_key),
-    metadata = coalesce(sqlc.narg('metadata'), metadata)
-WHERE id = $1
-RETURNING id;
+    uri = COALESCE(sqlc.narg('uri'), uri),
+    public_key = COALESCE(sqlc.narg('public_key'), public_key),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata)
+WHERE id = $1;
 
 -- name: DeleteKeyAccessServer :execrows
 DELETE FROM key_access_servers WHERE id = $1;

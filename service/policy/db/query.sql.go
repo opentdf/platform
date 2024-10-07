@@ -920,7 +920,8 @@ func (q *Queries) GetAttributeValue(ctx context.Context, id string) (GetAttribut
 const getKeyAccessServer = `-- name: GetKeyAccessServer :one
 SELECT id, uri, public_key,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-FROM key_access_servers WHERE id = $1
+FROM key_access_servers
+WHERE id = $1
 `
 
 type GetKeyAccessServerRow struct {
@@ -934,7 +935,8 @@ type GetKeyAccessServerRow struct {
 //
 //	SELECT id, uri, public_key,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-//	FROM key_access_servers WHERE id = $1
+//	FROM key_access_servers
+//	WHERE id = $1
 func (q *Queries) GetKeyAccessServer(ctx context.Context, id string) (GetKeyAccessServerRow, error) {
 	row := q.db.QueryRow(ctx, getKeyAccessServer, id)
 	var i GetKeyAccessServerRow
@@ -2160,14 +2162,13 @@ func (q *Queries) UpdateAttributeValue(ctx context.Context, arg UpdateAttributeV
 	return result.RowsAffected(), nil
 }
 
-const updateKeyAccessServer = `-- name: UpdateKeyAccessServer :one
+const updateKeyAccessServer = `-- name: UpdateKeyAccessServer :execrows
 UPDATE key_access_servers
 SET 
-    uri = coalesce($2, uri),
-    public_key = coalesce($3, public_key),
-    metadata = coalesce($4, metadata)
+    uri = COALESCE($2, uri),
+    public_key = COALESCE($3, public_key),
+    metadata = COALESCE($4, metadata)
 WHERE id = $1
-RETURNING id
 `
 
 type UpdateKeyAccessServerParams struct {
@@ -2181,21 +2182,21 @@ type UpdateKeyAccessServerParams struct {
 //
 //	UPDATE key_access_servers
 //	SET
-//	    uri = coalesce($2, uri),
-//	    public_key = coalesce($3, public_key),
-//	    metadata = coalesce($4, metadata)
+//	    uri = COALESCE($2, uri),
+//	    public_key = COALESCE($3, public_key),
+//	    metadata = COALESCE($4, metadata)
 //	WHERE id = $1
-//	RETURNING id
-func (q *Queries) UpdateKeyAccessServer(ctx context.Context, arg UpdateKeyAccessServerParams) (string, error) {
-	row := q.db.QueryRow(ctx, updateKeyAccessServer,
+func (q *Queries) UpdateKeyAccessServer(ctx context.Context, arg UpdateKeyAccessServerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateKeyAccessServer,
 		arg.ID,
 		arg.Uri,
 		arg.PublicKey,
 		arg.Metadata,
 	)
-	var id string
-	err := row.Scan(&id)
-	return id, err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateNamespace = `-- name: UpdateNamespace :execrows

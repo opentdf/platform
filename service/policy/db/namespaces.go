@@ -164,7 +164,7 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 	nsFqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
 	c.logger.Debug("upserted fqn for unsafely updated namespace", slog.Any("fqn", nsFqn))
 
-	attrs, err := c.ListAllAttributes(ctx, StateAny, id)
+	attrs, err := c.ListAttributes(ctx, StateAny, id)
 	if err != nil {
 		return nil, err
 	}

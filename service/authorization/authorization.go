@@ -278,11 +278,12 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 						if entityID == "" {
 							entityID = EntityIDPrefix + fmt.Sprint(idx)
 						}
+						entityCategory := entities[idx].GetCategory()
 						auditECEntitlements = append(auditECEntitlements, audit.EntityChainEntitlement{
 							EntityID:                 entityID,
+							EntityCatagory:           entityCategory,
 							AttributeValueReferences: e.GetAttributeValueFqns(),
 						})
-						entityCategory := entities[idx].GetCategory()
 
 						// If entity type unspecified, include in access decision to err on the side of caution
 						if entityCategory == authorization.Entity_CATEGORY_SUBJECT || entityCategory == authorization.Entity_CATEGORY_UNSPECIFIED {

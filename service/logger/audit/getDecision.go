@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/opentdf/platform/protocol/go/authorization"
 )
 
 type DecisionResult int
@@ -21,8 +23,9 @@ func (dr DecisionResult) String() string {
 }
 
 type EntityChainEntitlement struct {
-	EntityID                 string   `json:"entityId"`
-	AttributeValueReferences []string `json:"attributeValueReferences"`
+	EntityID                 string                        `json:"entityId"`
+	EntityCatagory           authorization.Entity_Category `json:"entityCatagory"`
+	AttributeValueReferences []string                      `json:"attributeValueReferences"`
 }
 
 type EntityDecision struct {
@@ -81,9 +84,11 @@ func buildActorAttributes(entityChainEntitlements []EntityChainEntitlement) []in
 	for i, v := range entityChainEntitlements {
 		actorAttributes[i] = struct {
 			EntityID                 string   `json:"entityId"`
+			EntityCategory           string   `json:"entityCategory"`
 			AttributeValueReferences []string `json:"attributeValueReferences"`
 		}{
 			EntityID:                 v.EntityID,
+			EntityCategory:           v.EntityCatagory.String(),
 			AttributeValueReferences: v.AttributeValueReferences,
 		}
 	}

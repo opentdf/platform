@@ -53,7 +53,10 @@ func CreatePolicyEvent(ctx context.Context, isSuccess bool, params PolicyEventPa
 			UserAgent: auditDataFromContext.UserAgent,
 			RequestIP: auditDataFromContext.RequestIP,
 		},
-		RequestID: auditDataFromContext.RequestID,
+		Request: eventRequest{
+			ID:       auditDataFromContext.RequestID,
+			Resource: auditDataFromContext.RequestResource,
+		},
 		Timestamp: time.Now().Format(time.RFC3339),
 	}
 

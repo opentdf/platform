@@ -72,7 +72,10 @@ func CreateGetDecisionEvent(ctx context.Context, params GetDecisionEventParams) 
 			UserAgent: auditDataFromContext.UserAgent,
 			RequestIP: auditDataFromContext.RequestIP,
 		},
-		RequestID: auditDataFromContext.RequestID,
+		Request: eventRequest{
+			ID:       auditDataFromContext.RequestID,
+			Resource: auditDataFromContext.RequestResource,
+		},
 		Timestamp: time.Now().Format(time.RFC3339),
 	}, nil
 }

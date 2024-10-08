@@ -65,7 +65,10 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 			UserAgent: auditDataFromContext.UserAgent,
 			RequestIP: auditDataFromContext.RequestIP,
 		},
-		RequestID: auditDataFromContext.RequestID,
+		Request: eventRequest{
+			ID:       auditDataFromContext.RequestID,
+			Resource: auditDataFromContext.RequestResource,
+		},
 		Timestamp: time.Now().Format(time.RFC3339),
 	}, nil
 }

@@ -20,10 +20,10 @@ type EventObject struct {
 	Actor         auditEventActor  `json:"actor"`
 	EventMetaData interface{}      `json:"eventMetaData"`
 	ClientInfo    eventClientInfo  `json:"clientInfo"`
+	Request       eventRequest     `json:"request"`
 
 	Original  map[string]interface{} `json:"original,omitempty"`
 	Updated   map[string]interface{} `json:"updated,omitempty"`
-	RequestID uuid.UUID              `json:"requestId"`
 	Timestamp string                 `json:"timestamp"`
 }
 
@@ -61,11 +61,17 @@ type eventClientInfo struct {
 	RequestIP string `json:"requestIp"`
 }
 
+type eventRequest struct {
+	ID       uuid.UUID `json:"id"`
+	Resource string    `json:"resource"`
+}
+
 type ContextData struct {
-	RequestID uuid.UUID
-	UserAgent string
-	RequestIP string
-	ActorID   string
+	RequestID       uuid.UUID
+	UserAgent       string
+	RequestIP       string
+	ActorID         string
+	RequestResource string
 }
 
 // Gets relevant audit data from the context object.
@@ -80,10 +86,11 @@ func GetAuditDataFromContext(ctx context.Context) ContextData {
 	}
 
 	return ContextData{
-		RequestID: requestID,
-		UserAgent: getContextValue(ctx, sdkAudit.UserAgentContextKey),
-		RequestIP: getRequestIPFromContext(ctx),
-		ActorID:   getContextValue(ctx, sdkAudit.ActorIDContextKey),
+		RequestID:       requestID,
+		UserAgent:       getContextValue(ctx, sdkAudit.UserAgentContextKey),
+		RequestIP:       getRequestIPFromContext(ctx),
+		ActorID:         getContextValue(ctx, sdkAudit.ActorIDContextKey),
+		RequestResource: getContextValue(ctx, sdkAudit.RequestResourceContextKey),
 	}
 }
 

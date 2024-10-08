@@ -1014,14 +1014,15 @@ func (q *Queries) GetNamespace(ctx context.Context, id string) (GetNamespaceRow,
 const getResourceMapping = `-- name: GetResourceMapping :one
 SELECT
     m.id,
-    JSON_BUILD_OBJECT('id', av.id, 'value', av.value) as attribute_value,
+    JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
     m.terms,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
     COALESCE(m.group_id::TEXT, '')::TEXT as group_id
 FROM resource_mappings m 
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
+LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 WHERE m.id = $1
-GROUP BY av.id, m.id
+GROUP BY av.id, m.id, fqns.fqn
 `
 
 type GetResourceMappingRow struct {
@@ -1036,14 +1037,15 @@ type GetResourceMappingRow struct {
 //
 //	SELECT
 //	    m.id,
-//	    JSON_BUILD_OBJECT('id', av.id, 'value', av.value) as attribute_value,
+//	    JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
 //	    m.terms,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
 //	    COALESCE(m.group_id::TEXT, '')::TEXT as group_id
 //	FROM resource_mappings m
 //	LEFT JOIN attribute_values av on m.attribute_value_id = av.id
+//	LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 //	WHERE m.id = $1
-//	GROUP BY av.id, m.id
+//	GROUP BY av.id, m.id, fqns.fqn
 func (q *Queries) GetResourceMapping(ctx context.Context, id string) (GetResourceMappingRow, error) {
 	row := q.db.QueryRow(ctx, getResourceMapping, id)
 	var i GetResourceMappingRow
@@ -1762,14 +1764,15 @@ const listResourceMappings = `-- name: ListResourceMappings :many
 
 SELECT
     m.id,
-    JSON_BUILD_OBJECT('id', av.id, 'value', av.value) as attribute_value,
+    JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
     m.terms,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
     COALESCE(m.group_id::TEXT, '')::TEXT as group_id
 FROM resource_mappings m 
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
+LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 WHERE (NULLIF($1, '') IS NULL OR m.group_id = $1::UUID)
-GROUP BY av.id, m.id
+GROUP BY av.id, m.id, fqns.fqn
 `
 
 type ListResourceMappingsRow struct {
@@ -1786,14 +1789,15 @@ type ListResourceMappingsRow struct {
 //
 //	SELECT
 //	    m.id,
-//	    JSON_BUILD_OBJECT('id', av.id, 'value', av.value) as attribute_value,
+//	    JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
 //	    m.terms,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
 //	    COALESCE(m.group_id::TEXT, '')::TEXT as group_id
 //	FROM resource_mappings m
 //	LEFT JOIN attribute_values av on m.attribute_value_id = av.id
+//	LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 //	WHERE (NULLIF($1, '') IS NULL OR m.group_id = $1::UUID)
-//	GROUP BY av.id, m.id
+//	GROUP BY av.id, m.id, fqns.fqn
 func (q *Queries) ListResourceMappings(ctx context.Context, groupID interface{}) ([]ListResourceMappingsRow, error) {
 	rows, err := q.db.Query(ctx, listResourceMappings, groupID)
 	if err != nil {

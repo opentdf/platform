@@ -518,14 +518,15 @@ DELETE FROM resource_mapping_groups WHERE id = $1;
 -- name: ListResourceMappings :many
 SELECT
     m.id,
-    JSON_BUILD_OBJECT('id', av.id, 'value', av.value) as attribute_value,
+    JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
     m.terms,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
     COALESCE(m.group_id::TEXT, '')::TEXT as group_id
 FROM resource_mappings m 
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
+LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 WHERE (NULLIF(@group_id, '') IS NULL OR m.group_id = @group_id::UUID)
-GROUP BY av.id, m.id;
+GROUP BY av.id, m.id, fqns.fqn;
 
 -- name: ListResourceMappingsByFullyQualifiedGroup :many
 SELECT 
@@ -547,14 +548,15 @@ WHERE ns.name = @namespace_name AND g.name = @group_name;
 -- name: GetResourceMapping :one
 SELECT
     m.id,
-    JSON_BUILD_OBJECT('id', av.id, 'value', av.value) as attribute_value,
+    JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
     m.terms,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
     COALESCE(m.group_id::TEXT, '')::TEXT as group_id
 FROM resource_mappings m 
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
+LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 WHERE m.id = $1
-GROUP BY av.id, m.id;
+GROUP BY av.id, m.id, fqns.fqn;
 
 -- name: CreateResourceMapping :one
 INSERT INTO resource_mappings (attribute_value_id, terms, metadata, group_id)

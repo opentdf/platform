@@ -2,7 +2,6 @@ package audit
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 )
 
@@ -70,12 +69,7 @@ func (a *Logger) rewrapBase(ctx context.Context, eventParams RewrapAuditEventPar
 		return
 	}
 
-	auditEventJSONBytes, err := json.Marshal(auditEvent)
-	if err != nil {
-		a.logger.ErrorContext(ctx, "error marshalling rewrap audit event", "err", err)
-	}
-
-	a.logger.Log(ctx, LevelAudit, string(auditEventJSONBytes))
+	a.logger.Log(ctx, LevelAudit, "rewrap", "audit", *auditEvent)
 }
 
 func (a *Logger) PolicyCRUDSuccess(ctx context.Context, eventParams PolicyEventParams) {
@@ -93,12 +87,7 @@ func (a *Logger) policyCrudBase(ctx context.Context, isSuccess bool, eventParams
 		return
 	}
 
-	auditEventJSONBytes, err := json.Marshal(auditEvent)
-	if err != nil {
-		a.logger.ErrorContext(ctx, "error marshalling policy attribute audit event", "err", err)
-	}
-
-	a.logger.Log(ctx, LevelAudit, string(auditEventJSONBytes))
+	a.logger.Log(ctx, LevelAudit, "policy crud", "audit", *auditEvent)
 }
 
 func (a *Logger) GetDecision(ctx context.Context, eventParams GetDecisionEventParams) {
@@ -108,10 +97,5 @@ func (a *Logger) GetDecision(ctx context.Context, eventParams GetDecisionEventPa
 		return
 	}
 
-	auditEventJSONBytes, err := json.Marshal(auditEvent)
-	if err != nil {
-		a.logger.ErrorContext(ctx, "error marshalling get decision audit event", "err", err)
-	}
-
-	a.logger.Log(ctx, LevelAudit, string(auditEventJSONBytes))
+	a.logger.Log(ctx, LevelAudit, "decision", "audit", *auditEvent)
 }

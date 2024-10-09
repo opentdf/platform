@@ -87,7 +87,7 @@ func (a *Logger) policyCrudBase(ctx context.Context, isSuccess bool, eventParams
 		return
 	}
 
-	a.logger.Log(ctx, LevelAudit, "policy curd", "audit", *auditEvent)
+	a.logger.Log(ctx, LevelAudit, "policy crud", "audit", *auditEvent)
 }
 
 func (a *Logger) GetDecision(ctx context.Context, eventParams GetDecisionEventParams) {

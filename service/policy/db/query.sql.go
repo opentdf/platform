@@ -1827,18 +1827,24 @@ func (q *Queries) ListResourceMappings(ctx context.Context, groupID interface{})
 const listResourceMappingsByFullyQualifiedGroup = `-- name: ListResourceMappingsByFullyQualifiedGroup :many
 SELECT 
     m.id,
-    m.attribute_value_id,
+    JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
     m.terms,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
-    -- sqlc needs TEXT cast here to be able to generate string properties in Go struct
-    -- has issues when using aliases for some reason, even on a varchar field like g.name
-    g.id::TEXT as group_id,
-    g.namespace_id::TEXT as group_namespace_id,
-    g.name::TEXT as group_name,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', g.metadata -> 'labels', 'created_at', g.created_at, 'updated_at', g.updated_at)) as group_metadata
+    JSON_BUILD_OBJECT(
+        'id', g.id,
+        'namespace_id', g.namespace_id,
+        'name', g.name,
+        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+            'labels', g.metadata -> 'labels',
+            'created_at', g.created_at,
+            'updated_at', g.updated_at
+        ))
+    ) as group
 FROM resource_mappings m
 LEFT JOIN resource_mapping_groups g ON m.group_id = g.id
 LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
+LEFT JOIN attribute_values av on m.attribute_value_id = av.id
+LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 WHERE ns.name = $1 AND g.name = $2
 `
 
@@ -1848,32 +1854,35 @@ type ListResourceMappingsByFullyQualifiedGroupParams struct {
 }
 
 type ListResourceMappingsByFullyQualifiedGroupRow struct {
-	ID               string   `json:"id"`
-	AttributeValueID string   `json:"attribute_value_id"`
-	Terms            []string `json:"terms"`
-	Metadata         []byte   `json:"metadata"`
-	GroupID          string   `json:"group_id"`
-	GroupNamespaceID string   `json:"group_namespace_id"`
-	GroupName        string   `json:"group_name"`
-	GroupMetadata    []byte   `json:"group_metadata"`
+	ID             string   `json:"id"`
+	AttributeValue []byte   `json:"attribute_value"`
+	Terms          []string `json:"terms"`
+	Metadata       []byte   `json:"metadata"`
+	Group          []byte   `json:"group"`
 }
 
 // ListResourceMappingsByFullyQualifiedGroup
 //
 //	SELECT
 //	    m.id,
-//	    m.attribute_value_id,
+//	    JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
 //	    m.terms,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
-//	    -- sqlc needs TEXT cast here to be able to generate string properties in Go struct
-//	    -- has issues when using aliases for some reason, even on a varchar field like g.name
-//	    g.id::TEXT as group_id,
-//	    g.namespace_id::TEXT as group_namespace_id,
-//	    g.name::TEXT as group_name,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', g.metadata -> 'labels', 'created_at', g.created_at, 'updated_at', g.updated_at)) as group_metadata
+//	    JSON_BUILD_OBJECT(
+//	        'id', g.id,
+//	        'namespace_id', g.namespace_id,
+//	        'name', g.name,
+//	        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+//	            'labels', g.metadata -> 'labels',
+//	            'created_at', g.created_at,
+//	            'updated_at', g.updated_at
+//	        ))
+//	    ) as group
 //	FROM resource_mappings m
 //	LEFT JOIN resource_mapping_groups g ON m.group_id = g.id
 //	LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
+//	LEFT JOIN attribute_values av on m.attribute_value_id = av.id
+//	LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 //	WHERE ns.name = $1 AND g.name = $2
 func (q *Queries) ListResourceMappingsByFullyQualifiedGroup(ctx context.Context, arg ListResourceMappingsByFullyQualifiedGroupParams) ([]ListResourceMappingsByFullyQualifiedGroupRow, error) {
 	rows, err := q.db.Query(ctx, listResourceMappingsByFullyQualifiedGroup, arg.NamespaceName, arg.GroupName)
@@ -1886,13 +1895,10 @@ func (q *Queries) ListResourceMappingsByFullyQualifiedGroup(ctx context.Context,
 		var i ListResourceMappingsByFullyQualifiedGroupRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.AttributeValueID,
+			&i.AttributeValue,
 			&i.Terms,
 			&i.Metadata,
-			&i.GroupID,
-			&i.GroupNamespaceID,
-			&i.GroupName,
-			&i.GroupMetadata,
+			&i.Group,
 		); err != nil {
 			return nil, err
 		}

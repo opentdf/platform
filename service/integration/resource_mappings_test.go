@@ -481,6 +481,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqns() {
 	scenarioDotComNs := s.getScenarioDotComNamespace()
 	scenarioDotComGroup := s.f.GetResourceMappingGroupKey("scenario.com_ns_group_1")
 	scenarioDotComGroupMapping := s.f.GetResourceMappingKey("resource_mapping_to_attribute_value3")
+	scenarioDotComAttrValue := s.f.GetAttributeValueKey("scenario.com/attr/working_group/value/blue")
 
 	groupFqn := fmt.Sprintf("https://%s/resm/%s", scenarioDotComNs.Name, scenarioDotComGroup.Name)
 
@@ -491,25 +492,31 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqns() {
 	mappingsByGroup, ok := fqnRmGroupMap[groupFqn]
 	s.True(ok)
 	s.NotNil(mappingsByGroup)
-	s.Equal(scenarioDotComGroup.ID, mappingsByGroup.GetGroup().GetId())
-	s.Equal(scenarioDotComGroup.NamespaceID, mappingsByGroup.GetGroup().GetNamespaceId())
-	s.Equal(scenarioDotComGroup.Name, mappingsByGroup.GetGroup().GetName())
-	groupMetadata := mappingsByGroup.GetGroup().GetMetadata()
+	group := mappingsByGroup.GetGroup()
+	s.Equal(scenarioDotComGroup.ID, group.GetId())
+	s.Equal(scenarioDotComGroup.NamespaceID, group.GetNamespaceId())
+	s.Equal(scenarioDotComGroup.Name, group.GetName())
+	groupMetadata := group.GetMetadata()
 	createdAt := groupMetadata.GetCreatedAt()
 	updatedAt := groupMetadata.GetUpdatedAt()
-	s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
-	s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
+	s.False(createdAt.AsTime().IsZero())
+	s.False(updatedAt.AsTime().IsZero())
+	s.True(updatedAt.AsTime().Equal(createdAt.AsTime()))
 
 	s.Len(mappingsByGroup.GetMappings(), 1, "expected 1 mapping")
 	mapping := mappingsByGroup.GetMappings()[0]
 	s.Equal(scenarioDotComGroupMapping.ID, mapping.GetId())
-	s.Equal(scenarioDotComGroupMapping.AttributeValueID, mapping.GetAttributeValue().GetId())
 	s.Equal(scenarioDotComGroupMapping.Terms, mapping.GetTerms())
-	metadata := mapping.GetMetadata()
-	createdAt = metadata.GetCreatedAt()
-	updatedAt = metadata.GetUpdatedAt()
-	s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
-	s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
+	mappingMetadata := mapping.GetMetadata()
+	createdAt = mappingMetadata.GetCreatedAt()
+	updatedAt = mappingMetadata.GetUpdatedAt()
+	s.False(createdAt.AsTime().IsZero())
+	s.False(updatedAt.AsTime().IsZero())
+	s.True(updatedAt.AsTime().Equal(createdAt.AsTime()))
+	value := mapping.GetAttributeValue()
+	s.Equal(scenarioDotComAttrValue.ID, value.GetId())
+	s.Equal(scenarioDotComAttrValue.Value, value.GetValue())
+	s.Equal("https://scenario.com/attr/working_group/value/blue", value.GetFqn())
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqnsWithEmptyOrNilFqnsFails() {

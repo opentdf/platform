@@ -105,7 +105,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	}
 
 	if inputSize > maxFileSizeSupported {
-		return nil, ErrFileTooLarge
+		return nil, errFileTooLarge
 	}
 
 	_, err = reader.Seek(0, io.SeekStart)
@@ -323,7 +323,7 @@ func (r *Reader) Manifest() Manifest {
 func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFConfig) error { //nolint:funlen,gocognit // Better readability keeping it as is
 	manifest := Manifest{}
 	if len(tdfConfig.splitPlan) == 0 && len(tdfConfig.kasInfoList) == 0 {
-		return fmt.Errorf("%w: no key access template specified or inferred", ErrInvalidKasInfo)
+		return fmt.Errorf("%w: no key access template specified or inferred", errInvalidKasInfo)
 	}
 
 	manifest.EncryptionInformation.KeyAccessType = kSplitKeyType
@@ -429,7 +429,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 
 		for _, kasInfo := range conjunction[splitID] {
 			if len(kasInfo.PublicKey) == 0 {
-				return fmt.Errorf("splitID:[%s], kas:[%s]: %w", splitID, kasInfo.URL, ErrKasPubKeyMissing)
+				return fmt.Errorf("splitID:[%s], kas:[%s]: %w", splitID, kasInfo.URL, errKasPubKeyMissing)
 			}
 
 			// wrap the key with kas public key
@@ -605,7 +605,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 		}
 
 		if n != len(writeBuf) {
-			return totalBytes, ErrWriteFailed
+			return totalBytes, errWriteFailed
 		}
 
 		payloadReadOffset += seg.EncryptedSize
@@ -689,7 +689,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		}
 
 		if n != len(writeBuf) {
-			return 0, ErrWriteFailed
+			return 0, errWriteFailed
 		}
 
 		payloadReadOffset += seg.EncryptedSize
@@ -802,7 +802,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		ss := keySplitStep{KAS: keyAccessObj.KasURL, SplitID: keyAccessObj.SplitID}
 
 		var wrappedKey []byte
-		if !mixedSplits {
+		if !mixedSplits { //nolint:nestif // todo: subfunction
 			wrappedKey, err = client.unwrap(ctx, keyAccessObj, r.manifest.EncryptionInformation.Policy)
 			if err != nil {
 				errToReturn := fmt.Errorf("doPayloadKeyUnwrap splitKey.rewrap failed: %w", err)
@@ -810,7 +810,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 					return fmt.Errorf("%w: %w", ErrRewrapBadRequest, errToReturn)
 				}
 				if !strings.Contains(err.Error(), codes.PermissionDenied.String()) {
-					return fmt.Errorf("%w: %w", ErrRewrapForbidden, errToReturn)
+					return fmt.Errorf("%w: %w", errRewrapForbidden, errToReturn)
 				}
 				return errToReturn
 			}
@@ -827,8 +827,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 					skippedSplits[ss] = fmt.Errorf("%w: %w", ErrRewrapBadRequest, errToReturn)
 				}
 				if !strings.Contains(err.Error(), codes.PermissionDenied.String()) {
-					skippedSplits[ss] = fmt.Errorf("%w: %w", ErrRewrapForbidden, errToReturn)
-
+					skippedSplits[ss] = fmt.Errorf("%w: %w", errRewrapForbidden, errToReturn)
 				}
 				skippedSplits[ss] = errToReturn
 				continue

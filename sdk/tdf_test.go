@@ -765,6 +765,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 			_, err = r.ReadAt(buf, int64(offset))
 			s.Require().Error(err)
 			s.Require().ErrorIs(err, ErrAssertionFailure{ID: test.assertions[test.failedAssertion].ID})
+			s.Require().ErrorIs(err, ErrTampered)
 		}
 		_ = os.Remove(tdfFilename)
 	}

@@ -6,27 +6,32 @@ import (
 )
 
 var (
-	ErrFileTooLarge            = errors.New("tdf: can't create tdf larger than 64gb")
-	ErrRootSigValidation       = errors.New("tdf: failed integrity check on root signature")
-	ErrSegSizeMismatch         = errors.New("tdf: mismatch encrypted segment size in manifest")
-	ErrTDFReaderFailed         = errors.New("tdf: fail to read bytes from TDFReader")
-	ErrWriteFailed             = errors.New("tdf: io.writer fail to write all bytes")
-	ErrSegSigValidation        = errors.New("tdf: failed integrity check on segment hash")
-	ErrTDFPayloadReadFail      = errors.New("tdf: fail to read payload from tdf")
-	ErrInvalidKasInfo          = errors.New("tdf: kas information is missing")
-	ErrKasPubKeyMissing        = errors.New("tdf: kas public key is missing")
-	ErrTDFPayloadInvalidOffset = errors.New("sdk.Reader.ReadAt: negative offset")
-	ErrRewrapBadRequest        = errors.New("tdf: rewrap request 400")
-	ErrRewrapForbidden         = errors.New("tdf: rewrap request 403")
-	ErrRootSignatureFailure    = errors.New("tdf: issue verifying root signature")
+	errFileTooLarge     = errors.New("tdf: can't create tdf larger than 64gb")
+	errWriteFailed      = errors.New("tdf: io.writer fail to write all bytes")
+	errInvalidKasInfo   = errors.New("tdf: kas information is missing")
+	errKasPubKeyMissing = errors.New("tdf: kas public key is missing")
+	errRewrapForbidden  = errors.New("tdf: rewrap request 403")
+	// Exposed tamper detection errors
+	ErrTampered                = errors.New("tamper detected")
+	ErrRootSigValidation       = fmt.Errorf("[%w] tdf: failed integrity check on root signature", ErrTampered)
+	ErrSegSizeMismatch         = fmt.Errorf("[%w] tdf: mismatch encrypted segment size in manifest", ErrTampered)
+	ErrTDFReaderFailed         = fmt.Errorf("[%w] tdf: fail to read bytes from TDFReader", ErrTampered)
+	ErrSegSigValidation        = fmt.Errorf("[%w] tdf: failed integrity check on segment hash", ErrTampered)
+	ErrTDFPayloadReadFail      = fmt.Errorf("[%w] tdf: fail to read payload from tdf", ErrTampered)
+	ErrTDFPayloadInvalidOffset = fmt.Errorf("[%w] sdk.Reader.ReadAt: negative offset", ErrTampered)
+	ErrRewrapBadRequest        = fmt.Errorf("[%w] tdf: rewrap request 400", ErrTampered)
+	ErrRootSignatureFailure    = fmt.Errorf("[%w] tdf: issue verifying root signature", ErrTampered)
 )
 
-// Custom error struct with a string field
-type ErrAssertionFailure struct {
+// Custom error struct for Assertion errors
+type ErrAssertionFailure struct { //nolint:errname // match naming of existing errors
 	ID string
 }
 
-// Implement the Error() method to satisfy the error interface
 func (e ErrAssertionFailure) Error() string {
-	return fmt.Sprintf("tdf: issue verifying assertions, id: %s", e.ID)
+	return fmt.Errorf("[%w] tdf: issue verifying assertions, id: %s", ErrTampered, e.ID).Error()
+}
+
+func (e ErrAssertionFailure) Unwrap() error {
+	return ErrTampered
 }

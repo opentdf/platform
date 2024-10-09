@@ -6,8 +6,10 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policydb "github.com/opentdf/platform/service/policy/db"
@@ -38,53 +40,104 @@ func NewRegistration() serviceregistry.Registration {
 //
 
 func (s *UnsafeService) UnsafeUpdateNamespace(ctx context.Context, req *unsafe.UnsafeUpdateNamespaceRequest) (*unsafe.UnsafeUpdateNamespaceResponse, error) {
+	id := req.GetId()
+	name := req.GetName()
+
 	rsp := &unsafe.UnsafeUpdateNamespaceResponse{}
 
-	_, err := s.dbClient.GetNamespace(ctx, req.GetId())
-	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeNamespace,
+		ObjectID:   id,
 	}
 
-	item, err := s.dbClient.UnsafeUpdateNamespace(ctx, req.GetId(), req.GetName())
+	original, err := s.dbClient.GetNamespace(ctx, id)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("namespace", req.GetName()))
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 	}
-	rsp.Namespace = item
+
+	updated, err := s.dbClient.UnsafeUpdateNamespace(ctx, id, name)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", id), slog.String("namespace", name))
+	}
+
+	auditParams.Original = original
+	auditParams.Updated = updated
+
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.Namespace = &policy.Namespace{
+		Id: id,
+	}
 
 	return rsp, nil
 }
 
 func (s *UnsafeService) UnsafeReactivateNamespace(ctx context.Context, req *unsafe.UnsafeReactivateNamespaceRequest) (*unsafe.UnsafeReactivateNamespaceResponse, error) {
+	id := req.GetId()
+
 	rsp := &unsafe.UnsafeReactivateNamespaceResponse{}
 
-	_, err := s.dbClient.GetNamespace(ctx, req.GetId())
-	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeNamespace,
+		ObjectID:   id,
 	}
 
-	item, err := s.dbClient.UnsafeReactivateNamespace(ctx, req.GetId())
+	original, err := s.dbClient.GetNamespace(ctx, id)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()))
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 	}
-	rsp.Namespace = item
+
+	updated, err := s.dbClient.UnsafeReactivateNamespace(ctx, id)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", id))
+	}
+
+	auditParams.Original = original
+	auditParams.Updated = updated
+
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.Namespace = &policy.Namespace{
+		Id: id,
+	}
 
 	return rsp, nil
 }
 
 func (s *UnsafeService) UnsafeDeleteNamespace(ctx context.Context, req *unsafe.UnsafeDeleteNamespaceRequest) (*unsafe.UnsafeDeleteNamespaceResponse, error) {
+	id := req.GetId()
+
 	rsp := &unsafe.UnsafeDeleteNamespaceResponse{}
 
-	existing, err := s.dbClient.GetNamespace(ctx, req.GetId())
-	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeNamespace,
+		ObjectID:   id,
 	}
 
-	deleted, err := s.dbClient.UnsafeDeleteNamespace(ctx, existing, req.GetFqn())
+	existing, err := s.dbClient.GetNamespace(ctx, id)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 	}
 
-	rsp.Namespace = deleted
+	_, err = s.dbClient.UnsafeDeleteNamespace(ctx, existing, req.GetFqn())
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", id))
+	}
+
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.Namespace = &policy.Namespace{
+		Id: id,
+	}
 
 	return rsp, nil
 }
@@ -94,55 +147,103 @@ func (s *UnsafeService) UnsafeDeleteNamespace(ctx context.Context, req *unsafe.U
 //
 
 func (s *UnsafeService) UnsafeUpdateAttribute(ctx context.Context, req *unsafe.UnsafeUpdateAttributeRequest) (*unsafe.UnsafeUpdateAttributeResponse, error) {
+	id := req.GetId()
+
 	rsp := &unsafe.UnsafeUpdateAttributeResponse{}
 
-	_, err := s.dbClient.GetAttribute(ctx, req.GetId())
-	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeAttributeDefinition,
+		ObjectID:   id,
 	}
 
-	item, err := s.dbClient.UnsafeUpdateAttribute(ctx, req)
+	original, err := s.dbClient.GetAttribute(ctx, id)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("attribute", req.String()))
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 	}
 
-	rsp.Attribute = item
+	updated, err := s.dbClient.UnsafeUpdateAttribute(ctx, req)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", id), slog.String("attribute", req.String()))
+	}
+
+	auditParams.Original = original
+	auditParams.Updated = updated
+
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.Attribute = &policy.Attribute{
+		Id: id,
+	}
 
 	return rsp, nil
 }
 
 func (s *UnsafeService) UnsafeReactivateAttribute(ctx context.Context, req *unsafe.UnsafeReactivateAttributeRequest) (*unsafe.UnsafeReactivateAttributeResponse, error) {
+	id := req.GetId()
+
 	rsp := &unsafe.UnsafeReactivateAttributeResponse{}
 
-	_, err := s.dbClient.GetAttribute(ctx, req.GetId())
-	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeAttributeDefinition,
+		ObjectID:   id,
 	}
 
-	item, err := s.dbClient.UnsafeReactivateAttribute(ctx, req.GetId())
+	original, err := s.dbClient.GetAttribute(ctx, id)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()))
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 	}
 
-	rsp.Attribute = item
+	updated, err := s.dbClient.UnsafeReactivateAttribute(ctx, id)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", id))
+	}
+
+	auditParams.Original = original
+	auditParams.Updated = updated
+
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.Attribute = &policy.Attribute{
+		Id: id,
+	}
 
 	return rsp, nil
 }
 
 func (s *UnsafeService) UnsafeDeleteAttribute(ctx context.Context, req *unsafe.UnsafeDeleteAttributeRequest) (*unsafe.UnsafeDeleteAttributeResponse, error) {
+	id := req.GetId()
+
 	rsp := &unsafe.UnsafeDeleteAttributeResponse{}
 
-	existing, err := s.dbClient.GetAttribute(ctx, req.GetId())
-	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeAttributeDefinition,
+		ObjectID:   id,
 	}
 
-	deleted, err := s.dbClient.UnsafeDeleteAttribute(ctx, existing, req.GetFqn())
+	existing, err := s.dbClient.GetAttribute(ctx, id)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 	}
 
-	rsp.Attribute = deleted
+	_, err = s.dbClient.UnsafeDeleteAttribute(ctx, existing, req.GetFqn())
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", id))
+	}
+
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.Attribute = &policy.Attribute{
+		Id: id,
+	}
 
 	return rsp, nil
 }
@@ -152,50 +253,100 @@ func (s *UnsafeService) UnsafeDeleteAttribute(ctx context.Context, req *unsafe.U
 //
 
 func (s *UnsafeService) UnsafeUpdateAttributeValue(ctx context.Context, req *unsafe.UnsafeUpdateAttributeValueRequest) (*unsafe.UnsafeUpdateAttributeValueResponse, error) {
+	id := req.GetId()
+
 	rsp := &unsafe.UnsafeUpdateAttributeValueResponse{}
-	_, err := s.dbClient.GetAttributeValue(ctx, req.GetId())
-	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeAttributeValue,
+		ObjectID:   id,
 	}
 
-	item, err := s.dbClient.UnsafeUpdateAttributeValue(ctx, req)
+	original, err := s.dbClient.GetAttributeValue(ctx, id)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()), slog.String("attribute_value", req.String()))
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 	}
 
-	rsp.Value = item
+	updated, err := s.dbClient.UnsafeUpdateAttributeValue(ctx, req)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", id), slog.String("attribute_value", req.String()))
+	}
+
+	auditParams.Original = original
+	auditParams.Updated = updated
+
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.Value = &policy.Value{
+		Id: id,
+	}
 	return rsp, nil
 }
 
 func (s *UnsafeService) UnsafeReactivateAttributeValue(ctx context.Context, req *unsafe.UnsafeReactivateAttributeValueRequest) (*unsafe.UnsafeReactivateAttributeValueResponse, error) {
+	id := req.GetId()
+
 	rsp := &unsafe.UnsafeReactivateAttributeValueResponse{}
 
-	_, err := s.dbClient.GetAttributeValue(ctx, req.GetId())
-	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeAttributeValue,
+		ObjectID:   id,
 	}
 
-	item, err := s.dbClient.UnsafeReactivateAttributeValue(ctx, req.GetId())
+	original, err := s.dbClient.GetAttributeValue(ctx, id)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.GetId()))
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 	}
 
-	rsp.Value = item
+	updated, err := s.dbClient.UnsafeReactivateAttributeValue(ctx, id)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", id))
+	}
+
+	auditParams.Original = original
+	auditParams.Updated = updated
+
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.Value = &policy.Value{
+		Id: id,
+	}
 	return rsp, nil
 }
 
 func (s *UnsafeService) UnsafeDeleteAttributeValue(ctx context.Context, req *unsafe.UnsafeDeleteAttributeValueRequest) (*unsafe.UnsafeDeleteAttributeValueResponse, error) {
+	id := req.GetId()
+
 	rsp := &unsafe.UnsafeDeleteAttributeValueResponse{}
-	existing, err := s.dbClient.GetAttributeValue(ctx, req.GetId())
-	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.GetId()))
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeAttributeValue,
+		ObjectID:   id,
 	}
 
-	deleted, err := s.dbClient.UnsafeDeleteAttributeValue(ctx, existing, req)
+	existing, err := s.dbClient.GetAttributeValue(ctx, id)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.GetId()))
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 	}
 
-	rsp.Value = deleted
+	_, err = s.dbClient.UnsafeDeleteAttributeValue(ctx, existing, req)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", id))
+	}
+
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.Value = &policy.Value{
+		Id: id,
+	}
 	return rsp, nil
 }

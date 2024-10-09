@@ -155,13 +155,13 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Cached() {
 			"name": "cached KAS",
 		},
 	}
-	cached_key_pem := "some_local_public_key_in_base64"
+	cachedKeyPem := "some_local_public_key_in_base64"
 	pubKey := &policy.PublicKey{
 		PublicKey: &policy.PublicKey_Cached{
 			Cached: &policy.KasPublicKeySet{
 				Keys: []*policy.KasPublicKey{
 					{
-						Pem: cached_key_pem,
+						Pem: cachedKeyPem,
 					},
 				},
 			},
@@ -177,7 +177,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Cached() {
 	s.Require().NoError(err)
 	s.NotNil(r)
 	s.NotZero(r.GetId())
-	s.Equal(r.GetPublicKey().GetCached().GetKeys()[0].GetPem(), cached_key_pem)
+	s.Equal(r.GetPublicKey().GetCached().GetKeys()[0].GetPem(), cachedKeyPem)
 }
 
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {

@@ -241,14 +241,15 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Definition
 	s.NotNil(grant)
 
 	// create a second kas registration and grant it to the attribute definition
-	localKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+	cached_key_pem := "cached_key"
+	cachedKas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
 		Uri: "https://example.org/kas2",
 		PublicKey: &policy.PublicKey{
 			PublicKey: &policy.PublicKey_Cached{
 				Cached: &policy.KasPublicKeySet{
 					Keys: []*policy.KasPublicKey{
 						{
-							Pem: "local_key",
+							Pem: "cached_key",
 						},
 					},
 				},
@@ -256,12 +257,13 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Definition
 		},
 	})
 	s.Require().NoError(err)
-	s.NotNil(localKAS)
+	s.NotNil(cachedKas)
 
 	grant2, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, &attributes.AttributeKeyAccessServer{
-		KeyAccessServerId: localKAS.GetId(),
+		KeyAccessServerId: cachedKas.GetId(),
 		AttributeId:       a.GetId(),
 	})
+	cached_kas_id := grant2.GetKeyAccessServerId()
 	s.Require().NoError(err)
 	s.NotNil(grant2)
 
@@ -272,10 +274,19 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Definition
 
 	// ensure the attribute has the grants
 	s.Len(got.GetGrants(), 2)
-	grantIDs := []string{remoteKAS.GetId(), localKAS.GetId()}
+	grantIDs := []string{remoteKAS.GetId(), cachedKas.GetId()}
 	s.Contains(grantIDs, got.GetGrants()[0].GetId())
 	s.Contains(grantIDs, got.GetGrants()[1].GetId())
 	s.NotEqual(got.GetGrants()[0].GetId(), got.GetGrants()[1].GetId())
+	// ensure grant has cached key pem
+	pem_is_present := false
+	for _, g := range got.GetGrants() {
+		if g.GetId() == cached_kas_id {
+			s.Equal(g.GetPublicKey().GetCached().GetKeys()[0].GetPem(), cached_key_pem)
+			pem_is_present = true
+		}
+	}
+	s.True(pem_is_present)
 
 	// get the attribute by the fqn of one of its values and ensure the grants are present on the definition
 	got, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, "https://example.org/attr/attr_with_grants/value/value1")

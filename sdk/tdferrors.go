@@ -11,7 +11,7 @@ var (
 	errInvalidKasInfo   = errors.New("tdf: kas information is missing")
 	errKasPubKeyMissing = errors.New("tdf: kas public key is missing")
 	errRewrapForbidden  = errors.New("tdf: rewrap request 403")
-	// Exposed tamper detection errors
+	// Exposed tamper detection errors, Catch all possible tamper errors with errors.Is(ErrTampered)
 	ErrTampered                = errors.New("tamper detected")
 	ErrRootSigValidation       = fmt.Errorf("[%w] tdf: failed integrity check on root signature", ErrTampered)
 	ErrSegSizeMismatch         = fmt.Errorf("[%w] tdf: mismatch encrypted segment size in manifest", ErrTampered)

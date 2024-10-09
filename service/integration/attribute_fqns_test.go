@@ -263,7 +263,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Definition
 		KeyAccessServerId: cachedKas.GetId(),
 		AttributeId:       a.GetId(),
 	})
-	cachedKasId := grant2.GetKeyAccessServerId()
+	cachedKasID := grant2.GetKeyAccessServerId()
 	s.Require().NoError(err)
 	s.NotNil(grant2)
 
@@ -281,7 +281,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Definition
 	// ensure grant has cached key pem
 	pemIsPresent := false
 	for _, g := range got.GetGrants() {
-		if g.GetId() == cachedKasId {
+		if g.GetId() == cachedKasID {
 			s.Equal(g.GetPublicKey().GetCached().GetKeys()[0].GetPem(), cachedKeyPem)
 			pemIsPresent = true
 		}

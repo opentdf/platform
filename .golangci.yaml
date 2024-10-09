@@ -68,7 +68,7 @@ linters-settings:
             reason: "gofrs' package is not go module"
   gosec:
     excludes:
-      - G115 # integer overflow protection; 
+      - G115 # integer overflow protection;
 
   govet:
     # Enable all analyzers.
@@ -138,7 +138,7 @@ linters:
     - errname # checks that sentinel errors are prefixed with the Err and error types are suffixed with the Error
     - errorlint # finds code that will cause problems with the error wrapping scheme introduced in Go 1.13
     - exhaustive # checks exhaustiveness of enum switch statements
-    - exportloopref # checks for pointers to enclosing loop variables
+    # - exportloopref # checks for pointers to enclosing loop variables Since Go1.22 (loopvar) this linter is no longer relevant. Replaced by copyloopvar."
     # - fatcontext
     - forbidigo # forbids identifiers
     - forcetypeassert # finds forced type assertions

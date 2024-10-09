@@ -81,9 +81,8 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 		t.Fatalf("event client info did not match expected: got %+v, want %+v", event.ClientInfo, expectedClientInfo)
 	}
 
-	expectedRequestID, _ := uuid.Parse(TestRequestID)
-	if event.RequestID != expectedRequestID {
-		t.Fatalf("event request ID did not match expected: got %v, want %v", event.RequestID, expectedRequestID)
+	if event.RequestID != TestRequestID {
+		t.Fatalf("event request ID did not match expected: got %v, want %v", event.RequestID, TestRequestID)
 	}
 
 	validateRecentEventTimestamp(t, event)

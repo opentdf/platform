@@ -529,27 +529,34 @@ WHERE (NULLIF(@group_id, '') IS NULL OR m.group_id = @group_id::UUID)
 GROUP BY av.id, m.id, fqns.fqn;
 
 -- name: ListResourceMappingsByFullyQualifiedGroup :many
-SELECT 
+-- CTE to cache the group JSON build since it will be the same for all mappings of the group
+WITH groups_cte AS (
+    SELECT
+        g.id,
+        JSON_BUILD_OBJECT(
+            'id', g.id,
+            'namespace_id', g.namespace_id,
+            'name', g.name,
+            'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+                'labels', g.metadata -> 'labels',
+                'created_at', g.created_at,
+                'updated_at', g.updated_at
+            ))
+        ) as group
+    FROM resource_mapping_groups g
+    JOIN attribute_namespaces ns on g.namespace_id = ns.id
+    WHERE ns.name = @namespace_name AND g.name = @group_name
+)
+SELECT
     m.id,
     JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
     m.terms,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
-    JSON_BUILD_OBJECT(
-        'id', g.id,
-        'namespace_id', g.namespace_id,
-        'name', g.name,
-        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
-            'labels', g.metadata -> 'labels',
-            'created_at', g.created_at,
-            'updated_at', g.updated_at
-        ))
-    ) as group
+    g.group
 FROM resource_mappings m
-LEFT JOIN resource_mapping_groups g ON m.group_id = g.id
-LEFT JOIN attribute_namespaces ns ON g.namespace_id = ns.id
-LEFT JOIN attribute_values av on m.attribute_value_id = av.id
-LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
-WHERE ns.name = @namespace_name AND g.name = @group_name;
+JOIN groups_cte g ON m.group_id = g.id
+JOIN attribute_values av on m.attribute_value_id = av.id
+JOIN attribute_fqns fqns on av.id = fqns.value_id;
 
 -- name: GetResourceMapping :one
 SELECT

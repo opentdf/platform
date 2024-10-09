@@ -12,7 +12,7 @@ import (
 
 func TestGetAuditDataFromContextHappyPath(t *testing.T) {
 	ctx := context.Background()
-	testRequestID := uuid.New().String()
+	testRequestID := uuid.New()
 	testUserAgent := "test-user-agent"
 	testRequestIP := "192.168.0.1"
 	testActorID := "test-actor-id"
@@ -27,7 +27,7 @@ func TestGetAuditDataFromContextHappyPath(t *testing.T) {
 
 	auditData := GetAuditDataFromContext(ctx)
 
-	if auditData.RequestID.String() != testRequestID {
+	if auditData.RequestID.String() != testRequestID.String() {
 		t.Fatalf("RequestID did not match: %v", auditData.RequestID)
 	}
 
@@ -62,6 +62,67 @@ func TestGetAuditDataFromContextDefaultsPath(t *testing.T) {
 	}
 
 	if auditData.ActorID != defaultNone {
+		t.Fatalf("ActorID did not match: %v", auditData.ActorID)
+	}
+}
+func TestGetAuditDataFromContextWithNoKeys(t *testing.T) {
+	ctx := context.Background()
+	auditData := GetAuditDataFromContext(ctx)
+
+	if auditData.RequestID != uuid.Nil {
+		t.Fatalf("RequestID did not match: %v", auditData.RequestID)
+	}
+
+	if auditData.UserAgent != "None" {
+		t.Fatalf("UserAgent did not match: %v", auditData.UserAgent)
+	}
+
+	if auditData.RequestIP != "None" {
+		t.Fatalf("RequestIP did not match: %v", auditData.RequestIP)
+	}
+
+	if auditData.ActorID != "None" {
+		t.Fatalf("ActorID did not match: %v", auditData.ActorID)
+	}
+}
+func TestGetAuditDataFromContextWithPartialKeys(t *testing.T) {
+	ctx := context.Background()
+	testUserAgent := "partial-user-agent"
+	testActorID := "partial-actor-id"
+
+	// Set relevant context keys
+	ctx = context.WithValue(ctx, sdkAudit.UserAgentContextKey, testUserAgent)
+	ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, testActorID)
+
+	auditData := GetAuditDataFromContext(ctx)
+
+	if auditData.RequestID != uuid.Nil {
+		t.Fatalf("RequestID did not match: %v", auditData.RequestID)
+	}
+
+	if auditData.UserAgent != testUserAgent {
+		t.Fatalf("UserAgent did not match: %v", auditData.UserAgent)
+	}
+
+	if auditData.RequestIP != "None" {
+		t.Fatalf("RequestIP did not match: %v", auditData.RequestIP)
+	}
+
+	if auditData.ActorID != testActorID {
+		t.Fatalf("ActorID did not match: %v", auditData.ActorID)
+	}
+}
+
+func TestGetAuditDataFromContextWrongType(t *testing.T) {
+	ctx := context.Background()
+	testActorID := 12345
+
+	// Set relevant context keys
+	ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, testActorID)
+
+	auditData := GetAuditDataFromContext(ctx)
+
+	if auditData.ActorID != "None" {
 		t.Fatalf("ActorID did not match: %v", auditData.ActorID)
 	}
 }

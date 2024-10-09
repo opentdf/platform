@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.14](https://github.com/opentdf/platform/compare/sdk/v0.3.13...sdk/v0.3.14) (2024-10-08)
+
+
+### Features
+
+* **sdk:** Improve KAS key lookup and caching ([#1556](https://github.com/opentdf/platform/issues/1556)) ([fb6c47a](https://github.com/opentdf/platform/commit/fb6c47a95f2e91748436a76aeef46a81273bb10d))
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1609](https://github.com/opentdf/platform/issues/1609)) ([d5e4292](https://github.com/opentdf/platform/commit/d5e4292a026cda0e0bfc667f267492f4024b0335))
+
 ## [0.3.13](https://github.com/opentdf/platform/compare/sdk/v0.3.12...sdk/v0.3.13) (2024-10-01)
 
 

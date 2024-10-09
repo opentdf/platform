@@ -68,7 +68,7 @@ type ContextData struct {
 	ActorID   string
 }
 
-// Gets relevant audit data from the context object.
+// GetAuditDataFromContext Gets relevant audit data from the context object.
 func GetAuditDataFromContext(ctx context.Context) ContextData {
 	// Extract the request ID from context
 

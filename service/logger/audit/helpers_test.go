@@ -2,6 +2,7 @@ package audit
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"testing"
 	"time"
 
@@ -9,7 +10,6 @@ import (
 )
 
 const (
-	TestRequestID     = "60d77895-b330-42da-92d2-5a9aa773fa1b"
 	TestUserAgent     = "test-user-agent"
 	TestActorID       = "test-actor-id"
 	TestRequestIP     = "192.168.1.1"
@@ -17,6 +17,8 @@ const (
 	TestAlgorithm     = "rsa"
 	TestPolicyBinding = "test-policy-binding"
 )
+
+var TestRequestID = uuid.New()
 
 func createTestContext() context.Context {
 	ctx := context.Background()

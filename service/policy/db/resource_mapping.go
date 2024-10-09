@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/util"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 /*
@@ -208,31 +209,32 @@ func (c PolicyDBClient) ListResourceMappingsByGroupFqns(ctx context.Context, fqn
 
 		mappings := make([]*policy.ResourceMapping, len(rows))
 		for i, row := range rows {
-			metadata := new(common.Metadata)
+			metadata := &common.Metadata{}
 			if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
+				return nil, err
+			}
+
+			value := &policy.Value{}
+			if err := unmarshalAttributeValue(row.AttributeValue, value); err != nil {
 				return nil, err
 			}
 
 			mappings[i] = &policy.ResourceMapping{
 				Id:             row.ID,
-				AttributeValue: &policy.Value{Id: row.AttributeValueID},
+				AttributeValue: value,
 				Terms:          row.Terms,
 				Metadata:       metadata,
 			}
 		}
 
 		// all rows will have the same group values, so just use first row for group object population
-		groupMetadata := new(common.Metadata)
-		if err := unmarshalMetadata(rows[0].GroupMetadata, groupMetadata); err != nil {
+		group := &policy.ResourceMappingGroup{}
+		if err := protojson.Unmarshal(rows[0].Group, group); err != nil {
 			return nil, err
 		}
+
 		mappingsByGroup := &resourcemapping.ResourceMappingsByGroup{
-			Group: &policy.ResourceMappingGroup{
-				Id:          rows[0].GroupID,
-				NamespaceId: rows[0].GroupNamespaceID,
-				Name:        rows[0].GroupName,
-				Metadata:    groupMetadata,
-			},
+			Group:    group,
 			Mappings: mappings,
 		}
 

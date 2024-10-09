@@ -427,7 +427,7 @@ resource_mappings:
       group_id: 173bb45c-76ae-4993-a648-d9bc0bc05147
     resource_mapping_to_attribute_value3:
       id: f4d76bfb-e1a1-4f7a-83f2-8e8433cf229f
-      attribute_value_id: 04bd2657-de10-46bc-a88f-5d687de4816b
+      attribute_value_id: c2140825-0969-44c9-8dd6-5d7e0a856b9c
       terms:
         - helloworld
       group_id: 45f392f0-7d9e-4c73-9bf7-11bbd3bd40af

@@ -249,7 +249,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Definition
 				Cached: &policy.KasPublicKeySet{
 					Keys: []*policy.KasPublicKey{
 						{
-							Pem: "cached_key",
+							Pem: cached_key_pem,
 						},
 					},
 				},

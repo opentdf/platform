@@ -149,19 +149,19 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_UriConflict_Fails() {
 	s.Nil(k)
 }
 
-func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Local() {
+func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Cached() {
 	metadata := &common.MetadataMutable{
 		Labels: map[string]string{
-			"name": "local KAS",
+			"name": "cached KAS",
 		},
 	}
-
+	cached_key_pem := "some_local_public_key_in_base64"
 	pubKey := &policy.PublicKey{
 		PublicKey: &policy.PublicKey_Cached{
 			Cached: &policy.KasPublicKeySet{
 				Keys: []*policy.KasPublicKey{
 					{
-						Pem: "some_local_public_key_in_base64",
+						Pem: cached_key_pem,
 					},
 				},
 			},
@@ -177,6 +177,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Local() {
 	s.Require().NoError(err)
 	s.NotNil(r)
 	s.NotZero(r.GetId())
+	s.Equal(r.GetPublicKey().GetCached().GetKeys()[0].GetPem(), cached_key_pem)
 }
 
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {

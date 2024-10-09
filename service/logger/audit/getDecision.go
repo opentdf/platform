@@ -22,6 +22,7 @@ func (dr DecisionResult) String() string {
 
 type EntityChainEntitlement struct {
 	EntityID                 string   `json:"entityId"`
+	EntityCatagory           string   `json:"entityCatagory"`
 	AttributeValueReferences []string `json:"attributeValueReferences"`
 }
 
@@ -81,9 +82,11 @@ func buildActorAttributes(entityChainEntitlements []EntityChainEntitlement) []in
 	for i, v := range entityChainEntitlements {
 		actorAttributes[i] = struct {
 			EntityID                 string   `json:"entityId"`
+			EntityCategory           string   `json:"entityCategory"`
 			AttributeValueReferences []string `json:"attributeValueReferences"`
 		}{
 			EntityID:                 v.EntityID,
+			EntityCategory:           v.EntityCatagory,
 			AttributeValueReferences: v.AttributeValueReferences,
 		}
 	}

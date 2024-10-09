@@ -2,10 +2,10 @@ package audit
 
 import (
 	"context"
-	"github.com/google/uuid"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 )
 

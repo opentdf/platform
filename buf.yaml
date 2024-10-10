@@ -1,0 +1,31 @@
+version: v2
+modules:
+  - path: service
+    excludes:
+      - service/logger/audit
+deps:
+  - buf.build/bufbuild/protovalidate
+  - buf.build/googleapis/googleapis
+  - buf.build/grpc-ecosystem/grpc-gateway
+lint:
+  use:
+    - DEFAULT
+  except:
+    - FIELD_NOT_REQUIRED
+    - PACKAGE_NO_IMPORT_CYCLE
+    - PACKAGE_VERSION_SUFFIX
+  ignore_only:
+    PACKAGE_VERSION_SUFFIX:
+      - service/google/api/annotations.proto
+      - service/google/api/http.proto
+      - service/google/protobuf/wrappers.proto
+breaking:
+  use:
+    - FILE
+    - PACKAGE
+    - WIRE
+    - WIRE_JSON
+  except:
+    - EXTENSION_NO_DELETE
+    - FIELD_SAME_DEFAULT
+    - PACKAGE_EXTENSION_NO_DELETE

@@ -42,7 +42,7 @@ func (s DummyEntityResolutionService) CreateEntityChainFromJwt(ctx context.Conte
 func CreateEntityChainFromJwt(
 	_ context.Context,
 	req *entityresolution.CreateEntityChainFromJwtRequest,
-	logger *logger.Logger,
+	_ *logger.Logger,
 ) (entityresolution.CreateEntityChainFromJwtResponse, error) {
 	entityChains := []*authorization.EntityChain{}
 	// for each token in the tokens form an entity chain

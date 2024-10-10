@@ -105,11 +105,11 @@ func upsertKasRegistration(ctx context.Context, s *sdk.SDK, uri string, pk *poli
 			oldpk := ki.GetPublicKey()
 			recreate := false
 			switch {
-			case pk != nil && pk.GetLocal() == "" && oldpk.GetLocal() == "":
+			case pk != nil && len(pk.GetCached().Keys) == 0 && len(oldpk.GetCached().Keys) == 0:
 				recreate = pk.GetRemote() != oldpk.GetRemote()
 			case pk != nil:
 				// previously remote, now local, or local and changed
-				recreate = pk.GetLocal() != oldpk.GetLocal()
+				recreate = pk.GetCached() != oldpk.GetCached()
 			}
 			if !recreate {
 				return ki.GetId(), nil
@@ -180,8 +180,15 @@ func updateKas(cmd *cobra.Command) error {
 		}
 	case key != "":
 		pk = new(policy.PublicKey)
-		pk.PublicKey = &policy.PublicKey_Local{
-			Local: key,
+		pk.PublicKey = &policy.PublicKey_Cached{
+			Cached: &policy.KasPublicKeySet{
+				Keys: []*policy.KasPublicKey{
+					{
+						Pem: key,
+						Alg: algString2Proto(algorithm),
+					},
+				},
+			},
 		}
 	}
 

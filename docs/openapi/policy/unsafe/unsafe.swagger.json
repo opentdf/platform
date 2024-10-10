@@ -603,10 +603,6 @@
           "type": "string",
           "title": "kas public key url - optional since can also be retrieved via public key"
         },
-        "local": {
-          "type": "string",
-          "title": "public key; PEM of RSA public key; prefer `cached`"
-        },
         "cached": {
           "$ref": "#/definitions/policyKasPublicKeySet",
           "title": "public key with additional information. Current preferred version"

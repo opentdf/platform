@@ -149,16 +149,22 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_UriConflict_Fails() {
 	s.Nil(k)
 }
 
-func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Local() {
+func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Cached() {
 	metadata := &common.MetadataMutable{
 		Labels: map[string]string{
-			"name": "local KAS",
+			"name": "cached KAS",
 		},
 	}
-
+	cachedKeyPem := "some_local_public_key_in_base64"
 	pubKey := &policy.PublicKey{
-		PublicKey: &policy.PublicKey_Local{
-			Local: "some_local_public_key_in_base64",
+		PublicKey: &policy.PublicKey_Cached{
+			Cached: &policy.KasPublicKeySet{
+				Keys: []*policy.KasPublicKey{
+					{
+						Pem: cachedKeyPem,
+					},
+				},
+			},
 		},
 	}
 
@@ -171,6 +177,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Local() {
 	s.Require().NoError(err)
 	s.NotNil(r)
 	s.NotZero(r.GetId())
+	s.Equal(r.GetPublicKey().GetCached().GetKeys()[0].GetPem(), cachedKeyPem)
 }
 
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
@@ -232,7 +239,6 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(updatedURI, got.GetUri())
 	s.Equal(updatedPubKeyRemote, got.GetPublicKey().GetRemote())
-	s.Zero(got.GetPublicKey().GetLocal()) //nolint:staticcheck // deprecated but this is a test
 	s.Zero(got.GetPublicKey().GetCached())
 	s.Equal(fixedLabel, got.GetMetadata().GetLabels()["fixed"])
 	s.Equal(updatedLabel, got.GetMetadata().GetLabels()["update"])
@@ -312,7 +318,6 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Uri_DoesNotAlterOtherValue
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(updatedURI, got.GetUri())
 	s.Equal(pubKeyRemote, got.GetPublicKey().GetRemote())
-	s.Zero(got.GetPublicKey().GetLocal()) //nolint:staticcheck // deprecated but this is a test
 	s.Zero(got.GetPublicKey().GetCached())
 	s.Nil(got.GetMetadata().GetLabels())
 }
@@ -373,8 +378,14 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOthe
 
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_WithNonExistentId_Fails() {
 	pubKey := &policy.PublicKey{
-		PublicKey: &policy.PublicKey_Local{
-			Local: "this_is_a_local_key",
+		PublicKey: &policy.PublicKey_Cached{
+			Cached: &policy.KasPublicKeySet{
+				Keys: []*policy.KasPublicKey{
+					{
+						Pem: "this_is_a_local_key",
+					},
+				},
+			},
 		},
 	}
 	updatedKas := &kasregistry.UpdateKeyAccessServerRequest{
@@ -457,7 +468,15 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasId() {
 	firstKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
 		Uri: "https://firstkas.com/kas/uri",
 		PublicKey: &policy.PublicKey{
-			PublicKey: &policy.PublicKey_Local{Local: "public"},
+			PublicKey: &policy.PublicKey_Cached{
+				Cached: &policy.KasPublicKeySet{
+					Keys: []*policy.KasPublicKey{
+						{
+							Pem: "public",
+						},
+					},
+				},
+			},
 		},
 	})
 	s.Require().NoError(err)
@@ -467,7 +486,15 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasId() {
 	otherKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
 		Uri: "https://otherkas.com/kas/uri",
 		PublicKey: &policy.PublicKey{
-			PublicKey: &policy.PublicKey_Local{Local: "public"},
+			PublicKey: &policy.PublicKey_Cached{
+				Cached: &policy.KasPublicKeySet{
+					Keys: []*policy.KasPublicKey{
+						{
+							Pem: "public",
+						},
+					},
+				},
+			},
 		},
 	})
 	s.Require().NoError(err)
@@ -569,7 +596,15 @@ func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {
 	kas := &kasregistry.CreateKeyAccessServerRequest{
 		Uri: "https://listingkasgrants.com/kas/uri",
 		PublicKey: &policy.PublicKey{
-			PublicKey: &policy.PublicKey_Local{Local: "public"},
+			PublicKey: &policy.PublicKey_Cached{
+				Cached: &policy.KasPublicKeySet{
+					Keys: []*policy.KasPublicKey{
+						{
+							Pem: "public",
+						},
+					},
+				},
+			},
 		},
 	}
 	firstKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kas)
@@ -580,7 +615,15 @@ func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {
 	second := &kasregistry.CreateKeyAccessServerRequest{
 		Uri: "https://listingkasgrants.com/another/kas/uri",
 		PublicKey: &policy.PublicKey{
-			PublicKey: &policy.PublicKey_Local{Local: "public"},
+			PublicKey: &policy.PublicKey_Cached{
+				Cached: &policy.KasPublicKeySet{
+					Keys: []*policy.KasPublicKey{
+						{
+							Pem: "public",
+						},
+					},
+				},
+			},
 		},
 	}
 	secondKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, second)

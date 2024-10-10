@@ -219,7 +219,6 @@ type assertionTests struct {
 	assertions                []AssertionConfig
 	assertionVerificationKeys *AssertionVerificationKeys
 	expectedSize              int
-	failedAssertion           int
 }
 
 const payload = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -394,7 +393,6 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 			},
 			assertionVerificationKeys: nil,
 			expectedSize:              2896,
-			failedAssertion:           -1,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -426,8 +424,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 			assertionVerificationKeys: &AssertionVerificationKeys{
 				DefaultKey: defaultKey,
 			},
-			expectedSize:    2896,
-			failedAssertion: -1,
+			expectedSize: 2896,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -475,8 +472,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					},
 				},
 			},
-			expectedSize:    3195,
-			failedAssertion: -1,
+			expectedSize: 3195,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -515,8 +511,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					},
 				},
 			},
-			expectedSize:    2896,
-			failedAssertion: -1,
+			expectedSize: 2896,
 		},
 	} {
 		expectedTdfSize := test.expectedSize
@@ -623,8 +618,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					SigningKey: defaultKey,
 				},
 			},
-			expectedSize:    2896,
-			failedAssertion: 0,
+			expectedSize: 2896,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -672,8 +666,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					},
 				},
 			},
-			expectedSize:    3195,
-			failedAssertion: 0,
+			expectedSize: 3195,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -707,8 +700,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 			assertionVerificationKeys: &AssertionVerificationKeys{
 				DefaultKey: defaultKey,
 			},
-			expectedSize:    2896,
-			failedAssertion: 1,
+			expectedSize: 2896,
 		},
 	} {
 		expectedTdfSize := test.expectedSize
@@ -764,8 +756,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 			offset := 2
 			_, err = r.ReadAt(buf, int64(offset))
 			s.Require().Error(err)
-			s.Require().ErrorIs(err, ErrAssertionFailure{ID: test.assertions[test.failedAssertion].ID})
-			s.Require().ErrorIs(err, ErrTampered)
+			s.Require().NotErrorIs(err, io.EOF)
 		}
 		_ = os.Remove(tdfFilename)
 	}

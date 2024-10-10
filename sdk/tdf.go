@@ -923,6 +923,9 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 
 		assertionHash, assertionSig, err := assertion.Verify(assertionKey)
 		if err != nil {
+			if errors.Is(err, errAssertionVerifyKeyFailure) {
+				return fmt.Errorf("assertion verification failed: %w", err)
+			}
 			return fmt.Errorf("%w: assertion verification failed: %w", ErrAssertionFailure{ID: assertion.ID}, err)
 		}
 

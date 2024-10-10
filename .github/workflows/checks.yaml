@@ -84,7 +84,7 @@ jobs:
           skip-cache: true
           args: --out-format=colored-line-number
       - if: matrix.directory == 'service'
-        run: .github/scripts/init-temp-keys.sh
+        run: go run ./service keys init
       - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
       - if: matrix.directory == 'service'

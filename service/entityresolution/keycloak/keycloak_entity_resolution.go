@@ -36,7 +36,7 @@ const (
 
 const serviceAccountUsernamePrefix = "service-account-"
 
-type KeycloakEntityResolutionService struct { //nolint:revive // allow for simple naming
+type KeycloakEntityResolutionService struct {
 	entityresolution.UnimplementedEntityResolutionServiceServer
 	idpConfig KeycloakConfig
 	logger    *logger.Logger

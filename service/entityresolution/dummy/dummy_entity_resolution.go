@@ -18,12 +18,12 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-type DummyEntityResolutionService struct { //nolint:revive // allow for simple naming
+type DummyEntityResolutionService struct {
 	entityresolution.UnimplementedEntityResolutionServiceServer
 	logger *logger.Logger
 }
 
-func RegisterDummyERS(config serviceregistry.ServiceConfig, logger *logger.Logger) (any, serviceregistry.HandlerServer) {
+func RegisterDummyERS(_ serviceregistry.ServiceConfig, logger *logger.Logger) (any, serviceregistry.HandlerServer) {
 	return &DummyEntityResolutionService{logger: logger},
 		func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 			return entityresolution.RegisterEntityResolutionServiceHandlerServer(ctx, mux, server.(entityresolution.EntityResolutionServiceServer)) //nolint:forcetypeassert // allow type assert, following other services
@@ -41,14 +41,14 @@ func (s DummyEntityResolutionService) CreateEntityChainFromJwt(ctx context.Conte
 }
 
 func CreateEntityChainFromJwt(
-	ctx context.Context,
+	_ context.Context,
 	req *entityresolution.CreateEntityChainFromJwtRequest,
 	logger *logger.Logger,
 ) (entityresolution.CreateEntityChainFromJwtResponse, error) {
 	entityChains := []*authorization.EntityChain{}
 	// for each token in the tokens form an entity chain
 	for _, tok := range req.GetTokens() {
-		entities, err := getEntitiesFromToken(ctx, tok.GetJwt(), logger)
+		entities, err := getEntitiesFromToken(tok.GetJwt(), logger)
 		if err != nil {
 			return entityresolution.CreateEntityChainFromJwtResponse{}, err
 		}
@@ -58,12 +58,10 @@ func CreateEntityChainFromJwt(
 	return entityresolution.CreateEntityChainFromJwtResponse{EntityChains: entityChains}, nil
 }
 
-func EntityResolution(ctx context.Context,
+func EntityResolution(_ context.Context,
 	req *entityresolution.ResolveEntitiesRequest, logger *logger.Logger,
 ) (entityresolution.ResolveEntitiesResponse, error) {
-
 	payload := req.GetEntities()
-
 	var resolvedEntities []*entityresolution.EntityRepresentation
 
 	for idx, ident := range payload {
@@ -86,7 +84,6 @@ func EntityResolution(ctx context.Context,
 			entityStruct = retrievedStruct
 
 		}
-
 		// make sure the id field is populated
 		originialID := ident.GetId()
 		if originialID == "" {
@@ -103,17 +100,13 @@ func EntityResolution(ctx context.Context,
 	return entityresolution.ResolveEntitiesResponse{EntityRepresentations: resolvedEntities}, nil
 }
 
-func getEntitiesFromToken(ctx context.Context, jwtString string, logger *logger.Logger) ([]*authorization.Entity, error) {
+func getEntitiesFromToken(jwtString string, logger *logger.Logger) ([]*authorization.Entity, error) {
 	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
 	if err != nil {
 		return nil, errors.New("error parsing jwt " + err.Error())
 	}
-	// claims, err := token.AsMap(context.Background()) ///nolint:contextcheck // Do not want to include keys from context in map
-	// if err != nil {
-	// 	return nil, errors.New("error getting claims from jwt")
-	// }
-	claims := token.PrivateClaims()
 
+	claims := token.PrivateClaims()
 	entities := []*authorization.Entity{}
 
 	// Convert map[string]interface{} to *structpb.Struct
@@ -130,9 +123,8 @@ func getEntitiesFromToken(ctx context.Context, jwtString string, logger *logger.
 
 	entities = append(entities, &authorization.Entity{
 		EntityType: &authorization.Entity_Claims{Claims: anyClaims},
-		// EntityType: &authorization.Entity_ClientId{ClientId: extractedValueCasted},
-		Id:       "jwtentity-claims",
-		Category: authorization.Entity_CATEGORY_SUBJECT,
+		Id:         "jwtentity-claims",
+		Category:   authorization.Entity_CATEGORY_SUBJECT,
 	})
 	return entities, nil
 }

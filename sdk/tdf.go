@@ -576,7 +576,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 		}
 
 		if int64(len(readBuf)) != seg.EncryptedSize {
-			return totalBytes, ErrTDFReaderFailed
+			return totalBytes, ErrSegSizeMismatch
 		}
 
 		segHashAlg := r.manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm
@@ -660,7 +660,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		}
 
 		if int64(len(readBuf)) != seg.EncryptedSize {
-			return 0, ErrTDFReaderFailed
+			return 0, ErrSegSizeMismatch
 		}
 
 		segHashAlg := r.manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm

@@ -2,7 +2,6 @@ package entityresolution
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -48,7 +47,7 @@ func CreateEntityChainFromJwt(
 	entityChains := []*authorization.EntityChain{}
 	// for each token in the tokens form an entity chain
 	for _, tok := range req.GetTokens() {
-		entities, err := getEntitiesFromToken(tok.GetJwt(), logger)
+		entities, err := getEntitiesFromToken(tok.GetJwt())
 		if err != nil {
 			return entityresolution.CreateEntityChainFromJwtResponse{}, err
 		}
@@ -82,7 +81,6 @@ func EntityResolution(_ context.Context,
 				return entityresolution.ResolveEntitiesResponse{}, fmt.Errorf("unable to make entity struct: %w", err)
 			}
 			entityStruct = retrievedStruct
-
 		}
 		// make sure the id field is populated
 		originialID := ident.GetId()
@@ -100,10 +98,10 @@ func EntityResolution(_ context.Context,
 	return entityresolution.ResolveEntitiesResponse{EntityRepresentations: resolvedEntities}, nil
 }
 
-func getEntitiesFromToken(jwtString string, logger *logger.Logger) ([]*authorization.Entity, error) {
+func getEntitiesFromToken(jwtString string) ([]*authorization.Entity, error) {
 	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
 	if err != nil {
-		return nil, errors.New("error parsing jwt " + err.Error())
+		return nil, fmt.Errorf("error parsing jwt: %w", err)
 	}
 
 	claims := token.PrivateClaims()

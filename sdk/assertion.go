@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/gowebpki/jcs"
@@ -29,6 +30,8 @@ type Assertion struct {
 	Statement      Statement      `json:"statement"`
 	Binding        Binding        `json:"binding"`
 }
+
+var errAssertionVerifyKeyFailure = errors.New("assertion: failed to verify with provided key")
 
 // Sign signs the assertion with the given hash and signature using the key.
 // It returns an error if the signing fails.
@@ -63,7 +66,7 @@ func (a Assertion) Verify(key AssertionKey) (string, string, error) {
 		jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key),
 	)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("%w: %w", errAssertionVerifyKeyFailure, err)
 	}
 	hashClaim, found := tok.Get(kAssertionHash)
 	if !found {

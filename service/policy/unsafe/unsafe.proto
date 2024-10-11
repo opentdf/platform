@@ -18,8 +18,8 @@ message UnsafeUpdateNamespaceRequest {
   string name = 2 [
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
-      id: "namespace_name_format",
-      message: "Namespace must be a valid hostname. It should include at least one dot, with each segment (label) starting and ending with an alphanumeric character. Each label must be 1 to 63 characters long, allowing hyphens but not as the first or last character. The top-level domain (the last segment after the final dot) must consist of at least two alphabetic characters. The stored namespace will be normalized to lower case.",
+      id: "namespace_name_format"
+      message: "Namespace must be a valid hostname. It should include at least one dot, with each segment (label) starting and ending with an alphanumeric character. Each label must be 1 to 63 characters long, allowing hyphens but not as the first or last character. The top-level domain (the last segment after the final dot) must consist of at least two alphabetic characters. The stored namespace will be normalized to lower case."
       expression: "this.matches('^([a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?\\\\.)+[a-zA-Z]{2,}$')"
     }
   ];
@@ -35,7 +35,7 @@ message UnsafeReactivateNamespaceRequest {
   string id = 1 [(buf.validate.field).required = true];
 }
 message UnsafeReactivateNamespaceResponse {
-    policy.Namespace namespace = 1;
+  policy.Namespace namespace = 1;
 }
 
 // WARNING!!
@@ -61,22 +61,20 @@ message UnsafeUpdateAttributeRequest {
   string id = 1 [(buf.validate.field).required = true];
 
   // Optional
-  // WARNING!! 
+  // WARNING!!
   // Updating the name of an Attribute will retroactively alter access to existing TDFs of the old and new Attribute name.
   string name = 2 [
     (buf.validate.field).required = false,
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
-      id: "attribute_name_format",
-      message: "Attribute name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute name will be normalized to lower case.",
+      id: "attribute_name_format"
+      message: "Attribute name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute name will be normalized to lower case."
       expression: "size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true"
     }
   ];
-  // WARNING!! 
+  // WARNING!!
   // Updating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.
-  AttributeRuleTypeEnum rule = 3 [
-    (buf.validate.field).enum.defined_only = true
-  ];
+  AttributeRuleTypeEnum rule = 3 [(buf.validate.field).enum.defined_only = true];
   // WARNING!!
   // Unsafe reordering requires the full list of values in the new order they should be stored. Updating the order of values in a HIERARCHY-rule Attribute Definition
   // will retroactively alter access to existing TDFs containing those values. Replacing values on an attribute in place is not supported; values can be unsafely deleted
@@ -116,7 +114,7 @@ message UnsafeDeleteAttributeResponse {
 /// Value Unsafe RPC messages
 ///
 
-// WARNING!! 
+// WARNING!!
 // Updating an Attribute Value will retroactively alter access to existing TDFs containing the old and new Attribute Value.
 message UnsafeUpdateAttributeValueRequest {
   string id = 1 [(buf.validate.field).required = true];
@@ -124,8 +122,8 @@ message UnsafeUpdateAttributeValueRequest {
   string value = 2 [
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
-      id: "value_format",
-      message: "Attribute Value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute value will be normalized to lower case.",
+      id: "value_format"
+      message: "Attribute Value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute value will be normalized to lower case."
       expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
     }
   ];
@@ -158,7 +156,7 @@ message UnsafeDeleteAttributeValueResponse {
 }
 
 ///
-/// Unsafe Service 
+/// Unsafe Service
 /// IN FLIGHT AND NOT YET IMPLEMENTED!
 ///
 service UnsafeService {

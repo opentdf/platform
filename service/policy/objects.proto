@@ -262,9 +262,9 @@ message KeyAccessServer {
   string id = 1;
   // Address of a KAS instance
   string uri = 2 [(buf.validate.field).cel = {
-      id: "uri_format",
-      message: "URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
-      expression: "this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')"
+    id: "uri_format"
+    message: "URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes."
+    expression: "this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')"
   }];
   PublicKey public_key = 3;
 
@@ -289,7 +289,7 @@ message KasPublicKey {
   string kid = 2;
 
   // A known algorithm type with any additional parameters encoded.
-  // To start, these may be `rsa:2048` for encrypting ZTDF files and 
+  // To start, these may be `rsa:2048` for encrypting ZTDF files and
   // `ec:secp256r1` for nanoTDF, but more formats may be added as needed.
   KasPublicKeyAlgEnum alg = 3;
 }
@@ -309,9 +309,7 @@ message PublicKey {
     }];
 
     // public key; PEM of RSA public key; prefer `cached`
-    string local = 2 [
-      deprecated = true
-    ];
+    string local = 2 [deprecated = true];
 
     // public key with additional information. Current preferred version
     KasPublicKeySet cached = 3;

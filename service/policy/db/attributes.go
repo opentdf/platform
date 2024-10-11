@@ -35,18 +35,21 @@ func attributesValuesProtojson(valuesJSON []byte) ([]*policy.Value, error) {
 		values []*policy.Value
 	)
 
-	if err := json.Unmarshal(valuesJSON, &raw); err != nil {
-		return nil, err
+	if valuesJSON != nil {
+		if err := json.Unmarshal(valuesJSON, &raw); err != nil {
+			return nil, err
+		}
+
+		for _, r := range raw {
+			value := &policy.Value{}
+			err := protojson.Unmarshal(r, value)
+			if err != nil {
+				return nil, fmt.Errorf("error unmarshaling a value: %w", err)
+			}
+			values = append(values, value)
+		}
 	}
 
-	for _, r := range raw {
-		value := &policy.Value{}
-		err := protojson.Unmarshal(r, value)
-		if err != nil {
-			return nil, fmt.Errorf("error unmarshaling a value: %w", err)
-		}
-		values = append(values, value)
-	}
 	return values, nil
 }
 
@@ -194,8 +197,12 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.At
 	return policyAttr, nil
 }
 
-func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*policy.Attribute, error) {
-	fullAttr, err := c.Queries.GetAttributeByDefOrValueFqn(ctx, strings.ToLower(fqn))
+func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqns ...string) (*policy.Attribute, error) {
+	for i, fqn := range fqns {
+		fqns[i] = strings.ToLower(fqn)
+	}
+
+	fullAttr, err := c.Queries.GetAttributeByDefOrValueFqn(ctx, fqns)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -211,28 +218,20 @@ func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 		return nil, fmt.Errorf("failed to unmarshal values [%s]: %w", string(fullAttr.Values), err)
 	}
 
-	m := new(common.Metadata)
-	if fullAttr.Metadata != nil {
-		err = unmarshalMetadata(fullAttr.Metadata, m)
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal metadata [%s]: %w", string(fullAttr.Metadata), err)
-		}
-	}
 	var grants []*policy.KeyAccessServer
-	if fullAttr.DefinitionGrants != nil {
-		grants, err = db.KeyAccessServerProtoJSON(fullAttr.DefinitionGrants)
+	if fullAttr.Grants != nil {
+		grants, err = db.KeyAccessServerProtoJSON(fullAttr.Grants)
 		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal grants [%s]: %w", string(fullAttr.DefinitionGrants), err)
+			return nil, fmt.Errorf("failed to unmarshal grants [%s]: %w", string(fullAttr.Grants), err)
 		}
 	}
 	return &policy.Attribute{
 		Id:        fullAttr.ID,
 		Name:      fullAttr.Name,
 		Rule:      attributesRuleTypeEnumTransformOut(string(fullAttr.Rule)),
-		Fqn:       fullAttr.DefinitionFqn,
+		Fqn:       fullAttr.Fqn,
 		Active:    &wrapperspb.BoolValue{Value: fullAttr.Active},
 		Grants:    grants,
-		Metadata:  m,
 		Namespace: ns,
 		Values:    values,
 	}, nil

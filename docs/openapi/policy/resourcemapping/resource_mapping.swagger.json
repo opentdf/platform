@@ -580,6 +580,114 @@
       },
       "title": "A collection of Conditions evaluated by the boolean_operator provided"
     },
+    "policyJWK": {
+      "type": "object",
+      "properties": {
+        "kty": {
+          "type": "string",
+          "title": "Key type, as defined in JWA https://datatracker.ietf.org/doc/html/rfc7518"
+        },
+        "use": {
+          "type": "string",
+          "description": "Either `sig` or `enc`, if present."
+        },
+        "keyOps": {
+          "type": "string",
+          "description": "Valid operations, e.g. `sign`, `verify`, `encrypt`, etc."
+        },
+        "alg": {
+          "type": "string"
+        },
+        "kid": {
+          "type": "string",
+          "title": "FIXME: Can this be an `any`?"
+        },
+        "x5u": {
+          "type": "string",
+          "title": "x.509 URL parameter"
+        },
+        "x5c": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "x.509 cert chain parameter"
+        },
+        "x5t": {
+          "type": "string",
+          "title": "x.509 sha-1 thumbprint"
+        },
+        "x5t#s256": {
+          "type": "string",
+          "title": "x.509 sha-256 thumbprint"
+        },
+        "e": {
+          "type": "string",
+          "title": "RSA parameters: https://datatracker.ietf.org/doc/html/rfc7518#section-6.3\nExponent of an RSA Public Key"
+        },
+        "n": {
+          "type": "string",
+          "title": "Modulus of an RSA Public Key"
+        },
+        "d": {
+          "type": "string",
+          "title": "RSA private key parameter (private exponent)\nOR Elliptic Curve Private Key parameter (ECC Private Key)"
+        },
+        "p": {
+          "type": "string",
+          "title": "RSA private key parameter (First Prime Factor)"
+        },
+        "q": {
+          "type": "string",
+          "title": "RSA private key parameter (Second Prime Factor)"
+        },
+        "dp": {
+          "type": "string",
+          "title": "RSA private key parameter (First Factor CRT Exponent)"
+        },
+        "dq": {
+          "type": "string",
+          "title": "RSA private key parameter (Second Factor CRT Exponent)"
+        },
+        "qi": {
+          "type": "string",
+          "title": "RSA private key parameter (First CRT Coefficient)"
+        },
+        "oth": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyOtherPrimeInfo"
+          },
+          "title": "RSA private key parameter (Other Primes Info)"
+        },
+        "crv": {
+          "type": "string",
+          "title": "Elliptic Curve Key parameter (Curve)"
+        },
+        "x": {
+          "type": "string",
+          "title": "Elliptic Curve Key parameter (X Coordinate)"
+        },
+        "y": {
+          "type": "string",
+          "title": "Elliptic Curve Key parameter (Y Coordinate)"
+        }
+      },
+      "title": "Protocol buffer approximation of a JSON web key: https://datatracker.ietf.org/doc/html/rfc7517"
+    },
+    "policyJWKSet": {
+      "type": "object",
+      "properties": {
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyJWK"
+          }
+        }
+      }
+    },
     "policyKasPublicKey": {
       "type": "object",
       "properties": {
@@ -593,7 +701,7 @@
         },
         "alg": {
           "$ref": "#/definitions/policyKasPublicKeyAlgEnum",
-          "description": "A known algorithm type with any additional parameters encoded.\nTo start, these may be `rsa:2048` for encrypting ZTDF files and \n`ec:secp256r1` for nanoTDF, but more formats may be added as needed."
+          "description": "A known algorithm type with any additional parameters encoded.\nTo start, these may be `rsa:2048` for encrypting ZTDF files and\n`ec:secp256r1` for nanoTDF, but more formats may be added as needed."
         }
       },
       "title": "A KAS public key and some associated metadata for further identifcation"
@@ -671,6 +779,24 @@
         }
       }
     },
+    "policyOtherPrimeInfo": {
+      "type": "object",
+      "properties": {
+        "r": {
+          "type": "string",
+          "title": "RSA private key parameter (Other Prime Factor)"
+        },
+        "d": {
+          "type": "string",
+          "title": "RSA private key parameter (Factor CRT Exponent)"
+        },
+        "t": {
+          "type": "string",
+          "title": "RSA private key parameter (Factor CRT Coefficient)"
+        }
+      },
+      "title": "RSA private key prime information"
+    },
     "policyPublicKey": {
       "type": "object",
       "properties": {
@@ -685,6 +811,10 @@
         "cached": {
           "$ref": "#/definitions/policyKasPublicKeySet",
           "title": "public key with additional information. Current preferred version"
+        },
+        "set": {
+          "$ref": "#/definitions/policyJWKSet",
+          "title": "Multiple keys with key ids"
         }
       }
     },

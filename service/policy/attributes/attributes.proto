@@ -50,8 +50,8 @@ message CreateAttributeRequest {
     (buf.validate.field).required = true,
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
-      id: "attribute_name_format",
-      message: "Attribute name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute name will be normalized to lower case.",
+      id: "attribute_name_format"
+      message: "Attribute name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute name will be normalized to lower case."
       expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
     }
   ];
@@ -61,19 +61,16 @@ message CreateAttributeRequest {
   ];
   // Optional attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
   // The stored attribute value will be normalized to lower case.
-  repeated string values = 4 [
-    (buf.validate.field).repeated = {
-      min_items: 0,
-      unique: true,
-      items: {
-        string: 
-          {
-            max_len: 253,
-            pattern: "^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$"
-          }
-      },
+  repeated string values = 4 [(buf.validate.field).repeated = {
+    min_items: 0
+    unique: true
+    items: {
+      string: {
+        max_len: 253
+        pattern: "^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$"
+      }
     }
-  ];
+  }];
 
   // Optional
   common.MetadataMutable metadata = 100;
@@ -123,12 +120,12 @@ message ListAttributeValuesResponse {
 message CreateAttributeValueRequest {
   // Required
   string attribute_id = 1 [(buf.validate.field).required = true];
-  string value = 2     [
+  string value = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
-      id: "attribute_value_format",
-      message: "Attribute value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute value will be normalized to lower case.",
+      id: "attribute_value_format"
+      message: "Attribute value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute value will be normalized to lower case."
       expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
     }
   ];
@@ -292,9 +289,7 @@ service AttributesService {
   }
 
   rpc RemoveKeyAccessServerFromAttribute(RemoveKeyAccessServerFromAttributeRequest) returns (RemoveKeyAccessServerFromAttributeResponse) {
-    option (google.api.http) = {
-      delete: "/attributes/keyaccessserver/grants"
-    };
+    option (google.api.http) = {delete: "/attributes/keyaccessserver/grants"};
   }
 
   rpc AssignKeyAccessServerToValue(AssignKeyAccessServerToValueRequest) returns (AssignKeyAccessServerToValueResponse) {
@@ -305,8 +300,6 @@ service AttributesService {
   }
 
   rpc RemoveKeyAccessServerFromValue(RemoveKeyAccessServerFromValueRequest) returns (RemoveKeyAccessServerFromValueResponse) {
-    option (google.api.http) = {
-      delete: "/attributes/values/keyaccessserver/grants"
-    };
+    option (google.api.http) = {delete: "/attributes/values/keyaccessserver/grants"};
   }
 }

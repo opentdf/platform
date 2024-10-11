@@ -3,9 +3,8 @@ syntax = "proto3";
 package policy.subjectmapping;
 
 import "buf/validate/validate.proto";
-import "google/api/annotations.proto";
-
 import "common/common.proto";
+import "google/api/annotations.proto";
 import "policy/objects.proto";
 
 // MatchSubjectMappingsRequest liberally returns a list of SubjectMappings based on the provided SubjectProperties. The SubjectMappings are returned
@@ -28,7 +27,7 @@ message MatchSubjectMappingsResponse {
 }
 
 /*
-  Subject Mappings CRUD Operations
+   Subject Mappings CRUD Operations
 */
 
 message GetSubjectMappingRequest {
@@ -43,7 +42,7 @@ message ListSubjectMappingsResponse {
   repeated policy.SubjectMapping subject_mappings = 1;
 }
 
-message CreateSubjectMappingRequest{
+message CreateSubjectMappingRequest {
   // Required
   // Attribute Value to be mapped to
   string attribute_value_id = 1 [(buf.validate.field).required = true];
@@ -91,7 +90,7 @@ message DeleteSubjectMappingResponse {
 }
 
 /**
-  SubjectConditionSet CRUD operations
+   SubjectConditionSet CRUD operations
 */
 
 message GetSubjectConditionSetRequest {
@@ -149,7 +148,6 @@ message DeleteSubjectConditionSetResponse {
 }
 
 service SubjectMappingService {
-
   // Find matching Subject Mappings for a given Subject
   rpc MatchSubjectMappings(MatchSubjectMappingsRequest) returns (MatchSubjectMappingsResponse) {
     option (google.api.http) = {
@@ -208,5 +206,4 @@ service SubjectMappingService {
   rpc DeleteSubjectConditionSet(DeleteSubjectConditionSetRequest) returns (DeleteSubjectConditionSetResponse) {
     option (google.api.http) = {delete: "/subject-condition-sets/{id}"};
   }
-
 }

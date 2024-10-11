@@ -216,7 +216,9 @@ jobs:
             examples/go.sum
       - run: cd service && go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
       - run: cd service && go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
-      - run: make proto-generate
+      - run: buf format -w service
+      - name: Format .proto files
+        run: make proto-generate
       - name: Restore go.mod after installing protoc-gen-doc
         run: git restore {service,protocol/go}/go.{mod,sum}
       - name: validate go mod tidy

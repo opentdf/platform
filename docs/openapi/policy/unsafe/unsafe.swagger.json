@@ -183,14 +183,14 @@
           },
           {
             "name": "name",
-            "description": "Optional\nWARNING!! \nUpdating the name of an Attribute will retroactively alter access to existing TDFs of the old and new Attribute name.",
+            "description": "Optional\nWARNING!!\nUpdating the name of an Attribute will retroactively alter access to existing TDFs of the old and new Attribute name.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "rule",
-            "description": "WARNING!! \nUpdating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.",
+            "description": "WARNING!!\nUpdating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.",
             "in": "query",
             "required": false,
             "type": "string",
@@ -518,7 +518,7 @@
         },
         "alg": {
           "$ref": "#/definitions/policyKasPublicKeyAlgEnum",
-          "description": "A known algorithm type with any additional parameters encoded.\nTo start, these may be `rsa:2048` for encrypting ZTDF files and \n`ec:secp256r1` for nanoTDF, but more formats may be added as needed."
+          "description": "A known algorithm type with any additional parameters encoded.\nTo start, these may be `rsa:2048` for encrypting ZTDF files and\n`ec:secp256r1` for nanoTDF, but more formats may be added as needed."
         }
       },
       "title": "A KAS public key and some associated metadata for further identifcation"

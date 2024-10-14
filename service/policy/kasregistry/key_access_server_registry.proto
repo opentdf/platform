@@ -92,7 +92,7 @@ message KeyAccessServerGrants {
 message ListKeyAccessServerGrantsRequest {
   // Optional
   // Filter LIST by either ID, URI, or common name of a registered Key Access Server.
-  // If none is provided, grants from all registered KASs to policy attribute objects are returned.
+  // If none are provided, grants from all registered KASs to policy attribute objects are returned.
   string kas_id = 1;
   string kas_uri = 2;
   string kas_name = 3;

@@ -692,7 +692,7 @@ type ListKeyAccessServerGrantsRequest struct {
 
 	// Optional
 	// Filter LIST by either ID, URI, or common name of a registered Key Access Server.
-	// If none is provided, grants from all registered KASs to policy attribute objects are returned.
+	// If none are provided, grants from all registered KASs to policy attribute objects are returned.
 	KasId   string `protobuf:"bytes,1,opt,name=kas_id,json=kasId,proto3" json:"kas_id,omitempty"`
 	KasUri  string `protobuf:"bytes,2,opt,name=kas_uri,json=kasUri,proto3" json:"kas_uri,omitempty"`
 	KasName string `protobuf:"bytes,3,opt,name=kas_name,json=kasName,proto3" json:"kas_name,omitempty"`

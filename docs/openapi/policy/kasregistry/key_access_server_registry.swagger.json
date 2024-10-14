@@ -88,13 +88,19 @@
         "parameters": [
           {
             "name": "kasId",
-            "description": "Optional\nFilter LIST by either ID or URI of a registered Key Access Server.\nIf neither is provided, grants from all registered KASs to policy attribute objects are returned.",
+            "description": "Optional\nFilter LIST by either ID, URI, or common name of a registered Key Access Server.\nIf none is provided, grants from all registered KASs to policy attribute objects are returned.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "kasUri",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "kasName",
             "in": "query",
             "required": false,
             "type": "string"

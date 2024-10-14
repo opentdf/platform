@@ -43,7 +43,7 @@ func (pdp *Pdp) DetermineAccess(
 	}
 
 	// Unlike with Values, there should only be *one* Attribute Definition per FQN (e.g "https://namespace.org/attr/MyAttr")
-	fqnToDefinitionMap, err := GetFqnToDefinitionMap(attributeDefinitions, pdp.logger)
+	fqnToDefinitionMap, err := GetFqnToDefinitionMap(ctx, attributeDefinitions, pdp.logger)
 	if err != nil {
 		pdp.logger.Error(fmt.Sprintf("error grouping attribute definitions by FQN: %s", err.Error()))
 		return nil, err
@@ -560,7 +560,7 @@ type ValueFailure struct {
 
 // GroupDefinitionsByFqn takes a slice of Attribute Definitions and returns them as a map:
 // FQN -> Attribute Definition
-func GetFqnToDefinitionMap(attributeDefinitions []*policy.Attribute, log *logger.Logger) (map[string]*policy.Attribute, error) {
+func GetFqnToDefinitionMap(ctx context.Context, attributeDefinitions []*policy.Attribute, log *logger.Logger) (map[string]*policy.Attribute, error) {
 	grouped := make(map[string]*policy.Attribute)
 	for _, def := range attributeDefinitions {
 		a, err := GetDefinitionFqnFromDefinition(def)
@@ -570,7 +570,7 @@ func GetFqnToDefinitionMap(attributeDefinitions []*policy.Attribute, log *logger
 		if v, ok := grouped[a]; ok {
 			// TODO: is this really an error case, or is logging a warning okay?
 			log.Warn(fmt.Sprintf("duplicate Attribute Definition FQN %s found when building FQN map which may indicate an issue", a))
-			log.Trace("duplicate attribute definitions found are: ", "attr1", v, "attr2", def)
+			log.TraceContext(ctx, "duplicate attribute definitions found are: ", "attr1", v, "attr2", def)
 		}
 		grouped[a] = def
 	}

@@ -89,6 +89,8 @@ p,	role:admin,		/v1/token/authorization,						  				        *,      allow
 p,	role:standard,		policy.*,																read,			allow
 p,	role:standard,		kasregistry.*,													read,			allow
 p,	role:standard,    kas.AccessService/Rewrap, 			           *,			allow
+p,      role:standard,          kas.AuthorizationService/GetDecisions,             *,                   allow
+p,      role:standard,          kas.AuthorizationService/GetDecisionsByToken,      *,                   allow
 ## HTTP routes
 p,	role:standard,		/attributes*,														read,			allow
 p,	role:standard,		/namespaces*,														read,			allow
@@ -97,6 +99,8 @@ p,	role:standard,		/resource-mappings*,										read,			allow
 p,	role:standard,		/key-access-servers*,										read,			allow
 p,	role:standard,		/kas/v2/rewrap,													write,		allow
 p,	role:standard,		/entityresolution/resolve,							write,  	allow
+p,      role:standard,          /v1/authorization,                                                              write,          allow
+p,      role:standard,          /v1/token/authorization,                                                        write,          allow
 
 # Public routes
 ## gRPC routes

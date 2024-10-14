@@ -132,7 +132,7 @@ func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrValuesOfOneDefinition []*
 		return nil, fmt.Errorf("error getting definition FQN from data attribute value: %s", err.Error())
 	}
 	pdp.logger.DebugContext(ctx, "Evaluating allOf decision", "attribute definition FQN", def)
-	pdp.logger.TraceContext(ctx, "Attribute values for ", "attribute definition FQN", attrDefFqn, "values", dataAttrValuesOfOneDefinition)
+	pdp.logger.TraceContext(ctx, "Attribute values for ", "attribute definition FQN", def, "values", dataAttrValuesOfOneDefinition)
 
 	// Go through every entity's attributeValues set...
 	for entityID, entityAttrVals := range entityAttributeValueFqns {
@@ -151,7 +151,7 @@ func (pdp *Pdp) allOfRule(ctx context.Context, dataAttrValuesOfOneDefinition []*
 			if err != nil {
 				return nil, fmt.Errorf("error getting definition FQN from data attribute value: %s", err.Error())
 			}
-			pdp.logger.DebugContext(ctx, "Evaluating allOf decision", "data attr fqn", attrDefFqn, "value", dataAttrVal.GetValue()))
+			pdp.logger.DebugContext(ctx, "Evaluating allOf decision", "data attr fqn", attrDefFqn, "value", dataAttrVal.GetValue())
 			// See if
 			// 1. there exists an entity Attribute Value in the set of Attribute Values
 			// with the same FQN as the data Attribute Value in question
@@ -289,7 +289,6 @@ func (pdp *Pdp) hierarchyRule(ctx context.Context, dataAttrValuesOfOneDefinition
 			// For every unique data Attribute Value in this set of data Attribute Values sharing the same FQN...
 			pdp.logger.DebugContext(ctx, "Evaluating hierarchy decision", "attribute definition fqn", attrDefFqn, "value", highestDataAttrVal.GetValue())
 			pdp.logger.TraceContext(ctx, "Value obj", "value", highestDataAttrVal.GetValue(), "obj", highestDataAttrVal)
-
 
 			// Compare the (one or more) Attribute Values for this FQN to the (one) data Attribute Value, and see which is "higher".
 			passed, err := entityRankGreaterThanOrEqualToDataRank(order, highestDataAttrVal, entityAttrGroup[attrDefFqn], pdp.logger)

@@ -1,7 +1,6 @@
 package access
 
 import (
-	"context"
 	ctx "context"
 	"testing"
 
@@ -772,7 +771,7 @@ func Test_GetFqnToDefinitionMap(t *testing.T) {
 		&simpleHierarchyAttribute,
 	}
 
-	fqnToDefinitionMap, err := GetFqnToDefinitionMap(context.Background(), mockAttrDefinitions, logger.CreateTestLogger())
+	fqnToDefinitionMap, err := GetFqnToDefinitionMap(ctx.Background(), mockAttrDefinitions, logger.CreateTestLogger())
 	require.NoError(t, err)
 
 	for _, attrDef := range mockAttrDefinitions {
@@ -787,7 +786,7 @@ func Test_GetFqnToDefinitionMap_SucceedsWithDuplicateDefinitions(t *testing.T) {
 		&simpleAnyOfAttribute,
 	}
 
-	fqnToDefinitionMap, err := GetFqnToDefinitionMap(context.Background(), mockAttrDefinitions, logger.CreateTestLogger())
+	fqnToDefinitionMap, err := GetFqnToDefinitionMap(ctx.Background(), mockAttrDefinitions, logger.CreateTestLogger())
 	require.NoError(t, err)
 	expectedFqn := fqnBuilder(mockAttrDefinitions[0].GetNamespace().GetName(), mockAttrDefinitions[0].GetName(), "")
 	v, ok := fqnToDefinitionMap[expectedFqn]

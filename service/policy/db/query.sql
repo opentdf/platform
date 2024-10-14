@@ -6,6 +6,7 @@
 SELECT 
     kas.id AS kas_id, 
     kas.uri AS kas_uri, 
+    kas.name AS kas_name,
     kas.public_key AS kas_public_key,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
         'labels', kas.metadata -> 'labels', 
@@ -48,23 +49,24 @@ LEFT JOIN
     AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
 WHERE (NULLIF(@kas_id, '') IS NULL OR kas.id = @kas_id::uuid)
     AND (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri::varchar)
+    AND (NULLIF(@kas_name, '') IS NULL OR kas.name = @kas_name::varchar)
 GROUP BY 
     kas.id;
 
 -- name: ListKeyAccessServers :many
-SELECT id, uri, public_key,
+SELECT id, uri, public_key, name,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
 FROM key_access_servers;
 
 -- name: GetKeyAccessServer :one
-SELECT id, uri, public_key,
+SELECT id, uri, public_key, name,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
 FROM key_access_servers
 WHERE id = $1;
 
 -- name: CreateKeyAccessServer :one
-INSERT INTO key_access_servers (uri, public_key, metadata)
-VALUES ($1, $2, $3)
+INSERT INTO key_access_servers (uri, public_key, name, metadata)
+VALUES ($1, $2, $3, $4)
 RETURNING id;
 
 -- name: UpdateKeyAccessServer :execrows
@@ -72,6 +74,7 @@ UPDATE key_access_servers
 SET 
     uri = COALESCE(sqlc.narg('uri'), uri),
     public_key = COALESCE(sqlc.narg('public_key'), public_key),
+    name = COALESCE(sqlc.narg('name'), name),
     metadata = COALESCE(sqlc.narg('metadata'), metadata)
 WHERE id = $1;
 
@@ -160,6 +163,7 @@ LEFT JOIN (
         DISTINCT JSONB_BUILD_OBJECT(
             'id', vkas.id,
             'uri', vkas.uri,
+            'name', vkas.name,
             'public_key', vkas.public_key
         )
     ) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr,
@@ -360,6 +364,7 @@ SELECT
         DISTINCT JSONB_BUILD_OBJECT(
             'id', kas.id,
             'uri', kas.uri,
+            'name', kas.name,
             'public_key', kas.public_key
         )
     ) FILTER (WHERE adkag.attribute_definition_id IS NOT NULL) AS grants,
@@ -371,7 +376,7 @@ LEFT JOIN (
         av.id,
         av.value,
         av.active,
-        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT('id', vkas.id,'uri', vkas.uri,'public_key', vkas.public_key )) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr,
+        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT('id', vkas.id,'uri', vkas.uri,'name', vkas.name,'public_key', vkas.public_key )) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr,
         av.attribute_definition_id
     FROM attribute_values av
     LEFT JOIN attribute_value_key_access_grants avg ON av.id = avg.attribute_value_id
@@ -444,6 +449,7 @@ SELECT
         DISTINCT JSONB_BUILD_OBJECT(
             'id', kas.id,
             'uri', kas.uri,
+            'name', kas.name,
             'public_key', kas.public_key
         )
     ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants
@@ -611,8 +617,9 @@ SELECT
     fqns.fqn,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
     JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
-        'id', kas.id, 
-        'uri', kas.uri, 
+        'id', kas.id,
+        'uri', kas.uri,
+        'name', kas.name,
         'public_key', kas.public_key
     )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants
 FROM attribute_namespaces ns

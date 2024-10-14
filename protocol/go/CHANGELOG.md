@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.18](https://github.com/opentdf/platform/compare/protocol/go/v0.2.17...protocol/go/v0.2.18) (2024-10-11)
+
+
+### Features
+
+* **policy:** DSP-51 - deprecate PublicKey local field ([#1590](https://github.com/opentdf/platform/issues/1590)) ([e3ed0b5](https://github.com/opentdf/platform/commit/e3ed0b5ce6039000c9e3c574d3d6ce2931781235))
+
 ## [0.2.17](https://github.com/opentdf/platform/compare/protocol/go/v0.2.16...protocol/go/v0.2.17) (2024-09-25)
 
 

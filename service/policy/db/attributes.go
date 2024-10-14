@@ -197,44 +197,60 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.At
 	return policyAttr, nil
 }
 
-func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqns ...string) (*policy.Attribute, error) {
-	for i, fqn := range fqns {
-		fqns[i] = strings.ToLower(fqn)
-	}
-
-	fullAttr, err := c.Queries.GetAttributeByDefOrValueFqn(ctx, fqns)
+func (c PolicyDBClient) ListAttributesByFqn(ctx context.Context, fqns []string) ([]*policy.Attribute, error) {
+	list, err := c.Queries.ListAttributesByDefOrValueFqns(ctx, fqns)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	ns := new(policy.Namespace)
-	err = protojson.Unmarshal(fullAttr.Namespace, ns)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal namespace [%s]: %w", string(fullAttr.Namespace), err)
-	}
-
-	values, err := attributesValuesProtojson(fullAttr.Values)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal values [%s]: %w", string(fullAttr.Values), err)
-	}
-
-	var grants []*policy.KeyAccessServer
-	if fullAttr.Grants != nil {
-		grants, err = db.KeyAccessServerProtoJSON(fullAttr.Grants)
+	attrs := make([]*policy.Attribute, len(list))
+	for i, attr := range list {
+		ns := new(policy.Namespace)
+		err = protojson.Unmarshal(attr.Namespace, ns)
 		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal grants [%s]: %w", string(fullAttr.Grants), err)
+			return nil, fmt.Errorf("failed to unmarshal namespace [%s]: %w", string(attr.Namespace), err)
+		}
+
+		values, err := attributesValuesProtojson(attr.Values)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal values [%s]: %w", string(attr.Values), err)
+		}
+
+		var grants []*policy.KeyAccessServer
+		if attr.Grants != nil {
+			grants, err = db.KeyAccessServerProtoJSON(attr.Grants)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal grants [%s]: %w", string(attr.Grants), err)
+			}
+		}
+
+		attrs[i] = &policy.Attribute{
+			Id:        attr.ID,
+			Name:      attr.Name,
+			Rule:      attributesRuleTypeEnumTransformOut(string(attr.Rule)),
+			Fqn:       attr.Fqn,
+			Active:    &wrapperspb.BoolValue{Value: attr.Active},
+			Grants:    grants,
+			Namespace: ns,
+			Values:    values,
 		}
 	}
-	return &policy.Attribute{
-		Id:        fullAttr.ID,
-		Name:      fullAttr.Name,
-		Rule:      attributesRuleTypeEnumTransformOut(string(fullAttr.Rule)),
-		Fqn:       fullAttr.Fqn,
-		Active:    &wrapperspb.BoolValue{Value: fullAttr.Active},
-		Grants:    grants,
-		Namespace: ns,
-		Values:    values,
-	}, nil
+
+	return attrs, nil
+}
+
+func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*policy.Attribute, error) {
+	list, err := c.ListAttributesByFqn(ctx, []string{strings.ToLower(fqn)})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	if len(list) != 1 {
+		return nil, db.ErrNotFound
+	}
+
+	attr := list[0]
+	return attr, nil
 }
 
 func (c PolicyDBClient) GetAttributesByNamespace(ctx context.Context, namespaceID string) ([]*policy.Attribute, error) {

@@ -190,7 +190,7 @@ LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 WHERE ad.namespace_id = $1
 GROUP BY ad.id, n.name;
 
--- name: GetAttributeByDefOrValueFqn :one
+-- name: ListAttributesByDefOrValueFqns :many
 -- get the attribute definition for the provided value or definition fqn
 WITH target_definition AS (
     SELECT DISTINCT

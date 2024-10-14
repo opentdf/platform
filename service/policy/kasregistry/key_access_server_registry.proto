@@ -91,10 +91,11 @@ message KeyAccessServerGrants {
 // GET request to the specific policy object.
 message ListKeyAccessServerGrantsRequest {
   // Optional
-  // Filter LIST by either ID or URI of a registered Key Access Server.
-  // If neither is provided, grants from all registered KASs to policy attribute objects are returned.
+  // Filter LIST by either ID, URI, or common name of a registered Key Access Server.
+  // If none is provided, grants from all registered KASs to policy attribute objects are returned.
   string kas_id = 1;
   string kas_uri = 2;
+  string kas_name = 3;
 }
 
 message ListKeyAccessServerGrantsResponse {

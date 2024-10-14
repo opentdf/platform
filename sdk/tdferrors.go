@@ -11,7 +11,6 @@ var (
 	errInvalidKasInfo   = errors.New("tdf: kas information is missing")
 	errKasPubKeyMissing = errors.New("tdf: kas public key is missing")
 	errRewrapForbidden  = errors.New("tdf: rewrap request 403")
-	errTDFReaderFailed  = fmt.Errorf("tdf: fail to read bytes from TDFReader")
 
 	// Exposed tamper detection errors, Catch all possible tamper errors with errors.Is(ErrTampered)
 	ErrTampered                = errors.New("tamper detected")

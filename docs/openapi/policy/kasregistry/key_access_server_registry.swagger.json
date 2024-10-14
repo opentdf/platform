@@ -199,6 +199,9 @@
                 "publicKey": {
                   "$ref": "#/definitions/policyPublicKey"
                 },
+                "name": {
+                  "type": "string"
+                },
                 "metadata": {
                   "$ref": "#/definitions/commonMetadataMutable",
                   "title": "Common metadata"
@@ -271,6 +274,10 @@
         },
         "publicKey": {
           "$ref": "#/definitions/policyPublicKey"
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadataMutable",
@@ -427,6 +434,10 @@
         },
         "publicKey": {
           "$ref": "#/definitions/policyPublicKey"
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional\nUnique name of the KAS instance"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",

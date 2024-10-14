@@ -26,7 +26,6 @@ message CreateKeyAccessServerRequest {
 
   // Optional
   string name = 20 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
       id: "kas_name_format",
@@ -48,7 +47,6 @@ message UpdateKeyAccessServerRequest {
   string uri = 2;
   PublicKey public_key = 3;
   string name = 20 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
       id: "kas_name_format",

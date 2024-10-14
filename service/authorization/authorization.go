@@ -146,7 +146,7 @@ func NewRegistration() serviceregistry.Registration {
 
 // TODO: Not sure what we want to check here?
 func (as AuthorizationService) IsReady(ctx context.Context) error {
-	as.logger.DebugContext(ctx, "checking readiness of authorization service")
+	as.logger.TraceContext(ctx, "checking readiness of authorization service")
 	return nil
 }
 
@@ -278,11 +278,12 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *authoriza
 						if entityID == "" {
 							entityID = EntityIDPrefix + fmt.Sprint(idx)
 						}
+						entityCategory := entities[idx].GetCategory()
 						auditECEntitlements = append(auditECEntitlements, audit.EntityChainEntitlement{
 							EntityID:                 entityID,
+							EntityCatagory:           entityCategory.String(),
 							AttributeValueReferences: e.GetAttributeValueFqns(),
 						})
-						entityCategory := entities[idx].GetCategory()
 
 						// If entity type unspecified, include in access decision to err on the side of caution
 						if entityCategory == authorization.Entity_CATEGORY_SUBJECT || entityCategory == authorization.Entity_CATEGORY_UNSPECIFIED {

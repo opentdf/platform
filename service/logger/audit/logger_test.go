@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/opentdf/platform/protocol/go/authorization"
 )
 
 func createTestLogger() (*Logger, *bytes.Buffer) {
@@ -84,13 +85,6 @@ var policyCRUDParams = PolicyEventParams{
 	ActionType: ActionTypeUpdate,
 	ObjectID:   "test-object-id",
 	ObjectType: ObjectTypeKeyObject,
-
-	Original: map[string]string{
-		"key": "old-value",
-	},
-	Updated: map[string]string{
-		"key": "new-value",
-	},
 }
 
 func TestAuditRewrapSuccess(t *testing.T) {
@@ -105,18 +99,11 @@ func TestAuditRewrapSuccess(t *testing.T) {
 			"object": {
 				"type": "key_object",
 				"id": "%s",
-				"attributes": {
-				  "assertions": [],
-					"attrs": []
-				}
+				"attributes": {}
 			},
 			"action": {
 			  "type": "rewrap",
 				"result": "success"
-			},
-			"owner": {
-			  "id": "%s",
-				"orgId": "%s"
 			},
 			"actor": {
 			  "id": "%s",
@@ -138,8 +125,6 @@ func TestAuditRewrapSuccess(t *testing.T) {
 	  }
 		`,
 		rewrapParams.Policy.UUID.String(),
-		uuid.Nil.String(),
-		uuid.Nil.String(),
 		TestActorID,
 		rewrapParams.Algorithm,
 		rewrapParams.PolicyBinding,
@@ -171,18 +156,11 @@ func TestAuditRewrapFailure(t *testing.T) {
 			"object": {
 				"type": "key_object",
 				"id": "%s",
-				"attributes": {
-				  "assertions": [],
-					"attrs": []
-				}
+				"attributes": {}
 			},
 			"action": {
 			  "type": "rewrap",
 				"result": "error"
-			},
-			"owner": {
-			  "id": "%s",
-				"orgId": "%s"
 			},
 			"actor": {
 			  "id": "%s",
@@ -204,8 +182,6 @@ func TestAuditRewrapFailure(t *testing.T) {
 	  }
 		`,
 		rewrapParams.Policy.UUID.String(),
-		uuid.Nil.String(),
-		uuid.Nil.String(),
 		TestActorID,
 		rewrapParams.Algorithm,
 		rewrapParams.PolicyBinding,
@@ -237,19 +213,12 @@ func TestPolicyCRUDSuccess(t *testing.T) {
 		  "object": {
 			  "type": "%s",
 				"id": "%s",
-				"attributes": {
-				  "assertions": null,
-					"attrs": null
-				}
+				"attributes": {}
 			},
 			"action": {
 			  "type": "%s",
 				"result": "success"
 			},
-			"owner": {
-				"id": "%s",
-				"orgId": "%s"
-	    },
 			"actor": {
 				"id": "%s",
 				"attributes": []
@@ -260,26 +229,12 @@ func TestPolicyCRUDSuccess(t *testing.T) {
 				"platform": "policy",
 				"requestIp": "%s"
 			},
-			"diff": [
-				{
-					"op": "test",
-					"path": "/key",
-					"value": "old-value"
-				},
-				{
-					"op": "replace",
-					"path": "/key",
-					"value": "new-value"
-				}
-			],
 			"requestId": "%s",
 			"timestamp": "%s"
 		}`,
 		ObjectTypeKeyObject.String(),
 		policyCRUDParams.ObjectID,
 		ActionTypeUpdate.String(),
-		uuid.Nil.String(),
-		uuid.Nil.String(),
 		TestActorID,
 		TestUserAgent,
 		TestRequestIP,
@@ -308,19 +263,12 @@ func TestPolicyCrudFailure(t *testing.T) {
 		  "object": {
 			  "type": "%s",
 				"id": "%s",
-				"attributes": {
-				  "assertions": null,
-					"attrs": null
-				}
+				"attributes": {}
 			},
 			"action": {
 			  "type": "%s",
 				"result": "error"
 			},
-			"owner": {
-				"id": "%s",
-				"orgId": "%s"
-	    },
 			"actor": {
 				"id": "%s",
 				"attributes": []
@@ -337,8 +285,6 @@ func TestPolicyCrudFailure(t *testing.T) {
 		ObjectTypeKeyObject.String(),
 		policyCRUDParams.ObjectID,
 		ActionTypeUpdate.String(),
-		uuid.Nil.String(),
-		uuid.Nil.String(),
 		TestActorID,
 		TestUserAgent,
 		TestRequestIP,
@@ -361,7 +307,7 @@ func TestGetDecision(t *testing.T) {
 	params := GetDecisionEventParams{
 		Decision: GetDecisionResultPermit,
 		EntityChainEntitlements: []EntityChainEntitlement{
-			{EntityID: "test-entity-id", AttributeValueReferences: []string{"test-attribute-value-reference"}},
+			{EntityID: "test-entity-id", EntityCatagory: authorization.Entity_CATEGORY_ENVIRONMENT.String(), AttributeValueReferences: []string{"test-attribute-value-reference"}},
 		},
 		EntityChainID: "test-entity-chain-id",
 		EntityDecisions: []EntityDecision{
@@ -381,7 +327,6 @@ func TestGetDecision(t *testing.T) {
 					"type": "%s",
 					"id": "%s",
 					"attributes": {
-						"assertions": null,
 						"attrs": %q
 					}
 				},
@@ -389,15 +334,12 @@ func TestGetDecision(t *testing.T) {
 					"type": "%s",
 					"result": "%s"
 				},
-				"owner": {
-					"id": "%s",
-					"orgId": "%s"
-				},
 				"actor": {
 					"id": "%s",
 					"attributes": [
 						{
 							"entityId": "%s",
+							"entityCategory": "%s",
 							"attributeValueReferences": %q
 						}
 					]
@@ -424,10 +366,9 @@ func TestGetDecision(t *testing.T) {
 		params.FQNs,
 		ActionTypeRead.String(),
 		ActionResultSuccess,
-		uuid.Nil.String(),
-		uuid.Nil.String(),
 		params.EntityChainID,
 		params.EntityChainEntitlements[0].EntityID,
+		params.EntityChainEntitlements[0].EntityCatagory,
 		params.EntityChainEntitlements[0].AttributeValueReferences,
 		params.EntityDecisions[0].EntityID,
 		params.EntityDecisions[0].Decision,

@@ -50,7 +50,6 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 			Type:   ActionTypeRewrap,
 			Result: auditEventActionResult,
 		},
-		Owner: CreateNilOwner(),
 		Actor: auditEventActor{
 			ID:         auditDataFromContext.ActorID,
 			Attributes: make([]interface{}, 0),

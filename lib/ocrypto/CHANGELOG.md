@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.1.5...lib/ocrypto/v0.1.6) (2024-10-03)
+
+
+### Features
+
+* **sdk:** Improve KAS key lookup and caching ([#1556](https://github.com/opentdf/platform/issues/1556)) ([fb6c47a](https://github.com/opentdf/platform/commit/fb6c47a95f2e91748436a76aeef46a81273bb10d))
+
 ## [0.1.5](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.1.4...lib/ocrypto/v0.1.5) (2024-05-31)
 
 

@@ -16,6 +16,7 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
@@ -160,7 +161,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	if cfg.coreConn != nil {
 		platformConn = cfg.coreConn
 	} else {
-		platformConn, err = grpc.Dial(platformEndpoint, dialOptions...)
+		platformConn, err = grpc.NewClient(platformEndpoint, dialOptions...)
 		if err != nil {
 			return nil, errors.Join(ErrGrpcDialFailed, err)
 		}
@@ -357,7 +358,7 @@ func IsValidNanoTdf(reader io.ReadSeeker) (bool, error) {
 }
 
 func fetchPlatformConfiguration(platformEndpoint string, dialOptions []grpc.DialOption) (PlatformConfiguration, error) {
-	conn, err := grpc.Dial(platformEndpoint, dialOptions...)
+	conn, err := grpc.NewClient(platformEndpoint, dialOptions...)
 	if err != nil {
 		return nil, errors.Join(ErrGrpcDialFailed, err)
 	}
@@ -423,4 +424,21 @@ func getTokenEndpoint(c config) (string, error) {
 	}
 
 	return tokenEndpoint, nil
+}
+
+// StoreKASKeys caches the given values as the public keys associated with the
+// KAS at the given URL, replacing any existing keys that are cached for that URL
+// with the same algorithm and URL.
+// Only one key per url and algorithm is stored in the cache,
+// so only store the most recent known key per url & algorithm pair.
+func (s *SDK) StoreKASKeys(url string, keys *policy.KasPublicKeySet) error {
+	for _, key := range keys.GetKeys() {
+		s.kasKeyCache.store(KASInfo{
+			URL:       url,
+			PublicKey: key.GetPem(),
+			KID:       key.GetKid(),
+			Algorithm: algProto2String(key.GetAlg()),
+		})
+	}
+	return nil
 }

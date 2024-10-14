@@ -373,7 +373,7 @@ func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtStrin
 	}
 	entities = append(entities, &authorization.Entity{
 		EntityType: &authorization.Entity_ClientId{ClientId: extractedValueCasted},
-		Id:         fmt.Sprintf("jwtentity-%d", entityID),
+		Id:         fmt.Sprintf("jwtentity-%d-clientid-%s", entityID, extractedValueCasted),
 		Category:   authorization.Entity_CATEGORY_ENVIRONMENT,
 	})
 	entityID++
@@ -396,21 +396,21 @@ func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtStrin
 		if clientid != "" {
 			entities = append(entities, &authorization.Entity{
 				EntityType: &authorization.Entity_ClientId{ClientId: clientid},
-				Id:         fmt.Sprintf("jwtentity-%d", entityID),
+				Id:         fmt.Sprintf("jwtentity-%d-clientid-%s", entityID, clientid),
 				Category:   authorization.Entity_CATEGORY_SUBJECT,
 			})
 		} else {
 			// if the returned clientId is empty, no client found, its not a serive account proceed with username
 			entities = append(entities, &authorization.Entity{
 				EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted},
-				Id:         fmt.Sprintf("jwtentity-%d", entityID),
+				Id:         fmt.Sprintf("jwtentity-%d-username-%s", entityID, extractedValueUsernameCasted),
 				Category:   authorization.Entity_CATEGORY_SUBJECT,
 			})
 		}
 	} else {
 		entities = append(entities, &authorization.Entity{
 			EntityType: &authorization.Entity_UserName{UserName: extractedValueUsernameCasted},
-			Id:         fmt.Sprintf("jwtentity-%d", entityID),
+			Id:         fmt.Sprintf("jwtentity-%d-username-%s", entityID, extractedValueUsernameCasted),
 			Category:   authorization.Entity_CATEGORY_SUBJECT,
 		})
 	}

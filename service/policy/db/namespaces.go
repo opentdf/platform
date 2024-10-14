@@ -11,7 +11,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/pkg/db"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -21,12 +20,9 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, id string) (*policy.Na
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	m := &common.Metadata{}
-	if ns.Metadata != nil {
-		if err := protojson.Unmarshal(ns.Metadata, m); err != nil {
-			c.logger.Error("could not unmarshal metadata", slog.String("error", err.Error()))
-			return nil, err
-		}
+	metadata := &common.Metadata{}
+	if err = unmarshalMetadata(ns.Metadata, metadata); err != nil {
+		return nil, err
 	}
 
 	var grants []*policy.KeyAccessServer
@@ -43,7 +39,7 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, id string) (*policy.Na
 		Name:     ns.Name,
 		Active:   &wrapperspb.BoolValue{Value: ns.Active},
 		Grants:   grants,
-		Metadata: m,
+		Metadata: metadata,
 		Fqn:      ns.Fqn.String,
 	}, nil
 }
@@ -54,10 +50,7 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, state string) ([]*po
 	}
 
 	if state != "" && state != StateAny {
-		active = pgtype.Bool{
-			Bool:  state == StateActive,
-			Valid: true,
-		}
+		active = pgtypeBool(state == StateActive)
 	}
 
 	list, err := c.Queries.ListNamespaces(ctx, active)
@@ -69,7 +62,7 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, state string) ([]*po
 
 	for i, ns := range list {
 		metadata := &common.Metadata{}
-		if err = unmarshalMetadata(ns.Metadata, metadata, c.logger); err != nil {
+		if err = unmarshalMetadata(ns.Metadata, metadata); err != nil {
 			return nil, err
 		}
 
@@ -86,11 +79,11 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, state string) ([]*po
 }
 
 func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.CreateNamespaceRequest) (*policy.Namespace, error) {
+	name := strings.ToLower(r.GetName())
 	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
-	name := strings.ToLower(r.GetName())
 
 	createdID, err := c.Queries.CreateNamespace(ctx, CreateNamespaceParams{
 		Name:     name,
@@ -153,11 +146,8 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 	name = strings.ToLower(name)
 
 	count, err := c.Queries.UpdateNamespace(ctx, UpdateNamespaceParams{
-		ID: id,
-		Name: pgtype.Text{
-			String: name,
-			Valid:  name != "",
-		},
+		ID:   id,
+		Name: pgtypeText(name),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -167,15 +157,15 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 	}
 
 	// Update all FQNs that may contain the namespace name
-	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
-	c.logger.Debug("upserted fqn for unsafely updated namespace", slog.Any("fqn", fqn))
+	nsFqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
+	c.logger.Debug("upserted fqn for unsafely updated namespace", slog.Any("fqn", nsFqn))
 
-	attrs, err := c.ListAllAttributes(ctx, StateAny, id)
+	attrs, err := c.ListAttributes(ctx, StateAny, id)
 	if err != nil {
 		return nil, err
 	}
 	for _, attr := range attrs {
-		fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id, attributeID: attr.GetId()})
+		fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id, attributeID: attr.GetId()})
 		c.logger.Debug("upserted definition fqn for unsafely updated namespace", slog.Any("fqn", fqn))
 		for _, value := range attr.GetValues() {
 			fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id, attributeID: attr.GetId(), valueID: value.GetId()})
@@ -186,6 +176,7 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 	return &policy.Namespace{
 		Id:   id,
 		Name: name,
+		Fqn:  nsFqn,
 	}, nil
 }
 
@@ -204,15 +195,12 @@ func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*po
 	}
 
 	if !allAttrsDeactivated {
-		c.logger.Warn("deactivating the namespace with existed attributes can affect access to related data. Please be aware and proceed accordingly.")
+		c.logger.Warn("deactivating the namespace with existing attributes can affect access to related data. Please be aware and proceed accordingly.")
 	}
 
 	count, err := c.Queries.UpdateNamespace(ctx, UpdateNamespaceParams{
-		ID: id,
-		Active: pgtype.Bool{
-			Bool:  false,
-			Valid: true,
-		},
+		ID:     id,
+		Active: pgtypeBool(false),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -238,11 +226,8 @@ func (c PolicyDBClient) UnsafeReactivateNamespace(ctx context.Context, id string
 	}
 
 	count, err := c.Queries.UpdateNamespace(ctx, UpdateNamespaceParams{
-		ID: id,
-		Active: pgtype.Bool{
-			Bool:  true,
-			Valid: true,
-		},
+		ID:     id,
+		Active: pgtypeBool(true),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

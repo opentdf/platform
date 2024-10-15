@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.16](https://github.com/opentdf/platform/compare/sdk/v0.3.15...sdk/v0.3.16) (2024-10-15)
+
+
+### Features
+
+* **sdk:** Expose error types for signature, assertion, and kas failures ([#1613](https://github.com/opentdf/platform/issues/1613)) ([2aab506](https://github.com/opentdf/platform/commit/2aab5062a7aef3a9c95f0bb2c9c031a08501f76d))
+
+## [0.3.15](https://github.com/opentdf/platform/compare/sdk/v0.3.14...sdk/v0.3.15) (2024-10-15)
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1637](https://github.com/opentdf/platform/issues/1637)) ([f42d5af](https://github.com/opentdf/platform/commit/f42d5af65738bff3497c16d63455457f6aab2728))
+
 ## [0.3.14](https://github.com/opentdf/platform/compare/sdk/v0.3.13...sdk/v0.3.14) (2024-10-08)
 
 

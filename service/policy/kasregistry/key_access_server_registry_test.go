@@ -40,7 +40,7 @@ var (
 	fakeID  = "6321ea85-ca04-466f-aefb-174bcdbc0612"
 )
 
-func Test_CreateKeyAccessServer_ShouldWork(t *testing.T) {
+func Test_CreateKeyAccessServer_Succeeds(t *testing.T) {
 	good := []struct {
 		uri      string
 		key      *policy.PublicKey
@@ -97,7 +97,7 @@ func Test_CreateKeyAccessServer_ShouldWork(t *testing.T) {
 	}
 }
 
-func Test_CreateKeyAccessServer_BadInputsShouldFail(t *testing.T) {
+func Test_CreateKeyAccessServer_Fails(t *testing.T) {
 	bad := []struct {
 		uri      string
 		key      *policy.PublicKey
@@ -176,7 +176,7 @@ func Test_CreateKeyAccessServer_BadInputsShouldFail(t *testing.T) {
 	}
 }
 
-func Test_UpdateKeyAccessServer_ShouldBePatchStyle(t *testing.T) {
+func Test_UpdateKeyAccessServer_Succeeds(t *testing.T) {
 	good := []struct {
 		uri      string
 		key      *policy.PublicKey
@@ -246,7 +246,7 @@ func Test_UpdateKeyAccessServer_ShouldBePatchStyle(t *testing.T) {
 	}
 }
 
-func Test_UpdateKeyAccessServer_BadInputsShouldFail(t *testing.T) {
+func Test_UpdateKeyAccessServer_Fails(t *testing.T) {
 	bad := []struct {
 		uri      string
 		key      *policy.PublicKey

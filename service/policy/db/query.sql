@@ -208,6 +208,7 @@ WITH target_definition AS (
 	        DISTINCT JSONB_BUILD_OBJECT(
 	            'id', kas.id,
 	            'uri', kas.uri,
+                'name', kas.name,
 	            'public_key', kas.public_key
 	        )
 	    ) FILTER (WHERE kas.id IS NOT NULL) AS grants
@@ -231,6 +232,7 @@ namespaces AS (
 	            DISTINCT JSONB_BUILD_OBJECT(
 	                'id', kas.id,
 	                'uri', kas.uri,
+                    'name', kas.name,
 	                'public_key', kas.public_key
 	            )
 	        ) FILTER (WHERE kas.id IS NOT NULL)
@@ -251,6 +253,7 @@ value_grants AS (
 			DISTINCT JSONB_BUILD_OBJECT(
 				'id', kas.id,
                 'uri', kas.uri,
+                'name', kas.name,
                 'public_key', kas.public_key
             )
 		) FILTER (WHERE kas.id IS NOT NULL) AS grants

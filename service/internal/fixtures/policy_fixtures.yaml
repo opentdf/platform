@@ -242,7 +242,7 @@ subject_mappings:
       subject_condition_set_id: 10d03422-7eae-43b9-ac3b-d10400171858
       actions:
         - standard: STANDARD_ACTION_DECRYPT
-    
+
     subject_mapping_sdk_attribute1:
       id: bc28cacb-1687-4c87-9c63-eae55e271320
       attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
@@ -442,6 +442,7 @@ kas_registry:
     columns:
       - id
       - uri
+      - name
       - public_key
   data:
     key_access_server_1:
@@ -449,9 +450,11 @@ kas_registry:
       uri: https://kas.example.com
       public_key:
         remote: https://kas.example.com/public_key
+      name: kas-remote-example
     key_access_server_2:
       id: e36640a6-61c5-4d4c-a45b-0e0a26d1c45f
       uri: https://local.kas.com:3000
+      name: kas-cached-key
       public_key:
         cached:
           keys:
@@ -470,3 +473,9 @@ kas_registry:
                 -----END CERTIFICATE-----
               kid: r1
               alg: 1
+    key_access_server_acme:
+      id: 882c5ee8-1a26-4d32-af98-38c9df0993cb
+      uri: https://kas.acme.net
+      public_key:
+        remote: https://kas.acme.net/key
+      name: remote-acme-kas

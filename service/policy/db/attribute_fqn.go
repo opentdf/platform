@@ -119,6 +119,7 @@ func (c *PolicyDBClient) AttrFqnReindex(ctx context.Context) (res struct { //nol
 func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attributes.GetAttributeValuesByFqnsRequest) (map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	fqns := r.GetFqns()
 
+	// todo: move to proto validation
 	if fqns == nil || r.GetWithValue() == nil {
 		return nil, errors.Join(db.ErrMissingValue, errors.New("error: one or more FQNs and a WithValue selector must be provided"))
 	}
@@ -130,6 +131,7 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 		fqn = strings.ToLower(fqn)
 
 		// ensure the FQN corresponds to an attribute value and not a definition or namespace alone
+		// todo: move to proto validation
 		if !strings.Contains(fqn, "/value/") {
 			return nil, db.ErrFqnMissingValue
 		}

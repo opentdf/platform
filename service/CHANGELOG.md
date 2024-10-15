@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.4.25](https://github.com/opentdf/platform/compare/service/v0.4.24...service/v0.4.25) (2024-10-15)
+
+
+### Features
+
+* **authz:** Add name to entity id when retrieved from token ([#1616](https://github.com/opentdf/platform/issues/1616)) ([5304204](https://github.com/opentdf/platform/commit/53042041a3c4993cc56db893a69b9e27363e8d1a))
+* **core:** Add entity category to audit logs ([#1614](https://github.com/opentdf/platform/issues/1614)) ([871878c](https://github.com/opentdf/platform/commit/871878c922b595cc5354a10300f3e488a841e580))
+* **core:** Change log level from Debug to Trace for readiness checks ([#1544](https://github.com/opentdf/platform/issues/1544)) ([0af1269](https://github.com/opentdf/platform/commit/0af12698842b297e9b8f7de5fd009c2e776c5ec1)), closes [#1545](https://github.com/opentdf/platform/issues/1545)
+* **policy:** 1004 add audit support for unsafe actions ([#1620](https://github.com/opentdf/platform/issues/1620)) ([4b64e5b](https://github.com/opentdf/platform/commit/4b64e5bc7978201b1f4ba688c292925da227081e))
+* **policy:** 1357 policy GetAttributeByFqn db query should employ fewer roundtrips ([#1633](https://github.com/opentdf/platform/issues/1633)) ([0bdb7e5](https://github.com/opentdf/platform/commit/0bdb7e507e5b0303db281e8b967a20b8cbc43ec2)), closes [#1357](https://github.com/opentdf/platform/issues/1357)
+* **policy:** 1421 tech debt migrate Resource Mappings object queries to sqlc ([#1422](https://github.com/opentdf/platform/issues/1422)) ([cd74bcf](https://github.com/opentdf/platform/commit/cd74bcf00d1c19c9a609f1dba6ad406a0454b07c))
+* **policy:** 1426 tech debt migrate Namespace object queries to sqlc - PART 2 ([#1617](https://github.com/opentdf/platform/issues/1617)) ([b914350](https://github.com/opentdf/platform/commit/b9143502c737a526f71a41d31ad6778e392255e0))
+* **policy:** 1434 tech debt migrate attribute value object queries to sqlc ([#1444](https://github.com/opentdf/platform/issues/1444)) ([0a7998e](https://github.com/opentdf/platform/commit/0a7998ec44c98eab5e084766e759fb2596e6e184)), closes [#1434](https://github.com/opentdf/platform/issues/1434)
+* **policy:** 1435 tech debt migrate attribute definition object queries to sqlc ([#1450](https://github.com/opentdf/platform/issues/1450)) ([c36624c](https://github.com/opentdf/platform/commit/c36624cbefd8643cad6f01603046fa060ae06724))
+* **policy:** 1436 tech debt migrate subject mapping and condition set object queries to sqlc ([#1606](https://github.com/opentdf/platform/issues/1606)) ([ec60c9f](https://github.com/opentdf/platform/commit/ec60c9fcb6d2ad7c7638dab39145341ab6f5d213))
+* **policy:** 1438 tech debt migrate attribute fqn indexing queries to sqlc ([#1445](https://github.com/opentdf/platform/issues/1445)) ([617aa91](https://github.com/opentdf/platform/commit/617aa913a1e79f0332c90e2882878c88ba3c3ff7)), closes [#1438](https://github.com/opentdf/platform/issues/1438)
+* **policy:** 1580 Resource Mappings GET/LIST should provide attribute value FQNs in response ([#1622](https://github.com/opentdf/platform/issues/1622)) ([e33bcc0](https://github.com/opentdf/platform/commit/e33bcc0aa04794049a5f920e1d4014a86e65a97b)), closes [#1580](https://github.com/opentdf/platform/issues/1580)
+* **policy:** 1618 update KAS CRUD to align with ADR decisions ([#1619](https://github.com/opentdf/platform/issues/1619)) ([379f980](https://github.com/opentdf/platform/commit/379f980bc8166fcf856e75e6ba5bac75adff92d6)), closes [#1618](https://github.com/opentdf/platform/issues/1618)
+* **policy:** DSP-51 - deprecate PublicKey local field ([#1590](https://github.com/opentdf/platform/issues/1590)) ([e3ed0b5](https://github.com/opentdf/platform/commit/e3ed0b5ce6039000c9e3c574d3d6ce2931781235))
+* **sdk:** Improve KAS key lookup and caching ([#1556](https://github.com/opentdf/platform/issues/1556)) ([fb6c47a](https://github.com/opentdf/platform/commit/fb6c47a95f2e91748436a76aeef46a81273bb10d))
+
+
+### Bug Fixes
+
+* allow standard users to get authorization decisions ([#1634](https://github.com/opentdf/platform/issues/1634)) ([718f5e3](https://github.com/opentdf/platform/commit/718f5e3aeb98795ec2edd1da5bd41dce24991969))
+* **authz:** Move logs containing subject mappings to trace level ([#1635](https://github.com/opentdf/platform/issues/1635)) ([80c117c](https://github.com/opentdf/platform/commit/80c117cbf21dc6ed54acaf5eacb180e1c9bd5540)), closes [#1503](https://github.com/opentdf/platform/issues/1503)
+* **core:** Autobump service ([#1611](https://github.com/opentdf/platform/issues/1611)) ([2567052](https://github.com/opentdf/platform/commit/256705261e0c61e9624adf5cc7b9d2ac08581858))
+* **core:** Autobump service ([#1624](https://github.com/opentdf/platform/issues/1624)) ([9468479](https://github.com/opentdf/platform/commit/94684795da135f330abdee3d86a17a72e909e5f5))
+* **core:** Autobump service ([#1639](https://github.com/opentdf/platform/issues/1639)) ([0551247](https://github.com/opentdf/platform/commit/05512477604d894b9eba3dca137d9960608abf40))
+* **core:** Autobump service ([#1654](https://github.com/opentdf/platform/issues/1654)) ([ecf41e9](https://github.com/opentdf/platform/commit/ecf41e9cd0f7d02cfded03053e91fc23884ba452))
+* **core:** log audit object as json ([#1612](https://github.com/opentdf/platform/issues/1612)) ([c519ffb](https://github.com/opentdf/platform/commit/c519ffb7a87a2fd21e0e162c1898667815cc7c28))
+* Simplify request ID extraction from context for AUDIT ([#1626](https://github.com/opentdf/platform/issues/1626)) ([2f7518c](https://github.com/opentdf/platform/commit/2f7518c3447211106c19ae376f9f700a31ef8f0a))
+
 ## [0.4.24](https://github.com/opentdf/platform/compare/service/v0.4.23...service/v0.4.24) (2024-10-01)
 
 

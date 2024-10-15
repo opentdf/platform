@@ -117,35 +117,56 @@ func (c *PolicyDBClient) AttrFqnReindex(ctx context.Context) (res struct { //nol
 }
 
 func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attributes.GetAttributeValuesByFqnsRequest) (map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
-	if r.Fqns == nil || r.GetWithValue() == nil {
+	fqns := r.GetFqns()
+
+	if fqns == nil || r.GetWithValue() == nil {
 		return nil, errors.Join(db.ErrMissingValue, errors.New("error: one or more FQNs and a WithValue selector must be provided"))
 	}
-	list := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, len(r.GetFqns()))
-	for _, fqn := range r.GetFqns() {
+
+	list := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, len(fqns))
+
+	for i, fqn := range fqns {
 		// normalize to lower case
 		fqn = strings.ToLower(fqn)
+
 		// ensure the FQN corresponds to an attribute value and not a definition or namespace alone
 		if !strings.Contains(fqn, "/value/") {
 			return nil, db.ErrFqnMissingValue
 		}
-		attr, err := c.GetAttributeByFqn(ctx, fqn)
-		if err != nil {
-			c.logger.Error("could not get attribute by FQN", slog.String("fqn", fqn), slog.String("error", err.Error()))
-			return nil, err
-		}
-		pair := &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
-			Attribute: attr,
-		}
-		for _, v := range attr.GetValues() {
-			if v.GetFqn() == fqn {
-				pair.Value = v
+
+		// update array with normalized FQN
+		fqns[i] = fqn
+
+		// prepopulate response map for easy lookup
+		list[fqn] = nil
+	}
+
+	// get all attribute values by FQN
+	attrs, err := c.ListAttributesByFqns(ctx, fqns)
+	if err != nil {
+		return nil, err
+	}
+
+	// loop through attributes to find values that match the requested FQNs
+	for _, attr := range attrs {
+		for _, val := range attr.GetValues() {
+			valFqn := val.GetFqn()
+			if _, ok := list[valFqn]; ok {
+				// update response map with attribute and value pair if value FQN found
+				list[valFqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+					Attribute: attr,
+					Value:     val,
+				}
 			}
 		}
-		if pair.GetValue() == nil {
-			c.logger.Error("could not find value for FQN", slog.String("fqn", fqn))
-			return nil, fmt.Errorf("could not find value for FQN [%s] %w", fqn, db.ErrNotFound)
-		}
-		list[fqn] = pair
 	}
+
+	// check if all requested FQNs were found
+	for fqn, pair := range list {
+		if pair == nil {
+			return nil, fmt.Errorf("could not find value for FQN [%s]: %w", fqn, db.ErrNotFound)
+		}
+	}
+
 	return list, nil
 }

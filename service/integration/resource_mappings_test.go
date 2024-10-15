@@ -61,7 +61,14 @@ func (s *ResourceMappingsSuite) getResourceMappingFixtures() []fixtures.FixtureD
 	return []fixtures.FixtureDataResourceMapping{
 		s.f.GetResourceMappingKey("resource_mapping_to_attribute_value1"),
 		s.f.GetResourceMappingKey("resource_mapping_to_attribute_value2"),
-		s.f.GetResourceMappingKey("resource_mapping_to_attribute_value3"),
+	}
+}
+
+// these are the attribute values that are used in the getResourceMappingFixtures method above
+func (s *ResourceMappingsSuite) getResourceMappingAttributeValueFixtures() []fixtures.FixtureDataAttributeValue {
+	return []fixtures.FixtureDataAttributeValue{
+		s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1"),
+		s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2"),
 	}
 }
 
@@ -410,22 +417,49 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithUnknownGroupIdFail
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappings() {
-	// make sure we can get all fixtures
-	testData := s.getResourceMappingFixtures()
+	testMappings := make(map[string]fixtures.FixtureDataResourceMapping)
+	for _, testMapping := range s.getResourceMappingFixtures() {
+		testMappings[testMapping.ID] = testMapping
+	}
+
+	testValues := make(map[string]fixtures.FixtureDataAttributeValue)
+	for _, testValue := range s.getResourceMappingAttributeValueFixtures() {
+		testValues[testValue.ID] = testValue
+	}
+
 	req := &resourcemapping.ListResourceMappingsRequest{}
 	mappings, err := s.db.PolicyClient.ListResourceMappings(s.ctx, req)
 	s.Require().NoError(err)
 	s.NotNil(mappings)
-	for _, testMapping := range testData {
-		found := false
-		for _, mapping := range mappings {
-			if testMapping.ID == mapping.GetId() {
-				found = true
-				break
-			}
+
+	testMappingCount := len(testMappings)
+	foundCount := 0
+
+	for _, mapping := range mappings {
+		testMapping, ok := testMappings[mapping.GetId()]
+		if !ok {
+			// todo: DB is not cleaned up between tests, so ignore any unexpected mappings
+			continue
 		}
-		s.True(found, "expected to find mapping %s", testMapping.ID)
+		foundCount++
+
+		s.Equal(testMapping.Terms, mapping.GetTerms())
+		s.Equal(testMapping.GroupID, mapping.GetGroup().GetId())
+		metadata := mapping.GetMetadata()
+		createdAt := metadata.GetCreatedAt()
+		updatedAt := metadata.GetUpdatedAt()
+		s.False(createdAt.AsTime().IsZero())
+		s.False(updatedAt.AsTime().IsZero())
+		s.True(updatedAt.AsTime().Equal(createdAt.AsTime()))
+
+		value := mapping.GetAttributeValue()
+		testValue, ok := testValues[value.GetId()]
+		s.True(ok, "expected value %s", value.GetId())
+		s.Equal(testValue.Value, value.GetValue())
+		s.Equal(fmt.Sprintf("https://example.com/attr/attr1/value/%s", value.GetValue()), value.GetFqn())
 	}
+
+	s.Equal(testMappingCount, foundCount)
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupId() {
@@ -447,6 +481,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqns() {
 	scenarioDotComNs := s.getScenarioDotComNamespace()
 	scenarioDotComGroup := s.f.GetResourceMappingGroupKey("scenario.com_ns_group_1")
 	scenarioDotComGroupMapping := s.f.GetResourceMappingKey("resource_mapping_to_attribute_value3")
+	scenarioDotComAttrValue := s.f.GetAttributeValueKey("scenario.com/attr/working_group/value/blue")
 
 	groupFqn := fmt.Sprintf("https://%s/resm/%s", scenarioDotComNs.Name, scenarioDotComGroup.Name)
 
@@ -457,25 +492,31 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqns() {
 	mappingsByGroup, ok := fqnRmGroupMap[groupFqn]
 	s.True(ok)
 	s.NotNil(mappingsByGroup)
-	s.Equal(scenarioDotComGroup.ID, mappingsByGroup.GetGroup().GetId())
-	s.Equal(scenarioDotComGroup.NamespaceID, mappingsByGroup.GetGroup().GetNamespaceId())
-	s.Equal(scenarioDotComGroup.Name, mappingsByGroup.GetGroup().GetName())
-	groupMetadata := mappingsByGroup.GetGroup().GetMetadata()
+	group := mappingsByGroup.GetGroup()
+	s.Equal(scenarioDotComGroup.ID, group.GetId())
+	s.Equal(scenarioDotComGroup.NamespaceID, group.GetNamespaceId())
+	s.Equal(scenarioDotComGroup.Name, group.GetName())
+	groupMetadata := group.GetMetadata()
 	createdAt := groupMetadata.GetCreatedAt()
 	updatedAt := groupMetadata.GetUpdatedAt()
-	s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
-	s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
+	s.False(createdAt.AsTime().IsZero())
+	s.False(updatedAt.AsTime().IsZero())
+	s.True(updatedAt.AsTime().Equal(createdAt.AsTime()))
 
 	s.Len(mappingsByGroup.GetMappings(), 1, "expected 1 mapping")
 	mapping := mappingsByGroup.GetMappings()[0]
 	s.Equal(scenarioDotComGroupMapping.ID, mapping.GetId())
-	s.Equal(scenarioDotComGroupMapping.AttributeValueID, mapping.GetAttributeValue().GetId())
 	s.Equal(scenarioDotComGroupMapping.Terms, mapping.GetTerms())
-	metadata := mapping.GetMetadata()
-	createdAt = metadata.GetCreatedAt()
-	updatedAt = metadata.GetUpdatedAt()
-	s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
-	s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
+	mappingMetadata := mapping.GetMetadata()
+	createdAt = mappingMetadata.GetCreatedAt()
+	updatedAt = mappingMetadata.GetUpdatedAt()
+	s.False(createdAt.AsTime().IsZero())
+	s.False(updatedAt.AsTime().IsZero())
+	s.True(updatedAt.AsTime().Equal(createdAt.AsTime()))
+	value := mapping.GetAttributeValue()
+	s.Equal(scenarioDotComAttrValue.ID, value.GetId())
+	s.Equal(scenarioDotComAttrValue.Value, value.GetValue())
+	s.Equal("https://scenario.com/attr/working_group/value/blue", value.GetFqn())
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqnsWithEmptyOrNilFqnsFails() {
@@ -542,22 +583,26 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqnsWithKnownAnd
 }
 
 func (s *ResourceMappingsSuite) Test_GetResourceMapping() {
-	// make sure we can get all fixtures
-	testData := s.getResourceMappingFixtures()
-	for _, testMapping := range testData {
-		mapping, err := s.db.PolicyClient.GetResourceMapping(s.ctx, testMapping.ID)
-		s.Require().NoError(err)
-		s.NotNil(mapping)
-		s.Equal(testMapping.ID, mapping.GetId())
-		s.Equal(testMapping.AttributeValueID, mapping.GetAttributeValue().GetId())
-		s.Equal(testMapping.Terms, mapping.GetTerms())
-		s.Equal(testMapping.GroupID, mapping.GetGroup().GetId())
-		metadata := mapping.GetMetadata()
-		createdAt := metadata.GetCreatedAt()
-		updatedAt := metadata.GetUpdatedAt()
-		s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
-		s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
-	}
+	testValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	testMapping := s.f.GetResourceMappingKey("resource_mapping_to_attribute_value1")
+
+	mapping, err := s.db.PolicyClient.GetResourceMapping(s.ctx, testMapping.ID)
+	s.Require().NoError(err)
+	s.NotNil(mapping)
+	s.Equal(testMapping.ID, mapping.GetId())
+	s.Equal(testMapping.Terms, mapping.GetTerms())
+	s.Equal(testMapping.GroupID, mapping.GetGroup().GetId())
+	metadata := mapping.GetMetadata()
+	createdAt := metadata.GetCreatedAt()
+	updatedAt := metadata.GetUpdatedAt()
+	s.False(createdAt.AsTime().IsZero())
+	s.False(updatedAt.AsTime().IsZero())
+	s.True(updatedAt.AsTime().Equal(createdAt.AsTime()))
+
+	value := mapping.GetAttributeValue()
+	s.Equal(testValue.ID, value.GetId())
+	s.Equal(testValue.Value, value.GetValue())
+	s.Equal("https://example.com/attr/attr1/value/value1", value.GetFqn())
 }
 
 func (s *ResourceMappingsSuite) Test_GetResourceMappingWithUnknownIdFails() {
@@ -568,15 +613,14 @@ func (s *ResourceMappingsSuite) Test_GetResourceMappingWithUnknownIdFails() {
 }
 
 func (s *ResourceMappingsSuite) Test_GetResourceMappingOfCreatedSucceeds() {
-	metadata := &common.MetadataMutable{}
+	testValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
+	testGroup := s.getResourceMappingGroupFixtures()[0]
 
-	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
-	rmGroup := s.getResourceMappingGroupFixtures()[0]
 	mapping := &resourcemapping.CreateResourceMappingRequest{
-		AttributeValueId: attrValue.ID,
-		Metadata:         metadata,
+		AttributeValueId: testValue.ID,
+		Metadata:         &common.MetadataMutable{},
 		Terms:            []string{"term1", "term2"},
-		GroupId:          rmGroup.ID,
+		GroupId:          testGroup.ID,
 	}
 	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
 	s.Require().NoError(err)
@@ -586,9 +630,13 @@ func (s *ResourceMappingsSuite) Test_GetResourceMappingOfCreatedSucceeds() {
 	s.Require().NoError(err)
 	s.NotNil(mapping)
 	s.Equal(createdMapping.GetId(), got.GetId())
-	s.Equal(createdMapping.GetAttributeValue().GetId(), got.GetAttributeValue().GetId())
 	s.Equal(createdMapping.GetTerms(), mapping.GetTerms())
 	s.Equal(createdMapping.GetGroup().GetId(), got.GetGroup().GetId())
+
+	gotValue := got.GetAttributeValue()
+	s.Equal(testValue.ID, gotValue.GetId())
+	s.Equal(testValue.Value, gotValue.GetValue())
+	s.Equal("https://example.com/attr/attr1/value/value2", gotValue.GetFqn())
 }
 
 func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {

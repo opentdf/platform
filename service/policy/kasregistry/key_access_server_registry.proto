@@ -26,12 +26,12 @@ message CreateKeyAccessServerRequest {
 
   // Optional
   string name = 20 [
-    (buf.validate.field).ignore = IGNORE_IF_DEFAULT_VALUE,
+    (buf.validate.field).required = false,
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
       id: "kas_name_format",
       message: "Registered KAS name must be an alphanumeric string, allowing hyphens, and underscores but not as the first or last character. The stored KAS name will be normalized to lower case.",
-      expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+      expression: "size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true"
     }
   ];
 
@@ -50,12 +50,12 @@ message UpdateKeyAccessServerRequest {
   string uri = 2;
   PublicKey public_key = 3;
   string name = 20 [
-    (buf.validate.field).ignore = IGNORE_IF_DEFAULT_VALUE,
+    (buf.validate.field).required = false,
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
       id: "kas_name_format",
       message: "Registered KAS name must be an alphanumeric string, allowing hyphens, and underscores but not as the first or last character. The stored KAS name will be normalized to lower case.",
-      expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+      expression: "size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true"
     }
   ];
 

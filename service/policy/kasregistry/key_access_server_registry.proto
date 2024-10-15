@@ -45,6 +45,8 @@ message CreateKeyAccessServerResponse {
 message UpdateKeyAccessServerRequest {
   // Required
   string id = 1 [(buf.validate.field).required = true];
+  
+  // Optional - PATCH style
   string uri = 2;
   PublicKey public_key = 3;
   string name = 20 [

@@ -330,7 +330,8 @@ type UpdateKeyAccessServerRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Required
-	Id        string            `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Optional - PATCH style
 	Uri       string            `protobuf:"bytes,2,opt,name=uri,proto3" json:"uri,omitempty"`
 	PublicKey *policy.PublicKey `protobuf:"bytes,3,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
 	Name      string            `protobuf:"bytes,20,opt,name=name,proto3" json:"name,omitempty"`

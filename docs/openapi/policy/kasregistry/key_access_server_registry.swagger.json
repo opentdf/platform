@@ -200,7 +200,8 @@
               "type": "object",
               "properties": {
                 "uri": {
-                  "type": "string"
+                  "type": "string",
+                  "title": "Optional - PATCH style"
                 },
                 "publicKey": {
                   "$ref": "#/definitions/policyPublicKey"

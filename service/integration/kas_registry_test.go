@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/common"
@@ -177,6 +178,31 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_NameConflict_Fails() {
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
 	s.Nil(k)
+}
+
+func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Name_LowerCased() {
+	uri := "somekas.com"
+	pubKey := &policy.PublicKey{
+		PublicKey: &policy.PublicKey_Remote{
+			Remote: "https://acmecorp.somewhere/key",
+		},
+	}
+	name := "1MiXEDCASEkas-name"
+
+	kasRegistry := &kasregistry.CreateKeyAccessServerRequest{
+		Uri:       uri,
+		Name:      name,
+		PublicKey: pubKey,
+	}
+	k, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
+	s.Require().NoError(err)
+	s.NotNil(k)
+	s.NotEqual("", k.GetId())
+
+	got, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, k.GetId())
+	s.NotNil(got)
+	s.Require().NoError(err)
+	s.Equal(strings.ToLower(name), got.GetName())
 }
 
 func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Cached() {

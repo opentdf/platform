@@ -171,5 +171,7 @@ FROM CursorData;
 - :green_circle: Flexibility - pagination _a single page_ backward made possible by response `previous_cursor` value
 - :green_circle: Complexity - timestamp timezone differential is not a problem as cursors are server-determined and an API concern
 - :yellow_circle:/:red_circle: Reliability - provisioned policy will sometimes contain the same `created_at` timestamp, making it less than 100% reliable
+- :red_circle: New index on the `created_at` timestamp required which adds overhead but little value for management with
+time pretty much irrelevant to attributes except if required for sorting
 - :red_circle: Complexity - SQL queries become significantly more complex to build and read into responses
 - :red_circle: Flexibility - random access is still not supported without client state management and prior knowledge of forward pagination's historical cursors

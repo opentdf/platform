@@ -69,7 +69,5 @@ func Test_CreateSubjectMappingRequest_PopulatedArray_Succeeds(t *testing.T) {
 	}
 
 	err := getValidator().Validate(req)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "attribute_value_id")
-	require.Contains(t, err.Error(), "[string.uuid]")
+	require.NoError(t, err)
 }

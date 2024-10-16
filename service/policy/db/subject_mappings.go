@@ -536,6 +536,8 @@ func (c PolicyDBClient) DeleteSubjectMapping(ctx context.Context, id string) (*p
 //
 // NOTE: if you have any issues, set the log level to 'debug' for more comprehensive context.
 func selectMatchedSubjectMappingsSQL(subjectProperties []*policy.SubjectProperty, logger *logger.Logger) (string, []interface{}, error) {
+	// if has selector field, return true
+
 	var err error
 	if len(subjectProperties) == 0 {
 		err = errors.Join(db.ErrMissingValue, errors.New("one or more subject properties is required"))
@@ -555,12 +557,10 @@ func selectMatchedSubjectMappingsSQL(subjectProperties []*policy.SubjectProperty
 
 		hasField := "each_condition->>'subject_external_selector_value' = '" + sp.GetExternalSelectorValue() + "'"
 		hasValue := "(each_condition->>'subject_external_values')::jsonb @> '[\"" + sp.GetExternalValue() + "\"]'::jsonb"
-		hasInOperator := "each_condition->>'operator' = 'SUBJECT_MAPPING_OPERATOR_ENUM_IN'"
-		hasNotInOperator := "each_condition->>'operator' = 'SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN'"
 		// Parses the json and matches the row if either of the following conditions are met:
-		where += "((" + hasField + " AND " + hasValue + " AND " + hasInOperator + ")" +
+		where += "((" + hasField + " AND " + hasValue + ")" +
 			" OR " +
-			"(" + hasField + " AND NOT " + hasValue + " AND " + hasNotInOperator + "))"
+			"(" + hasField + " AND NOT " + hasValue + "))"
 		logger.Debug("current condition filter WHERE clause", slog.String("subject_external_selector_value", sp.GetExternalSelectorValue()), slog.String("subject_external_value", sp.GetExternalValue()), slog.String("where", where))
 	}
 	where += ")"

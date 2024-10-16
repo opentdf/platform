@@ -556,11 +556,10 @@ func selectMatchedSubjectMappingsSQL(subjectProperties []*policy.SubjectProperty
 		}
 
 		hasField := "each_condition->>'subject_external_selector_value' = '" + sp.GetExternalSelectorValue() + "'"
-		hasValue := "(each_condition->>'subject_external_values')::jsonb @> '[\"" + sp.GetExternalValue() + "\"]'::jsonb"
 		// Parses the json and matches the row if either of the following conditions are met:
-		where += "((" + hasField + " AND " + hasValue + ")" +
+		where += "((" + hasField + ")" +
 			" OR " +
-			"(" + hasField + " AND NOT " + hasValue + "))"
+			"(" + hasField + "))"
 		logger.Debug("current condition filter WHERE clause", slog.String("subject_external_selector_value", sp.GetExternalSelectorValue()), slog.String("subject_external_value", sp.GetExternalValue()), slog.String("where", where))
 	}
 	where += ")"

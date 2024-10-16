@@ -78,8 +78,8 @@ func Test_CreateSubjectMappingRequest_WithExistingSubjectConditionSetID_Succeeds
 		AttributeValueId: fakeID,
 		Actions: []*policy.Action{
 			{
-				Value: &policy.Action_Custom{
-					Custom: "my custom action",
+				Value: &policy.Action_Standard{
+					Standard: policy.Action_STANDARD_ACTION_DECRYPT,
 				},
 			},
 		},

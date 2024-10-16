@@ -121,7 +121,7 @@ func TestCreateAttribute_NamespaceIdMissing_Fails(t *testing.T) {
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "namespace_id")
-	require.Contains(t, err.Error(), "[required]")
+	require.Contains(t, err.Error(), "[string.uuid_empty]")
 }
 
 func TestCreateAttribute_RuleMissing_Fails(t *testing.T) {
@@ -259,7 +259,7 @@ func TestCreateAttributeValue_AttributeIdMissing_Fails(t *testing.T) {
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "attribute_id")
-	require.Contains(t, err.Error(), "[required]")
+	require.Contains(t, err.Error(), "[string.uuid_empty]")
 }
 
 func TestCreateAttributeValue_ValueMissing_Fails(t *testing.T) {

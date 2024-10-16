@@ -52,7 +52,7 @@ message UnsafeDeleteNamespaceRequest {
     (buf.validate.field).string.uuid = true
   ];
   // Fully Qualified Name (FQN) of Namespace (i.e. https://<namespace>), normalized to lower case.
-  string fqn = 2 [(buf.validate.field).required = true]; // TODO: valid FQN
+  string fqn = 2 [(buf.validate.field).required = true];
 }
 message UnsafeDeleteNamespaceResponse {
   policy.Namespace namespace = 1;
@@ -118,7 +118,7 @@ message UnsafeDeleteAttributeRequest {
     (buf.validate.field).string.uuid = true
   ];
   // Fully Qualified Name (FQN) of Attribute Definition (i.e. https://<namespace>/attr/<attribute name>), normalized to lower case.
-  string fqn = 2 [(buf.validate.field).required = true]; // TODO: valid FQN
+  string fqn = 2 [(buf.validate.field).required = true];
 }
 message UnsafeDeleteAttributeResponse {
   policy.Attribute attribute = 1;
@@ -169,7 +169,7 @@ message UnsafeDeleteAttributeValueRequest {
     (buf.validate.field).string.uuid = true
   ];
   // Fully Qualified Name (FQN) of Attribute Value (i.e. https://<namespace>/attr/<attribute name>/value/<value>), normalized to lower case.
-  string fqn = 2 [(buf.validate.field).required = true]; // TODO: valid FQN
+  string fqn = 2 [(buf.validate.field).required = true];
 }
 message UnsafeDeleteAttributeValueResponse {
   policy.Value value = 1;

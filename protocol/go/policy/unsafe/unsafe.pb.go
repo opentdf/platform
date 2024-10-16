@@ -238,7 +238,7 @@ type UnsafeDeleteNamespaceRequest struct {
 	// UUID of the Namespace
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Fully Qualified Name (FQN) of Namespace (i.e. https://<namespace>), normalized to lower case.
-	Fqn string `protobuf:"bytes,2,opt,name=fqn,proto3" json:"fqn,omitempty"` // TODO: valid FQN
+	Fqn string `protobuf:"bytes,2,opt,name=fqn,proto3" json:"fqn,omitempty"`
 }
 
 func (x *UnsafeDeleteNamespaceRequest) Reset() {
@@ -574,7 +574,7 @@ type UnsafeDeleteAttributeRequest struct {
 	// UUID of the Attribute
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Fully Qualified Name (FQN) of Attribute Definition (i.e. https://<namespace>/attr/<attribute name>), normalized to lower case.
-	Fqn string `protobuf:"bytes,2,opt,name=fqn,proto3" json:"fqn,omitempty"` // TODO: valid FQN
+	Fqn string `protobuf:"bytes,2,opt,name=fqn,proto3" json:"fqn,omitempty"`
 }
 
 func (x *UnsafeDeleteAttributeRequest) Reset() {
@@ -882,7 +882,7 @@ type UnsafeDeleteAttributeValueRequest struct {
 	// UUID of the Attribute Value
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Fully Qualified Name (FQN) of Attribute Value (i.e. https://<namespace>/attr/<attribute name>/value/<value>), normalized to lower case.
-	Fqn string `protobuf:"bytes,2,opt,name=fqn,proto3" json:"fqn,omitempty"` // TODO: valid FQN
+	Fqn string `protobuf:"bytes,2,opt,name=fqn,proto3" json:"fqn,omitempty"`
 }
 
 func (x *UnsafeDeleteAttributeValueRequest) Reset() {

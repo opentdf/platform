@@ -43,7 +43,7 @@
           },
           {
             "name": "fqn",
-            "description": "Fully Qualified Name (FQN) of Attribute Value (i.e. https://\u003cnamespace\u003e/attr/\u003cattribute name\u003e/value/\u003cvalue\u003e), normalized to lower case.\n\nTODO: valid FQN",
+            "description": "Fully Qualified Name (FQN) of Attribute Value (i.e. https://\u003cnamespace\u003e/attr/\u003cattribute name\u003e/value/\u003cvalue\u003e), normalized to lower case.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -146,7 +146,7 @@
           },
           {
             "name": "fqn",
-            "description": "Fully Qualified Name (FQN) of Attribute Definition (i.e. https://\u003cnamespace\u003e/attr/\u003cattribute name\u003e), normalized to lower case.\n\nTODO: valid FQN",
+            "description": "Fully Qualified Name (FQN) of Attribute Definition (i.e. https://\u003cnamespace\u003e/attr/\u003cattribute name\u003e), normalized to lower case.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -276,7 +276,7 @@
           },
           {
             "name": "fqn",
-            "description": "Fully Qualified Name (FQN) of Namespace (i.e. https://\u003cnamespace\u003e), normalized to lower case.\n\nTODO: valid FQN",
+            "description": "Fully Qualified Name (FQN) of Namespace (i.e. https://\u003cnamespace\u003e), normalized to lower case.",
             "in": "query",
             "required": false,
             "type": "string"

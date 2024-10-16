@@ -4213,9 +4213,7 @@ The stored attribute value will be normalized to lower case. </p></td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
                   <td><p>Required
-Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&lt;attribute_name&gt;/value/&lt;value_name&gt;), normalized to lower case.
-
-TODO: validate min/max len but NOT FQN format </p></td>
+Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&lt;attribute_name&gt;/value/&lt;value_name&gt;), normalized to lower case. </p></td>
                 </tr>
               
                 <tr>
@@ -5234,16 +5232,14 @@ Attribute &lt;&gt; Key Access Server RPCs
                   <td></td>
                   <td><p>Optional
 Filter LIST by either ID or URI of a registered Key Access Server.
-If neither is provided, grants from all registered KASs to policy attribute objects are returned.
-
-TOOD: test ignore_empty and other options for validating UUID only when not empty </p></td>
+If neither is provided, grants from all registered KASs to policy attribute objects are returned. </p></td>
                 </tr>
               
                 <tr>
                   <td>kas_uri</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>TODO: uri format </p></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -6149,16 +6145,14 @@ Namespace &lt;&gt; Key Access Server RPCs
                   <td>terms</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
-                  <td><p>TODO: validate list min/max and term min/max </p></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
                   <td>group_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Optional
-
-TODO: validate UUID only when provided </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>
@@ -6405,9 +6399,7 @@ TODO: validate UUID only when provided </p></td>
                   <td>namespace_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Optional
-
-TODO: validate UUID only if provided </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>
@@ -6535,9 +6527,7 @@ Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group n
                   <td>group_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Optional
-
-TODO: validate UUID only when provided </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>
@@ -6623,9 +6613,7 @@ TODO: validate UUID only when provided </p></td>
                   <td>namespace_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Optional
-
-TODO: validate UUID only when provided </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>
@@ -6701,23 +6689,21 @@ TODO: validate UUID only when provided </p></td>
                   <td>attribute_value_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Optional
-
-TODO: validate UUID only when provided </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>
                   <td>terms</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
-                  <td><p>TODO: validate list min/max and term min/max </p></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
                   <td>group_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>TODO: validate UUID only when provided </p></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -7074,9 +7060,7 @@ Attribute Value to be mapped to </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Either of the following:
-Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
-
-TODO: validate UUID only when provided </p></td>
+Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set) </p></td>
                 </tr>
               
                 <tr>
@@ -7557,9 +7541,7 @@ If provided, replaces entire existing structure of Subject Sets, Condition Group
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Optional
-Replaces the existing SubjectConditionSet id with a new one
-
-TODO: validate UUID only when provided </p></td>
+Replaces the existing SubjectConditionSet id with a new one </p></td>
                 </tr>
               
                 <tr>
@@ -7867,9 +7849,7 @@ UUID of the Attribute </p></td>
                   <td>fqn</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Fully Qualified Name (FQN) of Attribute Definition (i.e. https://&lt;namespace&gt;/attr/&lt;attribute name&gt;), normalized to lower case.
-
-TODO: valid FQN </p></td>
+                  <td><p>Fully Qualified Name (FQN) of Attribute Definition (i.e. https://&lt;namespace&gt;/attr/&lt;attribute name&gt;), normalized to lower case. </p></td>
                 </tr>
               
             </tbody>
@@ -7925,9 +7905,7 @@ UUID of the Attribute Value </p></td>
                   <td>fqn</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Fully Qualified Name (FQN) of Attribute Value (i.e. https://&lt;namespace&gt;/attr/&lt;attribute name&gt;/value/&lt;value&gt;), normalized to lower case.
-
-TODO: valid FQN </p></td>
+                  <td><p>Fully Qualified Name (FQN) of Attribute Value (i.e. https://&lt;namespace&gt;/attr/&lt;attribute name&gt;/value/&lt;value&gt;), normalized to lower case. </p></td>
                 </tr>
               
             </tbody>
@@ -7983,9 +7961,7 @@ UUID of the Namespace </p></td>
                   <td>fqn</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Fully Qualified Name (FQN) of Namespace (i.e. https://&lt;namespace&gt;), normalized to lower case.
-
-TODO: valid FQN </p></td>
+                  <td><p>Fully Qualified Name (FQN) of Namespace (i.e. https://&lt;namespace&gt;), normalized to lower case. </p></td>
                 </tr>
               
             </tbody>

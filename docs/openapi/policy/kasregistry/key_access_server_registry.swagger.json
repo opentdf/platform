@@ -88,14 +88,13 @@
         "parameters": [
           {
             "name": "kasId",
-            "description": "Optional\nFilter LIST by either ID or URI of a registered Key Access Server.\nIf neither is provided, grants from all registered KASs to policy attribute objects are returned.\n\nTOOD: test ignore_empty and other options for validating UUID only when not empty",
+            "description": "Optional\nFilter LIST by either ID or URI of a registered Key Access Server.\nIf neither is provided, grants from all registered KASs to policy attribute objects are returned.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "kasUri",
-            "description": "TODO: uri format",
             "in": "query",
             "required": false,
             "type": "string"

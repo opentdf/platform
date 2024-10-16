@@ -8,6 +8,8 @@ import "google/api/annotations.proto";
 import "common/common.proto";
 import "policy/objects.proto";
 
+// TODO: optional validation below should be through a custom validator, which is too bleeding edge at present without full plugin support
+
 // MatchSubjectMappingsRequest liberally returns a list of SubjectMappings based on the provided SubjectProperties. The SubjectMappings are returned
 // if there is any single condition found among the structures that matches for one of the provided properties:
 // 1. The external selector value, external value, and an IN operator
@@ -56,7 +58,11 @@ message CreateSubjectMappingRequest{
 
   // Either of the following:
   // Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
-  string existing_subject_condition_set_id = 3; // TODO: validate UUID only when provided
+  string existing_subject_condition_set_id = 3 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
   // Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
   SubjectConditionSetCreate new_subject_condition_set = 4;
 
@@ -75,7 +81,11 @@ message UpdateSubjectMappingRequest {
 
   // Optional
   // Replaces the existing SubjectConditionSet id with a new one
-  string subject_condition_set_id = 2; // TODO: validate UUID only when provided
+  string subject_condition_set_id = 2 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
   // Replaces entire list of actions permitted by subjects
   repeated policy.Action actions = 3;
 

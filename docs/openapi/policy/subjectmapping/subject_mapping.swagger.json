@@ -359,7 +359,6 @@
               "properties": {
                 "subjectConditionSetId": {
                   "type": "string",
-                  "description": "TODO: validate UUID only when provided",
                   "title": "Optional\nReplaces the existing SubjectConditionSet id with a new one"
                 },
                 "actions": {
@@ -855,7 +854,6 @@
         },
         "existingSubjectConditionSetId": {
           "type": "string",
-          "description": "TODO: validate UUID only when provided",
           "title": "Either of the following:\nReuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)"
         },
         "newSubjectConditionSet": {

@@ -12,9 +12,15 @@ import "policy/objects.proto";
    Resource Mapping Groups
 */
 
+// TODO: optional validation below should be through a custom validator, which is too bleeding edge at present without full plugin support
+
 message ListResourceMappingGroupsRequest {
   // Optional
-  string namespace_id = 1; // TODO: validate UUID only if provided
+  string namespace_id = 1 [(buf.validate.field).cel = {
+      id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+    }];
 }
 
 message ListResourceMappingGroupsResponse {
@@ -55,9 +61,20 @@ message UpdateResourceMappingGroupRequest {
   ];
 
   // Optional
-  string namespace_id = 2; // TODO: validate UUID only when provided
+  string namespace_id = 2 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
 
-  string name = 3;
+  string name = 3 [
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "optional_name_format",
+      message: "Optional field must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored group name will be normalized to lower case.",
+      expression: "size(this) == 0 || this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
 
   // Common metadata
   common.MetadataMutable metadata = 100;
@@ -85,7 +102,11 @@ message DeleteResourceMappingGroupResponse {
 
 message ListResourceMappingsRequest {
   // Optional
-  string group_id = 1; // TODO: validate UUID only when provided
+  string group_id = 1 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
 }
 
 message ListResourceMappingsResponse {
@@ -136,10 +157,17 @@ message CreateResourceMappingRequest {
     (buf.validate.field).string.uuid = true
   ];
 
-  repeated string terms = 2 [(buf.validate.field).required = true]; // TODO: validate list min/max and term min/max
+  repeated string terms = 2 [(buf.validate.field).repeated = {
+    min_items: 1,
+    max_items: 1000,
+  }];
 
   // Optional
-  string group_id = 3; // TODO: validate UUID only when provided
+  string group_id = 3 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
 
   common.MetadataMutable metadata = 100;
 }
@@ -154,11 +182,21 @@ message UpdateResourceMappingRequest {
   ];
 
   // Optional
-  string attribute_value_id = 4; // TODO: validate UUID only when provided
+  string attribute_value_id = 4 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
 
-  repeated string terms = 5; // TODO: validate list min/max and term min/max
+  repeated string terms = 5 [(buf.validate.field).repeated = {
+    max_items: 1000,
+  }];
 
-  string group_id = 6; // TODO: validate UUID only when provided
+  string group_id = 6 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
 
   // Common Metadata
   common.MetadataMutable metadata = 100;

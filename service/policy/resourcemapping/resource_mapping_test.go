@@ -52,6 +52,14 @@ func getValidator() *protovalidate.Validator {
 	return v
 }
 
+func getMaxTerms() []string {
+	maxTerms := make([]string, 1000)
+	for i := range maxTerms {
+		maxTerms[i] = "abc"
+	}
+	return maxTerms
+}
+
 func runFqnValidator(fqn string) error {
 	req := &resourcemapping.ListResourceMappingsByGroupFqnsRequest{
 		Fqns: []string{fqn},
@@ -133,10 +141,7 @@ func Test_ListResourceMappingsRequest_Succeeds(t *testing.T) {
 
 func Test_CreateResourceMappingRequest_Succeeds(t *testing.T) {
 	v := getValidator()
-	maxTerms := make([]string, 1000)
-	for i := range maxTerms {
-		maxTerms[i] = "abc"
-	}
+	maxTerms := getMaxTerms()
 
 	good := []struct {
 		valueID  string
@@ -179,6 +184,11 @@ func Test_CreateResourceMappingRequest_Succeeds(t *testing.T) {
 		err := v.Validate(req)
 		require.NoError(t, err, test.scenario)
 	}
+}
+
+func Test_CreateResourceMappingRequest_Fails(t *testing.T) {
+	v := getValidator()
+	maxTerms := getMaxTerms()
 
 	bad := []struct {
 		valueID  string
@@ -237,10 +247,7 @@ func Test_CreateResourceMappingRequest_Succeeds(t *testing.T) {
 
 func Test_UpdateResourceMappingRequest_Succeeds(t *testing.T) {
 	v := getValidator()
-	maxTerms := make([]string, 1000)
-	for i := range maxTerms {
-		maxTerms[i] = "abc"
-	}
+	maxTerms := getMaxTerms()
 
 	good := []struct {
 		valueID  string
@@ -296,6 +303,11 @@ func Test_UpdateResourceMappingRequest_Succeeds(t *testing.T) {
 		err := v.Validate(req)
 		require.NoError(t, err, test.scenario)
 	}
+}
+
+func Test_UpdateResourceMappingRequest_Fails(t *testing.T) {
+	v := getValidator()
+	maxTerms := getMaxTerms()
 
 	bad := []struct {
 		id       string

@@ -41,7 +41,7 @@ func Test_GetKeyAccessServerRequest_Succeeds(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func Test_CreateKeyAccessServerRequest_Succeeds(t *testing.T) {
+func Test_CreateKeyAccessServerRequest_Fails(t *testing.T) {
 	v := getValidator()
 	bad := []struct {
 		pk       *policy.PublicKey
@@ -73,7 +73,10 @@ func Test_CreateKeyAccessServerRequest_Succeeds(t *testing.T) {
 		err := v.Validate(req)
 		require.Error(t, err, test.scenario)
 	}
+}
 
+func Test_CreateKeyAccessServerRequest_Succeeds(t *testing.T) {
+	v := getValidator()
 	good := []struct {
 		pk  *policy.PublicKey
 		uri string
@@ -98,7 +101,7 @@ func Test_CreateKeyAccessServerRequest_Succeeds(t *testing.T) {
 	}
 }
 
-func Test_UpdateKeyAccessServerRequest_Succeeds(t *testing.T) {
+func Test_UpdateKeyAccessServerRequest_Fails(t *testing.T) {
 	v := getValidator()
 	bad := []struct {
 		id       string
@@ -135,6 +138,10 @@ func Test_UpdateKeyAccessServerRequest_Succeeds(t *testing.T) {
 		err := v.Validate(req)
 		require.Error(t, err, test.scenario)
 	}
+}
+
+func Test_UpdateKeyAccessServerRequest_Succeeds(t *testing.T) {
+	v := getValidator()
 
 	good := []struct {
 		pk       *policy.PublicKey
@@ -187,7 +194,7 @@ func Test_DeleteKeyAccessServerRequest_Succeeds(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func Test_ListKeyAccessServerGrantsRequest_Succeeds(t *testing.T) {
+func Test_ListKeyAccessServerGrantsRequest_Fails(t *testing.T) {
 	v := getValidator()
 	bad := []struct {
 		id       string
@@ -214,6 +221,10 @@ func Test_ListKeyAccessServerGrantsRequest_Succeeds(t *testing.T) {
 		err := v.Validate(req)
 		require.Error(t, err, test.scenario)
 	}
+}
+
+func Test_ListKeyAccessServerGrantsRequest_Succeeds(t *testing.T) {
+	v := getValidator()
 
 	good := []struct {
 		id       string

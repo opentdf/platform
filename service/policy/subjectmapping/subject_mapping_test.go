@@ -71,3 +71,48 @@ func Test_CreateSubjectMappingRequest_PopulatedArray_Succeeds(t *testing.T) {
 	err := getValidator().Validate(req)
 	require.NoError(t, err)
 }
+
+func Test_CreateSubjectMappingRequest_WithExistingSubjectConditionSetID_Succeeds(t *testing.T) {
+	v := getValidator()
+	req := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId: fakeID,
+		Actions: []*policy.Action{
+			{
+				Value: &policy.Action_Custom{
+					Custom: "my custom action",
+				},
+			},
+		},
+		ExistingSubjectConditionSetId: fakeID,
+	}
+
+	err := v.Validate(req)
+	require.NoError(t, err)
+
+	req.ExistingSubjectConditionSetId = "bad-scs-id"
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "optional_uuid_format")
+}
+
+func Test_UpdateSubjectMappingRequest_Succeeds(t *testing.T) {
+	v := getValidator()
+	req := &subjectmapping.UpdateSubjectMappingRequest{}
+
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "string.uuid")
+
+	req.Id = fakeID
+	err = v.Validate(req)
+	require.NoError(t, err, "valid uuid format for ID")
+
+	req.SubjectConditionSetId = "bad-id"
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "optional_uuid_format")
+
+	req.SubjectConditionSetId = fakeID
+	err = v.Validate(req)
+	require.NoError(t, err, "valid uuid format for subject_condition_set_id")
+}

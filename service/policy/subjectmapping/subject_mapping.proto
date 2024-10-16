@@ -33,7 +33,6 @@ message MatchSubjectMappingsResponse {
 
 message GetSubjectMappingRequest {
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 }
@@ -50,7 +49,6 @@ message CreateSubjectMappingRequest{
   // Required
   // Attribute Value to be mapped to
   string attribute_value_id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
   // The actions permitted by subjects in this mapping
@@ -72,7 +70,6 @@ message CreateSubjectMappingResponse {
 message UpdateSubjectMappingRequest {
   // Required
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 
@@ -93,7 +90,6 @@ message UpdateSubjectMappingResponse {
 
 message DeleteSubjectMappingRequest {
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 }
@@ -108,7 +104,6 @@ message DeleteSubjectMappingResponse {
 
 message GetSubjectConditionSetRequest {
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 }
@@ -141,7 +136,6 @@ message CreateSubjectConditionSetResponse {
 message UpdateSubjectConditionSetRequest {
   // Required
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 
@@ -160,7 +154,6 @@ message UpdateSubjectConditionSetResponse {
 
 message DeleteSubjectConditionSetRequest {
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 }

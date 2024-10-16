@@ -14,22 +14,18 @@ import "policy/selectors.proto";
 
 message AttributeKeyAccessServer {
   string attribute_id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
   string key_access_server_id = 2 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 }
 
 message ValueKeyAccessServer {
   string value_id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
   string key_access_server_id = 2 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 }
@@ -50,7 +46,6 @@ message ListAttributesResponse {
 
 message GetAttributeRequest {
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 }
@@ -61,7 +56,6 @@ message GetAttributeResponse {
 message CreateAttributeRequest {
   // Required
   string namespace_id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
   string name = 2 [
@@ -103,7 +97,6 @@ message CreateAttributeResponse {
 message UpdateAttributeRequest {
   // Required
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 
@@ -117,7 +110,6 @@ message UpdateAttributeResponse {
 
 message DeactivateAttributeRequest {
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 }
@@ -130,7 +122,6 @@ message DeactivateAttributeResponse {
 ///
 message GetAttributeValueRequest {
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 }
@@ -140,7 +131,6 @@ message GetAttributeValueResponse {
 
 message ListAttributeValuesRequest {
   string attribute_id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
   // ACTIVE by default when not specified
@@ -153,7 +143,6 @@ message ListAttributeValuesResponse {
 message CreateAttributeValueRequest {
   // Required
   string attribute_id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
   string value = 2     [
@@ -179,7 +168,6 @@ message CreateAttributeValueResponse {
 
 message UpdateAttributeValueRequest {
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 
@@ -197,7 +185,6 @@ message UpdateAttributeValueResponse {
 
 message DeactivateAttributeValueRequest {
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 }

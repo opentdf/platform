@@ -9,7 +9,6 @@ import "policy/objects.proto";
 
 message GetKeyAccessServerRequest {
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 }
@@ -37,7 +36,6 @@ message CreateKeyAccessServerResponse {
 message UpdateKeyAccessServerRequest {
   // Required
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
   string uri = 2;
@@ -53,7 +51,6 @@ message UpdateKeyAccessServerResponse {
 
 message DeleteKeyAccessServerRequest {
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 }

@@ -24,7 +24,6 @@ message ListResourceMappingGroupsResponse {
 message GetResourceMappingGroupRequest {
   // Required
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 }
@@ -36,7 +35,6 @@ message GetResourceMappingGroupResponse {
 message CreateResourceMappingGroupRequest {
   // Required
   string namespace_id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 
@@ -53,7 +51,6 @@ message CreateResourceMappingGroupResponse {
 message UpdateResourceMappingGroupRequest {
   // Required
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 
@@ -74,7 +71,6 @@ message UpdateResourceMappingGroupResponse {
 message DeleteResourceMappingGroupRequest {
   // Required
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 }
@@ -125,7 +121,6 @@ message ListResourceMappingsByGroupFqnsResponse {
 message GetResourceMappingRequest {
   // Required
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 }
@@ -138,7 +133,6 @@ message GetResourceMappingResponse {
 message CreateResourceMappingRequest {
   // Required
   string attribute_value_id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 
@@ -156,7 +150,6 @@ message CreateResourceMappingResponse {
 message UpdateResourceMappingRequest {
   // Required
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 
@@ -178,7 +171,6 @@ message UpdateResourceMappingResponse {
 message DeleteResourceMappingRequest {
   // Required
   string id = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];
 }

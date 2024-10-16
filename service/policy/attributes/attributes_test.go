@@ -187,6 +187,86 @@ func TestCreateAttribute_ValueInvalid_Fails(t *testing.T) {
 	require.Contains(t, err.Error(), "[string.pattern]")
 }
 
+func TestAttributeKeyAccessServer_Succeeds(t *testing.T) {
+	validAttrKAS := &attributes.AttributeKeyAccessServer{
+		AttributeId:       validUUID,
+		KeyAccessServerId: validUUID,
+	}
+
+	err := getValidator().Validate(validAttrKAS)
+	require.NoError(t, err)
+}
+
+func TestAttributeKeyAccessServer_Fails(t *testing.T) {
+	bad := []struct {
+		attrID string
+		kasID  string
+	}{
+		{
+			"",
+			validUUID,
+		},
+		{
+			validUUID,
+			"",
+		},
+		{
+			"",
+			"",
+		},
+		{},
+	}
+
+	for _, test := range bad {
+		invalidAttrKAS := &attributes.AttributeKeyAccessServer{
+			AttributeId:       test.attrID,
+			KeyAccessServerId: test.kasID,
+		}
+		err := getValidator().Validate(invalidAttrKAS)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "string.uuid")
+	}
+}
+
+func TestGetAttributeRequest(t *testing.T) {
+	req := &attributes.GetAttributeRequest{}
+	err := getValidator().Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "string.uuid")
+
+	req = &attributes.GetAttributeRequest{
+		Id: validUUID,
+	}
+	err = getValidator().Validate(req)
+	require.NoError(t, err)
+}
+
+func TestUpdateAttributeRequest(t *testing.T) {
+	req := &attributes.UpdateAttributeRequest{}
+	err := getValidator().Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "string.uuid")
+
+	req = &attributes.UpdateAttributeRequest{
+		Id: validUUID,
+	}
+	err = getValidator().Validate(req)
+	require.NoError(t, err)
+}
+
+func TestDeactivateAttributeRequest(t *testing.T) {
+	req := &attributes.DeactivateAttributeRequest{}
+	err := getValidator().Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "string.uuid")
+
+	req = &attributes.DeactivateAttributeRequest{
+		Id: validUUID,
+	}
+	err = getValidator().Validate(req)
+	require.NoError(t, err)
+}
+
 // Create Attribute Values
 
 func TestCreateAttributeValue_Valid_Succeeds(t *testing.T) {
@@ -273,4 +353,97 @@ func TestCreateAttributeValue_ValueMissing_Fails(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "value")
 	require.Contains(t, err.Error(), "[required]")
+}
+
+func TestValueKeyAccessServer_Succeeds(t *testing.T) {
+	validValueKAS := &attributes.ValueKeyAccessServer{
+		ValueId:           validUUID,
+		KeyAccessServerId: validUUID,
+	}
+
+	err := getValidator().Validate(validValueKAS)
+	require.NoError(t, err)
+}
+
+func TestValueKeyAccessServer_Fails(t *testing.T) {
+	bad := []struct {
+		valID string
+		kasID string
+	}{
+		{
+			"",
+			validUUID,
+		},
+		{
+			validUUID,
+			"",
+		},
+		{
+			"",
+			"",
+		},
+		{},
+	}
+
+	for _, test := range bad {
+		invalidValKAS := &attributes.ValueKeyAccessServer{
+			ValueId:           test.valID,
+			KeyAccessServerId: test.kasID,
+		}
+		err := getValidator().Validate(invalidValKAS)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "string.uuid")
+	}
+}
+
+func TestGetAttributeValueRequest(t *testing.T) {
+	req := &attributes.GetAttributeValueRequest{}
+	err := getValidator().Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "string.uuid")
+
+	req = &attributes.GetAttributeValueRequest{
+		Id: validUUID,
+	}
+	err = getValidator().Validate(req)
+	require.NoError(t, err)
+}
+
+func TestListAttributeValuesRequest(t *testing.T) {
+	req := &attributes.ListAttributeValuesRequest{}
+	err := getValidator().Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "string.uuid")
+
+	req = &attributes.ListAttributeValuesRequest{
+		AttributeId: validUUID,
+	}
+	err = getValidator().Validate(req)
+	require.NoError(t, err)
+}
+
+func TestUpdateAttributeValueRequest(t *testing.T) {
+	req := &attributes.UpdateAttributeValueRequest{}
+	err := getValidator().Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "string.uuid")
+
+	req = &attributes.UpdateAttributeValueRequest{
+		Id: validUUID,
+	}
+	err = getValidator().Validate(req)
+	require.NoError(t, err)
+}
+
+func TestDeactivateAttributeValueRequest(t *testing.T) {
+	req := &attributes.DeactivateAttributeValueRequest{}
+	err := getValidator().Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "string.uuid")
+
+	req = &attributes.DeactivateAttributeValueRequest{
+		Id: validUUID,
+	}
+	err = getValidator().Validate(req)
+	require.NoError(t, err)
 }

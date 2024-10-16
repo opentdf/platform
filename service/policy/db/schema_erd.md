@@ -65,6 +65,7 @@ erDiagram
         timestamp_with_time_zone created_at 
         uuid id PK "Primary key for the table"
         jsonb metadata "Metadata for the KAS (see protos for structure)"
+        character_varying name UK 
         jsonb public_key "Public key of the KAS (see protos for structure/options)"
         timestamp_with_time_zone updated_at 
         character_varying uri UK "URI of the KAS"
@@ -73,6 +74,7 @@ erDiagram
     resource_mapping_groups {
         timestamp_with_time_zone created_at 
         uuid id PK "Primary key for the table"
+        jsonb metadata 
         character_varying name UK "Name for the group of resource mappings"
         uuid namespace_id FK,UK "Foreign key to the namespace of the attribute"
         timestamp_with_time_zone updated_at 

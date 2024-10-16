@@ -14,7 +14,7 @@ import "policy/objects.proto";
 
 message ListResourceMappingGroupsRequest {
   // Optional
-  string namespace_id = 1;
+  string namespace_id = 1; // TODO: validate UUID only if provided
 }
 
 message ListResourceMappingGroupsResponse {
@@ -23,7 +23,10 @@ message ListResourceMappingGroupsResponse {
 
 message GetResourceMappingGroupRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
 }
 
 message GetResourceMappingGroupResponse {
@@ -32,7 +35,10 @@ message GetResourceMappingGroupResponse {
 
 message CreateResourceMappingGroupRequest {
   // Required
-  string namespace_id = 1 [(buf.validate.field).required = true];
+  string namespace_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
 
   string name = 2 [(buf.validate.field).required = true];
 
@@ -46,10 +52,13 @@ message CreateResourceMappingGroupResponse {
 
 message UpdateResourceMappingGroupRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
 
   // Optional
-  string namespace_id = 2;
+  string namespace_id = 2; // TODO: validate UUID only when provided
 
   string name = 3;
 
@@ -64,7 +73,10 @@ message UpdateResourceMappingGroupResponse {
 
 message DeleteResourceMappingGroupRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
 }
 
 message DeleteResourceMappingGroupResponse {
@@ -77,7 +89,7 @@ message DeleteResourceMappingGroupResponse {
 
 message ListResourceMappingsRequest {
   // Optional
-  string group_id = 1;
+  string group_id = 1; // TODO: validate UUID only when provided
 }
 
 message ListResourceMappingsResponse {
@@ -112,50 +124,28 @@ message ListResourceMappingsByGroupFqnsResponse {
 
 message GetResourceMappingRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
 }
 
 message GetResourceMappingResponse {
   policy.ResourceMapping resource_mapping = 1;
 }
 
-/*
- ### Request
 
-     grpcurl -plaintext -d @ localhost:8080 policy.resourcemapping.ResourceMappingService/CreateResourceMapping <<EOM
-       {
-         "mapping": {
-           "name": "Classification",
-           "attribute_value_id": "12345678-1234-1234-1234-123456789012",
-           "terms": ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]
-         }
-       }
-     EOM
-
-   ### Response
-
-     {
-       "mapping": {
-         "metadata": {
-           "id": "12345678-1234-1234-1234-123456789012",
-           "created_at": "2020-01-01T00:00:00Z",
-           "updated_at": "2020-01-01T00:00:00Z"
-         },
-         "name": "Classification",
-         "attribute_value_id": "12345678-1234-1234-1234-123456789012",
-         "terms": ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]
-       }
-     }
-
-*/
 message CreateResourceMappingRequest {
   // Required
-  string attribute_value_id = 1 [(buf.validate.field).required = true];
+  string attribute_value_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
 
-  repeated string terms = 2 [(buf.validate.field).required = true];
+  repeated string terms = 2 [(buf.validate.field).required = true]; // TODO: validate list min/max and term min/max
 
   // Optional
-  string group_id = 3;
+  string group_id = 3; // TODO: validate UUID only when provided
 
   common.MetadataMutable metadata = 100;
 }
@@ -165,14 +155,17 @@ message CreateResourceMappingResponse {
 
 message UpdateResourceMappingRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
 
   // Optional
-  string attribute_value_id = 4;
+  string attribute_value_id = 4; // TODO: validate UUID only when provided
 
-  repeated string terms = 5;
+  repeated string terms = 5; // TODO: validate list min/max and term min/max
 
-  string group_id = 6;
+  string group_id = 6; // TODO: validate UUID only when provided
 
   // Common Metadata
   common.MetadataMutable metadata = 100;
@@ -184,7 +177,10 @@ message UpdateResourceMappingResponse {
 
 message DeleteResourceMappingRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message DeleteResourceMappingResponse {
   ResourceMapping resource_mapping = 1;

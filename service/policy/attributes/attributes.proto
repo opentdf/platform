@@ -13,13 +13,25 @@ import "policy/selectors.proto";
 */
 
 message AttributeKeyAccessServer {
-  string attribute_id = 1;
-  string key_access_server_id = 2;
+  string attribute_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
+  string key_access_server_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
 }
 
 message ValueKeyAccessServer {
-  string value_id = 1;
-  string key_access_server_id = 2;
+  string value_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
+  string key_access_server_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
 }
 
 /*
@@ -37,7 +49,10 @@ message ListAttributesResponse {
 }
 
 message GetAttributeRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message GetAttributeResponse {
   policy.Attribute attribute = 1;
@@ -45,7 +60,10 @@ message GetAttributeResponse {
 
 message CreateAttributeRequest {
   // Required
-  string namespace_id = 1 [(buf.validate.field).required = true];
+  string namespace_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
   string name = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.max_len = 253,
@@ -84,7 +102,10 @@ message CreateAttributeResponse {
 
 message UpdateAttributeRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
 
   // Optional
   common.MetadataMutable metadata = 100;
@@ -95,7 +116,10 @@ message UpdateAttributeResponse {
 }
 
 message DeactivateAttributeRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message DeactivateAttributeResponse {
   policy.Attribute attribute = 1;
@@ -105,14 +129,20 @@ message DeactivateAttributeResponse {
 /// Value RPC messages
 ///
 message GetAttributeValueRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message GetAttributeValueResponse {
   policy.Value value = 1;
 }
 
 message ListAttributeValuesRequest {
-  string attribute_id = 1 [(buf.validate.field).required = true];
+  string attribute_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
   // ACTIVE by default when not specified
   common.ActiveStateEnum state = 2;
 }
@@ -122,7 +152,10 @@ message ListAttributeValuesResponse {
 
 message CreateAttributeValueRequest {
   // Required
-  string attribute_id = 1 [(buf.validate.field).required = true];
+  string attribute_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
   string value = 2     [
     (buf.validate.field).required = true,
     (buf.validate.field).string.max_len = 253,
@@ -145,7 +178,10 @@ message CreateAttributeValueResponse {
 }
 
 message UpdateAttributeValueRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
 
   // Deprecated
   reserved "members";
@@ -160,7 +196,10 @@ message UpdateAttributeValueResponse {
 }
 
 message DeactivateAttributeValueRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message DeactivateAttributeValueResponse {
   policy.Value value = 1;
@@ -169,7 +208,7 @@ message DeactivateAttributeValueResponse {
 message GetAttributeValuesByFqnsRequest {
   // Required
   // Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
-  repeated string fqns = 1 [(buf.validate.field).required = true];
+  repeated string fqns = 1 [(buf.validate.field).required = true]; // TODO: validate min/max len but NOT FQN format
   policy.AttributeValueSelector with_value = 2 [(buf.validate.field).required = true];
 }
 message GetAttributeValuesByFqnsResponse {

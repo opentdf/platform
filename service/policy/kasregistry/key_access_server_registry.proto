@@ -8,7 +8,10 @@ import "google/api/annotations.proto";
 import "policy/objects.proto";
 
 message GetKeyAccessServerRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message GetKeyAccessServerResponse {
   KeyAccessServer key_access_server = 1;
@@ -33,7 +36,10 @@ message CreateKeyAccessServerResponse {
 
 message UpdateKeyAccessServerRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
   string uri = 2;
   PublicKey public_key = 3;
 
@@ -46,7 +52,10 @@ message UpdateKeyAccessServerResponse {
 }
 
 message DeleteKeyAccessServerRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message DeleteKeyAccessServerResponse {
   KeyAccessServer key_access_server = 1;
@@ -73,8 +82,8 @@ message ListKeyAccessServerGrantsRequest {
   // Optional
   // Filter LIST by either ID or URI of a registered Key Access Server.
   // If neither is provided, grants from all registered KASs to policy attribute objects are returned.
-  string kas_id = 1;
-  string kas_uri = 2;
+  string kas_id = 1; // TOOD: test ignore_empty and other options for validating UUID only when not empty
+  string kas_uri = 2; // TODO: uri format
 }
 
 message ListKeyAccessServerGrantsResponse {

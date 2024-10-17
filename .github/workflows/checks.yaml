@@ -38,7 +38,16 @@ jobs:
         # - '!CODEOWNERS'
         run: |
           # Check if any non-Markdown files or 'docs/**' changed, and exclude 'LICENSE' and 'CODEOWNERS'
-          changed_files=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+
+          # Get the commit range for the diff (use HEAD^ for fallback)
+          before_commit="${{ github.event.before }}"
+          current_commit="${{ github.sha }}"
+          
+          if [ -z "$before_commit" ]; then
+            before_commit="HEAD^"
+          fi
+
+          changed_files=$(git diff --name-only $before_commit $current_commit)
           echo "Changed files: $changed_files"
 
           if echo "$changed_files" | grep -E '^(docs/|[^/]*\.(?!md$)|[^/]*$)' | grep -vE '(LICENSE|CODEOWNERS)'; then

@@ -8,14 +8,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	validUUID              = "390e0058-7ae8-48f6-821c-9db07c831276"
+	errMessageOptionalUUID = "optional_uuid_format"
+)
+
 var (
 	validFqns = []string{
 		"https://example.com/resm/group1",
 		"https://scenario.com/resm/group2",
 		"https://hypenated-ns.com/resm/group3",
 	}
-
-	validUUID = "390e0058-7ae8-48f6-821c-9db07c831276"
 
 	invalidFqns = []string{
 		// empty string
@@ -136,7 +139,7 @@ func Test_ListResourceMappingsRequest_Succeeds(t *testing.T) {
 	req.GroupId = "invalid-id"
 	err = v.Validate(req)
 	require.Error(t, err, "group_id is not a valid UUID")
-	require.Contains(t, err.Error(), "optional_uuid_format")
+	require.Contains(t, err.Error(), errMessageOptionalUUID)
 }
 
 func Test_CreateResourceMappingRequest_Succeeds(t *testing.T) {

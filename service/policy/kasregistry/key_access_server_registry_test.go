@@ -17,16 +17,18 @@ func getValidator() *protovalidate.Validator {
 	return v
 }
 
-var (
+const (
 	validSecureURI   = "https://example.net"
 	validInsecureURI = "http://local.something.com"
 	validUUID        = "00000000-0000-0000-0000-000000000000"
-	remotePubKey     = &policy.PublicKey{
-		PublicKey: &policy.PublicKey_Remote{
-			Remote: validSecureURI + "/public_key",
-		},
-	}
+	errMessageUUID   = "string.uuid"
 )
+
+var remotePubKey = &policy.PublicKey{
+	PublicKey: &policy.PublicKey_Remote{
+		Remote: validSecureURI + "/public_key",
+	},
+}
 
 func Test_GetKeyAccessServerRequest_Succeeds(t *testing.T) {
 	req := &kasregistry.GetKeyAccessServerRequest{}
@@ -34,7 +36,7 @@ func Test_GetKeyAccessServerRequest_Succeeds(t *testing.T) {
 
 	err := v.Validate(req)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "string.uuid")
+	require.Contains(t, err.Error(), errMessageUUID)
 
 	req.Id = validUUID
 	err = v.Validate(req)
@@ -187,7 +189,7 @@ func Test_DeleteKeyAccessServerRequest_Succeeds(t *testing.T) {
 
 	err := v.Validate(req)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "string.uuid")
+	require.Contains(t, err.Error(), errMessageUUID)
 
 	req.Id = validUUID
 	err = v.Validate(req)

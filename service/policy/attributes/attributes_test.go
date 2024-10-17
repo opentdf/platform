@@ -18,12 +18,13 @@ func getValidator() *protovalidate.Validator {
 	return v
 }
 
-var (
-	validName   = "name"
-	validValue1 = "value1"
-	validValue2 = "value_2"
-	validValue3 = "3_value"
-	validUUID   = "00000000-0000-0000-0000-000000000000"
+const (
+	validName      = "name"
+	validValue1    = "value1"
+	validValue2    = "value_2"
+	validValue3    = "3_value"
+	validUUID      = "00000000-0000-0000-0000-000000000000"
+	errMessageUUID = "string.uuid"
 )
 
 // Create Attributes (definitions)
@@ -121,7 +122,7 @@ func TestCreateAttribute_NamespaceIdMissing_Fails(t *testing.T) {
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "namespace_id")
-	require.Contains(t, err.Error(), "[string.uuid_empty]")
+	require.Contains(t, err.Error(), errMessageUUID)
 }
 
 func TestCreateAttribute_RuleMissing_Fails(t *testing.T) {
@@ -224,7 +225,7 @@ func TestAttributeKeyAccessServer_Fails(t *testing.T) {
 		}
 		err := getValidator().Validate(invalidAttrKAS)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "string.uuid")
+		require.Contains(t, err.Error(), errMessageUUID)
 	}
 }
 
@@ -232,7 +233,7 @@ func TestGetAttributeRequest(t *testing.T) {
 	req := &attributes.GetAttributeRequest{}
 	err := getValidator().Validate(req)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "string.uuid")
+	require.Contains(t, err.Error(), errMessageUUID)
 
 	req = &attributes.GetAttributeRequest{
 		Id: validUUID,
@@ -245,7 +246,7 @@ func TestUpdateAttributeRequest(t *testing.T) {
 	req := &attributes.UpdateAttributeRequest{}
 	err := getValidator().Validate(req)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "string.uuid")
+	require.Contains(t, err.Error(), errMessageUUID)
 
 	req = &attributes.UpdateAttributeRequest{
 		Id: validUUID,
@@ -258,7 +259,7 @@ func TestDeactivateAttributeRequest(t *testing.T) {
 	req := &attributes.DeactivateAttributeRequest{}
 	err := getValidator().Validate(req)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "string.uuid")
+	require.Contains(t, err.Error(), errMessageUUID)
 
 	req = &attributes.DeactivateAttributeRequest{
 		Id: validUUID,
@@ -339,7 +340,7 @@ func TestCreateAttributeValue_AttributeIdMissing_Fails(t *testing.T) {
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "attribute_id")
-	require.Contains(t, err.Error(), "[string.uuid_empty]")
+	require.Contains(t, err.Error(), errMessageUUID)
 }
 
 func TestCreateAttributeValue_ValueMissing_Fails(t *testing.T) {
@@ -392,7 +393,7 @@ func TestValueKeyAccessServer_Fails(t *testing.T) {
 		}
 		err := getValidator().Validate(invalidValKAS)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "string.uuid")
+		require.Contains(t, err.Error(), errMessageUUID)
 	}
 }
 
@@ -400,7 +401,7 @@ func TestGetAttributeValueRequest(t *testing.T) {
 	req := &attributes.GetAttributeValueRequest{}
 	err := getValidator().Validate(req)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "string.uuid")
+	require.Contains(t, err.Error(), errMessageUUID)
 
 	req = &attributes.GetAttributeValueRequest{
 		Id: validUUID,
@@ -413,7 +414,7 @@ func TestListAttributeValuesRequest(t *testing.T) {
 	req := &attributes.ListAttributeValuesRequest{}
 	err := getValidator().Validate(req)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "string.uuid")
+	require.Contains(t, err.Error(), errMessageUUID)
 
 	req = &attributes.ListAttributeValuesRequest{
 		AttributeId: validUUID,
@@ -426,7 +427,7 @@ func TestUpdateAttributeValueRequest(t *testing.T) {
 	req := &attributes.UpdateAttributeValueRequest{}
 	err := getValidator().Validate(req)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "string.uuid")
+	require.Contains(t, err.Error(), errMessageUUID)
 
 	req = &attributes.UpdateAttributeValueRequest{
 		Id: validUUID,
@@ -439,7 +440,7 @@ func TestDeactivateAttributeValueRequest(t *testing.T) {
 	req := &attributes.DeactivateAttributeValueRequest{}
 	err := getValidator().Validate(req)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "string.uuid")
+	require.Contains(t, err.Error(), errMessageUUID)
 
 	req = &attributes.DeactivateAttributeValueRequest{
 		Id: validUUID,

@@ -17,7 +17,11 @@ func getValidator() *protovalidate.Validator {
 	return v
 }
 
-var fakeID = "cf75540a-cd58-4c6c-a502-7108be7a6edd"
+const (
+	errMessageUUID         = "string.uuid"
+	errMessageOptionalUUID = "optional_uuid_format"
+	fakeID                 = "cf75540a-cd58-4c6c-a502-7108be7a6edd"
+)
 
 func Test_CreateSubjectMappingRequest_NilActionsArray_Fails(t *testing.T) {
 	req := &subjectmapping.CreateSubjectMappingRequest{
@@ -53,7 +57,7 @@ func Test_CreateSubjectMappingRequest_PopulatedArray_BadValueID_Fails(t *testing
 	err := getValidator().Validate(req)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "attribute_value_id")
-	require.Contains(t, err.Error(), "[string.uuid]")
+	require.Contains(t, err.Error(), errMessageUUID)
 }
 
 func Test_CreateSubjectMappingRequest_PopulatedArray_Succeeds(t *testing.T) {
@@ -92,7 +96,7 @@ func Test_CreateSubjectMappingRequest_WithExistingSubjectConditionSetID_Succeeds
 	req.ExistingSubjectConditionSetId = "bad-scs-id"
 	err = v.Validate(req)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "optional_uuid_format")
+	require.Contains(t, err.Error(), errMessageUUID)
 }
 
 func Test_UpdateSubjectMappingRequest_Succeeds(t *testing.T) {
@@ -101,7 +105,7 @@ func Test_UpdateSubjectMappingRequest_Succeeds(t *testing.T) {
 
 	err := v.Validate(req)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "string.uuid")
+	require.Contains(t, err.Error(), errMessageUUID)
 
 	req.Id = fakeID
 	err = v.Validate(req)
@@ -110,7 +114,7 @@ func Test_UpdateSubjectMappingRequest_Succeeds(t *testing.T) {
 	req.SubjectConditionSetId = "bad-id"
 	err = v.Validate(req)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "optional_uuid_format")
+	require.Contains(t, err.Error(), errMessageOptionalUUID)
 
 	req.SubjectConditionSetId = fakeID
 	err = v.Validate(req)

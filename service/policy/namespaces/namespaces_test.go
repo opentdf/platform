@@ -9,9 +9,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	validName = "namespace.org"
-	validUUID = "390e0058-7ae8-48f6-821c-9db07c831276"
+const (
+	validName      = "namespace.org"
+	validUUID      = "390e0058-7ae8-48f6-821c-9db07c831276"
+	errMessageUUID = "string.uuid"
 )
 
 func getValidator() *protovalidate.Validator {
@@ -119,7 +120,7 @@ func Test_GetNamespaceRequest_Succeeds(t *testing.T) {
 
 	err := v.Validate(req)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "string.uuid")
+	require.Contains(t, err.Error(), errMessageUUID)
 
 	req.Id = validUUID
 	err = v.Validate(req)
@@ -132,7 +133,7 @@ func Test_UpdateNamespaceRequest_Succeeds(t *testing.T) {
 
 	err := v.Validate(req)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "string.uuid")
+	require.Contains(t, err.Error(), errMessageUUID)
 
 	req.Id = validUUID
 	err = v.Validate(req)
@@ -145,7 +146,7 @@ func Test_DeactivateNamespaceRequest_Succeeds(t *testing.T) {
 
 	err := v.Validate(req)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "string.uuid")
+	require.Contains(t, err.Error(), errMessageUUID)
 
 	req.Id = validUUID
 	err = v.Validate(req)
@@ -189,6 +190,6 @@ func Test_NamespaceKeyAccessServer_Fails(t *testing.T) {
 		}
 		err := getValidator().Validate(invalidNamespaceKAS)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "string.uuid")
+		require.Contains(t, err.Error(), errMessageUUID)
 	}
 }

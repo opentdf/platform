@@ -267,6 +267,18 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 			resource: "/kas/v2/rewrap",
 			action:   "write",
 		},
+		{
+			allowed:  true,
+			roles:    standard,
+			resource: "authorization.AuthorizationService/GetDecisions",
+			action:   "read",
+		},
+		{
+			allowed:  true,
+			roles:    standard,
+			resource: "authorization.AuthorizationService/GetDecisionsByToken",
+			action:   "read",
+		},
 
 		// undefined role
 		{

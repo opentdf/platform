@@ -66,9 +66,7 @@ func marshalActionsProto(actions []*policy.Action) ([]byte, error) {
 }
 
 func unmarshalActionsProto(actionsJSON []byte, actions *[]*policy.Action) error {
-	var (
-		raw []json.RawMessage
-	)
+	var raw []json.RawMessage
 
 	if actionsJSON != nil {
 		if err := json.Unmarshal(actionsJSON, &raw); err != nil {
@@ -234,7 +232,7 @@ func (c PolicyDBClient) GetSubjectConditionSet(ctx context.Context, id string) (
 }
 
 func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context) ([]*policy.SubjectConditionSet, error) {
-	list, err := c.Queries.ListSubjectConditionSets(ctx)
+	list, err := c.Queries.ListSubjectConditionSets(ctx, ListSubjectConditionSetsParams{})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -418,7 +416,7 @@ func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*poli
 }
 
 func (c PolicyDBClient) ListSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
-	list, err := c.Queries.ListSubjectMappings(ctx)
+	list, err := c.Queries.ListSubjectMappings(ctx, ListSubjectMappingsParams{})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

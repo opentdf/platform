@@ -21,7 +21,6 @@ var (
 	ErrNotFound                  = errors.New("ErrNotFound: value not found")
 	ErrEnumValueInvalid          = errors.New("ErrEnumValueInvalid: not a valid enum value")
 	ErrUUIDInvalid               = errors.New("ErrUUIDInvalid: value not a valid UUID")
-	ErrFqnMissingValue           = errors.New("ErrFqnMissingValue: FQN must include a value")
 	ErrMissingValue              = errors.New("ErrMissingValue: value must be included")
 )
 
@@ -126,10 +125,6 @@ func StatusifyError(err error, fallbackErr string, log ...any) error {
 	if errors.Is(err, ErrRestrictViolation) {
 		slog.Error(ErrTextRestrictViolation, l...)
 		return status.Error(codes.InvalidArgument, ErrTextRestrictViolation)
-	}
-	if errors.Is(err, ErrFqnMissingValue) {
-		slog.Error(ErrTextFqnMissingValue, l...)
-		return status.Error(codes.InvalidArgument, ErrTextFqnMissingValue)
 	}
 	slog.Error(err.Error(), l...)
 	return status.Error(codes.Internal, fallbackErr)

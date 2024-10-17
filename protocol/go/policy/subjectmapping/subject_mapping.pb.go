@@ -229,7 +229,7 @@ type ListSubjectMappingsRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Optional
-	// Currently defaulted to 250 if not providedand subject to change at any time
+	// Currently defaulted to 250 if not provided and subject to change at any time
 	Limit int32 `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Optional
 	// Defaulted if not provided
@@ -798,7 +798,7 @@ type ListSubjectConditionSetsRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Optional
-	// Currently defaulted to 250 if not providedand subject to change at any time
+	// Currently defaulted to 250 if not provided and subject to change at any time
 	Limit int32 `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Optional
 	// Defaulted if not provided

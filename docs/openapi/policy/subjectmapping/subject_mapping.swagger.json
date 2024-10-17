@@ -36,7 +36,7 @@
         "parameters": [
           {
             "name": "limit",
-            "description": "Optional\nCurrently defaulted to 250 if not providedand subject to change at any time",
+            "description": "Optional\nCurrently defaulted to 250 if not provided and subject to change at any time",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -218,7 +218,7 @@
         "parameters": [
           {
             "name": "limit",
-            "description": "Optional\nCurrently defaulted to 250 if not providedand subject to change at any time",
+            "description": "Optional\nCurrently defaulted to 250 if not provided and subject to change at any time",
             "in": "query",
             "required": false,
             "type": "integer",

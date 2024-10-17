@@ -18,7 +18,9 @@ import (
 */
 
 func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resourcemapping.ListResourceMappingGroupsRequest) ([]*policy.ResourceMappingGroup, error) {
-	list, err := c.Queries.ListResourceMappingGroups(ctx, r.GetNamespaceId())
+	list, err := c.Queries.ListResourceMappingGroups(ctx, ListResourceMappingGroupsParams{
+		NamespaceID: r.GetNamespaceId(),
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -142,7 +144,9 @@ func (c PolicyDBClient) DeleteResourceMappingGroup(ctx context.Context, id strin
 */
 
 func (c PolicyDBClient) ListResourceMappings(ctx context.Context, r *resourcemapping.ListResourceMappingsRequest) ([]*policy.ResourceMapping, error) {
-	list, err := c.Queries.ListResourceMappings(ctx, r.GetGroupId())
+	list, err := c.Queries.ListResourceMappings(ctx, ListResourceMappingsParams{
+		GroupID: r.GetGroupId(),
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

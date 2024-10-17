@@ -53,7 +53,9 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, state string) ([]*po
 		active = pgtypeBool(state == StateActive)
 	}
 
-	list, err := c.Queries.ListNamespaces(ctx, active)
+	list, err := c.Queries.ListNamespaces(ctx, ListNamespacesParams{
+		Active: active,
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

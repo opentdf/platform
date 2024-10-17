@@ -33,6 +33,24 @@
             }
           }
         },
+        "parameters": [
+          {
+            "name": "limit",
+            "description": "Optional\nCurrently defaulted to 250 if not provided and subject to change at any time",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "description": "Optional\nDefaulted if not provided",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
         "tags": [
           "SubjectMappingService"
         ]
@@ -197,6 +215,24 @@
             }
           }
         },
+        "parameters": [
+          {
+            "name": "limit",
+            "description": "Optional\nCurrently defaulted to 250 if not provided and subject to change at any time",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "description": "Optional\nDefaulted if not provided",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
         "tags": [
           "SubjectMappingService"
         ]
@@ -925,6 +961,21 @@
             "type": "object",
             "$ref": "#/definitions/policySubjectConditionSet"
           }
+        },
+        "currentOffset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Current pagination offset"
+        },
+        "nextOffset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Calculated with request limit + offset or defaults\nEmpty when none remain after current page"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Total count of entire list"
         }
       }
     },
@@ -937,6 +988,21 @@
             "type": "object",
             "$ref": "#/definitions/policySubjectMapping"
           }
+        },
+        "currentOffset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Current pagination offset"
+        },
+        "nextOffset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Calculated with request limit + offset or defaults\nEmpty when none remain after current page"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Total count of entire list"
         }
       }
     },

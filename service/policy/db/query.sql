@@ -49,12 +49,16 @@ LEFT JOIN
 WHERE (NULLIF(@kas_id, '') IS NULL OR kas.id = @kas_id::uuid)
     AND (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri::varchar)
 GROUP BY 
-    kas.id;
+    kas.id
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: ListKeyAccessServers :many
 SELECT id, uri, public_key,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-FROM key_access_servers;
+FROM key_access_servers
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: GetKeyAccessServer :one
 SELECT id, uri, public_key,
@@ -174,7 +178,9 @@ WHERE
     (sqlc.narg('active')::BOOLEAN IS NULL OR ad.active = sqlc.narg('active')) AND
     (NULLIF(@namespace_id, '') IS NULL OR ad.namespace_id = @namespace_id::uuid) AND
     (NULLIF(@namespace_name, '') IS NULL OR n.name = @namespace_name)
-GROUP BY ad.id, n.name, fqns.fqn;
+GROUP BY ad.id, n.name, fqns.fqn
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: ListAttributesSummary :many
 SELECT
@@ -188,7 +194,9 @@ SELECT
 FROM attribute_definitions ad
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 WHERE ad.namespace_id = $1
-GROUP BY ad.id, n.name;
+GROUP BY ad.id, n.name
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: ListAttributesByDefOrValueFqns :many
 -- get the attribute definition for the provided value or definition fqn
@@ -389,7 +397,6 @@ WHERE attribute_definition_id = $1 AND key_access_server_id = $2;
 ----------------------------------------------------------------
 
 -- name: ListAttributeValues :many
-
 SELECT
     av.id,
     av.value,
@@ -403,7 +410,9 @@ WHERE (
     (sqlc.narg('active')::BOOLEAN IS NULL OR av.active = sqlc.narg('active')) AND
     (NULLIF(@attribute_definition_id, '') IS NULL OR av.attribute_definition_id = @attribute_definition_id::UUID)
 )
-GROUP BY av.id, fqns.fqn;
+GROUP BY av.id, fqns.fqn
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: GetAttributeValue :one
 SELECT
@@ -460,7 +469,9 @@ WHERE attribute_value_id = $1 AND key_access_server_id = $2;
 SELECT id, namespace_id, name,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
 FROM resource_mapping_groups
-WHERE (NULLIF(@namespace_id, '') IS NULL OR namespace_id = @namespace_id::uuid);
+WHERE (NULLIF(@namespace_id, '') IS NULL OR namespace_id = @namespace_id::uuid)
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: GetResourceMappingGroup :one
 SELECT id, namespace_id, name,
@@ -499,7 +510,9 @@ FROM resource_mappings m
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 WHERE (NULLIF(@group_id, '') IS NULL OR m.group_id = @group_id::UUID)
-GROUP BY av.id, m.id, fqns.fqn;
+GROUP BY av.id, m.id, fqns.fqn
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: ListResourceMappingsByFullyQualifiedGroup :many
 -- CTE to cache the group JSON build since it will be the same for all mappings of the group
@@ -574,7 +587,9 @@ SELECT
     fqns.fqn
 FROM attribute_namespaces ns
 LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
-WHERE (sqlc.narg('active')::BOOLEAN IS NULL OR ns.active = sqlc.narg('active')::BOOLEAN);
+WHERE (sqlc.narg('active')::BOOLEAN IS NULL OR ns.active = sqlc.narg('active')::BOOLEAN)
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: GetNamespace :one
 SELECT
@@ -629,7 +644,9 @@ SELECT
     id,
     condition,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-FROM subject_condition_set;
+FROM subject_condition_set
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: GetSubjectConditionSet :one
 SELECT
@@ -672,7 +689,9 @@ SELECT
 FROM subject_mappings sm
 LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
 LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
-GROUP BY av.id, sm.id, scs.id;
+GROUP BY av.id, sm.id, scs.id
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: GetSubjectMapping :one
 SELECT

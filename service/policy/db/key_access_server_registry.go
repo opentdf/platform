@@ -12,7 +12,7 @@ import (
 )
 
 func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context) ([]*policy.KeyAccessServer, error) {
-	list, err := c.Queries.ListKeyAccessServers(ctx)
+	list, err := c.Queries.ListKeyAccessServers(ctx, ListKeyAccessServersParams{})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

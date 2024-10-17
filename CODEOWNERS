@@ -1,3 +1,4 @@
 # CODEOWNERS - code freeze
 
-* @opentdf/architecture @opentdf/security
+* @opentdf/architecture
+CODEOWNERS     @opentdf/architecture @opentdf/security

@@ -19,14 +19,15 @@ func getValidator() *protovalidate.Validator {
 }
 
 const (
-	validName                = "name"
-	validValue1              = "value1"
-	validValue2              = "value_2"
-	validValue3              = "3_value"
-	validUUID                = "00000000-0000-0000-0000-000000000000"
-	errMessageUUID           = "string.uuid"
-	errMessageAttrNameFormat = "attribute_name_format"
-	errMessageRequired       = "required"
+	validName                 = "name"
+	validValue1               = "value1"
+	validValue2               = "value_2"
+	validValue3               = "3_value"
+	validUUID                 = "00000000-0000-0000-0000-000000000000"
+	errMessageUUID            = "string.uuid"
+	errMessageAttrNameFormat  = "attribute_name_format"
+	errMessageAttrValueFormat = "attribute_value_format"
+	errMessageRequired        = "required"
 )
 
 // Create Attributes (definitions)
@@ -308,7 +309,7 @@ func TestCreateAttributeValue_ValueWithSpace_Fails(t *testing.T) {
 	err := v.Validate(req)
 
 	require.Error(t, err)
-	require.Contains(t, err.Error(), errMessageAttrNameFormat)
+	require.Contains(t, err.Error(), errMessageAttrValueFormat)
 }
 
 func TestCreateAttributeValue_ValueWithNonAlphanumeric_Fails(t *testing.T) {
@@ -328,7 +329,7 @@ func TestCreateAttributeValue_ValueWithNonAlphanumeric_Fails(t *testing.T) {
 		err := v.Validate(req)
 
 		require.Error(t, err)
-		require.Contains(t, err.Error(), errMessageAttrNameFormat)
+		require.Contains(t, err.Error(), errMessageAttrValueFormat)
 	}
 }
 

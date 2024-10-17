@@ -52,7 +52,7 @@ jobs:
           changed_files=$(git diff --name-only $before_commit $current_commit)
           echo "Changed files: $changed_files"
 
-          if echo "$changed_files" | grep -E '^(docs/|[^/]*\.(?!md$)|[^/]*$)' | grep -vE '(LICENSE|CODEOWNERS)'; then
+          if echo "$changed_files" | grep -E '^(docs/.+\.md$|[^.]+(\.[^m]|m[^d])$)' | grep -vE '(LICENSE|CODEOWNERS)'; then
             echo "Paths of interest were modified."
             echo "paths_changed=true" >> $GITHUB_ENV
           else

@@ -527,17 +527,10 @@ func (c PolicyDBClient) DeleteSubjectMapping(ctx context.Context, id string) (*p
 // and the JSON structure being SubjectSets -> ConditionGroups -> Conditions.
 //
 // Unfortunately we must do some slight filtering at the SQL level to avoid extreme and potentially non-rare edge cases. Subject Mappings will
-// be returned if there is any condition found among the structures that matches:
-// 1. The external field, external value, and an IN operator
-// 2. The external field, _no_ external value, and a NOT_IN operator
-//
-// Without this filtering, if a selector value was something like '.emailAddress' or '.username', every Subject is probably going to relate to that mapping
-// in some way or another. This could theoretically be every attribute in the DB if a policy admin has relied heavily on that field.
+// be returned if an external selector field matches.
 //
 // NOTE: if you have any issues, set the log level to 'debug' for more comprehensive context.
 func selectMatchedSubjectMappingsSQL(subjectProperties []*policy.SubjectProperty, logger *logger.Logger) (string, []interface{}, error) {
-	// if has selector field, return true
-
 	var err error
 	if len(subjectProperties) == 0 {
 		err = errors.Join(db.ErrMissingValue, errors.New("one or more subject properties is required"))
@@ -556,7 +549,7 @@ func selectMatchedSubjectMappingsSQL(subjectProperties []*policy.SubjectProperty
 		}
 
 		hasField := "each_condition->>'subject_external_selector_value' = '" + sp.GetExternalSelectorValue() + "'"
-		// Parses the json and matches the row if either of the following conditions are met:
+		// Parses the json and matches the row if the selector exists:
 		where += "(" + hasField + ")"
 		logger.Debug("current condition filter WHERE clause", slog.String("subject_external_selector_value", sp.GetExternalSelectorValue()), slog.String("subject_external_value", sp.GetExternalValue()), slog.String("where", where))
 	}
@@ -586,15 +579,8 @@ func selectMatchedSubjectMappingsSQL(subjectProperties []*policy.SubjectProperty
 		ToSql()
 }
 
-// GetMatchedSubjectMappings liberally returns a list of SubjectMappings based on the provided SubjectProperties. The SubjectMappings are returned
-// if there is any single condition found among the structures that matches:
-// 1. The external field, external value, and an IN operator
-// 2. The external field, _no_ external value, and a NOT_IN operator
-//
-// Without this filtering, if a field was something like '.emailAddress' or '.username', every Subject is probably going to relate to that mapping
-// in some way or another, potentially matching every single attribute in the DB if a policy admin has relied heavily on that field. There is no
-// logic applied beyond a single condition within the query to avoid business logic interpreting the supplied conditions beyond the bare minimum
-// initial filter.
+// GetMatchedSubjectMappings liberally returns a list of SubjectMappings based on the provided SubjectProperties.
+// The SubjectMappings are returned if an external selector field matches.
 //
 // NOTE: This relationship is sometimes called Entitlements or Subject Entitlements.
 // NOTE: if you have any issues, set the log level to 'debug' for more comprehensive context.

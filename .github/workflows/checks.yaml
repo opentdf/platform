@@ -26,7 +26,7 @@ jobs:
       paths_changed: ${{ steps.check_paths.outputs.paths_changed }}  # Output value to other jobs
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
 
       - name: Check if specific paths are changed
         id: check_paths
@@ -38,16 +38,16 @@ jobs:
         # - '!CODEOWNERS'
         run: |
           # Check if any non-Markdown files or 'docs/**' changed, and exclude 'LICENSE' and 'CODEOWNERS'
-          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E '^(docs/|[^/]*\.(?!md$)|[^/]*$)' | grep -vE '(LICENSE|CODEOWNERS)'; then
+          changed_files=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+          echo "Changed files: $changed_files"
+
+          if echo "$changed_files" | grep -E '^(docs/|[^/]*\.(?!md$)|[^/]*$)' | grep -vE '(LICENSE|CODEOWNERS)'; then
             echo "Paths of interest were modified."
             echo "paths_changed=true" >> $GITHUB_ENV
-            # echo "::set-output name=paths_changed::true"
           else
             echo "No matching paths were modified."
             echo "paths_changed=false" >> $GITHUB_ENV
-            # echo "::set-output name=paths_changed::false"
           fi
-          exit 0
   go:
     needs: deltas
     if: ${{ needs.job1.outputs.paths_changed == 'true' }}

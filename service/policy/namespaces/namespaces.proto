@@ -13,8 +13,14 @@ import "policy/objects.proto";
 */
 
 message NamespaceKeyAccessServer {
-  string namespace_id = 1;
-  string key_access_server_id = 2;
+  // Required
+  string namespace_id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+  // Required
+  string key_access_server_id = 2 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 
 /*
@@ -24,13 +30,17 @@ message NamespaceKeyAccessServer {
 */
 
 message GetNamespaceRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message GetNamespaceResponse {
   policy.Namespace namespace = 1;
 }
 
 message ListNamespacesRequest {
+  // Optional
   // ACTIVE by default when not specified
   common.ActiveStateEnum state = 1;
 }
@@ -59,7 +69,9 @@ message CreateNamespaceResponse {
 
 message UpdateNamespaceRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 
   // Optional
   common.MetadataMutable metadata = 100;
@@ -70,7 +82,10 @@ message UpdateNamespaceResponse {
 }
 
 message DeactivateNamespaceRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message DeactivateNamespaceResponse {}
 

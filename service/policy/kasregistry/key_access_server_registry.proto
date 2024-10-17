@@ -8,7 +8,10 @@ import "google/api/annotations.proto";
 import "policy/objects.proto";
 
 message GetKeyAccessServerRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message GetKeyAccessServerResponse {
   KeyAccessServer key_access_server = 1;
@@ -19,11 +22,19 @@ message ListKeyAccessServersResponse {
   repeated KeyAccessServer key_access_servers = 1;
 }
 
+// TODO: optional validation below should be through a custom validator, which is too bleeding edge at present without full plugin support
+
 message CreateKeyAccessServerRequest {
   // Required
-  string uri = 1 [(buf.validate.field).required = true];
+  string uri = 1 [(buf.validate.field).cel = {
+      id: "uri_format",
+      message: "URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
+      expression: "this.matches('^https?://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')"
+  }];
+  // Required
   PublicKey public_key = 2 [(buf.validate.field).required = true];
 
+  // Optional
   // Common metadata
   common.MetadataMutable metadata = 100;
 }
@@ -33,10 +44,19 @@ message CreateKeyAccessServerResponse {
 
 message UpdateKeyAccessServerRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
-  string uri = 2;
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+  // Required
+  string uri = 2 [(buf.validate.field).cel = {
+      id: "optional_uri_format",
+      message: "Optional URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
+      expression: "size(this) == 0 || this.matches('^https?://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')"
+  }];
+  // Required
   PublicKey public_key = 3;
 
+  // Optional
   // Common metadata
   common.MetadataMutable metadata = 100;
   common.MetadataUpdateEnum metadata_update_behavior = 101;
@@ -46,7 +66,10 @@ message UpdateKeyAccessServerResponse {
 }
 
 message DeleteKeyAccessServerRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message DeleteKeyAccessServerResponse {
   KeyAccessServer key_access_server = 1;
@@ -65,16 +88,29 @@ message KeyAccessServerGrants {
   repeated GrantedPolicyObject value_grants = 4;
 }
 
+// TODO: optional validation below should be through a custom validator, which is too bleeding edge at present without full plugin support
+
 // LIST of KAS Grants returns flat response of grants to all policy objects. It does not
 // employ selectors for grants to specific policy objects or build the attribute tree relation.
 // If grants to a known namespace, attribute, or value are needed, use the respective
 // GET request to the specific policy object.
 message ListKeyAccessServerGrantsRequest {
   // Optional
-  // Filter LIST by either ID or URI of a registered Key Access Server.
+  // Filter LIST by either ID of a registered Key Access Server.
   // If neither is provided, grants from all registered KASs to policy attribute objects are returned.
-  string kas_id = 1;
-  string kas_uri = 2;
+  string kas_id = 1 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
+  // Optional
+  // Filter LIST by URI of a registered Key Access Server.
+  // If neither is provided, grants from all registered KASs to policy attribute objects are returned.
+  string kas_uri = 2 [(buf.validate.field).cel = {
+      id: "optional_uri_format",
+      message: "Optional URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
+      expression: "size(this) == 0 || this.matches('^https?://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')"
+  }];
 }
 
 message ListKeyAccessServerGrantsResponse {

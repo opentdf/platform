@@ -17,9 +17,15 @@ func getValidator() *protovalidate.Validator {
 	return v
 }
 
+const (
+	errMessageUUID         = "string.uuid"
+	errMessageOptionalUUID = "optional_uuid_format"
+	fakeID                 = "cf75540a-cd58-4c6c-a502-7108be7a6edd"
+)
+
 func Test_CreateSubjectMappingRequest_NilActionsArray_Fails(t *testing.T) {
 	req := &subjectmapping.CreateSubjectMappingRequest{
-		AttributeValueId: "av-test-id",
+		AttributeValueId: fakeID,
 	}
 
 	err := getValidator().Validate(req)
@@ -28,7 +34,7 @@ func Test_CreateSubjectMappingRequest_NilActionsArray_Fails(t *testing.T) {
 
 func Test_CreateSubjectMappingRequest_EmptyActionsArray_Fails(t *testing.T) {
 	req := &subjectmapping.CreateSubjectMappingRequest{
-		AttributeValueId: "av-test-id",
+		AttributeValueId: fakeID,
 		Actions:          []*policy.Action{},
 	}
 
@@ -36,7 +42,7 @@ func Test_CreateSubjectMappingRequest_EmptyActionsArray_Fails(t *testing.T) {
 	require.Error(t, err)
 }
 
-func Test_CreateSubjectMappingRequest_PopulatedArray_Succeeds(t *testing.T) {
+func Test_CreateSubjectMappingRequest_PopulatedArray_BadValueID_Fails(t *testing.T) {
 	req := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId: "av-test-id",
 		Actions: []*policy.Action{
@@ -49,5 +55,68 @@ func Test_CreateSubjectMappingRequest_PopulatedArray_Succeeds(t *testing.T) {
 	}
 
 	err := getValidator().Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "attribute_value_id")
+	require.Contains(t, err.Error(), errMessageUUID)
+}
+
+func Test_CreateSubjectMappingRequest_PopulatedArray_Succeeds(t *testing.T) {
+	req := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId: fakeID,
+		Actions: []*policy.Action{
+			{
+				Value: &policy.Action_Custom{
+					Custom: "my custom action",
+				},
+			},
+		},
+	}
+
+	err := getValidator().Validate(req)
 	require.NoError(t, err)
+}
+
+func Test_CreateSubjectMappingRequest_WithExistingSubjectConditionSetID_Succeeds(t *testing.T) {
+	v := getValidator()
+	req := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId: fakeID,
+		Actions: []*policy.Action{
+			{
+				Value: &policy.Action_Standard{
+					Standard: policy.Action_STANDARD_ACTION_DECRYPT,
+				},
+			},
+		},
+		ExistingSubjectConditionSetId: fakeID,
+	}
+
+	err := v.Validate(req)
+	require.NoError(t, err)
+
+	req.ExistingSubjectConditionSetId = "bad-scs-id"
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageOptionalUUID)
+}
+
+func Test_UpdateSubjectMappingRequest_Succeeds(t *testing.T) {
+	v := getValidator()
+	req := &subjectmapping.UpdateSubjectMappingRequest{}
+
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageUUID)
+
+	req.Id = fakeID
+	err = v.Validate(req)
+	require.NoError(t, err, "valid uuid format for ID")
+
+	req.SubjectConditionSetId = "bad-id"
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageOptionalUUID)
+
+	req.SubjectConditionSetId = fakeID
+	err = v.Validate(req)
+	require.NoError(t, err, "valid uuid format for subject_condition_set_id")
 }

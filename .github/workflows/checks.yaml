@@ -61,7 +61,7 @@ jobs:
           fi
   go:
     needs: deltas
-    if: ${{ needs.job1.outputs.paths_changed == 'true' }}
+    if: ${{ needs.deltas.outputs.paths_changed == 'true' }}
     runs-on: ubuntu-22.04
     permissions:
       checks: write
@@ -130,7 +130,7 @@ jobs:
 
   integration:
     needs: deltas
-    if: ${{ needs.job1.outputs.paths_changed == 'true' }}
+    if: ${{ needs.deltas.outputs.paths_changed == 'true' }}
     name: integration tests
     runs-on: ubuntu-22.04
     steps:
@@ -191,7 +191,7 @@ jobs:
 
   image:
     needs: deltas
-    if: ${{ needs.job1.outputs.paths_changed == 'true' }}
+    if: ${{ needs.deltas.outputs.paths_changed == 'true' }}
     name: image build
     runs-on: ubuntu-22.04
     steps:
@@ -205,7 +205,7 @@ jobs:
 
   platform-xtest:
     needs: deltas
-    if: ${{ needs.job1.outputs.paths_changed == 'true' }}
+    if: ${{ needs.deltas.outputs.paths_changed == 'true' }}
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       # use commit instead of ref so we can "go get" specific sdk version
@@ -214,7 +214,7 @@ jobs:
   # test latest otdfctl CLI 'main' against platform PR branch
   otdfctl-test:
     needs: deltas
-    if: ${{ needs.job1.outputs.paths_changed == 'true' }}
+    if: ${{ needs.deltas.outputs.paths_changed == 'true' }}
     name: otdfctl e2e tests
     runs-on: ubuntu-latest
     steps:
@@ -227,7 +227,7 @@ jobs:
 
   buflint:
     needs: deltas
-    if: ${{ needs.job1.outputs.paths_changed == 'true' }}
+    if: ${{ needs.deltas.outputs.paths_changed == 'true' }}
     name: Protocol Buffer Lint and Gencode Up-to-date check
     runs-on: ubuntu-22.04
     steps:

@@ -36,7 +36,7 @@ jobs:
         # - 'docs/**'
         # - '!LICENSE'
         # - '!CODEOWNERS'
-        run: |
+        run: |-
           # Check if any non-Markdown files or 'docs/**' changed, and exclude 'LICENSE' and 'CODEOWNERS'
           if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E '^(docs/|[^/]*\.(?!md$)|[^/]*$)' | grep -vE '(LICENSE|CODEOWNERS)'; then
             echo "Paths of interest were modified."

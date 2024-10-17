@@ -181,7 +181,7 @@ type ListNamespacesRequest struct {
 	// ACTIVE by default when not specified
 	State common.ActiveStateEnum `protobuf:"varint,1,opt,name=state,proto3,enum=common.ActiveStateEnum" json:"state,omitempty"`
 	// Optional
-	// Currently defaulted to 250 if not providedand subject to change at any time
+	// Currently defaulted to 250 if not provided and subject to change at any time
 	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Optional
 	// Defaulted if not provided

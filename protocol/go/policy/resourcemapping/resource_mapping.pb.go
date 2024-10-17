@@ -32,7 +32,7 @@ type ListResourceMappingGroupsRequest struct {
 	// Optional
 	NamespaceId string `protobuf:"bytes,1,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
 	// Optional
-	// Currently defaulted to 250 if not providedand subject to change at any time
+	// Currently defaulted to 250 if not provided and subject to change at any time
 	Limit int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Optional
 	// Defaulted if not provided
@@ -578,7 +578,7 @@ type ListResourceMappingsRequest struct {
 	// Optional
 	GroupId string `protobuf:"bytes,1,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
 	// Optional
-	// Currently defaulted to 250 if not providedand subject to change at any time
+	// Currently defaulted to 250 if not provided and subject to change at any time
 	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Optional
 	// Defaulted if not provided

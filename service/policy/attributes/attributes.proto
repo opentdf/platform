@@ -31,6 +31,13 @@ message ListAttributesRequest {
   common.ActiveStateEnum state = 1;
   // can be id or name
   string namespace = 2;
+
+  // Optional
+  // Currently defaulted to 250 if not provided and subject to change at any time
+  int32 limit = 3;
+  // Optional
+  // Defaulted if not provided
+  int32 offset = 4;
 }
 message ListAttributesResponse {
   repeated policy.Attribute attributes = 1;
@@ -115,6 +122,13 @@ message ListAttributeValuesRequest {
   string attribute_id = 1 [(buf.validate.field).required = true];
   // ACTIVE by default when not specified
   common.ActiveStateEnum state = 2;
+
+  // Optional
+  // Currently defaulted to 250 if not provided and subject to change at any time
+  int32 limit = 3;
+  // Optional
+  // Defaulted if not provided
+  int32 offset = 4;
 }
 message ListAttributeValuesResponse {
   repeated policy.Value values = 1;

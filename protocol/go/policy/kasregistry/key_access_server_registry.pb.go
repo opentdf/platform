@@ -124,7 +124,7 @@ type ListKeyAccessServersRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Optional
-	// Currently defaulted to 250 if not providedand subject to change at any time
+	// Currently defaulted to 250 if not provided and subject to change at any time
 	Limit int32 `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Optional
 	// Defaulted if not provided
@@ -700,7 +700,7 @@ type ListKeyAccessServerGrantsRequest struct {
 	KasId  string `protobuf:"bytes,1,opt,name=kas_id,json=kasId,proto3" json:"kas_id,omitempty"`
 	KasUri string `protobuf:"bytes,2,opt,name=kas_uri,json=kasUri,proto3" json:"kas_uri,omitempty"`
 	// Optional
-	// Currently defaulted to 250 if not providedand subject to change at any time
+	// Currently defaulted to 250 if not provided and subject to change at any time
 	Limit int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Optional
 	// Defaulted if not provided

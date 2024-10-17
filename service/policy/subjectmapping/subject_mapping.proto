@@ -40,7 +40,7 @@ message GetSubjectMappingResponse {
 
 message ListSubjectMappingsRequest {
   // Optional
-  // Currently defaulted to 250 if not providedand subject to change at any time
+  // Currently defaulted to 250 if not provided and subject to change at any time
   int32 limit = 1;
   // Optional
   // Defaulted if not provided
@@ -112,7 +112,7 @@ message GetSubjectConditionSetResponse {
 
 message ListSubjectConditionSetsRequest {
   // Optional
-  // Currently defaulted to 250 if not providedand subject to change at any time
+  // Currently defaulted to 250 if not provided and subject to change at any time
   int32 limit = 1;
   // Optional
   // Defaulted if not provided

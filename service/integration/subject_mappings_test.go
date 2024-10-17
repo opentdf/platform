@@ -834,7 +834,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InOne() {
 	s.Equal(fixtureScs.ID, sm[0].GetSubjectConditionSet().GetId())
 }
 
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DoesNotReturnNotInWhenMatches() {
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_ReturnsNotInWhenMatches() {
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_not_in")
 	externalSelectorValue := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
 	externalValues := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
@@ -849,7 +849,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DoesNotReturnNotInW
 	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
 	s.Require().NoError(err)
 	s.NotZero(smList)
-	s.Empty(smList)
+	s.Equal(fixtureScs.ID, smList[0].GetSubjectConditionSet().GetId())
 }
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInOneMatch() {
@@ -1003,7 +1003,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInMultiple() {
 	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
 	s.Require().NoError(err)
 	s.NotZero(smList)
-	s.Len(smList, 2)
+	s.Len(smList, 3)
 	for _, sm := range smList {
 		if sm.GetSubjectConditionSet().GetId() == fixtureScs.ID {
 			s.Equal(expectedMappedFixture.ID, sm.GetId())

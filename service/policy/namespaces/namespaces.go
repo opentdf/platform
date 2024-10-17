@@ -93,10 +93,23 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *namespaces
 	}
 	rsp := &namespaces.CreateNamespaceResponse{}
 
-	n, err := ns.dbClient.CreateNamespace(ctx, req)
+	tx, err := ns.dbClient.BeginTx(ctx)
+	if err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, "begin txn failed", slog.String("name", req.GetName()))
+	}
+	// safe to ignore error per https://pkg.go.dev/github.com/jackc/pgx#hdr-Transactions
+	defer tx.Rollback(ctx)
+
+	n, err := ns.dbClient.WithTx(tx).CreateNamespace(ctx, req)
 	if err != nil {
 		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("name", req.GetName()))
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, "commit txn failed", slog.String("name", req.GetName()))
 	}
 
 	auditParams.ObjectID = n.GetId()

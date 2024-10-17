@@ -29,7 +29,9 @@ type NamespaceKeyAccessServer struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	NamespaceId       string `protobuf:"bytes,1,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
+	// Required
+	NamespaceId string `protobuf:"bytes,1,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
+	// Required
 	KeyAccessServerId string `protobuf:"bytes,2,opt,name=key_access_server_id,json=keyAccessServerId,proto3" json:"key_access_server_id,omitempty"`
 }
 
@@ -84,6 +86,7 @@ type GetNamespaceRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
@@ -178,6 +181,7 @@ type ListNamespacesRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Optional
 	// ACTIVE by default when not specified
 	State common.ActiveStateEnum `protobuf:"varint,1,opt,name=state,proto3,enum=common.ActiveStateEnum" json:"state,omitempty"`
 }
@@ -489,6 +493,7 @@ type DeactivateNamespaceRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 

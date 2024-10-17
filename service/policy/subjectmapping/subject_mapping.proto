@@ -34,6 +34,7 @@ message MatchSubjectMappingsResponse {
 */
 
 message GetSubjectMappingRequest {
+  // Required
   string id = 1 [
     (buf.validate.field).string.uuid = true
   ];
@@ -53,6 +54,7 @@ message CreateSubjectMappingRequest{
   string attribute_value_id = 1 [
     (buf.validate.field).string.uuid = true
   ];
+  // Required
   // The actions permitted by subjects in this mapping
   repeated policy.Action actions = 2 [(buf.validate.field).repeated.min_items = 1];
 
@@ -86,6 +88,7 @@ message UpdateSubjectMappingRequest {
       message: "Optional field must be a valid UUID",
       expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
   }];
+  // Optional
   // Replaces entire list of actions permitted by subjects
   repeated policy.Action actions = 3;
 
@@ -99,6 +102,7 @@ message UpdateSubjectMappingResponse {
 }
 
 message DeleteSubjectMappingRequest {
+  // Required
   string id = 1 [
     (buf.validate.field).string.uuid = true
   ];
@@ -113,6 +117,7 @@ message DeleteSubjectMappingResponse {
 */
 
 message GetSubjectConditionSetRequest {
+  // Required
   string id = 1 [
     (buf.validate.field).string.uuid = true
   ];
@@ -163,6 +168,7 @@ message UpdateSubjectConditionSetResponse {
 }
 
 message DeleteSubjectConditionSetRequest {
+  // Required
   string id = 1 [
     (buf.validate.field).string.uuid = true
   ];

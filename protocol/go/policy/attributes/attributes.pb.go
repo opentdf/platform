@@ -29,7 +29,9 @@ type AttributeKeyAccessServer struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	AttributeId       string `protobuf:"bytes,1,opt,name=attribute_id,json=attributeId,proto3" json:"attribute_id,omitempty"`
+	// Required
+	AttributeId string `protobuf:"bytes,1,opt,name=attribute_id,json=attributeId,proto3" json:"attribute_id,omitempty"`
+	// Required
 	KeyAccessServerId string `protobuf:"bytes,2,opt,name=key_access_server_id,json=keyAccessServerId,proto3" json:"key_access_server_id,omitempty"`
 }
 
@@ -84,7 +86,9 @@ type ValueKeyAccessServer struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ValueId           string `protobuf:"bytes,1,opt,name=value_id,json=valueId,proto3" json:"value_id,omitempty"`
+	// Required
+	ValueId string `protobuf:"bytes,1,opt,name=value_id,json=valueId,proto3" json:"value_id,omitempty"`
+	// Required
 	KeyAccessServerId string `protobuf:"bytes,2,opt,name=key_access_server_id,json=keyAccessServerId,proto3" json:"key_access_server_id,omitempty"`
 }
 
@@ -139,9 +143,11 @@ type ListAttributesRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Optional
 	// ACTIVE by default when not specified
 	State common.ActiveStateEnum `protobuf:"varint,1,opt,name=state,proto3,enum=common.ActiveStateEnum" json:"state,omitempty"`
-	// can be id or name
+	// Optional
+	// Namespace ID or name
 	Namespace string `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 }
 
@@ -243,6 +249,7 @@ type GetAttributeRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
@@ -338,10 +345,13 @@ type CreateAttributeRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Required
-	NamespaceId string                       `protobuf:"bytes,1,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
-	Name        string                       `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Rule        policy.AttributeRuleTypeEnum `protobuf:"varint,3,opt,name=rule,proto3,enum=policy.AttributeRuleTypeEnum" json:"rule,omitempty"`
-	// Optional attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
+	NamespaceId string `protobuf:"bytes,1,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
+	// Required
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// Required
+	Rule policy.AttributeRuleTypeEnum `protobuf:"varint,3,opt,name=rule,proto3,enum=policy.AttributeRuleTypeEnum" json:"rule,omitempty"`
+	// Optional
+	// Attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
 	// The stored attribute value will be normalized to lower case.
 	Values []string `protobuf:"bytes,4,rep,name=values,proto3" json:"values,omitempty"`
 	// Optional
@@ -579,6 +589,7 @@ type DeactivateAttributeRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
@@ -676,6 +687,7 @@ type GetAttributeValueRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
@@ -770,7 +782,9 @@ type ListAttributeValuesRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	AttributeId string `protobuf:"bytes,1,opt,name=attribute_id,json=attributeId,proto3" json:"attribute_id,omitempty"`
+	// Optional
 	// ACTIVE by default when not specified
 	State common.ActiveStateEnum `protobuf:"varint,2,opt,name=state,proto3,enum=common.ActiveStateEnum" json:"state,omitempty"`
 }
@@ -875,7 +889,9 @@ type CreateAttributeValueRequest struct {
 
 	// Required
 	AttributeId string `protobuf:"bytes,1,opt,name=attribute_id,json=attributeId,proto3" json:"attribute_id,omitempty"`
-	Value       string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	// Required
+	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	// Optional
 	// Common metadata
 	Metadata *common.MetadataMutable `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
 }
@@ -985,7 +1001,9 @@ type UpdateAttributeValueRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Optional
 	// Common metadata
 	Metadata               *common.MetadataMutable   `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
 	MetadataUpdateBehavior common.MetadataUpdateEnum `protobuf:"varint,101,opt,name=metadata_update_behavior,json=metadataUpdateBehavior,proto3,enum=common.MetadataUpdateEnum" json:"metadata_update_behavior,omitempty"`
@@ -1096,6 +1114,7 @@ type DeactivateAttributeValueRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
@@ -1190,7 +1209,6 @@ type GetAttributeValuesByFqnsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Required
 	// Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
 	Fqns      []string                       `protobuf:"bytes,1,rep,name=fqns,proto3" json:"fqns,omitempty"`
 	WithValue *policy.AttributeValueSelector `protobuf:"bytes,2,opt,name=with_value,json=withValue,proto3" json:"with_value,omitempty"`
@@ -1295,6 +1313,7 @@ type AssignKeyAccessServerToAttributeRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	AttributeKeyAccessServer *AttributeKeyAccessServer `protobuf:"bytes,1,opt,name=attribute_key_access_server,json=attributeKeyAccessServer,proto3" json:"attribute_key_access_server,omitempty"`
 }
 
@@ -1389,6 +1408,7 @@ type RemoveKeyAccessServerFromAttributeRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	AttributeKeyAccessServer *AttributeKeyAccessServer `protobuf:"bytes,1,opt,name=attribute_key_access_server,json=attributeKeyAccessServer,proto3" json:"attribute_key_access_server,omitempty"`
 }
 
@@ -1483,6 +1503,7 @@ type AssignKeyAccessServerToValueRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	ValueKeyAccessServer *ValueKeyAccessServer `protobuf:"bytes,1,opt,name=value_key_access_server,json=valueKeyAccessServer,proto3" json:"value_key_access_server,omitempty"`
 }
 
@@ -1577,6 +1598,7 @@ type RemoveKeyAccessServerFromValueRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	ValueKeyAccessServer *ValueKeyAccessServer `protobuf:"bytes,1,opt,name=value_key_access_server,json=valueKeyAccessServer,proto3" json:"value_key_access_server,omitempty"`
 }
 

@@ -172,7 +172,8 @@
                   "title": "Optional"
                 },
                 "name": {
-                  "type": "string"
+                  "type": "string",
+                  "title": "Optional"
                 },
                 "metadata": {
                   "$ref": "#/definitions/commonMetadataMutable",
@@ -384,14 +385,16 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": "Optional"
                 },
                 "groupId": {
-                  "type": "string"
+                  "type": "string",
+                  "title": "Optional"
                 },
                 "metadata": {
                   "$ref": "#/definitions/commonMetadataMutable",
-                  "title": "Common Metadata"
+                  "title": "Optional\nCommon Metadata"
                 },
                 "metadataUpdateBehavior": {
                   "$ref": "#/definitions/commonMetadataUpdateEnum"
@@ -863,7 +866,8 @@
           "title": "Required"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadataMutable",
@@ -890,14 +894,16 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "title": "Required"
         },
         "groupId": {
           "type": "string",
           "title": "Optional"
         },
         "metadata": {
-          "$ref": "#/definitions/commonMetadataMutable"
+          "$ref": "#/definitions/commonMetadataMutable",
+          "title": "Optional"
         }
       }
     },

@@ -13,9 +13,11 @@ import "policy/objects.proto";
 */
 
 message NamespaceKeyAccessServer {
+  // Required
   string namespace_id = 1 [
     (buf.validate.field).string.uuid = true
   ];
+  // Required
   string key_access_server_id = 2 [
     (buf.validate.field).string.uuid = true
   ];
@@ -28,6 +30,7 @@ message NamespaceKeyAccessServer {
 */
 
 message GetNamespaceRequest {
+  // Required
   string id = 1 [
     (buf.validate.field).string.uuid = true
   ];
@@ -37,6 +40,7 @@ message GetNamespaceResponse {
 }
 
 message ListNamespacesRequest {
+  // Optional
   // ACTIVE by default when not specified
   common.ActiveStateEnum state = 1;
 }
@@ -78,6 +82,7 @@ message UpdateNamespaceResponse {
 }
 
 message DeactivateNamespaceRequest {
+  // Required
   string id = 1 [
     (buf.validate.field).string.uuid = true
   ];

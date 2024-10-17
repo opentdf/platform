@@ -32,7 +32,8 @@ type UnsafeUpdateNamespaceRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Required
-	Id   string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Required
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 }
 
@@ -137,6 +138,7 @@ type UnsafeReactivateNamespaceRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
@@ -237,6 +239,7 @@ type UnsafeDeleteNamespaceRequest struct {
 	// Required
 	// UUID of the Namespace
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Required
 	// Fully Qualified Name (FQN) of Namespace (i.e. https://<namespace>), normalized to lower case.
 	Fqn string `protobuf:"bytes,2,opt,name=fqn,proto3" json:"fqn,omitempty"`
 }
@@ -347,9 +350,11 @@ type UnsafeUpdateAttributeRequest struct {
 	// WARNING!!
 	// Updating the name of an Attribute will retroactively alter access to existing TDFs of the old and new Attribute name.
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// Optional
 	// WARNING!!
 	// Updating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.
 	Rule policy.AttributeRuleTypeEnum `protobuf:"varint,3,opt,name=rule,proto3,enum=policy.AttributeRuleTypeEnum" json:"rule,omitempty"`
+	// Optional
 	// WARNING!!
 	// Unsafe reordering requires the full list of values in the new order they should be stored. Updating the order of values in a HIERARCHY-rule Attribute Definition
 	// will retroactively alter access to existing TDFs containing those values. Replacing values on an attribute in place is not supported; values can be unsafely deleted
@@ -472,6 +477,7 @@ type UnsafeReactivateAttributeRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
@@ -573,6 +579,7 @@ type UnsafeDeleteAttributeRequest struct {
 	// Required
 	// UUID of the Attribute
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Required
 	// Fully Qualified Name (FQN) of Attribute Definition (i.e. https://<namespace>/attr/<attribute name>), normalized to lower case.
 	Fqn string `protobuf:"bytes,2,opt,name=fqn,proto3" json:"fqn,omitempty"`
 }
@@ -677,7 +684,9 @@ type UnsafeUpdateAttributeValueRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id    string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Required
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Required
 	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 }
 
@@ -781,6 +790,7 @@ type UnsafeReactivateAttributeValueRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
@@ -881,6 +891,7 @@ type UnsafeDeleteAttributeValueRequest struct {
 	// Required
 	// UUID of the Attribute Value
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Required
 	// Fully Qualified Name (FQN) of Attribute Value (i.e. https://<namespace>/attr/<attribute name>/value/<value>), normalized to lower case.
 	Fqn string `protobuf:"bytes,2,opt,name=fqn,proto3" json:"fqn,omitempty"`
 }

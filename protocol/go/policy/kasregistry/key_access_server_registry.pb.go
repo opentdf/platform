@@ -29,6 +29,7 @@ type GetKeyAccessServerRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
@@ -209,8 +210,10 @@ type CreateKeyAccessServerRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Required
-	Uri       string            `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"`
+	Uri string `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"`
+	// Required
 	PublicKey *policy.PublicKey `protobuf:"bytes,2,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	// Optional
 	// Common metadata
 	Metadata *common.MetadataMutable `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
 }
@@ -321,9 +324,12 @@ type UpdateKeyAccessServerRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Required
-	Id        string            `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Uri       string            `protobuf:"bytes,2,opt,name=uri,proto3" json:"uri,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Required
+	Uri string `protobuf:"bytes,2,opt,name=uri,proto3" json:"uri,omitempty"`
+	// Required
 	PublicKey *policy.PublicKey `protobuf:"bytes,3,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	// Optional
 	// Common metadata
 	Metadata               *common.MetadataMutable   `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
 	MetadataUpdateBehavior common.MetadataUpdateEnum `protobuf:"varint,101,opt,name=metadata_update_behavior,json=metadataUpdateBehavior,proto3,enum=common.MetadataUpdateEnum" json:"metadata_update_behavior,omitempty"`
@@ -448,6 +454,7 @@ type DeleteKeyAccessServerRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
@@ -674,9 +681,12 @@ type ListKeyAccessServerGrantsRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Optional
-	// Filter LIST by either ID or URI of a registered Key Access Server.
+	// Filter LIST by either ID of a registered Key Access Server.
 	// If neither is provided, grants from all registered KASs to policy attribute objects are returned.
-	KasId  string `protobuf:"bytes,1,opt,name=kas_id,json=kasId,proto3" json:"kas_id,omitempty"`
+	KasId string `protobuf:"bytes,1,opt,name=kas_id,json=kasId,proto3" json:"kas_id,omitempty"`
+	// Optional
+	// Filter LIST by URI of a registered Key Access Server.
+	// If neither is provided, grants from all registered KASs to policy attribute objects are returned.
 	KasUri string `protobuf:"bytes,2,opt,name=kas_uri,json=kasUri,proto3" json:"kas_uri,omitempty"`
 }
 

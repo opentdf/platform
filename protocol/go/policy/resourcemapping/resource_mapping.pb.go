@@ -221,7 +221,8 @@ type CreateResourceMappingGroupRequest struct {
 
 	// Required
 	NamespaceId string `protobuf:"bytes,1,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
-	Name        string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// Required
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// Common metadata
 	Metadata *common.MetadataMutable `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
 }
@@ -335,7 +336,8 @@ type UpdateResourceMappingGroupRequest struct {
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Optional
 	NamespaceId string `protobuf:"bytes,2,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
-	Name        string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// Optional
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// Common metadata
 	Metadata               *common.MetadataMutable   `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
 	MetadataUpdateBehavior common.MetadataUpdateEnum `protobuf:"varint,101,opt,name=metadata_update_behavior,json=metadataUpdateBehavior,proto3,enum=common.MetadataUpdateEnum" json:"metadata_update_behavior,omitempty"`
@@ -897,10 +899,12 @@ type CreateResourceMappingRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Required
-	AttributeValueId string   `protobuf:"bytes,1,opt,name=attribute_value_id,json=attributeValueId,proto3" json:"attribute_value_id,omitempty"`
-	Terms            []string `protobuf:"bytes,2,rep,name=terms,proto3" json:"terms,omitempty"`
+	AttributeValueId string `protobuf:"bytes,1,opt,name=attribute_value_id,json=attributeValueId,proto3" json:"attribute_value_id,omitempty"`
+	// Required
+	Terms []string `protobuf:"bytes,2,rep,name=terms,proto3" json:"terms,omitempty"`
 	// Optional
-	GroupId  string                  `protobuf:"bytes,3,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	GroupId string `protobuf:"bytes,3,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	// Optional
 	Metadata *common.MetadataMutable `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
 }
 
@@ -1019,9 +1023,12 @@ type UpdateResourceMappingRequest struct {
 	// Required
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Optional
-	AttributeValueId string   `protobuf:"bytes,4,opt,name=attribute_value_id,json=attributeValueId,proto3" json:"attribute_value_id,omitempty"`
-	Terms            []string `protobuf:"bytes,5,rep,name=terms,proto3" json:"terms,omitempty"`
-	GroupId          string   `protobuf:"bytes,6,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	AttributeValueId string `protobuf:"bytes,4,opt,name=attribute_value_id,json=attributeValueId,proto3" json:"attribute_value_id,omitempty"`
+	// Optional
+	Terms []string `protobuf:"bytes,5,rep,name=terms,proto3" json:"terms,omitempty"`
+	// Optional
+	GroupId string `protobuf:"bytes,6,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	// Optional
 	// Common Metadata
 	Metadata               *common.MetadataMutable   `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
 	MetadataUpdateBehavior common.MetadataUpdateEnum `protobuf:"varint,101,opt,name=metadata_update_behavior,json=metadataUpdateBehavior,proto3,enum=common.MetadataUpdateEnum" json:"metadata_update_behavior,omitempty"`

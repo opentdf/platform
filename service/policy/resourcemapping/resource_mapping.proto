@@ -44,6 +44,7 @@ message CreateResourceMappingGroupRequest {
     (buf.validate.field).string.uuid = true
   ];
 
+  // Required
   string name = 2 [(buf.validate.field).required = true];
 
   // Common metadata
@@ -67,6 +68,7 @@ message UpdateResourceMappingGroupRequest {
       expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
   }];
 
+  // Optional
   string name = 3 [
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
@@ -157,6 +159,7 @@ message CreateResourceMappingRequest {
     (buf.validate.field).string.uuid = true
   ];
 
+  // Required
   repeated string terms = 2 [(buf.validate.field).repeated = {
     min_items: 1,
     max_items: 1000,
@@ -169,6 +172,7 @@ message CreateResourceMappingRequest {
       expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
   }];
 
+  // Optional
   common.MetadataMutable metadata = 100;
 }
 message CreateResourceMappingResponse {
@@ -188,16 +192,19 @@ message UpdateResourceMappingRequest {
       expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
   }];
 
+  // Optional
   repeated string terms = 5 [(buf.validate.field).repeated = {
     max_items: 1000,
   }];
 
+  // Optional
   string group_id = 6 [(buf.validate.field).cel = {
      id: "optional_uuid_format",
       message: "Optional field must be a valid UUID",
       expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
   }];
 
+  // Optional
   // Common Metadata
   common.MetadataMutable metadata = 100;
   common.MetadataUpdateEnum metadata_update_behavior = 101;

@@ -134,6 +134,7 @@ type GetSubjectMappingRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
@@ -316,6 +317,7 @@ type CreateSubjectMappingRequest struct {
 	// Required
 	// Attribute Value to be mapped to
 	AttributeValueId string `protobuf:"bytes,1,opt,name=attribute_value_id,json=attributeValueId,proto3" json:"attribute_value_id,omitempty"`
+	// Required
 	// The actions permitted by subjects in this mapping
 	Actions []*policy.Action `protobuf:"bytes,2,rep,name=actions,proto3" json:"actions,omitempty"`
 	// Either of the following:
@@ -451,6 +453,7 @@ type UpdateSubjectMappingRequest struct {
 	// Optional
 	// Replaces the existing SubjectConditionSet id with a new one
 	SubjectConditionSetId string `protobuf:"bytes,2,opt,name=subject_condition_set_id,json=subjectConditionSetId,proto3" json:"subject_condition_set_id,omitempty"`
+	// Optional
 	// Replaces entire list of actions permitted by subjects
 	Actions []*policy.Action `protobuf:"bytes,3,rep,name=actions,proto3" json:"actions,omitempty"`
 	// Common metadata
@@ -578,6 +581,7 @@ type DeleteSubjectMappingRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
@@ -673,6 +677,7 @@ type GetSubjectConditionSetRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
@@ -1136,6 +1141,7 @@ type DeleteSubjectConditionSetRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Required
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 

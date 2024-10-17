@@ -13,18 +13,22 @@ import "policy/selectors.proto";
 */
 
 message AttributeKeyAccessServer {
+  // Required
   string attribute_id = 1 [
     (buf.validate.field).string.uuid = true
   ];
+  // Required
   string key_access_server_id = 2 [
     (buf.validate.field).string.uuid = true
   ];
 }
 
 message ValueKeyAccessServer {
+  // Required
   string value_id = 1 [
     (buf.validate.field).string.uuid = true
   ];
+  // Required
   string key_access_server_id = 2 [
     (buf.validate.field).string.uuid = true
   ];
@@ -35,9 +39,11 @@ message ValueKeyAccessServer {
 */
 
 message ListAttributesRequest {
+  // Optional
   // ACTIVE by default when not specified
   common.ActiveStateEnum state = 1;
-  // can be id or name
+  // Optional
+  // Namespace ID or name
   string namespace = 2;
 }
 message ListAttributesResponse {
@@ -45,6 +51,7 @@ message ListAttributesResponse {
 }
 
 message GetAttributeRequest {
+  // Required
   string id = 1 [
     (buf.validate.field).string.uuid = true
   ];
@@ -58,6 +65,7 @@ message CreateAttributeRequest {
   string namespace_id = 1 [
     (buf.validate.field).string.uuid = true
   ];
+  // Required
   string name = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.max_len = 253,
@@ -67,11 +75,13 @@ message CreateAttributeRequest {
       expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
     }
   ];
+  // Required
   AttributeRuleTypeEnum rule = 3 [
     (buf.validate.field).enum.defined_only = true,
     (buf.validate.field).required = true
   ];
-  // Optional attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
+  // Optional 
+  // Attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
   // The stored attribute value will be normalized to lower case.
   repeated string values = 4 [
     (buf.validate.field).repeated = {
@@ -109,6 +119,7 @@ message UpdateAttributeResponse {
 }
 
 message DeactivateAttributeRequest {
+  // Required
   string id = 1 [
     (buf.validate.field).string.uuid = true
   ];
@@ -121,6 +132,7 @@ message DeactivateAttributeResponse {
 /// Value RPC messages
 ///
 message GetAttributeValueRequest {
+  // Required
   string id = 1 [
     (buf.validate.field).string.uuid = true
   ];
@@ -130,9 +142,11 @@ message GetAttributeValueResponse {
 }
 
 message ListAttributeValuesRequest {
+  // Required
   string attribute_id = 1 [
     (buf.validate.field).string.uuid = true
   ];
+  // Optional
   // ACTIVE by default when not specified
   common.ActiveStateEnum state = 2;
 }
@@ -145,6 +159,7 @@ message CreateAttributeValueRequest {
   string attribute_id = 1 [
     (buf.validate.field).string.uuid = true
   ];
+  // Required
   string value = 2     [
     (buf.validate.field).required = true,
     (buf.validate.field).string.max_len = 253,
@@ -159,6 +174,7 @@ message CreateAttributeValueRequest {
   reserved "members";
   reserved 3;
 
+  // Optional
   // Common metadata
   common.MetadataMutable metadata = 100;
 }
@@ -167,6 +183,7 @@ message CreateAttributeValueResponse {
 }
 
 message UpdateAttributeValueRequest {
+  // Required
   string id = 1 [
     (buf.validate.field).string.uuid = true
   ];
@@ -175,6 +192,7 @@ message UpdateAttributeValueRequest {
   reserved "members";
   reserved 4;
 
+  // Optional
   // Common metadata
   common.MetadataMutable metadata = 100;
   common.MetadataUpdateEnum metadata_update_behavior = 101;
@@ -184,6 +202,7 @@ message UpdateAttributeValueResponse {
 }
 
 message DeactivateAttributeValueRequest {
+  // Required
   string id = 1 [
     (buf.validate.field).string.uuid = true
   ];
@@ -212,6 +231,7 @@ message GetAttributeValuesByFqnsResponse {
 */
 
 message AssignKeyAccessServerToAttributeRequest {
+  // Required
   AttributeKeyAccessServer attribute_key_access_server = 1;
 }
 
@@ -220,6 +240,7 @@ message AssignKeyAccessServerToAttributeResponse {
 }
 
 message RemoveKeyAccessServerFromAttributeRequest {
+  // Required
   AttributeKeyAccessServer attribute_key_access_server = 1;
 }
 
@@ -228,6 +249,7 @@ message RemoveKeyAccessServerFromAttributeResponse {
 }
 
 message AssignKeyAccessServerToValueRequest {
+  // Required
   ValueKeyAccessServer value_key_access_server = 1;
 }
 
@@ -236,6 +258,7 @@ message AssignKeyAccessServerToValueResponse {
 }
 
 message RemoveKeyAccessServerFromValueRequest {
+  // Required
   ValueKeyAccessServer value_key_access_server = 1;
 }
 

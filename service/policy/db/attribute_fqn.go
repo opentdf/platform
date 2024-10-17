@@ -40,7 +40,7 @@ func (c *PolicyDBClient) upsertAttrFqn(ctx context.Context, opts attrFqnUpsertOp
 	case opts.attributeID != "":
 		fqn, err = c.Queries.UpsertAttributeDefinitionFqn(ctx, opts.attributeID)
 	case opts.namespaceID != "":
-		fqn, err = c.Queries.UpsertAttributeNamespaceFqn(ctx, opts.valueID)
+		fqn, err = c.Queries.UpsertAttributeNamespaceFqn(ctx, opts.namespaceID)
 	default:
 		err = fmt.Errorf("at least one of namespaceId, attributeId, or valueId must be set")
 	}

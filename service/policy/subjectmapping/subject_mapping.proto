@@ -48,6 +48,9 @@ message ListSubjectMappingsRequest {
 }
 message ListSubjectMappingsResponse {
   repeated policy.SubjectMapping subject_mappings = 1;
+  // Calculated with request limit + offset or defaults.
+  // Empty when none remain after current page.
+  int32 next_offset = 2;
 }
 
 message CreateSubjectMappingRequest{
@@ -120,6 +123,9 @@ message ListSubjectConditionSetsRequest {
 }
 message ListSubjectConditionSetsResponse {
   repeated policy.SubjectConditionSet subject_condition_sets = 1;
+  // Calculated with request limit + offset or defaults.
+  // Empty when none remain after current page.
+  int32 next_offset = 2;
 }
 
 message SubjectConditionSetCreate {

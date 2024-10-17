@@ -41,6 +41,9 @@ message ListAttributesRequest {
 }
 message ListAttributesResponse {
   repeated policy.Attribute attributes = 1;
+  // Calculated with request limit + offset or defaults.
+  // Empty when none remain after current page.
+  int32 next_offset = 2;
 }
 
 message GetAttributeRequest {
@@ -132,6 +135,9 @@ message ListAttributeValuesRequest {
 }
 message ListAttributeValuesResponse {
   repeated policy.Value values = 1;
+  // Calculated with request limit + offset or defaults.
+  // Empty when none remain after current page.
+  int32 next_offset = 2;
 }
 
 message CreateAttributeValueRequest {

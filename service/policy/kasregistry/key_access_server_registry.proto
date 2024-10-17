@@ -24,6 +24,9 @@ message ListKeyAccessServersRequest {
 }
 message ListKeyAccessServersResponse {
   repeated KeyAccessServer key_access_servers = 1;
+  // Calculated with request limit + offset or defaults.
+  // Empty when none remain after current page.
+  int32 next_offset = 2;
 }
 
 message CreateKeyAccessServerRequest {
@@ -93,6 +96,9 @@ message ListKeyAccessServerGrantsRequest {
 
 message ListKeyAccessServerGrantsResponse {
   repeated KeyAccessServerGrants grants = 1;
+  // Calculated with request limit + offset or defaults.
+  // Empty when none remain after current page.
+  int32 next_offset = 2;
 }
 
 service KeyAccessServerRegistryService {

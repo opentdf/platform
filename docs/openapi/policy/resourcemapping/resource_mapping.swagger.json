@@ -985,6 +985,11 @@
             "type": "object",
             "$ref": "#/definitions/policyResourceMappingGroup"
           }
+        },
+        "nextOffset": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Calculated with request limit + offset or defaults.\nEmpty when none remain after current page."
         }
       }
     },
@@ -1008,6 +1013,11 @@
             "type": "object",
             "$ref": "#/definitions/policyResourceMapping"
           }
+        },
+        "nextOffset": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Calculated with request limit + offset or defaults.\nEmpty when none remain after current page."
         }
       }
     },

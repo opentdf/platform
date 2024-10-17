@@ -1003,7 +1003,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInMultiple() {
 	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
 	s.Require().NoError(err)
 	s.NotZero(smList)
-	s.Len(smList, 2)
+	s.Len(smList, 3)
 	for _, sm := range smList {
 		if sm.GetSubjectConditionSet().GetId() == fixtureScs.ID {
 			s.Equal(expectedMappedFixture.ID, sm.GetId())

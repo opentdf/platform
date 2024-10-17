@@ -19,12 +19,14 @@ func getValidator() *protovalidate.Validator {
 }
 
 const (
-	validName      = "name"
-	validValue1    = "value1"
-	validValue2    = "value_2"
-	validValue3    = "3_value"
-	validUUID      = "00000000-0000-0000-0000-000000000000"
-	errMessageUUID = "string.uuid"
+	validName                = "name"
+	validValue1              = "value1"
+	validValue2              = "value_2"
+	validValue3              = "3_value"
+	validUUID                = "00000000-0000-0000-0000-000000000000"
+	errMessageUUID           = "string.uuid"
+	errMessageAttrNameFormat = "attribute_name_format"
+	errMessageRequired       = "required"
 )
 
 // Create Attributes (definitions)
@@ -86,7 +88,7 @@ func TestCreateAttribute_NameWithSpace_Fails(t *testing.T) {
 	err := v.Validate(req)
 
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "[attribute_name_format]")
+	require.Contains(t, err.Error(), errMessageAttrNameFormat)
 }
 
 func TestCreateAttribute_NameWithNonAlphanumeric_Fails(t *testing.T) {
@@ -107,7 +109,7 @@ func TestCreateAttribute_NameWithNonAlphanumeric_Fails(t *testing.T) {
 		err := v.Validate(req)
 
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "[attribute_name_format]")
+		require.Contains(t, err.Error(), errMessageAttrNameFormat)
 	}
 }
 
@@ -136,7 +138,7 @@ func TestCreateAttribute_RuleMissing_Fails(t *testing.T) {
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "rule")
-	require.Contains(t, err.Error(), "[required]")
+	require.Contains(t, err.Error(), errMessageRequired)
 }
 
 func TestCreateAttribute_RuleUnspecified_Fails(t *testing.T) {
@@ -151,7 +153,7 @@ func TestCreateAttribute_RuleUnspecified_Fails(t *testing.T) {
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "rule")
-	require.Contains(t, err.Error(), "[required]")
+	require.Contains(t, err.Error(), errMessageRequired)
 }
 
 func TestCreateAttribute_RuleInvalid_Fails(t *testing.T) {
@@ -306,7 +308,7 @@ func TestCreateAttributeValue_ValueWithSpace_Fails(t *testing.T) {
 	err := v.Validate(req)
 
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "[attribute_value_format]")
+	require.Contains(t, err.Error(), errMessageAttrNameFormat)
 }
 
 func TestCreateAttributeValue_ValueWithNonAlphanumeric_Fails(t *testing.T) {
@@ -326,7 +328,7 @@ func TestCreateAttributeValue_ValueWithNonAlphanumeric_Fails(t *testing.T) {
 		err := v.Validate(req)
 
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "[attribute_value_format]")
+		require.Contains(t, err.Error(), errMessageAttrNameFormat)
 	}
 }
 
@@ -353,7 +355,7 @@ func TestCreateAttributeValue_ValueMissing_Fails(t *testing.T) {
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "value")
-	require.Contains(t, err.Error(), "[required]")
+	require.Contains(t, err.Error(), errMessageRequired)
 }
 
 func TestValueKeyAccessServer_Succeeds(t *testing.T) {

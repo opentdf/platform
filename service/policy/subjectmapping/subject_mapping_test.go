@@ -96,7 +96,7 @@ func Test_CreateSubjectMappingRequest_WithExistingSubjectConditionSetID_Succeeds
 	req.ExistingSubjectConditionSetId = "bad-scs-id"
 	err = v.Validate(req)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), errMessageUUID)
+	require.Contains(t, err.Error(), errMessageOptionalUUID)
 }
 
 func Test_UpdateSubjectMappingRequest_Succeeds(t *testing.T) {

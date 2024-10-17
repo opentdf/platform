@@ -101,7 +101,7 @@ func Test_ListResourceMappingsByGroupFqnsRequest_NilArray_Fails(t *testing.T) {
 	req := &resourcemapping.ListResourceMappingsByGroupFqnsRequest{
 		Fqns: nil,
 	}
-	
+
 	err := getValidator().Validate(req)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), errMessageMinItems)

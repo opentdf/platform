@@ -46,6 +46,7 @@ jobs:
             echo "No matching paths were modified."
             echo "paths_changed=false" >> $GITHUB_ENV
             # echo "::set-output name=paths_changed::false"
+          exit 0
   go:
     needs: deltas
     if: ${{ needs.job1.outputs.paths_changed == 'true' }}

@@ -38,7 +38,14 @@ message GetSubjectMappingResponse {
   policy.SubjectMapping subject_mapping = 1;
 }
 
-message ListSubjectMappingsRequest {}
+message ListSubjectMappingsRequest {
+  // Optional
+  // Currently defaulted to 250 if not providedand subject to change at any time
+  int32 limit = 1;
+  // Optional
+  // Defaulted if not provided
+  int32 offset = 2;
+}
 message ListSubjectMappingsResponse {
   repeated policy.SubjectMapping subject_mappings = 1;
 }
@@ -103,7 +110,14 @@ message GetSubjectConditionSetResponse {
   repeated policy.SubjectMapping associated_subject_mappings = 2;
 }
 
-message ListSubjectConditionSetsRequest {}
+message ListSubjectConditionSetsRequest {
+  // Optional
+  // Currently defaulted to 250 if not providedand subject to change at any time
+  int32 limit = 1;
+  // Optional
+  // Defaulted if not provided
+  int32 offset = 2;
+}
 message ListSubjectConditionSetsResponse {
   repeated policy.SubjectConditionSet subject_condition_sets = 1;
 }

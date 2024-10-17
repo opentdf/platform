@@ -33,6 +33,24 @@
             }
           }
         },
+        "parameters": [
+          {
+            "name": "limit",
+            "description": "Optional\nCurrently defaulted to 250 if not providedand subject to change at any time",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "description": "Optional\nDefaulted if not provided",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
         "tags": [
           "KeyAccessServerRegistryService"
         ]
@@ -98,6 +116,22 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "limit",
+            "description": "Optional\nCurrently defaulted to 250 if not providedand subject to change at any time",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "description": "Optional\nDefaulted if not provided",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
           }
         ],
         "tags": [

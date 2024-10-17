@@ -33,6 +33,13 @@ message GetNamespaceResponse {
 message ListNamespacesRequest {
   // ACTIVE by default when not specified
   common.ActiveStateEnum state = 1;
+
+  // Optional
+  // Currently defaulted to 250 if not providedand subject to change at any time
+  int32 limit = 2;
+  // Optional
+  // Defaulted if not provided
+  int32 offset = 3;
 }
 message ListNamespacesResponse {
   repeated policy.Namespace namespaces = 1;

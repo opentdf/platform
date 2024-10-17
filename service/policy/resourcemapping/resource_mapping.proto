@@ -15,6 +15,13 @@ import "policy/objects.proto";
 message ListResourceMappingGroupsRequest {
   // Optional
   string namespace_id = 1;
+
+  // Optional
+  // Currently defaulted to 250 if not providedand subject to change at any time
+  int32 limit = 3;
+  // Optional
+  // Defaulted if not provided
+  int32 offset = 4;
 }
 
 message ListResourceMappingGroupsResponse {
@@ -78,6 +85,13 @@ message DeleteResourceMappingGroupResponse {
 message ListResourceMappingsRequest {
   // Optional
   string group_id = 1;
+
+  // Optional
+  // Currently defaulted to 250 if not providedand subject to change at any time
+  int32 limit = 2;
+  // Optional
+  // Defaulted if not provided
+  int32 offset = 3;
 }
 
 message ListResourceMappingsResponse {

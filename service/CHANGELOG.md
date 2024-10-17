@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.26](https://github.com/opentdf/platform/compare/service/v0.4.25...service/v0.4.26) (2024-10-17)
+
+
+### Bug Fixes
+
+* use the right service namespace and update the tests ([#1665](https://github.com/opentdf/platform/issues/1665)) ([72ce62b](https://github.com/opentdf/platform/commit/72ce62b9b79a5b00d9723003789648246dd009b1))
+
 ## [0.4.25](https://github.com/opentdf/platform/compare/service/v0.4.24...service/v0.4.25) (2024-10-15)
 
 

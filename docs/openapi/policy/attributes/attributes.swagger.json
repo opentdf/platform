@@ -764,6 +764,21 @@
             "type": "object",
             "$ref": "#/definitions/policyValue"
           }
+        },
+        "currentOffset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Current pagination offset"
+        },
+        "nextOffset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Calculated with request limit + offset or defaults\nEmpty when none remain after current page"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Total count of entire list"
         }
       }
     },
@@ -776,6 +791,21 @@
             "type": "object",
             "$ref": "#/definitions/policyAttribute"
           }
+        },
+        "currentOffset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Current pagination offset"
+        },
+        "nextOffset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Calculated with request limit + offset or defaults\nEmpty when none remain after current page"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Total count of entire list"
         }
       }
     },

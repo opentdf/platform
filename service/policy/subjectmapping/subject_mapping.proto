@@ -48,6 +48,13 @@ message ListSubjectMappingsRequest {
 }
 message ListSubjectMappingsResponse {
   repeated policy.SubjectMapping subject_mappings = 1;
+  // Current pagination offset
+  int32 current_offset = 2;
+  // Calculated with request limit + offset or defaults
+  // Empty when none remain after current page
+  int32 next_offset = 3;
+  // Total count of entire list
+  int32 total = 4;
 }
 
 message CreateSubjectMappingRequest{
@@ -120,6 +127,13 @@ message ListSubjectConditionSetsRequest {
 }
 message ListSubjectConditionSetsResponse {
   repeated policy.SubjectConditionSet subject_condition_sets = 1;
+  // Current pagination offset
+  int32 current_offset = 2;
+  // Calculated with request limit + offset or defaults
+  // Empty when none remain after current page
+  int32 next_offset = 3;
+  // Total count of entire list
+  int32 total = 4;
 }
 
 message SubjectConditionSetCreate {

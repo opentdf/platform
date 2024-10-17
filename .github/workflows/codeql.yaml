@@ -1,0 +1,48 @@
+name: "CodeQL"
+
+on:
+  schedule:
+    - cron: '0 13 * * 1' # At 1:00 PM UTC every Monday
+  pull_request:
+    paths:
+      - '.github/workflows/codeql.yaml'
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'go' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.work
+      if: ${{ matrix.language == 'go' }}
+
+    - name: Initialize the CodeQL tools for scanning
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+      timeout-minutes: 5
+
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
+      timeout-minutes: 10
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
+      timeout-minutes: 10

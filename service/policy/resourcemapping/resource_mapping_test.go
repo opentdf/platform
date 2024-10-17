@@ -11,6 +11,7 @@ import (
 const (
 	validUUID              = "390e0058-7ae8-48f6-821c-9db07c831276"
 	errMessageOptionalUUID = "optional_uuid_format"
+	errMessageMinItems     = "min_items"
 )
 
 var (
@@ -93,15 +94,17 @@ func Test_ListResourceMappingsByGroupFqnsRequest_EmptyArray_Fails(t *testing.T) 
 
 	err := getValidator().Validate(req)
 	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageMinItems)
 }
 
 func Test_ListResourceMappingsByGroupFqnsRequest_NilArray_Fails(t *testing.T) {
 	req := &resourcemapping.ListResourceMappingsByGroupFqnsRequest{
 		Fqns: nil,
 	}
-
+	
 	err := getValidator().Validate(req)
 	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageMinItems)
 }
 
 func Test_ListResourceMappingsByGroupFqnsRequest_AnyInvalid_Fails(t *testing.T) {

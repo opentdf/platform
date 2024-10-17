@@ -10,10 +10,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-// Note: Policy Object LIST count is defaulted to 250 if not provided. This may change at any time and is an internal
-// concern of the policy services that should not be relied upon for stability.
-const defaultObjectListCount = 250
-
 func constructMetadata(table string, isJSON bool) string {
 	if table != "" {
 		table += "."

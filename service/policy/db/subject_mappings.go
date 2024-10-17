@@ -66,7 +66,9 @@ func marshalActionsProto(actions []*policy.Action) ([]byte, error) {
 }
 
 func unmarshalActionsProto(actionsJSON []byte, actions *[]*policy.Action) error {
-	var raw []json.RawMessage
+	var (
+		raw []json.RawMessage
+	)
 
 	if actionsJSON != nil {
 		if err := json.Unmarshal(actionsJSON, &raw); err != nil {

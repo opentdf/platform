@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -44,16 +46,21 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, id string) (*policy.Na
 	}, nil
 }
 
-func (c PolicyDBClient) ListNamespaces(ctx context.Context, state string) ([]*policy.Namespace, error) {
+func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNamespacesRequest) ([]*policy.Namespace, error) {
 	active := pgtype.Bool{
 		Valid: false,
 	}
-
+	state := GetDBStateTypeTransformedEnum(r.GetState())
 	if state != "" && state != StateAny {
 		active = pgtypeBool(state == StateActive)
 	}
 
-	list, err := c.Queries.ListNamespaces(ctx, active)
+	page := r.GetPagination()
+	list, err := c.Queries.ListNamespaces(ctx, ListNamespacesParams{
+		Active: active,
+		Limit:  getListLimit(page.GetLimit()),
+		Offset: page.GetOffset(),
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -160,7 +167,12 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 	nsFqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
 	c.logger.Debug("upserted fqn for unsafely updated namespace", slog.Any("fqn", nsFqn))
 
-	attrs, err := c.ListAttributes(ctx, StateAny, id)
+	// TODO: deprecate the list of attributes and move upsert to a transaction/trigger
+	attrs, err := c.ListAttributes(ctx, &attributes.ListAttributesRequest{
+		State:      common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Namespace:  id,
+		Pagination: &policy.PageRequest{Limit: math.MaxInt32},
+	})
 	if err != nil {
 		return nil, err
 	}

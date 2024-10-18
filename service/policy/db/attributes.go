@@ -115,7 +115,10 @@ func hydrateAttribute(row *attributeQueryRow) (*policy.Attribute, error) {
 // CRUD operations
 ///
 
-func (c PolicyDBClient) ListAttributes(ctx context.Context, state string, namespace string) ([]*policy.Attribute, error) {
+func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAttributesRequest) ([]*policy.Attribute, error) {
+	namespace := r.GetNamespace()
+	state := GetDBStateTypeTransformedEnum(r.GetState())
+	page := r.GetPagination()
 	var (
 		active = pgtype.Bool{
 			Valid: false,
@@ -140,6 +143,8 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, state string, namesp
 		Active:        active,
 		NamespaceID:   namespaceID,
 		NamespaceName: namespaceName,
+		Limit:         getListLimit(page.GetLimit()),
+		Offset:        page.GetOffset(),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -168,8 +173,13 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, state string, namesp
 }
 
 func (c PolicyDBClient) ListAllAttributes(ctx context.Context) ([]*policy.Attribute, error) {
+	// TODO: iterate through to build entire list
 	// call general List method with empty params to get all attributes
-	return c.ListAttributes(ctx, "", "")
+	return c.ListAttributes(ctx, &attributes.ListAttributesRequest{
+		Pagination: &policy.PageRequest{
+			Limit: 10000,
+		},
+	})
 }
 
 func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
@@ -254,7 +264,9 @@ func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 }
 
 func (c PolicyDBClient) GetAttributesByNamespace(ctx context.Context, namespaceID string) ([]*policy.Attribute, error) {
-	list, err := c.Queries.ListAttributesSummary(ctx, namespaceID)
+	list, err := c.Queries.ListAttributesSummary(ctx, ListAttributesSummaryParams{
+		NamespaceID: namespaceID,
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

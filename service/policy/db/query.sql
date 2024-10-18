@@ -49,12 +49,24 @@ LEFT JOIN
 WHERE (NULLIF(@kas_id, '') IS NULL OR kas.id = @kas_id::uuid)
     AND (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri::varchar)
 GROUP BY 
-    kas.id;
+    kas.id
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: ListKeyAccessServers :many
-SELECT id, uri, public_key,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-FROM key_access_servers;
+WITH counted AS (
+    SELECT COUNT(kas.id) AS total
+    FROM key_access_servers kas
+)
+SELECT id,
+       uri,
+       public_key,
+       JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+       counted.total
+FROM key_access_servers
+JOIN counted ON true
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: GetKeyAccessServer :one
 SELECT id, uri, public_key,
@@ -132,6 +144,10 @@ RETURNING fqn;
 ----------------------------------------------------------------
 
 -- name: ListAttributesDetail :many
+WITH counted AS (
+    SELECT COUNT(ad.id) AS total
+    FROM attribute_definitions ad
+)
 SELECT
     ad.id,
     ad.name as attribute_name,
@@ -148,8 +164,10 @@ SELECT
             'fqn', CONCAT(fqns.fqn, '/value/', avt.value)
         ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
     ) AS values,
-    fqns.fqn
+    fqns.fqn,
+    counted.total
 FROM attribute_definitions ad
+JOIN counted ON true
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 LEFT JOIN (
   SELECT
@@ -174,9 +192,14 @@ WHERE
     (sqlc.narg('active')::BOOLEAN IS NULL OR ad.active = sqlc.narg('active')) AND
     (NULLIF(@namespace_id, '') IS NULL OR ad.namespace_id = @namespace_id::uuid) AND
     (NULLIF(@namespace_name, '') IS NULL OR n.name = @namespace_name)
-GROUP BY ad.id, n.name, fqns.fqn;
+GROUP BY ad.id, n.name, fqns.fqn
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: ListAttributesSummary :many
+WITH counted AS (
+    SELECT COUNT(ad.id) AS total FROM attribute_definitions ad
+)
 SELECT
     ad.id,
     ad.name as attribute_name,
@@ -184,11 +207,15 @@ SELECT
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ad.metadata -> 'labels', 'created_at', ad.created_at, 'updated_at', ad.updated_at)) AS metadata,
     ad.namespace_id,
     ad.active,
-    n.name as namespace_name
+    n.name as namespace_name,
+    counted.total
 FROM attribute_definitions ad
+JOIN counted ON true
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 WHERE ad.namespace_id = $1
-GROUP BY ad.id, n.name;
+GROUP BY ad.id, n.name
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: ListAttributesByDefOrValueFqns :many
 -- get the attribute definition for the provided value or definition fqn
@@ -389,21 +416,28 @@ WHERE attribute_definition_id = $1 AND key_access_server_id = $2;
 ----------------------------------------------------------------
 
 -- name: ListAttributeValues :many
-
+WITH counted AS (
+    SELECT COUNT(av.id) AS total
+    FROM attribute_values av
+)
 SELECT
     av.id,
     av.value,
     av.active,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
     av.attribute_definition_id,
-    fqns.fqn
+    fqns.fqn,
+    counted.total
 FROM attribute_values av
+JOIN counted ON true
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 WHERE (
     (sqlc.narg('active')::BOOLEAN IS NULL OR av.active = sqlc.narg('active')) AND
     (NULLIF(@attribute_definition_id, '') IS NULL OR av.attribute_definition_id = @attribute_definition_id::UUID)
 )
-GROUP BY av.id, fqns.fqn;
+GROUP BY av.id, fqns.fqn
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: GetAttributeValue :one
 SELECT
@@ -457,10 +491,20 @@ WHERE attribute_value_id = $1 AND key_access_server_id = $2;
 ----------------------------------------------------------------
 
 -- name: ListResourceMappingGroups :many
-SELECT id, namespace_id, name,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+WITH counted AS (
+    SELECT COUNT(rmg.id) AS total
+    FROM resource_mapping_groups rmg
+)
+SELECT id,
+    namespace_id,
+    name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+    counted.total
 FROM resource_mapping_groups
-WHERE (NULLIF(@namespace_id, '') IS NULL OR namespace_id = @namespace_id::uuid);
+JOIN counted ON true
+WHERE (NULLIF(@namespace_id, '') IS NULL OR namespace_id = @namespace_id::uuid)
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: GetResourceMappingGroup :one
 SELECT id, namespace_id, name,
@@ -489,17 +533,25 @@ DELETE FROM resource_mapping_groups WHERE id = $1;
 ----------------------------------------------------------------
 
 -- name: ListResourceMappings :many
+WITH counted AS (
+    SELECT COUNT(rm.id) AS total
+    FROM resource_mappings rm
+)
 SELECT
     m.id,
     JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
     m.terms,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
-    COALESCE(m.group_id::TEXT, '')::TEXT as group_id
+    COALESCE(m.group_id::TEXT, '')::TEXT as group_id,
+    counted.total
 FROM resource_mappings m 
+JOIN counted ON true
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 WHERE (NULLIF(@group_id, '') IS NULL OR m.group_id = @group_id::UUID)
-GROUP BY av.id, m.id, fqns.fqn;
+GROUP BY av.id, m.id, fqns.fqn
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: ListResourceMappingsByFullyQualifiedGroup :many
 -- CTE to cache the group JSON build since it will be the same for all mappings of the group
@@ -566,15 +618,22 @@ DELETE FROM resource_mappings WHERE id = $1;
 ----------------------------------------------------------------
 
 -- name: ListNamespaces :many
+WITH counted AS (
+    SELECT COUNT(id) AS total FROM attribute_namespaces
+)
 SELECT
     ns.id,
     ns.name,
     ns.active,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
-    fqns.fqn
+    fqns.fqn,
+    counted.total
 FROM attribute_namespaces ns
+JOIN counted ON true
 LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
-WHERE (sqlc.narg('active')::BOOLEAN IS NULL OR ns.active = sqlc.narg('active')::BOOLEAN);
+WHERE (sqlc.narg('active')::BOOLEAN IS NULL OR ns.active = sqlc.narg('active')::BOOLEAN)
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: GetNamespace :one
 SELECT
@@ -625,11 +684,19 @@ WHERE namespace_id = $1 AND key_access_server_id = $2;
 ----------------------------------------------------------------
 
 -- name: ListSubjectConditionSets :many
+WITH counted AS (
+    SELECT COUNT(scs.id) AS total
+    FROM subject_condition_set scs
+)
 SELECT
     id,
     condition,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-FROM subject_condition_set;
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+    counted.total
+FROM subject_condition_set
+JOIN counted ON true
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: GetSubjectConditionSet :one
 SELECT
@@ -659,6 +726,10 @@ DELETE FROM subject_condition_set WHERE id = $1;
 ----------------------------------------------------------------
 
 -- name: ListSubjectMappings :many
+WITH counted AS (
+    SELECT COUNT(sm.id) AS total
+    FROM subject_mappings sm
+)
 SELECT
     sm.id,
     sm.actions,
@@ -668,11 +739,15 @@ SELECT
         'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', scs.metadata->'labels', 'created_at', scs.created_at, 'updated_at', scs.updated_at)),
         'subject_sets', scs.condition
     ) AS subject_condition_set,
-    JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active) AS attribute_value
+    JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active) AS attribute_value,
+    counted.total
 FROM subject_mappings sm
+JOIN counted ON true
 LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
 LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
-GROUP BY av.id, sm.id, scs.id;
+GROUP BY av.id, sm.id, scs.id
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: GetSubjectMapping :one
 SELECT

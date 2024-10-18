@@ -7,6 +7,7 @@ import "google/api/annotations.proto";
 
 import "common/common.proto";
 import "policy/objects.proto";
+import "policy/selectors.proto";
 
 // MatchSubjectMappingsRequest liberally returns a list of SubjectMappings based on the provided SubjectProperties. The SubjectMappings are returned
 // if there is any single condition found among the structures that matches for one of the provided properties:
@@ -38,9 +39,13 @@ message GetSubjectMappingResponse {
   policy.SubjectMapping subject_mapping = 1;
 }
 
-message ListSubjectMappingsRequest {}
+message ListSubjectMappingsRequest {
+  // Optional
+  policy.PageRequest pagination = 1;
+}
 message ListSubjectMappingsResponse {
   repeated policy.SubjectMapping subject_mappings = 1;
+  policy.PageResponse pagination = 2;
 }
 
 message CreateSubjectMappingRequest{
@@ -103,9 +108,13 @@ message GetSubjectConditionSetResponse {
   repeated policy.SubjectMapping associated_subject_mappings = 2;
 }
 
-message ListSubjectConditionSetsRequest {}
+message ListSubjectConditionSetsRequest {
+  // Optional
+  policy.PageRequest pagination = 1;
+}
 message ListSubjectConditionSetsResponse {
   repeated policy.SubjectConditionSet subject_condition_sets = 1;
+  policy.PageResponse pagination = 2;
 }
 
 message SubjectConditionSetCreate {

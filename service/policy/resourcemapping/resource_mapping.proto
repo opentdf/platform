@@ -7,6 +7,7 @@ import "google/api/annotations.proto";
 
 import "common/common.proto";
 import "policy/objects.proto";
+import "policy/selectors.proto";
 
 /*
    Resource Mapping Groups
@@ -15,10 +16,14 @@ import "policy/objects.proto";
 message ListResourceMappingGroupsRequest {
   // Optional
   string namespace_id = 1;
+
+  // Optional
+  policy.PageRequest pagination = 2;
 }
 
 message ListResourceMappingGroupsResponse {
   repeated ResourceMappingGroup resource_mapping_groups = 1;
+  policy.PageResponse pagination = 2;
 }
 
 message GetResourceMappingGroupRequest {
@@ -78,10 +83,14 @@ message DeleteResourceMappingGroupResponse {
 message ListResourceMappingsRequest {
   // Optional
   string group_id = 1;
+
+  // Optional
+  policy.PageRequest pagination = 2;
 }
 
 message ListResourceMappingsResponse {
   repeated policy.ResourceMapping resource_mappings = 1;
+  policy.PageResponse pagination = 2;
 }
 
 message ListResourceMappingsByGroupFqnsRequest {

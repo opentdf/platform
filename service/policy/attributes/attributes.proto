@@ -33,21 +33,11 @@ message ListAttributesRequest {
   string namespace = 2;
 
   // Optional
-  // Currently defaulted to 250 if not provided and subject to change at any time
-  int32 limit = 3;
-  // Optional
-  // Defaulted if not provided
-  int32 offset = 4;
+  policy.PageRequest pagination = 3;
 }
 message ListAttributesResponse {
   repeated policy.Attribute attributes = 1;
-  // Current pagination offset
-  int32 current_offset = 2;
-  // Calculated with request limit + offset or defaults
-  // Empty when none remain after current page
-  int32 next_offset = 3;
-  // Total count of entire list
-  int32 total = 4;
+  policy.PageResponse pagination = 2;
 }
 
 message GetAttributeRequest {
@@ -131,21 +121,11 @@ message ListAttributeValuesRequest {
   common.ActiveStateEnum state = 2;
 
   // Optional
-  // Currently defaulted to 250 if not provided and subject to change at any time
-  int32 limit = 3;
-  // Optional
-  // Defaulted if not provided
-  int32 offset = 4;
+  policy.PageRequest pagination = 3;
 }
 message ListAttributeValuesResponse {
   repeated policy.Value values = 1;
-  // Current pagination offset
-  int32 current_offset = 2;
-  // Calculated with request limit + offset or defaults
-  // Empty when none remain after current page
-  int32 next_offset = 3;
-  // Total count of entire list
-  int32 total = 4;
+  policy.PageResponse pagination = 2;
 }
 
 message CreateAttributeValueRequest {

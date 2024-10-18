@@ -513,6 +513,14 @@
                   <a href="#policy.AttributeValueSelector.AttributeSelector.NamespaceSelector"><span class="badge">M</span>AttributeValueSelector.AttributeSelector.NamespaceSelector</a>
                 </li>
               
+                <li>
+                  <a href="#policy.PageRequest"><span class="badge">M</span>PageRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.PageResponse"><span class="badge">M</span>PageResponse</a>
+                </li>
+              
               
               
               
@@ -3726,6 +3734,78 @@ To start, these may be `rsa:2048` for encrypting ZTDF files and
 
         
       
+        <h3 id="policy.PageRequest">PageRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>limit</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p>Optional
+Currently defaulted to 250 if not provided and subject to change at any time </p></td>
+                </tr>
+              
+                <tr>
+                  <td>offset</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p>Optional
+Defaulted if not provided </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.PageResponse">PageResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>current_offset</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p>Requested pagination offset </p></td>
+                </tr>
+              
+                <tr>
+                  <td>next_offset</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p>Calculated with request limit &#43; offset or defaults
+Empty when none remain after current page </p></td>
+                </tr>
+              
+                <tr>
+                  <td>total</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p>Total count of entire list </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
 
       
 
@@ -4341,19 +4421,10 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
                 </tr>
               
                 <tr>
-                  <td>limit</td>
-                  <td><a href="#int32">int32</a></td>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
                   <td></td>
-                  <td><p>Optional
-Currently defaulted to 250 if not provided and subject to change at any time </p></td>
-                </tr>
-              
-                <tr>
-                  <td>offset</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Optional
-Defaulted if not provided </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>
@@ -4381,25 +4452,10 @@ Defaulted if not provided </p></td>
                 </tr>
               
                 <tr>
-                  <td>current_offset</td>
-                  <td><a href="#int32">int32</a></td>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
                   <td></td>
-                  <td><p>Current pagination offset </p></td>
-                </tr>
-              
-                <tr>
-                  <td>next_offset</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Calculated with request limit &#43; offset or defaults
-Empty when none remain after current page </p></td>
-                </tr>
-              
-                <tr>
-                  <td>total</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Total count of entire list </p></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -4434,19 +4490,10 @@ Empty when none remain after current page </p></td>
                 </tr>
               
                 <tr>
-                  <td>limit</td>
-                  <td><a href="#int32">int32</a></td>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
                   <td></td>
-                  <td><p>Optional
-Currently defaulted to 250 if not provided and subject to change at any time </p></td>
-                </tr>
-              
-                <tr>
-                  <td>offset</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Optional
-Defaulted if not provided </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>
@@ -4474,25 +4521,10 @@ Defaulted if not provided </p></td>
                 </tr>
               
                 <tr>
-                  <td>current_offset</td>
-                  <td><a href="#int32">int32</a></td>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
                   <td></td>
-                  <td><p>Current pagination offset </p></td>
-                </tr>
-              
-                <tr>
-                  <td>next_offset</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Calculated with request limit &#43; offset or defaults
-Empty when none remain after current page </p></td>
-                </tr>
-              
-                <tr>
-                  <td>total</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Total count of entire list </p></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -5319,19 +5351,10 @@ If neither is provided, grants from all registered KASs to policy attribute obje
                 </tr>
               
                 <tr>
-                  <td>limit</td>
-                  <td><a href="#int32">int32</a></td>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
                   <td></td>
-                  <td><p>Optional
-Currently defaulted to 250 if not provided and subject to change at any time </p></td>
-                </tr>
-              
-                <tr>
-                  <td>offset</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Optional
-Defaulted if not provided </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>
@@ -5359,25 +5382,10 @@ Defaulted if not provided </p></td>
                 </tr>
               
                 <tr>
-                  <td>current_offset</td>
-                  <td><a href="#int32">int32</a></td>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
                   <td></td>
-                  <td><p>Current pagination offset </p></td>
-                </tr>
-              
-                <tr>
-                  <td>next_offset</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Calculated with request limit &#43; offset or defaults
-Empty when none remain after current page </p></td>
-                </tr>
-              
-                <tr>
-                  <td>total</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Total count of entire list </p></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -5398,19 +5406,10 @@ Empty when none remain after current page </p></td>
             <tbody>
               
                 <tr>
-                  <td>limit</td>
-                  <td><a href="#int32">int32</a></td>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
                   <td></td>
-                  <td><p>Optional
-Currently defaulted to 250 if not provided and subject to change at any time </p></td>
-                </tr>
-              
-                <tr>
-                  <td>offset</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Optional
-Defaulted if not provided </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>
@@ -5438,25 +5437,10 @@ Defaulted if not provided </p></td>
                 </tr>
               
                 <tr>
-                  <td>current_offset</td>
-                  <td><a href="#int32">int32</a></td>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
                   <td></td>
-                  <td><p>Current pagination offset </p></td>
-                </tr>
-              
-                <tr>
-                  <td>next_offset</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Calculated with request limit &#43; offset or defaults
-Empty when none remain after current page </p></td>
-                </tr>
-              
-                <tr>
-                  <td>total</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Total count of entire list </p></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -5888,19 +5872,10 @@ Empty when none remain after current page </p></td>
                 </tr>
               
                 <tr>
-                  <td>limit</td>
-                  <td><a href="#int32">int32</a></td>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
                   <td></td>
-                  <td><p>Optional
-Currently defaulted to 250 if not provided and subject to change at any time </p></td>
-                </tr>
-              
-                <tr>
-                  <td>offset</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Optional
-Defaulted if not provided </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>
@@ -5928,25 +5903,10 @@ Defaulted if not provided </p></td>
                 </tr>
               
                 <tr>
-                  <td>current_offset</td>
-                  <td><a href="#int32">int32</a></td>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
                   <td></td>
-                  <td><p>Current pagination offset </p></td>
-                </tr>
-              
-                <tr>
-                  <td>next_offset</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Calculated with request limit &#43; offset or defaults
-Empty when none remain after current page </p></td>
-                </tr>
-              
-                <tr>
-                  <td>total</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Total count of entire list </p></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -6603,19 +6563,10 @@ Namespace &lt;&gt; Key Access Server RPCs
                 </tr>
               
                 <tr>
-                  <td>limit</td>
-                  <td><a href="#int32">int32</a></td>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
                   <td></td>
-                  <td><p>Optional
-Currently defaulted to 250 if not provided and subject to change at any time </p></td>
-                </tr>
-              
-                <tr>
-                  <td>offset</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Optional
-Defaulted if not provided </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>
@@ -6643,25 +6594,10 @@ Defaulted if not provided </p></td>
                 </tr>
               
                 <tr>
-                  <td>current_offset</td>
-                  <td><a href="#int32">int32</a></td>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
                   <td></td>
-                  <td><p>Current pagination offset </p></td>
-                </tr>
-              
-                <tr>
-                  <td>next_offset</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Calculated with request limit &#43; offset or defaults
-Empty when none remain after current page </p></td>
-                </tr>
-              
-                <tr>
-                  <td>total</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Total count of entire list </p></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -6769,19 +6705,10 @@ Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group n
                 </tr>
               
                 <tr>
-                  <td>limit</td>
-                  <td><a href="#int32">int32</a></td>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
                   <td></td>
-                  <td><p>Optional
-Currently defaulted to 250 if not provided and subject to change at any time </p></td>
-                </tr>
-              
-                <tr>
-                  <td>offset</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Optional
-Defaulted if not provided </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>
@@ -6809,25 +6736,10 @@ Defaulted if not provided </p></td>
                 </tr>
               
                 <tr>
-                  <td>current_offset</td>
-                  <td><a href="#int32">int32</a></td>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
                   <td></td>
-                  <td><p>Current pagination offset </p></td>
-                </tr>
-              
-                <tr>
-                  <td>next_offset</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Calculated with request limit &#43; offset or defaults
-Empty when none remain after current page </p></td>
-                </tr>
-              
-                <tr>
-                  <td>total</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Total count of entire list </p></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -7594,19 +7506,10 @@ Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition
             <tbody>
               
                 <tr>
-                  <td>limit</td>
-                  <td><a href="#int32">int32</a></td>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
                   <td></td>
-                  <td><p>Optional
-Currently defaulted to 250 if not provided and subject to change at any time </p></td>
-                </tr>
-              
-                <tr>
-                  <td>offset</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Optional
-Defaulted if not provided </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>
@@ -7634,25 +7537,10 @@ Defaulted if not provided </p></td>
                 </tr>
               
                 <tr>
-                  <td>current_offset</td>
-                  <td><a href="#int32">int32</a></td>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
                   <td></td>
-                  <td><p>Current pagination offset </p></td>
-                </tr>
-              
-                <tr>
-                  <td>next_offset</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Calculated with request limit &#43; offset or defaults
-Empty when none remain after current page </p></td>
-                </tr>
-              
-                <tr>
-                  <td>total</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Total count of entire list </p></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -7673,19 +7561,10 @@ Empty when none remain after current page </p></td>
             <tbody>
               
                 <tr>
-                  <td>limit</td>
-                  <td><a href="#int32">int32</a></td>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
                   <td></td>
-                  <td><p>Optional
-Currently defaulted to 250 if not provided and subject to change at any time </p></td>
-                </tr>
-              
-                <tr>
-                  <td>offset</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Optional
-Defaulted if not provided </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>
@@ -7713,25 +7592,10 @@ Defaulted if not provided </p></td>
                 </tr>
               
                 <tr>
-                  <td>current_offset</td>
-                  <td><a href="#int32">int32</a></td>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
                   <td></td>
-                  <td><p>Current pagination offset </p></td>
-                </tr>
-              
-                <tr>
-                  <td>next_offset</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Calculated with request limit &#43; offset or defaults
-Empty when none remain after current page </p></td>
-                </tr>
-              
-                <tr>
-                  <td>total</td>
-                  <td><a href="#int32">int32</a></td>
-                  <td></td>
-                  <td><p>Total count of entire list </p></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>

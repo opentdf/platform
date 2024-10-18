@@ -62,9 +62,9 @@ func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 }
 
 func (s KeyAccessServerRegistry) ListKeyAccessServers(ctx context.Context,
-	_ *kasr.ListKeyAccessServersRequest,
+	r *kasr.ListKeyAccessServersRequest,
 ) (*kasr.ListKeyAccessServersResponse, error) {
-	keyAccessServers, err := s.dbClient.ListKeyAccessServers(ctx)
+	keyAccessServers, err := s.dbClient.ListKeyAccessServers(ctx, r.GetPagination())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}

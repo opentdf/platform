@@ -14,6 +14,13 @@ import (
 // concern of the policy services that should not be relied upon for stability.
 const defaultObjectListCount = 250
 
+func getListLimit(l int32) int32 {
+	if l > 0 {
+		return l
+	}
+	return defaultObjectListCount
+}
+
 func constructMetadata(table string, isJSON bool) string {
 	if table != "" {
 		table += "."

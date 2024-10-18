@@ -11,8 +11,11 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context) ([]*policy.KeyAccessServer, error) {
-	list, err := c.Queries.ListKeyAccessServers(ctx, ListKeyAccessServersParams{})
+func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, page *policy.PageRequest) ([]*policy.KeyAccessServer, error) {
+	list, err := c.Queries.ListKeyAccessServers(ctx, ListKeyAccessServersParams{
+		Offset: page.GetOffset(),
+		Limit:  getListLimit(page.GetLimit()),
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -162,10 +165,12 @@ func (c PolicyDBClient) DeleteKeyAccessServer(ctx context.Context, id string) (*
 	}, nil
 }
 
-func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, kasID string, kasURI string) ([]*kasregistry.KeyAccessServerGrants, error) {
+func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, kasID string, kasURI string, page *policy.PageRequest) ([]*kasregistry.KeyAccessServerGrants, error) {
 	params := ListKeyAccessServerGrantsParams{
 		KasID:  kasID,
 		KasUri: kasURI,
+		Offset: page.GetOffset(),
+		Limit:  getListLimit(page.GetLimit()),
 	}
 	listRows, err := c.Queries.ListKeyAccessServerGrants(ctx, params)
 	if err != nil {

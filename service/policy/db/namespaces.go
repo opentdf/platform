@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -44,7 +45,7 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, id string) (*policy.Na
 	}, nil
 }
 
-func (c PolicyDBClient) ListNamespaces(ctx context.Context, state string) ([]*policy.Namespace, error) {
+func (c PolicyDBClient) ListNamespaces(ctx context.Context, state string, page *policy.PageRequest) ([]*policy.Namespace, error) {
 	active := pgtype.Bool{
 		Valid: false,
 	}
@@ -55,6 +56,8 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, state string) ([]*po
 
 	list, err := c.Queries.ListNamespaces(ctx, ListNamespacesParams{
 		Active: active,
+		Limit:  getListLimit(page.GetLimit()),
+		Offset: page.GetOffset(),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -162,7 +165,8 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 	nsFqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
 	c.logger.Debug("upserted fqn for unsafely updated namespace", slog.Any("fqn", nsFqn))
 
-	attrs, err := c.ListAttributes(ctx, StateAny, id)
+	// TODO: deprecate the list of attributes and move upsert to a transaction/trigger
+	attrs, err := c.ListAttributes(ctx, StateAny, id, &policy.PageRequest{Limit: math.MaxInt32})
 	if err != nil {
 		return nil, err
 	}

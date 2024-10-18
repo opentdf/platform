@@ -231,8 +231,11 @@ func (c PolicyDBClient) GetSubjectConditionSet(ctx context.Context, id string) (
 	}, nil
 }
 
-func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context) ([]*policy.SubjectConditionSet, error) {
-	list, err := c.Queries.ListSubjectConditionSets(ctx, ListSubjectConditionSetsParams{})
+func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context, page *policy.PageRequest) ([]*policy.SubjectConditionSet, error) {
+	list, err := c.Queries.ListSubjectConditionSets(ctx, ListSubjectConditionSetsParams{
+		Limit:  getListLimit(page.GetLimit()),
+		Offset: page.GetOffset(),
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -415,8 +418,11 @@ func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*poli
 	}, nil
 }
 
-func (c PolicyDBClient) ListSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
-	list, err := c.Queries.ListSubjectMappings(ctx, ListSubjectMappingsParams{})
+func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, page *policy.PageRequest) ([]*policy.SubjectMapping, error) {
+	list, err := c.Queries.ListSubjectMappings(ctx, ListSubjectMappingsParams{
+		Limit:  getListLimit(page.GetLimit()),
+		Offset: page.GetOffset(),
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

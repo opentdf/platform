@@ -13,7 +13,7 @@ import "policy/objects.proto";
 //
 // NOTE: if you have any issues, debug logs are available within the service to help identify why a mapping was or was not returned.
 message MatchSubjectMappingsRequest {
-  repeated policy.SubjectProperty subject_properties = 1;
+  repeated policy.SubjectProperty subject_properties = 1 [(buf.validate.field).repeated.min_items = 1];
 }
 
 message MatchSubjectMappingsResponse {

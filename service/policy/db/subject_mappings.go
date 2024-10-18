@@ -532,18 +532,8 @@ func (c PolicyDBClient) DeleteSubjectMapping(ctx context.Context, id string) (*p
 // NOTE: if you have any issues, set the log level to 'debug' for more comprehensive context.
 func selectMatchedSubjectMappingsSQL(subjectProperties []*policy.SubjectProperty, logger *logger.Logger) (string, []interface{}, error) {
 	var err error
-	if len(subjectProperties) == 0 {
-		err = errors.Join(db.ErrMissingValue, errors.New("one or more subject properties is required"))
-		logger.Error("subject property missing required value", slog.Any("properties provided", subjectProperties), slog.String("error", err.Error()))
-		return "", nil, err
-	}
 	where := "("
 	for i, sp := range subjectProperties {
-		if sp.GetExternalSelectorValue() == "" || sp.GetExternalValue() == "" {
-			err = errors.Join(db.ErrMissingValue, errors.New("all subject properties must include defined external selector value and value"))
-			logger.Error("subject property missing required value", slog.Any("properties provided", subjectProperties), slog.String("error", err.Error()))
-			return "", nil, err
-		}
 		if i > 0 {
 			where += " OR "
 		}

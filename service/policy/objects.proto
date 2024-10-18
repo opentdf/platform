@@ -220,8 +220,7 @@ message SubjectConditionSet {
    and the external_value is the value selected by the external_selector_value on that Entity Representation (Subject Context). These mirror the Condition.
 */
 message SubjectProperty {
-  string external_selector_value = 1 [(buf.validate.field).required = true];
-  string external_value = 2 [(buf.validate.field).required = true];
+  string external_selector_value = 1 [(buf.validate.field).required = true, (buf.validate.field).string = {min_len: 1}];
 }
 
 /*

@@ -7,6 +7,7 @@ import "google/api/annotations.proto";
 
 import "common/common.proto";
 import "policy/objects.proto";
+import "policy/selectors.proto";
 
 /*
    Resource Mapping Groups
@@ -17,22 +18,12 @@ message ListResourceMappingGroupsRequest {
   string namespace_id = 1;
 
   // Optional
-  // Currently defaulted to 250 if not provided and subject to change at any time
-  int32 limit = 3;
-  // Optional
-  // Defaulted if not provided
-  int32 offset = 4;
+  policy.PageRequest pagination = 2;
 }
 
 message ListResourceMappingGroupsResponse {
   repeated ResourceMappingGroup resource_mapping_groups = 1;
-  // Current pagination offset
-  int32 current_offset = 2;
-  // Calculated with request limit + offset or defaults
-  // Empty when none remain after current page
-  int32 next_offset = 3;
-  // Total count of entire list
-  int32 total = 4;
+  policy.PageResponse pagination = 2;
 }
 
 message GetResourceMappingGroupRequest {
@@ -94,22 +85,12 @@ message ListResourceMappingsRequest {
   string group_id = 1;
 
   // Optional
-  // Currently defaulted to 250 if not provided and subject to change at any time
-  int32 limit = 2;
-  // Optional
-  // Defaulted if not provided
-  int32 offset = 3;
+  policy.PageRequest pagination = 2;
 }
 
 message ListResourceMappingsResponse {
   repeated policy.ResourceMapping resource_mappings = 1;
-  // Current pagination offset
-  int32 current_offset = 2;
-  // Calculated with request limit + offset or defaults
-  // Empty when none remain after current page
-  int32 next_offset = 3;
-  // Total count of entire list
-  int32 total = 4;
+  policy.PageResponse pagination = 2;
 }
 
 message ListResourceMappingsByGroupFqnsRequest {

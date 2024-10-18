@@ -57,7 +57,7 @@
             "type": "string"
           },
           {
-            "name": "limit",
+            "name": "pagination.limit",
             "description": "Optional\nCurrently defaulted to 250 if not provided and subject to change at any time",
             "in": "query",
             "required": false,
@@ -65,7 +65,7 @@
             "format": "int32"
           },
           {
-            "name": "offset",
+            "name": "pagination.offset",
             "description": "Optional\nDefaulted if not provided",
             "in": "query",
             "required": false,
@@ -206,7 +206,7 @@
             "default": "ACTIVE_STATE_ENUM_UNSPECIFIED"
           },
           {
-            "name": "limit",
+            "name": "pagination.limit",
             "description": "Optional\nCurrently defaulted to 250 if not provided and subject to change at any time",
             "in": "query",
             "required": false,
@@ -214,7 +214,7 @@
             "format": "int32"
           },
           {
-            "name": "offset",
+            "name": "pagination.offset",
             "description": "Optional\nDefaulted if not provided",
             "in": "query",
             "required": false,
@@ -765,20 +765,8 @@
             "$ref": "#/definitions/policyValue"
           }
         },
-        "currentOffset": {
-          "type": "integer",
-          "format": "int32",
-          "title": "Current pagination offset"
-        },
-        "nextOffset": {
-          "type": "integer",
-          "format": "int32",
-          "title": "Calculated with request limit + offset or defaults\nEmpty when none remain after current page"
-        },
-        "total": {
-          "type": "integer",
-          "format": "int32",
-          "title": "Total count of entire list"
+        "pagination": {
+          "$ref": "#/definitions/policyPageResponse"
         }
       }
     },
@@ -792,20 +780,8 @@
             "$ref": "#/definitions/policyAttribute"
           }
         },
-        "currentOffset": {
-          "type": "integer",
-          "format": "int32",
-          "title": "Current pagination offset"
-        },
-        "nextOffset": {
-          "type": "integer",
-          "format": "int32",
-          "title": "Calculated with request limit + offset or defaults\nEmpty when none remain after current page"
-        },
-        "total": {
-          "type": "integer",
-          "format": "int32",
-          "title": "Total count of entire list"
+        "pagination": {
+          "$ref": "#/definitions/policyPageResponse"
         }
       }
     },
@@ -1141,6 +1117,41 @@
             "$ref": "#/definitions/policyKeyAccessServer"
           },
           "title": "KAS grants for the namespace"
+        }
+      }
+    },
+    "policyPageRequest": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Optional\nCurrently defaulted to 250 if not provided and subject to change at any time"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Optional\nDefaulted if not provided"
+        }
+      }
+    },
+    "policyPageResponse": {
+      "type": "object",
+      "properties": {
+        "currentOffset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Requested pagination offset"
+        },
+        "nextOffset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Calculated with request limit + offset or defaults\nEmpty when none remain after current page"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Total count of entire list"
         }
       }
     },

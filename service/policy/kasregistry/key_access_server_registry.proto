@@ -6,6 +6,7 @@ import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
 import "policy/objects.proto";
+import "policy/selectors.proto";
 
 message GetKeyAccessServerRequest {
   string id = 1 [(buf.validate.field).required = true];
@@ -16,21 +17,11 @@ message GetKeyAccessServerResponse {
 
 message ListKeyAccessServersRequest {
   // Optional
-  // Currently defaulted to 250 if not provided and subject to change at any time
-  int32 limit = 1;
-  // Optional
-  // Defaulted if not provided
-  int32 offset = 2;
+  policy.PageRequest pagination = 1;
 }
 message ListKeyAccessServersResponse {
   repeated KeyAccessServer key_access_servers = 1;
-  // Current pagination offset
-  int32 current_offset = 2;
-  // Calculated with request limit + offset or defaults
-  // Empty when none remain after current page
-  int32 next_offset = 3;
-  // Total count of entire list
-  int32 total = 4;
+  policy.PageResponse pagination = 2;
 }
 
 message CreateKeyAccessServerRequest {
@@ -91,22 +82,12 @@ message ListKeyAccessServerGrantsRequest {
   string kas_uri = 2;
 
   // Optional
-  // Currently defaulted to 250 if not provided and subject to change at any time
-  int32 limit = 3;
-  // Optional
-  // Defaulted if not provided
-  int32 offset = 4;
+  policy.PageRequest pagination = 3;
 }
 
 message ListKeyAccessServerGrantsResponse {
   repeated KeyAccessServerGrants grants = 1;
-  // Current pagination offset
-  int32 current_offset = 2;
-  // Calculated with request limit + offset or defaults
-  // Empty when none remain after current page
-  int32 next_offset = 3;
-  // Total count of entire list
-  int32 total = 4;
+  policy.PageResponse pagination = 2;
 }
 
 service KeyAccessServerRegistryService {

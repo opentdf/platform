@@ -728,6 +728,9 @@
       "properties": {
         "externalSelectorValue": {
           "type": "string"
+        },
+        "externalValue": {
+          "type": "string"
         }
       },
       "description": "A property of a Subject/Entity as its selector expression -\u003e value result pair. This would mirror external user attributes retrieved\nfrom an authoritative source such as an IDP (Identity Provider) or User Store. Examples include such ADFS/LDAP, OKTA, etc.\nFor now, a valid property must contain both a selector expression \u0026 a resulting value.\n\nThe external_selector_value is a specifier to select a value from a flattened external representation of an Entity (such as from idP/LDAP),\nand the external_value is the value selected by the external_selector_value on that Entity Representation (Subject Context). These mirror the Condition."

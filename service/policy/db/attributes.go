@@ -115,7 +115,10 @@ func hydrateAttribute(row *attributeQueryRow) (*policy.Attribute, error) {
 // CRUD operations
 ///
 
-func (c PolicyDBClient) ListAttributes(ctx context.Context, state string, namespace string, page *policy.PageRequest) ([]*policy.Attribute, error) {
+func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAttributesRequest) ([]*policy.Attribute, error) {
+	namespace := r.GetNamespace()
+	state := GetDBStateTypeTransformedEnum(r.GetState())
+	page := r.GetPagination()
 	var (
 		active = pgtype.Bool{
 			Valid: false,
@@ -172,8 +175,10 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, state string, namesp
 func (c PolicyDBClient) ListAllAttributes(ctx context.Context) ([]*policy.Attribute, error) {
 	// TODO: iterate through to build entire list
 	// call general List method with empty params to get all attributes
-	return c.ListAttributes(ctx, "", "", &policy.PageRequest{
-		Limit: 10000,
+	return c.ListAttributes(ctx, &attributes.ListAttributesRequest{
+		Pagination: &policy.PageRequest{
+			Limit: 10000,
+		},
 	})
 }
 

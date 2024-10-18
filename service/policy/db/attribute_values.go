@@ -85,7 +85,10 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, id string) (*poli
 	}, nil
 }
 
-func (c PolicyDBClient) ListAttributeValues(ctx context.Context, attributeID string, state string, page *policy.PageRequest) ([]*policy.Value, error) {
+func (c PolicyDBClient) ListAttributeValues(ctx context.Context, r *attributes.ListAttributeValuesRequest) ([]*policy.Value, error) {
+	state := GetDBStateTypeTransformedEnum(r.GetState())
+	page := r.GetPagination()
+
 	active := pgtype.Bool{
 		Valid: false,
 	}
@@ -95,7 +98,7 @@ func (c PolicyDBClient) ListAttributeValues(ctx context.Context, attributeID str
 	}
 
 	list, err := c.Queries.ListAttributeValues(ctx, ListAttributeValuesParams{
-		AttributeDefinitionID: attributeID,
+		AttributeDefinitionID: r.GetAttributeId(),
 		Active:                active,
 		Limit:                 getListLimit(page.GetLimit()),
 		Offset:                page.GetOffset(),
@@ -130,8 +133,10 @@ func (c PolicyDBClient) ListAttributeValues(ctx context.Context, attributeID str
 func (c PolicyDBClient) ListAllAttributeValues(ctx context.Context) ([]*policy.Value, error) {
 	// TODO: iterate through entire thing
 	// call ListAttributeValues method with "empty" param values to make the query return all rows
-	return c.ListAttributeValues(ctx, "", StateAny, &policy.PageRequest{
-		Limit: 10000,
+	return c.ListAttributeValues(ctx, &attributes.ListAttributeValuesRequest{
+		Pagination: &policy.PageRequest{
+			Limit: 10000,
+		},
 	})
 }
 

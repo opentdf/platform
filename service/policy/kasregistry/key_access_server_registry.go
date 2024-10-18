@@ -148,7 +148,7 @@ func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
 func (s KeyAccessServerRegistry) ListKeyAccessServerGrants(ctx context.Context,
 	req *kasr.ListKeyAccessServerGrantsRequest,
 ) (*kasr.ListKeyAccessServerGrantsResponse, error) {
-	keyAccessServerGrants, err := s.dbClient.ListKeyAccessServerGrants(ctx, req.GetKasId(), req.GetKasUri())
+	keyAccessServerGrants, err := s.dbClient.ListKeyAccessServerGrants(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}

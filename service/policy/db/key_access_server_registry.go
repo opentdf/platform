@@ -165,10 +165,11 @@ func (c PolicyDBClient) DeleteKeyAccessServer(ctx context.Context, id string) (*
 	}, nil
 }
 
-func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, kasID string, kasURI string, page *policy.PageRequest) ([]*kasregistry.KeyAccessServerGrants, error) {
+func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasregistry.ListKeyAccessServerGrantsRequest) ([]*kasregistry.KeyAccessServerGrants, error) {
+	page := r.GetPagination()
 	params := ListKeyAccessServerGrantsParams{
-		KasID:  kasID,
-		KasUri: kasURI,
+		KasID:  r.GetKasId(),
+		KasUri: r.GetKasUri(),
 		Offset: page.GetOffset(),
 		Limit:  getListLimit(page.GetLimit()),
 	}

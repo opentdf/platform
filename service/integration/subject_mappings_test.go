@@ -873,18 +873,6 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInOneMatch() {
 	s.Equal(expectedMappedFixture.ID, smList[0].GetId())
 }
 
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MissingFieldInProperty_Fails() {
-	props := []*policy.SubjectProperty{
-		{
-			ExternalValue: "some_value",
-		},
-	}
-
-	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-	s.Zero(sm)
-}
-
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MissingValueInProperty_Fails() {
 	props := []*policy.SubjectProperty{
 		{

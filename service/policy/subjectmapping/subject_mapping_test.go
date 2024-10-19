@@ -51,3 +51,36 @@ func Test_CreateSubjectMappingRequest_PopulatedArray_Succeeds(t *testing.T) {
 	err := getValidator().Validate(req)
 	require.NoError(t, err)
 }
+
+func Test_MatchSubjectMappingsRequest_MissingSelector_Fails(t *testing.T) {
+	props := []*policy.SubjectProperty{
+		{
+			ExternalValue: "some_value",
+		},
+	}
+	req := &subjectmapping.MatchSubjectMappingsRequest{SubjectProperties: props}
+
+	err := getValidator().Validate(req)
+	require.Error(t, err)
+}
+
+func Test_MatchSubjectMappingsRequest_EmptyArray_Fails(t *testing.T) {
+	props := []*policy.SubjectProperty{}
+	req := &subjectmapping.MatchSubjectMappingsRequest{SubjectProperties: props}
+
+	err := getValidator().Validate(req)
+	require.Error(t, err)
+}
+
+func Test_MatchSubjectMappingsRequest_Succeeds(t *testing.T) {
+	props := []*policy.SubjectProperty{
+		{
+			ExternalSelectorValue: ".some_field",
+			ExternalValue:         "some_value",
+		},
+	}
+	req := &subjectmapping.MatchSubjectMappingsRequest{SubjectProperties: props}
+
+	err := getValidator().Validate(req)
+	require.NoError(t, err)
+}

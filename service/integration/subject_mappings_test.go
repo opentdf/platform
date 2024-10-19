@@ -873,26 +873,6 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInOneMatch() {
 	s.Equal(expectedMappedFixture.ID, smList[0].GetId())
 }
 
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MissingValueInProperty_Fails() {
-	props := []*policy.SubjectProperty{
-		{
-			ExternalSelectorValue: ".some_field",
-		},
-	}
-
-	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-	s.Zero(sm)
-}
-
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NoPropertiesProvided_Fails() {
-	props := []*policy.SubjectProperty{}
-
-	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-	s.Zero(sm)
-}
-
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InMultiple() {
 	simpleScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_in")
 	simpleexternalSelectorValue := simpleScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue

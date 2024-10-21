@@ -691,6 +691,33 @@ LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
 WHERE sm.id = $1
 GROUP BY av.id, sm.id, scs.id;
 
+-- name: MatchSubjectMappings :many
+SELECT
+    sm.id,
+    sm.actions,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
+    JSON_BUILD_OBJECT(
+        'id', scs.id,
+        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', scs.metadata -> 'labels', 'created_at', scs.created_at, 'updated_at', scs.updated_at)),
+        'subject_sets', scs.condition
+    ) AS subject_condition_set,
+    JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active) AS attribute_value
+FROM subject_mappings sm
+LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
+LEFT JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+LEFT JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
+LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
+WHERE ns.active = true AND ad.active = true and av.active = true AND EXISTS (
+    SELECT 1
+    FROM JSONB_ARRAY_ELEMENTS(scs.condition) AS ss, JSONB_ARRAY_ELEMENTS(ss->'condition_groups') AS cg, JSONB_ARRAY_ELEMENTS(cg->'conditions') AS each_condition
+    -- variable list of conditions
+    -- WHERE (each_condition->>'subject_external_selector_value') IN (SELECT UNNEST(@subject_external_selector_values::TEXT[]))
+    WHERE (each_condition->>'subject_external_selector_value' = ANY(@selectors::TEXT[]))
+
+)
+GROUP BY av.id, sm.id, scs.id;
+
+
 -- name: CreateSubjectMapping :one
 INSERT INTO subject_mappings (attribute_value_id, actions, metadata, subject_condition_set_id)
 VALUES ($1, $2, $3, $4)

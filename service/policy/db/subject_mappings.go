@@ -5,14 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
-	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -530,63 +528,108 @@ func (c PolicyDBClient) DeleteSubjectMapping(ctx context.Context, id string) (*p
 // be returned if an external selector field matches.
 //
 // NOTE: if you have any issues, set the log level to 'debug' for more comprehensive context.
-func selectMatchedSubjectMappingsSQL(subjectProperties []*policy.SubjectProperty, logger *logger.Logger) (string, []interface{}, error) {
-	var err error
-	where := "("
-	for i, sp := range subjectProperties {
-		if i > 0 {
-			where += " OR "
-		}
+// func selectMatchedSubjectMappingsSQL(subjectProperties []*policy.SubjectProperty, logger *logger.Logger) (string, []interface{}, error) {
+// 	var err error
+// 	where := "("
+// 	for i, sp := range subjectProperties {
+// 		if i > 0 {
+// 			where += " OR "
+// 		}
 
-		hasField := "each_condition->>'subject_external_selector_value' = '" + sp.GetExternalSelectorValue() + "'"
-		// Parses the json and matches the row if the selector exists:
-		where += "(" + hasField + ")"
-		logger.Debug("current condition filter WHERE clause", slog.String("subject_external_selector_value", sp.GetExternalSelectorValue()), slog.String("subject_external_value", sp.GetExternalValue()), slog.String("where", where))
-	}
-	where += ")"
+// 		hasField := "each_condition->>'subject_external_selector_value' = '" + sp.GetExternalSelectorValue() + "'"
+// 		// Parses the json and matches the row if the selector exists:
+// 		where += "(" + hasField + ")"
+// 		logger.Debug("current condition filter WHERE clause", slog.String("subject_external_selector_value", sp.GetExternalSelectorValue()), slog.String("subject_external_value", sp.GetExternalValue()), slog.String("where", where))
+// 	}
+// 	where += ")"
 
-	t := Tables.SubjectConditionSet
-	smT := Tables.SubjectMappings
+// 	t := Tables.SubjectConditionSet
+// 	smT := Tables.SubjectMappings
 
-	whereSubQ, _, err := db.NewStatementBuilder().
-		// SELECT 1 is consumed by EXISTS clause, not true selection of data
-		Select("1").
-		From("jsonb_array_elements(" + t.Field("condition") + ") AS ss" +
-			", jsonb_array_elements(ss->'condition_groups') AS cg" +
-			", jsonb_array_elements(cg->'conditions') AS each_condition").
-		Where(where).
-		ToSql()
-	if err != nil {
-		logger.Error("could not generate SQL for subject entitlements", slog.String("error", err.Error()))
-		return "", nil, err
-	}
-	logger.Debug("checking for existence of any condition in the SubjectSets > ConditionGroups > Conditions that matches the provided subject properties", slog.String("where", whereSubQ))
+// 	whereSubQ, _, err := db.NewStatementBuilder().
+// 		// SELECT 1 is consumed by EXISTS clause, not true selection of data
+// 		Select("1").
+// 		From("jsonb_array_elements(" + t.Field("condition") + ") AS ss" +
+// 			", jsonb_array_elements(ss->'condition_groups') AS cg" +
+// 			", jsonb_array_elements(cg->'conditions') AS each_condition").
+// 		Where(where).
+// 		ToSql()
+// 	if err != nil {
+// 		logger.Error("could not generate SQL for subject entitlements", slog.String("error", err.Error()))
+// 		return "", nil, err
+// 	}
+// 	logger.Debug("checking for existence of any condition in the SubjectSets > ConditionGroups > Conditions that matches the provided subject properties", slog.String("where", whereSubQ))
 
-	return subjectMappingSelect().
-		From(smT.Name()).
-		// ensure namespace, definition, and value of mapped attribute are all active
-		Where("ns.active = true AND ad.active = true AND av.active = true AND EXISTS (" + whereSubQ + ")").
-		ToSql()
-}
+// 	return subjectMappingSelect().
+// 		From(smT.Name()).
+// 		// ensure namespace, definition, and value of mapped attribute are all active
+// 		Where("ns.active = true AND ad.active = true AND av.active = true AND EXISTS (" + whereSubQ + ")").
+// 		ToSql()
+// }
 
 // GetMatchedSubjectMappings liberally returns a list of SubjectMappings based on the provided SubjectProperties.
 // The SubjectMappings are returned if an external selector field matches.
 //
 // NOTE: This relationship is sometimes called Entitlements or Subject Entitlements.
 // NOTE: if you have any issues, set the log level to 'debug' for more comprehensive context.
+// func (c PolicyDBClient) GetMatchedSubjectMappings(ctx context.Context, properties []*policy.SubjectProperty) ([]*policy.SubjectMapping, error) {
+// 	sql, args, err := selectMatchedSubjectMappingsSQL(properties, c.logger)
+// 	println("sql: ", sql)
+// 	c.logger.Debug("generated SQL for subject entitlements", slog.Any("properties", properties), slog.String("sql", sql), slog.Any("args", args))
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	rows, err := c.Query(ctx, sql, args)
+// 	c.logger.Debug("executed SQL for subject entitlements", slog.Any("properties", properties), slog.String("sql", sql), slog.Any("args", args), slog.Any("rows", rows), slog.Any("error", err))
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer rows.Close()
+
+// 	return subjectMappingHydrateList(rows)
+// }
+
 func (c PolicyDBClient) GetMatchedSubjectMappings(ctx context.Context, properties []*policy.SubjectProperty) ([]*policy.SubjectMapping, error) {
-	sql, args, err := selectMatchedSubjectMappingsSQL(properties, c.logger)
-	c.logger.Debug("generated SQL for subject entitlements", slog.Any("properties", properties), slog.String("sql", sql), slog.Any("args", args))
+	selectors := []string{}
+	for _, sp := range properties {
+		selectors = append(selectors, sp.GetExternalSelectorValue())
+	}
+	list, err := c.Queries.MatchSubjectMappings(ctx, selectors)
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	rows, err := c.Query(ctx, sql, args)
-	c.logger.Debug("executed SQL for subject entitlements", slog.Any("properties", properties), slog.String("sql", sql), slog.Any("args", args), slog.Any("rows", rows), slog.Any("error", err))
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+	mappings := make([]*policy.SubjectMapping, len(list))
+	for i, sm := range list {
+		metadata := &common.Metadata{}
+		if err = unmarshalMetadata(sm.Metadata, metadata); err != nil {
+			return nil, err
+		}
 
-	return subjectMappingHydrateList(rows)
+		av := &policy.Value{}
+		if err = unmarshalAttributeValue(sm.AttributeValue, av); err != nil {
+			return nil, err
+		}
+
+		a := []*policy.Action{}
+		if err = unmarshalActionsProto(sm.Actions, &a); err != nil {
+			return nil, err
+		}
+
+		scs := policy.SubjectConditionSet{}
+		if err = unmarshalSubjectConditionSet(sm.SubjectConditionSet, &scs); err != nil {
+			return nil, err
+		}
+
+		mappings[i] = &policy.SubjectMapping{
+			Id:                  sm.ID,
+			Metadata:            metadata,
+			AttributeValue:      av,
+			SubjectConditionSet: &scs,
+			Actions:             a,
+		}
+	}
+
+	return mappings, nil
 }

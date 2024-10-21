@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -83,36 +82,6 @@ func unmarshalActionsProto(actionsJSON []byte, actions *[]*policy.Action) error 
 	}
 
 	return nil
-}
-
-func subjectMappingSelect() sq.SelectBuilder {
-	t := Tables.SubjectMappings
-	avT := Tables.AttributeValues
-	scsT := Tables.SubjectConditionSet
-	adT := Tables.Attributes
-	nsT := Tables.Namespaces
-	return db.NewStatementBuilder().Select(
-		t.Field("id"),
-		t.Field("actions"),
-		constructMetadata(t.Name(), false),
-		"JSON_BUILD_OBJECT("+
-			"'id', "+scsT.Field("id")+", "+
-			constructMetadata(scsT.Name(), true)+
-			"'subject_sets', "+scsT.Field("condition")+
-			") AS subject_condition_set",
-		"JSON_BUILD_OBJECT("+
-			"'id', av.id,"+
-			"'value', av.value,"+
-			"'active', av.active"+
-			") AS attribute_value",
-	).
-		LeftJoin(avT.Name() + " av ON " + t.Field("attribute_value_id") + " = " + "av.id").
-		LeftJoin(adT.Name() + " ad ON av.attribute_definition_id = ad.id").
-		LeftJoin(nsT.Name() + " ns ON ad.namespace_id = ns.id").
-		GroupBy("av.id").
-		GroupBy(t.Field("id")).
-		LeftJoin(scsT.Name() + " ON " + scsT.Field("id") + " = " + t.Field("subject_condition_set_id")).
-		GroupBy(scsT.Field("id"))
 }
 
 func subjectMappingHydrateItem(row pgx.Row) (*policy.SubjectMapping, error) {

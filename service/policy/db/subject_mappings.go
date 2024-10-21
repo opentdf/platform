@@ -83,50 +83,6 @@ func unmarshalActionsProto(actionsJSON []byte, actions *[]*policy.Action) error 
 	return nil
 }
 
-func subjectMappingHydrateItem(row MatchSubjectMappingsRow) (*policy.SubjectMapping, error) {
-	var err error
-	metadata := &common.Metadata{}
-	if err = unmarshalMetadata(row.Metadata, metadata); err != nil {
-		return nil, err
-	}
-
-	av := &policy.Value{}
-	if err = unmarshalAttributeValue(row.AttributeValue, av); err != nil {
-		return nil, err
-	}
-
-	a := []*policy.Action{}
-	if err = unmarshalActionsProto(row.Actions, &a); err != nil {
-		return nil, err
-	}
-
-	scs := policy.SubjectConditionSet{}
-	if err = unmarshalSubjectConditionSet(row.SubjectConditionSet, &scs); err != nil {
-		return nil, err
-	}
-	return &policy.SubjectMapping{
-		Id:                  row.ID,
-		Metadata:            metadata,
-		AttributeValue:      av,
-		SubjectConditionSet: &scs,
-		Actions:             a,
-	}, nil
-}
-
-func subjectMappingHydrateList(rows []MatchSubjectMappingsRow) ([]*policy.SubjectMapping, error) {
-	mappings := make([]*policy.SubjectMapping, len(rows))
-	for i, row := range rows {
-		sm, err := subjectMappingHydrateItem(row)
-		if err != nil {
-			return nil, err
-		}
-
-		mappings[i] = sm
-	}
-
-	return mappings, nil
-}
-
 /*
 	Subject Condition Sets
 */

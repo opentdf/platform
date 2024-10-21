@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
@@ -84,65 +83,48 @@ func unmarshalActionsProto(actionsJSON []byte, actions *[]*policy.Action) error 
 	return nil
 }
 
-func subjectMappingHydrateItem(row pgx.Row) (*policy.SubjectMapping, error) {
-	var (
-		id                 string
-		actionsJSON        []byte
-		metadataJSON       []byte
-		scsJSON            []byte
-		attributeValueJSON []byte
-	)
-
-	err := row.Scan(
-		&id,
-		&actionsJSON,
-		&metadataJSON,
-		&scsJSON,
-		&attributeValueJSON,
-	)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	m := &common.Metadata{}
-	if err = unmarshalMetadata(metadataJSON, m); err != nil {
+func subjectMappingHydrateItem(row MatchSubjectMappingsRow) (*policy.SubjectMapping, error) {
+	var err error
+	metadata := &common.Metadata{}
+	if err = unmarshalMetadata(row.Metadata, metadata); err != nil {
 		return nil, err
 	}
 
 	av := &policy.Value{}
-	if err = unmarshalAttributeValue(attributeValueJSON, av); err != nil {
+	if err = unmarshalAttributeValue(row.AttributeValue, av); err != nil {
 		return nil, err
 	}
 
 	a := []*policy.Action{}
-	if err = unmarshalActionsProto(actionsJSON, &a); err != nil {
+	if err = unmarshalActionsProto(row.Actions, &a); err != nil {
 		return nil, err
 	}
 
 	scs := policy.SubjectConditionSet{}
-	if err = unmarshalSubjectConditionSet(scsJSON, &scs); err != nil {
+	if err = unmarshalSubjectConditionSet(row.SubjectConditionSet, &scs); err != nil {
 		return nil, err
 	}
-
 	return &policy.SubjectMapping{
-		Id:                  id,
-		Metadata:            m,
+		Id:                  row.ID,
+		Metadata:            metadata,
 		AttributeValue:      av,
 		SubjectConditionSet: &scs,
 		Actions:             a,
 	}, nil
 }
 
-func subjectMappingHydrateList(rows pgx.Rows) ([]*policy.SubjectMapping, error) {
-	list := make([]*policy.SubjectMapping, 0)
-	for rows.Next() {
-		s, err := subjectMappingHydrateItem(rows)
+func subjectMappingHydrateList(rows []MatchSubjectMappingsRow) ([]*policy.SubjectMapping, error) {
+	mappings := make([]*policy.SubjectMapping, len(rows))
+	for i, row := range rows {
+		sm, err := subjectMappingHydrateItem(row)
 		if err != nil {
 			return nil, err
 		}
-		list = append(list, s)
+
+		mappings[i] = sm
 	}
-	return list, nil
+
+	return mappings, nil
 }
 
 /*

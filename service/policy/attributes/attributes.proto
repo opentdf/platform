@@ -169,8 +169,16 @@ message DeactivateAttributeValueResponse {
 message GetAttributeValuesByFqnsRequest {
   // Required
   // Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
-  repeated string fqns = 1 [(buf.validate.field).required = true];
-  policy.AttributeValueSelector with_value = 2 [(buf.validate.field).required = true];
+  repeated string fqns = 1 [
+    (buf.validate.field).repeated = {
+      min_items: 1,
+      max_items: 250
+    }
+  ];
+
+  // Optional
+  // This attribute value selector is not used currently, but left here for future use.
+  policy.AttributeValueSelector with_value = 2;
 }
 message GetAttributeValuesByFqnsResponse {
   message AttributeAndValue {

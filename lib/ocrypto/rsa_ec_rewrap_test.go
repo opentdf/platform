@@ -3,8 +3,9 @@ package ocrypto
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 const (

@@ -89,8 +89,8 @@ p,	role:admin,		/v1/token/authorization,						  				        *,      allow
 p,	role:standard,		policy.*,																read,			allow
 p,	role:standard,		kasregistry.*,													read,			allow
 p,	role:standard,    kas.AccessService/Rewrap, 			           *,			allow
-p,      role:standard,          kas.AuthorizationService/GetDecisions,             read,                   allow
-p,      role:standard,          kas.AuthorizationService/GetDecisionsByToken,      read,                   allow
+p,  role:standard,    authorization.AuthorizationService/GetDecisions,        read, allow
+p,  role:standard,    authorization.AuthorizationService/GetDecisionsByToken, read, allow
 ## HTTP routes
 p,	role:standard,		/attributes*,														read,			allow
 p,	role:standard,		/namespaces*,														read,			allow

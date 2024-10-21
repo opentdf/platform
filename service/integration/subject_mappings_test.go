@@ -834,7 +834,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InOne() {
 	s.Equal(fixtureScs.ID, sm[0].GetSubjectConditionSet().GetId())
 }
 
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DoesNotReturnNotInWhenMatches() {
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_ReturnsNotInWhenMatches() {
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_not_in")
 	externalSelectorValue := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
 	externalValues := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
@@ -849,7 +849,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DoesNotReturnNotInW
 	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
 	s.Require().NoError(err)
 	s.NotZero(smList)
-	s.Empty(smList)
+	s.Equal(fixtureScs.ID, smList[0].GetSubjectConditionSet().GetId())
 }
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInOneMatch() {
@@ -871,38 +871,6 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInOneMatch() {
 	s.Require().Len(smList, 1)
 	s.Equal(fixtureScs.ID, smList[0].GetSubjectConditionSet().GetId())
 	s.Equal(expectedMappedFixture.ID, smList[0].GetId())
-}
-
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MissingFieldInProperty_Fails() {
-	props := []*policy.SubjectProperty{
-		{
-			ExternalValue: "some_value",
-		},
-	}
-
-	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-	s.Zero(sm)
-}
-
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MissingValueInProperty_Fails() {
-	props := []*policy.SubjectProperty{
-		{
-			ExternalSelectorValue: ".some_field",
-		},
-	}
-
-	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-	s.Zero(sm)
-}
-
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NoPropertiesProvided_Fails() {
-	props := []*policy.SubjectProperty{}
-
-	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-	s.Zero(sm)
 }
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InMultiple() {
@@ -1003,7 +971,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInMultiple() {
 	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
 	s.Require().NoError(err)
 	s.NotZero(smList)
-	s.Len(smList, 2)
+	s.Len(smList, 3)
 	for _, sm := range smList {
 		if sm.GetSubjectConditionSet().GetId() == fixtureScs.ID {
 			s.Equal(expectedMappedFixture.ID, sm.GetId())

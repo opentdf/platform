@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	kas_rsa_2048_public = `-----BEGIN PUBLIC KEY-----
+	kasRSA2048PublicKey = `-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxiglL9UYch+/Tcx8PuU2
 R1t6VccwZ8m2460Kq+p3JMydV5XeXJvjlehCxPuDDExoTtnj4fGRwNjsjj5cbJbq
 929VRB2BpFLnGyX1iUGGzackXcvvvFwz0DogH1IOh0szgDGPls6BokoMRdbC9bq5
@@ -18,7 +18,7 @@ XmlRmOHqMNGBziGBu1CeRL+4fbf+NykGAWQ216StbcClFXHC6G1/sFuOhFE12d+v
 zQIDAQAB
 -----END PUBLIC KEY-----`
 
-	kas_rsa_2048_private = `-----BEGIN PRIVATE KEY-----
+	kasRSA2048PrivateKey = `-----BEGIN PRIVATE KEY-----
 MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDGKCUv1RhyH79N
 zHw+5TZHW3pVxzBnybbjrQqr6nckzJ1Xld5cm+OV6ELE+4MMTGhO2ePh8ZHA2OyO
 Plxslur3b1VEHYGkUucbJfWJQYbNpyRdy++8XDPQOiAfUg6HSzOAMY+WzoGiSgxF
@@ -47,7 +47,7 @@ pREiRl7wx0sg0UlJmqprZK6LKuVCiy8r6qX6wGsYNbkLNiB8t0ro/f2/+FsPprUt
 2qCgxkX89uyYl/aupOnlBJMk
 -----END PRIVATE KEY-----`
 
-	kas_rsa_3072_public = `-----BEGIN PUBLIC KEY-----
+	kasRSA3072PublicKey = `-----BEGIN PUBLIC KEY-----
 MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAvpLaaETLrAY3t0O9YVNF
 fn8viEJHxIWCYr9NTOWrwJiJypYFaZcvbkEZsnPyb/utgmdtgcmqrX+MbIjBzBlL
 pn8apd1R3zTh136bGMHfVl8uN5oDH1QX0QVG8NQc41cVcztCWodIR6d8fofq0b8U
@@ -59,7 +59,7 @@ t2uDw5OY9VkES21MIN8bfdWA6gonPm4iKn5L6WltQQUQdn8vk/89AOFIbP/7e3Yv
 OHrp2m+VNTqcdrgVG4sdSG0DGZNSLM5U6SHMTgoQS6TtAgMBAAE=
 -----END PUBLIC KEY-----`
 
-	kas_rsa_3072_private = `-----BEGIN PRIVATE KEY-----
+	kasRSA3072PrivateKey = `-----BEGIN PRIVATE KEY-----
 MIIG/gIBADANBgkqhkiG9w0BAQEFAASCBugwggbkAgEAAoIBgQC+ktpoRMusBje3
 Q71hU0V+fy+IQkfEhYJiv01M5avAmInKlgVply9uQRmyc/Jv+62CZ22Byaqtf4xs
 iMHMGUumfxql3VHfNOHXfpsYwd9WXy43mgMfVBfRBUbw1BzjVxVzO0Jah0hHp3x+
@@ -100,7 +100,7 @@ mT3cRlwvxPqWFRsbgO0AihWOjoUy11OJmGX8wKWuAdwTKdXtu8ZGtfGtYBLwgG0U
 Wnzkl5DShi5QHFAHEwaWZizh
 -----END PRIVATE KEY-----`
 
-	kas_rsa_4096_public = `-----BEGIN PUBLIC KEY-----
+	kasRSA4096PublicKey = `-----BEGIN PUBLIC KEY-----
 MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAvvGs2QasIR8bI5zeIgLw
 SEJVgjREUaUxszYS3DOyakssbPZqN+3cjFQBKgrBudcrgvMUip6WmQbMOn20t4Qp
 vJJdx13GCfOxZufa9Ndo5NzKEMg4Usk5MIJxBiLOkrRRMMM5jt0GvR9H8OIfKn8A
@@ -115,7 +115,7 @@ A/lZKMd5nLgeK9jlTBf8WAbWIuRJPWGkszMN9k+YvIKUlFFKVEY4hV8VBxHHMcFZ
 oPtirhPIyHBgqe3rmlJvDIsCAwEAAQ==
 -----END PUBLIC KEY-----`
 
-	kas_rsa_4096_private = `-----BEGIN PRIVATE KEY-----
+	kasRSA4096PrivateKey = `-----BEGIN PRIVATE KEY-----
 MIIJQgIBADANBgkqhkiG9w0BAQEFAASCCSwwggkoAgEAAoICAQC+8azZBqwhHxsj
 nN4iAvBIQlWCNERRpTGzNhLcM7JqSyxs9mo37dyMVAEqCsG51yuC8xSKnpaZBsw6
 fbS3hCm8kl3HXcYJ87Fm59r012jk3MoQyDhSyTkwgnEGIs6StFEwwzmO3Qa9H0fw
@@ -168,7 +168,7 @@ cgTJg5PEyffwXTyaaJ8cZUol8PnxTvplBpWseKFeEdgPxOHAnfHdMEjgH5ikd0+w
 T1IXp5vmOmypUj5J0znUZnrXU+CpBA==
 -----END PRIVATE KEY-----`
 
-	client_rsa_2048_public = `-----BEGIN PUBLIC KEY-----
+	clientRSA2048PublicKey = `-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA06c5MJO+WuhaU40o5ueP
 PFiIZZaDfr0ERWpEZ0h3EeUMvD0sqrWvmay61rLkUEaHwwYZwxQp3eJ27YSGJ0Ki
 fPexijdAOQuGd51inwFSJe8AwdqNSH1NzEFsZNYSAFTU4//Qq5U+Ynwq/wUxq8p8
@@ -178,7 +178,7 @@ lebrUSiq40m+Mh1GYycp92KrGGG0tw9lEza5F/ArQVsl6RAQ3kJ0Z9P8Qn5OgFN/
 VwIDAQAB
 -----END PUBLIC KEY-----`
 
-	client_rsa_2048_private = `-----BEGIN PRIVATE KEY-----
+	clientRSA2048PrivateKey = `-----BEGIN PRIVATE KEY-----
 MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDTpzkwk75a6FpT
 jSjm5488WIhlloN+vQRFakRnSHcR5Qy8PSyqta+ZrLrWsuRQRofDBhnDFCnd4nbt
 hIYnQqJ897GKN0A5C4Z3nWKfAVIl7wDB2o1IfU3MQWxk1hIAVNTj/9CrlT5ifCr/
@@ -207,7 +207,7 @@ nRhvJIhyAK8GbpVPkBi7haNl0H5DRQBev8dVxZKg13QZGJloRNInmpDnXRBwYfqa
 Ez3tJkzLH5PytDsJyreB8wZL
 -----END PRIVATE KEY-----`
 
-	client_rsa_3072_public = `-----BEGIN PUBLIC KEY-----
+	clientRSA3072PublicKey = `-----BEGIN PUBLIC KEY-----
 MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAxBu04Tq3Xp4IJ/2h1hWT
 VvumUMKNXJ9jpm3NUinjx6QyQazUAgMF4eNs8m8beIAMpCpYG9sS8Sc5xil3UmUn
 DwhgMalDU/MxDPiTWMe6TP+DRYB6uCgvJUBz2dkaLHyQrEsOdi9auQ0p3NZzjUid
@@ -219,7 +219,7 @@ z5+8Bqmuvt/KsKVy7L89bKGxfoY7NwwjIMfoQCJAKb72GiLJJQYVDfuhjKBCsoXR
 kVskEtG/mHUmiMlRrY5fqVLBku+KgrfjyS5iBedVmpPbAgMBAAE=
 -----END PUBLIC KEY-----`
 
-	client_rsa_3072_private = `-----BEGIN PRIVATE KEY-----
+	clientRSA3072PrivateKey = `-----BEGIN PRIVATE KEY-----
 MIIG/QIBADANBgkqhkiG9w0BAQEFAASCBucwggbjAgEAAoIBgQDEG7ThOrdenggn
 /aHWFZNW+6ZQwo1cn2Ombc1SKePHpDJBrNQCAwXh42zybxt4gAykKlgb2xLxJznG
 KXdSZScPCGAxqUNT8zEM+JNYx7pM/4NFgHq4KC8lQHPZ2RosfJCsSw52L1q5DSnc
@@ -260,7 +260,7 @@ ji0/3WovrS8rDPexch4/G+7wOtAF4APF52CRBLtSA3G3jhISl9W5fEU7OQ+uF9tU
 5JlSZqTeZ8u+eQGlcNonAFU=
 -----END PRIVATE KEY-----`
 
-	client_rsa_4096_public = `-----BEGIN PUBLIC KEY-----
+	clientRSA4096PublicKey = `-----BEGIN PUBLIC KEY-----
 MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAtK01xut0kOEcloZBn2Aq
 4mcVfqbidyy3B4vmuybaIyZz+UYiYIKXbm4j6PN5U32tYT2WjMUj2ReSVcEZirX0
 RA0n5nnif2rAyshF3PD6HOkV43XTYAano0RZf8oxow78hQBQFdGEl+yPLwclBUal
@@ -275,7 +275,7 @@ Na1ka2d9Dn3UUkRCFfJjltIZfhaoFj98AUhWXmCwQ0atTh2AP5DI7xXhywKqqyL+
 AUWCoPbjycIQvYTZzNYT4d8CAwEAAQ==
 -----END PUBLIC KEY-----`
 
-	client_rsa_4096_private = `-----BEGIN PRIVATE KEY-----
+	clientRSA4096PrivateKey = `-----BEGIN PRIVATE KEY-----
 MIIJQgIBADANBgkqhkiG9w0BAQEFAASCCSwwggkoAgEAAoICAQC0rTXG63SQ4RyW
 hkGfYCriZxV+puJ3LLcHi+a7JtojJnP5RiJggpdubiPo83lTfa1hPZaMxSPZF5JV
 wRmKtfREDSfmeeJ/asDKyEXc8Poc6RXjddNgBqejRFl/yjGjDvyFAFAV0YSX7I8v
@@ -328,38 +328,38 @@ YfNVLFnAZTZl6NkVkWsHG0PSZaHccHWnbjXHtOJWHl3P7dzZUuRCRHNzXZMqExfr
 37rhIPAoq2LDsgOaeW57z0ZQ1Hqp2g==
 -----END PRIVATE KEY-----`
 
-	kas_ec_256_public = `-----BEGIN PUBLIC KEY-----
+	kasEC256PublicKey = `-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1eSEY/uLgliKkq0klNpznlX9LOIW
 sFh+ENju5oA/vZXY4Si0sNl/t9oax+IOjm5JZZSkCDYoeelajUxpQIZgRg==
 -----END PUBLIC KEY-----`
 
-	kas_ec_256_private = `-----BEGIN PRIVATE KEY-----
+	kasEC256PrivateKey = `-----BEGIN PRIVATE KEY-----
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgpe8aN73TmHsOQGXO
 GVGzimdlJgxs5DTqptIrvJwh626hRANCAATV5IRj+4uCWIqSrSSU2nOeVf0s4haw
 WH4Q2O7mgD+9ldjhKLSw2X+32hrH4g6ObklllKQINih56VqNTGlAhmBG
 -----END PRIVATE KEY-----`
 
-	kas_ec_384_public = `-----BEGIN PUBLIC KEY-----
+	kasEC384PublicKey = `-----BEGIN PUBLIC KEY-----
 MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEWt3+UR+Rpxgb5iFoukHbf9kiiTbiU2i9
 jLKaLhBqSZzoM1efQvpWacbb9+r5D9Mv/y7s+ThW/2+eAKoaeDSMHhoO1gSx0YXH
 ej9/CqfTpdDbm4HJi/aUJ2gLwjSrSnsj
 -----END PUBLIC KEY-----`
 
-	kas_ec_384_private = `-----BEGIN PRIVATE KEY-----
+	kasEC384PrivateKey = `-----BEGIN PRIVATE KEY-----
 MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDALXfz/NrisKyuyvwX7
 3WLUwryz4mytjHahcDn8pxVGQDUiP0zX6B+PcCCge47+Y0WhZANiAARa3f5RH5Gn
 GBvmIWi6Qdt/2SKJNuJTaL2MspouEGpJnOgzV59C+lZpxtv36vkP0y//Luz5OFb/
 b54Aqhp4NIweGg7WBLHRhcd6P38Kp9Ol0NubgcmL9pQnaAvCNKtKeyM=
 -----END PRIVATE KEY-----`
 
-	kas_ec_521_public = `-----BEGIN PUBLIC KEY-----
+	kasEC521PublicKey = `-----BEGIN PUBLIC KEY-----
 MIGbMBAGByqGSM49AgEGBSuBBAAjA4GGAAQAkuuA6HDjiWUXgcaxT16GHrZIJQds
 zKvJJvHYHqdHycXAEzMBwrZlwmyTDMs0zC1zKnp0KJg2oN/JEMckL/7Bj3sAybE1
 wySV9zHP24bzDNpQTrnd1XJp74WNClI+m/CjGCPMZOvBPNyWf8ysTQ0jFDs98AEB
 A7dBvFZL2O9lLhrUEt4=
 -----END PUBLIC KEY-----`
 
-	kas_ec_521_private = `-----BEGIN PRIVATE KEY-----
+	kasEC521PrivateKey = `-----BEGIN PRIVATE KEY-----
 MIHuAgEAMBAGByqGSM49AgEGBSuBBAAjBIHWMIHTAgEBBEIArPqCq8Pxh2XS0Faz
 OxZ3Mznwm8rHrQU0mnrn3xlrVVQefkCEeRDmsD8wAXBdd72t3HU7HvMCqWHUhLfg
 ByDKS6GhgYkDgYYABACS64DocOOJZReBxrFPXoYetkglB2zMq8km8dgep0fJxcAT
@@ -368,38 +368,38 @@ ud3VcmnvhY0KUj6b8KMYI8xk68E83JZ/zKxNDSMUOz3wAQEDt0G8VkvY72UuGtQS
 3g==
 -----END PRIVATE KEY-----`
 
-	nanotdf_ec_256_public = `-----BEGIN PUBLIC KEY-----
+	nanotdfEC256PublicKey = `-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEM1fJlnzL3bMYoh6yU9aOmbwaWHWq
 7CATl+sjaEefNduwTwZZRquNkI5gZzeUuodvGAolQIGhLUdWq9nnS/qx8g==
 -----END PUBLIC KEY-----`
 
-	nanotdf_ec_256_private = `-----BEGIN PRIVATE KEY-----
+	nanotdfEC256PrivateKey = `-----BEGIN PRIVATE KEY-----
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgGDTNEZTfx0QJH+Cv
 BZqwBbl3l9psQEKpYuktczPJe6OhRANCAAQzV8mWfMvdsxiiHrJT1o6ZvBpYdars
 IBOX6yNoR58127BPBllGq42QjmBnN5S6h28YCiVAgaEtR1ar2edL+rHy
 -----END PRIVATE KEY-----`
 
-	nanotdf_ec_384_public = `-----BEGIN PUBLIC KEY-----
+	nanotdfEC384PublicKey = `-----BEGIN PUBLIC KEY-----
 MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEDIVAsQDhX/eyPwouPbsxReSWrs0vlgdD
 s3kp0xhuYNIsEn6geCTHzun15DrmW93/vMdUGwdhuZHDEgNCMM5K3Tkp12husDyc
 9wSoe9aBJItnbFPYXV83qu4AndpZh09l
 -----END PUBLIC KEY-----`
 
-	nanotdf_ec_384_private = `-----BEGIN PRIVATE KEY-----
+	nanotdfEC384PrivateKey = `-----BEGIN PRIVATE KEY-----
 MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDDxrtzz4hqeu7NVjW8b
 z/VV6cGBHWbMK18YC7Z9Z3p53zJ8uNaWzld3uCoy3DVHc6GhZANiAAQMhUCxAOFf
 97I/Ci49uzFF5JauzS+WB0OzeSnTGG5g0iwSfqB4JMfO6fXkOuZb3f+8x1QbB2G5
 kcMSA0IwzkrdOSnXaG6wPJz3BKh71oEki2dsU9hdXzeq7gCd2lmHT2U=
 -----END PRIVATE KEY-----`
 
-	nanotdf_ec_521_public = `-----BEGIN PUBLIC KEY-----
+	nanotdfEC521publicKey = `-----BEGIN PUBLIC KEY-----
 MIGbMBAGByqGSM49AgEGBSuBBAAjA4GGAAQBKSdtLB/5LTSsQLqEB2ytZ/lIj0vS
 IS2IIgjRvGPUr5F6ZoZ4v78oAMT+rg8INZfC0Mxw429k2AuNXI56WD/jIxABLiB0
 Oq7JS/8bGTEEMLptt5CwLzbp7oGXN08SMNMKGuP5fnsD8t89zx7u4AGbF3Btb5iT
 O9LiKgComz+oA+dOoU8=
 -----END PUBLIC KEY-----`
 
-	nanotdf_ec_521_private = `-----BEGIN PRIVATE KEY-----
+	nanotdfEC521PrivateKey = `-----BEGIN PRIVATE KEY-----
 MIHuAgEAMBAGByqGSM49AgEGBSuBBAAjBIHWMIHTAgEBBEIBfYRA/C4czvXEvqW5
 Cwibov7dRy5oFmqpUSxtXKfPpvLZIdldOyeX5EnqY30au8rnknHi50HvZykOCobP
 aU0SKhWhgYkDgYYABAEpJ20sH/ktNKxAuoQHbK1n+UiPS9IhLYgiCNG8Y9SvkXpm
@@ -408,38 +408,38 @@ kLAvNunugZc3TxIw0woa4/l+ewPy3z3PHu7gAZsXcG1vmJM70uIqAKibP6gD506h
 Tw==
 -----END PRIVATE KEY-----`
 
-	client_ec_256_public = `-----BEGIN PUBLIC KEY-----
+	clientEC256PublicKey = `-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEPebiI6IF413z3FwiPRpytpTqgDfF
 RPqR3T4Y9UHNmiK++aTHtVVIqm/QShe/RX/i9tTp/ugDiMKVhlsnWvp7iQ==
 -----END PUBLIC KEY-----`
 
-	client_ec_256_private = `-----BEGIN PRIVATE KEY-----
+	clientEC256PrivateKey = `-----BEGIN PRIVATE KEY-----
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgswA9Oa+q7mmhgAGF
 hdTHWOYKeA8tyFbc75QzeacoQ1ahRANCAAQ95uIjogXjXfPcXCI9GnK2lOqAN8VE
 +pHdPhj1Qc2aIr75pMe1VUiqb9BKF79Ff+L21On+6AOIwpWGWyda+nuJ
 -----END PRIVATE KEY-----`
 
-	client_ec_384_public = `-----BEGIN PUBLIC KEY-----
+	clientEC384PublicKey = `-----BEGIN PUBLIC KEY-----
 MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEN7TqOJkT4HVkEfdXboquj5Setj/NRZ+m
 syXDsW03OracrQgC7YcCZGaYOdw7CKyB2mQhUxnUjt24uwzKxrwqdwdVbdCgRZ+q
 Qvvv1gTSFPaaynTKcmRKeJrB8E+x402h
 -----END PUBLIC KEY-----`
 
-	client_ec_384_private = `-----BEGIN PRIVATE KEY-----
+	clientEC384PrivateKey = `-----BEGIN PRIVATE KEY-----
 MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDC/yMfCqwqHEPHCQ1XT
 zbhkdVTnKA5AZENWYw589z1SjJxiEaSf4nvoDe2WdeqDOeyhZANiAAQ3tOo4mRPg
 dWQR91duiq6PlJ62P81Fn6azJcOxbTc6tpytCALthwJkZpg53DsIrIHaZCFTGdSO
 3bi7DMrGvCp3B1Vt0KBFn6pC++/WBNIU9prKdMpyZEp4msHwT7HjTaE=
 -----END PRIVATE KEY-----`
 
-	client_ec_521_public = `-----BEGIN PUBLIC KEY-----
+	clientEC521PublicKey = `-----BEGIN PUBLIC KEY-----
 MIGbMBAGByqGSM49AgEGBSuBBAAjA4GGAAQBbCtibYZHdlg4ZRa2RAIdNrEQe1K+
 /g6s6mwAduMulwDRjh2HyXmqMITIi8pLdBuxqemyIp3iA0bBQO9+q8vuv7sAj7L4
 E9taFLDINdJN9QbNXkfiIqPEgbrFmZSg6jjU5h7qkMd63kt4he2LuBheduWx1Pcy
 3bZlcIP9SNOY614VF7A=
 -----END PUBLIC KEY-----`
 
-	client_ec_521_private = `-----BEGIN PRIVATE KEY-----
+	clientEC521PrivateKey = `-----BEGIN PRIVATE KEY-----
 MIHuAgEAMBAGByqGSM49AgEGBSuBBAAjBIHWMIHTAgEBBEIBAif12Nlxa+RgSdYB
 pn170EbEeXE8ORFYtSofBKEuCKd3FgxHCU6UPUENXX3oligX9tB7xq1hZVSS1Bk3
 W9aAZDqhgYkDgYYABAFsK2Jthkd2WDhlFrZEAh02sRB7Ur7+DqzqbAB24y6XANGO
@@ -450,17 +450,17 @@ sA==
 )
 
 const (
-	// this wrapped key is generated by encrypting 32 byte symmetric key with  kas_rsa_2048_public
-	rsa_2048_wrappedKey   = `rKNvfoTo8vl+cfFuaWFxu+7btyj0DrMR59iIpgugyKjnb0V+dlaVFIw03UbWThEZA/1xGYYTK4CsX3J5h4FV0kAAdMXkRjaW7fygigHPixailHjDRuA34CpL6ndq+mIa6fWZ1hRbpXu3fOOfnBT+33wGhNH7sowNtNKJvNLzlta1ZObPZCPfdNuJ0wZz4eAkKijN7Lvtqt4Ts6Jtb9DOZ0GTBZBHx8j9JH3avE3Tkj0KSUydpSQRgojCkgdWDVOK6L3YcETTObMKUKPwzljBZAEUCnxi1nNGGmpytF1WfIyrUTQPJ1fPKlkCWZV7NnJ+Mk0U760hQBHg669vhw1+Cg==`
-	rsa_2048_actualSymKey = `ac0be299f7e067d63c524f1a56e38c6a9657f3e20983b42e3f6116a3a08fe7cc`
+	// this wrapped key is generated by encrypting 32 byte symmetric key with  kasRSA2048PublicKey
+	rsa2048WrappedKey   = `rKNvfoTo8vl+cfFuaWFxu+7btyj0DrMR59iIpgugyKjnb0V+dlaVFIw03UbWThEZA/1xGYYTK4CsX3J5h4FV0kAAdMXkRjaW7fygigHPixailHjDRuA34CpL6ndq+mIa6fWZ1hRbpXu3fOOfnBT+33wGhNH7sowNtNKJvNLzlta1ZObPZCPfdNuJ0wZz4eAkKijN7Lvtqt4Ts6Jtb9DOZ0GTBZBHx8j9JH3avE3Tkj0KSUydpSQRgojCkgdWDVOK6L3YcETTObMKUKPwzljBZAEUCnxi1nNGGmpytF1WfIyrUTQPJ1fPKlkCWZV7NnJ+Mk0U760hQBHg669vhw1+Cg==`
+	rsa2048ActualSymKey = `ac0be299f7e067d63c524f1a56e38c6a9657f3e20983b42e3f6116a3a08fe7cc`
 
-	// this wrapped key is generated by encrypting 32 byte symmetric key with  kas_rsa_3072_public
-	rsa_3072_wrappedKey   = `vk6h3gomD6P9aOA0sJ4Hiq3qSARbfKeZhIumVA9QTA1dYdUyMWm41GpCbU6goOiJOQ181zdgQah27BzztMrxDn68SkCJ1PggMWcALdqEEtDtlgWGmSPdYCMgsdXOfGfp63nSHT+Sk/AKi3pNlwpcJdCILRlKd2sD5WrhvFGvz2OJFKb50aYMmwG8+ZSPdwjHGm1/+mPG41UfEgLEWfdYvK7annnTlgR5fM/ke71OsAj9Su3g9XiAltQ7qXHJXeAMLiw9xjgcRRb+5WzX3waJhFsNF4kBFkEoOkAUoFKFhj0N9FJFAs77fPzYmUyVNKEyAQJOuLVkTMemK1IPAzHNbuWdRS6iEh6qvGTjSa3eHJNvHcdW8FMEX/T1M6eVG/kZjWXknFeuLZ37uEWB6jy5IAUNHiwoPv+6USDt43ALT9wyEhAGORN3Va4WBRzyDaXButB9mzprJ6Iy1RKOUWTtpCYhb1HIjGBdVJhNu21IXLMDVce5/FdRmL46sRY1p3d/`
-	rsa_3072_actualSymKey = `9220975a6eb4a6014b01d904a483a08dfcbd0ed87d6c2d827522b7f4728ee0ef`
+	// this wrapped key is generated by encrypting 32 byte symmetric key with  kasRSA3072PublicKey
+	rsa3072WrappedKey   = `vk6h3gomD6P9aOA0sJ4Hiq3qSARbfKeZhIumVA9QTA1dYdUyMWm41GpCbU6goOiJOQ181zdgQah27BzztMrxDn68SkCJ1PggMWcALdqEEtDtlgWGmSPdYCMgsdXOfGfp63nSHT+Sk/AKi3pNlwpcJdCILRlKd2sD5WrhvFGvz2OJFKb50aYMmwG8+ZSPdwjHGm1/+mPG41UfEgLEWfdYvK7annnTlgR5fM/ke71OsAj9Su3g9XiAltQ7qXHJXeAMLiw9xjgcRRb+5WzX3waJhFsNF4kBFkEoOkAUoFKFhj0N9FJFAs77fPzYmUyVNKEyAQJOuLVkTMemK1IPAzHNbuWdRS6iEh6qvGTjSa3eHJNvHcdW8FMEX/T1M6eVG/kZjWXknFeuLZ37uEWB6jy5IAUNHiwoPv+6USDt43ALT9wyEhAGORN3Va4WBRzyDaXButB9mzprJ6Iy1RKOUWTtpCYhb1HIjGBdVJhNu21IXLMDVce5/FdRmL46sRY1p3d/`
+	rsa3072ActualSymKey = `9220975a6eb4a6014b01d904a483a08dfcbd0ed87d6c2d827522b7f4728ee0ef`
 
-	// this wrapped key is generated by encrypting 32 byte symmetric key with  kas_rsa_4096_public
-	rsa_4096_wrappedKey   = `j+myfvdo5zIv0qYOdn4ZCrGrWq/EHnFua2ifklGkhPd6mGh0TkFD3lcTB6ZnDq+a9Rcq1ugt6KBK8wImgTowZNyM+8V3W7DsGclxgEQZUAh96jZWSiY130L6e2ey1y5SdgvVbUknKkO4Fs7ZySe7ks99F4RFlMXxE1oKG8bvw57ohDF0L1KmSqA0JeMojElyPuqzCkMog1cqCU0RSsUJz6FPfyhgCZsRxZjmOA87mfTNcfIXhk7phAtQaH0aFvhdeS86sORcr19f16Sz9MRMY3ARLnNwENTYYsSqG2JWzoXhtJ7QPBu5adObkQZIg74myAMHOYIQu2KcGGAylivBxo/hRF2+DAFI7bJUN/UezDVspILF5GupUSHa7CCUZPc43AfSO9B+Jw5DlGapnqfE1BtgZrEMxn1p0lpTrRfuaZXWX2sKpO3caHhLBpt83ZdGcz/m01S1bLqMbb1y7cw+6PdZus4ag2jBq1KD2jiyhqhjSrz7mDRTuXh0WDzG1g1a9+vgdJ5u/wt8tGhkugxy+ElCdoHzgbBlf5AUkJ1Yy8coZlp/UvpGaKh+dvhu1MnSxlySp55xG8S/gB/bxU/vnYsacK8HLQAkz1P7Q/mFocPXVNCgSwmXRAaJGQZJehvlyR9ULnIKFpARIidwrFlbzY2qYW/JPCyAtLvbupR2xio=`
-	rsa_4096_actualSymKey = `413e390d063a87e54c713f03a843c1c190681c86de6e00f0d6ea53f7f9c4a783`
+	// this wrapped key is generated by encrypting 32 byte symmetric key with  kasRSA4096PublicKey
+	rsa4096WrappedKey   = `j+myfvdo5zIv0qYOdn4ZCrGrWq/EHnFua2ifklGkhPd6mGh0TkFD3lcTB6ZnDq+a9Rcq1ugt6KBK8wImgTowZNyM+8V3W7DsGclxgEQZUAh96jZWSiY130L6e2ey1y5SdgvVbUknKkO4Fs7ZySe7ks99F4RFlMXxE1oKG8bvw57ohDF0L1KmSqA0JeMojElyPuqzCkMog1cqCU0RSsUJz6FPfyhgCZsRxZjmOA87mfTNcfIXhk7phAtQaH0aFvhdeS86sORcr19f16Sz9MRMY3ARLnNwENTYYsSqG2JWzoXhtJ7QPBu5adObkQZIg74myAMHOYIQu2KcGGAylivBxo/hRF2+DAFI7bJUN/UezDVspILF5GupUSHa7CCUZPc43AfSO9B+Jw5DlGapnqfE1BtgZrEMxn1p0lpTrRfuaZXWX2sKpO3caHhLBpt83ZdGcz/m01S1bLqMbb1y7cw+6PdZus4ag2jBq1KD2jiyhqhjSrz7mDRTuXh0WDzG1g1a9+vgdJ5u/wt8tGhkugxy+ElCdoHzgbBlf5AUkJ1Yy8coZlp/UvpGaKh+dvhu1MnSxlySp55xG8S/gB/bxU/vnYsacK8HLQAkz1P7Q/mFocPXVNCgSwmXRAaJGQZJehvlyR9ULnIKFpARIidwrFlbzY2qYW/JPCyAtLvbupR2xio=`
+	rsa4096ActualSymKey = `413e390d063a87e54c713f03a843c1c190681c86de6e00f0d6ea53f7f9c4a783`
 )
 
 func BenchmarkRCAKasRewrap(b *testing.B) {
@@ -473,24 +473,24 @@ func BenchmarkRCAKasRewrap(b *testing.B) {
 	}{
 		{
 			name:         "RCA2024",
-			privateKey:   kas_rsa_2048_private,
-			wrappedKey:   rsa_2048_wrappedKey,
-			actualSymKey: rsa_2048_actualSymKey,
-			publicKey:    client_rsa_2048_public,
+			privateKey:   kasRSA2048PrivateKey,
+			wrappedKey:   rsa2048WrappedKey,
+			actualSymKey: rsa2048ActualSymKey,
+			publicKey:    clientRSA2048PublicKey,
 		},
 		{
 			name:         "RCA3072",
-			privateKey:   kas_rsa_3072_private,
-			wrappedKey:   rsa_3072_wrappedKey,
-			actualSymKey: rsa_3072_actualSymKey,
-			publicKey:    client_rsa_3072_public,
+			privateKey:   kasRSA3072PrivateKey,
+			wrappedKey:   rsa3072WrappedKey,
+			actualSymKey: rsa3072ActualSymKey,
+			publicKey:    clientRSA3072PublicKey,
 		},
 		{
 			name:         "RCA4096",
-			privateKey:   kas_rsa_4096_private,
-			wrappedKey:   rsa_4096_wrappedKey,
-			actualSymKey: rsa_4096_actualSymKey,
-			publicKey:    client_rsa_4096_public,
+			privateKey:   kasRSA4096PrivateKey,
+			wrappedKey:   rsa4096WrappedKey,
+			actualSymKey: rsa4096ActualSymKey,
+			publicKey:    clientRSA4096PublicKey,
 		},
 	}
 
@@ -523,7 +523,7 @@ func BenchmarkRCAKasRewrap(b *testing.B) {
 			}
 
 			_ = Base64Encode(wrappedKey)
-			
+
 			if bm.actualSymKey != hex.EncodeToString(symkey) {
 				b.Errorf("Symmetric key mismatch: expected %s, got %s", bm.actualSymKey, hex.EncodeToString(symkey))
 			}
@@ -539,9 +539,9 @@ func BenchmarkEC256KasRewrap(b *testing.B) {
 		clientPublicKey  string
 		eccMode          ECCMode
 	}{
-		{"EC256", kas_ec_256_private, nanotdf_ec_256_public, client_ec_256_public, ECCModeSecp256r1},
-		{"EC384", kas_ec_384_private, nanotdf_ec_384_public, client_ec_384_public, ECCModeSecp384r1},
-		{"EC521", kas_ec_521_private, nanotdf_ec_521_public, client_ec_521_public, ECCModeSecp521r1},
+		{"EC256", kasEC256PrivateKey, nanotdfEC256PublicKey, clientEC256PublicKey, ECCModeSecp256r1},
+		{"EC384", kasEC384PrivateKey, nanotdfEC384PublicKey, clientEC384PublicKey, ECCModeSecp384r1},
+		{"EC521", kasEC521PrivateKey, nanotdfEC521publicKey, clientEC521PublicKey, ECCModeSecp521r1},
 	}
 
 	for _, bm := range benchmarks {

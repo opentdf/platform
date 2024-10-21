@@ -11,10 +11,12 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, page *policy.PageRequest) ([]*policy.KeyAccessServer, error) {
+func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, page *policy.PageRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
+	limit := getListLimit(page.GetLimit())
+	offset := page.GetOffset()
 	list, err := c.Queries.ListKeyAccessServers(ctx, ListKeyAccessServersParams{
-		Offset: page.GetOffset(),
-		Limit:  getListLimit(page.GetLimit()),
+		Offset: offset,
+		Limit:  limit,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -43,8 +45,21 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, page *policy.P
 
 		keyAccessServers[i] = keyAccessServer
 	}
+	var total int32 = 0
+	var nextOffset int32 = 0
+	if len(list) > 0 {
+		total = int32(list[0].Total)
+		nextOffset = getNextOffset(offset, limit, total)
+	}
 
-	return keyAccessServers, nil
+	return &kasregistry.ListKeyAccessServersResponse{
+		KeyAccessServers: keyAccessServers,
+		Pagination: &policy.PageResponse{
+			CurrentOffset: offset,
+			Total:         total,
+			NextOffset:    nextOffset,
+		},
+	}, nil
 }
 
 func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, id string) (*policy.KeyAccessServer, error) {
@@ -165,13 +180,15 @@ func (c PolicyDBClient) DeleteKeyAccessServer(ctx context.Context, id string) (*
 	}, nil
 }
 
-func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasregistry.ListKeyAccessServerGrantsRequest) ([]*kasregistry.KeyAccessServerGrants, error) {
+func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasregistry.ListKeyAccessServerGrantsRequest) (*kasregistry.ListKeyAccessServerGrantsResponse, error) {
 	page := r.GetPagination()
+	limit := getListLimit(page.GetLimit())
+	offset := page.GetOffset()
 	params := ListKeyAccessServerGrantsParams{
 		KasID:  r.GetKasId(),
 		KasUri: r.GetKasUri(),
-		Offset: page.GetOffset(),
-		Limit:  getListLimit(page.GetLimit()),
+		Offset: offset,
+		Limit:  limit,
 	}
 	listRows, err := c.Queries.ListKeyAccessServerGrants(ctx, params)
 	if err != nil {
@@ -208,6 +225,18 @@ func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasreg
 			NamespaceGrants: namespaceGrants,
 		}
 	}
-
-	return grants, nil
+	var total int32 = 0
+	var nextOffset int32 = 0
+	if len(listRows) > 0 {
+		total = int32(listRows[0].Total)
+		nextOffset = getNextOffset(offset, limit, total)
+	}
+	return &kasregistry.ListKeyAccessServerGrantsResponse{
+		Grants: grants,
+		Pagination: &policy.PageResponse{
+			CurrentOffset: params.Offset,
+			Total:         total,
+			NextOffset:    nextOffset,
+		},
+	}, nil
 }

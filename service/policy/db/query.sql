@@ -3,53 +3,66 @@
 ----------------------------------------------------------------
 
 -- name: ListKeyAccessServerGrants :many
+WITH listed AS (
+    SELECT 
+        COUNT(*) OVER() AS total, 
+        kas.id AS kas_id, 
+        kas.uri AS kas_uri, 
+        kas.public_key AS kas_public_key,
+        JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+            'labels', kas.metadata -> 'labels', 
+            'created_at', kas.created_at, 
+            'updated_at', kas.updated_at
+        )) AS kas_metadata,
+        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
+            'id', attrkag.attribute_definition_id, 
+            'fqn', fqns_on_attr.fqn
+        )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL) AS attributes_grants,
+        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
+            'id', valkag.attribute_value_id, 
+            'fqn', fqns_on_vals.fqn
+        )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL) AS values_grants,
+        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
+            'id', nskag.namespace_id, 
+            'fqn', fqns_on_ns.fqn
+        )) FILTER (WHERE nskag.namespace_id IS NOT NULL) AS namespace_grants
+    FROM 
+        key_access_servers kas
+    LEFT JOIN 
+        attribute_definition_key_access_grants attrkag 
+        ON kas.id = attrkag.key_access_server_id
+    LEFT JOIN 
+        attribute_fqns fqns_on_attr 
+        ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id 
+        AND fqns_on_attr.value_id IS NULL
+    LEFT JOIN 
+        attribute_value_key_access_grants valkag 
+        ON kas.id = valkag.key_access_server_id
+    LEFT JOIN 
+        attribute_fqns fqns_on_vals 
+        ON valkag.attribute_value_id = fqns_on_vals.value_id
+    LEFT JOIN
+        attribute_namespace_key_access_grants nskag
+        ON kas.id = nskag.key_access_server_id
+    LEFT JOIN 
+        attribute_fqns fqns_on_ns
+        ON nskag.namespace_id = fqns_on_ns.namespace_id
+        AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
+    WHERE (NULLIF(@kas_id, '') IS NULL OR kas.id = @kas_id::uuid)
+        AND (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri::varchar)
+    GROUP BY 
+        kas.id
+)
 SELECT 
-    kas.id AS kas_id, 
-    kas.uri AS kas_uri, 
-    kas.public_key AS kas_public_key,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
-        'labels', kas.metadata -> 'labels', 
-        'created_at', kas.created_at, 
-        'updated_at', kas.updated_at
-    )) AS kas_metadata,
-    JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
-        'id', attrkag.attribute_definition_id, 
-        'fqn', fqns_on_attr.fqn
-    )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL) AS attributes_grants,
-    JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
-        'id', valkag.attribute_value_id, 
-        'fqn', fqns_on_vals.fqn
-    )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL) AS values_grants,
-    JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
-        'id', nskag.namespace_id, 
-        'fqn', fqns_on_ns.fqn
-    )) FILTER (WHERE nskag.namespace_id IS NOT NULL) AS namespace_grants
-FROM 
-    key_access_servers kas
-LEFT JOIN 
-    attribute_definition_key_access_grants attrkag 
-    ON kas.id = attrkag.key_access_server_id
-LEFT JOIN 
-    attribute_fqns fqns_on_attr 
-    ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id 
-    AND fqns_on_attr.value_id IS NULL
-LEFT JOIN 
-    attribute_value_key_access_grants valkag 
-    ON kas.id = valkag.key_access_server_id
-LEFT JOIN 
-    attribute_fqns fqns_on_vals 
-    ON valkag.attribute_value_id = fqns_on_vals.value_id
-LEFT JOIN
-    attribute_namespace_key_access_grants nskag
-    ON kas.id = nskag.key_access_server_id
-LEFT JOIN 
-    attribute_fqns fqns_on_ns
-    ON nskag.namespace_id = fqns_on_ns.namespace_id
-    AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
-WHERE (NULLIF(@kas_id, '') IS NULL OR kas.id = @kas_id::uuid)
-    AND (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri::varchar)
-GROUP BY 
-    kas.id
+    listed.kas_id,
+    listed.kas_uri,
+    listed.kas_public_key,
+    listed.kas_metadata,
+    listed.attributes_grants,
+    listed.values_grants,
+    listed.namespace_grants,
+    listed.total  
+FROM listed
 LIMIT @limit_
 OFFSET @offset_;
 
@@ -58,12 +71,12 @@ WITH counted AS (
     SELECT COUNT(kas.id) AS total
     FROM key_access_servers kas
 )
-SELECT id,
-       uri,
-       public_key,
-       JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+SELECT kas.id,
+       kas.uri,
+       kas.public_key,
+       JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) as metadata,
        counted.total
-FROM key_access_servers
+FROM key_access_servers kas
 JOIN counted ON true
 LIMIT @limit_
 OFFSET @offset_;

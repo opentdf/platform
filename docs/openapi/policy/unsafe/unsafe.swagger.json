@@ -558,6 +558,10 @@
         "publicKey": {
           "$ref": "#/definitions/policyPublicKey"
         },
+        "name": {
+          "type": "string",
+          "title": "Optional\nUnique name of the KAS instance"
+        },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",
           "title": "Common metadata"

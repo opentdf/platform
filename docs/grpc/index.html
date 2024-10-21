@@ -1642,6 +1642,14 @@ To start, these may be `rsa:2048` for encrypting ZTDF files and
                 </tr>
               
                 <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+Unique name of the KAS instance </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
@@ -5007,6 +5015,13 @@ Attribute &lt;&gt; Key Access Server RPCs
                 </tr>
               
                 <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
@@ -5231,12 +5246,19 @@ Attribute &lt;&gt; Key Access Server RPCs
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Optional
-Filter LIST by either ID or URI of a registered Key Access Server.
-If neither is provided, grants from all registered KASs to policy attribute objects are returned. </p></td>
+Filter LIST by either ID, URI, or common name of a registered Key Access Server.
+If none are provided, grants from all registered KASs to policy attribute objects are returned. </p></td>
                 </tr>
               
                 <tr>
                   <td>kas_uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_name</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
@@ -5325,12 +5347,19 @@ If neither is provided, grants from all registered KASs to policy attribute obje
                   <td>uri</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Optional - PATCH style </p></td>
                 </tr>
               
                 <tr>
                   <td>public_key</td>
                   <td><a href="#policy.PublicKey">policy.PublicKey</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>

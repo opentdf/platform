@@ -104,6 +104,7 @@ type FixtureDataKasRegistry struct {
 		Remote string                    `yaml:"remote" json:"remote,omitempty"`
 		Cached *policypb.KasPublicKeySet `yaml:"cached" json:"cached,omitempty"`
 	} `yaml:"public_key" json:"public_key"`
+	Name string `yaml:"name"`
 }
 
 type FixtureData struct {
@@ -402,6 +403,7 @@ func (f *Fixtures) provisionKasRegistry() int64 {
 		v := []string{
 			f.db.StringWrap(d.ID),
 			f.db.StringWrap(d.URI),
+			f.db.StringWrap(d.Name),
 		}
 
 		pubKeyJSON, err := json.Marshal(d.PubKey)
@@ -410,6 +412,7 @@ func (f *Fixtures) provisionKasRegistry() int64 {
 			panic("issue with KAS registry public key JSON")
 		}
 		v = append(v, f.db.StringWrap(string(pubKeyJSON)))
+
 		values = append(values, v)
 	}
 	return f.provision(fixtureData.KasRegistries.Metadata.TableName, fixtureData.KasRegistries.Metadata.Columns, values)

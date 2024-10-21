@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -36,6 +37,7 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context) ([]*policy.Key
 		keyAccessServer.Id = kas.ID
 		keyAccessServer.Uri = kas.Uri
 		keyAccessServer.PublicKey = publicKey
+		keyAccessServer.Name = kas.Name.String
 		keyAccessServer.Metadata = metadata
 
 		keyAccessServers[i] = keyAccessServer
@@ -66,14 +68,16 @@ func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, id string) (*pol
 	return &policy.KeyAccessServer{
 		Id:        kas.ID,
 		Uri:       kas.Uri,
-		Metadata:  metadata,
 		PublicKey: publicKey,
+		Name:      kas.Name.String,
+		Metadata:  metadata,
 	}, nil
 }
 
 func (c PolicyDBClient) CreateKeyAccessServer(ctx context.Context, r *kasregistry.CreateKeyAccessServerRequest) (*policy.KeyAccessServer, error) {
 	uri := r.GetUri()
 	publicKey := r.GetPublicKey()
+	name := strings.ToLower(r.GetName())
 
 	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
@@ -88,6 +92,7 @@ func (c PolicyDBClient) CreateKeyAccessServer(ctx context.Context, r *kasregistr
 	createdID, err := c.Queries.CreateKeyAccessServer(ctx, CreateKeyAccessServerParams{
 		Uri:       uri,
 		PublicKey: publicKeyJSON,
+		Name:      pgtypeText(name),
 		Metadata:  metadataJSON,
 	})
 	if err != nil {
@@ -98,6 +103,7 @@ func (c PolicyDBClient) CreateKeyAccessServer(ctx context.Context, r *kasregistr
 		Id:        createdID,
 		Uri:       uri,
 		PublicKey: publicKey,
+		Name:      name,
 		Metadata:  metadata,
 	}, nil
 }
@@ -105,6 +111,7 @@ func (c PolicyDBClient) CreateKeyAccessServer(ctx context.Context, r *kasregistr
 func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r *kasregistry.UpdateKeyAccessServerRequest) (*policy.KeyAccessServer, error) {
 	uri := r.GetUri()
 	publicKey := r.GetPublicKey()
+	name := strings.ToLower(r.GetName())
 
 	// if extend we need to merge the metadata
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
@@ -129,6 +136,7 @@ func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r 
 	count, err := c.Queries.UpdateKeyAccessServer(ctx, UpdateKeyAccessServerParams{
 		ID:        id,
 		Uri:       pgtypeText(uri),
+		Name:      pgtypeText(name),
 		PublicKey: publicKeyJSON,
 		Metadata:  metadataJSON,
 	})
@@ -142,6 +150,7 @@ func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r 
 	return &policy.KeyAccessServer{
 		Id:        id,
 		Uri:       uri,
+		Name:      name,
 		PublicKey: publicKey,
 		Metadata:  metadata,
 	}, nil
@@ -162,10 +171,11 @@ func (c PolicyDBClient) DeleteKeyAccessServer(ctx context.Context, id string) (*
 	}, nil
 }
 
-func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, kasID string, kasURI string) ([]*kasregistry.KeyAccessServerGrants, error) {
+func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, kasID, kasURI, kasName string) ([]*kasregistry.KeyAccessServerGrants, error) {
 	params := ListKeyAccessServerGrantsParams{
-		KasID:  kasID,
-		KasUri: kasURI,
+		KasID:   kasID,
+		KasUri:  kasURI,
+		KasName: kasName,
 	}
 	listRows, err := c.Queries.ListKeyAccessServerGrants(ctx, params)
 	if err != nil {
@@ -182,6 +192,7 @@ func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, kasID str
 			Id:        grant.KasID,
 			Uri:       grant.KasUri,
 			PublicKey: pubKey,
+			Name:      grant.KasName.String,
 		}
 		attrGrants, err := db.GrantedPolicyObjectProtoJSON(grant.AttributesGrants)
 		if err != nil {

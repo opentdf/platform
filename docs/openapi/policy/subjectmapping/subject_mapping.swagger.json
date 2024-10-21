@@ -33,6 +33,24 @@
             }
           }
         },
+        "parameters": [
+          {
+            "name": "pagination.limit",
+            "description": "Optional\nCurrently defaulted to 250 if not provided and subject to change at any time",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pagination.offset",
+            "description": "Optional\nDefaulted if not provided",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
         "tags": [
           "SubjectMappingService"
         ]
@@ -197,6 +215,24 @@
             }
           }
         },
+        "parameters": [
+          {
+            "name": "pagination.limit",
+            "description": "Optional\nCurrently defaulted to 250 if not provided and subject to change at any time",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pagination.offset",
+            "description": "Optional\nDefaulted if not provided",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
         "tags": [
           "SubjectMappingService"
         ]
@@ -650,6 +686,41 @@
         }
       }
     },
+    "policyPageRequest": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Optional\nCurrently defaulted to 250 if not provided and subject to change at any time"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Optional\nDefaulted if not provided"
+        }
+      }
+    },
+    "policyPageResponse": {
+      "type": "object",
+      "properties": {
+        "currentOffset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Requested pagination offset"
+        },
+        "nextOffset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Calculated with request limit + offset or defaults\nEmpty when none remain after current page"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Total count of entire list"
+        }
+      }
+    },
     "policyPublicKey": {
       "type": "object",
       "properties": {
@@ -925,6 +996,9 @@
             "type": "object",
             "$ref": "#/definitions/policySubjectConditionSet"
           }
+        },
+        "pagination": {
+          "$ref": "#/definitions/policyPageResponse"
         }
       }
     },
@@ -937,6 +1011,9 @@
             "type": "object",
             "$ref": "#/definitions/policySubjectMapping"
           }
+        },
+        "pagination": {
+          "$ref": "#/definitions/policyPageResponse"
         }
       }
     },

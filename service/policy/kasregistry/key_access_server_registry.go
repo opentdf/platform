@@ -62,16 +62,14 @@ func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 }
 
 func (s KeyAccessServerRegistry) ListKeyAccessServers(ctx context.Context,
-	_ *kasr.ListKeyAccessServersRequest,
+	r *kasr.ListKeyAccessServersRequest,
 ) (*kasr.ListKeyAccessServersResponse, error) {
-	keyAccessServers, err := s.dbClient.ListKeyAccessServers(ctx)
+	rsp, err := s.dbClient.ListKeyAccessServers(ctx, r.GetPagination())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
 
-	return &kasr.ListKeyAccessServersResponse{
-		KeyAccessServers: keyAccessServers,
-	}, nil
+	return rsp, nil
 }
 
 func (s KeyAccessServerRegistry) GetKeyAccessServer(ctx context.Context,
@@ -148,12 +146,10 @@ func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
 func (s KeyAccessServerRegistry) ListKeyAccessServerGrants(ctx context.Context,
 	req *kasr.ListKeyAccessServerGrantsRequest,
 ) (*kasr.ListKeyAccessServerGrantsResponse, error) {
-	keyAccessServerGrants, err := s.dbClient.ListKeyAccessServerGrants(ctx, req.GetKasId(), req.GetKasUri())
+	rsp, err := s.dbClient.ListKeyAccessServerGrants(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
 
-	return &kasr.ListKeyAccessServerGrantsResponse{
-		Grants: keyAccessServerGrants,
-	}, nil
+	return rsp, nil
 }

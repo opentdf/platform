@@ -18,7 +18,12 @@ import (
 */
 
 func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resourcemapping.ListResourceMappingGroupsRequest) ([]*policy.ResourceMappingGroup, error) {
-	list, err := c.Queries.ListResourceMappingGroups(ctx, r.GetNamespaceId())
+	page := r.GetPagination()
+	list, err := c.Queries.ListResourceMappingGroups(ctx, ListResourceMappingGroupsParams{
+		NamespaceID: r.GetNamespaceId(),
+		Limit:       getListLimit(page.GetLimit()),
+		Offset:      page.GetOffset(),
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -142,7 +147,12 @@ func (c PolicyDBClient) DeleteResourceMappingGroup(ctx context.Context, id strin
 */
 
 func (c PolicyDBClient) ListResourceMappings(ctx context.Context, r *resourcemapping.ListResourceMappingsRequest) ([]*policy.ResourceMapping, error) {
-	list, err := c.Queries.ListResourceMappings(ctx, r.GetGroupId())
+	page := r.GetPagination()
+	list, err := c.Queries.ListResourceMappings(ctx, ListResourceMappingsParams{
+		GroupID: r.GetGroupId(),
+		Limit:   getListLimit(page.GetLimit()),
+		Offset:  page.GetOffset(),
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

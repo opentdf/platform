@@ -58,7 +58,7 @@ func (ns NamespacesService) ListNamespaces(ctx context.Context, req *namespaces.
 	ns.logger.Debug("listing namespaces", slog.String("state", state))
 
 	rsp := &namespaces.ListNamespacesResponse{}
-	list, err := ns.dbClient.ListNamespaces(ctx, state)
+	list, err := ns.dbClient.ListNamespaces(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}

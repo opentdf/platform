@@ -66,9 +66,7 @@ func marshalActionsProto(actions []*policy.Action) ([]byte, error) {
 }
 
 func unmarshalActionsProto(actionsJSON []byte, actions *[]*policy.Action) error {
-	var (
-		raw []json.RawMessage
-	)
+	var raw []json.RawMessage
 
 	if actionsJSON != nil {
 		if err := json.Unmarshal(actionsJSON, &raw); err != nil {
@@ -233,8 +231,12 @@ func (c PolicyDBClient) GetSubjectConditionSet(ctx context.Context, id string) (
 	}, nil
 }
 
-func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context) ([]*policy.SubjectConditionSet, error) {
-	list, err := c.Queries.ListSubjectConditionSets(ctx)
+func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context, r *subjectmapping.ListSubjectConditionSetsRequest) ([]*policy.SubjectConditionSet, error) {
+	page := r.GetPagination()
+	list, err := c.Queries.ListSubjectConditionSets(ctx, ListSubjectConditionSetsParams{
+		Limit:  getListLimit(page.GetLimit()),
+		Offset: page.GetOffset(),
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -417,8 +419,12 @@ func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*poli
 	}, nil
 }
 
-func (c PolicyDBClient) ListSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
-	list, err := c.Queries.ListSubjectMappings(ctx)
+func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmapping.ListSubjectMappingsRequest) ([]*policy.SubjectMapping, error) {
+	page := r.GetPagination()
+	list, err := c.Queries.ListSubjectMappings(ctx, ListSubjectMappingsParams{
+		Limit:  getListLimit(page.GetLimit()),
+		Offset: page.GetOffset(),
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

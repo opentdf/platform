@@ -10,6 +10,27 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+// Note: Policy Object LIST count is defaulted to 250 if not provided. This may change at any time and is an internal
+// concern of the policy services that should not be relied upon for stability.
+const defaultObjectListCount = 250
+
+// Defaults the LIST limit to internal default limit value if not provided
+func getListLimit(l int32) int32 {
+	if l > 0 {
+		return l
+	}
+	return defaultObjectListCount
+}
+
+// Returns next page's offset if another page within total, or else returns 0
+func getNextOffset(current, limit, total int32) int32 {
+	next := current + limit
+	if next <= total {
+		return next
+	}
+	return 0
+}
+
 func constructMetadata(table string, isJSON bool) string {
 	if table != "" {
 		table += "."

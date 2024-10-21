@@ -66,11 +66,10 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 	req *attributes.ListAttributesRequest,
 ) (*attributes.ListAttributesResponse, error) {
 	state := policydb.GetDBStateTypeTransformedEnum(req.GetState())
-	namespace := req.GetNamespace()
 	s.logger.Debug("listing attribute definitions", slog.String("state", state))
 	rsp := &attributes.ListAttributesResponse{}
 
-	list, err := s.dbClient.ListAttributes(ctx, state, namespace)
+	list, err := s.dbClient.ListAttributes(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
@@ -202,9 +201,8 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attri
 }
 
 func (s *AttributesService) ListAttributeValues(ctx context.Context, req *attributes.ListAttributeValuesRequest) (*attributes.ListAttributeValuesResponse, error) {
-	state := policydb.GetDBStateTypeTransformedEnum(req.GetState())
-	s.logger.Debug("listing attribute values", slog.String("attributeId", req.GetAttributeId()), slog.String("state", state))
-	list, err := s.dbClient.ListAttributeValues(ctx, req.GetAttributeId(), state)
+	s.logger.Debug("listing attribute values", slog.String("attributeId", req.GetAttributeId()), slog.String("state", policydb.GetDBStateTypeTransformedEnum(req.GetState())))
+	list, err := s.dbClient.ListAttributeValues(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed, slog.String("attributeId", req.GetAttributeId()))
 	}

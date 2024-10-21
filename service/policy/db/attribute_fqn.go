@@ -5,9 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"strings"
 
+	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/pkg/db"
 )
 
@@ -72,7 +76,13 @@ func (c *PolicyDBClient) AttrFqnReindex(ctx context.Context) (res struct { //nol
 },
 ) {
 	// Get all namespaces
-	ns, err := c.ListNamespaces(ctx, StateAny)
+	// TODO: iterate instead of using arbitrary limit/offset
+	ns, err := c.ListNamespaces(ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Pagination: &policy.PageRequest{
+			Limit: math.MaxInt32,
+		},
+	})
 	if err != nil {
 		panic(fmt.Errorf("could not get namespaces: %w", err))
 	}

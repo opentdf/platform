@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/proto"
 )
 
 var absentAttributeValueUUID = "78909865-8888-9999-9999-000000000000"
@@ -112,48 +113,49 @@ func (s *AttributeValuesSuite) Test_ListAttributeValues_Limit_Succeeds() {
 	listed := listRsp.GetValues()
 	s.Equal(len(listed), int(limit))
 
-	// ensure list contains the two test fixtures and that response matches expected data
+	// validate at least two fixtures are correctly retrieved
 	f1 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 	f2 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
 
-	for _, item := range listed {
-		if item.GetId() == f1.ID {
-			s.Equal(f1.ID, item.GetId())
-			s.Equal(f1.Value, item.GetValue())
-			// s.Equal(f1.AttributeDefinitionId, item.AttributeId)
-		} else if item.GetId() == f2.ID {
-			s.Equal(f2.ID, item.GetId())
-			s.Equal(f2.Value, item.GetValue())
-			// s.Equal(f2.AttributeDefinitionId, item.AttributeId)
+	for _, val := range listed {
+		if val.GetId() == f1.ID {
+			s.Equal(f1.ID, val.GetId())
+			s.Equal(f1.Value, val.GetValue())
+			s.Equal(f1.AttributeDefinitionID, val.GetAttribute().GetId())
+		} else if val.GetId() == f2.ID {
+			s.Equal(f2.ID, val.GetId())
+			s.Equal(f2.Value, val.GetValue())
+			s.Equal(f2.AttributeDefinitionID, val.GetAttribute().GetId())
 		}
 	}
 }
 
 func (s *AttributeValuesSuite) Test_ListAttributeValues_Offset_Succeeds() {
-	attrID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").AttributeDefinitionID
-
-	listRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
-		AttributeId: attrID,
-		State:       common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
-	})
+	req := &attributes.ListAttributeValuesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+	}
+	// make initial list request to compare against
+	listRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, req)
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 	listed := listRsp.GetValues()
 
-	// ensure list contains the two test fixtures and that response matches expected data
-	f1 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
-	f2 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
+	// set the offset pagination
+	offset := 4
+	req.Pagination = &policy.PageRequest{
+		Offset: int32(offset),
+	}
+	offsetListRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(offsetListRsp)
+	offsetListed := offsetListRsp.GetValues()
 
-	for _, item := range listed {
-		if item.GetId() == f1.ID {
-			s.Equal(f1.ID, item.GetId())
-			s.Equal(f1.Value, item.GetValue())
-			// s.Equal(f1.AttributeDefinitionId, item.AttributeId)
-		} else if item.GetId() == f2.ID {
-			s.Equal(f2.ID, item.GetId())
-			s.Equal(f2.Value, item.GetValue())
-			// s.Equal(f2.AttributeDefinitionId, item.AttributeId)
-		}
+	// length is reduced by the offset amount
+	s.Equal(len(offsetListed), len(listed)-offset)
+
+	// objects are equal between offset and original list beginning at offset index
+	for i, val := range offsetListed {
+		s.True(proto.Equal(val, listed[i+offset]))
 	}
 }
 

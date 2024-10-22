@@ -878,7 +878,6 @@ WHERE (
     ($1::BOOLEAN IS NULL OR av.active = $1) AND
     (NULLIF($2, '') IS NULL OR av.attribute_definition_id = $2::UUID)
 )
-GROUP BY av.id, fqns.fqn, counted.total
 LIMIT $4
 OFFSET $3
 `
@@ -923,7 +922,6 @@ type ListAttributeValuesRow struct {
 //	    ($1::BOOLEAN IS NULL OR av.active = $1) AND
 //	    (NULLIF($2, '') IS NULL OR av.attribute_definition_id = $2::UUID)
 //	)
-//	GROUP BY av.id, fqns.fqn, counted.total
 //	LIMIT $4
 //	OFFSET $3
 func (q *Queries) ListAttributeValues(ctx context.Context, arg ListAttributeValuesParams) ([]ListAttributeValuesRow, error) {

@@ -448,7 +448,6 @@ WHERE (
     (sqlc.narg('active')::BOOLEAN IS NULL OR av.active = sqlc.narg('active')) AND
     (NULLIF(@attribute_definition_id, '') IS NULL OR av.attribute_definition_id = @attribute_definition_id::UUID)
 )
-GROUP BY av.id, fqns.fqn, counted.total
 LIMIT @limit_
 OFFSET @offset_;
 

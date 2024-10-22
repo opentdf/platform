@@ -11,9 +11,8 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, page *policy.PageRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
-	limit := getListLimit(page.GetLimit())
-	offset := page.GetOffset()
+func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
+	limit, offset := getRequestedLimitOffset(r)
 	list, err := c.Queries.ListKeyAccessServers(ctx, ListKeyAccessServersParams{
 		Offset: offset,
 		Limit:  limit,
@@ -45,8 +44,8 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, page *policy.P
 
 		keyAccessServers[i] = keyAccessServer
 	}
-	var total int32 = 0
-	var nextOffset int32 = 0
+	var total int32
+	var nextOffset int32
 	if len(list) > 0 {
 		total = int32(list[0].Total)
 		nextOffset = getNextOffset(offset, limit, total)
@@ -225,8 +224,8 @@ func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasreg
 			NamespaceGrants: namespaceGrants,
 		}
 	}
-	var total int32 = 0
-	var nextOffset int32 = 0
+	var total int32
+	var nextOffset int32
 	if len(listRows) > 0 {
 		total = int32(listRows[0].Total)
 		nextOffset = getNextOffset(offset, limit, total)

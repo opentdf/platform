@@ -100,7 +100,7 @@ func (c *PolicyDBClient) AttrFqnReindex(ctx context.Context) (res struct { //nol
 	}
 
 	// Reindex all namespaces
-	for _, n := range ns {
+	for _, n := range ns.GetNamespaces() {
 		res.Namespaces = append(res.Namespaces, struct {
 			ID  string
 			Fqn string

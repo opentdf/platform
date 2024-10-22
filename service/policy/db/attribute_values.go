@@ -85,9 +85,9 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, id string) (*poli
 	}, nil
 }
 
-func (c PolicyDBClient) ListAttributeValues(ctx context.Context, r *attributes.ListAttributeValuesRequest) ([]*policy.Value, error) {
+func (c PolicyDBClient) ListAttributeValues(ctx context.Context, r *attributes.ListAttributeValuesRequest) (*attributes.ListAttributeValuesResponse, error) {
 	state := GetDBStateTypeTransformedEnum(r.GetState())
-	page := r.GetPagination()
+	limit, offset := getRequestedLimitOffset(r)
 
 	active := pgtype.Bool{
 		Valid: false,
@@ -100,8 +100,8 @@ func (c PolicyDBClient) ListAttributeValues(ctx context.Context, r *attributes.L
 	list, err := c.Queries.ListAttributeValues(ctx, ListAttributeValuesParams{
 		AttributeDefinitionID: r.GetAttributeId(),
 		Active:                active,
-		Limit:                 getListLimit(page.GetLimit()),
-		Offset:                page.GetOffset(),
+		Limit:                 limit,
+		Offset:                offset,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -126,8 +126,21 @@ func (c PolicyDBClient) ListAttributeValues(ctx context.Context, r *attributes.L
 			Fqn: av.Fqn.String,
 		}
 	}
+	var total int32
+	var nextOffset int32
+	if len(list) > 0 {
+		total = int32(list[0].Total)
+		nextOffset = getNextOffset(offset, limit, total)
+	}
 
-	return attributeValues, nil
+	return &attributes.ListAttributeValuesResponse{
+		Values: attributeValues,
+		Pagination: &policy.PageResponse{
+			CurrentOffset: offset,
+			Total:         total,
+			NextOffset:    nextOffset,
+		},
+	}, nil
 }
 
 func (c PolicyDBClient) ListAllAttributeValues(ctx context.Context) ([]*policy.Value, error) {

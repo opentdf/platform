@@ -68,15 +68,13 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 func (s SubjectMappingService) ListSubjectMappings(ctx context.Context,
 	r *sm.ListSubjectMappingsRequest,
 ) (*sm.ListSubjectMappingsResponse, error) {
-	rsp := &sm.ListSubjectMappingsResponse{}
 	s.logger.Debug("listing subject mappings")
 
-	mappings, err := s.dbClient.ListSubjectMappings(ctx, r)
+	rsp, err := s.dbClient.ListSubjectMappings(ctx, r)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
 
-	rsp.SubjectMappings = mappings
 	return rsp, nil
 }
 
@@ -195,15 +193,13 @@ func (s SubjectMappingService) GetSubjectConditionSet(ctx context.Context,
 func (s SubjectMappingService) ListSubjectConditionSets(ctx context.Context,
 	r *sm.ListSubjectConditionSetsRequest,
 ) (*sm.ListSubjectConditionSetsResponse, error) {
-	rsp := &sm.ListSubjectConditionSetsResponse{}
 	s.logger.Debug("listing subject condition sets")
 
-	conditionSets, err := s.dbClient.ListSubjectConditionSets(ctx, r)
+	rsp, err := s.dbClient.ListSubjectConditionSets(ctx, r)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
 
-	rsp.SubjectConditionSets = conditionSets
 	return rsp, nil
 }
 

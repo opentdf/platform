@@ -46,7 +46,7 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, id string) (*policy.Na
 	}, nil
 }
 
-func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNamespacesRequest) ([]*policy.Namespace, error) {
+func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNamespacesRequest) (*namespaces.ListNamespacesResponse, error) {
 	active := pgtype.Bool{
 		Valid: false,
 	}
@@ -55,17 +55,18 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNa
 		active = pgtypeBool(state == StateActive)
 	}
 
-	page := r.GetPagination()
+	limit := getListLimit(r.GetPagination().GetLimit())
+	offset := r.GetPagination().GetOffset()
 	list, err := c.Queries.ListNamespaces(ctx, ListNamespacesParams{
 		Active: active,
-		Limit:  getListLimit(page.GetLimit()),
-		Offset: page.GetOffset(),
+		Limit:  limit,
+		Offset: offset,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	namespaces := make([]*policy.Namespace, len(list))
+	nsList := make([]*policy.Namespace, len(list))
 
 	for i, ns := range list {
 		metadata := &common.Metadata{}
@@ -73,7 +74,7 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNa
 			return nil, err
 		}
 
-		namespaces[i] = &policy.Namespace{
+		nsList[i] = &policy.Namespace{
 			Id:       ns.ID,
 			Name:     ns.Name,
 			Active:   &wrapperspb.BoolValue{Value: ns.Active},
@@ -82,7 +83,21 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNa
 		}
 	}
 
-	return namespaces, nil
+	var total int32 
+	var nextOffset int32 
+	if len(list) > 0 {
+		total = int32(list[0].Total)
+		nextOffset = getNextOffset(offset, limit, total)
+	}
+
+	return &namespaces.ListNamespacesResponse{
+		Namespaces: nsList,
+		Pagination: &policy.PageResponse{
+			CurrentOffset: offset,
+			Total:         total,
+			NextOffset:    nextOffset,
+		},
+	}, nil
 }
 
 func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.CreateNamespaceRequest) (*policy.Namespace, error) {
@@ -176,7 +191,7 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 	if err != nil {
 		return nil, err
 	}
-	for _, attr := range attrs {
+	for _, attr := range attrs.GetAttributes() {
 		fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id, attributeID: attr.GetId()})
 		c.logger.Debug("upserted definition fqn for unsafely updated namespace", slog.Any("fqn", fqn))
 		for _, value := range attr.GetValues() {

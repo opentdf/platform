@@ -231,11 +231,11 @@ func (c PolicyDBClient) GetSubjectConditionSet(ctx context.Context, id string) (
 	}, nil
 }
 
-func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context, r *subjectmapping.ListSubjectConditionSetsRequest) ([]*policy.SubjectConditionSet, error) {
-	page := r.GetPagination()
+func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context, r *subjectmapping.ListSubjectConditionSetsRequest) (*subjectmapping.ListSubjectConditionSetsResponse, error) {
+	limit, offset := getRequestedLimitOffset(r)
 	list, err := c.Queries.ListSubjectConditionSets(ctx, ListSubjectConditionSetsParams{
-		Limit:  getListLimit(page.GetLimit()),
-		Offset: page.GetOffset(),
+		Limit:  limit,
+		Offset: offset,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -260,7 +260,21 @@ func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context, r *subject
 		}
 	}
 
-	return setList, nil
+	var total int32
+	var nextOffset int32
+	if len(list) > 0 {
+		total = int32(list[0].Total)
+		nextOffset = getNextOffset(offset, limit, total)
+	}
+
+	return &subjectmapping.ListSubjectConditionSetsResponse{
+		SubjectConditionSets: setList,
+		Pagination: &policy.PageResponse{
+			CurrentOffset: offset,
+			Total:         total,
+			NextOffset:    nextOffset,
+		},
+	}, nil
 }
 
 // Mutates provided fields and returns the updated subject condition set
@@ -419,11 +433,13 @@ func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*poli
 	}, nil
 }
 
-func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmapping.ListSubjectMappingsRequest) ([]*policy.SubjectMapping, error) {
+func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmapping.ListSubjectMappingsRequest) (*subjectmapping.ListSubjectMappingsResponse, error) {
 	page := r.GetPagination()
+	limit := getListLimit(page.GetLimit())
+	offset := page.GetOffset()
 	list, err := c.Queries.ListSubjectMappings(ctx, ListSubjectMappingsParams{
-		Limit:  getListLimit(page.GetLimit()),
-		Offset: page.GetOffset(),
+		Limit:  limit,
+		Offset: offset,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -460,7 +476,21 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmappi
 		}
 	}
 
-	return mappings, nil
+	var total int32
+	var nextOffset int32
+	if len(list) > 0 {
+		total = int32(list[0].Total)
+		nextOffset = getNextOffset(offset, limit, total)
+	}
+
+	return &subjectmapping.ListSubjectMappingsResponse{
+		SubjectMappings: mappings,
+		Pagination: &policy.PageResponse{
+			CurrentOffset: offset,
+			Total:         total,
+			NextOffset:    nextOffset,
+		},
+	}, nil
 }
 
 // Mutates provided fields and returns the updated subject mapping

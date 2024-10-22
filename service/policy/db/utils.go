@@ -10,6 +10,15 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+type paginatedRequest interface {
+	GetPagination() *policy.PageRequest
+}
+
+func getRequestedLimitOffset(r paginatedRequest) (int32, int32) {
+	page := r.GetPagination()
+	return getListLimit(page.GetLimit()), page.GetOffset()
+}
+
 // Note: Policy Object LIST count is defaulted to 250 if not provided. This may change at any time and is an internal
 // concern of the policy services that should not be relied upon for stability.
 const defaultObjectListCount = 250

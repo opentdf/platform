@@ -51,7 +51,7 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNa
 		Valid: false,
 	}
 	state := getDBStateTypeTransformedEnum(r.GetState())
-	if state != "" && state != stateAny {
+	if state != stateAny {
 		active = pgtypeBool(state == stateActive)
 	}
 
@@ -107,6 +107,7 @@ func (c PolicyDBClient) ListAllNamespaces(ctx context.Context) ([]*policy.Namesp
 
 	for {
 		listed, err := c.ListNamespaces(ctx, &namespaces.ListNamespacesRequest{
+			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
 			Pagination: &policy.PageRequest{
 				Limit:  defaultObjectListAllLimit,
 				Offset: nextOffset,

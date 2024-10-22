@@ -43,7 +43,93 @@ func (s *AttributeValuesSuite) TearDownSuite() {
 	s.f.TearDown()
 }
 
+func (s *AttributeValuesSuite) Test_ListAttributeValues_WithAttributeID_Succeeds() {
+	attrID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").AttributeDefinitionID
+
+	listRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
+		AttributeId: attrID,
+		State:       common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+	listed := listRsp.GetValues()
+
+	// ensure list contains the two test fixtures and that response matches expected data
+	f1 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	f2 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
+
+	for _, val := range listed {
+		if val.GetId() == f1.ID {
+			s.Equal(f1.ID, val.GetId())
+			s.Equal(f1.Value, val.GetValue())
+			s.Equal(f1.AttributeDefinitionID, val.GetAttribute().GetId())
+		} else if val.GetId() == f2.ID {
+			s.Equal(f2.ID, val.GetId())
+			s.Equal(f2.Value, val.GetValue())
+			s.Equal(f2.AttributeDefinitionID, val.GetAttribute().GetId())
+		}
+	}
+}
+
 func (s *AttributeValuesSuite) Test_ListAttributeValues_NoPagination_Succeeds() {
+	allFixtureValueFqns := map[string]bool{
+		"https://example.com/attr/attr1/value/value1":                          false,
+		"https://example.com/attr/attr1/value/value2":                          false,
+		"https://example.com/attr/attr2/value/value1":                          false,
+		"https://example.com/attr/attr2/value/value2":                          false,
+		"https://example.net/attr/attr1/value/value1":                          false,
+		"https://example.net/attr/attr1/value/value2":                          false,
+		"https://scenario.com/attr/working_group/value/blue":                   false,
+		"https://deactivated.io/attr/deactivated_attr/value/deactivated_value": false,
+	}
+	listRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+	// mark every listed value true
+	for _, val := range listRsp.GetValues() {
+		allFixtureValueFqns[val.GetFqn()] = true
+	}
+	// ensure all fixtures were found by unbounded list
+	for fqn, found := range allFixtureValueFqns {
+		if !found {
+			s.Failf("failed to list fixture", fqn)
+		}
+	}
+}
+
+func (s *AttributeValuesSuite) Test_ListAttributeValues_Limit_Succeeds() {
+	var limit int32 = 2
+	listRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Pagination: &policy.PageRequest{
+			Limit: limit,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+	listed := listRsp.GetValues()
+	s.Equal(len(listed), int(limit))
+
+	// ensure list contains the two test fixtures and that response matches expected data
+	f1 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	f2 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
+
+	for _, item := range listed {
+		if item.GetId() == f1.ID {
+			s.Equal(f1.ID, item.GetId())
+			s.Equal(f1.Value, item.GetValue())
+			// s.Equal(f1.AttributeDefinitionId, item.AttributeId)
+		} else if item.GetId() == f2.ID {
+			s.Equal(f2.ID, item.GetId())
+			s.Equal(f2.Value, item.GetValue())
+			// s.Equal(f2.AttributeDefinitionId, item.AttributeId)
+		}
+	}
+}
+
+func (s *AttributeValuesSuite) Test_ListAttributeValues_Offset_Succeeds() {
 	attrID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").AttributeDefinitionID
 
 	listRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
@@ -70,62 +156,6 @@ func (s *AttributeValuesSuite) Test_ListAttributeValues_NoPagination_Succeeds() 
 		}
 	}
 }
-
-// func (s *AttributeValuesSuite) Test_ListAttributeValues_Limit_Succeeds() {
-// 	attrID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").AttributeDefinitionID
-
-// 	listRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
-// 		AttributeId: attrID,
-// 		State:       common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
-// 	})
-// 	s.Require().NoError(err)
-// 	s.NotNil(listRsp)
-// 	listed := listRsp.GetValues()
-
-// 	// ensure list contains the two test fixtures and that response matches expected data
-// 	f1 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
-// 	f2 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
-
-// 	for _, item := range listed {
-// 		if item.GetId() == f1.ID {
-// 			s.Equal(f1.ID, item.GetId())
-// 			s.Equal(f1.Value, item.GetValue())
-// 			// s.Equal(f1.AttributeDefinitionId, item.AttributeId)
-// 		} else if item.GetId() == f2.ID {
-// 			s.Equal(f2.ID, item.GetId())
-// 			s.Equal(f2.Value, item.GetValue())
-// 			// s.Equal(f2.AttributeDefinitionId, item.AttributeId)
-// 		}
-// 	}
-// }
-
-// func (s *AttributeValuesSuite) Test_ListAttributeValues_Offset_Succeeds() {
-// 	attrID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").AttributeDefinitionID
-
-// 	listRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
-// 		AttributeId: attrID,
-// 		State:       common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
-// 	})
-// 	s.Require().NoError(err)
-// 	s.NotNil(listRsp)
-// 	listed := listRsp.GetValues()
-
-// 	// ensure list contains the two test fixtures and that response matches expected data
-// 	f1 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
-// 	f2 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
-
-// 	for _, item := range listed {
-// 		if item.GetId() == f1.ID {
-// 			s.Equal(f1.ID, item.GetId())
-// 			s.Equal(f1.Value, item.GetValue())
-// 			// s.Equal(f1.AttributeDefinitionId, item.AttributeId)
-// 		} else if item.GetId() == f2.ID {
-// 			s.Equal(f2.ID, item.GetId())
-// 			s.Equal(f2.Value, item.GetValue())
-// 			// s.Equal(f2.AttributeDefinitionId, item.AttributeId)
-// 		}
-// 	}
-// }
 
 func (s *AttributeValuesSuite) Test_GetAttributeValue() {
 	f := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
@@ -189,7 +219,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_SetsActiveStateTrueByDe
 	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
 
 	req := &attributes.CreateAttributeValueRequest{
-		Value: "testing create gives active true by default",
+		Value: "testing-create-gives-active-true-by-default",
 	}
 	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.ID, req)
 	s.Require().NoError(err)

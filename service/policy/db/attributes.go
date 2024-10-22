@@ -127,7 +127,7 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAt
 		namespaceName = ""
 	)
 
-	if state != "" && state != stateAny {
+	if state != stateAny {
 		active = pgtypeBool(state == stateActive)
 	}
 
@@ -193,6 +193,7 @@ func (c PolicyDBClient) ListAllAttributes(ctx context.Context) ([]*policy.Attrib
 
 	for {
 		listed, err := c.ListAttributes(ctx, &attributes.ListAttributesRequest{
+			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
 			Pagination: &policy.PageRequest{
 				Limit:  defaultObjectListAllLimit,
 				Offset: nextOffset,

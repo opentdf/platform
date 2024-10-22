@@ -77,7 +77,7 @@ SELECT kas.id,
        JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) as metadata,
        counted.total
 FROM key_access_servers kas
-JOIN counted ON true
+CROSS JOIN counted
 LIMIT @limit_
 OFFSET @offset_;
 
@@ -180,7 +180,7 @@ SELECT
     fqns.fqn,
     counted.total
 FROM attribute_definitions ad
-JOIN counted ON true
+CROSS JOIN counted
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 LEFT JOIN (
   SELECT
@@ -205,7 +205,7 @@ WHERE
     (sqlc.narg('active')::BOOLEAN IS NULL OR ad.active = sqlc.narg('active')) AND
     (NULLIF(@namespace_id, '') IS NULL OR ad.namespace_id = @namespace_id::uuid) AND
     (NULLIF(@namespace_name, '') IS NULL OR n.name = @namespace_name)
-GROUP BY ad.id, n.name, fqns.fqn
+GROUP BY ad.id, n.name, fqns.fqn, counted.total
 LIMIT @limit_
 OFFSET @offset_;
 
@@ -223,10 +223,10 @@ SELECT
     n.name as namespace_name,
     counted.total
 FROM attribute_definitions ad
-JOIN counted ON true
+CROSS JOIN counted
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 WHERE ad.namespace_id = $1
-GROUP BY ad.id, n.name
+GROUP BY ad.id, n.name, counted.total
 LIMIT @limit_
 OFFSET @offset_;
 
@@ -442,13 +442,13 @@ SELECT
     fqns.fqn,
     counted.total
 FROM attribute_values av
-JOIN counted ON true
+CROSS JOIN counted
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 WHERE (
     (sqlc.narg('active')::BOOLEAN IS NULL OR av.active = sqlc.narg('active')) AND
     (NULLIF(@attribute_definition_id, '') IS NULL OR av.attribute_definition_id = @attribute_definition_id::UUID)
 )
-GROUP BY av.id, fqns.fqn
+GROUP BY av.id, fqns.fqn, counted.total
 LIMIT @limit_
 OFFSET @offset_;
 
@@ -508,14 +508,14 @@ WITH counted AS (
     SELECT COUNT(rmg.id) AS total
     FROM resource_mapping_groups rmg
 )
-SELECT id,
-    namespace_id,
-    name,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+SELECT rmg.id,
+    rmg.namespace_id,
+    rmg.name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', rmg.metadata -> 'labels', 'created_at', rmg.created_at, 'updated_at', rmg.updated_at)) as metadata,
     counted.total
-FROM resource_mapping_groups
-JOIN counted ON true
-WHERE (NULLIF(@namespace_id, '') IS NULL OR namespace_id = @namespace_id::uuid)
+FROM resource_mapping_groups rmg
+CROSS JOIN counted
+WHERE (NULLIF(@namespace_id, '') IS NULL OR rmg.namespace_id = @namespace_id::uuid)
 LIMIT @limit_
 OFFSET @offset_;
 
@@ -558,11 +558,11 @@ SELECT
     COALESCE(m.group_id::TEXT, '')::TEXT as group_id,
     counted.total
 FROM resource_mappings m 
-JOIN counted ON true
+CROSS JOIN counted
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 WHERE (NULLIF(@group_id, '') IS NULL OR m.group_id = @group_id::UUID)
-GROUP BY av.id, m.id, fqns.fqn
+GROUP BY av.id, m.id, fqns.fqn, counted.total
 LIMIT @limit_
 OFFSET @offset_;
 
@@ -642,7 +642,7 @@ SELECT
     fqns.fqn,
     counted.total
 FROM attribute_namespaces ns
-JOIN counted ON true
+CROSS JOIN counted
 LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
 WHERE (sqlc.narg('active')::BOOLEAN IS NULL OR ns.active = sqlc.narg('active')::BOOLEAN)
 LIMIT @limit_
@@ -702,12 +702,12 @@ WITH counted AS (
     FROM subject_condition_set scs
 )
 SELECT
-    id,
-    condition,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+    scs.id,
+    scs.condition,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', scs.metadata -> 'labels', 'created_at', scs.created_at, 'updated_at', scs.updated_at)) as metadata,
     counted.total
-FROM subject_condition_set
-JOIN counted ON true
+FROM subject_condition_set scs
+CROSS JOIN counted
 LIMIT @limit_
 OFFSET @offset_;
 
@@ -755,10 +755,10 @@ SELECT
     JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active) AS attribute_value,
     counted.total
 FROM subject_mappings sm
-JOIN counted ON true
+CROSS JOIN counted
 LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
 LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
-GROUP BY av.id, sm.id, scs.id
+GROUP BY av.id, sm.id, scs.id, counted.total
 LIMIT @limit_
 OFFSET @offset_;
 

@@ -872,13 +872,13 @@ SELECT
     fqns.fqn,
     counted.total
 FROM attribute_values av
-JOIN counted ON true
+CROSS JOIN counted
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 WHERE (
     ($1::BOOLEAN IS NULL OR av.active = $1) AND
     (NULLIF($2, '') IS NULL OR av.attribute_definition_id = $2::UUID)
 )
-GROUP BY av.id, fqns.fqn
+GROUP BY av.id, fqns.fqn, counted.total
 LIMIT $4
 OFFSET $3
 `
@@ -917,13 +917,13 @@ type ListAttributeValuesRow struct {
 //	    fqns.fqn,
 //	    counted.total
 //	FROM attribute_values av
-//	JOIN counted ON true
+//	CROSS JOIN counted
 //	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 //	WHERE (
 //	    ($1::BOOLEAN IS NULL OR av.active = $1) AND
 //	    (NULLIF($2, '') IS NULL OR av.attribute_definition_id = $2::UUID)
 //	)
-//	GROUP BY av.id, fqns.fqn
+//	GROUP BY av.id, fqns.fqn, counted.total
 //	LIMIT $4
 //	OFFSET $3
 func (q *Queries) ListAttributeValues(ctx context.Context, arg ListAttributeValuesParams) ([]ListAttributeValuesRow, error) {
@@ -1267,7 +1267,7 @@ SELECT
     fqns.fqn,
     counted.total
 FROM attribute_definitions ad
-JOIN counted ON true
+CROSS JOIN counted
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 LEFT JOIN (
   SELECT
@@ -1292,7 +1292,7 @@ WHERE
     ($1::BOOLEAN IS NULL OR ad.active = $1) AND
     (NULLIF($2, '') IS NULL OR ad.namespace_id = $2::uuid) AND
     (NULLIF($3, '') IS NULL OR n.name = $3)
-GROUP BY ad.id, n.name, fqns.fqn
+GROUP BY ad.id, n.name, fqns.fqn, counted.total
 LIMIT $5
 OFFSET $4
 `
@@ -1345,7 +1345,7 @@ type ListAttributesDetailRow struct {
 //	    fqns.fqn,
 //	    counted.total
 //	FROM attribute_definitions ad
-//	JOIN counted ON true
+//	CROSS JOIN counted
 //	LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 //	LEFT JOIN (
 //	  SELECT
@@ -1370,7 +1370,7 @@ type ListAttributesDetailRow struct {
 //	    ($1::BOOLEAN IS NULL OR ad.active = $1) AND
 //	    (NULLIF($2, '') IS NULL OR ad.namespace_id = $2::uuid) AND
 //	    (NULLIF($3, '') IS NULL OR n.name = $3)
-//	GROUP BY ad.id, n.name, fqns.fqn
+//	GROUP BY ad.id, n.name, fqns.fqn, counted.total
 //	LIMIT $5
 //	OFFSET $4
 func (q *Queries) ListAttributesDetail(ctx context.Context, arg ListAttributesDetailParams) ([]ListAttributesDetailRow, error) {
@@ -1424,10 +1424,10 @@ SELECT
     n.name as namespace_name,
     counted.total
 FROM attribute_definitions ad
-JOIN counted ON true
+CROSS JOIN counted
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 WHERE ad.namespace_id = $1
-GROUP BY ad.id, n.name
+GROUP BY ad.id, n.name, counted.total
 LIMIT $3
 OFFSET $2
 `
@@ -1464,10 +1464,10 @@ type ListAttributesSummaryRow struct {
 //	    n.name as namespace_name,
 //	    counted.total
 //	FROM attribute_definitions ad
-//	JOIN counted ON true
+//	CROSS JOIN counted
 //	LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 //	WHERE ad.namespace_id = $1
-//	GROUP BY ad.id, n.name
+//	GROUP BY ad.id, n.name, counted.total
 //	LIMIT $3
 //	OFFSET $2
 func (q *Queries) ListAttributesSummary(ctx context.Context, arg ListAttributesSummaryParams) ([]ListAttributesSummaryRow, error) {
@@ -1694,7 +1694,7 @@ SELECT kas.id,
        JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) as metadata,
        counted.total
 FROM key_access_servers kas
-JOIN counted ON true
+CROSS JOIN counted
 LIMIT $2
 OFFSET $1
 `
@@ -1724,7 +1724,7 @@ type ListKeyAccessServersRow struct {
 //	       JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) as metadata,
 //	       counted.total
 //	FROM key_access_servers kas
-//	JOIN counted ON true
+//	CROSS JOIN counted
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) ListKeyAccessServers(ctx context.Context, arg ListKeyAccessServersParams) ([]ListKeyAccessServersRow, error) {
@@ -1766,7 +1766,7 @@ SELECT
     fqns.fqn,
     counted.total
 FROM attribute_namespaces ns
-JOIN counted ON true
+CROSS JOIN counted
 LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
 WHERE ($1::BOOLEAN IS NULL OR ns.active = $1::BOOLEAN)
 LIMIT $3
@@ -1803,7 +1803,7 @@ type ListNamespacesRow struct {
 //	    fqns.fqn,
 //	    counted.total
 //	FROM attribute_namespaces ns
-//	JOIN counted ON true
+//	CROSS JOIN counted
 //	LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
 //	WHERE ($1::BOOLEAN IS NULL OR ns.active = $1::BOOLEAN)
 //	LIMIT $3
@@ -1841,14 +1841,14 @@ WITH counted AS (
     SELECT COUNT(rmg.id) AS total
     FROM resource_mapping_groups rmg
 )
-SELECT id,
-    namespace_id,
-    name,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+SELECT rmg.id,
+    rmg.namespace_id,
+    rmg.name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', rmg.metadata -> 'labels', 'created_at', rmg.created_at, 'updated_at', rmg.updated_at)) as metadata,
     counted.total
-FROM resource_mapping_groups
-JOIN counted ON true
-WHERE (NULLIF($1, '') IS NULL OR namespace_id = $1::uuid)
+FROM resource_mapping_groups rmg
+CROSS JOIN counted
+WHERE (NULLIF($1, '') IS NULL OR rmg.namespace_id = $1::uuid)
 LIMIT $3
 OFFSET $2
 `
@@ -1875,14 +1875,14 @@ type ListResourceMappingGroupsRow struct {
 //	    SELECT COUNT(rmg.id) AS total
 //	    FROM resource_mapping_groups rmg
 //	)
-//	SELECT id,
-//	    namespace_id,
-//	    name,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+//	SELECT rmg.id,
+//	    rmg.namespace_id,
+//	    rmg.name,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', rmg.metadata -> 'labels', 'created_at', rmg.created_at, 'updated_at', rmg.updated_at)) as metadata,
 //	    counted.total
-//	FROM resource_mapping_groups
-//	JOIN counted ON true
-//	WHERE (NULLIF($1, '') IS NULL OR namespace_id = $1::uuid)
+//	FROM resource_mapping_groups rmg
+//	CROSS JOIN counted
+//	WHERE (NULLIF($1, '') IS NULL OR rmg.namespace_id = $1::uuid)
 //	LIMIT $3
 //	OFFSET $2
 func (q *Queries) ListResourceMappingGroups(ctx context.Context, arg ListResourceMappingGroupsParams) ([]ListResourceMappingGroupsRow, error) {
@@ -1925,11 +1925,11 @@ SELECT
     COALESCE(m.group_id::TEXT, '')::TEXT as group_id,
     counted.total
 FROM resource_mappings m 
-JOIN counted ON true
+CROSS JOIN counted
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 WHERE (NULLIF($1, '') IS NULL OR m.group_id = $1::UUID)
-GROUP BY av.id, m.id, fqns.fqn
+GROUP BY av.id, m.id, fqns.fqn, counted.total
 LIMIT $3
 OFFSET $2
 `
@@ -1965,11 +1965,11 @@ type ListResourceMappingsRow struct {
 //	    COALESCE(m.group_id::TEXT, '')::TEXT as group_id,
 //	    counted.total
 //	FROM resource_mappings m
-//	JOIN counted ON true
+//	CROSS JOIN counted
 //	LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 //	LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 //	WHERE (NULLIF($1, '') IS NULL OR m.group_id = $1::UUID)
-//	GROUP BY av.id, m.id, fqns.fqn
+//	GROUP BY av.id, m.id, fqns.fqn, counted.total
 //	LIMIT $3
 //	OFFSET $2
 func (q *Queries) ListResourceMappings(ctx context.Context, arg ListResourceMappingsParams) ([]ListResourceMappingsRow, error) {
@@ -2104,12 +2104,12 @@ WITH counted AS (
     FROM subject_condition_set scs
 )
 SELECT
-    id,
-    condition,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+    scs.id,
+    scs.condition,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', scs.metadata -> 'labels', 'created_at', scs.created_at, 'updated_at', scs.updated_at)) as metadata,
     counted.total
-FROM subject_condition_set
-JOIN counted ON true
+FROM subject_condition_set scs
+CROSS JOIN counted
 LIMIT $2
 OFFSET $1
 `
@@ -2135,12 +2135,12 @@ type ListSubjectConditionSetsRow struct {
 //	    FROM subject_condition_set scs
 //	)
 //	SELECT
-//	    id,
-//	    condition,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+//	    scs.id,
+//	    scs.condition,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', scs.metadata -> 'labels', 'created_at', scs.created_at, 'updated_at', scs.updated_at)) as metadata,
 //	    counted.total
-//	FROM subject_condition_set
-//	JOIN counted ON true
+//	FROM subject_condition_set scs
+//	CROSS JOIN counted
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) ListSubjectConditionSets(ctx context.Context, arg ListSubjectConditionSetsParams) ([]ListSubjectConditionSetsRow, error) {
@@ -2186,10 +2186,10 @@ SELECT
     JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active) AS attribute_value,
     counted.total
 FROM subject_mappings sm
-JOIN counted ON true
+CROSS JOIN counted
 LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
 LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
-GROUP BY av.id, sm.id, scs.id
+GROUP BY av.id, sm.id, scs.id, counted.total
 LIMIT $2
 OFFSET $1
 `
@@ -2228,10 +2228,10 @@ type ListSubjectMappingsRow struct {
 //	    JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active) AS attribute_value,
 //	    counted.total
 //	FROM subject_mappings sm
-//	JOIN counted ON true
+//	CROSS JOIN counted
 //	LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
 //	LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
-//	GROUP BY av.id, sm.id, scs.id
+//	GROUP BY av.id, sm.id, scs.id, counted.total
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) ListSubjectMappings(ctx context.Context, arg ListSubjectMappingsParams) ([]ListSubjectMappingsRow, error) {

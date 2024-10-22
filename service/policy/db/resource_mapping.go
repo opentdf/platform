@@ -18,7 +18,7 @@ import (
 */
 
 func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resourcemapping.ListResourceMappingGroupsRequest) (*resourcemapping.ListResourceMappingGroupsResponse, error) {
-	limit, offset := getRequestedLimitOffset(r)
+	limit, offset := getRequestedLimitOffset(r.GetPagination())
 	list, err := c.Queries.ListResourceMappingGroups(ctx, ListResourceMappingGroupsParams{
 		NamespaceID: r.GetNamespaceId(),
 		Limit:       limit,

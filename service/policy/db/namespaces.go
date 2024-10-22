@@ -83,8 +83,8 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNa
 		}
 	}
 
-	var total int32 
-	var nextOffset int32 
+	var total int32
+	var nextOffset int32
 	if len(list) > 0 {
 		total = int32(list[0].Total)
 		nextOffset = getNextOffset(offset, limit, total)
@@ -98,6 +98,33 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNa
 			NextOffset:    nextOffset,
 		},
 	}, nil
+}
+
+// Loads all namespaces into memory by making iterative db roundtrip requests of defaultObjectListAllLimit size
+func (c PolicyDBClient) ListAllNamespaces(ctx context.Context) ([]*policy.Namespace, error) {
+	var nextOffset int32
+	nsList := make([]*policy.Namespace, 0)
+
+	for {
+		listed, err := c.ListNamespaces(ctx, &namespaces.ListNamespacesRequest{
+			Pagination: &policy.PageRequest{
+				Limit:  defaultObjectListAllLimit,
+				Offset: nextOffset,
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to list all namespaces: %w", err)
+		}
+
+		nextOffset = listed.GetPagination().GetNextOffset()
+		nsList = append(nsList, listed.Namespaces...)
+
+		// offset becomes zero when list is exhausted
+		if nextOffset <= 0 {
+			break
+		}
+	}
+	return nsList, nil
 }
 
 func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.CreateNamespaceRequest) (*policy.Namespace, error) {

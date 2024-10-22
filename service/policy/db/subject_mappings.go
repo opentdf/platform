@@ -232,7 +232,7 @@ func (c PolicyDBClient) GetSubjectConditionSet(ctx context.Context, id string) (
 }
 
 func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context, r *subjectmapping.ListSubjectConditionSetsRequest) (*subjectmapping.ListSubjectConditionSetsResponse, error) {
-	limit, offset := getRequestedLimitOffset(r)
+	limit, offset := getRequestedLimitOffset(r.GetPagination())
 	list, err := c.Queries.ListSubjectConditionSets(ctx, ListSubjectConditionSetsParams{
 		Limit:  limit,
 		Offset: offset,

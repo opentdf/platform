@@ -87,7 +87,7 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, id string) (*poli
 
 func (c PolicyDBClient) ListAttributeValues(ctx context.Context, r *attributes.ListAttributeValuesRequest) (*attributes.ListAttributeValuesResponse, error) {
 	state := GetDBStateTypeTransformedEnum(r.GetState())
-	limit, offset := getRequestedLimitOffset(r)
+	limit, offset := getRequestedLimitOffset(r.GetPagination())
 
 	active := pgtype.Bool{
 		Valid: false,
@@ -143,14 +143,31 @@ func (c PolicyDBClient) ListAttributeValues(ctx context.Context, r *attributes.L
 	}, nil
 }
 
+// Loads all attribute values into memory by making iterative db roundtrip requests of defaultObjectListAllLimit size
 func (c PolicyDBClient) ListAllAttributeValues(ctx context.Context) ([]*policy.Value, error) {
-	// TODO: iterate through entire thing
-	// call ListAttributeValues method with "empty" param values to make the query return all rows
-	return c.ListAttributeValues(ctx, &attributes.ListAttributeValuesRequest{
-		Pagination: &policy.PageRequest{
-			Limit: 10000,
-		},
-	})
+	var nextOffset int32
+	valsList := make([]*policy.Value, 0)
+
+	for {
+		listed, err := c.ListAttributeValues(ctx, &attributes.ListAttributeValuesRequest{
+			Pagination: &policy.PageRequest{
+				Limit:  defaultObjectListAllLimit,
+				Offset: nextOffset,
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to list all attributes: %w", err)
+		}
+
+		nextOffset = listed.GetPagination().GetNextOffset()
+		valsList = append(valsList, listed.Values...)
+
+		// offset becomes zero when list is exhausted
+		if nextOffset <= 0 {
+			break
+		}
+	}
+	return valsList, nil
 }
 
 func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.UpdateAttributeValueRequest) (*policy.Value, error) {

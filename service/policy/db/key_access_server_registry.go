@@ -12,7 +12,7 @@ import (
 )
 
 func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
-	limit, offset := getRequestedLimitOffset(r)
+	limit, offset := getRequestedLimitOffset(r.GetPagination())
 	list, err := c.Queries.ListKeyAccessServers(ctx, ListKeyAccessServersParams{
 		Offset: offset,
 		Limit:  limit,

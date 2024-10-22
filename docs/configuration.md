@@ -66,23 +66,24 @@ The server configuration is used to define how the application runs its server.
 
 Root level key `server`
 
-| Field                 | Description                                                       | Default | Environment Variable |
-| --------------------- | ----------------------------------------------------------------- | ------- | -------------------- |
-| `auth.audience`       | The audience for the IDP.                                         |         | OPENTDF_SERVER_AUTH_AUDIENCE |
-| `auth.issuer`         | The issuer for the IDP.                                           |         | OPENTDF_SERVER_AUTH_ISSUER |
-| `auth.cache_refresh`  | Interval in which the IDP jwks should be refreshed                | `15m`   | OPENTDF_SERVER_AUTH_CACHE_REFRESH |
-| `auth.dpopskew`       | The amount of time drift allowed between when the client generated a dpop proof and the server time. | `1h` | OPENTDF_SERVER_AUTH |
-| `auth.skew`           | The amount of time drift allowed between a tokens `exp` claim and the server time. | `1m` | OPENTDF_SERVER_AUTH_SKEW |
-| `auth.public_client_id` | The oidc client id. This is leveraged by otdfctl.               |         | OPENTDF_SERVER_AUTH_PUBLIC_CLIENT_ID |
-| `auth.enforceDPoP`    | If true, DPoP bindings on Access Tokens are enforced.             | `false` | OPENTDF_SERVER_AUTH_ENFORCEDPOP |
-| `cryptoProvider`      | A list of public/private keypairs and their use. Described [below](#crypto-provider) | empty   | |
-| `enable_pprof`        | Enable golang performance profiling                               | `false` | OPENTDF_SERVER_ENABLE_PPROF    |
-| `grpc.reflection`     | The configuration for the grpc server.                            | `true`  | OPENTDF_SERVER_GRPC_REFLECTION |
-| `host`                | The host address for the server.                                  | `""`    | OPENTDF_SERVER_HOST  |
-| `port`                | The port number for the server.                                   | `9000`  | OPENTDF_SERVER_PORT  |
-| `tls.enabled`         | Enable tls.                                                       | `false` | OPENTDF_SERVER_TLS_ENABLED |
-| `tls.cert`            | The path to the tls certificate.                                  |         | OPENTDF_SERVER_TLS_CERT |
-| `tls.key`             | The path to the tls key.                                          |         | OPENTDF_SERVER_TLS_KEY  |
+| Field                   | Description                                                                                                   | Default | Environment Variable                 |
+|-------------------------|---------------------------------------------------------------------------------------------------------------|---------|--------------------------------------|
+| `auth.audience`         | The audience for the IDP.                                                                                     |         | OPENTDF_SERVER_AUTH_AUDIENCE         |
+| `auth.issuer`           | The issuer for the IDP.                                                                                       |         | OPENTDF_SERVER_AUTH_ISSUER           |
+| `auth.policy`           | The Casbin policy for enforcing authorization on endpoints. Described [below](#casbin-endpoint-authorization) |         |                                      |
+| `auth.cache_refresh`    | Interval in which the IDP jwks should be refreshed                                                            | `15m`   | OPENTDF_SERVER_AUTH_CACHE_REFRESH    |
+| `auth.dpopskew`         | The amount of time drift allowed between when the client generated a dpop proof and the server time.          | `1h`    | OPENTDF_SERVER_AUTH                  |
+| `auth.skew`             | The amount of time drift allowed between a tokens `exp` claim and the server time.                            | `1m`    | OPENTDF_SERVER_AUTH_SKEW             |
+| `auth.public_client_id` | The oidc client id. This is leveraged by otdfctl.                                                             |         | OPENTDF_SERVER_AUTH_PUBLIC_CLIENT_ID |
+| `auth.enforceDPoP`      | If true, DPoP bindings on Access Tokens are enforced.                                                         | `false` | OPENTDF_SERVER_AUTH_ENFORCEDPOP      |
+| `cryptoProvider`        | A list of public/private keypairs and their use. Described [below](#crypto-provider)                          | empty   |                                      |
+| `enable_pprof`          | Enable golang performance profiling                                                                           | `false` | OPENTDF_SERVER_ENABLE_PPROF          |
+| `grpc.reflection`       | The configuration for the grpc server.                                                                        | `true`  | OPENTDF_SERVER_GRPC_REFLECTION       |
+| `host`                  | The host address for the server.                                                                              | `""`    | OPENTDF_SERVER_HOST                  |
+| `port`                  | The port number for the server.                                                                               | `9000`  | OPENTDF_SERVER_PORT                  |
+| `tls.enabled`           | Enable tls.                                                                                                   | `false` | OPENTDF_SERVER_TLS_ENABLED           |
+| `tls.cert`              | The path to the tls certificate.                                                                              |         | OPENTDF_SERVER_TLS_CERT              |
+| `tls.key`               | The path to the tls key.                                                                                      |         | OPENTDF_SERVER_TLS_KEY               |
 
 Example:
 
@@ -217,3 +218,90 @@ services:
       path: /path/to/policy.rego
       query: data.opentdf.entitlements.attributes
 ```
+
+### Casbin Endpoint Authorization
+
+OpenTDF uses Casbin to manage authorization policies. This document provides an overview of how to configure and manage the default authorization policy in OpenTDF.
+
+#### Key Aspects of Authorization Configuration
+
+1. **Default Role**: The default role assigned to an authorized user if no specific role is found.
+2. **Claim**: The claim in the OIDC token that should be used to map roles.
+3. **Map**: Mapping between policy roles and IdP roles.
+4. **CSV**: The authorization policy in CSV format.
+5. **Model**: The Casbin policy model.
+
+#### Configuration in opentdf-example.yaml
+
+Below is an example configuration snippet from
+opentdf-example.yaml:
+
+```yaml
+server:
+  auth:
+    enabled: true
+    enforceDPoP: false
+    public_client_id: 'opentdf-public'
+    audience: 'http://localhost:8080'
+    issuer: http://keycloak:8888/auth/realms/opentdf
+    policy:
+      ## Default role for all requests
+      default: "role:standard"
+      
+      ## Dot notation is used to access nested claims (i.e. realm_access.roles)
+      claim: "realm_access.roles"
+      
+      ## Maps the external role to the OpenTDF role
+      ## Note: left side is used in the policy, right side is the external role
+      map:
+        standard: opentdf-standard
+        admin: opentdf-admin
+        org-admin: opentdf-org-admin
+
+      ## Custom policy (see examples https://github.com/casbin/casbin/tree/master/examples)
+      csv: |
+        p, role:org-admin, policy:attributes, *, *, allow
+        p, role:org-admin, policy:subject-mappings, *, *, allow
+        p, role:org-admin, policy:resource-mappings, *, *, allow
+        p, role:org-admin, policy:kas-registry, *, *, allow
+        p, role:org-admin, policy:unsafe, *, *, allow
+        p, role:admin, policy:attributes, read, allow
+        p, role:admin, policy:subject-mappings, read, allow
+        p, role:admin, policy:resource-mappings, read, allow
+        p, role:admin, policy:kas-registry, read, allow
+        p, role:standard, policy:attributes, read, allow
+        p, role:standard, policy:subject-mappings, read, allow
+        p, role:standard, policy:resource-mappings, read, allow
+        p, role:standard, policy:kas-registry, read, allow
+        p, role:unknown, entityresolution.EntityResolutionService.ResolveEntities, write, allow
+        p, role:unknown, kas.AccessService/Rewrap, *, allow
+
+      ## Custom model (see https://casbin.org/docs/syntax-for-models/)
+      model: |
+        [request_definition]
+        r = sub, res, act, obj
+        
+        [policy_definition]
+        p = sub, res, act, obj, eft
+        
+        [role_definition]
+        g = _, _
+        
+        [policy_effect]
+        e = some(where (p.eft == allow)) && !some(where (p.eft == deny))
+        
+        [matchers]
+        m = g(r.sub, p.sub) && globOrRegexMatch(r.res, p.res) && globOrRegexMatch(r.act, p.act) && globOrRegexMatch(r.obj, p.obj)
+```
+
+#### Role Permissions
+
+- **Org Admin**: Can read, write, and perform unsafe mutations.
+- **Admin**: Can read and write.
+- **Standard User**: Can read.
+- **Public Endpoints**: Accessible without specific roles.
+
+#### Managing Authorization Policy
+
+Admins can manage the authorization policy directly in the YAML configuration file. For detailed configuration options, refer to the [Casbin documentation](https://casbin.org/docs/en/syntax-for-models).
+

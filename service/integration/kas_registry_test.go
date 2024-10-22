@@ -599,11 +599,11 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasId() {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasId_NoResultsIfNotFound() {
 	// list grants by KAS ID
-	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, &kasregistry.ListKeyAccessServerGrantsRequest{
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, &kasregistry.ListKeyAccessServerGrantsRequest{
 		KasId: nonExistentKasRegistryID,
 	})
 	s.Require().NoError(err)
-	s.Empty(listedGrants)
+	s.Empty(listRsp.GetGrants())
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasUri() {
@@ -648,7 +648,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasUri_NoResultsIfNot
 		KasUri: "https://notfound.com/kas/uri",
 	})
 	s.Require().NoError(err)
-	s.Nil(listGrantsRsp)
+	s.Empty(listGrantsRsp.GetGrants())
 }
 
 func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {

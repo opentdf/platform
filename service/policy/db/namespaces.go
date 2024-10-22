@@ -50,9 +50,9 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNa
 	active := pgtype.Bool{
 		Valid: false,
 	}
-	state := GetDBStateTypeTransformedEnum(r.GetState())
-	if state != "" && state != StateAny {
-		active = pgtypeBool(state == StateActive)
+	state := getDBStateTypeTransformedEnum(r.GetState())
+	if state != "" && state != stateAny {
+		active = pgtypeBool(state == stateActive)
 	}
 
 	limit := getListLimit(r.GetPagination().GetLimit())

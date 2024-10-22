@@ -86,15 +86,15 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, id string) (*poli
 }
 
 func (c PolicyDBClient) ListAttributeValues(ctx context.Context, r *attributes.ListAttributeValuesRequest) (*attributes.ListAttributeValuesResponse, error) {
-	state := GetDBStateTypeTransformedEnum(r.GetState())
+	state := getDBStateTypeTransformedEnum(r.GetState())
 	limit, offset := getRequestedLimitOffset(r.GetPagination())
 
 	active := pgtype.Bool{
 		Valid: false,
 	}
 
-	if state != "" && state != StateAny {
-		active = pgtypeBool(state == StateActive)
+	if state != "" && state != stateAny {
+		active = pgtypeBool(state == stateActive)
 	}
 
 	list, err := c.Queries.ListAttributeValues(ctx, ListAttributeValuesParams{

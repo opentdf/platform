@@ -366,17 +366,20 @@ func (s *AttributesSuite) Test_GetAttribute_ContainsKASGrants() {
 	s.Equal(createdKAS.GetId(), gotAttr.GetGrants()[0].GetId())
 }
 
-func (s *AttributesSuite) Test_ListAttributes() {
+func (s *AttributesSuite) Test_ListAttributes_NoPagination_Succeeds() {
 	fixtures := s.getAttributeFixtures()
 
-	list, err := s.db.PolicyClient.ListAttributes(s.ctx, policydb.StateActive, "")
+	r := &attributes.ListAttributesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+	}
+	list, err := s.db.PolicyClient.ListAttributes(s.ctx, r)
 	s.Require().NoError(err)
 	s.NotNil(list)
 
 	// all fixtures are listed
 	for _, f := range fixtures {
 		var found bool
-		for _, l := range list {
+		for _, l := range list.GetAttributes() {
 			if f.ID == l.GetId() {
 				found = true
 				break
@@ -385,6 +388,52 @@ func (s *AttributesSuite) Test_ListAttributes() {
 		s.True(found)
 	}
 }
+
+// func (s *AttributesSuite) Test_ListAttributes_Limit_Succeeds() {
+// 	fixtures := s.getAttributeFixtures()
+
+// 	r := &attributes.ListAttributesRequest{
+// 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+// 	}
+// 	list, err := s.db.PolicyClient.ListAttributes(s.ctx, r)
+// 	s.Require().NoError(err)
+// 	s.NotNil(list)
+
+// 	// all fixtures are listed
+// 	for _, f := range fixtures {
+// 		var found bool
+// 		for _, l := range list.GetAttributes() {
+// 			if f.ID == l.GetId() {
+// 				found = true
+// 				break
+// 			}
+// 		}
+// 		s.True(found)
+// 	}
+// }
+
+// func (s *AttributesSuite) Test_ListAttributes_Offset_Succeeds() {
+// 	fixtures := s.getAttributeFixtures()
+
+// 	r := &attributes.ListAttributesRequest{
+// 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+// 	}
+// 	list, err := s.db.PolicyClient.ListAttributes(s.ctx, r)
+// 	s.Require().NoError(err)
+// 	s.NotNil(list)
+
+// 	// all fixtures are listed
+// 	for _, f := range fixtures {
+// 		var found bool
+// 		for _, l := range list.GetAttributes() {
+// 			if f.ID == l.GetId() {
+// 				found = true
+// 				break
+// 			}
+// 		}
+// 		s.True(found)
+// 	}
+// }
 
 func (s *AttributesSuite) Test_ListAttributes_FqnsIncluded() {
 	// create an attribute
@@ -398,11 +447,15 @@ func (s *AttributesSuite) Test_ListAttributes_FqnsIncluded() {
 	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 
-	list, err := s.db.PolicyClient.ListAttributes(s.ctx, policydb.StateActive, fixtureNamespaceID)
+	r := &attributes.ListAttributesRequest{
+		State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+		Namespace: fixtureNamespaceID,
+	}
+	list, err := s.db.PolicyClient.ListAttributes(s.ctx, r)
 	s.Require().NoError(err)
 	s.NotNil(list)
 
-	for _, a := range list {
+	for _, a := range list.GetAttributes() {
 		// attr fqn
 		s.NotEqual("", a.GetFqn())
 		s.Equal(fmt.Sprintf("https://%s/attr/%s", a.GetNamespace().GetName(), a.GetName()), a.GetFqn())
@@ -425,37 +478,45 @@ func (s *AttributesSuite) Test_ListAttributes_ByNamespaceIdOrName() {
 	for _, f := range s.getAttributeFixtures() {
 		namespaces[f.NamespaceID] = ""
 	}
+	r := &attributes.ListAttributesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+	}
 	// list attributes by namespace id
 	for nsID := range namespaces {
-		list, err := s.db.PolicyClient.ListAttributes(s.ctx, policydb.StateAny, nsID)
+		r.Namespace = nsID
+		rsp, err := s.db.PolicyClient.ListAttributes(s.ctx, r)
 		s.Require().NoError(err)
-		s.NotNil(list)
-		s.NotEmpty(list)
-		for _, l := range list {
+		s.NotNil(rsp)
+		listed := rsp.GetAttributes()
+		s.NotEmpty(listed)
+		for _, l := range listed {
 			s.Equal(nsID, l.GetNamespace().GetId())
 		}
-		namespaces[nsID] = list[0].GetNamespace().GetName()
+		namespaces[nsID] = listed[0].GetNamespace().GetName()
 	}
 
 	// list attributes by namespace name
 	for _, nsName := range namespaces {
-		list, err := s.db.PolicyClient.ListAttributes(s.ctx, policydb.StateAny, nsName)
+		r.Namespace = nsName
+		rsp, err := s.db.PolicyClient.ListAttributes(s.ctx, r)
 		s.Require().NoError(err)
-		s.NotNil(list)
-		s.NotEmpty(list)
-		for _, l := range list {
+		s.NotNil(rsp)
+		listed := rsp.GetAttributes()
+		s.NotEmpty(listed)
+		for _, l := range listed {
 			s.Equal(nsName, l.GetNamespace().GetName())
 		}
 	}
 
 	// list attributes by namespace name with case insensitivity
 	for _, nsName := range namespaces {
-		upperNsName := strings.ToUpper(nsName)
-		list, err := s.db.PolicyClient.ListAttributes(s.ctx, policydb.StateAny, upperNsName)
+		r.Namespace = strings.ToUpper(nsName)
+		rsp, err := s.db.PolicyClient.ListAttributes(s.ctx, r)
 		s.Require().NoError(err)
-		s.NotNil(list)
-		s.NotEmpty(list)
-		for _, l := range list {
+		s.NotNil(rsp)
+		listed := rsp.GetAttributes()
+		s.NotEmpty(listed)
+		for _, l := range listed {
 			s.Equal(nsName, l.GetNamespace().GetName())
 		}
 	}
@@ -809,10 +870,14 @@ func (s *AttributesSuite) Test_UnsafeDeleteAttribute() {
 	s.NotEqual("", ns.GetId())
 
 	// attribute should not be listed anymore
-	list, err := s.db.PolicyClient.ListAttributes(s.ctx, policydb.StateAny, fixtureNamespaceID)
+	rsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Namespace: fixtureNamespaceID,
+	})
 	s.Require().NoError(err)
-	s.NotNil(list)
-	for _, l := range list {
+	s.NotNil(rsp)
+	listed := rsp.GetAttributes()
+	for _, l := range listed {
 		s.NotEqual(createdAttr.GetId(), l.GetId())
 	}
 
@@ -905,16 +970,19 @@ func setupCascadeDeactivateAttribute(s *AttributesSuite) (string, string, string
 func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_List() {
 	type test struct {
 		name     string
-		testFunc func(state string) bool
-		state    string
+		testFunc func(state common.ActiveStateEnum) bool
+		state    common.ActiveStateEnum
 		isFound  bool
 	}
 
-	listNamespaces := func(state string) bool {
-		listedNamespaces, err := s.db.PolicyClient.ListNamespaces(s.ctx, state)
+	listNamespaces := func(state common.ActiveStateEnum) bool {
+		nsListRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+			State: state,
+		})
 		s.Require().NoError(err)
-		s.NotNil(listedNamespaces)
-		for _, ns := range listedNamespaces {
+		s.NotNil(nsListRsp)
+		listed := nsListRsp.GetNamespaces()
+		for _, ns := range listed {
 			if stillActiveNsID == ns.GetId() {
 				return true
 			}
@@ -922,11 +990,14 @@ func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_List() {
 		return false
 	}
 
-	listAttributes := func(state string) bool {
-		listedAttrs, err := s.db.PolicyClient.ListAttributes(s.ctx, state, "")
+	listAttributes := func(state common.ActiveStateEnum) bool {
+		listAttrsRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+			State: state,
+		})
 		s.Require().NoError(err)
-		s.NotNil(listedAttrs)
-		for _, a := range listedAttrs {
+		s.NotNil(listAttrsRsp)
+		listed := listAttrsRsp.GetAttributes()
+		for _, a := range listed {
 			if deactivatedAttrID == a.GetId() {
 				return true
 			}
@@ -934,11 +1005,15 @@ func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_List() {
 		return false
 	}
 
-	listValues := func(state string) bool {
-		listedVals, err := s.db.PolicyClient.ListAttributeValues(s.ctx, deactivatedAttrID, state)
+	listValues := func(state common.ActiveStateEnum) bool {
+		valsListRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
+			AttributeId: deactivatedAttrID,
+			State:       state,
+		})
 		s.Require().NoError(err)
-		s.NotNil(listedVals)
-		for _, v := range listedVals {
+		s.NotNil(valsListRsp)
+		listed := valsListRsp.GetValues()
+		for _, v := range listed {
 			if deactivatedAttrValueID == v.GetId() {
 				return true
 			}
@@ -950,55 +1025,55 @@ func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_List() {
 		{
 			name:     "namespace is NOT found in LIST of INACTIVE",
 			testFunc: listNamespaces,
-			state:    policydb.StateInactive,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE,
 			isFound:  false,
 		},
 		{
 			name:     "namespace is found when filtering for ACTIVE state",
 			testFunc: listNamespaces,
-			state:    policydb.StateActive,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
 			isFound:  true,
 		},
 		{
 			name:     "namespace is found when filtering for ANY state",
 			testFunc: listNamespaces,
-			state:    policydb.StateAny,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
 			isFound:  true,
 		},
 		{
 			name:     "attribute is found when filtering for INACTIVE state",
 			testFunc: listAttributes,
-			state:    policydb.StateInactive,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE,
 			isFound:  true,
 		},
 		{
 			name:     "attribute is found when filtering for ANY state",
 			testFunc: listAttributes,
-			state:    policydb.StateAny,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
 			isFound:  true,
 		},
 		{
 			name:     "attribute is NOT found when filtering for ACTIVE state",
 			testFunc: listAttributes,
-			state:    policydb.StateActive,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
 			isFound:  false,
 		},
 		{
 			name:     "value is NOT found in LIST of ACTIVE",
 			testFunc: listValues,
-			state:    policydb.StateActive,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
 			isFound:  false,
 		},
 		{
 			name:     "value is found when filtering for INACTIVE state",
 			testFunc: listValues,
-			state:    policydb.StateInactive,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE,
 			isFound:  true,
 		},
 		{
 			name:     "value is found when filtering for ANY state",
 			testFunc: listValues,
-			state:    policydb.StateAny,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
 			isFound:  true,
 		},
 	}

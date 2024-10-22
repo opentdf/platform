@@ -13,11 +13,11 @@ import (
 const (
 	// Note: Policy Object LIST count is defaulted to 250 if not provided. This may change at any time and is an internal
 	// concern of the policy services that should not be relied upon for stability.
-	defaultObjectListLimit = 250
+	defaultObjectListLimit int32 = 250
 
 	// The Policy DB Client exposes ListAll methods for certain cases when the entire list is needed.
 	// The default iterated list count is set here to avoid postgres performance degradation.
-	defaultObjectListAllLimit = 1000
+	defaultObjectListAllLimit int32 = 1000
 )
 
 func getRequestedLimitOffset(page *policy.PageRequest) (int32, int32) {

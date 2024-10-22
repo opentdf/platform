@@ -117,7 +117,7 @@ func hydrateAttribute(row *attributeQueryRow) (*policy.Attribute, error) {
 
 func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAttributesRequest) (*attributes.ListAttributesResponse, error) {
 	namespace := r.GetNamespace()
-	state := GetDBStateTypeTransformedEnum(r.GetState())
+	state := getDBStateTypeTransformedEnum(r.GetState())
 	limit, offset := getRequestedLimitOffset(r.GetPagination())
 	var (
 		active = pgtype.Bool{
@@ -127,8 +127,8 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAt
 		namespaceName = ""
 	)
 
-	if state != "" && state != StateAny {
-		active = pgtypeBool(state == StateActive)
+	if state != "" && state != stateAny {
+		active = pgtypeBool(state == stateActive)
 	}
 
 	if namespace != "" {

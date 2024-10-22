@@ -13,6 +13,8 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+const nonExistentAttributeValueUUID = "78909865-8888-9999-9999-000000000000"
+
 type SubjectMappingsSuite struct {
 	suite.Suite
 	f  fixtures.Fixtures
@@ -373,10 +375,12 @@ func (s *SubjectMappingsSuite) TestGetSubjectMapping_NonExistentId_Fails() {
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
-func (s *SubjectMappingsSuite) TestListSubjectMappings() {
-	list, err := s.db.PolicyClient.ListSubjectMappings(context.Background())
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_NoPagination_Succeeds() {
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{})
 	s.Require().NoError(err)
-	s.NotNil(list)
+	s.NotNil(listRsp)
+	listed := listRsp.GetSubjectMappings()
+	s.NotEmpty(listed)
 
 	fixture1 := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute1")
 	found1 := false
@@ -384,7 +388,7 @@ func (s *SubjectMappingsSuite) TestListSubjectMappings() {
 	found2 := false
 	fixture3 := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute3")
 	found3 := false
-	s.GreaterOrEqual(len(list), 3)
+	s.GreaterOrEqual(len(listed), 3)
 
 	assertEqual := func(sm *policy.SubjectMapping, fixture fixtures.FixtureDataSubjectMapping) {
 		s.Equal(fixture.AttributeValueID, sm.GetAttributeValue().GetId())
@@ -392,7 +396,87 @@ func (s *SubjectMappingsSuite) TestListSubjectMappings() {
 		s.Equal(fixture.SubjectConditionSetID, sm.GetSubjectConditionSet().GetId())
 		s.Equal(len(fixture.Actions), len(sm.GetActions()))
 	}
-	for _, sm := range list {
+	for _, sm := range listed {
+		if sm.GetId() == fixture1.ID {
+			assertEqual(sm, fixture1)
+			found1 = true
+		}
+		if sm.GetId() == fixture2.ID {
+			assertEqual(sm, fixture2)
+			found2 = true
+		}
+		if sm.GetId() == fixture3.ID {
+			assertEqual(sm, fixture3)
+			found3 = true
+		}
+	}
+	s.True(found1)
+	s.True(found2)
+	s.True(found3)
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_Limit_Succeeds() {
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+	listed := listRsp.GetSubjectMappings()
+	s.NotEmpty(listed)
+
+	fixture1 := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute1")
+	found1 := false
+	fixture2 := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute2")
+	found2 := false
+	fixture3 := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute3")
+	found3 := false
+	s.GreaterOrEqual(len(listed), 3)
+
+	assertEqual := func(sm *policy.SubjectMapping, fixture fixtures.FixtureDataSubjectMapping) {
+		s.Equal(fixture.AttributeValueID, sm.GetAttributeValue().GetId())
+		s.True(sm.GetAttributeValue().GetActive().GetValue())
+		s.Equal(fixture.SubjectConditionSetID, sm.GetSubjectConditionSet().GetId())
+		s.Equal(len(fixture.Actions), len(sm.GetActions()))
+	}
+	for _, sm := range listed {
+		if sm.GetId() == fixture1.ID {
+			assertEqual(sm, fixture1)
+			found1 = true
+		}
+		if sm.GetId() == fixture2.ID {
+			assertEqual(sm, fixture2)
+			found2 = true
+		}
+		if sm.GetId() == fixture3.ID {
+			assertEqual(sm, fixture3)
+			found3 = true
+		}
+	}
+	s.True(found1)
+	s.True(found2)
+	s.True(found3)
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_Offset_Succeeds() {
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+	listed := listRsp.GetSubjectMappings()
+	s.NotEmpty(listed)
+
+	fixture1 := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute1")
+	found1 := false
+	fixture2 := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute2")
+	found2 := false
+	fixture3 := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute3")
+	found3 := false
+	s.GreaterOrEqual(len(listed), 3)
+
+	assertEqual := func(sm *policy.SubjectMapping, fixture fixtures.FixtureDataSubjectMapping) {
+		s.Equal(fixture.AttributeValueID, sm.GetAttributeValue().GetId())
+		s.True(sm.GetAttributeValue().GetActive().GetValue())
+		s.Equal(fixture.SubjectConditionSetID, sm.GetSubjectConditionSet().GetId())
+		s.Equal(len(fixture.Actions), len(sm.GetActions()))
+	}
+	for _, sm := range listed {
 		if sm.GetId() == fixture1.ID {
 			assertEqual(sm, fixture1)
 			found1 = true
@@ -573,10 +657,11 @@ func (s *SubjectMappingsSuite) TestGetSubjectConditionSet_NonExistentId_Fails() 
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
-func (s *SubjectMappingsSuite) TestListSubjectConditionSet() {
-	list, err := s.db.PolicyClient.ListSubjectConditionSets(context.Background())
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_NoPagination_Succeeds() {
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(context.Background(), &subjectmapping.ListSubjectConditionSetsRequest{})
 	s.Require().NoError(err)
-	s.NotNil(list)
+	s.NotNil(listRsp)
+	listed := listRsp.GetSubjectConditionSets()
 
 	fixture1 := s.f.GetSubjectConditionSetKey("subject_condition_set1")
 	found1 := false
@@ -587,8 +672,76 @@ func (s *SubjectMappingsSuite) TestListSubjectConditionSet() {
 	fixture4 := s.f.GetSubjectConditionSetKey("subject_condition_simple_in")
 	found4 := false
 
-	s.GreaterOrEqual(len(list), 3)
-	for _, scs := range list {
+	s.GreaterOrEqual(len(listed), 3)
+	for _, scs := range listed {
+		switch scs.GetId() {
+		case fixture1.ID:
+			found1 = true
+		case fixture2.ID:
+			found2 = true
+		case fixture3.ID:
+			found3 = true
+		case fixture4.ID:
+			found4 = true
+		}
+	}
+	s.True(found1)
+	s.True(found2)
+	s.True(found3)
+	s.True(found4)
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_Limit_Succeeds() {
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(context.Background(), &subjectmapping.ListSubjectConditionSetsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+	listed := listRsp.GetSubjectConditionSets()
+
+	fixture1 := s.f.GetSubjectConditionSetKey("subject_condition_set1")
+	found1 := false
+	fixture2 := s.f.GetSubjectConditionSetKey("subject_condition_set2")
+	found2 := false
+	fixture3 := s.f.GetSubjectConditionSetKey("subject_condition_set3")
+	found3 := false
+	fixture4 := s.f.GetSubjectConditionSetKey("subject_condition_simple_in")
+	found4 := false
+
+	s.GreaterOrEqual(len(listed), 3)
+	for _, scs := range listed {
+		switch scs.GetId() {
+		case fixture1.ID:
+			found1 = true
+		case fixture2.ID:
+			found2 = true
+		case fixture3.ID:
+			found3 = true
+		case fixture4.ID:
+			found4 = true
+		}
+	}
+	s.True(found1)
+	s.True(found2)
+	s.True(found3)
+	s.True(found4)
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_Offset_Succeeds() {
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(context.Background(), &subjectmapping.ListSubjectConditionSetsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+	listed := listRsp.GetSubjectConditionSets()
+
+	fixture1 := s.f.GetSubjectConditionSetKey("subject_condition_set1")
+	found1 := false
+	fixture2 := s.f.GetSubjectConditionSetKey("subject_condition_set2")
+	found2 := false
+	fixture3 := s.f.GetSubjectConditionSetKey("subject_condition_set3")
+	found3 := false
+	fixture4 := s.f.GetSubjectConditionSetKey("subject_condition_simple_in")
+	found4 := false
+
+	s.GreaterOrEqual(len(listed), 3)
+	for _, scs := range listed {
 		switch scs.GetId() {
 		case fixture1.ID:
 			found1 = true

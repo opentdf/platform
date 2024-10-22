@@ -54,8 +54,7 @@ func (ns NamespacesService) IsReady(ctx context.Context) error {
 }
 
 func (ns NamespacesService) ListNamespaces(ctx context.Context, req *namespaces.ListNamespacesRequest) (*namespaces.ListNamespacesResponse, error) {
-	state := policydb.GetDBStateTypeTransformedEnum(req.GetState())
-	ns.logger.Debug("listing namespaces", slog.String("state", state))
+	ns.logger.Debug("listing namespaces", slog.String("state", req.GetState().String()))
 
 	rsp, err := ns.dbClient.ListNamespaces(ctx, req)
 	if err != nil {

@@ -65,8 +65,7 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 func (s *AttributesService) ListAttributes(ctx context.Context,
 	req *attributes.ListAttributesRequest,
 ) (*attributes.ListAttributesResponse, error) {
-	state := policydb.GetDBStateTypeTransformedEnum(req.GetState())
-	s.logger.Debug("listing attribute definitions", slog.String("state", state))
+	s.logger.Debug("listing attribute definitions", slog.String("state", req.GetState().String()))
 
 	rsp, err := s.dbClient.ListAttributes(ctx, req)
 	if err != nil {
@@ -199,7 +198,7 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attri
 }
 
 func (s *AttributesService) ListAttributeValues(ctx context.Context, req *attributes.ListAttributeValuesRequest) (*attributes.ListAttributeValuesResponse, error) {
-	s.logger.Debug("listing attribute values", slog.String("attributeId", req.GetAttributeId()), slog.String("state", policydb.GetDBStateTypeTransformedEnum(req.GetState())))
+	s.logger.Debug("listing attribute values", slog.String("attributeId", req.GetAttributeId()), slog.String("state", req.GetState().String()))
 	rsp, err := s.dbClient.ListAttributeValues(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed, slog.String("attributeId", req.GetAttributeId()))

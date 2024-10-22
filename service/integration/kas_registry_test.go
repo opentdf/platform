@@ -48,13 +48,59 @@ func (s *KasRegistrySuite) getKasRegistryFixtures() []fixtures.FixtureDataKasReg
 	}
 }
 
-func (s *KasRegistrySuite) Test_ListKeyAccessServers() {
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_NoPagination_Succeeds() {
 	fixtures := s.getKasRegistryFixtures()
-	list, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx)
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{})
 	s.Require().NoError(err)
-	s.NotNil(list)
+	s.NotNil(listRsp)
+	listed := listRsp.GetKeyAccessServers()
+	s.NotEmpty(listed)
 	for _, fixture := range fixtures {
-		for _, item := range list {
+		for _, item := range listed {
+			if item.GetId() == fixture.ID {
+				s.Equal(fixture.ID, item.GetId())
+				if item.GetPublicKey().GetRemote() != "" {
+					s.Equal(fixture.PubKey.Remote, item.GetPublicKey().GetRemote())
+				} else {
+					s.Equal(fixture.PubKey.Cached, item.GetPublicKey().GetCached())
+				}
+				s.Equal(fixture.URI, item.GetUri())
+			}
+		}
+	}
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_Offset_Succeeds() {
+	fixtures := s.getKasRegistryFixtures()
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+	listed := listRsp.GetKeyAccessServers()
+	s.NotEmpty(listed)
+	for _, fixture := range fixtures {
+		for _, item := range listed {
+			if item.GetId() == fixture.ID {
+				s.Equal(fixture.ID, item.GetId())
+				if item.GetPublicKey().GetRemote() != "" {
+					s.Equal(fixture.PubKey.Remote, item.GetPublicKey().GetRemote())
+				} else {
+					s.Equal(fixture.PubKey.Cached, item.GetPublicKey().GetCached())
+				}
+				s.Equal(fixture.URI, item.GetUri())
+			}
+		}
+	}
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_Limit_Succeeds() {
+	fixtures := s.getKasRegistryFixtures()
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+	listed := listRsp.GetKeyAccessServers()
+	s.NotEmpty(listed)
+	for _, fixture := range fixtures {
+		for _, item := range listed {
 			if item.GetId() == fixture.ID {
 				s.Equal(fixture.ID, item.GetId())
 				if item.GetPublicKey().GetRemote() != "" {
@@ -519,9 +565,13 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasId() {
 	s.NotNil(valGrant)
 
 	// list grants by KAS ID
-	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, firstKAS.GetId(), "")
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, &kasregistry.ListKeyAccessServerGrantsRequest{
+		KasId: firstKAS.GetId(),
+	})
 	s.Require().NoError(err)
-	s.NotNil(listedGrants)
+	s.NotNil(listRsp)
+
+	listedGrants := listRsp.GetGrants()
 	s.Len(listedGrants, 1)
 	g := listedGrants[0]
 	s.Equal(firstKAS.GetId(), g.GetKeyAccessServer().GetId())
@@ -531,9 +581,13 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasId() {
 	s.Empty(g.GetNamespaceGrants())
 
 	// list grants by the other KAS ID
-	listedGrants, err = s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, otherKAS.GetId(), "")
+	listRsp, err = s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, &kasregistry.ListKeyAccessServerGrantsRequest{
+		KasId: otherKAS.GetId(),
+	})
 	s.Require().NoError(err)
-	s.NotNil(listedGrants)
+	s.NotNil(listRsp)
+
+	listedGrants = listRsp.GetGrants()
 	s.Len(listedGrants, 1)
 	g = listedGrants[0]
 	s.Equal(otherKAS.GetId(), g.GetKeyAccessServer().GetId())
@@ -545,7 +599,9 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasId() {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasId_NoResultsIfNotFound() {
 	// list grants by KAS ID
-	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, nonExistentKasRegistryID, "")
+	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, &kasregistry.ListKeyAccessServerGrantsRequest{
+		KasId: nonExistentKasRegistryID,
+	})
 	s.Require().NoError(err)
 	s.Empty(listedGrants)
 }
@@ -573,10 +629,12 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasUri() {
 	s.NotNil(createdGrant)
 
 	// list grants by KAS URI
-	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, "", fixtureKAS.URI)
-
+	listGrantsRsp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, &kasregistry.ListKeyAccessServerGrantsRequest{
+		KasUri: fixtureKAS.URI,
+	})
 	s.Require().NoError(err)
-	s.NotNil(listedGrants)
+	s.NotNil(listGrantsRsp)
+	listedGrants := listGrantsRsp.GetGrants()
 	s.GreaterOrEqual(len(listedGrants), 1)
 	for _, g := range listedGrants {
 		s.Equal(fixtureKAS.ID, g.GetKeyAccessServer().GetId())
@@ -586,9 +644,11 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasUri() {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasUri_NoResultsIfNotFound() {
 	// list grants by KAS ID
-	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, "", "https://notfound.com/kas/uri")
+	listGrantsRsp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, &kasregistry.ListKeyAccessServerGrantsRequest{
+		KasUri: "https://notfound.com/kas/uri",
+	})
 	s.Require().NoError(err)
-	s.Empty(listedGrants)
+	s.Nil(listGrantsRsp)
 }
 
 func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {
@@ -693,9 +753,10 @@ func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {
 	s.NotNil(nsAnotherGrant)
 
 	// list all grants
-	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, "", "")
+	listGrantsRsp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, &kasregistry.ListKeyAccessServerGrantsRequest{})
 	s.Require().NoError(err)
-	s.NotNil(listedGrants)
+	s.NotNil(listGrantsRsp)
+	listedGrants := listGrantsRsp.GetGrants()
 	s.GreaterOrEqual(len(listedGrants), 1)
 
 	s.GreaterOrEqual(len(listedGrants), 2)

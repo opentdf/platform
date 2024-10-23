@@ -82,52 +82,75 @@ DELETE FROM key_access_servers WHERE id = $1;
 -- ATTRIBUTE FQN
 ----------------------------------------------------------------
 
--- name: UpsertAttributeValueFqn :one
+-- name: UpsertAttributeValueFqn :many
+WITH new_fqns_cte AS (
+    -- get attribute value fqns
+    SELECT
+        ns.id as namespace_id,
+        ad.id as attribute_id,
+        av.id as value_id,
+        CONCAT('https://', ns.name, '/attr/', ad.name, '/value/', av.value) AS fqn
+    FROM attribute_values av
+    JOIN attribute_definitions ad on av.attribute_definition_id = ad.id
+    JOIN attribute_namespaces ns on ad.namespace_id = ns.id
+    WHERE av.id = @value_id
+)
 INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
-SELECT
-    n.id,
-    ad.id,
-    av.id,
-    CONCAT('https://', n.name, '/attr/', ad.name, '/value/', av.value) AS fqn
-FROM attribute_namespaces n
-JOIN attribute_definitions ad ON n.id = ad.namespace_id
-JOIN attribute_values av ON ad.id = av.attribute_definition_id
-WHERE av.id = $1
+SELECT 
+    namespace_id,
+    attribute_id,
+    value_id,
+    fqn
+FROM new_fqns_cte
 ON CONFLICT (namespace_id, attribute_id, value_id) 
     DO UPDATE 
         SET fqn = EXCLUDED.fqn
-RETURNING fqn;
+RETURNING
+    COALESCE(namespace_id::TEXT, '')::TEXT as namespace_id,
+    COALESCE(attribute_id::TEXT, '')::TEXT as attribute_id,
+    COALESCE(value_id::TEXT, '')::TEXT as value_id,
+    fqn;
 
--- name: UpsertAttributeDefinitionFqn :one
+-- name: UpsertAttributeDefinitionFqn :many
+WITH new_fqns_cte AS (
+    -- get attribute definition fqns
+    SELECT
+        ns.id as namespace_id,
+        ad.id as attribute_id,
+        NULL::UUID as value_id,
+        CONCAT('https://', ns.name, '/attr/', ad.name) AS fqn
+    FROM attribute_definitions ad
+    JOIN attribute_namespaces ns on ad.namespace_id = ns.id
+    WHERE ad.id = @attribute_id
+    UNION
+    -- get attribute value fqns
+    SELECT
+        ns.id as namespace_id,
+        ad.id as attribute_id,
+        av.id as value_id,
+        CONCAT('https://', ns.name, '/attr/', ad.name, '/value/', av.value) AS fqn
+    FROM attribute_values av
+    JOIN attribute_definitions ad on av.attribute_definition_id = ad.id
+    JOIN attribute_namespaces ns on ad.namespace_id = ns.id
+    WHERE ad.id = @attribute_id
+)
 INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
-SELECT
-    n.id,
-    ad.id,
-    NULL,
-    CONCAT('https://', n.name, '/attr/', ad.name) AS fqn
-FROM attribute_namespaces n
-JOIN attribute_definitions ad ON n.id = ad.namespace_id
-WHERE ad.id = $1
+SELECT 
+    namespace_id,
+    attribute_id,
+    value_id,
+    fqn
+FROM new_fqns_cte
 ON CONFLICT (namespace_id, attribute_id, value_id) 
     DO UPDATE 
         SET fqn = EXCLUDED.fqn
-RETURNING fqn;
+RETURNING
+    COALESCE(namespace_id::TEXT, '')::TEXT as namespace_id,
+    COALESCE(attribute_id::TEXT, '')::TEXT as attribute_id,
+    COALESCE(value_id::TEXT, '')::TEXT as value_id,
+    fqn;
 
--- name: UpsertAttributeNamespaceFqn :one
-INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
-SELECT
-    n.id,
-    NULL,
-    NULL,
-    CONCAT('https://', n.name) AS fqn
-FROM attribute_namespaces n
-WHERE n.id = $1
-ON CONFLICT (namespace_id, attribute_id, value_id) 
-    DO UPDATE 
-        SET fqn = EXCLUDED.fqn
-RETURNING fqn;
-
--- name: UpsertAttributeNamespaceFqn_V2 :exec
+-- name: UpsertAttributeNamespaceFqn :many
 WITH new_fqns_cte AS (
     -- get namespace fqns
     SELECT
@@ -168,65 +191,12 @@ SELECT
 FROM new_fqns_cte
 ON CONFLICT (namespace_id, attribute_id, value_id) 
     DO UPDATE 
-        SET fqn = EXCLUDED.fqn;
-
--- name: UpsertAttributeDefinitionFqn_V2 :exec
-WITH new_fqns_cte AS (
-    -- get attribute definition fqns
-    SELECT
-        ns.id as namespace_id,
-        ad.id as attribute_id,
-        NULL::UUID as value_id,
-        CONCAT('https://', ns.name, '/attr/', ad.name) AS fqn
-    FROM attribute_definitions ad
-    JOIN attribute_namespaces ns on ad.namespace_id = ns.id
-    WHERE ad.id = @attribute_id
-    UNION
-    -- get attribute value fqns
-    SELECT
-        ns.id as namespace_id,
-        ad.id as attribute_id,
-        av.id as value_id,
-        CONCAT('https://', ns.name, '/attr/', ad.name, '/value/', av.value) AS fqn
-    FROM attribute_values av
-    JOIN attribute_definitions ad on av.attribute_definition_id = ad.id
-    JOIN attribute_namespaces ns on ad.namespace_id = ns.id
-    WHERE ad.id = @attribute_id
-)
-INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
-SELECT 
-    namespace_id,
-    attribute_id,
-    value_id,
-    fqn
-FROM new_fqns_cte
-ON CONFLICT (namespace_id, attribute_id, value_id) 
-    DO UPDATE 
-        SET fqn = EXCLUDED.fqn;
-
--- name: UpsertAttributeValueFqn_V2 :exec
-WITH new_fqns_cte AS (
-    -- get attribute value fqns
-    SELECT
-        ns.id as namespace_id,
-        ad.id as attribute_id,
-        av.id as value_id,
-        CONCAT('https://', ns.name, '/attr/', ad.name, '/value/', av.value) AS fqn
-    FROM attribute_values av
-    JOIN attribute_definitions ad on av.attribute_definition_id = ad.id
-    JOIN attribute_namespaces ns on ad.namespace_id = ns.id
-    WHERE av.id = @value_id
-)
-INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
-SELECT 
-    namespace_id,
-    attribute_id,
-    value_id,
-    fqn
-FROM new_fqns_cte
-ON CONFLICT (namespace_id, attribute_id, value_id) 
-    DO UPDATE 
-        SET fqn = EXCLUDED.fqn;
+        SET fqn = EXCLUDED.fqn
+RETURNING
+    COALESCE(namespace_id::TEXT, '')::TEXT as namespace_id,
+    COALESCE(attribute_id::TEXT, '')::TEXT as attribute_id,
+    COALESCE(value_id::TEXT, '')::TEXT as value_id,
+    fqn;
 
 ---------------------------------------------------------------- 
 -- ATTRIBUTES

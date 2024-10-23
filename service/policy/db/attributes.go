@@ -310,7 +310,7 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	}
 
 	// Update the FQNs
-	err = c.Queries.UpsertAttributeDefinitionFqn_V2(ctx, createdID)
+	_, err = c.Queries.UpsertAttributeDefinitionFqn(ctx, createdID)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -373,7 +373,7 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 
 	// Upsert all the FQNs with the definition name mutation
 	if name != "" {
-		err = c.Queries.UpsertAttributeDefinitionFqn_V2(ctx, id)
+		_, err = c.Queries.UpsertAttributeDefinitionFqn(ctx, id)
 		if err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(err)
 		}

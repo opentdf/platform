@@ -4,56 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"strings"
 
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/pkg/db"
 )
-
-// These values are optional, but at least one must be set. The other values will be derived from
-// the set values.
-type attrFqnUpsertOptions struct {
-	namespaceID string
-	attributeID string
-	valueID     string
-}
-
-// This logic is a bit complex. What we are trying to achieve is to upsert the fqn based on the
-// combination of namespaceId, attributeId, and valueId. However, instead of requiring all three
-// we want to support partial attribute FQNs. This means that we need to support the following
-// combinations:
-// 1. namespaceId
-// 2. namespaceId, attributeId
-// 3. namespaceId, attributeId, valueId
-//
-// This is a side effect -- errors will be swallowed and the fqn will be returned as an empty string
-func (c *PolicyDBClient) upsertAttrFqn(ctx context.Context, opts attrFqnUpsertOptions) string {
-	var (
-		fqn string
-		err error
-	)
-
-	switch {
-	case opts.valueID != "":
-		fqn, err = c.Queries.UpsertAttributeValueFqn(ctx, opts.valueID)
-	case opts.attributeID != "":
-		fqn, err = c.Queries.UpsertAttributeDefinitionFqn(ctx, opts.attributeID)
-	case opts.namespaceID != "":
-		fqn, err = c.Queries.UpsertAttributeNamespaceFqn(ctx, opts.namespaceID)
-	default:
-		err = fmt.Errorf("at least one of namespaceId, attributeId, or valueId must be set")
-	}
-
-	if err != nil {
-		wrappedErr := db.WrapIfKnownInvalidQueryErr(err)
-		c.logger.ErrorContext(ctx, "could not update FQN", slog.Any("opts", opts), slog.String("error", wrappedErr.Error()))
-		return ""
-	}
-
-	c.logger.DebugContext(ctx, "updated FQN", slog.String("fqn", fqn), slog.Any("opts", opts))
-	return fqn
-}
 
 // AttrFqnReindex will reindex all namespace, attribute, and attribute_value FQNs
 func (c *PolicyDBClient) AttrFqnReindex(ctx context.Context) (res struct { //nolint:nonamedreturns // Used to initialize an anonymous struct
@@ -77,40 +32,36 @@ func (c *PolicyDBClient) AttrFqnReindex(ctx context.Context) (res struct { //nol
 		panic(fmt.Errorf("could not get namespaces: %w", err))
 	}
 
-	// Get all attributes
-	attrs, err := c.ListAllAttributes(ctx)
-	if err != nil {
-		panic(fmt.Errorf("could not get attributes: %w", err))
-	}
-
-	// Get all attribute values
-	values, err := c.ListAllAttributeValues(ctx)
-	if err != nil {
-		panic(fmt.Errorf("could not get attribute values: %w", err))
-	}
-
 	// Reindex all namespaces
+	reindexedRecords := []UpsertAttributeNamespaceFqnRow{}
 	for _, n := range ns {
-		res.Namespaces = append(res.Namespaces, struct {
-			ID  string
-			Fqn string
-		}{ID: n.GetId(), Fqn: c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: n.GetId()})})
+		rows, err := c.Queries.UpsertAttributeNamespaceFqn(ctx, n.GetId())
+		if err != nil {
+			panic(fmt.Errorf("could not update namespace [%s] FQN: %w", n.GetId(), err))
+		}
+		reindexedRecords = append(reindexedRecords, rows...)
 	}
 
-	// Reindex all attributes
-	for _, a := range attrs {
-		res.Attributes = append(res.Attributes, struct {
-			ID  string
-			Fqn string
-		}{ID: a.GetId(), Fqn: c.upsertAttrFqn(ctx, attrFqnUpsertOptions{attributeID: a.GetId()})})
-	}
-
-	// Reindex all attribute values
-	for _, av := range values {
-		res.Values = append(res.Values, struct {
-			ID  string
-			Fqn string
-		}{ID: av.GetId(), Fqn: c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: av.GetId()})})
+	for _, r := range reindexedRecords {
+		if r.AttributeID == "" && r.ValueID == "" {
+			// namespace record
+			res.Namespaces = append(res.Namespaces, struct {
+				ID  string
+				Fqn string
+			}{ID: r.NamespaceID, Fqn: r.Fqn})
+		} else if r.ValueID == "" {
+			// attribute definition record
+			res.Attributes = append(res.Attributes, struct {
+				ID  string
+				Fqn string
+			}{ID: r.AttributeID, Fqn: r.Fqn})
+		} else {
+			// attribute value record
+			res.Values = append(res.Values, struct {
+				ID  string
+				Fqn string
+			}{ID: r.ValueID, Fqn: r.Fqn})
+		}
 	}
 
 	return res

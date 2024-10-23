@@ -6,7 +6,6 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -32,26 +31,6 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-const (
-	// Failure while connecting to a service.
-	// Check your configuration and/or retry.
-	ErrGrpcDialFailed                 = Error("failed to dial grpc endpoint")
-	ErrShutdownFailed                 = Error("failed to shutdown sdk")
-	ErrPlatformConfigFailed           = Error("failed to retrieve platform configuration")
-	ErrPlatformEndpointMalformed      = Error("platform endpoint is malformed")
-	ErrPlatformIssuerNotFound         = Error("issuer not found in well-known idp configuration")
-	ErrPlatformAuthzEndpointNotFound  = Error("authorization_endpoint not found in well-known idp configuration")
-	ErrPlatformTokenEndpointNotFound  = Error("token_endpoint not found in well-known idp configuration")
-	ErrPlatformPublicClientIDNotFound = Error("public_client_id not found in well-known idp configuration")
-	ErrAccessTokenInvalid             = Error("access token is invalid")
-)
-
-type Error string
-
-func (c Error) Error() string {
-	return string(c)
-}
-
 type SDK struct {
 	config
 	*kasKeyCache
@@ -68,6 +47,23 @@ type SDK struct {
 	EntityResoution         entityresolution.EntityResolutionServiceClient
 	wellknownConfiguration  wellknownconfiguration.WellKnownServiceClient
 }
+
+type TdfType string
+
+const (
+	OIDCWellKnownConfigurationEndpoint = "/.well-known/openid-configuration"
+
+	OIDCConfigTokenEndpoint = "token_endpoint"
+
+	Invalid  TdfType = "Invalid"
+	Nano     TdfType = "Nano"
+	Standard TdfType = "Standard"
+)
+
+var (
+	URLSchemeRegexp        = regexp.MustCompile(`^https?://`)
+	PlatformEndpointRegexp = regexp.MustCompile(`^(https?:\/\/)?(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(:\d+)?|(localhost)(:\d+)?)\/?$`)
+)
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	var (
@@ -89,7 +85,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	// If IPC is enabled, we need to have a core connection
 	if cfg.ipc && cfg.coreConn == nil {
-		return nil, errors.New("core connection is required for IPC mode")
+		return nil, ErrSDKIPCCoreConnectionRequired
 	}
 
 	// If KAS session key is not provided, generate a new one
@@ -187,17 +183,17 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 func SanitizePlatformEndpoint(e string) (string, error) {
 	// check if there's a scheme, if not, add https
-	if !regexp.MustCompile(`^https?://`).MatchString(e) {
+	if !URLSchemeRegexp.MatchString(e) {
 		e = "https://" + e
 	}
 
-	if !regexp.MustCompile(`^(https?:\/\/)?(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(:\d+)?|(localhost)(:\d+)?)\/?$`).MatchString(e) {
-		return "", errors.New("platform endpoint is not valid")
+	if !PlatformEndpointRegexp.MatchString(e) {
+		return "", ErrPlatformEndpointMalformed
 	}
 
 	u, err := url.ParseRequestURI(e)
 	if err != nil {
-		return "", errors.Join(fmt.Errorf("cannot parse platform endpoint(%s)", e), err)
+		return "", errors.Join(ErrPlatformEndpointParseFailed, err)
 	}
 
 	p := u.Port()
@@ -213,6 +209,9 @@ func SanitizePlatformEndpoint(e string) (string, error) {
 }
 
 func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
+	var ts auth.AccessTokenSource
+	var err error
+
 	if c.customAccessTokenSource != nil {
 		return c.customAccessTokenSource, nil
 	}
@@ -223,19 +222,16 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 	}
 
 	if c.certExchange != nil && c.tokenExchange != nil {
-		return nil, fmt.Errorf("cannot do both token exchange and certificate exchange")
+		return nil, ErrAuthTokenExchangeOrCertExchange
 	}
 
 	if c.dpopKey == nil {
 		rsaKeyPair, err := ocrypto.NewRSAKeyPair(dpopKeySize)
 		if err != nil {
-			return nil, fmt.Errorf("could not generate RSA Key: %w", err)
+			return nil, errors.Join(ErrSDKRSAKeyGenerationFailed, err)
 		}
 		c.dpopKey = &rsaKeyPair
 	}
-
-	var ts auth.AccessTokenSource
-	var err error
 
 	switch {
 	case c.oauthAccessTokenSource != nil:
@@ -268,7 +264,7 @@ func (s SDK) Close() error {
 		return nil
 	}
 	if err := s.conn.Close(); err != nil {
-		return errors.Join(ErrShutdownFailed, err)
+		return errors.Join(ErrSDKShutdownFailed, err)
 	}
 	return nil
 }
@@ -277,14 +273,6 @@ func (s SDK) Close() error {
 func (s SDK) Conn() *grpc.ClientConn {
 	return s.conn
 }
-
-type TdfType string
-
-const (
-	Invalid  TdfType = "Invalid"
-	Nano     TdfType = "Nano"
-	Standard TdfType = "Standard"
-)
 
 // String returns the string representation of the applies to state.
 func (t TdfType) String() string {
@@ -324,12 +312,12 @@ func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 	// create tdf reader
 	tdfReader, err := archive.NewTDFReader(reader)
 	if err != nil {
-		return false, fmt.Errorf("archive.NewTDFReader failed: %w", err)
+		return false, errors.Join(ErrTDFArchiveReaderUnexpected, err)
 	}
 
 	manifest, err := tdfReader.Manifest()
 	if err != nil {
-		return false, fmt.Errorf("tdfReader.Manifest failed: %w", err)
+		return false, errors.Join(ErrTDFReaderManifestUnexpected, err)
 	}
 
 	// Convert the embedded data to a string
@@ -338,11 +326,11 @@ func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 	manifestStringLoader := gojsonschema.NewStringLoader(manifest)
 	result, err := gojsonschema.Validate(loader, manifestStringLoader)
 	if err != nil {
-		return false, errors.New("could not validate manifest.json")
+		return false, ErrTDFManifestValidationFailed
 	}
 
 	if !result.Valid() {
-		return false, errors.New("manifest was not valid")
+		return false, ErrTDFManifestInvalid
 	}
 
 	return true, nil
@@ -373,7 +361,7 @@ func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfiguration, err
 
 	response, err := wellKnownConfig.GetWellKnownConfiguration(context.Background(), &req)
 	if err != nil {
-		return nil, errors.Join(errors.New("unable to retrieve config information, and none was provided"), err)
+		return nil, errors.Join(ErrPlatformConfigRetrieval, err)
 	}
 	// Get token endpoint
 	configuration := response.GetConfiguration()
@@ -383,13 +371,13 @@ func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfiguration, err
 
 // TODO: This should be moved to a separate package. We do discovery in ../service/internal/auth/discovery.go
 func getTokenEndpoint(c config) (string, error) {
-	issuerURL, ok := c.PlatformConfiguration["platform_issuer"].(string)
+	issuerURL, ok := c.PlatformConfiguration[PlatformConfigIssuer].(string)
 
 	if !ok {
-		return "", errors.New("platform_issuer is not set, or is not a string")
+		return "", ErrPlatformConfigIssuerNotFound
 	}
 
-	oidcConfigURL := issuerURL + "/.well-known/openid-configuration"
+	oidcConfigURL := issuerURL + OIDCWellKnownConfigurationEndpoint
 
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, oidcConfigURL, nil)
 	if err != nil {
@@ -418,9 +406,9 @@ func getTokenEndpoint(c config) (string, error) {
 	if err = json.Unmarshal(body, &config); err != nil {
 		return "", err
 	}
-	tokenEndpoint, ok := config["token_endpoint"].(string)
+	tokenEndpoint, ok := config[OIDCConfigTokenEndpoint].(string)
 	if !ok {
-		return "", errors.New("token_endpoint not found in well-known configuration")
+		return "", ErrOIDCTokenEndpointMissing
 	}
 
 	return tokenEndpoint, nil

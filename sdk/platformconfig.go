@@ -1,7 +1,15 @@
 package sdk
 
+const (
+	PlatformConfigIdp                   = "idp"
+	PlatformConfigIssuer                = "issuer"
+	PlatformConfigAuthorizationEndpoint = "authorization_endpoint"
+	PlatformConfigTokenEndpoint         = "token_endpoint"
+	PlatformConfigPublicClientID        = "public_client_id"
+)
+
 func (c PlatformConfiguration) getIdpConfig() map[string]interface{} {
-	idpCfg, err := c["idp"].(map[string]interface{})
+	idpCfg, err := c[PlatformConfigIdp].(map[string]interface{})
 	if !err {
 		idpCfg = map[string]interface{}{}
 	}
@@ -10,7 +18,7 @@ func (c PlatformConfiguration) getIdpConfig() map[string]interface{} {
 
 func (c PlatformConfiguration) Issuer() (string, error) {
 	idpCfg := c.getIdpConfig()
-	value, ok := idpCfg["issuer"].(string)
+	value, ok := idpCfg[PlatformConfigIssuer].(string)
 	if !ok {
 		return "", ErrPlatformIssuerNotFound
 	}
@@ -19,7 +27,7 @@ func (c PlatformConfiguration) Issuer() (string, error) {
 
 func (c PlatformConfiguration) AuthzEndpoint() (string, error) {
 	idpCfg := c.getIdpConfig()
-	value, ok := idpCfg["authorization_endpoint"].(string)
+	value, ok := idpCfg[PlatformConfigAuthorizationEndpoint].(string)
 	if !ok {
 		return "", ErrPlatformAuthzEndpointNotFound
 	}
@@ -28,7 +36,7 @@ func (c PlatformConfiguration) AuthzEndpoint() (string, error) {
 
 func (c PlatformConfiguration) TokenEndpoint() (string, error) {
 	idpCfg := c.getIdpConfig()
-	value, ok := idpCfg["token_endpoint"].(string)
+	value, ok := idpCfg[PlatformConfigTokenEndpoint].(string)
 	if !ok {
 		return "", ErrPlatformTokenEndpointNotFound
 	}
@@ -37,7 +45,7 @@ func (c PlatformConfiguration) TokenEndpoint() (string, error) {
 
 func (c PlatformConfiguration) PublicClientID() (string, error) {
 	idpCfg := c.getIdpConfig()
-	value, ok := idpCfg["public_client_id"].(string)
+	value, ok := idpCfg[PlatformConfigPublicClientID].(string)
 	if !ok {
 		return "", ErrPlatformPublicClientIDNotFound
 	}

@@ -2403,6 +2403,80 @@ func (q *Queries) UpsertAttributeDefinitionFqn(ctx context.Context, id string) (
 	return fqn, err
 }
 
+const upsertAttributeDefinitionFqn_V2 = `-- name: UpsertAttributeDefinitionFqn_V2 :exec
+WITH new_fqns_cte AS (
+    -- get attribute definition fqns
+    SELECT
+        ns.id as namespace_id,
+        ad.id as attribute_id,
+        NULL::UUID as value_id,
+        CONCAT('https://', ns.name, '/attr/', ad.name) AS fqn
+    FROM attribute_definitions ad
+    JOIN attribute_namespaces ns on ad.namespace_id = ns.id
+    WHERE ad.id = $1
+    UNION
+    -- get attribute value fqns
+    SELECT
+        ns.id as namespace_id,
+        ad.id as attribute_id,
+        av.id as value_id,
+        CONCAT('https://', ns.name, '/attr/', ad.name, '/value/', av.value) AS fqn
+    FROM attribute_values av
+    JOIN attribute_definitions ad on av.attribute_definition_id = ad.id
+    JOIN attribute_namespaces ns on ad.namespace_id = ns.id
+    WHERE ad.id = $1
+)
+INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
+SELECT 
+    namespace_id,
+    attribute_id,
+    value_id,
+    fqn
+FROM new_fqns_cte
+ON CONFLICT (namespace_id, attribute_id, value_id) 
+    DO UPDATE 
+        SET fqn = EXCLUDED.fqn
+`
+
+// UpsertAttributeDefinitionFqn_V2
+//
+//	WITH new_fqns_cte AS (
+//	    -- get attribute definition fqns
+//	    SELECT
+//	        ns.id as namespace_id,
+//	        ad.id as attribute_id,
+//	        NULL::UUID as value_id,
+//	        CONCAT('https://', ns.name, '/attr/', ad.name) AS fqn
+//	    FROM attribute_definitions ad
+//	    JOIN attribute_namespaces ns on ad.namespace_id = ns.id
+//	    WHERE ad.id = $1
+//	    UNION
+//	    -- get attribute value fqns
+//	    SELECT
+//	        ns.id as namespace_id,
+//	        ad.id as attribute_id,
+//	        av.id as value_id,
+//	        CONCAT('https://', ns.name, '/attr/', ad.name, '/value/', av.value) AS fqn
+//	    FROM attribute_values av
+//	    JOIN attribute_definitions ad on av.attribute_definition_id = ad.id
+//	    JOIN attribute_namespaces ns on ad.namespace_id = ns.id
+//	    WHERE ad.id = $1
+//	)
+//	INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
+//	SELECT
+//	    namespace_id,
+//	    attribute_id,
+//	    value_id,
+//	    fqn
+//	FROM new_fqns_cte
+//	ON CONFLICT (namespace_id, attribute_id, value_id)
+//	    DO UPDATE
+//	        SET fqn = EXCLUDED.fqn
+func (q *Queries) UpsertAttributeDefinitionFqn_V2(ctx context.Context, attributeID string) error {
+	_, err := q.db.Exec(ctx, upsertAttributeDefinitionFqn_V2, attributeID)
+	return err
+}
+
 const upsertAttributeNamespaceFqn = `-- name: UpsertAttributeNamespaceFqn :one
 INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
 SELECT
@@ -2440,7 +2514,6 @@ func (q *Queries) UpsertAttributeNamespaceFqn(ctx context.Context, id string) (s
 }
 
 const upsertAttributeNamespaceFqn_V2 = `-- name: UpsertAttributeNamespaceFqn_V2 :exec
-
 WITH new_fqns_cte AS (
     -- get namespace fqns
     SELECT
@@ -2484,9 +2557,7 @@ ON CONFLICT (namespace_id, attribute_id, value_id)
         SET fqn = EXCLUDED.fqn
 `
 
-// --------------------------------------------------------------
-// ATTRIBUTE FQN
-// --------------------------------------------------------------
+// UpsertAttributeNamespaceFqn_V2
 //
 //	WITH new_fqns_cte AS (
 //	    -- get namespace fqns
@@ -2535,6 +2606,7 @@ func (q *Queries) UpsertAttributeNamespaceFqn_V2(ctx context.Context, namespaceI
 }
 
 const upsertAttributeValueFqn = `-- name: UpsertAttributeValueFqn :one
+
 INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
 SELECT
     n.id,
@@ -2551,7 +2623,9 @@ ON CONFLICT (namespace_id, attribute_id, value_id)
 RETURNING fqn
 `
 
-// UpsertAttributeValueFqn
+// --------------------------------------------------------------
+// ATTRIBUTE FQN
+// --------------------------------------------------------------
 //
 //	INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
 //	SELECT
@@ -2572,4 +2646,58 @@ func (q *Queries) UpsertAttributeValueFqn(ctx context.Context, id string) (strin
 	var fqn string
 	err := row.Scan(&fqn)
 	return fqn, err
+}
+
+const upsertAttributeValueFqn_V2 = `-- name: UpsertAttributeValueFqn_V2 :exec
+WITH new_fqns_cte AS (
+    -- get attribute value fqns
+    SELECT
+        ns.id as namespace_id,
+        ad.id as attribute_id,
+        av.id as value_id,
+        CONCAT('https://', ns.name, '/attr/', ad.name, '/value/', av.value) AS fqn
+    FROM attribute_values av
+    JOIN attribute_definitions ad on av.attribute_definition_id = ad.id
+    JOIN attribute_namespaces ns on ad.namespace_id = ns.id
+    WHERE av.id = $1
+)
+INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
+SELECT 
+    namespace_id,
+    attribute_id,
+    value_id,
+    fqn
+FROM new_fqns_cte
+ON CONFLICT (namespace_id, attribute_id, value_id) 
+    DO UPDATE 
+        SET fqn = EXCLUDED.fqn
+`
+
+// UpsertAttributeValueFqn_V2
+//
+//	WITH new_fqns_cte AS (
+//	    -- get attribute value fqns
+//	    SELECT
+//	        ns.id as namespace_id,
+//	        ad.id as attribute_id,
+//	        av.id as value_id,
+//	        CONCAT('https://', ns.name, '/attr/', ad.name, '/value/', av.value) AS fqn
+//	    FROM attribute_values av
+//	    JOIN attribute_definitions ad on av.attribute_definition_id = ad.id
+//	    JOIN attribute_namespaces ns on ad.namespace_id = ns.id
+//	    WHERE av.id = $1
+//	)
+//	INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
+//	SELECT
+//	    namespace_id,
+//	    attribute_id,
+//	    value_id,
+//	    fqn
+//	FROM new_fqns_cte
+//	ON CONFLICT (namespace_id, attribute_id, value_id)
+//	    DO UPDATE
+//	        SET fqn = EXCLUDED.fqn
+func (q *Queries) UpsertAttributeValueFqn_V2(ctx context.Context, valueID string) error {
+	_, err := q.db.Exec(ctx, upsertAttributeValueFqn_V2, valueID)
+	return err
 }

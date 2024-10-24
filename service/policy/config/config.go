@@ -20,14 +20,18 @@ func GetSharedPolicyConfig(srp serviceregistry.RegistrationParams) *Config {
 	policyCfg := new(Config)
 
 	if err := defaults.Set(policyCfg); err != nil {
-		panic(fmt.Errorf("failed to set defaults for authorization service config: %w", err))
+		panic(fmt.Errorf("failed to set defaults for policy service config: %w", err))
 	}
 
 	// Only decode config if it exists
 	if srp.Config != nil {
 		if err := mapstructure.Decode(srp.Config, &policyCfg); err != nil {
-			panic(fmt.Errorf("invalid auth svc cfg [%v] %w", srp.Config, err))
+			panic(fmt.Errorf("invalid policy svc cfg [%v] %w", srp.Config, err))
 		}
+	}
+
+	if policyCfg.ListRequestLimitMax <= policyCfg.ListRequestLimitDefault {
+		panic(fmt.Errorf("policy svc config request limit maximum [%d] must be greater than request limit default [%d]", policyCfg.ListRequestLimitMax, policyCfg.ListRequestLimitDefault))
 	}
 
 	return policyCfg

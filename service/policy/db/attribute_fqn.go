@@ -43,19 +43,20 @@ func (c *PolicyDBClient) AttrFqnReindex(ctx context.Context) (res struct { //nol
 	}
 
 	for _, r := range reindexedRecords {
-		if r.AttributeID == "" && r.ValueID == "" {
+		switch {
+		case r.AttributeID == "" && r.ValueID == "":
 			// namespace record
 			res.Namespaces = append(res.Namespaces, struct {
 				ID  string
 				Fqn string
 			}{ID: r.NamespaceID, Fqn: r.Fqn})
-		} else if r.ValueID == "" {
+		case r.ValueID == "":
 			// attribute definition record
 			res.Attributes = append(res.Attributes, struct {
 				ID  string
 				Fqn string
 			}{ID: r.AttributeID, Fqn: r.Fqn})
-		} else {
+		default:
 			// attribute value record
 			res.Values = append(res.Values, struct {
 				ID  string

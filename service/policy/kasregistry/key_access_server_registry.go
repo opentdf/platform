@@ -12,6 +12,8 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	policyconfig "github.com/opentdf/platform/service/policy/config"
+
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
@@ -19,19 +21,25 @@ type KeyAccessServerRegistry struct {
 	kasr.UnimplementedKeyAccessServerRegistryServiceServer
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
+	config   *policyconfig.Config
 }
 
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		ServiceDesc: &kasr.KeyAccessServerRegistryService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &KeyAccessServerRegistry{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
-				srv, ok := s.(kasr.KeyAccessServerRegistryServiceServer)
-				if !ok {
-					return fmt.Errorf("argument is not of type kasr.KeyAccessServerRegistryServiceServer")
+			cfg := policyconfig.GetSharedPolicyConfig(srp)
+			return &KeyAccessServerRegistry{
+					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
+					logger:   srp.Logger,
+					config:   cfg,
+				}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
+					srv, ok := s.(kasr.KeyAccessServerRegistryServiceServer)
+					if !ok {
+						return fmt.Errorf("argument is not of type kasr.KeyAccessServerRegistryServiceServer")
+					}
+					return kasr.RegisterKeyAccessServerRegistryServiceHandlerServer(ctx, mux, srv)
 				}
-				return kasr.RegisterKeyAccessServerRegistryServiceHandlerServer(ctx, mux, srv)
-			}
 		},
 	}
 }
@@ -62,16 +70,14 @@ func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 }
 
 func (s KeyAccessServerRegistry) ListKeyAccessServers(ctx context.Context,
-	_ *kasr.ListKeyAccessServersRequest,
+	r *kasr.ListKeyAccessServersRequest,
 ) (*kasr.ListKeyAccessServersResponse, error) {
-	keyAccessServers, err := s.dbClient.ListKeyAccessServers(ctx)
+	rsp, err := s.dbClient.ListKeyAccessServers(ctx, r)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
 
-	return &kasr.ListKeyAccessServersResponse{
-		KeyAccessServers: keyAccessServers,
-	}, nil
+	return rsp, nil
 }
 
 func (s KeyAccessServerRegistry) GetKeyAccessServer(ctx context.Context,
@@ -148,12 +154,10 @@ func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
 func (s KeyAccessServerRegistry) ListKeyAccessServerGrants(ctx context.Context,
 	req *kasr.ListKeyAccessServerGrantsRequest,
 ) (*kasr.ListKeyAccessServerGrantsResponse, error) {
-	keyAccessServerGrants, err := s.dbClient.ListKeyAccessServerGrants(ctx, req.GetKasId(), req.GetKasUri())
+	rsp, err := s.dbClient.ListKeyAccessServerGrants(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
 
-	return &kasr.ListKeyAccessServerGrantsResponse{
-		Grants: keyAccessServerGrants,
-	}, nil
+	return rsp, nil
 }

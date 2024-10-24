@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/stretchr/testify/suite"
 )
@@ -48,23 +49,91 @@ func (s *KasRegistrySuite) getKasRegistryFixtures() []fixtures.FixtureDataKasReg
 	}
 }
 
-func (s *KasRegistrySuite) Test_ListKeyAccessServers() {
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_NoPagination_Succeeds() {
 	fixtures := s.getKasRegistryFixtures()
-	list, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx)
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{})
 	s.Require().NoError(err)
-	s.NotNil(list)
-	for _, fixture := range fixtures {
-		for _, item := range list {
-			if item.GetId() == fixture.ID {
-				s.Equal(fixture.ID, item.GetId())
-				if item.GetPublicKey().GetRemote() != "" {
-					s.Equal(fixture.PubKey.Remote, item.GetPublicKey().GetRemote())
-				} else {
-					s.Equal(fixture.PubKey.Cached, item.GetPublicKey().GetCached())
-				}
-				s.Equal(fixture.URI, item.GetUri())
+	s.NotNil(listRsp)
+
+	listed := listRsp.GetKeyAccessServers()
+	s.NotEmpty(listed)
+
+	// ensure we find each fixture in the list response
+	for _, f := range fixtures {
+		found := false
+		for _, kasr := range listed {
+			if kasr.GetId() == f.ID {
+				found = true
 			}
 		}
+		s.True(found)
+	}
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_Limit_Succeeds() {
+	var limit int32 = 2
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Pagination: &policy.PageRequest{
+			Limit: limit,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	listed := listRsp.GetKeyAccessServers()
+	s.Equal(len(listed), int(limit))
+
+	for _, kas := range listed {
+		s.NotEmpty(kas.GetId())
+		s.NotEmpty(kas.GetUri())
+		s.NotNil(kas.GetPublicKey())
+	}
+
+	// request with one below maximum
+	listRsp, err = s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax - 1,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+}
+
+func (s *NamespacesSuite) Test_ListKeyAccessServers_Limit_TooLarge_Fails() {
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax + 1,
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrListLimitTooLarge)
+	s.Nil(listRsp)
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_Offset_Succeeds() {
+	req := &kasregistry.ListKeyAccessServersRequest{}
+	// make initial list request to compare against
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+	listed := listRsp.GetKeyAccessServers()
+
+	// set the offset pagination
+	offset := 1
+	req.Pagination = &policy.PageRequest{
+		Offset: int32(offset),
+	}
+	offsetListRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(offsetListRsp)
+	offsetListed := offsetListRsp.GetKeyAccessServers()
+
+	// length is reduced by the offset amount
+	s.Equal(len(offsetListed), len(listed)-offset)
+
+	// objects are equal between offset and original list beginning at offset index
+	for i, val := range offsetListed {
+		s.True(proto.Equal(val, listed[i+offset]))
 	}
 }
 
@@ -519,9 +588,13 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasId() {
 	s.NotNil(valGrant)
 
 	// list grants by KAS ID
-	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, firstKAS.GetId(), "")
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, &kasregistry.ListKeyAccessServerGrantsRequest{
+		KasId: firstKAS.GetId(),
+	})
 	s.Require().NoError(err)
-	s.NotNil(listedGrants)
+	s.NotNil(listRsp)
+
+	listedGrants := listRsp.GetGrants()
 	s.Len(listedGrants, 1)
 	g := listedGrants[0]
 	s.Equal(firstKAS.GetId(), g.GetKeyAccessServer().GetId())
@@ -531,9 +604,13 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasId() {
 	s.Empty(g.GetNamespaceGrants())
 
 	// list grants by the other KAS ID
-	listedGrants, err = s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, otherKAS.GetId(), "")
+	listRsp, err = s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, &kasregistry.ListKeyAccessServerGrantsRequest{
+		KasId: otherKAS.GetId(),
+	})
 	s.Require().NoError(err)
-	s.NotNil(listedGrants)
+	s.NotNil(listRsp)
+
+	listedGrants = listRsp.GetGrants()
 	s.Len(listedGrants, 1)
 	g = listedGrants[0]
 	s.Equal(otherKAS.GetId(), g.GetKeyAccessServer().GetId())
@@ -545,9 +622,11 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasId() {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasId_NoResultsIfNotFound() {
 	// list grants by KAS ID
-	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, nonExistentKasRegistryID, "")
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, &kasregistry.ListKeyAccessServerGrantsRequest{
+		KasId: nonExistentKasRegistryID,
+	})
 	s.Require().NoError(err)
-	s.Empty(listedGrants)
+	s.Empty(listRsp.GetGrants())
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasUri() {
@@ -573,10 +652,12 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasUri() {
 	s.NotNil(createdGrant)
 
 	// list grants by KAS URI
-	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, "", fixtureKAS.URI)
-
+	listGrantsRsp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, &kasregistry.ListKeyAccessServerGrantsRequest{
+		KasUri: fixtureKAS.URI,
+	})
 	s.Require().NoError(err)
-	s.NotNil(listedGrants)
+	s.NotNil(listGrantsRsp)
+	listedGrants := listGrantsRsp.GetGrants()
 	s.GreaterOrEqual(len(listedGrants), 1)
 	for _, g := range listedGrants {
 		s.Equal(fixtureKAS.ID, g.GetKeyAccessServer().GetId())
@@ -586,9 +667,11 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasUri() {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServerGrantsByKasUri_NoResultsIfNotFound() {
 	// list grants by KAS ID
-	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, "", "https://notfound.com/kas/uri")
+	listGrantsRsp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, &kasregistry.ListKeyAccessServerGrantsRequest{
+		KasUri: "https://notfound.com/kas/uri",
+	})
 	s.Require().NoError(err)
-	s.Empty(listedGrants)
+	s.Empty(listGrantsRsp.GetGrants())
 }
 
 func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {
@@ -693,14 +776,17 @@ func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {
 	s.NotNil(nsAnotherGrant)
 
 	// list all grants
-	listedGrants, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, "", "")
+	listGrantsRsp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, &kasregistry.ListKeyAccessServerGrantsRequest{})
 	s.Require().NoError(err)
-	s.NotNil(listedGrants)
+	s.NotNil(listGrantsRsp)
+	listedGrants := listGrantsRsp.GetGrants()
 	s.GreaterOrEqual(len(listedGrants), 1)
 
 	s.GreaterOrEqual(len(listedGrants), 2)
+	foundCount := 0
 	for _, g := range listedGrants {
-		if g.GetKeyAccessServer().GetId() == firstKAS.GetId() {
+		switch g.GetKeyAccessServer().GetId() {
+		case firstKAS.GetId():
 			// should have expected sole attribute grant
 			s.Len(g.GetAttributeGrants(), 1)
 			s.Equal(createdAttr.GetId(), g.GetAttributeGrants()[0].GetId())
@@ -709,8 +795,10 @@ func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {
 			s.Len(g.GetNamespaceGrants(), 1)
 			s.Equal(createdNs.GetId(), g.GetNamespaceGrants()[0].GetId())
 			s.Equal(nsFQN, g.GetNamespaceGrants()[0].GetFqn())
-		}
-		if g.GetKeyAccessServer().GetId() == secondKAS.GetId() {
+
+			foundCount++
+
+		case secondKAS.GetId():
 			// should have expected value grant
 			s.Len(g.GetValueGrants(), 1)
 			s.Equal(value.GetId(), g.GetValueGrants()[0].GetId())
@@ -719,7 +807,75 @@ func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {
 			s.Len(g.GetNamespaceGrants(), 1)
 			s.Equal(createdNs.GetId(), g.GetNamespaceGrants()[0].GetId())
 			s.Equal(nsFQN, g.GetNamespaceGrants()[0].GetFqn())
+
+			foundCount++
 		}
+	}
+	s.Equal(2, foundCount)
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_Limit_Succeeds() {
+	var limit int32 = 2
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, &kasregistry.ListKeyAccessServerGrantsRequest{
+		Pagination: &policy.PageRequest{
+			Limit: limit,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	listed := listRsp.GetGrants()
+	s.Equal(len(listed), int(limit))
+
+	for _, grant := range listed {
+		s.NotNil(grant.GetKeyAccessServer())
+	}
+
+	// request with one below maximum
+	listRsp, err = s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, &kasregistry.ListKeyAccessServerGrantsRequest{
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax - 1,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+}
+
+func (s *NamespacesSuite) Test_ListKeyAccessServerGrants_Limit_TooLarge_Fails() {
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, &kasregistry.ListKeyAccessServerGrantsRequest{
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax + 1,
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrListLimitTooLarge)
+	s.Nil(listRsp)
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_Offset_Succeeds() {
+	req := &kasregistry.ListKeyAccessServerGrantsRequest{}
+	// make initial list request to compare against
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+	listed := listRsp.GetGrants()
+
+	// set the offset pagination
+	offset := 1
+	req.Pagination = &policy.PageRequest{
+		Offset: int32(offset),
+	}
+	offsetListRsp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(offsetListRsp)
+	offsetListed := offsetListRsp.GetGrants()
+
+	// length is reduced by the offset amount
+	s.Equal(len(offsetListed), len(listed)-offset)
+
+	// objects are equal between offset and original list beginning at offset index
+	for i, val := range offsetListed {
+		s.True(proto.Equal(val, listed[i+offset]))
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
@@ -19,19 +20,25 @@ type ResourceMappingService struct { //nolint:revive // ResourceMappingService i
 	resourcemapping.UnimplementedResourceMappingServiceServer
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
+	config   *policyconfig.Config
 }
 
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		ServiceDesc: &resourcemapping.ResourceMappingService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &ResourceMappingService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
-				server, ok := s.(resourcemapping.ResourceMappingServiceServer)
-				if !ok {
-					return fmt.Errorf("failed to assert server as resourcemapping.ResourceMappingServiceServer")
+			cfg := policyconfig.GetSharedPolicyConfig(srp)
+			return &ResourceMappingService{
+					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
+					logger:   srp.Logger,
+					config:   cfg,
+				}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
+					server, ok := s.(resourcemapping.ResourceMappingServiceServer)
+					if !ok {
+						return fmt.Errorf("failed to assert server as resourcemapping.ResourceMappingServiceServer")
+					}
+					return resourcemapping.RegisterResourceMappingServiceHandlerServer(ctx, mux, server)
 				}
-				return resourcemapping.RegisterResourceMappingServiceHandlerServer(ctx, mux, server)
-			}
 		},
 	}
 }
@@ -41,14 +48,12 @@ func NewRegistration() serviceregistry.Registration {
 */
 
 func (s ResourceMappingService) ListResourceMappingGroups(ctx context.Context, req *resourcemapping.ListResourceMappingGroupsRequest) (*resourcemapping.ListResourceMappingGroupsResponse, error) {
-	rmGroups, err := s.dbClient.ListResourceMappingGroups(ctx, req)
+	rsp, err := s.dbClient.ListResourceMappingGroups(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
 
-	return &resourcemapping.ListResourceMappingGroupsResponse{
-		ResourceMappingGroups: rmGroups,
-	}, nil
+	return rsp, nil
 }
 
 func (s ResourceMappingService) GetResourceMappingGroup(ctx context.Context, req *resourcemapping.GetResourceMappingGroupRequest) (*resourcemapping.GetResourceMappingGroupResponse, error) {
@@ -147,14 +152,12 @@ func (s ResourceMappingService) DeleteResourceMappingGroup(ctx context.Context, 
 func (s ResourceMappingService) ListResourceMappings(ctx context.Context,
 	req *resourcemapping.ListResourceMappingsRequest,
 ) (*resourcemapping.ListResourceMappingsResponse, error) {
-	resourceMappings, err := s.dbClient.ListResourceMappings(ctx, req)
+	rsp, err := s.dbClient.ListResourceMappings(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
 
-	return &resourcemapping.ListResourceMappingsResponse{
-		ResourceMappings: resourceMappings,
-	}, nil
+	return rsp, nil
 }
 
 func (s ResourceMappingService) ListResourceMappingsByGroupFqns(ctx context.Context, req *resourcemapping.ListResourceMappingsByGroupFqnsRequest) (*resourcemapping.ListResourceMappingsByGroupFqnsResponse, error) {

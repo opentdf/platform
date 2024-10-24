@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
@@ -19,18 +20,24 @@ type AttributesService struct { //nolint:revive // AttributesService is a valid 
 	attributes.UnimplementedAttributesServiceServer
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
+	config   *policyconfig.Config
 }
 
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		ServiceDesc: &attributes.AttributesService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &AttributesService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				if srv, ok := server.(attributes.AttributesServiceServer); ok {
-					return attributes.RegisterAttributesServiceHandlerServer(ctx, mux, srv)
+			cfg := policyconfig.GetSharedPolicyConfig(srp)
+			return &AttributesService{
+					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
+					logger:   srp.Logger,
+					config:   cfg,
+				}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+					if srv, ok := server.(attributes.AttributesServiceServer); ok {
+						return attributes.RegisterAttributesServiceHandlerServer(ctx, mux, srv)
+					}
+					return fmt.Errorf("failed to assert server as attributes.AttributesServiceServer")
 				}
-				return fmt.Errorf("failed to assert server as attributes.AttributesServiceServer")
-			}
 		},
 	}
 }
@@ -65,16 +72,12 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 func (s *AttributesService) ListAttributes(ctx context.Context,
 	req *attributes.ListAttributesRequest,
 ) (*attributes.ListAttributesResponse, error) {
-	state := policydb.GetDBStateTypeTransformedEnum(req.GetState())
-	namespace := req.GetNamespace()
-	s.logger.Debug("listing attribute definitions", slog.String("state", state))
-	rsp := &attributes.ListAttributesResponse{}
+	s.logger.Debug("listing attribute definitions", slog.String("state", req.GetState().String()))
 
-	list, err := s.dbClient.ListAttributes(ctx, state, namespace)
+	rsp, err := s.dbClient.ListAttributes(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
-	rsp.Attributes = list
 
 	return rsp, nil
 }
@@ -202,16 +205,14 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attri
 }
 
 func (s *AttributesService) ListAttributeValues(ctx context.Context, req *attributes.ListAttributeValuesRequest) (*attributes.ListAttributeValuesResponse, error) {
-	state := policydb.GetDBStateTypeTransformedEnum(req.GetState())
-	s.logger.Debug("listing attribute values", slog.String("attributeId", req.GetAttributeId()), slog.String("state", state))
-	list, err := s.dbClient.ListAttributeValues(ctx, req.GetAttributeId(), state)
+	s.logger.Debug("listing attribute values", slog.String("attributeId", req.GetAttributeId()), slog.String("state", req.GetState().String()))
+
+	rsp, err := s.dbClient.ListAttributeValues(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed, slog.String("attributeId", req.GetAttributeId()))
 	}
 
-	return &attributes.ListAttributeValuesResponse{
-		Values: list,
-	}, nil
+	return rsp, nil
 }
 
 func (s *AttributesService) GetAttributeValue(ctx context.Context, req *attributes.GetAttributeValueRequest) (*attributes.GetAttributeValueResponse, error) {

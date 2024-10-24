@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
@@ -19,18 +20,24 @@ type UnsafeService struct { //nolint:revive // UnsafeService is a valid name for
 	unsafe.UnimplementedUnsafeServiceServer
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
+	config   *policyconfig.Config
 }
 
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		ServiceDesc: &unsafe.UnsafeService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &UnsafeService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				if srv, ok := server.(unsafe.UnsafeServiceServer); ok {
-					return unsafe.RegisterUnsafeServiceHandlerServer(ctx, mux, srv)
+			cfg := policyconfig.GetSharedPolicyConfig(srp)
+			return &UnsafeService{
+					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
+					logger:   srp.Logger,
+					config:   cfg,
+				}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+					if srv, ok := server.(unsafe.UnsafeServiceServer); ok {
+						return unsafe.RegisterUnsafeServiceHandlerServer(ctx, mux, srv)
+					}
+					return fmt.Errorf("failed to assert server as unsafe.UnsafeServiceServer")
 				}
-				return fmt.Errorf("failed to assert server as unsafe.UnsafeServiceServer")
-			}
 		},
 	}
 }

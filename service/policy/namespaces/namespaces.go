@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
@@ -19,14 +20,19 @@ type NamespacesService struct { //nolint:revive // NamespacesService is a valid 
 	namespaces.UnimplementedNamespaceServiceServer
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
+	config   *policyconfig.Config
 }
 
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		ServiceDesc: &namespaces.NamespaceService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			ns := &NamespacesService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
-
+			cfg := policyconfig.GetSharedPolicyConfig(srp)
+			ns := &NamespacesService{
+				dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
+				logger:   srp.Logger,
+				config:   cfg,
+			}
 			if err := srp.RegisterReadinessCheck("policy", ns.IsReady); err != nil {
 				srp.Logger.Error("failed to register policy readiness check", slog.String("error", err.Error()))
 			}
@@ -54,17 +60,14 @@ func (ns NamespacesService) IsReady(ctx context.Context) error {
 }
 
 func (ns NamespacesService) ListNamespaces(ctx context.Context, req *namespaces.ListNamespacesRequest) (*namespaces.ListNamespacesResponse, error) {
-	state := policydb.GetDBStateTypeTransformedEnum(req.GetState())
-	ns.logger.Debug("listing namespaces", slog.String("state", state))
+	ns.logger.Debug("listing namespaces", slog.String("state", req.GetState().String()))
 
-	rsp := &namespaces.ListNamespacesResponse{}
-	list, err := ns.dbClient.ListNamespaces(ctx, state)
+	rsp, err := ns.dbClient.ListNamespaces(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
 
 	ns.logger.Debug("listed namespaces")
-	rsp.Namespaces = list
 
 	return rsp, nil
 }

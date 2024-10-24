@@ -72,7 +72,7 @@ func (c *PolicyDBClient) AttrFqnReindex(ctx context.Context) (res struct { //nol
 },
 ) {
 	// Get all namespaces
-	ns, err := c.ListNamespaces(ctx, StateAny)
+	nsList, err := c.ListAllNamespaces(ctx)
 	if err != nil {
 		panic(fmt.Errorf("could not get namespaces: %w", err))
 	}
@@ -90,7 +90,7 @@ func (c *PolicyDBClient) AttrFqnReindex(ctx context.Context) (res struct { //nol
 	}
 
 	// Reindex all namespaces
-	for _, n := range ns {
+	for _, n := range nsList {
 		res.Namespaces = append(res.Namespaces, struct {
 			ID  string
 			Fqn string

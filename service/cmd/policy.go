@@ -83,7 +83,13 @@ func policyDBClient(conf *config.Config) (policydb.PolicyDBClient, error) {
 		return policydb.PolicyDBClient{}, err
 	}
 
-	return policydb.NewClient(dbClient, logger), nil
+	// This command connects directly to the database so runtime policy config list limit settings can be ignored
+	var (
+		limitDefault int32 = 1000
+		limitMax     int32 = 2500
+	)
+
+	return policydb.NewClient(dbClient, logger, limitMax, limitDefault), nil
 }
 
 func init() {

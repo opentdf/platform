@@ -61,6 +61,11 @@ func (ns NamespacesService) IsReady(ctx context.Context) error {
 func (ns NamespacesService) ListNamespaces(ctx context.Context, req *namespaces.ListNamespacesRequest) (*namespaces.ListNamespacesResponse, error) {
 	ns.logger.Debug("listing namespaces", slog.String("state", req.GetState().String()))
 
+	maxLimit := ns.config.ListRequestLimitMax
+	if maxLimit > 0 && req.GetPagination().GetLimit() > int32(maxLimit) {
+		return nil, db.StatusifyError(db.ErrListLimitTooLarge, db.ErrTextListLimitTooLarge)
+	}
+
 	rsp, err := ns.dbClient.ListNamespaces(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)

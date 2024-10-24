@@ -71,6 +71,11 @@ func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 func (s KeyAccessServerRegistry) ListKeyAccessServers(ctx context.Context,
 	r *kasr.ListKeyAccessServersRequest,
 ) (*kasr.ListKeyAccessServersResponse, error) {
+	maxLimit := s.config.ListRequestLimitMax
+	if maxLimit > 0 && r.GetPagination().GetLimit() > int32(maxLimit) {
+		return nil, db.StatusifyError(db.ErrListLimitTooLarge, db.ErrTextListLimitTooLarge)
+	}
+
 	rsp, err := s.dbClient.ListKeyAccessServers(ctx, r)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
@@ -153,6 +158,11 @@ func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
 func (s KeyAccessServerRegistry) ListKeyAccessServerGrants(ctx context.Context,
 	req *kasr.ListKeyAccessServerGrantsRequest,
 ) (*kasr.ListKeyAccessServerGrantsResponse, error) {
+	maxLimit := s.config.ListRequestLimitMax
+	if maxLimit > 0 && req.GetPagination().GetLimit() > int32(maxLimit) {
+		return nil, db.StatusifyError(db.ErrListLimitTooLarge, db.ErrTextListLimitTooLarge)
+	}
+
 	rsp, err := s.dbClient.ListKeyAccessServerGrants(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)

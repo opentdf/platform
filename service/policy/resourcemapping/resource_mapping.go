@@ -47,6 +47,11 @@ func NewRegistration() serviceregistry.Registration {
 */
 
 func (s ResourceMappingService) ListResourceMappingGroups(ctx context.Context, req *resourcemapping.ListResourceMappingGroupsRequest) (*resourcemapping.ListResourceMappingGroupsResponse, error) {
+	maxLimit := s.config.ListRequestLimitMax
+	if maxLimit > 0 && req.GetPagination().GetLimit() > int32(maxLimit) {
+		return nil, db.StatusifyError(db.ErrListLimitTooLarge, db.ErrTextListLimitTooLarge)
+	}
+
 	rsp, err := s.dbClient.ListResourceMappingGroups(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
@@ -151,6 +156,11 @@ func (s ResourceMappingService) DeleteResourceMappingGroup(ctx context.Context, 
 func (s ResourceMappingService) ListResourceMappings(ctx context.Context,
 	req *resourcemapping.ListResourceMappingsRequest,
 ) (*resourcemapping.ListResourceMappingsResponse, error) {
+	maxLimit := s.config.ListRequestLimitMax
+	if maxLimit > 0 && req.GetPagination().GetLimit() > int32(maxLimit) {
+		return nil, db.StatusifyError(db.ErrListLimitTooLarge, db.ErrTextListLimitTooLarge)
+	}
+
 	rsp, err := s.dbClient.ListResourceMappings(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)

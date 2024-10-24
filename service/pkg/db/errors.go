@@ -23,6 +23,7 @@ var (
 	ErrUUIDInvalid               = errors.New("ErrUUIDInvalid: value not a valid UUID")
 	ErrFqnMissingValue           = errors.New("ErrFqnMissingValue: FQN must include a value")
 	ErrMissingValue              = errors.New("ErrMissingValue: value must be included")
+	ErrListLimitTooLarge         = errors.New("ErrListLimitTooLarge: requested limit greater than configured maximum")
 )
 
 // Get helpful error message for PostgreSQL violation
@@ -99,6 +100,7 @@ const (
 	ErrTextUUIDInvalid         = "invalid input syntax for type uuid"
 	ErrTextRestrictViolation   = "intended action would violate a restriction"
 	ErrTextFqnMissingValue     = "FQN must specify a valid value and be of format 'https://<namespace>/attr/<attribute name>/value/<value>'"
+	ErrTextListLimitTooLarge   = "requested pagination limit must be less than or equal to configured limit"
 )
 
 func StatusifyError(err error, fallbackErr string, log ...any) error {

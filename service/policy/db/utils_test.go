@@ -7,13 +7,14 @@ import (
 )
 
 func Test_GetListLimit(t *testing.T) {
+	var defaultListLimit int32 = 1000
 	cases := []struct {
 		limit    int32
 		expected int32
 	}{
 		{
 			0,
-			defaultObjectListLimit,
+			1000,
 		},
 		{
 			1,
@@ -26,12 +27,13 @@ func Test_GetListLimit(t *testing.T) {
 	}
 
 	for _, test := range cases {
-		result := getListLimit(test.limit)
+		result := getListLimit(test.limit, defaultListLimit)
 		assert.Equal(t, test.expected, result)
 	}
 }
 
 func Test_GetNextOffset(t *testing.T) {
+	var defaultTestListLimit int32 = 250
 	cases := []struct {
 		currOffset int32
 		limit      int32
@@ -41,9 +43,9 @@ func Test_GetNextOffset(t *testing.T) {
 	}{
 		{
 			currOffset: 0,
-			limit:      defaultObjectListLimit,
+			limit:      defaultTestListLimit,
 			total:      1000,
-			expected:   defaultObjectListLimit,
+			expected:   defaultTestListLimit,
 			scenario:   "defaulted limit with many remaining",
 		},
 		{
@@ -62,14 +64,14 @@ func Test_GetNextOffset(t *testing.T) {
 		},
 		{
 			currOffset: 100,
-			limit:      defaultObjectListLimit,
+			limit:      defaultTestListLimit,
 			total:      200,
 			expected:   0,
 			scenario:   "default limit with none remaining",
 		},
 		{
-			currOffset: 350 - defaultObjectListLimit - 1,
-			limit:      defaultObjectListLimit,
+			currOffset: 350 - defaultTestListLimit - 1,
+			limit:      defaultTestListLimit,
 			total:      350,
 			expected:   349,
 			scenario:   "default limit with exactly one remaining",

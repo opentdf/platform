@@ -27,10 +27,11 @@ func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		ServiceDesc: &namespaces.NamespaceService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
+			cfg := policyconfig.GetSharedPolicyConfig(srp)
 			ns := &NamespacesService{
-				dbClient: policydb.NewClient(srp.DBClient, srp.Logger),
+				dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
 				logger:   srp.Logger,
-				config:   policyconfig.GetSharedPolicyConfig(srp),
+				config:   cfg,
 			}
 			if err := srp.RegisterReadinessCheck("policy", ns.IsReady); err != nil {
 				srp.Logger.Error("failed to register policy readiness check", slog.String("error", err.Error()))

@@ -13,6 +13,11 @@ import (
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
+var (
+	fixtureLimitDefault int32 = 1000
+	fixtureLimitMax     int32 = 5000
+)
+
 type DBInterface struct {
 	Client       *db.Client
 	PolicyClient policydb.PolicyDBClient
@@ -42,7 +47,7 @@ func NewDBInterface(cfg config.Config) DBInterface {
 	return DBInterface{
 		Client:       c,
 		Schema:       config.Schema,
-		PolicyClient: policydb.NewClient(c, logger),
+		PolicyClient: policydb.NewClient(c, logger, fixtureLimitMax, fixtureLimitDefault),
 	}
 }
 

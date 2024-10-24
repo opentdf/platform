@@ -28,10 +28,11 @@ func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		ServiceDesc: &kasr.KeyAccessServerRegistryService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
+			cfg := policyconfig.GetSharedPolicyConfig(srp)
 			return &KeyAccessServerRegistry{
-					dbClient: policydb.NewClient(srp.DBClient, srp.Logger),
+					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
 					logger:   srp.Logger,
-					config:   policyconfig.GetSharedPolicyConfig(srp),
+					config:   cfg,
 				}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
 					srv, ok := s.(kasr.KeyAccessServerRegistryServiceServer)
 					if !ok {

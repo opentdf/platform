@@ -10,26 +10,16 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-const (
-	// Note: Policy Object LIST count is defaulted to 250 if not provided. This may change at any time and is an internal
-	// concern of the policy services that should not be relied upon for stability.
-	defaultObjectListLimit int32 = 250
-
-	// The Policy DB Client exposes ListAll methods for certain cases when the entire list is needed.
-	// The default iterated list count is set here to avoid postgres performance degradation.
-	defaultObjectListAllLimit int32 = 1000
-)
-
-func getRequestedLimitOffset(page *policy.PageRequest) (int32, int32) {
-	return getListLimit(page.GetLimit()), page.GetOffset()
+func (c PolicyDBClient) getRequestedLimitOffset(page *policy.PageRequest) (int32, int32) {
+	return getListLimit(page.GetLimit(), c.listCfg.limitDefault), page.GetOffset()
 }
 
 // Defaults the LIST limit to internal default limit value if not provided
-func getListLimit(l int32) int32 {
-	if l > 0 {
-		return l
+func getListLimit(limit int32, limitDefault int32) int32 {
+	if limit > 0 {
+		return limit
 	}
-	return defaultObjectListLimit
+	return limitDefault
 }
 
 // Returns next page's offset if has not yet reached total, or else returns 0

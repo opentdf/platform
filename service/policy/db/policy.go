@@ -15,10 +15,16 @@ const (
 
 type transformedState string
 
+type ListConfig struct {
+	limitDefault int32
+	limitMax     int32
+}
+
 type PolicyDBClient struct {
 	*db.Client
 	logger *logger.Logger
 	*Queries
+	listCfg ListConfig
 }
 
 var (
@@ -47,7 +53,7 @@ var Tables struct {
 	KeyAccessServerRegistry       db.Table
 }
 
-func NewClient(c *db.Client, logger *logger.Logger) PolicyDBClient {
+func NewClient(c *db.Client, logger *logger.Logger, configuredListLimitMax, configuredListLimitDefault int32) PolicyDBClient {
 	t := db.NewTable(c.Schema())
 	Tables.Attributes = t(TableAttributes)
 	Tables.AttributeValues = t(TableAttributeValues)
@@ -60,7 +66,7 @@ func NewClient(c *db.Client, logger *logger.Logger) PolicyDBClient {
 	Tables.SubjectConditionSet = t(TableSubjectConditionSet)
 	Tables.KeyAccessServerRegistry = t(TableKeyAccessServerRegistry)
 
-	return PolicyDBClient{c, logger, New(c.Pgx)}
+	return PolicyDBClient{c, logger, New(c.Pgx), ListConfig{limitDefault: configuredListLimitDefault, limitMax: configuredListLimitMax}}
 }
 
 func getDBStateTypeTransformedEnum(state common.ActiveStateEnum) transformedState {

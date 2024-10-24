@@ -118,7 +118,7 @@ func hydrateAttribute(row *attributeQueryRow) (*policy.Attribute, error) {
 func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAttributesRequest) (*attributes.ListAttributesResponse, error) {
 	namespace := r.GetNamespace()
 	state := getDBStateTypeTransformedEnum(r.GetState())
-	limit, offset := getRequestedLimitOffset(r.GetPagination())
+	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 	var (
 		active = pgtype.Bool{
 			Valid: false,
@@ -195,7 +195,7 @@ func (c PolicyDBClient) ListAllAttributes(ctx context.Context) ([]*policy.Attrib
 		listed, err := c.ListAttributes(ctx, &attributes.ListAttributesRequest{
 			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
 			Pagination: &policy.PageRequest{
-				Limit:  defaultObjectListAllLimit,
+				Limit:  c.listCfg.limitMax,
 				Offset: nextOffset,
 			},
 		})

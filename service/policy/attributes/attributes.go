@@ -27,10 +27,11 @@ func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		ServiceDesc: &attributes.AttributesService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
+			cfg := policyconfig.GetSharedPolicyConfig(srp)
 			return &AttributesService{
-					dbClient: policydb.NewClient(srp.DBClient, srp.Logger),
+					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
 					logger:   srp.Logger,
-					config:   policyconfig.GetSharedPolicyConfig(srp),
+					config:   cfg,
 				}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 					if srv, ok := server.(attributes.AttributesServiceServer); ok {
 						return attributes.RegisterAttributesServiceHandlerServer(ctx, mux, srv)

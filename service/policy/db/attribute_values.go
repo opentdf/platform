@@ -87,7 +87,7 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, id string) (*poli
 
 func (c PolicyDBClient) ListAttributeValues(ctx context.Context, r *attributes.ListAttributeValuesRequest) (*attributes.ListAttributeValuesResponse, error) {
 	state := getDBStateTypeTransformedEnum(r.GetState())
-	limit, offset := getRequestedLimitOffset(r.GetPagination())
+	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 
 	active := pgtype.Bool{
 		Valid: false,
@@ -152,7 +152,7 @@ func (c PolicyDBClient) ListAllAttributeValues(ctx context.Context) ([]*policy.V
 		listed, err := c.ListAttributeValues(ctx, &attributes.ListAttributeValuesRequest{
 			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
 			Pagination: &policy.PageRequest{
-				Limit:  defaultObjectListAllLimit,
+				Limit:  c.listCfg.limitMax,
 				Offset: nextOffset,
 			},
 		})

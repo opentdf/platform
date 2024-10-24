@@ -55,8 +55,7 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNa
 		active = pgtypeBool(state == stateActive)
 	}
 
-	limit := getListLimit(r.GetPagination().GetLimit())
-	offset := r.GetPagination().GetOffset()
+	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 	list, err := c.Queries.ListNamespaces(ctx, ListNamespacesParams{
 		Active: active,
 		Limit:  limit,
@@ -101,7 +100,7 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNa
 }
 
 // Loads all namespaces into memory by making iterative db roundtrip requests of defaultObjectListAllLimit size
-func (c PolicyDBClient) ListAllNamespaces(ctx context.Context) ([]*policy.Namespace, error) {
+func (c PolicyDBClient) ListAllNamespaces(ctx context.Context, configuredMaxLimit int32) ([]*policy.Namespace, error) {
 	var nextOffset int32
 	nsList := make([]*policy.Namespace, 0)
 
@@ -109,7 +108,7 @@ func (c PolicyDBClient) ListAllNamespaces(ctx context.Context) ([]*policy.Namesp
 		listed, err := c.ListNamespaces(ctx, &namespaces.ListNamespacesRequest{
 			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
 			Pagination: &policy.PageRequest{
-				Limit:  defaultObjectListAllLimit,
+				Limit:  configuredMaxLimit,
 				Offset: nextOffset,
 			},
 		})

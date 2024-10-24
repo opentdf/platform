@@ -73,7 +73,7 @@ func (c *PolicyDBClient) AttrFqnReindex(ctx context.Context) (res struct { //nol
 ) {
 	// Get all namespaces
 	// TODO: iterate instead of using arbitrary limit/offset
-	nsList, err := c.ListAllNamespaces(ctx)
+	nsList, err := c.ListAllNamespaces(ctx, c.listCfg.limitMax)
 	if err != nil {
 		panic(fmt.Errorf("could not get namespaces: %w", err))
 	}

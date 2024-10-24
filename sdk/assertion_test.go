@@ -31,5 +31,5 @@ func TestTDFWithAssertion(t *testing.T) {
 	hashOfAssertion, err := assertion.GetHash()
 	require.NoError(t, err)
 
-	assert.Equal(t, string(hashOfAssertion), "4a447a13c5a32730d20bdf7feecb9ffe16649bc731914b574d80035a3927f860")
+	assert.Equal(t, "4a447a13c5a32730d20bdf7feecb9ffe16649bc731914b574d80035a3927f860", string(hashOfAssertion))
 }

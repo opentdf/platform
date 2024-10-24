@@ -10,16 +10,16 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+// Gathers request pagination limit/offset or configured default
 func (c PolicyDBClient) getRequestedLimitOffset(page *policy.PageRequest) (int32, int32) {
 	return getListLimit(page.GetLimit(), c.listCfg.limitDefault), page.GetOffset()
 }
 
-// Defaults the LIST limit to internal default limit value if not provided
-func getListLimit(limit int32, limitDefault int32) int32 {
+func getListLimit(limit int32, fallback int32) int32 {
 	if limit > 0 {
 		return limit
 	}
-	return limitDefault
+	return fallback
 }
 
 // Returns next page's offset if has not yet reached total, or else returns 0

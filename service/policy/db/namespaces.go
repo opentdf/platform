@@ -106,7 +106,7 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNa
 }
 
 // Loads all namespaces into memory by making iterative db roundtrip requests of defaultObjectListAllLimit size
-func (c PolicyDBClient) ListAllNamespaces(ctx context.Context, configuredMaxLimit int32) ([]*policy.Namespace, error) {
+func (c PolicyDBClient) ListAllNamespaces(ctx context.Context) ([]*policy.Namespace, error) {
 	var nextOffset int32
 	nsList := make([]*policy.Namespace, 0)
 
@@ -114,7 +114,7 @@ func (c PolicyDBClient) ListAllNamespaces(ctx context.Context, configuredMaxLimi
 		listed, err := c.ListNamespaces(ctx, &namespaces.ListNamespacesRequest{
 			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
 			Pagination: &policy.PageRequest{
-				Limit:  configuredMaxLimit,
+				Limit:  c.listCfg.limitMax,
 				Offset: nextOffset,
 			},
 		})

@@ -6,6 +6,7 @@ import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
 import "policy/objects.proto";
+import "policy/selectors.proto";
 
 message GetKeyAccessServerRequest {
   string id = 1 [(buf.validate.field).required = true];
@@ -14,9 +15,13 @@ message GetKeyAccessServerResponse {
   KeyAccessServer key_access_server = 1;
 }
 
-message ListKeyAccessServersRequest {}
+message ListKeyAccessServersRequest {
+  // Optional
+  policy.PageRequest pagination = 1;
+}
 message ListKeyAccessServersResponse {
   repeated KeyAccessServer key_access_servers = 1;
+  policy.PageResponse pagination = 2;
 }
 
 message CreateKeyAccessServerRequest {
@@ -75,10 +80,14 @@ message ListKeyAccessServerGrantsRequest {
   // If neither is provided, grants from all registered KASs to policy attribute objects are returned.
   string kas_id = 1;
   string kas_uri = 2;
+
+  // Optional
+  policy.PageRequest pagination = 3;
 }
 
 message ListKeyAccessServerGrantsResponse {
   repeated KeyAccessServerGrants grants = 1;
+  policy.PageResponse pagination = 2;
 }
 
 service KeyAccessServerRegistryService {

@@ -31,9 +31,13 @@ message ListAttributesRequest {
   common.ActiveStateEnum state = 1;
   // can be id or name
   string namespace = 2;
+
+  // Optional
+  policy.PageRequest pagination = 3;
 }
 message ListAttributesResponse {
   repeated policy.Attribute attributes = 1;
+  policy.PageResponse pagination = 2;
 }
 
 message GetAttributeRequest {
@@ -115,9 +119,13 @@ message ListAttributeValuesRequest {
   string attribute_id = 1 [(buf.validate.field).required = true];
   // ACTIVE by default when not specified
   common.ActiveStateEnum state = 2;
+
+  // Optional
+  policy.PageRequest pagination = 3;
 }
 message ListAttributeValuesResponse {
   repeated policy.Value values = 1;
+  policy.PageResponse pagination = 2;
 }
 
 message CreateAttributeValueRequest {

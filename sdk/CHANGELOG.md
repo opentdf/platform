@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.17](https://github.com/opentdf/platform/compare/sdk/v0.3.16...sdk/v0.3.17) (2024-10-24)
+
+
+### Bug Fixes
+
+* **sdk:** Stops including binding in assertion hashes ([#1681](https://github.com/opentdf/platform/issues/1681)) ([a4583b0](https://github.com/opentdf/platform/commit/a4583b07a15f73027a1a63c619338bf1bdbebe49))
+
 ## [0.3.16](https://github.com/opentdf/platform/compare/sdk/v0.3.15...sdk/v0.3.16) (2024-10-15)
 
 

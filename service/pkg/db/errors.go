@@ -133,6 +133,10 @@ func StatusifyError(err error, fallbackErr string, log ...any) error {
 		slog.Error(ErrTextFqnMissingValue, l...)
 		return status.Error(codes.InvalidArgument, ErrTextFqnMissingValue)
 	}
+	if errors.Is(err, ErrListLimitTooLarge) {
+		slog.Error(ErrTextListLimitTooLarge, l...)
+		return status.Error(codes.InvalidArgument, ErrTextListLimitTooLarge)
+	}
 	slog.Error(err.Error(), l...)
 	return status.Error(codes.Internal, fallbackErr)
 }

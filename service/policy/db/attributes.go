@@ -127,6 +127,11 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAt
 		namespaceName = ""
 	)
 
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > int32(maxLimit) {
+		return nil, db.ErrListLimitTooLarge
+	}
+
 	if state != stateAny {
 		active = pgtypeBool(state == stateActive)
 	}

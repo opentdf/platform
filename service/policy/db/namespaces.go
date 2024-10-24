@@ -47,6 +47,13 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, id string) (*policy.Na
 }
 
 func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNamespacesRequest) (*namespaces.ListNamespacesResponse, error) {
+	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
+
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > int32(maxLimit) {
+		return nil, db.ErrListLimitTooLarge
+	}
+
 	active := pgtype.Bool{
 		Valid: false,
 	}
@@ -55,7 +62,6 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNa
 		active = pgtypeBool(state == stateActive)
 	}
 
-	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 	list, err := c.Queries.ListNamespaces(ctx, ListNamespacesParams{
 		Active: active,
 		Limit:  limit,

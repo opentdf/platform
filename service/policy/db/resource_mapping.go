@@ -19,6 +19,12 @@ import (
 
 func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resourcemapping.ListResourceMappingGroupsRequest) (*resourcemapping.ListResourceMappingGroupsResponse, error) {
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
+
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > int32(maxLimit) {
+		return nil, db.ErrListLimitTooLarge
+	}
+
 	list, err := c.Queries.ListResourceMappingGroups(ctx, ListResourceMappingGroupsParams{
 		NamespaceID: r.GetNamespaceId(),
 		Limit:       limit,
@@ -162,6 +168,12 @@ func (c PolicyDBClient) DeleteResourceMappingGroup(ctx context.Context, id strin
 
 func (c PolicyDBClient) ListResourceMappings(ctx context.Context, r *resourcemapping.ListResourceMappingsRequest) (*resourcemapping.ListResourceMappingsResponse, error) {
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
+
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > int32(maxLimit) {
+		return nil, db.ErrListLimitTooLarge
+	}
+
 	list, err := c.Queries.ListResourceMappings(ctx, ListResourceMappingsParams{
 		GroupID: r.GetGroupId(),
 		Limit:   limit,

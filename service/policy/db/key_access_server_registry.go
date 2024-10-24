@@ -13,6 +13,12 @@ import (
 
 func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
+
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > int32(maxLimit) {
+		return nil, db.ErrListLimitTooLarge
+	}
+
 	list, err := c.Queries.ListKeyAccessServers(ctx, ListKeyAccessServersParams{
 		Offset: offset,
 		Limit:  limit,
@@ -180,8 +186,12 @@ func (c PolicyDBClient) DeleteKeyAccessServer(ctx context.Context, id string) (*
 }
 
 func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasregistry.ListKeyAccessServerGrantsRequest) (*kasregistry.ListKeyAccessServerGrantsResponse, error) {
-	page := r.GetPagination()
-	limit, offset := c.getRequestedLimitOffset(page)
+	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > int32(maxLimit) {
+		return nil, db.ErrListLimitTooLarge
+	}
+
 	params := ListKeyAccessServerGrantsParams{
 		KasID:  r.GetKasId(),
 		KasUri: r.GetKasUri(),

@@ -89,6 +89,11 @@ func (c PolicyDBClient) ListAttributeValues(ctx context.Context, r *attributes.L
 	state := getDBStateTypeTransformedEnum(r.GetState())
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > int32(maxLimit) {
+		return nil, db.ErrListLimitTooLarge
+	}
+
 	active := pgtype.Bool{
 		Valid: false,
 	}

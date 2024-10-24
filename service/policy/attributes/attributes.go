@@ -74,11 +74,6 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 ) (*attributes.ListAttributesResponse, error) {
 	s.logger.Debug("listing attribute definitions", slog.String("state", req.GetState().String()))
 
-	maxLimit := s.config.ListRequestLimitMax
-	if maxLimit > 0 && req.GetPagination().GetLimit() > int32(maxLimit) {
-		return nil, db.StatusifyError(db.ErrListLimitTooLarge, db.ErrTextListLimitTooLarge)
-	}
-
 	rsp, err := s.dbClient.ListAttributes(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
@@ -211,11 +206,6 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *attri
 
 func (s *AttributesService) ListAttributeValues(ctx context.Context, req *attributes.ListAttributeValuesRequest) (*attributes.ListAttributeValuesResponse, error) {
 	s.logger.Debug("listing attribute values", slog.String("attributeId", req.GetAttributeId()), slog.String("state", req.GetState().String()))
-
-	maxLimit := s.config.ListRequestLimitMax
-	if maxLimit > 0 && req.GetPagination().GetLimit() > int32(maxLimit) {
-		return nil, db.StatusifyError(db.ErrListLimitTooLarge, db.ErrTextListLimitTooLarge)
-	}
 
 	rsp, err := s.dbClient.ListAttributeValues(ctx, req)
 	if err != nil {

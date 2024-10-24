@@ -77,11 +77,6 @@ func (s SubjectMappingService) ListSubjectMappings(ctx context.Context,
 ) (*sm.ListSubjectMappingsResponse, error) {
 	s.logger.Debug("listing subject mappings")
 
-	maxLimit := s.config.ListRequestLimitMax
-	if maxLimit > 0 && r.GetPagination().GetLimit() > int32(maxLimit) {
-		return nil, db.StatusifyError(db.ErrListLimitTooLarge, db.ErrTextListLimitTooLarge)
-	}
-
 	rsp, err := s.dbClient.ListSubjectMappings(ctx, r)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
@@ -206,11 +201,6 @@ func (s SubjectMappingService) ListSubjectConditionSets(ctx context.Context,
 	r *sm.ListSubjectConditionSetsRequest,
 ) (*sm.ListSubjectConditionSetsResponse, error) {
 	s.logger.Debug("listing subject condition sets")
-
-	maxLimit := s.config.ListRequestLimitMax
-	if maxLimit > 0 && r.GetPagination().GetLimit() > int32(maxLimit) {
-		return nil, db.StatusifyError(db.ErrListLimitTooLarge, db.ErrTextListLimitTooLarge)
-	}
 
 	rsp, err := s.dbClient.ListSubjectConditionSets(ctx, r)
 	if err != nil {

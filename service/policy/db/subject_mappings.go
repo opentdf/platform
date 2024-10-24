@@ -233,6 +233,12 @@ func (c PolicyDBClient) GetSubjectConditionSet(ctx context.Context, id string) (
 
 func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context, r *subjectmapping.ListSubjectConditionSetsRequest) (*subjectmapping.ListSubjectConditionSetsResponse, error) {
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
+
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > int32(maxLimit) {
+		return nil, db.ErrListLimitTooLarge
+	}
+
 	list, err := c.Queries.ListSubjectConditionSets(ctx, ListSubjectConditionSetsParams{
 		Limit:  limit,
 		Offset: offset,
@@ -435,6 +441,12 @@ func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*poli
 
 func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmapping.ListSubjectMappingsRequest) (*subjectmapping.ListSubjectMappingsResponse, error) {
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
+
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > int32(maxLimit) {
+		return nil, db.ErrListLimitTooLarge
+	}
+
 	list, err := c.Queries.ListSubjectMappings(ctx, ListSubjectMappingsParams{
 		Limit:  limit,
 		Offset: offset,

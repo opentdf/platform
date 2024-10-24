@@ -1,6 +1,8 @@
 package db
 
 import (
+	"context"
+
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -17,6 +19,23 @@ type PolicyDBClient struct {
 	*db.Client
 	logger *logger.Logger
 	*Queries
+}
+
+func (c *PolicyDBClient) RunInTx(ctx context.Context, f func(txClient *PolicyDBClient) error) error {
+	// todo: could abstract Pgx.Tx to a common interface
+	tx, err := c.Client.Pgx.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	txClient := &PolicyDBClient{c.Client, c.logger, c.Queries.WithTx(tx)}
+
+	err = f(txClient)
+	if err != nil {
+		return tx.Rollback(ctx)
+	}
+
+	return tx.Commit(ctx)
 }
 
 var (

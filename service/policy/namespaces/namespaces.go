@@ -93,18 +93,23 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *namespaces
 	}
 	rsp := &namespaces.CreateNamespaceResponse{}
 
-	n, err := ns.dbClient.CreateNamespace(ctx, req)
+	var namespace *policy.Namespace
+	err := ns.dbClient.RunInTx(ctx, func(tx *policydb.PolicyDBClient) error {
+		n, err := tx.CreateNamespace(ctx, req)
+		namespace = n
+		return err
+	})
 	if err != nil {
 		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("name", req.GetName()))
 	}
 
-	auditParams.ObjectID = n.GetId()
-	auditParams.Original = n
+	auditParams.ObjectID = namespace.GetId()
+	auditParams.Original = namespace
 	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	ns.logger.Debug("created new namespace", slog.String("name", req.GetName()))
-	rsp.Namespace = n
+	rsp.Namespace = namespace
 
 	return rsp, nil
 }
@@ -120,16 +125,25 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces
 		ObjectID:   namespaceID,
 	}
 
-	original, err := ns.dbClient.GetNamespace(ctx, namespaceID)
-	if err != nil {
-		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", namespaceID))
-	}
+	var original, updated *policy.Namespace
+	err := ns.dbClient.RunInTx(ctx, func(tx *policydb.PolicyDBClient) error {
+		o, err := tx.GetNamespace(ctx, namespaceID)
+		if err != nil {
+			return db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", namespaceID))
+		}
+		original = o
 
-	updated, err := ns.dbClient.UpdateNamespace(ctx, namespaceID, req)
+		u, err := tx.UpdateNamespace(ctx, namespaceID, req)
+		if err != nil {
+			return db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", namespaceID))
+		}
+		updated = u
+
+		return nil
+	})
 	if err != nil {
 		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", namespaceID))
+		return nil, err
 	}
 
 	auditParams.Original = original
@@ -156,16 +170,25 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *namesp
 		ObjectID:   namespaceID,
 	}
 
-	original, err := ns.dbClient.GetNamespace(ctx, namespaceID)
-	if err != nil {
-		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", namespaceID))
-	}
+	var original, updated *policy.Namespace
+	err := ns.dbClient.RunInTx(ctx, func(tx *policydb.PolicyDBClient) error {
+		o, err := tx.GetNamespace(ctx, namespaceID)
+		if err != nil {
+			return db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", namespaceID))
+		}
+		original = o
 
-	updated, err := ns.dbClient.DeactivateNamespace(ctx, namespaceID)
+		u, err := tx.DeactivateNamespace(ctx, namespaceID)
+		if err != nil {
+			return db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", namespaceID))
+		}
+		updated = u
+
+		return nil
+	})
 	if err != nil {
 		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", namespaceID))
+		return nil, err
 	}
 
 	auditParams.Original = original

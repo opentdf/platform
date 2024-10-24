@@ -15,6 +15,8 @@ services:
     rsacertid: r1
   policy:
     enabled: true
+    # listrequestlimitdefault: 1000
+    # listrequestlimitmax: 2500
   entityresolution:
     enabled: true
     url: http://localhost:8888/auth

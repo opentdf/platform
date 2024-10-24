@@ -32,6 +32,11 @@ services:
       from:
         email: true
         username: true
+  # policy is enabled by default in mode 'all'
+  # policy:
+  #   enabled: true
+    # listrequestlimitdefault: 1000
+    # listrequestlimitmax: 2500
 server:
   auth:
     enabled: true

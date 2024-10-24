@@ -217,3 +217,21 @@ services:
       path: /path/to/policy.rego
       query: data.opentdf.entitlements.attributes
 ```
+
+### Policy
+
+Root level key `policy`
+
+| Field                     | Description                                            | Default                                | Environment Variables                           |
+| ------------------------- | ------------------------------------------------------ | -------------------------------------- | ----------------------------------------------- |
+| `listrequestlimitdefault` | Policy List request limit default when not provided    | 1000                                   | OPENTDF_SERVICES_POLICY_LISTREQUESTLIMITDEFAULT |
+| `listrequestlimitmax`     | Policy List request limit maximum enforced by services | 2500                                   | OPENTDF_SERVICES_POLICY_LISTREQUESTLIMITMAX     |
+
+Example:
+
+```yaml
+services:
+  policy:
+    listrequestlimitdefault: 1000
+    listrequestlimitmax: 2500
+```

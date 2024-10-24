@@ -172,13 +172,13 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *namesp
 
 	var original, updated *policy.Namespace
 	err := ns.dbClient.RunInTx(ctx, func(tx *policydb.PolicyDBClient) error {
-		o, err := ns.dbClient.GetNamespace(ctx, namespaceID)
+		o, err := tx.GetNamespace(ctx, namespaceID)
 		if err != nil {
 			return db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", namespaceID))
 		}
 		original = o
 
-		u, err := ns.dbClient.DeactivateNamespace(ctx, namespaceID)
+		u, err := tx.DeactivateNamespace(ctx, namespaceID)
 		if err != nil {
 			return db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", namespaceID))
 		}

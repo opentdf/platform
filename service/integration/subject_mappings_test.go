@@ -11,6 +11,7 @@ import (
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/proto"
 )
 
 const nonExistentAttributeValueUUID = "78909865-8888-9999-9999-000000000000"
@@ -416,83 +417,54 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_NoPagination_Succeeds() 
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_Limit_Succeeds() {
-	listRsp, err := s.db.PolicyClient.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{})
+	var limit int32 = 3
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{
+		Pagination: &policy.PageRequest{
+			Limit: limit,
+		},
+	})
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
+
 	listed := listRsp.GetSubjectMappings()
 	s.NotEmpty(listed)
 
-	fixture1 := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute1")
-	found1 := false
-	fixture2 := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute2")
-	found2 := false
-	fixture3 := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute3")
-	found3 := false
-	s.GreaterOrEqual(len(listed), 3)
-
-	assertEqual := func(sm *policy.SubjectMapping, fixture fixtures.FixtureDataSubjectMapping) {
-		s.Equal(fixture.AttributeValueID, sm.GetAttributeValue().GetId())
-		s.True(sm.GetAttributeValue().GetActive().GetValue())
-		s.Equal(fixture.SubjectConditionSetID, sm.GetSubjectConditionSet().GetId())
-		s.Equal(len(fixture.Actions), len(sm.GetActions()))
-	}
 	for _, sm := range listed {
-		if sm.GetId() == fixture1.ID {
-			assertEqual(sm, fixture1)
-			found1 = true
-		}
-		if sm.GetId() == fixture2.ID {
-			assertEqual(sm, fixture2)
-			found2 = true
-		}
-		if sm.GetId() == fixture3.ID {
-			assertEqual(sm, fixture3)
-			found3 = true
-		}
+		s.NotEmpty(sm.GetId())
+		s.NotEmpty(sm.GetAttributeValue())
+		s.NotNil(sm.GetSubjectConditionSet())
 	}
-	s.True(found1)
-	s.True(found2)
-	s.True(found3)
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_Offset_Succeeds() {
-	listRsp, err := s.db.PolicyClient.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{})
+	req := &subjectmapping.ListSubjectMappingsRequest{}
+	totalListRsp, err := s.db.PolicyClient.ListSubjectMappings(context.Background(), req)
 	s.Require().NoError(err)
-	s.NotNil(listRsp)
-	listed := listRsp.GetSubjectMappings()
-	s.NotEmpty(listed)
+	s.NotNil(totalListRsp)
 
-	fixture1 := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute1")
-	found1 := false
-	fixture2 := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute2")
-	found2 := false
-	fixture3 := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute3")
-	found3 := false
-	s.GreaterOrEqual(len(listed), 3)
+	totalList := totalListRsp.GetSubjectMappings()
+	s.NotEmpty(totalList)
 
-	assertEqual := func(sm *policy.SubjectMapping, fixture fixtures.FixtureDataSubjectMapping) {
-		s.Equal(fixture.AttributeValueID, sm.GetAttributeValue().GetId())
-		s.True(sm.GetAttributeValue().GetActive().GetValue())
-		s.Equal(fixture.SubjectConditionSetID, sm.GetSubjectConditionSet().GetId())
-		s.Equal(len(fixture.Actions), len(sm.GetActions()))
+	// set the offset pagination
+	offset := 2
+	req.Pagination = &policy.PageRequest{
+		Offset: int32(offset),
 	}
-	for _, sm := range listed {
-		if sm.GetId() == fixture1.ID {
-			assertEqual(sm, fixture1)
-			found1 = true
-		}
-		if sm.GetId() == fixture2.ID {
-			assertEqual(sm, fixture2)
-			found2 = true
-		}
-		if sm.GetId() == fixture3.ID {
-			assertEqual(sm, fixture3)
-			found3 = true
-		}
+
+	offetListRsp, err := s.db.PolicyClient.ListSubjectMappings(context.Background(), req)
+	s.Require().NoError(err)
+	s.NotNil(offetListRsp)
+
+	offsetList := offetListRsp.GetSubjectMappings()
+	s.NotEmpty(offsetList)
+
+	// length is reduced by the offset amount
+	s.Equal(len(offsetList), len(totalList)-offset)
+
+	// objects are equal between offset and original list beginning at offset index
+	for i, sm := range offsetList {
+		s.True(proto.Equal(sm, totalList[i+offset]))
 	}
-	s.True(found1)
-	s.True(found2)
-	s.True(found3)
 }
 
 func (s *SubjectMappingsSuite) TestDeleteSubjectMapping() {
@@ -692,71 +664,53 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_NoPagination_Succeed
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_Limit_Succeeds() {
-	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(context.Background(), &subjectmapping.ListSubjectConditionSetsRequest{})
+	var limit int32 = 3
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(context.Background(), &subjectmapping.ListSubjectConditionSetsRequest{
+		Pagination: &policy.PageRequest{
+			Limit: limit,
+		},
+	})
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
+
 	listed := listRsp.GetSubjectConditionSets()
+	s.NotEmpty(listed)
 
-	fixture1 := s.f.GetSubjectConditionSetKey("subject_condition_set1")
-	found1 := false
-	fixture2 := s.f.GetSubjectConditionSetKey("subject_condition_set2")
-	found2 := false
-	fixture3 := s.f.GetSubjectConditionSetKey("subject_condition_set3")
-	found3 := false
-	fixture4 := s.f.GetSubjectConditionSetKey("subject_condition_simple_in")
-	found4 := false
-
-	s.GreaterOrEqual(len(listed), 3)
-	for _, scs := range listed {
-		switch scs.GetId() {
-		case fixture1.ID:
-			found1 = true
-		case fixture2.ID:
-			found2 = true
-		case fixture3.ID:
-			found3 = true
-		case fixture4.ID:
-			found4 = true
-		}
+	for _, sm := range listed {
+		s.NotEmpty(sm.GetId())
+		s.NotEmpty(sm.GetSubjectSets())
 	}
-	s.True(found1)
-	s.True(found2)
-	s.True(found3)
-	s.True(found4)
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_Offset_Succeeds() {
-	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(context.Background(), &subjectmapping.ListSubjectConditionSetsRequest{})
+	req := &subjectmapping.ListSubjectConditionSetsRequest{}
+	totalListRsp, err := s.db.PolicyClient.ListSubjectConditionSets(context.Background(), req)
 	s.Require().NoError(err)
-	s.NotNil(listRsp)
-	listed := listRsp.GetSubjectConditionSets()
+	s.NotNil(totalListRsp)
 
-	fixture1 := s.f.GetSubjectConditionSetKey("subject_condition_set1")
-	found1 := false
-	fixture2 := s.f.GetSubjectConditionSetKey("subject_condition_set2")
-	found2 := false
-	fixture3 := s.f.GetSubjectConditionSetKey("subject_condition_set3")
-	found3 := false
-	fixture4 := s.f.GetSubjectConditionSetKey("subject_condition_simple_in")
-	found4 := false
+	totalList := totalListRsp.GetSubjectConditionSets()
+	s.NotEmpty(totalList)
 
-	s.GreaterOrEqual(len(listed), 3)
-	for _, scs := range listed {
-		switch scs.GetId() {
-		case fixture1.ID:
-			found1 = true
-		case fixture2.ID:
-			found2 = true
-		case fixture3.ID:
-			found3 = true
-		case fixture4.ID:
-			found4 = true
-		}
+	// set the offset pagination
+	offset := 5
+	req.Pagination = &policy.PageRequest{
+		Offset: int32(offset),
 	}
-	s.True(found1)
-	s.True(found2)
-	s.True(found3)
-	s.True(found4)
+
+	offetListRsp, err := s.db.PolicyClient.ListSubjectConditionSets(context.Background(), req)
+	s.Require().NoError(err)
+	s.NotNil(offetListRsp)
+
+	offsetList := offetListRsp.GetSubjectConditionSets()
+	s.NotEmpty(offsetList)
+
+	// length is reduced by the offset amount
+	s.Equal(len(offsetList), len(totalList)-offset)
+
+	// objects are equal between offset and original list beginning at offset index
+	for i, scs := range offsetList {
+		s.True(proto.Equal(scs, totalList[i+offset]))
+	}
 }
 
 func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet() {

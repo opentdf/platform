@@ -32,10 +32,10 @@ func getListLimit(l int32) int32 {
 	return defaultObjectListLimit
 }
 
-// Returns next page's offset if another page within total, or else returns 0
-func getNextOffset(current, limit, total int32) int32 {
-	next := current + limit
-	if next <= total {
+// Returns next page's offset if has not yet reached total, or else returns 0
+func getNextOffset(currentOffset, limit, total int32) int32 {
+	next := currentOffset + limit
+	if next < total {
 		return next
 	}
 	return 0

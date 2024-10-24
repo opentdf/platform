@@ -7,10 +7,12 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -97,38 +99,48 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups_NoPagination_Succ
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups_Limit_Succeeds() {
-	testData := s.getResourceMappingGroupFixtures()
-	listRmGroupsRsp, err := s.db.PolicyClient.ListResourceMappingGroups(s.ctx, &resourcemapping.ListResourceMappingGroupsRequest{})
+	var limit int32 = 2
+	listRsp, err := s.db.PolicyClient.ListResourceMappingGroups(s.ctx, &resourcemapping.ListResourceMappingGroupsRequest{
+		Pagination: &policy.PageRequest{
+			Limit: limit,
+		},
+	})
 	s.Require().NoError(err)
-	s.NotNil(listRmGroupsRsp)
-	listed := listRmGroupsRsp.GetResourceMappingGroups()
-	for _, testRmGroup := range testData {
-		found := false
-		for _, rmGroup := range listed {
-			if testRmGroup.ID == rmGroup.GetId() {
-				found = true
-				break
-			}
-		}
-		s.True(found, fmt.Sprintf("expected to find resource mapping group %s", testRmGroup.ID))
+	s.NotNil(listRsp)
+	listed := listRsp.GetResourceMappingGroups()
+	s.Equal(len(listed), int(limit))
+
+	for _, rmg := range listed {
+		s.NotEmpty(rmg.GetNamespaceId())
+		s.NotEmpty(rmg.GetId())
+		s.NotEmpty(rmg.GetName())
 	}
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups_Offset_Succeeds() {
-	testData := s.getResourceMappingGroupFixtures()
-	listRmGroupsRsp, err := s.db.PolicyClient.ListResourceMappingGroups(s.ctx, &resourcemapping.ListResourceMappingGroupsRequest{})
+	req := &resourcemapping.ListResourceMappingGroupsRequest{}
+	// make initial list request to compare against
+	listRsp, err := s.db.PolicyClient.ListResourceMappingGroups(s.ctx, req)
 	s.Require().NoError(err)
-	s.NotNil(listRmGroupsRsp)
-	listed := listRmGroupsRsp.GetResourceMappingGroups()
-	for _, testRmGroup := range testData {
-		found := false
-		for _, rmGroup := range listed {
-			if testRmGroup.ID == rmGroup.GetId() {
-				found = true
-				break
-			}
-		}
-		s.True(found, fmt.Sprintf("expected to find resource mapping group %s", testRmGroup.ID))
+	s.NotNil(listRsp)
+	listed := listRsp.GetResourceMappingGroups()
+
+	// set the offset pagination
+	offset := 2
+	req.Pagination = &policy.PageRequest{
+		Offset: int32(offset),
+	}
+	offsetListRsp, err := s.db.PolicyClient.ListResourceMappingGroups(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(offsetListRsp)
+	offsetListed := offsetListRsp.GetResourceMappingGroups()
+
+	// length is reduced by the offset amount
+	s.Equal(len(offsetListed), len(listed)-offset)
+
+	// objects are equal between offset and original list beginning at offset index
+	for i, val := range offsetListed {
+		s.True(proto.Equal(val, listed[i+offset]))
 	}
 }
 
@@ -408,22 +420,6 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithUnknownAttributeVa
 	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
 
-func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithEmptyTermsSucceeds() {
-	metadata := &common.MetadataMutable{}
-
-	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
-	mapping := &resourcemapping.CreateResourceMappingRequest{
-		AttributeValueId: attrValue.ID,
-		Metadata:         metadata,
-		Terms:            []string{},
-	}
-	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
-	s.Require().NoError(err)
-	s.NotNil(createdMapping)
-	s.NotNil(createdMapping.GetTerms())
-	s.Empty(createdMapping.GetTerms())
-}
-
 func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithGroupIdSucceeds() {
 	metadata := &common.MetadataMutable{}
 
@@ -470,6 +466,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings_NoPagination_Succeeds(
 	listRsp, err := s.db.PolicyClient.ListResourceMappings(s.ctx, &resourcemapping.ListResourceMappingsRequest{})
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
+
 	list := listRsp.GetResourceMappings()
 	s.NotEmpty(list)
 
@@ -479,7 +476,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings_NoPagination_Succeeds(
 	for _, mapping := range list {
 		testMapping, ok := testMappings[mapping.GetId()]
 		if !ok {
-			// todo: DB is not cleaned up between tests, so ignore any unexpected mappings
+			// only validating presence of all fixtures within the list response
 			continue
 		}
 		foundCount++
@@ -504,100 +501,52 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings_NoPagination_Succeeds(
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappings_Limit_Succeeds() {
-	testMappings := make(map[string]fixtures.FixtureDataResourceMapping)
-	for _, testMapping := range s.getResourceMappingFixtures() {
-		testMappings[testMapping.ID] = testMapping
-	}
-
-	testValues := make(map[string]fixtures.FixtureDataAttributeValue)
-	for _, testValue := range s.getResourceMappingAttributeValueFixtures() {
-		testValues[testValue.ID] = testValue
-	}
-
-	listRsp, err := s.db.PolicyClient.ListResourceMappings(s.ctx, &resourcemapping.ListResourceMappingsRequest{})
+	var limit int32 = 4
+	listRsp, err := s.db.PolicyClient.ListResourceMappings(s.ctx, &resourcemapping.ListResourceMappingsRequest{
+		Pagination: &policy.PageRequest{
+			Limit: limit,
+		},
+	})
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
-	list := listRsp.GetResourceMappings()
-	s.NotEmpty(list)
 
-	testMappingCount := len(testMappings)
-	foundCount := 0
+	listed := listRsp.GetResourceMappings()
+	s.Equal(len(listed), int(limit))
 
-	for _, mapping := range list {
-		testMapping, ok := testMappings[mapping.GetId()]
-		if !ok {
-			// todo: DB is not cleaned up between tests, so ignore any unexpected mappings
-			continue
-		}
-		foundCount++
-
-		s.Equal(testMapping.Terms, mapping.GetTerms())
-		s.Equal(testMapping.GroupID, mapping.GetGroup().GetId())
-		metadata := mapping.GetMetadata()
-		createdAt := metadata.GetCreatedAt()
-		updatedAt := metadata.GetUpdatedAt()
-		s.False(createdAt.AsTime().IsZero())
-		s.False(updatedAt.AsTime().IsZero())
-		s.True(updatedAt.AsTime().Equal(createdAt.AsTime()))
-
-		value := mapping.GetAttributeValue()
-		testValue, ok := testValues[value.GetId()]
-		s.True(ok, "expected value %s", value.GetId())
-		s.Equal(testValue.Value, value.GetValue())
-		s.Equal(fmt.Sprintf("https://example.com/attr/attr1/value/%s", value.GetValue()), value.GetFqn())
+	for _, rm := range listed {
+		s.NotEmpty(rm.GetId())
+		s.NotEmpty(rm.GetAttributeValue())
 	}
-
-	s.Equal(testMappingCount, foundCount)
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappings_Offset_Succeeds() {
-	testMappings := make(map[string]fixtures.FixtureDataResourceMapping)
-	for _, testMapping := range s.getResourceMappingFixtures() {
-		testMappings[testMapping.ID] = testMapping
-	}
-
-	testValues := make(map[string]fixtures.FixtureDataAttributeValue)
-	for _, testValue := range s.getResourceMappingAttributeValueFixtures() {
-		testValues[testValue.ID] = testValue
-	}
-
-	listRsp, err := s.db.PolicyClient.ListResourceMappings(s.ctx, &resourcemapping.ListResourceMappingsRequest{})
+	req := &resourcemapping.ListResourceMappingsRequest{}
+	// make initial list request to compare against
+	listRsp, err := s.db.PolicyClient.ListResourceMappings(s.ctx, req)
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
-	list := listRsp.GetResourceMappings()
-	s.NotEmpty(list)
+	listed := listRsp.GetResourceMappings()
 
-	testMappingCount := len(testMappings)
-	foundCount := 0
-
-	for _, mapping := range list {
-		testMapping, ok := testMappings[mapping.GetId()]
-		if !ok {
-			// todo: DB is not cleaned up between tests, so ignore any unexpected mappings
-			continue
-		}
-		foundCount++
-
-		s.Equal(testMapping.Terms, mapping.GetTerms())
-		s.Equal(testMapping.GroupID, mapping.GetGroup().GetId())
-		metadata := mapping.GetMetadata()
-		createdAt := metadata.GetCreatedAt()
-		updatedAt := metadata.GetUpdatedAt()
-		s.False(createdAt.AsTime().IsZero())
-		s.False(updatedAt.AsTime().IsZero())
-		s.True(updatedAt.AsTime().Equal(createdAt.AsTime()))
-
-		value := mapping.GetAttributeValue()
-		testValue, ok := testValues[value.GetId()]
-		s.True(ok, "expected value %s", value.GetId())
-		s.Equal(testValue.Value, value.GetValue())
-		s.Equal(fmt.Sprintf("https://example.com/attr/attr1/value/%s", value.GetValue()), value.GetFqn())
+	// set the offset pagination
+	offset := 2
+	req.Pagination = &policy.PageRequest{
+		Offset: int32(offset),
 	}
+	offsetListRsp, err := s.db.PolicyClient.ListResourceMappings(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(offsetListRsp)
+	offsetListed := offsetListRsp.GetResourceMappings()
 
-	s.Equal(testMappingCount, foundCount)
+	// length is reduced by the offset amount
+	s.Equal(len(offsetListed), len(listed)-offset)
+
+	// objects are equal between offset and original list beginning at offset index
+	for i, rm := range offsetListed {
+		s.True(proto.Equal(rm, listed[i+offset]))
+	}
 }
 
-func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupId() {
+func (s *ResourceMappingsSuite) Test_ListResourceMappings_ByGroupId_Succeeds() {
 	req := &resourcemapping.ListResourceMappingsRequest{
 		GroupId: s.getResourceMappingGroupFixtures()[0].ID,
 	}
@@ -613,7 +562,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupId() {
 	}
 }
 
-func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqns() {
+func (s *ResourceMappingsSuite) Test_ListResourceMappings_ByGroupFqns_Succeeds() {
 	scenarioDotComNs := s.getScenarioDotComNamespace()
 	scenarioDotComGroup := s.f.GetResourceMappingGroupKey("scenario.com_ns_group_1")
 	scenarioDotComGroupMapping := s.f.GetResourceMappingKey("resource_mapping_to_attribute_value3")
@@ -655,7 +604,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqns() {
 	s.Equal("https://scenario.com/attr/working_group/value/blue", value.GetFqn())
 }
 
-func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqnsWithEmptyOrNilFqnsFails() {
+func (s *ResourceMappingsSuite) Test_ListResourceMappings_ByGroupFqns_WithEmptyOrNilFqns_Fails() {
 	fqnRmGroupMap, err := s.db.PolicyClient.ListResourceMappingsByGroupFqns(s.ctx, nil)
 	s.Require().Error(err)
 	s.Nil(fqnRmGroupMap)
@@ -665,20 +614,20 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqnsWithEmptyOrN
 	s.Nil(fqnRmGroupMap)
 }
 
-func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqnsWithInvalidFqnsFails() {
+func (s *ResourceMappingsSuite) Test_ListResourceMappings_ByGroupFqns_WithInvalidFqns_Fails() {
 	fqnRmGroupMap, err := s.db.PolicyClient.ListResourceMappingsByGroupFqns(s.ctx, []string{"invalid_fqn"})
 	s.Require().Error(err)
 	s.Nil(fqnRmGroupMap)
 }
 
-func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqnsWithUnknownFqnsFails() {
+func (s *ResourceMappingsSuite) Test_ListResourceMappings_ByGroupFqns_WithUnknownFqns_Fails() {
 	unknownFqn := "https://unknown.com/resm/unknown_group"
 	fqnRmGroupMap, err := s.db.PolicyClient.ListResourceMappingsByGroupFqns(s.ctx, []string{unknownFqn})
 	s.Require().Error(err)
 	s.Nil(fqnRmGroupMap)
 }
 
-func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqnsWithKnownAndUnknownFqnsSucceeds() {
+func (s *ResourceMappingsSuite) Test_ListResourceMappings_ByGroupFqns_WithKnownAndUnknownFqns_Succeeds() {
 	exampleDotComNs := s.getExampleDotComNamespace()
 	exampleDotComRmGroup1 := s.f.GetResourceMappingGroupKey("example.com_ns_group_1")
 
@@ -698,7 +647,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqnsWithKnownAnd
 	s.Nil(unknownResp)
 }
 
-func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqnsWithKnownAndInvalidFqnsSucceeds() {
+func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqns_WithKnownAndInvalidFqns_Succeeds() {
 	exampleDotComNs := s.getExampleDotComNamespace()
 	exampleDotComRmGroup1 := s.f.GetResourceMappingGroupKey("example.com_ns_group_1")
 

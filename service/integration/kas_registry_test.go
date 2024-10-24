@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/stretchr/testify/suite"
 )
@@ -53,64 +54,66 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_NoPagination_Succeeds() {
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{})
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
-	listed := listRsp.GetKeyAccessServers()
-	s.NotEmpty(listed)
-	for _, fixture := range fixtures {
-		for _, item := range listed {
-			if item.GetId() == fixture.ID {
-				s.Equal(fixture.ID, item.GetId())
-				if item.GetPublicKey().GetRemote() != "" {
-					s.Equal(fixture.PubKey.Remote, item.GetPublicKey().GetRemote())
-				} else {
-					s.Equal(fixture.PubKey.Cached, item.GetPublicKey().GetCached())
-				}
-				s.Equal(fixture.URI, item.GetUri())
-			}
-		}
-	}
-}
 
-func (s *KasRegistrySuite) Test_ListKeyAccessServers_Offset_Succeeds() {
-	fixtures := s.getKasRegistryFixtures()
-	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{})
-	s.Require().NoError(err)
-	s.NotNil(listRsp)
 	listed := listRsp.GetKeyAccessServers()
 	s.NotEmpty(listed)
-	for _, fixture := range fixtures {
-		for _, item := range listed {
-			if item.GetId() == fixture.ID {
-				s.Equal(fixture.ID, item.GetId())
-				if item.GetPublicKey().GetRemote() != "" {
-					s.Equal(fixture.PubKey.Remote, item.GetPublicKey().GetRemote())
-				} else {
-					s.Equal(fixture.PubKey.Cached, item.GetPublicKey().GetCached())
-				}
-				s.Equal(fixture.URI, item.GetUri())
+
+	// ensure we find each fixture in the list response
+	for _, f := range fixtures {
+		found := false
+		for _, kasr := range listed {
+			if kasr.GetId() == f.ID {
+				found = true
 			}
 		}
+		s.True(found)
 	}
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_Limit_Succeeds() {
-	fixtures := s.getKasRegistryFixtures()
-	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{})
+	var limit int32 = 2
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Pagination: &policy.PageRequest{
+			Limit: limit,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	listed := listRsp.GetKeyAccessServers()
+	s.Equal(len(listed), int(limit))
+
+	for _, val := range listed {
+		s.NotEmpty(val.GetId())
+		s.NotEmpty(val.GetUri())
+		s.NotNil(val.GetPublicKey())
+	}
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_Offset_Succeeds() {
+	req := &kasregistry.ListKeyAccessServersRequest{}
+	// make initial list request to compare against
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, req)
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 	listed := listRsp.GetKeyAccessServers()
-	s.NotEmpty(listed)
-	for _, fixture := range fixtures {
-		for _, item := range listed {
-			if item.GetId() == fixture.ID {
-				s.Equal(fixture.ID, item.GetId())
-				if item.GetPublicKey().GetRemote() != "" {
-					s.Equal(fixture.PubKey.Remote, item.GetPublicKey().GetRemote())
-				} else {
-					s.Equal(fixture.PubKey.Cached, item.GetPublicKey().GetCached())
-				}
-				s.Equal(fixture.URI, item.GetUri())
-			}
-		}
+
+	// set the offset pagination
+	offset := 1
+	req.Pagination = &policy.PageRequest{
+		Offset: int32(offset),
+	}
+	offsetListRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(offsetListRsp)
+	offsetListed := offsetListRsp.GetKeyAccessServers()
+
+	// length is reduced by the offset amount
+	s.Equal(len(offsetListed), len(listed)-offset)
+
+	// objects are equal between offset and original list beginning at offset index
+	for i, val := range offsetListed {
+		s.True(proto.Equal(val, listed[i+offset]))
 	}
 }
 

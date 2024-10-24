@@ -18,6 +18,7 @@ import (
 	"github.com/opentdf/platform/service/pkg/db"
 	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/proto"
 )
 
 type AttributesSuite struct {
@@ -370,16 +371,16 @@ func (s *AttributesSuite) Test_ListAttributes_NoPagination_Succeeds() {
 	fixtures := s.getAttributeFixtures()
 
 	r := &attributes.ListAttributesRequest{
-		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
 	}
-	list, err := s.db.PolicyClient.ListAttributes(s.ctx, r)
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, r)
 	s.Require().NoError(err)
-	s.NotNil(list)
+	s.NotNil(listRsp)
 
 	// all fixtures are listed
 	for _, f := range fixtures {
 		var found bool
-		for _, l := range list.GetAttributes() {
+		for _, l := range listRsp.GetAttributes() {
 			if f.ID == l.GetId() {
 				found = true
 				break
@@ -389,51 +390,54 @@ func (s *AttributesSuite) Test_ListAttributes_NoPagination_Succeeds() {
 	}
 }
 
-// func (s *AttributesSuite) Test_ListAttributes_Limit_Succeeds() {
-// 	fixtures := s.getAttributeFixtures()
+func (s *AttributesSuite) Test_ListAttributes_Limit_Succeeds() {
+	var limit int32 = 2
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Pagination: &policy.PageRequest{
+			Limit: limit,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+	listed := listRsp.GetAttributes()
+	s.Equal(len(listed), int(limit))
 
-// 	r := &attributes.ListAttributesRequest{
-// 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
-// 	}
-// 	list, err := s.db.PolicyClient.ListAttributes(s.ctx, r)
-// 	s.Require().NoError(err)
-// 	s.NotNil(list)
+	for _, definition := range listed {
+		s.NotEmpty(definition.GetFqn())
+		s.NotEmpty(definition.GetId())
+		s.NotEmpty(definition.GetName())
+	}
+}
 
-// 	// all fixtures are listed
-// 	for _, f := range fixtures {
-// 		var found bool
-// 		for _, l := range list.GetAttributes() {
-// 			if f.ID == l.GetId() {
-// 				found = true
-// 				break
-// 			}
-// 		}
-// 		s.True(found)
-// 	}
-// }
+func (s *AttributesSuite) Test_ListAttributes_Offset_Succeeds() {
+	req := &attributes.ListAttributesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+	}
+	// make initial list request to compare against
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+	listed := listRsp.GetAttributes()
 
-// func (s *AttributesSuite) Test_ListAttributes_Offset_Succeeds() {
-// 	fixtures := s.getAttributeFixtures()
+	// set the offset pagination
+	offset := 2
+	req.Pagination = &policy.PageRequest{
+		Offset: int32(offset),
+	}
+	offsetListRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(offsetListRsp)
+	offsetListed := offsetListRsp.GetAttributes()
 
-// 	r := &attributes.ListAttributesRequest{
-// 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
-// 	}
-// 	list, err := s.db.PolicyClient.ListAttributes(s.ctx, r)
-// 	s.Require().NoError(err)
-// 	s.NotNil(list)
+	// length is reduced by the offset amount
+	s.Equal(len(offsetListed), len(listed)-offset)
 
-// 	// all fixtures are listed
-// 	for _, f := range fixtures {
-// 		var found bool
-// 		for _, l := range list.GetAttributes() {
-// 			if f.ID == l.GetId() {
-// 				found = true
-// 				break
-// 			}
-// 		}
-// 		s.True(found)
-// 	}
-// }
+	// objects are equal between offset and original list beginning at offset index
+	for i, attr := range offsetListed {
+		s.True(proto.Equal(attr, listed[i+offset]))
+	}
+}
 
 func (s *AttributesSuite) Test_ListAttributes_FqnsIncluded() {
 	// create an attribute

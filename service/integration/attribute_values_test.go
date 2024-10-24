@@ -113,20 +113,10 @@ func (s *AttributeValuesSuite) Test_ListAttributeValues_Limit_Succeeds() {
 	listed := listRsp.GetValues()
 	s.Equal(len(listed), int(limit))
 
-	// validate at least two fixtures are correctly retrieved
-	f1 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
-	f2 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
-
 	for _, val := range listed {
-		if val.GetId() == f1.ID {
-			s.Equal(f1.ID, val.GetId())
-			s.Equal(f1.Value, val.GetValue())
-			s.Equal(f1.AttributeDefinitionID, val.GetAttribute().GetId())
-		} else if val.GetId() == f2.ID {
-			s.Equal(f2.ID, val.GetId())
-			s.Equal(f2.Value, val.GetValue())
-			s.Equal(f2.AttributeDefinitionID, val.GetAttribute().GetId())
-		}
+		s.NotEmpty(val.GetFqn())
+		s.NotEmpty(val.GetId())
+		s.NotEmpty(val.GetValue())
 	}
 }
 
@@ -141,7 +131,7 @@ func (s *AttributeValuesSuite) Test_ListAttributeValues_Offset_Succeeds() {
 	listed := listRsp.GetValues()
 
 	// set the offset pagination
-	offset := 4
+	offset := 5
 	req.Pagination = &policy.PageRequest{
 		Offset: int32(offset),
 	}

@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/proto"
 )
 
 type NamespacesSuite struct {
@@ -138,30 +139,65 @@ func (s *NamespacesSuite) Test_ListNamespaces_NoPagination_Succeeds() {
 	s.NotNil(listNamespacesRsp)
 	listed := listNamespacesRsp.GetNamespaces()
 	s.GreaterOrEqual(len(listed), len(testData))
+
+	for _, f := range testData {
+		found := false
+		for _, ns := range listed {
+			if ns.GetId() == f.ID {
+				found = true
+			}
+		}
+		s.True(found)
+	}
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_Limit_Succeeds() {
-	testData := s.getActiveNamespaceFixtures()
-
-	listNamespacesRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
-		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+	var limit int32 = 2
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Pagination: &policy.PageRequest{
+			Limit: limit,
+		},
 	})
 	s.Require().NoError(err)
-	s.NotNil(listNamespacesRsp)
-	listed := listNamespacesRsp.GetNamespaces()
-	s.GreaterOrEqual(len(listed), len(testData))
+	s.NotNil(listRsp)
+	listed := listRsp.GetNamespaces()
+	s.Equal(len(listed), int(limit))
+
+	for _, ns := range listed {
+		s.NotEmpty(ns.GetFqn())
+		s.NotEmpty(ns.GetId())
+		s.NotEmpty(ns.GetName())
+	}
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_Offset_Succeeds() {
-	testData := s.getActiveNamespaceFixtures()
-
-	listNamespacesRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
-		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
-	})
+	req := &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+	}
+	// make initial list request to compare against
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, req)
 	s.Require().NoError(err)
-	s.NotNil(listNamespacesRsp)
-	listed := listNamespacesRsp.GetNamespaces()
-	s.GreaterOrEqual(len(listed), len(testData))
+	s.NotNil(listRsp)
+	listed := listRsp.GetNamespaces()
+
+	// set the offset pagination
+	offset := 4
+	req.Pagination = &policy.PageRequest{
+		Offset: int32(offset),
+	}
+	offsetListRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(offsetListRsp)
+	offsetListed := offsetListRsp.GetNamespaces()
+
+	// length is reduced by the offset amount
+	s.Equal(len(offsetListed), len(listed)-offset)
+
+	// objects are equal between offset and original list beginning at offset index
+	for i, ns := range offsetListed {
+		s.True(proto.Equal(ns, listed[i+offset]))
+	}
 }
 
 func (s *NamespacesSuite) Test_UpdateNamespace() {

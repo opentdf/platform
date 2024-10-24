@@ -125,16 +125,25 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *namespaces
 		ObjectID:   namespaceID,
 	}
 
-	original, err := ns.dbClient.GetNamespace(ctx, namespaceID)
-	if err != nil {
-		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", namespaceID))
-	}
+	var original, updated *policy.Namespace
+	err := ns.dbClient.RunInTx(ctx, func(tx *policydb.PolicyDBClient) error {
+		o, err := tx.GetNamespace(ctx, namespaceID)
+		if err != nil {
+			return db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", namespaceID))
+		}
+		original = o
 
-	updated, err := ns.dbClient.UpdateNamespace(ctx, namespaceID, req)
+		u, err := tx.UpdateNamespace(ctx, namespaceID, req)
+		if err != nil {
+			return db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", namespaceID))
+		}
+		updated = u
+
+		return nil
+	})
 	if err != nil {
 		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", namespaceID))
+		return nil, err
 	}
 
 	auditParams.Original = original
@@ -161,16 +170,25 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *namesp
 		ObjectID:   namespaceID,
 	}
 
-	original, err := ns.dbClient.GetNamespace(ctx, namespaceID)
-	if err != nil {
-		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", namespaceID))
-	}
+	var original, updated *policy.Namespace
+	err := ns.dbClient.RunInTx(ctx, func(tx *policydb.PolicyDBClient) error {
+		o, err := ns.dbClient.GetNamespace(ctx, namespaceID)
+		if err != nil {
+			return db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", namespaceID))
+		}
+		original = o
 
-	updated, err := ns.dbClient.DeactivateNamespace(ctx, namespaceID)
+		u, err := ns.dbClient.DeactivateNamespace(ctx, namespaceID)
+		if err != nil {
+			return db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", namespaceID))
+		}
+		updated = u
+
+		return nil
+	})
 	if err != nil {
 		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", namespaceID))
+		return nil, err
 	}
 
 	auditParams.Original = original

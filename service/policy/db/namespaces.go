@@ -4,13 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"math"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -216,15 +214,11 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 	c.logger.Debug("upserted fqn for unsafely updated namespace", slog.Any("fqn", nsFqn))
 
 	// TODO: deprecate the list of attributes and move upsert to a transaction/trigger
-	attrs, err := c.ListAttributes(ctx, &attributes.ListAttributesRequest{
-		State:      common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
-		Namespace:  id,
-		Pagination: &policy.PageRequest{Limit: math.MaxInt32},
-	})
+	attrs, err := c.ListAllAttributes(ctx)
 	if err != nil {
 		return nil, err
 	}
-	for _, attr := range attrs.GetAttributes() {
+	for _, attr := range attrs {
 		fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id, attributeID: attr.GetId()})
 		c.logger.Debug("upserted definition fqn for unsafely updated namespace", slog.Any("fqn", fqn))
 		for _, value := range attr.GetValues() {

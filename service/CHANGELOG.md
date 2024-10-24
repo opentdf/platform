@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.27](https://github.com/opentdf/platform/compare/service/v0.4.26...service/v0.4.27) (2024-10-24)
+
+
+### Features
+
+* **docs:** add policy ADR for LIST limit and pagination ([#1557](https://github.com/opentdf/platform/issues/1557)) ([069f939](https://github.com/opentdf/platform/commit/069f939923cb3570c1e62453f68022a0b9c3e544))
+
 ## [0.4.26](https://github.com/opentdf/platform/compare/service/v0.4.25...service/v0.4.26) (2024-10-17)
 
 

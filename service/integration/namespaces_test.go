@@ -171,6 +171,18 @@ func (s *NamespacesSuite) Test_ListNamespaces_Limit_Succeeds() {
 	}
 }
 
+func (s *NamespacesSuite) Test_ListNamespaces_Limit_TooLarge_Fails() {
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax + 1,
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrListLimitTooLarge)
+	s.Nil(listRsp)
+}
+
 func (s *NamespacesSuite) Test_ListNamespaces_Offset_Succeeds() {
 	req := &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,

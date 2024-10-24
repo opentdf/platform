@@ -14,14 +14,17 @@ import (
 )
 
 var (
-	FixtureLimitDefault int32 = 1000
-	FixtureLimitMax     int32 = 5000
+	// Configured default LIST Limit when working with fixtures
+	fixtureLimitDefault int32 = 1000
+	fixtureLimitMax     int32 = 5000
 )
 
 type DBInterface struct {
 	Client       *db.Client
 	PolicyClient policydb.PolicyDBClient
 	Schema       string
+	LimitDefault int32
+	LimitMax     int32
 }
 
 func NewDBInterface(cfg config.Config) DBInterface {
@@ -47,7 +50,9 @@ func NewDBInterface(cfg config.Config) DBInterface {
 	return DBInterface{
 		Client:       c,
 		Schema:       config.Schema,
-		PolicyClient: policydb.NewClient(c, logger, FixtureLimitMax, FixtureLimitDefault),
+		PolicyClient: policydb.NewClient(c, logger, fixtureLimitMax, fixtureLimitDefault),
+		LimitDefault: fixtureLimitDefault,
+		LimitMax:     fixtureLimitMax,
 	}
 }
 

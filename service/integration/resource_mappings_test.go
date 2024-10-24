@@ -117,6 +117,17 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups_Limit_Succeeds() 
 	}
 }
 
+func (s *NamespacesSuite) Test_ListResourceMappingGroups_Limit_TooLarge_Fails() {
+	listRsp, err := s.db.PolicyClient.ListResourceMappingGroups(s.ctx, &resourcemapping.ListResourceMappingGroupsRequest{
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax + 1,
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrListLimitTooLarge)
+	s.Nil(listRsp)
+}
+
 func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups_Offset_Succeeds() {
 	req := &resourcemapping.ListResourceMappingGroupsRequest{}
 	// make initial list request to compare against
@@ -517,6 +528,17 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings_Limit_Succeeds() {
 		s.NotEmpty(rm.GetId())
 		s.NotEmpty(rm.GetAttributeValue())
 	}
+}
+
+func (s *NamespacesSuite) Test_ListResourceMappings_Limit_TooLarge_Fails() {
+	listRsp, err := s.db.PolicyClient.ListResourceMappings(s.ctx, &resourcemapping.ListResourceMappingsRequest{
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax + 1,
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrListLimitTooLarge)
+	s.Nil(listRsp)
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappings_Offset_Succeeds() {

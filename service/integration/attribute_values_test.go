@@ -118,6 +118,38 @@ func (s *AttributeValuesSuite) Test_ListAttributeValues_Limit_Succeeds() {
 		s.NotEmpty(val.GetId())
 		s.NotEmpty(val.GetValue())
 	}
+
+	// request with one below maximum
+	listRsp, err = s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax - 1,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// request with exactly maximum
+	listRsp, err = s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+}
+
+func (s *NamespacesSuite) Test_ListAttributeValues_Limit_TooLarge_Fails() {
+	listRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax + 1,
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrListLimitTooLarge)
+	s.Nil(listRsp)
 }
 
 func (s *AttributeValuesSuite) Test_ListAttributeValues_Offset_Succeeds() {

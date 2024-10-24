@@ -2,9 +2,7 @@ package db
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -23,34 +21,21 @@ type PolicyDBClient struct {
 	*Queries
 }
 
-type DbTransaction interface {
-	Commit(ctx context.Context) error
-	Rollback(ctx context.Context) error
-}
-
-type PgxDbTransaction struct {
-	pgxTx pgx.Tx
-}
-
-func (t *PgxDbTransaction) Commit(ctx context.Context) error {
-	return t.pgxTx.Commit(ctx)
-}
-
-func (t *PgxDbTransaction) Rollback(ctx context.Context) error {
-	return t.pgxTx.Rollback(ctx)
-}
-
-func (c *PolicyDBClient) BeginTx(ctx context.Context) (DbTransaction, error) {
+func (c *PolicyDBClient) RunInTx(ctx context.Context, f func(txClient *PolicyDBClient) error) error {
+	// todo: could abstract Pgx.Tx to a common interface
 	tx, err := c.Client.Pgx.Begin(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+		return err
 	}
 
-	return &PgxDbTransaction{tx}, nil
-}
+	txClient := &PolicyDBClient{c.Client, c.logger, c.Queries.WithTx(tx)}
 
-func (c *PolicyDBClient) WithTx(tx DbTransaction) *PolicyDBClient {
-	return &PolicyDBClient{c.Client, c.logger, c.Queries.WithTx(tx.(*PgxDbTransaction).pgxTx)}
+	err = f(txClient)
+	if err != nil {
+		return tx.Rollback(ctx)
+	} else {
+		return tx.Commit(ctx)
+	}
 }
 
 var (

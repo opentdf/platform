@@ -93,8 +93,25 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *namespaces
 	}
 	rsp := &namespaces.CreateNamespaceResponse{}
 
-	n, err := ns.dbClient.CreateNamespace(ctx, req)
+	tx, err := ns.dbClient.BeginTx(ctx)
 	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("name", req.GetName()))
+	}
+	// ignoring error for now
+	defer func() {
+		err := tx.Rollback(ctx)
+		if err != nil {
+			ns.logger.Error("failed to rollback transaction", slog.Any("err", err))
+		}
+	}()
+
+	n, err := ns.dbClient.WithTx(tx).CreateNamespace(ctx, req)
+	if err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("name", req.GetName()))
+	}
+
+	if err := tx.Commit(ctx); err != nil {
 		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("name", req.GetName()))
 	}

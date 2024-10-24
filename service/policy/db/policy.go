@@ -33,9 +33,9 @@ func (c *PolicyDBClient) RunInTx(ctx context.Context, f func(txClient *PolicyDBC
 	err = f(txClient)
 	if err != nil {
 		return tx.Rollback(ctx)
-	} else {
-		return tx.Commit(ctx)
 	}
+
+	return tx.Commit(ctx)
 }
 
 var (

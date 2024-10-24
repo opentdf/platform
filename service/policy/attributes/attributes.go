@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
@@ -19,18 +20,23 @@ type AttributesService struct { //nolint:revive // AttributesService is a valid 
 	attributes.UnimplementedAttributesServiceServer
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
+	config   *policyconfig.Config
 }
 
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		ServiceDesc: &attributes.AttributesService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &AttributesService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				if srv, ok := server.(attributes.AttributesServiceServer); ok {
-					return attributes.RegisterAttributesServiceHandlerServer(ctx, mux, srv)
+			return &AttributesService{
+					dbClient: policydb.NewClient(srp.DBClient, srp.Logger),
+					logger:   srp.Logger,
+					config:   policyconfig.GetSharedPolicyConfig(srp),
+				}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
+					if srv, ok := server.(attributes.AttributesServiceServer); ok {
+						return attributes.RegisterAttributesServiceHandlerServer(ctx, mux, srv)
+					}
+					return fmt.Errorf("failed to assert server as attributes.AttributesServiceServer")
 				}
-				return fmt.Errorf("failed to assert server as attributes.AttributesServiceServer")
-			}
 		},
 	}
 }

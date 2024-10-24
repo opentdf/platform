@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
@@ -19,14 +20,18 @@ type NamespacesService struct { //nolint:revive // NamespacesService is a valid 
 	namespaces.UnimplementedNamespaceServiceServer
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
+	config   *policyconfig.Config
 }
 
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		ServiceDesc: &namespaces.NamespaceService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			ns := &NamespacesService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
-
+			ns := &NamespacesService{
+				dbClient: policydb.NewClient(srp.DBClient, srp.Logger),
+				logger:   srp.Logger,
+				config:   policyconfig.GetSharedPolicyConfig(srp),
+			}
 			if err := srp.RegisterReadinessCheck("policy", ns.IsReady); err != nil {
 				srp.Logger.Error("failed to register policy readiness check", slog.String("error", err.Error()))
 			}

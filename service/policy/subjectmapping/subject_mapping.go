@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
@@ -19,19 +20,24 @@ type SubjectMappingService struct { //nolint:revive // SubjectMappingService is 
 	sm.UnimplementedSubjectMappingServiceServer
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
+	config   *policyconfig.Config
 }
 
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		ServiceDesc: &sm.SubjectMappingService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &SubjectMappingService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
-				server, ok := s.(sm.SubjectMappingServiceServer)
-				if !ok {
-					return fmt.Errorf("failed to assert server as sm.SubjectMappingServiceServer")
+			return &SubjectMappingService{
+					dbClient: policydb.NewClient(srp.DBClient, srp.Logger),
+					logger:   srp.Logger,
+					config:   policyconfig.GetSharedPolicyConfig(srp),
+				}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
+					server, ok := s.(sm.SubjectMappingServiceServer)
+					if !ok {
+						return fmt.Errorf("failed to assert server as sm.SubjectMappingServiceServer")
+					}
+					return sm.RegisterSubjectMappingServiceHandlerServer(ctx, mux, server)
 				}
-				return sm.RegisterSubjectMappingServiceHandlerServer(ctx, mux, server)
-			}
 		},
 	}
 }

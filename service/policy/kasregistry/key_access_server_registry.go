@@ -12,6 +12,8 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	policyconfig "github.com/opentdf/platform/service/policy/config"
+
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
@@ -19,19 +21,24 @@ type KeyAccessServerRegistry struct {
 	kasr.UnimplementedKeyAccessServerRegistryServiceServer
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
+	config   *policyconfig.Config
 }
 
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		ServiceDesc: &kasr.KeyAccessServerRegistryService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &KeyAccessServerRegistry{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
-				srv, ok := s.(kasr.KeyAccessServerRegistryServiceServer)
-				if !ok {
-					return fmt.Errorf("argument is not of type kasr.KeyAccessServerRegistryServiceServer")
+			return &KeyAccessServerRegistry{
+					dbClient: policydb.NewClient(srp.DBClient, srp.Logger),
+					logger:   srp.Logger,
+					config:   policyconfig.GetSharedPolicyConfig(srp),
+				}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
+					srv, ok := s.(kasr.KeyAccessServerRegistryServiceServer)
+					if !ok {
+						return fmt.Errorf("argument is not of type kasr.KeyAccessServerRegistryServiceServer")
+					}
+					return kasr.RegisterKeyAccessServerRegistryServiceHandlerServer(ctx, mux, srv)
 				}
-				return kasr.RegisterKeyAccessServerRegistryServiceHandlerServer(ctx, mux, srv)
-			}
 		},
 	}
 }

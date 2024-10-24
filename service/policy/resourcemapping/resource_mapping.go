@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
@@ -19,19 +20,24 @@ type ResourceMappingService struct { //nolint:revive // ResourceMappingService i
 	resourcemapping.UnimplementedResourceMappingServiceServer
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
+	config   *policyconfig.Config
 }
 
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		ServiceDesc: &resourcemapping.ResourceMappingService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &ResourceMappingService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
-				server, ok := s.(resourcemapping.ResourceMappingServiceServer)
-				if !ok {
-					return fmt.Errorf("failed to assert server as resourcemapping.ResourceMappingServiceServer")
+			return &ResourceMappingService{
+					dbClient: policydb.NewClient(srp.DBClient, srp.Logger),
+					logger:   srp.Logger,
+					config:   policyconfig.GetSharedPolicyConfig(srp),
+				}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
+					server, ok := s.(resourcemapping.ResourceMappingServiceServer)
+					if !ok {
+						return fmt.Errorf("failed to assert server as resourcemapping.ResourceMappingServiceServer")
+					}
+					return resourcemapping.RegisterResourceMappingServiceHandlerServer(ctx, mux, server)
 				}
-				return resourcemapping.RegisterResourceMappingServiceHandlerServer(ctx, mux, server)
-			}
 		},
 	}
 }

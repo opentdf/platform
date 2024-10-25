@@ -15,7 +15,7 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 
 	maxLimit := c.listCfg.limitMax
-	if maxLimit > 0 && limit > int32(maxLimit) {
+	if maxLimit > 0 && limit > maxLimit {
 		return nil, db.ErrListLimitTooLarge
 	}
 
@@ -188,7 +188,7 @@ func (c PolicyDBClient) DeleteKeyAccessServer(ctx context.Context, id string) (*
 func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasregistry.ListKeyAccessServerGrantsRequest) (*kasregistry.ListKeyAccessServerGrantsResponse, error) {
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 	maxLimit := c.listCfg.limitMax
-	if maxLimit > 0 && limit > int32(maxLimit) {
+	if maxLimit > 0 && limit > maxLimit {
 		return nil, db.ErrListLimitTooLarge
 	}
 

@@ -21,7 +21,7 @@ func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resour
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 
 	maxLimit := c.listCfg.limitMax
-	if maxLimit > 0 && limit > int32(maxLimit) {
+	if maxLimit > 0 && limit > maxLimit {
 		return nil, db.ErrListLimitTooLarge
 	}
 
@@ -170,7 +170,7 @@ func (c PolicyDBClient) ListResourceMappings(ctx context.Context, r *resourcemap
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 
 	maxLimit := c.listCfg.limitMax
-	if maxLimit > 0 && limit > int32(maxLimit) {
+	if maxLimit > 0 && limit > maxLimit {
 		return nil, db.ErrListLimitTooLarge
 	}
 

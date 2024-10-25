@@ -235,7 +235,7 @@ func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context, r *subject
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 
 	maxLimit := c.listCfg.limitMax
-	if maxLimit > 0 && limit > int32(maxLimit) {
+	if maxLimit > 0 && limit > maxLimit {
 		return nil, db.ErrListLimitTooLarge
 	}
 
@@ -443,7 +443,7 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmappi
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 
 	maxLimit := c.listCfg.limitMax
-	if maxLimit > 0 && limit > int32(maxLimit) {
+	if maxLimit > 0 && limit > maxLimit {
 		return nil, db.ErrListLimitTooLarge
 	}
 

@@ -48,7 +48,7 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNa
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 
 	maxLimit := c.listCfg.limitMax
-	if maxLimit > 0 && limit > int32(maxLimit) {
+	if maxLimit > 0 && limit > maxLimit {
 		return nil, db.ErrListLimitTooLarge
 	}
 
@@ -121,7 +121,7 @@ func (c PolicyDBClient) ListAllNamespaces(ctx context.Context) ([]*policy.Namesp
 		}
 
 		nextOffset = listed.GetPagination().GetNextOffset()
-		nsList = append(nsList, listed.Namespaces...)
+		nsList = append(nsList, listed.GetNamespaces()...)
 
 		// offset becomes zero when list is exhausted
 		if nextOffset <= 0 {

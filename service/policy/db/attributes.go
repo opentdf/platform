@@ -128,7 +128,7 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAt
 	)
 
 	maxLimit := c.listCfg.limitMax
-	if maxLimit > 0 && limit > int32(maxLimit) {
+	if maxLimit > 0 && limit > maxLimit {
 		return nil, db.ErrListLimitTooLarge
 	}
 
@@ -209,7 +209,7 @@ func (c PolicyDBClient) ListAllAttributes(ctx context.Context) ([]*policy.Attrib
 		}
 
 		nextOffset = listed.GetPagination().GetNextOffset()
-		attrsList = append(attrsList, listed.Attributes...)
+		attrsList = append(attrsList, listed.GetAttributes()...)
 
 		// offset becomes zero when list is exhausted
 		if nextOffset <= 0 {

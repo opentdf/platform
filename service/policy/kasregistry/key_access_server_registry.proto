@@ -51,7 +51,8 @@ message UpdateKeyAccessServerRequest {
   string uri = 2 [(buf.validate.field).cel = {
       id: "optional_uri_format",
       message: "Optional URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
-      expression: "size(this) == 0 || this.matches('^https?://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')"
+      expression: "size(this) == 0 ||  this.isUri()"
+"
   }];
   // Required
   PublicKey public_key = 3;

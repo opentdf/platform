@@ -66,9 +66,7 @@ func marshalActionsProto(actions []*policy.Action) ([]byte, error) {
 }
 
 func unmarshalActionsProto(actionsJSON []byte, actions *[]*policy.Action) error {
-	var (
-		raw []json.RawMessage
-	)
+	var raw []json.RawMessage
 
 	if actionsJSON != nil {
 		if err := json.Unmarshal(actionsJSON, &raw); err != nil {
@@ -317,6 +315,25 @@ func (c PolicyDBClient) DeleteSubjectConditionSet(ctx context.Context, id string
 	return &policy.SubjectConditionSet{
 		Id: id,
 	}, nil
+}
+
+// Deletes/prunes all subject condition sets not referenced within a subject mapping
+func (c PolicyDBClient) DeleteAllUnmappedSubjectConditionSets(ctx context.Context) ([]*policy.SubjectConditionSet, error) {
+	deletedIDs, err := c.Queries.DeleteAllUnmappedSubjectConditionSets(ctx)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if len(deletedIDs) == 0 {
+		return nil, db.ErrNotFound
+	}
+
+	setList := make([]*policy.SubjectConditionSet, len(deletedIDs))
+	for i, id := range deletedIDs {
+		setList[i] = &policy.SubjectConditionSet{
+			Id: id,
+		}
+	}
+	return setList, nil
 }
 
 /*

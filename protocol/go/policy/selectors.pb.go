@@ -207,7 +207,8 @@ type PageRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Optional
-	// Currently defaulted to 250 if not provided and subject to change at any time
+	// Set to configured default limit if not provided
+	// Maximum limit set in platform config and enforced by services
 	Limit int32 `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Optional
 	// Defaulted if not provided

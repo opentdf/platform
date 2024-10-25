@@ -46,7 +46,8 @@ message AttributeValueSelector {
 
 message PageRequest {
   // Optional
-  // Currently defaulted to 250 if not provided and subject to change at any time
+  // Set to configured default limit if not provided
+  // Maximum limit set in platform config and enforced by services
   int32 limit = 1;
   // Optional
   // Defaulted if not provided

@@ -50,7 +50,7 @@
           },
           {
             "name": "pagination.limit",
-            "description": "Optional\nCurrently defaulted to 250 if not provided and subject to change at any time",
+            "description": "Optional\nSet to configured default limit if not provided\nMaximum limit set in platform config and enforced by services",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -508,7 +508,7 @@
         "limit": {
           "type": "integer",
           "format": "int32",
-          "title": "Optional\nCurrently defaulted to 250 if not provided and subject to change at any time"
+          "title": "Optional\nSet to configured default limit if not provided\nMaximum limit set in platform config and enforced by services"
         },
         "offset": {
           "type": "integer",

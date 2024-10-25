@@ -60,11 +60,6 @@ func Test_CreateKeyAccessServerRequest_Fails(t *testing.T) {
 			"",
 			"empty URI",
 		},
-		{
-			remotePubKey,
-			"udp://hello.world",
-			"bad URI format",
-		},
 	}
 
 	for _, test := range bad {
@@ -91,6 +86,20 @@ func Test_CreateKeyAccessServerRequest_Succeeds(t *testing.T) {
 			remotePubKey,
 			validInsecureURI,
 		},
+		{
+			remotePubKey,
+			// non http protocol
+			"udp://hello.world",
+		},
+		// ports allowed
+		{
+			remotePubKey,
+			validInsecureURI + ":8080",
+		},
+		{
+			remotePubKey,
+			validSecureURI + ":8080",
+		},
 	}
 
 	for _, test := range good {
@@ -111,12 +120,6 @@ func Test_UpdateKeyAccessServerRequest_Fails(t *testing.T) {
 		uri      string
 		scenario string
 	}{
-		{
-			validUUID,
-			remotePubKey,
-			"udp://hello.world",
-			"bad URI format",
-		},
 		{
 			"",
 			remotePubKey,
@@ -157,8 +160,18 @@ func Test_UpdateKeyAccessServerRequest_Succeeds(t *testing.T) {
 		},
 		{
 			remotePubKey,
+			"udp://hello.world",
+			"other non-http URI",
+		},
+		{
+			remotePubKey,
 			validInsecureURI,
 			"both http uri and public key",
+		},
+		{
+			remotePubKey,
+			validInsecureURI + ":9000",
+			"with port",
 		},
 		{
 			nil,
@@ -205,7 +218,7 @@ func Test_ListKeyAccessServerGrantsRequest_Fails(t *testing.T) {
 	}{
 		{
 			"",
-			"udp://hello.world",
+			"missing.scheme",
 			"bad URI format",
 		},
 		{

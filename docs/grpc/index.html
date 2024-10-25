@@ -949,6 +949,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest"><span class="badge">M</span>DeleteAllUnmappedSubjectConditionSetsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse"><span class="badge">M</span>DeleteAllUnmappedSubjectConditionSetsResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.subjectmapping.DeleteSubjectConditionSetRequest"><span class="badge">M</span>DeleteSubjectConditionSetRequest</a>
                 </li>
               
@@ -7108,6 +7116,37 @@ Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition
 
         
       
+        <h3 id="policy.subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest">DeleteAllUnmappedSubjectConditionSetsRequest</h3>
+        <p>Prune any Subject Condition Sets not utilized within a Subject Mapping</p>
+
+        
+
+        
+      
+        <h3 id="policy.subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse">DeleteAllUnmappedSubjectConditionSetsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>subject_condition_sets</td>
+                  <td><a href="#policy.SubjectConditionSet">policy.SubjectConditionSet</a></td>
+                  <td>repeated</td>
+                  <td><p>Only IDs of any deleted Subject Condition Set provided </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.subjectmapping.DeleteSubjectConditionSetRequest">DeleteSubjectConditionSetRequest</h3>
         <p></p>
 
@@ -7687,6 +7726,13 @@ Replaces the existing SubjectConditionSet id with a new one </p></td>
                 <td><p></p></td>
               </tr>
             
+              <tr>
+                <td>DeleteAllUnmappedSubjectConditionSets</td>
+                <td><a href="#policy.subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest">DeleteAllUnmappedSubjectConditionSetsRequest</a></td>
+                <td><a href="#policy.subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse">DeleteAllUnmappedSubjectConditionSetsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
           </tbody>
         </table>
 
@@ -7811,6 +7857,16 @@ Replaces the existing SubjectConditionSet id with a new one </p></td>
                 <td>DeleteSubjectConditionSet</td>
                 <td>DELETE</td>
                 <td>/subject-condition-sets/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>DeleteAllUnmappedSubjectConditionSets</td>
+                <td>DELETE</td>
+                <td>/subject-condition-sets/unmapped</td>
                 <td></td>
               </tr>
               

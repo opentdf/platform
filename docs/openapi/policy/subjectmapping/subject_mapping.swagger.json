@@ -68,6 +68,28 @@
         ]
       }
     },
+    "/subject-condition-sets/unmapped": {
+      "delete": {
+        "operationId": "SubjectMappingService_DeleteAllUnmappedSubjectConditionSets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingDeleteAllUnmappedSubjectConditionSetsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "SubjectMappingService"
+        ]
+      }
+    },
     "/subject-condition-sets/{id}": {
       "get": {
         "operationId": "SubjectMappingService_GetSubjectConditionSet",
@@ -871,6 +893,19 @@
       "properties": {
         "subjectMapping": {
           "$ref": "#/definitions/policySubjectMapping"
+        }
+      }
+    },
+    "subjectmappingDeleteAllUnmappedSubjectConditionSetsResponse": {
+      "type": "object",
+      "properties": {
+        "subjectConditionSets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policySubjectConditionSet"
+          },
+          "title": "Only IDs of any deleted Subject Condition Set provided"
         }
       }
     },

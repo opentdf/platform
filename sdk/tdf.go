@@ -921,6 +921,11 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 			}
 		}
 
+		// Skip assertion verification if disabled
+		if r.config.disableAssertionVerification {
+			continue
+		}
+
 		assertionHash, assertionSig, err := assertion.Verify(assertionKey)
 		if err != nil {
 			if errors.Is(err, errAssertionVerifyKeyFailure) {

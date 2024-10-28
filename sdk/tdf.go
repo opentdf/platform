@@ -904,6 +904,12 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 
 	// Validate assertions
 	for _, assertion := range r.manifest.Assertions {
+
+		// Skip assertion verification if disabled
+		if r.config.disableAssertionVerification {
+			continue
+		}
+
 		assertionKey := AssertionKey{}
 		// Set default to HS256
 		assertionKey.Alg = AssertionKeyAlgHS256
@@ -920,12 +926,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 				assertionKey.Key = foundKey.Key
 			}
 		}
-
-		// Skip assertion verification if disabled
-		if r.config.disableAssertionVerification {
-			continue
-		}
-
+		
 		assertionHash, assertionSig, err := assertion.Verify(assertionKey)
 		if err != nil {
 			if errors.Is(err, errAssertionVerifyKeyFailure) {

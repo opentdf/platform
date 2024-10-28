@@ -1,10 +1,11 @@
-go 1.22
+go 1.23.2
 
 use (
 	./examples
 	./lib/fixtures
 	./lib/flattening
 	./lib/ocrypto
+	./test/performance
 	./protocol/go
 	./sdk
 	./service

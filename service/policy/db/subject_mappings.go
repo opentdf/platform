@@ -62,9 +62,7 @@ func marshalActionsProto(actions []*policy.Action) ([]byte, error) {
 }
 
 func unmarshalActionsProto(actionsJSON []byte, actions *[]*policy.Action) error {
-	var (
-		raw []json.RawMessage
-	)
+	var raw []json.RawMessage
 
 	if actionsJSON != nil {
 		if err := json.Unmarshal(actionsJSON, &raw); err != nil {
@@ -428,8 +426,8 @@ func (c PolicyDBClient) DeleteSubjectMapping(ctx context.Context, id string) (*p
 // GetMatchedSubjectMappings liberally returns a list of SubjectMappings based on the provided SubjectProperties.
 // The SubjectMappings are returned if an external selector field matches.
 //
-// NOTE: This relationship is sometimes called Entitlements or Subject Entitlements.
-// NOTE: if you have any issues, set the log level to 'debug' for more comprehensive context.
+// NOTE: Any matched SubjectMappings cannot entitle without resolution of the Condition Sets returned. Each contains
+// logic that must be applied to a subject Entity Representation to assure entitlement.
 func (c PolicyDBClient) GetMatchedSubjectMappings(ctx context.Context, properties []*policy.SubjectProperty) ([]*policy.SubjectMapping, error) {
 	selectors := []string{}
 	for _, sp := range properties {
@@ -442,11 +440,6 @@ func (c PolicyDBClient) GetMatchedSubjectMappings(ctx context.Context, propertie
 
 	mappings := make([]*policy.SubjectMapping, len(list))
 	for i, sm := range list {
-		metadata := &common.Metadata{}
-		if err = unmarshalMetadata(sm.Metadata, metadata); err != nil {
-			return nil, err
-		}
-
 		av := &policy.Value{}
 		if err = unmarshalAttributeValue(sm.AttributeValue, av); err != nil {
 			return nil, err
@@ -457,16 +450,15 @@ func (c PolicyDBClient) GetMatchedSubjectMappings(ctx context.Context, propertie
 			return nil, err
 		}
 
-		scs := policy.SubjectConditionSet{}
-		if err = unmarshalSubjectConditionSet(sm.SubjectConditionSet, &scs); err != nil {
+		scs := &policy.SubjectConditionSet{}
+		if err = unmarshalSubjectConditionSet(sm.SubjectConditionSet, scs); err != nil {
 			return nil, err
 		}
 
 		mappings[i] = &policy.SubjectMapping{
 			Id:                  sm.ID,
-			Metadata:            metadata,
 			AttributeValue:      av,
-			SubjectConditionSet: &scs,
+			SubjectConditionSet: scs,
 			Actions:             a,
 		}
 	}

@@ -84,3 +84,15 @@ func Test_MatchSubjectMappingsRequest_Succeeds(t *testing.T) {
 	err := getValidator().Validate(req)
 	require.NoError(t, err)
 }
+
+func Test_MatchSubjectMappingsRequest_EmptyExternalValue_Succeeds(t *testing.T) {
+	props := []*policy.SubjectProperty{
+		{
+			ExternalSelectorValue: ".some_field",
+		},
+	}
+	req := &subjectmapping.MatchSubjectMappingsRequest{SubjectProperties: props}
+
+	err := getValidator().Validate(req)
+	require.NoError(t, err)
+}

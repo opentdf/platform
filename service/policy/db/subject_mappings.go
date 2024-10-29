@@ -450,15 +450,15 @@ func (c PolicyDBClient) GetMatchedSubjectMappings(ctx context.Context, propertie
 			return nil, err
 		}
 
-		scs := policy.SubjectConditionSet{}
-		if err = unmarshalSubjectConditionSet(sm.SubjectConditionSet, &scs); err != nil {
+		scs := &policy.SubjectConditionSet{}
+		if err = unmarshalSubjectConditionSet(sm.SubjectConditionSet, scs); err != nil {
 			return nil, err
 		}
 
 		mappings[i] = &policy.SubjectMapping{
 			Id:                  sm.ID,
 			AttributeValue:      av,
-			SubjectConditionSet: &scs,
+			SubjectConditionSet: scs,
 			Actions:             a,
 		}
 	}

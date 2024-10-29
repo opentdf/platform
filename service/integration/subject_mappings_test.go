@@ -15,8 +15,9 @@ import (
 
 type SubjectMappingsSuite struct {
 	suite.Suite
-	f   fixtures.Fixtures
-	db  fixtures.DBInterface
+	f  fixtures.Fixtures
+	db fixtures.DBInterface
+	//nolint:containedctx // Only used for test suite
 	ctx context.Context
 }
 

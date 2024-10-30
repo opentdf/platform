@@ -25,6 +25,7 @@ type NanoTDFConfig struct {
 	sigCfg       signatureConfig
 	policy       policyInfo
 	bindCfg      bindingConfig
+	dataSetCfg   *dataSetConfig
 }
 
 type NanoTDFOption func(*NanoTDFConfig) error
@@ -48,6 +49,11 @@ func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
 			hasSignature:  false,
 			signatureMode: ocrypto.ECCModeSecp256r1,
 			cipher:        cipherModeAes256gcm96Bit,
+		},
+		dataSetCfg: &dataSetConfig{
+			iterations: 0,
+			useDataSet: false,
+			header:     []byte{},
 		},
 	}
 
@@ -75,6 +81,10 @@ func (config *NanoTDFConfig) SetAttributes(attributes []string) error {
 // EnableECDSAPolicyBinding enable ecdsa policy binding
 func (config *NanoTDFConfig) EnableECDSAPolicyBinding() {
 	config.bindCfg.useEcdsaBinding = true
+}
+
+func (config *NanoTDFConfig) EnableDataSet() {
+	config.dataSetCfg.useDataSet = true
 }
 
 // WithNanoDataAttributes appends the given data attributes to the bound policy

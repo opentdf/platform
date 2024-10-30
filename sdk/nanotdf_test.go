@@ -2,9 +2,12 @@ package sdk
 
 import (
 	"bytes"
+	"crypto/ecdh"
+	"crypto/rand"
 	"encoding/gob"
 	"io"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -296,5 +299,65 @@ func TestCreateNanoTDF(t *testing.T) {
 			}
 			require.NoError(t, err)
 		})
+	}
+}
+
+func TestDataSet(t *testing.T) {
+	const (
+		kasURL = "https://test.virtru.com"
+	)
+
+	var s SDK
+	conf, err := s.NewNanoTDFConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = conf.SetKasURL(kasURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = conf.SetAttributes([]string{"https://examples.com/attr/attr1/value/value1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	key, err := ecdh.P256().GenerateKey(rand.Reader)
+	conf.kasPublicKey = key.PublicKey()
+
+	getHeaderAndSymKey := func(cfg *NanoTDFConfig) ([]byte, []byte) {
+		out := &bytes.Buffer{}
+		symKey, _, err := writeNanoTDFHeader(out, *conf)
+		if err != nil {
+			t.Fatal()
+		}
+
+		return out.Bytes(), symKey
+	}
+
+	header1, symKey1 := getHeaderAndSymKey(conf)
+	header2, symKey2 := getHeaderAndSymKey(conf)
+
+	if bytes.Equal(header1, header2) {
+		t.Fatal("headers should not match")
+	}
+
+	conf.EnableDataSet()
+	header1, symKey1 = getHeaderAndSymKey(conf)
+	header2, symKey2 = getHeaderAndSymKey(conf)
+
+	if !bytes.Equal(symKey1, symKey2) {
+		t.Fatal("keys should match")
+	}
+	if !bytes.Equal(header1, header2) {
+		t.Fatal("headers should match")
+	}
+
+	for i := 0; i < kMaxIters-3; i++ {
+		getHeaderAndSymKey(conf)
+	}
+	_, _, err = writeNanoTDFHeader(nil, *conf)
+	if err == nil || !strings.Contains(err.Error(), "max dataset size") {
+		t.Fatal("expected max dataset size")
 	}
 }

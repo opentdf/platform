@@ -37,6 +37,7 @@ const (
 	kNanoTDFIvSize                = 3
 	kNanoTDFGMACLength            = 8
 	kNanoTDFMagicStringAndVersion = "L1L"
+	kMaxIters                     = 1<<24 - 1
 )
 
 /******************************** Header**************************
@@ -174,6 +175,13 @@ type signatureConfig struct {
 	hasSignature  bool
 	signatureMode ocrypto.ECCMode
 	cipher        CipherMode
+}
+
+type dataSetConfig struct {
+	iterations int32
+	header     []byte
+	useDataSet bool
+	symKey     []byte
 }
 
 type policyInfo struct {
@@ -355,6 +363,21 @@ func SizeOfAuthTagForCipher(cipherType CipherMode) (int, error) {
 // ============================================================================================================
 
 func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32, error) {
+	if config.dataSetCfg.useDataSet {
+		config.dataSetCfg.iterations++ // TODO: should this be threadsafe?
+		if config.dataSetCfg.iterations == kMaxIters {
+			return nil, 0, fmt.Errorf("max dataset size: %d", kMaxIters)
+		}
+		if config.dataSetCfg.iterations != 1 {
+			n, err := writer.Write(config.dataSetCfg.header)
+			return config.dataSetCfg.symKey, uint32(n), err
+		}
+		// First Iteration: header has not been calculated, will write to header and save for later use.
+		buf := &bytes.Buffer{}
+		writer = io.MultiWriter(writer, buf)
+		defer func() { config.dataSetCfg.header = buf.Bytes() }()
+	}
+
 	var totalBytes uint32
 
 	// Write the magic number
@@ -508,6 +531,10 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 		return nil, 0, err
 	}
 	totalBytes += uint32(l)
+
+	if config.dataSetCfg.useDataSet {
+		config.dataSetCfg.symKey = symmetricKey
+	}
 
 	return symmetricKey, totalBytes, nil
 }

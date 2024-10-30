@@ -359,6 +359,35 @@ func SizeOfAuthTagForCipher(cipherType CipherMode) (int, error) {
 }
 
 // ============================================================================================================
+// NanoTDF Header Store
+// ============================================================================================================
+
+type datasetStore map[string]struct {
+	key             []byte
+	encryptedHeader []byte
+}
+
+func (n datasetStore) store(header, key []byte) {
+	hash := ocrypto.SHA256AsHex(header)
+	n[string(hash)] = struct {
+		key             []byte
+		encryptedHeader []byte
+	}{key: key, encryptedHeader: header}
+}
+
+func (n datasetStore) get(header []byte) ([]byte, bool) {
+	hash := ocrypto.SHA256AsHex(header)
+	item, ok := n[string(hash)]
+	if !ok {
+		return nil, false
+	}
+	if bytes.Equal(item.encryptedHeader, header) { // TODO: is this necessary
+		return item.key, true
+	}
+	return nil, false
+}
+
+// ============================================================================================================
 // NanoTDF Header read/write
 // ============================================================================================================
 
@@ -816,21 +845,9 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
-	encodedHeader := ocrypto.Base64Encode(headerBuf)
-
-	rsaKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
+	symmetricKey, err := s.getNanoRewrapKey(ctx, headerBuf, kasURL)
 	if err != nil {
-		return 0, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
-	}
-
-	client, err := newKASClient(s.dialOptions, s.tokenSource, rsaKeyPair)
-	if err != nil {
-		return 0, fmt.Errorf("newKASClient failed: %w", err)
-	}
-
-	symmetricKey, err := client.unwrapNanoTDF(ctx, string(encodedHeader), kasURL)
-	if err != nil {
-		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
+		return 0, err
 	}
 
 	encoded := ocrypto.Base64Encode(symmetricKey)
@@ -882,6 +899,34 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 	}
 
 	return uint32(writeLen), nil
+}
+
+func (s SDK) getNanoRewrapKey(ctx context.Context, header []byte, kasURL string) ([]byte, error) {
+	if s.datasetStore != nil {
+		if key, found := s.datasetStore.get(header); found {
+			return key, nil
+		}
+	}
+	encodedHeader := ocrypto.Base64Encode(header)
+
+	rsaKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
+	}
+
+	client, err := newKASClient(s.dialOptions, s.tokenSource, rsaKeyPair)
+	if err != nil {
+		return nil, fmt.Errorf("newKASClient failed: %w", err)
+	}
+
+	symmetricKey, err := client.unwrapNanoTDF(ctx, string(encodedHeader), kasURL)
+	if err != nil {
+		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
+	}
+	if s.datasetStore != nil {
+		s.datasetStore.store(header, symmetricKey)
+	}
+	return symmetricKey, nil
 }
 
 type requestBody struct {

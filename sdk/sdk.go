@@ -170,7 +170,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	return &SDK{
 		config:                  *cfg,
-		datasetStore:            &datasetStore{},
+		datasetStore:            cfg.datasetStore,
 		kasKeyCache:             newKasKeyCache(),
 		conn:                    platformConn,
 		dialOptions:             dialOptions,

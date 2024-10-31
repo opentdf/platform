@@ -323,11 +323,14 @@ func TestDataSet(t *testing.T) {
 	}
 
 	key, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
 	conf.kasPublicKey = key.PublicKey()
 
 	getHeaderAndSymKey := func(cfg *NanoTDFConfig) ([]byte, []byte) {
 		out := &bytes.Buffer{}
-		symKey, _, err := writeNanoTDFHeader(out, *conf)
+		symKey, _, err := writeNanoTDFHeader(out, *cfg)
 		if err != nil {
 			t.Fatal()
 		}
@@ -335,16 +338,16 @@ func TestDataSet(t *testing.T) {
 		return out.Bytes(), symKey
 	}
 
-	header1, symKey1 := getHeaderAndSymKey(conf)
-	header2, symKey2 := getHeaderAndSymKey(conf)
+	header1, _ := getHeaderAndSymKey(conf)
+	header2, _ := getHeaderAndSymKey(conf)
 
 	if bytes.Equal(header1, header2) {
 		t.Fatal("headers should not match")
 	}
 
 	conf.EnableDataSet()
-	header1, symKey1 = getHeaderAndSymKey(conf)
-	header2, symKey2 = getHeaderAndSymKey(conf)
+	header1, symKey1 := getHeaderAndSymKey(conf)
+	header2, symKey2 := getHeaderAndSymKey(conf)
 
 	if !bytes.Equal(symKey1, symKey2) {
 		t.Fatal("keys should match")

@@ -72,7 +72,7 @@ func WithInsecureSkipVerifyConn() Option {
 // WithNanoDatasets returns an Option that sets up storing dataset keys for nTDFs
 func WithNanoDatasets() Option {
 	return func(c *config) {
-		c.datasetStore = &datasetStore{}
+		c.datasetStore = newDatasetStore()
 	}
 }
 

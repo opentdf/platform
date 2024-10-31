@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"sync"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 )
@@ -362,26 +363,37 @@ func SizeOfAuthTagForCipher(cipherType CipherMode) (int, error) {
 // NanoTDF Header Store
 // ============================================================================================================
 
-type datasetStore map[string]struct {
+type datasetStore struct {
+	s   map[string]datasetStoreEntry
+	mux sync.RWMutex
+}
+
+type datasetStoreEntry struct {
 	key             []byte
 	encryptedHeader []byte
 }
 
-func (n datasetStore) store(header, key []byte) {
-	hash := ocrypto.SHA256AsHex(header)
-	n[string(hash)] = struct {
-		key             []byte
-		encryptedHeader []byte
-	}{key: key, encryptedHeader: header}
+func newDatasetStore() *datasetStore {
+	return &datasetStore{s: make(map[string]datasetStoreEntry)}
 }
 
-func (n datasetStore) get(header []byte) ([]byte, bool) {
+func (n *datasetStore) store(header, key []byte) {
+	n.mux.Lock()
+	defer n.mux.Unlock()
 	hash := ocrypto.SHA256AsHex(header)
-	item, ok := n[string(hash)]
+	n.s[string(hash)] = datasetStoreEntry{key: key, encryptedHeader: header}
+}
+
+func (n *datasetStore) get(header []byte) ([]byte, bool) {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
+	hash := ocrypto.SHA256AsHex(header)
+	item, ok := n.s[string(hash)]
 	if !ok {
 		return nil, false
 	}
-	if bytes.Equal(item.encryptedHeader, header) { // TODO: is this necessary
+	// check for hash collision
+	if bytes.Equal(item.encryptedHeader, header) {
 		return item.key, true
 	}
 	return nil, false

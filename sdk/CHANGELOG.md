@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.3.17](https://github.com/opentdf/platform/compare/sdk/v0.3.16...sdk/v0.3.17) (2024-10-28)
+
+
+### Bug Fixes
+
+* **sdk:** option to disable assertion verification ([#1689](https://github.com/opentdf/platform/issues/1689)) ([5c08c47](https://github.com/opentdf/platform/commit/5c08c47d616e98a0dcd2eec4e30a6c04ae71526d))
+* **sdk:** Stops including binding in assertion hashes ([#1681](https://github.com/opentdf/platform/issues/1681)) ([a4583b0](https://github.com/opentdf/platform/commit/a4583b07a15f73027a1a63c619338bf1bdbebe49))
+
+## [0.3.16](https://github.com/opentdf/platform/compare/sdk/v0.3.15...sdk/v0.3.16) (2024-10-15)
+
+
+### Features
+
+* **sdk:** Expose error types for signature, assertion, and kas failures ([#1613](https://github.com/opentdf/platform/issues/1613)) ([2aab506](https://github.com/opentdf/platform/commit/2aab5062a7aef3a9c95f0bb2c9c031a08501f76d))
+
+## [0.3.15](https://github.com/opentdf/platform/compare/sdk/v0.3.14...sdk/v0.3.15) (2024-10-15)
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1637](https://github.com/opentdf/platform/issues/1637)) ([f42d5af](https://github.com/opentdf/platform/commit/f42d5af65738bff3497c16d63455457f6aab2728))
+
 ## [0.3.14](https://github.com/opentdf/platform/compare/sdk/v0.3.13...sdk/v0.3.14) (2024-10-08)
 
 

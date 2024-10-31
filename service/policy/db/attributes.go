@@ -35,18 +35,21 @@ func attributesValuesProtojson(valuesJSON []byte) ([]*policy.Value, error) {
 		values []*policy.Value
 	)
 
-	if err := json.Unmarshal(valuesJSON, &raw); err != nil {
-		return nil, err
+	if valuesJSON != nil {
+		if err := json.Unmarshal(valuesJSON, &raw); err != nil {
+			return nil, err
+		}
+
+		for _, r := range raw {
+			value := &policy.Value{}
+			err := protojson.Unmarshal(r, value)
+			if err != nil {
+				return nil, fmt.Errorf("error unmarshaling a value: %w", err)
+			}
+			values = append(values, value)
+		}
 	}
 
-	for _, r := range raw {
-		value := &policy.Value{}
-		err := protojson.Unmarshal(r, value)
-		if err != nil {
-			return nil, fmt.Errorf("error unmarshaling a value: %w", err)
-		}
-		values = append(values, value)
-	}
 	return values, nil
 }
 
@@ -194,48 +197,60 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.At
 	return policyAttr, nil
 }
 
-func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*policy.Attribute, error) {
-	fullAttr, err := c.Queries.GetAttributeByDefOrValueFqn(ctx, strings.ToLower(fqn))
+func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string) ([]*policy.Attribute, error) {
+	list, err := c.Queries.ListAttributesByDefOrValueFqns(ctx, fqns)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	ns := new(policy.Namespace)
-	err = protojson.Unmarshal(fullAttr.Namespace, ns)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal namespace [%s]: %w", string(fullAttr.Namespace), err)
-	}
-
-	values, err := attributesValuesProtojson(fullAttr.Values)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal values [%s]: %w", string(fullAttr.Values), err)
-	}
-
-	m := new(common.Metadata)
-	if fullAttr.Metadata != nil {
-		err = unmarshalMetadata(fullAttr.Metadata, m)
+	attrs := make([]*policy.Attribute, len(list))
+	for i, attr := range list {
+		ns := new(policy.Namespace)
+		err = protojson.Unmarshal(attr.Namespace, ns)
 		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal metadata [%s]: %w", string(fullAttr.Metadata), err)
+			return nil, fmt.Errorf("failed to unmarshal namespace [%s]: %w", string(attr.Namespace), err)
+		}
+
+		values, err := attributesValuesProtojson(attr.Values)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal values [%s]: %w", string(attr.Values), err)
+		}
+
+		var grants []*policy.KeyAccessServer
+		if attr.Grants != nil {
+			grants, err = db.KeyAccessServerProtoJSON(attr.Grants)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal grants [%s]: %w", string(attr.Grants), err)
+			}
+		}
+
+		attrs[i] = &policy.Attribute{
+			Id:        attr.ID,
+			Name:      attr.Name,
+			Rule:      attributesRuleTypeEnumTransformOut(string(attr.Rule)),
+			Fqn:       attr.Fqn,
+			Active:    &wrapperspb.BoolValue{Value: attr.Active},
+			Grants:    grants,
+			Namespace: ns,
+			Values:    values,
 		}
 	}
-	var grants []*policy.KeyAccessServer
-	if fullAttr.DefinitionGrants != nil {
-		grants, err = db.KeyAccessServerProtoJSON(fullAttr.DefinitionGrants)
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal grants [%s]: %w", string(fullAttr.DefinitionGrants), err)
-		}
+
+	return attrs, nil
+}
+
+func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*policy.Attribute, error) {
+	list, err := c.ListAttributesByFqns(ctx, []string{strings.ToLower(fqn)})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-	return &policy.Attribute{
-		Id:        fullAttr.ID,
-		Name:      fullAttr.Name,
-		Rule:      attributesRuleTypeEnumTransformOut(string(fullAttr.Rule)),
-		Fqn:       fullAttr.DefinitionFqn,
-		Active:    &wrapperspb.BoolValue{Value: fullAttr.Active},
-		Grants:    grants,
-		Metadata:  m,
-		Namespace: ns,
-		Values:    values,
-	}, nil
+
+	if len(list) != 1 {
+		return nil, db.ErrNotFound
+	}
+
+	attr := list[0]
+	return attr, nil
 }
 
 func (c PolicyDBClient) GetAttributesByNamespace(ctx context.Context, namespaceID string) ([]*policy.Attribute, error) {

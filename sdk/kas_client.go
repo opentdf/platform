@@ -31,6 +31,7 @@ type KASClient struct {
 	dialOptions        []grpc.DialOption
 	clientPublicKeyPEM string
 	asymDecryption     ocrypto.AsymDecryption
+	ecDecryption       *ocrypto.ECKeyPair
 }
 
 // once the backend moves over we should use the same type that the golang backend uses here
@@ -42,7 +43,7 @@ type rewrapRequestBody struct {
 	SchemaVersion   string    `json:"schemaVersion,omitempty"`
 }
 
-func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, sessionKey ocrypto.RsaKeyPair) (*KASClient, error) {
+func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, sessionKey ocrypto.RsaKeyPair, nanoSessionKey *ocrypto.ECKeyPair) (*KASClient, error) {
 	clientPublicKey, err := sessionKey.PublicKeyInPemFormat()
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
@@ -63,6 +64,7 @@ func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTo
 		dialOptions:        dialOptions,
 		clientPublicKeyPEM: clientPublicKey,
 		asymDecryption:     asymDecryption,
+		ecDecryption:       nanoSessionKey,
 	}, nil
 }
 
@@ -181,21 +183,15 @@ func (k *KASClient) makeNanoTDFRewrapRequest(ctx context.Context, header string,
 }
 
 func (k *KASClient) unwrapNanoTDF(ctx context.Context, header string, kasURL string) ([]byte, error) {
-	keypair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.NewECKeyPair failed :%w", err)
-	}
-
-	publicKeyAsPem, err := keypair.PublicKeyInPemFormat()
+	publicKeyAsPem, err := k.ecDecryption.PublicKeyInPemFormat()
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewECKeyPair.PublicKeyInPemFormat failed :%w", err)
 	}
 
-	privateKeyAsPem, err := keypair.PrivateKeyInPemFormat()
+	privateKeyAsPem, err := k.ecDecryption.PrivateKeyInPemFormat()
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewECKeyPair.PrivateKeyInPemFormat failed :%w", err)
 	}
-
 	response, err := k.makeNanoTDFRewrapRequest(ctx, header, kasURL, publicKeyAsPem)
 	if err != nil {
 		return nil, fmt.Errorf("error making request to kas: %w", err)

@@ -794,7 +794,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 	mixedSplits := len(r.manifest.KeyAccessObjs) > 1 && r.manifest.KeyAccessObjs[0].SplitID != ""
 
 	for _, keyAccessObj := range r.manifest.EncryptionInformation.KeyAccessObjs {
-		client, err := newKASClient(r.dialOptions, r.tokenSource, r.kasSessionKey)
+		client, err := newKASClient(r.dialOptions, r.tokenSource, r.kasSessionKey, nil)
 		if err != nil {
 			return fmt.Errorf("newKASClient failed:%w", err)
 		}

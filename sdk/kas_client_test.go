@@ -58,7 +58,7 @@ func TestCreatingRequest(t *testing.T) {
 		t.Fatalf("error creating RSA Key: %v", err)
 	}
 
-	client, err := newKASClient(dialOption, tokenSource, kasKey)
+	client, err := newKASClient(dialOption, tokenSource, kasKey, nil)
 	if err != nil {
 		t.Fatalf("error setting KASClient: %v", err)
 	}

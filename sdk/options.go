@@ -28,6 +28,7 @@ type config struct {
 	extraDialOptions        []grpc.DialOption
 	certExchange            *oauth.CertExchangeInfo
 	kasSessionKey           *ocrypto.RsaKeyPair
+	nanoSessionKey          *ocrypto.ECKeyPair
 	dpopKey                 *ocrypto.RsaKeyPair
 	ipc                     bool
 	tdfFeatures             tdfFeatures

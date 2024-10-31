@@ -791,12 +791,7 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 
 	encodedHeader := ocrypto.Base64Encode(headerBuf)
 
-	rsaKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
-	if err != nil {
-		return 0, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
-	}
-
-	client, err := newKASClient(s.dialOptions, s.tokenSource, rsaKeyPair)
+	client, err := newKASClient(s.dialOptions, s.tokenSource, *s.kasSessionKey, s.nanoSessionKey)
 	if err != nil {
 		return 0, fmt.Errorf("newKASClient failed: %w", err)
 	}

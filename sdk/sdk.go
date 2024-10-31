@@ -101,6 +101,14 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		cfg.kasSessionKey = &key
 	}
 
+	if cfg.nanoSessionKey == nil {
+		key, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
+		if err != nil {
+			return nil, fmt.Errorf("ocrypto.NewECKeyPair failed :%w", err)
+		}
+		cfg.nanoSessionKey = &key
+	}
+
 	// once we change KAS to use standard DPoP we can put this all in the `build()` method
 	dialOptions := append([]grpc.DialOption{}, cfg.build()...)
 	// Add extra grpc dial options if provided. This is useful during tests.

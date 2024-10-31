@@ -17,24 +17,24 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-type DummyEntityResolutionService struct {
+type ClaimsEntityResolutionService struct {
 	entityresolution.UnimplementedEntityResolutionServiceServer
 	logger *logger.Logger
 }
 
-func RegisterDummyERS(_ serviceregistry.ServiceConfig, logger *logger.Logger) (any, serviceregistry.HandlerServer) {
-	return &DummyEntityResolutionService{logger: logger},
+func RegisterClaimsERS(_ serviceregistry.ServiceConfig, logger *logger.Logger) (any, serviceregistry.HandlerServer) {
+	return &ClaimsEntityResolutionService{logger: logger},
 		func(ctx context.Context, mux *runtime.ServeMux, server any) error {
 			return entityresolution.RegisterEntityResolutionServiceHandlerServer(ctx, mux, server.(entityresolution.EntityResolutionServiceServer)) //nolint:forcetypeassert // allow type assert, following other services
 		}
 }
 
-func (s DummyEntityResolutionService) ResolveEntities(ctx context.Context, req *entityresolution.ResolveEntitiesRequest) (*entityresolution.ResolveEntitiesResponse, error) {
+func (s ClaimsEntityResolutionService) ResolveEntities(ctx context.Context, req *entityresolution.ResolveEntitiesRequest) (*entityresolution.ResolveEntitiesResponse, error) {
 	resp, err := EntityResolution(ctx, req, s.logger)
 	return &resp, err
 }
 
-func (s DummyEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *entityresolution.CreateEntityChainFromJwtRequest) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
+func (s ClaimsEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *entityresolution.CreateEntityChainFromJwtRequest) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
 	resp, err := CreateEntityChainFromJwt(ctx, req, s.logger)
 	return &resp, err
 }

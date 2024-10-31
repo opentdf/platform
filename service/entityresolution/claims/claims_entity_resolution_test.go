@@ -6,7 +6,7 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
-	dummy "github.com/opentdf/platform/service/entityresolution/dummy"
+	claims "github.com/opentdf/platform/service/entityresolution/claims"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,7 +25,7 @@ func Test_ClientResolveEntity(t *testing.T) {
 	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = dummy.EntityResolution(ctxb, &req, logger.CreateTestLogger())
+	var resp, reserr = claims.EntityResolution(ctxb, &req, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -49,7 +49,7 @@ func Test_EmailResolveEntity(t *testing.T) {
 	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = dummy.EntityResolution(ctxb, &req, logger.CreateTestLogger())
+	var resp, reserr = claims.EntityResolution(ctxb, &req, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -65,12 +65,12 @@ func Test_EmailResolveEntity(t *testing.T) {
 }
 
 func Test_ClaimsResolveEntity(t *testing.T) {
-	claims := map[string]interface{}{
+	customclaims := map[string]interface{}{
 		"foo": "bar",
 		"baz": 42,
 	}
 	// Convert map[string]interface{} to *structpb.Struct
-	structClaims, err := structpb.NewStruct(claims)
+	structClaims, err := structpb.NewStruct(customclaims)
 	require.NoError(t, err)
 
 	// Wrap the struct in an *anypb.Any
@@ -85,7 +85,7 @@ func Test_ClaimsResolveEntity(t *testing.T) {
 	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = dummy.EntityResolution(ctxb, &req, logger.CreateTestLogger())
+	var resp, reserr = claims.EntityResolution(ctxb, &req, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -105,7 +105,7 @@ func Test_JWTToEntityChainClaims(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: samplejwt}}
 
-	var resp, reserr = dummy.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, logger.CreateTestLogger())
+	var resp, reserr = claims.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 

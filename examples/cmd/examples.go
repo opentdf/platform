@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"google.golang.org/grpc/resolver"
 	"log"
 	"os"
 	"strings"
@@ -28,6 +29,7 @@ func init() {
 }
 
 func newSDK() (*sdk.SDK, error) {
+	resolver.SetDefaultScheme("passthrough") //something wrong with my dns maybe dont commit
 	opts := []sdk.Option{sdk.WithInsecurePlaintextConn()}
 	if clientCredentials != "" {
 		i := strings.Index(clientCredentials, ":")
@@ -35,9 +37,6 @@ func newSDK() (*sdk.SDK, error) {
 			return nil, fmt.Errorf("invalid client id/secret pair")
 		}
 		opts = append(opts, sdk.WithClientCredentials(clientCredentials[:i], clientCredentials[i+1:], nil))
-	}
-	if tokenEndpoint != "" {
-		opts = append(opts, sdk.WithTokenEndpoint(tokenEndpoint))
 	}
 	return sdk.New(platformEndpoint, opts...)
 }

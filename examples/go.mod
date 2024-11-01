@@ -7,6 +7,7 @@ require (
 	github.com/opentdf/platform/protocol/go v0.2.18
 	github.com/opentdf/platform/sdk v0.3.16
 	github.com/spf13/cobra v1.8.0
+	golang.org/x/time v0.7.0
 	google.golang.org/protobuf v1.33.0
 )
 

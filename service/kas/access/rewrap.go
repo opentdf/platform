@@ -19,6 +19,8 @@ import (
 	"strings"
 	"time"
 
+	"go.opentelemetry.io/otel"
+
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -31,6 +33,7 @@ import (
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
+	"github.com/opentdf/platform/service/tracing"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -305,6 +308,10 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 }
 
 func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
+	tracer := otel.Tracer(tracing.ServiceName)
+	ctx, span := tracer.Start(ctx, "tdf3 rewrap")
+	defer span.End()
+
 	var kidsToCheck []string
 	if body.KeyAccess.KID != "" {
 		kidsToCheck = []string{body.KeyAccess.KID}
@@ -393,6 +400,10 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 }
 
 func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
+	tracer := otel.Tracer(tracing.ServiceName)
+	ctx, span := tracer.Start(ctx, "nanotdf rewrap")
+	defer span.End()
+
 	headerReader := bytes.NewReader(body.KeyAccess.Header)
 
 	header, _, err := sdk.NewNanoTDFHeaderFromReader(headerReader)

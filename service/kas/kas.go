@@ -13,14 +13,20 @@ import (
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/kas/access"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"github.com/opentdf/platform/service/tracing"
+	"go.opentelemetry.io/otel"
 )
 
 func NewRegistration() serviceregistry.Registration {
+	tracer := otel.Tracer(tracing.ServiceName)
+
 	return serviceregistry.Registration{
 		Namespace:   "kas",
 		ServiceDesc: &kaspb.AccessService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			// FIXME msg="mismatched key access url" keyAccessURL=http://localhost:9000 kasURL=https://:9000
+			_, span := tracer.Start(context.Background(), "RegisterFunc")
+			defer span.End()
+
 			hostWithPort := srp.OTDF.HTTPServer.Addr
 			if strings.HasPrefix(hostWithPort, ":") {
 				hostWithPort = "localhost" + hostWithPort
@@ -28,17 +34,21 @@ func NewRegistration() serviceregistry.Registration {
 			kasURLString := "http://" + hostWithPort
 			kasURI, err := url.Parse(kasURLString)
 			if err != nil {
+				span.RecordError(err)
 				panic(fmt.Errorf("invalid kas address [%s] %w", kasURLString, err))
 			}
 
 			var kasCfg access.KASConfig
 			if err := mapstructure.Decode(srp.Config, &kasCfg); err != nil {
+				span.RecordError(err)
 				panic(fmt.Errorf("invalid kas cfg [%v] %w", srp.Config, err))
 			}
 
 			switch {
 			case kasCfg.ECCertID != "" && len(kasCfg.Keyring) > 0:
-				panic("invalid kas cfg: please specify keyring or eccertid, not both")
+				err := fmt.Errorf("invalid kas cfg: please specify keyring or eccertid, not both")
+				span.RecordError(err)
+				panic(err)
 			case len(kasCfg.Keyring) == 0:
 				deprecatedOrDefault := func(kid, alg string) {
 					if kid == "" {

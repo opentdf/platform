@@ -10,6 +10,8 @@ import (
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/service/internal/security"
+	"github.com/opentdf/platform/service/tracing"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
@@ -72,6 +74,10 @@ func (p Provider) LegacyPublicKey(ctx context.Context, in *kaspb.LegacyPublicKey
 }
 
 func (p Provider) PublicKey(ctx context.Context, in *kaspb.PublicKeyRequest) (*kaspb.PublicKeyResponse, error) {
+	tracer := otel.Tracer(tracing.ServiceName)
+	ctx, span := tracer.Start(ctx, "get publickey")
+	defer span.End()
+
 	algorithm := in.GetAlgorithm()
 	if algorithm == "" {
 		algorithm = security.AlgorithmRSA2048

@@ -7,7 +7,6 @@ import (
 	"encoding/gob"
 	"io"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -330,7 +329,7 @@ func TestDataSet(t *testing.T) {
 
 	getHeaderAndSymKey := func(cfg *NanoTDFConfig) ([]byte, []byte) {
 		out := &bytes.Buffer{}
-		symKey, _, err := writeNanoTDFHeader(out, *cfg)
+		symKey, _, _, err := writeNanoTDFHeader(out, *cfg)
 		if err != nil {
 			t.Fatal()
 		}
@@ -356,11 +355,15 @@ func TestDataSet(t *testing.T) {
 		t.Fatal("headers should match")
 	}
 
-	for i := 0; i < kMaxIters-3; i++ {
-		getHeaderAndSymKey(conf)
+	for i := 2; i <= kMaxIters; i++ {
+		header, _ := getHeaderAndSymKey(conf)
+		if !bytes.Equal(header, header1) {
+			t.Fatal("max iteration reset occurred too early, headers differ")
+		}
 	}
-	_, _, err = writeNanoTDFHeader(nil, *conf)
-	if err == nil || !strings.Contains(err.Error(), "max dataset size") {
-		t.Fatal("expected max dataset size")
+
+	header, _ := getHeaderAndSymKey(conf)
+	if bytes.Equal(header, header1) {
+		t.Fatal("header did not reset")
 	}
 }

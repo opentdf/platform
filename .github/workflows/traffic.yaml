@@ -30,7 +30,7 @@ jobs:
         private-key: "${{ secrets.AUTOMATION_KEY }}"
         owner: opentdf 
     - name: checkout repo
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - id: get-date
       name: Set current date as env variable

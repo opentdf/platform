@@ -407,9 +407,8 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	if config.dataSetCfg.useDataSet {
 		config.dataSetCfg.iterations++ // TODO: should this be threadsafe?
 		if config.dataSetCfg.iterations == kMaxIters {
-			return nil, 0, fmt.Errorf("max dataset size: %d", kMaxIters)
-		}
-		if config.dataSetCfg.iterations != 1 {
+			config.dataSetCfg.iterations = 1
+		} else if config.dataSetCfg.iterations != 1 {
 			n, err := writer.Write(config.dataSetCfg.header)
 			return config.dataSetCfg.symKey, uint32(n), err
 		}
@@ -789,6 +788,7 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 		return 0, fmt.Errorf("ocrypto.RandomBytes failed:%w", err)
 	}
 	ivPadded = append(ivPadded, iv...)
+	incrementIV(ivPadded)
 
 	tagSize, err := SizeOfAuthTagForCipher(config.sigCfg.cipher)
 	if err != nil {
@@ -823,6 +823,13 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	totalSize += uint32(l)
 
 	return totalSize, nil
+}
+
+func incrementIV(iv []byte) {
+	iv[0]++
+	for i := 1; iv[i-1] == 0 && i < len(iv); i++ {
+		iv[i]++
+	}
 }
 
 // ============================================================================================================

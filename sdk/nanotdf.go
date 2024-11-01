@@ -9,11 +9,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"io"
 	"log/slog"
 	"sync"
-
-	"github.com/opentdf/platform/lib/ocrypto"
 )
 
 // ============================================================================================================
@@ -179,10 +178,11 @@ type signatureConfig struct {
 }
 
 type dataSetConfig struct {
-	iterations int32
+	iterations uint32
 	header     []byte
 	useDataSet bool
 	symKey     []byte
+	mux        sync.Mutex
 }
 
 type policyInfo struct {
@@ -405,11 +405,22 @@ func (n *datasetStore) get(header []byte) ([]byte, bool) {
 
 func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32, error) {
 	if config.dataSetCfg.useDataSet {
-		config.dataSetCfg.iterations++ // TODO: should this be threadsafe?
-		if config.dataSetCfg.iterations == kMaxIters {
+		// If concurrently writing, we must know what iteration we are on in a threadsafe way
+		// also when we need to safely read the header to ensure not rewritten in next max iteration
+		config.dataSetCfg.mux.Lock()
+		defer config.dataSetCfg.mux.Unlock()
+
+		// Store iteration and header and increment iteration
+		iteration := config.dataSetCfg.iterations
+		config.dataSetCfg.iterations++
+		header := config.dataSetCfg.header
+		// Reset iteration if reached max iters
+		if iteration == kMaxIters {
 			config.dataSetCfg.iterations = 1
-		} else if config.dataSetCfg.iterations != 1 {
-			n, err := writer.Write(config.dataSetCfg.header)
+		}
+		// Return saved header
+		if config.dataSetCfg.iterations != 1 {
+			n, err := writer.Write(header)
 			return config.dataSetCfg.symKey, uint32(n), err
 		}
 		// First Iteration: header has not been calculated, will write to header and save for later use.
@@ -788,7 +799,6 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 		return 0, fmt.Errorf("ocrypto.RandomBytes failed:%w", err)
 	}
 	ivPadded = append(ivPadded, iv...)
-	incrementIV(ivPadded)
 
 	tagSize, err := SizeOfAuthTagForCipher(config.sigCfg.cipher)
 	if err != nil {
@@ -823,13 +833,6 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	totalSize += uint32(l)
 
 	return totalSize, nil
-}
-
-func incrementIV(iv []byte) {
-	iv[0]++
-	for i := 1; iv[i-1] == 0 && i < len(iv); i++ {
-		iv[i]++
-	}
 }
 
 // ============================================================================================================

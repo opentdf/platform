@@ -1,4 +1,43 @@
-# CODEOWNERS - code freeze
+# CODEOWNERS
 
-* @opentdf/architecture
+* @opentdf/maintainers
+
+## Lib
+
+/.github/     @opentdf/architecture @opentdf/maintainers
+/lib/         @opentdf/architecture @opentdf/maintainers
+/lib/ocrypto  @opentdf/architecture
+
+## General
+
+.gitignore    @opentdf/maintainers
+go.mod        @opentdf/maintainers
+*.sum         @opentdf/maintainers
+
+### Documentation
+
+*.md          @opentdf/maintainers
+/docs/        @opentdf/maintainers
+/examples/    @opentdf/maintainers
+
+## Services
+
+/protocol/go/          @opentdf/architecture @opentdf/maintainers
+
+### Policy
+
+/service/migrations/   @opentdf/cli @opentdf/architecture
+/service/policy/       @opentdf/cli @opentdf/architecture
+
+### Key Access Server
+
+/service/kas/           @opentdf/kas @opentdf/architecture
+
+## SDK
+
+/sdk/ @opentdf/go-sdk @opentdf/architecture
+
+## High Security Area
+
 CODEOWNERS     @opentdf/architecture @opentdf/security
+LICENSE        @opentdf/architecture

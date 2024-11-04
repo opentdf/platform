@@ -27,6 +27,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/kas"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
@@ -36,7 +37,6 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-	"gotest.tools/v3/assert"
 )
 
 type AuthSuite struct {
@@ -452,9 +452,9 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 		MinVersion: tls.VersionTLS12,
 	})
 
-	conn, _ := grpc.DialContext(context.Background(), "", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
+	conn, _ := grpc.NewClient("passthrough://bufconn", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
 		return listener.Dial()
-	}), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock(), grpc.WithUnaryInterceptor(addingInterceptor.AddCredentials))
+	}), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(addingInterceptor.AddCredentials))
 
 	client := kas.NewAccessServiceClient(conn)
 

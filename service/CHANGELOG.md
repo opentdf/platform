@@ -1,5 +1,141 @@
 # Changelog
 
+## [0.4.26](https://github.com/opentdf/platform/compare/service/v0.4.25...service/v0.4.26) (2024-10-17)
+
+
+### Bug Fixes
+
+* use the right service namespace and update the tests ([#1665](https://github.com/opentdf/platform/issues/1665)) ([72ce62b](https://github.com/opentdf/platform/commit/72ce62b9b79a5b00d9723003789648246dd009b1))
+
+## [0.4.25](https://github.com/opentdf/platform/compare/service/v0.4.24...service/v0.4.25) (2024-10-15)
+
+
+### Features
+
+* **authz:** Add name to entity id when retrieved from token ([#1616](https://github.com/opentdf/platform/issues/1616)) ([5304204](https://github.com/opentdf/platform/commit/53042041a3c4993cc56db893a69b9e27363e8d1a))
+* **core:** Add entity category to audit logs ([#1614](https://github.com/opentdf/platform/issues/1614)) ([871878c](https://github.com/opentdf/platform/commit/871878c922b595cc5354a10300f3e488a841e580))
+* **core:** Change log level from Debug to Trace for readiness checks ([#1544](https://github.com/opentdf/platform/issues/1544)) ([0af1269](https://github.com/opentdf/platform/commit/0af12698842b297e9b8f7de5fd009c2e776c5ec1)), closes [#1545](https://github.com/opentdf/platform/issues/1545)
+* **policy:** 1004 add audit support for unsafe actions ([#1620](https://github.com/opentdf/platform/issues/1620)) ([4b64e5b](https://github.com/opentdf/platform/commit/4b64e5bc7978201b1f4ba688c292925da227081e))
+* **policy:** 1357 policy GetAttributeByFqn db query should employ fewer roundtrips ([#1633](https://github.com/opentdf/platform/issues/1633)) ([0bdb7e5](https://github.com/opentdf/platform/commit/0bdb7e507e5b0303db281e8b967a20b8cbc43ec2)), closes [#1357](https://github.com/opentdf/platform/issues/1357)
+* **policy:** 1421 tech debt migrate Resource Mappings object queries to sqlc ([#1422](https://github.com/opentdf/platform/issues/1422)) ([cd74bcf](https://github.com/opentdf/platform/commit/cd74bcf00d1c19c9a609f1dba6ad406a0454b07c))
+* **policy:** 1426 tech debt migrate Namespace object queries to sqlc - PART 2 ([#1617](https://github.com/opentdf/platform/issues/1617)) ([b914350](https://github.com/opentdf/platform/commit/b9143502c737a526f71a41d31ad6778e392255e0))
+* **policy:** 1434 tech debt migrate attribute value object queries to sqlc ([#1444](https://github.com/opentdf/platform/issues/1444)) ([0a7998e](https://github.com/opentdf/platform/commit/0a7998ec44c98eab5e084766e759fb2596e6e184)), closes [#1434](https://github.com/opentdf/platform/issues/1434)
+* **policy:** 1435 tech debt migrate attribute definition object queries to sqlc ([#1450](https://github.com/opentdf/platform/issues/1450)) ([c36624c](https://github.com/opentdf/platform/commit/c36624cbefd8643cad6f01603046fa060ae06724))
+* **policy:** 1436 tech debt migrate subject mapping and condition set object queries to sqlc ([#1606](https://github.com/opentdf/platform/issues/1606)) ([ec60c9f](https://github.com/opentdf/platform/commit/ec60c9fcb6d2ad7c7638dab39145341ab6f5d213))
+* **policy:** 1438 tech debt migrate attribute fqn indexing queries to sqlc ([#1445](https://github.com/opentdf/platform/issues/1445)) ([617aa91](https://github.com/opentdf/platform/commit/617aa913a1e79f0332c90e2882878c88ba3c3ff7)), closes [#1438](https://github.com/opentdf/platform/issues/1438)
+* **policy:** 1580 Resource Mappings GET/LIST should provide attribute value FQNs in response ([#1622](https://github.com/opentdf/platform/issues/1622)) ([e33bcc0](https://github.com/opentdf/platform/commit/e33bcc0aa04794049a5f920e1d4014a86e65a97b)), closes [#1580](https://github.com/opentdf/platform/issues/1580)
+* **policy:** 1618 update KAS CRUD to align with ADR decisions ([#1619](https://github.com/opentdf/platform/issues/1619)) ([379f980](https://github.com/opentdf/platform/commit/379f980bc8166fcf856e75e6ba5bac75adff92d6)), closes [#1618](https://github.com/opentdf/platform/issues/1618)
+* **policy:** DSP-51 - deprecate PublicKey local field ([#1590](https://github.com/opentdf/platform/issues/1590)) ([e3ed0b5](https://github.com/opentdf/platform/commit/e3ed0b5ce6039000c9e3c574d3d6ce2931781235))
+* **sdk:** Improve KAS key lookup and caching ([#1556](https://github.com/opentdf/platform/issues/1556)) ([fb6c47a](https://github.com/opentdf/platform/commit/fb6c47a95f2e91748436a76aeef46a81273bb10d))
+
+
+### Bug Fixes
+
+* allow standard users to get authorization decisions ([#1634](https://github.com/opentdf/platform/issues/1634)) ([718f5e3](https://github.com/opentdf/platform/commit/718f5e3aeb98795ec2edd1da5bd41dce24991969))
+* **authz:** Move logs containing subject mappings to trace level ([#1635](https://github.com/opentdf/platform/issues/1635)) ([80c117c](https://github.com/opentdf/platform/commit/80c117cbf21dc6ed54acaf5eacb180e1c9bd5540)), closes [#1503](https://github.com/opentdf/platform/issues/1503)
+* **core:** Autobump service ([#1611](https://github.com/opentdf/platform/issues/1611)) ([2567052](https://github.com/opentdf/platform/commit/256705261e0c61e9624adf5cc7b9d2ac08581858))
+* **core:** Autobump service ([#1624](https://github.com/opentdf/platform/issues/1624)) ([9468479](https://github.com/opentdf/platform/commit/94684795da135f330abdee3d86a17a72e909e5f5))
+* **core:** Autobump service ([#1639](https://github.com/opentdf/platform/issues/1639)) ([0551247](https://github.com/opentdf/platform/commit/05512477604d894b9eba3dca137d9960608abf40))
+* **core:** Autobump service ([#1654](https://github.com/opentdf/platform/issues/1654)) ([ecf41e9](https://github.com/opentdf/platform/commit/ecf41e9cd0f7d02cfded03053e91fc23884ba452))
+* **core:** log audit object as json ([#1612](https://github.com/opentdf/platform/issues/1612)) ([c519ffb](https://github.com/opentdf/platform/commit/c519ffb7a87a2fd21e0e162c1898667815cc7c28))
+* Simplify request ID extraction from context for AUDIT ([#1626](https://github.com/opentdf/platform/issues/1626)) ([2f7518c](https://github.com/opentdf/platform/commit/2f7518c3447211106c19ae376f9f700a31ef8f0a))
+
+## [0.4.24](https://github.com/opentdf/platform/compare/service/v0.4.23...service/v0.4.24) (2024-10-01)
+
+
+### Features
+
+* **ci:** run otdfctl e2e tests within platform ([#1526](https://github.com/opentdf/platform/issues/1526)) ([8240645](https://github.com/opentdf/platform/commit/8240645270e1cd25001c6f40d4276093c6e3cb23)), closes [#1528](https://github.com/opentdf/platform/issues/1528)
+* **core:** Ability to add namespace level loggers ([#1537](https://github.com/opentdf/platform/issues/1537)) ([bd57070](https://github.com/opentdf/platform/commit/bd570702952092f05f84f2312a211aa753f3205e))
+* **policy:** 1370 add audit support for Resource Mapping Groups ([#1418](https://github.com/opentdf/platform/issues/1418)) ([57dc217](https://github.com/opentdf/platform/commit/57dc21788557f726362ce0fd0351cf6ea12fee2c)), closes [#1370](https://github.com/opentdf/platform/issues/1370)
+* **policy:** 1398 add metadata support to Resource Mapping Groups ([#1412](https://github.com/opentdf/platform/issues/1412)) ([87b7b2f](https://github.com/opentdf/platform/commit/87b7b2ff6f7b39d34823ba926758fba25489c0a6))
+* **policy:** 1426 tech debt migrate Namespace object queries to sqlc ([#1432](https://github.com/opentdf/platform/issues/1432)) ([6bde0ab](https://github.com/opentdf/platform/commit/6bde0abae4997af4ce9a3556d65d28fa322423e3)), closes [#1426](https://github.com/opentdf/platform/issues/1426)
+* **policy:** 1509 add readme on arch decisions of policy service ([#1508](https://github.com/opentdf/platform/issues/1508)) ([71b49ec](https://github.com/opentdf/platform/commit/71b49eca6e84185f85c97b7c490e8f9e89176764)), closes [#1509](https://github.com/opentdf/platform/issues/1509)
+* **policy:** 1552 implement recommended changes to audit process ([#1588](https://github.com/opentdf/platform/issues/1588)) ([aabc5cb](https://github.com/opentdf/platform/commit/aabc5cb58979e736657c0c6fd48ae7077e0def5f))
+* **policy:** generate policy ERD ([#1525](https://github.com/opentdf/platform/issues/1525)) ([8eb322b](https://github.com/opentdf/platform/commit/8eb322bddccd4eedcea87bfadb9cfd194e0d028f))
+
+
+### Bug Fixes
+
+* **core:** Add NanoTDF KID padding removal and update logging level ([#1466](https://github.com/opentdf/platform/issues/1466)) ([54de8f4](https://github.com/opentdf/platform/commit/54de8f4e0497e8c587eac06fb5418e9dc3b33e19)), closes [#1467](https://github.com/opentdf/platform/issues/1467)
+* **core:** Autobump service ([#1514](https://github.com/opentdf/platform/issues/1514)) ([2b9aa6d](https://github.com/opentdf/platform/commit/2b9aa6d7213ce8c940481bfc3578f672a8b2776b))
+* **core:** Autobump service ([#1599](https://github.com/opentdf/platform/issues/1599)) ([93646d7](https://github.com/opentdf/platform/commit/93646d7d2c4f4f09561501aa0013a46688da48f6))
+* **core:** Fix parsing /v1/authorization ([#1554](https://github.com/opentdf/platform/issues/1554)) ([b7d694d](https://github.com/opentdf/platform/commit/b7d694d5df3867f278007660c32acb72c868735e)), closes [#1553](https://github.com/opentdf/platform/issues/1553)
+* **core:** Fix POST /v1/entitlements body parsing ([#1574](https://github.com/opentdf/platform/issues/1574)) ([fcae7ef](https://github.com/opentdf/platform/commit/fcae7ef0eba2c43ab93f5a2815e7b3e1dec69364))
+* **core:** let service start fail if port not free ([#1504](https://github.com/opentdf/platform/issues/1504)) ([708d15d](https://github.com/opentdf/platform/commit/708d15d8d10fc7b253dd22f151ed765222737175))
+* **policy:** ensure LIST namespace grants excludes fqns for defs/vals ([#1478](https://github.com/opentdf/platform/issues/1478)) ([243c51c](https://github.com/opentdf/platform/commit/243c51c49b3ca323cabe1cbc07ac33272be38dfd))
+
+## [0.4.23](https://github.com/opentdf/platform/compare/service/v0.4.22...service/v0.4.23) (2024-08-27)
+
+
+### Bug Fixes
+
+* **core:** Fix flake in nano rewrap ([#1457](https://github.com/opentdf/platform/issues/1457)) ([45b0f90](https://github.com/opentdf/platform/commit/45b0f9000c56d2e76ae35f060eaa6b21ded5deca))
+* **main:** Fix deadlock when registering config with duplicate namespace ([#1462](https://github.com/opentdf/platform/issues/1462)) ([6266998](https://github.com/opentdf/platform/commit/6266998b9c17ba64e3396a3379f0d18548593215)), closes [#1461](https://github.com/opentdf/platform/issues/1461)
+
+## [0.4.22](https://github.com/opentdf/platform/compare/service/v0.4.21...service/v0.4.22) (2024-08-26)
+
+
+### Bug Fixes
+
+* **core:** Don't double encode key fixture ([#1453](https://github.com/opentdf/platform/issues/1453)) ([75f9bb4](https://github.com/opentdf/platform/commit/75f9bb4481eb93fc61954be118d0c16a69be5b94)), closes [#1454](https://github.com/opentdf/platform/issues/1454)
+* remove access token log even on failure ([#1452](https://github.com/opentdf/platform/issues/1452)) ([2add657](https://github.com/opentdf/platform/commit/2add657071a679335be8b41440c782883f28fa52))
+* stopped logging policy binding ([#1451](https://github.com/opentdf/platform/issues/1451)) ([309dafe](https://github.com/opentdf/platform/commit/309dafe0164a2f4d8125d3def0fbb2267d625d2d))
+
+## [0.4.21](https://github.com/opentdf/platform/compare/service/v0.4.20...service/v0.4.21) (2024-08-23)
+
+
+### Features
+
+* **core:** KID in NanoTDF KAS ResourceLocator borrowed from Protocol ([#1222](https://github.com/opentdf/platform/issues/1222)) ([e5ee4ef](https://github.com/opentdf/platform/commit/e5ee4efe91bffd9e0310daccf7217d6a797a7cc9))
+
+
+### Bug Fixes
+
+* **authz:** entitlements fqn casing ([#1446](https://github.com/opentdf/platform/issues/1446)) ([2ffc66b](https://github.com/opentdf/platform/commit/2ffc66b1810e095fbd4779f3e311d40d37b6f83b)), closes [#1359](https://github.com/opentdf/platform/issues/1359)
+* **core:** Autobump service ([#1417](https://github.com/opentdf/platform/issues/1417)) ([e6db378](https://github.com/opentdf/platform/commit/e6db378970657e0992199284a199e6099a6e4bf1))
+* **core:** Autobump service ([#1441](https://github.com/opentdf/platform/issues/1441)) ([e17deab](https://github.com/opentdf/platform/commit/e17deab15b5177145610ad1cd2048898bfc67c63))
+* **core:** Autobump service ([#1449](https://github.com/opentdf/platform/issues/1449)) ([7e443da](https://github.com/opentdf/platform/commit/7e443da08b424dfb239e9afadcbc4be4e4f32ac1))
+* **core:** case sensitivity in AccessPDP ([#1439](https://github.com/opentdf/platform/issues/1439)) ([aed7633](https://github.com/opentdf/platform/commit/aed7633190a3c120a0e67c0dc668abf25bc2a0f8)), closes [#1359](https://github.com/opentdf/platform/issues/1359)
+* **core:** policy db should use pool connection hook to set search_path ([#1443](https://github.com/opentdf/platform/issues/1443)) ([8501ff5](https://github.com/opentdf/platform/commit/8501ff5488a893d1aad3d24e73994a1556698b63))
+
+## [0.4.20](https://github.com/opentdf/platform/compare/service/v0.4.19...service/v0.4.20) (2024-08-22)
+
+
+### Bug Fixes
+
+* migration missing conditional ([#1424](https://github.com/opentdf/platform/issues/1424)) ([87efe8d](https://github.com/opentdf/platform/commit/87efe8da2b44d43f1f9ce1a4ea00097911de2e45)), closes [#1423](https://github.com/opentdf/platform/issues/1423)
+
+## [0.4.19](https://github.com/opentdf/platform/compare/service/v0.4.18...service/v0.4.19) (2024-08-20)
+
+
+### Features
+
+* **core:** add RPCs to namespaces service to handle assignment/removal of KAS grants ([#1344](https://github.com/opentdf/platform/issues/1344)) ([ee47d6c](https://github.com/opentdf/platform/commit/ee47d6cb4576108f0a85a325f41cd43182a2bc73))
+* **core:** Adds key ids to kas registry ([#1347](https://github.com/opentdf/platform/issues/1347)) ([e6c76ee](https://github.com/opentdf/platform/commit/e6c76ee415e08ec8681ae4ff8fb9d5d04ea7d2bb))
+* **core:** further support in policy for namespace grants ([#1334](https://github.com/opentdf/platform/issues/1334)) ([d56231e](https://github.com/opentdf/platform/commit/d56231ea632c6072613c18cf1fcb9770cedf49e3))
+* **core:** support grants to namespaces, definitions, and values in GetAttributeByValueFqns ([#1353](https://github.com/opentdf/platform/issues/1353)) ([42a3d74](https://github.com/opentdf/platform/commit/42a3d747f7271b3861ee210b621a5502b8f07174))
+* **core:** validate kas uri ([#1351](https://github.com/opentdf/platform/issues/1351)) ([2b70931](https://github.com/opentdf/platform/commit/2b7093136f6af1b6a86e613c095cefe403c9a06c))
+* **policy:** 1277 protos and service methods for Resource Mapping Groups operations ([#1343](https://github.com/opentdf/platform/issues/1343)) ([570f402](https://github.com/opentdf/platform/commit/570f4023183898212dcd007e5b42135ccf1d285a))
+* **sdk:** Load KAS keys from policy service ([#1346](https://github.com/opentdf/platform/issues/1346)) ([fe628a0](https://github.com/opentdf/platform/commit/fe628a013e41fb87585eb53a61988f822b40a71a))
+* **sdk:** public client and other enhancements to well-known SDK functionality ([#1365](https://github.com/opentdf/platform/issues/1365)) ([3be50a4](https://github.com/opentdf/platform/commit/3be50a4ebf26680fad4ab46620cdfa82340a3da3))
+
+
+### Bug Fixes
+
+* **authz:** Add http routes for authorization to casbin policy ([#1355](https://github.com/opentdf/platform/issues/1355)) ([3fbaf59](https://github.com/opentdf/platform/commit/3fbaf5968d795ccfb44bd59178a25df4df5eb798))
+* **core:** align keycloak provisioning in one command ([#1381](https://github.com/opentdf/platform/issues/1381)) ([c3611d2](https://github.com/opentdf/platform/commit/c3611d2bb3ebd3791de9eecdb97efb36ac43f19d)), closes [#1380](https://github.com/opentdf/platform/issues/1380)
+* **core:** align policy kas grant assignments http gateway methods with actions ([#1299](https://github.com/opentdf/platform/issues/1299)) ([031c6ca](https://github.com/opentdf/platform/commit/031c6ca87b8e252a4254f10bfcc78b45e5111ed9))
+* **core:** Autobump service ([#1340](https://github.com/opentdf/platform/issues/1340)) ([3414670](https://github.com/opentdf/platform/commit/341467051fc70fe84c627d5cea07f7b111ca0d08))
+* **core:** Autobump service ([#1369](https://github.com/opentdf/platform/issues/1369)) ([2ac2378](https://github.com/opentdf/platform/commit/2ac2378f5934066ff9ff22e782adf02baa68f797))
+* **core:** Autobump service ([#1403](https://github.com/opentdf/platform/issues/1403)) ([8084e3e](https://github.com/opentdf/platform/commit/8084e3e3b242f36617a5eba2839ab8aee1631287))
+* **core:** Autobump service ([#1405](https://github.com/opentdf/platform/issues/1405)) ([74a7f0c](https://github.com/opentdf/platform/commit/74a7f0c2daa988c3a505c9c027575cc00b6ac35a))
+* **core:** bump go version to 1.22 ([#1407](https://github.com/opentdf/platform/issues/1407)) ([c696cd1](https://github.com/opentdf/platform/commit/c696cd1144309f28226547ebe26a76259a8e88d3))
+* **core:** cleanup sensitive info being logged from configuration ([#1366](https://github.com/opentdf/platform/issues/1366)) ([2b6cf62](https://github.com/opentdf/platform/commit/2b6cf62941075eab30ab9ba71f17be09b05821b6))
+* **core:** policy kas grants list (filter params and namespace grants) ([#1342](https://github.com/opentdf/platform/issues/1342)) ([f18ba68](https://github.com/opentdf/platform/commit/f18ba683007a6fa9f3527238596d426931d81d85))
+* **core:** policy migrations timestamps merge order ([#1325](https://github.com/opentdf/platform/issues/1325)) ([2bf4290](https://github.com/opentdf/platform/commit/2bf4290b310097c4faf9556064e8a9666e084964))
+* **sdk:** align sdk with platform modes ([#1328](https://github.com/opentdf/platform/issues/1328)) ([88ca6f7](https://github.com/opentdf/platform/commit/88ca6f7458930b753756606b670a5c36bddf818c))
+
 ## [0.4.18](https://github.com/opentdf/platform/compare/service/v0.4.17...service/v0.4.18) (2024-08-12)
 
 

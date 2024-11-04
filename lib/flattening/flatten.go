@@ -63,7 +63,7 @@ func flattenInterface(i interface{}) ([]Item, error) {
 	case bool, int, string, float64, float32:
 		o = append(o, Item{Key: "", Value: child})
 	default:
-		return nil, errors.New("unrecognozed item in json")
+		return nil, errors.New("unrecognized item in json")
 	}
 	return o, nil
 }

@@ -13,8 +13,6 @@ import (
 	"log/slog"
 
 	"github.com/opentdf/platform/lib/ocrypto"
-	"github.com/opentdf/platform/protocol/go/kas"
-	"google.golang.org/grpc"
 )
 
 // ============================================================================================================
@@ -62,6 +60,10 @@ type NanoTDFHeader struct {
 	gmacPolicyBinding   []byte
 	ecdsaPolicyBindingR []byte
 	ecdsaPolicyBindingS []byte
+}
+
+func (header *NanoTDFHeader) GetKasURL() ResourceLocator {
+	return header.kasURL
 }
 
 // GetCipher -- get the cipher from the nano tdf header
@@ -165,7 +167,6 @@ type remotePolicy struct {
 
 type bindingConfig struct {
 	useEcdsaBinding bool
-	padding         uint8
 	eccMode         ocrypto.ECCMode
 }
 
@@ -205,23 +206,21 @@ const (
 
 // Binding config byte format
 // ---------------------------------
-// | 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1 |
+// | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
 // ---------------------------------
-// | E | M | M | M | x | x | x | x |
+// | E | x | x | x | x | M | M | M |
 // ---------------------------------
-// bit 8 - use ECDSA
-// bit 5-7 - eccMode
-// bit 1-4 - padding
+// bit 7 - use ECDSA
+// bit 6-3 - reserved
+// bit 2-0 - ECC Curve enum
 
 // deserializeBindingCfg - read byte of binding config into bindingConfig struct
 func deserializeBindingCfg(b byte) bindingConfig {
 	cfg := bindingConfig{}
 	// Shift to low nybble test low bit
 	cfg.useEcdsaBinding = (b >> 7 & 0b00000001) == 1 //nolint:mnd // better readability as literal
-	// ignore padding
-	cfg.padding = 0
 	// shift to low nybble and use low 3 bits
-	cfg.eccMode = ocrypto.ECCMode((b >> 4) & 0b00000111) //nolint:mnd // better readability as literal
+	cfg.eccMode = ocrypto.ECCMode(b & 0b00000111) //nolint:mnd // better readability as literal
 
 	return cfg
 }
@@ -235,7 +234,7 @@ func serializeBindingCfg(bindCfg bindingConfig) byte {
 		bindSerial |= 0b10000000
 	}
 	// Mask value to low 3 bytes and shift to high nybble
-	bindSerial |= (byte(bindCfg.eccMode) & 0b00000111) << 4 //nolint:mnd // better readability as literal
+	bindSerial |= (byte(bindCfg.eccMode) & 0b00000111) //nolint:mnd // better readability as literal
 
 	return bindSerial
 }
@@ -659,6 +658,12 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 
 // CreateNanoTDF - reads plain text from the given reader and saves it to the writer, subject to the given options
 func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFConfig) (uint32, error) {
+	if writer == nil {
+		return 0, fmt.Errorf("writer is nil")
+	}
+	if reader == nil {
+		return 0, fmt.Errorf("reader is nil")
+	}
 	var totalSize uint32
 	buf := bytes.Buffer{}
 	size, err := buf.ReadFrom(reader)
@@ -670,19 +675,27 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 		return 0, errors.New("exceeds max size for nano tdf")
 	}
 
-	kasURL, err := config.kasURL.getURL()
+	kasURL, err := config.kasURL.GetURL()
 	if err != nil {
 		return 0, fmt.Errorf("config.kasURL failed:%w", err)
 	}
-
-	kasPublicKey, err := getECPublicKey(kasURL, s.dialOptions...)
+	if kasURL == "https://" || kasURL == "http://" {
+		return 0, errors.New("config.kasUrl is empty")
+	}
+	ki, err := s.getPublicKey(context.Background(), kasURL, config.bindCfg.eccMode.String())
 	if err != nil {
 		return 0, fmt.Errorf("getECPublicKey failed:%w", err)
 	}
 
-	slog.Debug("CreateNanoTDF", slog.String("header size", kasPublicKey))
+	// update KAS URL with kid if set
+	if ki.KID != "" && !s.nanoFeatures.noKID {
+		err = config.kasURL.setURLWithIdentifier(kasURL, ki.KID)
+		if err != nil {
+			return 0, fmt.Errorf("getECPublicKey setURLWithIdentifier failed:%w", err)
+		}
+	}
 
-	config.kasPublicKey, err = ocrypto.ECPubKeyFromPem([]byte(kasPublicKey))
+	config.kasPublicKey, err = ocrypto.ECPubKeyFromPem([]byte(ki.PublicKey))
 	if err != nil {
 		return 0, fmt.Errorf("ocrypto.ECPubKeyFromPem failed: %w", err)
 	}
@@ -771,7 +784,7 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
-	kasURL, err := header.kasURL.getURL()
+	kasURL, err := header.kasURL.GetURL()
 	if err != nil {
 		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
@@ -842,32 +855,6 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 	}
 
 	return uint32(writeLen), nil
-}
-
-// getECPublicKey - Contact the specified KAS and get its public key
-func getECPublicKey(kasURL string, opts ...grpc.DialOption) (string, error) {
-	req := kas.PublicKeyRequest{}
-	req.Algorithm = "ec:secp256r1"
-	grpcAddress, err := getGRPCAddress(kasURL)
-	if err != nil {
-		return "", err
-	}
-	conn, err := grpc.Dial(grpcAddress, opts...)
-	if err != nil {
-		return "", fmt.Errorf("error connecting to grpc service at %s: %w", kasURL, err)
-	}
-	defer conn.Close()
-
-	ctx := context.Background()
-	serviceClient := kas.NewAccessServiceClient(conn)
-
-	resp, err := serviceClient.PublicKey(ctx, &req)
-
-	if err != nil {
-		return "", fmt.Errorf("error making request to KAS: %w", err)
-	}
-
-	return resp.GetPublicKey(), nil
 }
 
 type requestBody struct {

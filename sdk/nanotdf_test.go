@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -20,7 +22,7 @@ func nanoTDFEqual(a, b *NanoTDFHeader) bool {
 	}
 
 	// Compare binding field
-	if a.bindCfg.useEcdsaBinding != b.bindCfg.useEcdsaBinding || a.bindCfg.padding != b.bindCfg.padding || a.bindCfg.eccMode != b.bindCfg.eccMode {
+	if a.bindCfg.useEcdsaBinding != b.bindCfg.useEcdsaBinding || a.bindCfg.eccMode != b.bindCfg.eccMode {
 		return false
 	}
 
@@ -92,7 +94,6 @@ func NotTestReadNanoTDFHeader(t *testing.T) {
 		},
 		bindCfg: bindingConfig{
 			useEcdsaBinding: true,
-			padding:         0,
 			eccMode:         ocrypto.ECCModeSecp256r1,
 		},
 		sigCfg: signatureConfig{
@@ -237,5 +238,63 @@ func NotTestCreateNanoTDF(t *testing.T) {
 	_, err = s.CreateNanoTDF(io.Writer(outfile), io.ReadSeeker(infile), config)
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestCreateNanoTDF(t *testing.T) {
+	tests := []struct {
+		name          string
+		writer        io.Writer
+		reader        io.Reader
+		config        NanoTDFConfig
+		expectedError string
+	}{
+		{
+			name:          "Nil writer",
+			writer:        nil,
+			reader:        bytes.NewReader([]byte("test data")),
+			config:        NanoTDFConfig{},
+			expectedError: "writer is nil",
+		},
+		{
+			name:          "Nil reader",
+			writer:        new(bytes.Buffer),
+			reader:        nil,
+			config:        NanoTDFConfig{},
+			expectedError: "reader is nil",
+		},
+		{
+			name:          "Empty NanoTDFConfig",
+			writer:        new(bytes.Buffer),
+			reader:        bytes.NewReader([]byte("test data")),
+			config:        NanoTDFConfig{},
+			expectedError: "config.kasUrl is empty",
+		},
+		{
+			name:   "KAS Identifier NanoTDFConfig",
+			writer: new(bytes.Buffer),
+			reader: bytes.NewReader([]byte("test data")),
+			config: NanoTDFConfig{
+				kasURL: ResourceLocator{
+					protocol:   1,
+					body:       "kas.com",
+					identifier: "e0",
+				},
+			},
+			expectedError: "error making request",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, err := New("localhost:8080", WithPlatformConfiguration(PlatformConfiguration{}))
+			require.NoError(t, err)
+			_, err = s.CreateNanoTDF(tt.writer, tt.reader, tt.config)
+			if tt.expectedError != "" {
+				assert.ErrorContains(t, err, tt.expectedError)
+				return
+			}
+			require.NoError(t, err)
+		})
 	}
 }

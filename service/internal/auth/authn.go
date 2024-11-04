@@ -114,6 +114,8 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	if err != nil {
 		return nil, err
 	}
+	// Assign configured public_client_id
+	oidcConfig.PublicClientID = cfg.PublicClientID
 
 	// If the issuer is different from the one in the configuration, update the configuration
 	// This could happen if we are hitting an internal endpoint. Example we might point to https://keycloak.opentdf.svc/realms/opentdf
@@ -356,7 +358,7 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		jwt.WithAcceptableSkew(a.oidcConfiguration.TokenSkew),
 	)
 	if err != nil {
-		a.logger.Warn("failed to validate auth token", slog.String("token", tokenRaw), slog.Any("err", err))
+		a.logger.Warn("failed to validate auth token", slog.String("err", err.Error()))
 		return nil, nil, err
 	}
 

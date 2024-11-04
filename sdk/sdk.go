@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -17,6 +16,7 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
@@ -35,10 +35,15 @@ import (
 const (
 	// Failure while connecting to a service.
 	// Check your configuration and/or retry.
-	ErrGrpcDialFailed            = Error("failed to dial grpc endpoint")
-	ErrShutdownFailed            = Error("failed to shutdown sdk")
-	ErrPlatformConfigFailed      = Error("failed to retrieve platform configuration")
-	ErrPlatformEndpointMalformed = Error("platform endpoint is malformed")
+	ErrGrpcDialFailed                 = Error("failed to dial grpc endpoint")
+	ErrShutdownFailed                 = Error("failed to shutdown sdk")
+	ErrPlatformConfigFailed           = Error("failed to retrieve platform configuration")
+	ErrPlatformEndpointMalformed      = Error("platform endpoint is malformed")
+	ErrPlatformIssuerNotFound         = Error("issuer not found in well-known idp configuration")
+	ErrPlatformAuthzEndpointNotFound  = Error("authorization_endpoint not found in well-known idp configuration")
+	ErrPlatformTokenEndpointNotFound  = Error("token_endpoint not found in well-known idp configuration")
+	ErrPlatformPublicClientIDNotFound = Error("public_client_id not found in well-known idp configuration")
+	ErrAccessTokenInvalid             = Error("access token is invalid")
 )
 
 type Error string
@@ -66,8 +71,8 @@ type SDK struct {
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	var (
-		defaultConn *grpc.ClientConn // Connection to the platform if no other connection is provided
-		err         error
+		platformConn *grpc.ClientConn // Connection to the platform
+		err          error
 	)
 
 	// Set default options
@@ -82,13 +87,12 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		opt(cfg)
 	}
 
-	if !cfg.ipc {
-		platformEndpoint, err = SanitizePlatformEndpoint(platformEndpoint)
-		if err != nil {
-			return nil, errors.Join(ErrPlatformEndpointMalformed, err)
-		}
+	// If IPC is enabled, we need to have a core connection
+	if cfg.ipc && cfg.coreConn == nil {
+		return nil, errors.New("core connection is required for IPC mode")
 	}
 
+	// If KAS session key is not provided, generate a new one
 	if cfg.kasSessionKey == nil {
 		key, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
 		if err != nil {
@@ -104,22 +108,31 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		dialOptions = append(dialOptions, cfg.extraDialOptions...)
 	}
 
+	// IF IPC is disabled we build a connection to the platform
+	if !cfg.ipc {
+		platformEndpoint, err = SanitizePlatformEndpoint(platformEndpoint)
+		if err != nil {
+			return nil, errors.Join(ErrPlatformEndpointMalformed, err)
+		}
+	}
+
 	// If platformConfiguration is not provided, fetch it from the platform
-	if cfg.platformConfiguration == nil && platformEndpoint != "" { //nolint:nestif // Most of checks are for errors
+	if cfg.PlatformConfiguration == nil && !cfg.ipc { //nolint:nestif // Most of checks are for errors
 		var pcfg PlatformConfiguration
 		var err error
 
-		if cfg.wellknownConn != nil {
-			pcfg, err = getPlatformConfiguration(cfg.wellknownConn)
+		if cfg.coreConn != nil {
+			pcfg, err = getPlatformConfiguration(cfg.coreConn) // Pick a connection until cfg.wellknownConn is removed
+			if err != nil {
+				return nil, errors.Join(ErrPlatformConfigFailed, err)
+			}
 		} else {
 			pcfg, err = fetchPlatformConfiguration(platformEndpoint, dialOptions)
+			if err != nil {
+				return nil, errors.Join(ErrPlatformConfigFailed, err)
+			}
 		}
-
-		if err != nil {
-			return nil, errors.Join(ErrPlatformConfigFailed, err)
-		}
-		cfg.platformConfiguration = pcfg
-
+		cfg.PlatformConfiguration = pcfg
 		if cfg.tokenEndpoint == "" {
 			cfg.tokenEndpoint, err = getTokenEndpoint(*cfg)
 			if err != nil {
@@ -130,6 +143,9 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	var uci []grpc.UnaryClientInterceptor
 
+	// Add request ID interceptor
+	uci = append(uci, audit.MetadataAddingClientInterceptor)
+
 	accessTokenSource, err := buildIDPTokenSource(cfg)
 	if err != nil {
 		return nil, err
@@ -139,14 +155,13 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		uci = append(uci, interceptor.AddCredentials)
 	}
 
-	// Add request ID interceptor
-	uci = append(uci, audit.MetadataAddingClientInterceptor)
-
 	dialOptions = append(dialOptions, grpc.WithChainUnaryInterceptor(uci...))
 
-	if platformEndpoint != "" {
-		var err error
-		defaultConn, err = grpc.Dial(platformEndpoint, dialOptions...)
+	// If coreConn is provided, use it as the platform connection
+	if cfg.coreConn != nil {
+		platformConn = cfg.coreConn
+	} else {
+		platformConn, err = grpc.NewClient(platformEndpoint, dialOptions...)
 		if err != nil {
 			return nil, errors.Join(ErrGrpcDialFailed, err)
 		}
@@ -155,18 +170,18 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	return &SDK{
 		config:                  *cfg,
 		kasKeyCache:             newKasKeyCache(),
-		conn:                    defaultConn,
+		conn:                    platformConn,
 		dialOptions:             dialOptions,
 		tokenSource:             accessTokenSource,
-		Attributes:              attributes.NewAttributesServiceClient(selectConn(cfg.policyConn, defaultConn)),
-		Namespaces:              namespaces.NewNamespaceServiceClient(selectConn(cfg.policyConn, defaultConn)),
-		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(selectConn(cfg.policyConn, defaultConn)),
-		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(selectConn(cfg.policyConn, defaultConn)),
-		Unsafe:                  unsafe.NewUnsafeServiceClient(selectConn(cfg.policyConn, defaultConn)),
-		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(selectConn(cfg.policyConn, defaultConn)),
-		Authorization:           authorization.NewAuthorizationServiceClient(selectConn(cfg.authorizationConn, defaultConn)),
-		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(selectConn(cfg.entityresolutionConn, defaultConn)),
-		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(selectConn(cfg.wellknownConn, defaultConn)),
+		Attributes:              attributes.NewAttributesServiceClient(platformConn),
+		Namespaces:              namespaces.NewNamespaceServiceClient(platformConn),
+		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(platformConn),
+		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(platformConn),
+		Unsafe:                  unsafe.NewUnsafeServiceClient(platformConn),
+		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(platformConn),
+		Authorization:           authorization.NewAuthorizationServiceClient(platformConn),
+		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(platformConn),
+		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(platformConn),
 	}, nil
 }
 
@@ -202,14 +217,8 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 		return c.customAccessTokenSource, nil
 	}
 
-	if (c.clientCredentials == nil) != (c.tokenEndpoint == "") {
-		return nil, errors.New("either both or neither of client credentials and token endpoint must be specified")
-	}
-
-	// at this point we have either both client credentials and a token endpoint or none of the above. if we don't have
-	// any just return a KAS client that can only get public keys
-	if c.clientCredentials == nil {
-		slog.Info("no client credentials provided. GRPC requests to KAS and services will not be authenticated.")
+	// There are uses for uncredentialed clients (i.e. consuming the well-known configuration).
+	if c.clientCredentials == nil && c.oauthAccessTokenSource == nil {
 		return nil, nil //nolint:nilnil // not having credentials is not an error
 	}
 
@@ -229,6 +238,8 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 	var err error
 
 	switch {
+	case c.oauthAccessTokenSource != nil:
+		ts, err = NewOAuthAccessTokenSource(c.oauthAccessTokenSource, c.scopes, c.dpopKey)
 	case c.certExchange != nil:
 		ts, err = NewCertExchangeTokenSource(*c.certExchange, *c.clientCredentials, c.tokenEndpoint, c.dpopKey)
 	case c.tokenExchange != nil:
@@ -326,7 +337,6 @@ func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 	loader := gojsonschema.NewStringLoader(manifestSchemaString)
 	manifestStringLoader := gojsonschema.NewStringLoader(manifest)
 	result, err := gojsonschema.Validate(loader, manifestStringLoader)
-
 	if err != nil {
 		return false, errors.New("could not validate manifest.json")
 	}
@@ -348,7 +358,7 @@ func IsValidNanoTdf(reader io.ReadSeeker) (bool, error) {
 }
 
 func fetchPlatformConfiguration(platformEndpoint string, dialOptions []grpc.DialOption) (PlatformConfiguration, error) {
-	conn, err := grpc.Dial(platformEndpoint, dialOptions...)
+	conn, err := grpc.NewClient(platformEndpoint, dialOptions...)
 	if err != nil {
 		return nil, errors.Join(ErrGrpcDialFailed, err)
 	}
@@ -373,7 +383,7 @@ func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfiguration, err
 
 // TODO: This should be moved to a separate package. We do discovery in ../service/internal/auth/discovery.go
 func getTokenEndpoint(c config) (string, error) {
-	issuerURL, ok := c.platformConfiguration["platform_issuer"].(string)
+	issuerURL, ok := c.PlatformConfiguration["platform_issuer"].(string)
 
 	if !ok {
 		return "", errors.New("platform_issuer is not set, or is not a string")
@@ -416,11 +426,19 @@ func getTokenEndpoint(c config) (string, error) {
 	return tokenEndpoint, nil
 }
 
-// selectConn returns the preferred connection if it is not nil, otherwise it returns the fallback connection
-// which is the default connection built to the platform.
-func selectConn(preferred, fallback *grpc.ClientConn) *grpc.ClientConn {
-	if preferred != nil {
-		return preferred
+// StoreKASKeys caches the given values as the public keys associated with the
+// KAS at the given URL, replacing any existing keys that are cached for that URL
+// with the same algorithm and URL.
+// Only one key per url and algorithm is stored in the cache,
+// so only store the most recent known key per url & algorithm pair.
+func (s *SDK) StoreKASKeys(url string, keys *policy.KasPublicKeySet) error {
+	for _, key := range keys.GetKeys() {
+		s.kasKeyCache.store(KASInfo{
+			URL:       url,
+			PublicKey: key.GetPem(),
+			KID:       key.GetKid(),
+			Algorithm: algProto2String(key.GetAlg()),
+		})
 	}
-	return fallback
+	return nil
 }

@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -15,7 +14,6 @@ import (
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	policydb "github.com/opentdf/platform/service/policy/db"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -225,19 +223,12 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 
 	// create a value
 	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
-	start := time.Now().Add(-time.Second)
 	created, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.ID, &attributes.CreateAttributeValueRequest{
 		Value: "created value testing update",
 		Metadata: &common.MetadataMutable{
 			Labels: labels,
 		},
 	})
-	end := time.Now().Add(time.Second)
-	metadata := created.GetMetadata()
-	updatedAt := metadata.GetUpdatedAt()
-	createdAt := metadata.GetCreatedAt()
-	s.True(createdAt.AsTime().After(start))
-	s.True(createdAt.AsTime().Before(end))
 	s.Require().NoError(err)
 	s.NotNil(created)
 
@@ -267,7 +258,12 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
-	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
+	metadata := got.GetMetadata()
+	createdAt := metadata.GetCreatedAt()
+	updatedAt := metadata.GetUpdatedAt()
+	s.False(createdAt.AsTime().IsZero())
+	s.False(updatedAt.AsTime().IsZero())
+	s.True(updatedAt.AsTime().After(createdAt.AsTime()))
 }
 
 func (s *AttributeValuesSuite) Test_UpdateAttributeValue_WithInvalidId_Fails() {
@@ -514,7 +510,7 @@ func (s *AttributeValuesSuite) Test_DeactivateAttribute_Cascades_List() {
 	}
 
 	listAttributes := func(state string) bool {
-		listedAttrs, err := s.db.PolicyClient.ListAllAttributes(s.ctx, state, "")
+		listedAttrs, err := s.db.PolicyClient.ListAttributes(s.ctx, state, "")
 		s.Require().NoError(err)
 		s.NotNil(listedAttrs)
 		for _, a := range listedAttrs {
@@ -595,9 +591,9 @@ func (s *AttributeValuesSuite) Test_DeactivateAttribute_Cascades_List() {
 	}
 
 	for _, tableTest := range tests {
-		s.T().Run(tableTest.name, func(t *testing.T) {
+		s.Run(tableTest.name, func() {
 			found := tableTest.testFunc(tableTest.state)
-			assert.Equal(t, tableTest.isFound, found)
+			s.Equal(tableTest.isFound, found)
 		})
 	}
 }

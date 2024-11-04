@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/opentdf/platform/lib/ocrypto"
-	"github.com/opentdf/platform/sdk/internal/autoconfigure"
 )
 
 // ============================================================================================================
@@ -20,7 +19,7 @@ import (
 type NanoTDFConfig struct {
 	keyPair      ocrypto.ECKeyPair
 	kasPublicKey *ecdh.PublicKey
-	attributes   []autoconfigure.AttributeValueFQN
+	attributes   []AttributeValueFQN
 	cipher       CipherMode
 	kasURL       ResourceLocator
 	sigCfg       signatureConfig
@@ -42,7 +41,6 @@ func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
 		keyPair: newECKeyPair,
 		bindCfg: bindingConfig{
 			useEcdsaBinding: false,
-			padding:         0,
 			eccMode:         ocrypto.ECCModeSecp256r1,
 		},
 		cipher: kCipher96AuthTagSize,
@@ -63,9 +61,9 @@ func (config *NanoTDFConfig) SetKasURL(url string) error {
 
 // SetAttributes - set the attributes to be used for this nanoTDF
 func (config *NanoTDFConfig) SetAttributes(attributes []string) error {
-	config.attributes = make([]autoconfigure.AttributeValueFQN, len(attributes))
+	config.attributes = make([]AttributeValueFQN, len(attributes))
 	for i, a := range attributes {
-		v, err := autoconfigure.NewAttributeValueFQN(a)
+		v, err := NewAttributeValueFQN(a)
 		if err != nil {
 			return err
 		}
@@ -83,35 +81,11 @@ func (config *NanoTDFConfig) EnableECDSAPolicyBinding() {
 func WithNanoDataAttributes(attributes ...string) NanoTDFOption {
 	return func(c *NanoTDFConfig) error {
 		for _, a := range attributes {
-			v, err := autoconfigure.NewAttributeValueFQN(a)
+			v, err := NewAttributeValueFQN(a)
 			if err != nil {
 				return err
 			}
 			c.attributes = append(c.attributes, v)
-		}
-		return nil
-	}
-}
-
-type NanoKASInfo struct {
-	kasPublicKeyPem string
-	kasURL          string
-}
-
-// WithNanoKasInformation adds the first kas url and its corresponding public key
-// that is required to create and read the nanotdf.  Note that only the first
-// entry is used, as multi-kas is not supported for nanotdf
-func WithNanoKasInformation(kasInfoList ...NanoKASInfo) NanoTDFOption {
-	return func(c *NanoTDFConfig) error {
-		newKasInfos := make([]NanoKASInfo, 0)
-		newKasInfos = append(newKasInfos, kasInfoList...)
-		err := c.kasURL.setURL(newKasInfos[0].kasURL)
-		if err != nil {
-			return err
-		}
-		c.kasPublicKey, err = ocrypto.ECPubKeyFromPem([]byte(newKasInfos[0].kasPublicKeyPem))
-		if err != nil {
-			return err
 		}
 		return nil
 	}

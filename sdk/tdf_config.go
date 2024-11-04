@@ -5,12 +5,13 @@ import (
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/sdk/internal/autoconfigure"
 )
 
 const (
 	tdf3KeySize        = 2048
 	defaultSegmentSize = 2 * 1024 * 1024 // 2mb
+	maxSegmentSize     = defaultSegmentSize * 2
+	minSegmentSize     = 16 * 1024
 	kasPublicKeyPath   = "/kas_public_key"
 )
 
@@ -58,10 +59,10 @@ type TDFConfig struct {
 	integrityAlgorithm        IntegrityAlgorithm
 	segmentIntegrityAlgorithm IntegrityAlgorithm
 	assertions                []AssertionConfig
-	attributes                []autoconfigure.AttributeValueFQN
+	attributes                []AttributeValueFQN
 	attributeValues           []*policy.Value
 	kasInfoList               []KASInfo
-	splitPlan                 []autoconfigure.SplitStep
+	splitPlan                 []keySplitStep
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -106,7 +107,7 @@ func WithDataAttributes(attributes ...string) TDFOption {
 	return func(c *TDFConfig) error {
 		c.attributeValues = nil
 		for _, a := range attributes {
-			v, err := autoconfigure.NewAttributeValueFQN(a)
+			v, err := NewAttributeValueFQN(a)
 			if err != nil {
 				return err
 			}
@@ -123,11 +124,11 @@ func WithDataAttributes(attributes ...string) TDFOption {
 // it to the `CreateTDF` method with this option.
 func WithDataAttributeValues(attributes ...*policy.Value) TDFOption {
 	return func(c *TDFConfig) error {
-		c.attributes = make([]autoconfigure.AttributeValueFQN, len(attributes))
+		c.attributes = make([]AttributeValueFQN, len(attributes))
 		c.attributeValues = make([]*policy.Value, len(attributes))
 		for i, a := range attributes {
 			c.attributeValues[i] = a
-			afqn, err := autoconfigure.NewAttributeValueFQN(a.GetFqn())
+			afqn, err := NewAttributeValueFQN(a.GetFqn())
 			if err != nil {
 				// TODO: update service to validate and encode FQNs properly
 				return err
@@ -154,9 +155,9 @@ func WithKasInformation(kasInfoList ...KASInfo) TDFOption {
 	}
 }
 
-func withSplitPlan(p ...autoconfigure.SplitStep) TDFOption {
+func withSplitPlan(p ...keySplitStep) TDFOption {
 	return func(c *TDFConfig) error {
-		c.splitPlan = make([]autoconfigure.SplitStep, len(p))
+		c.splitPlan = make([]keySplitStep, len(p))
 		copy(c.splitPlan, p)
 		c.autoconfigure = false
 		return nil
@@ -178,8 +179,14 @@ func WithMimeType(mimeType string) TDFOption {
 	}
 }
 
-// WithSegmentSize returns an Option that set the default segment size to TDF.
+// WithSegmentSize returns an Option that set the default segment size within the TDF. Any excessively large or small
+// values will be replaced with a supported value.
 func WithSegmentSize(size int64) TDFOption {
+	if size > maxSegmentSize {
+		size = maxSegmentSize
+	} else if size < minSegmentSize {
+		size = minSegmentSize
+	}
 	return func(c *TDFConfig) error {
 		c.defaultSegmentSize = size
 		return nil
@@ -210,11 +217,14 @@ type TDFReaderOption func(*TDFReaderConfig) error
 
 type TDFReaderConfig struct {
 	// Optional Map of Assertion Verification Keys
-	AssertionVerificationKeys AssertionVerificationKeys
+	AssertionVerificationKeys    AssertionVerificationKeys
+	disableAssertionVerification bool
 }
 
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
-	c := &TDFReaderConfig{}
+	c := &TDFReaderConfig{
+		disableAssertionVerification: false,
+	}
 	for _, o := range opt {
 		err := o(c)
 		if err != nil {
@@ -228,6 +238,13 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		c.AssertionVerificationKeys = keys
+		return nil
+	}
+}
+
+func WithDisableAssertionVerification(disable bool) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.disableAssertionVerification = disable
 		return nil
 	}
 }

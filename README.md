@@ -10,7 +10,7 @@
 
 - [Configuration](./docs/configuration.md)
 - [Development](#development)
-- [Policy Config Schema](./service/migrations/20240212000000_schema_erd.md)
+- [Policy Config Schema](./service/policy/db/schema_erd.md)
 - [Policy Config Testing Diagram](./service/integration/testing_diagram.png)
 
 ### Prerequisites for Project Consumers & Contributors

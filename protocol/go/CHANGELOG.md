@@ -1,5 +1,54 @@
 # Changelog
 
+## [0.2.18](https://github.com/opentdf/platform/compare/protocol/go/v0.2.17...protocol/go/v0.2.18) (2024-10-11)
+
+
+### Features
+
+* **policy:** DSP-51 - deprecate PublicKey local field ([#1590](https://github.com/opentdf/platform/issues/1590)) ([e3ed0b5](https://github.com/opentdf/platform/commit/e3ed0b5ce6039000c9e3c574d3d6ce2931781235))
+
+## [0.2.17](https://github.com/opentdf/platform/compare/protocol/go/v0.2.16...protocol/go/v0.2.17) (2024-09-25)
+
+
+### Bug Fixes
+
+* **core:** Fix POST /v1/entitlements body parsing ([#1574](https://github.com/opentdf/platform/issues/1574)) ([fcae7ef](https://github.com/opentdf/platform/commit/fcae7ef0eba2c43ab93f5a2815e7b3e1dec69364))
+
+## [0.2.16](https://github.com/opentdf/platform/compare/protocol/go/v0.2.15...protocol/go/v0.2.16) (2024-09-19)
+
+
+### Bug Fixes
+
+* **core:** Fix parsing /v1/authorization ([#1554](https://github.com/opentdf/platform/issues/1554)) ([b7d694d](https://github.com/opentdf/platform/commit/b7d694d5df3867f278007660c32acb72c868735e)), closes [#1553](https://github.com/opentdf/platform/issues/1553)
+
+## [0.2.15](https://github.com/opentdf/platform/compare/protocol/go/v0.2.14...protocol/go/v0.2.15) (2024-09-04)
+
+
+### Features
+
+* **policy:** 1398 add metadata support to Resource Mapping Groups ([#1412](https://github.com/opentdf/platform/issues/1412)) ([87b7b2f](https://github.com/opentdf/platform/commit/87b7b2ff6f7b39d34823ba926758fba25489c0a6))
+
+## [0.2.14](https://github.com/opentdf/platform/compare/protocol/go/v0.2.13...protocol/go/v0.2.14) (2024-08-20)
+
+
+### Features
+
+* **policy:** 1277 protos and service methods for Resource Mapping Groups operations ([#1343](https://github.com/opentdf/platform/issues/1343)) ([570f402](https://github.com/opentdf/platform/commit/570f4023183898212dcd007e5b42135ccf1d285a))
+* **sdk:** Load KAS keys from policy service ([#1346](https://github.com/opentdf/platform/issues/1346)) ([fe628a0](https://github.com/opentdf/platform/commit/fe628a013e41fb87585eb53a61988f822b40a71a))
+
+## [0.2.13](https://github.com/opentdf/platform/compare/protocol/go/v0.2.12...protocol/go/v0.2.13) (2024-08-16)
+
+
+### Features
+
+* **core:** Adds key ids to kas registry ([#1347](https://github.com/opentdf/platform/issues/1347)) ([e6c76ee](https://github.com/opentdf/platform/commit/e6c76ee415e08ec8681ae4ff8fb9d5d04ea7d2bb))
+* **core:** validate kas uri ([#1351](https://github.com/opentdf/platform/issues/1351)) ([2b70931](https://github.com/opentdf/platform/commit/2b7093136f6af1b6a86e613c095cefe403c9a06c))
+
+
+### Bug Fixes
+
+* **core:** align policy kas grant assignments http gateway methods with actions ([#1299](https://github.com/opentdf/platform/issues/1299)) ([031c6ca](https://github.com/opentdf/platform/commit/031c6ca87b8e252a4254f10bfcc78b45e5111ed9))
+
 ## [0.2.12](https://github.com/opentdf/platform/compare/protocol/go/v0.2.11...protocol/go/v0.2.12) (2024-08-13)
 
 

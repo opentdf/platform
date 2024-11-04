@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/authorization"
 	"github.com/opentdf/platform/service/entityresolution"
@@ -15,7 +16,7 @@ import (
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/kas"
-	"github.com/opentdf/platform/service/logger"
+	logging "github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/policy"
@@ -102,7 +103,7 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 // based on the configuration and namespace mode. It creates a new service logger
 // and a database client if required. It registers the services with the gRPC server,
 // in-process gRPC server, and gRPC gateway. Finally, it logs the status of each service.
-func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFServer, client *sdk.SDK, logger *logger.Logger, reg serviceregistry.Registry) error {
+func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFServer, client *sdk.SDK, logger *logging.Logger, reg serviceregistry.Registry) error {
 	// Iterate through the registered namespaces
 	for ns, namespace := range reg {
 		// modeEnabled checks if the mode is enabled based on the configuration and namespace mode.
@@ -120,11 +121,25 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 			continue
 		}
 
-		svcLogger := logger.With("namespace", ns)
+		var svcLogger *logging.Logger = logger.With("namespace", ns)
+		extractedLogLevel, err := extractServiceLoggerConfig(cfg.Services[ns])
+
+		// If ns has log_level in config, create new logger with that level
+		if err == nil {
+			if extractedLogLevel != cfg.Logger.Level {
+				slog.Debug("configuring logger")
+				var newLoggerConfig logging.Config = cfg.Logger
+				newLoggerConfig.Level = extractedLogLevel
+				newSvcLogger, err := logging.NewLogger(newLoggerConfig)
+				// only assign if logger successfully created
+				if err == nil {
+					svcLogger = newSvcLogger.With("namespace", ns)
+				}
+			}
+		}
 
 		var svcDBClient *db.Client
 
-		// Create new service logger
 		for _, svc := range namespace.Services {
 			// Get new db client if it is required and not already created
 			if svc.DB.Required && svcDBClient == nil {
@@ -136,7 +151,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				}
 			}
 
-			err := svc.Start(ctx, serviceregistry.RegistrationParams{
+			err = svc.Start(ctx, serviceregistry.RegistrationParams{
 				Config:                 cfg.Services[svc.Namespace],
 				Logger:                 svcLogger,
 				DBClient:               svcDBClient,
@@ -179,10 +194,22 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 	return nil
 }
 
+func extractServiceLoggerConfig(cfg serviceregistry.ServiceConfig) (string, error) {
+	type ServiceConfigWithLogger struct {
+		LogLevel string `mapstructure:"log_level" json:"log_level,omitempty"`
+	}
+	var svcLoggerConfig ServiceConfigWithLogger
+	err := mapstructure.Decode(cfg, &svcLoggerConfig)
+	if err == nil && svcLoggerConfig.LogLevel != "" {
+		return svcLoggerConfig.LogLevel, nil
+	}
+	return "", fmt.Errorf("could not decode service log level: %w", err)
+}
+
 // newServiceDBClient creates a new database client for the specified namespace.
 // It initializes the client with the provided context, logger configuration, database configuration,
 // namespace, and migrations. It returns the created client and any error encountered during creation.
-func newServiceDBClient(ctx context.Context, logCfg logger.Config, dbCfg db.Config, ns string, migrations *embed.FS) (*db.Client, error) {
+func newServiceDBClient(ctx context.Context, logCfg logging.Config, dbCfg db.Config, ns string, migrations *embed.FS) (*db.Client, error) {
 	var err error
 
 	client, err := db.New(ctx, dbCfg, logCfg,

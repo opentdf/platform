@@ -2,11 +2,11 @@ package audit
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
-	"github.com/wI2L/jsondiff"
 )
 
 // Common Strings
@@ -18,14 +18,27 @@ const (
 type EventObject struct {
 	Object        auditEventObject `json:"object"`
 	Action        eventAction      `json:"action"`
-	Owner         EventOwner       `json:"owner"`
 	Actor         auditEventActor  `json:"actor"`
 	EventMetaData interface{}      `json:"eventMetaData"`
 	ClientInfo    eventClientInfo  `json:"clientInfo"`
 
-	Diff      []DiffEntry `json:"diff,omitempty"`
-	RequestID uuid.UUID   `json:"requestId"`
-	Timestamp string      `json:"timestamp"`
+	Original  map[string]interface{} `json:"original,omitempty"`
+	Updated   map[string]interface{} `json:"updated,omitempty"`
+	RequestID uuid.UUID              `json:"requestId"`
+	Timestamp string                 `json:"timestamp"`
+}
+
+func (e EventObject) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.Any("object", e.Object),
+		slog.Any("action", e.Action),
+		slog.Any("actor", e.Actor),
+		slog.Any("eventMetaData", e.EventMetaData),
+		slog.Any("clientInfo", e.ClientInfo),
+		slog.Any("original", e.Original),
+		slog.Any("updated", e.Updated),
+		slog.String("requestID", e.RequestID.String()),
+		slog.String("timestamp", e.Timestamp))
 }
 
 // event.object
@@ -36,11 +49,26 @@ type auditEventObject struct {
 	Attributes eventObjectAttributes `json:"attributes,omitempty"`
 }
 
+func (e auditEventObject) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("type", e.Type.String()),
+		slog.String("id", e.ID),
+		slog.String("name", e.Name),
+		slog.Any("attributes", e.Attributes))
+}
+
 // event.object.attributes
 type eventObjectAttributes struct {
-	Assertions  []string `json:"assertions"`
-	Attrs       []string `json:"attrs"`
+	Assertions  []string `json:"assertions,omitempty"`
+	Attrs       []string `json:"attrs,omitempty"`
 	Permissions []string `json:"permissions,omitempty"`
+}
+
+func (e eventObjectAttributes) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.Any("assertions", e.Assertions),
+		slog.Any("attrs", e.Attrs),
+		slog.Any("permissions", e.Permissions))
 }
 
 // event.action
@@ -49,16 +77,22 @@ type eventAction struct {
 	Result ActionResult `json:"result"`
 }
 
-// event.owner
-type EventOwner struct {
-	ID    uuid.UUID `json:"id"`
-	OrgID uuid.UUID `json:"orgId"`
+func (e eventAction) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("type", e.Type.String()),
+		slog.String("result", e.Result.String()))
 }
 
 // event.actor
 type auditEventActor struct {
 	ID         string        `json:"id"`
 	Attributes []interface{} `json:"attributes"`
+}
+
+func (e auditEventActor) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("id", e.ID),
+		slog.Any("attributes", e.Attributes))
 }
 
 // event.clientInfo
@@ -68,6 +102,13 @@ type eventClientInfo struct {
 	RequestIP string `json:"requestIp"`
 }
 
+func (e eventClientInfo) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("userAgent", e.UserAgent),
+		slog.String("platform", e.Platform),
+		slog.String("requestIP", e.RequestIP))
+}
+
 type ContextData struct {
 	RequestID uuid.UUID
 	UserAgent string
@@ -75,14 +116,20 @@ type ContextData struct {
 	ActorID   string
 }
 
-// Gets relevant audit data from the context object.
+func (c ContextData) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("requestID", c.RequestID.String()),
+		slog.String("userAgent", c.UserAgent),
+		slog.String("requestIP", c.RequestIP),
+		slog.String("actorID", c.ActorID))
+}
+
+// GetAuditDataFromContext gets relevant audit data from the context object
 func GetAuditDataFromContext(ctx context.Context) ContextData {
 	// Extract the request ID from context
 
-	requestIDString, _ := ctx.Value(sdkAudit.RequestIDContextKey).(string)
-
-	requestID, err := uuid.Parse(requestIDString)
-	if err != nil {
+	requestID, found := ctx.Value(sdkAudit.RequestIDContextKey).(uuid.UUID)
+	if !found {
 		requestID = uuid.Nil
 	}
 
@@ -119,37 +166,4 @@ func getRequestIPFromContext(ctx context.Context) string {
 	}
 
 	return defaultNone
-}
-
-// Audit requires an "owner" field but that doesn't apply in the context of the
-// platform. Therefore we just create a "nil" owner which has nil UUID fields.
-func CreateNilOwner() EventOwner {
-	return EventOwner{
-		ID:    uuid.Nil,
-		OrgID: uuid.Nil,
-	}
-}
-
-type DiffEntry struct {
-	Type  string      `json:"op"`
-	Path  string      `json:"path"`
-	Value interface{} `json:"value,omitempty"`
-}
-
-func createJSONPatchDiff(original []byte, target []byte) ([]DiffEntry, error) {
-	patch, err := jsondiff.CompareJSON(original, target, jsondiff.Invertible())
-	diffArray := make([]DiffEntry, len(patch))
-	if err != nil {
-		return nil, err
-	}
-
-	for i, item := range patch {
-		diffArray[i] = DiffEntry{
-			Type:  item.Type,
-			Path:  item.Path,
-			Value: item.Value,
-		}
-	}
-
-	return diffArray, nil
 }

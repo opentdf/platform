@@ -60,6 +60,9 @@ p,	role:org-admin,		/resource-mappings*,										*,			allow
 p,	role:org-admin,		/key-access-servers*,										*,			allow
 p,	role:org-admin, 	/kas/v2/rewrap,						  		        *,      allow
 p,	role:org-admin,		/unsafe*,										            *,			allow
+p,	role:org-admin,		/v1/entitlements,						  				        *,      allow
+p,	role:org-admin,		/v1/authorization,						  				        *,      allow
+p,	role:org-admin,		/v1/token/authorization,						  				        *,      allow
 
 # Role: Admin
 ## gRPC routes
@@ -76,12 +79,18 @@ p,	role:admin,		/subject-mappings*,													*,			allow
 p,	role:admin,		/resource-mappings*,												*,			allow
 p,	role:admin,		/key-access-servers*,												*,			allow
 p,	role:admin,		/kas/v2/rewrap,						  				        *,      allow
+p,	role:admin,		/v1/entitlements,						  				        *,      allow
+p,	role:admin,		/v1/authorization,						  				        *,      allow
+p,	role:admin,		/v1/token/authorization,						  				        *,      allow
+
 
 ## Role: Standard
 ## gRPC routes
 p,	role:standard,		policy.*,																read,			allow
 p,	role:standard,		kasregistry.*,													read,			allow
 p,	role:standard,    kas.AccessService/Rewrap, 			           *,			allow
+p,  role:standard,    authorization.AuthorizationService/GetDecisions,        read, allow
+p,  role:standard,    authorization.AuthorizationService/GetDecisionsByToken, read, allow
 ## HTTP routes
 p,	role:standard,		/attributes*,														read,			allow
 p,	role:standard,		/namespaces*,														read,			allow
@@ -90,6 +99,8 @@ p,	role:standard,		/resource-mappings*,										read,			allow
 p,	role:standard,		/key-access-servers*,										read,			allow
 p,	role:standard,		/kas/v2/rewrap,													write,		allow
 p,	role:standard,		/entityresolution/resolve,							write,  	allow
+p,      role:standard,          /v1/authorization,                                                              write,          allow
+p,      role:standard,          /v1/token/authorization,                                                        write,          allow
 
 # Public routes
 ## gRPC routes

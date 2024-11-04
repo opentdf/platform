@@ -7,6 +7,7 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/oauth"
+	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -16,29 +17,35 @@ type Option func(*config)
 
 // Internal config struct for building SDK options.
 type config struct {
+	// Platform configuration structure is subject to change. Consume via accessor methods.
+	PlatformConfiguration   PlatformConfiguration
 	dialOption              grpc.DialOption
 	tlsConfig               *tls.Config
 	clientCredentials       *oauth.ClientCredentials
 	tokenExchange           *oauth.TokenExchangeInfo
 	tokenEndpoint           string
 	scopes                  []string
-	policyConn              *grpc.ClientConn
-	authorizationConn       *grpc.ClientConn
-	entityresolutionConn    *grpc.ClientConn
 	extraDialOptions        []grpc.DialOption
 	certExchange            *oauth.CertExchangeInfo
-	wellknownConn           *grpc.ClientConn
-	platformConfiguration   PlatformConfiguration
 	kasSessionKey           *ocrypto.RsaKeyPair
 	dpopKey                 *ocrypto.RsaKeyPair
 	ipc                     bool
 	tdfFeatures             tdfFeatures
+	nanoFeatures            nanoFeatures
 	customAccessTokenSource auth.AccessTokenSource
+	oauthAccessTokenSource  oauth2.TokenSource
+	coreConn                *grpc.ClientConn
 }
 
 // Options specific to TDF protocol features
 type tdfFeatures struct {
 	// For backward compatibility, don't store the KID in the KAO.
+	noKID bool
+}
+
+// Options specific to NanoTDF protocol features
+type nanoFeatures struct {
+	// noKID For backward compatibility, don't store the KID in the KAS ResourceLocator.
 	noKID bool
 }
 
@@ -99,21 +106,31 @@ func withCustomAccessTokenSource(a auth.AccessTokenSource) Option {
 	}
 }
 
+// WithOAuthAccessTokenSource directs the SDK to use a standard OAuth2 token source for authentication
+func WithOAuthAccessTokenSource(t oauth2.TokenSource) Option {
+	return func(c *config) {
+		c.oauthAccessTokenSource = t
+	}
+}
+
+// Deprecated: Use WithCustomCoreConnection instead
 func WithCustomPolicyConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
-		c.policyConn = conn
+		c.coreConn = conn
 	}
 }
 
+// Deprecated: Use WithCustomCoreConnection instead
 func WithCustomAuthorizationConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
-		c.authorizationConn = conn
+		c.coreConn = conn
 	}
 }
 
+// Deprecated: Use WithCustomCoreConnection instead
 func WithCustomEntityResolutionConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
-		c.entityresolutionConn = conn
+		c.coreConn = conn
 	}
 }
 
@@ -156,7 +173,7 @@ func WithSessionSignerRSA(key *rsa.PrivateKey) Option {
 
 func WithCustomWellknownConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
-		c.wellknownConn = conn
+		c.coreConn = conn
 	}
 }
 
@@ -164,7 +181,7 @@ func WithCustomWellknownConnection(conn *grpc.ClientConn) Option {
 // Use this option with caution, as it may lead to unexpected behavior
 func WithPlatformConfiguration(platformConfiguration PlatformConfiguration) Option {
 	return func(c *config) {
-		c.platformConfiguration = platformConfiguration
+		c.PlatformConfiguration = platformConfiguration
 	}
 }
 
@@ -181,5 +198,20 @@ func WithIPC() Option {
 func WithNoKIDInKAO() Option {
 	return func(c *config) {
 		c.tdfFeatures.noKID = true
+	}
+}
+
+// WithCoreConnection returns an Option that sets up a connection to the core platform
+func WithCustomCoreConnection(conn *grpc.ClientConn) Option {
+	return func(c *config) {
+		c.coreConn = conn
+	}
+}
+
+// WithNoKIDInNano disables storing the KID in the KAS ResourceLocator.
+// This allows generating NanoTDF files that are compatible with legacy file formats (no KID).
+func WithNoKIDInNano() Option {
+	return func(c *config) {
+		c.nanoFeatures.noKID = true
 	}
 }

@@ -33,6 +33,16 @@
             }
           }
         },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/authorizationGetDecisionsRequest"
+            }
+          }
+        ],
         "tags": [
           "AuthorizationService"
         ]
@@ -57,27 +67,13 @@
         },
         "parameters": [
           {
-            "name": "scope.resourceAttributesId",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "scope.attributeValueFqns",
-            "in": "query",
-            "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
-          },
-          {
-            "name": "withComprehensiveHierarchy",
-            "description": "optional parameter to return a full list of entitlements - returns lower hierarchy attributes",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
+            "name": "body",
+            "description": "Example: Get entitlements for bob and alice (both represented using an email address\n\n{\n\"entities\": [\n{\n\"id\": \"e1\",\n\"emailAddress\": \"bob@example.org\"\n},\n{\n\"id\": \"e2\",\n\"emailAddress\": \"alice@example.org\"\n}\n],\n\"scope\": {\n\"attributeFqns\": [\n\"https://example.net/attr/attr1/value/value1\",\n\"https://example.net/attr/attr1/value/value2\"\n]\n}\n}",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/authorizationGetEntitlementsRequest"
+            }
           }
         ],
         "tags": [
@@ -282,6 +278,18 @@
         }
       }
     },
+    "authorizationGetDecisionsRequest": {
+      "type": "object",
+      "properties": {
+        "decisionRequests": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authorizationDecisionRequest"
+          }
+        }
+      }
+    },
     "authorizationGetDecisionsResponse": {
       "type": "object",
       "properties": {
@@ -293,6 +301,29 @@
           }
         }
       }
+    },
+    "authorizationGetEntitlementsRequest": {
+      "type": "object",
+      "properties": {
+        "entities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authorizationEntity"
+          },
+          "title": "list of requested entities"
+        },
+        "scope": {
+          "$ref": "#/definitions/authorizationResourceAttribute",
+          "title": "optional attribute fqn as a scope"
+        },
+        "withComprehensiveHierarchy": {
+          "type": "boolean",
+          "title": "optional parameter to return a full list of entitlements - returns lower hierarchy attributes"
+        }
+      },
+      "description": "Example: Get entitlements for bob and alice (both represented using an email address\n\n{\n\"entities\": [\n{\n\"id\": \"e1\",\n\"emailAddress\": \"bob@example.org\"\n},\n{\n\"id\": \"e2\",\n\"emailAddress\": \"alice@example.org\"\n}\n],\n\"scope\": {\n\"attributeFqns\": [\n\"https://example.net/attr/attr1/value/value1\",\n\"https://example.net/attr/attr1/value/value2\"\n]\n}\n}",
+      "title": "Request to get entitlements for one or more entities for an optional attribute scope"
     },
     "authorizationGetEntitlementsResponse": {
       "type": "object",

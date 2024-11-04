@@ -8,14 +8,12 @@ import (
 	"log/slog"
 	"strings"
 
-	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
-	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -31,492 +29,283 @@ func attributesRuleTypeEnumTransformOut(value string) policy.AttributeRuleTypeEn
 	return policy.AttributeRuleTypeEnum(policy.AttributeRuleTypeEnum_value[AttributeRuleTypeEnumPrefix+value])
 }
 
-func attributesValuesProtojson(valuesJSON []byte, attrFqn sql.NullString) ([]*policy.Value, error) {
+func attributesValuesProtojson(valuesJSON []byte) ([]*policy.Value, error) {
 	var (
 		raw    []json.RawMessage
 		values []*policy.Value
 	)
 
-	if err := json.Unmarshal(valuesJSON, &raw); err != nil {
-		return nil, err
+	if valuesJSON != nil {
+		if err := json.Unmarshal(valuesJSON, &raw); err != nil {
+			return nil, err
+		}
+
+		for _, r := range raw {
+			value := &policy.Value{}
+			err := protojson.Unmarshal(r, value)
+			if err != nil {
+				return nil, fmt.Errorf("error unmarshaling a value: %w", err)
+			}
+			values = append(values, value)
+		}
 	}
 
-	for _, r := range raw {
-		value := &policy.Value{}
-		err := protojson.Unmarshal(r, value)
-		if err != nil {
-			return nil, fmt.Errorf("error unmarshaling a value: %w", err)
-		}
-		if attrFqn.Valid && value.GetFqn() == "" {
-			value.Fqn = fmt.Sprintf("%s/value/%s", attrFqn.String, value.GetValue())
-		}
-		values = append(values, value)
-	}
 	return values, nil
 }
 
-type attributesSelectOptions struct {
-	withAttributeValues bool
-	withKeyAccessGrants bool
-	// withFqn and withOneValueByFqn are mutually exclusive
-	withFqn           bool
-	withOneValueByFqn string
-	state             string
-	namespace         string
+type attributeQueryRow struct {
+	id            string
+	name          string
+	rule          string
+	metadataJSON  []byte
+	namespaceID   string
+	active        bool
+	namespaceName string
+	valuesJSON    []byte
+	grantsJSON    []byte
+	fqn           sql.NullString
 }
 
-func attributesSelect(opts attributesSelectOptions) sq.SelectBuilder {
-	if opts.withKeyAccessGrants {
-		opts.withAttributeValues = true
+func hydrateAttribute(row *attributeQueryRow) (*policy.Attribute, error) {
+	metadata := &common.Metadata{}
+	if err := unmarshalMetadata(row.metadataJSON, metadata); err != nil {
+		return nil, err
 	}
 
-	t := Tables.Attributes
-	nt := Tables.Namespaces
-	avt := Tables.AttributeValues
-	fqnt := Tables.AttrFqn
-	smT := Tables.SubjectMappings
-	scsT := Tables.SubjectConditionSet
-	akagt := Tables.AttributeKeyAccessGrants
-	avkagt := Tables.AttributeValueKeyAccessGrants
-	selectFields := []string{
-		t.Field("id"),
-		t.Field("name"),
-		t.Field("rule"),
-		constructMetadata(t.Name(), false),
-		t.Field("namespace_id"),
-		t.Field("active"),
-		nt.Field("name"),
-	}
-
-	shouldGetValues := opts.withAttributeValues || opts.withOneValueByFqn != "" || opts.withFqn
-	if shouldGetValues {
-		valueSelect := "JSON_AGG(" +
-			"JSON_BUILD_OBJECT(" +
-			"'id', avt.id," +
-			"'value', avt.value," +
-			"'active', avt.active"
-
-		// include the subject mapping / subject condition set for each value
-		if opts.withOneValueByFqn != "" {
-			valueSelect += ", 'fqn', val_sm_fqn_join.fqn, " +
-				"'subject_mappings', sub_maps_arr, " +
-				"'grants', val_grants_arr"
-		}
-		valueSelect += ")) AS values"
-		selectFields = append(selectFields, t.Field("values_order"), valueSelect)
-	}
-	if opts.withKeyAccessGrants {
-		// query the attribute definition KAS grants
-		selectFields = append(selectFields,
-			"JSONB_AGG("+
-				"DISTINCT JSONB_BUILD_OBJECT("+
-				"'id',"+Tables.KeyAccessServerRegistry.Field("id")+", "+
-				"'uri',"+Tables.KeyAccessServerRegistry.Field("uri")+", "+
-				"'public_key',"+Tables.KeyAccessServerRegistry.Field("public_key")+
-				")) FILTER (WHERE "+akagt.Field("attribute_definition_id")+" IS NOT NULL) AS grants",
-		)
-	}
-	if opts.withFqn {
-		selectFields = append(selectFields, fqnt.Field("fqn"))
-	}
-
-	sb := db.NewStatementBuilder().Select(selectFields...).
-		LeftJoin(nt.Name() + " ON " + nt.Field("id") + " = " + t.Field("namespace_id"))
-
-	if shouldGetValues {
-		subQuery := "(SELECT av.id, av.value, av.active, " +
-			"JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(" +
-			"'id', vkas.id," +
-			"'uri', vkas.uri," +
-			"'public_key', vkas.public_key " +
-			")) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr, " +
-			"av.attribute_definition_id FROM " + avt.Name() + " av " +
-			"LEFT JOIN " + avkagt.Name() + " avg ON av.id = avg.attribute_value_id " +
-			"LEFT JOIN " + Tables.KeyAccessServerRegistry.Name() + " vkas ON avg.key_access_server_id = vkas.id "
-		if opts.withOneValueByFqn != "" {
-			subQuery += "WHERE av.active = true "
-		}
-		subQuery += "GROUP BY av.id) avt ON avt.attribute_definition_id = " + t.Field("id")
-		sb = sb.LeftJoin(subQuery)
-	}
-	if opts.withKeyAccessGrants {
-		sb = sb.
-			LeftJoin(akagt.Name() + " ON " + akagt.WithoutSchema().Name() + ".attribute_definition_id = " + t.Field("id")).
-			LeftJoin(Tables.KeyAccessServerRegistry.Name() + " ON " + Tables.KeyAccessServerRegistry.Field("id") + " = " + akagt.Field("key_access_server_id"))
-	}
-	if opts.withFqn {
-		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id") +
-			" AND " + fqnt.Field("value_id") + " IS NULL")
-	}
-
-	if opts.withOneValueByFqn != "" {
-		sb = sb.LeftJoin(fqnt.Name() + " ON " + fqnt.Field("attribute_id") + " = " + t.Field("id")).
-			LeftJoin("(SELECT " +
-				avt.Field("id") + " AS av_id," +
-				"JSON_AGG(JSON_BUILD_OBJECT(" +
-				"'id', " + smT.Field("id") + "," +
-				"'actions', " + smT.Field("actions") + "," +
-				constructMetadata(smT.Name(), true) +
-				"'subject_condition_set', JSON_BUILD_OBJECT(" +
-				"'id', " + scsT.Field("id") + "," +
-				constructMetadata(scsT.Name(), true) +
-				"'subject_sets', " + scsT.Field("condition") +
-				")" +
-				")) AS sub_maps_arr " +
-				", inner_fqns.fqn AS fqn " +
-				"FROM " + smT.Name() + " " +
-				"LEFT JOIN " + avt.Name() + " ON " + smT.Field("attribute_value_id") + " = " + avt.Field("id") + " " +
-				"LEFT JOIN " + scsT.Name() + " ON " + smT.Field("subject_condition_set_id") + " = " + scsT.Field("id") + " " +
-				"INNER JOIN " + fqnt.Name() + " AS inner_fqns ON " + avt.Field("id") + " = inner_fqns.value_id " +
-				"WHERE inner_fqns.fqn = '" + opts.withOneValueByFqn + "' " +
-				"AND " + avt.Field("active") + " = true " +
-				"GROUP BY " + avt.Field("id") + ", inner_fqns.fqn " +
-				") AS val_sm_fqn_join ON " + "avt.id" + " = val_sm_fqn_join.av_id " +
-				"AND " + "avt.id" + " = " + fqnt.Field("value_id"),
-			)
-	}
-	g := []string{t.Field("id"), nt.Field("name")}
-
-	if opts.withFqn {
-		g = append(g, fqnt.Field("fqn"))
-	}
-
-	return sb.GroupBy(g...)
-}
-
-func attributesHydrateItem(row pgx.Row, opts attributesSelectOptions, logger *logger.Logger) (*policy.Attribute, error) {
-	if opts.withKeyAccessGrants {
-		opts.withAttributeValues = true
-	}
-
-	var (
-		id            string
-		name          string
-		rule          string
-		metadataJSON  []byte
-		namespaceID   string
-		active        bool
-		namespaceName string
-		valuesJSON    []byte
-		valuesOrder   []string
-		grants        []byte
-		fqn           sql.NullString
-	)
-
-	fields := []interface{}{&id, &name, &rule, &metadataJSON, &namespaceID, &active, &namespaceName}
-	shouldGetValues := opts.withAttributeValues || opts.withOneValueByFqn != "" || opts.withFqn
-	if shouldGetValues {
-		fields = append(fields, &valuesOrder, &valuesJSON)
-	}
-	if opts.withKeyAccessGrants {
-		fields = append(fields, &grants)
-	}
-	if opts.withFqn {
-		fields = append(fields, &fqn)
-	}
-
-	err := row.Scan(fields...)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	m := &common.Metadata{}
-	if metadataJSON != nil {
-		if err := protojson.Unmarshal(metadataJSON, m); err != nil {
-			logger.Error("could not unmarshal metadata", slog.String("error", err.Error()))
-			return nil, err
-		}
-	}
-	var v []*policy.Value
-	if valuesJSON != nil {
-		v, err = attributesValuesProtojson(valuesJSON, fqn)
+	var values []*policy.Value
+	if row.valuesJSON != nil {
+		v, err := attributesValuesProtojson(row.valuesJSON)
 		if err != nil {
-			logger.Error("could not unmarshal values", slog.String("error", err.Error()))
-			return nil, err
+			return nil, fmt.Errorf("failed to unmarshal valuesJSON [%s]: %w", string(row.valuesJSON), err)
 		}
+		values = v
 	}
-	var k []*policy.KeyAccessServer
-	if grants != nil {
-		k, err = db.KeyAccessServerProtoJSON(grants)
+
+	var grants []*policy.KeyAccessServer
+	if row.grantsJSON != nil {
+		k, err := db.KeyAccessServerProtoJSON(row.grantsJSON)
 		if err != nil {
-			logger.Error("could not unmarshal key access grants", slog.String("error", err.Error()))
-			return nil, err
+			return nil, fmt.Errorf("failed to unmarshal grantsJSON [%s]: %w", string(row.grantsJSON), err)
 		}
+		grants = k
 	}
 
 	ns := &policy.Namespace{
-		Id:   namespaceID,
-		Name: namespaceName,
-		Fqn:  fmt.Sprintf("https://%s", namespaceName),
+		Id:   row.namespaceID,
+		Name: row.namespaceName,
+		Fqn:  fmt.Sprintf("https://%s", row.namespaceName),
 	}
 
 	attr := &policy.Attribute{
-		Id:        id,
-		Name:      name,
-		Rule:      attributesRuleTypeEnumTransformOut(rule),
-		Active:    &wrapperspb.BoolValue{Value: active},
-		Metadata:  m,
+		Id:        row.id,
+		Name:      row.name,
+		Rule:      attributesRuleTypeEnumTransformOut(row.rule),
+		Values:    values,
+		Active:    &wrapperspb.BoolValue{Value: row.active},
+		Metadata:  metadata,
 		Namespace: ns,
-		Grants:    k,
-		Fqn:       fqn.String,
+		Grants:    grants,
+		Fqn:       row.fqn.String,
 	}
-
-	// Deactivations of individual values can unsync the order in the values_order column and the selected number of attribute values.
-	// In Go, int value 0 is not equal to 0, so check if they're not equal and more than 0 to check a potential count mismatch.
-	mismatchedCount := len(v) > 0 && len(valuesOrder) > 0 && len(valuesOrder) != len(v)
-
-	// sort the values according to the order
-	ordered := make([]*policy.Value, 0)
-	for _, order := range valuesOrder {
-		for _, value := range v {
-			if value.GetId() == order {
-				ordered = append(ordered, value)
-				break
-			}
-			// If all values are active, the order should be correct and the number of values should match the count of ordered ids.
-			if mismatchedCount && !value.GetActive().GetValue() {
-				logger.Warn("attribute's values order and number of values do not match - DB is in potentially bad state", slog.String("attribute definition id", id), slog.Any("expected values order", valuesOrder), slog.Any("retrieved values", v))
-			}
-		}
-	}
-	attr.Values = ordered
 
 	return attr, nil
-}
-
-func attributesHydrateList(rows pgx.Rows, opts attributesSelectOptions, logger *logger.Logger) ([]*policy.Attribute, error) {
-	list := make([]*policy.Attribute, 0)
-	for rows.Next() {
-		attr, err := attributesHydrateItem(rows, opts, logger)
-		if err != nil {
-			return nil, err
-		}
-		list = append(list, attr)
-	}
-	return list, nil
 }
 
 ///
 // CRUD operations
 ///
 
-func listAllAttributesSQL(opts attributesSelectOptions) (string, []interface{}, error) {
-	t := Tables.Attributes
-	sb := attributesSelect(opts).
-		From(t.Name())
+func (c PolicyDBClient) ListAttributes(ctx context.Context, state string, namespace string) ([]*policy.Attribute, error) {
+	var (
+		active = pgtype.Bool{
+			Valid: false,
+		}
+		namespaceID   = ""
+		namespaceName = ""
+	)
 
-	if opts.state != "" && opts.state != StateAny {
-		sb = sb.Where(sq.Eq{t.Field("active"): opts.state == StateActive})
+	if state != "" && state != StateAny {
+		active = pgtypeBool(state == StateActive)
 	}
 
-	if opts.namespace != "" {
-		_, err := uuid.Parse(opts.namespace)
-		if err == nil {
-			sb = sb.Where(sq.Eq{t.Field("namespace_id"): opts.namespace})
+	if namespace != "" {
+		if _, err := uuid.Parse(namespace); err == nil {
+			namespaceID = namespace
 		} else {
-			sb = sb.Where(sq.Eq{Tables.Namespaces.Field("name"): opts.namespace})
+			namespaceName = strings.ToLower(namespace)
 		}
 	}
-	return sb.ToSql()
+
+	list, err := c.Queries.ListAttributesDetail(ctx, ListAttributesDetailParams{
+		Active:        active,
+		NamespaceID:   namespaceID,
+		NamespaceName: namespaceName,
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	policyAttributes := make([]*policy.Attribute, len(list))
+
+	for i, attr := range list {
+		policyAttributes[i], err = hydrateAttribute(&attributeQueryRow{
+			id:            attr.ID,
+			name:          attr.AttributeName,
+			rule:          string(attr.Rule),
+			active:        attr.Active,
+			metadataJSON:  attr.Metadata,
+			namespaceID:   attr.NamespaceID,
+			namespaceName: attr.NamespaceName.String,
+			valuesJSON:    attr.Values,
+			fqn:           sql.NullString(attr.Fqn),
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return policyAttributes, nil
 }
 
-func (c PolicyDBClient) ListAllAttributes(ctx context.Context, state string, namespace string) ([]*policy.Attribute, error) {
-	opts := attributesSelectOptions{
-		withAttributeValues: true,
-		withKeyAccessGrants: false,
-		withFqn:             true,
-		state:               state,
-		namespace:           namespace,
-	}
-
-	sql, args, err := listAllAttributesSQL(opts)
-	if err != nil {
-		return nil, err
-	}
-	c.logger.Debug("list all attributes", slog.String("sql", sql), slog.Any("args", args))
-
-	rows, err := c.Query(ctx, sql, args)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	defer rows.Close()
-
-	list, err := attributesHydrateList(rows, opts, c.logger)
-	if err != nil {
-		c.logger.Error("could not hydrate list", slog.String("error", err.Error()))
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	return list, nil
-}
-
-func (c PolicyDBClient) ListAllAttributesWithout(ctx context.Context, state string) ([]*policy.Attribute, error) {
-	opts := attributesSelectOptions{
-		withAttributeValues: false,
-		withKeyAccessGrants: false,
-		withFqn:             true,
-		state:               state,
-	}
-
-	sql, args, err := listAllAttributesSQL(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := c.Query(ctx, sql, args)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	defer rows.Close()
-
-	list, err := attributesHydrateList(rows, opts, c.logger)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	c.logger.Debug("list", slog.Any("list", list))
-
-	return list, nil
-}
-
-func getAttributeSQL(id string, opts attributesSelectOptions) (string, []interface{}, error) {
-	t := Tables.Attributes
-	return attributesSelect(opts).
-		Where(sq.Eq{t.Field("id"): id}).
-		From(t.Name()).
-		ToSql()
+func (c PolicyDBClient) ListAllAttributes(ctx context.Context) ([]*policy.Attribute, error) {
+	// call general List method with empty params to get all attributes
+	return c.ListAttributes(ctx, "", "")
 }
 
 func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
-	opts := attributesSelectOptions{
-		withFqn:             true,
-		withAttributeValues: true,
-		withKeyAccessGrants: true,
+	attr, err := c.Queries.GetAttribute(ctx, id)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-	sql, args, err := getAttributeSQL(id, opts)
+
+	policyAttr, err := hydrateAttribute(&attributeQueryRow{
+		id:            attr.ID,
+		name:          attr.AttributeName,
+		rule:          string(attr.Rule),
+		active:        attr.Active,
+		metadataJSON:  attr.Metadata,
+		namespaceID:   attr.NamespaceID,
+		namespaceName: attr.NamespaceName.String,
+		valuesJSON:    attr.Values,
+		grantsJSON:    attr.Grants,
+		fqn:           sql.NullString(attr.Fqn),
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	row, err := c.QueryRow(ctx, sql, args)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	attribute, err := attributesHydrateItem(row, opts, c.logger)
-	if err != nil {
-		c.logger.Error("could not hydrate item", slog.String("attributeId", id), slog.String("error", err.Error()))
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	return attribute, nil
+	return policyAttr, nil
 }
 
-// Get attribute by fqn, ensuring the attribute definition and namespace are both active
-func getAttributeByFqnSQL(fqn string, opts attributesSelectOptions) (string, []interface{}, error) {
-	return attributesSelect(opts).
-		Where(sq.Eq{Tables.AttrFqn.Field("fqn"): fqn, Tables.Attributes.Field("active"): true, Tables.Namespaces.Field("active"): true}).
-		From(Tables.Attributes.Name()).
-		ToSql()
+func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string) ([]*policy.Attribute, error) {
+	list, err := c.Queries.ListAttributesByDefOrValueFqns(ctx, fqns)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	attrs := make([]*policy.Attribute, len(list))
+	for i, attr := range list {
+		ns := new(policy.Namespace)
+		err = protojson.Unmarshal(attr.Namespace, ns)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal namespace [%s]: %w", string(attr.Namespace), err)
+		}
+
+		values, err := attributesValuesProtojson(attr.Values)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal values [%s]: %w", string(attr.Values), err)
+		}
+
+		var grants []*policy.KeyAccessServer
+		if attr.Grants != nil {
+			grants, err = db.KeyAccessServerProtoJSON(attr.Grants)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal grants [%s]: %w", string(attr.Grants), err)
+			}
+		}
+
+		attrs[i] = &policy.Attribute{
+			Id:        attr.ID,
+			Name:      attr.Name,
+			Rule:      attributesRuleTypeEnumTransformOut(string(attr.Rule)),
+			Fqn:       attr.Fqn,
+			Active:    &wrapperspb.BoolValue{Value: attr.Active},
+			Grants:    grants,
+			Namespace: ns,
+			Values:    values,
+		}
+	}
+
+	return attrs, nil
 }
 
 func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*policy.Attribute, error) {
-	// normalize to lower case
-	fqn = strings.ToLower(fqn)
-	opts := attributesSelectOptions{
-		withAttributeValues: true,
-		withKeyAccessGrants: true,
-	}
-	if strings.Contains(fqn, "/value/") {
-		opts.withOneValueByFqn = fqn
-	} else {
-		opts.withFqn = true
-	}
-	sql, args, err := getAttributeByFqnSQL(fqn, opts)
-	if err != nil {
-		return nil, err
-	}
-
-	row, err := c.QueryRow(ctx, sql, args)
+	list, err := c.ListAttributesByFqns(ctx, []string{strings.ToLower(fqn)})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	attribute, err := attributesHydrateItem(row, opts, c.logger)
-	if err != nil {
-		c.logger.Error("could not hydrate item", slog.String("fqn", fqn), slog.String("error", err.Error()))
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	if len(list) != 1 {
+		return nil, db.ErrNotFound
 	}
-	return attribute, nil
-}
 
-func getAttributesByNamespaceSQL(namespaceID string, opts attributesSelectOptions) (string, []interface{}, error) {
-	t := Tables.Attributes
-	return attributesSelect(opts).
-		Where(sq.Eq{t.Field("namespace_id"): namespaceID}).
-		From(t.Name()).
-		ToSql()
+	attr := list[0]
+	return attr, nil
 }
 
 func (c PolicyDBClient) GetAttributesByNamespace(ctx context.Context, namespaceID string) ([]*policy.Attribute, error) {
-	opts := attributesSelectOptions{}
-	sql, args, err := getAttributesByNamespaceSQL(namespaceID, opts)
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := c.Query(ctx, sql, args)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	defer rows.Close()
-
-	list, err := attributesHydrateList(rows, opts, c.logger)
+	list, err := c.Queries.ListAttributesSummary(ctx, namespaceID)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	return list, nil
-}
+	policyAttributes := make([]*policy.Attribute, len(list))
 
-func createAttributeSQL(namespaceID string, name string, rule string, metadata []byte) (string, []interface{}, error) {
-	t := Tables.Attributes
-	return db.NewStatementBuilder().
-		Insert(t.Name()).
-		Columns("namespace_id", "name", "rule", "metadata").
-		Values(namespaceID, name, rule, metadata).
-		Suffix(createSuffix).
-		ToSql()
+	for i, attr := range list {
+		policyAttributes[i], err = hydrateAttribute(&attributeQueryRow{
+			id:            attr.ID,
+			name:          attr.AttributeName,
+			rule:          string(attr.Rule),
+			active:        attr.Active,
+			metadataJSON:  attr.Metadata,
+			namespaceID:   attr.NamespaceID,
+			namespaceName: attr.NamespaceName.String,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return policyAttributes, nil
 }
 
 func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.CreateAttributeRequest) (*policy.Attribute, error) {
+	name := strings.ToLower(r.GetName())
+	namespaceID := r.GetNamespaceId()
 	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
+	ruleString := attributesRuleTypeEnumTransformIn(r.GetRule().String())
 
-	name := strings.ToLower(r.GetName())
-
-	sql, args, err := createAttributeSQL(r.GetNamespaceId(), name, attributesRuleTypeEnumTransformIn(r.GetRule().String()), metadataJSON)
+	createdID, err := c.Queries.CreateAttribute(ctx, CreateAttributeParams{
+		NamespaceID: namespaceID,
+		Name:        name,
+		Rule:        AttributeDefinitionRule(ruleString),
+		Metadata:    metadataJSON,
+	})
 	if err != nil {
-		return nil, err
-	}
-
-	var id string
-	if r, err := c.QueryRow(ctx, sql, args); err != nil {
-		return nil, err
-	} else if err := r.Scan(&id, &metadataJSON); err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	if err = unmarshalMetadata(metadataJSON, metadata, c.logger); err != nil {
-		return nil, err
 	}
 
 	// Add values
 	var values []*policy.Value
 	for _, v := range r.GetValues() {
-		req := &attributes.CreateAttributeValueRequest{AttributeId: id, Value: v}
-		value, err := c.CreateAttributeValue(ctx, id, req)
+		req := &attributes.CreateAttributeValueRequest{
+			AttributeId: createdID,
+			Value:       v,
+		}
+		value, err := c.CreateAttributeValue(ctx, createdID, req)
 		if err != nil {
 			return nil, err
 		}
@@ -524,49 +313,40 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	}
 
 	// Update the FQNs
-	namespaceID := r.GetNamespaceId()
-	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id})
-	c.logger.Debug("upserted fqn with new attribute definition", slog.Any("fqn", fqn))
+	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{
+		namespaceID: namespaceID,
+		attributeID: createdID,
+	})
+	c.logger.DebugContext(ctx, "upserted fqn with new attribute definition", slog.Any("fqn", fqn))
 
 	for _, v := range values {
-		fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id, valueID: v.GetId()})
-		c.logger.Debug("upserted fqn with new attribute value on new definition create", slog.Any("fqn", fqn))
+		fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{
+			namespaceID: namespaceID,
+			attributeID: createdID,
+			valueID:     v.GetId(),
+		})
+		c.logger.DebugContext(ctx, "upserted fqn with new attribute value on new definition create", slog.Any("fqn", fqn))
 	}
 
 	a := &policy.Attribute{
-		Id:       id,
+		Id:       createdID,
 		Name:     name,
 		Rule:     r.GetRule(),
 		Metadata: metadata,
 		Namespace: &policy.Namespace{
-			Id: r.GetNamespaceId(),
+			Id: namespaceID,
 		},
 		Active: &wrapperspb.BoolValue{Value: true},
 		Values: values,
+		Fqn:    fqn,
 	}
 	return a, nil
 }
 
-func unsafeUpdateAttributeSQL(id string, updateName string, updateRule string, replaceValuesOrder []string) (string, []interface{}, error) {
-	t := Tables.Attributes
-	sb := db.NewStatementBuilder().Update(t.Name())
-
-	if updateName != "" {
-		sb = sb.Set("name", updateName)
-	}
-	if updateRule != "" {
-		sb = sb.Set("rule", updateRule)
-	}
-	if len(replaceValuesOrder) > 0 {
-		sb = sb.Set("values_order", replaceValuesOrder)
-	}
-
-	return sb.Where(sq.Eq{t.Field("id"): id}).
-		ToSql()
-}
-
 func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.UnsafeUpdateAttributeRequest) (*policy.Attribute, error) {
 	id := r.GetId()
+	name := strings.ToLower(r.GetName())
+	rule := r.GetRule()
 	before, err := c.GetAttribute(ctx, id)
 	if err != nil {
 		return nil, err
@@ -595,51 +375,53 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 	}
 
 	// Handle case where rule is not actually being updated
-	rule := ""
-	if r.GetRule() != policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED {
-		rule = attributesRuleTypeEnumTransformIn(r.GetRule().String())
+	ruleString := ""
+	if rule != policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED {
+		ruleString = attributesRuleTypeEnumTransformIn(rule.String())
 	}
 
-	sql, args, err := unsafeUpdateAttributeSQL(id, strings.ToLower(r.GetName()), rule, r.GetValuesOrder())
+	count, err := c.Queries.UpdateAttribute(ctx, UpdateAttributeParams{
+		ID:   id,
+		Name: pgtypeText(name),
+		Rule: NullAttributeDefinitionRule{
+			AttributeDefinitionRule: AttributeDefinitionRule(ruleString),
+			Valid:                   ruleString != "",
+		},
+		ValuesOrder: r.GetValuesOrder(),
+	})
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
 	}
 
-	err = c.Exec(ctx, sql, args)
-	if err != nil {
-		return nil, err
+	attribute := &policy.Attribute{
+		Id:   id,
+		Name: name,
+		Rule: rule,
 	}
 
 	// Upsert all the FQNs with the definition name mutation
-	if r.GetName() != "" {
+	if name != "" {
 		namespaceID := before.GetNamespace().GetId()
-		fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id})
-		c.logger.Debug("upserted attribute fqn with new definition name", slog.Any("fqn", fqn))
+		attrFqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id})
+		c.logger.Debug("upserted attribute fqn with new definition name", slog.Any("fqn", attrFqn))
 		if len(before.GetValues()) > 0 {
 			for _, v := range before.GetValues() {
-				fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id, valueID: v.GetId()})
+				fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id, valueID: v.GetId()})
 				c.logger.Debug("upserted attribute value fqn with new definition name", slog.Any("fqn", fqn))
 			}
 		}
+		attribute.Fqn = attrFqn
 	}
 
-	return c.GetAttribute(ctx, id)
-}
-
-func safeUpdateAttributeSQL(id string, metadata []byte) (string, []interface{}, error) {
-	t := Tables.Attributes
-	sb := db.NewStatementBuilder().Update(t.Name())
-
-	if metadata != nil {
-		sb = sb.Set("metadata", metadata)
-	}
-
-	return sb.Where(sq.Eq{t.Field("id"): id}).ToSql()
+	return attribute, nil
 }
 
 func (c PolicyDBClient) UpdateAttribute(ctx context.Context, id string, r *attributes.UpdateAttributeRequest) (*policy.Attribute, error) {
 	// if extend we need to merge the metadata
-	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
+	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		a, err := c.GetAttribute(ctx, id)
 		if err != nil {
 			return nil, err
@@ -650,95 +432,76 @@ func (c PolicyDBClient) UpdateAttribute(ctx context.Context, id string, r *attri
 		return nil, err
 	}
 
-	sql, args, err := safeUpdateAttributeSQL(id, metadataJSON)
-	if db.IsQueryBuilderSetClauseError(err) {
-		return &policy.Attribute{
-			Id: id,
-		}, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
-	}
-
-	return &policy.Attribute{
-		Id: id,
-	}, nil
-}
-
-func deactivateAttributeSQL(id string) (string, []interface{}, error) {
-	t := Tables.Attributes
-	return db.NewStatementBuilder().
-		Update(t.Name()).
-		Set("active", false).
-		Where(sq.Eq{t.Field("id"): id}).
-		Suffix("RETURNING \"id\"").
-		ToSql()
-}
-
-func (c PolicyDBClient) DeactivateAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
-	sql, args, err := deactivateAttributeSQL(id)
+	count, err := c.Queries.UpdateAttribute(ctx, UpdateAttributeParams{
+		ID:       id,
+		Metadata: metadataJSON,
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
+	if count == 0 {
+		return nil, db.ErrNotFound
 	}
-	return c.GetAttribute(ctx, id)
+
+	return &policy.Attribute{
+		Id:       id,
+		Metadata: metadata,
+	}, nil
 }
 
-func unsafeReactivateAttributeSQL(id string) (string, []interface{}, error) {
-	t := Tables.Attributes
-	return db.NewStatementBuilder().
-		Update(t.Name()).
-		Set("active", true).
-		Where(sq.Eq{t.Field("id"): id}).
-		Suffix("RETURNING \"id\"").
-		ToSql()
+func (c PolicyDBClient) DeactivateAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
+	count, err := c.Queries.UpdateAttribute(ctx, UpdateAttributeParams{
+		ID:     id,
+		Active: pgtypeBool(false),
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
+
+	return &policy.Attribute{
+		Id:     id,
+		Active: &wrapperspb.BoolValue{Value: false},
+	}, nil
 }
 
 func (c PolicyDBClient) UnsafeReactivateAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
-	sql, args, err := unsafeReactivateAttributeSQL(id)
+	count, err := c.Queries.UpdateAttribute(ctx, UpdateAttributeParams{
+		ID:     id,
+		Active: pgtypeBool(true),
+	})
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
 	}
 
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
-	}
-
-	return c.GetAttribute(ctx, id)
-}
-
-func unsafeDeleteAttributeSQL(id string) (string, []interface{}, error) {
-	t := Tables.Attributes
-	return db.NewStatementBuilder().
-		Delete(t.Name()).
-		Where(sq.Eq{t.Field("id"): id}).
-		Suffix("RETURNING \"id\"").
-		ToSql()
+	return &policy.Attribute{
+		Id:     id,
+		Active: &wrapperspb.BoolValue{Value: true},
+	}, nil
 }
 
 func (c PolicyDBClient) UnsafeDeleteAttribute(ctx context.Context, existing *policy.Attribute, fqn string) (*policy.Attribute, error) {
 	if existing == nil {
 		return nil, fmt.Errorf("attribute not found: %w", db.ErrNotFound)
 	}
-	id := existing.GetId()
 
 	if existing.GetFqn() != fqn {
 		return nil, fmt.Errorf("fqn mismatch: %w", db.ErrNotFound)
 	}
-	sql, args, err := unsafeDeleteAttributeSQL(id)
-	if err != nil {
-		return nil, err
-	}
 
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
+	id := existing.GetId()
+
+	count, err := c.Queries.DeleteAttribute(ctx, id)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
 	}
 
 	return &policy.Attribute{
@@ -750,45 +513,28 @@ func (c PolicyDBClient) UnsafeDeleteAttribute(ctx context.Context, existing *pol
 /// Key Access Server assignments
 ///
 
-func assignKeyAccessServerToAttributeSQL(attributeID, keyAccessServerID string) (string, []interface{}, error) {
-	t := Tables.AttributeKeyAccessGrants
-	return db.NewStatementBuilder().
-		Insert(t.Name()).
-		Columns("attribute_definition_id", "key_access_server_id").
-		Values(attributeID, keyAccessServerID).
-		ToSql()
-}
-
 func (c PolicyDBClient) AssignKeyAccessServerToAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
-	sql, args, err := assignKeyAccessServerToAttributeSQL(k.GetAttributeId(), k.GetKeyAccessServerId())
+	_, err := c.Queries.AssignKeyAccessServerToAttribute(ctx, AssignKeyAccessServerToAttributeParams{
+		AttributeDefinitionID: k.GetAttributeId(),
+		KeyAccessServerID:     k.GetKeyAccessServerId(),
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
 	}
 
 	return k, nil
 }
 
-func removeKeyAccessServerFromAttributeSQL(attributeID, keyAccessServerID string) (string, []interface{}, error) {
-	t := Tables.AttributeKeyAccessGrants
-	return db.NewStatementBuilder().
-		Delete(t.Name()).
-		Where(sq.Eq{"attribute_definition_id": attributeID, "key_access_server_id": keyAccessServerID}).
-		Suffix("IS TRUE RETURNING *").
-		ToSql()
-}
-
 func (c PolicyDBClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
-	sql, args, err := removeKeyAccessServerFromAttributeSQL(k.GetAttributeId(), k.GetKeyAccessServerId())
+	count, err := c.Queries.RemoveKeyAccessServerFromAttribute(ctx, RemoveKeyAccessServerFromAttributeParams{
+		AttributeDefinitionID: k.GetAttributeId(),
+		KeyAccessServerID:     k.GetKeyAccessServerId(),
+	})
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
+	if count == 0 {
+		return nil, db.ErrNotFound
 	}
 
 	return k, nil

@@ -37,7 +37,7 @@
         "parameters": [
           {
             "name": "state",
-            "description": "ACTIVE by default when not specified",
+            "description": "Optional\nACTIVE by default when not specified",
             "in": "query",
             "required": false,
             "type": "string",
@@ -51,7 +51,7 @@
           },
           {
             "name": "namespace",
-            "description": "can be id or name",
+            "description": "Optional\nNamespace ID or name",
             "in": "query",
             "required": false,
             "type": "string"
@@ -171,13 +171,14 @@
         "parameters": [
           {
             "name": "attributeId",
+            "description": "Required",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "state",
-            "description": "ACTIVE by default when not specified",
+            "description": "Optional\nACTIVE by default when not specified",
             "in": "query",
             "required": false,
             "type": "string",
@@ -216,6 +217,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -244,6 +246,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -272,6 +275,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -285,7 +289,7 @@
               "properties": {
                 "metadata": {
                   "$ref": "#/definitions/commonMetadataMutable",
-                  "title": "Common metadata"
+                  "title": "Optional\nCommon metadata"
                 },
                 "metadataUpdateBehavior": {
                   "$ref": "#/definitions/commonMetadataUpdateEnum"
@@ -299,7 +303,43 @@
         ]
       }
     },
-    "/attributes/keyaccessserver/assign": {
+    "/attributes/keyaccessserver/grants": {
+      "delete": {
+        "operationId": "AttributesService_RemoveKeyAccessServerFromAttribute",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/attributesRemoveKeyAccessServerFromAttributeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "attributeKeyAccessServer.attributeId",
+            "description": "Required",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "attributeKeyAccessServer.keyAccessServerId",
+            "description": "Required",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AttributesService"
+        ]
+      },
       "post": {
         "summary": "--------------------------------------*\nAttribute \u003c\u003e Key Access Server RPCs\n---------------------------------------",
         "operationId": "AttributesService_AssignKeyAccessServerToAttribute",
@@ -320,6 +360,7 @@
         "parameters": [
           {
             "name": "attributeKeyAccessServer",
+            "description": "Required",
             "in": "body",
             "required": true,
             "schema": {
@@ -332,14 +373,14 @@
         ]
       }
     },
-    "/attributes/keyaccessserver/remove": {
-      "post": {
-        "operationId": "AttributesService_RemoveKeyAccessServerFromAttribute",
+    "/attributes/values/keyaccessserver/grants": {
+      "delete": {
+        "operationId": "AttributesService_RemoveKeyAccessServerFromValue",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/attributesRemoveKeyAccessServerFromAttributeResponse"
+              "$ref": "#/definitions/attributesRemoveKeyAccessServerFromValueResponse"
             }
           },
           "default": {
@@ -351,20 +392,24 @@
         },
         "parameters": [
           {
-            "name": "attributeKeyAccessServer",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/attributesAttributeKeyAccessServer"
-            }
+            "name": "valueKeyAccessServer.valueId",
+            "description": "Required",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "valueKeyAccessServer.keyAccessServerId",
+            "description": "Required",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
           "AttributesService"
         ]
-      }
-    },
-    "/attributes/values/keyaccessserver/assign": {
+      },
       "post": {
         "operationId": "AttributesService_AssignKeyAccessServerToValue",
         "responses": {
@@ -384,38 +429,7 @@
         "parameters": [
           {
             "name": "valueKeyAccessServer",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/attributesValueKeyAccessServer"
-            }
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/values/keyaccessserver/remove": {
-      "post": {
-        "operationId": "AttributesService_RemoveKeyAccessServerFromValue",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesRemoveKeyAccessServerFromValueResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "valueKeyAccessServer",
+            "description": "Required",
             "in": "body",
             "required": true,
             "schema": {
@@ -461,11 +475,12 @@
               "type": "object",
               "properties": {
                 "value": {
-                  "type": "string"
+                  "type": "string",
+                  "title": "Required"
                 },
                 "metadata": {
                   "$ref": "#/definitions/commonMetadataMutable",
-                  "title": "Common metadata"
+                  "title": "Optional\nCommon metadata"
                 }
               }
             }
@@ -496,6 +511,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -524,6 +540,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -626,10 +643,12 @@
       "type": "object",
       "properties": {
         "attributeId": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         },
         "keyAccessServerId": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         }
       }
     },
@@ -641,17 +660,19 @@
           "title": "Required"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         },
         "rule": {
-          "$ref": "#/definitions/policyAttributeRuleTypeEnum"
+          "$ref": "#/definitions/policyAttributeRuleTypeEnum",
+          "title": "Required"
         },
         "values": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "Optional attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.\nThe stored attribute value will be normalized to lower case."
+          "description": "Optional \nAttribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.\nThe stored attribute value will be normalized to lower case."
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadataMutable",
@@ -779,10 +800,12 @@
       "type": "object",
       "properties": {
         "valueId": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         },
         "keyAccessServerId": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         }
       }
     },
@@ -987,6 +1010,46 @@
       },
       "title": "A collection of Conditions evaluated by the boolean_operator provided"
     },
+    "policyKasPublicKey": {
+      "type": "object",
+      "properties": {
+        "pem": {
+          "type": "string",
+          "title": "x509 ASN.1 content in PEM envelope, usually"
+        },
+        "kid": {
+          "type": "string",
+          "title": "A unique string identifier for this key"
+        },
+        "alg": {
+          "$ref": "#/definitions/policyKasPublicKeyAlgEnum",
+          "description": "A known algorithm type with any additional parameters encoded.\nTo start, these may be `rsa:2048` for encrypting ZTDF files and \n`ec:secp256r1` for nanoTDF, but more formats may be added as needed."
+        }
+      },
+      "title": "A KAS public key and some associated metadata for further identifcation"
+    },
+    "policyKasPublicKeyAlgEnum": {
+      "type": "string",
+      "enum": [
+        "KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED",
+        "KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048",
+        "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1"
+      ],
+      "default": "KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED"
+    },
+    "policyKasPublicKeySet": {
+      "type": "object",
+      "properties": {
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKasPublicKey"
+          }
+        }
+      },
+      "title": "A list of known KAS public keys"
+    },
     "policyKeyAccessServer": {
       "type": "object",
       "properties": {
@@ -999,6 +1062,10 @@
         },
         "publicKey": {
           "$ref": "#/definitions/policyPublicKey"
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional\nUnique name of the KAS instance"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",
@@ -1045,9 +1112,9 @@
           "type": "string",
           "title": "kas public key url - optional since can also be retrieved via public key"
         },
-        "local": {
-          "type": "string",
-          "title": "public key - optional since can also be retrieved via url"
+        "cached": {
+          "$ref": "#/definitions/policyKasPublicKeySet",
+          "title": "public key with additional information. Current preferred version"
         }
       }
     },

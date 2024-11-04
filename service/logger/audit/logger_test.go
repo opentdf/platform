@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/opentdf/platform/protocol/go/authorization"
 )
 
 func createTestLogger() (*Logger, *bytes.Buffer) {
@@ -34,9 +35,10 @@ func removeWhitespace(s string) string {
 }
 
 type logEntryStructure struct {
-	Time  string `json:"time"`
-	Level string `json:"level"`
-	Msg   string `json:"msg"`
+	Time  string          `json:"time"`
+	Level string          `json:"level"`
+	Msg   string          `json:"msg"`
+	Audit json.RawMessage `json:"audit"`
 }
 
 func extractLogEntry(t *testing.T, logBuffer *bytes.Buffer) (logEntryStructure, time.Time) {
@@ -84,13 +86,6 @@ var policyCRUDParams = PolicyEventParams{
 	ActionType: ActionTypeUpdate,
 	ObjectID:   "test-object-id",
 	ObjectType: ObjectTypeKeyObject,
-
-	Original: map[string]string{
-		"key": "old-value",
-	},
-	Updated: map[string]string{
-		"key": "new-value",
-	},
 }
 
 func TestAuditRewrapSuccess(t *testing.T) {
@@ -105,18 +100,16 @@ func TestAuditRewrapSuccess(t *testing.T) {
 			"object": {
 				"type": "key_object",
 				"id": "%s",
+				"name": "",
 				"attributes": {
-				  "assertions": [],
-					"attrs": []
-				}
+            		"assertions": [],
+            		"attrs": [],
+            		"permissions": []
+        		}
 			},
 			"action": {
 			  "type": "rewrap",
 				"result": "success"
-			},
-			"owner": {
-			  "id": "%s",
-				"orgId": "%s"
 			},
 			"actor": {
 			  "id": "%s",
@@ -131,15 +124,15 @@ func TestAuditRewrapSuccess(t *testing.T) {
 			"clientInfo": {
 			  "userAgent": "%s",
 				"platform": "kas",
-				"requestIp": "%s"
+				"requestIP": "%s"
 			},
-			"requestId": "%s",
+			"original": null,
+			"updated": null,
+			"requestID": "%s",
 			"timestamp": "%s"
 	  }
 		`,
 		rewrapParams.Policy.UUID.String(),
-		uuid.Nil.String(),
-		uuid.Nil.String(),
 		TestActorID,
 		rewrapParams.Algorithm,
 		rewrapParams.PolicyBinding,
@@ -152,7 +145,7 @@ func TestAuditRewrapSuccess(t *testing.T) {
 
 	// Remove newlines and spaces from expected
 	expectedAuditLog = removeWhitespace(expectedAuditLog)
-	loggedMessage := removeWhitespace(logEntry.Msg)
+	loggedMessage := removeWhitespace(string(logEntry.Audit))
 
 	if expectedAuditLog != loggedMessage {
 		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)
@@ -171,18 +164,16 @@ func TestAuditRewrapFailure(t *testing.T) {
 			"object": {
 				"type": "key_object",
 				"id": "%s",
+				"name": "",
 				"attributes": {
-				  "assertions": [],
-					"attrs": []
-				}
+            		"assertions": [],
+            		"attrs": [],
+            		"permissions": []
+        		}
 			},
 			"action": {
 			  "type": "rewrap",
 				"result": "error"
-			},
-			"owner": {
-			  "id": "%s",
-				"orgId": "%s"
 			},
 			"actor": {
 			  "id": "%s",
@@ -197,15 +188,15 @@ func TestAuditRewrapFailure(t *testing.T) {
 			"clientInfo": {
 			  "userAgent": "%s",
 				"platform": "kas",
-				"requestIp": "%s"
+				"requestIP": "%s"
 			},
-			"requestId": "%s",
+			"original": null,
+			"updated": null,
+			"requestID": "%s",
 			"timestamp": "%s"
 	  }
 		`,
 		rewrapParams.Policy.UUID.String(),
-		uuid.Nil.String(),
-		uuid.Nil.String(),
 		TestActorID,
 		rewrapParams.Algorithm,
 		rewrapParams.PolicyBinding,
@@ -218,7 +209,7 @@ func TestAuditRewrapFailure(t *testing.T) {
 
 	// Remove newlines and spaces from expected
 	expectedAuditLog = removeWhitespace(expectedAuditLog)
-	loggedMessage := removeWhitespace(logEntry.Msg)
+	loggedMessage := removeWhitespace(string(logEntry.Audit))
 
 	if expectedAuditLog != loggedMessage {
 		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)
@@ -237,19 +228,17 @@ func TestPolicyCRUDSuccess(t *testing.T) {
 		  "object": {
 			  "type": "%s",
 				"id": "%s",
+				"name": "",
 				"attributes": {
-				  "assertions": null,
-					"attrs": null
-				}
+            		"assertions": null,
+            		"attrs": null,
+            		"permissions": null
+        		}
 			},
 			"action": {
 			  "type": "%s",
 				"result": "success"
 			},
-			"owner": {
-				"id": "%s",
-				"orgId": "%s"
-	    },
 			"actor": {
 				"id": "%s",
 				"attributes": []
@@ -258,28 +247,16 @@ func TestPolicyCRUDSuccess(t *testing.T) {
 			"clientInfo": {
 				"userAgent": "%s",
 				"platform": "policy",
-				"requestIp": "%s"
+				"requestIP": "%s"
 			},
-			"diff": [
-				{
-					"op": "test",
-					"path": "/key",
-					"value": "old-value"
-				},
-				{
-					"op": "replace",
-					"path": "/key",
-					"value": "new-value"
-				}
-			],
-			"requestId": "%s",
+			"original": null,
+			"updated": null,
+			"requestID": "%s",
 			"timestamp": "%s"
 		}`,
 		ObjectTypeKeyObject.String(),
 		policyCRUDParams.ObjectID,
 		ActionTypeUpdate.String(),
-		uuid.Nil.String(),
-		uuid.Nil.String(),
 		TestActorID,
 		TestUserAgent,
 		TestRequestIP,
@@ -289,7 +266,7 @@ func TestPolicyCRUDSuccess(t *testing.T) {
 
 	// Remove newlines and spaces from expected
 	expectedAuditLog = removeWhitespace(expectedAuditLog)
-	loggedMessage := removeWhitespace(logEntry.Msg)
+	loggedMessage := removeWhitespace(string(logEntry.Audit))
 
 	if expectedAuditLog != loggedMessage {
 		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)
@@ -308,19 +285,17 @@ func TestPolicyCrudFailure(t *testing.T) {
 		  "object": {
 			  "type": "%s",
 				"id": "%s",
+				"name": "",
 				"attributes": {
-				  "assertions": null,
-					"attrs": null
-				}
+            		"assertions": null,
+            		"attrs": null,
+            		"permissions": null
+        		}
 			},
 			"action": {
 			  "type": "%s",
 				"result": "error"
 			},
-			"owner": {
-				"id": "%s",
-				"orgId": "%s"
-	    },
 			"actor": {
 				"id": "%s",
 				"attributes": []
@@ -329,16 +304,16 @@ func TestPolicyCrudFailure(t *testing.T) {
 			"clientInfo": {
 				"userAgent": "%s",
 				"platform": "policy",
-				"requestIp": "%s"
+				"requestIP": "%s"
 			},
-			"requestId": "%s",
+			"original": null,
+			"updated": null,
+			"requestID": "%s",
 			"timestamp": "%s"
 		}`,
 		ObjectTypeKeyObject.String(),
 		policyCRUDParams.ObjectID,
 		ActionTypeUpdate.String(),
-		uuid.Nil.String(),
-		uuid.Nil.String(),
 		TestActorID,
 		TestUserAgent,
 		TestRequestIP,
@@ -348,7 +323,7 @@ func TestPolicyCrudFailure(t *testing.T) {
 
 	// Remove newlines and spaces from expected
 	expectedAuditLog = removeWhitespace(expectedAuditLog)
-	loggedMessage := removeWhitespace(logEntry.Msg)
+	loggedMessage := removeWhitespace(string(logEntry.Audit))
 
 	if expectedAuditLog != loggedMessage {
 		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)
@@ -361,7 +336,7 @@ func TestGetDecision(t *testing.T) {
 	params := GetDecisionEventParams{
 		Decision: GetDecisionResultPermit,
 		EntityChainEntitlements: []EntityChainEntitlement{
-			{EntityID: "test-entity-id", AttributeValueReferences: []string{"test-attribute-value-reference"}},
+			{EntityID: "test-entity-id", EntityCatagory: authorization.Entity_CATEGORY_ENVIRONMENT.String(), AttributeValueReferences: []string{"test-attribute-value-reference"}},
 		},
 		EntityChainID: "test-entity-chain-id",
 		EntityDecisions: []EntityDecision{
@@ -380,24 +355,23 @@ func TestGetDecision(t *testing.T) {
 				"object": {
 					"type": "%s",
 					"id": "%s",
+					"name": "",
 					"attributes": {
-						"assertions": null,
-						"attrs": %q
-					}
+            			"assertions": null,
+            			"attrs": %q,
+            			"permissions": null
+        			}
 				},
 				"action": {
 					"type": "%s",
 					"result": "%s"
-				},
-				"owner": {
-					"id": "%s",
-					"orgId": "%s"
 				},
 				"actor": {
 					"id": "%s",
 					"attributes": [
 						{
 							"entityId": "%s",
+							"entityCategory": "%s",
 							"attributeValueReferences": %q
 						}
 					]
@@ -414,9 +388,11 @@ func TestGetDecision(t *testing.T) {
 				"clientInfo": {
 					"userAgent": "%s",
 					"platform": "authorization",
-					"requestIp": "%s"
+					"requestIP": "%s"
 				},
-				"requestId": "%s",
+				"original": null,
+				"updated": null,
+				"requestID": "%s",
 				"timestamp": "%s"
 		}`,
 		ObjectTypeEntityObject.String(),
@@ -424,10 +400,9 @@ func TestGetDecision(t *testing.T) {
 		params.FQNs,
 		ActionTypeRead.String(),
 		ActionResultSuccess,
-		uuid.Nil.String(),
-		uuid.Nil.String(),
 		params.EntityChainID,
 		params.EntityChainEntitlements[0].EntityID,
+		params.EntityChainEntitlements[0].EntityCatagory,
 		params.EntityChainEntitlements[0].AttributeValueReferences,
 		params.EntityDecisions[0].EntityID,
 		params.EntityDecisions[0].Decision,
@@ -440,7 +415,7 @@ func TestGetDecision(t *testing.T) {
 
 	// Remove newlines and spaces from expected
 	expectedAuditLog = removeWhitespace(expectedAuditLog)
-	loggedMessage := removeWhitespace(logEntry.Msg)
+	loggedMessage := removeWhitespace(string(logEntry.Audit))
 
 	if expectedAuditLog != loggedMessage {
 		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)

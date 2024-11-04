@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"testing"
-	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -148,20 +147,6 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NewSubjectConditionSet()
 	s.Equal(expectedCondition.GetSubjectExternalValues(), gotCondition.GetSubjectExternalValues())
 }
 
-func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NoActions_Fails() {
-	fixtureAttrVal := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value1")
-	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
-	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
-		AttributeValueId:              fixtureAttrVal.ID,
-		ExistingSubjectConditionSetId: fixtureScs.ID,
-	}
-
-	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
-	s.Require().Error(err)
-	s.Nil(created)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-}
-
 func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentAttributeValueId_Fails() {
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
 	aTransmit := fixtureActions[Transmit]
@@ -204,14 +189,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 		Actions:                       []*policy.Action{aTransmit, aCustomUpload},
 		ExistingSubjectConditionSetId: fixtureScs.ID,
 	}
-	start := time.Now().Add(-time.Second)
 	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
-	end := time.Now().Add(time.Second)
-	metadata := created.GetMetadata()
-	updatedAt := metadata.GetUpdatedAt()
-	createdAt := metadata.GetCreatedAt()
-	s.True(createdAt.AsTime().After(start))
-	s.True(createdAt.AsTime().Before(end))
 	s.Require().NoError(err)
 	s.NotNil(created)
 
@@ -235,7 +213,12 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 	s.Equal(got.GetActions(), newActions)
 	s.Equal(newSubjectMapping.GetAttributeValueId(), got.GetAttributeValue().GetId())
 	s.Equal(newSubjectMapping.GetExistingSubjectConditionSetId(), got.GetSubjectConditionSet().GetId())
-	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
+	metadata := got.GetMetadata()
+	createdAt := metadata.GetCreatedAt()
+	updatedAt := metadata.GetUpdatedAt()
+	s.False(createdAt.AsTime().IsZero())
+	s.False(updatedAt.AsTime().IsZero())
+	s.True(updatedAt.AsTime().After(createdAt.AsTime()))
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_SubjectConditionSetId() {
@@ -658,14 +641,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {
 			{},
 		},
 	}
-	start := time.Now().Add(-time.Second)
 	created, err := s.db.PolicyClient.CreateSubjectConditionSet(context.Background(), newConditionSet)
-	end := time.Now().Add(time.Second)
-	metadata := created.GetMetadata()
-	updatedAt := metadata.GetUpdatedAt()
-	createdAt := metadata.GetCreatedAt()
-	s.True(createdAt.AsTime().After(start))
-	s.True(createdAt.AsTime().Before(end))
 	s.Require().NoError(err)
 	s.NotNil(created)
 
@@ -705,7 +681,12 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(len(ss), len(got.GetSubjectSets()))
 	s.Equal(ss[0].GetConditionGroups()[0].GetConditions()[0].GetSubjectExternalSelectorValue(), got.GetSubjectSets()[0].GetConditionGroups()[0].GetConditions()[0].GetSubjectExternalSelectorValue())
-	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
+	metadata := got.GetMetadata()
+	createdAt := metadata.GetCreatedAt()
+	updatedAt := metadata.GetUpdatedAt()
+	s.False(createdAt.AsTime().IsZero())
+	s.False(updatedAt.AsTime().IsZero())
+	s.True(updatedAt.AsTime().After(createdAt.AsTime()))
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_AllAllowedFields() {

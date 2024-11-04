@@ -230,6 +230,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.KasPublicKey"><span class="badge">M</span>KasPublicKey</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.KasPublicKeySet"><span class="badge">M</span>KasPublicKeySet</a>
+                </li>
+              
+                <li>
                   <a href="#policy.KeyAccessServer"><span class="badge">M</span>KeyAccessServer</a>
                 </li>
               
@@ -280,6 +288,10 @@
               
                 <li>
                   <a href="#policy.ConditionBooleanTypeEnum"><span class="badge">E</span>ConditionBooleanTypeEnum</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.KasPublicKeyAlgEnum"><span class="badge">E</span>KasPublicKeyAlgEnum</a>
                 </li>
               
                 <li>
@@ -810,11 +822,27 @@
             <ul>
               
                 <li>
+                  <a href="#policy.resourcemapping.CreateResourceMappingGroupRequest"><span class="badge">M</span>CreateResourceMappingGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.CreateResourceMappingGroupResponse"><span class="badge">M</span>CreateResourceMappingGroupResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.resourcemapping.CreateResourceMappingRequest"><span class="badge">M</span>CreateResourceMappingRequest</a>
                 </li>
               
                 <li>
                   <a href="#policy.resourcemapping.CreateResourceMappingResponse"><span class="badge">M</span>CreateResourceMappingResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.DeleteResourceMappingGroupRequest"><span class="badge">M</span>DeleteResourceMappingGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.DeleteResourceMappingGroupResponse"><span class="badge">M</span>DeleteResourceMappingGroupResponse</a>
                 </li>
               
                 <li>
@@ -826,6 +854,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.resourcemapping.GetResourceMappingGroupRequest"><span class="badge">M</span>GetResourceMappingGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.GetResourceMappingGroupResponse"><span class="badge">M</span>GetResourceMappingGroupResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.resourcemapping.GetResourceMappingRequest"><span class="badge">M</span>GetResourceMappingRequest</a>
                 </li>
               
@@ -834,11 +870,43 @@
                 </li>
               
                 <li>
+                  <a href="#policy.resourcemapping.ListResourceMappingGroupsRequest"><span class="badge">M</span>ListResourceMappingGroupsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.ListResourceMappingGroupsResponse"><span class="badge">M</span>ListResourceMappingGroupsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.ListResourceMappingsByGroupFqnsRequest"><span class="badge">M</span>ListResourceMappingsByGroupFqnsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.ListResourceMappingsByGroupFqnsResponse"><span class="badge">M</span>ListResourceMappingsByGroupFqnsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.ListResourceMappingsByGroupFqnsResponse.FqnResourceMappingGroupsEntry"><span class="badge">M</span>ListResourceMappingsByGroupFqnsResponse.FqnResourceMappingGroupsEntry</a>
+                </li>
+              
+                <li>
                   <a href="#policy.resourcemapping.ListResourceMappingsRequest"><span class="badge">M</span>ListResourceMappingsRequest</a>
                 </li>
               
                 <li>
                   <a href="#policy.resourcemapping.ListResourceMappingsResponse"><span class="badge">M</span>ListResourceMappingsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.ResourceMappingsByGroup"><span class="badge">M</span>ResourceMappingsByGroup</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.UpdateResourceMappingGroupRequest"><span class="badge">M</span>UpdateResourceMappingGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.resourcemapping.UpdateResourceMappingGroupResponse"><span class="badge">M</span>UpdateResourceMappingGroupResponse</a>
                 </li>
               
                 <li>
@@ -1478,6 +1546,70 @@
 
         
       
+        <h3 id="policy.KasPublicKey">KasPublicKey</h3>
+        <p>A KAS public key and some associated metadata for further identifcation</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>pem</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>x509 ASN.1 content in PEM envelope, usually </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kid</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>A unique string identifier for this key </p></td>
+                </tr>
+              
+                <tr>
+                  <td>alg</td>
+                  <td><a href="#policy.KasPublicKeyAlgEnum">KasPublicKeyAlgEnum</a></td>
+                  <td></td>
+                  <td><p>A known algorithm type with any additional parameters encoded.
+To start, these may be `rsa:2048` for encrypting ZTDF files and 
+`ec:secp256r1` for nanoTDF, but more formats may be added as needed. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.KasPublicKeySet">KasPublicKeySet</h3>
+        <p>A list of known KAS public keys</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>keys</td>
+                  <td><a href="#policy.KasPublicKey">KasPublicKey</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.KeyAccessServer">KeyAccessServer</h3>
         <p>Key Access Server Registry</p>
 
@@ -1507,6 +1639,14 @@
                   <td><a href="#policy.PublicKey">PublicKey</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+Unique name of the KAS instance </p></td>
                 </tr>
               
                 <tr>
@@ -1600,10 +1740,10 @@
                 </tr>
               
                 <tr>
-                  <td>local</td>
-                  <td><a href="#string">string</a></td>
+                  <td>cached</td>
+                  <td><a href="#policy.KasPublicKeySet">KasPublicKeySet</a></td>
                   <td></td>
-                  <td><p>public key - optional since can also be retrieved via url </p></td>
+                  <td><p>public key with additional information. Current preferred version </p></td>
                 </tr>
               
             </tbody>
@@ -1694,6 +1834,13 @@
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>the common name for the group of resource mappings, which must be unique per namespace </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
                 </tr>
               
             </tbody>
@@ -2010,6 +2157,35 @@
               <tr>
                 <td>CONDITION_BOOLEAN_TYPE_ENUM_OR</td>
                 <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+        <h3 id="policy.KasPublicKeyAlgEnum">KasPublicKeyAlgEnum</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1</td>
+                <td>5</td>
                 <td><p></p></td>
               </tr>
             
@@ -2694,7 +2870,7 @@
                 <td>GetDecisions</td>
                 <td>POST</td>
                 <td>/v1/authorization</td>
-                <td></td>
+                <td>*</td>
               </tr>
               
             
@@ -2714,7 +2890,7 @@
                 <td>GetEntitlements</td>
                 <td>POST</td>
                 <td>/v1/entitlements</td>
-                <td></td>
+                <td>*</td>
               </tr>
               
             
@@ -3586,7 +3762,7 @@
                   <td>attribute_key_access_server</td>
                   <td><a href="#policy.attributes.AttributeKeyAccessServer">AttributeKeyAccessServer</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -3634,7 +3810,7 @@
                   <td>value_key_access_server</td>
                   <td><a href="#policy.attributes.ValueKeyAccessServer">ValueKeyAccessServer</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -3682,14 +3858,14 @@
                   <td>attribute_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>key_access_server_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -3720,21 +3896,22 @@
                   <td>name</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>rule</td>
                   <td><a href="#policy.AttributeRuleTypeEnum">policy.AttributeRuleTypeEnum</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>values</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
-                  <td><p>Optional attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
+                  <td><p>Optional 
+Attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
 The stored attribute value will be normalized to lower case. </p></td>
                 </tr>
               
@@ -3797,14 +3974,15 @@ The stored attribute value will be normalized to lower case. </p></td>
                   <td>value</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
-                  <td><p>Common metadata </p></td>
+                  <td><p>Optional
+Common metadata </p></td>
                 </tr>
               
             </tbody>
@@ -3852,7 +4030,7 @@ The stored attribute value will be normalized to lower case. </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -3900,7 +4078,7 @@ The stored attribute value will be normalized to lower case. </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -3948,7 +4126,7 @@ The stored attribute value will be normalized to lower case. </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -3996,7 +4174,7 @@ The stored attribute value will be normalized to lower case. </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -4162,14 +4340,15 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
                   <td>attribute_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>state</td>
                   <td><a href="#common.ActiveStateEnum">common.ActiveStateEnum</a></td>
                   <td></td>
-                  <td><p>ACTIVE by default when not specified </p></td>
+                  <td><p>Optional
+ACTIVE by default when not specified </p></td>
                 </tr>
               
             </tbody>
@@ -4217,14 +4396,16 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
                   <td>state</td>
                   <td><a href="#common.ActiveStateEnum">common.ActiveStateEnum</a></td>
                   <td></td>
-                  <td><p>ACTIVE by default when not specified </p></td>
+                  <td><p>Optional
+ACTIVE by default when not specified </p></td>
                 </tr>
               
                 <tr>
                   <td>namespace</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>can be id or name </p></td>
+                  <td><p>Optional
+Namespace ID or name </p></td>
                 </tr>
               
             </tbody>
@@ -4272,7 +4453,7 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
                   <td>attribute_key_access_server</td>
                   <td><a href="#policy.attributes.AttributeKeyAccessServer">AttributeKeyAccessServer</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -4320,7 +4501,7 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
                   <td>value_key_access_server</td>
                   <td><a href="#policy.attributes.ValueKeyAccessServer">ValueKeyAccessServer</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -4430,14 +4611,15 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
-                  <td><p>Common metadata </p></td>
+                  <td><p>Optional
+Common metadata </p></td>
                 </tr>
               
                 <tr>
@@ -4492,14 +4674,14 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
                   <td>value_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>key_access_server_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -4767,7 +4949,7 @@ Attribute &lt;&gt; Key Access Server RPCs
               <tr>
                 <td>AssignKeyAccessServerToAttribute</td>
                 <td>POST</td>
-                <td>/attributes/keyaccessserver/assign</td>
+                <td>/attributes/keyaccessserver/grants</td>
                 <td>attribute_key_access_server</td>
               </tr>
               
@@ -4776,9 +4958,9 @@ Attribute &lt;&gt; Key Access Server RPCs
               
               <tr>
                 <td>RemoveKeyAccessServerFromAttribute</td>
-                <td>POST</td>
-                <td>/attributes/keyaccessserver/remove</td>
-                <td>attribute_key_access_server</td>
+                <td>DELETE</td>
+                <td>/attributes/keyaccessserver/grants</td>
+                <td></td>
               </tr>
               
             
@@ -4787,7 +4969,7 @@ Attribute &lt;&gt; Key Access Server RPCs
               <tr>
                 <td>AssignKeyAccessServerToValue</td>
                 <td>POST</td>
-                <td>/attributes/values/keyaccessserver/assign</td>
+                <td>/attributes/values/keyaccessserver/grants</td>
                 <td>value_key_access_server</td>
               </tr>
               
@@ -4796,9 +4978,9 @@ Attribute &lt;&gt; Key Access Server RPCs
               
               <tr>
                 <td>RemoveKeyAccessServerFromValue</td>
-                <td>POST</td>
-                <td>/attributes/values/keyaccessserver/remove</td>
-                <td>value_key_access_server</td>
+                <td>DELETE</td>
+                <td>/attributes/values/keyaccessserver/grants</td>
+                <td></td>
               </tr>
               
             
@@ -4835,7 +5017,14 @@ Attribute &lt;&gt; Key Access Server RPCs
                   <td>public_key</td>
                   <td><a href="#policy.PublicKey">policy.PublicKey</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>
@@ -4890,7 +5079,7 @@ Attribute &lt;&gt; Key Access Server RPCs
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -4938,7 +5127,7 @@ Attribute &lt;&gt; Key Access Server RPCs
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -5063,7 +5252,7 @@ Attribute &lt;&gt; Key Access Server RPCs
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Optional
-Filter LIST by either ID or URI of a registered Key Access Server.
+Filter LIST by either ID of a registered Key Access Server.
 If neither is provided, grants from all registered KASs to policy attribute objects are returned. </p></td>
                 </tr>
               
@@ -5071,7 +5260,18 @@ If neither is provided, grants from all registered KASs to policy attribute obje
                   <td>kas_uri</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Optional
+Filter LIST by URI of a registered Key Access Server.
+If none is provided, grants from all registered KASs to policy attribute objects are returned. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+Filter LIST by name of a registered Key Access Server.
+If none are provided, grants from all registered KASs to policy attribute objects are returned. </p></td>
                 </tr>
               
             </tbody>
@@ -5157,21 +5357,29 @@ If neither is provided, grants from all registered KASs to policy attribute obje
                   <td>uri</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>
                   <td>public_key</td>
                   <td><a href="#policy.PublicKey">policy.PublicKey</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
-                  <td><p>Common metadata </p></td>
+                  <td><p>Optional
+Common metadata </p></td>
                 </tr>
               
                 <tr>
@@ -5475,7 +5683,7 @@ If neither is provided, grants from all registered KASs to policy attribute obje
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -5506,7 +5714,7 @@ If neither is provided, grants from all registered KASs to policy attribute obje
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -5554,7 +5762,8 @@ If neither is provided, grants from all registered KASs to policy attribute obje
                   <td>state</td>
                   <td><a href="#common.ActiveStateEnum">common.ActiveStateEnum</a></td>
                   <td></td>
-                  <td><p>ACTIVE by default when not specified </p></td>
+                  <td><p>Optional
+ACTIVE by default when not specified </p></td>
                 </tr>
               
             </tbody>
@@ -5602,14 +5811,14 @@ If neither is provided, grants from all registered KASs to policy attribute obje
                   <td>namespace_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>key_access_server_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -5894,8 +6103,70 @@ Namespace &lt;&gt; Key Access Server RPCs
       <p></p>
 
       
+        <h3 id="policy.resourcemapping.CreateResourceMappingGroupRequest">CreateResourceMappingGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemapping.CreateResourceMappingGroupResponse">CreateResourceMappingGroupResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>resource_mapping_group</td>
+                  <td><a href="#policy.ResourceMappingGroup">policy.ResourceMappingGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.resourcemapping.CreateResourceMappingRequest">CreateResourceMappingRequest</h3>
-        <p>### Request</p><p>grpcurl -plaintext -d @ localhost:8080 policy.resourcemapping.ResourceMappingService/CreateResourceMapping <<EOM</p><p>{</p><p>"mapping": {</p><p>"name": "Classification",</p><p>"attribute_value_id": "12345678-1234-1234-1234-123456789012",</p><p>"terms": ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]</p><p>}</p><p>}</p><p>EOM</p><p>### Response</p><p>{</p><p>"mapping": {</p><p>"metadata": {</p><p>"id": "12345678-1234-1234-1234-123456789012",</p><p>"created_at": "2020-01-01T00:00:00Z",</p><p>"updated_at": "2020-01-01T00:00:00Z"</p><p>},</p><p>"name": "Classification",</p><p>"attribute_value_id": "12345678-1234-1234-1234-123456789012",</p><p>"terms": ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]</p><p>}</p><p>}</p>
+        <p></p>
 
         
           <table class="field-table">
@@ -5915,7 +6186,14 @@ Namespace &lt;&gt; Key Access Server RPCs
                   <td>terms</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>group_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>
@@ -5956,6 +6234,54 @@ Namespace &lt;&gt; Key Access Server RPCs
 
         
       
+        <h3 id="policy.resourcemapping.DeleteResourceMappingGroupRequest">DeleteResourceMappingGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemapping.DeleteResourceMappingGroupResponse">DeleteResourceMappingGroupResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>resource_mapping_group</td>
+                  <td><a href="#policy.ResourceMappingGroup">policy.ResourceMappingGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.resourcemapping.DeleteResourceMappingRequest">DeleteResourceMappingRequest</h3>
         <p></p>
 
@@ -5970,7 +6296,7 @@ Namespace &lt;&gt; Key Access Server RPCs
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -6004,6 +6330,54 @@ Namespace &lt;&gt; Key Access Server RPCs
 
         
       
+        <h3 id="policy.resourcemapping.GetResourceMappingGroupRequest">GetResourceMappingGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemapping.GetResourceMappingGroupResponse">GetResourceMappingGroupResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>resource_mapping_group</td>
+                  <td><a href="#policy.ResourceMappingGroup">policy.ResourceMappingGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.resourcemapping.GetResourceMappingRequest">GetResourceMappingRequest</h3>
         <p></p>
 
@@ -6018,7 +6392,7 @@ Namespace &lt;&gt; Key Access Server RPCs
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -6052,10 +6426,155 @@ Namespace &lt;&gt; Key Access Server RPCs
 
         
       
+        <h3 id="policy.resourcemapping.ListResourceMappingGroupsRequest">ListResourceMappingGroupsRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemapping.ListResourceMappingGroupsResponse">ListResourceMappingGroupsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>resource_mapping_groups</td>
+                  <td><a href="#policy.ResourceMappingGroup">policy.ResourceMappingGroup</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemapping.ListResourceMappingsByGroupFqnsRequest">ListResourceMappingsByGroupFqnsRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqns</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>Required
+Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group name&gt;&#39; </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemapping.ListResourceMappingsByGroupFqnsResponse">ListResourceMappingsByGroupFqnsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqn_resource_mapping_groups</td>
+                  <td><a href="#policy.resourcemapping.ListResourceMappingsByGroupFqnsResponse.FqnResourceMappingGroupsEntry">ListResourceMappingsByGroupFqnsResponse.FqnResourceMappingGroupsEntry</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemapping.ListResourceMappingsByGroupFqnsResponse.FqnResourceMappingGroupsEntry">ListResourceMappingsByGroupFqnsResponse.FqnResourceMappingGroupsEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#policy.resourcemapping.ResourceMappingsByGroup">ResourceMappingsByGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.resourcemapping.ListResourceMappingsRequest">ListResourceMappingsRequest</h3>
         <p></p>
 
         
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>group_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
 
         
       
@@ -6073,6 +6592,113 @@ Namespace &lt;&gt; Key Access Server RPCs
                   <td>resource_mappings</td>
                   <td><a href="#policy.ResourceMapping">policy.ResourceMapping</a></td>
                   <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemapping.ResourceMappingsByGroup">ResourceMappingsByGroup</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>group</td>
+                  <td><a href="#policy.ResourceMappingGroup">policy.ResourceMappingGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>mappings</td>
+                  <td><a href="#policy.ResourceMapping">policy.ResourceMapping</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemapping.UpdateResourceMappingGroupRequest">UpdateResourceMappingGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata_update_behavior</td>
+                  <td><a href="#common.MetadataUpdateEnum">common.MetadataUpdateEnum</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.resourcemapping.UpdateResourceMappingGroupResponse">UpdateResourceMappingGroupResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>resource_mapping_group</td>
+                  <td><a href="#policy.ResourceMappingGroup">policy.ResourceMappingGroup</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               
@@ -6111,14 +6737,22 @@ Namespace &lt;&gt; Key Access Server RPCs
                   <td>terms</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
-                  <td><p> </p></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>group_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
-                  <td><p>Common Metadata </p></td>
+                  <td><p>Optional
+Common Metadata </p></td>
                 </tr>
               
                 <tr>
@@ -6166,7 +6800,7 @@ Namespace &lt;&gt; Key Access Server RPCs
 
       
         <h3 id="policy.resourcemapping.ResourceMappingService">ResourceMappingService</h3>
-        <p></p>
+        <p>Resource Mapping Groups</p>
         <table class="enum-table">
           <thead>
             <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
@@ -6174,9 +6808,51 @@ Namespace &lt;&gt; Key Access Server RPCs
           <tbody>
             
               <tr>
+                <td>ListResourceMappingGroups</td>
+                <td><a href="#policy.resourcemapping.ListResourceMappingGroupsRequest">ListResourceMappingGroupsRequest</a></td>
+                <td><a href="#policy.resourcemapping.ListResourceMappingGroupsResponse">ListResourceMappingGroupsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetResourceMappingGroup</td>
+                <td><a href="#policy.resourcemapping.GetResourceMappingGroupRequest">GetResourceMappingGroupRequest</a></td>
+                <td><a href="#policy.resourcemapping.GetResourceMappingGroupResponse">GetResourceMappingGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CreateResourceMappingGroup</td>
+                <td><a href="#policy.resourcemapping.CreateResourceMappingGroupRequest">CreateResourceMappingGroupRequest</a></td>
+                <td><a href="#policy.resourcemapping.CreateResourceMappingGroupResponse">CreateResourceMappingGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>UpdateResourceMappingGroup</td>
+                <td><a href="#policy.resourcemapping.UpdateResourceMappingGroupRequest">UpdateResourceMappingGroupRequest</a></td>
+                <td><a href="#policy.resourcemapping.UpdateResourceMappingGroupResponse">UpdateResourceMappingGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>DeleteResourceMappingGroup</td>
+                <td><a href="#policy.resourcemapping.DeleteResourceMappingGroupRequest">DeleteResourceMappingGroupRequest</a></td>
+                <td><a href="#policy.resourcemapping.DeleteResourceMappingGroupResponse">DeleteResourceMappingGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
                 <td>ListResourceMappings</td>
                 <td><a href="#policy.resourcemapping.ListResourceMappingsRequest">ListResourceMappingsRequest</a></td>
                 <td><a href="#policy.resourcemapping.ListResourceMappingsResponse">ListResourceMappingsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ListResourceMappingsByGroupFqns</td>
+                <td><a href="#policy.resourcemapping.ListResourceMappingsByGroupFqnsRequest">ListResourceMappingsByGroupFqnsRequest</a></td>
+                <td><a href="#policy.resourcemapping.ListResourceMappingsByGroupFqnsResponse">ListResourceMappingsByGroupFqnsResponse</a></td>
                 <td><p></p></td>
               </tr>
             
@@ -6229,9 +6905,69 @@ Namespace &lt;&gt; Key Access Server RPCs
               
               
               <tr>
+                <td>ListResourceMappingGroups</td>
+                <td>GET</td>
+                <td>/resource-mapping-groups</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>GetResourceMappingGroup</td>
+                <td>GET</td>
+                <td>/resource-mapping-groups/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>CreateResourceMappingGroup</td>
+                <td>POST</td>
+                <td>/resource-mapping-groups</td>
+                <td>*</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>UpdateResourceMappingGroup</td>
+                <td>PATCH</td>
+                <td>/resource-mapping-groups/{id}</td>
+                <td>*</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>DeleteResourceMappingGroup</td>
+                <td>DELETE</td>
+                <td>/resource-mapping-groups/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
                 <td>ListResourceMappings</td>
                 <td>GET</td>
                 <td>/resource-mappings</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>ListResourceMappingsByGroupFqns</td>
+                <td>GET</td>
+                <td>/resource-mappings/group-fqns</td>
                 <td></td>
               </tr>
               
@@ -6358,7 +7094,8 @@ Attribute Value to be mapped to </p></td>
                   <td>actions</td>
                   <td><a href="#policy.Action">policy.Action</a></td>
                   <td>repeated</td>
-                  <td><p>The actions permitted by subjects in this mapping </p></td>
+                  <td><p>Required
+The actions permitted by subjects in this mapping </p></td>
                 </tr>
               
                 <tr>
@@ -6428,7 +7165,7 @@ Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -6476,7 +7213,7 @@ Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -6524,7 +7261,7 @@ Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -6579,7 +7316,7 @@ Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -6854,7 +7591,8 @@ Replaces the existing SubjectConditionSet id with a new one </p></td>
                   <td>actions</td>
                   <td><a href="#policy.Action">policy.Action</a></td>
                   <td>repeated</td>
-                  <td><p>Replaces entire list of actions permitted by subjects </p></td>
+                  <td><p>Optional
+Replaces entire list of actions permitted by subjects </p></td>
                 </tr>
               
                 <tr>
@@ -7155,7 +7893,8 @@ UUID of the Attribute </p></td>
                   <td>fqn</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Fully Qualified Name (FQN) of Attribute Definition (i.e. https://&lt;namespace&gt;/attr/&lt;attribute name&gt;), normalized to lower case. </p></td>
+                  <td><p>Required
+Fully Qualified Name (FQN) of Attribute Definition (i.e. https://&lt;namespace&gt;/attr/&lt;attribute name&gt;), normalized to lower case. </p></td>
                 </tr>
               
             </tbody>
@@ -7211,7 +7950,8 @@ UUID of the Attribute Value </p></td>
                   <td>fqn</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Fully Qualified Name (FQN) of Attribute Value (i.e. https://&lt;namespace&gt;/attr/&lt;attribute name&gt;/value/&lt;value&gt;), normalized to lower case. </p></td>
+                  <td><p>Required
+Fully Qualified Name (FQN) of Attribute Value (i.e. https://&lt;namespace&gt;/attr/&lt;attribute name&gt;/value/&lt;value&gt;), normalized to lower case. </p></td>
                 </tr>
               
             </tbody>
@@ -7267,7 +8007,8 @@ UUID of the Namespace </p></td>
                   <td>fqn</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Fully Qualified Name (FQN) of Namespace (i.e. https://&lt;namespace&gt;), normalized to lower case. </p></td>
+                  <td><p>Required
+Fully Qualified Name (FQN) of Namespace (i.e. https://&lt;namespace&gt;), normalized to lower case. </p></td>
                 </tr>
               
             </tbody>
@@ -7315,7 +8056,7 @@ UUID of the Namespace </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -7363,7 +8104,7 @@ UUID of the Namespace </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -7411,7 +8152,7 @@ UUID of the Namespace </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -7475,7 +8216,8 @@ Updating the name of an Attribute will retroactively alter access to existing TD
                   <td>rule</td>
                   <td><a href="#policy.AttributeRuleTypeEnum">policy.AttributeRuleTypeEnum</a></td>
                   <td></td>
-                  <td><p>WARNING!! 
+                  <td><p>Optional
+WARNING!! 
 Updating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name. </p></td>
                 </tr>
               
@@ -7483,7 +8225,8 @@ Updating the rule of an Attribute will retroactively alter access to existing TD
                   <td>values_order</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
-                  <td><p>WARNING!!
+                  <td><p>Optional
+WARNING!!
 Unsafe reordering requires the full list of values in the new order they should be stored. Updating the order of values in a HIERARCHY-rule Attribute Definition
 will retroactively alter access to existing TDFs containing those values. Replacing values on an attribute in place is not supported; values can be unsafely deleted
 deleted, created, and unsafely re-ordered as necessary. </p></td>
@@ -7534,14 +8277,14 @@ deleted, created, and unsafely re-ordered as necessary. </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>value</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -7596,7 +8339,7 @@ deleted, created, and unsafely re-ordered as necessary. </p></td>
                   <td>name</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>

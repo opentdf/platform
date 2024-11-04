@@ -5,14 +5,14 @@
 // type EventObject struct {
 // 	Object        auditEventObject `json:"object"`
 // 	Action        eventAction      `json:"action"`
-// 	Owner         EventOwner       `json:"owner"`
 // 	Actor         auditEventActor  `json:"actor"`
 // 	EventMetaData interface{}      `json:"eventMetaData"`
 // 	ClientInfo    eventClientInfo  `json:"clientInfo"`
 
-// 	Diff      []DiffEntry `json:"diff,omitempty"`
-// 	RequestID uuid.UUID   `json:"requestId"`
-// 	Timestamp string      `json:"timestamp"`
+// 	Original  map[string]interface{} `json:"original,omitempty"`
+// 	Updated   map[string]interface{} `json:"updated,omitempty"`
+// 	RequestID uuid.UUID              `json:"requestId"`
+// 	Timestamp string                 `json:"timestamp"`
 // }
 
 // Defined here: platform/service/internal/logger/audit/utils.go
@@ -35,9 +35,9 @@ type Logger struct {
 }
 
 type Config struct {
-	Level  string `yaml:"level" default:"info"`
-	Output string `yaml:"output" default:"stdout"`
-	Type   string `yaml:"type" default:"json"`
+	Level  string `mapstructure:"level" json:"level" default:"info"`
+	Output string `mapstructure:"output" json:"output" default:"stdout"`
+	Type   string `mapstructure:"type" json:"type" default:"json"`
 }
 
 const (
@@ -45,7 +45,8 @@ const (
 )
 
 func NewLogger(config Config) (*Logger, error) {
-	var logger *slog.Logger
+	var sLogger *slog.Logger
+	logger := new(Logger)
 
 	w, err := getWriter(config)
 	if err != nil {
@@ -61,15 +62,15 @@ func NewLogger(config Config) (*Logger, error) {
 	case "json":
 		j := slog.NewJSONHandler(w, &slog.HandlerOptions{
 			Level:       level,
-			ReplaceAttr: audit.ReplaceAttrAuditLevel,
+			ReplaceAttr: logger.replaceAttrChain,
 		})
-		logger = slog.New(j)
+		sLogger = slog.New(j)
 	case "text":
 		t := slog.NewTextHandler(w, &slog.HandlerOptions{
 			Level:       level,
-			ReplaceAttr: audit.ReplaceAttrAuditLevel,
+			ReplaceAttr: logger.replaceAttrChain,
 		})
-		logger = slog.New(t)
+		sLogger = slog.New(t)
 	default:
 		return nil, fmt.Errorf("invalid logger type: %s", config.Type)
 	}
@@ -83,10 +84,10 @@ func NewLogger(config Config) (*Logger, error) {
 	auditLoggerBase := slog.New(auditLoggerHandler)
 	auditLogger := audit.CreateAuditLogger(*auditLoggerBase)
 
-	return &Logger{
-		Logger: logger,
-		Audit:  auditLogger,
-	}, nil
+	logger.Logger = sLogger
+	logger.Audit = auditLogger
+
+	return logger, nil
 }
 
 func (l *Logger) With(key string, value string) *Logger {
@@ -135,4 +136,9 @@ func CreateTestLogger() *Logger {
 		Type:   "json",
 	})
 	return logger
+}
+
+// TODO: We can filter by keys if we need to in the future so they don't get proccessed by the masqer
+func (l *Logger) replaceAttrChain(groups []string, a slog.Attr) slog.Attr {
+	return audit.ReplaceAttrAuditLevel(groups, a)
 }

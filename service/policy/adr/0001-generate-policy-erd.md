@@ -10,7 +10,7 @@ Automation is expected to improve maintenance of an ERD containing the entire sc
 
 We will generate a mermaid diagram `.md` schema with a Go tool called [mermerd](https://github.com/KarnerTh/mermerd) that is MIT licensed and actively maintained.
 
-We will place it in `service/policy/db` alongside all DB code and link to it within documentation (see [generated mermerd ERD](../db/policy_erd.md)).
+We will place it in `service/policy/db` alongside all DB code and link to it within documentation (see [generated mermerd ERD](../db/schema_erd.md)).
 
 At a future time, we may desire to make the following enhancements:
 

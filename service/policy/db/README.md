@@ -36,6 +36,8 @@ Other useful subcommands also exist on `sqlc`, like `vet`, `compile`, `verify`, 
 
 ### Schema ERD
 
+[Current schema](./schema_erd.md)
+
 The schema in the policy database is managed through `Goose` migrations (see above), which are also read
 into the `sqlc` generated code to execute db queries within Go.
 

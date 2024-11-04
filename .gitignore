@@ -24,8 +24,9 @@ __pycache__
 
 # Userland files
 opentdf.yaml
-.vscode/settings.json
+.vscode/
 .idea/
+
 
 # Generated files
 tmp-gen/
@@ -45,3 +46,4 @@ sensitive.txt.tdf
 keys/
 /examples/sensitive.txt.ntdf
 sensitive.txt.ntdf
+untracked-files/

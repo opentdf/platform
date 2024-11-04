@@ -1,0 +1,28 @@
+{
+  // Attach to Air for debugging
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Package",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${fileDirname}",
+      "env": {
+        "TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED": "true",
+        "TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE": "/var/run/docker.sock"
+      },
+      "showLog": true,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Attach to Air",
+      "type": "go",
+      "debugAdapter": "dlv-dap",
+      "mode": "remote",
+      "request": "attach",
+      "host": "127.0.0.1",
+      "port": 12345
+    }
+  ]
+}

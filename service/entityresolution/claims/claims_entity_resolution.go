@@ -22,10 +22,11 @@ type ClaimsEntityResolutionService struct {
 	logger *logger.Logger
 }
 
-func RegisterClaimsERS(_ serviceregistry.ServiceConfig, logger *logger.Logger) (any, serviceregistry.HandlerServer) {
-	return &ClaimsEntityResolutionService{logger: logger},
-		func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-			return entityresolution.RegisterEntityResolutionServiceHandlerServer(ctx, mux, server.(entityresolution.EntityResolutionServiceServer)) //nolint:forcetypeassert // allow type assert, following other services
+func RegisterClaimsERS(_ serviceregistry.ServiceConfig, logger *logger.Logger) (ClaimsEntityResolutionService, serviceregistry.HandlerServer) {
+	claimsSVC := ClaimsEntityResolutionService{logger: logger}
+	return claimsSVC,
+		func(ctx context.Context, mux *runtime.ServeMux) error {
+			return entityresolution.RegisterEntityResolutionServiceHandlerServer(ctx, mux, claimsSVC) //nolint:forcetypeassert // allow type assert, following other services
 		}
 }
 
@@ -64,7 +65,7 @@ func EntityResolution(_ context.Context,
 	var resolvedEntities []*entityresolution.EntityRepresentation
 
 	for idx, ident := range payload {
-		var entityStruct = &structpb.Struct{}
+		entityStruct := &structpb.Struct{}
 		switch ident.GetEntityType().(type) {
 		case *authorization.Entity_Claims:
 			claims := ident.GetClaims()

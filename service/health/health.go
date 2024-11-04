@@ -12,29 +12,29 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var (
-	serviceHealthChecks = make(map[string]func(context.Context) error)
-)
+var serviceHealthChecks = make(map[string]func(context.Context) error)
 
 type HealthService struct { //nolint:revive // HealthService is a valid name for this struct
 	healthpb.UnimplementedHealthServer
 	logger *logger.Logger
 }
 
-func NewRegistration() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		Namespace:   "health",
-		ServiceDesc: &healthpb.Health_ServiceDesc,
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			err := srp.WellKnownConfig("health", map[string]any{
-				"endpoint": "/healthz",
-			})
-			if err != nil {
-				srp.Logger.Error("failed to set well-known config", slog.String("error", err.Error()))
-			}
-			return &HealthService{logger: srp.Logger}, func(_ context.Context, _ *runtime.ServeMux, _ any) error {
-				return nil
-			}
+func NewRegistration() *serviceregistry.Service[HealthService] {
+	return &serviceregistry.Service[HealthService]{
+		ServiceOptions: serviceregistry.ServiceOptions[HealthService]{
+			Namespace:   "health",
+			ServiceDesc: &healthpb.Health_ServiceDesc,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (*HealthService, serviceregistry.HandlerServer) {
+				err := srp.WellKnownConfig("health", map[string]any{
+					"endpoint": "/healthz",
+				})
+				if err != nil {
+					srp.Logger.Error("failed to set well-known config", slog.String("error", err.Error()))
+				}
+				return &HealthService{logger: srp.Logger}, func(_ context.Context, _ *runtime.ServeMux) error {
+					return nil
+				}
+			},
 		},
 	}
 }

@@ -35,17 +35,17 @@ func RegisterConfiguration(namespace string, config any) error {
 	return nil
 }
 
-func NewRegistration() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		Namespace:   "wellknown",
-		ServiceDesc: &wellknown.WellKnownService_ServiceDesc,
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &WellKnownService{logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				if srv, ok := server.(wellknown.WellKnownServiceServer); ok {
-					return wellknown.RegisterWellKnownServiceHandlerServer(ctx, mux, srv)
+func NewRegistration() *serviceregistry.Service[WellKnownService] {
+	return &serviceregistry.Service[WellKnownService]{
+		ServiceOptions: serviceregistry.ServiceOptions[WellKnownService]{
+			Namespace:   "wellknown",
+			ServiceDesc: &wellknown.WellKnownService_ServiceDesc,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (*WellKnownService, serviceregistry.HandlerServer) {
+				wk := &WellKnownService{logger: srp.Logger}
+				return wk, func(ctx context.Context, mux *runtime.ServeMux) error {
+					return wellknown.RegisterWellKnownServiceHandlerServer(ctx, mux, wk)
 				}
-				return fmt.Errorf("failed to assert server as WellKnownServiceServer")
-			}
+			},
 		},
 	}
 }

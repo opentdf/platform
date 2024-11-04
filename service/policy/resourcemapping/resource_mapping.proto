@@ -7,6 +7,7 @@ import "google/api/annotations.proto";
 
 import "common/common.proto";
 import "policy/objects.proto";
+import "policy/selectors.proto";
 
 /*
    Resource Mapping Groups
@@ -21,10 +22,15 @@ message ListResourceMappingGroupsRequest {
       message: "Optional field must be a valid UUID",
       expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
     }];
+
+  // Optional
+  policy.PageRequest pagination = 10;
 }
 
 message ListResourceMappingGroupsResponse {
   repeated ResourceMappingGroup resource_mapping_groups = 1;
+
+  policy.PageResponse pagination = 10;
 }
 
 message GetResourceMappingGroupRequest {
@@ -109,10 +115,15 @@ message ListResourceMappingsRequest {
       message: "Optional field must be a valid UUID",
       expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
   }];
+
+  // Optional
+  policy.PageRequest pagination = 10;
 }
 
 message ListResourceMappingsResponse {
   repeated policy.ResourceMapping resource_mappings = 1;
+
+  policy.PageResponse pagination = 10;
 }
 
 message ListResourceMappingsByGroupFqnsRequest {

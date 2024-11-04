@@ -1,6 +1,7 @@
 package kasregistry
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/bufbuild/protovalidate-go"
@@ -24,11 +25,27 @@ const (
 	errMessageUUID   = "string.uuid"
 )
 
-var remotePubKey = &policy.PublicKey{
-	PublicKey: &policy.PublicKey_Remote{
-		Remote: validSecureURI + "/public_key",
-	},
-}
+var (
+	remotePubKey = &policy.PublicKey{
+		PublicKey: &policy.PublicKey_Remote{
+			Remote: validSecureURI + "/public_key",
+		},
+	}
+
+	fakeCachedKey = &policy.PublicKey{
+		PublicKey: &policy.PublicKey_Cached{
+			Cached: &policy.KasPublicKeySet{
+				Keys: []*policy.KasPublicKey{
+					{
+						Pem: "fake PEM",
+					},
+				},
+			},
+		},
+	}
+	fakeURI = "https://someuri.com"
+	fakeID  = "6321ea85-ca04-466f-aefb-174bcdbc0612"
+)
 
 func Test_GetKeyAccessServerRequest_Succeeds(t *testing.T) {
 	req := &kasregistry.GetKeyAccessServerRequest{}
@@ -41,159 +58,6 @@ func Test_GetKeyAccessServerRequest_Succeeds(t *testing.T) {
 	req.Id = validUUID
 	err = v.Validate(req)
 	require.NoError(t, err)
-}
-
-func Test_CreateKeyAccessServerRequest_Fails(t *testing.T) {
-	v := getValidator()
-	bad := []struct {
-		pk       *policy.PublicKey
-		uri      string
-		scenario string
-	}{
-		{
-			nil,
-			validSecureURI,
-			"no required public key",
-		},
-		{
-			remotePubKey,
-			"",
-			"empty URI",
-		},
-	}
-
-	for _, test := range bad {
-		req := &kasregistry.CreateKeyAccessServerRequest{
-			Uri:       test.uri,
-			PublicKey: test.pk,
-		}
-		err := v.Validate(req)
-		require.Error(t, err, test.scenario)
-	}
-}
-
-func Test_CreateKeyAccessServerRequest_Succeeds(t *testing.T) {
-	v := getValidator()
-	good := []struct {
-		pk  *policy.PublicKey
-		uri string
-	}{
-		{
-			remotePubKey,
-			validSecureURI,
-		},
-		{
-			remotePubKey,
-			validInsecureURI,
-		},
-		{
-			remotePubKey,
-			// non http protocol
-			"udp://hello.world",
-		},
-		// ports allowed
-		{
-			remotePubKey,
-			validInsecureURI + ":8080",
-		},
-		{
-			remotePubKey,
-			validSecureURI + ":8080",
-		},
-	}
-
-	for _, test := range good {
-		req := &kasregistry.CreateKeyAccessServerRequest{
-			Uri:       test.uri,
-			PublicKey: test.pk,
-		}
-		err := v.Validate(req)
-		require.NoError(t, err)
-	}
-}
-
-func Test_UpdateKeyAccessServerRequest_Fails(t *testing.T) {
-	v := getValidator()
-	bad := []struct {
-		id       string
-		pk       *policy.PublicKey
-		uri      string
-		scenario string
-	}{
-		{
-			"",
-			remotePubKey,
-			validSecureURI,
-			"no required ID",
-		},
-		{
-			"bad-id-format",
-			remotePubKey,
-			validSecureURI,
-			"invalid UUID",
-		},
-	}
-
-	for _, test := range bad {
-		req := &kasregistry.UpdateKeyAccessServerRequest{
-			Id:        test.id,
-			Uri:       test.uri,
-			PublicKey: test.pk,
-		}
-		err := v.Validate(req)
-		require.Error(t, err, test.scenario)
-	}
-}
-
-func Test_UpdateKeyAccessServerRequest_Succeeds(t *testing.T) {
-	v := getValidator()
-
-	good := []struct {
-		pk       *policy.PublicKey
-		uri      string
-		scenario string
-	}{
-		{
-			remotePubKey,
-			validSecureURI,
-			"both https uri and public key",
-		},
-		{
-			remotePubKey,
-			"udp://hello.world",
-			"other non-http URI",
-		},
-		{
-			remotePubKey,
-			validInsecureURI,
-			"both http uri and public key",
-		},
-		{
-			remotePubKey,
-			validInsecureURI + ":9000",
-			"with port",
-		},
-		{
-			nil,
-			validSecureURI,
-			"no optional public key",
-		},
-		{
-			remotePubKey,
-			"",
-			"empty optional URI",
-		},
-	}
-
-	for _, test := range good {
-		req := &kasregistry.UpdateKeyAccessServerRequest{
-			Id:        validUUID,
-			Uri:       test.uri,
-			PublicKey: test.pk,
-		}
-		err := v.Validate(req)
-		require.NoError(t, err, test.scenario)
-	}
 }
 
 func Test_DeleteKeyAccessServerRequest_Succeeds(t *testing.T) {
@@ -281,4 +145,309 @@ func Test_ListKeyAccessServerGrantsRequest_Succeeds(t *testing.T) {
 		err := v.Validate(req)
 		require.NoError(t, err, test.scenario)
 	}
+}
+
+func Test_CreateKeyAccessServer_Succeeds(t *testing.T) {
+	good := []struct {
+		uri      string
+		key      *policy.PublicKey
+		name     string
+		scenario string
+	}{
+		{
+			fakeURI,
+			fakeCachedKey,
+			"",
+			"no optional KAS name & cached key",
+		},
+		{
+			fakeURI,
+			fakeCachedKey,
+			"kas_name",
+			"included KAS name & cached key",
+		},
+		{
+			fakeURI,
+			fakeCachedKey,
+			"kas-name",
+			"hyphenated KAS name",
+		},
+		{
+			fakeURI,
+			fakeCachedKey,
+			"kas-name123",
+			"numeric KAS name",
+		},
+		{
+			fakeURI,
+			fakeCachedKey,
+			"KASnameIsMiXeDCaSe",
+			"mixed case KAS name",
+		},
+		{
+			fakeURI,
+			remotePubKey,
+			"",
+			"no optional KAS name & remote key",
+		},
+	}
+
+	for _, test := range good {
+		createReq := &kasregistry.CreateKeyAccessServerRequest{
+			Uri:       test.uri,
+			PublicKey: test.key,
+			Name:      test.name,
+		}
+
+		err := getValidator().Validate(createReq)
+		require.NoError(t, err, test.scenario+" should be valid")
+	}
+}
+
+func Test_CreateKeyAccessServer_Fails(t *testing.T) {
+	bad := []struct {
+		uri      string
+		key      *policy.PublicKey
+		name     string
+		scenario string
+	}{
+		{
+			"",
+			fakeCachedKey,
+			"",
+			"no uri",
+		},
+		{
+			fakeURI,
+			fakeCachedKey,
+			"kas name",
+			"kas name has spaces",
+		},
+		{
+			fakeURI,
+			fakeCachedKey,
+			"kas_name_",
+			"kas name ends in underscore",
+		},
+		{
+			fakeURI,
+			fakeCachedKey,
+			"_kas_name",
+			"kas name starts with underscore",
+		},
+		{
+			fakeURI,
+			fakeCachedKey,
+			"kas-name-",
+			"kas name ends in hyphen",
+		},
+		{
+			fakeURI,
+			fakeCachedKey,
+			"-kas-name",
+			"kas name starts with hyphen",
+		},
+		{
+			fakeURI,
+			fakeCachedKey,
+			strings.Repeat("a", 254),
+			"name too long",
+		},
+		{
+			fakeURI,
+			nil,
+			"",
+			"no public key",
+		},
+		{
+			fakeURI,
+			&policy.PublicKey{
+				PublicKey: &policy.PublicKey_Remote{
+					Remote: "bad format",
+				},
+			},
+			"",
+			"remote public key bad format",
+		},
+	}
+
+	for _, test := range bad {
+		createReq := &kasregistry.CreateKeyAccessServerRequest{
+			Uri:       test.uri,
+			PublicKey: test.key,
+			Name:      test.name,
+		}
+
+		err := getValidator().Validate(createReq)
+		require.Error(t, err, test.scenario+" should be invalid")
+	}
+}
+
+func Test_UpdateKeyAccessServer_Succeeds(t *testing.T) {
+	good := []struct {
+		uri      string
+		key      *policy.PublicKey
+		name     string
+		scenario string
+	}{
+		{
+			fakeURI,
+			fakeCachedKey,
+			"",
+			"no optional KAS name",
+		},
+		{
+			fakeURI + "/somewhere-over-the-rainbow",
+			nil,
+			"",
+			"only URI",
+		},
+		{
+			"",
+			fakeCachedKey,
+			"",
+			"only cached key",
+		},
+		{
+			"",
+			remotePubKey,
+			"",
+			"only remote key",
+		},
+		{
+			"",
+			nil,
+			"KASnameIsMiXeDCaSe",
+			"mixed case KAS name",
+		},
+		{
+			fakeURI,
+			remotePubKey,
+			"new-name1",
+			"everything included",
+		},
+		{
+			fakeURI,
+			fakeCachedKey,
+			"kas-name",
+			"hyphenated KAS name",
+		},
+		{
+			fakeURI,
+			fakeCachedKey,
+			"kas-name123",
+			"numeric KAS name",
+		},
+	}
+
+	for _, test := range good {
+		updateReq := &kasregistry.UpdateKeyAccessServerRequest{
+			Id:        fakeID,
+			Uri:       test.uri,
+			PublicKey: test.key,
+			Name:      test.name,
+		}
+
+		err := getValidator().Validate(updateReq)
+		require.NoError(t, err, test.scenario+" should be valid")
+	}
+}
+
+func Test_UpdateKeyAccessServer_Fails(t *testing.T) {
+	bad := []struct {
+		id       string
+		uri      string
+		key      *policy.PublicKey
+		name     string
+		scenario string
+	}{
+		{
+			validUUID,
+			fakeURI,
+			fakeCachedKey,
+			"kas name",
+			"kas name has spaces",
+		},
+		{
+			validUUID,
+			fakeURI,
+			fakeCachedKey,
+			"kas_name_",
+			"kas name ends in underscore",
+		},
+		{
+			validUUID,
+			fakeURI,
+			fakeCachedKey,
+			"_kas_name",
+			"kas name starts with underscore",
+		},
+		{
+			validUUID,
+			fakeURI,
+			fakeCachedKey,
+			"kas-name-",
+			"kas name ends in hyphen",
+		},
+		{
+			validUUID,
+			fakeURI,
+			fakeCachedKey,
+			"-kas-name",
+			"kas name starts with hyphen",
+		},
+		{
+			validUUID,
+			fakeURI,
+			fakeCachedKey,
+			strings.Repeat("a", 254),
+			"name too long",
+		},
+		{
+			validUUID,
+			fakeURI,
+			&policy.PublicKey{
+				PublicKey: &policy.PublicKey_Remote{
+					Remote: "bad URL",
+				},
+			},
+			"",
+			"remote public key bad format",
+		},
+		{
+			"bad-id",
+			fakeURI,
+			fakeCachedKey,
+			"",
+			"invalid id",
+		},
+		{
+			"",
+			fakeURI,
+			fakeCachedKey,
+			"",
+			"no id",
+		},
+	}
+
+	for _, test := range bad {
+		updateReq := &kasregistry.UpdateKeyAccessServerRequest{
+			Id:        test.id,
+			Uri:       test.uri,
+			PublicKey: test.key,
+			Name:      test.name,
+		}
+
+		err := getValidator().Validate(updateReq)
+		require.Error(t, err, "scenario should be invalid: "+test.scenario)
+	}
+}
+
+func Test_UpdateKeyAccessServer_ShouldRequireID(t *testing.T) {
+	updateReq := &kasregistry.UpdateKeyAccessServerRequest{
+		Uri: fakeURI,
+	}
+
+	err := getValidator().Validate(updateReq)
+	require.Error(t, err, "ID should be required")
 }

@@ -95,7 +95,14 @@
           },
           {
             "name": "kasUri",
-            "description": "Optional\nFilter LIST by URI of a registered Key Access Server.\nIf neither is provided, grants from all registered KASs to policy attribute objects are returned.",
+            "description": "Optional\nFilter LIST by URI of a registered Key Access Server.\nIf none is provided, grants from all registered KASs to policy attribute objects are returned.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "kasName",
+            "description": "Optional\nFilter LIST by name of a registered Key Access Server.\nIf none are provided, grants from all registered KASs to policy attribute objects are returned.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -198,11 +205,15 @@
               "properties": {
                 "uri": {
                   "type": "string",
-                  "title": "Required"
+                  "title": "Optional"
                 },
                 "publicKey": {
                   "$ref": "#/definitions/policyPublicKey",
-                  "title": "Required"
+                  "title": "Optional"
+                },
+                "name": {
+                  "type": "string",
+                  "title": "Optional"
                 },
                 "metadata": {
                   "$ref": "#/definitions/commonMetadataMutable",
@@ -278,9 +289,13 @@
           "$ref": "#/definitions/policyPublicKey",
           "title": "Required"
         },
+        "name": {
+          "type": "string",
+          "title": "Optional"
+        },
         "metadata": {
           "$ref": "#/definitions/commonMetadataMutable",
-          "title": "Optional\nCommon metadata"
+          "title": "Common metadata"
         }
       }
     },
@@ -433,6 +448,10 @@
         },
         "publicKey": {
           "$ref": "#/definitions/policyPublicKey"
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional\nUnique name of the KAS instance"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",

@@ -35,6 +35,16 @@ message CreateKeyAccessServerRequest {
   PublicKey public_key = 2 [(buf.validate.field).required = true];
 
   // Optional
+  string name = 20 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "kas_name_format",
+      message: "Registered KAS name must be an alphanumeric string, allowing hyphens, and underscores but not as the first or last character. The stored KAS name will be normalized to lower case.",
+      expression: "size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true"
+    }
+  ];
+
   // Common metadata
   common.MetadataMutable metadata = 100;
 }
@@ -47,14 +57,24 @@ message UpdateKeyAccessServerRequest {
   string id = 1 [
     (buf.validate.field).string.uuid = true
   ];
-  // Required
+  // Optional
   string uri = 2 [(buf.validate.field).cel = {
       id: "optional_uri_format",
       message: "Optional URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
       expression: "size(this) == 0 || this.isUri()",
   }];
-  // Required
+  // Optional
   PublicKey public_key = 3;
+  // Optional
+  string name = 4 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "kas_name_format",
+      message: "Registered KAS name must be an alphanumeric string, allowing hyphens, and underscores but not as the first or last character. The stored KAS name will be normalized to lower case.",
+      expression: "size(this) == 0 || this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
 
   // Optional
   // Common metadata
@@ -105,12 +125,24 @@ message ListKeyAccessServerGrantsRequest {
   }];
   // Optional
   // Filter LIST by URI of a registered Key Access Server.
-  // If neither is provided, grants from all registered KASs to policy attribute objects are returned.
+  // If none is provided, grants from all registered KASs to policy attribute objects are returned.
   string kas_uri = 2 [(buf.validate.field).cel = {
       id: "optional_uri_format",
       message: "Optional URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
       expression: "size(this) == 0 || this.isUri()"
   }];
+  // Optional
+  // Filter LIST by name of a registered Key Access Server.
+  // If none are provided, grants from all registered KASs to policy attribute objects are returned.
+  string kas_name = 3 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "kas_name_format",
+      message: "Registered KAS name must be an alphanumeric string, allowing hyphens, and underscores but not as the first or last character. The stored KAS name will be normalized to lower case.",
+      expression: "size(this) == 0 || this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
 }
 
 message ListKeyAccessServerGrantsResponse {

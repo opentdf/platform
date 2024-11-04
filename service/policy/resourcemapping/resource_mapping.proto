@@ -12,9 +12,15 @@ import "policy/objects.proto";
    Resource Mapping Groups
 */
 
+// TODO: optional validation below should be through a custom validator, which is too bleeding edge at present without full plugin support
+
 message ListResourceMappingGroupsRequest {
   // Optional
-  string namespace_id = 1;
+  string namespace_id = 1 [(buf.validate.field).cel = {
+      id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+    }];
 }
 
 message ListResourceMappingGroupsResponse {
@@ -23,7 +29,9 @@ message ListResourceMappingGroupsResponse {
 
 message GetResourceMappingGroupRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 
 message GetResourceMappingGroupResponse {
@@ -32,8 +40,11 @@ message GetResourceMappingGroupResponse {
 
 message CreateResourceMappingGroupRequest {
   // Required
-  string namespace_id = 1 [(buf.validate.field).required = true];
+  string namespace_id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 
+  // Required
   string name = 2 [(buf.validate.field).required = true];
 
   // Common metadata
@@ -46,12 +57,26 @@ message CreateResourceMappingGroupResponse {
 
 message UpdateResourceMappingGroupRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 
   // Optional
-  string namespace_id = 2;
+  string namespace_id = 2 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
 
-  string name = 3;
+  // Optional
+  string name = 3 [
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "optional_name_format",
+      message: "Optional field must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored group name will be normalized to lower case.",
+      expression: "size(this) == 0 || this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
 
   // Common metadata
   common.MetadataMutable metadata = 100;
@@ -64,7 +89,9 @@ message UpdateResourceMappingGroupResponse {
 
 message DeleteResourceMappingGroupRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 
 message DeleteResourceMappingGroupResponse {
@@ -77,7 +104,11 @@ message DeleteResourceMappingGroupResponse {
 
 message ListResourceMappingsRequest {
   // Optional
-  string group_id = 1;
+  string group_id = 1 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
 }
 
 message ListResourceMappingsResponse {
@@ -112,51 +143,36 @@ message ListResourceMappingsByGroupFqnsResponse {
 
 message GetResourceMappingRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 
 message GetResourceMappingResponse {
   policy.ResourceMapping resource_mapping = 1;
 }
 
-/*
- ### Request
 
-     grpcurl -plaintext -d @ localhost:8080 policy.resourcemapping.ResourceMappingService/CreateResourceMapping <<EOM
-       {
-         "mapping": {
-           "name": "Classification",
-           "attribute_value_id": "12345678-1234-1234-1234-123456789012",
-           "terms": ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]
-         }
-       }
-     EOM
-
-   ### Response
-
-     {
-       "mapping": {
-         "metadata": {
-           "id": "12345678-1234-1234-1234-123456789012",
-           "created_at": "2020-01-01T00:00:00Z",
-           "updated_at": "2020-01-01T00:00:00Z"
-         },
-         "name": "Classification",
-         "attribute_value_id": "12345678-1234-1234-1234-123456789012",
-         "terms": ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]
-       }
-     }
-
-*/
 message CreateResourceMappingRequest {
   // Required
-  string attribute_value_id = 1 [(buf.validate.field).required = true];
+  string attribute_value_id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 
-  repeated string terms = 2 [(buf.validate.field).required = true];
+  // Required
+  repeated string terms = 2 [(buf.validate.field).repeated = {
+    min_items: 1,
+    max_items: 1000,
+  }];
 
   // Optional
-  string group_id = 3;
+  string group_id = 3 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
 
+  // Optional
   common.MetadataMutable metadata = 100;
 }
 message CreateResourceMappingResponse {
@@ -165,15 +181,30 @@ message CreateResourceMappingResponse {
 
 message UpdateResourceMappingRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 
   // Optional
-  string attribute_value_id = 4;
+  string attribute_value_id = 4 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
 
-  repeated string terms = 5;
+  // Optional
+  repeated string terms = 5 [(buf.validate.field).repeated = {
+    max_items: 1000,
+  }];
 
-  string group_id = 6;
+  // Optional
+  string group_id = 6 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
 
+  // Optional
   // Common Metadata
   common.MetadataMutable metadata = 100;
   common.MetadataUpdateEnum metadata_update_behavior = 101;
@@ -184,7 +215,9 @@ message UpdateResourceMappingResponse {
 
 message DeleteResourceMappingRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message DeleteResourceMappingResponse {
   ResourceMapping resource_mapping = 1;

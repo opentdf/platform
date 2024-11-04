@@ -8,6 +8,8 @@ import "google/api/annotations.proto";
 import "common/common.proto";
 import "policy/objects.proto";
 
+// TODO: optional validation below should be through a custom validator, which is too bleeding edge at present without full plugin support
+
 // MatchSubjectMappingsRequest liberally returns a list of SubjectMappings based on the provided SubjectProperties. The SubjectMappings are returned
 // if there is any single condition found among the structures that matches for one of the provided properties:
 // 1. The external selector value, external value, and an IN operator
@@ -32,7 +34,10 @@ message MatchSubjectMappingsResponse {
 */
 
 message GetSubjectMappingRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message GetSubjectMappingResponse {
   policy.SubjectMapping subject_mapping = 1;
@@ -46,13 +51,20 @@ message ListSubjectMappingsResponse {
 message CreateSubjectMappingRequest{
   // Required
   // Attribute Value to be mapped to
-  string attribute_value_id = 1 [(buf.validate.field).required = true];
+  string attribute_value_id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+  // Required
   // The actions permitted by subjects in this mapping
   repeated policy.Action actions = 2 [(buf.validate.field).repeated.min_items = 1];
 
   // Either of the following:
   // Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
-  string existing_subject_condition_set_id = 3;
+  string existing_subject_condition_set_id = 3 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
   // Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
   SubjectConditionSetCreate new_subject_condition_set = 4;
 
@@ -65,11 +77,18 @@ message CreateSubjectMappingResponse {
 
 message UpdateSubjectMappingRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 
   // Optional
   // Replaces the existing SubjectConditionSet id with a new one
-  string subject_condition_set_id = 2;
+  string subject_condition_set_id = 2 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
+  // Optional
   // Replaces entire list of actions permitted by subjects
   repeated policy.Action actions = 3;
 
@@ -83,7 +102,10 @@ message UpdateSubjectMappingResponse {
 }
 
 message DeleteSubjectMappingRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message DeleteSubjectMappingResponse {
   // Only ID of the updated Subject Mapping provided
@@ -95,7 +117,10 @@ message DeleteSubjectMappingResponse {
 */
 
 message GetSubjectConditionSetRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message GetSubjectConditionSetResponse {
   policy.SubjectConditionSet subject_condition_set = 1;
@@ -125,7 +150,9 @@ message CreateSubjectConditionSetResponse {
 
 message UpdateSubjectConditionSetRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 
   // Optional
   // If provided, replaces entire existing structure of Subject Sets, Condition Groups, & Conditions
@@ -141,7 +168,10 @@ message UpdateSubjectConditionSetResponse {
 }
 
 message DeleteSubjectConditionSetRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message DeleteSubjectConditionSetResponse {
   // Only ID of deleted Subject Condition Set provided

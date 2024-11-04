@@ -24,7 +24,8 @@ message ListKeyAccessServersRequest {
 }
 message ListKeyAccessServersResponse {
   repeated KeyAccessServer key_access_servers = 1;
-  policy.PageResponse pagination = 2;
+
+  policy.PageResponse pagination = 10;
 }
 
 // TODO: optional validation below should be through a custom validator, which is too bleeding edge at present without full plugin support
@@ -154,7 +155,8 @@ message ListKeyAccessServerGrantsRequest {
 }
 message ListKeyAccessServerGrantsResponse {
   repeated KeyAccessServerGrants grants = 1;
-  policy.PageResponse pagination = 2;
+
+  policy.PageResponse pagination = 10;
 }
 
 service KeyAccessServerRegistryService {

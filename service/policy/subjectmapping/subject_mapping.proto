@@ -39,7 +39,8 @@ message ListSubjectMappingsRequest {
 }
 message ListSubjectMappingsResponse {
   repeated policy.SubjectMapping subject_mappings = 1;
-  policy.PageResponse pagination = 2;
+
+  policy.PageResponse pagination = 10;
 }
 
 message CreateSubjectMappingRequest{
@@ -128,7 +129,8 @@ message ListSubjectConditionSetsRequest {
 }
 message ListSubjectConditionSetsResponse {
   repeated policy.SubjectConditionSet subject_condition_sets = 1;
-  policy.PageResponse pagination = 2;
+
+  policy.PageResponse pagination = 10;
 }
 
 message SubjectConditionSetCreate {

@@ -51,7 +51,8 @@ message ListAttributesRequest {
 }
 message ListAttributesResponse {
   repeated policy.Attribute attributes = 1;
-  policy.PageResponse pagination = 2;
+
+  policy.PageResponse pagination = 10;
 }
 
 message GetAttributeRequest {
@@ -159,7 +160,8 @@ message ListAttributeValuesRequest {
 }
 message ListAttributeValuesResponse {
   repeated policy.Value values = 1;
-  policy.PageResponse pagination = 2;
+
+  policy.PageResponse pagination = 10;
 }
 
 message CreateAttributeValueRequest {

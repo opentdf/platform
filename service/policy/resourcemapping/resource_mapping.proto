@@ -29,7 +29,8 @@ message ListResourceMappingGroupsRequest {
 
 message ListResourceMappingGroupsResponse {
   repeated ResourceMappingGroup resource_mapping_groups = 1;
-  policy.PageResponse pagination = 2;
+
+  policy.PageResponse pagination = 10;
 }
 
 message GetResourceMappingGroupRequest {
@@ -121,7 +122,8 @@ message ListResourceMappingsRequest {
 
 message ListResourceMappingsResponse {
   repeated policy.ResourceMapping resource_mappings = 1;
-  policy.PageResponse pagination = 2;
+
+  policy.PageResponse pagination = 10;
 }
 
 message ListResourceMappingsByGroupFqnsRequest {

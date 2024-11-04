@@ -50,7 +50,8 @@ message ListNamespacesRequest {
 }
 message ListNamespacesResponse {
   repeated policy.Namespace namespaces = 1;
-  policy.PageResponse pagination = 2;
+
+  policy.PageResponse pagination = 10;
 }
 
 message CreateNamespaceRequest {

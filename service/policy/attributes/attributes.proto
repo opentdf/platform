@@ -45,9 +45,14 @@ message ListAttributesRequest {
   // Optional
   // Namespace ID or name
   string namespace = 2;
+
+  // Optional
+  policy.PageRequest pagination = 10;
 }
 message ListAttributesResponse {
   repeated policy.Attribute attributes = 1;
+
+  policy.PageResponse pagination = 10;
 }
 
 message GetAttributeRequest {
@@ -149,9 +154,14 @@ message ListAttributeValuesRequest {
   // Optional
   // ACTIVE by default when not specified
   common.ActiveStateEnum state = 2;
+
+  // Optional
+  policy.PageRequest pagination = 10;
 }
 message ListAttributeValuesResponse {
   repeated policy.Value values = 1;
+
+  policy.PageResponse pagination = 10;
 }
 
 message CreateAttributeValueRequest {

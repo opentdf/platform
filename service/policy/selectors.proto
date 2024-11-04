@@ -43,3 +43,23 @@ message AttributeValueSelector {
     }
 	AttributeSelector with_attribute = 10;
 }
+
+message PageRequest {
+  // Optional
+  // Set to configured default limit if not provided
+  // Maximum limit set in platform config and enforced by services
+  int32 limit = 1;
+  // Optional
+  // Defaulted if not provided
+  int32 offset = 2;
+}
+
+message PageResponse {
+  // Requested pagination offset
+  int32 current_offset = 1;
+  // Calculated with request limit + offset or defaults
+  // Empty when none remain after current page
+  int32 next_offset = 2;
+  // Total count of entire list
+  int32 total = 3;
+}

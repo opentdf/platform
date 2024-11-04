@@ -473,6 +473,24 @@ func local_request_SubjectMappingService_DeleteSubjectConditionSet_0(ctx context
 
 }
 
+func request_SubjectMappingService_DeleteAllUnmappedSubjectConditionSets_0(ctx context.Context, marshaler runtime.Marshaler, client SubjectMappingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq DeleteAllUnmappedSubjectConditionSetsRequest
+	var metadata runtime.ServerMetadata
+
+	msg, err := client.DeleteAllUnmappedSubjectConditionSets(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_SubjectMappingService_DeleteAllUnmappedSubjectConditionSets_0(ctx context.Context, marshaler runtime.Marshaler, server SubjectMappingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq DeleteAllUnmappedSubjectConditionSetsRequest
+	var metadata runtime.ServerMetadata
+
+	msg, err := server.DeleteAllUnmappedSubjectConditionSets(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
 // RegisterSubjectMappingServiceHandlerServer registers the http handlers for service SubjectMappingService to "mux".
 // UnaryRPC     :call SubjectMappingServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
@@ -751,6 +769,31 @@ func RegisterSubjectMappingServiceHandlerServer(ctx context.Context, mux *runtim
 		}
 
 		forward_SubjectMappingService_DeleteSubjectConditionSet_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("DELETE", pattern_SubjectMappingService_DeleteAllUnmappedSubjectConditionSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/policy.subjectmapping.SubjectMappingService/DeleteAllUnmappedSubjectConditionSets", runtime.WithHTTPPathPattern("/subject-condition-sets/unmapped"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_SubjectMappingService_DeleteAllUnmappedSubjectConditionSets_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_SubjectMappingService_DeleteAllUnmappedSubjectConditionSets_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1037,6 +1080,28 @@ func RegisterSubjectMappingServiceHandlerClient(ctx context.Context, mux *runtim
 
 	})
 
+	mux.Handle("DELETE", pattern_SubjectMappingService_DeleteAllUnmappedSubjectConditionSets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		var err error
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/policy.subjectmapping.SubjectMappingService/DeleteAllUnmappedSubjectConditionSets", runtime.WithHTTPPathPattern("/subject-condition-sets/unmapped"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_SubjectMappingService_DeleteAllUnmappedSubjectConditionSets_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_SubjectMappingService_DeleteAllUnmappedSubjectConditionSets_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
 	return nil
 }
 
@@ -1062,6 +1127,8 @@ var (
 	pattern_SubjectMappingService_UpdateSubjectConditionSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1}, []string{"subject-condition-sets", "id"}, ""))
 
 	pattern_SubjectMappingService_DeleteSubjectConditionSet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1}, []string{"subject-condition-sets", "id"}, ""))
+
+	pattern_SubjectMappingService_DeleteAllUnmappedSubjectConditionSets_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"subject-condition-sets", "unmapped"}, ""))
 )
 
 var (
@@ -1086,4 +1153,6 @@ var (
 	forward_SubjectMappingService_UpdateSubjectConditionSet_0 = runtime.ForwardResponseMessage
 
 	forward_SubjectMappingService_DeleteSubjectConditionSet_0 = runtime.ForwardResponseMessage
+
+	forward_SubjectMappingService_DeleteAllUnmappedSubjectConditionSets_0 = runtime.ForwardResponseMessage
 )

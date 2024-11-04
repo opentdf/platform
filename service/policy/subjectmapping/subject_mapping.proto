@@ -167,6 +167,13 @@ message DeleteSubjectConditionSetResponse {
   policy.SubjectConditionSet subject_condition_set = 1;
 }
 
+// Prune any Subject Condition Sets not utilized within a Subject Mapping
+message DeleteAllUnmappedSubjectConditionSetsRequest {}
+message DeleteAllUnmappedSubjectConditionSetsResponse {
+  // Only IDs of any deleted Subject Condition Set provided
+  repeated policy.SubjectConditionSet subject_condition_sets = 1;
+}
+
 service SubjectMappingService {
 
   // Find matching Subject Mappings for a given Subject
@@ -226,6 +233,10 @@ service SubjectMappingService {
 
   rpc DeleteSubjectConditionSet(DeleteSubjectConditionSetRequest) returns (DeleteSubjectConditionSetResponse) {
     option (google.api.http) = {delete: "/subject-condition-sets/{id}"};
+  }
+
+  rpc DeleteAllUnmappedSubjectConditionSets(DeleteAllUnmappedSubjectConditionSetsRequest) returns (DeleteAllUnmappedSubjectConditionSetsResponse) {
+    option (google.api.http) = {delete: "/subject-condition-sets/unmapped"};
   }
 
 }

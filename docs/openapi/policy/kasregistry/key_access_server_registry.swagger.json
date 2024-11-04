@@ -88,7 +88,7 @@
         "parameters": [
           {
             "name": "kasId",
-            "description": "Optional\nFilter LIST by either ID of a registered Key Access Server.\nIf neither is provided, grants from all registered KASs to policy attribute objects are returned.",
+            "description": "Optional\nFilter LIST by ID of a registered Key Access Server.\nIf neither is provided, grants from all registered KASs to policy attribute objects are returned.",
             "in": "query",
             "required": false,
             "type": "string"

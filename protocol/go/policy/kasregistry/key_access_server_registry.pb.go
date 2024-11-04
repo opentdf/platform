@@ -698,7 +698,7 @@ type ListKeyAccessServerGrantsRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Optional
-	// Filter LIST by either ID of a registered Key Access Server.
+	// Filter LIST by ID of a registered Key Access Server.
 	// If neither is provided, grants from all registered KASs to policy attribute objects are returned.
 	KasId string `protobuf:"bytes,1,opt,name=kas_id,json=kasId,proto3" json:"kas_id,omitempty"`
 	// Optional

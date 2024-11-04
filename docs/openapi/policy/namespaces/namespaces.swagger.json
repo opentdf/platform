@@ -36,7 +36,7 @@
         "parameters": [
           {
             "name": "state",
-            "description": "ACTIVE by default when not specified",
+            "description": "Optional\nACTIVE by default when not specified",
             "in": "query",
             "required": false,
             "type": "string",
@@ -104,12 +104,14 @@
         "parameters": [
           {
             "name": "namespaceKeyAccessServer.namespaceId",
+            "description": "Required",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "namespaceKeyAccessServer.keyAccessServerId",
+            "description": "Required",
             "in": "query",
             "required": false,
             "type": "string"
@@ -171,6 +173,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -199,6 +202,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -369,10 +373,12 @@
       "type": "object",
       "properties": {
         "namespaceId": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         },
         "keyAccessServerId": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         }
       }
     },
@@ -444,6 +450,10 @@
         },
         "publicKey": {
           "$ref": "#/definitions/policyPublicKey"
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional\nUnique name of the KAS instance"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",

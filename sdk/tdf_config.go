@@ -217,11 +217,14 @@ type TDFReaderOption func(*TDFReaderConfig) error
 
 type TDFReaderConfig struct {
 	// Optional Map of Assertion Verification Keys
-	AssertionVerificationKeys AssertionVerificationKeys
+	AssertionVerificationKeys    AssertionVerificationKeys
+	disableAssertionVerification bool
 }
 
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
-	c := &TDFReaderConfig{}
+	c := &TDFReaderConfig{
+		disableAssertionVerification: false,
+	}
 	for _, o := range opt {
 		err := o(c)
 		if err != nil {
@@ -235,6 +238,13 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		c.AssertionVerificationKeys = keys
+		return nil
+	}
+}
+
+func WithDisableAssertionVerification(disable bool) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.disableAssertionVerification = disable
 		return nil
 	}
 }

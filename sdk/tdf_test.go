@@ -216,9 +216,10 @@ type partialReadTdfTest struct {
 }
 
 type assertionTests struct {
-	assertions                []AssertionConfig
-	assertionVerificationKeys *AssertionVerificationKeys
-	expectedSize              int
+	assertions                   []AssertionConfig
+	assertionVerificationKeys    *AssertionVerificationKeys
+	disableAssertionVerification bool
+	expectedSize                 int
 }
 
 const payload = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -391,8 +392,9 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					},
 				},
 			},
-			assertionVerificationKeys: nil,
-			expectedSize:              2896,
+			assertionVerificationKeys:    nil,
+			disableAssertionVerification: false,
+			expectedSize:                 2896,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -424,7 +426,8 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 			assertionVerificationKeys: &AssertionVerificationKeys{
 				DefaultKey: defaultKey,
 			},
-			expectedSize: 2896,
+			disableAssertionVerification: false,
+			expectedSize:                 2896,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -472,7 +475,8 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					},
 				},
 			},
-			expectedSize: 3195,
+			disableAssertionVerification: false,
+			expectedSize:                 3195,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -511,7 +515,25 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					},
 				},
 			},
-			expectedSize: 2896,
+			disableAssertionVerification: false,
+			expectedSize:                 2896,
+		},
+		{
+			assertions: []AssertionConfig{
+				{
+					ID:             "assertion2",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "json",
+						Schema: "urn:nato:stanag:5636:A:1:elements:json",
+						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
+					},
+				},
+			},
+			disableAssertionVerification: true,
+			expectedSize:                 2302,
 		},
 	} {
 		expectedTdfSize := test.expectedSize
@@ -558,9 +580,11 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 
 			var r *Reader
 			if test.assertionVerificationKeys == nil {
-				r, err = s.sdk.LoadTDF(readSeeker)
+				r, err = s.sdk.LoadTDF(readSeeker, WithDisableAssertionVerification(test.disableAssertionVerification))
 			} else {
-				r, err = s.sdk.LoadTDF(readSeeker, WithAssertionVerificationKeys(*test.assertionVerificationKeys))
+				r, err = s.sdk.LoadTDF(readSeeker,
+					WithAssertionVerificationKeys(*test.assertionVerificationKeys),
+					WithDisableAssertionVerification(test.disableAssertionVerification))
 			}
 			s.Require().NoError(err)
 

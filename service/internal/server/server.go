@@ -157,9 +157,12 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to create grpc server: %w", err)
 	}
+
+	grpcInProcessServer := newGrpcInProcessServer()
+
 	grpcIPCServer := &inProcessServer{
-		ln:                 memhttp.New(nil),
-		srv:                newGrpcInProcessServer(),
+		ln:                 memhttp.New(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { grpcInProcessServer.ServeHTTP(w, r) })),
+		srv:                grpcInProcessServer,
 		maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
 		maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
 	}

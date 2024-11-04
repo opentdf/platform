@@ -106,13 +106,21 @@
         "parameters": [
           {
             "name": "kasId",
-            "description": "Optional\nFilter LIST by either ID or URI of a registered Key Access Server.\nIf neither is provided, grants from all registered KASs to policy attribute objects are returned.",
+            "description": "Optional\nFilter LIST by ID of a registered Key Access Server.\nIf neither is provided, grants from all registered KASs to policy attribute objects are returned.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "kasUri",
+            "description": "Optional\nFilter LIST by URI of a registered Key Access Server.\nIf none is provided, grants from all registered KASs to policy attribute objects are returned.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "kasName",
+            "description": "Optional\nFilter LIST by name of a registered Key Access Server.\nIf none are provided, grants from all registered KASs to policy attribute objects are returned.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -159,6 +167,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -187,6 +196,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -228,14 +238,20 @@
               "type": "object",
               "properties": {
                 "uri": {
-                  "type": "string"
+                  "type": "string",
+                  "title": "Optional"
                 },
                 "publicKey": {
-                  "$ref": "#/definitions/policyPublicKey"
+                  "$ref": "#/definitions/policyPublicKey",
+                  "title": "Optional"
+                },
+                "name": {
+                  "type": "string",
+                  "title": "Optional"
                 },
                 "metadata": {
                   "$ref": "#/definitions/commonMetadataMutable",
-                  "title": "Common metadata"
+                  "title": "Optional\nCommon metadata"
                 },
                 "metadataUpdateBehavior": {
                   "$ref": "#/definitions/commonMetadataUpdateEnum"
@@ -304,7 +320,12 @@
           "title": "Required"
         },
         "publicKey": {
-          "$ref": "#/definitions/policyPublicKey"
+          "$ref": "#/definitions/policyPublicKey",
+          "title": "Required"
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadataMutable",
@@ -467,6 +488,10 @@
         },
         "publicKey": {
           "$ref": "#/definitions/policyPublicKey"
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional\nUnique name of the KAS instance"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",

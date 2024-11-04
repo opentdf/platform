@@ -86,6 +86,28 @@
         ]
       }
     },
+    "/subject-condition-sets/unmapped": {
+      "delete": {
+        "operationId": "SubjectMappingService_DeleteAllUnmappedSubjectConditionSets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/subjectmappingDeleteAllUnmappedSubjectConditionSetsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "SubjectMappingService"
+        ]
+      }
+    },
     "/subject-condition-sets/{id}": {
       "get": {
         "operationId": "SubjectMappingService_GetSubjectConditionSet",
@@ -106,6 +128,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -134,6 +157,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -325,6 +349,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -353,6 +378,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -403,7 +429,7 @@
                     "type": "object",
                     "$ref": "#/definitions/policyAction"
                   },
-                  "title": "Replaces entire list of actions permitted by subjects"
+                  "title": "Optional\nReplaces entire list of actions permitted by subjects"
                 },
                 "metadata": {
                   "$ref": "#/definitions/commonMetadataMutable",
@@ -565,7 +591,6 @@
           "title": "list of comparison values for the result of applying the subject_external_selector_value on a flattened Entity Representation (Subject), evaluated by the operator"
         }
       },
-      "description": "Example:  Subjects with a field selected by the flattened selector \"'.division'\" and a value of \"Accounting\" or \"Marketing\":\n{\n\"subject_external_selector_value\": \"'.division'\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_IN\",\n\"subject_external_values\" : [\"Accounting\", \"Marketing\"]\n}\n\nExample: Subjects that are not part of the Fantastic Four according to their alias field:\n{\n\"subject_external_selector_value\": \"'.data[0].alias'\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN\",\n\"subject_external_values\" : [\"mister_fantastic\", \"the_thing\", \"human_torch\", \"invisible_woman\"]\n}",
       "title": "*\nA Condition defines a rule of \u003cthe value at the flattened 'selector value' location\u003e \u003coperator\u003e \u003csubject external values\u003e"
     },
     "policyConditionBooleanTypeEnum": {
@@ -647,6 +672,10 @@
         },
         "publicKey": {
           "$ref": "#/definitions/policyPublicKey"
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional\nUnique name of the KAS instance"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",
@@ -921,7 +950,7 @@
             "type": "object",
             "$ref": "#/definitions/policyAction"
           },
-          "title": "The actions permitted by subjects in this mapping"
+          "title": "Required\nThe actions permitted by subjects in this mapping"
         },
         "existingSubjectConditionSetId": {
           "type": "string",
@@ -942,6 +971,19 @@
       "properties": {
         "subjectMapping": {
           "$ref": "#/definitions/policySubjectMapping"
+        }
+      }
+    },
+    "subjectmappingDeleteAllUnmappedSubjectConditionSetsResponse": {
+      "type": "object",
+      "properties": {
+        "subjectConditionSets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policySubjectConditionSet"
+          },
+          "title": "Only IDs of any deleted Subject Condition Set provided"
         }
       }
     },

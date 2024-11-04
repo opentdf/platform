@@ -37,7 +37,7 @@
         "parameters": [
           {
             "name": "state",
-            "description": "ACTIVE by default when not specified",
+            "description": "Optional\nACTIVE by default when not specified",
             "in": "query",
             "required": false,
             "type": "string",
@@ -51,7 +51,7 @@
           },
           {
             "name": "namespace",
-            "description": "can be id or name",
+            "description": "Optional\nNamespace ID or name",
             "in": "query",
             "required": false,
             "type": "string"
@@ -171,13 +171,14 @@
         "parameters": [
           {
             "name": "attributeId",
+            "description": "Required",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "state",
-            "description": "ACTIVE by default when not specified",
+            "description": "Optional\nACTIVE by default when not specified",
             "in": "query",
             "required": false,
             "type": "string",
@@ -216,6 +217,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -244,6 +246,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -272,6 +275,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -285,7 +289,7 @@
               "properties": {
                 "metadata": {
                   "$ref": "#/definitions/commonMetadataMutable",
-                  "title": "Common metadata"
+                  "title": "Optional\nCommon metadata"
                 },
                 "metadataUpdateBehavior": {
                   "$ref": "#/definitions/commonMetadataUpdateEnum"
@@ -319,12 +323,14 @@
         "parameters": [
           {
             "name": "attributeKeyAccessServer.attributeId",
+            "description": "Required",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "attributeKeyAccessServer.keyAccessServerId",
+            "description": "Required",
             "in": "query",
             "required": false,
             "type": "string"
@@ -354,6 +360,7 @@
         "parameters": [
           {
             "name": "attributeKeyAccessServer",
+            "description": "Required",
             "in": "body",
             "required": true,
             "schema": {
@@ -386,12 +393,14 @@
         "parameters": [
           {
             "name": "valueKeyAccessServer.valueId",
+            "description": "Required",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "valueKeyAccessServer.keyAccessServerId",
+            "description": "Required",
             "in": "query",
             "required": false,
             "type": "string"
@@ -420,6 +429,7 @@
         "parameters": [
           {
             "name": "valueKeyAccessServer",
+            "description": "Required",
             "in": "body",
             "required": true,
             "schema": {
@@ -465,11 +475,12 @@
               "type": "object",
               "properties": {
                 "value": {
-                  "type": "string"
+                  "type": "string",
+                  "title": "Required"
                 },
                 "metadata": {
                   "$ref": "#/definitions/commonMetadataMutable",
-                  "title": "Common metadata"
+                  "title": "Optional\nCommon metadata"
                 }
               }
             }
@@ -500,6 +511,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -528,6 +540,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -630,10 +643,12 @@
       "type": "object",
       "properties": {
         "attributeId": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         },
         "keyAccessServerId": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         }
       }
     },
@@ -645,17 +660,19 @@
           "title": "Required"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         },
         "rule": {
-          "$ref": "#/definitions/policyAttributeRuleTypeEnum"
+          "$ref": "#/definitions/policyAttributeRuleTypeEnum",
+          "title": "Required"
         },
         "values": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "Optional attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.\nThe stored attribute value will be normalized to lower case."
+          "description": "Optional \nAttribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.\nThe stored attribute value will be normalized to lower case."
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadataMutable",
@@ -783,10 +800,12 @@
       "type": "object",
       "properties": {
         "valueId": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         },
         "keyAccessServerId": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         }
       }
     },

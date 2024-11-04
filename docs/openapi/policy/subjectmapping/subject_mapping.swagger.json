@@ -88,6 +88,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -116,6 +117,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -289,6 +291,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -317,6 +320,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -367,7 +371,7 @@
                     "type": "object",
                     "$ref": "#/definitions/policyAction"
                   },
-                  "title": "Replaces entire list of actions permitted by subjects"
+                  "title": "Optional\nReplaces entire list of actions permitted by subjects"
                 },
                 "metadata": {
                   "$ref": "#/definitions/commonMetadataMutable",
@@ -854,7 +858,7 @@
             "type": "object",
             "$ref": "#/definitions/policyAction"
           },
-          "title": "The actions permitted by subjects in this mapping"
+          "title": "Required\nThe actions permitted by subjects in this mapping"
         },
         "existingSubjectConditionSetId": {
           "type": "string",

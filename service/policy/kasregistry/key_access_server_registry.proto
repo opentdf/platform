@@ -99,7 +99,6 @@ message ListKeyAccessServerGrantsRequest {
   string kas_uri = 2;
   string kas_name = 3;
 }
-
 message ListKeyAccessServerGrantsResponse {
   repeated KeyAccessServerGrants grants = 1;
 }

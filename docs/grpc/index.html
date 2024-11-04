@@ -1486,7 +1486,7 @@
         
       
         <h3 id="policy.Condition">Condition</h3>
-        <p>A Condition defines a rule of <the value at the flattened 'selector value' location> <operator> <subject external values></p><p>Example:  Subjects with a field selected by the flattened selector "'.division'" and a value of "Accounting" or "Marketing":</p><p>{</p><p>"subject_external_selector_value": "'.division'",</p><p>"operator": "SUBJECT_MAPPING_OPERATOR_ENUM_IN",</p><p>"subject_external_values" : ["Accounting", "Marketing"]</p><p>}</p><p>Example: Subjects that are not part of the Fantastic Four according to their alias field:</p><p>{</p><p>"subject_external_selector_value": "'.data[0].alias'",</p><p>"operator": "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN",</p><p>"subject_external_values" : ["mister_fantastic", "the_thing", "human_torch", "invisible_woman"]</p><p>}</p>
+        <p>A Condition defines a rule of <the value at the flattened 'selector value' location> <operator> <subject external values></p>
 
         
           <table class="field-table">
@@ -3770,7 +3770,7 @@ Unique name of the KAS instance </p></td>
                   <td>attribute_key_access_server</td>
                   <td><a href="#policy.attributes.AttributeKeyAccessServer">AttributeKeyAccessServer</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -3818,7 +3818,7 @@ Unique name of the KAS instance </p></td>
                   <td>value_key_access_server</td>
                   <td><a href="#policy.attributes.ValueKeyAccessServer">ValueKeyAccessServer</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -3866,14 +3866,14 @@ Unique name of the KAS instance </p></td>
                   <td>attribute_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>key_access_server_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -3904,21 +3904,22 @@ Unique name of the KAS instance </p></td>
                   <td>name</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>rule</td>
                   <td><a href="#policy.AttributeRuleTypeEnum">policy.AttributeRuleTypeEnum</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>values</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
-                  <td><p>Optional attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
+                  <td><p>Optional 
+Attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
 The stored attribute value will be normalized to lower case. </p></td>
                 </tr>
               
@@ -3981,14 +3982,15 @@ The stored attribute value will be normalized to lower case. </p></td>
                   <td>value</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
-                  <td><p>Common metadata </p></td>
+                  <td><p>Optional
+Common metadata </p></td>
                 </tr>
               
             </tbody>
@@ -4036,7 +4038,7 @@ The stored attribute value will be normalized to lower case. </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -4084,7 +4086,7 @@ The stored attribute value will be normalized to lower case. </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -4132,7 +4134,7 @@ The stored attribute value will be normalized to lower case. </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -4180,7 +4182,7 @@ The stored attribute value will be normalized to lower case. </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -4236,7 +4238,8 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
                   <td>with_value</td>
                   <td><a href="#policy.AttributeValueSelector">policy.AttributeValueSelector</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Optional
+This attribute value selector is not used currently, but left here for future use. </p></td>
                 </tr>
               
             </tbody>
@@ -4346,14 +4349,15 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
                   <td>attribute_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>state</td>
                   <td><a href="#common.ActiveStateEnum">common.ActiveStateEnum</a></td>
                   <td></td>
-                  <td><p>ACTIVE by default when not specified </p></td>
+                  <td><p>Optional
+ACTIVE by default when not specified </p></td>
                 </tr>
               
             </tbody>
@@ -4401,14 +4405,16 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
                   <td>state</td>
                   <td><a href="#common.ActiveStateEnum">common.ActiveStateEnum</a></td>
                   <td></td>
-                  <td><p>ACTIVE by default when not specified </p></td>
+                  <td><p>Optional
+ACTIVE by default when not specified </p></td>
                 </tr>
               
                 <tr>
                   <td>namespace</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>can be id or name </p></td>
+                  <td><p>Optional
+Namespace ID or name </p></td>
                 </tr>
               
             </tbody>
@@ -4456,7 +4462,7 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
                   <td>attribute_key_access_server</td>
                   <td><a href="#policy.attributes.AttributeKeyAccessServer">AttributeKeyAccessServer</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -4504,7 +4510,7 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
                   <td>value_key_access_server</td>
                   <td><a href="#policy.attributes.ValueKeyAccessServer">ValueKeyAccessServer</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -4614,14 +4620,15 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
-                  <td><p>Common metadata </p></td>
+                  <td><p>Optional
+Common metadata </p></td>
                 </tr>
               
                 <tr>
@@ -4676,14 +4683,14 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
                   <td>value_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>key_access_server_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -5019,7 +5026,7 @@ Attribute &lt;&gt; Key Access Server RPCs
                   <td>public_key</td>
                   <td><a href="#policy.PublicKey">policy.PublicKey</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
@@ -5081,7 +5088,7 @@ Attribute &lt;&gt; Key Access Server RPCs
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -5129,7 +5136,7 @@ Attribute &lt;&gt; Key Access Server RPCs
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -5254,22 +5261,26 @@ Attribute &lt;&gt; Key Access Server RPCs
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Optional
-Filter LIST by either ID, URI, or common name of a registered Key Access Server.
-If none are provided, grants from all registered KASs to policy attribute objects are returned. </p></td>
+Filter LIST by ID of a registered Key Access Server.
+If neither is provided, grants from all registered KASs to policy attribute objects are returned. </p></td>
                 </tr>
               
                 <tr>
                   <td>kas_uri</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Optional
+Filter LIST by URI of a registered Key Access Server.
+If none is provided, grants from all registered KASs to policy attribute objects are returned. </p></td>
                 </tr>
               
                 <tr>
                   <td>kas_name</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Optional
+Filter LIST by name of a registered Key Access Server.
+If none are provided, grants from all registered KASs to policy attribute objects are returned. </p></td>
                 </tr>
               
             </tbody>
@@ -5355,28 +5366,29 @@ If none are provided, grants from all registered KASs to policy attribute object
                   <td>uri</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Optional - PATCH style </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>
                   <td>public_key</td>
                   <td><a href="#policy.PublicKey">policy.PublicKey</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>
                   <td>name</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
-                  <td><p>Common metadata </p></td>
+                  <td><p>Optional
+Common metadata </p></td>
                 </tr>
               
                 <tr>
@@ -5680,7 +5692,7 @@ If none are provided, grants from all registered KASs to policy attribute object
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -5711,7 +5723,7 @@ If none are provided, grants from all registered KASs to policy attribute object
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -5759,7 +5771,8 @@ If none are provided, grants from all registered KASs to policy attribute object
                   <td>state</td>
                   <td><a href="#common.ActiveStateEnum">common.ActiveStateEnum</a></td>
                   <td></td>
-                  <td><p>ACTIVE by default when not specified </p></td>
+                  <td><p>Optional
+ACTIVE by default when not specified </p></td>
                 </tr>
               
             </tbody>
@@ -5807,14 +5820,14 @@ If none are provided, grants from all registered KASs to policy attribute object
                   <td>namespace_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>key_access_server_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -6120,7 +6133,7 @@ Namespace &lt;&gt; Key Access Server RPCs
                   <td>name</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
@@ -6162,7 +6175,7 @@ Namespace &lt;&gt; Key Access Server RPCs
         
       
         <h3 id="policy.resourcemapping.CreateResourceMappingRequest">CreateResourceMappingRequest</h3>
-        <p>### Request</p><p>grpcurl -plaintext -d @ localhost:8080 policy.resourcemapping.ResourceMappingService/CreateResourceMapping <<EOM</p><p>{</p><p>"mapping": {</p><p>"name": "Classification",</p><p>"attribute_value_id": "12345678-1234-1234-1234-123456789012",</p><p>"terms": ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]</p><p>}</p><p>}</p><p>EOM</p><p>### Response</p><p>{</p><p>"mapping": {</p><p>"metadata": {</p><p>"id": "12345678-1234-1234-1234-123456789012",</p><p>"created_at": "2020-01-01T00:00:00Z",</p><p>"updated_at": "2020-01-01T00:00:00Z"</p><p>},</p><p>"name": "Classification",</p><p>"attribute_value_id": "12345678-1234-1234-1234-123456789012",</p><p>"terms": ["CONFIDENTIAL", "CONTROLLED UNCLASSIFIED", "OFFICIAL-SENSITIVE", "CUI", "C"]</p><p>}</p><p>}</p>
+        <p></p>
 
         
           <table class="field-table">
@@ -6182,7 +6195,7 @@ Namespace &lt;&gt; Key Access Server RPCs
                   <td>terms</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
@@ -6196,7 +6209,7 @@ Namespace &lt;&gt; Key Access Server RPCs
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>
@@ -6657,7 +6670,7 @@ Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group n
                   <td>name</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>
@@ -6733,21 +6746,22 @@ Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group n
                   <td>terms</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
-                  <td><p> </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>
                   <td>group_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
-                  <td><p>Common Metadata </p></td>
+                  <td><p>Optional
+Common Metadata </p></td>
                 </tr>
               
                 <tr>
@@ -7089,7 +7103,8 @@ Attribute Value to be mapped to </p></td>
                   <td>actions</td>
                   <td><a href="#policy.Action">policy.Action</a></td>
                   <td>repeated</td>
-                  <td><p>The actions permitted by subjects in this mapping </p></td>
+                  <td><p>Required
+The actions permitted by subjects in this mapping </p></td>
                 </tr>
               
                 <tr>
@@ -7190,7 +7205,7 @@ Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -7238,7 +7253,7 @@ Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -7286,7 +7301,7 @@ Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -7341,7 +7356,7 @@ Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -7438,7 +7453,7 @@ Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition
         
       
         <h3 id="policy.subjectmapping.MatchSubjectMappingsRequest">MatchSubjectMappingsRequest</h3>
-        <p>MatchSubjectMappingsRequest liberally returns a list of SubjectMappings based on the provided SubjectProperties. The SubjectMappings are returned</p><p>if there is any single condition found among the structures that matches for one of the provided properties:</p><p>1. The external selector value, external value, and an IN operator</p><p>2. The external selector value, _no_ external value, and a NOT_IN operator</p><p>Without this filtering, if a selector value was something like '.emailAddress' or '.username', every Subject is probably going to relate to that mapping</p><p>in some way or another, potentially matching every single attribute in the DB if a policy admin has relied heavily on that field. There is no</p><p>logic applied beyond a single condition within the query to avoid business logic interpreting the supplied conditions beyond the bare minimum</p><p>initial filter.</p><p>NOTE: if you have any issues, debug logs are available within the service to help identify why a mapping was or was not returned.</p>
+        <p>MatchSubjectMappingsRequest liberally returns a list of SubjectMappings based on the provided SubjectProperties.</p><p>The SubjectMappings are returned if an external selector field matches.</p>
 
         
           <table class="field-table">
@@ -7616,7 +7631,8 @@ Replaces the existing SubjectConditionSet id with a new one </p></td>
                   <td>actions</td>
                   <td><a href="#policy.Action">policy.Action</a></td>
                   <td>repeated</td>
-                  <td><p>Replaces entire list of actions permitted by subjects </p></td>
+                  <td><p>Optional
+Replaces entire list of actions permitted by subjects </p></td>
                 </tr>
               
                 <tr>
@@ -7934,7 +7950,8 @@ UUID of the Attribute </p></td>
                   <td>fqn</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Fully Qualified Name (FQN) of Attribute Definition (i.e. https://&lt;namespace&gt;/attr/&lt;attribute name&gt;), normalized to lower case. </p></td>
+                  <td><p>Required
+Fully Qualified Name (FQN) of Attribute Definition (i.e. https://&lt;namespace&gt;/attr/&lt;attribute name&gt;), normalized to lower case. </p></td>
                 </tr>
               
             </tbody>
@@ -7990,7 +8007,8 @@ UUID of the Attribute Value </p></td>
                   <td>fqn</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Fully Qualified Name (FQN) of Attribute Value (i.e. https://&lt;namespace&gt;/attr/&lt;attribute name&gt;/value/&lt;value&gt;), normalized to lower case. </p></td>
+                  <td><p>Required
+Fully Qualified Name (FQN) of Attribute Value (i.e. https://&lt;namespace&gt;/attr/&lt;attribute name&gt;/value/&lt;value&gt;), normalized to lower case. </p></td>
                 </tr>
               
             </tbody>
@@ -8046,7 +8064,8 @@ UUID of the Namespace </p></td>
                   <td>fqn</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Fully Qualified Name (FQN) of Namespace (i.e. https://&lt;namespace&gt;), normalized to lower case. </p></td>
+                  <td><p>Required
+Fully Qualified Name (FQN) of Namespace (i.e. https://&lt;namespace&gt;), normalized to lower case. </p></td>
                 </tr>
               
             </tbody>
@@ -8094,7 +8113,7 @@ UUID of the Namespace </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -8142,7 +8161,7 @@ UUID of the Namespace </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -8190,7 +8209,7 @@ UUID of the Namespace </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -8254,7 +8273,8 @@ Updating the name of an Attribute will retroactively alter access to existing TD
                   <td>rule</td>
                   <td><a href="#policy.AttributeRuleTypeEnum">policy.AttributeRuleTypeEnum</a></td>
                   <td></td>
-                  <td><p>WARNING!! 
+                  <td><p>Optional
+WARNING!! 
 Updating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name. </p></td>
                 </tr>
               
@@ -8262,7 +8282,8 @@ Updating the rule of an Attribute will retroactively alter access to existing TD
                   <td>values_order</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
-                  <td><p>WARNING!!
+                  <td><p>Optional
+WARNING!!
 Unsafe reordering requires the full list of values in the new order they should be stored. Updating the order of values in a HIERARCHY-rule Attribute Definition
 will retroactively alter access to existing TDFs containing those values. Replacing values on an attribute in place is not supported; values can be unsafely deleted
 deleted, created, and unsafely re-ordered as necessary. </p></td>
@@ -8313,14 +8334,14 @@ deleted, created, and unsafely re-ordered as necessary. </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>value</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -8375,7 +8396,7 @@ deleted, created, and unsafely re-ordered as necessary. </p></td>
                   <td>name</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>

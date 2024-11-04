@@ -9,7 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var validName = "namespace.org"
+const (
+	validName      = "namespace.org"
+	validUUID      = "390e0058-7ae8-48f6-821c-9db07c831276"
+	errMessageUUID = "string.uuid"
+)
 
 func getValidator() *protovalidate.Validator {
 	v, err := protovalidate.New()
@@ -108,4 +112,84 @@ func TestCreateNamespace_NameMissing_Fails(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "name")
 	require.Contains(t, err.Error(), "[required]")
+}
+
+func Test_GetNamespaceRequest_Succeeds(t *testing.T) {
+	req := &namespaces.GetNamespaceRequest{}
+	v := getValidator()
+
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageUUID)
+
+	req.Id = validUUID
+	err = v.Validate(req)
+	require.NoError(t, err)
+}
+
+func Test_UpdateNamespaceRequest_Succeeds(t *testing.T) {
+	req := &namespaces.UpdateNamespaceRequest{}
+	v := getValidator()
+
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageUUID)
+
+	req.Id = validUUID
+	err = v.Validate(req)
+	require.NoError(t, err)
+}
+
+func Test_DeactivateNamespaceRequest_Succeeds(t *testing.T) {
+	req := &namespaces.DeactivateNamespaceRequest{}
+	v := getValidator()
+
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageUUID)
+
+	req.Id = validUUID
+	err = v.Validate(req)
+	require.NoError(t, err)
+}
+
+func Test_NamespaceKeyAccessServer_Succeeds(t *testing.T) {
+	validNamespaceKas := &namespaces.NamespaceKeyAccessServer{
+		NamespaceId:       validUUID,
+		KeyAccessServerId: validUUID,
+	}
+
+	err := getValidator().Validate(validNamespaceKas)
+	require.NoError(t, err)
+}
+
+func Test_NamespaceKeyAccessServer_Fails(t *testing.T) {
+	bad := []struct {
+		nsID  string
+		kasID string
+	}{
+		{
+			"",
+			validUUID,
+		},
+		{
+			validUUID,
+			"",
+		},
+		{
+			"",
+			"",
+		},
+		{},
+	}
+
+	for _, test := range bad {
+		invalidNamespaceKAS := &namespaces.NamespaceKeyAccessServer{
+			NamespaceId:       test.nsID,
+			KeyAccessServerId: test.kasID,
+		}
+		err := getValidator().Validate(invalidNamespaceKAS)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), errMessageUUID)
+	}
 }

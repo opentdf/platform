@@ -24,7 +24,7 @@ message ListResourceMappingGroupsRequest {
     }];
 
   // Optional
-  policy.PageRequest pagination = 2;
+  policy.PageRequest pagination = 10;
 }
 
 message ListResourceMappingGroupsResponse {
@@ -117,7 +117,7 @@ message ListResourceMappingsRequest {
   }];
 
   // Optional
-  policy.PageRequest pagination = 2;
+  policy.PageRequest pagination = 10;
 }
 
 message ListResourceMappingsResponse {

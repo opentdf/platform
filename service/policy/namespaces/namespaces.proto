@@ -46,7 +46,7 @@ message ListNamespacesRequest {
   common.ActiveStateEnum state = 1;
 
   // Optional
-  policy.PageRequest pagination = 2;
+  policy.PageRequest pagination = 10;
 }
 message ListNamespacesResponse {
   repeated policy.Namespace namespaces = 1;

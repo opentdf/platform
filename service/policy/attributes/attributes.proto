@@ -47,7 +47,7 @@ message ListAttributesRequest {
   string namespace = 2;
 
   // Optional
-  policy.PageRequest pagination = 3;
+  policy.PageRequest pagination = 10;
 }
 message ListAttributesResponse {
   repeated policy.Attribute attributes = 1;
@@ -156,7 +156,7 @@ message ListAttributeValuesRequest {
   common.ActiveStateEnum state = 2;
 
   // Optional
-  policy.PageRequest pagination = 3;
+  policy.PageRequest pagination = 10;
 }
 message ListAttributeValuesResponse {
   repeated policy.Value values = 1;

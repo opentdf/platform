@@ -20,7 +20,7 @@ message GetKeyAccessServerResponse {
 
 message ListKeyAccessServersRequest {
   // Optional
-  policy.PageRequest pagination = 1;
+  policy.PageRequest pagination = 10;
 }
 message ListKeyAccessServersResponse {
   repeated KeyAccessServer key_access_servers = 1;
@@ -151,7 +151,7 @@ message ListKeyAccessServerGrantsRequest {
   ];
 
   // Optional
-  policy.PageRequest pagination = 20;
+  policy.PageRequest pagination = 10;
 }
 message ListKeyAccessServerGrantsResponse {
   repeated KeyAccessServerGrants grants = 1;

@@ -64,6 +64,6 @@ func pgtypeBool(b bool) pgtype.Bool {
 
 // Helper function for swallowing the error in a Pgx Transaction rollback per the documentation
 func TxRollback(ctx context.Context, tx pgx.Tx) {
-	//nolint noop https://pkg.go.dev/github.com/jackc/pgx#hdr-Transactions
+	//nolint:errcheck // noop https://pkg.go.dev/github.com/jackc/pgx#hdr-Transactions
 	tx.Rollback(ctx)
 }

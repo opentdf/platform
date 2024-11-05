@@ -98,7 +98,6 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *namespaces
 		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, "begin txn failed", slog.String("name", req.GetName()))
 	}
-	// safe to ignore error per https://pkg.go.dev/github.com/jackc/pgx#hdr-Transactions
 	defer policydb.TxRollback(ctx, tx)
 
 	n, err := ns.dbClient.WithTx(tx).CreateNamespace(ctx, req)

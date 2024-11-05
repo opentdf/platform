@@ -1,9 +1,11 @@
 package db
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -58,4 +60,10 @@ func pgtypeBool(b bool) pgtype.Bool {
 		Bool:  b,
 		Valid: true,
 	}
+}
+
+// Helper function for swallowing the error in a Pgx Transaction rollback per the documentation
+func TxRollback(ctx context.Context, tx pgx.Tx) {
+	//nolint noop https://pkg.go.dev/github.com/jackc/pgx#hdr-Transactions
+	tx.Rollback(ctx)
 }

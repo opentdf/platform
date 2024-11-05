@@ -238,9 +238,6 @@ func (s *NamespacesSuite) Test_UpdateNamespace() {
 		},
 	})
 	metadata := created.GetMetadata()
-	// only GET returns populated created/updated times
-	s.Nil(metadata.GetCreatedAt())
-	s.Nil(metadata.GetUpdatedAt())
 
 	s.Require().NoError(err)
 	s.NotNil(created)

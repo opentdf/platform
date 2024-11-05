@@ -18,7 +18,7 @@ import (
 func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID string, r *attributes.CreateAttributeValueRequest) (*policy.Value, error) {
 	value := strings.ToLower(r.GetValue())
 
-	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
+	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
@@ -33,23 +33,12 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 	}
 
 	// Update FQN
-	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: createdID})
-	if fqn != "" {
-		c.logger.Debug("created new attribute value FQN",
-			slog.String("value_id", createdID),
-			slog.String("value", value),
-			slog.String("fqn", fqn),
-		)
+	_, err = c.Queries.UpsertAttributeValueFqn(ctx, createdID)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	return &policy.Value{
-		Id:        createdID,
-		Attribute: &policy.Attribute{Id: attributeID},
-		Value:     value,
-		Metadata:  metadata,
-		Active:    &wrapperspb.BoolValue{Value: true},
-		Fqn:       fqn,
-	}, nil
+	return c.GetAttributeValue(ctx, createdID)
 }
 
 func (c PolicyDBClient) GetAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
@@ -222,18 +211,12 @@ func (c PolicyDBClient) UnsafeUpdateAttributeValue(ctx context.Context, r *unsaf
 	}
 
 	// Update FQN
-	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{valueID: id})
-	c.logger.Debug("upserted fqn for unsafely updated value",
-		slog.String("id", id),
-		slog.String("value", value),
-		slog.String("fqn", fqn),
-	)
+	_, err = c.Queries.UpsertAttributeValueFqn(ctx, id)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
 
-	return &policy.Value{
-		Id:    id,
-		Value: value,
-		Fqn:   fqn,
-	}, nil
+	return c.GetAttributeValue(ctx, id)
 }
 
 func (c PolicyDBClient) DeactivateAttributeValue(ctx context.Context, id string) (*policy.Value, error) {

@@ -19,17 +19,18 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	SubjectMappingService_MatchSubjectMappings_FullMethodName      = "/policy.subjectmapping.SubjectMappingService/MatchSubjectMappings"
-	SubjectMappingService_ListSubjectMappings_FullMethodName       = "/policy.subjectmapping.SubjectMappingService/ListSubjectMappings"
-	SubjectMappingService_GetSubjectMapping_FullMethodName         = "/policy.subjectmapping.SubjectMappingService/GetSubjectMapping"
-	SubjectMappingService_CreateSubjectMapping_FullMethodName      = "/policy.subjectmapping.SubjectMappingService/CreateSubjectMapping"
-	SubjectMappingService_UpdateSubjectMapping_FullMethodName      = "/policy.subjectmapping.SubjectMappingService/UpdateSubjectMapping"
-	SubjectMappingService_DeleteSubjectMapping_FullMethodName      = "/policy.subjectmapping.SubjectMappingService/DeleteSubjectMapping"
-	SubjectMappingService_ListSubjectConditionSets_FullMethodName  = "/policy.subjectmapping.SubjectMappingService/ListSubjectConditionSets"
-	SubjectMappingService_GetSubjectConditionSet_FullMethodName    = "/policy.subjectmapping.SubjectMappingService/GetSubjectConditionSet"
-	SubjectMappingService_CreateSubjectConditionSet_FullMethodName = "/policy.subjectmapping.SubjectMappingService/CreateSubjectConditionSet"
-	SubjectMappingService_UpdateSubjectConditionSet_FullMethodName = "/policy.subjectmapping.SubjectMappingService/UpdateSubjectConditionSet"
-	SubjectMappingService_DeleteSubjectConditionSet_FullMethodName = "/policy.subjectmapping.SubjectMappingService/DeleteSubjectConditionSet"
+	SubjectMappingService_MatchSubjectMappings_FullMethodName                  = "/policy.subjectmapping.SubjectMappingService/MatchSubjectMappings"
+	SubjectMappingService_ListSubjectMappings_FullMethodName                   = "/policy.subjectmapping.SubjectMappingService/ListSubjectMappings"
+	SubjectMappingService_GetSubjectMapping_FullMethodName                     = "/policy.subjectmapping.SubjectMappingService/GetSubjectMapping"
+	SubjectMappingService_CreateSubjectMapping_FullMethodName                  = "/policy.subjectmapping.SubjectMappingService/CreateSubjectMapping"
+	SubjectMappingService_UpdateSubjectMapping_FullMethodName                  = "/policy.subjectmapping.SubjectMappingService/UpdateSubjectMapping"
+	SubjectMappingService_DeleteSubjectMapping_FullMethodName                  = "/policy.subjectmapping.SubjectMappingService/DeleteSubjectMapping"
+	SubjectMappingService_ListSubjectConditionSets_FullMethodName              = "/policy.subjectmapping.SubjectMappingService/ListSubjectConditionSets"
+	SubjectMappingService_GetSubjectConditionSet_FullMethodName                = "/policy.subjectmapping.SubjectMappingService/GetSubjectConditionSet"
+	SubjectMappingService_CreateSubjectConditionSet_FullMethodName             = "/policy.subjectmapping.SubjectMappingService/CreateSubjectConditionSet"
+	SubjectMappingService_UpdateSubjectConditionSet_FullMethodName             = "/policy.subjectmapping.SubjectMappingService/UpdateSubjectConditionSet"
+	SubjectMappingService_DeleteSubjectConditionSet_FullMethodName             = "/policy.subjectmapping.SubjectMappingService/DeleteSubjectConditionSet"
+	SubjectMappingService_DeleteAllUnmappedSubjectConditionSets_FullMethodName = "/policy.subjectmapping.SubjectMappingService/DeleteAllUnmappedSubjectConditionSets"
 )
 
 // SubjectMappingServiceClient is the client API for SubjectMappingService service.
@@ -48,6 +49,7 @@ type SubjectMappingServiceClient interface {
 	CreateSubjectConditionSet(ctx context.Context, in *CreateSubjectConditionSetRequest, opts ...grpc.CallOption) (*CreateSubjectConditionSetResponse, error)
 	UpdateSubjectConditionSet(ctx context.Context, in *UpdateSubjectConditionSetRequest, opts ...grpc.CallOption) (*UpdateSubjectConditionSetResponse, error)
 	DeleteSubjectConditionSet(ctx context.Context, in *DeleteSubjectConditionSetRequest, opts ...grpc.CallOption) (*DeleteSubjectConditionSetResponse, error)
+	DeleteAllUnmappedSubjectConditionSets(ctx context.Context, in *DeleteAllUnmappedSubjectConditionSetsRequest, opts ...grpc.CallOption) (*DeleteAllUnmappedSubjectConditionSetsResponse, error)
 }
 
 type subjectMappingServiceClient struct {
@@ -157,6 +159,15 @@ func (c *subjectMappingServiceClient) DeleteSubjectConditionSet(ctx context.Cont
 	return out, nil
 }
 
+func (c *subjectMappingServiceClient) DeleteAllUnmappedSubjectConditionSets(ctx context.Context, in *DeleteAllUnmappedSubjectConditionSetsRequest, opts ...grpc.CallOption) (*DeleteAllUnmappedSubjectConditionSetsResponse, error) {
+	out := new(DeleteAllUnmappedSubjectConditionSetsResponse)
+	err := c.cc.Invoke(ctx, SubjectMappingService_DeleteAllUnmappedSubjectConditionSets_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SubjectMappingServiceServer is the server API for SubjectMappingService service.
 // All implementations must embed UnimplementedSubjectMappingServiceServer
 // for forward compatibility
@@ -173,6 +184,7 @@ type SubjectMappingServiceServer interface {
 	CreateSubjectConditionSet(context.Context, *CreateSubjectConditionSetRequest) (*CreateSubjectConditionSetResponse, error)
 	UpdateSubjectConditionSet(context.Context, *UpdateSubjectConditionSetRequest) (*UpdateSubjectConditionSetResponse, error)
 	DeleteSubjectConditionSet(context.Context, *DeleteSubjectConditionSetRequest) (*DeleteSubjectConditionSetResponse, error)
+	DeleteAllUnmappedSubjectConditionSets(context.Context, *DeleteAllUnmappedSubjectConditionSetsRequest) (*DeleteAllUnmappedSubjectConditionSetsResponse, error)
 	mustEmbedUnimplementedSubjectMappingServiceServer()
 }
 
@@ -212,6 +224,9 @@ func (UnimplementedSubjectMappingServiceServer) UpdateSubjectConditionSet(contex
 }
 func (UnimplementedSubjectMappingServiceServer) DeleteSubjectConditionSet(context.Context, *DeleteSubjectConditionSetRequest) (*DeleteSubjectConditionSetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteSubjectConditionSet not implemented")
+}
+func (UnimplementedSubjectMappingServiceServer) DeleteAllUnmappedSubjectConditionSets(context.Context, *DeleteAllUnmappedSubjectConditionSetsRequest) (*DeleteAllUnmappedSubjectConditionSetsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteAllUnmappedSubjectConditionSets not implemented")
 }
 func (UnimplementedSubjectMappingServiceServer) mustEmbedUnimplementedSubjectMappingServiceServer() {}
 
@@ -424,6 +439,24 @@ func _SubjectMappingService_DeleteSubjectConditionSet_Handler(srv interface{}, c
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SubjectMappingService_DeleteAllUnmappedSubjectConditionSets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteAllUnmappedSubjectConditionSetsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubjectMappingServiceServer).DeleteAllUnmappedSubjectConditionSets(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubjectMappingService_DeleteAllUnmappedSubjectConditionSets_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubjectMappingServiceServer).DeleteAllUnmappedSubjectConditionSets(ctx, req.(*DeleteAllUnmappedSubjectConditionSetsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SubjectMappingService_ServiceDesc is the grpc.ServiceDesc for SubjectMappingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -474,6 +507,10 @@ var SubjectMappingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteSubjectConditionSet",
 			Handler:    _SubjectMappingService_DeleteSubjectConditionSet_Handler,
+		},
+		{
+			MethodName: "DeleteAllUnmappedSubjectConditionSets",
+			Handler:    _SubjectMappingService_DeleteAllUnmappedSubjectConditionSets_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

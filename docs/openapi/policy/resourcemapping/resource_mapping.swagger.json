@@ -188,7 +188,8 @@
                   "title": "Optional"
                 },
                 "name": {
-                  "type": "string"
+                  "type": "string",
+                  "title": "Optional"
                 },
                 "metadata": {
                   "$ref": "#/definitions/commonMetadataMutable",
@@ -271,7 +272,6 @@
         "parameters": [
           {
             "name": "body",
-            "description": "grpcurl -plaintext -d @ localhost:8080 policy.resourcemapping.ResourceMappingService/CreateResourceMapping \u003c\u003cEOM\n{\n\"mapping\": {\n\"name\": \"Classification\",\n\"attribute_value_id\": \"12345678-1234-1234-1234-123456789012\",\n\"terms\": [\"CONFIDENTIAL\", \"CONTROLLED UNCLASSIFIED\", \"OFFICIAL-SENSITIVE\", \"CUI\", \"C\"]\n}\n}\nEOM\n\n### Response\n\n{\n\"mapping\": {\n\"metadata\": {\n\"id\": \"12345678-1234-1234-1234-123456789012\",\n\"created_at\": \"2020-01-01T00:00:00Z\",\n\"updated_at\": \"2020-01-01T00:00:00Z\"\n},\n\"name\": \"Classification\",\n\"attribute_value_id\": \"12345678-1234-1234-1234-123456789012\",\n\"terms\": [\"CONFIDENTIAL\", \"CONTROLLED UNCLASSIFIED\", \"OFFICIAL-SENSITIVE\", \"CUI\", \"C\"]\n}\n}",
             "in": "body",
             "required": true,
             "schema": {
@@ -417,14 +417,16 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": "Optional"
                 },
                 "groupId": {
-                  "type": "string"
+                  "type": "string",
+                  "title": "Optional"
                 },
                 "metadata": {
                   "$ref": "#/definitions/commonMetadataMutable",
-                  "title": "Common Metadata"
+                  "title": "Optional\nCommon Metadata"
                 },
                 "metadataUpdateBehavior": {
                   "$ref": "#/definitions/commonMetadataUpdateEnum"
@@ -582,7 +584,6 @@
           "title": "list of comparison values for the result of applying the subject_external_selector_value on a flattened Entity Representation (Subject), evaluated by the operator"
         }
       },
-      "description": "Example:  Subjects with a field selected by the flattened selector \"'.division'\" and a value of \"Accounting\" or \"Marketing\":\n{\n\"subject_external_selector_value\": \"'.division'\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_IN\",\n\"subject_external_values\" : [\"Accounting\", \"Marketing\"]\n}\n\nExample: Subjects that are not part of the Fantastic Four according to their alias field:\n{\n\"subject_external_selector_value\": \"'.data[0].alias'\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN\",\n\"subject_external_values\" : [\"mister_fantastic\", \"the_thing\", \"human_torch\", \"invisible_woman\"]\n}",
       "title": "*\nA Condition defines a rule of \u003cthe value at the flattened 'selector value' location\u003e \u003coperator\u003e \u003csubject external values\u003e"
     },
     "policyConditionBooleanTypeEnum": {
@@ -664,6 +665,10 @@
         },
         "publicKey": {
           "$ref": "#/definitions/policyPublicKey"
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional\nUnique name of the KAS instance"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",
@@ -931,7 +936,8 @@
           "title": "Required"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadataMutable",
@@ -958,18 +964,18 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "title": "Required"
         },
         "groupId": {
           "type": "string",
           "title": "Optional"
         },
         "metadata": {
-          "$ref": "#/definitions/commonMetadataMutable"
+          "$ref": "#/definitions/commonMetadataMutable",
+          "title": "Optional"
         }
-      },
-      "description": "grpcurl -plaintext -d @ localhost:8080 policy.resourcemapping.ResourceMappingService/CreateResourceMapping \u003c\u003cEOM\n{\n\"mapping\": {\n\"name\": \"Classification\",\n\"attribute_value_id\": \"12345678-1234-1234-1234-123456789012\",\n\"terms\": [\"CONFIDENTIAL\", \"CONTROLLED UNCLASSIFIED\", \"OFFICIAL-SENSITIVE\", \"CUI\", \"C\"]\n}\n}\nEOM\n\n### Response\n\n{\n\"mapping\": {\n\"metadata\": {\n\"id\": \"12345678-1234-1234-1234-123456789012\",\n\"created_at\": \"2020-01-01T00:00:00Z\",\n\"updated_at\": \"2020-01-01T00:00:00Z\"\n},\n\"name\": \"Classification\",\n\"attribute_value_id\": \"12345678-1234-1234-1234-123456789012\",\n\"terms\": [\"CONFIDENTIAL\", \"CONTROLLED UNCLASSIFIED\", \"OFFICIAL-SENSITIVE\", \"CUI\", \"C\"]\n}\n}",
-      "title": "### Request"
+      }
     },
     "resourcemappingCreateResourceMappingResponse": {
       "type": "object",

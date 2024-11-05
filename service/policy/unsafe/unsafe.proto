@@ -13,8 +13,11 @@ import "policy/objects.proto";
 // Existing Attribute Definitions and their Values under the Namespace will now be associated with the new Namespace name.
 message UnsafeUpdateNamespaceRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 
+  // Required
   string name = 2 [
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
@@ -32,7 +35,10 @@ message UnsafeUpdateNamespaceResponse {
 // Reactivating a Namespace can potentially open up an access path to existing TDFs containing any Attributes under the Namespace.
 // Active state of any Definitions and their Values under this Namespace will NOT be changed.
 message UnsafeReactivateNamespaceRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message UnsafeReactivateNamespaceResponse {
     policy.Namespace namespace = 1;
@@ -44,7 +50,10 @@ message UnsafeReactivateNamespaceResponse {
 message UnsafeDeleteNamespaceRequest {
   // Required
   // UUID of the Namespace
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+  // Required
   // Fully Qualified Name (FQN) of Namespace (i.e. https://<namespace>), normalized to lower case.
   string fqn = 2 [(buf.validate.field).required = true];
 }
@@ -58,7 +67,9 @@ message UnsafeDeleteNamespaceResponse {
 // Updating an Attribute can have dangerous consequences. Use with caution.
 message UnsafeUpdateAttributeRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 
   // Optional
   // WARNING!! 
@@ -72,11 +83,13 @@ message UnsafeUpdateAttributeRequest {
       expression: "size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true"
     }
   ];
+  // Optional
   // WARNING!! 
   // Updating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.
   AttributeRuleTypeEnum rule = 3 [
     (buf.validate.field).enum.defined_only = true
   ];
+  // Optional
   // WARNING!!
   // Unsafe reordering requires the full list of values in the new order they should be stored. Updating the order of values in a HIERARCHY-rule Attribute Definition
   // will retroactively alter access to existing TDFs containing those values. Replacing values on an attribute in place is not supported; values can be unsafely deleted
@@ -91,7 +104,10 @@ message UnsafeUpdateAttributeResponse {
 // Reactivating an Attribute can potentially open up an access path to existing TDFs containing the Attribute name.
 // Active state of any Values under this Attribute Definition will NOT be changed.
 message UnsafeReactivateAttributeRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message UnsafeReactivateAttributeResponse {
   policy.Attribute attribute = 1;
@@ -104,7 +120,10 @@ message UnsafeReactivateAttributeResponse {
 message UnsafeDeleteAttributeRequest {
   // Required
   // UUID of the Attribute
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+  // Required
   // Fully Qualified Name (FQN) of Attribute Definition (i.e. https://<namespace>/attr/<attribute name>), normalized to lower case.
   string fqn = 2 [(buf.validate.field).required = true];
 }
@@ -119,8 +138,12 @@ message UnsafeDeleteAttributeResponse {
 // WARNING!! 
 // Updating an Attribute Value will retroactively alter access to existing TDFs containing the old and new Attribute Value.
 message UnsafeUpdateAttributeValueRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 
+  // Required
   string value = 2 [
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
@@ -137,7 +160,10 @@ message UnsafeUpdateAttributeValueResponse {
 // WARNING!!
 // Reactivating an Attribute Value can potentially open up an access path to existing TDFs containing the Attribute Value.
 message UnsafeReactivateAttributeValueRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message UnsafeReactivateAttributeValueResponse {
   policy.Value value = 1;
@@ -149,7 +175,10 @@ message UnsafeReactivateAttributeValueResponse {
 message UnsafeDeleteAttributeValueRequest {
   // Required
   // UUID of the Attribute Value
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+  // Required
   // Fully Qualified Name (FQN) of Attribute Value (i.e. https://<namespace>/attr/<attribute name>/value/<value>), normalized to lower case.
   string fqn = 2 [(buf.validate.field).required = true];
 }

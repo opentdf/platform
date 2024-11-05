@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
@@ -331,7 +330,7 @@ func (c PolicyDBClient) GetAttributesByNamespace(ctx context.Context, namespaceI
 func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.CreateAttributeRequest) (*policy.Attribute, error) {
 	name := strings.ToLower(r.GetName())
 	namespaceID := r.GetNamespaceId()
-	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
+	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
@@ -348,48 +347,24 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	}
 
 	// Add values
-	var values []*policy.Value
 	for _, v := range r.GetValues() {
 		req := &attributes.CreateAttributeValueRequest{
 			AttributeId: createdID,
 			Value:       v,
 		}
-		value, err := c.CreateAttributeValue(ctx, createdID, req)
+		_, err := c.CreateAttributeValue(ctx, createdID, req)
 		if err != nil {
 			return nil, err
 		}
-		values = append(values, value)
 	}
 
 	// Update the FQNs
-	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{
-		namespaceID: namespaceID,
-		attributeID: createdID,
-	})
-	c.logger.DebugContext(ctx, "upserted fqn with new attribute definition", slog.Any("fqn", fqn))
-
-	for _, v := range values {
-		fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{
-			namespaceID: namespaceID,
-			attributeID: createdID,
-			valueID:     v.GetId(),
-		})
-		c.logger.DebugContext(ctx, "upserted fqn with new attribute value on new definition create", slog.Any("fqn", fqn))
+	_, err = c.Queries.UpsertAttributeDefinitionFqn(ctx, createdID)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	a := &policy.Attribute{
-		Id:       createdID,
-		Name:     name,
-		Rule:     r.GetRule(),
-		Metadata: metadata,
-		Namespace: &policy.Namespace{
-			Id: namespaceID,
-		},
-		Active: &wrapperspb.BoolValue{Value: true},
-		Values: values,
-		Fqn:    fqn,
-	}
-	return a, nil
+	return c.GetAttribute(ctx, createdID)
 }
 
 func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.UnsafeUpdateAttributeRequest) (*policy.Attribute, error) {
@@ -445,27 +420,15 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 		return nil, db.ErrNotFound
 	}
 
-	attribute := &policy.Attribute{
-		Id:   id,
-		Name: name,
-		Rule: rule,
-	}
-
 	// Upsert all the FQNs with the definition name mutation
 	if name != "" {
-		namespaceID := before.GetNamespace().GetId()
-		attrFqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id})
-		c.logger.Debug("upserted attribute fqn with new definition name", slog.Any("fqn", attrFqn))
-		if len(before.GetValues()) > 0 {
-			for _, v := range before.GetValues() {
-				fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: namespaceID, attributeID: id, valueID: v.GetId()})
-				c.logger.Debug("upserted attribute value fqn with new definition name", slog.Any("fqn", fqn))
-			}
+		_, err = c.Queries.UpsertAttributeDefinitionFqn(ctx, id)
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
 		}
-		attribute.Fqn = attrFqn
 	}
 
-	return attribute, nil
+	return c.GetAttribute(ctx, id)
 }
 
 func (c PolicyDBClient) UpdateAttribute(ctx context.Context, id string, r *attributes.UpdateAttributeRequest) (*policy.Attribute, error) {

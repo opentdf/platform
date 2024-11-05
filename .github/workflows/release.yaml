@@ -72,7 +72,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
       - run: |
@@ -99,7 +99,7 @@ jobs:
           git diff
         env:
           GONOSUMDB: github.com/opentdf/platform/${{join(fromJson(needs.release-please.outputs.paths_released), ',github.com/opentdf/platform/')}}
-      - uses: planetscale/ghcommit-action@c7915d6c18d5ce4eb42b0eff3f10a29fe0766e4c
+      - uses: planetscale/ghcommit-action@d4176bfacef926cc2db351eab20398dfc2f593b5
         with:
           commit_message: "fix(core): Autobump ${{ matrix.path }}"
           repo: ${{ github.repository }}

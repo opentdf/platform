@@ -62,7 +62,8 @@ func (d *DBInterface) UUIDArrayWrap(v []string) string {
 }
 
 func (d *DBInterface) StringWrap(v string) string {
-	return "'" + v + "'"
+	escaped := strings.ReplaceAll(v, "'", "''")
+	return "'" + escaped + "'"
 }
 
 func (d *DBInterface) OptionalStringWrap(v string) string {

@@ -245,7 +245,7 @@ func TestNonZeroRandomPaddedIV(t *testing.T) {
 	iv, err := nonZeroRandomPaddedIV()
 	require.NoError(t, err)
 	require.NotNil(t, iv)
-	assert.Len(t, ocrypto.GcmStandardNonceSize, iv)
+	assert.Len(t, iv, ocrypto.GcmStandardNonceSize)
 
 	// Ensure that the IV is not all zeros
 	allZero := true

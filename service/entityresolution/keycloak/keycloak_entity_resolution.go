@@ -61,7 +61,7 @@ func RegisterKeycloakERS(config serviceregistry.ServiceConfig, logger *logger.Lo
 	keycloakSVC := &KeycloakEntityResolutionService{idpConfig: inputIdpConfig, logger: logger}
 	return keycloakSVC,
 		func(ctx context.Context, mux *runtime.ServeMux) error {
-			return entityresolution.RegisterEntityResolutionServiceHandlerServer(ctx, mux, keycloakSVC) //nolint:forcetypeassert // allow type assert, following other services
+			return entityresolution.RegisterEntityResolutionServiceHandlerServer(ctx, mux, keycloakSVC)
 		}
 }
 

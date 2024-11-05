@@ -26,7 +26,7 @@ func RegisterClaimsERS(_ serviceregistry.ServiceConfig, logger *logger.Logger) (
 	claimsSVC := ClaimsEntityResolutionService{logger: logger}
 	return claimsSVC,
 		func(ctx context.Context, mux *runtime.ServeMux) error {
-			return entityresolution.RegisterEntityResolutionServiceHandlerServer(ctx, mux, claimsSVC) //nolint:forcetypeassert // allow type assert, following other services
+			return entityresolution.RegisterEntityResolutionServiceHandlerServer(ctx, mux, claimsSVC)
 		}
 }
 

@@ -80,8 +80,7 @@ type IService interface {
 // of the service within the instance of the platform.
 type Service[S any] struct {
 	// Registration
-	impl       *S
-	handleFunc HandlerServer
+	impl *S
 	// Started is a flag that indicates whether the service has been started
 	Started bool
 	// Close is a function that can be called to close the service
@@ -150,7 +149,7 @@ func (s *Service[S]) Start(ctx context.Context, params RegistrationParams) error
 		)
 	}
 
-	s.impl, s.handleFunc = s.RegisterFunc(params)
+	s.impl, s.httpHandlerFunc = s.RegisterFunc(params)
 
 	s.Started = true
 	return nil
@@ -173,10 +172,10 @@ func (s *Service[S]) RegisterGRPCServer(server *grpc.Server) error {
 // It takes a context, a ServeMux, and an implementation function as parameters.
 // If the service did not register a handler, it returns an error.
 func (s *Service[S]) RegisterHTTPServer(ctx context.Context, mux *runtime.ServeMux) error {
-	if s.handleFunc == nil {
+	if s.httpHandlerFunc == nil {
 		return fmt.Errorf("service did not register a handler")
 	}
-	return s.handleFunc(ctx, mux)
+	return s.httpHandlerFunc(ctx, mux)
 }
 
 // namespace represents a namespace in the service registry.

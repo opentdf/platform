@@ -174,7 +174,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 			}
 
 			// Register the service with the gRPC gateway
-			if err := svc.RegisterHTTPServer(ctx, otdf.Mux); err != nil { //nolint:staticcheck // This is deprecated for internal tracking
+			if err := svc.RegisterHTTPServer(ctx, otdf.Mux); err != nil {
 				logger.Error("failed to register service to grpc gateway", slog.String("namespace", ns), slog.String("error", err.Error()))
 				return err
 			}

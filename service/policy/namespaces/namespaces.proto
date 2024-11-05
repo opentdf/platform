@@ -7,6 +7,7 @@ import "google/api/annotations.proto";
 
 import "common/common.proto";
 import "policy/objects.proto";
+import "policy/selectors.proto";
 
 /*
     Key Access Server Grants
@@ -43,9 +44,14 @@ message ListNamespacesRequest {
   // Optional
   // ACTIVE by default when not specified
   common.ActiveStateEnum state = 1;
+
+  // Optional
+  policy.PageRequest pagination = 10;
 }
 message ListNamespacesResponse {
   repeated policy.Namespace namespaces = 1;
+
+  policy.PageResponse pagination = 10;
 }
 
 message CreateNamespaceRequest {

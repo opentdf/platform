@@ -54,7 +54,6 @@ func (t Table) Field(field string) string {
 // We can rename this but wanted to get mocks working.
 type PgxIface interface {
 	Acquire(ctx context.Context) (*pgxpool.Conn, error)
-	Begin(ctx context.Context) (pgx.Tx, error)
 	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
 	QueryRow(context.Context, string, ...any) pgx.Row
 	Query(context.Context, string, ...any) (pgx.Rows, error)

@@ -513,6 +513,14 @@
                   <a href="#policy.AttributeValueSelector.AttributeSelector.NamespaceSelector"><span class="badge">M</span>AttributeValueSelector.AttributeSelector.NamespaceSelector</a>
                 </li>
               
+                <li>
+                  <a href="#policy.PageRequest"><span class="badge">M</span>PageRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.PageResponse"><span class="badge">M</span>PageResponse</a>
+                </li>
+              
               
               
               
@@ -946,6 +954,14 @@
               
                 <li>
                   <a href="#policy.subjectmapping.CreateSubjectMappingResponse"><span class="badge">M</span>CreateSubjectMappingResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest"><span class="badge">M</span>DeleteAllUnmappedSubjectConditionSetsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse"><span class="badge">M</span>DeleteAllUnmappedSubjectConditionSetsResponse</a>
                 </li>
               
                 <li>
@@ -1478,7 +1494,7 @@
         
       
         <h3 id="policy.Condition">Condition</h3>
-        <p>A Condition defines a rule of <the value at the flattened 'selector value' location> <operator> <subject external values></p><p>Example:  Subjects with a field selected by the flattened selector "'.division'" and a value of "Accounting" or "Marketing":</p><p>{</p><p>"subject_external_selector_value": "'.division'",</p><p>"operator": "SUBJECT_MAPPING_OPERATOR_ENUM_IN",</p><p>"subject_external_values" : ["Accounting", "Marketing"]</p><p>}</p><p>Example: Subjects that are not part of the Fantastic Four according to their alias field:</p><p>{</p><p>"subject_external_selector_value": "'.data[0].alias'",</p><p>"operator": "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN",</p><p>"subject_external_values" : ["mister_fantastic", "the_thing", "human_torch", "invisible_woman"]</p><p>}</p>
+        <p>A Condition defines a rule of <the value at the flattened 'selector value' location> <operator> <subject external values></p>
 
         
           <table class="field-table">
@@ -3734,6 +3750,79 @@ Unique name of the KAS instance </p></td>
 
         
       
+        <h3 id="policy.PageRequest">PageRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>limit</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p>Optional
+Set to configured default limit if not provided
+Maximum limit set in platform config and enforced by services </p></td>
+                </tr>
+              
+                <tr>
+                  <td>offset</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p>Optional
+Defaulted if not provided </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.PageResponse">PageResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>current_offset</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p>Requested pagination offset </p></td>
+                </tr>
+              
+                <tr>
+                  <td>next_offset</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p>Calculated with request limit &#43; offset or defaults
+Empty when none remain after current page </p></td>
+                </tr>
+              
+                <tr>
+                  <td>total</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p>Total count of entire list </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
 
       
 
@@ -4230,7 +4319,8 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
                   <td>with_value</td>
                   <td><a href="#policy.AttributeValueSelector">policy.AttributeValueSelector</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Optional
+This attribute value selector is not used currently, but left here for future use. </p></td>
                 </tr>
               
             </tbody>
@@ -4351,6 +4441,13 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
 ACTIVE by default when not specified </p></td>
                 </tr>
               
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -4372,6 +4469,13 @@ ACTIVE by default when not specified </p></td>
                   <td>values</td>
                   <td><a href="#policy.Value">policy.Value</a></td>
                   <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               
@@ -4408,6 +4512,13 @@ ACTIVE by default when not specified </p></td>
 Namespace ID or name </p></td>
                 </tr>
               
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -4429,6 +4540,13 @@ Namespace ID or name </p></td>
                   <td>attributes</td>
                   <td><a href="#policy.Attribute">policy.Attribute</a></td>
                   <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               
@@ -5252,7 +5370,7 @@ Attribute &lt;&gt; Key Access Server RPCs
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Optional
-Filter LIST by either ID of a registered Key Access Server.
+Filter LIST by ID of a registered Key Access Server.
 If neither is provided, grants from all registered KASs to policy attribute objects are returned. </p></td>
                 </tr>
               
@@ -5272,6 +5390,13 @@ If none is provided, grants from all registered KASs to policy attribute objects
                   <td><p>Optional
 Filter LIST by name of a registered Key Access Server.
 If none are provided, grants from all registered KASs to policy attribute objects are returned. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>
@@ -5298,6 +5423,13 @@ If none are provided, grants from all registered KASs to policy attribute object
                   <td><p> </p></td>
                 </tr>
               
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -5309,6 +5441,23 @@ If none are provided, grants from all registered KASs to policy attribute object
         <p></p>
 
         
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
 
         
       
@@ -5326,6 +5475,13 @@ If none are provided, grants from all registered KASs to policy attribute object
                   <td>key_access_servers</td>
                   <td><a href="#policy.KeyAccessServer">policy.KeyAccessServer</a></td>
                   <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               
@@ -5766,6 +5922,13 @@ Common metadata </p></td>
 ACTIVE by default when not specified </p></td>
                 </tr>
               
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -5787,6 +5950,13 @@ ACTIVE by default when not specified </p></td>
                   <td>namespaces</td>
                   <td><a href="#policy.Namespace">policy.Namespace</a></td>
                   <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               
@@ -6443,6 +6613,13 @@ Namespace &lt;&gt; Key Access Server RPCs
                   <td><p>Optional </p></td>
                 </tr>
               
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -6464,6 +6641,13 @@ Namespace &lt;&gt; Key Access Server RPCs
                   <td>resource_mapping_groups</td>
                   <td><a href="#policy.ResourceMappingGroup">policy.ResourceMappingGroup</a></td>
                   <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               
@@ -6571,6 +6755,13 @@ Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group n
                   <td><p>Optional </p></td>
                 </tr>
               
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -6592,6 +6783,13 @@ Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group n
                   <td>resource_mappings</td>
                   <td><a href="#policy.ResourceMapping">policy.ResourceMapping</a></td>
                   <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               
@@ -7151,6 +7349,37 @@ Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition
 
         
       
+        <h3 id="policy.subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest">DeleteAllUnmappedSubjectConditionSetsRequest</h3>
+        <p>Prune any Subject Condition Sets not utilized within a Subject Mapping</p>
+
+        
+
+        
+      
+        <h3 id="policy.subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse">DeleteAllUnmappedSubjectConditionSetsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>subject_condition_sets</td>
+                  <td><a href="#policy.SubjectConditionSet">policy.SubjectConditionSet</a></td>
+                  <td>repeated</td>
+                  <td><p>Only IDs of any deleted Subject Condition Set provided </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.subjectmapping.DeleteSubjectConditionSetRequest">DeleteSubjectConditionSetRequest</h3>
         <p></p>
 
@@ -7354,6 +7583,23 @@ Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition
         <p></p>
 
         
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
 
         
       
@@ -7374,6 +7620,13 @@ Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition
                   <td><p> </p></td>
                 </tr>
               
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -7385,6 +7638,23 @@ Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition
         <p></p>
 
         
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
 
         
       
@@ -7405,6 +7675,13 @@ Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition
                   <td><p> </p></td>
                 </tr>
               
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -7413,7 +7690,7 @@ Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition
         
       
         <h3 id="policy.subjectmapping.MatchSubjectMappingsRequest">MatchSubjectMappingsRequest</h3>
-        <p>MatchSubjectMappingsRequest liberally returns a list of SubjectMappings based on the provided SubjectProperties. The SubjectMappings are returned</p><p>if there is any single condition found among the structures that matches for one of the provided properties:</p><p>1. The external selector value, external value, and an IN operator</p><p>2. The external selector value, _no_ external value, and a NOT_IN operator</p><p>Without this filtering, if a selector value was something like '.emailAddress' or '.username', every Subject is probably going to relate to that mapping</p><p>in some way or another, potentially matching every single attribute in the DB if a policy admin has relied heavily on that field. There is no</p><p>logic applied beyond a single condition within the query to avoid business logic interpreting the supplied conditions beyond the bare minimum</p><p>initial filter.</p><p>NOTE: if you have any issues, debug logs are available within the service to help identify why a mapping was or was not returned.</p>
+        <p>MatchSubjectMappingsRequest liberally returns a list of SubjectMappings based on the provided SubjectProperties.</p><p>The SubjectMappings are returned if an external selector field matches.</p>
 
         
           <table class="field-table">
@@ -7731,6 +8008,13 @@ Replaces entire list of actions permitted by subjects </p></td>
                 <td><p></p></td>
               </tr>
             
+              <tr>
+                <td>DeleteAllUnmappedSubjectConditionSets</td>
+                <td><a href="#policy.subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest">DeleteAllUnmappedSubjectConditionSetsRequest</a></td>
+                <td><a href="#policy.subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse">DeleteAllUnmappedSubjectConditionSetsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
           </tbody>
         </table>
 
@@ -7855,6 +8139,16 @@ Replaces entire list of actions permitted by subjects </p></td>
                 <td>DeleteSubjectConditionSet</td>
                 <td>DELETE</td>
                 <td>/subject-condition-sets/{id}</td>
+                <td></td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>DeleteAllUnmappedSubjectConditionSets</td>
+                <td>DELETE</td>
+                <td>/subject-condition-sets/unmapped</td>
                 <td></td>
               </tr>
               

@@ -80,7 +80,7 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, state string) ([]*po
 
 func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.CreateNamespaceRequest) (*policy.Namespace, error) {
 	name := strings.ToLower(r.GetName())
-	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
+	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
@@ -94,16 +94,12 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 	}
 
 	// Update FQN
-	fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: createdID})
-	c.logger.Debug("upserted fqn for created namespace", slog.Any("fqn", fqn))
+	_, err = c.Queries.UpsertAttributeNamespaceFqn(ctx, createdID)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
 
-	return &policy.Namespace{
-		Id:       createdID,
-		Name:     name,
-		Active:   &wrapperspb.BoolValue{Value: true},
-		Metadata: metadata,
-		Fqn:      fqn,
-	}, nil
+	return c.GetNamespace(ctx, createdID)
 }
 
 func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *namespaces.UpdateNamespaceRequest) (*policy.Namespace, error) {
@@ -157,27 +153,12 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 	}
 
 	// Update all FQNs that may contain the namespace name
-	nsFqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id})
-	c.logger.Debug("upserted fqn for unsafely updated namespace", slog.Any("fqn", nsFqn))
-
-	attrs, err := c.ListAttributes(ctx, StateAny, id)
+	_, err = c.Queries.UpsertAttributeNamespaceFqn(ctx, id)
 	if err != nil {
-		return nil, err
-	}
-	for _, attr := range attrs {
-		fqn := c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id, attributeID: attr.GetId()})
-		c.logger.Debug("upserted definition fqn for unsafely updated namespace", slog.Any("fqn", fqn))
-		for _, value := range attr.GetValues() {
-			fqn = c.upsertAttrFqn(ctx, attrFqnUpsertOptions{namespaceID: id, attributeID: attr.GetId(), valueID: value.GetId()})
-			c.logger.Debug("upserted value fqn for unsafely updated namespace", slog.Any("fqn", fqn))
-		}
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	return &policy.Namespace{
-		Id:   id,
-		Name: name,
-		Fqn:  nsFqn,
-	}, nil
+	return c.GetNamespace(ctx, id)
 }
 
 func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*policy.Namespace, error) {

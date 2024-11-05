@@ -640,16 +640,27 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet_WithNonExistentId_F
 
 func (s *SubjectMappingsSuite) TestDeleteAllUnmappedSubjectConditionSets() {
 	// create two new subject condition sets, create a subject mapping with one of them, then verify only the unmapped is deleted
-	new := &subjectmapping.SubjectConditionSetCreate{
-		// content of subject sets is irrelevant to this test
-		SubjectSets: []*policy.SubjectSet{},
+	newSCS := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: ".some_selector",
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
-	unmapped, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, new)
+	unmapped, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newSCS)
 	s.Require().NoError(err)
 	s.NotNil(unmapped)
 
-	mapped, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, new)
+	mapped, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newSCS)
 	s.Require().NoError(err)
 	s.NotNil(mapped)
 
@@ -677,6 +688,12 @@ func (s *SubjectMappingsSuite) TestDeleteAllUnmappedSubjectConditionSets() {
 	}
 	s.True(unmappedDeleted)
 	s.False(mappedDeleted)
+
+	// cannot get after pruning
+	got, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, unmapped.GetId())
+	s.Nil(got)
+	s.Require().Error(err)
+	s.ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {

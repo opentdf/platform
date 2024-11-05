@@ -155,6 +155,8 @@ type KeyAccessServer struct {
 	Metadata  []byte             `json:"metadata"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	// Optional common name of the KAS
+	Name pgtype.Text `json:"name"`
 }
 
 // Table to store associated terms that should map resource data to attribute values

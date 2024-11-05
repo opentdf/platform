@@ -1,4 +1,4 @@
-protocol/go/go.mod linguist-generated=false
+go.mod linguist-generated=false
 protocol/go/** linguist-generated=true
 docs/grpc/** linguist-generated=true
 docs/openapi/** linguist-generated=true

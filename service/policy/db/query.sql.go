@@ -132,24 +132,30 @@ func (q *Queries) CreateAttributeValue(ctx context.Context, arg CreateAttributeV
 }
 
 const createKeyAccessServer = `-- name: CreateKeyAccessServer :one
-INSERT INTO key_access_servers (uri, public_key, metadata)
-VALUES ($1, $2, $3)
+INSERT INTO key_access_servers (uri, public_key, name, metadata)
+VALUES ($1, $2, $3, $4)
 RETURNING id
 `
 
 type CreateKeyAccessServerParams struct {
-	Uri       string `json:"uri"`
-	PublicKey []byte `json:"public_key"`
-	Metadata  []byte `json:"metadata"`
+	Uri       string      `json:"uri"`
+	PublicKey []byte      `json:"public_key"`
+	Name      pgtype.Text `json:"name"`
+	Metadata  []byte      `json:"metadata"`
 }
 
 // CreateKeyAccessServer
 //
-//	INSERT INTO key_access_servers (uri, public_key, metadata)
-//	VALUES ($1, $2, $3)
+//	INSERT INTO key_access_servers (uri, public_key, name, metadata)
+//	VALUES ($1, $2, $3, $4)
 //	RETURNING id
 func (q *Queries) CreateKeyAccessServer(ctx context.Context, arg CreateKeyAccessServerParams) (string, error) {
-	row := q.db.QueryRow(ctx, createKeyAccessServer, arg.Uri, arg.PublicKey, arg.Metadata)
+	row := q.db.QueryRow(ctx, createKeyAccessServer,
+		arg.Uri,
+		arg.PublicKey,
+		arg.Name,
+		arg.Metadata,
+	)
 	var id string
 	err := row.Scan(&id)
 	return id, err
@@ -426,6 +432,7 @@ SELECT
         DISTINCT JSONB_BUILD_OBJECT(
             'id', kas.id,
             'uri', kas.uri,
+            'name', kas.name,
             'public_key', kas.public_key
         )
     ) FILTER (WHERE adkag.attribute_definition_id IS NOT NULL) AS grants,
@@ -437,7 +444,7 @@ LEFT JOIN (
         av.id,
         av.value,
         av.active,
-        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT('id', vkas.id,'uri', vkas.uri,'public_key', vkas.public_key )) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr,
+        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT('id', vkas.id,'uri', vkas.uri,'name', vkas.name,'public_key', vkas.public_key )) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr,
         av.attribute_definition_id
     FROM attribute_values av
     LEFT JOIN attribute_value_key_access_grants avg ON av.id = avg.attribute_value_id
@@ -486,6 +493,7 @@ type GetAttributeRow struct {
 //	        DISTINCT JSONB_BUILD_OBJECT(
 //	            'id', kas.id,
 //	            'uri', kas.uri,
+//	            'name', kas.name,
 //	            'public_key', kas.public_key
 //	        )
 //	    ) FILTER (WHERE adkag.attribute_definition_id IS NOT NULL) AS grants,
@@ -497,7 +505,7 @@ type GetAttributeRow struct {
 //	        av.id,
 //	        av.value,
 //	        av.active,
-//	        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT('id', vkas.id,'uri', vkas.uri,'public_key', vkas.public_key )) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr,
+//	        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT('id', vkas.id,'uri', vkas.uri,'name', vkas.name,'public_key', vkas.public_key )) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr,
 //	        av.attribute_definition_id
 //	    FROM attribute_values av
 //	    LEFT JOIN attribute_value_key_access_grants avg ON av.id = avg.attribute_value_id
@@ -539,6 +547,7 @@ SELECT
         DISTINCT JSONB_BUILD_OBJECT(
             'id', kas.id,
             'uri', kas.uri,
+            'name', kas.name,
             'public_key', kas.public_key
         )
     ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants
@@ -573,6 +582,7 @@ type GetAttributeValueRow struct {
 //	        DISTINCT JSONB_BUILD_OBJECT(
 //	            'id', kas.id,
 //	            'uri', kas.uri,
+//	            'name', kas.name,
 //	            'public_key', kas.public_key
 //	        )
 //	    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants
@@ -598,22 +608,23 @@ func (q *Queries) GetAttributeValue(ctx context.Context, id string) (GetAttribut
 }
 
 const getKeyAccessServer = `-- name: GetKeyAccessServer :one
-SELECT id, uri, public_key,
+SELECT id, uri, public_key, name,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
 FROM key_access_servers
 WHERE id = $1
 `
 
 type GetKeyAccessServerRow struct {
-	ID        string `json:"id"`
-	Uri       string `json:"uri"`
-	PublicKey []byte `json:"public_key"`
-	Metadata  []byte `json:"metadata"`
+	ID        string      `json:"id"`
+	Uri       string      `json:"uri"`
+	PublicKey []byte      `json:"public_key"`
+	Name      pgtype.Text `json:"name"`
+	Metadata  []byte      `json:"metadata"`
 }
 
 // GetKeyAccessServer
 //
-//	SELECT id, uri, public_key,
+//	SELECT id, uri, public_key, name,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
 //	FROM key_access_servers
 //	WHERE id = $1
@@ -624,6 +635,7 @@ func (q *Queries) GetKeyAccessServer(ctx context.Context, id string) (GetKeyAcce
 		&i.ID,
 		&i.Uri,
 		&i.PublicKey,
+		&i.Name,
 		&i.Metadata,
 	)
 	return i, err
@@ -637,8 +649,9 @@ SELECT
     fqns.fqn,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
     JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
-        'id', kas.id, 
-        'uri', kas.uri, 
+        'id', kas.id,
+        'uri', kas.uri,
+        'name', kas.name,
         'public_key', kas.public_key
     )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants
 FROM attribute_namespaces ns
@@ -669,6 +682,7 @@ type GetNamespaceRow struct {
 //	    JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
 //	        'id', kas.id,
 //	        'uri', kas.uri,
+//	        'name', kas.name,
 //	        'public_key', kas.public_key
 //	    )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants
 //	FROM attribute_namespaces ns
@@ -970,6 +984,7 @@ WITH target_definition AS (
 	        DISTINCT JSONB_BUILD_OBJECT(
 	            'id', kas.id,
 	            'uri', kas.uri,
+                'name', kas.name,
 	            'public_key', kas.public_key
 	        )
 	    ) FILTER (WHERE kas.id IS NOT NULL) AS grants
@@ -993,6 +1008,7 @@ namespaces AS (
 	            DISTINCT JSONB_BUILD_OBJECT(
 	                'id', kas.id,
 	                'uri', kas.uri,
+                    'name', kas.name,
 	                'public_key', kas.public_key
 	            )
 	        ) FILTER (WHERE kas.id IS NOT NULL)
@@ -1013,6 +1029,7 @@ value_grants AS (
 			DISTINCT JSONB_BUILD_OBJECT(
 				'id', kas.id,
                 'uri', kas.uri,
+                'name', kas.name,
                 'public_key', kas.public_key
             )
 		) FILTER (WHERE kas.id IS NOT NULL) AS grants
@@ -1104,6 +1121,7 @@ type ListAttributesByDefOrValueFqnsRow struct {
 //		        DISTINCT JSONB_BUILD_OBJECT(
 //		            'id', kas.id,
 //		            'uri', kas.uri,
+//	                'name', kas.name,
 //		            'public_key', kas.public_key
 //		        )
 //		    ) FILTER (WHERE kas.id IS NOT NULL) AS grants
@@ -1127,6 +1145,7 @@ type ListAttributesByDefOrValueFqnsRow struct {
 //		            DISTINCT JSONB_BUILD_OBJECT(
 //		                'id', kas.id,
 //		                'uri', kas.uri,
+//	                    'name', kas.name,
 //		                'public_key', kas.public_key
 //		            )
 //		        ) FILTER (WHERE kas.id IS NOT NULL)
@@ -1147,6 +1166,7 @@ type ListAttributesByDefOrValueFqnsRow struct {
 //				DISTINCT JSONB_BUILD_OBJECT(
 //					'id', kas.id,
 //	                'uri', kas.uri,
+//	                'name', kas.name,
 //	                'public_key', kas.public_key
 //	            )
 //			) FILTER (WHERE kas.id IS NOT NULL) AS grants
@@ -1276,6 +1296,7 @@ LEFT JOIN (
         DISTINCT JSONB_BUILD_OBJECT(
             'id', vkas.id,
             'uri', vkas.uri,
+            'name', vkas.name,
             'public_key', vkas.public_key
         )
     ) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr,
@@ -1354,6 +1375,7 @@ type ListAttributesDetailRow struct {
 //	        DISTINCT JSONB_BUILD_OBJECT(
 //	            'id', vkas.id,
 //	            'uri', vkas.uri,
+//	            'name', vkas.name,
 //	            'public_key', vkas.public_key
 //	        )
 //	    ) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr,
@@ -1504,6 +1526,7 @@ WITH listed AS (
         COUNT(*) OVER() AS total, 
         kas.id AS kas_id, 
         kas.uri AS kas_uri, 
+        kas.name AS kas_name,
         kas.public_key AS kas_public_key,
         JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
             'labels', kas.metadata -> 'labels', 
@@ -1546,12 +1569,14 @@ WITH listed AS (
         AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
     WHERE (NULLIF($3, '') IS NULL OR kas.id = $3::uuid)
         AND (NULLIF($4, '') IS NULL OR kas.uri = $4::varchar)
+        AND (NULLIF($5, '') IS NULL OR kas.name = $5::varchar)
     GROUP BY 
         kas.id
 )
 SELECT 
     listed.kas_id,
     listed.kas_uri,
+    listed.kas_name,
     listed.kas_public_key,
     listed.kas_metadata,
     listed.attributes_grants,
@@ -1564,21 +1589,23 @@ OFFSET $1
 `
 
 type ListKeyAccessServerGrantsParams struct {
-	Offset int32       `json:"offset_"`
-	Limit  int32       `json:"limit_"`
-	KasID  interface{} `json:"kas_id"`
-	KasUri interface{} `json:"kas_uri"`
+	Offset  int32       `json:"offset_"`
+	Limit   int32       `json:"limit_"`
+	KasID   interface{} `json:"kas_id"`
+	KasUri  interface{} `json:"kas_uri"`
+	KasName interface{} `json:"kas_name"`
 }
 
 type ListKeyAccessServerGrantsRow struct {
-	KasID            string `json:"kas_id"`
-	KasUri           string `json:"kas_uri"`
-	KasPublicKey     []byte `json:"kas_public_key"`
-	KasMetadata      []byte `json:"kas_metadata"`
-	AttributesGrants []byte `json:"attributes_grants"`
-	ValuesGrants     []byte `json:"values_grants"`
-	NamespaceGrants  []byte `json:"namespace_grants"`
-	Total            int64  `json:"total"`
+	KasID            string      `json:"kas_id"`
+	KasUri           string      `json:"kas_uri"`
+	KasName          pgtype.Text `json:"kas_name"`
+	KasPublicKey     []byte      `json:"kas_public_key"`
+	KasMetadata      []byte      `json:"kas_metadata"`
+	AttributesGrants []byte      `json:"attributes_grants"`
+	ValuesGrants     []byte      `json:"values_grants"`
+	NamespaceGrants  []byte      `json:"namespace_grants"`
+	Total            int64       `json:"total"`
 }
 
 // --------------------------------------------------------------
@@ -1590,6 +1617,7 @@ type ListKeyAccessServerGrantsRow struct {
 //	        COUNT(*) OVER() AS total,
 //	        kas.id AS kas_id,
 //	        kas.uri AS kas_uri,
+//	        kas.name AS kas_name,
 //	        kas.public_key AS kas_public_key,
 //	        JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
 //	            'labels', kas.metadata -> 'labels',
@@ -1632,12 +1660,14 @@ type ListKeyAccessServerGrantsRow struct {
 //	        AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
 //	    WHERE (NULLIF($3, '') IS NULL OR kas.id = $3::uuid)
 //	        AND (NULLIF($4, '') IS NULL OR kas.uri = $4::varchar)
+//	        AND (NULLIF($5, '') IS NULL OR kas.name = $5::varchar)
 //	    GROUP BY
 //	        kas.id
 //	)
 //	SELECT
 //	    listed.kas_id,
 //	    listed.kas_uri,
+//	    listed.kas_name,
 //	    listed.kas_public_key,
 //	    listed.kas_metadata,
 //	    listed.attributes_grants,
@@ -1653,6 +1683,7 @@ func (q *Queries) ListKeyAccessServerGrants(ctx context.Context, arg ListKeyAcce
 		arg.Limit,
 		arg.KasID,
 		arg.KasUri,
+		arg.KasName,
 	)
 	if err != nil {
 		return nil, err
@@ -1664,6 +1695,7 @@ func (q *Queries) ListKeyAccessServerGrants(ctx context.Context, arg ListKeyAcce
 		if err := rows.Scan(
 			&i.KasID,
 			&i.KasUri,
+			&i.KasName,
 			&i.KasPublicKey,
 			&i.KasMetadata,
 			&i.AttributesGrants,
@@ -1689,6 +1721,7 @@ WITH counted AS (
 SELECT kas.id,
        kas.uri,
        kas.public_key,
+       kas.name AS kas_name,
        JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) as metadata,
        counted.total
 FROM key_access_servers kas
@@ -1703,11 +1736,12 @@ type ListKeyAccessServersParams struct {
 }
 
 type ListKeyAccessServersRow struct {
-	ID        string `json:"id"`
-	Uri       string `json:"uri"`
-	PublicKey []byte `json:"public_key"`
-	Metadata  []byte `json:"metadata"`
-	Total     int64  `json:"total"`
+	ID        string      `json:"id"`
+	Uri       string      `json:"uri"`
+	PublicKey []byte      `json:"public_key"`
+	KasName   pgtype.Text `json:"kas_name"`
+	Metadata  []byte      `json:"metadata"`
+	Total     int64       `json:"total"`
 }
 
 // ListKeyAccessServers
@@ -1719,6 +1753,7 @@ type ListKeyAccessServersRow struct {
 //	SELECT kas.id,
 //	       kas.uri,
 //	       kas.public_key,
+//	       kas.name AS kas_name,
 //	       JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) as metadata,
 //	       counted.total
 //	FROM key_access_servers kas
@@ -1738,6 +1773,7 @@ func (q *Queries) ListKeyAccessServers(ctx context.Context, arg ListKeyAccessSer
 			&i.ID,
 			&i.Uri,
 			&i.PublicKey,
+			&i.KasName,
 			&i.Metadata,
 			&i.Total,
 		); err != nil {
@@ -2487,7 +2523,8 @@ UPDATE key_access_servers
 SET 
     uri = COALESCE($2, uri),
     public_key = COALESCE($3, public_key),
-    metadata = COALESCE($4, metadata)
+    name = COALESCE($4, name),
+    metadata = COALESCE($5, metadata)
 WHERE id = $1
 `
 
@@ -2495,6 +2532,7 @@ type UpdateKeyAccessServerParams struct {
 	ID        string      `json:"id"`
 	Uri       pgtype.Text `json:"uri"`
 	PublicKey []byte      `json:"public_key"`
+	Name      pgtype.Text `json:"name"`
 	Metadata  []byte      `json:"metadata"`
 }
 
@@ -2504,13 +2542,15 @@ type UpdateKeyAccessServerParams struct {
 //	SET
 //	    uri = COALESCE($2, uri),
 //	    public_key = COALESCE($3, public_key),
-//	    metadata = COALESCE($4, metadata)
+//	    name = COALESCE($4, name),
+//	    metadata = COALESCE($5, metadata)
 //	WHERE id = $1
 func (q *Queries) UpdateKeyAccessServer(ctx context.Context, arg UpdateKeyAccessServerParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateKeyAccessServer,
 		arg.ID,
 		arg.Uri,
 		arg.PublicKey,
+		arg.Name,
 		arg.Metadata,
 	)
 	if err != nil {

@@ -343,6 +343,7 @@ func (s *AttributesSuite) Test_GetAttribute_ContainsKASGrants() {
 				Remote: "https://example.com/kas/key/1",
 			},
 		},
+		Name: "def_kas-name",
 	}
 	createdKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kas)
 	s.Require().NoError(err)
@@ -363,8 +364,10 @@ func (s *AttributesSuite) Test_GetAttribute_ContainsKASGrants() {
 	s.Require().NoError(err)
 	s.NotNil(gotAttr)
 
-	s.Len(gotAttr.GetGrants(), 1)
-	s.Equal(createdKAS.GetId(), gotAttr.GetGrants()[0].GetId())
+	gotGrants := gotAttr.GetGrants()
+	s.Len(gotGrants, 1)
+	s.Equal(createdKAS.GetId(), gotGrants[0].GetId())
+	s.Equal(kas.GetName(), gotGrants[0].GetName())
 }
 
 func (s *AttributesSuite) Test_ListAttributes_NoPagination_Succeeds() {

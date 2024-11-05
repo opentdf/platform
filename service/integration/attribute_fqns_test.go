@@ -1486,7 +1486,7 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithNonValueFqns(
 	})
 	s.Require().Error(err)
 	s.Nil(v)
-	s.Require().ErrorIs(err, db.ErrFqnMissingValue)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 
 	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: []string{attrFqn},
@@ -1496,5 +1496,5 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithNonValueFqns(
 	})
 	s.Require().Error(err)
 	s.Nil(v)
-	s.Require().ErrorIs(err, db.ErrFqnMissingValue)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }

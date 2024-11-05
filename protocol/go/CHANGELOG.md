@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.20](https://github.com/opentdf/platform/compare/protocol/go/v0.2.19...protocol/go/v0.2.20) (2024-11-05)
+
+
+### Features
+
+* add generated connect-rpc code ([#1708](https://github.com/opentdf/platform/issues/1708)) ([92ac86a](https://github.com/opentdf/platform/commit/92ac86aa84d645fb5db26c17716d52457673f2de))
+
 ## [0.2.19](https://github.com/opentdf/platform/compare/protocol/go/v0.2.18...protocol/go/v0.2.19) (2024-11-05)
 
 

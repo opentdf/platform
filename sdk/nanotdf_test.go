@@ -344,7 +344,7 @@ func TestDataSet(t *testing.T) {
 		t.Fatal("headers should not match")
 	}
 
-	conf.EnableDataSet()
+	conf.EnableCollection()
 	header1, symKey1 := getHeaderAndSymKey(conf)
 	header2, symKey2 := getHeaderAndSymKey(conf)
 

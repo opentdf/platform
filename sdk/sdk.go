@@ -55,7 +55,7 @@ func (c Error) Error() string {
 type SDK struct {
 	config
 	*kasKeyCache
-	*datasetStore
+	*collectionStore
 	conn                    *grpc.ClientConn
 	dialOptions             []grpc.DialOption
 	tokenSource             auth.AccessTokenSource
@@ -170,7 +170,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	return &SDK{
 		config:                  *cfg,
-		datasetStore:            cfg.datasetStore,
+		collectionStore:         cfg.collectionStore,
 		kasKeyCache:             newKasKeyCache(),
 		conn:                    platformConn,
 		dialOptions:             dialOptions,

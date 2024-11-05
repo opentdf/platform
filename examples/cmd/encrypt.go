@@ -125,7 +125,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		nanoTDFConfig.SetAttributes(dataAttributes)
 		nanoTDFConfig.EnableECDSAPolicyBinding()
 		if collection > 0 {
-			nanoTDFConfig.EnableDataSet()
+			nanoTDFConfig.EnableCollection()
 		}
 		err = nanoTDFConfig.SetKasURL(fmt.Sprintf("http://%s/kas", platformEndpoint))
 		if err != nil {

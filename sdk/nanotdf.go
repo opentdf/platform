@@ -178,12 +178,12 @@ type signatureConfig struct {
 	cipher        CipherMode
 }
 
-type dataSetConfig struct {
-	iterations uint32
-	header     []byte
-	useDataSet bool
-	symKey     []byte
-	mux        sync.Mutex
+type collectionConfig struct {
+	iterations    uint32
+	header        []byte
+	useCollection bool
+	symKey        []byte
+	mux           sync.Mutex
 }
 
 type policyInfo struct {
@@ -361,31 +361,31 @@ func SizeOfAuthTagForCipher(cipherType CipherMode) (int, error) {
 }
 
 // ============================================================================================================
-// NanoTDF Header Store
+// NanoTDF Collection Header Store
 // ============================================================================================================
 
-type datasetStore struct {
-	s   map[string]datasetStoreEntry
+type collectionStore struct {
+	s   map[string]collectionStoreEntry
 	mux sync.RWMutex
 }
 
-type datasetStoreEntry struct {
+type collectionStoreEntry struct {
 	key             []byte
 	encryptedHeader []byte
 }
 
-func newDatasetStore() *datasetStore {
-	return &datasetStore{s: make(map[string]datasetStoreEntry)}
+func newCollectionStore() *collectionStore {
+	return &collectionStore{s: make(map[string]collectionStoreEntry)}
 }
 
-func (n *datasetStore) store(header, key []byte) {
+func (n *collectionStore) store(header, key []byte) {
 	n.mux.Lock()
 	defer n.mux.Unlock()
 	hash := ocrypto.SHA256AsHex(header)
-	n.s[string(hash)] = datasetStoreEntry{key: key, encryptedHeader: header}
+	n.s[string(hash)] = collectionStoreEntry{key: key, encryptedHeader: header}
 }
 
-func (n *datasetStore) get(header []byte) ([]byte, bool) {
+func (n *collectionStore) get(header []byte) ([]byte, bool) {
 	n.mux.RLock()
 	defer n.mux.RUnlock()
 	hash := ocrypto.SHA256AsHex(header)
@@ -405,29 +405,29 @@ func (n *datasetStore) get(header []byte) ([]byte, bool) {
 // ============================================================================================================
 
 func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32, uint32, error) {
-	if config.dataSetCfg.useDataSet {
+	if config.collectionCfg.useCollection {
 		// If concurrently writing, we must know what iteration we are on in a threadsafe way
 		// also when we need to safely read the header to ensure not rewritten in next max iteration
-		config.dataSetCfg.mux.Lock()
-		defer config.dataSetCfg.mux.Unlock()
+		config.collectionCfg.mux.Lock()
+		defer config.collectionCfg.mux.Unlock()
 
 		// Store iteration and header and increment iteration
-		iteration := config.dataSetCfg.iterations
-		config.dataSetCfg.iterations++
-		header := config.dataSetCfg.header
+		iteration := config.collectionCfg.iterations
+		config.collectionCfg.iterations++
+		header := config.collectionCfg.header
 		// Reset iteration if reached max iters
 		if iteration == kMaxIters {
-			config.dataSetCfg.iterations = 0
+			config.collectionCfg.iterations = 0
 		}
 		// Return saved header
 		if iteration != 0 {
 			n, err := writer.Write(header)
-			return config.dataSetCfg.symKey, uint32(n), iteration, err
+			return config.collectionCfg.symKey, uint32(n), iteration, err
 		}
 		// First Iteration: header has not been calculated, will write to header and save for later use.
 		buf := &bytes.Buffer{}
 		writer = io.MultiWriter(writer, buf)
-		defer func() { config.dataSetCfg.header = buf.Bytes() }()
+		defer func() { config.collectionCfg.header = buf.Bytes() }()
 	}
 
 	var totalBytes uint32
@@ -584,8 +584,8 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	}
 	totalBytes += uint32(l)
 
-	if config.dataSetCfg.useDataSet {
-		config.dataSetCfg.symKey = symmetricKey
+	if config.collectionCfg.useCollection {
+		config.collectionCfg.symKey = symmetricKey
 	}
 
 	return symmetricKey, totalBytes, 0, nil
@@ -796,7 +796,7 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	noncePadding := make([]byte, kIvPadding)
 	var iv []byte
 	ivPadded = append(ivPadded, noncePadding...)
-	if config.dataSetCfg.useDataSet {
+	if config.collectionCfg.useCollection {
 		iv = make([]byte, binary.MaxVarintLen32)
 		binary.LittleEndian.PutUint32(iv, iteration)
 		iv = iv[:kNanoTDFIvSize]
@@ -932,8 +932,8 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 }
 
 func (s SDK) getNanoRewrapKey(ctx context.Context, header []byte, kasURL string) ([]byte, error) {
-	if s.datasetStore != nil {
-		if key, found := s.datasetStore.get(header); found {
+	if s.collectionStore != nil {
+		if key, found := s.collectionStore.get(header); found {
 			return key, nil
 		}
 	}
@@ -953,8 +953,8 @@ func (s SDK) getNanoRewrapKey(ctx context.Context, header []byte, kasURL string)
 	if err != nil {
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
-	if s.datasetStore != nil {
-		s.datasetStore.store(header, symmetricKey)
+	if s.collectionStore != nil {
+		s.collectionStore.store(header, symmetricKey)
 	}
 	return symmetricKey, nil
 }

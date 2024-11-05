@@ -35,7 +35,7 @@ type config struct {
 	customAccessTokenSource auth.AccessTokenSource
 	oauthAccessTokenSource  oauth2.TokenSource
 	coreConn                *grpc.ClientConn
-	datasetStore            *datasetStore
+	collectionStore         *collectionStore
 }
 
 // Options specific to TDF protocol features
@@ -69,10 +69,10 @@ func WithInsecureSkipVerifyConn() Option {
 	}
 }
 
-// WithNanoDatasets returns an Option that sets up storing dataset keys for nTDFs
-func WithNanoDatasets() Option {
+// WithStoreCollectionHeaders returns an Option that sets up storing dataset keys for nTDFs
+func WithStoreCollectionHeaders() Option {
 	return func(c *config) {
-		c.datasetStore = newDatasetStore()
+		c.collectionStore = newCollectionStore()
 	}
 }
 

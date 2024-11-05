@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/pkg/db"
 )
 
@@ -26,14 +28,16 @@ func (c *PolicyDBClient) AttrFqnReindex(ctx context.Context) (res struct { //nol
 },
 ) {
 	// Get all namespaces
-	nsList, err := c.ListAllNamespaces(ctx)
+	ns, err := c.ListNamespaces(ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+	})
 	if err != nil {
 		panic(fmt.Errorf("could not get namespaces: %w", err))
 	}
 
 	// Reindex all namespaces
 	reindexedRecords := []UpsertAttributeNamespaceFqnRow{}
-	for _, n := range ns {
+	for _, n := range ns.GetNamespaces() {
 		rows, err := c.Queries.UpsertAttributeNamespaceFqn(ctx, n.GetId())
 		if err != nil {
 			panic(fmt.Errorf("could not update namespace [%s] FQN: %w", n.GetId(), err))

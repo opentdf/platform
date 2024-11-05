@@ -1,0 +1,22 @@
+name: Git Town
+
+on:
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  git-town:
+    name: Display the branch stack
+    runs-on: ubuntu-22.04
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: git-town/action@7cec053e109396e49a15328a749b32552e6f91db
+        with:
+          skip-single-stacks: true
+          main-branch: main

@@ -7,20 +7,12 @@ import "google/api/annotations.proto";
 
 import "common/common.proto";
 import "policy/objects.proto";
+import "policy/selectors.proto";
 
-// MatchSubjectMappingsRequest liberally returns a list of SubjectMappings based on the provided SubjectProperties. The SubjectMappings are returned
-// if there is any single condition found among the structures that matches for one of the provided properties:
-// 1. The external selector value, external value, and an IN operator
-// 2. The external selector value, _no_ external value, and a NOT_IN operator
-//
-// Without this filtering, if a selector value was something like '.emailAddress' or '.username', every Subject is probably going to relate to that mapping
-// in some way or another, potentially matching every single attribute in the DB if a policy admin has relied heavily on that field. There is no
-// logic applied beyond a single condition within the query to avoid business logic interpreting the supplied conditions beyond the bare minimum
-// initial filter.
-//
-// NOTE: if you have any issues, debug logs are available within the service to help identify why a mapping was or was not returned.
+// MatchSubjectMappingsRequest liberally returns a list of SubjectMappings based on the provided SubjectProperties.
+// The SubjectMappings are returned if an external selector field matches.
 message MatchSubjectMappingsRequest {
-  repeated policy.SubjectProperty subject_properties = 1;
+  repeated policy.SubjectProperty subject_properties = 1 [(buf.validate.field).repeated.min_items = 1];
 }
 
 message MatchSubjectMappingsResponse {
@@ -32,27 +24,42 @@ message MatchSubjectMappingsResponse {
 */
 
 message GetSubjectMappingRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message GetSubjectMappingResponse {
   policy.SubjectMapping subject_mapping = 1;
 }
 
-message ListSubjectMappingsRequest {}
+message ListSubjectMappingsRequest {
+  // Optional
+  policy.PageRequest pagination = 10;
+}
 message ListSubjectMappingsResponse {
   repeated policy.SubjectMapping subject_mappings = 1;
+
+  policy.PageResponse pagination = 10;
 }
 
 message CreateSubjectMappingRequest{
   // Required
   // Attribute Value to be mapped to
-  string attribute_value_id = 1 [(buf.validate.field).required = true];
+  string attribute_value_id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+  // Required
   // The actions permitted by subjects in this mapping
   repeated policy.Action actions = 2 [(buf.validate.field).repeated.min_items = 1];
 
   // Either of the following:
   // Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
-  string existing_subject_condition_set_id = 3;
+  string existing_subject_condition_set_id = 3 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
   // Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
   SubjectConditionSetCreate new_subject_condition_set = 4;
 
@@ -65,11 +72,18 @@ message CreateSubjectMappingResponse {
 
 message UpdateSubjectMappingRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 
   // Optional
   // Replaces the existing SubjectConditionSet id with a new one
-  string subject_condition_set_id = 2;
+  string subject_condition_set_id = 2 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
+  // Optional
   // Replaces entire list of actions permitted by subjects
   repeated policy.Action actions = 3;
 
@@ -83,7 +97,10 @@ message UpdateSubjectMappingResponse {
 }
 
 message DeleteSubjectMappingRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message DeleteSubjectMappingResponse {
   // Only ID of the updated Subject Mapping provided
@@ -95,7 +112,10 @@ message DeleteSubjectMappingResponse {
 */
 
 message GetSubjectConditionSetRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message GetSubjectConditionSetResponse {
   policy.SubjectConditionSet subject_condition_set = 1;
@@ -103,9 +123,14 @@ message GetSubjectConditionSetResponse {
   repeated policy.SubjectMapping associated_subject_mappings = 2;
 }
 
-message ListSubjectConditionSetsRequest {}
+message ListSubjectConditionSetsRequest {
+  // Optional
+  policy.PageRequest pagination = 10;
+}
 message ListSubjectConditionSetsResponse {
   repeated policy.SubjectConditionSet subject_condition_sets = 1;
+
+  policy.PageResponse pagination = 10;
 }
 
 message SubjectConditionSetCreate {
@@ -125,7 +150,9 @@ message CreateSubjectConditionSetResponse {
 
 message UpdateSubjectConditionSetRequest {
   // Required
-  string id = 1 [(buf.validate.field).required = true];
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 
   // Optional
   // If provided, replaces entire existing structure of Subject Sets, Condition Groups, & Conditions
@@ -141,7 +168,10 @@ message UpdateSubjectConditionSetResponse {
 }
 
 message DeleteSubjectConditionSetRequest {
-  string id = 1 [(buf.validate.field).required = true];
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message DeleteSubjectConditionSetResponse {
   // Only ID of deleted Subject Condition Set provided

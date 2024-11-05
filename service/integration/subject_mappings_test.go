@@ -15,8 +15,9 @@ import (
 
 type SubjectMappingsSuite struct {
 	suite.Suite
-	f   fixtures.Fixtures
-	db  fixtures.DBInterface
+	f  fixtures.Fixtures
+	db fixtures.DBInterface
+	//nolint:containedctx // Only used for test suite
 	ctx context.Context
 }
 
@@ -27,6 +28,7 @@ func (s *SubjectMappingsSuite) SetupSuite() {
 	s.db = fixtures.NewDBInterface(c)
 	s.ctx = context.Background()
 	s.f = fixtures.NewFixture(s.db)
+	s.ctx = context.Background()
 	s.f.Provision()
 }
 
@@ -859,134 +861,172 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NonExistentId_Fails
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InOne() {
-	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
-	externalSelectorValue := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
-	externalValues := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
-
-	props := []*policy.SubjectProperty{
-		{
-			ExternalSelectorValue: externalSelectorValue,
-			ExternalValue:         externalValues[0],
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_SingleMatch() {
+	externalSelector := ".testing_matched_sm"
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+	newScs := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: externalSelector,
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"match"},
+							},
+						},
+					},
+				},
+			},
 		},
 	}
+	aTransmit := fixtureActions[Transmit]
 
-	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
+	subjectMapping := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:       fixtureAttrValID,
+		Actions:                []*policy.Action{aTransmit},
+		NewSubjectConditionSet: newScs,
+	}
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, subjectMapping)
 	s.Require().NoError(err)
-	s.NotZero(sm)
-	s.Equal(fixtureScs.ID, sm[0].GetSubjectConditionSet().GetId())
-}
-
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DoesNotReturnNotInWhenMatches() {
-	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_not_in")
-	externalSelectorValue := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
-	externalValues := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
+	s.NotNil(created)
 
 	props := []*policy.SubjectProperty{
 		{
-			ExternalSelectorValue: externalSelectorValue,
-			ExternalValue:         externalValues[0],
+			ExternalSelectorValue: externalSelector,
 		},
 	}
 
 	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
 	s.Require().NoError(err)
 	s.NotZero(smList)
-	s.Empty(smList)
+	matched := smList[0]
+	s.Equal(created.GetId(), matched.GetId())
+	s.NotZero(matched.GetAttributeValue().GetId())
+	s.NotZero(matched.GetId())
+	s.NotNil(matched.GetActions())
 }
 
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInOneMatch() {
-	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_not_in")
-	externalSelectorValue := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_IgnoresExternalValueInCondition() {
+	externalSelector := ".testing_unmatched_condition"
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2").ID
+	newScs := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: externalSelector,
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"idp_value"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	aTransmit := fixtureActions[Transmit]
 
-	expectedMappedFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_simple_not_in")
+	subjectMapping := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:       fixtureAttrValID,
+		Actions:                []*policy.Action{aTransmit},
+		NewSubjectConditionSet: newScs,
+	}
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, subjectMapping)
+	s.Require().NoError(err)
+	s.NotNil(created)
 
 	props := []*policy.SubjectProperty{
 		{
-			ExternalSelectorValue: externalSelectorValue,
-			ExternalValue:         "random_value",
+			ExternalSelectorValue: externalSelector,
+			ExternalValue:         "unrelated",
 		},
 	}
 
 	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
 	s.Require().NoError(err)
 	s.NotZero(smList)
-	s.Require().Len(smList, 1)
-	s.Equal(fixtureScs.ID, smList[0].GetSubjectConditionSet().GetId())
-	s.Equal(expectedMappedFixture.ID, smList[0].GetId())
+	matched := smList[0]
+	s.Equal(created.GetId(), matched.GetId())
+	s.NotZero(matched.GetAttributeValue().GetId())
+	s.NotZero(matched.GetId())
+	s.NotNil(matched.GetActions())
 }
 
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MissingFieldInProperty_Fails() {
-	props := []*policy.SubjectProperty{
-		{
-			ExternalValue: "some_value",
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MultipleMatches() {
+	externalSelector1 := ".idp_field"
+	externalSelector2 := ".org.attributes[]"
+	// create a two subject mappings with different subject condition sets
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2").ID
+	newScs := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: externalSelector1,
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"idp_value"},
+							},
+						},
+					},
+				},
+			},
 		},
 	}
+	aTransmit := fixtureActions[Transmit]
 
-	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-	s.Zero(sm)
-}
-
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MissingValueInProperty_Fails() {
-	props := []*policy.SubjectProperty{
-		{
-			ExternalSelectorValue: ".some_field",
-		},
+	subjectMapping := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:       fixtureAttrValID,
+		Actions:                []*policy.Action{aTransmit},
+		NewSubjectConditionSet: newScs,
 	}
 
-	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-	s.Zero(sm)
-}
-
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NoPropertiesProvided_Fails() {
-	props := []*policy.SubjectProperty{}
-
-	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-	s.Zero(sm)
-}
-
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InMultiple() {
-	simpleScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_in")
-	simpleexternalSelectorValue := simpleScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
-	simpleExternalValues := simpleScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
-
-	otherScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
-	otherexternalSelectorValue := otherScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
-	otherExternalValues := otherScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
-
-	props := []*policy.SubjectProperty{
-		{
-			ExternalSelectorValue: simpleexternalSelectorValue,
-			ExternalValue:         simpleExternalValues[0],
-		},
-		{
-			ExternalSelectorValue: otherexternalSelectorValue,
-			ExternalValue:         otherExternalValues[0],
-		},
-	}
-
-	gotEntitlements, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
+	subjectMappingFirst, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, subjectMapping)
 	s.Require().NoError(err)
-	s.NotZero(gotEntitlements)
-	s.GreaterOrEqual(len(gotEntitlements), 2)
+	s.NotNil(subjectMappingFirst)
 
-	mappedSimple := s.f.GetSubjectMappingKey("subject_mapping_subject_simple_in")
-	foundMappedSimple := false
-	mappedSubjectConditionSet1 := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute1")
-	foundMappedSubjectConditionSet1 := false
+	// create the second subject mapping with the second SCS
+	newScs.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue = externalSelector2
+	subjectMapping.NewSubjectConditionSet = newScs
 
-	for _, sm := range gotEntitlements {
-		if sm.GetSubjectConditionSet().GetId() == mappedSimple.SubjectConditionSetID {
-			foundMappedSimple = true
-		} else if sm.GetSubjectConditionSet().GetId() == mappedSubjectConditionSet1.SubjectConditionSetID {
-			foundMappedSubjectConditionSet1 = true
+	subjectMappingSecond, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, subjectMapping)
+	s.Require().NoError(err)
+	s.NotNil(subjectMappingSecond)
+
+	props := []*policy.SubjectProperty{
+		{
+			ExternalSelectorValue: externalSelector1,
+		},
+		{
+			ExternalSelectorValue: externalSelector2,
+		},
+	}
+
+	candidateEntitlements, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
+	s.Require().NoError(err)
+	s.NotZero(candidateEntitlements)
+	s.GreaterOrEqual(len(candidateEntitlements), 2)
+
+	foundFirst := false
+	foundSecond := false
+
+	for _, sm := range candidateEntitlements {
+		if sm.GetId() == subjectMappingFirst.GetId() {
+			foundFirst = true
+		} else if sm.GetId() == subjectMappingSecond.GetId() {
+			foundSecond = true
 		}
 	}
-	s.True(foundMappedSimple)
-	s.True(foundMappedSubjectConditionSet1)
+	s.True(foundFirst)
+	s.True(foundSecond)
 }
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DeactivatedValueNotReturned() {
@@ -1008,7 +1048,6 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DeactivatedValueNot
 	props := []*policy.SubjectProperty{
 		{
 			ExternalSelectorValue: fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue,
-			ExternalValue:         fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues[0],
 		},
 	}
 	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
@@ -1023,23 +1062,52 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DeactivatedValueNot
 	}
 }
 
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInMultiple() {
-	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_not_in")
-	externalSelectorValue := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
-	expectedMappedFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_simple_not_in")
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_ConditionSetReusedByMultipleSubjectMappings() {
+	selector := ".hello_world"
+	toCreate := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: selector,
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"goodnight_moon"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	createdSCS, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, toCreate)
+	s.Require().NoError(err)
+	s.NotNil(createdSCS)
 
-	otherFixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set3")
-	otherexternalSelectorValue1 := otherFixtureScs.Condition.SubjectSets[0].ConditionGroups[1].Conditions[1].SubjectExternalSelectorValue
-	otherExpectedMatchedFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute3")
+	// Create two subject mappings across different values that reuse the same subject condition set
+	attrVal1 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+	sm1, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              attrVal1,
+		ExistingSubjectConditionSetId: createdSCS.GetId(),
+		Actions:                       []*policy.Action{fixtureActions[Decrypt]},
+	})
+	s.Require().NoError(err)
+	s.NotNil(sm1)
+	attrVal2 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2").ID
+	sm2, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              attrVal2,
+		ExistingSubjectConditionSetId: createdSCS.GetId(),
+		Actions:                       []*policy.Action{fixtureActions[Transmit]},
+	})
+	s.Require().NoError(err)
+	s.NotNil(sm2)
 
+	// check matched subject mappings for the selector in the reused SCS
 	props := []*policy.SubjectProperty{
 		{
-			ExternalSelectorValue: externalSelectorValue,
-			ExternalValue:         "random_value_definitely_not_in_fixtures",
-		},
-		{
-			ExternalSelectorValue: otherexternalSelectorValue1,
-			ExternalValue:         "random_value_definitely_not_in_fixtures",
+			ExternalSelectorValue: selector,
 		},
 	}
 
@@ -1047,53 +1115,77 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInMultiple() {
 	s.Require().NoError(err)
 	s.NotZero(smList)
 	s.Len(smList, 2)
+	foundSm1 := false
+	foundSm2 := false
 	for _, sm := range smList {
-		if sm.GetSubjectConditionSet().GetId() == fixtureScs.ID {
-			s.Equal(expectedMappedFixture.ID, sm.GetId())
-		} else if sm.GetSubjectConditionSet().GetId() == otherFixtureScs.ID {
-			s.Equal(otherExpectedMatchedFixture.ID, sm.GetId())
+		smID := sm.GetId()
+		foundSCS := sm.GetSubjectConditionSet().GetId()
+		foundAttrVal := sm.GetAttributeValue().GetId()
+		s.Equal(foundSCS, createdSCS.GetId())
+		if smID == sm1.GetId() {
+			foundSm1 = true
+			s.Equal(sm1.GetAttributeValue().GetId(), foundAttrVal)
+		}
+		if smID == sm2.GetId() {
+			foundSm2 = true
+			s.Equal(sm2.GetAttributeValue().GetId(), foundAttrVal)
 		}
 	}
+	s.True(foundSm1)
+	s.True(foundSm2)
 }
 
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InOneAndNotInASecond() {
-	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_in")
-	externalSelectorValue := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
-	externalValues := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
-	expectedMappedFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_simple_in")
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_OnlyMatchesOneProperty() {
+	selector := ".only_matches_one[]"
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2").ID
+	newScs := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: selector,
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"random_value"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 
-	otherFixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_not_in")
-	otherexternalSelectorValue := otherFixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
-	expectedMappedOtherFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_simple_not_in")
+	subjectMapping := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:       fixtureAttrValID,
+		Actions:                []*policy.Action{fixtureActions[Transmit], fixtureActions[Decrypt]},
+		NewSubjectConditionSet: newScs,
+	}
+
+	createdSM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, subjectMapping)
+	s.Require().NoError(err)
+	s.NotNil(createdSM)
 
 	props := []*policy.SubjectProperty{
 		{
-			ExternalSelectorValue: externalSelectorValue,
-			ExternalValue:         externalValues[0],
+			ExternalSelectorValue: selector,
 		},
 		{
-			ExternalSelectorValue: otherexternalSelectorValue,
-			ExternalValue:         "random_value_987654321",
+			ExternalSelectorValue: "random_value_987654321",
 		},
 	}
 
 	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
 	s.Require().NoError(err)
-	s.NotZero(smList)
-	for _, sm := range smList {
-		if sm.GetSubjectConditionSet().GetId() == fixtureScs.ID {
-			s.Equal(expectedMappedFixture.ID, sm.GetId())
-		} else if sm.GetSubjectConditionSet().GetId() == otherFixtureScs.ID {
-			s.Equal(expectedMappedOtherFixture.ID, sm.GetId())
-		}
-	}
+	s.Len(smList, 1)
+	s.Equal(smList[0].GetId(), createdSM.GetId())
 }
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NonExistentField_ReturnsNoMappings() {
 	props := []*policy.SubjectProperty{
 		{
 			ExternalSelectorValue: ".non_existent_field[1]",
-			ExternalValue:         "non_existent_value",
 		},
 	}
 	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)

@@ -57,9 +57,20 @@ func local_request_SubjectMappingService_MatchSubjectMappings_0(ctx context.Cont
 
 }
 
+var (
+	filter_SubjectMappingService_ListSubjectMappings_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_SubjectMappingService_ListSubjectMappings_0(ctx context.Context, marshaler runtime.Marshaler, client SubjectMappingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListSubjectMappingsRequest
 	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_SubjectMappingService_ListSubjectMappings_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 
 	msg, err := client.ListSubjectMappings(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
@@ -69,6 +80,13 @@ func request_SubjectMappingService_ListSubjectMappings_0(ctx context.Context, ma
 func local_request_SubjectMappingService_ListSubjectMappings_0(ctx context.Context, marshaler runtime.Marshaler, server SubjectMappingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListSubjectMappingsRequest
 	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_SubjectMappingService_ListSubjectMappings_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 
 	msg, err := server.ListSubjectMappings(ctx, &protoReq)
 	return msg, metadata, err
@@ -265,9 +283,20 @@ func local_request_SubjectMappingService_DeleteSubjectMapping_0(ctx context.Cont
 
 }
 
+var (
+	filter_SubjectMappingService_ListSubjectConditionSets_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+)
+
 func request_SubjectMappingService_ListSubjectConditionSets_0(ctx context.Context, marshaler runtime.Marshaler, client SubjectMappingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListSubjectConditionSetsRequest
 	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_SubjectMappingService_ListSubjectConditionSets_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 
 	msg, err := client.ListSubjectConditionSets(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
@@ -277,6 +306,13 @@ func request_SubjectMappingService_ListSubjectConditionSets_0(ctx context.Contex
 func local_request_SubjectMappingService_ListSubjectConditionSets_0(ctx context.Context, marshaler runtime.Marshaler, server SubjectMappingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq ListSubjectConditionSetsRequest
 	var metadata runtime.ServerMetadata
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_SubjectMappingService_ListSubjectConditionSets_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 
 	msg, err := server.ListSubjectConditionSets(ctx, &protoReq)
 	return msg, metadata, err

@@ -108,7 +108,8 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_ContainsKASGrants() {
 	s.NotNil(got)
 	s.Empty(got.GetGrants())
 
-	fixtureKeyAccessServerID = s.f.GetKasRegistryKey("key_access_server_1").ID
+	fixtureKeyAccessServer := s.f.GetKasRegistryKey("key_access_server_1")
+	fixtureKeyAccessServerID := fixtureKeyAccessServer.ID
 	assignment := &attributes.ValueKeyAccessServer{
 		ValueId:           createdValue.GetId(),
 		KeyAccessServerId: fixtureKeyAccessServerID,
@@ -122,8 +123,10 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_ContainsKASGrants() {
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(createdValue.GetId(), got.GetId())
-	s.Len(got.GetGrants(), 1)
-	s.Equal(fixtureKeyAccessServerID, got.GetGrants()[0].GetId())
+	gotGrants := got.GetGrants()
+	s.Len(gotGrants, 1)
+	s.Equal(fixtureKeyAccessServerID, gotGrants[0].GetId())
+	s.Equal(fixtureKeyAccessServer.Name, gotGrants[0].GetName())
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_SetsActiveStateTrueByDefault() {

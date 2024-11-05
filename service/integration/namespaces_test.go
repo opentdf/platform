@@ -781,6 +781,7 @@ func (s *NamespacesSuite) Test_AssignKASGrant() {
 	kasRegistry := &kasregistry.CreateKeyAccessServerRequest{
 		Uri:       "kas.uri/ns",
 		PublicKey: pubKey,
+		Name:      "kas-name-ns",
 	}
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	s.Require().NoError(err)
@@ -800,6 +801,7 @@ func (s *NamespacesSuite) Test_AssignKASGrant() {
 	s.NotNil(got)
 	s.Len(got.GetGrants(), 1)
 	s.Equal(kas.GetId(), got.GetGrants()[0].GetId())
+	s.Equal(kasRegistry.GetName(), got.GetGrants()[0].GetName())
 }
 
 func (s *NamespacesSuite) Test_AssignKASGrant_FailsInvalidIds() {

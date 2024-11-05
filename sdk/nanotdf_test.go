@@ -241,6 +241,23 @@ func NotTestCreateNanoTDF(t *testing.T) {
 	}
 }
 
+func TestNonZeroRandomPaddedIV(t *testing.T) {
+	iv, err := nonZeroRandomPaddedIV()
+	require.NoError(t, err)
+	require.NotNil(t, iv)
+	assert.Equal(t, ocrypto.GcmStandardNonceSize, len(iv))
+
+	// Ensure that the IV is not all zeros
+	allZero := true
+	for _, b := range iv {
+		if b != 0 {
+			allZero = false
+			break
+		}
+	}
+	assert.False(t, allZero, "IV should not be all zeros")
+}
+
 func TestCreateNanoTDF(t *testing.T) {
 	tests := []struct {
 		name          string

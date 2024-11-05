@@ -291,7 +291,8 @@ func (t TdfType) String() string {
 	return string(t)
 }
 
-// String method to make the custom type printable
+// GetTdfType returns the type of TDF based on the reader.
+// Reader is reset after the check.
 func GetTdfType(reader io.ReadSeeker) TdfType {
 	isValidNanoTdf, _ := IsValidNanoTdf(reader)
 
@@ -348,13 +349,12 @@ func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 	return true, nil
 }
 
+// IsValidNanoTdf detects whether, or not the reader is a valid Nano TDF.
+// Reader is reset after the check.
 func IsValidNanoTdf(reader io.ReadSeeker) (bool, error) {
 	_, _, err := NewNanoTDFHeaderFromReader(reader)
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
+	_, _ = reader.Seek(0, io.SeekStart) // Ignore the error as we're just checking if it's a valid nano TDF
+	return err == nil, err
 }
 
 func fetchPlatformConfiguration(platformEndpoint string, dialOptions []grpc.DialOption) (PlatformConfiguration, error) {

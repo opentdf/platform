@@ -145,6 +145,12 @@ func TestNew_ShouldValidateGoodNanoTdf(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.True(t, isValid)
+
+	// Try again to see if the reader has been reset
+	isValid, err = sdk.IsValidNanoTdf(in)
+	require.NoError(t, err)
+
+	assert.True(t, isValid)
 }
 
 func TestNew_ShouldNotValidateBadNanoTdf(t *testing.T) {
@@ -166,6 +172,12 @@ func TestNew_ShouldValidateStandardTdf(t *testing.T) {
 
 	in := bytes.NewReader(goodDecodedData)
 	isValid, err := sdk.IsValidTdf(in)
+	require.NoError(t, err)
+
+	assert.True(t, isValid)
+
+	// Try again to see if the reader has been reset
+	isValid, err = sdk.IsValidTdf(in)
 	require.NoError(t, err)
 
 	assert.True(t, isValid)

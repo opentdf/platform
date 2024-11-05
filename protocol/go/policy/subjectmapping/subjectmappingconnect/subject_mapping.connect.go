@@ -66,22 +66,26 @@ const (
 	// SubjectMappingServiceDeleteSubjectConditionSetProcedure is the fully-qualified name of the
 	// SubjectMappingService's DeleteSubjectConditionSet RPC.
 	SubjectMappingServiceDeleteSubjectConditionSetProcedure = "/policy.subjectmapping.SubjectMappingService/DeleteSubjectConditionSet"
+	// SubjectMappingServiceDeleteAllUnmappedSubjectConditionSetsProcedure is the fully-qualified name
+	// of the SubjectMappingService's DeleteAllUnmappedSubjectConditionSets RPC.
+	SubjectMappingServiceDeleteAllUnmappedSubjectConditionSetsProcedure = "/policy.subjectmapping.SubjectMappingService/DeleteAllUnmappedSubjectConditionSets"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	subjectMappingServiceServiceDescriptor                         = subjectmapping.File_policy_subjectmapping_subject_mapping_proto.Services().ByName("SubjectMappingService")
-	subjectMappingServiceMatchSubjectMappingsMethodDescriptor      = subjectMappingServiceServiceDescriptor.Methods().ByName("MatchSubjectMappings")
-	subjectMappingServiceListSubjectMappingsMethodDescriptor       = subjectMappingServiceServiceDescriptor.Methods().ByName("ListSubjectMappings")
-	subjectMappingServiceGetSubjectMappingMethodDescriptor         = subjectMappingServiceServiceDescriptor.Methods().ByName("GetSubjectMapping")
-	subjectMappingServiceCreateSubjectMappingMethodDescriptor      = subjectMappingServiceServiceDescriptor.Methods().ByName("CreateSubjectMapping")
-	subjectMappingServiceUpdateSubjectMappingMethodDescriptor      = subjectMappingServiceServiceDescriptor.Methods().ByName("UpdateSubjectMapping")
-	subjectMappingServiceDeleteSubjectMappingMethodDescriptor      = subjectMappingServiceServiceDescriptor.Methods().ByName("DeleteSubjectMapping")
-	subjectMappingServiceListSubjectConditionSetsMethodDescriptor  = subjectMappingServiceServiceDescriptor.Methods().ByName("ListSubjectConditionSets")
-	subjectMappingServiceGetSubjectConditionSetMethodDescriptor    = subjectMappingServiceServiceDescriptor.Methods().ByName("GetSubjectConditionSet")
-	subjectMappingServiceCreateSubjectConditionSetMethodDescriptor = subjectMappingServiceServiceDescriptor.Methods().ByName("CreateSubjectConditionSet")
-	subjectMappingServiceUpdateSubjectConditionSetMethodDescriptor = subjectMappingServiceServiceDescriptor.Methods().ByName("UpdateSubjectConditionSet")
-	subjectMappingServiceDeleteSubjectConditionSetMethodDescriptor = subjectMappingServiceServiceDescriptor.Methods().ByName("DeleteSubjectConditionSet")
+	subjectMappingServiceServiceDescriptor                                     = subjectmapping.File_policy_subjectmapping_subject_mapping_proto.Services().ByName("SubjectMappingService")
+	subjectMappingServiceMatchSubjectMappingsMethodDescriptor                  = subjectMappingServiceServiceDescriptor.Methods().ByName("MatchSubjectMappings")
+	subjectMappingServiceListSubjectMappingsMethodDescriptor                   = subjectMappingServiceServiceDescriptor.Methods().ByName("ListSubjectMappings")
+	subjectMappingServiceGetSubjectMappingMethodDescriptor                     = subjectMappingServiceServiceDescriptor.Methods().ByName("GetSubjectMapping")
+	subjectMappingServiceCreateSubjectMappingMethodDescriptor                  = subjectMappingServiceServiceDescriptor.Methods().ByName("CreateSubjectMapping")
+	subjectMappingServiceUpdateSubjectMappingMethodDescriptor                  = subjectMappingServiceServiceDescriptor.Methods().ByName("UpdateSubjectMapping")
+	subjectMappingServiceDeleteSubjectMappingMethodDescriptor                  = subjectMappingServiceServiceDescriptor.Methods().ByName("DeleteSubjectMapping")
+	subjectMappingServiceListSubjectConditionSetsMethodDescriptor              = subjectMappingServiceServiceDescriptor.Methods().ByName("ListSubjectConditionSets")
+	subjectMappingServiceGetSubjectConditionSetMethodDescriptor                = subjectMappingServiceServiceDescriptor.Methods().ByName("GetSubjectConditionSet")
+	subjectMappingServiceCreateSubjectConditionSetMethodDescriptor             = subjectMappingServiceServiceDescriptor.Methods().ByName("CreateSubjectConditionSet")
+	subjectMappingServiceUpdateSubjectConditionSetMethodDescriptor             = subjectMappingServiceServiceDescriptor.Methods().ByName("UpdateSubjectConditionSet")
+	subjectMappingServiceDeleteSubjectConditionSetMethodDescriptor             = subjectMappingServiceServiceDescriptor.Methods().ByName("DeleteSubjectConditionSet")
+	subjectMappingServiceDeleteAllUnmappedSubjectConditionSetsMethodDescriptor = subjectMappingServiceServiceDescriptor.Methods().ByName("DeleteAllUnmappedSubjectConditionSets")
 )
 
 // SubjectMappingServiceClient is a client for the policy.subjectmapping.SubjectMappingService
@@ -99,6 +103,7 @@ type SubjectMappingServiceClient interface {
 	CreateSubjectConditionSet(context.Context, *connect.Request[subjectmapping.CreateSubjectConditionSetRequest]) (*connect.Response[subjectmapping.CreateSubjectConditionSetResponse], error)
 	UpdateSubjectConditionSet(context.Context, *connect.Request[subjectmapping.UpdateSubjectConditionSetRequest]) (*connect.Response[subjectmapping.UpdateSubjectConditionSetResponse], error)
 	DeleteSubjectConditionSet(context.Context, *connect.Request[subjectmapping.DeleteSubjectConditionSetRequest]) (*connect.Response[subjectmapping.DeleteSubjectConditionSetResponse], error)
+	DeleteAllUnmappedSubjectConditionSets(context.Context, *connect.Request[subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest]) (*connect.Response[subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse], error)
 }
 
 // NewSubjectMappingServiceClient constructs a client for the
@@ -178,22 +183,29 @@ func NewSubjectMappingServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(subjectMappingServiceDeleteSubjectConditionSetMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		deleteAllUnmappedSubjectConditionSets: connect.NewClient[subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest, subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse](
+			httpClient,
+			baseURL+SubjectMappingServiceDeleteAllUnmappedSubjectConditionSetsProcedure,
+			connect.WithSchema(subjectMappingServiceDeleteAllUnmappedSubjectConditionSetsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // subjectMappingServiceClient implements SubjectMappingServiceClient.
 type subjectMappingServiceClient struct {
-	matchSubjectMappings      *connect.Client[subjectmapping.MatchSubjectMappingsRequest, subjectmapping.MatchSubjectMappingsResponse]
-	listSubjectMappings       *connect.Client[subjectmapping.ListSubjectMappingsRequest, subjectmapping.ListSubjectMappingsResponse]
-	getSubjectMapping         *connect.Client[subjectmapping.GetSubjectMappingRequest, subjectmapping.GetSubjectMappingResponse]
-	createSubjectMapping      *connect.Client[subjectmapping.CreateSubjectMappingRequest, subjectmapping.CreateSubjectMappingResponse]
-	updateSubjectMapping      *connect.Client[subjectmapping.UpdateSubjectMappingRequest, subjectmapping.UpdateSubjectMappingResponse]
-	deleteSubjectMapping      *connect.Client[subjectmapping.DeleteSubjectMappingRequest, subjectmapping.DeleteSubjectMappingResponse]
-	listSubjectConditionSets  *connect.Client[subjectmapping.ListSubjectConditionSetsRequest, subjectmapping.ListSubjectConditionSetsResponse]
-	getSubjectConditionSet    *connect.Client[subjectmapping.GetSubjectConditionSetRequest, subjectmapping.GetSubjectConditionSetResponse]
-	createSubjectConditionSet *connect.Client[subjectmapping.CreateSubjectConditionSetRequest, subjectmapping.CreateSubjectConditionSetResponse]
-	updateSubjectConditionSet *connect.Client[subjectmapping.UpdateSubjectConditionSetRequest, subjectmapping.UpdateSubjectConditionSetResponse]
-	deleteSubjectConditionSet *connect.Client[subjectmapping.DeleteSubjectConditionSetRequest, subjectmapping.DeleteSubjectConditionSetResponse]
+	matchSubjectMappings                  *connect.Client[subjectmapping.MatchSubjectMappingsRequest, subjectmapping.MatchSubjectMappingsResponse]
+	listSubjectMappings                   *connect.Client[subjectmapping.ListSubjectMappingsRequest, subjectmapping.ListSubjectMappingsResponse]
+	getSubjectMapping                     *connect.Client[subjectmapping.GetSubjectMappingRequest, subjectmapping.GetSubjectMappingResponse]
+	createSubjectMapping                  *connect.Client[subjectmapping.CreateSubjectMappingRequest, subjectmapping.CreateSubjectMappingResponse]
+	updateSubjectMapping                  *connect.Client[subjectmapping.UpdateSubjectMappingRequest, subjectmapping.UpdateSubjectMappingResponse]
+	deleteSubjectMapping                  *connect.Client[subjectmapping.DeleteSubjectMappingRequest, subjectmapping.DeleteSubjectMappingResponse]
+	listSubjectConditionSets              *connect.Client[subjectmapping.ListSubjectConditionSetsRequest, subjectmapping.ListSubjectConditionSetsResponse]
+	getSubjectConditionSet                *connect.Client[subjectmapping.GetSubjectConditionSetRequest, subjectmapping.GetSubjectConditionSetResponse]
+	createSubjectConditionSet             *connect.Client[subjectmapping.CreateSubjectConditionSetRequest, subjectmapping.CreateSubjectConditionSetResponse]
+	updateSubjectConditionSet             *connect.Client[subjectmapping.UpdateSubjectConditionSetRequest, subjectmapping.UpdateSubjectConditionSetResponse]
+	deleteSubjectConditionSet             *connect.Client[subjectmapping.DeleteSubjectConditionSetRequest, subjectmapping.DeleteSubjectConditionSetResponse]
+	deleteAllUnmappedSubjectConditionSets *connect.Client[subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest, subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse]
 }
 
 // MatchSubjectMappings calls policy.subjectmapping.SubjectMappingService.MatchSubjectMappings.
@@ -255,6 +267,12 @@ func (c *subjectMappingServiceClient) DeleteSubjectConditionSet(ctx context.Cont
 	return c.deleteSubjectConditionSet.CallUnary(ctx, req)
 }
 
+// DeleteAllUnmappedSubjectConditionSets calls
+// policy.subjectmapping.SubjectMappingService.DeleteAllUnmappedSubjectConditionSets.
+func (c *subjectMappingServiceClient) DeleteAllUnmappedSubjectConditionSets(ctx context.Context, req *connect.Request[subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest]) (*connect.Response[subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse], error) {
+	return c.deleteAllUnmappedSubjectConditionSets.CallUnary(ctx, req)
+}
+
 // SubjectMappingServiceHandler is an implementation of the
 // policy.subjectmapping.SubjectMappingService service.
 type SubjectMappingServiceHandler interface {
@@ -270,6 +288,7 @@ type SubjectMappingServiceHandler interface {
 	CreateSubjectConditionSet(context.Context, *connect.Request[subjectmapping.CreateSubjectConditionSetRequest]) (*connect.Response[subjectmapping.CreateSubjectConditionSetResponse], error)
 	UpdateSubjectConditionSet(context.Context, *connect.Request[subjectmapping.UpdateSubjectConditionSetRequest]) (*connect.Response[subjectmapping.UpdateSubjectConditionSetResponse], error)
 	DeleteSubjectConditionSet(context.Context, *connect.Request[subjectmapping.DeleteSubjectConditionSetRequest]) (*connect.Response[subjectmapping.DeleteSubjectConditionSetResponse], error)
+	DeleteAllUnmappedSubjectConditionSets(context.Context, *connect.Request[subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest]) (*connect.Response[subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse], error)
 }
 
 // NewSubjectMappingServiceHandler builds an HTTP handler from the service implementation. It
@@ -344,6 +363,12 @@ func NewSubjectMappingServiceHandler(svc SubjectMappingServiceHandler, opts ...c
 		connect.WithSchema(subjectMappingServiceDeleteSubjectConditionSetMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	subjectMappingServiceDeleteAllUnmappedSubjectConditionSetsHandler := connect.NewUnaryHandler(
+		SubjectMappingServiceDeleteAllUnmappedSubjectConditionSetsProcedure,
+		svc.DeleteAllUnmappedSubjectConditionSets,
+		connect.WithSchema(subjectMappingServiceDeleteAllUnmappedSubjectConditionSetsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/policy.subjectmapping.SubjectMappingService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SubjectMappingServiceMatchSubjectMappingsProcedure:
@@ -368,6 +393,8 @@ func NewSubjectMappingServiceHandler(svc SubjectMappingServiceHandler, opts ...c
 			subjectMappingServiceUpdateSubjectConditionSetHandler.ServeHTTP(w, r)
 		case SubjectMappingServiceDeleteSubjectConditionSetProcedure:
 			subjectMappingServiceDeleteSubjectConditionSetHandler.ServeHTTP(w, r)
+		case SubjectMappingServiceDeleteAllUnmappedSubjectConditionSetsProcedure:
+			subjectMappingServiceDeleteAllUnmappedSubjectConditionSetsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -419,4 +446,8 @@ func (UnimplementedSubjectMappingServiceHandler) UpdateSubjectConditionSet(conte
 
 func (UnimplementedSubjectMappingServiceHandler) DeleteSubjectConditionSet(context.Context, *connect.Request[subjectmapping.DeleteSubjectConditionSetRequest]) (*connect.Response[subjectmapping.DeleteSubjectConditionSetResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.subjectmapping.SubjectMappingService.DeleteSubjectConditionSet is not implemented"))
+}
+
+func (UnimplementedSubjectMappingServiceHandler) DeleteAllUnmappedSubjectConditionSets(context.Context, *connect.Request[subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest]) (*connect.Response[subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.subjectmapping.SubjectMappingService.DeleteAllUnmappedSubjectConditionSets is not implemented"))
 }

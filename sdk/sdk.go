@@ -350,6 +350,7 @@ func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 
 func IsValidNanoTdf(reader io.ReadSeeker) (bool, error) {
 	_, _, err := NewNanoTDFHeaderFromReader(reader)
+	reader.Seek(0, io.SeekStart)
 	if err != nil {
 		return false, err
 	}

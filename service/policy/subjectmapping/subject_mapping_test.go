@@ -120,3 +120,48 @@ func Test_UpdateSubjectMappingRequest_Succeeds(t *testing.T) {
 	err = v.Validate(req)
 	require.NoError(t, err, "valid uuid format for subject_condition_set_id")
 }
+
+func Test_MatchSubjectMappingsRequest_MissingSelector_Fails(t *testing.T) {
+	props := []*policy.SubjectProperty{
+		{
+			ExternalValue: "some_value",
+		},
+	}
+	req := &subjectmapping.MatchSubjectMappingsRequest{SubjectProperties: props}
+
+	err := getValidator().Validate(req)
+	require.Error(t, err)
+}
+
+func Test_MatchSubjectMappingsRequest_EmptyArray_Fails(t *testing.T) {
+	props := []*policy.SubjectProperty{}
+	req := &subjectmapping.MatchSubjectMappingsRequest{SubjectProperties: props}
+
+	err := getValidator().Validate(req)
+	require.Error(t, err)
+}
+
+func Test_MatchSubjectMappingsRequest_Succeeds(t *testing.T) {
+	props := []*policy.SubjectProperty{
+		{
+			ExternalSelectorValue: ".some_field",
+			ExternalValue:         "some_value",
+		},
+	}
+	req := &subjectmapping.MatchSubjectMappingsRequest{SubjectProperties: props}
+
+	err := getValidator().Validate(req)
+	require.NoError(t, err)
+}
+
+func Test_MatchSubjectMappingsRequest_EmptyExternalValue_Succeeds(t *testing.T) {
+	props := []*policy.SubjectProperty{
+		{
+			ExternalSelectorValue: ".some_field",
+		},
+	}
+	req := &subjectmapping.MatchSubjectMappingsRequest{SubjectProperties: props}
+
+	err := getValidator().Validate(req)
+	require.NoError(t, err)
+}

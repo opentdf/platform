@@ -1,6 +1,7 @@
 package attributes
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -450,4 +451,60 @@ func TestDeactivateAttributeValueRequest(t *testing.T) {
 	}
 	err = getValidator().Validate(req)
 	require.NoError(t, err)
+}
+
+func TestGetAttributeValuesByFqns_Valid_Succeeds(t *testing.T) {
+	req := &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{
+			"any_value",
+		},
+	}
+
+	v := getValidator()
+	err := v.Validate(req)
+
+	require.NoError(t, err)
+}
+
+func TestGetAttributeValuesByFqns_FQNsNil_Fails(t *testing.T) {
+	req := &attributes.GetAttributeValuesByFqnsRequest{}
+
+	v := getValidator()
+	err := v.Validate(req)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "fqns")
+	require.Contains(t, err.Error(), "[repeated.min_items]")
+}
+
+func TestGetAttributeValuesByFqns_FQNsEmpty_Fails(t *testing.T) {
+	req := &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{},
+	}
+
+	v := getValidator()
+	err := v.Validate(req)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "fqns")
+	require.Contains(t, err.Error(), "[repeated.min_items]")
+}
+
+func TestGetAttributeValuesByFqns_FQNsOutsideMaxItemsRange_Fails(t *testing.T) {
+	outsideRange := 251
+	fqns := make([]string, outsideRange)
+	for i := 0; i < outsideRange; i++ {
+		fqns[i] = fmt.Sprintf("fqn_%d", i)
+	}
+
+	req := &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: fqns,
+	}
+
+	v := getValidator()
+	err := v.Validate(req)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "fqns")
+	require.Contains(t, err.Error(), "[repeated.max_items]")
 }

@@ -6,6 +6,7 @@ import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
 import "policy/objects.proto";
+import "policy/selectors.proto";
 
 message GetKeyAccessServerRequest {
   // Required
@@ -17,9 +18,14 @@ message GetKeyAccessServerResponse {
   KeyAccessServer key_access_server = 1;
 }
 
-message ListKeyAccessServersRequest {}
+message ListKeyAccessServersRequest {
+  // Optional
+  policy.PageRequest pagination = 10;
+}
 message ListKeyAccessServersResponse {
   repeated KeyAccessServer key_access_servers = 1;
+
+  policy.PageResponse pagination = 10;
 }
 
 // TODO: optional validation below should be through a custom validator, which is too bleeding edge at present without full plugin support
@@ -116,7 +122,7 @@ message KeyAccessServerGrants {
 // GET request to the specific policy object.
 message ListKeyAccessServerGrantsRequest {
   // Optional
-  // Filter LIST by either ID of a registered Key Access Server.
+  // Filter LIST by ID of a registered Key Access Server.
   // If neither is provided, grants from all registered KASs to policy attribute objects are returned.
   string kas_id = 1 [(buf.validate.field).cel = {
      id: "optional_uuid_format",
@@ -143,10 +149,14 @@ message ListKeyAccessServerGrantsRequest {
       expression: "size(this) == 0 || this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
     }
   ];
-}
 
+  // Optional
+  policy.PageRequest pagination = 10;
+}
 message ListKeyAccessServerGrantsResponse {
   repeated KeyAccessServerGrants grants = 1;
+
+  policy.PageResponse pagination = 10;
 }
 
 service KeyAccessServerRegistryService {

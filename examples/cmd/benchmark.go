@@ -68,14 +68,6 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 
 	in := strings.NewReader("Hello, World!")
 
-	//opts := []sdk.Option{
-	//	sdk.WithInsecurePlaintextConn(),
-	//	sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
-	//	sdk.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
-	//}
-	//
-	//opts = append(opts, sdk.WithNoKIDInKAO())
-
 	// Create new offline client
 	client, err := newSDK()
 	if err != nil {

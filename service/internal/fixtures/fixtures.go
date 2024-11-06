@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 
+	policypb "github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/policy"
 	"gopkg.in/yaml.v2"
 )
@@ -83,19 +84,27 @@ type SubjectConditionSet struct {
 	} `yaml:"condition" json:"condition"`
 }
 
+type FixtureDataResourceMappingGroup struct {
+	ID          string `yaml:"id"`
+	NamespaceID string `yaml:"namespace_id"`
+	Name        string `yaml:"name"`
+}
+
 type FixtureDataResourceMapping struct {
 	ID               string   `yaml:"id"`
 	AttributeValueID string   `yaml:"attribute_value_id"`
 	Terms            []string `yaml:"terms"`
+	GroupID          string   `yaml:"group_id"`
 }
 
 type FixtureDataKasRegistry struct {
 	ID     string `yaml:"id"`
 	URI    string `yaml:"uri"`
 	PubKey struct {
-		Remote string `yaml:"remote" json:"remote,omitempty"`
-		Local  string `yaml:"local" json:"local,omitempty"`
+		Remote string                    `yaml:"remote" json:"remote,omitempty"`
+		Cached *policypb.KasPublicKeySet `yaml:"cached" json:"cached,omitempty"`
 	} `yaml:"public_key" json:"public_key"`
+	Name string `yaml:"name"`
 }
 
 type FixtureData struct {
@@ -121,6 +130,10 @@ type FixtureData struct {
 		Metadata FixtureMetadata                `yaml:"metadata"`
 		Data     map[string]SubjectConditionSet `yaml:"data"`
 	} `yaml:"subject_condition_set"`
+	ResourceMappingGroups struct {
+		Metadata FixtureMetadata                            `yaml:"metadata"`
+		Data     map[string]FixtureDataResourceMappingGroup `yaml:"data"`
+	} `yaml:"resource_mapping_groups"`
 	ResourceMappings struct {
 		Metadata FixtureMetadata                       `yaml:"metadata"`
 		Data     map[string]FixtureDataResourceMapping `yaml:"data"`
@@ -200,6 +213,15 @@ func (f *Fixtures) GetSubjectConditionSetKey(key string) SubjectConditionSet {
 	return scs
 }
 
+func (f *Fixtures) GetResourceMappingGroupKey(key string) FixtureDataResourceMappingGroup {
+	rmGroup, ok := fixtureData.ResourceMappingGroups.Data[key]
+	if !ok || rmGroup.ID == "" {
+		slog.Error("could not find resource-mapping-groups", slog.String("id", key))
+		panic("could not find resource-mapping-group fixture: " + key)
+	}
+	return rmGroup
+}
+
 func (f *Fixtures) GetResourceMappingKey(key string) FixtureDataResourceMapping {
 	rm, ok := fixtureData.ResourceMappings.Data[key]
 	if !ok || rm.ID == "" {
@@ -235,8 +257,10 @@ func (f *Fixtures) Provision() {
 	sc := f.provisionSubjectConditionSet()
 	slog.Info("📦 provisioning subject mapping data")
 	sM := f.provisionSubjectMappings()
+	slog.Info("📦 provisioning resource mapping group data")
+	rmg := f.provisionResourceMappingGroups()
 	slog.Info("📦 provisioning resource mapping data")
-	rM := f.provisionResourceMappings()
+	rm := f.provisionResourceMappings()
 	slog.Info("📦 provisioning kas registry data")
 	kas := f.provisionKasRegistry()
 	slog.Info("📦 provisioning attribute key access server data")
@@ -250,13 +274,14 @@ func (f *Fixtures) Provision() {
 		slog.Int64("attribute_values", aV),
 		slog.Int64("subject_mappings", sM),
 		slog.Int64("subject_condition_set", sc),
-		slog.Int64("resource_mappings", rM),
+		slog.Int64("resource_mapping_groups", rmg),
+		slog.Int64("resource_mappings", rm),
 		slog.Int64("kas_registry", kas),
 		slog.Int64("attribute_key_access_server", akas),
 		slog.Int64("attribute_value_key_access_server", avkas),
 	)
 	slog.Info("📚 indexing FQNs for fixtures")
-	f.db.PolicyClient.AttrFqnReindex()
+	f.db.PolicyClient.AttrFqnReindex(context.Background())
 	slog.Info("📚 successfully indexed FQNs")
 }
 
@@ -347,6 +372,18 @@ func (f *Fixtures) provisionSubjectMappings() int64 {
 	return f.provision(fixtureData.SubjectMappings.Metadata.TableName, fixtureData.SubjectMappings.Metadata.Columns, values)
 }
 
+func (f *Fixtures) provisionResourceMappingGroups() int64 {
+	values := make([][]string, 0, len(fixtureData.ResourceMappingGroups.Data))
+	for _, d := range fixtureData.ResourceMappingGroups.Data {
+		values = append(values, []string{
+			f.db.StringWrap(d.ID),
+			f.db.StringWrap(d.NamespaceID),
+			f.db.StringWrap(d.Name),
+		})
+	}
+	return f.provision(fixtureData.ResourceMappingGroups.Metadata.TableName, fixtureData.ResourceMappingGroups.Metadata.Columns, values)
+}
+
 func (f *Fixtures) provisionResourceMappings() int64 {
 	values := make([][]string, 0, len(fixtureData.ResourceMappings.Data))
 	for _, d := range fixtureData.ResourceMappings.Data {
@@ -354,6 +391,7 @@ func (f *Fixtures) provisionResourceMappings() int64 {
 			f.db.StringWrap(d.ID),
 			f.db.StringWrap(d.AttributeValueID),
 			f.db.StringArrayWrap(d.Terms),
+			f.db.StringWrap(d.GroupID),
 		})
 	}
 	return f.provision(fixtureData.ResourceMappings.Metadata.TableName, fixtureData.ResourceMappings.Metadata.Columns, values)
@@ -365,6 +403,7 @@ func (f *Fixtures) provisionKasRegistry() int64 {
 		v := []string{
 			f.db.StringWrap(d.ID),
 			f.db.StringWrap(d.URI),
+			f.db.StringWrap(d.Name),
 		}
 
 		pubKeyJSON, err := json.Marshal(d.PubKey)
@@ -373,6 +412,7 @@ func (f *Fixtures) provisionKasRegistry() int64 {
 			panic("issue with KAS registry public key JSON")
 		}
 		v = append(v, f.db.StringWrap(string(pubKeyJSON)))
+
 		values = append(values, v)
 	}
 	return f.provision(fixtureData.KasRegistries.Metadata.TableName, fixtureData.KasRegistries.Metadata.Columns, values)

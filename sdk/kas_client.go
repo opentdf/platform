@@ -77,7 +77,7 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, keyAccess KeyAccess, 
 		return nil, err
 	}
 
-	conn, err := grpc.Dial(grpcAddress, k.dialOptions...)
+	conn, err := grpc.NewClient(grpcAddress, k.dialOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to sas: %w", err)
 	}
@@ -96,7 +96,7 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, keyAccess KeyAccess, 
 func (k *KASClient) unwrap(ctx context.Context, keyAccess KeyAccess, policy string) ([]byte, error) {
 	response, err := k.makeRewrapRequest(ctx, keyAccess, policy)
 	if err != nil {
-		return nil, fmt.Errorf("error making request to kas: %w", err)
+		return nil, fmt.Errorf("error making rewrap request to kas: %w", err)
 	}
 
 	key, err := k.asymDecryption.Decrypt(response.GetEntityWrappedKey())
@@ -126,12 +126,12 @@ func (k *KASClient) getNanoTDFRewrapRequest(header string, kasURL string, pubKey
 		return nil, fmt.Errorf("Error marshaling request body: %w", err)
 	}
 
+	now := time.Now()
 	tok, err := jwt.NewBuilder().
 		Claim("requestBody", string(requestBodyJSON)).
-		IssuedAt(time.Now()).
-		Expiration(time.Now().Add(secondsPerMinute * time.Second)).
+		IssuedAt(now).
+		Expiration(now.Add(secondsPerMinute * time.Second)).
 		Build()
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to create jwt: %w", err)
 	}
@@ -144,7 +144,6 @@ func (k *KASClient) getNanoTDFRewrapRequest(header string, kasURL string, pubKey
 
 		return signed, nil
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign the token: %w", err)
 	}
@@ -165,7 +164,7 @@ func (k *KASClient) makeNanoTDFRewrapRequest(ctx context.Context, header string,
 		return nil, err
 	}
 
-	conn, err := grpc.Dial(grpcAddress, k.dialOptions...)
+	conn, err := grpc.NewClient(grpcAddress, k.dialOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to kas: %w", err)
 	}
@@ -199,7 +198,7 @@ func (k *KASClient) unwrapNanoTDF(ctx context.Context, header string, kasURL str
 
 	response, err := k.makeNanoTDFRewrapRequest(ctx, header, kasURL, publicKeyAsPem)
 	if err != nil {
-		return nil, fmt.Errorf("error making request to kas: %w", err)
+		return nil, fmt.Errorf("error making nano rewrap request to kas: %w", err)
 	}
 
 	sessionKey, err := ocrypto.ComputeECDHKey([]byte(privateKeyAsPem), []byte(response.GetSessionPublicKey()))
@@ -256,12 +255,12 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 		return nil, fmt.Errorf("Error marshaling request body: %w", err)
 	}
 
+	now := time.Now()
 	tok, err := jwt.NewBuilder().
 		Claim("requestBody", string(requestBodyJSON)).
-		IssuedAt(time.Now()).
-		Expiration(time.Now().Add(secondsPerMinute * time.Second)).
+		IssuedAt(now).
+		Expiration(now.Add(secondsPerMinute * time.Second)).
 		Build()
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to create jwt: %w", err)
 	}
@@ -274,7 +273,6 @@ func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.R
 
 		return signed, nil
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign the token: %w", err)
 	}
@@ -314,7 +312,7 @@ func (c *kasKeyCache) get(url, algorithm string) *KASInfo {
 	if !ok {
 		return nil
 	}
-	ago := now.Add(-1 * time.Hour)
+	ago := now.Add(-5 * time.Minute)
 	if ago.After(cv.Time) {
 		delete(c.c, cacheKey)
 		return nil
@@ -328,14 +326,16 @@ func (c *kasKeyCache) store(ki KASInfo) {
 }
 
 func (s SDK) getPublicKey(ctx context.Context, url, algorithm string) (*KASInfo, error) {
-	if cachedValue := s.kasKeyCache.get(url, algorithm); nil != cachedValue {
-		return cachedValue, nil
+	if s.kasKeyCache != nil {
+		if cachedValue := s.kasKeyCache.get(url, algorithm); nil != cachedValue {
+			return cachedValue, nil
+		}
 	}
 	grpcAddress, err := getGRPCAddress(url)
 	if err != nil {
 		return nil, err
 	}
-	conn, err := grpc.Dial(grpcAddress, s.dialOptions...)
+	conn, err := grpc.NewClient(grpcAddress, s.dialOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to grpc service at %s: %w", url, err)
 	}
@@ -350,7 +350,6 @@ func (s SDK) getPublicKey(ctx context.Context, url, algorithm string) (*KASInfo,
 		req.V = "1"
 	}
 	resp, err := serviceClient.PublicKey(ctx, &req)
-
 	if err != nil {
 		return nil, fmt.Errorf("error making request to KAS: %w", err)
 	}
@@ -366,6 +365,8 @@ func (s SDK) getPublicKey(ctx context.Context, url, algorithm string) (*KASInfo,
 		KID:       kid,
 		PublicKey: resp.GetPublicKey(),
 	}
-	s.kasKeyCache.store(ki)
+	if s.kasKeyCache != nil {
+		s.kasKeyCache.store(ki)
+	}
 	return &ki, nil
 }

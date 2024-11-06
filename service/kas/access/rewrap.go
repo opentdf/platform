@@ -227,7 +227,7 @@ func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byt
 		return nil, err400("bad request")
 	}
 	if !hmac.Equal(actualHMAC, expectedHMAC) {
-		logger.WarnContext(ctx, "policy hmac mismatch", "actual", actualHMAC, "expected", expectedHMAC, "policyBinding", policyBinding)
+		logger.WarnContext(ctx, "policy hmac mismatch", "policyBinding", policyBinding)
 		return nil, err400("bad request")
 	}
 	sDecPolicy, err := base64.StdEncoding.DecodeString(requestBody.Policy)
@@ -346,7 +346,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 		Jwt: entity.Token,
 	}
 
-	access, err := canAccess(ctx, tok, *policy, p.SDK, *p.Logger)
+	access, err := p.canAccess(ctx, tok, *policy)
 
 	// Audit the TDF3 Rewrap
 	kasPolicy := ConvertToAuditKasPolicy(*policy)
@@ -393,20 +393,25 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 }
 
 func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
-	// TODO Lookup KID from request content
-	// Should this be in the locator or somewhere else?
-	kid, err := p.lookupKid(ctx, security.AlgorithmECP256R1)
-	if err != nil {
-		p.Logger.WarnContext(ctx, "failure to find default kid for ec", "err", err)
-		return nil, err400("bad request")
-	}
 	headerReader := bytes.NewReader(body.KeyAccess.Header)
 
 	header, _, err := sdk.NewNanoTDFHeaderFromReader(headerReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
 	}
-
+	// Lookup KID from nano header
+	kid, err := header.GetKasURL().GetIdentifier()
+	if err != nil {
+		p.Logger.DebugContext(ctx, "nanoTDFRewrap GetIdentifier", "kid", kid, "err", err)
+		// legacy nano with KID
+		kid, err = p.lookupKid(ctx, security.AlgorithmECP256R1)
+		if err != nil {
+			p.Logger.ErrorContext(ctx, "failure to find default kid for ec", "err", err)
+			return nil, err400("bad request")
+		}
+		p.Logger.DebugContext(ctx, "nanoTDFRewrap lookupKid", "kid", kid)
+	}
+	p.Logger.DebugContext(ctx, "nanoTDFRewrap", "kid", kid)
 	ecCurve, err := header.ECCurve()
 	if err != nil {
 		return nil, fmt.Errorf("ECCurve failed: %w", err)
@@ -439,7 +444,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		Jwt: entity.Token,
 	}
 
-	access, err := canAccess(ctx, tok, *policy, p.SDK, *p.Logger)
+	access, err := p.canAccess(ctx, tok, *policy)
 
 	// Audit the rewrap
 	kasPolicy := ConvertToAuditKasPolicy(*policy)
@@ -461,22 +466,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		return nil, err403("forbidden")
 	}
 
-	pub, ok := body.PublicKey.(*ecdsa.PublicKey)
-	if !ok {
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-		return nil, fmt.Errorf("failed to extract public key: %w", err)
-	}
-
-	// Convert public key to 65-bytes format
-	pubKeyBytes := make([]byte, 1+len(pub.X.Bytes())+len(pub.Y.Bytes()))
-	pubKeyBytes[0] = 0x4 // ID for uncompressed format
-	if copy(pubKeyBytes[1:33], pub.X.Bytes()) != 32 || copy(pubKeyBytes[33:], pub.Y.Bytes()) != 32 {
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-		return nil, fmt.Errorf("failed to serialize keypair: %v", pub)
-	}
-
 	privateKeyHandle, publicKeyHandle, err := p.CryptoProvider.GenerateEphemeralKasKeys()
-
 	if err != nil {
 		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
 		return nil, fmt.Errorf("failed to generate keypair: %w", err)

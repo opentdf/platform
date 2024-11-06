@@ -7,7 +7,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -18,7 +17,6 @@ import (
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	policydb "github.com/opentdf/platform/service/policy/db"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -344,6 +342,7 @@ func (s *AttributesSuite) Test_GetAttribute_ContainsKASGrants() {
 				Remote: "https://example.com/kas/key/1",
 			},
 		},
+		Name: "def_kas-name",
 	}
 	createdKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kas)
 	s.Require().NoError(err)
@@ -364,14 +363,16 @@ func (s *AttributesSuite) Test_GetAttribute_ContainsKASGrants() {
 	s.Require().NoError(err)
 	s.NotNil(gotAttr)
 
-	s.Len(gotAttr.GetGrants(), 1)
-	s.Equal(createdKAS.GetId(), gotAttr.GetGrants()[0].GetId())
+	gotGrants := gotAttr.GetGrants()
+	s.Len(gotGrants, 1)
+	s.Equal(createdKAS.GetId(), gotGrants[0].GetId())
+	s.Equal(kas.GetName(), gotGrants[0].GetName())
 }
 
-func (s *AttributesSuite) Test_ListAttribute() {
+func (s *AttributesSuite) Test_ListAttributes() {
 	fixtures := s.getAttributeFixtures()
 
-	list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateActive, "")
+	list, err := s.db.PolicyClient.ListAttributes(s.ctx, policydb.StateActive, "")
 	s.Require().NoError(err)
 	s.NotNil(list)
 
@@ -388,7 +389,7 @@ func (s *AttributesSuite) Test_ListAttribute() {
 	}
 }
 
-func (s *AttributesSuite) Test_ListAttribute_FqnsIncluded() {
+func (s *AttributesSuite) Test_ListAttributes_FqnsIncluded() {
 	// create an attribute
 	attr := &attributes.CreateAttributeRequest{
 		Name:        "list_attribute_fqns_new_attr",
@@ -400,7 +401,7 @@ func (s *AttributesSuite) Test_ListAttribute_FqnsIncluded() {
 	s.Require().NoError(err)
 	s.NotNil(createdAttr)
 
-	list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateActive, fixtureNamespaceID)
+	list, err := s.db.PolicyClient.ListAttributes(s.ctx, policydb.StateActive, fixtureNamespaceID)
 	s.Require().NoError(err)
 	s.NotNil(list)
 
@@ -421,7 +422,7 @@ func (s *AttributesSuite) Test_ListAttribute_FqnsIncluded() {
 	}
 }
 
-func (s *AttributesSuite) Test_ListAttributesByNamespace() {
+func (s *AttributesSuite) Test_ListAttributes_ByNamespaceIdOrName() {
 	// get all unique namespace_ids
 	namespaces := map[string]string{}
 	for _, f := range s.getAttributeFixtures() {
@@ -429,7 +430,7 @@ func (s *AttributesSuite) Test_ListAttributesByNamespace() {
 	}
 	// list attributes by namespace id
 	for nsID := range namespaces {
-		list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateAny, nsID)
+		list, err := s.db.PolicyClient.ListAttributes(s.ctx, policydb.StateAny, nsID)
 		s.Require().NoError(err)
 		s.NotNil(list)
 		s.NotEmpty(list)
@@ -441,7 +442,19 @@ func (s *AttributesSuite) Test_ListAttributesByNamespace() {
 
 	// list attributes by namespace name
 	for _, nsName := range namespaces {
-		list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateAny, nsName)
+		list, err := s.db.PolicyClient.ListAttributes(s.ctx, policydb.StateAny, nsName)
+		s.Require().NoError(err)
+		s.NotNil(list)
+		s.NotEmpty(list)
+		for _, l := range list {
+			s.Equal(nsName, l.GetNamespace().GetName())
+		}
+	}
+
+	// list attributes by namespace name with case insensitivity
+	for _, nsName := range namespaces {
+		upperNsName := strings.ToUpper(nsName)
+		list, err := s.db.PolicyClient.ListAttributes(s.ctx, policydb.StateAny, upperNsName)
 		s.Require().NoError(err)
 		s.NotNil(list)
 		s.NotEmpty(list)
@@ -479,14 +492,7 @@ func (s *AttributesSuite) Test_UpdateAttribute() {
 			Labels: labels,
 		},
 	}
-	start := time.Now().Add(-time.Second)
 	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
-	end := time.Now().Add(time.Second)
-	metadata := created.GetMetadata()
-	updatedAt := metadata.GetUpdatedAt()
-	createdAt := metadata.GetCreatedAt()
-	s.True(createdAt.AsTime().After(start))
-	s.True(createdAt.AsTime().Before(end))
 	s.Require().NoError(err)
 	s.NotNil(created)
 
@@ -512,7 +518,12 @@ func (s *AttributesSuite) Test_UpdateAttribute() {
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
-	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
+	metadata := got.GetMetadata()
+	createdAt := metadata.GetCreatedAt()
+	updatedAt := metadata.GetUpdatedAt()
+	s.False(createdAt.AsTime().IsZero())
+	s.False(updatedAt.AsTime().IsZero())
+	s.True(updatedAt.AsTime().After(createdAt.AsTime()))
 }
 
 func (s *AttributesSuite) Test_UpdateAttribute_WithInvalidIdFails() {
@@ -753,7 +764,6 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_ReplaceValuesOrder() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(updated)
-	s.Len(updated.GetValues(), 3)
 
 	// get attribute and ensure the order of the values is preserved and successfully reversed
 	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
@@ -802,7 +812,7 @@ func (s *AttributesSuite) Test_UnsafeDeleteAttribute() {
 	s.NotEqual("", ns.GetId())
 
 	// attribute should not be listed anymore
-	list, err := s.db.PolicyClient.ListAllAttributes(s.ctx, policydb.StateAny, fixtureNamespaceID)
+	list, err := s.db.PolicyClient.ListAttributes(s.ctx, policydb.StateAny, fixtureNamespaceID)
 	s.Require().NoError(err)
 	s.NotNil(list)
 	for _, l := range list {
@@ -916,7 +926,7 @@ func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_List() {
 	}
 
 	listAttributes := func(state string) bool {
-		listedAttrs, err := s.db.PolicyClient.ListAllAttributes(s.ctx, state, "")
+		listedAttrs, err := s.db.PolicyClient.ListAttributes(s.ctx, state, "")
 		s.Require().NoError(err)
 		s.NotNil(listedAttrs)
 		for _, a := range listedAttrs {
@@ -997,9 +1007,9 @@ func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_List() {
 	}
 
 	for _, tableTest := range tests {
-		s.T().Run(tableTest.name, func(t *testing.T) {
+		s.Run(tableTest.name, func() {
 			found := tableTest.testFunc(tableTest.state)
-			assert.Equal(t, tableTest.isFound, found)
+			s.Equal(tableTest.isFound, found)
 		})
 	}
 }

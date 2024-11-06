@@ -1,19 +1,45 @@
 package sdk
 
-import "log/slog"
+func (c PlatformConfiguration) getIdpConfig() map[string]interface{} {
+	idpCfg, err := c["idp"].(map[string]interface{})
+	if !err {
+		idpCfg = map[string]interface{}{}
+	}
+	return idpCfg
+}
 
-func (s SDK) PlatformIssuer() string {
-	// This check is needed if we want to fetch platform configuration over ipc
-	if s.config.platformConfiguration == nil {
-		cfg, err := getPlatformConfiguration(s.conn)
-		if err != nil {
-			slog.Warn("failed to get platform configuration", slog.Any("error", err))
-		}
-		s.config.platformConfiguration = cfg
-	}
-	value, ok := s.config.platformConfiguration["platform_issuer"].(string)
+func (c PlatformConfiguration) Issuer() (string, error) {
+	idpCfg := c.getIdpConfig()
+	value, ok := idpCfg["issuer"].(string)
 	if !ok {
-		slog.Warn("platform_issuer not found in platform configuration")
+		return "", ErrPlatformIssuerNotFound
 	}
-	return value
+	return value, nil
+}
+
+func (c PlatformConfiguration) AuthzEndpoint() (string, error) {
+	idpCfg := c.getIdpConfig()
+	value, ok := idpCfg["authorization_endpoint"].(string)
+	if !ok {
+		return "", ErrPlatformAuthzEndpointNotFound
+	}
+	return value, nil
+}
+
+func (c PlatformConfiguration) TokenEndpoint() (string, error) {
+	idpCfg := c.getIdpConfig()
+	value, ok := idpCfg["token_endpoint"].(string)
+	if !ok {
+		return "", ErrPlatformTokenEndpointNotFound
+	}
+	return value, nil
+}
+
+func (c PlatformConfiguration) PublicClientID() (string, error) {
+	idpCfg := c.getIdpConfig()
+	value, ok := idpCfg["public_client_id"].(string)
+	if !ok {
+		return "", ErrPlatformPublicClientIDNotFound
+	}
+	return value, nil
 }

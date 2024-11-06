@@ -1,5 +1,104 @@
 # Changelog
 
+## [0.3.17](https://github.com/opentdf/platform/compare/sdk/v0.3.16...sdk/v0.3.17) (2024-10-28)
+
+
+### Bug Fixes
+
+* **sdk:** option to disable assertion verification ([#1689](https://github.com/opentdf/platform/issues/1689)) ([5c08c47](https://github.com/opentdf/platform/commit/5c08c47d616e98a0dcd2eec4e30a6c04ae71526d))
+* **sdk:** Stops including binding in assertion hashes ([#1681](https://github.com/opentdf/platform/issues/1681)) ([a4583b0](https://github.com/opentdf/platform/commit/a4583b07a15f73027a1a63c619338bf1bdbebe49))
+
+## [0.3.16](https://github.com/opentdf/platform/compare/sdk/v0.3.15...sdk/v0.3.16) (2024-10-15)
+
+
+### Features
+
+* **sdk:** Expose error types for signature, assertion, and kas failures ([#1613](https://github.com/opentdf/platform/issues/1613)) ([2aab506](https://github.com/opentdf/platform/commit/2aab5062a7aef3a9c95f0bb2c9c031a08501f76d))
+
+## [0.3.15](https://github.com/opentdf/platform/compare/sdk/v0.3.14...sdk/v0.3.15) (2024-10-15)
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1637](https://github.com/opentdf/platform/issues/1637)) ([f42d5af](https://github.com/opentdf/platform/commit/f42d5af65738bff3497c16d63455457f6aab2728))
+
+## [0.3.14](https://github.com/opentdf/platform/compare/sdk/v0.3.13...sdk/v0.3.14) (2024-10-08)
+
+
+### Features
+
+* **sdk:** Improve KAS key lookup and caching ([#1556](https://github.com/opentdf/platform/issues/1556)) ([fb6c47a](https://github.com/opentdf/platform/commit/fb6c47a95f2e91748436a76aeef46a81273bb10d))
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1609](https://github.com/opentdf/platform/issues/1609)) ([d5e4292](https://github.com/opentdf/platform/commit/d5e4292a026cda0e0bfc667f267492f4024b0335))
+
+## [0.3.13](https://github.com/opentdf/platform/compare/sdk/v0.3.12...sdk/v0.3.13) (2024-10-01)
+
+
+### Features
+
+* **sdk:** Add namesapce grants to key splitting ([#1512](https://github.com/opentdf/platform/issues/1512)) ([d9a07f8](https://github.com/opentdf/platform/commit/d9a07f84ab5686fe13af82435af3201042dd7228))
+
+
+### Bug Fixes
+
+* **ci:** Fix negative assertion test case false positive ([#1550](https://github.com/opentdf/platform/issues/1550)) ([ef40bdb](https://github.com/opentdf/platform/commit/ef40bdbc575638e29a6dfbe2890620ea252ee481))
+* **core:** Add NanoTDF KID padding removal and update logging level ([#1466](https://github.com/opentdf/platform/issues/1466)) ([54de8f4](https://github.com/opentdf/platform/commit/54de8f4e0497e8c587eac06fb5418e9dc3b33e19)), closes [#1467](https://github.com/opentdf/platform/issues/1467)
+* **core:** Autobump sdk ([#1513](https://github.com/opentdf/platform/issues/1513)) ([03fba13](https://github.com/opentdf/platform/commit/03fba13f3457584e910caf11eacf421fcafff355))
+* **core:** Autobump sdk ([#1577](https://github.com/opentdf/platform/issues/1577)) ([df7466b](https://github.com/opentdf/platform/commit/df7466b2484a836c7e91ca9af59c678d28c38b56))
+* **core:** only strip nano kids to the right ([#1475](https://github.com/opentdf/platform/issues/1475)) ([ae8d8a2](https://github.com/opentdf/platform/commit/ae8d8a27354e81b91b77ed5ab3d1710813c1f024))
+* **core:** Store attribute specific grants to key cache ([#1507](https://github.com/opentdf/platform/issues/1507)) ([8bc0a98](https://github.com/opentdf/platform/commit/8bc0a982481e64d1ec44c13de0c1d1264a61ac70))
+* **sdk:** DoS protection through TDF segment sizes ([#1536](https://github.com/opentdf/platform/issues/1536)) ([d506734](https://github.com/opentdf/platform/commit/d506734985eedd72532a280b7c83bc2d746488b3))
+* **sdk:** Fix nanotdf ECC mode bitfield ([#1551](https://github.com/opentdf/platform/issues/1551)) ([58a76ad](https://github.com/opentdf/platform/commit/58a76ad5a4736f99df3b9e1dcbf4e06c6b830da1))
+* **sdk:** Fix possible panic for `AttributeValueFQN.Prefix()` ([#1472](https://github.com/opentdf/platform/issues/1472)) ([144aeda](https://github.com/opentdf/platform/commit/144aeda9141123cbfad44271844df49d632744f2))
+* **sdk:** Granter offline mode with namespaces and keycache ([#1542](https://github.com/opentdf/platform/issues/1542)) ([ecd41f4](https://github.com/opentdf/platform/commit/ecd41f43461ecce967d193b09f469621a4d6b484))
+
+## [0.3.12](https://github.com/opentdf/platform/compare/sdk/v0.3.11...sdk/v0.3.12) (2024-08-23)
+
+
+### Features
+
+* **core:** KID in NanoTDF KAS ResourceLocator borrowed from Protocol ([#1222](https://github.com/opentdf/platform/issues/1222)) ([e5ee4ef](https://github.com/opentdf/platform/commit/e5ee4efe91bffd9e0310daccf7217d6a797a7cc9))
+
+## [0.3.11](https://github.com/opentdf/platform/compare/sdk/v0.3.10...sdk/v0.3.11) (2024-08-22)
+
+
+### Bug Fixes
+
+* **sdk:** set kas key cache ttl to 5 minutes ([#1428](https://github.com/opentdf/platform/issues/1428)) ([a9f63a9](https://github.com/opentdf/platform/commit/a9f63a9d53e1477cb5be315f595806a73f0c084e))
+* update to allow for using handling assertiongs ([#1431](https://github.com/opentdf/platform/issues/1431)) ([85d3167](https://github.com/opentdf/platform/commit/85d3167cc136a2d97a0f3f874d170f5cc3bc7369))
+
+## [0.3.10](https://github.com/opentdf/platform/compare/sdk/v0.3.9...sdk/v0.3.10) (2024-08-21)
+
+
+### Bug Fixes
+
+* **sdk:** 🔒 During read, limits TDF Manifest to 10MB  ([#1385](https://github.com/opentdf/platform/issues/1385)) ([cfeebce](https://github.com/opentdf/platform/commit/cfeebcedcaf1660cc73beb05abee5fa4d1431300))
+* **sdk:** let value grants override attr grants ([#1318](https://github.com/opentdf/platform/issues/1318)) ([77f1e11](https://github.com/opentdf/platform/commit/77f1e1140ffc134ce072ba2e79bd74426f8ee5f8))
+* **sdk:** well-known warning logs and public client id error ([#1415](https://github.com/opentdf/platform/issues/1415)) ([e6e76bf](https://github.com/opentdf/platform/commit/e6e76bf24a2e587817582ccb113d9e78a92b4060)), closes [#1414](https://github.com/opentdf/platform/issues/1414)
+
+## [0.3.9](https://github.com/opentdf/platform/compare/sdk/v0.3.8...sdk/v0.3.9) (2024-08-20)
+
+
+### Features
+
+* **sdk:** Load KAS keys from policy service ([#1346](https://github.com/opentdf/platform/issues/1346)) ([fe628a0](https://github.com/opentdf/platform/commit/fe628a013e41fb87585eb53a61988f822b40a71a))
+* **sdk:** support oauth2 tokensource with option ([#1394](https://github.com/opentdf/platform/issues/1394)) ([2886c0f](https://github.com/opentdf/platform/commit/2886c0ffa3807bbc6a2d4e9f0da7991a49d227fd)), closes [#1307](https://github.com/opentdf/platform/issues/1307)
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1402](https://github.com/opentdf/platform/issues/1402)) ([192e5e5](https://github.com/opentdf/platform/commit/192e5e5a5a2c8d4b5fec74b50a94f15abacc1db7))
+
+## [0.3.8](https://github.com/opentdf/platform/compare/sdk/v0.3.7...sdk/v0.3.8) (2024-08-19)
+
+
+### Features
+
+* **sdk:** public client and other enhancements to well-known SDK functionality ([#1365](https://github.com/opentdf/platform/issues/1365)) ([3be50a4](https://github.com/opentdf/platform/commit/3be50a4ebf26680fad4ab46620cdfa82340a3da3))
+
 ## [0.3.7](https://github.com/opentdf/platform/compare/sdk/v0.3.6...sdk/v0.3.7) (2024-08-16)
 
 

@@ -8,11 +8,10 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"net/netip"
 	"strings"
 	"time"
-
-	"net/http/pprof"
 
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/go-chi/cors"
@@ -22,9 +21,9 @@ import (
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/security"
+	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
-	"github.com/valyala/fasthttp/fasthttputil"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
@@ -48,48 +47,61 @@ func (e Error) Error() string {
 
 // Configurations for the server
 type Config struct {
-	Auth                    auth.Config     `yaml:"auth"`
-	GRPC                    GRPCConfig      `yaml:"grpc"`
-	CryptoProvider          security.Config `yaml:"cryptoProvider"`
-	TLS                     TLSConfig       `yaml:"tls"`
-	CORS                    CORSConfig      `yaml:"cors"`
-	WellKnownConfigRegister func(namespace string, config any) error
+	Auth                    auth.Config                              `mapstructure:"auth" json:"auth"`
+	GRPC                    GRPCConfig                               `mapstructure:"grpc" json:"grpc"`
+	CryptoProvider          security.Config                          `mapstructure:"cryptoProvider" json:"cryptoProvider"`
+	TLS                     TLSConfig                                `mapstructure:"tls" json:"tls"`
+	CORS                    CORSConfig                               `mapstructure:"cors" json:"cors"`
+	WellKnownConfigRegister func(namespace string, config any) error `mapstructure:"-" json:"-"`
 	// Port to listen on
-	Port int    `yaml:"port" default:"8080"`
-	Host string `yaml:"host,omitempty"`
+	Port int    `mapstructure:"port" json:"port" default:"8080"`
+	Host string `mapstructure:"host,omitempty" json:"host"`
 	// Enable pprof
-	EnablePprof bool `mapstructure:"enable_pprof" default:"false"`
+	EnablePprof bool `mapstructure:"enable_pprof" json:"enable_pprof" default:"false"`
+}
+
+func (c Config) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.Any("auth", c.Auth),
+		slog.Any("grpc", c.GRPC),
+		slog.Any("cryptoProvider", c.CryptoProvider),
+		slog.Any("tls", c.TLS),
+		slog.Any("cors", c.CORS),
+		slog.Int("port", c.Port),
+		slog.String("host", c.Host),
+		slog.Bool("enablePprof", c.EnablePprof),
+	)
 }
 
 // GRPC Server specific configurations
 type GRPCConfig struct {
 	// Enable reflection for grpc server (default: true)
-	ReflectionEnabled bool `yaml:"reflectionEnabled" default:"true"`
+	ReflectionEnabled bool `mapstructure:"reflectionEnabled" json:"reflectionEnabled" default:"true"`
 
-	MaxCallRecvMsgSizeBytes int `yaml:"maxCallRecvMsgSize" default:"4194304"` // 4MB = 4 * 1024 * 1024 = 4194304
-	MaxCallSendMsgSizeBytes int `yaml:"maxCallSendMsgSize" default:"4194304"` // 4MB = 4 * 1024 * 1024 = 4194304
+	MaxCallRecvMsgSizeBytes int `mapstructure:"maxCallRecvMsgSize" json:"maxCallRecvMsgSize" default:"4194304"` // 4MB = 4 * 1024 * 1024 = 4194304
+	MaxCallSendMsgSizeBytes int `mapstructure:"maxCallSendMsgSize" json:"maxCallSendMsgSize" default:"4194304"` // 4MB = 4 * 1024 * 1024 = 4194304
 }
 
 // TLS Configuration for the server
 type TLSConfig struct {
 	// Enable TLS for the server (default: false)
-	Enabled bool `yaml:"enabled" default:"false"`
+	Enabled bool `mapstructure:"enabled" json:"enabled" default:"false"`
 	// Path to the certificate file
-	Cert string `yaml:"cert"`
+	Cert string `mapstructure:"cert" json:"cert"`
 	// Path to the key file
-	Key string `yaml:"key"`
+	Key string `mapstructure:"key" json:"key"`
 }
 
 // CORS Configuration for the server
 type CORSConfig struct {
 	// Enable CORS for the server (default: true)
-	Enabled          bool     `yaml:"enabled" default:"true"`
-	AllowedOrigins   []string `yaml:"allowedorigins"`
-	AllowedMethods   []string `yaml:"allowedmethods"`
-	AllowedHeaders   []string `yaml:"allowedheaders"`
-	ExposedHeaders   []string `yaml:"exposedheaders"`
-	AllowCredentials bool     `yaml:"allowcredentials" default:"true"`
-	MaxAge           int      `yaml:"maxage" default:"3600"`
+	Enabled          bool     `mapstructure:"enabled" json:"enabled" default:"true"`
+	AllowedOrigins   []string `mapstructure:"allowedorigins" json:"allowedorigins"`
+	AllowedMethods   []string `mapstructure:"allowedmethods" json:"allowedmethods"`
+	AllowedHeaders   []string `mapstructure:"allowedheaders" json:"allowedheaders"`
+	ExposedHeaders   []string `mapstructure:"exposedheaders" json:"exposedheaders"`
+	AllowCredentials bool     `mapstructure:"allowcredentials" json:"allowedcredentials" default:"true"`
+	MaxAge           int      `mapstructure:"maxage" json:"maxage" default:"3600"`
 }
 
 type OpenTDFServer struct {
@@ -110,7 +122,7 @@ https://github.com/heroku/x/blob/master/grpc/grpcserver/inprocess.go
 https://github.com/valyala/fasthttp/blob/master/fasthttputil/inmemory_listener.go
 */
 type inProcessServer struct {
-	ln  *fasthttputil.InmemoryListener
+	ln  *memhttp.Server
 	srv *grpc.Server
 
 	maxCallRecvMsgSize int
@@ -145,9 +157,12 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to create grpc server: %w", err)
 	}
+
+	grpcInProcessServer := newGrpcInProcessServer()
+
 	grpcIPCServer := &inProcessServer{
-		ln:                 fasthttputil.NewInmemoryListener(),
-		srv:                newGrpcInProcessServer(),
+		ln:                 memhttp.New(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { grpcInProcessServer.ServeHTTP(w, r) })),
+		srv:                grpcInProcessServer,
 		maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
 		maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
 	}
@@ -271,7 +286,7 @@ func pprofHandler(h http.Handler) http.Handler {
 // httpGrpcHandlerFunc returns a http.Handler that delegates to the grpc server if the request is a grpc request
 func httpGrpcHandlerFunc(h http.Handler, g *grpc.Server, l *logger.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		l.Debug("grpc handler func", slog.Int("proto_major", r.ProtoMajor), slog.String("content_type", r.Header.Get("Content-Type")))
+		l.TraceContext(r.Context(), "grpc handler func", slog.Int("proto_major", r.ProtoMajor), slog.String("content_type", r.Header.Get("Content-Type")))
 		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
 			g.ServeHTTP(w, r)
 		} else {
@@ -352,11 +367,17 @@ func newGrpcServer(c Config, a *auth.Authentication, logger *logger.Logger) (*gr
 	return s, nil
 }
 
-func (s OpenTDFServer) Start() {
-	// // Start Http Server
-	go s.startHTTPServer()
+func (s OpenTDFServer) Start() error {
+	// Start Http Server
+	ln, err := s.openHTTPServerPort()
+	if err != nil {
+		return err
+	}
+	go s.startHTTPServer(ln)
+
 	// Start In Process Grpc Server
 	go s.startInProcessGrpcServer()
+	return nil
 }
 
 func (s OpenTDFServer) Stop() {
@@ -389,8 +410,8 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 			grpc.MaxCallRecvMsgSize(s.maxCallRecvMsgSize),
 			grpc.MaxCallSendMsgSize(s.maxCallSendMsgSize),
 		),
-		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
-			conn, err := s.ln.Dial()
+		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			conn, err := s.ln.Listener.DialContext(ctx, "inprocess", "")
 			if err != nil {
 				return nil, fmt.Errorf("failed to dial in process grpc server: %w", err)
 			}
@@ -400,32 +421,42 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 		grpc.WithChainUnaryInterceptor(clientInterceptors...),
 	}
 
-	conn, _ := grpc.Dial("", defaultOptions...)
+	conn, _ := grpc.NewClient("passthrough:///", defaultOptions...)
 	return conn
 }
 
 func (s OpenTDFServer) startInProcessGrpcServer() {
 	s.logger.Info("starting in process grpc server")
-	if err := s.GRPCInProcess.srv.Serve(s.GRPCInProcess.ln); err != nil {
+	if err := s.GRPCInProcess.srv.Serve(s.GRPCInProcess.ln.Listener); err != nil {
 		s.logger.Error("failed to serve in process grpc", slog.String("error", err.Error()))
 		panic(err)
 	}
 }
 
-func (s OpenTDFServer) startHTTPServer() {
-	var err error
+func (s OpenTDFServer) openHTTPServerPort() (net.Listener, error) {
+	addr := s.HTTPServer.Addr
+	if addr == "" {
+		if s.HTTPServer.TLSConfig != nil {
+			addr = ":https"
+		} else {
+			addr = ":http"
+		}
+	}
+	return net.Listen("tcp", addr)
+}
 
+func (s OpenTDFServer) startHTTPServer(ln net.Listener) {
+	var err error
 	if s.HTTPServer.TLSConfig != nil {
 		s.logger.Info("starting https server", "address", s.HTTPServer.Addr)
-		err = s.HTTPServer.ListenAndServeTLS("", "")
+		err = s.HTTPServer.ServeTLS(ln, "", "")
 	} else {
 		s.logger.Info("starting http server", "address", s.HTTPServer.Addr)
-		err = s.HTTPServer.ListenAndServe()
+		err = s.HTTPServer.Serve(ln)
 	}
 
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		s.logger.Error("failed to serve http", slog.String("error", err.Error()))
-		return
 	}
 }
 

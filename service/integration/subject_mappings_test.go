@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"testing"
-	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -18,6 +17,8 @@ type SubjectMappingsSuite struct {
 	suite.Suite
 	f  fixtures.Fixtures
 	db fixtures.DBInterface
+	//nolint:containedctx // Only used for test suite
+	ctx context.Context
 }
 
 func (s *SubjectMappingsSuite) SetupSuite() {
@@ -26,6 +27,7 @@ func (s *SubjectMappingsSuite) SetupSuite() {
 	c.DB.Schema = "test_opentdf_subject_mappings"
 	s.db = fixtures.NewDBInterface(c)
 	s.f = fixtures.NewFixture(s.db)
+	s.ctx = context.Background()
 	s.f.Provision()
 }
 
@@ -84,12 +86,12 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_ExistingSubjectCondition
 		Actions:                       []*policy.Action{aDecrypt, aTransmit},
 	}
 
-	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
 	s.Require().NoError(err)
 	s.NotNil(created)
 
 	// verify the subject mapping was created
-	sm, err := s.db.PolicyClient.GetSubjectMapping(context.Background(), created.GetId())
+	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.Equal(newSubjectMapping.GetAttributeValueId(), sm.GetAttributeValue().GetId())
 	s.Equal(newSubjectMapping.GetExistingSubjectConditionSetId(), sm.GetSubjectConditionSet().GetId())
@@ -126,12 +128,12 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NewSubjectConditionSet()
 		NewSubjectConditionSet: scs,
 	}
 
-	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
 	s.Require().NoError(err)
 	s.NotNil(created)
 
 	// verify the new subject condition set created was returned properly
-	sm, err := s.db.PolicyClient.GetSubjectMapping(context.Background(), created.GetId())
+	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(sm.GetSubjectConditionSet())
 	s.Equal(len(scs.GetSubjectSets()), len(sm.GetSubjectConditionSet().GetSubjectSets()))
@@ -148,20 +150,6 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NewSubjectConditionSet()
 	s.Equal(expectedCondition.GetSubjectExternalValues(), gotCondition.GetSubjectExternalValues())
 }
 
-func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NoActions_Fails() {
-	fixtureAttrVal := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value1")
-	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
-	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
-		AttributeValueId:              fixtureAttrVal.ID,
-		ExistingSubjectConditionSetId: fixtureScs.ID,
-	}
-
-	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
-	s.Require().Error(err)
-	s.Nil(created)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-}
-
 func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentAttributeValueId_Fails() {
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
 	aTransmit := fixtureActions[Transmit]
@@ -171,7 +159,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentAttributeValu
 		AttributeValueId:              nonExistentAttributeValueUUID,
 	}
 
-	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
 	s.Require().Error(err)
 	s.Nil(created)
 	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
@@ -186,7 +174,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentSubjectCondit
 		ExistingSubjectConditionSetId: nonExistentSubjectSetID,
 	}
 
-	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
 	s.Require().Error(err)
 	s.Nil(created)
 	s.Require().ErrorIs(err, db.ErrNotFound)
@@ -204,14 +192,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 		Actions:                       []*policy.Action{aTransmit, aCustomUpload},
 		ExistingSubjectConditionSetId: fixtureScs.ID,
 	}
-	start := time.Now().Add(-time.Second)
-	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
-	end := time.Now().Add(time.Second)
-	metadata := created.GetMetadata()
-	updatedAt := metadata.GetUpdatedAt()
-	createdAt := metadata.GetCreatedAt()
-	s.True(createdAt.AsTime().After(start))
-	s.True(createdAt.AsTime().Before(end))
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
 	s.Require().NoError(err)
 	s.NotNil(created)
 
@@ -222,20 +203,25 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 		Actions: newActions,
 	}
 
-	updated, err := s.db.PolicyClient.UpdateSubjectMapping(context.Background(), update)
+	updated, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
 	s.Require().NoError(err)
 	s.NotNil(updated)
 	s.Equal(created.GetId(), updated.GetId())
 
 	// verify the actions were updated but nothing else
-	got, err := s.db.PolicyClient.GetSubjectMapping(context.Background(), created.GetId())
+	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(len(newActions), len(got.GetActions()))
 	s.Equal(got.GetActions(), newActions)
 	s.Equal(newSubjectMapping.GetAttributeValueId(), got.GetAttributeValue().GetId())
 	s.Equal(newSubjectMapping.GetExistingSubjectConditionSetId(), got.GetSubjectConditionSet().GetId())
-	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
+	metadata := got.GetMetadata()
+	createdAt := metadata.GetCreatedAt()
+	updatedAt := metadata.GetUpdatedAt()
+	s.False(createdAt.AsTime().IsZero())
+	s.False(updatedAt.AsTime().IsZero())
+	s.True(updatedAt.AsTime().After(createdAt.AsTime()))
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_SubjectConditionSetId() {
@@ -250,7 +236,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_SubjectConditionSetId() 
 		ExistingSubjectConditionSetId: fixtureScs.ID,
 	}
 
-	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
 	s.Require().NoError(err)
 	s.NotNil(created)
 
@@ -261,13 +247,13 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_SubjectConditionSetId() 
 		SubjectConditionSetId: newScs.ID,
 	}
 
-	updated, err := s.db.PolicyClient.UpdateSubjectMapping(context.Background(), update)
+	updated, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
 	s.Require().NoError(err)
 	s.NotNil(updated)
 	s.Equal(created.GetId(), updated.GetId())
 
 	// verify the subject condition set was updated but nothing else
-	got, err := s.db.PolicyClient.GetSubjectMapping(context.Background(), created.GetId())
+	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(newSubjectMapping.GetAttributeValueId(), got.GetAttributeValue().GetId())
@@ -288,7 +274,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_UpdateAllAllowedFields()
 		ExistingSubjectConditionSetId: fixtureScs.ID,
 	}
 
-	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
 	s.Require().NoError(err)
 	s.NotNil(created)
 
@@ -306,13 +292,13 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_UpdateAllAllowedFields()
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
 	}
 
-	updated, err := s.db.PolicyClient.UpdateSubjectMapping(context.Background(), update)
+	updated, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
 	s.Require().NoError(err)
 	s.NotNil(updated)
 	s.Equal(created.GetId(), updated.GetId())
 
 	// verify the subject mapping was updated
-	got, err := s.db.PolicyClient.GetSubjectMapping(context.Background(), created.GetId())
+	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
@@ -332,7 +318,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_NonExistentId_Fails() {
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
 	}
 
-	sm, err := s.db.PolicyClient.UpdateSubjectMapping(context.Background(), update)
+	sm, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
 	s.Require().Error(err)
 	s.Nil(sm)
 	s.Require().ErrorIs(err, db.ErrNotFound)
@@ -344,7 +330,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_NonExistentSubjectCondit
 		SubjectConditionSetId: nonExistentSubjectSetID,
 	}
 
-	sm, err := s.db.PolicyClient.UpdateSubjectMapping(context.Background(), update)
+	sm, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
 	s.Require().Error(err)
 	s.Nil(sm)
 	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
@@ -353,7 +339,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_NonExistentSubjectCondit
 func (s *SubjectMappingsSuite) TestGetSubjectMapping() {
 	fixture := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute2")
 
-	sm, err := s.db.PolicyClient.GetSubjectMapping(context.Background(), fixture.ID)
+	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, fixture.ID)
 	s.Require().NoError(err)
 	s.NotNil(sm)
 	s.Equal(fixture.ID, sm.GetId())
@@ -372,7 +358,7 @@ func (s *SubjectMappingsSuite) TestGetSubjectMapping() {
 			s.Equal("custom:\""+fixture.Actions[i].Custom+"\"", a.String())
 		}
 	}
-	got, err := s.db.PolicyClient.GetAttributeValue(context.Background(), fixture.AttributeValueID)
+	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, fixture.AttributeValueID)
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(fixture.AttributeValueID, got.GetId())
@@ -384,14 +370,14 @@ func (s *SubjectMappingsSuite) TestGetSubjectMapping() {
 }
 
 func (s *SubjectMappingsSuite) TestGetSubjectMapping_NonExistentId_Fails() {
-	sm, err := s.db.PolicyClient.GetSubjectMapping(context.Background(), nonExistentSubjectMappingID)
+	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, nonExistentSubjectMappingID)
 	s.Require().Error(err)
 	s.Nil(sm)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *SubjectMappingsSuite) TestListSubjectMappings() {
-	list, err := s.db.PolicyClient.ListSubjectMappings(context.Background())
+	list, err := s.db.PolicyClient.ListSubjectMappings(s.ctx)
 	s.Require().NoError(err)
 	s.NotNil(list)
 
@@ -440,22 +426,22 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectMapping() {
 		ExistingSubjectConditionSetId: fixtureScs.ID,
 	}
 
-	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
 	s.Require().NoError(err)
 	s.NotNil(created)
 
-	deleted, err := s.db.PolicyClient.DeleteSubjectMapping(context.Background(), created.GetId())
+	deleted, err := s.db.PolicyClient.DeleteSubjectMapping(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(deleted)
 
-	got, err := s.db.PolicyClient.GetSubjectMapping(context.Background(), created.GetId())
+	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
 	s.Require().Error(err)
 	s.Nil(got)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *SubjectMappingsSuite) TestDeleteSubjectMapping_WithNonExistentId_Fails() {
-	deleted, err := s.db.PolicyClient.DeleteSubjectMapping(context.Background(), nonExistentSubjectMappingID)
+	deleted, err := s.db.PolicyClient.DeleteSubjectMapping(s.ctx, nonExistentSubjectMappingID)
 	s.Require().Error(err)
 	s.Nil(deleted)
 	s.Require().ErrorIs(err, db.ErrNotFound)
@@ -490,19 +476,19 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectMapping_DoesNotDeleteSubjectCond
 		NewSubjectConditionSet: newScs,
 	}
 
-	created, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
 	s.Require().NoError(err)
 	s.NotNil(created)
 
-	sm, err := s.db.PolicyClient.GetSubjectMapping(context.Background(), created.GetId())
+	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(sm)
-	deleted, err := s.db.PolicyClient.DeleteSubjectMapping(context.Background(), sm.GetId())
+	deleted, err := s.db.PolicyClient.DeleteSubjectMapping(s.ctx, sm.GetId())
 	s.Require().NoError(err)
 	s.NotNil(deleted)
 	s.NotZero(deleted.GetId())
 
-	scs, err := s.db.PolicyClient.GetSubjectConditionSet(context.Background(), sm.GetSubjectConditionSet().GetId())
+	scs, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, sm.GetSubjectConditionSet().GetId())
 	s.Require().NoError(err)
 	s.NotNil(scs)
 	s.Equal(sm.GetSubjectConditionSet().GetId(), scs.GetId())
@@ -532,7 +518,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectConditionSet() {
 		},
 	}
 
-	scs, err := s.db.PolicyClient.CreateSubjectConditionSet(context.Background(), newConditionSet)
+	scs, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newConditionSet)
 	s.Require().NoError(err)
 	s.NotNil(scs)
 }
@@ -557,7 +543,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectConditionSetContains() {
 		},
 	}
 
-	scs, err := s.db.PolicyClient.CreateSubjectConditionSet(context.Background(), newConditionSet)
+	scs, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newConditionSet)
 	s.Require().NoError(err)
 	s.NotNil(scs)
 }
@@ -565,7 +551,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectConditionSetContains() {
 func (s *SubjectMappingsSuite) TestGetSubjectConditionSet_ById() {
 	fixture := s.f.GetSubjectConditionSetKey("subject_condition_set1")
 
-	scs, err := s.db.PolicyClient.GetSubjectConditionSet(context.Background(), fixture.ID)
+	scs, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, fixture.ID)
 	s.Require().NoError(err)
 	s.NotNil(scs)
 	s.Equal(fixture.ID, scs.GetId())
@@ -577,21 +563,21 @@ func (s *SubjectMappingsSuite) TestGetSubjectConditionSet_ById() {
 }
 
 func (s *SubjectMappingsSuite) TestGetSubjectConditionSet_WithNoId_Fails() {
-	scs, err := s.db.PolicyClient.GetSubjectConditionSet(context.Background(), "")
+	scs, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, "")
 	s.Require().Error(err)
 	s.Nil(scs)
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
 }
 
 func (s *SubjectMappingsSuite) TestGetSubjectConditionSet_NonExistentId_Fails() {
-	scs, err := s.db.PolicyClient.GetSubjectConditionSet(context.Background(), nonExistentSubjectSetID)
+	scs, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, nonExistentSubjectSetID)
 	s.Require().Error(err)
 	s.Nil(scs)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *SubjectMappingsSuite) TestListSubjectConditionSet() {
-	list, err := s.db.PolicyClient.ListSubjectConditionSets(context.Background())
+	list, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx)
 	s.Require().NoError(err)
 	s.NotNil(list)
 
@@ -629,23 +615,23 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet() {
 		SubjectSets: []*policy.SubjectSet{},
 	}
 
-	created, err := s.db.PolicyClient.CreateSubjectConditionSet(context.Background(), newConditionSet)
+	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newConditionSet)
 	s.Require().NoError(err)
 	s.NotNil(created)
 
-	deleted, err := s.db.PolicyClient.DeleteSubjectConditionSet(context.Background(), created.GetId())
+	deleted, err := s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(deleted)
 	s.Equal(created.GetId(), deleted.GetId())
 
-	got, err := s.db.PolicyClient.GetSubjectConditionSet(context.Background(), created.GetId())
+	got, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, created.GetId())
 	s.Require().Error(err)
 	s.Nil(got)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet_WithNonExistentId_Fails() {
-	deleted, err := s.db.PolicyClient.DeleteSubjectConditionSet(context.Background(), nonExistentSubjectSetID)
+	deleted, err := s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, nonExistentSubjectSetID)
 	s.Require().Error(err)
 	s.Nil(deleted)
 	s.Require().ErrorIs(err, db.ErrNotFound)
@@ -658,14 +644,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {
 			{},
 		},
 	}
-	start := time.Now().Add(-time.Second)
-	created, err := s.db.PolicyClient.CreateSubjectConditionSet(context.Background(), newConditionSet)
-	end := time.Now().Add(time.Second)
-	metadata := created.GetMetadata()
-	updatedAt := metadata.GetUpdatedAt()
-	createdAt := metadata.GetCreatedAt()
-	s.True(createdAt.AsTime().After(start))
-	s.True(createdAt.AsTime().Before(end))
+	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newConditionSet)
 	s.Require().NoError(err)
 	s.NotNil(created)
 
@@ -693,19 +672,24 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
 	}
 
-	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(context.Background(), update)
+	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, update)
 	s.Require().NoError(err)
 	s.NotNil(updated)
 	s.Equal(created.GetId(), updated.GetId())
 
 	// verify the subject condition set was updated
-	got, err := s.db.PolicyClient.GetSubjectConditionSet(context.Background(), created.GetId())
+	got, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(len(ss), len(got.GetSubjectSets()))
 	s.Equal(ss[0].GetConditionGroups()[0].GetConditions()[0].GetSubjectExternalSelectorValue(), got.GetSubjectSets()[0].GetConditionGroups()[0].GetConditions()[0].GetSubjectExternalSelectorValue())
-	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
+	metadata := got.GetMetadata()
+	createdAt := metadata.GetCreatedAt()
+	updatedAt := metadata.GetUpdatedAt()
+	s.False(createdAt.AsTime().IsZero())
+	s.False(updatedAt.AsTime().IsZero())
+	s.True(updatedAt.AsTime().After(createdAt.AsTime()))
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_AllAllowedFields() {
@@ -716,7 +700,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_AllAllowedFields() 
 		},
 	}
 
-	created, err := s.db.PolicyClient.CreateSubjectConditionSet(context.Background(), newConditionSet)
+	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newConditionSet)
 	s.Require().NoError(err)
 	s.NotNil(created)
 
@@ -747,13 +731,13 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_AllAllowedFields() 
 		Id:                     created.GetId(),
 	}
 
-	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(context.Background(), update)
+	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, update)
 	s.Require().NoError(err)
 	s.NotNil(updated)
 	s.Equal(created.GetId(), updated.GetId())
 
 	// verify the subject condition set was updated
-	got, err := s.db.PolicyClient.GetSubjectConditionSet(context.Background(), created.GetId())
+	got, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
@@ -782,7 +766,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_ChangeOperator() {
 		},
 	}
 
-	created, err := s.db.PolicyClient.CreateSubjectConditionSet(context.Background(), newConditionSet)
+	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newConditionSet)
 	s.Require().NoError(err)
 	s.NotNil(created)
 
@@ -808,11 +792,11 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_ChangeOperator() {
 		SubjectSets: newSS,
 		Id:          created.GetId(),
 	}
-	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(context.Background(), update)
+	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, update)
 	s.Require().NoError(err)
 	s.NotNil(updated)
 
-	got, err := s.db.PolicyClient.GetSubjectConditionSet(context.Background(), created.GetId())
+	got, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
@@ -829,140 +813,178 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NonExistentId_Fails
 		SubjectSets: []*policy.SubjectSet{},
 	}
 
-	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(context.Background(), update)
+	updated, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, update)
 	s.Require().Error(err)
 	s.Nil(updated)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InOne() {
-	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
-	externalSelectorValue := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
-	externalValues := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
-
-	props := []*policy.SubjectProperty{
-		{
-			ExternalSelectorValue: externalSelectorValue,
-			ExternalValue:         externalValues[0],
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_SingleMatch() {
+	externalSelector := ".testing_matched_sm"
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+	newScs := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: externalSelector,
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"match"},
+							},
+						},
+					},
+				},
+			},
 		},
 	}
+	aTransmit := fixtureActions[Transmit]
 
-	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
+	subjectMapping := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:       fixtureAttrValID,
+		Actions:                []*policy.Action{aTransmit},
+		NewSubjectConditionSet: newScs,
+	}
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, subjectMapping)
 	s.Require().NoError(err)
-	s.NotZero(sm)
-	s.Equal(fixtureScs.ID, sm[0].GetSubjectConditionSet().GetId())
-}
-
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DoesNotReturnNotInWhenMatches() {
-	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_not_in")
-	externalSelectorValue := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
-	externalValues := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
+	s.NotNil(created)
 
 	props := []*policy.SubjectProperty{
 		{
-			ExternalSelectorValue: externalSelectorValue,
-			ExternalValue:         externalValues[0],
+			ExternalSelectorValue: externalSelector,
 		},
 	}
 
-	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
-	s.Require().NoError(err)
-	s.NotZero(smList)
-	s.Empty(smList)
-}
-
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInOneMatch() {
-	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_not_in")
-	externalSelectorValue := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
-
-	expectedMappedFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_simple_not_in")
-
-	props := []*policy.SubjectProperty{
-		{
-			ExternalSelectorValue: externalSelectorValue,
-			ExternalValue:         "random_value",
-		},
-	}
-
-	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
+	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
 	s.Require().NoError(err)
 	s.NotZero(smList)
-	s.Require().Len(smList, 1)
-	s.Equal(fixtureScs.ID, smList[0].GetSubjectConditionSet().GetId())
-	s.Equal(expectedMappedFixture.ID, smList[0].GetId())
+	matched := smList[0]
+	s.Equal(created.GetId(), matched.GetId())
+	s.NotZero(matched.GetAttributeValue().GetId())
+	s.NotZero(matched.GetId())
+	s.NotNil(matched.GetActions())
 }
 
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MissingFieldInProperty_Fails() {
-	props := []*policy.SubjectProperty{
-		{
-			ExternalValue: "some_value",
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_IgnoresExternalValueInCondition() {
+	externalSelector := ".testing_unmatched_condition"
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2").ID
+	newScs := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: externalSelector,
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"idp_value"},
+							},
+						},
+					},
+				},
+			},
 		},
 	}
+	aTransmit := fixtureActions[Transmit]
 
-	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-	s.Zero(sm)
-}
-
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MissingValueInProperty_Fails() {
-	props := []*policy.SubjectProperty{
-		{
-			ExternalSelectorValue: ".some_field",
-		},
+	subjectMapping := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:       fixtureAttrValID,
+		Actions:                []*policy.Action{aTransmit},
+		NewSubjectConditionSet: newScs,
 	}
-
-	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-	s.Zero(sm)
-}
-
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NoPropertiesProvided_Fails() {
-	props := []*policy.SubjectProperty{}
-
-	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-	s.Zero(sm)
-}
-
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InMultiple() {
-	simpleScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_in")
-	simpleexternalSelectorValue := simpleScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
-	simpleExternalValues := simpleScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
-
-	otherScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
-	otherexternalSelectorValue := otherScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
-	otherExternalValues := otherScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
-
-	props := []*policy.SubjectProperty{
-		{
-			ExternalSelectorValue: simpleexternalSelectorValue,
-			ExternalValue:         simpleExternalValues[0],
-		},
-		{
-			ExternalSelectorValue: otherexternalSelectorValue,
-			ExternalValue:         otherExternalValues[0],
-		},
-	}
-
-	gotEntitlements, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, subjectMapping)
 	s.Require().NoError(err)
-	s.NotZero(gotEntitlements)
-	s.GreaterOrEqual(len(gotEntitlements), 2)
+	s.NotNil(created)
 
-	mappedSimple := s.f.GetSubjectMappingKey("subject_mapping_subject_simple_in")
-	foundMappedSimple := false
-	mappedSubjectConditionSet1 := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute1")
-	foundMappedSubjectConditionSet1 := false
+	props := []*policy.SubjectProperty{
+		{
+			ExternalSelectorValue: externalSelector,
+			ExternalValue:         "unrelated",
+		},
+	}
 
-	for _, sm := range gotEntitlements {
-		if sm.GetSubjectConditionSet().GetId() == mappedSimple.SubjectConditionSetID {
-			foundMappedSimple = true
-		} else if sm.GetSubjectConditionSet().GetId() == mappedSubjectConditionSet1.SubjectConditionSetID {
-			foundMappedSubjectConditionSet1 = true
+	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
+	s.Require().NoError(err)
+	s.NotZero(smList)
+	matched := smList[0]
+	s.Equal(created.GetId(), matched.GetId())
+	s.NotZero(matched.GetAttributeValue().GetId())
+	s.NotZero(matched.GetId())
+	s.NotNil(matched.GetActions())
+}
+
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MultipleMatches() {
+	externalSelector1 := ".idp_field"
+	externalSelector2 := ".org.attributes[]"
+	// create a two subject mappings with different subject condition sets
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2").ID
+	newScs := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: externalSelector1,
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"idp_value"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	aTransmit := fixtureActions[Transmit]
+
+	subjectMapping := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:       fixtureAttrValID,
+		Actions:                []*policy.Action{aTransmit},
+		NewSubjectConditionSet: newScs,
+	}
+
+	subjectMappingFirst, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, subjectMapping)
+	s.Require().NoError(err)
+	s.NotNil(subjectMappingFirst)
+
+	// create the second subject mapping with the second SCS
+	newScs.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue = externalSelector2
+	subjectMapping.NewSubjectConditionSet = newScs
+
+	subjectMappingSecond, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, subjectMapping)
+	s.Require().NoError(err)
+	s.NotNil(subjectMappingSecond)
+
+	props := []*policy.SubjectProperty{
+		{
+			ExternalSelectorValue: externalSelector1,
+		},
+		{
+			ExternalSelectorValue: externalSelector2,
+		},
+	}
+
+	candidateEntitlements, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
+	s.Require().NoError(err)
+	s.NotZero(candidateEntitlements)
+	s.GreaterOrEqual(len(candidateEntitlements), 2)
+
+	foundFirst := false
+	foundSecond := false
+
+	for _, sm := range candidateEntitlements {
+		if sm.GetId() == subjectMappingFirst.GetId() {
+			foundFirst = true
+		} else if sm.GetId() == subjectMappingSecond.GetId() {
+			foundSecond = true
 		}
 	}
-	s.True(foundMappedSimple)
-	s.True(foundMappedSubjectConditionSet1)
+	s.True(foundFirst)
+	s.True(foundSecond)
 }
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DeactivatedValueNotReturned() {
@@ -976,7 +998,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DeactivatedValueNot
 		Actions:                       []*policy.Action{aTransmit},
 		ExistingSubjectConditionSetId: fixtureScs.ID,
 	}
-	sm, err := s.db.PolicyClient.CreateSubjectMapping(context.Background(), newSubjectMapping)
+	sm, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
 	s.Require().NoError(err)
 	s.NotNil(sm)
 
@@ -984,10 +1006,9 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DeactivatedValueNot
 	props := []*policy.SubjectProperty{
 		{
 			ExternalSelectorValue: fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue,
-			ExternalValue:         fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues[0],
 		},
 	}
-	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
+	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
 	s.Require().NoError(err)
 	s.NotZero(smList)
 
@@ -999,80 +1020,133 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DeactivatedValueNot
 	}
 }
 
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NotInMultiple() {
-	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_not_in")
-	externalSelectorValue := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
-	expectedMappedFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_simple_not_in")
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_ConditionSetReusedByMultipleSubjectMappings() {
+	selector := ".hello_world"
+	toCreate := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: selector,
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"goodnight_moon"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	createdSCS, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, toCreate)
+	s.Require().NoError(err)
+	s.NotNil(createdSCS)
 
-	otherFixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set3")
-	otherexternalSelectorValue1 := otherFixtureScs.Condition.SubjectSets[0].ConditionGroups[1].Conditions[1].SubjectExternalSelectorValue
-	otherExpectedMatchedFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute3")
+	// Create two subject mappings across different values that reuse the same subject condition set
+	attrVal1 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+	sm1, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              attrVal1,
+		ExistingSubjectConditionSetId: createdSCS.GetId(),
+		Actions:                       []*policy.Action{fixtureActions[Decrypt]},
+	})
+	s.Require().NoError(err)
+	s.NotNil(sm1)
+	attrVal2 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2").ID
+	sm2, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              attrVal2,
+		ExistingSubjectConditionSetId: createdSCS.GetId(),
+		Actions:                       []*policy.Action{fixtureActions[Transmit]},
+	})
+	s.Require().NoError(err)
+	s.NotNil(sm2)
 
+	// check matched subject mappings for the selector in the reused SCS
 	props := []*policy.SubjectProperty{
 		{
-			ExternalSelectorValue: externalSelectorValue,
-			ExternalValue:         "random_value_definitely_not_in_fixtures",
-		},
-		{
-			ExternalSelectorValue: otherexternalSelectorValue1,
-			ExternalValue:         "random_value_definitely_not_in_fixtures",
+			ExternalSelectorValue: selector,
 		},
 	}
 
-	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
+	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
 	s.Require().NoError(err)
 	s.NotZero(smList)
 	s.Len(smList, 2)
+	foundSm1 := false
+	foundSm2 := false
 	for _, sm := range smList {
-		if sm.GetSubjectConditionSet().GetId() == fixtureScs.ID {
-			s.Equal(expectedMappedFixture.ID, sm.GetId())
-		} else if sm.GetSubjectConditionSet().GetId() == otherFixtureScs.ID {
-			s.Equal(otherExpectedMatchedFixture.ID, sm.GetId())
+		smID := sm.GetId()
+		foundSCS := sm.GetSubjectConditionSet().GetId()
+		foundAttrVal := sm.GetAttributeValue().GetId()
+		s.Equal(foundSCS, createdSCS.GetId())
+		if smID == sm1.GetId() {
+			foundSm1 = true
+			s.Equal(sm1.GetAttributeValue().GetId(), foundAttrVal)
+		}
+		if smID == sm2.GetId() {
+			foundSm2 = true
+			s.Equal(sm2.GetAttributeValue().GetId(), foundAttrVal)
 		}
 	}
+	s.True(foundSm1)
+	s.True(foundSm2)
 }
 
-func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_InOneAndNotInASecond() {
-	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_in")
-	externalSelectorValue := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
-	externalValues := fixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalValues
-	expectedMappedFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_simple_in")
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_OnlyMatchesOneProperty() {
+	selector := ".only_matches_one[]"
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2").ID
+	newScs := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: selector,
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"random_value"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 
-	otherFixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_simple_not_in")
-	otherexternalSelectorValue := otherFixtureScs.Condition.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue
-	expectedMappedOtherFixture := s.f.GetSubjectMappingKey("subject_mapping_subject_simple_not_in")
+	subjectMapping := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:       fixtureAttrValID,
+		Actions:                []*policy.Action{fixtureActions[Transmit], fixtureActions[Decrypt]},
+		NewSubjectConditionSet: newScs,
+	}
+
+	createdSM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, subjectMapping)
+	s.Require().NoError(err)
+	s.NotNil(createdSM)
 
 	props := []*policy.SubjectProperty{
 		{
-			ExternalSelectorValue: externalSelectorValue,
-			ExternalValue:         externalValues[0],
+			ExternalSelectorValue: selector,
 		},
 		{
-			ExternalSelectorValue: otherexternalSelectorValue,
-			ExternalValue:         "random_value_987654321",
+			ExternalSelectorValue: "random_value_987654321",
 		},
 	}
 
-	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
+	smList, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
 	s.Require().NoError(err)
-	s.NotZero(smList)
-	for _, sm := range smList {
-		if sm.GetSubjectConditionSet().GetId() == fixtureScs.ID {
-			s.Equal(expectedMappedFixture.ID, sm.GetId())
-		} else if sm.GetSubjectConditionSet().GetId() == otherFixtureScs.ID {
-			s.Equal(expectedMappedOtherFixture.ID, sm.GetId())
-		}
-	}
+	s.Len(smList, 1)
+	s.Equal(smList[0].GetId(), createdSM.GetId())
 }
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NonExistentField_ReturnsNoMappings() {
 	props := []*policy.SubjectProperty{
 		{
 			ExternalSelectorValue: ".non_existent_field[1]",
-			ExternalValue:         "non_existent_value",
 		},
 	}
-	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(context.Background(), props)
+	sm, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
 	s.Require().NoError(err)
 	s.NotZero(sm)
 	s.Empty(sm)
@@ -1098,7 +1172,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_MetadataVariations(
 		"new":    newLabel,
 	}
 
-	created, err := s.db.PolicyClient.CreateSubjectConditionSet(context.Background(), &subjectmapping.SubjectConditionSetCreate{
+	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
 		SubjectSets: []*policy.SubjectSet{
 			{},
 		},
@@ -1110,7 +1184,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_MetadataVariations(
 	s.NotNil(created)
 
 	// update with no changes
-	updatedWithoutChange, err := s.db.PolicyClient.UpdateSubjectConditionSet(context.Background(), &subjectmapping.UpdateSubjectConditionSetRequest{
+	updatedWithoutChange, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, &subjectmapping.UpdateSubjectConditionSetRequest{
 		Id: created.GetId(),
 	})
 	s.Require().NoError(err)
@@ -1118,7 +1192,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_MetadataVariations(
 	s.Equal(created.GetId(), updatedWithoutChange.GetId())
 
 	// update with changes
-	updatedWithChange, err := s.db.PolicyClient.UpdateSubjectConditionSet(context.Background(), &subjectmapping.UpdateSubjectConditionSetRequest{
+	updatedWithChange, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, &subjectmapping.UpdateSubjectConditionSetRequest{
 		Id:                     created.GetId(),
 		Metadata:               &common.MetadataMutable{Labels: updateLabels},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
@@ -1128,14 +1202,14 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_MetadataVariations(
 	s.Equal(created.GetId(), updatedWithChange.GetId())
 
 	// verify the metadata was extended
-	got, err := s.db.PolicyClient.GetSubjectConditionSet(context.Background(), created.GetId())
+	got, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(expectedLabels, got.GetMetadata().GetLabels())
 
 	// update with replace
-	updatedWithReplace, err := s.db.PolicyClient.UpdateSubjectConditionSet(context.Background(), &subjectmapping.UpdateSubjectConditionSetRequest{
+	updatedWithReplace, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, &subjectmapping.UpdateSubjectConditionSetRequest{
 		Id:                     created.GetId(),
 		Metadata:               &common.MetadataMutable{Labels: labels},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
@@ -1145,7 +1219,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_MetadataVariations(
 	s.Equal(created.GetId(), updatedWithReplace.GetId())
 
 	// verify the metadata was replaced
-	got, err = s.db.PolicyClient.GetSubjectConditionSet(context.Background(), created.GetId())
+	got, err = s.db.PolicyClient.GetSubjectConditionSet(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())

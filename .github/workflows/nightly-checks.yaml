@@ -1,0 +1,76 @@
+name: 'Nightly Checks'
+
+on:
+  schedule:
+    # Run at 12:15 AM UTC (Scheduled actions are not guaranteed during times of high load like the top of the
+    # hour or 00:00. See discussion: https://github.com/orgs/community/discussions/27130)
+    - cron: '15 0 * * *'
+
+jobs:
+  db-flakiness-recovery:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      ######## CHECKOUT/SETUP PLATFORM #############
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          path: platform
+      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
+        with:
+          go-version-file: 'platform/service/go.mod'
+          check-latest: false
+          cache-dependency-path: |
+            platform/examples/go.sum
+            platform/protocol/go/go.sum
+            platform/sdk/go.sum
+            platform/service/go.sum
+      ######## SPIN UP PLATFORM/BACKEND #############
+      - run: |
+          ./.github/scripts/init-temp-keys.sh
+          cp opentdf-dev.yaml opentdf.yaml
+        working-directory: platform
+      - name: Added Trusted Certs
+        run: |
+          sudo chmod -R 777 ./keys
+          sudo apt-get install -y ca-certificates
+          sudo cp ./keys/localhost.crt /usr/local/share/ca-certificates
+          sudo update-ca-certificates
+        working-directory: platform
+      - run: docker compose up -d --wait --wait-timeout 240
+        working-directory: platform
+      - run: go run ./service provision keycloak
+        working-directory: platform
+      - run: go run ./service provision fixtures
+        working-directory: platform
+      - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
+        name: start server in background
+        with:
+          run: >
+            go build -o opentdf -v service/main.go
+            && .github/scripts/watch.sh opentdf.yaml ./opentdf start
+          wait-on: |
+            tcp:localhost:8080
+          log-output-if: true
+          wait-for: 90s
+          working-directory: platform
+
+      ######## CHECKOUT/BUILD 'otdfctl' #############
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: opentdf/otdfctl
+          ref: main
+          fetch-depth: 0
+          path: otdfctl
+      - run: go build -o otdfctl
+        working-directory: otdfctl
+      - run: cp otdfctl ../platform
+        working-directory: otdfctl
+
+      ######## RUN TESTS #############
+      - run: ./.github/scripts/connectivity-test.sh
+        name: Flaky Connectivity Test
+        working-directory: platform
+  ci-checks:
+    uses: opentdf/platform/.github/workflows/checks.yaml@main

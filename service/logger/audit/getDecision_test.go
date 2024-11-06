@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/uuid"
+	"github.com/opentdf/platform/protocol/go/authorization"
 )
 
 func TestCreateGetDecisionEventHappyPathSuccess(t *testing.T) {
@@ -14,10 +14,12 @@ func TestCreateGetDecisionEventHappyPathSuccess(t *testing.T) {
 		EntityChainEntitlements: []EntityChainEntitlement{
 			{
 				EntityID:                 "test-entity-id",
+				EntityCatagory:           authorization.Entity_CATEGORY_ENVIRONMENT.String(),
 				AttributeValueReferences: []string{"test-attribute-value-reference"},
 			},
 			{
 				EntityID:                 "test-entity-id-2",
+				EntityCatagory:           authorization.Entity_CATEGORY_SUBJECT.String(),
 				AttributeValueReferences: []string{"test-attribute-value-reference-2"},
 			},
 		},
@@ -55,10 +57,6 @@ func TestCreateGetDecisionEventHappyPathSuccess(t *testing.T) {
 		t.Fatalf("event action did not match expected: got %+v, want %+v", event.Action, expectedEventAction)
 	}
 
-	if !reflect.DeepEqual(event.Owner, CreateNilOwner()) {
-		t.Fatalf("event owner did not match expected: got %+v, want %+v", event.Owner, CreateNilOwner())
-	}
-
 	expectedEventActor := auditEventActor{
 		ID:         "test-entity-chain-id",
 		Attributes: buildActorAttributes(params.EntityChainEntitlements),
@@ -81,9 +79,8 @@ func TestCreateGetDecisionEventHappyPathSuccess(t *testing.T) {
 		t.Fatalf("event client info did not match expected: got %+v, want %+v", event.ClientInfo, expectedClientInfo)
 	}
 
-	expectedRequestID, _ := uuid.Parse(TestRequestID)
-	if event.RequestID != expectedRequestID {
-		t.Fatalf("event request ID did not match expected: got %v, want %v", event.RequestID, expectedRequestID)
+	if event.RequestID != TestRequestID {
+		t.Fatalf("event request ID did not match expected: got %v, want %v", event.RequestID, TestRequestID)
 	}
 
 	validateRecentEventTimestamp(t, event)
@@ -93,16 +90,18 @@ func TestBuildActorAttributes(t *testing.T) {
 	entitlements := []EntityChainEntitlement{
 		{
 			EntityID:                 "test-entity-id",
+			EntityCatagory:           authorization.Entity_CATEGORY_ENVIRONMENT.String(),
 			AttributeValueReferences: []string{"test-attribute-value-reference"},
 		},
 		{
 			EntityID:                 "test-entity-id-2",
+			EntityCatagory:           authorization.Entity_CATEGORY_SUBJECT.String(),
 			AttributeValueReferences: []string{"test-attribute-value-reference-2"},
 		},
 	}
 
 	actual := buildActorAttributes(entitlements)
-	expectedMarshal := "[{\"entityId\":\"test-entity-id\",\"attributeValueReferences\":[\"test-attribute-value-reference\"]},{\"entityId\":\"test-entity-id-2\",\"attributeValueReferences\":[\"test-attribute-value-reference-2\"]}]"
+	expectedMarshal := "[{\"entityId\":\"test-entity-id\",\"entityCategory\":\"CATEGORY_ENVIRONMENT\",\"attributeValueReferences\":[\"test-attribute-value-reference\"]},{\"entityId\":\"test-entity-id-2\",\"entityCategory\":\"CATEGORY_SUBJECT\",\"attributeValueReferences\":[\"test-attribute-value-reference-2\"]}]"
 	actualMarshal, err := json.Marshal(actual)
 	if err != nil {
 		t.Fatalf("error marshalling actor attributes: %v", err)

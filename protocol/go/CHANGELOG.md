@@ -1,5 +1,64 @@
 # Changelog
 
+## [0.2.20](https://github.com/opentdf/platform/compare/protocol/go/v0.2.19...protocol/go/v0.2.20) (2024-11-05)
+
+
+### Features
+
+* add generated connect-rpc code ([#1708](https://github.com/opentdf/platform/issues/1708)) ([92ac86a](https://github.com/opentdf/platform/commit/92ac86aa84d645fb5db26c17716d52457673f2de))
+
+## [0.2.19](https://github.com/opentdf/platform/compare/protocol/go/v0.2.18...protocol/go/v0.2.19) (2024-11-05)
+
+
+### Features
+
+* **policy:** 1651 move GetAttributesByValueFqns RPC request validation to protovalidate ([#1657](https://github.com/opentdf/platform/issues/1657)) ([c7d6b15](https://github.com/opentdf/platform/commit/c7d6b1542c10d3e2a35fa00efaf7d415f63c7dca))
+* **policy:** add optional name field to registered KASes in policy ([#1636](https://github.com/opentdf/platform/issues/1636)) ([f1382c1](https://github.com/opentdf/platform/commit/f1382c16893cefd40e930f4112ac7a61c9b05898))
+* **policy:** limit/offset throughout LIST protos/gencode ([#1668](https://github.com/opentdf/platform/issues/1668)) ([7de6cce](https://github.com/opentdf/platform/commit/7de6cce5c9603228bc0ef5566b5b2d10c4a12ee4))
+* **policy:** subject condition sets prune protos/gencode ([#1687](https://github.com/opentdf/platform/issues/1687)) ([a627e02](https://github.com/opentdf/platform/commit/a627e021e9df2c06e1c86acfc0a4ee83c4bce932))
+
+
+### Bug Fixes
+
+* **policy:** enhance proto validation across policy requests ([#1656](https://github.com/opentdf/platform/issues/1656)) ([df534c4](https://github.com/opentdf/platform/commit/df534c40f3f500190b200923e5157701b438431b))
+* **policy:** make MatchSubjectMappings operator agnostic ([#1658](https://github.com/opentdf/platform/issues/1658)) ([cb63819](https://github.com/opentdf/platform/commit/cb63819d107ed65cb5d467a956d713bd55214cdb))
+
+## [0.2.18](https://github.com/opentdf/platform/compare/protocol/go/v0.2.17...protocol/go/v0.2.18) (2024-10-11)
+
+
+### Features
+
+* **policy:** DSP-51 - deprecate PublicKey local field ([#1590](https://github.com/opentdf/platform/issues/1590)) ([e3ed0b5](https://github.com/opentdf/platform/commit/e3ed0b5ce6039000c9e3c574d3d6ce2931781235))
+
+## [0.2.17](https://github.com/opentdf/platform/compare/protocol/go/v0.2.16...protocol/go/v0.2.17) (2024-09-25)
+
+
+### Bug Fixes
+
+* **core:** Fix POST /v1/entitlements body parsing ([#1574](https://github.com/opentdf/platform/issues/1574)) ([fcae7ef](https://github.com/opentdf/platform/commit/fcae7ef0eba2c43ab93f5a2815e7b3e1dec69364))
+
+## [0.2.16](https://github.com/opentdf/platform/compare/protocol/go/v0.2.15...protocol/go/v0.2.16) (2024-09-19)
+
+
+### Bug Fixes
+
+* **core:** Fix parsing /v1/authorization ([#1554](https://github.com/opentdf/platform/issues/1554)) ([b7d694d](https://github.com/opentdf/platform/commit/b7d694d5df3867f278007660c32acb72c868735e)), closes [#1553](https://github.com/opentdf/platform/issues/1553)
+
+## [0.2.15](https://github.com/opentdf/platform/compare/protocol/go/v0.2.14...protocol/go/v0.2.15) (2024-09-04)
+
+
+### Features
+
+* **policy:** 1398 add metadata support to Resource Mapping Groups ([#1412](https://github.com/opentdf/platform/issues/1412)) ([87b7b2f](https://github.com/opentdf/platform/commit/87b7b2ff6f7b39d34823ba926758fba25489c0a6))
+
+## [0.2.14](https://github.com/opentdf/platform/compare/protocol/go/v0.2.13...protocol/go/v0.2.14) (2024-08-20)
+
+
+### Features
+
+* **policy:** 1277 protos and service methods for Resource Mapping Groups operations ([#1343](https://github.com/opentdf/platform/issues/1343)) ([570f402](https://github.com/opentdf/platform/commit/570f4023183898212dcd007e5b42135ccf1d285a))
+* **sdk:** Load KAS keys from policy service ([#1346](https://github.com/opentdf/platform/issues/1346)) ([fe628a0](https://github.com/opentdf/platform/commit/fe628a013e41fb87585eb53a61988f822b40a71a))
+
 ## [0.2.13](https://github.com/opentdf/platform/compare/protocol/go/v0.2.12...protocol/go/v0.2.13) (2024-08-16)
 
 

@@ -63,17 +63,31 @@ type PgxIface interface {
 }
 
 type Config struct {
-	Host          string `yaml:"host" default:"localhost"`
-	Port          int    `yaml:"port" default:"5432"`
-	Database      string `yaml:"database" default:"opentdf"`
-	User          string `yaml:"user" default:"postgres"`
-	Password      string `yaml:"password" default:"changeme" secret:"true"`
-	RunMigrations bool   `yaml:"runMigrations" default:"true"`
-	SSLMode       string `yaml:"sslmode" default:"prefer"`
-	Schema        string `yaml:"schema" default:"opentdf"`
+	Host          string `mapstructure:"host" json:"host" default:"localhost"`
+	Port          int    `mapstructure:"port" json:"port" default:"5432"`
+	Database      string `mapstructure:"database" json:"database" default:"opentdf"`
+	User          string `mapstructure:"user" json:"user" default:"postgres"`
+	Password      string `mapstructure:"password" json:"password" default:"changeme"`
+	RunMigrations bool   `mapstructure:"runMigrations" json:"runMigrations" default:"true"`
+	SSLMode       string `mapstructure:"sslmode" json:"sslmode" default:"prefer"`
+	Schema        string `mapstructure:"schema" json:"schema" default:"opentdf"`
 
-	VerifyConnection bool `yaml:"verifyConnection" default:"true"`
-	MigrationsFS     *embed.FS
+	VerifyConnection bool      `mapstructure:"verifyConnection" json:"verifyConnection" default:"true"`
+	MigrationsFS     *embed.FS `mapstructure:"-"`
+}
+
+func (c Config) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("host", c.Host),
+		slog.Int("port", c.Port),
+		slog.String("database", c.Database),
+		slog.String("user", c.User),
+		slog.String("password", "[REDACTED]"),
+		slog.String("sslmode", c.SSLMode),
+		slog.String("schema", c.Schema),
+		slog.Bool("runMigrations", c.RunMigrations),
+		slog.Bool("verifyConnection", c.VerifyConnection),
+	)
 }
 
 /*
@@ -144,13 +158,6 @@ func New(ctx context.Context, config Config, logCfg logger.Config, o ...OptsFunc
 		}
 	}
 
-	// Set the Client search_path to the schema
-	q := fmt.Sprintf("SET search_path TO %s", config.Schema)
-	if _, err := c.Pgx.Exec(ctx, q); err != nil {
-		return nil, fmt.Errorf("failed to SET search_path for db Client schema to [%s]: %w", config.Schema, err)
-	}
-
-	slog.Info("successfully set database client search_path", slog.String("schema", config.Schema))
 	return &c, nil
 }
 
@@ -171,7 +178,21 @@ func (c Config) buildConfig() (*pgxpool.Config, error) {
 		c.Database,
 		c.SSLMode,
 	)
-	return pgxpool.ParseConfig(u)
+	parsed, err := pgxpool.ParseConfig(u)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
+	}
+	// Configure the search_path schema immediately on connection opening
+	parsed.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		_, err := conn.Exec(ctx, fmt.Sprintf("SET search_path TO %s", c.Schema))
+		if err != nil {
+			slog.Error("failed to set database client search_path", slog.String("schema", c.Schema), slog.String("error", err.Error()))
+			return err
+		}
+		slog.Debug("successfully set database client search_path", slog.String("schema", c.Schema))
+		return nil
+	}
+	return parsed, nil
 }
 
 // Common function for all queryRow calls

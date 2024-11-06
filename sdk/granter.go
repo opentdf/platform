@@ -1,4 +1,4 @@
-package autoconfigure
+package sdk
 
 import (
 	"context"
@@ -27,14 +27,26 @@ const (
 	emptyTerm   = "DEFAULT"
 )
 
-// Represents a which KAS a split with the associated ID should shared with.
-type SplitStep struct {
+// keySplitStep represents a which KAS a split with the associated ID should be shared with.
+type keySplitStep struct {
 	KAS, SplitID string
 }
 
-// Utility type to represent an FQN for an attribute.
+// AttributeNameFQN is a utility type to represent an FQN for an attribute.
 type AttributeNameFQN struct {
 	url, key string
+}
+
+func attributeURLPartsValid(parts []string) error {
+	for i, part := range parts {
+		if part == "" {
+			return fmt.Errorf("%w: empty url path parts are not allowed", ErrInvalid)
+		} else if i > 1 && // skip first two parts as they will have protocol slashes
+			strings.Contains(part, "/") {
+			return fmt.Errorf("%w: slash not allowed in name or values", ErrInvalid)
+		}
+	}
+	return nil
 }
 
 func NewAttributeNameFQN(u string) (AttributeNameFQN, error) {
@@ -48,6 +60,11 @@ func NewAttributeNameFQN(u string) (AttributeNameFQN, error) {
 	if err != nil {
 		return AttributeNameFQN{}, fmt.Errorf("%w: error in attribute name [%s]", ErrInvalid, m[2])
 	}
+
+	if err := attributeURLPartsValid(m); err != nil {
+		return AttributeNameFQN{}, err
+	}
+
 	return AttributeNameFQN{u, strings.ToLower(u)}, nil
 }
 
@@ -86,7 +103,7 @@ func (a AttributeNameFQN) Name() string {
 	return v
 }
 
-// Utility type to represent an FQN for an attribute value.
+// AttributeValueFQN is a utility type to represent an FQN for an attribute value.
 type AttributeValueFQN struct {
 	url, key string
 }
@@ -105,6 +122,10 @@ func NewAttributeValueFQN(u string) (AttributeValueFQN, error) {
 	_, err = url.PathUnescape(m[3])
 	if err != nil {
 		return AttributeValueFQN{}, fmt.Errorf("%w: error in attribute value [%s]", ErrInvalid, m[3])
+	}
+
+	if err := attributeURLPartsValid(m); err != nil {
+		return AttributeValueFQN{}, err
 	}
 
 	return AttributeValueFQN{u, strings.ToLower(u)}, nil
@@ -163,7 +184,7 @@ func (a AttributeValueFQN) Name() string {
 }
 
 // Structure capable of generating a split plan from a given set of data tags.
-type Granter struct {
+type granter struct {
 	policy []AttributeValueFQN
 	grants map[string]*keyAccessGrant
 }
@@ -173,7 +194,7 @@ type keyAccessGrant struct {
 	kases []string
 }
 
-func (r Granter) addGrant(fqn AttributeValueFQN, kas string, attr *policy.Attribute) {
+func (r granter) addGrant(fqn AttributeValueFQN, kas string, attr *policy.Attribute) {
 	if _, ok := r.grants[fqn.key]; ok {
 		r.grants[fqn.key].kases = append(r.grants[fqn.key].kases, kas)
 	} else {
@@ -181,25 +202,28 @@ func (r Granter) addGrant(fqn AttributeValueFQN, kas string, attr *policy.Attrib
 	}
 }
 
-func (r Granter) addAllGrants(fqn AttributeValueFQN, gs []*policy.KeyAccessServer, attr *policy.Attribute) {
+func (r granter) addAllGrants(fqn AttributeValueFQN, gs []*policy.KeyAccessServer, attr *policy.Attribute) bool {
+	ok := false
 	for _, g := range gs {
 		if g != nil {
 			r.addGrant(fqn, g.GetUri(), attr)
+			ok = true
 		}
 	}
 	if len(gs) == 0 {
-		if _, ok := r.grants[fqn.key]; !ok {
+		if _, present := r.grants[fqn.key]; !present {
 			r.grants[fqn.key] = &keyAccessGrant{attr, []string{}}
 		}
 	}
+	return ok
 }
 
-func (r Granter) byAttribute(fqn AttributeValueFQN) *keyAccessGrant {
+func (r granter) byAttribute(fqn AttributeValueFQN) *keyAccessGrant {
 	return r.grants[fqn.key]
 }
 
 // Gets a list of directory of KAS grants for a list of attribute FQNs
-func NewGranterFromService(ctx context.Context, as attributes.AttributesServiceClient, fqns ...AttributeValueFQN) (Granter, error) {
+func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as attributes.AttributesServiceClient, fqns ...AttributeValueFQN) (granter, error) {
 	fqnsStr := make([]string, len(fqns))
 	for i, v := range fqns {
 		fqnsStr[i] = v.String()
@@ -213,10 +237,10 @@ func NewGranterFromService(ctx context.Context, as attributes.AttributesServiceC
 			},
 		})
 	if err != nil {
-		return Granter{}, err
+		return granter{}, err
 	}
 
-	grants := Granter{
+	grants := granter{
 		policy: fqns,
 		grants: make(map[string]*keyAccessGrant),
 	}
@@ -226,23 +250,66 @@ func NewGranterFromService(ctx context.Context, as attributes.AttributesServiceC
 			return grants, err
 		}
 		def := pair.GetAttribute()
+
 		if def != nil {
-			grants.addAllGrants(fqn, def.GetGrants(), def)
+			storeKeysToCache(def.GetGrants(), keyCache)
 		}
 		v := pair.GetValue()
+		valuesGranted := false
+		attributesGranted := false
 		if v != nil {
-			grants.addAllGrants(fqn, v.GetGrants(), def)
+			valuesGranted = grants.addAllGrants(fqn, v.GetGrants(), def)
+			storeKeysToCache(v.GetGrants(), keyCache)
+		}
+		// If no more specific grant was found, then add the value grants
+		if !valuesGranted && def != nil {
+			attributesGranted = grants.addAllGrants(fqn, def.GetGrants(), def)
+			storeKeysToCache(def.GetGrants(), keyCache)
+		}
+		if !valuesGranted && !attributesGranted && def.GetNamespace() != nil {
+			grants.addAllGrants(fqn, def.GetNamespace().GetGrants(), def)
+			storeKeysToCache(def.GetNamespace().GetGrants(), keyCache)
 		}
 	}
 
 	return grants, nil
 }
 
+func algProto2String(e policy.KasPublicKeyAlgEnum) string {
+	switch e {
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1:
+		return "ec:secp256r1"
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048:
+		return "rsa:2048"
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED:
+		return ""
+	}
+	return ""
+}
+
+func storeKeysToCache(kases []*policy.KeyAccessServer, c *kasKeyCache) {
+	for _, kas := range kases {
+		keys := kas.GetPublicKey().GetCached().GetKeys()
+		if len(keys) == 0 {
+			slog.Debug("no cached key in policy service", "kas", kas.GetUri())
+			continue
+		}
+		for _, ki := range keys {
+			c.store(KASInfo{
+				URL:       kas.GetUri(),
+				KID:       ki.GetKid(),
+				Algorithm: algProto2String(ki.GetAlg()),
+				PublicKey: ki.GetPem(),
+			})
+		}
+	}
+}
+
 // Given a policy (list of data attributes or tags),
 // get a set of grants from attribute values to KASes.
-// Unlike `NewGranterFromService`, this works offline.
-func NewGranterFromAttributes(attrs ...*policy.Value) (Granter, error) {
-	grants := Granter{
+// Unlike `newGranterFromService`, this works offline.
+func newGranterFromAttributes(keyCache *kasKeyCache, attrs ...*policy.Value) (granter, error) {
+	grants := granter{
 		grants: make(map[string]*keyAccessGrant),
 		policy: make([]AttributeValueFQN, len(attrs)),
 	}
@@ -254,41 +321,27 @@ func NewGranterFromAttributes(attrs ...*policy.Value) (Granter, error) {
 		grants.policy[i] = fqn
 		def := v.GetAttribute()
 		if def == nil {
-			return Granter{}, fmt.Errorf("no associated definition with value [%s]", fqn)
+			return granter{}, fmt.Errorf("no associated definition with value [%s]", fqn)
 		}
-		grants.addAllGrants(fqn, def.GetGrants(), def)
-		grants.addAllGrants(fqn, v.GetGrants(), def)
+		namespace := def.GetNamespace()
+		if namespace == nil {
+			return granter{}, fmt.Errorf("no associated namespace with definition [%s] from value [%s]", def.GetFqn(), fqn)
+		}
+
+		if grants.addAllGrants(fqn, v.GetGrants(), def) {
+			storeKeysToCache(v.GetGrants(), keyCache)
+			continue
+		}
+		// If no more specific grant was found, then add the attr grants
+		if grants.addAllGrants(fqn, def.GetGrants(), def) {
+			storeKeysToCache(def.GetGrants(), keyCache)
+			continue
+		}
+		grants.addAllGrants(fqn, namespace.GetGrants(), def)
+		storeKeysToCache(namespace.GetGrants(), keyCache)
 	}
 
 	return grants, nil
-}
-
-type AttributeService struct {
-	dict map[AttributeNameFQN]*policy.Attribute
-}
-
-func (s *AttributeService) Put(ad *policy.Attribute) error {
-	if s.dict == nil {
-		s.dict = make(map[AttributeNameFQN]*policy.Attribute)
-	}
-	prefix, err := NewAttributeNameFQN(ad.GetFqn())
-	if err != nil {
-		return err
-	}
-	if _, exists := s.dict[prefix]; exists {
-		return fmt.Errorf("ad prefix already found [%s]", prefix)
-	}
-	s.dict[prefix] = ad
-	return nil
-}
-
-// Given an attribute without a value (everything before /value/...), get the definition
-func (s *AttributeService) Get(prefix AttributeNameFQN) (*policy.Attribute, error) {
-	ad, exists := s.dict[prefix]
-	if !exists {
-		return nil, fmt.Errorf("[404] Unknown attribute type: [%s], not in [%v]", prefix, s.dict)
-	}
-	return ad, nil
 }
 
 type singleAttributeClause struct {
@@ -329,7 +382,7 @@ func (e attributeBooleanExpression) String() string {
 	return sb.String()
 }
 
-func (r Granter) Plan(defaultKas []string, genSplitID func() string) ([]SplitStep, error) {
+func (r granter) plan(defaultKas []string, genSplitID func() string) ([]keySplitStep, error) {
 	b := r.constructAttributeBoolean()
 	k, err := r.insertKeysForAttribute(*b)
 	if err != nil {
@@ -339,34 +392,34 @@ func (r Granter) Plan(defaultKas []string, genSplitID func() string) ([]SplitSte
 	k = k.reduce()
 	l := k.Len()
 	if l == 0 {
-		// default behavior: split key accross all default kases
+		// default behavior: split key across all default kases
 		switch len(defaultKas) {
 		case 0:
 			return nil, fmt.Errorf("no default KAS specified; required for grantless plans")
 		case 1:
-			return []SplitStep{{KAS: defaultKas[0]}}, nil
+			return []keySplitStep{{KAS: defaultKas[0]}}, nil
 		default:
-			p := make([]SplitStep, 0, len(defaultKas))
+			p := make([]keySplitStep, 0, len(defaultKas))
 			for _, kas := range defaultKas {
-				p = append(p, SplitStep{KAS: kas, SplitID: genSplitID()})
+				p = append(p, keySplitStep{KAS: kas, SplitID: genSplitID()})
 			}
 			return p, nil
 		}
 	}
-	p := make([]SplitStep, 0, l)
+	p := make([]keySplitStep, 0, l)
 	for _, v := range k.values {
 		splitID := ""
 		if l > 1 {
 			splitID = genSplitID()
 		}
 		for _, o := range v.values {
-			p = append(p, SplitStep{KAS: o.kas, SplitID: splitID})
+			p = append(p, keySplitStep{KAS: o.kas, SplitID: splitID})
 		}
 	}
 	return p, nil
 }
 
-func (r Granter) constructAttributeBoolean() *attributeBooleanExpression {
+func (r granter) constructAttributeBoolean() *attributeBooleanExpression {
 	prefixes := make(map[string]*singleAttributeClause)
 	sortedPrefixes := make([]string, 0)
 	for _, aP := range r.policy {
@@ -447,7 +500,7 @@ func ruleToOperator(e policy.AttributeRuleTypeEnum) string {
 	return ""
 }
 
-func (r *Granter) insertKeysForAttribute(e attributeBooleanExpression) (booleanKeyExpression, error) {
+func (r *granter) insertKeysForAttribute(e attributeBooleanExpression) (booleanKeyExpression, error) {
 	kcs := make([]keyClause, 0, len(e.must))
 	for _, clause := range e.must {
 		kcv := make([]publicKeyInfo, 0, len(clause.values))

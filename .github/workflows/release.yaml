@@ -17,7 +17,7 @@ jobs:
     steps:
       - name: Generate a token
         id: generate_token
-        uses: actions/create-github-app-token@31c86eb3b33c9b601a1f60f98dcbfd1d70f379b4 # v1.10.3
+        uses: actions/create-github-app-token@5d869da34e18e7287c1daad50e0b8ea0f506ce69 # v1.11.0
         with:
           app-id: "${{ secrets.APP_ID }}"
           private-key: "${{ secrets.AUTOMATION_KEY }}"
@@ -72,7 +72,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
       - run: |
@@ -99,7 +99,7 @@ jobs:
           git diff
         env:
           GONOSUMDB: github.com/opentdf/platform/${{join(fromJson(needs.release-please.outputs.paths_released), ',github.com/opentdf/platform/')}}
-      - uses: planetscale/ghcommit-action@b68767a2e130a71926b365322e62b583404a5e09
+      - uses: planetscale/ghcommit-action@d4176bfacef926cc2db351eab20398dfc2f593b5
         with:
           commit_message: "fix(core): Autobump ${{ matrix.path }}"
           repo: ${{ github.repository }}
@@ -108,7 +108,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Generate a token
         id: generate_token
-        uses: actions/create-github-app-token@31c86eb3b33c9b601a1f60f98dcbfd1d70f379b4 # v1.10.3
+        uses: actions/create-github-app-token@5d869da34e18e7287c1daad50e0b8ea0f506ce69 # v1.11.0
         with:
           app-id: "${{ secrets.APP_ID }}"
           private-key: "${{ secrets.AUTOMATION_KEY }}"

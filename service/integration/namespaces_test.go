@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -15,7 +14,6 @@ import (
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	policydb "github.com/opentdf/platform/service/policy/db"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -159,19 +157,13 @@ func (s *NamespacesSuite) Test_UpdateNamespace() {
 		"update": updatedLabel,
 		"new":    newLabel,
 	}
-	start := time.Now().Add(-time.Second)
 	created, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
 		Name: "updating-namespace.com",
 		Metadata: &common.MetadataMutable{
 			Labels: labels,
 		},
 	})
-	end := time.Now().Add(time.Second)
 	metadata := created.GetMetadata()
-	createdAt := metadata.GetCreatedAt()
-	updatedAt := metadata.GetUpdatedAt()
-	s.True(createdAt.AsTime().After(start))
-	s.True(createdAt.AsTime().Before(end))
 
 	s.Require().NoError(err)
 	s.NotNil(created)
@@ -190,13 +182,17 @@ func (s *NamespacesSuite) Test_UpdateNamespace() {
 	s.Require().NoError(err)
 	s.NotNil(updatedWithChange)
 	s.Equal(created.GetId(), updatedWithChange.GetId())
+	s.EqualValues(expectedLabels, updatedWithChange.GetMetadata().GetLabels())
 
 	got, err := s.db.PolicyClient.GetNamespace(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
-	s.True(got.GetMetadata().GetUpdatedAt().AsTime().After(updatedAt.AsTime()))
+	updatedMetadata := got.GetMetadata()
+	createdTime := metadata.GetCreatedAt().AsTime()
+	updatedTime := updatedMetadata.GetUpdatedAt().AsTime()
+	s.True(createdTime.Before(updatedTime))
 }
 
 func (s *NamespacesSuite) Test_UpdateNamespace_DoesNotExist_ShouldFail() {
@@ -219,6 +215,7 @@ func (s *NamespacesSuite) Test_DeactivateNamespace() {
 	inactive, err := s.db.PolicyClient.DeactivateNamespace(s.ctx, n.GetId())
 	s.Require().NoError(err)
 	s.NotNil(inactive)
+	s.False(inactive.GetActive().GetValue())
 
 	// Deactivated namespace should not be found on List
 	gotNamespaces, err := s.db.PolicyClient.ListNamespaces(s.ctx, policydb.StateActive)
@@ -290,7 +287,7 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_Cascades_List() {
 	}
 
 	listAttributes := func(state string) bool {
-		listedAttrs, err := s.db.PolicyClient.ListAllAttributes(s.ctx, state, "")
+		listedAttrs, err := s.db.PolicyClient.ListAttributes(s.ctx, state, "")
 		s.Require().NoError(err)
 		s.NotNil(listedAttrs)
 		for _, a := range listedAttrs {
@@ -371,9 +368,9 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_Cascades_List() {
 	}
 
 	for _, tableTest := range tests {
-		s.T().Run(tableTest.name, func(t *testing.T) {
+		s.Run(tableTest.name, func() {
 			found := tableTest.testFunc(tableTest.state)
-			assert.Equal(t, tableTest.isFound, found)
+			s.Equal(tableTest.isFound, found)
 		})
 	}
 }
@@ -671,16 +668,16 @@ func (s *NamespacesSuite) Test_UnsafeUpdateNamespace() {
 	s.Require().NoError(err)
 	s.NotNil(updated)
 	s.Equal(created.GetId(), updated.GetId())
-	s.True(updated.GetActive().GetValue())
 	s.Equal(after, updated.GetName())
-	createdTime := created.GetMetadata().GetCreatedAt().AsTime()
-	updatedTime := updated.GetMetadata().GetUpdatedAt().AsTime()
-	s.True(createdTime.Before(updatedTime))
 
 	got, err := s.db.PolicyClient.GetNamespace(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal("https://"+after, got.GetFqn())
+	s.True(got.GetActive().GetValue())
+	createdTime := created.GetMetadata().GetCreatedAt().AsTime()
+	updatedTime := got.GetMetadata().GetUpdatedAt().AsTime()
+	s.True(createdTime.Before(updatedTime))
 
 	// should be able to create original name after unsafely updating
 	recreated, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})
@@ -784,6 +781,7 @@ func (s *NamespacesSuite) Test_AssignKASGrant() {
 	kasRegistry := &kasregistry.CreateKeyAccessServerRequest{
 		Uri:       "kas.uri/ns",
 		PublicKey: pubKey,
+		Name:      "kas-name-ns",
 	}
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	s.Require().NoError(err)
@@ -803,6 +801,7 @@ func (s *NamespacesSuite) Test_AssignKASGrant() {
 	s.NotNil(got)
 	s.Len(got.GetGrants(), 1)
 	s.Equal(kas.GetId(), got.GetGrants()[0].GetId())
+	s.Equal(kasRegistry.GetName(), got.GetGrants()[0].GetName())
 }
 
 func (s *NamespacesSuite) Test_AssignKASGrant_FailsInvalidIds() {

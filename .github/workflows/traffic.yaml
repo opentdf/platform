@@ -1,0 +1,74 @@
+on:
+  schedule: 
+    # runs once a week on sunday
+    - cron: "55 23 * * 0"
+
+    
+jobs:
+  traffic:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: 'write'
+    strategy:
+      matrix:
+        repo-values:
+          - {repo: platform, event: ""}
+          - {repo: otdfctl, event: backend-}
+          - {repo: spec, event: frontend-}
+          - {repo: tests, event: tests-}
+          - {repo: client-web, event: clientweb-}
+          - {repo: client-cpp, event: cpp-sdk-}
+          - {repo: java-sdk, event: java-sdk-}
+          - {repo: charts, event: charts-}
+          - {repo: nifi, event: nifi-}
+    steps:
+    - name: Generate a token
+      id: generate_token
+      uses: actions/create-github-app-token@5d869da34e18e7287c1daad50e0b8ea0f506ce69 # v1.11.0
+      with:
+        app-id: "${{ secrets.APP_ID }}"
+        private-key: "${{ secrets.AUTOMATION_KEY }}"
+        owner: opentdf 
+    - name: checkout repo
+      uses: actions/checkout@v4
+
+    - id: get-date
+      name: Set current date as env variable
+      run: echo "DATE=$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
+
+    - name: Get Traffic
+      uses: actions/github-script@v7
+      id: get-traffic
+      env:
+        OWNER: opentdf
+        REPO: ${{ matrix.repo-values.repo }}
+        EVENT_TYPE: opentdf-${{ matrix.repo-values.event }}github
+        TODAY_DATE: ${{ steps.get-date.outputs.DATE }}
+      with:
+        github-token: ${{ steps.generate_token.outputs.token }} 
+        retries: 3
+        script: |
+          var fs = require('fs')
+          const getMetrics = require('./.github/scripts/metrics.js')
+          const result = await getMetrics({github})
+          console.log(result)
+          const jsonObj = JSON.stringify(result)
+          await fs.writeFile(process.env.TODAY_DATE + "-" + process.env.EVENT_TYPE +".json", jsonObj, err =>{
+          if(err) throw err})
+          return result
+          
+    #https://github.com/marketplace/actions/authenticate-to-google-cloud#setup
+    - id: 'auth'
+      name: 'Authenticate to Google Cloud'
+      uses: 'google-github-actions/auth@62cf5bd3e4211a0a0b51f2c6d6a37129d828611d'
+      with:
+        workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY }}
+        service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+    - id: 'upload-file'
+      uses: 'google-github-actions/upload-cloud-storage@v2'
+      with:
+        path: './${{ steps.get-date.outputs.DATE }}-opentdf-${{ matrix.repo-values.event }}github.json'
+        destination: 'prj-opentdf-4fc4-opentdf-github-metrics-bucket-us-38uz'
+        project_id: 'prj-opentdf-4fc4'
+

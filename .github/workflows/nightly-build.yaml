@@ -12,10 +12,10 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: "Authenticate to Google Cloud (Push to Public registry)"
         id: "gcp-auth"
-        uses: google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c
+        uses: google-github-actions/auth@62cf5bd3e4211a0a0b51f2c6d6a37129d828611d
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
@@ -23,7 +23,7 @@ jobs:
           create_credentials_file: false
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@59acb6260d9c0ba8f4a2f9d9b48431a222b68e20
+        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da
       
       - name: Set up QEMU
         uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf

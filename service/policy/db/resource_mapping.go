@@ -3,226 +3,323 @@ package db
 import (
 	"context"
 	"log/slog"
+	"strings"
 
-	sq "github.com/Masterminds/squirrel"
-	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
-	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
+	"github.com/opentdf/platform/service/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-func resourceMappingHydrateList(rows pgx.Rows, logger *logger.Logger) ([]*policy.ResourceMapping, error) {
-	var list []*policy.ResourceMapping
+/*
+	Resource Mapping CRUD
+*/
 
-	for rows.Next() {
-		rm, err := resourceMappingHydrateItem(rows, logger)
-		if err != nil {
-			return nil, err
-		}
-		list = append(list, rm)
-	}
-	return list, nil
-}
-
-func resourceMappingHydrateItem(row pgx.Row, logger *logger.Logger) (*policy.ResourceMapping, error) {
-	var (
-		id                 string
-		metadataJSON       []byte
-		metadata           = new(common.Metadata)
-		terms              []string
-		attributeValueJSON []byte
-		attributeValue     = new(policy.Value)
-	)
-
-	err := row.Scan(
-		&id,
-		&metadataJSON,
-		&terms,
-		&attributeValueJSON,
-	)
+func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resourcemapping.ListResourceMappingGroupsRequest) ([]*policy.ResourceMappingGroup, error) {
+	list, err := c.Queries.ListResourceMappingGroups(ctx, r.GetNamespaceId())
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	if metadataJSON != nil {
-		err = protojson.Unmarshal(metadataJSON, metadata)
-		if err != nil {
+	rmGroups := make([]*policy.ResourceMappingGroup, len(list))
+
+	for i, rmGroup := range list {
+		metadata := new(common.Metadata)
+		if err := unmarshalMetadata(rmGroup.Metadata, metadata); err != nil {
 			return nil, err
+		}
+
+		rmGroups[i] = &policy.ResourceMappingGroup{
+			Id:          rmGroup.ID,
+			NamespaceId: rmGroup.NamespaceID,
+			Name:        rmGroup.Name,
+			Metadata:    metadata,
 		}
 	}
 
-	if attributeValueJSON != nil {
-		if err := protojson.Unmarshal(attributeValueJSON, attributeValue); err != nil {
-			logger.Error("failed to unmarshal attribute value", slog.String("error", err.Error()), slog.String("attribute value JSON", string(attributeValueJSON)))
-			return nil, err
-		}
+	return rmGroups, nil
+}
+
+func (c PolicyDBClient) GetResourceMappingGroup(ctx context.Context, id string) (*policy.ResourceMappingGroup, error) {
+	rmGroup, err := c.Queries.GetResourceMappingGroup(ctx, id)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	return &policy.ResourceMapping{
-		Id:             id,
-		Metadata:       metadata,
-		AttributeValue: attributeValue,
-		Terms:          terms,
+	metadata := new(common.Metadata)
+	if err := unmarshalMetadata(rmGroup.Metadata, metadata); err != nil {
+		return nil, err
+	}
+
+	return &policy.ResourceMappingGroup{
+		Id:          rmGroup.ID,
+		NamespaceId: rmGroup.NamespaceID,
+		Name:        rmGroup.Name,
+		Metadata:    metadata,
 	}, nil
 }
 
-func resourceMappingSelect() sq.SelectBuilder {
-	t := Tables.ResourceMappings
-	at := Tables.AttributeValues
-	return db.NewStatementBuilder().Select(
-		t.Field("id"),
-		constructMetadata(t.Name(), false),
-		t.Field("terms"),
-		"JSON_BUILD_OBJECT("+
-			"'id', av.id,"+
-			"'value', av.value "+
-			") AS attribute_value",
-	).
-		LeftJoin(at.Name() + " av ON " + t.Field("attribute_value_id") + " = " + "av.id").
-		GroupBy("av.id").
-		GroupBy(t.Field("id"))
+func (c PolicyDBClient) CreateResourceMappingGroup(ctx context.Context, r *resourcemapping.CreateResourceMappingGroupRequest) (*policy.ResourceMappingGroup, error) {
+	namespaceID := r.GetNamespaceId()
+	name := strings.ToLower(r.GetName())
+
+	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
+	if err != nil {
+		return nil, err
+	}
+
+	createdID, err := c.Queries.CreateResourceMappingGroup(ctx, CreateResourceMappingGroupParams{
+		NamespaceID: namespaceID,
+		Name:        name,
+		Metadata:    metadataJSON,
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return &policy.ResourceMappingGroup{
+		Id:          createdID,
+		NamespaceId: namespaceID,
+		Name:        name,
+		Metadata:    metadata,
+	}, nil
+}
+
+func (c PolicyDBClient) UpdateResourceMappingGroup(ctx context.Context, id string, r *resourcemapping.UpdateResourceMappingGroupRequest) (*policy.ResourceMappingGroup, error) {
+	namespaceID := r.GetNamespaceId()
+	name := strings.ToLower(r.GetName())
+
+	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
+		rmGroup, err := c.GetResourceMappingGroup(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		return rmGroup.GetMetadata(), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	count, err := c.Queries.UpdateResourceMappingGroup(ctx, UpdateResourceMappingGroupParams{
+		ID:          id,
+		NamespaceID: pgtypeUUID(namespaceID),
+		Name:        pgtypeText(name),
+		Metadata:    metadataJSON,
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
+
+	return &policy.ResourceMappingGroup{
+		Id:          id,
+		NamespaceId: namespaceID,
+		Name:        name,
+		Metadata:    metadata,
+	}, nil
+}
+
+func (c PolicyDBClient) DeleteResourceMappingGroup(ctx context.Context, id string) (*policy.ResourceMappingGroup, error) {
+	count, err := c.Queries.DeleteResourceMappingGroup(ctx, id)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
+
+	return &policy.ResourceMappingGroup{
+		Id: id,
+	}, nil
 }
 
 /*
  Resource Mapping CRUD
 */
 
-func createResourceMappingSQL(attributeValueID string, metadata []byte, terms []string) (string, []interface{}, error) {
-	return db.NewStatementBuilder().
-		Insert(Tables.ResourceMappings.Name()).
-		Columns(
-			"attribute_value_id",
-			"metadata",
-			"terms",
-		).
-		Values(
-			attributeValueID,
-			metadata,
-			terms,
-		).
-		Suffix(createSuffix).
-		ToSql()
+func (c PolicyDBClient) ListResourceMappings(ctx context.Context, r *resourcemapping.ListResourceMappingsRequest) ([]*policy.ResourceMapping, error) {
+	list, err := c.Queries.ListResourceMappings(ctx, r.GetGroupId())
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	mappings := make([]*policy.ResourceMapping, len(list))
+
+	for i, rm := range list {
+		var (
+			metadata       = new(common.Metadata)
+			attributeValue = new(policy.Value)
+		)
+
+		if err = unmarshalMetadata(rm.Metadata, metadata); err != nil {
+			return nil, err
+		}
+
+		if err = unmarshalAttributeValue(rm.AttributeValue, attributeValue); err != nil {
+			return nil, err
+		}
+
+		mapping := &policy.ResourceMapping{
+			Id:             rm.ID,
+			AttributeValue: attributeValue,
+			Terms:          rm.Terms,
+			Metadata:       metadata,
+		}
+
+		if rm.GroupID != "" {
+			mapping.Group = &policy.ResourceMappingGroup{Id: rm.GroupID}
+		}
+
+		mappings[i] = mapping
+	}
+
+	return mappings, nil
+}
+
+func (c PolicyDBClient) ListResourceMappingsByGroupFqns(ctx context.Context, fqns []string) (map[string]*resourcemapping.ResourceMappingsByGroup, error) {
+	resp := make(map[string]*resourcemapping.ResourceMappingsByGroup)
+	resultCount := 0
+
+	for _, fqn := range fqns {
+		fullyQualifiedGroup, err := util.ParseResourceMappingGroupFqn(fqn)
+		if err != nil {
+			// invalid FQNs not included in the response - ignore and continue, but log for investigation
+			slog.DebugContext(ctx, "error parsing Resource Mapping Group FQN", slog.String("rmg_fqn", fqn))
+			continue
+		}
+
+		rows, err := c.Queries.ListResourceMappingsByFullyQualifiedGroup(ctx, ListResourceMappingsByFullyQualifiedGroupParams{
+			NamespaceName: fullyQualifiedGroup.Namespace,
+			GroupName:     fullyQualifiedGroup.GroupName,
+		})
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+
+		if len(rows) == 0 {
+			// no rows found for this FQN - ignore and continue
+			continue
+		}
+
+		resultCount++
+
+		mappings := make([]*policy.ResourceMapping, len(rows))
+		for i, row := range rows {
+			metadata := &common.Metadata{}
+			if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
+				return nil, err
+			}
+
+			value := &policy.Value{}
+			if err := unmarshalAttributeValue(row.AttributeValue, value); err != nil {
+				return nil, err
+			}
+
+			mappings[i] = &policy.ResourceMapping{
+				Id:             row.ID,
+				AttributeValue: value,
+				Terms:          row.Terms,
+				Metadata:       metadata,
+			}
+		}
+
+		// all rows will have the same group values, so just use first row for group object population
+		group := &policy.ResourceMappingGroup{}
+		if err := protojson.Unmarshal(rows[0].Group, group); err != nil {
+			return nil, err
+		}
+
+		mappingsByGroup := &resourcemapping.ResourceMappingsByGroup{
+			Group:    group,
+			Mappings: mappings,
+		}
+
+		resp[fqn] = mappingsByGroup
+	}
+
+	if resultCount == 0 {
+		// should return an error if none of the FQNs are found
+		return nil, db.ErrNotFound
+	}
+
+	return resp, nil
+}
+
+func (c PolicyDBClient) GetResourceMapping(ctx context.Context, id string) (*policy.ResourceMapping, error) {
+	rm, err := c.Queries.GetResourceMapping(ctx, id)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	var (
+		metadata       = new(common.Metadata)
+		attributeValue = new(policy.Value)
+	)
+
+	if err = unmarshalMetadata(rm.Metadata, metadata); err != nil {
+		return nil, err
+	}
+
+	if err = unmarshalAttributeValue(rm.AttributeValue, attributeValue); err != nil {
+		return nil, err
+	}
+
+	policyRM := &policy.ResourceMapping{
+		Id:             rm.ID,
+		AttributeValue: attributeValue,
+		Terms:          rm.Terms,
+		Metadata:       metadata,
+	}
+
+	if rm.GroupID != "" {
+		policyRM.Group = &policy.ResourceMappingGroup{Id: rm.GroupID}
+	}
+
+	return policyRM, nil
 }
 
 func (c PolicyDBClient) CreateResourceMapping(ctx context.Context, r *resourcemapping.CreateResourceMappingRequest) (*policy.ResourceMapping, error) {
+	attributeValueID := r.GetAttributeValueId()
+	terms := r.GetTerms()
+	groupID := r.GetGroupId()
 	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
 
-	sql, args, err := createResourceMappingSQL(r.GetAttributeValueId(), metadataJSON, r.GetTerms())
-	if err != nil {
-		return nil, err
-	}
-
-	row, err := c.QueryRow(ctx, sql, args)
+	createdID, err := c.Queries.CreateResourceMapping(ctx, CreateResourceMappingParams{
+		AttributeValueID: attributeValueID,
+		Terms:            terms,
+		Metadata:         metadataJSON,
+		GroupID:          pgtypeUUID(groupID),
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	var id string
-	if err := row.Scan(&id, &metadataJSON); err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	av, err := c.GetAttributeValue(ctx, r.GetAttributeValueId())
-	if err != nil {
-		c.logger.Error("failed to get attribute value", "id", r.GetAttributeValueId(), "err", err)
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	if err = unmarshalMetadata(metadataJSON, metadata, c.logger); err != nil {
-		return nil, err
-	}
-
-	return &policy.ResourceMapping{
-		Id:             id,
+	rm := &policy.ResourceMapping{
+		Id:             createdID,
+		AttributeValue: &policy.Value{Id: attributeValueID},
+		Terms:          terms,
 		Metadata:       metadata,
-		AttributeValue: av,
-		Terms:          r.GetTerms(),
-	}, nil
-}
-
-func getResourceMappingSQL(id string) (string, []interface{}, error) {
-	t := Tables.ResourceMappings
-	return resourceMappingSelect().
-		Where(sq.Eq{t.Field("id"): id}).
-		From(Tables.ResourceMappings.Name()).
-		ToSql()
-}
-
-func (c PolicyDBClient) GetResourceMapping(ctx context.Context, id string) (*policy.ResourceMapping, error) {
-	sql, args, err := getResourceMappingSQL(id)
-	if err != nil {
-		return nil, err
 	}
 
-	row, err := c.QueryRow(ctx, sql, args)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	if groupID != "" {
+		rm.Group = &policy.ResourceMappingGroup{Id: groupID}
 	}
 
-	rm, err := resourceMappingHydrateItem(row, c.logger)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
 	return rm, nil
 }
 
-func listResourceMappingsSQL() (string, []interface{}, error) {
-	t := Tables.ResourceMappings
-	return resourceMappingSelect().
-		From(t.Name()).
-		ToSql()
-}
-
-func (c PolicyDBClient) ListResourceMappings(ctx context.Context) ([]*policy.ResourceMapping, error) {
-	sql, args, err := listResourceMappingsSQL()
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := c.Query(ctx, sql, args)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	defer rows.Close()
-
-	list, err := resourceMappingHydrateList(rows, c.logger)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	return list, nil
-}
-
-func updateResourceMappingSQL(id string, attributeValueID string, metadata []byte, terms []string) (string, []interface{}, error) {
-	t := Tables.ResourceMappings
-	sb := db.NewStatementBuilder().
-		Update(t.Name())
-
-	if attributeValueID != "" {
-		sb = sb.Set("attribute_value_id", attributeValueID)
-	}
-
-	if metadata != nil {
-		sb = sb.Set("metadata", metadata)
-	}
-
-	if terms != nil {
-		sb = sb.Set("terms", terms)
-	}
-
-	return sb.
-		Where(sq.Eq{"id": id}).
-		ToSql()
-}
-
 func (c PolicyDBClient) UpdateResourceMapping(ctx context.Context, id string, r *resourcemapping.UpdateResourceMappingRequest) (*policy.ResourceMapping, error) {
-	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
+	attributeValueID := r.GetAttributeValueId()
+	terms := r.GetTerms()
+	groupID := r.GetGroupId()
+	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		rm, err := c.GetResourceMapping(ctx, id)
 		if err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -233,52 +330,47 @@ func (c PolicyDBClient) UpdateResourceMapping(ctx context.Context, id string, r 
 		return nil, err
 	}
 
-	sql, args, err := updateResourceMappingSQL(
-		id,
-		r.GetAttributeValueId(),
-		metadataJSON,
-		r.GetTerms(),
-	)
-	if db.IsQueryBuilderSetClauseError(err) {
-		return &policy.ResourceMapping{
-			Id: id,
-		}, nil
-	}
+	count, err := c.Queries.UpdateResourceMapping(ctx, UpdateResourceMappingParams{
+		ID:               id,
+		AttributeValueID: pgtypeUUID(attributeValueID),
+		Terms:            terms,
+		Metadata:         metadataJSON,
+		GroupID:          pgtypeUUID(groupID),
+	})
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
 	}
 
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
+	rm := &policy.ResourceMapping{
+		Id:       id,
+		Terms:    terms,
+		Metadata: metadata,
+	}
+
+	if attributeValueID != "" {
+		rm.AttributeValue = &policy.Value{Id: attributeValueID}
+	}
+
+	if groupID != "" {
+		rm.Group = &policy.ResourceMappingGroup{Id: groupID}
+	}
+
+	return rm, nil
+}
+
+func (c PolicyDBClient) DeleteResourceMapping(ctx context.Context, id string) (*policy.ResourceMapping, error) {
+	count, err := c.Queries.DeleteResourceMapping(ctx, id)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
 	}
 
 	return &policy.ResourceMapping{
 		Id: id,
 	}, nil
-}
-
-func deleteResourceMappingSQL(id string) (string, []interface{}, error) {
-	t := Tables.ResourceMappings
-	return db.NewStatementBuilder().
-		Delete(t.Name()).
-		Where(sq.Eq{t.Field("id"): id}).
-		ToSql()
-}
-
-func (c PolicyDBClient) DeleteResourceMapping(ctx context.Context, id string) (*policy.ResourceMapping, error) {
-	prev, err := c.GetResourceMapping(ctx, id)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	sql, args, err := deleteResourceMappingSQL(id)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := c.Exec(ctx, sql, args); err != nil {
-		return nil, err
-	}
-
-	return prev, nil
 }

@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/gowebpki/jcs"
@@ -27,8 +28,10 @@ type Assertion struct {
 	Scope          Scope          `json:"scope"`
 	AppliesToState AppliesToState `json:"appliesToState,omitempty"`
 	Statement      Statement      `json:"statement"`
-	Binding        Binding        `json:"binding"`
+	Binding        Binding        `json:"binding,omitempty"`
 }
+
+var errAssertionVerifyKeyFailure = errors.New("assertion: failed to verify with provided key")
 
 // Sign signs the assertion with the given hash and signature using the key.
 // It returns an error if the signing fails.
@@ -63,7 +66,7 @@ func (a Assertion) Verify(key AssertionKey) (string, string, error) {
 		jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key),
 	)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("%w: %w", errAssertionVerifyKeyFailure, err)
 	}
 	hashClaim, found := tok.Get(kAssertionHash)
 	if !found {
@@ -87,18 +90,34 @@ func (a Assertion) Verify(key AssertionKey) (string, string, error) {
 
 // GetHash returns the hash of the assertion in hex format.
 func (a Assertion) GetHash() ([]byte, error) {
-	// clear out the binding
-	a.Binding.Method = ""
-	a.Binding.Signature = ""
+	// Clear out the binding
+	a.Binding = Binding{}
 
+	// Marshal the assertion to JSON
 	assertionJSON, err := json.Marshal(a)
 	if err != nil {
-		return nil, fmt.Errorf("json.Marshal failed:%w", err)
+		return nil, fmt.Errorf("json.Marshal failed: %w", err)
 	}
 
+	// Unmarshal the JSON into a map to manipulate it
+	var jsonObject map[string]interface{}
+	if err := json.Unmarshal(assertionJSON, &jsonObject); err != nil {
+		return nil, fmt.Errorf("json.Unmarshal failed: %w", err)
+	}
+
+	// Remove the binding key
+	delete(jsonObject, "binding")
+
+	// Marshal the map back to JSON
+	assertionJSON, err = json.Marshal(jsonObject)
+	if err != nil {
+		return nil, fmt.Errorf("json.Marshal failed: %w", err)
+	}
+
+	// Transform the JSON using JCS
 	transformedJSON, err := jcs.Transform(assertionJSON)
 	if err != nil {
-		return nil, fmt.Errorf("jcs.Transform failed:%w", err)
+		return nil, fmt.Errorf("jcs.Transform failed: %w", err)
 	}
 
 	return ocrypto.SHA256AsHex(transformedJSON), nil

@@ -16,6 +16,197 @@
     "application/json"
   ],
   "paths": {
+    "/resource-mapping-groups": {
+      "get": {
+        "operationId": "ResourceMappingService_ListResourceMappingGroups",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/resourcemappingListResourceMappingGroupsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "namespaceId",
+            "description": "Optional",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pagination.limit",
+            "description": "Optional\nSet to configured default limit if not provided\nMaximum limit set in platform config and enforced by services",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pagination.offset",
+            "description": "Optional\nDefaulted if not provided",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "ResourceMappingService"
+        ]
+      },
+      "post": {
+        "operationId": "ResourceMappingService_CreateResourceMappingGroup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/resourcemappingCreateResourceMappingGroupResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/resourcemappingCreateResourceMappingGroupRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ResourceMappingService"
+        ]
+      }
+    },
+    "/resource-mapping-groups/{id}": {
+      "get": {
+        "operationId": "ResourceMappingService_GetResourceMappingGroup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/resourcemappingGetResourceMappingGroupResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "Required",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ResourceMappingService"
+        ]
+      },
+      "delete": {
+        "operationId": "ResourceMappingService_DeleteResourceMappingGroup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/resourcemappingDeleteResourceMappingGroupResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "Required",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ResourceMappingService"
+        ]
+      },
+      "patch": {
+        "operationId": "ResourceMappingService_UpdateResourceMappingGroup",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/resourcemappingUpdateResourceMappingGroupResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "Required",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "namespaceId": {
+                  "type": "string",
+                  "title": "Optional"
+                },
+                "name": {
+                  "type": "string",
+                  "title": "Optional"
+                },
+                "metadata": {
+                  "$ref": "#/definitions/commonMetadataMutable",
+                  "title": "Common metadata"
+                },
+                "metadataUpdateBehavior": {
+                  "$ref": "#/definitions/commonMetadataUpdateEnum"
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "ResourceMappingService"
+        ]
+      }
+    },
     "/resource-mappings": {
       "get": {
         "operationId": "ResourceMappingService_ListResourceMappings",
@@ -33,6 +224,31 @@
             }
           }
         },
+        "parameters": [
+          {
+            "name": "groupId",
+            "description": "Optional",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pagination.limit",
+            "description": "Optional\nSet to configured default limit if not provided\nMaximum limit set in platform config and enforced by services",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pagination.offset",
+            "description": "Optional\nDefaulted if not provided",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
         "tags": [
           "ResourceMappingService"
         ]
@@ -56,12 +272,46 @@
         "parameters": [
           {
             "name": "body",
-            "description": "grpcurl -plaintext -d @ localhost:8080 policy.resourcemapping.ResourceMappingService/CreateResourceMapping \u003c\u003cEOM\n{\n\"mapping\": {\n\"name\": \"Classification\",\n\"attribute_value_id\": \"12345678-1234-1234-1234-123456789012\",\n\"terms\": [\"CONFIDENTIAL\", \"CONTROLLED UNCLASSIFIED\", \"OFFICIAL-SENSITIVE\", \"CUI\", \"C\"]\n}\n}\nEOM\n\n### Response\n\n{\n\"mapping\": {\n\"metadata\": {\n\"id\": \"12345678-1234-1234-1234-123456789012\",\n\"created_at\": \"2020-01-01T00:00:00Z\",\n\"updated_at\": \"2020-01-01T00:00:00Z\"\n},\n\"name\": \"Classification\",\n\"attribute_value_id\": \"12345678-1234-1234-1234-123456789012\",\n\"terms\": [\"CONFIDENTIAL\", \"CONTROLLED UNCLASSIFIED\", \"OFFICIAL-SENSITIVE\", \"CUI\", \"C\"]\n}\n}",
             "in": "body",
             "required": true,
             "schema": {
               "$ref": "#/definitions/resourcemappingCreateResourceMappingRequest"
             }
+          }
+        ],
+        "tags": [
+          "ResourceMappingService"
+        ]
+      }
+    },
+    "/resource-mappings/group-fqns": {
+      "get": {
+        "operationId": "ResourceMappingService_ListResourceMappingsByGroupFqns",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/resourcemappingListResourceMappingsByGroupFqnsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "fqns",
+            "description": "Required\nStructure of the RM Group FQN is 'https://\u003cnamespace\u003e/resm/\u003cgroup name\u003e'",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
           }
         ],
         "tags": [
@@ -89,6 +339,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -117,6 +368,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -165,11 +417,16 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": "Optional"
+                },
+                "groupId": {
+                  "type": "string",
+                  "title": "Optional"
                 },
                 "metadata": {
                   "$ref": "#/definitions/commonMetadataMutable",
-                  "title": "Common Metadata"
+                  "title": "Optional\nCommon Metadata"
                 },
                 "metadataUpdateBehavior": {
                   "$ref": "#/definitions/commonMetadataUpdateEnum"
@@ -327,7 +584,6 @@
           "title": "list of comparison values for the result of applying the subject_external_selector_value on a flattened Entity Representation (Subject), evaluated by the operator"
         }
       },
-      "description": "Example:  Subjects with a field selected by the flattened selector \"'.division'\" and a value of \"Accounting\" or \"Marketing\":\n{\n\"subject_external_selector_value\": \"'.division'\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_IN\",\n\"subject_external_values\" : [\"Accounting\", \"Marketing\"]\n}\n\nExample: Subjects that are not part of the Fantastic Four according to their alias field:\n{\n\"subject_external_selector_value\": \"'.data[0].alias'\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN\",\n\"subject_external_values\" : [\"mister_fantastic\", \"the_thing\", \"human_torch\", \"invisible_woman\"]\n}",
       "title": "*\nA Condition defines a rule of \u003cthe value at the flattened 'selector value' location\u003e \u003coperator\u003e \u003csubject external values\u003e"
     },
     "policyConditionBooleanTypeEnum": {
@@ -410,6 +666,10 @@
         "publicKey": {
           "$ref": "#/definitions/policyPublicKey"
         },
+        "name": {
+          "type": "string",
+          "title": "Optional\nUnique name of the KAS instance"
+        },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",
           "title": "Common metadata"
@@ -448,16 +708,47 @@
         }
       }
     },
+    "policyPageRequest": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Optional\nSet to configured default limit if not provided\nMaximum limit set in platform config and enforced by services"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Optional\nDefaulted if not provided"
+        }
+      }
+    },
+    "policyPageResponse": {
+      "type": "object",
+      "properties": {
+        "currentOffset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Requested pagination offset"
+        },
+        "nextOffset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Calculated with request limit + offset or defaults\nEmpty when none remain after current page"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Total count of entire list"
+        }
+      }
+    },
     "policyPublicKey": {
       "type": "object",
       "properties": {
         "remote": {
           "type": "string",
           "title": "kas public key url - optional since can also be retrieved via public key"
-        },
-        "local": {
-          "type": "string",
-          "title": "public key - optional since can also be retrieved via url"
         },
         "cached": {
           "$ref": "#/definitions/policyKasPublicKeySet",
@@ -502,6 +793,10 @@
         "name": {
           "type": "string",
           "title": "the common name for the group of resource mappings, which must be unique per namespace"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
         }
       },
       "description": "Resource Mapping Groups are namespaced collections of Resource Mappings associated under a common group name."
@@ -633,6 +928,31 @@
       "additionalProperties": {},
       "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(\u0026foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n    // or ...\n    if (any.isSameTypeAs(Foo.getDefaultInstance())) {\n      foo = any.unpack(Foo.getDefaultInstance());\n    }\n\n Example 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\n Example 4: Pack and unpack a message in Go\n\n     foo := \u0026pb.Foo{...}\n     any, err := anypb.New(foo)\n     if err != nil {\n       ...\n     }\n     ...\n     foo := \u0026pb.Foo{}\n     if err := any.UnmarshalTo(foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\nJSON\n====\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": \u003cstring\u003e,\n      \"lastName\": \u003cstring\u003e\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
     },
+    "resourcemappingCreateResourceMappingGroupRequest": {
+      "type": "object",
+      "properties": {
+        "namespaceId": {
+          "type": "string",
+          "title": "Required"
+        },
+        "name": {
+          "type": "string",
+          "title": "Required"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadataMutable",
+          "title": "Common metadata"
+        }
+      }
+    },
+    "resourcemappingCreateResourceMappingGroupResponse": {
+      "type": "object",
+      "properties": {
+        "resourceMappingGroup": {
+          "$ref": "#/definitions/policyResourceMappingGroup"
+        }
+      }
+    },
     "resourcemappingCreateResourceMappingRequest": {
       "type": "object",
       "properties": {
@@ -644,21 +964,32 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "title": "Required"
+        },
+        "groupId": {
+          "type": "string",
+          "title": "Optional"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadataMutable",
           "title": "Optional"
         }
-      },
-      "description": "grpcurl -plaintext -d @ localhost:8080 policy.resourcemapping.ResourceMappingService/CreateResourceMapping \u003c\u003cEOM\n{\n\"mapping\": {\n\"name\": \"Classification\",\n\"attribute_value_id\": \"12345678-1234-1234-1234-123456789012\",\n\"terms\": [\"CONFIDENTIAL\", \"CONTROLLED UNCLASSIFIED\", \"OFFICIAL-SENSITIVE\", \"CUI\", \"C\"]\n}\n}\nEOM\n\n### Response\n\n{\n\"mapping\": {\n\"metadata\": {\n\"id\": \"12345678-1234-1234-1234-123456789012\",\n\"created_at\": \"2020-01-01T00:00:00Z\",\n\"updated_at\": \"2020-01-01T00:00:00Z\"\n},\n\"name\": \"Classification\",\n\"attribute_value_id\": \"12345678-1234-1234-1234-123456789012\",\n\"terms\": [\"CONFIDENTIAL\", \"CONTROLLED UNCLASSIFIED\", \"OFFICIAL-SENSITIVE\", \"CUI\", \"C\"]\n}\n}",
-      "title": "### Request"
+      }
     },
     "resourcemappingCreateResourceMappingResponse": {
       "type": "object",
       "properties": {
         "resourceMapping": {
           "$ref": "#/definitions/policyResourceMapping"
+        }
+      }
+    },
+    "resourcemappingDeleteResourceMappingGroupResponse": {
+      "type": "object",
+      "properties": {
+        "resourceMappingGroup": {
+          "$ref": "#/definitions/policyResourceMappingGroup"
         }
       }
     },
@@ -670,11 +1001,45 @@
         }
       }
     },
+    "resourcemappingGetResourceMappingGroupResponse": {
+      "type": "object",
+      "properties": {
+        "resourceMappingGroup": {
+          "$ref": "#/definitions/policyResourceMappingGroup"
+        }
+      }
+    },
     "resourcemappingGetResourceMappingResponse": {
       "type": "object",
       "properties": {
         "resourceMapping": {
           "$ref": "#/definitions/policyResourceMapping"
+        }
+      }
+    },
+    "resourcemappingListResourceMappingGroupsResponse": {
+      "type": "object",
+      "properties": {
+        "resourceMappingGroups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyResourceMappingGroup"
+          }
+        },
+        "pagination": {
+          "$ref": "#/definitions/policyPageResponse"
+        }
+      }
+    },
+    "resourcemappingListResourceMappingsByGroupFqnsResponse": {
+      "type": "object",
+      "properties": {
+        "fqnResourceMappingGroups": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/resourcemappingResourceMappingsByGroup"
+          }
         }
       }
     },
@@ -687,6 +1052,32 @@
             "type": "object",
             "$ref": "#/definitions/policyResourceMapping"
           }
+        },
+        "pagination": {
+          "$ref": "#/definitions/policyPageResponse"
+        }
+      }
+    },
+    "resourcemappingResourceMappingsByGroup": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "$ref": "#/definitions/policyResourceMappingGroup"
+        },
+        "mappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyResourceMapping"
+          }
+        }
+      }
+    },
+    "resourcemappingUpdateResourceMappingGroupResponse": {
+      "type": "object",
+      "properties": {
+        "resourceMappingGroup": {
+          "$ref": "#/definitions/policyResourceMappingGroup"
         }
       }
     },

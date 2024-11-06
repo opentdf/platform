@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -17,6 +16,7 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
@@ -35,10 +35,15 @@ import (
 const (
 	// Failure while connecting to a service.
 	// Check your configuration and/or retry.
-	ErrGrpcDialFailed            = Error("failed to dial grpc endpoint")
-	ErrShutdownFailed            = Error("failed to shutdown sdk")
-	ErrPlatformConfigFailed      = Error("failed to retrieve platform configuration")
-	ErrPlatformEndpointMalformed = Error("platform endpoint is malformed")
+	ErrGrpcDialFailed                 = Error("failed to dial grpc endpoint")
+	ErrShutdownFailed                 = Error("failed to shutdown sdk")
+	ErrPlatformConfigFailed           = Error("failed to retrieve platform configuration")
+	ErrPlatformEndpointMalformed      = Error("platform endpoint is malformed")
+	ErrPlatformIssuerNotFound         = Error("issuer not found in well-known idp configuration")
+	ErrPlatformAuthzEndpointNotFound  = Error("authorization_endpoint not found in well-known idp configuration")
+	ErrPlatformTokenEndpointNotFound  = Error("token_endpoint not found in well-known idp configuration")
+	ErrPlatformPublicClientIDNotFound = Error("public_client_id not found in well-known idp configuration")
+	ErrAccessTokenInvalid             = Error("access token is invalid")
 )
 
 type Error string
@@ -112,7 +117,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 
 	// If platformConfiguration is not provided, fetch it from the platform
-	if cfg.platformConfiguration == nil && !cfg.ipc { //nolint:nestif // Most of checks are for errors
+	if cfg.PlatformConfiguration == nil && !cfg.ipc { //nolint:nestif // Most of checks are for errors
 		var pcfg PlatformConfiguration
 		var err error
 
@@ -127,7 +132,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 				return nil, errors.Join(ErrPlatformConfigFailed, err)
 			}
 		}
-		cfg.platformConfiguration = pcfg
+		cfg.PlatformConfiguration = pcfg
 		if cfg.tokenEndpoint == "" {
 			cfg.tokenEndpoint, err = getTokenEndpoint(*cfg)
 			if err != nil {
@@ -156,7 +161,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	if cfg.coreConn != nil {
 		platformConn = cfg.coreConn
 	} else {
-		platformConn, err = grpc.Dial(platformEndpoint, dialOptions...)
+		platformConn, err = grpc.NewClient(platformEndpoint, dialOptions...)
 		if err != nil {
 			return nil, errors.Join(ErrGrpcDialFailed, err)
 		}
@@ -212,14 +217,8 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 		return c.customAccessTokenSource, nil
 	}
 
-	if (c.clientCredentials == nil) != (c.tokenEndpoint == "") {
-		return nil, errors.New("either both or neither of client credentials and token endpoint must be specified")
-	}
-
-	// at this point we have either both client credentials and a token endpoint or none of the above. if we don't have
-	// any just return a KAS client that can only get public keys
-	if c.clientCredentials == nil {
-		slog.Info("no client credentials provided. GRPC requests to KAS and services will not be authenticated.")
+	// There are uses for uncredentialed clients (i.e. consuming the well-known configuration).
+	if c.clientCredentials == nil && c.oauthAccessTokenSource == nil {
 		return nil, nil //nolint:nilnil // not having credentials is not an error
 	}
 
@@ -239,6 +238,8 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 	var err error
 
 	switch {
+	case c.oauthAccessTokenSource != nil:
+		ts, err = NewOAuthAccessTokenSource(c.oauthAccessTokenSource, c.scopes, c.dpopKey)
 	case c.certExchange != nil:
 		ts, err = NewCertExchangeTokenSource(*c.certExchange, *c.clientCredentials, c.tokenEndpoint, c.dpopKey)
 	case c.tokenExchange != nil:
@@ -290,7 +291,8 @@ func (t TdfType) String() string {
 	return string(t)
 }
 
-// String method to make the custom type printable
+// GetTdfType returns the type of TDF based on the reader.
+// Reader is reset after the check.
 func GetTdfType(reader io.ReadSeeker) TdfType {
 	isValidNanoTdf, _ := IsValidNanoTdf(reader)
 
@@ -336,7 +338,6 @@ func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 	loader := gojsonschema.NewStringLoader(manifestSchemaString)
 	manifestStringLoader := gojsonschema.NewStringLoader(manifest)
 	result, err := gojsonschema.Validate(loader, manifestStringLoader)
-
 	if err != nil {
 		return false, errors.New("could not validate manifest.json")
 	}
@@ -348,17 +349,16 @@ func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 	return true, nil
 }
 
+// IsValidNanoTdf detects whether, or not the reader is a valid Nano TDF.
+// Reader is reset after the check.
 func IsValidNanoTdf(reader io.ReadSeeker) (bool, error) {
 	_, _, err := NewNanoTDFHeaderFromReader(reader)
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
+	_, _ = reader.Seek(0, io.SeekStart) // Ignore the error as we're just checking if it's a valid nano TDF
+	return err == nil, err
 }
 
 func fetchPlatformConfiguration(platformEndpoint string, dialOptions []grpc.DialOption) (PlatformConfiguration, error) {
-	conn, err := grpc.Dial(platformEndpoint, dialOptions...)
+	conn, err := grpc.NewClient(platformEndpoint, dialOptions...)
 	if err != nil {
 		return nil, errors.Join(ErrGrpcDialFailed, err)
 	}
@@ -383,7 +383,7 @@ func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfiguration, err
 
 // TODO: This should be moved to a separate package. We do discovery in ../service/internal/auth/discovery.go
 func getTokenEndpoint(c config) (string, error) {
-	issuerURL, ok := c.platformConfiguration["platform_issuer"].(string)
+	issuerURL, ok := c.PlatformConfiguration["platform_issuer"].(string)
 
 	if !ok {
 		return "", errors.New("platform_issuer is not set, or is not a string")
@@ -424,4 +424,21 @@ func getTokenEndpoint(c config) (string, error) {
 	}
 
 	return tokenEndpoint, nil
+}
+
+// StoreKASKeys caches the given values as the public keys associated with the
+// KAS at the given URL, replacing any existing keys that are cached for that URL
+// with the same algorithm and URL.
+// Only one key per url and algorithm is stored in the cache,
+// so only store the most recent known key per url & algorithm pair.
+func (s *SDK) StoreKASKeys(url string, keys *policy.KasPublicKeySet) error {
+	for _, key := range keys.GetKeys() {
+		s.kasKeyCache.store(KASInfo{
+			URL:       url,
+			PublicKey: key.GetPem(),
+			KID:       key.GetKid(),
+			Algorithm: algProto2String(key.GetAlg()),
+		})
+	}
+	return nil
 }

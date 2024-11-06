@@ -37,7 +37,7 @@ func NewRegistration() *serviceregistry.Service[EntityResolution] {
 					return &EntityResolution{EntityResolutionServiceServer: claimsSVC}, claimsHandler
 				}
 
-				// Default to keyclaok ERS
+				// Default to keycloak ERS
 				kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger)
 				return &EntityResolution{EntityResolutionServiceServer: kcSVC}, kcHandler
 			},

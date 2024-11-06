@@ -294,3 +294,30 @@ func (s SubjectMappingService) DeleteSubjectConditionSet(ctx context.Context,
 	}
 	return &connect.Response[subjectmapping.DeleteSubjectConditionSetResponse]{Msg: rsp}, nil
 }
+
+func (s SubjectMappingService) DeleteAllUnmappedSubjectConditionSets(ctx context.Context,
+	_ *sm.DeleteAllUnmappedSubjectConditionSetsRequest,
+) (*sm.DeleteAllUnmappedSubjectConditionSetsResponse, error) {
+	rsp := &sm.DeleteAllUnmappedSubjectConditionSetsResponse{}
+	s.logger.Debug("deleting all unmapped subject condition sets")
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeConditionSet,
+	}
+
+	deleted, err := s.dbClient.DeleteAllUnmappedSubjectConditionSets(ctx)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed)
+	}
+
+	// Log each pruned subject condition set to audit
+	for _, scs := range deleted {
+		auditParams.ObjectID = scs.GetId()
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	}
+
+	rsp.SubjectConditionSets = deleted
+	return rsp, nil
+}

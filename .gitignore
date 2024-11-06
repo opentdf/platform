@@ -24,7 +24,7 @@ __pycache__
 
 # Userland files
 opentdf.yaml
-.vscode/settings.json
+.vscode/
 .idea/
 
 # Generated files

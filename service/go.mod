@@ -21,14 +21,13 @@ require (
 	github.com/opentdf/platform/lib/fixtures v0.2.7
 	github.com/opentdf/platform/lib/flattening v0.1.1
 	github.com/opentdf/platform/lib/ocrypto v0.1.6
-	github.com/opentdf/platform/protocol/go v0.2.18
+	github.com/opentdf/platform/protocol/go v0.2.20
 	github.com/opentdf/platform/sdk v0.3.16
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.32.0
-	github.com/valyala/fasthttp v1.52.0
 	go.opentelemetry.io/otel v1.31.0
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.31.0
 	go.opentelemetry.io/otel/sdk v1.31.0
@@ -43,6 +42,7 @@ require (
 	github.com/Microsoft/hcsshim v0.12.0 // indirect
 	github.com/OneOfOne/xxhash v1.2.8 // indirect
 	github.com/agnivade/levenshtein v1.1.1 // indirect
+	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/casbin/govaluate v1.1.0 // indirect

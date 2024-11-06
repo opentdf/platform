@@ -37,7 +37,7 @@
         "parameters": [
           {
             "name": "state",
-            "description": "ACTIVE by default when not specified",
+            "description": "Optional\nACTIVE by default when not specified",
             "in": "query",
             "required": false,
             "type": "string",
@@ -51,10 +51,26 @@
           },
           {
             "name": "namespace",
-            "description": "can be id or name",
+            "description": "Optional\nNamespace ID or name",
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "pagination.limit",
+            "description": "Optional\nSet to configured default limit if not provided\nMaximum limit set in platform config and enforced by services",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pagination.offset",
+            "description": "Optional\nDefaulted if not provided",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
           }
         ],
         "tags": [
@@ -171,13 +187,14 @@
         "parameters": [
           {
             "name": "attributeId",
+            "description": "Required",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "state",
-            "description": "ACTIVE by default when not specified",
+            "description": "Optional\nACTIVE by default when not specified",
             "in": "query",
             "required": false,
             "type": "string",
@@ -188,6 +205,22 @@
               "ACTIVE_STATE_ENUM_ANY"
             ],
             "default": "ACTIVE_STATE_ENUM_UNSPECIFIED"
+          },
+          {
+            "name": "pagination.limit",
+            "description": "Optional\nSet to configured default limit if not provided\nMaximum limit set in platform config and enforced by services",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pagination.offset",
+            "description": "Optional\nDefaulted if not provided",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
           }
         ],
         "tags": [
@@ -216,6 +249,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -244,6 +278,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -272,6 +307,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -285,7 +321,7 @@
               "properties": {
                 "metadata": {
                   "$ref": "#/definitions/commonMetadataMutable",
-                  "title": "Common metadata"
+                  "title": "Optional\nCommon metadata"
                 },
                 "metadataUpdateBehavior": {
                   "$ref": "#/definitions/commonMetadataUpdateEnum"
@@ -319,12 +355,14 @@
         "parameters": [
           {
             "name": "attributeKeyAccessServer.attributeId",
+            "description": "Required",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "attributeKeyAccessServer.keyAccessServerId",
+            "description": "Required",
             "in": "query",
             "required": false,
             "type": "string"
@@ -354,6 +392,7 @@
         "parameters": [
           {
             "name": "attributeKeyAccessServer",
+            "description": "Required",
             "in": "body",
             "required": true,
             "schema": {
@@ -386,12 +425,14 @@
         "parameters": [
           {
             "name": "valueKeyAccessServer.valueId",
+            "description": "Required",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "valueKeyAccessServer.keyAccessServerId",
+            "description": "Required",
             "in": "query",
             "required": false,
             "type": "string"
@@ -420,6 +461,7 @@
         "parameters": [
           {
             "name": "valueKeyAccessServer",
+            "description": "Required",
             "in": "body",
             "required": true,
             "schema": {
@@ -465,11 +507,12 @@
               "type": "object",
               "properties": {
                 "value": {
-                  "type": "string"
+                  "type": "string",
+                  "title": "Required"
                 },
                 "metadata": {
                   "$ref": "#/definitions/commonMetadataMutable",
-                  "title": "Common metadata"
+                  "title": "Optional\nCommon metadata"
                 }
               }
             }
@@ -500,6 +543,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -528,6 +572,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -630,10 +675,12 @@
       "type": "object",
       "properties": {
         "attributeId": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         },
         "keyAccessServerId": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         }
       }
     },
@@ -645,17 +692,19 @@
           "title": "Required"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         },
         "rule": {
-          "$ref": "#/definitions/policyAttributeRuleTypeEnum"
+          "$ref": "#/definitions/policyAttributeRuleTypeEnum",
+          "title": "Required"
         },
         "values": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "Optional attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.\nThe stored attribute value will be normalized to lower case."
+          "description": "Optional \nAttribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.\nThe stored attribute value will be normalized to lower case."
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadataMutable",
@@ -732,6 +781,9 @@
             "type": "object",
             "$ref": "#/definitions/policyValue"
           }
+        },
+        "pagination": {
+          "$ref": "#/definitions/policyPageResponse"
         }
       }
     },
@@ -744,6 +796,9 @@
             "type": "object",
             "$ref": "#/definitions/policyAttribute"
           }
+        },
+        "pagination": {
+          "$ref": "#/definitions/policyPageResponse"
         }
       }
     },
@@ -783,10 +838,12 @@
       "type": "object",
       "properties": {
         "valueId": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         },
         "keyAccessServerId": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         }
       }
     },
@@ -961,7 +1018,6 @@
           "title": "list of comparison values for the result of applying the subject_external_selector_value on a flattened Entity Representation (Subject), evaluated by the operator"
         }
       },
-      "description": "Example:  Subjects with a field selected by the flattened selector \"'.division'\" and a value of \"Accounting\" or \"Marketing\":\n{\n\"subject_external_selector_value\": \"'.division'\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_IN\",\n\"subject_external_values\" : [\"Accounting\", \"Marketing\"]\n}\n\nExample: Subjects that are not part of the Fantastic Four according to their alias field:\n{\n\"subject_external_selector_value\": \"'.data[0].alias'\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN\",\n\"subject_external_values\" : [\"mister_fantastic\", \"the_thing\", \"human_torch\", \"invisible_woman\"]\n}",
       "title": "*\nA Condition defines a rule of \u003cthe value at the flattened 'selector value' location\u003e \u003coperator\u003e \u003csubject external values\u003e"
     },
     "policyConditionBooleanTypeEnum": {
@@ -1044,6 +1100,10 @@
         "publicKey": {
           "$ref": "#/definitions/policyPublicKey"
         },
+        "name": {
+          "type": "string",
+          "title": "Optional\nUnique name of the KAS instance"
+        },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",
           "title": "Common metadata"
@@ -1079,6 +1139,41 @@
             "$ref": "#/definitions/policyKeyAccessServer"
           },
           "title": "KAS grants for the namespace"
+        }
+      }
+    },
+    "policyPageRequest": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Optional\nSet to configured default limit if not provided\nMaximum limit set in platform config and enforced by services"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Optional\nDefaulted if not provided"
+        }
+      }
+    },
+    "policyPageResponse": {
+      "type": "object",
+      "properties": {
+        "currentOffset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Requested pagination offset"
+        },
+        "nextOffset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Calculated with request limit + offset or defaults\nEmpty when none remain after current page"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Total count of entire list"
         }
       }
     },

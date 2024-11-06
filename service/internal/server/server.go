@@ -21,9 +21,9 @@ import (
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/security"
+	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
-	"github.com/valyala/fasthttp/fasthttputil"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
@@ -122,7 +122,7 @@ https://github.com/heroku/x/blob/master/grpc/grpcserver/inprocess.go
 https://github.com/valyala/fasthttp/blob/master/fasthttputil/inmemory_listener.go
 */
 type inProcessServer struct {
-	ln  *fasthttputil.InmemoryListener
+	ln  *memhttp.Server
 	srv *grpc.Server
 
 	maxCallRecvMsgSize int
@@ -157,9 +157,12 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to create grpc server: %w", err)
 	}
+
+	grpcInProcessServer := newGrpcInProcessServer()
+
 	grpcIPCServer := &inProcessServer{
-		ln:                 fasthttputil.NewInmemoryListener(),
-		srv:                newGrpcInProcessServer(),
+		ln:                 memhttp.New(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { grpcInProcessServer.ServeHTTP(w, r) })),
+		srv:                grpcInProcessServer,
 		maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
 		maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
 	}
@@ -407,8 +410,8 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 			grpc.MaxCallRecvMsgSize(s.maxCallRecvMsgSize),
 			grpc.MaxCallSendMsgSize(s.maxCallSendMsgSize),
 		),
-		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
-			conn, err := s.ln.Dial()
+		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			conn, err := s.ln.Listener.DialContext(ctx, "inprocess", "")
 			if err != nil {
 				return nil, fmt.Errorf("failed to dial in process grpc server: %w", err)
 			}
@@ -424,7 +427,7 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 
 func (s OpenTDFServer) startInProcessGrpcServer() {
 	s.logger.Info("starting in process grpc server")
-	if err := s.GRPCInProcess.srv.Serve(s.GRPCInProcess.ln); err != nil {
+	if err := s.GRPCInProcess.srv.Serve(s.GRPCInProcess.ln.Listener); err != nil {
 		s.logger.Error("failed to serve in process grpc", slog.String("error", err.Error()))
 		panic(err)
 	}

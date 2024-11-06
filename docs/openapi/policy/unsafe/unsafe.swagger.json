@@ -43,7 +43,7 @@
           },
           {
             "name": "fqn",
-            "description": "Fully Qualified Name (FQN) of Attribute Value (i.e. https://\u003cnamespace\u003e/attr/\u003cattribute name\u003e/value/\u003cvalue\u003e), normalized to lower case.",
+            "description": "Required\nFully Qualified Name (FQN) of Attribute Value (i.e. https://\u003cnamespace\u003e/attr/\u003cattribute name\u003e/value/\u003cvalue\u003e), normalized to lower case.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -73,12 +73,14 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
             "name": "value",
+            "description": "Required",
             "in": "query",
             "required": false,
             "type": "string"
@@ -109,6 +111,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -146,7 +149,7 @@
           },
           {
             "name": "fqn",
-            "description": "Fully Qualified Name (FQN) of Attribute Definition (i.e. https://\u003cnamespace\u003e/attr/\u003cattribute name\u003e), normalized to lower case.",
+            "description": "Required\nFully Qualified Name (FQN) of Attribute Definition (i.e. https://\u003cnamespace\u003e/attr/\u003cattribute name\u003e), normalized to lower case.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -190,7 +193,7 @@
           },
           {
             "name": "rule",
-            "description": "WARNING!! \nUpdating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.",
+            "description": "Optional\nWARNING!! \nUpdating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.",
             "in": "query",
             "required": false,
             "type": "string",
@@ -204,7 +207,7 @@
           },
           {
             "name": "valuesOrder",
-            "description": "WARNING!!\nUnsafe reordering requires the full list of values in the new order they should be stored. Updating the order of values in a HIERARCHY-rule Attribute Definition\nwill retroactively alter access to existing TDFs containing those values. Replacing values on an attribute in place is not supported; values can be unsafely deleted\ndeleted, created, and unsafely re-ordered as necessary.",
+            "description": "Optional\nWARNING!!\nUnsafe reordering requires the full list of values in the new order they should be stored. Updating the order of values in a HIERARCHY-rule Attribute Definition\nwill retroactively alter access to existing TDFs containing those values. Replacing values on an attribute in place is not supported; values can be unsafely deleted\ndeleted, created, and unsafely re-ordered as necessary.",
             "in": "query",
             "required": false,
             "type": "array",
@@ -239,6 +242,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -276,7 +280,7 @@
           },
           {
             "name": "fqn",
-            "description": "Fully Qualified Name (FQN) of Namespace (i.e. https://\u003cnamespace\u003e), normalized to lower case.",
+            "description": "Required\nFully Qualified Name (FQN) of Namespace (i.e. https://\u003cnamespace\u003e), normalized to lower case.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -313,6 +317,7 @@
           },
           {
             "name": "name",
+            "description": "Required",
             "in": "query",
             "required": false,
             "type": "string"
@@ -343,6 +348,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -475,7 +481,6 @@
           "title": "list of comparison values for the result of applying the subject_external_selector_value on a flattened Entity Representation (Subject), evaluated by the operator"
         }
       },
-      "description": "Example:  Subjects with a field selected by the flattened selector \"'.division'\" and a value of \"Accounting\" or \"Marketing\":\n{\n\"subject_external_selector_value\": \"'.division'\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_IN\",\n\"subject_external_values\" : [\"Accounting\", \"Marketing\"]\n}\n\nExample: Subjects that are not part of the Fantastic Four according to their alias field:\n{\n\"subject_external_selector_value\": \"'.data[0].alias'\",\n\"operator\": \"SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN\",\n\"subject_external_values\" : [\"mister_fantastic\", \"the_thing\", \"human_torch\", \"invisible_woman\"]\n}",
       "title": "*\nA Condition defines a rule of \u003cthe value at the flattened 'selector value' location\u003e \u003coperator\u003e \u003csubject external values\u003e"
     },
     "policyConditionBooleanTypeEnum": {
@@ -557,6 +562,10 @@
         },
         "publicKey": {
           "$ref": "#/definitions/policyPublicKey"
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional\nUnique name of the KAS instance"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",

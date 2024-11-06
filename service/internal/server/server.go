@@ -9,16 +9,15 @@ import (
 	"net"
 	"net/http"
 	"net/http/pprof"
-	"net/netip"
+	"regexp"
+	"slices"
 	"strings"
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/bufbuild/protovalidate-go"
+	"connectrpc.com/grpcreflect"
+	"connectrpc.com/validate"
 	"github.com/go-chi/cors"
-	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
-	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/security"
@@ -28,10 +27,7 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
-	"google.golang.org/grpc/reflection"
 )
 
 const (
@@ -113,11 +109,9 @@ type ConnectRPC struct {
 
 type OpenTDFServer struct {
 	AuthN               *auth.Authentication
-	Mux                 *runtime.ServeMux
+	ExtraHandlerMux     *http.ServeMux
 	HTTPServer          *http.Server
-	GRPCServer          *grpc.Server
-	GRPCInProcess       *inProcessServer
-	ConnectRPCInProcess *ConnectRPC
+	ConnectRPCInProcess *inProcessServer
 	ConnectRPC          *ConnectRPC
 	CryptoProvider      security.CryptoProvider
 
@@ -131,22 +125,16 @@ https://github.com/heroku/x/blob/master/grpc/grpcserver/inprocess.go
 https://github.com/valyala/fasthttp/blob/master/fasthttputil/inmemory_listener.go
 */
 type inProcessServer struct {
-	ln  *memhttp.Server
-	srv *grpc.Server
-
+	srv                *memhttp.Server
 	maxCallRecvMsgSize int
 	maxCallSendMsgSize int
+	*ConnectRPC
 }
 
 func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, error) {
 	var (
 		authN *auth.Authentication
 		err   error
-		// Two muxes are needed for the connect rpc server. One for the in process server and one for the http server.
-		connectRPCIPCMux          = http.NewServeMux()
-		connectRPCMux             = http.NewServeMux()
-		connectRPCIPCInterceptors []connect.HandlerOption
-		connectRPCInterceptors    []connect.HandlerOption
 	)
 
 	// Add authN interceptor
@@ -166,37 +154,37 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 		logger.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
-	// Create grpc server and in process grpc server
-	grpcServer, err := newGrpcServer(config, authN, logger)
+	connectRPCIpc, err := newConnectRPCIPC()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create grpc server: %w", err)
+		return nil, fmt.Errorf("failed to create connect rpc ipc server: %w", err)
 	}
 
-	grpcInProcessServer := newGrpcInProcessServer()
-
-	grpcIPCServer := &inProcessServer{
-		ln:                 memhttp.New(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { grpcInProcessServer.ServeHTTP(w, r) })),
-		srv:                grpcInProcessServer,
-		maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
-		maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
+	connectRPC, err := newConnectRPC(config, authN, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create connect rpc server: %w", err)
 	}
+
+	// Mux for addtional http handlers
+	extraHandlerMux := http.NewServeMux()
 
 	// Create http server
-	mux := runtime.NewServeMux(
-		runtime.WithHealthzEndpoint(healthpb.NewHealthClient(grpcIPCServer.Conn())),
-	)
-	httpServer, err := newHTTPServer(config, mux, authN, grpcServer, logger)
+	httpServer, err := newHTTPServer(config, connectRPC.Mux, extraHandlerMux, authN, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http server: %w", err)
 	}
 
 	o := OpenTDFServer{
-		AuthN:         authN,
-		Mux:           mux,
-		HTTPServer:    httpServer,
-		GRPCServer:    grpcServer,
-		GRPCInProcess: grpcIPCServer,
-		logger:        logger,
+		AuthN:           authN,
+		ExtraHandlerMux: extraHandlerMux,
+		HTTPServer:      httpServer,
+		ConnectRPC:      connectRPC,
+		ConnectRPCInProcess: &inProcessServer{
+			srv:                memhttp.New(connectRPCIpc.Mux),
+			maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
+			maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
+			ConnectRPC:         connectRPCIpc,
+		},
+		logger: logger,
 	}
 
 	// Create crypto provider
@@ -210,24 +198,16 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 }
 
 // newHTTPServer creates a new http server with the given handler and grpc server
-func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Server, l *logger.Logger) (*http.Server, error) {
+func newHTTPServer(c Config, connectRPC http.Handler, extraHandlers http.Handler, a *auth.Authentication, l *logger.Logger) (*http.Server, error) {
 	var (
 		err                  error
 		tc                   *tls.Config
 		writeTimeoutOverride = writeTimeout
 	)
 
-	// Add authN interceptor
-	// This is needed because we are leveraging RegisterXServiceHandlerServer instead of RegisterXServiceHandlerFromEndpoint
-	if c.Auth.Enabled {
-		h = a.MuxHandler(h)
-	} else {
-		l.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
-	}
-
 	// CORS
 	if c.CORS.Enabled {
-		h = cors.New(cors.Options{
+		corsHandler := cors.New(cors.Options{
 			AllowOriginFunc: func(_ *http.Request, origin string) bool {
 				for _, allowedOrigin := range c.CORS.AllowedOrigins {
 					if allowedOrigin == "*" {
@@ -244,35 +224,69 @@ func newHTTPServer(c Config, h http.Handler, a *auth.Authentication, g *grpc.Ser
 			ExposedHeaders:   c.CORS.ExposedHeaders,
 			AllowCredentials: c.CORS.AllowCredentials,
 			MaxAge:           c.CORS.MaxAge,
-		}).Handler(h)
+		})
+
+		// Apply CORS to connectRPC and extra handlers
+		connectRPC = corsHandler.Handler(connectRPC)
+		extraHandlers = corsHandler.Handler(extraHandlers)
+	}
+
+	// Add authN interceptor to extra handlers
+	if c.Auth.Enabled {
+		extraHandlers = a.MuxHandler(extraHandlers)
+	} else {
+		l.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
 	// Enable pprof
 	if c.EnablePprof {
-		h = pprofHandler(h)
+		extraHandlers = pprofHandler(extraHandlers)
 		// Need to extend write timeout to collect pprof data.
 		writeTimeoutOverride = 30 * time.Second //nolint:mnd // easier to read that we are overriding the default
 	}
 
-	// Add grpc handler
-	h2 := httpGrpcHandlerFunc(h, g, l)
-
+	var handler http.Handler
 	if !c.TLS.Enabled {
-		h2 = h2c.NewHandler(h2, &http2.Server{})
+		handler = h2c.NewHandler(routeConnectRPCRequests(connectRPC, extraHandlers), &http2.Server{})
 	} else {
 		tc, err = loadTLSConfig(c.TLS)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load tls config: %w", err)
 		}
+		handler = routeConnectRPCRequests(connectRPC, extraHandlers)
 	}
 
 	return &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", c.Host, c.Port),
 		WriteTimeout: writeTimeoutOverride,
 		ReadTimeout:  readTimeout,
-		Handler:      h2,
+		Handler:      handler,
 		TLSConfig:    tc,
 	}, nil
+}
+
+var rpcPathRegex = regexp.MustCompile(`^/[\w\.]+\.[\w\.]+/[\w]+$`)
+
+func routeConnectRPCRequests(connectRPC http.Handler, httpHandler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		contentType := r.Header.Get("Content-Type")
+		if slices.Contains([]string{
+			"application/grpc",
+			"application/grpc+proto",
+			"application/grpc+json",
+			"application/grpc-web",
+			"application/grpc-web+proto",
+			"application/grpc-web+json",
+			"application/proto",
+			"application/json",
+			"application/connect+proto",
+			"application/connect+json",
+		}, contentType) && r.Method == http.MethodPost && rpcPathRegex.MatchString(r.URL.Path) {
+			connectRPC.ServeHTTP(w, r)
+		} else {
+			httpHandler.ServeHTTP(w, r)
+		}
+	})
 }
 
 // ppprof handler
@@ -297,91 +311,58 @@ func pprofHandler(h http.Handler) http.Handler {
 	})
 }
 
-// httpGrpcHandlerFunc returns a http.Handler that delegates to the grpc server if the request is a grpc request
-func httpGrpcHandlerFunc(h http.Handler, g *grpc.Server, l *logger.Logger) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		l.TraceContext(r.Context(), "grpc handler func", slog.Int("proto_major", r.ProtoMajor), slog.String("content_type", r.Header.Get("Content-Type")))
-		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
-			g.ServeHTTP(w, r)
-		} else {
-			h.ServeHTTP(w, r)
-		}
-	})
-}
+func newConnectRPCIPC() (*ConnectRPC, error) {
+	interceptors := make([]connect.HandlerOption, 0)
 
-func newGrpcInProcessServer() *grpc.Server {
-	var interceptors []grpc.UnaryServerInterceptor
-	var serverOptions []grpc.ServerOption
-
-	// Add audit to in process server
-	interceptors = append(interceptors, audit.ContextServerInterceptor)
-
-	// FIXME: this should probably use existing IP address instead of local?
-	// Add RealIP interceptor to in process server
-	// trustedPeers := []netip.Prefix{} // TODO: add this as a config option?
-	// headers := []string{realip.XForwardedFor, realip.XRealIp}
-	// interceptors = append(interceptors, realip.UnaryServerInterceptor(trustedPeers, headers))
-
-	// Add interceptors to server options
-	serverOptions = append(serverOptions, grpc.ChainUnaryInterceptor(interceptors...))
-	return grpc.NewServer(serverOptions...)
-}
-
-// newGrpcServer creates a new grpc server with the given config and authN interceptor
-func newGrpcServer(c Config, a *auth.Authentication, logger *logger.Logger) (*grpc.Server, error) {
-	var i []grpc.UnaryServerInterceptor
-	var o []grpc.ServerOption
-
-	// Enable proto validation
-	validator, err := protovalidate.New()
+	// Add protovalidate interceptor
+	vaidationInterceptor, err := validate.NewInterceptor()
 	if err != nil {
-		logger.Warn("failed to create proto validator", slog.String("error", err.Error()))
+		return nil, fmt.Errorf("failed to create validation interceptor: %w", err)
 	}
 
-	// Add Audit Unary Server Interceptor
-	i = append(i, audit.ContextServerInterceptor)
+	interceptors = append(interceptors, connect.WithInterceptors(vaidationInterceptor, audit.ContextServerInterceptor()))
+
+	return &ConnectRPC{
+		Interceptors: interceptors,
+		Mux:          http.NewServeMux(),
+	}, nil
+}
+
+func newConnectRPC(c Config, a *auth.Authentication, logger *logger.Logger) (*ConnectRPC, error) {
+	interceptors := make([]connect.HandlerOption, 0)
+
+	// Add protovalidate interceptor
+	vaidationInterceptor, err := validate.NewInterceptor()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create validation interceptor: %w", err)
+	}
+
+	interceptors = append(interceptors, connect.WithInterceptors(vaidationInterceptor, audit.ContextServerInterceptor()))
 
 	if c.Auth.Enabled {
-		i = append(i, a.UnaryServerInterceptor)
+		interceptors = append(interceptors, connect.WithInterceptors(a.ConnectUnaryServerInterceptor()))
 	} else {
 		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
 	}
 
-	// Add tls creds if tls is not nil
-	if c.TLS.Enabled {
-		c, err := loadTLSConfig(c.TLS)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load tls config: %w", err)
-		}
-		o = append(o, grpc.Creds(credentials.NewTLS(c)))
-	}
-
-	// Add proto validation interceptor
-	i = append(i, protovalidate_middleware.UnaryServerInterceptor(validator))
-
-	o = append(o, grpc.ChainUnaryInterceptor(
-		i...,
-	))
-
-	// Chain relaip interceptor
-	trustedPeers := []netip.Prefix{} // TODO: add this as a config option?
-	headers := []string{realip.XForwardedFor, realip.XRealIp}
-
-	o = append(o, grpc.ChainUnaryInterceptor(
-		realip.UnaryServerInterceptor(trustedPeers, headers),
-	))
-
-	s := grpc.NewServer(o...)
-
-	// Enable grpc reflection
-	if c.GRPC.ReflectionEnabled {
-		reflection.Register(s)
-	}
-
-	return s, nil
+	return &ConnectRPC{
+		Interceptors: interceptors,
+		Mux:          http.NewServeMux(),
+	}, nil
 }
 
 func (s OpenTDFServer) Start() error {
+	// Add reflection api to connect-rpc
+	reflector := grpcreflect.NewStaticReflector(
+		s.ConnectRPC.ServiceReflection...,
+	)
+
+	s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
+	s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
+
+	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
+	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
+
 	// Start Http Server
 	ln, err := s.openHTTPServerPort()
 	if err != nil {
@@ -389,8 +370,6 @@ func (s OpenTDFServer) Start() error {
 	}
 	go s.startHTTPServer(ln)
 
-	// Start In Process Grpc Server
-	go s.startInProcessGrpcServer()
 	return nil
 }
 
@@ -404,13 +383,12 @@ func (s OpenTDFServer) Stop() {
 	}
 
 	s.logger.Info("shutting down in process grpc server")
-	s.GRPCInProcess.srv.GracefulStop()
+	if err := s.ConnectRPCInProcess.srv.Shutdown(ctx); err != nil {
+		s.logger.Error("failed to shutdown in process connect-rpc server", slog.String("error", err.Error()))
+		return
+	}
 
 	s.logger.Info("shutdown complete")
-}
-
-func (s inProcessServer) GetGrpcServer() *grpc.Server {
-	return s.srv
 }
 
 func (s inProcessServer) Conn() *grpc.ClientConn {
@@ -425,7 +403,7 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 			grpc.MaxCallSendMsgSize(s.maxCallSendMsgSize),
 		),
 		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
-			conn, err := s.ln.Listener.DialContext(ctx, "inprocess", "")
+			conn, err := s.srv.Listener.DialContext(ctx, "tcp", "http://localhost:8080")
 			if err != nil {
 				return nil, fmt.Errorf("failed to dial in process grpc server: %w", err)
 			}
@@ -437,14 +415,6 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 
 	conn, _ := grpc.NewClient("passthrough:///", defaultOptions...)
 	return conn
-}
-
-func (s OpenTDFServer) startInProcessGrpcServer() {
-	s.logger.Info("starting in process grpc server")
-	if err := s.GRPCInProcess.srv.Serve(s.GRPCInProcess.ln.Listener); err != nil {
-		s.logger.Error("failed to serve in process grpc", slog.String("error", err.Error()))
-		panic(err)
-	}
 }
 
 func (s OpenTDFServer) openHTTPServerPort() (net.Listener, error) {

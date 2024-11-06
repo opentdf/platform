@@ -8,8 +8,8 @@ import (
 	"log/slog"
 	"strings"
 
+	"connectrpc.com/connect"
 	"github.com/Nerzal/gocloak/v13"
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/mitchellh/mapstructure"
 	"github.com/opentdf/platform/protocol/go/authorization"
@@ -59,20 +59,17 @@ func RegisterKeycloakERS(config serviceregistry.ServiceConfig, logger *logger.Lo
 	}
 	logger.Debug("entity_resolution configuration", "config", inputIdpConfig)
 	keycloakSVC := &KeycloakEntityResolutionService{idpConfig: inputIdpConfig, logger: logger}
-	return keycloakSVC,
-		func(ctx context.Context, mux *runtime.ServeMux) error {
-			return entityresolution.RegisterEntityResolutionServiceHandlerServer(ctx, mux, keycloakSVC)
-		}
+	return keycloakSVC, nil
 }
 
-func (s KeycloakEntityResolutionService) ResolveEntities(ctx context.Context, req *entityresolution.ResolveEntitiesRequest) (*entityresolution.ResolveEntitiesResponse, error) {
-	resp, err := EntityResolution(ctx, req, s.idpConfig, s.logger)
-	return &resp, err
+func (s KeycloakEntityResolutionService) ResolveEntities(ctx context.Context, req *connect.Request[entityresolution.ResolveEntitiesRequest]) (*connect.Response[entityresolution.ResolveEntitiesResponse], error) {
+	resp, err := EntityResolution(ctx, req.Msg, s.idpConfig, s.logger)
+	return &connect.Response[entityresolution.ResolveEntitiesResponse]{Msg: &resp}, err
 }
 
-func (s KeycloakEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *entityresolution.CreateEntityChainFromJwtRequest) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
-	resp, err := CreateEntityChainFromJwt(ctx, req, s.idpConfig, s.logger)
-	return &resp, err
+func (s KeycloakEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
+	resp, err := CreateEntityChainFromJwt(ctx, req.Msg, s.idpConfig, s.logger)
+	return &connect.Response[entityresolution.CreateEntityChainFromJwtResponse]{Msg: &resp}, err
 }
 
 func (c KeycloakConfig) LogValue() slog.Value {

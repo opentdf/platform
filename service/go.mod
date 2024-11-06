@@ -4,6 +4,8 @@ go 1.22
 
 require (
 	connectrpc.com/connect v1.17.0
+	connectrpc.com/grpcreflect v1.2.0
+	connectrpc.com/validate v0.1.0
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/Nerzal/gocloak/v13 v13.9.0
 	github.com/bmatcuk/doublestar v1.3.4
@@ -147,6 +149,7 @@ require (
 )
 
 require (
+	connectrpc.com/grpchealth v1.3.0
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9 // indirect

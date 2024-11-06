@@ -163,20 +163,20 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 			if err != nil {
 				return err
 			}
-			// Register the service with the gRPC server
-			if err := svc.RegisterGRPCServer(otdf.GRPCServer); err != nil {
-				return err
-			}
-
-			// Register the service with in process gRPC server
-			if err := svc.RegisterGRPCServer(otdf.GRPCInProcess.GetGrpcServer()); err != nil {
-				return err
-			}
 
 			// Register the service with the gRPC gateway
-			if err := svc.RegisterHTTPServer(ctx, otdf.Mux); err != nil {
-				logger.Error("failed to register service to grpc gateway", slog.String("namespace", ns), slog.String("error", err.Error()))
-				return err
+			if err := svc.RegisterExtraHandlers(ctx, otdf.ExtraHandlerMux); err != nil {
+				logger.Error("service did not register extra http handlers", slog.String("namespace", ns))
+			}
+
+			// Register Connect RPC Services
+			if err := svc.RegisterConnectRPCServiceHandler(ctx, otdf.ConnectRPC); err != nil {
+				logger.Info("service did not register a connect-rpc handler", slog.String("namespace", ns))
+			}
+
+			// Register In Process Connect RPC Services
+			if err := svc.RegisterConnectRPCServiceHandler(ctx, otdf.ConnectRPCInProcess.ConnectRPC); err != nil {
+				logger.Info("service did not register a connect-rpc handler", slog.String("namespace", ns))
 			}
 
 			logger.Info(

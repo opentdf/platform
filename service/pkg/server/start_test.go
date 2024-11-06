@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -9,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/server"
@@ -25,7 +25,7 @@ type (
 	TestService        struct{}
 )
 
-func (t TestService) TestHandler(w http.ResponseWriter, _ *http.Request, _ map[string]string) {
+func (t TestService) TestHandler(w http.ResponseWriter, _ *http.Request) {
 	_, err := w.Write([]byte("hello from test service!"))
 	if err != nil {
 		panic(err)
@@ -99,11 +99,12 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Res
 	require.NoError(t, err)
 
 	// Register Test Service
-	ts := &TestService{}
+	ts := TestService{}
 	registerTestService, _ := mockTestServiceRegistry(mockTestServiceOptions{
 		serviceObject: ts,
-		serviceHandler: func(_ context.Context, mux *runtime.ServeMux) error {
-			return mux.HandlePath(http.MethodGet, "/healthz", ts.TestHandler)
+		serviceHandler: func(_ context.Context, mux *http.ServeMux) error {
+			mux.HandleFunc(fmt.Sprintf("%s /healthz", http.MethodGet), ts.TestHandler)
+			return nil
 		},
 	})
 

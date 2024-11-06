@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
@@ -24,20 +24,17 @@ type ClaimsEntityResolutionService struct {
 
 func RegisterClaimsERS(_ serviceregistry.ServiceConfig, logger *logger.Logger) (ClaimsEntityResolutionService, serviceregistry.HandlerServer) {
 	claimsSVC := ClaimsEntityResolutionService{logger: logger}
-	return claimsSVC,
-		func(ctx context.Context, mux *runtime.ServeMux) error {
-			return entityresolution.RegisterEntityResolutionServiceHandlerServer(ctx, mux, claimsSVC)
-		}
+	return claimsSVC, nil
 }
 
-func (s ClaimsEntityResolutionService) ResolveEntities(ctx context.Context, req *entityresolution.ResolveEntitiesRequest) (*entityresolution.ResolveEntitiesResponse, error) {
-	resp, err := EntityResolution(ctx, req, s.logger)
-	return &resp, err
+func (s ClaimsEntityResolutionService) ResolveEntities(ctx context.Context, req *connect.Request[entityresolution.ResolveEntitiesRequest]) (*connect.Response[entityresolution.ResolveEntitiesResponse], error) {
+	resp, err := EntityResolution(ctx, req.Msg, s.logger)
+	return &connect.Response[entityresolution.ResolveEntitiesResponse]{Msg: &resp}, err
 }
 
-func (s ClaimsEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *entityresolution.CreateEntityChainFromJwtRequest) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
-	resp, err := CreateEntityChainFromJwt(ctx, req, s.logger)
-	return &resp, err
+func (s ClaimsEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
+	resp, err := CreateEntityChainFromJwt(ctx, req.Msg, s.logger)
+	return &connect.Response[entityresolution.CreateEntityChainFromJwtResponse]{Msg: &resp}, err
 }
 
 func CreateEntityChainFromJwt(

@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/go-chi/cors"
 	protovalidate_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
@@ -104,13 +105,21 @@ type CORSConfig struct {
 	MaxAge           int      `mapstructure:"maxage" json:"maxage" default:"3600"`
 }
 
+type ConnectRPC struct {
+	Mux               *http.ServeMux
+	Interceptors      []connect.HandlerOption
+	ServiceReflection []string
+}
+
 type OpenTDFServer struct {
-	AuthN          *auth.Authentication
-	Mux            *runtime.ServeMux
-	HTTPServer     *http.Server
-	GRPCServer     *grpc.Server
-	GRPCInProcess  *inProcessServer
-	CryptoProvider security.CryptoProvider
+	AuthN               *auth.Authentication
+	Mux                 *runtime.ServeMux
+	HTTPServer          *http.Server
+	GRPCServer          *grpc.Server
+	GRPCInProcess       *inProcessServer
+	ConnectRPCInProcess *ConnectRPC
+	ConnectRPC          *ConnectRPC
+	CryptoProvider      security.CryptoProvider
 
 	logger *logger.Logger
 }
@@ -133,6 +142,11 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 	var (
 		authN *auth.Authentication
 		err   error
+		// Two muxes are needed for the connect rpc server. One for the in process server and one for the http server.
+		connectRPCIPCMux          = http.NewServeMux()
+		connectRPCMux             = http.NewServeMux()
+		connectRPCIPCInterceptors []connect.HandlerOption
+		connectRPCInterceptors    []connect.HandlerOption
 	)
 
 	// Add authN interceptor

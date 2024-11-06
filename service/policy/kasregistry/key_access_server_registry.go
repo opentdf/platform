@@ -2,7 +2,6 @@ package kasregistry
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -21,17 +20,18 @@ type KeyAccessServerRegistry struct {
 	logger   *logger.Logger
 }
 
-func NewRegistration() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		ServiceDesc: &kasr.KeyAccessServerRegistryService_ServiceDesc,
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &KeyAccessServerRegistry{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
-				srv, ok := s.(kasr.KeyAccessServerRegistryServiceServer)
-				if !ok {
-					return fmt.Errorf("argument is not of type kasr.KeyAccessServerRegistryServiceServer")
+func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[KeyAccessServerRegistry] {
+	return &serviceregistry.Service[KeyAccessServerRegistry]{
+		ServiceOptions: serviceregistry.ServiceOptions[KeyAccessServerRegistry]{
+			Namespace:   ns,
+			DB:          dbRegister,
+			ServiceDesc: &kasr.KeyAccessServerRegistryService_ServiceDesc,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (*KeyAccessServerRegistry, serviceregistry.HandlerServer) {
+				ksr := &KeyAccessServerRegistry{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
+				return ksr, func(ctx context.Context, mux *runtime.ServeMux) error {
+					return kasr.RegisterKeyAccessServerRegistryServiceHandlerServer(ctx, mux, ksr)
 				}
-				return kasr.RegisterKeyAccessServerRegistryServiceHandlerServer(ctx, mux, srv)
-			}
+			},
 		},
 	}
 }

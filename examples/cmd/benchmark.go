@@ -153,7 +153,6 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 				cmd.Printf("Error: %v\n", err)
 			}
 
-			//Print decrypted string
 			_, err = io.Copy(io.Discard, tdfreader)
 			if err != nil && err != io.EOF {
 				cmd.Printf("Error: %v\n", err)

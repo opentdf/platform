@@ -2,7 +2,6 @@ package subjectmapping
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -21,17 +20,18 @@ type SubjectMappingService struct { //nolint:revive // SubjectMappingService is 
 	logger   *logger.Logger
 }
 
-func NewRegistration() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		ServiceDesc: &sm.SubjectMappingService_ServiceDesc,
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &SubjectMappingService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
-				server, ok := s.(sm.SubjectMappingServiceServer)
-				if !ok {
-					return fmt.Errorf("failed to assert server as sm.SubjectMappingServiceServer")
+func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[SubjectMappingService] {
+	return &serviceregistry.Service[SubjectMappingService]{
+		ServiceOptions: serviceregistry.ServiceOptions[SubjectMappingService]{
+			Namespace:   ns,
+			DB:          dbRegister,
+			ServiceDesc: &sm.SubjectMappingService_ServiceDesc,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (*SubjectMappingService, serviceregistry.HandlerServer) {
+				smSvc := &SubjectMappingService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
+				return smSvc, func(ctx context.Context, mux *runtime.ServeMux) error {
+					return sm.RegisterSubjectMappingServiceHandlerServer(ctx, mux, smSvc)
 				}
-				return sm.RegisterSubjectMappingServiceHandlerServer(ctx, mux, server)
-			}
+			},
 		},
 	}
 }

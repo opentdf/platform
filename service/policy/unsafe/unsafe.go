@@ -2,7 +2,6 @@ package unsafe
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -21,16 +20,18 @@ type UnsafeService struct { //nolint:revive // UnsafeService is a valid name for
 	logger   *logger.Logger
 }
 
-func NewRegistration() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		ServiceDesc: &unsafe.UnsafeService_ServiceDesc,
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &UnsafeService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				if srv, ok := server.(unsafe.UnsafeServiceServer); ok {
-					return unsafe.RegisterUnsafeServiceHandlerServer(ctx, mux, srv)
+func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[UnsafeService] {
+	return &serviceregistry.Service[UnsafeService]{
+		ServiceOptions: serviceregistry.ServiceOptions[UnsafeService]{
+			Namespace:   ns,
+			DB:          dbRegister,
+			ServiceDesc: &unsafe.UnsafeService_ServiceDesc,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (*UnsafeService, serviceregistry.HandlerServer) {
+				unsafeSvc := &UnsafeService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
+				return unsafeSvc, func(ctx context.Context, mux *runtime.ServeMux) error {
+					return unsafe.RegisterUnsafeServiceHandlerServer(ctx, mux, unsafeSvc)
 				}
-				return fmt.Errorf("failed to assert server as unsafe.UnsafeServiceServer")
-			}
+			},
 		},
 	}
 }

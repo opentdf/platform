@@ -154,7 +154,7 @@ message SubjectMapping {
 */
 message Condition {
   // a selector for a field value on a flattened Entity Representation (such as from idP/LDAP)
-  string subject_external_selector_value = 1;
+  string subject_external_selector_value = 1 [ (buf.validate.field).required = true ];
 
   // the evaluation operator of relation
   SubjectMappingOperatorEnum operator = 2 [
@@ -163,7 +163,7 @@ message Condition {
   ];
 
   // list of comparison values for the result of applying the subject_external_selector_value on a flattened Entity Representation (Subject), evaluated by the operator
-  repeated string subject_external_values = 3;
+  repeated string subject_external_values = 3 [(buf.validate.field).repeated.min_items = 1];
 }
 
 // A collection of Conditions evaluated by the boolean_operator provided

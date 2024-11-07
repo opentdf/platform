@@ -6,7 +6,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	sm "github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping/subjectmappingconnect"
 	"github.com/opentdf/platform/service/logger"
@@ -42,8 +41,8 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
  * --------------------------------------------------*/
 
 func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
-	req *connect.Request[subjectmapping.CreateSubjectMappingRequest],
-) (*connect.Response[subjectmapping.CreateSubjectMappingResponse], error) {
+	req *connect.Request[sm.CreateSubjectMappingRequest],
+) (*connect.Response[sm.CreateSubjectMappingResponse], error) {
 	rsp := &sm.CreateSubjectMappingResponse{}
 	s.logger.Debug("creating subject mapping")
 
@@ -52,23 +51,23 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 		ObjectType: audit.ObjectTypeSubjectMapping,
 	}
 
-	sm, err := s.dbClient.CreateSubjectMapping(ctx, req.Msg)
+	subjectMapping, err := s.dbClient.CreateSubjectMapping(ctx, req.Msg)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("subjectMapping", req.Msg.String()))
 	}
 
-	auditParams.ObjectID = sm.GetId()
-	auditParams.Original = sm
+	auditParams.ObjectID = subjectMapping.GetId()
+	auditParams.Original = subjectMapping
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-	rsp.SubjectMapping = sm
-	return &connect.Response[subjectmapping.CreateSubjectMappingResponse]{Msg: rsp}, nil
+	rsp.SubjectMapping = subjectMapping
+	return &connect.Response[sm.CreateSubjectMappingResponse]{Msg: rsp}, nil
 }
 
 func (s SubjectMappingService) ListSubjectMappings(ctx context.Context,
-	_ *connect.Request[subjectmapping.ListSubjectMappingsRequest],
-) (*connect.Response[subjectmapping.ListSubjectMappingsResponse], error) {
+	_ *connect.Request[sm.ListSubjectMappingsRequest],
+) (*connect.Response[sm.ListSubjectMappingsResponse], error) {
 	rsp := &sm.ListSubjectMappingsResponse{}
 	s.logger.Debug("listing subject mappings")
 
@@ -78,12 +77,12 @@ func (s SubjectMappingService) ListSubjectMappings(ctx context.Context,
 	}
 
 	rsp.SubjectMappings = mappings
-	return &connect.Response[subjectmapping.ListSubjectMappingsResponse]{Msg: rsp}, nil
+	return &connect.Response[sm.ListSubjectMappingsResponse]{Msg: rsp}, nil
 }
 
 func (s SubjectMappingService) GetSubjectMapping(ctx context.Context,
-	req *connect.Request[subjectmapping.GetSubjectMappingRequest],
-) (*connect.Response[subjectmapping.GetSubjectMappingResponse], error) {
+	req *connect.Request[sm.GetSubjectMappingRequest],
+) (*connect.Response[sm.GetSubjectMappingResponse], error) {
 	rsp := &sm.GetSubjectMappingResponse{}
 	s.logger.Debug("getting subject mapping", slog.String("id", req.Msg.GetId()))
 
@@ -93,12 +92,12 @@ func (s SubjectMappingService) GetSubjectMapping(ctx context.Context,
 	}
 
 	rsp.SubjectMapping = mapping
-	return &connect.Response[subjectmapping.GetSubjectMappingResponse]{Msg: rsp}, nil
+	return &connect.Response[sm.GetSubjectMappingResponse]{Msg: rsp}, nil
 }
 
 func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
-	req *connect.Request[subjectmapping.UpdateSubjectMappingRequest],
-) (*connect.Response[subjectmapping.UpdateSubjectMappingResponse], error) {
+	req *connect.Request[sm.UpdateSubjectMappingRequest],
+) (*connect.Response[sm.UpdateSubjectMappingResponse], error) {
 	rsp := &sm.UpdateSubjectMappingResponse{}
 	subjectMappingID := req.Msg.GetId()
 
@@ -129,12 +128,12 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 	rsp.SubjectMapping = &policy.SubjectMapping{
 		Id: subjectMappingID,
 	}
-	return &connect.Response[subjectmapping.UpdateSubjectMappingResponse]{Msg: rsp}, nil
+	return &connect.Response[sm.UpdateSubjectMappingResponse]{Msg: rsp}, nil
 }
 
 func (s SubjectMappingService) DeleteSubjectMapping(ctx context.Context,
-	req *connect.Request[subjectmapping.DeleteSubjectMappingRequest],
-) (*connect.Response[subjectmapping.DeleteSubjectMappingResponse], error) {
+	req *connect.Request[sm.DeleteSubjectMappingRequest],
+) (*connect.Response[sm.DeleteSubjectMappingResponse], error) {
 	rsp := &sm.DeleteSubjectMappingResponse{}
 	s.logger.Debug("deleting subject mapping", slog.String("id", req.Msg.GetId()))
 
@@ -156,12 +155,12 @@ func (s SubjectMappingService) DeleteSubjectMapping(ctx context.Context,
 	rsp.SubjectMapping = &policy.SubjectMapping{
 		Id: subjectMappingID,
 	}
-	return &connect.Response[subjectmapping.DeleteSubjectMappingResponse]{Msg: rsp}, nil
+	return &connect.Response[sm.DeleteSubjectMappingResponse]{Msg: rsp}, nil
 }
 
 func (s SubjectMappingService) MatchSubjectMappings(ctx context.Context,
-	req *connect.Request[subjectmapping.MatchSubjectMappingsRequest],
-) (*connect.Response[subjectmapping.MatchSubjectMappingsResponse], error) {
+	req *connect.Request[sm.MatchSubjectMappingsRequest],
+) (*connect.Response[sm.MatchSubjectMappingsResponse], error) {
 	rsp := &sm.MatchSubjectMappingsResponse{}
 	s.logger.Debug("matching subject mappings", slog.Any("subjectProperties", req.Msg.GetSubjectProperties()))
 
@@ -171,7 +170,7 @@ func (s SubjectMappingService) MatchSubjectMappings(ctx context.Context,
 	}
 
 	rsp.SubjectMappings = smList
-	return &connect.Response[subjectmapping.MatchSubjectMappingsResponse]{Msg: rsp}, nil
+	return &connect.Response[sm.MatchSubjectMappingsResponse]{Msg: rsp}, nil
 }
 
 /* --------------------------------------------------------
@@ -179,8 +178,8 @@ func (s SubjectMappingService) MatchSubjectMappings(ctx context.Context,
  * -------------------------------------------------------*/
 
 func (s SubjectMappingService) GetSubjectConditionSet(ctx context.Context,
-	req *connect.Request[subjectmapping.GetSubjectConditionSetRequest],
-) (*connect.Response[subjectmapping.GetSubjectConditionSetResponse], error) {
+	req *connect.Request[sm.GetSubjectConditionSetRequest],
+) (*connect.Response[sm.GetSubjectConditionSetResponse], error) {
 	rsp := &sm.GetSubjectConditionSetResponse{}
 	s.logger.Debug("getting subject condition set", slog.String("id", req.Msg.GetId()))
 
@@ -190,12 +189,12 @@ func (s SubjectMappingService) GetSubjectConditionSet(ctx context.Context,
 	}
 
 	rsp.SubjectConditionSet = conditionSet
-	return &connect.Response[subjectmapping.GetSubjectConditionSetResponse]{Msg: rsp}, nil
+	return &connect.Response[sm.GetSubjectConditionSetResponse]{Msg: rsp}, nil
 }
 
 func (s SubjectMappingService) ListSubjectConditionSets(ctx context.Context,
-	_ *connect.Request[subjectmapping.ListSubjectConditionSetsRequest],
-) (*connect.Response[subjectmapping.ListSubjectConditionSetsResponse], error) {
+	_ *connect.Request[sm.ListSubjectConditionSetsRequest],
+) (*connect.Response[sm.ListSubjectConditionSetsResponse], error) {
 	rsp := &sm.ListSubjectConditionSetsResponse{}
 	s.logger.Debug("listing subject condition sets")
 
@@ -205,12 +204,12 @@ func (s SubjectMappingService) ListSubjectConditionSets(ctx context.Context,
 	}
 
 	rsp.SubjectConditionSets = conditionSets
-	return &connect.Response[subjectmapping.ListSubjectConditionSetsResponse]{Msg: rsp}, nil
+	return &connect.Response[sm.ListSubjectConditionSetsResponse]{Msg: rsp}, nil
 }
 
 func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
-	req *connect.Request[subjectmapping.CreateSubjectConditionSetRequest],
-) (*connect.Response[subjectmapping.CreateSubjectConditionSetResponse], error) {
+	req *connect.Request[sm.CreateSubjectConditionSetRequest],
+) (*connect.Response[sm.CreateSubjectConditionSetResponse], error) {
 	rsp := &sm.CreateSubjectConditionSetResponse{}
 	s.logger.Debug("creating subject condition set", slog.String("subjectConditionSet", req.Msg.String()))
 
@@ -230,12 +229,12 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.SubjectConditionSet = conditionSet
-	return &connect.Response[subjectmapping.CreateSubjectConditionSetResponse]{Msg: rsp}, nil
+	return &connect.Response[sm.CreateSubjectConditionSetResponse]{Msg: rsp}, nil
 }
 
 func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
-	req *connect.Request[subjectmapping.UpdateSubjectConditionSetRequest],
-) (*connect.Response[subjectmapping.UpdateSubjectConditionSetResponse], error) {
+	req *connect.Request[sm.UpdateSubjectConditionSetRequest],
+) (*connect.Response[sm.UpdateSubjectConditionSetResponse], error) {
 	rsp := &sm.UpdateSubjectConditionSetResponse{}
 	s.logger.Debug("updating subject condition set", slog.String("subjectConditionSet", req.Msg.String()))
 
@@ -265,12 +264,12 @@ func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
 	rsp.SubjectConditionSet = &policy.SubjectConditionSet{
 		Id: subjectConditionSetID,
 	}
-	return &connect.Response[subjectmapping.UpdateSubjectConditionSetResponse]{Msg: rsp}, nil
+	return &connect.Response[sm.UpdateSubjectConditionSetResponse]{Msg: rsp}, nil
 }
 
 func (s SubjectMappingService) DeleteSubjectConditionSet(ctx context.Context,
-	req *connect.Request[subjectmapping.DeleteSubjectConditionSetRequest],
-) (*connect.Response[subjectmapping.DeleteSubjectConditionSetResponse], error) {
+	req *connect.Request[sm.DeleteSubjectConditionSetRequest],
+) (*connect.Response[sm.DeleteSubjectConditionSetResponse], error) {
 	rsp := &sm.DeleteSubjectConditionSetResponse{}
 	s.logger.Debug("deleting subject condition set", slog.String("id", req.Msg.GetId()))
 
@@ -292,7 +291,7 @@ func (s SubjectMappingService) DeleteSubjectConditionSet(ctx context.Context,
 	rsp.SubjectConditionSet = &policy.SubjectConditionSet{
 		Id: conditionSetID,
 	}
-	return &connect.Response[subjectmapping.DeleteSubjectConditionSetResponse]{Msg: rsp}, nil
+	return &connect.Response[sm.DeleteSubjectConditionSetResponse]{Msg: rsp}, nil
 }
 
 func (s SubjectMappingService) DeleteAllUnmappedSubjectConditionSets(ctx context.Context,

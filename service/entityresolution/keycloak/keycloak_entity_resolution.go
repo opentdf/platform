@@ -64,12 +64,12 @@ func RegisterKeycloakERS(config serviceregistry.ServiceConfig, logger *logger.Lo
 
 func (s KeycloakEntityResolutionService) ResolveEntities(ctx context.Context, req *connect.Request[entityresolution.ResolveEntitiesRequest]) (*connect.Response[entityresolution.ResolveEntitiesResponse], error) {
 	resp, err := EntityResolution(ctx, req.Msg, s.idpConfig, s.logger)
-	return &connect.Response[entityresolution.ResolveEntitiesResponse]{Msg: &resp}, err
+	return connect.NewResponse(&resp), err
 }
 
 func (s KeycloakEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
 	resp, err := CreateEntityChainFromJwt(ctx, req.Msg, s.idpConfig, s.logger)
-	return &connect.Response[entityresolution.CreateEntityChainFromJwtResponse]{Msg: &resp}, err
+	return connect.NewResponse(&resp), err
 }
 
 func (c KeycloakConfig) LogValue() slog.Value {

@@ -173,11 +173,9 @@ func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *co
 	if err != nil {
 		return nil, err
 	}
-	return &connect.Response[authorization.GetDecisionsByTokenResponse]{
-		Msg: &authorization.GetDecisionsByTokenResponse{
-			DecisionResponses: resp.Msg.GetDecisionResponses(),
-		},
-	}, err
+	return connect.NewResponse(&authorization.GetDecisionsByTokenResponse{
+		DecisionResponses: resp.Msg.GetDecisionResponses(),
+	}), err
 }
 
 func (as *AuthorizationService) GetDecisions(ctx context.Context, req *connect.Request[authorization.GetDecisionsRequest]) (*connect.Response[authorization.GetDecisionsResponse], error) {
@@ -364,7 +362,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *connect.R
 			}
 		}
 	}
-	return &connect.Response[authorization.GetDecisionsResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 // makeSubMapsByValLookup creates a lookup map of subject mappings by attribute value ID.
@@ -498,7 +496,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 		return nil, status.Error(codes.Internal, "failed to evaluate entitlements policy")
 	}
 
-	resp := &connect.Response[authorization.GetEntitlementsResponse]{Msg: rsp}
+	resp := connect.NewResponse(rsp)
 
 	// If we get no results and no error then we assume that the entity is not entitled to anything
 	if len(results) == 0 {

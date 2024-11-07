@@ -59,7 +59,7 @@ func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 
 	rsp.KeyAccessServer = ks
 
-	return &connect.Response[kasr.CreateKeyAccessServerResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s KeyAccessServerRegistry) ListKeyAccessServers(ctx context.Context,
@@ -74,7 +74,7 @@ func (s KeyAccessServerRegistry) ListKeyAccessServers(ctx context.Context,
 
 	rsp.KeyAccessServers = keyAccessServers
 
-	return &connect.Response[kasr.ListKeyAccessServersResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s KeyAccessServerRegistry) GetKeyAccessServer(ctx context.Context,
@@ -89,7 +89,7 @@ func (s KeyAccessServerRegistry) GetKeyAccessServer(ctx context.Context,
 
 	rsp.KeyAccessServer = keyAccessServer
 
-	return &connect.Response[kasr.GetKeyAccessServerResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
@@ -125,7 +125,7 @@ func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
 		Id: kasID,
 	}
 
-	return &connect.Response[kasr.UpdateKeyAccessServerResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
@@ -151,7 +151,7 @@ func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
 		Id: kasID,
 	}
 
-	return &connect.Response[kasr.DeleteKeyAccessServerResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s KeyAccessServerRegistry) ListKeyAccessServerGrants(ctx context.Context,
@@ -166,5 +166,5 @@ func (s KeyAccessServerRegistry) ListKeyAccessServerGrants(ctx context.Context,
 
 	rsp.Grants = keyAccessServerGrants
 
-	return &connect.Response[kasr.ListKeyAccessServerGrantsResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }

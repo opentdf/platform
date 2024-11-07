@@ -66,7 +66,7 @@ func (ns NamespacesService) ListNamespaces(ctx context.Context, req *connect.Req
 	ns.logger.Debug("listed namespaces")
 	rsp.Namespaces = list
 
-	return &connect.Response[namespaces.ListNamespacesResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (ns NamespacesService) GetNamespace(ctx context.Context, req *connect.Request[namespaces.GetNamespaceRequest]) (*connect.Response[namespaces.GetNamespaceResponse], error) {
@@ -81,7 +81,7 @@ func (ns NamespacesService) GetNamespace(ctx context.Context, req *connect.Reque
 
 	rsp.Namespace = namespace
 
-	return &connect.Response[namespaces.GetNamespaceResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (ns NamespacesService) CreateNamespace(ctx context.Context, req *connect.Request[namespaces.CreateNamespaceRequest]) (*connect.Response[namespaces.CreateNamespaceResponse], error) {
@@ -106,7 +106,7 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *connect.Re
 	ns.logger.Debug("created new namespace", slog.String("name", req.Msg.GetName()))
 	rsp.Namespace = n
 
-	return &connect.Response[namespaces.CreateNamespaceResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *connect.Request[namespaces.UpdateNamespaceRequest]) (*connect.Response[namespaces.UpdateNamespaceResponse], error) {
@@ -141,7 +141,7 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *connect.Re
 	rsp.Namespace = &policy.Namespace{
 		Id: namespaceID,
 	}
-	return &connect.Response[namespaces.UpdateNamespaceResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *connect.Request[namespaces.DeactivateNamespaceRequest]) (*connect.Response[namespaces.DeactivateNamespaceResponse], error) {
@@ -173,7 +173,7 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *connec
 	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	ns.logger.Debug("soft-deleted namespace", slog.String("id", namespaceID))
 
-	return &connect.Response[namespaces.DeactivateNamespaceResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (ns NamespacesService) AssignKeyAccessServerToNamespace(ctx context.Context, req *connect.Request[namespaces.AssignKeyAccessServerToNamespaceRequest]) (*connect.Response[namespaces.AssignKeyAccessServerToNamespaceResponse], error) {
@@ -195,7 +195,7 @@ func (ns NamespacesService) AssignKeyAccessServerToNamespace(ctx context.Context
 
 	rsp.NamespaceKeyAccessServer = namespaceKas
 
-	return &connect.Response[namespaces.AssignKeyAccessServerToNamespaceResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (ns NamespacesService) RemoveKeyAccessServerFromNamespace(ctx context.Context, req *connect.Request[namespaces.RemoveKeyAccessServerFromNamespaceRequest]) (*connect.Response[namespaces.RemoveKeyAccessServerFromNamespaceResponse], error) {
@@ -217,5 +217,5 @@ func (ns NamespacesService) RemoveKeyAccessServerFromNamespace(ctx context.Conte
 
 	rsp.NamespaceKeyAccessServer = namespaceKas
 
-	return &connect.Response[namespaces.RemoveKeyAccessServerFromNamespaceResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }

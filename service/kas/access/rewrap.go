@@ -296,13 +296,13 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 			p.Logger.ErrorContext(ctx, "rewrap nano", "err", err)
 		}
 		p.Logger.DebugContext(ctx, "rewrap nano", "rsp", rsp)
-		return &connect.Response[kaspb.RewrapResponse]{Msg: rsp}, err
+		return connect.NewResponse(rsp), err
 	}
 	rsp, err := p.tdf3Rewrap(ctx, body, entityInfo)
 	if err != nil {
 		p.Logger.ErrorContext(ctx, "rewrap tdf3", "err", err)
 	}
-	return &connect.Response[kaspb.RewrapResponse]{Msg: rsp}, err
+	return connect.NewResponse(rsp), err
 }
 
 func (p *Provider) RewrapHandler(w http.ResponseWriter, r *http.Request) {

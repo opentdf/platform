@@ -62,5 +62,5 @@ func (s WellKnownService) GetWellKnownConfiguration(_ context.Context, _ *connec
 	rsp := &wellknown.GetWellKnownConfigurationResponse{
 		Configuration: cfg,
 	}
-	return &connect.Response[wellknown.GetWellKnownConfigurationResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }

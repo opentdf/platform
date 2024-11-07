@@ -50,7 +50,7 @@ func (s ResourceMappingService) ListResourceMappingGroups(ctx context.Context, r
 
 	rsp.ResourceMappingGroups = rmGroups
 
-	return &connect.Response[resourcemapping.ListResourceMappingGroupsResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s ResourceMappingService) GetResourceMappingGroup(ctx context.Context, req *connect.Request[resourcemapping.GetResourceMappingGroupRequest]) (*connect.Response[resourcemapping.GetResourceMappingGroupResponse], error) {
@@ -63,7 +63,7 @@ func (s ResourceMappingService) GetResourceMappingGroup(ctx context.Context, req
 
 	rsp.ResourceMappingGroup = rmGroup
 
-	return &connect.Response[resourcemapping.GetResourceMappingGroupResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s ResourceMappingService) CreateResourceMappingGroup(ctx context.Context, req *connect.Request[resourcemapping.CreateResourceMappingGroupRequest]) (*connect.Response[resourcemapping.CreateResourceMappingGroupResponse], error) {
@@ -86,7 +86,7 @@ func (s ResourceMappingService) CreateResourceMappingGroup(ctx context.Context, 
 
 	rsp.ResourceMappingGroup = rmGroup
 
-	return &connect.Response[resourcemapping.CreateResourceMappingGroupResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s ResourceMappingService) UpdateResourceMappingGroup(ctx context.Context, req *connect.Request[resourcemapping.UpdateResourceMappingGroupRequest]) (*connect.Response[resourcemapping.UpdateResourceMappingGroupResponse], error) {
@@ -121,7 +121,7 @@ func (s ResourceMappingService) UpdateResourceMappingGroup(ctx context.Context, 
 		Id: id,
 	}
 
-	return &connect.Response[resourcemapping.UpdateResourceMappingGroupResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s ResourceMappingService) DeleteResourceMappingGroup(ctx context.Context, req *connect.Request[resourcemapping.DeleteResourceMappingGroupRequest]) (*connect.Response[resourcemapping.DeleteResourceMappingGroupResponse], error) {
@@ -147,7 +147,7 @@ func (s ResourceMappingService) DeleteResourceMappingGroup(ctx context.Context, 
 		Id: id,
 	}
 
-	return &connect.Response[resourcemapping.DeleteResourceMappingGroupResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 /*
@@ -166,7 +166,7 @@ func (s ResourceMappingService) ListResourceMappings(ctx context.Context,
 
 	rsp.ResourceMappings = resourceMappings
 
-	return &connect.Response[resourcemapping.ListResourceMappingsResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s ResourceMappingService) ListResourceMappingsByGroupFqns(ctx context.Context, req *connect.Request[resourcemapping.ListResourceMappingsByGroupFqnsRequest]) (*connect.Response[resourcemapping.ListResourceMappingsByGroupFqnsResponse], error) {
@@ -181,7 +181,7 @@ func (s ResourceMappingService) ListResourceMappingsByGroupFqns(ctx context.Cont
 
 	rsp.FqnResourceMappingGroups = fqnRmGroupMap
 
-	return &connect.Response[resourcemapping.ListResourceMappingsByGroupFqnsResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s ResourceMappingService) GetResourceMapping(ctx context.Context,
@@ -196,7 +196,7 @@ func (s ResourceMappingService) GetResourceMapping(ctx context.Context,
 
 	rsp.ResourceMapping = rm
 
-	return &connect.Response[resourcemapping.GetResourceMappingResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s ResourceMappingService) CreateResourceMapping(ctx context.Context,
@@ -223,7 +223,7 @@ func (s ResourceMappingService) CreateResourceMapping(ctx context.Context,
 
 	rsp.ResourceMapping = rm
 
-	return &connect.Response[resourcemapping.CreateResourceMappingResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
@@ -262,7 +262,7 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 		Id: resourceMappingID,
 	}
 
-	return &connect.Response[resourcemapping.UpdateResourceMappingResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s ResourceMappingService) DeleteResourceMapping(ctx context.Context,
@@ -290,5 +290,5 @@ func (s ResourceMappingService) DeleteResourceMapping(ctx context.Context,
 		Id: resourceMappingID,
 	}
 
-	return &connect.Response[resourcemapping.DeleteResourceMappingResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }

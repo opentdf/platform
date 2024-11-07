@@ -62,7 +62,7 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.SubjectMapping = subjectMapping
-	return &connect.Response[sm.CreateSubjectMappingResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s SubjectMappingService) ListSubjectMappings(ctx context.Context,
@@ -77,7 +77,7 @@ func (s SubjectMappingService) ListSubjectMappings(ctx context.Context,
 	}
 
 	rsp.SubjectMappings = mappings
-	return &connect.Response[sm.ListSubjectMappingsResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s SubjectMappingService) GetSubjectMapping(ctx context.Context,
@@ -92,7 +92,7 @@ func (s SubjectMappingService) GetSubjectMapping(ctx context.Context,
 	}
 
 	rsp.SubjectMapping = mapping
-	return &connect.Response[sm.GetSubjectMappingResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
@@ -128,7 +128,7 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 	rsp.SubjectMapping = &policy.SubjectMapping{
 		Id: subjectMappingID,
 	}
-	return &connect.Response[sm.UpdateSubjectMappingResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s SubjectMappingService) DeleteSubjectMapping(ctx context.Context,
@@ -155,7 +155,7 @@ func (s SubjectMappingService) DeleteSubjectMapping(ctx context.Context,
 	rsp.SubjectMapping = &policy.SubjectMapping{
 		Id: subjectMappingID,
 	}
-	return &connect.Response[sm.DeleteSubjectMappingResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s SubjectMappingService) MatchSubjectMappings(ctx context.Context,
@@ -170,7 +170,7 @@ func (s SubjectMappingService) MatchSubjectMappings(ctx context.Context,
 	}
 
 	rsp.SubjectMappings = smList
-	return &connect.Response[sm.MatchSubjectMappingsResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 /* --------------------------------------------------------
@@ -189,7 +189,7 @@ func (s SubjectMappingService) GetSubjectConditionSet(ctx context.Context,
 	}
 
 	rsp.SubjectConditionSet = conditionSet
-	return &connect.Response[sm.GetSubjectConditionSetResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s SubjectMappingService) ListSubjectConditionSets(ctx context.Context,
@@ -204,7 +204,7 @@ func (s SubjectMappingService) ListSubjectConditionSets(ctx context.Context,
 	}
 
 	rsp.SubjectConditionSets = conditionSets
-	return &connect.Response[sm.ListSubjectConditionSetsResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
@@ -229,7 +229,7 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.SubjectConditionSet = conditionSet
-	return &connect.Response[sm.CreateSubjectConditionSetResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
@@ -264,7 +264,7 @@ func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
 	rsp.SubjectConditionSet = &policy.SubjectConditionSet{
 		Id: subjectConditionSetID,
 	}
-	return &connect.Response[sm.UpdateSubjectConditionSetResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s SubjectMappingService) DeleteSubjectConditionSet(ctx context.Context,
@@ -291,7 +291,7 @@ func (s SubjectMappingService) DeleteSubjectConditionSet(ctx context.Context,
 	rsp.SubjectConditionSet = &policy.SubjectConditionSet{
 		Id: conditionSetID,
 	}
-	return &connect.Response[sm.DeleteSubjectConditionSetResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s SubjectMappingService) DeleteAllUnmappedSubjectConditionSets(ctx context.Context,
@@ -318,5 +318,5 @@ func (s SubjectMappingService) DeleteAllUnmappedSubjectConditionSets(ctx context
 	}
 
 	rsp.SubjectConditionSets = deleted
-	return &connect.Response[sm.DeleteAllUnmappedSubjectConditionSetsResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }

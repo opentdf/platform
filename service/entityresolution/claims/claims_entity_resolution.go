@@ -29,12 +29,12 @@ func RegisterClaimsERS(_ serviceregistry.ServiceConfig, logger *logger.Logger) (
 
 func (s ClaimsEntityResolutionService) ResolveEntities(ctx context.Context, req *connect.Request[entityresolution.ResolveEntitiesRequest]) (*connect.Response[entityresolution.ResolveEntitiesResponse], error) {
 	resp, err := EntityResolution(ctx, req.Msg, s.logger)
-	return &connect.Response[entityresolution.ResolveEntitiesResponse]{Msg: &resp}, err
+	return connect.NewResponse(&resp), err
 }
 
 func (s ClaimsEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
 	resp, err := CreateEntityChainFromJwt(ctx, req.Msg, s.logger)
-	return &connect.Response[entityresolution.CreateEntityChainFromJwtResponse]{Msg: &resp}, err
+	return connect.NewResponse(&resp), err
 }
 
 func CreateEntityChainFromJwt(

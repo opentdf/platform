@@ -66,7 +66,7 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.Attribute = item
-	return &connect.Response[attributes.CreateAttributeResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *AttributesService) ListAttributes(ctx context.Context,
@@ -83,7 +83,7 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 	}
 	rsp.Attributes = list
 
-	return &connect.Response[attributes.ListAttributesResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *AttributesService) GetAttribute(ctx context.Context,
@@ -97,7 +97,7 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 	}
 	rsp.Attribute = item
 
-	return &connect.Response[attributes.GetAttributeResponse]{Msg: rsp}, err
+	return connect.NewResponse(rsp), err
 }
 
 func (s *AttributesService) GetAttributeValuesByFqns(ctx context.Context,
@@ -111,7 +111,7 @@ func (s *AttributesService) GetAttributeValuesByFqns(ctx context.Context,
 	}
 	rsp.FqnAttributeValues = fqnsToAttributes
 
-	return &connect.Response[attributes.GetAttributeValuesByFqnsResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *AttributesService) GetAttributeValuesByFqnsHandler(w http.ResponseWriter, r *http.Request) {
@@ -188,7 +188,7 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 		Id: attributeID,
 	}
 
-	return &connect.Response[attributes.UpdateAttributeResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *AttributesService) DeactivateAttribute(ctx context.Context,
@@ -222,7 +222,7 @@ func (s *AttributesService) DeactivateAttribute(ctx context.Context,
 	rsp.Attribute = &policy.Attribute{
 		Id: attributeID,
 	}
-	return &connect.Response[attributes.DeactivateAttributeResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 ///
@@ -248,7 +248,7 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.Value = item
-	return &connect.Response[attributes.CreateAttributeValueResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *AttributesService) ListAttributeValues(ctx context.Context, req *connect.Request[attributes.ListAttributeValuesRequest]) (*connect.Response[attributes.ListAttributeValuesResponse], error) {
@@ -263,7 +263,7 @@ func (s *AttributesService) ListAttributeValues(ctx context.Context, req *connec
 
 	rsp.Values = list
 
-	return &connect.Response[attributes.ListAttributeValuesResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *AttributesService) GetAttributeValue(ctx context.Context, req *connect.Request[attributes.GetAttributeValueRequest]) (*connect.Response[attributes.GetAttributeValueResponse], error) {
@@ -276,7 +276,7 @@ func (s *AttributesService) GetAttributeValue(ctx context.Context, req *connect.
 
 	rsp.Value = item
 
-	return &connect.Response[attributes.GetAttributeValueResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *connect.Request[attributes.UpdateAttributeValueRequest]) (*connect.Response[attributes.UpdateAttributeValueResponse], error) {
@@ -309,7 +309,7 @@ func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *conne
 		Id: attributeID,
 	}
 
-	return &connect.Response[attributes.UpdateAttributeValueResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *connect.Request[attributes.DeactivateAttributeValueRequest]) (*connect.Response[attributes.DeactivateAttributeValueResponse], error) {
@@ -340,7 +340,7 @@ func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *c
 
 	rsp.Value = updated
 
-	return &connect.Response[attributes.DeactivateAttributeValueResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *AttributesService) AssignKeyAccessServerToAttribute(ctx context.Context, req *connect.Request[attributes.AssignKeyAccessServerToAttributeRequest]) (*connect.Response[attributes.AssignKeyAccessServerToAttributeResponse], error) {
@@ -361,7 +361,7 @@ func (s *AttributesService) AssignKeyAccessServerToAttribute(ctx context.Context
 
 	rsp.AttributeKeyAccessServer = attributeKas
 
-	return &connect.Response[attributes.AssignKeyAccessServerToAttributeResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Context, req *connect.Request[attributes.RemoveKeyAccessServerFromAttributeRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromAttributeResponse], error) {
@@ -382,7 +382,7 @@ func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Conte
 
 	rsp.AttributeKeyAccessServer = attributeKas
 
-	return &connect.Response[attributes.RemoveKeyAccessServerFromAttributeResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *AttributesService) AssignKeyAccessServerToValue(ctx context.Context, req *connect.Request[attributes.AssignKeyAccessServerToValueRequest]) (*connect.Response[attributes.AssignKeyAccessServerToValueResponse], error) {
@@ -403,7 +403,7 @@ func (s *AttributesService) AssignKeyAccessServerToValue(ctx context.Context, re
 
 	rsp.ValueKeyAccessServer = valueKas
 
-	return &connect.Response[attributes.AssignKeyAccessServerToValueResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, req *connect.Request[attributes.RemoveKeyAccessServerFromValueRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromValueResponse], error) {
@@ -424,5 +424,5 @@ func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, 
 
 	rsp.ValueKeyAccessServer = valueKas
 
-	return &connect.Response[attributes.RemoveKeyAccessServerFromValueResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }

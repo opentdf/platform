@@ -73,7 +73,7 @@ func (s *UnsafeService) UnsafeUpdateNamespace(ctx context.Context, req *connect.
 		Id: id,
 	}
 
-	return &connect.Response[unsafe.UnsafeUpdateNamespaceResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *UnsafeService) UnsafeReactivateNamespace(ctx context.Context, req *connect.Request[unsafe.UnsafeReactivateNamespaceRequest]) (*connect.Response[unsafe.UnsafeReactivateNamespaceResponse], error) {
@@ -108,7 +108,7 @@ func (s *UnsafeService) UnsafeReactivateNamespace(ctx context.Context, req *conn
 		Id: id,
 	}
 
-	return &connect.Response[unsafe.UnsafeReactivateNamespaceResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *UnsafeService) UnsafeDeleteNamespace(ctx context.Context, req *connect.Request[unsafe.UnsafeDeleteNamespaceRequest]) (*connect.Response[unsafe.UnsafeDeleteNamespaceResponse], error) {
@@ -140,7 +140,7 @@ func (s *UnsafeService) UnsafeDeleteNamespace(ctx context.Context, req *connect.
 		Id: id,
 	}
 
-	return &connect.Response[unsafe.UnsafeDeleteNamespaceResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 //
@@ -179,7 +179,7 @@ func (s *UnsafeService) UnsafeUpdateAttribute(ctx context.Context, req *connect.
 		Id: id,
 	}
 
-	return &connect.Response[unsafe.UnsafeUpdateAttributeResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *UnsafeService) UnsafeReactivateAttribute(ctx context.Context, req *connect.Request[unsafe.UnsafeReactivateAttributeRequest]) (*connect.Response[unsafe.UnsafeReactivateAttributeResponse], error) {
@@ -214,7 +214,7 @@ func (s *UnsafeService) UnsafeReactivateAttribute(ctx context.Context, req *conn
 		Id: id,
 	}
 
-	return &connect.Response[unsafe.UnsafeReactivateAttributeResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *UnsafeService) UnsafeDeleteAttribute(ctx context.Context, req *connect.Request[unsafe.UnsafeDeleteAttributeRequest]) (*connect.Response[unsafe.UnsafeDeleteAttributeResponse], error) {
@@ -246,7 +246,7 @@ func (s *UnsafeService) UnsafeDeleteAttribute(ctx context.Context, req *connect.
 		Id: id,
 	}
 
-	return &connect.Response[unsafe.UnsafeDeleteAttributeResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 //
@@ -284,7 +284,7 @@ func (s *UnsafeService) UnsafeUpdateAttributeValue(ctx context.Context, req *con
 	rsp.Value = &policy.Value{
 		Id: id,
 	}
-	return &connect.Response[unsafe.UnsafeUpdateAttributeValueResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *UnsafeService) UnsafeReactivateAttributeValue(ctx context.Context, req *connect.Request[unsafe.UnsafeReactivateAttributeValueRequest]) (*connect.Response[unsafe.UnsafeReactivateAttributeValueResponse], error) {
@@ -318,7 +318,7 @@ func (s *UnsafeService) UnsafeReactivateAttributeValue(ctx context.Context, req 
 	rsp.Value = &policy.Value{
 		Id: id,
 	}
-	return &connect.Response[unsafe.UnsafeReactivateAttributeValueResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *UnsafeService) UnsafeDeleteAttributeValue(ctx context.Context, req *connect.Request[unsafe.UnsafeDeleteAttributeValueRequest]) (*connect.Response[unsafe.UnsafeDeleteAttributeValueResponse], error) {
@@ -349,5 +349,5 @@ func (s *UnsafeService) UnsafeDeleteAttributeValue(ctx context.Context, req *con
 	rsp.Value = &policy.Value{
 		Id: id,
 	}
-	return &connect.Response[unsafe.UnsafeDeleteAttributeValueResponse]{Msg: rsp}, nil
+	return connect.NewResponse(rsp), nil
 }

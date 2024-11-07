@@ -33,7 +33,10 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			ConnectRPCFunc: attributesconnect.NewAttributesServiceHandler,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (attributesconnect.AttributesServiceHandler, serviceregistry.HandlerServer) {
 				as := &AttributesService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
-				return as, nil
+				return as, func(_ context.Context, mux *http.ServeMux) error {
+					mux.HandleFunc(fmt.Sprintf("%s /attributes/*/fqn", http.MethodGet), as.GetAttributeValuesByFqnsHandler)
+					return nil
+				}
 			},
 		},
 	}

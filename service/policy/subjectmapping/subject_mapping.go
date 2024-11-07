@@ -52,7 +52,7 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 		ObjectType: audit.ObjectTypeSubjectMapping,
 	}
 
-	sm, err := s.dbClient.CreateSubjectMapping(ctx, req)
+	sm, err := s.dbClient.CreateSubjectMapping(ctx, req.Msg)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("subjectMapping", req.Msg.String()))
@@ -272,7 +272,7 @@ func (s SubjectMappingService) DeleteSubjectConditionSet(ctx context.Context,
 	req *connect.Request[subjectmapping.DeleteSubjectConditionSetRequest],
 ) (*connect.Response[subjectmapping.DeleteSubjectConditionSetResponse], error) {
 	rsp := &sm.DeleteSubjectConditionSetResponse{}
-	s.logger.Debug("deleting subject condition set", slog.String("id", req.GetId()))
+	s.logger.Debug("deleting subject condition set", slog.String("id", req.Msg.GetId()))
 
 	conditionSetID := req.Msg.GetId()
 	auditParams := audit.PolicyEventParams{
@@ -296,8 +296,8 @@ func (s SubjectMappingService) DeleteSubjectConditionSet(ctx context.Context,
 }
 
 func (s SubjectMappingService) DeleteAllUnmappedSubjectConditionSets(ctx context.Context,
-	_ *sm.DeleteAllUnmappedSubjectConditionSetsRequest,
-) (*sm.DeleteAllUnmappedSubjectConditionSetsResponse, error) {
+	_ *connect.Request[sm.DeleteAllUnmappedSubjectConditionSetsRequest],
+) (*connect.Response[sm.DeleteAllUnmappedSubjectConditionSetsResponse], error) {
 	rsp := &sm.DeleteAllUnmappedSubjectConditionSetsResponse{}
 	s.logger.Debug("deleting all unmapped subject condition sets")
 
@@ -319,5 +319,5 @@ func (s SubjectMappingService) DeleteAllUnmappedSubjectConditionSets(ctx context
 	}
 
 	rsp.SubjectConditionSets = deleted
-	return rsp, nil
+	return &connect.Response[sm.DeleteAllUnmappedSubjectConditionSetsResponse]{Msg: rsp}, nil
 }

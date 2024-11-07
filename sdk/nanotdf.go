@@ -12,6 +12,7 @@ import (
 	"io"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 )
@@ -364,40 +365,71 @@ func SizeOfAuthTagForCipher(cipherType CipherMode) (int, error) {
 // NanoTDF Collection Header Store
 // ============================================================================================================
 
+const kDefaultExpirationTime = 5 * time.Minute
+const kDefaultCleaningInterval = 10 * time.Minute
+
 type collectionStore struct {
-	s   map[string]collectionStoreEntry
-	mux sync.RWMutex
+	cache          sync.Map
+	expireDuration time.Duration
+	closeChan      chan struct{}
 }
 
 type collectionStoreEntry struct {
 	key             []byte
 	encryptedHeader []byte
+	expire          time.Time
 }
 
-func newCollectionStore() *collectionStore {
-	return &collectionStore{s: make(map[string]collectionStoreEntry)}
+func newCollectionStore(expireDuration, cleaningInterval time.Duration) *collectionStore {
+	store := &collectionStore{expireDuration: expireDuration, cache: sync.Map{}, closeChan: make(chan struct{})}
+	store.startJanitor(cleaningInterval)
+	return store
 }
 
-func (n *collectionStore) store(header, key []byte) {
-	n.mux.Lock()
-	defer n.mux.Unlock()
+func (c *collectionStore) startJanitor(cleaningInterval time.Duration) {
+	go func() {
+		ticker := time.NewTicker(cleaningInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				now := time.Now()
+				c.cache.Range(func(key, value any) bool {
+					entry, _ := value.(*collectionStoreEntry)
+					if now.Compare(entry.expire) >= 0 {
+						c.cache.Delete(key)
+					}
+					return true
+				})
+			case <-c.closeChan:
+				return
+			}
+		}
+	}()
+}
+
+func (c *collectionStore) store(header, key []byte) {
 	hash := ocrypto.SHA256AsHex(header)
-	n.s[string(hash)] = collectionStoreEntry{key: key, encryptedHeader: header}
+	expire := time.Now().Add(c.expireDuration)
+	c.cache.Store(string(hash), &collectionStoreEntry{key: key, encryptedHeader: header, expire: expire})
 }
 
-func (n *collectionStore) get(header []byte) ([]byte, bool) {
-	n.mux.RLock()
-	defer n.mux.RUnlock()
+func (c *collectionStore) get(header []byte) ([]byte, bool) {
 	hash := ocrypto.SHA256AsHex(header)
-	item, ok := n.s[string(hash)]
+	itemIntf, ok := c.cache.Load(string(hash))
 	if !ok {
 		return nil, false
 	}
+	item, _ := itemIntf.(*collectionStoreEntry)
 	// check for hash collision
 	if bytes.Equal(item.encryptedHeader, header) {
 		return item.key, true
 	}
 	return nil, false
+}
+
+func (c *collectionStore) close() {
+	c.closeChan <- struct{}{}
 }
 
 // ============================================================================================================

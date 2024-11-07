@@ -266,6 +266,10 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 
 // Close closes the underlying grpc.ClientConn.
 func (s SDK) Close() error {
+	if s.collectionStore != nil {
+		s.collectionStore.close()
+	}
+
 	if s.conn == nil {
 		return nil
 	}

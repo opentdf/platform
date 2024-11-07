@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/spf13/cobra"
 	"io"
 	"os"
 	"path/filepath"
-
-	"github.com/spf13/cobra"
 )
 
 func init() {
@@ -52,6 +51,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 				}
 			}
 		}
+		client.Close()
 		return nil
 	}
 

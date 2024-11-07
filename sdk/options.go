@@ -72,7 +72,7 @@ func WithInsecureSkipVerifyConn() Option {
 // WithStoreCollectionHeaders returns an Option that sets up storing dataset keys for nTDFs
 func WithStoreCollectionHeaders() Option {
 	return func(c *config) {
-		c.collectionStore = newCollectionStore()
+		c.collectionStore = newCollectionStore(kDefaultExpirationTime, kDefaultCleaningInterval)
 	}
 }
 

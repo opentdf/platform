@@ -156,7 +156,7 @@ func getContextValue(ctx context.Context, key sdkAudit.ContextKey) string {
 // that is not present, it falls back to the realip package.
 func getRequestIPFromContext(ctx context.Context) string {
 	ip := realip.FromContext(ctx)
-	if ip.String() != "" {
+	if ip.String() != "" && ip.String() != "<nil>" {
 		return ip.String()
 	}
 

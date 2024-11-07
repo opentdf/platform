@@ -28,7 +28,6 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 	}
 
 	event, err := CreateRewrapAuditEvent(createTestContext(), params)
-
 	if err != nil {
 		t.Fatalf("error creating rewrap audit event: %v", err)
 	}
@@ -75,7 +74,7 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 	expectedClientInfo := eventClientInfo{
 		Platform:  "kas",
 		UserAgent: TestUserAgent,
-		RequestIP: TestRequestIP,
+		RequestIP: TestRequestIP.String(),
 	}
 	if !reflect.DeepEqual(event.ClientInfo, expectedClientInfo) {
 		t.Fatalf("event client info did not match expected: got %+v, want %+v", event.ClientInfo, expectedClientInfo)

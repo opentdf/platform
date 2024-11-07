@@ -16,7 +16,6 @@ import (
 )
 
 type UnsafeService struct { //nolint:revive // UnsafeService is a valid name for this struct
-	unsafe.UnimplementedUnsafeServiceServer
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
 }

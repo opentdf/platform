@@ -16,7 +16,6 @@ import (
 )
 
 type ResourceMappingService struct { //nolint:revive // ResourceMappingService is a valid name for this struct
-	resourcemapping.UnimplementedResourceMappingServiceServer
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
 }

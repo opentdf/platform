@@ -15,7 +15,6 @@ import (
 var serviceHealthChecks = make(map[string]func(context.Context) error)
 
 type HealthService struct { //nolint:revive // HealthService is a valid name for this struct
-	healthpb.UnimplementedHealthServer
 	logger *logger.Logger
 }
 

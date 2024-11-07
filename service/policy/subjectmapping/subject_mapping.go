@@ -16,7 +16,6 @@ import (
 )
 
 type SubjectMappingService struct { //nolint:revive // SubjectMappingService is a valid name for this struct
-	sm.UnimplementedSubjectMappingServiceServer
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
 }

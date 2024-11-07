@@ -17,7 +17,6 @@ import (
 )
 
 type WellKnownService struct {
-	wellknown.UnimplementedWellKnownServiceServer
 	logger *logger.Logger
 }
 

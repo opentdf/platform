@@ -17,7 +17,6 @@ import (
 )
 
 type NamespacesService struct { //nolint:revive // NamespacesService is a valid name
-	namespaces.UnimplementedNamespaceServiceServer
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
 }

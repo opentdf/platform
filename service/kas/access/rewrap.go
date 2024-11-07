@@ -66,15 +66,15 @@ const (
 )
 
 func err400(s string) error {
-	return errors.Join(ErrUser, status.Error(codes.InvalidArgument, s))
+	return connect.NewError(connect.CodeInvalidArgument, errors.Join(ErrUser, status.Error(codes.InvalidArgument, s)))
 }
 
 func err401(s string) error {
-	return errors.Join(ErrUser, status.Error(codes.Unauthenticated, s))
+	return connect.NewError(connect.CodeUnauthenticated, errors.Join(ErrUser, status.Error(codes.Unauthenticated, s)))
 }
 
 func err403(s string) error {
-	return errors.Join(ErrUser, status.Error(codes.PermissionDenied, s))
+	return connect.NewError(connect.CodePermissionDenied, errors.Join(ErrUser, status.Error(codes.PermissionDenied, s)))
 }
 
 func generateHMACDigest(ctx context.Context, msg, key []byte, logger logger.Logger) ([]byte, error) {

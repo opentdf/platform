@@ -21,7 +21,7 @@ func NewAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
 	if block == nil {
 		return AsymEncryption{}, errors.New("failed to parse PEM formatted public key")
 	}
-
+	fmt.Println("THIS IS A TEST TEST TEST")
 	var pub any
 	if strings.Contains(publicKeyInPem, "BEGIN CERTIFICATE") {
 		cert, err := x509.ParseCertificate(block.Bytes)

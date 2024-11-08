@@ -184,6 +184,11 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				logger.Info("service did not register a grpc gateway handler", slog.String("namespace", ns))
 			}
 
+			// Register Extra Handlers
+			if err := svc.RegisterHTTPHandlers(ctx, otdf.GRPCGatewayMux); err != nil {
+				logger.Info("service did not register extra http handlers", slog.String("namespace", ns))
+			}
+
 			logger.Info(
 				"service running",
 				slog.String("namespace", ns),

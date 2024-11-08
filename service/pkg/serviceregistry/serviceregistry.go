@@ -74,6 +74,7 @@ type IService interface {
 	Shutdown() error
 	RegisterConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error
 	RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, []grpc.DialOption) error
+	RegisterHTTPHandlers(ctx context.Context, mux *runtime.ServeMux) error
 }
 
 // Service is a struct that holds the registration information for a service as well as the state
@@ -158,11 +159,6 @@ func (s *Service[S]) Start(ctx context.Context, params RegistrationParams) error
 	return nil
 }
 
-// Deprecated: RegisterConnectRPCServiceHandler is deprecated and should not be used going forward.
-// We will be looking onto other alternatives like bufconnect to replace this.
-// RegisterConnectRPCServiceHandler registers an HTTP server with the service.
-// It takes a context, a ServeMux, and an implementation function as parameters.
-// If the service did not register a handler, it returns an error.
 func (s Service[S]) RegisterConnectRPCServiceHandler(_ context.Context, connectRPC *server.ConnectRPC) error {
 	if s.ConnectRPCFunc == nil {
 		return fmt.Errorf("service did not register a handler")
@@ -173,7 +169,23 @@ func (s Service[S]) RegisterConnectRPCServiceHandler(_ context.Context, connectR
 	return nil
 }
 
-// RegisterGRPCGatewayHandler registers a gRPC service with the gRPC gateway. This is temporary until we deprecate grpc-gateway
+// Deprecated: RegisterHTTPServer is deprecated and should not be used going forward.
+// We will be looking onto other alternatives like bufconnect to replace this.
+// RegisterHTTPServer registers an HTTP server with the service.
+// It takes a context, a ServeMux, and an implementation function as parameters.
+// If the service did not register a handler, it returns an error.
+func (s *Service[S]) RegisterHTTPHandlers(ctx context.Context, mux *runtime.ServeMux) error {
+	if s.httpHandlerFunc == nil {
+		return fmt.Errorf("service did not register any handlers")
+	}
+	return s.httpHandlerFunc(ctx, mux)
+}
+
+// Deprecated: RegisterConnectRPCServiceHandler is deprecated and should not be used going forward.
+// We will be looking onto other alternatives like bufconnect to replace this.
+// RegisterConnectRPCServiceHandler registers an HTTP server with the service.
+// It takes a context, a ServeMux, and an implementation function as parameters.
+// If the service did not register a handler, it returns an error.
 func (s Service[S]) RegisterGRPCGatewayHandler(ctx context.Context, mux *runtime.ServeMux, opts []grpc.DialOption) error {
 	if s.GRPCGateayFunc == nil {
 		return fmt.Errorf("service did not register a handler")

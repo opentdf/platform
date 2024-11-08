@@ -177,10 +177,11 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 			}
 
 			// Register GRPC Gateway
-			if err := svc.RegisterGRPCGatewayHandler(ctx, otdf.GRPCGatewayMux, []grpc.DialOption{
-				otdf.ConnectRPCInProcess.WithContextDialer(),
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-			}); err != nil {
+			grpcGatewayDialOptions := make([]grpc.DialOption, 0)
+			if !cfg.Server.TLS.Enabled {
+				grpcGatewayDialOptions = append(grpcGatewayDialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))
+			}
+			if err := svc.RegisterGRPCGatewayHandler(ctx, otdf.GRPCGatewayMux, fmt.Sprintf("localhost:%d", cfg.Server.Port), grpcGatewayDialOptions); err != nil {
 				logger.Info("service did not register a grpc gateway handler", slog.String("namespace", ns))
 			}
 

@@ -73,8 +73,8 @@ type IService interface {
 	IsStarted() bool
 	Shutdown() error
 	RegisterConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error
-	RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, []grpc.DialOption) error
-	RegisterHTTPHandlers(ctx context.Context, mux *runtime.ServeMux) error
+	RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, string, []grpc.DialOption) error
+	RegisterHTTPHandlers(context.Context, *runtime.ServeMux) error
 }
 
 // Service is a struct that holds the registration information for a service as well as the state
@@ -186,11 +186,11 @@ func (s *Service[S]) RegisterHTTPHandlers(ctx context.Context, mux *runtime.Serv
 // RegisterConnectRPCServiceHandler registers an HTTP server with the service.
 // It takes a context, a ServeMux, and an implementation function as parameters.
 // If the service did not register a handler, it returns an error.
-func (s Service[S]) RegisterGRPCGatewayHandler(ctx context.Context, mux *runtime.ServeMux, opts []grpc.DialOption) error {
+func (s Service[S]) RegisterGRPCGatewayHandler(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) error {
 	if s.GRPCGateayFunc == nil {
 		return fmt.Errorf("service did not register a handler")
 	}
-	return s.GRPCGateayFunc(ctx, mux, "passthrough://", opts)
+	return s.GRPCGateayFunc(ctx, mux, endpoint, opts)
 }
 
 // namespace represents a namespace in the service registry.

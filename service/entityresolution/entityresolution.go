@@ -28,6 +28,7 @@ func NewRegistration() *serviceregistry.Service[entityresolutionconnect.EntityRe
 			Namespace:      "entityresolution",
 			ServiceDesc:    &entityresolution.EntityResolutionService_ServiceDesc,
 			ConnectRPCFunc: entityresolutionconnect.NewEntityResolutionServiceHandler,
+			GRPCGateayFunc: entityresolution.RegisterEntityResolutionServiceHandlerFromEndpoint,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (entityresolutionconnect.EntityResolutionServiceHandler, serviceregistry.HandlerServer) {
 				var inputConfig ERSConfig
 

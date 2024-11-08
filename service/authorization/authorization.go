@@ -60,6 +60,7 @@ func NewRegistration() *serviceregistry.Service[authorizationconnect.Authorizati
 			Namespace:      "authorization",
 			ServiceDesc:    &authorization.AuthorizationService_ServiceDesc,
 			ConnectRPCFunc: authorizationconnect.NewAuthorizationServiceHandler,
+			GRPCGateayFunc: authorization.RegisterAuthorizationServiceHandlerFromEndpoint,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authorizationconnect.AuthorizationServiceHandler, serviceregistry.HandlerServer) {
 				var (
 					err             error

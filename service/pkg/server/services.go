@@ -21,6 +21,8 @@ import (
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/policy"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
@@ -164,11 +166,6 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				return err
 			}
 
-			// Register the service with the gRPC gateway
-			if err := svc.RegisterExtraHandlers(ctx, otdf.ExtraHandlerMux); err != nil {
-				logger.Error("service did not register extra http handlers", slog.String("namespace", ns))
-			}
-
 			// Register Connect RPC Services
 			if err := svc.RegisterConnectRPCServiceHandler(ctx, otdf.ConnectRPC); err != nil {
 				logger.Info("service did not register a connect-rpc handler", slog.String("namespace", ns))
@@ -177,6 +174,14 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 			// Register In Process Connect RPC Services
 			if err := svc.RegisterConnectRPCServiceHandler(ctx, otdf.ConnectRPCInProcess.ConnectRPC); err != nil {
 				logger.Info("service did not register a connect-rpc handler", slog.String("namespace", ns))
+			}
+
+			// Register GRPC Gateway
+			if err := svc.RegisterGRPCGatewayHandler(ctx, otdf.GRPCGatewayMux, []grpc.DialOption{
+				otdf.ConnectRPCInProcess.WithContextDialer(),
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+			}); err != nil {
+				logger.Info("service did not register a grpc gateway handler", slog.String("namespace", ns))
 			}
 
 			logger.Info(

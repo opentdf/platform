@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"regexp"
-	"slices"
 	"strings"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"connectrpc.com/grpcreflect"
 	"connectrpc.com/validate"
 	"github.com/go-chi/cors"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/security"
@@ -109,7 +109,7 @@ type ConnectRPC struct {
 
 type OpenTDFServer struct {
 	AuthN               *auth.Authentication
-	ExtraHandlerMux     *http.ServeMux
+	GRPCGatewayMux      *runtime.ServeMux
 	HTTPServer          *http.Server
 	ConnectRPCInProcess *inProcessServer
 	ConnectRPC          *ConnectRPC
@@ -164,20 +164,20 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 		return nil, fmt.Errorf("failed to create connect rpc server: %w", err)
 	}
 
-	// Mux for addtional http handlers
-	extraHandlerMux := http.NewServeMux()
+	// GRPC Gateway Mux
+	grpcGatewayMux := runtime.NewServeMux()
 
 	// Create http server
-	httpServer, err := newHTTPServer(config, connectRPC.Mux, extraHandlerMux, authN, logger)
+	httpServer, err := newHTTPServer(config, connectRPC.Mux, grpcGatewayMux, authN, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http server: %w", err)
 	}
 
 	o := OpenTDFServer{
-		AuthN:           authN,
-		ExtraHandlerMux: extraHandlerMux,
-		HTTPServer:      httpServer,
-		ConnectRPC:      connectRPC,
+		AuthN:          authN,
+		GRPCGatewayMux: grpcGatewayMux,
+		HTTPServer:     httpServer,
+		ConnectRPC:     connectRPC,
 		ConnectRPCInProcess: &inProcessServer{
 			srv:                memhttp.New(connectRPCIpc.Mux),
 			maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
@@ -197,13 +197,47 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 	return &o, nil
 }
 
+// Custom response writer to add deprecation header
+type grpcGatewayResponseWriter struct {
+	w           http.ResponseWriter
+	code        int
+	wroteHeader bool
+}
+
+func (rw *grpcGatewayResponseWriter) Header() http.Header {
+	return rw.w.Header()
+}
+
+func (rw *grpcGatewayResponseWriter) WriteHeader(statusCode int) {
+	if rw.wroteHeader == false {
+		rw.w.Header().Set("Deprecation", fmt.Sprintf("@%d", time.Date(2025, time.March, 25, 0, 0, 0, 0, time.UTC).Unix()))
+		rw.wroteHeader = true
+		rw.w.WriteHeader(statusCode)
+	}
+	rw.code = statusCode
+}
+
+func (rw *grpcGatewayResponseWriter) Write(data []byte) (int, error) {
+	// Ensure headers are written before any data
+	if !rw.wroteHeader {
+		rw.WriteHeader(http.StatusOK)
+	}
+	return rw.w.Write(data)
+}
+
 // newHTTPServer creates a new http server with the given handler and grpc server
-func newHTTPServer(c Config, connectRPC http.Handler, extraHandlers http.Handler, a *auth.Authentication, l *logger.Logger) (*http.Server, error) {
+func newHTTPServer(c Config, connectRPC http.Handler, originalGrpcGateway http.Handler, a *auth.Authentication, l *logger.Logger) (*http.Server, error) {
 	var (
 		err                  error
 		tc                   *tls.Config
 		writeTimeoutOverride = writeTimeout
 	)
+
+	// Adds deprecation header to any grpcGateway responses.
+	var grpcGateway http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		grpcRW := &grpcGatewayResponseWriter{w: w, code: http.StatusOK}
+		originalGrpcGateway.ServeHTTP(grpcRW, r)
+	})
 
 	// CORS
 	if c.CORS.Enabled {
@@ -228,32 +262,32 @@ func newHTTPServer(c Config, connectRPC http.Handler, extraHandlers http.Handler
 
 		// Apply CORS to connectRPC and extra handlers
 		connectRPC = corsHandler.Handler(connectRPC)
-		extraHandlers = corsHandler.Handler(extraHandlers)
+		grpcGateway = corsHandler.Handler(grpcGateway)
 	}
 
 	// Add authN interceptor to extra handlers
 	if c.Auth.Enabled {
-		extraHandlers = a.MuxHandler(extraHandlers)
+		grpcGateway = a.MuxHandler(grpcGateway)
 	} else {
 		l.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
 	// Enable pprof
 	if c.EnablePprof {
-		extraHandlers = pprofHandler(extraHandlers)
+		grpcGateway = pprofHandler(grpcGateway)
 		// Need to extend write timeout to collect pprof data.
 		writeTimeoutOverride = 30 * time.Second //nolint:mnd // easier to read that we are overriding the default
 	}
 
 	var handler http.Handler
 	if !c.TLS.Enabled {
-		handler = h2c.NewHandler(routeConnectRPCRequests(connectRPC, extraHandlers), &http2.Server{})
+		handler = h2c.NewHandler(routeConnectRPCRequests(connectRPC, grpcGateway), &http2.Server{})
 	} else {
 		tc, err = loadTLSConfig(c.TLS)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load tls config: %w", err)
 		}
-		handler = routeConnectRPCRequests(connectRPC, extraHandlers)
+		handler = routeConnectRPCRequests(connectRPC, grpcGateway)
 	}
 
 	return &http.Server{
@@ -269,19 +303,8 @@ var rpcPathRegex = regexp.MustCompile(`^/[\w\.]+\.[\w\.]+/[\w]+$`)
 
 func routeConnectRPCRequests(connectRPC http.Handler, httpHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		contentType := r.Header.Get("Content-Type")
-		if slices.Contains([]string{
-			"application/grpc",
-			"application/grpc+proto",
-			"application/grpc+json",
-			"application/grpc-web",
-			"application/grpc-web+proto",
-			"application/grpc-web+json",
-			"application/proto",
-			"application/json",
-			"application/connect+proto",
-			"application/connect+json",
-		}, contentType) && r.Method == http.MethodPost && rpcPathRegex.MatchString(r.URL.Path) {
+		// contentType := r.Header.Get("Content-Type")
+		if (r.Method == http.MethodPost || r.Method == http.MethodGet) && rpcPathRegex.MatchString(r.URL.Path) {
 			connectRPC.ServeHTTP(w, r)
 		} else {
 			httpHandler.ServeHTTP(w, r)
@@ -415,6 +438,16 @@ func (s inProcessServer) Conn() *grpc.ClientConn {
 
 	conn, _ := grpc.NewClient("passthrough:///", defaultOptions...)
 	return conn
+}
+
+func (s *inProcessServer) WithContextDialer() grpc.DialOption {
+	return grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+		conn, err := s.srv.Listener.DialContext(ctx, "tcp", "http://localhost:8080")
+		if err != nil {
+			return nil, fmt.Errorf("failed to dial in process grpc server: %w", err)
+		}
+		return conn, nil
+	})
 }
 
 func (s OpenTDFServer) openHTTPServerPort() (net.Listener, error) {

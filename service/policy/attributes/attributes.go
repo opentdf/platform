@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/http"
-	"strconv"
 
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -16,7 +14,6 @@ import (
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policydb "github.com/opentdf/platform/service/policy/db"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type AttributesService struct { //nolint:revive // AttributesService is a valid name for this struct
@@ -31,12 +28,10 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			DB:             dbRegister,
 			ServiceDesc:    &attributes.AttributesService_ServiceDesc,
 			ConnectRPCFunc: attributesconnect.NewAttributesServiceHandler,
+			GRPCGateayFunc: attributes.RegisterAttributesServiceHandlerFromEndpoint,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (attributesconnect.AttributesServiceHandler, serviceregistry.HandlerServer) {
 				as := &AttributesService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
-				return as, func(_ context.Context, mux *http.ServeMux) error {
-					mux.HandleFunc(fmt.Sprintf("%s /attributes/*/fqn", http.MethodGet), as.GetAttributeValuesByFqnsHandler)
-					return nil
-				}
+				return as, nil
 			},
 		},
 	}
@@ -112,48 +107,6 @@ func (s *AttributesService) GetAttributeValuesByFqns(ctx context.Context,
 	rsp.FqnAttributeValues = fqnsToAttributes
 
 	return connect.NewResponse(rsp), nil
-}
-
-func (s *AttributesService) GetAttributeValuesByFqnsHandler(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-
-	fqns := q["fqns"]
-	withAttrGrants, err := strconv.ParseBool(q.Get("withValue.withAttribute.withKeyAccessGrants"))
-	if err != nil {
-		s.logger.Error("failed to parse withValue.withAttribute.withKeyAccessGrants", slog.String("error", err.Error()))
-		withAttrGrants = false
-	}
-
-	withGrants, err := strconv.ParseBool(q.Get("withValue.withKeyAccessGrants"))
-	if err != nil {
-		s.logger.Error("failed to parse withValue.withKeyAccessGrants", slog.String("error", err.Error()))
-		withGrants = false
-	}
-
-	fqnsToAttributes, err := s.dbClient.GetAttributesByValueFqns(r.Context(), &attributes.GetAttributeValuesByFqnsRequest{
-		Fqns: fqns,
-		WithValue: &policy.AttributeValueSelector{
-			WithKeyAccessGrants: withGrants,
-			WithAttribute: &policy.AttributeValueSelector_AttributeSelector{
-				WithKeyAccessGrants: withAttrGrants,
-			},
-		},
-	})
-	if err != nil {
-		s.logger.Error("failed to get attribute values by fqns", slog.String("error", err.Error()))
-		http.Error(w, "failed to get attribute values by fqns", http.StatusInternalServerError)
-		return
-	}
-	fqnsToAttributesBytes, err := protojson.Marshal(&attributes.GetAttributeValuesByFqnsResponse{FqnAttributeValues: fqnsToAttributes})
-	if err != nil {
-		s.logger.Error("failed to marshal attribute values by fqns", slog.String("error", err.Error()))
-		http.Error(w, "failed to marshal attribute values by fqns", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if _, err = w.Write(fqnsToAttributesBytes); err != nil {
-		s.logger.Error("failed to write attribute values by fqns", slog.String("error", err.Error()))
-	}
 }
 
 func (s *AttributesService) UpdateAttribute(ctx context.Context,

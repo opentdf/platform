@@ -127,12 +127,14 @@ func NewSubjectMappingServiceClient(httpClient connect.HTTPClient, baseURL strin
 			httpClient,
 			baseURL+SubjectMappingServiceListSubjectMappingsProcedure,
 			connect.WithSchema(subjectMappingServiceListSubjectMappingsMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getSubjectMapping: connect.NewClient[subjectmapping.GetSubjectMappingRequest, subjectmapping.GetSubjectMappingResponse](
 			httpClient,
 			baseURL+SubjectMappingServiceGetSubjectMappingProcedure,
 			connect.WithSchema(subjectMappingServiceGetSubjectMappingMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		createSubjectMapping: connect.NewClient[subjectmapping.CreateSubjectMappingRequest, subjectmapping.CreateSubjectMappingResponse](
@@ -157,12 +159,14 @@ func NewSubjectMappingServiceClient(httpClient connect.HTTPClient, baseURL strin
 			httpClient,
 			baseURL+SubjectMappingServiceListSubjectConditionSetsProcedure,
 			connect.WithSchema(subjectMappingServiceListSubjectConditionSetsMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getSubjectConditionSet: connect.NewClient[subjectmapping.GetSubjectConditionSetRequest, subjectmapping.GetSubjectConditionSetResponse](
 			httpClient,
 			baseURL+SubjectMappingServiceGetSubjectConditionSetProcedure,
 			connect.WithSchema(subjectMappingServiceGetSubjectConditionSetMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		createSubjectConditionSet: connect.NewClient[subjectmapping.CreateSubjectConditionSetRequest, subjectmapping.CreateSubjectConditionSetResponse](
@@ -307,12 +311,14 @@ func NewSubjectMappingServiceHandler(svc SubjectMappingServiceHandler, opts ...c
 		SubjectMappingServiceListSubjectMappingsProcedure,
 		svc.ListSubjectMappings,
 		connect.WithSchema(subjectMappingServiceListSubjectMappingsMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	subjectMappingServiceGetSubjectMappingHandler := connect.NewUnaryHandler(
 		SubjectMappingServiceGetSubjectMappingProcedure,
 		svc.GetSubjectMapping,
 		connect.WithSchema(subjectMappingServiceGetSubjectMappingMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	subjectMappingServiceCreateSubjectMappingHandler := connect.NewUnaryHandler(
@@ -337,12 +343,14 @@ func NewSubjectMappingServiceHandler(svc SubjectMappingServiceHandler, opts ...c
 		SubjectMappingServiceListSubjectConditionSetsProcedure,
 		svc.ListSubjectConditionSets,
 		connect.WithSchema(subjectMappingServiceListSubjectConditionSetsMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	subjectMappingServiceGetSubjectConditionSetHandler := connect.NewUnaryHandler(
 		SubjectMappingServiceGetSubjectConditionSetProcedure,
 		svc.GetSubjectConditionSet,
 		connect.WithSchema(subjectMappingServiceGetSubjectConditionSetMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	subjectMappingServiceCreateSubjectConditionSetHandler := connect.NewUnaryHandler(

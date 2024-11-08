@@ -41,6 +41,7 @@ func NewRegistration() *serviceregistry.Service[wellknownconfigurationconnect.We
 			Namespace:      "wellknown",
 			ServiceDesc:    &wellknown.WellKnownService_ServiceDesc,
 			ConnectRPCFunc: wellknownconfigurationconnect.NewWellKnownServiceHandler,
+			GRPCGateayFunc: wellknown.RegisterWellKnownServiceHandlerFromEndpoint,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (wellknownconfigurationconnect.WellKnownServiceHandler, serviceregistry.HandlerServer) {
 				wk := &WellKnownService{logger: srp.Logger}
 				return wk, nil

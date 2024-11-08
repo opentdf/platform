@@ -27,6 +27,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			DB:             dbRegister,
 			ServiceDesc:    &kasr.KeyAccessServerRegistryService_ServiceDesc,
 			ConnectRPCFunc: kasregistryconnect.NewKeyAccessServerRegistryServiceHandler,
+			GRPCGateayFunc: kasr.RegisterKeyAccessServerRegistryServiceHandlerFromEndpoint,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasregistryconnect.KeyAccessServerRegistryServiceHandler, serviceregistry.HandlerServer) {
 				ksr := &KeyAccessServerRegistry{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
 				return ksr, nil

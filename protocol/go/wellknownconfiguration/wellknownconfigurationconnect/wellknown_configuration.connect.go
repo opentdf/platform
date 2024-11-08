@@ -63,6 +63,7 @@ func NewWellKnownServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			httpClient,
 			baseURL+WellKnownServiceGetWellKnownConfigurationProcedure,
 			connect.WithSchema(wellKnownServiceGetWellKnownConfigurationMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -95,6 +96,7 @@ func NewWellKnownServiceHandler(svc WellKnownServiceHandler, opts ...connect.Han
 		WellKnownServiceGetWellKnownConfigurationProcedure,
 		svc.GetWellKnownConfiguration,
 		connect.WithSchema(wellKnownServiceGetWellKnownConfigurationMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/wellknownconfiguration.WellKnownService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

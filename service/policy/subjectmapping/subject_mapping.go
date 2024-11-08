@@ -27,6 +27,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			DB:             dbRegister,
 			ServiceDesc:    &sm.SubjectMappingService_ServiceDesc,
 			ConnectRPCFunc: subjectmappingconnect.NewSubjectMappingServiceHandler,
+			GRPCGateayFunc: sm.RegisterSubjectMappingServiceHandlerFromEndpoint,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (subjectmappingconnect.SubjectMappingServiceHandler, serviceregistry.HandlerServer) {
 				smSvc := &SubjectMappingService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
 				return smSvc, nil

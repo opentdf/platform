@@ -28,6 +28,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			DB:             dbRegister,
 			ServiceDesc:    &namespaces.NamespaceService_ServiceDesc,
 			ConnectRPCFunc: namespacesconnect.NewNamespaceServiceHandler,
+			GRPCGateayFunc: namespaces.RegisterNamespaceServiceHandlerFromEndpoint,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (namespacesconnect.NamespaceServiceHandler, serviceregistry.HandlerServer) {
 				ns := &NamespacesService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
 

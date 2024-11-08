@@ -2,9 +2,9 @@ package server
 
 import (
 	"context"
-	"net/http"
 	"testing"
 
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -22,7 +22,7 @@ type mockTestServiceOptions struct {
 	serviceName        string
 	serviceHandlerType any
 	serviceObject      any
-	serviceHandler     func(ctx context.Context, mux *http.ServeMux) error
+	serviceHandler     func(ctx context.Context, mux *runtime.ServeMux) error
 	dbRegister         serviceregistry.DBRegister
 }
 
@@ -32,7 +32,7 @@ func mockTestServiceRegistry(opts mockTestServiceOptions) (serviceregistry.IServ
 		namespace:          "test",
 		serviceName:        "TestService",
 		serviceHandlerType: (*interface{})(nil),
-		serviceHandler: func(_ context.Context, _ *http.ServeMux) error {
+		serviceHandler: func(_ context.Context, _ *runtime.ServeMux) error {
 			return nil
 		},
 	}
@@ -65,7 +65,7 @@ func mockTestServiceRegistry(opts mockTestServiceOptions) (serviceregistry.IServ
 				if ts, ok = opts.serviceObject.(TestService); !ok {
 					panic("serviceObject is not a TestService")
 				}
-				return ts, func(ctx context.Context, mux *http.ServeMux) error {
+				return ts, func(ctx context.Context, mux *runtime.ServeMux) error {
 					spy.wasCalled = true
 					spy.callParams = append(spy.callParams, srp, ctx, mux, ts)
 					return serviceHandler(ctx, mux)

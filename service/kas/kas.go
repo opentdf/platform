@@ -1,10 +1,8 @@
 package kas
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"net/url"
 	"strings"
 
@@ -22,6 +20,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 			Namespace:      "kas",
 			ServiceDesc:    &kaspb.AccessService_ServiceDesc,
 			ConnectRPCFunc: kasconnect.NewAccessServiceHandler,
+			GRPCGateayFunc: kaspb.RegisterAccessServiceHandlerFromEndpoint,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasconnect.AccessServiceHandler, serviceregistry.HandlerServer) {
 				// FIXME msg="mismatched key access url" keyAccessURL=http://localhost:9000 kasURL=https://:9000
 				hostWithPort := srp.OTDF.HTTPServer.Addr
@@ -82,12 +81,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					srp.Logger.Error("failed to register kas readiness check", slog.String("error", err.Error()))
 				}
 
-				return p, func(_ context.Context, mux *http.ServeMux) error {
-					mux.HandleFunc(fmt.Sprintf("%s /kas/kas_public_key", http.MethodGet), p.LegacyPublicKeyHandler)
-					mux.HandleFunc(fmt.Sprintf("%s /kas/v2/kas_public_key", http.MethodGet), p.PublicKeyHandler)
-					mux.HandleFunc(fmt.Sprintf("%s /kas/v2/rewrap", http.MethodPost), p.RewrapHandler)
-					return nil
-				}
+				return p, nil
 			},
 		},
 	}

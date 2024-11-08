@@ -73,12 +73,14 @@ func NewAccessServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			httpClient,
 			baseURL+AccessServicePublicKeyProcedure,
 			connect.WithSchema(accessServicePublicKeyMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		legacyPublicKey: connect.NewClient[kas.LegacyPublicKeyRequest, wrapperspb.StringValue](
 			httpClient,
 			baseURL+AccessServiceLegacyPublicKeyProcedure,
 			connect.WithSchema(accessServiceLegacyPublicKeyMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		rewrap: connect.NewClient[kas.RewrapRequest, kas.RewrapResponse](
@@ -130,12 +132,14 @@ func NewAccessServiceHandler(svc AccessServiceHandler, opts ...connect.HandlerOp
 		AccessServicePublicKeyProcedure,
 		svc.PublicKey,
 		connect.WithSchema(accessServicePublicKeyMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	accessServiceLegacyPublicKeyHandler := connect.NewUnaryHandler(
 		AccessServiceLegacyPublicKeyProcedure,
 		svc.LegacyPublicKey,
 		connect.WithSchema(accessServiceLegacyPublicKeyMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	accessServiceRewrapHandler := connect.NewUnaryHandler(

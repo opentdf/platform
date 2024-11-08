@@ -19,8 +19,6 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 func TestExportRsaPublicKeyAsPemStrSuccess(t *testing.T) {
@@ -200,9 +198,9 @@ func TestStandardPublicKeyHandlerV2NotFound(t *testing.T) {
 	})
 	assert.Nil(t, k)
 	require.Error(t, err)
-	status, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, codes.NotFound, status.Code())
+
+	status := connect.CodeOf(err)
+	assert.Equal(t, connect.CodeNotFound, status)
 }
 
 func TestStandardPublicKeyHandlerV2WithJwk(t *testing.T) {

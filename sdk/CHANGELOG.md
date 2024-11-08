@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.18](https://github.com/opentdf/platform/compare/sdk/v0.3.17...sdk/v0.3.18) (2024-11-06)
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1725](https://github.com/opentdf/platform/issues/1725)) ([89e63de](https://github.com/opentdf/platform/commit/89e63dee36ff01c4ebb74f653f3c63b923464454))
+* NanoTDF secure key from debug logging and iv conflict risk ([#1714](https://github.com/opentdf/platform/issues/1714)) ([7ba2e12](https://github.com/opentdf/platform/commit/7ba2e12d4ece7fb298f58adc38181e62cc2fc2ee))
+* **sdk:** Error message improvements ([#1176](https://github.com/opentdf/platform/issues/1176)) ([0ef65d4](https://github.com/opentdf/platform/commit/0ef65d410a8e1bc8b82f52b6a4f0f469a2f7f4fe))
+* **sdk:** Fix handling of kas rewrap errors ([#1696](https://github.com/opentdf/platform/issues/1696)) ([ce10f3f](https://github.com/opentdf/platform/commit/ce10f3f8a8d3cfc3abf4950c044da18a42e4107a))
+* **sdk:** reset reader after checking if IsNanoTDF ([#1718](https://github.com/opentdf/platform/issues/1718)) ([f9d6f26](https://github.com/opentdf/platform/commit/f9d6f26f1a674366da3d1adfe414ed66480e710f)), closes [#1717](https://github.com/opentdf/platform/issues/1717)
+
 ## [0.3.17](https://github.com/opentdf/platform/compare/sdk/v0.3.16...sdk/v0.3.17) (2024-10-28)
 
 

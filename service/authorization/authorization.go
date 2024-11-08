@@ -54,92 +54,90 @@ type CustomRego struct {
 	Query string `mapstructure:"query" json:"query" default:"data.opentdf.entitlements.attributes"`
 }
 
-func NewRegistration() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		Namespace:   "authorization",
-		ServiceDesc: &authorization.AuthorizationService_ServiceDesc,
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			var (
-				err             error
-				entitlementRego []byte
-				authZCfg        = new(Config)
-			)
+func NewRegistration() *serviceregistry.Service[AuthorizationService] {
+	return &serviceregistry.Service[AuthorizationService]{
+		ServiceOptions: serviceregistry.ServiceOptions[AuthorizationService]{
+			Namespace:   "authorization",
+			ServiceDesc: &authorization.AuthorizationService_ServiceDesc,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (*AuthorizationService, serviceregistry.HandlerServer) {
+				var (
+					err             error
+					entitlementRego []byte
+					authZCfg        = new(Config)
+				)
 
-			logger := srp.Logger
+				logger := srp.Logger
 
-			// default ERS endpoint
-			as := &AuthorizationService{sdk: srp.SDK, logger: logger}
-			if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
-				logger.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
-			}
-
-			if err := defaults.Set(authZCfg); err != nil {
-				panic(fmt.Errorf("failed to set defaults for authorization service config: %w", err))
-			}
-
-			// Only decode config if it exists
-			if srp.Config != nil {
-				if err := mapstructure.Decode(srp.Config, &authZCfg); err != nil {
-					panic(fmt.Errorf("invalid auth svc cfg [%v] %w", srp.Config, err))
-				}
-			}
-
-			// Validate Config
-			validate := validator.New(validator.WithRequiredStructEnabled())
-			if err := validate.Struct(authZCfg); err != nil {
-				var invalidValidationError *validator.InvalidValidationError
-				if errors.As(err, &invalidValidationError) {
-					logger.Error("error validating authorization service config", slog.String("error", err.Error()))
-					panic(fmt.Errorf("error validating authorization service config: %w", err))
+				// default ERS endpoint
+				as := &AuthorizationService{sdk: srp.SDK, logger: logger}
+				if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
+					logger.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
 				}
 
-				var validationErrors validator.ValidationErrors
-				if errors.As(err, &validationErrors) {
-					for _, err := range validationErrors {
+				if err := defaults.Set(authZCfg); err != nil {
+					panic(fmt.Errorf("failed to set defaults for authorization service config: %w", err))
+				}
+
+				// Only decode config if it exists
+				if srp.Config != nil {
+					if err := mapstructure.Decode(srp.Config, &authZCfg); err != nil {
+						panic(fmt.Errorf("invalid auth svc cfg [%v] %w", srp.Config, err))
+					}
+				}
+
+				// Validate Config
+				validate := validator.New(validator.WithRequiredStructEnabled())
+				if err := validate.Struct(authZCfg); err != nil {
+					var invalidValidationError *validator.InvalidValidationError
+					if errors.As(err, &invalidValidationError) {
 						logger.Error("error validating authorization service config", slog.String("error", err.Error()))
 						panic(fmt.Errorf("error validating authorization service config: %w", err))
 					}
+
+					var validationErrors validator.ValidationErrors
+					if errors.As(err, &validationErrors) {
+						for _, err := range validationErrors {
+							logger.Error("error validating authorization service config", slog.String("error", err.Error()))
+							panic(fmt.Errorf("error validating authorization service config: %w", err))
+						}
+					}
 				}
-			}
 
-			logger.Debug("authorization service config", slog.Any("config", *authZCfg))
+				logger.Debug("authorization service config", slog.Any("config", *authZCfg))
 
-			// Build Rego PreparedEvalQuery
+				// Build Rego PreparedEvalQuery
 
-			// Load rego from embedded file or custom path
-			if authZCfg.Rego.Path != "" {
-				entitlementRego, err = os.ReadFile(authZCfg.Rego.Path)
+				// Load rego from embedded file or custom path
+				if authZCfg.Rego.Path != "" {
+					entitlementRego, err = os.ReadFile(authZCfg.Rego.Path)
+					if err != nil {
+						panic(fmt.Errorf("failed to read custom entitlements.rego file: %w", err))
+					}
+				} else {
+					entitlementRego, err = policies.EntitlementsRego.ReadFile("entitlements/entitlements.rego")
+					if err != nil {
+						panic(fmt.Errorf("failed to read entitlements.rego file: %w", err))
+					}
+				}
+
+				// Register builtin
+				subjectmappingbuiltin.SubjectMappingBuiltin()
+
+				as.eval, err = rego.New(
+					rego.Query(authZCfg.Rego.Query),
+					rego.Module("entitlements.rego", string(entitlementRego)),
+					rego.StrictBuiltinErrors(true),
+				).PrepareForEval(context.Background())
 				if err != nil {
-					panic(fmt.Errorf("failed to read custom entitlements.rego file: %w", err))
+					panic(fmt.Errorf("failed to prepare entitlements.rego for eval: %w", err))
 				}
-			} else {
-				entitlementRego, err = policies.EntitlementsRego.ReadFile("entitlements/entitlements.rego")
-				if err != nil {
-					panic(fmt.Errorf("failed to read entitlements.rego file: %w", err))
+
+				as.config = *authZCfg
+
+				return as, func(ctx context.Context, mux *runtime.ServeMux) error {
+					return authorization.RegisterAuthorizationServiceHandlerServer(ctx, mux, as)
 				}
-			}
-
-			// Register builtin
-			subjectmappingbuiltin.SubjectMappingBuiltin()
-
-			as.eval, err = rego.New(
-				rego.Query(authZCfg.Rego.Query),
-				rego.Module("entitlements.rego", string(entitlementRego)),
-				rego.StrictBuiltinErrors(true),
-			).PrepareForEval(context.Background())
-			if err != nil {
-				panic(fmt.Errorf("failed to prepare entitlements.rego for eval: %w", err))
-			}
-
-			as.config = *authZCfg
-
-			return as, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				authServer, okAuth := server.(authorization.AuthorizationServiceServer)
-				if !okAuth {
-					return fmt.Errorf("failed to assert server type to authorization.AuthorizationServiceServer")
-				}
-				return authorization.RegisterAuthorizationServiceHandlerServer(ctx, mux, authServer)
-			}
+			},
 		},
 	}
 }

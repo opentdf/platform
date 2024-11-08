@@ -90,6 +90,8 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		}
 		if collection == 0 {
 			out, err = os.Create(outputName)
+			writer = append(writer, out)
+			defer out.Close()
 			if err != nil {
 				return err
 			}

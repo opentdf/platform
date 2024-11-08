@@ -151,24 +151,10 @@ message SubjectMapping {
 
 /**
    A Condition defines a rule of <the value at the flattened 'selector value' location> <operator> <subject external values>
-
-   Example:  Subjects with a field selected by the flattened selector "'.division'" and a value of "Accounting" or "Marketing":
-    {
-      "subject_external_selector_value": "'.division'",
-      "operator": "SUBJECT_MAPPING_OPERATOR_ENUM_IN",
-      "subject_external_values" : ["Accounting", "Marketing"]
-    }
-
-    Example: Subjects that are not part of the Fantastic Four according to their alias field:
-    {
-      "subject_external_selector_value": "'.data[0].alias'",
-      "operator": "SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN",
-      "subject_external_values" : ["mister_fantastic", "the_thing", "human_torch", "invisible_woman"]
-    }
 */
 message Condition {
   // a selector for a field value on a flattened Entity Representation (such as from idP/LDAP)
-  string subject_external_selector_value = 1;
+  string subject_external_selector_value = 1 [ (buf.validate.field).required = true ];
 
   // the evaluation operator of relation
   SubjectMappingOperatorEnum operator = 2 [
@@ -177,7 +163,7 @@ message Condition {
   ];
 
   // list of comparison values for the result of applying the subject_external_selector_value on a flattened Entity Representation (Subject), evaluated by the operator
-  repeated string subject_external_values = 3;
+  repeated string subject_external_values = 3 [(buf.validate.field).repeated.min_items = 1];
 }
 
 // A collection of Conditions evaluated by the boolean_operator provided
@@ -220,8 +206,8 @@ message SubjectConditionSet {
    and the external_value is the value selected by the external_selector_value on that Entity Representation (Subject Context). These mirror the Condition.
 */
 message SubjectProperty {
-  string external_selector_value = 1 [(buf.validate.field).required = true];
-  string external_value = 2 [(buf.validate.field).required = true];
+  string external_selector_value = 1 [(buf.validate.field).required = true, (buf.validate.field).string = {min_len: 1}];
+  string external_value = 2;
 }
 
 /*
@@ -264,9 +250,13 @@ message KeyAccessServer {
   string uri = 2 [(buf.validate.field).cel = {
       id: "uri_format",
       message: "URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
-      expression: "this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')"
+      expression: "this.matches('^https?://[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')"
   }];
   PublicKey public_key = 3;
+
+  // Optional
+  // Unique name of the KAS instance
+  string name = 20;
 
   // Common metadata
   common.Metadata metadata = 100;

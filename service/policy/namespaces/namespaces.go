@@ -21,23 +21,23 @@ type NamespacesService struct { //nolint:revive // NamespacesService is a valid 
 	logger   *logger.Logger
 }
 
-func NewRegistration() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		ServiceDesc: &namespaces.NamespaceService_ServiceDesc,
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			ns := &NamespacesService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
+func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[NamespacesService] {
+	return &serviceregistry.Service[NamespacesService]{
+		ServiceOptions: serviceregistry.ServiceOptions[NamespacesService]{
+			Namespace:   ns,
+			DB:          dbRegister,
+			ServiceDesc: &namespaces.NamespaceService_ServiceDesc,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (*NamespacesService, serviceregistry.HandlerServer) {
+				ns := &NamespacesService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
 
-			if err := srp.RegisterReadinessCheck("policy", ns.IsReady); err != nil {
-				srp.Logger.Error("failed to register policy readiness check", slog.String("error", err.Error()))
-			}
-
-			return ns, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				nsServer, ok := server.(namespaces.NamespaceServiceServer)
-				if !ok {
-					return fmt.Errorf("failed to assert server as namespaces.NamespaceServiceServer")
+				if err := srp.RegisterReadinessCheck("policy", ns.IsReady); err != nil {
+					srp.Logger.Error("failed to register policy readiness check", slog.String("error", err.Error()))
 				}
-				return namespaces.RegisterNamespaceServiceHandlerServer(ctx, mux, nsServer)
-			}
+
+				return ns, func(ctx context.Context, mux *runtime.ServeMux) error {
+					return namespaces.RegisterNamespaceServiceHandlerServer(ctx, mux, ns)
+				}
+			},
 		},
 	}
 }

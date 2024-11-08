@@ -9,11 +9,14 @@ import (
 	"strings"
 
 	"github.com/Nerzal/gocloak/v13"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/mitchellh/mapstructure"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	auth "github.com/opentdf/platform/service/authorization"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -33,6 +36,12 @@ const (
 
 const serviceAccountUsernamePrefix = "service-account-"
 
+type KeycloakEntityResolutionService struct {
+	entityresolution.UnimplementedEntityResolutionServiceServer
+	idpConfig KeycloakConfig
+	logger    *logger.Logger
+}
+
 type KeycloakConfig struct {
 	URL            string                 `mapstructure:"url" json:"url"`
 	Realm          string                 `mapstructure:"realm" json:"realm"`
@@ -41,6 +50,29 @@ type KeycloakConfig struct {
 	LegacyKeycloak bool                   `mapstructure:"legacykeycloak" json:"legacykeycloak" default:"false"`
 	SubGroups      bool                   `mapstructure:"subgroups" json:"subgroups" default:"false"`
 	InferID        InferredIdentityConfig `mapstructure:"inferid,omitempty" json:"inferid,omitempty"`
+}
+
+func RegisterKeycloakERS(config serviceregistry.ServiceConfig, logger *logger.Logger) (*KeycloakEntityResolutionService, serviceregistry.HandlerServer) {
+	var inputIdpConfig KeycloakConfig
+	if err := mapstructure.Decode(config, &inputIdpConfig); err != nil {
+		panic(err)
+	}
+	logger.Debug("entity_resolution configuration", "config", inputIdpConfig)
+	keycloakSVC := &KeycloakEntityResolutionService{idpConfig: inputIdpConfig, logger: logger}
+	return keycloakSVC,
+		func(ctx context.Context, mux *runtime.ServeMux) error {
+			return entityresolution.RegisterEntityResolutionServiceHandlerServer(ctx, mux, keycloakSVC)
+		}
+}
+
+func (s KeycloakEntityResolutionService) ResolveEntities(ctx context.Context, req *entityresolution.ResolveEntitiesRequest) (*entityresolution.ResolveEntitiesResponse, error) {
+	resp, err := EntityResolution(ctx, req, s.idpConfig, s.logger)
+	return &resp, err
+}
+
+func (s KeycloakEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *entityresolution.CreateEntityChainFromJwtRequest) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
+	resp, err := CreateEntityChainFromJwt(ctx, req, s.idpConfig, s.logger)
+	return &resp, err
 }
 
 func (c KeycloakConfig) LogValue() slog.Value {

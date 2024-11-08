@@ -2,7 +2,6 @@ package subjectmapping
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -21,17 +20,18 @@ type SubjectMappingService struct { //nolint:revive // SubjectMappingService is 
 	logger   *logger.Logger
 }
 
-func NewRegistration() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		ServiceDesc: &sm.SubjectMappingService_ServiceDesc,
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &SubjectMappingService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, s any) error {
-				server, ok := s.(sm.SubjectMappingServiceServer)
-				if !ok {
-					return fmt.Errorf("failed to assert server as sm.SubjectMappingServiceServer")
+func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[SubjectMappingService] {
+	return &serviceregistry.Service[SubjectMappingService]{
+		ServiceOptions: serviceregistry.ServiceOptions[SubjectMappingService]{
+			Namespace:   ns,
+			DB:          dbRegister,
+			ServiceDesc: &sm.SubjectMappingService_ServiceDesc,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (*SubjectMappingService, serviceregistry.HandlerServer) {
+				smSvc := &SubjectMappingService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
+				return smSvc, func(ctx context.Context, mux *runtime.ServeMux) error {
+					return sm.RegisterSubjectMappingServiceHandlerServer(ctx, mux, smSvc)
 				}
-				return sm.RegisterSubjectMappingServiceHandlerServer(ctx, mux, server)
-			}
+			},
 		},
 	}
 }
@@ -291,5 +291,32 @@ func (s SubjectMappingService) DeleteSubjectConditionSet(ctx context.Context,
 	rsp.SubjectConditionSet = &policy.SubjectConditionSet{
 		Id: conditionSetID,
 	}
+	return rsp, nil
+}
+
+func (s SubjectMappingService) DeleteAllUnmappedSubjectConditionSets(ctx context.Context,
+	_ *sm.DeleteAllUnmappedSubjectConditionSetsRequest,
+) (*sm.DeleteAllUnmappedSubjectConditionSetsResponse, error) {
+	rsp := &sm.DeleteAllUnmappedSubjectConditionSetsResponse{}
+	s.logger.Debug("deleting all unmapped subject condition sets")
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeConditionSet,
+	}
+
+	deleted, err := s.dbClient.DeleteAllUnmappedSubjectConditionSets(ctx)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed)
+	}
+
+	// Log each pruned subject condition set to audit
+	for _, scs := range deleted {
+		auditParams.ObjectID = scs.GetId()
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	}
+
+	rsp.SubjectConditionSets = deleted
 	return rsp, nil
 }

@@ -530,9 +530,6 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 		return nil, 0, 0, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
 	}
 
-	encoded := ocrypto.Base64Encode(symmetricKey)
-	slog.Debug("writeNanoTDFHeader", slog.String("symmetricKey", string(encoded)))
-
 	aesGcm, err := ocrypto.NewAESGcm(symmetricKey)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
@@ -763,6 +760,33 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	return header, size, nil
 }
 
+func nonZeroRandomPaddedIV() ([]byte, error) {
+	const (
+		loopCountLimit = 10
+	)
+	loopCount := 1
+	for {
+		ivPadded := make([]byte, 0, ocrypto.GcmStandardNonceSize)
+		noncePadding := make([]byte, kIvPadding)
+		ivPadded = append(ivPadded, noncePadding...)
+		iv, err := ocrypto.RandomBytes(kNanoTDFIvSize)
+		if err != nil {
+			return nil, fmt.Errorf("ocrypto.RandomBytes failed:%w", err)
+		}
+		ivPadded = append(ivPadded, iv...)
+		for _, b := range ivPadded {
+			if b != 0 {
+				return ivPadded, nil
+			}
+		}
+		// all zero IV, this is extremely rare so should be able to be addressed in the next loop
+		if loopCount >= loopCountLimit { // crazy, there must be an issue with the constants
+			return nil, errors.New("nonZeroPaddedIV loop exceeded limit")
+		}
+		loopCount++
+	}
+}
+
 // ============================================================================================================
 // NanoTDF Encrypt
 // ============================================================================================================
@@ -823,22 +847,18 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	if err != nil {
 		return 0, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
 	}
-
-	ivPadded := make([]byte, 0, ocrypto.GcmStandardNonceSize)
-	noncePadding := make([]byte, kIvPadding)
-	var iv []byte
-	ivPadded = append(ivPadded, noncePadding...)
+	var ivPadded []byte
 	if config.collectionCfg.useCollection {
-		iv = make([]byte, binary.MaxVarintLen32)
+		ivPadded = make([]byte, gcmIvSize)
+		iv := make([]byte, binary.MaxVarintLen32)
 		binary.LittleEndian.PutUint32(iv, iteration)
-		iv = iv[:kNanoTDFIvSize]
+		copy(ivPadded[kIvPadding:], iv[:kNanoTDFIvSize])
 	} else {
-		iv, err = ocrypto.RandomBytes(kNanoTDFIvSize)
+		ivPadded, err = nonZeroRandomPaddedIV()
 		if err != nil {
-			return 0, fmt.Errorf("ocrypto.RandomBytes failed:%w", err)
+			return 0, err
 		}
 	}
-	ivPadded = append(ivPadded, iv...)
 
 	tagSize, err := SizeOfAuthTagForCipher(config.sigCfg.cipher)
 	if err != nil {
@@ -911,9 +931,6 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 	if err != nil {
 		return 0, err
 	}
-
-	encoded := ocrypto.Base64Encode(symmetricKey)
-	slog.Debug("ReadNanoTDF", slog.String("symmetricKey", string(encoded)))
 
 	const (
 		kPayloadLoadLengthBufLength = 4

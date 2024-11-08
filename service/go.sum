@@ -1,5 +1,7 @@
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.34.1-20240508200655-46a4cf4ba109.1 h1:LEXWFH/xZ5oOWrC3oOtHbUyBdzRWMCPpAQmKC9v05mA=
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.34.1-20240508200655-46a4cf4ba109.1/go.mod h1:XF+P8+RmfdufmIYpGUC+6bF7S+IlmHDEnCrO3OXaUAQ=
+connectrpc.com/connect v1.17.0 h1:W0ZqMhtVzn9Zhn2yATuUokDLO5N+gIuBWMOnsQrfmZk=
+connectrpc.com/connect v1.17.0/go.mod h1:0292hj1rnx8oFrStN7cB4jjVBeqs+Yx5yDIC2prWDO8=
 dario.cat/mergo v1.0.0 h1:AGCNq9Evsj31mOgNPcLyXc+4PNABt905YmuqPYYpBWk=
 dario.cat/mergo v1.0.0/go.mod h1:uNxQE+84aUszobStD9th8a29P2fMDhsBdgRYvZOxGmk=
 github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 h1:bvDV9vkmnHYOMsOr4WLk+Vo07yKIzd94sVoIqshQ4bU=
@@ -270,8 +272,8 @@ github.com/opentdf/platform/lib/flattening v0.1.1 h1:la1f6PcRsc+yLH8+9UEr0ux6IRK
 github.com/opentdf/platform/lib/flattening v0.1.1/go.mod h1:eyG7pe5UZlV+GI5/CymQD3xTAJxNhnP9M4QnBzaad1M=
 github.com/opentdf/platform/lib/ocrypto v0.1.6 h1:rd4ctCZOE/c3qDJORtkSK9tw6dEXb+jbJXRRk4LcxII=
 github.com/opentdf/platform/lib/ocrypto v0.1.6/go.mod h1:ne+l8Q922OdzA0xesK3XJmfECBnn5vLSGYU3/3OhiHM=
-github.com/opentdf/platform/protocol/go v0.2.18 h1:s+TVZkOPGCzy7WyObtJWJNaFeOGDUTuSmAsq3omvugY=
-github.com/opentdf/platform/protocol/go v0.2.18/go.mod h1:WqDcnFQJb0v8ivRQPidbehcL8ils5ZSZYXkuv0nyvsI=
+github.com/opentdf/platform/protocol/go v0.2.20 h1:FPU1ZcXvPm/QeE2nqgbD/HMTOCICQSD0DoncQbAZ1ws=
+github.com/opentdf/platform/protocol/go v0.2.20/go.mod h1:TWIuf387VeR3q0TL4nAMKQTWEqqID+8Yjao76EX9Dto=
 github.com/opentdf/platform/sdk v0.3.16 h1:goF6Krn14+Y2H1wa3h2iYk1kOBrrze6t392szLb9ryE=
 github.com/opentdf/platform/sdk v0.3.16/go.mod h1:c2+nrsRLvLf2OOryXnNy0iGZN/TScc21Pul7uqKVXIs=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
@@ -367,10 +369,6 @@ github.com/tklauser/numcpus v0.6.1 h1:ng9scYS7az0Bk4OZLvrNXNSAO2Pxr1XXRAPyjhIx+F
 github.com/tklauser/numcpus v0.6.1/go.mod h1:1XfjsgE2zo8GVw7POkMbHENHzVg3GzmoZ9fESEdAacY=
 github.com/tursodatabase/libsql-client-go v0.0.0-20231216154754-8383a53d618f h1:teZ0Pj1Wp3Wk0JObKBiKZqgxhYwLeJhVAyj6DRgmQtY=
 github.com/tursodatabase/libsql-client-go v0.0.0-20231216154754-8383a53d618f/go.mod h1:UMde0InJz9I0Le/1YIR4xsB0E2vb01MrDY6k/eNdfkg=
-github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6KllzawFIhcdPw=
-github.com/valyala/bytebufferpool v1.0.0/go.mod h1:6bBcMArwyJ5K/AmCkWv1jt77kVWyCJ6HpOuEn7z0Csc=
-github.com/valyala/fasthttp v1.52.0 h1:wqBQpxH71XW0e2g+Og4dzQM8pk34aFYlA1Ga8db7gU0=
-github.com/valyala/fasthttp v1.52.0/go.mod h1:hf5C4QnVMkNXMspnsUlfM3WitlgYflyhHYoKol/szxQ=
 github.com/vertica/vertica-sql-go v1.3.3 h1:fL+FKEAEy5ONmsvya2WH5T8bhkvY27y/Ik3ReR2T+Qw=
 github.com/vertica/vertica-sql-go v1.3.3/go.mod h1:jnn2GFuv+O2Jcjktb7zyc4Utlbu9YVqpHH/lx63+1M4=
 github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f/go.mod h1:N2zxlSyiKSe5eX1tZViRH5QA0qijqEDrYZiPEAiq3wU=

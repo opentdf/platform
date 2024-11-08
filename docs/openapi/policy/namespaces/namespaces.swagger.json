@@ -36,7 +36,7 @@
         "parameters": [
           {
             "name": "state",
-            "description": "ACTIVE by default when not specified",
+            "description": "Optional\nACTIVE by default when not specified",
             "in": "query",
             "required": false,
             "type": "string",
@@ -47,6 +47,22 @@
               "ACTIVE_STATE_ENUM_ANY"
             ],
             "default": "ACTIVE_STATE_ENUM_UNSPECIFIED"
+          },
+          {
+            "name": "pagination.limit",
+            "description": "Optional\nSet to configured default limit if not provided\nMaximum limit set in platform config and enforced by services",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pagination.offset",
+            "description": "Optional\nDefaulted if not provided",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
           }
         ],
         "tags": [
@@ -104,12 +120,14 @@
         "parameters": [
           {
             "name": "namespaceKeyAccessServer.namespaceId",
+            "description": "Required",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "namespaceKeyAccessServer.keyAccessServerId",
+            "description": "Required",
             "in": "query",
             "required": false,
             "type": "string"
@@ -171,6 +189,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -199,6 +218,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
@@ -362,6 +382,9 @@
             "type": "object",
             "$ref": "#/definitions/policyNamespace"
           }
+        },
+        "pagination": {
+          "$ref": "#/definitions/policyPageResponse"
         }
       }
     },
@@ -369,10 +392,12 @@
       "type": "object",
       "properties": {
         "namespaceId": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         },
         "keyAccessServerId": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         }
       }
     },
@@ -445,6 +470,10 @@
         "publicKey": {
           "$ref": "#/definitions/policyPublicKey"
         },
+        "name": {
+          "type": "string",
+          "title": "Optional\nUnique name of the KAS instance"
+        },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",
           "title": "Common metadata"
@@ -480,6 +509,41 @@
             "$ref": "#/definitions/policyKeyAccessServer"
           },
           "title": "KAS grants for the namespace"
+        }
+      }
+    },
+    "policyPageRequest": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Optional\nSet to configured default limit if not provided\nMaximum limit set in platform config and enforced by services"
+        },
+        "offset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Optional\nDefaulted if not provided"
+        }
+      }
+    },
+    "policyPageResponse": {
+      "type": "object",
+      "properties": {
+        "currentOffset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Requested pagination offset"
+        },
+        "nextOffset": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Calculated with request limit + offset or defaults\nEmpty when none remain after current page"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Total count of entire list"
         }
       }
     },

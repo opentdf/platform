@@ -209,7 +209,7 @@ func (rw *grpcGatewayResponseWriter) Header() http.Header {
 }
 
 func (rw *grpcGatewayResponseWriter) WriteHeader(statusCode int) {
-	if rw.wroteHeader == false {
+	if !rw.wroteHeader {
 		rw.w.Header().Set("Deprecation", fmt.Sprintf("@%d", time.Date(2025, time.March, 25, 0, 0, 0, 0, time.UTC).Unix()))
 		rw.wroteHeader = true
 		rw.w.WriteHeader(statusCode)

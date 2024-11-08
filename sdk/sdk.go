@@ -26,6 +26,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/sdk/auth"
+	"github.com/opentdf/platform/sdk/internal/archive"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -321,16 +322,17 @@ var manifestSchema []byte
 
 func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 	// create tdf reader
-	// tdfReader, err := archive.NewTDFReader(reader)
-	// if err != nil {
-	// 	return false, fmt.Errorf("archive.NewTDFReader failed: %w", err)
-	// }
+	tdfReader, err := archive.NewTDFReader(reader)
+	if err != nil {
+		return false, fmt.Errorf("archive.NewTDFReader failed: %w", err)
+	}
 
-	// manifest, err := tdfReader.Manifest()
-	// if err != nil {
-	// 	return false, fmt.Errorf("tdfReader.Manifest failed: %w", err)
-	// }
+	_, err = tdfReader.Manifest()
+	if err != nil {
+		return false, fmt.Errorf("tdfReader.Manifest failed: %w", err)
+	}
 
+	// Schema validation is failing across SDKs
 	// // Convert the embedded data to a string
 	// manifestSchemaString := string(manifestSchema)
 	// loader := gojsonschema.NewStringLoader(manifestSchemaString)

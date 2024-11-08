@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 )
 
@@ -17,10 +18,10 @@ type AsymEncryption struct {
 
 // NewAsymEncryption creates and returns a new AsymEncryption.
 func NewAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
-	fmt.Println("THIS IS A TEST TEST TEST")
+	slog.Info("THIS IS A TEST TEST TEST")
 	block, _ := pem.Decode([]byte(publicKeyInPem))
 	if block == nil {
-		return AsymEncryption{}, errors.New("failed to parse PEM formatted public key")
+		return AsymEncryption{}, errors.New("failed to parse _PEM_ formatted public key")
 	}
 	var pub any
 	if strings.Contains(publicKeyInPem, "BEGIN CERTIFICATE") {
@@ -31,7 +32,7 @@ func NewAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
 
 		var ok bool
 		if pub, ok = cert.PublicKey.(*rsa.PublicKey); !ok {
-			return AsymEncryption{}, errors.New("failed to parse PEM formatted public key")
+			return AsymEncryption{}, errors.New("failed to parse _PEM_ formatted public key")
 		}
 	} else {
 		var err error

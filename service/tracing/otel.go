@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"sync"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
@@ -15,13 +16,23 @@ import (
 
 const ServiceName = "opentdf-service"
 
+// Create a thread-safe writer wrapper
+type syncWriter struct {
+	mu     sync.Mutex
+	writer *lumberjack.Logger
+}
+
+func (w *syncWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.writer.Write(p)
+}
+
 func InitTracer() func() {
-	// Ensure the traces folder exists
 	if err := os.MkdirAll("traces", os.ModePerm); err != nil {
 		log.Fatal(err)
 	}
 
-	// Create a lumberjack logger for file rotation
 	lumberjackLogger := &lumberjack.Logger{
 		Filename:   "traces/traces.log",
 		MaxSize:    10,   //nolint:mnd  // maximum size in megabytes
@@ -30,9 +41,13 @@ func InitTracer() func() {
 		Compress:   true, // compress the rotated files
 	}
 
-	// Create a stdout exporter that writes to the lumberjack logger
+	// Wrap the logger with our thread-safe writer
+	safeWriter := &syncWriter{
+		writer: lumberjackLogger,
+	}
+
 	exporter, err := stdouttrace.New(
-		stdouttrace.WithWriter(lumberjackLogger),
+		stdouttrace.WithWriter(safeWriter),
 	)
 	if err != nil {
 		log.Fatal(err)

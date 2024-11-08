@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -18,20 +19,14 @@ type Trace struct {
 
 type TraceStats struct {
 	Count     int
-	TotalTime float64
-	MinTime   float64
-	MaxTime   float64
+	TotalTime int64 // nanoseconds
+	MinTime   int64 // nanoseconds
+	MaxTime   int64 // nanoseconds
 }
 
-type BatchStats struct {
-	BatchCount int
-	TotalTime  float64
-	StartTime  time.Time
-	EndTime    time.Time
-}
+const maxBufferSize = 64 * 1024 // 64KB buffer
 
 var folderPath string
-var batchCount int
 
 func init() {
 	metricsCmd := &cobra.Command{
@@ -42,89 +37,85 @@ func init() {
 	}
 
 	metricsCmd.PersistentFlags().StringVarP(&folderPath, "folder", "f", "./traces", "Path to the folder containing traces.log")
-	metricsCmd.PersistentFlags().IntVarP(&batchCount, "batchcount", "b", 100, "Number of requests per batch")
 	ExamplesCmd.AddCommand(metricsCmd)
 }
 
+func formatDuration(nanos int64) string {
+	ms := float64(nanos) / 1_000_000.0 // Convert to milliseconds
+	us := float64(nanos) / 1_000.0     // Convert to microseconds
+	return fmt.Sprintf("%.3f ms (%.3f µs, %.0f ns)", ms, us, float64(nanos))
+}
+
 func runMetrics(cmd *cobra.Command, args []string) error {
-	logFilePath := filepath.Join(folderPath, "traces.log")
-	file, err := os.Open(logFilePath)
+	logFile := filepath.Join(folderPath, "traces.log")
+	file, err := os.Open(logFile)
 	if err != nil {
-		cmd.Println("Error opening file:", err)
-		return err
+		return fmt.Errorf("error opening file: %w", err)
 	}
 	defer file.Close()
 
 	traces := make(map[string]*TraceStats)
-	batchStats := make(map[string]*BatchStats)
+
 	scanner := bufio.NewScanner(file)
+	buf := make([]byte, maxBufferSize)
+	scanner.Buffer(buf, maxBufferSize)
+
 	for scanner.Scan() {
+		line := scanner.Text()
 		var trace Trace
-		err := json.Unmarshal(scanner.Bytes(), &trace)
-		if err != nil {
-			cmd.Println("Error parsing JSON:", err)
+		if err := json.Unmarshal([]byte(line), &trace); err != nil {
+			cmd.Printf("Warning: Skipping malformed line: %v\n", err)
 			continue
 		}
 
 		startTime, err := time.Parse(time.RFC3339Nano, trace.StartTime)
 		if err != nil {
-			cmd.Println("Error parsing start time:", err)
+			cmd.Printf("Error parsing start time: %v\n", err)
 			continue
 		}
 
 		endTime, err := time.Parse(time.RFC3339Nano, trace.EndTime)
 		if err != nil {
-			cmd.Println("Error parsing end time:", err)
+			cmd.Printf("Error parsing end time: %v\n", err)
 			continue
 		}
 
-		duration := endTime.Sub(startTime).Milliseconds()
+		// Calculate duration in nanoseconds
+		duration := endTime.UnixNano() - startTime.UnixNano()
+
+		// Initialize trace stats if not exists
 		if _, exists := traces[trace.Name]; !exists {
 			traces[trace.Name] = &TraceStats{
-				MinTime: float64(duration),
-				MaxTime: float64(duration),
+				MinTime: duration,
+				MaxTime: duration,
 			}
 		}
 
+		// Update trace statistics
 		stats := traces[trace.Name]
 		stats.Count++
-		stats.TotalTime += float64(duration)
-		if float64(duration) < stats.MinTime {
-			stats.MinTime = float64(duration)
+		stats.TotalTime += duration
+		if duration < stats.MinTime {
+			stats.MinTime = duration
 		}
-		if float64(duration) > stats.MaxTime {
-			stats.MaxTime = float64(duration)
-		}
-
-		if _, exists := batchStats[trace.Name]; !exists {
-			batchStats[trace.Name] = &BatchStats{
-				StartTime: startTime,
-			}
-		}
-
-		batch := batchStats[trace.Name]
-		batch.BatchCount++
-		batch.TotalTime += float64(duration)
-		batch.EndTime = endTime
-
-		if batch.BatchCount == batchCount {
-			average := batch.TotalTime / float64(batchCount)
-			cmd.Printf("Name: %s, Batch Average Duration: %.2f ms, Start Time: %s, End Time: %s\n",
-				trace.Name, average, batch.StartTime.Format(time.RFC3339), batch.EndTime.Format(time.RFC3339))
-			batch.BatchCount = 0
-			batch.TotalTime = 0
-			batch.StartTime = endTime
+		if duration > stats.MaxTime {
+			stats.MaxTime = duration
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		cmd.Println("Error reading file:", err)
+		return fmt.Errorf("error reading file: %w", err)
 	}
 
+	// Output statistics
+	cmd.Println("\nTrace Statistics:")
 	for name, stats := range traces {
-		average := stats.TotalTime / float64(stats.Count)
-		cmd.Printf("Name: %s, Count: %d, Average Duration: %.2f ms, Min Duration: %.2f ms, Max Duration: %.2f ms\n",
-			name, stats.Count, average, stats.MinTime, stats.MaxTime)
+		averageNanos := stats.TotalTime / int64(stats.Count)
+		cmd.Printf("\n%s:\n", name)
+		cmd.Printf("  Total Requests: %d\n", stats.Count)
+		cmd.Printf("  Average Duration: %s\n", formatDuration(averageNanos))
+		cmd.Printf("  Min Duration: %s\n", formatDuration(stats.MinTime))
+		cmd.Printf("  Max Duration: %s\n", formatDuration(stats.MaxTime))
 	}
 
 	return nil

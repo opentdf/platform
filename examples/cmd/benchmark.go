@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/opentdf/platform/sdk"
-	"github.com/spf13/cobra"
 	"io"
 	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/opentdf/platform/sdk"
+	"github.com/spf13/cobra"
 )
 
 type TDFFormat string
@@ -65,7 +66,6 @@ func init() {
 }
 
 func runBenchmark(cmd *cobra.Command, args []string) error {
-
 	in := strings.NewReader("Hello, World!")
 
 	// Create new offline client
@@ -93,7 +93,6 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 		opts = append(opts, sdk.WithAutoconfigure(autoconfigure))
 		opts = append(opts, sdk.WithKasInformation(
 			sdk.KASInfo{
-				// examples assume insecure http
 				URL:       fmt.Sprintf("http://%s", "localhost:8080"),
 				PublicKey: "",
 			}))
@@ -135,6 +134,7 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 	var wg sync.WaitGroup
 	requests := make(chan struct{}, config.ConcurrentRequests)
 	results := make(chan time.Duration, config.RequestCount)
+	errors := make(chan error, config.RequestCount)
 
 	// Function to perform the operation
 	operation := func() {
@@ -143,29 +143,32 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 
 		file, err := os.Open("sensitive.txt.tdf")
 		if err != nil {
-			cmd.Printf("Error: %v\n", err)
+			errors <- fmt.Errorf("file open error: %v", err)
+			return
 		}
 		defer file.Close()
 
 		if config.TDFFormat == TDF3 {
 			tdfreader, err := client.LoadTDF(file)
 			if err != nil {
-				cmd.Printf("Error: %v\n", err)
+				errors <- fmt.Errorf("LoadTDF error: %v", err)
+				return
 			}
 
 			_, err = io.Copy(io.Discard, tdfreader)
 			if err != nil && err != io.EOF {
-				cmd.Printf("Error: %v\n", err)
+				errors <- fmt.Errorf("read error: %v", err)
+				return
 			}
 		} else {
 			_, err = client.ReadNanoTDF(io.Discard, file)
 			if err != nil {
-				cmd.Printf("Error: %v\n", err)
+				errors <- fmt.Errorf("ReadNanoTDF error: %v", err)
+				return
 			}
 		}
 
-		duration := time.Since(start)
-		results <- duration
+		results <- time.Since(start)
 	}
 
 	// Start the benchmark
@@ -178,25 +181,46 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 			operation()
 		}()
 	}
+
 	wg.Wait()
 	close(results)
-	totalTime := time.Since(startTime)
+	close(errors)
 
-	// Calculate throughput and latency
+	// Count errors and collect error messages
+	errorCount := 0
+	errorMsgs := make(map[string]int)
+	for err := range errors {
+		errorCount++
+		errorMsgs[err.Error()]++
+	}
+
+	successCount := 0
 	var totalDuration time.Duration
 	for result := range results {
+		successCount++
 		totalDuration += result
 	}
-	averageLatency := totalDuration / time.Duration(config.RequestCount)
-	throughput := float64(config.RequestCount) / totalTime.Seconds()
 
+	totalTime := time.Since(startTime)
+	averageLatency := totalDuration / time.Duration(successCount)
+	throughput := float64(successCount) / totalTime.Seconds()
+
+	// Print results
+	cmd.Printf("\nBenchmark Results:\n")
 	cmd.Printf("Total Requests: %d\n", config.RequestCount)
+	cmd.Printf("Successful Requests: %d\n", successCount)
+	cmd.Printf("Failed Requests: %d\n", errorCount)
 	cmd.Printf("Concurrent Requests: %d\n", config.ConcurrentRequests)
 	cmd.Printf("Total Time: %s\n", totalTime)
 	cmd.Printf("Average Latency: %s\n", averageLatency)
 	cmd.Printf("Throughput: %.2f requests/second\n", throughput)
 
-	return nil
+	if errorCount > 0 {
+		cmd.Printf("\nError Summary:\n")
+		for errMsg, count := range errorMsgs {
+			cmd.Printf("%s: %d occurrences\n", errMsg, count)
+		}
+	}
 
 	return nil
 }

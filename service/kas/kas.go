@@ -18,16 +18,16 @@ import (
 )
 
 func NewRegistration() *serviceregistry.Service[access.Provider] {
-  tracer := otel.Tracer(tracing.ServiceName)
-  
+	tracer := otel.Tracer(tracing.ServiceName)
+
 	return &serviceregistry.Service[access.Provider]{
 		ServiceOptions: serviceregistry.ServiceOptions[access.Provider]{
 			Namespace:   "kas",
 			ServiceDesc: &kaspb.AccessService_ServiceDesc,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (*access.Provider, serviceregistry.HandlerServer) {
-        _, span := tracer.Start(context.Background(), "RegisterFunc")
-			  defer span.End()
-        
+				_, span := tracer.Start(context.Background(), "RegisterFunc")
+				defer span.End()
+
 				// FIXME msg="mismatched key access url" keyAccessURL=http://localhost:9000 kasURL=https://:9000
 				hostWithPort := srp.OTDF.HTTPServer.Addr
 				if strings.HasPrefix(hostWithPort, ":") {
@@ -36,19 +36,19 @@ func NewRegistration() *serviceregistry.Service[access.Provider] {
 				kasURLString := "http://" + hostWithPort
 				kasURI, err := url.Parse(kasURLString)
 				if err != nil {
-          span.RecordError(err)
+					span.RecordError(err)
 					panic(fmt.Errorf("invalid kas address [%s] %w", kasURLString, err))
 				}
 
 				var kasCfg access.KASConfig
 				if err := mapstructure.Decode(srp.Config, &kasCfg); err != nil {
-          span.RecordError(err)
+					span.RecordError(err)
 					panic(fmt.Errorf("invalid kas cfg [%v] %w", srp.Config, err))
 				}
 
 				switch {
 				case kasCfg.ECCertID != "" && len(kasCfg.Keyring) > 0:
-          span.RecordError(err)
+					span.RecordError(err)
 					panic("invalid kas cfg: please specify keyring or eccertid, not both")
 				case len(kasCfg.Keyring) == 0:
 					deprecatedOrDefault := func(kid, alg string) {

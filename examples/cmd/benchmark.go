@@ -88,25 +88,7 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 	}()
 
 	var dataAttributes []string
-	if config.TDFFormat == TDF3 {
-		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...)}
-		opts = append(opts, sdk.WithAutoconfigure(autoconfigure))
-		opts = append(opts, sdk.WithKasInformation(
-			sdk.KASInfo{
-				URL:       fmt.Sprintf("http://%s", "localhost:8080"),
-				PublicKey: "",
-			}))
-		tdf, err := client.CreateTDF(out, in, opts...)
-		if err != nil {
-			return err
-		}
-
-		manifestJSON, err := json.MarshalIndent(tdf.Manifest(), "", "  ")
-		if err != nil {
-			return err
-		}
-		cmd.Println(string(manifestJSON))
-	} else {
+	if config.TDFFormat == NanoTDF {
 		nanoTDFConfig, err := client.NewNanoTDFConfig()
 		if err != nil {
 			return err
@@ -129,6 +111,24 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
+	} else {
+		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...)}
+		opts = append(opts, sdk.WithAutoconfigure(autoconfigure))
+		opts = append(opts, sdk.WithKasInformation(
+			sdk.KASInfo{
+				URL:       fmt.Sprintf("http://%s", "localhost:8080"),
+				PublicKey: "",
+			}))
+		tdf, err := client.CreateTDF(out, in, opts...)
+		if err != nil {
+			return err
+		}
+
+		manifestJSON, err := json.MarshalIndent(tdf.Manifest(), "", "  ")
+		if err != nil {
+			return err
+		}
+		cmd.Println(string(manifestJSON))
 	}
 
 	var wg sync.WaitGroup
@@ -148,7 +148,13 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 		}
 		defer file.Close()
 
-		if config.TDFFormat == TDF3 {
+		if config.TDFFormat == NanoTDF {
+			_, err = client.ReadNanoTDF(io.Discard, file)
+			if err != nil {
+				errors <- fmt.Errorf("ReadNanoTDF error: %v", err)
+				return
+			}
+		} else {
 			tdfreader, err := client.LoadTDF(file)
 			if err != nil {
 				errors <- fmt.Errorf("LoadTDF error: %v", err)
@@ -158,12 +164,6 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 			_, err = io.Copy(io.Discard, tdfreader)
 			if err != nil && err != io.EOF {
 				errors <- fmt.Errorf("read error: %v", err)
-				return
-			}
-		} else {
-			_, err = client.ReadNanoTDF(io.Discard, file)
-			if err != nil {
-				errors <- fmt.Errorf("ReadNanoTDF error: %v", err)
 				return
 			}
 		}

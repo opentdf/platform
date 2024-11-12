@@ -189,7 +189,7 @@ jobs:
       - name: check pwd
         run: pwd
       - name: check ls
-        run: ls -la
+        run: ls -la ./examples
       - name: run tdf3 benchmark tests
         run: ./examples/examples benchmark --count 10000 --concurrent 10
       - name: run nanotdf benchmark tests

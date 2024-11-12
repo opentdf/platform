@@ -34,8 +34,10 @@ Root level key `sdk_config`
 
 | Field    | Description  | Default  | Environment Variable |
 | -------- | -------------| -------- | -------------------- |
-| `endpoint` | The core platform endpoint to connect to |  | OPENTDF_SDK_CONFIG_ENDPOINT |
-| `plaintext` | Use a plaintext grpc connection | `false` | OPENTDF_SDK_CONFIG_PLAINTEXT |
+| `core.endpoint` | The core platform endpoint to connect to |  | OPENTDF_SDK_CONFIG_ENDPOINT |
+| `core.plaintext` | Use a plaintext grpc connection | `false` | OPENTDF_SDK_CONFIG_PLAINTEXT |
+| `entityresoluytion.endpoint` | The entityresolution endpoint to connect to |  |  |
+| `entityresolution.plaintext` | Use a plaintext ERS grpc connection | `false` |  |
 | `client_id` | OAuth client id |  | OPENTDF_SDK_CONFIG_CLIENT_ID |
 | `client_secret` |  The clients credentials | | OPENTDF_SDK_CONFIG_CLIENT_SECRET |
 

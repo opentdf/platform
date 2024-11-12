@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -9,13 +10,20 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk"
+	sdkauth "github.com/opentdf/platform/sdk/auth"
+	"github.com/opentdf/platform/sdk/auth/oauth"
+	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
 	"golang.org/x/exp/slices"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const devModeMessage = `
@@ -141,22 +149,90 @@ func Start(f ...StartOptions) error {
 		client     *sdk.SDK
 	)
 
-	// If the mode is not all or core, we need to have a valid SDK config
-	if !slices.Contains(cfg.Mode, "all") && !slices.Contains(cfg.Mode, "core") && cfg.SDKConfig == (config.SDKConfig{}) {
-		logger.Error("mode is not all or core, but no sdk config provided")
-		return errors.New("mode is not all or core, but no sdk config provided")
+	// If the mode is not all or entityresolution, we need to have a valid SDK config
+	// entityresolution does not connect to other services and can run on its own
+	if !slices.Contains(cfg.Mode, "all") && !slices.Contains(cfg.Mode, "entityresolution") && cfg.SDKConfig == (config.SDKConfig{}) {
+		logger.Error("mode is not all or entityresolution, but no sdk config provided")
+		return errors.New("mode is not all or entityresolution, but no sdk config provided")
 	}
 
 	// If client credentials are provided, use them
 	if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
+		logger.Info("using client credentials", "", cfg.SDKConfig.ClientID, cfg.SDKConfig.ClientSecret)
 		sdkOptions = append(sdkOptions, sdk.WithClientCredentials(cfg.SDKConfig.ClientID, cfg.SDKConfig.ClientSecret, nil))
+
+		oidcconfig, err := auth.DiscoverOIDCConfiguration(ctx, cfg.Server.Auth.Issuer, logger)
+		if err != nil {
+			return fmt.Errorf("could not retrieve oidc configuration: %w", err)
+		}
+
+		// provide token endpoint -- sdk cannot discover it since well-known service isnt running yet
+		sdkOptions = append(sdkOptions, sdk.WithTokenEndpoint(oidcconfig.TokenEndpoint))
 	}
 
 	// If the mode is all, use IPC for the SDK client
-	if slices.Contains(cfg.Mode, "all") || slices.Contains(cfg.Mode, "core") {
+	if slices.Contains(cfg.Mode, "all") ||
+		slices.Contains(cfg.Mode, "entityresolution") ||
+		slices.Contains(cfg.Mode, "core") {
 		// Use IPC for the SDK client
 		sdkOptions = append(sdkOptions, sdk.WithIPC())
 		sdkOptions = append(sdkOptions, sdk.WithCustomCoreConnection(otdf.GRPCInProcess.Conn()))
+
+		// handle ERS connection for core mode
+		if slices.Contains(cfg.Mode, "core") {
+			logger.Info("core mode")
+
+			if cfg.SDKConfig.EntityResolutionConnection.Endpoint == "" {
+				return errors.New("entityresolution endpoint must be provided in core mode")
+			}
+
+			ersDialOptions := []grpc.DialOption{}
+			var tlsConfig *tls.Config
+			if cfg.SDKConfig.EntityResolutionConnection.Insecure {
+				tlsConfig := &tls.Config{
+					MinVersion:         tls.VersionTLS12,
+					InsecureSkipVerify: true, // #nosec G402
+				}
+				ersDialOptions = append(ersDialOptions, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+			}
+			if cfg.SDKConfig.EntityResolutionConnection.Plaintext {
+				tlsConfig = &tls.Config{}
+				ersDialOptions = append(ersDialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))
+			}
+
+			if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
+				// dont do this twice
+				oidcconfig, err := auth.DiscoverOIDCConfiguration(ctx, cfg.Server.Auth.Issuer, logger)
+				if err != nil {
+					return fmt.Errorf("could not retrieve oidc configuration: %w", err)
+				}
+
+				rsaKeyPair, err := ocrypto.NewRSAKeyPair(2048)
+				if err != nil {
+					return fmt.Errorf("could not generate RSA Key: %w", err)
+				}
+				ts, err := sdk.NewIDPAccessTokenSource(
+					oauth.ClientCredentials{ClientID: cfg.SDKConfig.ClientID, ClientAuth: cfg.SDKConfig.ClientSecret},
+					oidcconfig.TokenEndpoint,
+					nil,
+					&rsaKeyPair,
+				)
+				if err != nil {
+					return fmt.Errorf("error creating ERS tokensource: %w", err)
+				}
+
+				interceptor := sdkauth.NewTokenAddingInterceptor(ts, tlsConfig)
+
+				ersDialOptions = append(ersDialOptions, grpc.WithChainUnaryInterceptor(interceptor.AddCredentials))
+			}
+
+			conn, err := grpc.NewClient(cfg.SDKConfig.EntityResolutionConnection.Endpoint, ersDialOptions...)
+			if err != nil {
+				return fmt.Errorf("could not connect to ERS: %w", err)
+			}
+			sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(conn))
+			logger.Info("added with custom ers connection for ", "", cfg.SDKConfig.EntityResolutionConnection.Endpoint)
+		}
 
 		client, err = sdk.New("", sdkOptions...)
 		if err != nil {
@@ -165,10 +241,13 @@ func Start(f ...StartOptions) error {
 		}
 	} else {
 		// Use the provided SDK config
-		if cfg.SDKConfig.Plaintext {
+		if cfg.SDKConfig.CorePlatformConnection.Insecure {
+			sdkOptions = append(sdkOptions, sdk.WithInsecureSkipVerifyConn())
+		}
+		if cfg.SDKConfig.CorePlatformConnection.Plaintext {
 			sdkOptions = append(sdkOptions, sdk.WithInsecurePlaintextConn())
 		}
-		client, err = sdk.New(cfg.SDKConfig.Endpoint, sdkOptions...)
+		client, err = sdk.New(cfg.SDKConfig.CorePlatformConnection.Endpoint, sdkOptions...)
 		if err != nil {
 			logger.Error("issue creating sdk client", slog.String("error", err.Error()))
 			return fmt.Errorf("issue creating sdk client: %w", err)

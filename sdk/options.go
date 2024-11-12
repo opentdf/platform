@@ -6,7 +6,7 @@ import (
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
-	"github.com/opentdf/platform/sdk/internal/oauth"
+	"github.com/opentdf/platform/sdk/auth/oauth"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -35,6 +35,7 @@ type config struct {
 	customAccessTokenSource auth.AccessTokenSource
 	oauthAccessTokenSource  oauth2.TokenSource
 	coreConn                *grpc.ClientConn
+	entityResolutionConn    *grpc.ClientConn
 }
 
 // Options specific to TDF protocol features
@@ -127,10 +128,9 @@ func WithCustomAuthorizationConnection(conn *grpc.ClientConn) Option {
 	}
 }
 
-// Deprecated: Use WithCustomCoreConnection instead
 func WithCustomEntityResolutionConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
-		c.coreConn = conn
+		c.entityResolutionConn = conn
 	}
 }
 

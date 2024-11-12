@@ -150,7 +150,6 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_Core_Expect_Cor
 	suite.Require().NoError(err)
 	suite.Len(wellKnown.Services, 1)
 	suite.Equal(modeCore, wellKnown.Mode)
-
 }
 
 // Register core and kas services
@@ -178,7 +177,6 @@ func (suite *ServiceTestSuite) Test_RegisterServices_In_Mode_Core_Plus_Kas_Expec
 	suite.Require().NoError(err)
 	suite.Len(wellKnown.Services, 1)
 	suite.Equal(modeCore, wellKnown.Mode)
-
 }
 
 // Register core and kas and ERS services

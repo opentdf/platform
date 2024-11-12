@@ -188,6 +188,8 @@ jobs:
           wait-for: 90s
       - name: check pwd
         run: pwd
+      - name: check ls
+        run: ls -la
       - name: run tdf3 benchmark tests
         run: ./examples/examples benchmark --count 10000 --concurrent 10
       - name: run nanotdf benchmark tests

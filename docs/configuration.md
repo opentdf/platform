@@ -256,19 +256,14 @@ server:
       map:
         standard: opentdf-standard
         admin: opentdf-admin
-        org-admin: opentdf-org-admin
 
       ## Custom policy (see examples https://github.com/casbin/casbin/tree/master/examples)
       csv: |
-        p, role:org-admin, policy:attributes, *, *, allow
-        p, role:org-admin, policy:subject-mappings, *, *, allow
-        p, role:org-admin, policy:resource-mappings, *, *, allow
-        p, role:org-admin, policy:kas-registry, *, *, allow
-        p, role:org-admin, policy:unsafe, *, *, allow
-        p, role:admin, policy:attributes, read, allow
-        p, role:admin, policy:subject-mappings, read, allow
-        p, role:admin, policy:resource-mappings, read, allow
-        p, role:admin, policy:kas-registry, read, allow
+        p, role:admin, policy:attributes, *, *, allow
+        p, role:admin, policy:subject-mappings, *, *, allow
+        p, role:admin, policy:resource-mappings, *, *, allow
+        p, role:admin, policy:kas-registry, *, *, allow
+        p, role:admin, policy:unsafe, *, *, allow
         p, role:standard, policy:attributes, read, allow
         p, role:standard, policy:subject-mappings, read, allow
         p, role:standard, policy:resource-mappings, read, allow

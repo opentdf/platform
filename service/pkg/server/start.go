@@ -34,6 +34,7 @@ const devModeMessage = `
 ██████╔╝███████╗ ╚████╔╝ ███████╗███████╗╚██████╔╝██║     ██║ ╚═╝ ██║███████╗██║ ╚████║   ██║       ██║ ╚═╝ ██║╚██████╔╝██████╔╝███████╗
 ╚═════╝ ╚══════╝  ╚═══╝  ╚══════╝╚══════╝ ╚═════╝ ╚═╝     ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝   ╚═╝       ╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝                                                                                        
 `
+const dpopKeySize = 2048
 
 func Start(f ...StartOptions) error {
 	startConfig := StartConfig{}
@@ -158,7 +159,6 @@ func Start(f ...StartOptions) error {
 
 	// If client credentials are provided, use them
 	if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
-		logger.Info("using client credentials", "", cfg.SDKConfig.ClientID, cfg.SDKConfig.ClientSecret)
 		sdkOptions = append(sdkOptions, sdk.WithClientCredentials(cfg.SDKConfig.ClientID, cfg.SDKConfig.ClientSecret, nil))
 
 		oidcconfig, err := auth.DiscoverOIDCConfiguration(ctx, cfg.Server.Auth.Issuer, logger)
@@ -171,7 +171,7 @@ func Start(f ...StartOptions) error {
 	}
 
 	// If the mode is all, use IPC for the SDK client
-	if slices.Contains(cfg.Mode, "all") ||
+	if slices.Contains(cfg.Mode, "all") || //nolint:nestif // Need to handle all config options
 		slices.Contains(cfg.Mode, "entityresolution") ||
 		slices.Contains(cfg.Mode, "core") {
 		// Use IPC for the SDK client
@@ -189,7 +189,7 @@ func Start(f ...StartOptions) error {
 			ersDialOptions := []grpc.DialOption{}
 			var tlsConfig *tls.Config
 			if cfg.SDKConfig.EntityResolutionConnection.Insecure {
-				tlsConfig := &tls.Config{
+				tlsConfig = &tls.Config{
 					MinVersion:         tls.VersionTLS12,
 					InsecureSkipVerify: true, // #nosec G402
 				}
@@ -201,13 +201,12 @@ func Start(f ...StartOptions) error {
 			}
 
 			if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
-				// dont do this twice
 				oidcconfig, err := auth.DiscoverOIDCConfiguration(ctx, cfg.Server.Auth.Issuer, logger)
 				if err != nil {
 					return fmt.Errorf("could not retrieve oidc configuration: %w", err)
 				}
 
-				rsaKeyPair, err := ocrypto.NewRSAKeyPair(2048)
+				rsaKeyPair, err := ocrypto.NewRSAKeyPair(dpopKeySize)
 				if err != nil {
 					return fmt.Errorf("could not generate RSA Key: %w", err)
 				}

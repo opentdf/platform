@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.19](https://github.com/opentdf/platform/compare/sdk/v0.3.18...sdk/v0.3.19) (2024-11-12)
+
+
+### Bug Fixes
+
+* update GetType to check the first 4 bytes ([#1736](https://github.com/opentdf/platform/issues/1736)) ([d6a1e6d](https://github.com/opentdf/platform/commit/d6a1e6d6bf60e970afe8fc26c483cfe2e340fdd4))
+
 ## [0.3.18](https://github.com/opentdf/platform/compare/sdk/v0.3.17...sdk/v0.3.18) (2024-11-06)
 
 

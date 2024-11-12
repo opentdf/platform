@@ -193,11 +193,11 @@ jobs:
       - name: check ls
         run: ls -la
       - name: run tdf3 benchmark tests
-        run: ./examples benchmark --count 10000 --concurrent 10
+        run: ./examples/examples benchmark --count 10000 --concurrent 10
       - name: run nanotdf benchmark tests
-        run: ./examples benchmark --tdf nanotdf--count 10000 --concurrent 10
+        run: ./examples/examples benchmark --tdf nanotdf--count 10000 --concurrent 10
       - name: collect the metrics from the benchmark tests
-        run: ./examples metrics
+        run: ./examples/examples metrics
 
   image:
     name: image build

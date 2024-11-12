@@ -292,9 +292,10 @@ func (t TdfType) String() string {
 	return string(t)
 }
 
-// ZIP file signature
 var (
-	zipSignature  = []byte{0x50, 0x4B, 0x03, 0x04}
+	// ZIP file Signature
+	zipSignature = []byte{0x50, 0x4B, 0x03, 0x04}
+	// Nano TDF Signature
 	nanoSignature = []byte{0x4C, 0x31, 0x4C}
 )
 

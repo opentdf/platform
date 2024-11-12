@@ -301,7 +301,8 @@ var (
 // GetTdfType returns the type of TDF based on the reader.
 // Reader is reset after the check.
 func GetTdfType(reader io.ReadSeeker) TdfType {
-	buffer := make([]byte, 4)
+	numBytes := 4
+	buffer := make([]byte, numBytes)
 	n, err := reader.Read(buffer)
 	if err != nil {
 		return Invalid
@@ -310,11 +311,10 @@ func GetTdfType(reader io.ReadSeeker) TdfType {
 	// Reset the reader to its original position
 	_, err = reader.Seek(0, io.SeekStart)
 	if err != nil {
-		fmt.Println("Error seeking in reader:", err)
 		return Invalid
 	}
 
-	if n < 4 {
+	if n < numBytes {
 		return Invalid
 	}
 

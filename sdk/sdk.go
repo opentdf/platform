@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	_ "embed"
@@ -291,19 +292,40 @@ func (t TdfType) String() string {
 	return string(t)
 }
 
+// ZIP file signature
+var (
+	zipSignature  = []byte{0x50, 0x4B, 0x03, 0x04}
+	nanoSignature = []byte{0x4C, 0x31, 0x4C}
+)
+
 // GetTdfType returns the type of TDF based on the reader.
 // Reader is reset after the check.
 func GetTdfType(reader io.ReadSeeker) TdfType {
-	isValidNanoTdf, _ := IsValidNanoTdf(reader)
-
-	if isValidNanoTdf {
-		return Nano
+	buffer := make([]byte, 4)
+	n, err := reader.Read(buffer)
+	if err != nil {
+		return Invalid
 	}
 
-	isValidStandardTdf, _ := IsValidTdf(reader)
+	// Reset the reader to its original position
+	_, err = reader.Seek(0, io.SeekStart)
+	if err != nil {
+		fmt.Println("Error seeking in reader:", err)
+		return Invalid
+	}
 
-	if isValidStandardTdf {
+	if n < 4 {
+		return Invalid
+	}
+
+	// Check if the first 4 bytes match the ZIP signature
+	if bytes.Equal(buffer, zipSignature) {
 		return Standard
+	}
+
+	// Check if the first 3 bytes match the Nano signature
+	if bytes.Equal(buffer[:3], nanoSignature) {
+		return Nano
 	}
 
 	return Invalid

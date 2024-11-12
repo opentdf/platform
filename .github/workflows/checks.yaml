@@ -186,16 +186,12 @@ jobs:
             tcp:localhost:8080
           log-output-if: true
           wait-for: 90s
-      - name: check pwd
-        run: pwd
       - name: build examples
         run: cd examples && go build -o examples .
-      - name: check ls
-        run: ls -la
       - name: run tdf3 benchmark tests
         run: ./examples/examples benchmark --count 10000 --concurrent 10
       - name: run nanotdf benchmark tests
-        run: ./examples/examples benchmark --tdf nanotdf--count 10000 --concurrent 10
+        run: ./examples/examples benchmark --tdf nanotdf --count 10000 --concurrent 10
       - name: collect the metrics from the benchmark tests
         run: ./examples/examples metrics
 

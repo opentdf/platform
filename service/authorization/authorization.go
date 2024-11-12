@@ -9,8 +9,6 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
@@ -230,7 +228,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *connect.R
 
 			attrDefs, err = populateAttrDefValueFqns(attrDefs)
 			if err != nil {
-				return nil, err
+				return nil, connect.NewError(connect.CodeInternal, err)
 			}
 
 			// get the relevant resource attribute fqns
@@ -449,12 +447,12 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	attrsRes, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{})
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, "failed to list attributes")
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list attributes"))
 	}
 	subMapsRes, err := as.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{})
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, "failed to list subject mappings")
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list subject mappings"))
 	}
 	// create a lookup map of attribute value FQNs (based on request scope)
 	scopeMap := makeScopeMap(req.Msg.GetScope())
@@ -470,7 +468,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	// TODO: this could probably be moved to proto validation https://github.com/opentdf/platform/issues/1057
 	if req.Msg.Entities == nil {
 		as.logger.ErrorContext(ctx, "requires entities")
-		return nil, status.Error(codes.InvalidArgument, "requires entities")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("requires entities"))
 	}
 	rsp := &authorization.GetEntitlementsResponse{
 		Entitlements: make([]*authorization.EntityEntitlements, len(req.Msg.GetEntities())),
@@ -487,14 +485,14 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	in, err := entitlements.OpaInput(subjectMappings, ersResp)
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to build rego input", slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, "failed to build rego input")
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to build rego input"))
 	}
 
 	results, err := as.eval.Eval(ctx,
 		rego.EvalInput(in),
 	)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to evaluate entitlements policy")
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to evaluate entitlements policy"))
 	}
 
 	resp := connect.NewResponse(rsp)

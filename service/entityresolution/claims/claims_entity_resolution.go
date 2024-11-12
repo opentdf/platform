@@ -69,14 +69,14 @@ func EntityResolution(_ context.Context,
 			if claims != nil {
 				err := claims.UnmarshalTo(entityStruct)
 				if err != nil {
-					return entityresolution.ResolveEntitiesResponse{}, fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err)
+					return entityresolution.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err))
 				}
 			}
 		default:
 			retrievedStruct, err := entityToStructPb(ident)
 			if err != nil {
 				logger.Error("unable to make entity struct", slog.String("error", err.Error()))
-				return entityresolution.ResolveEntitiesResponse{}, fmt.Errorf("unable to make entity struct: %w", err)
+				return entityresolution.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInternal, fmt.Errorf("unable to make entity struct: %w", err))
 			}
 			entityStruct = retrievedStruct
 		}

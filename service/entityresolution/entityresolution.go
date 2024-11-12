@@ -12,25 +12,35 @@ type ERSConfig struct {
 	Mode string `mapstructure:"mode" json:"mode"`
 }
 
-const KeycloakMode = "keycloak"
-const ClaimsMode = "claims"
+const (
+	KeycloakMode = "keycloak"
+	ClaimsMode   = "claims"
+)
 
-func NewRegistration() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		Namespace:   "entityresolution",
-		ServiceDesc: &entityresolution.EntityResolutionService_ServiceDesc,
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			var inputConfig ERSConfig
+type EntityResolution struct {
+	entityresolution.EntityResolutionServiceServer
+}
 
-			if err := mapstructure.Decode(srp.Config, &inputConfig); err != nil {
-				panic(err)
-			}
-			if inputConfig.Mode == ClaimsMode {
-				return claims.RegisterClaimsERS(srp.Config, srp.Logger)
-			}
+func NewRegistration() *serviceregistry.Service[EntityResolution] {
+	return &serviceregistry.Service[EntityResolution]{
+		ServiceOptions: serviceregistry.ServiceOptions[EntityResolution]{
+			Namespace:   "entityresolution",
+			ServiceDesc: &entityresolution.EntityResolutionService_ServiceDesc,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (*EntityResolution, serviceregistry.HandlerServer) {
+				var inputConfig ERSConfig
 
-			// Default to keyclaok ERS
-			return keycloak.RegisterKeycloakERS(srp.Config, srp.Logger)
+				if err := mapstructure.Decode(srp.Config, &inputConfig); err != nil {
+					panic(err)
+				}
+				if inputConfig.Mode == ClaimsMode {
+					claimsSVC, claimsHandler := claims.RegisterClaimsERS(srp.Config, srp.Logger)
+					return &EntityResolution{EntityResolutionServiceServer: claimsSVC}, claimsHandler
+				}
+
+				// Default to keycloak ERS
+				kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger)
+				return &EntityResolution{EntityResolutionServiceServer: kcSVC}, kcHandler
+			},
 		},
 	}
 }

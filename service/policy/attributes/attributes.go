@@ -21,16 +21,18 @@ type AttributesService struct { //nolint:revive // AttributesService is a valid 
 	logger   *logger.Logger
 }
 
-func NewRegistration() serviceregistry.Registration {
-	return serviceregistry.Registration{
-		ServiceDesc: &attributes.AttributesService_ServiceDesc,
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return &AttributesService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				if srv, ok := server.(attributes.AttributesServiceServer); ok {
-					return attributes.RegisterAttributesServiceHandlerServer(ctx, mux, srv)
+func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[AttributesService] {
+	return &serviceregistry.Service[AttributesService]{
+		ServiceOptions: serviceregistry.ServiceOptions[AttributesService]{
+			Namespace:   ns,
+			DB:          dbRegister,
+			ServiceDesc: &attributes.AttributesService_ServiceDesc,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (*AttributesService, serviceregistry.HandlerServer) {
+				as := &AttributesService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
+				return as, func(ctx context.Context, mux *runtime.ServeMux) error {
+					return attributes.RegisterAttributesServiceHandlerServer(ctx, mux, as)
 				}
-				return fmt.Errorf("failed to assert server as attributes.AttributesServiceServer")
-			}
+			},
 		},
 	}
 }

@@ -52,16 +52,16 @@ type KeycloakConfig struct {
 	InferID        InferredIdentityConfig `mapstructure:"inferid,omitempty" json:"inferid,omitempty"`
 }
 
-func RegisterKeycloakERS(config serviceregistry.ServiceConfig, logger *logger.Logger) (any, serviceregistry.HandlerServer) {
+func RegisterKeycloakERS(config serviceregistry.ServiceConfig, logger *logger.Logger) (*KeycloakEntityResolutionService, serviceregistry.HandlerServer) {
 	var inputIdpConfig KeycloakConfig
 	if err := mapstructure.Decode(config, &inputIdpConfig); err != nil {
 		panic(err)
 	}
 	logger.Debug("entity_resolution configuration", "config", inputIdpConfig)
-
-	return &KeycloakEntityResolutionService{idpConfig: inputIdpConfig, logger: logger},
-		func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-			return entityresolution.RegisterEntityResolutionServiceHandlerServer(ctx, mux, server.(entityresolution.EntityResolutionServiceServer)) //nolint:forcetypeassert // allow type assert, following other services
+	keycloakSVC := &KeycloakEntityResolutionService{idpConfig: inputIdpConfig, logger: logger}
+	return keycloakSVC,
+		func(ctx context.Context, mux *runtime.ServeMux) error {
+			return entityresolution.RegisterEntityResolutionServiceHandlerServer(ctx, mux, keycloakSVC)
 		}
 }
 

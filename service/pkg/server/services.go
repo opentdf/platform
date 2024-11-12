@@ -40,7 +40,7 @@ const (
 // registerEssentialServices registers the essential services to the given service registry.
 // It takes a serviceregistry.Registry as input and returns an error if registration fails.
 func registerEssentialServices(reg serviceregistry.Registry) error {
-	essentialServices := []serviceregistry.Registration{
+	essentialServices := []serviceregistry.IService{
 		health.NewRegistration(),
 	}
 	// Register the essential services
@@ -56,7 +56,7 @@ func registerEssentialServices(reg serviceregistry.Registry) error {
 // It returns the list of registered services and any error encountered during registration.
 func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string, error) {
 	var (
-		services           []serviceregistry.Registration
+		services           []serviceregistry.IService
 		registeredServices []string
 	)
 
@@ -64,7 +64,7 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 		switch m {
 		case "all":
 			registeredServices = append(registeredServices, []string{servicePolicy, serviceAuthorization, serviceKAS, serviceWellKnown, serviceEntityResolution}...)
-			services = append(services, []serviceregistry.Registration{
+			services = append(services, []serviceregistry.IService{
 				authorization.NewRegistration(),
 				kas.NewRegistration(),
 				wellknown.NewRegistration(),
@@ -73,7 +73,7 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 			services = append(services, policy.NewRegistrations()...)
 		case "core":
 			registeredServices = append(registeredServices, []string{servicePolicy, serviceAuthorization, serviceWellKnown}...)
-			services = append(services, []serviceregistry.Registration{
+			services = append(services, []serviceregistry.IService{
 				authorization.NewRegistration(),
 				wellknown.NewRegistration(),
 			}...)
@@ -148,17 +148,17 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 
 		for _, svc := range namespace.Services {
 			// Get new db client if it is required and not already created
-			if svc.DB.Required && svcDBClient == nil {
+			if svc.IsDBRequired() && svcDBClient == nil {
 				logger.Debug("creating database client", slog.String("namespace", ns))
 				var err error
-				svcDBClient, err = newServiceDBClient(ctx, cfg.Logger, cfg.DB, ns, svc.DB.Migrations)
+				svcDBClient, err = newServiceDBClient(ctx, cfg.Logger, cfg.DB, ns, svc.DBMigrations())
 				if err != nil {
 					return err
 				}
 			}
 
 			err = svc.Start(ctx, serviceregistry.RegistrationParams{
-				Config:                 cfg.Services[svc.Namespace],
+				Config:                 cfg.Services[svc.GetNamespace()],
 				Logger:                 svcLogger,
 				DBClient:               svcDBClient,
 				SDK:                    client,
@@ -180,7 +180,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 			}
 
 			// Register the service with the gRPC gateway
-			if err := svc.RegisterHTTPServer(ctx, otdf.Mux); err != nil { //nolint:staticcheck // This is deprecated for internal tracking
+			if err := svc.RegisterHTTPServer(ctx, otdf.Mux); err != nil {
 				logger.Error("failed to register service to grpc gateway", slog.String("namespace", ns), slog.String("error", err.Error()))
 				return err
 			}
@@ -188,7 +188,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 			logger.Info(
 				"service running",
 				slog.String("namespace", ns),
-				slog.String("service", svc.ServiceDesc.ServiceName),
+				slog.String("service", svc.GetServiceDesc().ServiceName),
 				slog.Group("database",
 					slog.Any("required", svcDBClient != nil),
 					slog.Any("migrationStatus", determineStatusOfMigration(svcDBClient)),

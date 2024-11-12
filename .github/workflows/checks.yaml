@@ -189,9 +189,9 @@ jobs:
       - name: build examples
         run: cd examples && go build -o examples .
       - name: run tdf3 benchmark tests
-        run: ./examples/examples benchmark --count 10000 --concurrent 10
+        run: ./examples/examples benchmark --count 5000 --concurrent 50
       - name: run nanotdf benchmark tests
-        run: ./examples/examples benchmark --tdf nanotdf --count 10000 --concurrent 10
+        run: ./examples/examples benchmark --tdf nanotdf --count 5000 --concurrent 50
       - name: collect the metrics from the benchmark tests
         run: ./examples/examples metrics
 

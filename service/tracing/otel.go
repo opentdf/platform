@@ -35,7 +35,7 @@ func InitTracer() func() {
 
 	lumberjackLogger := &lumberjack.Logger{
 		Filename:   "traces/traces.log",
-		MaxSize:    10,   //nolint:mnd  // maximum size in megabytes
+		MaxSize:    20,   //nolint:mnd  // maximum size in megabytes
 		MaxBackups: 10,   //nolint:mnd // number of backups
 		MaxAge:     30,   //nolint:mnd    // days
 		Compress:   true, // compress the rotated files

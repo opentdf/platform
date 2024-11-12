@@ -27,6 +27,7 @@ import (
 	"github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/archive"
+	"github.com/xeipuuv/gojsonschema"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -327,24 +328,23 @@ func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 		return false, fmt.Errorf("archive.NewTDFReader failed: %w", err)
 	}
 
-	_, err = tdfReader.Manifest()
+	manifest, err := tdfReader.Manifest()
 	if err != nil {
 		return false, fmt.Errorf("tdfReader.Manifest failed: %w", err)
 	}
 
-	// Schema validation is failing across SDKs
-	// // Convert the embedded data to a string
-	// manifestSchemaString := string(manifestSchema)
-	// loader := gojsonschema.NewStringLoader(manifestSchemaString)
-	// manifestStringLoader := gojsonschema.NewStringLoader(manifest)
-	// result, err := gojsonschema.Validate(loader, manifestStringLoader)
-	// if err != nil {
-	// 	return false, errors.New("could not validate manifest.json")
-	// }
+	// Convert the embedded data to a string
+	manifestSchemaString := string(manifestSchema)
+	loader := gojsonschema.NewStringLoader(manifestSchemaString)
+	manifestStringLoader := gojsonschema.NewStringLoader(manifest)
+	result, err := gojsonschema.Validate(loader, manifestStringLoader)
+	if err != nil {
+		return false, errors.New("could not validate manifest.json")
+	}
 
-	// if !result.Valid() {
-	// 	return false, errors.New("manifest was not valid")
-	// }
+	if !result.Valid() {
+		return false, errors.New("manifest was not valid")
+	}
 
 	return true, nil
 }

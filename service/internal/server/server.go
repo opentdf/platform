@@ -209,8 +209,9 @@ func (rw *grpcGatewayResponseWriter) Header() http.Header {
 }
 
 func (rw *grpcGatewayResponseWriter) WriteHeader(statusCode int) {
+	GRPCGatewayDeprecationDate := fmt.Sprintf("@%d", time.Date(2025, time.March, 25, 0, 0, 0, 0, time.UTC).Unix())
 	if !rw.wroteHeader {
-		rw.w.Header().Set("Deprecation", fmt.Sprintf("@%d", time.Date(2025, time.March, 25, 0, 0, 0, 0, time.UTC).Unix()))
+		rw.w.Header().Set("Deprecation", GRPCGatewayDeprecationDate)
 		rw.wroteHeader = true
 		rw.w.WriteHeader(statusCode)
 	}

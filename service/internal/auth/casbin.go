@@ -46,22 +46,8 @@ var defaultPolicy = `
 
 
 # Role: Admin
-## gRPC routes
-p,	role:admin,		*,																*,			allow
-
-## HTTP routes
-p,	role:admin,		/attributes*,																*,			allow
-p,	role:admin,		/namespaces*,																*,			allow
-p,	role:admin,		/subject-mappings*,													*,			allow
-p,	role:admin,		/resource-mappings*,												*,			allow
-p,	role:admin,		/key-access-servers*,												*,			allow
-p,	role:admin,		/kas/v2/rewrap,						  				        *,      allow
-p,	role:admin,		/unsafe*,										            *,			allow
-p,	role:admin,		/v1/entitlements,						  				        *,      allow
-p,	role:admin,		/v1/authorization,						  				        *,      allow
-p,	role:admin,		/v1/token/authorization,						  				        *,      allow
-p,	role:admin,		/entityresolution/entitychain,							*,  	allow
-p,	role:admin,		/entityresolution/resolve,							*,  	allow
+## gRPC and HTTP routes
+p,	role:admin,		*,					*,			allow
 
 ## Role: Standard
 ## gRPC routes

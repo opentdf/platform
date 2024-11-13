@@ -91,12 +91,14 @@ func NewKeyAccessServerRegistryServiceClient(httpClient connect.HTTPClient, base
 			httpClient,
 			baseURL+KeyAccessServerRegistryServiceListKeyAccessServersProcedure,
 			connect.WithSchema(keyAccessServerRegistryServiceListKeyAccessServersMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getKeyAccessServer: connect.NewClient[kasregistry.GetKeyAccessServerRequest, kasregistry.GetKeyAccessServerResponse](
 			httpClient,
 			baseURL+KeyAccessServerRegistryServiceGetKeyAccessServerProcedure,
 			connect.WithSchema(keyAccessServerRegistryServiceGetKeyAccessServerMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		createKeyAccessServer: connect.NewClient[kasregistry.CreateKeyAccessServerRequest, kasregistry.CreateKeyAccessServerResponse](
@@ -121,6 +123,7 @@ func NewKeyAccessServerRegistryServiceClient(httpClient connect.HTTPClient, base
 			httpClient,
 			baseURL+KeyAccessServerRegistryServiceListKeyAccessServerGrantsProcedure,
 			connect.WithSchema(keyAccessServerRegistryServiceListKeyAccessServerGrantsMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -192,12 +195,14 @@ func NewKeyAccessServerRegistryServiceHandler(svc KeyAccessServerRegistryService
 		KeyAccessServerRegistryServiceListKeyAccessServersProcedure,
 		svc.ListKeyAccessServers,
 		connect.WithSchema(keyAccessServerRegistryServiceListKeyAccessServersMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	keyAccessServerRegistryServiceGetKeyAccessServerHandler := connect.NewUnaryHandler(
 		KeyAccessServerRegistryServiceGetKeyAccessServerProcedure,
 		svc.GetKeyAccessServer,
 		connect.WithSchema(keyAccessServerRegistryServiceGetKeyAccessServerMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	keyAccessServerRegistryServiceCreateKeyAccessServerHandler := connect.NewUnaryHandler(
@@ -222,6 +227,7 @@ func NewKeyAccessServerRegistryServiceHandler(svc KeyAccessServerRegistryService
 		KeyAccessServerRegistryServiceListKeyAccessServerGrantsProcedure,
 		svc.ListKeyAccessServerGrants,
 		connect.WithSchema(keyAccessServerRegistryServiceListKeyAccessServerGrantsMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/policy.kasregistry.KeyAccessServerRegistryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -115,12 +115,14 @@ func NewResourceMappingServiceClient(httpClient connect.HTTPClient, baseURL stri
 			httpClient,
 			baseURL+ResourceMappingServiceListResourceMappingGroupsProcedure,
 			connect.WithSchema(resourceMappingServiceListResourceMappingGroupsMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getResourceMappingGroup: connect.NewClient[resourcemapping.GetResourceMappingGroupRequest, resourcemapping.GetResourceMappingGroupResponse](
 			httpClient,
 			baseURL+ResourceMappingServiceGetResourceMappingGroupProcedure,
 			connect.WithSchema(resourceMappingServiceGetResourceMappingGroupMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		createResourceMappingGroup: connect.NewClient[resourcemapping.CreateResourceMappingGroupRequest, resourcemapping.CreateResourceMappingGroupResponse](
@@ -145,18 +147,21 @@ func NewResourceMappingServiceClient(httpClient connect.HTTPClient, baseURL stri
 			httpClient,
 			baseURL+ResourceMappingServiceListResourceMappingsProcedure,
 			connect.WithSchema(resourceMappingServiceListResourceMappingsMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		listResourceMappingsByGroupFqns: connect.NewClient[resourcemapping.ListResourceMappingsByGroupFqnsRequest, resourcemapping.ListResourceMappingsByGroupFqnsResponse](
 			httpClient,
 			baseURL+ResourceMappingServiceListResourceMappingsByGroupFqnsProcedure,
 			connect.WithSchema(resourceMappingServiceListResourceMappingsByGroupFqnsMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getResourceMapping: connect.NewClient[resourcemapping.GetResourceMappingRequest, resourcemapping.GetResourceMappingResponse](
 			httpClient,
 			baseURL+ResourceMappingServiceGetResourceMappingProcedure,
 			connect.WithSchema(resourceMappingServiceGetResourceMappingMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		createResourceMapping: connect.NewClient[resourcemapping.CreateResourceMappingRequest, resourcemapping.CreateResourceMappingResponse](
@@ -282,12 +287,14 @@ func NewResourceMappingServiceHandler(svc ResourceMappingServiceHandler, opts ..
 		ResourceMappingServiceListResourceMappingGroupsProcedure,
 		svc.ListResourceMappingGroups,
 		connect.WithSchema(resourceMappingServiceListResourceMappingGroupsMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	resourceMappingServiceGetResourceMappingGroupHandler := connect.NewUnaryHandler(
 		ResourceMappingServiceGetResourceMappingGroupProcedure,
 		svc.GetResourceMappingGroup,
 		connect.WithSchema(resourceMappingServiceGetResourceMappingGroupMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	resourceMappingServiceCreateResourceMappingGroupHandler := connect.NewUnaryHandler(
@@ -312,18 +319,21 @@ func NewResourceMappingServiceHandler(svc ResourceMappingServiceHandler, opts ..
 		ResourceMappingServiceListResourceMappingsProcedure,
 		svc.ListResourceMappings,
 		connect.WithSchema(resourceMappingServiceListResourceMappingsMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	resourceMappingServiceListResourceMappingsByGroupFqnsHandler := connect.NewUnaryHandler(
 		ResourceMappingServiceListResourceMappingsByGroupFqnsProcedure,
 		svc.ListResourceMappingsByGroupFqns,
 		connect.WithSchema(resourceMappingServiceListResourceMappingsByGroupFqnsMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	resourceMappingServiceGetResourceMappingHandler := connect.NewUnaryHandler(
 		ResourceMappingServiceGetResourceMappingProcedure,
 		svc.GetResourceMapping,
 		connect.WithSchema(resourceMappingServiceGetResourceMappingMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	resourceMappingServiceCreateResourceMappingHandler := connect.NewUnaryHandler(

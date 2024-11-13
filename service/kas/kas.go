@@ -1,26 +1,27 @@
 package kas
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"net/url"
 	"strings"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/mitchellh/mapstructure"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/kas/access"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 )
 
-func NewRegistration() *serviceregistry.Service[access.Provider] {
-	return &serviceregistry.Service[access.Provider]{
-		ServiceOptions: serviceregistry.ServiceOptions[access.Provider]{
-			Namespace:   "kas",
-			ServiceDesc: &kaspb.AccessService_ServiceDesc,
-			RegisterFunc: func(srp serviceregistry.RegistrationParams) (*access.Provider, serviceregistry.HandlerServer) {
+func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler] {
+	return &serviceregistry.Service[kasconnect.AccessServiceHandler]{
+		ServiceOptions: serviceregistry.ServiceOptions[kasconnect.AccessServiceHandler]{
+			Namespace:      "kas",
+			ServiceDesc:    &kaspb.AccessService_ServiceDesc,
+			ConnectRPCFunc: kasconnect.NewAccessServiceHandler,
+			GRPCGateayFunc: kaspb.RegisterAccessServiceHandlerFromEndpoint,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasconnect.AccessServiceHandler, serviceregistry.HandlerServer) {
 				// FIXME msg="mismatched key access url" keyAccessURL=http://localhost:9000 kasURL=https://:9000
 				hostWithPort := srp.OTDF.HTTPServer.Addr
 				if strings.HasPrefix(hostWithPort, ":") {
@@ -65,7 +66,7 @@ func NewRegistration() *serviceregistry.Service[access.Provider] {
 					kasCfg.Keyring = append(kasCfg.Keyring, inferLegacyKeys(kasCfg.Keyring)...)
 				}
 
-				p := access.Provider{
+				p := &access.Provider{
 					URI:            *kasURI,
 					AttributeSvc:   nil,
 					CryptoProvider: srp.OTDF.CryptoProvider,
@@ -80,9 +81,7 @@ func NewRegistration() *serviceregistry.Service[access.Provider] {
 					srp.Logger.Error("failed to register kas readiness check", slog.String("error", err.Error()))
 				}
 
-				return &p, func(ctx context.Context, mux *runtime.ServeMux) error {
-					return kaspb.RegisterAccessServiceHandlerServer(ctx, mux, &p)
-				}
+				return p, nil
 			},
 		},
 	}

@@ -2,21 +2,25 @@ package audit
 
 import (
 	"context"
+	"net"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
+	"github.com/opentdf/platform/service/internal/server/realip"
 )
 
 const (
-	TestUserAgent     = "test-user-agent"
-	TestActorID       = "test-actor-id"
-	TestRequestIP     = "192.168.1.1"
+	TestUserAgent = "test-user-agent"
+	TestActorID   = "test-actor-id"
+
 	TestTDFFormat     = "nano"
 	TestAlgorithm     = "rsa"
 	TestPolicyBinding = "test-policy-binding"
 )
+
+var TestRequestIP = net.ParseIP("192.168.1.1")
 
 var TestRequestID = uuid.New()
 
@@ -24,7 +28,7 @@ func createTestContext() context.Context {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, sdkAudit.RequestIDContextKey, TestRequestID)
 	ctx = context.WithValue(ctx, sdkAudit.UserAgentContextKey, TestUserAgent)
-	ctx = context.WithValue(ctx, sdkAudit.RequestIPContextKey, TestRequestIP)
+	ctx = context.WithValue(ctx, realip.ClientIP{}, TestRequestIP)
 	ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, TestActorID)
 	return ctx
 }

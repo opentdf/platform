@@ -5,8 +5,8 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
-	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
+	"github.com/opentdf/platform/service/internal/server/realip"
 )
 
 // Common Strings
@@ -155,14 +155,9 @@ func getContextValue(ctx context.Context, key sdkAudit.ContextKey) string {
 // can pass the custom X-Forwarded-Request-IP header for internal requests. If
 // that is not present, it falls back to the realip package.
 func getRequestIPFromContext(ctx context.Context) string {
-	requestIPFromContextKey, isOK := ctx.Value(sdkAudit.RequestIPContextKey).(string)
-	if isOK {
-		return requestIPFromContextKey
-	}
-
-	requestIPFromRealip, ipOK := realip.FromContext(ctx)
-	if ipOK {
-		return requestIPFromRealip.String()
+	ip := realip.FromContext(ctx)
+	if ip.String() != "" && ip.String() != "<nil>" {
+		return ip.String()
 	}
 
 	return defaultNone

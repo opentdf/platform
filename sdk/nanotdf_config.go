@@ -83,6 +83,8 @@ func (config *NanoTDFConfig) EnableECDSAPolicyBinding() {
 	config.bindCfg.useEcdsaBinding = true
 }
 
+// EnableCollection Experimental: Enables Collection in NanoTDFConfig.
+// Reuse NanoTDFConfig to add nTDFs to a Collection.
 func (config *NanoTDFConfig) EnableCollection() {
 	config.collectionCfg.useCollection = true
 }

@@ -241,10 +241,12 @@ service ResourceMappingService {
 
   rpc ListResourceMappingGroups(ListResourceMappingGroupsRequest) returns (ListResourceMappingGroupsResponse) {
     option (google.api.http) = {get: "/resource-mapping-groups"};
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc GetResourceMappingGroup(GetResourceMappingGroupRequest) returns (GetResourceMappingGroupResponse) {
     option (google.api.http) = {get: "/resource-mapping-groups/{id}"};
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc CreateResourceMappingGroup(CreateResourceMappingGroupRequest) returns (CreateResourceMappingGroupResponse) {
@@ -271,14 +273,17 @@ service ResourceMappingService {
 
   rpc ListResourceMappings(ListResourceMappingsRequest) returns (ListResourceMappingsResponse) {
     option (google.api.http) = {get: "/resource-mappings"};
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc ListResourceMappingsByGroupFqns(ListResourceMappingsByGroupFqnsRequest) returns (ListResourceMappingsByGroupFqnsResponse) {
     option (google.api.http) = {get: "/resource-mappings/group-fqns"};
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc GetResourceMapping(GetResourceMappingRequest) returns (GetResourceMappingResponse) {
     option (google.api.http) = {get: "/resource-mappings/{id}"};
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc CreateResourceMapping(CreateResourceMappingRequest) returns (CreateResourceMappingResponse) {

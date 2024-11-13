@@ -99,7 +99,7 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Res
 	require.NoError(t, err)
 
 	// Register Test Service
-	ts := &TestService{}
+	ts := TestService{}
 	registerTestService, _ := mockTestServiceRegistry(mockTestServiceOptions{
 		serviceObject: ts,
 		serviceHandler: func(_ context.Context, mux *runtime.ServeMux) error {

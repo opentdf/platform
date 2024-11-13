@@ -27,10 +27,9 @@ type RequestBody struct {
 }
 
 type KASClient struct {
-	accessTokenSource  auth.AccessTokenSource
-	dialOptions        []grpc.DialOption
-	clientPublicKeyPEM string
-	asymDecryption     ocrypto.AsymDecryption
+	accessTokenSource auth.AccessTokenSource
+	dialOptions       []grpc.DialOption
+	sessionKey        *ocrypto.RsaKeyPair
 }
 
 // once the backend moves over we should use the same type that the golang backend uses here
@@ -42,27 +41,12 @@ type rewrapRequestBody struct {
 	SchemaVersion   string    `json:"schemaVersion,omitempty"`
 }
 
-func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, sessionKey ocrypto.RsaKeyPair) (*KASClient, error) {
-	clientPublicKey, err := sessionKey.PublicKeyInPemFormat()
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
-	}
-
-	clientPrivateKey, err := sessionKey.PrivateKeyInPemFormat()
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
-	}
-
-	asymDecryption, err := ocrypto.NewAsymDecryption(clientPrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
-	}
+func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, sessionKey *ocrypto.RsaKeyPair) (*KASClient, error) {
 
 	return &KASClient{
-		accessTokenSource:  accessTokenSource,
-		dialOptions:        dialOptions,
-		clientPublicKeyPEM: clientPublicKey,
-		asymDecryption:     asymDecryption,
+		accessTokenSource: accessTokenSource,
+		dialOptions:       dialOptions,
+		sessionKey:        sessionKey,
 	}, nil
 }
 
@@ -99,7 +83,20 @@ func (k *KASClient) unwrap(ctx context.Context, keyAccess KeyAccess, policy stri
 		return nil, fmt.Errorf("error making rewrap request to kas: %w", err)
 	}
 
-	key, err := k.asymDecryption.Decrypt(response.GetEntityWrappedKey())
+	if k.sessionKey == nil {
+		return nil, fmt.Errorf("session key is nil")
+	}
+	clientPrivateKey, err := k.sessionKey.PrivateKeyInPemFormat()
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
+	}
+
+	asymDecryption, err := ocrypto.NewAsymDecryption(clientPrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
+	}
+
+	key, err := asymDecryption.Decrypt(response.GetEntityWrappedKey())
 	if err != nil {
 		return nil, fmt.Errorf("error decrypting payload from KAS: %w", err)
 	}
@@ -245,10 +242,21 @@ func getGRPCAddress(kasURL string) (string, error) {
 }
 
 func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.RewrapRequest, error) {
+
+	// check if the session key is nil if not return an error
+	if k.sessionKey == nil {
+		return nil, fmt.Errorf("session key is nil")
+	}
+
+	clientPublicKey, err := k.sessionKey.PublicKeyInPemFormat()
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
+	}
+
 	requestBody := rewrapRequestBody{
 		Policy:          policy,
 		KeyAccess:       keyAccess,
-		ClientPublicKey: k.clientPublicKeyPEM,
+		ClientPublicKey: clientPublicKey,
 	}
 	requestBodyJSON, err := json.Marshal(requestBody)
 	if err != nil {

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.8](https://github.com/opentdf/platform/compare/lib/fixtures/v0.2.7...lib/fixtures/v0.2.8) (2024-11-13)
+
+
+### Features
+
+* **authz:** Remove org-admin role, move privileges to admin role ([#1740](https://github.com/opentdf/platform/issues/1740)) ([ae931d0](https://github.com/opentdf/platform/commit/ae931d02f347edea468d4c5d48ab3e07ce7d3abe))
+
 ## [0.2.7](https://github.com/opentdf/platform/compare/lib/fixtures/v0.2.6...lib/fixtures/v0.2.7) (2024-06-20)
 
 

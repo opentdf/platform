@@ -259,11 +259,7 @@ server:
 
       ## Custom policy (see examples https://github.com/casbin/casbin/tree/master/examples)
       csv: |
-        p, role:admin, policy:attributes, *, *, allow
-        p, role:admin, policy:subject-mappings, *, *, allow
-        p, role:admin, policy:resource-mappings, *, *, allow
-        p, role:admin, policy:kas-registry, *, *, allow
-        p, role:admin, policy:unsafe, *, *, allow
+        p, role:admin, *, *, allow
         p, role:standard, policy:attributes, read, allow
         p, role:standard, policy:subject-mappings, read, allow
         p, role:standard, policy:resource-mappings, read, allow

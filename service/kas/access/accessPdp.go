@@ -19,7 +19,7 @@ func (p *Provider) canAccess(ctx context.Context, token *authorization.Token, po
 		// TODO: Move dissems check to the getdecisions endpoint
 		p.Logger.Error("Dissems check is not enabled in v2 platform kas")
 	}
-	if policy.Body.DataAttributes != nil {
+	if len(policy.Body.DataAttributes) > 0 {
 		attrAccess, err := p.checkAttributes(ctx, policy.Body.DataAttributes, token)
 		if err != nil {
 			return false, err

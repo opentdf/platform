@@ -142,24 +142,28 @@ func NewAttributesServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+AttributesServiceListAttributesProcedure,
 			connect.WithSchema(attributesServiceListAttributesMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		listAttributeValues: connect.NewClient[attributes.ListAttributeValuesRequest, attributes.ListAttributeValuesResponse](
 			httpClient,
 			baseURL+AttributesServiceListAttributeValuesProcedure,
 			connect.WithSchema(attributesServiceListAttributeValuesMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getAttribute: connect.NewClient[attributes.GetAttributeRequest, attributes.GetAttributeResponse](
 			httpClient,
 			baseURL+AttributesServiceGetAttributeProcedure,
 			connect.WithSchema(attributesServiceGetAttributeMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getAttributeValuesByFqns: connect.NewClient[attributes.GetAttributeValuesByFqnsRequest, attributes.GetAttributeValuesByFqnsResponse](
 			httpClient,
 			baseURL+AttributesServiceGetAttributeValuesByFqnsProcedure,
 			connect.WithSchema(attributesServiceGetAttributeValuesByFqnsMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		createAttribute: connect.NewClient[attributes.CreateAttributeRequest, attributes.CreateAttributeResponse](
@@ -367,24 +371,28 @@ func NewAttributesServiceHandler(svc AttributesServiceHandler, opts ...connect.H
 		AttributesServiceListAttributesProcedure,
 		svc.ListAttributes,
 		connect.WithSchema(attributesServiceListAttributesMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceListAttributeValuesHandler := connect.NewUnaryHandler(
 		AttributesServiceListAttributeValuesProcedure,
 		svc.ListAttributeValues,
 		connect.WithSchema(attributesServiceListAttributeValuesMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceGetAttributeHandler := connect.NewUnaryHandler(
 		AttributesServiceGetAttributeProcedure,
 		svc.GetAttribute,
 		connect.WithSchema(attributesServiceGetAttributeMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceGetAttributeValuesByFqnsHandler := connect.NewUnaryHandler(
 		AttributesServiceGetAttributeValuesByFqnsProcedure,
 		svc.GetAttributeValuesByFqns,
 		connect.WithSchema(attributesServiceGetAttributeValuesByFqnsMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceCreateAttributeHandler := connect.NewUnaryHandler(

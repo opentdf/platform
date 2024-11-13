@@ -162,10 +162,12 @@ message ListKeyAccessServerGrantsResponse {
 service KeyAccessServerRegistryService {
   rpc ListKeyAccessServers(ListKeyAccessServersRequest) returns (ListKeyAccessServersResponse) {
     option (google.api.http) = {get: "/key-access-servers"};
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc GetKeyAccessServer(GetKeyAccessServerRequest) returns (GetKeyAccessServerResponse) {
     option (google.api.http) = {get: "/key-access-servers/{id}"};
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc CreateKeyAccessServer(CreateKeyAccessServerRequest) returns (CreateKeyAccessServerResponse) {
@@ -188,5 +190,6 @@ service KeyAccessServerRegistryService {
 
   rpc ListKeyAccessServerGrants(ListKeyAccessServerGrantsRequest) returns (ListKeyAccessServerGrantsResponse) {
     option (google.api.http) = {get: "/key-access-servers/grants"};
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 }

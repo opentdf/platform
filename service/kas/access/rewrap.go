@@ -16,9 +16,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strings"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -32,7 +34,6 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -63,15 +64,15 @@ const (
 )
 
 func err400(s string) error {
-	return errors.Join(ErrUser, status.Error(codes.InvalidArgument, s))
+	return connect.NewError(connect.CodeInvalidArgument, errors.Join(ErrUser, status.Error(codes.InvalidArgument, s)))
 }
 
 func err401(s string) error {
-	return errors.Join(ErrUser, status.Error(codes.Unauthenticated, s))
+	return connect.NewError(connect.CodeUnauthenticated, errors.Join(ErrUser, status.Error(codes.Unauthenticated, s)))
 }
 
 func err403(s string) error {
-	return errors.Join(ErrUser, status.Error(codes.PermissionDenied, s))
+	return connect.NewError(connect.CodePermissionDenied, errors.Join(ErrUser, status.Error(codes.PermissionDenied, s)))
 }
 
 func generateHMACDigest(ctx context.Context, msg, key []byte, logger logger.Logger) ([]byte, error) {
@@ -119,14 +120,9 @@ func justRequestBody(ctx context.Context, token jwt.Token, logger logger.Logger)
 	return rbString, nil
 }
 
-func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest, logger logger.Logger) (*RequestBody, error) {
+func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRequest, logger logger.Logger) (*RequestBody, error) {
 	// First load legacy method for verifying SRT
-	md, exists := metadata.FromIncomingContext(ctx)
-	if !exists {
-		logger.WarnContext(ctx, "missing metadata for srt validation")
-		return nil, errors.New("missing metadata")
-	}
-	if vpk, ok := md["X-Virtrupubkey"]; ok && len(vpk) == 1 {
+	if vpk, ok := headers["X-Virtrupubkey"]; ok && len(vpk) == 1 {
 		logger.InfoContext(ctx, "Legacy Client: Processing X-Virtrupubkey")
 	}
 
@@ -190,6 +186,7 @@ func extractSRTBody(ctx context.Context, in *kaspb.RewrapRequest, logger logger.
 		return nil, err400("clientPublicKey unsupported type")
 	}
 }
+
 func extractPolicyBinding(policyBinding interface{}) (string, error) {
 	switch v := policyBinding.(type) {
 	case string:
@@ -203,6 +200,7 @@ func extractPolicyBinding(policyBinding interface{}) (string, error) {
 		return "", fmt.Errorf("unsupported policy binding type")
 	}
 }
+
 func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byte, logger logger.Logger) (*Policy, error) {
 	actualHMAC, err := generateHMACDigest(ctx, []byte(requestBody.Policy), k, logger)
 	if err != nil {
@@ -246,7 +244,7 @@ func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byt
 }
 
 func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, error) {
-	var info = new(entityInfo)
+	info := new(entityInfo)
 
 	token := auth.GetAccessTokenFromContext(ctx, logger)
 	if token == nil {
@@ -269,10 +267,11 @@ func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, err
 	return info, nil
 }
 
-func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
+func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.RewrapRequest]) (*connect.Response[kaspb.RewrapResponse], error) {
+	in := req.Msg
 	p.Logger.DebugContext(ctx, "REWRAP")
 
-	body, err := extractSRTBody(ctx, in, *p.Logger)
+	body, err := extractSRTBody(ctx, req.Header(), in, *p.Logger)
 	if err != nil {
 		p.Logger.DebugContext(ctx, "unverifiable srt", "err", err)
 		return nil, err
@@ -295,13 +294,13 @@ func (p *Provider) Rewrap(ctx context.Context, in *kaspb.RewrapRequest) (*kaspb.
 			p.Logger.ErrorContext(ctx, "rewrap nano", "err", err)
 		}
 		p.Logger.DebugContext(ctx, "rewrap nano", "rsp", rsp)
-		return rsp, err
+		return connect.NewResponse(rsp), err
 	}
 	rsp, err := p.tdf3Rewrap(ctx, body, entityInfo)
 	if err != nil {
 		p.Logger.ErrorContext(ctx, "rewrap tdf3", "err", err)
 	}
-	return rsp, err
+	return connect.NewResponse(rsp), err
 }
 
 func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {

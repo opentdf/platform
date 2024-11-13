@@ -95,8 +95,8 @@ github.com/opentdf/platform/lib/ocrypto v0.1.6 h1:rd4ctCZOE/c3qDJORtkSK9tw6dEXb+
 github.com/opentdf/platform/lib/ocrypto v0.1.6/go.mod h1:ne+l8Q922OdzA0xesK3XJmfECBnn5vLSGYU3/3OhiHM=
 github.com/opentdf/platform/protocol/go v0.2.20 h1:FPU1ZcXvPm/QeE2nqgbD/HMTOCICQSD0DoncQbAZ1ws=
 github.com/opentdf/platform/protocol/go v0.2.20/go.mod h1:TWIuf387VeR3q0TL4nAMKQTWEqqID+8Yjao76EX9Dto=
-github.com/opentdf/platform/sdk v0.3.16 h1:goF6Krn14+Y2H1wa3h2iYk1kOBrrze6t392szLb9ryE=
-github.com/opentdf/platform/sdk v0.3.16/go.mod h1:c2+nrsRLvLf2OOryXnNy0iGZN/TScc21Pul7uqKVXIs=
+github.com/opentdf/platform/sdk v0.3.19 h1:4Ign6HPrxOH6ZllLO/cI6joSuqz8CqPlpxpTKunpMQs=
+github.com/opentdf/platform/sdk v0.3.19/go.mod h1:u+XZhVRsMq5blukCFCHcjk6HLCp4Y5mmIQu7GhtKQ3E=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=

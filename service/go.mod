@@ -4,6 +4,8 @@ go 1.22
 
 require (
 	connectrpc.com/connect v1.17.0
+	connectrpc.com/grpcreflect v1.2.0
+	connectrpc.com/validate v0.1.0
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/Nerzal/gocloak/v13 v13.9.0
 	github.com/bmatcuk/doublestar v1.3.4
@@ -13,7 +15,6 @@ require (
 	github.com/go-chi/cors v1.2.1
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/google/uuid v1.6.0
-	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.5.5
@@ -23,7 +24,7 @@ require (
 	github.com/opentdf/platform/lib/flattening v0.1.1
 	github.com/opentdf/platform/lib/ocrypto v0.1.6
 	github.com/opentdf/platform/protocol/go v0.2.20
-	github.com/opentdf/platform/sdk v0.3.16
+	github.com/opentdf/platform/sdk v0.3.19
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.18.2
@@ -62,6 +63,7 @@ require (
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/google/flatbuffers v23.5.26+incompatible // indirect
 	github.com/gowebpki/jcs v1.0.1 // indirect
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
@@ -149,6 +151,7 @@ require (
 )
 
 require (
+	connectrpc.com/grpchealth v1.3.0
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9 // indirect

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"log/slog"
+	"net/http"
 	"testing"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -154,7 +155,7 @@ func privateKey(t *testing.T) *rsa.PrivateKey {
 	return k
 }
 
-func publicKey(t *testing.T) *rsa.PublicKey {
+func publicKeyTest(t *testing.T) *rsa.PublicKey {
 	b, rest := pem.Decode([]byte(rsaPublic))
 	require.NotNil(t, b)
 	assert.Empty(t, rest)
@@ -298,7 +299,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 	srt2 := makeRewrapBody(t, fauxPolicyBytes(t), true)
 	badPolicySrt := makeRewrapBody(t, emptyPolicyBytes(), true)
 
-	var tests = []struct {
+	tests := []struct {
 		name        string
 		body        []byte
 		goodDPoP    bool
@@ -322,7 +323,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 				if tt.goodDPoP {
 					key, err = jwk.FromRaw(entityPublicKey(t))
 				} else {
-					key, err = jwk.FromRaw(publicKey(t))
+					key, err = jwk.FromRaw(publicKeyTest(t))
 				}
 				require.NoError(t, err, "couldn't get JWK from key")
 				err = key.Set(jwk.AlgorithmKey, jwa.RS256) // Check the error return value
@@ -337,6 +338,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 
 			verified, err := extractSRTBody(
 				ctx,
+				http.Header{},
 				&kaspb.RewrapRequest{
 					SignedRequestToken: string(tt.body),
 				},
@@ -375,6 +377,7 @@ func Test_SignedRequestBody_When_Bad_Signature_Expect_Failure(t *testing.T) {
 
 	verified, err := extractSRTBody(
 		ctx,
+		http.Header{},
 		&kaspb.RewrapRequest{
 			SignedRequestToken: string(makeRewrapBody(t, fauxPolicyBytes(t), false)),
 		},

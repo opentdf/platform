@@ -16,7 +16,7 @@ const (
 	TrueClientIP  = "True-Client-Ip"
 )
 
-type clientIP struct{}
+type ClientIP struct{}
 
 func ConnectRealIPUnaryInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
@@ -26,7 +26,7 @@ func ConnectRealIPUnaryInterceptor() connect.UnaryInterceptorFunc {
 		) (connect.AnyResponse, error) {
 			ip := getIP(ctx, req.Peer(), req.Header())
 
-			ctx = context.WithValue(ctx, clientIP{}, ip)
+			ctx = context.WithValue(ctx, ClientIP{}, ip)
 
 			return next(ctx, req)
 		})
@@ -54,7 +54,7 @@ func getIP(_ context.Context, peer connect.Peer, headers http.Header) net.IP {
 }
 
 func FromContext(ctx context.Context) net.IP {
-	ip, ok := ctx.Value(clientIP{}).(net.IP)
+	ip, ok := ctx.Value(ClientIP{}).(net.IP)
 	if !ok {
 		return net.IP{}
 	}

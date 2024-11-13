@@ -96,12 +96,14 @@ func NewNamespaceServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			httpClient,
 			baseURL+NamespaceServiceGetNamespaceProcedure,
 			connect.WithSchema(namespaceServiceGetNamespaceMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		listNamespaces: connect.NewClient[namespaces.ListNamespacesRequest, namespaces.ListNamespacesResponse](
 			httpClient,
 			baseURL+NamespaceServiceListNamespacesProcedure,
 			connect.WithSchema(namespaceServiceListNamespacesMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		createNamespace: connect.NewClient[namespaces.CreateNamespaceRequest, namespaces.CreateNamespaceResponse](
@@ -209,12 +211,14 @@ func NewNamespaceServiceHandler(svc NamespaceServiceHandler, opts ...connect.Han
 		NamespaceServiceGetNamespaceProcedure,
 		svc.GetNamespace,
 		connect.WithSchema(namespaceServiceGetNamespaceMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	namespaceServiceListNamespacesHandler := connect.NewUnaryHandler(
 		NamespaceServiceListNamespacesProcedure,
 		svc.ListNamespaces,
 		connect.WithSchema(namespaceServiceListNamespacesMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	namespaceServiceCreateNamespaceHandler := connect.NewUnaryHandler(

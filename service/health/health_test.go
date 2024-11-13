@@ -2,10 +2,12 @@ package health
 
 import (
 	"context"
+	"testing"
 
+	"connectrpc.com/grpchealth"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 type HealthCheckSuite struct {
@@ -18,6 +20,10 @@ func (s *HealthCheckSuite) SetupSuite() {
 func (s *HealthCheckSuite) TearDownTest() {
 	// Because its a global we need to reset it after each test
 	serviceHealthChecks = make(map[string]func(context.Context) error)
+}
+
+func TestHealthCheckSuite(t *testing.T) {
+	suite.Run(t, new(HealthCheckSuite))
 }
 
 func (s *HealthCheckSuite) TestRegisterReadinessCheck() {
@@ -67,11 +73,11 @@ func (s *HealthCheckSuite) TestCheck() {
 	s.Require().NoError(err)
 
 	// Check the health check.
-	result, err := hs.Check(context.Background(), &grpc_health_v1.HealthCheckRequest{
+	result, err := hs.Check(context.Background(), &grpchealth.CheckRequest{
 		Service: "all",
 	})
 	s.Require().NoError(err)
-	s.Equal("SERVING", result.GetStatus().String())
+	s.Equal(grpchealth.StatusServing, result.Status)
 }
 
 func (s *HealthCheckSuite) TestCheckServiceUnknown() {
@@ -79,28 +85,37 @@ func (s *HealthCheckSuite) TestCheckServiceUnknown() {
 	hs := &HealthService{}
 
 	// Check the health check.
-	result, err := hs.Check(context.Background(), &grpc_health_v1.HealthCheckRequest{
+	result, err := hs.Check(context.Background(), &grpchealth.CheckRequest{
 		Service: "unknown",
 	})
 	s.Require().NoError(err)
-	s.Equal("SERVICE_UNKNOWN", result.GetStatus().String())
+	s.Equal(grpchealth.StatusUnknown, result.Status)
 }
 
 func (s *HealthCheckSuite) TestCheckNotServing() {
 	// TestCheckNotServing tests the health check when a service is not serving.
-	hs := &HealthService{}
+	lgr, err := logger.NewLogger(logger.Config{
+		Output: "stdout",
+		Level:  "info",
+		Type:   "json",
+	})
+	s.Require().NoError(err)
+
+	hs := &HealthService{
+		logger: lgr,
+	}
 
 	// Register the health check.
-	err := RegisterReadinessCheck("failing", func(context.Context) error {
+	err = RegisterReadinessCheck("failing", func(context.Context) error {
 		return assert.AnError
 	})
 
 	s.Require().NoError(err)
 
 	// Check the health check.
-	result, err := hs.Check(context.Background(), &grpc_health_v1.HealthCheckRequest{
+	result, err := hs.Check(context.Background(), &grpchealth.CheckRequest{
 		Service: "failing",
 	})
 	s.Require().NoError(err)
-	s.Equal("NOT_SERVING", result.GetStatus().String())
+	s.Equal(grpchealth.StatusNotServing, result.Status)
 }

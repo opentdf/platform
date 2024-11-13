@@ -41,13 +41,12 @@ type rewrapRequestBody struct {
 	SchemaVersion   string    `json:"schemaVersion,omitempty"`
 }
 
-func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, sessionKey *ocrypto.RsaKeyPair) (*KASClient, error) {
-
+func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, sessionKey *ocrypto.RsaKeyPair) *KASClient {
 	return &KASClient{
 		accessTokenSource: accessTokenSource,
 		dialOptions:       dialOptions,
 		sessionKey:        sessionKey,
-	}, nil
+	}
 }
 
 // there is no connection caching as of now
@@ -242,7 +241,6 @@ func getGRPCAddress(kasURL string) (string, error) {
 }
 
 func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.RewrapRequest, error) {
-
 	// check if the session key is nil if not return an error
 	if k.sessionKey == nil {
 		return nil, fmt.Errorf("session key is nil")

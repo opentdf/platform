@@ -811,10 +811,7 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 
 	encodedHeader := ocrypto.Base64Encode(headerBuf)
 
-	client, err := newKASClient(s.dialOptions, s.tokenSource, nil)
-	if err != nil {
-		return 0, fmt.Errorf("newKASClient failed: %w", err)
-	}
+	client := newKASClient(s.dialOptions, s.tokenSource, nil)
 
 	symmetricKey, err := client.unwrapNanoTDF(ctx, string(encodedHeader), kasURL)
 	if err != nil {

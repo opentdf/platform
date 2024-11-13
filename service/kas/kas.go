@@ -22,7 +22,6 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 			ConnectRPCFunc: kasconnect.NewAccessServiceHandler,
 			GRPCGateayFunc: kaspb.RegisterAccessServiceHandlerFromEndpoint,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasconnect.AccessServiceHandler, serviceregistry.HandlerServer) {
-
 				// FIXME msg="mismatched key access url" keyAccessURL=http://localhost:9000 kasURL=https://:9000
 				hostWithPort := srp.OTDF.HTTPServer.Addr
 				if strings.HasPrefix(hostWithPort, ":") {

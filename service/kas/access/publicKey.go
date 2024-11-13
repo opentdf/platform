@@ -75,10 +75,10 @@ func (p Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kasp
 }
 
 func (p Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.PublicKeyRequest]) (*connect.Response[kaspb.PublicKeyResponse], error) {
-  tracer := otel.Tracer(tracing.ServiceName)
+	tracer := otel.Tracer(tracing.ServiceName)
 	ctx, span := tracer.Start(ctx, "get publickey")
 	defer span.End()
-  
+
 	algorithm := req.Msg.GetAlgorithm()
 	if algorithm == "" {
 		algorithm = security.AlgorithmRSA2048

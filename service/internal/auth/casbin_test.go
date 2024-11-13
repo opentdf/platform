@@ -183,7 +183,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 			action:   "write",
 		},
 		{
-			allowed:  false,
+			allowed:  true,
 			roles:    admin,
 			resource: "non-existent",
 			action:   "read",
@@ -364,17 +364,19 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies() {
 	// other roles denied new policy: admin
 	tok := s.newTokWithDefaultClaim(true, false)
 	allowed, err := enforcer.Enforce(tok, "new.service.DoSomething", "read")
-	s.Require().Error(err)
-	s.False(allowed)
+	s.Require().NoError(err)
+	s.True(allowed)
 	allowed, err = enforcer.Enforce(tok, "new.service.DoSomething", "write")
-	s.Require().Error(err)
-	s.False(allowed)
+	s.Require().NoError(err)
+	s.True(allowed)
 
 	// other roles denied new policy: standard
 	tok = s.newTokWithDefaultClaim(false, true)
+	err = enforcer.ExtendDefaultPolicy([][]string{{"p", "role:standard", "new.service.*", "read", "allow"}})
+	s.Require().NoError(err)
 	allowed, err = enforcer.Enforce(tok, "new.service.DoSomething", "read")
-	s.Require().Error(err)
-	s.False(allowed)
+	s.Require().NoError(err)
+	s.True(allowed)
 	allowed, err = enforcer.Enforce(tok, "new.service.DoSomething", "write")
 	s.Require().Error(err)
 	s.False(allowed)
@@ -385,7 +387,8 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MultipleExtensions() {
 	s.Require().NoError(err)
 
 	err = enforcer.ExtendDefaultPolicy([][]string{
-		{"p", "role:admin", "new.hello.*", "*", "allow"},
+		{"p", "role:standard", "new.service.*", "write", "allow"},
+		{"p", "role:standard", "new.hello.*", "read", "allow"},
 	})
 	s.Require().NoError(err)
 
@@ -399,17 +402,17 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MultipleExtensions() {
 	}{
 		// original default policy still evaluates correctly
 		{adminTok, true, "policy.attributes.CreateAttribute", "write"},
-		{adminTok, false, "new.service.ActionableObject", "read"},
-		{adminTok, false, "new.service.ActionableObject", "write"},
+		{adminTok, true, "new.service.ActionableObject", "read"},
+		{adminTok, true, "new.service.ActionableObject", "write"},
 		{adminTok, true, "new.hello.World", "read"},
 		{adminTok, true, "new.hello.World", "write"},
 		{adminTok, true, "new.hello.SomethingElse", "read"},
 		{adminTok, true, "new.hello.SomethingElse", "write"},
 		{standardTok, false, "new.service.ActionableObject", "read"},
-		{standardTok, false, "new.service.ActionableObject", "write"},
-		{standardTok, false, "new.hello.World", "read"},
+		{standardTok, true, "new.service.ActionableObject", "write"},
+		{standardTok, true, "new.hello.World", "read"},
 		{standardTok, false, "new.hello.World", "write"},
-		{standardTok, false, "new.hello.SomethingElse", "read"},
+		{standardTok, true, "new.hello.SomethingElse", "read"},
 		{standardTok, false, "new.hello.SomethingElse", "write"},
 	}
 

@@ -47,11 +47,7 @@ var defaultPolicy = `
 
 # Role: Admin
 ## gRPC routes
-p,	role:admin,		policy.*,																*,			allow
-p,	role:admin,		kasregistry.*,													*,			allow
-p,	role:admin,		kas.AccessService/Rewrap, 			        *,			allow
-p,  role:admin,     authorization.*,                        *,      allow
-p,  role:admin,     entityresolution.*,                        *,      allow
+p,	role:admin,		*,																*,			allow
 
 ## HTTP routes
 p,	role:admin,		/attributes*,																*,			allow

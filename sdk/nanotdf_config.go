@@ -17,14 +17,15 @@ import (
 // ============================================================================================================
 
 type NanoTDFConfig struct {
-	keyPair      ocrypto.ECKeyPair
-	kasPublicKey *ecdh.PublicKey
-	attributes   []AttributeValueFQN
-	cipher       CipherMode
-	kasURL       ResourceLocator
-	sigCfg       signatureConfig
-	policy       policyInfo
-	bindCfg      bindingConfig
+	keyPair       ocrypto.ECKeyPair
+	kasPublicKey  *ecdh.PublicKey
+	attributes    []AttributeValueFQN
+	cipher        CipherMode
+	kasURL        ResourceLocator
+	sigCfg        signatureConfig
+	policy        policyInfo
+	bindCfg       bindingConfig
+	collectionCfg *collectionConfig
 }
 
 type NanoTDFOption func(*NanoTDFConfig) error
@@ -48,6 +49,11 @@ func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
 			hasSignature:  false,
 			signatureMode: ocrypto.ECCModeSecp256r1,
 			cipher:        cipherModeAes256gcm96Bit,
+		},
+		collectionCfg: &collectionConfig{
+			iterations:    0,
+			useCollection: false,
+			header:        []byte{},
 		},
 	}
 
@@ -75,6 +81,12 @@ func (config *NanoTDFConfig) SetAttributes(attributes []string) error {
 // EnableECDSAPolicyBinding enable ecdsa policy binding
 func (config *NanoTDFConfig) EnableECDSAPolicyBinding() {
 	config.bindCfg.useEcdsaBinding = true
+}
+
+// EnableCollection Experimental: Enables Collection in NanoTDFConfig.
+// Reuse NanoTDFConfig to add nTDFs to a Collection.
+func (config *NanoTDFConfig) EnableCollection() {
+	config.collectionCfg.useCollection = true
 }
 
 // WithNanoDataAttributes appends the given data attributes to the bound policy

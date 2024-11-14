@@ -56,6 +56,7 @@ func (c Error) Error() string {
 type SDK struct {
 	config
 	*kasKeyCache
+	*collectionStore
 	conn                    *grpc.ClientConn
 	dialOptions             []grpc.DialOption
 	tokenSource             auth.AccessTokenSource
@@ -170,6 +171,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	return &SDK{
 		config:                  *cfg,
+		collectionStore:         cfg.collectionStore,
 		kasKeyCache:             newKasKeyCache(),
 		conn:                    platformConn,
 		dialOptions:             dialOptions,
@@ -265,6 +267,10 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 
 // Close closes the underlying grpc.ClientConn.
 func (s SDK) Close() error {
+	if s.collectionStore != nil {
+		s.collectionStore.close()
+	}
+
 	if s.conn == nil {
 		return nil
 	}

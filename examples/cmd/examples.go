@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"google.golang.org/grpc/resolver"
 	"log"
 	"os"
 	"strings"
@@ -28,7 +29,8 @@ func init() {
 }
 
 func newSDK() (*sdk.SDK, error) {
-	opts := []sdk.Option{sdk.WithInsecurePlaintextConn()}
+	resolver.SetDefaultScheme("passthrough")
+	opts := []sdk.Option{sdk.WithStoreCollectionHeaders(), sdk.WithInsecurePlaintextConn()}
 	if clientCredentials != "" {
 		i := strings.Index(clientCredentials, ":")
 		if i < 0 {

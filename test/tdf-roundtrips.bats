@@ -111,7 +111,7 @@
   wait_for_green
 
   echo "[INFO] validating default key is r1"
-  [ $(grpcurl -plaintext "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
+  [ $(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
 
   echo "[INFO] decrypting after key rotation"
   go run ./examples decrypt sensitive-with-no-kid.txt.tdf | grep "Hello Legacy"
@@ -122,7 +122,7 @@
 wait_for_green() {
   limit=5
   for i in $(seq 1 $limit); do
-    if [ $(grpcurl -plaintext "localhost:8080" "grpc.health.v1.Health.Check" | jq -e -r .status) = SERVING ]; then
+    if [ $(grpcurl "localhost:8080" "grpc.health.v1.Health.Check" | jq -e -r .status) = SERVING ]; then
       return 0
     fi
     sleep 4

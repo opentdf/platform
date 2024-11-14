@@ -2,6 +2,7 @@ package wellknownconfiguration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -11,8 +12,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration/wellknownconfigurationconnect"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -56,7 +55,7 @@ func (s WellKnownService) GetWellKnownConfiguration(_ context.Context, _ *connec
 	rwMutex.RUnlock()
 	if err != nil {
 		s.logger.Error("failed to create struct for wellknown configuration", slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, "failed to create struct for wellknown configuration")
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to create struct for wellknown configuration"))
 	}
 
 	rsp := &wellknown.GetWellKnownConfigurationResponse{

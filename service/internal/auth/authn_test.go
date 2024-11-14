@@ -243,7 +243,10 @@ func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missin
 	})(context.Background(), req)
 
 	s.Require().Error(err)
-	s.Require().ErrorIs(err, status.Error(codes.Unauthenticated, "missing authorization header"))
+
+	connectErr := connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
+
+	s.Require().ErrorAs(err, &connectErr)
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {

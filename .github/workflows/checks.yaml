@@ -90,6 +90,8 @@ jobs:
   integration:
     name: integration tests
     runs-on: ubuntu-22.04
+    env:
+      TLS_ENABLED: "true"
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7

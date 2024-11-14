@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 type ServiceConfig map[string]any
@@ -37,6 +38,8 @@ type RegistrationParams struct {
 	SDK *sdk.SDK
 	// Logger is the logger that can be used to log messages. This logger is scoped to the service
 	Logger *logger.Logger
+
+	ConfigProto protoreflect.ProtoMessage
 
 	////// The following functions are optional and intended to be called by the service //////
 
@@ -63,6 +66,8 @@ type Registration struct {
 
 	// DB is optional and used to register the service with a database
 	DB DBRegister
+
+	ServiceConfig ServiceConfigRegister
 }
 
 // DBRegister is a struct that holds the information needed to register a service with a database
@@ -73,6 +78,10 @@ type DBRegister struct {
 	// This is required to support the `migrate` command or the `runMigrations` configuration option.
 	// More information on Goose can be found at https://github.com/pressly/goose
 	Migrations *embed.FS
+}
+
+type ServiceConfigRegister struct {
+	Proto protoreflect.ProtoMessage
 }
 
 // Service is a struct that holds the registration information for a service as well as the state

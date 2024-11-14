@@ -11,6 +11,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/authorization"
+	cfgSvc "github.com/opentdf/platform/service/config"
 	"github.com/opentdf/platform/service/entityresolution"
 	"github.com/opentdf/platform/service/health"
 	"github.com/opentdf/platform/service/internal/config"
@@ -99,11 +100,42 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 	return registeredServices, nil
 }
 
+// TODO: REMOVE THIS
+// - purely for getting the migrations to run before starting the other services
+// - current gRPC service does nothing
+func startConfigService(ctx context.Context, cfg config.Config) (*cfgSvc.ConfigService, error) {
+	svc := serviceregistry.Registration{
+		Namespace: "config",
+		DB: serviceregistry.DBRegister{
+			Required:   true,
+			Migrations: cfgSvc.Migrations,
+		},
+	}
+
+	svcDBClient, err := newServiceDBClient(ctx, cfg.Logger, cfg.DB, svc.Namespace, svc.DB.Migrations)
+	if err != nil {
+		return nil, err
+	}
+
+	if svc.DB.Required && !svcDBClient.RanMigrations() && svcDBClient.MigrationsEnabled() {
+		appliedMigrations, err := svcDBClient.RunMigrations(ctx, svc.DB.Migrations)
+		if err != nil {
+			return nil, err
+		}
+
+		slog.Info("database migrations complete", slog.Int("applied", appliedMigrations))
+	}
+
+	configService := cfgSvc.New(svcDBClient)
+
+	return configService, nil
+}
+
 // startServices iterates through the registered namespaces and starts the services
 // based on the configuration and namespace mode. It creates a new service logger
 // and a database client if required. It registers the services with the gRPC server,
 // in-process gRPC server, and gRPC gateway. Finally, it logs the status of each service.
-func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFServer, client *sdk.SDK, logger *logging.Logger, reg serviceregistry.Registry) error {
+func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFServer, client *sdk.SDK, logger *logging.Logger, reg serviceregistry.Registry, cfgSvc *cfgSvc.ConfigService) error {
 	// Iterate through the registered namespaces
 	for ns, namespace := range reg {
 		// modeEnabled checks if the mode is enabled based on the configuration and namespace mode.
@@ -151,6 +183,17 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				}
 			}
 
+			if svc.ServiceConfig.Proto != nil {
+				err = cfgSvc.LoadConfig(ctx, ns, svc.ServiceConfig.Proto)
+				if err != nil {
+					return fmt.Errorf("issue loading config for %s: %w", ns, err)
+				}
+				slog.Info("loaded config",
+					slog.String("namespace", ns),
+					slog.Any("config", svc.ServiceConfig.Proto),
+				)
+			}
+
 			err = svc.Start(ctx, serviceregistry.RegistrationParams{
 				Config:                 cfg.Services[svc.Namespace],
 				Logger:                 svcLogger,
@@ -159,6 +202,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				WellKnownConfig:        wellknown.RegisterConfiguration,
 				RegisterReadinessCheck: health.RegisterReadinessCheck,
 				OTDF:                   otdf, // TODO: REMOVE THIS
+				ConfigProto:            svc.ServiceConfig.Proto,
 			})
 			if err != nil {
 				return err

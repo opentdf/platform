@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	configv1 "github.com/opentdf/platform/protocol/go/config/v1"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/logger"
@@ -19,13 +20,19 @@ type NamespacesService struct { //nolint:revive // NamespacesService is a valid 
 	namespaces.UnimplementedNamespaceServiceServer
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
+	config   *configv1.PolicyConfig
 }
 
 func NewRegistration() serviceregistry.Registration {
 	return serviceregistry.Registration{
 		ServiceDesc: &namespaces.NamespaceService_ServiceDesc,
 		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			ns := &NamespacesService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
+			cfg, ok := srp.ConfigProto.(*configv1.PolicyConfig)
+			if !ok {
+				panic("failed to assert config as *configv1.PolicyConfig")
+			}
+
+			ns := &NamespacesService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger, config: cfg}
 
 			if err := srp.RegisterReadinessCheck("policy", ns.IsReady); err != nil {
 				srp.Logger.Error("failed to register policy readiness check", slog.String("error", err.Error()))
@@ -54,6 +61,8 @@ func (ns NamespacesService) IsReady(ctx context.Context) error {
 }
 
 func (ns NamespacesService) ListNamespaces(ctx context.Context, req *namespaces.ListNamespacesRequest) (*namespaces.ListNamespacesResponse, error) {
+	slog.Info("namespaces service config", slog.Any("http_cache_secs", ns.config.GetHttpCacheSecs().GetValue()))
+
 	state := policydb.GetDBStateTypeTransformedEnum(req.GetState())
 	ns.logger.Debug("listing namespaces", slog.String("state", state))
 

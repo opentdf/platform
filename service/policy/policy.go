@@ -3,6 +3,7 @@ package policy
 import (
 	"embed"
 
+	configv1 "github.com/opentdf/platform/protocol/go/config/v1"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/policy/attributes"
 	"github.com/opentdf/platform/service/policy/db/migrations"
@@ -26,6 +27,9 @@ func NewRegistrations() []serviceregistry.Registration {
 		Required:   true,
 		Migrations: Migrations,
 	}
+	svcConfigRegister := serviceregistry.ServiceConfigRegister{
+		Proto: &configv1.PolicyConfig{},
+	}
 
 	for _, r := range []serviceregistry.Registration{
 		attributes.NewRegistration(),
@@ -37,6 +41,7 @@ func NewRegistrations() []serviceregistry.Registration {
 	} {
 		r.Namespace = namespace
 		r.DB = dbRegister
+		r.ServiceConfig = svcConfigRegister
 		registrations = append(registrations, r)
 	}
 	return registrations

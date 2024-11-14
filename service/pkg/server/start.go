@@ -177,8 +177,14 @@ func Start(f ...StartOptions) error {
 
 	defer client.Close()
 
+	cfgSvc, err := startConfigService(ctx, *cfg)
+	if err != nil {
+		logger.Error("issue starting config service", slog.String("error", err.Error()))
+		return fmt.Errorf("issue starting config service: %w", err)
+	}
+
 	logger.Info("starting services")
-	err = startServices(ctx, *cfg, otdf, client, logger, svcRegistry)
+	err = startServices(ctx, *cfg, otdf, client, logger, svcRegistry, cfgSvc)
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)

@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"google.golang.org/grpc/resolver"
 	"log"
 	"os"
 	"strings"
+
+	"google.golang.org/grpc/resolver"
 
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
@@ -30,7 +31,7 @@ func init() {
 
 func newSDK() (*sdk.SDK, error) {
 	resolver.SetDefaultScheme("passthrough")
-	opts := []sdk.Option{sdk.WithStoreCollectionHeaders(), sdk.WithInsecurePlaintextConn()}
+	opts := []sdk.Option{sdk.WithStoreCollectionHeaders()}
 	if clientCredentials != "" {
 		i := strings.Index(clientCredentials, ":")
 		if i < 0 {

@@ -114,7 +114,7 @@ jobs:
       - run: |
           .github/scripts/init-temp-keys.sh
           mkcert -install
-          mkcert -cert-file ./keys/localhost.crt -key-file ./keys/localhost-key.pem localhost
+          mkcert -cert-file ./keys/platform.crt -key-file ./keys/platform-key.pem localhost
           cp opentdf-dev.yaml opentdf.yaml
           yq eval '.server.tls.enabled = true' -i opentdf.yaml
       - name: Added Trusted Certs

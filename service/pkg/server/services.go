@@ -22,6 +22,7 @@ import (
 	"github.com/opentdf/platform/service/policy"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -180,6 +181,12 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 			grpcGatewayDialOptions := make([]grpc.DialOption, 0)
 			if !cfg.Server.TLS.Enabled {
 				grpcGatewayDialOptions = append(grpcGatewayDialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))
+			} else {
+				creds, err := credentials.NewClientTLSFromFile(cfg.Server.TLS.Cert, "")
+				if err != nil {
+					return fmt.Errorf("failed to create grpc-gateway client TLS credentials: %w", err)
+				}
+				grpcGatewayDialOptions = append(grpcGatewayDialOptions, grpc.WithTransportCredentials(creds))
 			}
 			if err := svc.RegisterGRPCGatewayHandler(ctx, otdf.GRPCGatewayMux, fmt.Sprintf("localhost:%d", cfg.Server.Port), grpcGatewayDialOptions); err != nil {
 				logger.Info("service did not register a grpc gateway handler", slog.String("namespace", ns))

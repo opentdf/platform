@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package config;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/any.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/descriptor.proto";
+
+message FieldMetadata {
+  string description = 1 [(buf.validate.field).required = true];
+  string help_text = 2 [(buf.validate.field).required = true];
+  string default = 3 [(buf.validate.field).required = true];
+}
+
+extend google.protobuf.FieldOptions {
+  FieldMetadata meta = 50000 [(buf.validate.field).required = true];
+}
+
+message BoolField {
+  bool value = 1 [(buf.validate.field).required = true];
+}
+
+message StringField {
+  string value = 1 [(buf.validate.field).required = true];
+}
+
+message IntField {
+  int32 value = 1 [(buf.validate.field).required = true];
+}
+
+message Config {
+  string service = 1;
+  string version = 2;
+  repeated string aliases = 3;
+  google.protobuf.Any value = 4;
+}
+
+message CreateConfigRequest {
+  string service = 1 [(buf.validate.field).required = true];
+  string version = 2 [(buf.validate.field).required = true];
+  repeated string aliases = 3;
+  google.protobuf.Any value = 4 [(buf.validate.field).required = true];
+}
+
+message CreateConfigResponse {
+  Config config = 1;
+}
+
+message GetConfigRequest {
+  string service = 1 [(buf.validate.field).required = true];
+
+  // TODO: likely that there's a need to query by service and version as well
+  // maybe use oneOf for id or service/version combo
+}
+
+message GetConfigResponse {
+  Config config = 1;
+}
+
+// TODO: implement the gRPC service
+// service ConfigService {
+//   rpc CreateConfig(CreateConfigRequest) returns (CreateConfigResponse) {
+//     option (google.api.http) = {post: "/config"};
+//   }
+
+//   rpc GetConfig(GetConfigRequest) returns (GetConfigResponse) {
+//     option (google.api.http) = {get: "/config/{service}"};
+//   }
+// }

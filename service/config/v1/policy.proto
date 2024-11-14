@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package config.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/any.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/descriptor.proto";
+import "config/config.proto";
+
+message PolicyConfig {
+  config.IntField http_cache_secs = 1 [
+    (buf.validate.field).required = true,
+    (config.meta) = {
+      description: "ConnectRPC HTTP Cache duration in seconds",
+      help_text: "Set the ConnectRPC HTTP Cache duration (seconds)",
+      default: "300"
+    }
+  ];
+}

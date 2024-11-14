@@ -1,0 +1,17 @@
+version: '2'
+sql:
+  - engine: postgresql
+    queries: query.sql
+    schema: migrations
+    gen:
+      go:
+        package: db
+        out: .
+        sql_package: pgx/v5
+        emit_json_tags: true
+        emit_sql_as_comment: true
+        json_tags_case_style: snake
+        overrides:
+          - db_type: uuid
+            go_type:
+              type: string

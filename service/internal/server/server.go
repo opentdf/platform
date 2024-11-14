@@ -179,7 +179,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 				return "", false
 			},
 		),
-		runtime.WithMetadata(func(ctx context.Context, r *http.Request) metadata.MD {
+		runtime.WithMetadata(func(ctx context.Context, _ *http.Request) metadata.MD {
 			md := make(map[string]string)
 			if method, ok := runtime.RPCMethod(ctx); ok {
 				md["method"] = method // /grpc.gateway.examples.internal.proto.examplepb.LoginService/Login

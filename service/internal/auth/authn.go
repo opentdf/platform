@@ -536,21 +536,29 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 		return nil, fmt.Errorf("the DPoP JWT has expired")
 	}
 
-	htm, ok := dpopToken.Get("htm")
+	htma, ok := dpopToken.Get("htm")
 	if !ok {
 		return nil, fmt.Errorf("`htm` claim missing in DPoP JWT")
 	}
+	htm, ok := htma.(string)
+	if !ok {
+		return nil, fmt.Errorf("`htm` claim invalid format in DPoP JWT")
+	}
 
-	if !slices.Contains(dpopInfo.m, htm.(string)) {
+	if !slices.Contains(dpopInfo.m, htm) {
 		return nil, fmt.Errorf("incorrect `htm` claim in DPoP JWT; received [%v], but should match [%v]", htm, dpopInfo.m)
 	}
 
-	htu, ok := dpopToken.Get("htu")
+	htua, ok := dpopToken.Get("htu")
 	if !ok {
 		return nil, fmt.Errorf("`htu` claim missing in DPoP JWT")
 	}
+	htu, ok := htua.(string)
+	if !ok {
+		return nil, fmt.Errorf("`htu` claim invalid format in DPoP JWT")
+	}
 
-	if !slices.Contains(dpopInfo.u, htu.(string)) {
+	if !slices.Contains(dpopInfo.u, htu) {
 		return nil, fmt.Errorf("incorrect `htu` claim in DPoP JWT; received [%v], but should match [%v]", htu, dpopInfo.u)
 	}
 

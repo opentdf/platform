@@ -408,8 +408,8 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 				context.Background(),
 				[]string{fmt.Sprintf("DPoP %s", string(testCase.accessToken))},
 				receiverInfo{
-					u: "/a/path",
-					m: http.MethodPost,
+					u: []string{"/a/path"},
+					m: []string{http.MethodPost},
 				},
 				[]string{dpopToken},
 			)

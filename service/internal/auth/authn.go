@@ -181,10 +181,10 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 }
 
 type receiverInfo struct {
-	// The URI of the request
-	u string
-	// The HTTP method of the request
-	m string
+	// Acceptable URIs of the request
+	u []string
+	// Allowed HTTP methods of the request
+	m []string
 }
 
 func normalizeURL(o string, u *url.URL) string {
@@ -209,6 +209,8 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
+		dp := r.Header.Values("Dpop")
+
 		// Verify the token
 		header := r.Header["Authorization"]
 		if len(header) < 1 {
@@ -225,10 +227,11 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			}
 		}
 		accessTok, ctxWithJWK, err := a.checkToken(r.Context(), header, receiverInfo{
-			u: normalizeURL(origin, r.URL),
-			m: r.Method,
-		}, r.Header["Dpop"])
+			u: []string{normalizeURL(origin, r.URL)},
+			m: []string{r.Method},
+		}, dp)
 		if err != nil {
+			slog.WarnContext(r.Context(), "unauthenticated", "error", err, "dpop", dp, "authorization", header)
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
 			return
 		}
@@ -270,6 +273,32 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
+			ri := receiverInfo{
+				u: []string{req.Spec().Procedure},
+				m: []string{http.MethodPost},
+			}
+
+			paths := req.Header()["Pattern"]
+			if len(paths) == 0 {
+				paths = allowedPublicEndpoints[:]
+			}
+			for _, m := range []string{"Origin", "Grpcgateway-Origin", "Grpcgateway-Referer"} {
+				origins := req.Header().Values(m)
+				if len(origins) == 0 {
+					continue
+				}
+				for _, o := range origins {
+					if strings.HasSuffix(o, ":443") {
+						o = "https://" + strings.TrimPrefix(strings.TrimSuffix(o, ":443"), "https://")
+					} else {
+						o = strings.TrimSuffix(o, ":80")
+					}
+					for _, u := range paths {
+						ri.u = append(ri.u, normalizeURL(o, &url.URL{Path: u}))
+					}
+				}
+			}
+
 			// Interceptor Logic
 			// Allow health checks and other public routes to pass through
 			if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(req.Spec().Procedure)) { //nolint:contextcheck // There is no way to pass a context here
@@ -289,10 +318,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			token, newCtx, err := a.checkToken(
 				ctx,
 				header,
-				receiverInfo{
-					u: req.Spec().Procedure,
-					m: http.MethodPost,
-				},
+				ri,
 				req.Header()["Dpop"],
 			)
 			if err != nil {
@@ -515,7 +541,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 		return nil, fmt.Errorf("`htm` claim missing in DPoP JWT")
 	}
 
-	if htm != dpopInfo.m {
+	if !slices.Contains(dpopInfo.m, htm.(string)) {
 		return nil, fmt.Errorf("incorrect `htm` claim in DPoP JWT; received [%v], but should match [%v]", htm, dpopInfo.m)
 	}
 
@@ -524,7 +550,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 		return nil, fmt.Errorf("`htu` claim missing in DPoP JWT")
 	}
 
-	if htu != dpopInfo.u {
+	if !slices.Contains(dpopInfo.u, htu.(string)) {
 		return nil, fmt.Errorf("incorrect `htu` claim in DPoP JWT; received [%v], but should match [%v]", htu, dpopInfo.u)
 	}
 

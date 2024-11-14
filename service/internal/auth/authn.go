@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -23,8 +24,6 @@ import (
 
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/logger"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 const (
@@ -279,7 +278,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 
 			header := req.Header()["Authorization"]
 			if len(header) < 1 {
-				return nil, status.Error(codes.Unauthenticated, "missing authorization header")
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
 			}
 
 			// parse the rpc method
@@ -297,19 +296,19 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				req.Header()["Dpop"],
 			)
 			if err != nil {
-				return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
 
 			// Check if the token is allowed to access the resource
 			if allowed, err := a.enforcer.Enforce(token, resource, action); err != nil {
 				if err.Error() == "permission denied" {
 					a.logger.Warn("permission denied", slog.String("azp", token.Subject()), slog.String("error", err.Error()))
-					return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+					return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 				}
 				return nil, err
 			} else if !allowed {
 				a.logger.Warn("permission denied", slog.String("azp", token.Subject()))
-				return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 			}
 
 			return next(newCtx, req)

@@ -2,14 +2,14 @@ package health
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
+	"connectrpc.com/connect"
 	"connectrpc.com/grpchealth"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
-	"google.golang.org/grpc/codes"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
-	"google.golang.org/grpc/status"
 )
 
 var serviceHealthChecks = make(map[string]func(context.Context) error)
@@ -75,12 +75,12 @@ func (s HealthService) Check(ctx context.Context, req *grpchealth.CheckRequest) 
 }
 
 func (s HealthService) Watch(_ *healthpb.HealthCheckRequest, _ healthpb.Health_WatchServer) error {
-	return status.Error(codes.Unimplemented, "unimplemented")
+	return connect.NewError(connect.CodeUnimplemented, errors.New("unimplemented"))
 }
 
 func RegisterReadinessCheck(namespace string, service func(context.Context) error) error {
 	if _, ok := serviceHealthChecks[namespace]; ok {
-		return status.Error(codes.AlreadyExists, "readiness check already registered")
+		return errors.New("readiness check already registered")
 	}
 	serviceHealthChecks[namespace] = service
 

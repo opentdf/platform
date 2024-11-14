@@ -33,6 +33,10 @@ services:
         email: true
         username: true
 server:
+  tls:
+    enabled: false
+    cert: ./keys/platform.crt
+    key: ./keys/platform-key.pem
   auth:
     enabled: true
     enforceDPoP: false

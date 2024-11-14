@@ -158,6 +158,10 @@ services:
     realm: "opentdf"
     legacykeycloak: true
 server:
+  tls:
+    enabled: true
+    cert: ./keys/platform.crt
+    key: ./keys/platform-key.pem
   auth:
     enabled: true
     enforceDPoP: false
@@ -229,6 +233,10 @@ services:
     realm: "opentdf"
     legacykeycloak: true
 server:
+  tls:
+    enabled: true
+    cert: ./keys/platform.crt
+    key: ./keys/platform-key.pem
   auth:
     enabled: true
     enforceDPoP: false

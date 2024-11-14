@@ -105,9 +105,18 @@ jobs:
         run: ./.github/scripts/work-init.sh
       - run: go mod download
       - run: go mod verify
+      - name: Install mkcert
+        run: |
+          sudo apt-get install -y libnss3-tools
+          curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
+          chmod +x mkcert-v*-linux-amd64
+          sudo cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
       - run: |
           .github/scripts/init-temp-keys.sh
+          mkcert -install
+          mkcert -cert-file ./keys/localhost.crt -key-file ./keys/localhost-key.pem localhost
           cp opentdf-dev.yaml opentdf.yaml
+          yq eval '.server.tls.enabled = true' -i opentdf.yaml
       - name: Added Trusted Certs
         run: |
           sudo chmod -R 777 ./keys

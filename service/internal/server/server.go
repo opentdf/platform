@@ -174,7 +174,6 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 					return k, true
 				}
 				if textproto.CanonicalMIMEHeaderKey(key) == "Dpop" {
-					logger.Info("DPOP KEY FOUUUUND")
 					return "Dpop", true
 				}
 				return "", false
@@ -188,7 +187,6 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 			if pattern, ok := runtime.HTTPPathPattern(ctx); ok {
 				md["pattern"] = pattern // /v1/example/login
 			}
-			logger.Info("DPOP METADATATTATA", slog.Any("metadata", md))
 			return metadata.New(md)
 		}),
 	)

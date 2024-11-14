@@ -11,8 +11,6 @@ import (
 	"connectrpc.com/connect"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/service/internal/security"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -116,7 +114,7 @@ func (p Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Publ
 			return r(rsaPublicKeyPem, kid, err)
 		}
 	}
-	return nil, status.Error(codes.NotFound, "invalid algorithm or format")
+	return nil, connect.NewError(connect.CodeNotFound, errors.New("invalid algorithm or format"))
 }
 
 func exportRsaPublicKeyAsPemStr(pubkey *rsa.PublicKey) (string, error) {

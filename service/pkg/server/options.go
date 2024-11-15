@@ -12,6 +12,7 @@ type StartConfig struct {
 	WaitForShutdownSignal       bool
 	PublicRoutes                []string
 	authzDefaultPolicyExtension [][]string
+	authzPolicy                 string
 	extraCoreServices           []serviceregistry.IService
 	extraServices               []serviceregistry.IService
 }
@@ -67,6 +68,21 @@ func WithPublicRoutes(routes []string) StartOptions {
 func WithAuthZDefaultPolicyExtension(policies [][]string) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.authzDefaultPolicyExtension = policies
+		return c
+	}
+}
+
+// deprecated: Use WithAuthZPolicy
+// WithAuthZPolicy option sets the casbin policy to be used.
+// Example:
+//
+//	  opentdf.WithAuthZPolicy(strings.Join([]string{
+//		   "p, role:admin, pep*, *, allow",
+//		   "p, role:standard, pep*, read, allow",
+//		 }, "\n")),
+func WithAuthZPolicy(policy string) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.authzPolicy = policy
 		return c
 	}
 }

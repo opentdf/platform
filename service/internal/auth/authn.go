@@ -199,8 +199,14 @@ func normalizeURL(o string, u *url.URL) string {
 	return ou.String()
 }
 
+// deprecated
 func (a *Authentication) ExtendAuthzDefaultPolicy(policies [][]string) error {
 	return a.enforcer.ExtendDefaultPolicy(policies)
+}
+
+// SetAuthzPolicy sets the policy for the casbin enforcer
+func (a *Authentication) SetAuthzPolicy(policy string) error {
+	return a.enforcer.SetPolicy(policy)
 }
 
 // verifyTokenHandler is a http handler that verifies the token

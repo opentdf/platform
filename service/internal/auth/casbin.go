@@ -216,6 +216,7 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 	}, nil
 }
 
+// deprecated
 // Extend the default policy
 func (e *Enforcer) ExtendDefaultPolicy(policies [][]string) error {
 	if !e.isDefaultPolicy {
@@ -249,6 +250,17 @@ func (e *Enforcer) ExtendDefaultPolicy(policies [][]string) error {
 	}
 	e.isDefaultPolicy = false
 
+	return nil
+}
+
+// SetPolicy sets the policy for the enforcer
+func (e *Enforcer) SetPolicy(policy string) error {
+	a := stringadapter.NewAdapter(policy)
+	e.SetAdapter(a)
+	if err := e.LoadPolicy(); err != nil {
+		return fmt.Errorf("failed to load extended default policy: %w", err)
+	}
+	e.isDefaultPolicy = false
 	return nil
 }
 

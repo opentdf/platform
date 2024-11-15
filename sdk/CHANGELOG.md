@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.3.20](https://github.com/opentdf/platform/compare/sdk/v0.3.19...sdk/v0.3.20) (2024-11-13)
+
+
+### Features
+
+* backend migration to connect-rpc ([#1733](https://github.com/opentdf/platform/issues/1733)) ([d10ba3c](https://github.com/opentdf/platform/commit/d10ba3cb22175a000ba5d156987c9f201749ae88))
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1747](https://github.com/opentdf/platform/issues/1747)) ([fb50a43](https://github.com/opentdf/platform/commit/fb50a431cde8691c670c2bf457c0545c89f278f9))
+
+## [0.3.19](https://github.com/opentdf/platform/compare/sdk/v0.3.18...sdk/v0.3.19) (2024-11-12)
+
+
+### Bug Fixes
+
+* update GetType to check the first 4 bytes ([#1736](https://github.com/opentdf/platform/issues/1736)) ([d6a1e6d](https://github.com/opentdf/platform/commit/d6a1e6d6bf60e970afe8fc26c483cfe2e340fdd4))
+
 ## [0.3.18](https://github.com/opentdf/platform/compare/sdk/v0.3.17...sdk/v0.3.18) (2024-11-06)
 
 

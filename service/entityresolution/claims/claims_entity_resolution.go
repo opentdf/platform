@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
@@ -22,21 +22,19 @@ type ClaimsEntityResolutionService struct {
 	logger *logger.Logger
 }
 
-func RegisterClaimsERS(_ serviceregistry.ServiceConfig, logger *logger.Logger) (any, serviceregistry.HandlerServer) {
-	return &ClaimsEntityResolutionService{logger: logger},
-		func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-			return entityresolution.RegisterEntityResolutionServiceHandlerServer(ctx, mux, server.(entityresolution.EntityResolutionServiceServer)) //nolint:forcetypeassert // allow type assert, following other services
-		}
+func RegisterClaimsERS(_ serviceregistry.ServiceConfig, logger *logger.Logger) (ClaimsEntityResolutionService, serviceregistry.HandlerServer) {
+	claimsSVC := ClaimsEntityResolutionService{logger: logger}
+	return claimsSVC, nil
 }
 
-func (s ClaimsEntityResolutionService) ResolveEntities(ctx context.Context, req *entityresolution.ResolveEntitiesRequest) (*entityresolution.ResolveEntitiesResponse, error) {
-	resp, err := EntityResolution(ctx, req, s.logger)
-	return &resp, err
+func (s ClaimsEntityResolutionService) ResolveEntities(ctx context.Context, req *connect.Request[entityresolution.ResolveEntitiesRequest]) (*connect.Response[entityresolution.ResolveEntitiesResponse], error) {
+	resp, err := EntityResolution(ctx, req.Msg, s.logger)
+	return connect.NewResponse(&resp), err
 }
 
-func (s ClaimsEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *entityresolution.CreateEntityChainFromJwtRequest) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
-	resp, err := CreateEntityChainFromJwt(ctx, req, s.logger)
-	return &resp, err
+func (s ClaimsEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
+	resp, err := CreateEntityChainFromJwt(ctx, req.Msg, s.logger)
+	return connect.NewResponse(&resp), err
 }
 
 func CreateEntityChainFromJwt(
@@ -64,21 +62,21 @@ func EntityResolution(_ context.Context,
 	var resolvedEntities []*entityresolution.EntityRepresentation
 
 	for idx, ident := range payload {
-		var entityStruct = &structpb.Struct{}
+		entityStruct := &structpb.Struct{}
 		switch ident.GetEntityType().(type) {
 		case *authorization.Entity_Claims:
 			claims := ident.GetClaims()
 			if claims != nil {
 				err := claims.UnmarshalTo(entityStruct)
 				if err != nil {
-					return entityresolution.ResolveEntitiesResponse{}, fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err)
+					return entityresolution.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err))
 				}
 			}
 		default:
 			retrievedStruct, err := entityToStructPb(ident)
 			if err != nil {
 				logger.Error("unable to make entity struct", slog.String("error", err.Error()))
-				return entityresolution.ResolveEntitiesResponse{}, fmt.Errorf("unable to make entity struct: %w", err)
+				return entityresolution.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInternal, fmt.Errorf("unable to make entity struct: %w", err))
 			}
 			entityStruct = retrievedStruct
 		}

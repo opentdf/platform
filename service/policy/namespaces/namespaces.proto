@@ -119,10 +119,12 @@ message RemoveKeyAccessServerFromNamespaceResponse {
 service NamespaceService {
   rpc GetNamespace(GetNamespaceRequest) returns (GetNamespaceResponse) {
     option (google.api.http) = {get: "/attributes/namespaces/{id}"};
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc ListNamespaces(ListNamespacesRequest) returns (ListNamespacesResponse) {
     option (google.api.http) = {get: "/attributes/namespaces"};
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc CreateNamespace(CreateNamespaceRequest) returns (CreateNamespaceResponse) {

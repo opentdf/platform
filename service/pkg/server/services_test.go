@@ -22,17 +22,17 @@ type mockTestServiceOptions struct {
 	serviceName        string
 	serviceHandlerType any
 	serviceObject      any
-	serviceHandler     func(ctx context.Context, mux *runtime.ServeMux, server any) error
+	serviceHandler     func(ctx context.Context, mux *runtime.ServeMux) error
 	dbRegister         serviceregistry.DBRegister
 }
 
-func mockTestServiceRegistry(opts mockTestServiceOptions) (serviceregistry.Registration, *spyTestService) {
+func mockTestServiceRegistry(opts mockTestServiceOptions) (serviceregistry.IService, *spyTestService) {
 	spy := &spyTestService{}
 	mockTestServiceDefaults := mockTestServiceOptions{
 		namespace:          "test",
 		serviceName:        "TestService",
 		serviceHandlerType: (*interface{})(nil),
-		serviceHandler: func(_ context.Context, _ *runtime.ServeMux, _ any) error {
+		serviceHandler: func(_ context.Context, _ *runtime.ServeMux) error {
 			return nil
 		},
 	}
@@ -52,21 +52,28 @@ func mockTestServiceRegistry(opts mockTestServiceOptions) (serviceregistry.Regis
 		serviceHandler = opts.serviceHandler
 	}
 
-	return serviceregistry.Registration{
-		Namespace: namespace,
-		ServiceDesc: &grpc.ServiceDesc{
-			ServiceName: serviceName,
-			HandlerType: serviceHandlerType,
-		},
-		RegisterFunc: func(srp serviceregistry.RegistrationParams) (any, serviceregistry.HandlerServer) {
-			return opts.serviceObject, func(ctx context.Context, mux *runtime.ServeMux, server any) error {
-				spy.wasCalled = true
-				spy.callParams = append(spy.callParams, srp, ctx, mux, server)
-				return serviceHandler(ctx, mux, server)
-			}
-		},
+	return &serviceregistry.Service[TestService]{
+		ServiceOptions: serviceregistry.ServiceOptions[TestService]{
+			Namespace: namespace,
+			ServiceDesc: &grpc.ServiceDesc{
+				ServiceName: serviceName,
+				HandlerType: serviceHandlerType,
+			},
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (TestService, serviceregistry.HandlerServer) {
+				var ts TestService
+				var ok bool
+				if ts, ok = opts.serviceObject.(TestService); !ok {
+					panic("serviceObject is not a TestService")
+				}
+				return ts, func(ctx context.Context, mux *runtime.ServeMux) error {
+					spy.wasCalled = true
+					spy.callParams = append(spy.callParams, srp, ctx, mux, ts)
+					return serviceHandler(ctx, mux)
+				}
+			},
 
-		DB: opts.dbRegister,
+			DB: opts.dbRegister,
+		},
 	}, spy
 }
 
@@ -189,7 +196,7 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 
 	// Test service which will be enabled
 	registerTest, testSpy := mockTestServiceRegistry(mockTestServiceOptions{
-		serviceObject: &TestService{},
+		serviceObject: TestService{},
 	})
 	err := registry.RegisterService(registerTest, "test")
 	suite.Require().NoError(err)

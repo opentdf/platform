@@ -20,8 +20,8 @@ func init() {
 	Migrations = &migrations.FS
 }
 
-func NewRegistrations() []serviceregistry.Registration {
-	registrations := []serviceregistry.Registration{}
+func NewRegistrations() []serviceregistry.IService {
+	registrations := []serviceregistry.IService{}
 	namespace := "policy"
 	dbRegister := serviceregistry.DBRegister{
 		Required:   true,
@@ -31,18 +31,13 @@ func NewRegistrations() []serviceregistry.Registration {
 		Proto: &configv1.PolicyConfig{},
 	}
 
-	for _, r := range []serviceregistry.Registration{
-		attributes.NewRegistration(),
-		namespaces.NewRegistration(),
-		resourcemapping.NewRegistration(),
-		subjectmapping.NewRegistration(),
-		kasregistry.NewRegistration(),
-		unsafe.NewRegistration(),
-	} {
-		r.Namespace = namespace
-		r.DB = dbRegister
-		r.ServiceConfig = svcConfigRegister
-		registrations = append(registrations, r)
-	}
+	registrations = append(registrations, []serviceregistry.IService{
+		attributes.NewRegistration(namespace, dbRegister),
+		namespaces.NewRegistration(namespace, dbRegister, svcConfigRegister),
+		resourcemapping.NewRegistration(namespace, dbRegister),
+		subjectmapping.NewRegistration(namespace, dbRegister),
+		kasregistry.NewRegistration(namespace, dbRegister),
+		unsafe.NewRegistration(namespace, dbRegister),
+	}...)
 	return registrations
 }

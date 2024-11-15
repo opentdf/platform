@@ -17,3 +17,7 @@ const (
 	RequestIPHeaderKey RequestHeader = "x-forwarded-request-ip"
 	ActorIDHeaderKey   RequestHeader = "x-forwarded-actor-id"
 )
+
+func (r RequestHeader) String() string {
+	return string(r)
+}

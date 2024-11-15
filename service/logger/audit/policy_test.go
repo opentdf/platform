@@ -42,7 +42,6 @@ func Test_CreatePolicyEvent_HappyPath(t *testing.T) {
 	}
 
 	event, err := CreatePolicyEvent(createTestContext(), true, params)
-
 	if err != nil {
 		t.Fatalf("error creating policy audit event: %v", err)
 	}
@@ -74,7 +73,7 @@ func Test_CreatePolicyEvent_HappyPath(t *testing.T) {
 	expectedClientInfo := eventClientInfo{
 		Platform:  "policy",
 		UserAgent: TestUserAgent,
-		RequestIP: TestRequestIP,
+		RequestIP: TestRequestIP.String(),
 	}
 	if !reflect.DeepEqual(event.ClientInfo, expectedClientInfo) {
 		t.Fatalf("event client info did not match expected: got %+v, want %+v", event.ClientInfo, expectedClientInfo)
@@ -99,7 +98,6 @@ func Test_CreatePolicyEvent_WithOriginal(t *testing.T) {
 	}
 
 	event, err := CreatePolicyEvent(createTestContext(), true, params)
-
 	if err != nil {
 		t.Fatalf("error creating policy audit event: %v", err)
 	}

@@ -293,16 +293,20 @@ service AttributesService {
    *---------------------------------------*/
   rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {
     option (google.api.http) = {get: "/attributes"};
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc ListAttributeValues(ListAttributeValuesRequest) returns (ListAttributeValuesResponse) {
     option (google.api.http) = {get: "/attributes/*/values"};
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc GetAttribute(GetAttributeRequest) returns (GetAttributeResponse) {
     option (google.api.http) = {get: "/attributes/{id}"};
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc GetAttributeValuesByFqns(GetAttributeValuesByFqnsRequest) returns (GetAttributeValuesByFqnsResponse) {
     option (google.api.http) = {get: "/attributes/*/fqn"};
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc CreateAttribute(CreateAttributeRequest) returns (CreateAttributeResponse) {

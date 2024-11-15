@@ -120,7 +120,6 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 
 	opentdfClientID := "opentdf"
 	opentdfSdkClientID := "opentdf-sdk"
-	opentdfOrgAdminRoleName := "opentdf-org-admin"
 	opentdfAdminRoleName := "opentdf-admin"
 	opentdfStandardRoleName := "opentdf-standard"
 	testingOnlyRoleName := "opentdf-testing-role"
@@ -155,7 +154,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	}
 
 	// Create Roles
-	roles := []string{opentdfOrgAdminRoleName, opentdfAdminRoleName, opentdfStandardRoleName, testingOnlyRoleName}
+	roles := []string{opentdfAdminRoleName, opentdfStandardRoleName, testingOnlyRoleName}
 	for _, role := range roles {
 		_, err := client.CreateRealmRole(ctx, token.AccessToken, kcConnectParams.Realm, gocloak.Role{
 			Name: gocloak.StringP(role),
@@ -173,8 +172,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	}
 
 	// Get the roles
-	var opentdfOrgAdminRole *gocloak.Role
-	// var opentdfAdminRole *gocloak.Role
+	var opentdfAdminRole *gocloak.Role
 	var opentdfStandardRole *gocloak.Role
 	var testingOnlyRole *gocloak.Role
 	realmRoles, err := client.GetRealmRoles(ctx, token.AccessToken, kcConnectParams.Realm, gocloak.GetRoleParams{
@@ -187,10 +185,8 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	slog.Info(fmt.Sprintf("✅ Roles found: %d", len(realmRoles))) // , slog.String("roles", fmt.Sprintf("%v", realmRoles))
 	for _, role := range realmRoles {
 		switch *role.Name {
-		case opentdfOrgAdminRoleName:
-			opentdfOrgAdminRole = role
-		// case opentdfAdminRoleName:
-		// 	opentdfAdminRole = role
+		case opentdfAdminRoleName:
+			opentdfAdminRole = role
 		case opentdfStandardRoleName:
 			opentdfStandardRole = role
 		case testingOnlyRoleName:
@@ -207,7 +203,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		ClientAuthenticatorType: gocloak.StringP("client-secret"),
 		Secret:                  gocloak.StringP("secret"),
 		ProtocolMappers:         &protocolMappers,
-	}, []gocloak.Role{*opentdfOrgAdminRole}, nil)
+	}, []gocloak.Role{*opentdfAdminRole}, nil)
 	if err != nil {
 		return err
 	}

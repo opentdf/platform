@@ -126,9 +126,9 @@ func Start(f ...StartOptions) error {
 	if len(startConfig.extraServices) > 0 {
 		logger.Debug("registering extra services")
 		for _, service := range startConfig.extraServices {
-			err := svcRegistry.RegisterService(service, service.Namespace)
+			err := svcRegistry.RegisterService(service, service.GetNamespace())
 			if err != nil {
-				logger.Error("could not register extra service", slog.String("namespace", service.Namespace), slog.String("error", err.Error()))
+				logger.Error("could not register extra service", slog.String("namespace", service.GetNamespace()), slog.String("error", err.Error()))
 				return fmt.Errorf("could not register extra service: %w", err)
 			}
 		}
@@ -156,7 +156,7 @@ func Start(f ...StartOptions) error {
 	if slices.Contains(cfg.Mode, "all") || slices.Contains(cfg.Mode, "core") {
 		// Use IPC for the SDK client
 		sdkOptions = append(sdkOptions, sdk.WithIPC())
-		sdkOptions = append(sdkOptions, sdk.WithCustomCoreConnection(otdf.GRPCInProcess.Conn()))
+		sdkOptions = append(sdkOptions, sdk.WithCustomCoreConnection(otdf.ConnectRPCInProcess.Conn()))
 
 		client, err = sdk.New("", sdkOptions...)
 		if err != nil {

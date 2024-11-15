@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"google.golang.org/grpc/resolver"
+
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
 )
@@ -28,7 +30,8 @@ func init() {
 }
 
 func newSDK() (*sdk.SDK, error) {
-	opts := []sdk.Option{sdk.WithInsecurePlaintextConn()}
+	resolver.SetDefaultScheme("passthrough")
+	opts := []sdk.Option{sdk.WithStoreCollectionHeaders()}
 	if clientCredentials != "" {
 		i := strings.Index(clientCredentials, ":")
 		if i < 0 {

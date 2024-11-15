@@ -36,7 +36,8 @@ type TestConfig struct {
 var attributesToMap = []string{
 	"https://example.com/attr/language/value/english",
 	"https://example.com/attr/color/value/red",
-	"https://example.com/attr/cards/value/queen"}
+	"https://example.com/attr/cards/value/queen",
+}
 
 var successAttributeSets = [][]string{
 	{},
@@ -45,11 +46,13 @@ var successAttributeSets = [][]string{
 	{"https://example.com/attr/color/value/red", "https://example.com/attr/color/value/green"},
 	{"https://example.com/attr/cards/value/jack"},
 	{"https://example.com/attr/cards/value/queen"},
-	{"https://example.com/attr/language/value/english",
+	{
+		"https://example.com/attr/language/value/english",
 		"https://example.com/attr/color/value/red",
 		"https://example.com/attr/color/value/green",
 		"https://example.com/attr/cards/value/jack",
-		"https://example.com/attr/cards/value/queen"},
+		"https://example.com/attr/cards/value/queen",
+	},
 }
 
 var failureAttributeSets = [][]string{
@@ -57,19 +60,25 @@ var failureAttributeSets = [][]string{
 	{"https://example.com/attr/color/value/blue"},
 	{"https://example.com/attr/color/value/blue", "https://example.com/attr/color/value/green"},
 	{"https://example.com/attr/cards/value/king"},
-	{"https://example.com/attr/language/value/english",
+	{
+		"https://example.com/attr/language/value/english",
 		"https://example.com/attr/language/value/french",
 		"https://example.com/attr/color/value/red",
 		"https://example.com/attr/color/value/green",
-		"https://example.com/attr/cards/value/queen"},
-	{"https://example.com/attr/language/value/english",
+		"https://example.com/attr/cards/value/queen",
+	},
+	{
+		"https://example.com/attr/language/value/english",
 		"https://example.com/attr/color/value/blue",
 		"https://example.com/attr/color/value/green",
-		"https://example.com/attr/cards/value/queen"},
-	{"https://example.com/attr/language/value/english",
+		"https://example.com/attr/cards/value/queen",
+	},
+	{
+		"https://example.com/attr/language/value/english",
 		"https://example.com/attr/color/value/red",
 		"https://example.com/attr/color/value/green",
-		"https://example.com/attr/cards/value/king"},
+		"https://example.com/attr/cards/value/king",
+	},
 }
 
 func newTestConfig() TestConfig {
@@ -91,13 +100,25 @@ func Test_RoundTrips(t *testing.T) {
 type RoundtripSuite struct {
 	suite.Suite
 	TestConfig
+	client *sdk.SDK
 }
 
 func (s *RoundtripSuite) SetupSuite() {
 	s.TestConfig = newTestConfig()
 	slog.Info("Test config", "", s.TestConfig)
 
-	err := s.CreateTestData()
+	opts := []sdk.Option{}
+	if os.Getenv("TLS_ENABLED") == "" {
+		opts = append(opts, sdk.WithInsecurePlaintextConn())
+	}
+
+	opts = append(opts, sdk.WithClientCredentials(s.TestConfig.ClientID, s.TestConfig.ClientSecret, nil))
+
+	sdk, err := sdk.New(s.TestConfig.PlatformEndpoint, opts...)
+	s.Require().NoError(err)
+	s.client = sdk
+
+	err = s.CreateTestData()
 	s.Require().NoError(err)
 }
 
@@ -108,9 +129,9 @@ func (s *RoundtripSuite) Tests() {
 		s.Run(n, func() {
 			filename := fmt.Sprintf("test-success-%d.tdf", i)
 			plaintext := "Running a roundtrip test!"
-			err := encrypt(&s.TestConfig, plaintext, attributes, filename)
+			err := encrypt(s.client, s.TestConfig, plaintext, attributes, filename)
 			s.Require().NoError(err)
-			err = decrypt(&s.TestConfig, filename, plaintext)
+			err = decrypt(s.client, filename, plaintext)
 			s.NoError(err)
 		})
 	}
@@ -121,30 +142,21 @@ func (s *RoundtripSuite) Tests() {
 		s.Run(n, func() {
 			filename := fmt.Sprintf("test-failure-%d.tdf", i)
 			plaintext := "Running a roundtrip test!"
-			err := encrypt(&s.TestConfig, plaintext, attributes, filename)
+			err := encrypt(s.client, s.TestConfig, plaintext, attributes, filename)
 			s.Require().NoError(err)
-			err = decrypt(&s.TestConfig, filename, plaintext)
+			err = decrypt(s.client, filename, plaintext)
 			s.ErrorContains(err, "PermissionDenied")
 		})
 	}
 }
 
 func (s *RoundtripSuite) CreateTestData() error {
-	sdk, err := sdk.New(s.TestConfig.PlatformEndpoint,
-		sdk.WithInsecurePlaintextConn(),
-		sdk.WithClientCredentials(s.TestConfig.ClientID,
-			s.TestConfig.ClientSecret, nil),
-	)
-	if err != nil {
-		slog.Error("could not connect", slog.String("error", err.Error()))
-		return err
-	}
-	defer sdk.Close()
+	client := s.client
 
 	// create namespace example.com
 	var exampleNamespace *policy.Namespace
 	slog.Info("listing namespaces")
-	listResp, err := sdk.Namespaces.ListNamespaces(context.Background(), &namespaces.ListNamespacesRequest{})
+	listResp, err := client.Namespaces.ListNamespaces(context.Background(), &namespaces.ListNamespacesRequest{})
 	if err != nil {
 		return err
 	}
@@ -158,7 +170,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 
 	if exampleNamespace == nil {
 		slog.Info("creating new namespace")
-		resp, err := sdk.Namespaces.CreateNamespace(context.Background(), &namespaces.CreateNamespaceRequest{
+		resp, err := client.Namespaces.CreateNamespace(context.Background(), &namespaces.CreateNamespaceRequest{
 			Name: "example.com",
 		})
 		if err != nil {
@@ -171,7 +183,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 
 	// Create the attributes
 	slog.Info("creating attribute language with allOf rule")
-	_, err = sdk.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
+	_, err = client.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Name:        "language",
 		NamespaceId: exampleNamespace.GetId(),
 		Rule:        *policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF.Enum(),
@@ -193,7 +205,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 	}
 
 	slog.Info("creating attribute color with anyOf rule")
-	_, err = sdk.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
+	_, err = client.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Name:        "color",
 		NamespaceId: exampleNamespace.GetId(),
 		Rule:        *policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF.Enum(),
@@ -215,7 +227,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 	}
 
 	slog.Info("creating attribute cards with hierarchy rule")
-	_, err = sdk.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
+	_, err = client.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Name:        "cards",
 		NamespaceId: exampleNamespace.GetId(),
 		Rule:        *policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY.Enum(),
@@ -238,7 +250,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 
 	slog.Info("##################################\n#######################################")
 
-	allAttr, err := sdk.Attributes.ListAttributes(context.Background(), &attributes.ListAttributesRequest{})
+	allAttr, err := client.Attributes.ListAttributes(context.Background(), &attributes.ListAttributesRequest{})
 	if err != nil {
 		slog.Error("could not list attributes", slog.String("error", err.Error()))
 		return err
@@ -249,7 +261,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 
 	// get the attribute ids for the values were mapping to the client
 	var attributeValueIDs []string
-	fqnResp, err := sdk.Attributes.GetAttributeValuesByFqns(context.Background(), &attributes.GetAttributeValuesByFqnsRequest{
+	fqnResp, err := client.Attributes.GetAttributeValuesByFqns(context.Background(), &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns:      attributesToMap,
 		WithValue: &policy.AttributeValueSelector{},
 	})
@@ -264,11 +276,12 @@ func (s *RoundtripSuite) CreateTestData() error {
 	// create subject mappings
 	slog.Info("creating subject mappings for client " + s.TestConfig.ClientID)
 	for _, attributeID := range attributeValueIDs {
-		_, err = sdk.SubjectMapping.CreateSubjectMapping(context.Background(), &subjectmapping.CreateSubjectMappingRequest{
+		_, err = client.SubjectMapping.CreateSubjectMapping(context.Background(), &subjectmapping.CreateSubjectMappingRequest{
 			AttributeValueId: attributeID,
-			Actions: []*policy.Action{{Value: &policy.Action_Standard{
-				Standard: policy.Action_STANDARD_ACTION_DECRYPT,
-			}},
+			Actions: []*policy.Action{
+				{Value: &policy.Action_Standard{
+					Standard: policy.Action_STANDARD_ACTION_DECRYPT,
+				}},
 				{Value: &policy.Action_Standard{
 					Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
 				}},
@@ -276,11 +289,12 @@ func (s *RoundtripSuite) CreateTestData() error {
 			NewSubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
 				SubjectSets: []*policy.SubjectSet{
 					{ConditionGroups: []*policy.ConditionGroup{
-						{Conditions: []*policy.Condition{{
-							SubjectExternalSelectorValue: ".clientId",
-							Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-							SubjectExternalValues:        []string{s.TestConfig.ClientID},
-						}},
+						{
+							Conditions: []*policy.Condition{{
+								SubjectExternalSelectorValue: ".clientId",
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{s.TestConfig.ClientID},
+							}},
 							BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
 						},
 					}},
@@ -299,7 +313,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 		}
 	}
 
-	allSubMaps, err := sdk.SubjectMapping.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{})
+	allSubMaps, err := client.SubjectMapping.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{})
 	if err != nil {
 		slog.Error("could not list subject mappings", slog.String("error", err.Error()))
 		return err
@@ -309,19 +323,8 @@ func (s *RoundtripSuite) CreateTestData() error {
 	return nil
 }
 
-func encrypt(testConfig *TestConfig, plaintext string, attributes []string, filename string) error {
+func encrypt(client *sdk.SDK, testConfig TestConfig, plaintext string, attributes []string, filename string) error {
 	strReader := strings.NewReader(plaintext)
-
-	// Create new offline client
-	client, err := sdk.New(testConfig.PlatformEndpoint,
-		sdk.WithInsecurePlaintextConn(),
-		sdk.WithClientCredentials(testConfig.ClientID,
-			testConfig.ClientSecret, nil),
-		sdk.WithTokenEndpoint(testConfig.TokenEndpoint),
-	)
-	if err != nil {
-		return err
-	}
 
 	tdfFile, err := os.Create(filename)
 	if err != nil {
@@ -344,17 +347,7 @@ func encrypt(testConfig *TestConfig, plaintext string, attributes []string, file
 	return nil
 }
 
-func decrypt(testConfig *TestConfig, tdfFile string, plaintext string) error {
-	// Create new client
-	client, err := sdk.New(testConfig.PlatformEndpoint,
-		sdk.WithInsecurePlaintextConn(),
-		sdk.WithClientCredentials(testConfig.ClientID,
-			testConfig.ClientSecret, nil),
-		sdk.WithTokenEndpoint(testConfig.TokenEndpoint),
-	)
-	if err != nil {
-		return err
-	}
+func decrypt(client *sdk.SDK, tdfFile string, plaintext string) error {
 	file, err := os.Open(tdfFile)
 	if err != nil {
 		return err

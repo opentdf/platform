@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.1.6...lib/ocrypto/v0.1.7) (2024-11-15)
+
+
+### Features
+
+* **sdk:** add collections for nanotdf  ([#1695](https://github.com/opentdf/platform/issues/1695)) ([6497bf3](https://github.com/opentdf/platform/commit/6497bf3a7cee9b6900569bc6cc2c39b2f647fb52))
+
 ## [0.1.6](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.1.5...lib/ocrypto/v0.1.6) (2024-10-03)
 
 

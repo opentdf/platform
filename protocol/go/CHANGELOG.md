@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.22](https://github.com/opentdf/platform/compare/protocol/go/v0.2.21...protocol/go/v0.2.22) (2024-11-14)
+
+
+### Features
+
+* **sdk:** add collections for nanotdf  ([#1695](https://github.com/opentdf/platform/issues/1695)) ([6497bf3](https://github.com/opentdf/platform/commit/6497bf3a7cee9b6900569bc6cc2c39b2f647fb52))
+
 ## [0.2.21](https://github.com/opentdf/platform/compare/protocol/go/v0.2.20...protocol/go/v0.2.21) (2024-11-13)
 
 

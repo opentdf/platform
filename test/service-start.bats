@@ -3,14 +3,14 @@
 # Tests for validating that the system is nominally running
 
 @test "gRPC: health check is healthy" {
-  run grpcurl -plaintext "localhost:8080" "grpc.health.v1.Health.Check"
+  run grpcurl "localhost:8080" "grpc.health.v1.Health.Check"
   echo "$output"
   [ $status = 0 ]
   [ $(jq -r .status <<<"${output}") = SERVING ]
 }
 
 @test "gRPC: reports a public key" {
-  run grpcurl -plaintext "localhost:8080" "kas.AccessService/PublicKey"
+  run grpcurl "localhost:8080" "kas.AccessService/PublicKey"
   echo "$output"
 
   # Is public key
@@ -25,7 +25,7 @@
 }
 
 @test "REST: new public key endpoint (no algorithm)" {
-  run curl -s --show-error --fail-with-body --insecure "localhost:8080/kas/v2/kas_public_key"
+  run curl -s --show-error --fail-with-body "https://localhost:8080/kas/v2/kas_public_key"
   echo "output=$output"
   p=$(jq -r .publicKey <<<"${output}")
 
@@ -40,7 +40,7 @@
 }
 
 @test "REST: new public key endpoint (ec)" {
-  run curl -s --show-error --fail-with-body --insecure "localhost:8080/kas/v2/kas_public_key?algorithm=ec:secp256r1"
+  run curl -s --show-error --fail-with-body "https://localhost:8080/kas/v2/kas_public_key?algorithm=ec:secp256r1"
   echo "$output"
 
   # Is public key
@@ -55,13 +55,13 @@
 }
 
 @test "REST: public key endpoint (unknown algorithm)" {
-  run curl -o /dev/null -s -w "%{http_code}" "localhost:8080/kas/v2/kas_public_key?algorithm=invalid"
+  run curl -o /dev/null -s -w "%{http_code}" "https://localhost:8080/kas/v2/kas_public_key?algorithm=invalid"
   echo "$output"
   [ $output = 404 ]
 }
 
 @test "gRPC: public key endpoint (unknown algorithm)" {
-  run grpcurl -d '{"algorithm":"invalid"}' -plaintext "localhost:8080" "kas.AccessService/PublicKey" 
+  run grpcurl -d '{"algorithm":"invalid"}' "localhost:8080" "kas.AccessService/PublicKey" 
   echo "$output"
   [[ $output = *NotFound* ]]
 }

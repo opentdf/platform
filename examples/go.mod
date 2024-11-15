@@ -3,7 +3,7 @@ module github.com/opentdf/platform/examples
 go 1.21
 
 require (
-	github.com/opentdf/platform/lib/ocrypto v0.1.6
+	github.com/opentdf/platform/lib/ocrypto v0.1.7
 	github.com/opentdf/platform/protocol/go v0.2.20
 	github.com/opentdf/platform/sdk v0.3.19
 	github.com/spf13/cobra v1.8.1
@@ -31,7 +31,6 @@ require (
 	github.com/lestrrat-go/iter v1.0.2 // indirect
 	github.com/lestrrat-go/jwx/v2 v2.0.21 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
-	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect

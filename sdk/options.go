@@ -35,6 +35,7 @@ type config struct {
 	customAccessTokenSource auth.AccessTokenSource
 	oauthAccessTokenSource  oauth2.TokenSource
 	coreConn                *grpc.ClientConn
+	collectionStore         *collectionStore
 }
 
 // Options specific to TDF protocol features
@@ -65,6 +66,13 @@ func WithInsecureSkipVerifyConn() Option {
 		c.dialOption = grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig))
 		// used by http client
 		c.tlsConfig = tlsConfig
+	}
+}
+
+// WithStoreCollectionHeaders Experimental: returns an Option that sets up storing dataset keys for nTDFs
+func WithStoreCollectionHeaders() Option {
+	return func(c *config) {
+		c.collectionStore = newCollectionStore(kDefaultExpirationTime, kDefaultCleaningInterval)
 	}
 }
 

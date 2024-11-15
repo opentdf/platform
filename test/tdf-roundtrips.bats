@@ -70,7 +70,7 @@
 
 @test "examples: legacy key support Z-TDF" {
   echo "[INFO] validating default key is r1"
-  [ $(grpcurl -plaintext "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
+  [ $(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
 
   echo "[INFO] encrypting samples"
   go run ./examples encrypt --autoconfigure=false -o sensitive-with-no-kid.txt.tdf --no-kid-in-kao "Hello Legacy"
@@ -86,7 +86,7 @@
   wait_for_green
 
   echo "[INFO] validating default key is r2"
-  [ $(grpcurl -plaintext "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r2 ]
+  [ $(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r2 ]
 
   echo "[INFO] decrypting after key rotation"
   go run ./examples decrypt sensitive-with-no-kid.txt.tdf | grep "Hello Legacy"
@@ -95,7 +95,7 @@
 
 @test "examples: legacy kas and service config format support" {
   echo "[INFO] validating default key is r1"
-  [ $(grpcurl -plaintext "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
+  [ $(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
 
   echo "[INFO] encrypting samples"
   go run ./examples encrypt --autoconfigure=false -o sensitive-with-no-kid.txt.tdf --no-kid-in-kao "Hello Legacy"
@@ -111,7 +111,7 @@
   wait_for_green
 
   echo "[INFO] validating default key is r1"
-  [ $(grpcurl -plaintext "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
+  [ $(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
 
   echo "[INFO] decrypting after key rotation"
   go run ./examples decrypt sensitive-with-no-kid.txt.tdf | grep "Hello Legacy"
@@ -122,7 +122,7 @@
 wait_for_green() {
   limit=5
   for i in $(seq 1 $limit); do
-    if [ $(grpcurl -plaintext "localhost:8080" "grpc.health.v1.Health.Check" | jq -e -r .status) = SERVING ]; then
+    if [ $(grpcurl "localhost:8080" "grpc.health.v1.Health.Check" | jq -e -r .status) = SERVING ]; then
       return 0
     fi
     sleep 4
@@ -158,6 +158,10 @@ services:
     realm: "opentdf"
     legacykeycloak: true
 server:
+  tls:
+    enabled: true
+    cert: ./keys/platform.crt
+    key: ./keys/platform-key.pem
   auth:
     enabled: true
     enforceDPoP: false
@@ -229,6 +233,10 @@ services:
     realm: "opentdf"
     legacykeycloak: true
 server:
+  tls:
+    enabled: true
+    cert: ./keys/platform.crt
+    key: ./keys/platform-key.pem
   auth:
     enabled: true
     enforceDPoP: false

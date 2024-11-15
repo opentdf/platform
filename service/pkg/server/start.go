@@ -170,7 +170,7 @@ func Start(f ...StartOptions) error {
 	if slices.Contains(cfg.Mode, "all") || slices.Contains(cfg.Mode, "core") {
 		// Use IPC for the SDK client
 		sdkOptions = append(sdkOptions, sdk.WithIPC())
-		sdkOptions = append(sdkOptions, sdk.WithCustomCoreConnection(otdf.GRPCInProcess.Conn()))
+		sdkOptions = append(sdkOptions, sdk.WithCustomCoreConnection(otdf.ConnectRPCInProcess.Conn()))
 
 		client, err = sdk.New("", sdkOptions...)
 		if err != nil {

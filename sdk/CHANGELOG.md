@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.3.21](https://github.com/opentdf/platform/compare/sdk/v0.3.20...sdk/v0.3.21) (2024-11-15)
+
+
+### Features
+
+* **sdk:** add collections for nanotdf  ([#1695](https://github.com/opentdf/platform/issues/1695)) ([6497bf3](https://github.com/opentdf/platform/commit/6497bf3a7cee9b6900569bc6cc2c39b2f647fb52))
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1766](https://github.com/opentdf/platform/issues/1766)) ([9ff9f61](https://github.com/opentdf/platform/commit/9ff9f615ff167c165e3150bf1b571d59e1924720))
+
+## [0.3.20](https://github.com/opentdf/platform/compare/sdk/v0.3.19...sdk/v0.3.20) (2024-11-13)
+
+
+### Features
+
+* backend migration to connect-rpc ([#1733](https://github.com/opentdf/platform/issues/1733)) ([d10ba3c](https://github.com/opentdf/platform/commit/d10ba3cb22175a000ba5d156987c9f201749ae88))
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1747](https://github.com/opentdf/platform/issues/1747)) ([fb50a43](https://github.com/opentdf/platform/commit/fb50a431cde8691c670c2bf457c0545c89f278f9))
+
+## [0.3.19](https://github.com/opentdf/platform/compare/sdk/v0.3.18...sdk/v0.3.19) (2024-11-12)
+
+
+### Bug Fixes
+
+* update GetType to check the first 4 bytes ([#1736](https://github.com/opentdf/platform/issues/1736)) ([d6a1e6d](https://github.com/opentdf/platform/commit/d6a1e6d6bf60e970afe8fc26c483cfe2e340fdd4))
+
 ## [0.3.18](https://github.com/opentdf/platform/compare/sdk/v0.3.17...sdk/v0.3.18) (2024-11-06)
 
 

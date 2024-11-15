@@ -2,21 +2,20 @@ package wellknownconfiguration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"connectrpc.com/connect"
 	wellknown "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
+	"github.com/opentdf/platform/protocol/go/wellknownconfiguration/wellknownconfigurationconnect"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type WellKnownService struct {
-	wellknown.UnimplementedWellKnownServiceServer
 	logger *logger.Logger
 }
 
@@ -35,31 +34,32 @@ func RegisterConfiguration(namespace string, config any) error {
 	return nil
 }
 
-func NewRegistration() *serviceregistry.Service[WellKnownService] {
-	return &serviceregistry.Service[WellKnownService]{
-		ServiceOptions: serviceregistry.ServiceOptions[WellKnownService]{
-			Namespace:   "wellknown",
-			ServiceDesc: &wellknown.WellKnownService_ServiceDesc,
-			RegisterFunc: func(srp serviceregistry.RegistrationParams) (*WellKnownService, serviceregistry.HandlerServer) {
+func NewRegistration() *serviceregistry.Service[wellknownconfigurationconnect.WellKnownServiceHandler] {
+	return &serviceregistry.Service[wellknownconfigurationconnect.WellKnownServiceHandler]{
+		ServiceOptions: serviceregistry.ServiceOptions[wellknownconfigurationconnect.WellKnownServiceHandler]{
+			Namespace:      "wellknown",
+			ServiceDesc:    &wellknown.WellKnownService_ServiceDesc,
+			ConnectRPCFunc: wellknownconfigurationconnect.NewWellKnownServiceHandler,
+			GRPCGateayFunc: wellknown.RegisterWellKnownServiceHandlerFromEndpoint,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (wellknownconfigurationconnect.WellKnownServiceHandler, serviceregistry.HandlerServer) {
 				wk := &WellKnownService{logger: srp.Logger}
-				return wk, func(ctx context.Context, mux *runtime.ServeMux) error {
-					return wellknown.RegisterWellKnownServiceHandlerServer(ctx, mux, wk)
-				}
+				return wk, nil
 			},
 		},
 	}
 }
 
-func (s WellKnownService) GetWellKnownConfiguration(_ context.Context, _ *wellknown.GetWellKnownConfigurationRequest) (*wellknown.GetWellKnownConfigurationResponse, error) {
+func (s WellKnownService) GetWellKnownConfiguration(_ context.Context, _ *connect.Request[wellknown.GetWellKnownConfigurationRequest]) (*connect.Response[wellknown.GetWellKnownConfigurationResponse], error) {
 	rwMutex.RLock()
 	cfg, err := structpb.NewStruct(wellKnownConfiguration)
 	rwMutex.RUnlock()
 	if err != nil {
 		s.logger.Error("failed to create struct for wellknown configuration", slog.String("error", err.Error()))
-		return nil, status.Error(codes.Internal, "failed to create struct for wellknown configuration")
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to create struct for wellknown configuration"))
 	}
 
-	return &wellknown.GetWellKnownConfigurationResponse{
+	rsp := &wellknown.GetWellKnownConfigurationResponse{
 		Configuration: cfg,
-	}, nil
+	}
+	return connect.NewResponse(rsp), nil
 }

@@ -9,9 +9,9 @@ import (
 	"slices"
 
 	"connectrpc.com/connect"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/sdk"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -51,7 +51,7 @@ type RegistrationParams struct {
 }
 type (
 	HandlerServer       func(ctx context.Context, mux *runtime.ServeMux) error
-	RegisterFunc[S any] func(RegistrationParams) (Impl *S, HandlerServer HandlerServer)
+	RegisterFunc[S any] func(RegistrationParams) (impl S, HandlerServer HandlerServer)
 )
 
 // DBRegister is a struct that holds the information needed to register a service with a database
@@ -72,15 +72,16 @@ type IService interface {
 	Start(ctx context.Context, params RegistrationParams) error
 	IsStarted() bool
 	Shutdown() error
-	RegisterGRPCServer(server *grpc.Server) error
-	RegisterHTTPServer(ctx context.Context, mux *runtime.ServeMux) error
+	RegisterConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error
+	RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, string, []grpc.DialOption) error
+	RegisterHTTPHandlers(context.Context, *runtime.ServeMux) error
 }
 
 // Service is a struct that holds the registration information for a service as well as the state
 // of the service within the instance of the platform.
 type Service[S any] struct {
 	// Registration
-	impl *S
+	impl S
 	// Started is a flag that indicates whether the service has been started
 	Started bool
 	// Close is a function that can be called to close the service
@@ -97,10 +98,13 @@ type ServiceOptions[S any] struct {
 	// but at minimum, the ServiceName field must be set
 	ServiceDesc *grpc.ServiceDesc
 	// RegisterFunc is the function that will be called to register the service
-	RegisterFunc    RegisterFunc[S]
+	RegisterFunc RegisterFunc[S]
+	// HTTPHandlerFunc is the function that will be called to register extra http handlers
 	httpHandlerFunc HandlerServer
 	// ConnectRPCServiceHandler is the function that will be called to register the service with the
 	ConnectRPCFunc func(S, ...connect.HandlerOption) (string, http.Handler)
+	// Deprecated: Registers a gRPC service with the gRPC gateway
+	GRPCGateayFunc func(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error)
 	// DB is optional and used to register the service with a database
 	DB DBRegister
 }
@@ -155,14 +159,13 @@ func (s *Service[S]) Start(ctx context.Context, params RegistrationParams) error
 	return nil
 }
 
-// RegisterGRPCServer registers the gRPC server with the service implementation.
-// It checks if the service implementation is registered and then registers the service with the server.
-// It returns an error if the service implementation is not registered.
-func (s *Service[S]) RegisterGRPCServer(server *grpc.Server) error {
-	if s.impl == nil {
-		return fmt.Errorf("service did not register an implementation")
+func (s Service[S]) RegisterConnectRPCServiceHandler(_ context.Context, connectRPC *server.ConnectRPC) error {
+	if s.ConnectRPCFunc == nil {
+		return fmt.Errorf("service did not register a handler")
 	}
-	server.RegisterService(s.ServiceDesc, s.impl)
+	connectRPC.ServiceReflection = append(connectRPC.ServiceReflection, s.GetServiceDesc().ServiceName)
+	path, handler := s.ConnectRPCFunc(s.impl, connectRPC.Interceptors...)
+	connectRPC.Mux.Handle(path, handler)
 	return nil
 }
 
@@ -171,11 +174,23 @@ func (s *Service[S]) RegisterGRPCServer(server *grpc.Server) error {
 // RegisterHTTPServer registers an HTTP server with the service.
 // It takes a context, a ServeMux, and an implementation function as parameters.
 // If the service did not register a handler, it returns an error.
-func (s *Service[S]) RegisterHTTPServer(ctx context.Context, mux *runtime.ServeMux) error {
+func (s *Service[S]) RegisterHTTPHandlers(ctx context.Context, mux *runtime.ServeMux) error {
 	if s.httpHandlerFunc == nil {
-		return fmt.Errorf("service did not register a handler")
+		return fmt.Errorf("service did not register any handlers")
 	}
 	return s.httpHandlerFunc(ctx, mux)
+}
+
+// Deprecated: RegisterConnectRPCServiceHandler is deprecated and should not be used going forward.
+// We will be looking onto other alternatives like bufconnect to replace this.
+// RegisterConnectRPCServiceHandler registers an HTTP server with the service.
+// It takes a context, a ServeMux, and an implementation function as parameters.
+// If the service did not register a handler, it returns an error.
+func (s Service[S]) RegisterGRPCGatewayHandler(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) error {
+	if s.GRPCGateayFunc == nil {
+		return fmt.Errorf("service did not register a handler")
+	}
+	return s.GRPCGateayFunc(ctx, mux, endpoint, opts)
 }
 
 // namespace represents a namespace in the service registry.

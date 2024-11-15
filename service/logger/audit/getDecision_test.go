@@ -33,7 +33,6 @@ func TestCreateGetDecisionEventHappyPathSuccess(t *testing.T) {
 	}
 
 	event, err := CreateGetDecisionEvent(createTestContext(), params)
-
 	if err != nil {
 		t.Fatalf("error creating get decision audit event: %v", err)
 	}
@@ -73,7 +72,7 @@ func TestCreateGetDecisionEventHappyPathSuccess(t *testing.T) {
 	expectedClientInfo := eventClientInfo{
 		Platform:  "authorization",
 		UserAgent: TestUserAgent,
-		RequestIP: TestRequestIP,
+		RequestIP: TestRequestIP.String(),
 	}
 	if !reflect.DeepEqual(event.ClientInfo, expectedClientInfo) {
 		t.Fatalf("event client info did not match expected: got %+v, want %+v", event.ClientInfo, expectedClientInfo)

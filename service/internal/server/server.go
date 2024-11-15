@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/pprof"
+	"net/textproto"
 	"regexp"
 	"strings"
 	"time"
@@ -28,6 +29,7 @@ import (
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 )
 
 const (
@@ -165,7 +167,29 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 	}
 
 	// GRPC Gateway Mux
-	grpcGatewayMux := runtime.NewServeMux()
+	grpcGatewayMux := runtime.NewServeMux(
+		runtime.WithIncomingHeaderMatcher(
+			func(key string) (string, bool) {
+				if k, ok := runtime.DefaultHeaderMatcher(key); ok {
+					return k, true
+				}
+				if textproto.CanonicalMIMEHeaderKey(key) == "Dpop" {
+					return "Dpop", true
+				}
+				return "", false
+			},
+		),
+		runtime.WithMetadata(func(ctx context.Context, _ *http.Request) metadata.MD {
+			md := make(map[string]string)
+			if method, ok := runtime.RPCMethod(ctx); ok {
+				md["method"] = method // /grpc.gateway.examples.internal.proto.examplepb.LoginService/Login
+			}
+			if pattern, ok := runtime.HTTPPathPattern(ctx); ok {
+				md["pattern"] = pattern // /v1/example/login
+			}
+			return metadata.New(md)
+		}),
+	)
 
 	// Create http server
 	httpServer, err := newHTTPServer(config, connectRPC.Mux, grpcGatewayMux, authN, logger)

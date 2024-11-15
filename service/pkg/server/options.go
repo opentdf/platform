@@ -17,7 +17,7 @@ type StartConfig struct {
 	extraServices               []serviceregistry.IService
 }
 
-// Deprecated: Use WithConfigKey
+// WithConfigName option sets the configuration name.
 func WithConfigName(name string) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.ConfigKey = name
@@ -59,6 +59,7 @@ func WithPublicRoutes(routes []string) StartOptions {
 	}
 }
 
+// Deprecated: Use WithConfigKey
 // WithAuthZDefaultPolicyExtension option allows for extending the default casbin poliy
 // Example:
 //

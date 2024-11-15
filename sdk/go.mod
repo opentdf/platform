@@ -8,7 +8,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/opentdf/platform/lib/fixtures v0.2.8
-	github.com/opentdf/platform/lib/ocrypto v0.1.6
+	github.com/opentdf/platform/lib/ocrypto v0.1.7
 	github.com/opentdf/platform/protocol/go v0.2.20
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.32.0
@@ -68,7 +68,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
-	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/shirou/gopsutil/v3 v3.23.12 // indirect

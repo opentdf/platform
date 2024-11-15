@@ -72,7 +72,7 @@ func WithAuthZDefaultPolicyExtension(policies [][]string) StartOptions {
 	}
 }
 
-// deprecated: Use WithAuthZPolicy
+// Deprecated: Use WithAuthZPolicy
 // WithAuthZPolicy option sets the casbin policy to be used.
 // Example:
 //

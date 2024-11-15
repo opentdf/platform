@@ -13,8 +13,6 @@ import (
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/tracing"
 	"go.opentelemetry.io/otel"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
 )
 

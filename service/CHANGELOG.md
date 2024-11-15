@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.28](https://github.com/opentdf/platform/compare/service/v0.4.27...service/v0.4.28) (2024-11-15)
+
+
+### Features
+
+* **sdk:** add collections for nanotdf  ([#1695](https://github.com/opentdf/platform/issues/1695)) ([6497bf3](https://github.com/opentdf/platform/commit/6497bf3a7cee9b6900569bc6cc2c39b2f647fb52))
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1767](https://github.com/opentdf/platform/issues/1767)) ([949087e](https://github.com/opentdf/platform/commit/949087e5e28e2ef082989d0b9622820f6ec57f69))
+* **core:** Autobump service ([#1771](https://github.com/opentdf/platform/issues/1771)) ([7a2e709](https://github.com/opentdf/platform/commit/7a2e709acbe0e01df74b0691a93fe54b03754f0c))
+* **core:** Updates dpop check for connect ([#1760](https://github.com/opentdf/platform/issues/1760)) ([6d7f24a](https://github.com/opentdf/platform/commit/6d7f24a32222a9eff73c769ac9ec3af91058c7ea))
+* grpc-gateway connection with tls enabled ([#1758](https://github.com/opentdf/platform/issues/1758)) ([3120350](https://github.com/opentdf/platform/commit/312035008dfd42c94d3e8135d05deb4cc5bfe21f))
+
 ## [0.4.27](https://github.com/opentdf/platform/compare/service/v0.4.26...service/v0.4.27) (2024-11-14)
 
 

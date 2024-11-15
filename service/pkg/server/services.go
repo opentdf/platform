@@ -107,21 +107,16 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 // - purely for getting the migrations to run before starting the other services
 // - current gRPC service does nothing
 func startConfigService(ctx context.Context, cfg config.Config) (*cfgSvc.ConfigService, error) {
-	svc := serviceregistry.Registration{
-		Namespace: "config",
-		DB: serviceregistry.DBRegister{
-			Required:   true,
-			Migrations: cfgSvc.Migrations,
-		},
-	}
+	namespace := "config"
+	migrations := cfgSvc.Migrations
 
-	svcDBClient, err := newServiceDBClient(ctx, cfg.Logger, cfg.DB, svc.Namespace, svc.DB.Migrations)
+	svcDBClient, err := newServiceDBClient(ctx, cfg.Logger, cfg.DB, namespace, migrations)
 	if err != nil {
 		return nil, err
 	}
 
-	if svc.DB.Required && !svcDBClient.RanMigrations() && svcDBClient.MigrationsEnabled() {
-		appliedMigrations, err := svcDBClient.RunMigrations(ctx, svc.DB.Migrations)
+	if !svcDBClient.RanMigrations() && svcDBClient.MigrationsEnabled() {
+		appliedMigrations, err := svcDBClient.RunMigrations(ctx, migrations)
 		if err != nil {
 			return nil, err
 		}
@@ -186,14 +181,14 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				}
 			}
 
-			if svc.ServiceConfig.Proto != nil {
-				err = cfgSvc.LoadConfig(ctx, ns, svc.ServiceConfig.Proto)
+			if svc.ServiceConfigProto() != nil {
+				err = cfgSvc.LoadConfig(ctx, ns, svc.ServiceConfigProto())
 				if err != nil {
 					return fmt.Errorf("issue loading config for %s: %w", ns, err)
 				}
 				slog.Info("loaded config",
 					slog.String("namespace", ns),
-					slog.Any("config", svc.ServiceConfig.Proto),
+					slog.Any("config", svc.ServiceConfigProto()),
 				)
 			}
 
@@ -205,7 +200,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				WellKnownConfig:        wellknown.RegisterConfiguration,
 				RegisterReadinessCheck: health.RegisterReadinessCheck,
 				OTDF:                   otdf, // TODO: REMOVE THIS
-				ConfigProto:            svc.ServiceConfig.Proto,
+				ConfigProto:            svc.ServiceConfigProto(),
 			})
 			if err != nil {
 				return err

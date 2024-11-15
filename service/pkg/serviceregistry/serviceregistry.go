@@ -74,6 +74,7 @@ type ServiceConfigRegister struct {
 type IService interface {
 	IsDBRequired() bool
 	DBMigrations() *embed.FS
+	ServiceConfigProto() protoreflect.ProtoMessage
 	GetNamespace() string
 	GetServiceDesc() *grpc.ServiceDesc
 	Start(ctx context.Context, params RegistrationParams) error
@@ -143,6 +144,10 @@ func (s Service[S]) IsDBRequired() bool {
 
 func (s Service[S]) DBMigrations() *embed.FS {
 	return s.DB.Migrations
+}
+
+func (s Service[S]) ServiceConfigProto() protoreflect.ProtoMessage {
+	return s.ServiceConfig.Proto
 }
 
 // Start starts the service and performs necessary initialization steps.

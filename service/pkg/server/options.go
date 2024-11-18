@@ -60,7 +60,7 @@ func WithPublicRoutes(routes []string) StartOptions {
 	}
 }
 
-// Deprecated: Use WithConfigKey
+// Deprecated: Use WithAuthZPolicy
 // WithAuthZDefaultPolicyExtension option allows for extending the default casbin poliy
 // Example:
 //

@@ -17,6 +17,7 @@ type StartConfig struct {
 	extraServices               []serviceregistry.IService
 }
 
+// Deprecated: Use WithConfigKey
 // WithConfigName option sets the configuration name.
 func WithConfigName(name string) StartOptions {
 	return func(c StartConfig) StartConfig {

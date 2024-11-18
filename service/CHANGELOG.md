@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.29](https://github.com/opentdf/platform/compare/service/v0.4.28...service/v0.4.29) (2024-11-18)
+
+
+### Features
+
+* **core:** programmatic setting of authz policy ([#1769](https://github.com/opentdf/platform/issues/1769)) ([dff34ff](https://github.com/opentdf/platform/commit/dff34ffabf190f21d2f866de23bf9ef955ab7c12))
+
 ## [0.4.28](https://github.com/opentdf/platform/compare/service/v0.4.27...service/v0.4.28) (2024-11-15)
 
 

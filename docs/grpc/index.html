@@ -388,6 +388,72 @@
         
           
           <li>
+            <a href="#config%2fconfig.proto">config/config.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#config.BoolField"><span class="badge">M</span>BoolField</a>
+                </li>
+              
+                <li>
+                  <a href="#config.Config"><span class="badge">M</span>Config</a>
+                </li>
+              
+                <li>
+                  <a href="#config.CreateConfigRequest"><span class="badge">M</span>CreateConfigRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#config.CreateConfigResponse"><span class="badge">M</span>CreateConfigResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#config.FieldMetadata"><span class="badge">M</span>FieldMetadata</a>
+                </li>
+              
+                <li>
+                  <a href="#config.GetConfigRequest"><span class="badge">M</span>GetConfigRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#config.GetConfigResponse"><span class="badge">M</span>GetConfigResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#config.IntField"><span class="badge">M</span>IntField</a>
+                </li>
+              
+                <li>
+                  <a href="#config.StringField"><span class="badge">M</span>StringField</a>
+                </li>
+              
+              
+              
+                <li>
+                  <a href="#config%2fconfig.proto-extensions"><span class="badge">X</span>File-level Extensions</a>
+                </li>
+              
+              
+            </ul>
+          </li>
+        
+          
+          <li>
+            <a href="#config%2fv1%2fpolicy.proto">config/v1/policy.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#config.v1.PolicyConfig"><span class="badge">M</span>PolicyConfig</a>
+                </li>
+              
+              
+              
+              
+            </ul>
+          </li>
+        
+          
+          <li>
             <a href="#entityresolution%2fentity_resolution.proto">entityresolution/entity_resolution.proto</a>
             <ul>
               
@@ -2914,6 +2980,348 @@ Unique name of the KAS instance </p></td>
           </table>
           
         
+    
+      
+      <div class="file-heading">
+        <h2 id="config/config.proto">config/config.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="config.BoolField">BoolField</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="config.Config">Config</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>service</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>version</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>aliases</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#google.protobuf.Any">google.protobuf.Any</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="config.CreateConfigRequest">CreateConfigRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>service</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>version</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>aliases</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#google.protobuf.Any">google.protobuf.Any</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="config.CreateConfigResponse">CreateConfigResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>config</td>
+                  <td><a href="#config.Config">Config</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="config.FieldMetadata">FieldMetadata</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>description</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>help_text</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>default</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="config.GetConfigRequest">GetConfigRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>service</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="config.GetConfigResponse">GetConfigResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>config</td>
+                  <td><a href="#config.Config">Config</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="config.IntField">IntField</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="config.StringField">StringField</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+
+      
+
+      
+        <h3 id="config/config.proto-extensions">File-level Extensions</h3>
+        <table class="extension-table">
+          <thead>
+            <tr><td>Extension</td><td>Type</td><td>Base</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>meta</td>
+                <td><a href="#config.FieldMetadata">FieldMetadata</a></td>
+                <td><a href="#google.protobuf.FieldOptions">.google.protobuf.FieldOptions</a></td>
+                <td>50000</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+
+      
+    
+      
+      <div class="file-heading">
+        <h2 id="config/v1/policy.proto">config/v1/policy.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="config.v1.PolicyConfig">PolicyConfig</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>http_cache_secs</td>
+                  <td><a href="#config.IntField">config.IntField</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+
+      
+
+      
+
+      
     
       
       <div class="file-heading">

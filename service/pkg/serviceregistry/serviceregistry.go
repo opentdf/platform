@@ -16,6 +16,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 type ServiceConfig map[string]any
@@ -39,6 +40,8 @@ type RegistrationParams struct {
 	SDK *sdk.SDK
 	// Logger is the logger that can be used to log messages. This logger is scoped to the service
 	Logger *logger.Logger
+
+	ConfigProto protoreflect.ProtoMessage
 
 	////// The following functions are optional and intended to be called by the service //////
 
@@ -64,9 +67,14 @@ type DBRegister struct {
 	Migrations *embed.FS
 }
 
+type ServiceConfigRegister struct {
+	Proto protoreflect.ProtoMessage
+}
+
 type IService interface {
 	IsDBRequired() bool
 	DBMigrations() *embed.FS
+	ServiceConfigProto() protoreflect.ProtoMessage
 	GetNamespace() string
 	GetServiceDesc() *grpc.ServiceDesc
 	Start(ctx context.Context, params RegistrationParams) error
@@ -107,6 +115,8 @@ type ServiceOptions[S any] struct {
 	GRPCGateayFunc func(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error)
 	// DB is optional and used to register the service with a database
 	DB DBRegister
+
+	ServiceConfig ServiceConfigRegister
 }
 
 func (s Service[S]) GetNamespace() string {
@@ -134,6 +144,10 @@ func (s Service[S]) IsDBRequired() bool {
 
 func (s Service[S]) DBMigrations() *embed.FS {
 	return s.DB.Migrations
+}
+
+func (s Service[S]) ServiceConfigProto() protoreflect.ProtoMessage {
+	return s.ServiceConfig.Proto
 }
 
 // Start starts the service and performs necessary initialization steps.

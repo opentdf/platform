@@ -197,7 +197,7 @@ func normalizeURL(o string, u *url.URL) string {
 	return ou.String()
 }
 
-// deprecated
+// Deprecated: currently still respected within SDK but will be removed
 func (a *Authentication) ExtendAuthzDefaultPolicy(policies [][]string) error {
 	return a.enforcer.ExtendDefaultPolicy(policies)
 }

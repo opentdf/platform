@@ -29,6 +29,7 @@ func (s *SubjectMappingsSuite) SetupSuite() {
 	c := *Config
 	c.DB.Schema = "test_opentdf_subject_mappings"
 	s.db = fixtures.NewDBInterface(c)
+	s.ctx = context.Background()
 	s.f = fixtures.NewFixture(s.db)
 	s.ctx = context.Background()
 	s.f.Provision()
@@ -782,6 +783,64 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet_WithNonExistentId_F
 	s.Require().Error(err)
 	s.Nil(deleted)
 	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *SubjectMappingsSuite) TestDeleteAllUnmappedSubjectConditionSets() {
+	// create two new subject condition sets, create a subject mapping with one of them, then verify only the unmapped is deleted
+	newSCS := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: ".some_selector",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	unmapped, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newSCS)
+	s.Require().NoError(err)
+	s.NotNil(unmapped)
+
+	mapped, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newSCS)
+	s.Require().NoError(err)
+	s.NotNil(mapped)
+
+	sm, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID,
+		Actions:                       []*policy.Action{fixtureActions[Decrypt]},
+		ExistingSubjectConditionSetId: mapped.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(sm)
+
+	deleted, err := s.db.PolicyClient.DeleteAllUnmappedSubjectConditionSets(s.ctx)
+	s.Require().NoError(err)
+	s.NotEmpty(deleted)
+	unmappedDeleted := true
+	mappedDeleted := false
+	for _, scs := range deleted {
+		deletedID := scs.GetId()
+		if deletedID == unmapped.GetId() {
+			unmappedDeleted = true
+		}
+		if deletedID == mapped.GetId() {
+			mappedDeleted = true
+		}
+	}
+	s.True(unmappedDeleted)
+	s.False(mappedDeleted)
+
+	// cannot get after pruning
+	got, err := s.db.PolicyClient.GetSubjectConditionSet(s.ctx, unmapped.GetId())
+	s.Nil(got)
+	s.Require().Error(err)
+	s.ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {

@@ -3,6 +3,7 @@ package auth
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/casbin/casbin/v2/model"
@@ -24,27 +25,19 @@ type AuthnCasbinSuite struct {
 	suite.Suite
 }
 
-func (s *AuthnCasbinSuite) buildTokenRoles(orgAdmin bool, admin bool, standard bool, roleMaps []string) []interface{} {
-	orgAdminRole := "opentdf-org-admin"
-	if len(roleMaps) > 0 {
-		orgAdminRole = roleMaps[0]
-	}
+func (s *AuthnCasbinSuite) buildTokenRoles(admin bool, standard bool, roleMaps []string) []interface{} {
 	adminRole := "opentdf-admin"
-	if len(roleMaps) > 1 {
-		adminRole = roleMaps[1]
+	if len(roleMaps) > 0 {
+		adminRole = roleMaps[0]
 	}
 	standardRole := "opentdf-standard"
-	if len(roleMaps) > 2 {
-		standardRole = roleMaps[2]
+	if len(roleMaps) > 1 {
+		standardRole = roleMaps[1]
 	}
 
 	i := 0
-	roles := make([]interface{}, 3)
+	roles := make([]interface{}, 2)
 
-	if orgAdmin {
-		roles[i] = orgAdminRole
-		i++
-	}
 	if admin {
 		roles[i] = adminRole
 		i++
@@ -56,27 +49,27 @@ func (s *AuthnCasbinSuite) buildTokenRoles(orgAdmin bool, admin bool, standard b
 	return roles
 }
 
-func (s *AuthnCasbinSuite) newTokWithDefaultClaim(orgAdmin bool, admin bool, standard bool) jwt.Token {
+func (s *AuthnCasbinSuite) newTokWithDefaultClaim(admin bool, standard bool) jwt.Token {
 	tok := jwt.New()
-	tokenRoles := s.buildTokenRoles(orgAdmin, admin, standard, nil)
+	tokenRoles := s.buildTokenRoles(admin, standard, nil)
 	if err := tok.Set("realm_access", map[string]interface{}{"roles": tokenRoles}); err != nil {
 		s.T().Fatal(err)
 	}
 	return tok
 }
 
-func (s *AuthnCasbinSuite) newTokenWithCustomClaim(orgAdmin bool, admin bool, standard bool) (string, jwt.Token) {
+func (s *AuthnCasbinSuite) newTokenWithCustomClaim(admin bool, standard bool) (string, jwt.Token) {
 	tok := jwt.New()
-	tokenRoles := s.buildTokenRoles(orgAdmin, admin, standard, nil)
+	tokenRoles := s.buildTokenRoles(admin, standard, nil)
 	if err := tok.Set("test", map[string]interface{}{"test_roles": map[string]interface{}{"roles": tokenRoles}}); err != nil {
 		s.T().Fatal(err)
 	}
 	return "test.test_roles.roles", tok
 }
 
-func (s *AuthnCasbinSuite) newTokenWithCustomRoleMap(orgAdmin bool, admin bool, standard bool) (string, jwt.Token) {
+func (s *AuthnCasbinSuite) newTokenWithCustomRoleMap(admin bool, standard bool) (string, jwt.Token) {
 	tok := jwt.New()
-	tokenRoles := s.buildTokenRoles(orgAdmin, admin, standard, []string{"test-org-admin", "test-admin", "test-standard"})
+	tokenRoles := s.buildTokenRoles(admin, standard, []string{"test-admin", "test-standard"})
 	if err := tok.Set("realm_access", map[string]interface{}{"roles": tokenRoles}); err != nil {
 		s.T().Fatal(err)
 	}
@@ -154,10 +147,9 @@ func (s *AuthnCasbinSuite) Test_NewEnforcerWithBadCustomModel() {
 }
 
 func (s *AuthnCasbinSuite) Test_Enforcement() {
-	orgadmin := []bool{true, false, false}
-	admin := []bool{false, true, false}
-	standard := []bool{false, false, true}
-	unknown := []bool{false, false, false}
+	admin := []bool{true, false}
+	standard := []bool{false, true}
+	unknown := []bool{false, false}
 
 	tests := []struct {
 		name     string
@@ -166,38 +158,6 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		resource string
 		action   string
 	}{
-		// // org-admin role
-		{
-			allowed:  true,
-			roles:    orgadmin,
-			resource: "policy.attributes.DoSomething",
-			action:   "read",
-		},
-		{
-			allowed:  true,
-			roles:    orgadmin,
-			resource: "policy.attributes.DoSomething",
-			action:   "write",
-		},
-		{
-			allowed:  true,
-			roles:    orgadmin,
-			resource: "/attributes/do/something",
-			action:   "read",
-		},
-		{
-			allowed:  true,
-			roles:    orgadmin,
-			resource: "/attributes/do/something",
-			action:   "write",
-		},
-		{
-			allowed:  false,
-			roles:    orgadmin,
-			resource: "non-existent",
-			action:   "read",
-		},
-
 		// admin role
 		{
 			allowed:  true,
@@ -224,7 +184,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 			action:   "write",
 		},
 		{
-			allowed:  false,
+			allowed:  true,
 			roles:    admin,
 			resource: "non-existent",
 			action:   "read",
@@ -318,10 +278,8 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		var actor string
 		switch {
 		case test.roles[0]:
-			actor = "org-admin"
-		case test.roles[1]:
 			actor = "admin"
-		case test.roles[2]:
+		case test.roles[1]:
 			actor = "standard"
 		default:
 			actor = "undefined"
@@ -331,7 +289,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		slog.Info("running test w/ default claim", slog.String("name", name))
 		enforcer, err := NewCasbinEnforcer(CasbinConfig{}, logger.CreateTestLogger())
 		s.Require().NoError(err)
-		tok := s.newTokWithDefaultClaim(test.roles[0], test.roles[1], test.roles[2])
+		tok := s.newTokWithDefaultClaim(test.roles[0], test.roles[1])
 		allowed, err := enforcer.Enforce(tok, test.resource, test.action)
 		if !test.allowed {
 			s.Require().Error(err)
@@ -347,7 +305,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 			},
 		}, logger.CreateTestLogger())
 		s.Require().NoError(err)
-		_, tok = s.newTokenWithCustomClaim(test.roles[0], test.roles[1], test.roles[2])
+		_, tok = s.newTokenWithCustomClaim(test.roles[0], test.roles[1])
 		allowed, err = enforcer.Enforce(tok, test.resource, test.action)
 		if !test.allowed {
 			s.Require().Error(err)
@@ -360,14 +318,13 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		enforcer, err = NewCasbinEnforcer(CasbinConfig{
 			PolicyConfig: PolicyConfig{
 				RoleMap: map[string]string{
-					"org-admin": "test-org-admin",
-					"admin":     "test-admin",
-					"standard":  "test-standard",
+					"admin":    "test-admin",
+					"standard": "test-standard",
 				},
 			},
 		}, logger.CreateTestLogger())
 		s.Require().NoError(err)
-		_, tok = s.newTokenWithCustomRoleMap(test.roles[0], test.roles[1], test.roles[2])
+		_, tok = s.newTokenWithCustomRoleMap(test.roles[0], test.roles[1])
 		allowed, err = enforcer.Enforce(tok, test.resource, test.action)
 		if !test.allowed {
 			s.Require().Error(err)
@@ -378,12 +335,9 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		slog.Info("running test w/ client_id", slog.String("name", name))
 		roleMap := make(map[string]string)
 		if test.roles[0] {
-			roleMap["org-admin"] = "test"
-		}
-		if test.roles[1] {
 			roleMap["admin"] = "test"
 		}
-		if test.roles[2] {
+		if test.roles[1] {
 			roleMap["standard"] = "test"
 		}
 
@@ -408,39 +362,22 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies() {
 	enforcer, err := NewCasbinEnforcer(CasbinConfig{}, logger.CreateTestLogger())
 	s.Require().NoError(err)
-	tok := s.newTokWithDefaultClaim(true, false, false)
-
-	// Org-admin role
-	err = enforcer.ExtendDefaultPolicy([][]string{{"p", "role:org-admin", "new.service.*", "*", "allow"}})
-	s.Require().NoError(err)
-
-	// original org-admin policy still evaluates correctly
-	allowed, err := enforcer.Enforce(tok, "policy.attributes.DoSomething", "write")
-	s.Require().NoError(err)
-	s.True(allowed)
-
-	// allowed role for new policy is allowed
-	allowed, err = enforcer.Enforce(tok, "new.service.DoSomething", "read")
-	s.Require().NoError(err)
-	s.True(allowed)
-	allowed, err = enforcer.Enforce(tok, "new.service.DoSomething", "write")
-	s.Require().NoError(err)
-	s.True(allowed)
-
 	// other roles denied new policy: admin
-	tok = s.newTokWithDefaultClaim(false, true, false)
-	allowed, err = enforcer.Enforce(tok, "new.service.DoSomething", "read")
-	s.Require().Error(err)
-	s.False(allowed)
+	tok := s.newTokWithDefaultClaim(true, false)
+	allowed, err := enforcer.Enforce(tok, "new.service.DoSomething", "read")
+	s.Require().NoError(err)
+	s.True(allowed)
 	allowed, err = enforcer.Enforce(tok, "new.service.DoSomething", "write")
-	s.Require().Error(err)
-	s.False(allowed)
+	s.Require().NoError(err)
+	s.True(allowed)
 
 	// other roles denied new policy: standard
-	tok = s.newTokWithDefaultClaim(false, false, true)
+	tok = s.newTokWithDefaultClaim(false, true)
+	err = enforcer.ExtendDefaultPolicy([][]string{{"p", "role:standard", "new.service.*", "read", "allow"}})
+	s.Require().NoError(err)
 	allowed, err = enforcer.Enforce(tok, "new.service.DoSomething", "read")
-	s.Require().Error(err)
-	s.False(allowed)
+	s.Require().NoError(err)
+	s.True(allowed)
 	allowed, err = enforcer.Enforce(tok, "new.service.DoSomething", "write")
 	s.Require().Error(err)
 	s.False(allowed)
@@ -450,16 +387,14 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MultipleExtensions() {
 	enforcer, err := NewCasbinEnforcer(CasbinConfig{}, logger.CreateTestLogger())
 	s.Require().NoError(err)
 
-	// Org-admin role
 	err = enforcer.ExtendDefaultPolicy([][]string{
-		{"p", "role:org-admin", "new.service.*", "*", "allow"},
-		{"p", "role:admin", "new.hello.*", "*", "allow"},
+		{"p", "role:standard", "new.service.*", "write", "allow"},
+		{"p", "role:standard", "new.hello.*", "read", "allow"},
 	})
 	s.Require().NoError(err)
 
-	orgAdminTok := s.newTokWithDefaultClaim(true, false, false)
-	adminTok := s.newTokWithDefaultClaim(false, true, false)
-	standardTok := s.newTokWithDefaultClaim(false, false, true)
+	adminTok := s.newTokWithDefaultClaim(true, false)
+	standardTok := s.newTokWithDefaultClaim(false, true)
 	cases := []struct {
 		tok             jwt.Token
 		expectedAllowed bool
@@ -467,25 +402,18 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MultipleExtensions() {
 		action          string
 	}{
 		// original default policy still evaluates correctly
-		{orgAdminTok, true, "policy.attributes.CreateAttribute", "write"},
-		// both new policies are evaluated correctly
-		{orgAdminTok, true, "new.service.ActionableObject", "read"},
-		{orgAdminTok, true, "new.service.ActionableObject", "write"},
-		{orgAdminTok, false, "new.hello.World", "read"},
-		{orgAdminTok, false, "new.hello.World", "write"},
-		{orgAdminTok, false, "new.hello.SomethingElse", "read"},
-		{orgAdminTok, false, "new.hello.SomethingElse", "write"},
-		{adminTok, false, "new.service.ActionableObject", "read"},
-		{adminTok, false, "new.service.ActionableObject", "write"},
+		{adminTok, true, "policy.attributes.CreateAttribute", "write"},
+		{adminTok, true, "new.service.ActionableObject", "read"},
+		{adminTok, true, "new.service.ActionableObject", "write"},
 		{adminTok, true, "new.hello.World", "read"},
 		{adminTok, true, "new.hello.World", "write"},
 		{adminTok, true, "new.hello.SomethingElse", "read"},
 		{adminTok, true, "new.hello.SomethingElse", "write"},
 		{standardTok, false, "new.service.ActionableObject", "read"},
-		{standardTok, false, "new.service.ActionableObject", "write"},
-		{standardTok, false, "new.hello.World", "read"},
+		{standardTok, true, "new.service.ActionableObject", "write"},
+		{standardTok, true, "new.hello.World", "read"},
 		{standardTok, false, "new.hello.World", "write"},
-		{standardTok, false, "new.hello.SomethingElse", "read"},
+		{standardTok, true, "new.hello.SomethingElse", "read"},
 		{standardTok, false, "new.hello.SomethingElse", "write"},
 	}
 
@@ -503,18 +431,18 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MultipleExtensions() {
 func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MalformedErrors() {
 	enforcer, err := NewCasbinEnforcer(CasbinConfig{}, logger.CreateTestLogger())
 	s.Require().NoError(err)
-	tok := s.newTokWithDefaultClaim(true, false, false)
+	tok := s.newTokWithDefaultClaim(true, false)
 	allowed, err := enforcer.Enforce(tok, "policy.attributes.DoSomething", "read")
 	s.Require().NoError(err)
 	s.True(allowed)
 
 	// missing 'p'
-	err = enforcer.ExtendDefaultPolicy([][]string{{"role:org-admin", "new.service.DoSomething", "*"}})
+	err = enforcer.ExtendDefaultPolicy([][]string{{"role:admin", "new.service.DoSomething", "*"}})
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, ErrPolicyMalformed)
 
 	// missing effect
-	err = enforcer.ExtendDefaultPolicy([][]string{{"p", "role:org-admin", "new.service.DoSomething", "*"}})
+	err = enforcer.ExtendDefaultPolicy([][]string{{"p", "role:admin", "new.service.DoSomething", "*"}})
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, ErrPolicyMalformed)
 
@@ -524,7 +452,65 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MalformedErrors() {
 	s.Require().ErrorIs(err, ErrPolicyMalformed)
 
 	// missing role prefix
-	err = enforcer.ExtendDefaultPolicy([][]string{{"p", "org-admin", "new.service.DoSomething", "*"}})
+	err = enforcer.ExtendDefaultPolicy([][]string{{"p", "admin", "new.service.DoSomething", "*"}})
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, ErrPolicyMalformed)
+}
+
+func (s *AuthnCasbinSuite) Test_SetPolicy() {
+	enforcer, err := NewCasbinEnforcer(CasbinConfig{}, logger.CreateTestLogger())
+	s.Require().NoError(err)
+
+	// Org-admin role
+	err = enforcer.SetPolicy(strings.Join([]string{
+		"p, role:admin, new.hello.*, *, allow",
+		"p, role:standard, new.hello.*, read, allow",
+		"p, role:standard, new.hello.*, write, deny",
+	}, "\n"))
+	s.Require().NoError(err)
+
+	// unauthorized role
+	tok := s.newTokWithDefaultClaim(false, false)
+	allowed, err := enforcer.Enforce(tok, "new.hello.World", "read")
+	s.Require().Error(err)
+	s.False(allowed)
+	allowed, err = enforcer.Enforce(tok, "new.hello.World", "write")
+	s.Require().Error(err)
+	s.False(allowed)
+	allowed, err = enforcer.Enforce(tok, "new.service.DoSomething", "read")
+	s.Require().Error(err)
+	s.False(allowed)
+	allowed, err = enforcer.Enforce(tok, "new.service.DoSomething", "write")
+	s.Require().Error(err)
+	s.False(allowed)
+
+	// other roles denied new policy: admin
+	tok = s.newTokWithDefaultClaim(true, false)
+	allowed, err = enforcer.Enforce(tok, "new.hello.World", "read")
+	s.Require().NoError(err)
+	s.True(allowed)
+	allowed, err = enforcer.Enforce(tok, "new.hello.World", "write")
+	s.Require().NoError(err)
+	s.True(allowed)
+	allowed, err = enforcer.Enforce(tok, "new.service.DoSomething", "read")
+	s.Require().Error(err)
+	s.False(allowed)
+	allowed, err = enforcer.Enforce(tok, "new.service.DoSomething", "write")
+	s.Require().Error(err)
+	s.False(allowed)
+
+	// other roles denied new policy: standard
+	tok = s.newTokWithDefaultClaim(false, true)
+	allowed, err = enforcer.Enforce(tok, "new.hello.World", "read")
+	s.Require().NoError(err)
+	s.True(allowed)
+	allowed, err = enforcer.Enforce(tok, "new.hello.World", "write")
+	s.Require().Error(err)
+	s.False(allowed)
+	allowed, err = enforcer.Enforce(tok, "new.service.DoSomething", "read")
+	s.Require().Error(err)
+	s.False(allowed)
+	allowed, err = enforcer.Enforce(tok, "new.service.DoSomething", "write")
+	s.Require().Error(err)
+	s.False(allowed)
 }

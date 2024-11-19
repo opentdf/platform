@@ -12,11 +12,13 @@ type StartConfig struct {
 	WaitForShutdownSignal       bool
 	PublicRoutes                []string
 	authzDefaultPolicyExtension [][]string
-	extraCoreServices           []serviceregistry.Registration
-	extraServices               []serviceregistry.Registration
+	authzPolicy                 string
+	extraCoreServices           []serviceregistry.IService
+	extraServices               []serviceregistry.IService
 }
 
 // Deprecated: Use WithConfigKey
+// WithConfigName option sets the configuration name.
 func WithConfigName(name string) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.ConfigKey = name
@@ -58,11 +60,12 @@ func WithPublicRoutes(routes []string) StartOptions {
 	}
 }
 
+// Deprecated: Use WithAuthZPolicy
 // WithAuthZDefaultPolicyExtension option allows for extending the default casbin poliy
 // Example:
 //
 //	opentdf.WithAuthZDefaultPolicyExtension([][]string{
-//				{"p","role:org-admin", "pep*", "*","allow"),
+//				{"p","role:admin", "pep*", "*","allow"),
 //			}),
 func WithAuthZDefaultPolicyExtension(policies [][]string) StartOptions {
 	return func(c StartConfig) StartConfig {
@@ -71,9 +74,23 @@ func WithAuthZDefaultPolicyExtension(policies [][]string) StartOptions {
 	}
 }
 
+// WithAuthZPolicy option sets the casbin policy to be used.
+// Example:
+//
+//	  opentdf.WithAuthZPolicy(strings.Join([]string{
+//		   "p, role:admin, pep*, *, allow",
+//		   "p, role:standard, pep*, read, allow",
+//		 }, "\n")),
+func WithAuthZPolicy(policy string) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.authzPolicy = policy
+		return c
+	}
+}
+
 // WithCoreServices option adds additional core services to the platform
 // It takes a variadic parameter of type serviceregistry.Registration, which represents the core services to be added.
-func WithCoreServices(services ...serviceregistry.Registration) StartOptions {
+func WithCoreServices(services ...serviceregistry.IService) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.extraCoreServices = append(c.extraCoreServices, services...)
 		return c
@@ -83,7 +100,7 @@ func WithCoreServices(services ...serviceregistry.Registration) StartOptions {
 // WithServices option adds additional services to the platform.
 // This will set the mode for these services to the namespace name.
 // It takes a variadic parameter of type serviceregistry.Registration, which represents the services to be added.
-func WithServices(services ...serviceregistry.Registration) StartOptions {
+func WithServices(services ...serviceregistry.IService) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.extraServices = append(c.extraServices, services...)
 		return c

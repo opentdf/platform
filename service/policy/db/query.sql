@@ -816,6 +816,11 @@ WHERE id = $1;
 -- name: DeleteSubjectConditionSet :execrows
 DELETE FROM subject_condition_set WHERE id = $1;
 
+-- name: DeleteAllUnmappedSubjectConditionSets :many
+DELETE FROM subject_condition_set
+WHERE id NOT IN (SELECT DISTINCT sm.subject_condition_set_id FROM subject_mappings sm)
+RETURNING id;
+
 ---------------------------------------------------------------- 
 -- SUBJECT MAPPINGS
 ----------------------------------------------------------------

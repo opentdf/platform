@@ -20,12 +20,15 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
+	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,9 +36,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -57,24 +58,19 @@ type FakeAccessServiceServer struct {
 	kas.UnimplementedAccessServiceServer
 }
 
-func (f *FakeAccessServiceServer) Info(context.Context, *kas.InfoRequest) (*kas.InfoResponse, error) {
-	return &kas.InfoResponse{}, nil
+func (f *FakeAccessServiceServer) PublicKey(_ context.Context, _ *connect.Request[kas.PublicKeyRequest]) (*connect.Response[kas.PublicKeyResponse], error) {
+	return &connect.Response[kas.PublicKeyResponse]{Msg: &kas.PublicKeyResponse{}}, status.Error(codes.Unauthenticated, "no public key for you")
 }
 
-func (f *FakeAccessServiceServer) PublicKey(context.Context, *kas.PublicKeyRequest) (*kas.PublicKeyResponse, error) {
-	return &kas.PublicKeyResponse{}, status.Error(codes.Unauthenticated, "no public key for you")
+func (f *FakeAccessServiceServer) LegacyPublicKey(_ context.Context, _ *connect.Request[kas.LegacyPublicKeyRequest]) (*connect.Response[wrapperspb.StringValue], error) {
+	return &connect.Response[wrapperspb.StringValue]{Msg: &wrapperspb.StringValue{}}, nil
 }
 
-func (f *FakeAccessServiceServer) LegacyPublicKey(context.Context, *kas.LegacyPublicKeyRequest) (*wrapperspb.StringValue, error) {
-	return &wrapperspb.StringValue{}, nil
-}
+func (f *FakeAccessServiceServer) Rewrap(ctx context.Context, req *connect.Request[kas.RewrapRequest]) (*connect.Response[kas.RewrapResponse], error) {
+	f.accessToken = req.Header()["Authorization"]
+	f.dpopKey = GetJWKFromContext(ctx, logger.CreateTestLogger())
 
-func (f *FakeAccessServiceServer) Rewrap(ctx context.Context, _ *kas.RewrapRequest) (*kas.RewrapResponse, error) {
-	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		f.accessToken = md.Get("authorization")
-		f.dpopKey = GetJWKFromContext(ctx, logger.CreateTestLogger())
-	}
-	return &kas.RewrapResponse{}, nil
+	return &connect.Response[kas.RewrapResponse]{Msg: &kas.RewrapResponse{}}, nil
 }
 
 type FakeTokenSource struct {
@@ -230,13 +226,27 @@ func (s *AuthSuite) Test_MuxHandler_When_Authorization_Header_Missing_Expect_Err
 }
 
 func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missing_Expect_Error() {
-	md := metadata.New(map[string]string{})
-	ctx := metadata.NewIncomingContext(context.Background(), md)
-	_, err := s.auth.UnaryServerInterceptor(ctx, "test", &grpc.UnaryServerInfo{
-		FullMethod: "/test",
-	}, nil)
+	// Create the interceptor
+	interceptor := s.auth.ConnectUnaryServerInterceptor()
+
+	// Create a dummy next handler
+	next := func(_ context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+		// Return a dummy response
+		return connect.NewResponse[string](nil), nil
+	}
+
+	// Create a request
+	req := connect.NewRequest[string](nil)
+
+	_, err := interceptor(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		return next(ctx, req)
+	})(context.Background(), req)
+
 	s.Require().Error(err)
-	s.Require().ErrorIs(err, status.Error(codes.Unauthenticated, "missing authorization header"))
+
+	connectErr := connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
+
+	s.Require().ErrorAs(err, &connectErr)
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
@@ -398,8 +408,8 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 				context.Background(),
 				[]string{fmt.Sprintf("DPoP %s", string(testCase.accessToken))},
 				receiverInfo{
-					u: "/a/path",
-					m: http.MethodPost,
+					u: []string{"/a/path"},
+					m: []string{http.MethodPost},
 				},
 				[]string{dpopToken},
 			)
@@ -430,20 +440,16 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 	s.Require().NoError(err)
 
-	buffer := 1024 * 1024
-	listener := bufconn.Listen(buffer)
-
-	server := grpc.NewServer(grpc.UnaryInterceptor(s.auth.UnaryServerInterceptor))
-	defer server.Stop()
+	interceptor := connect.WithInterceptors(s.auth.ConnectUnaryServerInterceptor())
 
 	fakeServer := &FakeAccessServiceServer{}
-	kas.RegisterAccessServiceServer(server, fakeServer)
-	go func() {
-		err := server.Serve(listener)
-		if err != nil {
-			panic(err)
-		}
-	}()
+
+	mux := http.NewServeMux()
+	path, handler := kasconnect.NewAccessServiceHandler(fakeServer, interceptor)
+	mux.Handle(path, handler)
+
+	server := memhttp.New(mux)
+	defer server.Close()
 
 	addingInterceptor := sdkauth.NewTokenAddingInterceptor(&FakeTokenSource{
 		key:         dpopKey,
@@ -452,8 +458,8 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 		MinVersion: tls.VersionTLS12,
 	})
 
-	conn, _ := grpc.NewClient("passthrough://bufconn", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
-		return listener.Dial()
+	conn, _ := grpc.NewClient("passthrough://bufconn", grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+		return server.Listener.DialContext(ctx, "tcp", "http://localhost:8080")
 	}), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(addingInterceptor.AddCredentials))
 
 	client := kas.NewAccessServiceClient(conn)

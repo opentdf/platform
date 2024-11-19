@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"connectrpc.com/connect"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
@@ -63,6 +64,7 @@ func (*mySubjectMappingClient) ListSubjectMappings(_ context.Context, _ *sm.List
 func (*myERSClient) CreateEntityChainFromJwt(_ context.Context, _ *entityresolution.CreateEntityChainFromJwtRequest, _ ...grpc.CallOption) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
 	return &createEntityChainResp, nil
 }
+
 func (*myERSClient) ResolveEntities(_ context.Context, _ *entityresolution.ResolveEntitiesRequest, _ ...grpc.CallOption) (*entityresolution.ResolveEntitiesResponse, error) {
 	return &resolveEntitiesResp, nil
 }
@@ -177,12 +179,13 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	}
 	userStruct, _ := structpb.NewStruct(userRepresentation)
 	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
-		EntityRepresentations: []*entityresolution.EntityRepresentation{{
-			OriginalId: "e1",
-			AdditionalProps: []*structpb.Struct{
-				userStruct,
+		EntityRepresentations: []*entityresolution.EntityRepresentation{
+			{
+				OriginalId: "e1",
+				AdditionalProps: []*structpb.Struct{
+					userStruct,
+				},
 			},
-		},
 		},
 	}
 
@@ -200,27 +203,34 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	require.NoError(t, err)
 
 	// set the request
-	req := authorization.GetDecisionsRequest{DecisionRequests: []*authorization.DecisionRequest{
-		{
-			Actions: []*policy.Action{},
-			EntityChains: []*authorization.EntityChain{
+	req := connect.Request[authorization.GetDecisionsRequest]{
+		Msg: &authorization.GetDecisionsRequest{
+			DecisionRequests: []*authorization.DecisionRequest{
 				{
-					Id: "ec1",
-					Entities: []*authorization.Entity{
-						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+					Actions: []*policy.Action{},
+					EntityChains: []*authorization.EntityChain{
+						{
+							Id: "ec1",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+					},
+					ResourceAttributes: []*authorization.ResourceAttribute{
+						{AttributeValueFqns: []string{mockFqn1}},
 					},
 				},
 			},
-			ResourceAttributes: []*authorization.ResourceAttribute{
-				{AttributeValueFqns: []string{mockFqn1}},
-			},
 		},
-	}}
+	}
 
-	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
-		SubjectMapping: &mySubjectMappingClient{},
-		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
-		eval: prepared}
+	as := AuthorizationService{
+		logger: logger, sdk: &otdf.SDK{
+			SubjectMapping: &mySubjectMappingClient{},
+			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		},
+		eval: prepared,
+	}
 
 	resp, err := as.GetDecisions(ctxb, &req)
 
@@ -228,42 +238,46 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	assert.NotNil(t, resp)
 
 	// one entitlement, one attribute value throughout
-	slog.Debug(resp.String())
-	assert.Len(t, resp.GetDecisionResponses(), 1)
-	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.GetDecisionResponses()[0].GetDecision())
+	slog.Debug(resp.Msg.String())
+	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
+	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.Msg.GetDecisionResponses()[0].GetDecision())
 
 	// run again with two attribute values throughout
 	// set the request
-	req = authorization.GetDecisionsRequest{DecisionRequests: []*authorization.DecisionRequest{
-		{
-			Actions: []*policy.Action{},
-			EntityChains: []*authorization.EntityChain{
+	req = connect.Request[authorization.GetDecisionsRequest]{
+		Msg: &authorization.GetDecisionsRequest{
+			DecisionRequests: []*authorization.DecisionRequest{
 				{
-					Id: "ec1",
-					Entities: []*authorization.Entity{
-						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+					Actions: []*policy.Action{},
+					EntityChains: []*authorization.EntityChain{
+						{
+							Id: "ec1",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+					},
+					ResourceAttributes: []*authorization.ResourceAttribute{
+						{AttributeValueFqns: []string{mockFqn1}},
+					},
+				},
+				{
+					Actions: []*policy.Action{},
+					EntityChains: []*authorization.EntityChain{
+						{
+							Id: "ec1",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+					},
+					ResourceAttributes: []*authorization.ResourceAttribute{
+						{AttributeValueFqns: []string{mockFqn1, mockFqn2}},
 					},
 				},
 			},
-			ResourceAttributes: []*authorization.ResourceAttribute{
-				{AttributeValueFqns: []string{mockFqn1}},
-			},
 		},
-		{
-			Actions: []*policy.Action{},
-			EntityChains: []*authorization.EntityChain{
-				{
-					Id: "ec1",
-					Entities: []*authorization.Entity{
-						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
-					},
-				},
-			},
-			ResourceAttributes: []*authorization.ResourceAttribute{
-				{AttributeValueFqns: []string{mockFqn1, mockFqn2}},
-			},
-		},
-	}}
+	}
 	attrDef.Values = append(attrDef.Values, &policy.Value{
 		Value: mockAttrValue2,
 	})
@@ -288,9 +302,9 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 
 	resp, err = as.GetDecisions(ctxb, &req)
 	require.NoError(t, err)
-	assert.Len(t, resp.GetDecisionResponses(), 2)
-	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.GetDecisionResponses()[0].GetDecision())
-	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.GetDecisionResponses()[1].GetDecision())
+	assert.Len(t, resp.Msg.GetDecisionResponses(), 2)
+	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.Msg.GetDecisionResponses()[0].GetDecision())
+	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.Msg.GetDecisionResponses()[1].GetDecision())
 }
 
 func Test_GetDecisions_AllOf_Fail(t *testing.T) {
@@ -331,32 +345,37 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 	}
 	userStruct, _ := structpb.NewStruct(userRepresentation)
 	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
-		EntityRepresentations: []*entityresolution.EntityRepresentation{{
-			OriginalId: "e1",
-			AdditionalProps: []*structpb.Struct{
-				userStruct,
+		EntityRepresentations: []*entityresolution.EntityRepresentation{
+			{
+				OriginalId: "e1",
+				AdditionalProps: []*structpb.Struct{
+					userStruct,
+				},
 			},
-		},
 		},
 	}
 
 	// set the request
-	req := authorization.GetDecisionsRequest{DecisionRequests: []*authorization.DecisionRequest{
-		{
-			Actions: []*policy.Action{},
-			EntityChains: []*authorization.EntityChain{
+	req := connect.Request[authorization.GetDecisionsRequest]{
+		Msg: &authorization.GetDecisionsRequest{
+			DecisionRequests: []*authorization.DecisionRequest{
 				{
-					Id: "ec1",
-					Entities: []*authorization.Entity{
-						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+					Actions: []*policy.Action{},
+					EntityChains: []*authorization.EntityChain{
+						{
+							Id: "ec1",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+					},
+					ResourceAttributes: []*authorization.ResourceAttribute{
+						{AttributeValueFqns: []string{mockFqn1, mockFqn2}},
 					},
 				},
 			},
-			ResourceAttributes: []*authorization.ResourceAttribute{
-				{AttributeValueFqns: []string{mockFqn1, mockFqn2}},
-			},
 		},
-	}}
+	}
 
 	ctxb := context.Background()
 
@@ -371,10 +390,13 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 	prepared, err := testrego.PrepareForEval(ctxb)
 	require.NoError(t, err)
 
-	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
-		SubjectMapping: &mySubjectMappingClient{},
-		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
-		eval: prepared}
+	as := AuthorizationService{
+		logger: logger, sdk: &otdf.SDK{
+			SubjectMapping: &mySubjectMappingClient{},
+			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		},
+		eval: prepared,
+	}
 
 	resp, err := as.GetDecisions(ctxb, &req)
 
@@ -384,9 +406,9 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 	// NOTE: there should be two decision responses, one for each data attribute value, but authorization service
 	// only responds with one permit/deny at the moment
 	// entitlements only contain the first FQN, so we have a deny decision
-	as.logger.Debug(resp.String())
-	assert.Len(t, resp.GetDecisionResponses(), 1)
-	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.GetDecisionResponses()[0].GetDecision())
+	as.logger.Debug(resp.Msg.String())
+	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
+	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.Msg.GetDecisionResponses()[0].GetDecision())
 }
 
 // Subject entitled and environment entity not entitled -- still pass
@@ -421,12 +443,13 @@ func Test_GetDecisionsAllOfWithEnvironmental_Pass(t *testing.T) {
 	}
 	userStruct, _ := structpb.NewStruct(userRepresentation)
 	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
-		EntityRepresentations: []*entityresolution.EntityRepresentation{{
-			OriginalId: "e1",
-			AdditionalProps: []*structpb.Struct{
-				userStruct,
+		EntityRepresentations: []*entityresolution.EntityRepresentation{
+			{
+				OriginalId: "e1",
+				AdditionalProps: []*structpb.Struct{
+					userStruct,
+				},
 			},
-		},
 		},
 	}
 
@@ -444,28 +467,35 @@ func Test_GetDecisionsAllOfWithEnvironmental_Pass(t *testing.T) {
 	require.NoError(t, err)
 
 	// set the request
-	req := authorization.GetDecisionsRequest{DecisionRequests: []*authorization.DecisionRequest{
-		{
-			Actions: []*policy.Action{},
-			EntityChains: []*authorization.EntityChain{
+	req := connect.Request[authorization.GetDecisionsRequest]{
+		Msg: &authorization.GetDecisionsRequest{
+			DecisionRequests: []*authorization.DecisionRequest{
 				{
-					Id: "ec1",
-					Entities: []*authorization.Entity{
-						{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "opentdf"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT},
-						{Id: "e2", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+					Actions: []*policy.Action{},
+					EntityChains: []*authorization.EntityChain{
+						{
+							Id: "ec1",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "opentdf"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT},
+								{Id: "e2", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+					},
+					ResourceAttributes: []*authorization.ResourceAttribute{
+						{AttributeValueFqns: []string{mockFqn1}},
 					},
 				},
 			},
-			ResourceAttributes: []*authorization.ResourceAttribute{
-				{AttributeValueFqns: []string{mockFqn1}},
-			},
 		},
-	}}
+	}
 
-	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
-		SubjectMapping: &mySubjectMappingClient{},
-		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
-		eval: prepared}
+	as := AuthorizationService{
+		logger: logger, sdk: &otdf.SDK{
+			SubjectMapping: &mySubjectMappingClient{},
+			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		},
+		eval: prepared,
+	}
 
 	resp, err := as.GetDecisions(ctxb, &req)
 
@@ -473,9 +503,9 @@ func Test_GetDecisionsAllOfWithEnvironmental_Pass(t *testing.T) {
 	assert.NotNil(t, resp)
 
 	// one entitlement, one attribute value throughout
-	slog.Debug(resp.String())
-	assert.Len(t, resp.GetDecisionResponses(), 1)
-	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.GetDecisionResponses()[0].GetDecision())
+	slog.Debug(resp.Msg.String())
+	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
+	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.Msg.GetDecisionResponses()[0].GetDecision())
 }
 
 // Subject not entitled and environment entity entitled -- still fail
@@ -510,12 +540,13 @@ func Test_GetDecisionsAllOfWithEnvironmental_Fail(t *testing.T) {
 	}
 	userStruct, _ := structpb.NewStruct(userRepresentation)
 	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
-		EntityRepresentations: []*entityresolution.EntityRepresentation{{
-			OriginalId: "e1",
-			AdditionalProps: []*structpb.Struct{
-				userStruct,
+		EntityRepresentations: []*entityresolution.EntityRepresentation{
+			{
+				OriginalId: "e1",
+				AdditionalProps: []*structpb.Struct{
+					userStruct,
+				},
 			},
-		},
 		},
 	}
 
@@ -533,28 +564,35 @@ func Test_GetDecisionsAllOfWithEnvironmental_Fail(t *testing.T) {
 	require.NoError(t, err)
 
 	// set the request
-	req := authorization.GetDecisionsRequest{DecisionRequests: []*authorization.DecisionRequest{
-		{
-			Actions: []*policy.Action{},
-			EntityChains: []*authorization.EntityChain{
+	req := connect.Request[authorization.GetDecisionsRequest]{
+		Msg: &authorization.GetDecisionsRequest{
+			DecisionRequests: []*authorization.DecisionRequest{
 				{
-					Id: "ec1",
-					Entities: []*authorization.Entity{
-						{Id: "e2", EntityType: &authorization.Entity_ClientId{ClientId: "opentdf"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT},
-						{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+					Actions: []*policy.Action{},
+					EntityChains: []*authorization.EntityChain{
+						{
+							Id: "ec1",
+							Entities: []*authorization.Entity{
+								{Id: "e2", EntityType: &authorization.Entity_ClientId{ClientId: "opentdf"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT},
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+					},
+					ResourceAttributes: []*authorization.ResourceAttribute{
+						{AttributeValueFqns: []string{mockFqn1}},
 					},
 				},
 			},
-			ResourceAttributes: []*authorization.ResourceAttribute{
-				{AttributeValueFqns: []string{mockFqn1}},
-			},
 		},
-	}}
+	}
 
-	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
-		SubjectMapping: &mySubjectMappingClient{},
-		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
-		eval: prepared}
+	as := AuthorizationService{
+		logger: logger, sdk: &otdf.SDK{
+			SubjectMapping: &mySubjectMappingClient{},
+			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		},
+		eval: prepared,
+	}
 
 	resp, err := as.GetDecisions(ctxb, &req)
 
@@ -562,9 +600,9 @@ func Test_GetDecisionsAllOfWithEnvironmental_Fail(t *testing.T) {
 	assert.NotNil(t, resp)
 
 	// one entitlement, one attribute value throughout
-	slog.Debug(resp.String())
-	assert.Len(t, resp.GetDecisionResponses(), 1)
-	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.GetDecisionResponses()[0].GetDecision())
+	slog.Debug(resp.Msg.String())
+	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
+	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.Msg.GetDecisionResponses()[0].GetDecision())
 }
 
 func Test_GetEntitlementsSimple(t *testing.T) {
@@ -600,12 +638,13 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 	}
 	userStruct, _ := structpb.NewStruct(userRepresentation)
 	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
-		EntityRepresentations: []*entityresolution.EntityRepresentation{{
-			OriginalId: "e1",
-			AdditionalProps: []*structpb.Struct{
-				userStruct,
+		EntityRepresentations: []*entityresolution.EntityRepresentation{
+			{
+				OriginalId: "e1",
+				AdditionalProps: []*structpb.Struct{
+					userStruct,
+				},
 			},
-		},
 		},
 	}
 
@@ -622,23 +661,28 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 	prepared, err := rego.PrepareForEval(ctxb)
 	require.NoError(t, err)
 
-	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
-		SubjectMapping: &mySubjectMappingClient{},
-		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
-		eval: prepared}
+	as := AuthorizationService{
+		logger: logger, sdk: &otdf.SDK{
+			SubjectMapping: &mySubjectMappingClient{},
+			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		},
+		eval: prepared,
+	}
 
-	req := authorization.GetEntitlementsRequest{
-		Entities: []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT}},
-		Scope:    &authorization.ResourceAttribute{AttributeValueFqns: []string{"https://www.example.org/attr/foo/value/value1"}},
+	req := connect.Request[authorization.GetEntitlementsRequest]{
+		Msg: &authorization.GetEntitlementsRequest{
+			Entities: []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT}},
+			Scope:    &authorization.ResourceAttribute{AttributeValueFqns: []string{"https://www.example.org/attr/foo/value/value1"}},
+		},
 	}
 
 	resp, err := as.GetEntitlements(ctxb, &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
-	assert.Len(t, resp.GetEntitlements(), 1)
-	assert.Equal(t, "e1", resp.GetEntitlements()[0].GetEntityId())
-	assert.Equal(t, []string{"https://www.example.org/attr/foo/value/value1"}, resp.GetEntitlements()[0].GetAttributeValueFqns())
+	assert.Len(t, resp.Msg.GetEntitlements(), 1)
+	assert.Equal(t, "e1", resp.Msg.GetEntitlements()[0].GetEntityId())
+	assert.Equal(t, []string{"https://www.example.org/attr/foo/value/value1"}, resp.Msg.GetEntitlements()[0].GetAttributeValueFqns())
 }
 
 func Test_GetEntitlementsFqnCasing(t *testing.T) {
@@ -667,12 +711,13 @@ func Test_GetEntitlementsFqnCasing(t *testing.T) {
 	}
 	userStruct, _ := structpb.NewStruct(userRepresentation)
 	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
-		EntityRepresentations: []*entityresolution.EntityRepresentation{{
-			OriginalId: "e1",
-			AdditionalProps: []*structpb.Struct{
-				userStruct,
+		EntityRepresentations: []*entityresolution.EntityRepresentation{
+			{
+				OriginalId: "e1",
+				AdditionalProps: []*structpb.Struct{
+					userStruct,
+				},
 			},
-		},
 		},
 	}
 
@@ -689,18 +734,23 @@ func Test_GetEntitlementsFqnCasing(t *testing.T) {
 	prepared, err := rego.PrepareForEval(ctxb)
 	require.NoError(t, err)
 
-	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
-		SubjectMapping: &mySubjectMappingClient{},
-		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
-		eval: prepared}
-
-	req := authorization.GetEntitlementsRequest{
-		Entities: []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT}},
-		// Using mixed case here
-		Scope: &authorization.ResourceAttribute{AttributeValueFqns: []string{"https://www.example.org/attr/foo/value/VaLuE1"}},
+	as := AuthorizationService{
+		logger: logger, sdk: &otdf.SDK{
+			SubjectMapping: &mySubjectMappingClient{},
+			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		},
+		eval: prepared,
 	}
 
-	for fqn := range makeScopeMap(req.GetScope()) {
+	req := connect.Request[authorization.GetEntitlementsRequest]{
+		Msg: &authorization.GetEntitlementsRequest{
+			Entities: []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT}},
+			// Using mixed case here
+			Scope: &authorization.ResourceAttribute{AttributeValueFqns: []string{"https://www.example.org/attr/foo/value/VaLuE1"}},
+		},
+	}
+
+	for fqn := range makeScopeMap(req.Msg.GetScope()) {
 		assert.Equal(t, fqn, strings.ToLower(fqn))
 	}
 
@@ -708,9 +758,9 @@ func Test_GetEntitlementsFqnCasing(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
-	assert.Len(t, resp.GetEntitlements(), 1)
-	assert.Equal(t, "e1", resp.GetEntitlements()[0].GetEntityId())
-	assert.Equal(t, []string{"https://www.example.org/attr/foo/value/value1"}, resp.GetEntitlements()[0].GetAttributeValueFqns())
+	assert.Len(t, resp.Msg.GetEntitlements(), 1)
+	assert.Equal(t, "e1", resp.Msg.GetEntitlements()[0].GetEntityId())
+	assert.Equal(t, []string{"https://www.example.org/attr/foo/value/value1"}, resp.Msg.GetEntitlements()[0].GetAttributeValueFqns())
 }
 
 func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
@@ -747,12 +797,13 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 	}
 	userStruct, _ := structpb.NewStruct(userRepresentation)
 	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
-		EntityRepresentations: []*entityresolution.EntityRepresentation{{
-			OriginalId: "e1",
-			AdditionalProps: []*structpb.Struct{
-				userStruct,
+		EntityRepresentations: []*entityresolution.EntityRepresentation{
+			{
+				OriginalId: "e1",
+				AdditionalProps: []*structpb.Struct{
+					userStruct,
+				},
 			},
-		},
 		},
 	}
 
@@ -768,25 +819,30 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 	// Run evaluation.
 	prepared, err := rego.PrepareForEval(ctxb)
 	require.NoError(t, err)
-	as := AuthorizationService{logger: logger, sdk: &otdf.SDK{
-		SubjectMapping: &mySubjectMappingClient{},
-		Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{}},
-		eval: prepared}
+	as := AuthorizationService{
+		logger: logger, sdk: &otdf.SDK{
+			SubjectMapping: &mySubjectMappingClient{},
+			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		},
+		eval: prepared,
+	}
 
 	withHierarchy := true
-	req := authorization.GetEntitlementsRequest{
-		Entities:                   []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT}},
-		Scope:                      &authorization.ResourceAttribute{AttributeValueFqns: []string{"https://www.example.org/attr/foo/value/value1"}},
-		WithComprehensiveHierarchy: &withHierarchy,
+	req := connect.Request[authorization.GetEntitlementsRequest]{
+		Msg: &authorization.GetEntitlementsRequest{
+			Entities:                   []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT}},
+			Scope:                      &authorization.ResourceAttribute{AttributeValueFqns: []string{"https://www.example.org/attr/foo/value/value1"}},
+			WithComprehensiveHierarchy: &withHierarchy,
+		},
 	}
 
 	resp, err := as.GetEntitlements(ctxb, &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
-	assert.Len(t, resp.GetEntitlements(), 1)
-	assert.Equal(t, "e1", resp.GetEntitlements()[0].GetEntityId())
-	assert.Equal(t, []string{"https://www.example.org/attr/foo/value/value1", "https://www.example.org/attr/foo/value/value2"}, resp.GetEntitlements()[0].GetAttributeValueFqns())
+	assert.Len(t, resp.Msg.GetEntitlements(), 1)
+	assert.Equal(t, "e1", resp.Msg.GetEntitlements()[0].GetEntityId())
+	assert.Equal(t, []string{"https://www.example.org/attr/foo/value/value1", "https://www.example.org/attr/foo/value/value2"}, resp.Msg.GetEntitlements()[0].GetAttributeValueFqns())
 }
 
 func TestFqnBuilder(t *testing.T) {

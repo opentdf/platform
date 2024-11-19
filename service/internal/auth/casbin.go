@@ -24,14 +24,12 @@ var (
 var defaultRoleClaim = "realm_access.roles"
 
 var defaultRoleMap = map[string]string{
-	"standard":  "opentdf-standard",
-	"admin":     "opentdf-admin",
-	"org-admin": "opentdf-org-admin",
+	"standard": "opentdf-standard",
+	"admin":    "opentdf-admin",
 }
 
 var defaultPolicy = `
 ## Roles (prefixed with role:)
-# org-admin - organization admin
 # admin - admin
 # standard - standard
 # unknown - unknown role or no role
@@ -46,51 +44,19 @@ var defaultPolicy = `
 # delete - delete the resource
 # unsafe - unsafe actions
 
-# Role: Org-Admin
-## gRPC routes
-p,	role:org-admin,		policy.*,																*,			allow
-p,	role:org-admin,		kasregistry.*,													*,			allow
-p,	role:org-admin,		kas.AccessService/Rewrap, 			        *,			allow
-p,  role:org-admin,   authorization.*,                        *,      allow
-## HTTP routes
-p,	role:org-admin,		/attributes*,														*,			allow
-p,	role:org-admin,		/namespaces*,														*,			allow
-p,	role:org-admin,		/subject-mappings*,											*,			allow
-p,	role:org-admin,		/resource-mappings*,										*,			allow
-p,	role:org-admin,		/key-access-servers*,										*,			allow
-p,	role:org-admin, 	/kas/v2/rewrap,						  		        *,      allow
-p,	role:org-admin,		/unsafe*,										            *,			allow
-p,	role:org-admin,		/v1/entitlements,						  				        *,      allow
-p,	role:org-admin,		/v1/authorization,						  				        *,      allow
-p,	role:org-admin,		/v1/token/authorization,						  				        *,      allow
 
 # Role: Admin
-## gRPC routes
-p,	role:admin,		    policy.*,																read,			allow
-p,	role:admin,		    policy.*,																write,			allow
-p,	role:admin,		    policy.*,																delete,			allow
-p,	role:admin,		    kasregistry.*,													*,			allow
-p,	role:admin,		    kas.AccessService/Rewrap, 			        *,			allow
-p,  role:admin,   authorization.*,                        *,      allow
-## HTTP routes
-p,	role:admin,		/attributes*,																*,			allow
-p,	role:admin,		/namespaces*,																*,			allow
-p,	role:admin,		/subject-mappings*,													*,			allow
-p,	role:admin,		/resource-mappings*,												*,			allow
-p,	role:admin,		/key-access-servers*,												*,			allow
-p,	role:admin,		/kas/v2/rewrap,						  				        *,      allow
-p,	role:admin,		/v1/entitlements,						  				        *,      allow
-p,	role:admin,		/v1/authorization,						  				        *,      allow
-p,	role:admin,		/v1/token/authorization,						  				        *,      allow
-
+## gRPC and HTTP routes
+p,	role:admin,		*,					*,			allow
 
 ## Role: Standard
 ## gRPC routes
 p,	role:standard,		policy.*,																read,			allow
 p,	role:standard,		kasregistry.*,													read,			allow
-p,	role:standard,    kas.AccessService/Rewrap, 			           *,			allow
-p,  role:standard,    authorization.AuthorizationService/GetDecisions,        read, allow
-p,  role:standard,    authorization.AuthorizationService/GetDecisionsByToken, read, allow
+p,	role:standard,      kas.AccessService/Rewrap, 			           *,			allow
+p,  role:standard,      authorization.AuthorizationService/GetDecisions,        read, allow
+p,  role:standard,      authorization.AuthorizationService/GetDecisionsByToken, read, allow
+
 ## HTTP routes
 p,	role:standard,		/attributes*,														read,			allow
 p,	role:standard,		/namespaces*,														read,			allow
@@ -98,18 +64,15 @@ p,	role:standard,		/subject-mappings*,											read,			allow
 p,	role:standard,		/resource-mappings*,										read,			allow
 p,	role:standard,		/key-access-servers*,										read,			allow
 p,	role:standard,		/kas/v2/rewrap,													write,		allow
-p,	role:standard,		/entityresolution/resolve,							write,  	allow
-p,      role:standard,          /v1/authorization,                                                              write,          allow
-p,      role:standard,          /v1/token/authorization,                                                        write,          allow
+p,  role:standard,      /v1/authorization,                                                              write,          allow
+p,  role:standard,      /v1/token/authorization,                                                        write,          allow
 
 # Public routes
 ## gRPC routes
 ## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)
-p,	role:unknown,			entityresolution.EntityResolutionService.ResolveEntities,					write,		allow
 p,	role:unknown,     kas.AccessService/Rewrap, 			                                  *,	  allow
 ## HTTP routes
 ## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)
-p,	role:unknown,			/entityresolution/resolve,							  write,		allow
 p,	role:unknown,		  /kas/v2/rewrap,													  *,		allow
 
 `
@@ -216,6 +179,7 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 	}, nil
 }
 
+// deprecated
 // Extend the default policy
 func (e *Enforcer) ExtendDefaultPolicy(policies [][]string) error {
 	if !e.isDefaultPolicy {
@@ -249,6 +213,17 @@ func (e *Enforcer) ExtendDefaultPolicy(policies [][]string) error {
 	}
 	e.isDefaultPolicy = false
 
+	return nil
+}
+
+// SetPolicy sets the policy for the enforcer
+func (e *Enforcer) SetPolicy(policy string) error {
+	a := stringadapter.NewAdapter(policy)
+	e.SetAdapter(a)
+	if err := e.LoadPolicy(); err != nil {
+		return fmt.Errorf("failed to load extended default policy: %w", err)
+	}
+	e.isDefaultPolicy = false
 	return nil
 }
 

@@ -6,11 +6,10 @@ import (
 	"log/slog"
 	"strings"
 
+	"connectrpc.com/connect"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 var (
@@ -106,32 +105,32 @@ func StatusifyError(err error, fallbackErr string, log ...any) error {
 	l := append([]any{"error", err}, log...)
 	if errors.Is(err, ErrUniqueConstraintViolation) {
 		slog.Error(ErrTextConflict, l...)
-		return status.Error(codes.AlreadyExists, ErrTextConflict)
+		return connect.NewError(connect.CodeAlreadyExists, errors.New(ErrTextConflict))
 	}
 	if errors.Is(err, ErrNotFound) {
 		slog.Error(ErrTextNotFound, l...)
-		return status.Error(codes.NotFound, ErrTextNotFound)
+		return connect.NewError(connect.CodeNotFound, errors.New(ErrTextNotFound))
 	}
 	if errors.Is(err, ErrForeignKeyViolation) {
 		slog.Error(ErrTextRelationInvalid, l...)
-		return status.Error(codes.InvalidArgument, ErrTextRelationInvalid)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrTextRelationInvalid))
 	}
 	if errors.Is(err, ErrEnumValueInvalid) {
 		slog.Error(ErrTextEnumValueInvalid, l...)
-		return status.Error(codes.InvalidArgument, ErrTextEnumValueInvalid)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrTextEnumValueInvalid))
 	}
 	if errors.Is(err, ErrUUIDInvalid) {
 		slog.Error(ErrTextUUIDInvalid, l...)
-		return status.Error(codes.InvalidArgument, ErrTextUUIDInvalid)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrTextUUIDInvalid))
 	}
 	if errors.Is(err, ErrRestrictViolation) {
 		slog.Error(ErrTextRestrictViolation, l...)
-		return status.Error(codes.InvalidArgument, ErrTextRestrictViolation)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrTextRestrictViolation))
 	}
 	if errors.Is(err, ErrListLimitTooLarge) {
 		slog.Error(ErrTextListLimitTooLarge, l...)
-		return status.Error(codes.InvalidArgument, ErrTextListLimitTooLarge)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrTextListLimitTooLarge))
 	}
 	slog.Error(err.Error(), l...)
-	return status.Error(codes.Internal, fallbackErr)
+	return connect.NewError(connect.CodeInternal, errors.New(fallbackErr))
 }

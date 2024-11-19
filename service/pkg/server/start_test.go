@@ -2,14 +2,12 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
-
-	"log/slog"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/auth"
@@ -22,8 +20,10 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type TestServiceService interface{}
-type TestService struct{}
+type (
+	TestServiceService interface{}
+	TestService        struct{}
+)
 
 func (t TestService) TestHandler(w http.ResponseWriter, _ *http.Request, _ map[string]string) {
 	_, err := w.Write([]byte("hello from test service!"))
@@ -99,14 +99,11 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Res
 	require.NoError(t, err)
 
 	// Register Test Service
+	ts := TestService{}
 	registerTestService, _ := mockTestServiceRegistry(mockTestServiceOptions{
-		serviceObject: &TestService{},
-		serviceHandler: func(_ context.Context, mux *runtime.ServeMux, server any) error {
-			t, ok := server.(*TestService)
-			if !ok {
-				return fmt.Errorf("Surprise! Not a TestService")
-			}
-			return mux.HandlePath(http.MethodGet, "/healthz", t.TestHandler)
+		serviceObject: ts,
+		serviceHandler: func(_ context.Context, mux *runtime.ServeMux) error {
+			return mux.HandlePath(http.MethodGet, "/healthz", ts.TestHandler)
 		},
 	})
 

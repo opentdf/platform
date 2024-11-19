@@ -18,5 +18,6 @@ message GetWellKnownConfigurationResponse {
 service WellKnownService {
   rpc GetWellKnownConfiguration(GetWellKnownConfigurationRequest) returns (GetWellKnownConfigurationResponse) {
     option (google.api.http) = {get: "/.well-known/opentdf-configuration"};
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 }

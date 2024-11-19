@@ -63,6 +63,7 @@ service AccessService {
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       responses: {key: "200"}
     };
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
@@ -72,6 +73,7 @@ service AccessService {
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       responses: {key: "200"}
     };
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc Rewrap(RewrapRequest) returns (RewrapResponse) {

@@ -8,7 +8,7 @@ services:
     - ./keys/localhost.key:/etc/x509/tls/localhost.key
     - ./keys/ca.jks:/truststore/truststore.jks
     # This is kc 24.0.1 with opentdf protocol mapper on board
-    image: cgr.dev/chainguard/keycloak@sha256:37895558d2e0e93ffff75da5900f9ae7e79ec6d1c390b18b2ecea6cee45ec26f
+    image: keycloak/keycloak:25.0
     restart: always
     command:
     - "start-dev"
@@ -32,6 +32,7 @@ services:
       KC_HTTP_ENABLED: "true"
       KC_HTTP_PORT: "8888"
       KC_HTTPS_PORT: "8443"
+      KC_HTTP_MANAGEMENT_PORT: "9001"
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: changeme
       #KC_HOSTNAME_URL: http://localhost:8888/auth
@@ -43,11 +44,29 @@ services:
       KC_HTTPS_CERTIFICATE_KEY_FILE: "/etc/x509/tls/localhost.key"
       KC_HTTPS_CLIENT_AUTH: "request"
     ports:
+      - "9001:9001"
       - "8888:8888"
       - "8443:8443"
     healthcheck:
-      test: ['CMD-SHELL', '[ -f /tmp/HealthCheck.java ] || echo "public class HealthCheck { public static void main(String[] args) throws java.lang.Throwable { System.exit(java.net.HttpURLConnection.HTTP_OK == ((java.net.HttpURLConnection)new java.net.URL(args[0]).openConnection()).getResponseCode() ? 0 : 1); } }" > /tmp/HealthCheck.java && java /tmp/HealthCheck.java http://localhost:8888/auth/health/live']
-      interval: 5s
+      test: 
+        - CMD-SHELL
+        - |
+          [ -f /tmp/HealthCheck.java ] || echo "public class HealthCheck { 
+            public static void main(String[] args) throws java.lang.Throwable { 
+              javax.net.ssl.HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> true); 
+              javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance(\"SSL\"); 
+              sc.init(null, new javax.net.ssl.TrustManager[]{ 
+                new javax.net.ssl.X509TrustManager() { 
+                  public java.security.cert.X509Certificate[] getAcceptedIssuers() { return null; } 
+                  public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {} 
+                  public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) {} 
+                } 
+              }, new java.security.SecureRandom()); 
+              javax.net.ssl.HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory()); 
+              java.net.HttpURLConnection conn = (java.net.HttpURLConnection)new java.net.URL(args[0]).openConnection(); 
+              System.exit(java.net.HttpURLConnection.HTTP_OK == conn.getResponseCode() ? 0 : 1); 
+            } 
+          }" > /tmp/HealthCheck.java && java /tmp/HealthCheck.java https://localhost:9001/auth/health/live      
       timeout: 10s
       retries: 3
       start_period: 2m

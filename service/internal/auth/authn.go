@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/bmatcuk/doublestar"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -22,10 +24,6 @@ import (
 
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/logger"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 )
 
 const (
@@ -183,10 +181,10 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 }
 
 type receiverInfo struct {
-	// The URI of the request
-	u string
-	// The HTTP method of the request
-	m string
+	// Acceptable URIs of the request
+	u []string
+	// Allowed HTTP methods of the request
+	m []string
 }
 
 func normalizeURL(o string, u *url.URL) string {
@@ -199,8 +197,14 @@ func normalizeURL(o string, u *url.URL) string {
 	return ou.String()
 }
 
+// deprecated
 func (a *Authentication) ExtendAuthzDefaultPolicy(policies [][]string) error {
 	return a.enforcer.ExtendDefaultPolicy(policies)
+}
+
+// SetAuthzPolicy sets the policy for the casbin enforcer
+func (a *Authentication) SetAuthzPolicy(policy string) error {
+	return a.enforcer.SetPolicy(policy)
 }
 
 // verifyTokenHandler is a http handler that verifies the token
@@ -210,6 +214,8 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			handler.ServeHTTP(w, r)
 			return
 		}
+
+		dp := r.Header.Values("Dpop")
 
 		// Verify the token
 		header := r.Header["Authorization"]
@@ -227,10 +233,11 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			}
 		}
 		accessTok, ctxWithJWK, err := a.checkToken(r.Context(), header, receiverInfo{
-			u: normalizeURL(origin, r.URL),
-			m: r.Method,
-		}, r.Header["Dpop"])
+			u: []string{normalizeURL(origin, r.URL)},
+			m: []string{r.Method},
+		}, dp)
 		if err != nil {
+			slog.WarnContext(r.Context(), "unauthenticated", "error", err, "dpop", dp, "authorization", header)
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
 			return
 		}
@@ -266,57 +273,80 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 }
 
 // UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
-func (a Authentication) UnaryServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-	// Allow health checks and other public routes to pass through
-	if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(info.FullMethod)) { //nolint:contextcheck // There is no way to pass a context here
-		return handler(ctx, req)
+func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptorFunc {
+	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
+		return connect.UnaryFunc(func(
+			ctx context.Context,
+			req connect.AnyRequest,
+		) (connect.AnyResponse, error) {
+			ri := receiverInfo{
+				u: []string{req.Spec().Procedure},
+				m: []string{http.MethodPost},
+			}
+
+			paths := req.Header()["Pattern"]
+			if len(paths) == 0 {
+				paths = allowedPublicEndpoints[:]
+			}
+			for _, m := range []string{"Origin", "Grpcgateway-Origin", "Grpcgateway-Referer"} {
+				origins := req.Header().Values(m)
+				if len(origins) == 0 {
+					continue
+				}
+				for _, o := range origins {
+					if strings.HasSuffix(o, ":443") {
+						o = "https://" + strings.TrimPrefix(strings.TrimSuffix(o, ":443"), "https://")
+					} else {
+						o = strings.TrimSuffix(o, ":80")
+					}
+					for _, u := range paths {
+						ri.u = append(ri.u, normalizeURL(o, &url.URL{Path: u}))
+					}
+				}
+			}
+
+			// Interceptor Logic
+			// Allow health checks and other public routes to pass through
+			if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(req.Spec().Procedure)) { //nolint:contextcheck // There is no way to pass a context here
+				return next(ctx, req)
+			}
+
+			header := req.Header()["Authorization"]
+			if len(header) < 1 {
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
+			}
+
+			// parse the rpc method
+			p := strings.Split(req.Spec().Procedure, "/")
+			resource := p[1] + "/" + p[2]
+			action := getAction(p[2])
+
+			token, newCtx, err := a.checkToken(
+				ctx,
+				header,
+				ri,
+				req.Header()["Dpop"],
+			)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+			}
+
+			// Check if the token is allowed to access the resource
+			if allowed, err := a.enforcer.Enforce(token, resource, action); err != nil {
+				if err.Error() == "permission denied" {
+					a.logger.Warn("permission denied", slog.String("azp", token.Subject()), slog.String("error", err.Error()))
+					return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
+				}
+				return nil, err
+			} else if !allowed {
+				a.logger.Warn("permission denied", slog.String("azp", token.Subject()))
+				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
+			}
+
+			return next(newCtx, req)
+		})
 	}
-
-	// Get the metadata from the context
-	// The keys within metadata.MD are normalized to lowercase.
-	// See: https://godoc.org/google.golang.org/grpc/metadata#New
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return nil, status.Error(codes.Unauthenticated, "missing metadata")
-	}
-
-	// Verify the token
-	header := md["authorization"]
-	if len(header) < 1 {
-		return nil, status.Error(codes.Unauthenticated, "missing authorization header")
-	}
-
-	// parse the rpc method
-	p := strings.Split(info.FullMethod, "/")
-	resource := p[1] + "/" + p[2]
-	action := getAction(p[2])
-
-	token, newCtx, err := a.checkToken(
-		ctx,
-		header,
-		receiverInfo{
-			u: info.FullMethod,
-			m: http.MethodPost,
-		},
-		md["dpop"],
-	)
-	if err != nil {
-		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
-	}
-
-	// Check if the token is allowed to access the resource
-	if allowed, err := a.enforcer.Enforce(token, resource, action); err != nil {
-		if err.Error() == "permission denied" {
-			a.logger.Warn("permission denied", slog.String("azp", token.Subject()), slog.String("error", err.Error()))
-			return nil, status.Errorf(codes.PermissionDenied, "permission denied")
-		}
-		return nil, err
-	} else if !allowed {
-		a.logger.Warn("permission denied", slog.String("azp", token.Subject()))
-		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
-	}
-
-	return handler(newCtx, req)
+	return connect.UnaryInterceptorFunc(interceptor)
 }
 
 // getAction returns the action based on the rpc name
@@ -512,21 +542,29 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 		return nil, fmt.Errorf("the DPoP JWT has expired")
 	}
 
-	htm, ok := dpopToken.Get("htm")
+	htma, ok := dpopToken.Get("htm")
 	if !ok {
 		return nil, fmt.Errorf("`htm` claim missing in DPoP JWT")
 	}
+	htm, ok := htma.(string)
+	if !ok {
+		return nil, fmt.Errorf("`htm` claim invalid format in DPoP JWT")
+	}
 
-	if htm != dpopInfo.m {
+	if !slices.Contains(dpopInfo.m, htm) {
 		return nil, fmt.Errorf("incorrect `htm` claim in DPoP JWT; received [%v], but should match [%v]", htm, dpopInfo.m)
 	}
 
-	htu, ok := dpopToken.Get("htu")
+	htua, ok := dpopToken.Get("htu")
 	if !ok {
 		return nil, fmt.Errorf("`htu` claim missing in DPoP JWT")
 	}
+	htu, ok := htua.(string)
+	if !ok {
+		return nil, fmt.Errorf("`htu` claim invalid format in DPoP JWT")
+	}
 
-	if htu != dpopInfo.u {
+	if !slices.Contains(dpopInfo.u, htu) {
 		return nil, fmt.Errorf("incorrect `htu` claim in DPoP JWT; received [%v], but should match [%v]", htu, dpopInfo.u)
 	}
 

@@ -46,9 +46,9 @@ EOF
   echo "Using Access Token: $ACCESS_TOKEN"
 
   # Print the grpcurl command for debugging
-  echo grpcurl -plaintext -H \"Authorization: Bearer $ACCESS_TOKEN\" -d \"$JSON_BODY\" $BASE_URL authorization.AuthorizationService/GetEntitlements
+  echo grpcurl -H \"Authorization: Bearer $ACCESS_TOKEN\" -d \"$JSON_BODY\" $BASE_URL authorization.AuthorizationService/GetEntitlements
 
-  run grpcurl -plaintext -H "Authorization: Bearer $ACCESS_TOKEN" \
+  run grpcurl -H "Authorization: Bearer $ACCESS_TOKEN" \
     -d "$JSON_BODY" \
     $BASE_URL authorization.AuthorizationService/GetEntitlements
 

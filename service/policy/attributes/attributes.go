@@ -13,12 +13,14 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
 type AttributesService struct { //nolint:revive // AttributesService is a valid name for this struct
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
+	config   *policyconfig.Config
 }
 
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[attributesconnect.AttributesServiceHandler] {
@@ -30,8 +32,12 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			ConnectRPCFunc: attributesconnect.NewAttributesServiceHandler,
 			GRPCGateayFunc: attributes.RegisterAttributesServiceHandlerFromEndpoint,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (attributesconnect.AttributesServiceHandler, serviceregistry.HandlerServer) {
-				as := &AttributesService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
-				return as, nil
+				cfg := policyconfig.GetSharedPolicyConfig(srp)
+				return &AttributesService{
+					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
+					logger:   srp.Logger,
+					config:   cfg,
+				}, nil
 			},
 		},
 	}
@@ -67,16 +73,13 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 func (s *AttributesService) ListAttributes(ctx context.Context,
 	req *connect.Request[attributes.ListAttributesRequest],
 ) (*connect.Response[attributes.ListAttributesResponse], error) {
-	state := policydb.GetDBStateTypeTransformedEnum(req.Msg.GetState())
-	namespace := req.Msg.GetNamespace()
+	state := req.Msg.GetState().String()
 	s.logger.Debug("listing attribute definitions", slog.String("state", state))
-	rsp := &attributes.ListAttributesResponse{}
 
-	list, err := s.dbClient.ListAttributes(ctx, state, namespace)
+	rsp, err := s.dbClient.ListAttributes(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
-	rsp.Attributes = list
 
 	return connect.NewResponse(rsp), nil
 }
@@ -205,16 +208,12 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 }
 
 func (s *AttributesService) ListAttributeValues(ctx context.Context, req *connect.Request[attributes.ListAttributeValuesRequest]) (*connect.Response[attributes.ListAttributeValuesResponse], error) {
-	rsp := &attributes.ListAttributeValuesResponse{}
-
-	state := policydb.GetDBStateTypeTransformedEnum(req.Msg.GetState())
+	state := req.Msg.GetState().String()
 	s.logger.Debug("listing attribute values", slog.String("attributeId", req.Msg.GetAttributeId()), slog.String("state", state))
-	list, err := s.dbClient.ListAttributeValues(ctx, req.Msg.GetAttributeId(), state)
+	rsp, err := s.dbClient.ListAttributeValues(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed, slog.String("attributeId", req.Msg.GetAttributeId()))
 	}
-
-	rsp.Values = list
 
 	return connect.NewResponse(rsp), nil
 }

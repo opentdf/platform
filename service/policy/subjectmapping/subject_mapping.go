@@ -12,12 +12,14 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
 type SubjectMappingService struct { //nolint:revive // SubjectMappingService is a valid name for this struct
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
+	config   *policyconfig.Config
 }
 
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[subjectmappingconnect.SubjectMappingServiceHandler] {
@@ -29,8 +31,12 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			ConnectRPCFunc: subjectmappingconnect.NewSubjectMappingServiceHandler,
 			GRPCGateayFunc: sm.RegisterSubjectMappingServiceHandlerFromEndpoint,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (subjectmappingconnect.SubjectMappingServiceHandler, serviceregistry.HandlerServer) {
-				smSvc := &SubjectMappingService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
-				return smSvc, nil
+				cfg := policyconfig.GetSharedPolicyConfig(srp)
+				return &SubjectMappingService{
+					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
+					logger:   srp.Logger,
+					config:   cfg,
+				}, nil
 			},
 		},
 	}
@@ -66,17 +72,15 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 }
 
 func (s SubjectMappingService) ListSubjectMappings(ctx context.Context,
-	_ *connect.Request[sm.ListSubjectMappingsRequest],
+	req *connect.Request[sm.ListSubjectMappingsRequest],
 ) (*connect.Response[sm.ListSubjectMappingsResponse], error) {
-	rsp := &sm.ListSubjectMappingsResponse{}
 	s.logger.Debug("listing subject mappings")
 
-	mappings, err := s.dbClient.ListSubjectMappings(ctx)
+	rsp, err := s.dbClient.ListSubjectMappings(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
 
-	rsp.SubjectMappings = mappings
 	return connect.NewResponse(rsp), nil
 }
 
@@ -193,17 +197,15 @@ func (s SubjectMappingService) GetSubjectConditionSet(ctx context.Context,
 }
 
 func (s SubjectMappingService) ListSubjectConditionSets(ctx context.Context,
-	_ *connect.Request[sm.ListSubjectConditionSetsRequest],
+	req *connect.Request[sm.ListSubjectConditionSetsRequest],
 ) (*connect.Response[sm.ListSubjectConditionSetsResponse], error) {
-	rsp := &sm.ListSubjectConditionSetsResponse{}
 	s.logger.Debug("listing subject condition sets")
 
-	conditionSets, err := s.dbClient.ListSubjectConditionSets(ctx)
+	rsp, err := s.dbClient.ListSubjectConditionSets(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
 
-	rsp.SubjectConditionSets = conditionSets
 	return connect.NewResponse(rsp), nil
 }
 

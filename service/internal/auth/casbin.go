@@ -14,9 +14,8 @@ import (
 )
 
 var (
-	rolePrefix            = "role:"
-	defaultRole           = "unknown"
-	defaultPolicyPartsLen = 5
+	rolePrefix  = "role:"
+	defaultRole = "unknown"
 )
 
 var defaultPolicy = `
@@ -93,10 +92,8 @@ type Enforcer struct {
 	Policy string
 	logger *logger.Logger
 
-	isDefaultRoleClaim bool
-	isDefaultRoleMap   bool
-	isDefaultPolicy    bool
-	isDefaultModel     bool
+	isDefaultPolicy bool
+	isDefaultModel  bool
 }
 
 type casbinSubject []string

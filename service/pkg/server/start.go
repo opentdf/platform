@@ -63,6 +63,21 @@ func Start(f ...StartOptions) error {
 		cfg.Server.Auth.PublicRoutes = startConfig.PublicRoutes
 	}
 
+	// Set policy extension
+	if len(startConfig.authzDefaultPolicyExtension) > 0 {
+		cfg.Server.Auth.Policy.PolicyExtension = startConfig.authzDefaultPolicyExtension
+	}
+
+	// Set Default Policy
+	if startConfig.authzPolicy != "" {
+		cfg.Server.Auth.Policy.Default = startConfig.authzPolicy
+	}
+
+	// Set Casbin Adapter
+	if startConfig.casbinAdapter != nil {
+		cfg.Server.Auth.Policy.Adapter = startConfig.casbinAdapter
+	}
+
 	logger.Debug("config loaded", slog.Any("config", cfg))
 
 	// Create new server for grpc & http. Also will support in process grpc potentially too
@@ -74,34 +89,6 @@ func Start(f ...StartOptions) error {
 		return fmt.Errorf("issue creating opentdf server: %w", err)
 	}
 	defer otdf.Stop()
-
-	// Append the authz policies
-	if len(startConfig.authzDefaultPolicyExtension) > 0 {
-		if otdf.AuthN == nil {
-			err := errors.New("authn not enabled")
-			logger.Error("issue adding authz policies", "error", err)
-			return fmt.Errorf("issue adding authz policies: %w", err)
-		}
-		err := otdf.AuthN.ExtendAuthzDefaultPolicy(startConfig.authzDefaultPolicyExtension)
-		if err != nil {
-			logger.Error("issue adding authz policies", slog.String("error", err.Error()))
-			return fmt.Errorf("issue adding authz policies: %w", err)
-		}
-	}
-
-	// Set the authz policy
-	if startConfig.authzPolicy != "" {
-		if otdf.AuthN == nil {
-			err := errors.New("authn not enabled")
-			logger.Error("issue setting authz policy", slog.String("error", err.Error()))
-			return fmt.Errorf("issue setting authz policy: %w", err)
-		}
-		err := otdf.AuthN.SetAuthzPolicy(startConfig.authzPolicy)
-		if err != nil {
-			logger.Error("issue setting authz policy", slog.String("error", err.Error()))
-			return fmt.Errorf("issue setting authz policy: %w", err)
-		}
-	}
 
 	// Initialize the service registry
 	logger.Debug("initializing service registry")

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/casbin/casbin/v2/persist"
 	"github.com/opentdf/platform/service/logger"
 )
 
@@ -27,11 +28,16 @@ type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
 }
 
 type PolicyConfig struct {
-	Default   string            `mapstructure:"default" json:"default"`
-	RoleClaim string            `mapstructure:"claim" json:"claim"`
-	RoleMap   map[string]string `mapstructure:"map" json:"map"`
-	Csv       string            `mapstructure:"csv" json:"csv"`
-	Model     string            `mapstructure:"model" json:"model"`
+	Default       string `mapstructure:"default" json:"default"`
+	UserNameClaim string `mapstructure:"username_claim" json:"username_claim" default:"sub"`
+	GroupsClaim   string `mapstructure:"groups_claim" json:"group_claim" default:"realm_access.roles"`
+	// Deprecated: Use GroupClain instead
+	RoleClaim       string            `mapstructure:"claim" json:"claim" default:"realm_access.roles"`
+	RoleMap         map[string]string `mapstructure:"map" json:"map"`
+	Csv             string            `mapstructure:"csv" json:"csv"`
+	PolicyExtension string            `mapstructure:"-" json:"-"`
+	Model           string            `mapstructure:"model" json:"model"`
+	Adapter         persist.Adapter   `mapstructure:"-" json:"-"`
 }
 
 func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {

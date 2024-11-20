@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/casbin/casbin/v2/persist"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 )
 
@@ -11,10 +12,11 @@ type StartConfig struct {
 	ConfigFile                  string
 	WaitForShutdownSignal       bool
 	PublicRoutes                []string
-	authzDefaultPolicyExtension [][]string
+	authzDefaultPolicyExtension string
 	authzPolicy                 string
 	extraCoreServices           []serviceregistry.IService
 	extraServices               []serviceregistry.IService
+	casbinAdapter               persist.Adapter
 }
 
 // Deprecated: Use WithConfigKey
@@ -60,28 +62,14 @@ func WithPublicRoutes(routes []string) StartOptions {
 	}
 }
 
-// Deprecated: Use WithAuthZPolicy
-// WithAuthZDefaultPolicyExtension option allows for extending the default casbin poliy
-// Example:
-//
-//	opentdf.WithAuthZDefaultPolicyExtension([][]string{
-//				{"p","role:admin", "pep*", "*","allow"),
-//			}),
-func WithAuthZDefaultPolicyExtension(policies [][]string) StartOptions {
-	return func(c StartConfig) StartConfig {
-		c.authzDefaultPolicyExtension = policies
-		return c
-	}
-}
-
-// WithAuthZPolicy option sets the casbin policy to be used.
+// WithAuthZPolicy option sets the default casbin policy to be used.
 // Example:
 //
 //	  opentdf.WithAuthZPolicy(strings.Join([]string{
 //		   "p, role:admin, pep*, *, allow",
 //		   "p, role:standard, pep*, read, allow",
 //		 }, "\n")),
-func WithAuthZPolicy(policy string) StartOptions {
+func WithDefaultAuthZPolicy(policy string) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.authzPolicy = policy
 		return c
@@ -103,6 +91,14 @@ func WithCoreServices(services ...serviceregistry.IService) StartOptions {
 func WithServices(services ...serviceregistry.IService) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.extraServices = append(c.extraServices, services...)
+		return c
+	}
+}
+
+// WithCasbinAdapter option sets the casbin adapter to be used for the casbin enforcer.
+func WithCasbinAdapter(adapter persist.Adapter) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.casbinAdapter = adapter
 		return c
 	}
 }

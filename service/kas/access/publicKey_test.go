@@ -13,13 +13,12 @@ import (
 	"os"
 	"testing"
 
+	"connectrpc.com/connect"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 func TestExportRsaPublicKeyAsPemStrSuccess(t *testing.T) {
@@ -101,7 +100,7 @@ func TestStandardCertificateHandlerEmpty(t *testing.T) {
 		Logger:         logger.CreateTestLogger(),
 	}
 
-	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Fmt: "pkcs8"})
+	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{Fmt: "pkcs8"}})
 	require.Error(t, err, "not found")
 	assert.Nil(t, result)
 }
@@ -147,10 +146,10 @@ func TestStandardPublicKeyHandlerV2(t *testing.T) {
 		},
 	}
 
-	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{})
+	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{}})
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	assert.Contains(t, result.GetPublicKey(), "BEGIN PUBLIC KEY")
+	assert.Contains(t, result.Msg.GetPublicKey(), "BEGIN PUBLIC KEY")
 }
 
 func TestStandardPublicKeyHandlerV2Failure(t *testing.T) {
@@ -166,7 +165,7 @@ func TestStandardPublicKeyHandlerV2Failure(t *testing.T) {
 		Logger:         logger.CreateTestLogger(),
 	}
 
-	k, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{})
+	k, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{}})
 	assert.Nil(t, k)
 	require.Error(t, err)
 }
@@ -192,14 +191,16 @@ func TestStandardPublicKeyHandlerV2NotFound(t *testing.T) {
 		Logger:         logger.CreateTestLogger(),
 	}
 
-	k, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{
-		Algorithm: "algorithm:unknown",
+	k, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{
+		Msg: &kaspb.PublicKeyRequest{
+			Algorithm: "algorithm:unknown",
+		},
 	})
 	assert.Nil(t, k)
 	require.Error(t, err)
-	status, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, codes.NotFound, status.Code())
+
+	status := connect.CodeOf(err)
+	assert.Equal(t, connect.CodeNotFound, status)
 }
 
 func TestStandardPublicKeyHandlerV2WithJwk(t *testing.T) {
@@ -230,14 +231,16 @@ func TestStandardPublicKeyHandlerV2WithJwk(t *testing.T) {
 		},
 	}
 
-	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{
-		Algorithm: "rsa:2048",
-		V:         "2",
-		Fmt:       "jwk",
+	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{
+		Msg: &kaspb.PublicKeyRequest{
+			Algorithm: "rsa:2048",
+			V:         "2",
+			Fmt:       "jwk",
+		},
 	})
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	assert.Contains(t, result.GetPublicKey(), "\"kty\"")
+	assert.Contains(t, result.Msg.GetPublicKey(), "\"kty\"")
 }
 
 func TestStandardCertificateHandlerWithEc256(t *testing.T) {
@@ -261,10 +264,14 @@ func TestStandardCertificateHandlerWithEc256(t *testing.T) {
 		CryptoProvider: c,
 	}
 
-	result, err := kas.LegacyPublicKey(context.Background(), &kaspb.LegacyPublicKeyRequest{Algorithm: "ec:secp256r1"})
+	result, err := kas.LegacyPublicKey(context.Background(), &connect.Request[kaspb.LegacyPublicKeyRequest]{
+		Msg: &kaspb.LegacyPublicKeyRequest{
+			Algorithm: "ec:secp256r1",
+		},
+	})
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	assert.Contains(t, result.GetValue(), "BEGIN PUBLIC KEY")
+	assert.Contains(t, result.Msg.GetValue(), "BEGIN PUBLIC KEY")
 }
 
 func TestStandardPublicKeyHandlerWithEc256(t *testing.T) {
@@ -288,10 +295,14 @@ func TestStandardPublicKeyHandlerWithEc256(t *testing.T) {
 		CryptoProvider: c,
 	}
 
-	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "ec:secp256r1"})
+	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{
+		Msg: &kaspb.PublicKeyRequest{
+			Algorithm: "ec:secp256r1",
+		},
+	})
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	assert.Contains(t, result.GetPublicKey(), "BEGIN PUBLIC KEY")
+	assert.Contains(t, result.Msg.GetPublicKey(), "BEGIN PUBLIC KEY")
 }
 
 func TestStandardPublicKeyHandlerV2WithEc256(t *testing.T) {
@@ -315,9 +326,13 @@ func TestStandardPublicKeyHandlerV2WithEc256(t *testing.T) {
 		CryptoProvider: c,
 	}
 
-	result, err := kas.PublicKey(context.Background(), &kaspb.PublicKeyRequest{Algorithm: "ec:secp256r1",
-		V: "2"})
+	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{
+		Msg: &kaspb.PublicKeyRequest{
+			Algorithm: "ec:secp256r1",
+			V:         "2",
+		},
+	})
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	assert.Contains(t, result.GetPublicKey(), "BEGIN PUBLIC KEY")
+	assert.Contains(t, result.Msg.GetPublicKey(), "BEGIN PUBLIC KEY")
 }

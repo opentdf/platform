@@ -10,6 +10,27 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+// Gathers request pagination limit/offset or configured default
+func (c PolicyDBClient) getRequestedLimitOffset(page *policy.PageRequest) (int32, int32) {
+	return getListLimit(page.GetLimit(), c.listCfg.limitDefault), page.GetOffset()
+}
+
+func getListLimit(limit int32, fallback int32) int32 {
+	if limit > 0 {
+		return limit
+	}
+	return fallback
+}
+
+// Returns next page's offset if has not yet reached total, or else returns 0
+func getNextOffset(currentOffset, limit, total int32) int32 {
+	next := currentOffset + limit
+	if next < total {
+		return next
+	}
+	return 0
+}
+
 func unmarshalMetadata(metadataJSON []byte, m *common.Metadata) error {
 	if metadataJSON != nil {
 		if err := protojson.Unmarshal(metadataJSON, m); err != nil {

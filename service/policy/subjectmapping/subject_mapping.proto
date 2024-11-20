@@ -197,9 +197,11 @@ service SubjectMappingService {
 
   rpc ListSubjectMappings(ListSubjectMappingsRequest) returns (ListSubjectMappingsResponse) {
     option (google.api.http) = {get: "/subject-mappings"};
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc GetSubjectMapping(GetSubjectMappingRequest) returns (GetSubjectMappingResponse) {
     option (google.api.http) = {get: "/subject-mappings/{id}"};
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc CreateSubjectMapping(CreateSubjectMappingRequest) returns (CreateSubjectMappingResponse) {
@@ -222,10 +224,12 @@ service SubjectMappingService {
 
   rpc ListSubjectConditionSets(ListSubjectConditionSetsRequest) returns (ListSubjectConditionSetsResponse) {
     option (google.api.http) = {get: "/subject-condition-sets"};
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc GetSubjectConditionSet(GetSubjectConditionSetRequest) returns (GetSubjectConditionSetResponse) {
     option (google.api.http) = {get: "/subject-condition-sets/{id}"};
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc CreateSubjectConditionSet(CreateSubjectConditionSetRequest) returns (CreateSubjectConditionSetResponse) {

@@ -136,8 +136,18 @@ func (c PolicyDBClient) GetSubjectConditionSet(ctx context.Context, id string) (
 	}, nil
 }
 
-func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context) ([]*policy.SubjectConditionSet, error) {
-	list, err := c.Queries.ListSubjectConditionSets(ctx)
+func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context, r *subjectmapping.ListSubjectConditionSetsRequest) (*subjectmapping.ListSubjectConditionSetsResponse, error) {
+	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
+
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > maxLimit {
+		return nil, db.ErrListLimitTooLarge
+	}
+
+	list, err := c.Queries.ListSubjectConditionSets(ctx, ListSubjectConditionSetsParams{
+		Limit:  limit,
+		Offset: offset,
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -161,7 +171,21 @@ func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context) ([]*policy
 		}
 	}
 
-	return setList, nil
+	var total int32
+	var nextOffset int32
+	if len(list) > 0 {
+		total = int32(list[0].Total)
+		nextOffset = getNextOffset(offset, limit, total)
+	}
+
+	return &subjectmapping.ListSubjectConditionSetsResponse{
+		SubjectConditionSets: setList,
+		Pagination: &policy.PageResponse{
+			CurrentOffset: offset,
+			Total:         total,
+			NextOffset:    nextOffset,
+		},
+	}, nil
 }
 
 // Mutates provided fields and returns the updated subject condition set
@@ -339,8 +363,18 @@ func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*poli
 	}, nil
 }
 
-func (c PolicyDBClient) ListSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
-	list, err := c.Queries.ListSubjectMappings(ctx)
+func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmapping.ListSubjectMappingsRequest) (*subjectmapping.ListSubjectMappingsResponse, error) {
+	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
+
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > maxLimit {
+		return nil, db.ErrListLimitTooLarge
+	}
+
+	list, err := c.Queries.ListSubjectMappings(ctx, ListSubjectMappingsParams{
+		Limit:  limit,
+		Offset: offset,
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -376,7 +410,21 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context) ([]*policy.Subj
 		}
 	}
 
-	return mappings, nil
+	var total int32
+	var nextOffset int32
+	if len(list) > 0 {
+		total = int32(list[0].Total)
+		nextOffset = getNextOffset(offset, limit, total)
+	}
+
+	return &subjectmapping.ListSubjectMappingsResponse{
+		SubjectMappings: mappings,
+		Pagination: &policy.PageResponse{
+			CurrentOffset: offset,
+			Total:         total,
+			NextOffset:    nextOffset,
+		},
+	}, nil
 }
 
 // Mutates provided fields and returns the updated subject mapping

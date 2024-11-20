@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.22](https://github.com/opentdf/platform/compare/protocol/go/v0.2.21...protocol/go/v0.2.22) (2024-11-14)
+
+
+### Features
+
+* **sdk:** add collections for nanotdf  ([#1695](https://github.com/opentdf/platform/issues/1695)) ([6497bf3](https://github.com/opentdf/platform/commit/6497bf3a7cee9b6900569bc6cc2c39b2f647fb52))
+
+## [0.2.21](https://github.com/opentdf/platform/compare/protocol/go/v0.2.20...protocol/go/v0.2.21) (2024-11-13)
+
+
+### Features
+
+* backend migration to connect-rpc ([#1733](https://github.com/opentdf/platform/issues/1733)) ([d10ba3c](https://github.com/opentdf/platform/commit/d10ba3cb22175a000ba5d156987c9f201749ae88))
+* **policy:** subject condition sets prune service/db ([#1688](https://github.com/opentdf/platform/issues/1688)) ([3cdd1b2](https://github.com/opentdf/platform/commit/3cdd1b26e81cb004b02af44e914baef3422cdcde)), closes [#1178](https://github.com/opentdf/platform/issues/1178)
+
 ## [0.2.20](https://github.com/opentdf/platform/compare/protocol/go/v0.2.19...protocol/go/v0.2.20) (2024-11-05)
 
 

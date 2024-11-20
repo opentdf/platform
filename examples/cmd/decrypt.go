@@ -3,10 +3,11 @@ package cmd
 import (
 	"bytes"
 	"errors"
+	"fmt"
+	"github.com/spf13/cobra"
 	"io"
 	"os"
-
-	"github.com/spf13/cobra"
+	"path/filepath"
 )
 
 func init() {
@@ -31,6 +32,29 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	// Collection
+	if stat, err := os.Stat(tdfFile); err == nil && stat.IsDir() {
+		entries, err := os.ReadDir(tdfFile)
+		if err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				f, err := os.Open(filepath.Join(tdfFile, entry.Name()))
+				if err != nil {
+					return err
+				}
+				_, err = client.ReadNanoTDF(os.Stdout, f)
+				fmt.Println()
+				if err != nil {
+					return err
+				}
+			}
+		}
+		client.Close()
+		return nil
+	}
+
 	file, err := os.Open(tdfFile)
 	if err != nil {
 		return err

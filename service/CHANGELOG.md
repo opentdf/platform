@@ -1,5 +1,63 @@
 # Changelog
 
+## [0.4.29](https://github.com/opentdf/platform/compare/service/v0.4.28...service/v0.4.29) (2024-11-18)
+
+
+### Features
+
+* **core:** programmatic setting of authz policy ([#1769](https://github.com/opentdf/platform/issues/1769)) ([dff34ff](https://github.com/opentdf/platform/commit/dff34ffabf190f21d2f866de23bf9ef955ab7c12))
+
+## [0.4.28](https://github.com/opentdf/platform/compare/service/v0.4.27...service/v0.4.28) (2024-11-15)
+
+
+### Features
+
+* **sdk:** add collections for nanotdf  ([#1695](https://github.com/opentdf/platform/issues/1695)) ([6497bf3](https://github.com/opentdf/platform/commit/6497bf3a7cee9b6900569bc6cc2c39b2f647fb52))
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1767](https://github.com/opentdf/platform/issues/1767)) ([949087e](https://github.com/opentdf/platform/commit/949087e5e28e2ef082989d0b9622820f6ec57f69))
+* **core:** Autobump service ([#1771](https://github.com/opentdf/platform/issues/1771)) ([7a2e709](https://github.com/opentdf/platform/commit/7a2e709acbe0e01df74b0691a93fe54b03754f0c))
+* **core:** Updates dpop check for connect ([#1760](https://github.com/opentdf/platform/issues/1760)) ([6d7f24a](https://github.com/opentdf/platform/commit/6d7f24a32222a9eff73c769ac9ec3af91058c7ea))
+* grpc-gateway connection with tls enabled ([#1758](https://github.com/opentdf/platform/issues/1758)) ([3120350](https://github.com/opentdf/platform/commit/312035008dfd42c94d3e8135d05deb4cc5bfe21f))
+
+## [0.4.27](https://github.com/opentdf/platform/compare/service/v0.4.26...service/v0.4.27) (2024-11-14)
+
+
+### Features
+
+* **authz:** JWT ERS that just returns claims ([#1630](https://github.com/opentdf/platform/issues/1630)) ([316b5be](https://github.com/opentdf/platform/commit/316b5be042d9723b19ad5fdbc02f3ffdbc3764c2))
+* **authz:** Remove org-admin role, move privileges to admin role ([#1740](https://github.com/opentdf/platform/issues/1740)) ([ae931d0](https://github.com/opentdf/platform/commit/ae931d02f347edea468d4c5d48ab3e07ce7d3abe))
+* backend migration to connect-rpc ([#1733](https://github.com/opentdf/platform/issues/1733)) ([d10ba3c](https://github.com/opentdf/platform/commit/d10ba3cb22175a000ba5d156987c9f201749ae88))
+* connectrpc realip interceptor ([#1728](https://github.com/opentdf/platform/issues/1728)) ([292fca0](https://github.com/opentdf/platform/commit/292fca06441b1587edb9c64f324eb87dc0b88c5f))
+* **docs:** add policy ADR for LIST limit and pagination ([#1557](https://github.com/opentdf/platform/issues/1557)) ([069f939](https://github.com/opentdf/platform/commit/069f939923cb3570c1e62453f68022a0b9c3e544))
+* move from fasthttp in-memory listener to memhttp implementation ([#1709](https://github.com/opentdf/platform/issues/1709)) ([70518ff](https://github.com/opentdf/platform/commit/70518ff6da81fda1c61452968ed4c0615e4702b9))
+* **policy:** 1603 policy improve upsertattrfqn ([#1679](https://github.com/opentdf/platform/issues/1679)) ([cd17a44](https://github.com/opentdf/platform/commit/cd17a44c3fdb7d510cb9e1fb744a1b12fe1e346e))
+* **policy:** 1651 move GetAttributesByValueFqns RPC request validation to protovalidate ([#1657](https://github.com/opentdf/platform/issues/1657)) ([c7d6b15](https://github.com/opentdf/platform/commit/c7d6b1542c10d3e2a35fa00efaf7d415f63c7dca))
+* **policy:** 1659 spike on transactions support ([#1678](https://github.com/opentdf/platform/issues/1678)) ([a6fea11](https://github.com/opentdf/platform/commit/a6fea11070f18b7136f47fe87d4fe2020189efb8))
+* **policy:** add optional name field to registered KASes in policy ([#1636](https://github.com/opentdf/platform/issues/1636)) ([f1382c1](https://github.com/opentdf/platform/commit/f1382c16893cefd40e930f4112ac7a61c9b05898))
+* **policy:** add optional name field to registered KASes in policy ([#1641](https://github.com/opentdf/platform/issues/1641)) ([b277ab4](https://github.com/opentdf/platform/commit/b277ab4cb4fa9aca343fa14d1751f4dff3ea3e23))
+* **policy:** limit/offset throughout LIST protos/gencode ([#1668](https://github.com/opentdf/platform/issues/1668)) ([7de6cce](https://github.com/opentdf/platform/commit/7de6cce5c9603228bc0ef5566b5b2d10c4a12ee4))
+* **policy:** SPIKE transactions support ([#1663](https://github.com/opentdf/platform/issues/1663)) ([866f4f3](https://github.com/opentdf/platform/commit/866f4f364991c55cad75be79c55adab013a25ead))
+* **policy:** subject condition sets prune protos/gencode ([#1687](https://github.com/opentdf/platform/issues/1687)) ([a627e02](https://github.com/opentdf/platform/commit/a627e021e9df2c06e1c86acfc0a4ee83c4bce932))
+* **policy:** subject condition sets prune service/db ([#1688](https://github.com/opentdf/platform/issues/1688)) ([3cdd1b2](https://github.com/opentdf/platform/commit/3cdd1b26e81cb004b02af44e914baef3422cdcde)), closes [#1178](https://github.com/opentdf/platform/issues/1178)
+* update service registry in preperation for connectrpc migration ([#1715](https://github.com/opentdf/platform/issues/1715)) ([ce289a4](https://github.com/opentdf/platform/commit/ce289a44505e5e3be995e5049f5cbbfb1839f41b))
+
+
+### Bug Fixes
+
+* cleanup left over status.Error in favor of connect.NewError ([#1751](https://github.com/opentdf/platform/issues/1751)) ([acea8d1](https://github.com/opentdf/platform/commit/acea8d1dbbc037458e6974376a609e064a238931))
+* **core:** Autobump service ([#1726](https://github.com/opentdf/platform/issues/1726)) ([39a898d](https://github.com/opentdf/platform/commit/39a898d3d7c45c48187ed54e67519d953d5e3d0c))
+* **core:** Autobump service ([#1739](https://github.com/opentdf/platform/issues/1739)) ([46662a7](https://github.com/opentdf/platform/commit/46662a791aa5c26ff6b363e773d74c1e7a89614c))
+* **core:** Autobump service ([#1750](https://github.com/opentdf/platform/issues/1750)) ([4b239b1](https://github.com/opentdf/platform/commit/4b239b1f288121ec224038aff7534d4b5329c22d))
+* Fixtures CodeQL alert for potentially unsafe quoting ([#1703](https://github.com/opentdf/platform/issues/1703)) ([6f2fa9b](https://github.com/opentdf/platform/commit/6f2fa9b49ae59ca22eedd4b41df02a2bc5fe687d))
+* **kas:** Only hit authorization if data attributes not empty ([#1741](https://github.com/opentdf/platform/issues/1741)) ([471f5f1](https://github.com/opentdf/platform/commit/471f5f102e7a4e01abaff6fa2750ad784880274b))
+* **policy:** enhance proto validation across policy requests ([#1656](https://github.com/opentdf/platform/issues/1656)) ([df534c4](https://github.com/opentdf/platform/commit/df534c40f3f500190b200923e5157701b438431b))
+* **policy:** make MatchSubjectMappings operator agnostic ([#1658](https://github.com/opentdf/platform/issues/1658)) ([cb63819](https://github.com/opentdf/platform/commit/cb63819d107ed65cb5d467a956d713bd55214cdb))
+* **policy:** REVERT PR [#1663](https://github.com/opentdf/platform/issues/1663) - SPIKE transactions support ([#1719](https://github.com/opentdf/platform/issues/1719)) ([184a733](https://github.com/opentdf/platform/commit/184a733154943abab7fd2a3715dc25b63dfa622e))
+* **policy:** schema markdown links should work ([#1672](https://github.com/opentdf/platform/issues/1672)) ([4122262](https://github.com/opentdf/platform/commit/412226296d579f1d9cb52f149a5e4b629a7f7908))
+
 ## [0.4.26](https://github.com/opentdf/platform/compare/service/v0.4.25...service/v0.4.26) (2024-10-17)
 
 

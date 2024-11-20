@@ -4,23 +4,25 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net"
 	"testing"
 
 	"github.com/google/uuid"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
+	"github.com/opentdf/platform/service/internal/server/realip"
 )
 
 func TestGetAuditDataFromContextHappyPath(t *testing.T) {
 	ctx := context.Background()
 	testRequestID := uuid.New()
 	testUserAgent := "test-user-agent"
-	testRequestIP := "192.168.0.1"
+	testRequestIP := net.ParseIP("192.168.0.1")
 	testActorID := "test-actor-id"
 
 	// Set relevant context keys
 	ctx = context.WithValue(ctx, sdkAudit.RequestIDContextKey, testRequestID)
 	ctx = context.WithValue(ctx, sdkAudit.UserAgentContextKey, testUserAgent)
-	ctx = context.WithValue(ctx, sdkAudit.RequestIPContextKey, testRequestIP)
+	ctx = context.WithValue(ctx, realip.ClientIP{}, testRequestIP)
 	ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, testActorID)
 
 	slog.Info(fmt.Sprintf("Test: %v", ctx.Value(sdkAudit.RequestIDContextKey)))
@@ -35,7 +37,7 @@ func TestGetAuditDataFromContextHappyPath(t *testing.T) {
 		t.Fatalf("UserAgent did not match: %v", auditData.UserAgent)
 	}
 
-	if auditData.RequestIP != testRequestIP {
+	if auditData.RequestIP != testRequestIP.String() {
 		t.Fatalf("RequestIP did not match: %v", auditData.RequestIP)
 	}
 
@@ -65,6 +67,7 @@ func TestGetAuditDataFromContextDefaultsPath(t *testing.T) {
 		t.Fatalf("ActorID did not match: %v", auditData.ActorID)
 	}
 }
+
 func TestGetAuditDataFromContextWithNoKeys(t *testing.T) {
 	ctx := context.Background()
 	auditData := GetAuditDataFromContext(ctx)
@@ -85,6 +88,7 @@ func TestGetAuditDataFromContextWithNoKeys(t *testing.T) {
 		t.Fatalf("ActorID did not match: %v", auditData.ActorID)
 	}
 }
+
 func TestGetAuditDataFromContextWithPartialKeys(t *testing.T) {
 	ctx := context.Background()
 	testUserAgent := "partial-user-agent"

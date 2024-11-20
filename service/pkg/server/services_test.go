@@ -59,10 +59,10 @@ func mockTestServiceRegistry(opts mockTestServiceOptions) (serviceregistry.IServ
 				ServiceName: serviceName,
 				HandlerType: serviceHandlerType,
 			},
-			RegisterFunc: func(srp serviceregistry.RegistrationParams) (*TestService, serviceregistry.HandlerServer) {
-				var ts *TestService
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (TestService, serviceregistry.HandlerServer) {
+				var ts TestService
 				var ok bool
-				if ts, ok = opts.serviceObject.(*TestService); !ok {
+				if ts, ok = opts.serviceObject.(TestService); !ok {
 					panic("serviceObject is not a TestService")
 				}
 				return ts, func(ctx context.Context, mux *runtime.ServeMux) error {
@@ -218,7 +218,7 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 
 	// Test service which will be enabled
 	registerTest, testSpy := mockTestServiceRegistry(mockTestServiceOptions{
-		serviceObject: &TestService{},
+		serviceObject: TestService{},
 	})
 	err := registry.RegisterService(registerTest, "test")
 	suite.Require().NoError(err)

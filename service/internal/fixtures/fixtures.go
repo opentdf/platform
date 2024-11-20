@@ -47,12 +47,6 @@ type FixtureDataAttributeValue struct {
 	Active                bool   `yaml:"active"`
 }
 
-type FixtureDataValueMember struct {
-	ID       string `yaml:"id"`
-	ValueID  string `yaml:"value_id"`
-	MemberID string `yaml:"member_id"`
-}
-
 type FixtureDataAttributeValueKeyAccessServer struct {
 	ValueID           string `yaml:"value_id"`
 	KeyAccessServerID string `yaml:"key_access_server_id"`

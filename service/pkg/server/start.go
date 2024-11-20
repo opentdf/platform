@@ -97,6 +97,20 @@ func Start(f ...StartOptions) error {
 		}
 	}
 
+	// Set the authz policy
+	if startConfig.authzPolicy != "" {
+		if otdf.AuthN == nil {
+			err := errors.New("authn not enabled")
+			logger.Error("issue setting authz policy", slog.String("error", err.Error()))
+			return fmt.Errorf("issue setting authz policy: %w", err)
+		}
+		err := otdf.AuthN.SetAuthzPolicy(startConfig.authzPolicy)
+		if err != nil {
+			logger.Error("issue setting authz policy", slog.String("error", err.Error()))
+			return fmt.Errorf("issue setting authz policy: %w", err)
+		}
+	}
+
 	// Initialize the service registry
 	logger.Debug("initializing service registry")
 	svcRegistry := serviceregistry.NewServiceRegistry()
@@ -176,7 +190,7 @@ func Start(f ...StartOptions) error {
 		slices.Contains(cfg.Mode, "core") {
 		// Use IPC for the SDK client
 		sdkOptions = append(sdkOptions, sdk.WithIPC())
-		sdkOptions = append(sdkOptions, sdk.WithCustomCoreConnection(otdf.GRPCInProcess.Conn()))
+		sdkOptions = append(sdkOptions, sdk.WithCustomCoreConnection(otdf.ConnectRPCInProcess.Conn()))
 
 		// handle ERS connection for core mode
 		if slices.Contains(cfg.Mode, "core") {

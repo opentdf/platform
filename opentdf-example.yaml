@@ -23,6 +23,11 @@ services:
       from:
         email: true
         username: true
+  # policy is enabled by default in mode 'all'
+  # policy:
+  #   enabled: true
+  # list_request_limit_default: 1000
+  # list_request_limit_max: 2500
 server:
   auth:
     enabled: true
@@ -40,15 +45,10 @@ server:
       map:
       #  standard: opentdf-standard
       #  admin: opentdf-admin
-      #  org-admin: opentdf-org-admin
 
       ## Custom policy (see examples https://github.com/casbin/casbin/tree/master/examples)
       csv: #|
-      #  p, role:org-admin, policy:attributes, *, *, allow
-      #  p, role:org-admin, policy:subject-mappings, *, *, allow
-      #  p, role:org-admin, policy:resource-mappings, *, *, allow
-      #  p, role:org-admin, policy:kas-registry, *, *, allow
-      #  p, role:org-admin, policy:unsafe, *, *, allow
+      #  p, role:admin, *, *, allow
       ## Custom model (see https://casbin.org/docs/syntax-for-models/)
       model: #|
       #  [request_definition]

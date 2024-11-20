@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"sync"
+	"time"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 )
@@ -37,6 +39,7 @@ const (
 	kNanoTDFIvSize                = 3
 	kNanoTDFGMACLength            = 8
 	kNanoTDFMagicStringAndVersion = "L1L"
+	kMaxIters                     = 1<<24 - 1
 )
 
 /******************************** Header**************************
@@ -174,6 +177,14 @@ type signatureConfig struct {
 	hasSignature  bool
 	signatureMode ocrypto.ECCMode
 	cipher        CipherMode
+}
+
+type collectionConfig struct {
+	iterations    uint32
+	header        []byte
+	useCollection bool
+	symKey        []byte
+	mux           sync.Mutex
 }
 
 type policyInfo struct {
@@ -351,16 +362,112 @@ func SizeOfAuthTagForCipher(cipherType CipherMode) (int, error) {
 }
 
 // ============================================================================================================
+// NanoTDF Collection Header Store
+// ============================================================================================================
+
+const kDefaultExpirationTime = 5 * time.Minute
+const kDefaultCleaningInterval = 10 * time.Minute
+
+type collectionStore struct {
+	cache          sync.Map
+	expireDuration time.Duration
+	closeChan      chan struct{}
+}
+
+type collectionStoreEntry struct {
+	key             []byte
+	encryptedHeader []byte
+	expire          time.Time
+}
+
+func newCollectionStore(expireDuration, cleaningInterval time.Duration) *collectionStore {
+	store := &collectionStore{expireDuration: expireDuration, cache: sync.Map{}, closeChan: make(chan struct{})}
+	store.startJanitor(cleaningInterval)
+	return store
+}
+
+func (c *collectionStore) startJanitor(cleaningInterval time.Duration) {
+	go func() {
+		ticker := time.NewTicker(cleaningInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				now := time.Now()
+				c.cache.Range(func(key, value any) bool {
+					entry, _ := value.(*collectionStoreEntry)
+					if now.Compare(entry.expire) >= 0 {
+						c.cache.Delete(key)
+					}
+					return true
+				})
+			case <-c.closeChan:
+				return
+			}
+		}
+	}()
+}
+
+func (c *collectionStore) store(header, key []byte) {
+	hash := ocrypto.SHA256AsHex(header)
+	expire := time.Now().Add(c.expireDuration)
+	c.cache.Store(string(hash), &collectionStoreEntry{key: key, encryptedHeader: header, expire: expire})
+}
+
+func (c *collectionStore) get(header []byte) ([]byte, bool) {
+	hash := ocrypto.SHA256AsHex(header)
+	itemIntf, ok := c.cache.Load(string(hash))
+	if !ok {
+		return nil, false
+	}
+	item, _ := itemIntf.(*collectionStoreEntry)
+	// check for hash collision
+	if bytes.Equal(item.encryptedHeader, header) {
+		return item.key, true
+	}
+	return nil, false
+}
+
+func (c *collectionStore) close() {
+	c.closeChan <- struct{}{}
+}
+
+// ============================================================================================================
 // NanoTDF Header read/write
 // ============================================================================================================
 
-func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32, error) {
+func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32, uint32, error) {
+	if config.collectionCfg.useCollection {
+		// If concurrently writing, we must know what iteration we are on in a threadsafe way
+		// also when we need to safely read the header to ensure not rewritten in next max iteration
+		config.collectionCfg.mux.Lock()
+		defer config.collectionCfg.mux.Unlock()
+
+		// Store iteration and header and increment iteration
+		iteration := config.collectionCfg.iterations
+		config.collectionCfg.iterations++
+		header := config.collectionCfg.header
+		// Reset iteration if reached max iters
+		if iteration == kMaxIters {
+			config.collectionCfg.iterations = 0
+		}
+		// Return saved header
+		if iteration != 0 {
+			n, err := writer.Write(header)
+			return config.collectionCfg.symKey, uint32(n), iteration, err
+		}
+		// First Iteration: header has not been calculated, will write to header and save for later use.
+		buf := &bytes.Buffer{}
+		writer = io.MultiWriter(writer, buf)
+		defer func() { config.collectionCfg.header = buf.Bytes() }()
+	}
+
 	var totalBytes uint32
 
 	// Write the magic number
 	l, err := writer.Write([]byte(kNanoTDFMagicStringAndVersion))
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
 	totalBytes += uint32(l)
 
@@ -369,7 +476,7 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	// Write the kas url
 	err = config.kasURL.writeResourceLocator(writer)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
 	totalBytes += uint32(config.kasURL.getLength())
 	slog.Debug("writeNanoTDFHeader", slog.Uint64("resource locator number", uint64(config.kasURL.getLength())))
@@ -377,14 +484,14 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	// Write ECC And Binding Mode
 	l, err = writer.Write([]byte{serializeBindingCfg(config.bindCfg)})
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
 	totalBytes += uint32(l)
 
 	// Write Payload and Sig Mode
 	l, err = writer.Write([]byte{serializeSignatureCfg(config.sigCfg)})
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
 	totalBytes += uint32(l)
 
@@ -392,45 +499,45 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	config.policy.body.mode = policyTypeEmbeddedPolicyEncrypted
 	l, err = writer.Write([]byte{byte(config.policy.body.mode)})
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
 	totalBytes += uint32(l)
 
 	policyObj, err := createPolicyObject(config.attributes)
 	if err != nil {
-		return nil, 0, fmt.Errorf("fail to create policy object:%w", err)
+		return nil, 0, 0, fmt.Errorf("fail to create policy object:%w", err)
 	}
 
 	policyObjectAsStr, err := json.Marshal(policyObj)
 	if err != nil {
-		return nil, 0, fmt.Errorf("json.Marshal failed:%w", err)
+		return nil, 0, 0, fmt.Errorf("json.Marshal failed:%w", err)
 	}
 
 	ecdhKey, err := ocrypto.ConvertToECDHPrivateKey(config.keyPair.PrivateKey)
 	if err != nil {
-		return nil, 0, fmt.Errorf("ocrypto.ConvertToECDHPrivateKey failed:%w", err)
+		return nil, 0, 0, fmt.Errorf("ocrypto.ConvertToECDHPrivateKey failed:%w", err)
 	}
 
 	symKey, err := ocrypto.ComputeECDHKeyFromECDHKeys(config.kasPublicKey, ecdhKey)
 	if err != nil {
-		return nil, 0, fmt.Errorf("ocrypto.ComputeECDHKeyFromEC failed:%w", err)
+		return nil, 0, 0, fmt.Errorf("ocrypto.ComputeECDHKeyFromEC failed:%w", err)
 	}
 
 	salt := versionSalt()
 
 	symmetricKey, err := ocrypto.CalculateHKDF(salt, symKey)
 	if err != nil {
-		return nil, 0, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
+		return nil, 0, 0, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
 	}
 
 	aesGcm, err := ocrypto.NewAESGcm(symmetricKey)
 	if err != nil {
-		return nil, 0, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
+		return nil, 0, 0, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
 	}
 
 	tagSize, err := SizeOfAuthTagForCipher(config.sigCfg.cipher)
 	if err != nil {
-		return nil, 0, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
+		return nil, 0, 0, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
 	}
 
 	const (
@@ -439,7 +546,7 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	iv := make([]byte, kIvLength)
 	cipherText, err := aesGcm.EncryptWithIVAndTagSize(iv, policyObjectAsStr, tagSize)
 	if err != nil {
-		return nil, 0, fmt.Errorf("AesGcm.EncryptWithIVAndTagSize failed:%w", err)
+		return nil, 0, 0, fmt.Errorf("AesGcm.EncryptWithIVAndTagSize failed:%w", err)
 	}
 
 	embeddedP := embeddedPolicy{
@@ -448,7 +555,7 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	}
 	err = embeddedP.writeEmbeddedPolicy(writer)
 	if err != nil {
-		return nil, 0, fmt.Errorf("writeEmbeddedPolicy failed:%w", err)
+		return nil, 0, 0, fmt.Errorf("writeEmbeddedPolicy failed:%w", err)
 	}
 
 	// size of uint16
@@ -461,39 +568,39 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	if config.bindCfg.useEcdsaBinding { //nolint:nestif // todo: subfunction
 		rBytes, sBytes, err := ocrypto.ComputeECDSASig(digest, config.keyPair.PrivateKey)
 		if err != nil {
-			return nil, 0, fmt.Errorf("ComputeECDSASig failed:%w", err)
+			return nil, 0, 0, fmt.Errorf("ComputeECDSASig failed:%w", err)
 		}
 
 		// write rBytes len and rBytes contents
 		l, err = writer.Write([]byte{uint8(len(rBytes))})
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, 0, err
 		}
 		totalBytes += uint32(l)
 
 		l, err = writer.Write(rBytes)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, 0, err
 		}
 		totalBytes += uint32(l)
 
 		// write sBytes len and sBytes contents
 		l, err = writer.Write([]byte{uint8(len(sBytes))})
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, 0, err
 		}
 		totalBytes += uint32(l)
 
 		l, err = writer.Write(sBytes)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, 0, err
 		}
 		totalBytes += uint32(l)
 	} else {
 		binding := digest[len(digest)-kNanoTDFGMACLength:]
 		l, err = writer.Write(binding)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, 0, err
 		}
 		totalBytes += uint32(l)
 	}
@@ -502,11 +609,15 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 
 	l, err = writer.Write(ephemeralPublicKeyKey)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
 	totalBytes += uint32(l)
 
-	return symmetricKey, totalBytes, nil
+	if config.collectionCfg.useCollection {
+		config.collectionCfg.symKey = symmetricKey
+	}
+
+	return symmetricKey, totalBytes, 0, nil
 }
 
 func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error) {
@@ -725,7 +836,7 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	}
 
 	// Create nano tdf header
-	key, totalSize, err := writeNanoTDFHeader(writer, config)
+	key, totalSize, iteration, err := writeNanoTDFHeader(writer, config)
 	if err != nil {
 		return 0, fmt.Errorf("writeNanoTDFHeader failed:%w", err)
 	}
@@ -736,10 +847,17 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	if err != nil {
 		return 0, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
 	}
-
-	ivPadded, err := nonZeroRandomPaddedIV()
-	if err != nil {
-		return 0, err
+	var ivPadded []byte
+	if config.collectionCfg.useCollection {
+		ivPadded = make([]byte, gcmIvSize)
+		iv := make([]byte, binary.MaxVarintLen32)
+		binary.LittleEndian.PutUint32(iv, iteration)
+		copy(ivPadded[kIvPadding:], iv[:kNanoTDFIvSize])
+	} else {
+		ivPadded, err = nonZeroRandomPaddedIV()
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	tagSize, err := SizeOfAuthTagForCipher(config.sigCfg.cipher)
@@ -809,21 +927,9 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
-	encodedHeader := ocrypto.Base64Encode(headerBuf)
-
-	rsaKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
+	symmetricKey, err := s.getNanoRewrapKey(ctx, headerBuf, kasURL)
 	if err != nil {
-		return 0, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
-	}
-
-	client, err := newKASClient(s.dialOptions, s.tokenSource, rsaKeyPair)
-	if err != nil {
-		return 0, fmt.Errorf("newKASClient failed: %w", err)
-	}
-
-	symmetricKey, err := client.unwrapNanoTDF(ctx, string(encodedHeader), kasURL)
-	if err != nil {
-		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
+		return 0, err
 	}
 
 	const (
@@ -872,6 +978,34 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 	}
 
 	return uint32(writeLen), nil
+}
+
+func (s SDK) getNanoRewrapKey(ctx context.Context, header []byte, kasURL string) ([]byte, error) {
+	if s.collectionStore != nil {
+		if key, found := s.collectionStore.get(header); found {
+			return key, nil
+		}
+	}
+	encodedHeader := ocrypto.Base64Encode(header)
+
+	rsaKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
+	}
+
+	client, err := newKASClient(s.dialOptions, s.tokenSource, rsaKeyPair)
+	if err != nil {
+		return nil, fmt.Errorf("newKASClient failed: %w", err)
+	}
+
+	symmetricKey, err := client.unwrapNanoTDF(ctx, string(encodedHeader), kasURL)
+	if err != nil {
+		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
+	}
+	if s.collectionStore != nil {
+		s.collectionStore.store(header, symmetricKey)
+	}
+	return symmetricKey, nil
 }
 
 type requestBody struct {

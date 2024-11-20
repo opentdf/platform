@@ -13,7 +13,6 @@ realms:
       realm: opentdf
       enabled: true
     custom_realm_roles:
-      - name: opentdf-org-admin
       - name: opentdf-admin
       - name: opentdf-standard
     custom_client_roles:
@@ -35,7 +34,7 @@ realms:
           protocolMappers:
             - *customAudMapper
         sa_realm_roles: 
-          - opentdf-org-admin
+          - opentdf-admin
       - client:
           clientID: opentdf-sdk
           enabled: true
@@ -98,7 +97,7 @@ realms:
         groups:
           - mygroup
         realmRoles:
-          - opentdf-org-admin
+          - opentdf-admin
         clientRoles:
           realm-management:
             - view-clients

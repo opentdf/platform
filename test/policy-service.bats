@@ -3,7 +3,7 @@
 # Tests for policy service administration
 
 @test "gRPC: lists attributes" {
-  run grpcurl -plaintext "localhost:8080" list
+  run grpcurl "localhost:8080" list
   echo "$output"
   [ $status = 0 ]
   [[ $output = *grpc.health.v1.Health* ]]

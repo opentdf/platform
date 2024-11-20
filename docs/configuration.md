@@ -221,6 +221,24 @@ services:
       query: data.opentdf.entitlements.attributes
 ```
 
+### Policy
+
+Root level key `policy`
+
+| Field                        | Description                                            | Default | Environment Variables                              |
+| ---------------------------- | ------------------------------------------------------ | ------- | -------------------------------------------------- |
+| `list_request_limit_default` | Policy List request limit default when not provided    | 1000    | OPENTDF_SERVICES_POLICY_LIST_REQUEST_LIMIT_DEFAULT |
+| `list_request_limit_max`     | Policy List request limit maximum enforced by services | 2500    | OPENTDF_SERVICES_POLICY_LIST_REQUEST_LIMIT_MAX     |
+
+Example:
+
+```yaml
+services:
+  policy:
+    list_request_limit_default: 1000
+    list_request_limit_max: 2500
+```
+
 ### Casbin Endpoint Authorization
 
 OpenTDF uses Casbin to manage authorization policies. This document provides an overview of how to configure and manage the default authorization policy in OpenTDF.
@@ -258,19 +276,10 @@ server:
       map:
         standard: opentdf-standard
         admin: opentdf-admin
-        org-admin: opentdf-org-admin
 
       ## Custom policy (see examples https://github.com/casbin/casbin/tree/master/examples)
       csv: |
-        p, role:org-admin, policy:attributes, *, *, allow
-        p, role:org-admin, policy:subject-mappings, *, *, allow
-        p, role:org-admin, policy:resource-mappings, *, *, allow
-        p, role:org-admin, policy:kas-registry, *, *, allow
-        p, role:org-admin, policy:unsafe, *, *, allow
-        p, role:admin, policy:attributes, read, allow
-        p, role:admin, policy:subject-mappings, read, allow
-        p, role:admin, policy:resource-mappings, read, allow
-        p, role:admin, policy:kas-registry, read, allow
+        p, role:admin, *, *, allow
         p, role:standard, policy:attributes, read, allow
         p, role:standard, policy:subject-mappings, read, allow
         p, role:standard, policy:resource-mappings, read, allow

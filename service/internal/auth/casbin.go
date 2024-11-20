@@ -136,10 +136,9 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 	}
 
 	isDefaultAdapter := false
+	// If adapter is not provided, use the default string adapter
 	if c.Adapter == nil {
 		isDefaultAdapter = true
-		// Set empty policy string so we can load the default policy
-		// later if a different adapter is provided
 		c.Adapter = stringadapter.NewAdapter(c.Csv)
 	}
 

@@ -39,12 +39,13 @@ func (c *PolicyDBClient) RunInTx(ctx context.Context, query func(txClient *Polic
 	if err != nil {
 		return fmt.Errorf("failed to begin DB transaction: %w", err)
 	}
+	defer tx.Rollback(ctx)
 
-	txClient := &PolicyDBClient{c.Client, c.logger, c.Queries, c.listCfg}
+	txClient := &PolicyDBClient{c.Client, c.logger, c.Queries.WithTx(tx), c.listCfg}
 
 	err = query(txClient)
 	if err != nil {
-		return tx.Rollback(ctx)
+		return err
 	}
 
 	return tx.Commit(ctx)

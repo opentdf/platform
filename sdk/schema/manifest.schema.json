@@ -33,7 +33,7 @@
             "type": "string"
           }
         },
-        "required": ["type", "url", "protocol", "isEncrypted","mimeType"]
+        "required": ["type", "url", "protocol", "isEncrypted"]
       },
       "encryptionInformation": {
         "type": "object",

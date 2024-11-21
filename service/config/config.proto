@@ -4,7 +4,7 @@ package config;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/any.proto";
-import "google/api/annotations.proto";
+// import "google/api/annotations.proto";
 import "google/protobuf/descriptor.proto";
 
 message FieldMetadata {
@@ -14,7 +14,7 @@ message FieldMetadata {
 }
 
 extend google.protobuf.FieldOptions {
-  FieldMetadata meta = 50000 [(buf.validate.field).required = true];
+  FieldMetadata meta = 50000;
 }
 
 message BoolField {

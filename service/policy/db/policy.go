@@ -1,6 +1,9 @@
 package db
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -29,6 +32,22 @@ type PolicyDBClient struct {
 
 func NewClient(c *db.Client, logger *logger.Logger, configuredListLimitMax, configuredListLimitDefault int32) PolicyDBClient {
 	return PolicyDBClient{c, logger, New(c.Pgx), ListConfig{limitDefault: configuredListLimitDefault, limitMax: configuredListLimitMax}}
+}
+
+func (c *PolicyDBClient) RunInTx(ctx context.Context, query func(txClient *PolicyDBClient) error) error {
+	tx, err := c.Client.Pgx.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin DB transaction: %w", err)
+	}
+
+	txClient := &PolicyDBClient{c.Client, c.logger, c.Queries, c.listCfg}
+
+	err = query(txClient)
+	if err != nil {
+		return tx.Rollback(ctx)
+	}
+
+	return tx.Commit(ctx)
 }
 
 func getDBStateTypeTransformedEnum(state common.ActiveStateEnum) transformedState {

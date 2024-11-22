@@ -247,7 +247,7 @@ OpenTDF uses Casbin to manage authorization policies. This document provides an 
 3. **Group Claim**: The claim in the OIDC token that should be used to find the group claims.
 4. **Map (Deprecated)**: Mapping between policy roles and IdP roles.
 4. **Extension**: Policy that will extend the builtin policy
-4. **CSV**: The authorization policy in CSV format. This will override builtin policy.
+4. **CSV**: The authorization policy in CSV format. This will override the builtin policy.
 5. **Model**: The Casbin policy model. This should only be set if you have a deep understanding of how casbin works.
 
 #### Configuration in opentdf-example.yaml

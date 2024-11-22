@@ -107,8 +107,7 @@ func (s *PolicyDBClientSuite) Test_RunInTx_RollsBackOnFailure() {
 		})
 		s.Require().Error(err)
 		s.Require().Zero(attrID)
-
-		return nil
+		return err
 	})
 	s.Require().Error(txErr)
 

@@ -63,14 +63,9 @@ func Start(f ...StartOptions) error {
 		cfg.Server.Auth.PublicRoutes = startConfig.PublicRoutes
 	}
 
-	// Set policy extension
-	if len(startConfig.authzDefaultPolicyExtension) > 0 {
-		cfg.Server.Auth.Policy.PolicyExtension = startConfig.authzDefaultPolicyExtension
-	}
-
 	// Set Default Policy
-	if startConfig.authzPolicy != "" {
-		cfg.Server.Auth.Policy.Default = startConfig.authzPolicy
+	if startConfig.bultinPolicyOverride != "" {
+		cfg.Server.Auth.Policy.Builtin = startConfig.bultinPolicyOverride
 	}
 
 	// Set Casbin Adapter

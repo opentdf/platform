@@ -381,7 +381,7 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies() {
 	err := defaults.Set(&policyCfg)
 	s.Require().NoError(err)
 
-	policyCfg.PolicyExtension = strings.Join([]string{
+	policyCfg.Extension = strings.Join([]string{
 		"p, role:standard, new.service.*, read, allow",
 	}, "\n")
 
@@ -419,7 +419,7 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MalformedErrors() {
 	s.True(allowed)
 
 	// missing 'p'
-	policyCfg.PolicyExtension = strings.Join([]string{
+	policyCfg.Extension = strings.Join([]string{
 		"role:admin, new.service.DoSomething, *",
 	}, "\n")
 	enforcer, err = NewCasbinEnforcer(CasbinConfig{
@@ -432,7 +432,7 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MalformedErrors() {
 	s.True(allowed)
 
 	// missing effect
-	policyCfg.PolicyExtension = strings.Join([]string{
+	policyCfg.Extension = strings.Join([]string{
 		"p, role:admin, new.service.DoSomething, *",
 	}, "\n")
 	enforcer, err = NewCasbinEnforcer(CasbinConfig{
@@ -445,7 +445,7 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MalformedErrors() {
 	s.True(allowed)
 
 	// empty
-	policyCfg.PolicyExtension = strings.Join([]string{
+	policyCfg.Extension = strings.Join([]string{
 		"",
 	}, "\n")
 	enforcer, err = NewCasbinEnforcer(CasbinConfig{
@@ -458,7 +458,7 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MalformedErrors() {
 	s.True(allowed)
 
 	// missing role prefix
-	policyCfg.PolicyExtension = strings.Join([]string{
+	policyCfg.Extension = strings.Join([]string{
 		"p, admin, new.service.DoSomething, *",
 	}, "\n")
 	enforcer, err = NewCasbinEnforcer(CasbinConfig{
@@ -476,7 +476,7 @@ func (s *AuthnCasbinSuite) Test_SetDefaultPolicy() {
 	err := defaults.Set(&policyCfg)
 	s.Require().NoError(err)
 
-	policyCfg.Default = strings.Join([]string{
+	policyCfg.Builtin = strings.Join([]string{
 		"p, role:admin, new.hello.*, *, allow",
 		"p, role:standard, new.hello.*, read, allow",
 		"p, role:standard, new.hello.*, write, deny",

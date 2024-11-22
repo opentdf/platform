@@ -18,7 +18,7 @@ var (
 	defaultRole = "unknown"
 )
 
-var defaultPolicy = `
+var builtinPolicy = `
 ## Roles (prefixed with role:)
 # admin - admin
 # standard - standard
@@ -113,11 +113,11 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 
 	isDefaultPolicy := false
 	if c.Csv == "" {
-		// Set the Default Policy if provided
-		if c.Default != "" {
-			c.Csv = c.Default
+		// Set the Bultin Policy if provided
+		if c.Builtin != "" {
+			c.Csv = c.Builtin
 		} else {
-			c.Csv = defaultPolicy
+			c.Csv = builtinPolicy
 		}
 		isDefaultPolicy = true
 	}
@@ -131,8 +131,10 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		}
 	}
 
-	if c.PolicyExtension != "" {
-		c.Csv = strings.Join([]string{c.Csv, c.PolicyExtension}, "\n")
+	isPolicyExtended := false
+	if c.Extension != "" {
+		c.Csv = strings.Join([]string{c.Csv, c.Extension}, "\n")
+		isPolicyExtended = true
 	}
 
 	isDefaultAdapter := false
@@ -145,7 +147,8 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 	logger.Debug("creating casbin enforcer",
 		slog.Any("config", c),
 		slog.Bool("isDefaultModel", isDefaultModel),
-		slog.Bool("isDefaultPolicy", isDefaultPolicy),
+		slog.Bool("isBuiltinPolicy", isDefaultPolicy),
+		slog.Bool("isPolicyExtended", isPolicyExtended),
 		slog.Bool("isDefaultAdapter", isDefaultAdapter),
 	)
 

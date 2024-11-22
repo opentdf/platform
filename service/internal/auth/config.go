@@ -28,16 +28,22 @@ type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
 }
 
 type PolicyConfig struct {
-	Default       string `mapstructure:"default" json:"default"`
+	Builtin string `mapstructure:"-" json:"-"`
+	// Username claim to use for user information
 	UserNameClaim string `mapstructure:"username_claim" json:"username_claim" default:"sub"`
-	GroupsClaim   string `mapstructure:"groups_claim" json:"group_claim" default:"realm_access.roles"`
+	// Claim to use for group/role information
+	GroupsClaim string `mapstructure:"groups_claim" json:"group_claim" default:"realm_access.roles"`
 	// Deprecated: Use GroupClain instead
-	RoleClaim       string            `mapstructure:"claim" json:"claim" default:"realm_access.roles"`
-	RoleMap         map[string]string `mapstructure:"map" json:"map"`
-	Csv             string            `mapstructure:"csv" json:"csv"`
-	PolicyExtension string            `mapstructure:"-" json:"-"`
-	Model           string            `mapstructure:"model" json:"model"`
-	Adapter         persist.Adapter   `mapstructure:"-" json:"-"`
+	RoleClaim string `mapstructure:"claim" json:"claim" default:"realm_access.roles"`
+	// Deprecated: Use Casbin grouping statements g, <user/group>, <role>
+	RoleMap map[string]string `mapstructure:"map" json:"map"`
+	// Override the builtin policy with a custom policy
+	Csv string `mapstructure:"csv" json:"csv"`
+	// Extend the builtin policy with a custom policy
+	Extension string `mapstructure:"extension" json:"extension"`
+	Model     string `mapstructure:"model" json:"model"`
+	// Override the default string-adapter
+	Adapter persist.Adapter `mapstructure:"-" json:"-"`
 }
 
 func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {

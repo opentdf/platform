@@ -8,15 +8,14 @@ import (
 type StartOptions func(StartConfig) StartConfig
 
 type StartConfig struct {
-	ConfigKey                   string
-	ConfigFile                  string
-	WaitForShutdownSignal       bool
-	PublicRoutes                []string
-	authzDefaultPolicyExtension string
-	authzPolicy                 string
-	extraCoreServices           []serviceregistry.IService
-	extraServices               []serviceregistry.IService
-	casbinAdapter               persist.Adapter
+	ConfigKey             string
+	ConfigFile            string
+	WaitForShutdownSignal bool
+	PublicRoutes          []string
+	bultinPolicyOverride  string
+	extraCoreServices     []serviceregistry.IService
+	extraServices         []serviceregistry.IService
+	casbinAdapter         persist.Adapter
 }
 
 // Deprecated: Use WithConfigKey
@@ -69,9 +68,9 @@ func WithPublicRoutes(routes []string) StartOptions {
 //		   "p, role:admin, pep*, *, allow",
 //		   "p, role:standard, pep*, read, allow",
 //		 }, "\n")),
-func WithDefaultAuthZPolicy(policy string) StartOptions {
+func WithBuiltinAuthZPolicy(policy string) StartOptions {
 	return func(c StartConfig) StartConfig {
-		c.authzPolicy = policy
+		c.bultinPolicyOverride = policy
 		return c
 	}
 }

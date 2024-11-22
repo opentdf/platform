@@ -17,8 +17,19 @@ import (
 	Resource Mapping CRUD
 */
 
-func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resourcemapping.ListResourceMappingGroupsRequest) ([]*policy.ResourceMappingGroup, error) {
-	list, err := c.Queries.ListResourceMappingGroups(ctx, r.GetNamespaceId())
+func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resourcemapping.ListResourceMappingGroupsRequest) (*resourcemapping.ListResourceMappingGroupsResponse, error) {
+	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
+
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > maxLimit {
+		return nil, db.ErrListLimitTooLarge
+	}
+
+	list, err := c.Queries.ListResourceMappingGroups(ctx, ListResourceMappingGroupsParams{
+		NamespaceID: r.GetNamespaceId(),
+		Limit:       limit,
+		Offset:      offset,
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -39,7 +50,21 @@ func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resour
 		}
 	}
 
-	return rmGroups, nil
+	var total int32
+	var nextOffset int32
+	if len(list) > 0 {
+		total = int32(list[0].Total)
+		nextOffset = getNextOffset(offset, limit, total)
+	}
+
+	return &resourcemapping.ListResourceMappingGroupsResponse{
+		ResourceMappingGroups: rmGroups,
+		Pagination: &policy.PageResponse{
+			CurrentOffset: offset,
+			Total:         total,
+			NextOffset:    nextOffset,
+		},
+	}, nil
 }
 
 func (c PolicyDBClient) GetResourceMappingGroup(ctx context.Context, id string) (*policy.ResourceMappingGroup, error) {
@@ -141,8 +166,19 @@ func (c PolicyDBClient) DeleteResourceMappingGroup(ctx context.Context, id strin
  Resource Mapping CRUD
 */
 
-func (c PolicyDBClient) ListResourceMappings(ctx context.Context, r *resourcemapping.ListResourceMappingsRequest) ([]*policy.ResourceMapping, error) {
-	list, err := c.Queries.ListResourceMappings(ctx, r.GetGroupId())
+func (c PolicyDBClient) ListResourceMappings(ctx context.Context, r *resourcemapping.ListResourceMappingsRequest) (*resourcemapping.ListResourceMappingsResponse, error) {
+	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
+
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > maxLimit {
+		return nil, db.ErrListLimitTooLarge
+	}
+
+	list, err := c.Queries.ListResourceMappings(ctx, ListResourceMappingsParams{
+		GroupID: r.GetGroupId(),
+		Limit:   limit,
+		Offset:  offset,
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -177,7 +213,21 @@ func (c PolicyDBClient) ListResourceMappings(ctx context.Context, r *resourcemap
 		mappings[i] = mapping
 	}
 
-	return mappings, nil
+	var total int32
+	var nextOffset int32
+	if len(list) > 0 {
+		total = int32(list[0].Total)
+		nextOffset = getNextOffset(offset, limit, total)
+	}
+
+	return &resourcemapping.ListResourceMappingsResponse{
+		ResourceMappings: mappings,
+		Pagination: &policy.PageResponse{
+			CurrentOffset: offset,
+			Total:         total,
+			NextOffset:    nextOffset,
+		},
+	}, nil
 }
 
 func (c PolicyDBClient) ListResourceMappingsByGroupFqns(ctx context.Context, fqns []string) (map[string]*resourcemapping.ResourceMappingsByGroup, error) {

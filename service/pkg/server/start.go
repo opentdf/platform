@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
@@ -164,6 +165,14 @@ func Start(f ...StartOptions) error {
 	// If client credentials are provided, use them
 	if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
 		sdkOptions = append(sdkOptions, sdk.WithClientCredentials(cfg.SDKConfig.ClientID, cfg.SDKConfig.ClientSecret, nil))
+
+		oidcconfig, err := auth.DiscoverOIDCConfiguration(ctx, cfg.Server.Auth.Issuer, logger)
+		if err != nil {
+			return fmt.Errorf("could not retrieve oidc configuration: %w", err)
+		}
+
+		// provide token endpoint -- sdk cannot discover it since well-known service isnt running yet
+		sdkOptions = append(sdkOptions, sdk.WithTokenEndpoint(oidcconfig.TokenEndpoint))
 	}
 
 	// If the mode is all, use IPC for the SDK client

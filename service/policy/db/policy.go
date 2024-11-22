@@ -7,33 +7,41 @@ import (
 )
 
 const (
-	StateInactive    = "INACTIVE"
-	StateActive      = "ACTIVE"
-	StateAny         = "ANY"
-	StateUnspecified = "UNSPECIFIED"
+	stateInactive    transformedState = "INACTIVE"
+	stateActive      transformedState = "ACTIVE"
+	stateAny         transformedState = "ANY"
+	stateUnspecified transformedState = "UNSPECIFIED"
 )
+
+type transformedState string
+
+type ListConfig struct {
+	limitDefault int32
+	limitMax     int32
+}
 
 type PolicyDBClient struct {
 	*db.Client
 	logger *logger.Logger
 	*Queries
+	listCfg ListConfig
 }
 
-func NewClient(c *db.Client, logger *logger.Logger) PolicyDBClient {
-	return PolicyDBClient{c, logger, New(c.Pgx)}
+func NewClient(c *db.Client, logger *logger.Logger, configuredListLimitMax, configuredListLimitDefault int32) PolicyDBClient {
+	return PolicyDBClient{c, logger, New(c.Pgx), ListConfig{limitDefault: configuredListLimitDefault, limitMax: configuredListLimitMax}}
 }
 
-func GetDBStateTypeTransformedEnum(state common.ActiveStateEnum) string {
+func getDBStateTypeTransformedEnum(state common.ActiveStateEnum) transformedState {
 	switch state.String() {
 	case common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE.String():
-		return StateActive
+		return stateActive
 	case common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE.String():
-		return StateInactive
+		return stateInactive
 	case common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY.String():
-		return StateAny
+		return stateAny
 	case common.ActiveStateEnum_ACTIVE_STATE_ENUM_UNSPECIFIED.String():
-		return StateActive
+		return stateActive
 	default:
-		return StateActive
+		return stateActive
 	}
 }

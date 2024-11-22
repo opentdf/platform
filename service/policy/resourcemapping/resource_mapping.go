@@ -12,12 +12,14 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
 type ResourceMappingService struct { //nolint:revive // ResourceMappingService is a valid name for this struct
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
+	config   *policyconfig.Config
 }
 
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[resourcemappingconnect.ResourceMappingServiceHandler] {
@@ -29,8 +31,12 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			ConnectRPCFunc: resourcemappingconnect.NewResourceMappingServiceHandler,
 			GRPCGateayFunc: resourcemapping.RegisterResourceMappingServiceHandlerFromEndpoint,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (resourcemappingconnect.ResourceMappingServiceHandler, serviceregistry.HandlerServer) {
-				rm := &ResourceMappingService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
-				return rm, nil
+				cfg := policyconfig.GetSharedPolicyConfig(srp)
+				return &ResourceMappingService{
+					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
+					logger:   srp.Logger,
+					config:   cfg,
+				}, nil
 			},
 		},
 	}
@@ -41,14 +47,10 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 */
 
 func (s ResourceMappingService) ListResourceMappingGroups(ctx context.Context, req *connect.Request[resourcemapping.ListResourceMappingGroupsRequest]) (*connect.Response[resourcemapping.ListResourceMappingGroupsResponse], error) {
-	rsp := &resourcemapping.ListResourceMappingGroupsResponse{}
-
-	rmGroups, err := s.dbClient.ListResourceMappingGroups(ctx, req.Msg)
+	rsp, err := s.dbClient.ListResourceMappingGroups(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
-
-	rsp.ResourceMappingGroups = rmGroups
 
 	return connect.NewResponse(rsp), nil
 }
@@ -157,14 +159,10 @@ func (s ResourceMappingService) DeleteResourceMappingGroup(ctx context.Context, 
 func (s ResourceMappingService) ListResourceMappings(ctx context.Context,
 	req *connect.Request[resourcemapping.ListResourceMappingsRequest],
 ) (*connect.Response[resourcemapping.ListResourceMappingsResponse], error) {
-	rsp := &resourcemapping.ListResourceMappingsResponse{}
-
-	resourceMappings, err := s.dbClient.ListResourceMappings(ctx, req.Msg)
+	rsp, err := s.dbClient.ListResourceMappings(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
-
-	rsp.ResourceMappings = resourceMappings
 
 	return connect.NewResponse(rsp), nil
 }

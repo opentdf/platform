@@ -13,12 +13,14 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
 type NamespacesService struct { //nolint:revive // NamespacesService is a valid name
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
+	config   *policyconfig.Config
 }
 
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[namespacesconnect.NamespaceServiceHandler] {
@@ -30,7 +32,12 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			ConnectRPCFunc: namespacesconnect.NewNamespaceServiceHandler,
 			GRPCGateayFunc: namespaces.RegisterNamespaceServiceHandlerFromEndpoint,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (namespacesconnect.NamespaceServiceHandler, serviceregistry.HandlerServer) {
-				ns := &NamespacesService{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
+				cfg := policyconfig.GetSharedPolicyConfig(srp)
+				ns := &NamespacesService{
+					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
+					logger:   srp.Logger,
+					config:   cfg,
+				}
 
 				if err := srp.RegisterReadinessCheck("policy", ns.IsReady); err != nil {
 					srp.Logger.Error("failed to register policy readiness check", slog.String("error", err.Error()))
@@ -54,17 +61,15 @@ func (ns NamespacesService) IsReady(ctx context.Context) error {
 }
 
 func (ns NamespacesService) ListNamespaces(ctx context.Context, req *connect.Request[namespaces.ListNamespacesRequest]) (*connect.Response[namespaces.ListNamespacesResponse], error) {
-	state := policydb.GetDBStateTypeTransformedEnum(req.Msg.GetState())
+	state := req.Msg.GetState().String()
 	ns.logger.Debug("listing namespaces", slog.String("state", state))
 
-	rsp := &namespaces.ListNamespacesResponse{}
-	list, err := ns.dbClient.ListNamespaces(ctx, state)
+	rsp, err := ns.dbClient.ListNamespaces(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
 
 	ns.logger.Debug("listed namespaces")
-	rsp.Namespaces = list
 
 	return connect.NewResponse(rsp), nil
 }

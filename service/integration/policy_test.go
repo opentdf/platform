@@ -15,7 +15,7 @@ type PolicyDBClientSuite struct {
 	suite.Suite
 	f   fixtures.Fixtures
 	db  fixtures.DBInterface
-	ctx context.Context
+	ctx context.Context //nolint:containedctx // context is used in the test suite
 }
 
 func (s *PolicyDBClientSuite) SetupSuite() {
@@ -85,8 +85,8 @@ func (s *PolicyDBClientSuite) Test_RunInTx_CommitsOnSuccess() {
 
 func (s *PolicyDBClientSuite) Test_RunInTx_RollsBackOnFailure() {
 	var (
-		nsName   string = "failure.com"
-		attrName string = fmt.Sprintf("http://%s/attr/attr_one", nsName)
+		nsName   = "failure.com"
+		attrName = fmt.Sprintf("http://%s/attr/attr_one", nsName)
 
 		nsID   string
 		attrID string

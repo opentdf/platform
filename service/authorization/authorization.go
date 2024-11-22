@@ -2,13 +2,17 @@ package authorization
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
+
+	"github.com/allegro/bigcache/v3"
 
 	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
@@ -34,10 +38,11 @@ import (
 const EntityIDPrefix string = "entity_idx_"
 
 type AuthorizationService struct { //nolint:revive // AuthorizationService is a valid name for this struct
-	sdk    *otdf.SDK
-	config Config
-	logger *logger.Logger
-	eval   rego.PreparedEvalQuery
+	sdk               *otdf.SDK
+	config            Config
+	logger            *logger.Logger
+	eval              rego.PreparedEvalQuery
+	entitlementsCache *bigcache.BigCache
 }
 
 type Config struct {
@@ -133,6 +138,14 @@ func NewRegistration() *serviceregistry.Service[authorizationconnect.Authorizati
 				}
 
 				as.config = *authZCfg
+
+				// initialize entitlements cache
+				cache, initErr := bigcache.New(context.Background(), bigcache.DefaultConfig(3*time.Minute))
+				if initErr != nil {
+					panic(fmt.Errorf("failed to initialize entitlements cache: %w", err))
+				}
+
+				as.entitlementsCache = cache
 
 				return as, nil
 			},
@@ -444,6 +457,46 @@ func makeScopeMap(scope *authorization.ResourceAttribute) map[string]bool {
 
 func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connect.Request[authorization.GetEntitlementsRequest]) (*connect.Response[authorization.GetEntitlementsResponse], error) {
 	as.logger.DebugContext(ctx, "getting entitlements")
+	rsp := &authorization.GetEntitlementsResponse{
+		Entitlements: make([]*authorization.EntityEntitlements, 0),
+	}
+	resp := connect.NewResponse(rsp)
+	// Check the cache
+	// remove any found entities from the request
+	var notCached []*authorization.Entity
+	for _, entity := range req.Msg.GetEntities() {
+		key := entityToCacheKey(entity)
+		entry, err := as.entitlementsCache.Get(key)
+		if err != nil {
+			if errors.Is(err, bigcache.ErrEntryNotFound) {
+				// not found in cache, move to next
+				notCached = append(notCached, entity)
+				continue
+			} else {
+				return nil, err
+			}
+		}
+		var decodedEntitlements []string
+		err = json.Unmarshal(entry, &decodedEntitlements)
+		if err != nil {
+			return nil, err
+		}
+		resp.Msg.Entitlements = append(resp.Msg.Entitlements, &authorization.EntityEntitlements{
+			EntityId:           entity.GetId(),
+			AttributeValueFqns: decodedEntitlements,
+		})
+	}
+	// if there are not cached entities, continue to find the entitlements for those
+	if len(notCached) != 0 {
+		as.logger.Info("some entities not cached", "", notCached)
+		req.Msg.Entities = notCached
+	} else {
+		// or we found all the entitlements in the cache so return them
+		as.logger.Info("all entities cached")
+		return resp, nil
+	}
+
+	// not all found check the normal way
 	attrsRes, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{})
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
@@ -470,9 +523,6 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 		as.logger.ErrorContext(ctx, "requires entities")
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("requires entities"))
 	}
-	rsp := &authorization.GetEntitlementsResponse{
-		Entitlements: make([]*authorization.EntityEntitlements, len(req.Msg.GetEntities())),
-	}
 
 	// call ERS on all entities
 	ersResp, err := as.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{Entities: req.Msg.GetEntities()})
@@ -494,8 +544,6 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to evaluate entitlements policy"))
 	}
-
-	resp := connect.NewResponse(rsp)
 
 	// If we get no results and no error then we assume that the entity is not entitled to anything
 	if len(results) == 0 {
@@ -555,13 +603,39 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 			entitlements[valueIDX] = entitlement
 		}
 		// Update the entity with its entitlements
-		resp.Msg.Entitlements[idx] = &authorization.EntityEntitlements{
+		resp.Msg.Entitlements = append(resp.Msg.Entitlements, &authorization.EntityEntitlements{
 			EntityId:           entity.GetId(),
 			AttributeValueFqns: entitlements,
+		})
+		// update the cache for that entity
+		// create a string representation of the entity maybe type//value (client_id//opentdf)
+		key := entityToCacheKey(entity)
+		// put the entity and entitlement list in the cache
+		entitlementbytes, err := json.Marshal(entitlements)
+		if err != nil {
+			return nil, err
 		}
+		as.entitlementsCache.Set(key, entitlementbytes)
 	}
 
 	return resp, nil
+}
+
+func entityToCacheKey(entity *authorization.Entity) string {
+	key := ""
+	switch entity.GetEntityType().(type) {
+	case *authorization.Entity_ClientId:
+		key = fmt.Sprintf("%s//%s", "client_id", entity.GetClientId())
+	case *authorization.Entity_EmailAddress:
+		key = fmt.Sprintf("%s//%s", "email_address", entity.GetEmailAddress())
+	case *authorization.Entity_UserName:
+		key = fmt.Sprintf("%s//%s", "username", entity.GetUserName())
+	case *authorization.Entity_Claims:
+		key = fmt.Sprintf("%s//%s", "claims", entity.GetClaims().String())
+	case *authorization.Entity_Uuid:
+		key = fmt.Sprintf("%s//%s", "uuid", entity.GetUuid())
+	}
+	return key
 }
 
 func retrieveAttributeDefinitions(ctx context.Context, ra *authorization.ResourceAttribute, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {

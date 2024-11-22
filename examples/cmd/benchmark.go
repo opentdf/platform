@@ -87,7 +87,7 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
-	var dataAttributes []string
+	var dataAttributes = []string{"http://example.com/attr/attr1/value/value1"}
 	if config.TDFFormat == NanoTDF {
 		nanoTDFConfig, err := client.NewNanoTDFConfig()
 		if err != nil {

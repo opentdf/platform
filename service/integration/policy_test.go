@@ -34,9 +34,9 @@ func (s *PolicyDBClientSuite) TearDownSuite() {
 
 func (s *PolicyDBClientSuite) Test_RunInTx_CommitsOnSuccess() {
 	var (
-		nsName   string = "success.com"
-		attrName string = fmt.Sprintf("http://%s/attr/attr_one", nsName)
-		valName  string = fmt.Sprintf("http://%s/attr/%s/value/attr_one_value", nsName, attrName)
+		nsName    = "success.com"
+		attrName  = fmt.Sprintf("http://%s/attr/attr_one", nsName)
+		attrValue = fmt.Sprintf("http://%s/attr/%s/value/attr_one_value", nsName, attrName)
 
 		nsID   string
 		attrID string
@@ -61,7 +61,7 @@ func (s *PolicyDBClientSuite) Test_RunInTx_CommitsOnSuccess() {
 
 		valID, err = txClient.Queries.CreateAttributeValue(s.ctx, db.CreateAttributeValueParams{
 			AttributeDefinitionID: attrID,
-			Value:                 valName,
+			Value:                 attrValue,
 		})
 		s.Require().NoError(err)
 		s.Require().NotNil(valID)
@@ -72,15 +72,15 @@ func (s *PolicyDBClientSuite) Test_RunInTx_CommitsOnSuccess() {
 
 	ns, err := s.db.PolicyClient.GetNamespace(s.ctx, nsID)
 	s.Require().NoError(err)
-	s.Equal(ns.Name, nsName)
+	s.Equal(nsName, ns.GetName())
 
 	attr, err := s.db.PolicyClient.GetAttribute(s.ctx, attrID)
 	s.Require().NoError(err)
-	s.Equal(attr.Name, attrName)
+	s.Equal(attrName, attr.GetName())
 
-	val, err := s.db.PolicyClient.GetAttributeValue(s.ctx, valID)
+	attrVal, err := s.db.PolicyClient.GetAttributeValue(s.ctx, valID)
 	s.Require().NoError(err)
-	s.Equal(val.Value, valName)
+	s.Equal(attrValue, attrVal.GetValue())
 }
 
 func (s *PolicyDBClientSuite) Test_RunInTx_RollsBackOnFailure() {

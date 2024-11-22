@@ -55,7 +55,7 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 	}
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		item, err := s.dbClient.CreateAttribute(ctx, req.Msg)
+		item, err := txClient.CreateAttribute(ctx, req.Msg)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("attribute", req.Msg.String()))

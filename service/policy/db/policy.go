@@ -39,6 +39,7 @@ func (c *PolicyDBClient) RunInTx(ctx context.Context, query func(txClient *Polic
 	if err != nil {
 		return fmt.Errorf("failed to begin DB transaction: %w", err)
 	}
+	//nolint:errcheck // ignore error per sqlc docs https://docs.sqlc.dev/en/stable/howto/transactions.html
 	defer tx.Rollback(ctx)
 
 	txClient := &PolicyDBClient{c.Client, c.logger, c.Queries.WithTx(tx), c.listCfg}

@@ -113,7 +113,6 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...)}
-		opts = append(opts, sdk.WithAutoconfigure(autoconfigure))
 		opts = append(opts, sdk.WithKasInformation(
 			sdk.KASInfo{
 				URL:       fmt.Sprintf("http://%s", "localhost:8080"),

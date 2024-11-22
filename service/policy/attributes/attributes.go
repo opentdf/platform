@@ -58,7 +58,7 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 		item, err := txClient.CreateAttribute(ctx, req.Msg)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-			return db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("attribute", req.Msg.String()))
+			return err
 		}
 
 		s.logger.Debug("created new attribute definition", slog.String("name", req.Msg.GetName()))
@@ -71,7 +71,7 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("attribute", req.Msg.String()))
 	}
 
 	return connect.NewResponse(rsp), nil

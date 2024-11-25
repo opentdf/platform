@@ -112,13 +112,16 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 			}
 		}
 	} else {
-		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...)}
-		opts = append(opts, sdk.WithKasInformation(
-			sdk.KASInfo{
-				URL:       fmt.Sprintf("http://%s", "localhost:8080"),
-				PublicKey: "",
-			}))
-		tdf, err := client.CreateTDF(out, in, opts...)
+		tdf, err :=
+			client.CreateTDF(
+				out, in,
+				sdk.WithDataAttributes(dataAttributes...),
+				sdk.WithKasInformation(
+					sdk.KASInfo{
+						URL:       fmt.Sprintf("http://%s", "localhost:8080"),
+						PublicKey: "",
+					}),
+				sdk.WithAutoconfigure(false))
 		if err != nil {
 			return err
 		}

@@ -1,21 +1,32 @@
-mode: entityresolution
+mode: kas
+sdk_config:
+  core:
+    endpoint: http://localhost:8080
+    plaintext: true
+  client_id: opentdf
+  client_secret: secret
 logger:
   level: debug
   type: text
   output: stdout
 services:
-  entityresolution:
-    log_level: info
-    url: http://localhost:8888/auth
-    clientid: 'tdf-entity-resolution'
-    clientsecret: 'secret'
-    realm: 'opentdf'
-    legacykeycloak: true
-    inferid:
-      from:
-        email: true
-        username: true
+  kas:
+    keyring:
+      - kid: e1
+        alg: ec:secp256r1
+      - kid: e1
+        alg: ec:secp256r1
+        legacy: true
+      - kid: r1
+        alg: rsa:2048
+      - kid: r1
+        alg: rsa:2048
+        legacy: true
 server:
+  tls:
+    enabled: false
+    cert: ./keys/platform.crt
+    key: ./keys/platform-key.pem
   auth:
     enabled: true
     enforceDPoP: false
@@ -32,15 +43,10 @@ server:
       map:
         # standard: opentdf-standard
         # admin: opentdf-admin
-        # org-admin: opentdf-org-admin
 
       ## Custom policy (see examples https://github.com/casbin/casbin/tree/master/examples)
       csv: #|
-      #  p, role:org-admin, policy:attributes, *, *, allow
-      #  p, role:org-admin, policy:subject-mappings, *, *, allow
-      #  p, role:org-admin, policy:resource-mappings, *, *, allow
-      #  p, role:org-admin, policy:kas-registry, *, *, allow
-      #  p, role:org-admin, policy:unsafe, *, *, allow
+      #  p, role:admin, *, *, allow
 
       ## Custom model (see https://casbin.org/docs/syntax-for-models/)
       model: #|
@@ -87,4 +93,16 @@ server:
     maxage: 3600
   grpc:
     reflectionEnabled: true # Default is false
-  port: 8080
+  cryptoProvider:
+    type: standard
+    standard:
+      keys:
+        - kid: r1
+          alg: rsa:2048
+          private: kas-private.pem
+          cert: kas-cert.pem
+        - kid: e1
+          alg: ec:secp256r1
+          private: kas-ec-private.pem
+          cert: kas-ec-cert.pem
+  port: 8989

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -162,6 +164,7 @@ func Start(f ...StartOptions) error {
 	var (
 		sdkOptions []sdk.Option
 		client     *sdk.SDK
+		oidcconfig *auth.OIDCConfiguration
 	)
 
 	// If the mode is not all or entityresolution, we need to have a valid SDK config
@@ -175,7 +178,7 @@ func Start(f ...StartOptions) error {
 	if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
 		sdkOptions = append(sdkOptions, sdk.WithClientCredentials(cfg.SDKConfig.ClientID, cfg.SDKConfig.ClientSecret, nil))
 
-		oidcconfig, err := auth.DiscoverOIDCConfiguration(ctx, cfg.Server.Auth.Issuer, logger)
+		oidcconfig, err = auth.DiscoverOIDCConfiguration(ctx, cfg.Server.Auth.Issuer, logger)
 		if err != nil {
 			return fmt.Errorf("could not retrieve oidc configuration: %w", err)
 		}
@@ -186,7 +189,7 @@ func Start(f ...StartOptions) error {
 
 	// If the mode is all, use IPC for the SDK client
 	if slices.Contains(cfg.Mode, "all") || //nolint:nestif // Need to handle all config options
-		slices.Contains(cfg.Mode, "entityresolution") ||
+		slices.Contains(cfg.Mode, "entityresolution") || // ERS does not connect to anything so it can also use IPC mode
 		slices.Contains(cfg.Mode, "core") {
 		// Use IPC for the SDK client
 		sdkOptions = append(sdkOptions, sdk.WithIPC())
@@ -215,9 +218,9 @@ func Start(f ...StartOptions) error {
 			}
 
 			if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
-				oidcconfig, err := auth.DiscoverOIDCConfiguration(ctx, cfg.Server.Auth.Issuer, logger)
-				if err != nil {
-					return fmt.Errorf("could not retrieve oidc configuration: %w", err)
+				if oidcconfig.Issuer == "" {
+					// this should not occur, it will have been set above if this block is entered
+					return errors.New("cannot add token interceptor: oidcconfig is empty")
 				}
 
 				rsaKeyPair, err := ocrypto.NewRSAKeyPair(dpopKeySize)
@@ -239,12 +242,27 @@ func Start(f ...StartOptions) error {
 				ersDialOptions = append(ersDialOptions, grpc.WithChainUnaryInterceptor(interceptor.AddCredentials))
 			}
 
-			conn, err := grpc.NewClient(cfg.SDKConfig.EntityResolutionConnection.Endpoint, ersDialOptions...)
+			parsedURL, err := url.Parse(cfg.SDKConfig.EntityResolutionConnection.Endpoint)
+			if err != nil {
+				return fmt.Errorf("cannot parse ers url(%s): %w", cfg.SDKConfig.EntityResolutionConnection.Endpoint, err)
+			}
+			// Needed to support buffconn for testing
+			if parsedURL.Host == "" {
+				return errors.New("ERS host is empty when parsing")
+			}
+			port := parsedURL.Port()
+			// if port is empty, default to 443.
+			if port == "" {
+				port = "443"
+			}
+			ersGRPCEndpoint := net.JoinHostPort(parsedURL.Hostname(), port)
+
+			conn, err := grpc.NewClient(ersGRPCEndpoint, ersDialOptions...)
 			if err != nil {
 				return fmt.Errorf("could not connect to ERS: %w", err)
 			}
 			sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(conn))
-			logger.Info("added with custom ers connection for ", "", cfg.SDKConfig.EntityResolutionConnection.Endpoint)
+			logger.Info("added with custom ers connection for ", "", ersGRPCEndpoint)
 		}
 
 		client, err = sdk.New("", sdkOptions...)

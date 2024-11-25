@@ -1,7 +1,7 @@
 mode: core
 sdk_config:
   entityresolution:
-    endpoint: localhost:8181
+    endpoint: http://localhost:8181
     plaintext: true
   client_id: opentdf
   client_secret: secret
@@ -50,7 +50,7 @@ server:
     cert: ./keys/platform.crt
     key: ./keys/platform-key.pem
   auth:
-    enabled: false
+    enabled: true
     enforceDPoP: false
     public_client_id: 'opentdf-public'
     audience: 'http://localhost:8080'
@@ -127,4 +127,4 @@ server:
           alg: ec:secp256r1
           private: kas-ec-private.pem
           cert: kas-ec-cert.pem
-  port: 8989
+  port: 8383

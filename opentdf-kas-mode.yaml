@@ -105,4 +105,4 @@ server:
           alg: ec:secp256r1
           private: kas-ec-private.pem
           cert: kas-ec-cert.pem
-  port: 8989
+  port: 8181

@@ -87,4 +87,4 @@ server:
     maxage: 3600
   grpc:
     reflectionEnabled: true # Default is false
-  port: 8181
+  port: 8282

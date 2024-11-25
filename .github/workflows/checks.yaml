@@ -170,7 +170,7 @@ jobs:
           push: false
 
   platform-xtest:
-    uses: opentdf/tests/.github/workflows/xtest.yml@use-ers-branch-tests
+    uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       # use commit instead of ref so we can "go get" specific sdk version
       platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}

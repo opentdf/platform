@@ -31,7 +31,7 @@ func init() {
 
 func newSDK() (*sdk.SDK, error) {
 	resolver.SetDefaultScheme("passthrough")
-	opts := []sdk.Option{sdk.WithInsecurePlaintextConn()}
+	opts := []sdk.Option{sdk.WithStoreCollectionHeaders()}
 	if clientCredentials != "" {
 		i := strings.Index(clientCredentials, ":")
 		if i < 0 {

@@ -36,17 +36,16 @@ server:
     audience: 'http://localhost:8080'
     issuer: http://keycloak:8888/auth/realms/opentdf
     policy:
-      ## Default policy for all requests
-      default: #"role:standard"
       ## Dot notation is used to access nested claims (i.e. realm_access.roles)
-      claim: # realm_access.roles
-      ## Maps the external role to the opentdf role
-      ## Note: left side is used in the policy, right side is the external role
-      map:
-      #  standard: opentdf-standard
-      #  admin: opentdf-admin
-
-      ## Custom policy (see examples https://github.com/casbin/casbin/tree/master/examples)
+      # Claim that represents the user (i.e. email)
+      username_claim: # preferred_username
+      # That claim to access groups (i.e. realm_access.roles)
+      groups_claim: # realm_access.roles
+      ## Extends the builtin policy
+      extension: |
+        g, opentdf-admin, role:admin
+        g, opentdf-standard, role:standard
+      ## Custom policy that overrides builtin policy (see examples https://github.com/casbin/casbin/tree/master/examples)
       csv: #|
       #  p, role:admin, *, *, allow
       ## Custom model (see https://casbin.org/docs/syntax-for-models/)

@@ -11,6 +11,8 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/util"
+
+	_ "embed"
 )
 
 var (
@@ -18,73 +20,11 @@ var (
 	defaultRole = "unknown"
 )
 
-var builtinPolicy = `
-## Roles (prefixed with role:)
-# admin - admin
-# standard - standard
-# unknown - unknown role or no role
+//go:embed casbin_policy.csv
+var builtinPolicy string
 
-## Resources
-# Resources beginning with / are HTTP routes. Generally, this does not matter, but when HTTP routes don't map well
-# with the protos this may become important.
-
-## Actions
-# read - read the resource
-# write - write to the resource
-# delete - delete the resource
-# unsafe - unsafe actions
-
-## Grouping Statements - Maps users/groups to roles
-g, opentdf-admin, role:admin
-g, opentdf-standard, role:standard
-
-# Role: Admin
-## gRPC and HTTP routes
-p,	role:admin,		*,					*,			allow
-
-## Role: Standard
-## gRPC routes
-p,	role:standard,		policy.*,																read,			allow
-p,	role:standard,		kasregistry.*,													read,			allow
-p,	role:standard,      kas.AccessService/Rewrap, 			           *,			allow
-p,  role:standard,      authorization.AuthorizationService/GetDecisions,        read, allow
-p,  role:standard,      authorization.AuthorizationService/GetDecisionsByToken, read, allow
-
-## HTTP routes
-p,	role:standard,		/attributes*,														read,			allow
-p,	role:standard,		/namespaces*,														read,			allow
-p,	role:standard,		/subject-mappings*,											read,			allow
-p,	role:standard,		/resource-mappings*,										read,			allow
-p,	role:standard,		/key-access-servers*,										read,			allow
-p,	role:standard,		/kas/v2/rewrap,													write,		allow
-p,  role:standard,      /v1/authorization,                                                              write,          allow
-p,  role:standard,      /v1/token/authorization,                                                        write,          allow
-
-# Public routes
-## gRPC routes
-## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)
-p,	role:unknown,     kas.AccessService/Rewrap, 			                                  *,	  allow
-## HTTP routes
-## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)
-p,	role:unknown,		  /kas/v2/rewrap,													  *,		allow
-`
-
-var defaultModel = `
-[request_definition]
-r = sub,	res,	act
-
-[policy_definition]
-p = sub,	res,	act,	eft
-
-[role_definition]
-g = _,	_
-
-[policy_effect]
-e = some(where (p.eft == allow)) && !some(where (p.eft == deny))
-
-[matchers]
-m = g(r.sub,	p.sub) && keyMatch(r.res,	p.res) && keyMatch(r.act,	p.act)
-`
+//go:embed casbin_model.conf
+var defaultModel string
 
 type Enforcer struct {
 	*casbin.Enforcer
@@ -135,6 +75,16 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 	if c.Extension != "" {
 		c.Csv = strings.Join([]string{c.Csv, c.Extension}, "\n")
 		isPolicyExtended = true
+	}
+
+	// Because we provided built in group mappings we need to add them
+	// if extensions and rolemap are not provided
+	if c.RoleMap == nil && c.Extension == "" {
+		c.Csv = strings.Join([]string{
+			c.Csv,
+			"g, opentdf-admin, role:admin",
+			"g, opentdf-standard, role:standard",
+		}, "\n")
 	}
 
 	isDefaultAdapter := false

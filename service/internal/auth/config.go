@@ -30,7 +30,7 @@ type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
 type PolicyConfig struct {
 	Builtin string `mapstructure:"-" json:"-"`
 	// Username claim to use for user information
-	UserNameClaim string `mapstructure:"username_claim" json:"username_claim" default:"sub"`
+	UserNameClaim string `mapstructure:"username_claim" json:"username_claim" default:"preferred_username"`
 	// Claim to use for group/role information
 	GroupsClaim string `mapstructure:"groups_claim" json:"group_claim" default:"realm_access.roles"`
 	// Deprecated: Use GroupClain instead

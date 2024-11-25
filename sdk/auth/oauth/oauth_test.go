@@ -15,7 +15,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"slices"
-	"strings"
 	"testing"
 	"time"
 
@@ -153,7 +152,7 @@ func (s *OAuthSuite) TestGettingAccessTokenFromKeycloak() {
 	s.Require().True(ok)
 	scopeString, ok := scope.(string)
 	s.Require().True(ok)
-	s.Require().True(strings.Contains(scopeString, "testscope"))
+	s.Require().Contains(scopeString, "testscope")
 
 	expectedThumbprint := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash)
 	s.Equal(expectedThumbprint, idpKeyFingerprint, "didn't get expected fingerprint")
@@ -242,7 +241,7 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 	s.Require().True(ok)
 	scopeString, ok := scope.(string)
 	s.Require().True(ok)
-	s.Require().True(strings.Contains(scopeString, "testscope"))
+	s.Require().Contains(scopeString, "testscope")
 }
 
 func (s *OAuthSuite) TestClientSecretNoNonce() {

@@ -11,7 +11,6 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"slices"
 	"testing"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -19,6 +18,8 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
@@ -28,19 +29,14 @@ import (
 
 func TestAddingTokensToOutgoingRequest(t *testing.T) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatalf("error generating key: %v", err)
-	}
+	require.NoError(t, err, "error generating key")
 
 	key, err := jwk.FromRaw(privateKey)
-	if err != nil {
-		t.Fatalf("error getting raw key")
-	}
+	require.NoError(t, err, "error getting raw key")
 
 	err = key.Set(jwk.AlgorithmKey, jwa.RS256)
-	if err != nil {
-		t.Fatalf("error setting the algorithm on the JWK")
-	}
+	require.NoError(t, err, "error setting the algorithm on the JWK")
+
 	ts := FakeTokenSource{
 		key:         key,
 		accessToken: "thisisafakeaccesstoken",
@@ -54,65 +50,48 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 	defer stop()
 
 	_, err = client.PublicKey(context.Background(), &kas.PublicKeyRequest{})
-	if err != nil {
-		t.Fatalf("error making call: %v", err)
-	}
+	require.NoError(t, err, "error making call")
 
-	if len(server.accessToken) != 1 || server.accessToken[0] != "DPoP thisisafakeaccesstoken" {
-		t.Fatalf("got incorrect access token: %v", server.accessToken)
-	}
-
-	if len(server.dpopToken) != 1 {
-		t.Fatalf("Got incorrect dpop token headers: %v", server.dpopToken)
-	}
+	assert.ElementsMatch(t, server.accessToken, []string{"DPoP thisisafakeaccesstoken"})
+	require.Len(t, server.dpopToken, 1, "incorrect dpop token headers")
 
 	dpopToken := server.dpopToken[0]
-
 	alg, ok := key.Algorithm().(jwa.SignatureAlgorithm)
-	if !ok {
-		t.Fatalf("got a bad signing algorithm")
-	}
+	assert.True(t, ok, "got a bad signing algorithm")
 
 	_, err = jws.Verify([]byte(dpopToken), jws.WithKey(alg, key))
-	if err != nil {
-		t.Fatalf("error verifying signature: %v", err)
-	}
+	require.NoError(t, err, "error verifying signature")
 
 	parsedSignature, _ := jws.Parse([]byte(dpopToken))
-
-	if len(parsedSignature.Signatures()) == 0 {
-		t.Fatalf("didn't get signature from jwt")
-	}
+	require.Len(t, parsedSignature.Signatures(), 1, "incorrect number of signatures")
 
 	sig := parsedSignature.Signatures()[0]
 	tokenKey, ok := sig.ProtectedHeaders().Get("jwk")
-	if !ok {
-		t.Fatalf("didn't get error getting key from token")
-	}
+	require.True(t, ok, "didn't get jwk token key")
+	tkkey, ok := tokenKey.(jwk.Key)
+	require.True(t, ok, "wrong type for jwk token key", tokenKey)
 
-	tp, _ := tokenKey.(jwk.Key).Thumbprint(crypto.SHA256)
+	tp, _ := tkkey.Thumbprint(crypto.SHA256)
 	ktp, _ := key.Thumbprint(crypto.SHA256)
-	if !slices.Equal(tp, ktp) {
-		t.Fatalf("got the wrong key from the token")
-	}
+	assert.Equal(t, tp, ktp, "got the wrong key from the token")
 
 	parsedToken, _ := jwt.Parse([]byte(dpopToken), jwt.WithVerify(false))
 
-	if method, _ := parsedToken.Get("htm"); method != http.MethodPost {
-		t.Fatalf("we got a bad method: %v", method)
-	}
+	method, ok := parsedToken.Get("htm")
+	require.True(t, ok, "error getting htm claim")
+	assert.Equal(t, http.MethodPost, method, "got a bad method")
 
-	if path, _ := parsedToken.Get("htu"); path != "/kas.AccessService/PublicKey" {
-		t.Fatalf("we got a bad method: %v", path)
-	}
+	path, ok := parsedToken.Get("htu")
+	require.True(t, ok, "error getting htu claim")
+	assert.Equal(t, "/kas.AccessService/PublicKey", path, "got a bad path")
 
 	h := sha256.New()
 	h.Write([]byte("thisisafakeaccesstoken"))
 	expectedHash := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil))
 
-	if ath, _ := parsedToken.Get("ath"); ath != expectedHash {
-		t.Fatalf("got invalid ath claim in token: %v", ath)
-	}
+	ath, ok := parsedToken.Get("ath")
+	require.True(t, ok, "error getting ath claim")
+	assert.Equal(t, expectedHash, ath, "invalid ath claim in token")
 }
 
 func Test_InvalidCredentials_DoesNotSendMessage(t *testing.T) {
@@ -126,10 +105,7 @@ func Test_InvalidCredentials_DoesNotSendMessage(t *testing.T) {
 	defer stop()
 
 	_, err := client.PublicKey(context.Background(), &kas.PublicKeyRequest{})
-
-	if err == nil {
-		t.Fatalf("should not have sent message because the token source returned an error")
-	}
+	require.Error(t, err, "should not have sent message because the token source returned an error")
 }
 
 type FakeAccessServiceServer struct {

@@ -16,7 +16,7 @@ For end-users/consumers, see [here](./Consuming.md).
    1. Note: You will have to add the ``localhost.crt`` as a trusted certificate to do TLS authentication at ``localhost:8443``.
 3. Create an OpenTDF config file: `opentdf.yaml`
    1. The `opentdf-dev.yaml` file is the more secure starting point, but you will likely need to modify it to match your environment. This configuration is recommended as it is more secure but it does require valid development keypairs.
-   2. The `opentdf-example-no-kas.yaml` file is simpler to run but less secure. This file configures the platform to startup without a KAS instances and without endpoint authentication.
+   2. The `opentdf-core-mode.yaml` file is simpler to run but less secure. This file configures the platform to startup without a KAS instances, without a built-in ERS instance, and without endpoint authentication.
 4. Provision keycloak: `go run github.com/opentdf/platform/service provision keycloak`. Updates the local Keycloak configuration for local testing and development by creating a realm, roles, a client, and users.
 5. Run the server: `go run github.com/opentdf/platform/service start`. Runs the OpenTDF platform capabilities as a monolithic service.
    1. _Alt_ use the hot-reload development environment `air`

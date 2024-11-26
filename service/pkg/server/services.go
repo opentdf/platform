@@ -30,6 +30,7 @@ const (
 	modeALL       = "all"
 	modeCore      = "core"
 	modeKAS       = "kas"
+	modeERS       = "entityresolution"
 	modeEssential = "essential"
 
 	serviceKAS              = "kas"
@@ -76,7 +77,6 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 		case "core":
 			registeredServices = append(registeredServices, []string{servicePolicy, serviceAuthorization, serviceWellKnown}...)
 			services = append(services, []serviceregistry.IService{
-				entityresolution.NewRegistration(),
 				authorization.NewRegistration(),
 				wellknown.NewRegistration(),
 			}...)
@@ -85,6 +85,12 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 			// If the mode is "kas", register only the KAS service
 			registeredServices = append(registeredServices, serviceKAS)
 			if err := reg.RegisterService(kas.NewRegistration(), modeKAS); err != nil {
+				return nil, err //nolint:wrapcheck // We are all friends here
+			}
+		case "entityresolution":
+			// If the mode is "entityresolution", register only the ERS service
+			registeredServices = append(registeredServices, serviceEntityResolution)
+			if err := reg.RegisterService(entityresolution.NewRegistration(), modeERS); err != nil {
 				return nil, err //nolint:wrapcheck // We are all friends here
 			}
 		default:

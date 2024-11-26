@@ -1,0 +1,44 @@
+## Roles (prefixed with role:)
+# admin - admin
+# standard - standard
+# unknown - unknown role or no role
+
+## Resources
+# Resources beginning with / are HTTP routes. Generally, this does not matter, but when HTTP routes don't map well
+# with the protos this may become important.
+
+## Actions
+# read - read the resource
+# write - write to the resource
+# delete - delete the resource
+# unsafe - unsafe actions
+
+# Role: Admin
+## gRPC and HTTP routes
+p,	role:admin,		*,					*,			allow
+
+## Role: Standard
+## gRPC routes
+p,	role:standard,		policy.*,																read,			allow
+p,	role:standard,		kasregistry.*,													read,			allow
+p,	role:standard,      kas.AccessService/Rewrap, 			           *,			allow
+p,  role:standard,      authorization.AuthorizationService/GetDecisions,        read, allow
+p,  role:standard,      authorization.AuthorizationService/GetDecisionsByToken, read, allow
+
+## HTTP routes
+p,	role:standard,		/attributes*,														read,			allow
+p,	role:standard,		/namespaces*,														read,			allow
+p,	role:standard,		/subject-mappings*,											read,			allow
+p,	role:standard,		/resource-mappings*,										read,			allow
+p,	role:standard,		/key-access-servers*,										read,			allow
+p,	role:standard,		/kas/v2/rewrap,													write,		allow
+p,  role:standard,      /v1/authorization,                                                              write,          allow
+p,  role:standard,      /v1/token/authorization,                                                        write,          allow
+
+# Public routes
+## gRPC routes
+## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)
+p,	role:unknown,     kas.AccessService/Rewrap, 			                                  *,	  allow
+## HTTP routes
+## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)
+p,	role:unknown,		  /kas/v2/rewrap,													  *,		allow

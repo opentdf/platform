@@ -1,3 +1,5 @@
+# configures the platform to startup without a KAS instances, without a built-in ERS instance, and without endpoint authentication
+# build off of this config file if you are running your ERS and KAS instances seperately or if you only need the policy features
 mode: core
 sdk_config:
   entityresolution:

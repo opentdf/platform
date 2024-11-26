@@ -1,3 +1,5 @@
+# configures the platform to run only the KAS and well known service
+# build off this config file if you intend on running a (or multiple) seperate kas instance(s)
 mode: kas
 sdk_config:
   core:

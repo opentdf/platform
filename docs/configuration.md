@@ -37,7 +37,7 @@ Root level key `sdk_config`
 | `core.endpoint` | The core platform endpoint to connect to |  | OPENTDF_SDK_CONFIG_ENDPOINT |
 | `core.plaintext` | Use a plaintext grpc connection | `false` | OPENTDF_SDK_CONFIG_PLAINTEXT |
 | `core.insecure` | Use an insecure tls connection | `false` |  |
-| `entityresoluytion.endpoint` | The entityresolution endpoint to connect to |  |  |
+| `entityresolution.endpoint` | The entityresolution endpoint to connect to |  |  |
 | `entityresolution.plaintext` | Use a plaintext ERS grpc connection | `false` |  |
 | `entityresolution.insecure` | Use an insecure tls connection | `false` |  |
 | `client_id` | OAuth client id |  | OPENTDF_SDK_CONFIG_CLIENT_ID |

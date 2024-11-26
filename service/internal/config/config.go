@@ -148,12 +148,14 @@ func (c *Config) LogValue() slog.Value {
 
 func (c SDKConfig) LogValue() slog.Value {
 	return slog.GroupValue(
-		slog.String("core endpoint", c.CorePlatformConnection.Endpoint),
-		slog.Bool("core plaintext", c.CorePlatformConnection.Plaintext),
-		slog.Bool("core insecure tls", c.CorePlatformConnection.Insecure),
-		slog.String("ers endpoint", c.EntityResolutionConnection.Endpoint),
-		slog.Bool("ers plaintext", c.EntityResolutionConnection.Plaintext),
-		slog.Bool("ers insecure tls", c.EntityResolutionConnection.Insecure),
+		slog.Group("core",
+			"endpoint", c.CorePlatformConnection.Endpoint,
+			"plaintext", c.CorePlatformConnection.Plaintext,
+			"insecure", c.CorePlatformConnection.Insecure),
+		slog.Group("entityresolution",
+			"endpoint", c.EntityResolutionConnection.Endpoint,
+			"plaintext", c.EntityResolutionConnection.Plaintext,
+			"insecure", c.EntityResolutionConnection.Insecure),
 		slog.String("client_id", c.ClientID),
 		slog.String("client_secret", "[REDACTED]"),
 	)

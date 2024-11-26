@@ -1,3 +1,5 @@
+# configures the platform to run just the entity resolution service and the well-known service
+# primarily to be used for testing and development of external ERS connections
 mode: entityresolution
 logger:
   level: debug

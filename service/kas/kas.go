@@ -73,6 +73,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					SDK:            srp.SDK,
 					Logger:         srp.Logger,
 					KASConfig:      kasCfg,
+					Tracer:         srp.Tracer,
 				}
 
 				srp.Logger.Debug("kas config", "config", kasCfg)

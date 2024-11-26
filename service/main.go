@@ -1,14 +1,7 @@
 package main
 
-import (
-	"github.com/opentdf/platform/service/cmd"
-	"github.com/opentdf/platform/service/tracing"
-)
+import "github.com/opentdf/platform/service/cmd"
 
 func main() {
-	// Initialize tracer
-	shutdown := tracing.InitTracer()
-	defer shutdown()
-
 	cmd.Execute()
 }

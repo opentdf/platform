@@ -14,12 +14,17 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-const ServiceName = "opentdf-service"
+const ServiceName = "github.com/opentdf/platform/service"
 
 // Create a thread-safe writer wrapper
 type syncWriter struct {
 	mu     sync.Mutex
 	writer *lumberjack.Logger
+}
+
+type Config struct {
+	Enabled bool   `json:"enabled"`
+	Folder  string `json:"folder"`
 }
 
 func (w *syncWriter) Write(p []byte) (int, error) {
@@ -28,13 +33,22 @@ func (w *syncWriter) Write(p []byte) (int, error) {
 	return w.writer.Write(p)
 }
 
-func InitTracer() func() {
-	if err := os.MkdirAll("traces", os.ModePerm); err != nil {
+func InitTracer(cfg Config) func() {
+	if !cfg.Enabled {
+		return func() {}
+	}
+
+	// Create a directory for the traces
+	td := cfg.Folder
+	if td == "" {
+		td = "traces"
+	}
+	if err := os.MkdirAll(td, os.ModePerm); err != nil {
 		log.Fatal(err)
 	}
 
 	lumberjackLogger := &lumberjack.Logger{
-		Filename:   "traces/traces.log",
+		Filename:   td + "/traces.log",
 		MaxSize:    20,   //nolint:mnd  // maximum size in megabytes
 		MaxBackups: 10,   //nolint:mnd // number of backups
 		MaxAge:     30,   //nolint:mnd    // days

@@ -121,3 +121,6 @@ server:
           private: kas-ec-private.pem
           cert: kas-ec-cert.pem
   port: 8080
+trace:
+  enabled: true
+  folder: traces

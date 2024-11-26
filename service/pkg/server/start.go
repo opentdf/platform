@@ -15,6 +15,7 @@ import (
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"github.com/opentdf/platform/service/tracing"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
 	"golang.org/x/exp/slices"
 )
@@ -54,6 +55,13 @@ func Start(f ...StartOptions) error {
 
 	// Set default for places we can't pass the logger
 	slog.SetDefault(logger.Logger)
+
+	if cfg.Trace.Enabled {
+		// Initialize tracer
+		logger.Debug("configuring otel tracer")
+		shutdown := tracing.InitTracer(cfg.Trace)
+		defer shutdown()
+	}
 
 	logger.Info("starting opentdf services")
 

@@ -168,3 +168,33 @@ func (s KeyAccessServerRegistry) ListKeyAccessServerGrants(ctx context.Context,
 
 	return connect.NewResponse(rsp), nil
 }
+
+func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, req *connect.Request[kasr.CreateKeyRequest]) (*connect.Response[kasr.CreateKeyResponse], error) {
+	resp, err := s.dbClient.CreateKey(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed)
+	}
+
+	return connect.NewResponse(resp), nil
+}
+
+func (s KeyAccessServerRegistry) GetKey(ctx context.Context, req *connect.Request[kasr.GetKeyRequest]) (*connect.Response[kasr.GetKeyResponse], error) {
+	resp, err := s.dbClient.GetKey(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed)
+	}
+
+	return connect.NewResponse(resp), nil
+}
+
+func (s KeyAccessServerRegistry) ListKeys(context.Context, *connect.Request[kasr.ListKeysRequest]) (*connect.Response[kasr.ListKeyResponse], error) {
+	panic("implement me")
+}
+
+func (s KeyAccessServerRegistry) UpdateKey(context.Context, *connect.Request[kasr.UpdateKeyRequest]) (*connect.Response[kasr.UpdateKeyResponse], error) {
+	panic("implement me")
+}
+
+func (s KeyAccessServerRegistry) DeleteKey(context.Context, *connect.Request[kasr.DeleteKeyRequest]) (*connect.Response[kasr.DeleteKeyResponse], error) {
+	panic("implement me")
+}

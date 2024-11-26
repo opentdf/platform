@@ -131,6 +131,41 @@ func (q *Queries) CreateAttributeValue(ctx context.Context, arg CreateAttributeV
 	return id, err
 }
 
+const createKey = `-- name: CreateKey :one
+
+INSERT INTO keys (key_access_server_id,key_id,alg,public_key,metadata)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id
+`
+
+type CreateKeyParams struct {
+	KeyAccessServerID string `json:"key_access_server_id"`
+	KeyID             string `json:"key_id"`
+	Alg               string `json:"alg"`
+	PublicKey         string `json:"public_key"`
+	Metadata          []byte `json:"metadata"`
+}
+
+// --------------------------------------------------------------
+// KEYS
+// --------------------------------------------------------------
+//
+//	INSERT INTO keys (key_access_server_id,key_id,alg,public_key,metadata)
+//	VALUES ($1, $2, $3, $4, $5)
+//	RETURNING id
+func (q *Queries) CreateKey(ctx context.Context, arg CreateKeyParams) (string, error) {
+	row := q.db.QueryRow(ctx, createKey,
+		arg.KeyAccessServerID,
+		arg.KeyID,
+		arg.Alg,
+		arg.PublicKey,
+		arg.Metadata,
+	)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
 const createKeyAccessServer = `-- name: CreateKeyAccessServer :one
 INSERT INTO key_access_servers (uri, public_key, name, metadata)
 VALUES ($1, $2, $3, $4)
@@ -346,6 +381,21 @@ DELETE FROM attribute_values WHERE id = $1
 //	DELETE FROM attribute_values WHERE id = $1
 func (q *Queries) DeleteAttributeValue(ctx context.Context, id string) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteAttributeValue, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteKey = `-- name: DeleteKey :execrows
+DELETE FROM keys WHERE id = $1
+`
+
+// DeleteKey
+//
+//	DELETE FROM keys WHERE id = $1
+func (q *Queries) DeleteKey(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteKey, id)
 	if err != nil {
 		return 0, err
 	}
@@ -634,6 +684,42 @@ func (q *Queries) GetAttributeValue(ctx context.Context, id string) (GetAttribut
 		&i.AttributeDefinitionID,
 		&i.Fqn,
 		&i.Grants,
+	)
+	return i, err
+}
+
+const getKey = `-- name: GetKey :one
+SELECT id, key_access_server_id, key_id, alg, public_key,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+FROM keys
+WHERE id = $1
+`
+
+type GetKeyRow struct {
+	ID                string `json:"id"`
+	KeyAccessServerID string `json:"key_access_server_id"`
+	KeyID             string `json:"key_id"`
+	Alg               string `json:"alg"`
+	PublicKey         string `json:"public_key"`
+	Metadata          []byte `json:"metadata"`
+}
+
+// GetKey
+//
+//	SELECT id, key_access_server_id, key_id, alg, public_key,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+//	FROM keys
+//	WHERE id = $1
+func (q *Queries) GetKey(ctx context.Context, id string) (GetKeyRow, error) {
+	row := q.db.QueryRow(ctx, getKey, id)
+	var i GetKeyRow
+	err := row.Scan(
+		&i.ID,
+		&i.KeyAccessServerID,
+		&i.KeyID,
+		&i.Alg,
+		&i.PublicKey,
+		&i.Metadata,
 	)
 	return i, err
 }
@@ -1818,6 +1904,84 @@ func (q *Queries) ListKeyAccessServers(ctx context.Context, arg ListKeyAccessSer
 	return items, nil
 }
 
+const listKeys = `-- name: ListKeys :many
+WITH counted AS (
+    SELECT COUNT(id) AS total FROM keys
+)
+SELECT
+    id,
+    key_access_server_id,
+    key_id,
+    alg,
+    public_key,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+    counted.total
+FROM keys
+CROSS JOIN counted
+LIMIT $2
+OFFSET $1
+`
+
+type ListKeysParams struct {
+	Offset int32 `json:"offset_"`
+	Limit  int32 `json:"limit_"`
+}
+
+type ListKeysRow struct {
+	ID                string `json:"id"`
+	KeyAccessServerID string `json:"key_access_server_id"`
+	KeyID             string `json:"key_id"`
+	Alg               string `json:"alg"`
+	PublicKey         string `json:"public_key"`
+	Metadata          []byte `json:"metadata"`
+	Total             int64  `json:"total"`
+}
+
+// ListKeys
+//
+//	WITH counted AS (
+//	    SELECT COUNT(id) AS total FROM keys
+//	)
+//	SELECT
+//	    id,
+//	    key_access_server_id,
+//	    key_id,
+//	    alg,
+//	    public_key,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+//	    counted.total
+//	FROM keys
+//	CROSS JOIN counted
+//	LIMIT $2
+//	OFFSET $1
+func (q *Queries) ListKeys(ctx context.Context, arg ListKeysParams) ([]ListKeysRow, error) {
+	rows, err := q.db.Query(ctx, listKeys, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListKeysRow
+	for rows.Next() {
+		var i ListKeysRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.KeyAccessServerID,
+			&i.KeyID,
+			&i.Alg,
+			&i.PublicKey,
+			&i.Metadata,
+			&i.Total,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listNamespaces = `-- name: ListNamespaces :many
 
 WITH counted AS (
@@ -2541,6 +2705,51 @@ func (q *Queries) UpdateAttributeValue(ctx context.Context, arg UpdateAttributeV
 		arg.ID,
 		arg.Value,
 		arg.Active,
+		arg.Metadata,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updateKey = `-- name: UpdateKey :execrows
+UPDATE keys
+SET
+    key_access_server_id = COALESCE($2, key_access_server_id),
+    key_id = COALESCE($3, key_id),
+    alg = COALESCE($4, alg),
+    public_key = COALESCE($5, public_key),
+    metadata = COALESCE($6, metadata)
+WHERE id = $1
+`
+
+type UpdateKeyParams struct {
+	ID                string      `json:"id"`
+	KeyAccessServerID pgtype.UUID `json:"key_access_server_id"`
+	KeyID             pgtype.Text `json:"key_id"`
+	Alg               pgtype.Text `json:"alg"`
+	PublicKey         pgtype.Text `json:"public_key"`
+	Metadata          []byte      `json:"metadata"`
+}
+
+// UpdateKey
+//
+//	UPDATE keys
+//	SET
+//	    key_access_server_id = COALESCE($2, key_access_server_id),
+//	    key_id = COALESCE($3, key_id),
+//	    alg = COALESCE($4, alg),
+//	    public_key = COALESCE($5, public_key),
+//	    metadata = COALESCE($6, metadata)
+//	WHERE id = $1
+func (q *Queries) UpdateKey(ctx context.Context, arg UpdateKeyParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateKey,
+		arg.ID,
+		arg.KeyAccessServerID,
+		arg.KeyID,
+		arg.Alg,
+		arg.PublicKey,
 		arg.Metadata,
 	)
 	if err != nil {

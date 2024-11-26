@@ -903,3 +903,51 @@ WHERE id = $1;
 
 -- name: DeleteSubjectMapping :execrows
 DELETE FROM subject_mappings WHERE id = $1;
+
+
+---------------------------------------------------------------- 
+-- KEYS
+----------------------------------------------------------------
+
+-- name: CreateKey :one
+INSERT INTO keys (key_access_server_id,key_id,alg,public_key,metadata)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id;
+
+-- name: GetKey :one
+SELECT id, key_access_server_id, key_id, alg, public_key,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+FROM keys
+WHERE id = $1;
+
+-- name: ListKeys :many
+WITH counted AS (
+    SELECT COUNT(id) AS total FROM keys
+)
+SELECT
+    id,
+    key_access_server_id,
+    key_id,
+    alg,
+    public_key,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+    counted.total
+FROM keys
+CROSS JOIN counted
+LIMIT @limit_
+OFFSET @offset_;
+
+-- name: UpdateKey :execrows
+UPDATE keys
+SET
+    key_access_server_id = COALESCE(sqlc.narg('key_access_server_id'), key_access_server_id),
+    key_id = COALESCE(sqlc.narg('key_id'), key_id),
+    alg = COALESCE(sqlc.narg('alg'), alg),
+    public_key = COALESCE(sqlc.narg('public_key'), public_key),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata)
+WHERE id = $1;
+
+-- name: DeleteKey :execrows
+DELETE FROM keys WHERE id = $1;
+
+----------------------------------------------------------------

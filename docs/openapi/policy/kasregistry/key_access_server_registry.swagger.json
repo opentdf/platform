@@ -106,21 +106,21 @@
         "parameters": [
           {
             "name": "kasId",
-            "description": "Optional\nFilter LIST by ID of a registered Key Access Server.\nIf neither is provided, grants from all registered KASs to policy attribute objects are returned.",
+            "description": "Optional\nFilter LIST by ID of a registered Key Access Server.\nIf neither is provided, grants from all registered KASs to policy attribute\nobjects are returned.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "kasUri",
-            "description": "Optional\nFilter LIST by URI of a registered Key Access Server.\nIf none is provided, grants from all registered KASs to policy attribute objects are returned.",
+            "description": "Optional\nFilter LIST by URI of a registered Key Access Server.\nIf none is provided, grants from all registered KASs to policy attribute\nobjects are returned.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "kasName",
-            "description": "Optional\nFilter LIST by name of a registered Key Access Server.\nIf none are provided, grants from all registered KASs to policy attribute objects are returned.",
+            "description": "Optional\nFilter LIST by name of a registered Key Access Server.\nIf none are provided, grants from all registered KASs to policy attribute\nobjects are returned.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -341,6 +341,14 @@
         }
       }
     },
+    "kasregistryCreateKeyResponse": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/policyKey"
+        }
+      }
+    },
     "kasregistryDeleteKeyAccessServerResponse": {
       "type": "object",
       "properties": {
@@ -349,11 +357,27 @@
         }
       }
     },
+    "kasregistryDeleteKeyResponse": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/policyKey"
+        }
+      }
+    },
     "kasregistryGetKeyAccessServerResponse": {
       "type": "object",
       "properties": {
         "keyAccessServer": {
           "$ref": "#/definitions/policyKeyAccessServer"
+        }
+      }
+    },
+    "kasregistryGetKeyResponse": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/policyKey"
         }
       }
     },
@@ -428,6 +452,21 @@
         }
       }
     },
+    "kasregistryListKeysResponse": {
+      "type": "object",
+      "properties": {
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKey"
+          }
+        },
+        "pagination": {
+          "$ref": "#/definitions/policyPageResponse"
+        }
+      }
+    },
     "kasregistryUpdateKeyAccessServerResponse": {
       "type": "object",
       "properties": {
@@ -435,6 +474,9 @@
           "$ref": "#/definitions/policyKeyAccessServer"
         }
       }
+    },
+    "kasregistryUpdateKeyResponse": {
+      "type": "object"
     },
     "policyKasPublicKey": {
       "type": "object",
@@ -449,7 +491,7 @@
         },
         "alg": {
           "$ref": "#/definitions/policyKasPublicKeyAlgEnum",
-          "description": "A known algorithm type with any additional parameters encoded.\nTo start, these may be `rsa:2048` for encrypting ZTDF files and \n`ec:secp256r1` for nanoTDF, but more formats may be added as needed."
+          "description": "A known algorithm type with any additional parameters encoded.\nTo start, these may be `rsa:2048` for encrypting ZTDF files and\n`ec:secp256r1` for nanoTDF, but more formats may be added as needed."
         }
       },
       "title": "A KAS public key and some associated metadata for further identifcation"
@@ -475,6 +517,24 @@
         }
       },
       "title": "A list of known KAS public keys"
+    },
+    "policyKey": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "publicKey": {
+          "$ref": "#/definitions/policyKasPublicKey"
+        },
+        "kas": {
+          "$ref": "#/definitions/policyKeyAccessServer"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
+        }
+      }
     },
     "policyKeyAccessServer": {
       "type": "object",

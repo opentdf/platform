@@ -969,7 +969,7 @@
         "ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY"
       ],
       "default": "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
-      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't\nviolated when users add new enum values to an enum in a given package"
     },
     "policyAttributeValueSelector": {
       "type": "object",
@@ -1004,7 +1004,7 @@
       "properties": {
         "subjectExternalSelectorValue": {
           "type": "string",
-          "title": "a selector for a field value on a flattened Entity Representation (such as from idP/LDAP)"
+          "title": "a selector for a field value on a flattened Entity Representation (such as\nfrom idP/LDAP)"
         },
         "operator": {
           "$ref": "#/definitions/policySubjectMappingOperatorEnum",
@@ -1015,10 +1015,10 @@
           "items": {
             "type": "string"
           },
-          "title": "list of comparison values for the result of applying the subject_external_selector_value on a flattened Entity Representation (Subject), evaluated by the operator"
+          "title": "list of comparison values for the result of applying the\nsubject_external_selector_value on a flattened Entity Representation\n(Subject), evaluated by the operator"
         }
       },
-      "title": "*\nA Condition defines a rule of \u003cthe value at the flattened 'selector value' location\u003e \u003coperator\u003e \u003csubject external values\u003e"
+      "title": "*\nA Condition defines a rule of \u003cthe value at the flattened 'selector value'\nlocation\u003e \u003coperator\u003e \u003csubject external values\u003e"
     },
     "policyConditionBooleanTypeEnum": {
       "type": "string",
@@ -1028,7 +1028,7 @@
         "CONDITION_BOOLEAN_TYPE_ENUM_OR"
       ],
       "default": "CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED",
-      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't\nviolated when users add new enum values to an enum in a given package"
     },
     "policyConditionGroup": {
       "type": "object",
@@ -1060,7 +1060,7 @@
         },
         "alg": {
           "$ref": "#/definitions/policyKasPublicKeyAlgEnum",
-          "description": "A known algorithm type with any additional parameters encoded.\nTo start, these may be `rsa:2048` for encrypting ZTDF files and \n`ec:secp256r1` for nanoTDF, but more formats may be added as needed."
+          "description": "A known algorithm type with any additional parameters encoded.\nTo start, these may be `rsa:2048` for encrypting ZTDF files and\n`ec:secp256r1` for nanoTDF, but more formats may be added as needed."
         }
       },
       "title": "A KAS public key and some associated metadata for further identifcation"
@@ -1120,7 +1120,7 @@
         },
         "name": {
           "type": "string",
-          "title": "used to partition Attribute Definitions, support by namespace AuthN and enable federation"
+          "title": "used to partition Attribute Definitions, support by namespace AuthN and\nenable federation"
         },
         "fqn": {
           "type": "string"
@@ -1207,7 +1207,7 @@
           "$ref": "#/definitions/commonMetadata"
         }
       },
-      "description": "A container for multiple Subject Sets, each containing Condition Groups, each containing Conditions. Multiple Subject Sets in a SubjectConditionSet\nare evaluated with AND logic. As each Subject Mapping has only one Attribute Value, the SubjectConditionSet is reusable across multiple\nSubject Mappings / Attribute Values and is an independent unit."
+      "description": "A container for multiple Subject Sets, each containing Condition Groups, each\ncontaining Conditions. Multiple Subject Sets in a SubjectConditionSet are\nevaluated with AND logic. As each Subject Mapping has only one Attribute\nValue, the SubjectConditionSet is reusable across multiple Subject Mappings /\nAttribute Values and is an independent unit."
     },
     "policySubjectMapping": {
       "type": "object",
@@ -1235,8 +1235,8 @@
           "$ref": "#/definitions/commonMetadata"
         }
       },
-      "description": "Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one\nwith permitted actions TRANSMIT and DECRYPT\n{\n\"id\": \"someid\",\n\"attribute_value\": {example_one_attribute_value...},\n\"subject_condition_set\": {\"subject_sets\":[{subject_set_1},{subject_set_2}]...},\n\"actions\": [{\"standard\": \"STANDARD_ACTION_DECRYPT\"}\", {\"standard\": \"STANDARD_ACTION_TRANSMIT\"}]\n}",
-      "title": "Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute value + action(s) combination"
+      "description": "Example: Subjects in sets 1 and 2 are entitled attribute value\nhttp://wwww.example.org/attr/example/value/one with permitted actions\nTRANSMIT and DECRYPT\n{\n\"id\": \"someid\",\n\"attribute_value\": {example_one_attribute_value...},\n\"subject_condition_set\":\n{\"subject_sets\":[{subject_set_1},{subject_set_2}]...}, \"actions\":\n[{\"standard\": \"STANDARD_ACTION_DECRYPT\"}\", {\"standard\":\n\"STANDARD_ACTION_TRANSMIT\"}]\n}",
+      "title": "Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute\nvalue + action(s) combination"
     },
     "policySubjectMappingOperatorEnum": {
       "type": "string",
@@ -1247,8 +1247,8 @@
         "SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS"
       ],
       "default": "SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED",
-      "description": "- SUBJECT_MAPPING_OPERATOR_ENUM_IN: operator that returns true if a value in a list matches the string\n - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN: operator that returns true if a value is not in a list that is matched by string\n - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS: operator that returns true if a value in a list contains the substring",
-      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package"
+      "description": "- SUBJECT_MAPPING_OPERATOR_ENUM_IN: operator that returns true if a value in a list matches the string\n - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN: operator that returns true if a value is not in a list that is matched by\nstring\n - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS: operator that returns true if a value in a list contains the substring",
+      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't\nviolated when users add new enum values to an enum in a given package"
     },
     "policySubjectSet": {
       "type": "object",

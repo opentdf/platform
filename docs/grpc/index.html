@@ -238,6 +238,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.Key"><span class="badge">M</span>Key</a>
+                </li>
+              
+                <li>
                   <a href="#policy.KeyAccessServer"><span class="badge">M</span>KeyAccessServer</a>
                 </li>
               
@@ -692,6 +696,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.kasregistry.CreateKeyRequest"><span class="badge">M</span>CreateKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.CreateKeyResponse"><span class="badge">M</span>CreateKeyResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.kasregistry.DeleteKeyAccessServerRequest"><span class="badge">M</span>DeleteKeyAccessServerRequest</a>
                 </li>
               
@@ -700,11 +712,27 @@
                 </li>
               
                 <li>
+                  <a href="#policy.kasregistry.DeleteKeyRequest"><span class="badge">M</span>DeleteKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.DeleteKeyResponse"><span class="badge">M</span>DeleteKeyResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.kasregistry.GetKeyAccessServerRequest"><span class="badge">M</span>GetKeyAccessServerRequest</a>
                 </li>
               
                 <li>
                   <a href="#policy.kasregistry.GetKeyAccessServerResponse"><span class="badge">M</span>GetKeyAccessServerResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.GetKeyRequest"><span class="badge">M</span>GetKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.GetKeyResponse"><span class="badge">M</span>GetKeyResponse</a>
                 </li>
               
                 <li>
@@ -732,11 +760,27 @@
                 </li>
               
                 <li>
+                  <a href="#policy.kasregistry.ListKeysRequest"><span class="badge">M</span>ListKeysRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.ListKeysResponse"><span class="badge">M</span>ListKeysResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.kasregistry.UpdateKeyAccessServerRequest"><span class="badge">M</span>UpdateKeyAccessServerRequest</a>
                 </li>
               
                 <li>
                   <a href="#policy.kasregistry.UpdateKeyAccessServerResponse"><span class="badge">M</span>UpdateKeyAccessServerResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.UpdateKeyRequest"><span class="badge">M</span>UpdateKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.UpdateKeyResponse"><span class="badge">M</span>UpdateKeyResponse</a>
                 </li>
               
               
@@ -1494,7 +1538,7 @@
         
       
         <h3 id="policy.Condition">Condition</h3>
-        <p>A Condition defines a rule of <the value at the flattened 'selector value' location> <operator> <subject external values></p>
+        <p>A Condition defines a rule of <the value at the flattened 'selector value'</p><p>location> <operator> <subject external values></p>
 
         
           <table class="field-table">
@@ -1507,7 +1551,8 @@
                   <td>subject_external_selector_value</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>a selector for a field value on a flattened Entity Representation (such as from idP/LDAP) </p></td>
+                  <td><p>a selector for a field value on a flattened Entity Representation (such as
+from idP/LDAP) </p></td>
                 </tr>
               
                 <tr>
@@ -1521,7 +1566,9 @@
                   <td>subject_external_values</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
-                  <td><p>list of comparison values for the result of applying the subject_external_selector_value on a flattened Entity Representation (Subject), evaluated by the operator </p></td>
+                  <td><p>list of comparison values for the result of applying the
+subject_external_selector_value on a flattened Entity Representation
+(Subject), evaluated by the operator </p></td>
                 </tr>
               
             </tbody>
@@ -1591,7 +1638,7 @@
                   <td><a href="#policy.KasPublicKeyAlgEnum">KasPublicKeyAlgEnum</a></td>
                   <td></td>
                   <td><p>A known algorithm type with any additional parameters encoded.
-To start, these may be `rsa:2048` for encrypting ZTDF files and 
+To start, these may be `rsa:2048` for encrypting ZTDF files and
 `ec:secp256r1` for nanoTDF, but more formats may be added as needed. </p></td>
                 </tr>
               
@@ -1617,6 +1664,51 @@ To start, these may be `rsa:2048` for encrypting ZTDF files and
                   <td><a href="#policy.KasPublicKey">KasPublicKey</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.Key">Key</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>public_key</td>
+                  <td><a href="#policy.KasPublicKey">KasPublicKey</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas</td>
+                  <td><a href="#policy.KeyAccessServer">KeyAccessServer</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
                 </tr>
               
             </tbody>
@@ -1700,7 +1792,8 @@ Unique name of the KAS instance </p></td>
                   <td>name</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>used to partition Attribute Definitions, support by namespace AuthN and enable federation </p></td>
+                  <td><p>used to partition Attribute Definitions, support by namespace AuthN and
+enable federation </p></td>
                 </tr>
               
                 <tr>
@@ -1770,7 +1863,7 @@ Unique name of the KAS instance </p></td>
         
       
         <h3 id="policy.ResourceMapping">ResourceMapping</h3>
-        <p>Resource Mappings (aka Access Control Resource Encodings aka ACRE) are structures supporting the mapping of Resources and Attribute Values</p>
+        <p>Resource Mappings (aka Access Control Resource Encodings aka ACRE) are</p><p>structures supporting the mapping of Resources and Attribute Values</p>
 
         
           <table class="field-table">
@@ -1822,7 +1915,7 @@ Unique name of the KAS instance </p></td>
         
       
         <h3 id="policy.ResourceMappingGroup">ResourceMappingGroup</h3>
-        <p>Resource Mapping Groups are namespaced collections of Resource Mappings associated under a common group name.</p>
+        <p>Resource Mapping Groups are namespaced collections of Resource Mappings</p><p>associated under a common group name.</p>
 
         
           <table class="field-table">
@@ -1849,7 +1942,8 @@ Unique name of the KAS instance </p></td>
                   <td>name</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>the common name for the group of resource mappings, which must be unique per namespace </p></td>
+                  <td><p>the common name for the group of resource mappings, which must be unique
+per namespace </p></td>
                 </tr>
               
                 <tr>
@@ -1867,7 +1961,7 @@ Unique name of the KAS instance </p></td>
         
       
         <h3 id="policy.SubjectConditionSet">SubjectConditionSet</h3>
-        <p>A container for multiple Subject Sets, each containing Condition Groups, each containing Conditions. Multiple Subject Sets in a SubjectConditionSet</p><p>are evaluated with AND logic. As each Subject Mapping has only one Attribute Value, the SubjectConditionSet is reusable across multiple</p><p>Subject Mappings / Attribute Values and is an independent unit.</p>
+        <p>A container for multiple Subject Sets, each containing Condition Groups, each</p><p>containing Conditions. Multiple Subject Sets in a SubjectConditionSet are</p><p>evaluated with AND logic. As each Subject Mapping has only one Attribute</p><p>Value, the SubjectConditionSet is reusable across multiple Subject Mappings /</p><p>Attribute Values and is an independent unit.</p>
 
         
           <table class="field-table">
@@ -1905,7 +1999,7 @@ Unique name of the KAS instance </p></td>
         
       
         <h3 id="policy.SubjectMapping">SubjectMapping</h3>
-        <p>Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute value + action(s) combination</p><p>Example: Subjects in sets 1 and 2 are entitled attribute value http://wwww.example.org/attr/example/value/one</p><p>with permitted actions TRANSMIT and DECRYPT</p><p>{</p><p>"id": "someid",</p><p>"attribute_value": {example_one_attribute_value...},</p><p>"subject_condition_set": {"subject_sets":[{subject_set_1},{subject_set_2}]...},</p><p>"actions": [{"standard": "STANDARD_ACTION_DECRYPT"}", {"standard": "STANDARD_ACTION_TRANSMIT"}]</p><p>}</p>
+        <p>Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute</p><p>value + action(s) combination</p><p>Example: Subjects in sets 1 and 2 are entitled attribute value</p><p>http://wwww.example.org/attr/example/value/one with permitted actions</p><p>TRANSMIT and DECRYPT</p><p>{</p><p>"id": "someid",</p><p>"attribute_value": {example_one_attribute_value...},</p><p>"subject_condition_set":</p><p>{"subject_sets":[{subject_set_1},{subject_set_2}]...}, "actions":</p><p>[{"standard": "STANDARD_ACTION_DECRYPT"}", {"standard":</p><p>"STANDARD_ACTION_TRANSMIT"}]</p><p>}</p>
 
         
           <table class="field-table">
@@ -1957,7 +2051,7 @@ Unique name of the KAS instance </p></td>
         
       
         <h3 id="policy.SubjectProperty">SubjectProperty</h3>
-        <p>A property of a Subject/Entity as its selector expression -> value result pair. This would mirror external user attributes retrieved</p><p>from an authoritative source such as an IDP (Identity Provider) or User Store. Examples include such ADFS/LDAP, OKTA, etc.</p><p>For now, a valid property must contain both a selector expression & a resulting value.</p><p>The external_selector_value is a specifier to select a value from a flattened external representation of an Entity (such as from idP/LDAP),</p><p>and the external_value is the value selected by the external_selector_value on that Entity Representation (Subject Context). These mirror the Condition.</p>
+        <p>A property of a Subject/Entity as its selector expression -> value result</p><p>pair. This would mirror external user attributes retrieved from an</p><p>authoritative source such as an IDP (Identity Provider) or User Store.</p><p>Examples include such ADFS/LDAP, OKTA, etc. For now, a valid property must</p><p>contain both a selector expression & a resulting value.</p><p>The external_selector_value is a specifier to select a value from a flattened</p><p>external representation of an Entity (such as from idP/LDAP), and the</p><p>external_value is the value selected by the external_selector_value on that</p><p>Entity Representation (Subject Context). These mirror the Condition.</p>
 
         
           <table class="field-table">
@@ -2116,7 +2210,7 @@ Unique name of the KAS instance </p></td>
         </table>
       
         <h3 id="policy.AttributeRuleTypeEnum">AttributeRuleTypeEnum</h3>
-        <p>buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package</p>
+        <p>buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't</p><p>violated when users add new enum values to an enum in a given package</p>
         <table class="enum-table">
           <thead>
             <tr><td>Name</td><td>Number</td><td>Description</td></tr>
@@ -2151,7 +2245,7 @@ Unique name of the KAS instance </p></td>
         </table>
       
         <h3 id="policy.ConditionBooleanTypeEnum">ConditionBooleanTypeEnum</h3>
-        <p>buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package</p>
+        <p>buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't</p><p>violated when users add new enum values to an enum in a given package</p>
         <table class="enum-table">
           <thead>
             <tr><td>Name</td><td>Number</td><td>Description</td></tr>
@@ -2209,7 +2303,7 @@ Unique name of the KAS instance </p></td>
         </table>
       
         <h3 id="policy.SubjectMappingOperatorEnum">SubjectMappingOperatorEnum</h3>
-        <p>buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't violated when users add new enum values to an enum in a given package</p>
+        <p>buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't</p><p>violated when users add new enum values to an enum in a given package</p>
         <table class="enum-table">
           <thead>
             <tr><td>Name</td><td>Number</td><td>Description</td></tr>
@@ -2231,7 +2325,8 @@ Unique name of the KAS instance </p></td>
               <tr>
                 <td>SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN</td>
                 <td>2</td>
-                <td><p>operator that returns true if a value is not in a list that is matched by string</p></td>
+                <td><p>operator that returns true if a value is not in a list that is matched by
+string</p></td>
               </tr>
             
               <tr>
@@ -5245,6 +5340,68 @@ Attribute &lt;&gt; Key Access Server RPCs
 
         
       
+        <h3 id="policy.kasregistry.CreateKeyRequest">CreateKeyRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>kas_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.KasPublicKey">policy.KasPublicKey</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.CreateKeyResponse">CreateKeyResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.Key">policy.Key</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.kasregistry.DeleteKeyAccessServerRequest">DeleteKeyAccessServerRequest</h3>
         <p></p>
 
@@ -5293,6 +5450,54 @@ Attribute &lt;&gt; Key Access Server RPCs
 
         
       
+        <h3 id="policy.kasregistry.DeleteKeyRequest">DeleteKeyRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.DeleteKeyResponse">DeleteKeyResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.Key">policy.Key</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.kasregistry.GetKeyAccessServerRequest">GetKeyAccessServerRequest</h3>
         <p></p>
 
@@ -5330,6 +5535,54 @@ Attribute &lt;&gt; Key Access Server RPCs
                 <tr>
                   <td>key_access_server</td>
                   <td><a href="#policy.KeyAccessServer">policy.KeyAccessServer</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.GetKeyRequest">GetKeyRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.GetKeyResponse">GetKeyResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.Key">policy.Key</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -5418,7 +5671,7 @@ Attribute &lt;&gt; Key Access Server RPCs
         
       
         <h3 id="policy.kasregistry.ListKeyAccessServerGrantsRequest">ListKeyAccessServerGrantsRequest</h3>
-        <p>LIST of KAS Grants returns flat response of grants to all policy objects. It does not</p><p>employ selectors for grants to specific policy objects or build the attribute tree relation.</p><p>If grants to a known namespace, attribute, or value are needed, use the respective</p><p>GET request to the specific policy object.</p>
+        <p>LIST of KAS Grants returns flat response of grants to all policy objects. It</p><p>does not employ selectors for grants to specific policy objects or build the</p><p>attribute tree relation. If grants to a known namespace, attribute, or value</p><p>are needed, use the respective GET request to the specific policy object.</p>
 
         
           <table class="field-table">
@@ -5433,7 +5686,8 @@ Attribute &lt;&gt; Key Access Server RPCs
                   <td></td>
                   <td><p>Optional
 Filter LIST by ID of a registered Key Access Server.
-If neither is provided, grants from all registered KASs to policy attribute objects are returned. </p></td>
+If neither is provided, grants from all registered KASs to policy attribute
+objects are returned. </p></td>
                 </tr>
               
                 <tr>
@@ -5442,7 +5696,8 @@ If neither is provided, grants from all registered KASs to policy attribute obje
                   <td></td>
                   <td><p>Optional
 Filter LIST by URI of a registered Key Access Server.
-If none is provided, grants from all registered KASs to policy attribute objects are returned. </p></td>
+If none is provided, grants from all registered KASs to policy attribute
+objects are returned. </p></td>
                 </tr>
               
                 <tr>
@@ -5451,7 +5706,8 @@ If none is provided, grants from all registered KASs to policy attribute objects
                   <td></td>
                   <td><p>Optional
 Filter LIST by name of a registered Key Access Server.
-If none are provided, grants from all registered KASs to policy attribute objects are returned. </p></td>
+If none are provided, grants from all registered KASs to policy attribute
+objects are returned. </p></td>
                 </tr>
               
                 <tr>
@@ -5554,6 +5810,68 @@ If none are provided, grants from all registered KASs to policy attribute object
 
         
       
+        <h3 id="policy.kasregistry.ListKeysRequest">ListKeysRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>kas_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.ListKeysResponse">ListKeysResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>keys</td>
+                  <td><a href="#policy.Key">policy.Key</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.kasregistry.UpdateKeyAccessServerRequest">UpdateKeyAccessServerRequest</h3>
         <p></p>
 
@@ -5638,6 +5956,45 @@ Common metadata </p></td>
 
         
       
+        <h3 id="policy.kasregistry.UpdateKeyRequest">UpdateKeyRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Optional
+Common metadata </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata_update_behavior</td>
+                  <td><a href="#common.MetadataUpdateEnum">common.MetadataUpdateEnum</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.UpdateKeyResponse">UpdateKeyResponse</h3>
+        <p></p>
+
+        
+
+        
+      
 
       
 
@@ -5691,6 +6048,41 @@ Common metadata </p></td>
                 <td>ListKeyAccessServerGrants</td>
                 <td><a href="#policy.kasregistry.ListKeyAccessServerGrantsRequest">ListKeyAccessServerGrantsRequest</a></td>
                 <td><a href="#policy.kasregistry.ListKeyAccessServerGrantsResponse">ListKeyAccessServerGrantsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CreateKey</td>
+                <td><a href="#policy.kasregistry.CreateKeyRequest">CreateKeyRequest</a></td>
+                <td><a href="#policy.kasregistry.CreateKeyResponse">CreateKeyResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetKey</td>
+                <td><a href="#policy.kasregistry.GetKeyRequest">GetKeyRequest</a></td>
+                <td><a href="#policy.kasregistry.GetKeyResponse">GetKeyResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ListKeys</td>
+                <td><a href="#policy.kasregistry.ListKeysRequest">ListKeysRequest</a></td>
+                <td><a href="#policy.kasregistry.ListKeysResponse">ListKeysResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>UpdateKey</td>
+                <td><a href="#policy.kasregistry.UpdateKeyRequest">UpdateKeyRequest</a></td>
+                <td><a href="#policy.kasregistry.UpdateKeyResponse">UpdateKeyResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>DeleteKey</td>
+                <td><a href="#policy.kasregistry.DeleteKeyRequest">DeleteKeyRequest</a></td>
+                <td><a href="#policy.kasregistry.DeleteKeyResponse">DeleteKeyResponse</a></td>
                 <td><p></p></td>
               </tr>
             

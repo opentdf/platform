@@ -259,3 +259,115 @@ func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasreg
 		},
 	}, nil
 }
+
+func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyRequest) (*kasregistry.CreateKeyResponse, error) {
+	kasID := r.GetKasId()
+	key := r.GetKey()
+
+	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := c.Queries.CreateKey(ctx, CreateKeyParams{
+		KeyAccessServerID: kasID,
+		KeyID:             key.GetKid(),
+		Alg:               key.GetAlg().String(),
+		PublicKey:         key.GetPem(),
+		Metadata:          metadataJSON,
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return &kasregistry.CreateKeyResponse{
+		Key: &policy.Key{
+			Id:       id,
+			Metadata: metadata,
+			PublicKey: &policy.KasPublicKey{
+				Kid: key.GetKid(),
+				Alg: key.GetAlg(),
+				Pem: key.GetPem(),
+			},
+		},
+	}, nil
+}
+
+func (c PolicyDBClient) GetKey(ctx context.Context, r *kasregistry.GetKeyRequest) (*kasregistry.GetKeyResponse, error) {
+	metadata := new(common.Metadata)
+
+	keyID := r.GetId()
+	key, err := c.Queries.GetKey(ctx, keyID)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	err = unmarshalMetadata(key.Metadata, metadata)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return &kasregistry.GetKeyResponse{
+		Key: &policy.Key{
+			Id:       keyID,
+			Metadata: metadata,
+			PublicKey: &policy.KasPublicKey{
+				Kid: key.KeyID,
+				Alg: policy.KasPublicKeyAlgEnum(policy.KasPublicKeyAlgEnum_value[key.Alg]),
+				Pem: key.PublicKey,
+			},
+		},
+	}, nil
+}
+
+func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysRequest) (*kasregistry.ListKeysResponse, error) {
+	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > maxLimit {
+		return nil, db.ErrListLimitTooLarge
+	}
+
+	params := ListKeysParams{
+		KasID:   r.GetKasId(),
+		KasUri:  r.GetKasUri(),
+		KasName: r.GetKasName(),
+		Offset:  offset,
+		Limit:   limit,
+	}
+	listRows, err := c.Queries.ListKeys(ctx, params)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	keys := make([]*policy.Key, len(listRows))
+	for i, key := range listRows {
+		metadata := new(common.Metadata)
+		err := unmarshalMetadata(key.Metadata, metadata)
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		keys[i] = &policy.Key{
+			Id:       key.ID,
+			Metadata: metadata,
+			PublicKey: &policy.KasPublicKey{
+				Kid: key.KeyID,
+				Alg: policy.KasPublicKeyAlgEnum(policy.KasPublicKeyAlgEnum_value[key.Alg]),
+				Pem: key.PublicKey,
+			},
+		}
+	}
+	var total int32
+	var nextOffset int32
+	if len(listRows) > 0 {
+		total = int32(listRows[0].Total)
+		nextOffset = getNextOffset(offset, limit, total)
+	}
+	return &kasregistry.ListKeysResponse{
+		Keys: keys,
+		Pagination: &policy.PageResponse{
+			CurrentOffset: params.Offset,
+			Total:         total,
+			NextOffset:    nextOffset,
+		},
+	}, nil
+}

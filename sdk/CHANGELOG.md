@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.23](https://github.com/opentdf/platform/compare/sdk/v0.3.22...sdk/v0.3.23) (2024-11-26)
+
+
+### Features
+
+* **core:** Introduce ERS mode, ability to connect to remote ERS ([#1735](https://github.com/opentdf/platform/issues/1735)) ([a118316](https://github.com/opentdf/platform/commit/a11831694302114a5d96ac7c6adb4ed55ceff80e))
+
 ## [0.3.22](https://github.com/opentdf/platform/compare/sdk/v0.3.21...sdk/v0.3.22) (2024-11-25)
 
 

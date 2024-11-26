@@ -13,9 +13,12 @@ import (
 )
 
 var (
-	platformEndpoint  string
-	clientCredentials string
-	tokenEndpoint     string
+	platformEndpoint       string
+	clientCredentials      string
+	tokenEndpoint          string
+	storeCollectionHeaders bool
+	insecurePlaintextConn  bool
+	insecureSkipVerify     bool
 )
 
 var ExamplesCmd = &cobra.Command{
@@ -24,14 +27,27 @@ var ExamplesCmd = &cobra.Command{
 
 func init() {
 	log.SetFlags(log.LstdFlags | log.Llongfile)
-	ExamplesCmd.PersistentFlags().StringVarP(&clientCredentials, "creds", "", "opentdf-sdk:secret", "client id:secret credentials")
-	ExamplesCmd.PersistentFlags().StringVarP(&platformEndpoint, "platformEndpoint", "e", "localhost:8080", "Platform Endpoint")
-	ExamplesCmd.PersistentFlags().StringVarP(&tokenEndpoint, "tokenEndpoint", "t", "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token", "OAuth token endpoint")
+	f := ExamplesCmd.PersistentFlags()
+	f.StringVarP(&clientCredentials, "creds", "", "opentdf-sdk:secret", "client id:secret credentials")
+	f.StringVarP(&platformEndpoint, "platformEndpoint", "e", "localhost:8080", "Platform Endpoint")
+	f.StringVarP(&tokenEndpoint, "tokenEndpoint", "t", "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token", "OAuth token endpoint")
+	f.BoolVar(&storeCollectionHeaders, "storeCollectionHeaders", true, "Store collection headers")
+	f.BoolVar(&insecurePlaintextConn, "insecurePlaintextConn", false, "Use insecure plaintext connection")
+	f.BoolVar(&insecureSkipVerify, "insecureSkipVerify", false, "Skip server certificate verification")
 }
 
 func newSDK() (*sdk.SDK, error) {
 	resolver.SetDefaultScheme("passthrough")
-	opts := []sdk.Option{sdk.WithStoreCollectionHeaders()}
+	opts := []sdk.Option{}
+	if insecurePlaintextConn {
+		opts = append(opts, sdk.WithInsecurePlaintextConn())
+	}
+	if insecureSkipVerify {
+		opts = append(opts, sdk.WithInsecureSkipVerifyConn())
+	}
+	if storeCollectionHeaders {
+		opts = append(opts, sdk.WithStoreCollectionHeaders())
+	}
 	if clientCredentials != "" {
 		i := strings.Index(clientCredentials, ":")
 		if i < 0 {

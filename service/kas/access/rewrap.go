@@ -309,8 +309,6 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 		var span trace.Span
 		ctx, span = p.Tracer.Start(ctx, "rewrap-tdf3")
 		defer span.End()
-	} else {
-		p.Logger.DebugContext(ctx, "tdf3Rewrap: no tracer")
 	}
 
 	var kidsToCheck []string
@@ -405,8 +403,6 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		var span trace.Span
 		ctx, span = p.Tracer.Start(ctx, "rewrap-nanotdf")
 		defer span.End()
-	} else {
-		p.Logger.DebugContext(ctx, "nanoTDFRewrap: no tracer")
 	}
 
 	headerReader := bytes.NewReader(body.KeyAccess.Header)

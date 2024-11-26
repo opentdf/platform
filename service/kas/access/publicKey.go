@@ -76,8 +76,6 @@ func (p Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Publ
 		var span trace.Span
 		ctx, span = p.Tracer.Start(ctx, "publickey")
 		defer span.End()
-	} else {
-		p.Logger.DebugContext(ctx, "PublicKey: no tracer")
 	}
 
 	algorithm := req.Msg.GetAlgorithm()

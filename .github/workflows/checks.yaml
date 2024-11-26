@@ -213,7 +213,7 @@ jobs:
       - name: run tdf3 benchmark tests
         run: ./examples/examples benchmark --count 5000 --concurrent 50
       - name: run nanotdf benchmark tests
-        run: ./examples/examples benchmark --tdf nanotdf --count 5000 --concurrent 50
+        run: ./examples/examples benchmark --storeCollectionHeaders false --tdf nanotdf --count 5000 --concurrent 50
       - name: collect the metrics from the benchmark tests
         run: ./examples/examples metrics
 

@@ -31,7 +31,7 @@ func init() {
 	f.StringVarP(&clientCredentials, "creds", "", "opentdf-sdk:secret", "client id:secret credentials")
 	f.StringVarP(&platformEndpoint, "platformEndpoint", "e", "localhost:8080", "Platform Endpoint")
 	f.StringVarP(&tokenEndpoint, "tokenEndpoint", "t", "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token", "OAuth token endpoint")
-	f.BoolVar(&storeCollectionHeaders, "storeCollectionHeaders", true, "Store collection headers")
+	f.BoolVar(&storeCollectionHeaders, "storeCollectionHeaders", false, "Store collection headers")
 	f.BoolVar(&insecurePlaintextConn, "insecurePlaintextConn", false, "Use insecure plaintext connection")
 	f.BoolVar(&insecureSkipVerify, "insecureSkipVerify", false, "Skip server certificate verification")
 }

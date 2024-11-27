@@ -144,6 +144,8 @@ jobs:
       - run: test/service-start.bats
       - run: test/tdf-roundtrips.bats
       - run: test/policy-service.bats
+      - name: verify bultin casbin policy
+        run: test/builtin-casbin.bats
       - name: create roundtrip test data and run tests
         run: go test ./service/rttests -v
       - name: enable static entitlements rego policy
@@ -156,6 +158,8 @@ jobs:
       - run: sleep 30
       - name: validate custom entity rego policy
         run: test/rego/custom-entity.bats
+      - name: verify bultin casbin policy
+        run: test/builtin-casbin.bats
 
   image:
     name: image build

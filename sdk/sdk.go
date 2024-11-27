@@ -115,7 +115,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	if !cfg.ipc {
 		platformEndpoint, err = SanitizePlatformEndpoint(platformEndpoint)
 		if err != nil {
-			return nil, errors.Join(ErrPlatformEndpointMalformed, err)
+			return nil, fmt.Errorf("%w [%v]: %w", ErrPlatformEndpointMalformed, platformEndpoint, err)
 		}
 	}
 

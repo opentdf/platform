@@ -1,13 +1,16 @@
+# configures the platform to run only the KAS and well known service
+# build off this config file if you intend on running a (or multiple) seperate kas instance(s)
+mode: kas
+sdk_config:
+  core:
+    endpoint: http://localhost:8080
+    plaintext: true
+  client_id: opentdf
+  client_secret: secret
 logger:
   level: debug
   type: text
   output: stdout
-# DB and Server configurations are defaulted for local development
-# db:
-#   host: localhost
-#   port: 5432
-#   user: postgres
-#   password: changeme
 services:
   kas:
     keyring:
@@ -21,22 +24,6 @@ services:
       - kid: r1
         alg: rsa:2048
         legacy: true
-  entityresolution:
-    log_level: info
-    url: http://localhost:8888/auth
-    clientid: 'tdf-entity-resolution'
-    clientsecret: 'secret'
-    realm: 'opentdf'
-    legacykeycloak: true
-    inferid:
-      from:
-        email: true
-        username: true
-  # policy is enabled by default in mode 'all'
-  # policy:
-  #   enabled: true
-  # list_request_limit_default: 1000
-  # list_request_limit_max: 2500
 server:
   tls:
     enabled: false
@@ -49,18 +36,20 @@ server:
     audience: 'http://localhost:8080'
     issuer: http://localhost:8888/auth/realms/opentdf
     policy:
+      ## Default policy for all requests
+      default: #"role:standard"
       ## Dot notation is used to access nested claims (i.e. realm_access.roles)
-      # Claim that represents the user (i.e. email)
-      username_claim: # preferred_username
-      # That claim to access groups (i.e. realm_access.roles)
-      groups_claim: # realm_access.roles
-      ## Extends the builtin policy
-      extension: |
-        g, opentdf-admin, role:admin
-        g, opentdf-standard, role:standard
-      ## Custom policy that overrides builtin policy (see examples https://github.com/casbin/casbin/tree/master/examples)
+      claim: # realm_access.roles
+      ## Maps the external role to the opentdf role
+      ## Note: left side is used in the policy, right side is the external role
+      map:
+        # standard: opentdf-standard
+        # admin: opentdf-admin
+
+      ## Custom policy (see examples https://github.com/casbin/casbin/tree/master/examples)
       csv: #|
       #  p, role:admin, *, *, allow
+
       ## Custom model (see https://casbin.org/docs/syntax-for-models/)
       model: #|
       #  [request_definition]
@@ -118,4 +107,4 @@ server:
           alg: ec:secp256r1
           private: kas-ec-private.pem
           cert: kas-ec-cert.pem
-  port: 8080
+  port: 8181

@@ -34,8 +34,12 @@ Root level key `sdk_config`
 
 | Field    | Description  | Default  | Environment Variable |
 | -------- | -------------| -------- | -------------------- |
-| `endpoint` | The core platform endpoint to connect to |  | OPENTDF_SDK_CONFIG_ENDPOINT |
-| `plaintext` | Use a plaintext grpc connection | `false` | OPENTDF_SDK_CONFIG_PLAINTEXT |
+| `core.endpoint` | The core platform endpoint to connect to |  | OPENTDF_SDK_CONFIG_ENDPOINT |
+| `core.plaintext` | Use a plaintext grpc connection | `false` | OPENTDF_SDK_CONFIG_PLAINTEXT |
+| `core.insecure` | Use an insecure tls connection | `false` |  |
+| `entityresolution.endpoint` | The entityresolution endpoint to connect to |  |  |
+| `entityresolution.plaintext` | Use a plaintext ERS grpc connection | `false` |  |
+| `entityresolution.insecure` | Use an insecure tls connection | `false` |  |
 | `client_id` | OAuth client id |  | OPENTDF_SDK_CONFIG_CLIENT_ID |
 | `client_secret` |  The clients credentials | | OPENTDF_SDK_CONFIG_CLIENT_SECRET |
 
@@ -243,11 +247,12 @@ OpenTDF uses Casbin to manage authorization policies. This document provides an 
 
 #### Key Aspects of Authorization Configuration
 
-1. **Default Role**: The default role assigned to an authorized user if no specific role is found.
-2. **Claim**: The claim in the OIDC token that should be used to map roles.
-3. **Map**: Mapping between policy roles and IdP roles.
-4. **CSV**: The authorization policy in CSV format.
-5. **Model**: The Casbin policy model.
+2. **Username Claim**: The claim in the OIDC token that should be used to extract a username.
+3. **Group Claim**: The claim in the OIDC token that should be used to find the group claims.
+4. **Map (Deprecated)**: Mapping between policy roles and IdP roles.
+4. **Extension**: Policy that will extend the builtin policy
+4. **CSV**: The authorization policy in CSV format. This will override the builtin policy.
+5. **Model**: The Casbin policy model. This should only be set if you have a deep understanding of how casbin works.
 
 #### Configuration in opentdf-example.yaml
 
@@ -263,19 +268,34 @@ server:
     audience: 'http://localhost:8080'
     issuer: http://keycloak:8888/auth/realms/opentdf
     policy:
-      ## Default role for all requests
-      default: "role:standard"
       
+      ## Deprecated
       ## Dot notation is used to access nested claims (i.e. realm_access.roles)
       claim: "realm_access.roles"
+
+      ## Dot notation is used to access the username claim
+      username_claim: "email"
+
+      ## Dot notation is used to access the groups claim
+      group_claim: "realm_access.roles"
       
+      ## Deprecated: Use standard casbin policy groupings (g, <user/group>, <role>)
       ## Maps the external role to the OpenTDF role
       ## Note: left side is used in the policy, right side is the external role
       map:
         standard: opentdf-standard
         admin: opentdf-admin
 
+      ## Policy that will extend the builtin policy.
+      extension: |
+        p, role:admin, *, *, allow
+        p, role:standard, policy:attributes, read, allow
+        p, role:standard, policy:subject-mappings, read, allow
+        g, opentdf-admin, role:admin
+        g, alice@opentdf.io, role:standard
+
       ## Custom policy (see examples https://github.com/casbin/casbin/tree/master/examples)
+      ## This will overwrite the builtin policy. Use with caution. 
       csv: |
         p, role:admin, *, *, allow
         p, role:standard, policy:attributes, read, allow
@@ -286,6 +306,7 @@ server:
         p, role:unknown, kas.AccessService/Rewrap, *, allow
 
       ## Custom model (see https://casbin.org/docs/syntax-for-models/)
+      ## Avoid setting this unless you have a deep understanding of how casbin works. 
       model: |
         [request_definition]
         r = sub, res, act, obj
@@ -305,8 +326,7 @@ server:
 
 #### Role Permissions
 
-- **Org Admin**: Can read, write, and perform unsafe mutations.
-- **Admin**: Can read and write.
+- **Admin**: Can perform all operations.
 - **Standard User**: Can read.
 - **Public Endpoints**: Accessible without specific roles.
 

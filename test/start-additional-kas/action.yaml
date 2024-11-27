@@ -23,8 +23,7 @@ runs:
           <opentdf-dev.yaml >opentdf-${{ inputs.kas-name }}.yaml yq e '
             (.server.port = ${{ inputs.kas-port }})
             | (.mode = ["kas"])
-            | (.trace.enabled = false)
-            | (.sdk_config = {"endpoint":"http://localhost:8080","plaintext":true,"client_id":"opentdf","client_secret":"secret"})
+            | (.sdk_config = {"client_id":"opentdf","client_secret":"secret","core":{"endpoint":"http://localhost:8080","plaintext":true}})
           '
           && .github/scripts/watch.sh opentdf-${{ inputs.kas-name }}.yaml ./opentdf --config-file ./opentdf-${{ inputs.kas-name }}.yaml start
         wait-on: |

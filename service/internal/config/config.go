@@ -47,11 +47,11 @@ type Config struct {
 
 // SDKConfig represents the configuration for the SDK.
 type SDKConfig struct {
-	// Endpoint is the URL of the Core Platform endpoint.
-	Endpoint string `mapstructure:"endpoint" json:"endpoint"`
+	// Connection to the Core Platform
+	CorePlatformConnection Connection `mapstructure:"core" json:"core"`
 
-	// Plaintext specifies whether the SDK should use plaintext communication.
-	Plaintext bool `mapstructure:"plaintext" json:"plaintext" default:"false" validate:"boolean"`
+	// Connection to an ERS if not in the core platform
+	EntityResolutionConnection Connection `mapstructure:"entityresolution" json:"entityresolution"`
 
 	// ClientID is the client ID used for client credentials grant.
 	// It is required together with ClientSecret.
@@ -60,6 +60,17 @@ type SDKConfig struct {
 	// ClientSecret is the client secret used for client credentials grant.
 	// It is required together with ClientID.
 	ClientSecret string `mapstructure:"client_secret" json:"client_secret" validate:"required_with=ClientID"`
+}
+
+type Connection struct {
+	// Endpoint is the URL of the platform or service.
+	Endpoint string `mapstructure:"endpoint" json:"endpoint"`
+
+	// Plaintext specifies whether the SDK should use plaintext communication.
+	Plaintext bool `mapstructure:"plaintext" json:"plaintext" default:"false" validate:"boolean"`
+
+	// Insecure specifies whether the SDK should use insecure TLS communication.
+	Insecure bool `mapstructure:"insecure" json:"insecure" default:"false" validate:"boolean"`
 }
 
 type Error string
@@ -141,8 +152,14 @@ func (c *Config) LogValue() slog.Value {
 
 func (c SDKConfig) LogValue() slog.Value {
 	return slog.GroupValue(
-		slog.String("endpoint", c.Endpoint),
-		slog.Bool("plaintext", c.Plaintext),
+		slog.Group("core",
+			"endpoint", c.CorePlatformConnection.Endpoint,
+			"plaintext", c.CorePlatformConnection.Plaintext,
+			"insecure", c.CorePlatformConnection.Insecure),
+		slog.Group("entityresolution",
+			"endpoint", c.EntityResolutionConnection.Endpoint,
+			"plaintext", c.EntityResolutionConnection.Plaintext,
+			"insecure", c.EntityResolutionConnection.Insecure),
 		slog.String("client_id", c.ClientID),
 		slog.String("client_secret", "[REDACTED]"),
 	)

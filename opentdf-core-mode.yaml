@@ -1,4 +1,12 @@
+# configures the platform to startup without a KAS instances, without a built-in ERS instance, and without endpoint authentication
+# build off of this config file if you are running your ERS and KAS instances seperately or if you only need the policy features
 mode: core
+sdk_config:
+  entityresolution:
+    endpoint: http://localhost:8181
+    plaintext: true
+  client_id: opentdf
+  client_secret: secret
 logger:
   level: debug
   type: text
@@ -44,4 +52,4 @@ server:
     maxage: 3600
   grpc:
     reflectionEnabled: true # Default is false
-  port: 8080
+  port: 8383

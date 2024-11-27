@@ -1,3 +1,5 @@
+#!/usr/bin/env bats
+
 setup() {
     export GRPC_HOST=localhost
     export GRPC_PORT=8080

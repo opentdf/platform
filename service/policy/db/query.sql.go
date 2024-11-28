@@ -2248,13 +2248,14 @@ SELECT
         'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', scs.metadata->'labels', 'created_at', scs.created_at, 'updated_at', scs.updated_at)),
         'subject_sets', scs.condition
     ) AS subject_condition_set,
-    JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active) AS attribute_value,
+    JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active, 'fqn',fqns.fqn) AS attribute_value,
     counted.total
 FROM subject_mappings sm
 CROSS JOIN counted
 LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
+LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
-GROUP BY av.id, sm.id, scs.id, counted.total
+GROUP BY av.id, sm.id, scs.id, counted.total, fqns.fqn
 LIMIT $2
 OFFSET $1
 `
@@ -2290,13 +2291,14 @@ type ListSubjectMappingsRow struct {
 //	        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', scs.metadata->'labels', 'created_at', scs.created_at, 'updated_at', scs.updated_at)),
 //	        'subject_sets', scs.condition
 //	    ) AS subject_condition_set,
-//	    JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active) AS attribute_value,
+//	    JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active, 'fqn',fqns.fqn) AS attribute_value,
 //	    counted.total
 //	FROM subject_mappings sm
 //	CROSS JOIN counted
 //	LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
+//	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 //	LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
-//	GROUP BY av.id, sm.id, scs.id, counted.total
+//	GROUP BY av.id, sm.id, scs.id, counted.total, fqns.fqn
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) ListSubjectMappings(ctx context.Context, arg ListSubjectMappingsParams) ([]ListSubjectMappingsRow, error) {

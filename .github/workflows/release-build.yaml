@@ -57,16 +57,7 @@ jobs:
             type=match,pattern=service/v(\d.\d.\d),group=1,prefix=v
             type=match,pattern=service/v(\d.\d),group=1,prefix=v
           labels: |
-            org.opencontainers.image.title=OpenTDF Platform Service
-            org.opencontainers.image.description=Persistent data centric security that extends owner control wherever data travels
-            org.opencontainers.image.version=${{ steps.version.outputs.VERSION }}
-            org.opencontainers.image.created={{date 'iso8601'}}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.licenses=BSD-3-Clause-Clear
-            org.opencontainers.image.url=https://github.com/${{ github.repository }}
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.documentation=https://docs.opentdf.io
-            org.opencontainers.image.vendor=${{ github.repository_owner }}
 
       - name: Build and Push container images
         uses: docker/build-push-action@1a162644f9a7e87d8f4b053101d1d9a712edc18c

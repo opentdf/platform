@@ -14,10 +14,6 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
-      - name: Extract version
-        id: version
-        run: echo "VERSION=${GITHUB_REF#service/}" >> $GITHUB_OUTPUT
-
       - name: "Authenticate to Google Cloud (Push to Public registry)"
         id: "gcp-auth"
         uses: google-github-actions/auth@62cf5bd3e4211a0a0b51f2c6d6a37129d828611d

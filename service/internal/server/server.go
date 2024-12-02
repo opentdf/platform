@@ -379,6 +379,12 @@ func newConnectRPCIPC() (*ConnectRPC, error) {
 func newConnectRPC(c Config, a *auth.Authentication, logger *logger.Logger) (*ConnectRPC, error) {
 	interceptors := make([]connect.HandlerOption, 0)
 
+	if c.Auth.Enabled {
+		interceptors = append(interceptors, connect.WithInterceptors(a.ConnectUnaryServerInterceptor()))
+	} else {
+		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
+	}
+
 	// Add protovalidate interceptor
 	vaidationInterceptor, err := validate.NewInterceptor()
 	if err != nil {
@@ -386,12 +392,6 @@ func newConnectRPC(c Config, a *auth.Authentication, logger *logger.Logger) (*Co
 	}
 
 	interceptors = append(interceptors, connect.WithInterceptors(vaidationInterceptor, audit.ContextServerInterceptor()))
-
-	if c.Auth.Enabled {
-		interceptors = append(interceptors, connect.WithInterceptors(a.ConnectUnaryServerInterceptor()))
-	} else {
-		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
-	}
 
 	return &ConnectRPC{
 		Interceptors: interceptors,

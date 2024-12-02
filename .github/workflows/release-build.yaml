@@ -72,6 +72,7 @@ jobs:
           for tag in ${TAGS}; do
             images+="${tag}@${DIGEST} "
           done
+          # shellcheck disable=SC2086
           cosign sign --yes ${images}
 
       - name: Generate Reports

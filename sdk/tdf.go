@@ -20,6 +20,7 @@ import (
 )
 
 const (
+	sdkVersion              = "1.0.0"
 	maxFileSizeSupported    = 68719476736 // 64gb
 	defaultMimeType         = "application/octet-stream"
 	tdfAsZip                = "zip"
@@ -325,7 +326,7 @@ func (r *Reader) Manifest() Manifest {
 func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFConfig) error { //nolint:funlen,gocognit // Better readability keeping it as is
 	manifest := Manifest{}
 
-	version, err := ReadVersion()
+	version, err := ParseVersion(sdkVersion)
 	if err != nil {
 		return fmt.Errorf("ReadVersion failed:%w", err)
 	}

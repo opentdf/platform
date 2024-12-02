@@ -266,7 +266,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		"https://example.com/attr/Classification/value/X",
 	}
 
-	expectedTdfSize := int64(2095)
+	expectedTdfSize := int64(2058)
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
 	{
@@ -396,7 +396,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 			},
 			assertionVerificationKeys:    nil,
 			disableAssertionVerification: false,
-			expectedSize:                 2896,
+			expectedSize:                 2805,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -429,7 +429,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				DefaultKey: defaultKey,
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 2896,
+			expectedSize:                 2805,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -478,7 +478,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 3195,
+			expectedSize:                 3104,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -518,7 +518,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 2896,
+			expectedSize:                 2805,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -535,7 +535,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: true,
-			expectedSize:                 2302,
+			expectedSize:                 2238,
 		},
 	} {
 		expectedTdfSize := test.expectedSize
@@ -644,7 +644,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					SigningKey: defaultKey,
 				},
 			},
-			expectedSize: 2896,
+			expectedSize: 2805,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -692,7 +692,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					},
 				},
 			},
-			expectedSize: 3195,
+			expectedSize: 3104,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -726,7 +726,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 			assertionVerificationKeys: &AssertionVerificationKeys{
 				DefaultKey: defaultKey,
 			},
-			expectedSize: 2896,
+			expectedSize: 2805,
 		},
 	} {
 		expectedTdfSize := test.expectedSize

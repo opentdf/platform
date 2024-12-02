@@ -57,25 +57,38 @@ func (s *UnsafeService) UnsafeUpdateNamespace(ctx context.Context, req *connect.
 		ObjectID:   id,
 	}
 
-	original, err := s.dbClient.GetNamespace(ctx, id)
+	var (
+		original *policy.Namespace
+		updated  *policy.Namespace
+		err      error
+	)
+
+	err = s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		original, err = txClient.GetNamespace(ctx, id)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		updated, err = txClient.UnsafeUpdateNamespace(ctx, id, name)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		auditParams.Original = original
+		auditParams.Updated = updated
+
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.Namespace = &policy.Namespace{
+			Id: id,
+		}
+
+		return nil
+	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
-	}
-
-	updated, err := s.dbClient.UnsafeUpdateNamespace(ctx, id, name)
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", id), slog.String("namespace", name))
-	}
-
-	auditParams.Original = original
-	auditParams.Updated = updated
-
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.Namespace = &policy.Namespace{
-		Id: id,
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("namespace", req.Msg.String()))
 	}
 
 	return connect.NewResponse(rsp), nil
@@ -163,25 +176,38 @@ func (s *UnsafeService) UnsafeUpdateAttribute(ctx context.Context, req *connect.
 		ObjectID:   id,
 	}
 
-	original, err := s.dbClient.GetAttribute(ctx, id)
+	var (
+		original *policy.Attribute
+		updated  *policy.Attribute
+		err      error
+	)
+
+	err = s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		original, err = txClient.GetAttribute(ctx, id)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		updated, err = txClient.UnsafeUpdateAttribute(ctx, req.Msg)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		auditParams.Original = original
+		auditParams.Updated = updated
+
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.Attribute = &policy.Attribute{
+			Id: id,
+		}
+
+		return nil
+	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
-	}
-
-	updated, err := s.dbClient.UnsafeUpdateAttribute(ctx, req.Msg)
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", id), slog.String("attribute", req.Msg.String()))
-	}
-
-	auditParams.Original = original
-	auditParams.Updated = updated
-
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.Attribute = &policy.Attribute{
-		Id: id,
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("attribute", req.Msg.String()))
 	}
 
 	return connect.NewResponse(rsp), nil
@@ -269,26 +295,40 @@ func (s *UnsafeService) UnsafeUpdateAttributeValue(ctx context.Context, req *con
 		ObjectID:   id,
 	}
 
-	original, err := s.dbClient.GetAttributeValue(ctx, id)
+	var (
+		original *policy.Value
+		updated  *policy.Value
+		err      error
+	)
+
+	err = s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		original, err = txClient.GetAttributeValue(ctx, id)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		updated, err = txClient.UnsafeUpdateAttributeValue(ctx, req.Msg)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		auditParams.Original = original
+		auditParams.Updated = updated
+
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.Value = &policy.Value{
+			Id: id,
+		}
+
+		return nil
+	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("attribute_value", req.Msg.String()))
 	}
 
-	updated, err := s.dbClient.UnsafeUpdateAttributeValue(ctx, req.Msg)
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", id), slog.String("attribute_value", req.Msg.String()))
-	}
-
-	auditParams.Original = original
-	auditParams.Updated = updated
-
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.Value = &policy.Value{
-		Id: id,
-	}
 	return connect.NewResponse(rsp), nil
 }
 

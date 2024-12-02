@@ -200,17 +200,25 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 		ActionType: audit.ActionTypeCreate,
 	}
 
-	item, err := s.dbClient.CreateAttributeValue(ctx, req.Msg.GetAttributeId(), req.Msg)
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		item, err := txClient.CreateAttributeValue(ctx, req.Msg.GetAttributeId(), req.Msg)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		auditParams.ObjectID = item.GetId()
+		auditParams.Original = item
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.Value = item
+
+		return nil
+	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("attributeId", req.Msg.GetAttributeId()), slog.String("value", req.Msg.String()))
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("value", req.Msg.String()))
 	}
 
-	auditParams.ObjectID = item.GetId()
-	auditParams.Original = item
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.Value = item
 	return connect.NewResponse(rsp), nil
 }
 

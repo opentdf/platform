@@ -57,20 +57,14 @@ func (s *UnsafeService) UnsafeUpdateNamespace(ctx context.Context, req *connect.
 		ObjectID:   id,
 	}
 
-	var (
-		original *policy.Namespace
-		updated  *policy.Namespace
-		err      error
-	)
-
-	err = s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		original, err = txClient.GetNamespace(ctx, id)
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		original, err := txClient.GetNamespace(ctx, id)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
-		updated, err = txClient.UnsafeUpdateNamespace(ctx, id, name)
+		updated, err := txClient.UnsafeUpdateNamespace(ctx, id, name)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
@@ -176,20 +170,14 @@ func (s *UnsafeService) UnsafeUpdateAttribute(ctx context.Context, req *connect.
 		ObjectID:   id,
 	}
 
-	var (
-		original *policy.Attribute
-		updated  *policy.Attribute
-		err      error
-	)
-
-	err = s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		original, err = txClient.GetAttribute(ctx, id)
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		original, err := txClient.GetAttribute(ctx, id)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
-		updated, err = txClient.UnsafeUpdateAttribute(ctx, req.Msg)
+		updated, err := txClient.UnsafeUpdateAttribute(ctx, req.Msg)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
@@ -295,20 +283,14 @@ func (s *UnsafeService) UnsafeUpdateAttributeValue(ctx context.Context, req *con
 		ObjectID:   id,
 	}
 
-	var (
-		original *policy.Value
-		updated  *policy.Value
-		err      error
-	)
-
-	err = s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		original, err = txClient.GetAttributeValue(ctx, id)
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		original, err := txClient.GetAttributeValue(ctx, id)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
-		updated, err = txClient.UnsafeUpdateAttributeValue(ctx, req.Msg)
+		updated, err := txClient.UnsafeUpdateAttributeValue(ctx, req.Msg)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err

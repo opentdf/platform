@@ -414,7 +414,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_NoPagination_Succeeds() 
 		}
 		if sm.GetId() == fixture3.ID {
 			assertEqual(sm, fixture3)
-			s.Equal("https://example.com/attr/attr2/value/value1", sm.GetAttributeValue().GetFqn())
+			s.Equal("https://example.com/attr/attr1/value/value1", sm.GetAttributeValue().GetFqn())
 			found3 = true
 		}
 	}

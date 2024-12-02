@@ -74,6 +74,7 @@ type SDK struct {
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	var (
 		platformConn *grpc.ClientConn // Connection to the platform
+		ersConn      *grpc.ClientConn // Connection to ERS (possibly remote)
 		err          error
 	)
 
@@ -114,7 +115,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	if !cfg.ipc {
 		platformEndpoint, err = SanitizePlatformEndpoint(platformEndpoint)
 		if err != nil {
-			return nil, errors.Join(ErrPlatformEndpointMalformed, err)
+			return nil, fmt.Errorf("%w [%v]: %w", ErrPlatformEndpointMalformed, platformEndpoint, err)
 		}
 	}
 
@@ -169,6 +170,12 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		}
 	}
 
+	if cfg.entityResolutionConn != nil {
+		ersConn = cfg.entityResolutionConn
+	} else {
+		ersConn = platformConn
+	}
+
 	return &SDK{
 		config:                  *cfg,
 		collectionStore:         cfg.collectionStore,
@@ -183,7 +190,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		Unsafe:                  unsafe.NewUnsafeServiceClient(platformConn),
 		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(platformConn),
 		Authorization:           authorization.NewAuthorizationServiceClient(platformConn),
-		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(platformConn),
+		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(ersConn),
 		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(platformConn),
 	}, nil
 }

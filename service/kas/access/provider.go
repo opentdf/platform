@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -25,6 +26,7 @@ type Provider struct {
 	Logger         *logger.Logger
 	Config         *serviceregistry.ServiceConfig
 	KASConfig
+	trace.Tracer
 }
 
 type KASConfig struct {

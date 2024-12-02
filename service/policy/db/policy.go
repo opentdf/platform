@@ -37,7 +37,7 @@ func NewClient(c *db.Client, logger *logger.Logger, configuredListLimitMax, conf
 func (c *PolicyDBClient) RunInTx(ctx context.Context, query func(txClient *PolicyDBClient) error) error {
 	tx, err := c.Client.Pgx.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to begin DB transaction: %w", err)
+		return fmt.Errorf("%w: %w", db.ErrTxBeginFailed, err)
 	}
 
 	txClient := &PolicyDBClient{c.Client, c.logger, c.Queries.WithTx(tx), c.listCfg}
@@ -48,13 +48,17 @@ func (c *PolicyDBClient) RunInTx(ctx context.Context, query func(txClient *Polic
 
 		if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
 			// this should never happen, but if it does, we want to know about it
-			return fmt.Errorf("failed to rollback DB transaction for [%w]: %w", err, rollbackErr)
+			return fmt.Errorf("%w, transaction [%w]: %w", db.ErrTxRollbackFailed, err, rollbackErr)
 		}
 
 		return err
 	}
 
-	return tx.Commit(ctx)
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("%w: %w", db.ErrTxCommitFailed, err)
+	}
+
+	return nil
 }
 
 func getDBStateTypeTransformedEnum(state common.ActiveStateEnum) transformedState {

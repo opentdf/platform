@@ -22,6 +22,9 @@ var (
 	ErrUUIDInvalid               = errors.New("ErrUUIDInvalid: value not a valid UUID")
 	ErrMissingValue              = errors.New("ErrMissingValue: value must be included")
 	ErrListLimitTooLarge         = errors.New("ErrListLimitTooLarge: requested limit greater than configured maximum")
+	ErrTxBeginFailed             = errors.New("ErrTxBeginFailed: failed to begin DB transaction")
+	ErrTxRollbackFailed          = errors.New("ErrTxRollbackFailed: failed to rollback DB transaction")
+	ErrTxCommitFailed            = errors.New("ErrTxCommitFailed: failed to commit DB transaction")
 )
 
 // Get helpful error message for PostgreSQL violation

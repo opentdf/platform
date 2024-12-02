@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.31](https://github.com/opentdf/platform/compare/service/v0.4.30...service/v0.4.31) (2024-12-02)
+
+
+### Features
+
+* **kas:** collect metrics ([#1702](https://github.com/opentdf/platform/issues/1702)) ([def28d1](https://github.com/opentdf/platform/commit/def28d1984b0b111a07330a3eb59c1285206062d))
+* **policy:** 1500 Attribute create with Values (one RPC Call) should employ a db transaction ([#1778](https://github.com/opentdf/platform/issues/1778)) ([90edbde](https://github.com/opentdf/platform/commit/90edbde92ea63ad488b9a6de09fcffbc7a4380de))
+
+
+### Bug Fixes
+
+* **core:** move auth interceptor to top of chain ([#1790](https://github.com/opentdf/platform/issues/1790)) ([f9f5a75](https://github.com/opentdf/platform/commit/f9f5a7545827c5d8cef7f536963e4f794a7f3f6c))
+* **policy:** return fqns in list subject mappings ([#1796](https://github.com/opentdf/platform/issues/1796)) ([c0a9dda](https://github.com/opentdf/platform/commit/c0a9dda975a9384cea8efc413d567edce13f753f))
+
 ## [0.4.30](https://github.com/opentdf/platform/compare/service/v0.4.29...service/v0.4.30) (2024-11-27)
 
 

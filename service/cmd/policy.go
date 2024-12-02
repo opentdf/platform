@@ -44,21 +44,29 @@ var (
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
 
-			res := dbClient.AttrFqnReindex(context.Background())
-			cmd.Print("Namespace FQNs reindexed:\n")
-			for _, r := range res.Namespaces {
-				cmd.Printf("\t%s: %s\n", r.ID, r.Fqn)
-			}
+			ctx := context.Background()
 
-			cmd.Print("Attribute FQNs reindexed:\n")
-			for _, r := range res.Attributes {
-				cmd.Printf("\t%s: %s\n", r.ID, r.Fqn)
-			}
+			// ignore error as dbClient.AttrFqnReindex will panic on error
+			_ = dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+				res := txClient.AttrFqnReindex(ctx)
 
-			cmd.Print("Attribute Value FQNs reindexed:\n")
-			for _, r := range res.Values {
-				cmd.Printf("\t%s: %s\n", r.ID, r.Fqn)
-			}
+				cmd.Print("Namespace FQNs reindexed:\n")
+				for _, r := range res.Namespaces {
+					cmd.Printf("\t%s: %s\n", r.ID, r.Fqn)
+				}
+
+				cmd.Print("Attribute FQNs reindexed:\n")
+				for _, r := range res.Attributes {
+					cmd.Printf("\t%s: %s\n", r.ID, r.Fqn)
+				}
+
+				cmd.Print("Attribute Value FQNs reindexed:\n")
+				for _, r := range res.Values {
+					cmd.Printf("\t%s: %s\n", r.ID, r.Fqn)
+				}
+
+				return nil
+			})
 		},
 	}
 )

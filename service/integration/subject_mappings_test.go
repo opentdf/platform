@@ -404,14 +404,17 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_NoPagination_Succeeds() 
 	for _, sm := range listed {
 		if sm.GetId() == fixture1.ID {
 			assertEqual(sm, fixture1)
+			s.Equal("https://example.com/attr/attr1/value/value1", sm.GetAttributeValue().GetFqn())
 			found1 = true
 		}
 		if sm.GetId() == fixture2.ID {
 			assertEqual(sm, fixture2)
+			s.Equal("https://example.com/attr/attr1/value/value2", sm.GetAttributeValue().GetFqn())
 			found2 = true
 		}
 		if sm.GetId() == fixture3.ID {
 			assertEqual(sm, fixture3)
+			s.Equal("https://example.com/attr/attr1/value/value1", sm.GetAttributeValue().GetFqn())
 			found3 = true
 		}
 	}

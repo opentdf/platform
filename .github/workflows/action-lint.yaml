@@ -1,0 +1,24 @@
+name: "🔦 actionlint"
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/**'
+
+jobs:
+    actionlint:
+        runs-on: ubuntu-22.04
+        name: actionlint
+        permissions:
+            contents: read
+            pull-requests: write
+            checks: write
+        steps:
+            - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+            - name: "Run reviewdog actionlint"
+              uses: reviewdog/action-actionlint@053981cb135d7a696bbeec6181d9d5fae6e07dae # v1.57.0
+              with:
+                reporter: "github-pr-review"
+                fail_on_error: true

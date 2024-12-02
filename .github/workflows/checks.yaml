@@ -144,6 +144,8 @@ jobs:
       - run: test/service-start.bats
       - run: test/tdf-roundtrips.bats
       - run: test/policy-service.bats
+      - name: verify bultin casbin policy
+        run: test/builtin-casbin.bats
       - name: create roundtrip test data and run tests
         run: go test ./service/rttests -v
       - name: enable static entitlements rego policy
@@ -224,7 +226,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6.3.0
+      - uses: docker/build-push-action@v6.10.0
         with:
           context: .
           file: ./Dockerfile

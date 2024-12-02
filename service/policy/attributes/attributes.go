@@ -54,19 +54,26 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 		ActionType: audit.ActionTypeCreate,
 	}
 
-	item, err := s.dbClient.CreateAttribute(ctx, req.Msg)
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		item, err := txClient.CreateAttribute(ctx, req.Msg)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		s.logger.Debug("created new attribute definition", slog.String("name", req.Msg.GetName()))
+
+		auditParams.ObjectID = item.GetId()
+		auditParams.Original = item
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.Attribute = item
+		return nil
+	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("attribute", req.Msg.String()))
 	}
 
-	s.logger.Debug("created new attribute definition", slog.String("name", req.Msg.GetName()))
-
-	auditParams.ObjectID = item.GetId()
-	auditParams.Original = item
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.Attribute = item
 	return connect.NewResponse(rsp), nil
 }
 

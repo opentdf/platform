@@ -308,7 +308,7 @@ func (s *UnsafeService) UnsafeUpdateAttributeValue(ctx context.Context, req *con
 		return nil
 	})
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("attribute_value", req.Msg.String()))
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("value", req.Msg.String()))
 	}
 
 	return connect.NewResponse(rsp), nil

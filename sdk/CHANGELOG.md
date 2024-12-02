@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.23](https://github.com/opentdf/platform/compare/sdk/v0.3.22...sdk/v0.3.23) (2024-11-26)
+
+
+### Features
+
+* **core:** Introduce ERS mode, ability to connect to remote ERS ([#1735](https://github.com/opentdf/platform/issues/1735)) ([a118316](https://github.com/opentdf/platform/commit/a11831694302114a5d96ac7c6adb4ed55ceff80e))
+
+## [0.3.22](https://github.com/opentdf/platform/compare/sdk/v0.3.21...sdk/v0.3.22) (2024-11-25)
+
+
+### Bug Fixes
+
+* **sdk:** Dont require mimetype in manifest schema ([#1777](https://github.com/opentdf/platform/issues/1777)) ([98c5899](https://github.com/opentdf/platform/commit/98c5899de25e5766cea8132e57eb95ed6ae629ee))
+* **sdk:** Expose oauth package ([#1779](https://github.com/opentdf/platform/issues/1779)) ([55c1a10](https://github.com/opentdf/platform/commit/55c1a10a1f187fdacd25dd684f64eebb79f09976))
+
 ## [0.3.21](https://github.com/opentdf/platform/compare/sdk/v0.3.20...sdk/v0.3.21) (2024-11-15)
 
 

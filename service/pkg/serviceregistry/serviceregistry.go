@@ -11,11 +11,12 @@ import (
 	"connectrpc.com/connect"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/sdk"
+	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc"
 
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
-	"google.golang.org/grpc"
 )
 
 type ServiceConfig map[string]any
@@ -39,6 +40,7 @@ type RegistrationParams struct {
 	SDK *sdk.SDK
 	// Logger is the logger that can be used to log messages. This logger is scoped to the service
 	Logger *logger.Logger
+	trace.Tracer
 
 	////// The following functions are optional and intended to be called by the service //////
 

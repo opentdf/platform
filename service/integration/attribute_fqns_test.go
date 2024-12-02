@@ -793,8 +793,8 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_AllIndividualFqnsSetOnResults(
 	s.NotNil(got)
 
 	s.True(strings.HasPrefix(got.GetFqn(), "https://"))
-	s.True(strings.Contains(got.GetFqn(), ns))
-	s.True(strings.Contains(got.GetFqn(), "attr/test_attr"))
+	s.Contains(got.GetFqn(), ns)
+	s.Contains(got.GetFqn(), "attr/test_attr")
 	s.Equal(got.GetNamespace().GetFqn(), fmt.Sprintf("https://%s", ns))
 	s.Equal(got.GetValues()[0].GetFqn(), fmt.Sprintf("%s/value/value1", setup.attrFqn))
 	s.Equal(got.GetValues()[1].GetFqn(), fmt.Sprintf("%s/value/value2", setup.attrFqn))

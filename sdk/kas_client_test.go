@@ -54,14 +54,9 @@ func TestCreatingRequest(t *testing.T) {
 	var dialOption []grpc.DialOption
 	tokenSource := getTokenSource(t)
 	kasKey, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
-	if err != nil {
-		t.Fatalf("error creating RSA Key: %v", err)
-	}
+	require.NoError(t, err, "error creating RSA Key")
 
-	client, err := newKASClient(dialOption, tokenSource, kasKey)
-	if err != nil {
-		t.Fatalf("error setting KASClient: %v", err)
-	}
+	client := newKASClient(dialOption, tokenSource, &kasKey)
 
 	keyAccess := KeyAccess{
 		KeyType:    "type1",
@@ -76,9 +71,7 @@ func TestCreatingRequest(t *testing.T) {
 	}
 
 	req, err := client.getRewrapRequest(keyAccess, "a policy")
-	if err != nil {
-		t.Fatalf("failed to create a rewrap request: %v", err)
-	}
+	require.NoError(t, err, "failed to create a rewrap request")
 
 	if req.GetSignedRequestToken() == "" {
 		t.Fatalf("didn't produce a signed request token")
@@ -87,55 +80,34 @@ func TestCreatingRequest(t *testing.T) {
 	pubKey, _ := tokenSource.dpopKey.PublicKey()
 
 	tok, err := jwt.ParseString(req.GetSignedRequestToken(), jwt.WithKey(tokenSource.dpopKey.Algorithm(), pubKey))
-	if err != nil {
-		t.Fatalf("couldn't parse signed token: %v", err)
-	}
+	require.NoError(t, err, "couldn't parse signed token")
 
 	rb, ok := tok.Get("requestBody")
-	if !ok {
-		t.Fatalf("didn't contain a request body")
-	}
+	require.True(t, ok, "didn't contain a request body")
 	requestBodyJSON, _ := rb.(string)
 	var requestBody map[string]interface{}
 
-	err = json.Unmarshal([]byte(requestBodyJSON), &requestBody)
-	if err != nil {
-		t.Fatalf("error unmarshaling request body: %v", err)
-	}
+	require.NoError(t, json.Unmarshal([]byte(requestBodyJSON), &requestBody), "error unmarshaling request body")
 
-	_, err = ocrypto.NewAsymEncryption(requestBody["clientPublicKey"].(string))
-	if err != nil {
-		t.Fatalf("NewAsymEncryption failed, incorrect public key include: %v", err)
-	}
+	cpk, ok := requestBody["clientPublicKey"].(string)
+	require.True(t, ok)
 
-	if requestBody["policy"] != "a policy" {
-		t.Fatalf("incorrect policy")
-	}
+	_, err = ocrypto.NewAsymEncryption(cpk)
+	require.NoError(t, err, "NewAsymEncryption failed, incorrect public key include")
 
-	requestKeyAccess, _ := requestBody["keyAccess"].(map[string]interface{})
-	policyBinding, _ := requestKeyAccess["policyBinding"].(map[string]interface{})
+	assert.Equal(t, "a policy", requestBody["policy"])
 
-	if requestKeyAccess["url"] != "https://kas.example.org" {
-		t.Fatalf("incorrect kasURL")
-	}
-	if requestKeyAccess["protocol"] != "protocol one" {
-		t.Fatalf("incorrect protocol")
-	}
-	if requestKeyAccess["url"] != "https://kas.example.org" {
-		t.Fatalf("incorrect kasURL")
-	}
-	if requestKeyAccess["wrappedKey"] != "wrapped" {
-		t.Fatalf("incorrect wrapped key")
-	}
-	if policyBinding["alg"] != "HS256" {
-		t.Fatalf("incorrect policy binding")
-	}
-	if policyBinding["hash"] != "somehash" {
-		t.Fatalf("incorrect policy binding")
-	}
-	if requestKeyAccess["encryptedMetadata"] != "encrypted" {
-		t.Fatalf("incorrect encrypted metadata")
-	}
+	requestKeyAccess, ok := requestBody["keyAccess"].(map[string]interface{})
+	require.True(t, ok)
+	policyBinding, ok := requestKeyAccess["policyBinding"].(map[string]interface{})
+	require.True(t, ok)
+
+	assert.Equal(t, "https://kas.example.org", requestKeyAccess["url"], "incorrect kasURL")
+	assert.Equal(t, "protocol one", requestKeyAccess["protocol"], "incorrect protocol")
+	assert.Equal(t, "wrapped", requestKeyAccess["wrappedKey"], "incorrect wrapped key")
+	assert.Equal(t, "HS256", policyBinding["alg"], "incorrect policy binding")
+	assert.Equal(t, "somehash", policyBinding["hash"], "incorrect policy binding")
+	assert.Equal(t, "encrypted", requestKeyAccess["encryptedMetadata"], "incorrect encrypted metadata")
 }
 
 func Test_StoreKASKeys(t *testing.T) {

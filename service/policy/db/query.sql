@@ -3,60 +3,87 @@
 ----------------------------------------------------------------
 
 -- name: ListKeyAccessServerGrants :many
+WITH listed AS (
+    SELECT 
+        COUNT(*) OVER() AS total, 
+        kas.id AS kas_id, 
+        kas.uri AS kas_uri, 
+        kas.name AS kas_name,
+        kas.public_key AS kas_public_key,
+        JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+            'labels', kas.metadata -> 'labels', 
+            'created_at', kas.created_at, 
+            'updated_at', kas.updated_at
+        )) AS kas_metadata,
+        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
+            'id', attrkag.attribute_definition_id, 
+            'fqn', fqns_on_attr.fqn
+        )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL) AS attributes_grants,
+        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
+            'id', valkag.attribute_value_id, 
+            'fqn', fqns_on_vals.fqn
+        )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL) AS values_grants,
+        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
+            'id', nskag.namespace_id, 
+            'fqn', fqns_on_ns.fqn
+        )) FILTER (WHERE nskag.namespace_id IS NOT NULL) AS namespace_grants
+    FROM 
+        key_access_servers kas
+    LEFT JOIN 
+        attribute_definition_key_access_grants attrkag 
+        ON kas.id = attrkag.key_access_server_id
+    LEFT JOIN 
+        attribute_fqns fqns_on_attr 
+        ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id 
+        AND fqns_on_attr.value_id IS NULL
+    LEFT JOIN 
+        attribute_value_key_access_grants valkag 
+        ON kas.id = valkag.key_access_server_id
+    LEFT JOIN 
+        attribute_fqns fqns_on_vals 
+        ON valkag.attribute_value_id = fqns_on_vals.value_id
+    LEFT JOIN
+        attribute_namespace_key_access_grants nskag
+        ON kas.id = nskag.key_access_server_id
+    LEFT JOIN 
+        attribute_fqns fqns_on_ns
+        ON nskag.namespace_id = fqns_on_ns.namespace_id
+        AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
+    WHERE (NULLIF(@kas_id, '') IS NULL OR kas.id = @kas_id::uuid)
+        AND (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri::varchar)
+        AND (NULLIF(@kas_name, '') IS NULL OR kas.name = @kas_name::varchar)
+    GROUP BY 
+        kas.id
+)
 SELECT 
-    kas.id AS kas_id, 
-    kas.uri AS kas_uri, 
-    kas.name AS kas_name,
-    kas.public_key AS kas_public_key,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
-        'labels', kas.metadata -> 'labels', 
-        'created_at', kas.created_at, 
-        'updated_at', kas.updated_at
-    )) AS kas_metadata,
-    JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
-        'id', attrkag.attribute_definition_id, 
-        'fqn', fqns_on_attr.fqn
-    )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL) AS attributes_grants,
-    JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
-        'id', valkag.attribute_value_id, 
-        'fqn', fqns_on_vals.fqn
-    )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL) AS values_grants,
-    JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
-        'id', nskag.namespace_id, 
-        'fqn', fqns_on_ns.fqn
-    )) FILTER (WHERE nskag.namespace_id IS NOT NULL) AS namespace_grants
-FROM 
-    key_access_servers kas
-LEFT JOIN 
-    attribute_definition_key_access_grants attrkag 
-    ON kas.id = attrkag.key_access_server_id
-LEFT JOIN 
-    attribute_fqns fqns_on_attr 
-    ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id 
-    AND fqns_on_attr.value_id IS NULL
-LEFT JOIN 
-    attribute_value_key_access_grants valkag 
-    ON kas.id = valkag.key_access_server_id
-LEFT JOIN 
-    attribute_fqns fqns_on_vals 
-    ON valkag.attribute_value_id = fqns_on_vals.value_id
-LEFT JOIN
-    attribute_namespace_key_access_grants nskag
-    ON kas.id = nskag.key_access_server_id
-LEFT JOIN 
-    attribute_fqns fqns_on_ns
-    ON nskag.namespace_id = fqns_on_ns.namespace_id
-    AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
-WHERE (NULLIF(@kas_id, '') IS NULL OR kas.id = @kas_id::uuid)
-    AND (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri::varchar)
-    AND (NULLIF(@kas_name, '') IS NULL OR kas.name = @kas_name::varchar)
-GROUP BY 
-    kas.id;
+    listed.kas_id,
+    listed.kas_uri,
+    listed.kas_name,
+    listed.kas_public_key,
+    listed.kas_metadata,
+    listed.attributes_grants,
+    listed.values_grants,
+    listed.namespace_grants,
+    listed.total  
+FROM listed
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: ListKeyAccessServers :many
-SELECT id, uri, public_key, name,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-FROM key_access_servers;
+WITH counted AS (
+    SELECT COUNT(kas.id) AS total
+    FROM key_access_servers kas
+)
+SELECT kas.id,
+       kas.uri,
+       kas.public_key,
+       kas.name AS kas_name,
+       JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) as metadata,
+       counted.total
+FROM key_access_servers kas
+CROSS JOIN counted
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: GetKeyAccessServer :one
 SELECT id, uri, public_key, name,
@@ -206,6 +233,10 @@ RETURNING
 ----------------------------------------------------------------
 
 -- name: ListAttributesDetail :many
+WITH counted AS (
+    SELECT COUNT(ad.id) AS total
+    FROM attribute_definitions ad
+)
 SELECT
     ad.id,
     ad.name as attribute_name,
@@ -222,8 +253,10 @@ SELECT
             'fqn', CONCAT(fqns.fqn, '/value/', avt.value)
         ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
     ) AS values,
-    fqns.fqn
+    fqns.fqn,
+    counted.total
 FROM attribute_definitions ad
+CROSS JOIN counted
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 LEFT JOIN (
   SELECT
@@ -249,9 +282,14 @@ WHERE
     (sqlc.narg('active')::BOOLEAN IS NULL OR ad.active = sqlc.narg('active')) AND
     (NULLIF(@namespace_id, '') IS NULL OR ad.namespace_id = @namespace_id::uuid) AND
     (NULLIF(@namespace_name, '') IS NULL OR n.name = @namespace_name)
-GROUP BY ad.id, n.name, fqns.fqn;
+GROUP BY ad.id, n.name, fqns.fqn, counted.total
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: ListAttributesSummary :many
+WITH counted AS (
+    SELECT COUNT(ad.id) AS total FROM attribute_definitions ad
+)
 SELECT
     ad.id,
     ad.name as attribute_name,
@@ -259,11 +297,15 @@ SELECT
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ad.metadata -> 'labels', 'created_at', ad.created_at, 'updated_at', ad.updated_at)) AS metadata,
     ad.namespace_id,
     ad.active,
-    n.name as namespace_name
+    n.name as namespace_name,
+    counted.total
 FROM attribute_definitions ad
+CROSS JOIN counted
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 WHERE ad.namespace_id = $1
-GROUP BY ad.id, n.name;
+GROUP BY ad.id, n.name, counted.total
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: ListAttributesByDefOrValueFqns :many
 -- get the attribute definition for the provided value or definition fqn
@@ -468,21 +510,27 @@ WHERE attribute_definition_id = $1 AND key_access_server_id = $2;
 ----------------------------------------------------------------
 
 -- name: ListAttributeValues :many
-
+WITH counted AS (
+    SELECT COUNT(av.id) AS total
+    FROM attribute_values av
+)
 SELECT
     av.id,
     av.value,
     av.active,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
     av.attribute_definition_id,
-    fqns.fqn
+    fqns.fqn,
+    counted.total
 FROM attribute_values av
+CROSS JOIN counted
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 WHERE (
     (sqlc.narg('active')::BOOLEAN IS NULL OR av.active = sqlc.narg('active')) AND
     (NULLIF(@attribute_definition_id, '') IS NULL OR av.attribute_definition_id = @attribute_definition_id::UUID)
 )
-GROUP BY av.id, fqns.fqn;
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: GetAttributeValue :one
 SELECT
@@ -537,10 +585,20 @@ WHERE attribute_value_id = $1 AND key_access_server_id = $2;
 ----------------------------------------------------------------
 
 -- name: ListResourceMappingGroups :many
-SELECT id, namespace_id, name,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-FROM resource_mapping_groups
-WHERE (NULLIF(@namespace_id, '') IS NULL OR namespace_id = @namespace_id::uuid);
+WITH counted AS (
+    SELECT COUNT(rmg.id) AS total
+    FROM resource_mapping_groups rmg
+)
+SELECT rmg.id,
+    rmg.namespace_id,
+    rmg.name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', rmg.metadata -> 'labels', 'created_at', rmg.created_at, 'updated_at', rmg.updated_at)) as metadata,
+    counted.total
+FROM resource_mapping_groups rmg
+CROSS JOIN counted
+WHERE (NULLIF(@namespace_id, '') IS NULL OR rmg.namespace_id = @namespace_id::uuid)
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: GetResourceMappingGroup :one
 SELECT id, namespace_id, name,
@@ -569,17 +627,25 @@ DELETE FROM resource_mapping_groups WHERE id = $1;
 ----------------------------------------------------------------
 
 -- name: ListResourceMappings :many
+WITH counted AS (
+    SELECT COUNT(rm.id) AS total
+    FROM resource_mappings rm
+)
 SELECT
     m.id,
     JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
     m.terms,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
-    COALESCE(m.group_id::TEXT, '')::TEXT as group_id
+    COALESCE(m.group_id::TEXT, '')::TEXT as group_id,
+    counted.total
 FROM resource_mappings m 
+CROSS JOIN counted
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 WHERE (NULLIF(@group_id, '') IS NULL OR m.group_id = @group_id::UUID)
-GROUP BY av.id, m.id, fqns.fqn;
+GROUP BY av.id, m.id, fqns.fqn, counted.total
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: ListResourceMappingsByFullyQualifiedGroup :many
 -- CTE to cache the group JSON build since it will be the same for all mappings of the group
@@ -646,15 +712,22 @@ DELETE FROM resource_mappings WHERE id = $1;
 ----------------------------------------------------------------
 
 -- name: ListNamespaces :many
+WITH counted AS (
+    SELECT COUNT(id) AS total FROM attribute_namespaces
+)
 SELECT
     ns.id,
     ns.name,
     ns.active,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
-    fqns.fqn
+    fqns.fqn,
+    counted.total
 FROM attribute_namespaces ns
+CROSS JOIN counted
 LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
-WHERE (sqlc.narg('active')::BOOLEAN IS NULL OR ns.active = sqlc.narg('active')::BOOLEAN);
+WHERE (sqlc.narg('active')::BOOLEAN IS NULL OR ns.active = sqlc.narg('active')::BOOLEAN)
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: GetNamespace :one
 SELECT
@@ -706,11 +779,19 @@ WHERE namespace_id = $1 AND key_access_server_id = $2;
 ----------------------------------------------------------------
 
 -- name: ListSubjectConditionSets :many
+WITH counted AS (
+    SELECT COUNT(scs.id) AS total
+    FROM subject_condition_set scs
+)
 SELECT
-    id,
-    condition,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-FROM subject_condition_set;
+    scs.id,
+    scs.condition,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', scs.metadata -> 'labels', 'created_at', scs.created_at, 'updated_at', scs.updated_at)) as metadata,
+    counted.total
+FROM subject_condition_set scs
+CROSS JOIN counted
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: GetSubjectConditionSet :one
 SELECT
@@ -745,6 +826,10 @@ RETURNING id;
 ----------------------------------------------------------------
 
 -- name: ListSubjectMappings :many
+WITH counted AS (
+    SELECT COUNT(sm.id) AS total
+    FROM subject_mappings sm
+)
 SELECT
     sm.id,
     sm.actions,
@@ -754,11 +839,21 @@ SELECT
         'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', scs.metadata->'labels', 'created_at', scs.created_at, 'updated_at', scs.updated_at)),
         'subject_sets', scs.condition
     ) AS subject_condition_set,
-    JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active) AS attribute_value
+    JSON_BUILD_OBJECT(
+        'id', av.id,
+        'value', av.value,
+        'active', av.active,
+        'fqn', fqns.fqn
+    ) AS attribute_value,
+    counted.total
 FROM subject_mappings sm
+CROSS JOIN counted
 LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
+LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
-GROUP BY av.id, sm.id, scs.id;
+GROUP BY av.id, sm.id, scs.id, counted.total, fqns.fqn
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: GetSubjectMapping :one
 SELECT

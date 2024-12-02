@@ -12,12 +12,15 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	policyconfig "github.com/opentdf/platform/service/policy/config"
+
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
 type KeyAccessServerRegistry struct {
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
+	config   *policyconfig.Config
 }
 
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[kasregistryconnect.KeyAccessServerRegistryServiceHandler] {
@@ -29,8 +32,12 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			ConnectRPCFunc: kasregistryconnect.NewKeyAccessServerRegistryServiceHandler,
 			GRPCGateayFunc: kasr.RegisterKeyAccessServerRegistryServiceHandlerFromEndpoint,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasregistryconnect.KeyAccessServerRegistryServiceHandler, serviceregistry.HandlerServer) {
-				ksr := &KeyAccessServerRegistry{dbClient: policydb.NewClient(srp.DBClient, srp.Logger), logger: srp.Logger}
-				return ksr, nil
+				cfg := policyconfig.GetSharedPolicyConfig(srp)
+				return &KeyAccessServerRegistry{
+					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
+					logger:   srp.Logger,
+					config:   cfg,
+				}, nil
 			},
 		},
 	}
@@ -64,16 +71,12 @@ func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 }
 
 func (s KeyAccessServerRegistry) ListKeyAccessServers(ctx context.Context,
-	_ *connect.Request[kasr.ListKeyAccessServersRequest],
+	req *connect.Request[kasr.ListKeyAccessServersRequest],
 ) (*connect.Response[kasr.ListKeyAccessServersResponse], error) {
-	rsp := &kasr.ListKeyAccessServersResponse{}
-
-	keyAccessServers, err := s.dbClient.ListKeyAccessServers(ctx)
+	rsp, err := s.dbClient.ListKeyAccessServers(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
-
-	rsp.KeyAccessServers = keyAccessServers
 
 	return connect.NewResponse(rsp), nil
 }
@@ -158,14 +161,10 @@ func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
 func (s KeyAccessServerRegistry) ListKeyAccessServerGrants(ctx context.Context,
 	req *connect.Request[kasr.ListKeyAccessServerGrantsRequest],
 ) (*connect.Response[kasr.ListKeyAccessServerGrantsResponse], error) {
-	rsp := &kasr.ListKeyAccessServerGrantsResponse{}
-
-	keyAccessServerGrants, err := s.dbClient.ListKeyAccessServerGrants(ctx, req.Msg.GetKasId(), req.Msg.GetKasUri(), req.Msg.GetKasName())
+	rsp, err := s.dbClient.ListKeyAccessServerGrants(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
-
-	rsp.Grants = keyAccessServerGrants
 
 	return connect.NewResponse(rsp), nil
 }

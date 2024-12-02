@@ -13,8 +13,8 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
-	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/proto"
 )
 
 var absentAttributeValueUUID = "78909865-8888-9999-9999-000000000000"
@@ -44,27 +44,140 @@ func (s *AttributeValuesSuite) TearDownSuite() {
 	s.f.TearDown()
 }
 
-func (s *AttributeValuesSuite) Test_ListAttributeValues() {
+func (s *AttributeValuesSuite) Test_ListAttributeValues_WithAttributeID_Succeeds() {
 	attrID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").AttributeDefinitionID
 
-	list, err := s.db.PolicyClient.ListAttributeValues(s.ctx, attrID, policydb.StateActive)
+	listRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
+		AttributeId: attrID,
+		State:       common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+	})
 	s.Require().NoError(err)
-	s.NotNil(list)
+	s.NotNil(listRsp)
+	listed := listRsp.GetValues()
 
 	// ensure list contains the two test fixtures and that response matches expected data
 	f1 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 	f2 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
 
-	for _, item := range list {
-		if item.GetId() == f1.ID {
-			s.Equal(f1.ID, item.GetId())
-			s.Equal(f1.Value, item.GetValue())
-			// s.Equal(f1.AttributeDefinitionId, item.AttributeId)
-		} else if item.GetId() == f2.ID {
-			s.Equal(f2.ID, item.GetId())
-			s.Equal(f2.Value, item.GetValue())
-			// s.Equal(f2.AttributeDefinitionId, item.AttributeId)
+	for _, val := range listed {
+		if val.GetId() == f1.ID {
+			s.Equal(f1.ID, val.GetId())
+			s.Equal(f1.Value, val.GetValue())
+			s.Equal(f1.AttributeDefinitionID, val.GetAttribute().GetId())
+		} else if val.GetId() == f2.ID {
+			s.Equal(f2.ID, val.GetId())
+			s.Equal(f2.Value, val.GetValue())
+			s.Equal(f2.AttributeDefinitionID, val.GetAttribute().GetId())
 		}
+	}
+}
+
+func (s *AttributeValuesSuite) Test_ListAttributeValues_NoPagination_Succeeds() {
+	allFixtureValueFqns := map[string]bool{
+		"https://example.com/attr/attr1/value/value1":                          false,
+		"https://example.com/attr/attr1/value/value2":                          false,
+		"https://example.com/attr/attr2/value/value1":                          false,
+		"https://example.com/attr/attr2/value/value2":                          false,
+		"https://example.net/attr/attr1/value/value1":                          false,
+		"https://example.net/attr/attr1/value/value2":                          false,
+		"https://scenario.com/attr/working_group/value/blue":                   false,
+		"https://deactivated.io/attr/deactivated_attr/value/deactivated_value": false,
+	}
+	listRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+	// mark every listed value true
+	for _, val := range listRsp.GetValues() {
+		allFixtureValueFqns[val.GetFqn()] = true
+	}
+	// ensure all fixtures were found by unbounded list
+	for fqn, found := range allFixtureValueFqns {
+		if !found {
+			s.Failf("failed to list fixture", fqn)
+		}
+	}
+}
+
+func (s *AttributeValuesSuite) Test_ListAttributeValues_Limit_Succeeds() {
+	var limit int32 = 2
+	listRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Pagination: &policy.PageRequest{
+			Limit: limit,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+	listed := listRsp.GetValues()
+	s.Equal(len(listed), int(limit))
+
+	for _, val := range listed {
+		s.NotEmpty(val.GetFqn())
+		s.NotEmpty(val.GetId())
+		s.NotEmpty(val.GetValue())
+	}
+
+	// request with one below maximum
+	listRsp, err = s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax - 1,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// request with exactly maximum
+	listRsp, err = s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+}
+
+func (s *NamespacesSuite) Test_ListAttributeValues_Limit_TooLarge_Fails() {
+	listRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax + 1,
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrListLimitTooLarge)
+	s.Nil(listRsp)
+}
+
+func (s *AttributeValuesSuite) Test_ListAttributeValues_Offset_Succeeds() {
+	req := &attributes.ListAttributeValuesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+	}
+	// make initial list request to compare against
+	listRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+	listed := listRsp.GetValues()
+
+	// set the offset pagination
+	offset := 5
+	req.Pagination = &policy.PageRequest{
+		Offset: int32(offset),
+	}
+	offsetListRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(offsetListRsp)
+	offsetListed := offsetListRsp.GetValues()
+
+	// length is reduced by the offset amount
+	s.Equal(len(offsetListed), len(listed)-offset)
+
+	// objects are equal between offset and original list beginning at offset index
+	for i, val := range offsetListed {
+		s.True(proto.Equal(val, listed[i+offset]))
 	}
 }
 
@@ -133,7 +246,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_SetsActiveStateTrueByDe
 	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
 
 	req := &attributes.CreateAttributeValueRequest{
-		Value: "testing create gives active true by default",
+		Value: "testing-create-gives-active-true-by-default",
 	}
 	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.ID, req)
 	s.Require().NoError(err)
@@ -495,15 +608,18 @@ func setupDeactivateAttributeValue(s *AttributeValuesSuite) (string, string, str
 func (s *AttributeValuesSuite) Test_DeactivateAttribute_Cascades_List() {
 	type test struct {
 		name     string
-		testFunc func(state string) bool
-		state    string
+		testFunc func(state common.ActiveStateEnum) bool
+		state    common.ActiveStateEnum
 		isFound  bool
 	}
 
-	listNamespaces := func(state string) bool {
-		listedNamespaces, err := s.db.PolicyClient.ListNamespaces(s.ctx, state)
+	listNamespaces := func(state common.ActiveStateEnum) bool {
+		listedNamespacesRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+			State: state,
+		})
 		s.Require().NoError(err)
-		s.NotNil(listedNamespaces)
+		s.NotNil(listedNamespacesRsp)
+		listedNamespaces := listedNamespacesRsp.GetNamespaces()
 		for _, ns := range listedNamespaces {
 			if stillActiveNsID == ns.GetId() {
 				return true
@@ -512,10 +628,13 @@ func (s *AttributeValuesSuite) Test_DeactivateAttribute_Cascades_List() {
 		return false
 	}
 
-	listAttributes := func(state string) bool {
-		listedAttrs, err := s.db.PolicyClient.ListAttributes(s.ctx, state, "")
+	listAttributes := func(state common.ActiveStateEnum) bool {
+		listedAttrsRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+			State: state,
+		})
 		s.Require().NoError(err)
-		s.NotNil(listedAttrs)
+		s.NotNil(listedAttrsRsp)
+		listedAttrs := listedAttrsRsp.GetAttributes()
 		for _, a := range listedAttrs {
 			if stillActiveAttributeID == a.GetId() {
 				return true
@@ -524,10 +643,14 @@ func (s *AttributeValuesSuite) Test_DeactivateAttribute_Cascades_List() {
 		return false
 	}
 
-	listValues := func(state string) bool {
-		listedVals, err := s.db.PolicyClient.ListAttributeValues(s.ctx, stillActiveAttributeID, state)
+	listValues := func(state common.ActiveStateEnum) bool {
+		listedValsRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
+			State:       state,
+			AttributeId: stillActiveAttributeID,
+		})
 		s.Require().NoError(err)
-		s.NotNil(listedVals)
+		s.NotNil(listedValsRsp)
+		listedVals := listedValsRsp.GetValues()
 		for _, v := range listedVals {
 			if deactivatedAttrValueID == v.GetId() {
 				return true
@@ -540,55 +663,55 @@ func (s *AttributeValuesSuite) Test_DeactivateAttribute_Cascades_List() {
 		{
 			name:     "namespace is NOT found in LIST of INACTIVE",
 			testFunc: listNamespaces,
-			state:    policydb.StateInactive,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE,
 			isFound:  false,
 		},
 		{
 			name:     "namespace is found when filtering for ACTIVE state",
 			testFunc: listNamespaces,
-			state:    policydb.StateActive,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
 			isFound:  true,
 		},
 		{
 			name:     "namespace is found when filtering for ANY state",
 			testFunc: listNamespaces,
-			state:    policydb.StateAny,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
 			isFound:  true,
 		},
 		{
 			name:     "attribute is NOT found when filtering for INACTIVE state",
 			testFunc: listAttributes,
-			state:    policydb.StateInactive,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE,
 			isFound:  false,
 		},
 		{
 			name:     "attribute is found when filtering for ANY state",
 			testFunc: listAttributes,
-			state:    policydb.StateAny,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
 			isFound:  true,
 		},
 		{
 			name:     "attribute is found when filtering for ACTIVE state",
 			testFunc: listAttributes,
-			state:    policydb.StateActive,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
 			isFound:  true,
 		},
 		{
 			name:     "value is NOT found in LIST of ACTIVE",
 			testFunc: listValues,
-			state:    policydb.StateActive,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
 			isFound:  false,
 		},
 		{
 			name:     "value is found when filtering for INACTIVE state",
 			testFunc: listValues,
-			state:    policydb.StateInactive,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE,
 			isFound:  true,
 		},
 		{
 			name:     "value is found when filtering for ANY state",
 			testFunc: listValues,
-			state:    policydb.StateAny,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
 			isFound:  true,
 		},
 	}

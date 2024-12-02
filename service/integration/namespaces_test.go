@@ -13,8 +13,8 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
-	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/proto"
 )
 
 type NamespacesSuite struct {
@@ -129,13 +129,87 @@ func (s *NamespacesSuite) Test_GetNamespace_DoesNotExist_ShouldFail() {
 	s.Nil(ns)
 }
 
-func (s *NamespacesSuite) Test_ListNamespaces() {
+func (s *NamespacesSuite) Test_ListNamespaces_NoPagination_Succeeds() {
 	testData := s.getActiveNamespaceFixtures()
 
-	gotNamespaces, err := s.db.PolicyClient.ListNamespaces(s.ctx, policydb.StateActive)
+	listNamespacesRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+	})
 	s.Require().NoError(err)
-	s.NotNil(gotNamespaces)
-	s.GreaterOrEqual(len(gotNamespaces), len(testData))
+	s.NotNil(listNamespacesRsp)
+	listed := listNamespacesRsp.GetNamespaces()
+	s.GreaterOrEqual(len(listed), len(testData))
+
+	for _, f := range testData {
+		found := false
+		for _, ns := range listed {
+			if ns.GetId() == f.ID {
+				found = true
+			}
+		}
+		s.True(found)
+	}
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_Limit_Succeeds() {
+	var limit int32 = 2
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Pagination: &policy.PageRequest{
+			Limit: limit,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+	listed := listRsp.GetNamespaces()
+	s.Equal(len(listed), int(limit))
+
+	for _, ns := range listed {
+		s.NotEmpty(ns.GetFqn())
+		s.NotEmpty(ns.GetId())
+		s.NotEmpty(ns.GetName())
+	}
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_Limit_TooLarge_Fails() {
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax + 1,
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrListLimitTooLarge)
+	s.Nil(listRsp)
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_Offset_Succeeds() {
+	req := &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+	}
+	// make initial list request to compare against
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+	listed := listRsp.GetNamespaces()
+
+	// set the offset pagination
+	offset := 4
+	req.Pagination = &policy.PageRequest{
+		Offset: int32(offset),
+	}
+	offsetListRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(offsetListRsp)
+	offsetListed := offsetListRsp.GetNamespaces()
+
+	// length is reduced by the offset amount
+	s.Equal(len(offsetListed), len(listed)-offset)
+
+	// objects are equal between offset and original list beginning at offset index
+	for i, ns := range offsetListed {
+		s.True(proto.Equal(ns, listed[i+offset]))
+	}
 }
 
 func (s *NamespacesSuite) Test_UpdateNamespace() {
@@ -218,10 +292,13 @@ func (s *NamespacesSuite) Test_DeactivateNamespace() {
 	s.False(inactive.GetActive().GetValue())
 
 	// Deactivated namespace should not be found on List
-	gotNamespaces, err := s.db.PolicyClient.ListNamespaces(s.ctx, policydb.StateActive)
+	listNamespacesRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+	})
 	s.Require().NoError(err)
-	s.NotNil(gotNamespaces)
-	for _, ns := range gotNamespaces {
+	s.NotNil(listNamespacesRsp)
+	listed := listNamespacesRsp.GetNamespaces()
+	for _, ns := range listed {
 		s.NotEqual(n.GetId(), ns.GetId())
 	}
 
@@ -269,16 +346,20 @@ func setupCascadeDeactivateNamespace(s *NamespacesSuite) (string, string, string
 func (s *NamespacesSuite) Test_DeactivateNamespace_Cascades_List() {
 	type test struct {
 		name     string
-		testFunc func(state string) bool
-		state    string
+		testFunc func(state common.ActiveStateEnum) bool
+		state    common.ActiveStateEnum
 		isFound  bool
 	}
 
-	listNamespaces := func(state string) bool {
-		listedNamespaces, err := s.db.PolicyClient.ListNamespaces(s.ctx, state)
+	listNamespaces := func(state common.ActiveStateEnum) bool {
+		listNamespacesRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+			State: state,
+		})
 		s.Require().NoError(err)
-		s.NotNil(listedNamespaces)
-		for _, ns := range listedNamespaces {
+		s.NotNil(listNamespacesRsp)
+
+		listed := listNamespacesRsp.GetNamespaces()
+		for _, ns := range listed {
 			if deactivatedNsID == ns.GetId() {
 				return true
 			}
@@ -286,11 +367,15 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_Cascades_List() {
 		return false
 	}
 
-	listAttributes := func(state string) bool {
-		listedAttrs, err := s.db.PolicyClient.ListAttributes(s.ctx, state, "")
+	listAttributes := func(state common.ActiveStateEnum) bool {
+		listAttrsRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+			State: state,
+		})
 		s.Require().NoError(err)
-		s.NotNil(listedAttrs)
-		for _, a := range listedAttrs {
+		s.NotNil(listAttrsRsp)
+
+		listed := listAttrsRsp.GetAttributes()
+		for _, a := range listed {
 			if deactivatedAttrID == a.GetId() {
 				return true
 			}
@@ -298,11 +383,15 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_Cascades_List() {
 		return false
 	}
 
-	listValues := func(state string) bool {
-		listedVals, err := s.db.PolicyClient.ListAttributeValues(s.ctx, deactivatedAttrID, state)
+	listValues := func(state common.ActiveStateEnum) bool {
+		listedValsRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
+			AttributeId: deactivatedAttrID,
+			State:       state,
+		})
 		s.Require().NoError(err)
-		s.NotNil(listedVals)
-		for _, v := range listedVals {
+		s.NotNil(listedValsRsp)
+		listed := listedValsRsp.GetValues()
+		for _, v := range listed {
 			if deactivatedAttrValueID == v.GetId() {
 				return true
 			}
@@ -314,55 +403,55 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_Cascades_List() {
 		{
 			name:     "namespace is NOT found in LIST of ACTIVE",
 			testFunc: listNamespaces,
-			state:    policydb.StateActive,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
 			isFound:  false,
 		},
 		{
 			name:     "namespace is found when filtering for INACTIVE state",
 			testFunc: listNamespaces,
-			state:    policydb.StateInactive,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE,
 			isFound:  true,
 		},
 		{
 			name:     "namespace is found when filtering for ANY state",
 			testFunc: listNamespaces,
-			state:    policydb.StateAny,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
 			isFound:  true,
 		},
 		{
 			name:     "attribute is found when filtering for INACTIVE state",
 			testFunc: listAttributes,
-			state:    policydb.StateInactive,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE,
 			isFound:  true,
 		},
 		{
 			name:     "attribute is found when filtering for ANY state",
 			testFunc: listAttributes,
-			state:    policydb.StateAny,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
 			isFound:  true,
 		},
 		{
 			name:     "attribute is NOT found when filtering for ACTIVE state",
 			testFunc: listAttributes,
-			state:    policydb.StateActive,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
 			isFound:  false,
 		},
 		{
 			name:     "value is NOT found in LIST of ACTIVE",
 			testFunc: listValues,
-			state:    policydb.StateActive,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
 			isFound:  false,
 		},
 		{
 			name:     "value is found when filtering for INACTIVE state",
 			testFunc: listValues,
-			state:    policydb.StateInactive,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE,
 			isFound:  true,
 		},
 		{
 			name:     "value is found when filtering for ANY state",
 			testFunc: listValues,
-			state:    policydb.StateAny,
+			state:    common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
 			isFound:  true,
 		},
 	}
@@ -554,11 +643,14 @@ func (s *NamespacesSuite) Test_UnsafeReactivateNamespace_SetsActiveStatusOfNames
 	s.True(active.GetActive().GetValue())
 
 	// test that the namespace is found in the list of active namespaces
-	gotNamespaces, err := s.db.PolicyClient.ListNamespaces(s.ctx, policydb.StateActive)
+	listNamespacesRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+	})
 	s.Require().NoError(err)
-	s.NotNil(gotNamespaces)
+	s.NotNil(listNamespacesRsp)
+	listed := listNamespacesRsp.GetNamespaces()
 	found := false
-	for _, ns := range gotNamespaces {
+	for _, ns := range listed {
 		if n.GetId() == ns.GetId() {
 			found = true
 			break
@@ -567,11 +659,14 @@ func (s *NamespacesSuite) Test_UnsafeReactivateNamespace_SetsActiveStatusOfNames
 	s.True(found)
 
 	// test that the namespace is not found in the list of inactive namespaces
-	gotNamespaces, err = s.db.PolicyClient.ListNamespaces(s.ctx, policydb.StateInactive)
+	listNamespacesRsp, err = s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE,
+	})
 	s.Require().NoError(err)
-	s.NotNil(gotNamespaces)
+	s.NotNil(listNamespacesRsp)
+	listed = listNamespacesRsp.GetNamespaces()
 	found = false
-	for _, ns := range gotNamespaces {
+	for _, ns := range listed {
 		if n.GetId() == ns.GetId() {
 			found = true
 			break

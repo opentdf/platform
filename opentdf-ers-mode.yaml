@@ -1,29 +1,22 @@
+# configures the platform to run just the entity resolution service and the well-known service
+# primarily to be used for testing and development of external ERS connections
+mode: entityresolution
 logger:
   level: debug
   type: text
   output: stdout
-# DB and Server configurations are defaulted for local development
-# db:
-#   host: localhost
-#   port: 5432
-#   user: postgres
-#   password: changeme
 services:
-  kas:
-    enabled: true
-    eccertid: e1
-    rsacertid: r1
-  policy:
-    enabled: true
   entityresolution:
-    enabled: true
+    log_level: info
     url: http://localhost:8888/auth
     clientid: 'tdf-entity-resolution'
     clientsecret: 'secret'
     realm: 'opentdf'
     legacykeycloak: true
-  authorization:
-    enabled: true
+    inferid:
+      from:
+        email: true
+        username: true
 server:
   auth:
     enabled: true
@@ -31,25 +24,26 @@ server:
     public_client_id: 'opentdf-public'
     audience: 'http://localhost:8080'
     issuer: http://localhost:8888/auth/realms/opentdf
-    clients:
-      - 'opentdf'
-      - 'opentdf-sdk'
     policy:
       ## Default policy for all requests
       default: #"role:standard"
-      ## Role map is used to map external roles to opentdf roles (opentdf_role:idp_role) the benefit of this is that you
-      ## can use the builtin policy if desired
-      roles:
-        ## Dot notation is used to access nested claims (i.e. realm_access.roles)
-        claim: # realm_access.roles
-        ## Maps the external role to the opentdf role
-        ## Note: left side is used in the policy, right side is the external role
-        map:
-        #  standard: opentdf-standard
-        #  admin: opentdf-admin
+      ## Dot notation is used to access nested claims (i.e. realm_access.roles)
+      claim: # realm_access.roles
+      ## Maps the external role to the opentdf role
+      ## Note: left side is used in the policy, right side is the external role
+      map:
+        # standard: opentdf-standard
+        # admin: opentdf-admin
+        # org-admin: opentdf-org-admin
+
       ## Custom policy (see examples https://github.com/casbin/casbin/tree/master/examples)
       csv: #|
-      #  p, role:admin, *, *, allow
+      #  p, role:org-admin, policy:attributes, *, *, allow
+      #  p, role:org-admin, policy:subject-mappings, *, *, allow
+      #  p, role:org-admin, policy:resource-mappings, *, *, allow
+      #  p, role:org-admin, policy:kas-registry, *, *, allow
+      #  p, role:org-admin, policy:unsafe, *, *, allow
+
       ## Custom model (see https://casbin.org/docs/syntax-for-models/)
       model: #|
       #  [request_definition]
@@ -85,6 +79,7 @@ server:
       - Authorization
       - Content-Type
       - X-CSRF-Token
+      - X-Request-ID
     # List of response headers that browsers are allowed to access
     exposedheaders:
       - Link
@@ -94,19 +89,4 @@ server:
     maxage: 3600
   grpc:
     reflectionEnabled: true # Default is false
-  cryptoProvider:
-    type: hsm
-    hsm:
-      # As configured by init-temp-keys.sh --hsm
-      pin: '12345'
-      slotlabel: 'dev-token'
-      keys:
-        - kid: r1
-          alg: rsa:2048
-          private: development-rsa-kas
-        - kid: e1
-          alg: ec:secp256r1
-          private: development-ec-kas
-  port: 8080
-opa:
-  embedded: true # Only for local development
+  port: 8282

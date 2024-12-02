@@ -44,21 +44,29 @@ var (
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
 
-			res := dbClient.AttrFqnReindex(context.Background())
-			cmd.Print("Namespace FQNs reindexed:\n")
-			for _, r := range res.Namespaces {
-				cmd.Printf("\t%s: %s\n", r.ID, r.Fqn)
-			}
+			ctx := context.Background()
 
-			cmd.Print("Attribute FQNs reindexed:\n")
-			for _, r := range res.Attributes {
-				cmd.Printf("\t%s: %s\n", r.ID, r.Fqn)
-			}
+			// ignore error as dbClient.AttrFqnReindex will panic on error
+			_ = dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+				res := txClient.AttrFqnReindex(ctx)
 
-			cmd.Print("Attribute Value FQNs reindexed:\n")
-			for _, r := range res.Values {
-				cmd.Printf("\t%s: %s\n", r.ID, r.Fqn)
-			}
+				cmd.Print("Namespace FQNs reindexed:\n")
+				for _, r := range res.Namespaces {
+					cmd.Printf("\t%s: %s\n", r.ID, r.Fqn)
+				}
+
+				cmd.Print("Attribute FQNs reindexed:\n")
+				for _, r := range res.Attributes {
+					cmd.Printf("\t%s: %s\n", r.ID, r.Fqn)
+				}
+
+				cmd.Print("Attribute Value FQNs reindexed:\n")
+				for _, r := range res.Values {
+					cmd.Printf("\t%s: %s\n", r.ID, r.Fqn)
+				}
+
+				return nil
+			})
 		},
 	}
 )
@@ -83,7 +91,13 @@ func policyDBClient(conf *config.Config) (policydb.PolicyDBClient, error) {
 		return policydb.PolicyDBClient{}, err
 	}
 
-	return policydb.NewClient(dbClient, logger), nil
+	// This command connects directly to the database so runtime policy config list limit settings can be ignored
+	var (
+		limitDefault int32 = 1000
+		limitMax     int32 = 2500
+	)
+
+	return policydb.NewClient(dbClient, logger, limitMax, limitDefault), nil
 }
 
 func init() {

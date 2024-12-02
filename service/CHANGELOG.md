@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.4.31](https://github.com/opentdf/platform/compare/service/v0.4.30...service/v0.4.31) (2024-12-02)
+
+
+### Features
+
+* **kas:** collect metrics ([#1702](https://github.com/opentdf/platform/issues/1702)) ([def28d1](https://github.com/opentdf/platform/commit/def28d1984b0b111a07330a3eb59c1285206062d))
+* **policy:** 1500 Attribute create with Values (one RPC Call) should employ a db transaction ([#1778](https://github.com/opentdf/platform/issues/1778)) ([90edbde](https://github.com/opentdf/platform/commit/90edbde92ea63ad488b9a6de09fcffbc7a4380de))
+
+
+### Bug Fixes
+
+* **core:** move auth interceptor to top of chain ([#1790](https://github.com/opentdf/platform/issues/1790)) ([f9f5a75](https://github.com/opentdf/platform/commit/f9f5a7545827c5d8cef7f536963e4f794a7f3f6c))
+* **policy:** return fqns in list subject mappings ([#1796](https://github.com/opentdf/platform/issues/1796)) ([c0a9dda](https://github.com/opentdf/platform/commit/c0a9dda975a9384cea8efc413d567edce13f753f))
+
+## [0.4.30](https://github.com/opentdf/platform/compare/service/v0.4.29...service/v0.4.30) (2024-11-27)
+
+
+### Features
+
+* **core:** Introduce ERS mode, ability to connect to remote ERS ([#1735](https://github.com/opentdf/platform/issues/1735)) ([a118316](https://github.com/opentdf/platform/commit/a11831694302114a5d96ac7c6adb4ed55ceff80e))
+* **policy:** limit/offset throughout LIST service RPCs/db ([#1669](https://github.com/opentdf/platform/issues/1669)) ([ec46a3a](https://github.com/opentdf/platform/commit/ec46a3a4375d6fe1c948c6f25146bb572717c651)), closes [#55](https://github.com/opentdf/platform/issues/55)
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1789](https://github.com/opentdf/platform/issues/1789)) ([ff7c6f3](https://github.com/opentdf/platform/commit/ff7c6f3ffe420d7c9ee8afe2a4d8614229128bed))
+* **core:** Set token endpoint manually if client creds provided in server sdk_config ([#1780](https://github.com/opentdf/platform/issues/1780)) ([07a1dbd](https://github.com/opentdf/platform/commit/07a1dbd28f6e758d36b54b44957ca132fd21793f))
+* properly set casbin authz policy ([#1776](https://github.com/opentdf/platform/issues/1776)) ([d4b501c](https://github.com/opentdf/platform/commit/d4b501c66f105a2c90ccc5bfa631b4b063e96f3e))
+
 ## [0.4.29](https://github.com/opentdf/platform/compare/service/v0.4.28...service/v0.4.29) (2024-11-18)
 
 

@@ -21,6 +21,10 @@ var (
 	ErrEnumValueInvalid          = errors.New("ErrEnumValueInvalid: not a valid enum value")
 	ErrUUIDInvalid               = errors.New("ErrUUIDInvalid: value not a valid UUID")
 	ErrMissingValue              = errors.New("ErrMissingValue: value must be included")
+	ErrListLimitTooLarge         = errors.New("ErrListLimitTooLarge: requested limit greater than configured maximum")
+	ErrTxBeginFailed             = errors.New("ErrTxBeginFailed: failed to begin DB transaction")
+	ErrTxRollbackFailed          = errors.New("ErrTxRollbackFailed: failed to rollback DB transaction")
+	ErrTxCommitFailed            = errors.New("ErrTxCommitFailed: failed to commit DB transaction")
 )
 
 // Get helpful error message for PostgreSQL violation
@@ -97,6 +101,7 @@ const (
 	ErrTextUUIDInvalid         = "invalid input syntax for type uuid"
 	ErrTextRestrictViolation   = "intended action would violate a restriction"
 	ErrTextFqnMissingValue     = "FQN must specify a valid value and be of format 'https://<namespace>/attr/<attribute name>/value/<value>'"
+	ErrTextListLimitTooLarge   = "requested pagination limit must be less than or equal to configured limit"
 )
 
 func StatusifyError(err error, fallbackErr string, log ...any) error {
@@ -124,6 +129,10 @@ func StatusifyError(err error, fallbackErr string, log ...any) error {
 	if errors.Is(err, ErrRestrictViolation) {
 		slog.Error(ErrTextRestrictViolation, l...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrTextRestrictViolation))
+	}
+	if errors.Is(err, ErrListLimitTooLarge) {
+		slog.Error(ErrTextListLimitTooLarge, l...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrTextListLimitTooLarge))
 	}
 	slog.Error(err.Error(), l...)
 	return connect.NewError(connect.CodeInternal, errors.New(fallbackErr))

@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
@@ -1478,4 +1480,31 @@ func (s *TDFSuite) checkIdentical(file, checksum string) bool {
 
 	c := h.Sum(nil)
 	return checksum == fmt.Sprintf("%x", c)
+}
+
+func TestParseVersion(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected Version
+		hasError bool
+	}{
+		{"1.2.3", Version{Major: 1, Minor: 2, Patch: 3}, false},
+		{"1.2.3+p1", Version{Major: 1, Minor: 2, Patch: 3, Preview: 1}, false},
+		{"1.2.3+p1.2", Version{Major: 1, Minor: 2, Patch: 3, Preview: 1, Revision: 2}, false},
+		{"1.2", Version{}, true},
+		{"1.2.3+p", Version{}, true},
+		{"1.2.3+p1.", Version{}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result, err := ParseVersion(tt.input)
+			if tt.hasError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expected, *result)
+			}
+		})
+	}
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/authorization/authorizationconnect"
+	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -444,22 +445,60 @@ func makeScopeMap(scope *authorization.ResourceAttribute) map[string]bool {
 
 func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connect.Request[authorization.GetEntitlementsRequest]) (*connect.Response[authorization.GetEntitlementsResponse], error) {
 	as.logger.DebugContext(ctx, "getting entitlements")
-	attrsRes, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{})
-	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
-		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list attributes"))
+
+	var nextOffset int32
+	attrsList := make([]*policy.Attribute, 0)
+	subjectMappingsList := make([]*policy.SubjectMapping, 0)
+
+	// If quantity of attributes exceeds maximum list pagination, all are needed to determine entitlements
+	for {
+		listed, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{
+			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+			Pagination: &policy.PageRequest{
+				Offset: nextOffset,
+			},
+		})
+		if err != nil {
+			as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
+			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list attributes"))
+		}
+
+		nextOffset = listed.GetPagination().GetNextOffset()
+		attrsList = append(attrsList, listed.GetAttributes()...)
+
+		// offset becomes zero when list is exhausted
+		if nextOffset <= 0 {
+			break
+		}
 	}
-	subMapsRes, err := as.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{})
-	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
-		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list subject mappings"))
+
+	// If quantity of subject mappings exceeds maximum list pagination, all are needed to determine entitlements
+	nextOffset = 0
+	for {
+		listed, err := as.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{
+			Pagination: &policy.PageRequest{
+				Offset: nextOffset,
+			},
+		})
+		if err != nil {
+			as.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
+			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list subject mappings"))
+		}
+
+		nextOffset = listed.GetPagination().GetNextOffset()
+		subjectMappingsList = append(subjectMappingsList, listed.GetSubjectMappings()...)
+
+		// offset becomes zero when list is exhausted
+		if nextOffset <= 0 {
+			break
+		}
 	}
 	// create a lookup map of attribute value FQNs (based on request scope)
 	scopeMap := makeScopeMap(req.Msg.GetScope())
 	// create a lookup map of subject mappings by attribute value ID
-	subMapsByVal := makeSubMapsByValLookup(subMapsRes.GetSubjectMappings())
+	subMapsByVal := makeSubMapsByValLookup(subjectMappingsList)
 	// create a lookup map of attribute values by FQN (for rego query)
-	fqnAttrVals := makeValsByFqnsLookup(attrsRes.GetAttributes(), subMapsByVal, scopeMap)
+	fqnAttrVals := makeValsByFqnsLookup(attrsList, subMapsByVal, scopeMap)
 	avf := &attr.GetAttributeValuesByFqnsResponse{
 		FqnAttributeValues: fqnAttrVals,
 	}

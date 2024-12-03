@@ -65,3 +65,17 @@
   echo "$output"
   [[ $output = *NotFound* ]]
 }
+
+@test "REST: health check endpoint" {
+  run curl -s -w '%{http_code}' "https://localhost:8080/healthz"
+  echo "$output"
+  [ "${output: -3}" = "200" ]
+  [ $(jq -r .status <<<"${output:0:-3}") = SERVING ]
+}
+
+@test "gRPC: healh check endpoint" {
+  run grpcurl "localhost:8080" "grpc.health.v1.Health.Check"
+  echo "$output"
+  [ $status = 0 ]
+  [ $(jq -r .status <<<"${output}") = SERVING ]
+}

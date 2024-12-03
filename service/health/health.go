@@ -37,7 +37,7 @@ func NewRegistration() *serviceregistry.Service[grpchealth.Checker] {
 				}
 				hs := HealthService{logger: srp.Logger}
 				return hs, func(_ context.Context, mux *runtime.ServeMux) error {
-					err := mux.HandlePath(http.MethodGet, "/healthz", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+					err := mux.HandlePath(http.MethodGet, "/healthz", func(w http.ResponseWriter, r *http.Request, _ map[string]string) { //nolint:contextcheck // check is not relevant here
 						resp, err := hs.Check(context.Background(), &grpchealth.CheckRequest{
 							Service: r.URL.Query().Get("service"),
 						})

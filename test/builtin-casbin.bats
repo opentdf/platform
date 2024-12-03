@@ -81,6 +81,12 @@ is_permission_denied() {
     [[ "$output" == *"Code: PermissionDenied"* ]] || [[ "$output" == *"status-code: 7"* ]]
 }
 
+# Helper to check if output indicates unauthenticated
+is_unauthenticated() {
+    local output=$1
+    [[ "$output" == *"Code: Unauthenticated"* ]] || [[ "$output" == *"status-code: 16"* ]]
+}
+
 # Helper to check if method is public
 is_public_endpoint() {
     local service=$1
@@ -102,11 +108,17 @@ is_public_endpoint() {
         
         for method in $methods; do
             echo "Testing $service/$method"
-            run grpc_test "admin_test" "$OPENTDF_ADMIN_TOKEN" "$service" "$method"
+            run grpc_test $test_name "$OPENTDF_ADMIN_TOKEN" "$service" "$method"
+
+            if is_unauthenticated "$output"  && "$service" != "kas.AccessService"; then
+                log_info $test_name "ERROR: Got unexpected Unauthenticated for $service/$method"
+                log_info $test_name "Output: $output"
+                false
+            fi
 
             if is_permission_denied "$output"; then
-                log_debug "admin_test" "Unexpected PERMISSION_DENIED for $service/$method"
-                log_debug "admin_test" "Output: $output"
+                log_info $test_name "Unexpected PERMISSION_DENIED for $service/$method"
+                log_info $test_name "Output: $output"
                 false
             fi
             log_info $test_name "Verified access to $service/$method"
@@ -135,9 +147,16 @@ is_public_endpoint() {
                 is_read_method "$method"]) || 
                [[ "$service/$method" == "authorization.AuthorizationService/GetDecisions" ]] || 
                [[ "$service/$method" == "authorization.AuthorizationService/GetDecisionsByToken" ]]; then
+                
+                if is_unauthenticated "$output"; then
+                    log_info $test_name "ERROR: Got unexpected Unauthenticated for $service/$method"
+                    log_info $test_name "Output: $output"
+                    false
+                fi
+
                 if is_permission_denied "$output"; then
-                    log_debug $test_name "Unexpected access denial for $service/$method"
-                    log_debug $test_name "Output: $output"
+                    log_info $test_name "Unexpected access denial for $service/$method"
+                    log_info $test_name "Output: $output"
                     false
                 fi
                 log_info $test_name "Verified access to $service/$method"
@@ -146,8 +165,8 @@ is_public_endpoint() {
                 if is_public_endpoint "$service" "$method"; then
                     log_info $test_name "Verified public endpoint $service/$method"
                 elif ! is_permission_denied "$output"; then
-                    log_debug $test_name "Expected access denial for $service/$method"
-                    log_debug $test_name "Output: $output"
+                    log_info $test_name "Expected access denial for $service/$method"
+                    log_info $test_name "Output: $output"
                     false
                 else
                     log_info $test_name "Verified access denial for $service/$method"

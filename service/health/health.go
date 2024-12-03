@@ -37,7 +37,7 @@ func NewRegistration() *serviceregistry.Service[grpchealth.Checker] {
 				}
 				hs := HealthService{logger: srp.Logger}
 				return hs, func(_ context.Context, mux *runtime.ServeMux) error {
-					mux.HandlePath(http.MethodGet, "/healthz", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+					err := mux.HandlePath(http.MethodGet, "/healthz", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
 						resp, err := hs.Check(context.Background(), &grpchealth.CheckRequest{
 							Service: r.URL.Query().Get("service"),
 						})
@@ -48,12 +48,21 @@ func NewRegistration() *serviceregistry.Service[grpchealth.Checker] {
 						status := map[string]interface{}{"status": strings.ToUpper(resp.Status.String())}
 						if resp.Status != grpchealth.StatusServing {
 							w.WriteHeader(http.StatusServiceUnavailable)
-							json.NewEncoder(w).Encode(status)
+							if err := json.NewEncoder(w).Encode(status); err != nil {
+								srp.Logger.Error("failed to encode health status", slog.String("error", err.Error()))
+							}
+
 							return
 						}
 						w.WriteHeader(http.StatusOK)
-						json.NewEncoder(w).Encode(status)
+						if err := json.NewEncoder(w).Encode(status); err != nil {
+							srp.Logger.Error("failed to encode health status", slog.String("error", err.Error()))
+						}
 					})
+					if err != nil {
+						srp.Logger.Error("failed to register healthz endpoint", slog.String("error", err.Error()))
+					}
+
 					return nil
 				}
 			},

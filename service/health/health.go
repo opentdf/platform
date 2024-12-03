@@ -60,7 +60,7 @@ func NewRegistration() *serviceregistry.Service[grpchealth.Checker] {
 						}
 					})
 					if err != nil {
-						srp.Logger.Error("failed to register healthz endpoint", slog.String("error", err.Error()))
+						panic(errors.Join(errors.New("failed to register healthz endpoint"), err))
 					}
 
 					return nil

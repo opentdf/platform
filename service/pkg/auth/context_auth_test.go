@@ -21,7 +21,9 @@ func TestContextWithAuthNInfo(t *testing.T) {
 	newCtx := ContextWithAuthNInfo(ctx, mockJWK, mockJWT, rawToken)
 
 	// Assert that the context contains the correct values
-	testAuthContext := newCtx.Value(authnContextKey).(*authContext)
+	value := newCtx.Value(authnContextKey)
+	testAuthContext, ok := value.(*authContext)
+	assert.True(t, ok)
 	assert.NotNil(t, testAuthContext)
 	assert.Equal(t, mockJWK, testAuthContext.key, "JWK should match")
 	assert.Equal(t, mockJWT, testAuthContext.accessToken, "JWT should match")
@@ -61,7 +63,6 @@ func TestGetRawAccessTokenFromContext(t *testing.T) {
 }
 
 func TestGetContextDetailsInvalidType(t *testing.T) {
-
 	// Create a context with an invalid type
 	ctx := context.WithValue(context.Background(), authnContextKey, "invalidType")
 

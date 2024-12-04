@@ -125,36 +125,22 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 // casbinEnforce is a helper function to enforce the policy with casbin
 // TODO implement a common type so this can be used for both http and grpc
 func (e *Enforcer) Enforce(token jwt.Token, resource, action string) (bool, error) {
-	var err error
-	permDeniedError := fmt.Errorf("permission denied")
-
 	// extract the role claim from the token
 	s := e.buildSubjectFromToken(token)
+	s = append(s, rolePrefix+defaultRole)
 
-	if len(s) == 0 {
-		sub := rolePrefix + defaultRole
-		e.logger.Debug("enforcing policy", slog.Any("subject", sub), slog.String("resource", resource), slog.String("action", action))
-		return e.Enforcer.Enforce(sub, resource, action)
-	}
-
-	allowed := false
 	for _, info := range s {
-		allowed, err = e.Enforcer.Enforce(info, resource, action)
+		allowed, err := e.Enforcer.Enforce(info, resource, action)
 		if err != nil {
 			e.logger.Error("enforce by role error", slog.String("subject info", info), slog.String("resource", resource), slog.String("action", action), slog.String("error", err.Error()))
-			continue
 		}
 		if allowed {
 			e.logger.Debug("allowed by policy", slog.String("subject info", info), slog.String("resource", resource), slog.String("action", action))
-			break
+			return true, nil
 		}
 	}
-	if !allowed {
-		e.logger.Debug("permission denied by policy", slog.Any("subject info", s), slog.String("resource", resource), slog.String("action", action))
-		return false, permDeniedError
-	}
-
-	return true, nil
+	e.logger.Debug("permission denied by policy", slog.Any("subject.info", s), slog.String("resource", resource), slog.String("action", action))
+	return false, fmt.Errorf("permission denied")
 }
 
 func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {

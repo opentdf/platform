@@ -24,19 +24,9 @@ import (
 
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/logger"
+
+	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 )
-
-const (
-	authnContextKey = authContextKey("dpop-jwk")
-)
-
-type authContextKey string
-
-type authContext struct {
-	key         jwk.Key
-	accessToken jwt.Token
-	rawToken    string
-}
 
 var (
 	// Set of allowed public endpoints that do not require authentication
@@ -394,7 +384,7 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 	if !tokenHasCNF && !a.enforceDPoP {
 		// this condition is not quite tight because it's possible that the `cnf` claim may
 		// come from token introspection
-		ctx = ContextWithAuthNInfo(ctx, nil, accessToken, tokenRaw)
+		ctx = ctxAuth.ContextWithAuthNInfo(ctx, nil, accessToken, tokenRaw)
 		return accessToken, ctx, nil
 	}
 	key, err := a.validateDPoP(accessToken, tokenRaw, dpopInfo, dpopHeader)
@@ -402,51 +392,8 @@ func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpo
 		a.logger.Warn("failed to validate dpop", slog.String("token", tokenRaw), slog.Any("err", err))
 		return nil, nil, err
 	}
-	ctx = ContextWithAuthNInfo(ctx, key, accessToken, tokenRaw)
+	ctx = ctxAuth.ContextWithAuthNInfo(ctx, key, accessToken, tokenRaw)
 	return accessToken, ctx, nil
-}
-
-func ContextWithAuthNInfo(ctx context.Context, key jwk.Key, accessToken jwt.Token, raw string) context.Context {
-	return context.WithValue(ctx, authnContextKey, &authContext{
-		key,
-		accessToken,
-		raw,
-	})
-}
-
-func getContextDetails(ctx context.Context, l *logger.Logger) *authContext {
-	key := ctx.Value(authnContextKey)
-	if key == nil {
-		return nil
-	}
-	if c, ok := key.(*authContext); ok {
-		return c
-	}
-
-	// We should probably return an error here?
-	l.ErrorContext(ctx, "invalid authContext")
-	return nil
-}
-
-func GetJWKFromContext(ctx context.Context, l *logger.Logger) jwk.Key {
-	if c := getContextDetails(ctx, l); c != nil {
-		return c.key
-	}
-	return nil
-}
-
-func GetAccessTokenFromContext(ctx context.Context, l *logger.Logger) jwt.Token {
-	if c := getContextDetails(ctx, l); c != nil {
-		return c.accessToken
-	}
-	return nil
-}
-
-func GetRawAccessTokenFromContext(ctx context.Context, l *logger.Logger) string {
-	if c := getContextDetails(ctx, l); c != nil {
-		return c.rawToken
-	}
-	return ""
 }
 
 func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiverInfo, headers []string) (jwk.Key, error) {

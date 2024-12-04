@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.32](https://github.com/opentdf/platform/compare/service/v0.4.31...service/v0.4.32) (2024-12-04)
+
+
+### Features
+
+* **policy:** 1660 transition Policy FQN indexing to a transaction rather than an unmonitored side effect ([#1782](https://github.com/opentdf/platform/issues/1782)) ([7c4c74f](https://github.com/opentdf/platform/commit/7c4c74f0da34da86085b30726d5606542ba10cff))
+
+
+### Bug Fixes
+
+* **authz:** handle pagination in authz service ([#1797](https://github.com/opentdf/platform/issues/1797)) ([58cb3f6](https://github.com/opentdf/platform/commit/58cb3f672324b715aeae04ac90368a33e8b045fa))
+* **core:** expose rest based healthcheck ([#1810](https://github.com/opentdf/platform/issues/1810)) ([859f23b](https://github.com/opentdf/platform/commit/859f23bd399b2a4e8a37c1e06ad1d613087451e2))
+
 ## [0.4.31](https://github.com/opentdf/platform/compare/service/v0.4.30...service/v0.4.31) (2024-12-02)
 
 

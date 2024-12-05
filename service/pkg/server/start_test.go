@@ -145,6 +145,7 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Res
 
 func (suite *StartTestSuite) Test_Start_Mode_Config_Errors() {
 	t := suite.T()
+	mockOpenTDFServer()
 	testCases := []struct {
 		name             string
 		configFile       string
@@ -169,6 +170,7 @@ func (suite *StartTestSuite) Test_Start_Mode_Config_Errors() {
 
 func (suite *StartTestSuite) Test_Start_Mode_Config_Success() {
 	t := suite.T()
+	mockOpenTDFServer()
 	testCases := []struct {
 		name       string
 		configFile string

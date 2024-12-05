@@ -142,3 +142,49 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Res
 	require.NoError(t, err)
 	assert.Equal(t, "hello from test service!", string(respBody))
 }
+
+func (suite *StartTestSuite) Test_Start_Mode_Config_Errors() {
+	t := suite.T()
+	testCases := []struct {
+		name             string
+		configFile       string
+		expErrorContains string
+	}{
+		{"core without sdk_config", "testdata/err-core-no-config.yaml", "no sdk config provided"},
+		{"kas without sdk_config", "testdata/err-core-no-config.yaml", "no sdk config provided"},
+		{"core with sdk_config without ers endpoint", "testdata/err-core-w-config-no-ers.yaml", "entityresolution endpoint must be provided in core mode"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := Start(
+				WithWaitForShutdownSignal(),
+				WithConfigFile(tc.configFile),
+			)
+			require.Error(t, err)
+			require.ErrorContains(t, err, tc.expErrorContains)
+		})
+	}
+}
+
+func (suite *StartTestSuite) Test_Start_Mode_Config_Success() {
+	t := suite.T()
+	testCases := []struct {
+		name       string
+		configFile string
+	}{
+		{"core with sdk_config", "testdata/core-correct-sdk-config.yaml"},
+		{"core,entityresolution no sdk_config", "testdata/core-ers-no-config.yaml"},
+		{"core,entityresolution,kas no sdk_config", "testdata/core-ers-kas-no-config.yaml"},
+		{"all no sdk_config", "testdata/all-no-config.yaml"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := Start(
+				WithConfigFile(tc.configFile),
+			)
+			require.NoError(t, err)
+		})
+	}
+}

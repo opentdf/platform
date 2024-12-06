@@ -34,6 +34,7 @@ type (
 const (
 	dbusername = "postgres"
 	dbpassword = "changeme"
+	dpport     = "5431/tcp"
 )
 
 func (t TestService) TestHandler(w http.ResponseWriter, _ *http.Request, _ map[string]string) {
@@ -43,66 +44,10 @@ func (t TestService) TestHandler(w http.ResponseWriter, _ *http.Request, _ map[s
 	}
 }
 
-func mockPostgres() (int, string, error) {
-	ctx := context.Background()
-	containerreq := tc.ContainerRequest{
-		Image:        "postgres:15-alpine",
-		Name:         "testcontainer-postgres",
-		ExposedPorts: []string{"5431/tcp"},
-		Env: map[string]string{
-			"POSTGRES_USER":     dbusername,
-			"POSTGRES_PASSWORD": dbpassword,
-			"POSTGRES_DB":       "opentdf",
-		},
-		WaitingFor: wait.ForExec([]string{"pg_isready", "-h", "localhost", "-U", "postgres"}).WithStartupTimeout(120 * time.Second),
-	}
-	req := tc.GenericContainerRequest{
-		ProviderType:     tc.ProviderDocker,
-		ContainerRequest: containerreq,
-		Started:          true,
-	}
+// func mockPostgres() (int, string, error) {
 
-	// cleanup existing containers:
-	existingContainers, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
-		ContainerRequest: containerreq,
-		Started:          false,
-	})
-	if err == nil {
-		err := existingContainers.Terminate(ctx) // Clean up pre-existing containers
-		if err != nil {
-			slog.Error("could not stop existing container")
-		}
-	}
-
-	slog.Info("starting postgres container")
-	postgres, err := tc.GenericContainer(context.Background(), req)
-	if err != nil {
-		return 0, "", fmt.Errorf("could not start postgres container, %w", err)
-	}
-
-	// Cleanup the container
-	defer func() {
-		if err := postgres.Terminate(ctx); err != nil {
-			slog.Error("could not stop postgres container", slog.String("error", err.Error()))
-			return
-		}
-
-		if err := recover(); err != nil {
-			os.Exit(1)
-		}
-	}()
-
-	port, err := postgres.MappedPort(ctx, "5432/tcp")
-	if err != nil {
-		return 0, "", fmt.Errorf("could not get postgres mapped port, %w", err)
-	}
-	host, err := postgres.Host(ctx)
-	if err != nil {
-		return 0, "", fmt.Errorf("Failed to get host: %w", err)
-	}
-
-	return port.Int(), host, nil
-}
+// 	return port.Int(), host, nil
+// }
 
 func mockKeycloakServer() *httptest.Server {
 	discoveryURL := "not set yet"
@@ -336,8 +281,69 @@ func (suite *StartTestSuite) Test_Start_Mode_Config_Errors() {
 func (suite *StartTestSuite) Test_Start_Mode_Config_Success() {
 	t := suite.T()
 	discoveryEndpoint := mockKeycloakServer()
-	port, host, err := mockPostgres()
+	// port, host, err := mockPostgres()
+	ctx := context.Background()
+	containerreq := tc.ContainerRequest{
+		Image:        "postgres:15-alpine",
+		Name:         fmt.Sprintf("testcontainer-postgres-%d", time.Now().UnixNano()),
+		ExposedPorts: []string{dpport},
+		Env: map[string]string{
+			"POSTGRES_USER":     dbusername,
+			"POSTGRES_PASSWORD": dbpassword,
+			"POSTGRES_DB":       "opentdf-test",
+		},
+		WaitingFor: wait.ForExec([]string{"pg_isready", "-h", "localhost", "-U", "postgres"}).WithStartupTimeout(120 * time.Second),
+	}
+	req := tc.GenericContainerRequest{
+		ProviderType:     tc.ProviderDocker,
+		ContainerRequest: containerreq,
+		Started:          true,
+	}
+
+	// cleanup existing containers:
+	existingContainers, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
+		ContainerRequest: containerreq,
+		Started:          false,
+	})
+	if err == nil {
+		err := existingContainers.Terminate(ctx) // Clean up pre-existing containers
+		if err != nil {
+			slog.Error("could not stop existing container")
+		}
+	}
+
+	slog.Info("starting postgres container")
+	postgres, err := tc.GenericContainer(context.Background(), req)
 	require.NoError(t, err)
+	// if err != nil {
+	// 	return 0, "", fmt.Errorf("could not start postgres container, %w", err)
+	// }
+
+	// Cleanup the container
+	defer func() {
+		if err := postgres.Terminate(ctx); err != nil {
+			slog.Error("could not stop postgres container", slog.String("error", err.Error()))
+			return
+		}
+
+		if err := recover(); err != nil {
+			os.Exit(1)
+		}
+	}()
+
+	dbport, err := postgres.MappedPort(ctx, dpport)
+	port := dbport.Int()
+	require.NoError(t, err)
+	// if err != nil {
+	// 	return 0, "", fmt.Errorf("could not get postgres mapped port, %w", err)
+	// }
+	host, err := postgres.Host(ctx)
+	require.NoError(t, err)
+	// if err != nil {
+	// 	return 0, "", fmt.Errorf("Failed to get host: %w", err)
+	// }
+
+	// require.NoError(t, err)
 	originalFilePath := "testdata/all-no-config.yaml"
 	testCases := []struct {
 		name          string

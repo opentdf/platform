@@ -2,10 +2,13 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/yaml.v3"
 )
 
 type (
@@ -32,9 +36,8 @@ func (t TestService) TestHandler(w http.ResponseWriter, _ *http.Request, _ map[s
 	}
 }
 
-func mockOpenTDFServer() (*server.OpenTDFServer, error) {
+func mockKeycloakServer() *httptest.Server {
 	discoveryURL := "not set yet"
-
 	discoveryEndpoint := httptest.NewServer(
 		http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			var resp string
@@ -62,6 +65,11 @@ func mockOpenTDFServer() (*server.OpenTDFServer, error) {
 
 	discoveryURL = discoveryEndpoint.URL
 
+	return discoveryEndpoint
+}
+
+func mockOpenTDFServer() (*server.OpenTDFServer, error) {
+	discoveryEndpoint := mockKeycloakServer()
 	// Create new opentdf server
 	return server.NewOpenTDFServer(server.Config{
 		WellKnownConfigRegister: func(_ string, _ any) error {
@@ -80,6 +88,70 @@ func mockOpenTDFServer() (*server.OpenTDFServer, error) {
 			Logger: slog.New(slog.Default().Handler()),
 		},
 	)
+}
+
+func updateNestedKey(data map[string]interface{}, path []string, value interface{}) error {
+	if len(path) == 0 {
+		return fmt.Errorf("path cannot be empty")
+	}
+
+	current := data
+	for i, key := range path[:len(path)-1] {
+		if next, ok := current[key]; ok {
+			if nextMap, ok2 := next.(map[string]interface{}); ok2 {
+				current = nextMap
+			} else {
+				return fmt.Errorf("key %s at path level %d is not a map", key, i)
+			}
+		} else {
+			// If the key doesn't exist, initialize a new map
+			newMap := make(map[string]interface{})
+			current[key] = newMap
+			current = newMap
+		}
+	}
+
+	// Set the value at the final key
+	current[path[len(path)-1]] = value
+	return nil
+}
+
+func createTempYAMLFileWithNestedChanges(changes map[string]interface{}, originalFilePath string, newFileName string) (string, error) {
+	// Load the original YAML file
+	data, err := os.ReadFile(originalFilePath)
+	if err != nil {
+		return "", err
+	}
+
+	var yamlData map[string]interface{}
+	if err := yaml.Unmarshal(data, &yamlData); err != nil {
+		return "", err
+	}
+
+	// Apply all changes
+	for keyPath, value := range changes {
+		path := strings.Split(keyPath, ".") // Convert dot notation to slice
+		if err := updateNestedKey(yamlData, path, value); err != nil {
+			return "", err
+		}
+	}
+
+	// Create a temporary file
+	tempFile, err := os.CreateTemp("testdata", newFileName)
+	if err != nil {
+		return "", err
+	}
+	defer tempFile.Close()
+
+	// Write the modified YAML to the temp file
+	encoder := yaml.NewEncoder(tempFile)
+	defer encoder.Close()
+
+	if err := encoder.Encode(&yamlData); err != nil {
+		return "", err
+	}
+
+	return tempFile.Name(), nil
 }
 
 type StartTestSuite struct {
@@ -141,4 +213,110 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Res
 
 	require.NoError(t, err)
 	assert.Equal(t, "hello from test service!", string(respBody))
+}
+
+func (suite *StartTestSuite) Test_Start_Mode_Config_Errors() {
+	t := suite.T()
+	discoveryEndpoint := mockKeycloakServer()
+	originalFilePath := "testdata/all-no-config.yaml"
+	testCases := []struct {
+		name             string
+		changes          map[string]interface{}
+		newConfigFile    string
+		expErrorContains string
+	}{
+		{"core without sdk_config",
+			map[string]interface{}{
+				"mode": "core", "server.auth.issuer": discoveryEndpoint.URL},
+			"err-core-no-config-*.yaml", "no sdk config provided"},
+		{"kas without sdk_config",
+			map[string]interface{}{
+				"mode": "kas", "server.auth.issuer": discoveryEndpoint.URL},
+			"err-kas-no-config-*.yaml", "no sdk config provided"},
+		{"core with sdk_config without ers endpoint",
+			map[string]interface{}{
+				"mode": "core", "server.auth.issuer": discoveryEndpoint.URL,
+				"sdk_config.client_id": "opentdf", "sdk_config.client_secret": "opentdf"},
+			"err-core-w-config-no-ers-*.yaml", "entityresolution endpoint must be provided in core mode"},
+	}
+	var tempFiles []string
+	defer func() {
+		// Cleanup all created temp files
+		for _, tempFile := range tempFiles {
+			if err := os.Remove(tempFile); err != nil {
+				t.Errorf("Failed to remove temp file %s: %v", tempFile, err)
+			}
+		}
+	}()
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tempFilePath, err := createTempYAMLFileWithNestedChanges(tc.changes, originalFilePath, tc.newConfigFile)
+			if err != nil {
+				t.Fatalf("Failed to create temp YAML file: %v", err)
+			}
+			tempFiles = append(tempFiles, tempFilePath)
+
+			err = Start(
+				WithConfigFile(tempFilePath),
+			)
+			require.Error(t, err)
+			require.ErrorContains(t, err, tc.expErrorContains)
+		})
+	}
+}
+
+func (suite *StartTestSuite) Test_Start_Mode_Config_Success() {
+	t := suite.T()
+	discoveryEndpoint := mockKeycloakServer()
+	// require.NoError(t, err)
+	originalFilePath := "testdata/all-no-config.yaml"
+	testCases := []struct {
+		name          string
+		changes       map[string]interface{}
+		newConfigFile string
+	}{
+		{"all without sdk_config",
+			map[string]interface{}{
+				"server.auth.issuer": discoveryEndpoint.URL},
+			"all-no-config-*.yaml"},
+		{"core,entityresolution without sdk_config",
+			map[string]interface{}{
+				"mode": "core,entityresolution", "server.auth.issuer": discoveryEndpoint.URL},
+			"all-no-config-*.yaml"},
+		{"core,entityresolution,kas without sdk_config",
+			map[string]interface{}{
+				"mode": "core,entityresolution,kas", "server.auth.issuer": discoveryEndpoint.URL},
+			"all-no-config-*.yaml"},
+		{"core with correct sdk_config",
+			map[string]interface{}{
+				"mode": "core", "server.auth.issuer": discoveryEndpoint.URL,
+				"sdk_config.client_id": "opentdf", "sdk_config.client_secret": "opentdf",
+				"sdk_config.entityresolution.endpoint": "http://localhost:8181", "sdk_config.entityresolution.plaintext": "true"},
+			"core-w-config-correct-*.yaml"},
+	}
+	var tempFiles []string
+	defer func() {
+		// Cleanup all created temp files
+		for _, tempFile := range tempFiles {
+			if err := os.Remove(tempFile); err != nil {
+				t.Errorf("Failed to remove temp file %s: %v", tempFile, err)
+			}
+		}
+	}()
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tempFilePath, err := createTempYAMLFileWithNestedChanges(tc.changes, originalFilePath, tc.newConfigFile)
+			if err != nil {
+				t.Fatalf("Failed to create temp YAML file: %v", err)
+			}
+			tempFiles = append(tempFiles, tempFilePath)
+
+			err = Start(
+				WithConfigFile(tempFilePath),
+			)
+			// require that it got past the service config and mode setup
+			// expected error when trying to establish db connection
+			require.ErrorContains(t, err, "failed to connect to database")
+		})
+	}
 }

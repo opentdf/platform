@@ -31,6 +31,11 @@ type (
 	TestService        struct{}
 )
 
+const (
+	dbusername = "postgres"
+	dbpassword = "changeme"
+)
+
 func (t TestService) TestHandler(w http.ResponseWriter, _ *http.Request, _ map[string]string) {
 	_, err := w.Write([]byte("hello from test service!"))
 	if err != nil {
@@ -40,23 +45,33 @@ func (t TestService) TestHandler(w http.ResponseWriter, _ *http.Request, _ map[s
 
 func mockPostgres() (int, string, error) {
 	ctx := context.Background()
-	req := tc.GenericContainerRequest{
-		ProviderType: tc.ProviderDocker,
-		ContainerRequest: tc.ContainerRequest{
-			Image:        "postgres:15-alpine",
-			Name:         "testcontainer-postgres",
-			ExposedPorts: []string{"5431/tcp"},
-			Env: map[string]string{
-				"POSTGRES_USER":     "postgres",
-				"POSTGRES_PASSWORD": "changeme",
-				"POSTGRES_DB":       "opentdf",
-			},
-			WaitingFor: wait.ForExec([]string{"pg_isready", "-h", "localhost", "-U", "postgres"}).WithStartupTimeout(120 * time.Second),
+	containerreq := tc.ContainerRequest{
+		Image:        "postgres:15-alpine",
+		Name:         "testcontainer-postgres",
+		ExposedPorts: []string{"5431/tcp"},
+		Env: map[string]string{
+			"POSTGRES_USER":     dbusername,
+			"POSTGRES_PASSWORD": dbpassword,
+			"POSTGRES_DB":       "opentdf",
 		},
-		Started: true,
+		WaitingFor: wait.ForExec([]string{"pg_isready", "-h", "localhost", "-U", "postgres"}).WithStartupTimeout(120 * time.Second),
+	}
+	req := tc.GenericContainerRequest{
+		ProviderType:     tc.ProviderDocker,
+		ContainerRequest: containerreq,
+		Started:          true,
 	}
 
-	slog.Info("📀 starting postgres container")
+	// cleanup existing containers:
+	existingContainers, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
+		ContainerRequest: containerreq,
+		Started:          false,
+	})
+	if err == nil {
+		existingContainers.Terminate(ctx) // Clean up pre-existing containers
+	}
+
+	slog.Info("starting postgres container")
 	postgres, err := tc.GenericContainer(context.Background(), req)
 	if err != nil {
 		return 0, "", fmt.Errorf("could not start postgres container, %w", err)
@@ -329,22 +344,22 @@ func (suite *StartTestSuite) Test_Start_Mode_Config_Success() {
 		{"all without sdk_config",
 			map[string]interface{}{
 				"db.host": host, "db.port": port,
-				"db.user": "postgres", "db.password": "changeme",
+				"db.user": dbusername, "db.password": dbpassword,
 				"server.auth.issuer": discoveryEndpoint.URL},
 			"all-no-config-*.yaml"},
 		{"core,entityresolution without sdk_config",
 			map[string]interface{}{"db.host": host, "db.port": port,
-				"db.user": "postgres", "db.password": "changeme",
+				"db.user": dbusername, "db.password": dbpassword,
 				"mode": "core,entityresolution", "server.auth.issuer": discoveryEndpoint.URL},
 			"all-no-config-*.yaml"},
 		{"core,entityresolution,kas without sdk_config",
 			map[string]interface{}{"db.host": host, "db.port": port,
-				"db.user": "postgres", "db.password": "changeme",
+				"db.user": dbusername, "db.password": dbpassword,
 				"mode": "core,entityresolution,kas", "server.auth.issuer": discoveryEndpoint.URL},
 			"all-no-config-*.yaml"},
 		{"core with correct sdk_config",
 			map[string]interface{}{"db.host": host, "db.port": port,
-				"db.user": "postgres", "db.password": "changeme",
+				"db.user": dbusername, "db.password": dbpassword,
 				"mode": "core", "server.auth.issuer": discoveryEndpoint.URL,
 				"sdk_config.client_id": "opentdf", "sdk_config.client_secret": "opentdf",
 				"sdk_config.entityresolution.endpoint": "http://localhost:8181", "sdk_config.entityresolution.plaintext": "true"},

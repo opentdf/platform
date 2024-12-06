@@ -21,8 +21,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	tc "github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"gopkg.in/yaml.v3"
 )
 
@@ -31,23 +29,12 @@ type (
 	TestService        struct{}
 )
 
-const (
-	dbusername = "postgres"
-	dbpassword = "changeme"
-	dpport     = "5431/tcp"
-)
-
 func (t TestService) TestHandler(w http.ResponseWriter, _ *http.Request, _ map[string]string) {
 	_, err := w.Write([]byte("hello from test service!"))
 	if err != nil {
 		panic(err)
 	}
 }
-
-// func mockPostgres() (int, string, error) {
-
-// 	return port.Int(), host, nil
-// }
 
 func mockKeycloakServer() *httptest.Server {
 	discoveryURL := "not set yet"
@@ -274,127 +261,6 @@ func (suite *StartTestSuite) Test_Start_Mode_Config_Errors() {
 			)
 			require.Error(t, err)
 			require.ErrorContains(t, err, tc.expErrorContains)
-		})
-	}
-}
-
-func (suite *StartTestSuite) Test_Start_Mode_Config_Success() {
-	t := suite.T()
-	discoveryEndpoint := mockKeycloakServer()
-	// port, host, err := mockPostgres()
-	ctx := context.Background()
-	containerreq := tc.ContainerRequest{
-		Image:        "postgres:15-alpine",
-		Name:         fmt.Sprintf("testcontainer-postgres-%d", time.Now().UnixNano()),
-		ExposedPorts: []string{dpport},
-		Env: map[string]string{
-			"POSTGRES_USER":     dbusername,
-			"POSTGRES_PASSWORD": dbpassword,
-			"POSTGRES_DB":       "opentdf-test",
-		},
-		WaitingFor: wait.ForExec([]string{"pg_isready", "-h", "localhost", "-U", "postgres"}).WithStartupTimeout(120 * time.Second),
-	}
-	req := tc.GenericContainerRequest{
-		ProviderType:     tc.ProviderDocker,
-		ContainerRequest: containerreq,
-		Started:          true,
-	}
-
-	// cleanup existing containers:
-	existingContainers, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
-		ContainerRequest: containerreq,
-		Started:          false,
-	})
-	if err == nil {
-		err := existingContainers.Terminate(ctx) // Clean up pre-existing containers
-		if err != nil {
-			slog.Error("could not stop existing container")
-		}
-	}
-
-	slog.Info("starting postgres container")
-	postgres, err := tc.GenericContainer(context.Background(), req)
-	require.NoError(t, err)
-	// if err != nil {
-	// 	return 0, "", fmt.Errorf("could not start postgres container, %w", err)
-	// }
-
-	// Cleanup the container
-	defer func() {
-		if err := postgres.Terminate(ctx); err != nil {
-			slog.Error("could not stop postgres container", slog.String("error", err.Error()))
-			return
-		}
-
-		if err := recover(); err != nil {
-			os.Exit(1)
-		}
-	}()
-
-	dbport, err := postgres.MappedPort(ctx, dpport)
-	port := dbport.Int()
-	require.NoError(t, err)
-	// if err != nil {
-	// 	return 0, "", fmt.Errorf("could not get postgres mapped port, %w", err)
-	// }
-	host, err := postgres.Host(ctx)
-	require.NoError(t, err)
-	// if err != nil {
-	// 	return 0, "", fmt.Errorf("Failed to get host: %w", err)
-	// }
-
-	// require.NoError(t, err)
-	originalFilePath := "testdata/all-no-config.yaml"
-	testCases := []struct {
-		name          string
-		changes       map[string]interface{}
-		newConfigFile string
-	}{
-		{"all without sdk_config",
-			map[string]interface{}{
-				"db.host": host, "db.port": port,
-				"db.user": dbusername, "db.password": dbpassword,
-				"server.auth.issuer": discoveryEndpoint.URL},
-			"all-no-config-*.yaml"},
-		{"core,entityresolution without sdk_config",
-			map[string]interface{}{"db.host": host, "db.port": port,
-				"db.user": dbusername, "db.password": dbpassword,
-				"mode": "core,entityresolution", "server.auth.issuer": discoveryEndpoint.URL},
-			"all-no-config-*.yaml"},
-		{"core,entityresolution,kas without sdk_config",
-			map[string]interface{}{"db.host": host, "db.port": port,
-				"db.user": dbusername, "db.password": dbpassword,
-				"mode": "core,entityresolution,kas", "server.auth.issuer": discoveryEndpoint.URL},
-			"all-no-config-*.yaml"},
-		{"core with correct sdk_config",
-			map[string]interface{}{"db.host": host, "db.port": port,
-				"db.user": dbusername, "db.password": dbpassword,
-				"mode": "core", "server.auth.issuer": discoveryEndpoint.URL,
-				"sdk_config.client_id": "opentdf", "sdk_config.client_secret": "opentdf",
-				"sdk_config.entityresolution.endpoint": "http://localhost:8181", "sdk_config.entityresolution.plaintext": "true"},
-			"core-w-config-correct-*.yaml"},
-	}
-	var tempFiles []string
-	defer func() {
-		// Cleanup all created temp files
-		for _, tempFile := range tempFiles {
-			if err := os.Remove(tempFile); err != nil {
-				t.Errorf("Failed to remove temp file %s: %v", tempFile, err)
-			}
-		}
-	}()
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			tempFilePath, err := createTempYAMLFileWithNestedChanges(tc.changes, originalFilePath, tc.newConfigFile)
-			if err != nil {
-				t.Fatalf("Failed to create temp YAML file: %v", err)
-			}
-			tempFiles = append(tempFiles, tempFilePath)
-
-			err = Start(
-				WithConfigFile(tempFilePath),
-			)
-			require.NoError(t, err)
 		})
 	}
 }

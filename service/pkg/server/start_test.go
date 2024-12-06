@@ -21,6 +21,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	tc "github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"gopkg.in/yaml.v3"
 )
 
@@ -34,6 +36,57 @@ func (t TestService) TestHandler(w http.ResponseWriter, _ *http.Request, _ map[s
 	if err != nil {
 		panic(err)
 	}
+}
+
+func mockPostgres() (int, string, error) {
+	ctx := context.Background()
+	req := tc.GenericContainerRequest{
+		ProviderType: tc.ProviderDocker,
+		ContainerRequest: tc.ContainerRequest{
+			Image:        "postgres:15-alpine",
+			Name:         "testcontainer-postgres",
+			ExposedPorts: []string{"5431/tcp"},
+
+			Env: map[string]string{
+				"POSTGRES_USER":     "postgres",
+				"POSTGRES_PASSWORD": "changeme",
+				"POSTGRES_DB":       "opentdf",
+			},
+
+			WaitingFor: wait.ForExec([]string{"pg_isready", "-h", "localhost", "-U", "postgres"}).WithStartupTimeout(120 * time.Second),
+		},
+		Started: true,
+	}
+
+	slog.Info("📀 starting postgres container")
+	postgres, err := tc.GenericContainer(context.Background(), req)
+	if err != nil {
+		return 0, "", fmt.Errorf("could not start postgres container, %v", err)
+	}
+
+	// Cleanup the container
+	defer func() {
+		if err := postgres.Terminate(ctx); err != nil {
+			slog.Error("could not stop postgres container", slog.String("error", err.Error()))
+			return
+		}
+
+		if err := recover(); err != nil {
+			os.Exit(1)
+		}
+	}()
+
+	port, err := postgres.MappedPort(ctx, "5432/tcp")
+	if err != nil {
+		return 0, "", fmt.Errorf("could not get postgres mapped port, %v", err)
+	}
+	host, err := postgres.Host(ctx)
+	if err != nil {
+		return 0, "", fmt.Errorf("Failed to get host: %v", err)
+	}
+
+	return port.Int(), host, nil
+
 }
 
 func mockKeycloakServer() *httptest.Server {
@@ -226,10 +279,12 @@ func (suite *StartTestSuite) Test_Start_Mode_Config_Errors() {
 		expErrorContains string
 	}{
 		{"core without sdk_config",
-			map[string]interface{}{"mode": "core", "server.auth.issuer": discoveryEndpoint.URL},
+			map[string]interface{}{
+				"mode": "core", "server.auth.issuer": discoveryEndpoint.URL},
 			"err-core-no-config-*.yaml", "no sdk config provided"},
 		{"kas without sdk_config",
-			map[string]interface{}{"mode": "kas", "server.auth.issuer": discoveryEndpoint.URL},
+			map[string]interface{}{
+				"mode": "kas", "server.auth.issuer": discoveryEndpoint.URL},
 			"err-kas-no-config-*.yaml", "no sdk config provided"},
 		{"core with sdk_config without ers endpoint",
 			map[string]interface{}{
@@ -266,6 +321,8 @@ func (suite *StartTestSuite) Test_Start_Mode_Config_Errors() {
 func (suite *StartTestSuite) Test_Start_Mode_Config_Success() {
 	t := suite.T()
 	discoveryEndpoint := mockKeycloakServer()
+	port, host, err := mockPostgres()
+	require.NoError(t, err)
 	originalFilePath := "testdata/all-no-config.yaml"
 	testCases := []struct {
 		name          string
@@ -273,18 +330,24 @@ func (suite *StartTestSuite) Test_Start_Mode_Config_Success() {
 		newConfigFile string
 	}{
 		{"all without sdk_config",
-			map[string]interface{}{"server.auth.issuer": discoveryEndpoint.URL},
+			map[string]interface{}{
+				"db.host": host, "db.port": port,
+				"db.user": "postgres", "db.password": "changeme",
+				"server.auth.issuer": discoveryEndpoint.URL},
 			"all-no-config-*.yaml"},
 		{"core,entityresolution without sdk_config",
-			map[string]interface{}{
+			map[string]interface{}{"db.host": host, "db.port": port,
+				"db.user": "postgres", "db.password": "changeme",
 				"mode": "core,entityresolution", "server.auth.issuer": discoveryEndpoint.URL},
 			"all-no-config-*.yaml"},
 		{"core,entityresolution,kas without sdk_config",
-			map[string]interface{}{
+			map[string]interface{}{"db.host": host, "db.port": port,
+				"db.user": "postgres", "db.password": "changeme",
 				"mode": "core,entityresolution,kas", "server.auth.issuer": discoveryEndpoint.URL},
 			"all-no-config-*.yaml"},
 		{"core with correct sdk_config",
-			map[string]interface{}{
+			map[string]interface{}{"db.host": host, "db.port": port,
+				"db.user": "postgres", "db.password": "changeme",
 				"mode": "core", "server.auth.issuer": discoveryEndpoint.URL,
 				"sdk_config.client_id": "opentdf", "sdk_config.client_secret": "opentdf",
 				"sdk_config.entityresolution.endpoint": "http://localhost:8181", "sdk_config.entityresolution.plaintext": "true"},

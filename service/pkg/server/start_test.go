@@ -46,13 +46,11 @@ func mockPostgres() (int, string, error) {
 			Image:        "postgres:15-alpine",
 			Name:         "testcontainer-postgres",
 			ExposedPorts: []string{"5431/tcp"},
-
 			Env: map[string]string{
 				"POSTGRES_USER":     "postgres",
 				"POSTGRES_PASSWORD": "changeme",
 				"POSTGRES_DB":       "opentdf",
 			},
-
 			WaitingFor: wait.ForExec([]string{"pg_isready", "-h", "localhost", "-U", "postgres"}).WithStartupTimeout(120 * time.Second),
 		},
 		Started: true,
@@ -61,7 +59,7 @@ func mockPostgres() (int, string, error) {
 	slog.Info("📀 starting postgres container")
 	postgres, err := tc.GenericContainer(context.Background(), req)
 	if err != nil {
-		return 0, "", fmt.Errorf("could not start postgres container, %v", err)
+		return 0, "", fmt.Errorf("could not start postgres container, %w", err)
 	}
 
 	// Cleanup the container
@@ -78,15 +76,14 @@ func mockPostgres() (int, string, error) {
 
 	port, err := postgres.MappedPort(ctx, "5432/tcp")
 	if err != nil {
-		return 0, "", fmt.Errorf("could not get postgres mapped port, %v", err)
+		return 0, "", fmt.Errorf("could not get postgres mapped port, %w", err)
 	}
 	host, err := postgres.Host(ctx)
 	if err != nil {
-		return 0, "", fmt.Errorf("Failed to get host: %v", err)
+		return 0, "", fmt.Errorf("Failed to get host: %w", err)
 	}
 
 	return port.Int(), host, nil
-
 }
 
 func mockKeycloakServer() *httptest.Server {
@@ -297,7 +294,7 @@ func (suite *StartTestSuite) Test_Start_Mode_Config_Errors() {
 		// Cleanup all created temp files
 		for _, tempFile := range tempFiles {
 			if err := os.Remove(tempFile); err != nil {
-				t.Errorf("Failed to remove temp file %s: %v", tempFile, err)
+				t.Errorf("Failed to remove temp file %s: %w", tempFile, err)
 			}
 		}
 	}()
@@ -358,7 +355,7 @@ func (suite *StartTestSuite) Test_Start_Mode_Config_Success() {
 		// Cleanup all created temp files
 		for _, tempFile := range tempFiles {
 			if err := os.Remove(tempFile); err != nil {
-				t.Errorf("Failed to remove temp file %s: %v", tempFile, err)
+				t.Errorf("Failed to remove temp file %s: %w", tempFile, err)
 			}
 		}
 	}()

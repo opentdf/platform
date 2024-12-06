@@ -294,7 +294,7 @@ func (suite *StartTestSuite) Test_Start_Mode_Config_Errors() {
 		// Cleanup all created temp files
 		for _, tempFile := range tempFiles {
 			if err := os.Remove(tempFile); err != nil {
-				t.Errorf("Failed to remove temp file %s: %w", tempFile, err)
+				t.Errorf("Failed to remove temp file %s: %v", tempFile, err)
 			}
 		}
 	}()
@@ -355,7 +355,7 @@ func (suite *StartTestSuite) Test_Start_Mode_Config_Success() {
 		// Cleanup all created temp files
 		for _, tempFile := range tempFiles {
 			if err := os.Remove(tempFile); err != nil {
-				t.Errorf("Failed to remove temp file %s: %w", tempFile, err)
+				t.Errorf("Failed to remove temp file %s: %v", tempFile, err)
 			}
 		}
 	}()

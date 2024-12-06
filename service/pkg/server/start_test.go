@@ -98,7 +98,7 @@ func updateNestedKey(data map[string]interface{}, path []string, value interface
 	current := data
 	for i, key := range path[:len(path)-1] {
 		if next, ok := current[key]; ok {
-			if nextMap, ok := next.(map[string]interface{}); ok {
+			if nextMap, ok2 := next.(map[string]interface{}); ok2 {
 				current = nextMap
 			} else {
 				return fmt.Errorf("key %s at path level %d is not a map", key, i)

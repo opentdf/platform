@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.24](https://github.com/opentdf/platform/compare/sdk/v0.3.23...sdk/v0.3.24) (2024-12-06)
+
+
+### Features
+
+* **kas:** collect metrics ([#1702](https://github.com/opentdf/platform/issues/1702)) ([def28d1](https://github.com/opentdf/platform/commit/def28d1984b0b111a07330a3eb59c1285206062d))
+
 ## [0.3.23](https://github.com/opentdf/platform/compare/sdk/v0.3.22...sdk/v0.3.23) (2024-11-26)
 
 

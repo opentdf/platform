@@ -30,10 +30,10 @@ import (
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/sdk"
-	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
+	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -128,7 +128,7 @@ func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRe
 	}
 
 	// get dpop public key from context
-	dpopJWK := auth.GetJWKFromContext(ctx, &logger)
+	dpopJWK := ctxAuth.GetJWKFromContext(ctx, &logger)
 
 	var err error
 	var rbString string
@@ -247,7 +247,7 @@ func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byt
 func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, error) {
 	info := new(entityInfo)
 
-	token := auth.GetAccessTokenFromContext(ctx, logger)
+	token := ctxAuth.GetAccessTokenFromContext(ctx, logger)
 	if token == nil {
 		return nil, err401("missing access token")
 	}
@@ -263,7 +263,7 @@ func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, err
 		logger.WarnContext(ctx, "missing sub")
 	}
 
-	info.Token = auth.GetRawAccessTokenFromContext(ctx, logger)
+	info.Token = ctxAuth.GetRawAccessTokenFromContext(ctx, logger)
 
 	return info, nil
 }

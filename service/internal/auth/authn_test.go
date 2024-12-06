@@ -31,6 +31,7 @@ import (
 	sdkauth "github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
+	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -69,7 +70,7 @@ func (f *FakeAccessServiceServer) LegacyPublicKey(_ context.Context, _ *connect.
 
 func (f *FakeAccessServiceServer) Rewrap(ctx context.Context, req *connect.Request[kas.RewrapRequest]) (*connect.Response[kas.RewrapResponse], error) {
 	f.accessToken = req.Header()["Authorization"]
-	f.dpopKey = GetJWKFromContext(ctx, logger.CreateTestLogger())
+	f.dpopKey = ctxAuth.GetJWKFromContext(ctx, logger.CreateTestLogger())
 
 	return &connect.Response[kas.RewrapResponse]{Msg: &kas.RewrapResponse{}}, nil
 }
@@ -512,7 +513,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 		timeout <- ""
 	}()
 	server := httptest.NewServer(s.auth.MuxHandler(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
-		jwkChan <- GetJWKFromContext(req.Context(), logger.CreateTestLogger())
+		jwkChan <- ctxAuth.GetJWKFromContext(req.Context(), logger.CreateTestLogger())
 	})))
 	defer server.Close()
 
@@ -638,7 +639,7 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 
 	_, ctx, err := auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
 	s.Require().NoError(err)
-	s.Require().Nil(GetJWKFromContext(ctx, logger.CreateTestLogger()))
+	s.Require().Nil(ctxAuth.GetJWKFromContext(ctx, logger.CreateTestLogger()))
 }
 
 func (s *AuthSuite) Test_PublicPath_Matches() {

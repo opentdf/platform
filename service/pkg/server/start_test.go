@@ -264,3 +264,59 @@ func (suite *StartTestSuite) Test_Start_Mode_Config_Errors() {
 		})
 	}
 }
+
+func (suite *StartTestSuite) Test_Start_Mode_Config_Success() {
+	t := suite.T()
+	discoveryEndpoint := mockKeycloakServer()
+	// require.NoError(t, err)
+	originalFilePath := "testdata/all-no-config.yaml"
+	testCases := []struct {
+		name          string
+		changes       map[string]interface{}
+		newConfigFile string
+	}{
+		{"all without sdk_config",
+			map[string]interface{}{
+				"server.auth.issuer": discoveryEndpoint.URL},
+			"all-no-config-*.yaml"},
+		{"core,entityresolution without sdk_config",
+			map[string]interface{}{
+				"mode": "core,entityresolution", "server.auth.issuer": discoveryEndpoint.URL},
+			"all-no-config-*.yaml"},
+		{"core,entityresolution,kas without sdk_config",
+			map[string]interface{}{
+				"mode": "core,entityresolution,kas", "server.auth.issuer": discoveryEndpoint.URL},
+			"all-no-config-*.yaml"},
+		{"core with correct sdk_config",
+			map[string]interface{}{
+				"mode": "core", "server.auth.issuer": discoveryEndpoint.URL,
+				"sdk_config.client_id": "opentdf", "sdk_config.client_secret": "opentdf",
+				"sdk_config.entityresolution.endpoint": "http://localhost:8181", "sdk_config.entityresolution.plaintext": "true"},
+			"core-w-config-correct-*.yaml"},
+	}
+	var tempFiles []string
+	defer func() {
+		// Cleanup all created temp files
+		for _, tempFile := range tempFiles {
+			if err := os.Remove(tempFile); err != nil {
+				t.Errorf("Failed to remove temp file %s: %v", tempFile, err)
+			}
+		}
+	}()
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tempFilePath, err := createTempYAMLFileWithNestedChanges(tc.changes, originalFilePath, tc.newConfigFile)
+			if err != nil {
+				t.Fatalf("Failed to create temp YAML file: %v", err)
+			}
+			tempFiles = append(tempFiles, tempFilePath)
+
+			err = Start(
+				WithConfigFile(tempFilePath),
+			)
+			// require that it got past the service config and mode setup
+			// expected error when trying to establish db connection
+			require.ErrorContains(t, err, "failed to connect to database")
+		})
+	}
+}

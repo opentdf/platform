@@ -68,7 +68,10 @@ func mockPostgres() (int, string, error) {
 		Started:          false,
 	})
 	if err == nil {
-		existingContainers.Terminate(ctx) // Clean up pre-existing containers
+		err := existingContainers.Terminate(ctx) // Clean up pre-existing containers
+		if err != nil {
+			slog.Error("could not stop existing container")
+		}
 	}
 
 	slog.Info("starting postgres container")

@@ -195,6 +195,30 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}, nil
 }
 
+//#region ConfigWrapper
+type ConfigWrapper struct {
+	internal *config
+}
+func NewConfigWrapper() *ConfigWrapper {
+    return &ConfigWrapper{
+        internal: &config{},
+    }
+}
+
+func (cw *ConfigWrapper) SetPlatformConfiguration(pc PlatformConfiguration) {
+    cw.internal.PlatformConfiguration = pc
+}
+
+func (cw *ConfigWrapper) SetDialOption(dialOption grpc.DialOption) {
+    cw.internal.dialOption = dialOption
+}
+
+func (cw *ConfigWrapper) InternalConfig() *config {
+    return cw.internal
+}
+
+//#endregion
+
 func SanitizePlatformEndpoint(e string) (string, error) {
 	// check if there's a scheme, if not, add https
 	if !regexp.MustCompile(`^https?://`).MatchString(e) {

@@ -266,9 +266,15 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		tmpAssertion.Statement = assertion.Statement
 		tmpAssertion.AppliesToState = assertion.AppliesToState
 
-		hashOfAssertion, err := tmpAssertion.GetHash()
+		hashOfAssertionAsHex, err := tmpAssertion.GetHash()
 		if err != nil {
 			return nil, err
+		}
+
+		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
+		_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding hex string: %w", err)
 		}
 
 		var completeHashBuilder strings.Builder
@@ -287,7 +293,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			assertionSigningKey = assertion.SigningKey
 		}
 
-		if err := tmpAssertion.Sign(string(hashOfAssertion), string(encoded), assertionSigningKey); err != nil {
+		if err := tmpAssertion.Sign(string(hashOfAssertionAsHex), string(encoded), assertionSigningKey); err != nil {
 			return nil, fmt.Errorf("failed to sign assertion: %w", err)
 		}
 
@@ -947,9 +953,15 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		}
 
 		// Get the hash of the assertion
-		hashOfAssertion, err := assertion.GetHash()
+		hashOfAssertionAsHex, err := assertion.GetHash()
 		if err != nil {
 			return fmt.Errorf("%w: failed to get hash of assertion: %w", ErrAssertionFailure{ID: assertion.ID}, err)
+		}
+
+		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
+		_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
+		if err != nil {
+			return fmt.Errorf("error decoding hex string: %w", err)
 		}
 
 		var completeHashBuilder bytes.Buffer
@@ -958,7 +970,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 
 		base64Hash := ocrypto.Base64Encode(completeHashBuilder.Bytes())
 
-		if string(hashOfAssertion) != assertionHash {
+		if string(hashOfAssertionAsHex) != assertionHash {
 			return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: assertion.ID})
 		}
 

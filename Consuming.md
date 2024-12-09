@@ -13,7 +13,9 @@ To contribute/develop, see [here](./Contributing.md).
 
    ```sh
    docker run --network opentdf_platform \
+         --rm \
          -v "$(pwd)/opentdf.yaml:/home/nonroot/.opentdf/opentdf.yaml" \
+         -v "$(pwd)/service/cmd/keycloak_data.yaml:/service/cmd/keycloak_data.yaml" \
          -it registry.opentdf.io/platform:nightly provision keycloak -e http://keycloak:8888/auth
    ```
 1. Start the platform
@@ -34,7 +36,7 @@ You can now access platform services at http://localhost:8080/ , and Keycloak at
 ##  Next steps
 * Try out our CLI (`otdfctl`): https://github.com/opentdf/otdfctl
    ```sh
-   otdfctl auth client-credentials --host http://localhost:8080 --client-id opentdf --client-secret secret
+   otdfctl auth client-credentials --host http://localhost:8080 opentdf secret
    ```
 * Join our slack channel ([click here](https://join.slack.com/t/opentdf/shared_invite/zt-1e3jhnedw-wjviK~qRH_T1zG4dfaa~3A))
 * Connect with the team

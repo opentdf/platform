@@ -1910,7 +1910,7 @@ WITH counted AS (
 )
 SELECT
     id,
-    key_access_server_id,
+    keys.key_access_server_id,
     key_id,
     alg,
     public_key,
@@ -1918,13 +1918,17 @@ SELECT
     counted.total
 FROM keys
 CROSS JOIN counted
-LIMIT $2
-OFFSET $1
+WHERE (
+    NULLIF($1, '') IS NULL OR keys.key_access_server_id = $1::uuid
+)
+LIMIT $3
+OFFSET $2
 `
 
 type ListKeysParams struct {
-	Offset int32 `json:"offset_"`
-	Limit  int32 `json:"limit_"`
+	KasID  interface{} `json:"kas_id"`
+	Offset int32       `json:"offset_"`
+	Limit  int32       `json:"limit_"`
 }
 
 type ListKeysRow struct {
@@ -1944,7 +1948,7 @@ type ListKeysRow struct {
 //	)
 //	SELECT
 //	    id,
-//	    key_access_server_id,
+//	    keys.key_access_server_id,
 //	    key_id,
 //	    alg,
 //	    public_key,
@@ -1952,10 +1956,13 @@ type ListKeysRow struct {
 //	    counted.total
 //	FROM keys
 //	CROSS JOIN counted
-//	LIMIT $2
-//	OFFSET $1
+//	WHERE (
+//	    NULLIF($1, '') IS NULL OR keys.key_access_server_id = $1::uuid
+//	)
+//	LIMIT $3
+//	OFFSET $2
 func (q *Queries) ListKeys(ctx context.Context, arg ListKeysParams) ([]ListKeysRow, error) {
-	rows, err := q.db.Query(ctx, listKeys, arg.Offset, arg.Limit)
+	rows, err := q.db.Query(ctx, listKeys, arg.KasID, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}

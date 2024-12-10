@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
@@ -327,12 +328,19 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 		return nil, db.ErrListLimitTooLarge
 	}
 
+	// Validate kas_id is uuid if set
+	if r.GetKasId() != "" {
+		if _, err := uuid.Parse(r.GetKasId()); err != nil {
+			return nil, db.StatusifyError(err, db.ErrEnumValueInvalid.Error())
+		}
+	}
+
 	params := ListKeysParams{
-		KasID:   r.GetKasId(),
-		KasUri:  r.GetKasUri(),
-		KasName: r.GetKasName(),
-		Offset:  offset,
-		Limit:   limit,
+		KasID: r.GetKasId(),
+		// KasUri:  r.GetKasUri(),
+		// KasName: r.GetKasName(),
+		Offset: offset,
+		Limit:  limit,
 	}
 	listRows, err := c.Queries.ListKeys(ctx, params)
 	if err != nil {
@@ -368,6 +376,22 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 			CurrentOffset: params.Offset,
 			Total:         total,
 			NextOffset:    nextOffset,
+		},
+	}, nil
+}
+
+func (c PolicyDBClient) DeleteKey(ctx context.Context, r *kasregistry.DeleteKeyRequest) (*kasregistry.DeleteKeyResponse, error) {
+	keyID := r.GetId()
+	count, err := c.Queries.DeleteKey(ctx, keyID)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
+	return &kasregistry.DeleteKeyResponse{
+		Key: &policy.Key{
+			Id: keyID,
 		},
 	}, nil
 }

@@ -926,7 +926,7 @@ WITH counted AS (
 )
 SELECT
     id,
-    key_access_server_id,
+    keys.key_access_server_id,
     key_id,
     alg,
     public_key,
@@ -934,6 +934,9 @@ SELECT
     counted.total
 FROM keys
 CROSS JOIN counted
+WHERE (
+    NULLIF(@kas_id, '') IS NULL OR keys.key_access_server_id = @kas_id::uuid
+)
 LIMIT @limit_
 OFFSET @offset_;
 

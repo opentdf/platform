@@ -3,7 +3,8 @@
 CREATE TABLE
     IF NOT EXISTS keys (
         id uuid DEFAULT gen_random_uuid () PRIMARY KEY,
-        active BOOLEAN NOT NULL DEFAULT TRUE,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        was_used BOOLEAN NOT NULL DEFAULT FALSE,
         key_access_server_id uuid NOT NULL REFERENCES key_access_servers (id),
         key_id VARCHAR(36) NOT NULL,
         alg VARCHAR(50) NOT NULL,

@@ -301,8 +301,14 @@ message KeyAccessServer {
 
 message Key {
   string id = 1;
-  KasPublicKey public_key = 2;
-  KeyAccessServer kas = 3;
+
+  bool is_active = 2;
+
+  bool was_used = 3;
+
+  KasPublicKey public_key = 4;
+
+  KeyAccessServer kas = 5;
 
   // Common metadata
   common.Metadata metadata = 100;

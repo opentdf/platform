@@ -915,27 +915,41 @@ VALUES ($1, $2, $3, $4, $5)
 RETURNING id;
 
 -- name: GetKey :one
-SELECT id, key_access_server_id, key_id, alg, public_key,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-FROM keys
-WHERE id = $1;
-
+SELECT 
+    k.id, 
+    k.is_active, 
+    k.was_used, 
+    k.key_access_server_id, 
+    k.key_id, 
+    k.alg, 
+    k.public_key,
+    kas.uri as kas_uri,
+    kas.name as kas_name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', k.metadata -> 'labels', 'created_at', k.created_at, 'updated_at', k.updated_at)) as metadata
+FROM keys k
+LEFT JOIN key_access_servers kas ON k.key_access_server_id = kas.id
+WHERE k.id = $1;
 -- name: ListKeys :many
 WITH counted AS (
-    SELECT COUNT(id) AS total FROM keys
+    SELECT COUNT(k.id) AS total FROM keys k
 )
-SELECT
-    id,
-    keys.key_access_server_id,
-    key_id,
-    alg,
-    public_key,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+SELECT 
+    k.id, 
+    k.is_active, 
+    k.was_used, 
+    k.key_access_server_id, 
+    k.key_id, 
+    k.alg, 
+    k.public_key,
+    kas.uri as kas_uri,
+    kas.name as kas_name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', k.metadata -> 'labels', 'created_at', k.created_at, 'updated_at', k.updated_at)) as metadata,
     counted.total
-FROM keys
+FROM keys k
+LEFT JOIN key_access_servers kas ON k.key_access_server_id = kas.id
 CROSS JOIN counted
 WHERE (
-    NULLIF(@kas_id, '') IS NULL OR keys.key_access_server_id = @kas_id::uuid
+    NULLIF(@kas_id, '') IS NULL OR k.key_access_server_id = @kas_id::uuid
 )
 LIMIT @limit_
 OFFSET @offset_;
@@ -952,5 +966,23 @@ WHERE id = $1;
 
 -- name: DeleteKey :execrows
 DELETE FROM keys WHERE id = $1;
+
+-- name: AssignKeyToNamespace :one
+INSERT INTO attribute_namespace_key_map (namespace_id, key_id) VALUES ($1, $2);
+
+-- name: RemoveKeyFromNamespace :execrows
+DELETE FROM attribute_namespace_key_map WHERE namespace_id = $1 AND key_id = $2;
+
+-- name: AssignKeyToAttributeDefinition :one
+INSERT INTO attribute_definition_key_map (attribute_definition_id, key_id) VALUES ($1, $2);
+
+-- name: RemoveKeyFromAttributeDefinition :execrows
+DELETE FROM attribute_definition_key_map WHERE attribute_definition_id = $1 AND key_id = $2;
+
+-- name: AssignKeyToAttributeValue :one
+INSERT INTO attribute_value_key_map (attribute_value_id, key_id) VALUES ($1, $2);
+
+-- name: RemoveKeyFromAttributeValue :execrows
+DELETE FROM attribute_value_key_map WHERE attribute_value_id = $1 AND key_id = $2;
 
 ----------------------------------------------------------------

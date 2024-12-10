@@ -524,6 +524,12 @@
         "id": {
           "type": "string"
         },
+        "isActive": {
+          "type": "boolean"
+        },
+        "wasUsed": {
+          "type": "boolean"
+        },
         "publicKey": {
           "$ref": "#/definitions/policyKasPublicKey"
         },

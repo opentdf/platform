@@ -160,6 +160,8 @@ type AttributeValueKeyMap struct {
 
 type Key struct {
 	ID                string           `json:"id"`
+	IsActive          bool             `json:"is_active"`
+	WasUsed           bool             `json:"was_used"`
 	KeyAccessServerID string           `json:"key_access_server_id"`
 	KeyID             string           `json:"key_id"`
 	Alg               string           `json:"alg"`

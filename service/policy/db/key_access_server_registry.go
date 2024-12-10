@@ -311,7 +311,14 @@ func (c PolicyDBClient) GetKey(ctx context.Context, r *kasregistry.GetKeyRequest
 	return &kasregistry.GetKeyResponse{
 		Key: &policy.Key{
 			Id:       keyID,
+			IsActive: key.IsActive,
+			WasUsed:  key.WasUsed,
 			Metadata: metadata,
+			Kas: &policy.KeyAccessServer{
+				Id:   key.KeyAccessServerID,
+				Uri:  key.KasUri.String,
+				Name: key.KasName.String,
+			},
 			PublicKey: &policy.KasPublicKey{
 				Kid: key.KeyID,
 				Alg: policy.KasPublicKeyAlgEnum(policy.KasPublicKeyAlgEnum_value[key.Alg]),
@@ -356,13 +363,21 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 		}
 		keys[i] = &policy.Key{
 			Id:       key.ID,
+			IsActive: key.IsActive,
+			WasUsed:  key.WasUsed,
 			Metadata: metadata,
+			Kas: &policy.KeyAccessServer{
+				Id:   key.KeyAccessServerID,
+				Uri:  key.KasUri.String,
+				Name: key.KasName.String,
+			},
 			PublicKey: &policy.KasPublicKey{
 				Kid: key.KeyID,
 				Alg: policy.KasPublicKeyAlgEnum(policy.KasPublicKeyAlgEnum_value[key.Alg]),
 				Pem: key.PublicKey,
 			},
 		}
+
 	}
 	var total int32
 	var nextOffset int32

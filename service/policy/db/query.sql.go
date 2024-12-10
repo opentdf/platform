@@ -689,36 +689,64 @@ func (q *Queries) GetAttributeValue(ctx context.Context, id string) (GetAttribut
 }
 
 const getKey = `-- name: GetKey :one
-SELECT id, key_access_server_id, key_id, alg, public_key,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-FROM keys
-WHERE id = $1
+SELECT 
+    k.id, 
+    k.is_active, 
+    k.was_used, 
+    k.key_access_server_id, 
+    k.key_id, 
+    k.alg, 
+    k.public_key,
+    kas.uri as kas_uri,
+    kas.name as kas_name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', k.metadata -> 'labels', 'created_at', k.created_at, 'updated_at', k.updated_at)) as metadata
+FROM keys k
+LEFT JOIN key_access_servers kas ON k.key_access_server_id = kas.id
+WHERE k.id = $1
 `
 
 type GetKeyRow struct {
-	ID                string `json:"id"`
-	KeyAccessServerID string `json:"key_access_server_id"`
-	KeyID             string `json:"key_id"`
-	Alg               string `json:"alg"`
-	PublicKey         string `json:"public_key"`
-	Metadata          []byte `json:"metadata"`
+	ID                string      `json:"id"`
+	IsActive          bool        `json:"is_active"`
+	WasUsed           bool        `json:"was_used"`
+	KeyAccessServerID string      `json:"key_access_server_id"`
+	KeyID             string      `json:"key_id"`
+	Alg               string      `json:"alg"`
+	PublicKey         string      `json:"public_key"`
+	KasUri            pgtype.Text `json:"kas_uri"`
+	KasName           pgtype.Text `json:"kas_name"`
+	Metadata          []byte      `json:"metadata"`
 }
 
 // GetKey
 //
-//	SELECT id, key_access_server_id, key_id, alg, public_key,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-//	FROM keys
-//	WHERE id = $1
+//	SELECT
+//	    k.id,
+//	    k.is_active,
+//	    k.was_used,
+//	    k.key_access_server_id,
+//	    k.key_id,
+//	    k.alg,
+//	    k.public_key,
+//	    kas.uri as kas_uri,
+//	    kas.name as kas_name,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', k.metadata -> 'labels', 'created_at', k.created_at, 'updated_at', k.updated_at)) as metadata
+//	FROM keys k
+//	LEFT JOIN key_access_servers kas ON k.key_access_server_id = kas.id
+//	WHERE k.id = $1
 func (q *Queries) GetKey(ctx context.Context, id string) (GetKeyRow, error) {
 	row := q.db.QueryRow(ctx, getKey, id)
 	var i GetKeyRow
 	err := row.Scan(
 		&i.ID,
+		&i.IsActive,
+		&i.WasUsed,
 		&i.KeyAccessServerID,
 		&i.KeyID,
 		&i.Alg,
 		&i.PublicKey,
+		&i.KasUri,
+		&i.KasName,
 		&i.Metadata,
 	)
 	return i, err
@@ -1906,20 +1934,25 @@ func (q *Queries) ListKeyAccessServers(ctx context.Context, arg ListKeyAccessSer
 
 const listKeys = `-- name: ListKeys :many
 WITH counted AS (
-    SELECT COUNT(id) AS total FROM keys
+    SELECT COUNT(k.id) AS total FROM keys k
 )
-SELECT
-    id,
-    keys.key_access_server_id,
-    key_id,
-    alg,
-    public_key,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+SELECT 
+    k.id, 
+    k.is_active, 
+    k.was_used, 
+    k.key_access_server_id, 
+    k.key_id, 
+    k.alg, 
+    k.public_key,
+    kas.uri as kas_uri,
+    kas.name as kas_name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', k.metadata -> 'labels', 'created_at', k.created_at, 'updated_at', k.updated_at)) as metadata,
     counted.total
-FROM keys
+FROM keys k
+LEFT JOIN key_access_servers kas ON k.key_access_server_id = kas.id
 CROSS JOIN counted
 WHERE (
-    NULLIF($1, '') IS NULL OR keys.key_access_server_id = $1::uuid
+    NULLIF($1, '') IS NULL OR k.key_access_server_id = $1::uuid
 )
 LIMIT $3
 OFFSET $2
@@ -1932,32 +1965,41 @@ type ListKeysParams struct {
 }
 
 type ListKeysRow struct {
-	ID                string `json:"id"`
-	KeyAccessServerID string `json:"key_access_server_id"`
-	KeyID             string `json:"key_id"`
-	Alg               string `json:"alg"`
-	PublicKey         string `json:"public_key"`
-	Metadata          []byte `json:"metadata"`
-	Total             int64  `json:"total"`
+	ID                string      `json:"id"`
+	IsActive          bool        `json:"is_active"`
+	WasUsed           bool        `json:"was_used"`
+	KeyAccessServerID string      `json:"key_access_server_id"`
+	KeyID             string      `json:"key_id"`
+	Alg               string      `json:"alg"`
+	PublicKey         string      `json:"public_key"`
+	KasUri            pgtype.Text `json:"kas_uri"`
+	KasName           pgtype.Text `json:"kas_name"`
+	Metadata          []byte      `json:"metadata"`
+	Total             int64       `json:"total"`
 }
 
 // ListKeys
 //
 //	WITH counted AS (
-//	    SELECT COUNT(id) AS total FROM keys
+//	    SELECT COUNT(k.id) AS total FROM keys k
 //	)
 //	SELECT
-//	    id,
-//	    keys.key_access_server_id,
-//	    key_id,
-//	    alg,
-//	    public_key,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+//	    k.id,
+//	    k.is_active,
+//	    k.was_used,
+//	    k.key_access_server_id,
+//	    k.key_id,
+//	    k.alg,
+//	    k.public_key,
+//	    kas.uri as kas_uri,
+//	    kas.name as kas_name,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', k.metadata -> 'labels', 'created_at', k.created_at, 'updated_at', k.updated_at)) as metadata,
 //	    counted.total
-//	FROM keys
+//	FROM keys k
+//	LEFT JOIN key_access_servers kas ON k.key_access_server_id = kas.id
 //	CROSS JOIN counted
 //	WHERE (
-//	    NULLIF($1, '') IS NULL OR keys.key_access_server_id = $1::uuid
+//	    NULLIF($1, '') IS NULL OR k.key_access_server_id = $1::uuid
 //	)
 //	LIMIT $3
 //	OFFSET $2
@@ -1972,10 +2014,14 @@ func (q *Queries) ListKeys(ctx context.Context, arg ListKeysParams) ([]ListKeysR
 		var i ListKeysRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.IsActive,
+			&i.WasUsed,
 			&i.KeyAccessServerID,
 			&i.KeyID,
 			&i.Alg,
 			&i.PublicKey,
+			&i.KasUri,
+			&i.KasName,
 			&i.Metadata,
 			&i.Total,
 		); err != nil {

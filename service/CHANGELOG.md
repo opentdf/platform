@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.34](https://github.com/opentdf/platform/compare/service/v0.4.33...service/v0.4.34) (2024-12-11)
+
+
+### Bug Fixes
+
+* **core:** properly chain grpc-gateway middleware order ([#1820](https://github.com/opentdf/platform/issues/1820)) ([5b9f054](https://github.com/opentdf/platform/commit/5b9f0541f39c6141ea060d699146482959fb32f7))
+
 ## [0.4.33](https://github.com/opentdf/platform/compare/service/v0.4.32...service/v0.4.33) (2024-12-06)
 
 

@@ -8,7 +8,9 @@ import (
 	"strings"
 
 	"github.com/creasty/defaults"
-	"github.com/go-playground/validator/v10"
+  "github.com/go-playground/validator/v10"
+	"github.com/mitchellh/mapstructure"
+	"github.com/opentdf/platform/service/internal/logger"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -122,7 +124,9 @@ func LoadConfig(key, file string) (*Config, error) {
 		return nil, errors.Join(err, ErrSettingConfig)
 	}
 
-	err = v.Unmarshal(config)
+	err = v.Unmarshal(config, viper.DecoderConfigOption(func(decoderConfig *mapstructure.DecoderConfig) {
+		decoderConfig.TagName = "yaml"
+	}))
 	if err != nil {
 		return nil, errors.Join(err, ErrUnmarshallingConfig)
 	}

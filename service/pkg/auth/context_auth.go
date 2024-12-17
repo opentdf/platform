@@ -8,11 +8,11 @@ import (
 	"github.com/opentdf/platform/service/logger"
 )
 
-const (
-	authnContextKey = authContextKey("dpop-jwk")
+var (
+	authnContextKey = authContextKey{}
 )
 
-type authContextKey string
+type authContextKey struct{}
 
 type authContext struct {
 	key         jwk.Key

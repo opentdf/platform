@@ -1,49 +1,57 @@
-# configures the platform to run just the entity resolution service and the well-known service
-# primarily to be used for testing and development of external ERS connections
-mode: entityresolution
+
+mode: all
 logger:
   level: debug
   type: text
   output: stdout
 services:
+  kas:
+    keyring:
+      - kid: e1
+        alg: ec:secp256r1
+      - kid: e1
+        alg: ec:secp256r1
+        legacy: true
+      - kid: r1
+        alg: rsa:2048
+      - kid: r1
+        alg: rsa:2048
+        legacy: true
   entityresolution:
     log_level: info
     url: http://localhost:8888/auth
-    clientid: "tdf-entity-resolution"
-    clientsecret: "secret"
-    realm: "opentdf"
+    clientid: 'tdf-entity-resolution'
+    clientsecret: 'secret'
+    realm: 'opentdf'
     legacykeycloak: true
     inferid:
       from:
         email: true
         username: true
 server:
+  tls:
+    enabled: false
+    cert: ./keys/platform.crt
+    key: ./keys/platform-key.pem
   auth:
     enabled: true
     enforceDPoP: false
-    public_client_id: "opentdf-public"
-    audience: "http://localhost:8080"
+    public_client_id: 'opentdf-public'
+    audience: 'http://localhost:8080'
     issuer: http://localhost:8888/auth/realms/opentdf
     policy:
-      ## Default policy for all requests
-      default: #"role:standard"
       ## Dot notation is used to access nested claims (i.e. realm_access.roles)
-      claim: # realm_access.roles
-      ## Maps the external role to the opentdf role
-      ## Note: left side is used in the policy, right side is the external role
-      map:
-        # standard: opentdf-standard
-        # admin: opentdf-admin
-        # org-admin: opentdf-org-admin
-
-      ## Custom policy (see examples https://github.com/casbin/casbin/tree/master/examples)
+      # Claim that represents the user (i.e. email)
+      username_claim: # preferred_username
+      # That claim to access groups (i.e. realm_access.roles)
+      groups_claim: # realm_access.roles
+      ## Extends the builtin policy
+      extension: |
+        g, opentdf-admin, role:admin
+        g, opentdf-standard, role:standard
+      ## Custom policy that overrides builtin policy (see examples https://github.com/casbin/casbin/tree/master/examples)
       csv: #|
-      #  p, role:org-admin, policy:attributes, *, *, allow
-      #  p, role:org-admin, policy:subject-mappings, *, *, allow
-      #  p, role:org-admin, policy:resource-mappings, *, *, allow
-      #  p, role:org-admin, policy:kas-registry, *, *, allow
-      #  p, role:org-admin, policy:unsafe, *, *, allow
-
+      #  p, role:admin, *, *, allow
       ## Custom model (see https://casbin.org/docs/syntax-for-models/)
       model: #|
       #  [request_definition]
@@ -61,9 +69,10 @@ server:
       #  [matchers]
       #  m = g(r.sub, p.sub) && globOrRegexMatch(r.res, p.res) && globOrRegexMatch(r.act, p.act) && globOrRegexMatch(r.obj, p.obj)
   cors:
+    enabled: false
     # "*" to allow any origin or a specific domain like "https://yourdomain.com"
     allowedorigins:
-      - "*"
+      - '*'
     # List of methods. Examples: "GET,POST,PUT"
     allowedmethods:
       - GET
@@ -88,4 +97,4 @@ server:
     maxage: 3600
   grpc:
     reflectionEnabled: true # Default is false
-  port: 8282
+  port: 8080

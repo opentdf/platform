@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.34](https://github.com/opentdf/platform/compare/service/v0.4.33...service/v0.4.34) (2024-12-11)
+
+
+### Bug Fixes
+
+* **core:** properly chain grpc-gateway middleware order ([#1820](https://github.com/opentdf/platform/issues/1820)) ([5b9f054](https://github.com/opentdf/platform/commit/5b9f0541f39c6141ea060d699146482959fb32f7))
+
+## [0.4.33](https://github.com/opentdf/platform/compare/service/v0.4.32...service/v0.4.33) (2024-12-06)
+
+
+### Bug Fixes
+
+* **core:** Allow more users to rewrap ([#1813](https://github.com/opentdf/platform/issues/1813)) ([4d47475](https://github.com/opentdf/platform/commit/4d474750c20a9a6fe0f00487195851a606e24076))
+* **core:** Handle multiple modes including entityresolution mode ([#1816](https://github.com/opentdf/platform/issues/1816)) ([32d6938](https://github.com/opentdf/platform/commit/32d6938549bd9fc7e9e2fc7ec0157537bddafcc9))
+
 ## [0.4.32](https://github.com/opentdf/platform/compare/service/v0.4.31...service/v0.4.32) (2024-12-04)
 
 

@@ -12,6 +12,10 @@ inputs:
   kas-name:
     required: true
     description: 'The name for the additional KAS'
+  keys:
+    required: false
+    description: A space-separated list of additional key files, in JSON format
+    default: '[]'
 
 runs:
   using: 'composite'
@@ -24,6 +28,7 @@ runs:
             (.server.port = ${{ inputs.kas-port }})
             | (.mode = ["kas"])
             | (.sdk_config = {"client_id":"opentdf","client_secret":"secret","core":{"endpoint":"http://localhost:8080","plaintext":true}})
+            | (.server.cryptoProvider.standard.keys |= .+ ${{ inputs.keys }})
           '
           && .github/scripts/watch.sh opentdf-${{ inputs.kas-name }}.yaml ./opentdf --config-file ./opentdf-${{ inputs.kas-name }}.yaml start
         wait-on: |

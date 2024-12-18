@@ -200,7 +200,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 	var attrValsReqs [][]*policy.Value
 	var fqnsReqs [][]string
 	allPertinentFQNS := &authorization.ResourceAttribute{AttributeValueFqns: make([]string, 0)}
-	response := make([]*authorization.DecisionResponse, len(dr.ResourceAttributes))
+	response := make([]*authorization.DecisionResponse, len(dr.GetResourceAttributes()))
 	for idx, ra := range dr.GetResourceAttributes() {
 		as.logger.DebugContext(ctx, "getting resource attributes", slog.String("FQNs", strings.Join(ra.GetAttributeValueFqns(), ", ")))
 
@@ -225,7 +225,8 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 					} else if len(ra.GetAttributeValueFqns()) > 0 {
 						decisionResp.ResourceAttributesId = ra.GetAttributeValueFqns()[0]
 					}
-					response[(idx*len(dr.EntityChains))+ecIdx] = decisionResp
+					responseIdx := (idx * len(dr.GetEntityChains())) + ecIdx
+					response[responseIdx] = decisionResp
 				}
 				continue
 			}
@@ -248,7 +249,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
-		allPertinentFQNS.AttributeValueFqns = append(allPertinentFQNS.AttributeValueFqns, ra.AttributeValueFqns...)
+		allPertinentFQNS.AttributeValueFqns = append(allPertinentFQNS.GetAttributeValueFqns(), ra.GetAttributeValueFqns()...)
 
 		// get the relevant resource attribute fqns
 		for _, attrDef := range attrDefs {
@@ -302,8 +303,8 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 			// Entitlementsfor sbuject entities in chain
 			subjectEntityAttrValues := make(map[string][]string)
 
-			//nolint:nestif // handle empty entity / attr list
-			if len(entities) == 0 || len(ra.AttributeValueFqns) == 0 {
+			// handle empty entity / attr list
+			if len(entities) == 0 || len(ra.GetAttributeValueFqns()) == 0 {
 				as.logger.WarnContext(ctx, "empty entity list and/or entity data attribute list")
 			} else {
 				ecEntitlements := ecChainEntitlementsResponse[idx]
@@ -389,7 +390,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 				FQNs:                    fqns,
 				ResourceAttributeID:     decisionResp.GetResourceAttributesId(),
 			})
-			response[(reqIdx*len(dr.EntityChains) + idx)] = decisionResp
+			response[(reqIdx*len(dr.GetEntityChains()) + idx)] = decisionResp
 		}
 	}
 	return response, nil

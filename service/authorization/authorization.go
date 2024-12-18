@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
+	"golang.org/x/exp/maps"
 
 	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
@@ -186,6 +187,30 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *connect.R
 		DecisionResponses: make([]*authorization.DecisionResponse, 0),
 	}
 	for _, dr := range req.Msg.GetDecisionRequests() {
+		allPertinentFQNs := getAllPertinentAttributeFQNSFromRAS(dr.GetResourceAttributes())
+		var ecChainEntitlementsResponse []*connect.Response[authorization.GetEntitlementsResponse]
+		for _, ec := range dr.GetEntityChains() {
+				entities := ec.GetEntities()
+				if len(entities) == 0 {
+					ecChainEntitlementsResponse = append(ecChainEntitlementsResponse, nil)
+					continue
+				}
+				req := connect.Request[authorization.GetEntitlementsRequest]{
+					Msg: &authorization.GetEntitlementsRequest{
+						Entities: entities,
+						Scope:  &authorization.ResourceAttribute{AttributeValueFqns: allPertinentFQNs},
+					},
+				}
+				ecEntitlements, err := as.GetEntitlements(ctx, &req)
+				if err != nil {
+					// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
+					return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("extra", "getEntitlements request failed"))
+				}
+				ecChainEntitlementsResponse = append(ecChainEntitlementsResponse, ecEntitlements)
+			}
+
+
+
 		for _, ra := range dr.GetResourceAttributes() {
 			as.logger.DebugContext(ctx, "getting resource attributes", slog.String("FQNs", strings.Join(ra.GetAttributeValueFqns(), ", ")))
 
@@ -244,38 +269,26 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *connect.R
 				}
 			}
 
-			for _, ec := range dr.GetEntityChains() {
+			for idx, ec := range dr.GetEntityChains() {
 				//
 				// TODO: we should already have the subject mappings here and be able to just use OPA to trim down the known data attr values to the ones matched up with the entities
 				//
 				entities := ec.GetEntities()
-				req := connect.Request[authorization.GetEntitlementsRequest]{
-					Msg: &authorization.GetEntitlementsRequest{
-						Entities: entities,
-						Scope:    &allPertinentFqnsRA,
-					},
-				}
-
 				auditECEntitlements := make([]audit.EntityChainEntitlement, 0)
 				auditEntityDecisions := make([]audit.EntityDecision, 0)
 
 				// Entitlements for environment entites in chain
 				envEntityAttrValues := make(map[string][]string)
-				// Entitlements for sbuject entities in chain
+				// Entitlementsfor sbuject entities in chain
 				subjectEntityAttrValues := make(map[string][]string)
 
 				//nolint:nestif // handle empty entity / attr list
 				if len(entities) == 0 || len(allPertinentFqnsRA.GetAttributeValueFqns()) == 0 {
 					as.logger.WarnContext(ctx, "empty entity list and/or entity data attribute list")
 				} else {
-					ecEntitlements, err := as.GetEntitlements(ctx, &req)
-					if err != nil {
-						// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
-						return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("extra", "getEntitlements request failed"))
-					}
+					
 
-					// TODO this might cause errors if multiple entities dont have ids
-					// currently just adding each entity returned to same list
+					ecEntitlements := ecChainEntitlementsResponse[idx]
 					for idx, e := range ecEntitlements.Msg.GetEntitlements() {
 						entityID := e.GetEntityId()
 						if entityID == "" {
@@ -363,6 +376,18 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *connect.R
 		}
 	}
 	return connect.NewResponse(rsp), nil
+}
+
+func getAllPertinentAttributeFQNSFromRAS(ras []*authorization.ResourceAttribute) []string {
+	attributeFQNsSet := make(map[string]bool)
+	for _, ra := range ras {
+		for _, fqn := range ra.AttributeValueFqns {
+			attributeFQNsSet[fqn] = true
+		}
+	}
+	return maps.Keys(attributeFQNsSet)
+
+
 }
 
 // makeSubMapsByValLookup creates a lookup map of subject mappings by attribute value ID.

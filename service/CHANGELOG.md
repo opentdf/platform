@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.35](https://github.com/opentdf/platform/compare/service/v0.4.34...service/v0.4.35) (2024-12-18)
+
+
+### Features
+
+* **core:** Expose context authn methods ([#1812](https://github.com/opentdf/platform/issues/1812)) ([a9f3fcc](https://github.com/opentdf/platform/commit/a9f3fccb8392609a1ca3e3658ec4fb930367abc9))
+
+
+### Bug Fixes
+
+* **core:** Update fixtures and flattening in sdk and service ([#1827](https://github.com/opentdf/platform/issues/1827)) ([d6d6a7a](https://github.com/opentdf/platform/commit/d6d6a7a2dffdb96cf7f7f731a4e6e66e06930e59))
+
 ## [0.4.34](https://github.com/opentdf/platform/compare/service/v0.4.33...service/v0.4.34) (2024-12-11)
 
 

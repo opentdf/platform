@@ -21,7 +21,7 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/open-policy-agent/opa v0.68.0
 	github.com/opentdf/platform/lib/fixtures v0.2.10
-	github.com/opentdf/platform/lib/flattening v0.1.1
+	github.com/opentdf/platform/lib/flattening v0.1.3
 	github.com/opentdf/platform/lib/ocrypto v0.1.7
 	github.com/opentdf/platform/protocol/go v0.2.20
 	github.com/opentdf/platform/sdk v0.3.23

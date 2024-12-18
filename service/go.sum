@@ -275,8 +275,8 @@ github.com/opencontainers/image-spec v1.1.0 h1:8SG7/vwALn54lVB/0yZ/MMwhFrPYtpEHQ
 github.com/opencontainers/image-spec v1.1.0/go.mod h1:W4s4sFTMaBeK1BQLXbG4AdM2szdn85PY75RI83NrTrM=
 github.com/opencontainers/runc v1.1.12 h1:BOIssBaW1La0/qbNZHXOOa71dZfZEQOzW7dqQf3phss=
 github.com/opencontainers/runc v1.1.12/go.mod h1:S+lQwSfncpBha7XTy/5lBwWgm5+y5Ma/O44Ekby9FK8=
-github.com/opentdf/platform/lib/fixtures v0.2.8 h1:lGYrMnbORtU62lxsJi8qPsxjFuNIkc4Dop8rVkH6pD0=
-github.com/opentdf/platform/lib/fixtures v0.2.8/go.mod h1:8yCSe+oUzW9jbM573r9qgE68rjwDMNzktObiGVsO/W8=
+github.com/opentdf/platform/lib/fixtures v0.2.10 h1:R688b98ctsEiDRlQSvLxmAWT7bXvCTb+nJCuiU2WsWs=
+github.com/opentdf/platform/lib/fixtures v0.2.10/go.mod h1:wGhclxDeDXf8bp5VAWztT1nY2gWVNGQLd8rWs5wtXV0=
 github.com/opentdf/platform/lib/flattening v0.1.1 h1:la1f6PcRsc+yLH8+9UEr0ux6IRKu+6+oMaMVt05+8HU=
 github.com/opentdf/platform/lib/flattening v0.1.1/go.mod h1:eyG7pe5UZlV+GI5/CymQD3xTAJxNhnP9M4QnBzaad1M=
 github.com/opentdf/platform/lib/ocrypto v0.1.7 h1:IcCYRrwmMqntqUE8frmUDg5EZ0WMdldpGeGhbv9+/A8=

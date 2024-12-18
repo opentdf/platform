@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.23](https://github.com/opentdf/platform/compare/protocol/go/v0.2.22...protocol/go/v0.2.23) (2024-12-18)
+
+
+### Bug Fixes
+
+* **core:** Update fixtures and flattening in sdk and service ([#1827](https://github.com/opentdf/platform/issues/1827)) ([d6d6a7a](https://github.com/opentdf/platform/commit/d6d6a7a2dffdb96cf7f7f731a4e6e66e06930e59))
+
 ## [0.2.22](https://github.com/opentdf/platform/compare/protocol/go/v0.2.21...protocol/go/v0.2.22) (2024-11-14)
 
 

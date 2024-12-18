@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.8](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.1.7...lib/ocrypto/v0.1.8) (2024-12-18)
+
+
+### Features
+
+* **kas:** collect metrics ([#1702](https://github.com/opentdf/platform/issues/1702)) ([def28d1](https://github.com/opentdf/platform/commit/def28d1984b0b111a07330a3eb59c1285206062d))
+
 ## [0.1.7](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.1.6...lib/ocrypto/v0.1.7) (2024-11-15)
 
 

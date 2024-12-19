@@ -201,7 +201,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 	var fqnsReqs [][]string
 	allPertinentFQNS := &authorization.ResourceAttribute{AttributeValueFqns: make([]string, 0)}
 	response := make([]*authorization.DecisionResponse, len(dr.GetResourceAttributes()))
-	for idx, ra := range dr.GetResourceAttributes() {
+	for raIdx, ra := range dr.GetResourceAttributes() {
 		as.logger.DebugContext(ctx, "getting resource attributes", slog.String("FQNs", strings.Join(ra.GetAttributeValueFqns(), ", ")))
 
 		// get attribute definition/value combinations
@@ -225,7 +225,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 					} else if len(ra.GetAttributeValueFqns()) > 0 {
 						decisionResp.ResourceAttributesId = ra.GetAttributeValueFqns()[0]
 					}
-					responseIdx := (idx * len(dr.GetEntityChains())) + ecIdx
+					responseIdx := (raIdx * len(dr.GetEntityChains())) + ecIdx
 					response[responseIdx] = decisionResp
 				}
 				continue
@@ -285,11 +285,11 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 		ecChainEntitlementsResponse = append(ecChainEntitlementsResponse, ecEntitlements)
 	}
 
-	for reqIdx, ra := range dr.GetResourceAttributes() {
-		for idx, ec := range dr.GetEntityChains() {
-			attrVals := attrValsReqs[reqIdx]
-			attrDefs := attrDefsReqs[reqIdx]
-			fqns := fqnsReqs[reqIdx]
+	for raIdx, ra := range dr.GetResourceAttributes() {
+		for ecIdx, ec := range dr.GetEntityChains() {
+			attrVals := attrValsReqs[raIdx]
+			attrDefs := attrDefsReqs[raIdx]
+			fqns := fqnsReqs[raIdx]
 
 			//
 			// TODO: we should already have the subject mappings here and be able to just use OPA to trim down the known data attr values to the ones matched up with the entities
@@ -307,13 +307,13 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 			if len(entities) == 0 || len(ra.GetAttributeValueFqns()) == 0 {
 				as.logger.WarnContext(ctx, "empty entity list and/or entity data attribute list")
 			} else {
-				ecEntitlements := ecChainEntitlementsResponse[idx]
-				for idx, e := range ecEntitlements.Msg.GetEntitlements() {
+				ecEntitlements := ecChainEntitlementsResponse[ecIdx]
+				for entIdx, e := range ecEntitlements.Msg.GetEntitlements() {
 					entityID := e.GetEntityId()
 					if entityID == "" {
-						entityID = EntityIDPrefix + fmt.Sprint(idx)
+						entityID = EntityIDPrefix + fmt.Sprint(entIdx)
 					}
-					entityCategory := entities[idx].GetCategory()
+					entityCategory := entities[entIdx].GetCategory()
 					auditECEntitlements = append(auditECEntitlements, audit.EntityChainEntitlement{
 						EntityID:                 entityID,
 						EntityCatagory:           entityCategory.String(),
@@ -390,7 +390,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 				FQNs:                    fqns,
 				ResourceAttributeID:     decisionResp.GetResourceAttributesId(),
 			})
-			response[(reqIdx*len(dr.GetEntityChains()) + idx)] = decisionResp
+			response[(raIdx*len(dr.GetEntityChains()) + ecIdx)] = decisionResp
 		}
 	}
 	return response, nil

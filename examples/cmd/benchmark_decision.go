@@ -17,11 +17,6 @@ func init() {
 		RunE:  runDecisionBenchmark,
 	}
 
-	benchmarkCmd.Flags().IntVar(&config.ConcurrentRequests, "concurrent", 10, "Number of concurrent requests")
-	benchmarkCmd.Flags().IntVar(&config.RequestCount, "count", 100, "Total number of requests")
-	benchmarkCmd.Flags().IntVar(&config.RequestsPerSecond, "rps", 50, "Requests per second limit")
-	benchmarkCmd.Flags().IntVar(&config.TimeoutSeconds, "timeout", 30, "Timeout in seconds")
-	benchmarkCmd.Flags().Var(&config.TDFFormat, "tdf", "TDF format (tdf3 or nanotdf)")
 	ExamplesCmd.AddCommand(benchmarkCmd)
 }
 

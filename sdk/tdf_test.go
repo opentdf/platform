@@ -396,7 +396,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 			},
 			assertionVerificationKeys:    nil,
 			disableAssertionVerification: false,
-			expectedSize:                 2805,
+			expectedSize:                 2689,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -429,7 +429,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				DefaultKey: defaultKey,
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 2805,
+			expectedSize:                 2689,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -478,7 +478,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 3104,
+			expectedSize:                 2988,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -518,7 +518,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 2805,
+			expectedSize:                 2689,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -535,7 +535,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: true,
-			expectedSize:                 2238,
+			expectedSize:                 2180,
 		},
 	} {
 		expectedTdfSize := test.expectedSize
@@ -644,7 +644,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					SigningKey: defaultKey,
 				},
 			},
-			expectedSize: 2805,
+			expectedSize: 2689,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -692,7 +692,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					},
 				},
 			},
-			expectedSize: 3104,
+			expectedSize: 2988,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -726,7 +726,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 			assertionVerificationKeys: &AssertionVerificationKeys{
 				DefaultKey: defaultKey,
 			},
-			expectedSize: 2805,
+			expectedSize: 2689,
 		},
 	} {
 		expectedTdfSize := test.expectedSize

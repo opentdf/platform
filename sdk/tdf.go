@@ -964,6 +964,11 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 			return fmt.Errorf("error decoding hex string: %w", err)
 		}
 
+		isLegacyTDF := r.manifest.TDFVersion == ""
+		if isLegacyTDF {
+			hashOfAssertion = hashOfAssertionAsHex
+		}
+
 		var completeHashBuilder bytes.Buffer
 		completeHashBuilder.Write(aggregateHash.Bytes())
 		completeHashBuilder.Write(hashOfAssertion)

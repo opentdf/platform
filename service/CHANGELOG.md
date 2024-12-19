@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.36](https://github.com/opentdf/platform/compare/service/v0.4.35...service/v0.4.36) (2024-12-19)
+
+
+### Bug Fixes
+
+* **core:** reduces GetEntitlements calls in GetDecisions ([#1822](https://github.com/opentdf/platform/issues/1822)) ([8bb5744](https://github.com/opentdf/platform/commit/8bb57440209f50434bcf46551f206dc49b040a03))
+
 ## [0.4.35](https://github.com/opentdf/platform/compare/service/v0.4.34...service/v0.4.35) (2024-12-18)
 
 

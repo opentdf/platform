@@ -9,7 +9,7 @@ inputs:
     default: 'main'
   extra-keys:
     required: false
-    description: A JSON array containing extra keys for the KAS to load. Each object should have a 'kid', 'alg', 'private', 'pem', and 'cert' field.
+    description: A JSON array containing extra keys for the KAS to load. Each object should have a 'kid', 'alg', 'private', 'cert', and 'pem' field.
     default: '[]'
 
 outputs:
@@ -46,7 +46,7 @@ runs:
       run: >-
         <opentdf-dev.yaml >opentdf.yaml yq e '
              (.services.kas.keyring = [{"kid":"ec1","alg":"ec:secp256r1"},{"kid":"r1","alg":"rsa:2048"}] + ({{ inputs.extra-keys }}[] | del(.private, .cert, .pem)))
-             | (.server.cryptoProvider.standard.keys = [{"kid":"ec1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"r1","alg":"rsa:2048","private":"kas-private.pem","cert":"kas-cert.pem"}] + ({{ inputs.extra-keys }}[] | del(.private, .cert))
+             | (.server.cryptoProvider.standard.keys = [{"kid":"ec1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"r1","alg":"rsa:2048","private":"kas-private.pem","cert":"kas-cert.pem"}] + ({{ inputs.extra-keys }}[] | del(.pem)))
            '
       working-directory: otdf-test-platform
     - name: Trust the generated certs

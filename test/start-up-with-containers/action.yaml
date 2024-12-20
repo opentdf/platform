@@ -46,7 +46,8 @@ runs:
       env:
         EXTRA_KEYS: ${{ inputs.extra-keys }}
       run: |
-        keylist='['
+        extra_keys='['
+        extra_keyring='['
         while IFS= read -r -d $'\0' json <&3; do
           printf 'processing %s\n' "${json}"
           pem="$(jq -r '.pem' <<< "${json}")"
@@ -54,22 +55,27 @@ runs:
           private_path="${HOME}/${kid}.pem"
           echo "${pem}" >"${private_path}"
 
-          command="$(printf '{kid, alg, private: "%s"}' "${private_path}")"
+          keylist_command="$(printf '{kid, alg, private: "%s"}' "${private_path}")"
 
-          keyobj="$(jq "${command}" <<< "${json}")"
-          if [ "${keylist}" != '[' ]; then
-            keylist+=','
+          keylist_obj="$(jq "${keylist_command}" <<< "${json}")"
+          if [ "${extra_keys}" != '[' ]; then
+            extra_keys+=','
           fi
-          keylist+="${keyobj}"
+          extra_keys+="${keylist_obj}"
+
+          if [ "${extra_keyring}" != '[' ]; then
+            extra_keyring+=','
+          fi
+          keyring_obj="$(jq '{kid, alg}' <<< "${json}")"
+          extra_keyring+="${keyring_obj}"
+
         done 3< <(jq -c --raw-output0 '.[]' <<< "${EXTRA_KEYS}")
-        keylist+=']'
+        extra_keys+=']'
+        extra_keyring+=']'
 
-        printf 'adding the following extra keys: %s\n' "${keylist}"
+        printf 'adding the following extra keys: %s-%s\n' "${extra_keys}" "${extra_keyring}"
 
-        yq_command=$(printf '
-             (.services.kas.keyring = [{"kid":"ec1","alg":"ec:secp256r1"},{"kid":"r1","alg":"rsa:2048"}] + (%s[] | del(.pem)))
-             | (.server.cryptoProvider.standard.keys = [{"kid":"ec1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"r1","alg":"rsa:2048","private":"kas-private.pem","cert":"kas-cert.pem"}] + %s)
-           '"${EXTRA_KEYS}" "${keylist}")
+        yq_command=$(printf '(.services.kas.keyring = [{"kid":"ec1","alg":"ec:secp256r1"},{"kid":"r1","alg":"rsa:2048"}] + %s) | (.server.cryptoProvider.standard.keys = [{"kid":"ec1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"r1","alg":"rsa:2048","private":"kas-private.pem","cert":"kas-cert.pem"}] + %s)' "${extra_keyring}" "${extra_keys}")
 
         printf 'the command is %s\n' "${yq_command}"
         <opentdf-dev.yaml >opentdf.yaml yq e "${yq_command}"

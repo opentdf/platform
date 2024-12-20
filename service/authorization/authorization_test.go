@@ -28,9 +28,9 @@ import (
 
 var (
 	getAttributesByValueFqnsResponse attr.GetAttributeValuesByFqnsResponse
-	getAttributesByValueFqnsError    error
+	errGetAttributesByValueFqns      error
 	listAttributeResp                attr.ListAttributesResponse
-	listAttributesError              error
+	errListAttributes                error
 	listSubjectMappings              sm.ListSubjectMappingsResponse
 	createEntityChainResp            entityresolution.CreateEntityChainFromJwtResponse
 	resolveEntitiesResp              entityresolution.ResolveEntitiesResponse
@@ -47,11 +47,11 @@ type myAttributesClient struct {
 }
 
 func (*myAttributesClient) ListAttributes(_ context.Context, _ *attr.ListAttributesRequest, _ ...grpc.CallOption) (*attr.ListAttributesResponse, error) {
-	return &listAttributeResp, listAttributesError
+	return &listAttributeResp, errListAttributes
 }
 
 func (*myAttributesClient) GetAttributeValuesByFqns(_ context.Context, _ *attr.GetAttributeValuesByFqnsRequest, _ ...grpc.CallOption) (*attr.GetAttributeValuesByFqnsResponse, error) {
-	return &getAttributesByValueFqnsResponse, getAttributesByValueFqnsError
+	return &getAttributesByValueFqnsResponse, errGetAttributesByValueFqns
 }
 
 type myERSClient struct {
@@ -1212,7 +1212,7 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 
 	// should not hit get attributes by value fqns
 	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{}
-	getAttributesByValueFqnsError = errors.New("should not hit")
+	errGetAttributesByValueFqns = errors.New("should not hit")
 
 	// set the request
 	req := connect.Request[authorization.GetDecisionsRequest]{
@@ -1249,7 +1249,7 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 
 	// will hit getAttributesByValueFqns but will get error
 	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{}
-	getAttributesByValueFqnsError = status.Error(codes.NotFound, db.ErrTextNotFound)
+	errGetAttributesByValueFqns = status.Error(codes.NotFound, db.ErrTextNotFound)
 
 	// set the request
 	req = connect.Request[authorization.GetDecisionsRequest]{
@@ -1286,7 +1286,7 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 
 	// should not hit get attributes by value fqns
 	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{}
-	getAttributesByValueFqnsError = errors.New("should not hit")
+	errGetAttributesByValueFqns = errors.New("should not hit")
 
 	// set the request
 	req = connect.Request[authorization.GetDecisionsRequest]{

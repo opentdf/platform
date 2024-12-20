@@ -48,6 +48,7 @@ runs:
       run: |
         keylist='['
         for json in $(jq -c '.[]' <<< "${EXTRA_KEYS}"); do
+          printf 'processing %s\n' "${json}"
           pem="$(jq -r '.pem' <<< "${json}")"
           kid="$(jq -r '.kid' <<< "${json}")"
           private_path="${HOME}/${kid}.pem"

@@ -50,18 +50,22 @@ runs:
         extra_keyring='['
         while IFS= read -r -d $'\0' json <&3; do
           printf 'processing %s\n' "${json}"
-          pem="$(jq -r '.pem' <<< "${json}")"
+          privateKeyPem="$(jq -r '.privateKey' <<< "${json}")"
+          certPem="$(jq -r '.cert' <<< "${json}")"
           kid="$(jq -r '.kid' <<< "${json}")"
-          private_path="${kid}.pem"
 
-          echo "${pem}" >"${private_path}"
+          private_path="${kid}.pem"
+          cert_path="${kid}-cert.pem"
+
+          echo "${privateKeyPem}" >"${private_path}"
+          echo "${certPem}" >"${cert_path}"
 
           cat "${private_path}"
           chmod a+r "${private_path}"
 
           openssl rsa -in "${private_path}" -check
 
-          keylist_command="$(printf '{kid, alg, private: "%s"}' "${private_path}")"
+          keylist_command="$(printf '{kid, alg, private: "%s", cert: "%s"}' "${private_path}" "${cert_path}")"
 
           keylist_obj="$(jq "${keylist_command}" <<< "${json}")"
           if [ "${extra_keys}" != '[' ]; then

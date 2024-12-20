@@ -47,7 +47,7 @@ runs:
         EXTRA_KEYS: ${{ inputs.extra-keys }}
       run: |
         keylist='['
-        for json in $(jq -c '.[]' <<< "${EXTRA_KEYS}"); do
+        while IFS= read -r -d $'\0' json <&3; do
           printf 'processing %s\n' "${json}"
           pem="$(jq -r '.pem' <<< "${json}")"
           kid="$(jq -r '.kid' <<< "${json}")"
@@ -61,8 +61,7 @@ runs:
             keylist+=','
           fi
           keylist+="${keyobj}"
-        done
-
+        done 3< <(jq -c --raw-output0 '.[]' <<< "${EXTRA_KEYS}")
         keylist+=']'
 
         printf 'adding the following extra keys: %s\n' "${keylist}"

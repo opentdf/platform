@@ -61,6 +61,15 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, id string) (*poli
 		}
 	}
 
+	var keys []*policy.Key
+	if av.Keys != nil {
+		keys, err = db.KeysProtoJSON(av.Keys)
+		if err != nil {
+			c.logger.ErrorContext(ctx, "could not unmarshal keys", slog.String("error", err.Error()))
+			return nil, err
+		}
+	}
+
 	return &policy.Value{
 		Id:       av.ID,
 		Value:    av.Value,
@@ -70,7 +79,8 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, id string) (*poli
 		Attribute: &policy.Attribute{
 			Id: av.AttributeDefinitionID,
 		},
-		Fqn: av.Fqn.String,
+		Fqn:  av.Fqn.String,
+		Keys: keys,
 	}, nil
 }
 
@@ -300,5 +310,28 @@ func (c PolicyDBClient) RemoveKeyAccessServerFromValue(ctx context.Context, k *a
 		return nil, db.ErrNotFound
 	}
 
+	return k, nil
+}
+
+func (c PolicyDBClient) AssignKeyToValue(ctx context.Context, k *attributes.ValueKey) error {
+	_, err := c.Queries.AssignPublicKeyToAttributeValue(ctx, AssignPublicKeyToAttributeValueParams{
+		ValueID: k.GetValueId(),
+		KeyID:   k.GetKeyId(),
+	})
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return nil
+}
+
+func (c PolicyDBClient) RemoveKeyFromValue(ctx context.Context, k *attributes.ValueKey) (*attributes.ValueKey, error) {
+	_, err := c.Queries.RemovePublicKeyFromAttributeValue(ctx, RemovePublicKeyFromAttributeValueParams{
+		ValueID: k.GetValueId(),
+		KeyID:   k.GetKeyId(),
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
 	return k, nil
 }

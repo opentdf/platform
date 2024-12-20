@@ -553,6 +553,26 @@
                 </li>
               
                 <li>
+                  <a href="#policy.attributes.AssignKeyToAttributeRequest"><span class="badge">M</span>AssignKeyToAttributeRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.AssignKeyToAttributeResponse"><span class="badge">M</span>AssignKeyToAttributeResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.AssignKeyToValueRequest"><span class="badge">M</span>AssignKeyToValueRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.AssignKeyToValueResponse"><span class="badge">M</span>AssignKeyToValueResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.AttributeKey"><span class="badge">M</span>AttributeKey</a>
+                </li>
+              
+                <li>
                   <a href="#policy.attributes.AttributeKeyAccessServer"><span class="badge">M</span>AttributeKeyAccessServer</a>
                 </li>
               
@@ -653,6 +673,22 @@
                 </li>
               
                 <li>
+                  <a href="#policy.attributes.RemoveKeyFromAttributeRequest"><span class="badge">M</span>RemoveKeyFromAttributeRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.RemoveKeyFromAttributeResponse"><span class="badge">M</span>RemoveKeyFromAttributeResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.RemoveKeyFromValueRequest"><span class="badge">M</span>RemoveKeyFromValueRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.RemoveKeyFromValueResponse"><span class="badge">M</span>RemoveKeyFromValueResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.attributes.UpdateAttributeRequest"><span class="badge">M</span>UpdateAttributeRequest</a>
                 </li>
               
@@ -666,6 +702,10 @@
               
                 <li>
                   <a href="#policy.attributes.UpdateAttributeValueResponse"><span class="badge">M</span>UpdateAttributeValueResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.ValueKey"><span class="badge">M</span>ValueKey</a>
                 </li>
               
                 <li>
@@ -807,6 +847,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.namespaces.AssignKeyToNamespaceRequest"><span class="badge">M</span>AssignKeyToNamespaceRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.namespaces.AssignKeyToNamespaceResponse"><span class="badge">M</span>AssignKeyToNamespaceResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.namespaces.CreateNamespaceRequest"><span class="badge">M</span>CreateNamespaceRequest</a>
                 </li>
               
@@ -839,6 +887,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.namespaces.NamespaceKey"><span class="badge">M</span>NamespaceKey</a>
+                </li>
+              
+                <li>
                   <a href="#policy.namespaces.NamespaceKeyAccessServer"><span class="badge">M</span>NamespaceKeyAccessServer</a>
                 </li>
               
@@ -848,6 +900,14 @@
               
                 <li>
                   <a href="#policy.namespaces.RemoveKeyAccessServerFromNamespaceResponse"><span class="badge">M</span>RemoveKeyAccessServerFromNamespaceResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.namespaces.RemoveKeyFromNamespaceRequest"><span class="badge">M</span>RemoveKeyFromNamespaceRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.namespaces.RemoveKeyFromNamespaceResponse"><span class="badge">M</span>RemoveKeyFromNamespaceResponse</a>
                 </li>
               
                 <li>
@@ -1121,6 +1181,14 @@
               
                 <li>
                   <a href="#policy.unsafe.UnsafeDeleteNamespaceResponse"><span class="badge">M</span>UnsafeDeleteNamespaceResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.UnsafeDeletePublicKeyRequest"><span class="badge">M</span>UnsafeDeletePublicKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.UnsafeDeletePublicKeyResponse"><span class="badge">M</span>UnsafeDeletePublicKeyResponse</a>
                 </li>
               
                 <li>
@@ -1524,6 +1592,13 @@
                 </tr>
               
                 <tr>
+                  <td>keys</td>
+                  <td><a href="#policy.Key">Key</a></td>
+                  <td>repeated</td>
+                  <td><p>Keys associated with the attribute </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
@@ -1836,6 +1911,13 @@ enable federation </p></td>
                   <td><a href="#policy.KeyAccessServer">KeyAccessServer</a></td>
                   <td>repeated</td>
                   <td><p>KAS grants for the namespace </p></td>
+                </tr>
+              
+                <tr>
+                  <td>keys</td>
+                  <td><a href="#policy.Key">Key</a></td>
+                  <td>repeated</td>
+                  <td><p>Keys for the namespace </p></td>
                 </tr>
               
             </tbody>
@@ -2176,6 +2258,13 @@ per namespace </p></td>
                   <td><a href="#policy.SubjectMapping">SubjectMapping</a></td>
                   <td>repeated</td>
                   <td><p>subject mapping </p></td>
+                </tr>
+              
+                <tr>
+                  <td>keys</td>
+                  <td><a href="#policy.Key">Key</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -4068,6 +4157,133 @@ Empty when none remain after current page </p></td>
 
         
       
+        <h3 id="policy.attributes.AssignKeyToAttributeRequest">AssignKeyToAttributeRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>attribute_key</td>
+                  <td><a href="#policy.attributes.AttributeKey">AttributeKey</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.AssignKeyToAttributeResponse">AssignKeyToAttributeResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>attribute_key</td>
+                  <td><a href="#policy.attributes.AttributeKey">AttributeKey</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.AssignKeyToValueRequest">AssignKeyToValueRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>value_key</td>
+                  <td><a href="#policy.attributes.ValueKey">ValueKey</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.AssignKeyToValueResponse">AssignKeyToValueResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>value_key</td>
+                  <td><a href="#policy.attributes.ValueKey">ValueKey</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.AttributeKey">AttributeKey</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>attribute_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.attributes.AttributeKeyAccessServer">AttributeKeyAccessServer</h3>
         <p></p>
 
@@ -4788,6 +5004,102 @@ Namespace ID or name </p></td>
 
         
       
+        <h3 id="policy.attributes.RemoveKeyFromAttributeRequest">RemoveKeyFromAttributeRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>attribute_key</td>
+                  <td><a href="#policy.attributes.AttributeKey">AttributeKey</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.RemoveKeyFromAttributeResponse">RemoveKeyFromAttributeResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>attribute_key</td>
+                  <td><a href="#policy.attributes.AttributeKey">AttributeKey</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.RemoveKeyFromValueRequest">RemoveKeyFromValueRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>value_key</td>
+                  <td><a href="#policy.attributes.ValueKey">ValueKey</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.RemoveKeyFromValueResponse">RemoveKeyFromValueResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>value_key</td>
+                  <td><a href="#policy.attributes.ValueKey">ValueKey</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.attributes.UpdateAttributeRequest">UpdateAttributeRequest</h3>
         <p></p>
 
@@ -4904,6 +5216,37 @@ Common metadata </p></td>
                   <td><a href="#policy.Value">policy.Value</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.ValueKey">ValueKey</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>value_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -5066,6 +5409,34 @@ Attribute &lt;&gt; Key Access Server RPCs
                 <td>RemoveKeyAccessServerFromValue</td>
                 <td><a href="#policy.attributes.RemoveKeyAccessServerFromValueRequest">RemoveKeyAccessServerFromValueRequest</a></td>
                 <td><a href="#policy.attributes.RemoveKeyAccessServerFromValueResponse">RemoveKeyAccessServerFromValueResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>AssignKeyToAttribute</td>
+                <td><a href="#policy.attributes.AssignKeyToAttributeRequest">AssignKeyToAttributeRequest</a></td>
+                <td><a href="#policy.attributes.AssignKeyToAttributeResponse">AssignKeyToAttributeResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>RemoveKeyFromAttribute</td>
+                <td><a href="#policy.attributes.RemoveKeyFromAttributeRequest">RemoveKeyFromAttributeRequest</a></td>
+                <td><a href="#policy.attributes.RemoveKeyFromAttributeResponse">RemoveKeyFromAttributeResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>AssignKeyToValue</td>
+                <td><a href="#policy.attributes.AssignKeyToValueRequest">AssignKeyToValueRequest</a></td>
+                <td><a href="#policy.attributes.AssignKeyToValueResponse">AssignKeyToValueResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>RemoveKeyFromValue</td>
+                <td><a href="#policy.attributes.RemoveKeyFromValueRequest">RemoveKeyFromValueRequest</a></td>
+                <td><a href="#policy.attributes.RemoveKeyFromValueResponse">RemoveKeyFromValueResponse</a></td>
                 <td><p></p></td>
               </tr>
             
@@ -6283,6 +6654,54 @@ Common metadata </p></td>
 
         
       
+        <h3 id="policy.namespaces.AssignKeyToNamespaceRequest">AssignKeyToNamespaceRequest</h3>
+        <p>Assign Key to Namespace</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_key</td>
+                  <td><a href="#policy.namespaces.NamespaceKey">NamespaceKey</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.namespaces.AssignKeyToNamespaceResponse">AssignKeyToNamespaceResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_key</td>
+                  <td><a href="#policy.namespaces.NamespaceKey">NamespaceKey</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.namespaces.CreateNamespaceRequest">CreateNamespaceRequest</h3>
         <p></p>
 
@@ -6480,6 +6899,37 @@ ACTIVE by default when not specified </p></td>
 
         
       
+        <h3 id="policy.namespaces.NamespaceKey">NamespaceKey</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.namespaces.NamespaceKeyAccessServer">NamespaceKeyAccessServer</h3>
         <p></p>
 
@@ -6548,6 +6998,54 @@ ACTIVE by default when not specified </p></td>
                 <tr>
                   <td>namespace_key_access_server</td>
                   <td><a href="#policy.namespaces.NamespaceKeyAccessServer">NamespaceKeyAccessServer</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.namespaces.RemoveKeyFromNamespaceRequest">RemoveKeyFromNamespaceRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_key</td>
+                  <td><a href="#policy.namespaces.NamespaceKey">NamespaceKey</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.namespaces.RemoveKeyFromNamespaceResponse">RemoveKeyFromNamespaceResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_key</td>
+                  <td><a href="#policy.namespaces.NamespaceKey">NamespaceKey</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -6683,6 +7181,22 @@ Namespace &lt;&gt; Key Access Server RPCs
                 <td>RemoveKeyAccessServerFromNamespace</td>
                 <td><a href="#policy.namespaces.RemoveKeyAccessServerFromNamespaceRequest">RemoveKeyAccessServerFromNamespaceRequest</a></td>
                 <td><a href="#policy.namespaces.RemoveKeyAccessServerFromNamespaceResponse">RemoveKeyAccessServerFromNamespaceResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>AssignKeyToNamespace</td>
+                <td><a href="#policy.namespaces.AssignKeyToNamespaceRequest">AssignKeyToNamespaceRequest</a></td>
+                <td><a href="#policy.namespaces.AssignKeyToNamespaceResponse">AssignKeyToNamespaceResponse</a></td>
+                <td><p>--------------------------------------*
+Namespace &lt;&gt; Key RPCs
+---------------------------------------</p></td>
+              </tr>
+            
+              <tr>
+                <td>RemoveKeyFromNamespace</td>
+                <td><a href="#policy.namespaces.RemoveKeyFromNamespaceRequest">RemoveKeyFromNamespaceRequest</a></td>
+                <td><a href="#policy.namespaces.RemoveKeyFromNamespaceResponse">RemoveKeyFromNamespaceResponse</a></td>
                 <td><p></p></td>
               </tr>
             
@@ -8952,6 +9466,55 @@ Fully Qualified Name (FQN) of Namespace (i.e. https://&lt;namespace&gt;), normal
 
         
       
+        <h3 id="policy.unsafe.UnsafeDeletePublicKeyRequest">UnsafeDeletePublicKeyRequest</h3>
+        <p>WARNING!!</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required
+UUID of the Key </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.unsafe.UnsafeDeletePublicKeyResponse">UnsafeDeletePublicKeyResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.Key">policy.Key</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.unsafe.UnsafeReactivateAttributeRequest">UnsafeReactivateAttributeRequest</h3>
         <p>WARNING!!</p><p>Reactivating an Attribute can potentially open up an access path to existing TDFs containing the Attribute name.</p><p>Active state of any Values under this Attribute Definition will NOT be changed.</p>
 
@@ -9364,6 +9927,15 @@ Value RPCs
                 <td><a href="#policy.unsafe.UnsafeDeleteAttributeValueRequest">UnsafeDeleteAttributeValueRequest</a></td>
                 <td><a href="#policy.unsafe.UnsafeDeleteAttributeValueResponse">UnsafeDeleteAttributeValueResponse</a></td>
                 <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>UnsafeDeletePublicKey</td>
+                <td><a href="#policy.unsafe.UnsafeDeletePublicKeyRequest">UnsafeDeletePublicKeyRequest</a></td>
+                <td><a href="#policy.unsafe.UnsafeDeletePublicKeyResponse">UnsafeDeletePublicKeyResponse</a></td>
+                <td><p>--------------------------------------*
+Key RPCs
+---------------------------------------</p></td>
               </tr>
             
           </tbody>

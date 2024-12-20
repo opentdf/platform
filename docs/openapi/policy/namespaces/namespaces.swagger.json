@@ -341,6 +341,14 @@
         }
       }
     },
+    "namespacesAssignKeyToNamespaceResponse": {
+      "type": "object",
+      "properties": {
+        "namespaceKey": {
+          "$ref": "#/definitions/namespacesNamespaceKey"
+        }
+      }
+    },
     "namespacesCreateNamespaceRequest": {
       "type": "object",
       "properties": {
@@ -388,6 +396,19 @@
         }
       }
     },
+    "namespacesNamespaceKey": {
+      "type": "object",
+      "properties": {
+        "namespaceId": {
+          "type": "string",
+          "title": "Required"
+        },
+        "keyId": {
+          "type": "string",
+          "title": "Required"
+        }
+      }
+    },
     "namespacesNamespaceKeyAccessServer": {
       "type": "object",
       "properties": {
@@ -406,6 +427,14 @@
       "properties": {
         "namespaceKeyAccessServer": {
           "$ref": "#/definitions/namespacesNamespaceKeyAccessServer"
+        }
+      }
+    },
+    "namespacesRemoveKeyFromNamespaceResponse": {
+      "type": "object",
+      "properties": {
+        "namespaceKey": {
+          "$ref": "#/definitions/namespacesNamespaceKey"
         }
       }
     },
@@ -456,6 +485,30 @@
         }
       },
       "title": "A list of known KAS public keys"
+    },
+    "policyKey": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "wasUsed": {
+          "type": "boolean"
+        },
+        "publicKey": {
+          "$ref": "#/definitions/policyKasPublicKey"
+        },
+        "kas": {
+          "$ref": "#/definitions/policyKeyAccessServer"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
+        }
+      }
     },
     "policyKeyAccessServer": {
       "type": "object",
@@ -509,6 +562,14 @@
             "$ref": "#/definitions/policyKeyAccessServer"
           },
           "title": "KAS grants for the namespace"
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKey"
+          },
+          "title": "Keys for the namespace"
         }
       }
     },

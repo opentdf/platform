@@ -356,3 +356,14 @@ func (s *UnsafeService) UnsafeDeleteAttributeValue(ctx context.Context, req *con
 	}
 	return connect.NewResponse(rsp), nil
 }
+
+func (s *UnsafeService) UnsafeDeletePublicKey(ctx context.Context, req *connect.Request[unsafe.UnsafeDeletePublicKeyRequest]) (*connect.Response[unsafe.UnsafeDeletePublicKeyResponse], error) {
+	resp, err := s.dbClient.UnsafeDeleteKey(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.Msg.GetId()))
+	}
+
+	return connect.NewResponse(&unsafe.UnsafeDeletePublicKeyResponse{
+		Key: resp,
+	}), nil
+}

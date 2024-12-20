@@ -282,5 +282,6 @@ service KeyAccessServerRegistryService {
 
   rpc UpdateKey(UpdateKeyRequest) returns (UpdateKeyResponse) {}
 
+  // DeleteKey is a soft delete, marking the key as inactive.
   rpc DeleteKey(DeleteKeyRequest) returns (DeleteKeyResponse) {}
 }

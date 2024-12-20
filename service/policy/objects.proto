@@ -22,6 +22,9 @@ message Namespace {
 
   // KAS grants for the namespace
   repeated KeyAccessServer grants = 6;
+
+  // Keys for the namespace
+  repeated Key keys = 7;
 }
 
 message Attribute {
@@ -47,6 +50,9 @@ message Attribute {
 
   // active by default until explicitly deactivated
   google.protobuf.BoolValue active = 8;
+
+  //Keys associated with the attribute
+  repeated Key keys = 9;
 
   // Common metadata
   common.Metadata metadata = 100;
@@ -83,6 +89,8 @@ message Value {
 
   // subject mapping
   repeated SubjectMapping subject_mappings = 8;
+
+  repeated Key keys = 9;
 
   // Common metadata
   common.Metadata metadata = 100;

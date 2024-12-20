@@ -671,6 +671,37 @@
         }
       }
     },
+    "attributesAssignKeyToAttributeResponse": {
+      "type": "object",
+      "properties": {
+        "attributeKey": {
+          "$ref": "#/definitions/attributesAttributeKey",
+          "title": "Required"
+        }
+      }
+    },
+    "attributesAssignKeyToValueResponse": {
+      "type": "object",
+      "properties": {
+        "valueKey": {
+          "$ref": "#/definitions/attributesValueKey",
+          "title": "Required"
+        }
+      }
+    },
+    "attributesAttributeKey": {
+      "type": "object",
+      "properties": {
+        "attributeId": {
+          "type": "string",
+          "title": "Required"
+        },
+        "keyId": {
+          "type": "string",
+          "title": "Required"
+        }
+      }
+    },
     "attributesAttributeKeyAccessServer": {
       "type": "object",
       "properties": {
@@ -818,6 +849,24 @@
         }
       }
     },
+    "attributesRemoveKeyFromAttributeResponse": {
+      "type": "object",
+      "properties": {
+        "attributeKey": {
+          "$ref": "#/definitions/attributesAttributeKey",
+          "title": "Required"
+        }
+      }
+    },
+    "attributesRemoveKeyFromValueResponse": {
+      "type": "object",
+      "properties": {
+        "valueKey": {
+          "$ref": "#/definitions/attributesValueKey",
+          "title": "Required"
+        }
+      }
+    },
     "attributesUpdateAttributeResponse": {
       "type": "object",
       "properties": {
@@ -831,6 +880,19 @@
       "properties": {
         "value": {
           "$ref": "#/definitions/policyValue"
+        }
+      }
+    },
+    "attributesValueKey": {
+      "type": "object",
+      "properties": {
+        "valueId": {
+          "type": "string",
+          "title": "Required"
+        },
+        "keyId": {
+          "type": "string",
+          "title": "Required"
         }
       }
     },
@@ -953,6 +1015,14 @@
         "active": {
           "type": "boolean",
           "title": "active by default until explicitly deactivated"
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKey"
+          },
+          "title": "Keys associated with the attribute"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",
@@ -1087,6 +1157,30 @@
       },
       "title": "A list of known KAS public keys"
     },
+    "policyKey": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "wasUsed": {
+          "type": "boolean"
+        },
+        "publicKey": {
+          "$ref": "#/definitions/policyKasPublicKey"
+        },
+        "kas": {
+          "$ref": "#/definitions/policyKeyAccessServer"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
+        }
+      }
+    },
     "policyKeyAccessServer": {
       "type": "object",
       "properties": {
@@ -1139,6 +1233,14 @@
             "$ref": "#/definitions/policyKeyAccessServer"
           },
           "title": "KAS grants for the namespace"
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKey"
+          },
+          "title": "Keys for the namespace"
         }
       }
     },
@@ -1299,6 +1401,13 @@
             "$ref": "#/definitions/policySubjectMapping"
           },
           "title": "subject mapping"
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKey"
+          }
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",

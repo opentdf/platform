@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -265,12 +266,12 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 	kasID := r.GetKasId()
 	key := r.GetKey()
 
-	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
+	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
 
-	id, err := c.Queries.CreateKey(ctx, CreateKeyParams{
+	id, err := c.Queries.CreatePublicKey(ctx, CreatePublicKeyParams{
 		KeyAccessServerID: kasID,
 		KeyID:             key.GetKid(),
 		Alg:               key.GetAlg().String(),
@@ -281,24 +282,22 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
+	// Get freshly created key
+	ck, err := c.GetPublicKey(ctx, &kasregistry.GetKeyRequest{Id: id})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
 	return &kasregistry.CreateKeyResponse{
-		Key: &policy.Key{
-			Id:       id,
-			Metadata: metadata,
-			PublicKey: &policy.KasPublicKey{
-				Kid: key.GetKid(),
-				Alg: key.GetAlg(),
-				Pem: key.GetPem(),
-			},
-		},
+		Key: ck.GetKey(),
 	}, nil
 }
 
-func (c PolicyDBClient) GetKey(ctx context.Context, r *kasregistry.GetKeyRequest) (*kasregistry.GetKeyResponse, error) {
+func (c PolicyDBClient) GetPublicKey(ctx context.Context, r *kasregistry.GetKeyRequest) (*kasregistry.GetKeyResponse, error) {
 	metadata := new(common.Metadata)
 
 	keyID := r.GetId()
-	key, err := c.Queries.GetKey(ctx, keyID)
+	key, err := c.Queries.GetPublicKey(ctx, keyID)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -342,14 +341,14 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 		}
 	}
 
-	params := ListKeysParams{
+	params := ListPublicKeysParams{
 		KasID: r.GetKasId(),
 		// KasUri:  r.GetKasUri(),
 		// KasName: r.GetKasName(),
 		Offset: offset,
 		Limit:  limit,
 	}
-	listRows, err := c.Queries.ListKeys(ctx, params)
+	listRows, err := c.Queries.ListPublicKeys(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -395,9 +394,9 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 	}, nil
 }
 
-func (c PolicyDBClient) DeleteKey(ctx context.Context, r *kasregistry.DeleteKeyRequest) (*kasregistry.DeleteKeyResponse, error) {
+func (c PolicyDBClient) SoftDeleteKey(ctx context.Context, r *kasregistry.DeleteKeyRequest) (*kasregistry.DeleteKeyResponse, error) {
 	keyID := r.GetId()
-	count, err := c.Queries.DeleteKey(ctx, keyID)
+	count, err := c.Queries.DeactivatePublicKey(ctx, keyID)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -408,5 +407,19 @@ func (c PolicyDBClient) DeleteKey(ctx context.Context, r *kasregistry.DeleteKeyR
 		Key: &policy.Key{
 			Id: keyID,
 		},
+	}, nil
+}
+
+func (c PolicyDBClient) UnsafeDeleteKey(ctx context.Context, r *unsafe.UnsafeDeletePublicKeyRequest) (*policy.Key, error) {
+	keyID := r.GetId()
+	count, err := c.Queries.DeletePublicKey(ctx, keyID)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
+	return &policy.Key{
+		Id: keyID,
 	}, nil
 }

@@ -445,6 +445,14 @@
           "type": "boolean",
           "title": "active by default until explicitly deactivated"
         },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKey"
+          },
+          "title": "Keys associated with the attribute"
+        },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",
           "title": "Common metadata"
@@ -550,6 +558,30 @@
       },
       "title": "A list of known KAS public keys"
     },
+    "policyKey": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "wasUsed": {
+          "type": "boolean"
+        },
+        "publicKey": {
+          "$ref": "#/definitions/policyKasPublicKey"
+        },
+        "kas": {
+          "$ref": "#/definitions/policyKeyAccessServer"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
+        }
+      }
+    },
     "policyKeyAccessServer": {
       "type": "object",
       "properties": {
@@ -602,6 +634,14 @@
             "$ref": "#/definitions/policyKeyAccessServer"
           },
           "title": "KAS grants for the namespace"
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKey"
+          },
+          "title": "Keys for the namespace"
         }
       }
     },
@@ -728,6 +768,13 @@
           },
           "title": "subject mapping"
         },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKey"
+          }
+        },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",
           "title": "Common metadata"
@@ -785,6 +832,14 @@
       "properties": {
         "namespace": {
           "$ref": "#/definitions/policyNamespace"
+        }
+      }
+    },
+    "unsafeUnsafeDeletePublicKeyResponse": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/policyKey"
         }
       }
     },

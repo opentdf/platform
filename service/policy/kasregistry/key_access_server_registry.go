@@ -179,7 +179,7 @@ func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, req *connect.Req
 }
 
 func (s KeyAccessServerRegistry) GetKey(ctx context.Context, req *connect.Request[kasr.GetKeyRequest]) (*connect.Response[kasr.GetKeyResponse], error) {
-	resp, err := s.dbClient.GetKey(ctx, req.Msg)
+	resp, err := s.dbClient.GetPublicKey(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed)
 	}
@@ -200,7 +200,7 @@ func (s KeyAccessServerRegistry) UpdateKey(context.Context, *connect.Request[kas
 }
 
 func (s KeyAccessServerRegistry) DeleteKey(ctx context.Context, req *connect.Request[kasr.DeleteKeyRequest]) (*connect.Response[kasr.DeleteKeyResponse], error) {
-	resp, err := s.dbClient.DeleteKey(ctx, req.Msg)
+	resp, err := s.dbClient.SoftDeleteKey(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed)
 	}

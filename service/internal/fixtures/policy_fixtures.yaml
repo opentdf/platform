@@ -266,12 +266,12 @@ subject_condition_set:
           - condition_groups:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_selector_value: '.attributes.superhero_name[]'
+                  - subject_external_selector_value: ".attributes.superhero_name[]"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - thor
                       - captain_america
-                  - subject_external_selector_value: '.attributes.superhero_group[]'
+                  - subject_external_selector_value: ".attributes.superhero_group[]"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - avengers
@@ -282,12 +282,12 @@ subject_condition_set:
           - condition_groups:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_selector_value: '.org'
+                  - subject_external_selector_value: ".org"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - marketing
                       - sales
-                  - subject_external_selector_value: '.role'
+                  - subject_external_selector_value: ".role"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - senior_vice_president
@@ -301,23 +301,23 @@ subject_condition_set:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
                   # any index
-                  - subject_external_selector_value: '.data[0].favorite_things[]'
+                  - subject_external_selector_value: ".data[0].favorite_things[]"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - futbol
                       - soccer
                   # specific index
-                  - subject_external_selector_value: '.data[0].favorite_things[1]'
+                  - subject_external_selector_value: ".data[0].favorite_things[1]"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
                     subject_external_values:
                       - ice_cream
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_selector_value: '.department'
+                  - subject_external_selector_value: ".department"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - engineering
-                  - subject_external_selector_value: '.role'
+                  - subject_external_selector_value: ".role"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
                     subject_external_values:
                       - manager
@@ -330,7 +330,7 @@ subject_condition_set:
           - condition_groups:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
-                  - subject_external_selector_value: '.some_field'
+                  - subject_external_selector_value: ".some_field"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - some_value
@@ -341,7 +341,7 @@ subject_condition_set:
           - condition_groups:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
-                  - subject_external_selector_value: '.some_other_field[1]'
+                  - subject_external_selector_value: ".some_other_field[1]"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
                     subject_external_values:
                       - some_other_value_123
@@ -352,13 +352,13 @@ subject_condition_set:
           - condition_groups:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_selector_value: '.team.name'
+                  - subject_external_selector_value: ".team.name"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - CoolTool
                       - RadService
                       - ShinyThing
-                  - subject_external_selector_value: '.org.name'
+                  - subject_external_selector_value: ".org.name"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - marketing
@@ -369,7 +369,7 @@ subject_condition_set:
           - condition_groups:
               - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
-                  - subject_external_selector_value: '.clientId'
+                  - subject_external_selector_value: ".clientId"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - opentdf-sdk
@@ -479,3 +479,93 @@ kas_registry:
       public_key:
         remote: https://kas.acme.net/key
       name: remote-acme-kas
+
+##############
+# Public Keys
+##############
+public_keys:
+  metadata:
+    table_name: public_keys
+    columns:
+      - id
+      - key_access_server_id
+      - key_id
+      - alg
+      - public_key
+  data:
+    key_1:
+      id: f478f1cd-df6e-4a55-9603-d961b36ea392
+      kas_id: 34f2acdc-3d9c-4e92-80b6-90fe4dc9afcb
+      key:
+        alg: KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
+        kid: r1
+        pem: |-
+          -----BEGIN CERTIFICATE-----
+          MIIBzzCCAXWgAwIBAgIUORuV3avU9AE6zsB6ZxyllHpi5d4wCgYIKoZIzj0EAwIw
+          PTELMAkGA1UEBhMCdXMxCzAJBgNVBAgMAmN0MSEwHwYDVQQKDBhJbnRlcm5ldCBX
+          aWRnaXRzIFB0eSBMdGQwHhcNMjQwMTAyMTY1NjU2WhcNMjUwMTAxMTY1NjU2WjA9
+          MQswCQYDVQQGEwJ1czELMAkGA1UECAwCY3QxITAfBgNVBAoMGEludGVybmV0IFdp
+          ZGdpdHMgUHR5IEx0ZDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABLV9fCJHD/kc
+          rXrUHQwAZx0Mc0dPvLjsJ/ojEtMMn0ROdeOx8ygxgcQTFFAxyCtBuadhAdm/iVHt
+          8g2EMz5dO3WjUzBRMB0GA1UdDgQWBBQYNkuk+JIuRWyn+bE8sBhRw27OVTAfBgNV
+          HSMEGDAWgBQYNkuk+JIuRWyn+bE8sBhRw27OVTAPBgNVHRMBAf8EBTADAQH/MAoG
+          CCqGSM49BAMCA0gAMEUCIQCAB2jiYe8AY6MJ4ADPSQGE47+a3kWFLcGsJhoZbxtg
+          UwIgcfIIuPfh4fbcv8cTi2BlI3k7sWPuAmIFVriI2d3Ux5Q=
+          -----END CERTIFICATE-----
+    key_2:
+      id: 68fb7e3e-6c7b-434d-bf38-07701ad8655a
+      kas_id: e36640a6-61c5-4d4c-a45b-0e0a26d1c45f
+      key:
+        alg: KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
+        kid: r2
+        pem: |-
+          -----BEGIN CERTIFICATE-----
+          MIIBzzCCAXWgAwIBAgIUORuV3avU9AE6zsB6ZxyllHpi5d4wCgYIKoZIzj0EAwIw
+          PTELMAkGA1UEBhMCdXMxCzAJBgNVBAgMAmN0MSEwHwYDVQQKDBhJbnRlcm5ldCBX
+          aWRnaXRzIFB0eSBMdGQwHhcNMjQwMTAyMTY1NjU2WhcNMjUwMTAxMTY1NjU2WjA9
+          MQswCQYDVQQGEwJ1czELMAkGA1UECAwCY3QxITAfBgNVBAoMGEludGVybmV0IFdp
+          ZGdpdHMgUHR5IEx0ZDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABLV9fCJHD/kc
+          rXrUHQwAZx0Mc0dPvLjsJ/ojEtMMn0ROdeOx8ygxgcQTFFAxyCtBuadhAdm/iVHt
+          8g2EMz5dO3WjUzBRMB0GA1UdDgQWBBQYNkuk+JIuRWyn+bE8sBhRw27OVTAfBgNV
+          HSMEGDAWgBQYNkuk+JIuRWyn+bE8sBhRw27OVTAPBgNVHRMBAf8EBTADAQH/MAoG
+          CCqGSM49BAMCA0gAMEUCIQCAB2jiYe8AY6MJ4ADPSQGE47+a3kWFLcGsJhoZbxtg
+          UwIgcfIIuPfh4fbcv8cTi2BlI3k7sWPuAmIFVriI2d3Ux5Q=
+          -----END CERTIFICATE-----
+
+value_key_map:
+  metadata:
+    table_name: attribute_value_public_key_map
+    columns:
+      - value_id
+      - key_id
+  data:
+    - value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
+      key_id: f478f1cd-df6e-4a55-9603-d961b36ea392
+    - value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
+      key_id: 68fb7e3e-6c7b-434d-bf38-07701ad8655a
+
+definition_key_map:
+  metadata:
+    table_name: attribute_definition_public_key_map
+    columns:
+      - definition_id
+      - key_id
+  data:
+    - definition_id: 6a261d68-0899-4e17-bb2f-124abba7c09c
+      key_id: f478f1cd-df6e-4a55-9603-d961b36ea392
+
+namespace_key_map:
+  metadata:
+    table_name: attribute_namespace_public_key_map
+    columns:
+      - namespace_id
+      - key_id
+  data:
+    - namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
+      key_id: f478f1cd-df6e-4a55-9603-d961b36ea392
+    - namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
+      key_id: 68fb7e3e-6c7b-434d-bf38-07701ad8655a
+    - namespace_id: 87ba60e1-da12-4889-95fd-267968bf0896
+      key_id: f478f1cd-df6e-4a55-9603-d961b36ea392
+    - namespace_id: 87ba60e1-da12-4889-95fd-267968bf0896
+      key_id: 68fb7e3e-6c7b-434d-bf38-07701ad8655a

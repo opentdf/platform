@@ -1013,6 +1013,144 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_Offset_Succeeds() {
 	}
 }
 
+// Public Key Tests
+
+var publicKeyTestUUID string
+
+func (s *KasRegistrySuite) Test_Create_Public_Key() {
+	// The initial rsa2048 public key is created in the fixture and should be active
+	kID := s.f.GetPublicKey("key_1").ID
+	r1, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: kID})
+	s.Require().NoError(err)
+	s.NotNil(r1)
+	s.True(r1.GetKey().GetIsActive())
+
+	kasID := s.f.GetKasRegistryKey("key_access_server_1").ID
+	kasRegistry := &kasregistry.CreateKeyRequest{
+		KasId: kasID,
+		Key: &policy.KasPublicKey{
+			Pem: "public",
+			Kid: "key-id",
+			Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048,
+		},
+	}
+
+	r2, err := s.db.PolicyClient.CreateKey(s.ctx, kasRegistry)
+	s.Require().NoError(err)
+	s.NotNil(r2)
+	s.Equal(kasID, r2.GetKey().GetKas().GetId())
+	s.Equal("public", r2.GetKey().GetPublicKey().GetPem())
+	s.True(r2.GetKey().GetIsActive())
+	publicKeyTestUUID = r2.GetKey().GetId()
+
+	// Now the old key should be inactive
+	r3, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: kID})
+	s.Require().NoError(err)
+	s.NotNil(r3)
+	s.False(r3.GetKey().GetIsActive())
+}
+
+func (s *KasRegistrySuite) Test_Create_Pulblic_Key_Unique_Constraint() {
+	// We can't have a duplicate public keys with the same (key_access_server_id, kid, alg) set
+	kasID := s.f.GetKasRegistryKey("key_access_server_1").ID
+	kasRegistry := &kasregistry.CreateKeyRequest{
+		KasId: kasID,
+		Key: &policy.KasPublicKey{
+			Pem: "public",
+			Kid: "key-id",
+			Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048,
+		},
+	}
+
+	r, err := s.db.PolicyClient.CreateKey(s.ctx, kasRegistry)
+	s.Require().Error(err)
+	s.Nil(r)
+	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
+}
+
+func (s *KasRegistrySuite) Test_Create_Public_Key_WithInvalidKasID_Fails() {
+	kasRegistry := &kasregistry.CreateKeyRequest{
+		KasId: "invalid-kas-id",
+		Key: &policy.KasPublicKey{
+			Pem: "public",
+			Kid: "key-id",
+			Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048,
+		},
+	}
+
+	r, err := s.db.PolicyClient.CreateKey(s.ctx, kasRegistry)
+	s.Require().Error(err)
+	s.Nil(r)
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
+}
+
+func (s *KasRegistrySuite) Test_Get_Public_Key() {
+	kasID := s.f.GetPublicKey("key_1").KasID
+	keyID := s.f.GetPublicKey("key_1").Key.Kid
+	id := s.f.GetPublicKey("key_1").ID
+
+	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: id})
+
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.Equal(kasID, r.GetKey().GetKas().GetId())
+	s.Equal(keyID, r.GetKey().GetPublicKey().GetKid())
+	s.Equal(id, r.GetKey().GetId())
+}
+
+func (s *KasRegistrySuite) Test_Get_Public_Key_WithInvalidID_Fails() {
+	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: "invalid-id"})
+
+	s.Require().Error(err)
+	s.Nil(r)
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
+}
+
+func (s *KasRegistrySuite) Test_Get_Public_Key_WithNotFoundID_Fails() {
+	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: nonExistentKasRegistryID})
+
+	s.Require().Error(err)
+	s.Nil(r)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *KasRegistrySuite) Test_List_Public_Keys() {
+	r, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.GreaterOrEqual(len(r.GetKeys()), 2)
+}
+
+func (s *KasRegistrySuite) Test_List_Public_Keys_ByKasID() {
+	kasID := s.f.GetKasRegistryKey("key_access_server_1").ID
+	r, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{KasId: kasID})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.GreaterOrEqual(len(r.GetKeys()), 1)
+	for _, key := range r.GetKeys() {
+		s.Equal(kasID, key.GetKas().GetId())
+	}
+}
+
+func (s *KasRegistrySuite) Test_List_Public_Keys_WithNonExistentKasID() {
+	r, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{KasId: nonExistentKasRegistryID})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.Empty(r.GetKeys())
+}
+
+func (s *KasRegistrySuite) Test_SoftDelete_Public_Key() {
+	r, err := s.db.PolicyClient.SoftDeleteKey(s.ctx, &kasregistry.DeleteKeyRequest{Id: publicKeyTestUUID})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.Equal(publicKeyTestUUID, r.GetKey().GetId())
+
+	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: publicKeyTestUUID})
+	s.Require().NoError(err)
+	s.NotNil(rr)
+	s.False(rr.GetKey().GetIsActive())
+}
+
 func TestKasRegistrySuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping db.KasRegistry integration tests")

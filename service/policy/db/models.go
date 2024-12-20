@@ -55,6 +55,21 @@ func (ns NullAttributeDefinitionRule) Value() (driver.Value, error) {
 	return string(ns.AttributeDefinitionRule), nil
 }
 
+type ActiveDefinitionPublicKeysView struct {
+	DefinitionID string `json:"definition_id"`
+	Keys         []byte `json:"keys"`
+}
+
+type ActiveNamespacePublicKeysView struct {
+	NamespaceID string `json:"namespace_id"`
+	Keys        []byte `json:"keys"`
+}
+
+type ActiveValuePublicKeysView struct {
+	ValueID string `json:"value_id"`
+	Keys    []byte `json:"keys"`
+}
+
 // Table to store the definitions of attributes
 type AttributeDefinition struct {
 	// Primary key for the table
@@ -83,9 +98,9 @@ type AttributeDefinitionKeyAccessGrant struct {
 	KeyAccessServerID string `json:"key_access_server_id"`
 }
 
-type AttributeDefinitionKeyMap struct {
-	AttributeDefinitionID string `json:"attribute_definition_id"`
-	KeyID                 string `json:"key_id"`
+type AttributeDefinitionPublicKeyMap struct {
+	DefinitionID string `json:"definition_id"`
+	KeyID        string `json:"key_id"`
 }
 
 // Table to store the fully qualified names of attributes for reverse lookup at their object IDs
@@ -124,7 +139,7 @@ type AttributeNamespaceKeyAccessGrant struct {
 	KeyAccessServerID string `json:"key_access_server_id"`
 }
 
-type AttributeNamespaceKeyMap struct {
+type AttributeNamespacePublicKeyMap struct {
 	NamespaceID string `json:"namespace_id"`
 	KeyID       string `json:"key_id"`
 }
@@ -153,22 +168,9 @@ type AttributeValueKeyAccessGrant struct {
 	KeyAccessServerID string `json:"key_access_server_id"`
 }
 
-type AttributeValueKeyMap struct {
-	AttributeValueID string `json:"attribute_value_id"`
-	KeyID            string `json:"key_id"`
-}
-
-type Key struct {
-	ID                string           `json:"id"`
-	IsActive          bool             `json:"is_active"`
-	WasUsed           bool             `json:"was_used"`
-	KeyAccessServerID string           `json:"key_access_server_id"`
-	KeyID             string           `json:"key_id"`
-	Alg               string           `json:"alg"`
-	PublicKey         string           `json:"public_key"`
-	Metadata          []byte           `json:"metadata"`
-	CreatedAt         pgtype.Timestamp `json:"created_at"`
-	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
+type AttributeValuePublicKeyMap struct {
+	ValueID string `json:"value_id"`
+	KeyID   string `json:"key_id"`
 }
 
 // Table to store the known registrations of key access servers (KASs)
@@ -185,6 +187,19 @@ type KeyAccessServer struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 	// Optional common name of the KAS
 	Name pgtype.Text `json:"name"`
+}
+
+type PublicKey struct {
+	ID                string           `json:"id"`
+	IsActive          bool             `json:"is_active"`
+	WasUsed           bool             `json:"was_used"`
+	KeyAccessServerID string           `json:"key_access_server_id"`
+	KeyID             string           `json:"key_id"`
+	Alg               string           `json:"alg"`
+	PublicKey         string           `json:"public_key"`
+	Metadata          []byte           `json:"metadata"`
+	CreatedAt         pgtype.Timestamp `json:"created_at"`
+	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
 }
 
 // Table to store associated terms that should map resource data to attribute values

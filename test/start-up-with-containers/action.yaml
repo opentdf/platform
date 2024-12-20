@@ -58,6 +58,8 @@ runs:
 
           cat "${private_path}"
 
+          openssl rsa -in "${private_path}" -check
+
           keylist_command="$(printf '{kid, alg, private: "%s"}' "${private_path}")"
 
           keylist_obj="$(jq "${keylist_command}" <<< "${json}")"

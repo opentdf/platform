@@ -17,15 +17,20 @@ import (
 	sm "github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
 var (
 	getAttributesByValueFqnsResponse attr.GetAttributeValuesByFqnsResponse
+	getAttributesByValueFqnsError    error
 	listAttributeResp                attr.ListAttributesResponse
+	listAttributesError              error
 	listSubjectMappings              sm.ListSubjectMappingsResponse
 	createEntityChainResp            entityresolution.CreateEntityChainFromJwtResponse
 	resolveEntitiesResp              entityresolution.ResolveEntitiesResponse
@@ -42,11 +47,11 @@ type myAttributesClient struct {
 }
 
 func (*myAttributesClient) ListAttributes(_ context.Context, _ *attr.ListAttributesRequest, _ ...grpc.CallOption) (*attr.ListAttributesResponse, error) {
-	return &listAttributeResp, nil
+	return &listAttributeResp, listAttributesError
 }
 
 func (*myAttributesClient) GetAttributeValuesByFqns(_ context.Context, _ *attr.GetAttributeValuesByFqnsRequest, _ ...grpc.CallOption) (*attr.GetAttributeValuesByFqnsResponse, error) {
-	return &getAttributesByValueFqnsResponse, nil
+	return &getAttributesByValueFqnsResponse, getAttributesByValueFqnsError
 }
 
 type myERSClient struct {
@@ -1158,4 +1163,159 @@ func TestPopulateAttrFqns(t *testing.T) {
 			assert.Equal(t, tc.expectedError, err)
 		})
 	}
+}
+
+func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
+	////////////////////// SETUP //////////////////////
+	logger := logger.CreateTestLogger()
+
+	listAttributeResp = attr.ListAttributesResponse{}
+
+	userRepresentation := map[string]interface{}{
+		"A": "B",
+		"C": "D",
+	}
+	userStruct, _ := structpb.NewStruct(userRepresentation)
+	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
+		EntityRepresentations: []*entityresolution.EntityRepresentation{
+			{
+				OriginalId: "e1",
+				AdditionalProps: []*structpb.Struct{
+					userStruct,
+				},
+			},
+		},
+	}
+
+	ctxb := context.Background()
+
+	testrego := rego.New(
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = {"e1":[]} { true }`,
+		))
+
+	// Run evaluation.
+	prepared, err := testrego.PrepareForEval(ctxb)
+	require.NoError(t, err)
+
+	as := AuthorizationService{
+		logger: logger, sdk: &otdf.SDK{
+			SubjectMapping: &mySubjectMappingClient{},
+			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		},
+		eval: prepared,
+	}
+
+	///////////// TEST1: Only empty string /////////////
+
+	// should not hit get attributes by value fqns
+	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{}
+	getAttributesByValueFqnsError = errors.New("should not hit")
+
+	// set the request
+	req := connect.Request[authorization.GetDecisionsRequest]{
+		Msg: &authorization.GetDecisionsRequest{
+			DecisionRequests: []*authorization.DecisionRequest{
+				{
+					Actions: []*policy.Action{},
+					EntityChains: []*authorization.EntityChain{
+						{
+							Id: "ec1",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+					},
+					ResourceAttributes: []*authorization.ResourceAttribute{
+						{AttributeValueFqns: []string{""}},
+					},
+				},
+			},
+		},
+	}
+
+	resp, err := as.GetDecisions(ctxb, &req)
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	slog.Debug(resp.Msg.String())
+	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
+	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.Msg.GetDecisionResponses()[0].GetDecision())
+
+	//////////  TEST2: FQN that doesnt exist //////////
+
+	// will hit getAttributesByValueFqns but will get error
+	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{}
+	getAttributesByValueFqnsError = status.Error(codes.NotFound, db.ErrTextNotFound)
+
+	// set the request
+	req = connect.Request[authorization.GetDecisionsRequest]{
+		Msg: &authorization.GetDecisionsRequest{
+			DecisionRequests: []*authorization.DecisionRequest{
+				{
+					Actions: []*policy.Action{},
+					EntityChains: []*authorization.EntityChain{
+						{
+							Id: "ec1",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+					},
+					ResourceAttributes: []*authorization.ResourceAttribute{
+						{AttributeValueFqns: []string{"https://example.com/attr/foo/value/doesntexist"}},
+					},
+				},
+			},
+		},
+	}
+
+	resp, err = as.GetDecisions(ctxb, &req)
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	slog.Debug(resp.Msg.String())
+	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
+	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.Msg.GetDecisionResponses()[0].GetDecision())
+
+	////////// TEST3: No FQNs in Resource Attribute /////////
+
+	// should not hit get attributes by value fqns
+	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{}
+	getAttributesByValueFqnsError = errors.New("should not hit")
+
+	// set the request
+	req = connect.Request[authorization.GetDecisionsRequest]{
+		Msg: &authorization.GetDecisionsRequest{
+			DecisionRequests: []*authorization.DecisionRequest{
+				{
+					Actions: []*policy.Action{},
+					EntityChains: []*authorization.EntityChain{
+						{
+							Id: "ec1",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+					},
+					ResourceAttributes: []*authorization.ResourceAttribute{
+						{ResourceAttributesId: "r1"},
+					},
+				},
+			},
+		},
+	}
+
+	resp, err = as.GetDecisions(ctxb, &req)
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	slog.Debug(resp.Msg.String())
+	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
+	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.Msg.GetDecisionResponses()[0].GetDecision())
 }

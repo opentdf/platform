@@ -210,7 +210,6 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 
 		// get attribute definition/value combinations
 		dataAttrDefsAndVals, err := retrieveAttributeDefinitions(ctx, ra, as.sdk)
-		as.logger.Debug("attr defts and vals", slog.Any("dataAttrDefsAndVals", dataAttrDefsAndVals))
 		if err != nil {
 			// if attribute an FQN does not exist
 			// return deny for all entity chains aginst this RA set and continue to next

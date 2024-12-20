@@ -43,7 +43,7 @@ runs:
       working-directory: otdf-test-platform
     - name: Map the config to the keys
       shell: bash
-      run: >-
+      run: |
         keylist='['
         for json in $(jq -c '.[]' <<< {{ inputs.extra-keys }}); do
           pem="$(jq -r '.pem' <<< "${json}")"

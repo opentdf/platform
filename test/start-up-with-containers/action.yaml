@@ -53,7 +53,11 @@ runs:
           pem="$(jq -r '.pem' <<< "${json}")"
           kid="$(jq -r '.kid' <<< "${json}")"
           private_path="${HOME}/${kid}.pem"
+
+          printf 'here is the pem: %s\n' "${pem}"
           echo "${pem}" >"${private_path}"
+
+          cat "${private_path}"
 
           keylist_command="$(printf '{kid, alg, private: "%s"}' "${private_path}")"
 

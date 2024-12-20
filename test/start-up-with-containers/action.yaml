@@ -57,6 +57,7 @@ runs:
           echo "${pem}" >"${private_path}"
 
           cat "${private_path}"
+          chmod a+r "${private_path}"
 
           openssl rsa -in "${private_path}" -check
 

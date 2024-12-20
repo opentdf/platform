@@ -43,9 +43,11 @@ runs:
       working-directory: otdf-test-platform
     - name: Map the config to the keys
       shell: bash
+      env:
+        EXTRA_KEYS: ${{ inputs.extra-keys }}
       run: |
         keylist='['
-        for json in $(jq -c '.[]' <<< {{ inputs.extra-keys }}); do
+        for json in $(jq -c '.[]' <<< "${EXTRA_KEYS}"); do
           pem="$(jq -r '.pem' <<< "${json}")"
           kid="$(jq -r '.kid' <<< "${json}")"
           private_path="${HOME}/${kid}.pem"
@@ -65,10 +67,11 @@ runs:
         printf 'adding the following extra keys: %s\n' "${keylist}"
 
         yq_command=$(printf '
-             (.services.kas.keyring = [{"kid":"ec1","alg":"ec:secp256r1"},{"kid":"r1","alg":"rsa:2048"}] + ({{ inputs.extra-keys }}[] | del(.pem)))
+             (.services.kas.keyring = [{"kid":"ec1","alg":"ec:secp256r1"},{"kid":"r1","alg":"rsa:2048"}] + (%s[] | del(.pem)))
              | (.server.cryptoProvider.standard.keys = [{"kid":"ec1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"r1","alg":"rsa:2048","private":"kas-private.pem","cert":"kas-cert.pem"}] + %s)
-           ', "${keylist}")
+           '"${EXTRA_KEYS}" "${keylist}")
 
+        printf 'the command is %s\n' "${yq_command}"
         <opentdf-dev.yaml >opentdf.yaml yq e "${yq_command}"
       working-directory: otdf-test-platform
     - name: Trust the generated certs

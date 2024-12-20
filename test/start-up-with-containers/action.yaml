@@ -9,7 +9,7 @@ inputs:
     default: 'main'
   extra-keys:
     required: false
-    description: A JSON array containing extra keys for the KAS to load. Each object should have 'kid', 'alg', 'private', and 'pem' fields.
+    description: A JSON array containing extra keys for the KAS to load. Each object should have 'kid', 'alg', and 'pem' fields.
     default: '[]'
 
 outputs:
@@ -44,10 +44,32 @@ runs:
     - name: Map the config to the keys
       shell: bash
       run: >-
-        <opentdf-dev.yaml >opentdf.yaml yq e '
-             (.services.kas.keyring = [{"kid":"ec1","alg":"ec:secp256r1"},{"kid":"r1","alg":"rsa:2048"}] + ({{ inputs.extra-keys }}[] | del(.private, .pem)))
-             | (.server.cryptoProvider.standard.keys = [{"kid":"ec1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"r1","alg":"rsa:2048","private":"kas-private.pem","cert":"kas-cert.pem"}] + ({{ inputs.extra-keys }}[] | del(.pem)))
-           '
+        keylist='['
+        for json in $(jq -c '.[]' <<< {{ inputs.extra-keys }}); do
+          pem="$(jq -r '.pem' <<< "${json}")"
+          kid="$(jq -r '.kid' <<< "${json}")"
+          private_path="${HOME}/${kid}.pem"
+          echo "${pem}" >"${private_path}"
+
+          command="$(printf '{kid, alg, private: "%s"}' "${private_path}")"
+
+          keyobj="$(jq "${command}" <<< "${json}")"
+          if [ "${keylist}" != '[' ]; then
+            keylist+=','
+          fi
+          keylist+="${keyobj}"
+        done
+
+        keylist+=']'
+
+        printf 'adding the following extra keys: %s\n' "${keylist}"
+
+        yq_command=$(printf '
+             (.services.kas.keyring = [{"kid":"ec1","alg":"ec:secp256r1"},{"kid":"r1","alg":"rsa:2048"}] + ({{ inputs.extra-keys }}[] | del(.pem)))
+             | (.server.cryptoProvider.standard.keys = [{"kid":"ec1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"r1","alg":"rsa:2048","private":"kas-private.pem","cert":"kas-cert.pem"}] + %s)
+           ', "${keylist}")
+
+        <opentdf-dev.yaml >opentdf.yaml yq e "${yq_command}"
       working-directory: otdf-test-platform
     - name: Trust the generated certs
       shell: bash

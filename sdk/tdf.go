@@ -863,6 +863,10 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 
 			unencryptedMetadata = metaData
 		}
+
+		if r.manifest.EncryptionInformation.KeyAccessObjs[0].SplitID == "" {
+			break
+		}
 	}
 
 	if mixedSplits && len(knownSplits) > len(foundSplits) {

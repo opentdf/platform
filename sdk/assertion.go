@@ -123,6 +123,49 @@ func (a Assertion) GetHash() ([]byte, error) {
 	return ocrypto.SHA256AsHex(transformedJSON), nil
 }
 
+type FlexibleValue struct {
+	AsString *string
+	AsObject map[string]interface{}
+}
+
+func (fv FlexibleValue) MarshalJSON() ([]byte, error) {
+	if fv.AsObject != nil {
+		objAsJSON, err := json.Marshal(fv.AsObject)
+		if err != nil {
+			return nil, err
+		}
+		return json.Marshal(string(objAsJSON))
+	}
+
+	if fv.AsString != nil {
+		return json.Marshal(*fv.AsString)
+	}
+
+	return json.Marshal(nil)
+}
+
+func (fv *FlexibleValue) UnmarshalJSON(data []byte) error {
+	// Try to unmarshal as a raw string
+	var strValue string
+	if err := json.Unmarshal(data, &strValue); err == nil {
+		var temp map[string]interface{}
+		if json.Unmarshal([]byte(strValue), &temp) == nil {
+			fv.AsObject = temp
+		} else {
+			fv.AsString = &strValue
+		}
+		return nil
+	}
+
+	var objValue map[string]interface{}
+	if err := json.Unmarshal(data, &objValue); err == nil {
+		fv.AsObject = objValue
+		return nil
+	}
+
+	return fmt.Errorf("value is neither a valid JSON object nor a string")
+}
+
 // Statement includes information applying to the scope of the assertion.
 // It could contain rights, handling instructions, or general metadata.
 type Statement struct {
@@ -131,7 +174,7 @@ type Statement struct {
 	// Schema describes the schema of the payload. (e.g. tdf)
 	Schema string `json:"schema,omitempty" validate:"required"`
 	// Value is the payload of the assertion.
-	Value string `json:"value,omitempty"  validate:"required"`
+	Value FlexibleValue `json:"value,omitempty"  validate:"required"`
 }
 
 // Binding enforces cryptographic integrity of the assertion.

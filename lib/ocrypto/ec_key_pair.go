@@ -45,7 +45,7 @@ func GetECCurveFromECCMode(mode ECCMode) (elliptic.Curve, error) {
 		// TODO FIXME - unsupported?
 		return nil, errors.New("unsupported nanoTDF ecc mode")
 	default:
-		return nil, fmt.Errorf("unsupported nanoTDF ecc mode %d", mode)
+		return nil, fmt.Errorf("unsupported nanoTDF ecc mode [%d]", mode)
 	}
 
 	return c, nil
@@ -211,7 +211,7 @@ func VerifyECDSASig(digest, r, s []byte, pubKey *ecdsa.PublicKey) bool {
 func ECPubKeyFromPem(pemECPubKey []byte) (*ecdh.PublicKey, error) {
 	block, _ := pem.Decode(pemECPubKey)
 	if block == nil {
-		return nil, fmt.Errorf("failed to parse PEM formatted public key")
+		return nil, fmt.Errorf("failed to parse PEM formatted public key (decode fail)")
 	}
 
 	var pub any
@@ -223,7 +223,7 @@ func ECPubKeyFromPem(pemECPubKey []byte) (*ecdh.PublicKey, error) {
 
 		var ok bool
 		if pub, ok = cert.PublicKey.(*ecdsa.PublicKey); !ok {
-			return nil, fmt.Errorf("failed to parse PEM formatted public key")
+			return nil, fmt.Errorf("failed to parse PEM formatted public key (incorrect cert type)")
 		}
 	} else {
 		var err error
@@ -247,7 +247,7 @@ func ECPubKeyFromPem(pemECPubKey []byte) (*ecdh.PublicKey, error) {
 func ECPrivateKeyFromPem(privateECKeyInPem []byte) (*ecdh.PrivateKey, error) {
 	block, _ := pem.Decode(privateECKeyInPem)
 	if block == nil {
-		return nil, fmt.Errorf("failed to parse PEM formatted private key")
+		return nil, fmt.Errorf("failed to parse PEM formatted EC private key (decode failed)")
 	}
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
@@ -322,7 +322,7 @@ func UncompressECPubKey(curve elliptic.Curve, compressedPubKey []byte) (*ecdsa.P
 	}
 	// Creating ecdsa.PublicKey from *big.Int
 	ephemeralECDSAPublicKey := &ecdsa.PublicKey{
-		Curve: elliptic.P256(),
+		Curve: curve,
 		X:     x,
 		Y:     y,
 	}

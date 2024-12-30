@@ -16,13 +16,15 @@ services:
     keyring:
       - kid: e1
         alg: ec:secp256r1
-      - kid: e1
-        alg: ec:secp256r1
+        private: kas-ec-private.pem
+        cert: kas-ec-cert.pem
+        active: true
         legacy: true
       - kid: r1
         alg: rsa:2048
-      - kid: r1
-        alg: rsa:2048
+        private: kas-private.pem
+        cert: kas-cert.pem
+        active: true
         legacy: true
 server:
   tls:
@@ -95,16 +97,4 @@ server:
     maxage: 3600
   grpc:
     reflectionEnabled: true # Default is false
-  cryptoProvider:
-    type: standard
-    standard:
-      keys:
-        - kid: r1
-          alg: rsa:2048
-          private: kas-private.pem
-          cert: kas-cert.pem
-        - kid: e1
-          alg: ec:secp256r1
-          private: kas-ec-private.pem
-          cert: kas-ec-cert.pem
   port: 8181

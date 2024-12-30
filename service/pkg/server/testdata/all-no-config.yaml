@@ -5,18 +5,6 @@ logger:
   type: text
   output: stdout
 services:
-  kas:
-    keyring:
-      - kid: e1
-        alg: ec:secp256r1
-      - kid: e1
-        alg: ec:secp256r1
-        legacy: true
-      - kid: r1
-        alg: rsa:2048
-      - kid: r1
-        alg: rsa:2048
-        legacy: true
   entityresolution:
     log_level: info
     url: http://localhost:8888/auth

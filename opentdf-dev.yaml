@@ -13,14 +13,14 @@ services:
     keyring:
       - kid: e1
         alg: ec:secp256r1
-      - kid: e1
-        alg: ec:secp256r1
-        legacy: true
+        cert: kas-ec-cert.pem
+        private: kas-ec-private.pem
+        active: true
       - kid: r1
         alg: rsa:2048
-      - kid: r1
-        alg: rsa:2048
-        legacy: true
+        cert: kas-cert.pem
+        private: kas-private.pem
+        active: true
   entityresolution:
     log_level: info
     url: http://localhost:8888/auth
@@ -105,16 +105,4 @@ server:
     maxage: 3600
   grpc:
     reflectionEnabled: true # Default is false
-  cryptoProvider:
-    type: standard
-    standard:
-      keys:
-        - kid: r1
-          alg: rsa:2048
-          private: kas-private.pem
-          cert: kas-cert.pem
-        - kid: e1
-          alg: ec:secp256r1
-          private: kas-ec-private.pem
-          cert: kas-ec-cert.pem
   port: 8080

@@ -202,6 +202,15 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 		successCount++
 		totalDuration += result
 	}
+	if successCount == 0 {
+		if errorCount > 0 {
+			cmd.Printf("\nError Summary:\n")
+			for errMsg, count := range errorMsgs {
+				cmd.Printf("%s: %d occurrences\n", errMsg, count)
+			}
+		}
+		return fmt.Errorf("no successful requests")
+	}
 
 	totalTime := time.Since(startTime)
 	averageLatency := totalDuration / time.Duration(successCount)

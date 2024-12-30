@@ -183,7 +183,8 @@ Environment Variable: `OPENTDF_SERVICES_KAS_KEYRING='[{"kid":"k1","alg":"rsa:204
 | ------------------ | ------------------------------------------------------------------------------- | -------- |
 | `keyring.*.kid`    | Which key id this is binding                                                    |          |
 | `keyring.*.alg`    | (Optional) Associated algorithm. (Allows reusing KID with different algorithms) |          |
-| `keyring.*.legacy` | Indicates this may be used for TDFs with no key ID; default if all unspecified. | inferred |
+| `keyring.*.active` | Marks the current public key for new TDFs with the specific algorithm; please specify exactly 1 for each currently recommended mechanism | false |
+| `keyring.*.legacy` | Indicates this may be used for TDFs with no key ID; default if all unspecified. | false |
 
 Example:
 

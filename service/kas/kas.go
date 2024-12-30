@@ -44,7 +44,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				case len(kasCfg.Keyring) == 0:
 					deprecatedOrDefault := func(kid, alg string) {
 						if kid == "" {
-							kid = srp.OTDF.CryptoProvider.FindKID(alg)
+							kid = srp.CryptoProvider.FindKID(alg)
 						}
 						if kid == "" {
 							srp.Logger.Warn("no known key for alg", "algorithm", alg)
@@ -65,6 +65,13 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				default:
 					kasCfg.Keyring = append(kasCfg.Keyring, inferLegacyKeys(kasCfg.Keyring)...)
 				}
+				// Create crypto provider
+				srp.Logger.Info("creating crypto provider", slog.String("type", config.CryptoProvider.Type))
+				cryptoProvider, err := security.NewCryptoProvider(srp.OTDF.Config.CryptoProvider)
+				if err != nil {
+					return nil, fmt.Errorf("security.NewCryptoProvider: %w", err)
+				}
+
 
 				p := &access.Provider{
 					URI:            *kasURI,

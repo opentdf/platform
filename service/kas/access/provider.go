@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	ErrHSM    = Error("hsm unexpected")
 	ErrConfig = Error("invalid config")
 )
 
@@ -38,13 +37,19 @@ type KASConfig struct {
 	RSACertID string `mapstructure:"rsacertid" json:"rsacertid"`
 }
 
-// Specifies the preferred/default key for a given algorithm type.
+// Details about a key. 
 type CurrentKeyFor struct {
-	Algorithm string `mapstructure:"alg" json:"alg"`
-	KID       string `mapstructure:"kid" json:"kid"`
-	// Indicates that the key should not be serves by default,
-	// but instead is allowed for legacy reasons on decrypt (rewrap) only
-	Legacy bool `mapstructure:"legacy" json:"legacy"`
+	// Valid algorithm. May be able to be derived from Private but it is better to just say it.
+	Algorithm string `mapstructure:"alg"`
+	// Key identifier. Should be short
+	KID string `mapstructure:"kid"`
+	// Implementation specific locator for private key;
+	// for 'standard' crypto service this is the path to a PEM file
+	Private string `mapstructure:"private"`
+	// Optional locator for the corresponding certificate.
+	// If not found, only public key (derivable from Private) is available.
+	Certificate string `mapstructure:"cert"`
+	// TODO: Options listing to support 'active' and 'kidless or legacy' parameters
 }
 
 func (p *Provider) IsReady(ctx context.Context) error {

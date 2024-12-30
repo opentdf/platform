@@ -116,6 +116,7 @@ type OpenTDFServer struct {
 	HTTPServer          *http.Server
 	ConnectRPCInProcess *inProcessServer
 	ConnectRPC          *ConnectRPC
+	// DEPRECATED No longer initialized
 	CryptoProvider      security.CryptoProvider
 
 	logger *logger.Logger
@@ -210,13 +211,6 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 			ConnectRPC:         connectRPCIpc,
 		},
 		logger: logger,
-	}
-
-	// Create crypto provider
-	logger.Info("creating crypto provider", slog.String("type", config.CryptoProvider.Type))
-	o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
-	if err != nil {
-		return nil, fmt.Errorf("security.NewCryptoProvider: %w", err)
 	}
 
 	return &o, nil

@@ -157,11 +157,15 @@ func Start(f ...StartOptions) error {
 		oidcconfig *auth.OIDCConfiguration
 	)
 
-	// If the mode is not all or entityresolution, we need to have a valid SDK config
+	// If the mode is not all, does not include both core and entityresolution, or is not entityresolution on its own, we need to have a valid SDK config
 	// entityresolution does not connect to other services and can run on its own
-	if !slices.Contains(cfg.Mode, "all") && !slices.Contains(cfg.Mode, "entityresolution") && cfg.SDKConfig == (config.SDKConfig{}) {
-		logger.Error("mode is not all or entityresolution, but no sdk config provided")
-		return errors.New("mode is not all or entityresolution, but no sdk config provided")
+	// core only connects to entityresolution
+	if !(slices.Contains(cfg.Mode, "all") || // no config required for all mode
+		(slices.Contains(cfg.Mode, "core") && slices.Contains(cfg.Mode, "entityresolution")) || // or core and entityresolution modes togethor
+		(slices.Contains(cfg.Mode, "entityresolution") && len(cfg.Mode) == 1)) && // or entityresolution on its own
+		cfg.SDKConfig == (config.SDKConfig{}) {
+		logger.Error("mode is not all, entityresolution, or a combination of core and entityresolution, but no sdk config provided")
+		return errors.New("mode is not all, entityresolution, or a combination of core and entityresolution, but no sdk config provided")
 	}
 
 	// If client credentials are provided, use them
@@ -186,7 +190,7 @@ func Start(f ...StartOptions) error {
 		sdkOptions = append(sdkOptions, sdk.WithCustomCoreConnection(otdf.ConnectRPCInProcess.Conn()))
 
 		// handle ERS connection for core mode
-		if slices.Contains(cfg.Mode, "core") {
+		if slices.Contains(cfg.Mode, "core") && !slices.Contains(cfg.Mode, "entityresolution") {
 			logger.Info("core mode")
 
 			if cfg.SDKConfig.EntityResolutionConnection.Endpoint == "" {

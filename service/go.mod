@@ -20,8 +20,8 @@ require (
 	github.com/jackc/pgx/v5 v5.5.5
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/open-policy-agent/opa v0.68.0
-	github.com/opentdf/platform/lib/fixtures v0.2.8
-	github.com/opentdf/platform/lib/flattening v0.1.1
+	github.com/opentdf/platform/lib/fixtures v0.2.10
+	github.com/opentdf/platform/lib/flattening v0.1.3
 	github.com/opentdf/platform/lib/ocrypto v0.1.7
 	github.com/opentdf/platform/protocol/go v0.2.20
 	github.com/opentdf/platform/sdk v0.3.23
@@ -151,7 +151,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gopkg.in/yaml.v3 v3.0.1
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 

@@ -48,11 +48,30 @@ message RewrapRequest {
   string signed_request_token = 1;
 }
 
+message KAORewrapResult {
+	map<string, google.protobuf.Value> metadata = 1;
+	string key_access_object_id = 2;
+	string status = 3;
+	oneof result { 
+		bytes kasWrappedKey = 4;
+		string error = 5;
+	}
+}
+
+message RewrapResult {
+	string policy_id = 1;
+	repeated KAORewrapResult results = 2;
+}
+
+
 message RewrapResponse {
+	// Deprecated
   map<string, google.protobuf.Value> metadata = 1;
   bytes entity_wrapped_key = 2;
   string session_public_key = 3;
   string schema_version = 4;
+	// New Rewrap API changes
+	repeated RewrapResult responses = 5;
 }
 
 // Get app info from the root path

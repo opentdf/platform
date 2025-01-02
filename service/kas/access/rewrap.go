@@ -1,7 +1,7 @@
 package access
 
 import (
-	"bytes"
+	// "bytes"
 	"context"
 	"crypto"
 	"crypto/ecdsa"
@@ -31,6 +31,7 @@ import (
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/security"
+	"github.com/opentdf/platform/service/kas/request"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
@@ -38,18 +39,13 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const kTDF3Algorithm = "rsa:2048"
+const kNanoAlgorithm = "ec:secp256r1"
+const kFailedStatus = "fail"
+const kPermitStatus = "permit"
+
 type SignedRequestBody struct {
 	RequestBody string `json:"requestBody"`
-}
-
-type RequestBody struct {
-	AuthToken       string      `json:"authToken"`
-	KeyAccess       KeyAccess   `json:"keyAccess"`
-	Policy          string      `json:"policy,omitempty"`
-	Algorithm       string      `json:"algorithm,omitempty"`
-	ClientPublicKey string      `json:"clientPublicKey"`
-	PublicKey       interface{} `json:"-"`
-	SchemaVersion   string      `json:"schemaVersion,omitempty"`
 }
 
 type entityInfo struct {
@@ -121,7 +117,7 @@ func justRequestBody(ctx context.Context, token jwt.Token, logger logger.Logger)
 	return rbString, nil
 }
 
-func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRequest, logger logger.Logger) (*RequestBody, error) {
+func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRequest, logger logger.Logger) (*request.RequestBody, error) {
 	// First load legacy method for verifying SRT
 	if vpk, ok := headers["X-Virtrupubkey"]; ok && len(vpk) == 1 {
 		logger.InfoContext(ctx, "Legacy Client: Processing X-Virtrupubkey")
@@ -153,7 +149,7 @@ func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRe
 		}
 	}
 
-	var requestBody RequestBody
+	var requestBody request.RequestBody
 	err = json.Unmarshal([]byte(rbString), &requestBody)
 	if err != nil {
 		logger.WarnContext(ctx, "invalid request body")
@@ -175,12 +171,10 @@ func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRe
 		return nil, err400("clientPublicKey parse failure")
 	}
 	// Check to make sure the clientPublicKey is a supported key type
-	switch publicKey := clientPublicKey.(type) {
+	switch clientPublicKey.(type) {
 	case *rsa.PublicKey:
-		requestBody.PublicKey = publicKey
 		return &requestBody, nil
 	case *ecdsa.PublicKey:
-		requestBody.PublicKey = publicKey
 		return &requestBody, nil
 	default:
 		logger.WarnContext(ctx, fmt.Sprintf("clientPublicKey not a supported key, was [%T]", clientPublicKey))
@@ -202,44 +196,55 @@ func extractPolicyBinding(policyBinding interface{}) (string, error) {
 	}
 }
 
-func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byte, logger logger.Logger) (*Policy, error) {
-	actualHMAC, err := generateHMACDigest(ctx, []byte(requestBody.Policy), k, logger)
-	if err != nil {
-		logger.WarnContext(ctx, "unable to generate policy hmac", "err", err)
-		return nil, err400("bad request")
-	}
-
-	policyBinding, err := extractPolicyBinding(requestBody.KeyAccess.PolicyBinding)
-	if err != nil {
-		logger.WarnContext(ctx, "invalid policy binding", "err", err)
-		return nil, err400("bad request")
-	}
-
-	expectedHMAC := make([]byte, base64.StdEncoding.DecodedLen(len(policyBinding)))
-	n, err := base64.StdEncoding.Decode(expectedHMAC, []byte(policyBinding))
-	if err == nil {
-		n, err = hex.Decode(expectedHMAC, expectedHMAC[:n])
-	}
-	expectedHMAC = expectedHMAC[:n]
-	if err != nil {
-		logger.WarnContext(ctx, "invalid policy binding", "err", err)
-		return nil, err400("bad request")
-	}
-	if !hmac.Equal(actualHMAC, expectedHMAC) {
-		logger.WarnContext(ctx, "policy hmac mismatch", "policyBinding", policyBinding)
-		return nil, err400("bad request")
-	}
-	sDecPolicy, err := base64.StdEncoding.DecodeString(requestBody.Policy)
+func verifyAndParsePolicy(ctx context.Context, req *request.RewrapRequests, logger logger.Logger) (*request.Policy, error) {
+	failed := false
+	sDecPolicy, err := base64.StdEncoding.DecodeString(req.Policy.Body)
 	if err != nil {
 		logger.WarnContext(ctx, "unable to decode policy", "err", err)
-		return nil, err400("bad request")
+		failed = true
 	}
 	decoder := json.NewDecoder(strings.NewReader(string(sDecPolicy)))
-	var policy Policy
+	var policy request.Policy
 	err = decoder.Decode(&policy)
 	if err != nil {
 		logger.WarnContext(ctx, "unable to decode policy", "err", err)
-		return nil, err400("bad request")
+		failed = true
+	}
+	req.Results.PolicyId = policy.UUID.String()
+
+	for _, kao := range req.KeyAccessObjectRequests {
+		if failed {
+			failedKAORewrap(req.Results, kao, "bad request")
+			continue
+		}
+		actualHMAC, err := generateHMACDigest(ctx, []byte(req.Policy.Body), kao.SymmetricKey, logger)
+		if err != nil {
+			logger.WarnContext(ctx, "unable to generate policy hmac", "err", err)
+			failedKAORewrap(req.Results, kao, "bad request")
+			continue
+		}
+		policyBinding := kao.PolicyBinding.(string)
+
+		expectedHMAC := make([]byte, base64.StdEncoding.DecodedLen(len(policyBinding)))
+		n, err := base64.StdEncoding.Decode(expectedHMAC, []byte(policyBinding))
+		if err == nil {
+			n, err = hex.Decode(expectedHMAC, expectedHMAC[:n])
+		}
+		expectedHMAC = expectedHMAC[:n]
+		if err != nil {
+			logger.WarnContext(ctx, "invalid policy binding", "err", err)
+			failedKAORewrap(req.Results, kao, "bad request")
+			continue
+		}
+		if !hmac.Equal(actualHMAC, expectedHMAC) {
+			logger.WarnContext(ctx, "policy hmac mismatch", "policyBinding", policyBinding)
+			failedKAORewrap(req.Results, kao, "bad request")
+			continue
+		}
+	}
+
+	if failed {
+		return nil, fmt.Errorf("invalid policy")
 	}
 	return &policy, nil
 }
@@ -267,6 +272,27 @@ func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, err
 
 	return info, nil
 }
+func failedKAORewrap(res *kaspb.RewrapResult, kao *request.KeyAccessObjectRequest, err string) *kaspb.KAORewrapResult {
+	if kao.Processed {
+		return nil
+	}
+	kao.Processed = true
+	kaoRes := &kaspb.KAORewrapResult{
+		KeyAccessObjectId: kao.KeyAccessObjectId,
+		Status:            kFailedStatus,
+		Result:            &kaspb.KAORewrapResult_Error{Error: err},
+	}
+	res.Results = append(res.Results, kaoRes)
+	return kaoRes
+}
+
+func markUnproccessedRequests(reqs []*request.RewrapRequests) {
+	for _, req := range reqs {
+		for _, kao := range req.KeyAccessObjectRequests {
+			failedKAORewrap(req.Results, kao, "could not proccess request")
+		}
+	}
+}
 
 func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.RewrapRequest]) (*connect.Response[kaspb.RewrapResponse], error) {
 	in := req.Msg
@@ -284,227 +310,290 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 		return nil, err
 	}
 
-	if body.Algorithm == "" {
-		p.Logger.DebugContext(ctx, "default rewrap algorithm")
-		body.Algorithm = "rsa:2048"
+	resp := &kaspb.RewrapResponse{}
+
+	// var nanoReqs []*RewrapRequests
+	var tdf3Reqs []*request.RewrapRequests
+	for _, req := range body.Requests {
+		switch {
+		// case req.Algorithm == kNanoAlgorithm:
+		// 	nanoReqs = append(nanoReqs, req)
+		case req.Algorithm == "" || req.Algorithm == kTDF3Algorithm:
+			tdf3Reqs = append(tdf3Reqs, req)
+		default:
+			// No algorithm: fail all Policy's KAOs
+			var failedKAOs []*kaspb.KAORewrapResult
+			for _, kao := range req.KeyAccessObjectRequests {
+				failedKAOs = append(failedKAOs,
+					failedKAORewrap(req.Results, kao, fmt.Sprintf("%s is not a valid algorithm", req.Algorithm)))
+			}
+			rewrapResult := &kaspb.RewrapResult{
+				Results: failedKAOs,
+			}
+			resp.Responses = append(resp.Responses, rewrapResult)
+		}
 	}
 
-	if body.Algorithm == "ec:secp256r1" {
-		rsp, err := p.nanoTDFRewrap(ctx, body, entityInfo)
-		if err != nil {
-			p.Logger.ErrorContext(ctx, "rewrap nano", "err", err)
-		}
-		p.Logger.DebugContext(ctx, "rewrap nano", "rsp", rsp)
-		return connect.NewResponse(rsp), err
+	p.tdf3Rewrap(ctx, tdf3Reqs, body.ClientPublicKey, entityInfo)
+	markUnproccessedRequests(tdf3Reqs)
+	for _, req := range tdf3Reqs {
+		resp.Responses = append(resp.Responses, req.Results)
 	}
-	rsp, err := p.tdf3Rewrap(ctx, body, entityInfo)
-	if err != nil {
-		p.Logger.ErrorContext(ctx, "rewrap tdf3", "err", err)
-	}
-	return connect.NewResponse(rsp), err
+
+	return connect.NewResponse(resp), err
 }
 
-func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
+func (p *Provider) verifyRewrapRequests(ctx context.Context, req *request.RewrapRequests) (*request.Policy, error) {
+	anyValidKAOs := false
+	p.Logger.DebugContext(ctx, "extracting policy", "requestBody.policy", req.Policy)
+	sDecPolicy, policyErr := base64.StdEncoding.DecodeString(req.Policy.Body)
+	req.Results = &kaspb.RewrapResult{
+		PolicyId: req.Policy.Id,
+	}
+	policy := &request.Policy{}
+	if policyErr == nil {
+		policyErr = json.Unmarshal(sDecPolicy, policy)
+	}
+
+	for _, kao := range req.KeyAccessObjectRequests {
+		if policyErr != nil {
+			failedKAORewrap(req.Results, kao, "bad request")
+			continue
+		}
+		var kidsToCheck []string
+		if kao.KID != "" {
+			kidsToCheck = []string{kao.KID}
+		} else {
+			p.Logger.InfoContext(ctx, "kid free kao")
+			for _, k := range p.KASConfig.Keyring {
+				if k.Algorithm == security.AlgorithmRSA2048 && k.Legacy {
+					kidsToCheck = append(kidsToCheck, k.KID)
+				}
+			}
+			if len(kidsToCheck) == 0 {
+				p.Logger.WarnContext(ctx, "failure to find legacy kids for rsa")
+				failedKAORewrap(req.Results, kao, "bad request")
+				continue
+			}
+		}
+
+		var err error
+		kao.SymmetricKey, err = p.CryptoProvider.RSADecrypt(crypto.SHA1, kidsToCheck[0], "", kao.WrappedKey)
+		for _, kid := range kidsToCheck[1:] {
+			p.Logger.WarnContext(ctx, "continue paging through legacy KIDs for kid free kao", "err", err)
+			if err == nil {
+				break
+			}
+			kao.SymmetricKey, err = p.CryptoProvider.RSADecrypt(crypto.SHA1, kid, "", kao.WrappedKey)
+		}
+		if err != nil {
+			p.Logger.WarnContext(ctx, "failure to decrypt dek", "err", err)
+			failedKAORewrap(req.Results, kao, "bad request")
+			continue
+		}
+		anyValidKAOs = true
+	}
+
+	if policyErr != nil {
+		return policy, nil
+	}
+	if !anyValidKAOs {
+		p.Logger.WarnContext(ctx, "no valid KAOs found")
+		return policy, fmt.Errorf("no valid KAOs")
+	}
+	return policy, nil
+}
+
+func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*request.RewrapRequests, clientPublicKey string, entity *entityInfo) {
 	if p.Tracer != nil {
 		var span trace.Span
 		ctx, span = p.Tracer.Start(ctx, "rewrap-tdf3")
 		defer span.End()
 	}
 
-	var kidsToCheck []string
-	if body.KeyAccess.KID != "" {
-		kidsToCheck = []string{body.KeyAccess.KID}
-	} else {
-		p.Logger.InfoContext(ctx, "kid free kao")
-		for _, k := range p.KASConfig.Keyring {
-			if k.Algorithm == security.AlgorithmRSA2048 && k.Legacy {
-				kidsToCheck = append(kidsToCheck, k.KID)
-			}
+	var policies []*request.Policy
+	policyReqs := make(map[*request.Policy]*request.RewrapRequests)
+	for _, req := range requests {
+		policy, err := p.verifyRewrapRequests(ctx, req)
+		if err != nil {
+			continue
 		}
-		if len(kidsToCheck) == 0 {
-			p.Logger.WarnContext(ctx, "failure to find legacy kids for rsa")
-			return nil, err400("bad request")
-		}
-	}
-	symmetricKey, err := p.CryptoProvider.RSADecrypt(crypto.SHA1, kidsToCheck[0], "", body.KeyAccess.WrappedKey)
-	for _, kid := range kidsToCheck[1:] {
-		p.Logger.WarnContext(ctx, "continue paging through legacy KIDs for kid free kao", "err", err)
-		if err == nil {
-			break
-		}
-		symmetricKey, err = p.CryptoProvider.RSADecrypt(crypto.SHA1, kid, "", body.KeyAccess.WrappedKey)
-	}
-	if err != nil {
-		p.Logger.WarnContext(ctx, "failure to decrypt dek", "err", err)
-		return nil, err400("bad request")
+		policies = append(policies, policy)
+		policyReqs[policy] = req
 	}
 
-	p.Logger.DebugContext(ctx, "verifying policy binding", "requestBody.policy", body.Policy)
-	policy, err := verifyAndParsePolicy(ctx, body, symmetricKey, *p.Logger)
-	if err != nil {
-		return nil, err
-	}
-
-	p.Logger.DebugContext(ctx, "extracting policy", "requestBody.policy", body.Policy)
-	// changed use the entities in the token to get the decisions
 	tok := &authorization.Token{
-		Id:  "rewrap-tok",
+		Id:  "rewrap-token",
 		Jwt: entity.Token,
 	}
-
-	access, err := p.canAccess(ctx, tok, *policy)
-
-	// Audit the TDF3 Rewrap
-	kasPolicy := ConvertToAuditKasPolicy(*policy)
-
-	policyBinding, _ := extractPolicyBinding(body.KeyAccess.PolicyBinding)
-
-	auditEventParams := audit.RewrapAuditEventParams{
-		Policy:        kasPolicy,
-		IsSuccess:     access,
-		TDFFormat:     "tdf3",
-		Algorithm:     body.Algorithm,
-		PolicyBinding: policyBinding,
+	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies)
+	if accessErr != nil {
+		for _, req := range requests {
+			for _, kao := range req.KeyAccessObjectRequests {
+				failedKAORewrap(req.Results, kao, "could not perform access")
+			}
+		}
+		return
 	}
 
-	if err != nil {
-		p.Logger.WarnContext(ctx, "Could not perform access decision!", "err", err)
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-		return nil, err403("forbidden")
-	}
-
-	if !access {
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-		return nil, err403("forbidden")
-	}
-
-	asymEncrypt, err := ocrypto.NewAsymEncryption(body.ClientPublicKey)
+	asymEncrypt, err := ocrypto.NewAsymEncryption(clientPublicKey)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "ocrypto.NewAsymEncryption:", "err", err)
 	}
 
-	rewrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
-	if err != nil {
-		p.Logger.WarnContext(ctx, "rewrap: ocrypto.AsymEncryption.encrypt failed", "err", err, "clientPublicKey", &body.ClientPublicKey)
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-		return nil, err400("bad key for rewrap")
-	}
-
-	p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
-	return &kaspb.RewrapResponse{
-		EntityWrappedKey: rewrappedKey,
-		SessionPublicKey: "",
-		SchemaVersion:    schemaVersion,
-	}, nil
-}
-
-func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
-	if p.Tracer != nil {
-		var span trace.Span
-		ctx, span = p.Tracer.Start(ctx, "rewrap-nanotdf")
-		defer span.End()
-	}
-
-	headerReader := bytes.NewReader(body.KeyAccess.Header)
-
-	header, _, err := sdk.NewNanoTDFHeaderFromReader(headerReader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
-	}
-	// Lookup KID from nano header
-	kid, err := header.GetKasURL().GetIdentifier()
-	if err != nil {
-		p.Logger.DebugContext(ctx, "nanoTDFRewrap GetIdentifier", "kid", kid, "err", err)
-		// legacy nano with KID
-		kid, err = p.lookupKid(ctx, security.AlgorithmECP256R1)
-		if err != nil {
-			p.Logger.ErrorContext(ctx, "failure to find default kid for ec", "err", err)
-			return nil, err400("bad request")
+	for _, pdpAccess := range pdpAccessResults {
+		policy := pdpAccess.Policy
+		req, ok := policyReqs[policy]
+		if !ok { // this should not happen
+			continue
 		}
-		p.Logger.DebugContext(ctx, "nanoTDFRewrap lookupKid", "kid", kid)
-	}
-	p.Logger.DebugContext(ctx, "nanoTDFRewrap", "kid", kid)
-	ecCurve, err := header.ECCurve()
-	if err != nil {
-		return nil, fmt.Errorf("ECCurve failed: %w", err)
-	}
+		access := pdpAccess.Access
 
-	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(kid, header.EphemeralKey, ecCurve)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
+		// Audit the TDF3 Rewrap
+		kasPolicy := request.ConvertToAuditKasPolicy(*policy)
+
+		for _, kao := range req.KeyAccessObjectRequests {
+			policyBinding, _ := extractPolicyBinding(kao.PolicyBinding)
+			auditEventParams := audit.RewrapAuditEventParams{
+				Policy:        kasPolicy,
+				IsSuccess:     access,
+				TDFFormat:     "tdf3",
+				Algorithm:     req.Algorithm,
+				PolicyBinding: policyBinding,
+			}
+
+			if !access {
+				p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
+				failedKAORewrap(req.Results, kao, "forbidden")
+				continue
+			}
+
+			rewrappedKey, err := asymEncrypt.Encrypt(kao.SymmetricKey)
+			if err != nil {
+				p.Logger.WarnContext(ctx, "rewrap: ocrypto.AsymEncryption.encrypt failed", "err", err, "clientPublicKey", clientPublicKey)
+				p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
+				failedKAORewrap(req.Results, kao, "bad key for rewrap")
+				continue
+			}
+			req.Results.Results = append(req.Results.Results, &kaspb.KAORewrapResult{
+				KeyAccessObjectId: kao.KeyAccessObjectId,
+				Status:            kPermitStatus,
+				Result:            &kaspb.KAORewrapResult_KasWrappedKey{KasWrappedKey: rewrappedKey},
+			})
+
+			kao.Processed = true
+			p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
+		}
 	}
-
-	// extract the policy
-	policy, err := extractNanoPolicy(symmetricKey, header)
-	if err != nil {
-		return nil, fmt.Errorf("Error extracting policy: %w", err)
-	}
-
-	// check the policy binding
-	verify, err := header.VerifyPolicyBinding()
-	if err != nil {
-		return nil, fmt.Errorf("failed to verify policy binding: %w", err)
-	}
-
-	if !verify {
-		return nil, fmt.Errorf("policy binding verification failed")
-	}
-
-	// do the access check
-	tok := &authorization.Token{
-		Id:  "rewrap-tok",
-		Jwt: entity.Token,
-	}
-
-	access, err := p.canAccess(ctx, tok, *policy)
-
-	// Audit the rewrap
-	kasPolicy := ConvertToAuditKasPolicy(*policy)
-	auditEventParams := audit.RewrapAuditEventParams{
-		Policy:    kasPolicy,
-		TDFFormat: "nano",
-		Algorithm: body.Algorithm,
-	}
-
-	if err != nil {
-		p.Logger.WarnContext(ctx, "Could not perform access decision!", "err", err)
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-		return nil, err403("forbidden")
-	}
-
-	if !access {
-		p.Logger.WarnContext(ctx, "Access Denied; no reason given")
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-		return nil, err403("forbidden")
-	}
-
-	privateKeyHandle, publicKeyHandle, err := p.CryptoProvider.GenerateEphemeralKasKeys()
-	if err != nil {
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-		return nil, fmt.Errorf("failed to generate keypair: %w", err)
-	}
-	sessionKey, err := p.CryptoProvider.GenerateNanoTDFSessionKey(privateKeyHandle, []byte(body.ClientPublicKey))
-	if err != nil {
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-		return nil, fmt.Errorf("failed to generate session key: %w", err)
-	}
-
-	cipherText, err := wrapKeyAES(sessionKey, symmetricKey)
-	if err != nil {
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-		return nil, fmt.Errorf("failed to encrypt key: %w", err)
-	}
-
-	p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
-
-	return &kaspb.RewrapResponse{
-		EntityWrappedKey: cipherText,
-		SessionPublicKey: string(publicKeyHandle),
-		SchemaVersion:    schemaVersion,
-	}, nil
 }
 
-func extractNanoPolicy(symmetricKey []byte, header sdk.NanoTDFHeader) (*Policy, error) {
+// func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
+// 	if p.Tracer != nil {
+// 		var span trace.Span
+// 		ctx, span = p.Tracer.Start(ctx, "rewrap-nanotdf")
+// 		defer span.End()
+// 	}
+//
+// 	headerReader := bytes.NewReader(body.KeyAccess.Header)
+//
+// 	header, _, err := sdk.NewNanoTDFHeaderFromReader(headerReader)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
+// 	}
+// 	// Lookup KID from nano header
+// 	kid, err := header.GetKasURL().GetIdentifier()
+// 	if err != nil {
+// 		p.Logger.DebugContext(ctx, "nanoTDFRewrap GetIdentifier", "kid", kid, "err", err)
+// 		// legacy nano with KID
+// 		kid, err = p.lookupKid(ctx, security.AlgorithmECP256R1)
+// 		if err != nil {
+// 			p.Logger.ErrorContext(ctx, "failure to find default kid for ec", "err", err)
+// 			return nil, err400("bad request")
+// 		}
+// 		p.Logger.DebugContext(ctx, "nanoTDFRewrap lookupKid", "kid", kid)
+// 	}
+// 	p.Logger.DebugContext(ctx, "nanoTDFRewrap", "kid", kid)
+// 	ecCurve, err := header.ECCurve()
+// 	if err != nil {
+// 		return nil, fmt.Errorf("ECCurve failed: %w", err)
+// 	}
+//
+// 	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(kid, header.EphemeralKey, ecCurve)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
+// 	}
+//
+// 	// extract the policy
+// 	policy, err := extractNanoPolicy(symmetricKey, header)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("Error extracting policy: %w", err)
+// 	}
+//
+// 	// check the policy binding
+// 	verify, err := header.VerifyPolicyBinding()
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to verify policy binding: %w", err)
+// 	}
+//
+// 	if !verify {
+// 		return nil, fmt.Errorf("policy binding verification failed")
+// 	}
+//
+// 	// do the access check
+// 	tok := &authorization.Token{
+// 		Id:  "rewrap-tok",
+// 		Jwt: entity.Token,
+// 	}
+//
+// 	access, err := p.canAccess(ctx, tok, *policy)
+//
+// 	// Audit the rewrap
+// 	kasPolicy := ConvertToAuditKasPolicy(*policy)
+// 	auditEventParams := audit.RewrapAuditEventParams{
+// 		Policy:    kasPolicy,
+// 		TDFFormat: "nano",
+// 		Algorithm: body.Algorithm,
+// 	}
+//
+// 	if err != nil {
+// 		p.Logger.WarnContext(ctx, "Could not perform access decision!", "err", err)
+// 		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
+// 		return nil, err403("forbidden")
+// 	}
+//
+// 	if !access {
+// 		p.Logger.WarnContext(ctx, "Access Denied; no reason given")
+// 		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
+// 		return nil, err403("forbidden")
+// 	}
+//
+// 	privateKeyHandle, publicKeyHandle, err := p.CryptoProvider.GenerateEphemeralKasKeys()
+// 	if err != nil {
+// 		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
+// 		return nil, fmt.Errorf("failed to generate keypair: %w", err)
+// 	}
+// 	sessionKey, err := p.CryptoProvider.GenerateNanoTDFSessionKey(privateKeyHandle, []byte(body.ClientPublicKey))
+// 	if err != nil {
+// 		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
+// 		return nil, fmt.Errorf("failed to generate session key: %w", err)
+// 	}
+//
+// 	cipherText, err := wrapKeyAES(sessionKey, symmetricKey)
+// 	if err != nil {
+// 		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
+// 		return nil, fmt.Errorf("failed to encrypt key: %w", err)
+// 	}
+//
+// 	p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
+//
+// 	return &kaspb.RewrapResponse{
+// 		EntityWrappedKey: cipherText,
+// 		SessionPublicKey: string(publicKeyHandle),
+// 		SchemaVersion:    schemaVersion,
+// 	}, nil
+// }
+
+func extractNanoPolicy(symmetricKey []byte, header sdk.NanoTDFHeader) (*request.Policy, error) {
 	gcm, err := ocrypto.NewAESGcm(symmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("crypto.NewAESGcm:%w", err)
@@ -524,7 +613,7 @@ func extractNanoPolicy(symmetricKey []byte, header sdk.NanoTDFHeader) (*Policy, 
 		return nil, fmt.Errorf("Error decrypting policy body:%w", err)
 	}
 
-	var policy Policy
+	var policy request.Policy
 	err = json.Unmarshal(policyData, &policy)
 	if err != nil {
 		return nil, fmt.Errorf("Error unmarshalling policy:%w", err)

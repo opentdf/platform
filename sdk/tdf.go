@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	sdkVersion              = "1.0.0"
+	sdkVersion              = "4.3.0"
 	maxFileSizeSupported    = 68719476736 // 64gb
 	defaultMimeType         = "application/octet-stream"
 	tdfAsZip                = "zip"

@@ -4,7 +4,7 @@ import (
 	"crypto"
 )
 
-const schemaVersion = "1.1.0"
+// const schemaVersion = "1.1.0"
 
 type Attribute struct {
 	URI           string           `json:"attribute"` // attribute

@@ -53,7 +53,7 @@ message KAORewrapResult {
 	string key_access_object_id = 2;
 	string status = 3;
 	oneof result { 
-		bytes kasWrappedKey = 4;
+		bytes kas_wrapped_key = 4;
 		string error = 5;
 	}
 }

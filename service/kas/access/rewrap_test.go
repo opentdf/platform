@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
-	"github.com/opentdf/platform/service/kas/request"
 	"log/slog"
 	"net/http"
 	"testing"
@@ -25,6 +24,7 @@ import (
 
 	"github.com/google/uuid"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/service/kas/request"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -226,7 +226,7 @@ func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) request.KeyAc
 	}
 
 	return request.KeyAccessObjectRequest{
-		KeyAccessObjectId: "123",
+		KeyAccessObjectID: "123",
 		KeyAccess: request.KeyAccess{
 			KeyType:       "wrapped",
 			KasURL:        "http://127.0.0.1:4000",
@@ -281,13 +281,12 @@ func jwtWrongKey(t *testing.T) []byte {
 }
 
 func makeRewrapRequests(t *testing.T, policy []byte, bindingAsString bool) []*request.RewrapRequests {
-
 	kaoReq := keyAccessWrappedRaw(t, bindingAsString)
 	return []*request.RewrapRequests{
 		{
 			KeyAccessObjectRequests: []*request.KeyAccessObjectRequest{&kaoReq},
 			Policy: request.PolicyRequest{
-				Id:   "123",
+				ID:   "123",
 				Body: string(policy),
 			},
 		},
@@ -295,7 +294,7 @@ func makeRewrapRequests(t *testing.T, policy []byte, bindingAsString bool) []*re
 }
 
 func makeRewrapBody(t *testing.T, policy []byte, policyBindingAsString bool) []byte {
-	mockBody := request.RequestBody{
+	mockBody := request.Body{
 		Requests:        makeRewrapRequests(t, policy, policyBindingAsString),
 		ClientPublicKey: rsaPublicAlt,
 	}

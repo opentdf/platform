@@ -18,16 +18,14 @@ services:
         alg: ec:secp256r1
         private: kas-ec-private.pem
         cert: kas-ec-cert.pem
-        options:
-          - active
-          - legacy
+        active: true
+        legacy: true
       - kid: r1
         alg: rsa:2048
         private: kas-private.pem
         cert: kas-cert.pem
-        options:
-          - active
-          - legacy
+        active: true
+        legacy: true
 server:
   tls:
     enabled: false

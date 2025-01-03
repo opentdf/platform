@@ -15,14 +15,12 @@ services:
         alg: ec:secp256r1
         cert: kas-ec-cert.pem
         private: kas-ec-private.pem
-        options:
-          - active
+        active: true
       - kid: r1
         alg: rsa:2048
         cert: kas-cert.pem
         private: kas-private.pem
-        options:
-          - active
+        active: true
   entityresolution:
     log_level: info
     url: http://localhost:8888/auth

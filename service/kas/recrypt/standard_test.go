@@ -66,7 +66,9 @@ func (s *StandardTestSuite) TestRSA() {
 
 	decrypted, err := s.Unwrap(kaskd.ID, wk)
 	s.Require().NoError(err)
-	s.Equal(dek, decrypted.(aesUnwrappedKey).value)
+	auk, ok := decrypted.(aesUnwrappedKey)
+	s.Require().True(ok)
+	s.Equal(dek, auk.value)
 }
 
 func (s *StandardTestSuite) TestEC() {
@@ -120,5 +122,7 @@ func (s *StandardTestSuite) TestEC() {
 	)
 	actual, err := s.Derive(kaskd.ID, publicKeyPem)
 	s.Require().NoError(err)
-	s.Equal(aesKey, actual.(aesUnwrappedKey).value)
+	auk, ok := actual.(aesUnwrappedKey)
+	s.Require().True(ok)
+	s.Equal(aesKey, auk.value)
 }

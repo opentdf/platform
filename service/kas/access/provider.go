@@ -2,6 +2,7 @@ package access
 
 import (
 	"context"
+	"crypto"
 	"fmt"
 	"net/url"
 	"os"
@@ -44,17 +45,30 @@ func (p *Provider) LoadStandardCryptoProvider() (*recrypt.Standard, error) {
 			return nil, fmt.Errorf("failed to rsa private key file: %w", err)
 		}
 
+		var secret crypto.PrivateKey
 		// FIXME will this work for EC keys? It seems to be rsa only.
-		asymDecryption, err := ocrypto.NewAsymDecryption(string(privatePemData))
-		if err != nil {
-			return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
+		if key.Algorithm == recrypt.AlgorithmRSA2048 {
+			asymDecryption, err := ocrypto.NewAsymDecryption(string(privatePemData))
+			if err != nil {
+				return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
+			}
+			secret = asymDecryption.PrivateKey
+		} else {
+			ecPrivateKey, err := ocrypto.ECPrivateKeyFromPem(privatePemData)
+			if err != nil {
+				return nil, fmt.Errorf("ocrypto.ECPrivateKeyFromPem failed: %w", err)
+			}
+			secret = ecPrivateKey
 		}
 
-		publicPemData, err := os.ReadFile(key.Certificate)
-		if err != nil {
-			return nil, fmt.Errorf("failed to rsa public key file: %w", err)
+		var publicPemData []byte
+		if key.Certificate != "" {
+			publicPemData, err = os.ReadFile(key.Certificate)
+			if err != nil {
+				return nil, fmt.Errorf("failed to rsa public key file: %w", err)
+			}
 		}
-		opts = append(opts, recrypt.WithKey(key.KID, key.Algorithm, asymDecryption.PrivateKey, publicPemData, true, false))
+		opts = append(opts, recrypt.WithKey(key.KID, key.Algorithm, secret, publicPemData, key.Active, key.Legacy))
 	}
 	c, err := recrypt.NewStandardWithOptions(opts...)
 	if err != nil {
@@ -76,7 +90,8 @@ type CurrentKeyFor struct {
 	// Optional locator for the corresponding certificate.
 	// If not found, only public key (derivable from Private) is available.
 	Certificate string `mapstructure:"cert"`
-	// TODO: Options listing to support 'active' and 'kidless or legacy' parameters
+	Active      bool   `mapstructure:"active"`
+	Legacy      bool   `mapstructure:"legacy"`
 }
 
 func (p *Provider) IsReady(ctx context.Context) error {

@@ -18,7 +18,7 @@ type AsymDecryption struct {
 func NewAsymDecryption(privateKeyInPem string) (AsymDecryption, error) {
 	block, _ := pem.Decode([]byte(privateKeyInPem))
 	if block == nil {
-		return AsymDecryption{}, errors.New("failed to parse PEM formatted private key")
+		return AsymDecryption{}, fmt.Errorf("failed to parse PEM formatted private key: %s", privateKeyInPem)
 	}
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)

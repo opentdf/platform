@@ -1,4 +1,4 @@
-package access
+package request
 
 import (
 	"github.com/google/uuid"

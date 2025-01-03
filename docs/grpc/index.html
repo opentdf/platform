@@ -439,6 +439,14 @@
                 </li>
               
                 <li>
+                  <a href="#kas.KAORewrapResult"><span class="badge">M</span>KAORewrapResult</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.KAORewrapResult.MetadataEntry"><span class="badge">M</span>KAORewrapResult.MetadataEntry</a>
+                </li>
+              
+                <li>
                   <a href="#kas.LegacyPublicKeyRequest"><span class="badge">M</span>LegacyPublicKeyRequest</a>
                 </li>
               
@@ -460,6 +468,10 @@
               
                 <li>
                   <a href="#kas.RewrapResponse.MetadataEntry"><span class="badge">M</span>RewrapResponse.MetadataEntry</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.RewrapResult"><span class="badge">M</span>RewrapResult</a>
                 </li>
               
               
@@ -3203,6 +3215,89 @@ Unique name of the KAS instance </p></td>
 
         
       
+        <h3 id="kas.KAORewrapResult">KAORewrapResult</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#kas.KAORewrapResult.MetadataEntry">KAORewrapResult.MetadataEntry</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_access_object_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>status</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kasWrappedKey</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>error</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.KAORewrapResult.MetadataEntry">KAORewrapResult.MetadataEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#google.protobuf.Value">google.protobuf.Value</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="kas.LegacyPublicKeyRequest">LegacyPublicKeyRequest</h3>
         <p></p>
 
@@ -3334,7 +3429,7 @@ Unique name of the KAS instance </p></td>
                   <td>metadata</td>
                   <td><a href="#kas.RewrapResponse.MetadataEntry">RewrapResponse.MetadataEntry</a></td>
                   <td>repeated</td>
-                  <td><p> </p></td>
+                  <td><p>Deprecated </p></td>
                 </tr>
               
                 <tr>
@@ -3356,6 +3451,13 @@ Unique name of the KAS instance </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>responses</td>
+                  <td><a href="#kas.RewrapResult">RewrapResult</a></td>
+                  <td>repeated</td>
+                  <td><p>New Rewrap API changes </p></td>
                 </tr>
               
             </tbody>
@@ -3386,6 +3488,37 @@ Unique name of the KAS instance </p></td>
                   <td>value</td>
                   <td><a href="#google.protobuf.Value">google.protobuf.Value</a></td>
                   <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.RewrapResult">RewrapResult</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>policy_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>results</td>
+                  <td><a href="#kas.KAORewrapResult">KAORewrapResult</a></td>
+                  <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
               

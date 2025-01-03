@@ -9,7 +9,7 @@ inputs:
     default: 'main'
   extra-keys:
     required: false
-    description: A JSON array containing extra keys for the KAS to load. Each object should have 'kid', 'alg', and 'pem' fields.
+    description: A JSON array containing extra keys for the KAS to load. Each object should have 'kid', 'alg', 'private', and 'cert' fields.
     default: '[]'
 
 outputs:

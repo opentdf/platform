@@ -48,6 +48,15 @@ type SignedRequestBody struct {
 	RequestBody string `json:"requestBody"`
 }
 
+type RequestBody struct {
+	AuthToken       string            `json:"authToken"`
+	KeyAccess       request.KeyAccess `json:"keyAccess"`
+	Policy          string            `json:"policy,omitempty"`
+	Algorithm       string            `json:"algorithm,omitempty"`
+	ClientPublicKey string            `json:"clientPublicKey"`
+	PublicKey       interface{}       `json:"-"`
+	SchemaVersion   string            `json:"schemaVersion,omitempty"`
+}
 type entityInfo struct {
 	EntityID string `json:"sub"`
 	ClientID string `json:"clientId"`
@@ -117,7 +126,34 @@ func justRequestBody(ctx context.Context, token jwt.Token, logger logger.Logger)
 	return rbString, nil
 }
 
-func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRequest, logger logger.Logger) (*request.RequestBody, error) {
+func extractAndConvertV1SRTBody(body []byte) (request.RequestBody, error) {
+	var requestBody RequestBody
+	if err := json.Unmarshal(body, &requestBody); err != nil {
+		return request.RequestBody{}, err
+	}
+
+	reqs := []*request.RewrapRequests{
+		{
+			KeyAccessObjectRequests: []*request.KeyAccessObjectRequest{
+				{KeyAccessObjectId: "kao-0", KeyAccess: requestBody.KeyAccess},
+			},
+			Algorithm: requestBody.Algorithm,
+			Policy: request.PolicyRequest{
+				Id:   "policy-1",
+				Body: requestBody.Policy,
+			},
+		},
+	}
+
+	return request.RequestBody{
+		ClientPublicKey: requestBody.ClientPublicKey,
+		Requests:        reqs,
+	}, nil
+
+}
+
+func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRequest, logger logger.Logger) (*request.RequestBody, bool, error) {
+	isV1 := false
 	// First load legacy method for verifying SRT
 	if vpk, ok := headers["X-Virtrupubkey"]; ok && len(vpk) == 1 {
 		logger.InfoContext(ctx, "Legacy Client: Processing X-Virtrupubkey")
@@ -138,22 +174,27 @@ func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRe
 		rbString, err = noverify(ctx, srt, logger)
 		if err != nil {
 			logger.ErrorContext(ctx, "unable to load RSA verifier", "err", err)
-			return nil, err
+			return nil, false, err
 		}
 	} else {
 		// verify and validate the request token
 		var err error
 		rbString, err = verifySRT(ctx, srt, dpopJWK, logger)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	}
 
 	var requestBody request.RequestBody
 	err = json.Unmarshal([]byte(rbString), &requestBody)
-	if err != nil {
-		logger.WarnContext(ctx, "invalid request body")
-		return nil, err400("invalid request body")
+	// if there are no requests then it could be a v1 request
+	if err != nil || len(requestBody.Requests) == 0 {
+		logger.WarnContext(ctx, "invalid request body! checking v1 SRT")
+		requestBody, err = extractAndConvertV1SRTBody([]byte(rbString))
+		if err != nil {
+			return nil, false, err400("invalid request body")
+		}
+		isV1 = true
 	}
 	logger.DebugContext(ctx, "extracted request body", slog.Any("requestBody", requestBody))
 
@@ -161,24 +202,24 @@ func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRe
 	block, _ := pem.Decode([]byte(requestBody.ClientPublicKey))
 	if block == nil {
 		logger.WarnContext(ctx, "missing clientPublicKey")
-		return nil, err400("clientPublicKey failure")
+		return nil, isV1, err400("clientPublicKey failure")
 	}
 
 	// Try to parse the clientPublicKey
 	clientPublicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
 		logger.WarnContext(ctx, "failure to parse clientPublicKey", "err", err)
-		return nil, err400("clientPublicKey parse failure")
+		return nil, isV1, err400("clientPublicKey parse failure")
 	}
 	// Check to make sure the clientPublicKey is a supported key type
 	switch clientPublicKey.(type) {
 	case *rsa.PublicKey:
-		return &requestBody, nil
+		return &requestBody, isV1, nil
 	case *ecdsa.PublicKey:
-		return &requestBody, nil
+		return &requestBody, isV1, nil
 	default:
 		logger.WarnContext(ctx, fmt.Sprintf("clientPublicKey not a supported key, was [%T]", clientPublicKey))
-		return nil, err400("clientPublicKey unsupported type")
+		return nil, isV1, err400("clientPublicKey unsupported type")
 	}
 }
 
@@ -214,13 +255,13 @@ func verifyAndParsePolicy(ctx context.Context, req *request.RewrapRequests, logg
 
 	for _, kao := range req.KeyAccessObjectRequests {
 		if failed {
-			failedKAORewrap(req.Results, kao, "bad request")
+			failedKAORewrap(req.Results, kao, err400("bad request"))
 			continue
 		}
 		actualHMAC, err := generateHMACDigest(ctx, []byte(req.Policy.Body), kao.SymmetricKey, logger)
 		if err != nil {
 			logger.WarnContext(ctx, "unable to generate policy hmac", "err", err)
-			failedKAORewrap(req.Results, kao, "bad request")
+			failedKAORewrap(req.Results, kao, err400("bad request"))
 			continue
 		}
 		policyBinding := kao.PolicyBinding.(string)
@@ -233,12 +274,12 @@ func verifyAndParsePolicy(ctx context.Context, req *request.RewrapRequests, logg
 		expectedHMAC = expectedHMAC[:n]
 		if err != nil {
 			logger.WarnContext(ctx, "invalid policy binding", "err", err)
-			failedKAORewrap(req.Results, kao, "bad request")
+			failedKAORewrap(req.Results, kao, err400("bad request"))
 			continue
 		}
 		if !hmac.Equal(actualHMAC, expectedHMAC) {
 			logger.WarnContext(ctx, "policy hmac mismatch", "policyBinding", policyBinding)
-			failedKAORewrap(req.Results, kao, "bad request")
+			failedKAORewrap(req.Results, kao, err400("bad request"))
 			continue
 		}
 	}
@@ -272,7 +313,7 @@ func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, err
 
 	return info, nil
 }
-func failedKAORewrap(res *kaspb.RewrapResult, kao *request.KeyAccessObjectRequest, err string) *kaspb.KAORewrapResult {
+func failedKAORewrap(res *kaspb.RewrapResult, kao *request.KeyAccessObjectRequest, err error) *kaspb.KAORewrapResult {
 	if kao.Processed {
 		return nil
 	}
@@ -280,8 +321,9 @@ func failedKAORewrap(res *kaspb.RewrapResult, kao *request.KeyAccessObjectReques
 	kaoRes := &kaspb.KAORewrapResult{
 		KeyAccessObjectId: kao.KeyAccessObjectId,
 		Status:            kFailedStatus,
-		Result:            &kaspb.KAORewrapResult_Error{Error: err},
+		Result:            &kaspb.KAORewrapResult_Error{Error: err.Error()},
 	}
+	kao.Err = err
 	res.Results = append(res.Results, kaoRes)
 	return kaoRes
 }
@@ -289,7 +331,7 @@ func failedKAORewrap(res *kaspb.RewrapResult, kao *request.KeyAccessObjectReques
 func markUnproccessedRequests(reqs []*request.RewrapRequests) {
 	for _, req := range reqs {
 		for _, kao := range req.KeyAccessObjectRequests {
-			failedKAORewrap(req.Results, kao, "could not proccess request")
+			failedKAORewrap(req.Results, kao, err400("could not process request"))
 		}
 	}
 }
@@ -298,7 +340,7 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 	in := req.Msg
 	p.Logger.DebugContext(ctx, "REWRAP")
 
-	body, err := extractSRTBody(ctx, req.Header(), in, *p.Logger)
+	body, isV1, err := extractSRTBody(ctx, req.Header(), in, *p.Logger)
 	if err != nil {
 		p.Logger.DebugContext(ctx, "unverifiable srt", "err", err)
 		return nil, err
@@ -325,7 +367,7 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 			var failedKAOs []*kaspb.KAORewrapResult
 			for _, kao := range req.KeyAccessObjectRequests {
 				failedKAOs = append(failedKAOs,
-					failedKAORewrap(req.Results, kao, fmt.Sprintf("%s is not a valid algorithm", req.Algorithm)))
+					failedKAORewrap(req.Results, kao, err400(fmt.Sprintf("invalid algorithm: %s", req.Algorithm))))
 			}
 			rewrapResult := &kaspb.RewrapResult{
 				Results: failedKAOs,
@@ -338,6 +380,17 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 	markUnproccessedRequests(tdf3Reqs)
 	for _, req := range tdf3Reqs {
 		resp.Responses = append(resp.Responses, req.Results)
+	}
+	if isV1 {
+		if len(resp.Responses) != 1 || len(resp.Responses[0].Results) != 1 {
+			return nil, fmt.Errorf("invalid request")
+		}
+		res := resp.Responses[0].Results[0]
+		if res.Status == kFailedStatus {
+			return nil, tdf3Reqs[0].KeyAccessObjectRequests[0].Err
+		}
+		resp.EntityWrappedKey = res.GetKasWrappedKey()
+		resp.Metadata = res.GetMetadata()
 	}
 
 	return connect.NewResponse(resp), err
@@ -357,7 +410,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *request.Rewrap
 
 	for _, kao := range req.KeyAccessObjectRequests {
 		if policyErr != nil {
-			failedKAORewrap(req.Results, kao, "bad request")
+			failedKAORewrap(req.Results, kao, err400("bad request"))
 			continue
 		}
 		var kidsToCheck []string
@@ -372,7 +425,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *request.Rewrap
 			}
 			if len(kidsToCheck) == 0 {
 				p.Logger.WarnContext(ctx, "failure to find legacy kids for rsa")
-				failedKAORewrap(req.Results, kao, "bad request")
+				failedKAORewrap(req.Results, kao, err400("bad request"))
 				continue
 			}
 		}
@@ -388,7 +441,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *request.Rewrap
 		}
 		if err != nil {
 			p.Logger.WarnContext(ctx, "failure to decrypt dek", "err", err)
-			failedKAORewrap(req.Results, kao, "bad request")
+			failedKAORewrap(req.Results, kao, err400("bad request"))
 			continue
 		}
 		anyValidKAOs = true
@@ -430,7 +483,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*request.RewrapReq
 	if accessErr != nil {
 		for _, req := range requests {
 			for _, kao := range req.KeyAccessObjectRequests {
-				failedKAORewrap(req.Results, kao, "could not perform access")
+				failedKAORewrap(req.Results, kao, err403("could not perform access"))
 			}
 		}
 		return
@@ -464,7 +517,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*request.RewrapReq
 
 			if !access {
 				p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-				failedKAORewrap(req.Results, kao, "forbidden")
+				failedKAORewrap(req.Results, kao, err403("forbidden"))
 				continue
 			}
 
@@ -472,7 +525,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*request.RewrapReq
 			if err != nil {
 				p.Logger.WarnContext(ctx, "rewrap: ocrypto.AsymEncryption.encrypt failed", "err", err, "clientPublicKey", clientPublicKey)
 				p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-				failedKAORewrap(req.Results, kao, "bad key for rewrap")
+				failedKAORewrap(req.Results, kao, err400("bad key for rewrap"))
 				continue
 			}
 			req.Results.Results = append(req.Results.Results, &kaspb.KAORewrapResult{

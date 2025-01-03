@@ -67,8 +67,11 @@ message RewrapResult {
 message RewrapResponse {
 	// Deprecated
   map<string, google.protobuf.Value> metadata = 1;
+  // Deprecated
   bytes entity_wrapped_key = 2;
+  // Deprecated
   string session_public_key = 3;
+  // Deprecated
   string schema_version = 4;
 	// New Rewrap API changes
 	repeated RewrapResult responses = 5;

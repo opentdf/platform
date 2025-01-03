@@ -21,7 +21,6 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
-	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
@@ -48,7 +47,6 @@ func (e Error) Error() string {
 type Config struct {
 	Auth                    auth.Config                              `mapstructure:"auth" json:"auth"`
 	GRPC                    GRPCConfig                               `mapstructure:"grpc" json:"grpc"`
-	CryptoProvider          security.Config                          `mapstructure:"cryptoProvider" json:"cryptoProvider"`
 	TLS                     TLSConfig                                `mapstructure:"tls" json:"tls"`
 	CORS                    CORSConfig                               `mapstructure:"cors" json:"cors"`
 	WellKnownConfigRegister func(namespace string, config any) error `mapstructure:"-" json:"-"`
@@ -63,7 +61,6 @@ func (c Config) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.Any("auth", c.Auth),
 		slog.Any("grpc", c.GRPC),
-		slog.Any("cryptoProvider", c.CryptoProvider),
 		slog.Any("tls", c.TLS),
 		slog.Any("cors", c.CORS),
 		slog.Int("port", c.Port),
@@ -116,7 +113,6 @@ type OpenTDFServer struct {
 	HTTPServer          *http.Server
 	ConnectRPCInProcess *inProcessServer
 	ConnectRPC          *ConnectRPC
-	CryptoProvider      security.CryptoProvider
 
 	logger *logger.Logger
 }
@@ -210,13 +206,6 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 			ConnectRPC:         connectRPCIpc,
 		},
 		logger: logger,
-	}
-
-	// Create crypto provider
-	logger.Info("creating crypto provider", slog.String("type", config.CryptoProvider.Type))
-	o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
-	if err != nil {
-		return nil, fmt.Errorf("security.NewCryptoProvider: %w", err)
 	}
 
 	return &o, nil

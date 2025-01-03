@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/service/internal/security"
+	"github.com/opentdf/platform/service/kas/recrypt"
 	"go.opentelemetry.io/otel/trace"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -20,53 +21,20 @@ const (
 	ErrPublicKeyMarshal  = Error("public key marshal error")
 )
 
-func (p Provider) lookupKid(ctx context.Context, algorithm string) (string, error) {
-	if len(p.KASConfig.Keyring) == 0 {
-		p.Logger.WarnContext(ctx, "no default keys found", "algorithm", algorithm)
-		return "", connect.NewError(connect.CodeNotFound, errors.Join(ErrConfig, errors.New("no default keys configured")))
-	}
-
-	for _, k := range p.KASConfig.Keyring {
-		if k.Algorithm == algorithm && !k.Legacy {
-			return k.KID, nil
-		}
-	}
-	p.Logger.WarnContext(ctx, "no (non-legacy) key for requested algorithm", "algorithm", algorithm)
-	return "", connect.NewError(connect.CodeNotFound, errors.Join(ErrConfig, errors.New("no default key for algorithm")))
-}
-
 func (p Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kaspb.LegacyPublicKeyRequest]) (*connect.Response[wrapperspb.StringValue], error) {
-	algorithm := req.Msg.GetAlgorithm()
-	if algorithm == "" {
-		algorithm = security.AlgorithmRSA2048
-	}
-	var pem string
-	var err error
-	if p.CryptoProvider == nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
-	}
-	kid, err := p.lookupKid(ctx, algorithm)
+	algorithm, err := p.CryptoProvider.ParseAlgorithm(req.Msg.GetAlgorithm())
 	if err != nil {
 		return nil, err
 	}
-
-	switch algorithm {
-	case security.AlgorithmECP256R1:
-		pem, err = p.CryptoProvider.ECCertificate(kid)
-		if err != nil {
-			p.Logger.ErrorContext(ctx, "CryptoProvider.ECPublicKey failed", "err", err)
-			return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
-		}
-	case security.AlgorithmRSA2048:
-		fallthrough
-	case "":
-		pem, err = p.CryptoProvider.RSAPublicKey(kid)
-		if err != nil {
-			p.Logger.ErrorContext(ctx, "CryptoProvider.RSAPublicKey failed", "err", err)
-			return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
-		}
-	default:
-		return nil, connect.NewError(connect.CodeNotFound, errors.Join(ErrConfig, errors.New("invalid algorithm")))
+	kid, err := p.CryptoProvider.CurrentKID(algorithm)
+	if err != nil {
+		return nil, err
+	}
+	fmt := recrypt.KeyFormatPEM
+	pem, err := p.CryptoProvider.PublicKey(algorithm, kid, fmt)
+	if err != nil {
+		p.Logger.ErrorContext(ctx, "CryptoProvider.ECPublicKey failed", "err", err)
+		return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
 	}
 	return connect.NewResponse(&wrapperspb.StringValue{Value: pem}), nil
 }
@@ -78,17 +46,24 @@ func (p Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Publ
 		defer span.End()
 	}
 
-	algorithm := req.Msg.GetAlgorithm()
-	if algorithm == "" {
-		algorithm = security.AlgorithmRSA2048
-	}
-	fmt := req.Msg.GetFmt()
-	kid, err := p.lookupKid(ctx, algorithm)
+	algorithm, err := p.CryptoProvider.ParseAlgorithm(req.Msg.GetAlgorithm())
 	if err != nil {
-		return nil, err
+		return nil, connect.NewError(connect.CodeNotFound, err)
+	}
+	if algorithm == recrypt.AlgorithmUndefined {
+		algorithm = recrypt.AlgorithmRSA2048
 	}
 
-	r := func(value, kid string, err error) (*connect.Response[kaspb.PublicKeyResponse], error) {
+	kid, err := p.CryptoProvider.CurrentKID(algorithm)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeNotFound, err)
+	}
+	fmt, err := p.CryptoProvider.ParseKeyFormat(req.Msg.GetFmt())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	r := func(value string, kid []recrypt.KeyIdentifier, err error) (*connect.Response[kaspb.PublicKeyResponse], error) {
 		if errors.Is(err, security.ErrCertNotFound) {
 			p.Logger.ErrorContext(ctx, "no key found for", "err", err, "kid", kid, "algorithm", algorithm, "fmt", fmt)
 			return nil, connect.NewError(connect.CodeNotFound, err)
@@ -100,28 +75,11 @@ func (p Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Publ
 			p.Logger.WarnContext(ctx, "hiding kid in public key response for legacy client", "kid", kid, "v", req.Msg.GetV())
 			return connect.NewResponse(&kaspb.PublicKeyResponse{PublicKey: value}), nil
 		}
-		return connect.NewResponse(&kaspb.PublicKeyResponse{PublicKey: value, Kid: kid}), nil
+		return connect.NewResponse(&kaspb.PublicKeyResponse{PublicKey: value, Kid: string(kid[0])}), nil
 	}
 
-	switch algorithm {
-	case security.AlgorithmECP256R1:
-		ecPublicKeyPem, err := p.CryptoProvider.ECPublicKey(kid)
-		return r(ecPublicKeyPem, kid, err)
-	case security.AlgorithmRSA2048:
-		fallthrough
-	case "":
-		switch fmt {
-		case "jwk":
-			rsaPublicKeyPem, err := p.CryptoProvider.RSAPublicKeyAsJSON(kid)
-			return r(rsaPublicKeyPem, kid, err)
-		case "pkcs8":
-			fallthrough
-		case "":
-			rsaPublicKeyPem, err := p.CryptoProvider.RSAPublicKey(kid)
-			return r(rsaPublicKeyPem, kid, err)
-		}
-	}
-	return nil, connect.NewError(connect.CodeNotFound, errors.New("invalid algorithm or format"))
+	v, err := p.CryptoProvider.PublicKey(algorithm, kid, fmt)
+	return r(v, kid, err)
 }
 
 func exportRsaPublicKeyAsPemStr(pubkey *rsa.PublicKey) (string, error) {

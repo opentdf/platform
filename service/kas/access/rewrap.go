@@ -3,11 +3,10 @@ package access
 import (
 	"bytes"
 	"context"
-	"crypto"
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/hmac"
 	"crypto/rsa"
-	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
@@ -30,7 +29,7 @@ import (
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/sdk"
-	"github.com/opentdf/platform/service/internal/security"
+	"github.com/opentdf/platform/service/kas/recrypt"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
@@ -74,16 +73,6 @@ func err401(s string) error {
 
 func err403(s string) error {
 	return connect.NewError(connect.CodePermissionDenied, errors.Join(ErrUser, status.Error(codes.PermissionDenied, s)))
-}
-
-func generateHMACDigest(ctx context.Context, msg, key []byte, logger logger.Logger) ([]byte, error) {
-	mac := hmac.New(sha256.New, key)
-	_, err := mac.Write(msg)
-	if err != nil {
-		logger.WarnContext(ctx, "failed to compute hmac")
-		return nil, errors.Join(ErrUser, status.Error(codes.InvalidArgument, "policy hmac"))
-	}
-	return mac.Sum(nil), nil
 }
 
 var acceptableSkew = 30 * time.Second
@@ -202,8 +191,8 @@ func extractPolicyBinding(policyBinding interface{}) (string, error) {
 	}
 }
 
-func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k []byte, logger logger.Logger) (*Policy, error) {
-	actualHMAC, err := generateHMACDigest(ctx, []byte(requestBody.Policy), k, logger)
+func verifyAndParsePolicy(ctx context.Context, requestBody *RequestBody, k recrypt.UnwrappedKey, logger logger.Logger) (*Policy, error) {
+	actualHMAC, err := k.Digest([]byte(requestBody.Policy))
 	if err != nil {
 		logger.WarnContext(ctx, "unable to generate policy hmac", "err", err)
 		return nil, err400("bad request")
@@ -311,13 +300,13 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 		defer span.End()
 	}
 
-	var kidsToCheck []string
+	var kidsToCheck []recrypt.KeyIdentifier
 	if body.KeyAccess.KID != "" {
-		kidsToCheck = []string{body.KeyAccess.KID}
+		kidsToCheck = []recrypt.KeyIdentifier{recrypt.KeyIdentifier(body.KeyAccess.KID)}
 	} else {
 		p.Logger.InfoContext(ctx, "kid free kao")
 		for _, k := range p.KASConfig.Keyring {
-			if k.Algorithm == security.AlgorithmRSA2048 && k.Legacy {
+			if k.Algorithm == recrypt.AlgorithmRSA2048 {
 				kidsToCheck = append(kidsToCheck, k.KID)
 			}
 		}
@@ -326,19 +315,18 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 			return nil, err400("bad request")
 		}
 	}
-	symmetricKey, err := p.CryptoProvider.RSADecrypt(crypto.SHA1, kidsToCheck[0], "", body.KeyAccess.WrappedKey)
+	symmetricKey, err := p.CryptoProvider.Unwrap(kidsToCheck[0], body.KeyAccess.WrappedKey)
 	for _, kid := range kidsToCheck[1:] {
-		p.Logger.WarnContext(ctx, "continue paging through legacy KIDs for kid free kao", "err", err)
 		if err == nil {
 			break
 		}
-		symmetricKey, err = p.CryptoProvider.RSADecrypt(crypto.SHA1, kid, "", body.KeyAccess.WrappedKey)
+		p.Logger.DebugContext(ctx, "continue paging through legacy KIDs for kid free kao", "err", err)
+		symmetricKey, err = p.CryptoProvider.Unwrap(kid, body.KeyAccess.WrappedKey)
 	}
 	if err != nil {
 		p.Logger.WarnContext(ctx, "failure to decrypt dek", "err", err)
 		return nil, err400("bad request")
 	}
-
 	p.Logger.DebugContext(ctx, "verifying policy binding", "requestBody.policy", body.Policy)
 	policy, err := verifyAndParsePolicy(ctx, body, symmetricKey, *p.Logger)
 	if err != nil {
@@ -383,7 +371,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 		p.Logger.WarnContext(ctx, "ocrypto.NewAsymEncryption:", "err", err)
 	}
 
-	rewrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
+	rewrappedKey, err := symmetricKey.Wrap(asymEncrypt)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "rewrap: ocrypto.AsymEncryption.encrypt failed", "err", err, "clientPublicKey", &body.ClientPublicKey)
 		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
@@ -411,25 +399,31 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse NanoTDF header: %w", err)
 	}
-	// Lookup KID from nano header
-	kid, err := header.GetKasURL().GetIdentifier()
-	if err != nil {
-		p.Logger.DebugContext(ctx, "nanoTDFRewrap GetIdentifier", "kid", kid, "err", err)
-		// legacy nano with KID
-		kid, err = p.lookupKid(ctx, security.AlgorithmECP256R1)
-		if err != nil {
-			p.Logger.ErrorContext(ctx, "failure to find default kid for ec", "err", err)
-			return nil, err400("bad request")
-		}
-		p.Logger.DebugContext(ctx, "nanoTDFRewrap lookupKid", "kid", kid)
-	}
-	p.Logger.DebugContext(ctx, "nanoTDFRewrap", "kid", kid)
 	ecCurve, err := header.ECCurve()
 	if err != nil {
 		return nil, fmt.Errorf("ECCurve failed: %w", err)
 	}
 
-	symmetricKey, err := p.CryptoProvider.GenerateNanoTDFSymmetricKey(kid, header.EphemeralKey, ecCurve)
+	var a recrypt.Algorithm
+	switch ecCurve {
+	case elliptic.P256():
+		a = recrypt.AlgorithmECP256R1
+	case elliptic.P384():
+		a = recrypt.AlgorithmECP384R1
+	case elliptic.P521():
+		a = recrypt.AlgorithmECP521R1
+	default:
+		return nil, fmt.Errorf("unsupported curve: %s", ecCurve)
+	}
+
+	// Lookup KID from nano header, or infer if not found
+	kid, err := p.extractKasKID(ctx, header, a)
+	if err != nil {
+		return nil, err
+	}
+	p.Logger.DebugContext(ctx, "nanoTDFRewrap", "kid", kid)
+
+	symmetricKey, err := p.CryptoProvider.Derive(kid, header.EphemeralKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
 	}
@@ -478,48 +472,55 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 		return nil, err403("forbidden")
 	}
 
-	privateKeyHandle, publicKeyHandle, err := p.CryptoProvider.GenerateEphemeralKasKeys()
+	wrappedKey, err := symmetricKey.NanoWrap([]byte(body.ClientPublicKey))
 	if err != nil {
 		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-		return nil, fmt.Errorf("failed to generate keypair: %w", err)
+		return nil, fmt.Errorf("failed to wrap key: %w", err)
 	}
-	sessionKey, err := p.CryptoProvider.GenerateNanoTDFSessionKey(privateKeyHandle, []byte(body.ClientPublicKey))
-	if err != nil {
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-		return nil, fmt.Errorf("failed to generate session key: %w", err)
-	}
-
-	cipherText, err := wrapKeyAES(sessionKey, symmetricKey)
-	if err != nil {
-		p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-		return nil, fmt.Errorf("failed to encrypt key: %w", err)
-	}
-
 	p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
 
 	return &kaspb.RewrapResponse{
-		EntityWrappedKey: cipherText,
-		SessionPublicKey: string(publicKeyHandle),
+		EntityWrappedKey: wrappedKey.EntityWrappedKey,
+		SessionPublicKey: wrappedKey.SessionPublicKey,
 		SchemaVersion:    schemaVersion,
 	}, nil
 }
 
-func extractNanoPolicy(symmetricKey []byte, header sdk.NanoTDFHeader) (*Policy, error) {
-	gcm, err := ocrypto.NewAESGcm(symmetricKey)
-	if err != nil {
-		return nil, fmt.Errorf("crypto.NewAESGcm:%w", err)
+func (p *Provider) extractKasKID(ctx context.Context, header sdk.NanoTDFHeader, a recrypt.Algorithm) (recrypt.KeyIdentifier, error) {
+	kidStr, err := header.GetKasURL().GetIdentifier()
+	if err == nil {
+		kid, err := p.ParseKeyIdentifier(kidStr)
+		if err != nil {
+			p.Logger.ErrorContext(ctx, "invalid kid", "kid", kidStr, "err", err)
+			return "", err400("bad request")
+		}
+		return kid, nil
 	}
+	if strings.Contains(err.Error(), "legacy") {
+		// legacy nano without KID
+		kids, err := p.LegacyKIDs(a)
+		if err != nil {
+			return "", fmt.Errorf("failure looking up legacy KID: %w", err)
+		}
+		if len(kids) == 0 {
+			p.Logger.ErrorContext(ctx, "failure to find legacy kids for ec", "err", err)
+			return "", err400("bad request")
+		}
+		if len(kids) > 1 {
+			p.Logger.WarnContext(ctx, "multiple legacy kids for ec; only trying one")
+		}
+		return kids[0], nil
+	}
+	return "", fmt.Errorf("failed to get KID: %w", err)
+}
 
-	const (
-		kIvLen = 12
-	)
-	iv := make([]byte, kIvLen)
+func extractNanoPolicy(symmetricKey recrypt.UnwrappedKey, header sdk.NanoTDFHeader) (*Policy, error) {
 	tagSize, err := sdk.SizeOfAuthTagForCipher(header.GetCipher())
 	if err != nil {
 		return nil, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
 	}
 
-	policyData, err := gcm.DecryptWithIVAndTagSize(iv, header.EncryptedPolicyBody, tagSize)
+	policyData, err := symmetricKey.DecryptNanoPolicy(header.EncryptedPolicyBody, tagSize)
 	if err != nil {
 		return nil, fmt.Errorf("Error decrypting policy body:%w", err)
 	}
@@ -530,18 +531,4 @@ func extractNanoPolicy(symmetricKey []byte, header sdk.NanoTDFHeader) (*Policy, 
 		return nil, fmt.Errorf("Error unmarshalling policy:%w", err)
 	}
 	return &policy, nil
-}
-
-func wrapKeyAES(sessionKey, dek []byte) ([]byte, error) {
-	gcm, err := ocrypto.NewAESGcm(sessionKey)
-	if err != nil {
-		return nil, fmt.Errorf("crypto.NewAESGcm:%w", err)
-	}
-
-	cipherText, err := gcm.Encrypt(dek)
-	if err != nil {
-		return nil, fmt.Errorf("crypto.AsymEncryption.encrypt:%w", err)
-	}
-
-	return cipherText, nil
 }

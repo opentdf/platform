@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.36](https://github.com/opentdf/platform/compare/service/v0.4.35...service/v0.4.36) (2025-01-03)
+
+
+### Bug Fixes
+
+* **core:** GetDecisions should handle empty string and non-existent attributes ([#1832](https://github.com/opentdf/platform/issues/1832)) ([dc89678](https://github.com/opentdf/platform/commit/dc8967842a035debce6d2251e13823b183e9c433))
+* **core:** reduces GetEntitlements calls in GetDecisions ([#1822](https://github.com/opentdf/platform/issues/1822)) ([8bb5744](https://github.com/opentdf/platform/commit/8bb57440209f50434bcf46551f206dc49b040a03))
+
 ## [0.4.35](https://github.com/opentdf/platform/compare/service/v0.4.34...service/v0.4.35) (2024-12-18)
 
 

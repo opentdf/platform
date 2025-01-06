@@ -17,15 +17,20 @@ import (
 	sm "github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
 var (
 	getAttributesByValueFqnsResponse attr.GetAttributeValuesByFqnsResponse
+	errGetAttributesByValueFqns      error
 	listAttributeResp                attr.ListAttributesResponse
+	errListAttributes                error
 	listSubjectMappings              sm.ListSubjectMappingsResponse
 	createEntityChainResp            entityresolution.CreateEntityChainFromJwtResponse
 	resolveEntitiesResp              entityresolution.ResolveEntitiesResponse
@@ -42,11 +47,11 @@ type myAttributesClient struct {
 }
 
 func (*myAttributesClient) ListAttributes(_ context.Context, _ *attr.ListAttributesRequest, _ ...grpc.CallOption) (*attr.ListAttributesResponse, error) {
-	return &listAttributeResp, nil
+	return &listAttributeResp, errListAttributes
 }
 
 func (*myAttributesClient) GetAttributeValuesByFqns(_ context.Context, _ *attr.GetAttributeValuesByFqnsRequest, _ ...grpc.CallOption) (*attr.GetAttributeValuesByFqnsResponse, error) {
-	return &getAttributesByValueFqnsResponse, nil
+	return &getAttributesByValueFqnsResponse, errGetAttributesByValueFqns
 }
 
 type myERSClient struct {
@@ -54,6 +59,10 @@ type myERSClient struct {
 }
 
 type mySubjectMappingClient struct {
+	sm.SubjectMappingServiceClient
+}
+
+type paginatedMockSubjectMappingClient struct {
 	sm.SubjectMappingServiceClient
 }
 
@@ -67,6 +76,52 @@ func (*myERSClient) CreateEntityChainFromJwt(_ context.Context, _ *entityresolut
 
 func (*myERSClient) ResolveEntities(_ context.Context, _ *entityresolution.ResolveEntitiesRequest, _ ...grpc.CallOption) (*entityresolution.ResolveEntitiesResponse, error) {
 	return &resolveEntitiesResp, nil
+}
+
+var (
+	smPaginationOffset = 3
+	smListCallCount    = 0
+)
+
+func (*paginatedMockSubjectMappingClient) ListSubjectMappings(_ context.Context, _ *sm.ListSubjectMappingsRequest, _ ...grpc.CallOption) (*sm.ListSubjectMappingsResponse, error) {
+	smListCallCount++
+	// simulate paginated list and policy LIST behavior
+	if smPaginationOffset > 0 {
+		rsp := &sm.ListSubjectMappingsResponse{
+			SubjectMappings: nil,
+			Pagination: &policy.PageResponse{
+				NextOffset: int32(smPaginationOffset),
+			},
+		}
+		smPaginationOffset = 0
+		return rsp, nil
+	}
+	return &listSubjectMappings, nil
+}
+
+type paginatedMockAttributesClient struct {
+	attr.AttributesServiceClient
+}
+
+var (
+	attrPaginationOffset = 3
+	attrListCallCount    = 0
+)
+
+func (*paginatedMockAttributesClient) ListAttributes(_ context.Context, _ *attr.ListAttributesRequest, _ ...grpc.CallOption) (*attr.ListAttributesResponse, error) {
+	attrListCallCount++
+	// simulate paginated list and policy LIST behavior
+	if attrPaginationOffset > 0 {
+		rsp := &attr.ListAttributesResponse{
+			Attributes: nil,
+			Pagination: &policy.PageResponse{
+				NextOffset: int32(attrPaginationOffset),
+			},
+		}
+		attrPaginationOffset = 0
+		return rsp, nil
+	}
+	return &listAttributeResp, nil
 }
 
 func TestGetComprehensiveHierarchy(t *testing.T) {
@@ -763,6 +818,91 @@ func Test_GetEntitlementsFqnCasing(t *testing.T) {
 	assert.Equal(t, []string{"https://www.example.org/attr/foo/value/value1"}, resp.Msg.GetEntitlements()[0].GetAttributeValueFqns())
 }
 
+func Test_GetEntitlements_HandlesPagination(t *testing.T) {
+	logger := logger.CreateTestLogger()
+
+	listAttributeResp = attr.ListAttributesResponse{}
+	attrDef := policy.Attribute{
+		Name: mockAttrName,
+		Namespace: &policy.Namespace{
+			Name: mockNamespace,
+		},
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values: []*policy.Value{
+			{
+				Value: mockAttrValue1,
+			},
+			{
+				Value: mockAttrValue2,
+			},
+		},
+	}
+	listAttributeResp.Attributes = []*policy.Attribute{&attrDef}
+	userRepresentation := map[string]interface{}{
+		"A": "B",
+		"C": "D",
+	}
+	userStruct, _ := structpb.NewStruct(userRepresentation)
+	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
+		EntityRepresentations: []*entityresolution.EntityRepresentation{
+			{
+				OriginalId: "e1",
+				AdditionalProps: []*structpb.Struct{
+					userStruct,
+				},
+			},
+		},
+	}
+
+	ctxb := context.Background()
+
+	rego := rego.New(
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = {"e1":["https://www.example.org/attr/foo/value/value1"]} { true }`,
+		))
+
+	// Run evaluation.
+	prepared, err := rego.PrepareForEval(ctxb)
+	require.NoError(t, err)
+
+	as := AuthorizationService{
+		logger: logger, sdk: &otdf.SDK{
+			SubjectMapping:  &paginatedMockSubjectMappingClient{},
+			Attributes:      &paginatedMockAttributesClient{},
+			EntityResoution: &myERSClient{},
+		},
+		eval: prepared,
+	}
+
+	req := connect.Request[authorization.GetEntitlementsRequest]{
+		Msg: &authorization.GetEntitlementsRequest{
+			Entities: []*authorization.Entity{{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "testclient"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT}},
+			// Using mixed case here
+			Scope: &authorization.ResourceAttribute{AttributeValueFqns: []string{"https://www.example.org/attr/foo/value/VaLuE1"}},
+		},
+	}
+
+	for fqn := range makeScopeMap(req.Msg.GetScope()) {
+		assert.Equal(t, fqn, strings.ToLower(fqn))
+	}
+
+	resp, err := as.GetEntitlements(ctxb, &req)
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Len(t, resp.Msg.GetEntitlements(), 1)
+	assert.Equal(t, "e1", resp.Msg.GetEntitlements()[0].GetEntityId())
+	assert.Equal(t, []string{"https://www.example.org/attr/foo/value/value1"}, resp.Msg.GetEntitlements()[0].GetAttributeValueFqns())
+
+	// paginated successfully
+	assert.Equal(t, 2, smListCallCount)
+	assert.Zero(t, smPaginationOffset)
+	assert.Equal(t, 2, attrListCallCount)
+	assert.Zero(t, attrPaginationOffset)
+}
+
 func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 	logger := logger.CreateTestLogger()
 	attrDef := policy.Attribute{
@@ -1023,4 +1163,159 @@ func TestPopulateAttrFqns(t *testing.T) {
 			assert.Equal(t, tc.expectedError, err)
 		})
 	}
+}
+
+func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
+	////////////////////// SETUP //////////////////////
+	logger := logger.CreateTestLogger()
+
+	listAttributeResp = attr.ListAttributesResponse{}
+
+	userRepresentation := map[string]interface{}{
+		"A": "B",
+		"C": "D",
+	}
+	userStruct, _ := structpb.NewStruct(userRepresentation)
+	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
+		EntityRepresentations: []*entityresolution.EntityRepresentation{
+			{
+				OriginalId: "e1",
+				AdditionalProps: []*structpb.Struct{
+					userStruct,
+				},
+			},
+		},
+	}
+
+	ctxb := context.Background()
+
+	testrego := rego.New(
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = {"e1":[]} { true }`,
+		))
+
+	// Run evaluation.
+	prepared, err := testrego.PrepareForEval(ctxb)
+	require.NoError(t, err)
+
+	as := AuthorizationService{
+		logger: logger, sdk: &otdf.SDK{
+			SubjectMapping: &mySubjectMappingClient{},
+			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		},
+		eval: prepared,
+	}
+
+	///////////// TEST1: Only empty string /////////////
+
+	// should not hit get attributes by value fqns
+	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{}
+	errGetAttributesByValueFqns = errors.New("should not hit")
+
+	// set the request
+	req := connect.Request[authorization.GetDecisionsRequest]{
+		Msg: &authorization.GetDecisionsRequest{
+			DecisionRequests: []*authorization.DecisionRequest{
+				{
+					Actions: []*policy.Action{},
+					EntityChains: []*authorization.EntityChain{
+						{
+							Id: "ec1",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+					},
+					ResourceAttributes: []*authorization.ResourceAttribute{
+						{AttributeValueFqns: []string{""}},
+					},
+				},
+			},
+		},
+	}
+
+	resp, err := as.GetDecisions(ctxb, &req)
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	slog.Debug(resp.Msg.String())
+	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
+	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.Msg.GetDecisionResponses()[0].GetDecision())
+
+	//////////  TEST2: FQN that doesnt exist //////////
+
+	// will hit getAttributesByValueFqns but will get error
+	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{}
+	errGetAttributesByValueFqns = status.Error(codes.NotFound, db.ErrTextNotFound)
+
+	// set the request
+	req = connect.Request[authorization.GetDecisionsRequest]{
+		Msg: &authorization.GetDecisionsRequest{
+			DecisionRequests: []*authorization.DecisionRequest{
+				{
+					Actions: []*policy.Action{},
+					EntityChains: []*authorization.EntityChain{
+						{
+							Id: "ec1",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+					},
+					ResourceAttributes: []*authorization.ResourceAttribute{
+						{AttributeValueFqns: []string{"https://example.com/attr/foo/value/doesntexist"}},
+					},
+				},
+			},
+		},
+	}
+
+	resp, err = as.GetDecisions(ctxb, &req)
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	slog.Debug(resp.Msg.String())
+	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
+	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.Msg.GetDecisionResponses()[0].GetDecision())
+
+	////////// TEST3: No FQNs in Resource Attribute /////////
+
+	// should not hit get attributes by value fqns
+	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{}
+	errGetAttributesByValueFqns = errors.New("should not hit")
+
+	// set the request
+	req = connect.Request[authorization.GetDecisionsRequest]{
+		Msg: &authorization.GetDecisionsRequest{
+			DecisionRequests: []*authorization.DecisionRequest{
+				{
+					Actions: []*policy.Action{},
+					EntityChains: []*authorization.EntityChain{
+						{
+							Id: "ec1",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+					},
+					ResourceAttributes: []*authorization.ResourceAttribute{
+						{ResourceAttributesId: "r1"},
+					},
+				},
+			},
+		},
+	}
+
+	resp, err = as.GetDecisions(ctxb, &req)
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	slog.Debug(resp.Msg.String())
+	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
+	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.Msg.GetDecisionResponses()[0].GetDecision())
 }

@@ -79,7 +79,11 @@ func convert(i interface{}) interface{} {
 	case map[interface{}]interface{}:
 		m2 := map[string]interface{}{}
 		for k, v := range x {
-			m2[k.(string)] = convert(v) //nolint:forcetypeassert // allow type assert
+			sk, ok := k.(string)
+			if !ok {
+				panic(fmt.Errorf("key is not a string: %v", k))
+			}
+			m2[sk] = convert(v)
 		}
 		return m2
 	case []interface{}:

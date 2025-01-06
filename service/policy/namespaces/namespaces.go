@@ -98,18 +98,25 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *connect.Re
 	}
 	rsp := &namespaces.CreateNamespaceResponse{}
 
-	n, err := ns.dbClient.CreateNamespace(ctx, req.Msg)
+	err := ns.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		n, err := txClient.CreateNamespace(ctx, req.Msg)
+		if err != nil {
+			ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		auditParams.ObjectID = n.GetId()
+		auditParams.Original = n
+		ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		ns.logger.Debug("created new namespace", slog.String("name", req.Msg.GetName()))
+		rsp.Namespace = n
+
+		return nil
+	})
 	if err != nil {
-		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("name", req.Msg.GetName()))
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("namespace", req.Msg.String()))
 	}
-
-	auditParams.ObjectID = n.GetId()
-	auditParams.Original = n
-	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	ns.logger.Debug("created new namespace", slog.String("name", req.Msg.GetName()))
-	rsp.Namespace = n
 
 	return connect.NewResponse(rsp), nil
 }

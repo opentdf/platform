@@ -94,7 +94,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups_NoPagination_Succ
 				break
 			}
 		}
-		s.True(found, fmt.Sprintf("expected to find resource mapping group %s", testRmGroup.ID))
+		s.True(found, "expected to find resource mapping group %s", testRmGroup.ID)
 	}
 }
 
@@ -580,7 +580,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings_ByGroupId_Succeeds() {
 		expectedGroupID := req.GetGroupId()
 		actualGroupID := mapping.GetGroup().GetId()
 		s.Equal(expectedGroupID, actualGroupID,
-			fmt.Sprintf("expected group id %s, got %s", expectedGroupID, actualGroupID))
+			"expected group id %s, got %s", expectedGroupID, actualGroupID)
 	}
 }
 

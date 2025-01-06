@@ -988,15 +988,7 @@ func (s SDK) getNanoRewrapKey(ctx context.Context, header []byte, kasURL string)
 	}
 	encodedHeader := ocrypto.Base64Encode(header)
 
-	rsaKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
-	}
-
-	client, err := newKASClient(s.dialOptions, s.tokenSource, rsaKeyPair)
-	if err != nil {
-		return nil, fmt.Errorf("newKASClient failed: %w", err)
-	}
+	client := newKASClient(s.dialOptions, s.tokenSource, nil)
 
 	symmetricKey, err := client.unwrapNanoTDF(ctx, string(encodedHeader), kasURL)
 	if err != nil {

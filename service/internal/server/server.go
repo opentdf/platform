@@ -96,11 +96,12 @@ type CORSConfig struct {
 	// Enable CORS for the server (default: true)
 	Enabled          bool     `mapstructure:"enabled" json:"enabled" default:"true"`
 	AllowedOrigins   []string `mapstructure:"allowedorigins" json:"allowedorigins"`
-	AllowedMethods   []string `mapstructure:"allowedmethods" json:"allowedmethods"`
-	AllowedHeaders   []string `mapstructure:"allowedheaders" json:"allowedheaders"`
+	AllowedMethods   []string `mapstructure:"allowedmethods" json:"allowedmethods" default:"[\"GET\",\"POST\",\"PATCH\",\"DELETE\",\"OPTIONS\"]"`
+	AllowedHeaders   []string `mapstructure:"allowedheaders" json:"allowedheaders" default:"[\"Accept\",\"Content-Type\",\"Content-Length\",\"Accept-Encoding\",\"X-CSRF-Token\",\"Authorization\",\"X-Requested-With\",\"Dpop\"]"`
 	ExposedHeaders   []string `mapstructure:"exposedheaders" json:"exposedheaders"`
 	AllowCredentials bool     `mapstructure:"allowcredentials" json:"allowedcredentials" default:"true"`
 	MaxAge           int      `mapstructure:"maxage" json:"maxage" default:"3600"`
+	Debug            bool     `mapstructure:"debug" json:"debug"`
 }
 
 type ConnectRPC struct {
@@ -264,6 +265,14 @@ func newHTTPServer(c Config, connectRPC http.Handler, originalGrpcGateway http.H
 		originalGrpcGateway.ServeHTTP(grpcRW, r)
 	})
 
+	// Add authN interceptor to extra handlers
+	if c.Auth.Enabled {
+		grpcGateway = a.MuxHandler(grpcGateway)
+	} else {
+		l.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
+	}
+
+	// Note: The grpc-gateway handlers are getting chained together in reverse. So the last handler is the first to be called.
 	// CORS
 	if c.CORS.Enabled {
 		corsHandler := cors.New(cors.Options{
@@ -283,18 +292,12 @@ func newHTTPServer(c Config, connectRPC http.Handler, originalGrpcGateway http.H
 			ExposedHeaders:   c.CORS.ExposedHeaders,
 			AllowCredentials: c.CORS.AllowCredentials,
 			MaxAge:           c.CORS.MaxAge,
+			Debug:            c.CORS.Debug,
 		})
 
 		// Apply CORS to connectRPC and extra handlers
 		connectRPC = corsHandler.Handler(connectRPC)
 		grpcGateway = corsHandler.Handler(grpcGateway)
-	}
-
-	// Add authN interceptor to extra handlers
-	if c.Auth.Enabled {
-		grpcGateway = a.MuxHandler(grpcGateway)
-	} else {
-		l.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
 	// Enable pprof
@@ -379,6 +382,12 @@ func newConnectRPCIPC() (*ConnectRPC, error) {
 func newConnectRPC(c Config, a *auth.Authentication, logger *logger.Logger) (*ConnectRPC, error) {
 	interceptors := make([]connect.HandlerOption, 0)
 
+	if c.Auth.Enabled {
+		interceptors = append(interceptors, connect.WithInterceptors(a.ConnectUnaryServerInterceptor()))
+	} else {
+		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
+	}
+
 	// Add protovalidate interceptor
 	vaidationInterceptor, err := validate.NewInterceptor()
 	if err != nil {
@@ -386,12 +395,6 @@ func newConnectRPC(c Config, a *auth.Authentication, logger *logger.Logger) (*Co
 	}
 
 	interceptors = append(interceptors, connect.WithInterceptors(vaidationInterceptor, audit.ContextServerInterceptor()))
-
-	if c.Auth.Enabled {
-		interceptors = append(interceptors, connect.WithInterceptors(a.ConnectUnaryServerInterceptor()))
-	} else {
-		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
-	}
 
 	return &ConnectRPC{
 		Interceptors: interceptors,

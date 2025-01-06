@@ -1,5 +1,82 @@
 # Changelog
 
+## [0.4.36](https://github.com/opentdf/platform/compare/service/v0.4.35...service/v0.4.36) (2025-01-03)
+
+
+### Bug Fixes
+
+* **core:** GetDecisions should handle empty string and non-existent attributes ([#1832](https://github.com/opentdf/platform/issues/1832)) ([dc89678](https://github.com/opentdf/platform/commit/dc8967842a035debce6d2251e13823b183e9c433))
+* **core:** reduces GetEntitlements calls in GetDecisions ([#1822](https://github.com/opentdf/platform/issues/1822)) ([8bb5744](https://github.com/opentdf/platform/commit/8bb57440209f50434bcf46551f206dc49b040a03))
+
+## [0.4.35](https://github.com/opentdf/platform/compare/service/v0.4.34...service/v0.4.35) (2024-12-18)
+
+
+### Features
+
+* **core:** Expose context authn methods ([#1812](https://github.com/opentdf/platform/issues/1812)) ([a9f3fcc](https://github.com/opentdf/platform/commit/a9f3fccb8392609a1ca3e3658ec4fb930367abc9))
+
+
+### Bug Fixes
+
+* **core:** Update fixtures and flattening in sdk and service ([#1827](https://github.com/opentdf/platform/issues/1827)) ([d6d6a7a](https://github.com/opentdf/platform/commit/d6d6a7a2dffdb96cf7f7f731a4e6e66e06930e59))
+
+## [0.4.34](https://github.com/opentdf/platform/compare/service/v0.4.33...service/v0.4.34) (2024-12-11)
+
+
+### Bug Fixes
+
+* **core:** properly chain grpc-gateway middleware order ([#1820](https://github.com/opentdf/platform/issues/1820)) ([5b9f054](https://github.com/opentdf/platform/commit/5b9f0541f39c6141ea060d699146482959fb32f7))
+
+## [0.4.33](https://github.com/opentdf/platform/compare/service/v0.4.32...service/v0.4.33) (2024-12-06)
+
+
+### Bug Fixes
+
+* **core:** Allow more users to rewrap ([#1813](https://github.com/opentdf/platform/issues/1813)) ([4d47475](https://github.com/opentdf/platform/commit/4d474750c20a9a6fe0f00487195851a606e24076))
+* **core:** Handle multiple modes including entityresolution mode ([#1816](https://github.com/opentdf/platform/issues/1816)) ([32d6938](https://github.com/opentdf/platform/commit/32d6938549bd9fc7e9e2fc7ec0157537bddafcc9))
+
+## [0.4.32](https://github.com/opentdf/platform/compare/service/v0.4.31...service/v0.4.32) (2024-12-04)
+
+
+### Features
+
+* **policy:** 1660 transition Policy FQN indexing to a transaction rather than an unmonitored side effect ([#1782](https://github.com/opentdf/platform/issues/1782)) ([7c4c74f](https://github.com/opentdf/platform/commit/7c4c74f0da34da86085b30726d5606542ba10cff))
+
+
+### Bug Fixes
+
+* **authz:** handle pagination in authz service ([#1797](https://github.com/opentdf/platform/issues/1797)) ([58cb3f6](https://github.com/opentdf/platform/commit/58cb3f672324b715aeae04ac90368a33e8b045fa))
+* **core:** expose rest based healthcheck ([#1810](https://github.com/opentdf/platform/issues/1810)) ([859f23b](https://github.com/opentdf/platform/commit/859f23bd399b2a4e8a37c1e06ad1d613087451e2))
+
+## [0.4.31](https://github.com/opentdf/platform/compare/service/v0.4.30...service/v0.4.31) (2024-12-02)
+
+
+### Features
+
+* **kas:** collect metrics ([#1702](https://github.com/opentdf/platform/issues/1702)) ([def28d1](https://github.com/opentdf/platform/commit/def28d1984b0b111a07330a3eb59c1285206062d))
+* **policy:** 1500 Attribute create with Values (one RPC Call) should employ a db transaction ([#1778](https://github.com/opentdf/platform/issues/1778)) ([90edbde](https://github.com/opentdf/platform/commit/90edbde92ea63ad488b9a6de09fcffbc7a4380de))
+
+
+### Bug Fixes
+
+* **core:** move auth interceptor to top of chain ([#1790](https://github.com/opentdf/platform/issues/1790)) ([f9f5a75](https://github.com/opentdf/platform/commit/f9f5a7545827c5d8cef7f536963e4f794a7f3f6c))
+* **policy:** return fqns in list subject mappings ([#1796](https://github.com/opentdf/platform/issues/1796)) ([c0a9dda](https://github.com/opentdf/platform/commit/c0a9dda975a9384cea8efc413d567edce13f753f))
+
+## [0.4.30](https://github.com/opentdf/platform/compare/service/v0.4.29...service/v0.4.30) (2024-11-27)
+
+
+### Features
+
+* **core:** Introduce ERS mode, ability to connect to remote ERS ([#1735](https://github.com/opentdf/platform/issues/1735)) ([a118316](https://github.com/opentdf/platform/commit/a11831694302114a5d96ac7c6adb4ed55ceff80e))
+* **policy:** limit/offset throughout LIST service RPCs/db ([#1669](https://github.com/opentdf/platform/issues/1669)) ([ec46a3a](https://github.com/opentdf/platform/commit/ec46a3a4375d6fe1c948c6f25146bb572717c651)), closes [#55](https://github.com/opentdf/platform/issues/55)
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1789](https://github.com/opentdf/platform/issues/1789)) ([ff7c6f3](https://github.com/opentdf/platform/commit/ff7c6f3ffe420d7c9ee8afe2a4d8614229128bed))
+* **core:** Set token endpoint manually if client creds provided in server sdk_config ([#1780](https://github.com/opentdf/platform/issues/1780)) ([07a1dbd](https://github.com/opentdf/platform/commit/07a1dbd28f6e758d36b54b44957ca132fd21793f))
+* properly set casbin authz policy ([#1776](https://github.com/opentdf/platform/issues/1776)) ([d4b501c](https://github.com/opentdf/platform/commit/d4b501c66f105a2c90ccc5bfa631b4b063e96f3e))
+
 ## [0.4.29](https://github.com/opentdf/platform/compare/service/v0.4.28...service/v0.4.29) (2024-11-18)
 
 

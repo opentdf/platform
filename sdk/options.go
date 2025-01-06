@@ -35,6 +35,7 @@ type config struct {
 	customAccessTokenSource auth.AccessTokenSource
 	oauthAccessTokenSource  oauth2.TokenSource
 	coreConn                *grpc.ClientConn
+	entityResolutionConn    *grpc.ClientConn
 	collectionStore         *collectionStore
 }
 
@@ -135,10 +136,9 @@ func WithCustomAuthorizationConnection(conn *grpc.ClientConn) Option {
 	}
 }
 
-// Deprecated: Use WithCustomCoreConnection instead
 func WithCustomEntityResolutionConnection(conn *grpc.ClientConn) Option {
 	return func(c *config) {
-		c.coreConn = conn
+		c.entityResolutionConn = conn
 	}
 }
 

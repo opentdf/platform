@@ -150,11 +150,6 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_Core_Expect_Cor
 	suite.Require().NoError(err)
 	suite.Len(wellKnown.Services, 1)
 	suite.Equal(modeCore, wellKnown.Mode)
-
-	ers, err := registry.GetNamespace(serviceEntityResolution)
-	suite.Require().NoError(err)
-	suite.Len(ers.Services, 1)
-	suite.Equal(modeCore, ers.Mode)
 }
 
 // Register core and kas services
@@ -182,11 +177,38 @@ func (suite *ServiceTestSuite) Test_RegisterServices_In_Mode_Core_Plus_Kas_Expec
 	suite.Require().NoError(err)
 	suite.Len(wellKnown.Services, 1)
 	suite.Equal(modeCore, wellKnown.Mode)
+}
+
+// Register core and kas and ERS services
+func (suite *ServiceTestSuite) Test_RegisterServices_In_Mode_Core_Plus_Kas_Expect_Core_And_Kas_And_ERS_Services_Registered() {
+	registry := serviceregistry.NewServiceRegistry()
+	_, err := registerCoreServices(registry, []string{modeCore, modeKAS, modeERS})
+	suite.Require().NoError(err)
+
+	authz, err := registry.GetNamespace(serviceAuthorization)
+	suite.Require().NoError(err)
+	suite.Len(authz.Services, 1)
+	suite.Equal(modeCore, authz.Mode)
+
+	kas, err := registry.GetNamespace(serviceKAS)
+	suite.Require().NoError(err)
+	suite.Len(kas.Services, 1)
+	suite.Equal(modeKAS, kas.Mode)
+
+	policy, err := registry.GetNamespace(servicePolicy)
+	suite.Require().NoError(err)
+	suite.Len(policy.Services, 6)
+	suite.Equal(modeCore, policy.Mode)
+
+	wellKnown, err := registry.GetNamespace(serviceWellKnown)
+	suite.Require().NoError(err)
+	suite.Len(wellKnown.Services, 1)
+	suite.Equal(modeCore, wellKnown.Mode)
 
 	ers, err := registry.GetNamespace(serviceEntityResolution)
 	suite.Require().NoError(err)
 	suite.Len(ers.Services, 1)
-	suite.Equal(modeCore, ers.Mode)
+	suite.Equal(modeERS, ers.Mode)
 }
 
 func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {

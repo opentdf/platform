@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: git-town/action@7cec053e109396e49a15328a749b32552e6f91db
+      - uses: git-town/action@8a1ec345d5e6181d108d189ad0b2ff262b3155f4
         with:
           skip-single-stacks: true
           main-branch: main

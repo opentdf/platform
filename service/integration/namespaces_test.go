@@ -1109,7 +1109,7 @@ func (s *NamespacesSuite) Test_GetNamespace_Returns_Only_Active_PublicKeys() {
 
 	// ensure only active public keys are returned
 	s.NotEmpty(n.GetKeys())
-	for _, k := range v.GetKeys() {
+	for _, k := range n.GetKeys() {
 		s.True(k.GetIsActive())
 	}
 }

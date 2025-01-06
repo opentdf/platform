@@ -1102,13 +1102,13 @@ func (s *NamespacesSuite) Test_RemoveKASGrant_FailsAlreadyRemoved() {
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
-func (s *AttributeValuesSuite) Test_GetNamespace_Returns_Only_Active_PublicKeys() {
-	v, err := s.db.PolicyClient.GetNamespace(s.ctx, s.f.GetNamespaceKey("scenario.com").ID)
+func (s *NamespacesSuite) Test_GetNamespace_Returns_Only_Active_PublicKeys() {
+	n, err := s.db.PolicyClient.GetNamespace(s.ctx, s.f.GetNamespaceKey("scenario.com").ID)
 	s.Require().NoError(err)
-	s.NotNil(v)
+	s.NotNil(n)
 
 	// ensure only active public keys are returned
-	s.Greater(len(v.GetKeys()), 0)
+	s.NotEmpty(n.GetKeys())
 	for _, k := range v.GetKeys() {
 		s.True(k.GetIsActive())
 	}

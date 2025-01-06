@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"testing"
 	"time"
@@ -103,11 +104,11 @@ func TestMain(m *testing.M) {
 			},
 
 			WaitingFor: wait.ForSQL(nat.Port("5432/tcp"), "pgx", func(host string, port nat.Port) string {
-				return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+				net.JoinHostPort(host, port.Port())
+				return fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable",
 					conf.DB.User,
 					conf.DB.Password,
-					host,
-					port.Port(),
+					net.JoinHostPort(host, port.Port()),
 					conf.DB.Database,
 				)
 			}).WithStartupTimeout(time.Second * 5).WithQuery("SELECT 10"),

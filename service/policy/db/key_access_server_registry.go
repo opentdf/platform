@@ -376,7 +376,6 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 				Pem: key.PublicKey,
 			},
 		}
-
 	}
 	var total int32
 	var nextOffset int32
@@ -398,7 +397,7 @@ func (c PolicyDBClient) UpdatePublicKey(ctx context.Context, r *kasregistry.Upda
 	keyID := r.GetId()
 	isActive := r.GetActive()
 
-	mdJson, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
+	mdJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		k, err := c.GetPublicKey(ctx, &kasregistry.GetKeyRequest{Id: keyID})
 		if err != nil {
 			return nil, err
@@ -412,7 +411,7 @@ func (c PolicyDBClient) UpdatePublicKey(ctx context.Context, r *kasregistry.Upda
 	pk, err := c.Queries.updatePublicKey(ctx, updatePublicKeyParams{
 		ID:       keyID,
 		IsActive: pgtypeBool(isActive),
-		Metadata: mdJson,
+		Metadata: mdJSON,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

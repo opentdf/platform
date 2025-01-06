@@ -358,10 +358,19 @@ func (s *UnsafeService) UnsafeDeleteAttributeValue(ctx context.Context, req *con
 }
 
 func (s *UnsafeService) UnsafeDeletePublicKey(ctx context.Context, req *connect.Request[unsafe.UnsafeDeletePublicKeyRequest]) (*connect.Response[unsafe.UnsafeDeletePublicKeyResponse], error) {
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypePublicKey,
+		ObjectID:   req.Msg.GetId(),
+	}
+
 	resp, err := s.dbClient.UnsafeDeleteKey(ctx, req.Msg)
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.Msg.GetId()))
 	}
+
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(&unsafe.UnsafeDeletePublicKeyResponse{
 		Key: resp,

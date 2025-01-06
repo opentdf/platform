@@ -155,6 +155,9 @@ message ListKeysResponse {
 }
 
 message UpdateKeyRequest {
+  // Required
+  string id = 1;
+  bool active = 2;
 
   // Optional
   // Common metadata
@@ -162,7 +165,7 @@ message UpdateKeyRequest {
   common.MetadataUpdateEnum metadata_update_behavior = 101;
 }
 
-message UpdateKeyResponse {}
+message UpdateKeyResponse { Key key = 1;}
 
 message DeleteKeyRequest { string id = 1; }
 

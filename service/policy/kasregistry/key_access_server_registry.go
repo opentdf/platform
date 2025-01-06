@@ -170,10 +170,20 @@ func (s KeyAccessServerRegistry) ListKeyAccessServerGrants(ctx context.Context,
 }
 
 func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, req *connect.Request[kasr.CreateKeyRequest]) (*connect.Response[kasr.CreateKeyResponse], error) {
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypePublicKey,
+	}
+
 	resp, err := s.dbClient.CreateKey(ctx, req.Msg)
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed)
 	}
+
+	auditParams.ObjectID = resp.GetKey().GetId()
+	auditParams.Original = resp.GetKey()
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(resp), nil
 }
@@ -195,14 +205,44 @@ func (s KeyAccessServerRegistry) ListKeys(ctx context.Context, req *connect.Requ
 	return connect.NewResponse(resp), nil
 }
 
-func (s KeyAccessServerRegistry) UpdateKey(context.Context, *connect.Request[kasr.UpdateKeyRequest]) (*connect.Response[kasr.UpdateKeyResponse], error) {
-	panic("implement me")
+func (s KeyAccessServerRegistry) UpdateKey(ctx context.Context, req *connect.Request[kasr.UpdateKeyRequest]) (*connect.Response[kasr.UpdateKeyResponse], error) {
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypePublicKey,
+		ObjectID:   req.Msg.GetId(),
+	}
+
+	original, err := s.dbClient.GetPublicKey(ctx, &kasr.GetKeyRequest{Id: req.Msg.GetId()})
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed)
+	}
+
+	resp, err := s.dbClient.UpdatePublicKey(ctx, req.Msg)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed)
+	}
+
+	auditParams.Original = original
+	auditParams.Updated = resp.GetKey()
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	return connect.NewResponse(resp), nil
 }
 
 func (s KeyAccessServerRegistry) DeleteKey(ctx context.Context, req *connect.Request[kasr.DeleteKeyRequest]) (*connect.Response[kasr.DeleteKeyResponse], error) {
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeSoftDelete,
+		ObjectType: audit.ObjectTypePublicKey,
+		ObjectID:   req.Msg.GetId(),
+	}
+
 	resp, err := s.dbClient.SoftDeleteKey(ctx, req.Msg)
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed)
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	return connect.NewResponse(resp), nil
 }

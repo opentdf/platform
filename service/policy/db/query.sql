@@ -48,9 +48,9 @@ WITH listed AS (
         attribute_fqns AS fqns_on_ns
             ON nskag.namespace_id = fqns_on_ns.namespace_id
         AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
-    WHERE (NULLIF(@kas_id, '') IS NULL OR kas.id = @kas_id::uuid) -- noqa
-        AND (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri::varchar) -- noqa
-        AND (NULLIF(@kas_name, '') IS NULL OR kas.name = @kas_name::varchar) -- noqa
+    WHERE (NULLIF(@kas_id, '') IS NULL OR kas.id = @kas_id::uuid) 
+        AND (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri::varchar) 
+        AND (NULLIF(@kas_name, '') IS NULL OR kas.name = @kas_name::varchar) 
     GROUP BY 
         kas.id
 )
@@ -65,8 +65,8 @@ SELECT
     listed.namespace_grants,
     listed.total  
 FROM listed
-LIMIT @limit_ -- noqa
-OFFSET @offset_; -- noqa
+LIMIT @limit_ 
+OFFSET @offset_; 
 
 -- name: ListKeyAccessServers :many
 WITH counted AS (
@@ -82,8 +82,8 @@ SELECT kas.id,
     counted.total
 FROM key_access_servers AS kas
 CROSS JOIN counted
-LIMIT @limit_ -- noqa
-OFFSET @offset_; -- noqa
+LIMIT @limit_ 
+OFFSET @offset_; 
 
 -- name: GetKeyAccessServer :one
 SELECT 
@@ -127,7 +127,7 @@ WITH new_fqns_cte AS (
     FROM attribute_values av
     INNER JOIN attribute_definitions AS ad ON av.attribute_definition_id = ad.id
     INNER JOIN attribute_namespaces AS ns ON ad.namespace_id = ns.id
-    WHERE av.id = @value_id -- noqa
+    WHERE av.id = @value_id 
 )
 
 INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
@@ -156,7 +156,7 @@ WITH new_fqns_cte AS (
         CONCAT('https://', ns.name, '/attr/', ad.name) AS fqn
     FROM attribute_definitions ad
     JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
-    WHERE ad.id = @attribute_id -- noqa
+    WHERE ad.id = @attribute_id 
     UNION
     -- get attribute value fqns
     SELECT
@@ -167,7 +167,7 @@ WITH new_fqns_cte AS (
     FROM attribute_values av
     JOIN attribute_definitions ad on av.attribute_definition_id = ad.id
     JOIN attribute_namespaces ns on ad.namespace_id = ns.id
-    WHERE ad.id = @attribute_id -- noqa
+    WHERE ad.id = @attribute_id 
 )
 INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
 SELECT 
@@ -194,7 +194,7 @@ WITH new_fqns_cte AS (
         NULL::UUID as value_id,
         CONCAT('https://', ns.name) AS fqn
     FROM attribute_namespaces ns
-    WHERE ns.id = @namespace_id -- noqa
+    WHERE ns.id = @namespace_id 
     UNION
     -- get attribute definition fqns
     SELECT
@@ -204,7 +204,7 @@ WITH new_fqns_cte AS (
         CONCAT('https://', ns.name, '/attr/', ad.name) AS fqn
     FROM attribute_definitions ad
     JOIN attribute_namespaces ns on ad.namespace_id = ns.id
-    WHERE ns.id = @namespace_id -- noqa
+    WHERE ns.id = @namespace_id 
     UNION
     -- get attribute value fqns
     SELECT
@@ -215,7 +215,7 @@ WITH new_fqns_cte AS (
     FROM attribute_values av
     JOIN attribute_definitions ad on av.attribute_definition_id = ad.id
     JOIN attribute_namespaces ns on ad.namespace_id = ns.id
-    WHERE ns.id = @namespace_id -- noqa
+    WHERE ns.id = @namespace_id 
 )
 INSERT INTO attribute_fqns (namespace_id, attribute_id, value_id, fqn)
 SELECT 
@@ -285,11 +285,11 @@ LEFT JOIN (
 LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
 WHERE
     (sqlc.narg('active')::BOOLEAN IS NULL OR ad.active = sqlc.narg('active')) AND
-    (NULLIF(@namespace_id, '') IS NULL OR ad.namespace_id = @namespace_id::uuid) AND -- noqa
-    (NULLIF(@namespace_name, '') IS NULL OR n.name = @namespace_name) -- noqa
+    (NULLIF(@namespace_id, '') IS NULL OR ad.namespace_id = @namespace_id::uuid) AND 
+    (NULLIF(@namespace_name, '') IS NULL OR n.name = @namespace_name) 
 GROUP BY ad.id, n.name, fqns.fqn, counted.total
-LIMIT @limit_ -- noqa
-OFFSET @offset_; -- noqa
+LIMIT @limit_ 
+OFFSET @offset_; 
 
 -- name: ListAttributesSummary :many
 WITH counted AS (
@@ -309,8 +309,8 @@ CROSS JOIN counted
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 WHERE ad.namespace_id = $1
 GROUP BY ad.id, n.name, counted.total
-LIMIT @limit_ -- noqa
-OFFSET @offset_; -- noqa
+LIMIT @limit_ 
+OFFSET @offset_; 
 
 -- name: ListAttributesByDefOrValueFqns :many
 -- get the attribute definition for the provided value or definition fqn
@@ -336,7 +336,7 @@ WITH target_definition AS (
     LEFT JOIN attribute_definition_key_access_grants adkag ON ad.id = adkag.attribute_definition_id
     LEFT JOIN key_access_servers kas ON adkag.key_access_server_id = kas.id
     LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
-    WHERE fqns.fqn = ANY(@fqns::TEXT[]) -- noqa
+    WHERE fqns.fqn = ANY(@fqns::TEXT[]) 
         AND ad.active = TRUE
     GROUP BY ad.id, k.keys
 ),
@@ -495,7 +495,7 @@ GROUP BY ad.id, n.name, fqns.fqn, k.keys;
 
 -- name: CreateAttribute :one
 INSERT INTO attribute_definitions (namespace_id, name, rule, metadata)
-VALUES (@namespace_id, @name, @rule, @metadata) -- noqa
+VALUES (@namespace_id, @name, @rule, @metadata) 
 RETURNING id;
 
 -- UpdateAttribute: Unsafe and Safe Updates both
@@ -542,10 +542,10 @@ CROSS JOIN counted
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 WHERE (
     (sqlc.narg('active')::BOOLEAN IS NULL OR av.active = sqlc.narg('active')) AND
-    (NULLIF(@attribute_definition_id, '') IS NULL OR av.attribute_definition_id = @attribute_definition_id::UUID) -- noqa
+    (NULLIF(@attribute_definition_id, '') IS NULL OR av.attribute_definition_id = @attribute_definition_id::UUID) 
 )
-LIMIT @limit_ -- noqa
-OFFSET @offset_; -- noqa
+LIMIT @limit_ 
+OFFSET @offset_; 
 
 -- name: GetAttributeValue :one
 SELECT
@@ -574,7 +574,7 @@ GROUP BY av.id, fqns.fqn, k.keys;
 
 -- name: CreateAttributeValue :one
 INSERT INTO attribute_values (attribute_definition_id, value, metadata)
-VALUES (@attribute_definition_id, @value, @metadata) -- noqa
+VALUES (@attribute_definition_id, @value, @metadata) 
 RETURNING id;
 
 -- UpdateAttributeValue: Safe and Unsafe Updates both
@@ -613,9 +613,9 @@ SELECT rmg.id,
     counted.total
 FROM resource_mapping_groups rmg
 CROSS JOIN counted
-WHERE (NULLIF(@namespace_id, '') IS NULL OR rmg.namespace_id = @namespace_id::uuid) -- noqa
-LIMIT @limit_ -- noqa
-OFFSET @offset_; -- noqa
+WHERE (NULLIF(@namespace_id, '') IS NULL OR rmg.namespace_id = @namespace_id::uuid) 
+LIMIT @limit_ 
+OFFSET @offset_; 
 
 -- name: GetResourceMappingGroup :one
 SELECT id, namespace_id, name,
@@ -659,10 +659,10 @@ FROM resource_mappings m
 CROSS JOIN counted
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
-WHERE (NULLIF(@group_id, '') IS NULL OR m.group_id = @group_id::UUID) -- noqa
+WHERE (NULLIF(@group_id, '') IS NULL OR m.group_id = @group_id::UUID) 
 GROUP BY av.id, m.id, fqns.fqn, counted.total
-LIMIT @limit_ -- noqa
-OFFSET @offset_; -- noqa
+LIMIT @limit_ 
+OFFSET @offset_; 
 
 -- name: ListResourceMappingsByFullyQualifiedGroup :many
 -- CTE to cache the group JSON build since it will be the same for all mappings of the group
@@ -681,7 +681,7 @@ WITH groups_cte AS (
         ) as group
     FROM resource_mapping_groups g
     JOIN attribute_namespaces ns on g.namespace_id = ns.id
-    WHERE ns.name = @namespace_name AND g.name = @group_name -- noqa
+    WHERE ns.name = @namespace_name AND g.name = @group_name 
 )
 SELECT
     m.id,
@@ -743,8 +743,8 @@ FROM attribute_namespaces ns
 CROSS JOIN counted
 LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
 WHERE (sqlc.narg('active')::BOOLEAN IS NULL OR ns.active = sqlc.narg('active')::BOOLEAN)
-LIMIT @limit_ -- noqa
-OFFSET @offset_; -- noqa
+LIMIT @limit_ 
+OFFSET @offset_; 
 
 -- name: GetNamespace :one
 SELECT
@@ -809,8 +809,8 @@ SELECT
     counted.total
 FROM subject_condition_set scs
 CROSS JOIN counted
-LIMIT @limit_ -- noqa
-OFFSET @offset_; -- noqa
+LIMIT @limit_ 
+OFFSET @offset_; 
 
 -- name: GetSubjectConditionSet :one
 SELECT
@@ -866,8 +866,8 @@ CROSS JOIN counted
 LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
 LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
 GROUP BY av.id, sm.id, scs.id, counted.total
-LIMIT @limit_ -- noqa
-OFFSET @offset_; -- noqa
+LIMIT @limit_ 
+OFFSET @offset_; 
 
 -- name: GetSubjectMapping :one
 SELECT
@@ -903,7 +903,7 @@ LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
 WHERE ns.active = true AND ad.active = true and av.active = true AND EXISTS (
     SELECT 1
     FROM JSONB_ARRAY_ELEMENTS(scs.condition) AS ss, JSONB_ARRAY_ELEMENTS(ss->'conditionGroups') AS cg, JSONB_ARRAY_ELEMENTS(cg->'conditions') AS each_condition
-    WHERE (each_condition->>'subjectExternalSelectorValue' = ANY(@selectors::TEXT[])) -- noqa
+    WHERE (each_condition->>'subjectExternalSelectorValue' = ANY(@selectors::TEXT[])) 
 )
 GROUP BY av.id, sm.id, scs.id;
 
@@ -929,30 +929,30 @@ DELETE FROM subject_mappings WHERE id = $1;
 -- KEYS
 ----------------------------------------------------------------
 
--- name: CreatePublicKey :one
+-- name: createPublicKey :one
 INSERT INTO public_keys (key_access_server_id, key_id, alg, public_key, metadata)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING id;
 
--- name: GetPublicKey :one
+-- name: getPublicKey :one
 SELECT 
-    k.id, 
-    k.is_active, 
-    k.was_used, 
-    k.key_access_server_id, 
-    k.key_id, 
-    k.alg, 
+    k.id,
+    k.is_active,
+    k.was_used,
+    k.key_access_server_id,
+    k.key_id,
+    k.alg,
     k.public_key,
-    kas.uri as kas_uri,
-    kas.name as kas_name,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', k.metadata -> 'labels', 'created_at', k.created_at, 'updated_at', k.updated_at)) as metadata
-FROM public_keys k
-LEFT JOIN key_access_servers kas ON k.key_access_server_id = kas.id
+    kas.uri AS kas_uri,
+    kas.name AS kas_name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', k.metadata -> 'labels', 'created_at', k.created_at, 'updated_at', k.updated_at)) AS metadata
+FROM public_keys AS k
+LEFT JOIN key_access_servers AS kas ON k.key_access_server_id = kas.id
 WHERE k.id = $1;
 
--- name: ListPublicKeys :many
+-- name: listPublicKeys :many
 WITH counted AS (
-    SELECT COUNT(k.id) AS total FROM public_keys k
+    SELECT COUNT(k.id) AS total FROM public_keys AS k
 )
 
 SELECT
@@ -963,30 +963,28 @@ SELECT
     k.key_id,
     k.alg,
     k.public_key,
-    kas.uri as kas_uri,
-    kas.name as kas_name,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', k.metadata -> 'labels', 'created_at', k.created_at, 'updated_at', k.updated_at)) as metadata,
+    kas.uri AS kas_uri,
+    kas.name AS kas_name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', k.metadata -> 'labels', 'created_at', k.created_at, 'updated_at', k.updated_at)) AS metadata,
     counted.total
 FROM public_keys k
-LEFT JOIN key_access_servers kas ON k.key_access_server_id = kas.id
+LEFT JOIN key_access_servers AS kas ON k.key_access_server_id = kas.id
 CROSS JOIN counted
 WHERE (
-    NULLIF(@kas_id, '') IS NULL OR k.key_access_server_id = @kas_id::uuid -- noqa
+    NULLIF(@kas_id, '') IS NULL OR k.key_access_server_id = @kas_id::uuid 
 )
-LIMIT @limit_ -- noqa
-OFFSET @offset_; -- noqa
+LIMIT @limit_ 
+OFFSET @offset_; 
 
--- name: UpdatePublicKey :execrows
+-- name: updatePublicKey :one
 UPDATE public_keys
 SET
-    key_access_server_id = COALESCE(sqlc.narg('key_access_server_id'), key_access_server_id),
-    key_id = COALESCE(sqlc.narg('key_id'), key_id),
-    alg = COALESCE(sqlc.narg('alg'), alg),
-    public_key = COALESCE(sqlc.narg('public_key'), public_key),
+    is_active = COALESCE(sqlc.narg('is_active')::BOOLEAN, is_active), 
     metadata = COALESCE(sqlc.narg('metadata'), metadata)
-WHERE id = $1;
+WHERE id = $1
+RETURNING *;
 
--- name: DeletePublicKey :execrows
+-- name: deletePublicKey :execrows
 DELETE FROM public_keys WHERE id = $1;
 
 -- name: DeactivatePublicKey :execrows

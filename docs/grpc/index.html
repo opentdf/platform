@@ -6366,6 +6366,20 @@ Common metadata </p></td>
             <tbody>
               
                 <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>active</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
@@ -6391,6 +6405,23 @@ Common metadata </p></td>
         <p></p>
 
         
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.Key">policy.Key</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
 
         
       
@@ -6482,7 +6513,7 @@ Common metadata </p></td>
                 <td>DeleteKey</td>
                 <td><a href="#policy.kasregistry.DeleteKeyRequest">DeleteKeyRequest</a></td>
                 <td><a href="#policy.kasregistry.DeleteKeyResponse">DeleteKeyResponse</a></td>
-                <td><p></p></td>
+                <td><p>DeleteKey is a soft delete, marking the key as inactive.</p></td>
               </tr>
             
           </tbody>

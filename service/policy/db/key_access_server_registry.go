@@ -271,7 +271,7 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		return nil, err
 	}
 
-	id, err := c.Queries.CreatePublicKey(ctx, CreatePublicKeyParams{
+	id, err := c.Queries.createPublicKey(ctx, createPublicKeyParams{
 		KeyAccessServerID: kasID,
 		KeyID:             key.GetKid(),
 		Alg:               key.GetAlg().String(),
@@ -297,7 +297,7 @@ func (c PolicyDBClient) GetPublicKey(ctx context.Context, r *kasregistry.GetKeyR
 	metadata := new(common.Metadata)
 
 	keyID := r.GetId()
-	key, err := c.Queries.GetPublicKey(ctx, keyID)
+	key, err := c.Queries.getPublicKey(ctx, keyID)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -341,14 +341,14 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 		}
 	}
 
-	params := ListPublicKeysParams{
+	params := listPublicKeysParams{
 		KasID: r.GetKasId(),
 		// KasUri:  r.GetKasUri(),
 		// KasName: r.GetKasName(),
 		Offset: offset,
 		Limit:  limit,
 	}
-	listRows, err := c.Queries.ListPublicKeys(ctx, params)
+	listRows, err := c.Queries.listPublicKeys(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -394,6 +394,48 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 	}, nil
 }
 
+func (c PolicyDBClient) UpdatePublicKey(ctx context.Context, r *kasregistry.UpdateKeyRequest) (*kasregistry.UpdateKeyResponse, error) {
+	keyID := r.GetId()
+	isActive := r.GetActive()
+
+	mdJson, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
+		k, err := c.GetPublicKey(ctx, &kasregistry.GetKeyRequest{Id: keyID})
+		if err != nil {
+			return nil, err
+		}
+		return k.GetKey().GetMetadata(), nil
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	pk, err := c.Queries.updatePublicKey(ctx, updatePublicKeyParams{
+		ID:       keyID,
+		IsActive: pgtypeBool(isActive),
+		Metadata: mdJson,
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return &kasregistry.UpdateKeyResponse{
+		Key: &policy.Key{
+			Id: pk.ID,
+			Kas: &policy.KeyAccessServer{
+				Id: pk.KeyAccessServerID,
+			},
+			IsActive: pk.IsActive,
+			WasUsed:  pk.WasUsed,
+			PublicKey: &policy.KasPublicKey{
+				Kid: pk.KeyID,
+				Alg: policy.KasPublicKeyAlgEnum(policy.KasPublicKeyAlgEnum_value[pk.Alg]),
+				Pem: pk.PublicKey,
+			},
+			Metadata: metadata,
+		},
+	}, nil
+}
+
 func (c PolicyDBClient) SoftDeleteKey(ctx context.Context, r *kasregistry.DeleteKeyRequest) (*kasregistry.DeleteKeyResponse, error) {
 	keyID := r.GetId()
 	count, err := c.Queries.DeactivatePublicKey(ctx, keyID)
@@ -412,7 +454,7 @@ func (c PolicyDBClient) SoftDeleteKey(ctx context.Context, r *kasregistry.Delete
 
 func (c PolicyDBClient) UnsafeDeleteKey(ctx context.Context, r *unsafe.UnsafeDeletePublicKeyRequest) (*policy.Key, error) {
 	keyID := r.GetId()
-	count, err := c.Queries.DeletePublicKey(ctx, keyID)
+	count, err := c.Queries.deletePublicKey(ctx, keyID)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

@@ -476,7 +476,12 @@
       }
     },
     "kasregistryUpdateKeyResponse": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/policyKey"
+        }
+      }
     },
     "policyKasPublicKey": {
       "type": "object",

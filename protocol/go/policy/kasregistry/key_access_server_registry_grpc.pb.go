@@ -46,6 +46,7 @@ type KeyAccessServerRegistryServiceClient interface {
 	GetKey(ctx context.Context, in *GetKeyRequest, opts ...grpc.CallOption) (*GetKeyResponse, error)
 	ListKeys(ctx context.Context, in *ListKeysRequest, opts ...grpc.CallOption) (*ListKeysResponse, error)
 	UpdateKey(ctx context.Context, in *UpdateKeyRequest, opts ...grpc.CallOption) (*UpdateKeyResponse, error)
+	// DeleteKey is a soft delete, marking the key as inactive.
 	DeleteKey(ctx context.Context, in *DeleteKeyRequest, opts ...grpc.CallOption) (*DeleteKeyResponse, error)
 }
 
@@ -170,6 +171,7 @@ type KeyAccessServerRegistryServiceServer interface {
 	GetKey(context.Context, *GetKeyRequest) (*GetKeyResponse, error)
 	ListKeys(context.Context, *ListKeysRequest) (*ListKeysResponse, error)
 	UpdateKey(context.Context, *UpdateKeyRequest) (*UpdateKeyResponse, error)
+	// DeleteKey is a soft delete, marking the key as inactive.
 	DeleteKey(context.Context, *DeleteKeyRequest) (*DeleteKeyResponse, error)
 	mustEmbedUnimplementedKeyAccessServerRegistryServiceServer()
 }

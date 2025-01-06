@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/proto"
@@ -1084,6 +1085,23 @@ func (s *KasRegistrySuite) Test_Create_Public_Key_WithInvalidKasID_Fails() {
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
 }
 
+func (s *KasRegistrySuite) Test_Update_Public_Key() {
+	kID := publicKeyTestUUID
+	resp, err := s.db.PolicyClient.UpdatePublicKey(s.ctx, &kasregistry.UpdateKeyRequest{
+		Id:     kID,
+		Active: false,
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+	s.False(resp.GetKey().GetIsActive())
+
+	// Get Key to validate update
+	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: kID})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.False(r.GetKey().GetIsActive())
+}
+
 func (s *KasRegistrySuite) Test_Get_Public_Key() {
 	kasID := s.f.GetPublicKey("key_1").KasID
 	keyID := s.f.GetPublicKey("key_1").Key.Kid
@@ -1149,6 +1167,26 @@ func (s *KasRegistrySuite) Test_SoftDelete_Public_Key() {
 	s.Require().NoError(err)
 	s.NotNil(rr)
 	s.False(rr.GetKey().GetIsActive())
+}
+
+func (s *KasRegistrySuite) Test_SoftDelete_Public_Key_WithInvalidID_Fails() {
+	r, err := s.db.PolicyClient.SoftDeleteKey(s.ctx, &kasregistry.DeleteKeyRequest{Id: "invalid-id"})
+	s.Require().Error(err)
+	s.Nil(r)
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
+}
+
+func (s *KasRegistrySuite) Test_UnsafeDelete_Public_Key() {
+	id := s.f.GetPublicKey("key_1").ID
+	r, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, &unsafe.UnsafeDeletePublicKeyRequest{Id: id})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.Equal(id, r.GetId())
+
+	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: id})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(rr)
 }
 
 func TestKasRegistrySuite(t *testing.T) {

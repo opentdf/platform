@@ -98,6 +98,7 @@ type KeyAccessServerRegistryServiceClient interface {
 	GetKey(context.Context, *connect.Request[kasregistry.GetKeyRequest]) (*connect.Response[kasregistry.GetKeyResponse], error)
 	ListKeys(context.Context, *connect.Request[kasregistry.ListKeysRequest]) (*connect.Response[kasregistry.ListKeysResponse], error)
 	UpdateKey(context.Context, *connect.Request[kasregistry.UpdateKeyRequest]) (*connect.Response[kasregistry.UpdateKeyResponse], error)
+	// DeleteKey is a soft delete, marking the key as inactive.
 	DeleteKey(context.Context, *connect.Request[kasregistry.DeleteKeyRequest]) (*connect.Response[kasregistry.DeleteKeyResponse], error)
 }
 
@@ -272,6 +273,7 @@ type KeyAccessServerRegistryServiceHandler interface {
 	GetKey(context.Context, *connect.Request[kasregistry.GetKeyRequest]) (*connect.Response[kasregistry.GetKeyResponse], error)
 	ListKeys(context.Context, *connect.Request[kasregistry.ListKeysRequest]) (*connect.Response[kasregistry.ListKeysResponse], error)
 	UpdateKey(context.Context, *connect.Request[kasregistry.UpdateKeyRequest]) (*connect.Response[kasregistry.UpdateKeyResponse], error)
+	// DeleteKey is a soft delete, marking the key as inactive.
 	DeleteKey(context.Context, *connect.Request[kasregistry.DeleteKeyRequest]) (*connect.Response[kasregistry.DeleteKeyResponse], error)
 }
 

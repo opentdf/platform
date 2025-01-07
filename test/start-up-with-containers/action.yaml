@@ -56,7 +56,7 @@ runs:
           cert_pem="$(jq -r '.cert' <<< "${key_json}")"
           kid="$(jq -r '.kid' <<< "${key_json}")"
 
-          # don't allow injection of paths. bash has a stupid bug where you can't quote
+          # don't allow injection of paths. the regex can't be quoted in bash
           if [[ ! "${kid}" =~ ^[-0-9a-zA-Z_]+$ ]]; then
             printf 'kid is not valid: [%s]\n' "${kid}" 1>&2
             exit 1

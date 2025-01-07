@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.10](https://github.com/opentdf/platform/compare/lib/fixtures/v0.2.9...lib/fixtures/v0.2.10) (2024-12-17)
+
+
+### Features
+
+* **kas:** collect metrics ([#1702](https://github.com/opentdf/platform/issues/1702)) ([def28d1](https://github.com/opentdf/platform/commit/def28d1984b0b111a07330a3eb59c1285206062d))
+
 ## [0.2.9](https://github.com/opentdf/platform/compare/lib/fixtures/v0.2.8...lib/fixtures/v0.2.9) (2024-11-14)
 
 

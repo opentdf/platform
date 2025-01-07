@@ -9,7 +9,7 @@ inputs:
     default: 'main'
   extra-keys:
     required: false
-    description: A JSON array containing extra keys for the KAS to load. Each object should have 'kid', 'alg', 'privateKey', and 'cert' fields.
+    description: A JSON array containing extra keys for the KAS to load. Each object should have 'kid', 'alg', 'private', and 'cert' fields.
     default: '[]'
 
 outputs:
@@ -80,7 +80,7 @@ runs:
       
         printf 'adding the following keys:\n  [%s]\n[%s]  \n' "${keys}" "${keyring}"
       
-        yq_command=$(printf '(.services.kas.keyring = %s) | (.server.cryptoProvider.standard.keys =%s)' "${keyring}" "${keys}")
+        yq_command=$(printf '(.services.kas.keyring = %s) | (.server.cryptoProvider.standard.keys = %s)' "${keyring}" "${keys}")
       
         <opentdf-dev.yaml >opentdf.yaml yq e "${yq_command}"
       working-directory: otdf-test-platform

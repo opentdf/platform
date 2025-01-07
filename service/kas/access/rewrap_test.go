@@ -17,8 +17,8 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
-	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/logger"
+	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -328,7 +328,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 				require.NoError(t, err, "couldn't get JWK from key")
 				err = key.Set(jwk.AlgorithmKey, jwa.RS256) // Check the error return value
 				require.NoError(t, err, "failed to set algorithm key")
-				ctx = auth.ContextWithAuthNInfo(ctx, key, mockJWT(t), bearer)
+				ctx = ctxAuth.ContextWithAuthNInfo(ctx, key, mockJWT(t), bearer)
 			}
 
 			md := metadata.New(map[string]string{"token": bearer})
@@ -370,7 +370,7 @@ func Test_SignedRequestBody_When_Bad_Signature_Expect_Failure(t *testing.T) {
 
 	err = key.Set(jwk.AlgorithmKey, jwa.NoSignature)
 	require.NoError(t, err, "failed to set algorithm key")
-	ctx = auth.ContextWithAuthNInfo(ctx, key, mockJWT(t), string(jwtStandard(t)))
+	ctx = ctxAuth.ContextWithAuthNInfo(ctx, key, mockJWT(t), string(jwtStandard(t)))
 
 	md := metadata.New(map[string]string{"token": string(jwtWrongKey(t))})
 	ctx = metadata.NewIncomingContext(ctx, md)

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/opentdf/platform/compare/lib/flattening/v0.1.2...lib/flattening/v0.1.3) (2024-12-17)
+
+
+### Features
+
+* **kas:** collect metrics ([#1702](https://github.com/opentdf/platform/issues/1702)) ([def28d1](https://github.com/opentdf/platform/commit/def28d1984b0b111a07330a3eb59c1285206062d))
+
 ## [0.1.2](https://github.com/opentdf/platform/compare/lib/flattening/v0.1.1...lib/flattening/v0.1.2) (2024-11-15)
 
 

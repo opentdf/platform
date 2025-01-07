@@ -75,13 +75,13 @@ runs:
           keyring_obj="$(jq '{kid, alg}' <<< "${key_json}")"
           keyring="$(jq '. + [$keyring_obj]' --argjson keyring_obj "${keyring_obj}" <<< "${keyring}")"
 
-          done 3< <(jq -c --raw-output0 '.[]' <<< "${EXTRA_KEYS}")
+        done 3< <(jq -c --raw-output0 '.[]' <<< "${EXTRA_KEYS}")
 
-          printf 'adding the following keys:\n  [%s]\n[%s]  \n' "${keys}" "${keyring}"
+        printf 'adding the following keys:\n  [%s]\n[%s]  \n' "${keys}" "${keyring}"
 
-          yq_command=$(printf '(.services.kas.keyring |= . + %s) | (.server.cryptoProvider.standard.keys |= . + %s)' "${keyring}" "${keys}")
+        yq_command=$(printf '(.services.kas.keyring |= . + %s) | (.server.cryptoProvider.standard.keys |= . + %s)' "${keyring}" "${keys}")
 
-          <opentdf-dev.yaml >opentdf.yaml yq e "${yq_command}"
+        <opentdf-dev.yaml >opentdf.yaml yq e "${yq_command}"
 
       working-directory: otdf-test-platform
     - name: Trust the generated certs

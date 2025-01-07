@@ -46,47 +46,42 @@ runs:
       env:
         EXTRA_KEYS: ${{ inputs.extra-keys }}
       run: |
-        extra_keys='['
-        extra_keyring='['
-        while IFS= read -r -d $'\0' json <&3; do
-          printf 'processing %s\n' "${json}"
-          private_pem="$(jq -r '.privateKey' <<< "${json}")"
-          cert_pem="$(jq -r '.cert' <<< "${json}")"
-          kid="$(jq -r '.kid' <<< "${json}")"
+        set -e
 
-          private_path="${kid}.pem"
-          cert_path="${kid}-cert.pem"
-
-          echo "${private_pem}" >"${private_path}"
-          echo "${cert_pem}" >"${cert_path}"
-
-          cat "${private_path}" "${cert_path}"
-          chmod a+r "${private_path}" "${cert_path}"
-
-          keylist_command="$(printf '{kid, alg, private: "%s", cert: "%s"}' "${private_path}" "${cert_path}")"
-
-          keylist_obj="$(jq "${keylist_command}" <<< "${json}")"
-          if [ "${extra_keys}" != '[' ]; then
-            extra_keys+=','
-          fi
-          extra_keys+="${keylist_obj}"
-
-          if [ "${extra_keyring}" != '[' ]; then
-            extra_keyring+=','
-          fi
-          keyring_obj="$(jq '{kid, alg}' <<< "${json}")"
-          extra_keyring+="${keyring_obj}"
-
+        keyring='[{"kid":"ec1","alg":"ec:secp256r1"},{"kid":"r1","alg":"rsa:2048"}]'
+        keys='[{"kid":"ec1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"r1","alg":"rsa:2048","private":"kas-private.pem","cert":"kas-cert.pem"}]'
+        while IFS= read -r -d $'\0' key_json <&3; do
+           printf 'processing %s\n' "${key_json}"
+           private_pem="$(jq -r '.privateKey' <<< "${key_json}")"
+           cert_pem="$(jq -r '.cert' <<< "${key_json}")"
+           kid="$(jq -r '.kid' <<< "${key_json}")"
+      
+           # don't allow injection of paths. bash has a stupid bug where you can't quote
+           if [[ ! "${kid}" =~ ^[-0-9a-zA-Z_]+$ ]]; then
+             printf 'kid is not valid: [%s]\n' "${kid}" 1>&2
+             exit 1
+           fi
+      
+           private_path="${kid}.pem"
+           cert_path="${kid}-cert.pem"
+      
+           echo "${private_pem}" >"${private_path}"
+           echo "${cert_pem}" >"${cert_path}"
+           chmod a+r "${private_path}" "${cert_path}"
+      
+           key_command="$(printf '{kid, alg, private: "%s", cert: "%s"}' "${private_path}" "${cert_path}")"
+           key_obj="$(jq "${key_command}" <<< "${key_json}")"
+           keys="$(jq "$(printf '. + [%s]' "${key_obj}")" <<< "${keys}")"
+      
+           keyring_obj="$(jq '{kid, alg}' <<< "${key_json}")"
+           keyring="$(jq "$(printf '. + [%s]' "${keyring_obj}")" <<< "${keyring}")"
+      
         done 3< <(jq -c --raw-output0 '.[]' <<< "${EXTRA_KEYS}")
-        extra_keys+=']'
-        extra_keyring+=']'
-
-        cat kas-private.pem
-
-        printf 'adding the following extra keys: %s-%s\n' "${extra_keys}" "${extra_keyring}"
-
-        yq_command=$(printf '(.services.kas.keyring = [{"kid":"ec1","alg":"ec:secp256r1"},{"kid":"r1","alg":"rsa:2048"}] + %s) | (.server.cryptoProvider.standard.keys = [{"kid":"ec1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"r1","alg":"rsa:2048","private":"kas-private.pem","cert":"kas-cert.pem"}] + %s)' "${extra_keyring}" "${extra_keys}")
-
+      
+        printf 'adding the following keys:\n  [%s]\n[%s]  \n' "${keys}" "${keyring}"
+      
+        yq_command=$(printf '(.services.kas.keyring = %s) | (.server.cryptoProvider.standard.keys =%s)' "${keyring}" "${keys}")
+      
         <opentdf-dev.yaml >opentdf.yaml yq e "${yq_command}"
       working-directory: otdf-test-platform
     - name: Trust the generated certs

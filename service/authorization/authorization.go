@@ -29,9 +29,13 @@ import (
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/policies"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const EntityIDPrefix string = "entity_idx_"
+
+var ErrEmptyStringAttribute = errors.New("resource attributes must have at least one attribute value fqn")
 
 type AuthorizationService struct { //nolint:revive // AuthorizationService is a valid name for this struct
 	sdk    *otdf.SDK
@@ -209,7 +213,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 		if err != nil {
 			// if attribute an FQN does not exist
 			// return deny for all entity chains aginst this RA set and continue to next
-			if errors.Is(err, db.StatusifyError(db.ErrNotFound, "")) {
+			if errors.Is(err, status.Error(codes.NotFound, db.ErrTextNotFound)) || errors.Is(err, ErrEmptyStringAttribute) {
 				for ecIdx, ec := range dr.GetEntityChains() {
 					decisionResp := &authorization.DecisionResponse{
 						Decision:      authorization.DecisionResponse_DECISION_DENY,
@@ -227,6 +231,10 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 					}
 					responseIdx := (raIdx * len(dr.GetEntityChains())) + ecIdx
 					response[responseIdx] = decisionResp
+					// append empty values to keep the order of the requests
+					attrDefsReqs = append(attrDefsReqs, []*policy.Attribute{})
+					attrValsReqs = append(attrValsReqs, []*policy.Value{})
+					fqnsReqs = append(fqnsReqs, []string{})
 				}
 				continue
 			}
@@ -287,6 +295,11 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 
 	for raIdx, ra := range dr.GetResourceAttributes() {
 		for ecIdx, ec := range dr.GetEntityChains() {
+			// check if we already have a decision for this entity chain
+			responseIdx := (raIdx * len(dr.GetEntityChains())) + ecIdx
+			if response[responseIdx] != nil {
+				continue
+			}
 			attrVals := attrValsReqs[raIdx]
 			attrDefs := attrDefsReqs[raIdx]
 			fqns := fqnsReqs[raIdx]
@@ -390,7 +403,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 				FQNs:                    fqns,
 				ResourceAttributeID:     decisionResp.GetResourceAttributesId(),
 			})
-			response[(raIdx*len(dr.GetEntityChains()) + ecIdx)] = decisionResp
+			response[responseIdx] = decisionResp
 		}
 	}
 	return response, nil
@@ -639,11 +652,22 @@ func retrieveAttributeDefinitions(ctx context.Context, ra *authorization.Resourc
 	if len(attrFqns) == 0 {
 		return make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue), nil
 	}
+	// remove empty strings
+	attrFqnsNoEmpty := attrFqns[:0] // Use the same backing array to avoid allocation
+	for _, str := range attrFqns {
+		if str != "" {
+			attrFqnsNoEmpty = append(attrFqnsNoEmpty, str)
+		}
+	}
+	// if no attribute value FQNs after removal, return error
+	if len(attrFqnsNoEmpty) == 0 {
+		return nil, ErrEmptyStringAttribute
+	}
 	resp, err := sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
 		WithValue: &policy.AttributeValueSelector{
 			WithSubjectMaps: false,
 		},
-		Fqns: attrFqns,
+		Fqns: attrFqnsNoEmpty,
 	})
 	if err != nil {
 		return nil, err

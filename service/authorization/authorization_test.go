@@ -1347,6 +1347,7 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 			},
 		},
 	}}
+	errGetAttributesByValueFqns = nil
 	userRepresentation := map[string]interface{}{
 		"A": "B",
 		"C": "D",

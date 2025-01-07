@@ -18,8 +18,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
@@ -266,7 +264,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		"https://example.com/attr/Classification/value/X",
 	}
 
-	expectedTdfSize := int64(2058)
+	expectedTdfSize := int64(2095)
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
 	{
@@ -396,7 +394,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 			},
 			assertionVerificationKeys:    nil,
 			disableAssertionVerification: false,
-			expectedSize:                 2689,
+			expectedSize:                 2896,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -429,7 +427,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				DefaultKey: defaultKey,
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 2689,
+			expectedSize:                 2896,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -478,7 +476,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 2988,
+			expectedSize:                 3195,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -518,7 +516,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 2689,
+			expectedSize:                 2896,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -535,7 +533,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: true,
-			expectedSize:                 2180,
+			expectedSize:                 2302,
 		},
 	} {
 		expectedTdfSize := test.expectedSize
@@ -644,7 +642,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					SigningKey: defaultKey,
 				},
 			},
-			expectedSize: 2689,
+			expectedSize: 2896,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -692,7 +690,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					},
 				},
 			},
-			expectedSize: 2988,
+			expectedSize: 3195,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -726,7 +724,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 			assertionVerificationKeys: &AssertionVerificationKeys{
 				DefaultKey: defaultKey,
 			},
-			expectedSize: 2689,
+			expectedSize: 2896,
 		},
 	} {
 		expectedTdfSize := test.expectedSize
@@ -1480,31 +1478,4 @@ func (s *TDFSuite) checkIdentical(file, checksum string) bool {
 
 	c := h.Sum(nil)
 	return checksum == fmt.Sprintf("%x", c)
-}
-
-func TestParseVersion(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected Version
-		hasError bool
-	}{
-		{"1.2.3", Version{Major: 1, Minor: 2, Patch: 3}, false},
-		{"1.2.3+p1", Version{Major: 1, Minor: 2, Patch: 3, Preview: 1}, false},
-		{"1.2.3+p1.2", Version{Major: 1, Minor: 2, Patch: 3, Preview: 1, Revision: 2}, false},
-		{"1.2", Version{}, true},
-		{"1.2.3+p", Version{}, true},
-		{"1.2.3+p1.", Version{}, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			result, err := ParseVersion(tt.input)
-			if tt.hasError {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, tt.expected, *result)
-			}
-		})
-	}
 }

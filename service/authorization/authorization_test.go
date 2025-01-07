@@ -38,8 +38,10 @@ var (
 	mockAttrName                     = "foo"
 	mockAttrValue1                   = "value1"
 	mockAttrValue2                   = "value2"
+	mockAttrValue3                   = "value3"
 	mockFqn1                         = fmt.Sprintf("https://%s/attr/%s/value/%s", mockNamespace, mockAttrName, mockAttrValue1)
 	mockFqn2                         = fmt.Sprintf("https://%s/attr/%s/value/%s", mockNamespace, mockAttrName, mockAttrValue2)
+	mockFqn3                         = fmt.Sprintf("https://%s/attr/%s/value/%s", mockNamespace, mockAttrName, mockAttrValue3)
 )
 
 type myAttributesClient struct {
@@ -1318,4 +1320,315 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 	slog.Debug(resp.Msg.String())
 	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
 	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.Msg.GetDecisionResponses()[0].GetDecision())
+}
+
+func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
+	logger := logger.CreateTestLogger()
+
+	listAttributeResp = attr.ListAttributesResponse{}
+
+	attrDef := policy.Attribute{
+		Name: mockAttrName,
+		Namespace: &policy.Namespace{
+			Name: mockNamespace,
+		},
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values: []*policy.Value{
+			{
+				Value: mockAttrValue1,
+			},
+		},
+	}
+	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{FqnAttributeValues: map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+		"https://www.example.org/attr/foo/value/value1": {
+			Attribute: &attrDef,
+			Value: &policy.Value{
+				Fqn: mockFqn1,
+			},
+		},
+	}}
+	userRepresentation := map[string]interface{}{
+		"A": "B",
+		"C": "D",
+	}
+	userStruct, _ := structpb.NewStruct(userRepresentation)
+	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
+		EntityRepresentations: []*entityresolution.EntityRepresentation{
+			{
+				OriginalId: "e1",
+				AdditionalProps: []*structpb.Struct{
+					userStruct,
+				},
+			},
+		},
+	}
+
+	ctxb := context.Background()
+
+	/////// TEST1: Three entity chains, one resource attribute ///////
+	testrego := rego.New(
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = {"e1":["https://www.example.org/attr/foo/value/value1"]} { true }`,
+		))
+
+	// Run evaluation.
+	prepared, err := testrego.PrepareForEval(ctxb)
+	require.NoError(t, err)
+
+	// set the request
+	req := connect.Request[authorization.GetDecisionsRequest]{
+		Msg: &authorization.GetDecisionsRequest{
+			DecisionRequests: []*authorization.DecisionRequest{
+				{
+					Actions: []*policy.Action{},
+					EntityChains: []*authorization.EntityChain{
+						{
+							Id: "ec1",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+						{
+							Id: "ec2",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+						{
+							Id: "ec3",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+					},
+					ResourceAttributes: []*authorization.ResourceAttribute{
+						{AttributeValueFqns: []string{mockFqn1}, ResourceAttributesId: "ra1"},
+					},
+				},
+			},
+		},
+	}
+
+	as := AuthorizationService{
+		logger: logger, sdk: &otdf.SDK{
+			SubjectMapping: &mySubjectMappingClient{},
+			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		},
+		eval: prepared,
+	}
+
+	resp, err := as.GetDecisions(ctxb, &req)
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	// one entitlement, one attribute value throughout
+	slog.Debug(resp.Msg.String())
+	assert.Len(t, resp.Msg.GetDecisionResponses(), 3)
+	assert.Equal(t, "ec1", resp.Msg.GetDecisionResponses()[0].GetEntityChainId())
+	assert.Equal(t, "ec2", resp.Msg.GetDecisionResponses()[1].GetEntityChainId())
+	assert.Equal(t, "ec3", resp.Msg.GetDecisionResponses()[2].GetEntityChainId())
+	assert.Equal(t, "ra1", resp.Msg.GetDecisionResponses()[0].GetResourceAttributesId())
+	assert.Equal(t, "ra1", resp.Msg.GetDecisionResponses()[1].GetResourceAttributesId())
+	assert.Equal(t, "ra1", resp.Msg.GetDecisionResponses()[2].GetResourceAttributesId())
+	for i := 0; i < len(resp.Msg.GetDecisionResponses()); i++ {
+		assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.Msg.GetDecisionResponses()[i].GetDecision())
+	}
+
+	/////// TEST2: Three entity chain, two resource attributes ///////
+	// set the request
+	req = connect.Request[authorization.GetDecisionsRequest]{
+		Msg: &authorization.GetDecisionsRequest{
+			DecisionRequests: []*authorization.DecisionRequest{
+				{
+					Actions: []*policy.Action{},
+					EntityChains: []*authorization.EntityChain{
+						{
+							Id: "ec1",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+						{
+							Id: "ec2",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+						{
+							Id: "ec3",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+					},
+					ResourceAttributes: []*authorization.ResourceAttribute{
+						{AttributeValueFqns: []string{mockFqn1}, ResourceAttributesId: "ra1"},
+						{AttributeValueFqns: []string{mockFqn2}, ResourceAttributesId: "ra2"},
+					},
+				},
+			},
+		},
+	}
+	attrDef.Values = append(attrDef.Values, &policy.Value{
+		Value: mockAttrValue2,
+	}, &policy.Value{
+		Value: mockAttrValue3,
+	})
+	getAttributesByValueFqnsResponse.FqnAttributeValues["https://www.example.org/attr/foo/value/value2"] = &attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+		Attribute: &attrDef,
+		Value: &policy.Value{
+			Fqn: mockFqn2,
+		},
+	}
+
+	testrego = rego.New(
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = {"e1": ["https://www.example.org/attr/foo/value/value1", "https://www.example.org/attr/foo/value/value2"]} { true }`,
+		))
+
+	// Run evaluation.
+	prepared, err = testrego.PrepareForEval(ctxb)
+	require.NoError(t, err)
+
+	as.eval = prepared
+
+	resp, err = as.GetDecisions(ctxb, &req)
+	require.NoError(t, err)
+	assert.Len(t, resp.Msg.GetDecisionResponses(), 6)
+
+	assert.Equal(t, "ec1", resp.Msg.GetDecisionResponses()[0].GetEntityChainId())
+	assert.Equal(t, "ra1", resp.Msg.GetDecisionResponses()[0].GetResourceAttributesId())
+	assert.Equal(t, "ec2", resp.Msg.GetDecisionResponses()[1].GetEntityChainId())
+	assert.Equal(t, "ra1", resp.Msg.GetDecisionResponses()[1].GetResourceAttributesId())
+	assert.Equal(t, "ec3", resp.Msg.GetDecisionResponses()[2].GetEntityChainId())
+	assert.Equal(t, "ra1", resp.Msg.GetDecisionResponses()[2].GetResourceAttributesId())
+
+	assert.Equal(t, "ec1", resp.Msg.GetDecisionResponses()[3].GetEntityChainId())
+	assert.Equal(t, "ra2", resp.Msg.GetDecisionResponses()[3].GetResourceAttributesId())
+	assert.Equal(t, "ec2", resp.Msg.GetDecisionResponses()[4].GetEntityChainId())
+	assert.Equal(t, "ra2", resp.Msg.GetDecisionResponses()[4].GetResourceAttributesId())
+	assert.Equal(t, "ec3", resp.Msg.GetDecisionResponses()[5].GetEntityChainId())
+	assert.Equal(t, "ra2", resp.Msg.GetDecisionResponses()[5].GetResourceAttributesId())
+
+	for i := 0; i < len(resp.Msg.GetDecisionResponses()); i++ {
+		assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.Msg.GetDecisionResponses()[i].GetDecision())
+	}
+
+	/////// TEST3: One entity chain, three resource attributes ///////
+	// set the request
+	req = connect.Request[authorization.GetDecisionsRequest]{
+		Msg: &authorization.GetDecisionsRequest{
+			DecisionRequests: []*authorization.DecisionRequest{
+				{
+					Actions: []*policy.Action{},
+					EntityChains: []*authorization.EntityChain{
+						{
+							Id: "ec1",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+					},
+					ResourceAttributes: []*authorization.ResourceAttribute{
+						{AttributeValueFqns: []string{mockFqn1}, ResourceAttributesId: "ra1"},
+						{AttributeValueFqns: []string{mockFqn2}, ResourceAttributesId: "ra2"},
+						{AttributeValueFqns: []string{mockFqn3}, ResourceAttributesId: "ra3"},
+					},
+				},
+			},
+		},
+	}
+	attrDef.Values = append(attrDef.Values, &policy.Value{
+		Value: mockAttrValue3,
+	})
+
+	getAttributesByValueFqnsResponse.FqnAttributeValues["https://www.example.org/attr/foo/value/value3"] = &attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+		Attribute: &attrDef,
+		Value: &policy.Value{
+			Fqn: mockFqn3,
+		},
+	}
+	testrego = rego.New(
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = {"e1": ["https://www.example.org/attr/foo/value/value1", "https://www.example.org/attr/foo/value/value2", "https://www.example.org/attr/foo/value/value3"]} { true }`,
+		))
+
+	// Run evaluation.
+	prepared, err = testrego.PrepareForEval(ctxb)
+	require.NoError(t, err)
+
+	as.eval = prepared
+
+	resp, err = as.GetDecisions(ctxb, &req)
+	require.NoError(t, err)
+	assert.Len(t, resp.Msg.GetDecisionResponses(), 3)
+	assert.Equal(t, "ec1", resp.Msg.GetDecisionResponses()[0].GetEntityChainId())
+	assert.Equal(t, "ec1", resp.Msg.GetDecisionResponses()[1].GetEntityChainId())
+	assert.Equal(t, "ec1", resp.Msg.GetDecisionResponses()[2].GetEntityChainId())
+	assert.Equal(t, "ra1", resp.Msg.GetDecisionResponses()[0].GetResourceAttributesId())
+	assert.Equal(t, "ra2", resp.Msg.GetDecisionResponses()[1].GetResourceAttributesId())
+	assert.Equal(t, "ra3", resp.Msg.GetDecisionResponses()[2].GetResourceAttributesId())
+	for i := 0; i < len(resp.Msg.GetDecisionResponses()); i++ {
+		assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.Msg.GetDecisionResponses()[i].GetDecision())
+	}
+
+	/////// TEST4: Two entity chain, three resource attributes ///////
+	// set the request
+	req = connect.Request[authorization.GetDecisionsRequest]{
+		Msg: &authorization.GetDecisionsRequest{
+			DecisionRequests: []*authorization.DecisionRequest{
+				{
+					Actions: []*policy.Action{},
+					EntityChains: []*authorization.EntityChain{
+						{
+							Id: "ec1",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+						{
+							Id: "ec2",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+					},
+					ResourceAttributes: []*authorization.ResourceAttribute{
+						{AttributeValueFqns: []string{mockFqn1}, ResourceAttributesId: "ra1"},
+						{AttributeValueFqns: []string{mockFqn2}, ResourceAttributesId: "ra2"},
+						{AttributeValueFqns: []string{mockFqn3}, ResourceAttributesId: "ra3"},
+					},
+				},
+			},
+		},
+	}
+
+	resp, err = as.GetDecisions(ctxb, &req)
+	require.NoError(t, err)
+	assert.Len(t, resp.Msg.GetDecisionResponses(), 6)
+	assert.Equal(t, "ec1", resp.Msg.GetDecisionResponses()[0].GetEntityChainId())
+	assert.Equal(t, "ra1", resp.Msg.GetDecisionResponses()[0].GetResourceAttributesId())
+	assert.Equal(t, "ec2", resp.Msg.GetDecisionResponses()[1].GetEntityChainId())
+	assert.Equal(t, "ra1", resp.Msg.GetDecisionResponses()[1].GetResourceAttributesId())
+
+	assert.Equal(t, "ec1", resp.Msg.GetDecisionResponses()[2].GetEntityChainId())
+	assert.Equal(t, "ra2", resp.Msg.GetDecisionResponses()[2].GetResourceAttributesId())
+	assert.Equal(t, "ec2", resp.Msg.GetDecisionResponses()[3].GetEntityChainId())
+	assert.Equal(t, "ra2", resp.Msg.GetDecisionResponses()[3].GetResourceAttributesId())
+
+	assert.Equal(t, "ec1", resp.Msg.GetDecisionResponses()[4].GetEntityChainId())
+	assert.Equal(t, "ra3", resp.Msg.GetDecisionResponses()[4].GetResourceAttributesId())
+	assert.Equal(t, "ec2", resp.Msg.GetDecisionResponses()[5].GetEntityChainId())
+	assert.Equal(t, "ra3", resp.Msg.GetDecisionResponses()[5].GetResourceAttributesId())
+
+	for i := 0; i < len(resp.Msg.GetDecisionResponses()); i++ {
+		assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.Msg.GetDecisionResponses()[i].GetDecision())
+	}
 }

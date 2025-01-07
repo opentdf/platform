@@ -69,12 +69,11 @@ runs:
            echo "${cert_pem}" >"${cert_path}"
            chmod a+r "${private_path}" "${cert_path}"
       
-           key_command="$(printf '{kid, alg, private: "%s", cert: "%s"}' "${private_path}" "${cert_path}")"
-           key_obj="$(jq "${key_command}" <<< "${key_json}")"
-           keys="$(jq "$(printf '. + [%s]' "${key_obj}")" <<< "${keys}")"
+           key_obj="$(jq {kid, alg, private: $private, cert: $cert} --argjson private "${private_path}" --argjson cert "${cert_path}" <<< "${key_json}")"
+           keys="$(jq '. + [$key_obj]' --argjson key_obj "${key_obj}")" <<< "${keys}")"
       
            keyring_obj="$(jq '{kid, alg}' <<< "${key_json}")"
-           keyring="$(jq "$(printf '. + [%s]' "${keyring_obj}")" <<< "${keyring}")"
+           keyring="$(jq '. + [$keyring_obj]' --argjson keyring_obj "${keyring_obj}" <<< "${keyring}")"
       
         done 3< <(jq -c --raw-output0 '.[]' <<< "${EXTRA_KEYS}")
       

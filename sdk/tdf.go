@@ -11,6 +11,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
@@ -332,7 +333,7 @@ func (r *Reader) Manifest() Manifest {
 func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFConfig) error { //nolint:funlen,gocognit // Better readability keeping it as is
 	manifest := Manifest{}
 
-	version, err := ParseVersion(sdkVersion)
+	version, err := semver.NewVersion(sdkVersion)
 	if err != nil {
 		return fmt.Errorf("ReadVersion failed:%w", err)
 	}

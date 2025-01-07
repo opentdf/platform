@@ -167,8 +167,13 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				}
 			}
 
+			svcConfig := cfg.Services[ns]
+			if ns == "kas" {
+				
+			}
+
 			err = svc.Start(ctx, serviceregistry.RegistrationParams{
-				Config:                 cfg.Services[svc.GetNamespace()],
+				Config:                 svcConfig,
 				Logger:                 svcLogger,
 				DBClient:               svcDBClient,
 				SDK:                    client,

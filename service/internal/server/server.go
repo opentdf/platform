@@ -21,6 +21,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
+	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
@@ -45,11 +46,13 @@ func (e Error) Error() string {
 
 // Configurations for the server
 type Config struct {
-	Auth                    auth.Config                              `mapstructure:"auth" json:"auth"`
-	GRPC                    GRPCConfig                               `mapstructure:"grpc" json:"grpc"`
-	TLS                     TLSConfig                                `mapstructure:"tls" json:"tls"`
-	CORS                    CORSConfig                               `mapstructure:"cors" json:"cors"`
-	WellKnownConfigRegister func(namespace string, config any) error `mapstructure:"-" json:"-"`
+	Auth auth.Config `mapstructure:"auth" json:"auth"`
+	GRPC GRPCConfig  `mapstructure:"grpc" json:"grpc"`
+	// Deprecated: Specify all crypto details in the `services.kas.keyring` struct
+	security.CryptoConfig2024 `mapstructure:"cryptoProvider" json:"cryptoProvider"`
+	TLS                       TLSConfig                                `mapstructure:"tls" json:"tls"`
+	CORS                      CORSConfig                               `mapstructure:"cors" json:"cors"`
+	WellKnownConfigRegister   func(namespace string, config any) error `mapstructure:"-" json:"-"`
 	// Port to listen on
 	Port int    `mapstructure:"port" json:"port" default:"8080"`
 	Host string `mapstructure:"host,omitempty" json:"host"`
@@ -108,7 +111,8 @@ type ConnectRPC struct {
 }
 
 type OpenTDFServer struct {
-	AuthN               *auth.Authentication
+	AuthN *auth.Authentication
+	*Config
 	GRPCGatewayMux      *runtime.ServeMux
 	HTTPServer          *http.Server
 	ConnectRPCInProcess *inProcessServer
@@ -196,6 +200,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 
 	o := OpenTDFServer{
 		AuthN:          authN,
+		Config:         &config,
 		GRPCGatewayMux: grpcGatewayMux,
 		HTTPServer:     httpServer,
 		ConnectRPC:     connectRPC,

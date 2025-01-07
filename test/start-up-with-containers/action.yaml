@@ -79,7 +79,7 @@ runs:
 
         printf 'adding the following keys:\n  [%s]\n[%s]  \n' "${keys}" "${keyring}"
 
-        yq_command=$(printf '(.services.kas.keyring = . + %s) | (.server.cryptoProvider.standard.keys = . + %s)' "${keyring}" "${keys}")
+        yq_command="$(printf '(.services.kas.keyring = . + %s) | (.server.cryptoProvider.standard.keys = . + %s)' "${keyring}" "${keys}")"
 
         <opentdf-dev.yaml >opentdf.yaml yq e "${yq_command}"
 

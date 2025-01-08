@@ -204,7 +204,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 	var attrValsReqs [][]*policy.Value
 	var fqnsReqs [][]string
 	allPertinentFQNS := &authorization.ResourceAttribute{AttributeValueFqns: make([]string, 0)}
-	response := make([]*authorization.DecisionResponse, len(dr.GetResourceAttributes()))
+	response := make([]*authorization.DecisionResponse, len(dr.GetResourceAttributes())*len(dr.GetEntityChains()))
 	for raIdx, ra := range dr.GetResourceAttributes() {
 		as.logger.DebugContext(ctx, "getting resource attributes", slog.String("FQNs", strings.Join(ra.GetAttributeValueFqns(), ", ")))
 

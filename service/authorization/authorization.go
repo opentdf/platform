@@ -318,12 +318,13 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 
 			// handle empty entity / attr list
 			decision := authorization.DecisionResponse_DECISION_DENY
-			if len(entities) == 0 {
+			switch {
+			case len(entities) == 0:
 				as.logger.WarnContext(ctx, "empty entity list")
-			} else if len(ra.GetAttributeValueFqns()) == 0 {
+			case len(ra.GetAttributeValueFqns()) == 0:
 				as.logger.WarnContext(ctx, "empty entity data attribute list")
 				decision = authorization.DecisionResponse_DECISION_PERMIT
-			} else {
+			default:
 				ecEntitlements := ecChainEntitlementsResponse[ecIdx]
 				for entIdx, e := range ecEntitlements.Msg.GetEntitlements() {
 					entityID := e.GetEntityId()

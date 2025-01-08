@@ -335,10 +335,17 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 
 	version, err := semver.NewVersion(sdkVersion)
 	if err != nil {
-		return fmt.Errorf("ReadVersion failed:%w", err)
+		return fmt.Errorf("failed to parse semantic version %q: %w", sdkVersion, err)
 	}
 
-	manifest.TDFVersion = version.String()
+	// Only attempt to set metadata if it's provided
+	if metadata := strings.TrimSpace(tdfConfig.buildMetadata); metadata != "" {
+		versionWithMetadata, err := version.SetMetadata(metadata)
+		if err != nil {
+			return fmt.Errorf("failed to set build metadata %q: %w", metadata, err)
+		}
+		manifest.TDFVersion = versionWithMetadata.String()
+	}
 
 	if len(tdfConfig.splitPlan) == 0 && len(tdfConfig.kasInfoList) == 0 {
 		return fmt.Errorf("%w: no key access template specified or inferred", errInvalidKasInfo)

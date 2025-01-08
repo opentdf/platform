@@ -62,7 +62,7 @@ type Manifest struct {
 	EncryptionInformation `json:"encryptionInformation"`
 	Payload               `json:"payload"`
 	Assertions            []Assertion `json:"assertions,omitempty"`
-	TDFVersion            string      `json:"tdf_spec_version,omitempty"`
+	TDFVersion            string      `json:"schemaVersion,omitempty"`
 }
 
 type attributeObject struct {

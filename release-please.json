@@ -24,7 +24,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "sdk/version.go"
+          "path": "version.go"
         }
       ]
     },
@@ -33,7 +33,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "service/cmd/version.go"
+          "path": "cmd/version.go"
         }
       ]
     }

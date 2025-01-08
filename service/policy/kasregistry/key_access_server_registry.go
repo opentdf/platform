@@ -233,7 +233,7 @@ func (s KeyAccessServerRegistry) UpdateKey(ctx context.Context, req *connect.Req
 
 func (s KeyAccessServerRegistry) DeleteKey(ctx context.Context, req *connect.Request[kasr.DeleteKeyRequest]) (*connect.Response[kasr.DeleteKeyResponse], error) {
 	auditParams := audit.PolicyEventParams{
-		ActionType: audit.ActionTypeSoftDelete,
+		ActionType: audit.ActionTypeUpdate,
 		ObjectType: audit.ObjectTypePublicKey,
 		ObjectID:   req.Msg.GetId(),
 	}

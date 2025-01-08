@@ -53,7 +53,6 @@ const (
 	ActionTypeUpdate
 	ActionTypeDelete
 	ActionTypeRewrap
-	ActionTypeSoftDelete
 )
 
 func (at ActionType) String() string {

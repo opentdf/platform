@@ -1786,6 +1786,29 @@ func Test_GetDecisions_Empty_EC_RA(t *testing.T) {
 			numDecisions:   1,
 			decisionResult: authorization.DecisionResponse_DECISION_PERMIT,
 		},
+		{
+			name: "Entity Chain with empty entity list and Resource attribute with empty fqn list",
+			req: connect.Request[authorization.GetDecisionsRequest]{
+				Msg: &authorization.GetDecisionsRequest{
+					DecisionRequests: []*authorization.DecisionRequest{
+						{
+							Actions: []*policy.Action{},
+							EntityChains: []*authorization.EntityChain{
+								{
+									Id:       "ec1",
+									Entities: []*authorization.Entity{},
+								},
+							},
+							ResourceAttributes: []*authorization.ResourceAttribute{
+								{AttributeValueFqns: []string{}},
+							},
+						},
+					},
+				},
+			},
+			numDecisions:   1,
+			decisionResult: authorization.DecisionResponse_DECISION_DENY,
+		},
 	}
 
 	///////////// Run tests /////////////////////

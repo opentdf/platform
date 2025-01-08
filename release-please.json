@@ -20,10 +20,22 @@
       "component": "protocol/go"
     },
     "sdk": {
-      "component": "sdk"
+      "component": "sdk",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "sdk/version.go"
+        }
+      ]
     },
     "service": {
-      "component": "service"
+      "component": "service",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "service/cmd/version.go"
+        }
+      ]
     }
   }
 }

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.25](https://github.com/opentdf/platform/compare/sdk/v0.3.24...sdk/v0.3.25) (2025-01-08)
+
+
+### Bug Fixes
+
+* **sdk:** Version config fix ([#1847](https://github.com/opentdf/platform/issues/1847)) ([be5d817](https://github.com/opentdf/platform/commit/be5d81777c08264d7fec80064b86a02bc4532229))
+
 ## [0.3.24](https://github.com/opentdf/platform/compare/sdk/v0.3.23...sdk/v0.3.24) (2025-01-08)
 
 

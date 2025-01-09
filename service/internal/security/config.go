@@ -73,6 +73,11 @@ type StandardKeyInfo struct {
 
 // Deprecated
 type CryptoConfig2024 struct {
+	Type     string `mapstructure:"type"`
+	Standard `mapstructure:"standard"`
+}
+
+type Standard struct {
 	Keys []KeyPairInfo `mapstructure:"keys" json:"keys"`
 	// Deprecated
 	RSAKeys map[string]StandardKeyInfo `mapstructure:"rsa,omitempty" json:"rsa,omitempty"`

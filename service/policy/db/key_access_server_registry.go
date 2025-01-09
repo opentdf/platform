@@ -263,6 +263,8 @@ func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasreg
 }
 
 func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyRequest) (*kasregistry.CreateKeyResponse, error) {
+	var ck *kasregistry.GetKeyResponse
+
 	kasID := r.GetKasId()
 	key := r.GetKey()
 
@@ -271,21 +273,28 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		return nil, err
 	}
 
-	id, err := c.Queries.createPublicKey(ctx, createPublicKeyParams{
-		KeyAccessServerID: kasID,
-		KeyID:             key.GetKid(),
-		Alg:               key.GetAlg().String(),
-		PublicKey:         key.GetPem(),
-		Metadata:          metadataJSON,
+	err = c.RunInTx(ctx, func(txClient *PolicyDBClient) error {
+		id, err := c.Queries.createPublicKey(ctx, createPublicKeyParams{
+			KeyAccessServerID: kasID,
+			KeyID:             key.GetKid(),
+			Alg:               key.GetAlg().String(),
+			PublicKey:         key.GetPem(),
+			Metadata:          metadataJSON,
+		})
+		if err != nil {
+			return db.WrapIfKnownInvalidQueryErr(err)
+		}
+
+		// Get freshly created key
+		ck, err = c.GetPublicKey(ctx, &kasregistry.GetKeyRequest{Id: id})
+		if err != nil {
+			return db.WrapIfKnownInvalidQueryErr(err)
+		}
+
+		return nil
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	// Get freshly created key
-	ck, err := c.GetPublicKey(ctx, &kasregistry.GetKeyRequest{Id: id})
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
 
 	return &kasregistry.CreateKeyResponse{

@@ -49,10 +49,10 @@ type Config struct {
 	Auth auth.Config `mapstructure:"auth" json:"auth"`
 	GRPC GRPCConfig  `mapstructure:"grpc" json:"grpc"`
 	// Deprecated: Specify all crypto details in the `services.kas.keyring` struct
-	security.CryptoConfig2024 `mapstructure:"cryptoProvider" json:"cryptoProvider"`
-	TLS                       TLSConfig                                `mapstructure:"tls" json:"tls"`
-	CORS                      CORSConfig                               `mapstructure:"cors" json:"cors"`
-	WellKnownConfigRegister   func(namespace string, config any) error `mapstructure:"-" json:"-"`
+	*security.CryptoConfig2024 `mapstructure:"cryptoProvider" json:"cryptoProvider"`
+	TLS                        TLSConfig                                `mapstructure:"tls" json:"tls"`
+	CORS                       CORSConfig                               `mapstructure:"cors" json:"cors"`
+	WellKnownConfigRegister    func(namespace string, config any) error `mapstructure:"-" json:"-"`
 	// Port to listen on
 	Port int    `mapstructure:"port" json:"port" default:"8080"`
 	Host string `mapstructure:"host,omitempty" json:"host"`

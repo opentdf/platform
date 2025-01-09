@@ -31,19 +31,20 @@ func (k *KASConfigDupe) locate(kid string) (int, bool) {
 // If one of the entries does not have `Legacy` set, set the value of `Active`.
 func (k *KASConfigDupe) consolidate() {
 	seen := make(map[string]int)
-	for i, key := range k.Keyring {
+	consolidated := make([]CurrentKeyFor, 0, len(k.Keyring)/2) //nolint:mnd // There are at most two of each of the new kind of keys.
+	for _, key := range k.Keyring {
 		if j, ok := seen[key.KID]; ok {
 			if key.Legacy {
-				k.Keyring[j].Legacy = true
+				consolidated[j].Legacy = true
 			} else {
-				k.Keyring[j].Active = key.Active
+				consolidated[j].Active = key.Active
 			}
-			k.Keyring = append(k.Keyring[:i], k.Keyring[i+1:]...)
-			i--
 		} else {
-			seen[key.KID] = i
+			seen[key.KID] = len(consolidated)
+			consolidated = append(consolidated, key)
 		}
 	}
+	k.Keyring = consolidated
 }
 
 // Deprecated
@@ -93,6 +94,9 @@ func (c CryptoConfig2024) MarshalTo(within map[string]any) error {
 	if err := mapstructure.Decode(within, &kasCfg); err != nil {
 		return fmt.Errorf("invalid kas cfg [%v] %w", within, err)
 	}
+	if len(kasCfg.Keyring) > 0 && (kasCfg.ECCertID != "" || kasCfg.RSACertID != "") {
+		return fmt.Errorf("invalid kas cfg [%v]", within)
+	}
 	kasCfg.consolidate()
 	for kid, stdKeyInfo := range c.RSAKeys {
 		if i, ok := kasCfg.locate(kid); ok {
@@ -105,7 +109,7 @@ func (c CryptoConfig2024) MarshalTo(within map[string]any) error {
 			KID:         kid,
 			Private:     stdKeyInfo.PrivateKeyPath,
 			Certificate: stdKeyInfo.PublicKeyPath,
-			Active:      true,
+			Active:      kasCfg.RSACertID == "" || kasCfg.RSACertID == kid,
 			Legacy:      true,
 		}
 		kasCfg.Keyring = append(kasCfg.Keyring, k)
@@ -121,7 +125,7 @@ func (c CryptoConfig2024) MarshalTo(within map[string]any) error {
 			KID:         kid,
 			Private:     stdKeyInfo.PrivateKeyPath,
 			Certificate: stdKeyInfo.PublicKeyPath,
-			Active:      true,
+			Active:      kasCfg.ECCertID == "" || kasCfg.ECCertID == kid,
 			Legacy:      true,
 		}
 		kasCfg.Keyring = append(kasCfg.Keyring, k)
@@ -138,6 +142,13 @@ func (c CryptoConfig2024) MarshalTo(within map[string]any) error {
 			Private:     k.Private,
 			Certificate: k.Certificate,
 		})
+	}
+	kasCfg.ECCertID = ""
+	kasCfg.RSACertID = ""
+	delete(within, "rsacertid")
+	delete(within, "eccertid")
+	if err := mapstructure.Decode(kasCfg, &within); err != nil {
+		return fmt.Errorf("failed serializing kas cfg [%v] %w", kasCfg, err)
 	}
 	return nil
 }

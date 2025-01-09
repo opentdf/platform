@@ -29,7 +29,8 @@ const (
 	KeyAccessServerRegistryService_GetKey_FullMethodName                    = "/policy.kasregistry.KeyAccessServerRegistryService/GetKey"
 	KeyAccessServerRegistryService_ListKeys_FullMethodName                  = "/policy.kasregistry.KeyAccessServerRegistryService/ListKeys"
 	KeyAccessServerRegistryService_UpdateKey_FullMethodName                 = "/policy.kasregistry.KeyAccessServerRegistryService/UpdateKey"
-	KeyAccessServerRegistryService_DeleteKey_FullMethodName                 = "/policy.kasregistry.KeyAccessServerRegistryService/DeleteKey"
+	KeyAccessServerRegistryService_DeactivateKey_FullMethodName             = "/policy.kasregistry.KeyAccessServerRegistryService/DeactivateKey"
+	KeyAccessServerRegistryService_ActivateKey_FullMethodName               = "/policy.kasregistry.KeyAccessServerRegistryService/ActivateKey"
 )
 
 // KeyAccessServerRegistryServiceClient is the client API for KeyAccessServerRegistryService service.
@@ -46,8 +47,8 @@ type KeyAccessServerRegistryServiceClient interface {
 	GetKey(ctx context.Context, in *GetKeyRequest, opts ...grpc.CallOption) (*GetKeyResponse, error)
 	ListKeys(ctx context.Context, in *ListKeysRequest, opts ...grpc.CallOption) (*ListKeysResponse, error)
 	UpdateKey(ctx context.Context, in *UpdateKeyRequest, opts ...grpc.CallOption) (*UpdateKeyResponse, error)
-	// DeleteKey is a soft delete, marking the key as inactive.
-	DeleteKey(ctx context.Context, in *DeleteKeyRequest, opts ...grpc.CallOption) (*DeleteKeyResponse, error)
+	DeactivateKey(ctx context.Context, in *DeactivateKeyRequest, opts ...grpc.CallOption) (*DeactivateKeyResponse, error)
+	ActivateKey(ctx context.Context, in *ActivateKeyRequest, opts ...grpc.CallOption) (*ActivateKeyResponse, error)
 }
 
 type keyAccessServerRegistryServiceClient struct {
@@ -148,9 +149,18 @@ func (c *keyAccessServerRegistryServiceClient) UpdateKey(ctx context.Context, in
 	return out, nil
 }
 
-func (c *keyAccessServerRegistryServiceClient) DeleteKey(ctx context.Context, in *DeleteKeyRequest, opts ...grpc.CallOption) (*DeleteKeyResponse, error) {
-	out := new(DeleteKeyResponse)
-	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_DeleteKey_FullMethodName, in, out, opts...)
+func (c *keyAccessServerRegistryServiceClient) DeactivateKey(ctx context.Context, in *DeactivateKeyRequest, opts ...grpc.CallOption) (*DeactivateKeyResponse, error) {
+	out := new(DeactivateKeyResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_DeactivateKey_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *keyAccessServerRegistryServiceClient) ActivateKey(ctx context.Context, in *ActivateKeyRequest, opts ...grpc.CallOption) (*ActivateKeyResponse, error) {
+	out := new(ActivateKeyResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_ActivateKey_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -171,8 +181,8 @@ type KeyAccessServerRegistryServiceServer interface {
 	GetKey(context.Context, *GetKeyRequest) (*GetKeyResponse, error)
 	ListKeys(context.Context, *ListKeysRequest) (*ListKeysResponse, error)
 	UpdateKey(context.Context, *UpdateKeyRequest) (*UpdateKeyResponse, error)
-	// DeleteKey is a soft delete, marking the key as inactive.
-	DeleteKey(context.Context, *DeleteKeyRequest) (*DeleteKeyResponse, error)
+	DeactivateKey(context.Context, *DeactivateKeyRequest) (*DeactivateKeyResponse, error)
+	ActivateKey(context.Context, *ActivateKeyRequest) (*ActivateKeyResponse, error)
 	mustEmbedUnimplementedKeyAccessServerRegistryServiceServer()
 }
 
@@ -210,8 +220,11 @@ func (UnimplementedKeyAccessServerRegistryServiceServer) ListKeys(context.Contex
 func (UnimplementedKeyAccessServerRegistryServiceServer) UpdateKey(context.Context, *UpdateKeyRequest) (*UpdateKeyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateKey not implemented")
 }
-func (UnimplementedKeyAccessServerRegistryServiceServer) DeleteKey(context.Context, *DeleteKeyRequest) (*DeleteKeyResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteKey not implemented")
+func (UnimplementedKeyAccessServerRegistryServiceServer) DeactivateKey(context.Context, *DeactivateKeyRequest) (*DeactivateKeyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeactivateKey not implemented")
+}
+func (UnimplementedKeyAccessServerRegistryServiceServer) ActivateKey(context.Context, *ActivateKeyRequest) (*ActivateKeyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ActivateKey not implemented")
 }
 func (UnimplementedKeyAccessServerRegistryServiceServer) mustEmbedUnimplementedKeyAccessServerRegistryServiceServer() {
 }
@@ -407,20 +420,38 @@ func _KeyAccessServerRegistryService_UpdateKey_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyAccessServerRegistryService_DeleteKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteKeyRequest)
+func _KeyAccessServerRegistryService_DeactivateKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeactivateKeyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyAccessServerRegistryServiceServer).DeleteKey(ctx, in)
+		return srv.(KeyAccessServerRegistryServiceServer).DeactivateKey(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: KeyAccessServerRegistryService_DeleteKey_FullMethodName,
+		FullMethod: KeyAccessServerRegistryService_DeactivateKey_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyAccessServerRegistryServiceServer).DeleteKey(ctx, req.(*DeleteKeyRequest))
+		return srv.(KeyAccessServerRegistryServiceServer).DeactivateKey(ctx, req.(*DeactivateKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KeyAccessServerRegistryService_ActivateKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ActivateKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyAccessServerRegistryServiceServer).ActivateKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KeyAccessServerRegistryService_ActivateKey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyAccessServerRegistryServiceServer).ActivateKey(ctx, req.(*ActivateKeyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -473,8 +504,12 @@ var KeyAccessServerRegistryService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _KeyAccessServerRegistryService_UpdateKey_Handler,
 		},
 		{
-			MethodName: "DeleteKey",
-			Handler:    _KeyAccessServerRegistryService_DeleteKey_Handler,
+			MethodName: "DeactivateKey",
+			Handler:    _KeyAccessServerRegistryService_DeactivateKey_Handler,
+		},
+		{
+			MethodName: "ActivateKey",
+			Handler:    _KeyAccessServerRegistryService_ActivateKey_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

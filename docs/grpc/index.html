@@ -728,6 +728,14 @@
             <ul>
               
                 <li>
+                  <a href="#policy.kasregistry.ActivateKeyRequest"><span class="badge">M</span>ActivateKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.ActivateKeyResponse"><span class="badge">M</span>ActivateKeyResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.kasregistry.CreateKeyAccessServerRequest"><span class="badge">M</span>CreateKeyAccessServerRequest</a>
                 </li>
               
@@ -744,19 +752,19 @@
                 </li>
               
                 <li>
+                  <a href="#policy.kasregistry.DeactivateKeyRequest"><span class="badge">M</span>DeactivateKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.DeactivateKeyResponse"><span class="badge">M</span>DeactivateKeyResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.kasregistry.DeleteKeyAccessServerRequest"><span class="badge">M</span>DeleteKeyAccessServerRequest</a>
                 </li>
               
                 <li>
                   <a href="#policy.kasregistry.DeleteKeyAccessServerResponse"><span class="badge">M</span>DeleteKeyAccessServerResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.kasregistry.DeleteKeyRequest"><span class="badge">M</span>DeleteKeyRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.kasregistry.DeleteKeyResponse"><span class="badge">M</span>DeleteKeyResponse</a>
                 </li>
               
                 <li>
@@ -5656,6 +5664,54 @@ Attribute &lt;&gt; Key Access Server RPCs
       <p></p>
 
       
+        <h3 id="policy.kasregistry.ActivateKeyRequest">ActivateKeyRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.ActivateKeyResponse">ActivateKeyResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.Key">policy.Key</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.kasregistry.CreateKeyAccessServerRequest">CreateKeyAccessServerRequest</h3>
         <p></p>
 
@@ -5787,6 +5843,54 @@ Attribute &lt;&gt; Key Access Server RPCs
 
         
       
+        <h3 id="policy.kasregistry.DeactivateKeyRequest">DeactivateKeyRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.DeactivateKeyResponse">DeactivateKeyResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.Key">policy.Key</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.kasregistry.DeleteKeyAccessServerRequest">DeleteKeyAccessServerRequest</h3>
         <p></p>
 
@@ -5824,54 +5928,6 @@ Attribute &lt;&gt; Key Access Server RPCs
                 <tr>
                   <td>key_access_server</td>
                   <td><a href="#policy.KeyAccessServer">policy.KeyAccessServer</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.kasregistry.DeleteKeyRequest">DeleteKeyRequest</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.kasregistry.DeleteKeyResponse">DeleteKeyResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>key</td>
-                  <td><a href="#policy.Key">policy.Key</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -6011,7 +6067,7 @@ Attribute &lt;&gt; Key Access Server RPCs
         
       
         <h3 id="policy.kasregistry.KeyAccessServerGrants">KeyAccessServerGrants</h3>
-        <p></p>
+        <p>Deprecated</p>
 
         
           <table class="field-table">
@@ -6373,13 +6429,6 @@ Common metadata </p></td>
                 </tr>
               
                 <tr>
-                  <td>active</td>
-                  <td><a href="#bool">bool</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
@@ -6510,10 +6559,17 @@ Common metadata </p></td>
               </tr>
             
               <tr>
-                <td>DeleteKey</td>
-                <td><a href="#policy.kasregistry.DeleteKeyRequest">DeleteKeyRequest</a></td>
-                <td><a href="#policy.kasregistry.DeleteKeyResponse">DeleteKeyResponse</a></td>
-                <td><p>DeleteKey is a soft delete, marking the key as inactive.</p></td>
+                <td>DeactivateKey</td>
+                <td><a href="#policy.kasregistry.DeactivateKeyRequest">DeactivateKeyRequest</a></td>
+                <td><a href="#policy.kasregistry.DeactivateKeyResponse">DeactivateKeyResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ActivateKey</td>
+                <td><a href="#policy.kasregistry.ActivateKeyRequest">ActivateKeyRequest</a></td>
+                <td><a href="#policy.kasregistry.ActivateKeyResponse">ActivateKeyResponse</a></td>
+                <td><p></p></td>
               </tr>
             
           </tbody>

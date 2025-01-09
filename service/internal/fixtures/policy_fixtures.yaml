@@ -551,6 +551,26 @@ public_keys:
           CCqGSM49BAMCA0gAMEUCIQCAB2jiYe8AY6MJ4ADPSQGE47+a3kWFLcGsJhoZbxtg
           UwIgcfIIuPfh4fbcv8cTi2BlI3k7sWPuAmIFVriI2d3Ux5Q=
           -----END CERTIFICATE-----
+    key_4:
+      id: 6abdb73e-89a2-4628-8c95-f40994833c66
+      kas_id: e36640a6-61c5-4d4c-a45b-0e0a26d1c45f
+      is_active: false
+      key:
+        alg: KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
+        kid: r1
+        pem: |-
+          -----BEGIN CERTIFICATE-----
+          MIIBzzCCAXWgAwIBAgIUORuV3avU9AE6zsB6ZxyllHpi5d4wCgYIKoZIzj0EAwIw
+          PTELMAkGA1UEBhMCdXMxCzAJBgNVBAgMAmN0MSEwHwYDVQQKDBhJbnRlcm5ldCBX
+          aWRnaXRzIFB0eSBMdGQwHhcNMjQwMTAyMTY1NjU2WhcNMjUwMTAxMTY1NjU2WjA9
+          MQswCQYDVQQGEwJ1czELMAkGA1UECAwCY3QxITAfBgNVBAoMGEludGVybmV0IFdp
+          ZGdpdHMgUHR5IEx0ZDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABLV9fCJHD/kc
+          rXrUHQwAZx0Mc0dPvLjsJ/ojEtMMn0ROdeOx8ygxgcQTFFAxyCtBuadhAdm/iVHt
+          8g2EMz5dO3WjUzBRMB0GA1UdDgQWBBQYNkuk+JIuRWyn+bE8sBhRw27OVTAfBgNV
+          HSMEGDAWgBQYNkuk+JIuRWyn+bE8sBhRw27OVTAPBgNVHRMBAf8EBTADAQH/MAoG
+          CCqGSM49BAMCA0gAMEUCIQCAB2jiYe8AY6MJ4ADPSQGE47+a3kWFLcGsJhoZbxtg
+          UwIgcfIIuPfh4fbcv8cTi2BlI3k7sWPuAmIFVriI2d3Ux5Q=
+          -----END CERTIFICATE-----
 
 value_key_map:
   metadata:

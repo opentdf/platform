@@ -395,7 +395,6 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 
 func (c PolicyDBClient) UpdatePublicKey(ctx context.Context, r *kasregistry.UpdateKeyRequest) (*kasregistry.UpdateKeyResponse, error) {
 	keyID := r.GetId()
-	isActive := r.GetActive()
 
 	mdJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		k, err := c.GetPublicKey(ctx, &kasregistry.GetKeyRequest{Id: keyID})
@@ -410,7 +409,6 @@ func (c PolicyDBClient) UpdatePublicKey(ctx context.Context, r *kasregistry.Upda
 
 	pk, err := c.Queries.updatePublicKey(ctx, updatePublicKeyParams{
 		ID:       keyID,
-		IsActive: pgtypeBool(isActive),
 		Metadata: mdJSON,
 	})
 	if err != nil {
@@ -435,7 +433,7 @@ func (c PolicyDBClient) UpdatePublicKey(ctx context.Context, r *kasregistry.Upda
 	}, nil
 }
 
-func (c PolicyDBClient) SoftDeleteKey(ctx context.Context, r *kasregistry.DeleteKeyRequest) (*kasregistry.DeleteKeyResponse, error) {
+func (c PolicyDBClient) DeactivateKey(ctx context.Context, r *kasregistry.DeactivateKeyRequest) (*kasregistry.DeactivateKeyResponse, error) {
 	keyID := r.GetId()
 	count, err := c.Queries.DeactivatePublicKey(ctx, keyID)
 	if err != nil {
@@ -444,7 +442,23 @@ func (c PolicyDBClient) SoftDeleteKey(ctx context.Context, r *kasregistry.Delete
 	if count == 0 {
 		return nil, db.ErrNotFound
 	}
-	return &kasregistry.DeleteKeyResponse{
+	return &kasregistry.DeactivateKeyResponse{
+		Key: &policy.Key{
+			Id: keyID,
+		},
+	}, nil
+}
+
+func (c PolicyDBClient) ActivateKey(ctx context.Context, r *kasregistry.ActivateKeyRequest) (*kasregistry.ActivateKeyResponse, error) {
+	keyID := r.GetId()
+	count, err := c.Queries.ActivatePublicKey(ctx, keyID)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
+	return &kasregistry.ActivateKeyResponse{
 		Key: &policy.Key{
 			Id: keyID,
 		},

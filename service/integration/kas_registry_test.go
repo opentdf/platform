@@ -1087,19 +1087,25 @@ func (s *KasRegistrySuite) Test_Create_Public_Key_WithInvalidKasID_Fails() {
 
 func (s *KasRegistrySuite) Test_Update_Public_Key() {
 	kID := publicKeyTestUUID
+	labels := map[string]string{
+		"update": "updated label",
+	}
 	resp, err := s.db.PolicyClient.UpdatePublicKey(s.ctx, &kasregistry.UpdateKeyRequest{
-		Id:     kID,
-		Active: false,
+		Id: kID,
+		Metadata: &common.MetadataMutable{
+			Labels: labels,
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
 	})
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.False(resp.GetKey().GetIsActive())
+	s.Equal(labels, resp.GetKey().GetMetadata().GetLabels())
 
 	// Get Key to validate update
 	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: kID})
 	s.Require().NoError(err)
 	s.NotNil(r)
-	s.False(r.GetKey().GetIsActive())
+	s.Equal(labels, r.GetKey().GetMetadata().GetLabels())
 }
 
 func (s *KasRegistrySuite) Test_Get_Public_Key() {
@@ -1157,20 +1163,41 @@ func (s *KasRegistrySuite) Test_List_Public_Keys_WithNonExistentKasID() {
 	s.Empty(r.GetKeys())
 }
 
-func (s *KasRegistrySuite) Test_SoftDelete_Public_Key() {
-	r, err := s.db.PolicyClient.SoftDeleteKey(s.ctx, &kasregistry.DeleteKeyRequest{Id: publicKeyTestUUID})
+func (s *KasRegistrySuite) Test_Deactivate_Public_Key() {
+	id := s.f.GetPublicKey("key_4").ID
+	r, err := s.db.PolicyClient.DeactivateKey(s.ctx, &kasregistry.DeactivateKeyRequest{Id: id})
 	s.Require().NoError(err)
 	s.NotNil(r)
-	s.Equal(publicKeyTestUUID, r.GetKey().GetId())
+	s.Equal(id, r.GetKey().GetId())
 
-	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: publicKeyTestUUID})
+	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: id})
 	s.Require().NoError(err)
 	s.NotNil(rr)
 	s.False(rr.GetKey().GetIsActive())
 }
 
-func (s *KasRegistrySuite) Test_SoftDelete_Public_Key_WithInvalidID_Fails() {
-	r, err := s.db.PolicyClient.SoftDeleteKey(s.ctx, &kasregistry.DeleteKeyRequest{Id: "invalid-id"})
+func (s *KasRegistrySuite) Test_Deactivate_Public_Key_WithInvalidID_Fails() {
+	r, err := s.db.PolicyClient.DeactivateKey(s.ctx, &kasregistry.DeactivateKeyRequest{Id: "invalid-id"})
+	s.Require().Error(err)
+	s.Nil(r)
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
+}
+
+func (s *KasRegistrySuite) Test_Activate_Public_Key() {
+	id := s.f.GetPublicKey("key_4").ID
+	r, err := s.db.PolicyClient.ActivateKey(s.ctx, &kasregistry.ActivateKeyRequest{Id: id})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.Equal(id, r.GetKey().GetId())
+
+	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: id})
+	s.Require().NoError(err)
+	s.NotNil(rr)
+	s.True(rr.GetKey().GetIsActive())
+}
+
+func (s *KasRegistrySuite) Test_Activate_Public_Key_WithInvalidID_Fails() {
+	r, err := s.db.PolicyClient.ActivateKey(s.ctx, &kasregistry.ActivateKeyRequest{Id: "invalid-id"})
 	s.Require().Error(err)
 	s.Nil(r)
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)

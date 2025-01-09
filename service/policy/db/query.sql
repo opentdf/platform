@@ -985,7 +985,6 @@ OFFSET @offset_;
 -- name: updatePublicKey :one
 UPDATE public_keys
 SET
-    is_active = COALESCE(sqlc.narg('is_active')::BOOLEAN, is_active), 
     metadata = COALESCE(sqlc.narg('metadata'), metadata)
 WHERE id = $1
 RETURNING *;
@@ -995,6 +994,9 @@ DELETE FROM public_keys WHERE id = $1;
 
 -- name: DeactivatePublicKey :execrows
 UPDATE public_keys SET is_active = FALSE WHERE id = $1;
+
+-- name: ActivatePublicKey :execrows
+UPDATE public_keys SET is_active = TRUE WHERE id = $1;
 
 -- name: AssignPublicKeyToNamespace :execrows
 INSERT INTO attribute_namespace_public_key_map (namespace_id, key_id) VALUES ($1, $2);

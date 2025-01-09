@@ -64,9 +64,12 @@ const (
 	// KeyAccessServerRegistryServiceUpdateKeyProcedure is the fully-qualified name of the
 	// KeyAccessServerRegistryService's UpdateKey RPC.
 	KeyAccessServerRegistryServiceUpdateKeyProcedure = "/policy.kasregistry.KeyAccessServerRegistryService/UpdateKey"
-	// KeyAccessServerRegistryServiceDeleteKeyProcedure is the fully-qualified name of the
-	// KeyAccessServerRegistryService's DeleteKey RPC.
-	KeyAccessServerRegistryServiceDeleteKeyProcedure = "/policy.kasregistry.KeyAccessServerRegistryService/DeleteKey"
+	// KeyAccessServerRegistryServiceDeactivateKeyProcedure is the fully-qualified name of the
+	// KeyAccessServerRegistryService's DeactivateKey RPC.
+	KeyAccessServerRegistryServiceDeactivateKeyProcedure = "/policy.kasregistry.KeyAccessServerRegistryService/DeactivateKey"
+	// KeyAccessServerRegistryServiceActivateKeyProcedure is the fully-qualified name of the
+	// KeyAccessServerRegistryService's ActivateKey RPC.
+	KeyAccessServerRegistryServiceActivateKeyProcedure = "/policy.kasregistry.KeyAccessServerRegistryService/ActivateKey"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -82,7 +85,8 @@ var (
 	keyAccessServerRegistryServiceGetKeyMethodDescriptor                    = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("GetKey")
 	keyAccessServerRegistryServiceListKeysMethodDescriptor                  = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("ListKeys")
 	keyAccessServerRegistryServiceUpdateKeyMethodDescriptor                 = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("UpdateKey")
-	keyAccessServerRegistryServiceDeleteKeyMethodDescriptor                 = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("DeleteKey")
+	keyAccessServerRegistryServiceDeactivateKeyMethodDescriptor             = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("DeactivateKey")
+	keyAccessServerRegistryServiceActivateKeyMethodDescriptor               = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("ActivateKey")
 )
 
 // KeyAccessServerRegistryServiceClient is a client for the
@@ -98,8 +102,8 @@ type KeyAccessServerRegistryServiceClient interface {
 	GetKey(context.Context, *connect.Request[kasregistry.GetKeyRequest]) (*connect.Response[kasregistry.GetKeyResponse], error)
 	ListKeys(context.Context, *connect.Request[kasregistry.ListKeysRequest]) (*connect.Response[kasregistry.ListKeysResponse], error)
 	UpdateKey(context.Context, *connect.Request[kasregistry.UpdateKeyRequest]) (*connect.Response[kasregistry.UpdateKeyResponse], error)
-	// DeleteKey is a soft delete, marking the key as inactive.
-	DeleteKey(context.Context, *connect.Request[kasregistry.DeleteKeyRequest]) (*connect.Response[kasregistry.DeleteKeyResponse], error)
+	DeactivateKey(context.Context, *connect.Request[kasregistry.DeactivateKeyRequest]) (*connect.Response[kasregistry.DeactivateKeyResponse], error)
+	ActivateKey(context.Context, *connect.Request[kasregistry.ActivateKeyRequest]) (*connect.Response[kasregistry.ActivateKeyResponse], error)
 }
 
 // NewKeyAccessServerRegistryServiceClient constructs a client for the
@@ -176,10 +180,16 @@ func NewKeyAccessServerRegistryServiceClient(httpClient connect.HTTPClient, base
 			connect.WithSchema(keyAccessServerRegistryServiceUpdateKeyMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		deleteKey: connect.NewClient[kasregistry.DeleteKeyRequest, kasregistry.DeleteKeyResponse](
+		deactivateKey: connect.NewClient[kasregistry.DeactivateKeyRequest, kasregistry.DeactivateKeyResponse](
 			httpClient,
-			baseURL+KeyAccessServerRegistryServiceDeleteKeyProcedure,
-			connect.WithSchema(keyAccessServerRegistryServiceDeleteKeyMethodDescriptor),
+			baseURL+KeyAccessServerRegistryServiceDeactivateKeyProcedure,
+			connect.WithSchema(keyAccessServerRegistryServiceDeactivateKeyMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		activateKey: connect.NewClient[kasregistry.ActivateKeyRequest, kasregistry.ActivateKeyResponse](
+			httpClient,
+			baseURL+KeyAccessServerRegistryServiceActivateKeyProcedure,
+			connect.WithSchema(keyAccessServerRegistryServiceActivateKeyMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -197,7 +207,8 @@ type keyAccessServerRegistryServiceClient struct {
 	getKey                    *connect.Client[kasregistry.GetKeyRequest, kasregistry.GetKeyResponse]
 	listKeys                  *connect.Client[kasregistry.ListKeysRequest, kasregistry.ListKeysResponse]
 	updateKey                 *connect.Client[kasregistry.UpdateKeyRequest, kasregistry.UpdateKeyResponse]
-	deleteKey                 *connect.Client[kasregistry.DeleteKeyRequest, kasregistry.DeleteKeyResponse]
+	deactivateKey             *connect.Client[kasregistry.DeactivateKeyRequest, kasregistry.DeactivateKeyResponse]
+	activateKey               *connect.Client[kasregistry.ActivateKeyRequest, kasregistry.ActivateKeyResponse]
 }
 
 // ListKeyAccessServers calls
@@ -255,9 +266,14 @@ func (c *keyAccessServerRegistryServiceClient) UpdateKey(ctx context.Context, re
 	return c.updateKey.CallUnary(ctx, req)
 }
 
-// DeleteKey calls policy.kasregistry.KeyAccessServerRegistryService.DeleteKey.
-func (c *keyAccessServerRegistryServiceClient) DeleteKey(ctx context.Context, req *connect.Request[kasregistry.DeleteKeyRequest]) (*connect.Response[kasregistry.DeleteKeyResponse], error) {
-	return c.deleteKey.CallUnary(ctx, req)
+// DeactivateKey calls policy.kasregistry.KeyAccessServerRegistryService.DeactivateKey.
+func (c *keyAccessServerRegistryServiceClient) DeactivateKey(ctx context.Context, req *connect.Request[kasregistry.DeactivateKeyRequest]) (*connect.Response[kasregistry.DeactivateKeyResponse], error) {
+	return c.deactivateKey.CallUnary(ctx, req)
+}
+
+// ActivateKey calls policy.kasregistry.KeyAccessServerRegistryService.ActivateKey.
+func (c *keyAccessServerRegistryServiceClient) ActivateKey(ctx context.Context, req *connect.Request[kasregistry.ActivateKeyRequest]) (*connect.Response[kasregistry.ActivateKeyResponse], error) {
+	return c.activateKey.CallUnary(ctx, req)
 }
 
 // KeyAccessServerRegistryServiceHandler is an implementation of the
@@ -273,8 +289,8 @@ type KeyAccessServerRegistryServiceHandler interface {
 	GetKey(context.Context, *connect.Request[kasregistry.GetKeyRequest]) (*connect.Response[kasregistry.GetKeyResponse], error)
 	ListKeys(context.Context, *connect.Request[kasregistry.ListKeysRequest]) (*connect.Response[kasregistry.ListKeysResponse], error)
 	UpdateKey(context.Context, *connect.Request[kasregistry.UpdateKeyRequest]) (*connect.Response[kasregistry.UpdateKeyResponse], error)
-	// DeleteKey is a soft delete, marking the key as inactive.
-	DeleteKey(context.Context, *connect.Request[kasregistry.DeleteKeyRequest]) (*connect.Response[kasregistry.DeleteKeyResponse], error)
+	DeactivateKey(context.Context, *connect.Request[kasregistry.DeactivateKeyRequest]) (*connect.Response[kasregistry.DeactivateKeyResponse], error)
+	ActivateKey(context.Context, *connect.Request[kasregistry.ActivateKeyRequest]) (*connect.Response[kasregistry.ActivateKeyResponse], error)
 }
 
 // NewKeyAccessServerRegistryServiceHandler builds an HTTP handler from the service implementation.
@@ -346,10 +362,16 @@ func NewKeyAccessServerRegistryServiceHandler(svc KeyAccessServerRegistryService
 		connect.WithSchema(keyAccessServerRegistryServiceUpdateKeyMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	keyAccessServerRegistryServiceDeleteKeyHandler := connect.NewUnaryHandler(
-		KeyAccessServerRegistryServiceDeleteKeyProcedure,
-		svc.DeleteKey,
-		connect.WithSchema(keyAccessServerRegistryServiceDeleteKeyMethodDescriptor),
+	keyAccessServerRegistryServiceDeactivateKeyHandler := connect.NewUnaryHandler(
+		KeyAccessServerRegistryServiceDeactivateKeyProcedure,
+		svc.DeactivateKey,
+		connect.WithSchema(keyAccessServerRegistryServiceDeactivateKeyMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	keyAccessServerRegistryServiceActivateKeyHandler := connect.NewUnaryHandler(
+		KeyAccessServerRegistryServiceActivateKeyProcedure,
+		svc.ActivateKey,
+		connect.WithSchema(keyAccessServerRegistryServiceActivateKeyMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/policy.kasregistry.KeyAccessServerRegistryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -374,8 +396,10 @@ func NewKeyAccessServerRegistryServiceHandler(svc KeyAccessServerRegistryService
 			keyAccessServerRegistryServiceListKeysHandler.ServeHTTP(w, r)
 		case KeyAccessServerRegistryServiceUpdateKeyProcedure:
 			keyAccessServerRegistryServiceUpdateKeyHandler.ServeHTTP(w, r)
-		case KeyAccessServerRegistryServiceDeleteKeyProcedure:
-			keyAccessServerRegistryServiceDeleteKeyHandler.ServeHTTP(w, r)
+		case KeyAccessServerRegistryServiceDeactivateKeyProcedure:
+			keyAccessServerRegistryServiceDeactivateKeyHandler.ServeHTTP(w, r)
+		case KeyAccessServerRegistryServiceActivateKeyProcedure:
+			keyAccessServerRegistryServiceActivateKeyHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -425,6 +449,10 @@ func (UnimplementedKeyAccessServerRegistryServiceHandler) UpdateKey(context.Cont
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.kasregistry.KeyAccessServerRegistryService.UpdateKey is not implemented"))
 }
 
-func (UnimplementedKeyAccessServerRegistryServiceHandler) DeleteKey(context.Context, *connect.Request[kasregistry.DeleteKeyRequest]) (*connect.Response[kasregistry.DeleteKeyResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.kasregistry.KeyAccessServerRegistryService.DeleteKey is not implemented"))
+func (UnimplementedKeyAccessServerRegistryServiceHandler) DeactivateKey(context.Context, *connect.Request[kasregistry.DeactivateKeyRequest]) (*connect.Response[kasregistry.DeactivateKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.kasregistry.KeyAccessServerRegistryService.DeactivateKey is not implemented"))
+}
+
+func (UnimplementedKeyAccessServerRegistryServiceHandler) ActivateKey(context.Context, *connect.Request[kasregistry.ActivateKeyRequest]) (*connect.Response[kasregistry.ActivateKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.kasregistry.KeyAccessServerRegistryService.ActivateKey is not implemented"))
 }

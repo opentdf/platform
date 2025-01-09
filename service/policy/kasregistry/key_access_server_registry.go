@@ -231,17 +231,33 @@ func (s KeyAccessServerRegistry) UpdateKey(ctx context.Context, req *connect.Req
 	return connect.NewResponse(resp), nil
 }
 
-func (s KeyAccessServerRegistry) DeleteKey(ctx context.Context, req *connect.Request[kasr.DeleteKeyRequest]) (*connect.Response[kasr.DeleteKeyResponse], error) {
+func (s KeyAccessServerRegistry) DeactivateKey(ctx context.Context, req *connect.Request[kasr.DeactivateKeyRequest]) (*connect.Response[kasr.DeactivateKeyResponse], error) {
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeUpdate,
 		ObjectType: audit.ObjectTypePublicKey,
 		ObjectID:   req.Msg.GetId(),
 	}
 
-	resp, err := s.dbClient.SoftDeleteKey(ctx, req.Msg)
+	resp, err := s.dbClient.DeactivateKey(ctx, req.Msg)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed)
+	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	return connect.NewResponse(resp), nil
+}
+
+func (s KeyAccessServerRegistry) ActivateKey(ctx context.Context, req *connect.Request[kasr.ActivateKeyRequest]) (*connect.Response[kasr.ActivateKeyResponse], error) {
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypePublicKey,
+		ObjectID:   req.Msg.GetId(),
+	}
+
+	resp, err := s.dbClient.ActivateKey(ctx, req.Msg)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed)
 	}
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	return connect.NewResponse(resp), nil

@@ -11,6 +11,21 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const activatePublicKey = `-- name: ActivatePublicKey :execrows
+UPDATE public_keys SET is_active = TRUE WHERE id = $1
+`
+
+// ActivatePublicKey
+//
+//	UPDATE public_keys SET is_active = TRUE WHERE id = $1
+func (q *Queries) ActivatePublicKey(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, activatePublicKey, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const assignKeyAccessServerToAttribute = `-- name: AssignKeyAccessServerToAttribute :execrows
 INSERT INTO attribute_definition_key_access_grants (attribute_definition_id, key_access_server_id)
 VALUES ($1, $2)
@@ -3522,28 +3537,25 @@ func (q *Queries) listPublicKeys(ctx context.Context, arg listPublicKeysParams) 
 const updatePublicKey = `-- name: updatePublicKey :one
 UPDATE public_keys
 SET
-    is_active = COALESCE($2::BOOLEAN, is_active), 
-    metadata = COALESCE($3, metadata)
+    metadata = COALESCE($2, metadata)
 WHERE id = $1
 RETURNING id, is_active, was_used, key_access_server_id, key_id, alg, public_key, metadata, created_at, updated_at
 `
 
 type updatePublicKeyParams struct {
-	ID       string      `json:"id"`
-	IsActive pgtype.Bool `json:"is_active"`
-	Metadata []byte      `json:"metadata"`
+	ID       string `json:"id"`
+	Metadata []byte `json:"metadata"`
 }
 
 // updatePublicKey
 //
 //	UPDATE public_keys
 //	SET
-//	    is_active = COALESCE($2::BOOLEAN, is_active),
-//	    metadata = COALESCE($3, metadata)
+//	    metadata = COALESCE($2, metadata)
 //	WHERE id = $1
 //	RETURNING id, is_active, was_used, key_access_server_id, key_id, alg, public_key, metadata, created_at, updated_at
 func (q *Queries) updatePublicKey(ctx context.Context, arg updatePublicKeyParams) (PublicKey, error) {
-	row := q.db.QueryRow(ctx, updatePublicKey, arg.ID, arg.IsActive, arg.Metadata)
+	row := q.db.QueryRow(ctx, updatePublicKey, arg.ID, arg.Metadata)
 	var i PublicKey
 	err := row.Scan(
 		&i.ID,

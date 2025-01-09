@@ -312,6 +312,14 @@
       "default": "METADATA_UPDATE_ENUM_UNSPECIFIED",
       "title": "- METADATA_UPDATE_ENUM_UNSPECIFIED: unspecified update type\n - METADATA_UPDATE_ENUM_EXTEND: only update the fields that are provided\n - METADATA_UPDATE_ENUM_REPLACE: replace the entire metadata with the provided metadata"
     },
+    "kasregistryActivateKeyResponse": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/policyKey"
+        }
+      }
+    },
     "kasregistryCreateKeyAccessServerRequest": {
       "type": "object",
       "properties": {
@@ -349,19 +357,19 @@
         }
       }
     },
+    "kasregistryDeactivateKeyResponse": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/policyKey"
+        }
+      }
+    },
     "kasregistryDeleteKeyAccessServerResponse": {
       "type": "object",
       "properties": {
         "keyAccessServer": {
           "$ref": "#/definitions/policyKeyAccessServer"
-        }
-      }
-    },
-    "kasregistryDeleteKeyResponse": {
-      "type": "object",
-      "properties": {
-        "key": {
-          "$ref": "#/definitions/policyKey"
         }
       }
     },
@@ -420,7 +428,8 @@
             "$ref": "#/definitions/kasregistryGrantedPolicyObject"
           }
         }
-      }
+      },
+      "title": "Deprecated"
     },
     "kasregistryListKeyAccessServerGrantsResponse": {
       "type": "object",

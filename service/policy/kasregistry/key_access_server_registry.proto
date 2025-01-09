@@ -109,6 +109,7 @@ message GrantedPolicyObject {
   string fqn = 2;
 }
 
+// Deprecated
 message KeyAccessServerGrants {
   KeyAccessServer key_access_server = 1;
   repeated GrantedPolicyObject namespace_grants = 2;
@@ -157,7 +158,6 @@ message ListKeysResponse {
 message UpdateKeyRequest {
   // Required
   string id = 1;
-  bool active = 2;
 
   // Optional
   // Common metadata
@@ -167,9 +167,23 @@ message UpdateKeyRequest {
 
 message UpdateKeyResponse { Key key = 1;}
 
-message DeleteKeyRequest { string id = 1; }
+message DeactivateKeyRequest { 
+  string id = 1 [ 
+    (buf.validate.field).string.uuid = true, 
+    (buf.validate.field).required = true
+  ];
+}
 
-message DeleteKeyResponse { Key key = 1; }
+message DeactivateKeyResponse { Key key = 1; }
+
+message ActivateKeyRequest { 
+  string id = 1 [ 
+    (buf.validate.field).string.uuid = true, 
+    (buf.validate.field).required = true
+  ];
+}
+
+message ActivateKeyResponse { Key key = 1; }
 
 // TODO: optional validation below should be through a custom validator, which
 // is too bleeding edge at present without full plugin support
@@ -285,6 +299,8 @@ service KeyAccessServerRegistryService {
 
   rpc UpdateKey(UpdateKeyRequest) returns (UpdateKeyResponse) {}
 
-  // DeleteKey is a soft delete, marking the key as inactive.
-  rpc DeleteKey(DeleteKeyRequest) returns (DeleteKeyResponse) {}
+  rpc DeactivateKey(DeactivateKeyRequest) returns (DeactivateKeyResponse) {}
+
+  rpc ActivateKey(ActivateKeyRequest) returns (ActivateKeyResponse) {}
+
 }

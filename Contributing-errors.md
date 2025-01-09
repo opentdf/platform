@@ -148,3 +148,5 @@ Similarly, any wrapped types should be exercised in unit tests.
 ## References
 
 - <https://ngrok.com/docs/errors/reference/>
+- <https://pkg.go.dev/errors>
+- <https://go.dev/doc/modules/version-numbers#major-version>

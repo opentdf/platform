@@ -295,7 +295,6 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	assert.NotNil(t, resp)
 
 	// one entitlement, one attribute value throughout
-	slog.Debug(resp.Msg.String())
 	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
 	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.Msg.GetDecisionResponses()[0].GetDecision())
 
@@ -560,7 +559,6 @@ func Test_GetDecisionsAllOfWithEnvironmental_Pass(t *testing.T) {
 	assert.NotNil(t, resp)
 
 	// one entitlement, one attribute value throughout
-	slog.Debug(resp.Msg.String())
 	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
 	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.Msg.GetDecisionResponses()[0].GetDecision())
 }
@@ -657,7 +655,6 @@ func Test_GetDecisionsAllOfWithEnvironmental_Fail(t *testing.T) {
 	assert.NotNil(t, resp)
 
 	// one entitlement, one attribute value throughout
-	slog.Debug(resp.Msg.String())
 	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
 	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.Msg.GetDecisionResponses()[0].GetDecision())
 }
@@ -1243,7 +1240,6 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
 
-	slog.Debug(resp.Msg.String())
 	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
 	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.Msg.GetDecisionResponses()[0].GetDecision())
 
@@ -1280,7 +1276,6 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
 
-	slog.Debug(resp.Msg.String())
 	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
 	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.Msg.GetDecisionResponses()[0].GetDecision())
 
@@ -1317,7 +1312,6 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
 
-	slog.Debug(resp.Msg.String())
 	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
 	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.Msg.GetDecisionResponses()[0].GetDecision())
 }
@@ -1631,5 +1625,202 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 
 	for i := 0; i < len(resp.Msg.GetDecisionResponses()); i++ {
 		assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.Msg.GetDecisionResponses()[i].GetDecision())
+	}
+}
+
+func Test_GetDecisions_Empty_EC_RA(t *testing.T) {
+	////////////////////// SETUP //////////////////////
+	logger := logger.CreateTestLogger()
+
+	listAttributeResp = attr.ListAttributesResponse{}
+	errGetAttributesByValueFqns = nil
+
+	attrDef := policy.Attribute{
+		Name: mockAttrName,
+		Namespace: &policy.Namespace{
+			Name: mockNamespace,
+		},
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values: []*policy.Value{
+			{
+				Value: mockAttrValue1,
+			},
+		},
+	}
+	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{FqnAttributeValues: map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+		"https://www.example.org/attr/foo/value/value1": {
+			Attribute: &attrDef,
+			Value: &policy.Value{
+				Fqn: mockFqn1,
+			},
+		},
+	}}
+	userRepresentation := map[string]interface{}{
+		"A": "B",
+		"C": "D",
+	}
+	userStruct, _ := structpb.NewStruct(userRepresentation)
+	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
+		EntityRepresentations: []*entityresolution.EntityRepresentation{
+			{
+				OriginalId: "e1",
+				AdditionalProps: []*structpb.Struct{
+					userStruct,
+				},
+			},
+		},
+	}
+
+	ctxb := context.Background()
+
+	testrego := rego.New(
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = {"e1":[]} { true }`,
+		))
+
+	// Run evaluation.
+	prepared, err := testrego.PrepareForEval(ctxb)
+	require.NoError(t, err)
+
+	as := AuthorizationService{
+		logger: logger, sdk: &otdf.SDK{
+			SubjectMapping: &mySubjectMappingClient{},
+			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		},
+		eval: prepared,
+	}
+
+	///////////// Test Cases /////////////////////
+	tests := []struct {
+		name           string
+		req            connect.Request[authorization.GetDecisionsRequest]
+		numDecisions   int
+		decisionResult authorization.DecisionResponse_Decision
+	}{
+		{
+			name: "Empty Resource attributes",
+			req: connect.Request[authorization.GetDecisionsRequest]{
+				Msg: &authorization.GetDecisionsRequest{
+					DecisionRequests: []*authorization.DecisionRequest{
+						{
+							Actions: []*policy.Action{},
+							EntityChains: []*authorization.EntityChain{
+								{
+									Id: "ec1",
+									Entities: []*authorization.Entity{
+										{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+									},
+								},
+							},
+							ResourceAttributes: []*authorization.ResourceAttribute{},
+						},
+					},
+				},
+			},
+			numDecisions: 0,
+		},
+		{
+			name: "Empty entity chains",
+			req: connect.Request[authorization.GetDecisionsRequest]{
+				Msg: &authorization.GetDecisionsRequest{
+					DecisionRequests: []*authorization.DecisionRequest{
+						{
+							Actions:      []*policy.Action{},
+							EntityChains: []*authorization.EntityChain{},
+							ResourceAttributes: []*authorization.ResourceAttribute{
+								{AttributeValueFqns: []string{mockFqn1}},
+							},
+						},
+					},
+				},
+			},
+			numDecisions: 0,
+		},
+		{
+			name: "Entity Chain with empty entity list",
+			req: connect.Request[authorization.GetDecisionsRequest]{
+				Msg: &authorization.GetDecisionsRequest{
+					DecisionRequests: []*authorization.DecisionRequest{
+						{
+							Actions: []*policy.Action{},
+							EntityChains: []*authorization.EntityChain{
+								{
+									Id:       "ec1",
+									Entities: []*authorization.Entity{},
+								},
+							},
+							ResourceAttributes: []*authorization.ResourceAttribute{
+								{AttributeValueFqns: []string{mockFqn1}},
+							},
+						},
+					},
+				},
+			},
+			numDecisions:   1,
+			decisionResult: authorization.DecisionResponse_DECISION_DENY,
+		},
+		{
+			name: "Resource attribute with empty fqn list",
+			req: connect.Request[authorization.GetDecisionsRequest]{
+				Msg: &authorization.GetDecisionsRequest{
+					DecisionRequests: []*authorization.DecisionRequest{
+						{
+							Actions: []*policy.Action{},
+							EntityChains: []*authorization.EntityChain{
+								{
+									Id: "ec1",
+									Entities: []*authorization.Entity{
+										{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+									},
+								},
+							},
+							ResourceAttributes: []*authorization.ResourceAttribute{
+								{AttributeValueFqns: []string{}},
+							},
+						},
+					},
+				},
+			},
+			numDecisions:   1,
+			decisionResult: authorization.DecisionResponse_DECISION_PERMIT,
+		},
+		{
+			name: "Entity Chain with empty entity list and Resource attribute with empty fqn list",
+			req: connect.Request[authorization.GetDecisionsRequest]{
+				Msg: &authorization.GetDecisionsRequest{
+					DecisionRequests: []*authorization.DecisionRequest{
+						{
+							Actions: []*policy.Action{},
+							EntityChains: []*authorization.EntityChain{
+								{
+									Id:       "ec1",
+									Entities: []*authorization.Entity{},
+								},
+							},
+							ResourceAttributes: []*authorization.ResourceAttribute{
+								{AttributeValueFqns: []string{}},
+							},
+						},
+					},
+				},
+			},
+			numDecisions:   1,
+			decisionResult: authorization.DecisionResponse_DECISION_DENY,
+		},
+	}
+
+	///////////// Run tests /////////////////////
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, err := as.GetDecisions(ctxb, &tc.req)
+			require.NoError(t, err)
+			assert.NotNil(t, resp)
+			assert.Len(t, resp.Msg.GetDecisionResponses(), tc.numDecisions)
+			if tc.decisionResult != authorization.DecisionResponse_DECISION_UNSPECIFIED {
+				assert.Equal(t, resp.Msg.GetDecisionResponses()[0].GetDecision(), tc.decisionResult)
+			}
+		})
 	}
 }

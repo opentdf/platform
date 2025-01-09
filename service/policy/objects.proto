@@ -308,6 +308,7 @@ message KeyAccessServer {
 }
 
 message Key {
+  // the database record ID, not the key ID (`kid`)
   string id = 1;
 
   bool is_active = 2;

@@ -366,19 +366,12 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 		switch {
 		case req.Algorithm == kNanoAlgorithm:
 			nanoReqs = append(nanoReqs, req)
-		case req.Algorithm == "" || req.Algorithm == kTDF3Algorithm:
+		case req.Algorithm == "":
+			req.Algorithm = kTDF3Algorithm
 			tdf3Reqs = append(tdf3Reqs, req)
 		default:
-			// No algorithm: fail all Policy's KAOs
+			tdf3Reqs = append(tdf3Reqs, req)
 
-			var failedKAOs []*kaspb.KAORewrapResult
-			req.Results = &kaspb.RewrapResult{
-				Results: failedKAOs,
-			}
-			for _, kao := range req.KeyAccessObjectRequests {
-				failedKAORewrap(req.Results, kao, err400(fmt.Sprintf("invalid algorithm: %s", req.Algorithm)))
-			}
-			requests = append(requests, req)
 		}
 	}
 	if len(tdf3Reqs) > 0 {

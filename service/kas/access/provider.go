@@ -25,7 +25,7 @@ type Provider struct {
 	URI          url.URL `json:"uri"`
 	SDK          *otdf.SDK
 	AttributeSvc *url.URL
-	recrypt.CryptoProvider
+	recrypt.Provider
 	Logger *logger.Logger
 	Config *serviceregistry.ServiceConfig
 	KASConfig
@@ -74,7 +74,7 @@ func (p *Provider) LoadStandardCryptoProvider() (*recrypt.Standard, error) {
 	if err != nil {
 		return nil, fmt.Errorf("recrypt.NewStandardWithOptions failed: %w", err)
 	}
-	p.CryptoProvider = c
+	p.Provider = c
 	return c, nil
 }
 

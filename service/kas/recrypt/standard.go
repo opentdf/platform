@@ -33,7 +33,7 @@ type keyHolder struct {
 	publicPEM []byte
 }
 
-// Implementation of the recrypt CryptoProvider interface using standard go crypto primitives.
+// Implementation of the recrypt.Provider interface using standard go crypto primitives.
 type Standard struct {
 	keys             map[KeyIdentifier]keyHolder
 	currentKIDsByAlg map[Algorithm][]KeyIdentifier

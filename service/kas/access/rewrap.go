@@ -316,13 +316,13 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 		}
 	}
 	p.Logger.DebugContext(ctx, "paging through legacy KIDs for kid free kao", "kids", kidsToCheck)
-	symmetricKey, err := p.CryptoProvider.Unwrap(kidsToCheck[0], body.KeyAccess.WrappedKey)
+	symmetricKey, err := p.Provider.Unwrap(kidsToCheck[0], body.KeyAccess.WrappedKey)
 	for _, kid := range kidsToCheck[1:] {
 		if err == nil {
 			break
 		}
 		p.Logger.DebugContext(ctx, "continue paging through legacy KIDs for kid free kao", "err", err, "kid", kid)
-		symmetricKey, err = p.CryptoProvider.Unwrap(kid, body.KeyAccess.WrappedKey)
+		symmetricKey, err = p.Provider.Unwrap(kid, body.KeyAccess.WrappedKey)
 	}
 	if err != nil {
 		p.Logger.WarnContext(ctx, "failure to decrypt dek", "err", err)
@@ -424,7 +424,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity 
 	}
 	p.Logger.DebugContext(ctx, "nanoTDFRewrap", "kid", kid)
 
-	symmetricKey, err := p.CryptoProvider.Derive(kid, header.EphemeralKey)
+	symmetricKey, err := p.Provider.Derive(kid, header.EphemeralKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
 	}

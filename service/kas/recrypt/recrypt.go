@@ -23,7 +23,7 @@ type KeyFormat string
 //   - Key agreement for nanoTDF and other EC based solutions
 //
 // This may be Closeable
-type CryptoProvider interface {
+type Provider interface {
 	// Return current preferred key identifier(s) for wrapping with the given algorithm.
 	CurrentKID(alg Algorithm) ([]KeyIdentifier, error)
 

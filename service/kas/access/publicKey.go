@@ -22,11 +22,11 @@ const (
 )
 
 func (p Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kaspb.LegacyPublicKeyRequest]) (*connect.Response[wrapperspb.StringValue], error) {
-	algorithm, err := p.CryptoProvider.ParseAlgorithm(req.Msg.GetAlgorithm())
+	algorithm, err := p.ParseAlgorithm(req.Msg.GetAlgorithm())
 	if err != nil {
 		return nil, err
 	}
-	kids, err := p.CryptoProvider.CurrentKID(algorithm)
+	kids, err := p.CurrentKID(algorithm)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func (p Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kasp
 		p.Logger.ErrorContext(ctx, "multiple keys found for algorithm", "algorithm", algorithm, "kids", kids)
 	}
 	fmt := recrypt.KeyFormatPEM
-	pem, err := p.CryptoProvider.PublicKey(algorithm, kids[:1], fmt)
+	pem, err := p.Provider.PublicKey(algorithm, kids[:1], fmt)
 	if err != nil {
 		p.Logger.ErrorContext(ctx, "CryptoProvider.ECPublicKey failed", "err", err)
 		return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
@@ -52,7 +52,7 @@ func (p Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Publ
 		defer span.End()
 	}
 
-	algorithm, err := p.CryptoProvider.ParseAlgorithm(req.Msg.GetAlgorithm())
+	algorithm, err := p.ParseAlgorithm(req.Msg.GetAlgorithm())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
@@ -60,14 +60,14 @@ func (p Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Publ
 		algorithm = recrypt.AlgorithmRSA2048
 	}
 
-	kids, err := p.CryptoProvider.CurrentKID(algorithm)
+	kids, err := p.CurrentKID(algorithm)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
 	if len(kids) == 0 {
 		return nil, security.ErrCertNotFound
 	}
-	fmt, err := p.CryptoProvider.ParseKeyFormat(req.Msg.GetFmt())
+	fmt, err := p.ParseKeyFormat(req.Msg.GetFmt())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -91,7 +91,7 @@ func (p Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Publ
 		return connect.NewResponse(&kaspb.PublicKeyResponse{PublicKey: value, Kid: string(kid[0])}), nil
 	}
 
-	v, err := p.CryptoProvider.PublicKey(algorithm, kids, fmt)
+	v, err := p.Provider.PublicKey(algorithm, kids, fmt)
 	return r(v, kids, err)
 }
 

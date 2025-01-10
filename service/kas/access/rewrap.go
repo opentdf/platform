@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -223,62 +222,34 @@ func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRe
 	}
 }
 
-func verifyAndParsePolicy(ctx context.Context, req *request.RewrapRequests, logger logger.Logger) (*request.Policy, error) {
-	failed := false
-	sDecPolicy, err := base64.StdEncoding.DecodeString(req.Policy.Body)
+func verifyPolicyBinding(ctx context.Context, policy []byte, kao *request.KeyAccessObjectRequest, logger logger.Logger) error {
+	actualHMAC, err := generateHMACDigest(ctx, policy, kao.SymmetricKey, logger)
 	if err != nil {
-		logger.WarnContext(ctx, "unable to decode policy", "err", err)
-		failed = true
+		logger.WarnContext(ctx, "unable to generate policy hmac", "err", err)
+		return err400("bad request")
 	}
-	decoder := json.NewDecoder(strings.NewReader(string(sDecPolicy)))
-	var policy request.Policy
-	err = decoder.Decode(&policy)
+	policyBinding, err := extractPolicyBinding(kao.PolicyBinding)
 	if err != nil {
-		logger.WarnContext(ctx, "unable to decode policy", "err", err)
-		failed = true
-	}
-	req.Results.PolicyId = policy.UUID.String()
-
-	for _, kao := range req.KeyAccessObjectRequests {
-		if failed {
-			failedKAORewrap(req.Results, kao, err400("bad request"))
-			continue
-		}
-		actualHMAC, err := generateHMACDigest(ctx, []byte(req.Policy.Body), kao.SymmetricKey, logger)
-		if err != nil {
-			logger.WarnContext(ctx, "unable to generate policy hmac", "err", err)
-			failedKAORewrap(req.Results, kao, err400("bad request"))
-			continue
-		}
-		policyBinding, err := extractPolicyBinding(kao.PolicyBinding)
-		if err != nil {
-			logger.WarnContext(ctx, "bad policy binding")
-			failedKAORewrap(req.Results, kao, err400("bad request"))
-			continue
-		}
-
-		expectedHMAC := make([]byte, base64.StdEncoding.DecodedLen(len(policyBinding)))
-		n, err := base64.StdEncoding.Decode(expectedHMAC, []byte(policyBinding))
-		if err == nil {
-			n, err = hex.Decode(expectedHMAC, expectedHMAC[:n])
-		}
-		expectedHMAC = expectedHMAC[:n]
-		if err != nil {
-			logger.WarnContext(ctx, "invalid policy binding", "err", err)
-			failedKAORewrap(req.Results, kao, err400("bad request"))
-			continue
-		}
-		if !hmac.Equal(actualHMAC, expectedHMAC) {
-			logger.WarnContext(ctx, "policy hmac mismatch", "policyBinding", policyBinding)
-			failedKAORewrap(req.Results, kao, err400("bad request"))
-			continue
-		}
+		logger.WarnContext(ctx, "bad policy binding")
+		return err400("bad request")
 	}
 
-	if failed {
-		return nil, fmt.Errorf("invalid policy")
+	expectedHMAC := make([]byte, base64.StdEncoding.DecodedLen(len(policyBinding)))
+	n, err := base64.StdEncoding.Decode(expectedHMAC, []byte(policyBinding))
+	if err == nil {
+		n, err = hex.Decode(expectedHMAC, expectedHMAC[:n])
 	}
-	return &policy, nil
+	expectedHMAC = expectedHMAC[:n]
+	if err != nil {
+		logger.WarnContext(ctx, "invalid policy binding", "err", err)
+		return err400("bad request")
+	}
+	if !hmac.Equal(actualHMAC, expectedHMAC) {
+		logger.WarnContext(ctx, "policy hmac mismatch", "policyBinding", policyBinding)
+		return err400("bad request")
+	}
+
+	return nil
 }
 
 func extractPolicyBinding(policyBinding interface{}) (string, error) {
@@ -450,6 +421,13 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *request.Rewrap
 			failedKAORewrap(req.Results, kao, err400("bad request"))
 			continue
 		}
+
+		err = verifyPolicyBinding(ctx, []byte(req.Policy.Body), kao, *p.Logger)
+		if err != nil {
+			failedKAORewrap(req.Results, kao, err)
+			continue
+		}
+
 		anyValidKAOs = true
 	}
 
@@ -461,6 +439,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *request.Rewrap
 		p.Logger.WarnContext(ctx, "no valid KAOs found")
 		return policy, fmt.Errorf("no valid KAOs")
 	}
+
 	return policy, nil
 }
 

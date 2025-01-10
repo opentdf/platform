@@ -366,17 +366,17 @@ func TestParseAndVerifyRequest(t *testing.T) {
 				require.NotNil(t, verified, "unable to load request body")
 				require.NotNil(t, verified.ClientPublicKey, "unable to load public key")
 
-				verified.Requests[0].Results = &kaspb.RewrapResult{}
+				for _, req := range verified.Requests {
+					req.Results = &kaspb.RewrapResult{}
+					req.KeyAccessObjectRequests[0].SymmetricKey = []byte(plainKey)
 
-				verified.Requests[0].KeyAccessObjectRequests[0].SymmetricKey = []byte(plainKey)
-
-				policy, err := verifyAndParsePolicy(context.Background(), verified.Requests[0], *logger)
-				err = errors.Join(err, verified.Requests[0].KeyAccessObjectRequests[0].Err)
-				if !tt.shouldError {
-					require.NoError(t, err, "failed to verify policy body=[%v]", tt.body)
-					assert.Len(t, policy.Body.DataAttributes, 2, "incorrect policy body=[%v]", policy.Body)
-				} else {
-					require.Error(t, err, "failed to fail policy body=[%v]", tt.body)
+					err := verifyPolicyBinding(context.Background(), []byte(req.Policy.Body), req.KeyAccessObjectRequests[0], *logger)
+					err = errors.Join(err, verified.Requests[0].KeyAccessObjectRequests[0].Err)
+					if !tt.shouldError {
+						require.NoError(t, err, "failed to verify policy body=[%v]", tt.body)
+					} else {
+						require.Error(t, err, "failed to fail policy body=[%v]", tt.body)
+					}
 				}
 			} else {
 				require.Error(t, err, "failed to fail srt=[%s], tok=[%s]", tt.body, bearer)

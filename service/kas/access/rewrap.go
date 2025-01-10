@@ -274,8 +274,8 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 	}
 
 	if body.Algorithm == "" {
-		p.Logger.DebugContext(ctx, "default rewrap algorithm")
 		body.Algorithm = "rsa:2048"
+		p.Logger.DebugContext(ctx, "default rewrap algorithm", "alg", body.Algorithm)
 	}
 
 	if body.Algorithm == "ec:secp256r1" {
@@ -315,12 +315,13 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 			return nil, err400("bad request")
 		}
 	}
+	p.Logger.DebugContext(ctx, "paging through legacy KIDs for kid free kao", "kids", kidsToCheck)
 	symmetricKey, err := p.CryptoProvider.Unwrap(kidsToCheck[0], body.KeyAccess.WrappedKey)
 	for _, kid := range kidsToCheck[1:] {
 		if err == nil {
 			break
 		}
-		p.Logger.DebugContext(ctx, "continue paging through legacy KIDs for kid free kao", "err", err)
+		p.Logger.DebugContext(ctx, "continue paging through legacy KIDs for kid free kao", "err", err, "kid", kid)
 		symmetricKey, err = p.CryptoProvider.Unwrap(kid, body.KeyAccess.WrappedKey)
 	}
 	if err != nil {

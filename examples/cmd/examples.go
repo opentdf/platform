@@ -48,7 +48,16 @@ func newSDK() (*sdk.SDK, error) {
 	if storeCollectionHeaders {
 		opts = append(opts, sdk.WithStoreCollectionHeaders())
 	}
-	if clientCredentials != "" {
+
+	if noKIDInKAO {
+		opts = append(opts, sdk.WithNoKIDInKAO())
+	}
+	if noKIDInNano {
+		opts = append(opts, sdk.WithNoKIDInNano())
+	}
+	if clientCredentials == "" {
+		opts = append(opts, sdk.WithClientCredentials("opentdf-sdk", "secret", nil))
+	} else {
 		i := strings.Index(clientCredentials, ":")
 		if i < 0 {
 			return nil, fmt.Errorf("invalid client id/secret pair")

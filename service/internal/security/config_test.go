@@ -17,7 +17,7 @@ func TestMarshalTo(t *testing.T) {
 		wantErr  bool
 	}{
 		{
-			name: "upgrade2023CertID",
+			name: "upgrade2023CertIDA",
 			config: CryptoConfig2024{
 				Standard: Standard{
 					RSAKeys: map[string]StandardKeyInfo{
@@ -38,6 +38,35 @@ func TestMarshalTo(t *testing.T) {
 					{Algorithm: "rsa:2048", KID: "rsa1", Private: "rsa1_private.pem", Certificate: "rsa1_public.pem", Active: true, Legacy: true},
 					{Algorithm: "ec:secp256r1", KID: "ec1", Private: "ec1_private.pem", Certificate: "ec1_public.pem", Active: true, Legacy: true},
 					{Algorithm: "ec:secp256r1", KID: "ec2", Private: "ec2_private.pem", Certificate: "ec2_public.pem", Active: false, Legacy: true},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "upgrade2023CertIDB",
+			config: CryptoConfig2024{
+				Standard: Standard{
+					RSAKeys: map[string]StandardKeyInfo{
+						"r1": {PrivateKeyPath: "r1_private.pem", PublicKeyPath: "r1_public.pem"},
+						"r2": {PrivateKeyPath: "r2_private.pem", PublicKeyPath: "r2_public.pem"},
+					},
+					ECKeys: map[string]StandardKeyInfo{
+						"e1": {PrivateKeyPath: "e1_private.pem", PublicKeyPath: "e1_public.pem"},
+						"e2": {PrivateKeyPath: "e2_private.pem", PublicKeyPath: "e2_public.pem"},
+					},
+				},
+			},
+			input: map[string]any{
+				"enabled":   true,
+				"eccertid":  "e1",
+				"rsacertid": "r1",
+			},
+			expected: KASConfigDupe{
+				Keyring: []CurrentKeyFor{
+					{Algorithm: "rsa:2048", KID: "r1", Private: "r1_private.pem", Certificate: "r1_public.pem", Active: true, Legacy: true},
+					{Algorithm: "rsa:2048", KID: "r2", Private: "r2_private.pem", Certificate: "r2_public.pem", Active: false, Legacy: true},
+					{Algorithm: "ec:secp256r1", KID: "e1", Private: "e1_private.pem", Certificate: "e1_public.pem", Active: true, Legacy: true},
+					{Algorithm: "ec:secp256r1", KID: "e2", Private: "e2_private.pem", Certificate: "e2_public.pem", Active: false, Legacy: true},
 				},
 			},
 			wantErr: false,

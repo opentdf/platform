@@ -176,15 +176,15 @@ server:
     standard:
       rsa:
         r1:
-          private_key_path: kas-private.pem
-          public_key_path: kas-cert.pem
+          private_key_path: kas-r1-private.pem
+          public_key_path: kas-r1-cert.pem
         r2:
           private_key_path: kas-r2-private.pem
           public_key_path: kas-r2-cert.pem
       ec:
         e1:
-          private_key_path: kas-ec-private.pem
-          public_key_path: kas-ec-cert.pem
+          private_key_path: kas-e1-private.pem
+          public_key_path: kas-e1-cert.pem
         e2:
           private_key_path: kas-e2-private.pem
           public_key_path: kas-e2-cert.pem

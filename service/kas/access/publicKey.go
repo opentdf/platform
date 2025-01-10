@@ -26,12 +26,18 @@ func (p Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kasp
 	if err != nil {
 		return nil, err
 	}
-	kid, err := p.CryptoProvider.CurrentKID(algorithm)
+	kids, err := p.CryptoProvider.CurrentKID(algorithm)
 	if err != nil {
 		return nil, err
 	}
+	if len(kids) == 0 {
+		return nil, security.ErrCertNotFound
+	}
+	if len(kids) > 1 {
+		p.Logger.ErrorContext(ctx, "multiple keys found for algorithm", "algorithm", algorithm, "kids", kids)
+	}
 	fmt := recrypt.KeyFormatPEM
-	pem, err := p.CryptoProvider.PublicKey(algorithm, kid, fmt)
+	pem, err := p.CryptoProvider.PublicKey(algorithm, kids[:1], fmt)
 	if err != nil {
 		p.Logger.ErrorContext(ctx, "CryptoProvider.ECPublicKey failed", "err", err)
 		return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
@@ -54,13 +60,20 @@ func (p Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Publ
 		algorithm = recrypt.AlgorithmRSA2048
 	}
 
-	kid, err := p.CryptoProvider.CurrentKID(algorithm)
+	kids, err := p.CryptoProvider.CurrentKID(algorithm)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
+	}
+	if len(kids) == 0 {
+		return nil, security.ErrCertNotFound
 	}
 	fmt, err := p.CryptoProvider.ParseKeyFormat(req.Msg.GetFmt())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if len(kids) > 1 && fmt != recrypt.KeyFormatJWK {
+		p.Logger.WarnContext(ctx, "multiple active keys found for algorithm, only returning the first one", "algorithm", algorithm, "kids", kids, "fmt", fmt)
+		kids = kids[:1]
 	}
 
 	r := func(value string, kid []recrypt.KeyIdentifier, err error) (*connect.Response[kaspb.PublicKeyResponse], error) {
@@ -78,8 +91,8 @@ func (p Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Publ
 		return connect.NewResponse(&kaspb.PublicKeyResponse{PublicKey: value, Kid: string(kid[0])}), nil
 	}
 
-	v, err := p.CryptoProvider.PublicKey(algorithm, kid, fmt)
-	return r(v, kid, err)
+	v, err := p.CryptoProvider.PublicKey(algorithm, kids, fmt)
+	return r(v, kids, err)
 }
 
 func exportRsaPublicKeyAsPemStr(pubkey *rsa.PublicKey) (string, error) {

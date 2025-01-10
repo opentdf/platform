@@ -3,18 +3,18 @@ package request
 import "github.com/opentdf/platform/protocol/go/kas"
 
 type PolicyRequest struct {
-	Id   string `json:"id"`
+	ID   string `json:"id"`
 	Body string `json:"body"`
 }
 
 type KeyAccessObjectRequest struct {
-	KeyAccessObjectId string `json:"keyAccessObjectId"`
+	KeyAccessObjectID string `json:"keyAccessObjectId"`
 	KeyAccess         `json:"keyAccessObject"`
 
 	// For Platform Use
 	Processed    bool   `json:"-"`
 	SymmetricKey []byte `json:"-"`
-	Err          error  `json"-"`
+	Err          error  `json:"-"`
 }
 
 type RewrapRequests struct {
@@ -26,7 +26,7 @@ type RewrapRequests struct {
 	Results *kas.RewrapResult `json:"-"`
 }
 
-type RequestBody struct {
+type Body struct {
 	Requests        []*RewrapRequests `json:"requests"`
 	ClientPublicKey string            `json:"ClientPublicKey"`
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/opentdf/platform/service/kas/request"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
@@ -49,12 +50,12 @@ func (p *Provider) canAccess(ctx context.Context, token *authorization.Token, po
 	if err != nil {
 		return nil, err
 	}
-	for _, resp := range dr.DecisionResponses {
-		policy, ok := idPolicyMap[resp.ResourceAttributesId]
+	for _, resp := range dr.GetDecisionResponses() {
+		policy, ok := idPolicyMap[resp.GetResourceAttributesId()]
 		if !ok { // this really should not happen
 			continue
 		}
-		res = append(res, PDPAccessResult{Policy: policy, Access: resp.Decision == authorization.DecisionResponse_DECISION_PERMIT})
+		res = append(res, PDPAccessResult{Policy: policy, Access: resp.GetDecision() == authorization.DecisionResponse_DECISION_PERMIT})
 	}
 
 	return res, nil

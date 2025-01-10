@@ -127,33 +127,32 @@ func justRequestBody(ctx context.Context, token jwt.Token, logger logger.Logger)
 	return rbString, nil
 }
 
-func extractAndConvertV1SRTBody(body []byte) (request.RequestBody, error) {
+func extractAndConvertV1SRTBody(body []byte) (request.Body, error) {
 	var requestBody RequestBody
 	if err := json.Unmarshal(body, &requestBody); err != nil {
-		return request.RequestBody{}, err
+		return request.Body{}, err
 	}
 
 	reqs := []*request.RewrapRequests{
 		{
 			KeyAccessObjectRequests: []*request.KeyAccessObjectRequest{
-				{KeyAccessObjectId: "kao-0", KeyAccess: requestBody.KeyAccess},
+				{KeyAccessObjectID: "kao-0", KeyAccess: requestBody.KeyAccess},
 			},
 			Algorithm: requestBody.Algorithm,
 			Policy: request.PolicyRequest{
-				Id:   "policy-1",
+				ID:   "policy-1",
 				Body: requestBody.Policy,
 			},
 		},
 	}
 
-	return request.RequestBody{
+	return request.Body{
 		ClientPublicKey: requestBody.ClientPublicKey,
 		Requests:        reqs,
 	}, nil
-
 }
 
-func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRequest, logger logger.Logger) (*request.RequestBody, bool, error) {
+func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRequest, logger logger.Logger) (*request.Body, bool, error) {
 	isV1 := false
 	// First load legacy method for verifying SRT
 	if vpk, ok := headers["X-Virtrupubkey"]; ok && len(vpk) == 1 {
@@ -186,7 +185,7 @@ func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRe
 		}
 	}
 
-	var requestBody request.RequestBody
+	var requestBody request.Body
 	err = json.Unmarshal([]byte(rbString), &requestBody)
 	// if there are no requests then it could be a v1 request
 	if err != nil || len(requestBody.Requests) == 0 {
@@ -265,7 +264,12 @@ func verifyAndParsePolicy(ctx context.Context, req *request.RewrapRequests, logg
 			failedKAORewrap(req.Results, kao, err400("bad request"))
 			continue
 		}
-		policyBinding := kao.PolicyBinding.(string)
+		policyBinding, ok := kao.PolicyBinding.(string)
+		if !ok {
+			logger.WarnContext(ctx, "bad policy binding")
+			failedKAORewrap(req.Results, kao, err400("bad request"))
+			continue
+		}
 
 		expectedHMAC := make([]byte, base64.StdEncoding.DecodedLen(len(policyBinding)))
 		n, err := base64.StdEncoding.Decode(expectedHMAC, []byte(policyBinding))
@@ -320,7 +324,7 @@ func failedKAORewrap(res *kaspb.RewrapResult, kao *request.KeyAccessObjectReques
 	}
 	kao.Processed = true
 	kaoRes := &kaspb.KAORewrapResult{
-		KeyAccessObjectId: kao.KeyAccessObjectId,
+		KeyAccessObjectId: kao.KeyAccessObjectID,
 		Status:            kFailedStatus,
 		Result:            &kaspb.KAORewrapResult_Error{Error: err.Error()},
 	}
@@ -380,7 +384,6 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 	if len(tdf3Reqs) > 0 {
 		p.tdf3Rewrap(ctx, tdf3Reqs, body.ClientPublicKey, entityInfo)
 		requests = append(requests, tdf3Reqs...)
-
 	}
 
 	if len(nanoReqs) > 0 {
@@ -394,11 +397,11 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 	}
 
 	if isV1 {
-		if len(resp.Responses) != 1 || len(resp.Responses[0].Results) != 1 {
+		if len(resp.GetResponses()) != 1 || len(resp.GetResponses()[0].GetResults()) != 1 {
 			return nil, fmt.Errorf("invalid request")
 		}
-		res := resp.Responses[0].Results[0]
-		if res.Status == kFailedStatus {
+		res := resp.GetResponses()[0].GetResults()[0]
+		if res.GetStatus() == kFailedStatus {
 			return nil, tdf3Reqs[0].KeyAccessObjectRequests[0].Err
 		}
 		resp.EntityWrappedKey = res.GetKasWrappedKey()
@@ -413,7 +416,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *request.Rewrap
 	p.Logger.DebugContext(ctx, "extracting policy", "requestBody.policy", req.Policy)
 	sDecPolicy, policyErr := base64.StdEncoding.DecodeString(req.Policy.Body)
 	req.Results = &kaspb.RewrapResult{
-		PolicyId: req.Policy.Id,
+		PolicyId: req.Policy.ID,
 	}
 	policy := &request.Policy{}
 	if policyErr == nil {
@@ -460,8 +463,9 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *request.Rewrap
 	}
 
 	if policyErr != nil {
-		return policy, nil
+		return nil, policyErr
 	}
+
 	if !anyValidKAOs {
 		p.Logger.WarnContext(ctx, "no valid KAOs found")
 		return policy, fmt.Errorf("no valid KAOs")
@@ -537,7 +541,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*request.RewrapReq
 				continue
 			}
 			req.Results.Results = append(req.Results.Results, &kaspb.KAORewrapResult{
-				KeyAccessObjectId: kao.KeyAccessObjectId,
+				KeyAccessObjectId: kao.KeyAccessObjectID,
 				Status:            kPermitStatus,
 				Result:            &kaspb.KAORewrapResult_KasWrappedKey{KasWrappedKey: rewrappedKey},
 			})
@@ -620,7 +624,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*request.Rewrap
 			}
 
 			req.Results.Results = append(req.Results.Results, &kaspb.KAORewrapResult{
-				KeyAccessObjectId: kao.KeyAccessObjectId,
+				KeyAccessObjectId: kao.KeyAccessObjectID,
 				Status:            kPermitStatus,
 				Result:            &kaspb.KAORewrapResult_KasWrappedKey{KasWrappedKey: cipherText},
 			})
@@ -631,8 +635,8 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*request.Rewrap
 	}
 	return string(publicKeyHandle)
 }
-func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *request.RewrapRequests) *request.Policy {
 
+func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *request.RewrapRequests) *request.Policy {
 	for _, kao := range req.KeyAccessObjectRequests {
 		// there should never be multiple KAOs in policy
 		if len(req.KeyAccessObjectRequests) != 1 {

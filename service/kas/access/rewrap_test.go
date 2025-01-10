@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"log/slog"
 	"net/http"
 	"testing"
@@ -365,7 +366,12 @@ func TestParseAndVerifyRequest(t *testing.T) {
 				require.NotNil(t, verified, "unable to load request body")
 				require.NotNil(t, verified.ClientPublicKey, "unable to load public key")
 
+				verified.Requests[0].Results = &kaspb.RewrapResult{}
+
+				verified.Requests[0].KeyAccessObjectRequests[0].SymmetricKey = []byte(plainKey)
+
 				policy, err := verifyAndParsePolicy(context.Background(), verified.Requests[0], *logger)
+				err = errors.Join(err, verified.Requests[0].KeyAccessObjectRequests[0].Err)
 				if !tt.shouldError {
 					require.NoError(t, err, "failed to verify policy body=[%v]", tt.body)
 					assert.Len(t, policy.Body.DataAttributes, 2, "incorrect policy body=[%v]", policy.Body)

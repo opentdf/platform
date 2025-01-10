@@ -223,20 +223,6 @@ func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRe
 	}
 }
 
-func extractPolicyBinding(policyBinding interface{}) (string, error) {
-	switch v := policyBinding.(type) {
-	case string:
-		return v, nil
-	case map[string]interface{}:
-		if hash, ok := v["hash"].(string); ok {
-			return hash, nil
-		}
-		return "", fmt.Errorf("invalid policy binding object, missing 'hash' field")
-	default:
-		return "", fmt.Errorf("unsupported policy binding type")
-	}
-}
-
 func verifyAndParsePolicy(ctx context.Context, req *request.RewrapRequests, logger logger.Logger) (*request.Policy, error) {
 	failed := false
 	sDecPolicy, err := base64.StdEncoding.DecodeString(req.Policy.Body)
@@ -264,8 +250,8 @@ func verifyAndParsePolicy(ctx context.Context, req *request.RewrapRequests, logg
 			failedKAORewrap(req.Results, kao, err400("bad request"))
 			continue
 		}
-		policyBinding, ok := kao.PolicyBinding.(string)
-		if !ok {
+		policyBinding, err := extractPolicyBinding(kao.PolicyBinding)
+		if err != nil {
 			logger.WarnContext(ctx, "bad policy binding")
 			failedKAORewrap(req.Results, kao, err400("bad request"))
 			continue
@@ -293,6 +279,20 @@ func verifyAndParsePolicy(ctx context.Context, req *request.RewrapRequests, logg
 		return nil, fmt.Errorf("invalid policy")
 	}
 	return &policy, nil
+}
+
+func extractPolicyBinding(policyBinding interface{}) (string, error) {
+	switch v := policyBinding.(type) {
+	case string:
+		return v, nil
+	case map[string]interface{}:
+		if hash, ok := v["hash"].(string); ok {
+			return hash, nil
+		}
+		return "", fmt.Errorf("invalid policy binding object, missing 'hash' field")
+	default:
+		return "", fmt.Errorf("unsupported policy binding type")
+	}
 }
 
 func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, error) {

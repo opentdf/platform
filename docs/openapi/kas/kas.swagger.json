@@ -181,13 +181,15 @@
         },
         "entityWrappedKey": {
           "type": "string",
-          "format": "byte"
+          "format": "byte",
+          "title": "Deprecated"
         },
         "sessionPublicKey": {
           "type": "string"
         },
         "schemaVersion": {
-          "type": "string"
+          "type": "string",
+          "title": "Deprecated"
         },
         "responses": {
           "type": "array",

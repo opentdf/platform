@@ -52,7 +52,7 @@ func (s SDK) CreateBulkRewrapRequest(options ...BulkDecryptOption) *BulkDecryptR
 func (s SDK) createDecryptor(tdf *BulkTDF, tdfType TdfType) (Decryptor, error) {
 	switch tdfType {
 	case Nano:
-		decryptor := CreateNanoTDFDecryptHandler(tdf.Reader, tdf.Writer)
+		decryptor := createNanoTDFDecryptHandler(tdf.Reader, tdf.Writer)
 		return decryptor, nil
 	case Standard:
 		return s.createTDF3DecryptHandler(tdf.Writer, tdf.Reader)
@@ -61,6 +61,7 @@ func (s SDK) createDecryptor(tdf *BulkTDF, tdfType TdfType) (Decryptor, error) {
 	return nil, fmt.Errorf("unknown tdf type: %s", tdfType)
 }
 
+// BulkDecrypt
 func (s SDK) BulkDecrypt(ctx context.Context, bulkReq *BulkDecryptRequest) error {
 	kasRewrapRequests := make(map[string][]*request.RewrapRequests)
 	tdfDecryptors := make(map[string]Decryptor)

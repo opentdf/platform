@@ -909,7 +909,7 @@ type NanoTDFDecryptHandler struct {
 	headerBuf []byte
 }
 
-func CreateNanoTDFDecryptHandler(reader io.ReadSeeker, writer io.Writer) *NanoTDFDecryptHandler {
+func createNanoTDFDecryptHandler(reader io.ReadSeeker, writer io.Writer) *NanoTDFDecryptHandler {
 	return &NanoTDFDecryptHandler{
 		reader: reader,
 		writer: writer,
@@ -1023,7 +1023,7 @@ func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error)
 
 // ReadNanoTDFContext - allows cancelling the reader
 func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io.ReadSeeker) (uint32, error) {
-	handler := CreateNanoTDFDecryptHandler(reader, writer)
+	handler := createNanoTDFDecryptHandler(reader, writer)
 
 	symmetricKey, err := s.getNanoRewrapKey(ctx, handler)
 	if err != nil {

@@ -202,6 +202,10 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 		successCount++
 		totalDuration += result
 	}
+	// fixes divide by 0 error
+	if successCount == 0 {
+		successCount = 1
+	}
 
 	totalTime := time.Since(startTime)
 	averageLatency := totalDuration / time.Duration(successCount)

@@ -20,8 +20,6 @@ The platform is designed as a modular monolith, meaning that all services are bu
 - core: Runs essential services, including policy, authorization, and wellknown services.
 - kas: Runs the Key Access Server (KAS) service.
 
-
-
 | Field    | Description  | Default  | Environment Variable |
 | -------- | -------------| -------- | -------------------- |
 | `mode`   | Drives which services to run. Following modes are supported. (all, core, kas) | `all` | OPENTDF_MODE |
@@ -80,7 +78,6 @@ Root level key `server`
 | `auth.skew`             | The amount of time drift allowed between a tokens `exp` claim and the server time.                            | `1m`    | OPENTDF_SERVER_AUTH_SKEW             |
 | `auth.public_client_id` | The oidc client id. This is leveraged by otdfctl.                                                             |         | OPENTDF_SERVER_AUTH_PUBLIC_CLIENT_ID |
 | `auth.enforceDPoP`      | If true, DPoP bindings on Access Tokens are enforced.                                                         | `false` | OPENTDF_SERVER_AUTH_ENFORCEDPOP      |
-| `cryptoProvider`        | A list of public/private keypairs and their use. Described [below](#crypto-provider)                          | empty   |                                      |
 | `enable_pprof`          | Enable golang performance profiling                                                                           | `false` | OPENTDF_SERVER_ENABLE_PPROF          |
 | `grpc.reflection`       | The configuration for the grpc server.                                                                        | `true`  | OPENTDF_SERVER_GRPC_REFLECTION       |
 | `host`                  | The host address for the server.                                                                              | `""`    | OPENTDF_SERVER_HOST                  |
@@ -116,27 +113,6 @@ server:
           private: kas-ec-private.pem
           cert: kas-ec-cert.pem
 ```
-
-### Crypto Provider
-
-To configure the Key Access Server,
-you must define a set of one or more public keypairs
-and a method for loading and using them.
-
-The crypto provider is implemented as an interface,
-allowing multiple implementations.
-
-Root level key `cryptoProvider`
-
-Environment Variable: `OPENTDF_SERVER_CRYPTOPROVIDER_STANDARD='[{"alg":"rsa:2048","kid":"k1","private":"kas-private.pem","cert":"kas-cert.pem"}]'`
-
-| Field                               | Description                                                               | Default    |
-| ----------------------------------- | ------------------------------------------------------------------------- | ---------- |
-| `cryptoProvider.type`               | The type of crypto provider to use.                                       | `standard` |
-| `cryptoProvider.standard.*.alg`     | An enum for the associated crypto type. E.g. `rsa:2048` or `ec:secp256r1` |            |
-| `cryptoProvider.standard.*.kid`     | A short, globally unique, stable identifier for this keypair.             |            |
-| `cryptoProvider.standard.*.private` | Path to the private key as a PEM file.                                    |            |
-| `cryptoProvider.standard.*.cert`    | (Optional) Path to a public cert for the keypair.                         |            |
 
 ## Database Configuration
 
@@ -177,14 +153,20 @@ Root level key `services`
 
 Root level key `kas`
 
-Environment Variable: `OPENTDF_SERVICES_KAS_KEYRING='[{"kid":"k1","alg":"rsa:2048"},{"kid":"k2","alg":"ec:secp256r1"}]'`
+To configure the Key Access Server,
+you must define a set of one or more public keypairs
+and a method for loading and using them.
+
+Environment Variable: `OPENTDF_SERVICES_KAS_KEYRING='[{"kid":"k1","alg":"rsa:2048",etc...}'`
 
 | Field              | Description                                                                     | Default  |
 | ------------------ | ------------------------------------------------------------------------------- | -------- |
-| `keyring.*.kid`    | Which key id this is binding                                                    |          |
-| `keyring.*.alg`    | (Optional) Associated algorithm. (Allows reusing KID with different algorithms) |          |
+| `keyring.*.kid`    | A short, globally unique, stable identifier for this keypair  |          |
+| `keyring.*.alg`    | An enum for the associated cryptographic mechanism. E.g. `rsa:2048` or `ec:secp256r1` |          |
 | `keyring.*.active` | Marks the current public key for new TDFs with the specific algorithm; please specify exactly 1 for each currently recommended mechanism | false |
 | `keyring.*.legacy` | Indicates this may be used for TDFs with no key ID; default if all unspecified. | false |
+| `keyring.*.private` | Path to the private key as a PEM file.                                    |            |
+| `keyring.*.cert`    | (Optional) Path to a public cert for the keypair.                         |            |
 
 Example:
 
@@ -195,13 +177,18 @@ services:
     keyring:
       - kid: e2
         alg: ec:secp256r1
+        private: ./keys/ec2-private.pem
       - kid: e1
         alg: ec:secp256r1
+        private: ./keys/ec1-private.pem
         legacy: true
       - kid: r2f
         alg: rsa:2048
+        private: ./keys/r2-private.pem
+        cert: ./keys/r2-cert.pem
       - kid: r1
         alg: rsa:2048
+        private: ./keys/r1-private.pem
         legacy: true
 ```
 
@@ -334,4 +321,3 @@ server:
 #### Managing Authorization Policy
 
 Admins can manage the authorization policy directly in the YAML configuration file. For detailed configuration options, refer to the [Casbin documentation](https://casbin.org/docs/en/syntax-for-models).
-

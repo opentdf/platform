@@ -1064,7 +1064,6 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 				Error:             err,
 			})
 		}
-
 	}
 
 	reqs, err := createRewrapRequest(ctx, r)
@@ -1080,7 +1079,6 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		if !ok {
 			err = fmt.Errorf("could not find policy in rewrap response")
 			reqFail(err, req)
-			return err
 		}
 		kaoResults = append(kaoResults, result...)
 	}

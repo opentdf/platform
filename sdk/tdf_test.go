@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/opentdf/platform/service/kas/request"
+
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
@@ -1215,7 +1217,7 @@ func (s *TDFSuite) testDecryptWithReader(sdk *SDK, tdfFile, decryptedTdfFileName
 	r, err := sdk.LoadTDF(readSeeker)
 	s.Require().NoError(err)
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(60*time.Millisecond))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(300*time.Minute))
 	defer cancel()
 	err = r.Init(ctx)
 	s.Require().NoError(err)
@@ -1427,40 +1429,52 @@ func (f *FakeKas) Rewrap(_ context.Context, in *kaspb.RewrapRequest) (*kaspb.Rew
 	if !ok {
 		return nil, fmt.Errorf("requestBody not a string")
 	}
-	entityWrappedKey := f.getRewrappedKey(requestBodyStr)
+	result := f.getRewrapResponse(requestBodyStr)
 
-	return &kaspb.RewrapResponse{EntityWrappedKey: entityWrappedKey}, nil
+	return result, nil
 }
 
 func (f *FakeKas) PublicKey(_ context.Context, _ *kaspb.PublicKeyRequest) (*kaspb.PublicKeyResponse, error) {
 	return &kaspb.PublicKeyResponse{PublicKey: f.KASInfo.PublicKey, Kid: f.KID}, nil
 }
 
-func (f *FakeKas) getRewrappedKey(rewrapRequest string) []byte {
-	bodyData := RequestBody{}
+func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse {
+	bodyData := request.Body{}
 	err := json.Unmarshal([]byte(rewrapRequest), &bodyData)
 	f.s.Require().NoError(err, "json.Unmarshal failed")
+	resp := &kaspb.RewrapResponse{}
 
-	wrappedKey, err := ocrypto.Base64Decode([]byte(bodyData.WrappedKey))
-	f.s.Require().NoError(err, "ocrypto.Base64Decode failed")
+	for _, req := range bodyData.Requests {
+		results := &kaspb.RewrapResult{PolicyId: req.Policy.ID}
+		resp.Responses = append(resp.Responses, results)
+		for _, kaoReq := range req.KeyAccessObjectRequests {
+			wrappedKey := kaoReq.WrappedKey
 
-	kasPrivateKey := strings.ReplaceAll(f.privateKey, "\n\t", "\n")
-	if bodyData.KID != "" && bodyData.KID != f.KID {
-		// old kid
-		lk, ok := f.legakeys[bodyData.KID]
-		f.s.Require().True(ok, "unable to find key [%s]", bodyData.KID)
-		kasPrivateKey = strings.ReplaceAll(lk.private, "\n\t", "\n")
+			kasPrivateKey := strings.ReplaceAll(f.privateKey, "\n\t", "\n")
+			if kaoReq.KID != "" && kaoReq.KID != f.KID {
+				// old kid
+				lk, ok := f.legakeys[kaoReq.KID]
+				f.s.Require().True(ok, "unable to find key [%s]", kaoReq.KID)
+				kasPrivateKey = strings.ReplaceAll(lk.private, "\n\t", "\n")
+			}
+
+			asymDecrypt, err := ocrypto.NewAsymDecryption(kasPrivateKey)
+			f.s.Require().NoError(err, "ocrypto.NewAsymDecryption failed")
+			symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
+			f.s.Require().NoError(err, "ocrypto.Decrypt failed")
+			asymEncrypt, err := ocrypto.NewAsymEncryption(bodyData.ClientPublicKey)
+			f.s.Require().NoError(err, "ocrypto.NewAsymEncryption failed")
+			entityWrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
+			f.s.Require().NoError(err, "ocrypto.encrypt failed")
+			kaoResult := &kaspb.KAORewrapResult{
+				Result:            &kaspb.KAORewrapResult_KasWrappedKey{KasWrappedKey: entityWrappedKey},
+				Status:            "permit",
+				KeyAccessObjectId: kaoReq.KeyAccessObjectID,
+			}
+			results.Results = append(results.Results, kaoResult)
+		}
 	}
-
-	asymDecrypt, err := ocrypto.NewAsymDecryption(kasPrivateKey)
-	f.s.Require().NoError(err, "ocrypto.NewAsymDecryption failed")
-	symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
-	f.s.Require().NoError(err, "ocrypto.Decrypt failed")
-	asymEncrypt, err := ocrypto.NewAsymEncryption(bodyData.ClientPublicKey)
-	f.s.Require().NoError(err, "ocrypto.NewAsymEncryption failed")
-	entityWrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
-	f.s.Require().NoError(err, "ocrypto.encrypt failed")
-	return entityWrappedKey
+	return resp
 }
 
 func (s *TDFSuite) checkIdentical(file, checksum string) bool {

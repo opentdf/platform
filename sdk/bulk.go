@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/opentdf/platform/service/kas/request"
 	"io"
+
+	"github.com/opentdf/platform/service/kas/request"
 )
 
 type BulkTDF struct {
@@ -53,18 +54,20 @@ func (s SDK) createDecryptor(tdf *BulkTDF, tdfType TdfType) (Decryptor, error) {
 	case Nano:
 		decryptor := CreateNanoTDFDecryptHandler(tdf.Reader, tdf.Writer)
 		return decryptor, nil
-	default:
+	case Standard:
 		return s.createTDF3DecryptHandler(tdf.Writer, tdf.Reader)
+	case Invalid:
 	}
+	return nil, fmt.Errorf("unknown tdf type: %s", tdfType)
 }
 
 func (s SDK) BulkDecrypt(ctx context.Context, bulkReq *BulkDecryptRequest) error {
-	var rewrapRequests []*request.RewrapRequests
+	kasRewrapRequests := make(map[string][]*request.RewrapRequests)
 	tdfDecryptors := make(map[string]Decryptor)
 	policyTDF := make(map[string]*BulkTDF)
 
 	for i, tdf := range bulkReq.TDFs {
-		policyId := fmt.Sprintf("policy-%d", i)
+		policyID := fmt.Sprintf("policy-%d", i)
 		decryptor, err := s.createDecryptor(tdf, bulkReq.TDFType)
 		if err != nil {
 			tdf.Error = err
@@ -76,21 +79,29 @@ func (s SDK) BulkDecrypt(ctx context.Context, bulkReq *BulkDecryptRequest) error
 			tdf.Error = err
 			continue
 		}
-		tdfDecryptors[policyId] = decryptor
-		policyTDF[policyId] = tdf
-
-		req.Policy.ID = policyId
-		rewrapRequests = append(rewrapRequests, req)
+		tdfDecryptors[policyID] = decryptor
+		policyTDF[policyID] = tdf
+		for kasURL, r := range req {
+			r.Policy.ID = policyID
+			kasRewrapRequests[kasURL] = append(kasRewrapRequests[kasURL], r)
+		}
 	}
 
 	kasClient := newKASClient(s.dialOptions, s.tokenSource, s.kasSessionKey)
-	var rewrapResp map[string][]KAOResult
+	allRewrapResp := make(map[string][]KAOResult)
 	var err error
-	switch bulkReq.TDFType {
-	case Nano:
-		rewrapResp, err = kasClient.nanoUnwrap(ctx, rewrapRequests)
-	default:
-		rewrapResp, err = kasClient.unwrap(ctx, rewrapRequests)
+	for _, rewrapRequests := range kasRewrapRequests {
+		var rewrapResp map[string][]KAOResult
+		switch bulkReq.TDFType {
+		case Nano:
+			rewrapResp, err = kasClient.nanoUnwrap(ctx, rewrapRequests...)
+		case Standard, Invalid:
+			rewrapResp, err = kasClient.unwrap(ctx, rewrapRequests...)
+		}
+
+		for id, res := range rewrapResp {
+			allRewrapResp[id] = append(allRewrapResp[id], res...)
+		}
 	}
 	if err != nil {
 		return fmt.Errorf("bulk rewrap failed: %w", err)
@@ -98,7 +109,7 @@ func (s SDK) BulkDecrypt(ctx context.Context, bulkReq *BulkDecryptRequest) error
 
 	var errList []error
 	for id, tdf := range policyTDF {
-		kaoRes, ok := rewrapResp[id]
+		kaoRes, ok := allRewrapResp[id]
 		if !ok {
 			tdf.Error = fmt.Errorf("rewrap did not create a response for this TDF")
 			errList = append(errList, tdf.Error)
@@ -110,8 +121,8 @@ func (s SDK) BulkDecrypt(ctx context.Context, bulkReq *BulkDecryptRequest) error
 			errList = append(errList, tdf.Error)
 			continue
 		}
-
 	}
+
 	if len(errList) != 0 {
 		return BulkDecryptionErrors(errList)
 	}

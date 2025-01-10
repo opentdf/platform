@@ -32,5 +32,5 @@ type RewrapRequests struct {
 
 type Body struct {
 	Requests        []*RewrapRequests `json:"requests"`
-	ClientPublicKey string            `json:"ClientPublicKey"`
+	ClientPublicKey string            `json:"clientPublicKey"`
 }

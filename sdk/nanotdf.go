@@ -9,11 +9,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/opentdf/platform/service/kas/request"
 	"io"
 	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/opentdf/platform/service/kas/request"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 )
@@ -913,14 +914,13 @@ func CreateNanoTDFDecryptHandler(reader io.ReadSeeker, writer io.Writer) *NanoTD
 		reader: reader,
 		writer: writer,
 	}
-
 }
 
 func (n *NanoTDFDecryptHandler) getRawHeader() []byte {
 	return n.headerBuf
 }
 
-func (n *NanoTDFDecryptHandler) CreateRewrapRequest(ctx context.Context) (*request.RewrapRequests, error) {
+func (n *NanoTDFDecryptHandler) CreateRewrapRequest(_ context.Context) (map[string]*request.RewrapRequests, error) {
 	var err error
 	var headerSize uint32
 	n.header, headerSize, err = NewNanoTDFHeaderFromReader(n.reader)
@@ -942,7 +942,7 @@ func (n *NanoTDFDecryptHandler) CreateRewrapRequest(ctx context.Context) (*reque
 		return nil, err
 	}
 
-	return &request.RewrapRequests{
+	req := &request.RewrapRequests{
 		KeyAccessObjectRequests: []*request.KeyAccessObjectRequest{
 			{
 				KeyAccessObjectID: "kao-0",
@@ -953,10 +953,11 @@ func (n *NanoTDFDecryptHandler) CreateRewrapRequest(ctx context.Context) (*reque
 			ID: "policy",
 		},
 		Algorithm: "ec:secp256r1",
-	}, nil
+	}
+	return map[string]*request.RewrapRequests{kasURL: req}, nil
 }
 
-func (n *NanoTDFDecryptHandler) Decrypt(ctx context.Context, result []KAOResult) (uint32, error) {
+func (n *NanoTDFDecryptHandler) Decrypt(_ context.Context, result []KAOResult) (uint32, error) {
 	var err error
 	if len(result) != 1 {
 		return 0, fmt.Errorf("improper result from kas")
@@ -1044,8 +1045,12 @@ func (s SDK) getNanoRewrapKey(ctx context.Context, decryptor *NanoTDFDecryptHand
 	}
 
 	client := newKASClient(s.dialOptions, s.tokenSource, nil)
+	kasURL, err := decryptor.header.kasURL.GetURL()
+	if err != nil {
+		return nil, err
+	}
 
-	policyResult, err := client.nanoUnwrap(ctx, []*request.RewrapRequests{req})
+	policyResult, err := client.nanoUnwrap(ctx, req[kasURL])
 	if err != nil {
 		return nil, fmt.Errorf("rewrap failed: %w", err)
 	}
@@ -1061,19 +1066,6 @@ func (s SDK) getNanoRewrapKey(ctx context.Context, decryptor *NanoTDFDecryptHand
 		s.collectionStore.store(decryptor.getRawHeader(), result[0].SymmetricKey)
 	}
 	return result[0].SymmetricKey, nil
-}
-
-type requestBody struct {
-	Algorithm       string    `json:"algorithm,omitempty"`
-	KeyAccess       keyAccess `json:"keyAccess"`
-	ClientPublicKey string    `json:"clientPublicKey"`
-}
-
-type keyAccess struct {
-	Header        string `json:"header"`
-	KeyAccessType string `json:"type"`
-	URL           string `json:"url"`
-	Protocol      string `json:"protocol"`
 }
 
 func versionSalt() []byte {

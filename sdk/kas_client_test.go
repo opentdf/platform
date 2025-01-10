@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/opentdf/platform/service/kas/request"
+
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -58,21 +60,32 @@ func TestCreatingRequest(t *testing.T) {
 
 	client := newKASClient(dialOption, tokenSource, &kasKey)
 
-	keyAccess := KeyAccess{
-		KeyType:    "type1",
-		KasURL:     "https://kas.example.org",
-		Protocol:   "protocol one",
-		WrappedKey: "wrapped",
-		PolicyBinding: PolicyBinding{
-			Alg:  "HS256",
-			Hash: "somehash",
+	keyAccess := []*request.RewrapRequests{
+		{
+			KeyAccessObjectRequests: []*request.KeyAccessObjectRequest{
+				{
+					KeyAccess: request.KeyAccess{
+						KeyType:    "type1",
+						KasURL:     "https://kas.example.org",
+						Protocol:   "protocol one",
+						WrappedKey: []byte("wrapped"),
+						PolicyBinding: PolicyBinding{
+							Alg:  "HS256",
+							Hash: "somehash",
+						},
+						EncryptedMetadata: "encrypted",
+					},
+				},
+			},
 		},
-		EncryptedMetadata: "encrypted",
 	}
+	kp, err := ocrypto.NewRSAKeyPair(1024)
+	require.NoError(t, err, "failed to make pub key")
+	pubkey, err := kp.PublicKeyInPemFormat()
+	require.NoError(t, err, "failed to make pub key")
 
-	req, err := client.getRewrapRequest(keyAccess, "a policy")
+	req, err := client.getRewrapRequest(keyAccess, pubkey)
 	require.NoError(t, err, "failed to create a rewrap request")
-
 	if req.GetSignedRequestToken() == "" {
 		t.Fatalf("didn't produce a signed request token")
 	}
@@ -85,29 +98,25 @@ func TestCreatingRequest(t *testing.T) {
 	rb, ok := tok.Get("requestBody")
 	require.True(t, ok, "didn't contain a request body")
 	requestBodyJSON, _ := rb.(string)
-	var requestBody map[string]interface{}
+	var requestBody request.Body
 
 	require.NoError(t, json.Unmarshal([]byte(requestBodyJSON), &requestBody), "error unmarshaling request body")
 
-	cpk, ok := requestBody["clientPublicKey"].(string)
-	require.True(t, ok)
-
-	_, err = ocrypto.NewAsymEncryption(cpk)
+	_, err = ocrypto.NewAsymEncryption(requestBody.ClientPublicKey)
 	require.NoError(t, err, "NewAsymEncryption failed, incorrect public key include")
 
-	assert.Equal(t, "a policy", requestBody["policy"])
+	require.Len(t, requestBody.Requests, 1)
+	require.Len(t, requestBody.Requests[0].KeyAccessObjectRequests, 1)
+	kao := requestBody.Requests[0].KeyAccessObjectRequests[0]
+	policyBinding, ok := kao.PolicyBinding.(map[string]interface{})
+	require.True(t, ok, "invalid policy binding")
 
-	requestKeyAccess, ok := requestBody["keyAccess"].(map[string]interface{})
-	require.True(t, ok)
-	policyBinding, ok := requestKeyAccess["policyBinding"].(map[string]interface{})
-	require.True(t, ok)
-
-	assert.Equal(t, "https://kas.example.org", requestKeyAccess["url"], "incorrect kasURL")
-	assert.Equal(t, "protocol one", requestKeyAccess["protocol"], "incorrect protocol")
-	assert.Equal(t, "wrapped", requestKeyAccess["wrappedKey"], "incorrect wrapped key")
+	assert.Equal(t, "https://kas.example.org", kao.KasURL, "incorrect kasURL")
+	assert.Equal(t, "protocol one", kao.Protocol, "incorrect protocol")
+	assert.Equal(t, []byte("wrapped"), kao.WrappedKey, "incorrect wrapped key")
 	assert.Equal(t, "HS256", policyBinding["alg"], "incorrect policy binding")
 	assert.Equal(t, "somehash", policyBinding["hash"], "incorrect policy binding")
-	assert.Equal(t, "encrypted", requestKeyAccess["encryptedMetadata"], "incorrect encrypted metadata")
+	assert.Equal(t, "encrypted", kao.EncryptedMetadata, "incorrect encrypted metadata")
 }
 
 func Test_StoreKASKeys(t *testing.T) {

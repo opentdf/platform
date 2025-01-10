@@ -7,11 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/opentdf/platform/service/kas/request"
 	"io"
 	"math"
 	"strconv"
 	"strings"
+
+	"github.com/opentdf/platform/service/kas/request"
 
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -93,7 +94,7 @@ func (r *tdf3DecryptHandler) Decrypt(ctx context.Context, results []KAOResult) (
 	return uint32(n), err
 }
 
-func (r *tdf3DecryptHandler) CreateRewrapRequest(ctx context.Context) (*request.RewrapRequests, error) {
+func (r *tdf3DecryptHandler) CreateRewrapRequest(ctx context.Context) (map[string]*request.RewrapRequests, error) {
 	return createRewrapRequest(ctx, r.reader)
 }
 
@@ -820,44 +821,50 @@ func (r *Reader) UnsafePayloadKeyRetrieval() ([]byte, error) {
 	return r.payloadKey, nil
 }
 
-func createRewrapRequest(ctx context.Context, r *Reader) (*request.RewrapRequests, error) {
-	rewrapReq := request.RewrapRequests{
-		Policy: request.PolicyRequest{
-			Body: r.manifest.EncryptionInformation.Policy,
-			ID:   "policy",
-		},
-	}
+func createRewrapRequest(_ context.Context, r *Reader) (map[string]*request.RewrapRequests, error) {
+	kasReqs := make(map[string]*request.RewrapRequests)
 	for i, kao := range r.manifest.EncryptionInformation.KeyAccessObjs {
-		kaoId := fmt.Sprintf("kao-%d", i)
+		kaoID := fmt.Sprintf("kao-%d", i)
 		key, err := ocrypto.Base64Decode([]byte(kao.WrappedKey))
 		if err != nil {
 			return nil, fmt.Errorf("could not decode wrapper key: %w", err)
 		}
 
-		rewrapReq.KeyAccessObjectRequests = append(rewrapReq.KeyAccessObjectRequests,
-			&request.KeyAccessObjectRequest{
-				KeyAccessObjectID: kaoId,
-				KeyAccess: request.KeyAccess{
-					KeyType:       kao.KeyType,
-					KasURL:        kao.KasURL,
-					KID:           kao.KID,
-					Protocol:      kao.Protocol,
-					PolicyBinding: kao.PolicyBinding,
-					SplitID:       kao.SplitID,
-					WrappedKey:    key,
+		kaoReq := &request.KeyAccessObjectRequest{
+			KeyAccessObjectID: kaoID,
+			KeyAccess: request.KeyAccess{
+				KeyType:       kao.KeyType,
+				KasURL:        kao.KasURL,
+				KID:           kao.KID,
+				Protocol:      kao.Protocol,
+				PolicyBinding: kao.PolicyBinding,
+				SplitID:       kao.SplitID,
+				WrappedKey:    key,
+			},
+		}
+		if req, ok := kasReqs[kao.KasURL]; ok {
+			req.KeyAccessObjectRequests = append(req.KeyAccessObjectRequests, kaoReq)
+		} else {
+			rewrapReq := request.RewrapRequests{
+				Policy: request.PolicyRequest{
+					Body: r.manifest.EncryptionInformation.Policy,
+					ID:   "policy",
 				},
-			})
+				KeyAccessObjectRequests: []*request.KeyAccessObjectRequest{kaoReq},
+			}
+			kasReqs[kao.KasURL] = &rewrapReq
+		}
 	}
 
-	return &rewrapReq, nil
+	return kasReqs, nil
 }
 
-func getIdx(kaoId string) int {
-	idx, _ := strconv.Atoi(strings.Split(kaoId, "-")[1])
+func getIdx(kaoID string) int {
+	idx, _ := strconv.Atoi(strings.Split(kaoID, "-")[1])
 	return idx
 }
 
-func (r *Reader) buildKey(ctx context.Context, results []KAOResult) error {
+func (r *Reader) buildKey(_ context.Context, results []KAOResult) error {
 	var unencryptedMetadata []byte
 	var payloadKey [kKeySize]byte
 	knownSplits := make(map[string]bool)
@@ -866,14 +873,13 @@ func (r *Reader) buildKey(ctx context.Context, results []KAOResult) error {
 	mixedSplits := len(r.manifest.KeyAccessObjs) > 1 && r.manifest.KeyAccessObjs[0].SplitID != ""
 
 	for _, kaoRes := range results {
-		idx := getIdx(kaoRes.KeyAccessObjectId)
+		idx := getIdx(kaoRes.KeyAccessObjectID)
 		keyAccessObj := r.manifest.KeyAccessObjs[idx]
 		ss := keySplitStep{KAS: keyAccessObj.KasURL, SplitID: keyAccessObj.SplitID}
 
 		wrappedKey := kaoRes.SymmetricKey
 		err := kaoRes.Error
 		if !mixedSplits { //nolint:nestif // todo: subfunction
-
 			if err != nil {
 				errToReturn := fmt.Errorf("doPayloadKeyUnwrap splitKey.rewrap failed: %w", err)
 				if strings.Contains(err.Error(), codes.InvalidArgument.String()) {
@@ -890,7 +896,7 @@ func (r *Reader) buildKey(ctx context.Context, results []KAOResult) error {
 				// already found
 				continue
 			}
-			//wrappedKey, err = client.buildKey(ctx, keyAccessObj, r.manifest.EncryptionInformation.Policy)
+			// wrappedKey, err = client.buildKey(ctx, keyAccessObj, r.manifest.EncryptionInformation.Policy)
 			if err != nil {
 				errToReturn := fmt.Errorf("kao buildKey failed for split %v: %w", ss, err)
 				if !strings.Contains(err.Error(), codes.InvalidArgument.String()) {
@@ -1041,26 +1047,30 @@ func (r *Reader) buildKey(ctx context.Context, results []KAOResult) error {
 	r.aesGcm = gcm
 
 	return nil
-
 }
 
 // Unwraps the payload key, if possible, using the access service
 func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocognit // Better readability keeping it as is
 	kasClient := newKASClient(r.dialOptions, r.tokenSource, &r.kasSessionKey)
 
-	req, err := createRewrapRequest(ctx, r)
+	reqs, err := createRewrapRequest(ctx, r)
 	if err != nil {
 		return err
 	}
-	policyRes, err := kasClient.unwrap(ctx, []*request.RewrapRequests{req})
-	if err != nil {
-		return err
+	var kaoResults []KAOResult
+	for _, req := range reqs {
+		policyRes, err := kasClient.unwrap(ctx, req)
+		if err != nil {
+			return err
+		}
+		result, ok := policyRes["policy"]
+		if !ok {
+			return fmt.Errorf("could not find policy in rewrap response")
+		}
+		kaoResults = append(kaoResults, result...)
 	}
-	result, ok := policyRes["policy"]
-	if !ok {
-		return fmt.Errorf("could not find policy in rewrap response")
-	}
-	return r.buildKey(ctx, result)
+
+	return r.buildKey(ctx, kaoResults)
 }
 
 // calculateSignature calculate signature of data of the given algorithm.

@@ -122,6 +122,7 @@
 wait_for_green() {
   limit=5
   for i in $(seq 1 $limit); do
+    
     grpcurl "localhost:8080" "grpc.health.v1.Health.Check"
     if [ "$(grpcurl "localhost:8080" "grpc.health.v1.Health.Check" | jq -e -r .status)" = SERVING ]; then
       return 0
@@ -266,7 +267,7 @@ setup_file() {
     cp opentdf.yaml opentdf-test-backup.yaml.bak
   fi
   openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=kas" -keyout kas-r1-private.pem -out kas-r1-cert.pem -days 365
-  openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=kas" -keyout kas-r1-private.pem -out kas-r1-cert.pem -days 365
+  openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=kas" -keyout kas-r2-private.pem -out kas-r2-cert.pem -days 365
   openssl ecparam -name prime256v1 >ecparams.tmp
   openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout kas-e1-private.pem -out kas-e1-cert.pem -days 365
   openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout kas-e2-private.pem -out kas-e2-cert.pem -days 365

@@ -34,13 +34,11 @@ func (k *KASConfigDupe) consolidate() {
 	consolidated := make([]CurrentKeyFor, 0, len(k.Keyring)/2) //nolint:mnd // There are at most two of each of the new kind of keys.
 	for _, key := range k.Keyring {
 		if j, ok := seen[key.KID]; ok {
-			if key.Legacy {
-				consolidated[j].Legacy = true
-			} else {
-				consolidated[j].Active = key.Active
-			}
+			consolidated[j].Legacy = consolidated[j].Legacy || key.Legacy
+			consolidated[j].Active = consolidated[j].Active || !key.Legacy
 		} else {
 			seen[key.KID] = len(consolidated)
+			key.Active = !key.Legacy
 			consolidated = append(consolidated, key)
 		}
 	}

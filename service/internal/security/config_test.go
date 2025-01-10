@@ -64,7 +64,7 @@ func TestMarshalTo(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "upgrade2024H2",
+			name: "upgrade2024H2A",
 			config: CryptoConfig2024{
 				Standard: Standard{
 					Keys: []KeyPairInfo{
@@ -75,14 +75,75 @@ func TestMarshalTo(t *testing.T) {
 			},
 			input: map[string]any{
 				"keyring": []map[string]any{
-					{"alg": "rsa:2048", "kid": "rsa1", "private": "rsa1_private.pem", "cert": "rsa1_public.pem", "active": true, "legacy": true},
-					{"alg": "ec:secp256r1", "kid": "ec1", "private": "ec1_private.pem", "cert": "ec1_public.pem", "active": true, "legacy": true},
+					{"alg": "rsa:2048", "kid": "rsa1"},
+					{"alg": "ec:secp256r1", "kid": "ec1"},
+					{"alg": "rsa:2048", "kid": "rsa1", "legacy": true},
+					{"alg": "ec:secp256r1", "kid": "ec1", "legacy": true},
 				},
 			},
 			expected: KASConfigDupe{
 				Keyring: []CurrentKeyFor{
 					{Algorithm: "rsa:2048", KID: "rsa1", Private: "rsa1_private.pem", Certificate: "rsa1_public.pem", Active: true, Legacy: true},
 					{Algorithm: "ec:secp256r1", KID: "ec1", Private: "ec1_private.pem", Certificate: "ec1_public.pem", Active: true, Legacy: true},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "upgrade2024H2A",
+			config: CryptoConfig2024{
+				Standard: Standard{
+					Keys: []KeyPairInfo{
+						{Algorithm: "rsa:2048", KID: "rsa1", Private: "rsa1_private.pem", Certificate: "rsa1_public.pem"},
+						{Algorithm: "ec:secp256r1", KID: "ec1", Private: "ec1_private.pem", Certificate: "ec1_public.pem"},
+					},
+				},
+			},
+			input: map[string]any{
+				"keyring": []map[string]any{
+					{"alg": "rsa:2048", "kid": "rsa1"},
+					{"alg": "ec:secp256r1", "kid": "ec1"},
+				},
+			},
+			expected: KASConfigDupe{
+				Keyring: []CurrentKeyFor{
+					{Algorithm: "rsa:2048", KID: "rsa1", Private: "rsa1_private.pem", Certificate: "rsa1_public.pem", Active: true, Legacy: false},
+					{Algorithm: "ec:secp256r1", KID: "ec1", Private: "ec1_private.pem", Certificate: "ec1_public.pem", Active: true, Legacy: false},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "upgrade2024H2B",
+			config: CryptoConfig2024{
+				Standard: Standard{
+					Keys: []KeyPairInfo{
+						{Algorithm: "ec:secp256r1", KID: "ec2", Private: "ec2_private.pem", Certificate: "ec2_public.pem"},
+						{Algorithm: "rsa:2048", KID: "rsa1", Private: "rsa1_private.pem", Certificate: "rsa1_public.pem"},
+						{Algorithm: "ec:secp256r1", KID: "ec1", Private: "ec1_private.pem", Certificate: "ec1_public.pem"},
+						{Algorithm: "rsa:2048", KID: "rsa3", Private: "rsa3_private.pem", Certificate: "rsa3_public.pem"},
+						{Algorithm: "rsa:2048", KID: "rsa2", Private: "rsa2_private.pem", Certificate: "rsa2_public.pem"},
+						{Algorithm: "ec:secp256r1", KID: "ec3", Private: "ec3_private.pem", Certificate: "ec3_public.pem"},
+					},
+				},
+			},
+			input: map[string]any{
+				"keyring": []map[string]any{
+					{"alg": "rsa:2048", "kid": "rsa1"},
+					{"alg": "ec:secp256r1", "kid": "ec1", "legacy": true},
+					{"alg": "ec:secp256r1", "kid": "ec1"},
+					{"alg": "rsa:2048", "kid": "rsa2", "legacy": true},
+					{"alg": "ec:secp256r1", "kid": "ec2", "legacy": true},
+				},
+			},
+			expected: KASConfigDupe{
+				Keyring: []CurrentKeyFor{
+					{Algorithm: "rsa:2048", KID: "rsa1", Private: "rsa1_private.pem", Certificate: "rsa1_public.pem", Active: true, Legacy: false},
+					{Algorithm: "rsa:2048", KID: "rsa2", Private: "rsa2_private.pem", Certificate: "rsa2_public.pem", Active: false, Legacy: true},
+					{Algorithm: "rsa:2048", KID: "rsa3", Private: "rsa3_private.pem", Certificate: "rsa3_public.pem", Active: false, Legacy: false},
+					{Algorithm: "ec:secp256r1", KID: "ec1", Private: "ec1_private.pem", Certificate: "ec1_public.pem", Active: true, Legacy: true},
+					{Algorithm: "ec:secp256r1", KID: "ec2", Private: "ec2_private.pem", Certificate: "ec2_public.pem", Active: false, Legacy: true},
+					{Algorithm: "ec:secp256r1", KID: "ec3", Private: "ec3_private.pem", Certificate: "ec3_public.pem", Active: false, Legacy: false},
 				},
 			},
 			wantErr: false,
@@ -117,7 +178,7 @@ func TestMarshalTo(t *testing.T) {
 			var result KASConfigDupe
 			err = mapstructure.Decode(tt.input, &result)
 			require.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
+			assert.ElementsMatch(t, tt.expected.Keyring, result.Keyring)
 		})
 	}
 }

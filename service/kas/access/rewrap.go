@@ -558,6 +558,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*request.Rewrap
 	}
 	sessionKey, err := p.CryptoProvider.GenerateNanoTDFSessionKey(privateKeyHandle, []byte(clientPublicKey))
 	if err != nil {
+		p.Logger.DebugContext(ctx, "GenerateNanoTDFSessionKey", "err", err)
 		failAllKaos(requests, fmt.Errorf("failed to generate session key: %w", err))
 		return ""
 	}

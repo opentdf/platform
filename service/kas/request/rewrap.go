@@ -2,6 +2,10 @@ package request
 
 import "github.com/opentdf/platform/protocol/go/kas"
 
+const (
+	PermitStatus = "permit"
+)
+
 type PolicyRequest struct {
 	ID   string `json:"id"`
 	Body string `json:"body"`

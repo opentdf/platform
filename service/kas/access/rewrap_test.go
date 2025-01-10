@@ -353,7 +353,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 
 			logger := logger.CreateTestLogger()
 
-			verified, err := extractSRTBody(
+			verified, _, err := extractSRTBody(
 				ctx,
 				http.Header{},
 				&kaspb.RewrapRequest{
@@ -392,7 +392,7 @@ func Test_SignedRequestBody_When_Bad_Signature_Expect_Failure(t *testing.T) {
 	md := metadata.New(map[string]string{"token": string(jwtWrongKey(t))})
 	ctx = metadata.NewIncomingContext(ctx, md)
 
-	verified, err := extractSRTBody(
+	verified, _, err := extractSRTBody(
 		ctx,
 		http.Header{},
 		&kaspb.RewrapRequest{

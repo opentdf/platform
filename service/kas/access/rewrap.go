@@ -361,6 +361,7 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 
 	var nanoReqs []*request.RewrapRequests
 	var tdf3Reqs []*request.RewrapRequests
+	var requests []*request.RewrapRequests
 	for _, req := range body.Requests {
 		switch {
 		case req.Algorithm == kNanoAlgorithm:
@@ -369,18 +370,17 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 			tdf3Reqs = append(tdf3Reqs, req)
 		default:
 			// No algorithm: fail all Policy's KAOs
+
 			var failedKAOs []*kaspb.KAORewrapResult
-			for _, kao := range req.KeyAccessObjectRequests {
-				failedKAOs = append(failedKAOs,
-					failedKAORewrap(req.Results, kao, err400(fmt.Sprintf("invalid algorithm: %s", req.Algorithm))))
-			}
-			rewrapResult := &kaspb.RewrapResult{
+			req.Results = &kaspb.RewrapResult{
 				Results: failedKAOs,
 			}
-			resp.Responses = append(resp.Responses, rewrapResult)
+			for _, kao := range req.KeyAccessObjectRequests {
+				failedKAORewrap(req.Results, kao, err400(fmt.Sprintf("invalid algorithm: %s", req.Algorithm)))
+			}
+			requests = append(requests, req)
 		}
 	}
-	var requests []*request.RewrapRequests
 	if len(tdf3Reqs) > 0 {
 		p.tdf3Rewrap(ctx, tdf3Reqs, body.ClientPublicKey, entityInfo)
 		requests = append(requests, tdf3Reqs...)
@@ -402,7 +402,7 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 		}
 		res := resp.GetResponses()[0].GetResults()[0]
 		if res.GetStatus() == kFailedStatus {
-			return nil, tdf3Reqs[0].KeyAccessObjectRequests[0].Err
+			return nil, requests[0].KeyAccessObjectRequests[0].Err
 		}
 		resp.EntityWrappedKey = res.GetKasWrappedKey()
 		resp.Metadata = res.GetMetadata()

@@ -5,6 +5,11 @@ erDiagram
         uuid key_access_server_id PK,FK "Foreign key to the KAS registration"
     }
 
+    attribute_definition_public_key_map {
+        uuid definition_id PK,FK "Foreign key to the attribute definition"
+        uuid key_id PK,FK "Foreign key to the public key"
+    }
+
     attribute_definitions {
         boolean active "Active/Inactive state"
         timestamp_with_time_zone created_at 
@@ -30,6 +35,11 @@ erDiagram
         uuid namespace_id PK,FK "Foreign key to the namespace of the KAS grant"
     }
 
+    attribute_namespace_public_key_map {
+        uuid key_id PK,FK "Foreign key to the public key"
+        uuid namespace_id PK,FK "Foreign key to the attribute namespace"
+    }
+
     attribute_namespaces {
         boolean active "Active/Inactive state"
         timestamp_with_time_zone created_at 
@@ -42,6 +52,11 @@ erDiagram
     attribute_value_key_access_grants {
         uuid attribute_value_id PK,FK "Foreign key to the attribute value"
         uuid key_access_server_id PK,FK "Foreign key to the KAS registration"
+    }
+
+    attribute_value_public_key_map {
+        uuid key_id PK,FK "Foreign key to the public key"
+        uuid value_id PK,FK "Foreign key to the attribute value"
     }
 
     attribute_values {
@@ -65,10 +80,23 @@ erDiagram
         timestamp_with_time_zone created_at 
         uuid id PK "Primary key for the table"
         jsonb metadata "Metadata for the KAS (see protos for structure)"
-        character_varying name UK 
+        character_varying name UK "Optional common name of the KAS"
         jsonb public_key "Public key of the KAS (see protos for structure/options)"
         timestamp_with_time_zone updated_at 
         character_varying uri UK "URI of the KAS"
+    }
+
+    public_keys {
+        character_varying alg UK "Algorithm used to generate the key"
+        timestamp_without_time_zone created_at "Timestamp when the key was created"
+        uuid id PK "Unique identifier for the public key"
+        boolean is_active "Flag to indicate if the key is active"
+        uuid key_access_server_id FK,UK "Foreign key to the key access server that owns the key"
+        character_varying key_id UK "Unique identifier for the key"
+        jsonb metadata "Additional metadata for the key"
+        text public_key "Public key in PEM format"
+        timestamp_without_time_zone updated_at "Timestamp when the key was last updated"
+        boolean was_used "Flag to indicate if the key has been used. Triggered when its mapped to a namespace, definition, or value"
     }
 
     resource_mapping_groups {
@@ -110,6 +138,8 @@ erDiagram
 
     attribute_definition_key_access_grants }o--|| attribute_definitions : "attribute_definition_id"
     attribute_definition_key_access_grants }o--|| key_access_servers : "key_access_server_id"
+    attribute_definition_public_key_map }o--|| attribute_definitions : "definition_id"
+    attribute_definition_public_key_map }o--|| public_keys : "key_id"
     attribute_definitions }o--|| attribute_namespaces : "namespace_id"
     attribute_fqns }o--|| attribute_definitions : "attribute_id"
     attribute_values }o--|| attribute_definitions : "attribute_definition_id"
@@ -117,11 +147,16 @@ erDiagram
     attribute_fqns }o--|| attribute_values : "value_id"
     attribute_namespace_key_access_grants }o--|| attribute_namespaces : "namespace_id"
     attribute_namespace_key_access_grants }o--|| key_access_servers : "key_access_server_id"
+    attribute_namespace_public_key_map }o--|| attribute_namespaces : "namespace_id"
+    attribute_namespace_public_key_map }o--|| public_keys : "key_id"
     resource_mapping_groups }o--|| attribute_namespaces : "namespace_id"
     attribute_value_key_access_grants }o--|| attribute_values : "attribute_value_id"
     attribute_value_key_access_grants }o--|| key_access_servers : "key_access_server_id"
+    attribute_value_public_key_map }o--|| attribute_values : "value_id"
+    attribute_value_public_key_map }o--|| public_keys : "key_id"
     resource_mappings }o--|| attribute_values : "attribute_value_id"
     subject_mappings }o--|| attribute_values : "attribute_value_id"
+    public_keys }o--|| key_access_servers : "key_access_server_id"
     resource_mappings }o--|| resource_mapping_groups : "group_id"
     subject_mappings }o--|| subject_condition_set : "subject_condition_set_id"
 ```

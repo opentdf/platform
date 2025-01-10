@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS
         metadata jsonb,
         created_at timestamp,
         updated_at timestamp,
-        UNIQUE (key_access_server_id, key_id, alg),
+        UNIQUE (key_access_server_id, key_id, alg), -- Prevents duplicate public keys for the same KAS by key_id and alg
         CONSTRAINT unique_active_key EXCLUDE (
             key_access_server_id
             WITH
@@ -24,6 +24,28 @@ CREATE TABLE IF NOT EXISTS
         WHERE
             (is_active)
     );
+
+COMMENT ON TABLE public_keys IS 'Table to store public keys for use in TDF encryption';
+
+COMMENT ON COLUMN public_keys.id IS 'Unique identifier for the public key';
+
+COMMENT ON COLUMN public_keys.is_active IS 'Flag to indicate if the key is active';
+
+COMMENT ON COLUMN public_keys.was_used IS 'Flag to indicate if the key has been used. Triggered when its mapped to a namespace, definition, or value';
+
+COMMENT ON COLUMN public_keys.key_access_server_id IS 'Foreign key to the key access server that owns the key';
+
+COMMENT ON COLUMN public_keys.key_id IS 'Unique identifier for the key';
+
+COMMENT ON COLUMN public_keys.alg IS 'Algorithm used to generate the key';
+
+COMMENT ON COLUMN public_keys.public_key IS 'Public key in PEM format';
+
+COMMENT ON COLUMN public_keys.metadata IS 'Additional metadata for the key';
+
+COMMENT ON COLUMN public_keys.created_at IS 'Timestamp when the key was created';
+
+COMMENT ON COLUMN public_keys.updated_at IS 'Timestamp when the key was last updated';
 
 CREATE
 OR REPLACE FUNCTION update_active_key () RETURNS trigger AS $$
@@ -52,6 +74,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+COMMENT ON FUNCTION update_active_key IS 'Function to update active key when a new key is inserted with the same algorithm and key_access_server_id';
+
 CREATE TRIGGER maintain_active_key BEFORE INSERT ON public_keys FOR EACH ROW
 EXECUTE FUNCTION update_active_key ();
 
@@ -62,6 +86,12 @@ CREATE TABLE IF NOT EXISTS
         PRIMARY KEY (namespace_id, key_id)
     );
 
+COMMENT ON TABLE attribute_namespace_public_key_map IS 'Table to map public keys to attribute namespaces';
+
+COMMENT ON COLUMN attribute_namespace_public_key_map.namespace_id IS 'Foreign key to the attribute namespace';
+
+COMMENT ON COLUMN attribute_namespace_public_key_map.key_id IS 'Foreign key to the public key';
+
 CREATE TABLE IF NOT EXISTS
     attribute_definition_public_key_map (
         definition_id uuid NOT NULL REFERENCES attribute_definitions (id) ON DELETE CASCADE,
@@ -69,12 +99,24 @@ CREATE TABLE IF NOT EXISTS
         PRIMARY KEY (definition_id, key_id)
     );
 
+COMMENT ON TABLE attribute_definition_public_key_map IS 'Table to map public keys to attribute definitions';
+
+COMMENT ON COLUMN attribute_definition_public_key_map.definition_id IS 'Foreign key to the attribute definition';
+
+COMMENT ON COLUMN attribute_definition_public_key_map.key_id IS 'Foreign key to the public key';
+
 CREATE TABLE IF NOT EXISTS
     attribute_value_public_key_map (
         value_id uuid NOT NULL REFERENCES attribute_values (id) ON DELETE CASCADE,
         key_id uuid NOT NULL REFERENCES public_keys (id) ON DELETE CASCADE,
         PRIMARY KEY (value_id, key_id)
     );
+
+COMMENT ON TABLE attribute_value_public_key_map IS 'Table to map public keys to attribute values';
+
+COMMENT ON COLUMN attribute_value_public_key_map.value_id IS 'Foreign key to the attribute value';
+
+COMMENT ON COLUMN attribute_value_public_key_map.key_id IS 'Foreign key to the public key';
 
 -- Trigger function to update was_used column
 CREATE
@@ -84,6 +126,8 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION update_was_used IS 'Function to update was_used column when a key is mapped to a namespace, definition, or value';
 
 -- Trigger for attribute_namespace_key_map
 CREATE TRIGGER trigger_update_was_used_namespace
@@ -125,6 +169,8 @@ WHERE
 GROUP BY
     km.namespace_id;
 
+COMMENT ON VIEW active_namespace_public_keys_view IS 'View to retrieve active public keys mapped to attribute namespaces';
+
 -- Trigger for attribute_definition_key_map
 CREATE TRIGGER trigger_update_was_used_definition
 AFTER INSERT ON attribute_definition_public_key_map FOR EACH ROW
@@ -164,6 +210,8 @@ WHERE
     ky.is_active = TRUE
 GROUP BY
     km.definition_id;
+
+COMMENT ON VIEW active_definition_public_keys_view IS 'View to retrieve active public keys mapped to attribute definitions';
 
 -- Trigger for attribute_value_key_map
 CREATE TRIGGER trigger_update_was_used_value
@@ -205,6 +253,8 @@ WHERE
 GROUP BY
     km.value_id;
 
+COMMENT ON VIEW active_value_public_keys_view IS 'View to retrieve active public keys mapped to attribute values';
+
 -- +goose StatementEnd
 -- +goose Down
 -- +goose StatementBegin
@@ -228,6 +278,6 @@ DROP TABLE attribute_namespace_public_key_map;
 
 DROP TABLE attribute_definition_public_key_map;
 
-DROP TABLE attribute_value_kpublic_key_map;
+DROP TABLE attribute_value_public_key_map;
 
 -- +goose StatementEnd

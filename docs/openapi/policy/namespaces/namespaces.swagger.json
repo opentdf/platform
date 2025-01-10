@@ -484,13 +484,14 @@
           }
         }
       },
-      "title": "A list of known KAS public keys"
+      "title": "Deprecated\nA list of known KAS public keys"
     },
     "policyKey": {
       "type": "object",
       "properties": {
         "id": {
-          "type": "string"
+          "type": "string",
+          "title": "the database record ID, not the key ID (`kid`)"
         },
         "isActive": {
           "type": "boolean"
@@ -521,7 +522,8 @@
           "title": "Address of a KAS instance"
         },
         "publicKey": {
-          "$ref": "#/definitions/policyPublicKey"
+          "$ref": "#/definitions/policyPublicKey",
+          "title": "Deprecated"
         },
         "name": {
           "type": "string",
@@ -619,7 +621,8 @@
           "$ref": "#/definitions/policyKasPublicKeySet",
           "title": "public key with additional information. Current preferred version"
         }
-      }
+      },
+      "title": "Deprecated"
     },
     "protobufAny": {
       "type": "object",

@@ -399,8 +399,9 @@ type Attribute struct {
 	// attribute rule enum
 	Rule   AttributeRuleTypeEnum `protobuf:"varint,4,opt,name=rule,proto3,enum=policy.AttributeRuleTypeEnum" json:"rule,omitempty"`
 	Values []*Value              `protobuf:"bytes,5,rep,name=values,proto3" json:"values,omitempty"`
-	Grants []*KeyAccessServer    `protobuf:"bytes,6,rep,name=grants,proto3" json:"grants,omitempty"`
-	Fqn    string                `protobuf:"bytes,7,opt,name=fqn,proto3" json:"fqn,omitempty"`
+	// Deprecated
+	Grants []*KeyAccessServer `protobuf:"bytes,6,rep,name=grants,proto3" json:"grants,omitempty"`
+	Fqn    string             `protobuf:"bytes,7,opt,name=fqn,proto3" json:"fqn,omitempty"`
 	// active by default until explicitly deactivated
 	Active *wrapperspb.BoolValue `protobuf:"bytes,8,opt,name=active,proto3" json:"active,omitempty"`
 	// Keys associated with the attribute
@@ -520,6 +521,7 @@ type Value struct {
 	Id        string     `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Attribute *Attribute `protobuf:"bytes,2,opt,name=attribute,proto3" json:"attribute,omitempty"`
 	Value     string     `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	// Deprecated
 	// list of key access servers
 	Grants []*KeyAccessServer `protobuf:"bytes,5,rep,name=grants,proto3" json:"grants,omitempty"`
 	Fqn    string             `protobuf:"bytes,6,opt,name=fqn,proto3" json:"fqn,omitempty"`
@@ -711,18 +713,6 @@ func (*Action_Custom) isAction_Value() {}
 
 // Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute
 // value + action(s) combination
-//
-// Example: Subjects in sets 1 and 2 are entitled attribute value
-// http://wwww.example.org/attr/example/value/one with permitted actions
-// TRANSMIT and DECRYPT
-// {
-// "id": "someid",
-// "attribute_value": {example_one_attribute_value...},
-// "subject_condition_set":
-// {"subject_sets":[{subject_set_1},{subject_set_2}]...}, "actions":
-// [{"standard": "STANDARD_ACTION_DECRYPT"}", {"standard":
-// "STANDARD_ACTION_TRANSMIT"}]
-// }
 type SubjectMapping struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1282,7 +1272,8 @@ type KeyAccessServer struct {
 
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Address of a KAS instance
-	Uri       string     `protobuf:"bytes,2,opt,name=uri,proto3" json:"uri,omitempty"`
+	Uri string `protobuf:"bytes,2,opt,name=uri,proto3" json:"uri,omitempty"`
+	// Deprecated
 	PublicKey *PublicKey `protobuf:"bytes,3,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
 	// Optional
 	// Unique name of the KAS instance
@@ -1363,6 +1354,7 @@ type Key struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// the database record ID, not the key ID (`kid`)
 	Id        string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	IsActive  bool             `protobuf:"varint,2,opt,name=is_active,json=isActive,proto3" json:"is_active,omitempty"`
 	WasUsed   bool             `protobuf:"varint,3,opt,name=was_used,json=wasUsed,proto3" json:"was_used,omitempty"`
@@ -1515,6 +1507,7 @@ func (x *KasPublicKey) GetAlg() KasPublicKeyAlgEnum {
 	return KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
 }
 
+// Deprecated
 // A list of known KAS public keys
 type KasPublicKeySet struct {
 	state         protoimpl.MessageState
@@ -1563,6 +1556,7 @@ func (x *KasPublicKeySet) GetKeys() []*KasPublicKey {
 	return nil
 }
 
+// Deprecated
 type PublicKey struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

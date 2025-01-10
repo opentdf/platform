@@ -44,6 +44,7 @@ message Attribute {
 
   repeated Value values = 5;
 
+  // Deprecated
   repeated KeyAccessServer grants = 6;
 
   string fqn = 7;
@@ -79,6 +80,7 @@ message Value {
   reserved "members";
   reserved 4;
 
+  // Deprecated
   // list of key access servers
   repeated KeyAccessServer grants = 5;
 
@@ -139,18 +141,6 @@ enum ConditionBooleanTypeEnum {
 /*
    Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute
    value + action(s) combination
-
-   Example: Subjects in sets 1 and 2 are entitled attribute value
-   http://wwww.example.org/attr/example/value/one with permitted actions
-   TRANSMIT and DECRYPT
-   {
-    "id": "someid",
-    "attribute_value": {example_one_attribute_value...},
-    "subject_condition_set":
-   {"subject_sets":[{subject_set_1},{subject_set_2}]...}, "actions":
-   [{"standard": "STANDARD_ACTION_DECRYPT"}", {"standard":
-   "STANDARD_ACTION_TRANSMIT"}]
-   }
 */
 message SubjectMapping {
   string id = 1;
@@ -297,6 +287,8 @@ message KeyAccessServer {
                  "Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/"
                  ".*)?$')"
   } ];
+
+  // Deprecated
   PublicKey public_key = 3;
 
   // Optional
@@ -345,9 +337,11 @@ message KasPublicKey {
   KasPublicKeyAlgEnum alg = 3;
 }
 
+// Deprecated
 // A list of known KAS public keys
 message KasPublicKeySet { repeated KasPublicKey keys = 1; }
 
+// Deprecated
 message PublicKey {
   // Deprecated
   reserved "local";

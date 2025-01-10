@@ -1582,7 +1582,7 @@
                   <td>grants</td>
                   <td><a href="#policy.KeyAccessServer">KeyAccessServer</a></td>
                   <td>repeated</td>
-                  <td><p> </p></td>
+                  <td><p>Deprecated </p></td>
                 </tr>
               
                 <tr>
@@ -1733,7 +1733,7 @@ To start, these may be `rsa:2048` for encrypting ZTDF files and
         
       
         <h3 id="policy.KasPublicKeySet">KasPublicKeySet</h3>
-        <p>A list of known KAS public keys</p>
+        <p>Deprecated</p><p>A list of known KAS public keys</p>
 
         
           <table class="field-table">
@@ -1770,7 +1770,7 @@ To start, these may be `rsa:2048` for encrypting ZTDF files and
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>the database record ID, not the key ID (`kid`) </p></td>
                 </tr>
               
                 <tr>
@@ -1843,7 +1843,7 @@ To start, these may be `rsa:2048` for encrypting ZTDF files and
                   <td>public_key</td>
                   <td><a href="#policy.PublicKey">PublicKey</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Deprecated </p></td>
                 </tr>
               
                 <tr>
@@ -1936,7 +1936,7 @@ enable federation </p></td>
         
       
         <h3 id="policy.PublicKey">PublicKey</h3>
-        <p></p>
+        <p>Deprecated</p>
 
         
           <table class="field-table">
@@ -2103,7 +2103,7 @@ per namespace </p></td>
         
       
         <h3 id="policy.SubjectMapping">SubjectMapping</h3>
-        <p>Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute</p><p>value + action(s) combination</p><p>Example: Subjects in sets 1 and 2 are entitled attribute value</p><p>http://wwww.example.org/attr/example/value/one with permitted actions</p><p>TRANSMIT and DECRYPT</p><p>{</p><p>"id": "someid",</p><p>"attribute_value": {example_one_attribute_value...},</p><p>"subject_condition_set":</p><p>{"subject_sets":[{subject_set_1},{subject_set_2}]...}, "actions":</p><p>[{"standard": "STANDARD_ACTION_DECRYPT"}", {"standard":</p><p>"STANDARD_ACTION_TRANSMIT"}]</p><p>}</p>
+        <p>Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute</p><p>value + action(s) combination</p>
 
         
           <table class="field-table">
@@ -2244,7 +2244,8 @@ per namespace </p></td>
                   <td>grants</td>
                   <td><a href="#policy.KeyAccessServer">KeyAccessServer</a></td>
                   <td>repeated</td>
-                  <td><p>list of key access servers </p></td>
+                  <td><p>Deprecated
+list of key access servers </p></td>
                 </tr>
               
                 <tr>

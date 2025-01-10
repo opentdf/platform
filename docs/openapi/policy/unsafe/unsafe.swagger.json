@@ -436,7 +436,8 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/policyKeyAccessServer"
-          }
+          },
+          "title": "Deprecated"
         },
         "fqn": {
           "type": "string"
@@ -556,13 +557,14 @@
           }
         }
       },
-      "title": "A list of known KAS public keys"
+      "title": "Deprecated\nA list of known KAS public keys"
     },
     "policyKey": {
       "type": "object",
       "properties": {
         "id": {
-          "type": "string"
+          "type": "string",
+          "title": "the database record ID, not the key ID (`kid`)"
         },
         "isActive": {
           "type": "boolean"
@@ -593,7 +595,8 @@
           "title": "Address of a KAS instance"
         },
         "publicKey": {
-          "$ref": "#/definitions/policyPublicKey"
+          "$ref": "#/definitions/policyPublicKey",
+          "title": "Deprecated"
         },
         "name": {
           "type": "string",
@@ -656,7 +659,8 @@
           "$ref": "#/definitions/policyKasPublicKeySet",
           "title": "public key with additional information. Current preferred version"
         }
-      }
+      },
+      "title": "Deprecated"
     },
     "policySubjectConditionSet": {
       "type": "object",
@@ -703,7 +707,6 @@
           "$ref": "#/definitions/commonMetadata"
         }
       },
-      "description": "Example: Subjects in sets 1 and 2 are entitled attribute value\nhttp://wwww.example.org/attr/example/value/one with permitted actions\nTRANSMIT and DECRYPT\n{\n\"id\": \"someid\",\n\"attribute_value\": {example_one_attribute_value...},\n\"subject_condition_set\":\n{\"subject_sets\":[{subject_set_1},{subject_set_2}]...}, \"actions\":\n[{\"standard\": \"STANDARD_ACTION_DECRYPT\"}\", {\"standard\":\n\"STANDARD_ACTION_TRANSMIT\"}]\n}",
       "title": "Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute\nvalue + action(s) combination"
     },
     "policySubjectMappingOperatorEnum": {
@@ -751,7 +754,7 @@
             "type": "object",
             "$ref": "#/definitions/policyKeyAccessServer"
           },
-          "title": "list of key access servers"
+          "title": "Deprecated\nlist of key access servers"
         },
         "fqn": {
           "type": "string"

@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"github.com/opentdf/platform/service/kas/request"
 	"log/slog"
 	"net/http"
 	"testing"
@@ -113,10 +114,10 @@ Dzq7D9lqeqSK/ds7r7hpbs4iIr6KrSuXwlXmYtnhRvKT
 	mockIDPOrigin = "https://keycloak-http/"
 )
 
-func fauxPolicy() *Policy {
-	return &Policy{
+func fauxPolicy() *request.Policy {
+	return &request.Policy{
 		UUID: uuid.MustParse("12345678-1234-1234-1234-1234567890AB"),
-		Body: PolicyBody{DataAttributes: []Attribute{
+		Body: request.PolicyBody{DataAttributes: []request.Attribute{
 			{URI: "https://example.com/attr/Classification/value/S"},
 			{URI: "https://example.com/attr/COI/value/PRX"},
 		}},
@@ -124,9 +125,9 @@ func fauxPolicy() *Policy {
 }
 
 func emptyPolicyBytes() []byte {
-	data, err := json.Marshal(Policy{
+	data, err := json.Marshal(request.Policy{
 		UUID: uuid.MustParse("12345678-1234-1234-1234-1234567890AB"),
-		Body: PolicyBody{},
+		Body: request.PolicyBody{},
 	})
 	if err != nil {
 		panic(err)
@@ -199,7 +200,7 @@ type PolicyBinding struct {
 	Hash string `json:"hash"`
 }
 
-func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) KeyAccess {
+func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) request.KeyAccessObjectRequest {
 	policyBytes := fauxPolicyBytes(t)
 	asym, err := ocrypto.NewAsymEncryption(rsaPublicAlt)
 	require.NoError(t, err, "rewrap: NewAsymEncryption failed")
@@ -224,12 +225,15 @@ func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) KeyAccess {
 		}
 	}
 
-	return KeyAccess{
-		Type:          "wrapped",
-		URL:           "http://127.0.0.1:4000",
-		Protocol:      "kas",
-		WrappedKey:    []byte(base64.StdEncoding.EncodeToString(wrappedKey)),
-		PolicyBinding: policyBinding,
+	return request.KeyAccessObjectRequest{
+		KeyAccessObjectId: "123",
+		KeyAccess: request.KeyAccess{
+			KeyType:       "wrapped",
+			KasURL:        "http://127.0.0.1:4000",
+			Protocol:      "kas",
+			WrappedKey:    []byte(base64.StdEncoding.EncodeToString(wrappedKey)),
+			PolicyBinding: policyBinding,
+		},
 	}
 }
 
@@ -276,10 +280,23 @@ func jwtWrongKey(t *testing.T) []byte {
 	return signedMockJWT(t, entityPrivateKey(t))
 }
 
+func makeRewrapRequests(t *testing.T, policy []byte, bindingAsString bool) []*request.RewrapRequests {
+
+	kaoReq := keyAccessWrappedRaw(t, bindingAsString)
+	return []*request.RewrapRequests{
+		{
+			KeyAccessObjectRequests: []*request.KeyAccessObjectRequest{&kaoReq},
+			Policy: request.PolicyRequest{
+				Id:   "123",
+				Body: string(policy),
+			},
+		},
+	}
+}
+
 func makeRewrapBody(t *testing.T, policy []byte, policyBindingAsString bool) []byte {
-	mockBody := RequestBody{
-		KeyAccess:       keyAccessWrappedRaw(t, policyBindingAsString),
-		Policy:          string(policy),
+	mockBody := request.RequestBody{
+		Requests:        makeRewrapRequests(t, policy, policyBindingAsString),
 		ClientPublicKey: rsaPublicAlt,
 	}
 	bodyData, err := json.Marshal(mockBody)
@@ -349,7 +366,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 				require.NotNil(t, verified, "unable to load request body")
 				require.NotNil(t, verified.ClientPublicKey, "unable to load public key")
 
-				policy, err := verifyAndParsePolicy(context.Background(), verified, []byte(plainKey), *logger)
+				policy, err := verifyAndParsePolicy(context.Background(), verified.Requests[0], *logger)
 				if !tt.shouldError {
 					require.NoError(t, err, "failed to verify policy body=[%v]", tt.body)
 					assert.Len(t, policy.Body.DataAttributes, 2, "incorrect policy body=[%v]", policy.Body)

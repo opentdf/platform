@@ -274,7 +274,7 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 	}
 
 	err = c.RunInTx(ctx, func(txClient *PolicyDBClient) error {
-		id, err := c.Queries.createPublicKey(ctx, createPublicKeyParams{
+		id, err := txClient.Queries.createPublicKey(ctx, createPublicKeyParams{
 			KeyAccessServerID: kasID,
 			KeyID:             key.GetKid(),
 			Alg:               key.GetAlg().String(),
@@ -286,7 +286,7 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		}
 
 		// Get freshly created key
-		ck, err = c.GetPublicKey(ctx, &kasregistry.GetKeyRequest{Id: id})
+		ck, err = txClient.GetPublicKey(ctx, &kasregistry.GetKeyRequest{Id: id})
 		if err != nil {
 			return db.WrapIfKnownInvalidQueryErr(err)
 		}

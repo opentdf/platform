@@ -637,6 +637,9 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*request.Rewrap
 }
 
 func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *request.RewrapRequests) *request.Policy {
+	req.Results = &kaspb.RewrapResult{
+		PolicyId: req.Policy.ID,
+	}
 	for _, kao := range req.KeyAccessObjectRequests {
 		// there should never be multiple KAOs in policy
 		if len(req.KeyAccessObjectRequests) != 1 {

@@ -1056,19 +1056,31 @@ func (r *Reader) buildKey(_ context.Context, results []KAOResult) error {
 func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocognit // Better readability keeping it as is
 	kasClient := newKASClient(r.dialOptions, r.tokenSource, &r.kasSessionKey)
 
+	var kaoResults []KAOResult
+	reqFail := func(err error, req *kas.RewrapRequestBody) {
+		for _, kao := range req.GetKeyAccessObjectRequests() {
+			kaoResults = append(kaoResults, KAOResult{
+				KeyAccessObjectID: kao.GetKeyAccessObjectId(),
+				Error:             err,
+			})
+		}
+
+	}
+
 	reqs, err := createRewrapRequest(ctx, r)
 	if err != nil {
 		return err
 	}
-	var kaoResults []KAOResult
 	for _, req := range reqs {
 		policyRes, err := kasClient.unwrap(ctx, req)
 		if err != nil {
-			return err
+			reqFail(err, req)
 		}
 		result, ok := policyRes["policy"]
 		if !ok {
-			return fmt.Errorf("could not find policy in rewrap response")
+			err = fmt.Errorf("could not find policy in rewrap response")
+			reqFail(err, req)
+			return err
 		}
 		kaoResults = append(kaoResults, result...)
 	}

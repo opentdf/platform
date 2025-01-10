@@ -318,9 +318,9 @@ func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, err
 
 	return info, nil
 }
-func failedKAORewrap(res *kaspb.RewrapResult, kao *request.KeyAccessObjectRequest, err error) *kaspb.KAORewrapResult {
+func failedKAORewrap(res *kaspb.RewrapResult, kao *request.KeyAccessObjectRequest, err error) {
 	if kao.Processed {
-		return nil
+		return
 	}
 	kao.Processed = true
 	kaoRes := &kaspb.KAORewrapResult{
@@ -330,7 +330,6 @@ func failedKAORewrap(res *kaspb.RewrapResult, kao *request.KeyAccessObjectReques
 	}
 	kao.Err = err
 	res.Results = append(res.Results, kaoRes)
-	return kaoRes
 }
 
 func markUnproccessedRequests(reqs []*request.RewrapRequests) {
@@ -371,7 +370,6 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 			tdf3Reqs = append(tdf3Reqs, req)
 		default:
 			tdf3Reqs = append(tdf3Reqs, req)
-
 		}
 	}
 	if len(tdf3Reqs) > 0 {

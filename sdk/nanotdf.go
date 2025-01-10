@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opentdf/platform/service/kas/request"
+	"github.com/opentdf/platform/protocol/go/kas"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 )
@@ -920,7 +920,7 @@ func (n *NanoTDFDecryptHandler) getRawHeader() []byte {
 	return n.headerBuf
 }
 
-func (n *NanoTDFDecryptHandler) CreateRewrapRequest(_ context.Context) (map[string]*request.RewrapRequests, error) {
+func (n *NanoTDFDecryptHandler) CreateRewrapRequest(_ context.Context) (map[string]*kas.RewrapRequestBody, error) {
 	var err error
 	var headerSize uint32
 	n.header, headerSize, err = NewNanoTDFHeaderFromReader(n.reader)
@@ -942,19 +942,19 @@ func (n *NanoTDFDecryptHandler) CreateRewrapRequest(_ context.Context) (map[stri
 		return nil, err
 	}
 
-	req := &request.RewrapRequests{
-		KeyAccessObjectRequests: []*request.KeyAccessObjectRequest{
+	req := &kas.RewrapRequestBody{
+		KeyAccessObjectRequests: []*kas.KeyAccessObjectRequest{
 			{
-				KeyAccessObjectID: "kao-0",
-				KeyAccess:         request.KeyAccess{KasURL: kasURL, Header: headerBuf, Algorithm: "ec:secp256r1"},
+				KeyAccessObjectId: "kao-0",
+				KeyAccessObject:   &kas.KeyAccess{KasUrl: kasURL, Header: headerBuf, Algorithm: "ec:secp256r1"},
 			},
 		},
-		Policy: request.PolicyRequest{
-			ID: "policy",
+		Policy: &kas.PolicyRequest{
+			Id: "policy",
 		},
 		Algorithm: "ec:secp256r1",
 	}
-	return map[string]*request.RewrapRequests{kasURL: req}, nil
+	return map[string]*kas.RewrapRequestBody{kasURL: req}, nil
 }
 
 func (n *NanoTDFDecryptHandler) Decrypt(_ context.Context, result []KAOResult) (uint32, error) {

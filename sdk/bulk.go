@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/opentdf/platform/service/kas/request"
+	"github.com/opentdf/platform/protocol/go/kas"
 )
 
 type BulkTDF struct {
@@ -63,7 +63,7 @@ func (s SDK) createDecryptor(tdf *BulkTDF, tdfType TdfType) (Decryptor, error) {
 
 // BulkDecrypt
 func (s SDK) BulkDecrypt(ctx context.Context, bulkReq *BulkDecryptRequest) error {
-	kasRewrapRequests := make(map[string][]*request.RewrapRequests)
+	kasRewrapRequests := make(map[string][]*kas.RewrapRequestBody)
 	tdfDecryptors := make(map[string]Decryptor)
 	policyTDF := make(map[string]*BulkTDF)
 
@@ -83,7 +83,7 @@ func (s SDK) BulkDecrypt(ctx context.Context, bulkReq *BulkDecryptRequest) error
 		tdfDecryptors[policyID] = decryptor
 		policyTDF[policyID] = tdf
 		for kasURL, r := range req {
-			r.Policy.ID = policyID
+			r.Policy.Id = policyID
 			kasRewrapRequests[kasURL] = append(kasRewrapRequests[kasURL], r)
 		}
 	}

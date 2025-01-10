@@ -413,7 +413,11 @@ func bulk(client *sdk.SDK, tdfSuccess []string, tdfFail []string, plaintext stri
 	req.TDFType = sdk.Standard
 	_ = client.BulkDecrypt(context.Background(), req)
 	for _, tdf := range passTDF {
-		builder := tdf.Writer.(*strings.Builder)
+		builder, ok := tdf.Writer.(*strings.Builder)
+		if !ok {
+			return fmt.Errorf("bad writer")
+		}
+
 		if tdf.Error != nil {
 			return tdf.Error
 		}

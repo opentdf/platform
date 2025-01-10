@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -18,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/opentdf/platform/service/kas/request"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -1439,22 +1438,23 @@ func (f *FakeKas) PublicKey(_ context.Context, _ *kaspb.PublicKeyRequest) (*kasp
 }
 
 func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse {
-	bodyData := request.Body{}
-	err := json.Unmarshal([]byte(rewrapRequest), &bodyData)
+	bodyData := kaspb.RequestBody{}
+	err := protojson.Unmarshal([]byte(rewrapRequest), &bodyData)
 	f.s.Require().NoError(err, "json.Unmarshal failed")
 	resp := &kaspb.RewrapResponse{}
 
-	for _, req := range bodyData.Requests {
-		results := &kaspb.RewrapResult{PolicyId: req.Policy.ID}
+	for _, req := range bodyData.GetRequests() {
+		results := &kaspb.RewrapResult{PolicyId: req.GetPolicy().GetId()}
 		resp.Responses = append(resp.Responses, results)
-		for _, kaoReq := range req.KeyAccessObjectRequests {
-			wrappedKey := kaoReq.WrappedKey
+		for _, kaoReq := range req.GetKeyAccessObjectRequests() {
+			kao := kaoReq.GetKeyAccessObject()
+			wrappedKey := kaoReq.GetKeyAccessObject().GetWrappedKey()
 
 			kasPrivateKey := strings.ReplaceAll(f.privateKey, "\n\t", "\n")
-			if kaoReq.KID != "" && kaoReq.KID != f.KID {
+			if kao.GetKid() != "" && kao.GetKid() != f.KID {
 				// old kid
-				lk, ok := f.legakeys[kaoReq.KID]
-				f.s.Require().True(ok, "unable to find key [%s]", kaoReq.KID)
+				lk, ok := f.legakeys[kaoReq.GetKeyAccessObject().GetKid()]
+				f.s.Require().True(ok, "unable to find key [%s]", kao.GetKid())
 				kasPrivateKey = strings.ReplaceAll(lk.private, "\n\t", "\n")
 			}
 
@@ -1462,14 +1462,14 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse 
 			f.s.Require().NoError(err, "ocrypto.NewAsymDecryption failed")
 			symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
 			f.s.Require().NoError(err, "ocrypto.Decrypt failed")
-			asymEncrypt, err := ocrypto.NewAsymEncryption(bodyData.ClientPublicKey)
+			asymEncrypt, err := ocrypto.NewAsymEncryption(bodyData.GetClientPublicKey())
 			f.s.Require().NoError(err, "ocrypto.NewAsymEncryption failed")
 			entityWrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
 			f.s.Require().NoError(err, "ocrypto.encrypt failed")
 			kaoResult := &kaspb.KAORewrapResult{
 				Result:            &kaspb.KAORewrapResult_KasWrappedKey{KasWrappedKey: entityWrappedKey},
 				Status:            "permit",
-				KeyAccessObjectId: kaoReq.KeyAccessObjectID,
+				KeyAccessObjectId: kaoReq.GetKeyAccessObjectId(),
 			}
 			results.Results = append(results.Results, kaoResult)
 		}

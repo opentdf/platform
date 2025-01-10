@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/opentdf/platform/service/kas/request"
-
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
 )
@@ -20,13 +18,13 @@ const (
 type PDPAccessResult struct {
 	Access bool
 	Error  error
-	Policy *request.Policy
+	Policy *Policy
 }
 
-func (p *Provider) canAccess(ctx context.Context, token *authorization.Token, policies []*request.Policy) ([]PDPAccessResult, error) {
+func (p *Provider) canAccess(ctx context.Context, token *authorization.Token, policies []*Policy) ([]PDPAccessResult, error) {
 	var res []PDPAccessResult
 	var rasList []*authorization.ResourceAttribute
-	idPolicyMap := make(map[string]*request.Policy)
+	idPolicyMap := make(map[string]*Policy)
 	for i, policy := range policies {
 		if len(policy.Body.Dissem) > 0 {
 			// TODO: Move dissems check to the getdecisions endpoint

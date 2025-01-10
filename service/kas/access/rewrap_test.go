@@ -8,10 +8,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
-	"errors"
 	"log/slog"
 	"net/http"
 	"testing"
+
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -25,7 +26,6 @@ import (
 
 	"github.com/google/uuid"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
-	"github.com/opentdf/platform/service/kas/request"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -115,10 +115,10 @@ Dzq7D9lqeqSK/ds7r7hpbs4iIr6KrSuXwlXmYtnhRvKT
 	mockIDPOrigin = "https://keycloak-http/"
 )
 
-func fauxPolicy() *request.Policy {
-	return &request.Policy{
+func fauxPolicy() *Policy {
+	return &Policy{
 		UUID: uuid.MustParse("12345678-1234-1234-1234-1234567890AB"),
-		Body: request.PolicyBody{DataAttributes: []request.Attribute{
+		Body: PolicyBody{DataAttributes: []Attribute{
 			{URI: "https://example.com/attr/Classification/value/S"},
 			{URI: "https://example.com/attr/COI/value/PRX"},
 		}},
@@ -126,9 +126,9 @@ func fauxPolicy() *request.Policy {
 }
 
 func emptyPolicyBytes() []byte {
-	data, err := json.Marshal(request.Policy{
+	data, err := json.Marshal(Policy{
 		UUID: uuid.MustParse("12345678-1234-1234-1234-1234567890AB"),
-		Body: request.PolicyBody{},
+		Body: PolicyBody{},
 	})
 	if err != nil {
 		panic(err)
@@ -201,7 +201,7 @@ type PolicyBinding struct {
 	Hash string `json:"hash"`
 }
 
-func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) request.KeyAccessObjectRequest {
+func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) kaspb.KeyAccessObjectRequest {
 	policyBytes := fauxPolicyBytes(t)
 	asym, err := ocrypto.NewAsymEncryption(rsaPublicAlt)
 	require.NoError(t, err, "rewrap: NewAsymEncryption failed")
@@ -225,15 +225,17 @@ func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) request.KeyAc
 			Hash: base64.StdEncoding.EncodeToString(dst),
 		}
 	}
+	binding, err := json.Marshal(policyBinding)
+	require.NoError(t, err)
 
-	return request.KeyAccessObjectRequest{
-		KeyAccessObjectID: "123",
-		KeyAccess: request.KeyAccess{
+	return kaspb.KeyAccessObjectRequest{
+		KeyAccessObjectId: "123",
+		KeyAccessObject: &kaspb.KeyAccess{
 			KeyType:       "wrapped",
-			KasURL:        "http://127.0.0.1:4000",
+			KasUrl:        "http://127.0.0.1:4000",
 			Protocol:      "kas",
 			WrappedKey:    []byte(base64.StdEncoding.EncodeToString(wrappedKey)),
-			PolicyBinding: policyBinding,
+			PolicyBinding: binding,
 		},
 	}
 }
@@ -281,13 +283,13 @@ func jwtWrongKey(t *testing.T) []byte {
 	return signedMockJWT(t, entityPrivateKey(t))
 }
 
-func makeRewrapRequests(t *testing.T, policy []byte, bindingAsString bool) []*request.RewrapRequests {
+func makeRewrapRequests(t *testing.T, policy []byte, bindingAsString bool) []*kaspb.RewrapRequestBody {
 	kaoReq := keyAccessWrappedRaw(t, bindingAsString)
-	return []*request.RewrapRequests{
+	return []*kaspb.RewrapRequestBody{
 		{
-			KeyAccessObjectRequests: []*request.KeyAccessObjectRequest{&kaoReq},
-			Policy: request.PolicyRequest{
-				ID:   "123",
+			KeyAccessObjectRequests: []*kaspb.KeyAccessObjectRequest{&kaoReq},
+			Policy: &kaspb.PolicyRequest{
+				Id:   "123",
 				Body: string(policy),
 			},
 		},
@@ -295,11 +297,11 @@ func makeRewrapRequests(t *testing.T, policy []byte, bindingAsString bool) []*re
 }
 
 func makeRewrapBody(t *testing.T, policy []byte, policyBindingAsString bool) []byte {
-	mockBody := request.Body{
+	mockBody := &kaspb.RequestBody{
 		Requests:        makeRewrapRequests(t, policy, policyBindingAsString),
 		ClientPublicKey: rsaPublicAlt,
 	}
-	bodyData, err := json.Marshal(mockBody)
+	bodyData, err := protojson.Marshal(mockBody)
 
 	require.NoError(t, err)
 	tok := jwt.New()
@@ -364,14 +366,10 @@ func TestParseAndVerifyRequest(t *testing.T) {
 			if tt.goodDPoP {
 				require.NoError(t, err, "failed to parse srt=[%s], tok=[%s]", tt.body, bearer)
 				require.NotNil(t, verified, "unable to load request body")
-				require.NotNil(t, verified.ClientPublicKey, "unable to load public key")
+				require.NotNil(t, verified.GetClientPublicKey(), "unable to load public key")
 
-				for _, req := range verified.Requests {
-					req.Results = &kaspb.RewrapResult{}
-					req.KeyAccessObjectRequests[0].SymmetricKey = []byte(plainKey)
-
-					err := verifyPolicyBinding(context.Background(), []byte(req.Policy.Body), req.KeyAccessObjectRequests[0], *logger)
-					err = errors.Join(err, verified.Requests[0].KeyAccessObjectRequests[0].Err)
+				for _, req := range verified.GetRequests() {
+					err := verifyPolicyBinding(context.Background(), []byte(req.GetPolicy().GetBody()), req.GetKeyAccessObjectRequests()[0], []byte(plainKey), *logger)
 					if !tt.shouldError {
 						require.NoError(t, err, "failed to verify policy body=[%v]", tt.body)
 					} else {

@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/opentdf/platform/service/kas/request"
+	"github.com/opentdf/platform/protocol/go/kas"
 
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -94,7 +94,7 @@ func (r *tdf3DecryptHandler) Decrypt(ctx context.Context, results []KAOResult) (
 	return uint32(n), err
 }
 
-func (r *tdf3DecryptHandler) CreateRewrapRequest(ctx context.Context) (map[string]*request.RewrapRequests, error) {
+func (r *tdf3DecryptHandler) CreateRewrapRequest(ctx context.Context) (map[string]*kas.RewrapRequestBody, error) {
 	return createRewrapRequest(ctx, r.reader)
 }
 
@@ -821,36 +821,39 @@ func (r *Reader) UnsafePayloadKeyRetrieval() ([]byte, error) {
 	return r.payloadKey, nil
 }
 
-func createRewrapRequest(_ context.Context, r *Reader) (map[string]*request.RewrapRequests, error) {
-	kasReqs := make(map[string]*request.RewrapRequests)
+func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.RewrapRequestBody, error) {
+	kasReqs := make(map[string]*kas.RewrapRequestBody)
 	for i, kao := range r.manifest.EncryptionInformation.KeyAccessObjs {
 		kaoID := fmt.Sprintf("kao-%d", i)
 		key, err := ocrypto.Base64Decode([]byte(kao.WrappedKey))
 		if err != nil {
 			return nil, fmt.Errorf("could not decode wrapper key: %w", err)
 		}
-
-		kaoReq := &request.KeyAccessObjectRequest{
-			KeyAccessObjectID: kaoID,
-			KeyAccess: request.KeyAccess{
+		binding, err := json.Marshal(kao.PolicyBinding)
+		if err != nil {
+			return nil, err
+		}
+		kaoReq := &kas.KeyAccessObjectRequest{
+			KeyAccessObjectId: kaoID,
+			KeyAccessObject: &kas.KeyAccess{
 				KeyType:       kao.KeyType,
-				KasURL:        kao.KasURL,
-				KID:           kao.KID,
+				KasUrl:        kao.KasURL,
+				Kid:           kao.KID,
 				Protocol:      kao.Protocol,
-				PolicyBinding: kao.PolicyBinding,
-				SplitID:       kao.SplitID,
+				PolicyBinding: binding,
+				SplitId:       kao.SplitID,
 				WrappedKey:    key,
 			},
 		}
 		if req, ok := kasReqs[kao.KasURL]; ok {
 			req.KeyAccessObjectRequests = append(req.KeyAccessObjectRequests, kaoReq)
 		} else {
-			rewrapReq := request.RewrapRequests{
-				Policy: request.PolicyRequest{
+			rewrapReq := kas.RewrapRequestBody{
+				Policy: &kas.PolicyRequest{
 					Body: r.manifest.EncryptionInformation.Policy,
-					ID:   "policy",
+					Id:   "policy",
 				},
-				KeyAccessObjectRequests: []*request.KeyAccessObjectRequest{kaoReq},
+				KeyAccessObjectRequests: []*kas.KeyAccessObjectRequest{kaoReq},
 			}
 			kasReqs[kao.KasURL] = &rewrapReq
 		}

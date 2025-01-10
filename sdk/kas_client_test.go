@@ -6,7 +6,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/opentdf/platform/service/kas/request"
+	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -59,20 +60,22 @@ func TestCreatingRequest(t *testing.T) {
 	require.NoError(t, err, "error creating RSA Key")
 
 	client := newKASClient(dialOption, tokenSource, &kasKey)
+	policyBindingBytes, err := json.Marshal(PolicyBinding{
+		Alg:  "HS256",
+		Hash: "somehash",
+	})
+	require.NoError(t, err)
 
-	keyAccess := []*request.RewrapRequests{
+	keyAccess := []*kaspb.RewrapRequestBody{
 		{
-			KeyAccessObjectRequests: []*request.KeyAccessObjectRequest{
+			KeyAccessObjectRequests: []*kaspb.KeyAccessObjectRequest{
 				{
-					KeyAccess: request.KeyAccess{
-						KeyType:    "type1",
-						KasURL:     "https://kas.example.org",
-						Protocol:   "protocol one",
-						WrappedKey: []byte("wrapped"),
-						PolicyBinding: PolicyBinding{
-							Alg:  "HS256",
-							Hash: "somehash",
-						},
+					KeyAccessObject: &kaspb.KeyAccess{
+						KeyType:           "type1",
+						KasUrl:            "https://kas.example.org",
+						Protocol:          "protocol one",
+						WrappedKey:        []byte("wrapped"),
+						PolicyBinding:     policyBindingBytes,
 						EncryptedMetadata: "encrypted",
 					},
 				},
@@ -98,25 +101,26 @@ func TestCreatingRequest(t *testing.T) {
 	rb, ok := tok.Get("requestBody")
 	require.True(t, ok, "didn't contain a request body")
 	requestBodyJSON, _ := rb.(string)
-	var requestBody request.Body
+	var requestBody kaspb.RequestBody
 
-	require.NoError(t, json.Unmarshal([]byte(requestBodyJSON), &requestBody), "error unmarshaling request body")
+	require.NoError(t, protojson.Unmarshal([]byte(requestBodyJSON), &requestBody), "error unmarshaling request body")
 
-	_, err = ocrypto.NewAsymEncryption(requestBody.ClientPublicKey)
+	_, err = ocrypto.NewAsymEncryption(requestBody.GetClientPublicKey())
 	require.NoError(t, err, "NewAsymEncryption failed, incorrect public key include")
 
-	require.Len(t, requestBody.Requests, 1)
-	require.Len(t, requestBody.Requests[0].KeyAccessObjectRequests, 1)
-	kao := requestBody.Requests[0].KeyAccessObjectRequests[0]
-	policyBinding, ok := kao.PolicyBinding.(map[string]interface{})
-	require.True(t, ok, "invalid policy binding")
+	require.Len(t, requestBody.GetRequests(), 1)
+	require.Len(t, requestBody.GetRequests()[0].GetKeyAccessObjectRequests(), 1)
+	kao := requestBody.GetRequests()[0].GetKeyAccessObjectRequests()[0]
+	var policyBinding map[string]interface{}
+	err = json.Unmarshal(kao.GetKeyAccessObject().GetPolicyBinding(), &policyBinding)
+	require.NoError(t, err)
 
-	assert.Equal(t, "https://kas.example.org", kao.KasURL, "incorrect kasURL")
-	assert.Equal(t, "protocol one", kao.Protocol, "incorrect protocol")
-	assert.Equal(t, []byte("wrapped"), kao.WrappedKey, "incorrect wrapped key")
+	assert.Equal(t, "https://kas.example.org", kao.GetKeyAccessObject().GetKasUrl(), "incorrect kasURL")
+	assert.Equal(t, "protocol one", kao.GetKeyAccessObject().GetProtocol(), "incorrect protocol")
+	assert.Equal(t, []byte("wrapped"), kao.GetKeyAccessObject().GetWrappedKey(), "incorrect wrapped key")
 	assert.Equal(t, "HS256", policyBinding["alg"], "incorrect policy binding")
 	assert.Equal(t, "somehash", policyBinding["hash"], "incorrect policy binding")
-	assert.Equal(t, "encrypted", kao.EncryptedMetadata, "incorrect encrypted metadata")
+	assert.Equal(t, "encrypted", kao.GetKeyAccessObject().GetEncryptedMetadata(), "incorrect encrypted metadata")
 }
 
 func Test_StoreKASKeys(t *testing.T) {

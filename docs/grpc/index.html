@@ -447,7 +447,19 @@
                 </li>
               
                 <li>
+                  <a href="#kas.KeyAccess"><span class="badge">M</span>KeyAccess</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.KeyAccessObjectRequest"><span class="badge">M</span>KeyAccessObjectRequest</a>
+                </li>
+              
+                <li>
                   <a href="#kas.LegacyPublicKeyRequest"><span class="badge">M</span>LegacyPublicKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.PolicyRequest"><span class="badge">M</span>PolicyRequest</a>
                 </li>
               
                 <li>
@@ -459,7 +471,15 @@
                 </li>
               
                 <li>
+                  <a href="#kas.RequestBody"><span class="badge">M</span>RequestBody</a>
+                </li>
+              
+                <li>
                   <a href="#kas.RewrapRequest"><span class="badge">M</span>RewrapRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.RewrapRequestBody"><span class="badge">M</span>RewrapRequestBody</a>
                 </li>
               
                 <li>
@@ -3298,6 +3318,124 @@ Unique name of the KAS instance </p></td>
 
         
       
+        <h3 id="kas.KeyAccess">KeyAccess</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>encrypted_metadata</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>policy_binding</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>protocol</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_type</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_url</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kid</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>split_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>wrapped_key</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>header</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>algorithm</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.KeyAccessObjectRequest">KeyAccessObjectRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_access_object_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_access_object</td>
+                  <td><a href="#kas.KeyAccess">KeyAccess</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="kas.LegacyPublicKeyRequest">LegacyPublicKeyRequest</h3>
         <p></p>
 
@@ -3310,6 +3448,37 @@ Unique name of the KAS instance </p></td>
               
                 <tr>
                   <td>algorithm</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.PolicyRequest">PolicyRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>body</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
@@ -3391,6 +3560,37 @@ Unique name of the KAS instance </p></td>
 
         
       
+        <h3 id="kas.RequestBody">RequestBody</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>client_public_key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>requests</td>
+                  <td><a href="#kas.RewrapRequestBody">RewrapRequestBody</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="kas.RewrapRequest">RewrapRequest</h3>
         <p></p>
 
@@ -3403,6 +3603,44 @@ Unique name of the KAS instance </p></td>
               
                 <tr>
                   <td>signed_request_token</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.RewrapRequestBody">RewrapRequestBody</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_access_object_requests</td>
+                  <td><a href="#kas.KeyAccessObjectRequest">KeyAccessObjectRequest</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>policy</td>
+                  <td><a href="#kas.PolicyRequest">PolicyRequest</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>algorithm</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>

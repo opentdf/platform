@@ -31,6 +31,39 @@ message LegacyPublicKeyRequest {
   string algorithm = 1;
 }
 
+message KeyAccess {
+  string encrypted_metadata = 1;
+  bytes policy_binding = 2;
+  string protocol = 3;
+  string key_type = 4;
+  string kas_url = 5;
+  string kid = 6;
+  string split_id = 7;
+  bytes wrapped_key = 8;
+  bytes header = 9;
+  string algorithm = 10;
+}
+message PolicyRequest {
+  string id = 1;
+  string body = 2;
+}
+
+message KeyAccessObjectRequest {
+  string key_access_object_id = 1;
+  KeyAccess key_access_object = 2;
+}
+
+message RewrapRequestBody {
+  repeated KeyAccessObjectRequest key_access_object_requests = 1;
+  PolicyRequest policy = 2;
+  string algorithm = 3;
+}
+
+message RequestBody {
+  string client_public_key = 1;
+  repeated RewrapRequestBody requests = 2;
+}
+
 message PublicKeyRequest {
   string algorithm = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "algorithm type rsa:<keysize> or ec:<curvename>"}];
   string fmt = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "response format"}];

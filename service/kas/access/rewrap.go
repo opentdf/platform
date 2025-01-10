@@ -51,13 +51,13 @@ type SignedRequestBody struct {
 }
 
 type RequestBody struct {
-	AuthToken       string          `json:"authToken"`
-	KeyAccess       kaspb.KeyAccess `json:"keyAccess"`
-	Policy          string          `json:"policy,omitempty"`
-	Algorithm       string          `json:"algorithm,omitempty"`
-	ClientPublicKey string          `json:"clientPublicKey"`
-	PublicKey       interface{}     `json:"-"`
-	SchemaVersion   string          `json:"schemaVersion,omitempty"`
+	AuthToken       string      `json:"authToken"`
+	KeyAccess       KeyAccess   `json:"keyAccess"`
+	Policy          string      `json:"policy,omitempty"`
+	Algorithm       string      `json:"algorithm,omitempty"`
+	ClientPublicKey string      `json:"clientPublicKey"`
+	PublicKey       interface{} `json:"-"`
+	SchemaVersion   string      `json:"schemaVersion,omitempty"`
 }
 
 type entityInfo struct {
@@ -143,10 +143,27 @@ func extractAndConvertV1SRTBody(body []byte) (kaspb.RequestBody, error) {
 		return kaspb.RequestBody{}, err
 	}
 
+	kao := requestBody.KeyAccess
+	binding, err := json.Marshal(kao.PolicyBinding)
+	if err != nil {
+		return kaspb.RequestBody{}, err
+	}
+
 	reqs := []*kaspb.RewrapRequestBody{
 		{
 			KeyAccessObjectRequests: []*kaspb.KeyAccessObjectRequest{
-				{KeyAccessObjectId: "kao-0", KeyAccessObject: &requestBody.KeyAccess},
+				{KeyAccessObjectId: "kao-0", KeyAccessObject: &kaspb.KeyAccess{
+					EncryptedMetadata: kao.EncryptedMetadata,
+					PolicyBinding:     binding,
+					Protocol:          kao.Protocol,
+					KeyType:           kao.Type,
+					KasUrl:            kao.URL,
+					Kid:               kao.KID,
+					SplitId:           kao.SID,
+					WrappedKey:        kao.WrappedKey,
+					Header:            kao.Header,
+					Algorithm:         kao.Algorithm,
+				}},
 			},
 			Algorithm: requestBody.Algorithm,
 			Policy: &kaspb.PolicyRequest{

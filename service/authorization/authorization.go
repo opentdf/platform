@@ -204,7 +204,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 	var attrValsReqs [][]*policy.Value
 	var fqnsReqs [][]string
 	allPertinentFQNS := &authorization.ResourceAttribute{AttributeValueFqns: make([]string, 0)}
-	response := make([]*authorization.DecisionResponse, len(dr.GetResourceAttributes()))
+	response := make([]*authorization.DecisionResponse, len(dr.GetResourceAttributes())*len(dr.GetEntityChains()))
 	for raIdx, ra := range dr.GetResourceAttributes() {
 		as.logger.DebugContext(ctx, "getting resource attributes", slog.String("FQNs", strings.Join(ra.GetAttributeValueFqns(), ", ")))
 
@@ -317,9 +317,14 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 			subjectEntityAttrValues := make(map[string][]string)
 
 			// handle empty entity / attr list
-			if len(entities) == 0 || len(ra.GetAttributeValueFqns()) == 0 {
-				as.logger.WarnContext(ctx, "empty entity list and/or entity data attribute list")
-			} else {
+			decision := authorization.DecisionResponse_DECISION_DENY
+			switch {
+			case len(entities) == 0:
+				as.logger.WarnContext(ctx, "empty entity list")
+			case len(ra.GetAttributeValueFqns()) == 0:
+				as.logger.WarnContext(ctx, "empty entity data attribute list")
+				decision = authorization.DecisionResponse_DECISION_PERMIT
+			default:
 				ecEntitlements := ecChainEntitlementsResponse[ecIdx]
 				for entIdx, e := range ecEntitlements.Msg.GetEntitlements() {
 					entityID := e.GetEntityId()
@@ -340,40 +345,39 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 						envEntityAttrValues[entityID] = e.GetAttributeValueFqns()
 					}
 				}
-			}
-
-			// call access-pdp
-			accessPDP := access.NewPdp(as.logger)
-			decisions, err := accessPDP.DetermineAccess(
-				ctx,
-				attrVals,
-				subjectEntityAttrValues,
-				attrDefs,
-			)
-			if err != nil {
-				// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
-				return nil, db.StatusifyError(errors.New("could not determine access"), "could not determine access", slog.String("error", err.Error()))
-			}
-			// check the decisions
-			decision := authorization.DecisionResponse_DECISION_PERMIT
-			for entityID, d := range decisions {
-				// Set overall decision as well as individual entity decision
-				entityDecision := authorization.DecisionResponse_DECISION_PERMIT
-				if !d.Access {
-					entityDecision = authorization.DecisionResponse_DECISION_DENY
-					decision = authorization.DecisionResponse_DECISION_DENY
+				// call access-pdp
+				accessPDP := access.NewPdp(as.logger)
+				decisions, err := accessPDP.DetermineAccess(
+					ctx,
+					attrVals,
+					subjectEntityAttrValues,
+					attrDefs,
+				)
+				if err != nil {
+					// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
+					return nil, db.StatusifyError(errors.New("could not determine access"), "could not determine access", slog.String("error", err.Error()))
 				}
+				// check the decisions
+				decision = authorization.DecisionResponse_DECISION_PERMIT
+				for entityID, d := range decisions {
+					// Set overall decision as well as individual entity decision
+					entityDecision := authorization.DecisionResponse_DECISION_PERMIT
+					if !d.Access {
+						entityDecision = authorization.DecisionResponse_DECISION_DENY
+						decision = authorization.DecisionResponse_DECISION_DENY
+					}
 
-				// Add entity decision to audit list
-				entityEntitlementFqns := subjectEntityAttrValues[entityID]
-				if entityEntitlementFqns == nil {
-					entityEntitlementFqns = []string{}
+					// Add entity decision to audit list
+					entityEntitlementFqns := subjectEntityAttrValues[entityID]
+					if entityEntitlementFqns == nil {
+						entityEntitlementFqns = []string{}
+					}
+					auditEntityDecisions = append(auditEntityDecisions, audit.EntityDecision{
+						EntityID:     entityID,
+						Decision:     entityDecision.String(),
+						Entitlements: entityEntitlementFqns,
+					})
 				}
-				auditEntityDecisions = append(auditEntityDecisions, audit.EntityDecision{
-					EntityID:     entityID,
-					Decision:     entityDecision.String(),
-					Entitlements: entityEntitlementFqns,
-				})
 			}
 
 			decisionResp := &authorization.DecisionResponse{

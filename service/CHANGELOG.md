@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.37](https://github.com/opentdf/platform/compare/service/v0.4.36...service/v0.4.37) (2025-01-09)
+
+
+### Features
+
+* **core:** Expose version info ([#1841](https://github.com/opentdf/platform/issues/1841)) ([92a9f5e](https://github.com/opentdf/platform/commit/92a9f5eab3f2372990b86df6a22ad209eed1a0f9))
+
+
+### Bug Fixes
+
+* **core:** Correct length of GetDecision response array ([#1839](https://github.com/opentdf/platform/issues/1839)) ([85ce9b6](https://github.com/opentdf/platform/commit/85ce9b60bda1c105f758399de7e209f8ce3c33ac))
+* **core:** Return deny decision for empty entity chains ([#1846](https://github.com/opentdf/platform/issues/1846)) ([1e8b6a5](https://github.com/opentdf/platform/commit/1e8b6a5b444bd1aaaabf1de0a64778d3f992ee52))
+
 ## [0.4.36](https://github.com/opentdf/platform/compare/service/v0.4.35...service/v0.4.36) (2025-01-03)
 
 

@@ -22,6 +22,7 @@ import (
 
 const (
 	sdkVersion              = "4.3.0"
+	keyAccessSechemaVersion = "1.0"
 	maxFileSizeSupported    = 68719476736 // 64gb
 	defaultMimeType         = "application/octet-stream"
 	tdfAsZip                = "zip"
@@ -477,6 +478,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 				EncryptedMetadata: encryptedMetadata,
 				SplitID:           splitID,
 				WrappedKey:        string(ocrypto.Base64Encode(wrappedKey)),
+				SchemaVersion:     keyAccessSechemaVersion,
 			}
 
 			manifest.EncryptionInformation.KeyAccessObjs = append(manifest.EncryptionInformation.KeyAccessObjs, keyAccess)

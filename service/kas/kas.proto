@@ -98,6 +98,7 @@ message PolicyRewrapResult {
 
 message RewrapResponse {
   reserved 1,4;
+  reserved "metadata", "schema_version";
   // Deprecated
   bytes entity_wrapped_key = 2;
   // Deprecated

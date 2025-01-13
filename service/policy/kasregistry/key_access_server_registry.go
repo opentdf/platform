@@ -2,6 +2,12 @@ package kasregistry
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"errors"
 	"log/slog"
 
 	"connectrpc.com/connect"
@@ -15,6 +21,14 @@ import (
 	policyconfig "github.com/opentdf/platform/service/policy/config"
 
 	policydb "github.com/opentdf/platform/service/policy/db"
+)
+
+var (
+	ErrInvalidKeyAlg    = errors.New("invalid key algorithm")
+	ErrInvalidKey       = errors.New("invalid key")
+	ErrInvalidKeySize   = errors.New("invalid key size")
+	ErrInvalidKeyCurve  = errors.New("invalid key curve")
+	ErrUnsupportedCurve = errors.New("unsupported curve")
 )
 
 type KeyAccessServerRegistry struct {
@@ -175,9 +189,16 @@ func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, req *connect.Req
 		ObjectType: audit.ObjectTypePublicKey,
 	}
 
+	// Verify the key matches the algorithm
+	if err := verifyKeyAlg(req.Msg.GetKey().GetPem(), req.Msg.GetKey().GetAlg()); err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed)
+	}
+
 	resp, err := s.dbClient.CreateKey(ctx, req.Msg)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		s.logger.ErrorContext(ctx, "failed to create key", slog.Any("key", err.Error()))
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed)
 	}
 
@@ -186,6 +207,74 @@ func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, req *connect.Req
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(resp), nil
+}
+
+// Helper function to get curve from algorithm
+func getCurveFromAlg(alg policy.KasPublicKeyAlgEnum) (elliptic.Curve, error) {
+	switch alg {
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1:
+		return elliptic.P256(), nil
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1:
+		return elliptic.P384(), nil
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1:
+		return elliptic.P521(), nil
+	default:
+		return nil, ErrUnsupportedCurve
+	}
+}
+
+// Verify the key matches the algorithm
+func verifyKeyAlg(key string, alg policy.KasPublicKeyAlgEnum) error {
+	block, _ := pem.Decode([]byte(key))
+	if block == nil {
+		return ErrInvalidKey
+	}
+	pubKey, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return ErrInvalidKey
+	}
+
+	switch alg {
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048,
+		policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096:
+
+		rsaKey, ok := pubKey.(*rsa.PublicKey)
+		if !ok {
+			return ErrInvalidKeyAlg
+		}
+
+		expectedSize := 0
+		switch alg {
+		case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048:
+			expectedSize = 256 // 2048 bits
+		case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096:
+			expectedSize = 512 // 4096 bits
+		}
+
+		if rsaKey.Size() != expectedSize { // 2048 bits = 256 bytes
+			return ErrInvalidKeySize
+		}
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1,
+		policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1,
+		policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1:
+
+		ecKey, ok := pubKey.(*ecdsa.PublicKey)
+		if !ok {
+			return ErrInvalidKeyAlg
+		}
+
+		expectedCurve, err := getCurveFromAlg(alg)
+		if err != nil {
+			return err
+		}
+
+		if ecKey.Curve != expectedCurve {
+			return ErrInvalidKeyCurve
+		}
+	default:
+		return ErrInvalidKeyAlg
+	}
+	return nil
 }
 
 func (s KeyAccessServerRegistry) GetKey(ctx context.Context, req *connect.Request[kasr.GetKeyRequest]) (*connect.Response[kasr.GetKeyResponse], error) {

@@ -63,7 +63,7 @@ func (s SDK) createDecryptor(tdf *BulkTDF, tdfType TdfType) (Decryptor, error) {
 
 // BulkDecrypt
 func (s SDK) BulkDecrypt(ctx context.Context, bulkReq *BulkDecryptRequest) error {
-	kasRewrapRequests := make(map[string][]*kas.RewrapRequestBody)
+	kasRewrapRequests := make(map[string][]*kas.UnsignedRewrapRequest_WithPolicyRequest)
 	tdfDecryptors := make(map[string]Decryptor)
 	policyTDF := make(map[string]*BulkTDF)
 

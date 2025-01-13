@@ -201,7 +201,7 @@ type PolicyBinding struct {
 	Hash string `json:"hash"`
 }
 
-func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) kaspb.KeyAccessObjectRequest {
+func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) kaspb.UnsignedRewrapRequest_WithKeyAccessObject {
 	policyBytes := fauxPolicyBytes(t)
 	asym, err := ocrypto.NewAsymEncryption(rsaPublicAlt)
 	require.NoError(t, err, "rewrap: NewAsymEncryption failed")
@@ -228,7 +228,7 @@ func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) kaspb.KeyAcce
 	binding, err := json.Marshal(policyBinding)
 	require.NoError(t, err)
 
-	return kaspb.KeyAccessObjectRequest{
+	return kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
 		KeyAccessObjectId: "123",
 		KeyAccessObject: &kaspb.KeyAccess{
 			KeyType:       "wrapped",
@@ -283,12 +283,12 @@ func jwtWrongKey(t *testing.T) []byte {
 	return signedMockJWT(t, entityPrivateKey(t))
 }
 
-func makeRewrapRequests(t *testing.T, policy []byte, bindingAsString bool) []*kaspb.RewrapRequestBody {
+func makeRewrapRequests(t *testing.T, policy []byte, bindingAsString bool) []*kaspb.UnsignedRewrapRequest_WithPolicyRequest {
 	kaoReq := keyAccessWrappedRaw(t, bindingAsString)
-	return []*kaspb.RewrapRequestBody{
+	return []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{
 		{
-			KeyAccessObjectRequests: []*kaspb.KeyAccessObjectRequest{&kaoReq},
-			Policy: &kaspb.PolicyRequest{
+			KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{&kaoReq},
+			Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
 				Id:   "123",
 				Body: string(policy),
 			},
@@ -297,7 +297,7 @@ func makeRewrapRequests(t *testing.T, policy []byte, bindingAsString bool) []*ka
 }
 
 func makeRewrapBody(t *testing.T, policy []byte, policyBindingAsString bool) []byte {
-	mockBody := &kaspb.RequestBody{
+	mockBody := &kaspb.UnsignedRewrapRequest{
 		Requests:        makeRewrapRequests(t, policy, policyBindingAsString),
 		ClientPublicKey: rsaPublicAlt,
 	}
@@ -369,7 +369,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 				require.NotNil(t, verified.GetClientPublicKey(), "unable to load public key")
 
 				for _, req := range verified.GetRequests() {
-					err := verifyPolicyBinding(context.Background(), []byte(req.GetPolicy().GetBody()), req.GetKeyAccessObjectRequests()[0], []byte(plainKey), *logger)
+					err := verifyPolicyBinding(context.Background(), []byte(req.GetPolicy().GetBody()), req.GetKeyAccessObjects()[0], []byte(plainKey), *logger)
 					if !tt.shouldError {
 						require.NoError(t, err, "failed to verify policy body=[%v]", tt.body)
 					} else {

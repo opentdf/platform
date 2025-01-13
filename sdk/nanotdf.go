@@ -920,7 +920,7 @@ func (n *NanoTDFDecryptHandler) getRawHeader() []byte {
 	return n.headerBuf
 }
 
-func (n *NanoTDFDecryptHandler) CreateRewrapRequest(_ context.Context) (map[string]*kas.RewrapRequestBody, error) {
+func (n *NanoTDFDecryptHandler) CreateRewrapRequest(_ context.Context) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error) {
 	var err error
 	var headerSize uint32
 	n.header, headerSize, err = NewNanoTDFHeaderFromReader(n.reader)
@@ -942,19 +942,19 @@ func (n *NanoTDFDecryptHandler) CreateRewrapRequest(_ context.Context) (map[stri
 		return nil, err
 	}
 
-	req := &kas.RewrapRequestBody{
-		KeyAccessObjectRequests: []*kas.KeyAccessObjectRequest{
+	req := &kas.UnsignedRewrapRequest_WithPolicyRequest{
+		KeyAccessObjects: []*kas.UnsignedRewrapRequest_WithKeyAccessObject{
 			{
 				KeyAccessObjectId: "kao-0",
 				KeyAccessObject:   &kas.KeyAccess{KasUrl: kasURL, Header: headerBuf, Algorithm: "ec:secp256r1"},
 			},
 		},
-		Policy: &kas.PolicyRequest{
+		Policy: &kas.UnsignedRewrapRequest_WithPolicy{
 			Id: "policy",
 		},
 		Algorithm: "ec:secp256r1",
 	}
-	return map[string]*kas.RewrapRequestBody{kasURL: req}, nil
+	return map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest{kasURL: req}, nil
 }
 
 func (n *NanoTDFDecryptHandler) Decrypt(_ context.Context, result []KAOResult) (uint32, error) {

@@ -94,7 +94,7 @@ func (r *tdf3DecryptHandler) Decrypt(ctx context.Context, results []KAOResult) (
 	return uint32(n), err
 }
 
-func (r *tdf3DecryptHandler) CreateRewrapRequest(ctx context.Context) (map[string]*kas.RewrapRequestBody, error) {
+func (r *tdf3DecryptHandler) CreateRewrapRequest(ctx context.Context) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error) {
 	return createRewrapRequest(ctx, r.reader)
 }
 
@@ -821,8 +821,8 @@ func (r *Reader) UnsafePayloadKeyRetrieval() ([]byte, error) {
 	return r.payloadKey, nil
 }
 
-func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.RewrapRequestBody, error) {
-	kasReqs := make(map[string]*kas.RewrapRequestBody)
+func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error) {
+	kasReqs := make(map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest)
 	for i, kao := range r.manifest.EncryptionInformation.KeyAccessObjs {
 		kaoID := fmt.Sprintf("kao-%d", i)
 		key, err := ocrypto.Base64Decode([]byte(kao.WrappedKey))
@@ -833,7 +833,7 @@ func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.RewrapRe
 		if err != nil {
 			return nil, err
 		}
-		kaoReq := &kas.KeyAccessObjectRequest{
+		kaoReq := &kas.UnsignedRewrapRequest_WithKeyAccessObject{
 			KeyAccessObjectId: kaoID,
 			KeyAccessObject: &kas.KeyAccess{
 				KeyType:       kao.KeyType,
@@ -846,14 +846,14 @@ func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.RewrapRe
 			},
 		}
 		if req, ok := kasReqs[kao.KasURL]; ok {
-			req.KeyAccessObjectRequests = append(req.KeyAccessObjectRequests, kaoReq)
+			req.KeyAccessObjects = append(req.KeyAccessObjects, kaoReq)
 		} else {
-			rewrapReq := kas.RewrapRequestBody{
-				Policy: &kas.PolicyRequest{
+			rewrapReq := kas.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: &kas.UnsignedRewrapRequest_WithPolicy{
 					Body: r.manifest.EncryptionInformation.Policy,
 					Id:   "policy",
 				},
-				KeyAccessObjectRequests: []*kas.KeyAccessObjectRequest{kaoReq},
+				KeyAccessObjects: []*kas.UnsignedRewrapRequest_WithKeyAccessObject{kaoReq},
 			}
 			kasReqs[kao.KasURL] = &rewrapReq
 		}
@@ -1057,8 +1057,8 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 	kasClient := newKASClient(r.dialOptions, r.tokenSource, &r.kasSessionKey)
 
 	var kaoResults []KAOResult
-	reqFail := func(err error, req *kas.RewrapRequestBody) {
-		for _, kao := range req.GetKeyAccessObjectRequests() {
+	reqFail := func(err error, req *kas.UnsignedRewrapRequest_WithPolicyRequest) {
+		for _, kao := range req.GetKeyAccessObjects() {
 			kaoResults = append(kaoResults, KAOResult{
 				KeyAccessObjectID: kao.GetKeyAccessObjectId(),
 				Error:             err,

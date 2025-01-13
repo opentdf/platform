@@ -1438,15 +1438,15 @@ func (f *FakeKas) PublicKey(_ context.Context, _ *kaspb.PublicKeyRequest) (*kasp
 }
 
 func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse {
-	bodyData := kaspb.RequestBody{}
+	bodyData := kaspb.UnsignedRewrapRequest{}
 	err := protojson.Unmarshal([]byte(rewrapRequest), &bodyData)
 	f.s.Require().NoError(err, "json.Unmarshal failed")
 	resp := &kaspb.RewrapResponse{}
 
 	for _, req := range bodyData.GetRequests() {
-		results := &kaspb.RewrapResult{PolicyId: req.GetPolicy().GetId()}
+		results := &kaspb.PolicyRewrapResult{PolicyId: req.GetPolicy().GetId()}
 		resp.Responses = append(resp.Responses, results)
-		for _, kaoReq := range req.GetKeyAccessObjectRequests() {
+		for _, kaoReq := range req.GetKeyAccessObjects() {
 			kao := kaoReq.GetKeyAccessObject()
 			wrappedKey := kaoReq.GetKeyAccessObject().GetWrappedKey()
 
@@ -1466,8 +1466,8 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse 
 			f.s.Require().NoError(err, "ocrypto.NewAsymEncryption failed")
 			entityWrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
 			f.s.Require().NoError(err, "ocrypto.encrypt failed")
-			kaoResult := &kaspb.KAORewrapResult{
-				Result:            &kaspb.KAORewrapResult_KasWrappedKey{KasWrappedKey: entityWrappedKey},
+			kaoResult := &kaspb.KeyAccessRewrapResult{
+				Result:            &kaspb.KeyAccessRewrapResult_KasWrappedKey{KasWrappedKey: entityWrappedKey},
 				Status:            "permit",
 				KeyAccessObjectId: kaoReq.GetKeyAccessObjectId(),
 			}

@@ -66,9 +66,9 @@ func TestCreatingRequest(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	keyAccess := []*kaspb.RewrapRequestBody{
+	keyAccess := []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{
 		{
-			KeyAccessObjectRequests: []*kaspb.KeyAccessObjectRequest{
+			KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
 				{
 					KeyAccessObject: &kaspb.KeyAccess{
 						KeyType:           "type1",
@@ -101,7 +101,7 @@ func TestCreatingRequest(t *testing.T) {
 	rb, ok := tok.Get("requestBody")
 	require.True(t, ok, "didn't contain a request body")
 	requestBodyJSON, _ := rb.(string)
-	var requestBody kaspb.RequestBody
+	var requestBody kaspb.UnsignedRewrapRequest
 
 	require.NoError(t, protojson.Unmarshal([]byte(requestBodyJSON), &requestBody), "error unmarshaling request body")
 
@@ -109,8 +109,8 @@ func TestCreatingRequest(t *testing.T) {
 	require.NoError(t, err, "NewAsymEncryption failed, incorrect public key include")
 
 	require.Len(t, requestBody.GetRequests(), 1)
-	require.Len(t, requestBody.GetRequests()[0].GetKeyAccessObjectRequests(), 1)
-	kao := requestBody.GetRequests()[0].GetKeyAccessObjectRequests()[0]
+	require.Len(t, requestBody.GetRequests()[0].GetKeyAccessObjects(), 1)
+	kao := requestBody.GetRequests()[0].GetKeyAccessObjects()[0]
 	var policyBinding map[string]interface{}
 	err = json.Unmarshal(kao.GetKeyAccessObject().GetPolicyBinding(), &policyBinding)
 	require.NoError(t, err)

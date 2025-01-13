@@ -35,7 +35,7 @@ type KAOResult struct {
 }
 
 type Decryptor interface {
-	CreateRewrapRequest(ctx context.Context) (map[string]*kas.RewrapRequestBody, error)
+	CreateRewrapRequest(ctx context.Context) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error)
 	Decrypt(ctx context.Context, results []KAOResult) (uint32, error)
 }
 
@@ -48,12 +48,12 @@ func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTo
 }
 
 // there is no connection caching as of now
-func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.RewrapRequestBody, pubKey string) (*kas.RewrapResponse, error) {
+func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.UnsignedRewrapRequest_WithPolicyRequest, pubKey string) (*kas.RewrapResponse, error) {
 	rewrapRequest, err := k.getRewrapRequest(requests, pubKey)
 	if err != nil {
 		return nil, err
 	}
-	grpcAddress, err := getGRPCAddress(requests[0].GetKeyAccessObjectRequests()[0].GetKeyAccessObject().GetKasUrl())
+	grpcAddress, err := getGRPCAddress(requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject().GetKasUrl())
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.Rewra
 
 	return response, nil
 }
-func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.RewrapRequestBody) (map[string][]KAOResult, error) {
+func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]KAOResult, error) {
 	keypair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewECKeyPair failed :%w", err)
@@ -130,7 +130,7 @@ func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.RewrapReque
 	return policyResults, nil
 }
 
-func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.RewrapRequestBody) (map[string][]KAOResult, error) {
+func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]KAOResult, error) {
 	if k.sessionKey == nil {
 		return nil, fmt.Errorf("session key is nil")
 	}
@@ -195,8 +195,8 @@ func getGRPCAddress(kasURL string) (string, error) {
 	return net.JoinHostPort(parsedURL.Hostname(), port), nil
 }
 
-func (k *KASClient) getRewrapRequest(reqs []*kas.RewrapRequestBody, pubKey string) (*kas.RewrapRequest, error) {
-	requestBody := &kas.RequestBody{
+func (k *KASClient) getRewrapRequest(reqs []*kas.UnsignedRewrapRequest_WithPolicyRequest, pubKey string) (*kas.RewrapRequest, error) {
+	requestBody := &kas.UnsignedRewrapRequest{
 		ClientPublicKey: pubKey,
 		Requests:        reqs,
 	}

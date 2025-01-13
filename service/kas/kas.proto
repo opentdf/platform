@@ -43,27 +43,26 @@ message KeyAccess {
   bytes header = 9;
   string algorithm = 10;
 }
-message PolicyRequest {
-  string id = 1;
-  string body = 2;
-}
 
-message KeyAccessObjectRequest {
-  string key_access_object_id = 1;
-  KeyAccess key_access_object = 2;
-}
+message UnsignedRewrapRequest {
+  message WithPolicy {
+    string id = 1;
+    string body = 2;
+  }
+  message WithKeyAccessObject {
+    string key_access_object_id = 1;
+    KeyAccess key_access_object = 2;
+  }
 
-message RewrapRequestBody {
-  repeated KeyAccessObjectRequest key_access_object_requests = 1;
-  PolicyRequest policy = 2;
-  string algorithm = 3;
-}
+  message WithPolicyRequest {
+    repeated WithKeyAccessObject key_access_objects = 1;
+    WithPolicy policy = 2;
+    string algorithm = 3;
+  }
 
-message RequestBody {
   string client_public_key = 1;
-  repeated RewrapRequestBody requests = 2;
+  repeated WithPolicyRequest requests = 2;
 }
-
 message PublicKeyRequest {
   string algorithm = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "algorithm type rsa:<keysize> or ec:<curvename>"}];
   string fmt = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "response format"}];
@@ -81,32 +80,30 @@ message RewrapRequest {
   string signed_request_token = 1;
 }
 
-message KAORewrapResult {
-	map<string, google.protobuf.Value> metadata = 1;
-	string key_access_object_id = 2;
-	string status = 3;
-	oneof result { 
-		bytes kas_wrapped_key = 4;
-		string error = 5;
-	}
+
+message KeyAccessRewrapResult {
+  map<string, google.protobuf.Value> metadata = 1;
+  string key_access_object_id = 2;
+  string status = 3;
+  oneof result {
+    bytes kas_wrapped_key = 4;
+    string error = 5;
+  }
 }
 
-message RewrapResult {
-	string policy_id = 1;
-	repeated KAORewrapResult results = 2;
+message PolicyRewrapResult {
+  string policy_id = 1;
+  repeated KeyAccessRewrapResult results = 2;
 }
-
 
 message RewrapResponse {
-	// Deprecated
-  map<string, google.protobuf.Value> metadata = 1;
+  reserved 1,4;
   // Deprecated
   bytes entity_wrapped_key = 2;
-  string session_public_key = 3;
   // Deprecated
-  string schema_version = 4;
+  string session_public_key = 3;
 	// New Rewrap API changes
-	repeated RewrapResult responses = 5;
+	repeated PolicyRewrapResult responses = 5;
 }
 
 // Get app info from the root path

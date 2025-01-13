@@ -439,19 +439,15 @@
                 </li>
               
                 <li>
-                  <a href="#kas.KAORewrapResult"><span class="badge">M</span>KAORewrapResult</a>
-                </li>
-              
-                <li>
-                  <a href="#kas.KAORewrapResult.MetadataEntry"><span class="badge">M</span>KAORewrapResult.MetadataEntry</a>
-                </li>
-              
-                <li>
                   <a href="#kas.KeyAccess"><span class="badge">M</span>KeyAccess</a>
                 </li>
               
                 <li>
-                  <a href="#kas.KeyAccessObjectRequest"><span class="badge">M</span>KeyAccessObjectRequest</a>
+                  <a href="#kas.KeyAccessRewrapResult"><span class="badge">M</span>KeyAccessRewrapResult</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.KeyAccessRewrapResult.MetadataEntry"><span class="badge">M</span>KeyAccessRewrapResult.MetadataEntry</a>
                 </li>
               
                 <li>
@@ -459,7 +455,7 @@
                 </li>
               
                 <li>
-                  <a href="#kas.PolicyRequest"><span class="badge">M</span>PolicyRequest</a>
+                  <a href="#kas.PolicyRewrapResult"><span class="badge">M</span>PolicyRewrapResult</a>
                 </li>
               
                 <li>
@@ -471,15 +467,7 @@
                 </li>
               
                 <li>
-                  <a href="#kas.RequestBody"><span class="badge">M</span>RequestBody</a>
-                </li>
-              
-                <li>
                   <a href="#kas.RewrapRequest"><span class="badge">M</span>RewrapRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#kas.RewrapRequestBody"><span class="badge">M</span>RewrapRequestBody</a>
                 </li>
               
                 <li>
@@ -487,11 +475,19 @@
                 </li>
               
                 <li>
-                  <a href="#kas.RewrapResponse.MetadataEntry"><span class="badge">M</span>RewrapResponse.MetadataEntry</a>
+                  <a href="#kas.UnsignedRewrapRequest"><span class="badge">M</span>UnsignedRewrapRequest</a>
                 </li>
               
                 <li>
-                  <a href="#kas.RewrapResult"><span class="badge">M</span>RewrapResult</a>
+                  <a href="#kas.UnsignedRewrapRequest.WithKeyAccessObject"><span class="badge">M</span>UnsignedRewrapRequest.WithKeyAccessObject</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.UnsignedRewrapRequest.WithPolicy"><span class="badge">M</span>UnsignedRewrapRequest.WithPolicy</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.UnsignedRewrapRequest.WithPolicyRequest"><span class="badge">M</span>UnsignedRewrapRequest.WithPolicyRequest</a>
                 </li>
               
               
@@ -3235,89 +3231,6 @@ Unique name of the KAS instance </p></td>
 
         
       
-        <h3 id="kas.KAORewrapResult">KAORewrapResult</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>metadata</td>
-                  <td><a href="#kas.KAORewrapResult.MetadataEntry">KAORewrapResult.MetadataEntry</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>key_access_object_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>status</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>kas_wrapped_key</td>
-                  <td><a href="#bytes">bytes</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>error</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="kas.KAORewrapResult.MetadataEntry">KAORewrapResult.MetadataEntry</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>key</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>value</td>
-                  <td><a href="#google.protobuf.Value">google.protobuf.Value</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="kas.KeyAccess">KeyAccess</h3>
         <p></p>
 
@@ -3405,7 +3318,7 @@ Unique name of the KAS instance </p></td>
 
         
       
-        <h3 id="kas.KeyAccessObjectRequest">KeyAccessObjectRequest</h3>
+        <h3 id="kas.KeyAccessRewrapResult">KeyAccessRewrapResult</h3>
         <p></p>
 
         
@@ -3416,6 +3329,13 @@ Unique name of the KAS instance </p></td>
             <tbody>
               
                 <tr>
+                  <td>metadata</td>
+                  <td><a href="#kas.KeyAccessRewrapResult.MetadataEntry">KeyAccessRewrapResult.MetadataEntry</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
                   <td>key_access_object_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
@@ -3423,8 +3343,53 @@ Unique name of the KAS instance </p></td>
                 </tr>
               
                 <tr>
-                  <td>key_access_object</td>
-                  <td><a href="#kas.KeyAccess">KeyAccess</a></td>
+                  <td>status</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_wrapped_key</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>error</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.KeyAccessRewrapResult.MetadataEntry">KeyAccessRewrapResult.MetadataEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#google.protobuf.Value">google.protobuf.Value</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -3460,7 +3425,7 @@ Unique name of the KAS instance </p></td>
 
         
       
-        <h3 id="kas.PolicyRequest">PolicyRequest</h3>
+        <h3 id="kas.PolicyRewrapResult">PolicyRewrapResult</h3>
         <p></p>
 
         
@@ -3471,16 +3436,16 @@ Unique name of the KAS instance </p></td>
             <tbody>
               
                 <tr>
-                  <td>id</td>
+                  <td>policy_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
               
                 <tr>
-                  <td>body</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
+                  <td>results</td>
+                  <td><a href="#kas.KeyAccessRewrapResult">KeyAccessRewrapResult</a></td>
+                  <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
               
@@ -3560,37 +3525,6 @@ Unique name of the KAS instance </p></td>
 
         
       
-        <h3 id="kas.RequestBody">RequestBody</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>client_public_key</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>requests</td>
-                  <td><a href="#kas.RewrapRequestBody">RewrapRequestBody</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="kas.RewrapRequest">RewrapRequest</h3>
         <p></p>
 
@@ -3615,44 +3549,6 @@ Unique name of the KAS instance </p></td>
 
         
       
-        <h3 id="kas.RewrapRequestBody">RewrapRequestBody</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>key_access_object_requests</td>
-                  <td><a href="#kas.KeyAccessObjectRequest">KeyAccessObjectRequest</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>policy</td>
-                  <td><a href="#kas.PolicyRequest">PolicyRequest</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>algorithm</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="kas.RewrapResponse">RewrapResponse</h3>
         <p></p>
 
@@ -3662,13 +3558,6 @@ Unique name of the KAS instance </p></td>
               <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
             </thead>
             <tbody>
-              
-                <tr>
-                  <td>metadata</td>
-                  <td><a href="#kas.RewrapResponse.MetadataEntry">RewrapResponse.MetadataEntry</a></td>
-                  <td>repeated</td>
-                  <td><p>Deprecated </p></td>
-                </tr>
               
                 <tr>
                   <td>entity_wrapped_key</td>
@@ -3681,19 +3570,12 @@ Unique name of the KAS instance </p></td>
                   <td>session_public_key</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>schema_version</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
                   <td><p>Deprecated </p></td>
                 </tr>
               
                 <tr>
                   <td>responses</td>
-                  <td><a href="#kas.RewrapResult">RewrapResult</a></td>
+                  <td><a href="#kas.PolicyRewrapResult">PolicyRewrapResult</a></td>
                   <td>repeated</td>
                   <td><p>New Rewrap API changes </p></td>
                 </tr>
@@ -3705,7 +3587,7 @@ Unique name of the KAS instance </p></td>
 
         
       
-        <h3 id="kas.RewrapResponse.MetadataEntry">RewrapResponse.MetadataEntry</h3>
+        <h3 id="kas.UnsignedRewrapRequest">UnsignedRewrapRequest</h3>
         <p></p>
 
         
@@ -3716,15 +3598,46 @@ Unique name of the KAS instance </p></td>
             <tbody>
               
                 <tr>
-                  <td>key</td>
+                  <td>client_public_key</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
               
                 <tr>
-                  <td>value</td>
-                  <td><a href="#google.protobuf.Value">google.protobuf.Value</a></td>
+                  <td>requests</td>
+                  <td><a href="#kas.UnsignedRewrapRequest.WithPolicyRequest">UnsignedRewrapRequest.WithPolicyRequest</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.UnsignedRewrapRequest.WithKeyAccessObject">UnsignedRewrapRequest.WithKeyAccessObject</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_access_object_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_access_object</td>
+                  <td><a href="#kas.KeyAccess">KeyAccess</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -3736,7 +3649,7 @@ Unique name of the KAS instance </p></td>
 
         
       
-        <h3 id="kas.RewrapResult">RewrapResult</h3>
+        <h3 id="kas.UnsignedRewrapRequest.WithPolicy">UnsignedRewrapRequest.WithPolicy</h3>
         <p></p>
 
         
@@ -3747,16 +3660,54 @@ Unique name of the KAS instance </p></td>
             <tbody>
               
                 <tr>
-                  <td>policy_id</td>
+                  <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
               
                 <tr>
-                  <td>results</td>
-                  <td><a href="#kas.KAORewrapResult">KAORewrapResult</a></td>
+                  <td>body</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.UnsignedRewrapRequest.WithPolicyRequest">UnsignedRewrapRequest.WithPolicyRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_access_objects</td>
+                  <td><a href="#kas.UnsignedRewrapRequest.WithKeyAccessObject">UnsignedRewrapRequest.WithKeyAccessObject</a></td>
                   <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>policy</td>
+                  <td><a href="#kas.UnsignedRewrapRequest.WithPolicy">UnsignedRewrapRequest.WithPolicy</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>algorithm</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               

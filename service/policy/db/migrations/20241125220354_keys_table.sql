@@ -3,7 +3,7 @@
 CREATE TABLE IF NOT EXISTS
     public_keys (
         id uuid DEFAULT gen_random_uuid () PRIMARY KEY,
-        is_active boolean NOT NULL DEFAULT TRUE,
+        is_active boolean NOT NULL DEFAULT FALSE,
         was_used boolean NOT NULL DEFAULT FALSE,
         key_access_server_id uuid NOT NULL REFERENCES key_access_servers (id),
         key_id varchar(36) NOT NULL,
@@ -51,7 +51,10 @@ CREATE
 OR REPLACE FUNCTION update_active_key () RETURNS trigger AS $$
 DECLARE
     current_active_key uuid;
+    mapping_count int;
 BEGIN
+    -- Log the incoming values
+    RAISE NOTICE 'New key ID: %, KAS ID: %, ALG: %', NEW.id, NEW.key_access_server_id, NEW.alg;
     -- Look for existing active key for this KAS and algorithm
     SELECT id INTO current_active_key
     FROM public_keys
@@ -61,13 +64,49 @@ BEGIN
 
     -- If no active key exists, mark the new one active
     IF current_active_key IS NULL THEN
-        NEW.is_active = TRUE;
+        UPDATE public_keys SET is_active = TRUE WHERE id = NEW.id;
+        RAISE NOTICE 'No active key found, marking new key active';
     -- If there is an active key and this is a new key, switch active status
     ELSIF current_active_key != NEW.id THEN
-        UPDATE public_keys
-        SET is_active = FALSE
-        WHERE id = current_active_key;
-        NEW.is_active = TRUE;
+        BEGIN
+            RAISE NOTICE 'Copying mappings from key % to key %', current_active_key, NEW.id;
+            -- Copy namespace mappings
+            GET DIAGNOSTICS mapping_count = ROW_COUNT;
+            INSERT INTO attribute_namespace_public_key_map (namespace_id, key_id)
+            SELECT namespace_id, NEW.id
+            FROM attribute_namespace_public_key_map
+            WHERE key_id = current_active_key;
+            RAISE NOTICE 'Copied % namespace mappings', mapping_count;
+
+            -- Copy definition mappings
+            GET DIAGNOSTICS mapping_count = ROW_COUNT;
+            INSERT INTO attribute_definition_public_key_map (definition_id, key_id)
+            SELECT definition_id, NEW.id
+            FROM attribute_definition_public_key_map
+            WHERE key_id = current_active_key;
+            RAISE NOTICE 'Copied % definition mappings', mapping_count;
+
+            -- Copy value mappings
+            GET DIAGNOSTICS mapping_count = ROW_COUNT;
+            INSERT INTO attribute_value_public_key_map (value_id, key_id)
+            SELECT value_id, NEW.id
+            FROM attribute_value_public_key_map
+            WHERE key_id = current_active_key;
+            RAISE NOTICE 'Copied % value mappings', mapping_count;
+
+            UPDATE public_keys SET is_active = FALSE WHERE id = current_active_key;
+
+            UPDATE public_keys SET is_active = TRUE WHERE id = NEW.id;
+
+            --NEW.is_active = TRUE;
+
+        EXCEPTION WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating active key: %', SQLERRM;
+            -- Still deactivate the current active key
+            UPDATE public_keys SET is_active = FALSE WHERE id = current_active_key;
+
+            UPDATE public_keys SET is_active = TRUE WHERE id = NEW.id;
+        END;
     END IF;
 
     RETURN NEW;
@@ -76,7 +115,8 @@ $$ LANGUAGE plpgsql;
 
 COMMENT ON FUNCTION update_active_key IS 'Function to update active key when a new key is inserted with the same algorithm and key_access_server_id';
 
-CREATE TRIGGER maintain_active_key BEFORE INSERT ON public_keys FOR EACH ROW
+CREATE TRIGGER maintain_active_key
+AFTER INSERT ON public_keys FOR EACH ROW
 EXECUTE FUNCTION update_active_key ();
 
 CREATE TABLE IF NOT EXISTS

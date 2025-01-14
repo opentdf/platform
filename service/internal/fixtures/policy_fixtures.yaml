@@ -536,7 +536,7 @@ public_keys:
       kas_id: e36640a6-61c5-4d4c-a45b-0e0a26d1c45f
       is_active: false
       key:
-        alg: KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
+        alg: KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096
         kid: r3
         pem: |-
           -----BEGIN CERTIFICATE-----

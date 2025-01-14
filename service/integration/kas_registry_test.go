@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"testing"
 
@@ -1050,6 +1051,47 @@ func (s *KasRegistrySuite) Test_Create_Public_Key() {
 	s.Require().NoError(err)
 	s.NotNil(r3)
 	s.False(r3.GetKey().GetIsActive())
+
+	// Check to make sure the new key was mapped to namespaces, definitions and values
+	vkms := s.f.GetValueMap(kID)
+	dkms := s.f.GetDefinitionKeyMap(kID)
+	nkms := s.f.GetNamespaceKeyMap(kID)
+
+	for _, vk := range vkms {
+		r, err := s.db.PolicyClient.GetAttributeValue(s.ctx, vk.ValueID)
+		s.Require().NoError(err)
+		s.NotNil(r)
+		s.True(slices.ContainsFunc(r.GetKeys(), func(key *policy.Key) bool {
+			return key.GetId() == publicKeyTestUUID
+		}))
+		s.False(slices.ContainsFunc(r.GetKeys(), func(key *policy.Key) bool {
+			return key.GetId() == kID
+		}))
+	}
+
+	for _, dk := range dkms {
+		r, err := s.db.PolicyClient.GetAttribute(s.ctx, dk.DefinitionID)
+		s.Require().NoError(err)
+		s.NotNil(r)
+		s.True(slices.ContainsFunc(r.GetKeys(), func(key *policy.Key) bool {
+			return key.GetId() == publicKeyTestUUID
+		}))
+		s.False(slices.ContainsFunc(r.GetKeys(), func(key *policy.Key) bool {
+			return key.GetId() == kID
+		}))
+	}
+
+	for _, nk := range nkms {
+		r, err := s.db.PolicyClient.GetNamespace(s.ctx, nk.NamespaceID)
+		s.Require().NoError(err)
+		s.NotNil(r)
+		s.True(slices.ContainsFunc(r.GetKeys(), func(key *policy.Key) bool {
+			return key.GetId() == publicKeyTestUUID
+		}))
+		s.False(slices.ContainsFunc(r.GetKeys(), func(key *policy.Key) bool {
+			return key.GetId() == kID
+		}))
+	}
 }
 
 func (s *KasRegistrySuite) Test_Create_Pulblic_Key_Unique_Constraint() {

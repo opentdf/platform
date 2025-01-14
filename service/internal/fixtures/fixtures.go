@@ -284,6 +284,36 @@ func (f *Fixtures) GetPublicKey(key string) FixtureDataPublicKey {
 	return pk
 }
 
+func (f *Fixtures) GetValueMap(key string) []FixtureDataValueKeyMap {
+	var vkms []FixtureDataValueKeyMap
+	for _, vkm := range fixtureData.ValueKeyMap.Data {
+		if vkm.KeyID == key {
+			vkms = append(vkms, vkm)
+		}
+	}
+	return vkms
+}
+
+func (f *Fixtures) GetDefinitionKeyMap(key string) []FixtureDataDefinitionKeyMap {
+	var dkms []FixtureDataDefinitionKeyMap
+	for _, dkm := range fixtureData.DefinitionKeyMap.Data {
+		if dkm.KeyID == key {
+			dkms = append(dkms, dkm)
+		}
+	}
+	return dkms
+}
+
+func (f *Fixtures) GetNamespaceKeyMap(key string) []FixtureDataNamespaceKeyMap {
+	var nkms []FixtureDataNamespaceKeyMap
+	for _, nkm := range fixtureData.NamespaceKeyMap.Data {
+		if nkm.KeyID == key {
+			nkms = append(nkms, nkm)
+		}
+	}
+	return nkms
+}
+
 func (f *Fixtures) Provision() {
 	slog.Info("📦 running migrations in schema", slog.String("schema", f.db.Schema))
 	_, err := f.db.Client.RunMigrations(context.Background(), policy.Migrations)

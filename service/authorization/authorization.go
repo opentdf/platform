@@ -154,7 +154,6 @@ func (as AuthorizationService) IsReady(ctx context.Context) error {
 }
 
 func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *connect.Request[authorization.GetDecisionsByTokenRequest]) (*connect.Response[authorization.GetDecisionsByTokenResponse], error) {
-
 	if as.Tracer != nil {
 		var span trace.Span
 		ctx, span = as.Tracer.Start(ctx, "GetDecisionsByToken")

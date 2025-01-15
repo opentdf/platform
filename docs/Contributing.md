@@ -24,3 +24,7 @@ For end-users/consumers, see [here](./Consuming.md).
 
 Note: support was added to provision a set of fixture data into the database.
 Run `go run github.com/opentdf/platform/service provision fixtures -h` for more information.
+
+## Advice for Code Contributors
+
+* Follow our [Error Guidelines](./Contributing-errors.md)

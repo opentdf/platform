@@ -17,12 +17,7 @@ func TestTDFWithAssertion(t *testing.T) {
 		Statement: Statement{
 			Format: "json+stanag5636",
 			Schema: "urn:nato:stanag:5636:A:1:elements:json",
-			Value: FlexibleValue{
-				AsString: func() *string {
-					val := "{\"ocl\":{\"pol\":\"62c76c68-d73d-4628-8ccc-4c1e18118c22\",\"cls\":\"SECRET\",\"catl\":[{\"type\":\"P\",\"name\":\"Releasable To\",\"vals\":[\"usa\"]}],\"dcr\":\"2024-10-21T20:47:36Z\"},\"context\":{\"@base\":\"urn:nato:stanag:5636:A:1:elements:json\"}}"
-					return &val
-				}(),
-			},
+			Value:  "{\"ocl\":{\"pol\":\"62c76c68-d73d-4628-8ccc-4c1e18118c22\",\"cls\":\"SECRET\",\"catl\":[{\"type\":\"P\",\"name\":\"Releasable To\",\"vals\":[\"usa\"]}],\"dcr\":\"2024-10-21T20:47:36Z\"},\"context\":{\"@base\":\"urn:nato:stanag:5636:A:1:elements:json\"}}",
 		},
 	}
 
@@ -42,6 +37,23 @@ func TestTDFWithAssertion(t *testing.T) {
 
 func TestTDFWithAssertionJsonObject(t *testing.T) {
 	// Define the assertion config with a JSON object in the statement value
+	value := `{
+		"ocl": {
+			"pol": "2ccf11cb-6c9a-4e49-9746-a7f0a295945d",
+			"cls": "SECRET",
+			"catl": [
+				{
+					"type": "P",
+					"name": "Releasable To",
+					"vals": ["usa"]
+				}
+			],
+			"dcr": "2024-12-17T13:00:52Z"
+		},
+		"context": {
+			"@base": "urn:nato:stanag:5636:A:1:elements:json"
+		}
+	}`
 	assertionConfig := AssertionConfig{
 		ID:             "ab43266781e64b51a4c52ffc44d6152c",
 		Type:           "handling",
@@ -49,25 +61,7 @@ func TestTDFWithAssertionJsonObject(t *testing.T) {
 		AppliesToState: "", // Use "" or a pointer to a string if necessary
 		Statement: Statement{
 			Format: "json-structured",
-			Value: FlexibleValue{
-				AsObject: map[string]interface{}{ // Correct usage of FlexibleValue
-					"ocl": map[string]interface{}{
-						"pol": "2ccf11cb-6c9a-4e49-9746-a7f0a295945d",
-						"cls": "SECRET",
-						"catl": []map[string]interface{}{
-							{
-								"type": "P",
-								"name": "Releasable To",
-								"vals": []string{"usa"},
-							},
-						},
-						"dcr": "2024-12-17T13:00:52Z",
-					},
-					"context": map[string]interface{}{
-						"@base": "urn:nato:stanag:5636:A:1:elements:json",
-					},
-				},
-			},
+			Value:  value,
 		},
 	}
 
@@ -80,28 +74,23 @@ func TestTDFWithAssertionJsonObject(t *testing.T) {
 		Statement:      assertionConfig.Statement,
 	}
 
-	// Serialize the JSON object in the statement value
-	serializedStatementValue, err := json.Marshal(assertion.Statement.Value.AsObject)
-	require.NoError(t, err)
+	var obj map[string]interface{}
+	err := json.Unmarshal([]byte(assertionConfig.Statement.Value), &obj)
+	require.NoError(t, err, "Unmarshaling the Value into a map should succeed")
 
-	// Ensure the serialized value is valid JSON
-	var deserialized map[string]interface{}
-	err = json.Unmarshal(serializedStatementValue, &deserialized)
-	require.NoError(t, err)
+	ocl, ok := obj["ocl"].(map[string]interface{})
+	require.True(t, ok, "Parsed Value should contain 'ocl' as an object")
+	require.Equal(t, "SECRET", ocl["cls"], "'cls' field should match")
+	require.Equal(t, "2ccf11cb-6c9a-4e49-9746-a7f0a295945d", ocl["pol"], "'pol' field should match")
 
-	// Set the serialized value back into the statement
-	assertion.Statement.Value = FlexibleValue{
-		AsString: func() *string {
-			val := string(serializedStatementValue)
-			return &val
-		}(),
-	}
+	context, ok := obj["context"].(map[string]interface{})
+	require.True(t, ok, "Parsed Value should contain 'context' as an object")
+	require.Equal(t, "urn:nato:stanag:5636:A:1:elements:json", context["@base"], "'@base' field should match")
 
 	// Calculate the hash of the assertion
 	hashOfAssertion, err := assertion.GetHash()
 	require.NoError(t, err)
 
-	// Assert the expected hash (example hash, replace with actual expected value)
-	expectedHash := "c1733259597a7025d2fdbd000a68c5ee3652cf2cd61c0be8f92f941c521cee92"
+	expectedHash := "722dd40a90a0f7ec718fb156207a647e64daa43c0ae1f033033473a172c72aee"
 	assert.Equal(t, expectedHash, string(hashOfAssertion))
 }

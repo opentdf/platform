@@ -796,46 +796,22 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 	for _, keyAccessObj := range r.manifest.EncryptionInformation.KeyAccessObjs {
 		client := newKASClient(r.dialOptions, r.tokenSource, &r.kasSessionKey)
 
-		ss := keySplitStep{KAS: keyAccessObj.KasURL, SplitID: keyAccessObj.SplitID}
-
 		var err error
 		var wrappedKey []byte
-		if !mixedSplits { //nolint:nestif // todo: subfunction
-			wrappedKey, err = client.unwrap(ctx, keyAccessObj, r.manifest.EncryptionInformation.Policy)
-			if err != nil {
-				errToReturn := fmt.Errorf("doPayloadKeyUnwrap splitKey.rewrap failed: %w", err)
-				if strings.Contains(err.Error(), codes.InvalidArgument.String()) {
-					return fmt.Errorf("%w: %w", ErrRewrapBadRequest, errToReturn)
-				}
-				if strings.Contains(err.Error(), codes.PermissionDenied.String()) {
-					return fmt.Errorf("%w: %w", errRewrapForbidden, errToReturn)
-				}
-				return errToReturn
+
+		wrappedKey, err = client.unwrap(ctx, keyAccessObj, r.manifest.EncryptionInformation.Policy)
+		if err != nil {
+			errToReturn := fmt.Errorf("doPayloadKeyUnwrap splitKey.rewrap failed: %w", err)
+			if strings.Contains(err.Error(), codes.InvalidArgument.String()) {
+				return fmt.Errorf("%w: %w", ErrRewrapBadRequest, errToReturn)
 			}
-		} else {
-			knownSplits[ss.SplitID] = true
-			if foundSplits[ss.SplitID] {
-				// already found
-				continue
+			if strings.Contains(err.Error(), codes.PermissionDenied.String()) {
+				return fmt.Errorf("%w: %w", errRewrapForbidden, errToReturn)
 			}
-			wrappedKey, err = client.unwrap(ctx, keyAccessObj, r.manifest.EncryptionInformation.Policy)
-			if err != nil {
-				errToReturn := fmt.Errorf("kao unwrap failed for split %v: %w", ss, err)
-				if !strings.Contains(err.Error(), codes.InvalidArgument.String()) {
-					skippedSplits[ss] = fmt.Errorf("%w: %w", ErrRewrapBadRequest, errToReturn)
-				}
-				if !strings.Contains(err.Error(), codes.PermissionDenied.String()) {
-					skippedSplits[ss] = fmt.Errorf("%w: %w", errRewrapForbidden, errToReturn)
-				}
-				skippedSplits[ss] = errToReturn
-				continue
-			}
+			return errToReturn
 		}
 
-		for keyByteIndex, keyByte := range wrappedKey {
-			payloadKey[keyByteIndex] ^= keyByte
-		}
-		foundSplits[ss.SplitID] = true
+		copy(payloadKey[:], wrappedKey)
 
 		if len(keyAccessObj.EncryptedMetadata) != 0 {
 			gcm, err := ocrypto.NewAESGcm(wrappedKey)
@@ -862,10 +838,6 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 			}
 
 			unencryptedMetadata = metaData
-		}
-
-		if r.manifest.EncryptionInformation.KeyAccessObjs[0].SplitID == "" {
-			break
 		}
 	}
 
@@ -948,7 +920,8 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 
 		base64Hash := ocrypto.Base64Encode(completeHashBuilder.Bytes())
 
-		if string(hashOfAssertion) != assertionHash {
+		stras := string(hashOfAssertion)
+		if stras != assertionHash {
 			return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: assertion.ID})
 		}
 

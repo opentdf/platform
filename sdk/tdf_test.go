@@ -225,13 +225,6 @@ type assertionTests struct {
 const payload = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 var buffer []byte //nolint:gochecknoglobals // for testing
-
-func NewFlexibleValueFromString(val string) FlexibleValue {
-	return FlexibleValue{
-		AsString: &val,
-	}
-}
-
 func init() {
 	// create a buffer and write with 0xff
 	buffer = make([]byte, stepSize)
@@ -383,7 +376,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					Statement: Statement{
 						Format: "base64binary",
 						Schema: "text",
-						Value:  NewFlexibleValueFromString("ICAgIDxlZGoOkVkaD4="),
+						Value:  "ICAgIDxlZGoOkVkaD4=",
 					},
 				},
 				{
@@ -394,12 +387,12 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					Statement: Statement{
 						Format: "json",
 						Schema: "urn:nato:stanag:5636:A:1:elements:json",
-						Value:  NewFlexibleValueFromString("{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}"),
+						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
 					},
 				},
 			},
 			assertionVerificationKeys:    nil,
-			disableAssertionVerification: true,
+			disableAssertionVerification: false,
 			expectedSize:                 2896,
 		},
 		{
@@ -412,7 +405,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					Statement: Statement{
 						Format: "base64binary",
 						Schema: "text",
-						Value:  NewFlexibleValueFromString("ICAgIDxlZGoOkVkaD4="),
+						Value:  "ICAgIDxlZGoOkVkaD4=",
 					},
 					SigningKey: defaultKey,
 				},
@@ -424,7 +417,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					Statement: Statement{
 						Format: "json",
 						Schema: "urn:nato:stanag:5636:A:1:elements:json",
-						Value:  NewFlexibleValueFromString("{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}"),
+						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
 					},
 					SigningKey: defaultKey,
 				},
@@ -432,7 +425,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 			assertionVerificationKeys: &AssertionVerificationKeys{
 				DefaultKey: defaultKey,
 			},
-			disableAssertionVerification: true,
+			disableAssertionVerification: false,
 			expectedSize:                 2896,
 		},
 		{
@@ -445,7 +438,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					Statement: Statement{
 						Format: "base64binary",
 						Schema: "text",
-						Value:  NewFlexibleValueFromString("ICAgIDxlZGoOkVkaD4="),
+						Value:  "ICAgIDxlZGoOkVkaD4=",
 					},
 					SigningKey: AssertionKey{
 						Alg: AssertionKeyAlgHS256,
@@ -460,7 +453,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					Statement: Statement{
 						Format: "json",
 						Schema: "urn:nato:stanag:5636:A:1:elements:json",
-						Value:  NewFlexibleValueFromString("{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}"),
+						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
 					},
 					SigningKey: AssertionKey{
 						Alg: AssertionKeyAlgRS256,
@@ -481,7 +474,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					},
 				},
 			},
-			disableAssertionVerification: true,
+			disableAssertionVerification: false,
 			expectedSize:                 3195,
 		},
 		{
@@ -494,7 +487,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					Statement: Statement{
 						Format: "base64binary",
 						Schema: "text",
-						Value:  NewFlexibleValueFromString("ICAgIDxlZGoOkVkaD4="),
+						Value:  "ICAgIDxlZGoOkVkaD4=",
 					},
 					SigningKey: AssertionKey{
 						Alg: AssertionKeyAlgHS256,
@@ -509,7 +502,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					Statement: Statement{
 						Format: "json",
 						Schema: "urn:nato:stanag:5636:A:1:elements:json",
-						Value:  NewFlexibleValueFromString("{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}"),
+						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
 					},
 				},
 			},
@@ -521,7 +514,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					},
 				},
 			},
-			disableAssertionVerification: true,
+			disableAssertionVerification: false,
 			expectedSize:                 2896,
 		},
 		{
@@ -534,7 +527,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					Statement: Statement{
 						Format: "json",
 						Schema: "urn:nato:stanag:5636:A:1:elements:json",
-						Value:  NewFlexibleValueFromString("{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}"),
+						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
 					},
 				},
 			},
@@ -631,7 +624,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					Statement: Statement{
 						Format: "base64binary",
 						Schema: "text",
-						Value:  NewFlexibleValueFromString("ICAgIDxlZGoOkVkaD4="),
+						Value:  "ICAgIDxlZGoOkVkaD4=",
 					},
 					SigningKey: defaultKey,
 				},
@@ -643,7 +636,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					Statement: Statement{
 						Format: "json",
 						Schema: "urn:nato:stanag:5636:A:1:elements:json",
-						Value:  NewFlexibleValueFromString("{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}"),
+						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
 					},
 					SigningKey: defaultKey,
 				},
@@ -660,7 +653,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					Statement: Statement{
 						Format: "base64binary",
 						Schema: "text",
-						Value:  NewFlexibleValueFromString("ICAgIDxlZGoOkVkaD4="),
+						Value:  "ICAgIDxlZGoOkVkaD4=",
 					},
 					SigningKey: AssertionKey{
 						Alg: AssertionKeyAlgHS256,
@@ -675,7 +668,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					Statement: Statement{
 						Format: "json",
 						Schema: "urn:nato:stanag:5636:A:1:elements:json",
-						Value:  NewFlexibleValueFromString("{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}"),
+						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
 					},
 					SigningKey: AssertionKey{
 						Alg: AssertionKeyAlgRS256,
@@ -708,7 +701,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					Statement: Statement{
 						Format: "base64binary",
 						Schema: "text",
-						Value:  NewFlexibleValueFromString("ICAgIDxlZGoOkVkaD4="),
+						Value:  "ICAgIDxlZGoOkVkaD4=",
 					},
 					SigningKey: AssertionKey{
 						Alg: AssertionKeyAlgHS256,
@@ -723,7 +716,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					Statement: Statement{
 						Format: "json",
 						Schema: "urn:nato:stanag:5636:A:1:elements:json",
-						Value:  NewFlexibleValueFromString("{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}"),
+						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
 					},
 				},
 			},

@@ -20,6 +20,11 @@ This document focuses on the first category, go `error` typed return values.
   application developers might depend on `strings.Contains()`
   which bind their applications to the error message and prohibit improving error language
   - Prefer using sentinel values for expected conditions
+    Sentinels should be named `Err?{Noun}{Case}`, where:
+      *Noun* is a word that describes the group of error conditions or scenario
+      and *Case* is an adjective or short description of the error type. The Err
+      prefix indicates an unexpected condition;
+      for expected conditions it should be left off
   - Prefer to use custom types for 'unexpected' error conditions.
     These allow for additional detail and assisting with debugging
     and can provide additional context for handling in application code
@@ -120,7 +125,7 @@ and instead expose more generic language errors.
 
 Exceptions exist when certain APIs or config are used.
 For instance if the developer is choosing a different elliptic curve (EC) type that we don’t support
-it would make sense to say “Unsupported curve, use  SECP11R2”.
+it would make sense to say “Unsupported curve, use SECP11R2”.
 This exception exists because the user is tweaking the curve.
 
 Expect that people have not read the documentation and don’t know the spec.

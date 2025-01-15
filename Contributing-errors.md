@@ -24,7 +24,8 @@ This document focuses on the first category, go `error` typed return values.
       *Noun* is a word that describes the group of error conditions or scenario
       and *Case* is an adjective or short description of the error type. The Err
       prefix indicates an unexpected condition;
-      for expected conditions it should be left off
+      for expected conditions it should be left off.
+      Leave out the noun if it is redundant with the package name.
   - Prefer to use custom types for 'unexpected' error conditions.
     These allow for additional detail and assisting with debugging
     and can provide additional context for handling in application code

@@ -6,11 +6,11 @@ When updating code in this repository,
 consider the following best practices for exposing errors in our APIs.
 Depending on your contribution, you may alter code that might produce:
 
-- go error types and constants, suitable for use with `errors.Is` and `errors.As`
-- errors exposed over RPC (e.g. with protocol buffers)
-- translation of those proto errors into JSON and HTTP status codes via REST endpoints
-- log messages suitable for operations, when contributing to service code
-- command line status codes
+- go error types and constants, suitable for use with [`errors.Is` and `errors.As`](https://pkg.go.dev/errors)
+- errors exposed over RPC (e.g. with [protocol buffers](https://grpc.io/docs/guides/error/))
+- translation of those proto errors into JSON and [HTTP status codes](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status) via REST endpoints
+- log messages [suitable for ops and SRE](https://www.honeycomb.io/blog/engineers-checklist-logging-best-practices), when contributing to service code
+- command line [status codes](https://tldp.org/LDP/abs/html/exitcodes.html)
 
 This document focuses on the first category, go `error` typed return values.
 
@@ -18,9 +18,18 @@ This document focuses on the first category, go `error` typed return values.
 
 - When a library does not provide explicitly exported and documented error types and constants,
   application developers might depend on `strings.Contains()`
-  which bind their applications to the error message and prohibit improving error language.
+  which bind their applications to the error message and prohibit improving error language
+  - Prefer using sentinel values for expected conditions
+  - Prefer to use custom types for 'unexpected' error conditions.
+    These allow for additional detail and assisting with debugging
+    and can provide additional context for handling in application code
 - Exporting too much or too many types
   will require us to support the variable or deprecate it
+  - Wrap with an non-exported type or `fmt.Errorf` to provide additional context to ops
+    without exposing more handling capabilities to the application
+- Returned errors may be explicity ignored with an `_`.
+- Errors in `defer` blocks should either be returned or wrapped and returned using named return types
+  OR logged in place
 
 #### Semantic Versioning with Errors in Go
 
@@ -120,7 +129,8 @@ Expect that people have not read the documentation and don’t know the spec.
 
 #### *actionable* - errors should be actionable to enable the developer to fix their own problem
 
-People like feedback [when it's actionable](https://fortune.com/2023/10/09/analyzed-2-years-performance-reviews-13000-workers-proof-low-quality-feedback-driving-employee-retention-down-careers-snyder-yen/) otherwise they look for alternatives.
+People like feedback when it's actionable and direct,
+otherwise they look for alternatives.
 
 Actionable errors handling can take a variety of forms.
 
@@ -147,6 +157,7 @@ Similarly, any wrapped types should be exercised in unit tests.
 
 ## References
 
-- <https://ngrok.com/docs/errors/reference/>
 - <https://pkg.go.dev/errors>
+- <https://ngrok.com/docs/errors/reference/>
 - <https://go.dev/doc/modules/version-numbers#major-version>
+- <https://www.honeycomb.io/blog/engineers-checklist-logging-best-practices>

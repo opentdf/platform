@@ -413,7 +413,7 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 		if kao.Error != nil {
 			return nil, kao.Error
 		}
-		resp.EntityWrappedKey = kao.Key
+		resp.EntityWrappedKey = kao.Key //nolint:staticcheck // deprecated but keeping behavior for backwards compatibility
 	}
 
 	return connect.NewResponse(resp), err

@@ -40,8 +40,13 @@ func WithTDFs(tdfs ...*BulkTDF) BulkDecryptOption {
 		request.AppendTDFs(tdfs...)
 	}
 }
+func WithTDFType(tdfType TdfType) BulkDecryptOption {
+	return func(request *BulkDecryptRequest) {
+		request.TDFType = tdfType
+	}
+}
 
-func (s SDK) CreateBulkRewrapRequest(options ...BulkDecryptOption) *BulkDecryptRequest {
+func createBulkRewrapRequest(options ...BulkDecryptOption) *BulkDecryptRequest {
 	req := &BulkDecryptRequest{}
 	for _, opt := range options {
 		opt(req)
@@ -62,7 +67,8 @@ func (s SDK) createDecryptor(tdf *BulkTDF, tdfType TdfType) (Decryptor, error) {
 }
 
 // BulkDecrypt
-func (s SDK) BulkDecrypt(ctx context.Context, bulkReq *BulkDecryptRequest) error {
+func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
+	bulkReq := createBulkRewrapRequest(opts...)
 	kasRewrapRequests := make(map[string][]*kas.UnsignedRewrapRequest_WithPolicyRequest)
 	tdfDecryptors := make(map[string]Decryptor)
 	policyTDF := make(map[string]*BulkTDF)

@@ -409,9 +409,7 @@ func bulk(client *sdk.SDK, tdfSuccess []string, tdfFail []string, plaintext stri
 		failTDF = append(failTDF, &sdk.BulkTDF{Writer: buf, Reader: file})
 	}
 
-	req := client.CreateBulkRewrapRequest(sdk.WithTDFs(passTDF...), sdk.WithTDFs(failTDF...))
-	req.TDFType = sdk.Standard
-	_ = client.BulkDecrypt(context.Background(), req)
+	_ = client.BulkDecrypt(context.Background(), sdk.WithTDFs(passTDF...), sdk.WithTDFs(failTDF...), sdk.WithTDFType(sdk.Standard))
 	for _, tdf := range passTDF {
 		builder, ok := tdf.Writer.(*strings.Builder)
 		if !ok {

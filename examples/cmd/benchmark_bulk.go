@@ -109,16 +109,15 @@ func runBenchmarkBulk(cmd *cobra.Command, args []string) error {
 		cipher, _ := io.ReadAll(file)
 
 		file.Seek(0, 0)
-		bulkReq := client.CreateBulkRewrapRequest()
 		format := sdk.Nano
+		var bulkTdfs []*sdk.BulkTDF
 		if config.TDFFormat == "tdf3" {
 			format = sdk.Standard
 		}
 		for i := 0; i < config.RequestCount; i++ {
-			bulkReq.AppendTDFs(&sdk.BulkTDF{Reader: bytes.NewReader(cipher), Writer: io.Discard})
+			bulkTdfs = append(bulkTdfs, &sdk.BulkTDF{Reader: bytes.NewReader(cipher), Writer: io.Discard})
 		}
-		bulkReq.TDFType = format
-		err = client.BulkDecrypt(ctx.Background(), bulkReq)
+		err = client.BulkDecrypt(ctx.Background(), sdk.WithTDFs(bulkTdfs...), sdk.WithTDFType(format))
 		if err != nil {
 			if errList, ok := sdk.IsPartialFailure(err); ok {
 				errors = errList

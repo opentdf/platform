@@ -97,12 +97,10 @@ message PolicyRewrapResult {
 }
 
 message RewrapResponse {
-  reserved 1,4;
-  reserved "metadata", "schema_version";
-  // Deprecated
-  bytes entity_wrapped_key = 2;
-  // Deprecated
-  string session_public_key = 3;
+  map<string, google.protobuf.Value> metadata = 1 [deprecated = true];
+  bytes entity_wrapped_key = 2 [deprecated = true];
+  string session_public_key = 3 [deprecated = true];
+  string schema_version = 4 [deprecated = true];
 	// New Rewrap API changes
 	repeated PolicyRewrapResult responses = 5;
 }

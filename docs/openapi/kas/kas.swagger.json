@@ -189,14 +189,19 @@
     "kasRewrapResponse": {
       "type": "object",
       "properties": {
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {}
+        },
         "entityWrappedKey": {
           "type": "string",
-          "format": "byte",
-          "title": "Deprecated"
+          "format": "byte"
         },
         "sessionPublicKey": {
-          "type": "string",
-          "title": "Deprecated"
+          "type": "string"
+        },
+        "schemaVersion": {
+          "type": "string"
         },
         "responses": {
           "type": "array",

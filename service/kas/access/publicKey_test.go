@@ -15,7 +15,7 @@ import (
 
 	"connectrpc.com/connect"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
-	"github.com/opentdf/platform/service/internal/security"
+	"github.com/opentdf/platform/service/kas/recrypt"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -87,26 +87,21 @@ func TestError(t *testing.T) {
 const hostname = "localhost"
 
 func TestStandardCertificateHandlerEmpty(t *testing.T) {
-	configStandard := security.Config{
-		Type: "standard",
-	}
-	c := mustNewCryptoProvider(t, configStandard)
-	defer c.Close()
 	kasURI := urlHost(t)
-
 	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: c,
-		Logger:         logger.CreateTestLogger(),
+		URI:    *kasURI,
+		Logger: logger.CreateTestLogger(),
 	}
+	c := mustNewCryptoProvider(t, &kas)
+	defer c.Close()
 
 	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{Fmt: "pkcs8"}})
 	require.Error(t, err, "not found")
 	assert.Nil(t, result)
 }
 
-func mustNewCryptoProvider(t *testing.T, configStandard security.Config) security.CryptoProvider {
-	c, err := security.NewCryptoProvider(configStandard)
+func mustNewCryptoProvider(t *testing.T, p *Provider) recrypt.Closeable {
+	c, err := p.LoadStandardCryptoProvider()
 	require.NoError(t, err)
 	require.NotNil(t, c)
 	return c
@@ -119,32 +114,23 @@ func urlHost(t *testing.T) *url.URL {
 }
 
 func TestStandardPublicKeyHandlerV2(t *testing.T) {
-	configStandard := security.Config{
-		Type: "standard",
-		StandardConfig: security.StandardConfig{
-			RSAKeys: map[string]security.StandardKeyInfo{
-				"rsa": {
-					PrivateKeyPath: "./testdata/access-provider-000-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-000-certificate.pem",
-				},
-			},
-		},
-	}
-	c := mustNewCryptoProvider(t, configStandard)
-	defer c.Close()
 	kasURI := urlHost(t)
 	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: c,
+		URI: *kasURI,
 		KASConfig: KASConfig{
 			Keyring: []CurrentKeyFor{
 				{
-					Algorithm: security.AlgorithmRSA2048,
-					KID:       "rsa",
+					Algorithm:   recrypt.AlgorithmRSA2048,
+					KID:         "rsa",
+					Private:     "./testdata/access-provider-000-private.pem",
+					Certificate: "./testdata/access-provider-000-certificate.pem",
+					Active:      true,
 				},
 			},
 		},
 	}
+	c := mustNewCryptoProvider(t, &kas)
+	defer c.Close()
 
 	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{}})
 	require.NoError(t, err)
@@ -153,17 +139,13 @@ func TestStandardPublicKeyHandlerV2(t *testing.T) {
 }
 
 func TestStandardPublicKeyHandlerV2Failure(t *testing.T) {
-	configStandard := security.Config{
-		Type: "standard",
-	}
-	c := mustNewCryptoProvider(t, configStandard)
-	defer c.Close()
 	kasURI := urlHost(t)
 	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: c,
-		Logger:         logger.CreateTestLogger(),
+		URI:    *kasURI,
+		Logger: logger.CreateTestLogger(),
 	}
+	c := mustNewCryptoProvider(t, &kas)
+	defer c.Close()
 
 	k, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{}})
 	assert.Nil(t, k)
@@ -171,25 +153,24 @@ func TestStandardPublicKeyHandlerV2Failure(t *testing.T) {
 }
 
 func TestStandardPublicKeyHandlerV2NotFound(t *testing.T) {
-	configStandard := security.Config{
-		Type: "standard",
-		StandardConfig: security.StandardConfig{
-			RSAKeys: map[string]security.StandardKeyInfo{
-				"rsa": {
-					PrivateKeyPath: "./testdata/access-provider-000-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-000-certificate.pem",
+	kasURI := urlHost(t)
+	kas := Provider{
+		URI:    *kasURI,
+		Logger: logger.CreateTestLogger(),
+		KASConfig: KASConfig{
+			Keyring: []CurrentKeyFor{
+				{
+					Algorithm:   recrypt.AlgorithmRSA2048,
+					KID:         "rsa",
+					Private:     "./testdata/access-provider-000-private.pem",
+					Certificate: "./testdata/access-provider-000-certificate.pem",
+					Active:      true,
 				},
 			},
 		},
 	}
-	c := mustNewCryptoProvider(t, configStandard)
+	c := mustNewCryptoProvider(t, &kas)
 	defer c.Close()
-	kasURI := urlHost(t)
-	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: c,
-		Logger:         logger.CreateTestLogger(),
-	}
 
 	k, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{
 		Msg: &kaspb.PublicKeyRequest{
@@ -204,32 +185,24 @@ func TestStandardPublicKeyHandlerV2NotFound(t *testing.T) {
 }
 
 func TestStandardPublicKeyHandlerV2WithJwk(t *testing.T) {
-	configStandard := security.Config{
-		Type: "standard",
-		StandardConfig: security.StandardConfig{
-			RSAKeys: map[string]security.StandardKeyInfo{
-				"rsa": {
-					PrivateKeyPath: "./testdata/access-provider-000-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-000-certificate.pem",
-				},
-			},
-		},
-	}
-	c := mustNewCryptoProvider(t, configStandard)
-	defer c.Close()
 	kasURI := urlHost(t)
 	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: c,
+		URI:    *kasURI,
+		Logger: logger.CreateTestLogger(),
 		KASConfig: KASConfig{
 			Keyring: []CurrentKeyFor{
 				{
-					Algorithm: security.AlgorithmRSA2048,
-					KID:       "rsa",
+					Algorithm:   recrypt.AlgorithmRSA2048,
+					KID:         "rsa",
+					Private:     "./testdata/access-provider-000-private.pem",
+					Certificate: "./testdata/access-provider-000-certificate.pem",
+					Active:      true,
 				},
 			},
 		},
 	}
+	c := mustNewCryptoProvider(t, &kas)
+	defer c.Close()
 
 	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{
 		Msg: &kaspb.PublicKeyRequest{
@@ -245,24 +218,23 @@ func TestStandardPublicKeyHandlerV2WithJwk(t *testing.T) {
 
 func TestStandardCertificateHandlerWithEc256(t *testing.T) {
 	t.Skip("EC Not yet implemented")
-	configStandard := security.Config{
-		Type: "standard",
-		StandardConfig: security.StandardConfig{
-			ECKeys: map[string]security.StandardKeyInfo{
-				"ec": {
-					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+	kasURI := urlHost(t)
+	kas := Provider{
+		URI:    *kasURI,
+		Logger: logger.CreateTestLogger(),
+		KASConfig: KASConfig{
+			Keyring: []CurrentKeyFor{
+				{
+					Algorithm:   recrypt.AlgorithmECP256R1,
+					KID:         "rsa",
+					Private:     "./testdata/access-provider-ec-private.pem",
+					Certificate: "./testdata/access-provider-ec-certificate.pem",
 				},
 			},
 		},
 	}
-	c := mustNewCryptoProvider(t, configStandard)
+	c := mustNewCryptoProvider(t, &kas)
 	defer c.Close()
-	kasURI := urlHost(t)
-	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: c,
-	}
 
 	result, err := kas.LegacyPublicKey(context.Background(), &connect.Request[kaspb.LegacyPublicKeyRequest]{
 		Msg: &kaspb.LegacyPublicKeyRequest{
@@ -275,25 +247,24 @@ func TestStandardCertificateHandlerWithEc256(t *testing.T) {
 }
 
 func TestStandardPublicKeyHandlerWithEc256(t *testing.T) {
-	t.Skip("EC Not yet implemented")
-	configStandard := security.Config{
-		Type: "standard",
-		StandardConfig: security.StandardConfig{
-			ECKeys: map[string]security.StandardKeyInfo{
-				"ec": {
-					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+	kasURI := urlHost(t)
+	kas := Provider{
+		URI:    *kasURI,
+		Logger: logger.CreateTestLogger(),
+		KASConfig: KASConfig{
+			Keyring: []CurrentKeyFor{
+				{
+					Algorithm:   recrypt.AlgorithmECP256R1,
+					KID:         "rsa",
+					Private:     "./testdata/access-provider-ec-private.pem",
+					Certificate: "./testdata/access-provider-ec-certificate.pem",
+					Active:      true,
 				},
 			},
 		},
 	}
-	c := mustNewCryptoProvider(t, configStandard)
+	c := mustNewCryptoProvider(t, &kas)
 	defer c.Close()
-	kasURI := urlHost(t)
-	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: c,
-	}
 
 	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{
 		Msg: &kaspb.PublicKeyRequest{
@@ -306,25 +277,24 @@ func TestStandardPublicKeyHandlerWithEc256(t *testing.T) {
 }
 
 func TestStandardPublicKeyHandlerV2WithEc256(t *testing.T) {
-	t.Skip("EC Not yet implemented")
-	configStandard := security.Config{
-		Type: "standard",
-		StandardConfig: security.StandardConfig{
-			ECKeys: map[string]security.StandardKeyInfo{
-				"ec": {
-					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+	kasURI := urlHost(t)
+	kas := Provider{
+		URI:    *kasURI,
+		Logger: logger.CreateTestLogger(),
+		KASConfig: KASConfig{
+			Keyring: []CurrentKeyFor{
+				{
+					Algorithm:   recrypt.AlgorithmECP256R1,
+					KID:         "rsa",
+					Private:     "./testdata/access-provider-ec-private.pem",
+					Certificate: "./testdata/access-provider-ec-certificate.pem",
+					Active:      true,
 				},
 			},
 		},
 	}
-	c := mustNewCryptoProvider(t, configStandard)
+	c := mustNewCryptoProvider(t, &kas)
 	defer c.Close()
-	kasURI := urlHost(t)
-	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: c,
-	}
 
 	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{
 		Msg: &kaspb.PublicKeyRequest{

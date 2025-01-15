@@ -37,9 +37,9 @@ type RegistrationParams struct {
 	// gRPC Inter Process Communication (IPC) between services. This ensures the services are
 	// communicating with each other by contract as well as supporting the various deployment models
 	// that OpenTDF supports.
-	SDK *sdk.SDK
+	*sdk.SDK
 	// Logger is the logger that can be used to log messages. This logger is scoped to the service
-	Logger *logger.Logger
+	*logger.Logger
 	trace.Tracer
 
 	////// The following functions are optional and intended to be called by the service //////

@@ -46,12 +46,13 @@ func (e Error) Error() string {
 
 // Configurations for the server
 type Config struct {
-	Auth                    auth.Config                              `mapstructure:"auth" json:"auth"`
-	GRPC                    GRPCConfig                               `mapstructure:"grpc" json:"grpc"`
-	CryptoProvider          security.Config                          `mapstructure:"cryptoProvider" json:"cryptoProvider"`
-	TLS                     TLSConfig                                `mapstructure:"tls" json:"tls"`
-	CORS                    CORSConfig                               `mapstructure:"cors" json:"cors"`
-	WellKnownConfigRegister func(namespace string, config any) error `mapstructure:"-" json:"-"`
+	Auth auth.Config `mapstructure:"auth" json:"auth"`
+	GRPC GRPCConfig  `mapstructure:"grpc" json:"grpc"`
+	// Deprecated: Specify all crypto details in the `services.kas.keyring` struct
+	*security.CryptoConfig2024 `mapstructure:"cryptoProvider" json:"cryptoProvider"`
+	TLS                        TLSConfig                                `mapstructure:"tls" json:"tls"`
+	CORS                       CORSConfig                               `mapstructure:"cors" json:"cors"`
+	WellKnownConfigRegister    func(namespace string, config any) error `mapstructure:"-" json:"-"`
 	// Port to listen on
 	Port int    `mapstructure:"port" json:"port" default:"8080"`
 	Host string `mapstructure:"host,omitempty" json:"host"`
@@ -63,7 +64,6 @@ func (c Config) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.Any("auth", c.Auth),
 		slog.Any("grpc", c.GRPC),
-		slog.Any("cryptoProvider", c.CryptoProvider),
 		slog.Any("tls", c.TLS),
 		slog.Any("cors", c.CORS),
 		slog.Int("port", c.Port),
@@ -111,12 +111,12 @@ type ConnectRPC struct {
 }
 
 type OpenTDFServer struct {
-	AuthN               *auth.Authentication
+	AuthN *auth.Authentication
+	*Config
 	GRPCGatewayMux      *runtime.ServeMux
 	HTTPServer          *http.Server
 	ConnectRPCInProcess *inProcessServer
 	ConnectRPC          *ConnectRPC
-	CryptoProvider      security.CryptoProvider
 
 	logger *logger.Logger
 }
@@ -200,6 +200,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 
 	o := OpenTDFServer{
 		AuthN:          authN,
+		Config:         &config,
 		GRPCGatewayMux: grpcGatewayMux,
 		HTTPServer:     httpServer,
 		ConnectRPC:     connectRPC,
@@ -210,13 +211,6 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 			ConnectRPC:         connectRPCIpc,
 		},
 		logger: logger,
-	}
-
-	// Create crypto provider
-	logger.Info("creating crypto provider", slog.String("type", config.CryptoProvider.Type))
-	o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
-	if err != nil {
-		return nil, fmt.Errorf("security.NewCryptoProvider: %w", err)
 	}
 
 	return &o, nil

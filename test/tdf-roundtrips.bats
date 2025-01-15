@@ -86,7 +86,7 @@
   wait_for_green
 
   echo "[INFO] validating default key is r2"
-  [ $(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r2 ]
+  [ "$(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r2 ]
 
   echo "[INFO] decrypting after key rotation"
   go run ./examples decrypt sensitive-with-no-kid.txt.tdf | grep "Hello Legacy"
@@ -111,7 +111,7 @@
   wait_for_green
 
   echo "[INFO] validating default key is r1"
-  [ $(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
+  [ "$(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r1 ]
 
   echo "[INFO] decrypting after key rotation"
   go run ./examples decrypt sensitive-with-no-kid.txt.tdf | grep "Hello Legacy"
@@ -122,7 +122,9 @@
 wait_for_green() {
   limit=5
   for i in $(seq 1 $limit); do
-    if [ $(grpcurl "localhost:8080" "grpc.health.v1.Health.Check" | jq -e -r .status) = SERVING ]; then
+    
+    grpcurl "localhost:8080" "grpc.health.v1.Health.Check"
+    if [ "$(grpcurl "localhost:8080" "grpc.health.v1.Health.Check" | jq -e -r .status)" = SERVING ]; then
       return 0
     fi
     sleep 4
@@ -174,15 +176,15 @@ server:
     standard:
       rsa:
         r1:
-          private_key_path: kas-private.pem
-          public_key_path: kas-cert.pem
+          private_key_path: kas-r1-private.pem
+          public_key_path: kas-r1-cert.pem
         r2:
           private_key_path: kas-r2-private.pem
           public_key_path: kas-r2-cert.pem
       ec:
         e1:
-          private_key_path: kas-ec-private.pem
-          public_key_path: kas-ec-cert.pem
+          private_key_path: kas-e1-private.pem
+          public_key_path: kas-e1-cert.pem
         e2:
           private_key_path: kas-e2-private.pem
           public_key_path: kas-e2-cert.pem
@@ -209,14 +211,24 @@ services:
     keyring:
       - kid: ${ec_current_key}
         alg: ec:secp256r1
+        active: true
+        private: kas-${ec_current_key}-private.pem
+        cert: kas-${ec_current_key}-cert.pem
       - kid: ${ec_legacy_key}
         alg: ec:secp256r1
         legacy: true
+        private: kas-${ec_legacy_key}-private.pem
+        cert: kas-${ec_legacy_key}-cert.pem
       - kid: ${rsa_current_key}
+        private: kas-${rsa_current_key}-private.pem
+        cert: kas-${rsa_current_key}-cert.pem
         alg: rsa:2048
+        active: true
       - kid: ${rsa_legacy_key}
         alg: rsa:2048
         legacy: true
+        private: kas-${rsa_legacy_key}-private.pem
+        cert: kas-${rsa_legacy_key}-cert.pem
   policy:
     enabled: true
   authorization:
@@ -244,26 +256,6 @@ server:
     issuer: http://localhost:8888/auth/realms/opentdf
   cors:
     enabled: false
-  cryptoProvider:
-    type: standard
-    standard:
-      keys:
-        - kid: r2
-          alg: rsa:2048
-          private: kas-r2-private.pem
-          cert: kas-r2-cert.pem
-        - kid: e2
-          alg: ec:secp256r1
-          private: kas-e2-private.pem
-          cert: kas-e2-cert.pem
-        - kid: r1
-          alg: rsa:2048
-          private: kas-private.pem
-          cert: kas-cert.pem
-        - kid: e1
-          alg: ec:secp256r1
-          private: kas-ec-private.pem
-          cert: kas-ec-cert.pem
   port: 8080
 opa:
   embedded: true
@@ -274,8 +266,10 @@ setup_file() {
   if [ -f opentdf.yaml ]; then
     cp opentdf.yaml opentdf-test-backup.yaml.bak
   fi
+  openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=kas" -keyout kas-r1-private.pem -out kas-r1-cert.pem -days 365
   openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=kas" -keyout kas-r2-private.pem -out kas-r2-cert.pem -days 365
   openssl ecparam -name prime256v1 >ecparams.tmp
+  openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout kas-e1-private.pem -out kas-e1-cert.pem -days 365
   openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout kas-e2-private.pem -out kas-e2-cert.pem -days 365
 }
 

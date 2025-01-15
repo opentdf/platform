@@ -36,7 +36,7 @@ func init() {
 	encryptCmd.Flags().BoolVar(&nanoFormat, "nano", false, "Output in nanoTDF format")
 	encryptCmd.Flags().BoolVar(&autoconfigure, "autoconfigure", true, "Use attribute grants to select kases")
 	encryptCmd.Flags().BoolVar(&noKIDInKAO, "no-kid-in-kao", false, "[deprecated] Disable storing key identifiers in TDF KAOs")
-	encryptCmd.Flags().BoolVar(&noKIDInNano, "no-kid-in-nano", true, "Disable storing key identifiers in nanoTDF KAS ResourceLocator")
+	encryptCmd.Flags().BoolVar(&noKIDInNano, "no-kid-in-nano", false, "Disable storing key identifiers in nanoTDF KAS ResourceLocator")
 	encryptCmd.Flags().StringVarP(&outputName, "output", "o", "sensitive.txt.tdf", "name or path of output file; - for stdout")
 	encryptCmd.Flags().IntVarP(&collection, "collection", "c", 0, "number of nano's to create for collection. If collection >0 (default) then output will be <iteration>_<output>")
 
@@ -50,19 +50,6 @@ func encrypt(cmd *cobra.Command, args []string) error {
 
 	plainText := args[0]
 	in := strings.NewReader(plainText)
-
-	opts := []sdk.Option{
-		sdk.WithInsecurePlaintextConn(),
-		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
-	}
-
-	if noKIDInKAO {
-		opts = append(opts, sdk.WithNoKIDInKAO())
-	}
-	// double negative always gets me
-	if !noKIDInNano {
-		opts = append(opts, sdk.WithNoKIDInNano())
-	}
 
 	// Create new offline client
 	client, err := newSDK()

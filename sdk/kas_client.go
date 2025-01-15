@@ -361,15 +361,15 @@ func (s SDK) getPublicKey(ctx context.Context, url, algorithm string) (*KASInfo,
 	}
 
 	kid := resp.GetKid()
-	if s.config.tdfFeatures.noKID {
-		kid = ""
-	}
 
 	ki := KASInfo{
 		URL:       url,
 		Algorithm: algorithm,
 		KID:       kid,
 		PublicKey: resp.GetPublicKey(),
+	}
+	if s.config.tdfFeatures.noKID {
+		ki.KID = ""
 	}
 	if s.kasKeyCache != nil {
 		s.kasKeyCache.store(ki)

@@ -453,6 +453,9 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 				SplitID:           splitID,
 				WrappedKey:        string(ocrypto.Base64Encode(wrappedKey)),
 			}
+			if s.config.tdfFeatures.noKID {
+				keyAccess.KID = ""
+			}
 
 			manifest.EncryptionInformation.KeyAccessObjs = append(manifest.EncryptionInformation.KeyAccessObjs, keyAccess)
 		}

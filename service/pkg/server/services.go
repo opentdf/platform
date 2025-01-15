@@ -167,8 +167,20 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				}
 			}
 
+			svcConfig := cfg.Services[ns]
+			if ns == "kas" {
+				logger.Debug("updating kas key configuration", slog.String("namespace", ns), slog.Any("legacyConfig", cfg.Server.CryptoConfig2024))
+				// Upgrade the the kas configuration, if there is a legacy `CryptoProvider` configuration
+				// present in the otdf server config.
+				if cfg.Server.CryptoConfig2024 != nil {
+					if err := cfg.Server.CryptoConfig2024.MarshalTo(svcConfig); err != nil {
+						return fmt.Errorf("failed to update kas key configuration from legacy server.cryptoprovider field: %w", err)
+					}
+				}
+			}
+
 			err = svc.Start(ctx, serviceregistry.RegistrationParams{
-				Config:                 cfg.Services[svc.GetNamespace()],
+				Config:                 svcConfig,
 				Logger:                 svcLogger,
 				DBClient:               svcDBClient,
 				SDK:                    client,

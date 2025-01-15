@@ -19,7 +19,7 @@ type AsymEncryption struct {
 func NewAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
 	block, _ := pem.Decode([]byte(publicKeyInPem))
 	if block == nil {
-		return AsymEncryption{}, errors.New("failed to parse PEM formatted public key")
+		return AsymEncryption{}, errors.New("failed to parse PEM formatted public key (decode fail)")
 	}
 
 	var pub any
@@ -31,7 +31,7 @@ func NewAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
 
 		var ok bool
 		if pub, ok = cert.PublicKey.(*rsa.PublicKey); !ok {
-			return AsymEncryption{}, errors.New("failed to parse PEM formatted public key")
+			return AsymEncryption{}, errors.New("failed to parse PEM formatted public key (incorrect type)")
 		}
 	} else {
 		var err error

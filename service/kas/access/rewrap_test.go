@@ -17,6 +17,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/service/kas/recrypt"
 	"github.com/opentdf/platform/service/logger"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/stretchr/testify/assert"
@@ -206,8 +207,7 @@ func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) KeyAccess {
 	wrappedKey, err := asym.Encrypt([]byte(plainKey))
 	require.NoError(t, err, "rewrap: encryptWithPublicKey failed")
 
-	logger := logger.CreateTestLogger()
-	bindingBytes, err := generateHMACDigest(context.Background(), policyBytes, []byte(plainKey), *logger)
+	bindingBytes, err := recrypt.NewAESUnwrappedKey([]byte(plainKey)).Digest(policyBytes)
 	require.NoError(t, err)
 
 	dst := make([]byte, hex.EncodedLen(len(bindingBytes)))
@@ -349,7 +349,8 @@ func TestParseAndVerifyRequest(t *testing.T) {
 				require.NotNil(t, verified, "unable to load request body")
 				require.NotNil(t, verified.ClientPublicKey, "unable to load public key")
 
-				policy, err := verifyAndParsePolicy(context.Background(), verified, []byte(plainKey), *logger)
+				k0 := recrypt.NewAESUnwrappedKey([]byte(plainKey))
+				policy, err := verifyAndParsePolicy(context.Background(), verified, k0, *logger)
 				if !tt.shouldError {
 					require.NoError(t, err, "failed to verify policy body=[%v]", tt.body)
 					assert.Len(t, policy.Body.DataAttributes, 2, "incorrect policy body=[%v]", policy.Body)

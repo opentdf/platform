@@ -32,7 +32,7 @@ func (t typeInfo) String() string {
 		return fmt.Sprintf("[✅ %s]", t.Type)
 	}
 	if t.Error != nil {
-		return fmt.Sprintf("[🚮🔥 %s %w]", t.Type, t.Error)
+		return fmt.Sprintf("[🚮🔥 %s %v]", t.Type, t.Error)
 	}
 	return fmt.Sprintf("[📛 %s]", t.Type)
 }

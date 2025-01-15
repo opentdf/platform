@@ -345,6 +345,10 @@ func GetTdfType(reader io.ReadSeeker) TdfType {
 	return Invalid
 }
 
+// Indicates JSON Schema validation failed for the manifest or header of the TDF file.
+// Some invalid manifests are still usable, so this file may still be usable.
+var ErrInvalidPerSchema = errors.New("invalid schema")
+
 //go:embed schema/manifest.schema.json
 var manifestSchema []byte
 
@@ -356,7 +360,6 @@ var manifestSchema []byte
 // 'required', older TDF versions will fail despite being valid. So each time we release an update to
 // the TDF spec, we'll need to include the respective schema in the schema directory, then update this code
 // to validate against all previously known schema versions.
-
 func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 	// create tdf reader
 	tdfReader, err := archive.NewTDFReader(reader)
@@ -379,7 +382,7 @@ func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 	}
 
 	if !result.Valid() {
-		return false, fmt.Errorf("manifest was not valid: %v", result.Errors())
+		return false, fmt.Errorf("%w: %v", ErrInvalidPerSchema, result.Errors())
 	}
 
 	return true, nil

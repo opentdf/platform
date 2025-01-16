@@ -225,7 +225,8 @@ type KeyAccess struct {
 	Kid               string         `protobuf:"bytes,6,opt,name=kid,proto3" json:"kid,omitempty"`
 	SplitId           string         `protobuf:"bytes,7,opt,name=split_id,json=sid,proto3" json:"split_id,omitempty"`
 	WrappedKey        []byte         `protobuf:"bytes,8,opt,name=wrapped_key,json=wrappedKey,proto3" json:"wrapped_key,omitempty"`
-	Header            []byte         `protobuf:"bytes,9,opt,name=header,proto3" json:"header,omitempty"`
+	// header is only used for NanoTDFs
+	Header []byte `protobuf:"bytes,9,opt,name=header,proto3" json:"header,omitempty"`
 }
 
 func (x *KeyAccess) Reset() {

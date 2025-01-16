@@ -807,10 +807,10 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		wrappedKey, err = client.unwrap(ctx, keyAccessObj, r.manifest.EncryptionInformation.Policy)
 		if err != nil {
 			errToReturn := fmt.Errorf("kao unwrap failed for split %v: %w", ss, err)
-			if !strings.Contains(err.Error(), codes.InvalidArgument.String()) {
+			if strings.Contains(err.Error(), codes.InvalidArgument.String()) {
 				skippedSplits[ss] = fmt.Errorf("%w: %w", ErrRewrapBadRequest, errToReturn)
 			}
-			if !strings.Contains(err.Error(), codes.PermissionDenied.String()) {
+			if strings.Contains(err.Error(), codes.PermissionDenied.String()) {
 				skippedSplits[ss] = fmt.Errorf("%w: %w", errRewrapForbidden, errToReturn)
 			}
 			skippedSplits[ss] = errToReturn

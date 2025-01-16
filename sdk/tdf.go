@@ -808,13 +808,13 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		if err != nil {
 			errToReturn := fmt.Errorf("kao unwrap failed for split %v: %w", ss, err)
 			if strings.Contains(err.Error(), codes.InvalidArgument.String()) {
-				skippedSplits[ss] = fmt.Errorf("%w: %w", ErrRewrapBadRequest, errToReturn)
-			} else if strings.Contains(err.Error(), codes.PermissionDenied.String()) {
-				skippedSplits[ss] = fmt.Errorf("%w: %w", errRewrapForbidden, errToReturn)
-			} else {
-				skippedSplits[ss] = errToReturn
-				continue
+				errToReturn = fmt.Errorf("%w: %w", ErrRewrapBadRequest, errToReturn)
 			}
+			if strings.Contains(err.Error(), codes.PermissionDenied.String()) {
+				errToReturn = fmt.Errorf("%w: %w", errRewrapForbidden, errToReturn)
+			}
+			skippedSplits[ss] = errToReturn
+			continue
 		}
 
 		for keyByteIndex, keyByte := range wrappedKey {
@@ -856,7 +856,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		for _, e := range skippedSplits {
 			v = append(v, e)
 		}
-		return v[1]
+		return errors.Join(v...)
 	}
 
 	aggregateHash := &bytes.Buffer{}

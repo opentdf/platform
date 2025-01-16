@@ -34,7 +34,7 @@ type KAOResult struct {
 	KeyAccessObjectID string
 }
 
-type Decryptor interface {
+type decryptor interface {
 	CreateRewrapRequest(ctx context.Context) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error)
 	Decrypt(ctx context.Context, results []KAOResult) (uint32, error)
 }
@@ -73,6 +73,7 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.Unsig
 
 	return response, nil
 }
+
 func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]KAOResult, error) {
 	keypair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
 	if err != nil {

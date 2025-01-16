@@ -117,7 +117,7 @@ func runBenchmarkBulk(cmd *cobra.Command, args []string) error {
 		for i := 0; i < config.RequestCount; i++ {
 			bulkTdfs = append(bulkTdfs, &sdk.BulkTDF{Reader: bytes.NewReader(cipher), Writer: io.Discard})
 		}
-		err = client.BulkDecrypt(ctx.Background(), sdk.WithTDFs(bulkTdfs...), sdk.WithTDFType(format))
+		err = client.BulkDecrypt(context.Background(), sdk.WithTDFs(bulkTdfs...), sdk.WithTDFType(format))
 		if err != nil {
 			if errList, ok := sdk.IsPartialFailure(err); ok {
 				errors = errList

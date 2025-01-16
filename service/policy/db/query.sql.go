@@ -3429,6 +3429,237 @@ func (q *Queries) getPublicKey(ctx context.Context, id string) (getPublicKeyRow,
 	return i, err
 }
 
+const listPublicKeyMappings = `-- name: listPublicKeyMappings :many
+WITH base_keys AS (
+    SELECT 
+        pk.id,
+        pk.is_active,
+        pk.was_used,
+        pk.key_id,
+        pk.alg,
+        pk.public_key,
+        kas.id as kas_id,
+        kas.name as kas_name,
+        kas.uri as kas_uri
+    FROM public_keys pk
+    JOIN key_access_servers kas ON pk.key_access_server_id = kas.id
+    WHERE ( NULLIF($3, '') IS NULL OR kas.id = $3::uuid )
+    AND   ( NULLIF($4, '') IS NULL OR pk.id = $4::uuid )
+),
+namespace_mappings AS (
+    SELECT 
+        pk.id as key_id,
+        ns.id as namespace_id,
+        fqn_ns.fqn as namespace_fqn
+    FROM public_keys pk
+    JOIN attribute_namespace_public_key_map nm ON pk.id = nm.key_id
+    JOIN attribute_namespaces ns ON nm.namespace_id = ns.id
+    LEFT JOIN attribute_fqns fqn_ns ON fqn_ns.namespace_id = ns.id 
+        AND fqn_ns.attribute_id IS NULL 
+        AND fqn_ns.value_id IS NULL
+),
+definition_mappings AS (
+    SELECT 
+        pk.id as key_id,
+        def.id as definition_id,
+        fqn_def.fqn as definition_fqn
+    FROM public_keys pk
+    JOIN attribute_definition_public_key_map dm ON pk.id = dm.key_id
+    JOIN attribute_definitions def ON dm.definition_id = def.id
+    LEFT JOIN attribute_fqns fqn_def ON fqn_def.namespace_id = def.namespace_id 
+        AND fqn_def.attribute_id = def.id 
+        AND fqn_def.value_id IS NULL
+),
+value_mappings AS (
+    SELECT 
+        pk.id as key_id,
+        val.id as value_id,
+        fqn_val.fqn as value_fqn
+    FROM public_keys pk
+    JOIN attribute_value_public_key_map vm ON pk.id = vm.key_id
+    JOIN attribute_values val ON vm.value_id = val.id
+    LEFT JOIN attribute_fqns fqn_val ON fqn_val.value_id = val.id
+)
+SELECT jsonb_build_object(
+    'kasId', bk.kas_id,
+    'kasName', bk.kas_name,
+    'kasUri', bk.kas_uri,
+    'publicKeys', jsonb_agg(
+        jsonb_build_object(
+            'key', jsonb_build_object(
+	            'id', bk.id,
+	            'isActive', bk.is_active,
+	            'wasUsed', bk.was_used,
+                'publicKey', jsonb_build_object(
+                    'kid', bk.key_id,
+                    'alg', bk.alg,
+                    'pem', bk.public_key
+                )
+            ),
+            'namespaces', (
+                SELECT jsonb_agg(DISTINCT jsonb_build_object(
+                    'id', nm.namespace_id,
+                    'fqn', nm.namespace_fqn
+                ))
+                FROM namespace_mappings nm
+                WHERE nm.key_id = bk.id
+            ),
+            'definitions', (
+                SELECT jsonb_agg(DISTINCT jsonb_build_object(
+                    'id', dm.definition_id,
+                    'fqn', dm.definition_fqn
+                ))
+                FROM definition_mappings dm
+                WHERE dm.key_id = bk.id
+            ),
+            'values', (
+                SELECT jsonb_agg(DISTINCT jsonb_build_object(
+                    'id', vm.value_id,
+                    'fqn', vm.value_fqn
+                ))
+                FROM value_mappings vm
+                WHERE vm.key_id = bk.id
+            )
+        )
+    )
+) as kas_info
+FROM base_keys bk
+GROUP BY bk.kas_id, bk.kas_name, bk.kas_uri
+LIMIT $2 
+OFFSET $1
+`
+
+type listPublicKeyMappingsParams struct {
+	Offset      int32       `json:"offset_"`
+	Limit       int32       `json:"limit_"`
+	KasID       interface{} `json:"kas_id"`
+	PublicKeyID interface{} `json:"public_key_id"`
+}
+
+// listPublicKeyMappings
+//
+//	WITH base_keys AS (
+//	    SELECT
+//	        pk.id,
+//	        pk.is_active,
+//	        pk.was_used,
+//	        pk.key_id,
+//	        pk.alg,
+//	        pk.public_key,
+//	        kas.id as kas_id,
+//	        kas.name as kas_name,
+//	        kas.uri as kas_uri
+//	    FROM public_keys pk
+//	    JOIN key_access_servers kas ON pk.key_access_server_id = kas.id
+//	    WHERE ( NULLIF($3, '') IS NULL OR kas.id = $3::uuid )
+//	    AND   ( NULLIF($4, '') IS NULL OR pk.id = $4::uuid )
+//	),
+//	namespace_mappings AS (
+//	    SELECT
+//	        pk.id as key_id,
+//	        ns.id as namespace_id,
+//	        fqn_ns.fqn as namespace_fqn
+//	    FROM public_keys pk
+//	    JOIN attribute_namespace_public_key_map nm ON pk.id = nm.key_id
+//	    JOIN attribute_namespaces ns ON nm.namespace_id = ns.id
+//	    LEFT JOIN attribute_fqns fqn_ns ON fqn_ns.namespace_id = ns.id
+//	        AND fqn_ns.attribute_id IS NULL
+//	        AND fqn_ns.value_id IS NULL
+//	),
+//	definition_mappings AS (
+//	    SELECT
+//	        pk.id as key_id,
+//	        def.id as definition_id,
+//	        fqn_def.fqn as definition_fqn
+//	    FROM public_keys pk
+//	    JOIN attribute_definition_public_key_map dm ON pk.id = dm.key_id
+//	    JOIN attribute_definitions def ON dm.definition_id = def.id
+//	    LEFT JOIN attribute_fqns fqn_def ON fqn_def.namespace_id = def.namespace_id
+//	        AND fqn_def.attribute_id = def.id
+//	        AND fqn_def.value_id IS NULL
+//	),
+//	value_mappings AS (
+//	    SELECT
+//	        pk.id as key_id,
+//	        val.id as value_id,
+//	        fqn_val.fqn as value_fqn
+//	    FROM public_keys pk
+//	    JOIN attribute_value_public_key_map vm ON pk.id = vm.key_id
+//	    JOIN attribute_values val ON vm.value_id = val.id
+//	    LEFT JOIN attribute_fqns fqn_val ON fqn_val.value_id = val.id
+//	)
+//	SELECT jsonb_build_object(
+//	    'kasId', bk.kas_id,
+//	    'kasName', bk.kas_name,
+//	    'kasUri', bk.kas_uri,
+//	    'publicKeys', jsonb_agg(
+//	        jsonb_build_object(
+//	            'key', jsonb_build_object(
+//		            'id', bk.id,
+//		            'isActive', bk.is_active,
+//		            'wasUsed', bk.was_used,
+//	                'publicKey', jsonb_build_object(
+//	                    'kid', bk.key_id,
+//	                    'alg', bk.alg,
+//	                    'pem', bk.public_key
+//	                )
+//	            ),
+//	            'namespaces', (
+//	                SELECT jsonb_agg(DISTINCT jsonb_build_object(
+//	                    'id', nm.namespace_id,
+//	                    'fqn', nm.namespace_fqn
+//	                ))
+//	                FROM namespace_mappings nm
+//	                WHERE nm.key_id = bk.id
+//	            ),
+//	            'definitions', (
+//	                SELECT jsonb_agg(DISTINCT jsonb_build_object(
+//	                    'id', dm.definition_id,
+//	                    'fqn', dm.definition_fqn
+//	                ))
+//	                FROM definition_mappings dm
+//	                WHERE dm.key_id = bk.id
+//	            ),
+//	            'values', (
+//	                SELECT jsonb_agg(DISTINCT jsonb_build_object(
+//	                    'id', vm.value_id,
+//	                    'fqn', vm.value_fqn
+//	                ))
+//	                FROM value_mappings vm
+//	                WHERE vm.key_id = bk.id
+//	            )
+//	        )
+//	    )
+//	) as kas_info
+//	FROM base_keys bk
+//	GROUP BY bk.kas_id, bk.kas_name, bk.kas_uri
+//	LIMIT $2
+//	OFFSET $1
+func (q *Queries) listPublicKeyMappings(ctx context.Context, arg listPublicKeyMappingsParams) ([][]byte, error) {
+	rows, err := q.db.Query(ctx, listPublicKeyMappings,
+		arg.Offset,
+		arg.Limit,
+		arg.KasID,
+		arg.PublicKeyID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items [][]byte
+	for rows.Next() {
+		var kas_info []byte
+		if err := rows.Scan(&kas_info); err != nil {
+			return nil, err
+		}
+		items = append(items, kas_info)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPublicKeys = `-- name: listPublicKeys :many
 WITH counted AS (
     SELECT COUNT(k.id) AS total FROM public_keys AS k

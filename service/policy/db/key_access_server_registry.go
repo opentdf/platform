@@ -402,6 +402,42 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 	}, nil
 }
 
+func (c PolicyDBClient) ListPublicKeyMappings(ctx context.Context, r *kasregistry.ListPublicKeyMappingRequest) (*kasregistry.ListPublicKeyMappingResponse, error) {
+	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > maxLimit {
+		return nil, db.ErrListLimitTooLarge
+	}
+
+	params := listPublicKeyMappingsParams{
+		KasID: r.GetKasId(),
+		// KasUri:  r.GetKasUri(),
+		// KasName: r.GetKasName(),
+		Offset: offset,
+		Limit:  limit,
+	}
+
+	listRows, err := c.Queries.listPublicKeyMappings(ctx, params)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	mappings := make([]*kasregistry.ListPublicKeyMappingResponse_PublicKeyMapping, len(listRows))
+	for i, mapping := range listRows {
+		fmt.Println(string(mapping))
+		pkm := new(kasregistry.ListPublicKeyMappingResponse_PublicKeyMapping)
+		err := protojson.Unmarshal(mapping, pkm)
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		mappings[i] = pkm
+	}
+
+	return &kasregistry.ListPublicKeyMappingResponse{
+		PublicKeyMappings: mappings,
+	}, nil
+}
+
 func (c PolicyDBClient) UpdatePublicKey(ctx context.Context, r *kasregistry.UpdateKeyRequest) (*kasregistry.UpdateKeyResponse, error) {
 	keyID := r.GetId()
 

@@ -155,6 +155,39 @@ message ListKeysResponse {
   policy.PageResponse pagination = 10;
 }
 
+message ListPublicKeyMappingRequest {
+  // Optional
+  string kas_id = 1;
+  // Optional
+  string kas_name = 2;
+  // Optional
+  string kas_uri = 3;
+  // Optional
+  policy.PageRequest pagination = 10;
+}
+
+message ListPublicKeyMappingResponse {
+  message PublicKeyMapping {
+    string kas_id = 2;
+    string kas_name = 3;
+    string kas_uri = 4;
+    repeated PublicKey public_keys = 5;
+  }
+  message PublicKey {
+    policy.Key key = 1;
+    repeated Association values = 6;
+    repeated Association definitions = 7;
+    repeated Association namespaces = 8;
+
+  }
+  message Association {
+    string id = 1;
+    string fqn = 2;
+  }
+
+  repeated PublicKeyMapping public_key_mappings = 1;
+}
+
 message UpdateKeyRequest {
   // Required
   string id = 1;
@@ -185,6 +218,7 @@ message ActivateKeyRequest {
 
 message ActivateKeyResponse { Key key = 1; }
 
+//Deprecated
 // TODO: optional validation below should be through a custom validator, which
 // is too bleeding edge at present without full plugin support
 
@@ -237,8 +271,10 @@ message ListKeyAccessServerGrantsRequest {
   // Optional
   policy.PageRequest pagination = 10;
 }
+
+// Deprecated
 message ListKeyAccessServerGrantsResponse {
-  repeated KeyAccessServerGrants grants = 1;
+  repeated KeyAccessServerGrants grants = 1 [deprecated = true];
 
   policy.PageResponse pagination = 10;
 }
@@ -283,6 +319,7 @@ service KeyAccessServerRegistryService {
     };
   }
 
+  // Deprecated
   rpc ListKeyAccessServerGrants(ListKeyAccessServerGrantsRequest)
       returns (ListKeyAccessServerGrantsResponse) {
     option (google.api.http) = {
@@ -296,6 +333,8 @@ service KeyAccessServerRegistryService {
   rpc GetKey(GetKeyRequest) returns (GetKeyResponse) {}
 
   rpc ListKeys(ListKeysRequest) returns (ListKeysResponse) {}
+
+  rpc ListPublicKeyMapping(ListPublicKeyMappingRequest) returns (ListPublicKeyMappingResponse) {}
 
   rpc UpdateKey(UpdateKeyRequest) returns (UpdateKeyResponse) {}
 

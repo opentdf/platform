@@ -816,6 +816,26 @@
                 </li>
               
                 <li>
+                  <a href="#policy.kasregistry.ListPublicKeyMappingRequest"><span class="badge">M</span>ListPublicKeyMappingRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.ListPublicKeyMappingResponse"><span class="badge">M</span>ListPublicKeyMappingResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.ListPublicKeyMappingResponse.Association"><span class="badge">M</span>ListPublicKeyMappingResponse.Association</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.ListPublicKeyMappingResponse.PublicKey"><span class="badge">M</span>ListPublicKeyMappingResponse.PublicKey</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.ListPublicKeyMappingResponse.PublicKeyMapping"><span class="badge">M</span>ListPublicKeyMappingResponse.PublicKeyMapping</a>
+                </li>
+              
+                <li>
                   <a href="#policy.kasregistry.UpdateKeyAccessServerRequest"><span class="badge">M</span>UpdateKeyAccessServerRequest</a>
                 </li>
               
@@ -6185,7 +6205,7 @@ objects are returned. </p></td>
         
       
         <h3 id="policy.kasregistry.ListKeyAccessServerGrantsResponse">ListKeyAccessServerGrantsResponse</h3>
-        <p></p>
+        <p>Deprecated</p>
 
         
           <table class="field-table">
@@ -6198,7 +6218,7 @@ objects are returned. </p></td>
                   <td>grants</td>
                   <td><a href="#policy.kasregistry.KeyAccessServerGrants">KeyAccessServerGrants</a></td>
                   <td>repeated</td>
-                  <td><p> </p></td>
+                  <td><p><strong>Deprecated.</strong>  </p></td>
                 </tr>
               
                 <tr>
@@ -6211,6 +6231,27 @@ objects are returned. </p></td>
             </tbody>
           </table>
 
+          
+            
+            
+            <h4>Fields with deprecated option</h4>
+            <table>
+              <thead>
+                <tr>
+                  <td>Name</td>
+                  <td>Option</td>
+                </tr>
+              </thead>
+              <tbody>
+              
+                <tr>
+                  <td>grants</td>
+                  <td><p>true</p></td>
+                </tr>
+              
+              </tbody>
+            </table>
+            
           
 
         
@@ -6336,6 +6377,196 @@ objects are returned. </p></td>
                   <td>pagination</td>
                   <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
                   <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.ListPublicKeyMappingRequest">ListPublicKeyMappingRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>kas_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.ListPublicKeyMappingResponse">ListPublicKeyMappingResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>public_key_mappings</td>
+                  <td><a href="#policy.kasregistry.ListPublicKeyMappingResponse.PublicKeyMapping">ListPublicKeyMappingResponse.PublicKeyMapping</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.ListPublicKeyMappingResponse.Association">ListPublicKeyMappingResponse.Association</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.ListPublicKeyMappingResponse.PublicKey">ListPublicKeyMappingResponse.PublicKey</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.Key">policy.Key</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>values</td>
+                  <td><a href="#policy.kasregistry.ListPublicKeyMappingResponse.Association">ListPublicKeyMappingResponse.Association</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>definitions</td>
+                  <td><a href="#policy.kasregistry.ListPublicKeyMappingResponse.Association">ListPublicKeyMappingResponse.Association</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespaces</td>
+                  <td><a href="#policy.kasregistry.ListPublicKeyMappingResponse.Association">ListPublicKeyMappingResponse.Association</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.ListPublicKeyMappingResponse.PublicKeyMapping">ListPublicKeyMappingResponse.PublicKeyMapping</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>kas_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>public_keys</td>
+                  <td><a href="#policy.kasregistry.ListPublicKeyMappingResponse.PublicKey">ListPublicKeyMappingResponse.PublicKey</a></td>
+                  <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
               
@@ -6546,7 +6777,7 @@ Common metadata </p></td>
                 <td>ListKeyAccessServerGrants</td>
                 <td><a href="#policy.kasregistry.ListKeyAccessServerGrantsRequest">ListKeyAccessServerGrantsRequest</a></td>
                 <td><a href="#policy.kasregistry.ListKeyAccessServerGrantsResponse">ListKeyAccessServerGrantsResponse</a></td>
-                <td><p></p></td>
+                <td><p>Deprecated</p></td>
               </tr>
             
               <tr>
@@ -6567,6 +6798,13 @@ Common metadata </p></td>
                 <td>ListKeys</td>
                 <td><a href="#policy.kasregistry.ListKeysRequest">ListKeysRequest</a></td>
                 <td><a href="#policy.kasregistry.ListKeysResponse">ListKeysResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ListPublicKeyMapping</td>
+                <td><a href="#policy.kasregistry.ListPublicKeyMappingRequest">ListPublicKeyMappingRequest</a></td>
+                <td><a href="#policy.kasregistry.ListPublicKeyMappingResponse">ListPublicKeyMappingResponse</a></td>
                 <td><p></p></td>
               </tr>
             

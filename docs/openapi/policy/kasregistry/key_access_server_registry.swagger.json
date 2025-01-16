@@ -88,6 +88,7 @@
     },
     "/key-access-servers/grants": {
       "get": {
+        "summary": "Deprecated",
         "operationId": "KeyAccessServerRegistryService_ListKeyAccessServerGrants",
         "responses": {
           "200": {
@@ -267,6 +268,38 @@
     }
   },
   "definitions": {
+    "ListPublicKeyMappingResponseAssociation": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "fqn": {
+          "type": "string"
+        }
+      }
+    },
+    "ListPublicKeyMappingResponsePublicKeyMapping": {
+      "type": "object",
+      "properties": {
+        "kasId": {
+          "type": "string"
+        },
+        "kasName": {
+          "type": "string"
+        },
+        "kasUri": {
+          "type": "string"
+        },
+        "publicKeys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kasregistryListPublicKeyMappingResponsePublicKey"
+          }
+        }
+      }
+    },
     "commonMetadata": {
       "type": "object",
       "properties": {
@@ -444,7 +477,8 @@
         "pagination": {
           "$ref": "#/definitions/policyPageResponse"
         }
-      }
+      },
+      "title": "Deprecated"
     },
     "kasregistryListKeyAccessServersResponse": {
       "type": "object",
@@ -473,6 +507,47 @@
         },
         "pagination": {
           "$ref": "#/definitions/policyPageResponse"
+        }
+      }
+    },
+    "kasregistryListPublicKeyMappingResponse": {
+      "type": "object",
+      "properties": {
+        "publicKeyMappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ListPublicKeyMappingResponsePublicKeyMapping"
+          }
+        }
+      }
+    },
+    "kasregistryListPublicKeyMappingResponsePublicKey": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/policyKey"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ListPublicKeyMappingResponseAssociation"
+          }
+        },
+        "definitions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ListPublicKeyMappingResponseAssociation"
+          }
+        },
+        "namespaces": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ListPublicKeyMappingResponseAssociation"
+          }
         }
       }
     },

@@ -294,6 +294,14 @@ func (s KeyAccessServerRegistry) ListKeys(ctx context.Context, req *connect.Requ
 	return connect.NewResponse(resp), nil
 }
 
+func (s KeyAccessServerRegistry) ListPublicKeyMapping(ctx context.Context, req *connect.Request[kasr.ListPublicKeyMappingRequest]) (*connect.Response[kasr.ListPublicKeyMappingResponse], error) {
+	resp, err := s.dbClient.ListPublicKeyMappings(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (s KeyAccessServerRegistry) UpdateKey(ctx context.Context, req *connect.Request[kasr.UpdateKeyRequest]) (*connect.Response[kasr.UpdateKeyResponse], error) {
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeUpdate,

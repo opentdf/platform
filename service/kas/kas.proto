@@ -31,17 +31,22 @@ message LegacyPublicKeyRequest {
   string algorithm = 1;
 }
 
+message PolicyBinding {
+  string algorithm = 1 [json_name = "alg"];
+	string hash = 2;
+}
+
 message KeyAccess {
   string encrypted_metadata = 1;
-  bytes policy_binding = 2;
+  PolicyBinding policy_binding = 2;
   string protocol = 3;
   string key_type = 4 [json_name = "type"];
   string kas_url = 5 [json_name = "url"];
   string kid = 6;
   string split_id = 7 [json_name = "sid"];
   bytes wrapped_key = 8;
+	// header is only used for NanoTDFs
   bytes header = 9;
-  string algorithm = 10 [json_name = "alg"];
 }
 
 message UnsignedRewrapRequest {

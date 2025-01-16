@@ -215,17 +215,18 @@ func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) kaspb.Unsigne
 	dst := make([]byte, hex.EncodedLen(len(bindingBytes)))
 	hex.Encode(dst, bindingBytes)
 
-	var policyBinding interface{}
+	var policyBinding *kaspb.PolicyBinding
 
 	if policyBindingAsString {
-		policyBinding = base64.StdEncoding.EncodeToString(dst)
-	} else {
-		policyBinding = PolicyBinding{
-			Alg:  "HS256",
+		policyBinding = &kaspb.PolicyBinding{
 			Hash: base64.StdEncoding.EncodeToString(dst),
 		}
+	} else {
+		policyBinding = &kaspb.PolicyBinding{
+			Algorithm: "HS256",
+			Hash:      base64.StdEncoding.EncodeToString(dst),
+		}
 	}
-	binding, err := json.Marshal(policyBinding)
 	require.NoError(t, err)
 
 	return kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
@@ -235,7 +236,7 @@ func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) kaspb.Unsigne
 			KasUrl:        "http://127.0.0.1:4000",
 			Protocol:      "kas",
 			WrappedKey:    []byte(base64.StdEncoding.EncodeToString(wrappedKey)),
-			PolicyBinding: binding,
+			PolicyBinding: policyBinding,
 		},
 	}
 }

@@ -246,8 +246,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			EncryptedSize: int64(len(cipherData)),
 		}
 
-		tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments =
-			append(tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments, segmentInfo)
+		tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments = append(tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments, segmentInfo)
 
 		totalSegments--
 		readPos += readSize
@@ -311,7 +310,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 		encoded := ocrypto.Base64Encode([]byte(completeHashBuilder.String()))
 
-		var assertionSigningKey = AssertionKey{}
+		assertionSigningKey := AssertionKey{}
 
 		// Set default to HS256 and payload key
 		assertionSigningKey.Alg = AssertionKeyAlgHS256
@@ -670,8 +669,8 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 	}
 
 	defaultSegmentSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
-	var start = math.Floor(float64(offset) / float64(defaultSegmentSize))
-	var end = math.Ceil(float64(offset+int64(len(buf))) / float64(defaultSegmentSize))
+	start := math.Floor(float64(offset) / float64(defaultSegmentSize))
+	end := math.Ceil(float64(offset+int64(len(buf))) / float64(defaultSegmentSize))
 
 	firstSegment := int64(start)
 	lastSegment := int64(end)
@@ -829,20 +828,40 @@ func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.Unsigned
 		if err != nil {
 			return nil, fmt.Errorf("could not decode wrapper key: %w", err)
 		}
-		binding, err := json.Marshal(kao.PolicyBinding)
-		if err != nil {
-			return nil, err
+		var alg string
+		var hash string
+		invalidPolicy := false
+		switch policyBinding := kao.PolicyBinding.(type) {
+		case string:
+			hash = policyBinding
+		case map[string]interface{}:
+			var ok bool
+			hash, ok = policyBinding["hash"].(string)
+			invalidPolicy = !ok
+			alg, ok = policyBinding["alg"].(string)
+			invalidPolicy = invalidPolicy || !ok
+		case (PolicyBinding):
+			hash = policyBinding.Hash
+			alg = policyBinding.Alg
+		default:
+			invalidPolicy = true
+		}
+		if invalidPolicy {
+			return nil, fmt.Errorf("invalid policy object: %s", kao.PolicyBinding)
 		}
 		kaoReq := &kas.UnsignedRewrapRequest_WithKeyAccessObject{
 			KeyAccessObjectId: kaoID,
 			KeyAccessObject: &kas.KeyAccess{
-				KeyType:       kao.KeyType,
-				KasUrl:        kao.KasURL,
-				Kid:           kao.KID,
-				Protocol:      kao.Protocol,
-				PolicyBinding: binding,
-				SplitId:       kao.SplitID,
-				WrappedKey:    key,
+				KeyType:  kao.KeyType,
+				KasUrl:   kao.KasURL,
+				Kid:      kao.KID,
+				Protocol: kao.Protocol,
+				PolicyBinding: &kas.PolicyBinding{
+					Hash:      hash,
+					Algorithm: alg,
+				},
+				SplitId:    kao.SplitID,
+				WrappedKey: key,
 			},
 		}
 		if req, ok := kasReqs[kao.KasURL]; ok {

@@ -38,10 +38,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const kTDF3Algorithm = "rsa:2048"
-const kNanoAlgorithm = "ec:secp256r1"
-const kFailedStatus = "fail"
-const kPermitStatus = "permit"
+const (
+	kTDF3Algorithm = "rsa:2048"
+	kNanoAlgorithm = "ec:secp256r1"
+	kFailedStatus  = "fail"
+	kPermitStatus  = "permit"
+)
 
 type SignedRequestBody struct {
 	RequestBody string `json:"requestBody"`
@@ -141,7 +143,7 @@ func extractAndConvertV1SRTBody(body []byte) (kaspb.UnsignedRewrapRequest, error
 	}
 
 	kao := requestBody.KeyAccess
-	binding, err := json.Marshal(kao.PolicyBinding)
+	binding, err := extractPolicyBinding(kao.PolicyBinding)
 	if err != nil {
 		return kaspb.UnsignedRewrapRequest{}, err
 	}
@@ -151,7 +153,7 @@ func extractAndConvertV1SRTBody(body []byte) (kaspb.UnsignedRewrapRequest, error
 			KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
 				{KeyAccessObjectId: "kao-0", KeyAccessObject: &kaspb.KeyAccess{
 					EncryptedMetadata: kao.EncryptedMetadata,
-					PolicyBinding:     binding,
+					PolicyBinding:     &kaspb.PolicyBinding{Hash: binding},
 					Protocol:          kao.Protocol,
 					KeyType:           kao.Type,
 					KasUrl:            kao.URL,
@@ -159,7 +161,6 @@ func extractAndConvertV1SRTBody(body []byte) (kaspb.UnsignedRewrapRequest, error
 					SplitId:           kao.SID,
 					WrappedKey:        kao.WrappedKey,
 					Header:            kao.Header,
-					Algorithm:         kao.Algorithm,
 				}},
 			},
 			Algorithm: requestBody.Algorithm,
@@ -253,12 +254,8 @@ func verifyPolicyBinding(ctx context.Context, policy []byte, kao *kaspb.Unsigned
 		logger.WarnContext(ctx, "unable to generate policy hmac", "err", err)
 		return err400("bad request")
 	}
-	policyBinding, err := extractPolicyBinding(kao.GetKeyAccessObject().GetPolicyBinding())
-	if err != nil {
-		logger.WarnContext(ctx, "bad policy binding")
-		return err400("bad request")
-	}
 
+	policyBinding := kao.GetKeyAccessObject().GetPolicyBinding().GetHash()
 	expectedHMAC := make([]byte, base64.StdEncoding.DecodedLen(len(policyBinding)))
 	n, err := base64.StdEncoding.Decode(expectedHMAC, []byte(policyBinding))
 	if err == nil {
@@ -277,11 +274,7 @@ func verifyPolicyBinding(ctx context.Context, policy []byte, kao *kaspb.Unsigned
 	return nil
 }
 
-func extractPolicyBinding(policyBindingBytes []byte) (string, error) {
-	var policyBinding interface{}
-	if err := json.Unmarshal(policyBindingBytes, &policyBinding); err != nil {
-		return "", fmt.Errorf("could not decode binding")
-	}
+func extractPolicyBinding(policyBinding interface{}) (string, error) {
 	switch v := policyBinding.(type) {
 	case string:
 		return v, nil
@@ -318,6 +311,7 @@ func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, err
 
 	return info, nil
 }
+
 func failedKAORewrap(res map[string]kaoResult, kao *kaspb.UnsignedRewrapRequest_WithKeyAccessObject, err error) {
 	res[kao.GetKeyAccessObjectId()] = kaoResult{
 		ID:    kao.GetKeyAccessObjectId(),
@@ -350,6 +344,7 @@ func addResultsToResponse(response *kaspb.RewrapResponse, result policyKAOResult
 		response.Responses = append(response.Responses, policyResults)
 	}
 }
+
 func getMapValue[Map ~map[K]V, K comparable, V any](m Map) *V {
 	for _, v := range m {
 		return &v
@@ -540,7 +535,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				continue
 			}
 
-			policyBinding, _ := extractPolicyBinding(kao.GetKeyAccessObject().GetPolicyBinding())
+			policyBinding := kao.GetKeyAccessObject().GetPolicyBinding().GetHash()
 			auditEventParams := audit.RewrapAuditEventParams{
 				Policy:        kasPolicy,
 				IsSuccess:     access,

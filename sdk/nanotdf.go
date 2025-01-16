@@ -946,7 +946,7 @@ func (n *NanoTDFDecryptHandler) CreateRewrapRequest(_ context.Context) (map[stri
 		KeyAccessObjects: []*kas.UnsignedRewrapRequest_WithKeyAccessObject{
 			{
 				KeyAccessObjectId: "kao-0",
-				KeyAccessObject:   &kas.KeyAccess{KasUrl: kasURL, Header: headerBuf, Algorithm: "ec:secp256r1"},
+				KeyAccessObject:   &kas.KeyAccess{KasUrl: kasURL, Header: headerBuf},
 			},
 		},
 		Policy: &kas.UnsignedRewrapRequest_WithPolicy{

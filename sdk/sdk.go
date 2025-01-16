@@ -347,7 +347,7 @@ func GetTdfType(reader io.ReadSeeker) TdfType {
 
 // Indicates JSON Schema validation failed for the manifest or header of the TDF file.
 // Some invalid manifests are still usable, so this file may still be usable.
-var ErrInvalidPerSchema = errors.New("invalid schema")
+var ErrInvalidPerSchema = errors.New("manifest was not valid")
 
 //go:embed schema/manifest.schema.json
 var manifestSchema []byte

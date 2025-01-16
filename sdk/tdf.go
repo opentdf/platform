@@ -812,8 +812,9 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 			} else if strings.Contains(err.Error(), codes.PermissionDenied.String()) {
 				skippedSplits[ss] = fmt.Errorf("%w: %w", errRewrapForbidden, errToReturn)
 			} else {
-			skippedSplits[ss] = errToReturn
-			continue
+				skippedSplits[ss] = errToReturn
+				continue
+			}
 		}
 
 		for keyByteIndex, keyByte := range wrappedKey {

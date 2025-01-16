@@ -957,7 +957,7 @@ func (n *NanoTDFDecryptHandler) CreateRewrapRequest(_ context.Context) (map[stri
 	return map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest{kasURL: req}, nil
 }
 
-func (n *NanoTDFDecryptHandler) Decrypt(_ context.Context, result []KAOResult) (uint32, error) {
+func (n *NanoTDFDecryptHandler) Decrypt(_ context.Context, result []kaoResult) (uint32, error) {
 	var err error
 	if len(result) != 1 {
 		return 0, fmt.Errorf("improper result from kas")
@@ -1029,7 +1029,7 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 	if err != nil {
 		return 0, err
 	}
-	return handler.Decrypt(ctx, []KAOResult{{SymmetricKey: symmetricKey}})
+	return handler.Decrypt(ctx, []kaoResult{{SymmetricKey: symmetricKey}})
 }
 
 func (s SDK) getNanoRewrapKey(ctx context.Context, decryptor *NanoTDFDecryptHandler) ([]byte, error) {

@@ -95,10 +95,10 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 	}
 
 	kasClient := newKASClient(s.dialOptions, s.tokenSource, s.kasSessionKey)
-	allRewrapResp := make(map[string][]KAOResult)
+	allRewrapResp := make(map[string][]kaoResult)
 	var err error
 	for _, rewrapRequests := range kasRewrapRequests {
-		var rewrapResp map[string][]KAOResult
+		var rewrapResp map[string][]kaoResult
 		switch bulkReq.TDFType {
 		case Nano:
 			rewrapResp, err = kasClient.nanoUnwrap(ctx, rewrapRequests...)

@@ -80,7 +80,7 @@ type tdf3DecryptHandler struct {
 	reader *Reader
 }
 
-func (r *tdf3DecryptHandler) Decrypt(ctx context.Context, results []KAOResult) (uint32, error) {
+func (r *tdf3DecryptHandler) Decrypt(ctx context.Context, results []kaoResult) (uint32, error) {
 	err := r.reader.buildKey(ctx, results)
 	if err != nil {
 		return 0, err
@@ -867,7 +867,7 @@ func getIdx(kaoID string) int {
 	return idx
 }
 
-func (r *Reader) buildKey(_ context.Context, results []KAOResult) error {
+func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 	var unencryptedMetadata []byte
 	var payloadKey [kKeySize]byte
 	knownSplits := make(map[string]bool)
@@ -1056,10 +1056,10 @@ func (r *Reader) buildKey(_ context.Context, results []KAOResult) error {
 func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocognit // Better readability keeping it as is
 	kasClient := newKASClient(r.dialOptions, r.tokenSource, &r.kasSessionKey)
 
-	var kaoResults []KAOResult
+	var kaoResults []kaoResult
 	reqFail := func(err error, req *kas.UnsignedRewrapRequest_WithPolicyRequest) {
 		for _, kao := range req.GetKeyAccessObjects() {
-			kaoResults = append(kaoResults, KAOResult{
+			kaoResults = append(kaoResults, kaoResult{
 				KeyAccessObjectID: kao.GetKeyAccessObjectId(),
 				Error:             err,
 			})

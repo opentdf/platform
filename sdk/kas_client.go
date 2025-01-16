@@ -28,7 +28,7 @@ type KASClient struct {
 	sessionKey        *ocrypto.RsaKeyPair
 }
 
-type KAOResult struct {
+type kaoResult struct {
 	SymmetricKey      []byte
 	Error             error
 	KeyAccessObjectID string
@@ -36,7 +36,7 @@ type KAOResult struct {
 
 type decryptor interface {
 	CreateRewrapRequest(ctx context.Context) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error)
-	Decrypt(ctx context.Context, results []KAOResult) (uint32, error)
+	Decrypt(ctx context.Context, results []kaoResult) (uint32, error)
 }
 
 func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, sessionKey *ocrypto.RsaKeyPair) *KASClient {
@@ -74,7 +74,7 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.Unsig
 	return response, nil
 }
 
-func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]KAOResult, error) {
+func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]kaoResult, error) {
 	keypair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewECKeyPair failed :%w", err)
@@ -109,20 +109,20 @@ func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRew
 		return nil, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
 	}
 
-	policyResults := make(map[string][]KAOResult)
+	policyResults := make(map[string][]kaoResult)
 	for _, results := range response.GetResponses() {
-		var kaoKeys []KAOResult
+		var kaoKeys []kaoResult
 		for _, kao := range results.GetResults() {
 			if kao.GetStatus() == "permit" {
 				wrappedKey := kao.GetKasWrappedKey()
 				key, err := aesGcm.Decrypt(wrappedKey)
 				if err != nil {
-					kaoKeys = append(kaoKeys, KAOResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
 				} else {
-					kaoKeys = append(kaoKeys, KAOResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key})
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key})
 				}
 			} else {
-				kaoKeys = append(kaoKeys, KAOResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError())})
+				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError())})
 			}
 		}
 		policyResults[results.GetPolicyId()] = kaoKeys
@@ -131,7 +131,7 @@ func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRew
 	return policyResults, nil
 }
 
-func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]KAOResult, error) {
+func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]kaoResult, error) {
 	if k.sessionKey == nil {
 		return nil, fmt.Errorf("session key is nil")
 	}
@@ -154,20 +154,20 @@ func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.UnsignedRewrapR
 		return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
 	}
 
-	policyResults := make(map[string][]KAOResult)
+	policyResults := make(map[string][]kaoResult)
 	for _, results := range response.GetResponses() {
-		var kaoKeys []KAOResult
+		var kaoKeys []kaoResult
 		for _, kao := range results.GetResults() {
 			if kao.GetStatus() == "permit" {
 				wrappedKey := kao.GetKasWrappedKey()
 				key, err := asymDecryption.Decrypt(wrappedKey)
 				if err != nil {
-					kaoKeys = append(kaoKeys, KAOResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
 				} else {
-					kaoKeys = append(kaoKeys, KAOResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key})
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key})
 				}
 			} else {
-				kaoKeys = append(kaoKeys, KAOResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError())})
+				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError())})
 			}
 		}
 		policyResults[results.GetPolicyId()] = kaoKeys

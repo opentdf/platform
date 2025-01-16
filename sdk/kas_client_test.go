@@ -8,7 +8,6 @@ import (
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"google.golang.org/protobuf/encoding/protojson"
-
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"

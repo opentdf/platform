@@ -856,7 +856,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		for _, e := range skippedSplits {
 			v = append(v, e)
 		}
-		return v[0]
+		return v[1]
 	}
 
 	aggregateHash := &bytes.Buffer{}

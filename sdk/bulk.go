@@ -37,7 +37,7 @@ type BulkDecryptOption func(request *BulkDecryptRequest)
 
 func WithTDFs(tdfs ...*BulkTDF) BulkDecryptOption {
 	return func(request *BulkDecryptRequest) {
-		request.AppendTDFs(tdfs...)
+		request.appendTDFs(tdfs...)
 	}
 }
 func WithTDFType(tdfType TdfType) BulkDecryptOption {

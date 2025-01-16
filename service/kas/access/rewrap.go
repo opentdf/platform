@@ -2,10 +2,6 @@ package access
 
 import (
 	"bytes"
-
-	"google.golang.org/protobuf/encoding/protojson"
-
-	// "bytes"
 	"context"
 	"crypto"
 	"crypto/ecdsa"
@@ -30,6 +26,7 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/sdk"

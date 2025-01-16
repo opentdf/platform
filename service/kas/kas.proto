@@ -35,8 +35,8 @@ message KeyAccess {
   string encrypted_metadata = 1;
   bytes policy_binding = 2;
   string protocol = 3;
-  string key_type = 4;
-  string kas_url = 5;
+  string key_type = 4 [json_name = "type"];
+  string kas_url = 5 [json_name = "url"];
   string kid = 6;
   string split_id = 7;
   bytes wrapped_key = 8;

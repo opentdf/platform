@@ -8,7 +8,7 @@
 
 ## Documentation
 
-- [Configuration](./docs/configuration.md)
+- [Configuration](./docs/Configuring.md)
 - [Development](#development)
 - [Policy Config Schema](./service/policy/db/schema_erd.md)
 - [Policy Config Testing Diagram](./service/integration/testing_diagram.png)
@@ -47,10 +47,10 @@ brew install buf go
 There are two primary audiences for this project. Consumers and Contributors
 
 1. Consuming
-Consumers of the OpenTDF platform should begin their journey [here](./Consuming.md).
+Consumers of the OpenTDF platform should begin their journey [here](./docs/Consuming.md).
 
 2. Contributing
-To contribute to the OpenTDF platform, you'll need bit more set setup and should start [here](./Contributing.md).
+To contribute to the OpenTDF platform, you'll need bit more set setup and should start [here](./docs/Contributing.md).
 
 ## Additional info for Project Consumers & Contributors
 

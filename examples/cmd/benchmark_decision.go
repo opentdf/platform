@@ -16,7 +16,7 @@ func init() {
 		Long:  `A OpenTDF benchmark tool to measure throughput and latency with configurable concurrency.`,
 		RunE:  runDecisionBenchmark,
 	}
-
+	benchmarkCmd.Flags().IntVar(&config.RequestCount, "count", 100, "Total number of requests")
 	ExamplesCmd.AddCommand(benchmarkCmd)
 }
 
@@ -28,7 +28,7 @@ func runDecisionBenchmark(cmd *cobra.Command, args []string) error {
 	}
 
 	ras := []*authorization.ResourceAttribute{}
-	for i := 0; i < 100; i++ {
+	for i := 0; i < config.RequestCount; i++ {
 		ras = append(ras, &authorization.ResourceAttribute{AttributeValueFqns: []string{"https://example.com/attr/attr1/value/value1"}})
 	}
 

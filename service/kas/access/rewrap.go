@@ -143,17 +143,15 @@ func extractAndConvertV1SRTBody(body []byte) (kaspb.UnsignedRewrapRequest, error
 	}
 
 	kao := requestBody.KeyAccess
-	binding, err := extractPolicyBinding(kao.PolicyBinding)
-	if err != nil {
-		return kaspb.UnsignedRewrapRequest{}, err
-	}
+	// ignore errors, maybe nanoTDF
+	binding, _ := extractPolicyBinding(kao.PolicyBinding)
 
 	reqs := []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{
 		{
 			KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
 				{KeyAccessObjectId: "kao-0", KeyAccessObject: &kaspb.KeyAccess{
 					EncryptedMetadata: kao.EncryptedMetadata,
-					PolicyBinding:     &kaspb.PolicyBinding{Hash: binding},
+					PolicyBinding:     &kaspb.PolicyBinding{Hash: binding, Algorithm: kao.Algorithm},
 					Protocol:          kao.Protocol,
 					KeyType:           kao.Type,
 					KasUrl:            kao.URL,

@@ -809,10 +809,9 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 			errToReturn := fmt.Errorf("kao unwrap failed for split %v: %w", ss, err)
 			if strings.Contains(err.Error(), codes.InvalidArgument.String()) {
 				skippedSplits[ss] = fmt.Errorf("%w: %w", ErrRewrapBadRequest, errToReturn)
-			}
-			if strings.Contains(err.Error(), codes.PermissionDenied.String()) {
+			} else if strings.Contains(err.Error(), codes.PermissionDenied.String()) {
 				skippedSplits[ss] = fmt.Errorf("%w: %w", errRewrapForbidden, errToReturn)
-			}
+			} else {
 			skippedSplits[ss] = errToReturn
 			continue
 		}

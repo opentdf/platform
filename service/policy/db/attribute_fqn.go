@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/pkg/db"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // AttrFqnReindex will reindex all namespace, attribute, and attribute_value FQNs
@@ -73,6 +74,12 @@ func (c *PolicyDBClient) AttrFqnReindex(ctx context.Context) (res struct { //nol
 
 func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attributes.GetAttributeValuesByFqnsRequest) (map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	fqns := r.GetFqns()
+
+	if c.Tracer != nil {
+		var span trace.Span
+		ctx, span = c.Tracer.Start(ctx, "DB:GetAttributesByValueFqns")
+		defer span.End()
+	}
 
 	list := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, len(fqns))
 

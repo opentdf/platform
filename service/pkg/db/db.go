@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/opentdf/platform/service/logger"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Table struct {
@@ -112,20 +113,24 @@ type Client struct {
 	ranMigrations bool
 	// This is the stdlib connection that is used for transactions
 	SQLDB *sql.DB
+	trace.Tracer
 }
 
 /*
 Connections and pools seems to be pulled in from env vars
 We should be able to tell the platform how to run
 */
-
-func New(ctx context.Context, config Config, logCfg logger.Config, o ...OptsFunc) (*Client, error) {
+func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace.Tracer, o ...OptsFunc) (*Client, error) {
 	for _, f := range o {
 		config = f(config)
 	}
 
 	c := Client{
 		config: config,
+	}
+
+	if tracer != nil {
+		c.Tracer = *tracer
 	}
 
 	l, err := logger.NewLogger(logger.Config{

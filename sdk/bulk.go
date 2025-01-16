@@ -20,15 +20,15 @@ type BulkDecryptRequest struct {
 	TDFType TdfType
 }
 
-type BulkDecryptionErrors []error
+type BulkErrors []error
 
-func (b BulkDecryptionErrors) Error() string {
+func (b BulkErrors) Error() string {
 	return fmt.Sprintf("Some TDFs could not be Decrypted: %s", errors.Join(b...).Error())
 }
 
-// IsPartialFailure Returns List of Decrypt Failures and true if is decryption failures
-func IsPartialFailure(err error) ([]error, bool) {
-	var list BulkDecryptionErrors
+// FromBulkErrors Returns List of Decrypt Failures and true if is decryption failures
+func FromBulkErrors(err error) ([]error, bool) {
+	var list BulkErrors
 	ok := errors.As(err, &list)
 	return list, ok
 }
@@ -131,7 +131,7 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 	}
 
 	if len(errList) != 0 {
-		return BulkDecryptionErrors(errList)
+		return BulkErrors(errList)
 	}
 
 	return nil

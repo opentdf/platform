@@ -119,7 +119,7 @@ dataAttributes := []string{"https://example.com/attr/attr1/value/value1"}
 		}
 		err = client.BulkDecrypt(context.Background(), sdk.WithTDFs(bulkTdfs...), sdk.WithTDFType(format))
 		if err != nil {
-			if errList, ok := sdk.IsPartialFailure(err); ok {
+			if errList, ok := sdk.FromBulkErrors(err); ok {
 				errors = errList
 			} else {
 				requestFailure = err

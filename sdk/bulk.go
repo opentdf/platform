@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/kas"
 )
 
+// BulkTDF: Reader is TDF Content. Writer writes encrypted data. Error is the error that occurs if decrypting fails.
 type BulkTDF struct {
 	Reader io.ReadSeeker
 	Writer io.Writer
@@ -20,6 +21,7 @@ type BulkDecryptRequest struct {
 	TDFType TdfType
 }
 
+// BulkErrors List of Errors that Failed during Bulk Decryption
 type BulkErrors []error
 
 func (b BulkErrors) Error() string {
@@ -35,11 +37,14 @@ func FromBulkErrors(err error) ([]error, bool) {
 
 type BulkDecryptOption func(request *BulkDecryptRequest)
 
+// WithTDFs Adds Lists of TDFs to be decrypted
 func WithTDFs(tdfs ...*BulkTDF) BulkDecryptOption {
 	return func(request *BulkDecryptRequest) {
 		request.appendTDFs(tdfs...)
 	}
 }
+
+// WithTDFType Type of TDFs to be decrypted
 func WithTDFType(tdfType TdfType) BulkDecryptOption {
 	return func(request *BulkDecryptRequest) {
 		request.TDFType = tdfType
@@ -66,7 +71,7 @@ func (s SDK) createDecryptor(tdf *BulkTDF, tdfType TdfType) (decryptor, error) {
 	return nil, fmt.Errorf("unknown tdf type: %s", tdfType)
 }
 
-// BulkDecrypt
+// BulkDecrypt Decrypts a list of BulkTDF and if a partial failure of TDFs unable to be decrypted, BulkErrors would be returned.
 func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 	bulkReq := createBulkRewrapRequest(opts...)
 	kasRewrapRequests := make(map[string][]*kas.UnsignedRewrapRequest_WithPolicyRequest)

@@ -56,7 +56,6 @@ type TDFConfig struct {
 	tdfPrivateKey             string
 	metaData                  string
 	mimeType                  string
-	buildMetadata             string
 	integrityAlgorithm        IntegrityAlgorithm
 	segmentIntegrityAlgorithm IntegrityAlgorithm
 	assertions                []AssertionConfig
@@ -169,14 +168,6 @@ func withSplitPlan(p ...keySplitStep) TDFOption {
 func WithMetaData(metaData string) TDFOption {
 	return func(c *TDFConfig) error {
 		c.metaData = metaData
-		return nil
-	}
-}
-
-// WithBuildMetadata returns an Option that add build metadata to TDF.
-func WithBuildMetadata(buildMetadata string) TDFOption {
-	return func(c *TDFConfig) error {
-		c.buildMetadata = buildMetadata
 		return nil
 	}
 }

@@ -18,7 +18,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
@@ -260,7 +259,6 @@ func TestTDF(t *testing.T) {
 
 func (s *TDFSuite) Test_SimpleTDF() {
 	metaData := []byte(`{"displayName" : "openTDF go sdk"}`)
-	buildMetadata := "test.01"
 	attributes := []string{
 		"https://example.com/attr/Classification/value/S",
 		"https://example.com/attr/Classification/value/X",
@@ -292,7 +290,6 @@ func (s *TDFSuite) Test_SimpleTDF() {
 			WithKasInformation(kasURLs...),
 			WithMetaData(string(metaData)),
 			WithDataAttributes(attributes...),
-			WithBuildMetadata(buildMetadata),
 		)
 
 		s.Require().NoError(err)
@@ -326,11 +323,6 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		payloadKey, err := r.UnsafePayloadKeyRetrieval()
 		s.Require().NoError(err)
 		s.Len(payloadKey, kKeySize)
-
-		version, err := semver.NewVersion(r.manifest.TDFVersion)
-		s.Require().NoError(err)
-
-		s.EqualValues(buildMetadata, version.Metadata())
 	}
 
 	// test reader

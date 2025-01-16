@@ -11,7 +11,6 @@ import (
 	"math"
 	"strings"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
@@ -334,20 +333,7 @@ func (r *Reader) Manifest() Manifest {
 func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFConfig) error { //nolint:funlen,gocognit // Better readability keeping it as is
 	manifest := Manifest{}
 
-	version, err := semver.NewVersion(sdkVersion)
-	if err != nil {
-		return fmt.Errorf("failed to parse semantic version %q: %w", sdkVersion, err)
-	}
-
-	// Only attempt to set metadata if it's provided
-	if metadata := strings.TrimSpace(tdfConfig.buildMetadata); metadata != "" {
-		versionWithMetadata, err := version.SetMetadata(metadata)
-		if err != nil {
-			return fmt.Errorf("failed to set build metadata %q: %w", metadata, err)
-		}
-		manifest.TDFVersion = versionWithMetadata.String()
-	}
-
+	manifest.TDFVersion = sdkVersion
 	if len(tdfConfig.splitPlan) == 0 && len(tdfConfig.kasInfoList) == 0 {
 		return fmt.Errorf("%w: no key access template specified or inferred", errInvalidKasInfo)
 	}

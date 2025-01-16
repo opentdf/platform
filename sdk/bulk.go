@@ -137,7 +137,7 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 	return nil
 }
 
-func (b *BulkDecryptRequest) AppendTDFs(tdfs ...*BulkTDF) {
+func (b *BulkDecryptRequest) appendTDFs(tdfs ...*BulkTDF) {
 	b.TDFs = append(
 		b.TDFs,
 		tdfs...,

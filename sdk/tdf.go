@@ -791,7 +791,6 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 	knownSplits := make(map[string]bool)
 	foundSplits := make(map[string]bool)
 	skippedSplits := make(map[keySplitStep]error)
-	mixedSplits := len(r.manifest.KeyAccessObjs) > 1 && r.manifest.KeyAccessObjs[0].SplitID != ""
 
 	for _, keyAccessObj := range r.manifest.EncryptionInformation.KeyAccessObjs {
 		client := newKASClient(r.dialOptions, r.tokenSource, &r.kasSessionKey)
@@ -800,36 +799,22 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 
 		var err error
 		var wrappedKey []byte
-		if !mixedSplits { //nolint:nestif // todo: subfunction
-			wrappedKey, err = client.unwrap(ctx, keyAccessObj, r.manifest.EncryptionInformation.Policy)
-			if err != nil {
-				errToReturn := fmt.Errorf("doPayloadKeyUnwrap splitKey.rewrap failed: %w", err)
-				if strings.Contains(err.Error(), codes.InvalidArgument.String()) {
-					return fmt.Errorf("%w: %w", ErrRewrapBadRequest, errToReturn)
-				}
-				if strings.Contains(err.Error(), codes.PermissionDenied.String()) {
-					return fmt.Errorf("%w: %w", errRewrapForbidden, errToReturn)
-				}
-				return errToReturn
+		knownSplits[ss.SplitID] = true
+		if foundSplits[ss.SplitID] {
+			// already found
+			continue
+		}
+		wrappedKey, err = client.unwrap(ctx, keyAccessObj, r.manifest.EncryptionInformation.Policy)
+		if err != nil {
+			errToReturn := fmt.Errorf("kao unwrap failed for split %v: %w", ss, err)
+			if strings.Contains(err.Error(), codes.InvalidArgument.String()) {
+				errToReturn = fmt.Errorf("%w: %w", ErrRewrapBadRequest, errToReturn)
 			}
-		} else {
-			knownSplits[ss.SplitID] = true
-			if foundSplits[ss.SplitID] {
-				// already found
-				continue
+			if strings.Contains(err.Error(), codes.PermissionDenied.String()) {
+				errToReturn = fmt.Errorf("%w: %w", errRewrapForbidden, errToReturn)
 			}
-			wrappedKey, err = client.unwrap(ctx, keyAccessObj, r.manifest.EncryptionInformation.Policy)
-			if err != nil {
-				errToReturn := fmt.Errorf("kao unwrap failed for split %v: %w", ss, err)
-				if !strings.Contains(err.Error(), codes.InvalidArgument.String()) {
-					skippedSplits[ss] = fmt.Errorf("%w: %w", ErrRewrapBadRequest, errToReturn)
-				}
-				if !strings.Contains(err.Error(), codes.PermissionDenied.String()) {
-					skippedSplits[ss] = fmt.Errorf("%w: %w", errRewrapForbidden, errToReturn)
-				}
-				skippedSplits[ss] = errToReturn
-				continue
-			}
+			skippedSplits[ss] = errToReturn
+			continue
 		}
 
 		for keyByteIndex, keyByte := range wrappedKey {
@@ -865,7 +850,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		}
 	}
 
-	if mixedSplits && len(knownSplits) > len(foundSplits) {
+	if len(knownSplits) > len(foundSplits) {
 		v := make([]error, 1, len(skippedSplits))
 		v[0] = fmt.Errorf("splitKey.unable to reconstruct split key: %v", skippedSplits)
 		for _, e := range skippedSplits {

@@ -379,7 +379,7 @@ func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 	}
 
 	if !result.Valid() {
-		return false, errors.New("manifest was not valid")
+		return false, fmt.Errorf("manifest was not valid: %v", result.Errors())
 	}
 
 	return true, nil

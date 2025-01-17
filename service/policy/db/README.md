@@ -2,7 +2,7 @@
 
 ### Migrations
 
-Migrations are configurable (see [service configuration readme](../../../docs/configuration.md)) and in Policy are powered by
+Migrations are configurable (see [service configuration readme](../../../docs/Configuring.md)) and in Policy are powered by
 [Goose](https://github.com/pressly/goose).
 
 Goose runs [the migrations](./migrations/) sequentially, and each migration should have an associated ERD in markdown as well if there have been

@@ -1206,6 +1206,33 @@ func (s *KasRegistrySuite) Test_List_Public_Keys_WithNonExistentKasID() {
 	s.Empty(r.GetKeys())
 }
 
+func (s *KasRegistrySuite) Test_List_Public_Key_Mappings() {
+	kasid := s.f.GetPublicKey("key_1").KasID
+	id := s.f.GetPublicKey("key_1").ID
+	r, err := s.db.PolicyClient.ListPublicKeyMappings(s.ctx, &kasregistry.ListPublicKeyMappingRequest{KasId: kasid})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.Len(r.GetPublicKeyMappings(), 1)
+	for _, m := range r.GetPublicKeyMappings() {
+		s.True(slices.ContainsFunc(m.PublicKeys, func(key *kasregistry.ListPublicKeyMappingResponse_PublicKey) bool {
+			return key.GetKey().GetId() == id
+		}))
+		for _, k := range m.GetPublicKeys() {
+			if k.GetKey().GetId() == id {
+				s.True(slices.ContainsFunc(k.GetValues(), func(value *kasregistry.ListPublicKeyMappingResponse_Association) bool {
+					return value.GetId() == s.f.GetValueMap(id)[0].ValueID
+				}))
+				s.True(slices.ContainsFunc(k.GetDefinitions(), func(definition *kasregistry.ListPublicKeyMappingResponse_Association) bool {
+					return definition.GetId() == s.f.GetDefinitionKeyMap(id)[0].DefinitionID
+				}))
+				s.True(slices.ContainsFunc(k.GetNamespaces(), func(namespace *kasregistry.ListPublicKeyMappingResponse_Association) bool {
+					return namespace.GetId() == s.f.GetNamespaceKeyMap(id)[0].NamespaceID
+				}))
+			}
+		}
+	}
+}
+
 func (s *KasRegistrySuite) Test_Deactivate_Public_Key() {
 	id := s.f.GetPublicKey("key_4").ID
 	r, err := s.db.PolicyClient.DeactivateKey(s.ctx, &kasregistry.DeactivateKeyRequest{Id: id})

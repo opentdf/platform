@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
@@ -318,10 +319,10 @@ func (c PolicyDBClient) GetPublicKey(ctx context.Context, r *kasregistry.GetKeyR
 
 	return &kasregistry.GetKeyResponse{
 		Key: &policy.Key{
-			Id:       keyID,
-			IsActive: key.IsActive,
-			WasUsed:  key.WasUsed,
-			Metadata: metadata,
+			Id:        keyID,
+			IsActive:  wrapperspb.Bool(key.IsActive),
+			WasMapped: wrapperspb.Bool(key.WasMapped),
+			Metadata:  metadata,
 			Kas: &policy.KeyAccessServer{
 				Id:   key.KeyAccessServerID,
 				Uri:  key.KasUri.String,
@@ -370,10 +371,10 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 			return nil, db.WrapIfKnownInvalidQueryErr(err)
 		}
 		keys[i] = &policy.Key{
-			Id:       key.ID,
-			IsActive: key.IsActive,
-			WasUsed:  key.WasUsed,
-			Metadata: metadata,
+			Id:        key.ID,
+			IsActive:  wrapperspb.Bool(key.IsActive),
+			WasMapped: wrapperspb.Bool(key.WasMapped),
+			Metadata:  metadata,
 			Kas: &policy.KeyAccessServer{
 				Id:   key.KeyAccessServerID,
 				Uri:  key.KasUri.String,
@@ -465,8 +466,8 @@ func (c PolicyDBClient) UpdatePublicKey(ctx context.Context, r *kasregistry.Upda
 			Kas: &policy.KeyAccessServer{
 				Id: pk.KeyAccessServerID,
 			},
-			IsActive: pk.IsActive,
-			WasUsed:  pk.WasUsed,
+			IsActive:  wrapperspb.Bool(pk.IsActive),
+			WasMapped: wrapperspb.Bool(pk.WasMapped),
 			PublicKey: &policy.KasPublicKey{
 				Kid: pk.KeyID,
 				Alg: policy.KasPublicKeyAlgEnum(policy.KasPublicKeyAlgEnum_value[pk.Alg]),

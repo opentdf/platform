@@ -3369,7 +3369,7 @@ const getPublicKey = `-- name: getPublicKey :one
 SELECT 
     k.id,
     k.is_active,
-    k.was_used,
+    k.was_mapped,
     k.key_access_server_id,
     k.key_id,
     k.alg,
@@ -3385,7 +3385,7 @@ WHERE k.id = $1
 type getPublicKeyRow struct {
 	ID                string      `json:"id"`
 	IsActive          bool        `json:"is_active"`
-	WasUsed           bool        `json:"was_used"`
+	WasMapped         bool        `json:"was_mapped"`
 	KeyAccessServerID string      `json:"key_access_server_id"`
 	KeyID             string      `json:"key_id"`
 	Alg               string      `json:"alg"`
@@ -3400,7 +3400,7 @@ type getPublicKeyRow struct {
 //	SELECT
 //	    k.id,
 //	    k.is_active,
-//	    k.was_used,
+//	    k.was_mapped,
 //	    k.key_access_server_id,
 //	    k.key_id,
 //	    k.alg,
@@ -3417,7 +3417,7 @@ func (q *Queries) getPublicKey(ctx context.Context, id string) (getPublicKeyRow,
 	err := row.Scan(
 		&i.ID,
 		&i.IsActive,
-		&i.WasUsed,
+		&i.WasMapped,
 		&i.KeyAccessServerID,
 		&i.KeyID,
 		&i.Alg,
@@ -3434,7 +3434,7 @@ WITH base_keys AS (
     SELECT 
         pk.id,
         pk.is_active,
-        pk.was_used,
+        pk.was_mapped,
         pk.key_id,
         pk.alg,
         pk.public_key,
@@ -3489,7 +3489,7 @@ SELECT jsonb_build_object(
             'key', jsonb_build_object(
 	            'id', bk.id,
 	            'isActive', bk.is_active,
-	            'wasUsed', bk.was_used,
+	            'wasMapped', bk.was_mapped,
                 'publicKey', jsonb_build_object(
                     'kid', bk.key_id,
                     'alg', bk.alg,
@@ -3542,7 +3542,7 @@ type listPublicKeyMappingsParams struct {
 //	    SELECT
 //	        pk.id,
 //	        pk.is_active,
-//	        pk.was_used,
+//	        pk.was_mapped,
 //	        pk.key_id,
 //	        pk.alg,
 //	        pk.public_key,
@@ -3597,7 +3597,7 @@ type listPublicKeyMappingsParams struct {
 //	            'key', jsonb_build_object(
 //		            'id', bk.id,
 //		            'isActive', bk.is_active,
-//		            'wasUsed', bk.was_used,
+//		            'wasMapped', bk.was_mapped,
 //	                'publicKey', jsonb_build_object(
 //	                    'kid', bk.key_id,
 //	                    'alg', bk.alg,
@@ -3668,7 +3668,7 @@ WITH counted AS (
 SELECT
     k.id,
     k.is_active,
-    k.was_used,
+    k.was_mapped,
     k.key_access_server_id,
     k.key_id,
     k.alg,
@@ -3696,7 +3696,7 @@ type listPublicKeysParams struct {
 type listPublicKeysRow struct {
 	ID                string      `json:"id"`
 	IsActive          bool        `json:"is_active"`
-	WasUsed           bool        `json:"was_used"`
+	WasMapped         bool        `json:"was_mapped"`
 	KeyAccessServerID string      `json:"key_access_server_id"`
 	KeyID             string      `json:"key_id"`
 	Alg               string      `json:"alg"`
@@ -3716,7 +3716,7 @@ type listPublicKeysRow struct {
 //	SELECT
 //	    k.id,
 //	    k.is_active,
-//	    k.was_used,
+//	    k.was_mapped,
 //	    k.key_access_server_id,
 //	    k.key_id,
 //	    k.alg,
@@ -3745,7 +3745,7 @@ func (q *Queries) listPublicKeys(ctx context.Context, arg listPublicKeysParams) 
 		if err := rows.Scan(
 			&i.ID,
 			&i.IsActive,
-			&i.WasUsed,
+			&i.WasMapped,
 			&i.KeyAccessServerID,
 			&i.KeyID,
 			&i.Alg,
@@ -3770,7 +3770,7 @@ UPDATE public_keys
 SET
     metadata = COALESCE($2, metadata)
 WHERE id = $1
-RETURNING id, is_active, was_used, key_access_server_id, key_id, alg, public_key, metadata, created_at, updated_at
+RETURNING id, is_active, was_mapped, key_access_server_id, key_id, alg, public_key, metadata, created_at, updated_at
 `
 
 type updatePublicKeyParams struct {
@@ -3784,14 +3784,14 @@ type updatePublicKeyParams struct {
 //	SET
 //	    metadata = COALESCE($2, metadata)
 //	WHERE id = $1
-//	RETURNING id, is_active, was_used, key_access_server_id, key_id, alg, public_key, metadata, created_at, updated_at
+//	RETURNING id, is_active, was_mapped, key_access_server_id, key_id, alg, public_key, metadata, created_at, updated_at
 func (q *Queries) updatePublicKey(ctx context.Context, arg updatePublicKeyParams) (PublicKey, error) {
 	row := q.db.QueryRow(ctx, updatePublicKey, arg.ID, arg.Metadata)
 	var i PublicKey
 	err := row.Scan(
 		&i.ID,
 		&i.IsActive,
-		&i.WasUsed,
+		&i.WasMapped,
 		&i.KeyAccessServerID,
 		&i.KeyID,
 		&i.Alg,

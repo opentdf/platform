@@ -303,9 +303,9 @@ message Key {
   // the database record ID, not the key ID (`kid`)
   string id = 1;
 
-  bool is_active = 2;
+  google.protobuf.BoolValue is_active = 2;
 
-  bool was_used = 3;
+  google.protobuf.BoolValue was_mapped = 3;
 
   KasPublicKey public_key = 4;
 

@@ -499,7 +499,7 @@
         "isActive": {
           "type": "boolean"
         },
-        "wasUsed": {
+        "wasMapped": {
           "type": "boolean"
         },
         "publicKey": {

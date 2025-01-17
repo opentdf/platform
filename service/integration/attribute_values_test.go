@@ -917,7 +917,7 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_Returns_Only_Active_Public
 	// ensure only active public keys are returned
 	s.NotEmpty(v.GetKeys())
 	for _, k := range v.GetKeys() {
-		s.True(k.GetIsActive())
+		s.True(k.GetIsActive().GetValue())
 	}
 }
 

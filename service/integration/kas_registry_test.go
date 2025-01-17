@@ -1026,7 +1026,7 @@ func (s *KasRegistrySuite) Test_Create_Public_Key() {
 	r1, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: kID})
 	s.Require().NoError(err)
 	s.NotNil(r1)
-	s.True(r1.GetKey().GetIsActive())
+	s.True(r1.GetKey().GetIsActive().GetValue())
 
 	kasID := s.f.GetKasRegistryKey("key_access_server_1").ID
 	kasRegistry := &kasregistry.CreateKeyRequest{
@@ -1043,14 +1043,14 @@ func (s *KasRegistrySuite) Test_Create_Public_Key() {
 	s.NotNil(r2)
 	s.Equal(kasID, r2.GetKey().GetKas().GetId())
 	s.Equal("public", r2.GetKey().GetPublicKey().GetPem())
-	s.True(r2.GetKey().GetIsActive())
+	s.True(r2.GetKey().GetIsActive().GetValue())
 	publicKeyTestUUID = r2.GetKey().GetId()
 
 	// Now the old key should be inactive
 	r3, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: kID})
 	s.Require().NoError(err)
 	s.NotNil(r3)
-	s.False(r3.GetKey().GetIsActive())
+	s.False(r3.GetKey().GetIsActive().GetValue())
 
 	// Check to make sure the new key was mapped to namespaces, definitions and values
 	vkms := s.f.GetValueMap(kID)
@@ -1243,7 +1243,7 @@ func (s *KasRegistrySuite) Test_Deactivate_Public_Key() {
 	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: id})
 	s.Require().NoError(err)
 	s.NotNil(rr)
-	s.False(rr.GetKey().GetIsActive())
+	s.False(rr.GetKey().GetIsActive().GetValue())
 }
 
 func (s *KasRegistrySuite) Test_Deactivate_Public_Key_WithInvalidID_Fails() {
@@ -1263,7 +1263,7 @@ func (s *KasRegistrySuite) Test_Activate_Public_Key() {
 	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: id})
 	s.Require().NoError(err)
 	s.NotNil(rr)
-	s.True(rr.GetKey().GetIsActive())
+	s.True(rr.GetKey().GetIsActive().GetValue())
 }
 
 func (s *KasRegistrySuite) Test_Activate_Public_Key_WithInvalidID_Fails() {

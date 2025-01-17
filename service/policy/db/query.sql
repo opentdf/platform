@@ -944,7 +944,7 @@ RETURNING id;
 SELECT 
     k.id,
     k.is_active,
-    k.was_used,
+    k.was_mapped,
     k.key_access_server_id,
     k.key_id,
     k.alg,
@@ -964,7 +964,7 @@ WITH counted AS (
 SELECT
     k.id,
     k.is_active,
-    k.was_used,
+    k.was_mapped,
     k.key_access_server_id,
     k.key_id,
     k.alg,
@@ -987,7 +987,7 @@ WITH base_keys AS (
     SELECT 
         pk.id,
         pk.is_active,
-        pk.was_used,
+        pk.was_mapped,
         pk.key_id,
         pk.alg,
         pk.public_key,
@@ -1042,7 +1042,7 @@ SELECT jsonb_build_object(
             'key', jsonb_build_object(
 	            'id', bk.id,
 	            'isActive', bk.is_active,
-	            'wasUsed', bk.was_used,
+	            'wasMapped', bk.was_mapped,
                 'publicKey', jsonb_build_object(
                     'kid', bk.key_id,
                     'alg', bk.alg,

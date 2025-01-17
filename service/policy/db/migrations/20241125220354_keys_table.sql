@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS
     public_keys (
         id uuid DEFAULT gen_random_uuid () PRIMARY KEY,
         is_active boolean NOT NULL DEFAULT FALSE,
-        was_used boolean NOT NULL DEFAULT FALSE,
+        was_mapped boolean NOT NULL DEFAULT FALSE,
         key_access_server_id uuid NOT NULL REFERENCES key_access_servers (id),
         key_id varchar(36) NOT NULL,
         alg varchar(50) NOT NULL,
@@ -31,7 +31,7 @@ COMMENT ON COLUMN public_keys.id IS 'Unique identifier for the public key';
 
 COMMENT ON COLUMN public_keys.is_active IS 'Flag to indicate if the key is active';
 
-COMMENT ON COLUMN public_keys.was_used IS 'Flag to indicate if the key has been used. Triggered when its mapped to a namespace, definition, or value';
+COMMENT ON COLUMN public_keys.was_mapped IS 'Flag to indicate if the key has been used. Triggered when its mapped to a namespace, definition, or value';
 
 COMMENT ON COLUMN public_keys.key_access_server_id IS 'Foreign key to the key access server that owns the key';
 
@@ -158,21 +158,21 @@ COMMENT ON COLUMN attribute_value_public_key_map.value_id IS 'Foreign key to the
 
 COMMENT ON COLUMN attribute_value_public_key_map.key_id IS 'Foreign key to the public key';
 
--- Trigger function to update was_used column
+-- Trigger function to update was_mapped column
 CREATE
-OR REPLACE FUNCTION update_was_used () RETURNS trigger AS $$
+OR REPLACE FUNCTION update_was_mapped () RETURNS trigger AS $$
 BEGIN
-    UPDATE public_keys SET was_used = TRUE WHERE id = NEW.key_id;
+    UPDATE public_keys SET was_mapped = TRUE WHERE id = NEW.key_id;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-COMMENT ON FUNCTION update_was_used IS 'Function to update was_used column when a key is mapped to a namespace, definition, or value';
+COMMENT ON FUNCTION update_was_mapped IS 'Function to update was_mapped column when a key is mapped to a namespace, definition, or value';
 
 -- Trigger for attribute_namespace_key_map
-CREATE TRIGGER trigger_update_was_used_namespace
+CREATE TRIGGER trigger_update_was_mapped_namespace
 AFTER INSERT ON attribute_namespace_public_key_map FOR EACH ROW
-EXECUTE FUNCTION update_was_used ();
+EXECUTE FUNCTION update_was_mapped ();
 
 -- View for active namespace keys
 CREATE VIEW
@@ -185,8 +185,8 @@ SELECT
             ky.id,
             'is_active',
             ky.is_active,
-            'was_used',
-            ky.was_used,
+            'was_mapped',
+            ky.was_mapped,
             'public_key',
             json_build_object(
                 'alg',
@@ -212,9 +212,9 @@ GROUP BY
 COMMENT ON VIEW active_namespace_public_keys_view IS 'View to retrieve active public keys mapped to attribute namespaces';
 
 -- Trigger for attribute_definition_key_map
-CREATE TRIGGER trigger_update_was_used_definition
+CREATE TRIGGER trigger_update_was_mapped_definition
 AFTER INSERT ON attribute_definition_public_key_map FOR EACH ROW
-EXECUTE FUNCTION update_was_used ();
+EXECUTE FUNCTION update_was_mapped ();
 
 -- View for active definition keys
 CREATE VIEW
@@ -227,8 +227,8 @@ SELECT
             ky.id,
             'is_active',
             ky.is_active,
-            'was_used',
-            ky.was_used,
+            'was_mapped',
+            ky.was_mapped,
             'public_key',
             json_build_object(
                 'alg',
@@ -254,9 +254,9 @@ GROUP BY
 COMMENT ON VIEW active_definition_public_keys_view IS 'View to retrieve active public keys mapped to attribute definitions';
 
 -- Trigger for attribute_value_key_map
-CREATE TRIGGER trigger_update_was_used_value
+CREATE TRIGGER trigger_update_was_mapped_value
 AFTER INSERT ON attribute_value_public_key_map FOR EACH ROW
-EXECUTE FUNCTION update_was_used ();
+EXECUTE FUNCTION update_was_mapped ();
 
 -- View for active value keys
 CREATE VIEW
@@ -269,8 +269,8 @@ SELECT
             ky.id,
             'is_active',
             ky.is_active,
-            'was_used',
-            ky.was_used,
+            'was_mapped',
+            ky.was_mapped,
             'public_key',
             json_build_object(
                 'alg',
@@ -304,13 +304,13 @@ DROP VIEW IF EXISTS active_definition_public_keys_view;
 
 DROP VIEW IF EXISTS active_namespace_public_keys_view;
 
-DROP TRIGGER IF EXISTS trigger_update_was_used_namespace ON attribute_namespace_public_key_map;
+DROP TRIGGER IF EXISTS trigger_update_was_mapped_namespace ON attribute_namespace_public_key_map;
 
-DROP TRIGGER IF EXISTS trigger_update_was_used_definition ON attribute_definition_public_key_map;
+DROP TRIGGER IF EXISTS trigger_update_was_mapped_definition ON attribute_definition_public_key_map;
 
-DROP TRIGGER IF EXISTS trigger_update_was_used_value ON attribute_value_key_map;
+DROP TRIGGER IF EXISTS trigger_update_was_mapped_value ON attribute_value_key_map;
 
-DROP FUNCTION IF EXISTS update_was_used ();
+DROP FUNCTION IF EXISTS update_was_mapped ();
 
 DROP TABLE public_keys;
 

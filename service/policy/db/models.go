@@ -208,7 +208,7 @@ type PublicKey struct {
 	// Flag to indicate if the key is active
 	IsActive bool `json:"is_active"`
 	// Flag to indicate if the key has been used. Triggered when its mapped to a namespace, definition, or value
-	WasUsed bool `json:"was_used"`
+	WasMapped bool `json:"was_mapped"`
 	// Foreign key to the key access server that owns the key
 	KeyAccessServerID string `json:"key_access_server_id"`
 	// Unique identifier for the key

@@ -669,7 +669,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_KasId() {
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	listedGrants := listRsp.GetGrants()
+	listedGrants := listRsp.GetGrants() //nolint:staticcheck // still needed for testing
 	s.Len(listedGrants, 1)
 	g := listedGrants[0]
 	s.Equal(firstKAS.GetId(), g.GetKeyAccessServer().GetId())
@@ -686,7 +686,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_KasId() {
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	listedGrants = listRsp.GetGrants()
+	listedGrants = listRsp.GetGrants() //nolint:staticcheck // still needed for testing
 	s.Len(listedGrants, 1)
 	g = listedGrants[0]
 	s.Equal(otherKAS.GetId(), g.GetKeyAccessServer().GetId())
@@ -703,7 +703,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_KasId_NoResultsIfNotFo
 		KasId: nonExistentKasRegistryID,
 	})
 	s.Require().NoError(err)
-	s.Empty(listRsp.GetGrants())
+	s.Empty(listRsp.GetGrants()) //nolint:staticcheck // still needed for testing
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_KasUri() {
@@ -734,7 +734,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_KasUri() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(listGrantsRsp)
-	listedGrants := listGrantsRsp.GetGrants()
+	listedGrants := listGrantsRsp.GetGrants() //nolint:staticcheck // still needed for testing
 	s.GreaterOrEqual(len(listedGrants), 1)
 	for _, g := range listedGrants {
 		s.Equal(fixtureKAS.ID, g.GetKeyAccessServer().GetId())
@@ -749,7 +749,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_KasUri_NoResultsIfNotF
 		KasUri: "https://notfound.com/kas/uri",
 	})
 	s.Require().NoError(err)
-	s.Empty(listGrantsRsp.GetGrants())
+	s.Empty(listGrantsRsp.GetGrants()) //nolint:staticcheck // still needed for testing
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_KasName() {
@@ -782,7 +782,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_KasName() {
 
 	s.Require().NoError(err)
 	s.NotNil(listedGrantsRsp)
-	listedGrants := listedGrantsRsp.GetGrants()
+	listedGrants := listedGrantsRsp.GetGrants() //nolint:staticcheck // still needed for testing
 	s.GreaterOrEqual(len(listedGrants), 1)
 	found := false
 	for _, g := range listedGrants {
@@ -806,7 +806,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_KasName_NoResultsIfNot
 		KasName: "unknown-name",
 	})
 	s.Require().NoError(err)
-	s.Empty(listGrantsRsp.GetGrants())
+	s.Empty(listGrantsRsp.GetGrants()) //nolint:staticcheck // still needed for testing
 }
 
 func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {
@@ -916,7 +916,7 @@ func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {
 	listGrantsRsp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, &kasregistry.ListKeyAccessServerGrantsRequest{})
 	s.Require().NoError(err)
 	s.NotNil(listGrantsRsp)
-	listedGrants := listGrantsRsp.GetGrants()
+	listedGrants := listGrantsRsp.GetGrants() //nolint:staticcheck // still needed for testing
 	s.GreaterOrEqual(len(listedGrants), 1)
 
 	s.GreaterOrEqual(len(listedGrants), 2)
@@ -961,7 +961,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_Limit_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	listed := listRsp.GetGrants()
+	listed := listRsp.GetGrants() //nolint:staticcheck // still needed for testing
 	s.Equal(len(listed), int(limit))
 
 	for _, grant := range listed {
@@ -995,7 +995,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_Offset_Succeeds() {
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, req)
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
-	listed := listRsp.GetGrants()
+	listed := listRsp.GetGrants() //nolint:staticcheck // still needed for testing
 
 	// set the offset pagination
 	offset := 1
@@ -1005,7 +1005,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_Offset_Succeeds() {
 	offsetListRsp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, req)
 	s.Require().NoError(err)
 	s.NotNil(offsetListRsp)
-	offsetListed := offsetListRsp.GetGrants()
+	offsetListed := offsetListRsp.GetGrants() //nolint:staticcheck // still needed for testing
 
 	// length is reduced by the offset amount
 	s.Equal(len(offsetListed), len(listed)-offset)
@@ -1214,7 +1214,7 @@ func (s *KasRegistrySuite) Test_List_Public_Key_Mappings() {
 	s.NotNil(r)
 	s.Len(r.GetPublicKeyMappings(), 1)
 	for _, m := range r.GetPublicKeyMappings() {
-		s.True(slices.ContainsFunc(m.PublicKeys, func(key *kasregistry.ListPublicKeyMappingResponse_PublicKey) bool {
+		s.True(slices.ContainsFunc(m.GetPublicKeys(), func(key *kasregistry.ListPublicKeyMappingResponse_PublicKey) bool {
 			return key.GetKey().GetId() == id
 		}))
 		for _, k := range m.GetPublicKeys() {

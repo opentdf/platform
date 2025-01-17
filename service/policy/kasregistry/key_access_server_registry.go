@@ -211,7 +211,7 @@ func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, req *connect.Req
 
 // Helper function to get curve from algorithm
 func getCurveFromAlg(alg policy.KasPublicKeyAlgEnum) (elliptic.Curve, error) {
-	switch alg {
+	switch alg { // nolint:exhaustive // covers ec cases
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1:
 		return elliptic.P256(), nil
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1:
@@ -234,7 +234,7 @@ func verifyKeyAlg(key string, alg policy.KasPublicKeyAlgEnum) error {
 		return ErrInvalidKey
 	}
 
-	switch alg {
+	switch alg { // nolint:exhaustive // covers all cases
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048,
 		policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096:
 
@@ -244,7 +244,7 @@ func verifyKeyAlg(key string, alg policy.KasPublicKeyAlgEnum) error {
 		}
 
 		expectedSize := 0
-		switch alg {
+		switch alg { // nolint:exhaustive // only covers rsa
 		case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048:
 			expectedSize = 256 // 2048 bits
 		case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096:

@@ -424,7 +424,6 @@ func (c PolicyDBClient) ListPublicKeyMappings(ctx context.Context, r *kasregistr
 
 	mappings := make([]*kasregistry.ListPublicKeyMappingResponse_PublicKeyMapping, len(listRows))
 	for i, mapping := range listRows {
-		fmt.Println(string(mapping))
 		pkm := new(kasregistry.ListPublicKeyMappingResponse_PublicKeyMapping)
 		err := protojson.Unmarshal(mapping, pkm)
 		if err != nil {

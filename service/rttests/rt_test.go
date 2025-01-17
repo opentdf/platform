@@ -123,11 +123,13 @@ func (s *RoundtripSuite) SetupSuite() {
 }
 
 func (s *RoundtripSuite) Tests() {
+	var passNames []string
 	// success tests
 	for i, attributes := range successAttributeSets {
 		n := fmt.Sprintf("success roundtrip %d", i)
 		s.Run(n, func() {
 			filename := fmt.Sprintf("test-success-%d.tdf", i)
+			passNames = append(passNames, filename)
 			plaintext := "Running a roundtrip test!"
 			err := encrypt(s.client, s.TestConfig, plaintext, attributes, filename)
 			s.Require().NoError(err)
@@ -136,11 +138,13 @@ func (s *RoundtripSuite) Tests() {
 		})
 	}
 
+	var failNames []string
 	// failure tests
 	for i, attributes := range failureAttributeSets {
 		n := fmt.Sprintf("failure roundtrip %d", i)
 		s.Run(n, func() {
 			filename := fmt.Sprintf("test-failure-%d.tdf", i)
+			failNames = append(failNames, filename)
 			plaintext := "Running a roundtrip test!"
 			err := encrypt(s.client, s.TestConfig, plaintext, attributes, filename)
 			s.Require().NoError(err)
@@ -148,6 +152,11 @@ func (s *RoundtripSuite) Tests() {
 			s.ErrorContains(err, "PermissionDenied")
 		})
 	}
+
+	// bulk tests
+	s.Run("bulk test", func() {
+		s.Require().NoError(bulk(s.client, passNames, failNames, "Running a roundtrip test!"))
+	})
 }
 
 func (s *RoundtripSuite) CreateTestData() error {
@@ -368,6 +377,56 @@ func decrypt(client *sdk.SDK, tdfFile string, plaintext string) error {
 
 	if buf.String() != plaintext {
 		return errors.New("decrypt result (" + buf.String() + ") does not match expected (" + plaintext + ")")
+	}
+
+	return nil
+}
+
+func bulk(client *sdk.SDK, tdfSuccess []string, tdfFail []string, plaintext string) error {
+	var passTDF []*sdk.BulkTDF
+	for _, fileName := range tdfSuccess {
+		file, err := os.Open(fileName)
+		if err != nil {
+			return err
+		}
+
+		defer file.Close()
+
+		buf := new(strings.Builder)
+		passTDF = append(passTDF, &sdk.BulkTDF{Writer: buf, Reader: file})
+	}
+
+	var failTDF []*sdk.BulkTDF
+	for _, fileName := range tdfFail {
+		file, err := os.Open(fileName)
+		if err != nil {
+			return err
+		}
+
+		defer file.Close()
+
+		buf := new(strings.Builder)
+		failTDF = append(failTDF, &sdk.BulkTDF{Writer: buf, Reader: file})
+	}
+
+	_ = client.BulkDecrypt(context.Background(), sdk.WithTDFs(passTDF...), sdk.WithTDFs(failTDF...), sdk.WithTDFType(sdk.Standard))
+	for _, tdf := range passTDF {
+		builder, ok := tdf.Writer.(*strings.Builder)
+		if !ok {
+			return fmt.Errorf("bad writer")
+		}
+
+		if tdf.Error != nil {
+			return tdf.Error
+		}
+		if builder.String() != plaintext {
+			return fmt.Errorf("bulk did not equal plaintext")
+		}
+	}
+	for _, tdf := range failTDF {
+		if tdf.Error == nil {
+			return fmt.Errorf("no expected err")
+		}
 	}
 
 	return nil

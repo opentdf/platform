@@ -130,6 +130,43 @@
     }
   },
   "definitions": {
+    "kasKeyAccessRewrapResult": {
+      "type": "object",
+      "properties": {
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "keyAccessObjectId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "kasWrappedKey": {
+          "type": "string",
+          "format": "byte"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "kasPolicyRewrapResult": {
+      "type": "object",
+      "properties": {
+        "policyId": {
+          "type": "string"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kasKeyAccessRewrapResult"
+          }
+        }
+      }
+    },
     "kasPublicKeyResponse": {
       "type": "object",
       "properties": {
@@ -165,6 +202,14 @@
         },
         "schemaVersion": {
           "type": "string"
+        },
+        "responses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kasPolicyRewrapResult"
+          },
+          "title": "New Rewrap API changes"
         }
       }
     },

@@ -24,6 +24,10 @@ type BulkDecryptRequest struct {
 // BulkErrors List of Errors that Failed during Bulk Decryption
 type BulkErrors []error
 
+func (b BulkErrors) Unwrap() []error {
+	return b
+}
+
 func (b BulkErrors) Error() string {
 	return fmt.Sprintf("Some TDFs could not be Decrypted: %s", errors.Join(b...).Error())
 }

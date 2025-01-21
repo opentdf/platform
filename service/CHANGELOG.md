@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.38](https://github.com/opentdf/platform/compare/service/v0.4.37...service/v0.4.38) (2025-01-21)
+
+
+### Features
+
+* **core:** adds bulk rewrap to sdk and service ([#1835](https://github.com/opentdf/platform/issues/1835)) ([11698ae](https://github.com/opentdf/platform/commit/11698ae18f66282980a7822dd145e3896c2b605c))
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1864](https://github.com/opentdf/platform/issues/1864)) ([f9d149b](https://github.com/opentdf/platform/commit/f9d149b78ff1425d8f376e05ea93793e319d1354))
+* **core:** Autobump service ([#1867](https://github.com/opentdf/platform/issues/1867)) ([b8f5101](https://github.com/opentdf/platform/commit/b8f5101efa08087c7e1de534b4aa607811f7df93))
+* **core:** reduces GetAttributeValuesByFqns calls in getDecisions ([#1857](https://github.com/opentdf/platform/issues/1857)) ([5379baf](https://github.com/opentdf/platform/commit/5379baf9701d1ae1168e8fc6b51a9c80bc9d2773))
+
 ## [0.4.37](https://github.com/opentdf/platform/compare/service/v0.4.36...service/v0.4.37) (2025-01-09)
 
 

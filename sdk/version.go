@@ -1,6 +1,11 @@
 package sdk
 
 const (
-	Version        = "0.3.25" // SDK version // x-release-please-version
-	TDFSpecVersion = "4.3.0"  // Vesion of TDF Spec currently targeted by the SDK
+	// The latest version of TDF Spec currently targeted by the SDK.
+	// By default, new files will conform to this version of the spec
+	// and, where possible, older versions will still be readable.
+	TDFSpecVersion = "4.3.0"
+
+	// The three-part semantic version number of this SDK
+	Version = "0.3.25" // x-release-please-version
 )

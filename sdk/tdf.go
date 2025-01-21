@@ -23,6 +23,7 @@ import (
 )
 
 const (
+	keyAccessSchemaVersion  = "1.0"
 	maxFileSizeSupported    = 68719476736 // 64gb
 	defaultMimeType         = "application/octet-stream"
 	tdfAsZip                = "zip"
@@ -234,7 +235,8 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			return nil, fmt.Errorf("io.writer.Write failed: %w", err)
 		}
 
-		segmentSig, err := calculateSignature(cipherData, tdfObject.payloadKey[:], tdfConfig.segmentIntegrityAlgorithm)
+		segmentSig, err := calculateSignature(cipherData, tdfObject.payloadKey[:],
+			tdfConfig.segmentIntegrityAlgorithm, false)
 		if err != nil {
 			return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
@@ -252,7 +254,8 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		readPos += readSize
 	}
 
-	rootSignature, err := calculateSignature([]byte(aggregateHash), tdfObject.payloadKey[:], tdfConfig.integrityAlgorithm)
+	rootSignature, err := calculateSignature([]byte(aggregateHash), tdfObject.payloadKey[:],
+		tdfConfig.integrityAlgorithm, false)
 	if err != nil {
 		return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 	}
@@ -299,9 +302,15 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		tmpAssertion.Statement = assertion.Statement
 		tmpAssertion.AppliesToState = assertion.AppliesToState
 
-		hashOfAssertion, err := tmpAssertion.GetHash()
+		hashOfAssertionAsHex, err := tmpAssertion.GetHash()
 		if err != nil {
 			return nil, err
+		}
+
+		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
+		_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding hex string: %w", err)
 		}
 
 		var completeHashBuilder strings.Builder
@@ -320,7 +329,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			assertionSigningKey = assertion.SigningKey
 		}
 
-		if err := tmpAssertion.Sign(string(hashOfAssertion), string(encoded), assertionSigningKey); err != nil {
+		if err := tmpAssertion.Sign(string(hashOfAssertionAsHex), string(encoded), assertionSigningKey); err != nil {
 			return nil, fmt.Errorf("failed to sign assertion: %w", err)
 		}
 
@@ -358,6 +367,8 @@ func (r *Reader) Manifest() Manifest {
 // prepare the manifest for TDF
 func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFConfig) error { //nolint:funlen,gocognit // Better readability keeping it as is
 	manifest := Manifest{}
+
+	manifest.TDFVersion = TDFSpecVersion
 	if len(tdfConfig.splitPlan) == 0 && len(tdfConfig.kasInfoList) == 0 {
 		return fmt.Errorf("%w: no key access template specified or inferred", errInvalidKasInfo)
 	}
@@ -488,6 +499,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 				EncryptedMetadata: encryptedMetadata,
 				SplitID:           splitID,
 				WrappedKey:        string(ocrypto.Base64Encode(wrappedKey)),
+				SchemaVersion:     keyAccessSchemaVersion,
 			}
 
 			manifest.EncryptionInformation.KeyAccessObjs = append(manifest.EncryptionInformation.KeyAccessObjs, keyAccess)
@@ -603,6 +615,8 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 		}
 	}
 
+	isLegacyTDF := r.manifest.TDFVersion == ""
+
 	var totalBytes int64
 	var payloadReadOffset int64
 	for _, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
@@ -621,7 +635,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 			sigAlg = GMAC
 		}
 
-		payloadSig, err := calculateSignature(readBuf, r.payloadKey, sigAlg)
+		payloadSig, err := calculateSignature(readBuf, r.payloadKey, sigAlg, isLegacyTDF)
 		if err != nil {
 			return totalBytes, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
@@ -682,6 +696,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		return 0, ErrTDFPayloadReadFail
 	}
 
+	isLegacyTDF := r.manifest.TDFVersion == ""
 	var decryptedBuf bytes.Buffer
 	var payloadReadOffset int64
 	for index, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
@@ -705,7 +720,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 			sigAlg = GMAC
 		}
 
-		payloadSig, err := calculateSignature(readBuf, r.payloadKey, sigAlg)
+		payloadSig, err := calculateSignature(readBuf, r.payloadKey, sigAlg, isLegacyTDF)
 		if err != nil {
 			return 0, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
@@ -1019,9 +1034,20 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 		}
 
 		// Get the hash of the assertion
-		hashOfAssertion, err := assertion.GetHash()
+		hashOfAssertionAsHex, err := assertion.GetHash()
 		if err != nil {
 			return fmt.Errorf("%w: failed to get hash of assertion: %w", ErrAssertionFailure{ID: assertion.ID}, err)
+		}
+
+		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
+		_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
+		if err != nil {
+			return fmt.Errorf("error decoding hex string: %w", err)
+		}
+
+		isLegacyTDF := r.manifest.TDFVersion == ""
+		if isLegacyTDF {
+			hashOfAssertion = hashOfAssertionAsHex
 		}
 
 		var completeHashBuilder bytes.Buffer
@@ -1030,7 +1056,7 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 
 		base64Hash := ocrypto.Base64Encode(completeHashBuilder.Bytes())
 
-		if string(hashOfAssertion) != assertionHash {
+		if string(hashOfAssertionAsHex) != assertionHash {
 			return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: assertion.ID})
 		}
 
@@ -1092,29 +1118,36 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 }
 
 // calculateSignature calculate signature of data of the given algorithm.
-func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm) (string, error) {
+func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm, isLegacyTDF bool) (string, error) {
 	if alg == HS256 {
 		hmac := ocrypto.CalculateSHA256Hmac(secret, data)
-		return hex.EncodeToString(hmac), nil
+		if isLegacyTDF {
+			return hex.EncodeToString(hmac), nil
+		}
+		return string(hmac), nil
 	}
 	if kGMACPayloadLength > len(data) {
 		return "", fmt.Errorf("fail to create gmac signature")
 	}
 
-	return hex.EncodeToString(data[len(data)-kGMACPayloadLength:]), nil
+	if isLegacyTDF {
+		return hex.EncodeToString(data[len(data)-kGMACPayloadLength:]), nil
+	}
+	return string(data[len(data)-kGMACPayloadLength:]), nil
 }
 
 // validate the root signature
 func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (bool, error) {
 	rootSigAlg := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm
 	rootSigValue := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature
+	isLegacyTDF := manifest.TDFVersion == ""
 
 	sigAlg := HS256
 	if strings.EqualFold(gmacIntegrityAlgorithm, rootSigAlg) {
 		sigAlg = GMAC
 	}
 
-	sig, err := calculateSignature(aggregateHash, secret, sigAlg)
+	sig, err := calculateSignature(aggregateHash, secret, sigAlg, isLegacyTDF)
 	if err != nil {
 		return false, fmt.Errorf("splitkey.getSignature failed:%w", err)
 	}

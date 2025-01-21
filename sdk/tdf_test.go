@@ -940,26 +940,26 @@ func (s *TDFSuite) Test_TDF() {
 		{
 			n:           "small",
 			fileSize:    5,
-			tdfFileSize: 1557,
+			tdfFileSize: 1560,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 		},
 		{
 			n:           "small-with-mime-type",
 			fileSize:    5,
-			tdfFileSize: 1557,
+			tdfFileSize: 1560,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			mimeType:    "text/plain",
 		},
 		{
 			n:           "1-kiB",
 			fileSize:    oneKB,
-			tdfFileSize: 2581,
+			tdfFileSize: 2598,
 			checksum:    "2edc986847e209b4016e141a6dc8716d3207350f416969382d431539bf292e4a",
 		},
 		{
 			n:           "medium",
 			fileSize:    hundredMB,
-			tdfFileSize: 104866410,
+			tdfFileSize: 104866427,
 			checksum:    "cee41e98d0a6ad65cc0ec77a2ba50bf26d64dc9007f7f1c7d7df68b8b71291a6",
 		},
 	} {
@@ -1041,7 +1041,7 @@ func (s *TDFSuite) Test_KeySplits() {
 		{
 			n:           "shared",
 			fileSize:    5,
-			tdfFileSize: 2664,
+			tdfFileSize: 2759,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
 				{KAS: "https://a.kas/", SplitID: "a"},
@@ -1052,7 +1052,7 @@ func (s *TDFSuite) Test_KeySplits() {
 		{
 			n:           "split",
 			fileSize:    5,
-			tdfFileSize: 2664,
+			tdfFileSize: 2759,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
 				{KAS: "https://a.kas/", SplitID: "a"},
@@ -1063,7 +1063,7 @@ func (s *TDFSuite) Test_KeySplits() {
 		{
 			n:           "mixture",
 			fileSize:    5,
-			tdfFileSize: 3211,
+			tdfFileSize: 3351,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
 				{KAS: "https://a.kas/", SplitID: "a"},

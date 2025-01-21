@@ -96,7 +96,7 @@ erDiagram
         jsonb metadata "Additional metadata for the key"
         text public_key "Public key in PEM format"
         timestamp_without_time_zone updated_at "Timestamp when the key was last updated"
-        boolean was_used "Flag to indicate if the key has been used. Triggered when its mapped to a namespace, definition, or value"
+        boolean was_mapped "Flag to indicate if the key has been used. Triggered when its mapped to a namespace, definition, or value"
     }
 
     resource_mapping_groups {

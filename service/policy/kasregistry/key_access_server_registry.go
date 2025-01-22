@@ -192,7 +192,7 @@ func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, req *connect.Req
 	// Verify the key matches the algorithm
 	if err := verifyKeyAlg(req.Msg.GetKey().GetPem(), req.Msg.GetKey().GetAlg()); err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextCreationFailed)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	resp, err := s.dbClient.CreateKey(ctx, req.Msg)

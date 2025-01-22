@@ -1286,6 +1286,87 @@ func (s *KasRegistrySuite) Test_UnsafeDelete_Public_Key() {
 	s.Nil(rr)
 }
 
+func (s *KasRegistrySuite) Test_Assign_and_Unassign_Public_Key() {
+	value := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1")
+	def := s.f.GetAttributeKey("example.net/attr/attr1")
+	ns := s.f.GetNamespaceKey("example.net")
+
+	id := s.f.GetPublicKey("key_1").ID
+
+	// Assign to value
+	err := s.db.PolicyClient.AssignKeyToNamespace(s.ctx, &namespaces.NamespaceKey{NamespaceId: ns.ID, KeyId: id})
+	s.Require().NoError(err)
+
+	err = s.db.PolicyClient.AssignKeyToAttribute(s.ctx, &attributes.AttributeKey{AttributeId: def.ID, KeyId: id})
+	s.Require().NoError(err)
+
+	err = s.db.PolicyClient.AssignKeyToValue(s.ctx, &attributes.ValueKey{ValueId: value.ID, KeyId: id})
+	s.Require().NoError(err)
+
+	// Get Namespace to validate assignment
+	n, err := s.db.PolicyClient.GetNamespace(s.ctx, ns.ID)
+	s.Require().NoError(err)
+	s.NotNil(n)
+	s.True(slices.ContainsFunc(n.GetKeys(), func(key *policy.Key) bool {
+		return key.GetId() == id
+	}))
+
+	// Get Attribute to validate assignment
+	d, err := s.db.PolicyClient.GetAttribute(s.ctx, def.ID)
+	s.Require().NoError(err)
+	s.NotNil(d)
+	s.True(slices.ContainsFunc(d.GetKeys(), func(key *policy.Key) bool {
+		return key.GetId() == id
+	}))
+
+	// Get Value to validate assignment
+	v, err := s.db.PolicyClient.GetAttributeValue(s.ctx, value.ID)
+	s.Require().NoError(err)
+	s.NotNil(v)
+	s.True(slices.ContainsFunc(v.GetKeys(), func(key *policy.Key) bool {
+		return key.GetId() == id
+	}))
+
+	// Unassign from value
+	vk, err := s.db.PolicyClient.RemoveKeyFromValue(s.ctx, &attributes.ValueKey{ValueId: value.ID, KeyId: id})
+	s.Require().NoError(err)
+	s.NotNil(vk)
+
+	// Unassign from attribute
+	dk, err := s.db.PolicyClient.RemoveKeyFromAttribute(s.ctx, &attributes.AttributeKey{AttributeId: def.ID, KeyId: id})
+	s.Require().NoError(err)
+	s.NotNil(dk)
+
+	// Unassign from namespace
+	nk, err := s.db.PolicyClient.RemoveKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{NamespaceId: ns.ID, KeyId: id})
+	s.Require().NoError(err)
+	s.NotNil(nk)
+
+	// Get Namespace to validate unassignment
+	n, err = s.db.PolicyClient.GetNamespace(s.ctx, ns.ID)
+	s.Require().NoError(err)
+	s.NotNil(n)
+	s.False(slices.ContainsFunc(n.GetKeys(), func(key *policy.Key) bool {
+		return key.GetId() == id
+	}))
+
+	// Get Attribute to validate unassignment
+	d, err = s.db.PolicyClient.GetAttribute(s.ctx, def.ID)
+	s.Require().NoError(err)
+	s.NotNil(d)
+	s.False(slices.ContainsFunc(d.GetKeys(), func(key *policy.Key) bool {
+		return key.GetId() == id
+	}))
+
+	// Get Value to validate unassignment
+	v, err = s.db.PolicyClient.GetAttributeValue(s.ctx, value.ID)
+	s.Require().NoError(err)
+	s.NotNil(v)
+	s.False(slices.ContainsFunc(v.GetKeys(), func(key *policy.Key) bool {
+		return key.GetId() == id
+	}))
+}
+
 func TestKasRegistrySuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping db.KasRegistry integration tests")

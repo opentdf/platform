@@ -81,18 +81,38 @@ type tdf3DecryptHandler struct {
 	reader *Reader
 }
 
-func (r *tdf3DecryptHandler) Decrypt(ctx context.Context, results []kaoResult) (uint32, error) {
+// Pipes from reader to writer, optionally cancelling.
+// returns the number of bytes written and any error encountered.
+// returns io.EOF if the context is not cancelled, or the context error if it is.
+func (r *tdf3DecryptHandler) Decrypt(ctx context.Context, results []kaoResult) (int, error) {
 	err := r.reader.buildKey(ctx, results)
 	if err != nil {
 		return 0, err
 	}
-	data, err := io.ReadAll(r.reader)
-	if err != nil {
-		return 0, err
+	buf := make([]byte, 32*1024)
+	var totalBytes int
+	for {
+		select {
+		case <-ctx.Done():
+			return totalBytes, ctx.Err()
+		default:
+			nr, err := r.reader.Read(buf)
+			// io.EOF is expected when the stream ends.
+			if err != nil && !errors.Is(err, io.EOF) {
+				return totalBytes, err
+			}
+			if nr > 0 {
+				nw, err := r.writer.Write(buf[:nr])
+				if err != nil {
+					return 0, err
+				}
+				totalBytes += nw
+			}
+			if errors.Is(err, io.EOF) {
+				return totalBytes, err
+			}
+		}
 	}
-
-	n, err := r.writer.Write(data)
-	return uint32(n), err
 }
 
 func (r *tdf3DecryptHandler) CreateRewrapRequest(ctx context.Context) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error) {

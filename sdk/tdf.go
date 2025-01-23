@@ -564,6 +564,16 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		return nil, fmt.Errorf("tdfReader.Manifest failed: %w", err)
 	}
 
+	if config.schemaValidationIntensity == Lax || config.schemaValidationIntensity == Strict {
+		valid, err := isValidManifest(manifest, Lax)
+		if err != nil {
+			return nil, err
+		}
+		if !valid {
+			return nil, fmt.Errorf("manifest schema validation failed")
+		}
+	}
+
 	manifestObj := &Manifest{}
 	err = json.Unmarshal([]byte(manifest), manifestObj)
 	if err != nil {

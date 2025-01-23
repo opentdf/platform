@@ -1018,9 +1018,9 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_Offset_Succeeds() {
 
 // Public Key Tests
 
-var publicKeyTestUUID string
-
 func (s *KasRegistrySuite) Test_Create_Public_Key() {
+	var publicKeyTestUUID string
+
 	// The initial rsa2048 public key is created in the fixture and should be active
 	kID := s.f.GetPublicKey("key_1").ID
 	r1, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: kID})
@@ -1134,7 +1134,7 @@ func (s *KasRegistrySuite) Test_Create_Public_Key_WithInvalidKasID_Fails() {
 }
 
 func (s *KasRegistrySuite) Test_Update_Public_Key() {
-	kID := publicKeyTestUUID
+	kID := s.f.GetPublicKey("key_2").ID
 	labels := map[string]string{
 		"update": "updated label",
 	}

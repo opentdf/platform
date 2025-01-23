@@ -957,7 +957,7 @@ func (n *NanoTDFDecryptHandler) CreateRewrapRequest(_ context.Context) (map[stri
 	return map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest{kasURL: req}, nil
 }
 
-func (n *NanoTDFDecryptHandler) Decrypt(_ context.Context, result []kaoResult) (uint32, error) {
+func (n *NanoTDFDecryptHandler) Decrypt(_ context.Context, result []kaoResult) (int, error) {
 	var err error
 	if len(result) != 1 {
 		return 0, fmt.Errorf("improper result from kas")
@@ -1013,16 +1013,16 @@ func (n *NanoTDFDecryptHandler) Decrypt(_ context.Context, result []kaoResult) (
 		return 0, err
 	}
 
-	return uint32(writeLen), nil
+	return writeLen, nil
 }
 
 // ReadNanoTDF - read the nano tdf and return the decrypted data from it
-func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error) {
+func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (int, error) {
 	return s.ReadNanoTDFContext(context.Background(), writer, reader)
 }
 
 // ReadNanoTDFContext - allows cancelling the reader
-func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io.ReadSeeker) (uint32, error) {
+func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io.ReadSeeker) (int, error) {
 	handler := createNanoTDFDecryptHandler(reader, writer)
 
 	symmetricKey, err := s.getNanoRewrapKey(ctx, handler)

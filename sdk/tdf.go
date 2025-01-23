@@ -81,7 +81,7 @@ type tdf3DecryptHandler struct {
 	reader *Reader
 }
 
-func (r *tdf3DecryptHandler) Decrypt(ctx context.Context, results []kaoResult) (uint32, error) {
+func (r *tdf3DecryptHandler) Decrypt(ctx context.Context, results []kaoResult) (int, error) {
 	err := r.reader.buildKey(ctx, results)
 	if err != nil {
 		return 0, err
@@ -92,7 +92,7 @@ func (r *tdf3DecryptHandler) Decrypt(ctx context.Context, results []kaoResult) (
 	}
 
 	n, err := r.writer.Write(data)
-	return uint32(n), err
+	return n, err
 }
 
 func (r *tdf3DecryptHandler) CreateRewrapRequest(ctx context.Context) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error) {

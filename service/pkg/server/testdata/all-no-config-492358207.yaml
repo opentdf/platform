@@ -1,0 +1,72 @@
+logger:
+    level: debug
+    output: stdout
+    type: text
+mode: all
+server:
+    auth:
+        audience: http://localhost:8080
+        enabled: true
+        enforceDPoP: false
+        issuer: http://127.0.0.1:59408
+        policy:
+            csv: null
+            extension: |
+                g, opentdf-admin, role:admin
+                g, opentdf-standard, role:standard
+            groups_claim: null
+            model: null
+            username_claim: null
+        public_client_id: opentdf-public
+    cors:
+        allowcredentials: true
+        allowedheaders:
+            - ACCEPT
+            - Authorization
+            - Content-Type
+            - X-CSRF-Token
+            - X-Request-ID
+        allowedmethods:
+            - GET
+            - POST
+            - PATCH
+            - PUT
+            - DELETE
+            - OPTIONS
+        allowedorigins:
+            - '*'
+        enabled: false
+        exposedheaders:
+            - Link
+        maxage: 3600
+    grpc:
+        reflectionEnabled: true
+    port: 8080
+    tls:
+        cert: ./keys/platform.crt
+        enabled: false
+        key: ./keys/platform-key.pem
+services:
+    entityresolution:
+        clientid: tdf-entity-resolution
+        clientsecret: secret
+        inferid:
+            from:
+                email: true
+                username: true
+        legacykeycloak: true
+        log_level: info
+        realm: opentdf
+        url: http://localhost:8888/auth
+    kas:
+        keyring:
+            - alg: ec:secp256r1
+              kid: e1
+            - alg: ec:secp256r1
+              kid: e1
+              legacy: true
+            - alg: rsa:2048
+              kid: r1
+            - alg: rsa:2048
+              kid: r1
+              legacy: true

@@ -1101,12 +1101,17 @@ func (s *KasRegistrySuite) Test_Create_Pulblic_Key_Unique_Constraint() {
 		KasId: kasID,
 		Key: &policy.KasPublicKey{
 			Pem: "public",
-			Kid: "key-id",
+			Kid: "key-unique",
 			Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048,
 		},
 	}
 
 	r, err := s.db.PolicyClient.CreatePublicKey(s.ctx, kasRegistry)
+	s.Require().NoError(err)
+	s.NotNil(r)
+
+	// Try to create the same key again
+	r, err = s.db.PolicyClient.CreatePublicKey(s.ctx, kasRegistry)
 	s.Require().Error(err)
 	s.Nil(r)
 	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)

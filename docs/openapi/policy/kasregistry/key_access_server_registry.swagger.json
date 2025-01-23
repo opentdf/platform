@@ -345,7 +345,7 @@
       "default": "METADATA_UPDATE_ENUM_UNSPECIFIED",
       "title": "- METADATA_UPDATE_ENUM_UNSPECIFIED: unspecified update type\n - METADATA_UPDATE_ENUM_EXTEND: only update the fields that are provided\n - METADATA_UPDATE_ENUM_REPLACE: replace the entire metadata with the provided metadata"
     },
-    "kasregistryActivateKeyResponse": {
+    "kasregistryActivatePublicKeyResponse": {
       "type": "object",
       "properties": {
         "key": {
@@ -382,7 +382,7 @@
         }
       }
     },
-    "kasregistryCreateKeyResponse": {
+    "kasregistryCreatePublicKeyResponse": {
       "type": "object",
       "properties": {
         "key": {
@@ -390,7 +390,7 @@
         }
       }
     },
-    "kasregistryDeactivateKeyResponse": {
+    "kasregistryDeactivatePublicKeyResponse": {
       "type": "object",
       "properties": {
         "key": {
@@ -414,7 +414,7 @@
         }
       }
     },
-    "kasregistryGetKeyResponse": {
+    "kasregistryGetPublicKeyResponse": {
       "type": "object",
       "properties": {
         "key": {
@@ -495,21 +495,6 @@
         }
       }
     },
-    "kasregistryListKeysResponse": {
-      "type": "object",
-      "properties": {
-        "keys": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/policyKey"
-          }
-        },
-        "pagination": {
-          "$ref": "#/definitions/policyPageResponse"
-        }
-      }
-    },
     "kasregistryListPublicKeyMappingResponse": {
       "type": "object",
       "properties": {
@@ -551,6 +536,21 @@
         }
       }
     },
+    "kasregistryListPublicKeysResponse": {
+      "type": "object",
+      "properties": {
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKey"
+          }
+        },
+        "pagination": {
+          "$ref": "#/definitions/policyPageResponse"
+        }
+      }
+    },
     "kasregistryUpdateKeyAccessServerResponse": {
       "type": "object",
       "properties": {
@@ -559,7 +559,7 @@
         }
       }
     },
-    "kasregistryUpdateKeyResponse": {
+    "kasregistryUpdatePublicKeyResponse": {
       "type": "object",
       "properties": {
         "key": {

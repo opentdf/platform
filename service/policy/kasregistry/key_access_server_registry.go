@@ -183,7 +183,7 @@ func (s KeyAccessServerRegistry) ListKeyAccessServerGrants(ctx context.Context,
 	return connect.NewResponse(rsp), nil
 }
 
-func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, req *connect.Request[kasr.CreateKeyRequest]) (*connect.Response[kasr.CreateKeyResponse], error) {
+func (s KeyAccessServerRegistry) CreatePublicKey(ctx context.Context, req *connect.Request[kasr.CreatePublicKeyRequest]) (*connect.Response[kasr.CreatePublicKeyResponse], error) {
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypePublicKey,
@@ -195,7 +195,7 @@ func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, req *connect.Req
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	resp, err := s.dbClient.CreateKey(ctx, req.Msg)
+	resp, err := s.dbClient.CreatePublicKey(ctx, req.Msg)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		s.logger.ErrorContext(ctx, "failed to create key", slog.Any("key", err.Error()))
@@ -277,7 +277,7 @@ func verifyKeyAlg(key string, alg policy.KasPublicKeyAlgEnum) error {
 	return nil
 }
 
-func (s KeyAccessServerRegistry) GetKey(ctx context.Context, req *connect.Request[kasr.GetKeyRequest]) (*connect.Response[kasr.GetKeyResponse], error) {
+func (s KeyAccessServerRegistry) GetPublicKey(ctx context.Context, req *connect.Request[kasr.GetPublicKeyRequest]) (*connect.Response[kasr.GetPublicKeyResponse], error) {
 	resp, err := s.dbClient.GetPublicKey(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed)
@@ -286,8 +286,8 @@ func (s KeyAccessServerRegistry) GetKey(ctx context.Context, req *connect.Reques
 	return connect.NewResponse(resp), nil
 }
 
-func (s KeyAccessServerRegistry) ListKeys(ctx context.Context, req *connect.Request[kasr.ListKeysRequest]) (*connect.Response[kasr.ListKeysResponse], error) {
-	resp, err := s.dbClient.ListKeys(ctx, req.Msg)
+func (s KeyAccessServerRegistry) ListPublicKeys(ctx context.Context, req *connect.Request[kasr.ListPublicKeysRequest]) (*connect.Response[kasr.ListPublicKeysResponse], error) {
+	resp, err := s.dbClient.ListPublicKeys(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
@@ -302,14 +302,14 @@ func (s KeyAccessServerRegistry) ListPublicKeyMapping(ctx context.Context, req *
 	return connect.NewResponse(resp), nil
 }
 
-func (s KeyAccessServerRegistry) UpdateKey(ctx context.Context, req *connect.Request[kasr.UpdateKeyRequest]) (*connect.Response[kasr.UpdateKeyResponse], error) {
+func (s KeyAccessServerRegistry) UpdatePublicKey(ctx context.Context, req *connect.Request[kasr.UpdatePublicKeyRequest]) (*connect.Response[kasr.UpdatePublicKeyResponse], error) {
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeUpdate,
 		ObjectType: audit.ObjectTypePublicKey,
 		ObjectID:   req.Msg.GetId(),
 	}
 
-	original, err := s.dbClient.GetPublicKey(ctx, &kasr.GetKeyRequest{Id: req.Msg.GetId()})
+	original, err := s.dbClient.GetPublicKey(ctx, &kasr.GetPublicKeyRequest{Id: req.Msg.GetId()})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed)
@@ -328,14 +328,14 @@ func (s KeyAccessServerRegistry) UpdateKey(ctx context.Context, req *connect.Req
 	return connect.NewResponse(resp), nil
 }
 
-func (s KeyAccessServerRegistry) DeactivateKey(ctx context.Context, req *connect.Request[kasr.DeactivateKeyRequest]) (*connect.Response[kasr.DeactivateKeyResponse], error) {
+func (s KeyAccessServerRegistry) DeactivatePublicKey(ctx context.Context, req *connect.Request[kasr.DeactivatePublicKeyRequest]) (*connect.Response[kasr.DeactivatePublicKeyResponse], error) {
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeUpdate,
 		ObjectType: audit.ObjectTypePublicKey,
 		ObjectID:   req.Msg.GetId(),
 	}
 
-	resp, err := s.dbClient.DeactivateKey(ctx, req.Msg)
+	resp, err := s.dbClient.DeactivatePublicKey(ctx, req.Msg)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed)
@@ -344,14 +344,14 @@ func (s KeyAccessServerRegistry) DeactivateKey(ctx context.Context, req *connect
 	return connect.NewResponse(resp), nil
 }
 
-func (s KeyAccessServerRegistry) ActivateKey(ctx context.Context, req *connect.Request[kasr.ActivateKeyRequest]) (*connect.Response[kasr.ActivateKeyResponse], error) {
+func (s KeyAccessServerRegistry) ActivatePublicKey(ctx context.Context, req *connect.Request[kasr.ActivatePublicKeyRequest]) (*connect.Response[kasr.ActivatePublicKeyResponse], error) {
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeUpdate,
 		ObjectType: audit.ObjectTypePublicKey,
 		ObjectID:   req.Msg.GetId(),
 	}
 
-	resp, err := s.dbClient.ActivateKey(ctx, req.Msg)
+	resp, err := s.dbClient.ActivatePublicKey(ctx, req.Msg)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed)

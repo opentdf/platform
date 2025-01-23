@@ -25,13 +25,13 @@ const (
 	KeyAccessServerRegistryService_UpdateKeyAccessServer_FullMethodName     = "/policy.kasregistry.KeyAccessServerRegistryService/UpdateKeyAccessServer"
 	KeyAccessServerRegistryService_DeleteKeyAccessServer_FullMethodName     = "/policy.kasregistry.KeyAccessServerRegistryService/DeleteKeyAccessServer"
 	KeyAccessServerRegistryService_ListKeyAccessServerGrants_FullMethodName = "/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServerGrants"
-	KeyAccessServerRegistryService_CreateKey_FullMethodName                 = "/policy.kasregistry.KeyAccessServerRegistryService/CreateKey"
-	KeyAccessServerRegistryService_GetKey_FullMethodName                    = "/policy.kasregistry.KeyAccessServerRegistryService/GetKey"
-	KeyAccessServerRegistryService_ListKeys_FullMethodName                  = "/policy.kasregistry.KeyAccessServerRegistryService/ListKeys"
+	KeyAccessServerRegistryService_CreatePublicKey_FullMethodName           = "/policy.kasregistry.KeyAccessServerRegistryService/CreatePublicKey"
+	KeyAccessServerRegistryService_GetPublicKey_FullMethodName              = "/policy.kasregistry.KeyAccessServerRegistryService/GetPublicKey"
+	KeyAccessServerRegistryService_ListPublicKeys_FullMethodName            = "/policy.kasregistry.KeyAccessServerRegistryService/ListPublicKeys"
 	KeyAccessServerRegistryService_ListPublicKeyMapping_FullMethodName      = "/policy.kasregistry.KeyAccessServerRegistryService/ListPublicKeyMapping"
-	KeyAccessServerRegistryService_UpdateKey_FullMethodName                 = "/policy.kasregistry.KeyAccessServerRegistryService/UpdateKey"
-	KeyAccessServerRegistryService_DeactivateKey_FullMethodName             = "/policy.kasregistry.KeyAccessServerRegistryService/DeactivateKey"
-	KeyAccessServerRegistryService_ActivateKey_FullMethodName               = "/policy.kasregistry.KeyAccessServerRegistryService/ActivateKey"
+	KeyAccessServerRegistryService_UpdatePublicKey_FullMethodName           = "/policy.kasregistry.KeyAccessServerRegistryService/UpdatePublicKey"
+	KeyAccessServerRegistryService_DeactivatePublicKey_FullMethodName       = "/policy.kasregistry.KeyAccessServerRegistryService/DeactivatePublicKey"
+	KeyAccessServerRegistryService_ActivatePublicKey_FullMethodName         = "/policy.kasregistry.KeyAccessServerRegistryService/ActivatePublicKey"
 )
 
 // KeyAccessServerRegistryServiceClient is the client API for KeyAccessServerRegistryService service.
@@ -45,13 +45,13 @@ type KeyAccessServerRegistryServiceClient interface {
 	DeleteKeyAccessServer(ctx context.Context, in *DeleteKeyAccessServerRequest, opts ...grpc.CallOption) (*DeleteKeyAccessServerResponse, error)
 	// Deprecated
 	ListKeyAccessServerGrants(ctx context.Context, in *ListKeyAccessServerGrantsRequest, opts ...grpc.CallOption) (*ListKeyAccessServerGrantsResponse, error)
-	CreateKey(ctx context.Context, in *CreateKeyRequest, opts ...grpc.CallOption) (*CreateKeyResponse, error)
-	GetKey(ctx context.Context, in *GetKeyRequest, opts ...grpc.CallOption) (*GetKeyResponse, error)
-	ListKeys(ctx context.Context, in *ListKeysRequest, opts ...grpc.CallOption) (*ListKeysResponse, error)
+	CreatePublicKey(ctx context.Context, in *CreatePublicKeyRequest, opts ...grpc.CallOption) (*CreatePublicKeyResponse, error)
+	GetPublicKey(ctx context.Context, in *GetPublicKeyRequest, opts ...grpc.CallOption) (*GetPublicKeyResponse, error)
+	ListPublicKeys(ctx context.Context, in *ListPublicKeysRequest, opts ...grpc.CallOption) (*ListPublicKeysResponse, error)
 	ListPublicKeyMapping(ctx context.Context, in *ListPublicKeyMappingRequest, opts ...grpc.CallOption) (*ListPublicKeyMappingResponse, error)
-	UpdateKey(ctx context.Context, in *UpdateKeyRequest, opts ...grpc.CallOption) (*UpdateKeyResponse, error)
-	DeactivateKey(ctx context.Context, in *DeactivateKeyRequest, opts ...grpc.CallOption) (*DeactivateKeyResponse, error)
-	ActivateKey(ctx context.Context, in *ActivateKeyRequest, opts ...grpc.CallOption) (*ActivateKeyResponse, error)
+	UpdatePublicKey(ctx context.Context, in *UpdatePublicKeyRequest, opts ...grpc.CallOption) (*UpdatePublicKeyResponse, error)
+	DeactivatePublicKey(ctx context.Context, in *DeactivatePublicKeyRequest, opts ...grpc.CallOption) (*DeactivatePublicKeyResponse, error)
+	ActivatePublicKey(ctx context.Context, in *ActivatePublicKeyRequest, opts ...grpc.CallOption) (*ActivatePublicKeyResponse, error)
 }
 
 type keyAccessServerRegistryServiceClient struct {
@@ -116,27 +116,27 @@ func (c *keyAccessServerRegistryServiceClient) ListKeyAccessServerGrants(ctx con
 	return out, nil
 }
 
-func (c *keyAccessServerRegistryServiceClient) CreateKey(ctx context.Context, in *CreateKeyRequest, opts ...grpc.CallOption) (*CreateKeyResponse, error) {
-	out := new(CreateKeyResponse)
-	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_CreateKey_FullMethodName, in, out, opts...)
+func (c *keyAccessServerRegistryServiceClient) CreatePublicKey(ctx context.Context, in *CreatePublicKeyRequest, opts ...grpc.CallOption) (*CreatePublicKeyResponse, error) {
+	out := new(CreatePublicKeyResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_CreatePublicKey_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *keyAccessServerRegistryServiceClient) GetKey(ctx context.Context, in *GetKeyRequest, opts ...grpc.CallOption) (*GetKeyResponse, error) {
-	out := new(GetKeyResponse)
-	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_GetKey_FullMethodName, in, out, opts...)
+func (c *keyAccessServerRegistryServiceClient) GetPublicKey(ctx context.Context, in *GetPublicKeyRequest, opts ...grpc.CallOption) (*GetPublicKeyResponse, error) {
+	out := new(GetPublicKeyResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_GetPublicKey_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *keyAccessServerRegistryServiceClient) ListKeys(ctx context.Context, in *ListKeysRequest, opts ...grpc.CallOption) (*ListKeysResponse, error) {
-	out := new(ListKeysResponse)
-	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_ListKeys_FullMethodName, in, out, opts...)
+func (c *keyAccessServerRegistryServiceClient) ListPublicKeys(ctx context.Context, in *ListPublicKeysRequest, opts ...grpc.CallOption) (*ListPublicKeysResponse, error) {
+	out := new(ListPublicKeysResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_ListPublicKeys_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -152,27 +152,27 @@ func (c *keyAccessServerRegistryServiceClient) ListPublicKeyMapping(ctx context.
 	return out, nil
 }
 
-func (c *keyAccessServerRegistryServiceClient) UpdateKey(ctx context.Context, in *UpdateKeyRequest, opts ...grpc.CallOption) (*UpdateKeyResponse, error) {
-	out := new(UpdateKeyResponse)
-	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_UpdateKey_FullMethodName, in, out, opts...)
+func (c *keyAccessServerRegistryServiceClient) UpdatePublicKey(ctx context.Context, in *UpdatePublicKeyRequest, opts ...grpc.CallOption) (*UpdatePublicKeyResponse, error) {
+	out := new(UpdatePublicKeyResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_UpdatePublicKey_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *keyAccessServerRegistryServiceClient) DeactivateKey(ctx context.Context, in *DeactivateKeyRequest, opts ...grpc.CallOption) (*DeactivateKeyResponse, error) {
-	out := new(DeactivateKeyResponse)
-	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_DeactivateKey_FullMethodName, in, out, opts...)
+func (c *keyAccessServerRegistryServiceClient) DeactivatePublicKey(ctx context.Context, in *DeactivatePublicKeyRequest, opts ...grpc.CallOption) (*DeactivatePublicKeyResponse, error) {
+	out := new(DeactivatePublicKeyResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_DeactivatePublicKey_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *keyAccessServerRegistryServiceClient) ActivateKey(ctx context.Context, in *ActivateKeyRequest, opts ...grpc.CallOption) (*ActivateKeyResponse, error) {
-	out := new(ActivateKeyResponse)
-	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_ActivateKey_FullMethodName, in, out, opts...)
+func (c *keyAccessServerRegistryServiceClient) ActivatePublicKey(ctx context.Context, in *ActivatePublicKeyRequest, opts ...grpc.CallOption) (*ActivatePublicKeyResponse, error) {
+	out := new(ActivatePublicKeyResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_ActivatePublicKey_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -190,13 +190,13 @@ type KeyAccessServerRegistryServiceServer interface {
 	DeleteKeyAccessServer(context.Context, *DeleteKeyAccessServerRequest) (*DeleteKeyAccessServerResponse, error)
 	// Deprecated
 	ListKeyAccessServerGrants(context.Context, *ListKeyAccessServerGrantsRequest) (*ListKeyAccessServerGrantsResponse, error)
-	CreateKey(context.Context, *CreateKeyRequest) (*CreateKeyResponse, error)
-	GetKey(context.Context, *GetKeyRequest) (*GetKeyResponse, error)
-	ListKeys(context.Context, *ListKeysRequest) (*ListKeysResponse, error)
+	CreatePublicKey(context.Context, *CreatePublicKeyRequest) (*CreatePublicKeyResponse, error)
+	GetPublicKey(context.Context, *GetPublicKeyRequest) (*GetPublicKeyResponse, error)
+	ListPublicKeys(context.Context, *ListPublicKeysRequest) (*ListPublicKeysResponse, error)
 	ListPublicKeyMapping(context.Context, *ListPublicKeyMappingRequest) (*ListPublicKeyMappingResponse, error)
-	UpdateKey(context.Context, *UpdateKeyRequest) (*UpdateKeyResponse, error)
-	DeactivateKey(context.Context, *DeactivateKeyRequest) (*DeactivateKeyResponse, error)
-	ActivateKey(context.Context, *ActivateKeyRequest) (*ActivateKeyResponse, error)
+	UpdatePublicKey(context.Context, *UpdatePublicKeyRequest) (*UpdatePublicKeyResponse, error)
+	DeactivatePublicKey(context.Context, *DeactivatePublicKeyRequest) (*DeactivatePublicKeyResponse, error)
+	ActivatePublicKey(context.Context, *ActivatePublicKeyRequest) (*ActivatePublicKeyResponse, error)
 	mustEmbedUnimplementedKeyAccessServerRegistryServiceServer()
 }
 
@@ -222,26 +222,26 @@ func (UnimplementedKeyAccessServerRegistryServiceServer) DeleteKeyAccessServer(c
 func (UnimplementedKeyAccessServerRegistryServiceServer) ListKeyAccessServerGrants(context.Context, *ListKeyAccessServerGrantsRequest) (*ListKeyAccessServerGrantsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListKeyAccessServerGrants not implemented")
 }
-func (UnimplementedKeyAccessServerRegistryServiceServer) CreateKey(context.Context, *CreateKeyRequest) (*CreateKeyResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateKey not implemented")
+func (UnimplementedKeyAccessServerRegistryServiceServer) CreatePublicKey(context.Context, *CreatePublicKeyRequest) (*CreatePublicKeyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreatePublicKey not implemented")
 }
-func (UnimplementedKeyAccessServerRegistryServiceServer) GetKey(context.Context, *GetKeyRequest) (*GetKeyResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetKey not implemented")
+func (UnimplementedKeyAccessServerRegistryServiceServer) GetPublicKey(context.Context, *GetPublicKeyRequest) (*GetPublicKeyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPublicKey not implemented")
 }
-func (UnimplementedKeyAccessServerRegistryServiceServer) ListKeys(context.Context, *ListKeysRequest) (*ListKeysResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListKeys not implemented")
+func (UnimplementedKeyAccessServerRegistryServiceServer) ListPublicKeys(context.Context, *ListPublicKeysRequest) (*ListPublicKeysResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListPublicKeys not implemented")
 }
 func (UnimplementedKeyAccessServerRegistryServiceServer) ListPublicKeyMapping(context.Context, *ListPublicKeyMappingRequest) (*ListPublicKeyMappingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListPublicKeyMapping not implemented")
 }
-func (UnimplementedKeyAccessServerRegistryServiceServer) UpdateKey(context.Context, *UpdateKeyRequest) (*UpdateKeyResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateKey not implemented")
+func (UnimplementedKeyAccessServerRegistryServiceServer) UpdatePublicKey(context.Context, *UpdatePublicKeyRequest) (*UpdatePublicKeyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdatePublicKey not implemented")
 }
-func (UnimplementedKeyAccessServerRegistryServiceServer) DeactivateKey(context.Context, *DeactivateKeyRequest) (*DeactivateKeyResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeactivateKey not implemented")
+func (UnimplementedKeyAccessServerRegistryServiceServer) DeactivatePublicKey(context.Context, *DeactivatePublicKeyRequest) (*DeactivatePublicKeyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeactivatePublicKey not implemented")
 }
-func (UnimplementedKeyAccessServerRegistryServiceServer) ActivateKey(context.Context, *ActivateKeyRequest) (*ActivateKeyResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ActivateKey not implemented")
+func (UnimplementedKeyAccessServerRegistryServiceServer) ActivatePublicKey(context.Context, *ActivatePublicKeyRequest) (*ActivatePublicKeyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ActivatePublicKey not implemented")
 }
 func (UnimplementedKeyAccessServerRegistryServiceServer) mustEmbedUnimplementedKeyAccessServerRegistryServiceServer() {
 }
@@ -365,56 +365,56 @@ func _KeyAccessServerRegistryService_ListKeyAccessServerGrants_Handler(srv inter
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyAccessServerRegistryService_CreateKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateKeyRequest)
+func _KeyAccessServerRegistryService_CreatePublicKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreatePublicKeyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyAccessServerRegistryServiceServer).CreateKey(ctx, in)
+		return srv.(KeyAccessServerRegistryServiceServer).CreatePublicKey(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: KeyAccessServerRegistryService_CreateKey_FullMethodName,
+		FullMethod: KeyAccessServerRegistryService_CreatePublicKey_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyAccessServerRegistryServiceServer).CreateKey(ctx, req.(*CreateKeyRequest))
+		return srv.(KeyAccessServerRegistryServiceServer).CreatePublicKey(ctx, req.(*CreatePublicKeyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyAccessServerRegistryService_GetKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetKeyRequest)
+func _KeyAccessServerRegistryService_GetPublicKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPublicKeyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyAccessServerRegistryServiceServer).GetKey(ctx, in)
+		return srv.(KeyAccessServerRegistryServiceServer).GetPublicKey(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: KeyAccessServerRegistryService_GetKey_FullMethodName,
+		FullMethod: KeyAccessServerRegistryService_GetPublicKey_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyAccessServerRegistryServiceServer).GetKey(ctx, req.(*GetKeyRequest))
+		return srv.(KeyAccessServerRegistryServiceServer).GetPublicKey(ctx, req.(*GetPublicKeyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyAccessServerRegistryService_ListKeys_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListKeysRequest)
+func _KeyAccessServerRegistryService_ListPublicKeys_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPublicKeysRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyAccessServerRegistryServiceServer).ListKeys(ctx, in)
+		return srv.(KeyAccessServerRegistryServiceServer).ListPublicKeys(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: KeyAccessServerRegistryService_ListKeys_FullMethodName,
+		FullMethod: KeyAccessServerRegistryService_ListPublicKeys_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyAccessServerRegistryServiceServer).ListKeys(ctx, req.(*ListKeysRequest))
+		return srv.(KeyAccessServerRegistryServiceServer).ListPublicKeys(ctx, req.(*ListPublicKeysRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -437,56 +437,56 @@ func _KeyAccessServerRegistryService_ListPublicKeyMapping_Handler(srv interface{
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyAccessServerRegistryService_UpdateKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateKeyRequest)
+func _KeyAccessServerRegistryService_UpdatePublicKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdatePublicKeyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyAccessServerRegistryServiceServer).UpdateKey(ctx, in)
+		return srv.(KeyAccessServerRegistryServiceServer).UpdatePublicKey(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: KeyAccessServerRegistryService_UpdateKey_FullMethodName,
+		FullMethod: KeyAccessServerRegistryService_UpdatePublicKey_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyAccessServerRegistryServiceServer).UpdateKey(ctx, req.(*UpdateKeyRequest))
+		return srv.(KeyAccessServerRegistryServiceServer).UpdatePublicKey(ctx, req.(*UpdatePublicKeyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyAccessServerRegistryService_DeactivateKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeactivateKeyRequest)
+func _KeyAccessServerRegistryService_DeactivatePublicKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeactivatePublicKeyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyAccessServerRegistryServiceServer).DeactivateKey(ctx, in)
+		return srv.(KeyAccessServerRegistryServiceServer).DeactivatePublicKey(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: KeyAccessServerRegistryService_DeactivateKey_FullMethodName,
+		FullMethod: KeyAccessServerRegistryService_DeactivatePublicKey_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyAccessServerRegistryServiceServer).DeactivateKey(ctx, req.(*DeactivateKeyRequest))
+		return srv.(KeyAccessServerRegistryServiceServer).DeactivatePublicKey(ctx, req.(*DeactivatePublicKeyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyAccessServerRegistryService_ActivateKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ActivateKeyRequest)
+func _KeyAccessServerRegistryService_ActivatePublicKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ActivatePublicKeyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyAccessServerRegistryServiceServer).ActivateKey(ctx, in)
+		return srv.(KeyAccessServerRegistryServiceServer).ActivatePublicKey(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: KeyAccessServerRegistryService_ActivateKey_FullMethodName,
+		FullMethod: KeyAccessServerRegistryService_ActivatePublicKey_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyAccessServerRegistryServiceServer).ActivateKey(ctx, req.(*ActivateKeyRequest))
+		return srv.(KeyAccessServerRegistryServiceServer).ActivatePublicKey(ctx, req.(*ActivatePublicKeyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -523,32 +523,32 @@ var KeyAccessServerRegistryService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _KeyAccessServerRegistryService_ListKeyAccessServerGrants_Handler,
 		},
 		{
-			MethodName: "CreateKey",
-			Handler:    _KeyAccessServerRegistryService_CreateKey_Handler,
+			MethodName: "CreatePublicKey",
+			Handler:    _KeyAccessServerRegistryService_CreatePublicKey_Handler,
 		},
 		{
-			MethodName: "GetKey",
-			Handler:    _KeyAccessServerRegistryService_GetKey_Handler,
+			MethodName: "GetPublicKey",
+			Handler:    _KeyAccessServerRegistryService_GetPublicKey_Handler,
 		},
 		{
-			MethodName: "ListKeys",
-			Handler:    _KeyAccessServerRegistryService_ListKeys_Handler,
+			MethodName: "ListPublicKeys",
+			Handler:    _KeyAccessServerRegistryService_ListPublicKeys_Handler,
 		},
 		{
 			MethodName: "ListPublicKeyMapping",
 			Handler:    _KeyAccessServerRegistryService_ListPublicKeyMapping_Handler,
 		},
 		{
-			MethodName: "UpdateKey",
-			Handler:    _KeyAccessServerRegistryService_UpdateKey_Handler,
+			MethodName: "UpdatePublicKey",
+			Handler:    _KeyAccessServerRegistryService_UpdatePublicKey_Handler,
 		},
 		{
-			MethodName: "DeactivateKey",
-			Handler:    _KeyAccessServerRegistryService_DeactivateKey_Handler,
+			MethodName: "DeactivatePublicKey",
+			Handler:    _KeyAccessServerRegistryService_DeactivatePublicKey_Handler,
 		},
 		{
-			MethodName: "ActivateKey",
-			Handler:    _KeyAccessServerRegistryService_ActivateKey_Handler,
+			MethodName: "ActivatePublicKey",
+			Handler:    _KeyAccessServerRegistryService_ActivatePublicKey_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

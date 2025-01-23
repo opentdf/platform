@@ -313,8 +313,8 @@ func (c PolicyDBClient) RemoveKeyAccessServerFromValue(ctx context.Context, k *a
 	return k, nil
 }
 
-func (c PolicyDBClient) AssignKeyToValue(ctx context.Context, k *attributes.ValueKey) error {
-	_, err := c.Queries.AssignPublicKeyToAttributeValue(ctx, AssignPublicKeyToAttributeValueParams{
+func (c PolicyDBClient) AssignPublicKeyToValue(ctx context.Context, k *attributes.ValueKey) error {
+	_, err := c.Queries.assignPublicKeyToAttributeValue(ctx, assignPublicKeyToAttributeValueParams{
 		ValueID: k.GetValueId(),
 		KeyID:   k.GetKeyId(),
 	})
@@ -325,8 +325,8 @@ func (c PolicyDBClient) AssignKeyToValue(ctx context.Context, k *attributes.Valu
 	return nil
 }
 
-func (c PolicyDBClient) RemoveKeyFromValue(ctx context.Context, k *attributes.ValueKey) (*attributes.ValueKey, error) {
-	_, err := c.Queries.RemovePublicKeyFromAttributeValue(ctx, RemovePublicKeyFromAttributeValueParams{
+func (c PolicyDBClient) RemovePublicKeyFromValue(ctx context.Context, k *attributes.ValueKey) (*attributes.ValueKey, error) {
+	_, err := c.Queries.removePublicKeyFromAttributeValue(ctx, removePublicKeyFromAttributeValueParams{
 		ValueID: k.GetValueId(),
 		KeyID:   k.GetKeyId(),
 	})

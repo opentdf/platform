@@ -121,7 +121,7 @@ message KeyAccessServerGrants {
   KEY MANAGEMENT
 */
 
-message CreateKeyRequest {
+message CreatePublicKeyRequest {
   // Required
   string kas_id = 1 [ (buf.validate.field).string.uuid = true ];
 
@@ -132,13 +132,13 @@ message CreateKeyRequest {
   common.MetadataMutable metadata = 100;
 }
 
-message CreateKeyResponse { Key key = 1; }
+message CreatePublicKeyResponse { Key key = 1; }
 
-message GetKeyRequest { string id = 1; }
+message GetPublicKeyRequest { string id = 1; }
 
-message GetKeyResponse { Key key = 1; }
+message GetPublicKeyResponse { Key key = 1; }
 
-message ListKeysRequest {
+message ListPublicKeysRequest {
   // Optional
   string kas_id = 1;
   // Optional
@@ -149,7 +149,7 @@ message ListKeysRequest {
   policy.PageRequest pagination = 10;
 }
 
-message ListKeysResponse { 
+message ListPublicKeysResponse { 
   repeated Key keys = 1; 
 
   policy.PageResponse pagination = 10;
@@ -188,7 +188,7 @@ message ListPublicKeyMappingResponse {
   repeated PublicKeyMapping public_key_mappings = 1;
 }
 
-message UpdateKeyRequest {
+message UpdatePublicKeyRequest {
   // Required
   string id = 1;
 
@@ -198,25 +198,25 @@ message UpdateKeyRequest {
   common.MetadataUpdateEnum metadata_update_behavior = 101;
 }
 
-message UpdateKeyResponse { Key key = 1;}
+message UpdatePublicKeyResponse { Key key = 1;}
 
-message DeactivateKeyRequest { 
+message DeactivatePublicKeyRequest { 
   string id = 1 [ 
     (buf.validate.field).string.uuid = true, 
     (buf.validate.field).required = true
   ];
 }
 
-message DeactivateKeyResponse { Key key = 1; }
+message DeactivatePublicKeyResponse { Key key = 1; }
 
-message ActivateKeyRequest { 
+message ActivatePublicKeyRequest { 
   string id = 1 [ 
     (buf.validate.field).string.uuid = true, 
     (buf.validate.field).required = true
   ];
 }
 
-message ActivateKeyResponse { Key key = 1; }
+message ActivatePublicKeyResponse { Key key = 1; }
 
 //Deprecated
 // TODO: optional validation below should be through a custom validator, which
@@ -328,18 +328,18 @@ service KeyAccessServerRegistryService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
-  rpc CreateKey(CreateKeyRequest) returns (CreateKeyResponse) {}
+  rpc CreatePublicKey(CreatePublicKeyRequest) returns (CreatePublicKeyResponse) {}
 
-  rpc GetKey(GetKeyRequest) returns (GetKeyResponse) {}
+  rpc GetPublicKey(GetPublicKeyRequest) returns (GetPublicKeyResponse) {}
 
-  rpc ListKeys(ListKeysRequest) returns (ListKeysResponse) {}
+  rpc ListPublicKeys(ListPublicKeysRequest) returns (ListPublicKeysResponse) {}
 
   rpc ListPublicKeyMapping(ListPublicKeyMappingRequest) returns (ListPublicKeyMappingResponse) {}
 
-  rpc UpdateKey(UpdateKeyRequest) returns (UpdateKeyResponse) {}
+  rpc UpdatePublicKey(UpdatePublicKeyRequest) returns (UpdatePublicKeyResponse) {}
 
-  rpc DeactivateKey(DeactivateKeyRequest) returns (DeactivateKeyResponse) {}
+  rpc DeactivatePublicKey(DeactivatePublicKeyRequest) returns (DeactivatePublicKeyResponse) {}
 
-  rpc ActivateKey(ActivateKeyRequest) returns (ActivateKeyResponse) {}
+  rpc ActivatePublicKey(ActivatePublicKeyRequest) returns (ActivatePublicKeyResponse) {}
 
 }

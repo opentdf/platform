@@ -263,8 +263,8 @@ func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasreg
 	}, nil
 }
 
-func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyRequest) (*kasregistry.CreateKeyResponse, error) {
-	var ck *kasregistry.GetKeyResponse
+func (c PolicyDBClient) CreatePublicKey(ctx context.Context, r *kasregistry.CreatePublicKeyRequest) (*kasregistry.CreatePublicKeyResponse, error) {
+	var ck *kasregistry.GetPublicKeyResponse
 
 	kasID := r.GetKasId()
 	key := r.GetKey()
@@ -287,7 +287,7 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		}
 
 		// Get freshly created key
-		ck, err = txClient.GetPublicKey(ctx, &kasregistry.GetKeyRequest{Id: id})
+		ck, err = txClient.GetPublicKey(ctx, &kasregistry.GetPublicKeyRequest{Id: id})
 		if err != nil {
 			return db.WrapIfKnownInvalidQueryErr(err)
 		}
@@ -298,12 +298,12 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		return nil, err
 	}
 
-	return &kasregistry.CreateKeyResponse{
+	return &kasregistry.CreatePublicKeyResponse{
 		Key: ck.GetKey(),
 	}, nil
 }
 
-func (c PolicyDBClient) GetPublicKey(ctx context.Context, r *kasregistry.GetKeyRequest) (*kasregistry.GetKeyResponse, error) {
+func (c PolicyDBClient) GetPublicKey(ctx context.Context, r *kasregistry.GetPublicKeyRequest) (*kasregistry.GetPublicKeyResponse, error) {
 	metadata := new(common.Metadata)
 
 	keyID := r.GetId()
@@ -317,7 +317,7 @@ func (c PolicyDBClient) GetPublicKey(ctx context.Context, r *kasregistry.GetKeyR
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	return &kasregistry.GetKeyResponse{
+	return &kasregistry.GetPublicKeyResponse{
 		Key: &policy.Key{
 			Id:        keyID,
 			IsActive:  wrapperspb.Bool(key.IsActive),
@@ -337,7 +337,7 @@ func (c PolicyDBClient) GetPublicKey(ctx context.Context, r *kasregistry.GetKeyR
 	}, nil
 }
 
-func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysRequest) (*kasregistry.ListKeysResponse, error) {
+func (c PolicyDBClient) ListPublicKeys(ctx context.Context, r *kasregistry.ListPublicKeysRequest) (*kasregistry.ListPublicKeysResponse, error) {
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 	maxLimit := c.listCfg.limitMax
 	if maxLimit > 0 && limit > maxLimit {
@@ -393,7 +393,7 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 		total = int32(listRows[0].Total)
 		nextOffset = getNextOffset(offset, limit, total)
 	}
-	return &kasregistry.ListKeysResponse{
+	return &kasregistry.ListPublicKeysResponse{
 		Keys: keys,
 		Pagination: &policy.PageResponse{
 			CurrentOffset: params.Offset,
@@ -438,11 +438,11 @@ func (c PolicyDBClient) ListPublicKeyMappings(ctx context.Context, r *kasregistr
 	}, nil
 }
 
-func (c PolicyDBClient) UpdatePublicKey(ctx context.Context, r *kasregistry.UpdateKeyRequest) (*kasregistry.UpdateKeyResponse, error) {
+func (c PolicyDBClient) UpdatePublicKey(ctx context.Context, r *kasregistry.UpdatePublicKeyRequest) (*kasregistry.UpdatePublicKeyResponse, error) {
 	keyID := r.GetId()
 
 	mdJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
-		k, err := c.GetPublicKey(ctx, &kasregistry.GetKeyRequest{Id: keyID})
+		k, err := c.GetPublicKey(ctx, &kasregistry.GetPublicKeyRequest{Id: keyID})
 		if err != nil {
 			return nil, err
 		}
@@ -460,7 +460,7 @@ func (c PolicyDBClient) UpdatePublicKey(ctx context.Context, r *kasregistry.Upda
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	return &kasregistry.UpdateKeyResponse{
+	return &kasregistry.UpdatePublicKeyResponse{
 		Key: &policy.Key{
 			Id: pk.ID,
 			Kas: &policy.KeyAccessServer{
@@ -478,32 +478,32 @@ func (c PolicyDBClient) UpdatePublicKey(ctx context.Context, r *kasregistry.Upda
 	}, nil
 }
 
-func (c PolicyDBClient) DeactivateKey(ctx context.Context, r *kasregistry.DeactivateKeyRequest) (*kasregistry.DeactivateKeyResponse, error) {
+func (c PolicyDBClient) DeactivatePublicKey(ctx context.Context, r *kasregistry.DeactivatePublicKeyRequest) (*kasregistry.DeactivatePublicKeyResponse, error) {
 	keyID := r.GetId()
-	count, err := c.Queries.DeactivatePublicKey(ctx, keyID)
+	count, err := c.Queries.deactivatePublicKey(ctx, keyID)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
 	}
-	return &kasregistry.DeactivateKeyResponse{
+	return &kasregistry.DeactivatePublicKeyResponse{
 		Key: &policy.Key{
 			Id: keyID,
 		},
 	}, nil
 }
 
-func (c PolicyDBClient) ActivateKey(ctx context.Context, r *kasregistry.ActivateKeyRequest) (*kasregistry.ActivateKeyResponse, error) {
+func (c PolicyDBClient) ActivatePublicKey(ctx context.Context, r *kasregistry.ActivatePublicKeyRequest) (*kasregistry.ActivatePublicKeyResponse, error) {
 	keyID := r.GetId()
-	count, err := c.Queries.ActivatePublicKey(ctx, keyID)
+	count, err := c.Queries.activatePublicKey(ctx, keyID)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
 	}
-	return &kasregistry.ActivateKeyResponse{
+	return &kasregistry.ActivatePublicKeyResponse{
 		Key: &policy.Key{
 			Id: keyID,
 		},

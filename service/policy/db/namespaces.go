@@ -337,8 +337,8 @@ func (c PolicyDBClient) RemoveKeyAccessServerFromNamespace(ctx context.Context, 
 	return k, nil
 }
 
-func (c PolicyDBClient) AssignKeyToNamespace(ctx context.Context, k *namespaces.NamespaceKey) error {
-	_, err := c.Queries.AssignPublicKeyToNamespace(ctx, AssignPublicKeyToNamespaceParams{
+func (c PolicyDBClient) AssignPublicKeyToNamespace(ctx context.Context, k *namespaces.NamespaceKey) error {
+	_, err := c.Queries.assignPublicKeyToNamespace(ctx, assignPublicKeyToNamespaceParams{
 		NamespaceID: k.GetNamespaceId(),
 		KeyID:       k.GetKeyId(),
 	})
@@ -348,8 +348,8 @@ func (c PolicyDBClient) AssignKeyToNamespace(ctx context.Context, k *namespaces.
 	return nil
 }
 
-func (c PolicyDBClient) RemoveKeyFromNamespace(ctx context.Context, k *namespaces.NamespaceKey) (*namespaces.NamespaceKey, error) {
-	count, err := c.Queries.RemovePublicKeyFromNamespace(ctx, RemovePublicKeyFromNamespaceParams{
+func (c PolicyDBClient) RemovePublicKeyFromNamespace(ctx context.Context, k *namespaces.NamespaceKey) (*namespaces.NamespaceKey, error) {
+	count, err := c.Queries.removePublicKeyFromNamespace(ctx, removePublicKeyFromNamespaceParams{
 		NamespaceID: k.GetNamespaceId(),
 		KeyID:       k.GetKeyId(),
 	})

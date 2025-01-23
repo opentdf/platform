@@ -11,21 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const activatePublicKey = `-- name: ActivatePublicKey :execrows
-UPDATE public_keys SET is_active = TRUE WHERE id = $1
-`
-
-// ActivatePublicKey
-//
-//	UPDATE public_keys SET is_active = TRUE WHERE id = $1
-func (q *Queries) ActivatePublicKey(ctx context.Context, id string) (int64, error) {
-	result, err := q.db.Exec(ctx, activatePublicKey, id)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const assignKeyAccessServerToAttribute = `-- name: AssignKeyAccessServerToAttribute :execrows
 INSERT INTO attribute_definition_key_access_grants (attribute_definition_id, key_access_server_id)
 VALUES ($1, $2)
@@ -86,66 +71,6 @@ type AssignKeyAccessServerToNamespaceParams struct {
 //	VALUES ($1, $2)
 func (q *Queries) AssignKeyAccessServerToNamespace(ctx context.Context, arg AssignKeyAccessServerToNamespaceParams) (int64, error) {
 	result, err := q.db.Exec(ctx, assignKeyAccessServerToNamespace, arg.NamespaceID, arg.KeyAccessServerID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const assignPublicKeyToAttributeDefinition = `-- name: AssignPublicKeyToAttributeDefinition :execrows
-INSERT INTO attribute_definition_public_key_map (definition_id, key_id) VALUES ($1, $2)
-`
-
-type AssignPublicKeyToAttributeDefinitionParams struct {
-	DefinitionID string `json:"definition_id"`
-	KeyID        string `json:"key_id"`
-}
-
-// AssignPublicKeyToAttributeDefinition
-//
-//	INSERT INTO attribute_definition_public_key_map (definition_id, key_id) VALUES ($1, $2)
-func (q *Queries) AssignPublicKeyToAttributeDefinition(ctx context.Context, arg AssignPublicKeyToAttributeDefinitionParams) (int64, error) {
-	result, err := q.db.Exec(ctx, assignPublicKeyToAttributeDefinition, arg.DefinitionID, arg.KeyID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const assignPublicKeyToAttributeValue = `-- name: AssignPublicKeyToAttributeValue :execrows
-INSERT INTO attribute_value_public_key_map (value_id, key_id) VALUES ($1, $2)
-`
-
-type AssignPublicKeyToAttributeValueParams struct {
-	ValueID string `json:"value_id"`
-	KeyID   string `json:"key_id"`
-}
-
-// AssignPublicKeyToAttributeValue
-//
-//	INSERT INTO attribute_value_public_key_map (value_id, key_id) VALUES ($1, $2)
-func (q *Queries) AssignPublicKeyToAttributeValue(ctx context.Context, arg AssignPublicKeyToAttributeValueParams) (int64, error) {
-	result, err := q.db.Exec(ctx, assignPublicKeyToAttributeValue, arg.ValueID, arg.KeyID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const assignPublicKeyToNamespace = `-- name: AssignPublicKeyToNamespace :execrows
-INSERT INTO attribute_namespace_public_key_map (namespace_id, key_id) VALUES ($1, $2)
-`
-
-type AssignPublicKeyToNamespaceParams struct {
-	NamespaceID string `json:"namespace_id"`
-	KeyID       string `json:"key_id"`
-}
-
-// AssignPublicKeyToNamespace
-//
-//	INSERT INTO attribute_namespace_public_key_map (namespace_id, key_id) VALUES ($1, $2)
-func (q *Queries) AssignPublicKeyToNamespace(ctx context.Context, arg AssignPublicKeyToNamespaceParams) (int64, error) {
-	result, err := q.db.Exec(ctx, assignPublicKeyToNamespace, arg.NamespaceID, arg.KeyID)
 	if err != nil {
 		return 0, err
 	}
@@ -364,21 +289,6 @@ func (q *Queries) CreateSubjectMapping(ctx context.Context, arg CreateSubjectMap
 	var id string
 	err := row.Scan(&id)
 	return id, err
-}
-
-const deactivatePublicKey = `-- name: DeactivatePublicKey :execrows
-UPDATE public_keys SET is_active = FALSE WHERE id = $1
-`
-
-// DeactivatePublicKey
-//
-//	UPDATE public_keys SET is_active = FALSE WHERE id = $1
-func (q *Queries) DeactivatePublicKey(ctx context.Context, id string) (int64, error) {
-	result, err := q.db.Exec(ctx, deactivatePublicKey, id)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
 }
 
 const deleteAllUnmappedSubjectConditionSets = `-- name: DeleteAllUnmappedSubjectConditionSets :many
@@ -2615,66 +2525,6 @@ func (q *Queries) RemoveKeyAccessServerFromNamespace(ctx context.Context, arg Re
 	return result.RowsAffected(), nil
 }
 
-const removePublicKeyFromAttributeDefinition = `-- name: RemovePublicKeyFromAttributeDefinition :execrows
-DELETE FROM attribute_definition_public_key_map WHERE definition_id = $1 AND key_id = $2
-`
-
-type RemovePublicKeyFromAttributeDefinitionParams struct {
-	DefinitionID string `json:"definition_id"`
-	KeyID        string `json:"key_id"`
-}
-
-// RemovePublicKeyFromAttributeDefinition
-//
-//	DELETE FROM attribute_definition_public_key_map WHERE definition_id = $1 AND key_id = $2
-func (q *Queries) RemovePublicKeyFromAttributeDefinition(ctx context.Context, arg RemovePublicKeyFromAttributeDefinitionParams) (int64, error) {
-	result, err := q.db.Exec(ctx, removePublicKeyFromAttributeDefinition, arg.DefinitionID, arg.KeyID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const removePublicKeyFromAttributeValue = `-- name: RemovePublicKeyFromAttributeValue :execrows
-DELETE FROM attribute_value_public_key_map WHERE value_id = $1 AND key_id = $2
-`
-
-type RemovePublicKeyFromAttributeValueParams struct {
-	ValueID string `json:"value_id"`
-	KeyID   string `json:"key_id"`
-}
-
-// RemovePublicKeyFromAttributeValue
-//
-//	DELETE FROM attribute_value_public_key_map WHERE value_id = $1 AND key_id = $2
-func (q *Queries) RemovePublicKeyFromAttributeValue(ctx context.Context, arg RemovePublicKeyFromAttributeValueParams) (int64, error) {
-	result, err := q.db.Exec(ctx, removePublicKeyFromAttributeValue, arg.ValueID, arg.KeyID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const removePublicKeyFromNamespace = `-- name: RemovePublicKeyFromNamespace :execrows
-DELETE FROM attribute_namespace_public_key_map WHERE namespace_id = $1 AND key_id = $2
-`
-
-type RemovePublicKeyFromNamespaceParams struct {
-	NamespaceID string `json:"namespace_id"`
-	KeyID       string `json:"key_id"`
-}
-
-// RemovePublicKeyFromNamespace
-//
-//	DELETE FROM attribute_namespace_public_key_map WHERE namespace_id = $1 AND key_id = $2
-func (q *Queries) RemovePublicKeyFromNamespace(ctx context.Context, arg RemovePublicKeyFromNamespaceParams) (int64, error) {
-	result, err := q.db.Exec(ctx, removePublicKeyFromNamespace, arg.NamespaceID, arg.KeyID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const updateAttribute = `-- name: UpdateAttribute :execrows
 UPDATE attribute_definitions
 SET
@@ -3315,6 +3165,81 @@ func (q *Queries) UpsertAttributeValueFqn(ctx context.Context, valueID string) (
 	return items, nil
 }
 
+const activatePublicKey = `-- name: activatePublicKey :execrows
+UPDATE public_keys SET is_active = TRUE WHERE id = $1
+`
+
+// activatePublicKey
+//
+//	UPDATE public_keys SET is_active = TRUE WHERE id = $1
+func (q *Queries) activatePublicKey(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, activatePublicKey, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const assignPublicKeyToAttributeDefinition = `-- name: assignPublicKeyToAttributeDefinition :execrows
+INSERT INTO attribute_definition_public_key_map (definition_id, key_id) VALUES ($1, $2)
+`
+
+type assignPublicKeyToAttributeDefinitionParams struct {
+	DefinitionID string `json:"definition_id"`
+	KeyID        string `json:"key_id"`
+}
+
+// assignPublicKeyToAttributeDefinition
+//
+//	INSERT INTO attribute_definition_public_key_map (definition_id, key_id) VALUES ($1, $2)
+func (q *Queries) assignPublicKeyToAttributeDefinition(ctx context.Context, arg assignPublicKeyToAttributeDefinitionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, assignPublicKeyToAttributeDefinition, arg.DefinitionID, arg.KeyID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const assignPublicKeyToAttributeValue = `-- name: assignPublicKeyToAttributeValue :execrows
+INSERT INTO attribute_value_public_key_map (value_id, key_id) VALUES ($1, $2)
+`
+
+type assignPublicKeyToAttributeValueParams struct {
+	ValueID string `json:"value_id"`
+	KeyID   string `json:"key_id"`
+}
+
+// assignPublicKeyToAttributeValue
+//
+//	INSERT INTO attribute_value_public_key_map (value_id, key_id) VALUES ($1, $2)
+func (q *Queries) assignPublicKeyToAttributeValue(ctx context.Context, arg assignPublicKeyToAttributeValueParams) (int64, error) {
+	result, err := q.db.Exec(ctx, assignPublicKeyToAttributeValue, arg.ValueID, arg.KeyID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const assignPublicKeyToNamespace = `-- name: assignPublicKeyToNamespace :execrows
+INSERT INTO attribute_namespace_public_key_map (namespace_id, key_id) VALUES ($1, $2)
+`
+
+type assignPublicKeyToNamespaceParams struct {
+	NamespaceID string `json:"namespace_id"`
+	KeyID       string `json:"key_id"`
+}
+
+// assignPublicKeyToNamespace
+//
+//	INSERT INTO attribute_namespace_public_key_map (namespace_id, key_id) VALUES ($1, $2)
+func (q *Queries) assignPublicKeyToNamespace(ctx context.Context, arg assignPublicKeyToNamespaceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, assignPublicKeyToNamespace, arg.NamespaceID, arg.KeyID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const createPublicKey = `-- name: createPublicKey :one
 
 INSERT INTO public_keys (key_access_server_id, key_id, alg, public_key, metadata)
@@ -3348,6 +3273,21 @@ func (q *Queries) createPublicKey(ctx context.Context, arg createPublicKeyParams
 	var id string
 	err := row.Scan(&id)
 	return id, err
+}
+
+const deactivatePublicKey = `-- name: deactivatePublicKey :execrows
+UPDATE public_keys SET is_active = FALSE WHERE id = $1
+`
+
+// deactivatePublicKey
+//
+//	UPDATE public_keys SET is_active = FALSE WHERE id = $1
+func (q *Queries) deactivatePublicKey(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deactivatePublicKey, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deletePublicKey = `-- name: deletePublicKey :execrows
@@ -3763,6 +3703,66 @@ func (q *Queries) listPublicKeys(ctx context.Context, arg listPublicKeysParams) 
 		return nil, err
 	}
 	return items, nil
+}
+
+const removePublicKeyFromAttributeDefinition = `-- name: removePublicKeyFromAttributeDefinition :execrows
+DELETE FROM attribute_definition_public_key_map WHERE definition_id = $1 AND key_id = $2
+`
+
+type removePublicKeyFromAttributeDefinitionParams struct {
+	DefinitionID string `json:"definition_id"`
+	KeyID        string `json:"key_id"`
+}
+
+// removePublicKeyFromAttributeDefinition
+//
+//	DELETE FROM attribute_definition_public_key_map WHERE definition_id = $1 AND key_id = $2
+func (q *Queries) removePublicKeyFromAttributeDefinition(ctx context.Context, arg removePublicKeyFromAttributeDefinitionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removePublicKeyFromAttributeDefinition, arg.DefinitionID, arg.KeyID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const removePublicKeyFromAttributeValue = `-- name: removePublicKeyFromAttributeValue :execrows
+DELETE FROM attribute_value_public_key_map WHERE value_id = $1 AND key_id = $2
+`
+
+type removePublicKeyFromAttributeValueParams struct {
+	ValueID string `json:"value_id"`
+	KeyID   string `json:"key_id"`
+}
+
+// removePublicKeyFromAttributeValue
+//
+//	DELETE FROM attribute_value_public_key_map WHERE value_id = $1 AND key_id = $2
+func (q *Queries) removePublicKeyFromAttributeValue(ctx context.Context, arg removePublicKeyFromAttributeValueParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removePublicKeyFromAttributeValue, arg.ValueID, arg.KeyID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const removePublicKeyFromNamespace = `-- name: removePublicKeyFromNamespace :execrows
+DELETE FROM attribute_namespace_public_key_map WHERE namespace_id = $1 AND key_id = $2
+`
+
+type removePublicKeyFromNamespaceParams struct {
+	NamespaceID string `json:"namespace_id"`
+	KeyID       string `json:"key_id"`
+}
+
+// removePublicKeyFromNamespace
+//
+//	DELETE FROM attribute_namespace_public_key_map WHERE namespace_id = $1 AND key_id = $2
+func (q *Queries) removePublicKeyFromNamespace(ctx context.Context, arg removePublicKeyFromNamespaceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removePublicKeyFromNamespace, arg.NamespaceID, arg.KeyID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updatePublicKey = `-- name: updatePublicKey :one

@@ -1091,28 +1091,28 @@ RETURNING *;
 -- name: deletePublicKey :execrows
 DELETE FROM public_keys WHERE id = $1;
 
--- name: DeactivatePublicKey :execrows
+-- name: deactivatePublicKey :execrows
 UPDATE public_keys SET is_active = FALSE WHERE id = $1;
 
--- name: ActivatePublicKey :execrows
+-- name: activatePublicKey :execrows
 UPDATE public_keys SET is_active = TRUE WHERE id = $1;
 
--- name: AssignPublicKeyToNamespace :execrows
+-- name: assignPublicKeyToNamespace :execrows
 INSERT INTO attribute_namespace_public_key_map (namespace_id, key_id) VALUES ($1, $2);
 
--- name: RemovePublicKeyFromNamespace :execrows
+-- name: removePublicKeyFromNamespace :execrows
 DELETE FROM attribute_namespace_public_key_map WHERE namespace_id = $1 AND key_id = $2;
 
--- name: AssignPublicKeyToAttributeDefinition :execrows
+-- name: assignPublicKeyToAttributeDefinition :execrows
 INSERT INTO attribute_definition_public_key_map (definition_id, key_id) VALUES ($1, $2);
 
--- name: RemovePublicKeyFromAttributeDefinition :execrows
+-- name: removePublicKeyFromAttributeDefinition :execrows
 DELETE FROM attribute_definition_public_key_map WHERE definition_id = $1 AND key_id = $2;
 
--- name: AssignPublicKeyToAttributeValue :execrows
+-- name: assignPublicKeyToAttributeValue :execrows
 INSERT INTO attribute_value_public_key_map (value_id, key_id) VALUES ($1, $2);
 
--- name: RemovePublicKeyFromAttributeValue :execrows
+-- name: removePublicKeyFromAttributeValue :execrows
 DELETE FROM attribute_value_public_key_map WHERE value_id = $1 AND key_id = $2;
 
 ----------------------------------------------------------------

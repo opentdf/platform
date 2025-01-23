@@ -1023,13 +1023,13 @@ var publicKeyTestUUID string
 func (s *KasRegistrySuite) Test_Create_Public_Key() {
 	// The initial rsa2048 public key is created in the fixture and should be active
 	kID := s.f.GetPublicKey("key_1").ID
-	r1, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: kID})
+	r1, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: kID})
 	s.Require().NoError(err)
 	s.NotNil(r1)
 	s.True(r1.GetKey().GetIsActive().GetValue())
 
 	kasID := s.f.GetKasRegistryKey("key_access_server_1").ID
-	kasRegistry := &kasregistry.CreateKeyRequest{
+	kasRegistry := &kasregistry.CreatePublicKeyRequest{
 		KasId: kasID,
 		Key: &policy.KasPublicKey{
 			Pem: "public",
@@ -1038,7 +1038,7 @@ func (s *KasRegistrySuite) Test_Create_Public_Key() {
 		},
 	}
 
-	r2, err := s.db.PolicyClient.CreateKey(s.ctx, kasRegistry)
+	r2, err := s.db.PolicyClient.CreatePublicKey(s.ctx, kasRegistry)
 	s.Require().NoError(err)
 	s.NotNil(r2)
 	s.Equal(kasID, r2.GetKey().GetKas().GetId())
@@ -1047,7 +1047,7 @@ func (s *KasRegistrySuite) Test_Create_Public_Key() {
 	publicKeyTestUUID = r2.GetKey().GetId()
 
 	// Now the old key should be inactive
-	r3, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: kID})
+	r3, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: kID})
 	s.Require().NoError(err)
 	s.NotNil(r3)
 	s.False(r3.GetKey().GetIsActive().GetValue())
@@ -1097,7 +1097,7 @@ func (s *KasRegistrySuite) Test_Create_Public_Key() {
 func (s *KasRegistrySuite) Test_Create_Pulblic_Key_Unique_Constraint() {
 	// We can't have a duplicate public keys with the same (key_access_server_id, kid, alg) set
 	kasID := s.f.GetKasRegistryKey("key_access_server_1").ID
-	kasRegistry := &kasregistry.CreateKeyRequest{
+	kasRegistry := &kasregistry.CreatePublicKeyRequest{
 		KasId: kasID,
 		Key: &policy.KasPublicKey{
 			Pem: "public",
@@ -1106,14 +1106,14 @@ func (s *KasRegistrySuite) Test_Create_Pulblic_Key_Unique_Constraint() {
 		},
 	}
 
-	r, err := s.db.PolicyClient.CreateKey(s.ctx, kasRegistry)
+	r, err := s.db.PolicyClient.CreatePublicKey(s.ctx, kasRegistry)
 	s.Require().Error(err)
 	s.Nil(r)
 	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
 }
 
 func (s *KasRegistrySuite) Test_Create_Public_Key_WithInvalidKasID_Fails() {
-	kasRegistry := &kasregistry.CreateKeyRequest{
+	kasRegistry := &kasregistry.CreatePublicKeyRequest{
 		KasId: "invalid-kas-id",
 		Key: &policy.KasPublicKey{
 			Pem: "public",
@@ -1122,7 +1122,7 @@ func (s *KasRegistrySuite) Test_Create_Public_Key_WithInvalidKasID_Fails() {
 		},
 	}
 
-	r, err := s.db.PolicyClient.CreateKey(s.ctx, kasRegistry)
+	r, err := s.db.PolicyClient.CreatePublicKey(s.ctx, kasRegistry)
 	s.Require().Error(err)
 	s.Nil(r)
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
@@ -1133,7 +1133,7 @@ func (s *KasRegistrySuite) Test_Update_Public_Key() {
 	labels := map[string]string{
 		"update": "updated label",
 	}
-	resp, err := s.db.PolicyClient.UpdatePublicKey(s.ctx, &kasregistry.UpdateKeyRequest{
+	resp, err := s.db.PolicyClient.UpdatePublicKey(s.ctx, &kasregistry.UpdatePublicKeyRequest{
 		Id: kID,
 		Metadata: &common.MetadataMutable{
 			Labels: labels,
@@ -1145,7 +1145,7 @@ func (s *KasRegistrySuite) Test_Update_Public_Key() {
 	s.Equal(labels, resp.GetKey().GetMetadata().GetLabels())
 
 	// Get Key to validate update
-	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: kID})
+	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: kID})
 	s.Require().NoError(err)
 	s.NotNil(r)
 	s.Equal(labels, r.GetKey().GetMetadata().GetLabels())
@@ -1156,7 +1156,7 @@ func (s *KasRegistrySuite) Test_Get_Public_Key() {
 	keyID := s.f.GetPublicKey("key_1").Key.Kid
 	id := s.f.GetPublicKey("key_1").ID
 
-	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: id})
+	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: id})
 
 	s.Require().NoError(err)
 	s.NotNil(r)
@@ -1166,7 +1166,7 @@ func (s *KasRegistrySuite) Test_Get_Public_Key() {
 }
 
 func (s *KasRegistrySuite) Test_Get_Public_Key_WithInvalidID_Fails() {
-	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: "invalid-id"})
+	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: "invalid-id"})
 
 	s.Require().Error(err)
 	s.Nil(r)
@@ -1174,7 +1174,7 @@ func (s *KasRegistrySuite) Test_Get_Public_Key_WithInvalidID_Fails() {
 }
 
 func (s *KasRegistrySuite) Test_Get_Public_Key_WithNotFoundID_Fails() {
-	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: nonExistentKasRegistryID})
+	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: nonExistentKasRegistryID})
 
 	s.Require().Error(err)
 	s.Nil(r)
@@ -1182,7 +1182,7 @@ func (s *KasRegistrySuite) Test_Get_Public_Key_WithNotFoundID_Fails() {
 }
 
 func (s *KasRegistrySuite) Test_List_Public_Keys() {
-	r, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{})
+	r, err := s.db.PolicyClient.ListPublicKeys(s.ctx, &kasregistry.ListPublicKeysRequest{})
 	s.Require().NoError(err)
 	s.NotNil(r)
 	s.GreaterOrEqual(len(r.GetKeys()), 2)
@@ -1190,7 +1190,7 @@ func (s *KasRegistrySuite) Test_List_Public_Keys() {
 
 func (s *KasRegistrySuite) Test_List_Public_Keys_ByKasID() {
 	kasID := s.f.GetKasRegistryKey("key_access_server_1").ID
-	r, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{KasId: kasID})
+	r, err := s.db.PolicyClient.ListPublicKeys(s.ctx, &kasregistry.ListPublicKeysRequest{KasId: kasID})
 	s.Require().NoError(err)
 	s.NotNil(r)
 	s.GreaterOrEqual(len(r.GetKeys()), 1)
@@ -1200,7 +1200,7 @@ func (s *KasRegistrySuite) Test_List_Public_Keys_ByKasID() {
 }
 
 func (s *KasRegistrySuite) Test_List_Public_Keys_WithNonExistentKasID() {
-	r, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{KasId: nonExistentKasRegistryID})
+	r, err := s.db.PolicyClient.ListPublicKeys(s.ctx, &kasregistry.ListPublicKeysRequest{KasId: nonExistentKasRegistryID})
 	s.Require().NoError(err)
 	s.NotNil(r)
 	s.Empty(r.GetKeys())
@@ -1235,19 +1235,19 @@ func (s *KasRegistrySuite) Test_List_Public_Key_Mappings() {
 
 func (s *KasRegistrySuite) Test_Deactivate_Public_Key() {
 	id := s.f.GetPublicKey("key_4").ID
-	r, err := s.db.PolicyClient.DeactivateKey(s.ctx, &kasregistry.DeactivateKeyRequest{Id: id})
+	r, err := s.db.PolicyClient.DeactivatePublicKey(s.ctx, &kasregistry.DeactivatePublicKeyRequest{Id: id})
 	s.Require().NoError(err)
 	s.NotNil(r)
 	s.Equal(id, r.GetKey().GetId())
 
-	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: id})
+	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: id})
 	s.Require().NoError(err)
 	s.NotNil(rr)
 	s.False(rr.GetKey().GetIsActive().GetValue())
 }
 
 func (s *KasRegistrySuite) Test_Deactivate_Public_Key_WithInvalidID_Fails() {
-	r, err := s.db.PolicyClient.DeactivateKey(s.ctx, &kasregistry.DeactivateKeyRequest{Id: "invalid-id"})
+	r, err := s.db.PolicyClient.DeactivatePublicKey(s.ctx, &kasregistry.DeactivatePublicKeyRequest{Id: "invalid-id"})
 	s.Require().Error(err)
 	s.Nil(r)
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
@@ -1255,19 +1255,19 @@ func (s *KasRegistrySuite) Test_Deactivate_Public_Key_WithInvalidID_Fails() {
 
 func (s *KasRegistrySuite) Test_Activate_Public_Key() {
 	id := s.f.GetPublicKey("key_4").ID
-	r, err := s.db.PolicyClient.ActivateKey(s.ctx, &kasregistry.ActivateKeyRequest{Id: id})
+	r, err := s.db.PolicyClient.ActivatePublicKey(s.ctx, &kasregistry.ActivatePublicKeyRequest{Id: id})
 	s.Require().NoError(err)
 	s.NotNil(r)
 	s.Equal(id, r.GetKey().GetId())
 
-	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: id})
+	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: id})
 	s.Require().NoError(err)
 	s.NotNil(rr)
 	s.True(rr.GetKey().GetIsActive().GetValue())
 }
 
 func (s *KasRegistrySuite) Test_Activate_Public_Key_WithInvalidID_Fails() {
-	r, err := s.db.PolicyClient.ActivateKey(s.ctx, &kasregistry.ActivateKeyRequest{Id: "invalid-id"})
+	r, err := s.db.PolicyClient.ActivatePublicKey(s.ctx, &kasregistry.ActivatePublicKeyRequest{Id: "invalid-id"})
 	s.Require().Error(err)
 	s.Nil(r)
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
@@ -1280,7 +1280,7 @@ func (s *KasRegistrySuite) Test_UnsafeDelete_Public_Key() {
 	s.NotNil(r)
 	s.Equal(id, r.GetId())
 
-	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetKeyRequest{Id: id})
+	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: id})
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(rr)
@@ -1294,13 +1294,13 @@ func (s *KasRegistrySuite) Test_Assign_and_Unassign_Public_Key() {
 	id := s.f.GetPublicKey("key_1").ID
 
 	// Assign to value
-	err := s.db.PolicyClient.AssignKeyToNamespace(s.ctx, &namespaces.NamespaceKey{NamespaceId: ns.ID, KeyId: id})
+	err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{NamespaceId: ns.ID, KeyId: id})
 	s.Require().NoError(err)
 
-	err = s.db.PolicyClient.AssignKeyToAttribute(s.ctx, &attributes.AttributeKey{AttributeId: def.ID, KeyId: id})
+	err = s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{AttributeId: def.ID, KeyId: id})
 	s.Require().NoError(err)
 
-	err = s.db.PolicyClient.AssignKeyToValue(s.ctx, &attributes.ValueKey{ValueId: value.ID, KeyId: id})
+	err = s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &attributes.ValueKey{ValueId: value.ID, KeyId: id})
 	s.Require().NoError(err)
 
 	// Get Namespace to validate assignment
@@ -1328,17 +1328,17 @@ func (s *KasRegistrySuite) Test_Assign_and_Unassign_Public_Key() {
 	}))
 
 	// Unassign from value
-	vk, err := s.db.PolicyClient.RemoveKeyFromValue(s.ctx, &attributes.ValueKey{ValueId: value.ID, KeyId: id})
+	vk, err := s.db.PolicyClient.RemovePublicKeyFromValue(s.ctx, &attributes.ValueKey{ValueId: value.ID, KeyId: id})
 	s.Require().NoError(err)
 	s.NotNil(vk)
 
 	// Unassign from attribute
-	dk, err := s.db.PolicyClient.RemoveKeyFromAttribute(s.ctx, &attributes.AttributeKey{AttributeId: def.ID, KeyId: id})
+	dk, err := s.db.PolicyClient.RemovePublicKeyFromAttribute(s.ctx, &attributes.AttributeKey{AttributeId: def.ID, KeyId: id})
 	s.Require().NoError(err)
 	s.NotNil(dk)
 
 	// Unassign from namespace
-	nk, err := s.db.PolicyClient.RemoveKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{NamespaceId: ns.ID, KeyId: id})
+	nk, err := s.db.PolicyClient.RemovePublicKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{NamespaceId: ns.ID, KeyId: id})
 	s.Require().NoError(err)
 	s.NotNil(nk)
 

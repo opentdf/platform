@@ -233,7 +233,7 @@ func (ns NamespacesService) RemoveKeyAccessServerFromNamespace(ctx context.Conte
 }
 
 func (ns NamespacesService) AssignKeyToNamespace(ctx context.Context, req *connect.Request[namespaces.AssignKeyToNamespaceRequest]) (*connect.Response[namespaces.AssignKeyToNamespaceResponse], error) {
-	err := ns.dbClient.AssignKeyToNamespace(ctx, req.Msg.GetNamespaceKey())
+	err := ns.dbClient.AssignPublicKeyToNamespace(ctx, req.Msg.GetNamespaceKey())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("namespaceKey", req.Msg.GetNamespaceKey().String()))
 	}
@@ -241,7 +241,7 @@ func (ns NamespacesService) AssignKeyToNamespace(ctx context.Context, req *conne
 }
 
 func (ns NamespacesService) RemoveKeyFromNamespace(ctx context.Context, req *connect.Request[namespaces.RemoveKeyFromNamespaceRequest]) (*connect.Response[namespaces.RemoveKeyFromNamespaceResponse], error) {
-	k, err := ns.dbClient.RemoveKeyFromNamespace(ctx, req.Msg.GetNamespaceKey())
+	k, err := ns.dbClient.RemovePublicKeyFromNamespace(ctx, req.Msg.GetNamespaceKey())
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("namespaceKey", req.Msg.GetNamespaceKey().String()))
 	}

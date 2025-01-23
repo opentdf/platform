@@ -225,8 +225,7 @@ const (
 type TDFReaderOption func(*TDFReaderConfig) error
 
 type TDFReaderConfig struct {
-	// Optional Map of Assertion Verification Keys
-	AssertionVerificationKeys    AssertionVerificationKeys
+	verifiers                    AssertionVerificationKeys
 	disableAssertionVerification bool
 
 	schemaValidationIntensity SchemaValidationIntensity
@@ -248,7 +247,7 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 
 func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
-		c.AssertionVerificationKeys = keys
+		c.verifiers = keys
 		return nil
 	}
 }

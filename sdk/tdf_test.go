@@ -218,7 +218,7 @@ type partialReadTdfTest struct {
 
 type assertionTests struct {
 	assertions                   []AssertionConfig
-	assertionVerificationKeys    *AssertionVerificationKeys
+	verifiers                    *AssertionVerificationKeys
 	disableAssertionVerification bool
 	expectedSize                 int
 }
@@ -393,7 +393,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					},
 				},
 			},
-			assertionVerificationKeys:    nil,
+			verifiers:                    nil,
 			disableAssertionVerification: false,
 			expectedSize:                 2689,
 		},
@@ -424,7 +424,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					SigningKey: defaultKey,
 				},
 			},
-			assertionVerificationKeys: &AssertionVerificationKeys{
+			verifiers: &AssertionVerificationKeys{
 				DefaultKey: defaultKey,
 			},
 			disableAssertionVerification: false,
@@ -463,7 +463,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					},
 				},
 			},
-			assertionVerificationKeys: &AssertionVerificationKeys{
+			verifiers: &AssertionVerificationKeys{
 				// defaultVerificationKey: nil,
 				Keys: map[string]AssertionKey{
 					"assertion1": {
@@ -508,7 +508,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					},
 				},
 			},
-			assertionVerificationKeys: &AssertionVerificationKeys{
+			verifiers: &AssertionVerificationKeys{
 				Keys: map[string]AssertionKey{
 					"assertion1": {
 						Alg: AssertionKeyAlgHS256,
@@ -580,11 +580,11 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 			buf := make([]byte, 8)
 
 			var r *Reader
-			if test.assertionVerificationKeys == nil {
+			if test.verifiers == nil {
 				r, err = s.sdk.LoadTDF(readSeeker, WithDisableAssertionVerification(test.disableAssertionVerification))
 			} else {
 				r, err = s.sdk.LoadTDF(readSeeker,
-					WithAssertionVerificationKeys(*test.assertionVerificationKeys),
+					WithAssertionVerificationKeys(*test.verifiers),
 					WithDisableAssertionVerification(test.disableAssertionVerification))
 			}
 			s.Require().NoError(err)
@@ -678,7 +678,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					},
 				},
 			},
-			assertionVerificationKeys: &AssertionVerificationKeys{
+			verifiers: &AssertionVerificationKeys{
 				// defaultVerificationKey: nil,
 				Keys: map[string]AssertionKey{
 					"assertion1": {
@@ -722,7 +722,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					},
 				},
 			},
-			assertionVerificationKeys: &AssertionVerificationKeys{
+			verifiers: &AssertionVerificationKeys{
 				DefaultKey: defaultKey,
 			},
 			expectedSize: 2689,
@@ -771,10 +771,10 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 			buf := make([]byte, 8)
 
 			var r *Reader
-			if test.assertionVerificationKeys == nil {
+			if test.verifiers == nil {
 				r, err = s.sdk.LoadTDF(readSeeker)
 			} else {
-				r, err = s.sdk.LoadTDF(readSeeker, WithAssertionVerificationKeys(*test.assertionVerificationKeys))
+				r, err = s.sdk.LoadTDF(readSeeker, WithAssertionVerificationKeys(*test.verifiers))
 			}
 			s.Require().NoError(err)
 

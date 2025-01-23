@@ -1023,9 +1023,9 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 		assertionKey.Alg = AssertionKeyAlgHS256
 		assertionKey.Key = payloadKey[:]
 
-		if !r.config.AssertionVerificationKeys.IsEmpty() {
+		if !r.config.verifiers.IsEmpty() {
 			// Look up the key for the assertion
-			foundKey, err := r.config.AssertionVerificationKeys.Get(assertion.ID)
+			foundKey, err := r.config.verifiers.Get(assertion.ID)
 
 			if err != nil {
 				return fmt.Errorf("%w: %w", ErrAssertionFailure{ID: assertion.ID}, err)

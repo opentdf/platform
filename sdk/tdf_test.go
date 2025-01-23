@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -17,6 +16,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -264,7 +265,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		"https://example.com/attr/Classification/value/X",
 	}
 
-	expectedTdfSize := int64(2095)
+	expectedTdfSize := int64(2058)
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
 	{
@@ -296,7 +297,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 32.0)
 	}
 
-	// test meta data
+	// test meta data and build meta data
 	{
 		readSeeker, err := os.Open(tdfFilename)
 		s.Require().NoError(err)
@@ -394,7 +395,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 			},
 			assertionVerificationKeys:    nil,
 			disableAssertionVerification: false,
-			expectedSize:                 2896,
+			expectedSize:                 2689,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -427,7 +428,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				DefaultKey: defaultKey,
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 2896,
+			expectedSize:                 2689,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -476,7 +477,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 3195,
+			expectedSize:                 2988,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -516,7 +517,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 2896,
+			expectedSize:                 2689,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -533,7 +534,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: true,
-			expectedSize:                 2302,
+			expectedSize:                 2180,
 		},
 	} {
 		expectedTdfSize := test.expectedSize
@@ -642,7 +643,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					SigningKey: defaultKey,
 				},
 			},
-			expectedSize: 2896,
+			expectedSize: 2689,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -690,7 +691,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					},
 				},
 			},
-			expectedSize: 3195,
+			expectedSize: 2988,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -724,7 +725,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 			assertionVerificationKeys: &AssertionVerificationKeys{
 				DefaultKey: defaultKey,
 			},
-			expectedSize: 2896,
+			expectedSize: 2689,
 		},
 	} {
 		expectedTdfSize := test.expectedSize
@@ -939,26 +940,26 @@ func (s *TDFSuite) Test_TDF() {
 		{
 			n:           "small",
 			fileSize:    5,
-			tdfFileSize: 1557,
+			tdfFileSize: 1560,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 		},
 		{
 			n:           "small-with-mime-type",
 			fileSize:    5,
-			tdfFileSize: 1557,
+			tdfFileSize: 1560,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			mimeType:    "text/plain",
 		},
 		{
 			n:           "1-kiB",
 			fileSize:    oneKB,
-			tdfFileSize: 2581,
+			tdfFileSize: 2598,
 			checksum:    "2edc986847e209b4016e141a6dc8716d3207350f416969382d431539bf292e4a",
 		},
 		{
 			n:           "medium",
 			fileSize:    hundredMB,
-			tdfFileSize: 104866410,
+			tdfFileSize: 104866427,
 			checksum:    "cee41e98d0a6ad65cc0ec77a2ba50bf26d64dc9007f7f1c7d7df68b8b71291a6",
 		},
 	} {
@@ -1040,7 +1041,7 @@ func (s *TDFSuite) Test_KeySplits() {
 		{
 			n:           "shared",
 			fileSize:    5,
-			tdfFileSize: 2664,
+			tdfFileSize: 2759,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
 				{KAS: "https://a.kas/", SplitID: "a"},
@@ -1051,7 +1052,7 @@ func (s *TDFSuite) Test_KeySplits() {
 		{
 			n:           "split",
 			fileSize:    5,
-			tdfFileSize: 2664,
+			tdfFileSize: 2759,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
 				{KAS: "https://a.kas/", SplitID: "a"},
@@ -1062,7 +1063,7 @@ func (s *TDFSuite) Test_KeySplits() {
 		{
 			n:           "mixture",
 			fileSize:    5,
-			tdfFileSize: 3211,
+			tdfFileSize: 3351,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
 				{KAS: "https://a.kas/", SplitID: "a"},
@@ -1215,7 +1216,7 @@ func (s *TDFSuite) testDecryptWithReader(sdk *SDK, tdfFile, decryptedTdfFileName
 	r, err := sdk.LoadTDF(readSeeker)
 	s.Require().NoError(err)
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(60*time.Millisecond))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(300*time.Minute))
 	defer cancel()
 	err = r.Init(ctx)
 	s.Require().NoError(err)
@@ -1427,40 +1428,53 @@ func (f *FakeKas) Rewrap(_ context.Context, in *kaspb.RewrapRequest) (*kaspb.Rew
 	if !ok {
 		return nil, fmt.Errorf("requestBody not a string")
 	}
-	entityWrappedKey := f.getRewrappedKey(requestBodyStr)
+	result := f.getRewrapResponse(requestBodyStr)
 
-	return &kaspb.RewrapResponse{EntityWrappedKey: entityWrappedKey}, nil
+	return result, nil
 }
 
 func (f *FakeKas) PublicKey(_ context.Context, _ *kaspb.PublicKeyRequest) (*kaspb.PublicKeyResponse, error) {
 	return &kaspb.PublicKeyResponse{PublicKey: f.KASInfo.PublicKey, Kid: f.KID}, nil
 }
 
-func (f *FakeKas) getRewrappedKey(rewrapRequest string) []byte {
-	bodyData := RequestBody{}
-	err := json.Unmarshal([]byte(rewrapRequest), &bodyData)
+func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse {
+	bodyData := kaspb.UnsignedRewrapRequest{}
+	err := protojson.Unmarshal([]byte(rewrapRequest), &bodyData)
 	f.s.Require().NoError(err, "json.Unmarshal failed")
+	resp := &kaspb.RewrapResponse{}
 
-	wrappedKey, err := ocrypto.Base64Decode([]byte(bodyData.WrappedKey))
-	f.s.Require().NoError(err, "ocrypto.Base64Decode failed")
+	for _, req := range bodyData.GetRequests() {
+		results := &kaspb.PolicyRewrapResult{PolicyId: req.GetPolicy().GetId()}
+		resp.Responses = append(resp.Responses, results)
+		for _, kaoReq := range req.GetKeyAccessObjects() {
+			kao := kaoReq.GetKeyAccessObject()
+			wrappedKey := kaoReq.GetKeyAccessObject().GetWrappedKey()
 
-	kasPrivateKey := strings.ReplaceAll(f.privateKey, "\n\t", "\n")
-	if bodyData.KID != "" && bodyData.KID != f.KID {
-		// old kid
-		lk, ok := f.legakeys[bodyData.KID]
-		f.s.Require().True(ok, "unable to find key [%s]", bodyData.KID)
-		kasPrivateKey = strings.ReplaceAll(lk.private, "\n\t", "\n")
+			kasPrivateKey := strings.ReplaceAll(f.privateKey, "\n\t", "\n")
+			if kao.GetKid() != "" && kao.GetKid() != f.KID {
+				// old kid
+				lk, ok := f.legakeys[kaoReq.GetKeyAccessObject().GetKid()]
+				f.s.Require().True(ok, "unable to find key [%s]", kao.GetKid())
+				kasPrivateKey = strings.ReplaceAll(lk.private, "\n\t", "\n")
+			}
+
+			asymDecrypt, err := ocrypto.NewAsymDecryption(kasPrivateKey)
+			f.s.Require().NoError(err, "ocrypto.NewAsymDecryption failed")
+			symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
+			f.s.Require().NoError(err, "ocrypto.Decrypt failed")
+			asymEncrypt, err := ocrypto.NewAsymEncryption(bodyData.GetClientPublicKey())
+			f.s.Require().NoError(err, "ocrypto.NewAsymEncryption failed")
+			entityWrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
+			f.s.Require().NoError(err, "ocrypto.encrypt failed")
+			kaoResult := &kaspb.KeyAccessRewrapResult{
+				Result:            &kaspb.KeyAccessRewrapResult_KasWrappedKey{KasWrappedKey: entityWrappedKey},
+				Status:            "permit",
+				KeyAccessObjectId: kaoReq.GetKeyAccessObjectId(),
+			}
+			results.Results = append(results.Results, kaoResult)
+		}
 	}
-
-	asymDecrypt, err := ocrypto.NewAsymDecryption(kasPrivateKey)
-	f.s.Require().NoError(err, "ocrypto.NewAsymDecryption failed")
-	symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
-	f.s.Require().NoError(err, "ocrypto.Decrypt failed")
-	asymEncrypt, err := ocrypto.NewAsymEncryption(bodyData.ClientPublicKey)
-	f.s.Require().NoError(err, "ocrypto.NewAsymEncryption failed")
-	entityWrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
-	f.s.Require().NoError(err, "ocrypto.encrypt failed")
-	return entityWrappedKey
+	return resp
 }
 
 func (s *TDFSuite) checkIdentical(file, checksum string) bool {

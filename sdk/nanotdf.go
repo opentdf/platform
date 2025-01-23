@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/opentdf/platform/protocol/go/kas"
+
 	"github.com/opentdf/platform/lib/ocrypto"
 )
 
@@ -899,44 +901,78 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 // NanoTDF Decrypt
 // ============================================================================================================
 
-// ReadNanoTDF - read the nano tdf and return the decrypted data from it
-func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error) {
-	return s.ReadNanoTDFContext(context.Background(), writer, reader)
+type NanoTDFDecryptHandler struct {
+	reader io.ReadSeeker
+	writer io.Writer
+
+	header    NanoTDFHeader
+	headerBuf []byte
 }
 
-// ReadNanoTDFContext - allows cancelling the reader
-func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io.ReadSeeker) (uint32, error) {
-	header, headerSize, err := NewNanoTDFHeaderFromReader(reader)
-	if err != nil {
-		return 0, err
+func createNanoTDFDecryptHandler(reader io.ReadSeeker, writer io.Writer) *NanoTDFDecryptHandler {
+	return &NanoTDFDecryptHandler{
+		reader: reader,
+		writer: writer,
 	}
+}
 
-	_, err = reader.Seek(0, io.SeekStart)
+func (n *NanoTDFDecryptHandler) getRawHeader() []byte {
+	return n.headerBuf
+}
+
+func (n *NanoTDFDecryptHandler) CreateRewrapRequest(_ context.Context) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error) {
+	var err error
+	var headerSize uint32
+	n.header, headerSize, err = NewNanoTDFHeaderFromReader(n.reader)
 	if err != nil {
-		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
+		return nil, err
+	}
+	_, err = n.reader.Seek(0, io.SeekStart)
+	if err != nil {
+		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
 	headerBuf := make([]byte, headerSize)
-	_, err = reader.Read(headerBuf)
+	_, err = n.reader.Read(headerBuf)
 	if err != nil {
-		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
+		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
+	}
+	kasURL, err := n.header.kasURL.GetURL()
+	if err != nil {
+		return nil, err
 	}
 
-	kasURL, err := header.kasURL.GetURL()
-	if err != nil {
-		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
+	req := &kas.UnsignedRewrapRequest_WithPolicyRequest{
+		KeyAccessObjects: []*kas.UnsignedRewrapRequest_WithKeyAccessObject{
+			{
+				KeyAccessObjectId: "kao-0",
+				KeyAccessObject:   &kas.KeyAccess{KasUrl: kasURL, Header: headerBuf},
+			},
+		},
+		Policy: &kas.UnsignedRewrapRequest_WithPolicy{
+			Id: "policy",
+		},
+		Algorithm: "ec:secp256r1",
+	}
+	return map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest{kasURL: req}, nil
+}
+
+func (n *NanoTDFDecryptHandler) Decrypt(_ context.Context, result []kaoResult) (uint32, error) {
+	var err error
+	if len(result) != 1 {
+		return 0, fmt.Errorf("improper result from kas")
 	}
 
-	symmetricKey, err := s.getNanoRewrapKey(ctx, headerBuf, kasURL)
-	if err != nil {
-		return 0, err
+	if result[0].Error != nil {
+		return 0, result[0].Error
 	}
+	key := result[0].SymmetricKey
 
 	const (
 		kPayloadLoadLengthBufLength = 4
 	)
 	payloadLengthBuf := make([]byte, kPayloadLoadLengthBufLength)
-	_, err = reader.Read(payloadLengthBuf[1:])
+	_, err = n.reader.Read(payloadLengthBuf[1:])
 
 	if err != nil {
 		return 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
@@ -946,12 +982,12 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 	slog.Debug("ReadNanoTDF", slog.Uint64("payloadLength", uint64(payloadLength)))
 
 	cipherDate := make([]byte, payloadLength)
-	_, err = reader.Read(cipherDate)
+	_, err = n.reader.Read(cipherDate)
 	if err != nil {
 		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
-	aesGcm, err := ocrypto.NewAESGcm(symmetricKey)
+	aesGcm, err := ocrypto.NewAESGcm(key)
 	if err != nil {
 		return 0, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
 	}
@@ -962,7 +998,7 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 	iv := cipherDate[:kNanoTDFIvSize]
 	ivPadded = append(ivPadded, iv...)
 
-	tagSize, err := SizeOfAuthTagForCipher(header.sigCfg.cipher)
+	tagSize, err := SizeOfAuthTagForCipher(n.header.sigCfg.cipher)
 	if err != nil {
 		return 0, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
 	}
@@ -972,7 +1008,7 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 		return 0, err
 	}
 
-	writeLen, err := writer.Write(decryptedData)
+	writeLen, err := n.writer.Write(decryptedData)
 	if err != nil {
 		return 0, err
 	}
@@ -980,37 +1016,56 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 	return uint32(writeLen), nil
 }
 
-func (s SDK) getNanoRewrapKey(ctx context.Context, header []byte, kasURL string) ([]byte, error) {
+// ReadNanoTDF - read the nano tdf and return the decrypted data from it
+func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker) (uint32, error) {
+	return s.ReadNanoTDFContext(context.Background(), writer, reader)
+}
+
+// ReadNanoTDFContext - allows cancelling the reader
+func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io.ReadSeeker) (uint32, error) {
+	handler := createNanoTDFDecryptHandler(reader, writer)
+
+	symmetricKey, err := s.getNanoRewrapKey(ctx, handler)
+	if err != nil {
+		return 0, err
+	}
+	return handler.Decrypt(ctx, []kaoResult{{SymmetricKey: symmetricKey}})
+}
+
+func (s SDK) getNanoRewrapKey(ctx context.Context, decryptor *NanoTDFDecryptHandler) ([]byte, error) {
+	req, err := decryptor.CreateRewrapRequest(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	if s.collectionStore != nil {
-		if key, found := s.collectionStore.get(header); found {
+		if key, found := s.collectionStore.get(decryptor.getRawHeader()); found {
 			return key, nil
 		}
 	}
-	encodedHeader := ocrypto.Base64Encode(header)
 
 	client := newKASClient(s.dialOptions, s.tokenSource, nil)
-
-	symmetricKey, err := client.unwrapNanoTDF(ctx, string(encodedHeader), kasURL)
+	kasURL, err := decryptor.header.kasURL.GetURL()
 	if err != nil {
-		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
+		return nil, err
 	}
+
+	policyResult, err := client.nanoUnwrap(ctx, req[kasURL])
+	if err != nil {
+		return nil, fmt.Errorf("rewrap failed: %w", err)
+	}
+	result, ok := policyResult["policy"]
+	if !ok || len(result) != 1 {
+		return nil, fmt.Errorf("policy was not found in rewrap response")
+	}
+	if result[0].Error != nil {
+		return nil, result[0].Error
+	}
+
 	if s.collectionStore != nil {
-		s.collectionStore.store(header, symmetricKey)
+		s.collectionStore.store(decryptor.getRawHeader(), result[0].SymmetricKey)
 	}
-	return symmetricKey, nil
-}
-
-type requestBody struct {
-	Algorithm       string    `json:"algorithm,omitempty"`
-	KeyAccess       keyAccess `json:"keyAccess"`
-	ClientPublicKey string    `json:"clientPublicKey"`
-}
-
-type keyAccess struct {
-	Header        string `json:"header"`
-	KeyAccessType string `json:"type"`
-	URL           string `json:"url"`
-	Protocol      string `json:"protocol"`
+	return result[0].SymmetricKey, nil
 }
 
 func versionSalt() []byte {

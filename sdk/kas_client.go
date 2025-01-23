@@ -2,11 +2,13 @@ package sdk
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
 	"time"
+
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -20,25 +22,21 @@ const (
 	secondsPerMinute = 60
 )
 
-type RequestBody struct {
-	KeyAccess       `json:"keyAccess"`
-	ClientPublicKey string `json:"clientPublicKey"`
-	Policy          string `json:"policy"`
-}
-
 type KASClient struct {
 	accessTokenSource auth.AccessTokenSource
 	dialOptions       []grpc.DialOption
 	sessionKey        *ocrypto.RsaKeyPair
 }
 
-// once the backend moves over we should use the same type that the golang backend uses here
-type rewrapRequestBody struct {
-	KeyAccess       KeyAccess `json:"keyAccess"`
-	Policy          string    `json:"policy,omitempty"`
-	Algorithm       string    `json:"algorithm,omitempty"`
-	ClientPublicKey string    `json:"clientPublicKey"`
-	SchemaVersion   string    `json:"schemaVersion,omitempty"`
+type kaoResult struct {
+	SymmetricKey      []byte
+	Error             error
+	KeyAccessObjectID string
+}
+
+type decryptor interface {
+	CreateRewrapRequest(ctx context.Context) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error)
+	Decrypt(ctx context.Context, results []kaoResult) (uint32, error)
 }
 
 func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, sessionKey *ocrypto.RsaKeyPair) *KASClient {
@@ -50,12 +48,12 @@ func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTo
 }
 
 // there is no connection caching as of now
-func (k *KASClient) makeRewrapRequest(ctx context.Context, keyAccess KeyAccess, policy string) (*kas.RewrapResponse, error) {
-	rewrapRequest, err := k.getRewrapRequest(keyAccess, policy)
+func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.UnsignedRewrapRequest_WithPolicyRequest, pubKey string) (*kas.RewrapResponse, error) {
+	rewrapRequest, err := k.getRewrapRequest(requests, pubKey)
 	if err != nil {
 		return nil, err
 	}
-	grpcAddress, err := getGRPCAddress(keyAccess.KasURL)
+	grpcAddress, err := getGRPCAddress(requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject().GetKasUrl())
 	if err != nil {
 		return nil, err
 	}
@@ -76,107 +74,7 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, keyAccess KeyAccess, 
 	return response, nil
 }
 
-func (k *KASClient) unwrap(ctx context.Context, keyAccess KeyAccess, policy string) ([]byte, error) {
-	response, err := k.makeRewrapRequest(ctx, keyAccess, policy)
-	if err != nil {
-		return nil, fmt.Errorf("error making rewrap request to kas: %w", err)
-	}
-
-	if k.sessionKey == nil {
-		return nil, fmt.Errorf("session key is nil")
-	}
-	clientPrivateKey, err := k.sessionKey.PrivateKeyInPemFormat()
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
-	}
-
-	asymDecryption, err := ocrypto.NewAsymDecryption(clientPrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
-	}
-
-	key, err := asymDecryption.Decrypt(response.GetEntityWrappedKey())
-	if err != nil {
-		return nil, fmt.Errorf("error decrypting payload from KAS: %w", err)
-	}
-
-	return key, nil
-}
-
-func (k *KASClient) getNanoTDFRewrapRequest(header string, kasURL string, pubKey string) (*kas.RewrapRequest, error) {
-	kAccess := keyAccess{
-		Header:        header,
-		KeyAccessType: "remote",
-		URL:           kasURL,
-		Protocol:      "kas",
-	}
-
-	requestBody := requestBody{
-		Algorithm:       "ec:secp256r1",
-		KeyAccess:       kAccess,
-		ClientPublicKey: pubKey,
-	}
-
-	requestBodyJSON, err := json.Marshal(requestBody)
-	if err != nil {
-		return nil, fmt.Errorf("Error marshaling request body: %w", err)
-	}
-
-	now := time.Now()
-	tok, err := jwt.NewBuilder().
-		Claim("requestBody", string(requestBodyJSON)).
-		IssuedAt(now).
-		Expiration(now.Add(secondsPerMinute * time.Second)).
-		Build()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create jwt: %w", err)
-	}
-
-	signedToken, err := k.accessTokenSource.MakeToken(func(key jwk.Key) ([]byte, error) {
-		signed, err := jwt.Sign(tok, jwt.WithKey(key.Algorithm(), key))
-		if err != nil {
-			return nil, fmt.Errorf("error signing DPoP token: %w", err)
-		}
-
-		return signed, nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign the token: %w", err)
-	}
-
-	rewrapRequest := kas.RewrapRequest{
-		SignedRequestToken: string(signedToken),
-	}
-	return &rewrapRequest, nil
-}
-
-func (k *KASClient) makeNanoTDFRewrapRequest(ctx context.Context, header string, kasURL string, pubKey string) (*kas.RewrapResponse, error) {
-	rewrapRequest, err := k.getNanoTDFRewrapRequest(header, kasURL, pubKey)
-	if err != nil {
-		return nil, err
-	}
-	grpcAddress, err := getGRPCAddress(kasURL)
-	if err != nil {
-		return nil, err
-	}
-
-	conn, err := grpc.NewClient(grpcAddress, k.dialOptions...)
-	if err != nil {
-		return nil, fmt.Errorf("error connecting to kas: %w", err)
-	}
-	defer conn.Close()
-
-	serviceClient := kas.NewAccessServiceClient(conn)
-
-	response, err := serviceClient.Rewrap(ctx, rewrapRequest)
-	if err != nil {
-		return nil, fmt.Errorf("error making rewrap request: %w", err)
-	}
-
-	return response, nil
-}
-
-func (k *KASClient) unwrapNanoTDF(ctx context.Context, header string, kasURL string) ([]byte, error) {
+func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]kaoResult, error) {
 	keypair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewECKeyPair failed :%w", err)
@@ -191,10 +89,9 @@ func (k *KASClient) unwrapNanoTDF(ctx context.Context, header string, kasURL str
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewECKeyPair.PrivateKeyInPemFormat failed :%w", err)
 	}
-
-	response, err := k.makeNanoTDFRewrapRequest(ctx, header, kasURL, publicKeyAsPem)
+	response, err := k.makeRewrapRequest(ctx, requests, publicKeyAsPem)
 	if err != nil {
-		return nil, fmt.Errorf("error making nano rewrap request to kas: %w", err)
+		return nil, err
 	}
 
 	sessionKey, err := ocrypto.ComputeECDHKey([]byte(privateKeyAsPem), []byte(response.GetSessionPublicKey()))
@@ -212,12 +109,71 @@ func (k *KASClient) unwrapNanoTDF(ctx context.Context, header string, kasURL str
 		return nil, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
 	}
 
-	symmetricKey, err := aesGcm.Decrypt(response.GetEntityWrappedKey())
-	if err != nil {
-		return nil, fmt.Errorf("AesGcm.Decrypt failed:%w", err)
+	policyResults := make(map[string][]kaoResult)
+	for _, results := range response.GetResponses() {
+		var kaoKeys []kaoResult
+		for _, kao := range results.GetResults() {
+			if kao.GetStatus() == "permit" {
+				wrappedKey := kao.GetKasWrappedKey()
+				key, err := aesGcm.Decrypt(wrappedKey)
+				if err != nil {
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
+				} else {
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key})
+				}
+			} else {
+				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError())})
+			}
+		}
+		policyResults[results.GetPolicyId()] = kaoKeys
 	}
 
-	return symmetricKey, nil
+	return policyResults, nil
+}
+
+func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]kaoResult, error) {
+	if k.sessionKey == nil {
+		return nil, fmt.Errorf("session key is nil")
+	}
+	pubKey, err := k.sessionKey.PublicKeyInPemFormat()
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.PublicKeyInPermFormat failed: %w", err)
+	}
+	response, err := k.makeRewrapRequest(ctx, requests, pubKey)
+	if err != nil {
+		return nil, fmt.Errorf("error making rewrap request to kas: %w", err)
+	}
+
+	clientPrivateKey, err := k.sessionKey.PrivateKeyInPemFormat()
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
+	}
+
+	asymDecryption, err := ocrypto.NewAsymDecryption(clientPrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
+	}
+
+	policyResults := make(map[string][]kaoResult)
+	for _, results := range response.GetResponses() {
+		var kaoKeys []kaoResult
+		for _, kao := range results.GetResults() {
+			if kao.GetStatus() == "permit" {
+				wrappedKey := kao.GetKasWrappedKey()
+				key, err := asymDecryption.Decrypt(wrappedKey)
+				if err != nil {
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
+				} else {
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key})
+				}
+			} else {
+				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError())})
+			}
+		}
+		policyResults[results.GetPolicyId()] = kaoKeys
+	}
+
+	return policyResults, nil
 }
 
 func getGRPCAddress(kasURL string) (string, error) {
@@ -240,23 +196,13 @@ func getGRPCAddress(kasURL string) (string, error) {
 	return net.JoinHostPort(parsedURL.Hostname(), port), nil
 }
 
-func (k *KASClient) getRewrapRequest(keyAccess KeyAccess, policy string) (*kas.RewrapRequest, error) {
-	// check if the session key is nil if not return an error
-	if k.sessionKey == nil {
-		return nil, fmt.Errorf("session key is nil")
+func (k *KASClient) getRewrapRequest(reqs []*kas.UnsignedRewrapRequest_WithPolicyRequest, pubKey string) (*kas.RewrapRequest, error) {
+	requestBody := &kas.UnsignedRewrapRequest{
+		ClientPublicKey: pubKey,
+		Requests:        reqs,
 	}
 
-	clientPublicKey, err := k.sessionKey.PublicKeyInPemFormat()
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
-	}
-
-	requestBody := rewrapRequestBody{
-		Policy:          policy,
-		KeyAccess:       keyAccess,
-		ClientPublicKey: clientPublicKey,
-	}
-	requestBodyJSON, err := json.Marshal(requestBody)
+	requestBodyJSON, err := protojson.Marshal(requestBody)
 	if err != nil {
 		return nil, fmt.Errorf("Error marshaling request body: %w", err)
 	}

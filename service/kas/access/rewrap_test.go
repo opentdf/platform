@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"testing"
 
+	"google.golang.org/protobuf/encoding/protojson"
+
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
@@ -199,7 +201,7 @@ type PolicyBinding struct {
 	Hash string `json:"hash"`
 }
 
-func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) KeyAccess {
+func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) kaspb.UnsignedRewrapRequest_WithKeyAccessObject {
 	policyBytes := fauxPolicyBytes(t)
 	asym, err := ocrypto.NewAsymEncryption(rsaPublicAlt)
 	require.NoError(t, err, "rewrap: NewAsymEncryption failed")
@@ -213,23 +215,29 @@ func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) KeyAccess {
 	dst := make([]byte, hex.EncodedLen(len(bindingBytes)))
 	hex.Encode(dst, bindingBytes)
 
-	var policyBinding interface{}
+	var policyBinding *kaspb.PolicyBinding
 
 	if policyBindingAsString {
-		policyBinding = base64.StdEncoding.EncodeToString(dst)
-	} else {
-		policyBinding = PolicyBinding{
-			Alg:  "HS256",
+		policyBinding = &kaspb.PolicyBinding{
 			Hash: base64.StdEncoding.EncodeToString(dst),
 		}
+	} else {
+		policyBinding = &kaspb.PolicyBinding{
+			Algorithm: "HS256",
+			Hash:      base64.StdEncoding.EncodeToString(dst),
+		}
 	}
+	require.NoError(t, err)
 
-	return KeyAccess{
-		Type:          "wrapped",
-		URL:           "http://127.0.0.1:4000",
-		Protocol:      "kas",
-		WrappedKey:    []byte(base64.StdEncoding.EncodeToString(wrappedKey)),
-		PolicyBinding: policyBinding,
+	return kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+		KeyAccessObjectId: "123",
+		KeyAccessObject: &kaspb.KeyAccess{
+			KeyType:       "wrapped",
+			KasUrl:        "http://127.0.0.1:4000",
+			Protocol:      "kas",
+			WrappedKey:    []byte(base64.StdEncoding.EncodeToString(wrappedKey)),
+			PolicyBinding: policyBinding,
+		},
 	}
 }
 
@@ -276,13 +284,25 @@ func jwtWrongKey(t *testing.T) []byte {
 	return signedMockJWT(t, entityPrivateKey(t))
 }
 
+func makeRewrapRequests(t *testing.T, policy []byte, bindingAsString bool) []*kaspb.UnsignedRewrapRequest_WithPolicyRequest {
+	kaoReq := keyAccessWrappedRaw(t, bindingAsString)
+	return []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+		{
+			KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{&kaoReq},
+			Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+				Id:   "123",
+				Body: string(policy),
+			},
+		},
+	}
+}
+
 func makeRewrapBody(t *testing.T, policy []byte, policyBindingAsString bool) []byte {
-	mockBody := RequestBody{
-		KeyAccess:       keyAccessWrappedRaw(t, policyBindingAsString),
-		Policy:          string(policy),
+	mockBody := &kaspb.UnsignedRewrapRequest{
+		Requests:        makeRewrapRequests(t, policy, policyBindingAsString),
 		ClientPublicKey: rsaPublicAlt,
 	}
-	bodyData, err := json.Marshal(mockBody)
+	bodyData, err := protojson.Marshal(mockBody)
 
 	require.NoError(t, err)
 	tok := jwt.New()
@@ -336,7 +356,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 
 			logger := logger.CreateTestLogger()
 
-			verified, err := extractSRTBody(
+			verified, _, err := extractSRTBody(
 				ctx,
 				http.Header{},
 				&kaspb.RewrapRequest{
@@ -347,14 +367,15 @@ func TestParseAndVerifyRequest(t *testing.T) {
 			if tt.goodDPoP {
 				require.NoError(t, err, "failed to parse srt=[%s], tok=[%s]", tt.body, bearer)
 				require.NotNil(t, verified, "unable to load request body")
-				require.NotNil(t, verified.ClientPublicKey, "unable to load public key")
+				require.NotNil(t, verified.GetClientPublicKey(), "unable to load public key")
 
-				policy, err := verifyAndParsePolicy(context.Background(), verified, []byte(plainKey), *logger)
-				if !tt.shouldError {
-					require.NoError(t, err, "failed to verify policy body=[%v]", tt.body)
-					assert.Len(t, policy.Body.DataAttributes, 2, "incorrect policy body=[%v]", policy.Body)
-				} else {
-					require.Error(t, err, "failed to fail policy body=[%v]", tt.body)
+				for _, req := range verified.GetRequests() {
+					err := verifyPolicyBinding(context.Background(), []byte(req.GetPolicy().GetBody()), req.GetKeyAccessObjects()[0], []byte(plainKey), *logger)
+					if !tt.shouldError {
+						require.NoError(t, err, "failed to verify policy body=[%v]", tt.body)
+					} else {
+						require.Error(t, err, "failed to fail policy body=[%v]", tt.body)
+					}
 				}
 			} else {
 				require.Error(t, err, "failed to fail srt=[%s], tok=[%s]", tt.body, bearer)
@@ -375,7 +396,7 @@ func Test_SignedRequestBody_When_Bad_Signature_Expect_Failure(t *testing.T) {
 	md := metadata.New(map[string]string{"token": string(jwtWrongKey(t))})
 	ctx = metadata.NewIncomingContext(ctx, md)
 
-	verified, err := extractSRTBody(
+	verified, _, err := extractSRTBody(
 		ctx,
 		http.Header{},
 		&kaspb.RewrapRequest{

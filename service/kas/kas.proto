@@ -31,6 +31,43 @@ message LegacyPublicKeyRequest {
   string algorithm = 1;
 }
 
+message PolicyBinding {
+  string algorithm = 1 [json_name = "alg"];
+	string hash = 2;
+}
+
+message KeyAccess {
+  string encrypted_metadata = 1;
+  PolicyBinding policy_binding = 2;
+  string protocol = 3;
+  string key_type = 4 [json_name = "type"];
+  string kas_url = 5 [json_name = "url"];
+  string kid = 6;
+  string split_id = 7 [json_name = "sid"];
+  bytes wrapped_key = 8;
+	// header is only used for NanoTDFs
+  bytes header = 9;
+}
+
+message UnsignedRewrapRequest {
+  message WithPolicy {
+    string id = 1;
+    string body = 2;
+  }
+  message WithKeyAccessObject {
+    string key_access_object_id = 1;
+    KeyAccess key_access_object = 2;
+  }
+
+  message WithPolicyRequest {
+    repeated WithKeyAccessObject key_access_objects = 1;
+    WithPolicy policy = 2;
+    string algorithm = 3;
+  }
+
+  string client_public_key = 1;
+  repeated WithPolicyRequest requests = 2;
+}
 message PublicKeyRequest {
   string algorithm = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "algorithm type rsa:<keysize> or ec:<curvename>"}];
   string fmt = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "response format"}];
@@ -48,11 +85,29 @@ message RewrapRequest {
   string signed_request_token = 1;
 }
 
-message RewrapResponse {
+
+message KeyAccessRewrapResult {
   map<string, google.protobuf.Value> metadata = 1;
-  bytes entity_wrapped_key = 2;
+  string key_access_object_id = 2;
+  string status = 3;
+  oneof result {
+    bytes kas_wrapped_key = 4;
+    string error = 5;
+  }
+}
+
+message PolicyRewrapResult {
+  string policy_id = 1;
+  repeated KeyAccessRewrapResult results = 2;
+}
+
+message RewrapResponse {
+  map<string, google.protobuf.Value> metadata = 1 [deprecated = true];
+  bytes entity_wrapped_key = 2 [deprecated = true];
   string session_public_key = 3;
-  string schema_version = 4;
+  string schema_version = 4 [deprecated = true];
+	// New Rewrap API changes
+	repeated PolicyRewrapResult responses = 5;
 }
 
 // Get app info from the root path

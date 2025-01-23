@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.4.38](https://github.com/opentdf/platform/compare/service/v0.4.37...service/v0.4.38) (2025-01-21)
+
+
+### Features
+
+* **core:** adds bulk rewrap to sdk and service ([#1835](https://github.com/opentdf/platform/issues/1835)) ([11698ae](https://github.com/opentdf/platform/commit/11698ae18f66282980a7822dd145e3896c2b605c))
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1864](https://github.com/opentdf/platform/issues/1864)) ([f9d149b](https://github.com/opentdf/platform/commit/f9d149b78ff1425d8f376e05ea93793e319d1354))
+* **core:** Autobump service ([#1867](https://github.com/opentdf/platform/issues/1867)) ([b8f5101](https://github.com/opentdf/platform/commit/b8f5101efa08087c7e1de534b4aa607811f7df93))
+* **core:** reduces GetAttributeValuesByFqns calls in getDecisions ([#1857](https://github.com/opentdf/platform/issues/1857)) ([5379baf](https://github.com/opentdf/platform/commit/5379baf9701d1ae1168e8fc6b51a9c80bc9d2773))
+
+## [0.4.37](https://github.com/opentdf/platform/compare/service/v0.4.36...service/v0.4.37) (2025-01-09)
+
+
+### Features
+
+* **core:** Expose version info ([#1841](https://github.com/opentdf/platform/issues/1841)) ([92a9f5e](https://github.com/opentdf/platform/commit/92a9f5eab3f2372990b86df6a22ad209eed1a0f9))
+
+
+### Bug Fixes
+
+* **core:** Correct length of GetDecision response array ([#1839](https://github.com/opentdf/platform/issues/1839)) ([85ce9b6](https://github.com/opentdf/platform/commit/85ce9b60bda1c105f758399de7e209f8ce3c33ac))
+* **core:** Return deny decision for empty entity chains ([#1846](https://github.com/opentdf/platform/issues/1846)) ([1e8b6a5](https://github.com/opentdf/platform/commit/1e8b6a5b444bd1aaaabf1de0a64778d3f992ee52))
+
 ## [0.4.36](https://github.com/opentdf/platform/compare/service/v0.4.35...service/v0.4.36) (2025-01-03)
 
 

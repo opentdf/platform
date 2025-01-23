@@ -443,7 +443,27 @@
                 </li>
               
                 <li>
+                  <a href="#kas.KeyAccess"><span class="badge">M</span>KeyAccess</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.KeyAccessRewrapResult"><span class="badge">M</span>KeyAccessRewrapResult</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.KeyAccessRewrapResult.MetadataEntry"><span class="badge">M</span>KeyAccessRewrapResult.MetadataEntry</a>
+                </li>
+              
+                <li>
                   <a href="#kas.LegacyPublicKeyRequest"><span class="badge">M</span>LegacyPublicKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.PolicyBinding"><span class="badge">M</span>PolicyBinding</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.PolicyRewrapResult"><span class="badge">M</span>PolicyRewrapResult</a>
                 </li>
               
                 <li>
@@ -464,6 +484,22 @@
               
                 <li>
                   <a href="#kas.RewrapResponse.MetadataEntry"><span class="badge">M</span>RewrapResponse.MetadataEntry</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.UnsignedRewrapRequest"><span class="badge">M</span>UnsignedRewrapRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.UnsignedRewrapRequest.WithKeyAccessObject"><span class="badge">M</span>UnsignedRewrapRequest.WithKeyAccessObject</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.UnsignedRewrapRequest.WithPolicy"><span class="badge">M</span>UnsignedRewrapRequest.WithPolicy</a>
+                </li>
+              
+                <li>
+                  <a href="#kas.UnsignedRewrapRequest.WithPolicyRequest"><span class="badge">M</span>UnsignedRewrapRequest.WithPolicyRequest</a>
                 </li>
               
               
@@ -3448,6 +3484,169 @@ string</p></td>
 
         
       
+        <h3 id="kas.KeyAccess">KeyAccess</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>encrypted_metadata</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>policy_binding</td>
+                  <td><a href="#kas.PolicyBinding">PolicyBinding</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>protocol</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_type</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_url</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kid</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>split_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>wrapped_key</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>header</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>header is only used for NanoTDFs </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.KeyAccessRewrapResult">KeyAccessRewrapResult</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#kas.KeyAccessRewrapResult.MetadataEntry">KeyAccessRewrapResult.MetadataEntry</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_access_object_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>status</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_wrapped_key</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>error</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.KeyAccessRewrapResult.MetadataEntry">KeyAccessRewrapResult.MetadataEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#google.protobuf.Value">google.protobuf.Value</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="kas.LegacyPublicKeyRequest">LegacyPublicKeyRequest</h3>
         <p></p>
 
@@ -3462,6 +3661,68 @@ string</p></td>
                   <td>algorithm</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.PolicyBinding">PolicyBinding</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>algorithm</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>hash</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.PolicyRewrapResult">PolicyRewrapResult</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>policy_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>results</td>
+                  <td><a href="#kas.KeyAccessRewrapResult">KeyAccessRewrapResult</a></td>
+                  <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
               
@@ -3579,14 +3840,14 @@ string</p></td>
                   <td>metadata</td>
                   <td><a href="#kas.RewrapResponse.MetadataEntry">RewrapResponse.MetadataEntry</a></td>
                   <td>repeated</td>
-                  <td><p> </p></td>
+                  <td><p><strong>Deprecated.</strong>  </p></td>
                 </tr>
               
                 <tr>
                   <td>entity_wrapped_key</td>
                   <td><a href="#bytes">bytes</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p><strong>Deprecated.</strong>  </p></td>
                 </tr>
               
                 <tr>
@@ -3600,12 +3861,50 @@ string</p></td>
                   <td>schema_version</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p><strong>Deprecated.</strong>  </p></td>
+                </tr>
+              
+                <tr>
+                  <td>responses</td>
+                  <td><a href="#kas.PolicyRewrapResult">PolicyRewrapResult</a></td>
+                  <td>repeated</td>
+                  <td><p>New Rewrap API changes </p></td>
                 </tr>
               
             </tbody>
           </table>
 
+          
+            
+            
+            <h4>Fields with deprecated option</h4>
+            <table>
+              <thead>
+                <tr>
+                  <td>Name</td>
+                  <td>Option</td>
+                </tr>
+              </thead>
+              <tbody>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><p>true</p></td>
+                </tr>
+              
+                <tr>
+                  <td>entity_wrapped_key</td>
+                  <td><p>true</p></td>
+                </tr>
+              
+                <tr>
+                  <td>schema_version</td>
+                  <td><p>true</p></td>
+                </tr>
+              
+              </tbody>
+            </table>
+            
           
 
         
@@ -3630,6 +3929,137 @@ string</p></td>
                 <tr>
                   <td>value</td>
                   <td><a href="#google.protobuf.Value">google.protobuf.Value</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.UnsignedRewrapRequest">UnsignedRewrapRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>client_public_key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>requests</td>
+                  <td><a href="#kas.UnsignedRewrapRequest.WithPolicyRequest">UnsignedRewrapRequest.WithPolicyRequest</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.UnsignedRewrapRequest.WithKeyAccessObject">UnsignedRewrapRequest.WithKeyAccessObject</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_access_object_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_access_object</td>
+                  <td><a href="#kas.KeyAccess">KeyAccess</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.UnsignedRewrapRequest.WithPolicy">UnsignedRewrapRequest.WithPolicy</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>body</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="kas.UnsignedRewrapRequest.WithPolicyRequest">UnsignedRewrapRequest.WithPolicyRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_access_objects</td>
+                  <td><a href="#kas.UnsignedRewrapRequest.WithKeyAccessObject">UnsignedRewrapRequest.WithKeyAccessObject</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>policy</td>
+                  <td><a href="#kas.UnsignedRewrapRequest.WithPolicy">UnsignedRewrapRequest.WithPolicy</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>algorithm</td>
+                  <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>

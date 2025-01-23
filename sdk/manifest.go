@@ -28,6 +28,7 @@ type KeyAccess struct {
 	EncryptedMetadata string      `json:"encryptedMetadata,omitempty"`
 	KID               string      `json:"kid,omitempty"`
 	SplitID           string      `json:"sid,omitempty"`
+	SchemaVersion     string      `json:"schemaVersion,omitempty"`
 }
 
 type PolicyBinding struct {
@@ -62,6 +63,7 @@ type Manifest struct {
 	EncryptionInformation `json:"encryptionInformation"`
 	Payload               `json:"payload"`
 	Assertions            []Assertion `json:"assertions,omitempty"`
+	TDFVersion            string      `json:"schemaVersion,omitempty"`
 }
 
 type attributeObject struct {

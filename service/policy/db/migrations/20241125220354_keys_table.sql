@@ -98,8 +98,6 @@ BEGIN
 
             UPDATE public_keys SET is_active = TRUE WHERE id = NEW.id;
 
-            --NEW.is_active = TRUE;
-
         EXCEPTION WHEN OTHERS THEN
             RAISE NOTICE 'Error updating active key: %', SQLERRM;
             -- Still deactivate the current active key
@@ -309,6 +307,10 @@ DROP TRIGGER IF EXISTS trigger_update_was_mapped_namespace ON attribute_namespac
 DROP TRIGGER IF EXISTS trigger_update_was_mapped_definition ON attribute_definition_public_key_map;
 
 DROP TRIGGER IF EXISTS trigger_update_was_mapped_value ON attribute_value_key_map;
+
+DROP TRIGGER IF EXISTS maintain_active_key;
+
+DROP FUNCTION IF EXISTS update_active_key;
 
 DROP FUNCTION IF EXISTS update_was_mapped ();
 

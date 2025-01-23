@@ -141,10 +141,11 @@ message GetPublicKeyResponse { Key key = 1; }
 message ListPublicKeysRequest {
   // Optional
   string kas_id = 1;
-  // Optional
-  string kas_name = 2;
-  // Optional
-  string kas_uri = 3;
+  // Future filter by fields
+  // // Optional
+  // string kas_name = 2;
+  // // Optional
+  // string kas_uri = 3;
   // Optional
   policy.PageRequest pagination = 10;
 }
@@ -158,10 +159,11 @@ message ListPublicKeysResponse {
 message ListPublicKeyMappingRequest {
   // Optional
   string kas_id = 1;
-  // Optional
-  string kas_name = 2;
-  // Optional
-  string kas_uri = 3;
+  // Future filter by fields
+  // // Optional
+  // string kas_name = 2;
+  // // Optional
+  // string kas_uri = 3;
   // Optional
   policy.PageRequest pagination = 10;
 }

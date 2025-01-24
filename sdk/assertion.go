@@ -145,13 +145,7 @@ func (s *Statement) UnmarshalJSON(data []byte) error {
 		if err != nil {
 			return err
 		}
-		// canonicalize the JSON object so that there is some hope of being able to load
-		// TDFs that write JSON objects
-		canonicalized, err := jcs.Transform(objAsString)
-		if err != nil {
-			return err
-		}
-		s.Value = string(canonicalized)
+		s.Value = string(objAsString)
 	} else {
 		// Assign raw string to Value
 		var str string

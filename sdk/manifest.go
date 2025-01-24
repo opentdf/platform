@@ -20,15 +20,16 @@ type IntegrityInformation struct {
 }
 
 type KeyAccess struct {
-	KeyType           string      `json:"type"`
-	KasURL            string      `json:"url"`
-	Protocol          string      `json:"protocol"`
-	WrappedKey        string      `json:"wrappedKey"`
-	PolicyBinding     interface{} `json:"policyBinding"`
-	EncryptedMetadata string      `json:"encryptedMetadata,omitempty"`
-	KID               string      `json:"kid,omitempty"`
-	SplitID           string      `json:"sid,omitempty"`
-	SchemaVersion     string      `json:"schemaVersion,omitempty"`
+	KeyType            string      `json:"type"`
+	KasURL             string      `json:"url"`
+	Protocol           string      `json:"protocol"`
+	WrappedKey         string      `json:"wrappedKey"`
+	PolicyBinding      interface{} `json:"policyBinding"`
+	EncryptedMetadata  string      `json:"encryptedMetadata,omitempty"`
+	KID                string      `json:"kid,omitempty"`
+	SplitID            string      `json:"sid,omitempty"`
+	SchemaVersion      string      `json:"schemaVersion,omitempty"`
+	EphemeralPublicKey string      `json:"ephemeralPublicKey,omitempty"`
 }
 
 type PolicyBinding struct {

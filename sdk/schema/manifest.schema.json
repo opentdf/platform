@@ -52,7 +52,7 @@
                 "type": {
                   "description": "The type of key access object.",
                   "type": "string",
-                  "enum": ["wrapped", "remote"]
+                  "enum": ["ec-wrapped", "remote", "wrapped"]
                 },
                 "url": {
                   "description": "A fully qualified URL pointing to a key access service responsible for managing access to the encryption keys.",
@@ -64,7 +64,7 @@
                   "enum": ["kas"]
                 },
                 "wrappedKey": {
-                  "description": "The symmetric key used to encrypt the payload. It has been encrypted using the public key of the KAS, then base64 encoded.",
+                  "description": "The symmetric key used to encrypt the payload. It has been encrypted using the public key of the KAS, then base64 encoded. Options",
                   "type": "string"
                 },
                 "sid": {
@@ -98,6 +98,10 @@
                 },
                 "encryptedMetadata": {
                   "description": "Metadata associated with the TDF, and the request. The contents of the metadata are freeform, and are used to pass information from the client, and any plugins that may be in use by the KAS. The metadata stored here should not be used for primary access decisions. Base64.",
+                  "type": "string"
+                },
+                "ephemeralPublicKey": {
+                  "description": "For ECC wrapped keys, the client public key portion used, with the KAS public key identified with the key id, to derive a shared key that encrypts the wrapped key.",
                   "type": "string"
                 }
               }

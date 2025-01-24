@@ -220,6 +220,7 @@ const (
 	Skip SchemaValidationIntensity = iota
 	Lax
 	Strict
+	unreasonable = 100
 )
 
 type TDFReaderOption func(*TDFReaderConfig) error
@@ -253,7 +254,7 @@ func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOpti
 }
 
 func WithSchemaValidation(intensity SchemaValidationIntensity) TDFReaderOption {
-	return func(c *TDFReaderConfig) eprror {
+	return func(c *TDFReaderConfig) error {
 		c.schemaValidationIntensity = intensity
 		return nil
 	}

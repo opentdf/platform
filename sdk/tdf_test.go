@@ -1,17 +1,20 @@
 package sdk
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"net"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -31,6 +34,7 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -602,6 +606,127 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 	}
 }
 
+func updateManifest(t *testing.T, tdfFile, outFile string, changer func(t *testing.T, dst io.Writer, f *zip.File) error) error {
+	z, err := zip.OpenReader(tdfFile)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err := z.Close()
+		require.NoError(t, err)
+	}()
+
+	unzippedDir := tdfFile + "-unzipped"
+	if err := os.MkdirAll(unzippedDir, os.ModePerm); err != nil {
+		return err
+	}
+	defer func() {
+		err := os.RemoveAll(unzippedDir)
+		require.NoError(t, err)
+	}()
+
+	for _, file := range z.File {
+		fpath := filepath.Join(unzippedDir, file.Name)
+		if file.FileInfo().IsDir() {
+			err := os.MkdirAll(fpath, os.ModePerm)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
+			return err
+		}
+
+		outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+		if err != nil {
+			return err
+		}
+
+		err = changer(t, outFile, file)
+		outFile.Close()
+		if err != nil {
+			return err
+		}
+	}
+
+	outZip, err := os.Create(outFile)
+	if err != nil {
+		return err
+	}
+	defer outZip.Close()
+
+	zipWriter := zip.NewWriter(outZip)
+	defer zipWriter.Close()
+
+	err = filepath.Walk(unzippedDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return err
+		}
+
+		header.Name, err = filepath.Rel(unzippedDir, path)
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			header.Name += "/"
+		} else {
+			header.Method = zip.Store
+		}
+
+		writer, err := zipWriter.CreateHeader(header)
+		if err != nil {
+			return err
+		}
+
+		if !info.IsDir() {
+			file, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+			_, err = io.Copy(writer, file)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	return err
+}
+
+/*
+	manifestPath := filepath.Join(unzippedDir, "0.manifest.json")
+	manifestFile, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return "", err
+	}
+
+	var manifestData Manifest
+	if err := json.Unmarshal(manifestFile, &manifestData); err != nil {
+		return "", err
+	}
+
+	newManifestData := manifestChange(manifestData)
+	newManifestFile, err := json.Marshal(newManifestData)
+	if err != nil {
+		return "", err
+	}
+
+	if err := os.WriteFile(manifestPath, newManifestFile, os.ModePerm); err != nil {
+		return "", err
+	}
+*/
+
 func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 	hs256Key := make([]byte, 32)
 	_, err := rand.Read(hs256Key)
@@ -931,6 +1056,184 @@ func (s *TDFSuite) Test_TDFReaderFail() {
 				test.optFunc,
 			)
 			s.Require().EqualError(err, test.expectedErr)
+		})
+	}
+}
+
+func (s *TDFSuite) Test_ValidateSchema() {
+	for index, test := range []struct {
+		n       string
+		changer func(*testing.T, io.Writer, *zip.File) error
+		err     error
+		failOn  SchemaValidationIntensity
+	}{
+		{
+			n: "valid",
+			changer: func(_ *testing.T, dst io.Writer, f *zip.File) error {
+				rc, err := f.Open()
+				if err != nil {
+					return err
+				}
+
+				_, err = io.Copy(dst, rc)
+				return err
+			},
+			err:    nil,
+			failOn: unreasonable,
+		},
+		{
+			n: "emptymanifest",
+			changer: func(_ *testing.T, dst io.Writer, f *zip.File) error {
+				rc, err := f.Open()
+				if err != nil {
+					return err
+				}
+
+				if f.Name == "0.manifest.json" {
+					_, err = dst.Write([]byte("{}"))
+				} else {
+					_, err = io.Copy(dst, rc)
+				}
+				return err
+			},
+			err:    ErrInvalidPerSchema,
+			failOn: Skip,
+		},
+		{
+			n: "nojsonchange",
+			changer: func(_ *testing.T, dst io.Writer, f *zip.File) error {
+				rc, err := f.Open()
+				if err != nil {
+					return err
+				}
+
+				// Validate json changer code
+				if f.Name != "0.manifest.json" {
+					_, err = io.Copy(dst, rc)
+					return err
+				}
+				// Read file from json as a map
+				var data map[string]interface{}
+				err = json.NewDecoder(rc).Decode(&data)
+				if err != nil {
+					return err
+				}
+				// encode data to dst
+
+				err = json.NewEncoder(dst).Encode(data)
+				return err
+			},
+			err:    nil,
+			failOn: unreasonable,
+		},
+		{
+			n: "lax",
+			changer: func(_ *testing.T, dst io.Writer, f *zip.File) error {
+				rc, err := f.Open()
+				if err != nil {
+					return err
+				}
+
+				if f.Name != "0.manifest.json" {
+					_, err = io.Copy(dst, rc)
+					return err
+				}
+				// Read file from json as a map
+				var data map[string]interface{}
+				err = json.NewDecoder(rc).Decode(&data)
+				if err != nil {
+					return err
+				}
+
+				(data["payload"].(map[string]interface{}))["tdf_spec_version"] = nil //nolint:errcheck,forcetypeassert // testonly code
+
+				err = json.NewEncoder(dst).Encode(data)
+				return err
+			},
+			err:    ErrInvalidPerSchema,
+			failOn: Strict,
+		},
+	} {
+		s.Run(test.n, func() {
+			// create .txt file
+			plainTextFileName := test.n + "-" + strconv.Itoa(index) + ".txt"
+			s.createFileName(buffer, plainTextFileName, 16)
+			defer func() {
+				// Remove the test files
+				_ = os.Remove(plainTextFileName)
+			}()
+			tdfFileName := plainTextFileName + ".tdf"
+
+			plainReader, err := os.Open(plainTextFileName)
+			s.Require().NoError(err)
+
+			defer func() {
+				err := plainReader.Close()
+				s.Require().NoError(err)
+			}()
+
+			ciphertextWriter, err := os.Create(tdfFileName)
+			s.Require().NoError(err)
+
+			defer func() {
+				err := ciphertextWriter.Close()
+				s.Require().NoError(err)
+				err = os.Remove(tdfFileName)
+				s.Require().NoError(err)
+			}()
+
+			encryptOpts := []TDFOption{
+				WithKasInformation(s.kases[0].KASInfo),
+				WithAutoconfigure(false),
+			}
+
+			// test encrypt
+			_, err = s.sdk.CreateTDF(ciphertextWriter, plainReader, encryptOpts...)
+			s.Require().NoError(err)
+
+			alteredFileName := "altered-" + tdfFileName
+			s.Require().NoError(updateManifest(s.T(), tdfFileName, alteredFileName, test.changer))
+
+			cipherText, err := os.Open(alteredFileName)
+			s.Require().NoError(err)
+
+			defer func() {
+				err := cipherText.Close()
+				s.Require().NoError(err)
+				_ = os.Remove(alteredFileName)
+			}()
+
+			for _, svi := range []SchemaValidationIntensity{Skip, Lax, Strict} {
+				r, err := s.sdk.LoadTDF(cipherText, WithSchemaValidation(svi))
+				switch {
+				case test.failOn > svi:
+					s.Require().NoError(err, "error should be nil at %s", svi)
+				case test.err != nil && svi > Skip:
+					// can either fail here or on first read (ie in Copy below)
+					// Errors on 'skip' won't match the expected error type, though.
+					if test.err != nil {
+						s.Require().ErrorIs(err, test.err, "[%v] at %s", err, svi)
+					} else {
+						s.Require().Error(err, "at %s", svi)
+					}
+					continue
+				default:
+					s.Require().NoError(err, "[%v] at %s", err, svi)
+				}
+
+				if test.failOn > svi {
+					n, err := io.Copy(io.Discard, r)
+					s.Require().NoError(err, "at %s", svi)
+					s.Equal(int64(16), n)
+				} else {
+					_, err := io.Copy(io.Discard, r)
+					if test.err != nil && svi != Skip {
+						s.Require().ErrorIs(err, test.err, "[%v] at %s", err, svi)
+					} else {
+						s.Require().Error(err, "[%v] at %s", err, svi)
+					}
+				}
+			}
 		})
 	}
 }

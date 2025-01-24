@@ -565,7 +565,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 	}
 
 	if config.schemaValidationIntensity == Lax || config.schemaValidationIntensity == Strict {
-		valid, err := isValidManifest(manifest, Lax)
+		valid, err := isValidManifest(manifest, config.schemaValidationIntensity)
 		if err != nil {
 			return nil, err
 		}

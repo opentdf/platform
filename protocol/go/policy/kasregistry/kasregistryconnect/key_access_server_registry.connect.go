@@ -52,6 +52,27 @@ const (
 	// KeyAccessServerRegistryServiceListKeyAccessServerGrantsProcedure is the fully-qualified name of
 	// the KeyAccessServerRegistryService's ListKeyAccessServerGrants RPC.
 	KeyAccessServerRegistryServiceListKeyAccessServerGrantsProcedure = "/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServerGrants"
+	// KeyAccessServerRegistryServiceCreatePublicKeyProcedure is the fully-qualified name of the
+	// KeyAccessServerRegistryService's CreatePublicKey RPC.
+	KeyAccessServerRegistryServiceCreatePublicKeyProcedure = "/policy.kasregistry.KeyAccessServerRegistryService/CreatePublicKey"
+	// KeyAccessServerRegistryServiceGetPublicKeyProcedure is the fully-qualified name of the
+	// KeyAccessServerRegistryService's GetPublicKey RPC.
+	KeyAccessServerRegistryServiceGetPublicKeyProcedure = "/policy.kasregistry.KeyAccessServerRegistryService/GetPublicKey"
+	// KeyAccessServerRegistryServiceListPublicKeysProcedure is the fully-qualified name of the
+	// KeyAccessServerRegistryService's ListPublicKeys RPC.
+	KeyAccessServerRegistryServiceListPublicKeysProcedure = "/policy.kasregistry.KeyAccessServerRegistryService/ListPublicKeys"
+	// KeyAccessServerRegistryServiceListPublicKeyMappingProcedure is the fully-qualified name of the
+	// KeyAccessServerRegistryService's ListPublicKeyMapping RPC.
+	KeyAccessServerRegistryServiceListPublicKeyMappingProcedure = "/policy.kasregistry.KeyAccessServerRegistryService/ListPublicKeyMapping"
+	// KeyAccessServerRegistryServiceUpdatePublicKeyProcedure is the fully-qualified name of the
+	// KeyAccessServerRegistryService's UpdatePublicKey RPC.
+	KeyAccessServerRegistryServiceUpdatePublicKeyProcedure = "/policy.kasregistry.KeyAccessServerRegistryService/UpdatePublicKey"
+	// KeyAccessServerRegistryServiceDeactivatePublicKeyProcedure is the fully-qualified name of the
+	// KeyAccessServerRegistryService's DeactivatePublicKey RPC.
+	KeyAccessServerRegistryServiceDeactivatePublicKeyProcedure = "/policy.kasregistry.KeyAccessServerRegistryService/DeactivatePublicKey"
+	// KeyAccessServerRegistryServiceActivatePublicKeyProcedure is the fully-qualified name of the
+	// KeyAccessServerRegistryService's ActivatePublicKey RPC.
+	KeyAccessServerRegistryServiceActivatePublicKeyProcedure = "/policy.kasregistry.KeyAccessServerRegistryService/ActivatePublicKey"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -63,6 +84,13 @@ var (
 	keyAccessServerRegistryServiceUpdateKeyAccessServerMethodDescriptor     = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("UpdateKeyAccessServer")
 	keyAccessServerRegistryServiceDeleteKeyAccessServerMethodDescriptor     = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("DeleteKeyAccessServer")
 	keyAccessServerRegistryServiceListKeyAccessServerGrantsMethodDescriptor = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("ListKeyAccessServerGrants")
+	keyAccessServerRegistryServiceCreatePublicKeyMethodDescriptor           = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("CreatePublicKey")
+	keyAccessServerRegistryServiceGetPublicKeyMethodDescriptor              = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("GetPublicKey")
+	keyAccessServerRegistryServiceListPublicKeysMethodDescriptor            = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("ListPublicKeys")
+	keyAccessServerRegistryServiceListPublicKeyMappingMethodDescriptor      = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("ListPublicKeyMapping")
+	keyAccessServerRegistryServiceUpdatePublicKeyMethodDescriptor           = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("UpdatePublicKey")
+	keyAccessServerRegistryServiceDeactivatePublicKeyMethodDescriptor       = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("DeactivatePublicKey")
+	keyAccessServerRegistryServiceActivatePublicKeyMethodDescriptor         = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("ActivatePublicKey")
 )
 
 // KeyAccessServerRegistryServiceClient is a client for the
@@ -73,7 +101,15 @@ type KeyAccessServerRegistryServiceClient interface {
 	CreateKeyAccessServer(context.Context, *connect.Request[kasregistry.CreateKeyAccessServerRequest]) (*connect.Response[kasregistry.CreateKeyAccessServerResponse], error)
 	UpdateKeyAccessServer(context.Context, *connect.Request[kasregistry.UpdateKeyAccessServerRequest]) (*connect.Response[kasregistry.UpdateKeyAccessServerResponse], error)
 	DeleteKeyAccessServer(context.Context, *connect.Request[kasregistry.DeleteKeyAccessServerRequest]) (*connect.Response[kasregistry.DeleteKeyAccessServerResponse], error)
+	// Deprecated
 	ListKeyAccessServerGrants(context.Context, *connect.Request[kasregistry.ListKeyAccessServerGrantsRequest]) (*connect.Response[kasregistry.ListKeyAccessServerGrantsResponse], error)
+	CreatePublicKey(context.Context, *connect.Request[kasregistry.CreatePublicKeyRequest]) (*connect.Response[kasregistry.CreatePublicKeyResponse], error)
+	GetPublicKey(context.Context, *connect.Request[kasregistry.GetPublicKeyRequest]) (*connect.Response[kasregistry.GetPublicKeyResponse], error)
+	ListPublicKeys(context.Context, *connect.Request[kasregistry.ListPublicKeysRequest]) (*connect.Response[kasregistry.ListPublicKeysResponse], error)
+	ListPublicKeyMapping(context.Context, *connect.Request[kasregistry.ListPublicKeyMappingRequest]) (*connect.Response[kasregistry.ListPublicKeyMappingResponse], error)
+	UpdatePublicKey(context.Context, *connect.Request[kasregistry.UpdatePublicKeyRequest]) (*connect.Response[kasregistry.UpdatePublicKeyResponse], error)
+	DeactivatePublicKey(context.Context, *connect.Request[kasregistry.DeactivatePublicKeyRequest]) (*connect.Response[kasregistry.DeactivatePublicKeyResponse], error)
+	ActivatePublicKey(context.Context, *connect.Request[kasregistry.ActivatePublicKeyRequest]) (*connect.Response[kasregistry.ActivatePublicKeyResponse], error)
 }
 
 // NewKeyAccessServerRegistryServiceClient constructs a client for the
@@ -126,6 +162,48 @@ func NewKeyAccessServerRegistryServiceClient(httpClient connect.HTTPClient, base
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		createPublicKey: connect.NewClient[kasregistry.CreatePublicKeyRequest, kasregistry.CreatePublicKeyResponse](
+			httpClient,
+			baseURL+KeyAccessServerRegistryServiceCreatePublicKeyProcedure,
+			connect.WithSchema(keyAccessServerRegistryServiceCreatePublicKeyMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		getPublicKey: connect.NewClient[kasregistry.GetPublicKeyRequest, kasregistry.GetPublicKeyResponse](
+			httpClient,
+			baseURL+KeyAccessServerRegistryServiceGetPublicKeyProcedure,
+			connect.WithSchema(keyAccessServerRegistryServiceGetPublicKeyMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listPublicKeys: connect.NewClient[kasregistry.ListPublicKeysRequest, kasregistry.ListPublicKeysResponse](
+			httpClient,
+			baseURL+KeyAccessServerRegistryServiceListPublicKeysProcedure,
+			connect.WithSchema(keyAccessServerRegistryServiceListPublicKeysMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listPublicKeyMapping: connect.NewClient[kasregistry.ListPublicKeyMappingRequest, kasregistry.ListPublicKeyMappingResponse](
+			httpClient,
+			baseURL+KeyAccessServerRegistryServiceListPublicKeyMappingProcedure,
+			connect.WithSchema(keyAccessServerRegistryServiceListPublicKeyMappingMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		updatePublicKey: connect.NewClient[kasregistry.UpdatePublicKeyRequest, kasregistry.UpdatePublicKeyResponse](
+			httpClient,
+			baseURL+KeyAccessServerRegistryServiceUpdatePublicKeyProcedure,
+			connect.WithSchema(keyAccessServerRegistryServiceUpdatePublicKeyMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		deactivatePublicKey: connect.NewClient[kasregistry.DeactivatePublicKeyRequest, kasregistry.DeactivatePublicKeyResponse](
+			httpClient,
+			baseURL+KeyAccessServerRegistryServiceDeactivatePublicKeyProcedure,
+			connect.WithSchema(keyAccessServerRegistryServiceDeactivatePublicKeyMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		activatePublicKey: connect.NewClient[kasregistry.ActivatePublicKeyRequest, kasregistry.ActivatePublicKeyResponse](
+			httpClient,
+			baseURL+KeyAccessServerRegistryServiceActivatePublicKeyProcedure,
+			connect.WithSchema(keyAccessServerRegistryServiceActivatePublicKeyMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -137,6 +215,13 @@ type keyAccessServerRegistryServiceClient struct {
 	updateKeyAccessServer     *connect.Client[kasregistry.UpdateKeyAccessServerRequest, kasregistry.UpdateKeyAccessServerResponse]
 	deleteKeyAccessServer     *connect.Client[kasregistry.DeleteKeyAccessServerRequest, kasregistry.DeleteKeyAccessServerResponse]
 	listKeyAccessServerGrants *connect.Client[kasregistry.ListKeyAccessServerGrantsRequest, kasregistry.ListKeyAccessServerGrantsResponse]
+	createPublicKey           *connect.Client[kasregistry.CreatePublicKeyRequest, kasregistry.CreatePublicKeyResponse]
+	getPublicKey              *connect.Client[kasregistry.GetPublicKeyRequest, kasregistry.GetPublicKeyResponse]
+	listPublicKeys            *connect.Client[kasregistry.ListPublicKeysRequest, kasregistry.ListPublicKeysResponse]
+	listPublicKeyMapping      *connect.Client[kasregistry.ListPublicKeyMappingRequest, kasregistry.ListPublicKeyMappingResponse]
+	updatePublicKey           *connect.Client[kasregistry.UpdatePublicKeyRequest, kasregistry.UpdatePublicKeyResponse]
+	deactivatePublicKey       *connect.Client[kasregistry.DeactivatePublicKeyRequest, kasregistry.DeactivatePublicKeyResponse]
+	activatePublicKey         *connect.Client[kasregistry.ActivatePublicKeyRequest, kasregistry.ActivatePublicKeyResponse]
 }
 
 // ListKeyAccessServers calls
@@ -174,6 +259,42 @@ func (c *keyAccessServerRegistryServiceClient) ListKeyAccessServerGrants(ctx con
 	return c.listKeyAccessServerGrants.CallUnary(ctx, req)
 }
 
+// CreatePublicKey calls policy.kasregistry.KeyAccessServerRegistryService.CreatePublicKey.
+func (c *keyAccessServerRegistryServiceClient) CreatePublicKey(ctx context.Context, req *connect.Request[kasregistry.CreatePublicKeyRequest]) (*connect.Response[kasregistry.CreatePublicKeyResponse], error) {
+	return c.createPublicKey.CallUnary(ctx, req)
+}
+
+// GetPublicKey calls policy.kasregistry.KeyAccessServerRegistryService.GetPublicKey.
+func (c *keyAccessServerRegistryServiceClient) GetPublicKey(ctx context.Context, req *connect.Request[kasregistry.GetPublicKeyRequest]) (*connect.Response[kasregistry.GetPublicKeyResponse], error) {
+	return c.getPublicKey.CallUnary(ctx, req)
+}
+
+// ListPublicKeys calls policy.kasregistry.KeyAccessServerRegistryService.ListPublicKeys.
+func (c *keyAccessServerRegistryServiceClient) ListPublicKeys(ctx context.Context, req *connect.Request[kasregistry.ListPublicKeysRequest]) (*connect.Response[kasregistry.ListPublicKeysResponse], error) {
+	return c.listPublicKeys.CallUnary(ctx, req)
+}
+
+// ListPublicKeyMapping calls
+// policy.kasregistry.KeyAccessServerRegistryService.ListPublicKeyMapping.
+func (c *keyAccessServerRegistryServiceClient) ListPublicKeyMapping(ctx context.Context, req *connect.Request[kasregistry.ListPublicKeyMappingRequest]) (*connect.Response[kasregistry.ListPublicKeyMappingResponse], error) {
+	return c.listPublicKeyMapping.CallUnary(ctx, req)
+}
+
+// UpdatePublicKey calls policy.kasregistry.KeyAccessServerRegistryService.UpdatePublicKey.
+func (c *keyAccessServerRegistryServiceClient) UpdatePublicKey(ctx context.Context, req *connect.Request[kasregistry.UpdatePublicKeyRequest]) (*connect.Response[kasregistry.UpdatePublicKeyResponse], error) {
+	return c.updatePublicKey.CallUnary(ctx, req)
+}
+
+// DeactivatePublicKey calls policy.kasregistry.KeyAccessServerRegistryService.DeactivatePublicKey.
+func (c *keyAccessServerRegistryServiceClient) DeactivatePublicKey(ctx context.Context, req *connect.Request[kasregistry.DeactivatePublicKeyRequest]) (*connect.Response[kasregistry.DeactivatePublicKeyResponse], error) {
+	return c.deactivatePublicKey.CallUnary(ctx, req)
+}
+
+// ActivatePublicKey calls policy.kasregistry.KeyAccessServerRegistryService.ActivatePublicKey.
+func (c *keyAccessServerRegistryServiceClient) ActivatePublicKey(ctx context.Context, req *connect.Request[kasregistry.ActivatePublicKeyRequest]) (*connect.Response[kasregistry.ActivatePublicKeyResponse], error) {
+	return c.activatePublicKey.CallUnary(ctx, req)
+}
+
 // KeyAccessServerRegistryServiceHandler is an implementation of the
 // policy.kasregistry.KeyAccessServerRegistryService service.
 type KeyAccessServerRegistryServiceHandler interface {
@@ -182,7 +303,15 @@ type KeyAccessServerRegistryServiceHandler interface {
 	CreateKeyAccessServer(context.Context, *connect.Request[kasregistry.CreateKeyAccessServerRequest]) (*connect.Response[kasregistry.CreateKeyAccessServerResponse], error)
 	UpdateKeyAccessServer(context.Context, *connect.Request[kasregistry.UpdateKeyAccessServerRequest]) (*connect.Response[kasregistry.UpdateKeyAccessServerResponse], error)
 	DeleteKeyAccessServer(context.Context, *connect.Request[kasregistry.DeleteKeyAccessServerRequest]) (*connect.Response[kasregistry.DeleteKeyAccessServerResponse], error)
+	// Deprecated
 	ListKeyAccessServerGrants(context.Context, *connect.Request[kasregistry.ListKeyAccessServerGrantsRequest]) (*connect.Response[kasregistry.ListKeyAccessServerGrantsResponse], error)
+	CreatePublicKey(context.Context, *connect.Request[kasregistry.CreatePublicKeyRequest]) (*connect.Response[kasregistry.CreatePublicKeyResponse], error)
+	GetPublicKey(context.Context, *connect.Request[kasregistry.GetPublicKeyRequest]) (*connect.Response[kasregistry.GetPublicKeyResponse], error)
+	ListPublicKeys(context.Context, *connect.Request[kasregistry.ListPublicKeysRequest]) (*connect.Response[kasregistry.ListPublicKeysResponse], error)
+	ListPublicKeyMapping(context.Context, *connect.Request[kasregistry.ListPublicKeyMappingRequest]) (*connect.Response[kasregistry.ListPublicKeyMappingResponse], error)
+	UpdatePublicKey(context.Context, *connect.Request[kasregistry.UpdatePublicKeyRequest]) (*connect.Response[kasregistry.UpdatePublicKeyResponse], error)
+	DeactivatePublicKey(context.Context, *connect.Request[kasregistry.DeactivatePublicKeyRequest]) (*connect.Response[kasregistry.DeactivatePublicKeyResponse], error)
+	ActivatePublicKey(context.Context, *connect.Request[kasregistry.ActivatePublicKeyRequest]) (*connect.Response[kasregistry.ActivatePublicKeyResponse], error)
 }
 
 // NewKeyAccessServerRegistryServiceHandler builds an HTTP handler from the service implementation.
@@ -230,6 +359,48 @@ func NewKeyAccessServerRegistryServiceHandler(svc KeyAccessServerRegistryService
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	keyAccessServerRegistryServiceCreatePublicKeyHandler := connect.NewUnaryHandler(
+		KeyAccessServerRegistryServiceCreatePublicKeyProcedure,
+		svc.CreatePublicKey,
+		connect.WithSchema(keyAccessServerRegistryServiceCreatePublicKeyMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	keyAccessServerRegistryServiceGetPublicKeyHandler := connect.NewUnaryHandler(
+		KeyAccessServerRegistryServiceGetPublicKeyProcedure,
+		svc.GetPublicKey,
+		connect.WithSchema(keyAccessServerRegistryServiceGetPublicKeyMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	keyAccessServerRegistryServiceListPublicKeysHandler := connect.NewUnaryHandler(
+		KeyAccessServerRegistryServiceListPublicKeysProcedure,
+		svc.ListPublicKeys,
+		connect.WithSchema(keyAccessServerRegistryServiceListPublicKeysMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	keyAccessServerRegistryServiceListPublicKeyMappingHandler := connect.NewUnaryHandler(
+		KeyAccessServerRegistryServiceListPublicKeyMappingProcedure,
+		svc.ListPublicKeyMapping,
+		connect.WithSchema(keyAccessServerRegistryServiceListPublicKeyMappingMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	keyAccessServerRegistryServiceUpdatePublicKeyHandler := connect.NewUnaryHandler(
+		KeyAccessServerRegistryServiceUpdatePublicKeyProcedure,
+		svc.UpdatePublicKey,
+		connect.WithSchema(keyAccessServerRegistryServiceUpdatePublicKeyMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	keyAccessServerRegistryServiceDeactivatePublicKeyHandler := connect.NewUnaryHandler(
+		KeyAccessServerRegistryServiceDeactivatePublicKeyProcedure,
+		svc.DeactivatePublicKey,
+		connect.WithSchema(keyAccessServerRegistryServiceDeactivatePublicKeyMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	keyAccessServerRegistryServiceActivatePublicKeyHandler := connect.NewUnaryHandler(
+		KeyAccessServerRegistryServiceActivatePublicKeyProcedure,
+		svc.ActivatePublicKey,
+		connect.WithSchema(keyAccessServerRegistryServiceActivatePublicKeyMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/policy.kasregistry.KeyAccessServerRegistryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case KeyAccessServerRegistryServiceListKeyAccessServersProcedure:
@@ -244,6 +415,20 @@ func NewKeyAccessServerRegistryServiceHandler(svc KeyAccessServerRegistryService
 			keyAccessServerRegistryServiceDeleteKeyAccessServerHandler.ServeHTTP(w, r)
 		case KeyAccessServerRegistryServiceListKeyAccessServerGrantsProcedure:
 			keyAccessServerRegistryServiceListKeyAccessServerGrantsHandler.ServeHTTP(w, r)
+		case KeyAccessServerRegistryServiceCreatePublicKeyProcedure:
+			keyAccessServerRegistryServiceCreatePublicKeyHandler.ServeHTTP(w, r)
+		case KeyAccessServerRegistryServiceGetPublicKeyProcedure:
+			keyAccessServerRegistryServiceGetPublicKeyHandler.ServeHTTP(w, r)
+		case KeyAccessServerRegistryServiceListPublicKeysProcedure:
+			keyAccessServerRegistryServiceListPublicKeysHandler.ServeHTTP(w, r)
+		case KeyAccessServerRegistryServiceListPublicKeyMappingProcedure:
+			keyAccessServerRegistryServiceListPublicKeyMappingHandler.ServeHTTP(w, r)
+		case KeyAccessServerRegistryServiceUpdatePublicKeyProcedure:
+			keyAccessServerRegistryServiceUpdatePublicKeyHandler.ServeHTTP(w, r)
+		case KeyAccessServerRegistryServiceDeactivatePublicKeyProcedure:
+			keyAccessServerRegistryServiceDeactivatePublicKeyHandler.ServeHTTP(w, r)
+		case KeyAccessServerRegistryServiceActivatePublicKeyProcedure:
+			keyAccessServerRegistryServiceActivatePublicKeyHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -275,4 +460,32 @@ func (UnimplementedKeyAccessServerRegistryServiceHandler) DeleteKeyAccessServer(
 
 func (UnimplementedKeyAccessServerRegistryServiceHandler) ListKeyAccessServerGrants(context.Context, *connect.Request[kasregistry.ListKeyAccessServerGrantsRequest]) (*connect.Response[kasregistry.ListKeyAccessServerGrantsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.kasregistry.KeyAccessServerRegistryService.ListKeyAccessServerGrants is not implemented"))
+}
+
+func (UnimplementedKeyAccessServerRegistryServiceHandler) CreatePublicKey(context.Context, *connect.Request[kasregistry.CreatePublicKeyRequest]) (*connect.Response[kasregistry.CreatePublicKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.kasregistry.KeyAccessServerRegistryService.CreatePublicKey is not implemented"))
+}
+
+func (UnimplementedKeyAccessServerRegistryServiceHandler) GetPublicKey(context.Context, *connect.Request[kasregistry.GetPublicKeyRequest]) (*connect.Response[kasregistry.GetPublicKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.kasregistry.KeyAccessServerRegistryService.GetPublicKey is not implemented"))
+}
+
+func (UnimplementedKeyAccessServerRegistryServiceHandler) ListPublicKeys(context.Context, *connect.Request[kasregistry.ListPublicKeysRequest]) (*connect.Response[kasregistry.ListPublicKeysResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.kasregistry.KeyAccessServerRegistryService.ListPublicKeys is not implemented"))
+}
+
+func (UnimplementedKeyAccessServerRegistryServiceHandler) ListPublicKeyMapping(context.Context, *connect.Request[kasregistry.ListPublicKeyMappingRequest]) (*connect.Response[kasregistry.ListPublicKeyMappingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.kasregistry.KeyAccessServerRegistryService.ListPublicKeyMapping is not implemented"))
+}
+
+func (UnimplementedKeyAccessServerRegistryServiceHandler) UpdatePublicKey(context.Context, *connect.Request[kasregistry.UpdatePublicKeyRequest]) (*connect.Response[kasregistry.UpdatePublicKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.kasregistry.KeyAccessServerRegistryService.UpdatePublicKey is not implemented"))
+}
+
+func (UnimplementedKeyAccessServerRegistryServiceHandler) DeactivatePublicKey(context.Context, *connect.Request[kasregistry.DeactivatePublicKeyRequest]) (*connect.Response[kasregistry.DeactivatePublicKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.kasregistry.KeyAccessServerRegistryService.DeactivatePublicKey is not implemented"))
+}
+
+func (UnimplementedKeyAccessServerRegistryServiceHandler) ActivatePublicKey(context.Context, *connect.Request[kasregistry.ActivatePublicKeyRequest]) (*connect.Response[kasregistry.ActivatePublicKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.kasregistry.KeyAccessServerRegistryService.ActivatePublicKey is not implemented"))
 }

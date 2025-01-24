@@ -55,6 +55,24 @@ func (ns NullAttributeDefinitionRule) Value() (driver.Value, error) {
 	return string(ns.AttributeDefinitionRule), nil
 }
 
+// View to retrieve active public keys mapped to attribute definitions
+type ActiveDefinitionPublicKeysView struct {
+	DefinitionID string `json:"definition_id"`
+	Keys         []byte `json:"keys"`
+}
+
+// View to retrieve active public keys mapped to attribute namespaces
+type ActiveNamespacePublicKeysView struct {
+	NamespaceID string `json:"namespace_id"`
+	Keys        []byte `json:"keys"`
+}
+
+// View to retrieve active public keys mapped to attribute values
+type ActiveValuePublicKeysView struct {
+	ValueID string `json:"value_id"`
+	Keys    []byte `json:"keys"`
+}
+
 // Table to store the definitions of attributes
 type AttributeDefinition struct {
 	// Primary key for the table
@@ -81,6 +99,14 @@ type AttributeDefinitionKeyAccessGrant struct {
 	AttributeDefinitionID string `json:"attribute_definition_id"`
 	// Foreign key to the KAS registration
 	KeyAccessServerID string `json:"key_access_server_id"`
+}
+
+// Table to map public keys to attribute definitions
+type AttributeDefinitionPublicKeyMap struct {
+	// Foreign key to the attribute definition
+	DefinitionID string `json:"definition_id"`
+	// Foreign key to the public key
+	KeyID string `json:"key_id"`
 }
 
 // Table to store the fully qualified names of attributes for reverse lookup at their object IDs
@@ -119,6 +145,14 @@ type AttributeNamespaceKeyAccessGrant struct {
 	KeyAccessServerID string `json:"key_access_server_id"`
 }
 
+// Table to map public keys to attribute namespaces
+type AttributeNamespacePublicKeyMap struct {
+	// Foreign key to the attribute namespace
+	NamespaceID string `json:"namespace_id"`
+	// Foreign key to the public key
+	KeyID string `json:"key_id"`
+}
+
 // Table to store the values of attributes
 type AttributeValue struct {
 	// Primary key for the table
@@ -143,6 +177,14 @@ type AttributeValueKeyAccessGrant struct {
 	KeyAccessServerID string `json:"key_access_server_id"`
 }
 
+// Table to map public keys to attribute values
+type AttributeValuePublicKeyMap struct {
+	// Foreign key to the attribute value
+	ValueID string `json:"value_id"`
+	// Foreign key to the public key
+	KeyID string `json:"key_id"`
+}
+
 // Table to store the known registrations of key access servers (KASs)
 type KeyAccessServer struct {
 	// Primary key for the table
@@ -157,6 +199,30 @@ type KeyAccessServer struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 	// Optional common name of the KAS
 	Name pgtype.Text `json:"name"`
+}
+
+// Table to store public keys for use in TDF encryption
+type PublicKey struct {
+	// Unique identifier for the public key
+	ID string `json:"id"`
+	// Flag to indicate if the key is active
+	IsActive bool `json:"is_active"`
+	// Flag to indicate if the key has been used. Triggered when its mapped to a namespace, definition, or value
+	WasMapped bool `json:"was_mapped"`
+	// Foreign key to the key access server that owns the key
+	KeyAccessServerID string `json:"key_access_server_id"`
+	// Unique identifier for the key
+	KeyID string `json:"key_id"`
+	// Algorithm used to generate the key
+	Alg string `json:"alg"`
+	// Public key in PEM format
+	PublicKey string `json:"public_key"`
+	// Additional metadata for the key
+	Metadata []byte `json:"metadata"`
+	// Timestamp when the key was created
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	// Timestamp when the key was last updated
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
 // Table to store associated terms that should map resource data to attribute values

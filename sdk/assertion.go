@@ -146,7 +146,7 @@ func (s *Statement) UnmarshalJSON(data []byte) error {
 			return err
 		}
 		// canonicalize the JSON object so that there is some hope of being able to load
-		// TDFs that write JSON objects
+		// TDFs written by clients that write JSON objects
 		canonicalized, err := jcs.Transform(objAsString)
 		if err != nil {
 			return err

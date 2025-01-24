@@ -125,9 +125,13 @@ func (a Assertion) GetHash() ([]byte, error) {
 
 func (s *Statement) UnmarshalJSON(data []byte) error {
 	// Define a custom struct for deserialization
+	type Alias Statement
 	aux := &struct {
 		Value json.RawMessage `json:"value,omitempty"`
-	}{}
+		*Alias
+	}{
+		Alias: (*Alias)(s),
+	}
 
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
@@ -141,6 +145,8 @@ func (s *Statement) UnmarshalJSON(data []byte) error {
 		if err != nil {
 			return err
 		}
+		// canonicalize the JSON object so that there is some hope of being able to load
+		// TDFs that write JSON objects
 		canonicalized, err := jcs.Transform(objAsString)
 		if err != nil {
 			return err

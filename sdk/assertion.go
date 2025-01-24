@@ -141,7 +141,11 @@ func (s *Statement) UnmarshalJSON(data []byte) error {
 		if err != nil {
 			return err
 		}
-		s.Value = string(objAsString)
+		canonicalized, err := jcs.Transform(objAsString)
+		if err != nil {
+			return err
+		}
+		s.Value = string(canonicalized)
 	} else {
 		// Assign raw string to Value
 		var str string

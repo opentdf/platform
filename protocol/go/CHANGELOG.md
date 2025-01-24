@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.24](https://github.com/opentdf/platform/compare/protocol/go/v0.2.23...protocol/go/v0.2.24) (2025-01-24)
+
+
+### Features
+
+* **policy:** adds new public keys table ([#1836](https://github.com/opentdf/platform/issues/1836)) ([cad5048](https://github.com/opentdf/platform/commit/cad5048d09609d678d5b5ac2972605dd61f33bb5))
+
 ## [0.2.23](https://github.com/opentdf/platform/compare/protocol/go/v0.2.22...protocol/go/v0.2.23) (2025-01-17)
 
 

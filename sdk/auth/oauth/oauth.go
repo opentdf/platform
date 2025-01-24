@@ -187,7 +187,7 @@ func processResponse(resp *http.Response) (*Token, error) {
 		return nil, fmt.Errorf("error unmarshaling token from response: %w", err)
 	}
 
-	token.received = time.Now()
+	token.received = time.Now().Round(0)
 
 	return token, nil
 }

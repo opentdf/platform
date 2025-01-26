@@ -64,11 +64,8 @@ func RegisterKeycloakERS(config serviceregistry.ServiceConfig, logger *logger.Lo
 }
 
 func (s KeycloakEntityResolutionService) ResolveEntities(ctx context.Context, req *connect.Request[entityresolution.ResolveEntitiesRequest]) (*connect.Response[entityresolution.ResolveEntitiesResponse], error) {
-	if s.Tracer != nil {
-		var span trace.Span
-		ctx, span = s.Tracer.Start(ctx, "ResolveEntities")
-		defer span.End()
-	}
+	ctx, span := s.Tracer.Start(ctx, "ResolveEntities")
+	defer span.End()
 
 	resp, err := EntityResolution(ctx, req.Msg, s.idpConfig, s.logger)
 	return connect.NewResponse(&resp), err
@@ -77,11 +74,8 @@ func (s KeycloakEntityResolutionService) ResolveEntities(ctx context.Context, re
 // - On rewrap - call keyclocks get client with the username
 
 func (s KeycloakEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
-	if s.Tracer != nil {
-		var span trace.Span
-		ctx, span = s.Tracer.Start(ctx, "CreateEntityChainFromJwt")
-		defer span.End()
-	}
+	ctx, span := s.Tracer.Start(ctx, "CreateEntityChainFromJwt")
+	defer span.End()
 
 	resp, err := CreateEntityChainFromJwt(ctx, req.Msg, s.idpConfig, s.logger)
 	return connect.NewResponse(&resp), err

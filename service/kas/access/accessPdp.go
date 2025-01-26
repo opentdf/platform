@@ -6,6 +6,7 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/service/tracing"
 )
 
 const (
@@ -35,6 +36,9 @@ func (p *Provider) checkAttributes(ctx context.Context, dataAttrs []Attribute, e
 		AttributeValueFqns: make([]string, 0),
 	}}
 
+	ctx, span := p.Tracer.Start(ctx, "checkAttributes")
+	defer span.End()
+
 	for _, attr := range dataAttrs {
 		ras[0].AttributeValueFqns = append(ras[0].GetAttributeValueFqns(), attr.URI)
 	}
@@ -49,6 +53,8 @@ func (p *Provider) checkAttributes(ctx context.Context, dataAttrs []Attribute, e
 			},
 		},
 	}
+
+	ctx = tracing.InjectTraceContext(ctx)
 	dr, err := p.SDK.Authorization.GetDecisionsByToken(ctx, &in)
 	if err != nil {
 		p.Logger.ErrorContext(ctx, "Error received from GetDecisionsByToken", "err", err)

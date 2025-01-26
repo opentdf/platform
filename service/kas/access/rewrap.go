@@ -26,8 +26,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/authorization"
-	"go.opentelemetry.io/otel/trace"
-
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/security"
@@ -305,11 +303,8 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 }
 
 func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
-	if p.Tracer != nil {
-		var span trace.Span
-		ctx, span = p.Tracer.Start(ctx, "rewrap-tdf3")
-		defer span.End()
-	}
+	ctx, span := p.Tracer.Start(ctx, "tdf3Rewrap")
+	defer span.End()
 
 	var kidsToCheck []string
 	if body.KeyAccess.KID != "" {
@@ -399,11 +394,8 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, body *RequestBody, entity *en
 }
 
 func (p *Provider) nanoTDFRewrap(ctx context.Context, body *RequestBody, entity *entityInfo) (*kaspb.RewrapResponse, error) {
-	if p.Tracer != nil {
-		var span trace.Span
-		ctx, span = p.Tracer.Start(ctx, "rewrap-nanotdf")
-		defer span.End()
-	}
+	ctx, span := p.Tracer.Start(ctx, "nanoTDFRewrap")
+	defer span.End()
 
 	headerReader := bytes.NewReader(body.KeyAccess.Header)
 

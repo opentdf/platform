@@ -83,11 +83,8 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 func (s *AttributesService) ListAttributes(ctx context.Context,
 	req *connect.Request[attributes.ListAttributesRequest],
 ) (*connect.Response[attributes.ListAttributesResponse], error) {
-	if s.Tracer != nil {
-		var span trace.Span
-		ctx, span = s.Tracer.Start(ctx, "ListAttributes")
-		defer span.End()
-	}
+	ctx, span := s.Tracer.Start(ctx, "ListAttributes")
+	defer span.End()
 
 	state := req.Msg.GetState().String()
 	s.logger.Debug("listing attribute definitions", slog.String("state", state))
@@ -103,11 +100,8 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 func (s *AttributesService) GetAttribute(ctx context.Context,
 	req *connect.Request[attributes.GetAttributeRequest],
 ) (*connect.Response[attributes.GetAttributeResponse], error) {
-	if s.Tracer != nil {
-		var span trace.Span
-		ctx, span = s.Tracer.Start(ctx, "GetAttribute")
-		defer span.End()
-	}
+	ctx, span := s.Tracer.Start(ctx, "GetAttribute")
+	defer span.End()
 
 	rsp := &attributes.GetAttributeResponse{}
 
@@ -123,11 +117,8 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 func (s *AttributesService) GetAttributeValuesByFqns(ctx context.Context,
 	req *connect.Request[attributes.GetAttributeValuesByFqnsRequest],
 ) (*connect.Response[attributes.GetAttributeValuesByFqnsResponse], error) {
-	if s.Tracer != nil {
-		var span trace.Span
-		ctx, span = s.Tracer.Start(ctx, "GetAttributeValuesByFqns")
-		defer span.End()
-	}
+	ctx, span := s.Tracer.Start(ctx, "GetAttributeValuesByFqns")
+	defer span.End()
 
 	rsp := &attributes.GetAttributeValuesByFqnsResponse{}
 

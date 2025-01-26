@@ -151,10 +151,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 		}
 
 		var svcDBClient *db.Client
-		var tracer trace.Tracer
-		if cfg.Trace.Enabled {
-			tracer = otel.Tracer(tracing.ServiceName)
-		}
+		tracer := otel.Tracer(tracing.ServiceName)
 
 		for _, svc := range namespace.Services {
 			// Get new db client if it is required and not already created

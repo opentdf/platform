@@ -129,9 +129,7 @@ func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace
 		config: config,
 	}
 
-	if tracer != nil {
-		c.Tracer = *tracer
-	}
+	c.Tracer = *tracer
 
 	l, err := logger.NewLogger(logger.Config{
 		Output: logCfg.Output,

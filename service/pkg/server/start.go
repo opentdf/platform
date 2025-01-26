@@ -66,12 +66,10 @@ func Start(f ...StartOptions) error {
 	// Set default for places we can't pass the logger
 	slog.SetDefault(logger.Logger)
 
-	if cfg.Trace.Enabled {
-		// Initialize tracer
-		logger.Debug("configuring otel tracer")
-		shutdown := tracing.InitTracer(cfg.Trace)
-		defer shutdown()
-	}
+	// Initialize tracer
+	logger.Debug("configuring otel tracer")
+	shutdown := tracing.InitTracer(cfg.Trace)
+	defer shutdown()
 
 	logger.Info("starting opentdf services")
 

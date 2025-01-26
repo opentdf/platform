@@ -12,7 +12,6 @@ import (
 	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/opentdf/platform/service/tracing"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/trace"
 )
 
 var (
@@ -33,11 +32,7 @@ func NewDBInterface(cfg config.Config) DBInterface {
 	config := cfg.DB
 	config.Schema = cfg.DB.Schema
 	logCfg := cfg.Logger
-
-	var tracer trace.Tracer
-	if cfg.Trace.Enabled {
-		tracer = otel.Tracer(tracing.ServiceName)
-	}
+	tracer := otel.Tracer(tracing.ServiceName)
 
 	c, err := db.New(context.Background(), config, logCfg, &tracer)
 	if err != nil {

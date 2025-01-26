@@ -2,6 +2,9 @@ logger:
   level: debug
   type: text
   output: stdout
+trace:
+  enabled: true
+  folder: "traces"
 # DB and Server configurations are defaulted for local development
 # db:
 #   host: localhost

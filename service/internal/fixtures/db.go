@@ -8,9 +8,11 @@ import (
 
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/logger"
-
 	"github.com/opentdf/platform/service/pkg/db"
 	policydb "github.com/opentdf/platform/service/policy/db"
+	"github.com/opentdf/platform/service/tracing"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var (
@@ -31,7 +33,13 @@ func NewDBInterface(cfg config.Config) DBInterface {
 	config := cfg.DB
 	config.Schema = cfg.DB.Schema
 	logCfg := cfg.Logger
-	c, err := db.New(context.Background(), config, logCfg)
+
+	var tracer trace.Tracer
+	if cfg.Trace.Enabled {
+		tracer = otel.Tracer(tracing.ServiceName)
+	}
+
+	c, err := db.New(context.Background(), config, logCfg, &tracer)
 	if err != nil {
 		slog.Error("issue creating database client", slog.String("error", err.Error()))
 		panic(err)

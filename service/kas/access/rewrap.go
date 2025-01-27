@@ -219,9 +219,8 @@ func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRe
 		}
 		isV1 = true
 	}
-	logger.DebugContext(ctx, "extracted request body", slog.Any("requestBody", requestBody.String()))
+	logger.DebugContext(ctx, "extracted request body", slog.String("rewrap.body", requestBody.String()), slog.Any("rewrap.srt", rbString))
 
-	logger.DebugContext(ctx, "extract public key", "requestBody.ClientPublicKey", requestBody.GetClientPublicKey())
 	block, _ := pem.Decode([]byte(requestBody.GetClientPublicKey()))
 	if block == nil {
 		logger.WarnContext(ctx, "missing clientPublicKey")

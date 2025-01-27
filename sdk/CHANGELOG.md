@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.27](https://github.com/opentdf/platform/compare/sdk/v0.3.26...sdk/v0.3.27) (2025-01-27)
+
+
+### Features
+
+* **policy:** adds new public keys table ([#1836](https://github.com/opentdf/platform/issues/1836)) ([cad5048](https://github.com/opentdf/platform/commit/cad5048d09609d678d5b5ac2972605dd61f33bb5))
+* **sdk:** Allow schema validation during TDF decrypt ([#1870](https://github.com/opentdf/platform/issues/1870)) ([b7e6fb2](https://github.com/opentdf/platform/commit/b7e6fb24631b4898561b1a64c24c85b32c452a1c))
+* **sdk:** remove hex encoding for segment hash ([#1805](https://github.com/opentdf/platform/issues/1805)) ([d7179c2](https://github.com/opentdf/platform/commit/d7179c2a91b508c26fbe6499fe5c1ac8334e5505))
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1873](https://github.com/opentdf/platform/issues/1873)) ([085ac7a](https://github.com/opentdf/platform/commit/085ac7af550d2c9d3fd0b0b2deb389939e7cde8e))
+* **sdk:** Removes unnecessary down-cast of `int` ([#1869](https://github.com/opentdf/platform/issues/1869)) ([66f0c14](https://github.com/opentdf/platform/commit/66f0c14a1ef7490a207c0cef8c98ab4af3f128b1))
+
 ## [0.3.26](https://github.com/opentdf/platform/compare/sdk/v0.3.25...sdk/v0.3.26) (2025-01-21)
 
 

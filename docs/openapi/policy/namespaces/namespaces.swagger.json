@@ -341,6 +341,14 @@
         }
       }
     },
+    "namespacesAssignKeyToNamespaceResponse": {
+      "type": "object",
+      "properties": {
+        "namespaceKey": {
+          "$ref": "#/definitions/namespacesNamespaceKey"
+        }
+      }
+    },
     "namespacesCreateNamespaceRequest": {
       "type": "object",
       "properties": {
@@ -388,6 +396,19 @@
         }
       }
     },
+    "namespacesNamespaceKey": {
+      "type": "object",
+      "properties": {
+        "namespaceId": {
+          "type": "string",
+          "title": "Required"
+        },
+        "keyId": {
+          "type": "string",
+          "title": "Required"
+        }
+      }
+    },
     "namespacesNamespaceKeyAccessServer": {
       "type": "object",
       "properties": {
@@ -406,6 +427,14 @@
       "properties": {
         "namespaceKeyAccessServer": {
           "$ref": "#/definitions/namespacesNamespaceKeyAccessServer"
+        }
+      }
+    },
+    "namespacesRemoveKeyFromNamespaceResponse": {
+      "type": "object",
+      "properties": {
+        "namespaceKey": {
+          "$ref": "#/definitions/namespacesNamespaceKey"
         }
       }
     },
@@ -430,7 +459,7 @@
         },
         "alg": {
           "$ref": "#/definitions/policyKasPublicKeyAlgEnum",
-          "description": "A known algorithm type with any additional parameters encoded.\nTo start, these may be `rsa:2048` for encrypting ZTDF files and \n`ec:secp256r1` for nanoTDF, but more formats may be added as needed."
+          "description": "A known algorithm type with any additional parameters encoded.\nTo start, these may be `rsa:2048` for encrypting ZTDF files and\n`ec:secp256r1` for nanoTDF, but more formats may be added as needed."
         }
       },
       "title": "A KAS public key and some associated metadata for further identifcation"
@@ -440,7 +469,10 @@
       "enum": [
         "KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED",
         "KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048",
-        "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1"
+        "KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096",
+        "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1",
+        "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1",
+        "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1"
       ],
       "default": "KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED"
     },
@@ -455,7 +487,32 @@
           }
         }
       },
-      "title": "A list of known KAS public keys"
+      "title": "Deprecated\nA list of known KAS public keys"
+    },
+    "policyKey": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "the database record ID, not the key ID (`kid`)"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "wasMapped": {
+          "type": "boolean"
+        },
+        "publicKey": {
+          "$ref": "#/definitions/policyKasPublicKey"
+        },
+        "kas": {
+          "$ref": "#/definitions/policyKeyAccessServer"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
+        }
+      }
     },
     "policyKeyAccessServer": {
       "type": "object",
@@ -468,7 +525,8 @@
           "title": "Address of a KAS instance"
         },
         "publicKey": {
-          "$ref": "#/definitions/policyPublicKey"
+          "$ref": "#/definitions/policyPublicKey",
+          "title": "Deprecated"
         },
         "name": {
           "type": "string",
@@ -490,7 +548,7 @@
         },
         "name": {
           "type": "string",
-          "title": "used to partition Attribute Definitions, support by namespace AuthN and enable federation"
+          "title": "used to partition Attribute Definitions, support by namespace AuthN and\nenable federation"
         },
         "fqn": {
           "type": "string"
@@ -509,6 +567,14 @@
             "$ref": "#/definitions/policyKeyAccessServer"
           },
           "title": "KAS grants for the namespace"
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKey"
+          },
+          "title": "Keys for the namespace"
         }
       }
     },
@@ -558,7 +624,8 @@
           "$ref": "#/definitions/policyKasPublicKeySet",
           "title": "public key with additional information. Current preferred version"
         }
-      }
+      },
+      "title": "Deprecated"
     },
     "protobufAny": {
       "type": "object",

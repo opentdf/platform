@@ -50,8 +50,8 @@ jobs:
           images: ${{ secrets.DOCKER_REPO }}
           tags: |
             type=sha,format=long
-            type=match,pattern=service/v(\d.\d.\d),group=1,prefix=v
-            type=match,pattern=service/v(\d.\d),group=1,prefix=v
+            type=match,pattern=service/v(\d+.\d+.\d+),group=1,prefix=v
+            type=match,pattern=service/v(\d+.\d+),group=1,prefix=v
           labels: |
             org.opencontainers.image.documentation=https://docs.opentdf.io
 

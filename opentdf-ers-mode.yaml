@@ -9,9 +9,9 @@ services:
   entityresolution:
     log_level: info
     url: http://localhost:8888/auth
-    clientid: 'tdf-entity-resolution'
-    clientsecret: 'secret'
-    realm: 'opentdf'
+    clientid: "tdf-entity-resolution"
+    clientsecret: "secret"
+    realm: "opentdf"
     legacykeycloak: true
     inferid:
       from:
@@ -21,8 +21,8 @@ server:
   auth:
     enabled: true
     enforceDPoP: false
-    public_client_id: 'opentdf-public'
-    audience: 'http://localhost:8080'
+    public_client_id: "opentdf-public"
+    audience: "http://localhost:8080"
     issuer: http://localhost:8888/auth/realms/opentdf
     policy:
       ## Default policy for all requests
@@ -61,10 +61,9 @@ server:
       #  [matchers]
       #  m = g(r.sub, p.sub) && globOrRegexMatch(r.res, p.res) && globOrRegexMatch(r.act, p.act) && globOrRegexMatch(r.obj, p.obj)
   cors:
-    enabled: false
     # "*" to allow any origin or a specific domain like "https://yourdomain.com"
     allowedorigins:
-      - '*'
+      - "*"
     # List of methods. Examples: "GET,POST,PUT"
     allowedmethods:
       - GET

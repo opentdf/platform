@@ -345,8 +345,15 @@ func GetTdfType(reader io.ReadSeeker) TdfType {
 	return Invalid
 }
 
+// Indicates JSON Schema validation failed for the manifest or header of the TDF file.
+// Some invalid manifests are still usable, so this file may still be usable.
+var ErrInvalidPerSchema = errors.New("manifest was not valid")
+
+//go:embed schema/manifest-lax.schema.json
+var manifestLaxSchema []byte
+
 //go:embed schema/manifest.schema.json
-var manifestSchema []byte
+var manifestStrictSchema []byte
 
 // Detects whether, or not the reader is a valid TDF. It first checks if it can "open" it
 // Then attempts to extract a manifest, then finally it validates the manifest using the json schema
@@ -356,7 +363,6 @@ var manifestSchema []byte
 // 'required', older TDF versions will fail despite being valid. So each time we release an update to
 // the TDF spec, we'll need to include the respective schema in the schema directory, then update this code
 // to validate against all previously known schema versions.
-
 func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 	// create tdf reader
 	tdfReader, err := archive.NewTDFReader(reader)
@@ -369,8 +375,22 @@ func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 		return false, fmt.Errorf("tdfReader.Manifest failed: %w", err)
 	}
 
+	return isValidManifest(manifest, Lax)
+}
+
+func isValidManifest(manifest string, intensity SchemaValidationIntensity) (bool, error) {
 	// Convert the embedded data to a string
-	manifestSchemaString := string(manifestSchema)
+	var manifestSchemaString string
+	switch intensity {
+	case Strict:
+		manifestSchemaString = string(manifestStrictSchema)
+	case Lax:
+		manifestSchemaString = string(manifestLaxSchema)
+	case Skip:
+		return true, nil
+	default:
+		manifestSchemaString = string(manifestLaxSchema)
+	}
 	loader := gojsonschema.NewStringLoader(manifestSchemaString)
 	manifestStringLoader := gojsonschema.NewStringLoader(manifest)
 	result, err := gojsonschema.Validate(loader, manifestStringLoader)
@@ -379,7 +399,7 @@ func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 	}
 
 	if !result.Valid() {
-		return false, errors.New("manifest was not valid")
+		return false, fmt.Errorf("%w: %v", ErrInvalidPerSchema, result.Errors())
 	}
 
 	return true, nil

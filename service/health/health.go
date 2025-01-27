@@ -2,11 +2,15 @@ package health
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
+	"net/http"
+	"strings"
 
 	"connectrpc.com/connect"
 	"connectrpc.com/grpchealth"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -31,7 +35,36 @@ func NewRegistration() *serviceregistry.Service[grpchealth.Checker] {
 				if err != nil {
 					srp.Logger.Error("failed to set well-known config", slog.String("error", err.Error()))
 				}
-				return HealthService{logger: srp.Logger}, nil
+				hs := HealthService{logger: srp.Logger}
+				return hs, func(_ context.Context, mux *runtime.ServeMux) error {
+					err := mux.HandlePath(http.MethodGet, "/healthz", func(w http.ResponseWriter, r *http.Request, _ map[string]string) { //nolint:contextcheck // check is not relevant here
+						resp, err := hs.Check(context.Background(), &grpchealth.CheckRequest{
+							Service: r.URL.Query().Get("service"),
+						})
+						if err != nil {
+							http.Error(w, err.Error(), http.StatusInternalServerError)
+							return
+						}
+						status := map[string]interface{}{"status": strings.ToUpper(resp.Status.String())}
+						if resp.Status != grpchealth.StatusServing {
+							w.WriteHeader(http.StatusServiceUnavailable)
+							if err := json.NewEncoder(w).Encode(status); err != nil {
+								srp.Logger.Error("failed to encode health status", slog.String("error", err.Error()))
+							}
+
+							return
+						}
+						w.WriteHeader(http.StatusOK)
+						if err := json.NewEncoder(w).Encode(status); err != nil {
+							srp.Logger.Error("failed to encode health status", slog.String("error", err.Error()))
+						}
+					})
+					if err != nil {
+						panic(errors.Join(errors.New("failed to register healthz endpoint"), err))
+					}
+
+					return nil
+				}
 			},
 		},
 	}

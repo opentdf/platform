@@ -23,6 +23,10 @@ message AttributeKeyAccessServer {
   ];
 }
 
+/*
+    Key Maps
+*/
+
 message ValueKeyAccessServer {
   // Required
   string value_id = 1 [
@@ -31,6 +35,32 @@ message ValueKeyAccessServer {
   // Required
   string key_access_server_id = 2 [
     (buf.validate.field).string.uuid = true
+  ];
+}
+
+message AttributeKey {
+  // Required
+  string attribute_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+  // Required
+  string key_id = 2 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+}
+
+message ValueKey {
+  // Required
+  string value_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+  // Required
+  string key_id = 2 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
   ];
 }
 
@@ -284,6 +314,58 @@ message RemoveKeyAccessServerFromValueResponse {
   ValueKeyAccessServer value_key_access_server = 1;
 }
 
+/*
+   Assign Key to Attribute and Value
+*/
+
+message AssignKeyToAttributeRequest {
+  // Required
+  AttributeKey attribute_key = 1 [
+    (buf.validate.field).required = true
+  ];
+}
+
+message AssignKeyToAttributeResponse {
+  // Required
+  AttributeKey attribute_key = 1;
+}
+
+message RemoveKeyFromAttributeRequest {
+  // Required
+  AttributeKey attribute_key = 1  [
+    (buf.validate.field).required = true
+  ];
+}
+
+message RemoveKeyFromAttributeResponse {
+  // Required
+  AttributeKey attribute_key = 1;
+}
+
+message AssignKeyToValueRequest {
+  // Required
+  ValueKey value_key = 1  [
+    (buf.validate.field).required = true
+  ];
+}
+
+message AssignKeyToValueResponse {
+  // Required
+  ValueKey value_key = 1;
+}
+
+message RemoveKeyFromValueRequest {
+  // Required
+  ValueKey value_key = 1;
+}
+
+message RemoveKeyFromValueResponse {
+  // Required
+  ValueKey value_key = 1;
+}
+
+
+
 ///
 /// Attribute Service
 ///
@@ -380,4 +462,18 @@ service AttributesService {
       delete: "/attributes/values/keyaccessserver/grants"
     };
   }
+
+  /*--------------------------------------*
+  * Attribute <> Key RPCs
+  *---------------------------------------*/
+
+  rpc AssignKeyToAttribute(AssignKeyToAttributeRequest) returns (AssignKeyToAttributeResponse){}
+
+  rpc RemoveKeyFromAttribute(RemoveKeyFromAttributeRequest) returns (RemoveKeyFromAttributeResponse){}
+
+  rpc AssignKeyToValue(AssignKeyToValueRequest) returns (AssignKeyToValueResponse){}
+
+  rpc RemoveKeyFromValue(RemoveKeyFromValueRequest) returns (RemoveKeyFromValueResponse){}
 }
+
+

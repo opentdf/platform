@@ -9,13 +9,13 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-
 	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/authorization/authorizationconnect"
+	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -29,9 +29,13 @@ import (
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/policies"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const EntityIDPrefix string = "entity_idx_"
+
+var ErrEmptyStringAttribute = errors.New("resource attributes must have at least one attribute value fqn")
 
 type AuthorizationService struct { //nolint:revive // AuthorizationService is a valid name for this struct
 	sdk    *otdf.SDK
@@ -185,117 +189,162 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *connect.R
 		DecisionResponses: make([]*authorization.DecisionResponse, 0),
 	}
 	for _, dr := range req.Msg.GetDecisionRequests() {
-		for _, ra := range dr.GetResourceAttributes() {
-			as.logger.DebugContext(ctx, "getting resource attributes", slog.String("FQNs", strings.Join(ra.GetAttributeValueFqns(), ", ")))
+		resp, err := as.getDecisions(ctx, dr)
+		if err != nil {
+			return nil, err
+		}
+		rsp.DecisionResponses = append(rsp.DecisionResponses, resp...)
+	}
 
-			// get attribute definition/value combinations
-			dataAttrDefsAndVals, err := retrieveAttributeDefinitions(ctx, ra, as.sdk)
-			if err != nil {
-				// if attribute an FQN does not exist
-				// return deny for all entity chains aginst this RA set and continue to next
-				if errors.Is(err, db.StatusifyError(db.ErrNotFound, "")) {
-					for _, ec := range dr.GetEntityChains() {
-						decisionResp := &authorization.DecisionResponse{
-							Decision:      authorization.DecisionResponse_DECISION_DENY,
-							EntityChainId: ec.GetId(),
-							Action: &policy.Action{
-								Value: &policy.Action_Standard{
-									Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
-								},
+	return connect.NewResponse(rsp), nil
+}
+
+func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorization.DecisionRequest) ([]*authorization.DecisionResponse, error) {
+	allPertinentFQNS := &authorization.ResourceAttribute{AttributeValueFqns: make([]string, 0)}
+	response := make([]*authorization.DecisionResponse, len(dr.GetResourceAttributes())*len(dr.GetEntityChains()))
+
+	// TODO: fetching missing FQNs should not lead into a complete failure, rather a list of unknown FQNs would be preferred
+	var err error
+	var dataAttrDefsAndVals map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue
+	allPertinentFQNS.AttributeValueFqns, err = getAttributesFromRas(dr.GetResourceAttributes())
+	if err == nil {
+		dataAttrDefsAndVals, err = retrieveAttributeDefinitions(ctx, allPertinentFQNS.GetAttributeValueFqns(), as.sdk)
+	}
+	if err != nil {
+		// if attribute an FQN does not exist
+		// return deny for all entity chains aginst this RAs
+		if errors.Is(err, status.Error(codes.NotFound, db.ErrTextNotFound)) || errors.Is(err, ErrEmptyStringAttribute) {
+			for raIdx, ra := range dr.GetResourceAttributes() {
+				for ecIdx, ec := range dr.GetEntityChains() {
+					decisionResp := &authorization.DecisionResponse{
+						Decision:      authorization.DecisionResponse_DECISION_DENY,
+						EntityChainId: ec.GetId(),
+						Action: &policy.Action{
+							Value: &policy.Action_Standard{
+								Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
 							},
-						}
-						if ra.GetResourceAttributesId() != "" {
-							decisionResp.ResourceAttributesId = ra.GetResourceAttributesId()
-						} else if len(ra.GetAttributeValueFqns()) > 0 {
-							decisionResp.ResourceAttributesId = ra.GetAttributeValueFqns()[0]
-						}
-						rsp.DecisionResponses = append(rsp.DecisionResponses, decisionResp)
+						},
 					}
-					continue
-				}
-				return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("fqns", strings.Join(ra.GetAttributeValueFqns(), ", ")))
-			}
-			var attrDefs []*policy.Attribute
-			var attrVals []*policy.Value
-			var fqns []string
-			for fqn, v := range dataAttrDefsAndVals {
-				attrDefs = append(attrDefs, v.GetAttribute())
-				attrVal := v.GetValue()
-				fqns = append(fqns, fqn)
-				attrVal.Fqn = fqn
-				attrVals = append(attrVals, attrVal)
-			}
-
-			attrDefs, err = populateAttrDefValueFqns(attrDefs)
-			if err != nil {
-				return nil, connect.NewError(connect.CodeInternal, err)
-			}
-
-			// get the relevant resource attribute fqns
-			allPertinentFqnsRA := authorization.ResourceAttribute{
-				AttributeValueFqns: ra.GetAttributeValueFqns(),
-			}
-			for _, attrDef := range attrDefs {
-				if attrDef.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
-					for _, value := range attrDef.GetValues() {
-						allPertinentFqnsRA.AttributeValueFqns = append(allPertinentFqnsRA.AttributeValueFqns, value.GetFqn())
+					if ra.GetResourceAttributesId() != "" {
+						decisionResp.ResourceAttributesId = ra.GetResourceAttributesId()
+					} else if len(ra.GetAttributeValueFqns()) > 0 {
+						decisionResp.ResourceAttributesId = ra.GetAttributeValueFqns()[0]
 					}
+					responseIdx := (raIdx * len(dr.GetEntityChains())) + ecIdx
+					response[responseIdx] = decisionResp
 				}
 			}
+			return response, nil
+		}
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("fqns", strings.Join(allPertinentFQNS.GetAttributeValueFqns(), ", ")))
+	}
 
-			for _, ec := range dr.GetEntityChains() {
-				//
-				// TODO: we should already have the subject mappings here and be able to just use OPA to trim down the known data attr values to the ones matched up with the entities
-				//
-				entities := ec.GetEntities()
-				req := connect.Request[authorization.GetEntitlementsRequest]{
-					Msg: &authorization.GetEntitlementsRequest{
-						Entities: entities,
-						Scope:    &allPertinentFqnsRA,
-					},
-				}
+	var allAttrDefs []*policy.Attribute
+	for _, v := range dataAttrDefsAndVals {
+		allAttrDefs = append(allAttrDefs, v.GetAttribute())
+	}
+	allAttrDefs, err = populateAttrDefValueFqns(allAttrDefs)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	// get the relevant resource attribute fqns
+	for _, attrDef := range allAttrDefs {
+		if attrDef.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+			for _, value := range attrDef.GetValues() {
+				allPertinentFQNS.AttributeValueFqns = append(allPertinentFQNS.AttributeValueFqns, value.GetFqn())
+			}
+		}
+	}
 
-				auditECEntitlements := make([]audit.EntityChainEntitlement, 0)
-				auditEntityDecisions := make([]audit.EntityDecision, 0)
+	var ecChainEntitlementsResponse []*connect.Response[authorization.GetEntitlementsResponse]
+	for _, ec := range dr.GetEntityChains() {
+		entities := ec.GetEntities()
+		if len(entities) == 0 {
+			ecChainEntitlementsResponse = append(ecChainEntitlementsResponse, nil)
+			continue
+		}
+		req := connect.Request[authorization.GetEntitlementsRequest]{
+			Msg: &authorization.GetEntitlementsRequest{
+				Entities: entities,
+				Scope:    allPertinentFQNS,
+			},
+		}
+		ecEntitlements, err := as.GetEntitlements(ctx, &req)
+		if err != nil {
+			// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
+			return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("extra", "getEntitlements request failed"))
+		}
+		ecChainEntitlementsResponse = append(ecChainEntitlementsResponse, ecEntitlements)
+	}
 
-				// Entitlements for environment entites in chain
-				envEntityAttrValues := make(map[string][]string)
-				// Entitlements for sbuject entities in chain
-				subjectEntityAttrValues := make(map[string][]string)
+	for raIdx, ra := range dr.GetResourceAttributes() {
+		var attrDefs []*policy.Attribute
+		var attrVals []*policy.Value
+		var fqns []string
 
-				//nolint:nestif // handle empty entity / attr list
-				if len(entities) == 0 || len(allPertinentFqnsRA.GetAttributeValueFqns()) == 0 {
-					as.logger.WarnContext(ctx, "empty entity list and/or entity data attribute list")
-				} else {
-					ecEntitlements, err := as.GetEntitlements(ctx, &req)
-					if err != nil {
-						// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
-						return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("extra", "getEntitlements request failed"))
+		for _, fqn := range ra.GetAttributeValueFqns() {
+			fqn = strings.ToLower(fqn)
+			fqns = append(fqns, fqn)
+			v := dataAttrDefsAndVals[fqn]
+			attrDefs = append(attrDefs, v.GetAttribute())
+			attrVal := v.GetValue()
+			attrVal.Fqn = fqn
+			attrVals = append(attrVals, attrVal)
+		}
+
+		attrDefs, err = populateAttrDefValueFqns(attrDefs)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+
+		for ecIdx, ec := range dr.GetEntityChains() {
+			// check if we already have a decision for this entity chain
+			responseIdx := (raIdx * len(dr.GetEntityChains())) + ecIdx
+			if response[responseIdx] != nil {
+				continue
+			}
+
+			//
+			// TODO: we should already have the subject mappings here and be able to just use OPA to trim down the known data attr values to the ones matched up with the entities
+			//
+			entities := ec.GetEntities()
+			auditECEntitlements := make([]audit.EntityChainEntitlement, 0)
+			auditEntityDecisions := make([]audit.EntityDecision, 0)
+
+			// Entitlements for environment entites in chain
+			envEntityAttrValues := make(map[string][]string)
+			// Entitlementsfor sbuject entities in chain
+			subjectEntityAttrValues := make(map[string][]string)
+
+			// handle empty entity / attr list
+			decision := authorization.DecisionResponse_DECISION_DENY
+			switch {
+			case len(entities) == 0:
+				as.logger.WarnContext(ctx, "empty entity list")
+			case len(ra.GetAttributeValueFqns()) == 0:
+				as.logger.WarnContext(ctx, "empty entity data attribute list")
+				decision = authorization.DecisionResponse_DECISION_PERMIT
+			default:
+				ecEntitlements := ecChainEntitlementsResponse[ecIdx]
+				for entIdx, e := range ecEntitlements.Msg.GetEntitlements() {
+					entityID := e.GetEntityId()
+					if entityID == "" {
+						entityID = EntityIDPrefix + fmt.Sprint(entIdx)
 					}
+					entityCategory := entities[entIdx].GetCategory()
+					auditECEntitlements = append(auditECEntitlements, audit.EntityChainEntitlement{
+						EntityID:                 entityID,
+						EntityCatagory:           entityCategory.String(),
+						AttributeValueReferences: e.GetAttributeValueFqns(),
+					})
 
-					// TODO this might cause errors if multiple entities dont have ids
-					// currently just adding each entity returned to same list
-					for idx, e := range ecEntitlements.Msg.GetEntitlements() {
-						entityID := e.GetEntityId()
-						if entityID == "" {
-							entityID = EntityIDPrefix + fmt.Sprint(idx)
-						}
-						entityCategory := entities[idx].GetCategory()
-						auditECEntitlements = append(auditECEntitlements, audit.EntityChainEntitlement{
-							EntityID:                 entityID,
-							EntityCatagory:           entityCategory.String(),
-							AttributeValueReferences: e.GetAttributeValueFqns(),
-						})
-
-						// If entity type unspecified, include in access decision to err on the side of caution
-						if entityCategory == authorization.Entity_CATEGORY_SUBJECT || entityCategory == authorization.Entity_CATEGORY_UNSPECIFIED {
-							subjectEntityAttrValues[entityID] = e.GetAttributeValueFqns()
-						} else {
-							envEntityAttrValues[entityID] = e.GetAttributeValueFqns()
-						}
+					// If entity type unspecified, include in access decision to err on the side of caution
+					if entityCategory == authorization.Entity_CATEGORY_SUBJECT || entityCategory == authorization.Entity_CATEGORY_UNSPECIFIED {
+						subjectEntityAttrValues[entityID] = e.GetAttributeValueFqns()
+					} else {
+						envEntityAttrValues[entityID] = e.GetAttributeValueFqns()
 					}
 				}
-
 				// call access-pdp
 				accessPDP := access.NewPdp(as.logger)
 				decisions, err := accessPDP.DetermineAccess(
@@ -309,7 +358,7 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *connect.R
 					return nil, db.StatusifyError(errors.New("could not determine access"), "could not determine access", slog.String("error", err.Error()))
 				}
 				// check the decisions
-				decision := authorization.DecisionResponse_DECISION_PERMIT
+				decision = authorization.DecisionResponse_DECISION_PERMIT
 				for entityID, d := range decisions {
 					// Set overall decision as well as individual entity decision
 					entityDecision := authorization.DecisionResponse_DECISION_PERMIT
@@ -329,39 +378,39 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *connect.R
 						Entitlements: entityEntitlementFqns,
 					})
 				}
-
-				decisionResp := &authorization.DecisionResponse{
-					Decision:      decision,
-					EntityChainId: ec.GetId(),
-					Action: &policy.Action{
-						Value: &policy.Action_Standard{
-							Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
-						},
-					},
-				}
-				if ra.GetResourceAttributesId() != "" {
-					decisionResp.ResourceAttributesId = ra.GetResourceAttributesId()
-				} else if len(ra.GetAttributeValueFqns()) > 0 {
-					decisionResp.ResourceAttributesId = ra.GetAttributeValueFqns()[0]
-				}
-
-				auditDecision := audit.GetDecisionResultDeny
-				if decision == authorization.DecisionResponse_DECISION_PERMIT {
-					auditDecision = audit.GetDecisionResultPermit
-				}
-				as.logger.Audit.GetDecision(ctx, audit.GetDecisionEventParams{
-					Decision:                auditDecision,
-					EntityChainEntitlements: auditECEntitlements,
-					EntityChainID:           decisionResp.GetEntityChainId(),
-					EntityDecisions:         auditEntityDecisions,
-					FQNs:                    fqns,
-					ResourceAttributeID:     decisionResp.GetResourceAttributesId(),
-				})
-				rsp.DecisionResponses = append(rsp.DecisionResponses, decisionResp)
 			}
+
+			decisionResp := &authorization.DecisionResponse{
+				Decision:      decision,
+				EntityChainId: ec.GetId(),
+				Action: &policy.Action{
+					Value: &policy.Action_Standard{
+						Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
+					},
+				},
+			}
+			if ra.GetResourceAttributesId() != "" {
+				decisionResp.ResourceAttributesId = ra.GetResourceAttributesId()
+			} else if len(ra.GetAttributeValueFqns()) > 0 {
+				decisionResp.ResourceAttributesId = ra.GetAttributeValueFqns()[0]
+			}
+
+			auditDecision := audit.GetDecisionResultDeny
+			if decision == authorization.DecisionResponse_DECISION_PERMIT {
+				auditDecision = audit.GetDecisionResultPermit
+			}
+			as.logger.Audit.GetDecision(ctx, audit.GetDecisionEventParams{
+				Decision:                auditDecision,
+				EntityChainEntitlements: auditECEntitlements,
+				EntityChainID:           decisionResp.GetEntityChainId(),
+				EntityDecisions:         auditEntityDecisions,
+				FQNs:                    fqns,
+				ResourceAttributeID:     decisionResp.GetResourceAttributesId(),
+			})
+			response[responseIdx] = decisionResp
 		}
 	}
-	return connect.NewResponse(rsp), nil
+	return response, nil
 }
 
 // makeSubMapsByValLookup creates a lookup map of subject mappings by attribute value ID.
@@ -444,22 +493,60 @@ func makeScopeMap(scope *authorization.ResourceAttribute) map[string]bool {
 
 func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connect.Request[authorization.GetEntitlementsRequest]) (*connect.Response[authorization.GetEntitlementsResponse], error) {
 	as.logger.DebugContext(ctx, "getting entitlements")
-	attrsRes, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{})
-	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
-		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list attributes"))
+
+	var nextOffset int32
+	attrsList := make([]*policy.Attribute, 0)
+	subjectMappingsList := make([]*policy.SubjectMapping, 0)
+
+	// If quantity of attributes exceeds maximum list pagination, all are needed to determine entitlements
+	for {
+		listed, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{
+			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+			Pagination: &policy.PageRequest{
+				Offset: nextOffset,
+			},
+		})
+		if err != nil {
+			as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
+			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list attributes"))
+		}
+
+		nextOffset = listed.GetPagination().GetNextOffset()
+		attrsList = append(attrsList, listed.GetAttributes()...)
+
+		// offset becomes zero when list is exhausted
+		if nextOffset <= 0 {
+			break
+		}
 	}
-	subMapsRes, err := as.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{})
-	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
-		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list subject mappings"))
+
+	// If quantity of subject mappings exceeds maximum list pagination, all are needed to determine entitlements
+	nextOffset = 0
+	for {
+		listed, err := as.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{
+			Pagination: &policy.PageRequest{
+				Offset: nextOffset,
+			},
+		})
+		if err != nil {
+			as.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
+			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list subject mappings"))
+		}
+
+		nextOffset = listed.GetPagination().GetNextOffset()
+		subjectMappingsList = append(subjectMappingsList, listed.GetSubjectMappings()...)
+
+		// offset becomes zero when list is exhausted
+		if nextOffset <= 0 {
+			break
+		}
 	}
 	// create a lookup map of attribute value FQNs (based on request scope)
 	scopeMap := makeScopeMap(req.Msg.GetScope())
 	// create a lookup map of subject mappings by attribute value ID
-	subMapsByVal := makeSubMapsByValLookup(subMapsRes.GetSubjectMappings())
+	subMapsByVal := makeSubMapsByValLookup(subjectMappingsList)
 	// create a lookup map of attribute values by FQN (for rego query)
-	fqnAttrVals := makeValsByFqnsLookup(attrsRes.GetAttributes(), subMapsByVal, scopeMap)
+	fqnAttrVals := makeValsByFqnsLookup(attrsList, subMapsByVal, scopeMap)
 	avf := &attr.GetAttributeValuesByFqnsResponse{
 		FqnAttributeValues: fqnAttrVals,
 	}
@@ -564,11 +651,31 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	return resp, nil
 }
 
-func retrieveAttributeDefinitions(ctx context.Context, ra *authorization.ResourceAttribute, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
-	attrFqns := ra.GetAttributeValueFqns()
+func getAttributesFromRas(ras []*authorization.ResourceAttribute) ([]string, error) {
+	var attrFqns []string
+	repeats := make(map[string]bool)
+	moreThanOneAttr := false
+	for _, ra := range ras {
+		for _, str := range ra.GetAttributeValueFqns() {
+			moreThanOneAttr = true
+			if str != "" && !repeats[str] {
+				attrFqns = append(attrFqns, str)
+				repeats[str] = true
+			}
+		}
+	}
+
+	if moreThanOneAttr && len(attrFqns) == 0 {
+		return nil, ErrEmptyStringAttribute
+	}
+	return attrFqns, nil
+}
+
+func retrieveAttributeDefinitions(ctx context.Context, attrFqns []string, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	if len(attrFqns) == 0 {
 		return make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue), nil
 	}
+
 	resp, err := sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
 		WithValue: &policy.AttributeValueSelector{
 			WithSubjectMaps: false,

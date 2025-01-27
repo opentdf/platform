@@ -4,8 +4,6 @@ import (
 	"crypto"
 )
 
-const schemaVersion = "1.1.0"
-
 type Attribute struct {
 	URI           string           `json:"attribute"` // attribute
 	PublicKey     crypto.PublicKey `json:"pubKey"`    // pubKey

@@ -2,11 +2,28 @@
 
 ### Migrations
 
-Migrations are configurable (see [service configuration readme](../../../docs/configuration.md)) and in Policy are powered by
+Migrations are configurable (see [service configuration readme](../../../docs/Configuring.md)) and in Policy are powered by
 [Goose](https://github.com/pressly/goose).
 
 Goose runs [the migrations](./migrations/) sequentially, and each migration should have an associated ERD in markdown as well if there have been
 changes to the table relations in the policy schema.
+
+Each migration is named `YYYYMMDD<number>_effect.sql` (i.e. `20240101000001_add_new_object.sql`) so that
+goose can order them appropriately.
+
+Each migration should also get a `.md` of the same name beside it with a description of the change to
+the schema and motivation behind it.
+
+As of the time of writing this documentation, there is a CLI command on the overall platform binary to
+migrate up and down for testing.
+
+
+Migration checklist:
+
+- [ ] tested migrating up and down thoroughly with CRUD before/after
+- [ ] migration file `.sql` named appropriately
+- [ ] migration file contains a `.md` associated with it
+- [ ] overall schema updated with `make policy-erd-gen`
 
 ### Queries
 

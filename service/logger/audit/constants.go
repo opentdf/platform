@@ -20,6 +20,7 @@ const (
 	ObjectTypeKeyObject
 	ObjectTypeEntityObject
 	ObjectTypeResourceMappingGroup
+	ObjectTypePublicKey
 )
 
 func (ot ObjectType) String() string {

@@ -34,6 +34,15 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, id string) (*policy.Na
 		}
 	}
 
+	var keys []*policy.Key
+	if len(ns.Keys) > 0 {
+		keys, err = db.KeysProtoJSON(ns.Keys)
+		if err != nil {
+			c.logger.Error("could not unmarshal keys", slog.String("error", err.Error()))
+			return nil, err
+		}
+	}
+
 	return &policy.Namespace{
 		Id:       id,
 		Name:     ns.Name,
@@ -41,6 +50,7 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, id string) (*policy.Na
 		Grants:   grants,
 		Metadata: metadata,
 		Fqn:      ns.Fqn.String,
+		Keys:     keys,
 	}, nil
 }
 
@@ -324,5 +334,30 @@ func (c PolicyDBClient) RemoveKeyAccessServerFromNamespace(ctx context.Context, 
 		return nil, db.ErrNotFound
 	}
 
+	return k, nil
+}
+
+func (c PolicyDBClient) AssignPublicKeyToNamespace(ctx context.Context, k *namespaces.NamespaceKey) error {
+	_, err := c.Queries.assignPublicKeyToNamespace(ctx, assignPublicKeyToNamespaceParams{
+		NamespaceID: k.GetNamespaceId(),
+		KeyID:       k.GetKeyId(),
+	})
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+	return nil
+}
+
+func (c PolicyDBClient) RemovePublicKeyFromNamespace(ctx context.Context, k *namespaces.NamespaceKey) (*namespaces.NamespaceKey, error) {
+	count, err := c.Queries.removePublicKeyFromNamespace(ctx, removePublicKeyFromNamespaceParams{
+		NamespaceID: k.GetNamespaceId(),
+		KeyID:       k.GetKeyId(),
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
 	return k, nil
 }

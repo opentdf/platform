@@ -88,6 +88,7 @@
     },
     "/key-access-servers/grants": {
       "get": {
+        "summary": "Deprecated",
         "operationId": "KeyAccessServerRegistryService_ListKeyAccessServerGrants",
         "responses": {
           "200": {
@@ -106,21 +107,21 @@
         "parameters": [
           {
             "name": "kasId",
-            "description": "Optional\nFilter LIST by ID of a registered Key Access Server.\nIf neither is provided, grants from all registered KASs to policy attribute objects are returned.",
+            "description": "Optional\nFilter LIST by ID of a registered Key Access Server.\nIf neither is provided, grants from all registered KASs to policy attribute\nobjects are returned.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "kasUri",
-            "description": "Optional\nFilter LIST by URI of a registered Key Access Server.\nIf none is provided, grants from all registered KASs to policy attribute objects are returned.",
+            "description": "Optional\nFilter LIST by URI of a registered Key Access Server.\nIf none is provided, grants from all registered KASs to policy attribute\nobjects are returned.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "kasName",
-            "description": "Optional\nFilter LIST by name of a registered Key Access Server.\nIf none are provided, grants from all registered KASs to policy attribute objects are returned.",
+            "description": "Optional\nFilter LIST by name of a registered Key Access Server.\nIf none are provided, grants from all registered KASs to policy attribute\nobjects are returned.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -267,6 +268,38 @@
     }
   },
   "definitions": {
+    "ListPublicKeyMappingResponseAssociation": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "fqn": {
+          "type": "string"
+        }
+      }
+    },
+    "ListPublicKeyMappingResponsePublicKeyMapping": {
+      "type": "object",
+      "properties": {
+        "kasId": {
+          "type": "string"
+        },
+        "kasName": {
+          "type": "string"
+        },
+        "kasUri": {
+          "type": "string"
+        },
+        "publicKeys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kasregistryListPublicKeyMappingResponsePublicKey"
+          }
+        }
+      }
+    },
     "commonMetadata": {
       "type": "object",
       "properties": {
@@ -312,6 +345,14 @@
       "default": "METADATA_UPDATE_ENUM_UNSPECIFIED",
       "title": "- METADATA_UPDATE_ENUM_UNSPECIFIED: unspecified update type\n - METADATA_UPDATE_ENUM_EXTEND: only update the fields that are provided\n - METADATA_UPDATE_ENUM_REPLACE: replace the entire metadata with the provided metadata"
     },
+    "kasregistryActivatePublicKeyResponse": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/policyKey"
+        }
+      }
+    },
     "kasregistryCreateKeyAccessServerRequest": {
       "type": "object",
       "properties": {
@@ -341,6 +382,22 @@
         }
       }
     },
+    "kasregistryCreatePublicKeyResponse": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/policyKey"
+        }
+      }
+    },
+    "kasregistryDeactivatePublicKeyResponse": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/policyKey"
+        }
+      }
+    },
     "kasregistryDeleteKeyAccessServerResponse": {
       "type": "object",
       "properties": {
@@ -354,6 +411,14 @@
       "properties": {
         "keyAccessServer": {
           "$ref": "#/definitions/policyKeyAccessServer"
+        }
+      }
+    },
+    "kasregistryGetPublicKeyResponse": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/policyKey"
         }
       }
     },
@@ -396,7 +461,8 @@
             "$ref": "#/definitions/kasregistryGrantedPolicyObject"
           }
         }
-      }
+      },
+      "title": "Deprecated"
     },
     "kasregistryListKeyAccessServerGrantsResponse": {
       "type": "object",
@@ -411,7 +477,8 @@
         "pagination": {
           "$ref": "#/definitions/policyPageResponse"
         }
-      }
+      },
+      "title": "Deprecated"
     },
     "kasregistryListKeyAccessServersResponse": {
       "type": "object",
@@ -428,11 +495,75 @@
         }
       }
     },
+    "kasregistryListPublicKeyMappingResponse": {
+      "type": "object",
+      "properties": {
+        "publicKeyMappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ListPublicKeyMappingResponsePublicKeyMapping"
+          }
+        }
+      }
+    },
+    "kasregistryListPublicKeyMappingResponsePublicKey": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/policyKey"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ListPublicKeyMappingResponseAssociation"
+          }
+        },
+        "definitions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ListPublicKeyMappingResponseAssociation"
+          }
+        },
+        "namespaces": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ListPublicKeyMappingResponseAssociation"
+          }
+        }
+      }
+    },
+    "kasregistryListPublicKeysResponse": {
+      "type": "object",
+      "properties": {
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKey"
+          }
+        },
+        "pagination": {
+          "$ref": "#/definitions/policyPageResponse"
+        }
+      }
+    },
     "kasregistryUpdateKeyAccessServerResponse": {
       "type": "object",
       "properties": {
         "keyAccessServer": {
           "$ref": "#/definitions/policyKeyAccessServer"
+        }
+      }
+    },
+    "kasregistryUpdatePublicKeyResponse": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/policyKey"
         }
       }
     },
@@ -449,7 +580,7 @@
         },
         "alg": {
           "$ref": "#/definitions/policyKasPublicKeyAlgEnum",
-          "description": "A known algorithm type with any additional parameters encoded.\nTo start, these may be `rsa:2048` for encrypting ZTDF files and \n`ec:secp256r1` for nanoTDF, but more formats may be added as needed."
+          "description": "A known algorithm type with any additional parameters encoded.\nTo start, these may be `rsa:2048` for encrypting ZTDF files and\n`ec:secp256r1` for nanoTDF, but more formats may be added as needed."
         }
       },
       "title": "A KAS public key and some associated metadata for further identifcation"
@@ -459,7 +590,10 @@
       "enum": [
         "KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED",
         "KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048",
-        "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1"
+        "KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096",
+        "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1",
+        "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1",
+        "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1"
       ],
       "default": "KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED"
     },
@@ -474,7 +608,32 @@
           }
         }
       },
-      "title": "A list of known KAS public keys"
+      "title": "Deprecated\nA list of known KAS public keys"
+    },
+    "policyKey": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "the database record ID, not the key ID (`kid`)"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "wasMapped": {
+          "type": "boolean"
+        },
+        "publicKey": {
+          "$ref": "#/definitions/policyKasPublicKey"
+        },
+        "kas": {
+          "$ref": "#/definitions/policyKeyAccessServer"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
+        }
+      }
     },
     "policyKeyAccessServer": {
       "type": "object",
@@ -487,7 +646,8 @@
           "title": "Address of a KAS instance"
         },
         "publicKey": {
-          "$ref": "#/definitions/policyPublicKey"
+          "$ref": "#/definitions/policyPublicKey",
+          "title": "Deprecated"
         },
         "name": {
           "type": "string",
@@ -546,7 +706,8 @@
           "$ref": "#/definitions/policyKasPublicKeySet",
           "title": "public key with additional information. Current preferred version"
         }
-      }
+      },
+      "title": "Deprecated"
     },
     "protobufAny": {
       "type": "object",

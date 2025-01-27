@@ -25,6 +25,23 @@ message NamespaceKeyAccessServer {
 }
 
 /*
+    Key Maps
+*/
+
+message NamespaceKey {
+  // Required
+  string namespace_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+  // Required
+  string key_id = 2 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+}
+
+/*
 
    Namespace Service Definitions
 
@@ -116,6 +133,29 @@ message RemoveKeyAccessServerFromNamespaceResponse {
   NamespaceKeyAccessServer namespace_key_access_server = 1;
 }
 
+/*
+  Assign Key to Namespace
+*/
+message AssignKeyToNamespaceRequest {
+  NamespaceKey namespace_key = 1 [
+    (buf.validate.field).required = true
+  ];
+}
+
+message AssignKeyToNamespaceResponse {
+  NamespaceKey namespace_key = 1;
+}
+
+message RemoveKeyFromNamespaceRequest {
+  NamespaceKey namespace_key = 1 [
+    (buf.validate.field).required = true
+  ];
+}
+
+message RemoveKeyFromNamespaceResponse {
+  NamespaceKey namespace_key = 1;
+}
+
 service NamespaceService {
   rpc GetNamespace(GetNamespaceRequest) returns (GetNamespaceResponse) {
     option (google.api.http) = {get: "/attributes/namespaces/{id}"};
@@ -158,5 +198,11 @@ service NamespaceService {
       delete: "/attributes/namespaces/keyaccessserver/grants"
     };
   }
+
+  /*--------------------------------------*
+   * Namespace <> Key RPCs
+   *---------------------------------------*/
+  rpc AssignKeyToNamespace(AssignKeyToNamespaceRequest) returns (AssignKeyToNamespaceResponse) {}
+  rpc RemoveKeyFromNamespace(RemoveKeyFromNamespaceRequest) returns (RemoveKeyFromNamespaceResponse) {}
 }
 

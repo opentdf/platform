@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"testing"
 
@@ -11,7 +12,9 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
+
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/proto"
@@ -666,7 +669,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_KasId() {
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	listedGrants := listRsp.GetGrants()
+	listedGrants := listRsp.GetGrants() //nolint:staticcheck // still needed for testing
 	s.Len(listedGrants, 1)
 	g := listedGrants[0]
 	s.Equal(firstKAS.GetId(), g.GetKeyAccessServer().GetId())
@@ -683,7 +686,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_KasId() {
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	listedGrants = listRsp.GetGrants()
+	listedGrants = listRsp.GetGrants() //nolint:staticcheck // still needed for testing
 	s.Len(listedGrants, 1)
 	g = listedGrants[0]
 	s.Equal(otherKAS.GetId(), g.GetKeyAccessServer().GetId())
@@ -700,7 +703,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_KasId_NoResultsIfNotFo
 		KasId: nonExistentKasRegistryID,
 	})
 	s.Require().NoError(err)
-	s.Empty(listRsp.GetGrants())
+	s.Empty(listRsp.GetGrants()) //nolint:staticcheck // still needed for testing
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_KasUri() {
@@ -731,7 +734,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_KasUri() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(listGrantsRsp)
-	listedGrants := listGrantsRsp.GetGrants()
+	listedGrants := listGrantsRsp.GetGrants() //nolint:staticcheck // still needed for testing
 	s.GreaterOrEqual(len(listedGrants), 1)
 	for _, g := range listedGrants {
 		s.Equal(fixtureKAS.ID, g.GetKeyAccessServer().GetId())
@@ -746,7 +749,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_KasUri_NoResultsIfNotF
 		KasUri: "https://notfound.com/kas/uri",
 	})
 	s.Require().NoError(err)
-	s.Empty(listGrantsRsp.GetGrants())
+	s.Empty(listGrantsRsp.GetGrants()) //nolint:staticcheck // still needed for testing
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_KasName() {
@@ -779,7 +782,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_KasName() {
 
 	s.Require().NoError(err)
 	s.NotNil(listedGrantsRsp)
-	listedGrants := listedGrantsRsp.GetGrants()
+	listedGrants := listedGrantsRsp.GetGrants() //nolint:staticcheck // still needed for testing
 	s.GreaterOrEqual(len(listedGrants), 1)
 	found := false
 	for _, g := range listedGrants {
@@ -803,7 +806,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_KasName_NoResultsIfNot
 		KasName: "unknown-name",
 	})
 	s.Require().NoError(err)
-	s.Empty(listGrantsRsp.GetGrants())
+	s.Empty(listGrantsRsp.GetGrants()) //nolint:staticcheck // still needed for testing
 }
 
 func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {
@@ -913,7 +916,7 @@ func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {
 	listGrantsRsp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, &kasregistry.ListKeyAccessServerGrantsRequest{})
 	s.Require().NoError(err)
 	s.NotNil(listGrantsRsp)
-	listedGrants := listGrantsRsp.GetGrants()
+	listedGrants := listGrantsRsp.GetGrants() //nolint:staticcheck // still needed for testing
 	s.GreaterOrEqual(len(listedGrants), 1)
 
 	s.GreaterOrEqual(len(listedGrants), 2)
@@ -958,7 +961,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_Limit_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	listed := listRsp.GetGrants()
+	listed := listRsp.GetGrants() //nolint:staticcheck // still needed for testing
 	s.Equal(len(listed), int(limit))
 
 	for _, grant := range listed {
@@ -992,7 +995,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_Offset_Succeeds() {
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, req)
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
-	listed := listRsp.GetGrants()
+	listed := listRsp.GetGrants() //nolint:staticcheck // still needed for testing
 
 	// set the offset pagination
 	offset := 1
@@ -1002,7 +1005,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_Offset_Succeeds() {
 	offsetListRsp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, req)
 	s.Require().NoError(err)
 	s.NotNil(offsetListRsp)
-	offsetListed := offsetListRsp.GetGrants()
+	offsetListed := offsetListRsp.GetGrants() //nolint:staticcheck // still needed for testing
 
 	// length is reduced by the offset amount
 	s.Equal(len(offsetListed), len(listed)-offset)
@@ -1011,6 +1014,362 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_Offset_Succeeds() {
 	for i, val := range offsetListed {
 		s.True(proto.Equal(val, listed[i+offset]))
 	}
+}
+
+// Public Key Tests
+
+func (s *KasRegistrySuite) Test_Create_Public_Key() {
+	var publicKeyTestUUID string
+
+	// The initial rsa2048 public key is created in the fixture and should be active
+	kID := s.f.GetPublicKey("key_1").ID
+	r1, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: kID})
+	s.Require().NoError(err)
+	s.NotNil(r1)
+	s.True(r1.GetKey().GetIsActive().GetValue())
+
+	kasID := s.f.GetKasRegistryKey("key_access_server_1").ID
+	kasRegistry := &kasregistry.CreatePublicKeyRequest{
+		KasId: kasID,
+		Key: &policy.KasPublicKey{
+			Pem: "public",
+			Kid: "key-id",
+			Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048,
+		},
+	}
+
+	r2, err := s.db.PolicyClient.CreatePublicKey(s.ctx, kasRegistry)
+	s.Require().NoError(err)
+	s.NotNil(r2)
+	s.Equal(kasID, r2.GetKey().GetKas().GetId())
+	s.Equal("public", r2.GetKey().GetPublicKey().GetPem())
+	s.True(r2.GetKey().GetIsActive().GetValue())
+	publicKeyTestUUID = r2.GetKey().GetId()
+
+	// Now the old key should be inactive
+	r3, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: kID})
+	s.Require().NoError(err)
+	s.NotNil(r3)
+	s.False(r3.GetKey().GetIsActive().GetValue())
+
+	// Check to make sure the new key was mapped to namespaces, definitions and values
+	vkms := s.f.GetValueMap(kID)
+	dkms := s.f.GetDefinitionKeyMap(kID)
+	nkms := s.f.GetNamespaceKeyMap(kID)
+
+	for _, vk := range vkms {
+		r, err := s.db.PolicyClient.GetAttributeValue(s.ctx, vk.ValueID)
+		s.Require().NoError(err)
+		s.NotNil(r)
+		s.True(slices.ContainsFunc(r.GetKeys(), func(key *policy.Key) bool {
+			return key.GetId() == publicKeyTestUUID
+		}))
+		s.False(slices.ContainsFunc(r.GetKeys(), func(key *policy.Key) bool {
+			return key.GetId() == kID
+		}))
+	}
+
+	for _, dk := range dkms {
+		r, err := s.db.PolicyClient.GetAttribute(s.ctx, dk.DefinitionID)
+		s.Require().NoError(err)
+		s.NotNil(r)
+		s.True(slices.ContainsFunc(r.GetKeys(), func(key *policy.Key) bool {
+			return key.GetId() == publicKeyTestUUID
+		}))
+		s.False(slices.ContainsFunc(r.GetKeys(), func(key *policy.Key) bool {
+			return key.GetId() == kID
+		}))
+	}
+
+	for _, nk := range nkms {
+		r, err := s.db.PolicyClient.GetNamespace(s.ctx, nk.NamespaceID)
+		s.Require().NoError(err)
+		s.NotNil(r)
+		s.True(slices.ContainsFunc(r.GetKeys(), func(key *policy.Key) bool {
+			return key.GetId() == publicKeyTestUUID
+		}))
+		s.False(slices.ContainsFunc(r.GetKeys(), func(key *policy.Key) bool {
+			return key.GetId() == kID
+		}))
+	}
+}
+
+func (s *KasRegistrySuite) Test_Create_Pulblic_Key_Unique_Constraint() {
+	// We can't have a duplicate public keys with the same (key_access_server_id, kid, alg) set
+	kasID := s.f.GetKasRegistryKey("key_access_server_1").ID
+	kasRegistry := &kasregistry.CreatePublicKeyRequest{
+		KasId: kasID,
+		Key: &policy.KasPublicKey{
+			Pem: "public",
+			Kid: "key-unique",
+			Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048,
+		},
+	}
+
+	r, err := s.db.PolicyClient.CreatePublicKey(s.ctx, kasRegistry)
+	s.Require().NoError(err)
+	s.NotNil(r)
+
+	// Try to create the same key again
+	r, err = s.db.PolicyClient.CreatePublicKey(s.ctx, kasRegistry)
+	s.Require().Error(err)
+	s.Nil(r)
+	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
+}
+
+func (s *KasRegistrySuite) Test_Create_Public_Key_WithInvalidKasID_Fails() {
+	kasRegistry := &kasregistry.CreatePublicKeyRequest{
+		KasId: "invalid-kas-id",
+		Key: &policy.KasPublicKey{
+			Pem: "public",
+			Kid: "key-id",
+			Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048,
+		},
+	}
+
+	r, err := s.db.PolicyClient.CreatePublicKey(s.ctx, kasRegistry)
+	s.Require().Error(err)
+	s.Nil(r)
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
+}
+
+func (s *KasRegistrySuite) Test_Update_Public_Key() {
+	kID := s.f.GetPublicKey("key_2").ID
+	labels := map[string]string{
+		"update": "updated label",
+	}
+	resp, err := s.db.PolicyClient.UpdatePublicKey(s.ctx, &kasregistry.UpdatePublicKeyRequest{
+		Id: kID,
+		Metadata: &common.MetadataMutable{
+			Labels: labels,
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+	s.Equal(labels, resp.GetKey().GetMetadata().GetLabels())
+
+	// Get Key to validate update
+	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: kID})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.Equal(labels, r.GetKey().GetMetadata().GetLabels())
+}
+
+func (s *KasRegistrySuite) Test_Get_Public_Key() {
+	kasID := s.f.GetPublicKey("key_1").KasID
+	keyID := s.f.GetPublicKey("key_1").Key.Kid
+	id := s.f.GetPublicKey("key_1").ID
+
+	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: id})
+
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.Equal(kasID, r.GetKey().GetKas().GetId())
+	s.Equal(keyID, r.GetKey().GetPublicKey().GetKid())
+	s.Equal(id, r.GetKey().GetId())
+}
+
+func (s *KasRegistrySuite) Test_Get_Public_Key_WithInvalidID_Fails() {
+	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: "invalid-id"})
+
+	s.Require().Error(err)
+	s.Nil(r)
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
+}
+
+func (s *KasRegistrySuite) Test_Get_Public_Key_WithNotFoundID_Fails() {
+	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: nonExistentKasRegistryID})
+
+	s.Require().Error(err)
+	s.Nil(r)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *KasRegistrySuite) Test_List_Public_Keys() {
+	r, err := s.db.PolicyClient.ListPublicKeys(s.ctx, &kasregistry.ListPublicKeysRequest{})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.GreaterOrEqual(len(r.GetKeys()), 2)
+}
+
+func (s *KasRegistrySuite) Test_List_Public_Keys_ByKasID() {
+	kasID := s.f.GetKasRegistryKey("key_access_server_1").ID
+	r, err := s.db.PolicyClient.ListPublicKeys(s.ctx, &kasregistry.ListPublicKeysRequest{KasId: kasID})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.GreaterOrEqual(len(r.GetKeys()), 1)
+	for _, key := range r.GetKeys() {
+		s.Equal(kasID, key.GetKas().GetId())
+	}
+}
+
+func (s *KasRegistrySuite) Test_List_Public_Keys_WithNonExistentKasID() {
+	r, err := s.db.PolicyClient.ListPublicKeys(s.ctx, &kasregistry.ListPublicKeysRequest{KasId: nonExistentKasRegistryID})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.Empty(r.GetKeys())
+}
+
+func (s *KasRegistrySuite) Test_List_Public_Key_Mappings() {
+	kasid := s.f.GetPublicKey("key_1").KasID
+	id := s.f.GetPublicKey("key_1").ID
+	r, err := s.db.PolicyClient.ListPublicKeyMappings(s.ctx, &kasregistry.ListPublicKeyMappingRequest{KasId: kasid})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.Len(r.GetPublicKeyMappings(), 1)
+	for _, m := range r.GetPublicKeyMappings() {
+		s.True(slices.ContainsFunc(m.GetPublicKeys(), func(key *kasregistry.ListPublicKeyMappingResponse_PublicKey) bool {
+			return key.GetKey().GetId() == id
+		}))
+		for _, k := range m.GetPublicKeys() {
+			if k.GetKey().GetId() == id {
+				s.True(slices.ContainsFunc(k.GetValues(), func(value *kasregistry.ListPublicKeyMappingResponse_Association) bool {
+					return value.GetId() == s.f.GetValueMap(id)[0].ValueID
+				}))
+				s.True(slices.ContainsFunc(k.GetDefinitions(), func(definition *kasregistry.ListPublicKeyMappingResponse_Association) bool {
+					return definition.GetId() == s.f.GetDefinitionKeyMap(id)[0].DefinitionID
+				}))
+				s.True(slices.ContainsFunc(k.GetNamespaces(), func(namespace *kasregistry.ListPublicKeyMappingResponse_Association) bool {
+					return namespace.GetId() == s.f.GetNamespaceKeyMap(id)[0].NamespaceID
+				}))
+			}
+		}
+	}
+}
+
+func (s *KasRegistrySuite) Test_Deactivate_Public_Key() {
+	id := s.f.GetPublicKey("key_4").ID
+	r, err := s.db.PolicyClient.DeactivatePublicKey(s.ctx, &kasregistry.DeactivatePublicKeyRequest{Id: id})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.Equal(id, r.GetKey().GetId())
+
+	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: id})
+	s.Require().NoError(err)
+	s.NotNil(rr)
+	s.False(rr.GetKey().GetIsActive().GetValue())
+}
+
+func (s *KasRegistrySuite) Test_Deactivate_Public_Key_WithInvalidID_Fails() {
+	r, err := s.db.PolicyClient.DeactivatePublicKey(s.ctx, &kasregistry.DeactivatePublicKeyRequest{Id: "invalid-id"})
+	s.Require().Error(err)
+	s.Nil(r)
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
+}
+
+func (s *KasRegistrySuite) Test_Activate_Public_Key() {
+	id := s.f.GetPublicKey("key_4").ID
+	r, err := s.db.PolicyClient.ActivatePublicKey(s.ctx, &kasregistry.ActivatePublicKeyRequest{Id: id})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.Equal(id, r.GetKey().GetId())
+
+	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: id})
+	s.Require().NoError(err)
+	s.NotNil(rr)
+	s.True(rr.GetKey().GetIsActive().GetValue())
+}
+
+func (s *KasRegistrySuite) Test_Activate_Public_Key_WithInvalidID_Fails() {
+	r, err := s.db.PolicyClient.ActivatePublicKey(s.ctx, &kasregistry.ActivatePublicKeyRequest{Id: "invalid-id"})
+	s.Require().Error(err)
+	s.Nil(r)
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
+}
+
+func (s *KasRegistrySuite) Test_UnsafeDelete_Public_Key() {
+	id := s.f.GetPublicKey("key_1").ID
+	r, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, &unsafe.UnsafeDeletePublicKeyRequest{Id: id})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.Equal(id, r.GetId())
+
+	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: id})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(rr)
+}
+
+func (s *KasRegistrySuite) Test_Assign_and_Unassign_Public_Key() {
+	value := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1")
+	def := s.f.GetAttributeKey("example.net/attr/attr1")
+	ns := s.f.GetNamespaceKey("example.net")
+
+	id := s.f.GetPublicKey("key_1").ID
+
+	// Assign to value
+	err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{NamespaceId: ns.ID, KeyId: id})
+	s.Require().NoError(err)
+
+	err = s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{AttributeId: def.ID, KeyId: id})
+	s.Require().NoError(err)
+
+	err = s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &attributes.ValueKey{ValueId: value.ID, KeyId: id})
+	s.Require().NoError(err)
+
+	// Get Namespace to validate assignment
+	n, err := s.db.PolicyClient.GetNamespace(s.ctx, ns.ID)
+	s.Require().NoError(err)
+	s.NotNil(n)
+	s.True(slices.ContainsFunc(n.GetKeys(), func(key *policy.Key) bool {
+		return key.GetId() == id
+	}))
+
+	// Get Attribute to validate assignment
+	d, err := s.db.PolicyClient.GetAttribute(s.ctx, def.ID)
+	s.Require().NoError(err)
+	s.NotNil(d)
+	s.True(slices.ContainsFunc(d.GetKeys(), func(key *policy.Key) bool {
+		return key.GetId() == id
+	}))
+
+	// Get Value to validate assignment
+	v, err := s.db.PolicyClient.GetAttributeValue(s.ctx, value.ID)
+	s.Require().NoError(err)
+	s.NotNil(v)
+	s.True(slices.ContainsFunc(v.GetKeys(), func(key *policy.Key) bool {
+		return key.GetId() == id
+	}))
+
+	// Unassign from value
+	vk, err := s.db.PolicyClient.RemovePublicKeyFromValue(s.ctx, &attributes.ValueKey{ValueId: value.ID, KeyId: id})
+	s.Require().NoError(err)
+	s.NotNil(vk)
+
+	// Unassign from attribute
+	dk, err := s.db.PolicyClient.RemovePublicKeyFromAttribute(s.ctx, &attributes.AttributeKey{AttributeId: def.ID, KeyId: id})
+	s.Require().NoError(err)
+	s.NotNil(dk)
+
+	// Unassign from namespace
+	nk, err := s.db.PolicyClient.RemovePublicKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{NamespaceId: ns.ID, KeyId: id})
+	s.Require().NoError(err)
+	s.NotNil(nk)
+
+	// Get Namespace to validate unassignment
+	n, err = s.db.PolicyClient.GetNamespace(s.ctx, ns.ID)
+	s.Require().NoError(err)
+	s.NotNil(n)
+	s.False(slices.ContainsFunc(n.GetKeys(), func(key *policy.Key) bool {
+		return key.GetId() == id
+	}))
+
+	// Get Attribute to validate unassignment
+	d, err = s.db.PolicyClient.GetAttribute(s.ctx, def.ID)
+	s.Require().NoError(err)
+	s.NotNil(d)
+	s.False(slices.ContainsFunc(d.GetKeys(), func(key *policy.Key) bool {
+		return key.GetId() == id
+	}))
+
+	// Get Value to validate unassignment
+	v, err = s.db.PolicyClient.GetAttributeValue(s.ctx, value.ID)
+	s.Require().NoError(err)
+	s.NotNil(v)
+	s.False(slices.ContainsFunc(v.GetKeys(), func(key *policy.Key) bool {
+		return key.GetId() == id
+	}))
 }
 
 func TestKasRegistrySuite(t *testing.T) {

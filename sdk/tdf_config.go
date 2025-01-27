@@ -213,12 +213,23 @@ func WithAutoconfigure(enable bool) TDFOption {
 	}
 }
 
+// Schema Validation where 0 = none (skip), 1 = lax (allowing novel entries, 'falsy' values for unkowns), 2 = strict (rejecting novel entries, strict match to manifest schema)
+type SchemaValidationIntensity int
+
+const (
+	Skip SchemaValidationIntensity = iota
+	Lax
+	Strict
+	unreasonable = 100
+)
+
 type TDFReaderOption func(*TDFReaderConfig) error
 
 type TDFReaderConfig struct {
-	// Optional Map of Assertion Verification Keys
-	AssertionVerificationKeys    AssertionVerificationKeys
+	verifiers                    AssertionVerificationKeys
 	disableAssertionVerification bool
+
+	schemaValidationIntensity SchemaValidationIntensity
 }
 
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
@@ -237,7 +248,14 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 
 func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
-		c.AssertionVerificationKeys = keys
+		c.verifiers = keys
+		return nil
+	}
+}
+
+func WithSchemaValidation(intensity SchemaValidationIntensity) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.schemaValidationIntensity = intensity
 		return nil
 	}
 }

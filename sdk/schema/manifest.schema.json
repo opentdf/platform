@@ -30,7 +30,7 @@
           },
           "tdf_spec_version": {
             "description": "Semver version number of the TDF spec.",
-            "type": ["string", "null"]
+            "type": "string"
           }
         },
         "required": ["type", "url", "protocol", "isEncrypted"]
@@ -69,7 +69,7 @@
                 },
                 "sid": {
                   "description": "A unique identifier for a single key split. In some complex policies, multiple key access objects may exist that share a specific key split. Using a splitId allows software to more efficiently operate by not reusing key material unnecessarily. ",
-                  "type": ["string", "null"]
+                  "type": "string"
                 },
                 "kid": {
                   "description": "A UUID for the specific keypair used for wrapping the symmetric key.",
@@ -98,7 +98,7 @@
                 },
                 "encryptedMetadata": {
                   "description": "Metadata associated with the TDF, and the request. The contents of the metadata are freeform, and are used to pass information from the client, and any plugins that may be in use by the KAS. The metadata stored here should not be used for primary access decisions. Base64.",
-                  "type": ["string", "null"]
+                  "type": "string"
                 }
               }
             },
@@ -198,7 +198,7 @@
             },
             "appliesToState": {
               "description": "Used to indicate if the statement metadata applies to 'encrypted' or 'unencrypted' data.",
-              "type": ["string", "null"]
+              "type": "string"
             },
             "statement": {
               "description": "Intended for access, rights, and/or handling instructions that apply to the scope of the assertion.",

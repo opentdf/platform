@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.39](https://github.com/opentdf/platform/compare/service/v0.4.38...service/v0.4.39) (2025-01-27)
+
+
+### Features
+
+* **policy:** adds new public keys table ([#1836](https://github.com/opentdf/platform/issues/1836)) ([cad5048](https://github.com/opentdf/platform/commit/cad5048d09609d678d5b5ac2972605dd61f33bb5))
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1875](https://github.com/opentdf/platform/issues/1875)) ([4b6c335](https://github.com/opentdf/platform/commit/4b6c3353913ad90aeef499beb5f8c52144679a61))
+
 ## [0.4.38](https://github.com/opentdf/platform/compare/service/v0.4.37...service/v0.4.38) (2025-01-21)
 
 

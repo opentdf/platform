@@ -81,7 +81,7 @@ type tdf3DecryptHandler struct {
 	reader *Reader
 }
 
-func (r *tdf3DecryptHandler) Decrypt(ctx context.Context, results []kaoResult) (uint32, error) {
+func (r *tdf3DecryptHandler) Decrypt(ctx context.Context, results []kaoResult) (int, error) {
 	err := r.reader.buildKey(ctx, results)
 	if err != nil {
 		return 0, err
@@ -92,7 +92,7 @@ func (r *tdf3DecryptHandler) Decrypt(ctx context.Context, results []kaoResult) (
 	}
 
 	n, err := r.writer.Write(data)
-	return uint32(n), err
+	return n, err
 }
 
 func (r *tdf3DecryptHandler) CreateRewrapRequest(ctx context.Context) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error) {
@@ -564,6 +564,16 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		return nil, fmt.Errorf("tdfReader.Manifest failed: %w", err)
 	}
 
+	if config.schemaValidationIntensity == Lax || config.schemaValidationIntensity == Strict {
+		valid, err := isValidManifest(manifest, config.schemaValidationIntensity)
+		if err != nil {
+			return nil, err
+		}
+		if !valid {
+			return nil, fmt.Errorf("manifest schema validation failed")
+		}
+	}
+
 	manifestObj := &Manifest{}
 	err = json.Unmarshal([]byte(manifest), manifestObj)
 	if err != nil {
@@ -1013,9 +1023,9 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 		assertionKey.Alg = AssertionKeyAlgHS256
 		assertionKey.Key = payloadKey[:]
 
-		if !r.config.AssertionVerificationKeys.IsEmpty() {
+		if !r.config.verifiers.IsEmpty() {
 			// Look up the key for the assertion
-			foundKey, err := r.config.AssertionVerificationKeys.Get(assertion.ID)
+			foundKey, err := r.config.verifiers.Get(assertion.ID)
 
 			if err != nil {
 				return fmt.Errorf("%w: %w", ErrAssertionFailure{ID: assertion.ID}, err)

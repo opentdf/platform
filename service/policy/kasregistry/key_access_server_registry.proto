@@ -10,13 +10,9 @@ import "policy/selectors.proto";
 
 message GetKeyAccessServerRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [ (buf.validate.field).string.uuid = true ];
 }
-message GetKeyAccessServerResponse {
-  KeyAccessServer key_access_server = 1;
-}
+message GetKeyAccessServerResponse { KeyAccessServer key_access_server = 1; }
 
 message ListKeyAccessServersRequest {
   // Optional
@@ -28,47 +24,55 @@ message ListKeyAccessServersResponse {
   policy.PageResponse pagination = 10;
 }
 
-// TODO: optional validation below should be through a custom validator, which is too bleeding edge at present without full plugin support
+// TODO: optional validation below should be through a custom validator, which
+// is too bleeding edge at present without full plugin support
 
 message CreateKeyAccessServerRequest {
   // Required
-  string uri = 1 [(buf.validate.field).cel = {
-      id: "uri_format",
-      message: "URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
-      expression: "this.isUri()"
-  }];
+  string uri = 1 [ (buf.validate.field).cel = {
+    id : "uri_format",
+    message : "URI must be a valid URL (e.g., 'https://demo.com/') followed by "
+              "additional segments. Each segment must start and end with an "
+              "alphanumeric character, can contain hyphens, alphanumeric "
+              "characters, and slashes.",
+    expression : "this.isUri()"
+  } ];
   // Required
-  PublicKey public_key = 2 [(buf.validate.field).required = true];
+  PublicKey public_key = 2 [ (buf.validate.field).required = true ];
 
   // Optional
   string name = 20 [
     (buf.validate.field).required = false,
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
-      id: "kas_name_format",
-      message: "Registered KAS name must be an alphanumeric string, allowing hyphens, and underscores but not as the first or last character. The stored KAS name will be normalized to lower case.",
-      expression: "size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true"
+      id : "kas_name_format",
+      message : "Registered KAS name must be an alphanumeric string, allowing "
+                "hyphens, and underscores but not as the first or last "
+                "character. The stored KAS name will be normalized to lower "
+                "case.",
+      expression : "size(this) > 0 ? "
+                   "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+                   " : true"
     }
   ];
 
   // Common metadata
   common.MetadataMutable metadata = 100;
 }
-message CreateKeyAccessServerResponse {
-  KeyAccessServer key_access_server = 1;
-}
+message CreateKeyAccessServerResponse { KeyAccessServer key_access_server = 1; }
 
 message UpdateKeyAccessServerRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [ (buf.validate.field).string.uuid = true ];
   // Optional
-  string uri = 2 [(buf.validate.field).cel = {
-      id: "optional_uri_format",
-      message: "Optional URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
-      expression: "size(this) == 0 || this.isUri()",
-  }];
+  string uri = 2 [ (buf.validate.field).cel = {
+    id : "optional_uri_format",
+    message : "Optional URI must be a valid URL (e.g., 'https://demo.com/') "
+              "followed by additional segments. Each segment must start and "
+              "end with an alphanumeric character, can contain hyphens, "
+              "alphanumeric characters, and slashes.",
+    expression : "size(this) == 0 || this.isUri()",
+  } ];
   // Optional
   PublicKey public_key = 3;
   // Optional
@@ -76,9 +80,13 @@ message UpdateKeyAccessServerRequest {
     (buf.validate.field).required = false,
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
-      id: "kas_name_format",
-      message: "Registered KAS name must be an alphanumeric string, allowing hyphens, and underscores but not as the first or last character. The stored KAS name will be normalized to lower case.",
-      expression: "size(this) == 0 || this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+      id : "kas_name_format",
+      message : "Registered KAS name must be an alphanumeric string, allowing "
+                "hyphens, and underscores but not as the first or last "
+                "character. The stored KAS name will be normalized to lower "
+                "case.",
+      expression : "size(this) == 0 || "
+                   "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
     }
   ];
 
@@ -87,19 +95,13 @@ message UpdateKeyAccessServerRequest {
   common.MetadataMutable metadata = 100;
   common.MetadataUpdateEnum metadata_update_behavior = 101;
 }
-message UpdateKeyAccessServerResponse {
-  KeyAccessServer key_access_server = 1;
-}
+message UpdateKeyAccessServerResponse { KeyAccessServer key_access_server = 1; }
 
 message DeleteKeyAccessServerRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [ (buf.validate.field).string.uuid = true ];
 }
-message DeleteKeyAccessServerResponse {
-  KeyAccessServer key_access_server = 1;
-}
+message DeleteKeyAccessServerResponse { KeyAccessServer key_access_server = 1; }
 
 // Can be namespace, attribute definition, or value
 message GrantedPolicyObject {
@@ -107,6 +109,7 @@ message GrantedPolicyObject {
   string fqn = 2;
 }
 
+// Deprecated
 message KeyAccessServerGrants {
   KeyAccessServer key_access_server = 1;
   repeated GrantedPolicyObject namespace_grants = 2;
@@ -114,82 +117,231 @@ message KeyAccessServerGrants {
   repeated GrantedPolicyObject value_grants = 4;
 }
 
-// TODO: optional validation below should be through a custom validator, which is too bleeding edge at present without full plugin support
+/*
+  KEY MANAGEMENT
+*/
 
-// LIST of KAS Grants returns flat response of grants to all policy objects. It does not
-// employ selectors for grants to specific policy objects or build the attribute tree relation.
-// If grants to a known namespace, attribute, or value are needed, use the respective
-// GET request to the specific policy object.
+message CreatePublicKeyRequest {
+  // Required
+  string kas_id = 1 [ (buf.validate.field).string.uuid = true ];
+
+  // Required
+  KasPublicKey key = 2;
+
+   // Common metadata
+  common.MetadataMutable metadata = 100;
+}
+
+message CreatePublicKeyResponse { Key key = 1; }
+
+message GetPublicKeyRequest { string id = 1; }
+
+message GetPublicKeyResponse { Key key = 1; }
+
+message ListPublicKeysRequest {
+  // Optional
+  string kas_id = 1;
+  // Future filter by fields
+  // // Optional
+  // string kas_name = 2;
+  // // Optional
+  // string kas_uri = 3;
+  // Optional
+  policy.PageRequest pagination = 10;
+}
+
+message ListPublicKeysResponse { 
+  repeated Key keys = 1; 
+
+  policy.PageResponse pagination = 10;
+}
+
+message ListPublicKeyMappingRequest {
+  // Optional
+  string kas_id = 1;
+  // Future filter by fields
+  // // Optional
+  // string kas_name = 2;
+  // // Optional
+  // string kas_uri = 3;
+  // Optional
+  policy.PageRequest pagination = 10;
+}
+
+message ListPublicKeyMappingResponse {
+  message PublicKeyMapping {
+    string kas_id = 2;
+    string kas_name = 3;
+    string kas_uri = 4;
+    repeated PublicKey public_keys = 5;
+  }
+  message PublicKey {
+    policy.Key key = 1;
+    repeated Association values = 6;
+    repeated Association definitions = 7;
+    repeated Association namespaces = 8;
+
+  }
+  message Association {
+    string id = 1;
+    string fqn = 2;
+  }
+
+  repeated PublicKeyMapping public_key_mappings = 1;
+}
+
+message UpdatePublicKeyRequest {
+  // Required
+  string id = 1;
+
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+
+message UpdatePublicKeyResponse { Key key = 1;}
+
+message DeactivatePublicKeyRequest { 
+  string id = 1 [ 
+    (buf.validate.field).string.uuid = true, 
+    (buf.validate.field).required = true
+  ];
+}
+
+message DeactivatePublicKeyResponse { Key key = 1; }
+
+message ActivatePublicKeyRequest { 
+  string id = 1 [ 
+    (buf.validate.field).string.uuid = true, 
+    (buf.validate.field).required = true
+  ];
+}
+
+message ActivatePublicKeyResponse { Key key = 1; }
+
+//Deprecated
+// TODO: optional validation below should be through a custom validator, which
+// is too bleeding edge at present without full plugin support
+
+// LIST of KAS Grants returns flat response of grants to all policy objects. It
+// does not employ selectors for grants to specific policy objects or build the
+// attribute tree relation. If grants to a known namespace, attribute, or value
+// are needed, use the respective GET request to the specific policy object.
 message ListKeyAccessServerGrantsRequest {
   // Optional
   // Filter LIST by ID of a registered Key Access Server.
-  // If neither is provided, grants from all registered KASs to policy attribute objects are returned.
-  string kas_id = 1 [(buf.validate.field).cel = {
-     id: "optional_uuid_format",
-      message: "Optional field must be a valid UUID",
-      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
-  }];
+  // If neither is provided, grants from all registered KASs to policy attribute
+  // objects are returned.
+  string kas_id = 1 [ (buf.validate.field).cel = {
+    id : "optional_uuid_format",
+    message : "Optional field must be a valid UUID",
+    expression : "size(this) == 0 || "
+                 "this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-["
+                 "0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  } ];
   // Optional
   // Filter LIST by URI of a registered Key Access Server.
-  // If none is provided, grants from all registered KASs to policy attribute objects are returned.
-  string kas_uri = 2 [(buf.validate.field).cel = {
-      id: "optional_uri_format",
-      message: "Optional URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.",
-      expression: "size(this) == 0 || this.isUri()"
-  }];
+  // If none is provided, grants from all registered KASs to policy attribute
+  // objects are returned.
+  string kas_uri = 2 [ (buf.validate.field).cel = {
+    id : "optional_uri_format",
+    message : "Optional URI must be a valid URL (e.g., 'https://demo.com/') "
+              "followed by additional segments. Each segment must start and "
+              "end with an alphanumeric character, can contain hyphens, "
+              "alphanumeric characters, and slashes.",
+    expression : "size(this) == 0 || this.isUri()"
+  } ];
   // Optional
   // Filter LIST by name of a registered Key Access Server.
-  // If none are provided, grants from all registered KASs to policy attribute objects are returned.
+  // If none are provided, grants from all registered KASs to policy attribute
+  // objects are returned.
   string kas_name = 3 [
     (buf.validate.field).required = false,
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
-      id: "kas_name_format",
-      message: "Registered KAS name must be an alphanumeric string, allowing hyphens, and underscores but not as the first or last character. The stored KAS name will be normalized to lower case.",
-      expression: "size(this) == 0 || this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+      id : "kas_name_format",
+      message : "Registered KAS name must be an alphanumeric string, allowing "
+                "hyphens, and underscores but not as the first or last "
+                "character. The stored KAS name will be normalized to lower "
+                "case.",
+      expression : "size(this) == 0 || "
+                   "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
     }
   ];
 
   // Optional
   policy.PageRequest pagination = 10;
 }
+
+// Deprecated
 message ListKeyAccessServerGrantsResponse {
-  repeated KeyAccessServerGrants grants = 1;
+  repeated KeyAccessServerGrants grants = 1 [deprecated = true];
 
   policy.PageResponse pagination = 10;
 }
 
 service KeyAccessServerRegistryService {
-  rpc ListKeyAccessServers(ListKeyAccessServersRequest) returns (ListKeyAccessServersResponse) {
-    option (google.api.http) = {get: "/key-access-servers"};
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-
-  rpc GetKeyAccessServer(GetKeyAccessServerRequest) returns (GetKeyAccessServerResponse) {
-    option (google.api.http) = {get: "/key-access-servers/{id}"};
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-
-  rpc CreateKeyAccessServer(CreateKeyAccessServerRequest) returns (CreateKeyAccessServerResponse) {
+  rpc ListKeyAccessServers(ListKeyAccessServersRequest)
+      returns (ListKeyAccessServersResponse) {
     option (google.api.http) = {
-      post: "/key-access-servers"
-      body: "*"
+      get : "/key-access-servers"
+    };
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc GetKeyAccessServer(GetKeyAccessServerRequest)
+      returns (GetKeyAccessServerResponse) {
+    option (google.api.http) = {
+      get : "/key-access-servers/{id}"
+    };
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc CreateKeyAccessServer(CreateKeyAccessServerRequest)
+      returns (CreateKeyAccessServerResponse) {
+    option (google.api.http) = {
+      post : "/key-access-servers"
+      body : "*"
     };
   }
 
-  rpc UpdateKeyAccessServer(UpdateKeyAccessServerRequest) returns (UpdateKeyAccessServerResponse) {
+  rpc UpdateKeyAccessServer(UpdateKeyAccessServerRequest)
+      returns (UpdateKeyAccessServerResponse) {
     option (google.api.http) = {
-      patch: "/key-access-servers/{id}"
-      body: "*"
+      patch : "/key-access-servers/{id}"
+      body : "*"
     };
   }
 
-  rpc DeleteKeyAccessServer(DeleteKeyAccessServerRequest) returns (DeleteKeyAccessServerResponse) {
-    option (google.api.http) = {delete: "/key-access-servers/{id}"};
+  rpc DeleteKeyAccessServer(DeleteKeyAccessServerRequest)
+      returns (DeleteKeyAccessServerResponse) {
+    option (google.api.http) = {
+      delete : "/key-access-servers/{id}"
+    };
   }
 
-  rpc ListKeyAccessServerGrants(ListKeyAccessServerGrantsRequest) returns (ListKeyAccessServerGrantsResponse) {
-    option (google.api.http) = {get: "/key-access-servers/grants"};
+  // Deprecated
+  rpc ListKeyAccessServerGrants(ListKeyAccessServerGrantsRequest)
+      returns (ListKeyAccessServerGrantsResponse) {
+    option (google.api.http) = {
+      get : "/key-access-servers/grants"
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+
+  rpc CreatePublicKey(CreatePublicKeyRequest) returns (CreatePublicKeyResponse) {}
+
+  rpc GetPublicKey(GetPublicKeyRequest) returns (GetPublicKeyResponse) {}
+
+  rpc ListPublicKeys(ListPublicKeysRequest) returns (ListPublicKeysResponse) {}
+
+  rpc ListPublicKeyMapping(ListPublicKeyMappingRequest) returns (ListPublicKeyMappingResponse) {}
+
+  rpc UpdatePublicKey(UpdatePublicKeyRequest) returns (UpdatePublicKeyResponse) {}
+
+  rpc DeactivatePublicKey(DeactivatePublicKeyRequest) returns (DeactivatePublicKeyResponse) {}
+
+  rpc ActivatePublicKey(ActivatePublicKeyRequest) returns (ActivatePublicKeyResponse) {}
+
 }

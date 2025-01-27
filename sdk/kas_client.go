@@ -36,7 +36,7 @@ type kaoResult struct {
 
 type decryptor interface {
 	CreateRewrapRequest(ctx context.Context) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error)
-	Decrypt(ctx context.Context, results []kaoResult) (uint32, error)
+	Decrypt(ctx context.Context, results []kaoResult) (int, error)
 }
 
 func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, sessionKey *ocrypto.RsaKeyPair) *KASClient {

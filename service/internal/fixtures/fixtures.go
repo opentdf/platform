@@ -101,6 +101,31 @@ type FixtureDataKasRegistry struct {
 	Name string `yaml:"name"`
 }
 
+type FixtureDataPublicKey struct {
+	ID    string `yaml:"id"`
+	KasID string `yaml:"kas_id"`
+	Key   struct {
+		Alg string `yaml:"alg" json:"alg"`
+		Kid string `yaml:"kid" json:"kid"`
+		PEM string `yaml:"pem" json:"pem"`
+	} `yaml:"key" json:"key"`
+}
+
+type FixtureDataValueKeyMap struct {
+	ValueID string `yaml:"value_id"`
+	KeyID   string `yaml:"key_id"`
+}
+
+type FixtureDataDefinitionKeyMap struct {
+	DefinitionID string `yaml:"definition_id"`
+	KeyID        string `yaml:"key_id"`
+}
+
+type FixtureDataNamespaceKeyMap struct {
+	NamespaceID string `yaml:"namespace_id"`
+	KeyID       string `yaml:"key_id"`
+}
+
 type FixtureData struct {
 	Namespaces struct {
 		Metadata FixtureMetadata                 `yaml:"metadata"`
@@ -136,6 +161,22 @@ type FixtureData struct {
 		Metadata FixtureMetadata                   `yaml:"metadata"`
 		Data     map[string]FixtureDataKasRegistry `yaml:"data"`
 	} `yaml:"kas_registry"`
+	PublicKey struct {
+		Metadata FixtureMetadata                 `yaml:"metadata"`
+		Data     map[string]FixtureDataPublicKey `yaml:"data"`
+	} `yaml:"public_keys"`
+	ValueKeyMap struct {
+		Metadata FixtureMetadata          `yaml:"metadata"`
+		Data     []FixtureDataValueKeyMap `yaml:"data"`
+	} `yaml:"value_key_map"`
+	DefinitionKeyMap struct {
+		Metadata FixtureMetadata               `yaml:"metadata"`
+		Data     []FixtureDataDefinitionKeyMap `yaml:"data"`
+	} `yaml:"definition_key_map"`
+	NamespaceKeyMap struct {
+		Metadata FixtureMetadata              `yaml:"metadata"`
+		Data     []FixtureDataNamespaceKeyMap `yaml:"data"`
+	} `yaml:"namespace_key_map"`
 }
 
 func LoadFixtureData(file string) {
@@ -234,6 +275,45 @@ func (f *Fixtures) GetKasRegistryKey(key string) FixtureDataKasRegistry {
 	return kasr
 }
 
+func (f *Fixtures) GetPublicKey(key string) FixtureDataPublicKey {
+	pk, ok := fixtureData.PublicKey.Data[key]
+	if !ok || pk.ID == "" {
+		slog.Error("could not find public-keys", slog.String("id", key))
+		panic("could not find public-key fixture: " + key)
+	}
+	return pk
+}
+
+func (f *Fixtures) GetValueMap(key string) []FixtureDataValueKeyMap {
+	var vkms []FixtureDataValueKeyMap
+	for _, vkm := range fixtureData.ValueKeyMap.Data {
+		if vkm.KeyID == key {
+			vkms = append(vkms, vkm)
+		}
+	}
+	return vkms
+}
+
+func (f *Fixtures) GetDefinitionKeyMap(key string) []FixtureDataDefinitionKeyMap {
+	var dkms []FixtureDataDefinitionKeyMap
+	for _, dkm := range fixtureData.DefinitionKeyMap.Data {
+		if dkm.KeyID == key {
+			dkms = append(dkms, dkm)
+		}
+	}
+	return dkms
+}
+
+func (f *Fixtures) GetNamespaceKeyMap(key string) []FixtureDataNamespaceKeyMap {
+	var nkms []FixtureDataNamespaceKeyMap
+	for _, nkm := range fixtureData.NamespaceKeyMap.Data {
+		if nkm.KeyID == key {
+			nkms = append(nkms, nkm)
+		}
+	}
+	return nkms
+}
+
 func (f *Fixtures) Provision() {
 	slog.Info("📦 running migrations in schema", slog.String("schema", f.db.Schema))
 	_, err := f.db.Client.RunMigrations(context.Background(), policy.Migrations)
@@ -261,6 +341,14 @@ func (f *Fixtures) Provision() {
 	akas := f.provisionAttributeKeyAccessServer()
 	slog.Info("📦 provisioning attribute value key access server data")
 	avkas := f.provisionAttributeValueKeyAccessServer()
+	slog.Info("📦 provisioning public keys")
+	pk := f.provisionPublicKeys()
+	slog.Info("📦 provisioning value key map")
+	vkm := f.provisionValueKeyMap()
+	slog.Info("📦 provisioning definition key map")
+	dkm := f.provisionDefinitionKeyMap()
+	slog.Info("📦 provisioning namespace key map")
+	nkm := f.provisionNamespaceKeyMap()
 
 	slog.Info("📦 provisioned fixtures data",
 		slog.Int64("namespaces", n),
@@ -273,6 +361,10 @@ func (f *Fixtures) Provision() {
 		slog.Int64("kas_registry", kas),
 		slog.Int64("attribute_key_access_server", akas),
 		slog.Int64("attribute_value_key_access_server", avkas),
+		slog.Int64("public_keys", pk),
+		slog.Int64("value_key_map", vkm),
+		slog.Int64("definition_key_map", dkm),
+		slog.Int64("namespace_key_map", nkm),
 	)
 	slog.Info("📚 indexing FQNs for fixtures")
 	f.db.PolicyClient.AttrFqnReindex(context.Background())
@@ -432,6 +524,53 @@ func (f *Fixtures) provisionAttributeValueKeyAccessServer() int64 {
 		})
 	}
 	return f.provision("attribute_value_key_access_grants", []string{"attribute_value_id", "key_access_server_id"}, values)
+}
+
+func (f *Fixtures) provisionPublicKeys() int64 {
+	values := make([][]string, 0, len(fixtureData.PublicKey.Data))
+	for _, d := range fixtureData.PublicKey.Data {
+		values = append(values, []string{
+			f.db.StringWrap(d.ID),
+			f.db.StringWrap(d.KasID),
+			f.db.StringWrap(d.Key.Kid),
+			f.db.StringWrap(d.Key.Alg),
+			f.db.StringWrap(d.Key.PEM),
+		})
+	}
+	return f.provision(fixtureData.PublicKey.Metadata.TableName, fixtureData.PublicKey.Metadata.Columns, values)
+}
+
+func (f *Fixtures) provisionValueKeyMap() int64 {
+	values := make([][]string, 0, len(fixtureData.ValueKeyMap.Data))
+	for _, d := range fixtureData.ValueKeyMap.Data {
+		values = append(values, []string{
+			f.db.StringWrap(d.ValueID),
+			f.db.StringWrap(d.KeyID),
+		})
+	}
+	return f.provision(fixtureData.ValueKeyMap.Metadata.TableName, fixtureData.ValueKeyMap.Metadata.Columns, values)
+}
+
+func (f *Fixtures) provisionDefinitionKeyMap() int64 {
+	values := make([][]string, 0, len(fixtureData.DefinitionKeyMap.Data))
+	for _, d := range fixtureData.DefinitionKeyMap.Data {
+		values = append(values, []string{
+			f.db.StringWrap(d.DefinitionID),
+			f.db.StringWrap(d.KeyID),
+		})
+	}
+	return f.provision(fixtureData.DefinitionKeyMap.Metadata.TableName, fixtureData.DefinitionKeyMap.Metadata.Columns, values)
+}
+
+func (f *Fixtures) provisionNamespaceKeyMap() int64 {
+	values := make([][]string, 0, len(fixtureData.NamespaceKeyMap.Data))
+	for _, d := range fixtureData.NamespaceKeyMap.Data {
+		values = append(values, []string{
+			f.db.StringWrap(d.NamespaceID),
+			f.db.StringWrap(d.KeyID),
+		})
+	}
+	return f.provision(fixtureData.NamespaceKeyMap.Metadata.TableName, fixtureData.NamespaceKeyMap.Metadata.Columns, values)
 }
 
 func (f *Fixtures) provision(t string, c []string, v [][]string) int64 {

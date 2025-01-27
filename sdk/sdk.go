@@ -349,8 +349,11 @@ func GetTdfType(reader io.ReadSeeker) TdfType {
 // Some invalid manifests are still usable, so this file may still be usable.
 var ErrInvalidPerSchema = errors.New("manifest was not valid")
 
+//go:embed schema/manifest-lax.schema.json
+var manifestLaxSchema []byte
+
 //go:embed schema/manifest.schema.json
-var manifestSchema []byte
+var manifestStrictSchema []byte
 
 // Detects whether, or not the reader is a valid TDF. It first checks if it can "open" it
 // Then attempts to extract a manifest, then finally it validates the manifest using the json schema
@@ -372,8 +375,22 @@ func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 		return false, fmt.Errorf("tdfReader.Manifest failed: %w", err)
 	}
 
+	return isValidManifest(manifest, Lax)
+}
+
+func isValidManifest(manifest string, intensity SchemaValidationIntensity) (bool, error) {
 	// Convert the embedded data to a string
-	manifestSchemaString := string(manifestSchema)
+	var manifestSchemaString string
+	switch intensity {
+	case Strict:
+		manifestSchemaString = string(manifestStrictSchema)
+	case Lax:
+		manifestSchemaString = string(manifestLaxSchema)
+	case Skip:
+		return true, nil
+	default:
+		manifestSchemaString = string(manifestLaxSchema)
+	}
 	loader := gojsonschema.NewStringLoader(manifestSchemaString)
 	manifestStringLoader := gojsonschema.NewStringLoader(manifest)
 	result, err := gojsonschema.Validate(loader, manifestStringLoader)

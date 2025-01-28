@@ -3603,6 +3603,7 @@ func (q *Queries) listPublicKeyMappings(ctx context.Context, arg listPublicKeyMa
 const listPublicKeys = `-- name: listPublicKeys :many
 WITH counted AS (
     SELECT COUNT(k.id) AS total FROM public_keys AS k
+    WHERE (NULLIF($1, '') IS NULL OR k.key_access_server_id = $1::uuid)
 )
 
 SELECT
@@ -3651,6 +3652,7 @@ type listPublicKeysRow struct {
 //
 //	WITH counted AS (
 //	    SELECT COUNT(k.id) AS total FROM public_keys AS k
+//	    WHERE (NULLIF($1, '') IS NULL OR k.key_access_server_id = $1::uuid)
 //	)
 //
 //	SELECT

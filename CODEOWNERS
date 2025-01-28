@@ -16,13 +16,15 @@
 
 ### Documentation
 
-*.md          @opentdf/maintainers
-/docs/        @opentdf/maintainers
-/examples/    @opentdf/maintainers
+*.md            @opentdf/maintainers
+/docs/          @opentdf/maintainers
+/examples/      @opentdf/maintainers
+/examples/go.*  @opentdf/maintainers @opentdf/security
 
 ## Services
 
 /protocol/go/          @opentdf/architecture @opentdf/maintainers
+/protocol/go/go.*      @opentdf/architecture @opentdf/maintainers @opentdf/security
 
 ### Policy
 
@@ -35,7 +37,8 @@
 
 ## SDK
 
-/sdk/ @opentdf/go-sdk @opentdf/architecture
+/sdk/     @opentdf/go-sdk @opentdf/architecture
+/sdk/go.* @opentdf/go-sdk @opentdf/architecture @opentdf/security
 
 ## High Security Area
 

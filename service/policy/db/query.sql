@@ -959,6 +959,7 @@ WHERE k.id = $1;
 -- name: listPublicKeys :many
 WITH counted AS (
     SELECT COUNT(k.id) AS total FROM public_keys AS k
+    WHERE (NULLIF(@kas_id, '') IS NULL OR k.key_access_server_id = @kas_id::uuid)
 )
 
 SELECT

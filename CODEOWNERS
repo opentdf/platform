@@ -19,6 +19,7 @@
 *.md          @opentdf/maintainers
 /docs/        @opentdf/maintainers
 /examples/    @opentdf/maintainers
+/examples/    @opentdf/maintainers @opentdf/security
 
 ## Services
 

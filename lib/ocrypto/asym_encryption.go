@@ -1,6 +1,7 @@
 package ocrypto
 
 import (
+	"crypto/ecdh"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1" //nolint:gosec // used for padding which is safe
@@ -11,34 +12,47 @@ import (
 	"strings"
 )
 
+type Scheme interface {
+	// Encrypt encrypts data with public key.
+	Encrypt(data []byte) ([]byte, error)
+
+	// PublicKeyInPemFormat Returns public key in pem format.
+	PublicKeyInPemFormat() (string, error)
+}
+
 type AsymEncryption struct {
 	PublicKey *rsa.PublicKey
 }
 
-// NewAsymEncryption creates and returns a new AsymEncryption.
-func NewAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
-	block, _ := pem.Decode([]byte(publicKeyInPem))
-	if block == nil {
-		return AsymEncryption{}, errors.New("failed to parse PEM formatted public key")
+type ECIES struct {
+	PublicKey    *ecdh.PublicKey
+	ephemeralKey *ecdh.PrivateKey
+}
+
+func FromPEM(publicKeyInPem string) (Scheme, error) {
+	pub, err := getPublicPart(publicKeyInPem)
+	if err != nil {
+		return nil, err
 	}
 
-	var pub any
-	if strings.Contains(publicKeyInPem, "BEGIN CERTIFICATE") {
-		cert, err := x509.ParseCertificate(block.Bytes)
-		if err != nil {
-			return AsymEncryption{}, fmt.Errorf("x509.ParseCertificate failed: %w", err)
-		}
+	switch pub := pub.(type) {
+	case *rsa.PublicKey:
+		return &AsymEncryption{pub}, nil
+	case *ecdh.PublicKey:
+		return &ECIES{pub}, nil
+	default:
+		break
+	}
 
-		var ok bool
-		if pub, ok = cert.PublicKey.(*rsa.PublicKey); !ok {
-			return AsymEncryption{}, errors.New("failed to parse PEM formatted public key")
-		}
-	} else {
-		var err error
-		pub, err = x509.ParsePKIXPublicKey(block.Bytes)
-		if err != nil {
-			return AsymEncryption{}, fmt.Errorf("x509.ParsePKIXPublicKey failed: %w", err)
-		}
+	return nil, errors.New("not an supported type of public key")
+}
+
+// NewAsymEncryption creates and returns a new AsymEncryption.
+// Deprecated: Use FromPEM instead.
+func NewAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
+	pub, err := getPublicPart(publicKeyInPem)
+	if err != nil {
+		return AsymEncryption{}, err
 	}
 
 	switch pub := pub.(type) {
@@ -48,10 +62,33 @@ func NewAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
 		break
 	}
 
-	return AsymEncryption{}, errors.New("not an rsa PEM formatted public key")
+	return AsymEncryption{}, errors.New("not an supported type of public key")
 }
 
-// Encrypt encrypts data with public key.
+func getPublicPart(publicKeyInPem string) (any, error) {
+	block, _ := pem.Decode([]byte(publicKeyInPem))
+	if block == nil {
+		return nil, errors.New("failed to parse PEM formatted public key")
+	}
+
+	var pub any
+	if strings.Contains(publicKeyInPem, "BEGIN CERTIFICATE") {
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("x509.ParseCertificate failed: %w", err)
+		}
+
+		pub = cert.PublicKey
+	} else {
+		var err error
+		pub, err = x509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("x509.ParsePKIXPublicKey failed: %w", err)
+		}
+	}
+	return pub, nil
+}
+
 func (asymEncryption AsymEncryption) Encrypt(data []byte) ([]byte, error) {
 	if asymEncryption.PublicKey == nil {
 		return nil, errors.New("failed to encrypt, public key is empty")
@@ -65,13 +102,12 @@ func (asymEncryption AsymEncryption) Encrypt(data []byte) ([]byte, error) {
 	return bytes, nil
 }
 
-// PublicKeyInPemFormat Returns public key in pem format.
-func (asymEncryption AsymEncryption) PublicKeyInPemFormat() (string, error) {
-	if asymEncryption.PublicKey == nil {
+func publicKeyInPemFormat(pk any) (string, error) {
+	if pk == nil {
 		return "", errors.New("failed to generate PEM formatted public key")
 	}
 
-	publicKeyBytes, err := x509.MarshalPKIXPublicKey(asymEncryption.PublicKey)
+	publicKeyBytes, err := x509.MarshalPKIXPublicKey(pk)
 	if err != nil {
 		return "", fmt.Errorf("x509.MarshalPKIXPublicKey failed: %w", err)
 	}
@@ -84,4 +120,22 @@ func (asymEncryption AsymEncryption) PublicKeyInPemFormat() (string, error) {
 	)
 
 	return string(publicKeyPem), nil
+}
+
+func (asymEncryption AsymEncryption) PublicKeyInPemFormat() (string, error) {
+	return publicKeyInPemFormat(asymEncryption.PublicKey)
+}
+
+// Encrypts the data with the EC public key.
+func (asymEncryption ECIES) Encrypt(data []byte) ([]byte, error) {
+	if asymEncryption.PublicKey == nil {
+		return nil, errors.New("failed to encrypt, public key is empty")
+	}
+
+	return bytes, nil
+}
+
+// PublicKeyInPemFormat Returns public key in pem format.
+func (asymEncryption ECIES) PublicKeyInPemFormat() (string, error) {
+	return publicKeyInPemFormat(asymEncryption.PublicKey)
 }

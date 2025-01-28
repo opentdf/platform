@@ -71,8 +71,6 @@ func (s KeycloakEntityResolutionService) ResolveEntities(ctx context.Context, re
 	return connect.NewResponse(&resp), err
 }
 
-// - On rewrap - call keyclocks get client with the username
-
 func (s KeycloakEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
 	ctx, span := s.Tracer.Start(ctx, "CreateEntityChainFromJwt")
 	defer span.End()

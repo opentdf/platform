@@ -5,6 +5,7 @@ logger:
 trace:
   enabled: true
   folder: "traces"
+  exportToJaeger: false
 # DB and Server configurations are defaulted for local development
 # db:
 #   host: localhost

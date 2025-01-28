@@ -85,3 +85,16 @@ services:
       retries: 10
     ports:
       - "5432:5432"
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"   # Web UI
+      - "4317:4317"     # OTLP gRPC
+      - "4318:4318"     # OTLP HTTP
+      - "14250:14250"   # Model/collector gRPC
+    profiles:
+      - tracing
+    restart: always

@@ -23,6 +23,7 @@
 ## Services
 
 /protocol/go/          @opentdf/architecture @opentdf/maintainers
+/protocol/go/go.*      @opentdf/architecture @opentdf/maintainers @opentdf/security
 
 ### Policy
 
@@ -35,7 +36,8 @@
 
 ## SDK
 
-/sdk/ @opentdf/go-sdk @opentdf/architecture
+/sdk/     @opentdf/go-sdk @opentdf/architecture
+/sdk/go.* @opentdf/go-sdk @opentdf/architecture @opentdf/security
 
 ## High Security Area
 

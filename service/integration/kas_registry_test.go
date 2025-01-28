@@ -1202,6 +1202,17 @@ func (s *KasRegistrySuite) Test_List_Public_Keys_ByKasID() {
 	for _, key := range r.GetKeys() {
 		s.Equal(kasID, key.GetKas().GetId())
 	}
+
+	filteredTotalKeys := r.GetPagination().GetTotal()
+
+	r, err = s.db.PolicyClient.ListPublicKeys(s.ctx, &kasregistry.ListPublicKeysRequest{})
+	s.Require().NoError(err)
+	s.NotNil(r)
+
+	totalKeys := r.GetPagination().GetTotal()
+
+	// Fixtures have multiple kas keys, so the total keys should be greater than the filtered total keys
+	s.NotEqual(totalKeys, filteredTotalKeys)
 }
 
 func (s *KasRegistrySuite) Test_List_Public_Keys_WithNonExistentKasID() {

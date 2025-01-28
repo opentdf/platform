@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.26](https://github.com/opentdf/platform/compare/sdk/v0.3.25...sdk/v0.3.26) (2025-01-21)
+
+
+### Features
+
+* **core:** adds bulk rewrap to sdk and service ([#1835](https://github.com/opentdf/platform/issues/1835)) ([11698ae](https://github.com/opentdf/platform/commit/11698ae18f66282980a7822dd145e3896c2b605c))
+* **core:** Adds ErrInvalidPerSchema ([#1860](https://github.com/opentdf/platform/issues/1860)) ([456639e](https://github.com/opentdf/platform/commit/456639e0bfbffc93b08ec1cea9dfb7d6feb3529d))
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1863](https://github.com/opentdf/platform/issues/1863)) ([855cb2b](https://github.com/opentdf/platform/commit/855cb2b779b04d927ebdf8bfe8af589c186f95eb))
+* **sdk:** everything is `mixedSplits` now ([#1861](https://github.com/opentdf/platform/issues/1861)) ([ba78f14](https://github.com/opentdf/platform/commit/ba78f142e94330ed66d45a9b43640fbcf2c98d22))
+* **sdk:** Fixed token expiration time ([#1854](https://github.com/opentdf/platform/issues/1854)) ([c3cda1b](https://github.com/opentdf/platform/commit/c3cda1b877ed588ac52dca09c74775a5d9fd63ca))
+
 ## [0.3.25](https://github.com/opentdf/platform/compare/sdk/v0.3.24...sdk/v0.3.25) (2025-01-08)
 
 

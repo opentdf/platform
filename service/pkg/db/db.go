@@ -148,6 +148,19 @@ func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace
 		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
 	}
 
+	dbConfig.ConnConfig.OnNotice = func(_ *pgconn.PgConn, n *pgconn.Notice) {
+		switch n.Severity {
+		case "DEBUG":
+			c.Logger.Debug("database notice", slog.String("message", n.Message))
+		case "NOTICE":
+			c.Logger.Info("database notice", slog.String("message", n.Message))
+		case "WARNING":
+			c.Logger.Warn("database notice", slog.String("message", n.Message))
+		case "ERROR":
+			c.Logger.Error("database notice", slog.String("message", n.Message))
+		}
+	}
+
 	slog.Info("opening new database pool", slog.String("schema", config.Schema))
 	pool, err := pgxpool.NewWithConfig(ctx, dbConfig)
 	if err != nil {
@@ -188,6 +201,7 @@ func (c Config) buildConfig() (*pgxpool.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
 	}
+
 	// Configure the search_path schema immediately on connection opening
 	parsed.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
 		_, err := conn.Exec(ctx, fmt.Sprintf("SET search_path TO %s", c.Schema))

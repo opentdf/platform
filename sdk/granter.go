@@ -14,9 +14,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 )
 
-var (
-	ErrInvalid = errors.New("invalid type")
-)
+var ErrInvalid = errors.New("invalid type")
 
 // Attribute rule types: operators!
 const (
@@ -229,13 +227,12 @@ func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as attrib
 		fqnsStr[i] = v.String()
 	}
 
-	av, err :=
-		as.GetAttributeValuesByFqns(ctx, &attributes.GetAttributeValuesByFqnsRequest{
-			Fqns: fqnsStr,
-			WithValue: &policy.AttributeValueSelector{
-				WithKeyAccessGrants: true,
-			},
-		})
+	av, err := as.GetAttributeValuesByFqns(ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: fqnsStr,
+		WithValue: &policy.AttributeValueSelector{
+			WithKeyAccessGrants: true,
+		},
+	})
 	if err != nil {
 		return granter{}, err
 	}
@@ -279,8 +276,14 @@ func algProto2String(e policy.KasPublicKeyAlgEnum) string {
 	switch e {
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1:
 		return "ec:secp256r1"
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1:
+		return "ec:secp384r1"
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1:
+		return "ec:secp521r1"
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048:
 		return "rsa:2048"
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096:
+		return "rsa:4096"
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED:
 		return ""
 	}

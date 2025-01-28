@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"crypto/rand"
@@ -13,10 +14,13 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -30,6 +34,7 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -217,7 +222,7 @@ type partialReadTdfTest struct {
 
 type assertionTests struct {
 	assertions                   []AssertionConfig
-	assertionVerificationKeys    *AssertionVerificationKeys
+	verifiers                    *AssertionVerificationKeys
 	disableAssertionVerification bool
 	expectedSize                 int
 }
@@ -264,7 +269,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		"https://example.com/attr/Classification/value/X",
 	}
 
-	expectedTdfSize := int64(2095)
+	expectedTdfSize := int64(2058)
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
 	{
@@ -296,7 +301,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 32.0)
 	}
 
-	// test meta data
+	// test meta data and build meta data
 	{
 		readSeeker, err := os.Open(tdfFilename)
 		s.Require().NoError(err)
@@ -392,9 +397,9 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					},
 				},
 			},
-			assertionVerificationKeys:    nil,
+			verifiers:                    nil,
 			disableAssertionVerification: false,
-			expectedSize:                 2896,
+			expectedSize:                 2689,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -423,11 +428,11 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					SigningKey: defaultKey,
 				},
 			},
-			assertionVerificationKeys: &AssertionVerificationKeys{
+			verifiers: &AssertionVerificationKeys{
 				DefaultKey: defaultKey,
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 2896,
+			expectedSize:                 2689,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -462,7 +467,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					},
 				},
 			},
-			assertionVerificationKeys: &AssertionVerificationKeys{
+			verifiers: &AssertionVerificationKeys{
 				// defaultVerificationKey: nil,
 				Keys: map[string]AssertionKey{
 					"assertion1": {
@@ -476,7 +481,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 3195,
+			expectedSize:                 2988,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -507,7 +512,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					},
 				},
 			},
-			assertionVerificationKeys: &AssertionVerificationKeys{
+			verifiers: &AssertionVerificationKeys{
 				Keys: map[string]AssertionKey{
 					"assertion1": {
 						Alg: AssertionKeyAlgHS256,
@@ -516,7 +521,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 2896,
+			expectedSize:                 2689,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -533,7 +538,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: true,
-			expectedSize:                 2302,
+			expectedSize:                 2180,
 		},
 	} {
 		expectedTdfSize := test.expectedSize
@@ -579,11 +584,11 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 			buf := make([]byte, 8)
 
 			var r *Reader
-			if test.assertionVerificationKeys == nil {
+			if test.verifiers == nil {
 				r, err = s.sdk.LoadTDF(readSeeker, WithDisableAssertionVerification(test.disableAssertionVerification))
 			} else {
 				r, err = s.sdk.LoadTDF(readSeeker,
-					WithAssertionVerificationKeys(*test.assertionVerificationKeys),
+					WithAssertionVerificationKeys(*test.verifiers),
 					WithDisableAssertionVerification(test.disableAssertionVerification))
 			}
 			s.Require().NoError(err)
@@ -600,6 +605,127 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 		_ = os.Remove(tdfFilename)
 	}
 }
+
+func updateManifest(t *testing.T, tdfFile, outFile string, changer func(t *testing.T, dst io.Writer, f *zip.File) error) error {
+	z, err := zip.OpenReader(tdfFile)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err := z.Close()
+		require.NoError(t, err)
+	}()
+
+	unzippedDir := tdfFile + "-unzipped"
+	if err := os.MkdirAll(unzippedDir, os.ModePerm); err != nil {
+		return err
+	}
+	defer func() {
+		err := os.RemoveAll(unzippedDir)
+		require.NoError(t, err)
+	}()
+
+	for _, file := range z.File {
+		fpath := filepath.Join(unzippedDir, file.Name)
+		if file.FileInfo().IsDir() {
+			err := os.MkdirAll(fpath, os.ModePerm)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
+			return err
+		}
+
+		outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+		if err != nil {
+			return err
+		}
+
+		err = changer(t, outFile, file)
+		outFile.Close()
+		if err != nil {
+			return err
+		}
+	}
+
+	outZip, err := os.Create(outFile)
+	if err != nil {
+		return err
+	}
+	defer outZip.Close()
+
+	zipWriter := zip.NewWriter(outZip)
+	defer zipWriter.Close()
+
+	err = filepath.Walk(unzippedDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return err
+		}
+
+		header.Name, err = filepath.Rel(unzippedDir, path)
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			header.Name += "/"
+		} else {
+			header.Method = zip.Store
+		}
+
+		writer, err := zipWriter.CreateHeader(header)
+		if err != nil {
+			return err
+		}
+
+		if !info.IsDir() {
+			file, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+			_, err = io.Copy(writer, file)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	return err
+}
+
+/*
+	manifestPath := filepath.Join(unzippedDir, "0.manifest.json")
+	manifestFile, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return "", err
+	}
+
+	var manifestData Manifest
+	if err := json.Unmarshal(manifestFile, &manifestData); err != nil {
+		return "", err
+	}
+
+	newManifestData := manifestChange(manifestData)
+	newManifestFile, err := json.Marshal(newManifestData)
+	if err != nil {
+		return "", err
+	}
+
+	if err := os.WriteFile(manifestPath, newManifestFile, os.ModePerm); err != nil {
+		return "", err
+	}
+*/
 
 func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 	hs256Key := make([]byte, 32)
@@ -642,7 +768,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					SigningKey: defaultKey,
 				},
 			},
-			expectedSize: 2896,
+			expectedSize: 2689,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -677,7 +803,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					},
 				},
 			},
-			assertionVerificationKeys: &AssertionVerificationKeys{
+			verifiers: &AssertionVerificationKeys{
 				// defaultVerificationKey: nil,
 				Keys: map[string]AssertionKey{
 					"assertion1": {
@@ -690,7 +816,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					},
 				},
 			},
-			expectedSize: 3195,
+			expectedSize: 2988,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -721,10 +847,10 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					},
 				},
 			},
-			assertionVerificationKeys: &AssertionVerificationKeys{
+			verifiers: &AssertionVerificationKeys{
 				DefaultKey: defaultKey,
 			},
-			expectedSize: 2896,
+			expectedSize: 2689,
 		},
 	} {
 		expectedTdfSize := test.expectedSize
@@ -770,10 +896,10 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 			buf := make([]byte, 8)
 
 			var r *Reader
-			if test.assertionVerificationKeys == nil {
+			if test.verifiers == nil {
 				r, err = s.sdk.LoadTDF(readSeeker)
 			} else {
-				r, err = s.sdk.LoadTDF(readSeeker, WithAssertionVerificationKeys(*test.assertionVerificationKeys))
+				r, err = s.sdk.LoadTDF(readSeeker, WithAssertionVerificationKeys(*test.verifiers))
 			}
 			s.Require().NoError(err)
 
@@ -934,31 +1060,209 @@ func (s *TDFSuite) Test_TDFReaderFail() {
 	}
 }
 
+func (s *TDFSuite) Test_ValidateSchema() {
+	for index, test := range []struct {
+		n       string
+		changer func(*testing.T, io.Writer, *zip.File) error
+		err     error
+		failOn  SchemaValidationIntensity
+	}{
+		{
+			n: "valid",
+			changer: func(_ *testing.T, dst io.Writer, f *zip.File) error {
+				rc, err := f.Open()
+				if err != nil {
+					return err
+				}
+
+				_, err = io.Copy(dst, rc)
+				return err
+			},
+			err:    nil,
+			failOn: unreasonable,
+		},
+		{
+			n: "emptymanifest",
+			changer: func(_ *testing.T, dst io.Writer, f *zip.File) error {
+				rc, err := f.Open()
+				if err != nil {
+					return err
+				}
+
+				if f.Name == "0.manifest.json" {
+					_, err = dst.Write([]byte("{}"))
+				} else {
+					_, err = io.Copy(dst, rc)
+				}
+				return err
+			},
+			err:    ErrInvalidPerSchema,
+			failOn: Skip,
+		},
+		{
+			n: "nojsonchange",
+			changer: func(_ *testing.T, dst io.Writer, f *zip.File) error {
+				rc, err := f.Open()
+				if err != nil {
+					return err
+				}
+
+				// Validate json changer code
+				if f.Name != "0.manifest.json" {
+					_, err = io.Copy(dst, rc)
+					return err
+				}
+				// Read file from json as a map
+				var data map[string]interface{}
+				err = json.NewDecoder(rc).Decode(&data)
+				if err != nil {
+					return err
+				}
+				// encode data to dst
+
+				err = json.NewEncoder(dst).Encode(data)
+				return err
+			},
+			err:    nil,
+			failOn: unreasonable,
+		},
+		{
+			n: "lax",
+			changer: func(_ *testing.T, dst io.Writer, f *zip.File) error {
+				rc, err := f.Open()
+				if err != nil {
+					return err
+				}
+
+				if f.Name != "0.manifest.json" {
+					_, err = io.Copy(dst, rc)
+					return err
+				}
+				// Read file from json as a map
+				var data map[string]interface{}
+				err = json.NewDecoder(rc).Decode(&data)
+				if err != nil {
+					return err
+				}
+
+				(data["payload"].(map[string]interface{}))["tdf_spec_version"] = nil //nolint:forcetypeassert // testonly code
+
+				err = json.NewEncoder(dst).Encode(data)
+				return err
+			},
+			err:    ErrInvalidPerSchema,
+			failOn: Strict,
+		},
+	} {
+		s.Run(test.n, func() {
+			// create .txt file
+			plainTextFileName := test.n + "-" + strconv.Itoa(index) + ".txt"
+			s.createFileName(buffer, plainTextFileName, 16)
+			defer func() {
+				// Remove the test files
+				_ = os.Remove(plainTextFileName)
+			}()
+			tdfFileName := plainTextFileName + ".tdf"
+
+			plainReader, err := os.Open(plainTextFileName)
+			s.Require().NoError(err)
+
+			defer func() {
+				err := plainReader.Close()
+				s.Require().NoError(err)
+			}()
+
+			ciphertextWriter, err := os.Create(tdfFileName)
+			s.Require().NoError(err)
+
+			defer func() {
+				err := ciphertextWriter.Close()
+				s.Require().NoError(err)
+				err = os.Remove(tdfFileName)
+				s.Require().NoError(err)
+			}()
+
+			encryptOpts := []TDFOption{
+				WithKasInformation(s.kases[0].KASInfo),
+				WithAutoconfigure(false),
+			}
+
+			// test encrypt
+			_, err = s.sdk.CreateTDF(ciphertextWriter, plainReader, encryptOpts...)
+			s.Require().NoError(err)
+
+			alteredFileName := "altered-" + tdfFileName
+			s.Require().NoError(updateManifest(s.T(), tdfFileName, alteredFileName, test.changer))
+
+			cipherText, err := os.Open(alteredFileName)
+			s.Require().NoError(err)
+
+			defer func() {
+				err := cipherText.Close()
+				s.Require().NoError(err)
+				_ = os.Remove(alteredFileName)
+			}()
+
+			for _, svi := range []SchemaValidationIntensity{Skip, Lax, Strict} {
+				r, err := s.sdk.LoadTDF(cipherText, WithSchemaValidation(svi))
+				switch {
+				case test.failOn > svi:
+					s.Require().NoError(err, "error should be nil at %s", svi)
+				case test.err != nil && svi > Skip:
+					// can either fail here or on first read (ie in Copy below)
+					// Errors on 'skip' won't match the expected error type, though.
+					if test.err != nil {
+						s.Require().ErrorIs(err, test.err, "[%v] at %s", err, svi)
+					} else {
+						s.Require().Error(err, "at %s", svi)
+					}
+					continue
+				default:
+					s.Require().NoError(err, "[%v] at %s", err, svi)
+				}
+
+				if test.failOn > svi {
+					n, err := io.Copy(io.Discard, r)
+					s.Require().NoError(err, "at %s", svi)
+					s.Equal(int64(16), n)
+				} else {
+					_, err := io.Copy(io.Discard, r)
+					if test.err != nil && svi != Skip {
+						s.Require().ErrorIs(err, test.err, "[%v] at %s", err, svi)
+					} else {
+						s.Require().Error(err, "[%v] at %s", err, svi)
+					}
+				}
+			}
+		})
+	}
+}
+
 func (s *TDFSuite) Test_TDF() {
 	for index, test := range []tdfTest{
 		{
 			n:           "small",
 			fileSize:    5,
-			tdfFileSize: 1557,
+			tdfFileSize: 1560,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 		},
 		{
 			n:           "small-with-mime-type",
 			fileSize:    5,
-			tdfFileSize: 1557,
+			tdfFileSize: 1560,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			mimeType:    "text/plain",
 		},
 		{
 			n:           "1-kiB",
 			fileSize:    oneKB,
-			tdfFileSize: 2581,
+			tdfFileSize: 2598,
 			checksum:    "2edc986847e209b4016e141a6dc8716d3207350f416969382d431539bf292e4a",
 		},
 		{
 			n:           "medium",
 			fileSize:    hundredMB,
-			tdfFileSize: 104866410,
+			tdfFileSize: 104866427,
 			checksum:    "cee41e98d0a6ad65cc0ec77a2ba50bf26d64dc9007f7f1c7d7df68b8b71291a6",
 		},
 	} {
@@ -1040,7 +1344,7 @@ func (s *TDFSuite) Test_KeySplits() {
 		{
 			n:           "shared",
 			fileSize:    5,
-			tdfFileSize: 2664,
+			tdfFileSize: 2759,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
 				{KAS: "https://a.kas/", SplitID: "a"},
@@ -1051,7 +1355,7 @@ func (s *TDFSuite) Test_KeySplits() {
 		{
 			n:           "split",
 			fileSize:    5,
-			tdfFileSize: 2664,
+			tdfFileSize: 2759,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
 				{KAS: "https://a.kas/", SplitID: "a"},
@@ -1062,7 +1366,7 @@ func (s *TDFSuite) Test_KeySplits() {
 		{
 			n:           "mixture",
 			fileSize:    5,
-			tdfFileSize: 3211,
+			tdfFileSize: 3351,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
 				{KAS: "https://a.kas/", SplitID: "a"},
@@ -1215,7 +1519,7 @@ func (s *TDFSuite) testDecryptWithReader(sdk *SDK, tdfFile, decryptedTdfFileName
 	r, err := sdk.LoadTDF(readSeeker)
 	s.Require().NoError(err)
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(60*time.Millisecond))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(300*time.Minute))
 	defer cancel()
 	err = r.Init(ctx)
 	s.Require().NoError(err)
@@ -1427,40 +1731,53 @@ func (f *FakeKas) Rewrap(_ context.Context, in *kaspb.RewrapRequest) (*kaspb.Rew
 	if !ok {
 		return nil, fmt.Errorf("requestBody not a string")
 	}
-	entityWrappedKey := f.getRewrappedKey(requestBodyStr)
+	result := f.getRewrapResponse(requestBodyStr)
 
-	return &kaspb.RewrapResponse{EntityWrappedKey: entityWrappedKey}, nil
+	return result, nil
 }
 
 func (f *FakeKas) PublicKey(_ context.Context, _ *kaspb.PublicKeyRequest) (*kaspb.PublicKeyResponse, error) {
 	return &kaspb.PublicKeyResponse{PublicKey: f.KASInfo.PublicKey, Kid: f.KID}, nil
 }
 
-func (f *FakeKas) getRewrappedKey(rewrapRequest string) []byte {
-	bodyData := RequestBody{}
-	err := json.Unmarshal([]byte(rewrapRequest), &bodyData)
+func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse {
+	bodyData := kaspb.UnsignedRewrapRequest{}
+	err := protojson.Unmarshal([]byte(rewrapRequest), &bodyData)
 	f.s.Require().NoError(err, "json.Unmarshal failed")
+	resp := &kaspb.RewrapResponse{}
 
-	wrappedKey, err := ocrypto.Base64Decode([]byte(bodyData.WrappedKey))
-	f.s.Require().NoError(err, "ocrypto.Base64Decode failed")
+	for _, req := range bodyData.GetRequests() {
+		results := &kaspb.PolicyRewrapResult{PolicyId: req.GetPolicy().GetId()}
+		resp.Responses = append(resp.Responses, results)
+		for _, kaoReq := range req.GetKeyAccessObjects() {
+			kao := kaoReq.GetKeyAccessObject()
+			wrappedKey := kaoReq.GetKeyAccessObject().GetWrappedKey()
 
-	kasPrivateKey := strings.ReplaceAll(f.privateKey, "\n\t", "\n")
-	if bodyData.KID != "" && bodyData.KID != f.KID {
-		// old kid
-		lk, ok := f.legakeys[bodyData.KID]
-		f.s.Require().True(ok, "unable to find key [%s]", bodyData.KID)
-		kasPrivateKey = strings.ReplaceAll(lk.private, "\n\t", "\n")
+			kasPrivateKey := strings.ReplaceAll(f.privateKey, "\n\t", "\n")
+			if kao.GetKid() != "" && kao.GetKid() != f.KID {
+				// old kid
+				lk, ok := f.legakeys[kaoReq.GetKeyAccessObject().GetKid()]
+				f.s.Require().True(ok, "unable to find key [%s]", kao.GetKid())
+				kasPrivateKey = strings.ReplaceAll(lk.private, "\n\t", "\n")
+			}
+
+			asymDecrypt, err := ocrypto.NewAsymDecryption(kasPrivateKey)
+			f.s.Require().NoError(err, "ocrypto.NewAsymDecryption failed")
+			symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
+			f.s.Require().NoError(err, "ocrypto.Decrypt failed")
+			asymEncrypt, err := ocrypto.NewAsymEncryption(bodyData.GetClientPublicKey())
+			f.s.Require().NoError(err, "ocrypto.NewAsymEncryption failed")
+			entityWrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
+			f.s.Require().NoError(err, "ocrypto.encrypt failed")
+			kaoResult := &kaspb.KeyAccessRewrapResult{
+				Result:            &kaspb.KeyAccessRewrapResult_KasWrappedKey{KasWrappedKey: entityWrappedKey},
+				Status:            "permit",
+				KeyAccessObjectId: kaoReq.GetKeyAccessObjectId(),
+			}
+			results.Results = append(results.Results, kaoResult)
+		}
 	}
-
-	asymDecrypt, err := ocrypto.NewAsymDecryption(kasPrivateKey)
-	f.s.Require().NoError(err, "ocrypto.NewAsymDecryption failed")
-	symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
-	f.s.Require().NoError(err, "ocrypto.Decrypt failed")
-	asymEncrypt, err := ocrypto.NewAsymEncryption(bodyData.ClientPublicKey)
-	f.s.Require().NoError(err, "ocrypto.NewAsymEncryption failed")
-	entityWrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
-	f.s.Require().NoError(err, "ocrypto.encrypt failed")
-	return entityWrappedKey
+	return resp
 }
 
 func (s *TDFSuite) checkIdentical(file, checksum string) bool {

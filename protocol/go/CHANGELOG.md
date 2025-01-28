@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.2.24](https://github.com/opentdf/platform/compare/protocol/go/v0.2.23...protocol/go/v0.2.24) (2025-01-24)
+
+
+### Features
+
+* **policy:** adds new public keys table ([#1836](https://github.com/opentdf/platform/issues/1836)) ([cad5048](https://github.com/opentdf/platform/commit/cad5048d09609d678d5b5ac2972605dd61f33bb5))
+
+## [0.2.23](https://github.com/opentdf/platform/compare/protocol/go/v0.2.22...protocol/go/v0.2.23) (2025-01-17)
+
+
+### Features
+
+* **core:** adds bulk rewrap to sdk and service ([#1835](https://github.com/opentdf/platform/issues/1835)) ([11698ae](https://github.com/opentdf/platform/commit/11698ae18f66282980a7822dd145e3896c2b605c))
+
+
+### Bug Fixes
+
+* **core:** Update fixtures and flattening in sdk and service ([#1827](https://github.com/opentdf/platform/issues/1827)) ([d6d6a7a](https://github.com/opentdf/platform/commit/d6d6a7a2dffdb96cf7f7f731a4e6e66e06930e59))
+
 ## [0.2.22](https://github.com/opentdf/platform/compare/protocol/go/v0.2.21...protocol/go/v0.2.22) (2024-11-14)
 
 

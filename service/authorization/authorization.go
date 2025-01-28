@@ -216,20 +216,21 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *connect.R
 }
 
 func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorization.DecisionRequest) ([]*authorization.DecisionResponse, error) {
-	var attrDefsReqs [][]*policy.Attribute
-	var attrValsReqs [][]*policy.Value
-	var fqnsReqs [][]string
 	allPertinentFQNS := &authorization.ResourceAttribute{AttributeValueFqns: make([]string, 0)}
 	response := make([]*authorization.DecisionResponse, len(dr.GetResourceAttributes())*len(dr.GetEntityChains()))
-	for raIdx, ra := range dr.GetResourceAttributes() {
-		as.logger.DebugContext(ctx, "getting resource attributes", slog.String("FQNs", strings.Join(ra.GetAttributeValueFqns(), ", ")))
 
-		// get attribute definition/value combinations
-		dataAttrDefsAndVals, err := retrieveAttributeDefinitions(ctx, ra, as.sdk)
-		if err != nil {
-			// if attribute an FQN does not exist
-			// return deny for all entity chains aginst this RA set and continue to next
-			if errors.Is(err, status.Error(codes.NotFound, db.ErrTextNotFound)) || errors.Is(err, ErrEmptyStringAttribute) {
+	// TODO: fetching missing FQNs should not lead into a complete failure, rather a list of unknown FQNs would be preferred
+	var err error
+	var dataAttrDefsAndVals map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue
+	allPertinentFQNS.AttributeValueFqns, err = getAttributesFromRas(dr.GetResourceAttributes())
+	if err == nil {
+		dataAttrDefsAndVals, err = retrieveAttributeDefinitions(ctx, allPertinentFQNS.GetAttributeValueFqns(), as.sdk)
+	}
+	if err != nil {
+		// if attribute an FQN does not exist
+		// return deny for all entity chains aginst this RAs
+		if errors.Is(err, status.Error(codes.NotFound, db.ErrTextNotFound)) || errors.Is(err, ErrEmptyStringAttribute) {
+			for raIdx, ra := range dr.GetResourceAttributes() {
 				for ecIdx, ec := range dr.GetEntityChains() {
 					decisionResp := &authorization.DecisionResponse{
 						Decision:      authorization.DecisionResponse_DECISION_DENY,
@@ -247,45 +248,28 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 					}
 					responseIdx := (raIdx * len(dr.GetEntityChains())) + ecIdx
 					response[responseIdx] = decisionResp
-					// append empty values to keep the order of the requests
-					attrDefsReqs = append(attrDefsReqs, []*policy.Attribute{})
-					attrValsReqs = append(attrValsReqs, []*policy.Value{})
-					fqnsReqs = append(fqnsReqs, []string{})
-				}
-				continue
-			}
-			return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("fqns", strings.Join(ra.GetAttributeValueFqns(), ", ")))
-		}
-
-		var attrDefs []*policy.Attribute
-		var attrVals []*policy.Value
-		var fqns []string
-
-		for fqn, v := range dataAttrDefsAndVals {
-			attrDefs = append(attrDefs, v.GetAttribute())
-			attrVal := v.GetValue()
-			fqns = append(fqns, fqn)
-			attrVal.Fqn = fqn
-			attrVals = append(attrVals, attrVal)
-		}
-
-		attrDefs, err = populateAttrDefValueFqns(attrDefs)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
-		}
-		allPertinentFQNS.AttributeValueFqns = append(allPertinentFQNS.GetAttributeValueFqns(), ra.GetAttributeValueFqns()...)
-
-		// get the relevant resource attribute fqns
-		for _, attrDef := range attrDefs {
-			if attrDef.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
-				for _, value := range attrDef.GetValues() {
-					allPertinentFQNS.AttributeValueFqns = append(allPertinentFQNS.AttributeValueFqns, value.GetFqn())
 				}
 			}
+			return response, nil
 		}
-		attrDefsReqs = append(attrDefsReqs, attrDefs)
-		attrValsReqs = append(attrValsReqs, attrVals)
-		fqnsReqs = append(fqnsReqs, fqns)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("fqns", strings.Join(allPertinentFQNS.GetAttributeValueFqns(), ", ")))
+	}
+
+	var allAttrDefs []*policy.Attribute
+	for _, v := range dataAttrDefsAndVals {
+		allAttrDefs = append(allAttrDefs, v.GetAttribute())
+	}
+	allAttrDefs, err = populateAttrDefValueFqns(allAttrDefs)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	// get the relevant resource attribute fqns
+	for _, attrDef := range allAttrDefs {
+		if attrDef.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+			for _, value := range attrDef.GetValues() {
+				allPertinentFQNS.AttributeValueFqns = append(allPertinentFQNS.AttributeValueFqns, value.GetFqn())
+			}
+		}
 	}
 
 	var ecChainEntitlementsResponse []*connect.Response[authorization.GetEntitlementsResponse]
@@ -310,15 +294,31 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 	}
 
 	for raIdx, ra := range dr.GetResourceAttributes() {
+		var attrDefs []*policy.Attribute
+		var attrVals []*policy.Value
+		var fqns []string
+
+		for _, fqn := range ra.GetAttributeValueFqns() {
+			fqn = strings.ToLower(fqn)
+			fqns = append(fqns, fqn)
+			v := dataAttrDefsAndVals[fqn]
+			attrDefs = append(attrDefs, v.GetAttribute())
+			attrVal := v.GetValue()
+			attrVal.Fqn = fqn
+			attrVals = append(attrVals, attrVal)
+		}
+
+		attrDefs, err = populateAttrDefValueFqns(attrDefs)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+
 		for ecIdx, ec := range dr.GetEntityChains() {
 			// check if we already have a decision for this entity chain
 			responseIdx := (raIdx * len(dr.GetEntityChains())) + ecIdx
 			if response[responseIdx] != nil {
 				continue
 			}
-			attrVals := attrValsReqs[raIdx]
-			attrDefs := attrDefsReqs[raIdx]
-			fqns := fqnsReqs[raIdx]
 
 			//
 			// TODO: we should already have the subject mappings here and be able to just use OPA to trim down the known data attr values to the ones matched up with the entities
@@ -670,27 +670,36 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	return resp, nil
 }
 
-func retrieveAttributeDefinitions(ctx context.Context, ra *authorization.ResourceAttribute, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
-	attrFqns := ra.GetAttributeValueFqns()
+func getAttributesFromRas(ras []*authorization.ResourceAttribute) ([]string, error) {
+	var attrFqns []string
+	repeats := make(map[string]bool)
+	moreThanOneAttr := false
+	for _, ra := range ras {
+		for _, str := range ra.GetAttributeValueFqns() {
+			moreThanOneAttr = true
+			if str != "" && !repeats[str] {
+				attrFqns = append(attrFqns, str)
+				repeats[str] = true
+			}
+		}
+	}
+
+	if moreThanOneAttr && len(attrFqns) == 0 {
+		return nil, ErrEmptyStringAttribute
+	}
+	return attrFqns, nil
+}
+
+func retrieveAttributeDefinitions(ctx context.Context, attrFqns []string, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	if len(attrFqns) == 0 {
 		return make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue), nil
 	}
-	// remove empty strings
-	attrFqnsNoEmpty := attrFqns[:0] // Use the same backing array to avoid allocation
-	for _, str := range attrFqns {
-		if str != "" {
-			attrFqnsNoEmpty = append(attrFqnsNoEmpty, str)
-		}
-	}
-	// if no attribute value FQNs after removal, return error
-	if len(attrFqnsNoEmpty) == 0 {
-		return nil, ErrEmptyStringAttribute
-	}
+
 	resp, err := sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
 		WithValue: &policy.AttributeValueSelector{
 			WithSubjectMaps: false,
 		},
-		Fqns: attrFqnsNoEmpty,
+		Fqns: attrFqns,
 	})
 	if err != nil {
 		return nil, err

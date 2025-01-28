@@ -204,7 +204,10 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 	}
 
 	totalTime := time.Since(startTime)
-	averageLatency := totalDuration / time.Duration(successCount)
+	var averageLatency time.Duration
+	if successCount > 0 {
+		averageLatency = totalDuration / time.Duration(successCount)
+	}
 	throughput := float64(successCount) / totalTime.Seconds()
 
 	// Print results
@@ -214,7 +217,9 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 	cmd.Printf("Failed Requests: %d\n", errorCount)
 	cmd.Printf("Concurrent Requests: %d\n", config.ConcurrentRequests)
 	cmd.Printf("Total Time: %s\n", totalTime)
-	cmd.Printf("Average Latency: %s\n", averageLatency)
+	if successCount > 0 {
+		cmd.Printf("Average Latency: %s\n", averageLatency)
+	}
 	cmd.Printf("Throughput: %.2f requests/second\n", throughput)
 
 	if errorCount > 0 {

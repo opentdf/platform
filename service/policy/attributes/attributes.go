@@ -405,3 +405,37 @@ func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, 
 
 	return connect.NewResponse(rsp), nil
 }
+
+func (s *AttributesService) AssignKeyToAttribute(ctx context.Context, req *connect.Request[attributes.AssignKeyToAttributeRequest]) (*connect.Response[attributes.AssignKeyToAttributeResponse], error) {
+	err := s.dbClient.AssignPublicKeyToAttribute(ctx, req.Msg.GetAttributeKey())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("attributeKey", req.Msg.GetAttributeKey().String()))
+	}
+	return connect.NewResponse(&attributes.AssignKeyToAttributeResponse{}), nil
+}
+
+func (s *AttributesService) RemoveKeyFromAttribute(ctx context.Context, req *connect.Request[attributes.RemoveKeyFromAttributeRequest]) (*connect.Response[attributes.RemoveKeyFromAttributeResponse], error) {
+	k, err := s.dbClient.RemovePublicKeyFromAttribute(ctx, req.Msg.GetAttributeKey())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("attributeKey", req.Msg.GetAttributeKey().String()))
+	}
+	return connect.NewResponse(&attributes.RemoveKeyFromAttributeResponse{
+		AttributeKey: k,
+	}), nil
+}
+
+func (s *AttributesService) AssignKeyToValue(ctx context.Context, req *connect.Request[attributes.AssignKeyToValueRequest]) (*connect.Response[attributes.AssignKeyToValueResponse], error) {
+	err := s.dbClient.AssignPublicKeyToValue(ctx, req.Msg.GetValueKey())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("attributeValueKey", req.Msg.GetValueKey().String()))
+	}
+	return connect.NewResponse(&attributes.AssignKeyToValueResponse{}), nil
+}
+
+func (s *AttributesService) RemoveKeyFromValue(ctx context.Context, req *connect.Request[attributes.RemoveKeyFromValueRequest]) (*connect.Response[attributes.RemoveKeyFromValueResponse], error) {
+	_, err := s.dbClient.RemovePublicKeyFromValue(ctx, req.Msg.GetValueKey())
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("attributeValueKey", req.Msg.GetValueKey().String()))
+	}
+	return connect.NewResponse(&attributes.RemoveKeyFromValueResponse{}), nil
+}

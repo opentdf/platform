@@ -186,6 +186,19 @@ message UnsafeDeleteAttributeValueResponse {
   policy.Value value = 1;
 }
 
+// WARNING!!
+message UnsafeDeletePublicKeyRequest {
+  // Required
+  // UUID of the Key
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+}
+
+message UnsafeDeletePublicKeyResponse {
+  policy.Key key = 1;
+}
+
 ///
 /// Unsafe Service 
 /// IN FLIGHT AND NOT YET IMPLEMENTED!
@@ -229,4 +242,9 @@ service UnsafeService {
   rpc UnsafeDeleteAttributeValue(UnsafeDeleteAttributeValueRequest) returns (UnsafeDeleteAttributeValueResponse) {
     option (google.api.http) = {delete: "/unsafe/attributes/values/{id}"};
   }
+
+  /*--------------------------------------*
+   * Key RPCs
+   *---------------------------------------*/
+   rpc UnsafeDeletePublicKey(UnsafeDeletePublicKeyRequest) returns (UnsafeDeletePublicKeyResponse) {}
 }

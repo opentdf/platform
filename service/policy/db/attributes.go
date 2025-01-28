@@ -240,6 +240,14 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.At
 		return nil, err
 	}
 
+	if len(attr.Keys) > 0 {
+		keys, err := db.KeysProtoJSON(attr.Keys)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal keys [%s]: %w", string(attr.Keys), err)
+		}
+		policyAttr.Keys = keys
+	}
+
 	return policyAttr, nil
 }
 
@@ -270,6 +278,14 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 			}
 		}
 
+		var keys []*policy.Key
+		if len(attr.Keys) > 0 {
+			keys, err = db.KeysProtoJSON(attr.Keys)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal keys [%s]: %w", string(attr.Keys), err)
+			}
+		}
+
 		attrs[i] = &policy.Attribute{
 			Id:        attr.ID,
 			Name:      attr.Name,
@@ -279,6 +295,7 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 			Grants:    grants,
 			Namespace: ns,
 			Values:    values,
+			Keys:      keys,
 		}
 	}
 
@@ -541,6 +558,33 @@ func (c PolicyDBClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, 
 	count, err := c.Queries.RemoveKeyAccessServerFromAttribute(ctx, RemoveKeyAccessServerFromAttributeParams{
 		AttributeDefinitionID: k.GetAttributeId(),
 		KeyAccessServerID:     k.GetKeyAccessServerId(),
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
+
+	return k, nil
+}
+
+func (c PolicyDBClient) AssignPublicKeyToAttribute(ctx context.Context, k *attributes.AttributeKey) error {
+	_, err := c.Queries.assignPublicKeyToAttributeDefinition(ctx, assignPublicKeyToAttributeDefinitionParams{
+		DefinitionID: k.GetAttributeId(),
+		KeyID:        k.GetKeyId(),
+	})
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return nil
+}
+
+func (c PolicyDBClient) RemovePublicKeyFromAttribute(ctx context.Context, k *attributes.AttributeKey) (*attributes.AttributeKey, error) {
+	count, err := c.Queries.removePublicKeyFromAttributeDefinition(ctx, removePublicKeyFromAttributeDefinitionParams{
+		DefinitionID: k.GetAttributeId(),
+		KeyID:        k.GetKeyId(),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

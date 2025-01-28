@@ -16,10 +16,10 @@
 
 ### Documentation
 
-*.md          @opentdf/maintainers
-/docs/        @opentdf/maintainers
-/examples/    @opentdf/maintainers
-/examples/    @opentdf/maintainers @opentdf/security
+*.md            @opentdf/maintainers
+/docs/          @opentdf/maintainers
+/examples/      @opentdf/maintainers
+/examples/go.*  @opentdf/maintainers @opentdf/security
 
 ## Services
 

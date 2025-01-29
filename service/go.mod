@@ -1,6 +1,6 @@
 module github.com/opentdf/platform/service
 
-go 1.23
+go 1.22
 
 require (
 	connectrpc.com/connect v1.17.0
@@ -40,7 +40,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.34.0
 	go.opentelemetry.io/otel/trace v1.34.0
 	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225
-	google.golang.org/grpc v1.69.4
+	google.golang.org/grpc v1.67.1
 	google.golang.org/protobuf v1.36.3
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v2 v2.4.0

@@ -24,11 +24,13 @@ import (
 )
 
 var (
-	ErrInvalidKeyAlg    = errors.New("invalid key algorithm")
-	ErrInvalidKey       = errors.New("invalid key")
-	ErrInvalidKeySize   = errors.New("invalid key size")
-	ErrInvalidKeyCurve  = errors.New("invalid key curve")
-	ErrUnsupportedCurve = errors.New("unsupported curve")
+	ErrFailedToDecodePEM      = errors.New("failed to decode PEM block from public key")
+	ErrFailedToParsePublicKey = errors.New("failed to parse public key from PEM block")
+	ErrUnsupportedKeyAlg      = errors.New("unsupported key algorithm")
+	ErrKeyAlgMismatch         = errors.New("key algorithm does not match the provided algorithm")
+	ErrInvalidRSAKeySize      = errors.New("invalid rsa key size")
+	ErrInvalidECKeyCurve      = errors.New("invalid ec key curve")
+	ErrUnsupportedCurve       = errors.New("unsupported curve")
 )
 
 type KeyAccessServerRegistry struct {
@@ -227,11 +229,11 @@ func getCurveFromAlg(alg policy.KasPublicKeyAlgEnum) (elliptic.Curve, error) {
 func verifyKeyAlg(key string, alg policy.KasPublicKeyAlgEnum) error {
 	block, _ := pem.Decode([]byte(key))
 	if block == nil {
-		return ErrInvalidKey
+		return ErrFailedToDecodePEM
 	}
 	pubKey, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		return ErrInvalidKey
+		return ErrFailedToParsePublicKey
 	}
 
 	switch alg { //nolint:exhaustive // covers all cases
@@ -240,7 +242,7 @@ func verifyKeyAlg(key string, alg policy.KasPublicKeyAlgEnum) error {
 
 		rsaKey, ok := pubKey.(*rsa.PublicKey)
 		if !ok {
-			return ErrInvalidKeyAlg
+			return ErrKeyAlgMismatch
 		}
 
 		expectedSize := 0
@@ -252,7 +254,7 @@ func verifyKeyAlg(key string, alg policy.KasPublicKeyAlgEnum) error {
 		}
 
 		if rsaKey.Size() != expectedSize { // 2048 bits = 256 bytes
-			return ErrInvalidKeySize
+			return ErrInvalidRSAKeySize
 		}
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1,
 		policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1,
@@ -260,7 +262,7 @@ func verifyKeyAlg(key string, alg policy.KasPublicKeyAlgEnum) error {
 
 		ecKey, ok := pubKey.(*ecdsa.PublicKey)
 		if !ok {
-			return ErrInvalidKeyAlg
+			return ErrKeyAlgMismatch
 		}
 
 		expectedCurve, err := getCurveFromAlg(alg)
@@ -269,10 +271,10 @@ func verifyKeyAlg(key string, alg policy.KasPublicKeyAlgEnum) error {
 		}
 
 		if ecKey.Curve != expectedCurve {
-			return ErrInvalidKeyCurve
+			return ErrInvalidECKeyCurve
 		}
 	default:
-		return ErrInvalidKeyAlg
+		return ErrUnsupportedKeyAlg
 	}
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/gowebpki/jcs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -93,4 +94,91 @@ func TestTDFWithAssertionJsonObject(t *testing.T) {
 
 	expectedHash := "722dd40a90a0f7ec718fb156207a647e64daa43c0ae1f033033473a172c72aee"
 	assert.Equal(t, expectedHash, string(hashOfAssertion))
+}
+
+func TestDeserializingAssertionWithJSONInStatementValue(t *testing.T) {
+	// the assertion has a JSON object in the statement value
+	assertionVal := ` {
+      "id": "bacbe31eab384df39d35a5fbe83778de",
+      "type": "handling",
+      "scope": "tdo",
+      "appliesToState": null,
+      "statement": {
+        "format": "json-structured",
+        "value": {
+          "ocl": {
+            "pol": "2ccf11cb-6c9a-4e49-9746-a7f0a295945d",
+            "cls": "SECRET",
+            "catl": [
+              {
+                "type": "P",
+                "name": "Releasable To",
+                "vals": [
+                  "usa"
+                ]
+              }
+            ],
+            "dcr": "2024-12-17T13:00:52Z"
+          },
+          "context": {
+            "@base": "urn:nato:stanag:5636:A:1:elements:json"
+          }
+        }
+      },
+      "binding": {
+        "method": "jws",
+        "signature": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJDb25maWRlbnRpYWxpdHlJbmZvcm1hdGlvbiI6InsgXCJvY2xcIjogeyBcInBvbFwiOiBcIjJjY2YxMWNiLTZjOWEtNGU0OS05NzQ2LWE3ZjBhMjk1OTQ1ZFwiLCBcImNsc1wiOiBcIlNFQ1JFVFwiLCBcImNhdGxcIjogWyB7IFwidHlwZVwiOiBcIlBcIiwgXCJuYW1lXCI6IFwiUmVsZWFzYWJsZSBUb1wiLCBcInZhbHNcIjogWyBcInVzYVwiIF0gfSBdLCBcImRjclwiOiBcIjIwMjQtMTItMTdUMTM6MDA6NTJaXCIgfSwgXCJjb250ZXh0XCI6IHsgXCJAYmFzZVwiOiBcInVybjpuYXRvOnN0YW5hZzo1NjM2OkE6MTplbGVtZW50czpqc29uXCIgfSB9In0.LlOzRLKKXMAqXDNsx9Ha5915CGcAkNLuBfI7jJmx6CnfQrLXhlRHWW3_aLv5DPsKQC6vh9gDQBH19o7q7EcukvK4IabA4l0oP8ePgHORaajyj7ONjoeudv_zQ9XN7xU447S3QznzOoasuWAFoN4682Fhf99Kjl6rhDCzmZhTwQw9drP7s41nNA5SwgEhoZj-X9KkNW5GbWjA95eb8uVRRWk8dOnVje6j8mlJuOtKdhMxQ8N5n0vBYYhiss9c4XervBjWAxwAMdbRaQN0iPZtMzIkxKLYxBZDvTnYSAqzpvfGPzkSI-Ze_hUZs2hp-ADNnYUJBf_LzFmKyqHjPSFQ7A"
+      }
+    }`
+
+	var assertion Assertion
+	err := json.Unmarshal([]byte(assertionVal), &assertion)
+	assert.NoError(t, err, "Error deserializing the assertion with a JSON object in the statement value")
+
+	var expectedAssertionValue, _ = jcs.Transform([]byte(`{
+          "ocl": {
+            "pol": "2ccf11cb-6c9a-4e49-9746-a7f0a295945d",
+            "cls": "SECRET",
+            "catl": [
+              {
+                "type": "P",
+                "name": "Releasable To",
+                "vals": [
+                  "usa"
+                ]
+              }
+            ],
+            "dcr": "2024-12-17T13:00:52Z"
+          },
+          "context": {
+            "@base": "urn:nato:stanag:5636:A:1:elements:json"
+          }
+        }`))
+	actualAssertionValue, err := jcs.Transform([]byte(assertion.Statement.Value))
+	require.NoError(t, err, "Error transforming the assertion statement value")
+	assert.Equal(t, expectedAssertionValue, actualAssertionValue)
+}
+
+func TestDeserializingAssertionWithStringInStatementValue(t *testing.T) {
+	// the assertion has a JSON object in the statement value
+	assertionVal := ` {
+      "id": "bacbe31eab384df39d35a5fbe83778de",
+      "type": "handling",
+      "scope": "tdo",
+      "appliesToState": null,
+      "statement": {
+        "format": "json-structured",
+        "value": "this is a value"
+      },
+      "binding": {
+        "method": "jws",
+        "signature": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJDb25maWRlbnRpYWxpdHlJbmZvcm1hdGlvbiI6InsgXCJvY2xcIjogeyBcInBvbFwiOiBcIjJjY2YxMWNiLTZjOWEtNGU0OS05NzQ2LWE3ZjBhMjk1OTQ1ZFwiLCBcImNsc1wiOiBcIlNFQ1JFVFwiLCBcImNhdGxcIjogWyB7IFwidHlwZVwiOiBcIlBcIiwgXCJuYW1lXCI6IFwiUmVsZWFzYWJsZSBUb1wiLCBcInZhbHNcIjogWyBcInVzYVwiIF0gfSBdLCBcImRjclwiOiBcIjIwMjQtMTItMTdUMTM6MDA6NTJaXCIgfSwgXCJjb250ZXh0XCI6IHsgXCJAYmFzZVwiOiBcInVybjpuYXRvOnN0YW5hZzo1NjM2OkE6MTplbGVtZW50czpqc29uXCIgfSB9In0.LlOzRLKKXMAqXDNsx9Ha5915CGcAkNLuBfI7jJmx6CnfQrLXhlRHWW3_aLv5DPsKQC6vh9gDQBH19o7q7EcukvK4IabA4l0oP8ePgHORaajyj7ONjoeudv_zQ9XN7xU447S3QznzOoasuWAFoN4682Fhf99Kjl6rhDCzmZhTwQw9drP7s41nNA5SwgEhoZj-X9KkNW5GbWjA95eb8uVRRWk8dOnVje6j8mlJuOtKdhMxQ8N5n0vBYYhiss9c4XervBjWAxwAMdbRaQN0iPZtMzIkxKLYxBZDvTnYSAqzpvfGPzkSI-Ze_hUZs2hp-ADNnYUJBf_LzFmKyqHjPSFQ7A"
+      }
+    }`
+
+	var assertion Assertion
+	err := json.Unmarshal([]byte(assertionVal), &assertion)
+	assert.NoError(t, err, "Error deserializing the assertion with a JSON object in the statement value")
+
+	assert.Equal(t, "this is a value", assertion.Statement.Value)
 }

@@ -480,10 +480,12 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 			}
 
 			// wrap the key with kas public key
-			asymEncrypt, err := ocrypto.NewAsymEncryption(kasInfo.PublicKey)
+			asymEncrypt, err := ocrypto.FromPEM(kasInfo.PublicKey)
 			if err != nil {
 				return fmt.Errorf("ocrypto.NewAsymEncryption failed:%w", err)
 			}
+
+			
 
 			wrappedKey, err := asymEncrypt.Encrypt(symKey)
 			if err != nil {

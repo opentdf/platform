@@ -133,7 +133,7 @@ func TestDeserializingAssertionWithJSONInStatementValue(t *testing.T) {
 
 	var assertion Assertion
 	err := json.Unmarshal([]byte(assertionVal), &assertion)
-	assert.NoError(t, err, "Error deserializing the assertion with a JSON object in the statement value")
+	require.NoError(t, err, "Error deserializing the assertion with a JSON object in the statement value")
 
 	var expectedAssertionValue, _ = jcs.Transform([]byte(`{
           "ocl": {
@@ -178,7 +178,7 @@ func TestDeserializingAssertionWithStringInStatementValue(t *testing.T) {
 
 	var assertion Assertion
 	err := json.Unmarshal([]byte(assertionVal), &assertion)
-	assert.NoError(t, err, "Error deserializing the assertion with a JSON object in the statement value")
+	require.NoError(t, err, "Error deserializing the assertion with a JSON object in the statement value")
 
 	assert.Equal(t, "this is a value", assertion.Statement.Value)
 }

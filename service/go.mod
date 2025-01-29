@@ -2,8 +2,6 @@ module github.com/opentdf/platform/service
 
 go 1.22.0
 
-toolchain go1.23.1
-
 require (
 	connectrpc.com/connect v1.17.0
 	connectrpc.com/grpcreflect v1.2.0

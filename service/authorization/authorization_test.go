@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go.opentelemetry.io/otel/trace/noop"
 	"log/slog"
 	"strings"
 	"testing"
+
+	"go.opentelemetry.io/otel/trace/noop"
 
 	"connectrpc.com/connect"
 	"github.com/open-policy-agent/opa/rego"

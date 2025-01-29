@@ -43,14 +43,14 @@ func (p *Provider) canAccess(ctx context.Context, token *authorization.Token, po
 			res = append(res, PDPAccessResult{Access: true, Policy: policy})
 		}
 	}
-  
-  ctx, span := p.Tracer.Start(ctx, "checkAttributes")
+
+	ctx, span := p.Tracer.Start(ctx, "checkAttributes")
 	defer span.End()
 
 	dr, err := p.checkAttributes(ctx, rasList, token)
-  if err != nil {
+	if err != nil {
 		return nil, err
-  }
+	}
 
 	for _, resp := range dr.GetDecisionResponses() {
 		policy, ok := idPolicyMap[resp.GetResourceAttributesId()]

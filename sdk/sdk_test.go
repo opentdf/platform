@@ -37,6 +37,7 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 				"authorization_endpoint": "https://example.org/auth",
 				"token_endpoint":         "https://example.org/token",
 				"public_client_id":       "myclient",
+				"auth_code_flow_port":    "9000",
 			},
 		}),
 		sdk.WithClientCredentials("myid", "mysecret", nil),
@@ -65,6 +66,11 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 	assert.Equal(t, "myclient", publicClientID)
 	require.NoError(t, err)
 
+	// Check platform auth code flow port
+	codeFlowPort, err := s.PlatformConfiguration.AuthCodeFlowPort()
+	assert.Equal(t, "9000", codeFlowPort)
+	require.NoError(t, err)
+
 	// check if the clients are available
 	assert.NotNil(t, s.Attributes)
 	assert.NotNil(t, s.ResourceMapping)
@@ -89,6 +95,10 @@ func Test_PlatformConfiguration_BadCases(t *testing.T) {
 		publicClientID, err := s.PlatformConfiguration.PublicClientID()
 		assert.Equal(t, "", publicClientID)
 		require.ErrorIs(t, err, sdk.ErrPlatformPublicClientIDNotFound)
+
+		codeFlowPort, err := s.PlatformConfiguration.AuthCodeFlowPort()
+		assert.Equal(t, "", codeFlowPort)
+		require.ErrorIs(t, err, sdk.ErrPlatformAuthCodeFlowPort)
 	}
 
 	noIdpValsSDK, err := sdk.New(goodPlatformEndpoint,

@@ -14,8 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"connectrpc.com/otelconnect"
-
 	"connectrpc.com/connect"
 	"connectrpc.com/grpcreflect"
 	"connectrpc.com/validate"
@@ -375,13 +373,6 @@ func newConnectRPCIPC() (*ConnectRPC, error) {
 
 	interceptors = append(interceptors, connect.WithInterceptors(vaidationInterceptor, audit.ContextServerInterceptor()))
 
-	otelConnectInterceptor, err := otelconnect.NewInterceptor()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create otel connect interceptor: %w", err)
-	}
-
-	interceptors = append(interceptors, connect.WithInterceptors(otelConnectInterceptor))
-
 	return &ConnectRPC{
 		Interceptors: interceptors,
 		Mux:          http.NewServeMux(),
@@ -404,12 +395,6 @@ func newConnectRPC(c Config, a *auth.Authentication, logger *logger.Logger) (*Co
 	}
 
 	interceptors = append(interceptors, connect.WithInterceptors(vaidationInterceptor, audit.ContextServerInterceptor()))
-
-	otelConnectInterceptor, err := otelconnect.NewInterceptor()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create otel connect interceptor: %w", err)
-	}
-	interceptors = append(interceptors, connect.WithInterceptors(otelConnectInterceptor))
 
 	return &ConnectRPC{
 		Interceptors: interceptors,

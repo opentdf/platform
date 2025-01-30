@@ -5,7 +5,6 @@ go 1.22
 require (
 	connectrpc.com/connect v1.17.0
 	connectrpc.com/grpcreflect v1.2.0
-	connectrpc.com/otelconnect v0.7.1
 	connectrpc.com/validate v0.1.0
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/Nerzal/gocloak/v13 v13.9.0

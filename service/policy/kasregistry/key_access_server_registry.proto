@@ -146,6 +146,7 @@ message ListPublicKeysRequest {
   // string kas_name = 2;
   // // Optional
   // string kas_uri = 3;
+
   // Optional
   policy.PageRequest pagination = 10;
 }
@@ -164,6 +165,10 @@ message ListPublicKeyMappingRequest {
   // string kas_name = 2;
   // // Optional
   // string kas_uri = 3;
+
+  // Optional Public Key ID
+  string public_key_id = 4;
+  
   // Optional
   policy.PageRequest pagination = 10;
 }
@@ -188,6 +193,8 @@ message ListPublicKeyMappingResponse {
   }
 
   repeated PublicKeyMapping public_key_mappings = 1;
+  
+  policy.PageResponse pagination = 10;
 }
 
 message UpdatePublicKeyRequest {

@@ -1215,6 +1215,17 @@ func (s *KasRegistrySuite) Test_List_Public_Keys_ByKasID() {
 	s.NotEqual(totalKeys, filteredTotalKeys)
 }
 
+func (s *KasRegistrySuite) Test_List_Public_Keys_WithLimit_1() {
+	r, err := s.db.PolicyClient.ListPublicKeys(s.ctx, &kasregistry.ListPublicKeysRequest{
+		Pagination: &policy.PageRequest{
+			Limit: 1,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.Len(r.GetKeys(), 1)
+}
+
 func (s *KasRegistrySuite) Test_List_Public_Keys_WithNonExistentKasID() {
 	r, err := s.db.PolicyClient.ListPublicKeys(s.ctx, &kasregistry.ListPublicKeysRequest{KasId: nonExistentKasRegistryID})
 	s.Require().NoError(err)
@@ -1246,6 +1257,42 @@ func (s *KasRegistrySuite) Test_List_Public_Key_Mappings() {
 				}))
 			}
 		}
+	}
+}
+
+func (s *KasRegistrySuite) Test_List_Public_Key_Mappings_WithLimit_1() {
+	r, err := s.db.PolicyClient.ListPublicKeyMappings(s.ctx, &kasregistry.ListPublicKeyMappingRequest{
+		Pagination: &policy.PageRequest{
+			Limit: 1,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.Len(r.GetPublicKeyMappings(), 1)
+}
+
+func (s *KasRegistrySuite) Test_List_Public_Key_Mappings_By_KAS_ID() {
+	kasID := s.f.GetKasRegistryKey("key_access_server_1").ID
+	r, err := s.db.PolicyClient.ListPublicKeyMappings(s.ctx, &kasregistry.ListPublicKeyMappingRequest{KasId: kasID})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.Len(r.GetPublicKeyMappings(), 1)
+
+	for _, m := range r.GetPublicKeyMappings() {
+		s.Equal(kasID, m.GetKasId())
+	}
+}
+
+func (s *KasRegistrySuite) Test_List_Public_Key_Mapping_By_PublicKey_ID() {
+	id := s.f.GetPublicKey("key_1").ID
+	r, err := s.db.PolicyClient.ListPublicKeyMappings(s.ctx, &kasregistry.ListPublicKeyMappingRequest{PublicKeyId: id})
+	s.Require().NoError(err)
+	s.NotNil(r)
+
+	for _, m := range r.GetPublicKeyMappings() {
+		s.True(slices.ContainsFunc(m.GetPublicKeys(), func(key *kasregistry.ListPublicKeyMappingResponse_PublicKey) bool {
+			return key.GetKey().GetId() == id
+		}))
 	}
 }
 

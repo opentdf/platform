@@ -6755,19 +6755,27 @@ objects are returned. </p></td>
                   <td>kas_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Optional </p></td>
+                  <td><p>Optional
+
+Future filter by fields
+// Optional
+string kas_name = 2;
+// Optional
+string kas_uri = 3; </p></td>
+                </tr>
+              
+                <tr>
+                  <td>public_key_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional Public Key ID </p></td>
                 </tr>
               
                 <tr>
                   <td>pagination</td>
                   <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
                   <td></td>
-                  <td><p>Future filter by fields
-// Optional
-string kas_name = 2;
-// Optional
-string kas_uri = 3;
-Optional </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>
@@ -6791,6 +6799,13 @@ Optional </p></td>
                   <td>public_key_mappings</td>
                   <td><a href="#policy.kasregistry.ListPublicKeyMappingResponse.PublicKeyMapping">ListPublicKeyMappingResponse.PublicKeyMapping</a></td>
                   <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               
@@ -6936,19 +6951,20 @@ Optional </p></td>
                   <td>kas_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Optional </p></td>
+                  <td><p>Optional
+
+Future filter by fields
+// Optional
+string kas_name = 2;
+// Optional
+string kas_uri = 3; </p></td>
                 </tr>
               
                 <tr>
                   <td>pagination</td>
                   <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
                   <td></td>
-                  <td><p>Future filter by fields
-// Optional
-string kas_name = 2;
-// Optional
-string kas_uri = 3;
-Optional </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>

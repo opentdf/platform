@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.39](https://github.com/opentdf/platform/compare/service/v0.4.38...service/v0.4.39) (2025-01-31)
+
+
+### Features
+
+* **policy:** adds new public keys table ([#1836](https://github.com/opentdf/platform/issues/1836)) ([cad5048](https://github.com/opentdf/platform/commit/cad5048d09609d678d5b5ac2972605dd61f33bb5))
+
+
+### Bug Fixes
+
+* add pagination to list public key mappings response ([#1889](https://github.com/opentdf/platform/issues/1889)) ([9898fbd](https://github.com/opentdf/platform/commit/9898fbda305f4eface291a2aaa98d2df80f0ad05))
+* cleanup kas public key create error messages ([#1887](https://github.com/opentdf/platform/issues/1887)) ([59f7d0e](https://github.com/opentdf/platform/commit/59f7d0e0ab45ef47b2df9326c0904b54fba4b3eb))
+* **core:** Autobump service ([#1875](https://github.com/opentdf/platform/issues/1875)) ([4b6c335](https://github.com/opentdf/platform/commit/4b6c3353913ad90aeef499beb5f8c52144679a61))
+* **core:** Autobump service ([#1895](https://github.com/opentdf/platform/issues/1895)) ([08a2048](https://github.com/opentdf/platform/commit/08a20481a085b4af67fc78e6cfae371f0bccd166))
+* filter total count on list public key operations ([#1884](https://github.com/opentdf/platform/issues/1884)) ([8df0adc](https://github.com/opentdf/platform/commit/8df0adc60dd49aa3dcdaf4d60f094338ca5ad2e9))
+
 ## [0.4.38](https://github.com/opentdf/platform/compare/service/v0.4.37...service/v0.4.38) (2025-01-21)
 
 

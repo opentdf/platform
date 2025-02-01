@@ -16,7 +16,7 @@ jobs:
 
       - name: "Authenticate to Google Cloud (Push to Public registry)"
         id: "gcp-auth"
-        uses: google-github-actions/auth@62cf5bd3e4211a0a0b51f2c6d6a37129d828611d
+        uses: google-github-actions/auth@71f986410dfbc7added4569d411d040a91dc6935
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}

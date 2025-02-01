@@ -984,7 +984,12 @@ LIMIT @limit_
 OFFSET @offset_; 
 
 -- name: listPublicKeyMappings :many
-WITH base_keys AS (
+WITH counted AS (
+    SELECT COUNT(pk.id) AS total FROM public_keys AS pk
+    WHERE (NULLIF(@kas_id, '') IS NULL OR pk.key_access_server_id = @kas_id::uuid)
+    AND   ( NULLIF(@public_key_id, '') IS NULL OR pk.id = @public_key_id::uuid )
+),
+base_keys AS (
     SELECT 
         pk.id,
         pk.is_active,
@@ -1076,9 +1081,11 @@ SELECT jsonb_build_object(
             )
         )
     )
-) as kas_info
+) as kas_info,
+counted.total
 FROM base_keys bk
-GROUP BY bk.kas_id, bk.kas_name, bk.kas_uri
+CROSS JOIN counted
+GROUP BY bk.kas_id, bk.kas_name, bk.kas_uri, counted.total
 LIMIT @limit_ 
 OFFSET @offset_;
 

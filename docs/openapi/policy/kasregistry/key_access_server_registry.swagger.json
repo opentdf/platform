@@ -168,9 +168,27 @@
         "parameters": [
           {
             "name": "id",
-            "description": "Required",
+            "description": "Deprecated",
             "in": "path",
             "required": true,
+            "type": "string"
+          },
+          {
+            "name": "kasId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "uri",
+            "in": "query",
+            "required": false,
             "type": "string"
           }
         ],

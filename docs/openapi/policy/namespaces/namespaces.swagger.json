@@ -189,9 +189,21 @@
         "parameters": [
           {
             "name": "id",
-            "description": "Required",
+            "description": "Deprecated",
             "in": "path",
             "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "fqn",
+            "in": "query",
+            "required": false,
             "type": "string"
           }
         ],

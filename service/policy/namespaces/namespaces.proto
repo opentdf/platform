@@ -48,10 +48,17 @@ message NamespaceKey {
 */
 
 message GetNamespaceRequest {
-  // Required
+  // Deprecated
   string id = 1 [
-    (buf.validate.field).string.uuid = true
+    deprecated = true
   ];
+
+  oneof identifier {
+    string namespace_id = 2 [
+      (buf.validate.field).string.uuid = true
+    ];
+    string fqn = 3;
+  }
 }
 message GetNamespaceResponse {
   policy.Namespace namespace = 1;

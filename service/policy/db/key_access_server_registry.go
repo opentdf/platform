@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
@@ -72,8 +73,32 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 	}, nil
 }
 
-func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, id string) (*policy.KeyAccessServer, error) {
-	kas, err := c.Queries.GetKeyAccessServer(ctx, id)
+func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, identifier any) (*policy.KeyAccessServer, error) {
+	var (
+		kas GetKeyAccessServerByIdRow
+		err error
+	)
+
+	switch i := identifier.(type) {
+	case *kasregistry.GetKeyAccessServerRequest_KasId:
+		kas, err = c.Queries.GetKeyAccessServerById(ctx, i.KasId)
+	case *kasregistry.GetKeyAccessServerRequest_Name:
+		var k GetKeyAccessServerByNameRow
+		k, err = c.Queries.GetKeyAccessServerByName(ctx, pgtype.Text{String: i.Name, Valid: true})
+		// Same struct fields allow for struct casting
+		kas = GetKeyAccessServerByIdRow(k)
+	case *kasregistry.GetKeyAccessServerRequest_Uri:
+		var k GetKeyAccessServerByUriRow
+		k, err = c.Queries.GetKeyAccessServerByUri(ctx, i.Uri)
+		// Same struct fields allow for struct casting
+		kas = GetKeyAccessServerByIdRow(k)
+	case string:
+		kas, err = c.Queries.GetKeyAccessServerById(ctx, i)
+	default:
+		// Hopefully this will never happen
+		return nil, fmt.Errorf("unknown identifier type: %T", i)
+	}
+
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -352,11 +377,11 @@ func (c PolicyDBClient) ListPublicKeys(ctx context.Context, r *kasregistry.ListP
 	}
 
 	params := listPublicKeysParams{
-		KasID: r.GetKasId(),
-		// KasUri:  r.GetKasUri(),
-		// KasName: r.GetKasName(),
-		Offset: offset,
-		Limit:  limit,
+		KasID:   r.GetKasId(),
+		KasUri:  r.GetKasUri(),
+		KasName: r.GetKasName(),
+		Offset:  offset,
+		Limit:   limit,
 	}
 	listRows, err := c.Queries.listPublicKeys(ctx, params)
 	if err != nil {
@@ -411,9 +436,9 @@ func (c PolicyDBClient) ListPublicKeyMappings(ctx context.Context, r *kasregistr
 	}
 
 	params := listPublicKeyMappingsParams{
-		KasID: r.GetKasId(),
-		// KasUri:  r.GetKasUri(),
-		// KasName: r.GetKasName(),
+		KasID:       r.GetKasId(),
+		KasUri:      r.GetKasUri(),
+		KasName:     r.GetKasName(),
 		PublicKeyID: r.GetPublicKeyId(),
 		Offset:      offset,
 		Limit:       limit,

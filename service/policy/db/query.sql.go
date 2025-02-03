@@ -442,7 +442,137 @@ func (q *Queries) DeleteSubjectMapping(ctx context.Context, id string) (int64, e
 	return result.RowsAffected(), nil
 }
 
-const getAttribute = `-- name: GetAttribute :one
+const getAttributeByFqn = `-- name: GetAttributeByFqn :one
+SELECT
+    ad.id,
+    ad.name as attribute_name,
+    ad.rule,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ad.metadata -> 'labels', 'created_at', ad.created_at, 'updated_at', ad.updated_at)) AS metadata,
+    ad.namespace_id,
+    ad.active,
+    n.name as namespace_name,
+    JSON_AGG(
+        JSON_BUILD_OBJECT(
+            'id', avt.id,
+            'value', avt.value,
+            'active', avt.active,
+            'fqn', CONCAT(fqns.fqn, '/value/', avt.value)
+        ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
+    ) AS values,
+    JSONB_AGG(
+        DISTINCT JSONB_BUILD_OBJECT(
+            'id', kas.id,
+            'uri', kas.uri,
+            'name', kas.name,
+            'public_key', kas.public_key
+        )
+    ) FILTER (WHERE adkag.attribute_definition_id IS NOT NULL) AS grants,
+    fqns.fqn,
+    k.keys AS keys
+FROM attribute_definitions ad
+LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
+LEFT JOIN (
+    SELECT
+        av.id,
+        av.value,
+        av.active,
+        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT('id', vkas.id,'uri', vkas.uri,'name', vkas.name,'public_key', vkas.public_key )) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr,
+        av.attribute_definition_id
+    FROM attribute_values av
+    LEFT JOIN attribute_value_key_access_grants avg ON av.id = avg.attribute_value_id
+    LEFT JOIN key_access_servers vkas ON avg.key_access_server_id = vkas.id
+    GROUP BY av.id
+) avt ON avt.attribute_definition_id = ad.id
+LEFT JOIN attribute_definition_key_access_grants adkag ON adkag.attribute_definition_id = ad.id
+LEFT JOIN key_access_servers kas ON kas.id = adkag.key_access_server_id
+LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
+LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
+WHERE REGEXP_REPLACE(fqns.fqn, '^https:\/\/', '') = REGEXP_REPLACE($1, '^https:\/\/', '')
+GROUP BY ad.id, n.name, fqns.fqn, k.keys
+`
+
+type GetAttributeByFqnRow struct {
+	ID            string                  `json:"id"`
+	AttributeName string                  `json:"attribute_name"`
+	Rule          AttributeDefinitionRule `json:"rule"`
+	Metadata      []byte                  `json:"metadata"`
+	NamespaceID   string                  `json:"namespace_id"`
+	Active        bool                    `json:"active"`
+	NamespaceName pgtype.Text             `json:"namespace_name"`
+	Values        []byte                  `json:"values"`
+	Grants        []byte                  `json:"grants"`
+	Fqn           pgtype.Text             `json:"fqn"`
+	Keys          []byte                  `json:"keys"`
+}
+
+// GetAttributeByFqn
+//
+//	SELECT
+//	    ad.id,
+//	    ad.name as attribute_name,
+//	    ad.rule,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ad.metadata -> 'labels', 'created_at', ad.created_at, 'updated_at', ad.updated_at)) AS metadata,
+//	    ad.namespace_id,
+//	    ad.active,
+//	    n.name as namespace_name,
+//	    JSON_AGG(
+//	        JSON_BUILD_OBJECT(
+//	            'id', avt.id,
+//	            'value', avt.value,
+//	            'active', avt.active,
+//	            'fqn', CONCAT(fqns.fqn, '/value/', avt.value)
+//	        ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
+//	    ) AS values,
+//	    JSONB_AGG(
+//	        DISTINCT JSONB_BUILD_OBJECT(
+//	            'id', kas.id,
+//	            'uri', kas.uri,
+//	            'name', kas.name,
+//	            'public_key', kas.public_key
+//	        )
+//	    ) FILTER (WHERE adkag.attribute_definition_id IS NOT NULL) AS grants,
+//	    fqns.fqn,
+//	    k.keys AS keys
+//	FROM attribute_definitions ad
+//	LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
+//	LEFT JOIN (
+//	    SELECT
+//	        av.id,
+//	        av.value,
+//	        av.active,
+//	        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT('id', vkas.id,'uri', vkas.uri,'name', vkas.name,'public_key', vkas.public_key )) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr,
+//	        av.attribute_definition_id
+//	    FROM attribute_values av
+//	    LEFT JOIN attribute_value_key_access_grants avg ON av.id = avg.attribute_value_id
+//	    LEFT JOIN key_access_servers vkas ON avg.key_access_server_id = vkas.id
+//	    GROUP BY av.id
+//	) avt ON avt.attribute_definition_id = ad.id
+//	LEFT JOIN attribute_definition_key_access_grants adkag ON adkag.attribute_definition_id = ad.id
+//	LEFT JOIN key_access_servers kas ON kas.id = adkag.key_access_server_id
+//	LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
+//	LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
+//	WHERE REGEXP_REPLACE(fqns.fqn, '^https:\/\/', '') = REGEXP_REPLACE($1, '^https:\/\/', '')
+//	GROUP BY ad.id, n.name, fqns.fqn, k.keys
+func (q *Queries) GetAttributeByFqn(ctx context.Context, regexpReplace string) (GetAttributeByFqnRow, error) {
+	row := q.db.QueryRow(ctx, getAttributeByFqn, regexpReplace)
+	var i GetAttributeByFqnRow
+	err := row.Scan(
+		&i.ID,
+		&i.AttributeName,
+		&i.Rule,
+		&i.Metadata,
+		&i.NamespaceID,
+		&i.Active,
+		&i.NamespaceName,
+		&i.Values,
+		&i.Grants,
+		&i.Fqn,
+		&i.Keys,
+	)
+	return i, err
+}
+
+const getAttributeById = `-- name: GetAttributeById :one
 SELECT
     ad.id,
     ad.name as attribute_name,
@@ -491,7 +621,7 @@ WHERE ad.id = $1
 GROUP BY ad.id, n.name, fqns.fqn, k.keys
 `
 
-type GetAttributeRow struct {
+type GetAttributeByIdRow struct {
 	ID            string                  `json:"id"`
 	AttributeName string                  `json:"attribute_name"`
 	Rule          AttributeDefinitionRule `json:"rule"`
@@ -505,7 +635,7 @@ type GetAttributeRow struct {
 	Keys          []byte                  `json:"keys"`
 }
 
-// GetAttribute
+// GetAttributeById
 //
 //	SELECT
 //	    ad.id,
@@ -553,9 +683,9 @@ type GetAttributeRow struct {
 //	LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
 //	WHERE ad.id = $1
 //	GROUP BY ad.id, n.name, fqns.fqn, k.keys
-func (q *Queries) GetAttribute(ctx context.Context, id string) (GetAttributeRow, error) {
-	row := q.db.QueryRow(ctx, getAttribute, id)
-	var i GetAttributeRow
+func (q *Queries) GetAttributeById(ctx context.Context, id string) (GetAttributeByIdRow, error) {
+	row := q.db.QueryRow(ctx, getAttributeById, id)
+	var i GetAttributeByIdRow
 	err := row.Scan(
 		&i.ID,
 		&i.AttributeName,
@@ -572,7 +702,85 @@ func (q *Queries) GetAttribute(ctx context.Context, id string) (GetAttributeRow,
 	return i, err
 }
 
-const getAttributeValue = `-- name: GetAttributeValue :one
+const getAttributeValueByFqn = `-- name: GetAttributeValueByFqn :one
+SELECT
+    av.id,
+    av.value,
+    av.active,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
+    av.attribute_definition_id,
+    fqns.fqn,
+    JSONB_AGG(
+        DISTINCT JSONB_BUILD_OBJECT(
+            'id', kas.id,
+            'uri', kas.uri,
+            'name', kas.name,
+            'public_key', kas.public_key
+        )
+    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants,
+    k.keys as keys
+FROM attribute_values av
+LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
+LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
+LEFT JOIN active_value_public_keys_view k ON av.id = k.value_id
+WHERE REGEXP_REPLACE(fqns.fqn, '^https:\/\/', '') = REGEXP_REPLACE($1, '^https:\/\/', '')
+GROUP BY av.id, fqns.fqn, k.keys
+`
+
+type GetAttributeValueByFqnRow struct {
+	ID                    string      `json:"id"`
+	Value                 string      `json:"value"`
+	Active                bool        `json:"active"`
+	Metadata              []byte      `json:"metadata"`
+	AttributeDefinitionID string      `json:"attribute_definition_id"`
+	Fqn                   pgtype.Text `json:"fqn"`
+	Grants                []byte      `json:"grants"`
+	Keys                  []byte      `json:"keys"`
+}
+
+// GetAttributeValueByFqn
+//
+//	SELECT
+//	    av.id,
+//	    av.value,
+//	    av.active,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
+//	    av.attribute_definition_id,
+//	    fqns.fqn,
+//	    JSONB_AGG(
+//	        DISTINCT JSONB_BUILD_OBJECT(
+//	            'id', kas.id,
+//	            'uri', kas.uri,
+//	            'name', kas.name,
+//	            'public_key', kas.public_key
+//	        )
+//	    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants,
+//	    k.keys as keys
+//	FROM attribute_values av
+//	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+//	LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
+//	LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
+//	LEFT JOIN active_value_public_keys_view k ON av.id = k.value_id
+//	WHERE REGEXP_REPLACE(fqns.fqn, '^https:\/\/', '') = REGEXP_REPLACE($1, '^https:\/\/', '')
+//	GROUP BY av.id, fqns.fqn, k.keys
+func (q *Queries) GetAttributeValueByFqn(ctx context.Context, regexpReplace string) (GetAttributeValueByFqnRow, error) {
+	row := q.db.QueryRow(ctx, getAttributeValueByFqn, regexpReplace)
+	var i GetAttributeValueByFqnRow
+	err := row.Scan(
+		&i.ID,
+		&i.Value,
+		&i.Active,
+		&i.Metadata,
+		&i.AttributeDefinitionID,
+		&i.Fqn,
+		&i.Grants,
+		&i.Keys,
+	)
+	return i, err
+}
+
+const getAttributeValueById = `-- name: GetAttributeValueById :one
 SELECT
     av.id,
     av.value,
@@ -598,7 +806,7 @@ WHERE av.id = $1
 GROUP BY av.id, fqns.fqn, k.keys
 `
 
-type GetAttributeValueRow struct {
+type GetAttributeValueByIdRow struct {
 	ID                    string      `json:"id"`
 	Value                 string      `json:"value"`
 	Active                bool        `json:"active"`
@@ -609,7 +817,7 @@ type GetAttributeValueRow struct {
 	Keys                  []byte      `json:"keys"`
 }
 
-// GetAttributeValue
+// GetAttributeValueById
 //
 //	SELECT
 //	    av.id,
@@ -634,9 +842,9 @@ type GetAttributeValueRow struct {
 //	LEFT JOIN active_value_public_keys_view k ON av.id = k.value_id
 //	WHERE av.id = $1
 //	GROUP BY av.id, fqns.fqn, k.keys
-func (q *Queries) GetAttributeValue(ctx context.Context, id string) (GetAttributeValueRow, error) {
-	row := q.db.QueryRow(ctx, getAttributeValue, id)
-	var i GetAttributeValueRow
+func (q *Queries) GetAttributeValueById(ctx context.Context, id string) (GetAttributeValueByIdRow, error) {
+	row := q.db.QueryRow(ctx, getAttributeValueById, id)
+	var i GetAttributeValueByIdRow
 	err := row.Scan(
 		&i.ID,
 		&i.Value,
@@ -650,18 +858,18 @@ func (q *Queries) GetAttributeValue(ctx context.Context, id string) (GetAttribut
 	return i, err
 }
 
-const getKeyAccessServer = `-- name: GetKeyAccessServer :one
+const getKeyAccessServerById = `-- name: GetKeyAccessServerById :one
 SELECT 
-    id,
-    uri, 
-    public_key, 
-    name,
+    kas.id,
+    kas.uri, 
+    kas.public_key, 
+    kas.name,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
-FROM key_access_servers
-WHERE id = $1
+FROM key_access_servers AS kas
+WHERE kas.id = $1
 `
 
-type GetKeyAccessServerRow struct {
+type GetKeyAccessServerByIdRow struct {
 	ID        string      `json:"id"`
 	Uri       string      `json:"uri"`
 	PublicKey []byte      `json:"public_key"`
@@ -669,19 +877,19 @@ type GetKeyAccessServerRow struct {
 	Metadata  []byte      `json:"metadata"`
 }
 
-// GetKeyAccessServer
+// GetKeyAccessServerById
 //
 //	SELECT
-//	    id,
-//	    uri,
-//	    public_key,
-//	    name,
+//	    kas.id,
+//	    kas.uri,
+//	    kas.public_key,
+//	    kas.name,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
-//	FROM key_access_servers
-//	WHERE id = $1
-func (q *Queries) GetKeyAccessServer(ctx context.Context, id string) (GetKeyAccessServerRow, error) {
-	row := q.db.QueryRow(ctx, getKeyAccessServer, id)
-	var i GetKeyAccessServerRow
+//	FROM key_access_servers AS kas
+//	WHERE kas.id = $1
+func (q *Queries) GetKeyAccessServerById(ctx context.Context, id string) (GetKeyAccessServerByIdRow, error) {
+	row := q.db.QueryRow(ctx, getKeyAccessServerById, id)
+	var i GetKeyAccessServerByIdRow
 	err := row.Scan(
 		&i.ID,
 		&i.Uri,
@@ -692,7 +900,161 @@ func (q *Queries) GetKeyAccessServer(ctx context.Context, id string) (GetKeyAcce
 	return i, err
 }
 
-const getNamespace = `-- name: GetNamespace :one
+const getKeyAccessServerByName = `-- name: GetKeyAccessServerByName :one
+SELECT 
+    kas.id,
+    kas.uri, 
+    kas.public_key, 
+    kas.name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+FROM key_access_servers AS kas
+WHERE kas.name = $1
+`
+
+type GetKeyAccessServerByNameRow struct {
+	ID        string      `json:"id"`
+	Uri       string      `json:"uri"`
+	PublicKey []byte      `json:"public_key"`
+	Name      pgtype.Text `json:"name"`
+	Metadata  []byte      `json:"metadata"`
+}
+
+// GetKeyAccessServerByName
+//
+//	SELECT
+//	    kas.id,
+//	    kas.uri,
+//	    kas.public_key,
+//	    kas.name,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+//	FROM key_access_servers AS kas
+//	WHERE kas.name = $1
+func (q *Queries) GetKeyAccessServerByName(ctx context.Context, name pgtype.Text) (GetKeyAccessServerByNameRow, error) {
+	row := q.db.QueryRow(ctx, getKeyAccessServerByName, name)
+	var i GetKeyAccessServerByNameRow
+	err := row.Scan(
+		&i.ID,
+		&i.Uri,
+		&i.PublicKey,
+		&i.Name,
+		&i.Metadata,
+	)
+	return i, err
+}
+
+const getKeyAccessServerByUri = `-- name: GetKeyAccessServerByUri :one
+SELECT 
+    id,
+    uri, 
+    public_key, 
+    name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+FROM key_access_servers
+WHERE uri = $1
+`
+
+type GetKeyAccessServerByUriRow struct {
+	ID        string      `json:"id"`
+	Uri       string      `json:"uri"`
+	PublicKey []byte      `json:"public_key"`
+	Name      pgtype.Text `json:"name"`
+	Metadata  []byte      `json:"metadata"`
+}
+
+// GetKeyAccessServerByUri
+//
+//	SELECT
+//	    id,
+//	    uri,
+//	    public_key,
+//	    name,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+//	FROM key_access_servers
+//	WHERE uri = $1
+func (q *Queries) GetKeyAccessServerByUri(ctx context.Context, uri string) (GetKeyAccessServerByUriRow, error) {
+	row := q.db.QueryRow(ctx, getKeyAccessServerByUri, uri)
+	var i GetKeyAccessServerByUriRow
+	err := row.Scan(
+		&i.ID,
+		&i.Uri,
+		&i.PublicKey,
+		&i.Name,
+		&i.Metadata,
+	)
+	return i, err
+}
+
+const getNamespaceByFqn = `-- name: GetNamespaceByFqn :one
+SELECT
+    ns.id,
+    ns.name,
+    ns.active,
+    fqns.fqn,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
+    JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
+        'id', kas.id,
+        'uri', kas.uri,
+        'name', kas.name,
+        'public_key', kas.public_key
+    )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants,
+    k.keys as keys
+FROM attribute_namespaces ns
+LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
+LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
+LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
+LEFT JOIN active_namespace_public_keys_view k ON ns.id = k.namespace_id
+WHERE ns.name = $1 AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+GROUP BY ns.id, fqns.fqn, k.keys
+`
+
+type GetNamespaceByFqnRow struct {
+	ID       string      `json:"id"`
+	Name     string      `json:"name"`
+	Active   bool        `json:"active"`
+	Fqn      pgtype.Text `json:"fqn"`
+	Metadata []byte      `json:"metadata"`
+	Grants   []byte      `json:"grants"`
+	Keys     []byte      `json:"keys"`
+}
+
+// GetNamespaceByFqn
+//
+//	SELECT
+//	    ns.id,
+//	    ns.name,
+//	    ns.active,
+//	    fqns.fqn,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
+//	    JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
+//	        'id', kas.id,
+//	        'uri', kas.uri,
+//	        'name', kas.name,
+//	        'public_key', kas.public_key
+//	    )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants,
+//	    k.keys as keys
+//	FROM attribute_namespaces ns
+//	LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
+//	LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
+//	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
+//	LEFT JOIN active_namespace_public_keys_view k ON ns.id = k.namespace_id
+//	WHERE ns.name = $1 AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+//	GROUP BY ns.id, fqns.fqn, k.keys
+func (q *Queries) GetNamespaceByFqn(ctx context.Context, name string) (GetNamespaceByFqnRow, error) {
+	row := q.db.QueryRow(ctx, getNamespaceByFqn, name)
+	var i GetNamespaceByFqnRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Active,
+		&i.Fqn,
+		&i.Metadata,
+		&i.Grants,
+		&i.Keys,
+	)
+	return i, err
+}
+
+const getNamespaceById = `-- name: GetNamespaceById :one
 SELECT
     ns.id,
     ns.name,
@@ -715,7 +1077,7 @@ WHERE ns.id = $1 AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 GROUP BY ns.id, fqns.fqn, k.keys
 `
 
-type GetNamespaceRow struct {
+type GetNamespaceByIdRow struct {
 	ID       string      `json:"id"`
 	Name     string      `json:"name"`
 	Active   bool        `json:"active"`
@@ -725,7 +1087,7 @@ type GetNamespaceRow struct {
 	Keys     []byte      `json:"keys"`
 }
 
-// GetNamespace
+// GetNamespaceById
 //
 //	SELECT
 //	    ns.id,
@@ -747,9 +1109,9 @@ type GetNamespaceRow struct {
 //	LEFT JOIN active_namespace_public_keys_view k ON ns.id = k.namespace_id
 //	WHERE ns.id = $1 AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 //	GROUP BY ns.id, fqns.fqn, k.keys
-func (q *Queries) GetNamespace(ctx context.Context, id string) (GetNamespaceRow, error) {
-	row := q.db.QueryRow(ctx, getNamespace, id)
-	var i GetNamespaceRow
+func (q *Queries) GetNamespaceById(ctx context.Context, id string) (GetNamespaceByIdRow, error) {
+	row := q.db.QueryRow(ctx, getNamespaceById, id)
+	var i GetNamespaceByIdRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -3371,9 +3733,12 @@ func (q *Queries) getPublicKey(ctx context.Context, id string) (getPublicKeyRow,
 
 const listPublicKeyMappings = `-- name: listPublicKeyMappings :many
 WITH counted AS (
-    SELECT COUNT(pk.id) AS total FROM public_keys AS pk
+    SELECT COUNT(DISTINCT kas.id) AS total FROM public_keys AS pk
+    JOIN key_access_servers kas ON pk.key_access_server_id = kas.id
     WHERE (NULLIF($3, '') IS NULL OR pk.key_access_server_id = $3::uuid)
-    AND   ( NULLIF($4, '') IS NULL OR pk.id = $4::uuid )
+    AND (NULLIF($4, '') IS NULL OR kas.name = $4)
+    AND (NULLIF($5, '') IS NULL OR kas.uri = $5)
+    AND   ( NULLIF($6, '') IS NULL OR pk.id = $6::uuid )
 ),
 base_keys AS (
     SELECT 
@@ -3389,7 +3754,9 @@ base_keys AS (
     FROM public_keys pk
     JOIN key_access_servers kas ON pk.key_access_server_id = kas.id
     WHERE ( NULLIF($3, '') IS NULL OR kas.id = $3::uuid )
-    AND   ( NULLIF($4, '') IS NULL OR pk.id = $4::uuid )
+    AND (NULLIF($4, '') IS NULL OR kas.name = $4)
+    AND (NULLIF($5, '') IS NULL OR kas.uri = $5)
+    AND   ( NULLIF($6, '') IS NULL OR pk.id = $6::uuid )
 ),
 namespace_mappings AS (
     SELECT 
@@ -3480,6 +3847,8 @@ type listPublicKeyMappingsParams struct {
 	Offset      int32       `json:"offset_"`
 	Limit       int32       `json:"limit_"`
 	KasID       interface{} `json:"kas_id"`
+	KasName     interface{} `json:"kas_name"`
+	KasUri      interface{} `json:"kas_uri"`
 	PublicKeyID interface{} `json:"public_key_id"`
 }
 
@@ -3491,9 +3860,12 @@ type listPublicKeyMappingsRow struct {
 // listPublicKeyMappings
 //
 //	WITH counted AS (
-//	    SELECT COUNT(pk.id) AS total FROM public_keys AS pk
+//	    SELECT COUNT(DISTINCT kas.id) AS total FROM public_keys AS pk
+//	    JOIN key_access_servers kas ON pk.key_access_server_id = kas.id
 //	    WHERE (NULLIF($3, '') IS NULL OR pk.key_access_server_id = $3::uuid)
-//	    AND   ( NULLIF($4, '') IS NULL OR pk.id = $4::uuid )
+//	    AND (NULLIF($4, '') IS NULL OR kas.name = $4)
+//	    AND (NULLIF($5, '') IS NULL OR kas.uri = $5)
+//	    AND   ( NULLIF($6, '') IS NULL OR pk.id = $6::uuid )
 //	),
 //	base_keys AS (
 //	    SELECT
@@ -3509,7 +3881,9 @@ type listPublicKeyMappingsRow struct {
 //	    FROM public_keys pk
 //	    JOIN key_access_servers kas ON pk.key_access_server_id = kas.id
 //	    WHERE ( NULLIF($3, '') IS NULL OR kas.id = $3::uuid )
-//	    AND   ( NULLIF($4, '') IS NULL OR pk.id = $4::uuid )
+//	    AND (NULLIF($4, '') IS NULL OR kas.name = $4)
+//	    AND (NULLIF($5, '') IS NULL OR kas.uri = $5)
+//	    AND   ( NULLIF($6, '') IS NULL OR pk.id = $6::uuid )
 //	),
 //	namespace_mappings AS (
 //	    SELECT
@@ -3599,6 +3973,8 @@ func (q *Queries) listPublicKeyMappings(ctx context.Context, arg listPublicKeyMa
 		arg.Offset,
 		arg.Limit,
 		arg.KasID,
+		arg.KasName,
+		arg.KasUri,
 		arg.PublicKeyID,
 	)
 	if err != nil {
@@ -3621,8 +3997,11 @@ func (q *Queries) listPublicKeyMappings(ctx context.Context, arg listPublicKeyMa
 
 const listPublicKeys = `-- name: listPublicKeys :many
 WITH counted AS (
-    SELECT COUNT(k.id) AS total FROM public_keys AS k
-    WHERE (NULLIF($1, '') IS NULL OR k.key_access_server_id = $1::uuid)
+    SELECT COUNT(DISTINCT kas.id) AS total FROM public_keys AS pk
+    JOIN key_access_servers kas ON pk.key_access_server_id = kas.id
+    WHERE (NULLIF($1, '') IS NULL OR kas.id = $1::uuid)
+    AND (NULLIF($2, '') IS NULL OR kas.name = $2)
+    AND (NULLIF($3, '') IS NULL OR kas.uri = $3)
 )
 
 SELECT
@@ -3643,14 +4022,18 @@ CROSS JOIN counted
 WHERE (
     NULLIF($1, '') IS NULL OR k.key_access_server_id = $1::uuid 
 )
-LIMIT $3 
-OFFSET $2
+AND (NULLIF($2, '') IS NULL OR kas.name = $2)
+AND (NULLIF($3, '') IS NULL OR kas.uri = $3)
+LIMIT $5 
+OFFSET $4
 `
 
 type listPublicKeysParams struct {
-	KasID  interface{} `json:"kas_id"`
-	Offset int32       `json:"offset_"`
-	Limit  int32       `json:"limit_"`
+	KasID   interface{} `json:"kas_id"`
+	KasName interface{} `json:"kas_name"`
+	KasUri  interface{} `json:"kas_uri"`
+	Offset  int32       `json:"offset_"`
+	Limit   int32       `json:"limit_"`
 }
 
 type listPublicKeysRow struct {
@@ -3670,8 +4053,11 @@ type listPublicKeysRow struct {
 // listPublicKeys
 //
 //	WITH counted AS (
-//	    SELECT COUNT(k.id) AS total FROM public_keys AS k
-//	    WHERE (NULLIF($1, '') IS NULL OR k.key_access_server_id = $1::uuid)
+//	    SELECT COUNT(DISTINCT kas.id) AS total FROM public_keys AS pk
+//	    JOIN key_access_servers kas ON pk.key_access_server_id = kas.id
+//	    WHERE (NULLIF($1, '') IS NULL OR kas.id = $1::uuid)
+//	    AND (NULLIF($2, '') IS NULL OR kas.name = $2)
+//	    AND (NULLIF($3, '') IS NULL OR kas.uri = $3)
 //	)
 //
 //	SELECT
@@ -3692,10 +4078,18 @@ type listPublicKeysRow struct {
 //	WHERE (
 //	    NULLIF($1, '') IS NULL OR k.key_access_server_id = $1::uuid
 //	)
-//	LIMIT $3
-//	OFFSET $2
+//	AND (NULLIF($2, '') IS NULL OR kas.name = $2)
+//	AND (NULLIF($3, '') IS NULL OR kas.uri = $3)
+//	LIMIT $5
+//	OFFSET $4
 func (q *Queries) listPublicKeys(ctx context.Context, arg listPublicKeysParams) ([]listPublicKeysRow, error) {
-	rows, err := q.db.Query(ctx, listPublicKeys, arg.KasID, arg.Offset, arg.Limit)
+	rows, err := q.db.Query(ctx, listPublicKeys,
+		arg.KasID,
+		arg.KasName,
+		arg.KasUri,
+		arg.Offset,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}

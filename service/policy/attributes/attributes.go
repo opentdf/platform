@@ -96,9 +96,17 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 ) (*connect.Response[attributes.GetAttributeResponse], error) {
 	rsp := &attributes.GetAttributeResponse{}
 
-	item, err := s.dbClient.GetAttribute(ctx, req.Msg.GetId())
+	var identifier any
+
+	if req.Msg.GetId() != "" { //nolint:staticcheck // Id can still be used until removed
+		identifier = req.Msg.GetId() //nolint:staticcheck // Id can still be used until removed
+	} else {
+		identifier = req.Msg.GetIdentifier()
+	}
+
+	item, err := s.dbClient.GetAttribute(ctx, identifier)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.Msg.GetId()))
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.Any("id", identifier))
 	}
 	rsp.Attribute = item
 
@@ -236,9 +244,17 @@ func (s *AttributesService) ListAttributeValues(ctx context.Context, req *connec
 func (s *AttributesService) GetAttributeValue(ctx context.Context, req *connect.Request[attributes.GetAttributeValueRequest]) (*connect.Response[attributes.GetAttributeValueResponse], error) {
 	rsp := &attributes.GetAttributeValueResponse{}
 
-	item, err := s.dbClient.GetAttributeValue(ctx, req.Msg.GetId())
+	var identifier any
+
+	if req.Msg.GetId() != "" { //nolint:staticcheck // Id can still be used until removed
+		identifier = req.Msg.GetId() //nolint:staticcheck // Id can still be used until removed
+	} else {
+		identifier = req.Msg.GetIdentifier()
+	}
+
+	item, err := s.dbClient.GetAttributeValue(ctx, identifier)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.Msg.GetId()))
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.Any("id", identifier))
 	}
 
 	rsp.Value = item

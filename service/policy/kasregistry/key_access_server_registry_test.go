@@ -51,11 +51,18 @@ func Test_GetKeyAccessServerRequest_Succeeds(t *testing.T) {
 	req := &kasregistry.GetKeyAccessServerRequest{}
 	v := getValidator()
 
+	req.Identifier = &kasregistry.GetKeyAccessServerRequest_KasId{
+		KasId: "",
+	}
+
 	err := v.Validate(req)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), errMessageUUID)
 
-	req.Id = validUUID
+	req.Id = validUUID //nolint:staticcheck // Id can still be used until removed
+	req.Identifier = &kasregistry.GetKeyAccessServerRequest_KasId{
+		KasId: validUUID,
+	}
 	err = v.Validate(req)
 	require.NoError(t, err)
 }

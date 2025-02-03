@@ -9,8 +9,18 @@ import "policy/objects.proto";
 import "policy/selectors.proto";
 
 message GetKeyAccessServerRequest {
-  // Required
-  string id = 1 [ (buf.validate.field).string.uuid = true ];
+  // Deprecated
+  string id = 1 [
+    deprecated = true
+  ];;
+
+  oneof identifier {
+    string kas_id = 2 [
+      (buf.validate.field).string.uuid = true
+    ];
+    string name = 3;
+    string uri = 4;
+  }
 }
 message GetKeyAccessServerResponse { KeyAccessServer key_access_server = 1; }
 
@@ -139,13 +149,14 @@ message GetPublicKeyRequest { string id = 1; }
 message GetPublicKeyResponse { Key key = 1; }
 
 message ListPublicKeysRequest {
-  // Optional
-  string kas_id = 1;
-  // Future filter by fields
-  // // Optional
-  // string kas_name = 2;
-  // // Optional
-  // string kas_uri = 3;
+  oneof identifier {
+    // Optional
+    string kas_id = 1;
+    // Optional
+    string kas_name = 2;
+    // Optional
+    string kas_uri = 3;
+  }
 
   // Optional
   policy.PageRequest pagination = 10;
@@ -158,13 +169,14 @@ message ListPublicKeysResponse {
 }
 
 message ListPublicKeyMappingRequest {
-  // Optional
-  string kas_id = 1;
-  // Future filter by fields
-  // // Optional
-  // string kas_name = 2;
-  // // Optional
-  // string kas_uri = 3;
+  oneof identifier {
+    // Optional
+    string kas_id = 1;
+    // Optional
+    string kas_name = 2;
+    // Optional
+    string kas_uri = 3;
+  }
 
   // Optional Public Key ID
   string public_key_id = 4;

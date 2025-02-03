@@ -234,13 +234,25 @@ func TestAttributeKeyAccessServer_Fails(t *testing.T) {
 }
 
 func TestGetAttributeRequest(t *testing.T) {
-	req := &attributes.GetAttributeRequest{}
+	req := &attributes.GetAttributeRequest{
+		Identifier: &attributes.GetAttributeRequest_AttributeId{
+			AttributeId: "",
+		},
+	}
 	err := getValidator().Validate(req)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), errMessageUUID)
 
 	req = &attributes.GetAttributeRequest{
 		Id: validUUID,
+	}
+	err = getValidator().Validate(req)
+	require.NoError(t, err)
+
+	req = &attributes.GetAttributeRequest{
+		Identifier: &attributes.GetAttributeRequest_AttributeId{
+			AttributeId: validUUID,
+		},
 	}
 	err = getValidator().Validate(req)
 	require.NoError(t, err)
@@ -402,13 +414,25 @@ func TestValueKeyAccessServer_Fails(t *testing.T) {
 }
 
 func TestGetAttributeValueRequest(t *testing.T) {
-	req := &attributes.GetAttributeValueRequest{}
+	req := &attributes.GetAttributeValueRequest{
+		Identifier: &attributes.GetAttributeValueRequest_ValueId{
+			ValueId: "",
+		},
+	}
 	err := getValidator().Validate(req)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), errMessageUUID)
 
 	req = &attributes.GetAttributeValueRequest{
 		Id: validUUID,
+	}
+	err = getValidator().Validate(req)
+	require.NoError(t, err)
+
+	req = &attributes.GetAttributeValueRequest{
+		Identifier: &attributes.GetAttributeValueRequest_ValueId{
+			ValueId: validUUID,
+		},
 	}
 	err = getValidator().Validate(req)
 	require.NoError(t, err)

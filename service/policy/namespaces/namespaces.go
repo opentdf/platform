@@ -75,13 +75,21 @@ func (ns NamespacesService) ListNamespaces(ctx context.Context, req *connect.Req
 }
 
 func (ns NamespacesService) GetNamespace(ctx context.Context, req *connect.Request[namespaces.GetNamespaceRequest]) (*connect.Response[namespaces.GetNamespaceResponse], error) {
-	ns.logger.Debug("getting namespace", slog.String("id", req.Msg.GetId()))
-
 	rsp := &namespaces.GetNamespaceResponse{}
 
-	namespace, err := ns.dbClient.GetNamespace(ctx, req.Msg.GetId())
+	var identifier any
+
+	if req.Msg.GetId() != "" { //nolint:staticcheck // Id can still be used until removed
+		identifier = req.Msg.GetId() //nolint:staticcheck // Id can still be used until removed
+	} else {
+		identifier = req.Msg.GetIdentifier()
+	}
+
+	ns.logger.Debug("getting namespace", slog.Any("id", identifier))
+
+	namespace, err := ns.dbClient.GetNamespace(ctx, identifier)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, "id", req.Msg.GetId())
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.Any("id", identifier))
 	}
 
 	rsp.Namespace = namespace

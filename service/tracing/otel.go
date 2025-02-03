@@ -98,7 +98,7 @@ func InitTracer(ctx context.Context, cfg Config) (func(), error) {
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 
 	return func() {
-		if err := tp.Shutdown(context.Background()); err != nil {
+		if err := tp.Shutdown(ctx); err != nil {
 			log.Printf("Error shutting down tracer provider: %v", err)
 		}
 	}, nil

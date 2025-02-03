@@ -1373,10 +1373,12 @@ func (s *KasRegistrySuite) Test_List_Public_Key_Mappings_WithLimit_1() {
 }
 
 func (s *KasRegistrySuite) Test_List_Public_Key_Mappings_By_KAS() {
-	kasID := s.f.GetKasRegistryKey("key_access_server_1").ID
+	kas := s.f.GetKasRegistryKey("key_access_server_1")
+
+	// List mappings by KAS ID
 	r, err := s.db.PolicyClient.ListPublicKeyMappings(s.ctx, &kasregistry.ListPublicKeyMappingRequest{
 		Identifier: &kasregistry.ListPublicKeyMappingRequest_KasId{
-			KasId: kasID,
+			KasId: kas.ID,
 		},
 	})
 	s.Require().NoError(err)
@@ -1384,7 +1386,41 @@ func (s *KasRegistrySuite) Test_List_Public_Key_Mappings_By_KAS() {
 	s.Len(r.GetPublicKeyMappings(), 1)
 
 	for _, m := range r.GetPublicKeyMappings() {
-		s.Equal(kasID, m.GetKasId())
+		s.Equal(kas.ID, m.GetKasId())
+		s.Equal(kas.URI, m.GetKasUri())
+		s.Equal(kas.Name, m.GetKasName())
+	}
+
+	// List mappings by KAS URI
+	r, err = s.db.PolicyClient.ListPublicKeyMappings(s.ctx, &kasregistry.ListPublicKeyMappingRequest{
+		Identifier: &kasregistry.ListPublicKeyMappingRequest_KasUri{
+			KasUri: kas.URI,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.Len(r.GetPublicKeyMappings(), 1)
+
+	for _, m := range r.GetPublicKeyMappings() {
+		s.Equal(kas.ID, m.GetKasId())
+		s.Equal(kas.URI, m.GetKasUri())
+		s.Equal(kas.Name, m.GetKasName())
+	}
+
+	// List mappings by KAS Name
+	r, err = s.db.PolicyClient.ListPublicKeyMappings(s.ctx, &kasregistry.ListPublicKeyMappingRequest{
+		Identifier: &kasregistry.ListPublicKeyMappingRequest_KasName{
+			KasName: kas.Name,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(r)
+	s.Len(r.GetPublicKeyMappings(), 1)
+
+	for _, m := range r.GetPublicKeyMappings() {
+		s.Equal(kas.ID, m.GetKasId())
+		s.Equal(kas.URI, m.GetKasUri())
+		s.Equal(kas.Name, m.GetKasName())
 	}
 }
 

@@ -93,7 +93,6 @@ func (s *NamespacesSuite) Test_GetNamespace() {
 	testData := s.getActiveNamespaceFixtures()
 
 	for _, test := range testData {
-
 		// Get namespace by deprecated id field
 		gotNamespace, err := s.db.PolicyClient.GetNamespace(s.ctx, test.ID)
 		s.Require().NoError(err)

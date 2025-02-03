@@ -291,7 +291,6 @@ func (s *AttributesSuite) Test_GetAttribute() {
 	fixtures := s.getAttributeFixtures()
 
 	for k, f := range fixtures {
-
 		// Test depreacted id field
 		gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, f.ID)
 		s.Require().NoError(err)
@@ -339,7 +338,6 @@ func (s *AttributesSuite) Test_GetAttribute() {
 		updatedAt = metadata.GetUpdatedAt()
 		s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
 		s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
-
 	}
 }
 

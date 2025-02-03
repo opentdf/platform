@@ -188,15 +188,15 @@ func (s *KasRegistrySuite) Test_GetKeyAccessServer() {
 	s.Equal(localFixture.PubKey.Cached, local.GetPublicKey().GetCached())
 
 	// Get kas by uri identifier
-	identifierUriRemote := &kasregistry.GetKeyAccessServerRequest_Uri{
+	identifierURIRemote := &kasregistry.GetKeyAccessServerRequest_Uri{
 		Uri: remoteFixture.URI,
 	}
 
-	identifierUriLocal := &kasregistry.GetKeyAccessServerRequest_Uri{
+	identifierURILocal := &kasregistry.GetKeyAccessServerRequest_Uri{
 		Uri: localFixture.URI,
 	}
 
-	remote, err = s.db.PolicyClient.GetKeyAccessServer(s.ctx, identifierUriRemote)
+	remote, err = s.db.PolicyClient.GetKeyAccessServer(s.ctx, identifierURIRemote)
 	s.Require().NoError(err)
 	s.NotNil(remote)
 	s.Equal(remoteFixture.ID, remote.GetId())
@@ -204,7 +204,7 @@ func (s *KasRegistrySuite) Test_GetKeyAccessServer() {
 	s.Equal(remoteFixture.Name, remote.GetName())
 	s.Equal(remoteFixture.PubKey.Remote, remote.GetPublicKey().GetRemote())
 
-	local, err = s.db.PolicyClient.GetKeyAccessServer(s.ctx, identifierUriLocal)
+	local, err = s.db.PolicyClient.GetKeyAccessServer(s.ctx, identifierURILocal)
 	s.Require().NoError(err)
 	s.NotNil(local)
 	s.Equal(localFixture.ID, local.GetId())

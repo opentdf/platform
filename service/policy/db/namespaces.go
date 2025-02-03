@@ -22,7 +22,6 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*poli
 
 	switch i := identifier.(type) {
 	case *namespaces.GetNamespaceRequest_NamespaceId:
-		fmt.Println(i.NamespaceId)
 		ns, err = c.Queries.GetNamespaceById(ctx, i.NamespaceId)
 	case *namespaces.GetNamespaceRequest_Fqn:
 		var n GetNamespaceByFqnRow

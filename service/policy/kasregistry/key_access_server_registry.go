@@ -104,15 +104,15 @@ func (s KeyAccessServerRegistry) GetKeyAccessServer(ctx context.Context,
 
 	var identifier any
 
-	if req.Msg.GetId() != "" {
-		identifier = req.Msg.GetId()
+	if req.Msg.GetId() != "" { //nolint:staticcheck // Id can still be used until removed
+		identifier = req.Msg.GetId() //nolint:staticcheck // Id can still be used until removed
 	} else {
 		identifier = req.Msg.GetIdentifier()
 	}
 
 	keyAccessServer, err := s.dbClient.GetKeyAccessServer(ctx, identifier)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.Msg.GetId()))
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.Any("id", identifier))
 	}
 
 	rsp.KeyAccessServer = keyAccessServer

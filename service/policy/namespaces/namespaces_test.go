@@ -115,14 +115,28 @@ func TestCreateNamespace_NameMissing_Fails(t *testing.T) {
 }
 
 func Test_GetNamespaceRequest_Succeeds(t *testing.T) {
-	req := &namespaces.GetNamespaceRequest{}
+	req := &namespaces.GetNamespaceRequest{
+		Identifier: &namespaces.GetNamespaceRequest_NamespaceId{
+			NamespaceId: "",
+		},
+	}
 	v := getValidator()
 
 	err := v.Validate(req)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), errMessageUUID)
 
-	req.Id = validUUID
+	req = &namespaces.GetNamespaceRequest{
+		Identifier: &namespaces.GetNamespaceRequest_NamespaceId{
+			NamespaceId: validUUID,
+		},
+	}
+	err = v.Validate(req)
+	require.NoError(t, err)
+
+	req = &namespaces.GetNamespaceRequest{
+		Id: validUUID, //nolint:staticcheck // Id can still be used until removed
+	}
 	err = v.Validate(req)
 	require.NoError(t, err)
 }

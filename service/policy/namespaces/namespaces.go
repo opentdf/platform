@@ -75,8 +75,6 @@ func (ns NamespacesService) ListNamespaces(ctx context.Context, req *connect.Req
 }
 
 func (ns NamespacesService) GetNamespace(ctx context.Context, req *connect.Request[namespaces.GetNamespaceRequest]) (*connect.Response[namespaces.GetNamespaceResponse], error) {
-	ns.logger.Debug("getting namespace", slog.String("id", req.Msg.GetId()))
-
 	rsp := &namespaces.GetNamespaceResponse{}
 
 	var identifier any
@@ -86,6 +84,8 @@ func (ns NamespacesService) GetNamespace(ctx context.Context, req *connect.Reque
 	} else {
 		identifier = req.Msg.GetIdentifier()
 	}
+
+	ns.logger.Debug("getting namespace", slog.Any("id", identifier))
 
 	namespace, err := ns.dbClient.GetNamespace(ctx, identifier)
 	if err != nil {

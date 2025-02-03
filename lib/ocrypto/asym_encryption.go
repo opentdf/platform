@@ -2,15 +2,20 @@ package ocrypto
 
 import (
 	"crypto/aes"
+	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1" //nolint:gosec // used for padding which is safe
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
+
+	"golang.org/x/crypto/hkdf"
 )
 
 type SchemeType string
@@ -20,7 +25,7 @@ const (
 	EC  SchemeType = "ec-wrapped"
 )
 
-type Scheme interface {
+type PublicKeyEncryptor interface {
 	// Encrypt encrypts data with public key.
 	Encrypt(data []byte) ([]byte, error)
 
@@ -41,12 +46,14 @@ type AsymEncryption struct {
 	PublicKey *rsa.PublicKey
 }
 
-type ECIES struct {
-	PublicKey *ecdh.PublicKey
-	private   *ecdh.PrivateKey
+type ECEncryptor struct {
+	pub  *ecdh.PublicKey
+	ek   *ecdh.PrivateKey
+	salt []byte
+	info []byte
 }
 
-func FromPEM(publicKeyInPem string) (Scheme, error) {
+func FromPublicPEM(publicKeyInPem string) (PublicKeyEncryptor, error) {
 	pub, err := getPublicPart(publicKeyInPem)
 	if err != nil {
 		return nil, err
@@ -64,9 +71,12 @@ func FromPEM(publicKeyInPem string) (Scheme, error) {
 	return nil, errors.New("not an supported type of public key")
 }
 
-func newECIES(publicKey *ecdh.PublicKey) (ECIES, err) {
-	privateKey, err := publicKey.Curve().GenerateKey(rand.Reader)
-	return ECIES{publicKey, privateKey}, err
+func newECIES(pub *ecdh.PublicKey) (ECEncryptor, error) {
+	ek, err := pub.Curve().GenerateKey(rand.Reader)
+	// TK Make these reasonable? IIRC salt should be longer, info maybe a parameters?
+	salt := []byte("salt")
+	info := []byte("info")
+	return ECEncryptor{pub, ek, salt, info}, err
 }
 
 // NewAsymEncryption creates and returns a new AsymEncryption.
@@ -115,7 +125,7 @@ func (e AsymEncryption) Type() SchemeType {
 	return RSA
 }
 
-func (e ECIES) Type() SchemeType {
+func (e ECEncryptor) Type() SchemeType {
 	return EC
 }
 
@@ -123,17 +133,17 @@ func (e AsymEncryption) EphemeralKey() ([]byte, error) {
 	return nil, errors.New("ephemeral key is not supported for RSA")
 }
 
-func (e ECIES) EphemeralKey() ([]byte, error) {
-	return e.private.PublicKey().Bytes(), nil
+func (e ECEncryptor) EphemeralKey() ([]byte, error) {
+	return e.ek.PublicKey().Bytes(), nil
 }
 
 func (e AsymEncryption) Metadata() (map[string]string, error) {
 	return make(map[string]string), nil
 }
 
-func (e ECIES) Metadata() (map[string]string, error) {
+func (e ECEncryptor) Metadata() (map[string]string, error) {
 	m := make(map[string]string)
-	m["ephemeralPublicKey"] = string(e.private.PublicKey().Bytes())
+	m["ephemeralPublicKey"] = string(e.ek.PublicKey().Bytes())
 	return m, nil
 }
 
@@ -175,39 +185,40 @@ func (e AsymEncryption) PublicKeyInPemFormat() (string, error) {
 }
 
 // Encrypts the data with the EC public key.
-func (e ECIES) Encrypt(data []byte) ([]byte, error) {
+func (e ECEncryptor) Encrypt(data []byte) ([]byte, error) {
+	ikm, err := e.ek.ECDH(e.pub)
+	if err != nil {
+		return nil, fmt.Errorf("ecdh failure: %w", err)
+	}
 
-	sharedKey, err := e.private.ComputeSecret(e.PublicKey)
+	hkdfObj := hkdf.New(sha256.New, ikm, e.salt, e.info)
 
-	return bytes, nil
+	derivedKey := make([]byte, len(ikm))
+	if _, err := io.ReadFull(hkdfObj, derivedKey); err != nil {
+		return nil, fmt.Errorf("hkdf failure: %w", err)
+	}
+
+	// Encrypt data with derived key using aes-gcm
+	block, err := aes.NewCipher(derivedKey)
+	if err != nil {
+		return nil, fmt.Errorf("aes.NewCipher failed: %w", err)
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("cipher.NewGCM failed: %w", err)
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, fmt.Errorf("nonce generation failed: %w", err)
+	}
+
+	ciphertext := gcm.Seal(nonce, nonce, data, nil)
+	return ciphertext, nil
 }
 
 // PublicKeyInPemFormat Returns public key in pem format.
-func (e ECIES) PublicKeyInPemFormat() (string, error) {
-	return publicKeyInPemFormat(e.PublicKey)
-}
-
-func (e ECIES) deriveKey() (*aes.Key, error) {
-	if e.PublicKey == nil {
-		return nil, errors.New("failed to encrypt, public key is empty")
-	}
-
-	if !e.private.Curve.IsOnCurve(e.PublicKey.X, pub.Y) {
-		return nil, fmt.Errorf("invalid public key")
-	}
-
-	var secret bytes.Buffer
-	secret.Write(k.PublicKey.Bytes(false))
-
-	sx, sy := pub.Curve.ScalarMult(pub.X, pub.Y, k.D.Bytes())
-	secret.Write([]byte{0x04})
-
-	// Sometimes shared secret coordinates are less than 32 bytes; Big Endian
-	l := len(pub.Curve.Params().P.Bytes())
-	secret.Write(zeroPad(sx.Bytes(), l))
-	secret.Write(zeroPad(sy.Bytes(), l))
-
-	return kdf(secret.Bytes())
-
-	return e.PublicKey
+func (e ECEncryptor) PublicKeyInPemFormat() (string, error) {
+	return publicKeyInPemFormat(e.pub)
 }

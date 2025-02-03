@@ -135,7 +135,7 @@ func Test_GetNamespaceRequest_Succeeds(t *testing.T) {
 	require.NoError(t, err)
 
 	req = &namespaces.GetNamespaceRequest{
-		Id: validUUID, //nolint:staticcheck // Id can still be used until removed
+		Id: validUUID,
 	}
 	err = v.Validate(req)
 	require.NoError(t, err)

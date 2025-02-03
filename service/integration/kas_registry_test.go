@@ -1374,6 +1374,7 @@ func (s *KasRegistrySuite) Test_List_Public_Key_Mappings_WithLimit_1() {
 
 func (s *KasRegistrySuite) Test_List_Public_Key_Mappings_By_KAS() {
 	kas := s.f.GetKasRegistryKey("key_access_server_1")
+	pk := s.f.GetPublicKey("key_1")
 
 	// List mappings by KAS ID
 	r, err := s.db.PolicyClient.ListPublicKeyMappings(s.ctx, &kasregistry.ListPublicKeyMappingRequest{
@@ -1389,6 +1390,9 @@ func (s *KasRegistrySuite) Test_List_Public_Key_Mappings_By_KAS() {
 		s.Equal(kas.ID, m.GetKasId())
 		s.Equal(kas.URI, m.GetKasUri())
 		s.Equal(kas.Name, m.GetKasName())
+		s.True(slices.ContainsFunc(m.GetPublicKeys(), func(key *kasregistry.ListPublicKeyMappingResponse_PublicKey) bool {
+			return key.GetKey().GetId() == pk.ID
+		}))
 	}
 
 	// List mappings by KAS URI
@@ -1405,6 +1409,9 @@ func (s *KasRegistrySuite) Test_List_Public_Key_Mappings_By_KAS() {
 		s.Equal(kas.ID, m.GetKasId())
 		s.Equal(kas.URI, m.GetKasUri())
 		s.Equal(kas.Name, m.GetKasName())
+		s.True(slices.ContainsFunc(m.GetPublicKeys(), func(key *kasregistry.ListPublicKeyMappingResponse_PublicKey) bool {
+			return key.GetKey().GetId() == pk.ID
+		}))
 	}
 
 	// List mappings by KAS Name
@@ -1421,6 +1428,9 @@ func (s *KasRegistrySuite) Test_List_Public_Key_Mappings_By_KAS() {
 		s.Equal(kas.ID, m.GetKasId())
 		s.Equal(kas.URI, m.GetKasUri())
 		s.Equal(kas.Name, m.GetKasName())
+		s.True(slices.ContainsFunc(m.GetPublicKeys(), func(key *kasregistry.ListPublicKeyMappingResponse_PublicKey) bool {
+			return key.GetKey().GetId() == pk.ID
+		}))
 	}
 }
 

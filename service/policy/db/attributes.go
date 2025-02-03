@@ -218,8 +218,27 @@ func (c PolicyDBClient) ListAllAttributes(ctx context.Context) ([]*policy.Attrib
 	return attrsList, nil
 }
 
-func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
-	attr, err := c.Queries.GetAttribute(ctx, id)
+func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*policy.Attribute, error) {
+	var (
+		attr GetAttributeByIdRow
+		err  error
+	)
+
+	switch i := identifier.(type) {
+	case *attributes.GetAttributeRequest_AttributeId:
+		attr, err = c.Queries.GetAttributeById(ctx, i.AttributeId)
+	case *attributes.GetAttributeRequest_Fqn:
+		var fv GetAttributeByFqnRow
+		fv, err = c.Queries.GetAttributeByFqn(ctx, i.Fqn)
+		// Same struct fields allow for struct casting
+		attr = GetAttributeByIdRow(fv)
+	case string:
+		attr, err = c.Queries.GetAttributeById(ctx, i)
+	default:
+		// Hopefully this will never happen
+		return nil, fmt.Errorf("unknown identifier type: %T", i)
+	}
+
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

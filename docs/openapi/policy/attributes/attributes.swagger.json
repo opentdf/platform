@@ -249,9 +249,21 @@
         "parameters": [
           {
             "name": "id",
-            "description": "Required",
+            "description": "Deprecated",
             "in": "path",
             "required": true,
+            "type": "string"
+          },
+          {
+            "name": "valueId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "fqn",
+            "in": "query",
+            "required": false,
             "type": "string"
           }
         ],
@@ -543,9 +555,21 @@
         "parameters": [
           {
             "name": "id",
-            "description": "Required",
+            "description": "Deprecated",
             "in": "path",
             "required": true,
+            "type": "string"
+          },
+          {
+            "name": "attributeId",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "fqn",
+            "in": "query",
+            "required": false,
             "type": "string"
           }
         ],

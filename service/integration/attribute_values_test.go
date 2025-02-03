@@ -183,17 +183,58 @@ func (s *AttributeValuesSuite) Test_ListAttributeValues_Offset_Succeeds() {
 
 func (s *AttributeValuesSuite) Test_GetAttributeValue() {
 	f := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+
+	// Get by deprecated id
+
 	v, err := s.db.PolicyClient.GetAttributeValue(s.ctx, f.ID)
 	s.Require().NoError(err)
 	s.NotNil(v)
 
 	s.Equal(f.ID, v.GetId())
 	s.Equal(f.Value, v.GetValue())
-	// s.Equal(f.AttributeDefinitionId, v.AttributeId)
+	s.Equal(f.AttributeDefinitionID, v.GetAttribute().GetId())
 	s.Equal("https://example.com/attr/attr1/value/value1", v.GetFqn())
 	metadata := v.GetMetadata()
 	createdAt := metadata.GetCreatedAt()
 	updatedAt := metadata.GetUpdatedAt()
+	s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
+	s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
+
+	// Get by new identifier id
+	identifierByID := &attributes.GetAttributeValueRequest_ValueId{
+		ValueId: f.ID,
+	}
+
+	v, err = s.db.PolicyClient.GetAttributeValue(s.ctx, identifierByID)
+	s.Require().NoError(err)
+	s.NotNil(v)
+
+	s.Equal(f.ID, v.GetId())
+	s.Equal(f.Value, v.GetValue())
+	s.Equal(f.AttributeDefinitionID, v.GetAttribute().GetId())
+	s.Equal("https://example.com/attr/attr1/value/value1", v.GetFqn())
+	metadata = v.GetMetadata()
+	createdAt = metadata.GetCreatedAt()
+	updatedAt = metadata.GetUpdatedAt()
+	s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
+	s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
+
+	// Get by new identifier fqn
+	identifierByFQN := &attributes.GetAttributeValueRequest_Fqn{
+		Fqn: "https://example.com/attr/attr1/value/value1",
+	}
+
+	v, err = s.db.PolicyClient.GetAttributeValue(s.ctx, identifierByFQN)
+	s.Require().NoError(err)
+	s.NotNil(v)
+
+	s.Equal(f.ID, v.GetId())
+	s.Equal(f.Value, v.GetValue())
+	s.Equal(f.AttributeDefinitionID, v.GetAttribute().GetId())
+	s.Equal("https://example.com/attr/attr1/value/value1", v.GetFqn())
+	metadata = v.GetMetadata()
+	createdAt = metadata.GetCreatedAt()
+	updatedAt = metadata.GetUpdatedAt()
 	s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
 	s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
 }

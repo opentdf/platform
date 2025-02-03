@@ -79,7 +79,15 @@ func (ns NamespacesService) GetNamespace(ctx context.Context, req *connect.Reque
 
 	rsp := &namespaces.GetNamespaceResponse{}
 
-	namespace, err := ns.dbClient.GetNamespace(ctx, req.Msg.GetId())
+	var identifier any
+
+	if req.Msg.GetId() != "" {
+		identifier = req.Msg.GetId()
+	} else {
+		identifier = req.Msg.GetIdentifier()
+	}
+
+	namespace, err := ns.dbClient.GetNamespace(ctx, identifier)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, "id", req.Msg.GetId())
 	}

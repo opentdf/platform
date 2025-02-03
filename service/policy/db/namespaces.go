@@ -14,8 +14,28 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func (c PolicyDBClient) GetNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
-	ns, err := c.Queries.GetNamespace(ctx, id)
+func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*policy.Namespace, error) {
+	var (
+		ns  GetNamespaceByIdRow
+		err error
+	)
+
+	switch i := identifier.(type) {
+	case *namespaces.GetNamespaceRequest_NamespaceId:
+		fmt.Println(i.NamespaceId)
+		ns, err = c.Queries.GetNamespaceById(ctx, i.NamespaceId)
+	case *namespaces.GetNamespaceRequest_Fqn:
+		var n GetNamespaceByFqnRow
+		n, err = c.Queries.GetNamespaceByFqn(ctx, i.Fqn)
+		// Same struct fields allow for struct casting
+		ns = GetNamespaceByIdRow(n)
+	case string:
+		ns, err = c.Queries.GetNamespaceById(ctx, i)
+	default:
+		// Hopefully this will never happen
+		return nil, fmt.Errorf("unknown identifier type: %T", i)
+	}
+
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -44,7 +64,7 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, id string) (*policy.Na
 	}
 
 	return &policy.Namespace{
-		Id:       id,
+		Id:       ns.ID,
 		Name:     ns.Name,
 		Active:   &wrapperspb.BoolValue{Value: ns.Active},
 		Grants:   grants,

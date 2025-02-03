@@ -102,7 +102,15 @@ func (s KeyAccessServerRegistry) GetKeyAccessServer(ctx context.Context,
 ) (*connect.Response[kasr.GetKeyAccessServerResponse], error) {
 	rsp := &kasr.GetKeyAccessServerResponse{}
 
-	keyAccessServer, err := s.dbClient.GetKeyAccessServer(ctx, req.Msg.GetId())
+	var identifier any
+
+	if req.Msg.GetId() != "" {
+		identifier = req.Msg.GetId()
+	} else {
+		identifier = req.Msg.GetIdentifier()
+	}
+
+	keyAccessServer, err := s.dbClient.GetKeyAccessServer(ctx, identifier)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.Msg.GetId()))
 	}

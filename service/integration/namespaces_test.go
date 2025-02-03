@@ -93,6 +93,8 @@ func (s *NamespacesSuite) Test_GetNamespace() {
 	testData := s.getActiveNamespaceFixtures()
 
 	for _, test := range testData {
+
+		// Get namespace by deprecated id field
 		gotNamespace, err := s.db.PolicyClient.GetNamespace(s.ctx, test.ID)
 		s.Require().NoError(err)
 		s.NotNil(gotNamespace)
@@ -101,6 +103,38 @@ func (s *NamespacesSuite) Test_GetNamespace() {
 		metadata := gotNamespace.GetMetadata()
 		createdAt := metadata.GetCreatedAt()
 		updatedAt := metadata.GetUpdatedAt()
+		s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
+		s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
+
+		// Get namespace by new identifier ID
+		identifierID := &namespaces.GetNamespaceRequest_NamespaceId{
+			NamespaceId: test.ID,
+		}
+
+		gotNamespace, err = s.db.PolicyClient.GetNamespace(s.ctx, identifierID)
+		s.Require().NoError(err)
+		s.NotNil(gotNamespace)
+		// name retrieved by ID equal to name used to create
+		s.Equal(test.Name, gotNamespace.GetName())
+		metadata = gotNamespace.GetMetadata()
+		createdAt = metadata.GetCreatedAt()
+		updatedAt = metadata.GetUpdatedAt()
+		s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
+		s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
+
+		// Get namespace by new identifier FQN
+		identifierFQN := &namespaces.GetNamespaceRequest_Fqn{
+			Fqn: test.Name,
+		}
+
+		gotNamespace, err = s.db.PolicyClient.GetNamespace(s.ctx, identifierFQN)
+		s.Require().NoError(err)
+		s.NotNil(gotNamespace)
+		// name retrieved by ID equal to name used to create
+		s.Equal(test.Name, gotNamespace.GetName())
+		metadata = gotNamespace.GetMetadata()
+		createdAt = metadata.GetCreatedAt()
+		updatedAt = metadata.GetUpdatedAt()
 		s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
 		s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
 	}

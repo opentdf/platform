@@ -86,10 +86,17 @@ message ListAttributesResponse {
 }
 
 message GetAttributeRequest {
-  // Required
+  // Deprecated
   string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+    deprecated = true
+  ];;
+
+  oneof identifier {
+    string attribute_id = 2 [
+      (buf.validate.field).string.uuid = true
+    ];
+    string fqn = 3;
+  }
 }
 message GetAttributeResponse {
   policy.Attribute attribute = 1;
@@ -167,10 +174,18 @@ message DeactivateAttributeResponse {
 /// Value RPC messages
 ///
 message GetAttributeValueRequest {
-  // Required
+  // Deprecated
   string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+    deprecated = true
+  ];;
+
+  oneof identifier {
+    string value_id = 2 [
+      (buf.validate.field).string.uuid = true
+    ];
+    string fqn = 3;
+  }
+
 }
 message GetAttributeValueResponse {
   policy.Value value = 1;

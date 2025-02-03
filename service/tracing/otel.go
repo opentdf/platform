@@ -2,6 +2,7 @@ package tracing
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -40,12 +41,12 @@ type Config struct {
 	ExportToJaeger bool   `yaml:"exportToJaeger"`
 }
 
-func InitTracer(cfg Config) func() {
+func InitTracer(ctx context.Context, cfg Config) (func(), error) {
 	if !cfg.Enabled {
 		tp := noop.NewTracerProvider()
 		otel.SetTracerProvider(tp)
 		otel.SetTextMapPropagator(propagation.TraceContext{})
-		return func() {}
+		return func() {}, nil
 	}
 
 	// Create a directory for the traces
@@ -54,7 +55,7 @@ func InitTracer(cfg Config) func() {
 		td = "traces"
 	}
 	if err := os.MkdirAll(td, os.ModePerm); err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("failed to create traces directory: %w", err)
 	}
 
 	lumberjackLogger := &lumberjack.Logger{
@@ -65,14 +66,12 @@ func InitTracer(cfg Config) func() {
 		Compress:   true, // compress the rotated files
 	}
 
-	// Wrap the logger with our thread-safe writer
 	safeWriter := &syncWriter{
 		writer: lumberjackLogger,
 	}
 
 	var exporter sdktrace.SpanExporter
 	var err error
-	ctx := context.Background()
 
 	if cfg.ExportToJaeger {
 		exporter, err = otlptrace.New(ctx, otlptracegrpc.NewClient(
@@ -85,7 +84,7 @@ func InitTracer(cfg Config) func() {
 		)
 	}
 	if err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("failed to create exporter: %w", err)
 	}
 
 	tp := sdktrace.NewTracerProvider(
@@ -99,10 +98,10 @@ func InitTracer(cfg Config) func() {
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 
 	return func() {
-		if err := tp.Shutdown(ctx); err != nil {
-			log.Fatal(err)
+		if err := tp.Shutdown(context.Background()); err != nil {
+			log.Printf("Error shutting down tracer provider: %v", err)
 		}
-	}
+	}, nil
 }
 
 // InjectTraceContext injects trace context into outgoing context

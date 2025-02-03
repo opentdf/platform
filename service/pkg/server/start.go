@@ -68,7 +68,10 @@ func Start(f ...StartOptions) error {
 
 	// Initialize tracer
 	logger.Debug("configuring otel tracer")
-	shutdown := tracing.InitTracer(cfg.Trace)
+	shutdown, err := tracing.InitTracer(ctx, cfg.Trace)
+	if err != nil {
+		return fmt.Errorf("could not initialize tracer: %w", err)
+	}
 	defer shutdown()
 
 	logger.Info("starting opentdf services")

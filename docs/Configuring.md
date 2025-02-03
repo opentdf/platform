@@ -334,3 +334,27 @@ server:
 
 Admins can manage the authorization policy directly in the YAML configuration file. For detailed configuration options, refer to the [Casbin documentation](https://casbin.org/docs/en/syntax-for-models).
 
+## Tracing Configuration
+
+The tracing configuration controls OpenTelemetry tracing behavior.
+
+Root level key `trace`
+
+| Field           | Description                                                | Default  | Environment Variable |
+|-----------------|------------------------------------------------------------| ---------|---------------------|
+| `enabled`       | Enable OpenTelemetry tracing                               | `false`  | OPENTDF_TRACE_ENABLED |
+| `folder`        | Directory where trace logs will be stored                  | `traces` | OPENTDF_TRACE_FOLDER |
+| `exportToJaeger`| Export traces to Jaeger instead of local file             | `false`  | OPENTDF_TRACE_EXPORT_TO_JAEGER |
+
+Example:
+```yaml
+trace:
+  enabled: true
+  folder: "traces"  # Traces will be written to traces/traces.log
+  exportToJaeger: false  # Set to true to export to Jaeger at localhost:4317
+```
+
+When enabled, traces are either:
+- Written to a local file with automatic log rotation (when `exportToJaeger: false`)
+- Exported to a Jaeger instance at localhost:4317 (when `exportToJaeger: true`)
+

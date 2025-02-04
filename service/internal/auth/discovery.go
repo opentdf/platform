@@ -27,7 +27,7 @@ type OIDCConfiguration struct {
 	IDTokenSigningAlgValuesSupported []string `json:"id_token_signing_alg_values_supported"`
 	RequireRequestURIRegistration    bool     `json:"require_request_uri_registration"`
 	PublicClientID                   string   `json:"public_client_id,omitempty"`
-	CodeFlowPort                     string   `json:"code_flow_port" default:"9000"`
+	CodeFlowPort                     string   `json:"code_flow_port,omitempty"`
 }
 
 // DiscoverOPENIDConfiguration discovers the openid configuration for the issuer provided

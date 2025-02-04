@@ -3557,6 +3557,13 @@ string</p></td>
                   <td><p>header is only used for NanoTDFs </p></td>
                 </tr>
               
+                <tr>
+                  <td>ephemeral_public_key</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>For wrapping with an ECDH derived key, when type=ec-wrapped </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -3607,6 +3614,14 @@ string</p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>ephemeral_public_key</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>Optional metadata for ECDH derived key wrapping.
+Maybe should be a generic &#39;context&#39; object? We may need info/salt? </p></td>
                 </tr>
               
             </tbody>

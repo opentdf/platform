@@ -36,7 +36,8 @@ type PublicKeyEncryptor interface {
 	Type() SchemeType
 
 	// For EC schemes, this method returns the public part of the ephemeral key.
-	EphemeralKey() ([]byte, error)
+	// Otherwise, it returns nil.
+	EphemeralKey() []byte
 
 	// Any extra metadata, e.g. the ephemeral public key for EC scheme keys.
 	Metadata() (map[string]string, error)
@@ -129,12 +130,12 @@ func (e ECEncryptor) Type() SchemeType {
 	return EC
 }
 
-func (e AsymEncryption) EphemeralKey() ([]byte, error) {
-	return nil, errors.New("ephemeral key is not supported for RSA")
+func (e AsymEncryption) EphemeralKey() []byte {
+	return nil
 }
 
-func (e ECEncryptor) EphemeralKey() ([]byte, error) {
-	return e.ek.PublicKey().Bytes(), nil
+func (e ECEncryptor) EphemeralKey() []byte {
+	return e.ek.PublicKey().Bytes()
 }
 
 func (e AsymEncryption) Metadata() (map[string]string, error) {

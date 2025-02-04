@@ -96,6 +96,10 @@ message KeyAccessRewrapResult {
     bytes kas_wrapped_key = 4;
     string error = 5;
   }
+
+  // Optional metadata for ECDH derived key wrapping.
+  // Maybe should be a generic 'context' object? We may need info/salt?
+  bytes ephemeral_public_key = 6;
 }
 
 message PolicyRewrapResult {

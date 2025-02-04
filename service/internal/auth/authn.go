@@ -102,9 +102,9 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	if err != nil {
 		return nil, err
 	}
-	// Assign configured public_client_id and code_flow_port
+	// Assign configured public_client_id and public_client_local_port
 	oidcConfig.PublicClientID = cfg.PublicClientID
-	oidcConfig.CodeFlowPort = cfg.CodeFlowPort
+	oidcConfig.PublicClientLocalPort = cfg.PublicClientLocalPort
 
 	// If the issuer is different from the one in the configuration, update the configuration
 	// This could happen if we are hitting an internal endpoint. Example we might point to https://keycloak.opentdf.svc/realms/opentdf

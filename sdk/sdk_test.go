@@ -33,11 +33,11 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 	s, err := sdk.New(goodPlatformEndpoint,
 		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
 			"idp": map[string]interface{}{
-				"issuer":                 "https://example.org",
-				"authorization_endpoint": "https://example.org/auth",
-				"token_endpoint":         "https://example.org/token",
-				"public_client_id":       "myclient",
-				"code_flow_port":         "9000",
+				"issuer":                   "https://example.org",
+				"authorization_endpoint":   "https://example.org/auth",
+				"token_endpoint":           "https://example.org/token",
+				"public_client_id":         "myclient",
+				"public_client_local_port": "9000",
 			},
 		}),
 		sdk.WithClientCredentials("myid", "mysecret", nil),
@@ -67,8 +67,8 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check platform auth code flow port
-	codeFlowPort, err := s.PlatformConfiguration.CodeFlowPort()
-	assert.Equal(t, "9000", codeFlowPort)
+	publicClientLocalPort, err := s.PlatformConfiguration.PublicClientLocalPort()
+	assert.Equal(t, "9000", publicClientLocalPort)
 	require.NoError(t, err)
 
 	// check if the clients are available
@@ -96,9 +96,9 @@ func Test_PlatformConfiguration_BadCases(t *testing.T) {
 		assert.Equal(t, "", publicClientID)
 		require.ErrorIs(t, err, sdk.ErrPlatformPublicClientIDNotFound)
 
-		codeFlowPort, err := s.PlatformConfiguration.CodeFlowPort()
-		assert.Equal(t, "", codeFlowPort)
-		require.ErrorIs(t, err, sdk.ErrPlatformCodeFlowPort)
+		publicClientLocalPort, err := s.PlatformConfiguration.PublicClientLocalPort()
+		assert.Equal(t, "", publicClientLocalPort)
+		require.ErrorIs(t, err, sdk.ErrPlatformPublicClientLocalPortNotFound)
 	}
 
 	noIdpValsSDK, err := sdk.New(goodPlatformEndpoint,

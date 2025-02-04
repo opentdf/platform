@@ -36,16 +36,16 @@ import (
 const (
 	// Failure while connecting to a service.
 	// Check your configuration and/or retry.
-	ErrGrpcDialFailed                 = Error("failed to dial grpc endpoint")
-	ErrShutdownFailed                 = Error("failed to shutdown sdk")
-	ErrPlatformConfigFailed           = Error("failed to retrieve platform configuration")
-	ErrPlatformEndpointMalformed      = Error("platform endpoint is malformed")
-	ErrPlatformIssuerNotFound         = Error("issuer not found in well-known idp configuration")
-	ErrPlatformAuthzEndpointNotFound  = Error("authorization_endpoint not found in well-known idp configuration")
-	ErrPlatformTokenEndpointNotFound  = Error("token_endpoint not found in well-known idp configuration")
-	ErrPlatformPublicClientIDNotFound = Error("public_client_id not found in well-known idp configuration")
-	ErrPlatformCodeFlowPort           = Error("code_flow_port not found in well-known idp configuration")
-	ErrAccessTokenInvalid             = Error("access token is invalid")
+	ErrGrpcDialFailed                        = Error("failed to dial grpc endpoint")
+	ErrShutdownFailed                        = Error("failed to shutdown sdk")
+	ErrPlatformConfigFailed                  = Error("failed to retrieve platform configuration")
+	ErrPlatformEndpointMalformed             = Error("platform endpoint is malformed")
+	ErrPlatformIssuerNotFound                = Error("issuer not found in well-known idp configuration")
+	ErrPlatformAuthzEndpointNotFound         = Error("authorization_endpoint not found in well-known idp configuration")
+	ErrPlatformTokenEndpointNotFound         = Error("token_endpoint not found in well-known idp configuration")
+	ErrPlatformPublicClientIDNotFound        = Error("public_client_id not found in well-known idp configuration")
+	ErrPlatformPublicClientLocalPortNotFound = Error("public_client_local_port not found in well-known idp configuration")
+	ErrAccessTokenInvalid                    = Error("access token is invalid")
 )
 
 type Error string

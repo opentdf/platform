@@ -44,11 +44,11 @@ func (c PlatformConfiguration) PublicClientID() (string, error) {
 	return value, nil
 }
 
-func (c PlatformConfiguration) CodeFlowPort() (string, error) {
+func (c PlatformConfiguration) PublicClientLocalPort() (string, error) {
 	idpCfg := c.getIdpConfig()
-	value, ok := idpCfg["code_flow_port"].(string)
+	value, ok := idpCfg["public_client_local_port"].(string)
 	if !ok {
-		return "", ErrPlatformCodeFlowPort
+		return "", ErrPlatformPublicClientLocalPortNotFound
 	}
 	return value, nil
 }

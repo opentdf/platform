@@ -22,7 +22,7 @@ server:
     enabled: false
     enforceDPoP: false
     public_client_id: 'opentdf-public'
-    code_flow_port: '9000'
+    public_client_local_port: '9000'
     audience: 'http://localhost:8080'
     issuer: http://localhost:8888/auth/realms/tdf
   cors:

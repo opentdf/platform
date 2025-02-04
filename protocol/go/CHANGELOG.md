@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.25](https://github.com/opentdf/platform/compare/protocol/go/v0.2.24...protocol/go/v0.2.25) (2025-01-31)
+
+
+### Bug Fixes
+
+* add pagination to list public key mappings response ([#1889](https://github.com/opentdf/platform/issues/1889)) ([9898fbd](https://github.com/opentdf/platform/commit/9898fbda305f4eface291a2aaa98d2df80f0ad05))
+
 ## [0.2.24](https://github.com/opentdf/platform/compare/protocol/go/v0.2.23...protocol/go/v0.2.24) (2025-01-24)
 
 

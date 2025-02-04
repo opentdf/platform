@@ -504,6 +504,9 @@
             "type": "object",
             "$ref": "#/definitions/ListPublicKeyMappingResponsePublicKeyMapping"
           }
+        },
+        "pagination": {
+          "$ref": "#/definitions/policyPageResponse"
         }
       }
     },

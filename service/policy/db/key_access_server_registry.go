@@ -414,8 +414,9 @@ func (c PolicyDBClient) ListPublicKeyMappings(ctx context.Context, r *kasregistr
 		KasID: r.GetKasId(),
 		// KasUri:  r.GetKasUri(),
 		// KasName: r.GetKasName(),
-		Offset: offset,
-		Limit:  limit,
+		PublicKeyID: r.GetPublicKeyId(),
+		Offset:      offset,
+		Limit:       limit,
 	}
 
 	listRows, err := c.Queries.listPublicKeyMappings(ctx, params)
@@ -426,15 +427,27 @@ func (c PolicyDBClient) ListPublicKeyMappings(ctx context.Context, r *kasregistr
 	mappings := make([]*kasregistry.ListPublicKeyMappingResponse_PublicKeyMapping, len(listRows))
 	for i, mapping := range listRows {
 		pkm := new(kasregistry.ListPublicKeyMappingResponse_PublicKeyMapping)
-		err := protojson.Unmarshal(mapping, pkm)
+		err := protojson.Unmarshal(mapping.KasInfo, pkm)
 		if err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(err)
 		}
 		mappings[i] = pkm
 	}
 
+	var total int32
+	var nextOffset int32
+	if len(listRows) > 0 {
+		total = int32(listRows[0].Total)
+		nextOffset = getNextOffset(offset, limit, total)
+	}
+
 	return &kasregistry.ListPublicKeyMappingResponse{
 		PublicKeyMappings: mappings,
+		Pagination: &policy.PageResponse{
+			CurrentOffset: params.Offset,
+			Total:         total,
+			NextOffset:    nextOffset,
+		},
 	}, nil
 }
 

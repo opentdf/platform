@@ -3370,7 +3370,12 @@ func (q *Queries) getPublicKey(ctx context.Context, id string) (getPublicKeyRow,
 }
 
 const listPublicKeyMappings = `-- name: listPublicKeyMappings :many
-WITH base_keys AS (
+WITH counted AS (
+    SELECT COUNT(pk.id) AS total FROM public_keys AS pk
+    WHERE (NULLIF($3, '') IS NULL OR pk.key_access_server_id = $3::uuid)
+    AND   ( NULLIF($4, '') IS NULL OR pk.id = $4::uuid )
+),
+base_keys AS (
     SELECT 
         pk.id,
         pk.is_active,
@@ -3462,9 +3467,11 @@ SELECT jsonb_build_object(
             )
         )
     )
-) as kas_info
+) as kas_info,
+counted.total
 FROM base_keys bk
-GROUP BY bk.kas_id, bk.kas_name, bk.kas_uri
+CROSS JOIN counted
+GROUP BY bk.kas_id, bk.kas_name, bk.kas_uri, counted.total
 LIMIT $2 
 OFFSET $1
 `
@@ -3476,9 +3483,19 @@ type listPublicKeyMappingsParams struct {
 	PublicKeyID interface{} `json:"public_key_id"`
 }
 
+type listPublicKeyMappingsRow struct {
+	KasInfo []byte `json:"kas_info"`
+	Total   int64  `json:"total"`
+}
+
 // listPublicKeyMappings
 //
-//	WITH base_keys AS (
+//	WITH counted AS (
+//	    SELECT COUNT(pk.id) AS total FROM public_keys AS pk
+//	    WHERE (NULLIF($3, '') IS NULL OR pk.key_access_server_id = $3::uuid)
+//	    AND   ( NULLIF($4, '') IS NULL OR pk.id = $4::uuid )
+//	),
+//	base_keys AS (
 //	    SELECT
 //	        pk.id,
 //	        pk.is_active,
@@ -3570,12 +3587,14 @@ type listPublicKeyMappingsParams struct {
 //	            )
 //	        )
 //	    )
-//	) as kas_info
+//	) as kas_info,
+//	counted.total
 //	FROM base_keys bk
-//	GROUP BY bk.kas_id, bk.kas_name, bk.kas_uri
+//	CROSS JOIN counted
+//	GROUP BY bk.kas_id, bk.kas_name, bk.kas_uri, counted.total
 //	LIMIT $2
 //	OFFSET $1
-func (q *Queries) listPublicKeyMappings(ctx context.Context, arg listPublicKeyMappingsParams) ([][]byte, error) {
+func (q *Queries) listPublicKeyMappings(ctx context.Context, arg listPublicKeyMappingsParams) ([]listPublicKeyMappingsRow, error) {
 	rows, err := q.db.Query(ctx, listPublicKeyMappings,
 		arg.Offset,
 		arg.Limit,
@@ -3586,13 +3605,13 @@ func (q *Queries) listPublicKeyMappings(ctx context.Context, arg listPublicKeyMa
 		return nil, err
 	}
 	defer rows.Close()
-	var items [][]byte
+	var items []listPublicKeyMappingsRow
 	for rows.Next() {
-		var kas_info []byte
-		if err := rows.Scan(&kas_info); err != nil {
+		var i listPublicKeyMappingsRow
+		if err := rows.Scan(&i.KasInfo, &i.Total); err != nil {
 			return nil, err
 		}
-		items = append(items, kas_info)
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

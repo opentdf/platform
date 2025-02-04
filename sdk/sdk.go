@@ -44,7 +44,7 @@ const (
 	ErrPlatformAuthzEndpointNotFound  = Error("authorization_endpoint not found in well-known idp configuration")
 	ErrPlatformTokenEndpointNotFound  = Error("token_endpoint not found in well-known idp configuration")
 	ErrPlatformPublicClientIDNotFound = Error("public_client_id not found in well-known idp configuration")
-	ErrPlatformAuthCodeFlowPort       = Error("auth_code_flow_port not found in well-known idp configuration")
+	ErrPlatformCodeFlowPort           = Error("code_flow_port not found in well-known idp configuration")
 	ErrAccessTokenInvalid             = Error("access token is invalid")
 )
 

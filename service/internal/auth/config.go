@@ -25,6 +25,7 @@ type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
 	DPoPSkew       time.Duration `mapstructure:"dpopskew" default:"1h"`
 	TokenSkew      time.Duration `mapstructure:"skew" default:"1m"`
 	PublicClientID string        `mapstructure:"public_client_id" json:"public_client_id,omitempty"`
+	CodeFlowPort   string        `mapstructure:"code_flow_port" json:"code_flow_port" default:"9000"`
 }
 
 type PolicyConfig struct {

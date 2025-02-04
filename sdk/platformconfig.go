@@ -44,11 +44,11 @@ func (c PlatformConfiguration) PublicClientID() (string, error) {
 	return value, nil
 }
 
-func (c PlatformConfiguration) AuthCodeFlowPort() (string, error) {
+func (c PlatformConfiguration) CodeFlowPort() (string, error) {
 	idpCfg := c.getIdpConfig()
-	value, ok := idpCfg["auth_code_flow_port"].(string)
+	value, ok := idpCfg["code_flow_port"].(string)
 	if !ok {
-		return "", ErrPlatformAuthCodeFlowPort
+		return "", ErrPlatformCodeFlowPort
 	}
 	return value, nil
 }

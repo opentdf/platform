@@ -5,12 +5,21 @@ This guide provides details about the configuration setup for the platform, incl
 The platform leverages [viper](https://github.com/spf13/viper) to help load configuration.
 
 - [Platform Configuration](#platform-configuration)
+  - [Deployment Mode](#deployment-mode)
+  - [SDK Configuration](#sdk-configuration)
   - [Logger Configuration](#logger-configuration)
   - [Server Configuration](#server-configuration)
+    - [Crypto Provider](#crypto-provider)
   - [Database Configuration](#database-configuration)
   - [Services Configuration](#services-configuration)
     - [Key Access Server (KAS)](#key-access-server-kas)
     - [Authorization](#authorization)
+    - [Policy](#policy)
+    - [Casbin Endpoint Authorization](#casbin-endpoint-authorization)
+      - [Key Aspects of Authorization Configuration](#key-aspects-of-authorization-configuration)
+      - [Configuration in opentdf-example.yaml](#configuration-in-opentdf-exampleyaml)
+      - [Role Permissions](#role-permissions)
+      - [Managing Authorization Policy](#managing-authorization-policy)
 
 ## Deployment Mode
 
@@ -79,6 +88,7 @@ Root level key `server`
 | `auth.dpopskew`         | The amount of time drift allowed between when the client generated a dpop proof and the server time.          | `1h`    | OPENTDF_SERVER_AUTH                  |
 | `auth.skew`             | The amount of time drift allowed between a tokens `exp` claim and the server time.                            | `1m`    | OPENTDF_SERVER_AUTH_SKEW             |
 | `auth.public_client_id` | The oidc client id. This is leveraged by otdfctl.                                                             |         | OPENTDF_SERVER_AUTH_PUBLIC_CLIENT_ID |
+| `auth.code_flow_port`   | The port used to perform oidc code flow authorization. This is leveraged by otdfctl.                          | `9000`  | OPENTDF_SERVER_AUTH_CODE_FLOW_PORT   |
 | `auth.enforceDPoP`      | If true, DPoP bindings on Access Tokens are enforced.                                                         | `false` | OPENTDF_SERVER_AUTH_ENFORCEDPOP      |
 | `cryptoProvider`        | A list of public/private keypairs and their use. Described [below](#crypto-provider)                          | empty   |                                      |
 | `enable_pprof`          | Enable golang performance profiling                                                                           | `false` | OPENTDF_SERVER_ENABLE_PPROF          |

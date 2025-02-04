@@ -321,13 +321,6 @@ func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, err
 	return info, nil
 }
 
-func failedKAORewrap3(res map[string]uncipheredResult, kao *kaspb.UnsignedRewrapRequest_WithKeyAccessObject, err error) kaoResult {
-	return kaoResult{
-		ID:    kao.GetKeyAccessObjectId(),
-		Error: err,
-	}
-}
-
 func failedKAORewrap2(res map[string]uncipheredResult, kao *kaspb.UnsignedRewrapRequest_WithKeyAccessObject, err error) {
 	res[kao.GetKeyAccessObjectId()] = uncipheredResult{
 		ID:    kao.GetKeyAccessObjectId(),
@@ -452,7 +445,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 
 		var symKey []byte
 		var err error
-		switch kao.KeyAccessObject.GetKeyType() {
+		switch kao.GetKeyAccessObject().GetKeyType() {
 		case "ec-wrapped":
 			symKey, err = p.CryptoProvider.ECDecrypt(kao.GetKeyAccessObject().GetKid(), kao.GetKeyAccessObject().GetEphemeralPublicKey(), kao.GetKeyAccessObject().GetWrappedKey())
 		case "wrapped":
@@ -519,12 +512,12 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		defer span.End()
 	}
 
-	intermediateResults := make(intermediateResults)
+	ir := make(intermediateResults)
 	var policies []*Policy
 	policyReqs := make(map[*Policy]*kaspb.UnsignedRewrapRequest_WithPolicyRequest)
 	for _, req := range requests {
 		policy, kaoResults, err := p.verifyRewrapRequests(ctx, req)
-		intermediateResults[req.GetPolicy().GetId()] = kaoResults
+		ir[req.GetPolicy().GetId()] = kaoResults
 		if err != nil {
 			continue
 		}
@@ -556,7 +549,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		}
 	}
 
-	results := make(policyKAOResults, len(intermediateResults))
+	results := make(policyKAOResults, len(ir))
 	for _, pdpAccess := range pdpAccessResults {
 		policy := pdpAccess.Policy
 		req, ok := policyReqs[policy]
@@ -564,7 +557,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			p.Logger.WarnContext(ctx, "policy not found in policyReqs", "policy.uuid", policy.UUID)
 			continue
 		}
-		imResults, ok := intermediateResults[req.GetPolicy().GetId()]
+		imResults, ok := ir[req.GetPolicy().GetId()]
 		if !ok {
 			// this should not happen
 			p.Logger.WarnContext(ctx, "policy not found in policyReq response", "policy.uuid", policy.UUID)

@@ -113,7 +113,7 @@ func NewECDecryptor(sk *ecdh.PrivateKey) (ECDecryptor, error) {
 	return ECDecryptor{sk, salt, info}, nil
 }
 
-func (e ECDecryptor) Decrypt(data []byte) ([]byte, error) {
+func (e ECDecryptor) Decrypt(_ []byte) ([]byte, error) {
 	// TK How to get the ephmeral key into here?
 	return nil, errors.New("ecdh standard decrypt unimplemented")
 }

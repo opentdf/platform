@@ -453,8 +453,8 @@ func versionSalt() []byte {
 }
 
 // ECDecrypt uses hybrid ECIES to decrypt the data.
-func (sc *StandardCrypto) ECDecrypt(keyID string, ephemeralPublicKey, ciphertext []byte) ([]byte, error) {
-	ska, ok := sc.keysByID[keyID]
+func (s *StandardCrypto) ECDecrypt(keyID string, ephemeralPublicKey, ciphertext []byte) ([]byte, error) {
+	ska, ok := s.keysByID[keyID]
 	if !ok {
 		return nil, fmt.Errorf("key [%s] not found", keyID)
 	}

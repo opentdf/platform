@@ -43,3 +43,12 @@ func (c PlatformConfiguration) PublicClientID() (string, error) {
 	}
 	return value, nil
 }
+
+func (c PlatformConfiguration) PublicClientLocalPort() (string, error) {
+	idpCfg := c.getIdpConfig()
+	value, ok := idpCfg["public_client_local_port"].(string)
+	if !ok {
+		return "", ErrPlatformPublicClientLocalPortNotFound
+	}
+	return value, nil
+}

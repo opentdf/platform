@@ -251,7 +251,7 @@ func (s StandardCrypto) RSAPublicKey(kid string) (string, error) {
 }
 
 func (s StandardCrypto) ECCertificate(kid string) (string, error) {
-	k, ok := s.keysByID[AlgorithmECP256R1]
+	k, ok := s.keysByID[kid]
 	if !ok {
 		return "", ErrCertNotFound
 	}
@@ -263,7 +263,7 @@ func (s StandardCrypto) ECCertificate(kid string) (string, error) {
 }
 
 func (s StandardCrypto) ECPublicKey(kid string) (string, error) {
-	k, ok := s.keysByID[AlgorithmECP256R1]
+	k, ok := s.keysByID[kid]
 	if !ok {
 		return "", ErrCertNotFound
 	}

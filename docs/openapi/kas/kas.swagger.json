@@ -149,11 +149,6 @@
         },
         "error": {
           "type": "string"
-        },
-        "ephemeralPublicKey": {
-          "type": "string",
-          "format": "byte",
-          "title": "Optional metadata for ECDH derived key wrapping.\nMaybe should be a generic 'context' object? We may need info/salt?"
         }
       }
     },

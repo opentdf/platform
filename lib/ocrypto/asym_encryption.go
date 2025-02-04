@@ -29,7 +29,7 @@ type PublicKeyEncryptor interface {
 	// Encrypt encrypts data with public key.
 	Encrypt(data []byte) ([]byte, error)
 
-	// PublicKeyInPemFormat Returns public key in pem format.
+	// PublicKeyInPemFormat Returns public key in pem format, or the empty string if not present
 	PublicKeyInPemFormat() (string, error)
 
 	// Type required to use the scheme for encryption - notably, if it procduces extra metadata.
@@ -81,7 +81,7 @@ func newECIES(pub *ecdh.PublicKey) (ECEncryptor, error) {
 }
 
 // NewAsymEncryption creates and returns a new AsymEncryption.
-// Deprecated: Use FromPEM instead.
+// Deprecated: Use FromPublicPEM instead.
 func NewAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
 	pub, err := getPublicPart(publicKeyInPem)
 	if err != nil {

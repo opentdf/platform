@@ -358,7 +358,6 @@ func addResultsToResponse(response *kaspb.RewrapResponse, result policyKAOResult
 			case kaoRes.Key != nil:
 				kaoResult.Status = kPermitStatus
 				kaoResult.Result = &kaspb.KeyAccessRewrapResult_KasWrappedKey{KasWrappedKey: kaoRes.Key}
-				kaoResult.EphemeralPublicKey = kaoRes.EphemeralPublicKey
 			default:
 				kaoResult.Status = kFailedStatus
 				kaoResult.Result = &kaspb.KeyAccessRewrapResult_Error{Error: "kao not processed by kas"}
@@ -409,7 +408,7 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 	}
 	var results policyKAOResults
 	if len(tdf3Reqs) > 0 {
-		results = p.tdf3Rewrap(ctx, tdf3Reqs, body.GetClientPublicKey(), entityInfo)
+		resp.SessionPublicKey, results = p.tdf3Rewrap(ctx, tdf3Reqs, body.GetClientPublicKey(), entityInfo)
 		addResultsToResponse(resp, results)
 	} else {
 		resp.SessionPublicKey, results = p.nanoTDFRewrap(ctx, nanoReqs, body.GetClientPublicKey(), entityInfo)
@@ -513,7 +512,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 	return policy, results, nil
 }
 
-func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entity *entityInfo) policyKAOResults {
+func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entity *entityInfo) (string, policyKAOResults) {
 	if p.Tracer != nil {
 		var span trace.Span
 		ctx, span = p.Tracer.Start(ctx, "rewrap-tdf3")
@@ -539,12 +538,22 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 	}
 	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies)
 	if accessErr != nil {
-		return failAllKaos(requests, err403("could not perform access"))
+		return "", failAllKaos(requests, err403("could not perform access"))
 	}
 
 	asymEncrypt, err := ocrypto.FromPublicPEM(clientPublicKey)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "ocrypto.NewAsymEncryption:", "err", err)
+		return "", failAllKaos(requests, err400("invalid request"))
+	}
+
+	var sessionKey string
+	if e, ok := asymEncrypt.(ocrypto.ECEncryptor); ok {
+		sessionKey, err = e.PublicKeyInPemFormat()
+		if err != nil {
+			p.Logger.WarnContext(ctx, "unable to serialize ephemeral key", "err", err)
+			return "", failAllKaos(requests, err400("invalid request"))
+		}
 	}
 
 	results := make(policyKAOResults, len(intermediateResults))
@@ -620,7 +629,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
 		}
 	}
-	return results
+	return sessionKey, results
 }
 
 func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entity *entityInfo) (string, policyKAOResults) {
@@ -653,7 +662,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 		return "", failAllKaos(requests, err403("could not perform access"))
 	}
 
-	privateKeyHandle, publicKeyHandle, err := p.CryptoProvider.GenerateEphemeralKasKeys()
+	privateKeyHandle, ephemeralKeyPEM, err := p.CryptoProvider.GenerateEphemeralKasKeys()
 	if err != nil {
 		return "", failAllKaos(requests, fmt.Errorf("failed to generate keypair: %w", err))
 	}
@@ -708,7 +717,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 			p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
 		}
 	}
-	return string(publicKeyHandle), results
+	return string(ephemeralKeyPEM), results
 }
 
 func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.UnsignedRewrapRequest_WithPolicyRequest) (*Policy, map[string]kaoResult) {

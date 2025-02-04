@@ -65,12 +65,24 @@ type entityInfo struct {
 	Token    string `json:"-"`
 }
 
-type kaoResult struct {
+type uncipheredResult struct {
 	ID    string
 	Key   []byte
 	Error error
 }
 
+type kaoResult struct {
+	ID    string
+	Key   []byte
+	Error error
+
+	// Optional: Present for EC wrapped responses
+	EphemeralPublicKey []byte
+}
+
+type intermediateResults map[string]map[string]uncipheredResult
+
+// From policy ID to KAO ID to result
 type policyKAOResults map[string]map[string]kaoResult
 
 const (
@@ -309,6 +321,13 @@ func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, err
 	return info, nil
 }
 
+func failedKAORewrap2(res map[string]uncipheredResult, kao *kaspb.UnsignedRewrapRequest_WithKeyAccessObject, err error) {
+	res[kao.GetKeyAccessObjectId()] = uncipheredResult{
+		ID:    kao.GetKeyAccessObjectId(),
+		Error: err,
+	}
+}
+
 func failedKAORewrap(res map[string]kaoResult, kao *kaspb.UnsignedRewrapRequest_WithKeyAccessObject, err error) {
 	res[kao.GetKeyAccessObjectId()] = kaoResult{
 		ID:    kao.GetKeyAccessObjectId(),
@@ -382,7 +401,7 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 	}
 	var results policyKAOResults
 	if len(tdf3Reqs) > 0 {
-		results = p.tdf3Rewrap(ctx, tdf3Reqs, body.GetClientPublicKey(), entityInfo)
+		resp.SessionPublicKey, results = p.tdf3Rewrap(ctx, tdf3Reqs, body.GetClientPublicKey(), entityInfo)
 		addResultsToResponse(resp, results)
 	} else {
 		resp.SessionPublicKey, results = p.nanoTDFRewrap(ctx, nanoReqs, body.GetClientPublicKey(), entityInfo)
@@ -408,8 +427,8 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 	return connect.NewResponse(resp), err
 }
 
-func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.UnsignedRewrapRequest_WithPolicyRequest) (*Policy, map[string]kaoResult, error) {
-	results := make(map[string]kaoResult)
+func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.UnsignedRewrapRequest_WithPolicyRequest) (*Policy, map[string]uncipheredResult, error) {
+	results := make(map[string]uncipheredResult)
 	anyValidKAOs := false
 	p.Logger.DebugContext(ctx, "extracting policy", "requestBody.policy", req.GetPolicy())
 	sDecPolicy, policyErr := base64.StdEncoding.DecodeString(req.GetPolicy().GetBody())
@@ -420,46 +439,53 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 
 	for _, kao := range req.GetKeyAccessObjects() {
 		if policyErr != nil {
-			failedKAORewrap(results, kao, err400("bad request"))
+			failedKAORewrap2(results, kao, err400("bad request"))
 			continue
 		}
-		var kidsToCheck []string
-		if kao.GetKeyAccessObject().GetKid() != "" {
-			kidsToCheck = []string{kao.GetKeyAccessObject().GetKid()}
-		} else {
-			p.Logger.InfoContext(ctx, "kid free kao")
-			for _, k := range p.KASConfig.Keyring {
-				if k.Algorithm == security.AlgorithmRSA2048 && k.Legacy {
-					kidsToCheck = append(kidsToCheck, k.KID)
+
+		var symKey []byte
+		var err error
+		switch kao.GetKeyAccessObject().GetKeyType() {
+		case "ec-wrapped":
+			symKey, err = p.CryptoProvider.ECDecrypt(kao.GetKeyAccessObject().GetKid(), kao.GetKeyAccessObject().GetEphemeralPublicKey(), kao.GetKeyAccessObject().GetWrappedKey())
+		case "wrapped":
+			var kidsToCheck []string
+			if kao.GetKeyAccessObject().GetKid() != "" {
+				kidsToCheck = []string{kao.GetKeyAccessObject().GetKid()}
+			} else {
+				p.Logger.InfoContext(ctx, "kid free kao")
+				for _, k := range p.KASConfig.Keyring {
+					if k.Algorithm == security.AlgorithmRSA2048 && k.Legacy {
+						kidsToCheck = append(kidsToCheck, k.KID)
+					}
+				}
+				if len(kidsToCheck) == 0 {
+					p.Logger.WarnContext(ctx, "failure to find legacy kids for rsa")
+					failedKAORewrap2(results, kao, err400("bad request"))
+					continue
 				}
 			}
-			if len(kidsToCheck) == 0 {
-				p.Logger.WarnContext(ctx, "failure to find legacy kids for rsa")
-				failedKAORewrap(results, kao, err400("bad request"))
-				continue
-			}
-		}
 
-		symKey, err := p.CryptoProvider.RSADecrypt(crypto.SHA1, kidsToCheck[0], "", kao.GetKeyAccessObject().GetWrappedKey())
-		for _, kid := range kidsToCheck[1:] {
-			p.Logger.WarnContext(ctx, "continue paging through legacy KIDs for kid free kao", "err", err)
-			if err == nil {
-				break
+			symKey, err = p.CryptoProvider.RSADecrypt(crypto.SHA1, kidsToCheck[0], "", kao.GetKeyAccessObject().GetWrappedKey())
+			for _, kid := range kidsToCheck[1:] {
+				p.Logger.WarnContext(ctx, "continue paging through legacy KIDs for kid free kao", "err", err)
+				if err == nil {
+					break
+				}
+				symKey, err = p.CryptoProvider.RSADecrypt(crypto.SHA1, kid, "", kao.GetKeyAccessObject().GetWrappedKey())
 			}
-			symKey, err = p.CryptoProvider.RSADecrypt(crypto.SHA1, kid, "", kao.GetKeyAccessObject().GetWrappedKey())
 		}
 		if err != nil {
 			p.Logger.WarnContext(ctx, "failure to decrypt dek", "err", err)
-			failedKAORewrap(results, kao, err400("bad request"))
+			failedKAORewrap2(results, kao, err400("bad request"))
 			continue
 		}
 
-		err = verifyPolicyBinding(ctx, []byte(req.GetPolicy().GetBody()), kao, symKey, *p.Logger)
-		if err != nil {
-			failedKAORewrap(results, kao, err)
+		if err := verifyPolicyBinding(ctx, []byte(req.GetPolicy().GetBody()), kao, symKey, *p.Logger); err != nil {
+			failedKAORewrap2(results, kao, err)
 			continue
 		}
-		results[kao.GetKeyAccessObjectId()] = kaoResult{
+		results[kao.GetKeyAccessObjectId()] = uncipheredResult{
 			ID:  kao.GetKeyAccessObjectId(),
 			Key: symKey,
 		}
@@ -479,19 +505,19 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 	return policy, results, nil
 }
 
-func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entity *entityInfo) policyKAOResults {
+func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entity *entityInfo) (string, policyKAOResults) {
 	if p.Tracer != nil {
 		var span trace.Span
 		ctx, span = p.Tracer.Start(ctx, "rewrap-tdf3")
 		defer span.End()
 	}
 
-	results := make(policyKAOResults)
+	ir := make(intermediateResults)
 	var policies []*Policy
 	policyReqs := make(map[*Policy]*kaspb.UnsignedRewrapRequest_WithPolicyRequest)
 	for _, req := range requests {
 		policy, kaoResults, err := p.verifyRewrapRequests(ctx, req)
-		results[req.GetPolicy().GetId()] = kaoResults
+		ir[req.GetPolicy().GetId()] = kaoResults
 		if err != nil {
 			continue
 		}
@@ -505,21 +531,42 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 	}
 	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies)
 	if accessErr != nil {
-		failAllKaos(requests, results, err403("could not perform access"))
-		return results
+		return "", failAllKaos(requests, err403("could not perform access"))
 	}
 
-	asymEncrypt, err := ocrypto.NewAsymEncryption(clientPublicKey)
+	asymEncrypt, err := ocrypto.FromPublicPEM(clientPublicKey)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "ocrypto.NewAsymEncryption:", "err", err)
+		return "", failAllKaos(requests, err400("invalid request"))
 	}
 
+	var sessionKey string
+	if e, ok := asymEncrypt.(ocrypto.ECEncryptor); ok {
+		sessionKey, err = e.PublicKeyInPemFormat()
+		if err != nil {
+			p.Logger.WarnContext(ctx, "unable to serialize ephemeral key", "err", err)
+			return "", failAllKaos(requests, err400("invalid request"))
+		}
+	}
+
+	results := make(policyKAOResults, len(ir))
 	for _, pdpAccess := range pdpAccessResults {
 		policy := pdpAccess.Policy
 		req, ok := policyReqs[policy]
-		kaoResults := results[req.GetPolicy().GetId()]
-		if !ok { // this should not happen
+		if !ok {
+			p.Logger.WarnContext(ctx, "policy not found in policyReqs", "policy.uuid", policy.UUID)
 			continue
+		}
+		imResults, ok := ir[req.GetPolicy().GetId()]
+		if !ok {
+			// this should not happen
+			p.Logger.WarnContext(ctx, "policy not found in policyReq response", "policy.uuid", policy.UUID)
+			continue
+		}
+		var resultPerPolicy map[string]kaoResult
+		if resultPerPolicy, ok = results[req.GetPolicy().GetId()]; !ok {
+			resultPerPolicy = make(map[string]kaoResult)
+			results[req.GetPolicy().GetId()] = resultPerPolicy
 		}
 		access := pdpAccess.Access
 
@@ -527,8 +574,14 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		kasPolicy := ConvertToAuditKasPolicy(*policy)
 
 		for _, kao := range req.GetKeyAccessObjects() {
-			kaoRes := kaoResults[kao.GetKeyAccessObjectId()]
+			kaoID := kao.GetKeyAccessObjectId()
+			kaoRes := imResults[kaoID]
 			if kaoRes.Error != nil {
+				// copy error into resultPerPolicy
+				resultPerPolicy[kaoID] = kaoResult{
+					ID:    kaoID,
+					Error: kaoRes.Error,
+				}
 				continue
 			}
 
@@ -543,7 +596,10 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 
 			if !access {
 				p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-				failedKAORewrap(kaoResults, kao, err403("forbidden"))
+				resultPerPolicy[kaoID] = kaoResult{
+					ID:    kaoID,
+					Error: err403("forbidden"),
+				}
 				continue
 			}
 
@@ -551,18 +607,22 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			if err != nil {
 				p.Logger.WarnContext(ctx, "rewrap: ocrypto.AsymEncryption.encrypt failed", "err", err, "clientPublicKey", clientPublicKey)
 				p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
-				failedKAORewrap(kaoResults, kao, err400("bad key for rewrap"))
+				resultPerPolicy[kaoID] = kaoResult{
+					ID:    kaoID,
+					Error: err400("bad key for rewrap"),
+				}
 				continue
 			}
-			kaoResults[kao.GetKeyAccessObjectId()] = kaoResult{
-				ID:  kao.GetKeyAccessObjectId(),
-				Key: rewrappedKey,
+			resultPerPolicy[kaoID] = kaoResult{
+				ID:                 kaoID,
+				Key:                rewrappedKey,
+				EphemeralPublicKey: asymEncrypt.EphemeralKey(),
 			}
 
 			p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
 		}
 	}
-	return results
+	return sessionKey, results
 }
 
 func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entity *entityInfo) (string, policyKAOResults) {
@@ -592,20 +652,17 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 
 	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies)
 	if accessErr != nil {
-		failAllKaos(requests, results, err403("could not perform access"))
-		return "", results
+		return "", failAllKaos(requests, err403("could not perform access"))
 	}
 
-	privateKeyHandle, publicKeyHandle, err := p.CryptoProvider.GenerateEphemeralKasKeys()
+	privateKeyHandle, ephemeralKeyPEM, err := p.CryptoProvider.GenerateEphemeralKasKeys()
 	if err != nil {
-		failAllKaos(requests, results, fmt.Errorf("failed to generate keypair: %w", err))
-		return "", results
+		return "", failAllKaos(requests, fmt.Errorf("failed to generate keypair: %w", err))
 	}
 	sessionKey, err := p.CryptoProvider.GenerateNanoTDFSessionKey(privateKeyHandle, []byte(clientPublicKey))
 	if err != nil {
 		p.Logger.DebugContext(ctx, "GenerateNanoTDFSessionKey", "err", err)
-		failAllKaos(requests, results, fmt.Errorf("failed to generate session key: %w", err))
-		return "", results
+		return "", failAllKaos(requests, fmt.Errorf("failed to generate session key: %w", err))
 	}
 
 	for _, pdpAccess := range pdpAccessResults {
@@ -653,7 +710,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 			p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
 		}
 	}
-	return string(publicKeyHandle), results
+	return string(ephemeralKeyPEM), results
 }
 
 func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.UnsignedRewrapRequest_WithPolicyRequest) (*Policy, map[string]kaoResult) {
@@ -767,10 +824,20 @@ func wrapKeyAES(sessionKey, dek []byte) ([]byte, error) {
 	return cipherText, nil
 }
 
-func failAllKaos(reqs []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, results policyKAOResults, err error) {
+func failAllKaos(reqs []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, err error) policyKAOResults {
+	r := make(policyKAOResults)
 	for _, req := range reqs {
+		pi := req.GetPolicy().GetId()
+		if _, ok := r[pi]; !ok {
+			r[pi] = make(map[string]kaoResult, len(req.GetKeyAccessObjects()))
+		}
 		for _, kao := range req.GetKeyAccessObjects() {
-			failedKAORewrap(results[req.GetPolicy().GetId()], kao, err)
+			pr := kaoResult{
+				ID:    kao.GetKeyAccessObjectId(),
+				Error: err,
+			}
+			r[pi][pr.ID] = pr
 		}
 	}
+	return r
 }

@@ -1145,7 +1145,11 @@ func (s *TDFSuite) Test_ValidateSchema() {
 					return err
 				}
 
-				(data["payload"].(map[string]interface{}))["tdf_spec_version"] = nil //nolint:forcetypeassert // testonly code
+				if m, ok := data["payload"].(map[string]interface{}); ok {
+					m["tdf_spec_version"] = nil
+				} else {
+					s.Fail("payload type invalid")
+				}
 
 				err = json.NewEncoder(dst).Encode(data)
 				return err

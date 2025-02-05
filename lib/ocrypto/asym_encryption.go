@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/ecdh"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1" //nolint:gosec // used for padding which is safe
@@ -63,6 +64,12 @@ func FromPublicPEM(publicKeyInPem string) (PublicKeyEncryptor, error) {
 	switch pub := pub.(type) {
 	case *rsa.PublicKey:
 		return &AsymEncryption{pub}, nil
+	case *ecdsa.PublicKey:
+		e, err := pub.ECDH()
+		if err != nil {
+			return nil, err
+		}
+		return newECIES(e)
 	case *ecdh.PublicKey:
 		return newECIES(pub)
 	default:
@@ -135,7 +142,11 @@ func (e AsymEncryption) EphemeralKey() []byte {
 }
 
 func (e ECEncryptor) EphemeralKey() []byte {
-	return e.ek.PublicKey().Bytes()
+	publicKeyBytes, err := x509.MarshalPKIXPublicKey(e.ek.PublicKey())
+	if err != nil {
+		return nil
+	}
+	return publicKeyBytes
 }
 
 func (e AsymEncryption) Metadata() (map[string]string, error) {
@@ -144,7 +155,7 @@ func (e AsymEncryption) Metadata() (map[string]string, error) {
 
 func (e ECEncryptor) Metadata() (map[string]string, error) {
 	m := make(map[string]string)
-	m["ephemeralPublicKey"] = string(e.ek.PublicKey().Bytes())
+	m["ephemeralPublicKey"] = string(e.EphemeralKey())
 	return m, nil
 }
 

@@ -119,14 +119,29 @@ func (e ECDecryptor) Decrypt(_ []byte) ([]byte, error) {
 }
 
 func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
-	ekDSA, err := UncompressECPubKey(convCurve(e.sk.Curve()), ephemeral)
-	if err != nil {
-		return nil, err
-	}
+	var ek *ecdh.PublicKey
 
-	ek, err := ekDSA.ECDH()
-	if err != nil {
-		return nil, fmt.Errorf("ecdh failure: %w", err)
+	if pubFromDSN, err := x509.ParsePKIXPublicKey(ephemeral); err == nil {
+		switch pubFromDSN := pubFromDSN.(type) {
+		case *ecdsa.PublicKey:
+			ek, err = ConvertToECDHPublicKey(pubFromDSN)
+			if err != nil {
+				return nil, fmt.Errorf("ecdh conversion failure: %w", err)
+			}
+		case *ecdh.PublicKey:
+			ek = pubFromDSN
+		default:
+			return nil, errors.New("not an supported type of public key")
+		}
+	} else {
+		ekDSA, err := UncompressECPubKey(convCurve(e.sk.Curve()), ephemeral)
+		if err != nil {
+			return nil, err
+		}
+		ek, err = ekDSA.ECDH()
+		if err != nil {
+			return nil, fmt.Errorf("ecdh failure: %w", err)
+		}
 	}
 
 	ikm, err := e.sk.ECDH(ek)

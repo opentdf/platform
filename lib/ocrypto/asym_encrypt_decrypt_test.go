@@ -218,7 +218,7 @@ wVyElqp317Ksz+GtTIc+DE6oryxK3tZd4hrj9fXT4KiJvQ4pcRjpePgH7B8=
 	}
 
 	for _, test := range rsaKeys {
-		asymEncryptor, err := NewAsymEncryption(test.publicKey)
+		asymEncryptor, err := FromPublicPEM(test.publicKey)
 		if err != nil {
 			t.Fatalf("NewAsymEncryption - failed: %v", err)
 		}
@@ -229,7 +229,7 @@ wVyElqp317Ksz+GtTIc+DE6oryxK3tZd4hrj9fXT4KiJvQ4pcRjpePgH7B8=
 			t.Fatalf("AsymEncryption encrypt failed: %v", err)
 		}
 
-		asymDecryptor, err := NewAsymDecryption(test.privateKey)
+		asymDecryptor, err := FromPrivatePEM(test.privateKey)
 		if err != nil {
 			t.Fatalf("NewAsymDecryption - failed: %v", err)
 		}

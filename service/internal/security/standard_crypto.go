@@ -220,6 +220,7 @@ func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]St
 
 	return &StandardCrypto{
 		keysByAlg: keysByAlg,
+		keysByID:  keysByID,
 	}, nil
 }
 
@@ -235,11 +236,11 @@ func (s StandardCrypto) FindKID(alg string) string {
 func (s StandardCrypto) RSAPublicKey(kid string) (string, error) {
 	k, ok := s.keysByID[kid]
 	if !ok {
-		return "", ErrCertNotFound
+		return "", fmt.Errorf("no rsa key with id [%s]: %w", kid, ErrCertNotFound)
 	}
 	rsa, ok := k.(StandardRSACrypto)
 	if !ok {
-		return "", ErrCertNotFound
+		return "", fmt.Errorf("key with id [%s] is not an RSA key: %w", kid, ErrCertNotFound)
 	}
 
 	pem, err := rsa.asymEncryption.PublicKeyInPemFormat()
@@ -253,11 +254,11 @@ func (s StandardCrypto) RSAPublicKey(kid string) (string, error) {
 func (s StandardCrypto) ECCertificate(kid string) (string, error) {
 	k, ok := s.keysByID[kid]
 	if !ok {
-		return "", ErrCertNotFound
+		return "", fmt.Errorf("no ec key with id [%s]: %w", kid, ErrCertNotFound)
 	}
 	ec, ok := k.(StandardECCrypto)
 	if !ok {
-		return "", ErrCertNotFound
+		return "", fmt.Errorf("key with id [%s] is not an EC key: %w", kid, ErrCertNotFound)
 	}
 	return ec.ecCertificatePEM, nil
 }

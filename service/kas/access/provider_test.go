@@ -1,10 +1,9 @@
-package kas
+package access
 
 import (
 	"testing"
 
 	"github.com/opentdf/platform/service/internal/security"
-	"github.com/opentdf/platform/service/kas/access"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,14 +12,14 @@ func TestInferLegacyKeys_empty(t *testing.T) {
 }
 
 func TestInferLegacyKeys_singles(t *testing.T) {
-	one := []access.CurrentKeyFor{
+	one := []CurrentKeyFor{
 		{
 			Algorithm: security.AlgorithmRSA2048,
 			KID:       "rsa",
 		},
 	}
 
-	oneLegacy := []access.CurrentKeyFor{
+	oneLegacy := []CurrentKeyFor{
 		{
 			Algorithm: security.AlgorithmRSA2048,
 			KID:       "rsa",
@@ -34,7 +33,7 @@ func TestInferLegacyKeys_singles(t *testing.T) {
 }
 
 func TestInferLegacyKeys_Mixed(t *testing.T) {
-	in := []access.CurrentKeyFor{
+	in := []CurrentKeyFor{
 		{
 			Algorithm: security.AlgorithmRSA2048,
 			KID:       "a",

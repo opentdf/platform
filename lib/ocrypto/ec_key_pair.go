@@ -19,12 +19,31 @@ import (
 
 type ECCMode uint8
 
+type KeyType int
+
+const (
+	RSAKey KeyType = iota
+	ECKey
+)
+
 const (
 	ECCModeSecp256r1 ECCMode = 0
 	ECCModeSecp384r1 ECCMode = 1
 	ECCModeSecp521r1 ECCMode = 2
 	ECCModeSecp256k1 ECCMode = 3
 )
+
+const (
+	ECCurveP256Size = 256
+	ECCurveP384Size = 384
+	ECCurveP521Size = 521
+)
+
+type KeyPair interface {
+	PublicKeyInPemFormat() (string, error)
+	PrivateKeyInPemFormat() (string, error)
+	GetKeyType() KeyType
+}
 
 type ECKeyPair struct {
 	PrivateKey *ecdsa.PrivateKey
@@ -63,6 +82,20 @@ func (mode ECCMode) String() string {
 		return "ec:secp256k1"
 	}
 	return "unspecified"
+}
+
+// ECSizeToMode converts a curve size to an ECCMode
+func ECSizeToMode(size int) (ECCMode, error) {
+	switch size {
+	case ECCurveP256Size:
+		return ECCModeSecp256r1, nil
+	case ECCurveP384Size:
+		return ECCModeSecp384r1, nil
+	case ECCurveP521Size:
+		return ECCModeSecp521r1, nil
+	default:
+		return 0, fmt.Errorf("unsupported EC curve size: %d", size)
+	}
 }
 
 // NewECKeyPair Generates an EC key pair of the given bit size.
@@ -360,4 +393,38 @@ func ECPublicKeyInPemFormat(publicKey ecdsa.PublicKey) (string, error) {
 	)
 
 	return string(publicKeyPem), nil
+}
+
+// GetECKeySize returns the curve size from a PEM-encoded EC public key
+func GetECKeySize(pemData []byte) (int, error) {
+	block, _ := pem.Decode(pemData)
+	if block == nil {
+		return 0, fmt.Errorf("failed to parse PEM block")
+	}
+
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse public key: %w", err)
+	}
+
+	ecKey, ok := pub.(*ecdsa.PublicKey)
+	if !ok {
+		return 0, fmt.Errorf("not an EC key")
+	}
+
+	switch ecKey.Curve {
+	case elliptic.P256():
+		return ECCurveP256Size, nil
+	case elliptic.P384():
+		return ECCurveP384Size, nil
+	case elliptic.P521():
+		return ECCurveP521Size, nil
+	default:
+		return 0, fmt.Errorf("unknown curve")
+	}
+}
+
+// GetKeyType returns the key type (ECKey)
+func (keyPair ECKeyPair) GetKeyType() KeyType {
+	return ECKey
 }

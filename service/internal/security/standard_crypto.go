@@ -2,6 +2,7 @@ package security
 
 import (
 	"crypto"
+	"crypto/ecdh"
 	"crypto/elliptic"
 	"crypto/sha256"
 	"crypto/x509"
@@ -60,6 +61,9 @@ type StandardECCrypto struct {
 	KeyPairInfo
 	ecPrivateKeyPem  string
 	ecCertificatePEM string
+
+	// Lazily filled in
+	sk *ecdh.PrivateKey
 }
 
 // List of keys by identifier
@@ -426,4 +430,31 @@ func versionSalt() []byte {
 	digest := sha256.New()
 	digest.Write([]byte(kNanoTDFMagicStringAndVersion))
 	return digest.Sum(nil)
+}
+
+// ECDecrypt uses hybrid ECIES to decrypt the data.
+func (s *StandardCrypto) ECDecrypt(keyID string, ephemeralPublicKey, ciphertext []byte) ([]byte, error) {
+	ska, ok := s.keysByID[keyID]
+	if !ok {
+		return nil, fmt.Errorf("key [%s] not found", keyID)
+	}
+	sk, ok := ska.(StandardECCrypto)
+	if !ok {
+		return nil, fmt.Errorf("key [%s] is not an EC key", keyID)
+	}
+	if sk.sk == nil {
+		// Parse the private key
+		loaded, err := ocrypto.ECPrivateKeyFromPem([]byte(sk.ecPrivateKeyPem))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse EC private key: %w", err)
+		}
+		sk.sk = loaded
+	}
+
+	ed, err := ocrypto.NewECDecryptor(sk.sk)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create EC decryptor: %w", err)
+	}
+
+	return ed.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
 }

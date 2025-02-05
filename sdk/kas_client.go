@@ -20,12 +20,13 @@ import (
 
 const (
 	secondsPerMinute = 60
+	statusPermit     = "permit"
 )
 
 type KASClient struct {
 	accessTokenSource auth.AccessTokenSource
 	dialOptions       []grpc.DialOption
-	sessionKey        *ocrypto.RsaKeyPair
+	sessionKey        ocrypto.KeyPair
 }
 
 type kaoResult struct {
@@ -39,7 +40,7 @@ type decryptor interface {
 	Decrypt(ctx context.Context, results []kaoResult) (int, error)
 }
 
-func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, sessionKey *ocrypto.RsaKeyPair) *KASClient {
+func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, sessionKey ocrypto.KeyPair) *KASClient {
 	return &KASClient{
 		accessTokenSource: accessTokenSource,
 		dialOptions:       dialOptions,
@@ -113,7 +114,7 @@ func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRew
 	for _, results := range response.GetResponses() {
 		var kaoKeys []kaoResult
 		for _, kao := range results.GetResults() {
-			if kao.GetStatus() == "permit" {
+			if kao.GetStatus() == statusPermit {
 				wrappedKey := kao.GetKasWrappedKey()
 				key, err := aesGcm.Decrypt(wrappedKey)
 				if err != nil {
@@ -144,23 +145,42 @@ func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.UnsignedRewrapR
 		return nil, fmt.Errorf("error making rewrap request to kas: %w", err)
 	}
 
+	if k.sessionKey.GetKeyType() == ocrypto.ECKey {
+		return k.handleECKeyResponse(response)
+	}
+	return k.handleRSAKeyResponse(response)
+}
+
+func (k *KASClient) handleECKeyResponse(response *kas.RewrapResponse) (map[string][]kaoResult, error) {
+	kasEphemeralPublicKey := response.GetSessionPublicKey()
 	clientPrivateKey, err := k.sessionKey.PrivateKeyInPemFormat()
 	if err != nil {
-		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
+		return nil, fmt.Errorf("failed to get private key: %w", err)
 	}
-
-	asymDecryption, err := ocrypto.NewAsymDecryption(clientPrivateKey)
+	ecdhKey, err := ocrypto.ComputeECDHKey([]byte(clientPrivateKey), []byte(kasEphemeralPublicKey))
 	if err != nil {
-		return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
+		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
+	}
+	sessionKey, err := ocrypto.CalculateHKDF([]byte("salt"), ecdhKey)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed: %w", err)
 	}
 
+	aesGcm, err := ocrypto.NewAESGcm(sessionKey)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.NewAESGcm failed: %w", err)
+	}
+
+	return k.processECResponse(response, aesGcm)
+}
+
+func (k *KASClient) processECResponse(response *kas.RewrapResponse, aesGcm ocrypto.AesGcm) (map[string][]kaoResult, error) {
 	policyResults := make(map[string][]kaoResult)
 	for _, results := range response.GetResponses() {
 		var kaoKeys []kaoResult
 		for _, kao := range results.GetResults() {
-			if kao.GetStatus() == "permit" {
-				wrappedKey := kao.GetKasWrappedKey()
-				key, err := asymDecryption.Decrypt(wrappedKey)
+			if kao.GetStatus() == statusPermit {
+				key, err := aesGcm.Decrypt(kao.GetKasWrappedKey())
 				if err != nil {
 					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
 				} else {
@@ -172,7 +192,41 @@ func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.UnsignedRewrapR
 		}
 		policyResults[results.GetPolicyId()] = kaoKeys
 	}
+	return policyResults, nil
+}
 
+func (k *KASClient) handleRSAKeyResponse(response *kas.RewrapResponse) (map[string][]kaoResult, error) {
+	clientPrivateKey, err := k.sessionKey.PrivateKeyInPemFormat()
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
+	}
+
+	asymDecryption, err := ocrypto.NewAsymDecryption(clientPrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
+	}
+
+	return k.processRSAResponse(response, asymDecryption)
+}
+
+func (k *KASClient) processRSAResponse(response *kas.RewrapResponse, asymDecryption ocrypto.AsymDecryption) (map[string][]kaoResult, error) {
+	policyResults := make(map[string][]kaoResult)
+	for _, results := range response.GetResponses() {
+		var kaoKeys []kaoResult
+		for _, kao := range results.GetResults() {
+			if kao.GetStatus() == statusPermit {
+				key, err := asymDecryption.Decrypt(kao.GetKasWrappedKey())
+				if err != nil {
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
+				} else {
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key})
+				}
+			} else {
+				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError())})
+			}
+		}
+		policyResults[results.GetPolicyId()] = kaoKeys
+	}
 	return policyResults, nil
 }
 

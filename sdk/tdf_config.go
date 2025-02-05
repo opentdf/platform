@@ -13,6 +13,10 @@ const (
 	maxSegmentSize     = defaultSegmentSize * 2
 	minSegmentSize     = 16 * 1024
 	kasPublicKeyPath   = "/kas_public_key"
+	DefaultRSAKeySize  = 2048
+	ECKeySize256       = 256
+	ECKeySize384       = 384
+	ECKeySize521       = 521
 )
 
 type TDFFormat = int
@@ -63,33 +67,20 @@ type TDFConfig struct {
 	attributeValues           []*policy.Value
 	kasInfoList               []KASInfo
 	splitPlan                 []keySplitStep
+	keyType                   ocrypto.KeyType
+	keySize                   int // For RSA this is key size, for EC this is curve size
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
-	rsaKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
-	}
-
-	publicKey, err := rsaKeyPair.PublicKeyInPemFormat()
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
-	}
-
-	privateKey, err := rsaKeyPair.PublicKeyInPemFormat()
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
-	}
-
 	c := &TDFConfig{
 		autoconfigure:             true,
-		tdfPrivateKey:             privateKey,
-		tdfPublicKey:              publicKey,
 		defaultSegmentSize:        defaultSegmentSize,
 		enableEncryption:          true,
 		tdfFormat:                 JSONFormat,
 		integrityAlgorithm:        HS256,
 		segmentIntegrityAlgorithm: GMAC,
+		keyType:                   ocrypto.RSAKey,    // default to RSA
+		keySize:                   DefaultRSAKeySize, // default size
 	}
 
 	for _, o := range opt {
@@ -99,7 +90,58 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 		}
 	}
 
+	publicKey, privateKey, err := generateKeyPair(c.keyType, c.keySize)
+	if err != nil {
+		return nil, err
+	}
+
+	c.tdfPrivateKey = privateKey
+	c.tdfPublicKey = publicKey
+
 	return c, nil
+}
+
+func generateKeyPair(keyType ocrypto.KeyType, keySize int) (string, string, error) {
+	if keyType == ocrypto.RSAKey {
+		return generateRSAKeyPair(keySize)
+	}
+	return generateECKeyPair(keySize)
+}
+
+func generateRSAKeyPair(keySize int) (string, string, error) {
+	rsaKeyPair, err := ocrypto.NewRSAKeyPair(keySize)
+	if err != nil {
+		return "", "", fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
+	}
+	publicKey, err := rsaKeyPair.PublicKeyInPemFormat()
+	if err != nil {
+		return "", "", fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
+	}
+	privateKey, err := rsaKeyPair.PrivateKeyInPemFormat()
+	if err != nil {
+		return "", "", fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
+	}
+	return publicKey, privateKey, nil
+}
+
+func generateECKeyPair(keySize int) (string, string, error) {
+	mode, err := ocrypto.ECSizeToMode(keySize)
+	if err != nil {
+		return "", "", err
+	}
+	ecKeyPair, err := ocrypto.NewECKeyPair(mode)
+	if err != nil {
+		return "", "", fmt.Errorf("ocrypto.NewECKeyPair failed: %w", err)
+	}
+	publicKey, err := ecKeyPair.PublicKeyInPemFormat()
+	if err != nil {
+		return "", "", fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
+	}
+	privateKey, err := ecKeyPair.PrivateKeyInPemFormat()
+	if err != nil {
+		return "", "", fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
+	}
+	return publicKey, privateKey, nil
 }
 
 // WithDataAttributes appends the given data attributes to the bound policy
@@ -213,6 +255,30 @@ func WithAutoconfigure(enable bool) TDFOption {
 	}
 }
 
+func WithKeyType(keyType ocrypto.KeyType, size int) TDFOption {
+	return func(c *TDFConfig) error {
+		switch keyType {
+		case ocrypto.RSAKey:
+			if size < 2048 || size > 4096 {
+				return fmt.Errorf("invalid RSA key size: %d, must be between 2048 and 4096", size)
+			}
+		case ocrypto.ECKey:
+			switch size {
+			case ECKeySize256, ECKeySize384, ECKeySize521:
+				// valid sizes
+			default:
+				return fmt.Errorf("invalid EC curve size: %d, must be one of 256, 384, or 521", size)
+			}
+		default:
+			return fmt.Errorf("unsupported key type")
+		}
+
+		c.keyType = keyType
+		c.keySize = size
+		return nil
+	}
+}
+
 // Schema Validation where 0 = none (skip), 1 = lax (allowing novel entries, 'falsy' values for unkowns), 2 = strict (rejecting novel entries, strict match to manifest schema)
 type SchemaValidationIntensity int
 
@@ -230,16 +296,40 @@ type TDFReaderConfig struct {
 	disableAssertionVerification bool
 
 	schemaValidationIntensity SchemaValidationIntensity
+	kasSessionKey             ocrypto.KeyPair
+	keyType                   ocrypto.KeyType
+	keySize                   int // For RSA this is key size, for EC this is curve size
 }
 
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
+	var err error
 	c := &TDFReaderConfig{
 		disableAssertionVerification: false,
+		keyType:                      ocrypto.RSAKey,
+		keySize:                      DefaultRSAKeySize,
 	}
+
 	for _, o := range opt {
 		err := o(c)
 		if err != nil {
 			return nil, err
+		}
+	}
+
+	if c.keyType == ocrypto.RSAKey {
+		c.kasSessionKey, err = ocrypto.NewRSAKeyPair(c.keySize)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create RSA key pair: %w", err)
+		}
+	} else {
+		var eccMode ocrypto.ECCMode
+		eccMode, err = ocrypto.ECSizeToMode(c.keySize)
+		if err != nil {
+			return nil, err
+		}
+		c.kasSessionKey, err = ocrypto.NewECKeyPair(eccMode)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create EC key pair: %w", err)
 		}
 	}
 
@@ -263,6 +353,30 @@ func WithSchemaValidation(intensity SchemaValidationIntensity) TDFReaderOption {
 func WithDisableAssertionVerification(disable bool) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		c.disableAssertionVerification = disable
+		return nil
+	}
+}
+
+func WithSessionKeyType(keyType ocrypto.KeyType, size int) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		switch keyType {
+		case ocrypto.RSAKey:
+			if size < 2048 || size > 4096 {
+				return fmt.Errorf("invalid RSA key size: %d, must be between 2048 and 4096", size)
+			}
+		case ocrypto.ECKey:
+			switch size {
+			case ECKeySize256, ECKeySize384, ECKeySize521:
+				// valid sizes
+			default:
+				return fmt.Errorf("invalid EC curve size: %d, must be one of 256, 384, or 521", size)
+			}
+		default:
+			return fmt.Errorf("unsupported key type")
+		}
+
+		c.keyType = keyType
+		c.keySize = size
 		return nil
 	}
 }

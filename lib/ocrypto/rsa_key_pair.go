@@ -76,3 +76,8 @@ func (keyPair RsaKeyPair) KeySize() (int, error) {
 	}
 	return keyPair.privateKey.N.BitLen(), nil
 }
+
+// GetKeyType returns the key type (RSAKey)
+func (keyPair RsaKeyPair) GetKeyType() KeyType {
+	return RSAKey
+}

@@ -99,6 +99,10 @@
               "encryptedMetadata": {
                 "description": "Metadata associated with the TDF, and the request. The contents of the metadata are freeform, and are used to pass information from the client, and any plugins that may be in use by the KAS. The metadata stored here should not be used for primary access decisions. Base64.",
                 "type": ["string", "null"]
+              },
+              "ephemeralPublicKey": {
+                "description": "For ECC wrapped keys, the client public key portion used, with the KAS public key identified with the key id, to derive a shared key that encrypts the wrapped key.",
+                "type": ["string", "null"]
               }
             }
           },

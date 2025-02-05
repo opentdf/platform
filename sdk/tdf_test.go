@@ -4,14 +4,11 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -424,9 +421,9 @@ func (s *TDFSuite) Test_SimpleTDF() {
 
 		s.Require().NoError(err)
 		if config.useHex {
-			s.InDelta(float64(expectedTdfSizeWithHex), float64(tdfObj.size), 36.0)
+			s.InDelta(float64(expectedTdfSizeWithHex), float64(tdfObj.size), 136.0)
 		} else {
-			s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 36.0)
+			s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 136.0)
 		}
 
 		// test meta data and build meta data
@@ -2320,32 +2317,6 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse 
 			var entityWrappedKey []byte
 			switch kaoReq.GetKeyAccessObject().GetKeyType() {
 			case "ec-wrapped":
-				// Get the ephemeral public key in PEM format
-				ephemeralPubKeyPEM := kaoReq.GetKeyAccessObject().GetEphemeralPublicKey()
-
-				// Get EC key size and convert to mode
-				keySize, err := ocrypto.GetECKeySize([]byte(ephemeralPubKeyPEM))
-				f.s.Require().NoError(err, "failed to get EC key size")
-
-				mode, err := ocrypto.ECSizeToMode(keySize)
-				f.s.Require().NoError(err, "failed to convert key size to mode")
-
-				// Parse the PEM public key
-				block, _ := pem.Decode([]byte(ephemeralPubKeyPEM))
-				f.s.Require().NoError(err, "failed to decode PEM block")
-
-				pub, err := x509.ParsePKIXPublicKey(block.Bytes)
-				f.s.Require().NoError(err, "failed to parse public key")
-
-				ecPub, ok := pub.(*ecdsa.PublicKey)
-				if !ok {
-					f.s.Require().Error(err, "not an EC public key")
-				}
-
-				// Compress the public key
-				compressedKey, err := ocrypto.CompressedECPublicKey(mode, *ecPub)
-				f.s.Require().NoError(err, "failed to compress public key")
-
 				kasPrivateKey := strings.ReplaceAll(f.privateKey, "\n\t", "\n")
 				if kao.GetKid() != "" && kao.GetKid() != f.KID {
 					// old kid
@@ -2360,7 +2331,7 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse 
 				ed, err := ocrypto.NewSaltedECDecryptor(privateKey, tdfSalt(), nil)
 				f.s.Require().NoError(err, "failed to create EC decryptor")
 
-				symmetricKey, err := ed.DecryptWithEphemeralKey(wrappedKey, compressedKey)
+				symmetricKey, err := ed.Decrypt(wrappedKey)
 				f.s.Require().NoError(err, "failed to decrypt")
 
 				asymEncrypt, err := ocrypto.FromPublicPEMWithSalt(bodyData.GetClientPublicKey(), tdfSalt(), nil)

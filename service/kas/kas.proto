@@ -48,9 +48,9 @@ message KeyAccess {
   // header is only used for NanoTDFs
   bytes header = 9;
 
-  // For wrapping with an ECDH derived key, when type=ec-wrapped.
-  // Should be a PEM-encoded PKCS#8 (asn.1) value.
-  string ephemeral_public_key = 10;
+  // 
+  reserved 10;
+  reserved "ephemeral_public_key";
 }
 
 message UnsignedRewrapRequest {

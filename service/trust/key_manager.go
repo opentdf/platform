@@ -11,10 +11,6 @@ type Encapsulator interface {
 
 	// PublicKeyInPemFormat Returns public key in pem format, or the empty string if not present
 	PublicKeyInPemFormat() (string, error)
-
-	// For EC schemes, this method returns the public part of the ephemeral key.
-	// Otherwise, it returns nil.
-	EphemeralKey() []byte
 }
 
 // ProtectedKey represents a decrypted key with operations that can be performed on it
@@ -40,7 +36,7 @@ type KeyManager interface {
 	// For EC keys, ephemeralPublicKey must be non-nil
 	// For RSA keys, ephemeralPublicKey should be nil
 	// Returns an UnwrappedKeyData interface for further operations
-	Decrypt(ctx context.Context, key KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKey, error)
+	Decrypt(ctx context.Context, key KeyDetails, ciphertext []byte) (ProtectedKey, error)
 
 	// DeriveKey computes an agreed upon secret key, which NanoTDF may directly as the DEK or a key split
 	DeriveKey(ctx context.Context, key KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ProtectedKey, error)

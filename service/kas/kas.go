@@ -9,7 +9,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
-	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/kas/access"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 )
@@ -37,34 +36,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				if err := mapstructure.Decode(srp.Config, &kasCfg); err != nil {
 					panic(fmt.Errorf("invalid kas cfg [%v] %w", srp.Config, err))
 				}
-
-				switch {
-				case kasCfg.ECCertID != "" && len(kasCfg.Keyring) > 0:
-					panic("invalid kas cfg: please specify keyring or eccertid, not both")
-				case len(kasCfg.Keyring) == 0:
-					deprecatedOrDefault := func(kid, alg string) {
-						if kid == "" {
-							kid = srp.OTDF.CryptoProvider.FindKID(alg)
-						}
-						if kid == "" {
-							srp.Logger.Warn("no known key for alg", "algorithm", alg)
-							return
-						}
-						kasCfg.Keyring = append(kasCfg.Keyring, access.CurrentKeyFor{
-							Algorithm: alg,
-							KID:       kid,
-						})
-						kasCfg.Keyring = append(kasCfg.Keyring, access.CurrentKeyFor{
-							Algorithm: alg,
-							KID:       kid,
-							Legacy:    true,
-						})
-					}
-					deprecatedOrDefault(kasCfg.ECCertID, security.AlgorithmECP256R1)
-					deprecatedOrDefault(kasCfg.RSACertID, security.AlgorithmRSA2048)
-				default:
-					kasCfg.Keyring = append(kasCfg.Keyring, inferLegacyKeys(kasCfg.Keyring)...)
-				}
+				kasCfg.UpgradeMapToKeyring(srp.OTDF.CryptoProvider)
 
 				p := &access.Provider{
 					URI:            *kasURI,
@@ -86,20 +58,4 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 			},
 		},
 	}
-}
-
-// If there exists *any* legacy keys, returns empty list.
-// Otherwise, create a copy with legacy=true for all values
-func inferLegacyKeys(keys []access.CurrentKeyFor) []access.CurrentKeyFor {
-	for _, k := range keys {
-		if k.Legacy {
-			return nil
-		}
-	}
-	l := make([]access.CurrentKeyFor, len(keys))
-	for i, k := range keys {
-		l[i] = k
-		l[i].Legacy = true
-	}
-	return l
 }

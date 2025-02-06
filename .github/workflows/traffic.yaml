@@ -34,7 +34,7 @@ jobs:
 
     - id: get-date
       name: Set current date as env variable
-      run: echo "DATE=$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
+      run: echo "DATE=$(date +'%Y%m%d')" >>"$GITHUB_OUTPUT"
 
     - name: Get Traffic
       uses: actions/github-script@v7

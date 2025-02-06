@@ -256,6 +256,7 @@
           },
           {
             "name": "valueId",
+            "description": "option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field",
             "in": "query",
             "required": false,
             "type": "string"
@@ -562,6 +563,7 @@
           },
           {
             "name": "attributeId",
+            "description": "option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field",
             "in": "query",
             "required": false,
             "type": "string"

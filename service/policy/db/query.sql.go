@@ -442,7 +442,7 @@ func (q *Queries) DeleteSubjectMapping(ctx context.Context, id string) (int64, e
 	return result.RowsAffected(), nil
 }
 
-const getAttributeByFqn = `-- name: GetAttributeByFqn :one
+const getAttribute = `-- name: GetAttribute :one
 SELECT
     ad.id,
     ad.name as attribute_name,
@@ -487,11 +487,17 @@ LEFT JOIN attribute_definition_key_access_grants adkag ON adkag.attribute_defini
 LEFT JOIN key_access_servers kas ON kas.id = adkag.key_access_server_id
 LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
 LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
-WHERE REGEXP_REPLACE(fqns.fqn, '^https:\/\/', '') = REGEXP_REPLACE($1, '^https:\/\/', '')
+WHERE ($1::uuid IS NULL OR ad.id = $1::uuid)
+  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE($2::text, '^https?://', ''))
 GROUP BY ad.id, n.name, fqns.fqn, k.keys
 `
 
-type GetAttributeByFqnRow struct {
+type GetAttributeParams struct {
+	ID  pgtype.UUID `json:"id"`
+	Fqn pgtype.Text `json:"fqn"`
+}
+
+type GetAttributeRow struct {
 	ID            string                  `json:"id"`
 	AttributeName string                  `json:"attribute_name"`
 	Rule          AttributeDefinitionRule `json:"rule"`
@@ -505,7 +511,7 @@ type GetAttributeByFqnRow struct {
 	Keys          []byte                  `json:"keys"`
 }
 
-// GetAttributeByFqn
+// GetAttribute
 //
 //	SELECT
 //	    ad.id,
@@ -551,11 +557,12 @@ type GetAttributeByFqnRow struct {
 //	LEFT JOIN key_access_servers kas ON kas.id = adkag.key_access_server_id
 //	LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
 //	LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
-//	WHERE REGEXP_REPLACE(fqns.fqn, '^https:\/\/', '') = REGEXP_REPLACE($1, '^https:\/\/', '')
+//	WHERE ($1::uuid IS NULL OR ad.id = $1::uuid)
+//	  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE($2::text, '^https?://', ''))
 //	GROUP BY ad.id, n.name, fqns.fqn, k.keys
-func (q *Queries) GetAttributeByFqn(ctx context.Context, regexpReplace string) (GetAttributeByFqnRow, error) {
-	row := q.db.QueryRow(ctx, getAttributeByFqn, regexpReplace)
-	var i GetAttributeByFqnRow
+func (q *Queries) GetAttribute(ctx context.Context, arg GetAttributeParams) (GetAttributeRow, error) {
+	row := q.db.QueryRow(ctx, getAttribute, arg.ID, arg.Fqn)
+	var i GetAttributeRow
 	err := row.Scan(
 		&i.ID,
 		&i.AttributeName,
@@ -572,137 +579,7 @@ func (q *Queries) GetAttributeByFqn(ctx context.Context, regexpReplace string) (
 	return i, err
 }
 
-const getAttributeById = `-- name: GetAttributeById :one
-SELECT
-    ad.id,
-    ad.name as attribute_name,
-    ad.rule,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ad.metadata -> 'labels', 'created_at', ad.created_at, 'updated_at', ad.updated_at)) AS metadata,
-    ad.namespace_id,
-    ad.active,
-    n.name as namespace_name,
-    JSON_AGG(
-        JSON_BUILD_OBJECT(
-            'id', avt.id,
-            'value', avt.value,
-            'active', avt.active,
-            'fqn', CONCAT(fqns.fqn, '/value/', avt.value)
-        ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
-    ) AS values,
-    JSONB_AGG(
-        DISTINCT JSONB_BUILD_OBJECT(
-            'id', kas.id,
-            'uri', kas.uri,
-            'name', kas.name,
-            'public_key', kas.public_key
-        )
-    ) FILTER (WHERE adkag.attribute_definition_id IS NOT NULL) AS grants,
-    fqns.fqn,
-    k.keys AS keys
-FROM attribute_definitions ad
-LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
-LEFT JOIN (
-    SELECT
-        av.id,
-        av.value,
-        av.active,
-        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT('id', vkas.id,'uri', vkas.uri,'name', vkas.name,'public_key', vkas.public_key )) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr,
-        av.attribute_definition_id
-    FROM attribute_values av
-    LEFT JOIN attribute_value_key_access_grants avg ON av.id = avg.attribute_value_id
-    LEFT JOIN key_access_servers vkas ON avg.key_access_server_id = vkas.id
-    GROUP BY av.id
-) avt ON avt.attribute_definition_id = ad.id
-LEFT JOIN attribute_definition_key_access_grants adkag ON adkag.attribute_definition_id = ad.id
-LEFT JOIN key_access_servers kas ON kas.id = adkag.key_access_server_id
-LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
-LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
-WHERE ad.id = $1
-GROUP BY ad.id, n.name, fqns.fqn, k.keys
-`
-
-type GetAttributeByIdRow struct {
-	ID            string                  `json:"id"`
-	AttributeName string                  `json:"attribute_name"`
-	Rule          AttributeDefinitionRule `json:"rule"`
-	Metadata      []byte                  `json:"metadata"`
-	NamespaceID   string                  `json:"namespace_id"`
-	Active        bool                    `json:"active"`
-	NamespaceName pgtype.Text             `json:"namespace_name"`
-	Values        []byte                  `json:"values"`
-	Grants        []byte                  `json:"grants"`
-	Fqn           pgtype.Text             `json:"fqn"`
-	Keys          []byte                  `json:"keys"`
-}
-
-// GetAttributeById
-//
-//	SELECT
-//	    ad.id,
-//	    ad.name as attribute_name,
-//	    ad.rule,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ad.metadata -> 'labels', 'created_at', ad.created_at, 'updated_at', ad.updated_at)) AS metadata,
-//	    ad.namespace_id,
-//	    ad.active,
-//	    n.name as namespace_name,
-//	    JSON_AGG(
-//	        JSON_BUILD_OBJECT(
-//	            'id', avt.id,
-//	            'value', avt.value,
-//	            'active', avt.active,
-//	            'fqn', CONCAT(fqns.fqn, '/value/', avt.value)
-//	        ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
-//	    ) AS values,
-//	    JSONB_AGG(
-//	        DISTINCT JSONB_BUILD_OBJECT(
-//	            'id', kas.id,
-//	            'uri', kas.uri,
-//	            'name', kas.name,
-//	            'public_key', kas.public_key
-//	        )
-//	    ) FILTER (WHERE adkag.attribute_definition_id IS NOT NULL) AS grants,
-//	    fqns.fqn,
-//	    k.keys AS keys
-//	FROM attribute_definitions ad
-//	LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
-//	LEFT JOIN (
-//	    SELECT
-//	        av.id,
-//	        av.value,
-//	        av.active,
-//	        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT('id', vkas.id,'uri', vkas.uri,'name', vkas.name,'public_key', vkas.public_key )) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr,
-//	        av.attribute_definition_id
-//	    FROM attribute_values av
-//	    LEFT JOIN attribute_value_key_access_grants avg ON av.id = avg.attribute_value_id
-//	    LEFT JOIN key_access_servers vkas ON avg.key_access_server_id = vkas.id
-//	    GROUP BY av.id
-//	) avt ON avt.attribute_definition_id = ad.id
-//	LEFT JOIN attribute_definition_key_access_grants adkag ON adkag.attribute_definition_id = ad.id
-//	LEFT JOIN key_access_servers kas ON kas.id = adkag.key_access_server_id
-//	LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
-//	LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
-//	WHERE ad.id = $1
-//	GROUP BY ad.id, n.name, fqns.fqn, k.keys
-func (q *Queries) GetAttributeById(ctx context.Context, id string) (GetAttributeByIdRow, error) {
-	row := q.db.QueryRow(ctx, getAttributeById, id)
-	var i GetAttributeByIdRow
-	err := row.Scan(
-		&i.ID,
-		&i.AttributeName,
-		&i.Rule,
-		&i.Metadata,
-		&i.NamespaceID,
-		&i.Active,
-		&i.NamespaceName,
-		&i.Values,
-		&i.Grants,
-		&i.Fqn,
-		&i.Keys,
-	)
-	return i, err
-}
-
-const getAttributeValueByFqn = `-- name: GetAttributeValueByFqn :one
+const getAttributeValue = `-- name: GetAttributeValue :one
 SELECT
     av.id,
     av.value,
@@ -724,11 +601,17 @@ LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
 LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
 LEFT JOIN active_value_public_keys_view k ON av.id = k.value_id
-WHERE REGEXP_REPLACE(fqns.fqn, '^https:\/\/', '') = REGEXP_REPLACE($1, '^https:\/\/', '')
+WHERE ($1::uuid IS NULL OR av.id = $1::uuid)
+  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE($2::text, '^https?://', ''))
 GROUP BY av.id, fqns.fqn, k.keys
 `
 
-type GetAttributeValueByFqnRow struct {
+type GetAttributeValueParams struct {
+	ID  pgtype.UUID `json:"id"`
+	Fqn pgtype.Text `json:"fqn"`
+}
+
+type GetAttributeValueRow struct {
 	ID                    string      `json:"id"`
 	Value                 string      `json:"value"`
 	Active                bool        `json:"active"`
@@ -739,7 +622,7 @@ type GetAttributeValueByFqnRow struct {
 	Keys                  []byte      `json:"keys"`
 }
 
-// GetAttributeValueByFqn
+// GetAttributeValue
 //
 //	SELECT
 //	    av.id,
@@ -762,11 +645,12 @@ type GetAttributeValueByFqnRow struct {
 //	LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
 //	LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
 //	LEFT JOIN active_value_public_keys_view k ON av.id = k.value_id
-//	WHERE REGEXP_REPLACE(fqns.fqn, '^https:\/\/', '') = REGEXP_REPLACE($1, '^https:\/\/', '')
+//	WHERE ($1::uuid IS NULL OR av.id = $1::uuid)
+//	  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE($2::text, '^https?://', ''))
 //	GROUP BY av.id, fqns.fqn, k.keys
-func (q *Queries) GetAttributeValueByFqn(ctx context.Context, regexpReplace string) (GetAttributeValueByFqnRow, error) {
-	row := q.db.QueryRow(ctx, getAttributeValueByFqn, regexpReplace)
-	var i GetAttributeValueByFqnRow
+func (q *Queries) GetAttributeValue(ctx context.Context, arg GetAttributeValueParams) (GetAttributeValueRow, error) {
+	row := q.db.QueryRow(ctx, getAttributeValue, arg.ID, arg.Fqn)
+	var i GetAttributeValueRow
 	err := row.Scan(
 		&i.ID,
 		&i.Value,
@@ -780,85 +664,7 @@ func (q *Queries) GetAttributeValueByFqn(ctx context.Context, regexpReplace stri
 	return i, err
 }
 
-const getAttributeValueById = `-- name: GetAttributeValueById :one
-SELECT
-    av.id,
-    av.value,
-    av.active,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
-    av.attribute_definition_id,
-    fqns.fqn,
-    JSONB_AGG(
-        DISTINCT JSONB_BUILD_OBJECT(
-            'id', kas.id,
-            'uri', kas.uri,
-            'name', kas.name,
-            'public_key', kas.public_key
-        )
-    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants,
-    k.keys as keys
-FROM attribute_values av
-LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
-LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
-LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
-LEFT JOIN active_value_public_keys_view k ON av.id = k.value_id
-WHERE av.id = $1
-GROUP BY av.id, fqns.fqn, k.keys
-`
-
-type GetAttributeValueByIdRow struct {
-	ID                    string      `json:"id"`
-	Value                 string      `json:"value"`
-	Active                bool        `json:"active"`
-	Metadata              []byte      `json:"metadata"`
-	AttributeDefinitionID string      `json:"attribute_definition_id"`
-	Fqn                   pgtype.Text `json:"fqn"`
-	Grants                []byte      `json:"grants"`
-	Keys                  []byte      `json:"keys"`
-}
-
-// GetAttributeValueById
-//
-//	SELECT
-//	    av.id,
-//	    av.value,
-//	    av.active,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
-//	    av.attribute_definition_id,
-//	    fqns.fqn,
-//	    JSONB_AGG(
-//	        DISTINCT JSONB_BUILD_OBJECT(
-//	            'id', kas.id,
-//	            'uri', kas.uri,
-//	            'name', kas.name,
-//	            'public_key', kas.public_key
-//	        )
-//	    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants,
-//	    k.keys as keys
-//	FROM attribute_values av
-//	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
-//	LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
-//	LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
-//	LEFT JOIN active_value_public_keys_view k ON av.id = k.value_id
-//	WHERE av.id = $1
-//	GROUP BY av.id, fqns.fqn, k.keys
-func (q *Queries) GetAttributeValueById(ctx context.Context, id string) (GetAttributeValueByIdRow, error) {
-	row := q.db.QueryRow(ctx, getAttributeValueById, id)
-	var i GetAttributeValueByIdRow
-	err := row.Scan(
-		&i.ID,
-		&i.Value,
-		&i.Active,
-		&i.Metadata,
-		&i.AttributeDefinitionID,
-		&i.Fqn,
-		&i.Grants,
-		&i.Keys,
-	)
-	return i, err
-}
-
-const getKeyAccessServerById = `-- name: GetKeyAccessServerById :one
+const getKeyAccessServer = `-- name: GetKeyAccessServer :one
 SELECT 
     kas.id,
     kas.uri, 
@@ -866,10 +672,18 @@ SELECT
     kas.name,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
 FROM key_access_servers AS kas
-WHERE kas.id = $1
+WHERE ($1::uuid IS NULL OR kas.id = $1::uuid)
+  AND ($2::text IS NULL OR kas.name = $2::text)
+  AND ($3::text IS NULL OR kas.uri = $3::text)
 `
 
-type GetKeyAccessServerByIdRow struct {
+type GetKeyAccessServerParams struct {
+	ID   pgtype.UUID `json:"id"`
+	Name pgtype.Text `json:"name"`
+	Uri  pgtype.Text `json:"uri"`
+}
+
+type GetKeyAccessServerRow struct {
 	ID        string      `json:"id"`
 	Uri       string      `json:"uri"`
 	PublicKey []byte      `json:"public_key"`
@@ -877,7 +691,7 @@ type GetKeyAccessServerByIdRow struct {
 	Metadata  []byte      `json:"metadata"`
 }
 
-// GetKeyAccessServerById
+// GetKeyAccessServer
 //
 //	SELECT
 //	    kas.id,
@@ -886,10 +700,12 @@ type GetKeyAccessServerByIdRow struct {
 //	    kas.name,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
 //	FROM key_access_servers AS kas
-//	WHERE kas.id = $1
-func (q *Queries) GetKeyAccessServerById(ctx context.Context, id string) (GetKeyAccessServerByIdRow, error) {
-	row := q.db.QueryRow(ctx, getKeyAccessServerById, id)
-	var i GetKeyAccessServerByIdRow
+//	WHERE ($1::uuid IS NULL OR kas.id = $1::uuid)
+//	  AND ($2::text IS NULL OR kas.name = $2::text)
+//	  AND ($3::text IS NULL OR kas.uri = $3::text)
+func (q *Queries) GetKeyAccessServer(ctx context.Context, arg GetKeyAccessServerParams) (GetKeyAccessServerRow, error) {
+	row := q.db.QueryRow(ctx, getKeyAccessServer, arg.ID, arg.Name, arg.Uri)
+	var i GetKeyAccessServerRow
 	err := row.Scan(
 		&i.ID,
 		&i.Uri,
@@ -900,91 +716,7 @@ func (q *Queries) GetKeyAccessServerById(ctx context.Context, id string) (GetKey
 	return i, err
 }
 
-const getKeyAccessServerByName = `-- name: GetKeyAccessServerByName :one
-SELECT 
-    kas.id,
-    kas.uri, 
-    kas.public_key, 
-    kas.name,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
-FROM key_access_servers AS kas
-WHERE kas.name = $1
-`
-
-type GetKeyAccessServerByNameRow struct {
-	ID        string      `json:"id"`
-	Uri       string      `json:"uri"`
-	PublicKey []byte      `json:"public_key"`
-	Name      pgtype.Text `json:"name"`
-	Metadata  []byte      `json:"metadata"`
-}
-
-// GetKeyAccessServerByName
-//
-//	SELECT
-//	    kas.id,
-//	    kas.uri,
-//	    kas.public_key,
-//	    kas.name,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
-//	FROM key_access_servers AS kas
-//	WHERE kas.name = $1
-func (q *Queries) GetKeyAccessServerByName(ctx context.Context, name pgtype.Text) (GetKeyAccessServerByNameRow, error) {
-	row := q.db.QueryRow(ctx, getKeyAccessServerByName, name)
-	var i GetKeyAccessServerByNameRow
-	err := row.Scan(
-		&i.ID,
-		&i.Uri,
-		&i.PublicKey,
-		&i.Name,
-		&i.Metadata,
-	)
-	return i, err
-}
-
-const getKeyAccessServerByUri = `-- name: GetKeyAccessServerByUri :one
-SELECT 
-    id,
-    uri, 
-    public_key, 
-    name,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
-FROM key_access_servers
-WHERE uri = $1
-`
-
-type GetKeyAccessServerByUriRow struct {
-	ID        string      `json:"id"`
-	Uri       string      `json:"uri"`
-	PublicKey []byte      `json:"public_key"`
-	Name      pgtype.Text `json:"name"`
-	Metadata  []byte      `json:"metadata"`
-}
-
-// GetKeyAccessServerByUri
-//
-//	SELECT
-//	    id,
-//	    uri,
-//	    public_key,
-//	    name,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
-//	FROM key_access_servers
-//	WHERE uri = $1
-func (q *Queries) GetKeyAccessServerByUri(ctx context.Context, uri string) (GetKeyAccessServerByUriRow, error) {
-	row := q.db.QueryRow(ctx, getKeyAccessServerByUri, uri)
-	var i GetKeyAccessServerByUriRow
-	err := row.Scan(
-		&i.ID,
-		&i.Uri,
-		&i.PublicKey,
-		&i.Name,
-		&i.Metadata,
-	)
-	return i, err
-}
-
-const getNamespaceByFqn = `-- name: GetNamespaceByFqn :one
+const getNamespace = `-- name: GetNamespace :one
 SELECT
     ns.id,
     ns.name,
@@ -1003,11 +735,18 @@ LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.n
 LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
 LEFT JOIN active_namespace_public_keys_view k ON ns.id = k.namespace_id
-WHERE ns.name = $1 AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL 
+  AND ($1::uuid IS NULL OR ns.id = $1::uuid)
+  AND ($2::text IS NULL OR ns.name = $2::text)
 GROUP BY ns.id, fqns.fqn, k.keys
 `
 
-type GetNamespaceByFqnRow struct {
+type GetNamespaceParams struct {
+	ID   pgtype.UUID `json:"id"`
+	Name pgtype.Text `json:"name"`
+}
+
+type GetNamespaceRow struct {
 	ID       string      `json:"id"`
 	Name     string      `json:"name"`
 	Active   bool        `json:"active"`
@@ -1017,7 +756,7 @@ type GetNamespaceByFqnRow struct {
 	Keys     []byte      `json:"keys"`
 }
 
-// GetNamespaceByFqn
+// GetNamespace
 //
 //	SELECT
 //	    ns.id,
@@ -1037,81 +776,13 @@ type GetNamespaceByFqnRow struct {
 //	LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
 //	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
 //	LEFT JOIN active_namespace_public_keys_view k ON ns.id = k.namespace_id
-//	WHERE ns.name = $1 AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+//	WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+//	  AND ($1::uuid IS NULL OR ns.id = $1::uuid)
+//	  AND ($2::text IS NULL OR ns.name = $2::text)
 //	GROUP BY ns.id, fqns.fqn, k.keys
-func (q *Queries) GetNamespaceByFqn(ctx context.Context, name string) (GetNamespaceByFqnRow, error) {
-	row := q.db.QueryRow(ctx, getNamespaceByFqn, name)
-	var i GetNamespaceByFqnRow
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Active,
-		&i.Fqn,
-		&i.Metadata,
-		&i.Grants,
-		&i.Keys,
-	)
-	return i, err
-}
-
-const getNamespaceById = `-- name: GetNamespaceById :one
-SELECT
-    ns.id,
-    ns.name,
-    ns.active,
-    fqns.fqn,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
-    JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
-        'id', kas.id,
-        'uri', kas.uri,
-        'name', kas.name,
-        'public_key', kas.public_key
-    )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants,
-    k.keys as keys
-FROM attribute_namespaces ns
-LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
-LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
-LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
-LEFT JOIN active_namespace_public_keys_view k ON ns.id = k.namespace_id
-WHERE ns.id = $1 AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
-GROUP BY ns.id, fqns.fqn, k.keys
-`
-
-type GetNamespaceByIdRow struct {
-	ID       string      `json:"id"`
-	Name     string      `json:"name"`
-	Active   bool        `json:"active"`
-	Fqn      pgtype.Text `json:"fqn"`
-	Metadata []byte      `json:"metadata"`
-	Grants   []byte      `json:"grants"`
-	Keys     []byte      `json:"keys"`
-}
-
-// GetNamespaceById
-//
-//	SELECT
-//	    ns.id,
-//	    ns.name,
-//	    ns.active,
-//	    fqns.fqn,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
-//	    JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
-//	        'id', kas.id,
-//	        'uri', kas.uri,
-//	        'name', kas.name,
-//	        'public_key', kas.public_key
-//	    )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants,
-//	    k.keys as keys
-//	FROM attribute_namespaces ns
-//	LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
-//	LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
-//	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
-//	LEFT JOIN active_namespace_public_keys_view k ON ns.id = k.namespace_id
-//	WHERE ns.id = $1 AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
-//	GROUP BY ns.id, fqns.fqn, k.keys
-func (q *Queries) GetNamespaceById(ctx context.Context, id string) (GetNamespaceByIdRow, error) {
-	row := q.db.QueryRow(ctx, getNamespaceById, id)
-	var i GetNamespaceByIdRow
+func (q *Queries) GetNamespace(ctx context.Context, arg GetNamespaceParams) (GetNamespaceRow, error) {
+	row := q.db.QueryRow(ctx, getNamespace, arg.ID, arg.Name)
+	var i GetNamespaceRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,

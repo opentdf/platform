@@ -11,30 +11,38 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/pkg/db"
+	"github.com/pkg/errors"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*policy.Namespace, error) {
 	var (
-		ns  GetNamespaceByIdRow
-		err error
+		ns     GetNamespaceRow
+		err    error
+		params GetNamespaceParams
 	)
 
 	switch i := identifier.(type) {
 	case *namespaces.GetNamespaceRequest_NamespaceId:
-		ns, err = c.Queries.GetNamespaceById(ctx, i.NamespaceId)
+		id := pgtypeUUID(i.NamespaceId)
+		if !id.Valid {
+			return nil, db.ErrUUIDInvalid
+		}
+		params = GetNamespaceParams{ID: id}
 	case *namespaces.GetNamespaceRequest_Fqn:
-		var n GetNamespaceByFqnRow
-		n, err = c.Queries.GetNamespaceByFqn(ctx, i.Fqn)
-		// Same struct fields allow for struct casting
-		ns = GetNamespaceByIdRow(n)
+		params = GetNamespaceParams{Name: pgtypeText(i.Fqn)}
 	case string:
-		ns, err = c.Queries.GetNamespaceById(ctx, i)
+		id := pgtypeUUID(i)
+		if !id.Valid {
+			return nil, db.ErrUUIDInvalid
+		}
+		params = GetNamespaceParams{ID: id}
 	default:
-		// Hopefully this will never happen
-		return nil, fmt.Errorf("unknown identifier type: %T", i)
+		// unexpected type
+		return nil, errors.Wrap(db.ErrUnknownSelectIdentifier, fmt.Sprintf("type [%T] value [%v]", i, i))
 	}
 
+	ns, err = c.Queries.GetNamespace(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

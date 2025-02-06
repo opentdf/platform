@@ -85,7 +85,7 @@ CROSS JOIN counted
 LIMIT @limit_ 
 OFFSET @offset_; 
 
--- name: GetKeyAccessServerById :one
+-- name: GetKeyAccessServer :one
 SELECT 
     kas.id,
     kas.uri, 
@@ -93,27 +93,9 @@ SELECT
     kas.name,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
 FROM key_access_servers AS kas
-WHERE kas.id = $1;
-
--- name: GetKeyAccessServerByName :one
-SELECT 
-    kas.id,
-    kas.uri, 
-    kas.public_key, 
-    kas.name,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
-FROM key_access_servers AS kas
-WHERE kas.name = $1;
-
--- name: GetKeyAccessServerByUri :one
-SELECT 
-    id,
-    uri, 
-    public_key, 
-    name,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
-FROM key_access_servers
-WHERE uri = $1;
+WHERE (sqlc.narg('id')::uuid IS NULL OR kas.id = sqlc.narg('id')::uuid)
+  AND (sqlc.narg('name')::text IS NULL OR kas.name = sqlc.narg('name')::text)
+  AND (sqlc.narg('uri')::text IS NULL OR kas.uri = sqlc.narg('uri')::text);
 
 -- name: CreateKeyAccessServer :one
 INSERT INTO key_access_servers (uri, public_key, name, metadata)
@@ -465,7 +447,7 @@ INNER JOIN namespaces n ON td.namespace_id = n.id
 LEFT JOIN values ON td.id = values.attribute_definition_id
 WHERE fqns.value_id IS NULL;
 
--- name: GetAttributeById :one
+-- name: GetAttribute :one
 SELECT
     ad.id,
     ad.name as attribute_name,
@@ -510,55 +492,8 @@ LEFT JOIN attribute_definition_key_access_grants adkag ON adkag.attribute_defini
 LEFT JOIN key_access_servers kas ON kas.id = adkag.key_access_server_id
 LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
 LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
-WHERE ad.id = $1
-GROUP BY ad.id, n.name, fqns.fqn, k.keys;
-
--- name: GetAttributeByFqn :one
-SELECT
-    ad.id,
-    ad.name as attribute_name,
-    ad.rule,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ad.metadata -> 'labels', 'created_at', ad.created_at, 'updated_at', ad.updated_at)) AS metadata,
-    ad.namespace_id,
-    ad.active,
-    n.name as namespace_name,
-    JSON_AGG(
-        JSON_BUILD_OBJECT(
-            'id', avt.id,
-            'value', avt.value,
-            'active', avt.active,
-            'fqn', CONCAT(fqns.fqn, '/value/', avt.value)
-        ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
-    ) AS values,
-    JSONB_AGG(
-        DISTINCT JSONB_BUILD_OBJECT(
-            'id', kas.id,
-            'uri', kas.uri,
-            'name', kas.name,
-            'public_key', kas.public_key
-        )
-    ) FILTER (WHERE adkag.attribute_definition_id IS NOT NULL) AS grants,
-    fqns.fqn,
-    k.keys AS keys
-FROM attribute_definitions ad
-LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
-LEFT JOIN (
-    SELECT
-        av.id,
-        av.value,
-        av.active,
-        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT('id', vkas.id,'uri', vkas.uri,'name', vkas.name,'public_key', vkas.public_key )) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr,
-        av.attribute_definition_id
-    FROM attribute_values av
-    LEFT JOIN attribute_value_key_access_grants avg ON av.id = avg.attribute_value_id
-    LEFT JOIN key_access_servers vkas ON avg.key_access_server_id = vkas.id
-    GROUP BY av.id
-) avt ON avt.attribute_definition_id = ad.id
-LEFT JOIN attribute_definition_key_access_grants adkag ON adkag.attribute_definition_id = ad.id
-LEFT JOIN key_access_servers kas ON kas.id = adkag.key_access_server_id
-LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
-LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
-WHERE REGEXP_REPLACE(fqns.fqn, '^https:\/\/', '') = REGEXP_REPLACE($1, '^https:\/\/', '')
+WHERE (sqlc.narg('id')::uuid IS NULL OR ad.id = sqlc.narg('id')::uuid)
+  AND (sqlc.narg('fqn')::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE(sqlc.narg('fqn')::text, '^https?://', ''))
 GROUP BY ad.id, n.name, fqns.fqn, k.keys;
 
 -- name: CreateAttribute :one
@@ -615,7 +550,7 @@ WHERE (
 LIMIT @limit_ 
 OFFSET @offset_; 
 
--- name: GetAttributeValueById :one
+-- name: GetAttributeValue :one
 SELECT
     av.id,
     av.value,
@@ -637,32 +572,8 @@ LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
 LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
 LEFT JOIN active_value_public_keys_view k ON av.id = k.value_id
-WHERE av.id = $1
-GROUP BY av.id, fqns.fqn, k.keys;
-
--- name: GetAttributeValueByFqn :one
-SELECT
-    av.id,
-    av.value,
-    av.active,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
-    av.attribute_definition_id,
-    fqns.fqn,
-    JSONB_AGG(
-        DISTINCT JSONB_BUILD_OBJECT(
-            'id', kas.id,
-            'uri', kas.uri,
-            'name', kas.name,
-            'public_key', kas.public_key
-        )
-    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants,
-    k.keys as keys
-FROM attribute_values av
-LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
-LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
-LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
-LEFT JOIN active_value_public_keys_view k ON av.id = k.value_id
-WHERE REGEXP_REPLACE(fqns.fqn, '^https:\/\/', '') = REGEXP_REPLACE($1, '^https:\/\/', '')
+WHERE (sqlc.narg('id')::uuid IS NULL OR av.id = sqlc.narg('id')::uuid)
+  AND (sqlc.narg('fqn')::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE(sqlc.narg('fqn')::text, '^https?://', ''))
 GROUP BY av.id, fqns.fqn, k.keys;
 
 -- name: CreateAttributeValue :one
@@ -839,7 +750,7 @@ WHERE (sqlc.narg('active')::BOOLEAN IS NULL OR ns.active = sqlc.narg('active')::
 LIMIT @limit_ 
 OFFSET @offset_; 
 
--- name: GetNamespaceById :one
+-- name: GetNamespace :one
 SELECT
     ns.id,
     ns.name,
@@ -858,35 +769,15 @@ LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.n
 LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
 LEFT JOIN active_namespace_public_keys_view k ON ns.id = k.namespace_id
-WHERE ns.id = $1 AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL 
+  AND (sqlc.narg('id')::uuid IS NULL OR ns.id = sqlc.narg('id')::uuid)
+  AND (sqlc.narg('name')::text IS NULL OR ns.name = sqlc.narg('name')::text)
 GROUP BY ns.id, fqns.fqn, k.keys;
 
 -- name: CreateNamespace :one
 INSERT INTO attribute_namespaces (name, metadata)
 VALUES ($1, $2)
 RETURNING id;
-
--- name: GetNamespaceByFqn :one
-SELECT
-    ns.id,
-    ns.name,
-    ns.active,
-    fqns.fqn,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
-    JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
-        'id', kas.id,
-        'uri', kas.uri,
-        'name', kas.name,
-        'public_key', kas.public_key
-    )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants,
-    k.keys as keys
-FROM attribute_namespaces ns
-LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
-LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
-LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
-LEFT JOIN active_namespace_public_keys_view k ON ns.id = k.namespace_id
-WHERE ns.name = $1 AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
-GROUP BY ns.id, fqns.fqn, k.keys;
 
 -- UpdateNamespace: both Safe and Unsafe Updates
 -- name: UpdateNamespace :execrows

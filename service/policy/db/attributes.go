@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/pkg/db"
+	"github.com/pkg/errors"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -220,25 +221,36 @@ func (c PolicyDBClient) ListAllAttributes(ctx context.Context) ([]*policy.Attrib
 
 func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*policy.Attribute, error) {
 	var (
-		attr GetAttributeByIdRow
-		err  error
+		attr   GetAttributeRow
+		err    error
+		params GetAttributeParams
 	)
 
 	switch i := identifier.(type) {
 	case *attributes.GetAttributeRequest_AttributeId:
-		attr, err = c.Queries.GetAttributeById(ctx, i.AttributeId)
+		id := pgtypeUUID(i.AttributeId)
+		if !id.Valid {
+			return nil, db.ErrUUIDInvalid
+		}
+		params = GetAttributeParams{ID: id}
 	case *attributes.GetAttributeRequest_Fqn:
-		var fv GetAttributeByFqnRow
-		fv, err = c.Queries.GetAttributeByFqn(ctx, i.Fqn)
-		// Same struct fields allow for struct casting
-		attr = GetAttributeByIdRow(fv)
+		fqn := pgtypeText(i.Fqn)
+		if !fqn.Valid {
+			return nil, db.ErrSelectIdentifierInvalid
+		}
+		params = GetAttributeParams{Fqn: pgtypeText(i.Fqn)}
 	case string:
-		attr, err = c.Queries.GetAttributeById(ctx, i)
+		id := pgtypeUUID(i)
+		if !id.Valid {
+			return nil, db.ErrUUIDInvalid
+		}
+		params = GetAttributeParams{ID: id}
 	default:
-		// Hopefully this will never happen
-		return nil, fmt.Errorf("unknown identifier type: %T", i)
+		// unexpected type
+		return nil, errors.Wrap(db.ErrSelectIdentifierInvalid, fmt.Sprintf("type [%T] value [%v]", i, i))
 	}
 
+	attr, err = c.Queries.GetAttribute(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

@@ -29,6 +29,10 @@ const (
 	errMessageAttrNameFormat  = "attribute_name_format"
 	errMessageAttrValueFormat = "attribute_value_format"
 	errMessageRequired        = "required"
+	errMessageMinLen          = "string.min_len"
+	errMessageURI             = "string.uri"
+	errRequiredField          = "required_fields"
+	errExclusiveFields        = "exclusive_fields"
 )
 
 // Create Attributes (definitions)
@@ -233,29 +237,118 @@ func TestAttributeKeyAccessServer_Fails(t *testing.T) {
 	}
 }
 
-func TestGetAttributeRequest(t *testing.T) {
-	req := &attributes.GetAttributeRequest{
-		Identifier: &attributes.GetAttributeRequest_AttributeId{
-			AttributeId: "",
+func Test_GetAttributeRequest(t *testing.T) {
+	testCases := []struct {
+		name         string
+		req          *attributes.GetAttributeRequest
+		expectError  bool
+		errorMessage string // Optional: expected error message substring
+	}{
+		{
+			name: "Invalid AttributeId in Identifier (empty string)",
+			req: &attributes.GetAttributeRequest{
+				Identifier: &attributes.GetAttributeRequest_AttributeId{
+					AttributeId: "",
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageUUID,
+		},
+		{
+			name: "Invalid AttributeId in Identifier (invalid UUID)",
+			req: &attributes.GetAttributeRequest{
+				Identifier: &attributes.GetAttributeRequest_AttributeId{
+					AttributeId: "invalid-uuid",
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageUUID,
+		},
+		{
+			name: "Valid Deprecated Id",
+			req: &attributes.GetAttributeRequest{
+				Id: validUUID,
+			},
+			expectError: false,
+		},
+		{
+			name: "Invalid Deprecated Id (empty string)",
+			req: &attributes.GetAttributeRequest{
+				Id: "",
+			},
+			expectError:  true,
+			errorMessage: errRequiredField,
+		},
+		{
+			name: "Valid AttributeId in Identifier",
+			req: &attributes.GetAttributeRequest{
+				Identifier: &attributes.GetAttributeRequest_AttributeId{
+					AttributeId: validUUID,
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Valid FQN Identifier",
+			req: &attributes.GetAttributeRequest{
+				Identifier: &attributes.GetAttributeRequest_Fqn{
+					Fqn: "https://example.com/valid_fqn",
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Invalid FQN Identifier (missing scheme)",
+			req: &attributes.GetAttributeRequest{
+				Identifier: &attributes.GetAttributeRequest_Fqn{
+					Fqn: "example.com/valid_fqn",
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageURI,
+		},
+		{
+			name: "Invalid FQN Identifier (empty string)",
+			req: &attributes.GetAttributeRequest{
+				Identifier: &attributes.GetAttributeRequest_Fqn{
+					Fqn: "",
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageMinLen,
+		},
+		{
+			name: "Invalid can't have both Id and Identifier",
+			req: &attributes.GetAttributeRequest{
+				Id: validUUID,
+				Identifier: &attributes.GetAttributeRequest_Fqn{
+					Fqn: "https://example.com/valid_fqn",
+				},
+			},
+			expectError:  true,
+			errorMessage: errExclusiveFields,
+		},
+		{
+			name:         "Invalid no Id or Identifier",
+			req:          &attributes.GetAttributeRequest{},
+			expectError:  true,
+			errorMessage: errRequiredField,
 		},
 	}
-	err := getValidator().Validate(req)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), errMessageUUID)
 
-	req = &attributes.GetAttributeRequest{
-		Id: validUUID,
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := getValidator().Validate(tc.req)
+			if tc.expectError {
+				require.Error(t, err, "Expected error for test case: %s", tc.name)
+				if tc.errorMessage != "" {
+					require.Contains(t, err.Error(), tc.errorMessage, "Expected error message to contain '%s' for test case: %s", tc.errorMessage, tc.name)
+				}
+			} else {
+				require.NoError(t, err, "Expected no error for test case: %s", tc.name)
+			}
+		})
 	}
-	err = getValidator().Validate(req)
-	require.NoError(t, err)
-
-	req = &attributes.GetAttributeRequest{
-		Identifier: &attributes.GetAttributeRequest_AttributeId{
-			AttributeId: validUUID,
-		},
-	}
-	err = getValidator().Validate(req)
-	require.NoError(t, err)
 }
 
 func TestUpdateAttributeRequest(t *testing.T) {
@@ -413,29 +506,118 @@ func TestValueKeyAccessServer_Fails(t *testing.T) {
 	}
 }
 
-func TestGetAttributeValueRequest(t *testing.T) {
-	req := &attributes.GetAttributeValueRequest{
-		Identifier: &attributes.GetAttributeValueRequest_ValueId{
-			ValueId: "",
+func Test_GetAttributeValueRequest(t *testing.T) {
+	testCases := []struct {
+		name         string
+		req          *attributes.GetAttributeValueRequest
+		expectError  bool
+		errorMessage string // Optional: expected error message substring
+	}{
+		{
+			name: "Invalid ValueId in Identifier (empty string)",
+			req: &attributes.GetAttributeValueRequest{
+				Identifier: &attributes.GetAttributeValueRequest_ValueId{
+					ValueId: "",
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageUUID,
+		},
+		{
+			name: "Invalid ValueId in Identifier (invalid UUID)",
+			req: &attributes.GetAttributeValueRequest{
+				Identifier: &attributes.GetAttributeValueRequest_ValueId{
+					ValueId: "invalid-uuid",
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageUUID,
+		},
+		{
+			name: "Valid Deprecated Id",
+			req: &attributes.GetAttributeValueRequest{
+				Id: validUUID,
+			},
+			expectError: false,
+		},
+		{
+			name: "Invalid Deprecated Id (empty string)",
+			req: &attributes.GetAttributeValueRequest{
+				Id: "",
+			},
+			expectError:  true,
+			errorMessage: errRequiredField,
+		},
+		{
+			name: "Valid ValueId in Identifier",
+			req: &attributes.GetAttributeValueRequest{
+				Identifier: &attributes.GetAttributeValueRequest_ValueId{
+					ValueId: validUUID,
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Valid FQN Identifier",
+			req: &attributes.GetAttributeValueRequest{
+				Identifier: &attributes.GetAttributeValueRequest_Fqn{
+					Fqn: "https://example.com/valid_fqn_value",
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Invalid FQN Identifier (missing scheme)",
+			req: &attributes.GetAttributeValueRequest{
+				Identifier: &attributes.GetAttributeValueRequest_Fqn{
+					Fqn: "example.com/valid_fqn_value",
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageURI,
+		},
+		{
+			name: "Invalid FQN Identifier (empty string)",
+			req: &attributes.GetAttributeValueRequest{
+				Identifier: &attributes.GetAttributeValueRequest_Fqn{
+					Fqn: "",
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageMinLen,
+		},
+		{
+			name: "Invalid can't have both Id and Identifier",
+			req: &attributes.GetAttributeValueRequest{
+				Id: validUUID,
+				Identifier: &attributes.GetAttributeValueRequest_Fqn{
+					Fqn: "https://example.com/valid_fqn_value",
+				},
+			},
+			expectError:  true,
+			errorMessage: errExclusiveFields,
+		},
+		{
+			name:         "Invalid no Id or Identifier",
+			req:          &attributes.GetAttributeValueRequest{},
+			expectError:  true,
+			errorMessage: errRequiredField,
 		},
 	}
-	err := getValidator().Validate(req)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), errMessageUUID)
 
-	req = &attributes.GetAttributeValueRequest{
-		Id: validUUID,
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := getValidator().Validate(tc.req)
+			if tc.expectError {
+				require.Error(t, err, "Expected error for test case: %s", tc.name)
+				if tc.errorMessage != "" {
+					require.Contains(t, err.Error(), tc.errorMessage, "Expected error message to contain '%s' for test case: %s", tc.errorMessage, tc.name)
+				}
+			} else {
+				require.NoError(t, err, "Expected no error for test case: %s", tc.name)
+			}
+		})
 	}
-	err = getValidator().Validate(req)
-	require.NoError(t, err)
-
-	req = &attributes.GetAttributeValueRequest{
-		Identifier: &attributes.GetAttributeValueRequest_ValueId{
-			ValueId: validUUID,
-		},
-	}
-	err = getValidator().Validate(req)
-	require.NoError(t, err)
 }
 
 func TestListAttributeValuesRequest(t *testing.T) {

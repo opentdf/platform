@@ -10,9 +10,13 @@ import (
 )
 
 const (
-	validName      = "namespace.org"
-	validUUID      = "390e0058-7ae8-48f6-821c-9db07c831276"
-	errMessageUUID = "string.uuid"
+	validName          = "namespace.org"
+	validUUID          = "390e0058-7ae8-48f6-821c-9db07c831276"
+	errMessageUUID     = "string.uuid"
+	errMessageMinLen   = "string.min_len"
+	errMessageURI      = "string.uri"
+	errRequiredField   = "required_fields"
+	errExclusiveFields = "exclusive_fields"
 )
 
 func getValidator() *protovalidate.Validator {
@@ -114,31 +118,136 @@ func TestCreateNamespace_NameMissing_Fails(t *testing.T) {
 	require.Contains(t, err.Error(), "[required]")
 }
 
-func Test_GetNamespaceRequest_Succeeds(t *testing.T) {
-	req := &namespaces.GetNamespaceRequest{
-		Identifier: &namespaces.GetNamespaceRequest_NamespaceId{
-			NamespaceId: "",
+func Test_GetNamespaceRequest(t *testing.T) {
+	testCases := []struct {
+		name         string
+		req          *namespaces.GetNamespaceRequest
+		expectError  bool
+		errorMessage string // Optional: expected error message substring
+	}{
+		{
+			name: "Invalid NamespaceId in Identifier (empty string)",
+			req: &namespaces.GetNamespaceRequest{
+				Identifier: &namespaces.GetNamespaceRequest_NamespaceId{
+					NamespaceId: "",
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageUUID,
+		},
+		{
+			name: "Invalid NamespaceId in Identifier (invalid UUID)",
+			req: &namespaces.GetNamespaceRequest{
+				Identifier: &namespaces.GetNamespaceRequest_NamespaceId{
+					NamespaceId: "invalid-uuid",
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageUUID,
+		},
+		{
+			name: "Valid NamespaceId in Identifier",
+			req: &namespaces.GetNamespaceRequest{
+				Identifier: &namespaces.GetNamespaceRequest_NamespaceId{
+					NamespaceId: validUUID,
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Valid Deprecated Id",
+			req: &namespaces.GetNamespaceRequest{
+				Id: validUUID,
+			},
+			expectError: false,
+		},
+		{
+			name: "Invalid Deprecated Id (empty string)",
+			req: &namespaces.GetNamespaceRequest{
+				Id: "",
+			},
+			expectError:  true,
+			errorMessage: errRequiredField,
+		},
+		{
+			name: "Invalid Deprecated Id (invalid UUID)",
+			req: &namespaces.GetNamespaceRequest{
+				Id: "invalid-uuid",
+			},
+			expectError:  true,
+			errorMessage: errMessageUUID,
+		},
+		{
+			name: "Invalid Namespace Identifier URI",
+			req: &namespaces.GetNamespaceRequest{
+				Identifier: &namespaces.GetNamespaceRequest_Fqn{
+					Fqn: "invalid-fqn",
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageURI,
+		},
+		{
+			name: "Invalid Namespace Identifier URI (empty string)",
+			req: &namespaces.GetNamespaceRequest{
+				Identifier: &namespaces.GetNamespaceRequest_Fqn{
+					Fqn: "",
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageMinLen,
+		},
+		{
+			name: "Invalid Namespace Identifier URI (missing scheme)",
+			req: &namespaces.GetNamespaceRequest{
+				Identifier: &namespaces.GetNamespaceRequest_Fqn{
+					Fqn: "namespace.org",
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageURI,
+		},
+		{
+			name: "Valid Namespace Identifier URI",
+			req: &namespaces.GetNamespaceRequest{
+				Identifier: &namespaces.GetNamespaceRequest_Fqn{
+					Fqn: "https://namespace.org",
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Invalid can't have both Id and Identifier",
+			req: &namespaces.GetNamespaceRequest{
+				Id: validUUID,
+				Identifier: &namespaces.GetNamespaceRequest_Fqn{
+					Fqn: "https://namespace.org",
+				},
+			},
+			expectError:  true,
+			errorMessage: errExclusiveFields,
+		},
+		{
+			name:         "Invalid no Id or Identifier",
+			req:          &namespaces.GetNamespaceRequest{},
+			expectError:  true,
+			errorMessage: errRequiredField,
 		},
 	}
-	v := getValidator()
 
-	err := v.Validate(req)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), errMessageUUID)
-
-	req = &namespaces.GetNamespaceRequest{
-		Identifier: &namespaces.GetNamespaceRequest_NamespaceId{
-			NamespaceId: validUUID,
-		},
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := getValidator().Validate(tc.req)
+			if tc.expectError {
+				require.Error(t, err, "Expected error for test case: %s", tc.name)
+				if tc.errorMessage != "" {
+					require.Contains(t, err.Error(), tc.errorMessage, "Expected error message to contain '%s' for test case: %s", tc.errorMessage, tc.name)
+				}
+			} else {
+				require.NoError(t, err, "Expected no error for test case: %s", tc.name)
+			}
+		})
 	}
-	err = v.Validate(req)
-	require.NoError(t, err)
-
-	req = &namespaces.GetNamespaceRequest{
-		Id: validUUID,
-	}
-	err = v.Validate(req)
-	require.NoError(t, err)
 }
 
 func Test_UpdateNamespaceRequest_Succeeds(t *testing.T) {

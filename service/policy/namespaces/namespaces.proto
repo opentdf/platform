@@ -48,18 +48,40 @@ message NamespaceKey {
 */
 
 message GetNamespaceRequest {
+  // Temporary message level validation until we remove the deprecated id field
+  option (buf.validate.message).cel = {
+    id: "exclusive_fields",
+    expression: "!(has(this.id) && (has(this.namespace_id) || has(this.fqn)))",
+    message: "Either use deprecated 'id' field or one of 'namespace_id' or 'fqn', but not both"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "required_fields",
+    expression: "has(this.id) || has(this.namespace_id) || has(this.fqn)",
+    message: "Either id or one of namespace_id or fqn must be set"
+  };
+
   // Deprecated
   string id = 1 [
-    deprecated = true
+    deprecated = true,
+    (buf.validate.field).ignore = IGNORE_IF_DEFAULT_VALUE,
+    (buf.validate.field).string.uuid= true
   ];
 
   oneof identifier {
+    //option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field
     string namespace_id = 2 [
       (buf.validate.field).string.uuid = true
     ];
-    string fqn = 3;
+    string fqn = 3 [
+      (buf.validate.field).string = {
+        min_len : 1
+        uri : true
+      }
+    ];
   }
 }
+
 message GetNamespaceResponse {
   policy.Namespace namespace = 1;
 }

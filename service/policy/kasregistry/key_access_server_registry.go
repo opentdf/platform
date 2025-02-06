@@ -319,7 +319,11 @@ func (s KeyAccessServerRegistry) UpdatePublicKey(ctx context.Context, req *conne
 		ObjectID:   req.Msg.GetId(),
 	}
 
-	original, err := s.dbClient.GetPublicKey(ctx, &kasr.GetPublicKeyRequest{Id: req.Msg.GetId()})
+	original, err := s.dbClient.GetPublicKey(ctx, &kasr.GetPublicKeyRequest{
+		Identifier: &kasr.GetPublicKeyRequest_Id{
+			Id: req.Msg.GetId(),
+		},
+	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed)

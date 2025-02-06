@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
@@ -93,55 +94,83 @@ func (s *NamespacesSuite) Test_GetNamespace() {
 	testData := s.getActiveNamespaceFixtures()
 
 	for _, test := range testData {
-		// Get namespace by deprecated id field
-		gotNamespace, err := s.db.PolicyClient.GetNamespace(s.ctx, test.ID)
-		s.Require().NoError(err)
-		s.NotNil(gotNamespace)
-		// name retrieved by ID equal to name used to create
-		s.Equal(test.Name, gotNamespace.GetName())
-		metadata := gotNamespace.GetMetadata()
-		createdAt := metadata.GetCreatedAt()
-		updatedAt := metadata.GetUpdatedAt()
-		s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
-		s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
-
-		// Get namespace by new identifier ID
-		identifierID := &namespaces.GetNamespaceRequest_NamespaceId{
-			NamespaceId: test.ID,
+		testCases := []struct {
+			name           string
+			input          interface{}
+			identifierType string
+		}{
+			{
+				name:           "Deprecated ID",
+				input:          test.ID,
+				identifierType: "Deprecated ID",
+			},
+			{
+				name:           "New Identifier - ID",
+				input:          &namespaces.GetNamespaceRequest_NamespaceId{NamespaceId: test.ID},
+				identifierType: "New ID",
+			},
+			{
+				name:           "New Identifier - FQN",
+				input:          &namespaces.GetNamespaceRequest_Fqn{Fqn: test.Name},
+				identifierType: "FQN",
+			},
 		}
 
-		gotNamespace, err = s.db.PolicyClient.GetNamespace(s.ctx, identifierID)
-		s.Require().NoError(err)
-		s.NotNil(gotNamespace)
-		// name retrieved by ID equal to name used to create
-		s.Equal(test.Name, gotNamespace.GetName())
-		metadata = gotNamespace.GetMetadata()
-		createdAt = metadata.GetCreatedAt()
-		updatedAt = metadata.GetUpdatedAt()
-		s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
-		s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
+		for _, tc := range testCases {
+			s.Run(fmt.Sprintf("%s - %s", test.Name, tc.name), func() { // Include namespace name in test name
+				gotNamespace, err := s.db.PolicyClient.GetNamespace(s.ctx, tc.input)
+				s.Require().NoError(err, "Failed to get Namespace by %s: %v", tc.identifierType, tc.input)
+				s.Require().NotNil(gotNamespace, "Expected non-nil Namespace for %s: %v", tc.identifierType, tc.input)
 
-		// Get namespace by new identifier FQN
-		identifierFQN := &namespaces.GetNamespaceRequest_Fqn{
-			Fqn: test.Name,
+				// name retrieved by ID equal to name used to create
+				s.Equal(test.Name, gotNamespace.GetName(), "Name mismatch for %s: %v", tc.identifierType, tc.input)
+
+				metadata := gotNamespace.GetMetadata()
+				s.Require().NotNil(metadata, "Metadata should not be nil for %s: %v", tc.identifierType, tc.input)
+				createdAt := metadata.GetCreatedAt()
+				updatedAt := metadata.GetUpdatedAt()
+				s.Require().NotNil(createdAt, "CreatedAt should not be nil for %s: %v", tc.identifierType, tc.input)
+				s.Require().NotNil(updatedAt, "UpdatedAt should not be nil for %s: %v", tc.identifierType, tc.input)
+
+				s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0, "CreatedAt is invalid for %s: %v", tc.identifierType, tc.input)
+				s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0, "UpdatedAt is invalid for %s: %v", tc.identifierType, tc.input)
+			})
 		}
+	}
+}
 
-		gotNamespace, err = s.db.PolicyClient.GetNamespace(s.ctx, identifierFQN)
-		s.Require().NoError(err)
-		s.NotNil(gotNamespace)
-		// name retrieved by ID equal to name used to create
-		s.Equal(test.Name, gotNamespace.GetName())
-		metadata = gotNamespace.GetMetadata()
-		createdAt = metadata.GetCreatedAt()
-		updatedAt = metadata.GetUpdatedAt()
-		s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
-		s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
+func (s *NamespacesSuite) Test_GetNamespace_NotFound() {
+	testCases := []struct {
+		name           string
+		input          interface{} // Input to GetNamespace - could be ID string or identifier struct
+		identifierType string      // For descriptive error messages
+	}{
+		{
+			name:           "Not Found - Deprecated ID",
+			input:          nonExistentNamespaceID, // Assuming nonExistentNamespaceID is defined in your test suite
+			identifierType: "Deprecated ID",
+		},
+		{
+			name:           "Not Found - New Identifier ID",
+			input:          &namespaces.GetNamespaceRequest_NamespaceId{NamespaceId: nonExistentNamespaceID},
+			identifierType: "New ID",
+		},
+		{
+			name:           "Not Found - New Identifier FQN",
+			input:          &namespaces.GetNamespaceRequest_Fqn{Fqn: "non-existent-namespace-fqn"}, // Example non-existent FQN
+			identifierType: "FQN",
+		},
+		// Add more test cases here if you want to test other "not found" scenarios
 	}
 
-	// Getting a namespace with an nonExistent id should fail
-	_, err := s.db.PolicyClient.GetNamespace(s.ctx, nonExistentNamespaceID)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrNotFound)
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			gotNamespace, err := s.db.PolicyClient.GetNamespace(s.ctx, tc.input)
+			s.Require().Error(err, "Expected error when Namespace is not found by %s: %v", tc.identifierType, tc.input)
+			s.Nil(gotNamespace, "Expected nil Namespace when not found by %s: %v", tc.identifierType, tc.input)
+			s.Require().ErrorIs(err, db.ErrNotFound, "Expected ErrNotFound when Namespace is not found by %s: %v", tc.identifierType, tc.input)
+		})
+	}
 }
 
 func (s *NamespacesSuite) Test_GetNamespace_InactiveState_Succeeds() {
@@ -153,13 +182,6 @@ func (s *NamespacesSuite) Test_GetNamespace_InactiveState_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(inactive.Name, got.GetName())
-}
-
-func (s *NamespacesSuite) Test_GetNamespace_DoesNotExist_ShouldFail() {
-	ns, err := s.db.PolicyClient.GetNamespace(s.ctx, nonExistentNamespaceID)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrNotFound)
-	s.Nil(ns)
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_NoPagination_Succeeds() {

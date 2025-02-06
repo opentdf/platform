@@ -9,17 +9,40 @@ import "policy/objects.proto";
 import "policy/selectors.proto";
 
 message GetKeyAccessServerRequest {
+  // Temporary message level validation until we remove the deprecated id field
+  option (buf.validate.message).cel = {
+    id: "exclusive_fields",
+    expression: "!(has(this.id) && (has(this.kas_id) || has(this.uri) || has(this.name)))",
+    message: "Either use deprecated 'id' field or one of 'kas_id' or 'uri', but not both"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "required_fields",
+    expression: "has(this.id) || has(this.kas_id) || has(this.uri) || has(this.name)",
+    message: "Either id or one of kas_id or uri must be set"
+  };
+
   // Deprecated
   string id = 1 [
-    deprecated = true
+    deprecated = true,
+    (buf.validate.field).ignore = IGNORE_IF_DEFAULT_VALUE,
+    (buf.validate.field).string.uuid= true
   ];;
 
   oneof identifier {
+    option (buf.validate.oneof).required = true;
     string kas_id = 2 [
       (buf.validate.field).string.uuid = true
     ];
-    string name = 3;
-    string uri = 4;
+    string name = 3 [
+      (buf.validate.field).string.min_len = 1
+    ];
+    string uri = 4 [
+      (buf.validate.field).string = {
+        min_len : 1
+        uri : true
+      }
+    ];
   }
 }
 message GetKeyAccessServerResponse { KeyAccessServer key_access_server = 1; }
@@ -136,7 +159,9 @@ message CreatePublicKeyRequest {
   string kas_id = 1 [ (buf.validate.field).string.uuid = true ];
 
   // Required
-  KasPublicKey key = 2;
+  KasPublicKey key = 2 [
+    (buf.validate.field).required = true
+  ];
 
    // Common metadata
   common.MetadataMutable metadata = 100;
@@ -144,18 +169,33 @@ message CreatePublicKeyRequest {
 
 message CreatePublicKeyResponse { Key key = 1; }
 
-message GetPublicKeyRequest { string id = 1; }
+message GetPublicKeyRequest { 
+  oneof identifier {
+    string id = 1 [
+      (buf.validate.field).string.uuid = true
+    ]; 
+  }
+}
 
 message GetPublicKeyResponse { Key key = 1; }
 
 message ListPublicKeysRequest {
-  oneof identifier {
+  oneof kas_filter {
     // Optional
-    string kas_id = 1;
+    string kas_id = 1 [
+      (buf.validate.field).string.uuid = true
+    ];
     // Optional
-    string kas_name = 2;
+    string kas_name = 2 [
+      (buf.validate.field).string.min_len = 1
+    ];
     // Optional
-    string kas_uri = 3;
+    string kas_uri = 3 [
+      (buf.validate.field).string = {
+        min_len : 1
+        uri : true
+      }
+    ];
   }
 
   // Optional
@@ -169,17 +209,29 @@ message ListPublicKeysResponse {
 }
 
 message ListPublicKeyMappingRequest {
-  oneof identifier {
+  oneof kas_filter {
     // Optional
-    string kas_id = 1;
+    string kas_id = 1 [
+      (buf.validate.field).string.uuid = true
+    ];
     // Optional
-    string kas_name = 2;
+    string kas_name = 2 [
+      (buf.validate.field).string.min_len = 1
+    ];
     // Optional
-    string kas_uri = 3;
+    string kas_uri = 3 [
+      (buf.validate.field).string = {
+        min_len : 1
+        uri : true
+      }
+    ];
   }
 
   // Optional Public Key ID
-  string public_key_id = 4;
+  string public_key_id = 4 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).ignore = IGNORE_IF_DEFAULT_VALUE
+  ];
   
   // Optional
   policy.PageRequest pagination = 10;
@@ -211,7 +263,9 @@ message ListPublicKeyMappingResponse {
 
 message UpdatePublicKeyRequest {
   // Required
-  string id = 1;
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 
   // Optional
   // Common metadata
@@ -223,8 +277,7 @@ message UpdatePublicKeyResponse { Key key = 1;}
 
 message DeactivatePublicKeyRequest { 
   string id = 1 [ 
-    (buf.validate.field).string.uuid = true, 
-    (buf.validate.field).required = true
+    (buf.validate.field).string.uuid = true
   ];
 }
 
@@ -232,14 +285,13 @@ message DeactivatePublicKeyResponse { Key key = 1; }
 
 message ActivatePublicKeyRequest { 
   string id = 1 [ 
-    (buf.validate.field).string.uuid = true, 
-    (buf.validate.field).required = true
+    (buf.validate.field).string.uuid = true
   ];
 }
 
 message ActivatePublicKeyResponse { Key key = 1; }
 
-//Deprecated
+// Deprecated in favor of ListPublicKeyMapping
 // TODO: optional validation below should be through a custom validator, which
 // is too bleeding edge at present without full plugin support
 

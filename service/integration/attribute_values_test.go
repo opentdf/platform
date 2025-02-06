@@ -184,66 +184,83 @@ func (s *AttributeValuesSuite) Test_ListAttributeValues_Offset_Succeeds() {
 func (s *AttributeValuesSuite) Test_GetAttributeValue() {
 	f := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 
-	// Get by deprecated id
-
-	v, err := s.db.PolicyClient.GetAttributeValue(s.ctx, f.ID)
-	s.Require().NoError(err)
-	s.NotNil(v)
-
-	s.Equal(f.ID, v.GetId())
-	s.Equal(f.Value, v.GetValue())
-	s.Equal(f.AttributeDefinitionID, v.GetAttribute().GetId())
-	s.Equal("https://example.com/attr/attr1/value/value1", v.GetFqn())
-	metadata := v.GetMetadata()
-	createdAt := metadata.GetCreatedAt()
-	updatedAt := metadata.GetUpdatedAt()
-	s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
-	s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
-
-	// Get by new identifier id
-	identifierByID := &attributes.GetAttributeValueRequest_ValueId{
-		ValueId: f.ID,
+	testCases := []struct {
+		name           string
+		input          interface{}
+		identifierType string
+	}{
+		{
+			name:           "Deprecated ID",
+			input:          f.ID,
+			identifierType: "Deprecated ID",
+		},
+		{
+			name:           "New Identifier - ID",
+			input:          &attributes.GetAttributeValueRequest_ValueId{ValueId: f.ID},
+			identifierType: "New ID",
+		},
+		{
+			name:           "New Identifier - FQN",
+			input:          &attributes.GetAttributeValueRequest_Fqn{Fqn: "https://example.com/attr/attr1/value/value1"},
+			identifierType: "FQN",
+		},
 	}
 
-	v, err = s.db.PolicyClient.GetAttributeValue(s.ctx, identifierByID)
-	s.Require().NoError(err)
-	s.NotNil(v)
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			v, err := s.db.PolicyClient.GetAttributeValue(s.ctx, tc.input)
+			s.Require().NoError(err, "Failed to get AttributeValue by %s: %v", tc.identifierType, tc.input)
+			s.Require().NotNil(v, "Expected non-nil AttributeValue for %s: %v", tc.identifierType, tc.input)
 
-	s.Equal(f.ID, v.GetId())
-	s.Equal(f.Value, v.GetValue())
-	s.Equal(f.AttributeDefinitionID, v.GetAttribute().GetId())
-	s.Equal("https://example.com/attr/attr1/value/value1", v.GetFqn())
-	metadata = v.GetMetadata()
-	createdAt = metadata.GetCreatedAt()
-	updatedAt = metadata.GetUpdatedAt()
-	s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
-	s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
+			s.Equal(f.ID, v.GetId(), "ID mismatch for %s: %v", tc.identifierType, tc.input)
+			s.Equal(f.Value, v.GetValue(), "Value mismatch for %s: %v", tc.identifierType, tc.input)
+			s.Equal(f.AttributeDefinitionID, v.GetAttribute().GetId(), "AttributeDefinitionID mismatch for %s: %v", tc.identifierType, tc.input)
+			s.Equal("https://example.com/attr/attr1/value/value1", v.GetFqn(), "FQN mismatch for %s: %v", tc.identifierType, tc.input)
 
-	// Get by new identifier fqn
-	identifierByFQN := &attributes.GetAttributeValueRequest_Fqn{
-		Fqn: "https://example.com/attr/attr1/value/value1",
+			metadata := v.GetMetadata()
+			s.Require().NotNil(metadata, "Metadata should not be nil for %s: %v", tc.identifierType, tc.input)
+			createdAt := metadata.GetCreatedAt()
+			updatedAt := metadata.GetUpdatedAt()
+			s.Require().NotNil(createdAt, "CreatedAt should not be nil for %s: %v", tc.identifierType, tc.input)
+			s.Require().NotNil(updatedAt, "UpdatedAt should not be nil for %s: %v", tc.identifierType, tc.input)
+
+			s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0, "CreatedAt is invalid for %s: %v", tc.identifierType, tc.input)
+			s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0, "UpdatedAt is invalid for %s: %v", tc.identifierType, tc.input)
+		})
 	}
-
-	v, err = s.db.PolicyClient.GetAttributeValue(s.ctx, identifierByFQN)
-	s.Require().NoError(err)
-	s.NotNil(v)
-
-	s.Equal(f.ID, v.GetId())
-	s.Equal(f.Value, v.GetValue())
-	s.Equal(f.AttributeDefinitionID, v.GetAttribute().GetId())
-	s.Equal("https://example.com/attr/attr1/value/value1", v.GetFqn())
-	metadata = v.GetMetadata()
-	createdAt = metadata.GetCreatedAt()
-	updatedAt = metadata.GetUpdatedAt()
-	s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
-	s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
 }
 
 func (s *AttributeValuesSuite) Test_GetAttributeValue_NotFound() {
-	attr, err := s.db.PolicyClient.GetAttributeValue(s.ctx, absentAttributeValueUUID)
-	s.Require().Error(err)
-	s.Nil(attr)
-	s.Require().ErrorIs(err, db.ErrNotFound)
+	testCases := []struct {
+		name           string
+		input          interface{} // Could be string ID or identifier struct if you want to test different not-found scenarios later
+		identifierType string      // For clarity in case you expand test cases
+	}{
+		{
+			name:           "Not Found - Deprecated ID", // Or just "Not Found" if only one case
+			input:          absentAttributeValueUUID,
+			identifierType: "Deprecated ID", // Or "UUID" or "ID"
+		},
+		{
+			name:           "Not Found - New Identifier - ID",
+			input:          &attributes.GetAttributeValueRequest_ValueId{ValueId: absentAttributeValueUUID},
+			identifierType: "New ID",
+		},
+		{
+			name:           "Not Found - New Identifier - FQN",
+			input:          &attributes.GetAttributeValueRequest_Fqn{Fqn: "https://example.com/attr/attr1/value/absent_value"},
+			identifierType: "FQN",
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			attr, err := s.db.PolicyClient.GetAttributeValue(s.ctx, tc.input)
+			s.Require().Error(err, "Expected an error when AttributeValue is not found by %s: %v", tc.identifierType, tc.input)
+			s.Nil(attr, "Expected nil AttributeValue when not found by %s: %v", tc.identifierType, tc.input)
+			s.Require().ErrorIs(err, db.ErrNotFound, "Expected ErrNotFound when AttributeValue is not found by %s: %v", tc.identifierType, tc.input)
+		})
+	}
 }
 
 func (s *AttributeValuesSuite) Test_GetAttributeValue_ContainsKASGrants() {

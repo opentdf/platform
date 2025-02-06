@@ -328,15 +328,31 @@ enum KasPublicKeyAlgEnum {
 // A KAS public key and some associated metadata for further identifcation
 message KasPublicKey {
   // x509 ASN.1 content in PEM envelope, usually
-  string pem = 1;
+  string pem = 1 [
+     (buf.validate.field).string = {
+        min_len: 1,
+        max_len: 2048
+      }
+  ];
 
   // A unique string identifier for this key
-  string kid = 2;
+  string kid = 2 [
+    (buf.validate.field).string = {
+      min_len : 1,
+      max_len : 32
+    }
+  ];
 
   // A known algorithm type with any additional parameters encoded.
   // To start, these may be `rsa:2048` for encrypting ZTDF files and
   // `ec:secp256r1` for nanoTDF, but more formats may be added as needed.
-  KasPublicKeyAlgEnum alg = 3;
+  KasPublicKeyAlgEnum alg = 3 [
+    (buf.validate.field).enum = {
+      defined_only: true,
+      not_in: [0]
+    }
+
+  ];
 }
 
 // Deprecated

@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/pkg/db"
+	"github.com/pkg/errors"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -75,30 +75,42 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 
 func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, identifier any) (*policy.KeyAccessServer, error) {
 	var (
-		kas GetKeyAccessServerByIdRow
-		err error
+		kas    GetKeyAccessServerRow
+		err    error
+		params GetKeyAccessServerParams
 	)
 
 	switch i := identifier.(type) {
 	case *kasregistry.GetKeyAccessServerRequest_KasId:
-		kas, err = c.Queries.GetKeyAccessServerById(ctx, i.KasId)
+		id := pgtypeUUID(i.KasId)
+		if !id.Valid {
+			return nil, db.ErrUUIDInvalid
+		}
+		params = GetKeyAccessServerParams{ID: id}
 	case *kasregistry.GetKeyAccessServerRequest_Name:
-		var k GetKeyAccessServerByNameRow
-		k, err = c.Queries.GetKeyAccessServerByName(ctx, pgtype.Text{String: i.Name, Valid: true})
-		// Same struct fields allow for struct casting
-		kas = GetKeyAccessServerByIdRow(k)
+		name := pgtypeText(i.Name)
+		if !name.Valid {
+			return nil, db.ErrSelectIdentifierInvalid
+		}
+		params = GetKeyAccessServerParams{Name: name}
 	case *kasregistry.GetKeyAccessServerRequest_Uri:
-		var k GetKeyAccessServerByUriRow
-		k, err = c.Queries.GetKeyAccessServerByUri(ctx, i.Uri)
-		// Same struct fields allow for struct casting
-		kas = GetKeyAccessServerByIdRow(k)
+		uri := pgtypeText(i.Uri)
+		if !uri.Valid {
+			return nil, db.ErrSelectIdentifierInvalid
+		}
+		params = GetKeyAccessServerParams{Uri: uri}
 	case string:
-		kas, err = c.Queries.GetKeyAccessServerById(ctx, i)
+		id := pgtypeUUID(i)
+		if !id.Valid {
+			return nil, db.ErrUUIDInvalid
+		}
+		params = GetKeyAccessServerParams{ID: id}
 	default:
-		// Hopefully this will never happen
-		return nil, fmt.Errorf("unknown identifier type: %T", i)
+		// unexpected type
+		return nil, errors.Wrap(db.ErrUnknownSelectIdentifier, fmt.Sprintf("type [%T] value [%v]", i, i))
 	}
 
+	kas, err = c.Queries.GetKeyAccessServer(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -312,7 +324,11 @@ func (c PolicyDBClient) CreatePublicKey(ctx context.Context, r *kasregistry.Crea
 		}
 
 		// Get freshly created key
-		ck, err = txClient.GetPublicKey(ctx, &kasregistry.GetPublicKeyRequest{Id: id})
+		ck, err = txClient.GetPublicKey(ctx, &kasregistry.GetPublicKeyRequest{
+			Identifier: &kasregistry.GetPublicKeyRequest_Id{
+				Id: id,
+			},
+		})
 		if err != nil {
 			return db.WrapIfKnownInvalidQueryErr(err)
 		}
@@ -480,7 +496,11 @@ func (c PolicyDBClient) UpdatePublicKey(ctx context.Context, r *kasregistry.Upda
 	keyID := r.GetId()
 
 	mdJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
-		k, err := c.GetPublicKey(ctx, &kasregistry.GetPublicKeyRequest{Id: keyID})
+		k, err := c.GetPublicKey(ctx, &kasregistry.GetPublicKeyRequest{
+			Identifier: &kasregistry.GetPublicKeyRequest_Id{
+				Id: keyID,
+			},
+		})
 		if err != nil {
 			return nil, err
 		}

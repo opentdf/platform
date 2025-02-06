@@ -436,7 +436,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		var err error
 		switch kao.GetKeyAccessObject().GetKeyType() {
 		case "ec-wrapped":
-			symKey, err = p.CryptoProvider.ECDecrypt(kao.GetKeyAccessObject().GetKid(), kao.GetKeyAccessObject().GetEphemeralPublicKey())
+			symKey, err = p.CryptoProvider.ECDecrypt(kao.GetKeyAccessObject().GetKid(), kao.GetKeyAccessObject().GetWrappedKey())
 		case "wrapped":
 			var kidsToCheck []string
 			if kao.GetKeyAccessObject().GetKid() != "" {

@@ -6,7 +6,6 @@ import (
 	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -117,27 +116,26 @@ func NewECDecryptor(sk *ecdh.PrivateKey) (ECDecryptor, error) {
 func (e ECDecryptor) Decrypt(wrapped []byte) ([]byte, error) {
 	var ek *ecdh.PublicKey
 	var wv ecWrappedValue
+	var pubFromDSN any
 
 	if rest, err := asn1.Unmarshal(wrapped, &wv); err != nil {
 		return nil, fmt.Errorf("asn1.Unmarshal failure: %w", err)
 	} else if len(rest) > 0 {
 		return nil, errors.New("trailing data")
-	} else {
-		if pubFromDSN, err := x509.ParsePKIXPublicKey(wv.EphemeralKey); err != nil {
-			return nil, fmt.Errorf("ecdh failure: %w", err)
-		} else {
-			switch pubFromDSN := pubFromDSN.(type) {
-			case *ecdsa.PublicKey:
-				ek, err = ConvertToECDHPublicKey(pubFromDSN)
-				if err != nil {
-					return nil, fmt.Errorf("ecdh conversion failure: %w", err)
-				}
-			case *ecdh.PublicKey:
-				ek = pubFromDSN
-			default:
-				return nil, errors.New("not an supported type of public key")
-			}
+	} else if pubFromDSN, err = x509.ParsePKIXPublicKey(wv.EphemeralKey); err != nil {
+		return nil, fmt.Errorf("ecdh failure: %w", err)
+	}
+	switch pubFromDSN := pubFromDSN.(type) {
+	case *ecdsa.PublicKey:
+		var err error
+		ek, err = ConvertToECDHPublicKey(pubFromDSN)
+		if err != nil {
+			return nil, fmt.Errorf("ecdh conversion failure: %w", err)
 		}
+	case *ecdh.PublicKey:
+		ek = pubFromDSN
+	default:
+		return nil, errors.New("not an supported type of public key")
 	}
 
 	ikm, err := e.sk.ECDH(ek)
@@ -175,17 +173,4 @@ func (e ECDecryptor) Decrypt(wrapped []byte) ([]byte, error) {
 	}
 
 	return plaintext, nil
-}
-
-func convCurve(c ecdh.Curve) elliptic.Curve {
-	switch c {
-	case ecdh.P256():
-		return elliptic.P256()
-	case ecdh.P384():
-		return elliptic.P384()
-	case ecdh.P521():
-		return elliptic.P521()
-	default:
-		return nil
-	}
 }

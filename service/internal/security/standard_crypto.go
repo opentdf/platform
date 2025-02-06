@@ -433,7 +433,7 @@ func versionSalt() []byte {
 }
 
 // ECDecrypt uses hybrid ECIES to decrypt the data.
-func (s *StandardCrypto) ECDecrypt(keyID string, ephemeralPublicKey, ciphertext []byte) ([]byte, error) {
+func (s *StandardCrypto) ECDecrypt(keyID string, ciphertext []byte) ([]byte, error) {
 	ska, ok := s.keysByID[keyID]
 	if !ok {
 		return nil, fmt.Errorf("key [%s] not found", keyID)
@@ -456,5 +456,5 @@ func (s *StandardCrypto) ECDecrypt(keyID string, ephemeralPublicKey, ciphertext 
 		return nil, fmt.Errorf("failed to create EC decryptor: %w", err)
 	}
 
-	return ed.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
+	return ed.Decrypt(ciphertext)
 }

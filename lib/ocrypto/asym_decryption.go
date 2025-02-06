@@ -10,6 +10,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/asn1"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -113,34 +114,29 @@ func NewECDecryptor(sk *ecdh.PrivateKey) (ECDecryptor, error) {
 	return ECDecryptor{sk, salt, info}, nil
 }
 
-func (e ECDecryptor) Decrypt(_ []byte) ([]byte, error) {
-	// TK How to get the ephmeral key into here?
-	return nil, errors.New("ecdh standard decrypt unimplemented")
-}
-
-func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
+func (e ECDecryptor) Decrypt(wrapped []byte) ([]byte, error) {
 	var ek *ecdh.PublicKey
+	var wv ecWrappedValue
 
-	if pubFromDSN, err := x509.ParsePKIXPublicKey(ephemeral); err == nil {
-		switch pubFromDSN := pubFromDSN.(type) {
-		case *ecdsa.PublicKey:
-			ek, err = ConvertToECDHPublicKey(pubFromDSN)
-			if err != nil {
-				return nil, fmt.Errorf("ecdh conversion failure: %w", err)
-			}
-		case *ecdh.PublicKey:
-			ek = pubFromDSN
-		default:
-			return nil, errors.New("not an supported type of public key")
-		}
+	if rest, err := asn1.Unmarshal(wrapped, &wv); err != nil {
+		return nil, fmt.Errorf("asn1.Unmarshal failure: %w", err)
+	} else if len(rest) > 0 {
+		return nil, errors.New("trailing data")
 	} else {
-		ekDSA, err := UncompressECPubKey(convCurve(e.sk.Curve()), ephemeral)
-		if err != nil {
-			return nil, err
-		}
-		ek, err = ekDSA.ECDH()
-		if err != nil {
+		if pubFromDSN, err := x509.ParsePKIXPublicKey(wv.EphemeralKey); err != nil {
 			return nil, fmt.Errorf("ecdh failure: %w", err)
+		} else {
+			switch pubFromDSN := pubFromDSN.(type) {
+			case *ecdsa.PublicKey:
+				ek, err = ConvertToECDHPublicKey(pubFromDSN)
+				if err != nil {
+					return nil, fmt.Errorf("ecdh conversion failure: %w", err)
+				}
+			case *ecdh.PublicKey:
+				ek = pubFromDSN
+			default:
+				return nil, errors.New("not an supported type of public key")
+			}
 		}
 	}
 
@@ -168,11 +164,11 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 	}
 
 	nonceSize := gcm.NonceSize()
-	if len(data) < nonceSize {
+	if len(wv.CipherText) < nonceSize {
 		return nil, errors.New("ciphertext too short")
 	}
 
-	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+	nonce, ciphertext := wv.CipherText[:nonceSize], wv.CipherText[nonceSize:]
 	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		return nil, fmt.Errorf("gcm.Open failure: %w", err)

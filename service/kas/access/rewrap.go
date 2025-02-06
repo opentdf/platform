@@ -70,9 +70,6 @@ type kaoResult struct {
 	DEK      []byte
 	Encapped []byte
 	Error    error
-
-	// Optional: Present for EC wrapped responses
-	EphemeralPublicKey []byte
 }
 
 // From policy ID to KAO ID to result
@@ -446,7 +443,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				continue
 			}
 
-			symKey, err = p.CryptoProvider.ECDecrypt(kao.GetKeyAccessObject().GetKid(), kao.GetKeyAccessObject().GetEphemeralPublicKey(), kao.GetKeyAccessObject().GetWrappedKey())
+			symKey, err = p.CryptoProvider.ECDecrypt(kao.GetKeyAccessObject().GetKid(), kao.GetKeyAccessObject().GetWrappedKey())
 		case "wrapped":
 			var kidsToCheck []string
 			if kao.GetKeyAccessObject().GetKid() != "" {
@@ -604,9 +601,8 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				continue
 			}
 			kaoResults[kaoID] = kaoResult{
-				ID:                 kaoID,
-				Encapped:           rewrappedKey,
-				EphemeralPublicKey: asymEncrypt.EphemeralKey(),
+				ID:       kaoID,
+				Encapped: rewrappedKey,
 			}
 
 			p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)

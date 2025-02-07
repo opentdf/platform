@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/opentdf/platform/sdk"
 	"io"
 	"os"
 	"path/filepath"
 
-	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/sdk"
+
 	"github.com/spf13/cobra"
 )
 
@@ -20,6 +20,7 @@ func init() {
 		RunE:  decrypt,
 		Args:  cobra.MinimumNArgs(1),
 	}
+	decryptCmd.Flags().StringVarP(&alg, "rewrap-encapsulation-algorithm", "a", "rsa:2048", "Key wrap response algorithm algorithm:parameters")
 	ExamplesCmd.AddCommand(decryptCmd)
 }
 
@@ -83,7 +84,18 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	if !isNano {
-		opts := []sdk.TDFReaderOption{sdk.WithSessionKeyType(ocrypto.ECKey, 256)}
+		opts := []sdk.TDFReaderOption{}
+		if alg != "" {
+			kt, err := keyTypeForKeyType(alg)
+			if err != nil {
+				return err
+			}
+			bits, err := bitsForKeyType(alg)
+			if err != nil {
+				return err
+			}
+			opts = append(opts, sdk.WithSessionKeyType(kt, bits))
+		}
 		tdfreader, err := client.LoadTDF(file, opts...)
 		if err != nil {
 			return err

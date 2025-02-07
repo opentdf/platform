@@ -25,6 +25,34 @@
   run go run ./examples decrypt sensitive.txt.tdf
   echo "$output"
   printf '%s\n' "$output" | grep "Hello Zero Trust"
+
+  echo "[INFO] decrypting with EC..."
+  run go run ./examples decrypt -a 'ec:secp256r1' sensitive.txt.tdf
+  echo "$output"
+  printf '%s\n' "$output" | grep "Hello Zero Trust"
+}
+
+@test "examples: roundtrip Z-TDF with EC wrapped KAO" {
+  # TODO: add subject mapping here to remove reliance on `provision fixtures`
+  echo "[INFO] create a tdf3 format file"
+  run go run ./examples encrypt -o sensitive-with-ec.txt.tdf --autoconfigure=false -a "ec:secp256r1" "Hello EC wrappers!"
+  echo "[INFO] echoing output; if successful, this is just the manifest"
+  echo "$output"
+
+  echo "[INFO] Validate the manifest lists the expected kid in its KAO"
+  kaotype=$(jq -r '.encryptionInformation.keyAccess[0].type' <<<"${output}")
+  echo "$kaotype"
+  [ "$kaotype" = ec-wrapped ]
+
+  echo "[INFO] decrypting..."
+  run go run ./examples decrypt sensitive-with-ec.txt.tdf
+  echo "$output"
+  printf '%s\n' "$output" | grep "Hello EC wrappers!"
+
+  echo "[INFO] decrypting with EC..."
+  run go run ./examples decrypt -a 'ec:secp256r1' sensitive-with-ec.txt.tdf
+  echo "$output"
+  printf '%s\n' "$output" | grep "Hello EC wrappers!"
 }
 
 @test "examples: roundtrip Z-TDF with extra unnecessary, invalid kas" {

@@ -22,6 +22,7 @@ var (
 	outputName     string
 	dataAttributes []string
 	collection     int
+	alg            string
 )
 
 func init() {
@@ -37,6 +38,7 @@ func init() {
 	encryptCmd.Flags().BoolVar(&noKIDInKAO, "no-kid-in-kao", false, "[deprecated] Disable storing key identifiers in TDF KAOs")
 	encryptCmd.Flags().BoolVar(&noKIDInNano, "no-kid-in-nano", true, "Disable storing key identifiers in nanoTDF KAS ResourceLocator")
 	encryptCmd.Flags().StringVarP(&outputName, "output", "o", "sensitive.txt.tdf", "name or path of output file; - for stdout")
+	encryptCmd.Flags().StringVarP(&alg, "key-encapsulation-algorithm", "a", "rsa:2048", "Key wrap algorithm algorithm:parameters")
 	encryptCmd.Flags().IntVarP(&collection, "collection", "c", 0, "number of nano's to create for collection. If collection >0 (default) then output will be <iteration>_<output>")
 
 	ExamplesCmd.AddCommand(&encryptCmd)
@@ -109,6 +111,17 @@ func encrypt(cmd *cobra.Command, args []string) error {
 					PublicKey: "",
 				}))
 		}
+		if alg != "" {
+			kt, err := keyTypeForKeyType(alg)
+			if err != nil {
+				return err
+			}
+			bits, err := bitsForKeyType(alg)
+			if err != nil {
+				return err
+			}
+			opts = append(opts, sdk.WithKeyType(kt, bits))
+		}
 		tdf, err := client.CreateTDF(out, in, opts...)
 		if err != nil {
 			return err
@@ -154,6 +167,29 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		}
 	}
 	return nil
+}
+
+func bitsForKeyType(alg string) (int, error) {
+	switch alg {
+	case "rsa:2048":
+		return 2048, nil
+	case "ec:secp256r1":
+		return 256, nil
+	default:
+		return 0, fmt.Errorf("unsupported key type [%s]", alg)
+	}
+}
+
+func keyTypeForKeyType(alg string) (ocrypto.KeyType, error) {
+	switch {
+	case strings.HasPrefix(alg, "rsa:"):
+		return ocrypto.RSAKey, nil
+	case strings.HasPrefix(alg, "ec:"):
+		return ocrypto.ECKey, nil
+	default:
+		// do not submit add ocrypto.UnknownKey
+		return ocrypto.RSAKey, fmt.Errorf("unsupported key type [%s]", alg)
+	}
 }
 
 func cat(cmd *cobra.Command, nTdfFile string) error {

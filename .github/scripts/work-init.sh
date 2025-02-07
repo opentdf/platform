@@ -36,20 +36,20 @@ case $component in
     echo "[INFO] skipping for leaf package"
     ;;
   sdk)
-    rm go.work go.work.sum &&
+    rm -f go.work go.work.sum &&
       go work init &&
       go work use ./sdk &&
       go work use ./service &&
       go work use ./examples
     ;;
   service)
-    rm go.work go.work.sum &&
+    rm -f go.work go.work.sum &&
       go work init &&
       go work use ./service &&
       go work use ./examples
     ;;
   examples)
-    rm go.work go.work.sum &&
+    rm -f go.work go.work.sum &&
       go work init &&
       go work use ./examples
     ;;

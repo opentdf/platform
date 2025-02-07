@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/opentdf/platform/lib/ocrypto"
-
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
 )
@@ -102,6 +101,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...)}
 		if !autoconfigure {
 			opts = append(opts, sdk.WithAutoconfigure(autoconfigure))
+			opts = append(opts, sdk.WithKeyType(ocrypto.ECKey, 256))
 			opts = append(opts, sdk.WithKasInformation(
 				sdk.KASInfo{
 					// examples assume insecure http

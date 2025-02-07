@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/opentdf/platform/sdk"
 	"io"
 	"os"
 	"path/filepath"
 
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/spf13/cobra"
 )
 
@@ -81,7 +83,8 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	}
 
 	if !isNano {
-		tdfreader, err := client.LoadTDF(file)
+		opts := []sdk.TDFReaderOption{sdk.WithSessionKeyType(ocrypto.ECKey, 256)}
+		tdfreader, err := client.LoadTDF(file, opts...)
 		if err != nil {
 			return err
 		}

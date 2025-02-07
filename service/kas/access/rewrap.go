@@ -439,7 +439,47 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		var err error
 		switch kao.GetKeyAccessObject().GetKeyType() {
 		case "ec-wrapped":
-			symKey, err = p.CryptoProvider.ECDecrypt(kao.GetKeyAccessObject().GetKid(), kao.GetKeyAccessObject().GetEphemeralPublicKey(), kao.GetKeyAccessObject().GetWrappedKey())
+
+			// Get the ephemeral public key in PEM format
+			ephemeralPubKeyPEM := kao.GetKeyAccessObject().GetEphemeralPublicKey()
+
+			// Get EC key size and convert to mode
+			keySize, err := ocrypto.GetECKeySize(ephemeralPubKeyPEM)
+			if err != nil {
+				return nil, results, fmt.Errorf("failed to get EC key size: %w", err)
+			}
+
+			mode, err := ocrypto.ECSizeToMode(keySize)
+			if err != nil {
+				return nil, results, fmt.Errorf("failed to convert key size to mode: %w", err)
+			}
+
+			// Parse the PEM public key
+			block, _ := pem.Decode(ephemeralPubKeyPEM)
+			if block == nil {
+				return nil, results, fmt.Errorf("failed to decode PEM block")
+			}
+
+			pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+			if err != nil {
+				return nil, results, fmt.Errorf("failed to parse public key: %w", err)
+			}
+
+			ecPub, ok := pub.(*ecdsa.PublicKey)
+			if !ok {
+				return nil, results, fmt.Errorf("not an EC public key")
+			}
+
+			// Compress the public key
+			compressedKey, err := ocrypto.CompressedECPublicKey(mode, *ecPub)
+			if err != nil {
+				return nil, results, fmt.Errorf("failed to compress public key: %w", err)
+			}
+
+			symKey, err = p.CryptoProvider.ECDecrypt(kao.GetKeyAccessObject().GetKid(), compressedKey, kao.GetKeyAccessObject().GetWrappedKey())
+			if err != nil {
+				return nil, results, fmt.Errorf("failed to decrypt EC key: %w", err)
+			}
 		case "wrapped":
 			var kidsToCheck []string
 			if kao.GetKeyAccessObject().GetKid() != "" {

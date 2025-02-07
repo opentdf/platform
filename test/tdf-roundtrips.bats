@@ -27,7 +27,7 @@
   printf '%s\n' "$output" | grep "Hello Zero Trust"
 
   echo "[INFO] decrypting with EC..."
-  run go run ./examples decrypt -a 'ec:secp256r1' sensitive.txt.tdf
+  run go run ./examples decrypt -A 'ec:secp256r1' sensitive.txt.tdf
   echo "$output"
   printf '%s\n' "$output" | grep "Hello Zero Trust"
 }
@@ -35,7 +35,7 @@
 @test "examples: roundtrip Z-TDF with EC wrapped KAO" {
   # TODO: add subject mapping here to remove reliance on `provision fixtures`
   echo "[INFO] create a tdf3 format file"
-  run go run ./examples encrypt -o sensitive-with-ec.txt.tdf --autoconfigure=false -a "ec:secp256r1" "Hello EC wrappers!"
+  run go run ./examples encrypt -o sensitive-with-ec.txt.tdf --autoconfigure=false -A "ec:secp256r1" "Hello EC wrappers!"
   echo "[INFO] echoing output; if successful, this is just the manifest"
   echo "$output"
 
@@ -50,7 +50,7 @@
   printf '%s\n' "$output" | grep "Hello EC wrappers!"
 
   echo "[INFO] decrypting with EC..."
-  run go run ./examples decrypt -a 'ec:secp256r1' sensitive-with-ec.txt.tdf
+  run go run ./examples decrypt -A 'ec:secp256r1' sensitive-with-ec.txt.tdf
   echo "$output"
   printf '%s\n' "$output" | grep "Hello EC wrappers!"
 }

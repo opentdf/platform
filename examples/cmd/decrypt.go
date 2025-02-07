@@ -20,7 +20,7 @@ func init() {
 		RunE:  decrypt,
 		Args:  cobra.MinimumNArgs(1),
 	}
-	decryptCmd.Flags().StringVarP(&alg, "rewrap-encapsulation-algorithm", "a", "rsa:2048", "Key wrap response algorithm algorithm:parameters")
+	decryptCmd.Flags().StringVarP(&alg, "rewrap-encapsulation-algorithm", "A", "rsa:2048", "Key wrap response algorithm algorithm:parameters")
 	ExamplesCmd.AddCommand(decryptCmd)
 }
 

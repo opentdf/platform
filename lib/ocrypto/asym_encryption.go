@@ -83,8 +83,7 @@ func newECIES(pub *ecdh.PublicKey) (ECEncryptor, error) {
 	ek, err := pub.Curve().GenerateKey(rand.Reader)
 	// TK Make these reasonable? IIRC salt should be longer, info maybe a parameters?
 	salt := []byte("salt")
-	info := []byte("info")
-	return ECEncryptor{pub, ek, salt, info}, err
+	return ECEncryptor{pub, ek, salt, nil}, err
 }
 
 // NewAsymEncryption creates and returns a new AsymEncryption.

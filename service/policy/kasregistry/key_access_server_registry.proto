@@ -30,7 +30,7 @@ message GetKeyAccessServerRequest {
   ];;
 
   oneof identifier {
-    option (buf.validate.oneof).required = true;
+    // option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field
     string kas_id = 2 [
       (buf.validate.field).string.uuid = true
     ];

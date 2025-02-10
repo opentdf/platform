@@ -79,7 +79,7 @@ jobs:
         run: |-
           go mod tidy
           go fmt ./...
-          git restore go.sum "${GITHUB_WORKSPACE}/go.work.sum"
+          git restore go.sum
         working-directory: ${{ matrix.directory }}
       - run: git diff
       - run: git diff-files --ignore-submodules
@@ -283,7 +283,7 @@ jobs:
         run: |-
           cd protocol/go
           go mod tidy
-          git restore go.sum "${GITHUB_WORKSPACE}/go.work.sum"
+          git restore go.sum
       - run: git diff
       - run: git diff-files --ignore-submodules
       - name: Check that make proto-generate has run before PR submission; see above for error details

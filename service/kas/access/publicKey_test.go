@@ -124,6 +124,12 @@ func TestStandardPublicKeyHandlerV2(t *testing.T) {
 	configStandard := security.Config{
 		Type: "standard",
 		StandardConfig: security.StandardConfig{
+			ECKeys: map[string]security.StandardKeyInfo{
+				"ec": {
+					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
+					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
+				},
+			},
 			RSAKeys: map[string]security.StandardKeyInfo{
 				"rsa": {
 					PrivateKeyPath: "./testdata/access-provider-000-private.pem",
@@ -141,6 +147,10 @@ func TestStandardPublicKeyHandlerV2(t *testing.T) {
 		KASConfig: KASConfig{
 			Keyring: []CurrentKeyFor{
 				{
+					Algorithm: security.AlgorithmECP256R1,
+					KID:       "ec",
+				},
+				{
 					Algorithm: security.AlgorithmRSA2048,
 					KID:       "rsa",
 				},
@@ -153,6 +163,15 @@ func TestStandardPublicKeyHandlerV2(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Contains(t, result.Msg.GetPublicKey(), "BEGIN PUBLIC KEY")
+	assert.Equal(t, "rsa", result.Msg.GetKid())
+
+	result, err = kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{
+		Algorithm: "ec:secp256r1",
+	}})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Contains(t, result.Msg.GetPublicKey(), "BEGIN PUBLIC KEY")
+	assert.Equal(t, "ec", result.Msg.GetKid())
 }
 
 func TestStandardPublicKeyHandlerV2Failure(t *testing.T) {
@@ -235,6 +254,7 @@ func TestStandardPublicKeyHandlerV2WithJwk(t *testing.T) {
 			},
 		},
 		Tracer: noop.NewTracerProvider().Tracer(""),
+		Logger: logger.CreateTestLogger(),
 	}
 
 	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{
@@ -250,7 +270,6 @@ func TestStandardPublicKeyHandlerV2WithJwk(t *testing.T) {
 }
 
 func TestStandardCertificateHandlerWithEc256(t *testing.T) {
-	t.Skip("EC Not yet implemented")
 	configStandard := security.Config{
 		Type: "standard",
 		StandardConfig: security.StandardConfig{
@@ -264,11 +283,15 @@ func TestStandardCertificateHandlerWithEc256(t *testing.T) {
 	}
 	c := mustNewCryptoProvider(t, configStandard)
 	defer c.Close()
+	kasCfg := KASConfig{}
+	kasCfg.UpgradeMapToKeyring(c)
 	kasURI := urlHost(t)
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: c,
 		Tracer:         noop.NewTracerProvider().Tracer(""),
+		KASConfig:      kasCfg,
+		Logger:         logger.CreateTestLogger(),
 	}
 
 	result, err := kas.LegacyPublicKey(context.Background(), &connect.Request[kaspb.LegacyPublicKeyRequest]{
@@ -278,11 +301,10 @@ func TestStandardCertificateHandlerWithEc256(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	assert.Contains(t, result.Msg.GetValue(), "BEGIN PUBLIC KEY")
+	assert.Contains(t, result.Msg.GetValue(), "BEGIN CERTIFICATE")
 }
 
 func TestStandardPublicKeyHandlerWithEc256(t *testing.T) {
-	t.Skip("EC Not yet implemented")
 	configStandard := security.Config{
 		Type: "standard",
 		StandardConfig: security.StandardConfig{
@@ -296,10 +318,14 @@ func TestStandardPublicKeyHandlerWithEc256(t *testing.T) {
 	}
 	c := mustNewCryptoProvider(t, configStandard)
 	defer c.Close()
+	kasCfg := KASConfig{}
+	kasCfg.UpgradeMapToKeyring(c)
 	kasURI := urlHost(t)
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: c,
+		KASConfig:      kasCfg,
+		Logger:         logger.CreateTestLogger(),
 	}
 
 	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{
@@ -313,7 +339,6 @@ func TestStandardPublicKeyHandlerWithEc256(t *testing.T) {
 }
 
 func TestStandardPublicKeyHandlerV2WithEc256(t *testing.T) {
-	t.Skip("EC Not yet implemented")
 	configStandard := security.Config{
 		Type: "standard",
 		StandardConfig: security.StandardConfig{
@@ -327,10 +352,14 @@ func TestStandardPublicKeyHandlerV2WithEc256(t *testing.T) {
 	}
 	c := mustNewCryptoProvider(t, configStandard)
 	defer c.Close()
+	kasCfg := KASConfig{}
+	kasCfg.UpgradeMapToKeyring(c)
 	kasURI := urlHost(t)
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: c,
+		KASConfig:      kasCfg,
+		Logger:         logger.CreateTestLogger(),
 	}
 
 	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{

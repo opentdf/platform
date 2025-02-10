@@ -49,7 +49,7 @@ jobs:
               sdk)
                 echo "TO_UPDATE=['examples','service']">>"$GITHUB_OUTPUT"
                 ;;
-              services)
+              service)
                 # examples does not import service, but assumes it is running separately
                 ;;
               examples)

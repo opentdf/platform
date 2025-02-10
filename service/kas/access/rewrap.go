@@ -440,6 +440,12 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		switch kao.GetKeyAccessObject().GetKeyType() {
 		case "ec-wrapped":
 
+			if !p.KASConfig.ECWrappedEnabled {
+				p.Logger.WarnContext(ctx, "ec-wrapped not enabled")
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
+			}
+
 			// Get the ephemeral public key in PEM format
 			ephemeralPubKeyPEM := kao.GetKeyAccessObject().GetEphemeralPublicKey()
 
@@ -580,6 +586,11 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		if err != nil {
 			p.Logger.ErrorContext(ctx, "unable to serialize ephemeral key", "err", err)
 			// This may be a 500, but could also be caused by a bad clientPublicKey
+			failAllKaos(requests, results, err400("invalid request"))
+			return "", results
+		}
+		if !p.KASConfig.ECWrappedEnabled {
+			p.Logger.ErrorContext(ctx, "ec rewrap not enabled")
 			failAllKaos(requests, results, err400("invalid request"))
 			return "", results
 		}

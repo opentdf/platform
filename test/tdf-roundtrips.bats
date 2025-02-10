@@ -238,6 +238,7 @@ logger:
 services:
   kas:
     enabled: true
+    ecwrappedenabled: true
     keyring:
       - kid: ${ec_current_key}
         alg: ec:secp256r1

@@ -231,5 +231,5 @@ func (e ECEncryptor) Encrypt(data []byte) ([]byte, error) {
 
 // PublicKeyInPemFormat Returns public key in pem format.
 func (e ECEncryptor) PublicKeyInPemFormat() (string, error) {
-	return publicKeyInPemFormat(e.pub)
+	return publicKeyInPemFormat(e.ek.Public())
 }

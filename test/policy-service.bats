@@ -60,9 +60,9 @@
 }
 
 @test "gRPC: kas grants assignment" {
-  go run ./examples --creds opentdf:secret kas add --kas https://a.example.io --public-key "$(<${BATS_TEST_DIRNAME}/../kas-cert.pem)"
-  go run ./examples --creds opentdf:secret kas add --kas https://b.example.io --public-key "$(<${BATS_TEST_DIRNAME}/../kas-cert.pem)"
-  go run ./examples --creds opentdf:secret kas add --kas https://c.example.io --public-key "$(<${BATS_TEST_DIRNAME}/../kas-cert.pem)"
+  go run ./examples --creds opentdf:secret kas add  --kas https://a.example.io --algorithm "rsa:2048" --kid r1 --public-key "$(<${BATS_TEST_DIRNAME}/../kas-cert.pem)"
+  go run ./examples --creds opentdf:secret kas add --kas https://b.example.io --algorithm "rsa:2048" --kid r1 --public-key "$(<${BATS_TEST_DIRNAME}/../kas-cert.pem)"
+  go run ./examples --creds opentdf:secret kas add --kas https://c.example.io --algorithm "rsa:2048" --kid r1 --public-key "$(<${BATS_TEST_DIRNAME}/../kas-cert.pem)"
 
   run go run ./examples --creds opentdf:secret kas ls -l
   echo "$output"

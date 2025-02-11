@@ -99,51 +99,16 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 	return c, nil
 }
 
-func generateKeyPair(keyType ocrypto.KeyType) (string, string, error) {
-	switch keyType {
-	case ocrypto.RSA2048Key:
-		ks, err := ocrypto.RSAKeyTypeToBits(keyType)
-		if err != nil {
-			return "", "", err
-		}
-		return generateRSAKeyPair(ks)
-	case ocrypto.EC256Key, ocrypto.EC384Key, ocrypto.EC521Key:
-		mode, err := ocrypto.ECKeyTypeToMode(keyType)
-		if err != nil {
-			return "", "", err
-		}
-		return generateECKeyPair(mode)
-	default:
-		return "", "", fmt.Errorf("unsupported key type")
-	}
-}
-
-func generateRSAKeyPair(keySize int) (string, string, error) {
-	rsaKeyPair, err := ocrypto.NewRSAKeyPair(keySize)
+func generateKeyPair(kt ocrypto.KeyType) (string, string, error) {
+	keyPair, err := ocrypto.NewKeyPair(kt)
 	if err != nil {
 		return "", "", fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
 	}
-	publicKey, err := rsaKeyPair.PublicKeyInPemFormat()
+	publicKey, err := keyPair.PublicKeyInPemFormat()
 	if err != nil {
 		return "", "", fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
 	}
-	privateKey, err := rsaKeyPair.PrivateKeyInPemFormat()
-	if err != nil {
-		return "", "", fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
-	}
-	return publicKey, privateKey, nil
-}
-
-func generateECKeyPair(mode ocrypto.ECCMode) (string, string, error) {
-	ecKeyPair, err := ocrypto.NewECKeyPair(mode)
-	if err != nil {
-		return "", "", fmt.Errorf("ocrypto.NewECKeyPair failed: %w", err)
-	}
-	publicKey, err := ecKeyPair.PublicKeyInPemFormat()
-	if err != nil {
-		return "", "", fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
-	}
-	privateKey, err := ecKeyPair.PrivateKeyInPemFormat()
+	privateKey, err := keyPair.PrivateKeyInPemFormat()
 	if err != nil {
 		return "", "", fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
 	}
@@ -290,7 +255,6 @@ type TDFReaderConfig struct {
 	schemaValidationIntensity SchemaValidationIntensity
 	kasSessionKey             ocrypto.KeyPair
 	keyType                   ocrypto.KeyType
-	keySize                   int // For RSA this is key size, for EC this is curve size
 }
 
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
@@ -298,7 +262,6 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 	c := &TDFReaderConfig{
 		disableAssertionVerification: false,
 		keyType:                      ocrypto.RSA2048Key,
-		keySize:                      DefaultRSAKeySize,
 	}
 
 	for _, o := range opt {
@@ -308,21 +271,9 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 		}
 	}
 
-	if c.keyType == ocrypto.RSA2048Key {
-		c.kasSessionKey, err = ocrypto.NewRSAKeyPair(c.keySize)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create RSA key pair: %w", err)
-		}
-	} else {
-		var eccMode ocrypto.ECCMode
-		eccMode, err = ocrypto.ECSizeToMode(c.keySize)
-		if err != nil {
-			return nil, err
-		}
-		c.kasSessionKey, err = ocrypto.NewECKeyPair(eccMode)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create EC key pair: %w", err)
-		}
+	c.kasSessionKey, err = ocrypto.NewKeyPair(c.keyType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create RSA key pair: %w", err)
 	}
 
 	return c, nil

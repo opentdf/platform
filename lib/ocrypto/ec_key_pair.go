@@ -48,6 +48,25 @@ type KeyPair interface {
 	GetKeyType() KeyType
 }
 
+func NewKeyPair(kt KeyType) (KeyPair, error) {
+	switch kt {
+	case RSA2048Key:
+		bits, err := RSAKeyTypeToBits(kt)
+		if err != nil {
+			return nil, err
+		}
+		return NewRSAKeyPair(bits)
+	case EC256Key, EC384Key, EC521Key:
+		mode, err := ECKeyTypeToMode(kt)
+		if err != nil {
+			return nil, err
+		}
+		return NewECKeyPair(mode)
+	default:
+		return nil, fmt.Errorf("unsupported key type: %v", kt)
+	}
+}
+
 type ECKeyPair struct {
 	PrivateKey *ecdsa.PrivateKey
 }

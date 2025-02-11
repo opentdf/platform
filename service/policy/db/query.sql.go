@@ -737,7 +737,7 @@ LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
 LEFT JOIN active_namespace_public_keys_view k ON ns.id = k.namespace_id
 WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL 
   AND ($1::uuid IS NULL OR ns.id = $1::uuid)
-  AND ($2::text IS NULL OR ns.name = $2::text)
+  AND ($2::text IS NULL OR ns.name = REGEXP_REPLACE($2::text, '^https?://', ''))
 GROUP BY ns.id, fqns.fqn, k.keys
 `
 
@@ -778,7 +778,7 @@ type GetNamespaceRow struct {
 //	LEFT JOIN active_namespace_public_keys_view k ON ns.id = k.namespace_id
 //	WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 //	  AND ($1::uuid IS NULL OR ns.id = $1::uuid)
-//	  AND ($2::text IS NULL OR ns.name = $2::text)
+//	  AND ($2::text IS NULL OR ns.name = REGEXP_REPLACE($2::text, '^https?://', ''))
 //	GROUP BY ns.id, fqns.fqn, k.keys
 func (q *Queries) GetNamespace(ctx context.Context, arg GetNamespaceParams) (GetNamespaceRow, error) {
 	row := q.db.QueryRow(ctx, getNamespace, arg.ID, arg.Name)

@@ -771,7 +771,7 @@ LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
 LEFT JOIN active_namespace_public_keys_view k ON ns.id = k.namespace_id
 WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL 
   AND (sqlc.narg('id')::uuid IS NULL OR ns.id = sqlc.narg('id')::uuid)
-  AND (sqlc.narg('name')::text IS NULL OR ns.name = sqlc.narg('name')::text)
+  AND (sqlc.narg('name')::text IS NULL OR ns.name = REGEXP_REPLACE(sqlc.narg('name')::text, '^https?://', ''))
 GROUP BY ns.id, fqns.fqn, k.keys;
 
 -- name: CreateNamespace :one

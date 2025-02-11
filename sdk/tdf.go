@@ -418,13 +418,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 	conjunction := make(map[string][]KASInfo)
 	var splitIDs []string
 
-	var keyAlgorithm string
-	if tdfConfig.keyType == ocrypto.RSAKey {
-		keyAlgorithm = fmt.Sprintf("rsa:%d", tdfConfig.keySize)
-	} else {
-		mode, _ := ocrypto.ECSizeToMode(tdfConfig.keySize)
-		keyAlgorithm = mode.String()
-	}
+	keyAlgorithm := string(tdfConfig.keyType)
 
 	for _, splitInfo := range tdfConfig.splitPlan {
 		// Public key was passed in with kasInfoList
@@ -541,8 +535,12 @@ func createKeyAccess(tdfConfig TDFConfig, kasInfo KASInfo, symKey []byte, policy
 		SchemaVersion:     keyAccessSchemaVersion,
 	}
 
-	if tdfConfig.keyType == ocrypto.ECKey {
-		wrappedKeyInfo, err := generateWrapKeyWithEC(tdfConfig.keySize, kasInfo.PublicKey, symKey)
+	if ocrypto.IsECKeyType(tdfConfig.keyType) {
+		mode, err := ocrypto.ECKeyTypeToMode(tdfConfig.keyType)
+		if err != nil {
+			return KeyAccess{}, err
+		}
+		wrappedKeyInfo, err := generateWrapKeyWithEC(mode, kasInfo.PublicKey, symKey)
 		if err != nil {
 			return KeyAccess{}, err
 		}
@@ -560,8 +558,7 @@ func createKeyAccess(tdfConfig TDFConfig, kasInfo KASInfo, symKey []byte, policy
 	return keyAccess, nil
 }
 
-func generateWrapKeyWithEC(keySize int, kasPublicKey string, symKey []byte) (ecKeyWrappedKeyInfo, error) {
-	mode, _ := ocrypto.ECSizeToMode(keySize)
+func generateWrapKeyWithEC(mode ocrypto.ECCMode, kasPublicKey string, symKey []byte) (ecKeyWrappedKeyInfo, error) {
 	ecKeyPair, err := ocrypto.NewECKeyPair(mode)
 	if err != nil {
 		return ecKeyWrappedKeyInfo{}, fmt.Errorf("ocrypto.NewECKeyPair failed:%w", err)

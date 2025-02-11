@@ -19,11 +19,13 @@ import (
 
 type ECCMode uint8
 
-type KeyType int
+type KeyType string
 
 const (
-	RSAKey KeyType = iota
-	ECKey
+	RSA2048Key KeyType = "rsa:2048"
+	EC256Key   KeyType = "ec:secp256r1"
+	EC384Key   KeyType = "ec:secp384r1"
+	EC521Key   KeyType = "ec:secp521r1"
 )
 
 const (
@@ -47,6 +49,23 @@ type KeyPair interface {
 
 type ECKeyPair struct {
 	PrivateKey *ecdsa.PrivateKey
+}
+
+func IsECKeyType(kt KeyType) bool {
+	switch kt {
+	case EC256Key, EC384Key, EC521Key:
+		return true
+	}
+	return false
+}
+
+func IsRSAKeyType(kt KeyType) bool {
+	switch kt {
+	case RSA2048Key:
+		return true
+	default:
+		return false
+	}
 }
 
 // GetECCurveFromECCMode return elliptic curve from ecc mode
@@ -95,6 +114,28 @@ func ECSizeToMode(size int) (ECCMode, error) {
 		return ECCModeSecp521r1, nil
 	default:
 		return 0, fmt.Errorf("unsupported EC curve size: %d", size)
+	}
+}
+
+func ECKeyTypeToMode(kt KeyType) (ECCMode, error) {
+	switch kt {
+	case EC256Key:
+		return ECCModeSecp256r1, nil
+	case EC384Key:
+		return ECCModeSecp384r1, nil
+	case EC521Key:
+		return ECCModeSecp521r1, nil
+	default:
+		return 0, fmt.Errorf("unsupported type: %v", kt)
+	}
+}
+
+func RSAKeyTypeToBits(kt KeyType) (int, error) {
+	switch kt {
+	case RSA2048Key:
+		return 2048, nil
+	default:
+		return 0, fmt.Errorf("unsupported type: %v", kt)
 	}
 }
 
@@ -426,5 +467,5 @@ func GetECKeySize(pemData []byte) (int, error) {
 
 // GetKeyType returns the key type (ECKey)
 func (keyPair ECKeyPair) GetKeyType() KeyType {
-	return ECKey
+	return EC256Key
 }

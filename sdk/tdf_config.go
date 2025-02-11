@@ -68,7 +68,6 @@ type TDFConfig struct {
 	kasInfoList               []KASInfo
 	splitPlan                 []keySplitStep
 	keyType                   ocrypto.KeyType
-	keySize                   int // For RSA this is key size, for EC this is curve size
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -79,8 +78,7 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 		tdfFormat:                 JSONFormat,
 		integrityAlgorithm:        HS256,
 		segmentIntegrityAlgorithm: GMAC,
-		keyType:                   ocrypto.RSAKey,    // default to RSA
-		keySize:                   DefaultRSAKeySize, // default size
+		keyType:                   ocrypto.RSA2048Key, // default to RSA
 	}
 
 	for _, o := range opt {
@@ -90,7 +88,7 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 		}
 	}
 
-	publicKey, privateKey, err := generateKeyPair(c.keyType, c.keySize)
+	publicKey, privateKey, err := generateKeyPair(c.keyType)
 	if err != nil {
 		return nil, err
 	}
@@ -101,11 +99,23 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 	return c, nil
 }
 
-func generateKeyPair(keyType ocrypto.KeyType, keySize int) (string, string, error) {
-	if keyType == ocrypto.RSAKey {
-		return generateRSAKeyPair(keySize)
+func generateKeyPair(keyType ocrypto.KeyType) (string, string, error) {
+	switch keyType {
+	case ocrypto.RSA2048Key:
+		ks, err := ocrypto.RSAKeyTypeToBits(keyType)
+		if err != nil {
+			return "", "", err
+		}
+		return generateRSAKeyPair(ks)
+	case ocrypto.EC256Key, ocrypto.EC384Key, ocrypto.EC521Key:
+		mode, err := ocrypto.ECKeyTypeToMode(keyType)
+		if err != nil {
+			return "", "", err
+		}
+		return generateECKeyPair(mode)
+	default:
+		return "", "", fmt.Errorf("unsupported key type")
 	}
-	return generateECKeyPair(keySize)
 }
 
 func generateRSAKeyPair(keySize int) (string, string, error) {
@@ -124,11 +134,7 @@ func generateRSAKeyPair(keySize int) (string, string, error) {
 	return publicKey, privateKey, nil
 }
 
-func generateECKeyPair(keySize int) (string, string, error) {
-	mode, err := ocrypto.ECSizeToMode(keySize)
-	if err != nil {
-		return "", "", err
-	}
+func generateECKeyPair(mode ocrypto.ECCMode) (string, string, error) {
 	ecKeyPair, err := ocrypto.NewECKeyPair(mode)
 	if err != nil {
 		return "", "", fmt.Errorf("ocrypto.NewECKeyPair failed: %w", err)
@@ -255,26 +261,12 @@ func WithAutoconfigure(enable bool) TDFOption {
 	}
 }
 
-func WithKeyType(keyType ocrypto.KeyType, size int) TDFOption {
+func WithWrappingKeyAlg(keyType ocrypto.KeyType) TDFOption {
 	return func(c *TDFConfig) error {
-		switch keyType {
-		case ocrypto.RSAKey:
-			if size < 2048 || size > 4096 {
-				return fmt.Errorf("invalid RSA key size: %d, must be between 2048 and 4096", size)
-			}
-		case ocrypto.ECKey:
-			switch size {
-			case ECKeySize256, ECKeySize384, ECKeySize521:
-				// valid sizes
-			default:
-				return fmt.Errorf("invalid EC curve size: %d, must be one of 256, 384, or 521", size)
-			}
-		default:
-			return fmt.Errorf("unsupported key type")
+		if c.keyType == "" {
+			return fmt.Errorf("key type missing")
 		}
-
 		c.keyType = keyType
-		c.keySize = size
 		return nil
 	}
 }
@@ -305,7 +297,7 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 	var err error
 	c := &TDFReaderConfig{
 		disableAssertionVerification: false,
-		keyType:                      ocrypto.RSAKey,
+		keyType:                      ocrypto.RSA2048Key,
 		keySize:                      DefaultRSAKeySize,
 	}
 
@@ -316,7 +308,7 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 		}
 	}
 
-	if c.keyType == ocrypto.RSAKey {
+	if c.keyType == ocrypto.RSA2048Key {
 		c.kasSessionKey, err = ocrypto.NewRSAKeyPair(c.keySize)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create RSA key pair: %w", err)
@@ -357,26 +349,12 @@ func WithDisableAssertionVerification(disable bool) TDFReaderOption {
 	}
 }
 
-func WithSessionKeyType(keyType ocrypto.KeyType, size int) TDFReaderOption {
+func WithSessionKeyType(keyType ocrypto.KeyType) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
-		switch keyType {
-		case ocrypto.RSAKey:
-			if size < 2048 || size > 4096 {
-				return fmt.Errorf("invalid RSA key size: %d, must be between 2048 and 4096", size)
-			}
-		case ocrypto.ECKey:
-			switch size {
-			case ECKeySize256, ECKeySize384, ECKeySize521:
-				// valid sizes
-			default:
-				return fmt.Errorf("invalid EC curve size: %d, must be one of 256, 384, or 521", size)
-			}
-		default:
-			return fmt.Errorf("unsupported key type")
+		if c.keyType == "" {
+			return fmt.Errorf("key type missing")
 		}
-
 		c.keyType = keyType
-		c.keySize = size
 		return nil
 	}
 }

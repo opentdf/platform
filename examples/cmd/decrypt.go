@@ -90,11 +90,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			bits, err := bitsForKeyType(alg)
-			if err != nil {
-				return err
-			}
-			opts = append(opts, sdk.WithSessionKeyType(kt, bits))
+			opts = append(opts, sdk.WithSessionKeyType(kt))
 		}
 		tdfreader, err := client.LoadTDF(file, opts...)
 		if err != nil {

@@ -103,7 +103,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...)}
 		if !autoconfigure {
 			opts = append(opts, sdk.WithAutoconfigure(autoconfigure))
-			opts = append(opts, sdk.WithKeyType(ocrypto.ECKey, 256))
+			opts = append(opts, sdk.WithWrappingKeyAlg(ocrypto.EC256Key))
 			opts = append(opts, sdk.WithKasInformation(
 				sdk.KASInfo{
 					// examples assume insecure http
@@ -116,11 +116,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			bits, err := bitsForKeyType(alg)
-			if err != nil {
-				return err
-			}
-			opts = append(opts, sdk.WithKeyType(kt, bits))
+			opts = append(opts, sdk.WithWrappingKeyAlg(kt))
 		}
 		tdf, err := client.CreateTDF(out, in, opts...)
 		if err != nil {
@@ -169,26 +165,15 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func bitsForKeyType(alg string) (int, error) {
-	switch alg {
-	case "rsa:2048":
-		return 2048, nil
-	case "ec:secp256r1":
-		return 256, nil
-	default:
-		return 0, fmt.Errorf("unsupported key type [%s]", alg)
-	}
-}
-
 func keyTypeForKeyType(alg string) (ocrypto.KeyType, error) {
-	switch {
-	case strings.HasPrefix(alg, "rsa:"):
-		return ocrypto.RSAKey, nil
-	case strings.HasPrefix(alg, "ec:"):
-		return ocrypto.ECKey, nil
+	switch alg {
+	case string(ocrypto.RSA2048Key):
+		return ocrypto.RSA2048Key, nil
+	case string(ocrypto.EC256Key):
+		return ocrypto.EC256Key, nil
 	default:
 		// do not submit add ocrypto.UnknownKey
-		return ocrypto.RSAKey, fmt.Errorf("unsupported key type [%s]", alg)
+		return ocrypto.RSA2048Key, fmt.Errorf("unsupported key type [%s]", alg)
 	}
 }
 

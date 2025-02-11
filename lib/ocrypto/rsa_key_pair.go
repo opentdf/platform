@@ -79,5 +79,5 @@ func (keyPair RsaKeyPair) KeySize() (int, error) {
 
 // GetKeyType returns the key type (RSAKey)
 func (keyPair RsaKeyPair) GetKeyType() KeyType {
-	return RSAKey
+	return RSA2048Key
 }

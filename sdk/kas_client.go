@@ -145,7 +145,7 @@ func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.UnsignedRewrapR
 		return nil, fmt.Errorf("error making rewrap request to kas: %w", err)
 	}
 
-	if k.sessionKey.GetKeyType() == ocrypto.ECKey {
+	if ocrypto.IsECKeyType(k.sessionKey.GetKeyType()) {
 		return k.handleECKeyResponse(response)
 	}
 	return k.handleRSAKeyResponse(response)

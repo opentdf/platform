@@ -11,7 +11,7 @@ inputs:
     required: false
     description: A JSON array containing extra keys for the KAS to load. Each object should have 'kid', 'alg', 'private', and 'cert' fields.
     default: '[]'
-  ec-wrapped-enabled:
+  ec-tdf-enabled:
     default: false
     description: 'Whether to enable ECC wrapping for TDFs'
     required: false
@@ -90,9 +90,9 @@ runs:
 
       working-directory: otdf-test-platform
     - name: Enable ECC wrapping for TDFs
-      if: ${{ inputs.ec-wrapped-enabled }}
+      if: ${{ inputs.ec-tdf-enabled }}
       run: |
-        yq e '.services.kas.ecwrappedenabled = true' -i opentdf.yaml
+        yq e '.services.kas.ectdfenabled = true' -i opentdf.yaml
     - name: Trust the generated certs
       shell: bash
       run: |

@@ -92,7 +92,7 @@ runs:
     - name: Enable ECC wrapping for TDFs
       if: ${{ inputs.ec-tdf-enabled }}
       run: |
-        yq e '.services.kas.ectdfenabled = true' -i opentdf.yaml
+        yq e '.services.kas.ec_tdf_enabled = true' -i opentdf.yaml
     - name: Trust the generated certs
       shell: bash
       run: |

@@ -238,7 +238,7 @@ logger:
 services:
   kas:
     enabled: true
-    ectdfenabled: true
+    ec_tdf_enabled: true
     keyring:
       - kid: ${ec_current_key}
         alg: ec:secp256r1

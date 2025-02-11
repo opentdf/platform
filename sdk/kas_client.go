@@ -27,6 +27,9 @@ type KASClient struct {
 	accessTokenSource auth.AccessTokenSource
 	dialOptions       []grpc.DialOption
 	sessionKey        ocrypto.KeyPair
+
+	// Set this to enable legacy, non-batch rewrap requests
+	supportSingleRewrapEndpoint bool
 }
 
 type kaoResult struct {
@@ -42,9 +45,10 @@ type decryptor interface {
 
 func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, sessionKey ocrypto.KeyPair) *KASClient {
 	return &KASClient{
-		accessTokenSource: accessTokenSource,
-		dialOptions:       dialOptions,
-		sessionKey:        sessionKey,
+		accessTokenSource:           accessTokenSource,
+		dialOptions:                 dialOptions,
+		sessionKey:                  sessionKey,
+		supportSingleRewrapEndpoint: true,
 	}
 }
 
@@ -175,6 +179,11 @@ func (k *KASClient) handleECKeyResponse(response *kas.RewrapResponse) (map[strin
 }
 
 func (k *KASClient) processECResponse(response *kas.RewrapResponse, aesGcm ocrypto.AesGcm) (map[string][]kaoResult, error) {
+	if len(response.GetResponses()) == 0 && len(response.GetEntityWrappedKey()) > 0 { //nolint:staticcheck // SA1019: use of deprecated method required for compatibility
+		// non-bulk (legacy) response
+		return k.unbulkUnwrap(asymDecryption, response)
+	}
+
 	policyResults := make(map[string][]kaoResult)
 	for _, results := range response.GetResponses() {
 		var kaoKeys []kaoResult
@@ -230,6 +239,24 @@ func (k *KASClient) processRSAResponse(response *kas.RewrapResponse, asymDecrypt
 	return policyResults, nil
 }
 
+func (*KASClient) unbulkUnwrap(asymDecryption ocrypto.AsymDecryption, response *kas.RewrapResponse, requests []*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]kaoResult, error) {
+	symmetricKey, err := asymDecryption.Decrypt(response.GetEntityWrappedKey()) //nolint:staticcheck // SA1019: use of deprecated method
+	if err != nil {
+		return nil, fmt.Errorf("AesGcm.Decrypt failed:%w", err)
+	}
+	if len(requests) != 1 || len(requests[0].GetKeyAccessObjects()) != 1 {
+		return nil, errors.New("unexpected number of requests")
+	}
+	kaoid := requests[0].GetKeyAccessObjects()[0].GetKeyAccessObjectId()
+	policyResults := make(map[string][]kaoResult, 1)
+	policyResults[requests[0].GetPolicy().GetId()] =
+		[]kaoResult{{
+			KeyAccessObjectID: kaoid,
+			SymmetricKey:      symmetricKey,
+		}}
+	return policyResults, nil
+}
+
 func getGRPCAddress(kasURL string) (string, error) {
 	parsedURL, err := url.Parse(kasURL)
 	if err != nil {
@@ -251,9 +278,17 @@ func getGRPCAddress(kasURL string) (string, error) {
 }
 
 func (k *KASClient) getRewrapRequest(reqs []*kas.UnsignedRewrapRequest_WithPolicyRequest, pubKey string) (*kas.RewrapRequest, error) {
+	if len(reqs) == 0 {
+		return nil, errors.New("no requests provided")
+	}
 	requestBody := &kas.UnsignedRewrapRequest{
 		ClientPublicKey: pubKey,
 		Requests:        reqs,
+	}
+	if len(reqs) == 1 && len(reqs[0].GetKeyAccessObjects()) == 1 && k.supportSingleRewrapEndpoint {
+		requestBody.KeyAccess = reqs[0].GetKeyAccessObjects()[0].GetKeyAccessObject() //nolint:staticcheck // SA1019: use of deprecated method
+		requestBody.Policy = reqs[0].GetPolicy().GetBody()                            //nolint:staticcheck // SA1019: use of deprecated method
+		requestBody.Algorithm = reqs[0].GetAlgorithm()                                //nolint:staticcheck // SA1019: use of deprecated method
 	}
 
 	requestBodyJSON, err := protojson.Marshal(requestBody)

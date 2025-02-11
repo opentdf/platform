@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -21,6 +22,7 @@ import (
 type FakeAccessTokenSource struct {
 	dpopKey        jwk.Key
 	asymDecryption ocrypto.AsymDecryption
+	asymEncryption ocrypto.AsymEncryption
 	accessToken    string
 }
 
@@ -36,6 +38,8 @@ func getTokenSource(t *testing.T) FakeAccessTokenSource {
 	dpopKey, _ := ocrypto.NewRSAKeyPair(2048)
 	dpopPEM, _ := dpopKey.PrivateKeyInPemFormat()
 	decryption, _ := ocrypto.NewAsymDecryption(dpopPEM)
+	dpopPEMPublic, _ := dpopKey.PublicKeyInPemFormat()
+	encryption, _ := ocrypto.NewAsymEncryption(dpopPEMPublic)
 	dpopJWK, err := jwk.ParseKey([]byte(dpopPEM), jwk.WithPEM(true))
 	if err != nil {
 		t.Fatalf("error creating JWK: %v", err)
@@ -48,6 +52,7 @@ func getTokenSource(t *testing.T) FakeAccessTokenSource {
 	return FakeAccessTokenSource{
 		dpopKey:        dpopJWK,
 		asymDecryption: decryption,
+		asymEncryption: encryption,
 		accessToken:    "thisistheaccesstoken",
 	}
 }
@@ -160,4 +165,107 @@ func Test_StoreKASKeys(t *testing.T) {
 	k2, err := s.getPublicKey(context.Background(), "https://localhost:54321", "ec:secp256r1")
 	assert.Nil(t, k2)
 	require.ErrorContains(t, err, "error making request")
+}
+
+type UnbulkUnwrapSuite struct {
+	suite.Suite
+	client         *KASClient
+	tokenSource    FakeAccessTokenSource
+	asymDecryption ocrypto.AsymDecryption
+	asymEncryption ocrypto.AsymEncryption
+}
+
+func (suite *UnbulkUnwrapSuite) SetupTest() {
+	suite.tokenSource = getTokenSource(suite.T())
+	suite.client = newKASClient(nil, suite.tokenSource, nil)
+	suite.asymDecryption = suite.tokenSource.asymDecryption
+	suite.asymEncryption = suite.tokenSource.asymEncryption
+}
+
+func (suite *UnbulkUnwrapSuite) TestUnbulkUnwrapHappyPath() {
+	k, err := suite.asymEncryption.Encrypt([]byte("wrappedKey"))
+	suite.Require().NoError(err, "error encrypting wrapped key")
+
+	response := &kaspb.RewrapResponse{
+		EntityWrappedKey: k,
+	}
+	requests := []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+		{
+			KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+				{
+					KeyAccessObjectId: "kaoID",
+				},
+			},
+			Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+				Id: "policyID",
+			},
+		},
+	}
+
+	results, err := suite.client.unbulkUnwrap(suite.asymDecryption, response, requests)
+	suite.Require().NoError(err, "unbulkUnwrap failed")
+
+	suite.Require().Len(results, 1)
+	suite.Require().Contains(results, "policyID")
+
+	kaoResults := results["policyID"]
+	suite.Require().Len(kaoResults, 1)
+
+	kaoResult := kaoResults[0]
+	suite.Equal("kaoID", kaoResult.KeyAccessObjectID)
+	suite.NotNil(kaoResult.SymmetricKey)
+	suite.Nil(kaoResult.Error)
+}
+
+func (suite *UnbulkUnwrapSuite) TestUnbulkUnwrap_ErrorDecrypt() {
+	response := &kaspb.RewrapResponse{
+		EntityWrappedKey: []byte("invalidWrappedKey"),
+	}
+
+	requests := []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+		{
+			KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+				{
+					KeyAccessObjectId: "kaoID",
+				},
+			},
+			Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+				Id: "policyID",
+			},
+		},
+	}
+
+	results, err := suite.client.unbulkUnwrap(suite.asymDecryption, response, requests)
+	suite.Require().Error(err, "expected error from unbulkUnwrap")
+	suite.Nil(results)
+}
+
+func (suite *UnbulkUnwrapSuite) TestUnbulkUnwrap_UnexpectedRequests() {
+	response := &kaspb.RewrapResponse{
+		EntityWrappedKey: []byte("wrappedKey"),
+	}
+
+	requests := []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+		{
+			KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+				{
+					KeyAccessObjectId: "kaoID",
+				},
+				{
+					KeyAccessObjectId: "kaoID2",
+				},
+			},
+			Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+				Id: "policyID",
+			},
+		},
+	}
+
+	results, err := suite.client.unbulkUnwrap(suite.asymDecryption, response, requests)
+	suite.Require().Error(err, "expected error from unbulkUnwrap")
+	suite.Nil(results)
+}
+
+func TestUnbulkUnwrap(t *testing.T) {
+	suite.Run(t, new(UnbulkUnwrapSuite))
 }

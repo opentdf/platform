@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -12,7 +13,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/pkg/db"
-	"github.com/pkg/errors"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -70,7 +70,7 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 		params = GetAttributeValueParams{ID: pgtypeUUID(i)}
 	default:
 		// unexpected type
-		return nil, errors.Wrap(db.ErrUnknownSelectIdentifier, fmt.Sprintf("type [%T] value [%v]", i, i))
+		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
 	}
 
 	av, err = c.Queries.GetAttributeValue(ctx, params)

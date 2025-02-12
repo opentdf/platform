@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/pkg/db"
-	"github.com/pkg/errors"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -247,7 +247,7 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*poli
 		params = GetAttributeParams{ID: id}
 	default:
 		// unexpected type
-		return nil, errors.Wrap(db.ErrSelectIdentifierInvalid, fmt.Sprintf("type [%T] value [%v]", i, i))
+		return nil, errors.Join(db.ErrSelectIdentifierInvalid, fmt.Errorf("type [%T] value [%v]", i, i))
 	}
 
 	attr, err = c.Queries.GetAttribute(ctx, params)

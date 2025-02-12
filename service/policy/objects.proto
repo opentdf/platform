@@ -331,7 +331,7 @@ message KasPublicKey {
   string pem = 1 [
      (buf.validate.field).string = {
         min_len: 1,
-        max_len: 2048
+        max_len: 8192
       }
   ];
 

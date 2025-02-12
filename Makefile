@@ -45,12 +45,12 @@ proto-lint:
 		fi)
 
 go-lint:
-	base_dir=$$(pwd); \
+	status=0; \
 	for m in $(HAND_MODS); do \
 		echo "Linting module: $$m"; \
-		(cd "$$m" && golangci-lint run $(LINT_OPTIONS) --path-prefix="$$m" ) || true; \
-		cd "$$base_dir"; \
-	done;
+		(cd "$$m" && golangci-lint run $(LINT_OPTIONS) --path-prefix="$$m" ) || status=1; \
+	done; \
+	exit $$status
 proto-generate:
 	rm -rf protocol/go/[a-fh-z]* docs/grpc docs/openapi
 	buf generate service

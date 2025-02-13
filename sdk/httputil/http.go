@@ -11,7 +11,7 @@ const (
 	// defaults to match DefaultTransport - defined to satisfy lint
 	maxIdleConns          = 100
 	idleConnTimeout       = 90 * time.Second
-	tLSHandshakeTimeout   = 10 * time.Second
+	tlsHandshakeTimeout   = 10 * time.Second
 	expectContinueTimeout = 1 * time.Second
 )
 
@@ -44,7 +44,7 @@ func SafeHTTPClientWithTLSConfig(cfg *tls.Config) *http.Client {
 		ForceAttemptHTTP2:     true,
 		MaxIdleConns:          maxIdleConns,
 		IdleConnTimeout:       idleConnTimeout,
-		TLSHandshakeTimeout:   tLSHandshakeTimeout,
+		TLSHandshakeTimeout:   tlsHandshakeTimeout,
 		ExpectContinueTimeout: expectContinueTimeout,
 	})
 }

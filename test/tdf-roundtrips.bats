@@ -19,7 +19,7 @@
   echo "[INFO] Validate the manifest lists the expected kid in its KAO"
   kid=$(jq -r '.encryptionInformation.keyAccess[0].kid' <<<"${output}")
   echo "$kid"
-  [ $kid = r1 ]
+  [ "$kid" = r1 ]
 
   echo "[INFO] decrypting..."
   run go run ./examples decrypt sensitive.txt.tdf
@@ -47,8 +47,8 @@
   sid1=$(jq -r '.encryptionInformation.keyAccess[0].sid' <<<"${output}")
   sid2=$(jq -r '.encryptionInformation.keyAccess[1].sid' <<<"${output}")
   echo "${u1},${sid1} ?= ${u2},${sid2}"
-  [ $u1 != $u2 ]
-  [ $sid1 = $sid2 ]
+  [ "$u1" != "$u2" ]
+  [ "$sid1" = "$sid2" ]
 
   echo "[INFO] decrypting..."
   run go run ./examples decrypt sensitive.txt.tdf
@@ -70,7 +70,7 @@
 
 @test "examples: legacy key support Z-TDF" {
   echo "[INFO] validating default key is r1"
-  [ $(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
+  [ "$(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r1 ]
 
   echo "[INFO] encrypting samples"
   go run ./examples encrypt --autoconfigure=false -o sensitive-with-no-kid.txt.tdf --no-kid-in-kao "Hello Legacy"
@@ -86,7 +86,7 @@
   wait_for_green
 
   echo "[INFO] validating default key is r2"
-  [ $(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r2 ]
+  [ "$(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r2 ]
 
   echo "[INFO] decrypting after key rotation"
   go run ./examples decrypt sensitive-with-no-kid.txt.tdf | grep "Hello Legacy"
@@ -95,7 +95,7 @@
 
 @test "examples: legacy kas and service config format support" {
   echo "[INFO] validating default key is r1"
-  [ $(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
+  [ "$(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r1 ]
 
   echo "[INFO] encrypting samples"
   go run ./examples encrypt --autoconfigure=false -o sensitive-with-no-kid.txt.tdf --no-kid-in-kao "Hello Legacy"
@@ -113,6 +113,10 @@
   echo "[INFO] validating default key is r1"
   [ $(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
 
+  echo "[INFO] validating keys are correct by alg"
+  [ "$(grpcurl -d '{"algorithm":"ec:secp256r1"}'  "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = e1 ]
+  [ "$(grpcurl -d '{"algorithm":"rsa:2048"}'  "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r1 ]
+
   echo "[INFO] decrypting after key rotation"
   go run ./examples decrypt sensitive-with-no-kid.txt.tdf | grep "Hello Legacy"
   go run ./examples decrypt sensitive-with-kid.txt.tdf | grep "Hello with Key Identifier"
@@ -122,7 +126,7 @@
 wait_for_green() {
   limit=5
   for i in $(seq 1 $limit); do
-    if [ $(grpcurl "localhost:8080" "grpc.health.v1.Health.Check" | jq -e -r .status) = SERVING ]; then
+    if [ "$(grpcurl "localhost:8080" "grpc.health.v1.Health.Check" | jq -e -r .status)" = SERVING ]; then
       return 0
     fi
     sleep 4

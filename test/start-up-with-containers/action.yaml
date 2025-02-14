@@ -90,6 +90,7 @@ runs:
 
       working-directory: otdf-test-platform
     - name: Enable ECC wrapping for TDFs
+      shell: bash
       if: ${{ inputs.ec-tdf-enabled }}
       run: |
         yq e '.services.kas.ec_tdf_enabled = true' -i opentdf.yaml

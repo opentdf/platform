@@ -5,7 +5,7 @@ import (
 )
 
 func TestAsymEncryptionAndDecryption(t *testing.T) {
-	var rsaKeys = []struct {
+	var keypairs = []struct {
 		privateKey string
 		publicKey  string
 	}{
@@ -215,10 +215,25 @@ I099IoRfC5djHUYYLMU/VkOIHuPC3sb7J65pSN26eR8bTMVNagk187V/xNwUuvkf
 wVyElqp317Ksz+GtTIc+DE6oryxK3tZd4hrj9fXT4KiJvQ4pcRjpePgH7B8=
 -----END CERTIFICATE-----`,
 		},
+		{`-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgwQlQvwfqC0sEaPVi
+l1CdHNqAndukGsrqMsfiIefXHQChRANCAAQSZSoVakwpWhKBZIR9dmmTkKv7GK6n
+6d0yFeGzOyqB7l9LOzOwlCDdm9k0jBQBw597Dyy7KQzW73zi+pSpgfYr
+-----END PRIVATE KEY-----
+`, `-----BEGIN CERTIFICATE-----
+MIIBcTCCARegAwIBAgIUQBzVxCvhpTzXU+i7qyiTNniBL4owCgYIKoZIzj0EAwIw
+DjEMMAoGA1UEAwwDa2FzMB4XDTI1MDExMDE2MzQ1NVoXDTI2MDExMDE2MzQ1NVow
+DjEMMAoGA1UEAwwDa2FzMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEmUqFWpM
+KVoSgWSEfXZpk5Cr+xiup+ndMhXhszsqge5fSzszsJQg3ZvZNIwUAcOfew8suykM
+1u984vqUqYH2K6NTMFEwHQYDVR0OBBYEFCAo/c694aHwmw/0kUTKuFvAQ4OcMB8G
+A1UdIwQYMBaAFCAo/c694aHwmw/0kUTKuFvAQ4OcMA8GA1UdEwEB/wQFMAMBAf8w
+CgYIKoZIzj0EAwIDSAAwRQIgUzKsJS6Pcu2aZ6BFfuqob552Ebdel4uFGZMqWrwW
+bW0CIQDT5QED+8mHFot9JXSx2q1c5mnRvl4yElK0fiHeatBdqw==
+-----END CERTIFICATE-----`},
 	}
 
-	for _, test := range rsaKeys {
-		asymEncryptor, err := NewAsymEncryption(test.publicKey)
+	for _, test := range keypairs {
+		asymEncryptor, err := FromPublicPEM(test.publicKey)
 		if err != nil {
 			t.Fatalf("NewAsymEncryption - failed: %v", err)
 		}
@@ -229,14 +244,25 @@ wVyElqp317Ksz+GtTIc+DE6oryxK3tZd4hrj9fXT4KiJvQ4pcRjpePgH7B8=
 			t.Fatalf("AsymEncryption encrypt failed: %v", err)
 		}
 
-		asymDecryptor, err := NewAsymDecryption(test.privateKey)
+		asymDecryptor, err := FromPrivatePEM(test.privateKey)
 		if err != nil {
 			t.Fatalf("NewAsymDecryption - failed: %v", err)
 		}
 
-		decryptedText, err := asymDecryptor.Decrypt(cipherText)
-		if err != nil {
-			t.Fatalf("AsymDecryption decrypt failed: %v", err)
+		var decryptedText []byte
+		ek := asymEncryptor.EphemeralKey()
+		if ek == nil {
+			decryptedText, err = asymDecryptor.Decrypt(cipherText)
+			if err != nil {
+				t.Fatalf("AsymDecryption decrypt failed: %v", err)
+			}
+		} else if ecd, ok := asymDecryptor.(ECDecryptor); ok {
+			decryptedText, err = ecd.DecryptWithEphemeralKey(cipherText, ek)
+			if err != nil {
+				t.Fatalf("AsymDecryption decrypt failed: %v", err)
+			}
+		} else {
+			t.Fatalf("AsymDecryption wrong type: %T", asymDecryptor)
 		}
 
 		if string(decryptedText) != plainText {

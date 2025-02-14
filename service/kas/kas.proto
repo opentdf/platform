@@ -47,6 +47,9 @@ message KeyAccess {
   bytes wrapped_key = 8;
 	// header is only used for NanoTDFs
   bytes header = 9;
+
+  // For wrapping with an ECDH derived key, when type=ec-wrapped
+  bytes ephemeral_public_key = 10;
 }
 
 message UnsignedRewrapRequest {

@@ -14,6 +14,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/sdk/httputil"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -25,15 +26,22 @@ const (
 )
 
 func NewTokenAddingInterceptor(t AccessTokenSource, c *tls.Config) TokenAddingInterceptor {
+	return NewTokenAddingInterceptorWithClient(t, httputil.SafeHTTPClientWithTLSConfig(c))
+}
+
+func NewTokenAddingInterceptorWithClient(t AccessTokenSource, c *http.Client) TokenAddingInterceptor {
+	if c == nil {
+		c = httputil.SafeHTTPClient()
+	}
 	return TokenAddingInterceptor{
 		tokenSource: t,
-		tlsConfig:   c,
+		httpClient:  c,
 	}
 }
 
 type TokenAddingInterceptor struct {
 	tokenSource AccessTokenSource
-	tlsConfig   *tls.Config
+	httpClient  *http.Client
 }
 
 func (i TokenAddingInterceptor) AddCredentials(
@@ -45,12 +53,7 @@ func (i TokenAddingInterceptor) AddCredentials(
 	opts ...grpc.CallOption,
 ) error {
 	newMetadata := make([]string, 0)
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: i.tlsConfig,
-		},
-	}
-	accessToken, err := i.tokenSource.AccessToken(ctx, client)
+	accessToken, err := i.tokenSource.AccessToken(ctx, i.httpClient)
 	if err == nil {
 		newMetadata = append(newMetadata, "Authorization", fmt.Sprintf("DPoP %s", accessToken))
 	} else {

@@ -3,10 +3,12 @@ package sdk
 import (
 	"crypto/rsa"
 	"crypto/tls"
+	"net/http"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/auth/oauth"
+	"github.com/opentdf/platform/sdk/httputil"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -20,7 +22,7 @@ type config struct {
 	// Platform configuration structure is subject to change. Consume via accessor methods.
 	PlatformConfiguration   PlatformConfiguration
 	dialOption              grpc.DialOption
-	tlsConfig               *tls.Config
+	httpClient              *http.Client
 	clientCredentials       *oauth.ClientCredentials
 	tokenExchange           *oauth.TokenExchangeInfo
 	tokenEndpoint           string
@@ -66,7 +68,7 @@ func WithInsecureSkipVerifyConn() Option {
 		}
 		c.dialOption = grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig))
 		// used by http client
-		c.tlsConfig = tlsConfig
+		c.httpClient = httputil.SafeHTTPClientWithTLSConfig(tlsConfig)
 	}
 }
 
@@ -83,7 +85,7 @@ func WithInsecurePlaintextConn() Option {
 		c.dialOption = grpc.WithTransportCredentials(insecure.NewCredentials())
 		// used by http client
 		// FIXME anything to do here
-		c.tlsConfig = &tls.Config{}
+		c.httpClient = httputil.SafeHTTPClient()
 	}
 }
 
@@ -97,7 +99,7 @@ func WithClientCredentials(clientID, clientSecret string, scopes []string) Optio
 
 func WithTLSCredentials(tls *tls.Config, audience []string) Option {
 	return func(c *config) {
-		c.certExchange = &oauth.CertExchangeInfo{TLSConfig: tls, Audience: audience}
+		c.certExchange = &oauth.CertExchangeInfo{HTTPClient: httputil.SafeHTTPClientWithTLSConfig(tls), Audience: audience}
 	}
 }
 

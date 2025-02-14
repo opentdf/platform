@@ -2,7 +2,6 @@ package oauth
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,6 +16,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/sdk/httputil"
 )
 
 const (
@@ -24,8 +24,8 @@ const (
 )
 
 type CertExchangeInfo struct {
-	TLSConfig *tls.Config
-	Audience  []string
+	HTTPClient *http.Client
+	Audience   []string
 }
 
 type ClientCredentials struct {
@@ -146,6 +146,9 @@ func GetAccessToken(client *http.Client, tokenEndpoint string, scopes []string, 
 	if err != nil {
 		return nil, err
 	}
+	if client == nil {
+		client = httputil.SafeHTTPClient()
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -249,6 +252,9 @@ func DoTokenExchange(ctx context.Context, client *http.Client, tokenEndpoint str
 	if err != nil {
 		return nil, err
 	}
+	if client == nil {
+		client = httputil.SafeHTTPClient()
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error making request to IdP for token exchange: %w", err)
@@ -313,12 +319,11 @@ func DoCertExchange(ctx context.Context, tokenEndpoint string, exchangeInfo Cert
 	if err != nil {
 		return nil, err
 	}
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: exchangeInfo.TLSConfig,
-		},
-	}
 
+	client := exchangeInfo.HTTPClient
+	if client == nil {
+		client = httputil.SafeHTTPClient()
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error making request to IdP for certificate exchange: %w", err)

@@ -23,6 +23,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/fixtures"
+	"github.com/opentdf/platform/sdk/httputil"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -78,12 +79,15 @@ func (s *OAuthSuite) TestCertExchangeFromKeycloak() {
 	rootCAs, _ := x509.SystemCertPool()
 	rootCAs.AppendCertsFromPEM(ca)
 	s.Require().NoError(err)
-	tlsConfig := tls.Config{
+	tlsConfig := &tls.Config{
 		MinVersion:   tls.VersionTLS12,
 		Certificates: []tls.Certificate{cert},
 		RootCAs:      rootCAs,
 	}
-	exhcangeInfo := CertExchangeInfo{TLSConfig: &tlsConfig, Audience: []string{"opentdf-sdk"}}
+	exhcangeInfo := CertExchangeInfo{
+		HTTPClient: httputil.SafeHTTPClientWithTLSConfig(tlsConfig),
+		Audience:   []string{"opentdf-sdk"},
+	}
 
 	tok, err := DoCertExchange(
 		context.Background(),

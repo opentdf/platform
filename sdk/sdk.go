@@ -27,6 +27,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/sdk/auth"
+	"github.com/opentdf/platform/sdk/httputil"
 	"github.com/opentdf/platform/sdk/internal/archive"
 	"github.com/xeipuuv/gojsonschema"
 	"google.golang.org/grpc"
@@ -154,7 +155,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		return nil, err
 	}
 	if accessTokenSource != nil {
-		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource, cfg.tlsConfig)
+		interceptor := auth.NewTokenAddingInterceptorWithClient(accessTokenSource, cfg.httpClient)
 		uci = append(uci, interceptor.AddCredentials)
 	}
 
@@ -452,13 +453,11 @@ func getTokenEndpoint(c config) (string, error) {
 		return "", err
 	}
 
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: c.tlsConfig,
-		},
+	client := c.httpClient
+	if client == nil {
+		client = httputil.SafeHTTPClient()
 	}
-
-	resp, err := httpClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}

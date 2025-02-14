@@ -487,9 +487,15 @@ LEFT JOIN attribute_definition_key_access_grants adkag ON adkag.attribute_defini
 LEFT JOIN key_access_servers kas ON kas.id = adkag.key_access_server_id
 LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
 LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
-WHERE ad.id = $1
+WHERE ($1::uuid IS NULL OR ad.id = $1::uuid)
+  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE($2::text, '^https?://', ''))
 GROUP BY ad.id, n.name, fqns.fqn, k.keys
 `
+
+type GetAttributeParams struct {
+	ID  pgtype.UUID `json:"id"`
+	Fqn pgtype.Text `json:"fqn"`
+}
 
 type GetAttributeRow struct {
 	ID            string                  `json:"id"`
@@ -551,10 +557,11 @@ type GetAttributeRow struct {
 //	LEFT JOIN key_access_servers kas ON kas.id = adkag.key_access_server_id
 //	LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
 //	LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
-//	WHERE ad.id = $1
+//	WHERE ($1::uuid IS NULL OR ad.id = $1::uuid)
+//	  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE($2::text, '^https?://', ''))
 //	GROUP BY ad.id, n.name, fqns.fqn, k.keys
-func (q *Queries) GetAttribute(ctx context.Context, id string) (GetAttributeRow, error) {
-	row := q.db.QueryRow(ctx, getAttribute, id)
+func (q *Queries) GetAttribute(ctx context.Context, arg GetAttributeParams) (GetAttributeRow, error) {
+	row := q.db.QueryRow(ctx, getAttribute, arg.ID, arg.Fqn)
 	var i GetAttributeRow
 	err := row.Scan(
 		&i.ID,
@@ -594,9 +601,15 @@ LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
 LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
 LEFT JOIN active_value_public_keys_view k ON av.id = k.value_id
-WHERE av.id = $1
+WHERE ($1::uuid IS NULL OR av.id = $1::uuid)
+  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE($2::text, '^https?://', ''))
 GROUP BY av.id, fqns.fqn, k.keys
 `
+
+type GetAttributeValueParams struct {
+	ID  pgtype.UUID `json:"id"`
+	Fqn pgtype.Text `json:"fqn"`
+}
 
 type GetAttributeValueRow struct {
 	ID                    string      `json:"id"`
@@ -632,10 +645,11 @@ type GetAttributeValueRow struct {
 //	LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
 //	LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
 //	LEFT JOIN active_value_public_keys_view k ON av.id = k.value_id
-//	WHERE av.id = $1
+//	WHERE ($1::uuid IS NULL OR av.id = $1::uuid)
+//	  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE($2::text, '^https?://', ''))
 //	GROUP BY av.id, fqns.fqn, k.keys
-func (q *Queries) GetAttributeValue(ctx context.Context, id string) (GetAttributeValueRow, error) {
-	row := q.db.QueryRow(ctx, getAttributeValue, id)
+func (q *Queries) GetAttributeValue(ctx context.Context, arg GetAttributeValueParams) (GetAttributeValueRow, error) {
+	row := q.db.QueryRow(ctx, getAttributeValue, arg.ID, arg.Fqn)
 	var i GetAttributeValueRow
 	err := row.Scan(
 		&i.ID,
@@ -652,14 +666,22 @@ func (q *Queries) GetAttributeValue(ctx context.Context, id string) (GetAttribut
 
 const getKeyAccessServer = `-- name: GetKeyAccessServer :one
 SELECT 
-    id,
-    uri, 
-    public_key, 
-    name,
+    kas.id,
+    kas.uri, 
+    kas.public_key, 
+    kas.name,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
-FROM key_access_servers
-WHERE id = $1
+FROM key_access_servers AS kas
+WHERE ($1::uuid IS NULL OR kas.id = $1::uuid)
+  AND ($2::text IS NULL OR kas.name = $2::text)
+  AND ($3::text IS NULL OR kas.uri = $3::text)
 `
+
+type GetKeyAccessServerParams struct {
+	ID   pgtype.UUID `json:"id"`
+	Name pgtype.Text `json:"name"`
+	Uri  pgtype.Text `json:"uri"`
+}
 
 type GetKeyAccessServerRow struct {
 	ID        string      `json:"id"`
@@ -672,15 +694,17 @@ type GetKeyAccessServerRow struct {
 // GetKeyAccessServer
 //
 //	SELECT
-//	    id,
-//	    uri,
-//	    public_key,
-//	    name,
+//	    kas.id,
+//	    kas.uri,
+//	    kas.public_key,
+//	    kas.name,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
-//	FROM key_access_servers
-//	WHERE id = $1
-func (q *Queries) GetKeyAccessServer(ctx context.Context, id string) (GetKeyAccessServerRow, error) {
-	row := q.db.QueryRow(ctx, getKeyAccessServer, id)
+//	FROM key_access_servers AS kas
+//	WHERE ($1::uuid IS NULL OR kas.id = $1::uuid)
+//	  AND ($2::text IS NULL OR kas.name = $2::text)
+//	  AND ($3::text IS NULL OR kas.uri = $3::text)
+func (q *Queries) GetKeyAccessServer(ctx context.Context, arg GetKeyAccessServerParams) (GetKeyAccessServerRow, error) {
+	row := q.db.QueryRow(ctx, getKeyAccessServer, arg.ID, arg.Name, arg.Uri)
 	var i GetKeyAccessServerRow
 	err := row.Scan(
 		&i.ID,
@@ -711,9 +735,16 @@ LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.n
 LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
 LEFT JOIN active_namespace_public_keys_view k ON ns.id = k.namespace_id
-WHERE ns.id = $1 AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL 
+  AND ($1::uuid IS NULL OR ns.id = $1::uuid)
+  AND ($2::text IS NULL OR ns.name = REGEXP_REPLACE($2::text, '^https?://', ''))
 GROUP BY ns.id, fqns.fqn, k.keys
 `
+
+type GetNamespaceParams struct {
+	ID   pgtype.UUID `json:"id"`
+	Name pgtype.Text `json:"name"`
+}
 
 type GetNamespaceRow struct {
 	ID       string      `json:"id"`
@@ -745,10 +776,12 @@ type GetNamespaceRow struct {
 //	LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
 //	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
 //	LEFT JOIN active_namespace_public_keys_view k ON ns.id = k.namespace_id
-//	WHERE ns.id = $1 AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+//	WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+//	  AND ($1::uuid IS NULL OR ns.id = $1::uuid)
+//	  AND ($2::text IS NULL OR ns.name = REGEXP_REPLACE($2::text, '^https?://', ''))
 //	GROUP BY ns.id, fqns.fqn, k.keys
-func (q *Queries) GetNamespace(ctx context.Context, id string) (GetNamespaceRow, error) {
-	row := q.db.QueryRow(ctx, getNamespace, id)
+func (q *Queries) GetNamespace(ctx context.Context, arg GetNamespaceParams) (GetNamespaceRow, error) {
+	row := q.db.QueryRow(ctx, getNamespace, arg.ID, arg.Name)
 	var i GetNamespaceRow
 	err := row.Scan(
 		&i.ID,
@@ -3371,9 +3404,12 @@ func (q *Queries) getPublicKey(ctx context.Context, id string) (getPublicKeyRow,
 
 const listPublicKeyMappings = `-- name: listPublicKeyMappings :many
 WITH counted AS (
-    SELECT COUNT(pk.id) AS total FROM public_keys AS pk
+    SELECT COUNT(DISTINCT kas.id) AS total FROM public_keys AS pk
+    JOIN key_access_servers kas ON pk.key_access_server_id = kas.id
     WHERE (NULLIF($3, '') IS NULL OR pk.key_access_server_id = $3::uuid)
-    AND   ( NULLIF($4, '') IS NULL OR pk.id = $4::uuid )
+    AND (NULLIF($4, '') IS NULL OR kas.name = $4)
+    AND (NULLIF($5, '') IS NULL OR kas.uri = $5)
+    AND   ( NULLIF($6, '') IS NULL OR pk.id = $6::uuid )
 ),
 base_keys AS (
     SELECT 
@@ -3389,7 +3425,9 @@ base_keys AS (
     FROM public_keys pk
     JOIN key_access_servers kas ON pk.key_access_server_id = kas.id
     WHERE ( NULLIF($3, '') IS NULL OR kas.id = $3::uuid )
-    AND   ( NULLIF($4, '') IS NULL OR pk.id = $4::uuid )
+    AND (NULLIF($4, '') IS NULL OR kas.name = $4)
+    AND (NULLIF($5, '') IS NULL OR kas.uri = $5)
+    AND   ( NULLIF($6, '') IS NULL OR pk.id = $6::uuid )
 ),
 namespace_mappings AS (
     SELECT 
@@ -3480,6 +3518,8 @@ type listPublicKeyMappingsParams struct {
 	Offset      int32       `json:"offset_"`
 	Limit       int32       `json:"limit_"`
 	KasID       interface{} `json:"kas_id"`
+	KasName     interface{} `json:"kas_name"`
+	KasUri      interface{} `json:"kas_uri"`
 	PublicKeyID interface{} `json:"public_key_id"`
 }
 
@@ -3491,9 +3531,12 @@ type listPublicKeyMappingsRow struct {
 // listPublicKeyMappings
 //
 //	WITH counted AS (
-//	    SELECT COUNT(pk.id) AS total FROM public_keys AS pk
+//	    SELECT COUNT(DISTINCT kas.id) AS total FROM public_keys AS pk
+//	    JOIN key_access_servers kas ON pk.key_access_server_id = kas.id
 //	    WHERE (NULLIF($3, '') IS NULL OR pk.key_access_server_id = $3::uuid)
-//	    AND   ( NULLIF($4, '') IS NULL OR pk.id = $4::uuid )
+//	    AND (NULLIF($4, '') IS NULL OR kas.name = $4)
+//	    AND (NULLIF($5, '') IS NULL OR kas.uri = $5)
+//	    AND   ( NULLIF($6, '') IS NULL OR pk.id = $6::uuid )
 //	),
 //	base_keys AS (
 //	    SELECT
@@ -3509,7 +3552,9 @@ type listPublicKeyMappingsRow struct {
 //	    FROM public_keys pk
 //	    JOIN key_access_servers kas ON pk.key_access_server_id = kas.id
 //	    WHERE ( NULLIF($3, '') IS NULL OR kas.id = $3::uuid )
-//	    AND   ( NULLIF($4, '') IS NULL OR pk.id = $4::uuid )
+//	    AND (NULLIF($4, '') IS NULL OR kas.name = $4)
+//	    AND (NULLIF($5, '') IS NULL OR kas.uri = $5)
+//	    AND   ( NULLIF($6, '') IS NULL OR pk.id = $6::uuid )
 //	),
 //	namespace_mappings AS (
 //	    SELECT
@@ -3599,6 +3644,8 @@ func (q *Queries) listPublicKeyMappings(ctx context.Context, arg listPublicKeyMa
 		arg.Offset,
 		arg.Limit,
 		arg.KasID,
+		arg.KasName,
+		arg.KasUri,
 		arg.PublicKeyID,
 	)
 	if err != nil {
@@ -3621,8 +3668,11 @@ func (q *Queries) listPublicKeyMappings(ctx context.Context, arg listPublicKeyMa
 
 const listPublicKeys = `-- name: listPublicKeys :many
 WITH counted AS (
-    SELECT COUNT(k.id) AS total FROM public_keys AS k
-    WHERE (NULLIF($1, '') IS NULL OR k.key_access_server_id = $1::uuid)
+    SELECT COUNT(DISTINCT kas.id) AS total FROM public_keys AS pk
+    JOIN key_access_servers kas ON pk.key_access_server_id = kas.id
+    WHERE (NULLIF($1, '') IS NULL OR kas.id = $1::uuid)
+    AND (NULLIF($2, '') IS NULL OR kas.name = $2)
+    AND (NULLIF($3, '') IS NULL OR kas.uri = $3)
 )
 
 SELECT
@@ -3643,14 +3693,18 @@ CROSS JOIN counted
 WHERE (
     NULLIF($1, '') IS NULL OR k.key_access_server_id = $1::uuid 
 )
-LIMIT $3 
-OFFSET $2
+AND (NULLIF($2, '') IS NULL OR kas.name = $2)
+AND (NULLIF($3, '') IS NULL OR kas.uri = $3)
+LIMIT $5 
+OFFSET $4
 `
 
 type listPublicKeysParams struct {
-	KasID  interface{} `json:"kas_id"`
-	Offset int32       `json:"offset_"`
-	Limit  int32       `json:"limit_"`
+	KasID   interface{} `json:"kas_id"`
+	KasName interface{} `json:"kas_name"`
+	KasUri  interface{} `json:"kas_uri"`
+	Offset  int32       `json:"offset_"`
+	Limit   int32       `json:"limit_"`
 }
 
 type listPublicKeysRow struct {
@@ -3670,8 +3724,11 @@ type listPublicKeysRow struct {
 // listPublicKeys
 //
 //	WITH counted AS (
-//	    SELECT COUNT(k.id) AS total FROM public_keys AS k
-//	    WHERE (NULLIF($1, '') IS NULL OR k.key_access_server_id = $1::uuid)
+//	    SELECT COUNT(DISTINCT kas.id) AS total FROM public_keys AS pk
+//	    JOIN key_access_servers kas ON pk.key_access_server_id = kas.id
+//	    WHERE (NULLIF($1, '') IS NULL OR kas.id = $1::uuid)
+//	    AND (NULLIF($2, '') IS NULL OR kas.name = $2)
+//	    AND (NULLIF($3, '') IS NULL OR kas.uri = $3)
 //	)
 //
 //	SELECT
@@ -3692,10 +3749,18 @@ type listPublicKeysRow struct {
 //	WHERE (
 //	    NULLIF($1, '') IS NULL OR k.key_access_server_id = $1::uuid
 //	)
-//	LIMIT $3
-//	OFFSET $2
+//	AND (NULLIF($2, '') IS NULL OR kas.name = $2)
+//	AND (NULLIF($3, '') IS NULL OR kas.uri = $3)
+//	LIMIT $5
+//	OFFSET $4
 func (q *Queries) listPublicKeys(ctx context.Context, arg listPublicKeysParams) ([]listPublicKeysRow, error) {
-	rows, err := q.db.Query(ctx, listPublicKeys, arg.KasID, arg.Offset, arg.Limit)
+	rows, err := q.db.Query(ctx, listPublicKeys,
+		arg.KasID,
+		arg.KasName,
+		arg.KasUri,
+		arg.Offset,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}

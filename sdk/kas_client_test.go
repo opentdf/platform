@@ -167,92 +167,19 @@ func Test_StoreKASKeys(t *testing.T) {
 	require.ErrorContains(t, err, "error making request")
 }
 
-type UnbulkUnwrapSuite struct {
+type TestUpgradeRewrapRequestV1Suite struct {
 	suite.Suite
-	client         *KASClient
-	tokenSource    FakeAccessTokenSource
-	asymDecryption ocrypto.AsymDecryption
-	asymEncryption ocrypto.AsymEncryption
 }
 
-func (suite *UnbulkUnwrapSuite) SetupTest() {
-	suite.tokenSource = getTokenSource(suite.T())
-	suite.client = newKASClient(nil, suite.tokenSource, nil)
-	suite.asymDecryption = suite.tokenSource.asymDecryption
-	suite.asymEncryption = suite.tokenSource.asymEncryption
-}
-
-func (suite *UnbulkUnwrapSuite) TestUnbulkUnwrapHappyPath() {
-	k, err := suite.asymEncryption.Encrypt([]byte("wrappedKey"))
-	suite.Require().NoError(err, "error encrypting wrapped key")
-
-	response := &kaspb.RewrapResponse{
-		EntityWrappedKey: k,
-	}
-	requests := []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{
-		{
-			KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
-				{
-					KeyAccessObjectId: "kaoID",
-				},
-			},
-			Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
-				Id: "policyID",
-			},
-		},
-	}
-
-	results, err := suite.client.unbulkUnwrap(suite.asymDecryption, response, requests)
-	suite.Require().NoError(err, "unbulkUnwrap failed")
-
-	suite.Require().Len(results, 1)
-	suite.Require().Contains(results, "policyID")
-
-	kaoResults := results["policyID"]
-	suite.Require().Len(kaoResults, 1)
-
-	kaoResult := kaoResults[0]
-	suite.Equal("kaoID", kaoResult.KeyAccessObjectID)
-	suite.NotNil(kaoResult.SymmetricKey)
-	suite.Nil(kaoResult.Error)
-}
-
-func (suite *UnbulkUnwrapSuite) TestUnbulkUnwrap_ErrorDecrypt() {
-	response := &kaspb.RewrapResponse{
-		EntityWrappedKey: []byte("invalidWrappedKey"),
-	}
-
-	requests := []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{
-		{
-			KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
-				{
-					KeyAccessObjectId: "kaoID",
-				},
-			},
-			Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
-				Id: "policyID",
-			},
-		},
-	}
-
-	results, err := suite.client.unbulkUnwrap(suite.asymDecryption, response, requests)
-	suite.Require().Error(err, "expected error from unbulkUnwrap")
-	suite.Nil(results)
-}
-
-func (suite *UnbulkUnwrapSuite) TestUnbulkUnwrap_UnexpectedRequests() {
+func (suite *TestUpgradeRewrapRequestV1Suite) TestUpgradeRewrapRequestV1_Happy() {
 	response := &kaspb.RewrapResponse{
 		EntityWrappedKey: []byte("wrappedKey"),
 	}
-
 	requests := []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{
 		{
 			KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
 				{
 					KeyAccessObjectId: "kaoID",
-				},
-				{
-					KeyAccessObjectId: "kaoID2",
 				},
 			},
 			Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
@@ -261,11 +188,29 @@ func (suite *UnbulkUnwrapSuite) TestUnbulkUnwrap_UnexpectedRequests() {
 		},
 	}
 
-	results, err := suite.client.unbulkUnwrap(suite.asymDecryption, response, requests)
-	suite.Require().Error(err, "expected error from unbulkUnwrap")
-	suite.Nil(results)
+	upgradeRewrapResponseV1(response, requests)
+
+	suite.Require().Len(response.GetResponses(), 1)
+	policyResult := response.GetResponses()[0]
+	suite.Equal("policyID", policyResult.GetPolicyId())
+
+	suite.Require().Len(policyResult.GetResults(), 1)
+	kaoResult := policyResult.GetResults()[0]
+
+	suite.Equal("kaoID", kaoResult.GetKeyAccessObjectId())
+	suite.NotNil(kaoResult.GetKasWrappedKey())
+	suite.Empty(kaoResult.GetError())
 }
 
-func TestUnbulkUnwrap(t *testing.T) {
-	suite.Run(t, new(UnbulkUnwrapSuite))
+func (suite *TestUpgradeRewrapRequestV1Suite) TestUpgradeRewrapRequestV1_Empty() {
+	response := &kaspb.RewrapResponse{}
+	requests := []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{}
+
+	upgradeRewrapResponseV1(response, requests)
+
+	suite.EqualExportedValues(&kaspb.RewrapResponse{}, response)
+}
+
+func TestUpgradeRewrapRequestV1(t *testing.T) {
+	suite.Run(t, new(TestUpgradeRewrapRequestV1Suite))
 }

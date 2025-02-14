@@ -76,7 +76,36 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.Unsig
 		return nil, fmt.Errorf("error making rewrap request: %w", err)
 	}
 
+	upgradeRewrapResponseV1(response, requests)
+
 	return response, nil
+}
+
+// convert v1 responses to v2
+func upgradeRewrapResponseV1(response *kas.RewrapResponse, requests []*kas.UnsignedRewrapRequest_WithPolicyRequest) {
+	if len(response.GetResponses()) > 0 {
+		return
+	}
+	if len(response.GetEntityWrappedKey()) == 0 { //nolint:staticcheck // SA1019: use of deprecated method required for compatibility
+		return
+	}
+	if len(requests) == 0 {
+		return
+	}
+	response.Responses = []*kas.PolicyRewrapResult{
+		{
+			PolicyId: requests[0].GetPolicy().GetId(),
+			Results: []*kas.KeyAccessRewrapResult{
+				{
+					KeyAccessObjectId: requests[0].GetKeyAccessObjects()[0].GetKeyAccessObjectId(),
+					Status:            statusPermit,
+					Result: &kas.KeyAccessRewrapResult_KasWrappedKey{
+						KasWrappedKey: response.GetEntityWrappedKey(), //nolint:staticcheck // SA1019: use of deprecated method
+					},
+				},
+			},
+		},
+	}
 }
 
 func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]kaoResult, error) {
@@ -179,11 +208,6 @@ func (k *KASClient) handleECKeyResponse(response *kas.RewrapResponse) (map[strin
 }
 
 func (k *KASClient) processECResponse(response *kas.RewrapResponse, aesGcm ocrypto.AesGcm) (map[string][]kaoResult, error) {
-	if len(response.GetResponses()) == 0 && len(response.GetEntityWrappedKey()) > 0 { //nolint:staticcheck // SA1019: use of deprecated method required for compatibility
-		// non-bulk (legacy) response
-		return k.unbulkUnwrap(asymDecryption, response)
-	}
-
 	policyResults := make(map[string][]kaoResult)
 	for _, results := range response.GetResponses() {
 		var kaoKeys []kaoResult
@@ -236,24 +260,6 @@ func (k *KASClient) processRSAResponse(response *kas.RewrapResponse, asymDecrypt
 		}
 		policyResults[results.GetPolicyId()] = kaoKeys
 	}
-	return policyResults, nil
-}
-
-func (*KASClient) unbulkUnwrap(asymDecryption ocrypto.AsymDecryption, response *kas.RewrapResponse, requests []*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]kaoResult, error) {
-	symmetricKey, err := asymDecryption.Decrypt(response.GetEntityWrappedKey()) //nolint:staticcheck // SA1019: use of deprecated method
-	if err != nil {
-		return nil, fmt.Errorf("AesGcm.Decrypt failed:%w", err)
-	}
-	if len(requests) != 1 || len(requests[0].GetKeyAccessObjects()) != 1 {
-		return nil, errors.New("unexpected number of requests")
-	}
-	kaoid := requests[0].GetKeyAccessObjects()[0].GetKeyAccessObjectId()
-	policyResults := make(map[string][]kaoResult, 1)
-	policyResults[requests[0].GetPolicy().GetId()] =
-		[]kaoResult{{
-			KeyAccessObjectID: kaoid,
-			SymmetricKey:      symmetricKey,
-		}}
 	return policyResults, nil
 }
 

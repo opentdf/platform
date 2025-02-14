@@ -94,6 +94,7 @@ runs:
       if: ${{ inputs.ec-tdf-enabled }}
       run: |
         yq e '.services.kas.ec_tdf_enabled = true' -i opentdf.yaml
+      working-directory: otdf-test-platform
     - name: Trust the generated certs
       shell: bash
       run: |

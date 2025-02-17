@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.26](https://github.com/opentdf/platform/compare/protocol/go/v0.2.25...protocol/go/v0.2.26) (2025-02-14)
+
+
+### Features
+
+* add ability to retrieve policy resources by id or name ([#1901](https://github.com/opentdf/platform/issues/1901)) ([deb4455](https://github.com/opentdf/platform/commit/deb4455773cd71d3436510bbeb599f309106ce1d))
+
 ## [0.2.25](https://github.com/opentdf/platform/compare/protocol/go/v0.2.24...protocol/go/v0.2.25) (2025-01-31)
 
 

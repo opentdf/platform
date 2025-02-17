@@ -52,16 +52,16 @@ func (s *AttributesSuite) TearDownSuite() {
 	s.f.TearDown()
 }
 
-func (s *AttributesSuite) getAttributeFixtures() []fixtures.FixtureDataAttribute {
-	return []fixtures.FixtureDataAttribute{
-		s.f.GetAttributeKey("example.com/attr/attr1"),
-		s.f.GetAttributeKey("example.com/attr/attr2"),
-		s.f.GetAttributeKey("example.net/attr/attr1"),
-		s.f.GetAttributeKey("example.net/attr/attr2"),
-		s.f.GetAttributeKey("example.net/attr/attr3"),
-		s.f.GetAttributeKey("example.org/attr/attr1"),
-		s.f.GetAttributeKey("example.org/attr/attr2"),
-		s.f.GetAttributeKey("example.org/attr/attr3"),
+func (s *AttributesSuite) getAttributeFixtures() map[string]fixtures.FixtureDataAttribute {
+	return map[string]fixtures.FixtureDataAttribute{
+		"example.com/attr/attr1": s.f.GetAttributeKey("example.com/attr/attr1"),
+		"example.com/attr/attr2": s.f.GetAttributeKey("example.com/attr/attr2"),
+		"example.net/attr/attr1": s.f.GetAttributeKey("example.net/attr/attr1"),
+		"example.net/attr/attr2": s.f.GetAttributeKey("example.net/attr/attr2"),
+		"example.net/attr/attr3": s.f.GetAttributeKey("example.net/attr/attr3"),
+		"example.org/attr/attr1": s.f.GetAttributeKey("example.org/attr/attr1"),
+		"example.org/attr/attr2": s.f.GetAttributeKey("example.org/attr/attr2"),
+		"example.org/attr/attr3": s.f.GetAttributeKey("example.org/attr/attr3"),
 	}
 }
 
@@ -290,28 +290,85 @@ func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 func (s *AttributesSuite) Test_GetAttribute() {
 	fixtures := s.getAttributeFixtures()
 
-	for _, f := range fixtures {
-		gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, f.ID)
-		s.Require().NoError(err)
-		s.NotNil(gotAttr)
-		s.Equal(f.ID, gotAttr.GetId())
-		s.Equal(f.Name, gotAttr.GetName())
-		s.Equal(fmt.Sprintf("%s%s", policydb.AttributeRuleTypeEnumPrefix, f.Rule), gotAttr.GetRule().Enum().String())
-		s.Equal(f.NamespaceID, gotAttr.GetNamespace().GetId())
-		metadata := gotAttr.GetMetadata()
-		createdAt := metadata.GetCreatedAt()
-		updatedAt := metadata.GetUpdatedAt()
-		s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
-		s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
+	for fqn, f := range fixtures {
+		testCases := []struct {
+			name           string
+			input          interface{}
+			identifierType string
+		}{
+			{
+				name:           "Deprecated ID",
+				input:          f.ID,
+				identifierType: "Deprecated ID",
+			},
+			{
+				name:           "New Identifier - ID",
+				input:          &attributes.GetAttributeRequest_AttributeId{AttributeId: f.ID},
+				identifierType: "New ID",
+			},
+			{
+				name:           "New Identifier - FQN",
+				input:          &attributes.GetAttributeRequest_Fqn{Fqn: fqn},
+				identifierType: "FQN",
+			},
+		}
+
+		for _, tc := range testCases {
+			s.Run(fmt.Sprintf("%s - %s", fqn, tc.name), func() { // Include fqn in test name for clarity
+				gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, tc.input)
+				s.Require().NoError(err, "Failed to get Attribute by %s: %v", tc.identifierType, tc.input)
+				s.Require().NotNil(gotAttr, "Expected non-nil Attribute for %s: %v", tc.identifierType, tc.input)
+
+				s.Equal(f.ID, gotAttr.GetId(), "ID mismatch for %s: %v", tc.identifierType, tc.input)
+				s.Equal(f.Name, gotAttr.GetName(), "Name mismatch for %s: %v", tc.identifierType, tc.input)
+				s.Equal(fmt.Sprintf("%s%s", policydb.AttributeRuleTypeEnumPrefix, f.Rule), gotAttr.GetRule().Enum().String(), "Rule mismatch for %s: %v", tc.identifierType, tc.input)
+				s.Equal(f.NamespaceID, gotAttr.GetNamespace().GetId(), "NamespaceID mismatch for %s: %v", tc.identifierType, tc.input)
+
+				metadata := gotAttr.GetMetadata()
+				s.Require().NotNil(metadata, "Metadata should not be nil for %s: %v", tc.identifierType, tc.input)
+				createdAt := metadata.GetCreatedAt()
+				updatedAt := metadata.GetUpdatedAt()
+				s.Require().NotNil(createdAt, "CreatedAt should not be nil for %s: %v", tc.identifierType, tc.input)
+				s.Require().NotNil(updatedAt, "UpdatedAt should not be nil for %s: %v", tc.identifierType, tc.input)
+
+				s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0, "CreatedAt is invalid for %s: %v", tc.identifierType, tc.input)
+				s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0, "UpdatedAt is invalid for %s: %v", tc.identifierType, tc.input)
+			})
+		}
 	}
 }
 
-func (s *AttributesSuite) Test_GetAttribute_WithInvalidIdFails() {
-	// this uuid does not exist
-	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, nonExistentAttrID)
-	s.Require().Error(err)
-	s.Nil(gotAttr)
-	s.Require().ErrorIs(err, db.ErrNotFound)
+func (s *AttributesSuite) Test_GetAttribute_NotFound() {
+	testCases := []struct {
+		name           string
+		input          interface{} // Could be string ID or identifier struct if needed later
+		identifierType string
+	}{
+		{
+			name:           "Not Found - Deprecated ID", // Or just "Not Found" if only one case is needed
+			input:          nonExistentAttrID,
+			identifierType: "Deprecated ID", // Or "UUID", "ID"
+		},
+		{
+			name:           "Not Found - New Identifier - ID",
+			input:          &attributes.GetAttributeRequest_AttributeId{AttributeId: nonExistentAttrID},
+			identifierType: "New ID",
+		},
+		{
+			name:           "Not Found - New Identifier - FQN",
+			input:          &attributes.GetAttributeRequest_Fqn{Fqn: "https://example.com/attr/non_existent_attr"},
+			identifierType: "FQN",
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, tc.input)
+			s.Require().Error(err, "Expected error when Attribute is not found by %s: %v", tc.identifierType, tc.input)
+			s.Nil(gotAttr, "Expected nil Attribute when not found by %s: %v", tc.identifierType, tc.input)
+			s.Require().ErrorIs(err, db.ErrNotFound, "Expected ErrNotFound when Attribute is not found by %s: %v", tc.identifierType, tc.input)
+		})
+	}
 }
 
 func (s *AttributesSuite) Test_GetAttribute_Deactivated_Succeeds() {

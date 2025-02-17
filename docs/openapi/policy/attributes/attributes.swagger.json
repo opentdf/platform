@@ -249,9 +249,22 @@
         "parameters": [
           {
             "name": "id",
-            "description": "Required",
+            "description": "Deprecated",
             "in": "path",
             "required": true,
+            "type": "string"
+          },
+          {
+            "name": "valueId",
+            "description": "option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "fqn",
+            "in": "query",
+            "required": false,
             "type": "string"
           }
         ],
@@ -543,9 +556,22 @@
         "parameters": [
           {
             "name": "id",
-            "description": "Required",
+            "description": "Deprecated",
             "in": "path",
             "required": true,
+            "type": "string"
+          },
+          {
+            "name": "attributeId",
+            "description": "option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "fqn",
+            "in": "query",
+            "required": false,
             "type": "string"
           }
         ],

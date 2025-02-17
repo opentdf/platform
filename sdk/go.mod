@@ -9,7 +9,7 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/opentdf/platform/lib/fixtures v0.2.10
 	github.com/opentdf/platform/lib/ocrypto v0.1.7
-	github.com/opentdf/platform/protocol/go v0.2.25
+	github.com/opentdf/platform/protocol/go v0.2.26
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.32.0
 	github.com/xeipuuv/gojsonschema v1.2.0

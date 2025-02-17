@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -218,8 +219,38 @@ func (c PolicyDBClient) ListAllAttributes(ctx context.Context) ([]*policy.Attrib
 	return attrsList, nil
 }
 
-func (c PolicyDBClient) GetAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
-	attr, err := c.Queries.GetAttribute(ctx, id)
+func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*policy.Attribute, error) {
+	var (
+		attr   GetAttributeRow
+		err    error
+		params GetAttributeParams
+	)
+
+	switch i := identifier.(type) {
+	case *attributes.GetAttributeRequest_AttributeId:
+		id := pgtypeUUID(i.AttributeId)
+		if !id.Valid {
+			return nil, db.ErrUUIDInvalid
+		}
+		params = GetAttributeParams{ID: id}
+	case *attributes.GetAttributeRequest_Fqn:
+		fqn := pgtypeText(i.Fqn)
+		if !fqn.Valid {
+			return nil, db.ErrSelectIdentifierInvalid
+		}
+		params = GetAttributeParams{Fqn: pgtypeText(i.Fqn)}
+	case string:
+		id := pgtypeUUID(i)
+		if !id.Valid {
+			return nil, db.ErrUUIDInvalid
+		}
+		params = GetAttributeParams{ID: id}
+	default:
+		// unexpected type
+		return nil, errors.Join(db.ErrSelectIdentifierInvalid, fmt.Errorf("type [%T] value [%v]", i, i))
+	}
+
+	attr, err = c.Queries.GetAttribute(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

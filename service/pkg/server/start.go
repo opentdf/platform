@@ -17,6 +17,7 @@ import (
 	"github.com/opentdf/platform/sdk"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/auth/oauth"
+	"github.com/opentdf/platform/sdk/httputil"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/server"
@@ -231,7 +232,8 @@ func Start(f ...StartOptions) error {
 					return fmt.Errorf("error creating ERS tokensource: %w", err)
 				}
 
-				interceptor := sdkauth.NewTokenAddingInterceptor(ts, tlsConfig)
+				interceptor := sdkauth.NewTokenAddingInterceptorWithClient(ts,
+					httputil.SafeHTTPClientWithTLSConfig(tlsConfig))
 
 				ersDialOptions = append(ersDialOptions, grpc.WithChainUnaryInterceptor(interceptor.AddCredentials))
 			}

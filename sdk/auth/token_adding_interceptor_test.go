@@ -18,6 +18,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/sdk/httputil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -42,9 +43,9 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 		accessToken: "thisisafakeaccesstoken",
 	}
 	server := FakeAccessServiceServer{}
-	oo := NewTokenAddingInterceptor(&ts, &tls.Config{
+	oo := NewTokenAddingInterceptorWithClient(&ts, httputil.SafeHTTPClientWithTLSConfig(&tls.Config{
 		MinVersion: tls.VersionTLS12,
-	})
+	}))
 
 	client, stop := runServer(&server, oo)
 	defer stop()
@@ -97,9 +98,9 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 func Test_InvalidCredentials_DoesNotSendMessage(t *testing.T) {
 	ts := FakeTokenSource{key: nil, accessToken: ""}
 	server := FakeAccessServiceServer{}
-	oo := NewTokenAddingInterceptor(&ts, &tls.Config{
+	oo := NewTokenAddingInterceptorWithClient(&ts, httputil.SafeHTTPClientWithTLSConfig(&tls.Config{
 		MinVersion: tls.VersionTLS12,
-	})
+	}))
 
 	client, stop := runServer(&server, oo)
 	defer stop()

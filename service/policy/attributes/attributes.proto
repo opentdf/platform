@@ -86,10 +86,38 @@ message ListAttributesResponse {
 }
 
 message GetAttributeRequest {
-  // Required
+  // Temporary message level validation until we remove the deprecated id field
+  option (buf.validate.message).cel = {
+    id: "exclusive_fields",
+    expression: "!(has(this.id) && (has(this.attribute_id) || has(this.fqn)))",
+    message: "Either use deprecated 'id' field or one of 'attribute_id' or 'fqn', but not both"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "required_fields",
+    expression: "has(this.id) || has(this.attribute_id) || has(this.fqn)",
+    message: "Either id or one of attribute_id or fqn must be set"
+  };
+
+  // Deprecated
   string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+    deprecated = true,
+    (buf.validate.field).ignore = IGNORE_IF_DEFAULT_VALUE,
+    (buf.validate.field).string.uuid= true
+  ];;
+
+  oneof identifier {
+    //option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field
+    string attribute_id = 2 [
+      (buf.validate.field).string.uuid = true
+    ];
+    string fqn = 3 [
+      (buf.validate.field).string = {
+        min_len : 1
+        uri : true
+      }
+    ];
+  }
 }
 message GetAttributeResponse {
   policy.Attribute attribute = 1;
@@ -167,10 +195,39 @@ message DeactivateAttributeResponse {
 /// Value RPC messages
 ///
 message GetAttributeValueRequest {
-  // Required
+  // Temporary message level validation until we remove the deprecated id field
+  option (buf.validate.message).cel = {
+    id: "exclusive_fields",
+    expression: "!(has(this.id) && (has(this.value_id) || has(this.fqn)))",
+    message: "Either use deprecated 'id' field or one of 'value_id' or 'fqn', but not both"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "required_fields",
+    expression: "has(this.id) || has(this.value_id) || has(this.fqn)",
+    message: "Either id or one of value_id or fqn must be set"
+  };
+
+  // Deprecated
   string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+    deprecated = true,
+    (buf.validate.field).ignore = IGNORE_IF_DEFAULT_VALUE,
+    (buf.validate.field).string.uuid= true
+  ];;
+
+  oneof identifier {
+    //option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field
+    string value_id = 2 [
+      (buf.validate.field).string.uuid = true
+    ];
+    string fqn = 3 [
+      (buf.validate.field).string = {
+        min_len : 1
+        uri : true
+      }
+    ];
+  }
+
 }
 message GetAttributeValueResponse {
   policy.Value value = 1;

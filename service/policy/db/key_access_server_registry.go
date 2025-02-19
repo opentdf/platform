@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -72,8 +73,44 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 	}, nil
 }
 
-func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, id string) (*policy.KeyAccessServer, error) {
-	kas, err := c.Queries.GetKeyAccessServer(ctx, id)
+func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, identifier any) (*policy.KeyAccessServer, error) {
+	var (
+		kas    GetKeyAccessServerRow
+		err    error
+		params GetKeyAccessServerParams
+	)
+
+	switch i := identifier.(type) {
+	case *kasregistry.GetKeyAccessServerRequest_KasId:
+		id := pgtypeUUID(i.KasId)
+		if !id.Valid {
+			return nil, db.ErrUUIDInvalid
+		}
+		params = GetKeyAccessServerParams{ID: id}
+	case *kasregistry.GetKeyAccessServerRequest_Name:
+		name := pgtypeText(i.Name)
+		if !name.Valid {
+			return nil, db.ErrSelectIdentifierInvalid
+		}
+		params = GetKeyAccessServerParams{Name: name}
+	case *kasregistry.GetKeyAccessServerRequest_Uri:
+		uri := pgtypeText(i.Uri)
+		if !uri.Valid {
+			return nil, db.ErrSelectIdentifierInvalid
+		}
+		params = GetKeyAccessServerParams{Uri: uri}
+	case string:
+		id := pgtypeUUID(i)
+		if !id.Valid {
+			return nil, db.ErrUUIDInvalid
+		}
+		params = GetKeyAccessServerParams{ID: id}
+	default:
+		// unexpected type
+		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
+	}
+
+	kas, err = c.Queries.GetKeyAccessServer(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -287,7 +324,11 @@ func (c PolicyDBClient) CreatePublicKey(ctx context.Context, r *kasregistry.Crea
 		}
 
 		// Get freshly created key
-		ck, err = txClient.GetPublicKey(ctx, &kasregistry.GetPublicKeyRequest{Id: id})
+		ck, err = txClient.GetPublicKey(ctx, &kasregistry.GetPublicKeyRequest{
+			Identifier: &kasregistry.GetPublicKeyRequest_Id{
+				Id: id,
+			},
+		})
 		if err != nil {
 			return db.WrapIfKnownInvalidQueryErr(err)
 		}
@@ -352,11 +393,11 @@ func (c PolicyDBClient) ListPublicKeys(ctx context.Context, r *kasregistry.ListP
 	}
 
 	params := listPublicKeysParams{
-		KasID: r.GetKasId(),
-		// KasUri:  r.GetKasUri(),
-		// KasName: r.GetKasName(),
-		Offset: offset,
-		Limit:  limit,
+		KasID:   r.GetKasId(),
+		KasUri:  r.GetKasUri(),
+		KasName: r.GetKasName(),
+		Offset:  offset,
+		Limit:   limit,
 	}
 	listRows, err := c.Queries.listPublicKeys(ctx, params)
 	if err != nil {
@@ -411,9 +452,9 @@ func (c PolicyDBClient) ListPublicKeyMappings(ctx context.Context, r *kasregistr
 	}
 
 	params := listPublicKeyMappingsParams{
-		KasID: r.GetKasId(),
-		// KasUri:  r.GetKasUri(),
-		// KasName: r.GetKasName(),
+		KasID:       r.GetKasId(),
+		KasUri:      r.GetKasUri(),
+		KasName:     r.GetKasName(),
 		PublicKeyID: r.GetPublicKeyId(),
 		Offset:      offset,
 		Limit:       limit,
@@ -455,7 +496,11 @@ func (c PolicyDBClient) UpdatePublicKey(ctx context.Context, r *kasregistry.Upda
 	keyID := r.GetId()
 
 	mdJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
-		k, err := c.GetPublicKey(ctx, &kasregistry.GetPublicKeyRequest{Id: keyID})
+		k, err := c.GetPublicKey(ctx, &kasregistry.GetPublicKeyRequest{
+			Identifier: &kasregistry.GetPublicKeyRequest_Id{
+				Id: keyID,
+			},
+		})
 		if err != nil {
 			return nil, err
 		}

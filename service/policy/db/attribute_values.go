@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -41,8 +42,38 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 	return c.GetAttributeValue(ctx, createdID)
 }
 
-func (c PolicyDBClient) GetAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
-	av, err := c.Queries.GetAttributeValue(ctx, id)
+func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (*policy.Value, error) {
+	var (
+		av     GetAttributeValueRow
+		err    error
+		params GetAttributeValueParams
+	)
+
+	switch i := identifier.(type) {
+	case *attributes.GetAttributeValueRequest_ValueId:
+		id := pgtypeUUID(i.ValueId)
+		if !id.Valid {
+			return nil, db.ErrUUIDInvalid
+		}
+		params = GetAttributeValueParams{ID: id}
+	case *attributes.GetAttributeValueRequest_Fqn:
+		fqn := pgtypeText(i.Fqn)
+		if !fqn.Valid {
+			return nil, db.ErrSelectIdentifierInvalid
+		}
+		params = GetAttributeValueParams{Fqn: fqn}
+	case string:
+		id := pgtypeUUID(i)
+		if !id.Valid {
+			return nil, db.ErrUUIDInvalid
+		}
+		params = GetAttributeValueParams{ID: pgtypeUUID(i)}
+	default:
+		// unexpected type
+		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
+	}
+
+	av, err = c.Queries.GetAttributeValue(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

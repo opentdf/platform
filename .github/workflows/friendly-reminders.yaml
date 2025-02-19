@@ -12,7 +12,7 @@ jobs:
       - name: Extract go version
         id: go-version
         run: |
-          echo "go-version=$(go work edit --json | jq -r '.Go')" >>$GITHUB_OUTPUT
+          echo "go-version=$(go work edit --json | jq -r '.Go')" >>"$GITHUB_OUTPUT"
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ steps.go-version.outputs.go-version }}
@@ -21,11 +21,11 @@ jobs:
         id: go-mod-tidy
         run: |
           # iterate over work file, cd and run go mod tidy
-          for line in $(go work edit --json | jq -r '.Use.[].DiskPath'); do
-            (cd $line && go mod tidy)
-          done
+          while IFS="" read -r line || [ -n "$line" ]; do
+            (cd "$line" && go mod tidy)
+          done < <(go work edit --json | jq -r '.Use.[].DiskPath')
           # check if any changes were made
-          echo $(git status --porcelain) >> $GITHUB_OUTPUT
+          git status --porcelain >>"$GITHUB_OUTPUT"
 
       - name: Post comment if go.mod was changed
         if: steps.go-mod-tidy.outputs.stdout != ''

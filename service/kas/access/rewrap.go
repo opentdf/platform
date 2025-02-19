@@ -222,16 +222,20 @@ func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRe
 	}
 
 	var requestBody kaspb.UnsignedRewrapRequest
-	err = protojson.Unmarshal([]byte(rbString), &requestBody)
+	err = protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal([]byte(rbString), &requestBody)
 	// if there are no requests then it could be a v1 request
-	if err != nil || len(requestBody.GetRequests()) == 0 {
+	if err != nil {
+		logger.WarnContext(ctx, "invalid SRT", "err.v2", err, "srt", rbString)
+		return nil, false, err400("invalid request body")
+	}
+	if len(requestBody.GetRequests()) == 0 {
+		logger.DebugContext(ctx, "legacy v1 SRT")
 		var errv1 error
-		requestBody, errv1 = extractAndConvertV1SRTBody([]byte(rbString))
-		if errv1 != nil {
-			logger.WarnContext(ctx, "invalid SRT", "err.v1", errv1, "err.v2", err)
+
+		if requestBody, errv1 = extractAndConvertV1SRTBody([]byte(rbString)); errv1 != nil {
+			logger.WarnContext(ctx, "invalid SRT", "err.v1", errv1, "srt", rbString, "rewrap.body", requestBody.String())
 			return nil, false, err400("invalid request body")
 		}
-		logger.DebugContext(ctx, "legacy v1 SRT", "err.v2", err)
 		isV1 = true
 	}
 	logger.DebugContext(ctx, "extracted request body", slog.String("rewrap.body", requestBody.String()), slog.Any("rewrap.srt", rbString))
@@ -289,9 +293,15 @@ func verifyPolicyBinding(ctx context.Context, policy []byte, kao *kaspb.Unsigned
 func extractPolicyBinding(policyBinding interface{}) (string, error) {
 	switch v := policyBinding.(type) {
 	case string:
+		if v == "" {
+			return "", fmt.Errorf("empty policy binding")
+		}
 		return v, nil
 	case map[string]interface{}:
 		if hash, ok := v["hash"].(string); ok {
+			if hash == "" {
+				return "", fmt.Errorf("empty policy binding hash field")
+			}
 			return hash, nil
 		}
 		return "", fmt.Errorf("invalid policy binding object, missing 'hash' field")

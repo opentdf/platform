@@ -33,7 +33,7 @@ message LegacyPublicKeyRequest {
 
 message PolicyBinding {
   string algorithm = 1 [json_name = "alg"];
-  string hash = 2;
+	string hash = 2;
 }
 
 message KeyAccess {
@@ -45,7 +45,7 @@ message KeyAccess {
   string kid = 6;
   string split_id = 7 [json_name = "sid"];
   bytes wrapped_key = 8;
-  // header is only used for NanoTDFs
+	// header is only used for NanoTDFs
   bytes header = 9;
 
   // For wrapping with an ECDH derived key, when type=ec-wrapped
@@ -70,13 +70,6 @@ message UnsignedRewrapRequest {
 
   string client_public_key = 1;
   repeated WithPolicyRequest requests = 2;
-
-  // Used for legacy non-bulk requests
-  KeyAccess key_access = 3 [deprecated = true];
-  // Used for legacy non-bulk requests
-  string policy = 4 [deprecated = true];
-  // Used for legacy non-bulk requests
-  string algorithm = 5 [deprecated = true];
 }
 message PublicKeyRequest {
   string algorithm = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "algorithm type rsa:<keysize> or ec:<curvename>"}];
@@ -116,8 +109,8 @@ message RewrapResponse {
   bytes entity_wrapped_key = 2 [deprecated = true];
   string session_public_key = 3;
   string schema_version = 4 [deprecated = true];
-  // New Rewrap API changes
-  repeated PolicyRewrapResult responses = 5;
+	// New Rewrap API changes
+	repeated PolicyRewrapResult responses = 5;
 }
 
 // Get app info from the root path

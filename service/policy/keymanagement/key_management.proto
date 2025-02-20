@@ -1,0 +1,188 @@
+syntax = "proto3";
+
+package policy.keymanagement;
+
+import "buf/validate/validate.proto";
+import "common/common.proto";
+import "policy/selectors.proto";
+
+// Supported key algorithms.
+enum Algorithm {
+  ALGORITHM_UNSPECIFIED = 0;
+  ALGORITHM_RSA_2048 = 1;
+  ALGORITHM_RSA_4096 = 2;
+  ALGORITHM_EC_P256 = 3;
+  ALGORITHM_EC_P384 = 4;
+  ALGORITHM_EC_P521 = 5;
+}
+
+// The status of the key.
+enum KeyStatus {
+  KEY_STATUS_UNSPECIFIED = 0;
+  KEY_STATUS_ACTIVE = 1;
+  KEY_STATUS_INACTIVE = 2;
+  KEY_STATUS_COMPROMISED = 3;
+  KEY_STATUS_EXPIRED = 4;
+}
+
+// Describe how the kas private key is managed.
+// If the key mode is LOCAL, then the kas private key is stored in the database.
+// This could be encrypted or unencrypted.
+// Remote means that the kas private key is stored in a remote key system like KMS or HSM
+// and all operations are done by the remote key system.
+enum KeyMode {
+  KEY_MODE_UNSPECIFIED = 0;
+  KEY_MODE_LOCAL = 1;
+  KEY_MODE_REMOTE = 2;
+}
+
+// Describes whether this kas is managed by the organization or if they imported
+// the kas information from an external party. These two modes are necessary in order
+// to encrypt a tdf dek with an external parties kas public key.
+enum SourceType {
+  SOURCE_TYPE_UNSPECIFIED = 0;
+  // The kas is managed by the organization.
+  SOURCE_TYPE_INTERNAL = 1;
+  // The kas is managed by an external party.
+  SOURCE_TYPE_EXTERNAL = 2;
+}
+
+message KeyAccessServer {
+  string id = 1;
+  string name = 2;
+  string uri = 3;
+  SourceType source_type = 4;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
+message Key {
+  string id = 1;
+}
+
+message CreateKeyAccessServerRequest {
+  string name = 1 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "kas_name_format"
+      message:
+        "Registered KAS name must be an alphanumeric string, allowing "
+        "hyphens, and underscores but not as the first or last "
+        "character. The stored KAS name will be normalized to lower "
+        "case."
+      expression:
+        "size(this) > 0 ? "
+        "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+        " : true"
+    }
+  ];
+  string uri = 2 [(buf.validate.field).cel = {
+    id: "uri_format"
+    message:
+      "URI must be a valid URL (e.g., 'https://demo.com/') followed by "
+      "additional segments. Each segment must start and end with an "
+      "alphanumeric character, can contain hyphens, alphanumeric "
+      "characters, and slashes."
+    expression: "this.isUri()"
+  }];
+  SourceType source_type = 3;
+}
+
+message CreateKeyAccessServerResponse {
+  KeyAccessServer key_access_server = 1;
+}
+
+message UpdateKeyAccessServerRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  // Optional
+  string uri = 2 [(buf.validate.field).cel = {
+    id: "optional_uri_format"
+    message:
+      "Optional URI must be a valid URL (e.g., 'https://demo.com/') "
+      "followed by additional segments. Each segment must start and "
+      "end with an alphanumeric character, can contain hyphens, "
+      "alphanumeric characters, and slashes."
+    expression: "size(this) == 0 || this.isUri()"
+  }];
+  // Optional
+  string name = 3 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "kas_name_format"
+      message:
+        "Registered KAS name must be an alphanumeric string, allowing "
+        "hyphens, and underscores but not as the first or last "
+        "character. The stored KAS name will be normalized to lower "
+        "case."
+      expression:
+        "size(this) == 0 || "
+        "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
+
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+message UpdateKeyAccessServerResponse {
+  KeyAccessServer key_access_server = 1;
+}
+
+message GetKeyAccessServerRequest {
+  oneof identifier {
+    option (buf.validate.oneof).required = true;
+    string id = 2 [(buf.validate.field).string.uuid = true];
+    string name = 3 [(buf.validate.field).string.min_len = 1];
+    string uri = 4 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }];
+  }
+}
+message GetKeyAccessServerResponse {
+  KeyAccessServer key_access_server = 1;
+}
+
+message ListKeyAccessServersRequest {
+  // Optional
+  policy.PageRequest pagination = 10;
+}
+message ListKeyAccessServersResponse {
+  repeated KeyAccessServer key_access_servers = 1;
+
+  policy.PageResponse pagination = 10;
+}
+
+message UnsafeDeleteKeyAccessServerRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message UnsafeDeleteKeyAccessServerResponse {
+  KeyAccessServer key_access_server = 1;
+}
+
+service KeyManagementService {
+  // Key Access Server Management
+  rpc CreateKeyAccessServer(CreateKeyAccessServerRequest) returns (CreateKeyAccessServerResponse) {}
+
+  rpc GetKeyAccessServer(GetKeyAccessServerRequest) returns (GetKeyAccessServerResponse) {}
+
+  rpc ListKeyAccessServers(ListKeyAccessServersRequest) returns (ListKeyAccessServersResponse) {}
+
+  rpc UpdateKeyAccessServer(UpdateKeyAccessServerRequest) returns (UpdateKeyAccessServerResponse) {}
+
+  rpc UnsafeDeleteKeyAccessServer(UnsafeDeleteKeyAccessServerRequest) returns (UnsafeDeleteKeyAccessServerResponse) {}
+
+  // Key Management
+  rpc CreateKey(CreateKeyRequest) returns (CreateKeyResponse) {}
+  rpc GetKey(GetKeyRequest) returns (GetKeyResponse) {}
+  rpc ListKeys(ListKeysRequest) returns (ListKeysResponse) {}
+  rpc UpdateKey(UpdateKeyRequest) returns (UpdateKeyResponse) {}
+  rpc UnsafeDeleteKey(UnsafeDeleteKeyRequest) returns (UnsafeDeleteKeyResponse) {}
+  rpc RotateKey(RotateKeyRequest) returns (RotateKeyResponse) {}
+}

@@ -19,6 +19,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 func TestExportRsaPublicKeyAsPemStrSuccess(t *testing.T) {
@@ -98,6 +99,7 @@ func TestStandardCertificateHandlerEmpty(t *testing.T) {
 		URI:            *kasURI,
 		CryptoProvider: c,
 		Logger:         logger.CreateTestLogger(),
+		Tracer:         noop.NewTracerProvider().Tracer(""),
 	}
 
 	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{Fmt: "pkcs8"}})
@@ -154,6 +156,7 @@ func TestStandardPublicKeyHandlerV2(t *testing.T) {
 				},
 			},
 		},
+		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
 	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{}})
@@ -182,6 +185,7 @@ func TestStandardPublicKeyHandlerV2Failure(t *testing.T) {
 		URI:            *kasURI,
 		CryptoProvider: c,
 		Logger:         logger.CreateTestLogger(),
+		Tracer:         noop.NewTracerProvider().Tracer(""),
 	}
 
 	k, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{}})
@@ -208,6 +212,7 @@ func TestStandardPublicKeyHandlerV2NotFound(t *testing.T) {
 		URI:            *kasURI,
 		CryptoProvider: c,
 		Logger:         logger.CreateTestLogger(),
+		Tracer:         noop.NewTracerProvider().Tracer(""),
 	}
 
 	k, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{
@@ -248,6 +253,7 @@ func TestStandardPublicKeyHandlerV2WithJwk(t *testing.T) {
 				},
 			},
 		},
+		Tracer: noop.NewTracerProvider().Tracer(""),
 		Logger: logger.CreateTestLogger(),
 	}
 
@@ -283,6 +289,7 @@ func TestStandardCertificateHandlerWithEc256(t *testing.T) {
 	kas := Provider{
 		URI:            *kasURI,
 		CryptoProvider: c,
+		Tracer:         noop.NewTracerProvider().Tracer(""),
 		KASConfig:      kasCfg,
 		Logger:         logger.CreateTestLogger(),
 	}

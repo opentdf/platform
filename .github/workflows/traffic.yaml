@@ -13,11 +13,10 @@ jobs:
       matrix:
         repo-values:
           - {repo: platform, event: ""}
-          - {repo: otdfctl, event: backend-}
-          - {repo: spec, event: frontend-}
+          - {repo: otdfctl, event: otdfctl-}
+          - {repo: spec, event: spec-}
           - {repo: tests, event: tests-}
-          - {repo: client-web, event: clientweb-}
-          - {repo: client-cpp, event: cpp-sdk-}
+          - {repo: web-sdk, event: web-sdk-}
           - {repo: java-sdk, event: java-sdk-}
           - {repo: charts, event: charts-}
           - {repo: nifi, event: nifi-}

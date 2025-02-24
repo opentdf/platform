@@ -120,7 +120,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%w [%v]: %w", ErrPlatformEndpointMalformed, platformEndpoint, err)
 		}
-		
+
 		// TODO: to support an offline SDK, we would need to remove the connection requirement
 		// For now we will only skip for test purposes
 		if !cfg.testSkipValidatePlatformConnectivity {

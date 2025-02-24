@@ -39,6 +39,9 @@ type config struct {
 	coreConn                *grpc.ClientConn
 	entityResolutionConn    *grpc.ClientConn
 	collectionStore         *collectionStore
+
+	// For testing purposes only
+	testSkipValidatePlatformConnectivity bool
 }
 
 // Options specific to TDF protocol features
@@ -114,6 +117,13 @@ func WithTokenEndpoint(tokenEndpoint string) Option {
 func withCustomAccessTokenSource(a auth.AccessTokenSource) Option {
 	return func(c *config) {
 		c.customAccessTokenSource = a
+	}
+}
+
+// For test purposes only, allows skipping the validation of platform connectivity
+func withTestSkipValidatePlatformConnectivity() Option {
+	return func(c *config) {
+		c.testSkipValidatePlatformConnectivity = true
 	}
 }
 

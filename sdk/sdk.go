@@ -32,6 +32,7 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 const (
@@ -39,6 +40,7 @@ const (
 	// Check your configuration and/or retry.
 	ErrGrpcDialFailed                 = Error("failed to dial grpc endpoint")
 	ErrShutdownFailed                 = Error("failed to shutdown sdk")
+	ErrPlatformUnreachable            = Error("platform unreachable or not responding")
 	ErrPlatformConfigFailed           = Error("failed to retrieve platform configuration")
 	ErrPlatformEndpointMalformed      = Error("platform endpoint is malformed")
 	ErrPlatformIssuerNotFound         = Error("issuer not found in well-known idp configuration")
@@ -112,11 +114,20 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		dialOptions = append(dialOptions, cfg.extraDialOptions...)
 	}
 
-	// IF IPC is disabled we build a connection to the platform
+	// IF IPC is disabled we build a validated healthy connection to the platform
 	if !cfg.ipc {
 		platformEndpoint, err = SanitizePlatformEndpoint(platformEndpoint)
 		if err != nil {
 			return nil, fmt.Errorf("%w [%v]: %w", ErrPlatformEndpointMalformed, platformEndpoint, err)
+		}
+		
+		// TODO: to support an offline SDK, we would need to remove the connection requirement
+		// For now we will only skip for test purposes
+		if !cfg.testSkipValidatePlatformConnectivity {
+			err = validateHealthyRunningPlatform(cfg.coreConn, platformEndpoint, dialOptions)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -422,6 +433,26 @@ func fetchPlatformConfiguration(platformEndpoint string, dialOptions []grpc.Dial
 	defer conn.Close()
 
 	return getPlatformConfiguration(conn)
+}
+
+// Test connectability to the platform and validate a healthy status
+func validateHealthyRunningPlatform(conn *grpc.ClientConn, platformEndpoint string, dialOptions []grpc.DialOption) error {
+	if conn == nil {
+		var err error
+		conn, err = grpc.NewClient(platformEndpoint, dialOptions...)
+		if err != nil {
+			return errors.Join(ErrGrpcDialFailed, err)
+		}
+		defer conn.Close()
+	}
+
+	req := healthpb.HealthCheckRequest{}
+	healthService := healthpb.NewHealthClient(conn)
+	resp, err := healthService.Check(context.Background(), &req)
+	if err != nil || resp.GetStatus() != healthpb.HealthCheckResponse_SERVING {
+		return errors.Join(ErrPlatformUnreachable, err)
+	}
+	return nil
 }
 
 func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfiguration, error) {

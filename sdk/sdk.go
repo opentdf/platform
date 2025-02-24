@@ -121,10 +121,8 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 			return nil, fmt.Errorf("%w [%v]: %w", ErrPlatformEndpointMalformed, platformEndpoint, err)
 		}
 
-		// TODO: to support an offline SDK, we would need to remove the connection requirement
-		// For now we will only skip for test purposes
-		if !cfg.testSkipValidatePlatformConnectivity {
-			err = validateHealthyRunningPlatform(cfg.coreConn, platformEndpoint, dialOptions)
+		if cfg.shouldValidatePlatformConnectivity {
+			err = ValidateHealthyPlatformConnection(platformEndpoint, dialOptions)
 			if err != nil {
 				return nil, err
 			}
@@ -436,15 +434,12 @@ func fetchPlatformConfiguration(platformEndpoint string, dialOptions []grpc.Dial
 }
 
 // Test connectability to the platform and validate a healthy status
-func validateHealthyRunningPlatform(conn *grpc.ClientConn, platformEndpoint string, dialOptions []grpc.DialOption) error {
-	if conn == nil {
-		var err error
-		conn, err = grpc.NewClient(platformEndpoint, dialOptions...)
-		if err != nil {
-			return errors.Join(ErrGrpcDialFailed, err)
-		}
-		defer conn.Close()
+func ValidateHealthyPlatformConnection(platformEndpoint string, dialOptions []grpc.DialOption) error {
+	conn, err := grpc.NewClient(platformEndpoint, dialOptions...)
+	if err != nil {
+		return errors.Join(ErrGrpcDialFailed, err)
 	}
+	defer conn.Close()
 
 	req := healthpb.HealthCheckRequest{}
 	healthService := healthpb.NewHealthClient(conn)

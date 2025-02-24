@@ -1,4 +1,4 @@
-package sdk
+package sdk_test
 
 import (
 	"bytes"
@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	"github.com/opentdf/platform/sdk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,8 +30,8 @@ func GetMethods(i interface{}) []string {
 }
 
 func TestNew_ShouldCreateSDK(t *testing.T) {
-	s, err := New(goodPlatformEndpoint,
-		WithPlatformConfiguration(PlatformConfiguration{
+	s, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
 			"idp": map[string]interface{}{
 				"issuer":                 "https://example.org",
 				"authorization_endpoint": "https://example.org/auth",
@@ -38,9 +39,8 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 				"public_client_id":       "myclient",
 			},
 		}),
-		WithClientCredentials("myid", "mysecret", nil),
-		WithTokenEndpoint("https://example.org/token"),
-		withTestSkipValidatePlatformConnectivity(),
+		sdk.WithClientCredentials("myid", "mysecret", nil),
+		sdk.WithTokenEndpoint("https://example.org/token"),
 	)
 	require.NoError(t, err)
 	require.NotNil(t, s)
@@ -73,38 +73,36 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 }
 
 func Test_PlatformConfiguration_BadCases(t *testing.T) {
-	assertions := func(t *testing.T, s *SDK) {
+	assertions := func(t *testing.T, s *sdk.SDK) {
 		iss, err := s.PlatformConfiguration.Issuer()
 		assert.Equal(t, "", iss)
-		require.ErrorIs(t, err, ErrPlatformIssuerNotFound)
+		require.ErrorIs(t, err, sdk.ErrPlatformIssuerNotFound)
 
 		authzEndpoint, err := s.PlatformConfiguration.AuthzEndpoint()
 		assert.Equal(t, "", authzEndpoint)
-		require.ErrorIs(t, err, ErrPlatformAuthzEndpointNotFound)
+		require.ErrorIs(t, err, sdk.ErrPlatformAuthzEndpointNotFound)
 
 		tokenEndpoint, err := s.PlatformConfiguration.TokenEndpoint()
 		assert.Equal(t, "", tokenEndpoint)
-		require.ErrorIs(t, err, ErrPlatformTokenEndpointNotFound)
+		require.ErrorIs(t, err, sdk.ErrPlatformTokenEndpointNotFound)
 
 		publicClientID, err := s.PlatformConfiguration.PublicClientID()
 		assert.Equal(t, "", publicClientID)
-		require.ErrorIs(t, err, ErrPlatformPublicClientIDNotFound)
+		require.ErrorIs(t, err, sdk.ErrPlatformPublicClientIDNotFound)
 	}
 
-	noIdpValsSDK, err := New(goodPlatformEndpoint,
-		WithPlatformConfiguration(PlatformConfiguration{
+	noIdpValsSDK, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
 			"idp": map[string]interface{}{},
 		}),
-		withTestSkipValidatePlatformConnectivity(),
 	)
 	require.NoError(t, err)
 	assert.NotNil(t, noIdpValsSDK)
 
 	assertions(t, noIdpValsSDK)
 
-	noIdpCfgSDK, err := New(goodPlatformEndpoint,
-		WithPlatformConfiguration(PlatformConfiguration{}),
-		withTestSkipValidatePlatformConnectivity(),
+	noIdpCfgSDK, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{}),
 	)
 	require.NoError(t, err)
 	assert.NotNil(t, noIdpCfgSDK)
@@ -114,11 +112,10 @@ func Test_PlatformConfiguration_BadCases(t *testing.T) {
 
 func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {
 	// When
-	s, err := New(goodPlatformEndpoint,
-		WithPlatformConfiguration(PlatformConfiguration{
+	s, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
 			"platform_issuer": "https://example.org",
 		}),
-		withTestSkipValidatePlatformConnectivity(),
 	)
 	// Then
 	require.NoError(t, err)
@@ -126,13 +123,12 @@ func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {
 }
 
 func TestNew_ShouldCloseConnections(t *testing.T) {
-	s, err := New(goodPlatformEndpoint,
-		WithPlatformConfiguration(PlatformConfiguration{
+	s, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
 			"platform_issuer": "https://example.org",
 		}),
-		WithClientCredentials("myid", "mysecret", nil),
-		WithTokenEndpoint("https://example.org/token"),
-		withTestSkipValidatePlatformConnectivity(),
+		sdk.WithClientCredentials("myid", "mysecret", nil),
+		sdk.WithTokenEndpoint("https://example.org/token"),
 	)
 	require.NoError(t, err)
 	require.NoError(t, s.Close())
@@ -145,13 +141,13 @@ func TestNew_ShouldValidateGoodNanoTdf(t *testing.T) {
 
 	require.NoError(t, err)
 	// Decode the base64 string
-	isValid, err := IsValidNanoTdf(in)
+	isValid, err := sdk.IsValidNanoTdf(in)
 	require.NoError(t, err)
 
 	assert.True(t, isValid)
 
 	// Try again to see if the reader has been reset
-	isValid, err = IsValidNanoTdf(in)
+	isValid, err = sdk.IsValidNanoTdf(in)
 	require.NoError(t, err)
 
 	assert.True(t, isValid)
@@ -164,7 +160,7 @@ func TestNew_ShouldNotValidateBadNanoTdf(t *testing.T) {
 
 	require.NoError(t, err)
 	// Decode the base64 string
-	isValid, _ := IsValidNanoTdf(in)
+	isValid, _ := sdk.IsValidNanoTdf(in)
 	// Error is ok here, as it acts as a sort of reason for the nanotdf not being valid
 	assert.False(t, isValid)
 }
@@ -175,13 +171,13 @@ func TestNew_ShouldValidateStandardTdf(t *testing.T) {
 	require.NoError(t, err)
 
 	in := bytes.NewReader(goodDecodedData)
-	isValid, err := IsValidTdf(in)
+	isValid, err := sdk.IsValidTdf(in)
 	require.NoError(t, err)
 
 	assert.True(t, isValid)
 
 	// Try again to see if the reader has been reset
-	isValid, err = IsValidTdf(in)
+	isValid, err = sdk.IsValidTdf(in)
 	require.NoError(t, err)
 
 	assert.True(t, isValid)
@@ -195,7 +191,7 @@ func TestNew_ShouldNotValidateBadStandardTdf(t *testing.T) {
 
 	require.NoError(t, err)
 	// Decode the base64 string
-	isValid, err := IsValidTdf(in)
+	isValid, err := sdk.IsValidTdf(in)
 	// Error is ok here, as it acts as a sort of reason for the nanotdf not being valid
 	assert.False(t, isValid)
 	require.Error(t, err)
@@ -208,19 +204,19 @@ func TestIsInvalid_MissingRequiredManifestPayloadField(t *testing.T) {
 
 	require.NoError(t, err)
 	// Decode the base64 string
-	isValid, err := IsValidTdf(in)
+	isValid, err := sdk.IsValidTdf(in)
 	// Error is ok here, as it acts as a sort of reason for the nanotdf not being valid
 	assert.False(t, isValid)
-	require.ErrorIs(t, err, ErrInvalidPerSchema)
+	require.ErrorIs(t, err, sdk.ErrInvalidPerSchema)
 }
 
 func TestNew_ShouldHaveSameMethods(t *testing.T) {
-	s, err := New(goodPlatformEndpoint,
-		WithPlatformConfiguration(PlatformConfiguration{
+	s, err := sdk.New(goodPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
 			"platform_issuer": "https://example.org",
 		}),
-		WithClientCredentials("myid", "mysecret", nil),
-		WithTokenEndpoint("https://example.org/token"),
+		sdk.WithClientCredentials("myid", "mysecret", nil),
+		sdk.WithTokenEndpoint("https://example.org/token"),
 	)
 	require.NoError(t, err)
 
@@ -259,10 +255,20 @@ func TestNew_ShouldHaveSameMethods(t *testing.T) {
 }
 
 func Test_New_ShouldFailWithDisconnectedPlatform(t *testing.T) {
-	// When
-	s, err := New(badPlatformEndpoint)
-	// Then
-	require.ErrorIs(t, err, ErrPlatformUnreachable)
+	s, err := sdk.New(badPlatformEndpoint,
+		sdk.WithConnectionValidation(),
+	)
+	require.ErrorIs(t, err, sdk.ErrPlatformUnreachable)
+	assert.Nil(t, s)
+
+	// validates even with platform configuration provided
+	s, err = sdk.New(badPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"platform_issuer": "https://example.org",
+		}),
+		sdk.WithConnectionValidation(),
+	)
+	require.ErrorIs(t, err, sdk.ErrPlatformUnreachable)
 	assert.Nil(t, s)
 }
 
@@ -336,7 +342,7 @@ func Test_ShouldSanitizePlatformEndpoint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual, err := SanitizePlatformEndpoint(tt.endpoint)
+			actual, err := sdk.SanitizePlatformEndpoint(tt.endpoint)
 			if tt.expected == "" {
 				require.Error(t, err)
 			} else {
@@ -353,9 +359,9 @@ func Test_GetType_NanoTDF(t *testing.T) {
 	require.NoError(t, err)
 
 	in := bytes.NewReader(nanoDecoded)
-	tdfType := GetTdfType(in)
+	tdfType := sdk.GetTdfType(in)
 
-	assert.Equal(t, Nano, tdfType)
+	assert.Equal(t, sdk.Nano, tdfType)
 }
 
 func Test_GetType_TDF(t *testing.T) {
@@ -364,25 +370,25 @@ func Test_GetType_TDF(t *testing.T) {
 	require.NoError(t, err)
 
 	in := bytes.NewReader(tdfDecoded)
-	tdfType := GetTdfType(in)
+	tdfType := sdk.GetTdfType(in)
 
-	assert.Equal(t, Standard, tdfType)
+	assert.Equal(t, sdk.Standard, tdfType)
 }
 
 func Test_GetType_InvalidTDF(t *testing.T) {
 	tdf := ""
 	in := bytes.NewReader([]byte(tdf))
 
-	tdfType := GetTdfType(in)
+	tdfType := sdk.GetTdfType(in)
 
-	assert.Equal(t, Invalid, tdfType)
+	assert.Equal(t, sdk.Invalid, tdfType)
 }
 
 func Test_GetType_Invalid2Bytes(t *testing.T) {
 	tdf := "UE"
 	in := bytes.NewReader([]byte(tdf))
 
-	tdfType := GetTdfType(in)
+	tdfType := sdk.GetTdfType(in)
 
-	assert.Equal(t, Invalid, tdfType)
+	assert.Equal(t, sdk.Invalid, tdfType)
 }

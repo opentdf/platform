@@ -29,6 +29,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
+	"github.com/opentdf/platform/sdk/httputil"
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
@@ -458,12 +459,12 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 	server := memhttp.New(mux)
 	defer server.Close()
 
-	addingInterceptor := sdkauth.NewTokenAddingInterceptor(&FakeTokenSource{
+	addingInterceptor := sdkauth.NewTokenAddingInterceptorWithClient(&FakeTokenSource{
 		key:         dpopKey,
 		accessToken: string(signedTok),
-	}, &tls.Config{
+	}, httputil.SafeHTTPClientWithTLSConfig(&tls.Config{
 		MinVersion: tls.VersionTLS12,
-	})
+	}))
 
 	conn, _ := grpc.NewClient("passthrough://bufconn", grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
 		return server.Listener.DialContext(ctx, "tcp", "http://localhost:8080")
@@ -519,19 +520,19 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 
 	req, err := http.NewRequest(http.MethodGet, server.URL+"/attributes", nil)
 
-	addingInterceptor := sdkauth.NewTokenAddingInterceptor(&FakeTokenSource{
+	addingInterceptor := sdkauth.NewTokenAddingInterceptorWithClient(&FakeTokenSource{
 		key:         dpopKey,
 		accessToken: string(signedTok),
-	}, &tls.Config{
+	}, httputil.SafeHTTPClientWithTLSConfig(&tls.Config{
 		MinVersion: tls.VersionTLS12,
-	})
+	}))
 	s.Require().NoError(err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", signedTok))
 	dpopTok, err := addingInterceptor.GetDPoPToken(server.URL+"/attributes", "GET", string(signedTok))
 	s.Require().NoError(err)
 	req.Header.Set("DPoP", dpopTok)
 
-	client := http.Client{}
+	client := httputil.SafeHTTPClient() // use safe client to help validate the client
 	_, err = client.Do(req)
 	s.Require().NoError(err)
 	var dpopKeyFromRequest jwk.Key

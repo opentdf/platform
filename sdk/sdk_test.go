@@ -3,7 +3,6 @@ package sdk
 import (
 	"bytes"
 	"encoding/base64"
-	"errors"
 	"reflect"
 	"testing"
 
@@ -263,7 +262,7 @@ func Test_New_ShouldFailWithDisconnectedPlatform(t *testing.T) {
 	// When
 	s, err := New(badPlatformEndpoint)
 	// Then
-	require.True(t, errors.Is(err, ErrPlatformUnreachable))
+	require.ErrorIs(t, err, ErrPlatformUnreachable)
 	assert.Nil(t, s)
 }
 

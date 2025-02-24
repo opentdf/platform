@@ -129,6 +129,32 @@ func (a Assertion) GetHash() ([]byte, error) {
 	return ocrypto.SHA256AsHex(transformedJSON), nil
 }
 
+func (s *Statement) MarshalJSON() ([]byte, error) {
+	// Define a custom struct for serialization
+	type Alias Statement
+	aux := &struct {
+		Value interface{} `json:"value,omitempty"`
+		*Alias
+	}{
+		Alias: (*Alias)(s),
+	}
+
+	if s.Format == "json-structured" {
+		raw := json.RawMessage(s.Value)
+		var tmp interface{}
+		// Attempt to decode Value to validate it's actual json
+		if err := json.Unmarshal(raw, &tmp); err == nil {
+			aux.Value = raw
+		} else {
+			aux.Value = s.Value
+		}
+	} else {
+		aux.Value = s.Value
+	}
+
+	return json.Marshal(aux)
+}
+
 func (s *Statement) UnmarshalJSON(data []byte) error {
 	// Define a custom struct for deserialization
 	type Alias Statement

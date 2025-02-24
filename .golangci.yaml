@@ -9,8 +9,6 @@ linters-settings:
     # Such cases aren't reported by default.
     # Default: false
     check-type-assertions: true
-    # https://github.com/golangci/golangci-lint/issues/4743
-    ignore: ''
 
   exhaustive:
     # Program elements to check for exhaustiveness.
@@ -138,7 +136,7 @@ linters:
     - errname # checks that sentinel errors are prefixed with the Err and error types are suffixed with the Error
     - errorlint # finds code that will cause problems with the error wrapping scheme introduced in Go 1.13
     - exhaustive # checks exhaustiveness of enum switch statements
-    # - exportloopref # checks for pointers to enclosing loop variables Since Go1.22 (loopvar) this linter is no longer relevant. Replaced by copyloopvar."
+    - exptostd # Added in 1.63. Checks for usages of the deprecated experimental packages
     # - fatcontext
     - forbidigo # forbids identifiers
     - forcetypeassert # finds forced type assertions
@@ -173,7 +171,6 @@ linters:
     # - spancheck # checks for incorrect usage of opentracing.Span # Added in golangci-lint 1.56
     - sqlclosecheck # checks that sql.Rows and sql.Stmt are closed
     - stylecheck # is a replacement for golint
-    - tenv # detects using os.Setenv instead of t.Setenv since Go1.17
     - testableexamples # checks if examples are testable (have an expected output)
     - testifylint
     #- testpackage # makes you use a separate _test package
@@ -181,6 +178,7 @@ linters:
     - unconvert # removes unnecessary type conversions
     - unparam # reports unused function parameters
     - usestdlibvars # detects the possibility to use variables/constants from the Go standard library
+    - usetesting # Replaced tenv in golangci-lint 1.63
     - wastedassign # finds wasted assignment statements
     - whitespace # detects leading and trailing whitespace
 

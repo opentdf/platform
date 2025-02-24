@@ -24,19 +24,19 @@
   - [Podman Compose](https://github.com/containers/podman-compose)
 - [Buf](https://buf.build/docs/ecosystem/cli-overview) is used for managing protobuf files.
   Required for developing services.
+- [golangci-lint](https://golangci-lint.run/) is used for ensuring good coding practices. 
+  Use `make go-lint` to run it before submitting a PR
 
 On macOS, these can be installed with [brew](https://docs.brew.sh/Installation)
 
 ```sh
-brew install buf go
+brew install buf go golangci-lint
 ```
 
 #### Optional tools
 
 - _Optional_ [Air](https://github.com/cosmtrek/air) is used for hot-reload development
   - install with `go install github.com/cosmtrek/air@latest`  
-- _Optional_ [golangci-lint](https://golangci-lint.run/) is used for ensuring good coding practices
-  - install with `brew install golangci-lint`
 - _Optional_ [grpcurl](https://github.com/fullstorydev/grpcurl) is used for testing gRPC services
   - install with `brew install grpcurl`
 - _Optional_ [openssl](https://www.openssl.org/) is used for generating certificates

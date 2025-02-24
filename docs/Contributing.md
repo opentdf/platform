@@ -27,4 +27,5 @@ Run `go run github.com/opentdf/platform/service provision fixtures -h` for more 
 
 ## Advice for Code Contributors
 
+* Make sure to run our linters with `make lint`
 * Follow our [Error Guidelines](./Contributing-errors.md)

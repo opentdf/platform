@@ -55,11 +55,11 @@ func FromPrivatePEM(privateKeyInPem string) (PrivateKeyDecryptor, error) {
 
 	switch privateKey := priv.(type) {
 	case *ecdsa.PrivateKey:
-		if sk, err := privateKey.ECDH(); err != nil {
+		sk, err := privateKey.ECDH()
+		if err != nil {
 			return nil, fmt.Errorf("unable to create ECDH key: %w", err)
-		} else {
-			return NewECDecryptor(sk)
 		}
+		return NewECDecryptor(sk)
 	case *ecdh.PrivateKey:
 		return NewECDecryptor(privateKey)
 	case *rsa.PrivateKey:

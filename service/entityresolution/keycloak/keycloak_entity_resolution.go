@@ -17,6 +17,7 @@ import (
 	auth "github.com/opentdf/platform/service/authorization"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -39,6 +40,7 @@ type KeycloakEntityResolutionService struct {
 	entityresolution.UnimplementedEntityResolutionServiceServer
 	idpConfig KeycloakConfig
 	logger    *logger.Logger
+	trace.Tracer
 }
 
 type KeycloakConfig struct {
@@ -62,11 +64,17 @@ func RegisterKeycloakERS(config serviceregistry.ServiceConfig, logger *logger.Lo
 }
 
 func (s KeycloakEntityResolutionService) ResolveEntities(ctx context.Context, req *connect.Request[entityresolution.ResolveEntitiesRequest]) (*connect.Response[entityresolution.ResolveEntitiesResponse], error) {
+	ctx, span := s.Tracer.Start(ctx, "ResolveEntities")
+	defer span.End()
+
 	resp, err := EntityResolution(ctx, req.Msg, s.idpConfig, s.logger)
 	return connect.NewResponse(&resp), err
 }
 
 func (s KeycloakEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
+	ctx, span := s.Tracer.Start(ctx, "CreateEntityChainFromJwt")
+	defer span.End()
+
 	resp, err := CreateEntityChainFromJwt(ctx, req.Msg, s.idpConfig, s.logger)
 	return connect.NewResponse(&resp), err
 }

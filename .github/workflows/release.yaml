@@ -61,7 +61,7 @@ jobs:
             esac
           done
         env:
-          RELEASED_PATHS: ${{ toJson(steps.release-please.outputs.paths_released) }}
+          RELEASED_PATHS: ${{ steps.release-please.outputs.paths_released }}
   update-go-mods:
     runs-on: ubuntu-latest
     needs: 
@@ -100,7 +100,7 @@ jobs:
           git diff
         env:
           GONOSUMDB: github.com/opentdf/platform/${{join(fromJson(needs.release-please.outputs.paths_released), ',github.com/opentdf/platform/')}}
-          RELEASED_PATHS: ${{ toJson(needs.release-please.outputs.paths_released) }}
+          RELEASED_PATHS: ${{ needs.release-please.outputs.paths_released }}
       - uses: planetscale/ghcommit-action@d4176bfacef926cc2db351eab20398dfc2f593b5
         with:
           commit_message: "fix(core): Autobump ${{ matrix.path }}"

@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.3.27](https://github.com/opentdf/platform/compare/sdk/v0.3.26...sdk/v0.3.27) (2025-02-25)
+
+
+### Features
+
+* **core:** EXPERIMENTAL: EC-wrapped key support ([#1902](https://github.com/opentdf/platform/issues/1902)) ([652266f](https://github.com/opentdf/platform/commit/652266f212ba10b2492a84741f68391a1d39e007))
+* **policy:** adds new public keys table ([#1836](https://github.com/opentdf/platform/issues/1836)) ([cad5048](https://github.com/opentdf/platform/commit/cad5048d09609d678d5b5ac2972605dd61f33bb5))
+* **sdk:** Allow schema validation during TDF decrypt ([#1870](https://github.com/opentdf/platform/issues/1870)) ([b7e6fb2](https://github.com/opentdf/platform/commit/b7e6fb24631b4898561b1a64c24c85b32c452a1c))
+* **sdk:** MIC-1436: User can decrypt TDF files created with FileWatcher2.0.8 and older. ([#1833](https://github.com/opentdf/platform/issues/1833)) ([f77d110](https://github.com/opentdf/platform/commit/f77d110fcc7f332ceec5a3294b144973eced37c1))
+* **sdk:** remove hex encoding for segment hash ([#1805](https://github.com/opentdf/platform/issues/1805)) ([d7179c2](https://github.com/opentdf/platform/commit/d7179c2a91b508c26fbe6499fe5c1ac8334e5505))
+* **sdk:** sdk.New should validate platform connectivity and provide precise error ([#1937](https://github.com/opentdf/platform/issues/1937)) ([aa3696d](https://github.com/opentdf/platform/commit/aa3696d848a23ac79029bd64f1b61a15567204d7))
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1873](https://github.com/opentdf/platform/issues/1873)) ([085ac7a](https://github.com/opentdf/platform/commit/085ac7af550d2c9d3fd0b0b2deb389939e7cde8e))
+* **core:** Autobump sdk ([#1894](https://github.com/opentdf/platform/issues/1894)) ([201244e](https://github.com/opentdf/platform/commit/201244e4473115f07fc997dc49c695cc05d9a6ba))
+* **core:** Autobump sdk ([#1917](https://github.com/opentdf/platform/issues/1917)) ([edeeb74](https://github.com/opentdf/platform/commit/edeeb74e9c38b2e6eef7fefa29768912371ec949))
+* **core:** Autobump sdk ([#1941](https://github.com/opentdf/platform/issues/1941)) ([0a5a948](https://github.com/opentdf/platform/commit/0a5a94893836482990586302bfb9838e54c5b6ba))
+* Improve http.Client usage for security and performance ([#1910](https://github.com/opentdf/platform/issues/1910)) ([e6a53a3](https://github.com/opentdf/platform/commit/e6a53a370b13c3ed63752789aa886be660354e1a))
+* **sdk:** bump lib/ocrypto to 0.1.8 ([#1938](https://github.com/opentdf/platform/issues/1938)) ([53fa8ab](https://github.com/opentdf/platform/commit/53fa8ab90236d5bd29541552782b60b96f625405))
+* **sdk:** Fix compatibility between bulk and non-bulk rewrap ([#1914](https://github.com/opentdf/platform/issues/1914)) ([74abbb6](https://github.com/opentdf/platform/commit/74abbb66cbb39023f56cd502a7cda294580a41c6))
+* **sdk:** Removes unnecessary down-cast of `int` ([#1869](https://github.com/opentdf/platform/issues/1869)) ([66f0c14](https://github.com/opentdf/platform/commit/66f0c14a1ef7490a207c0cef8c98ab4af3f128b1))
+
 ## [0.3.26](https://github.com/opentdf/platform/compare/sdk/v0.3.25...sdk/v0.3.26) (2025-01-21)
 
 

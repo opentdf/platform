@@ -3,9 +3,9 @@ module github.com/opentdf/platform/examples
 go 1.21
 
 require (
-	github.com/opentdf/platform/lib/ocrypto v0.1.7
-	github.com/opentdf/platform/protocol/go v0.2.26
-	github.com/opentdf/platform/sdk v0.3.23
+	github.com/opentdf/platform/lib/ocrypto v0.1.8
+	github.com/opentdf/platform/protocol/go v0.2.27
+	github.com/opentdf/platform/sdk v0.3.27
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.9.0
 	google.golang.org/grpc v1.66.0

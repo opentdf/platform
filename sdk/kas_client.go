@@ -20,12 +20,16 @@ import (
 
 const (
 	secondsPerMinute = 60
+	statusPermit     = "permit"
 )
 
 type KASClient struct {
 	accessTokenSource auth.AccessTokenSource
 	dialOptions       []grpc.DialOption
-	sessionKey        *ocrypto.RsaKeyPair
+	sessionKey        ocrypto.KeyPair
+
+	// Set this to enable legacy, non-batch rewrap requests
+	supportSingleRewrapEndpoint bool
 }
 
 type kaoResult struct {
@@ -39,11 +43,12 @@ type decryptor interface {
 	Decrypt(ctx context.Context, results []kaoResult) (int, error)
 }
 
-func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, sessionKey *ocrypto.RsaKeyPair) *KASClient {
+func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, sessionKey ocrypto.KeyPair) *KASClient {
 	return &KASClient{
-		accessTokenSource: accessTokenSource,
-		dialOptions:       dialOptions,
-		sessionKey:        sessionKey,
+		accessTokenSource:           accessTokenSource,
+		dialOptions:                 dialOptions,
+		sessionKey:                  sessionKey,
+		supportSingleRewrapEndpoint: true,
 	}
 }
 
@@ -71,7 +76,36 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.Unsig
 		return nil, fmt.Errorf("error making rewrap request: %w", err)
 	}
 
+	upgradeRewrapResponseV1(response, requests)
+
 	return response, nil
+}
+
+// convert v1 responses to v2
+func upgradeRewrapResponseV1(response *kas.RewrapResponse, requests []*kas.UnsignedRewrapRequest_WithPolicyRequest) {
+	if len(response.GetResponses()) > 0 {
+		return
+	}
+	if len(response.GetEntityWrappedKey()) == 0 { //nolint:staticcheck // SA1019: use of deprecated method required for compatibility
+		return
+	}
+	if len(requests) == 0 {
+		return
+	}
+	response.Responses = []*kas.PolicyRewrapResult{
+		{
+			PolicyId: requests[0].GetPolicy().GetId(),
+			Results: []*kas.KeyAccessRewrapResult{
+				{
+					KeyAccessObjectId: requests[0].GetKeyAccessObjects()[0].GetKeyAccessObjectId(),
+					Status:            statusPermit,
+					Result: &kas.KeyAccessRewrapResult_KasWrappedKey{
+						KasWrappedKey: response.GetEntityWrappedKey(), //nolint:staticcheck // SA1019: use of deprecated method
+					},
+				},
+			},
+		},
+	}
 }
 
 func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]kaoResult, error) {
@@ -113,7 +147,7 @@ func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRew
 	for _, results := range response.GetResponses() {
 		var kaoKeys []kaoResult
 		for _, kao := range results.GetResults() {
-			if kao.GetStatus() == "permit" {
+			if kao.GetStatus() == statusPermit {
 				wrappedKey := kao.GetKasWrappedKey()
 				key, err := aesGcm.Decrypt(wrappedKey)
 				if err != nil {
@@ -144,23 +178,42 @@ func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.UnsignedRewrapR
 		return nil, fmt.Errorf("error making rewrap request to kas: %w", err)
 	}
 
+	if ocrypto.IsECKeyType(k.sessionKey.GetKeyType()) {
+		return k.handleECKeyResponse(response)
+	}
+	return k.handleRSAKeyResponse(response)
+}
+
+func (k *KASClient) handleECKeyResponse(response *kas.RewrapResponse) (map[string][]kaoResult, error) {
+	kasEphemeralPublicKey := response.GetSessionPublicKey()
 	clientPrivateKey, err := k.sessionKey.PrivateKeyInPemFormat()
 	if err != nil {
-		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
+		return nil, fmt.Errorf("failed to get private key: %w", err)
 	}
-
-	asymDecryption, err := ocrypto.NewAsymDecryption(clientPrivateKey)
+	ecdhKey, err := ocrypto.ComputeECDHKey([]byte(clientPrivateKey), []byte(kasEphemeralPublicKey))
 	if err != nil {
-		return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
+		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
+	}
+	sessionKey, err := ocrypto.CalculateHKDF([]byte("salt"), ecdhKey)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed: %w", err)
 	}
 
+	aesGcm, err := ocrypto.NewAESGcm(sessionKey)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.NewAESGcm failed: %w", err)
+	}
+
+	return k.processECResponse(response, aesGcm)
+}
+
+func (k *KASClient) processECResponse(response *kas.RewrapResponse, aesGcm ocrypto.AesGcm) (map[string][]kaoResult, error) {
 	policyResults := make(map[string][]kaoResult)
 	for _, results := range response.GetResponses() {
 		var kaoKeys []kaoResult
 		for _, kao := range results.GetResults() {
-			if kao.GetStatus() == "permit" {
-				wrappedKey := kao.GetKasWrappedKey()
-				key, err := asymDecryption.Decrypt(wrappedKey)
+			if kao.GetStatus() == statusPermit {
+				key, err := aesGcm.Decrypt(kao.GetKasWrappedKey())
 				if err != nil {
 					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
 				} else {
@@ -172,7 +225,41 @@ func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.UnsignedRewrapR
 		}
 		policyResults[results.GetPolicyId()] = kaoKeys
 	}
+	return policyResults, nil
+}
 
+func (k *KASClient) handleRSAKeyResponse(response *kas.RewrapResponse) (map[string][]kaoResult, error) {
+	clientPrivateKey, err := k.sessionKey.PrivateKeyInPemFormat()
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
+	}
+
+	asymDecryption, err := ocrypto.NewAsymDecryption(clientPrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
+	}
+
+	return k.processRSAResponse(response, asymDecryption)
+}
+
+func (k *KASClient) processRSAResponse(response *kas.RewrapResponse, asymDecryption ocrypto.AsymDecryption) (map[string][]kaoResult, error) {
+	policyResults := make(map[string][]kaoResult)
+	for _, results := range response.GetResponses() {
+		var kaoKeys []kaoResult
+		for _, kao := range results.GetResults() {
+			if kao.GetStatus() == statusPermit {
+				key, err := asymDecryption.Decrypt(kao.GetKasWrappedKey())
+				if err != nil {
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
+				} else {
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key})
+				}
+			} else {
+				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError())})
+			}
+		}
+		policyResults[results.GetPolicyId()] = kaoKeys
+	}
 	return policyResults, nil
 }
 
@@ -197,9 +284,17 @@ func getGRPCAddress(kasURL string) (string, error) {
 }
 
 func (k *KASClient) getRewrapRequest(reqs []*kas.UnsignedRewrapRequest_WithPolicyRequest, pubKey string) (*kas.RewrapRequest, error) {
+	if len(reqs) == 0 {
+		return nil, errors.New("no requests provided")
+	}
 	requestBody := &kas.UnsignedRewrapRequest{
 		ClientPublicKey: pubKey,
 		Requests:        reqs,
+	}
+	if len(reqs) == 1 && len(reqs[0].GetKeyAccessObjects()) == 1 && k.supportSingleRewrapEndpoint {
+		requestBody.KeyAccess = reqs[0].GetKeyAccessObjects()[0].GetKeyAccessObject() //nolint:staticcheck // SA1019: use of deprecated method
+		requestBody.Policy = reqs[0].GetPolicy().GetBody()                            //nolint:staticcheck // SA1019: use of deprecated method
+		requestBody.Algorithm = reqs[0].GetAlgorithm()                                //nolint:staticcheck // SA1019: use of deprecated method
 	}
 
 	requestBodyJSON, err := protojson.Marshal(requestBody)

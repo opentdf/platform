@@ -102,9 +102,17 @@ func (s KeyAccessServerRegistry) GetKeyAccessServer(ctx context.Context,
 ) (*connect.Response[kasr.GetKeyAccessServerResponse], error) {
 	rsp := &kasr.GetKeyAccessServerResponse{}
 
-	keyAccessServer, err := s.dbClient.GetKeyAccessServer(ctx, req.Msg.GetId())
+	var identifier any
+
+	if req.Msg.GetId() != "" { //nolint:staticcheck // Id can still be used until removed
+		identifier = req.Msg.GetId() //nolint:staticcheck // Id can still be used until removed
+	} else {
+		identifier = req.Msg.GetIdentifier()
+	}
+
+	keyAccessServer, err := s.dbClient.GetKeyAccessServer(ctx, identifier)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.Msg.GetId()))
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.Any("id", identifier))
 	}
 
 	rsp.KeyAccessServer = keyAccessServer
@@ -311,7 +319,11 @@ func (s KeyAccessServerRegistry) UpdatePublicKey(ctx context.Context, req *conne
 		ObjectID:   req.Msg.GetId(),
 	}
 
-	original, err := s.dbClient.GetPublicKey(ctx, &kasr.GetPublicKeyRequest{Id: req.Msg.GetId()})
+	original, err := s.dbClient.GetPublicKey(ctx, &kasr.GetPublicKeyRequest{
+		Identifier: &kasr.GetPublicKeyRequest_Id{
+			Id: req.Msg.GetId(),
+		},
+	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed)

@@ -27,10 +27,12 @@ import (
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/sdk/auth"
+	"github.com/opentdf/platform/sdk/httputil"
 	"github.com/opentdf/platform/sdk/internal/archive"
 	"github.com/xeipuuv/gojsonschema"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 const (
@@ -38,6 +40,7 @@ const (
 	// Check your configuration and/or retry.
 	ErrGrpcDialFailed                 = Error("failed to dial grpc endpoint")
 	ErrShutdownFailed                 = Error("failed to shutdown sdk")
+	ErrPlatformUnreachable            = Error("platform unreachable or not responding")
 	ErrPlatformConfigFailed           = Error("failed to retrieve platform configuration")
 	ErrPlatformEndpointMalformed      = Error("platform endpoint is malformed")
 	ErrPlatformIssuerNotFound         = Error("issuer not found in well-known idp configuration")
@@ -111,11 +114,18 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		dialOptions = append(dialOptions, cfg.extraDialOptions...)
 	}
 
-	// IF IPC is disabled we build a connection to the platform
+	// IF IPC is disabled we build a validated healthy connection to the platform
 	if !cfg.ipc {
 		platformEndpoint, err = SanitizePlatformEndpoint(platformEndpoint)
 		if err != nil {
 			return nil, fmt.Errorf("%w [%v]: %w", ErrPlatformEndpointMalformed, platformEndpoint, err)
+		}
+
+		if cfg.shouldValidatePlatformConnectivity {
+			err = ValidateHealthyPlatformConnection(platformEndpoint, dialOptions)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -154,7 +164,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		return nil, err
 	}
 	if accessTokenSource != nil {
-		interceptor := auth.NewTokenAddingInterceptor(accessTokenSource, cfg.tlsConfig)
+		interceptor := auth.NewTokenAddingInterceptorWithClient(accessTokenSource, cfg.httpClient)
 		uci = append(uci, interceptor.AddCredentials)
 	}
 
@@ -423,6 +433,23 @@ func fetchPlatformConfiguration(platformEndpoint string, dialOptions []grpc.Dial
 	return getPlatformConfiguration(conn)
 }
 
+// Test connectability to the platform and validate a healthy status
+func ValidateHealthyPlatformConnection(platformEndpoint string, dialOptions []grpc.DialOption) error {
+	conn, err := grpc.NewClient(platformEndpoint, dialOptions...)
+	if err != nil {
+		return errors.Join(ErrGrpcDialFailed, err)
+	}
+	defer conn.Close()
+
+	req := healthpb.HealthCheckRequest{}
+	healthService := healthpb.NewHealthClient(conn)
+	resp, err := healthService.Check(context.Background(), &req)
+	if err != nil || resp.GetStatus() != healthpb.HealthCheckResponse_SERVING {
+		return errors.Join(ErrPlatformUnreachable, err)
+	}
+	return nil
+}
+
 func getPlatformConfiguration(conn *grpc.ClientConn) (PlatformConfiguration, error) {
 	req := wellknownconfiguration.GetWellKnownConfigurationRequest{}
 	wellKnownConfig := wellknownconfiguration.NewWellKnownServiceClient(conn)
@@ -452,13 +479,11 @@ func getTokenEndpoint(c config) (string, error) {
 		return "", err
 	}
 
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: c.tlsConfig,
-		},
+	client := c.httpClient
+	if client == nil {
+		client = httputil.SafeHTTPClient()
 	}
-
-	resp, err := httpClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}

@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -14,8 +15,34 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func (c PolicyDBClient) GetNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
-	ns, err := c.Queries.GetNamespace(ctx, id)
+func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*policy.Namespace, error) {
+	var (
+		ns     GetNamespaceRow
+		err    error
+		params GetNamespaceParams
+	)
+
+	switch i := identifier.(type) {
+	case *namespaces.GetNamespaceRequest_NamespaceId:
+		id := pgtypeUUID(i.NamespaceId)
+		if !id.Valid {
+			return nil, db.ErrUUIDInvalid
+		}
+		params = GetNamespaceParams{ID: id}
+	case *namespaces.GetNamespaceRequest_Fqn:
+		params = GetNamespaceParams{Name: pgtypeText(i.Fqn)}
+	case string:
+		id := pgtypeUUID(i)
+		if !id.Valid {
+			return nil, db.ErrUUIDInvalid
+		}
+		params = GetNamespaceParams{ID: id}
+	default:
+		// unexpected type
+		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
+	}
+
+	ns, err = c.Queries.GetNamespace(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -44,7 +71,7 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, id string) (*policy.Na
 	}
 
 	return &policy.Namespace{
-		Id:       id,
+		Id:       ns.ID,
 		Name:     ns.Name,
 		Active:   &wrapperspb.BoolValue{Value: ns.Active},
 		Grants:   grants,

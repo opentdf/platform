@@ -13,6 +13,10 @@ const (
 	maxSegmentSize     = defaultSegmentSize * 2
 	minSegmentSize     = 16 * 1024
 	kasPublicKeyPath   = "/kas_public_key"
+	DefaultRSAKeySize  = 2048
+	ECKeySize256       = 256
+	ECKeySize384       = 384
+	ECKeySize521       = 521
 )
 
 type TDFFormat = int
@@ -63,33 +67,18 @@ type TDFConfig struct {
 	attributeValues           []*policy.Value
 	kasInfoList               []KASInfo
 	splitPlan                 []keySplitStep
+	keyType                   ocrypto.KeyType
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
-	rsaKeyPair, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
-	}
-
-	publicKey, err := rsaKeyPair.PublicKeyInPemFormat()
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
-	}
-
-	privateKey, err := rsaKeyPair.PublicKeyInPemFormat()
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
-	}
-
 	c := &TDFConfig{
 		autoconfigure:             true,
-		tdfPrivateKey:             privateKey,
-		tdfPublicKey:              publicKey,
 		defaultSegmentSize:        defaultSegmentSize,
 		enableEncryption:          true,
 		tdfFormat:                 JSONFormat,
 		integrityAlgorithm:        HS256,
 		segmentIntegrityAlgorithm: GMAC,
+		keyType:                   ocrypto.RSA2048Key, // default to RSA
 	}
 
 	for _, o := range opt {
@@ -99,7 +88,31 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 		}
 	}
 
+	publicKey, privateKey, err := generateKeyPair(c.keyType)
+	if err != nil {
+		return nil, err
+	}
+
+	c.tdfPrivateKey = privateKey
+	c.tdfPublicKey = publicKey
+
 	return c, nil
+}
+
+func generateKeyPair(kt ocrypto.KeyType) (string, string, error) {
+	keyPair, err := ocrypto.NewKeyPair(kt)
+	if err != nil {
+		return "", "", fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
+	}
+	publicKey, err := keyPair.PublicKeyInPemFormat()
+	if err != nil {
+		return "", "", fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
+	}
+	privateKey, err := keyPair.PrivateKeyInPemFormat()
+	if err != nil {
+		return "", "", fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
+	}
+	return publicKey, privateKey, nil
 }
 
 // WithDataAttributes appends the given data attributes to the bound policy
@@ -213,6 +226,16 @@ func WithAutoconfigure(enable bool) TDFOption {
 	}
 }
 
+func WithWrappingKeyAlg(keyType ocrypto.KeyType) TDFOption {
+	return func(c *TDFConfig) error {
+		if c.keyType == "" {
+			return fmt.Errorf("key type missing")
+		}
+		c.keyType = keyType
+		return nil
+	}
+}
+
 // Schema Validation where 0 = none (skip), 1 = lax (allowing novel entries, 'falsy' values for unkowns), 2 = strict (rejecting novel entries, strict match to manifest schema)
 type SchemaValidationIntensity int
 
@@ -230,17 +253,27 @@ type TDFReaderConfig struct {
 	disableAssertionVerification bool
 
 	schemaValidationIntensity SchemaValidationIntensity
+	kasSessionKey             ocrypto.KeyPair
+	keyType                   ocrypto.KeyType
 }
 
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
+	var err error
 	c := &TDFReaderConfig{
 		disableAssertionVerification: false,
+		keyType:                      ocrypto.RSA2048Key,
 	}
+
 	for _, o := range opt {
 		err := o(c)
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	c.kasSessionKey, err = ocrypto.NewKeyPair(c.keyType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create RSA key pair: %w", err)
 	}
 
 	return c, nil
@@ -263,6 +296,16 @@ func WithSchemaValidation(intensity SchemaValidationIntensity) TDFReaderOption {
 func WithDisableAssertionVerification(disable bool) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		c.disableAssertionVerification = disable
+		return nil
+	}
+}
+
+func WithSessionKeyType(keyType ocrypto.KeyType) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		if c.keyType == "" {
+			return fmt.Errorf("key type missing")
+		}
+		c.keyType = keyType
 		return nil
 	}
 }

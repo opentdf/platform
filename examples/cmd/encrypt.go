@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/opentdf/platform/lib/ocrypto"
-
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
 )
@@ -23,6 +22,7 @@ var (
 	outputName     string
 	dataAttributes []string
 	collection     int
+	alg            string
 )
 
 func init() {
@@ -38,6 +38,7 @@ func init() {
 	encryptCmd.Flags().BoolVar(&noKIDInKAO, "no-kid-in-kao", false, "[deprecated] Disable storing key identifiers in TDF KAOs")
 	encryptCmd.Flags().BoolVar(&noKIDInNano, "no-kid-in-nano", true, "Disable storing key identifiers in nanoTDF KAS ResourceLocator")
 	encryptCmd.Flags().StringVarP(&outputName, "output", "o", "sensitive.txt.tdf", "name or path of output file; - for stdout")
+	encryptCmd.Flags().StringVarP(&alg, "key-encapsulation-algorithm", "A", "rsa:2048", "Key wrap algorithm algorithm:parameters")
 	encryptCmd.Flags().IntVarP(&collection, "collection", "c", 0, "number of nano's to create for collection. If collection >0 (default) then output will be <iteration>_<output>")
 
 	ExamplesCmd.AddCommand(&encryptCmd)
@@ -102,12 +103,20 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...)}
 		if !autoconfigure {
 			opts = append(opts, sdk.WithAutoconfigure(autoconfigure))
+			opts = append(opts, sdk.WithWrappingKeyAlg(ocrypto.EC256Key))
 			opts = append(opts, sdk.WithKasInformation(
 				sdk.KASInfo{
 					// examples assume insecure http
 					URL:       fmt.Sprintf("http://%s", platformEndpoint),
 					PublicKey: "",
 				}))
+		}
+		if alg != "" {
+			kt, err := keyTypeForKeyType(alg)
+			if err != nil {
+				return err
+			}
+			opts = append(opts, sdk.WithWrappingKeyAlg(kt))
 		}
 		tdf, err := client.CreateTDF(out, in, opts...)
 		if err != nil {
@@ -154,6 +163,18 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		}
 	}
 	return nil
+}
+
+func keyTypeForKeyType(alg string) (ocrypto.KeyType, error) {
+	switch alg {
+	case string(ocrypto.RSA2048Key):
+		return ocrypto.RSA2048Key, nil
+	case string(ocrypto.EC256Key):
+		return ocrypto.EC256Key, nil
+	default:
+		// do not submit add ocrypto.UnknownKey
+		return ocrypto.RSA2048Key, fmt.Errorf("unsupported key type [%s]", alg)
+	}
 }
 
 func cat(cmd *cobra.Command, nTdfFile string) error {

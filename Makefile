@@ -17,9 +17,9 @@ all: toolcheck clean build lint license test
 toolcheck:
 	@echo "Checking for required tools..."
 	@which buf > /dev/null || (echo "buf not found, please install it from https://docs.buf.build/installation" && exit 1)
-	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0'" && exit 1)
+	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.5'" && exit 1)
 	@which protoc-gen-doc > /dev/null || (echo "protoc-gen-doc not found, run 'go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1'" && exit 1)
-	@golangci-lint --version | grep "version v\?1.6[123]" > /dev/null || (echo "golangci-lint version must be v1.61 or later [$$(golangci-lint --version)]" && exit 1)
+	@golangci-lint --version | grep "version v\?1.6[456]" > /dev/null || (echo "golangci-lint version must be v1.64 or later [$$(golangci-lint --version)]" && exit 1)
 	@which goimports >/dev/null || (echo "goimports not found, run 'go install golang.org/x/tools/cmd/goimports@latest'")
 
 fix: tidy fmt
@@ -45,8 +45,12 @@ proto-lint:
 		fi)
 
 go-lint:
-	for m in $(HAND_MODS); do (cd $$m && golangci-lint run $(LINT_OPTIONS) --path-prefix=$$m) || exit 1; done
-
+	status=0; \
+	for m in $(HAND_MODS); do \
+		echo "Linting module: $$m"; \
+		(cd "$$m" && golangci-lint run $(LINT_OPTIONS) --path-prefix="$$m" ) || status=1; \
+	done; \
+	exit $$status
 proto-generate:
 	rm -rf protocol/go/[a-fh-z]* docs/grpc docs/openapi
 	buf generate service

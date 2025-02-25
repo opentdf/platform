@@ -254,14 +254,22 @@ func TestNew_ShouldHaveSameMethods(t *testing.T) {
 	}
 }
 
-func Test_ShouldCreateNewSDKWithBadEndpoint(t *testing.T) {
-	// Bad endpoints are not detected until the first call to the platform
-	t.Skip("Skipping test since this is expected but not great behavior")
-	// When
-	s, err := sdk.New(badPlatformEndpoint)
-	// Then
-	require.NoError(t, err)
-	assert.NotNil(t, s)
+func Test_New_ShouldFailWithDisconnectedPlatform(t *testing.T) {
+	s, err := sdk.New(badPlatformEndpoint,
+		sdk.WithConnectionValidation(),
+	)
+	require.ErrorIs(t, err, sdk.ErrPlatformUnreachable)
+	assert.Nil(t, s)
+
+	// validates even with platform configuration provided
+	s, err = sdk.New(badPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"platform_issuer": "https://example.org",
+		}),
+		sdk.WithConnectionValidation(),
+	)
+	require.ErrorIs(t, err, sdk.ErrPlatformUnreachable)
+	assert.Nil(t, s)
 }
 
 func Test_ShouldSanitizePlatformEndpoint(t *testing.T) {

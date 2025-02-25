@@ -65,7 +65,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@971e284b6050e8a5849b72094c50ab08da042db8
         with:
-          version: v1.61
+          version: v1.64
           working-directory: ${{ matrix.directory }}
           skip-cache: true
           args: --out-format=colored-line-number
@@ -79,7 +79,7 @@ jobs:
         run: |-
           go mod tidy
           go fmt ./...
-          git restore go.sum "${GITHUB_WORKSPACE}/go.work.sum"
+          git restore go.sum
         working-directory: ${{ matrix.directory }}
       - run: git diff
       - run: git diff-files --ignore-submodules
@@ -283,7 +283,7 @@ jobs:
         run: |-
           cd protocol/go
           go mod tidy
-          git restore go.sum "${GITHUB_WORKSPACE}/go.work.sum"
+          git restore go.sum
       - run: git diff
       - run: git diff-files --ignore-submodules
       - name: Check that make proto-generate has run before PR submission; see above for error details

@@ -34,6 +34,7 @@ const (
 	tdfZipReference         = "reference"
 	kKeySize                = 32
 	kWrapped                = "wrapped"
+	kECWrapped              = "ec-wrapped"
 	kKasProtocol            = "kas"
 	kSplitKeyType           = "split"
 	kGCMCipherAlgorithm     = "AES-256-GCM"
@@ -65,7 +66,7 @@ type Reader struct {
 	aesGcm              ocrypto.AesGcm
 	payloadSize         int64
 	payloadKey          []byte
-	kasSessionKey       ocrypto.RsaKeyPair
+	kasSessionKey       ocrypto.KeyPair
 	config              TDFReaderConfig
 }
 
@@ -79,6 +80,11 @@ type TDFObject struct {
 type tdf3DecryptHandler struct {
 	writer io.Writer
 	reader *Reader
+}
+
+type ecKeyWrappedKeyInfo struct {
+	publicKey  string
+	wrappedKey string
 }
 
 func (r *tdf3DecryptHandler) Decrypt(ctx context.Context, results []kaoResult) (int, error) {
@@ -412,12 +418,14 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 	conjunction := make(map[string][]KASInfo)
 	var splitIDs []string
 
+	keyAlgorithm := string(tdfConfig.keyType)
+
 	for _, splitInfo := range tdfConfig.splitPlan {
 		// Public key was passed in with kasInfoList
 		// TODO first look up in attribute information / add to split plan?
 		ki, ok := latestKASInfo[splitInfo.KAS]
 		if !ok || ki.PublicKey == "" {
-			k, err := s.getPublicKey(ctx, splitInfo.KAS, "rsa:2048")
+			k, err := s.getPublicKey(ctx, splitInfo.KAS, keyAlgorithm)
 			if err != nil {
 				return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", splitInfo.KAS, err)
 			}
@@ -451,27 +459,10 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 		// add meta data
 		var encryptedMetadata string
 		if len(tdfConfig.metaData) > 0 {
-			gcm, err := ocrypto.NewAESGcm(symKey)
+			encryptedMetadata, err = encryptMetadata(symKey, tdfConfig.metaData)
 			if err != nil {
-				return fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
+				return err
 			}
-
-			emb, err := gcm.Encrypt([]byte(tdfConfig.metaData))
-			if err != nil {
-				return fmt.Errorf("ocrypto.AesGcm.encrypt failed:%w", err)
-			}
-
-			iv := emb[:ocrypto.GcmStandardNonceSize]
-			metadata := EncryptedMetadata{
-				Cipher: string(ocrypto.Base64Encode(emb)),
-				Iv:     string(ocrypto.Base64Encode(iv)),
-			}
-
-			metadataJSON, err := json.Marshal(metadata)
-			if err != nil {
-				return fmt.Errorf(" json.Marshal failed:%w", err)
-			}
-			encryptedMetadata = string(ocrypto.Base64Encode(metadataJSON))
 		}
 
 		for _, kasInfo := range conjunction[splitID] {
@@ -479,27 +470,9 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 				return fmt.Errorf("splitID:[%s], kas:[%s]: %w", splitID, kasInfo.URL, errKasPubKeyMissing)
 			}
 
-			// wrap the key with kas public key
-			asymEncrypt, err := ocrypto.NewAsymEncryption(kasInfo.PublicKey)
+			keyAccess, err := createKeyAccess(tdfConfig, kasInfo, symKey, policyBinding, encryptedMetadata, splitID)
 			if err != nil {
-				return fmt.Errorf("ocrypto.NewAsymEncryption failed:%w", err)
-			}
-
-			wrappedKey, err := asymEncrypt.Encrypt(symKey)
-			if err != nil {
-				return fmt.Errorf("ocrypto.AsymEncryption.encrypt failed:%w", err)
-			}
-
-			keyAccess := KeyAccess{
-				KeyType:           kWrapped,
-				KasURL:            kasInfo.URL,
-				KID:               kasInfo.KID,
-				Protocol:          kKasProtocol,
-				PolicyBinding:     policyBinding,
-				EncryptedMetadata: encryptedMetadata,
-				SplitID:           splitID,
-				WrappedKey:        string(ocrypto.Base64Encode(wrappedKey)),
-				SchemaVersion:     keyAccessSchemaVersion,
+				return err
 			}
 
 			manifest.EncryptionInformation.KeyAccessObjs = append(manifest.EncryptionInformation.KeyAccessObjs, keyAccess)
@@ -524,6 +497,121 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 	t.manifest = manifest
 	t.aesGcm = gcm
 	return nil
+}
+
+func encryptMetadata(symKey []byte, metaData string) (string, error) {
+	gcm, err := ocrypto.NewAESGcm(symKey)
+	if err != nil {
+		return "", fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
+	}
+
+	emb, err := gcm.Encrypt([]byte(metaData))
+	if err != nil {
+		return "", fmt.Errorf("ocrypto.AesGcm.encrypt failed:%w", err)
+	}
+
+	iv := emb[:ocrypto.GcmStandardNonceSize]
+	metadata := EncryptedMetadata{
+		Cipher: string(ocrypto.Base64Encode(emb)),
+		Iv:     string(ocrypto.Base64Encode(iv)),
+	}
+
+	metadataJSON, err := json.Marshal(metadata)
+	if err != nil {
+		return "", fmt.Errorf(" json.Marshal failed:%w", err)
+	}
+	return string(ocrypto.Base64Encode(metadataJSON)), nil
+}
+
+func createKeyAccess(tdfConfig TDFConfig, kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding, encryptedMetadata, splitID string) (KeyAccess, error) {
+	keyAccess := KeyAccess{
+		KeyType:           kWrapped,
+		KasURL:            kasInfo.URL,
+		KID:               kasInfo.KID,
+		Protocol:          kKasProtocol,
+		PolicyBinding:     policyBinding,
+		EncryptedMetadata: encryptedMetadata,
+		SplitID:           splitID,
+		SchemaVersion:     keyAccessSchemaVersion,
+	}
+
+	if ocrypto.IsECKeyType(tdfConfig.keyType) {
+		mode, err := ocrypto.ECKeyTypeToMode(tdfConfig.keyType)
+		if err != nil {
+			return KeyAccess{}, err
+		}
+		wrappedKeyInfo, err := generateWrapKeyWithEC(mode, kasInfo.PublicKey, symKey)
+		if err != nil {
+			return KeyAccess{}, err
+		}
+		keyAccess.KeyType = kECWrapped
+		keyAccess.WrappedKey = wrappedKeyInfo.wrappedKey
+		keyAccess.EphemeralPublicKey = wrappedKeyInfo.publicKey
+	} else {
+		wrappedKey, err := generateWrapKeyWithRSA(kasInfo.PublicKey, symKey)
+		if err != nil {
+			return KeyAccess{}, err
+		}
+		keyAccess.WrappedKey = wrappedKey
+	}
+
+	return keyAccess, nil
+}
+
+func generateWrapKeyWithEC(mode ocrypto.ECCMode, kasPublicKey string, symKey []byte) (ecKeyWrappedKeyInfo, error) {
+	ecKeyPair, err := ocrypto.NewECKeyPair(mode)
+	if err != nil {
+		return ecKeyWrappedKeyInfo{}, fmt.Errorf("ocrypto.NewECKeyPair failed:%w", err)
+	}
+
+	emphermalPublicKey, err := ecKeyPair.PublicKeyInPemFormat()
+	if err != nil {
+		return ecKeyWrappedKeyInfo{}, fmt.Errorf("failed to get EC public key: %w", err)
+	}
+
+	emphermalPrivateKey, err := ecKeyPair.PrivateKeyInPemFormat()
+	if err != nil {
+		return ecKeyWrappedKeyInfo{}, fmt.Errorf("failed to get EC private key: %w", err)
+	}
+
+	ecdhKey, err := ocrypto.ComputeECDHKey([]byte(emphermalPrivateKey), []byte(kasPublicKey))
+	if err != nil {
+		return ecKeyWrappedKeyInfo{}, fmt.Errorf("ocrypto.ComputeECDHKey failed:%w", err)
+	}
+
+	sessionKey, err := ocrypto.CalculateHKDF([]byte("salt"), ecdhKey)
+	if err != nil {
+		return ecKeyWrappedKeyInfo{}, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
+	}
+
+	gcm, err := ocrypto.NewAESGcm(sessionKey)
+	if err != nil {
+		return ecKeyWrappedKeyInfo{}, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
+	}
+
+	wrappedKey, err := gcm.Encrypt(symKey)
+	if err != nil {
+		return ecKeyWrappedKeyInfo{}, fmt.Errorf("ocrypto.AESGcm.Encrypt failed:%w", err)
+	}
+
+	return ecKeyWrappedKeyInfo{
+		publicKey:  emphermalPublicKey,
+		wrappedKey: string(ocrypto.Base64Encode(wrappedKey)),
+	}, nil
+}
+
+func generateWrapKeyWithRSA(publicKey string, symKey []byte) (string, error) {
+	asymEncrypt, err := ocrypto.NewAsymEncryption(publicKey)
+	if err != nil {
+		return "", fmt.Errorf("ocrypto.NewAsymEncryption failed:%w", err)
+	}
+
+	wrappedKey, err := asymEncrypt.Encrypt(symKey)
+	if err != nil {
+		return "", fmt.Errorf("ocrypto.AsymEncryption.encrypt failed:%w", err)
+	}
+
+	return string(ocrypto.Base64Encode(wrappedKey)), nil
 }
 
 // create policy object
@@ -585,7 +673,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		dialOptions:   s.dialOptions,
 		tdfReader:     tdfReader,
 		manifest:      *manifestObj,
-		kasSessionKey: *s.config.kasSessionKey,
+		kasSessionKey: config.kasSessionKey,
 		config:        *config,
 	}, nil
 }
@@ -885,8 +973,9 @@ func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.Unsigned
 					Hash:      hash,
 					Algorithm: alg,
 				},
-				SplitId:    kao.SplitID,
-				WrappedKey: key,
+				SplitId:            kao.SplitID,
+				WrappedKey:         key,
+				EphemeralPublicKey: []byte(kao.EphemeralPublicKey),
 			},
 		}
 		if req, ok := kasReqs[kao.KasURL]; ok {
@@ -1095,7 +1184,7 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 
 // Unwraps the payload key, if possible, using the access service
 func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocognit // Better readability keeping it as is
-	kasClient := newKASClient(r.dialOptions, r.tokenSource, &r.kasSessionKey)
+	kasClient := newKASClient(r.dialOptions, r.tokenSource, r.kasSessionKey)
 
 	var kaoResults []kaoResult
 	reqFail := func(err error, req *kas.UnsignedRewrapRequest_WithPolicyRequest) {

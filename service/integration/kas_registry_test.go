@@ -145,35 +145,130 @@ func (s *KasRegistrySuite) Test_GetKeyAccessServer() {
 	remoteFixture := s.f.GetKasRegistryKey("key_access_server_1")
 	localFixture := s.f.GetKasRegistryKey("key_access_server_2")
 
-	remote, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, remoteFixture.ID)
-	s.Require().NoError(err)
-	s.NotNil(remote)
-	s.Equal(remoteFixture.ID, remote.GetId())
-	s.Equal(remoteFixture.URI, remote.GetUri())
-	s.Equal(remoteFixture.Name, remote.GetName())
-	s.Equal(remoteFixture.PubKey.Remote, remote.GetPublicKey().GetRemote())
+	testCases := []struct {
+		name           string
+		input          interface{} // Can be string or struct
+		expected       fixtures.FixtureDataKasRegistry
+		identifierType string // For clearer test case names
+	}{
+		{
+			name:           "Deprecated ID - Remote",
+			input:          remoteFixture.ID,
+			expected:       remoteFixture,
+			identifierType: "ID",
+		},
+		{
+			name:           "Deprecated ID - Local",
+			input:          localFixture.ID,
+			expected:       localFixture,
+			identifierType: "ID",
+		},
+		{
+			name:           "Name Identifier - Remote",
+			input:          &kasregistry.GetKeyAccessServerRequest_Name{Name: remoteFixture.Name},
+			expected:       remoteFixture,
+			identifierType: "Name",
+		},
+		{
+			name:           "Name Identifier - Local",
+			input:          &kasregistry.GetKeyAccessServerRequest_Name{Name: localFixture.Name},
+			expected:       localFixture,
+			identifierType: "Name",
+		},
+		{
+			name:           "URI Identifier - Remote",
+			input:          &kasregistry.GetKeyAccessServerRequest_Uri{Uri: remoteFixture.URI},
+			expected:       remoteFixture,
+			identifierType: "URI",
+		},
+		{
+			name:           "URI Identifier - Local",
+			input:          &kasregistry.GetKeyAccessServerRequest_Uri{Uri: localFixture.URI},
+			expected:       localFixture,
+			identifierType: "URI",
+		},
+	}
 
-	local, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, localFixture.ID)
-	s.Require().NoError(err)
-	s.NotNil(local)
-	s.Equal(localFixture.ID, local.GetId())
-	s.Equal(localFixture.URI, local.GetUri())
-	s.Equal(localFixture.Name, local.GetName())
-	s.Equal(localFixture.PubKey.Cached, local.GetPublicKey().GetCached())
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			resp, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, tc.input)
+			s.Require().NoError(err, "Failed to get KeyAccessServer by %s: %v", tc.identifierType, tc.input)
+			s.Require().NotNil(resp, "Expected non-nil response for %s: %v", tc.identifierType, tc.input)
+
+			s.Equal(tc.expected.ID, resp.GetId(), "ID mismatch for %s: %v", tc.identifierType, tc.input)
+			s.Equal(tc.expected.URI, resp.GetUri(), "URI mismatch for %s: %v", tc.identifierType, tc.input)
+			s.Equal(tc.expected.Name, resp.GetName(), "Name mismatch for %s: %v", tc.identifierType, tc.input)
+
+			switch tc.expected {
+			case remoteFixture:
+				s.Equal(tc.expected.PubKey.Remote, resp.GetPublicKey().GetRemote(), "PublicKey.Remote mismatch for %s: %v", tc.identifierType, tc.input)
+			case localFixture:
+				s.Equal(tc.expected.PubKey.Cached, resp.GetPublicKey().GetCached(), "PublicKey.Cached mismatch for %s: %v", tc.identifierType, tc.input)
+			default:
+				s.Fail("Unexpected fixture in test case: %s", tc.name) // Should not happen, but good to have for safety
+			}
+		})
+	}
 }
 
 func (s *KasRegistrySuite) Test_GetKeyAccessServer_WithNonExistentId_Fails() {
-	resp, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, nonExistentKasRegistryID)
-	s.Require().Error(err)
-	s.Nil(resp)
-	s.Require().ErrorIs(err, db.ErrNotFound)
+	testCases := []struct {
+		name  string
+		input interface{}
+	}{
+		{
+			name:  "string non-existent UUID",
+			input: nonExistentKasRegistryID,
+		},
+		{
+			name: "struct non-existent UUID",
+			input: &kasregistry.GetKeyAccessServerRequest_KasId{
+				KasId: nonExistentKasRegistryID,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			resp, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, tc.input)
+			s.Require().Error(err, "Expected an error for input: %s", tc.input)
+			s.Nil(resp, "Expected nil response for input: %s", tc.input)
+			s.Require().ErrorIs(err, db.ErrNotFound, "Expected ErrNotFound for input: %s", tc.input)
+		})
+	}
 }
 
 func (s *KasRegistrySuite) Test_GetKeyAccessServer_WithInvalidID_Fails() {
-	resp, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, "hello")
-	s.Require().Error(err)
-	s.Nil(resp)
-	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
+	testCases := []struct {
+		name  string
+		input interface{}
+	}{
+		{
+			name:  "string invalid UUID",
+			input: "hello",
+		},
+		{
+			name:  "struct invalid UUID",
+			input: &kasregistry.GetKeyAccessServerRequest_KasId{KasId: "hello"},
+		},
+		{
+			name:  "empty string",
+			input: "",
+		},
+		{
+			name:  "struct empty string",
+			input: &kasregistry.GetKeyAccessServerRequest_KasId{KasId: ""},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			resp, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, tc.input)
+			s.Require().Error(err)
+			s.Nil(resp)
+			s.Require().ErrorIs(err, db.ErrUUIDInvalid)
+		})
+	}
 }
 
 func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Remote() {
@@ -1023,7 +1118,9 @@ func (s *KasRegistrySuite) Test_Create_Public_Key() {
 
 	// The initial rsa2048 public key is created in the fixture and should be active
 	kID := s.f.GetPublicKey("key_1").ID
-	r1, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: kID})
+	r1, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{
+		Identifier: &kasregistry.GetPublicKeyRequest_Id{Id: kID},
+	})
 	s.Require().NoError(err)
 	s.NotNil(r1)
 	s.True(r1.GetKey().GetIsActive().GetValue())
@@ -1047,7 +1144,9 @@ func (s *KasRegistrySuite) Test_Create_Public_Key() {
 	publicKeyTestUUID = r2.GetKey().GetId()
 
 	// Now the old key should be inactive
-	r3, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: kID})
+	r3, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{
+		Identifier: &kasregistry.GetPublicKeyRequest_Id{Id: kID},
+	})
 	s.Require().NoError(err)
 	s.NotNil(r3)
 	s.False(r3.GetKey().GetIsActive().GetValue())
@@ -1150,7 +1249,9 @@ func (s *KasRegistrySuite) Test_Update_Public_Key() {
 	s.Equal(labels, resp.GetKey().GetMetadata().GetLabels())
 
 	// Get Key to validate update
-	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: kID})
+	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{
+		Identifier: &kasregistry.GetPublicKeyRequest_Id{Id: kID},
+	})
 	s.Require().NoError(err)
 	s.NotNil(r)
 	s.Equal(labels, r.GetKey().GetMetadata().GetLabels())
@@ -1161,7 +1262,9 @@ func (s *KasRegistrySuite) Test_Get_Public_Key() {
 	keyID := s.f.GetPublicKey("key_1").Key.Kid
 	id := s.f.GetPublicKey("key_1").ID
 
-	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: id})
+	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{
+		Identifier: &kasregistry.GetPublicKeyRequest_Id{Id: id},
+	})
 
 	s.Require().NoError(err)
 	s.NotNil(r)
@@ -1171,7 +1274,9 @@ func (s *KasRegistrySuite) Test_Get_Public_Key() {
 }
 
 func (s *KasRegistrySuite) Test_Get_Public_Key_WithInvalidID_Fails() {
-	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: "invalid-id"})
+	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{
+		Identifier: &kasregistry.GetPublicKeyRequest_Id{Id: "invalid-id"},
+	})
 
 	s.Require().Error(err)
 	s.Nil(r)
@@ -1179,7 +1284,9 @@ func (s *KasRegistrySuite) Test_Get_Public_Key_WithInvalidID_Fails() {
 }
 
 func (s *KasRegistrySuite) Test_Get_Public_Key_WithNotFoundID_Fails() {
-	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: nonExistentKasRegistryID})
+	r, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{
+		Identifier: &kasregistry.GetPublicKeyRequest_Id{Id: nonExistentKasRegistryID},
+	})
 
 	s.Require().Error(err)
 	s.Nil(r)
@@ -1193,26 +1300,63 @@ func (s *KasRegistrySuite) Test_List_Public_Keys() {
 	s.GreaterOrEqual(len(r.GetKeys()), 2)
 }
 
-func (s *KasRegistrySuite) Test_List_Public_Keys_ByKasID() {
-	kasID := s.f.GetKasRegistryKey("key_access_server_1").ID
-	r, err := s.db.PolicyClient.ListPublicKeys(s.ctx, &kasregistry.ListPublicKeysRequest{KasId: kasID})
+func (s *KasRegistrySuite) Test_List_Public_Keys_By_KAS() {
+	rAllKeys, err := s.db.PolicyClient.ListPublicKeys(s.ctx, &kasregistry.ListPublicKeysRequest{})
 	s.Require().NoError(err)
-	s.NotNil(r)
-	s.GreaterOrEqual(len(r.GetKeys()), 1)
-	for _, key := range r.GetKeys() {
-		s.Equal(kasID, key.GetKas().GetId())
+	s.NotNil(rAllKeys)
+	totalKeys := rAllKeys.GetPagination().GetTotal()
+
+	kas1 := s.f.GetKasRegistryKey("key_access_server_1")
+
+	testCases := []struct {
+		name           string
+		req            *kasregistry.ListPublicKeysRequest
+		identifierType string
+	}{
+		{
+			name: "List by KAS ID",
+			req: &kasregistry.ListPublicKeysRequest{
+				KasFilter: &kasregistry.ListPublicKeysRequest_KasId{
+					KasId: kas1.ID,
+				},
+			},
+			identifierType: "KAS ID",
+		},
+		{
+			name: "List by KAS URI",
+			req: &kasregistry.ListPublicKeysRequest{
+				KasFilter: &kasregistry.ListPublicKeysRequest_KasUri{
+					KasUri: kas1.URI,
+				},
+			},
+			identifierType: "KAS URI",
+		},
+		{
+			name: "List by KAS Name",
+			req: &kasregistry.ListPublicKeysRequest{
+				KasFilter: &kasregistry.ListPublicKeysRequest_KasName{
+					KasName: kas1.Name,
+				},
+			},
+			identifierType: "KAS Name",
+		},
 	}
 
-	filteredTotalKeys := r.GetPagination().GetTotal()
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			rFilteredKeys, err := s.db.PolicyClient.ListPublicKeys(s.ctx, tc.req)
+			s.Require().NoError(err, "Failed to list keys by %s", tc.identifierType)
+			s.Require().NotNil(rFilteredKeys, "Expected non-nil response when listing keys by %s", tc.identifierType)
+			s.GreaterOrEqual(len(rFilteredKeys.GetKeys()), 1, "Expected at least 1 key when listing by %s", tc.identifierType)
 
-	r, err = s.db.PolicyClient.ListPublicKeys(s.ctx, &kasregistry.ListPublicKeysRequest{})
-	s.Require().NoError(err)
-	s.NotNil(r)
+			for _, key := range rFilteredKeys.GetKeys() {
+				s.Equal(kas1.ID, key.GetKas().GetId(), "Key KAS ID mismatch when listing by %s", tc.identifierType)
+			}
 
-	totalKeys := r.GetPagination().GetTotal()
-
-	// Fixtures have multiple kas keys, so the total keys should be greater than the filtered total keys
-	s.NotEqual(totalKeys, filteredTotalKeys)
+			filteredTotalKeys := rFilteredKeys.GetPagination().GetTotal()
+			s.NotEqual(totalKeys, filteredTotalKeys, "Total keys should be different after filtering by %s", tc.identifierType)
+		})
+	}
 }
 
 func (s *KasRegistrySuite) Test_List_Public_Keys_WithLimit_1() {
@@ -1227,7 +1371,11 @@ func (s *KasRegistrySuite) Test_List_Public_Keys_WithLimit_1() {
 }
 
 func (s *KasRegistrySuite) Test_List_Public_Keys_WithNonExistentKasID() {
-	r, err := s.db.PolicyClient.ListPublicKeys(s.ctx, &kasregistry.ListPublicKeysRequest{KasId: nonExistentKasRegistryID})
+	r, err := s.db.PolicyClient.ListPublicKeys(s.ctx, &kasregistry.ListPublicKeysRequest{
+		KasFilter: &kasregistry.ListPublicKeysRequest_KasId{
+			KasId: nonExistentKasRegistryID,
+		},
+	})
 	s.Require().NoError(err)
 	s.NotNil(r)
 	s.Empty(r.GetKeys())
@@ -1236,7 +1384,11 @@ func (s *KasRegistrySuite) Test_List_Public_Keys_WithNonExistentKasID() {
 func (s *KasRegistrySuite) Test_List_Public_Key_Mappings() {
 	kasid := s.f.GetPublicKey("key_1").KasID
 	id := s.f.GetPublicKey("key_1").ID
-	r, err := s.db.PolicyClient.ListPublicKeyMappings(s.ctx, &kasregistry.ListPublicKeyMappingRequest{KasId: kasid})
+	r, err := s.db.PolicyClient.ListPublicKeyMappings(s.ctx, &kasregistry.ListPublicKeyMappingRequest{
+		KasFilter: &kasregistry.ListPublicKeyMappingRequest_KasId{
+			KasId: kasid,
+		},
+	})
 	s.Require().NoError(err)
 	s.NotNil(r)
 	s.Len(r.GetPublicKeyMappings(), 1)
@@ -1271,15 +1423,60 @@ func (s *KasRegistrySuite) Test_List_Public_Key_Mappings_WithLimit_1() {
 	s.Len(r.GetPublicKeyMappings(), 1)
 }
 
-func (s *KasRegistrySuite) Test_List_Public_Key_Mappings_By_KAS_ID() {
-	kasID := s.f.GetKasRegistryKey("key_access_server_1").ID
-	r, err := s.db.PolicyClient.ListPublicKeyMappings(s.ctx, &kasregistry.ListPublicKeyMappingRequest{KasId: kasID})
-	s.Require().NoError(err)
-	s.NotNil(r)
-	s.Len(r.GetPublicKeyMappings(), 1)
+func (s *KasRegistrySuite) Test_List_Public_Key_Mappings_By_KAS() {
+	kas := s.f.GetKasRegistryKey("key_access_server_1")
+	pk := s.f.GetPublicKey("key_1")
 
-	for _, m := range r.GetPublicKeyMappings() {
-		s.Equal(kasID, m.GetKasId())
+	testCases := []struct {
+		name           string
+		req            *kasregistry.ListPublicKeyMappingRequest
+		identifierType string
+	}{
+		{
+			name: "List by KAS ID",
+			req: &kasregistry.ListPublicKeyMappingRequest{
+				KasFilter: &kasregistry.ListPublicKeyMappingRequest_KasId{
+					KasId: kas.ID,
+				},
+			},
+			identifierType: "KAS ID",
+		},
+		{
+			name: "List by KAS URI",
+			req: &kasregistry.ListPublicKeyMappingRequest{
+				KasFilter: &kasregistry.ListPublicKeyMappingRequest_KasUri{
+					KasUri: kas.URI,
+				},
+			},
+			identifierType: "KAS URI",
+		},
+		{
+			name: "List by KAS Name",
+			req: &kasregistry.ListPublicKeyMappingRequest{
+				KasFilter: &kasregistry.ListPublicKeyMappingRequest_KasName{
+					KasName: kas.Name,
+				},
+			},
+			identifierType: "KAS Name",
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			r, err := s.db.PolicyClient.ListPublicKeyMappings(s.ctx, tc.req)
+			s.Require().NoError(err, "Failed to list mappings by %s", tc.identifierType)
+			s.Require().NotNil(r, "Expected non-nil response when listing mappings by %s", tc.identifierType)
+			s.Len(r.GetPublicKeyMappings(), 1, "Expected 1 mapping when listing by %s", tc.identifierType) // Assuming fixture setup ensures 1 mapping
+
+			for _, m := range r.GetPublicKeyMappings() {
+				s.Equal(kas.ID, m.GetKasId(), "KasId mismatch when listing by %s", tc.identifierType)
+				s.Equal(kas.URI, m.GetKasUri(), "KasUri mismatch when listing by %s", tc.identifierType)
+				s.Equal(kas.Name, m.GetKasName(), "KasName mismatch when listing by %s", tc.identifierType)
+				s.True(slices.ContainsFunc(m.GetPublicKeys(), func(key *kasregistry.ListPublicKeyMappingResponse_PublicKey) bool {
+					return key.GetKey().GetId() == pk.ID
+				}), "PublicKey not found in mappings when listing by %s", tc.identifierType)
+			}
+		})
 	}
 }
 
@@ -1303,7 +1500,9 @@ func (s *KasRegistrySuite) Test_Deactivate_Public_Key() {
 	s.NotNil(r)
 	s.Equal(id, r.GetKey().GetId())
 
-	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: id})
+	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{
+		Identifier: &kasregistry.GetPublicKeyRequest_Id{Id: id},
+	})
 	s.Require().NoError(err)
 	s.NotNil(rr)
 	s.False(rr.GetKey().GetIsActive().GetValue())
@@ -1323,7 +1522,9 @@ func (s *KasRegistrySuite) Test_Activate_Public_Key() {
 	s.NotNil(r)
 	s.Equal(id, r.GetKey().GetId())
 
-	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: id})
+	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{
+		Identifier: &kasregistry.GetPublicKeyRequest_Id{Id: id},
+	})
 	s.Require().NoError(err)
 	s.NotNil(rr)
 	s.True(rr.GetKey().GetIsActive().GetValue())
@@ -1343,7 +1544,9 @@ func (s *KasRegistrySuite) Test_UnsafeDelete_Public_Key() {
 	s.NotNil(r)
 	s.Equal(id, r.GetId())
 
-	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{Id: id})
+	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{
+		Identifier: &kasregistry.GetPublicKeyRequest_Id{Id: id},
+	})
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(rr)

@@ -20,25 +20,26 @@ type Option func(*config)
 // Internal config struct for building SDK options.
 type config struct {
 	// Platform configuration structure is subject to change. Consume via accessor methods.
-	PlatformConfiguration   PlatformConfiguration
-	dialOption              grpc.DialOption
-	httpClient              *http.Client
-	clientCredentials       *oauth.ClientCredentials
-	tokenExchange           *oauth.TokenExchangeInfo
-	tokenEndpoint           string
-	scopes                  []string
-	extraDialOptions        []grpc.DialOption
-	certExchange            *oauth.CertExchangeInfo
-	kasSessionKey           *ocrypto.RsaKeyPair
-	dpopKey                 *ocrypto.RsaKeyPair
-	ipc                     bool
-	tdfFeatures             tdfFeatures
-	nanoFeatures            nanoFeatures
-	customAccessTokenSource auth.AccessTokenSource
-	oauthAccessTokenSource  oauth2.TokenSource
-	coreConn                *grpc.ClientConn
-	entityResolutionConn    *grpc.ClientConn
-	collectionStore         *collectionStore
+	PlatformConfiguration              PlatformConfiguration
+	dialOption                         grpc.DialOption
+	httpClient                         *http.Client
+	clientCredentials                  *oauth.ClientCredentials
+	tokenExchange                      *oauth.TokenExchangeInfo
+	tokenEndpoint                      string
+	scopes                             []string
+	extraDialOptions                   []grpc.DialOption
+	certExchange                       *oauth.CertExchangeInfo
+	kasSessionKey                      *ocrypto.RsaKeyPair
+	dpopKey                            *ocrypto.RsaKeyPair
+	ipc                                bool
+	tdfFeatures                        tdfFeatures
+	nanoFeatures                       nanoFeatures
+	customAccessTokenSource            auth.AccessTokenSource
+	oauthAccessTokenSource             oauth2.TokenSource
+	coreConn                           *grpc.ClientConn
+	entityResolutionConn               *grpc.ClientConn
+	collectionStore                    *collectionStore
+	shouldValidatePlatformConnectivity bool
 }
 
 // Options specific to TDF protocol features
@@ -192,6 +193,13 @@ func WithCustomWellknownConnection(conn *grpc.ClientConn) Option {
 func WithPlatformConfiguration(platformConfiguration PlatformConfiguration) Option {
 	return func(c *config) {
 		c.PlatformConfiguration = platformConfiguration
+	}
+}
+
+// WithConnectionValidation will validate connection to a healthy, running platform
+func WithConnectionValidation() Option {
+	return func(c *config) {
+		c.shouldValidatePlatformConnectivity = true
 	}
 }
 

@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.27](https://github.com/opentdf/platform/compare/protocol/go/v0.2.26...protocol/go/v0.2.27) (2025-02-25)
+
+
+### Features
+
+* **core:** EXPERIMENTAL: EC-wrapped key support ([#1902](https://github.com/opentdf/platform/issues/1902)) ([652266f](https://github.com/opentdf/platform/commit/652266f212ba10b2492a84741f68391a1d39e007))
+
+
+### Bug Fixes
+
+* **sdk:** Fix compatibility between bulk and non-bulk rewrap ([#1914](https://github.com/opentdf/platform/issues/1914)) ([74abbb6](https://github.com/opentdf/platform/commit/74abbb66cbb39023f56cd502a7cda294580a41c6))
+
 ## [0.2.26](https://github.com/opentdf/platform/compare/protocol/go/v0.2.25...protocol/go/v0.2.26) (2025-02-14)
 
 

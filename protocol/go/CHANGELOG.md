@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.28](https://github.com/opentdf/platform/compare/protocol/go/v0.2.27...protocol/go/v0.2.28) (2025-02-26)
+
+
+### Bug Fixes
+
+* **core:** Fixes protoJSON parse bug on ec rewrap ([#1943](https://github.com/opentdf/platform/issues/1943)) ([9bebfd0](https://github.com/opentdf/platform/commit/9bebfd01f615f5a438e0695c03dbb1a9ad7badf3))
+
 ## [0.2.27](https://github.com/opentdf/platform/compare/protocol/go/v0.2.26...protocol/go/v0.2.27) (2025-02-25)
 
 

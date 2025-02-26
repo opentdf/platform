@@ -170,7 +170,7 @@ func extractAndConvertV1SRTBody(body []byte) (kaspb.UnsignedRewrapRequest, error
 						SplitId:            kao.SID,
 						WrappedKey:         kao.WrappedKey,
 						Header:             kao.Header,
-						EphemeralPublicKey: []byte(kao.EphemeralPublicKey),
+						EphemeralPublicKey: kao.EphemeralPublicKey,
 					},
 				},
 			},
@@ -467,7 +467,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			ephemeralPubKeyPEM := kao.GetKeyAccessObject().GetEphemeralPublicKey()
 
 			// Get EC key size and convert to mode
-			keySize, err := ocrypto.GetECKeySize(ephemeralPubKeyPEM)
+			keySize, err := ocrypto.GetECKeySize([]byte(ephemeralPubKeyPEM))
 			if err != nil {
 				return nil, results, fmt.Errorf("failed to get EC key size: %w", err)
 			}
@@ -478,7 +478,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			}
 
 			// Parse the PEM public key
-			block, _ := pem.Decode(ephemeralPubKeyPEM)
+			block, _ := pem.Decode([]byte(ephemeralPubKeyPEM))
 			if block == nil {
 				return nil, results, fmt.Errorf("failed to decode PEM block")
 			}

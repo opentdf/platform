@@ -87,13 +87,15 @@ OFFSET @offset_;
 
 -- name: GetKeyAccessServer :one
 SELECT 
-    id,
-    uri, 
-    public_key, 
-    name,
+    kas.id,
+    kas.uri, 
+    kas.public_key, 
+    kas.name,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
-FROM key_access_servers
-WHERE id = $1;
+FROM key_access_servers AS kas
+WHERE (sqlc.narg('id')::uuid IS NULL OR kas.id = sqlc.narg('id')::uuid)
+  AND (sqlc.narg('name')::text IS NULL OR kas.name = sqlc.narg('name')::text)
+  AND (sqlc.narg('uri')::text IS NULL OR kas.uri = sqlc.narg('uri')::text);
 
 -- name: CreateKeyAccessServer :one
 INSERT INTO key_access_servers (uri, public_key, name, metadata)
@@ -490,7 +492,8 @@ LEFT JOIN attribute_definition_key_access_grants adkag ON adkag.attribute_defini
 LEFT JOIN key_access_servers kas ON kas.id = adkag.key_access_server_id
 LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
 LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
-WHERE ad.id = $1
+WHERE (sqlc.narg('id')::uuid IS NULL OR ad.id = sqlc.narg('id')::uuid)
+  AND (sqlc.narg('fqn')::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE(sqlc.narg('fqn')::text, '^https?://', ''))
 GROUP BY ad.id, n.name, fqns.fqn, k.keys;
 
 -- name: CreateAttribute :one
@@ -569,7 +572,8 @@ LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
 LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
 LEFT JOIN active_value_public_keys_view k ON av.id = k.value_id
-WHERE av.id = $1
+WHERE (sqlc.narg('id')::uuid IS NULL OR av.id = sqlc.narg('id')::uuid)
+  AND (sqlc.narg('fqn')::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE(sqlc.narg('fqn')::text, '^https?://', ''))
 GROUP BY av.id, fqns.fqn, k.keys;
 
 -- name: CreateAttributeValue :one
@@ -765,7 +769,9 @@ LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.n
 LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
 LEFT JOIN active_namespace_public_keys_view k ON ns.id = k.namespace_id
-WHERE ns.id = $1 AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL 
+  AND (sqlc.narg('id')::uuid IS NULL OR ns.id = sqlc.narg('id')::uuid)
+  AND (sqlc.narg('name')::text IS NULL OR ns.name = REGEXP_REPLACE(sqlc.narg('name')::text, '^https?://', ''))
 GROUP BY ns.id, fqns.fqn, k.keys;
 
 -- name: CreateNamespace :one
@@ -958,8 +964,11 @@ WHERE k.id = $1;
 
 -- name: listPublicKeys :many
 WITH counted AS (
-    SELECT COUNT(k.id) AS total FROM public_keys AS k
-    WHERE (NULLIF(@kas_id, '') IS NULL OR k.key_access_server_id = @kas_id::uuid)
+    SELECT COUNT(DISTINCT kas.id) AS total FROM public_keys AS pk
+    JOIN key_access_servers kas ON pk.key_access_server_id = kas.id
+    WHERE (NULLIF(@kas_id, '') IS NULL OR kas.id = @kas_id::uuid)
+    AND (NULLIF(@kas_name, '') IS NULL OR kas.name = @kas_name)
+    AND (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri)
 )
 
 SELECT
@@ -980,13 +989,18 @@ CROSS JOIN counted
 WHERE (
     NULLIF(@kas_id, '') IS NULL OR k.key_access_server_id = @kas_id::uuid 
 )
+AND (NULLIF(@kas_name, '') IS NULL OR kas.name = @kas_name)
+AND (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri)
 LIMIT @limit_ 
 OFFSET @offset_; 
 
 -- name: listPublicKeyMappings :many
 WITH counted AS (
-    SELECT COUNT(pk.id) AS total FROM public_keys AS pk
+    SELECT COUNT(DISTINCT kas.id) AS total FROM public_keys AS pk
+    JOIN key_access_servers kas ON pk.key_access_server_id = kas.id
     WHERE (NULLIF(@kas_id, '') IS NULL OR pk.key_access_server_id = @kas_id::uuid)
+    AND (NULLIF(@kas_name, '') IS NULL OR kas.name = @kas_name)
+    AND (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri)
     AND   ( NULLIF(@public_key_id, '') IS NULL OR pk.id = @public_key_id::uuid )
 ),
 base_keys AS (
@@ -1003,6 +1017,8 @@ base_keys AS (
     FROM public_keys pk
     JOIN key_access_servers kas ON pk.key_access_server_id = kas.id
     WHERE ( NULLIF(@kas_id, '') IS NULL OR kas.id = @kas_id::uuid )
+    AND (NULLIF(@kas_name, '') IS NULL OR kas.name = @kas_name)
+    AND (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri)
     AND   ( NULLIF(@public_key_id, '') IS NULL OR pk.id = @public_key_id::uuid )
 ),
 namespace_mappings AS (

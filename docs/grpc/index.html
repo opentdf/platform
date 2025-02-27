@@ -3557,6 +3557,14 @@ string</p></td>
                   <td><p>header is only used for NanoTDFs </p></td>
                 </tr>
               
+                <tr>
+                  <td>ephemeral_public_key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>For wrapping with an ECDH derived key, when type=ec-wrapped.
+Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -3964,9 +3972,61 @@ string</p></td>
                   <td><p> </p></td>
                 </tr>
               
+                <tr>
+                  <td>key_access</td>
+                  <td><a href="#kas.KeyAccess">KeyAccess</a></td>
+                  <td></td>
+                  <td><p><strong>Deprecated.</strong> Used for legacy non-bulk requests </p></td>
+                </tr>
+              
+                <tr>
+                  <td>policy</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p><strong>Deprecated.</strong> Used for legacy non-bulk requests </p></td>
+                </tr>
+              
+                <tr>
+                  <td>algorithm</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p><strong>Deprecated.</strong> Used for legacy non-bulk requests </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
+          
+            
+            
+            <h4>Fields with deprecated option</h4>
+            <table>
+              <thead>
+                <tr>
+                  <td>Name</td>
+                  <td>Option</td>
+                </tr>
+              </thead>
+              <tbody>
+              
+                <tr>
+                  <td>key_access</td>
+                  <td><p>true</p></td>
+                </tr>
+              
+                <tr>
+                  <td>policy</td>
+                  <td><p>true</p></td>
+                </tr>
+              
+                <tr>
+                  <td>algorithm</td>
+                  <td><p>true</p></td>
+                </tr>
+              
+              </tbody>
+            </table>
+            
           
 
         
@@ -5043,12 +5103,47 @@ Common metadata </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Required </p></td>
+                  <td><p><strong>Deprecated.</strong> Deprecated </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
           </table>
 
+          
+            
+            
+            <h4>Fields with deprecated option</h4>
+            <table>
+              <thead>
+                <tr>
+                  <td>Name</td>
+                  <td>Option</td>
+                </tr>
+              </thead>
+              <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><p>true</p></td>
+                </tr>
+              
+              </tbody>
+            </table>
+            
           
 
         
@@ -5091,12 +5186,47 @@ Common metadata </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Required </p></td>
+                  <td><p><strong>Deprecated.</strong> Deprecated </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
           </table>
 
+          
+            
+            
+            <h4>Fields with deprecated option</h4>
+            <table>
+              <thead>
+                <tr>
+                  <td>Name</td>
+                  <td>Option</td>
+                </tr>
+              </thead>
+              <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><p>true</p></td>
+                </tr>
+              
+              </tbody>
+            </table>
+            
           
 
         
@@ -6422,12 +6552,54 @@ Attribute &lt;&gt; Key Access Server RPCs
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Required </p></td>
+                  <td><p><strong>Deprecated.</strong> Deprecated </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
           </table>
 
+          
+            
+            
+            <h4>Fields with deprecated option</h4>
+            <table>
+              <thead>
+                <tr>
+                  <td>Name</td>
+                  <td>Option</td>
+                </tr>
+              </thead>
+              <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><p>true</p></td>
+                </tr>
+              
+              </tbody>
+            </table>
+            
           
 
         
@@ -6755,13 +6927,21 @@ objects are returned. </p></td>
                   <td>kas_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Optional
-
-Future filter by fields
-// Optional
-string kas_name = 2;
-// Optional
-string kas_uri = 3; </p></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>
@@ -6951,13 +7131,21 @@ string kas_uri = 3; </p></td>
                   <td>kas_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Optional
-
-Future filter by fields
-// Optional
-string kas_name = 2;
-// Optional
-string kas_uri = 3; </p></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>
@@ -7574,12 +7762,47 @@ Common metadata </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Required </p></td>
+                  <td><p><strong>Deprecated.</strong> Deprecated </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
           </table>
 
+          
+            
+            
+            <h4>Fields with deprecated option</h4>
+            <table>
+              <thead>
+                <tr>
+                  <td>Name</td>
+                  <td>Option</td>
+                </tr>
+              </thead>
+              <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><p>true</p></td>
+                </tr>
+              
+              </tbody>
+            </table>
+            
           
 
         

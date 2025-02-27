@@ -13,18 +13,17 @@ jobs:
       matrix:
         repo-values:
           - {repo: platform, event: ""}
-          - {repo: otdfctl, event: backend-}
-          - {repo: spec, event: frontend-}
+          - {repo: otdfctl, event: otdfctl-}
+          - {repo: spec, event: spec-}
           - {repo: tests, event: tests-}
-          - {repo: client-web, event: clientweb-}
-          - {repo: client-cpp, event: cpp-sdk-}
+          - {repo: web-sdk, event: web-sdk-}
           - {repo: java-sdk, event: java-sdk-}
           - {repo: charts, event: charts-}
           - {repo: nifi, event: nifi-}
     steps:
     - name: Generate a token
       id: generate_token
-      uses: actions/create-github-app-token@5d869da34e18e7287c1daad50e0b8ea0f506ce69 # v1.11.0
+      uses: actions/create-github-app-token@0d564482f06ca65fa9e77e2510873638c82206f2 # v1.11.5
       with:
         app-id: "${{ secrets.APP_ID }}"
         private-key: "${{ secrets.AUTOMATION_KEY }}"

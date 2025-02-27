@@ -233,9 +233,8 @@ func EntityResolution(ctx context.Context,
 					if exErr != nil {
 						return entityresolution.ResolveEntitiesResponse{},
 							connect.NewError(connect.CodeNotFound, ErrNotFound)
-					} else {
-						keycloakEntities = expandedRepresentations
 					}
+					keycloakEntities = expandedRepresentations
 				default:
 					logger.Error("no group found for", slog.String("entity", ident.String()))
 					var entityNotFoundErr entityresolution.EntityNotFoundError

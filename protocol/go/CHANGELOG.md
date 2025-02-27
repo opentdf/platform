@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.2.28](https://github.com/opentdf/platform/compare/protocol/go/v0.2.27...protocol/go/v0.2.28) (2025-02-26)
+
+
+### Bug Fixes
+
+* **core:** Fixes protoJSON parse bug on ec rewrap ([#1943](https://github.com/opentdf/platform/issues/1943)) ([9bebfd0](https://github.com/opentdf/platform/commit/9bebfd01f615f5a438e0695c03dbb1a9ad7badf3))
+
+## [0.2.27](https://github.com/opentdf/platform/compare/protocol/go/v0.2.26...protocol/go/v0.2.27) (2025-02-25)
+
+
+### Features
+
+* **core:** EXPERIMENTAL: EC-wrapped key support ([#1902](https://github.com/opentdf/platform/issues/1902)) ([652266f](https://github.com/opentdf/platform/commit/652266f212ba10b2492a84741f68391a1d39e007))
+
+
+### Bug Fixes
+
+* **sdk:** Fix compatibility between bulk and non-bulk rewrap ([#1914](https://github.com/opentdf/platform/issues/1914)) ([74abbb6](https://github.com/opentdf/platform/commit/74abbb66cbb39023f56cd502a7cda294580a41c6))
+
+## [0.2.26](https://github.com/opentdf/platform/compare/protocol/go/v0.2.25...protocol/go/v0.2.26) (2025-02-14)
+
+
+### Features
+
+* add ability to retrieve policy resources by id or name ([#1901](https://github.com/opentdf/platform/issues/1901)) ([deb4455](https://github.com/opentdf/platform/commit/deb4455773cd71d3436510bbeb599f309106ce1d))
+
 ## [0.2.25](https://github.com/opentdf/platform/compare/protocol/go/v0.2.24...protocol/go/v0.2.25) (2025-01-31)
 
 

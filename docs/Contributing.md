@@ -51,4 +51,5 @@ Note: When `exportToJaeger` is false, traces will be written to local files inst
 
 ## Advice for Code Contributors
 
+* Make sure to run our linters with `make lint`
 * Follow our [Error Guidelines](./Contributing-errors.md)

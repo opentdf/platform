@@ -25,6 +25,8 @@ var (
 	ErrTxBeginFailed             = errors.New("ErrTxBeginFailed: failed to begin DB transaction")
 	ErrTxRollbackFailed          = errors.New("ErrTxRollbackFailed: failed to rollback DB transaction")
 	ErrTxCommitFailed            = errors.New("ErrTxCommitFailed: failed to commit DB transaction")
+	ErrSelectIdentifierInvalid   = errors.New("ErrSelectIdentifierInvalid: invalid identifier value for select query")
+	ErrUnknownSelectIdentifier   = errors.New("ErrUnknownSelectIdentifier: unknown identifier type for select query")
 )
 
 // Get helpful error message for PostgreSQL violation
@@ -102,6 +104,8 @@ const (
 	ErrTextRestrictViolation   = "intended action would violate a restriction"
 	ErrTextFqnMissingValue     = "FQN must specify a valid value and be of format 'https://<namespace>/attr/<attribute name>/value/<value>'"
 	ErrTextListLimitTooLarge   = "requested pagination limit must be less than or equal to configured limit"
+	ErrTextInvalidIdentifier   = "value sepcified as the identifier is invalid"
+	ErrorTextUnknownIdentifier = "could not match identifier to known type"
 )
 
 func StatusifyError(err error, fallbackErr string, log ...any) error {
@@ -133,6 +137,14 @@ func StatusifyError(err error, fallbackErr string, log ...any) error {
 	if errors.Is(err, ErrListLimitTooLarge) {
 		slog.Error(ErrTextListLimitTooLarge, l...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrTextListLimitTooLarge))
+	}
+	if errors.Is(err, ErrSelectIdentifierInvalid) {
+		slog.Error(ErrTextInvalidIdentifier, l...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrTextInvalidIdentifier))
+	}
+	if errors.Is(err, ErrUnknownSelectIdentifier) {
+		slog.Error(ErrorTextUnknownIdentifier, l...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextUnknownIdentifier))
 	}
 	slog.Error(err.Error(), l...)
 	return connect.NewError(connect.CodeInternal, errors.New(fallbackErr))

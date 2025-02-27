@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.28](https://github.com/opentdf/platform/compare/sdk/v0.3.27...sdk/v0.3.28) (2025-02-26)
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1948](https://github.com/opentdf/platform/issues/1948)) ([4dfb457](https://github.com/opentdf/platform/commit/4dfb45780ef5a42d95405a8ad09421a21c9cd149))
+* **core:** Fixes protoJSON parse bug on ec rewrap ([#1943](https://github.com/opentdf/platform/issues/1943)) ([9bebfd0](https://github.com/opentdf/platform/commit/9bebfd01f615f5a438e0695c03dbb1a9ad7badf3))
+
 ## [0.3.27](https://github.com/opentdf/platform/compare/sdk/v0.3.26...sdk/v0.3.27) (2025-02-25)
 
 

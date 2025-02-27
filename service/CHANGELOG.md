@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.4.39](https://github.com/opentdf/platform/compare/service/v0.4.38...service/v0.4.39) (2025-02-27)
+
+
+### Features
+
+* add ability to retrieve policy resources by id or name ([#1901](https://github.com/opentdf/platform/issues/1901)) ([deb4455](https://github.com/opentdf/platform/commit/deb4455773cd71d3436510bbeb599f309106ce1d))
+* **core:** EXPERIMENTAL: EC-wrapped key support ([#1902](https://github.com/opentdf/platform/issues/1902)) ([652266f](https://github.com/opentdf/platform/commit/652266f212ba10b2492a84741f68391a1d39e007))
+* **policy:** adds new public keys table ([#1836](https://github.com/opentdf/platform/issues/1836)) ([cad5048](https://github.com/opentdf/platform/commit/cad5048d09609d678d5b5ac2972605dd61f33bb5))
+
+
+### Bug Fixes
+
+* add pagination to list public key mappings response ([#1889](https://github.com/opentdf/platform/issues/1889)) ([9898fbd](https://github.com/opentdf/platform/commit/9898fbda305f4eface291a2aaa98d2df80f0ad05))
+* cleanup kas public key create error messages ([#1887](https://github.com/opentdf/platform/issues/1887)) ([59f7d0e](https://github.com/opentdf/platform/commit/59f7d0e0ab45ef47b2df9326c0904b54fba4b3eb))
+* **core:** Autobump service ([#1875](https://github.com/opentdf/platform/issues/1875)) ([4b6c335](https://github.com/opentdf/platform/commit/4b6c3353913ad90aeef499beb5f8c52144679a61))
+* **core:** Autobump service ([#1895](https://github.com/opentdf/platform/issues/1895)) ([08a2048](https://github.com/opentdf/platform/commit/08a20481a085b4af67fc78e6cfae371f0bccd166))
+* **core:** Autobump service ([#1919](https://github.com/opentdf/platform/issues/1919)) ([f902295](https://github.com/opentdf/platform/commit/f90229560e8f09b64b4bf650b271c5fbb428bc7f))
+* **core:** Autobump service ([#1945](https://github.com/opentdf/platform/issues/1945)) ([d2e37ca](https://github.com/opentdf/platform/commit/d2e37ca081d04f4588c58b752b0c96ef9b0125cb))
+* **core:** Autobump service ([#1950](https://github.com/opentdf/platform/issues/1950)) ([7270080](https://github.com/opentdf/platform/commit/7270080639f19ba9725f1e834970d94d00191994))
+* **core:** Autobump service ([#1952](https://github.com/opentdf/platform/issues/1952)) ([b20123e](https://github.com/opentdf/platform/commit/b20123ef768063eb883d9414d86ec1a0e3009884))
+* **core:** Fixes for ec-wrapped from js client ([#1923](https://github.com/opentdf/platform/issues/1923)) ([3a66485](https://github.com/opentdf/platform/commit/3a6648528e3d3582ec3c5222e4dfc37d0fb13e74))
+* **core:** Fixes protoJSON parse bug on ec rewrap ([#1943](https://github.com/opentdf/platform/issues/1943)) ([9bebfd0](https://github.com/opentdf/platform/commit/9bebfd01f615f5a438e0695c03dbb1a9ad7badf3))
+* **core:** improve logging and errors on rewrap ([#1906](https://github.com/opentdf/platform/issues/1906)) ([84339d6](https://github.com/opentdf/platform/commit/84339d620717c7bc5de0d6bb6ece656cce5c07be))
+* **core:** Requires unique kids ([#1905](https://github.com/opentdf/platform/issues/1905)) ([c1b380c](https://github.com/opentdf/platform/commit/c1b380cb586a10196a8febc700a57c2c41a51a18))
+* filter total count on list public key operations ([#1884](https://github.com/opentdf/platform/issues/1884)) ([8df0adc](https://github.com/opentdf/platform/commit/8df0adc60dd49aa3dcdaf4d60f094338ca5ad2e9))
+* **sdk:** Fix compatibility between bulk and non-bulk rewrap ([#1914](https://github.com/opentdf/platform/issues/1914)) ([74abbb6](https://github.com/opentdf/platform/commit/74abbb66cbb39023f56cd502a7cda294580a41c6))
+
 ## [0.4.38](https://github.com/opentdf/platform/compare/service/v0.4.37...service/v0.4.38) (2025-01-21)
 
 

@@ -961,7 +961,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 	}
 }
 
-func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing tdf
+func (s *TDFSuite) Test_TDFReader() {          //nolint:gocognit // requires for testing tdf
 	for _, test := range []partialReadTdfTest{ //nolint:gochecknoglobals // requires for testing tdf
 		{
 			payload: payload, // len: 62
@@ -1815,14 +1815,14 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse 
 				ephemeralPubKeyPEM := kaoReq.GetKeyAccessObject().GetEphemeralPublicKey()
 
 				// Get EC key size and convert to mode
-				keySize, err := ocrypto.GetECKeySize(ephemeralPubKeyPEM)
+				keySize, err := ocrypto.GetECKeySize([]byte(ephemeralPubKeyPEM))
 				f.s.Require().NoError(err, "failed to get EC key size")
 
 				mode, err := ocrypto.ECSizeToMode(keySize)
 				f.s.Require().NoError(err, "failed to convert key size to mode")
 
 				// Parse the PEM public key
-				block, _ := pem.Decode(ephemeralPubKeyPEM)
+				block, _ := pem.Decode([]byte(ephemeralPubKeyPEM))
 				f.s.Require().NoError(err, "failed to decode PEM block")
 
 				pub, err := x509.ParsePKIXPublicKey(block.Bytes)

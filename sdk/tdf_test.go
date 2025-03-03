@@ -961,7 +961,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 	}
 }
 
-func (s *TDFSuite) Test_TDFReader() {          //nolint:gocognit // requires for testing tdf
+func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing tdf
 	for _, test := range []partialReadTdfTest{ //nolint:gochecknoglobals // requires for testing tdf
 		{
 			payload: payload, // len: 62

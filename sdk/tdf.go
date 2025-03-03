@@ -579,7 +579,7 @@ func generateWrapKeyWithEC(mode ocrypto.ECCMode, kasPublicKey string, symKey []b
 		return ecKeyWrappedKeyInfo{}, fmt.Errorf("ocrypto.ComputeECDHKey failed:%w", err)
 	}
 
-	sessionKey, err := ocrypto.CalculateHKDF([]byte("salt"), ecdhKey)
+	sessionKey, err := ocrypto.CalculateHKDF(nil, ecdhKey)
 	if err != nil {
 		return ecKeyWrappedKeyInfo{}, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
 	}

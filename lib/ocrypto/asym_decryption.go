@@ -108,8 +108,7 @@ type ECDecryptor struct {
 
 func NewECDecryptor(sk *ecdh.PrivateKey) (ECDecryptor, error) {
 	// TK Make these reasonable? IIRC salt should be longer, info maybe a parameters?
-	salt := []byte("salt")
-	return ECDecryptor{sk, salt, nil}, nil
+	return ECDecryptor{sk, nil, nil}, nil
 }
 
 func (e ECDecryptor) Decrypt(_ []byte) ([]byte, error) {

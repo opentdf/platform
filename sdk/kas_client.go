@@ -194,7 +194,7 @@ func (k *KASClient) handleECKeyResponse(response *kas.RewrapResponse) (map[strin
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
 	}
-	sessionKey, err := ocrypto.CalculateHKDF([]byte("salt"), ecdhKey)
+	sessionKey, err := ocrypto.CalculateHKDF(nil, ecdhKey)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed: %w", err)
 	}

@@ -82,8 +82,7 @@ func FromPublicPEM(publicKeyInPem string) (PublicKeyEncryptor, error) {
 func newECIES(pub *ecdh.PublicKey) (ECEncryptor, error) {
 	ek, err := pub.Curve().GenerateKey(rand.Reader)
 	// TK Make these reasonable? IIRC salt should be longer, info maybe a parameters?
-	salt := []byte("salt")
-	return ECEncryptor{pub, ek, salt, nil}, err
+	return ECEncryptor{pub, ek, nil, nil}, err
 }
 
 // NewAsymEncryption creates and returns a new AsymEncryption.

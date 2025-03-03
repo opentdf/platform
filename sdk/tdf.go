@@ -975,7 +975,7 @@ func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.Unsigned
 				},
 				SplitId:            kao.SplitID,
 				WrappedKey:         key,
-				EphemeralPublicKey: []byte(kao.EphemeralPublicKey),
+				EphemeralPublicKey: kao.EphemeralPublicKey,
 			},
 		}
 		if req, ok := kasReqs[kao.KasURL]; ok {

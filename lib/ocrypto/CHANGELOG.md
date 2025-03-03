@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.8](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.1.7...lib/ocrypto/v0.1.8) (2025-02-25)
+
+
+### Features
+
+* **core:** EXPERIMENTAL: EC-wrapped key support ([#1902](https://github.com/opentdf/platform/issues/1902)) ([652266f](https://github.com/opentdf/platform/commit/652266f212ba10b2492a84741f68391a1d39e007))
+* **kas:** collect metrics ([#1702](https://github.com/opentdf/platform/issues/1702)) ([def28d1](https://github.com/opentdf/platform/commit/def28d1984b0b111a07330a3eb59c1285206062d))
+
 ## [0.1.7](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.1.6...lib/ocrypto/v0.1.7) (2024-11-15)
 
 

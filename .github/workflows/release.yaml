@@ -17,7 +17,7 @@ jobs:
     steps:
       - name: Generate a token
         id: generate_token
-        uses: actions/create-github-app-token@5d869da34e18e7287c1daad50e0b8ea0f506ce69 # v1.11.0
+        uses: actions/create-github-app-token@0d564482f06ca65fa9e77e2510873638c82206f2 # v1.11.5
         with:
           app-id: "${{ secrets.APP_ID }}"
           private-key: "${{ secrets.AUTOMATION_KEY }}"
@@ -30,7 +30,7 @@ jobs:
       - id: todo
         if: fromJson(steps.release-please.outputs.releases_created)
         run: |
-          for x in ${{join(fromJson(steps.release-please.outputs.paths_released), ' ')}}; do
+          <<<"$RELEASED_PATHS" jq -r '.[]'| while IFS= read -r x; do
             case "$x" in
               lib/ocrypto)
                 echo "TO_UPDATE=['examples','sdk','service']">>"$GITHUB_OUTPUT"
@@ -60,7 +60,8 @@ jobs:
                 ;;
             esac
           done
-
+        env:
+          RELEASED_PATHS: ${{ steps.release-please.outputs.paths_released }}
   update-go-mods:
     runs-on: ubuntu-latest
     needs: 
@@ -78,15 +79,15 @@ jobs:
       - run: |
           git checkout -b update-go-mods-for-${{matrix.path}}
           git push -f -u origin update-go-mods-for-${{matrix.path}}
-          cd ${{matrix.path}}
-          for x in ${{join(fromJson(needs.release-please.outputs.paths_released), ' ')}}; do
-            export pkg=github.com/opentdf/platform/${x}
+          cd ${{matrix.path}} || exit 1
+          <<<"$RELEASED_PATHS" jq -r '.[]'| while IFS= read -r x; do
+            export pkg="github.com/opentdf/platform/${x}"
             if go mod edit --json | jq -e '.Replace[] | select(.Old.Path == env.pkg)'; then
-              go mod edit --dropreplace=$pkg
+              go mod edit --dropreplace="$pkg"
             fi
             echo "Should we update [${pkg}] in [${{ matrix.path }}]?"
             if go mod edit --json | jq -e '.Require[] | select(.Path == env.pkg)'; then
-              ver=$(jq -r .\[\"${x}\"\] < "${GITHUB_WORKSPACE}/.release-please-manifest.json")
+              ver="$(jq -r --arg x "$x" '.[$x]' <"${GITHUB_WORKSPACE}"/.release-please-manifest.json)"
               echo "go get ${pkg}@v${ver}"
               go get "${pkg}@v${ver}"
             fi
@@ -99,6 +100,7 @@ jobs:
           git diff
         env:
           GONOSUMDB: github.com/opentdf/platform/${{join(fromJson(needs.release-please.outputs.paths_released), ',github.com/opentdf/platform/')}}
+          RELEASED_PATHS: ${{ needs.release-please.outputs.paths_released }}
       - uses: planetscale/ghcommit-action@d4176bfacef926cc2db351eab20398dfc2f593b5
         with:
           commit_message: "fix(core): Autobump ${{ matrix.path }}"
@@ -108,7 +110,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Generate a token
         id: generate_token
-        uses: actions/create-github-app-token@5d869da34e18e7287c1daad50e0b8ea0f506ce69 # v1.11.0
+        uses: actions/create-github-app-token@0d564482f06ca65fa9e77e2510873638c82206f2 # v1.11.5
         with:
           app-id: "${{ secrets.APP_ID }}"
           private-key: "${{ secrets.AUTOMATION_KEY }}"

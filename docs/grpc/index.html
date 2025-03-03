@@ -899,6 +899,125 @@
         
           
           <li>
+            <a href="#policy%2fkeymanagement%2fkey_management.proto">policy/keymanagement/key_management.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#policy.keymanagement.CreateKeyAccessServerRequest"><span class="badge">M</span>CreateKeyAccessServerRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.CreateKeyAccessServerResponse"><span class="badge">M</span>CreateKeyAccessServerResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.CreateKeyRequest"><span class="badge">M</span>CreateKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.CreateKeyResponse"><span class="badge">M</span>CreateKeyResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.GetKeyAccessServerRequest"><span class="badge">M</span>GetKeyAccessServerRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.GetKeyAccessServerResponse"><span class="badge">M</span>GetKeyAccessServerResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.GetKeyRequest"><span class="badge">M</span>GetKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.GetKeyResponse"><span class="badge">M</span>GetKeyResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.Key"><span class="badge">M</span>Key</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.KeyAccessServer"><span class="badge">M</span>KeyAccessServer</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.ListKeyAccessServersRequest"><span class="badge">M</span>ListKeyAccessServersRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.ListKeyAccessServersResponse"><span class="badge">M</span>ListKeyAccessServersResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.ListKeysRequest"><span class="badge">M</span>ListKeysRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.ListKeysResponse"><span class="badge">M</span>ListKeysResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.RotateKeyRequest"><span class="badge">M</span>RotateKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.RotateKeyResponse"><span class="badge">M</span>RotateKeyResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.UnsafeDeleteKeyAccessServerRequest"><span class="badge">M</span>UnsafeDeleteKeyAccessServerRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.UnsafeDeleteKeyAccessServerResponse"><span class="badge">M</span>UnsafeDeleteKeyAccessServerResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.UpdateKeyAccessServerRequest"><span class="badge">M</span>UpdateKeyAccessServerRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.UpdateKeyAccessServerResponse"><span class="badge">M</span>UpdateKeyAccessServerResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.UpdateKeyRequest"><span class="badge">M</span>UpdateKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.UpdateKeyResponse"><span class="badge">M</span>UpdateKeyResponse</a>
+                </li>
+              
+              
+                <li>
+                  <a href="#policy.keymanagement.Algorithm"><span class="badge">E</span>Algorithm</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.KeyMode"><span class="badge">E</span>KeyMode</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.KeyStatus"><span class="badge">E</span>KeyStatus</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.SourceType"><span class="badge">E</span>SourceType</a>
+                </li>
+              
+              
+              
+                <li>
+                  <a href="#policy.keymanagement.KeyManagementService"><span class="badge">S</span>KeyManagementService</a>
+                </li>
+              
+            </ul>
+          </li>
+        
+          
+          <li>
             <a href="#policy%2fnamespaces%2fnamespaces.proto">policy/namespaces/namespaces.proto</a>
             <ul>
               
@@ -7504,6 +7623,901 @@ Common metadata </p></td>
             </tbody>
           </table>
           
+        
+    
+      
+      <div class="file-heading">
+        <h2 id="policy/keymanagement/key_management.proto">policy/keymanagement/key_management.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="policy.keymanagement.CreateKeyAccessServerRequest">CreateKeyAccessServerRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>source_type</td>
+                  <td><a href="#policy.keymanagement.SourceType">SourceType</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.CreateKeyAccessServerResponse">CreateKeyAccessServerResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_access_server</td>
+                  <td><a href="#policy.keymanagement.KeyAccessServer">KeyAccessServer</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.CreateKeyRequest">CreateKeyRequest</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="policy.keymanagement.CreateKeyResponse">CreateKeyResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.keymanagement.Key">Key</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.GetKeyAccessServerRequest">GetKeyAccessServerRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.GetKeyAccessServerResponse">GetKeyAccessServerResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_access_server</td>
+                  <td><a href="#policy.keymanagement.KeyAccessServer">KeyAccessServer</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.GetKeyRequest">GetKeyRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.GetKeyResponse">GetKeyResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.keymanagement.Key">Key</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.Key">Key</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.KeyAccessServer">KeyAccessServer</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>source_type</td>
+                  <td><a href="#policy.keymanagement.SourceType">SourceType</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.ListKeyAccessServersRequest">ListKeyAccessServersRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.ListKeyAccessServersResponse">ListKeyAccessServersResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_access_servers</td>
+                  <td><a href="#policy.keymanagement.KeyAccessServer">KeyAccessServer</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.ListKeysRequest">ListKeysRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_algorithm</td>
+                  <td><a href="#policy.keymanagement.Algorithm">Algorithm</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.ListKeysResponse">ListKeysResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>keys</td>
+                  <td><a href="#policy.keymanagement.Key">Key</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.RotateKeyRequest">RotateKeyRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>current_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required (Current Active Key ID) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_algorithm</td>
+                  <td><a href="#policy.keymanagement.Algorithm">Algorithm</a></td>
+                  <td></td>
+                  <td><p>Required New Key Information </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_mode</td>
+                  <td><a href="#policy.keymanagement.KeyMode">KeyMode</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.RotateKeyResponse">RotateKeyResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.keymanagement.Key">Key</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.UnsafeDeleteKeyAccessServerRequest">UnsafeDeleteKeyAccessServerRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.UnsafeDeleteKeyAccessServerResponse">UnsafeDeleteKeyAccessServerResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_access_server</td>
+                  <td><a href="#policy.keymanagement.KeyAccessServer">KeyAccessServer</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.UpdateKeyAccessServerRequest">UpdateKeyAccessServerRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Optional
+Common metadata </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata_update_behavior</td>
+                  <td><a href="#common.MetadataUpdateEnum">common.MetadataUpdateEnum</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.UpdateKeyAccessServerResponse">UpdateKeyAccessServerResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_access_server</td>
+                  <td><a href="#policy.keymanagement.KeyAccessServer">KeyAccessServer</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.UpdateKeyRequest">UpdateKeyRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_status</td>
+                  <td><a href="#policy.keymanagement.KeyStatus">KeyStatus</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Optional
+Common metadata </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata_update_behavior</td>
+                  <td><a href="#common.MetadataUpdateEnum">common.MetadataUpdateEnum</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.UpdateKeyResponse">UpdateKeyResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.keymanagement.Key">Key</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+
+      
+        <h3 id="policy.keymanagement.Algorithm">Algorithm</h3>
+        <p>Supported key algorithms.</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>ALGORITHM_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ALGORITHM_RSA_2048</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ALGORITHM_RSA_4096</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ALGORITHM_EC_P256</td>
+                <td>3</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ALGORITHM_EC_P384</td>
+                <td>4</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ALGORITHM_EC_P521</td>
+                <td>5</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+        <h3 id="policy.keymanagement.KeyMode">KeyMode</h3>
+        <p>Describe how the kas private key is managed.</p><p>If the key mode is LOCAL, then the kas private key is stored in the database.</p><p>This could be encrypted or unencrypted.</p><p>Remote means that the kas private key is stored in a remote key system like KMS or HSM</p><p>and all operations are done by the remote key system.</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>KEY_MODE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KEY_MODE_LOCAL</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KEY_MODE_REMOTE</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+        <h3 id="policy.keymanagement.KeyStatus">KeyStatus</h3>
+        <p>The status of the key.</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>KEY_STATUS_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KEY_STATUS_ACTIVE</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KEY_STATUS_INACTIVE</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KEY_STATUS_COMPROMISED</td>
+                <td>3</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KEY_STATUS_EXPIRED</td>
+                <td>4</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+        <h3 id="policy.keymanagement.SourceType">SourceType</h3>
+        <p>Describes whether this kas is managed by the organization or if they imported</p><p>the kas information from an external party. These two modes are necessary in order</p><p>to encrypt a tdf dek with an external parties kas public key.</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SOURCE_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SOURCE_TYPE_INTERNAL</td>
+                <td>1</td>
+                <td><p>The kas is managed by the organization.</p></td>
+              </tr>
+            
+              <tr>
+                <td>SOURCE_TYPE_EXTERNAL</td>
+                <td>2</td>
+                <td><p>The kas is managed by an external party.</p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+
+      
+
+      
+        <h3 id="policy.keymanagement.KeyManagementService">KeyManagementService</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>CreateKeyAccessServer</td>
+                <td><a href="#policy.keymanagement.CreateKeyAccessServerRequest">CreateKeyAccessServerRequest</a></td>
+                <td><a href="#policy.keymanagement.CreateKeyAccessServerResponse">CreateKeyAccessServerResponse</a></td>
+                <td><p>Key Access Server Management</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetKeyAccessServer</td>
+                <td><a href="#policy.keymanagement.GetKeyAccessServerRequest">GetKeyAccessServerRequest</a></td>
+                <td><a href="#policy.keymanagement.GetKeyAccessServerResponse">GetKeyAccessServerResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ListKeyAccessServers</td>
+                <td><a href="#policy.keymanagement.ListKeyAccessServersRequest">ListKeyAccessServersRequest</a></td>
+                <td><a href="#policy.keymanagement.ListKeyAccessServersResponse">ListKeyAccessServersResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>UpdateKeyAccessServer</td>
+                <td><a href="#policy.keymanagement.UpdateKeyAccessServerRequest">UpdateKeyAccessServerRequest</a></td>
+                <td><a href="#policy.keymanagement.UpdateKeyAccessServerResponse">UpdateKeyAccessServerResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CreateKey</td>
+                <td><a href="#policy.keymanagement.CreateKeyRequest">CreateKeyRequest</a></td>
+                <td><a href="#policy.keymanagement.CreateKeyResponse">CreateKeyResponse</a></td>
+                <td><p>Key Management</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetKey</td>
+                <td><a href="#policy.keymanagement.GetKeyRequest">GetKeyRequest</a></td>
+                <td><a href="#policy.keymanagement.GetKeyResponse">GetKeyResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ListKeys</td>
+                <td><a href="#policy.keymanagement.ListKeysRequest">ListKeysRequest</a></td>
+                <td><a href="#policy.keymanagement.ListKeysResponse">ListKeysResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>UpdateKey</td>
+                <td><a href="#policy.keymanagement.UpdateKeyRequest">UpdateKeyRequest</a></td>
+                <td><a href="#policy.keymanagement.UpdateKeyResponse">UpdateKeyResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>RotateKey</td>
+                <td><a href="#policy.keymanagement.RotateKeyRequest">RotateKeyRequest</a></td>
+                <td><a href="#policy.keymanagement.RotateKeyResponse">RotateKeyResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+
         
     
       

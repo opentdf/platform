@@ -166,6 +166,66 @@ message UnsafeDeleteKeyAccessServerResponse {
   KeyAccessServer key_access_server = 1;
 }
 
+message CreateKeyRequest {}
+
+message CreateKeyResponse {
+  Key key = 1;
+}
+
+message GetKeyRequest {
+  oneof identifier {
+    option (buf.validate.oneof).required = true;
+    string id = 2 [(buf.validate.field).string.uuid = true];
+    string key_id = 3 [(buf.validate.field).string.min_len = 1];
+  }
+}
+
+message GetKeyResponse {
+  Key key = 1;
+}
+
+message ListKeysRequest {
+  Algorithm key_algorithm = 1 [(buf.validate.field).enum.defined_only = true];
+
+  // Optional
+  policy.PageRequest pagination = 10;
+}
+
+message ListKeysResponse {
+  repeated Key keys = 1;
+
+  policy.PageResponse pagination = 10;
+}
+
+message UpdateKeyRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  // Optional
+  KeyStatus key_status = 3 [(buf.validate.field).enum.defined_only = true];
+
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+
+message UpdateKeyResponse {
+  Key key = 1;
+}
+
+message RotateKeyRequest {
+  // Required (Current Active Key ID)
+  string current_id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Required New Key Information
+  Algorithm key_algorithm = 2 [(buf.validate.field).enum.defined_only = true];
+  KeyMode key_mode = 3 [(buf.validate.field).enum.defined_only = true];
+}
+
+message RotateKeyResponse {
+  Key key = 1;
+}
+
 service KeyManagementService {
   // Key Access Server Management
   rpc CreateKeyAccessServer(CreateKeyAccessServerRequest) returns (CreateKeyAccessServerResponse) {}
@@ -176,13 +236,18 @@ service KeyManagementService {
 
   rpc UpdateKeyAccessServer(UpdateKeyAccessServerRequest) returns (UpdateKeyAccessServerResponse) {}
 
-  rpc UnsafeDeleteKeyAccessServer(UnsafeDeleteKeyAccessServerRequest) returns (UnsafeDeleteKeyAccessServerResponse) {}
+  // rpc UnsafeDeleteKeyAccessServer(UnsafeDeleteKeyAccessServerRequest) returns (UnsafeDeleteKeyAccessServerResponse) {}
 
   // Key Management
   rpc CreateKey(CreateKeyRequest) returns (CreateKeyResponse) {}
+
   rpc GetKey(GetKeyRequest) returns (GetKeyResponse) {}
+
   rpc ListKeys(ListKeysRequest) returns (ListKeysResponse) {}
+
   rpc UpdateKey(UpdateKeyRequest) returns (UpdateKeyResponse) {}
-  rpc UnsafeDeleteKey(UnsafeDeleteKeyRequest) returns (UnsafeDeleteKeyResponse) {}
+
+  //rpc UnsafeDeleteKey(UnsafeDeleteKeyRequest) returns (UnsafeDeleteKeyResponse) {}
+
   rpc RotateKey(RotateKeyRequest) returns (RotateKeyResponse) {}
 }

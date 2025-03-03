@@ -4,16 +4,39 @@ ALTER TABLE key_access_servers
 ADD COLUMN IF NOT EXISTS source_type INT;
 
 CREATE TABLE IF NOT EXISTS
+    provider_config (
+        id UUID DEFAULT gen_random_uuid () PRIMARY KEY,
+        provider_name VARCHAR(255) NOT NULL,
+        config jsonb NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        metadata jsonb
+    );
+
+COMMENT ON TABLE provider_config IS 'Table to store key provider configurations';
+
+COMMENT ON COLUMN provider_config.id IS 'Unique identifier for the provider configuration';
+
+COMMENT ON COLUMN provider_config.provider_name IS 'Name of the key provider';
+
+COMMENT ON COLUMN provider_config.config IS 'Configuration details for the key provider';
+
+COMMENT ON COLUMN provider_config.created_at IS 'Timestamp when the provider configuration was created';
+
+COMMENT ON COLUMN provider_config.updated_at IS 'Timestamp when the provider configuration was last updated';
+
+COMMENT ON COLUMN provider_config.metadata IS 'Additional metadata for the provider configuration';
+
+CREATE TABLE IF NOT EXISTS
     asym_key (
         id UUID DEFAULT gen_random_uuid () PRIMARY KEY,
         key_id VARCHAR(36) NOT NULL, -- UNIQUE????
-        key_alg INT NOT NULL,
+        key_algorithm INT NOT NULL,
         key_status INT NOT NULL,
         key_mode INT NOT NULL,
-        -- key_access_server_id UUID NOT NULL REFERENCES key_access_servers (id),
-        public_key bytea,
-        private_key bytea,
-        provider_config jsonb,
+        public_key_ctx jsonb,
+        private_key_ctx jsonb,
+        provider_config_id UUID REFERENCES provider_config (id),
         metadata jsonb,
         created_at TIMESTAMP,
         updated_at TIMESTAMP
@@ -39,13 +62,13 @@ COMMENT ON COLUMN asym_key.key_mode IS 'Indicates whether the key is stored LOCA
 
 COMMENT ON COLUMN asym_key.key_id IS 'Unique identifier for the key';
 
-COMMENT ON COLUMN asym_key.key_alg IS 'Algorithm used to generate the key';
+COMMENT ON COLUMN asym_key.key_algorithm IS 'Algorithm used to generate the key';
 
-COMMENT ON COLUMN asym_key.public_key IS 'Public key in PEM or DER format';
+COMMENT ON COLUMN asym_key.public_key_ctx IS 'Public Key Context is a json defined structure of the public key';
 
-COMMENT ON COLUMN asym_key.private_key IS 'Private key in PEM or DER format';
+COMMENT ON COLUMN asym_key.private_key_ctx IS 'Private Key Context is a json defined structure of the private key. Could include information like PEM encoded key, or external key id information';
 
-COMMENT ON COLUMN asym_key.provider_config IS 'This is extra configuration for the key provider';
+COMMENT ON COLUMN asym_key.provider_config_id IS 'Reference the provider configuration for this key';
 
 COMMENT ON COLUMN asym_key.metadata IS 'Additional metadata for the key';
 
@@ -60,6 +83,7 @@ CREATE TABLE IF NOT EXISTS
         key_status INT NOT NULL,
         key_mode INT NOT NULL,
         key_value bytea,
+        provider_config_id UUID REFERENCES provider_config (id),
         created_at TIMESTAMP,
         updated_at TIMESTAMP,
         metadata jsonb
@@ -77,6 +101,8 @@ COMMENT ON COLUMN sym_key.key_mode IS 'Indicates whether the key is stored LOCAL
 
 COMMENT ON COLUMN sym_key.key_value IS 'Key value in binary format';
 
+COMMENT ON COLUMN sym_key.provider_config_id IS 'Reference the provider configuration for this key';
+
 COMMENT ON COLUMN sym_key.created_at IS 'Timestamp when the key was created';
 
 COMMENT ON COLUMN sym_key.updated_at IS 'Timestamp when the key was last updated';
@@ -87,7 +113,7 @@ CREATE TABLE IF NOT EXISTS
     key_access_server_keys (
         id UUID DEFAULT gen_random_uuid () PRIMARY KEY,
         key_access_server_id UUID NOT NULL REFERENCES key_access_servers (id) ON DELETE CASCADE,
-        UNIQUE (key_access_server_id, key_id, key_alg) -- Prevents duplicate public keys for the same KAS by key_id and alg
+        UNIQUE (key_access_server_id, key_id, key_algorithm) -- Prevents duplicate public keys for the same KAS by key_id and alg
     ) INHERITS (asym_key);
 
 -- CREATE
@@ -214,12 +240,12 @@ SELECT
             ky.key_status,
             'public_key',
             JSON_BUILD_OBJECT(
-                'key_alg',
-                ky.key_alg,
+                'key_algorithm',
+                ky.key_algorithm,
                 'key_id',
                 ky.key_id,
-                'pem',
-                ky.public_key
+                'public_key_ctx',
+                ky.public_key_ctx
             ),
             'kas',
             JSONB_BUILD_OBJECT('id', kas.id, 'uri', kas.uri, 'name', kas.name)
@@ -253,12 +279,12 @@ SELECT
             ky.key_status,
             'public_key',
             JSON_BUILD_OBJECT(
-                'key_alg',
-                ky.key_alg,
+                'key_algorithm',
+                ky.key_algorithm,
                 'key_id',
                 ky.key_id,
-                'pem',
-                ky.public_key
+                'public_key_ctx',
+                ky.public_key_ctx
             ),
             'kas',
             JSONB_BUILD_OBJECT('id', kas.id, 'uri', kas.uri, 'name', kas.name)
@@ -292,12 +318,12 @@ SELECT
             ky.key_status,
             'public_key',
             JSON_BUILD_OBJECT(
-                'key_alg',
-                ky.key_alg,
+                'key_algorithm',
+                ky.key_algorithm,
                 'key_id',
                 ky.key_id,
-                'pem',
-                ky.public_key
+                'public_key_ctx',
+                ky.public_key_ctx
             ),
             'kas',
             JSONB_BUILD_OBJECT('id', kas.id, 'uri', kas.uri, 'name', kas.name)
@@ -340,5 +366,7 @@ DROP TABLE IF EXISTS key_access_server_keys;
 DROP TABLE IF EXISTS asym_key;
 
 DROP TABLE IF EXISTS sym_key;
+
+DROP TABLE IF EXISTS provider_config;
 
 -- +goose StatementEnd

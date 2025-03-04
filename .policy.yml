@@ -120,13 +120,14 @@ approval_rules:
   if:
    changed_files:
     paths:
-    - "^go.mod$"
+    - "^.*/go.mod$"
+    - "^.*/go.sum$"
   options:
     invalidate_on_push: true
     ignore_edited_comments: true
     has_valid_signatures: true
   requires:
-    count: 1
+    count: 2
     teams:
     - "opentdf/architecture"
     - "opentdf/maintainers"

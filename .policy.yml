@@ -1,0 +1,168 @@
+policy:
+  approval:
+  - or:
+    - and:
+      - default
+      - github_actions
+      - lib_ocrypto
+      - go_mod
+      - repo_policy
+      - large_pr
+    - dependabot_updates
+    - autobump
+    
+  disapproval:
+    requires:
+      teams:
+      - "opentdf/maintainers"
+      - "opentdf/architecture"
+        
+
+approval_rules:
+- name: default
+  description: "Always require at least 1 maintainer approval"
+  options:
+    invalidate_on_push: true
+    ignore_edited_comments: true
+    has_valid_signatures: true
+  requires:
+    count: 1
+    teams:
+    - "opentdf/maintainers"
+
+- name: github_actions
+  description: "Approval rule for GitHub Actions"
+  if:
+   changed_files:
+    paths:
+    - "^.github/.*"
+  options:
+    invalidate_on_push: true
+    ignore_edited_comments: true
+    has_valid_signatures: true
+  requires:
+    count: 2
+    teams:
+    - "opentdf/architecture"
+    - "opentdf/maintainers"
+    - "opentdf/sre"
+    - "opentdf/security"
+
+- name: lib_ocrypto
+  description: "If the crypto library is changed, require 1 architecture approval"
+  if:
+   changed_files:
+    paths:
+    - "^lib/ocrypto/.*"
+  options:
+    invalidate_on_push: true
+    ignore_edited_comments: true
+    has_valid_signatures: true
+  requires:
+    count: 1
+    teams:
+    - "opentdf/architecture"
+
+- name: dependabot_updates
+  description: "If dependabot_updates and ci passes, require 0 approvals"
+  if:
+    has_labels:
+      - dependencies
+      - github_actions
+    has_author_in:
+      users:
+      - "dependabot[bot]"
+    has_contributor_in:
+      users:
+      - "dependabot[bot]"
+  options:
+    invalidate_on_push: true
+    ignore_edited_comments: true
+    has_valid_signatures: true
+  requires:
+    count: 0
+    conditions:
+      has_status:
+        conclusions: 
+        - success
+        statuses:
+        - ci
+        - pull-request-checks
+
+- name: autobump
+  description: "If its a autobump pull request, require 0 approvals"
+  if:
+    has_author_in:
+      users:
+      - "opentdf-automation[bot]"
+    has_contributor_in:
+      - "github-actions[bot]"
+    has_labels:
+      - autobump
+    from_branch:
+      pattern: "^update-go-mods-for-(service|sdk|examples)$"
+  options:
+    invalidate_on_push: true
+    ignore_edited_comments: true
+    has_valid_signatures: true
+  requires:
+    count: 0
+    conditions:
+      has_status:
+        conclusions: 
+        - success
+        statuses:
+        - ci
+        - pull-request-checks
+
+- name: go_mod
+  description: "If go.mod or go.sum is changed, require 2 approvals"
+  if:
+   changed_files:
+    paths:
+    - "^go.mod$"
+  options:
+    invalidate_on_push: true
+    ignore_edited_comments: true
+    has_valid_signatures: true
+  requires:
+    count: 1
+    teams:
+    - "opentdf/architecture"
+    - "opentdf/maintainers"
+    - "opentdf/security"
+
+- name: repo_policy
+  description: "If repo policy like CODEOWNERS is changed, require 1 approval from security or architecture"
+  if:
+    changed_files:
+      paths:
+      - "^CODEOWNERS$"
+      - "^LICENSE$"
+      - "^.policy.yml$"
+  options:
+    invalidate_on_push: true
+    ignore_edited_comments: true
+    has_valid_signatures: true
+  requires:
+    count: 1
+    teams:
+    - "opentdf/architecture"
+    - "opentdf/security"
+
+- name: large_pr
+  description: "If the PR is large, require 2 approvals"
+  if:
+    modified_lines:
+      additions: "> 100"
+      deletions: "> 100"
+      total: "> 200"
+  options:
+    invalidate_on_push: true
+    ignore_edited_comments: true
+    has_valid_signatures: true
+  requires:
+    count: 2
+    teams:
+    - "opentdf/architecture"
+    - "opentdf/maintainers"

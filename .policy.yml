@@ -68,7 +68,6 @@ approval_rules:
   if:
     has_labels:
       - dependencies
-      - github_actions
     has_author_in:
       users:
       - "dependabot[bot]"

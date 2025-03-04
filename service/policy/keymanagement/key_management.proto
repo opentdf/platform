@@ -53,12 +53,44 @@ message KeyAccessServer {
   string uri = 3;
   SourceType source_type = 4;
 
+  repeated AsymmetricKey keys = 5;
+
   // Common metadata
   common.Metadata metadata = 100;
 }
 
-message Key {
+message ProviderConfig {
   string id = 1;
+  string name = 2;
+  string config_json = 3;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
+message AsymmetricKey {
+  string id = 1;
+  string key_id = 2;
+  Algorithm key_algorithm = 3;
+  KeyStatus key_status = 4;
+  KeyMode key_mode = 5;
+  string public_key_ctx = 6; // Specific structure based on key provider implementation
+  string private_key_ctx = 7; // Specific structure based on key provider implementation
+  ProviderConfig provider_config = 8;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
+message SymmetricKey {
+  string id = 1;
+  string key_id = 2;
+  KeyStatus key_status = 3;
+  KeyMode key_mode = 4;
+  ProviderConfig provider_config = 5;
+
+  // Common metadata
+  common.Metadata metadata = 100;
 }
 
 message CreateKeyAccessServerRequest {
@@ -166,13 +198,82 @@ message UnsafeDeleteKeyAccessServerResponse {
   KeyAccessServer key_access_server = 1;
 }
 
-message CreateKeyRequest {}
+/*
+   Provider Configuration Requests and Response Messages
+*/
+message CreateProviderConfigRequest {
+  // Required
+  string name = 1 [(buf.validate.field).required = true];
+  string config_json = 2 [(buf.validate.field).required = true];
 
-message CreateKeyResponse {
-  Key key = 1;
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+}
+message CreateProviderConfigResponse {
+  ProviderConfig provider_config = 1;
 }
 
-message GetKeyRequest {
+message GetProviderConfigRequest {
+  oneof identifier {
+    option (buf.validate.oneof).required = true;
+    string id = 2 [(buf.validate.field).string.uuid = true];
+    string name = 3 [(buf.validate.field).string.min_len = 1];
+  }
+}
+message GetProviderConfigResponse {
+  ProviderConfig provider_config = 1;
+}
+
+message ListProviderConfigsRequest {
+  // Optional
+  policy.PageRequest pagination = 10;
+}
+message ListProviderConfigsResponse {
+  repeated ProviderConfig provider_configs = 1;
+
+  policy.PageResponse pagination = 10;
+}
+
+message UpdateProviderConfigRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  // Optional
+  string name = 2 [(buf.validate.field).required = false];
+  string config_json = 3 [(buf.validate.field).required = false];
+
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+message UpdateProviderConfigResponse {
+  ProviderConfig provider_config = 1;
+}
+
+/*
+   KAS Key Management Requests and Response Messages
+*/
+message CreateKasKeyRequest {
+  // Required
+  string kas_id = 1 [(buf.validate.field).string.uuid = true];
+  string key_id = 2 [(buf.validate.field).string.min_len = 1];
+  Algorithm key_algorithm = 3 [(buf.validate.field).enum.defined_only = true];
+  KeyMode key_mode = 4 [(buf.validate.field).enum.defined_only = true];
+  // KeyStatus key_status = 4 [(buf.validate.field).enum.defined_only = true]; // Do we mark key inactive and force admin to mark it active
+  //string public_key_ctx = 4; // Do we need this or can we just derive it from the private key
+  string private_key_ctx = 5; // Specific structure based on key provider implementation
+  // Optional
+  ProviderConfig provider_config = 6;
+
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+}
+
+message CreateKasKeyResponse {
+  AsymmetricKey key = 1;
+}
+
+message GetKasKeyRequest {
   oneof identifier {
     option (buf.validate.oneof).required = true;
     string id = 2 [(buf.validate.field).string.uuid = true];
@@ -180,24 +281,24 @@ message GetKeyRequest {
   }
 }
 
-message GetKeyResponse {
-  Key key = 1;
+message GetKasKeyResponse {
+  AsymmetricKey key = 1;
 }
 
-message ListKeysRequest {
+message ListKasKeysRequest {
   Algorithm key_algorithm = 1 [(buf.validate.field).enum.defined_only = true];
 
   // Optional
   policy.PageRequest pagination = 10;
 }
 
-message ListKeysResponse {
-  repeated Key keys = 1;
+message ListKasKeysResponse {
+  repeated AsymmetricKey keys = 1;
 
   policy.PageResponse pagination = 10;
 }
 
-message UpdateKeyRequest {
+message UpdateKasKeyRequest {
   // Required
   string id = 1 [(buf.validate.field).string.uuid = true];
   // Optional
@@ -209,11 +310,11 @@ message UpdateKeyRequest {
   common.MetadataUpdateEnum metadata_update_behavior = 101;
 }
 
-message UpdateKeyResponse {
-  Key key = 1;
+message UpdateKasKeyResponse {
+  AsymmetricKey key = 1;
 }
 
-message RotateKeyRequest {
+message RotateKasKeyRequest {
   // Required (Current Active Key ID)
   string current_id = 1 [(buf.validate.field).string.uuid = true];
 
@@ -222,32 +323,31 @@ message RotateKeyRequest {
   KeyMode key_mode = 3 [(buf.validate.field).enum.defined_only = true];
 }
 
-message RotateKeyResponse {
-  Key key = 1;
+message RotateKasKeyResponse {
+  SymmetricKey key = 1;
 }
 
 service KeyManagementService {
   // Key Access Server Management
   rpc CreateKeyAccessServer(CreateKeyAccessServerRequest) returns (CreateKeyAccessServerResponse) {}
-
   rpc GetKeyAccessServer(GetKeyAccessServerRequest) returns (GetKeyAccessServerResponse) {}
-
   rpc ListKeyAccessServers(ListKeyAccessServersRequest) returns (ListKeyAccessServersResponse) {}
-
   rpc UpdateKeyAccessServer(UpdateKeyAccessServerRequest) returns (UpdateKeyAccessServerResponse) {}
-
   // rpc UnsafeDeleteKeyAccessServer(UnsafeDeleteKeyAccessServerRequest) returns (UnsafeDeleteKeyAccessServerResponse) {}
 
   // Key Management
-  rpc CreateKey(CreateKeyRequest) returns (CreateKeyResponse) {}
+  // Provider Management
+  rpc CreateProviderConfig(CreateProviderConfigRequest) returns (CreateProviderConfigResponse) {}
+  rpc GetProviderConfig(GetProviderConfigRequest) returns (GetProviderConfigResponse) {}
+  rpc ListProviderConfigs(ListProviderConfigsRequest) returns (ListProviderConfigsResponse) {}
+  rpc UpdateProviderConfig(UpdateProviderConfigRequest) returns (UpdateProviderConfigResponse) {}
+  // rpc UnsafeDeleteProviderConfig(UnsafeDeleteProviderConfigRequest) returns (UnsafeDeleteProviderConfigResponse) {}
 
-  rpc GetKey(GetKeyRequest) returns (GetKeyResponse) {}
-
-  rpc ListKeys(ListKeysRequest) returns (ListKeysResponse) {}
-
-  rpc UpdateKey(UpdateKeyRequest) returns (UpdateKeyResponse) {}
-
+  // Asymetric Key Management
+  rpc CreateKasKey(CreateKasKeyRequest) returns (CreateKasKeyResponse) {}
+  rpc GetKasKey(GetKasKeyRequest) returns (GetKasKeyResponse) {}
+  rpc ListKasKeys(ListKasKeysRequest) returns (ListKasKeysResponse) {}
+  rpc UpdateKasKey(UpdateKasKeyRequest) returns (UpdateKasKeyResponse) {}
   //rpc UnsafeDeleteKey(UnsafeDeleteKeyRequest) returns (UnsafeDeleteKeyResponse) {}
-
-  rpc RotateKey(RotateKeyRequest) returns (RotateKeyResponse) {}
+  rpc RotateKasKey(RotateKasKeyRequest) returns (RotateKasKeyResponse) {}
 }

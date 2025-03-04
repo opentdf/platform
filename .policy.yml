@@ -119,8 +119,8 @@ approval_rules:
   if:
    changed_files:
     paths:
-    - "^.*/go.mod$"
-    - "^.*/go.sum$"
+    - "^(.*/)?(go\\.mod)$"  # Root or subdirectories
+    - "^(.*/)?(go\\.sum)$"  # Root or subdirectories
   options:
     invalidate_on_push: true
     ignore_edited_comments: true

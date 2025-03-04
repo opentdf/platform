@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"net"
@@ -194,7 +195,11 @@ func (k *KASClient) handleECKeyResponse(response *kas.RewrapResponse) (map[strin
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
 	}
-	sessionKey, err := ocrypto.CalculateHKDF([]byte("salt"), ecdhKey)
+
+	digest := sha256.New()
+	digest.Write([]byte("TDF"))
+	salt := digest.Sum(nil)
+	sessionKey, err := ocrypto.CalculateHKDF(salt, ecdhKey)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed: %w", err)
 	}

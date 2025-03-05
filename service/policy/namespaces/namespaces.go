@@ -240,10 +240,10 @@ func (ns NamespacesService) RemoveKeyAccessServerFromNamespace(ctx context.Conte
 	return connect.NewResponse(rsp), nil
 }
 
-func (ns NamespacesService) AssignKeyToNamespace(ctx context.Context, req *connect.Request[namespaces.AssignKeyToNamespaceRequest]) (*connect.Response[namespaces.AssignKeyToNamespaceResponse], error) {
+func (ns NamespacesService) AssignKeyToNamespace(context.Context, *connect.Request[namespaces.AssignKeyToNamespaceRequest]) (*connect.Response[namespaces.AssignKeyToNamespaceResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, nil)
 }
 
-func (ns NamespacesService) RemoveKeyFromNamespace(ctx context.Context, req *connect.Request[namespaces.RemoveKeyFromNamespaceRequest]) (*connect.Response[namespaces.RemoveKeyFromNamespaceResponse], error) {
+func (ns NamespacesService) RemoveKeyFromNamespace(context.Context, *connect.Request[namespaces.RemoveKeyFromNamespaceRequest]) (*connect.Response[namespaces.RemoveKeyFromNamespaceResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, nil)
 }

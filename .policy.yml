@@ -1,3 +1,4 @@
+# Policy Bot Configuration Docs https://github.com/palantir/policy-bot?tab=readme-ov-file#policyyml-specification
 policy:
   approval:
   - or:

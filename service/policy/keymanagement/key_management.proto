@@ -36,29 +36,6 @@ enum KeyMode {
   KEY_MODE_REMOTE = 2;
 }
 
-// Describes whether this kas is managed by the organization or if they imported
-// the kas information from an external party. These two modes are necessary in order
-// to encrypt a tdf dek with an external parties kas public key.
-enum SourceType {
-  SOURCE_TYPE_UNSPECIFIED = 0;
-  // The kas is managed by the organization.
-  SOURCE_TYPE_INTERNAL = 1;
-  // The kas is managed by an external party.
-  SOURCE_TYPE_EXTERNAL = 2;
-}
-
-message KeyAccessServer {
-  string id = 1;
-  string name = 2;
-  string uri = 3;
-  SourceType source_type = 4;
-
-  repeated AsymmetricKey keys = 5;
-
-  // Common metadata
-  common.Metadata metadata = 100;
-}
-
 message ProviderConfig {
   string id = 1;
   string name = 2;
@@ -93,118 +70,13 @@ message SymmetricKey {
   common.Metadata metadata = 100;
 }
 
-message CreateKeyAccessServerRequest {
-  string name = 1 [
-    (buf.validate.field).required = false,
-    (buf.validate.field).string.max_len = 253,
-    (buf.validate.field).cel = {
-      id: "kas_name_format"
-      message:
-        "Registered KAS name must be an alphanumeric string, allowing "
-        "hyphens, and underscores but not as the first or last "
-        "character. The stored KAS name will be normalized to lower "
-        "case."
-      expression:
-        "size(this) > 0 ? "
-        "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
-        " : true"
-    }
-  ];
-  string uri = 2 [(buf.validate.field).cel = {
-    id: "uri_format"
-    message:
-      "URI must be a valid URL (e.g., 'https://demo.com/') followed by "
-      "additional segments. Each segment must start and end with an "
-      "alphanumeric character, can contain hyphens, alphanumeric "
-      "characters, and slashes."
-    expression: "this.isUri()"
-  }];
-  SourceType source_type = 3;
-}
-
-message CreateKeyAccessServerResponse {
-  KeyAccessServer key_access_server = 1;
-}
-
-message UpdateKeyAccessServerRequest {
-  // Required
-  string id = 1 [(buf.validate.field).string.uuid = true];
-  // Optional
-  string uri = 2 [(buf.validate.field).cel = {
-    id: "optional_uri_format"
-    message:
-      "Optional URI must be a valid URL (e.g., 'https://demo.com/') "
-      "followed by additional segments. Each segment must start and "
-      "end with an alphanumeric character, can contain hyphens, "
-      "alphanumeric characters, and slashes."
-    expression: "size(this) == 0 || this.isUri()"
-  }];
-  // Optional
-  string name = 3 [
-    (buf.validate.field).required = false,
-    (buf.validate.field).string.max_len = 253,
-    (buf.validate.field).cel = {
-      id: "kas_name_format"
-      message:
-        "Registered KAS name must be an alphanumeric string, allowing "
-        "hyphens, and underscores but not as the first or last "
-        "character. The stored KAS name will be normalized to lower "
-        "case."
-      expression:
-        "size(this) == 0 || "
-        "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
-    }
-  ];
-
-  // Optional
-  // Common metadata
-  common.MetadataMutable metadata = 100;
-  common.MetadataUpdateEnum metadata_update_behavior = 101;
-}
-message UpdateKeyAccessServerResponse {
-  KeyAccessServer key_access_server = 1;
-}
-
-message GetKeyAccessServerRequest {
-  oneof identifier {
-    option (buf.validate.oneof).required = true;
-    string id = 2 [(buf.validate.field).string.uuid = true];
-    string name = 3 [(buf.validate.field).string.min_len = 1];
-    string uri = 4 [(buf.validate.field).string = {
-      min_len: 1
-      uri: true
-    }];
-  }
-}
-message GetKeyAccessServerResponse {
-  KeyAccessServer key_access_server = 1;
-}
-
-message ListKeyAccessServersRequest {
-  // Optional
-  policy.PageRequest pagination = 10;
-}
-message ListKeyAccessServersResponse {
-  repeated KeyAccessServer key_access_servers = 1;
-
-  policy.PageResponse pagination = 10;
-}
-
-message UnsafeDeleteKeyAccessServerRequest {
-  // Required
-  string id = 1 [(buf.validate.field).string.uuid = true];
-}
-message UnsafeDeleteKeyAccessServerResponse {
-  KeyAccessServer key_access_server = 1;
-}
-
 /*
    Provider Configuration Requests and Response Messages
 */
 message CreateProviderConfigRequest {
   // Required
   string name = 1 [(buf.validate.field).required = true];
-  string config_json = 2 [(buf.validate.field).required = true];
+  bytes config_json = 2 [(buf.validate.field).required = true];
 
   // Common metadata
   common.MetadataMutable metadata = 100;
@@ -250,91 +122,7 @@ message UpdateProviderConfigResponse {
   ProviderConfig provider_config = 1;
 }
 
-/*
-   KAS Key Management Requests and Response Messages
-*/
-message CreateKasKeyRequest {
-  // Required
-  string kas_id = 1 [(buf.validate.field).string.uuid = true];
-  string key_id = 2 [(buf.validate.field).string.min_len = 1];
-  Algorithm key_algorithm = 3 [(buf.validate.field).enum.defined_only = true];
-  KeyMode key_mode = 4 [(buf.validate.field).enum.defined_only = true];
-  // KeyStatus key_status = 4 [(buf.validate.field).enum.defined_only = true]; // Do we mark key inactive and force admin to mark it active
-  //string public_key_ctx = 4; // Do we need this or can we just derive it from the private key
-  string private_key_ctx = 5; // Specific structure based on key provider implementation
-  // Optional
-  ProviderConfig provider_config = 6;
-
-  // Common metadata
-  common.MetadataMutable metadata = 100;
-}
-
-message CreateKasKeyResponse {
-  AsymmetricKey key = 1;
-}
-
-message GetKasKeyRequest {
-  oneof identifier {
-    option (buf.validate.oneof).required = true;
-    string id = 2 [(buf.validate.field).string.uuid = true];
-    string key_id = 3 [(buf.validate.field).string.min_len = 1];
-  }
-}
-
-message GetKasKeyResponse {
-  AsymmetricKey key = 1;
-}
-
-message ListKasKeysRequest {
-  Algorithm key_algorithm = 1 [(buf.validate.field).enum.defined_only = true];
-
-  // Optional
-  policy.PageRequest pagination = 10;
-}
-
-message ListKasKeysResponse {
-  repeated AsymmetricKey keys = 1;
-
-  policy.PageResponse pagination = 10;
-}
-
-message UpdateKasKeyRequest {
-  // Required
-  string id = 1 [(buf.validate.field).string.uuid = true];
-  // Optional
-  KeyStatus key_status = 3 [(buf.validate.field).enum.defined_only = true];
-
-  // Optional
-  // Common metadata
-  common.MetadataMutable metadata = 100;
-  common.MetadataUpdateEnum metadata_update_behavior = 101;
-}
-
-message UpdateKasKeyResponse {
-  AsymmetricKey key = 1;
-}
-
-message RotateKasKeyRequest {
-  // Required (Current Active Key ID)
-  string current_id = 1 [(buf.validate.field).string.uuid = true];
-
-  // Required New Key Information
-  Algorithm key_algorithm = 2 [(buf.validate.field).enum.defined_only = true];
-  KeyMode key_mode = 3 [(buf.validate.field).enum.defined_only = true];
-}
-
-message RotateKasKeyResponse {
-  SymmetricKey key = 1;
-}
-
 service KeyManagementService {
-  // Key Access Server Management
-  rpc CreateKeyAccessServer(CreateKeyAccessServerRequest) returns (CreateKeyAccessServerResponse) {}
-  rpc GetKeyAccessServer(GetKeyAccessServerRequest) returns (GetKeyAccessServerResponse) {}
-  rpc ListKeyAccessServers(ListKeyAccessServersRequest) returns (ListKeyAccessServersResponse) {}
-  rpc UpdateKeyAccessServer(UpdateKeyAccessServerRequest) returns (UpdateKeyAccessServerResponse) {}
-  // rpc UnsafeDeleteKeyAccessServer(UnsafeDeleteKeyAccessServerRequest) returns (UnsafeDeleteKeyAccessServerResponse) {}
-
   // Key Management
   // Provider Management
   rpc CreateProviderConfig(CreateProviderConfigRequest) returns (CreateProviderConfigResponse) {}
@@ -342,12 +130,4 @@ service KeyManagementService {
   rpc ListProviderConfigs(ListProviderConfigsRequest) returns (ListProviderConfigsResponse) {}
   rpc UpdateProviderConfig(UpdateProviderConfigRequest) returns (UpdateProviderConfigResponse) {}
   // rpc UnsafeDeleteProviderConfig(UnsafeDeleteProviderConfigRequest) returns (UnsafeDeleteProviderConfigResponse) {}
-
-  // Asymetric Key Management
-  rpc CreateKasKey(CreateKasKeyRequest) returns (CreateKasKeyResponse) {}
-  rpc GetKasKey(GetKasKeyRequest) returns (GetKasKeyResponse) {}
-  rpc ListKasKeys(ListKasKeysRequest) returns (ListKasKeysResponse) {}
-  rpc UpdateKasKey(UpdateKasKeyRequest) returns (UpdateKasKeyResponse) {}
-  //rpc UnsafeDeleteKey(UnsafeDeleteKeyRequest) returns (UnsafeDeleteKeyResponse) {}
-  rpc RotateKasKey(RotateKasKeyRequest) returns (RotateKasKeyResponse) {}
 }

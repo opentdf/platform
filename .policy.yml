@@ -25,24 +25,26 @@ approval_rules:
   options:
     invalidate_on_push: true
     ignore_edited_comments: true
-    has_valid_signatures: true
   requires:
     count: 1
+    conditions:
+      has_valid_signatures: true
     teams:
     - "opentdf/maintainers"
 
 - name: github_actions
   description: "Approval rule for GitHub Actions"
   if:
-   changed_files:
-    paths:
-    - "^.github/.*"
+    changed_files:
+      paths:
+      - "^.github/.*"
   options:
     invalidate_on_push: true
     ignore_edited_comments: true
-    has_valid_signatures: true
   requires:
     count: 2
+    conditions:
+      has_valid_signatures: true
     teams:
     - "opentdf/architecture"
     - "opentdf/maintainers"
@@ -52,15 +54,16 @@ approval_rules:
 - name: lib_ocrypto
   description: "If the crypto library is changed, require 1 architecture approval"
   if:
-   changed_files:
-    paths:
-    - "^lib/ocrypto/.*"
+    changed_files:
+      paths:
+      - "^lib/ocrypto/.*"
   options:
     invalidate_on_push: true
     ignore_edited_comments: true
-    has_valid_signatures: true
   requires:
     count: 1
+    conditions:
+      has_valid_signatures: true
     teams:
     - "opentdf/architecture"
 
@@ -78,10 +81,10 @@ approval_rules:
   options:
     invalidate_on_push: true
     ignore_edited_comments: true
-    has_valid_signatures: true
   requires:
     count: 0
     conditions:
+      has_valid_signatures: true
       has_status:
         conclusions: 
         - success
@@ -96,6 +99,7 @@ approval_rules:
       users:
       - "opentdf-automation[bot]"
     has_contributor_in:
+      users:
       - "github-actions[bot]"
     has_labels:
       - autobump
@@ -104,10 +108,10 @@ approval_rules:
   options:
     invalidate_on_push: true
     ignore_edited_comments: true
-    has_valid_signatures: true
   requires:
     count: 0
     conditions:
+      has_valid_signatures: true
       has_status:
         conclusions: 
         - success
@@ -125,9 +129,10 @@ approval_rules:
   options:
     invalidate_on_push: true
     ignore_edited_comments: true
-    has_valid_signatures: true
   requires:
     count: 2
+    conditions:
+      has_valid_signatures: true
     teams:
     - "opentdf/architecture"
     - "opentdf/maintainers"
@@ -144,9 +149,10 @@ approval_rules:
   options:
     invalidate_on_push: true
     ignore_edited_comments: true
-    has_valid_signatures: true
   requires:
     count: 1
+    conditions:
+      has_valid_signatures: true
     teams:
     - "opentdf/architecture"
     - "opentdf/security"
@@ -161,9 +167,10 @@ approval_rules:
   options:
     invalidate_on_push: true
     ignore_edited_comments: true
-    has_valid_signatures: true
   requires:
     count: 2
+    conditions:
+      has_valid_signatures: true
     teams:
     - "opentdf/architecture"
     - "opentdf/maintainers"

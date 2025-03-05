@@ -23,7 +23,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/kasregistryListKeyAccessServersResponse"
+              "$ref": "#/definitions/policykasregistryListKeyAccessServersResponse"
             }
           },
           "default": {
@@ -61,7 +61,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/kasregistryCreateKeyAccessServerResponse"
+              "$ref": "#/definitions/policykasregistryCreateKeyAccessServerResponse"
             }
           },
           "default": {
@@ -77,7 +77,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/kasregistryCreateKeyAccessServerRequest"
+              "$ref": "#/definitions/policykasregistryCreateKeyAccessServerRequest"
             }
           }
         ],
@@ -155,7 +155,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/kasregistryGetKeyAccessServerResponse"
+              "$ref": "#/definitions/policykasregistryGetKeyAccessServerResponse"
             }
           },
           "default": {
@@ -232,7 +232,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/kasregistryUpdateKeyAccessServerResponse"
+              "$ref": "#/definitions/policykasregistryUpdateKeyAccessServerResponse"
             }
           },
           "default": {
@@ -372,35 +372,6 @@
         }
       }
     },
-    "kasregistryCreateKeyAccessServerRequest": {
-      "type": "object",
-      "properties": {
-        "uri": {
-          "type": "string",
-          "title": "Required"
-        },
-        "publicKey": {
-          "$ref": "#/definitions/policyPublicKey",
-          "title": "Required"
-        },
-        "name": {
-          "type": "string",
-          "title": "Optional"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadataMutable",
-          "title": "Common metadata"
-        }
-      }
-    },
-    "kasregistryCreateKeyAccessServerResponse": {
-      "type": "object",
-      "properties": {
-        "keyAccessServer": {
-          "$ref": "#/definitions/policyKeyAccessServer"
-        }
-      }
-    },
     "kasregistryCreatePublicKeyResponse": {
       "type": "object",
       "properties": {
@@ -418,14 +389,6 @@
       }
     },
     "kasregistryDeleteKeyAccessServerResponse": {
-      "type": "object",
-      "properties": {
-        "keyAccessServer": {
-          "$ref": "#/definitions/policyKeyAccessServer"
-        }
-      }
-    },
-    "kasregistryGetKeyAccessServerResponse": {
       "type": "object",
       "properties": {
         "keyAccessServer": {
@@ -499,21 +462,6 @@
       },
       "title": "Deprecated"
     },
-    "kasregistryListKeyAccessServersResponse": {
-      "type": "object",
-      "properties": {
-        "keyAccessServers": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/policyKeyAccessServer"
-          }
-        },
-        "pagination": {
-          "$ref": "#/definitions/policyPageResponse"
-        }
-      }
-    },
     "kasregistryListPublicKeyMappingResponse": {
       "type": "object",
       "properties": {
@@ -570,14 +518,6 @@
         },
         "pagination": {
           "$ref": "#/definitions/policyPageResponse"
-        }
-      }
-    },
-    "kasregistryUpdateKeyAccessServerResponse": {
-      "type": "object",
-      "properties": {
-        "keyAccessServer": {
-          "$ref": "#/definitions/policyKeyAccessServer"
         }
       }
     },
@@ -730,6 +670,66 @@
         }
       },
       "title": "Deprecated"
+    },
+    "policykasregistryCreateKeyAccessServerRequest": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string",
+          "title": "Required"
+        },
+        "publicKey": {
+          "$ref": "#/definitions/policyPublicKey",
+          "title": "Required"
+        },
+        "name": {
+          "type": "string",
+          "title": "Optional"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadataMutable",
+          "title": "Common metadata"
+        }
+      }
+    },
+    "policykasregistryCreateKeyAccessServerResponse": {
+      "type": "object",
+      "properties": {
+        "keyAccessServer": {
+          "$ref": "#/definitions/policyKeyAccessServer"
+        }
+      }
+    },
+    "policykasregistryGetKeyAccessServerResponse": {
+      "type": "object",
+      "properties": {
+        "keyAccessServer": {
+          "$ref": "#/definitions/policyKeyAccessServer"
+        }
+      }
+    },
+    "policykasregistryListKeyAccessServersResponse": {
+      "type": "object",
+      "properties": {
+        "keyAccessServers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKeyAccessServer"
+          }
+        },
+        "pagination": {
+          "$ref": "#/definitions/policyPageResponse"
+        }
+      }
+    },
+    "policykasregistryUpdateKeyAccessServerResponse": {
+      "type": "object",
+      "properties": {
+        "keyAccessServer": {
+          "$ref": "#/definitions/policyKeyAccessServer"
+        }
+      }
     },
     "protobufAny": {
       "type": "object",

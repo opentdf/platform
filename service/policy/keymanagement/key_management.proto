@@ -1,0 +1,133 @@
+syntax = "proto3";
+
+package policy.keymanagement;
+
+import "buf/validate/validate.proto";
+import "common/common.proto";
+import "policy/selectors.proto";
+
+// Supported key algorithms.
+enum Algorithm {
+  ALGORITHM_UNSPECIFIED = 0;
+  ALGORITHM_RSA_2048 = 1;
+  ALGORITHM_RSA_4096 = 2;
+  ALGORITHM_EC_P256 = 3;
+  ALGORITHM_EC_P384 = 4;
+  ALGORITHM_EC_P521 = 5;
+}
+
+// The status of the key.
+enum KeyStatus {
+  KEY_STATUS_UNSPECIFIED = 0;
+  KEY_STATUS_ACTIVE = 1;
+  KEY_STATUS_INACTIVE = 2;
+  KEY_STATUS_COMPROMISED = 3;
+  KEY_STATUS_EXPIRED = 4;
+}
+
+// Describe how the kas private key is managed.
+// If the key mode is LOCAL, then the kas private key is stored in the database.
+// This could be encrypted or unencrypted.
+// Remote means that the kas private key is stored in a remote key system like KMS or HSM
+// and all operations are done by the remote key system.
+enum KeyMode {
+  KEY_MODE_UNSPECIFIED = 0;
+  KEY_MODE_LOCAL = 1;
+  KEY_MODE_REMOTE = 2;
+}
+
+message ProviderConfig {
+  string id = 1;
+  string name = 2;
+  string config_json = 3;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
+message AsymmetricKey {
+  string id = 1;
+  string key_id = 2;
+  Algorithm key_algorithm = 3;
+  KeyStatus key_status = 4;
+  KeyMode key_mode = 5;
+  string public_key_ctx = 6; // Specific structure based on key provider implementation
+  string private_key_ctx = 7; // Specific structure based on key provider implementation
+  ProviderConfig provider_config = 8;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
+message SymmetricKey {
+  string id = 1;
+  string key_id = 2;
+  KeyStatus key_status = 3;
+  KeyMode key_mode = 4;
+  ProviderConfig provider_config = 5;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
+/*
+   Provider Configuration Requests and Response Messages
+*/
+message CreateProviderConfigRequest {
+  // Required
+  string name = 1 [(buf.validate.field).required = true];
+  bytes config_json = 2 [(buf.validate.field).required = true];
+
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+}
+message CreateProviderConfigResponse {
+  ProviderConfig provider_config = 1;
+}
+
+message GetProviderConfigRequest {
+  oneof identifier {
+    option (buf.validate.oneof).required = true;
+    string id = 2 [(buf.validate.field).string.uuid = true];
+    string name = 3 [(buf.validate.field).string.min_len = 1];
+  }
+}
+message GetProviderConfigResponse {
+  ProviderConfig provider_config = 1;
+}
+
+message ListProviderConfigsRequest {
+  // Optional
+  policy.PageRequest pagination = 10;
+}
+message ListProviderConfigsResponse {
+  repeated ProviderConfig provider_configs = 1;
+
+  policy.PageResponse pagination = 10;
+}
+
+message UpdateProviderConfigRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  // Optional
+  string name = 2 [(buf.validate.field).required = false];
+  string config_json = 3 [(buf.validate.field).required = false];
+
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+message UpdateProviderConfigResponse {
+  ProviderConfig provider_config = 1;
+}
+
+service KeyManagementService {
+  // Key Management
+  // Provider Management
+  rpc CreateProviderConfig(CreateProviderConfigRequest) returns (CreateProviderConfigResponse) {}
+  rpc GetProviderConfig(GetProviderConfigRequest) returns (GetProviderConfigResponse) {}
+  rpc ListProviderConfigs(ListProviderConfigsRequest) returns (ListProviderConfigsResponse) {}
+  rpc UpdateProviderConfig(UpdateProviderConfigRequest) returns (UpdateProviderConfigResponse) {}
+  // rpc UnsafeDeleteProviderConfig(UnsafeDeleteProviderConfigRequest) returns (UnsafeDeleteProviderConfigResponse) {}
+}

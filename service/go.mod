@@ -25,7 +25,7 @@ require (
 	github.com/opentdf/platform/lib/fixtures v0.2.10
 	github.com/opentdf/platform/lib/flattening v0.1.3
 	github.com/opentdf/platform/lib/ocrypto v0.1.8
-	github.com/opentdf/platform/protocol/go v0.2.28
+	github.com/opentdf/platform/protocol/go v0.2.29
 	github.com/opentdf/platform/sdk v0.3.28
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.8.1

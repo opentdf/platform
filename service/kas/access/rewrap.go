@@ -367,6 +367,7 @@ func addResultsToResponse(response *kaspb.RewrapResponse, result policyKAOResult
 	}
 }
 
+// Gets the only value in a singleton map, or an arbitrary value from a map with multiple values.
 func getMapValue[Map ~map[K]V, K comparable, V any](m Map) *V {
 	for _, v := range m {
 		return &v
@@ -427,7 +428,7 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 		kao := *getMapValue(kaoResults)
 
 		if kao.Error != nil {
-			p.Logger.DebugContext(ctx, "forwarding legacy err", "err", err)
+			p.Logger.DebugContext(ctx, "forwarding legacy err", "err", kao.Error)
 			return nil, kao.Error
 		}
 		resp.EntityWrappedKey = kao.Encapped //nolint:staticcheck // deprecated but keeping behavior for backwards compatibility
@@ -469,39 +470,53 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			// Get EC key size and convert to mode
 			keySize, err := ocrypto.GetECKeySize([]byte(ephemeralPubKeyPEM))
 			if err != nil {
-				return nil, results, fmt.Errorf("failed to get EC key size: %w", err)
+				p.Logger.WarnContext(ctx, "failed to get EC key size", "err", err, "kao", kao)
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
 			}
 
 			mode, err := ocrypto.ECSizeToMode(keySize)
 			if err != nil {
-				return nil, results, fmt.Errorf("failed to convert key size to mode: %w", err)
+				p.Logger.WarnContext(ctx, "failed to convert key size to mode", "err", err, "kao", kao)
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
 			}
 
 			// Parse the PEM public key
 			block, _ := pem.Decode([]byte(ephemeralPubKeyPEM))
 			if block == nil {
-				return nil, results, fmt.Errorf("failed to decode PEM block")
+				p.Logger.WarnContext(ctx, "failed to decode PEM block", "err", err, "kao", kao)
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
 			}
 
 			pub, err := x509.ParsePKIXPublicKey(block.Bytes)
 			if err != nil {
-				return nil, results, fmt.Errorf("failed to parse public key: %w", err)
+				p.Logger.WarnContext(ctx, "failed to parse public key", "err", err, "kao", kao)
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
 			}
 
 			ecPub, ok := pub.(*ecdsa.PublicKey)
 			if !ok {
-				return nil, results, fmt.Errorf("not an EC public key")
+				p.Logger.WarnContext(ctx, "not an EC public key", "err", err)
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
 			}
 
 			// Compress the public key
 			compressedKey, err := ocrypto.CompressedECPublicKey(mode, *ecPub)
 			if err != nil {
-				return nil, results, fmt.Errorf("failed to compress public key: %w", err)
+				p.Logger.WarnContext(ctx, "failed to compress public key", "err", err)
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
 			}
 
 			symKey, err = p.CryptoProvider.ECDecrypt(kao.GetKeyAccessObject().GetKid(), compressedKey, kao.GetKeyAccessObject().GetWrappedKey())
 			if err != nil {
-				return nil, results, fmt.Errorf("failed to decrypt EC key: %w", err)
+				p.Logger.WarnContext(ctx, "failed to decrypt EC key", "err", err)
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
 			}
 		case "wrapped":
 			var kidsToCheck []string
@@ -576,7 +591,6 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		results[policyID] = kaoResults
 		if err != nil {
 			p.Logger.WarnContext(ctx, "rewrap: verifyRewrapRequests failed", "err", err, "policyID", policyID)
-			// TODO Fail all requests for this policy
 			continue
 		}
 		policies = append(policies, policy)

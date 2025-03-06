@@ -591,7 +591,6 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		results[policyID] = kaoResults
 		if err != nil {
 			p.Logger.WarnContext(ctx, "rewrap: verifyRewrapRequests failed", "err", err, "policyID", policyID)
-			// TODO Fail all requests for this policy
 			continue
 		}
 		policies = append(policies, policy)

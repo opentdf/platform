@@ -25,6 +25,8 @@ const (
 	JTILength = 14
 )
 
+// Deprecated: NewTokenAddingInterceptor is deprecated, use NewTokenAddingInterceptorWithClient instead. A http client
+// can be constructed using httputil.SafeHTTPClientWithTLSConfig, but should be reused as much as possible.
 func NewTokenAddingInterceptor(t AccessTokenSource, c *tls.Config) TokenAddingInterceptor {
 	return NewTokenAddingInterceptorWithClient(t, httputil.SafeHTTPClientWithTLSConfig(c))
 }

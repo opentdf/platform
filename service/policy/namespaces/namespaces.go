@@ -240,20 +240,10 @@ func (ns NamespacesService) RemoveKeyAccessServerFromNamespace(ctx context.Conte
 	return connect.NewResponse(rsp), nil
 }
 
-func (ns NamespacesService) AssignKeyToNamespace(ctx context.Context, req *connect.Request[namespaces.AssignKeyToNamespaceRequest]) (*connect.Response[namespaces.AssignKeyToNamespaceResponse], error) {
-	err := ns.dbClient.AssignPublicKeyToNamespace(ctx, req.Msg.GetNamespaceKey())
-	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("namespaceKey", req.Msg.GetNamespaceKey().String()))
-	}
-	return connect.NewResponse(&namespaces.AssignKeyToNamespaceResponse{}), nil
+func (ns NamespacesService) AssignKeyToNamespace(context.Context, *connect.Request[namespaces.AssignKeyToNamespaceRequest]) (*connect.Response[namespaces.AssignKeyToNamespaceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, nil)
 }
 
-func (ns NamespacesService) RemoveKeyFromNamespace(ctx context.Context, req *connect.Request[namespaces.RemoveKeyFromNamespaceRequest]) (*connect.Response[namespaces.RemoveKeyFromNamespaceResponse], error) {
-	k, err := ns.dbClient.RemovePublicKeyFromNamespace(ctx, req.Msg.GetNamespaceKey())
-	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("namespaceKey", req.Msg.GetNamespaceKey().String()))
-	}
-	return connect.NewResponse(&namespaces.RemoveKeyFromNamespaceResponse{
-		NamespaceKey: k,
-	}), nil
+func (ns NamespacesService) RemoveKeyFromNamespace(context.Context, *connect.Request[namespaces.RemoveKeyFromNamespaceRequest]) (*connect.Response[namespaces.RemoveKeyFromNamespaceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, nil)
 }

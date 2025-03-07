@@ -107,8 +107,11 @@ type ECDecryptor struct {
 }
 
 func NewECDecryptor(sk *ecdh.PrivateKey) (ECDecryptor, error) {
-	// TK Make these reasonable? IIRC salt should be longer, info maybe a parameters?
-	salt := []byte("salt")
+	// TK Move salt and info out of library, into API option functions
+	digest := sha256.New()
+	digest.Write([]byte("TDF"))
+	salt := digest.Sum(nil)
+
 	return ECDecryptor{sk, salt, nil}, nil
 }
 

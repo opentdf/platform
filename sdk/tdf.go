@@ -3,6 +3,7 @@ package sdk
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -579,7 +580,10 @@ func generateWrapKeyWithEC(mode ocrypto.ECCMode, kasPublicKey string, symKey []b
 		return ecKeyWrappedKeyInfo{}, fmt.Errorf("ocrypto.ComputeECDHKey failed:%w", err)
 	}
 
-	sessionKey, err := ocrypto.CalculateHKDF([]byte("salt"), ecdhKey)
+	digest := sha256.New()
+	digest.Write([]byte("TDF"))
+	salt := digest.Sum(nil)
+	sessionKey, err := ocrypto.CalculateHKDF(salt, ecdhKey)
 	if err != nil {
 		return ecKeyWrappedKeyInfo{}, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
 	}

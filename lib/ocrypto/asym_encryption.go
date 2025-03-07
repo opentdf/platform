@@ -81,8 +81,10 @@ func FromPublicPEM(publicKeyInPem string) (PublicKeyEncryptor, error) {
 
 func newECIES(pub *ecdh.PublicKey) (ECEncryptor, error) {
 	ek, err := pub.Curve().GenerateKey(rand.Reader)
-	// TK Make these reasonable? IIRC salt should be longer, info maybe a parameters?
-	salt := []byte("salt")
+	// TK Move salt and info out of library, into API option functions
+	digest := sha256.New()
+	digest.Write([]byte("TDF"))
+	salt := digest.Sum(nil)
 	return ECEncryptor{pub, ek, salt, nil}, err
 }
 

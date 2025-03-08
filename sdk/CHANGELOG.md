@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.29](https://github.com/opentdf/platform/compare/sdk/v0.3.28...sdk/v0.3.29) (2025-03-08)
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#1968](https://github.com/opentdf/platform/issues/1968)) ([7084061](https://github.com/opentdf/platform/commit/7084061da604c7c1a37cc91b50141436ff7d2595))
+* **core:** Autobump sdk ([#1972](https://github.com/opentdf/platform/issues/1972)) ([7258f5d](https://github.com/opentdf/platform/commit/7258f5d4b45c37ef035ec7659747d6615ea8d54f))
+* **core:** Updates ec-wrapped to newer salt ([#1961](https://github.com/opentdf/platform/issues/1961)) ([0e17968](https://github.com/opentdf/platform/commit/0e17968e4bd4e69ddf7f676733327d6f0e0e36f0))
+* Service utilize `httputil.SafeHttpClient` ([#1926](https://github.com/opentdf/platform/issues/1926)) ([af32700](https://github.com/opentdf/platform/commit/af32700d37af4a8b2b354aefad56f05781e4ecd1))
+
 ## [0.3.28](https://github.com/opentdf/platform/compare/sdk/v0.3.27...sdk/v0.3.28) (2025-02-26)
 
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.40](https://github.com/opentdf/platform/compare/service/v0.4.39...service/v0.4.40) (2025-03-10)
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#1970](https://github.com/opentdf/platform/issues/1970)) ([c0bbb11](https://github.com/opentdf/platform/commit/c0bbb11042b7cae5317e19e8e8333d4eff2008c8))
+* **core:** Autobump service ([#1976](https://github.com/opentdf/platform/issues/1976)) ([c79fe0d](https://github.com/opentdf/platform/commit/c79fe0daf4742277e7cd177cf6ca565cbe3c9e47))
+* **core:** Fixes merge fail in bulk logic ([#1966](https://github.com/opentdf/platform/issues/1966)) ([c93bf62](https://github.com/opentdf/platform/commit/c93bf62c8fc39bf5c4f64386f37067e689024001))
+* **policy:** remove new public keys rpc's ([#1962](https://github.com/opentdf/platform/issues/1962)) ([5049bab](https://github.com/opentdf/platform/commit/5049baba20ddcefa40c280a18e5dd8ef754b7e22))
+* Service utilize `httputil.SafeHttpClient` ([#1926](https://github.com/opentdf/platform/issues/1926)) ([af32700](https://github.com/opentdf/platform/commit/af32700d37af4a8b2b354aefad56f05781e4ecd1))
+
 ## [0.4.39](https://github.com/opentdf/platform/compare/service/v0.4.38...service/v0.4.39) (2025-02-27)
 
 

@@ -7,6 +7,7 @@ import (
 	claims "github.com/opentdf/platform/service/entityresolution/claims"
 	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type ERSConfig struct {
@@ -20,6 +21,7 @@ const (
 
 type EntityResolution struct {
 	entityresolutionconnect.EntityResolutionServiceHandler
+	trace.Tracer
 }
 
 func NewRegistration() *serviceregistry.Service[entityresolutionconnect.EntityResolutionServiceHandler] {
@@ -37,12 +39,15 @@ func NewRegistration() *serviceregistry.Service[entityresolutionconnect.EntityRe
 				}
 				if inputConfig.Mode == ClaimsMode {
 					claimsSVC, claimsHandler := claims.RegisterClaimsERS(srp.Config, srp.Logger)
+					claimsSVC.Tracer = srp.Tracer
 					return EntityResolution{EntityResolutionServiceHandler: claimsSVC}, claimsHandler
 				}
 
 				// Default to keycloak ERS
 				kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger)
-				return EntityResolution{EntityResolutionServiceHandler: kcSVC}, kcHandler
+				kcSVC.Tracer = srp.Tracer
+
+				return EntityResolution{EntityResolutionServiceHandler: kcSVC, Tracer: srp.Tracer}, kcHandler
 			},
 		},
 	}

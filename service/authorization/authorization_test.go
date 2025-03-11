@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"go.opentelemetry.io/otel/trace/noop"
+
 	"connectrpc.com/connect"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/opentdf/platform/protocol/go/authorization"
@@ -282,11 +284,14 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	}
 
 	as := AuthorizationService{
-		logger: logger, sdk: &otdf.SDK{
-			SubjectMapping: &mySubjectMappingClient{},
-			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		logger: logger,
+		sdk: &otdf.SDK{
+			SubjectMapping:  &mySubjectMappingClient{},
+			Attributes:      &myAttributesClient{},
+			EntityResoution: &myERSClient{},
 		},
-		eval: prepared,
+		eval:   prepared,
+		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
 	resp, err := as.GetDecisions(ctxb, &req)
@@ -451,7 +456,8 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 			SubjectMapping: &mySubjectMappingClient{},
 			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
 		},
-		eval: prepared,
+		eval:   prepared,
+		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
 	resp, err := as.GetDecisions(ctxb, &req)
@@ -550,7 +556,8 @@ func Test_GetDecisionsAllOfWithEnvironmental_Pass(t *testing.T) {
 			SubjectMapping: &mySubjectMappingClient{},
 			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
 		},
-		eval: prepared,
+		eval:   prepared,
+		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
 	resp, err := as.GetDecisions(ctxb, &req)
@@ -646,7 +653,8 @@ func Test_GetDecisionsAllOfWithEnvironmental_Fail(t *testing.T) {
 			SubjectMapping: &mySubjectMappingClient{},
 			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
 		},
-		eval: prepared,
+		eval:   prepared,
+		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
 	resp, err := as.GetDecisions(ctxb, &req)
@@ -720,7 +728,8 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 			SubjectMapping: &mySubjectMappingClient{},
 			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
 		},
-		eval: prepared,
+		eval:   prepared,
+		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
 	req := connect.Request[authorization.GetEntitlementsRequest]{
@@ -793,7 +802,8 @@ func Test_GetEntitlementsFqnCasing(t *testing.T) {
 			SubjectMapping: &mySubjectMappingClient{},
 			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
 		},
-		eval: prepared,
+		eval:   prepared,
+		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
 	req := connect.Request[authorization.GetEntitlementsRequest]{
@@ -872,7 +882,8 @@ func Test_GetEntitlements_HandlesPagination(t *testing.T) {
 			Attributes:      &paginatedMockAttributesClient{},
 			EntityResoution: &myERSClient{},
 		},
-		eval: prepared,
+		eval:   prepared,
+		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
 	req := connect.Request[authorization.GetEntitlementsRequest]{
@@ -963,7 +974,8 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 			SubjectMapping: &mySubjectMappingClient{},
 			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
 		},
-		eval: prepared,
+		eval:   prepared,
+		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
 	withHierarchy := true
@@ -1204,7 +1216,8 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 			SubjectMapping: &mySubjectMappingClient{},
 			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
 		},
-		eval: prepared,
+		eval:   prepared,
+		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
 	///////////// TEST1: Only empty string /////////////
@@ -1411,7 +1424,8 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 			SubjectMapping: &mySubjectMappingClient{},
 			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
 		},
-		eval: prepared,
+		eval:   prepared,
+		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
 	resp, err := as.GetDecisions(ctxb, &req)
@@ -1689,7 +1703,8 @@ func Test_GetDecisions_Empty_EC_RA(t *testing.T) {
 			SubjectMapping: &mySubjectMappingClient{},
 			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
 		},
-		eval: prepared,
+		eval:   prepared,
+		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
 	///////////// Test Cases /////////////////////

@@ -168,7 +168,7 @@ func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRew
 
 func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]kaoResult, error) {
 	if k.sessionKey == nil {
-		return nil, fmt.Errorf("session key is nil")
+		return nil, errors.New("session key is nil")
 	}
 	pubKey, err := k.sessionKey.PublicKeyInPemFormat()
 	if err != nil {
@@ -304,7 +304,7 @@ func (k *KASClient) getRewrapRequest(reqs []*kas.UnsignedRewrapRequest_WithPolic
 
 	requestBodyJSON, err := protojson.Marshal(requestBody)
 	if err != nil {
-		return nil, fmt.Errorf("Error marshaling request body: %w", err)
+		return nil, fmt.Errorf("error marshaling request body: %w", err)
 	}
 
 	now := time.Now()

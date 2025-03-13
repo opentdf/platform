@@ -1,6 +1,6 @@
 module github.com/opentdf/platform/protocol/go
 
-go 1.21
+go 1.23
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.34.1-20240508200655-46a4cf4ba109.1

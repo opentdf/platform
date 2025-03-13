@@ -1,6 +1,6 @@
 module github.com/opentdf/platform/examples
 
-go 1.21
+go 1.23
 
 require (
 	github.com/opentdf/platform/lib/ocrypto v0.1.9

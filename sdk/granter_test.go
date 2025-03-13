@@ -381,8 +381,7 @@ func TestConfigurationServicePutGet(t *testing.T) {
 			grants, err := newGranterFromAttributes(newKasKeyCache(), v...)
 			require.NoError(t, err)
 			assert.Len(t, grants.grants, tc.size)
-			foundGrantNames := slices.AppendSeq(make([]string, 0, len(grants.grants)), maps.Keys(grants.grants))
-			assert.Subset(t, policyToStringKeys(tc.policy), foundGrantNames)
+			assert.Subset(t, policyToStringKeys(tc.policy), slices.Collect(maps.Keys(grants.grants)))
 			actualKases := make(map[string]bool)
 			for _, g := range grants.grants {
 				require.NotNil(t, g)
@@ -390,8 +389,7 @@ func TestConfigurationServicePutGet(t *testing.T) {
 					actualKases[k] = true
 				}
 			}
-			foundKasNames := slices.AppendSeq(make([]string, 0, len(actualKases)), maps.Keys(actualKases))
-			assert.ElementsMatch(t, tc.kases, foundKasNames)
+			assert.ElementsMatch(t, tc.kases, slices.Collect(maps.Keys(actualKases)))
 		})
 	}
 }

@@ -318,16 +318,16 @@ jobs:
           cache: false
       - name: check service licenses
         run: >
-          $(go env GOROOT)/bin/go run github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
+          "$(go env GOROOT)"/bin/go run github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
           check --disallowed_types=forbidden --include_tests
           ./service
       - name: check sdk licenses
         run: >
-          $(go env GOROOT)/bin/go run github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
+          "$(go env GOROOT)"/bin/go run github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
           check --disallowed_types=forbidden --include_tests
           ./sdk
       - name: check examples licenses
         run: >
-          $(go env GOROOT)/bin/go run github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
+          "$(go env GOROOT)"/bin/go run github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
           check --disallowed_types=forbidden --include_tests
           ./examples

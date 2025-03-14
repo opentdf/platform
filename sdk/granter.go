@@ -398,7 +398,7 @@ func (r granter) plan(defaultKas []string, genSplitID func() string) ([]keySplit
 		// default behavior: split key across all default kases
 		switch len(defaultKas) {
 		case 0:
-			return nil, fmt.Errorf("no default KAS specified; required for grantless plans")
+			return nil, errors.New("no default KAS specified; required for grantless plans")
 		case 1:
 			return []keySplitStep{{KAS: defaultKas[0]}}, nil
 		default:

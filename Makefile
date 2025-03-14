@@ -28,10 +28,10 @@ fmt:
 	for m in $(HAND_MODS); do (cd $$m && find ./ -name \*.go | xargs goimports -w) || exit 1; done
 
 tidy:
-	for m in $(HAND_MODS); do (cd $$m && go mod tidy) || exit 1; done
+	for m in $(MODS); do (cd $$m && go mod tidy) || exit 1; done
 
 license:
-	for m in $(HAND_MODS); do (cd $$m && go run github.com/google/go-licenses@v1.6.0 check --disallowed_types=forbidden --include_tests ./) || exit 1; done
+	for m in $(MODS); do (cd $$m && go run github.com/google/go-licenses@v1.6.0 check --disallowed_types=forbidden --include_tests ./) || exit 1; done
 
 lint: proto-lint go-lint
 

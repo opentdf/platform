@@ -326,6 +326,7 @@ func TestStandardPublicKeyHandlerWithEc256(t *testing.T) {
 		CryptoProvider: c,
 		KASConfig:      kasCfg,
 		Logger:         logger.CreateTestLogger(),
+		Tracer:         noop.NewTracerProvider().Tracer(""),
 	}
 
 	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{
@@ -360,6 +361,7 @@ func TestStandardPublicKeyHandlerV2WithEc256(t *testing.T) {
 		CryptoProvider: c,
 		KASConfig:      kasCfg,
 		Logger:         logger.CreateTestLogger(),
+		Tracer:         noop.NewTracerProvider().Tracer(""),
 	}
 
 	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{

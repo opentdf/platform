@@ -19,7 +19,7 @@ const (
 	ErrPublicKeyMarshal  = Error("public key marshal error")
 )
 
-func (p Provider) lookupKid(ctx context.Context, algorithm string) (string, error) {
+func (p *Provider) lookupKid(ctx context.Context, algorithm string) (string, error) {
 	if len(p.KASConfig.Keyring) == 0 {
 		p.Logger.WarnContext(ctx, "no default keys found", "algorithm", algorithm)
 		return "", connect.NewError(connect.CodeNotFound, errors.Join(ErrConfig, errors.New("no default keys configured")))
@@ -34,7 +34,7 @@ func (p Provider) lookupKid(ctx context.Context, algorithm string) (string, erro
 	return "", connect.NewError(connect.CodeNotFound, errors.Join(ErrConfig, errors.New("no default key for algorithm")))
 }
 
-func (p Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kaspb.LegacyPublicKeyRequest]) (*connect.Response[wrapperspb.StringValue], error) {
+func (p *Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kaspb.LegacyPublicKeyRequest]) (*connect.Response[wrapperspb.StringValue], error) {
 	algorithm := req.Msg.GetAlgorithm()
 	if algorithm == "" {
 		algorithm = security.AlgorithmRSA2048
@@ -70,7 +70,7 @@ func (p Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kasp
 	return connect.NewResponse(&wrapperspb.StringValue{Value: pem}), nil
 }
 
-func (p Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.PublicKeyRequest]) (*connect.Response[kaspb.PublicKeyResponse], error) {
+func (p *Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.PublicKeyRequest]) (*connect.Response[kaspb.PublicKeyResponse], error) {
 	ctx, span := p.Tracer.Start(ctx, "PublicKey")
 	defer span.End()
 

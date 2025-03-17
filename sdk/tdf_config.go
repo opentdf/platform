@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -229,7 +230,7 @@ func WithAutoconfigure(enable bool) TDFOption {
 func WithWrappingKeyAlg(keyType ocrypto.KeyType) TDFOption {
 	return func(c *TDFConfig) error {
 		if c.keyType == "" {
-			return fmt.Errorf("key type missing")
+			return errors.New("key type missing")
 		}
 		c.keyType = keyType
 		return nil
@@ -303,7 +304,7 @@ func WithDisableAssertionVerification(disable bool) TDFReaderOption {
 func WithSessionKeyType(keyType ocrypto.KeyType) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		if c.keyType == "" {
-			return fmt.Errorf("key type missing")
+			return errors.New("key type missing")
 		}
 		c.keyType = keyType
 		return nil

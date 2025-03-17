@@ -70,20 +70,20 @@ func (a Assertion) Verify(key AssertionKey) (string, string, error) {
 	}
 	hashClaim, found := tok.Get(kAssertionHash)
 	if !found {
-		return "", "", fmt.Errorf("hash claim not found")
+		return "", "", errors.New("hash claim not found")
 	}
 	hash, ok := hashClaim.(string)
 	if !ok {
-		return "", "", fmt.Errorf("hash claim is not a string")
+		return "", "", errors.New("hash claim is not a string")
 	}
 
 	sigClaim, found := tok.Get(kAssertionSignature)
 	if !found {
-		return "", "", fmt.Errorf("signature claim not found")
+		return "", "", errors.New("signature claim not found")
 	}
 	sig, ok := sigClaim.(string)
 	if !ok {
-		return "", "", fmt.Errorf("signature claim is not a string")
+		return "", "", errors.New("signature claim is not a string")
 	}
 	return hash, sig, nil
 }
@@ -268,7 +268,7 @@ type AssertionVerificationKeys struct {
 	Keys map[string]AssertionKey
 }
 
-// Returns the key for the given assertion ID or the default key if the key is not found.
+// Get returns the key for the given assertion ID or the default key if the key is not found.
 // If the default key is not set, it returns error.
 func (k AssertionVerificationKeys) Get(assertionID string) (AssertionKey, error) {
 	if key, ok := k.Keys[assertionID]; ok {

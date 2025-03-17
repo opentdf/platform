@@ -3,7 +3,9 @@ package sdk
 import (
 	"context"
 	"fmt"
+	"maps"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -11,7 +13,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/maps"
 	"google.golang.org/grpc"
 )
 
@@ -380,7 +381,7 @@ func TestConfigurationServicePutGet(t *testing.T) {
 			grants, err := newGranterFromAttributes(newKasKeyCache(), v...)
 			require.NoError(t, err)
 			assert.Len(t, grants.grants, tc.size)
-			assert.Subset(t, policyToStringKeys(tc.policy), maps.Keys(grants.grants))
+			assert.Subset(t, policyToStringKeys(tc.policy), slices.Collect(maps.Keys(grants.grants)))
 			actualKases := make(map[string]bool)
 			for _, g := range grants.grants {
 				require.NotNil(t, g)
@@ -388,7 +389,7 @@ func TestConfigurationServicePutGet(t *testing.T) {
 					actualKases[k] = true
 				}
 			}
-			assert.ElementsMatch(t, tc.kases, maps.Keys(actualKases))
+			assert.ElementsMatch(t, tc.kases, slices.Collect(maps.Keys(actualKases)))
 		})
 	}
 }

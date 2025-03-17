@@ -3,6 +3,7 @@ package sdk
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -228,7 +229,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		}
 
 		if int64(n) != readSize {
-			return nil, fmt.Errorf("io.ReadSeeker.Read size mismatch")
+			return nil, errors.New("io.ReadSeeker.Read size mismatch")
 		}
 
 		cipherData, err := tdfObject.aesGcm.Encrypt(readBuf.Bytes()[:readSize])
@@ -579,7 +580,10 @@ func generateWrapKeyWithEC(mode ocrypto.ECCMode, kasPublicKey string, symKey []b
 		return ecKeyWrappedKeyInfo{}, fmt.Errorf("ocrypto.ComputeECDHKey failed:%w", err)
 	}
 
-	sessionKey, err := ocrypto.CalculateHKDF([]byte("salt"), ecdhKey)
+	digest := sha256.New()
+	digest.Write([]byte("TDF"))
+	salt := digest.Sum(nil)
+	sessionKey, err := ocrypto.CalculateHKDF(salt, ecdhKey)
 	if err != nil {
 		return ecKeyWrappedKeyInfo{}, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
 	}
@@ -658,7 +662,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 			return nil, err
 		}
 		if !valid {
-			return nil, fmt.Errorf("manifest schema validation failed")
+			return nil, errors.New("manifest schema validation failed")
 		}
 	}
 
@@ -1207,7 +1211,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		}
 		result, ok := policyRes["policy"]
 		if !ok {
-			err = fmt.Errorf("could not find policy in rewrap response")
+			err = errors.New("could not find policy in rewrap response")
 			reqFail(err, req)
 		}
 		kaoResults = append(kaoResults, result...)
@@ -1226,7 +1230,7 @@ func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm, isLe
 		return string(hmac), nil
 	}
 	if kGMACPayloadLength > len(data) {
-		return "", fmt.Errorf("fail to create gmac signature")
+		return "", errors.New("fail to create gmac signature")
 	}
 
 	if isLegacyTDF {

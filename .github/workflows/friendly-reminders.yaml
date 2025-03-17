@@ -9,13 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Extract go version
-        id: go-version
-        run: |
-          echo "go-version=$(go work edit --json | jq -r '.Go')" >>"$GITHUB_OUTPUT"
       - uses: actions/setup-go@v5
         with:
-          go-version: ${{ steps.go-version.outputs.go-version }}
+          go-version-file: 'service/go.mod'
       
       - name: Check Go Mod Tidy
         id: go-mod-tidy

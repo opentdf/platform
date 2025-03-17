@@ -243,7 +243,7 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 	}
 
 	if c.certExchange != nil && c.tokenExchange != nil {
-		return nil, fmt.Errorf("cannot do both token exchange and certificate exchange")
+		return nil, errors.New("cannot do both token exchange and certificate exchange")
 	}
 
 	if c.dpopKey == nil {

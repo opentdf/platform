@@ -23,7 +23,7 @@ jobs:
       - name: 'Setup Go'
         uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
         with:
-          go-version: '1.22.12'
+          go-version: '1.23'
           check-latest: false
           cache-dependency-path: |
             service/go.sum
@@ -64,7 +64,7 @@ jobs:
           name: code-coverage-report
 
       - name: 'SonarCloud Scan'
-        uses: SonarSource/sonarcloud-github-action@383f7e52eae3ab0510c3cb0e7d9d150bbaeab838 #v3.1.0
+        uses: SonarSource/sonarqube-scan-action@0303d6b62e310685c0e34d0b9cde218036885c4d #v5.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

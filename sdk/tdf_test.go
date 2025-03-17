@@ -4,10 +4,13 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"log/slog"
@@ -205,6 +208,36 @@ uOnQR2c7Dix39LZQCiEfPSUnTAKJCyMpolky7Vq31PsPKk+gK19XftfH/Aul21vt
 ZwVW7fLwZ2SSmC9cOjSkzZw/eDwwIRNgo94OL4mw5cXSPOuMeO8Tugc6LO4v91SO
 yg==
 -----END CERTIFICATE-----`
+	mockECPrivateKey1 = `-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgokydHKV9HW88nqn9
+2U2J1AqvcjrLDRCH6NBdNVqYLJOhRANCAASu1haeL6ckVfALALUlJKsehW8xomA9
+dcWMuYTECCukuGCklqiD0ofQAo+stVTRjen+zxM7C6MJaHdsbE4Pf088
+-----END PRIVATE KEY-----`
+	mockECPublicKey1 = `-----BEGIN CERTIFICATE-----
+MIIBcTCCARegAwIBAgIURFydDqs4150ytI73sMRmya2fvTMwCgYIKoZIzj0EAwIw
+DjEMMAoGA1UEAwwDa2FzMB4XDTI0MDYxMTAxNTU0N1oXDTI1MDYxMTAxNTU0N1ow
+DjEMMAoGA1UEAwwDa2FzMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAErtYWni+n
+JFXwCwC1JSSrHoVvMaJgPXXFjLmExAgrpLhgpJaog9KH0AKPrLVU0Y3p/s8TOwuj
+CWh3bGxOD39PPKNTMFEwHQYDVR0OBBYEFLg9mMeD25ZGvmjSYaunIPoeekzlMB8G
+A1UdIwQYMBaAFLg9mMeD25ZGvmjSYaunIPoeekzlMA8GA1UdEwEB/wQFMAMBAf8w
+CgYIKoZIzj0EAwIDSAAwRQIhALYXC70t37RlmIkRDlUTehiVEHpSQXz04wQ9Ivw+
+4h4hAiBNR3rD3KieiJaiJrCfM6TPJL7TIch7pAhMHdG6IPJMoQ==
+-----END CERTIFICATE-----`
+	mockECPrivateKey2 = `-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgokydHKV9HW88nqn9
+2U2J1AqvcjrLDRCH6NBdNVqYLJOhRANCAASu1haeL6ckVfALALUlJKsehW8xomA9
+dcWMuYTECCukuGCklqiD0ofQAo+stVTRjen+zxM7C6MJaHdsbE4Pf088
+-----END PRIVATE KEY-----`
+	mockECPublicKey2 = `-----BEGIN CERTIFICATE-----
+MIIBcTCCARegAwIBAgIURFydDqs4150ytI73sMRmya2fvTMwCgYIKoZIzj0EAwIw
+DjEMMAoGA1UEAwwDa2FzMB4XDTI0MDYxMTAxNTU0N1oXDTI1MDYxMTAxNTU0N1ow
+DjEMMAoGA1UEAwwDa2FzMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAErtYWni+n
+JFXwCwC1JSSrHoVvMaJgPXXFjLmExAgrpLhgpJaog9KH0AKPrLVU0Y3p/s8TOwuj
+CWh3bGxOD39PPKNTMFEwHQYDVR0OBBYEFLg9mMeD25ZGvmjSYaunIPoeekzlMB8G
+A1UdIwQYMBaAFLg9mMeD25ZGvmjSYaunIPoeekzlMA8GA1UdEwEB/wQFMAMBAf8w
+CgYIKoZIzj0EAwIDSAAwRQIhALYXC70t37RlmIkRDlUTehiVEHpSQXz04wQ9Ivw+
+4h4hAiBNR3rD3KieiJaiJrCfM6TPJL7TIch7pAhMHdG6IPJMoQ==
+-----END CERTIFICATE-----`
 )
 
 type TestReadAt struct {
@@ -263,6 +296,11 @@ func TestTDF(t *testing.T) {
 }
 
 func (s *TDFSuite) Test_SimpleTDF() {
+	type TestConfig struct {
+		tdfOptions     []TDFOption
+		tdfReadOptions []TDFReaderOption
+	}
+
 	metaData := []byte(`{"displayName" : "openTDF go sdk"}`)
 	attributes := []string{
 		"https://example.com/attr/Classification/value/S",
@@ -272,14 +310,37 @@ func (s *TDFSuite) Test_SimpleTDF() {
 	expectedTdfSize := int64(2058)
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
-	{
-		kasURLs := []KASInfo{
-			{
-				URL:       "https://a.kas/",
-				PublicKey: "",
-			},
-		}
 
+	// add opts ...TDFOption to  TestConfig
+	testConfigs := []TestConfig{
+		{
+			tdfOptions: []TDFOption{
+				WithKasInformation(KASInfo{
+					URL:       "https://a.kas/",
+					PublicKey: "",
+				}),
+				WithMetaData(string(metaData)),
+				WithDataAttributes(attributes...),
+			},
+			tdfReadOptions: []TDFReaderOption{},
+		},
+		{
+			tdfOptions: []TDFOption{
+				WithKasInformation(KASInfo{
+					URL:       "https://d.kas/",
+					PublicKey: "",
+				}),
+				WithMetaData(string(metaData)),
+				WithDataAttributes(attributes...),
+				WithWrappingKeyAlg(ocrypto.EC256Key),
+			},
+			tdfReadOptions: []TDFReaderOption{
+				WithSessionKeyType(ocrypto.EC256Key),
+			},
+		},
+	}
+
+	for _, config := range testConfigs {
 		inBuf := bytes.NewBufferString(plainText)
 		bufReader := bytes.NewReader(inBuf.Bytes())
 
@@ -291,18 +352,12 @@ func (s *TDFSuite) Test_SimpleTDF() {
 			s.Require().NoError(err)
 		}(fileWriter)
 
-		tdfObj, err := s.sdk.CreateTDF(fileWriter, bufReader,
-			WithKasInformation(kasURLs...),
-			WithMetaData(string(metaData)),
-			WithDataAttributes(attributes...),
-		)
+		tdfObj, err := s.sdk.CreateTDF(fileWriter, bufReader, config.tdfOptions...)
 
 		s.Require().NoError(err)
-		s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 32.0)
-	}
+		s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 36.0)
 
-	// test meta data and build meta data
-	{
+		// test meta data and build meta data
 		readSeeker, err := os.Open(tdfFilename)
 		s.Require().NoError(err)
 
@@ -311,28 +366,23 @@ func (s *TDFSuite) Test_SimpleTDF() {
 			s.Require().NoError(err)
 		}(readSeeker)
 
-		r, err := s.sdk.LoadTDF(readSeeker)
-
+		r, err := s.sdk.LoadTDF(readSeeker, config.tdfReadOptions...)
 		s.Require().NoError(err)
 
 		unencryptedMetaData, err := r.UnencryptedMetadata()
 		s.Require().NoError(err)
-
 		s.EqualValues(metaData, unencryptedMetaData)
 
 		dataAttributes, err := r.DataAttributes()
 		s.Require().NoError(err)
-
 		s.Equal(attributes, dataAttributes)
 
 		payloadKey, err := r.UnsafePayloadKeyRetrieval()
 		s.Require().NoError(err)
 		s.Len(payloadKey, kKeySize)
-	}
 
-	// test reader
-	{
-		readSeeker, err := os.Open(tdfFilename)
+		// test reader
+		readSeeker, err = os.Open(tdfFilename)
 		s.Require().NoError(err)
 
 		defer func(readSeeker *os.File) {
@@ -341,8 +391,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		}(readSeeker)
 
 		buf := make([]byte, 8)
-
-		r, err := s.sdk.LoadTDF(readSeeker)
+		r, err = s.sdk.LoadTDF(readSeeker, config.tdfReadOptions...)
 		s.Require().NoError(err)
 
 		offset := 2
@@ -353,9 +402,9 @@ func (s *TDFSuite) Test_SimpleTDF() {
 
 		expectedPlainTxt := plainText[offset : offset+n]
 		s.Equal(expectedPlainTxt, string(buf[:n]))
-	}
 
-	_ = os.Remove(tdfFilename)
+		_ = os.Remove(tdfFilename)
+	}
 }
 
 func (s *TDFSuite) Test_TDFWithAssertion() {
@@ -1613,7 +1662,7 @@ func (s *TDFSuite) startBackend() {
 		return l.Dial()
 	}
 
-	s.kases = make([]FakeKas, 10)
+	s.kases = make([]FakeKas, 12)
 
 	for i, ki := range []struct {
 		url, private, public string
@@ -1623,6 +1672,8 @@ func (s *TDFSuite) startBackend() {
 		{"https://a.kas/", mockRSAPrivateKey1, mockRSAPublicKey1},
 		{"https://b.kas/", mockRSAPrivateKey2, mockRSAPublicKey2},
 		{"https://c.kas/", mockRSAPrivateKey3, mockRSAPublicKey3},
+		{"https://d.kas/", mockECPrivateKey1, mockECPublicKey1},
+		{"https://e.kas/", mockECPrivateKey2, mockECPublicKey2},
 		{kasAu, mockRSAPrivateKey1, mockRSAPublicKey1},
 		{kasCa, mockRSAPrivateKey2, mockRSAPublicKey2},
 		{kasUk, mockRSAPrivateKey2, mockRSAPublicKey2},
@@ -1757,22 +1808,83 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse 
 			kao := kaoReq.GetKeyAccessObject()
 			wrappedKey := kaoReq.GetKeyAccessObject().GetWrappedKey()
 
-			kasPrivateKey := strings.ReplaceAll(f.privateKey, "\n\t", "\n")
-			if kao.GetKid() != "" && kao.GetKid() != f.KID {
-				// old kid
-				lk, ok := f.legakeys[kaoReq.GetKeyAccessObject().GetKid()]
-				f.s.Require().True(ok, "unable to find key [%s]", kao.GetKid())
-				kasPrivateKey = strings.ReplaceAll(lk.private, "\n\t", "\n")
+			var entityWrappedKey []byte
+			switch kaoReq.GetKeyAccessObject().GetKeyType() {
+			case "ec-wrapped":
+				// Get the ephemeral public key in PEM format
+				ephemeralPubKeyPEM := kaoReq.GetKeyAccessObject().GetEphemeralPublicKey()
+
+				// Get EC key size and convert to mode
+				keySize, err := ocrypto.GetECKeySize([]byte(ephemeralPubKeyPEM))
+				f.s.Require().NoError(err, "failed to get EC key size")
+
+				mode, err := ocrypto.ECSizeToMode(keySize)
+				f.s.Require().NoError(err, "failed to convert key size to mode")
+
+				// Parse the PEM public key
+				block, _ := pem.Decode([]byte(ephemeralPubKeyPEM))
+				f.s.Require().NoError(err, "failed to decode PEM block")
+
+				pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+				f.s.Require().NoError(err, "failed to parse public key")
+
+				ecPub, ok := pub.(*ecdsa.PublicKey)
+				if !ok {
+					f.s.Require().Error(err, "not an EC public key")
+				}
+
+				// Compress the public key
+				compressedKey, err := ocrypto.CompressedECPublicKey(mode, *ecPub)
+				f.s.Require().NoError(err, "failed to compress public key")
+
+				kasPrivateKey := strings.ReplaceAll(f.privateKey, "\n\t", "\n")
+				if kao.GetKid() != "" && kao.GetKid() != f.KID {
+					// old kid
+					lk, found := f.legakeys[kaoReq.GetKeyAccessObject().GetKid()]
+					f.s.Require().True(found, "unable to find key [%s]", kao.GetKid())
+					kasPrivateKey = strings.ReplaceAll(lk.private, "\n\t", "\n")
+				}
+
+				privateKey, err := ocrypto.ECPrivateKeyFromPem([]byte(kasPrivateKey))
+				f.s.Require().NoError(err, "failed to extract private key from PEM")
+
+				ed, err := ocrypto.NewECDecryptor(privateKey)
+				f.s.Require().NoError(err, "failed to create EC decryptor")
+
+				symmetricKey, err := ed.DecryptWithEphemeralKey(wrappedKey, compressedKey)
+				f.s.Require().NoError(err, "failed to decrypt")
+
+				asymEncrypt, err := ocrypto.FromPublicPEM(bodyData.GetClientPublicKey())
+				f.s.Require().NoError(err, "ocrypto.FromPublicPEM failed")
+
+				var sessionKey string
+				if e, found := asymEncrypt.(ocrypto.ECEncryptor); found {
+					sessionKey, err = e.PublicKeyInPemFormat()
+					f.s.Require().NoError(err, "unable to serialize ephemeral key")
+				}
+				resp.SessionPublicKey = sessionKey
+				entityWrappedKey, err = asymEncrypt.Encrypt(symmetricKey)
+				f.s.Require().NoError(err, "ocrypto.AsymEncryption.encrypt failed")
+
+			case "wrapped":
+				kasPrivateKey := strings.ReplaceAll(f.privateKey, "\n\t", "\n")
+				if kao.GetKid() != "" && kao.GetKid() != f.KID {
+					// old kid
+					lk, ok := f.legakeys[kaoReq.GetKeyAccessObject().GetKid()]
+					f.s.Require().True(ok, "unable to find key [%s]", kao.GetKid())
+					kasPrivateKey = strings.ReplaceAll(lk.private, "\n\t", "\n")
+				}
+
+				asymDecrypt, err := ocrypto.NewAsymDecryption(kasPrivateKey)
+				f.s.Require().NoError(err, "ocrypto.NewAsymDecryption failed")
+				symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
+				f.s.Require().NoError(err, "ocrypto.Decrypt failed")
+				asymEncrypt, err := ocrypto.NewAsymEncryption(bodyData.GetClientPublicKey())
+				f.s.Require().NoError(err, "ocrypto.NewAsymEncryption failed")
+				entityWrappedKey, err = asymEncrypt.Encrypt(symmetricKey)
+				f.s.Require().NoError(err, "ocrypto.encrypt failed")
 			}
 
-			asymDecrypt, err := ocrypto.NewAsymDecryption(kasPrivateKey)
-			f.s.Require().NoError(err, "ocrypto.NewAsymDecryption failed")
-			symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
-			f.s.Require().NoError(err, "ocrypto.Decrypt failed")
-			asymEncrypt, err := ocrypto.NewAsymEncryption(bodyData.GetClientPublicKey())
-			f.s.Require().NoError(err, "ocrypto.NewAsymEncryption failed")
-			entityWrappedKey, err := asymEncrypt.Encrypt(symmetricKey)
-			f.s.Require().NoError(err, "ocrypto.encrypt failed")
 			kaoResult := &kaspb.KeyAccessRewrapResult{
 				Result:            &kaspb.KeyAccessRewrapResult_KasWrappedKey{KasWrappedKey: entityWrappedKey},
 				Status:            "permit",

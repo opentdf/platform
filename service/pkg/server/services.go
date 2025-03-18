@@ -167,6 +167,12 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				}
 			}
 
+			// TODO: viper watch env to demonstrate a config change at runtime
+			if svc.OnConfigUpdate != nil {
+				// channel stuff
+				// config service
+			}
+
 			err = svc.Start(ctx, serviceregistry.RegistrationParams{
 				Config:                 cfg.Services[svc.GetNamespace()],
 				Logger:                 svcLogger,

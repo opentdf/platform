@@ -2,6 +2,7 @@ package attributes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -23,7 +24,26 @@ type AttributesService struct { //nolint:revive // AttributesService is a valid 
 	config   *policyconfig.Config
 }
 
+func OnConfigUpdate(as *AttributesService) serviceregistry.OnConfigUpdateHook {
+	return func(cfg any) error {
+		serviceCfg, ok := cfg.(serviceregistry.ServiceConfig)
+		if !ok {
+			return errors.New("attributes service config update not of type serviceregistry.ServiceConfig")
+		}
+		sharedCfg, err := policyconfig.GetSharedPolicyConfig(serviceCfg)
+		if err != nil {
+			return fmt.Errorf("failed to get shared policy config: %w", err)
+		}
+		as.config = sharedCfg
+		as.dbClient = policydb.NewClient(as.dbClient.Client, as.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
+
+		return nil
+	}
+}
+
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[attributesconnect.AttributesServiceHandler] {
+	as := new(AttributesService)
+	onUpdateConfigHook := OnConfigUpdate(as)
 	return &serviceregistry.Service[attributesconnect.AttributesServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[attributesconnect.AttributesServiceHandler]{
 			Namespace:      ns,
@@ -31,13 +51,19 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			ServiceDesc:    &attributes.AttributesService_ServiceDesc,
 			ConnectRPCFunc: attributesconnect.NewAttributesServiceHandler,
 			GRPCGateayFunc: attributes.RegisterAttributesServiceHandlerFromEndpoint,
+			OnUpdateConfig: onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (attributesconnect.AttributesServiceHandler, serviceregistry.HandlerServer) {
-				cfg := policyconfig.GetSharedPolicyConfig(srp)
-				return &AttributesService{
-					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
-					logger:   srp.Logger,
-					config:   cfg,
-				}, nil
+				logger := srp.Logger
+				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
+				if err != nil {
+					logger.Error("error getting attributes service policy config", slog.String("error", err.Error()))
+					panic(err)
+				}
+
+				as.logger = logger
+				as.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
+				as.config = cfg
+				return as, nil
 			},
 		},
 	}

@@ -39,7 +39,7 @@ var ErrEmptyStringAttribute = errors.New("resource attributes must have at least
 
 type AuthorizationService struct { //nolint:revive // AuthorizationService is a valid name for this struct
 	sdk    *otdf.SDK
-	config Config
+	config *Config
 	logger *logger.Logger
 	eval   rego.PreparedEvalQuery
 }
@@ -56,28 +56,68 @@ type CustomRego struct {
 	Query string `mapstructure:"query" json:"query" default:"data.opentdf.entitlements.attributes"`
 }
 
+func OnUpdateConfig(as *AuthorizationService) serviceregistry.OnConfigUpdateHook {
+	return func(cfg any) error {
+		err := mapstructure.Decode(cfg, as.config)
+		if err != nil {
+			return fmt.Errorf("invalid auth svc cfg [%v] %w", cfg, err)
+		}
+
+		// Build Rego PreparedEvalQuery
+
+		// Load rego from embedded file or custom path
+		var entitlementRego []byte
+		if as.config.Rego.Path != "" {
+			entitlementRego, err = os.ReadFile(as.config.Rego.Path)
+			if err != nil {
+				return fmt.Errorf("failed to read custom entitlements.rego file: %w", err)
+			}
+		} else {
+			entitlementRego, err = policies.EntitlementsRego.ReadFile("entitlements/entitlements.rego")
+			if err != nil {
+				return fmt.Errorf("failed to read entitlements.rego file: %w", err)
+			}
+		}
+
+		// Register builtin
+		subjectmappingbuiltin.SubjectMappingBuiltin()
+
+		as.eval, err = rego.New(
+			rego.Query(as.config.Rego.Query),
+			rego.Module("entitlements.rego", string(entitlementRego)),
+			rego.StrictBuiltinErrors(true),
+		).PrepareForEval(context.Background())
+		if err != nil {
+			return fmt.Errorf("failed to prepare entitlements.rego for eval: %w", err)
+		}
+		return nil
+	}
+}
+
 func NewRegistration() *serviceregistry.Service[authorizationconnect.AuthorizationServiceHandler] {
+	as := new(AuthorizationService)
+	onUpdateConfig := OnUpdateConfig(as)
+
 	return &serviceregistry.Service[authorizationconnect.AuthorizationServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[authorizationconnect.AuthorizationServiceHandler]{
 			Namespace:      "authorization",
 			ServiceDesc:    &authorization.AuthorizationService_ServiceDesc,
 			ConnectRPCFunc: authorizationconnect.NewAuthorizationServiceHandler,
 			GRPCGateayFunc: authorization.RegisterAuthorizationServiceHandlerFromEndpoint,
+			OnUpdateConfig: onUpdateConfig,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authorizationconnect.AuthorizationServiceHandler, serviceregistry.HandlerServer) {
-				var (
-					err             error
-					entitlementRego []byte
-					authZCfg        = new(Config)
-				)
+				var authZCfg = new(Config)
 
 				logger := srp.Logger
 
 				// default ERS endpoint
-				as := &AuthorizationService{sdk: srp.SDK, logger: logger}
+				as.sdk = srp.SDK
+				as.logger = logger
 				if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
 					logger.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
 				}
 
+				// Read in config defaults only on first register
 				if err := defaults.Set(authZCfg); err != nil {
 					panic(fmt.Errorf("failed to set defaults for authorization service config: %w", err))
 				}
@@ -109,35 +149,10 @@ func NewRegistration() *serviceregistry.Service[authorizationconnect.Authorizati
 
 				logger.Debug("authorization service config", slog.Any("config", *authZCfg))
 
-				// Build Rego PreparedEvalQuery
-
-				// Load rego from embedded file or custom path
-				if authZCfg.Rego.Path != "" {
-					entitlementRego, err = os.ReadFile(authZCfg.Rego.Path)
-					if err != nil {
-						panic(fmt.Errorf("failed to read custom entitlements.rego file: %w", err))
-					}
-				} else {
-					entitlementRego, err = policies.EntitlementsRego.ReadFile("entitlements/entitlements.rego")
-					if err != nil {
-						panic(fmt.Errorf("failed to read entitlements.rego file: %w", err))
-					}
+				if err := onUpdateConfig(authZCfg); err != nil {
+					logger.Error("authorization service config setting error", slog.String("error", err.Error()))
+					panic(fmt.Errorf("error setting authorization service config: %w", err))
 				}
-
-				// Register builtin
-				subjectmappingbuiltin.SubjectMappingBuiltin()
-
-				as.eval, err = rego.New(
-					rego.Query(authZCfg.Rego.Query),
-					rego.Module("entitlements.rego", string(entitlementRego)),
-					rego.StrictBuiltinErrors(true),
-				).PrepareForEval(context.Background())
-				if err != nil {
-					panic(fmt.Errorf("failed to prepare entitlements.rego for eval: %w", err))
-				}
-
-				as.config = *authZCfg
-
 				return as, nil
 			},
 		},

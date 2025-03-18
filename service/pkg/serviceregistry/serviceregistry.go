@@ -54,6 +54,8 @@ type RegistrationParams struct {
 type (
 	HandlerServer       func(ctx context.Context, mux *runtime.ServeMux) error
 	RegisterFunc[S any] func(RegistrationParams) (impl S, HandlerServer HandlerServer)
+	// Allow services to implement handling for config changes as direced by caller
+	OnConfigUpdateHook func(any) error
 )
 
 // DBRegister is a struct that holds the information needed to register a service with a database
@@ -99,6 +101,8 @@ type ServiceOptions[S any] struct {
 	// ServiceDesc is the gRPC service descriptor. For non-gRPC services, this can be mocked out,
 	// but at minimum, the ServiceName field must be set
 	ServiceDesc *grpc.ServiceDesc
+	// OnUpdateConfig is a hook to handle in-service actions when config changes
+	OnUpdateConfig OnConfigUpdateHook
 	// RegisterFunc is the function that will be called to register the service
 	RegisterFunc RegisterFunc[S]
 	// HTTPHandlerFunc is the function that will be called to register extra http handlers

@@ -2,6 +2,8 @@ package unsafe
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 
 	"connectrpc.com/connect"
@@ -22,20 +24,45 @@ type UnsafeService struct { //nolint:revive // UnsafeService is a valid name for
 	config   *policyconfig.Config
 }
 
+func OnConfigUpdate(unsafeSvc *UnsafeService) serviceregistry.OnConfigUpdateHook {
+	return func(cfg any) error {
+		serviceCfg, ok := cfg.(serviceregistry.ServiceConfig)
+		if !ok {
+			return errors.New("unsafe service config update not of type serviceregistry.ServiceConfig")
+		}
+		sharedCfg, err := policyconfig.GetSharedPolicyConfig(serviceCfg)
+		if err != nil {
+			return fmt.Errorf("failed to get shared policy config: %w", err)
+		}
+		unsafeSvc.config = sharedCfg
+		unsafeSvc.dbClient = policydb.NewClient(unsafeSvc.dbClient.Client, unsafeSvc.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
+
+		return nil
+	}
+}
+
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[unsafeconnect.UnsafeServiceHandler] {
+	unsafeSvc := new(UnsafeService)
+	onUpdateConfigHook := OnConfigUpdate(unsafeSvc)
 	return &serviceregistry.Service[unsafeconnect.UnsafeServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[unsafeconnect.UnsafeServiceHandler]{
 			Namespace:      ns,
 			DB:             dbRegister,
 			ServiceDesc:    &unsafe.UnsafeService_ServiceDesc,
 			ConnectRPCFunc: unsafeconnect.NewUnsafeServiceHandler,
+			OnUpdateConfig: onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (unsafeconnect.UnsafeServiceHandler, serviceregistry.HandlerServer) {
-				cfg := policyconfig.GetSharedPolicyConfig(srp)
-				return &UnsafeService{
-					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
-					logger:   srp.Logger,
-					config:   cfg,
-				}, nil
+				logger := srp.Logger
+				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
+				if err != nil {
+					logger.Error("error getting unsafe service policy config", slog.String("error", err.Error()))
+					panic(err)
+				}
+
+				unsafeSvc.logger = logger
+				unsafeSvc.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
+				unsafeSvc.config = cfg
+				return unsafeSvc, nil
 			},
 		},
 	}

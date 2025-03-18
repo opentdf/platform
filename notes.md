@@ -1,0 +1,21 @@
+- service
+    - provides `RegisterFunc` within result of `NewRegistration`
+    - consumes `map[string]any` config as set on `srp.Config` in opentdf
+        - maybe: `LoadConfigEnv[namespace]()(config[T], error)` ?
+    - consumes `map[string]any` config as fetched from config service in DSP
+    - provides `OnUpdateConfig` hook to reload when config changes
+    - 
+
+- opentdf server
+    - providers registration params (including config yaml `.services[namespace]`)
+    - calls svc.Start for each service
+    - has to call hook to call config service in DSP
+    - associates open config update channel to config service under service namespace
+
+- config service
+    - configuration of our PEPs and services with protos managed within the DSP repo
+    - protos still make sense because:
+        - versioned and enforced structure
+        - testing of breaking changes
+        - validation of RPCs
+        - generated UI for admin-ui

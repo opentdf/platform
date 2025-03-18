@@ -3,6 +3,7 @@ package kasregistry
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"connectrpc.com/connect"
@@ -34,7 +35,26 @@ type KeyAccessServerRegistry struct {
 	config   *policyconfig.Config
 }
 
+func OnConfigUpdate(kasrSvc *KeyAccessServerRegistry) serviceregistry.OnConfigUpdateHook {
+	return func(cfg any) error {
+		serviceCfg, ok := cfg.(serviceregistry.ServiceConfig)
+		if !ok {
+			return errors.New("keyaccessserverregistry service config update not of type serviceregistry.ServiceConfig")
+		}
+		sharedCfg, err := policyconfig.GetSharedPolicyConfig(serviceCfg)
+		if err != nil {
+			return fmt.Errorf("failed to get shared policy config: %w", err)
+		}
+		kasrSvc.config = sharedCfg
+		kasrSvc.dbClient = policydb.NewClient(kasrSvc.dbClient.Client, kasrSvc.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
+
+		return nil
+	}
+}
+
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[kasregistryconnect.KeyAccessServerRegistryServiceHandler] {
+	kasrSvc := new(KeyAccessServerRegistry)
+	onUpdateConfigHook := OnConfigUpdate(kasrSvc)
 	return &serviceregistry.Service[kasregistryconnect.KeyAccessServerRegistryServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[kasregistryconnect.KeyAccessServerRegistryServiceHandler]{
 			Namespace:      ns,
@@ -42,13 +62,19 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			ServiceDesc:    &kasr.KeyAccessServerRegistryService_ServiceDesc,
 			ConnectRPCFunc: kasregistryconnect.NewKeyAccessServerRegistryServiceHandler,
 			GRPCGateayFunc: kasr.RegisterKeyAccessServerRegistryServiceHandlerFromEndpoint,
+			OnUpdateConfig: onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasregistryconnect.KeyAccessServerRegistryServiceHandler, serviceregistry.HandlerServer) {
-				cfg := policyconfig.GetSharedPolicyConfig(srp)
-				return &KeyAccessServerRegistry{
-					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
-					logger:   srp.Logger,
-					config:   cfg,
-				}, nil
+				logger := srp.Logger
+				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
+				if err != nil {
+					logger.Error("error getting keyaccessserverregistry service policy config", slog.String("error", err.Error()))
+					panic(err)
+				}
+
+				kasrSvc.logger = logger
+				kasrSvc.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
+				kasrSvc.config = cfg
+				return kasrSvc, nil
 			},
 		},
 	}

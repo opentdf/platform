@@ -57,6 +57,39 @@ type CustomRego struct {
 	Query string `mapstructure:"query" json:"query" default:"data.opentdf.entitlements.attributes"`
 }
 
+func (as *AuthorizationService) loadRegoAndBuiltins(cfg *Config) error {
+	var (
+		entitlementRego []byte
+		err             error
+	)
+	// Build Rego PreparedEvalQuery
+	// Load rego from embedded file or custom path
+	if cfg.Rego.Path != "" {
+		entitlementRego, err = os.ReadFile(cfg.Rego.Path)
+		if err != nil {
+			return fmt.Errorf("failed to read custom entitlements.rego file: %w", err)
+		}
+	} else {
+		entitlementRego, err = policies.EntitlementsRego.ReadFile("entitlements/entitlements.rego")
+		if err != nil {
+			return fmt.Errorf("failed to read entitlements.rego file: %w", err)
+		}
+	}
+
+	// Register builtin
+	subjectmappingbuiltin.SubjectMappingBuiltin()
+
+	as.eval, err = rego.New(
+		rego.Query(cfg.Rego.Query),
+		rego.Module("entitlements.rego", string(entitlementRego)),
+		rego.StrictBuiltinErrors(true),
+	).PrepareForEval(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to prepare entitlements.rego for eval: %w", err)
+	}
+	return nil
+}
+
 func OnConfigUpdate(as *AuthorizationService) serviceregistry.OnConfigUpdateHook {
 	return func(cfg config.ServiceConfig) error {
 		err := mapstructure.Decode(cfg, as.config)
@@ -64,32 +97,8 @@ func OnConfigUpdate(as *AuthorizationService) serviceregistry.OnConfigUpdateHook
 			return fmt.Errorf("invalid auth svc cfg [%v] %w", cfg, err)
 		}
 
-		// Build Rego PreparedEvalQuery
-
-		// Load rego from embedded file or custom path
-		var entitlementRego []byte
-		if as.config.Rego.Path != "" {
-			entitlementRego, err = os.ReadFile(as.config.Rego.Path)
-			if err != nil {
-				return fmt.Errorf("failed to read custom entitlements.rego file: %w", err)
-			}
-		} else {
-			entitlementRego, err = policies.EntitlementsRego.ReadFile("entitlements/entitlements.rego")
-			if err != nil {
-				return fmt.Errorf("failed to read entitlements.rego file: %w", err)
-			}
-		}
-
-		// Register builtin
-		subjectmappingbuiltin.SubjectMappingBuiltin()
-
-		as.eval, err = rego.New(
-			rego.Query(as.config.Rego.Query),
-			rego.Module("entitlements.rego", string(entitlementRego)),
-			rego.StrictBuiltinErrors(true),
-		).PrepareForEval(context.Background())
-		if err != nil {
-			return fmt.Errorf("failed to prepare entitlements.rego for eval: %w", err)
+		if err = as.loadRegoAndBuiltins(as.config); err != nil {
+			return fmt.Errorf("failed to load rego and builtins: %w", err)
 		}
 
 		slog.Info("authorization service config updated")
@@ -149,6 +158,11 @@ func NewRegistration() *serviceregistry.Service[authorizationconnect.Authorizati
 							panic(fmt.Errorf("error validating authorization service config: %w", err))
 						}
 					}
+				}
+
+				if err := as.loadRegoAndBuiltins(authZCfg); err != nil {
+					logger.Error("failed to load rego and builtins", slog.String("error", err.Error()))
+					panic(fmt.Errorf("failed to load rego and builtins: %w", err))
 				}
 
 				logger.Debug("authorization service config", slog.Any("config", *authZCfg))

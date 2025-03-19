@@ -165,7 +165,7 @@ func NewRegistration() *serviceregistry.Service[authorizationconnect.Authorizati
 					panic(fmt.Errorf("failed to load rego and builtins: %w", err))
 				}
 
-				logger.Debug("authorization service config", slog.Any("config", *authZCfg))
+				logger.Debug("authorization service config")
 
 				return as, nil
 			},

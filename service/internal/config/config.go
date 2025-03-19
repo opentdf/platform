@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+type ConfigServices map[string]ServiceConfig
 type ServiceConfig map[string]any
 
 // Config represents the configuration settings for the service.
@@ -41,7 +42,7 @@ type Config struct {
 	SDKConfig SDKConfig `mapstructure:"sdk_config" json:"sdk_config"`
 
 	// Services represents the configuration settings for the services.
-	Services map[string]ServiceConfig `mapstructure:"services"`
+	Services ConfigServices `mapstructure:"services"`
 
 	// Trace is for configuring open telemetry based tracing.
 	Trace tracing.Config `mapstructure:"trace"`
@@ -125,21 +126,20 @@ type ViperLoader struct {
 
 // NewViperLoader creates a new Viper-based configuration loader
 func NewViperLoader(key, file string) (*ViperLoader, error) {
-	v := viper.NewWithOptions(viper.WithLogger(slog.Default()))
-
 	homedir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, errors.Join(err, ErrLoadingConfig)
 	}
 
 	// Set paths and config file info
+	v := viper.NewWithOptions(viper.WithLogger(slog.Default()))
 	v.AddConfigPath(fmt.Sprintf("%s/."+key, homedir))
 	v.AddConfigPath("." + key)
 	v.AddConfigPath(".")
 	v.SetConfigName(key)
 	v.SetConfigType("yaml")
 
-	// Default config values
+	// Default config values (non-zero)
 	v.SetDefault("server.auth.cache_refresh_interval", "15m")
 
 	// Environment variable settings
@@ -147,7 +147,8 @@ func NewViperLoader(key, file string) (*ViperLoader, error) {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
-	// Handle custom config file path
+	// Allow for a custom config file to be passed in
+	// This takes precedence over the AddConfigPath/SetConfigName
 	if file != "" {
 		v.SetConfigFile(file)
 	}
@@ -182,14 +183,14 @@ func (l *ViperLoader) Load(cfg *Config) error {
 }
 
 // Watch starts watching for configuration changes
-func (l *ViperLoader) Watch(cfg *Config) (func(func(map[string]ServiceConfig)), error) {
+func (l *ViperLoader) Watch(cfg *Config) (func(func(ConfigServices)), error) {
 	l.viper.WatchConfig()
 
 	// Create a slice to store all the hook functions
-	var configChangeHooks []func(map[string]ServiceConfig)
+	var configChangeHooks []func(ConfigServices)
 
 	// Return a function that allows registering hooks
-	onConfigChange := func(hook func(map[string]ServiceConfig)) {
+	onConfigChange := func(hook func(ConfigServices)) {
 		configChangeHooks = append(configChangeHooks, hook)
 	}
 
@@ -215,7 +216,7 @@ func (l *ViperLoader) Watch(cfg *Config) (func(func(map[string]ServiceConfig)), 
 }
 
 // LoadConfig loads configuration using the provided loader or creates a default Viper loader
-func LoadConfig(key, file string) (*Config, func(func(map[string]ServiceConfig)), error) {
+func LoadConfig(key, file string) (*Config, func(func(ConfigServices)), error) {
 	config := &Config{}
 
 	// Create default loader if none provided

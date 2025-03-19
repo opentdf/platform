@@ -49,7 +49,7 @@ func Start(f ...StartOptions) error {
 	ctx := context.Background()
 
 	slog.Debug("loading configuration")
-	cfg, err := config.LoadConfig(startConfig.ConfigKey, startConfig.ConfigFile)
+	cfg, onConfigChange, err := config.LoadConfig(startConfig.ConfigKey, startConfig.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("could not load config: %w", err)
 	}
@@ -284,7 +284,7 @@ func Start(f ...StartOptions) error {
 	defer client.Close()
 
 	logger.Info("starting services")
-	err = startServices(ctx, *cfg, otdf, client, logger, svcRegistry)
+	err = startServices(ctx, cfg, onConfigChange, otdf, client, logger, svcRegistry)
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)

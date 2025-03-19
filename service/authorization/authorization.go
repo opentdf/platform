@@ -56,8 +56,8 @@ type CustomRego struct {
 	Query string `mapstructure:"query" json:"query" default:"data.opentdf.entitlements.attributes"`
 }
 
-func OnUpdateConfig(as *AuthorizationService) serviceregistry.OnConfigUpdateHook {
-	return func(cfg any) error {
+func OnConfigUpdate(as *AuthorizationService) serviceregistry.OnConfigUpdateHook {
+	return func(cfg serviceregistry.ServiceConfig) error {
 		err := mapstructure.Decode(cfg, as.config)
 		if err != nil {
 			return fmt.Errorf("invalid auth svc cfg [%v] %w", cfg, err)
@@ -90,13 +90,16 @@ func OnUpdateConfig(as *AuthorizationService) serviceregistry.OnConfigUpdateHook
 		if err != nil {
 			return fmt.Errorf("failed to prepare entitlements.rego for eval: %w", err)
 		}
+
+		slog.Info("authorization service config updated")
+
 		return nil
 	}
 }
 
 func NewRegistration() *serviceregistry.Service[authorizationconnect.AuthorizationServiceHandler] {
 	as := new(AuthorizationService)
-	onUpdateConfig := OnUpdateConfig(as)
+	onUpdateConfig := OnConfigUpdate(as)
 
 	return &serviceregistry.Service[authorizationconnect.AuthorizationServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[authorizationconnect.AuthorizationServiceHandler]{
@@ -104,7 +107,7 @@ func NewRegistration() *serviceregistry.Service[authorizationconnect.Authorizati
 			ServiceDesc:    &authorization.AuthorizationService_ServiceDesc,
 			ConnectRPCFunc: authorizationconnect.NewAuthorizationServiceHandler,
 			GRPCGateayFunc: authorization.RegisterAuthorizationServiceHandlerFromEndpoint,
-			OnUpdateConfig: onUpdateConfig,
+			OnConfigUpdate: onUpdateConfig,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authorizationconnect.AuthorizationServiceHandler, serviceregistry.HandlerServer) {
 				var authZCfg = new(Config)
 
@@ -149,10 +152,6 @@ func NewRegistration() *serviceregistry.Service[authorizationconnect.Authorizati
 
 				logger.Debug("authorization service config", slog.Any("config", *authZCfg))
 
-				if err := onUpdateConfig(authZCfg); err != nil {
-					logger.Error("authorization service config setting error", slog.String("error", err.Error()))
-					panic(fmt.Errorf("error setting authorization service config: %w", err))
-				}
 				return as, nil
 			},
 		},

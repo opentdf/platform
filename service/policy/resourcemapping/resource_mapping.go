@@ -2,7 +2,6 @@ package resourcemapping
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -25,17 +24,15 @@ type ResourceMappingService struct { //nolint:revive // ResourceMappingService i
 }
 
 func OnConfigUpdate(rmSvc *ResourceMappingService) serviceregistry.OnConfigUpdateHook {
-	return func(cfg any) error {
-		serviceCfg, ok := cfg.(serviceregistry.ServiceConfig)
-		if !ok {
-			return errors.New("resourcemapping service config update not of type serviceregistry.ServiceConfig")
-		}
-		sharedCfg, err := policyconfig.GetSharedPolicyConfig(serviceCfg)
+	return func(cfg serviceregistry.ServiceConfig) error {
+		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
 		if err != nil {
 			return fmt.Errorf("failed to get shared policy config: %w", err)
 		}
 		rmSvc.config = sharedCfg
 		rmSvc.dbClient = policydb.NewClient(rmSvc.dbClient.Client, rmSvc.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
+
+		slog.Info("resource mapping service config updated")
 
 		return nil
 	}
@@ -51,7 +48,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			ServiceDesc:    &resourcemapping.ResourceMappingService_ServiceDesc,
 			ConnectRPCFunc: resourcemappingconnect.NewResourceMappingServiceHandler,
 			GRPCGateayFunc: resourcemapping.RegisterResourceMappingServiceHandlerFromEndpoint,
-			OnUpdateConfig: onUpdateConfigHook,
+			OnConfigUpdate: onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (resourcemappingconnect.ResourceMappingServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)

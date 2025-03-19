@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/creasty/defaults"
 	"github.com/mitchellh/mapstructure"
@@ -41,5 +42,6 @@ func GetSharedPolicyConfig(cfg serviceregistry.ServiceConfig) (*Config, error) {
 		return nil, fmt.Errorf("failed to validate policy config: %w", err)
 	}
 
+	slog.Debug("policy config", slog.Any("config", policyCfg))
 	return policyCfg, nil
 }

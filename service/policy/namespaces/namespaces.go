@@ -2,7 +2,6 @@ package namespaces
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -25,17 +24,15 @@ type NamespacesService struct { //nolint:revive // NamespacesService is a valid 
 }
 
 func OnConfigUpdate(ns *NamespacesService) serviceregistry.OnConfigUpdateHook {
-	return func(cfg any) error {
-		serviceCfg, ok := cfg.(serviceregistry.ServiceConfig)
-		if !ok {
-			return errors.New("namespaces service config update not of type serviceregistry.ServiceConfig")
-		}
-		sharedCfg, err := policyconfig.GetSharedPolicyConfig(serviceCfg)
+	return func(cfg serviceregistry.ServiceConfig) error {
+		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
 		if err != nil {
 			return fmt.Errorf("failed to get shared policy config: %w", err)
 		}
 		ns.config = sharedCfg
 		ns.dbClient = policydb.NewClient(ns.dbClient.Client, ns.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
+
+		slog.Info("namespace service config updated")
 
 		return nil
 	}
@@ -51,7 +48,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			ServiceDesc:    &namespaces.NamespaceService_ServiceDesc,
 			ConnectRPCFunc: namespacesconnect.NewNamespaceServiceHandler,
 			GRPCGateayFunc: namespaces.RegisterNamespaceServiceHandlerFromEndpoint,
-			OnUpdateConfig: onUpdateConfigHook,
+			OnConfigUpdate: onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (namespacesconnect.NamespaceServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)

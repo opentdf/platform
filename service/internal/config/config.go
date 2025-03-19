@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/creasty/defaults"
+	"github.com/fsnotify/fsnotify"
 	"github.com/go-playground/validator/v10"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
@@ -73,69 +74,11 @@ type Connection struct {
 	Insecure bool `mapstructure:"insecure" json:"insecure" default:"false" validate:"boolean"`
 }
 
-type Error string
-
-func (e Error) Error() string {
-	return string(e)
-}
-
-const (
-	ErrLoadingConfig       Error = "error loading config"
-	ErrUnmarshallingConfig Error = "error unmarshalling config"
-	ErrSettingConfig       Error = "error setting config"
+var (
+	ErrLoadingConfig       = errors.New("error loading config")
+	ErrUnmarshallingConfig = errors.New("error unmarshalling config")
+	ErrSettingConfig       = errors.New("error setting config")
 )
-
-// LoadConfig Load config with viper.
-func LoadConfig(key, file string) (*Config, error) {
-	config := &Config{}
-
-	homedir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, errors.Join(err, ErrLoadingConfig)
-	}
-
-	v := viper.NewWithOptions(viper.WithLogger(slog.Default()))
-	v.AddConfigPath(fmt.Sprintf("%s/."+key, homedir))
-	v.AddConfigPath("." + key)
-	v.AddConfigPath(".")
-	v.SetConfigName(key)
-	v.SetConfigType("yaml")
-
-	// Default config values (non-zero)
-	v.SetDefault("server.auth.cache_refresh_interval", "15m")
-
-	v.SetEnvPrefix(key)
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	v.AutomaticEnv()
-
-	// Allow for a custom config file to be passed in
-	// This takes precedence over the AddConfigPath/SetConfigName
-	if file != "" {
-		v.SetConfigFile(file)
-	}
-
-	if err := v.ReadInConfig(); err != nil {
-		return nil, errors.Join(err, ErrLoadingConfig)
-	}
-
-	if err := defaults.Set(config); err != nil {
-		return nil, errors.Join(err, ErrSettingConfig)
-	}
-
-	err = v.Unmarshal(config)
-	if err != nil {
-		return nil, errors.Join(err, ErrUnmarshallingConfig)
-	}
-
-	// Validate Config
-	validate := validator.New()
-
-	if err := validate.Struct(config); err != nil {
-		return nil, errors.Join(err, ErrUnmarshallingConfig)
-	}
-
-	return config, nil
-}
 
 // LogValue returns a slog.Value representation of the config.
 // We exclude logging service configuration as it may contain sensitive information.
@@ -163,4 +106,133 @@ func (c SDKConfig) LogValue() slog.Value {
 		slog.String("client_id", c.ClientID),
 		slog.String("client_secret", "[REDACTED]"),
 	)
+}
+
+// ConfigLoader defines the interface for loading and managing configuration
+type ConfigLoader interface {
+	// Load loads the configuration into the provided struct
+	Load(cfg *Config) error
+
+	// Watch starts watching for configuration changes
+	Watch(cfg *Config) (func(func(fsnotify.Event)), error)
+}
+
+// ViperLoader implements ConfigLoader using Viper
+type ViperLoader struct {
+	viper *viper.Viper
+}
+
+// NewViperLoader creates a new Viper-based configuration loader
+func NewViperLoader(key, file string) (*ViperLoader, error) {
+	v := viper.NewWithOptions(viper.WithLogger(slog.Default()))
+
+	homedir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, errors.Join(err, ErrLoadingConfig)
+	}
+
+	// Set paths and config file info
+	v.AddConfigPath(fmt.Sprintf("%s/."+key, homedir))
+	v.AddConfigPath("." + key)
+	v.AddConfigPath(".")
+	v.SetConfigName(key)
+	v.SetConfigType("yaml")
+
+	// Default config values
+	v.SetDefault("server.auth.cache_refresh_interval", "15m")
+
+	// Environment variable settings
+	v.SetEnvPrefix(key)
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
+
+	// Handle custom config file path
+	if file != "" {
+		v.SetConfigFile(file)
+	}
+
+	// Read the config file
+	if err := v.ReadInConfig(); err != nil {
+		return nil, errors.Join(err, ErrLoadingConfig)
+	}
+
+	return &ViperLoader{viper: v}, nil
+}
+
+// Load loads the configuration into the provided struct
+func (l *ViperLoader) Load(cfg *Config) error {
+	// Set defaults
+	if err := defaults.Set(cfg); err != nil {
+		return errors.Join(err, ErrSettingConfig)
+	}
+
+	// Unmarshal config
+	if err := l.viper.Unmarshal(cfg); err != nil {
+		return errors.Join(err, ErrUnmarshallingConfig)
+	}
+
+	// Validate config
+	validate := validator.New()
+	if err := validate.Struct(cfg); err != nil {
+		return errors.Join(err, ErrUnmarshallingConfig)
+	}
+
+	return nil
+}
+
+// Watch starts watching for configuration changes
+func (l *ViperLoader) Watch(cfg *Config) (func(func(fsnotify.Event)), error) {
+	l.viper.WatchConfig()
+
+	// Create a slice to store all the hook functions
+	var configChangeHooks []func(fsnotify.Event)
+
+	// Return a function that allows registering hooks
+	onConfigChange := func(hook func(fsnotify.Event)) {
+		configChangeHooks = append(configChangeHooks, hook)
+	}
+
+	// Register only one viper config change handler
+	l.viper.OnConfigChange(func(e fsnotify.Event) {
+		slog.Info("Config file changed", "file", e.Name)
+
+		// First reload and validate the config
+		if err := l.Load(cfg); err != nil {
+			slog.Error("Error reloading config", "error", err)
+			return
+		}
+
+		slog.Info("Config successfully updated")
+
+		// Then execute all registered hooks with the event
+		for _, hook := range configChangeHooks {
+			hook(e)
+		}
+	})
+
+	return onConfigChange, nil
+}
+
+// LoadConfig loads configuration using the provided loader or creates a default Viper loader
+func LoadConfig(key, file string) (*Config, func(func(fsnotify.Event)), error) {
+	config := &Config{}
+
+	// Create default loader if none provided
+	loader, err := NewViperLoader(key, file)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Load initial configuration
+	if err := loader.Load(config); err != nil {
+		return nil, nil, err
+	}
+
+	// Watch for changes
+	onConfigChange, err := loader.Watch(config)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return config, onConfigChange, nil
 }

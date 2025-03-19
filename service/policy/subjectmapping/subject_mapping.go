@@ -2,7 +2,6 @@ package subjectmapping
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -25,17 +24,15 @@ type SubjectMappingService struct { //nolint:revive // SubjectMappingService is 
 }
 
 func OnConfigUpdate(smSvc *SubjectMappingService) serviceregistry.OnConfigUpdateHook {
-	return func(cfg any) error {
-		serviceCfg, ok := cfg.(serviceregistry.ServiceConfig)
-		if !ok {
-			return errors.New("subjectmapping service config update not of type serviceregistry.ServiceConfig")
-		}
-		sharedCfg, err := policyconfig.GetSharedPolicyConfig(serviceCfg)
+	return func(cfg serviceregistry.ServiceConfig) error {
+		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
 		if err != nil {
 			return fmt.Errorf("failed to get shared policy config: %w", err)
 		}
 		smSvc.config = sharedCfg
 		smSvc.dbClient = policydb.NewClient(smSvc.dbClient.Client, smSvc.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
+		
+		slog.Info("subject mapping service config updated")
 
 		return nil
 	}
@@ -51,7 +48,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			ServiceDesc:    &sm.SubjectMappingService_ServiceDesc,
 			ConnectRPCFunc: subjectmappingconnect.NewSubjectMappingServiceHandler,
 			GRPCGateayFunc: sm.RegisterSubjectMappingServiceHandlerFromEndpoint,
-			OnUpdateConfig: onUpdateConfigHook,
+			OnConfigUpdate: onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (subjectmappingconnect.SubjectMappingServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)

@@ -36,17 +36,15 @@ type KeyAccessServerRegistry struct {
 }
 
 func OnConfigUpdate(kasrSvc *KeyAccessServerRegistry) serviceregistry.OnConfigUpdateHook {
-	return func(cfg any) error {
-		serviceCfg, ok := cfg.(serviceregistry.ServiceConfig)
-		if !ok {
-			return errors.New("keyaccessserverregistry service config update not of type serviceregistry.ServiceConfig")
-		}
-		sharedCfg, err := policyconfig.GetSharedPolicyConfig(serviceCfg)
+	return func(cfg serviceregistry.ServiceConfig) error {
+		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
 		if err != nil {
 			return fmt.Errorf("failed to get shared policy config: %w", err)
 		}
 		kasrSvc.config = sharedCfg
 		kasrSvc.dbClient = policydb.NewClient(kasrSvc.dbClient.Client, kasrSvc.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
+
+		slog.Info("keyaccessserverregistry service config updated")
 
 		return nil
 	}
@@ -62,7 +60,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			ServiceDesc:    &kasr.KeyAccessServerRegistryService_ServiceDesc,
 			ConnectRPCFunc: kasregistryconnect.NewKeyAccessServerRegistryServiceHandler,
 			GRPCGateayFunc: kasr.RegisterKeyAccessServerRegistryServiceHandlerFromEndpoint,
-			OnUpdateConfig: onUpdateConfigHook,
+			OnConfigUpdate: onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasregistryconnect.KeyAccessServerRegistryServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)

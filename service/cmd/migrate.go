@@ -121,7 +121,7 @@ func migrateService(cmd *cobra.Command, args []string, migrationFunc func(*db.Cl
 func migrateDBClient(cmd *cobra.Command, opts ...db.OptsFunc) (*db.Client, error) {
 	configFile, _ := cmd.Flags().GetString(configFileFlag)
 	configKey, _ := cmd.Flags().GetString(configKeyFlag)
-	conf, err := config.LoadConfig(configKey, configFile)
+	conf, _, err := config.LoadConfig(configKey, configFile)
 	if err != nil {
 		panic(fmt.Errorf("could not load config: %w", err))
 	}

@@ -2,7 +2,6 @@ package attributes
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -25,17 +24,15 @@ type AttributesService struct { //nolint:revive // AttributesService is a valid 
 }
 
 func OnConfigUpdate(as *AttributesService) serviceregistry.OnConfigUpdateHook {
-	return func(cfg any) error {
-		serviceCfg, ok := cfg.(serviceregistry.ServiceConfig)
-		if !ok {
-			return errors.New("attributes service config update not of type serviceregistry.ServiceConfig")
-		}
-		sharedCfg, err := policyconfig.GetSharedPolicyConfig(serviceCfg)
+	return func(cfg serviceregistry.ServiceConfig) error {
+		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
 		if err != nil {
 			return fmt.Errorf("failed to get shared policy config: %w", err)
 		}
 		as.config = sharedCfg
 		as.dbClient = policydb.NewClient(as.dbClient.Client, as.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
+		
+		slog.Info("attributes service config updated")
 
 		return nil
 	}
@@ -51,7 +48,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			ServiceDesc:    &attributes.AttributesService_ServiceDesc,
 			ConnectRPCFunc: attributesconnect.NewAttributesServiceHandler,
 			GRPCGateayFunc: attributes.RegisterAttributesServiceHandlerFromEndpoint,
-			OnUpdateConfig: onUpdateConfigHook,
+			OnConfigUpdate: onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (attributesconnect.AttributesServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)

@@ -35,7 +35,7 @@ var (
 		Run: func(cmd *cobra.Command, _ []string) {
 			configFile, _ := cmd.Flags().GetString(configFileFlag)
 			configKey, _ := cmd.Flags().GetString(configKeyFlag)
-			cfg, err := config.LoadConfig(configKey, configFile)
+			cfg, _, err := config.LoadConfig(configKey, configFile)
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))
 			}

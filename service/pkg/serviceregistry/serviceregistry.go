@@ -55,7 +55,7 @@ type (
 	HandlerServer       func(ctx context.Context, mux *runtime.ServeMux) error
 	RegisterFunc[S any] func(RegistrationParams) (impl S, HandlerServer HandlerServer)
 	// Allow services to implement handling for config changes as direced by caller
-	OnConfigUpdateHook func(any) error
+	OnConfigUpdateHook func(ServiceConfig) error
 )
 
 // DBRegister is a struct that holds the information needed to register a service with a database
@@ -76,6 +76,7 @@ type IService interface {
 	Start(ctx context.Context, params RegistrationParams) error
 	IsStarted() bool
 	Shutdown() error
+	RegisterConfigUpdateHooks(_ context.Context, configUpdateHooks map[string][]OnConfigUpdateHook) error
 	RegisterConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error
 	RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, string, []grpc.DialOption) error
 	RegisterHTTPHandlers(context.Context, *runtime.ServeMux) error
@@ -101,8 +102,8 @@ type ServiceOptions[S any] struct {
 	// ServiceDesc is the gRPC service descriptor. For non-gRPC services, this can be mocked out,
 	// but at minimum, the ServiceName field must be set
 	ServiceDesc *grpc.ServiceDesc
-	// OnUpdateConfig is a hook to handle in-service actions when config changes
-	OnUpdateConfig OnConfigUpdateHook
+	// OnConfigUpdate is a hook to handle in-service actions when config changes
+	OnConfigUpdate OnConfigUpdateHook
 	// RegisterFunc is the function that will be called to register the service
 	RegisterFunc RegisterFunc[S]
 	// HTTPHandlerFunc is the function that will be called to register extra http handlers
@@ -162,6 +163,22 @@ func (s *Service[S]) Start(ctx context.Context, params RegistrationParams) error
 	s.impl, s.httpHandlerFunc = s.RegisterFunc(params)
 
 	s.Started = true
+	return nil
+}
+
+// RegisterConfigUpdateHooks stores the service's config update hook (if provided) under its namespace.
+// i.e.
+//
+//	policy: [attributes.OnConfigUpdate, resourcemapping.OnConfigUpdate, ...]
+//	authorization: [authorization.OnConfigUpdate]
+func (s Service[S]) RegisterConfigUpdateHooks(_ context.Context, configUpdateHooks map[string][]OnConfigUpdateHook) error {
+	if configUpdateHooks == nil {
+		return fmt.Errorf("configUpdateHooks cannot be nil")
+	}
+	if s.OnConfigUpdate != nil {
+		slog.Debug("registering config update hook", slog.String("namespace", s.GetNamespace()), slog.String("service", s.GetServiceDesc().ServiceName))
+		configUpdateHooks[s.GetNamespace()] = append(configUpdateHooks[s.GetNamespace()], s.OnConfigUpdate)
+	}
 	return nil
 }
 

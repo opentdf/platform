@@ -2,7 +2,6 @@ package unsafe
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -25,18 +24,14 @@ type UnsafeService struct { //nolint:revive // UnsafeService is a valid name for
 }
 
 func OnConfigUpdate(unsafeSvc *UnsafeService) serviceregistry.OnConfigUpdateHook {
-	return func(cfg any) error {
-		serviceCfg, ok := cfg.(serviceregistry.ServiceConfig)
-		if !ok {
-			return errors.New("unsafe service config update not of type serviceregistry.ServiceConfig")
-		}
-		sharedCfg, err := policyconfig.GetSharedPolicyConfig(serviceCfg)
+	return func(cfg serviceregistry.ServiceConfig) error {
+		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
 		if err != nil {
 			return fmt.Errorf("failed to get shared policy config: %w", err)
 		}
 		unsafeSvc.config = sharedCfg
 		unsafeSvc.dbClient = policydb.NewClient(unsafeSvc.dbClient.Client, unsafeSvc.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
-
+		slog.Info("unsafe service config updated")
 		return nil
 	}
 }
@@ -50,7 +45,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			DB:             dbRegister,
 			ServiceDesc:    &unsafe.UnsafeService_ServiceDesc,
 			ConnectRPCFunc: unsafeconnect.NewUnsafeServiceHandler,
-			OnUpdateConfig: onUpdateConfigHook,
+			OnConfigUpdate: onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (unsafeconnect.UnsafeServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)

@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
+	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -24,14 +25,14 @@ type AttributesService struct { //nolint:revive // AttributesService is a valid 
 }
 
 func OnConfigUpdate(as *AttributesService) serviceregistry.OnConfigUpdateHook {
-	return func(cfg serviceregistry.ServiceConfig) error {
+	return func(cfg config.ServiceConfig) error {
 		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
 		if err != nil {
 			return fmt.Errorf("failed to get shared policy config: %w", err)
 		}
 		as.config = sharedCfg
 		as.dbClient = policydb.NewClient(as.dbClient.Client, as.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
-		
+
 		slog.Info("attributes service config updated")
 
 		return nil

@@ -22,6 +22,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/access"
+	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/entitlements"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/logger"
@@ -57,7 +58,7 @@ type CustomRego struct {
 }
 
 func OnConfigUpdate(as *AuthorizationService) serviceregistry.OnConfigUpdateHook {
-	return func(cfg serviceregistry.ServiceConfig) error {
+	return func(cfg config.ServiceConfig) error {
 		err := mapstructure.Decode(cfg, as.config)
 		if err != nil {
 			return fmt.Errorf("invalid auth svc cfg [%v] %w", cfg, err)

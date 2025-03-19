@@ -13,10 +13,11 @@ import (
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
-	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/tracing"
 	"github.com/spf13/viper"
 )
+
+type ServiceConfig map[string]any
 
 // Config represents the configuration settings for the service.
 type Config struct {
@@ -40,7 +41,7 @@ type Config struct {
 	SDKConfig SDKConfig `mapstructure:"sdk_config" json:"sdk_config"`
 
 	// Services represents the configuration settings for the services.
-	Services map[string]serviceregistry.ServiceConfig `mapstructure:"services"`
+	Services map[string]ServiceConfig `mapstructure:"services"`
 
 	// Trace is for configuring open telemetry based tracing.
 	Trace tracing.Config `mapstructure:"trace"`
@@ -181,15 +182,16 @@ func (l *ViperLoader) Load(cfg *Config) error {
 }
 
 // Watch starts watching for configuration changes
-func (l *ViperLoader) Watch(cfg *Config) (func(func(fsnotify.Event)), error) {
+func (l *ViperLoader) Watch(cfg *Config) (func(func(map[string]ServiceConfig)), error) {
 	l.viper.WatchConfig()
 
 	// Create a slice to store all the hook functions
-	var configChangeHooks []func(fsnotify.Event)
+	var configChangeHooks []func(map[string]ServiceConfig)
 
 	// Return a function that allows registering hooks
-	onConfigChange := func(hook func(fsnotify.Event)) {
+	onConfigChange := func(hook func(map[string]ServiceConfig)) {
 		configChangeHooks = append(configChangeHooks, hook)
+		slog.Info("hook added", slog.Int("count", len(configChangeHooks)))
 	}
 
 	// Register only one viper config change handler
@@ -206,7 +208,7 @@ func (l *ViperLoader) Watch(cfg *Config) (func(func(fsnotify.Event)), error) {
 
 		// Then execute all registered hooks with the event
 		for _, hook := range configChangeHooks {
-			hook(e)
+			hook(cfg.Services)
 		}
 	})
 
@@ -214,7 +216,7 @@ func (l *ViperLoader) Watch(cfg *Config) (func(func(fsnotify.Event)), error) {
 }
 
 // LoadConfig loads configuration using the provided loader or creates a default Viper loader
-func LoadConfig(key, file string) (*Config, func(func(fsnotify.Event)), error) {
+func LoadConfig(key, file string) (*Config, func(func(map[string]ServiceConfig)), error) {
 	config := &Config{}
 
 	// Create default loader if none provided

@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	auth "github.com/opentdf/platform/service/authorization"
+	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -22,7 +23,7 @@ type ClaimsEntityResolutionService struct {
 	logger *logger.Logger
 }
 
-func RegisterClaimsERS(_ serviceregistry.ServiceConfig, logger *logger.Logger) (ClaimsEntityResolutionService, serviceregistry.HandlerServer) {
+func RegisterClaimsERS(_ config.ServiceConfig, logger *logger.Logger) (ClaimsEntityResolutionService, serviceregistry.HandlerServer) {
 	claimsSVC := ClaimsEntityResolutionService{logger: logger}
 	return claimsSVC, nil
 }

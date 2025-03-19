@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/mitchellh/mapstructure"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/authorization"
@@ -116,7 +115,7 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 // based on the configuration and namespace mode. It creates a new service logger
 // and a database client if required. It registers the services with the gRPC server,
 // in-process gRPC server, and gRPC gateway. Finally, it logs the status of each service.
-func startServices(ctx context.Context, cfg *config.Config, onServicesConfigChange func(func(fsnotify.Event)), otdf *server.OpenTDFServer, client *sdk.SDK, logger *logging.Logger, reg serviceregistry.Registry) error {
+func startServices(ctx context.Context, cfg *config.Config, onServicesConfigChange func(func(map[string]config.ServiceConfig)), otdf *server.OpenTDFServer, client *sdk.SDK, logger *logging.Logger, reg serviceregistry.Registry) error {
 	// Iterate through the registered namespaces
 	for ns, namespace := range reg {
 		// modeEnabled checks if the mode is enabled based on the configuration and namespace mode.
@@ -157,11 +156,6 @@ func startServices(ctx context.Context, cfg *config.Config, onServicesConfigChan
 			tracer = otel.Tracer(tracing.ServiceName)
 		}
 
-		// Map all service namespaces to config change event hooks
-		// policy: [attributes.OnConfigUpdate, resourcemapping, etc...]
-		// authorization: [authorization]
-		onConfigChangeEventHooks := make(map[string][]serviceregistry.OnConfigUpdateHook)
-
 		for _, svc := range namespace.Services {
 			// Get new db client if it is required and not already created
 			if svc.IsDBRequired() && svcDBClient == nil {
@@ -187,7 +181,7 @@ func startServices(ctx context.Context, cfg *config.Config, onServicesConfigChan
 				return err
 			}
 
-			if err := svc.RegisterConfigUpdateHooks(ctx, onConfigChangeEventHooks); err != nil {
+			if err := svc.RegisterConfigUpdateHook(ctx, onServicesConfigChange); err != nil {
 				return err
 			}
 
@@ -231,34 +225,12 @@ func startServices(ctx context.Context, cfg *config.Config, onServicesConfigChan
 				),
 			)
 		}
-
-		// When the config changes, call all hooks for all services under a service namespace
-		onServicesConfigChange(func(e fsnotify.Event) {
-			// Only process all rolled up services under a namespace once
-			// (i.e. policy.Attributes, policy.ResourceMapping, etc...)
-			namespacesSet := make([]string, 0)
-			for _, svc := range namespace.Services {
-				if !slices.Contains(namespacesSet, svc.GetNamespace()) {
-					namespacesSet = append(namespacesSet, svc.GetNamespace())
-					if hooks, ok := onConfigChangeEventHooks[svc.GetNamespace()]; ok {
-						for _, hook := range hooks {
-							svcConfig := cfg.Services[svc.GetNamespace()]
-							if svcConfig != nil {
-								if err := hook(svcConfig); err != nil {
-									logger.Error("failed to update service config", slog.String("namespace", ns), slog.String("service", svc.GetNamespace()), slog.String("error", err.Error()))
-								}
-							}
-						}
-					}
-				}
-			}
-		})
 	}
 
 	return nil
 }
 
-func extractServiceLoggerConfig(cfg serviceregistry.ServiceConfig) (string, error) {
+func extractServiceLoggerConfig(cfg config.ServiceConfig) (string, error) {
 	type ServiceConfigWithLogger struct {
 		LogLevel string `mapstructure:"log_level" json:"log_level,omitempty"`
 	}

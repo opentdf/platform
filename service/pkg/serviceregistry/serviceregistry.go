@@ -14,12 +14,11 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 
+	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 )
-
-type ServiceConfig map[string]any
 
 // RegistrationParams is a struct that holds the parameters needed to register a service
 // with the service registry. These parameters are passed to the RegisterFunc function defined
@@ -27,7 +26,7 @@ type ServiceConfig map[string]any
 type RegistrationParams struct {
 	// Config scoped to the service config. Since the main config contains all the service configs,
 	// which could have need-to-know information we don't want to expose it to all services.
-	Config ServiceConfig
+	Config config.ServiceConfig
 	// OTDF is the OpenTDF server that can be used to interact with the OpenTDFServer instance.
 	OTDF *server.OpenTDFServer
 	// DBClient is the database client that can be used to interact with the database. This client
@@ -55,7 +54,7 @@ type (
 	HandlerServer       func(ctx context.Context, mux *runtime.ServeMux) error
 	RegisterFunc[S any] func(RegistrationParams) (impl S, HandlerServer HandlerServer)
 	// Allow services to implement handling for config changes as direced by caller
-	OnConfigUpdateHook func(ServiceConfig) error
+	OnConfigUpdateHook func(config.ServiceConfig) error
 )
 
 // DBRegister is a struct that holds the information needed to register a service with a database
@@ -76,7 +75,7 @@ type IService interface {
 	Start(ctx context.Context, params RegistrationParams) error
 	IsStarted() bool
 	Shutdown() error
-	RegisterConfigUpdateHooks(_ context.Context, configUpdateHooks map[string][]OnConfigUpdateHook) error
+	RegisterConfigUpdateHook(_ context.Context, registrationFunc func(func(map[string]config.ServiceConfig))) error
 	RegisterConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error
 	RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, string, []grpc.DialOption) error
 	RegisterHTTPHandlers(context.Context, *runtime.ServeMux) error
@@ -166,18 +165,15 @@ func (s *Service[S]) Start(ctx context.Context, params RegistrationParams) error
 	return nil
 }
 
-// RegisterConfigUpdateHooks stores the service's config update hook (if provided) under its namespace.
-// i.e.
-//
-//	policy: [attributes.OnConfigUpdate, resourcemapping.OnConfigUpdate, ...]
-//	authorization: [authorization.OnConfigUpdate]
-func (s Service[S]) RegisterConfigUpdateHooks(_ context.Context, configUpdateHooks map[string][]OnConfigUpdateHook) error {
-	if configUpdateHooks == nil {
-		return fmt.Errorf("configUpdateHooks cannot be nil")
+// RegisterConfigUpdateHook stores the service's config update hook (if provided) under its namespace.
+func (s Service[S]) RegisterConfigUpdateHook(_ context.Context, registrationFunc func(func(map[string]config.ServiceConfig))) error {
+	if registrationFunc == nil {
+		return fmt.Errorf("onConfigUpdate cannot be nil")
 	}
 	if s.OnConfigUpdate != nil {
-		slog.Debug("registering config update hook", slog.String("namespace", s.GetNamespace()), slog.String("service", s.GetServiceDesc().ServiceName))
-		configUpdateHooks[s.GetNamespace()] = append(configUpdateHooks[s.GetNamespace()], s.OnConfigUpdate)
+		registrationFunc(func(cfg map[string]config.ServiceConfig) {
+			s.OnConfigUpdate(cfg[s.GetNamespace()])
+		})
 	}
 	return nil
 }

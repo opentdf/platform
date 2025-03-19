@@ -6,7 +6,7 @@ import (
 
 	"github.com/creasty/defaults"
 	"github.com/mitchellh/mapstructure"
-	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"github.com/opentdf/platform/service/internal/config"
 )
 
 // Global policy config to share among policy services
@@ -24,7 +24,7 @@ func (c Config) Validate() error {
 	return nil
 }
 
-func GetSharedPolicyConfig(cfg serviceregistry.ServiceConfig) (*Config, error) {
+func GetSharedPolicyConfig(cfg config.ServiceConfig) (*Config, error) {
 	policyCfg := new(Config)
 
 	if err := defaults.Set(policyCfg); err != nil {

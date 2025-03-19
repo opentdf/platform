@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	kasr "github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
+	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -36,7 +37,7 @@ type KeyAccessServerRegistry struct {
 }
 
 func OnConfigUpdate(kasrSvc *KeyAccessServerRegistry) serviceregistry.OnConfigUpdateHook {
-	return func(cfg serviceregistry.ServiceConfig) error {
+	return func(cfg config.ServiceConfig) error {
 		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
 		if err != nil {
 			return fmt.Errorf("failed to get shared policy config: %w", err)

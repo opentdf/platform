@@ -6,9 +6,9 @@ import (
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	otdf "github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
-	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -24,7 +24,7 @@ type Provider struct {
 	AttributeSvc   *url.URL
 	CryptoProvider security.CryptoProvider
 	Logger         *logger.Logger
-	Config         *serviceregistry.ServiceConfig
+	Config         *config.ServiceConfig
 	KASConfig
 	trace.Tracer
 }

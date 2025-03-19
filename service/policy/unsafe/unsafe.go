@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe/unsafeconnect"
+	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -24,7 +25,7 @@ type UnsafeService struct { //nolint:revive // UnsafeService is a valid name for
 }
 
 func OnConfigUpdate(unsafeSvc *UnsafeService) serviceregistry.OnConfigUpdateHook {
-	return func(cfg serviceregistry.ServiceConfig) error {
+	return func(cfg config.ServiceConfig) error {
 		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
 		if err != nil {
 			return fmt.Errorf("failed to get shared policy config: %w", err)

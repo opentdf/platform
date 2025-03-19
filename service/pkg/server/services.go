@@ -234,12 +234,20 @@ func startServices(ctx context.Context, cfg *config.Config, onServicesConfigChan
 
 		// When the config changes, call all hooks for all services under a service namespace
 		onServicesConfigChange(func(e fsnotify.Event) {
+			// Only process all rolled up services under a namespace once
+			// (i.e. policy.Attributes, policy.ResourceMapping, etc...)
+			namespacesSet := make([]string, 0)
 			for _, svc := range namespace.Services {
-				if hooks, ok := onConfigChangeEventHooks[svc.GetNamespace()]; ok {
-					for _, hook := range hooks {
-						svcConfig := cfg.Services[svc.GetNamespace()]
-						if err := hook(svcConfig); err != nil {
-							logger.Error("failed to update service config", slog.String("namespace", ns), slog.String("service", svc.GetNamespace()), slog.String("error", err.Error()))
+				if !slices.Contains(namespacesSet, svc.GetNamespace()) {
+					namespacesSet = append(namespacesSet, svc.GetNamespace())
+					if hooks, ok := onConfigChangeEventHooks[svc.GetNamespace()]; ok {
+						for _, hook := range hooks {
+							svcConfig := cfg.Services[svc.GetNamespace()]
+							if svcConfig != nil {
+								if err := hook(svcConfig); err != nil {
+									logger.Error("failed to update service config", slog.String("namespace", ns), slog.String("service", svc.GetNamespace()), slog.String("error", err.Error()))
+								}
+							}
 						}
 					}
 				}

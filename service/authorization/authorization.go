@@ -101,7 +101,7 @@ func OnConfigUpdate(as *AuthorizationService) serviceregistry.OnConfigUpdateHook
 			return fmt.Errorf("failed to load rego and builtins: %w", err)
 		}
 
-		slog.Info("authorization service config updated if changed")
+		slog.Info("authorization service config reloaded")
 
 		return nil
 	}

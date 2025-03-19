@@ -204,7 +204,7 @@ func (l *ViperLoader) Watch(cfg *Config) (func(func(ConfigServices)), error) {
 			return
 		}
 
-		slog.Info("Config successfully updated")
+		slog.Info("Config successfully reloaded", "config", cfg.LogValue())
 
 		// Then execute all registered hooks with the event
 		for _, hook := range configChangeHooks {

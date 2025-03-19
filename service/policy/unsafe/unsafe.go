@@ -32,7 +32,7 @@ func OnConfigUpdate(unsafeSvc *UnsafeService) serviceregistry.OnConfigUpdateHook
 		}
 		unsafeSvc.config = sharedCfg
 		unsafeSvc.dbClient = policydb.NewClient(unsafeSvc.dbClient.Client, unsafeSvc.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
-		slog.Info("unsafe service config updated")
+		slog.Info("unsafe service config reloaded")
 		return nil
 	}
 }

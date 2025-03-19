@@ -33,7 +33,7 @@ func OnConfigUpdate(smSvc *SubjectMappingService) serviceregistry.OnConfigUpdate
 		smSvc.config = sharedCfg
 		smSvc.dbClient = policydb.NewClient(smSvc.dbClient.Client, smSvc.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
 
-		slog.Info("subject mapping service config updated")
+		slog.Info("subject mapping service config reloaded")
 
 		return nil
 	}

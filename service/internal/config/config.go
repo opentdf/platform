@@ -191,7 +191,6 @@ func (l *ViperLoader) Watch(cfg *Config) (func(func(map[string]ServiceConfig)), 
 	// Return a function that allows registering hooks
 	onConfigChange := func(hook func(map[string]ServiceConfig)) {
 		configChangeHooks = append(configChangeHooks, hook)
-		slog.Info("hook added", slog.Int("count", len(configChangeHooks)))
 	}
 
 	// Register only one viper config change handler

@@ -33,7 +33,7 @@ func OnConfigUpdate(rmSvc *ResourceMappingService) serviceregistry.OnConfigUpdat
 		rmSvc.config = sharedCfg
 		rmSvc.dbClient = policydb.NewClient(rmSvc.dbClient.Client, rmSvc.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
 
-		slog.Info("resource mapping service config updated")
+		slog.Info("resource mapping service config reloaded")
 
 		return nil
 	}

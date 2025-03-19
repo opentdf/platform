@@ -45,7 +45,7 @@ func OnConfigUpdate(kasrSvc *KeyAccessServerRegistry) serviceregistry.OnConfigUp
 		kasrSvc.config = sharedCfg
 		kasrSvc.dbClient = policydb.NewClient(kasrSvc.dbClient.Client, kasrSvc.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
 
-		slog.Info("key access server registry service config updated")
+		slog.Info("key access server registry service config reloaded")
 
 		return nil
 	}

@@ -33,7 +33,7 @@ func OnConfigUpdate(as *AttributesService) serviceregistry.OnConfigUpdateHook {
 		as.config = sharedCfg
 		as.dbClient = policydb.NewClient(as.dbClient.Client, as.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
 
-		slog.Info("attributes service config updated")
+		slog.Info("attributes service config reloaded")
 
 		return nil
 	}

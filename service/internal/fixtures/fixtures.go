@@ -101,16 +101,6 @@ type FixtureDataKasRegistry struct {
 	Name string `yaml:"name"`
 }
 
-type FixtureDataPublicKey struct {
-	ID    string `yaml:"id"`
-	KasID string `yaml:"kas_id"`
-	Key   struct {
-		Alg string `yaml:"alg" json:"alg"`
-		Kid string `yaml:"kid" json:"kid"`
-		PEM string `yaml:"pem" json:"pem"`
-	} `yaml:"key" json:"key"`
-}
-
 type FixtureDataValueKeyMap struct {
 	ValueID string `yaml:"value_id"`
 	KeyID   string `yaml:"key_id"`
@@ -161,10 +151,6 @@ type FixtureData struct {
 		Metadata FixtureMetadata                   `yaml:"metadata"`
 		Data     map[string]FixtureDataKasRegistry `yaml:"data"`
 	} `yaml:"kas_registry"`
-	PublicKey struct {
-		Metadata FixtureMetadata                 `yaml:"metadata"`
-		Data     map[string]FixtureDataPublicKey `yaml:"data"`
-	} `yaml:"public_keys"`
 	ValueKeyMap struct {
 		Metadata FixtureMetadata          `yaml:"metadata"`
 		Data     []FixtureDataValueKeyMap `yaml:"data"`
@@ -275,15 +261,6 @@ func (f *Fixtures) GetKasRegistryKey(key string) FixtureDataKasRegistry {
 	return kasr
 }
 
-func (f *Fixtures) GetPublicKey(key string) FixtureDataPublicKey {
-	pk, ok := fixtureData.PublicKey.Data[key]
-	if !ok || pk.ID == "" {
-		slog.Error("could not find public-keys", slog.String("id", key))
-		panic("could not find public-key fixture: " + key)
-	}
-	return pk
-}
-
 func (f *Fixtures) GetValueMap(key string) []FixtureDataValueKeyMap {
 	var vkms []FixtureDataValueKeyMap
 	for _, vkm := range fixtureData.ValueKeyMap.Data {
@@ -341,8 +318,6 @@ func (f *Fixtures) Provision() {
 	akas := f.provisionAttributeKeyAccessServer()
 	slog.Info("📦 provisioning attribute value key access server data")
 	avkas := f.provisionAttributeValueKeyAccessServer()
-	slog.Info("📦 provisioning public keys")
-	pk := f.provisionPublicKeys()
 	slog.Info("📦 provisioning value key map")
 	vkm := f.provisionValueKeyMap()
 	slog.Info("📦 provisioning definition key map")
@@ -524,20 +499,6 @@ func (f *Fixtures) provisionAttributeValueKeyAccessServer() int64 {
 		})
 	}
 	return f.provision("attribute_value_key_access_grants", []string{"attribute_value_id", "key_access_server_id"}, values)
-}
-
-func (f *Fixtures) provisionPublicKeys() int64 {
-	values := make([][]string, 0, len(fixtureData.PublicKey.Data))
-	for _, d := range fixtureData.PublicKey.Data {
-		values = append(values, []string{
-			f.db.StringWrap(d.ID),
-			f.db.StringWrap(d.KasID),
-			f.db.StringWrap(d.Key.Kid),
-			f.db.StringWrap(d.Key.Alg),
-			f.db.StringWrap(d.Key.PEM),
-		})
-	}
-	return f.provision(fixtureData.PublicKey.Metadata.TableName, fixtureData.PublicKey.Metadata.Columns, values)
 }
 
 func (f *Fixtures) provisionValueKeyMap() int64 {

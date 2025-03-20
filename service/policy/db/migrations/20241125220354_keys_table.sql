@@ -2,16 +2,16 @@
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS
     public_keys (
-        id uuid DEFAULT gen_random_uuid () PRIMARY KEY,
-        is_active boolean NOT NULL DEFAULT FALSE,
-        was_mapped boolean NOT NULL DEFAULT FALSE,
-        key_access_server_id uuid NOT NULL REFERENCES key_access_servers (id),
-        key_id varchar(36) NOT NULL,
-        alg varchar(50) NOT NULL,
-        public_key text NOT NULL,
+        id UUID DEFAULT gen_random_uuid () PRIMARY KEY,
+        is_active BOOLEAN NOT NULL DEFAULT FALSE,
+        was_mapped BOOLEAN NOT NULL DEFAULT FALSE,
+        key_access_server_id UUID NOT NULL REFERENCES key_access_servers (id),
+        key_id VARCHAR(36) NOT NULL,
+        alg VARCHAR(50) NOT NULL,
+        public_key TEXT NOT NULL,
         metadata jsonb,
-        created_at timestamp,
-        updated_at timestamp,
+        created_at TIMESTAMP,
+        updated_at TIMESTAMP,
         UNIQUE (key_access_server_id, key_id, alg), -- Prevents duplicate public keys for the same KAS by key_id and alg
         CONSTRAINT unique_active_key EXCLUDE (
             key_access_server_id
@@ -48,7 +48,7 @@ COMMENT ON COLUMN public_keys.created_at IS 'Timestamp when the key was created'
 COMMENT ON COLUMN public_keys.updated_at IS 'Timestamp when the key was last updated';
 
 CREATE
-OR REPLACE FUNCTION update_active_key () RETURNS trigger AS $$
+OR REPLACE FUNCTION update_active_key () RETURNS TRIGGER AS $$
 DECLARE
     current_active_key uuid;
     mapping_count int;
@@ -119,8 +119,8 @@ EXECUTE FUNCTION update_active_key ();
 
 CREATE TABLE IF NOT EXISTS
     attribute_namespace_public_key_map (
-        namespace_id uuid NOT NULL REFERENCES attribute_namespaces (id) ON DELETE CASCADE,
-        key_id uuid NOT NULL REFERENCES public_keys (id) ON DELETE CASCADE,
+        namespace_id UUID NOT NULL REFERENCES attribute_namespaces (id) ON DELETE CASCADE,
+        key_id UUID NOT NULL REFERENCES public_keys (id) ON DELETE CASCADE,
         PRIMARY KEY (namespace_id, key_id)
     );
 
@@ -132,8 +132,8 @@ COMMENT ON COLUMN attribute_namespace_public_key_map.key_id IS 'Foreign key to t
 
 CREATE TABLE IF NOT EXISTS
     attribute_definition_public_key_map (
-        definition_id uuid NOT NULL REFERENCES attribute_definitions (id) ON DELETE CASCADE,
-        key_id uuid NOT NULL REFERENCES public_keys (id) ON DELETE CASCADE,
+        definition_id UUID NOT NULL REFERENCES attribute_definitions (id) ON DELETE CASCADE,
+        key_id UUID NOT NULL REFERENCES public_keys (id) ON DELETE CASCADE,
         PRIMARY KEY (definition_id, key_id)
     );
 
@@ -145,8 +145,8 @@ COMMENT ON COLUMN attribute_definition_public_key_map.key_id IS 'Foreign key to 
 
 CREATE TABLE IF NOT EXISTS
     attribute_value_public_key_map (
-        value_id uuid NOT NULL REFERENCES attribute_values (id) ON DELETE CASCADE,
-        key_id uuid NOT NULL REFERENCES public_keys (id) ON DELETE CASCADE,
+        value_id UUID NOT NULL REFERENCES attribute_values (id) ON DELETE CASCADE,
+        key_id UUID NOT NULL REFERENCES public_keys (id) ON DELETE CASCADE,
         PRIMARY KEY (value_id, key_id)
     );
 
@@ -158,7 +158,7 @@ COMMENT ON COLUMN attribute_value_public_key_map.key_id IS 'Foreign key to the p
 
 -- Trigger function to update was_mapped column
 CREATE
-OR REPLACE FUNCTION update_was_mapped () RETURNS trigger AS $$
+OR REPLACE FUNCTION update_was_mapped () RETURNS TRIGGER AS $$
 BEGIN
     UPDATE public_keys SET was_mapped = TRUE WHERE id = NEW.key_id;
     RETURN NEW;
@@ -177,8 +177,8 @@ CREATE VIEW
     active_namespace_public_keys_view AS
 SELECT
     km.namespace_id,
-    jsonb_agg(
-        DISTINCT jsonb_build_object(
+    JSONB_AGG(
+        DISTINCT JSONB_BUILD_OBJECT(
             'id',
             ky.id,
             'is_active',
@@ -186,7 +186,7 @@ SELECT
             'was_mapped',
             ky.was_mapped,
             'public_key',
-            json_build_object(
+            JSON_BUILD_OBJECT(
                 'alg',
                 ky.alg,
                 'kid',
@@ -195,7 +195,7 @@ SELECT
                 ky.public_key
             ),
             'kas',
-            jsonb_build_object('id', kas.id, 'uri', kas.uri, 'name', kas.name)
+            JSONB_BUILD_OBJECT('id', kas.id, 'uri', kas.uri, 'name', kas.name)
         )
     ) AS keys
 FROM
@@ -219,8 +219,8 @@ CREATE VIEW
     active_definition_public_keys_view AS
 SELECT
     km.definition_id,
-    jsonb_agg(
-        DISTINCT jsonb_build_object(
+    JSONB_AGG(
+        DISTINCT JSONB_BUILD_OBJECT(
             'id',
             ky.id,
             'is_active',
@@ -228,7 +228,7 @@ SELECT
             'was_mapped',
             ky.was_mapped,
             'public_key',
-            json_build_object(
+            JSON_BUILD_OBJECT(
                 'alg',
                 ky.alg,
                 'kid',
@@ -237,7 +237,7 @@ SELECT
                 ky.public_key
             ),
             'kas',
-            jsonb_build_object('id', kas.id, 'uri', kas.uri, 'name', kas.name)
+            JSONB_BUILD_OBJECT('id', kas.id, 'uri', kas.uri, 'name', kas.name)
         )
     ) AS keys
 FROM
@@ -261,8 +261,8 @@ CREATE VIEW
     active_value_public_keys_view AS
 SELECT
     km.value_id,
-    jsonb_agg(
-        DISTINCT jsonb_build_object(
+    JSONB_AGG(
+        DISTINCT JSONB_BUILD_OBJECT(
             'id',
             ky.id,
             'is_active',
@@ -270,7 +270,7 @@ SELECT
             'was_mapped',
             ky.was_mapped,
             'public_key',
-            json_build_object(
+            JSON_BUILD_OBJECT(
                 'alg',
                 ky.alg,
                 'kid',
@@ -279,7 +279,7 @@ SELECT
                 ky.public_key
             ),
             'kas',
-            jsonb_build_object('id', kas.id, 'uri', kas.uri, 'name', kas.name)
+            JSONB_BUILD_OBJECT('id', kas.id, 'uri', kas.uri, 'name', kas.name)
         )
     ) AS keys
 FROM
@@ -302,24 +302,24 @@ DROP VIEW IF EXISTS active_definition_public_keys_view;
 
 DROP VIEW IF EXISTS active_namespace_public_keys_view;
 
-DROP TRIGGER IF EXISTS trigger_update_was_mapped_namespace ON attribute_namespace_public_key_map;
+DROP TRIGGER IF EXISTS trigger_update_was_mapped_namespace ON attribute_namespace_public_key_map CASCADE;
 
-DROP TRIGGER IF EXISTS trigger_update_was_mapped_definition ON attribute_definition_public_key_map;
+DROP TRIGGER IF EXISTS trigger_update_was_mapped_definition ON attribute_definition_public_key_map CASCADE;
 
-DROP TRIGGER IF EXISTS trigger_update_was_mapped_value ON attribute_value_key_map;
+DROP TRIGGER IF EXISTS trigger_update_was_mapped_value ON attribute_value_key_map CASCADE;
 
-DROP TRIGGER IF EXISTS maintain_active_key;
+DROP TRIGGER IF EXISTS maintain_active_key ON public_keys;
 
 DROP FUNCTION IF EXISTS update_active_key;
 
-DROP FUNCTION IF EXISTS update_was_mapped ();
+DROP FUNCTION IF EXISTS update_was_mapped;
 
-DROP TABLE public_keys;
+DROP TABLE IF EXISTS attribute_namespace_public_key_map;
 
-DROP TABLE attribute_namespace_public_key_map;
+DROP TABLE IF EXISTS attribute_definition_public_key_map;
 
-DROP TABLE attribute_definition_public_key_map;
+DROP TABLE IF EXISTS attribute_value_public_key_map;
 
-DROP TABLE attribute_value_public_key_map;
+DROP TABLE IF EXISTS public_keys;
 
 -- +goose StatementEnd

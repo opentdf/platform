@@ -16,10 +16,9 @@ import (
 
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 )
-
-type ServiceConfig map[string]any
 
 // RegistrationParams is a struct that holds the parameters needed to register a service
 // with the service registry. These parameters are passed to the RegisterFunc function defined
@@ -27,7 +26,7 @@ type ServiceConfig map[string]any
 type RegistrationParams struct {
 	// Config scoped to the service config. Since the main config contains all the service configs,
 	// which could have need-to-know information we don't want to expose it to all services.
-	Config ServiceConfig
+	Config config.ServiceConfig
 	// OTDF is the OpenTDF server that can be used to interact with the OpenTDFServer instance.
 	OTDF *server.OpenTDFServer
 	// DBClient is the database client that can be used to interact with the database. This client
@@ -54,6 +53,8 @@ type RegistrationParams struct {
 type (
 	HandlerServer       func(ctx context.Context, mux *runtime.ServeMux) error
 	RegisterFunc[S any] func(RegistrationParams) (impl S, HandlerServer HandlerServer)
+	// Allow services to implement handling for config changes as direced by caller
+	OnConfigUpdateHook func(config.ServiceConfig) error
 )
 
 // DBRegister is a struct that holds the information needed to register a service with a database
@@ -74,6 +75,7 @@ type IService interface {
 	Start(ctx context.Context, params RegistrationParams) error
 	IsStarted() bool
 	Shutdown() error
+	RegisterConfigUpdateHook(_ context.Context, onConfigUpdate func(func(config.ConfigServices))) error
 	RegisterConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error
 	RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, string, []grpc.DialOption) error
 	RegisterHTTPHandlers(context.Context, *runtime.ServeMux) error
@@ -99,6 +101,8 @@ type ServiceOptions[S any] struct {
 	// ServiceDesc is the gRPC service descriptor. For non-gRPC services, this can be mocked out,
 	// but at minimum, the ServiceName field must be set
 	ServiceDesc *grpc.ServiceDesc
+	// OnConfigUpdate is a hook to handle in-service actions when config changes
+	OnConfigUpdate OnConfigUpdateHook
 	// RegisterFunc is the function that will be called to register the service
 	RegisterFunc RegisterFunc[S]
 	// HTTPHandlerFunc is the function that will be called to register extra http handlers
@@ -158,6 +162,19 @@ func (s *Service[S]) Start(ctx context.Context, params RegistrationParams) error
 	s.impl, s.httpHandlerFunc = s.RegisterFunc(params)
 
 	s.Started = true
+	return nil
+}
+
+// RegisterConfigUpdateHook stores the service's config update hook (if provided) under its namespace.
+func (s Service[S]) RegisterConfigUpdateHook(_ context.Context, registrationFunc func(func(config.ConfigServices))) error {
+	if registrationFunc == nil {
+		return fmt.Errorf("onConfigUpdate cannot be nil")
+	}
+	if s.OnConfigUpdate != nil {
+		registrationFunc(func(cfg config.ConfigServices) {
+			s.OnConfigUpdate(cfg[s.GetNamespace()])
+		})
+	}
 	return nil
 }
 

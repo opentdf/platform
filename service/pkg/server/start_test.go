@@ -14,9 +14,9 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/auth"
-	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -185,7 +185,7 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Res
 	// Start services with test service
 	err = startServices(context.Background(), config.Config{
 		Mode: []string{"all"},
-		Services: map[string]serviceregistry.ServiceConfig{
+		Services: map[string]config.ServiceConfig{
 			"test": {},
 		},
 	}, s, nil, logger, registry)

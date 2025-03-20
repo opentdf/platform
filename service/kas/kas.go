@@ -9,8 +9,8 @@ import (
 	"github.com/mitchellh/mapstructure"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
-	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/kas/access"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 )
 

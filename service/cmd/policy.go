@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/policy"
 	policydb "github.com/opentdf/platform/service/policy/db"

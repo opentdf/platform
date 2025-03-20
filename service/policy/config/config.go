@@ -6,7 +6,7 @@ import (
 
 	"github.com/creasty/defaults"
 	"github.com/mitchellh/mapstructure"
-	"github.com/opentdf/platform/service/internal/config"
+	"github.com/opentdf/platform/service/pkg/config"
 )
 
 // Global policy config to share among policy services

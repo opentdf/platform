@@ -1324,18 +1324,6 @@ func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Succes
 	s.Equal(aKas, resp)
 }
 
-func (s *AttributesSuite) Test_GetAttribute_Returns_Only_Active_PublicKeys() {
-	a, err := s.db.PolicyClient.GetAttribute(s.ctx, s.f.GetAttributeKey("example.com/attr/attr1").ID)
-	s.Require().NoError(err)
-	s.NotNil(a)
-
-	// ensure only active public keys are returned
-	s.NotEmpty(a.GetValues())
-	for _, k := range a.GetKeys() {
-		s.True(k.GetIsActive().GetValue())
-	}
-}
-
 func TestAttributesSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping attributes integration tests")

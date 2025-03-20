@@ -8,6 +8,21 @@ erDiagram
         character_varying name UK "Unique name of the action, e.g. read, write, etc."
         timestamp_with_time_zone updated_at 
     }
+    
+    asym_key {
+        timestamp_without_time_zone created_at "Timestamp when the key was created"
+        timestamp_without_time_zone expiration 
+        uuid id PK "Unique identifier for the key"
+        integer key_algorithm "Algorithm used to generate the key"
+        character_varying key_id "Unique identifier for the key"
+        integer key_mode "Indicates whether the key is stored LOCAL or REMOTE"
+        integer key_status "Indicates the status of the key Active, Inactive, Compromised, or Expired"
+        jsonb metadata "Additional metadata for the key"
+        jsonb private_key_ctx "Private Key Context is a json defined structure of the private key. Could include information like PEM encoded key, or external key id information"
+        uuid provider_config_id FK "Reference the provider configuration for this key"
+        jsonb public_key_ctx "Public Key Context is a json defined structure of the public key"
+        timestamp_without_time_zone updated_at "Timestamp when the key was last updated"
+    }
 
     attribute_definition_key_access_grants {
         uuid attribute_definition_id PK,FK "Foreign key to the attribute definition"
@@ -16,7 +31,7 @@ erDiagram
 
     attribute_definition_public_key_map {
         uuid definition_id PK,FK "Foreign key to the attribute definition"
-        uuid key_id PK,FK "Foreign key to the public key"
+        uuid key_access_server_key_id PK,FK "Foreign key to the key access server public key for wrapping symmetric keys"
     }
 
     attribute_definitions {
@@ -45,7 +60,7 @@ erDiagram
     }
 
     attribute_namespace_public_key_map {
-        uuid key_id PK,FK "Foreign key to the public key"
+        uuid key_access_server_key_id PK,FK "Foreign key to the key access server public key for wrapping symmetric keys"
         uuid namespace_id PK,FK "Foreign key to the attribute namespace"
     }
 
@@ -64,7 +79,7 @@ erDiagram
     }
 
     attribute_value_public_key_map {
-        uuid key_id PK,FK "Foreign key to the public key"
+        uuid key_access_server_key_id PK,FK "Foreign key to the key access server public key for wrapping symmetric keys"
         uuid value_id PK,FK "Foreign key to the attribute value"
     }
 
@@ -85,27 +100,40 @@ erDiagram
         bigint version_id 
     }
 
+    key_access_server_keys {
+        timestamp_without_time_zone created_at 
+        timestamp_without_time_zone expiration 
+        uuid id PK 
+        uuid key_access_server_id FK,UK 
+        integer key_algorithm UK 
+        character_varying key_id UK 
+        integer key_mode 
+        integer key_status 
+        jsonb metadata 
+        jsonb private_key_ctx 
+        uuid provider_config_id 
+        jsonb public_key_ctx 
+        timestamp_without_time_zone updated_at 
+    }
+
     key_access_servers {
         timestamp_with_time_zone created_at 
         uuid id PK "Primary key for the table"
         jsonb metadata "Metadata for the KAS (see protos for structure)"
         character_varying name UK "Optional common name of the KAS"
         jsonb public_key "Public key of the KAS (see protos for structure/options)"
+        character_varying source_type 
         timestamp_with_time_zone updated_at 
         character_varying uri UK "URI of the KAS"
     }
 
-    public_keys {
-        character_varying alg UK "Algorithm used to generate the key"
-        timestamp_without_time_zone created_at "Timestamp when the key was created"
-        uuid id PK "Unique identifier for the public key"
-        boolean is_active "Flag to indicate if the key is active"
-        uuid key_access_server_id FK,UK "Foreign key to the key access server that owns the key"
-        character_varying key_id UK "Unique identifier for the key"
-        jsonb metadata "Additional metadata for the key"
-        text public_key "Public key in PEM format"
-        timestamp_without_time_zone updated_at "Timestamp when the key was last updated"
-        boolean was_mapped "Flag to indicate if the key has been used. Triggered when its mapped to a namespace, definition, or value"
+    provider_config {
+        jsonb config "Configuration details for the key provider"
+        timestamp_without_time_zone created_at "Timestamp when the provider configuration was created"
+        uuid id PK "Unique identifier for the provider configuration"
+        jsonb metadata "Additional metadata for the provider configuration"
+        character_varying provider_name "Name of the key provider"
+        timestamp_without_time_zone updated_at "Timestamp when the provider configuration was last updated"
     }
 
     registered_resource_values {
@@ -167,11 +195,24 @@ erDiagram
         timestamp_with_time_zone updated_at 
     }
 
+    sym_key {
+        timestamp_without_time_zone created_at "Timestamp when the key was created"
+        uuid id PK "Unique identifier for the key"
+        character_varying key_id "Unique identifier for the key"
+        integer key_mode "Indicates whether the key is stored LOCAL or REMOTE"
+        integer key_status "Indicates the status of the key Active, Inactive, Compromised, or Expired"
+        bytea key_value "Key value in binary format"
+        jsonb metadata "Additional metadata for the key"
+        uuid provider_config_id FK "Reference the provider configuration for this key"
+        timestamp_without_time_zone updated_at "Timestamp when the key was last updated"
+    }
+
     subject_mapping_actions }o--|| actions : "action_id"
+    asym_key }o--|| provider_config : "provider_config_id"
     attribute_definition_key_access_grants }o--|| attribute_definitions : "attribute_definition_id"
     attribute_definition_key_access_grants }o--|| key_access_servers : "key_access_server_id"
     attribute_definition_public_key_map }o--|| attribute_definitions : "definition_id"
-    attribute_definition_public_key_map }o--|| public_keys : "key_id"
+    attribute_definition_public_key_map }o--|| key_access_server_keys : "key_access_server_key_id"
     attribute_definitions }o--|| attribute_namespaces : "namespace_id"
     attribute_fqns }o--|| attribute_definitions : "attribute_id"
     attribute_values }o--|| attribute_definitions : "attribute_definition_id"
@@ -180,16 +221,17 @@ erDiagram
     attribute_namespace_key_access_grants }o--|| attribute_namespaces : "namespace_id"
     attribute_namespace_key_access_grants }o--|| key_access_servers : "key_access_server_id"
     attribute_namespace_public_key_map }o--|| attribute_namespaces : "namespace_id"
-    attribute_namespace_public_key_map }o--|| public_keys : "key_id"
+    attribute_namespace_public_key_map }o--|| key_access_server_keys : "key_access_server_key_id"
     resource_mapping_groups }o--|| attribute_namespaces : "namespace_id"
     attribute_value_key_access_grants }o--|| attribute_values : "attribute_value_id"
     attribute_value_key_access_grants }o--|| key_access_servers : "key_access_server_id"
     attribute_value_public_key_map }o--|| attribute_values : "value_id"
-    attribute_value_public_key_map }o--|| public_keys : "key_id"
+    attribute_value_public_key_map }o--|| key_access_server_keys : "key_access_server_key_id"
     resource_mappings }o--|| attribute_values : "attribute_value_id"
     subject_mappings }o--|| attribute_values : "attribute_value_id"
-    public_keys }o--|| key_access_servers : "key_access_server_id"
     registered_resource_values }o--|| registered_resources : "registered_resource_id"
+    key_access_server_keys }o--|| key_access_servers : "key_access_server_id"
+    sym_key }o--|| provider_config : "provider_config_id"
     resource_mappings }o--|| resource_mapping_groups : "group_id"
     subject_mappings }o--|| subject_condition_set : "subject_condition_set_id"
     subject_mapping_actions }o--|| subject_mappings : "subject_mapping_id"

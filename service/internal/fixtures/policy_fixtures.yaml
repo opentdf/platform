@@ -572,46 +572,46 @@ kas_registry:
 #           UwIgcfIIuPfh4fbcv8cTi2BlI3k7sWPuAmIFVriI2d3Ux5Q=
 #           -----END CERTIFICATE-----
 
-value_key_map:
-  metadata:
-    table_name: attribute_value_public_key_map
-    columns:
-      - value_id
-      - key_id
-  data:
-    - value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
-      key_id: f478f1cd-df6e-4a55-9603-d961b36ea392
-    - value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
-      key_id: 68fb7e3e-6c7b-434d-bf38-07701ad8655a
-    - value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3 # deactivated
-      key_id: d433e903-e3d1-4823-9b3e-7b188e7c6060
+# value_key_map:
+#   metadata:
+#     table_name: attribute_value_public_key_map
+#     columns:
+#       - value_id
+#       - key_id
+#   data:
+#     - value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
+#       key_id: f478f1cd-df6e-4a55-9603-d961b36ea392
+#     - value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
+#       key_id: 68fb7e3e-6c7b-434d-bf38-07701ad8655a
+#     - value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3 # deactivated
+#       key_id: d433e903-e3d1-4823-9b3e-7b188e7c6060
 
-definition_key_map:
-  metadata:
-    table_name: attribute_definition_public_key_map
-    columns:
-      - definition_id
-      - key_id
-  data:
-    - definition_id: 6a261d68-0899-4e17-bb2f-124abba7c09c
-      key_id: f478f1cd-df6e-4a55-9603-d961b36ea392
-    - definition_id: 6a261d68-0899-4e17-bb2f-124abba7c09c # deactivated
-      key_id: d433e903-e3d1-4823-9b3e-7b188e7c6060
+# definition_key_map:
+#   metadata:
+#     table_name: attribute_definition_public_key_map
+#     columns:
+#       - definition_id
+#       - key_id
+#   data:
+#     - definition_id: 6a261d68-0899-4e17-bb2f-124abba7c09c
+#       key_id: f478f1cd-df6e-4a55-9603-d961b36ea392
+#     - definition_id: 6a261d68-0899-4e17-bb2f-124abba7c09c # deactivated
+#       key_id: d433e903-e3d1-4823-9b3e-7b188e7c6060
 
-namespace_key_map:
-  metadata:
-    table_name: attribute_namespace_public_key_map
-    columns:
-      - namespace_id
-      - key_id
-  data:
-    - namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
-      key_id: f478f1cd-df6e-4a55-9603-d961b36ea392
-    - namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
-      key_id: 68fb7e3e-6c7b-434d-bf38-07701ad8655a
-    - namespace_id: 87ba60e1-da12-4889-95fd-267968bf0896
-      key_id: f478f1cd-df6e-4a55-9603-d961b36ea392
-    - namespace_id: 87ba60e1-da12-4889-95fd-267968bf0896
-      key_id: 68fb7e3e-6c7b-434d-bf38-07701ad8655a
-    - namespace_id: 87ba60e1-da12-4889-95fd-267968bf0896 # deactivated
-      key_id: d433e903-e3d1-4823-9b3e-7b188e7c6060
+# namespace_key_map:
+#   metadata:
+#     table_name: attribute_namespace_public_key_map
+#     columns:
+#       - namespace_id
+#       - key_id
+#   data:
+#     - namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
+#       key_id: f478f1cd-df6e-4a55-9603-d961b36ea392
+#     - namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
+#       key_id: 68fb7e3e-6c7b-434d-bf38-07701ad8655a
+#     - namespace_id: 87ba60e1-da12-4889-95fd-267968bf0896
+#       key_id: f478f1cd-df6e-4a55-9603-d961b36ea392
+#     - namespace_id: 87ba60e1-da12-4889-95fd-267968bf0896
+#       key_id: 68fb7e3e-6c7b-434d-bf38-07701ad8655a
+#     - namespace_id: 87ba60e1-da12-4889-95fd-267968bf0896 # deactivated
+#       key_id: d433e903-e3d1-4823-9b3e-7b188e7c6060

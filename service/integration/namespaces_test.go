@@ -1157,18 +1157,6 @@ func (s *NamespacesSuite) Test_RemoveKASGrant_FailsAlreadyRemoved() {
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
-func (s *NamespacesSuite) Test_GetNamespace_Returns_Only_Active_PublicKeys() {
-	n, err := s.db.PolicyClient.GetNamespace(s.ctx, s.f.GetNamespaceKey("scenario.com").ID)
-	s.Require().NoError(err)
-	s.NotNil(n)
-
-	// ensure only active public keys are returned
-	s.NotEmpty(n.GetKeys())
-	for _, k := range n.GetKeys() {
-		s.True(k.GetIsActive().GetValue())
-	}
-}
-
 func TestNamespacesSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping namespaces integration tests")

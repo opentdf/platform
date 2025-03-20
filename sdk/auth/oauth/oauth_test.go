@@ -584,6 +584,8 @@ func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string, str
 	if err != nil {
 		t.Fatalf("error starting keycloak container: %v", err)
 	}
+	require.NoError(t, err, "could not start keycloak container")
+
 	port, _ := keycloak.MappedPort(ctx, "8082")
 	keycloakBase := fmt.Sprintf("http://localhost:%s", port.Port())
 

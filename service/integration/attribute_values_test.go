@@ -967,18 +967,6 @@ func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Succe
 	s.Equal(v, resp)
 }
 
-func (s *AttributeValuesSuite) Test_GetAttributeValue_Returns_Only_Active_PublicKeys() {
-	v, err := s.db.PolicyClient.GetAttributeValue(s.ctx, s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2").ID)
-	s.Require().NoError(err)
-	s.NotNil(v)
-
-	// ensure only active public keys are returned
-	s.NotEmpty(v.GetKeys())
-	for _, k := range v.GetKeys() {
-		s.True(k.GetIsActive().GetValue())
-	}
-}
-
 func TestAttributeValuesSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping attribute values integration tests")

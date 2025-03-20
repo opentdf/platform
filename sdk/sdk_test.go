@@ -304,6 +304,16 @@ func Test_ShouldSanitizePlatformEndpoint(t *testing.T) {
 			expected: "localhost:443",
 		},
 		{
+			name:     "HTTPS scheme port (IP)",
+			endpoint: "https://192.168.1.1:8080",
+			expected: "192.168.1.1:8080",
+		},
+		{
+			name:     "HTTPS scheme no port (IP)",
+			endpoint: "https://192.168.1.1",
+			expected: "192.168.1.1:443",
+		},
+		{
 			name:     "Malformed url",
 			endpoint: "http://localhost:8080:8080",
 			expected: "",

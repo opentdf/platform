@@ -12,7 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"regexp"
+	"strings"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/authorization"
@@ -207,25 +207,34 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 func SanitizePlatformEndpoint(e string) (string, error) {
 	// check if there's a scheme, if not, add https
-	if !regexp.MustCompile(`^https?://`).MatchString(e) {
-		e = "https://" + e
-	}
-
-	if !regexp.MustCompile(`^(https?:\/\/)?((([a-zA-Z0-9-]+\.)+[a-zA-Z-]{2,})|(([0-9]+\.){3}[0-9]+)|(localhost))(:\d+)?\/?$`).MatchString(e) {
-		return "", errors.New("platform endpoint is not valid")
-	}
-
 	u, err := url.ParseRequestURI(e)
 	if err != nil {
-		return "", errors.Join(fmt.Errorf("cannot parse platform endpoint(%s)", e), err)
+		return "", errors.Join(fmt.Errorf("cannot parse platform endpoint [%s]", e), err)
+	}
+	if u.Host == "" {
+		// if the schema is missing add https. when the schema is missing the host is parsed as the scheme
+		e = "https://" + e
+		u, err = url.ParseRequestURI(e)
+	}
+
+	if err != nil {
+		return "", errors.Join(fmt.Errorf("cannot parse platform endpoint [%s]", e), err)
+	}
+
+	if u.Host == "" {
+		return "", fmt.Errorf("invalid URL [%s], got empty hostname", e)
+	}
+
+	if strings.Contains(u.Hostname(), ":") {
+		return "", fmt.Errorf("invalid hostname [%s]. IPv6 addresses are not supported", u.Hostname())
 	}
 
 	p := u.Port()
 	if p == "" {
-		if u.Scheme == "http" {
-			p = "80"
-		} else {
+		if u.Scheme == "https" {
 			p = "443"
+		} else {
+			p = "80"
 		}
 	}
 

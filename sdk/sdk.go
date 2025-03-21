@@ -213,12 +213,11 @@ func SanitizePlatformEndpoint(e string) (string, error) {
 	}
 	if u.Host == "" {
 		// if the schema is missing add https. when the schema is missing the host is parsed as the scheme
-		e = "https://" + e
-		u, err = url.ParseRequestURI(e)
-	}
-
-	if err != nil {
-		return "", errors.Join(fmt.Errorf("cannot parse platform endpoint [%s]", e), err)
+		newE := "https://" + e
+		u, err = url.ParseRequestURI(newE)
+		if err != nil {
+			return "", errors.Join(fmt.Errorf("cannot parse platform endpoint [%s]", newE), err)
+		}
 	}
 
 	if u.Host == "" {

@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.1.9...lib/ocrypto/v0.2.0) (2025-03-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** Require go 1.23+ ([#1979](https://github.com/opentdf/platform/issues/1979))
+
+### Features
+
+* **core:** Require go 1.23+ ([#1979](https://github.com/opentdf/platform/issues/1979)) ([164c922](https://github.com/opentdf/platform/commit/164c922af74b1265fe487362c356abb7f1503ada))
+
 ## [0.1.9](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.1.8...lib/ocrypto/v0.1.9) (2025-03-07)
 
 

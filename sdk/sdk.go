@@ -218,22 +218,21 @@ func SanitizePlatformEndpoint(e string) (string, error) {
 		if err != nil {
 			return "", errors.Join(fmt.Errorf("cannot parse platform endpoint [%s]", newE), err)
 		}
+		if u.Host == "" {
+			return "", fmt.Errorf("invalid URL [%s], got empty hostname", newE)
+		}
 	}
-
-	if u.Host == "" {
-		return "", fmt.Errorf("invalid URL [%s], got empty hostname", e)
-	}
-
+	
 	if strings.Contains(u.Hostname(), ":") {
 		return "", fmt.Errorf("invalid hostname [%s]. IPv6 addresses are not supported", u.Hostname())
 	}
 
 	p := u.Port()
 	if p == "" {
-		if u.Scheme == "https" {
-			p = "443"
-		} else {
+		if u.Scheme == "http" {
 			p = "80"
+		} else {
+			p = "443"
 		}
 	}
 

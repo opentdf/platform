@@ -222,7 +222,7 @@ func SanitizePlatformEndpoint(e string) (string, error) {
 			return "", fmt.Errorf("invalid URL [%s], got empty hostname", newE)
 		}
 	}
-	
+
 	if strings.Contains(u.Hostname(), ":") {
 		return "", fmt.Errorf("invalid hostname [%s]. IPv6 addresses are not supported", u.Hostname())
 	}

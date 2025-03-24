@@ -22,7 +22,7 @@ func OnConfigUpdate(p *access.Provider) serviceregistry.OnConfigUpdateHook {
 		}
 
 		p.KASConfig = kasCfg
-		slog.Info("kas config reloaded")
+		p.Logger.Info("kas config reloaded")
 
 		return nil
 	}

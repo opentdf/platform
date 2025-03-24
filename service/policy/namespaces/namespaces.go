@@ -33,7 +33,7 @@ func OnConfigUpdate(ns *NamespacesService) serviceregistry.OnConfigUpdateHook {
 		ns.config = sharedCfg
 		ns.dbClient = policydb.NewClient(ns.dbClient.Client, ns.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
 
-		slog.Info("namespace service config reloaded")
+		ns.logger.Info("namespace service config reloaded")
 
 		return nil
 	}

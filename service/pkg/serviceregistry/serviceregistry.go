@@ -75,7 +75,7 @@ type IService interface {
 	Start(ctx context.Context, params RegistrationParams) error
 	IsStarted() bool
 	Shutdown() error
-	RegisterConfigUpdateHook(_ context.Context, onConfigUpdate func(func(config.ConfigServices))) error
+	RegisterConfigUpdateHooks(_ context.Context, onConfigUpdate []func(func(config.ConfigServices))) error
 	RegisterConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error
 	RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, string, []grpc.DialOption) error
 	RegisterHTTPHandlers(context.Context, *runtime.ServeMux) error
@@ -166,14 +166,16 @@ func (s *Service[S]) Start(ctx context.Context, params RegistrationParams) error
 }
 
 // RegisterConfigUpdateHook stores the service's config update hook (if provided) under its namespace.
-func (s Service[S]) RegisterConfigUpdateHook(_ context.Context, registrationFunc func(func(config.ConfigServices))) error {
-	if registrationFunc == nil {
+func (s Service[S]) RegisterConfigUpdateHooks(_ context.Context, registrationFuncs []func(func(config.ConfigServices))) error {
+	if registrationFuncs == nil {
 		return fmt.Errorf("onConfigUpdate cannot be nil")
 	}
 	if s.OnConfigUpdate != nil {
-		registrationFunc(func(cfg config.ConfigServices) {
-			s.OnConfigUpdate(cfg[s.GetNamespace()])
-		})
+		for _, registrationFunc := range registrationFuncs {
+			registrationFunc(func(cfg config.ConfigServices) {
+				s.OnConfigUpdate(cfg[s.GetNamespace()])
+			})
+		}
 	}
 	return nil
 }

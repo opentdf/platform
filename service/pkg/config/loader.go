@@ -19,7 +19,7 @@ type ConfigLoader interface {
 	Load(cfg *Config) error
 
 	// Watch starts watching for configuration changes
-	Watch(cfg *Config) (func(func(fsnotify.Event)), error)
+	Watch(cfg *Config) (func(func(ConfigServices)), error)
 
 	// GetName returns the name of the configuration loader
 	GetName() string

@@ -54,6 +54,16 @@ func Start(f ...StartOptions) error {
 		return fmt.Errorf("could not load config: %w", err)
 	}
 
+	if startConfig.configLoaders != nil {
+		for _, loader := range startConfig.configLoaders {
+			// TODO: merge, not replace?
+			err := loader.Load(cfg)
+			if err != nil {
+				return fmt.Errorf("could not load config: %w", err)
+			}
+		}
+	}
+
 	if cfg.DevMode {
 		fmt.Print(devModeMessage) //nolint:forbidigo // This ascii art is only displayed in dev mode
 	}
@@ -74,6 +84,8 @@ func Start(f ...StartOptions) error {
 		defer shutdown()
 	}
 
+	logger.Debug("config loaded", slog.Any("config", cfg.LogValue()))
+
 	logger.Info("starting opentdf services")
 
 	// Set allowed public routes when platform is being extended
@@ -91,8 +103,6 @@ func Start(f ...StartOptions) error {
 	if startConfig.casbinAdapter != nil {
 		cfg.Server.Auth.Policy.Adapter = startConfig.casbinAdapter
 	}
-
-	logger.Debug("config loaded", slog.Any("config", cfg))
 
 	// Create new server for grpc & http. Also will support in process grpc potentially too
 	logger.Debug("initializing opentdf server")

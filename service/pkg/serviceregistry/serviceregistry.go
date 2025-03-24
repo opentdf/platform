@@ -173,7 +173,12 @@ func (s Service[S]) RegisterConfigUpdateHooks(_ context.Context, registrationFun
 	if s.OnConfigUpdate != nil {
 		for _, registrationFunc := range registrationFuncs {
 			registrationFunc(func(cfg config.ConfigServices) {
-				s.OnConfigUpdate(cfg[s.GetNamespace()])
+				// TODO: remove
+				slog.Info("config update hook called", slog.String("namespace", s.GetNamespace()))
+				err := s.OnConfigUpdate(cfg[s.GetNamespace()])
+				if err != nil {
+					slog.Error("error calling config update hook", slog.String("namespace", s.GetNamespace()), slog.String("error", err.Error()))
+				}
 			})
 		}
 	}

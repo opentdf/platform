@@ -71,7 +71,6 @@ func NewEnvironmentLoader(key, file string) (*EnvironmentLoader, error) {
 	return &EnvironmentLoader{viper: v, name: "environment"}, nil
 }
 
-// TODO: ensure this load does not overwrite the hooks or loaders
 // Load loads the configuration into the provided struct
 func (l *EnvironmentLoader) Load(cfg *Config) error {
 	// Set defaults
@@ -114,17 +113,18 @@ func (l *EnvironmentLoader) Watch(_ context.Context, cfg *Config) error {
 
 		slog.Info("Environment config successfully reloaded",
 			slog.Any("config", cfg.LogValue()),
-			slog.Any("hooks", len(cfg.onConfigChangeHooks)),
+			slog.String("config loader changed", l.GetName()),
 		)
 
 		// Then execute all registered hooks with the event
-		for _, hook := range cfg.onConfigChangeHooks {
-			if err := hook(cfg.Services, l.GetName()); err != nil {
-				slog.Error("Error executing config change hook",
-					slog.String("error", err.Error()),
-					slog.String("config loader", l.GetName()),
-				)
-			}
+		if err := cfg.OnChange(context.Background()); err != nil {
+			slog.Error(
+				"Error executing config change hooks",
+				slog.String("error", err.Error()),
+				slog.String("config loader changed", l.GetName()),
+			)
+		} else {
+			slog.Debug("Config change hooks executed successfully", slog.String("config loader changed", l.GetName()))
 		}
 	})
 

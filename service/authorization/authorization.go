@@ -91,7 +91,7 @@ func (as *AuthorizationService) loadRegoAndBuiltins(cfg *Config) error {
 }
 
 func OnConfigUpdate(as *AuthorizationService) serviceregistry.OnConfigUpdateHook {
-	return func(cfg config.ServiceConfig) error {
+	return func(_ context.Context, cfg config.ServiceConfig) error {
 		err := mapstructure.Decode(cfg, as.config)
 		if err != nil {
 			return fmt.Errorf("invalid auth svc cfg [%v] %w", cfg, err)

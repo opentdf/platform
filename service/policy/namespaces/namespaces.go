@@ -25,7 +25,7 @@ type NamespacesService struct { //nolint:revive // NamespacesService is a valid 
 }
 
 func OnConfigUpdate(ns *NamespacesService) serviceregistry.OnConfigUpdateHook {
-	return func(cfg config.ServiceConfig) error {
+	return func(_ context.Context, cfg config.ServiceConfig) error {
 		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
 		if err != nil {
 			return fmt.Errorf("failed to get shared policy config: %w", err)

@@ -11,10 +11,8 @@ import (
 	"github.com/opentdf/platform/service/tracing"
 )
 
-// LoadedConfigChangeHook is a function invoked when the configuration changes.
-// It is passed the updated configuration for all services and the name of the configuration loader
-// that watched the change and fired the hook.
-type LoadedConfigChangeHook func(configServices ConfigServices, configLoaderName string) error
+// ConfigChangeHook is a function invoked when the configuration changes.
+type ConfigChangeHook func(configServices ConfigServices) error
 
 // Config structure holding all services.
 type ConfigServices map[string]ServiceConfig
@@ -50,7 +48,7 @@ type Config struct {
 	Trace tracing.Config `mapstructure:"trace"`
 
 	// onConfigChangeHooks is a list of functions to call when the configuration changes.
-	onConfigChangeHooks []LoadedConfigChangeHook
+	onConfigChangeHooks []ConfigChangeHook
 	// loaders is a list of configuration loaders.
 	loaders []ConfigLoader
 }
@@ -108,7 +106,7 @@ func (c *Config) AddLoader(loader ConfigLoader) {
 }
 
 // AddOnConfigChangeHook adds a hook to the list of hooks to call when the configuration changes.
-func (c *Config) AddOnConfigChangeHook(hook LoadedConfigChangeHook) {
+func (c *Config) AddOnConfigChangeHook(hook ConfigChangeHook) {
 	c.onConfigChangeHooks = append(c.onConfigChangeHooks, hook)
 }
 
@@ -119,6 +117,19 @@ func (c *Config) Watch(ctx context.Context) error {
 	}
 	for _, loader := range c.loaders {
 		if err := loader.Watch(ctx, c); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// OnChange invokes all registered onConfigChangeHooks after a configuration change.
+func (c *Config) OnChange(ctx context.Context) error {
+	if len(c.loaders) == 0 {
+		return nil
+	}
+	for _, hook := range c.onConfigChangeHooks {
+		if err := hook(c.Services); err != nil {
 			return err
 		}
 	}

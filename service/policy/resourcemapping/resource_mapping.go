@@ -25,7 +25,7 @@ type ResourceMappingService struct { //nolint:revive // ResourceMappingService i
 }
 
 func OnConfigUpdate(rmSvc *ResourceMappingService) serviceregistry.OnConfigUpdateHook {
-	return func(cfg config.ServiceConfig) error {
+	return func(_ context.Context, cfg config.ServiceConfig) error {
 		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
 		if err != nil {
 			return fmt.Errorf("failed to get shared policy config: %w", err)

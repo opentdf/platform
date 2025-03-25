@@ -54,7 +54,7 @@ type (
 	HandlerServer       func(ctx context.Context, mux *runtime.ServeMux) error
 	RegisterFunc[S any] func(RegistrationParams) (impl S, HandlerServer HandlerServer)
 	// Allow services to implement handling for config changes as direced by caller
-	OnConfigUpdateHook func(config.ServiceConfig) error
+	OnConfigUpdateHook func(context.Context, config.ServiceConfig) error
 )
 
 // DBRegister is a struct that holds the information needed to register a service with a database
@@ -75,7 +75,7 @@ type IService interface {
 	Start(ctx context.Context, params RegistrationParams) error
 	IsStarted() bool
 	Shutdown() error
-	RegisterConfigUpdateHook(_ context.Context, hookAppender func(config.LoadedConfigChangeHook)) error
+	RegisterConfigUpdateHook(ctx context.Context, hookAppender func(config.ConfigChangeHook)) error
 	RegisterConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error
 	RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, string, []grpc.DialOption) error
 	RegisterHTTPHandlers(context.Context, *runtime.ServeMux) error
@@ -166,16 +166,15 @@ func (s *Service[S]) Start(ctx context.Context, params RegistrationParams) error
 }
 
 // RegisterConfigUpdateHook appends a registered service's onConfigUpdateHook to any watching config loaders.
-func (s Service[S]) RegisterConfigUpdateHook(_ context.Context, hookAppender func(config.LoadedConfigChangeHook)) error {
+func (s Service[S]) RegisterConfigUpdateHook(ctx context.Context, hookAppender func(config.ConfigChangeHook)) error {
 	// If no hook is registered, exit
 	if s.OnConfigUpdate != nil {
-		var onChange config.LoadedConfigChangeHook = func(cfg config.ConfigServices, loaderName string) error {
-			slog.Debug("service config change hook",
+		var onChange config.ConfigChangeHook = func(cfg config.ConfigServices) error {
+			slog.Debug("service config change hook registered",
 				slog.String("namespace", s.GetNamespace()),
 				slog.String("service", s.GetServiceDesc().ServiceName),
-				slog.String("config loader", loaderName),
 			)
-			return s.OnConfigUpdate(cfg[s.GetNamespace()])
+			return s.OnConfigUpdate(ctx, cfg[s.GetNamespace()])
 		}
 		hookAppender(onChange)
 	}

@@ -1,6 +1,7 @@
 package kas
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -15,7 +16,7 @@ import (
 )
 
 func OnConfigUpdate(p *access.Provider) serviceregistry.OnConfigUpdateHook {
-	return func(cfg config.ServiceConfig) error {
+	return func(_ context.Context, cfg config.ServiceConfig) error {
 		var kasCfg access.KASConfig
 		if err := mapstructure.Decode(cfg, &kasCfg); err != nil {
 			return fmt.Errorf("invalid kas cfg [%v] %w", cfg, err)

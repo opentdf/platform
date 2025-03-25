@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -18,8 +19,11 @@ type ConfigLoader interface {
 	// Load loads the configuration into the provided struct
 	Load(cfg *Config) error
 
-	// Watch starts watching for configuration changes
-	Watch(cfg *Config) (func(func(ConfigServices)), error)
+	// Watch starts watching for configuration changes, returning a watcher function
+	Watch(ctx context.Context, cfg *Config) (ConfigWatcher, error)
+
+	// Close closes the configuration loader
+	Close() error
 
 	// GetName returns the name of the configuration loader
 	GetName() string
@@ -90,15 +94,15 @@ func (l *EnvironmentLoader) Load(cfg *Config) error {
 	return nil
 }
 
-// Watch starts watching for configuration changes
-func (l *EnvironmentLoader) Watch(cfg *Config) (func(func(ConfigServices)), error) {
+// Watch starts watching the config file for configuration changes
+func (l *EnvironmentLoader) Watch(_ context.Context, cfg *Config) (ConfigWatcher, error) {
 	l.viper.WatchConfig()
 
 	// Create a slice to store all the hook functions
-	var configChangeHooks []func(ConfigServices)
+	var configChangeHooks []ConfigChangeHook
 
 	// Return a function that allows registering hooks
-	onConfigChange := func(hook func(ConfigServices)) {
+	onConfigChange := func(hook ConfigChangeHook) {
 		configChangeHooks = append(configChangeHooks, hook)
 	}
 
@@ -123,7 +127,13 @@ func (l *EnvironmentLoader) Watch(cfg *Config) (func(func(ConfigServices)), erro
 	return onConfigChange, nil
 }
 
-// GetName returns the name of the configuration loader
+// GetName returns the name of the environment configuration loader
 func (l *EnvironmentLoader) GetName() string {
 	return "environment"
+}
+
+// Close closes the environment configuration loader
+func (l *EnvironmentLoader) Close() error {
+	// No-op on a viper-based loader, which does not provide a close method
+	return nil
 }

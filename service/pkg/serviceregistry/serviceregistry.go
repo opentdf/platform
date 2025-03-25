@@ -75,7 +75,7 @@ type IService interface {
 	Start(ctx context.Context, params RegistrationParams) error
 	IsStarted() bool
 	Shutdown() error
-	RegisterConfigUpdateHooks(_ context.Context, onConfigUpdate []func(func(config.ConfigServices))) error
+	RegisterConfigUpdateHooks(_ context.Context, onConfigUpdate []config.ConfigWatcher) error
 	RegisterConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error
 	RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, string, []grpc.DialOption) error
 	RegisterHTTPHandlers(context.Context, *runtime.ServeMux) error

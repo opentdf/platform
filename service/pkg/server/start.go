@@ -49,11 +49,11 @@ func Start(f ...StartOptions) error {
 	ctx := context.Background()
 
 	slog.Debug("loading configuration from environment")
-	cfg, watchEnvConfigChange, err := config.LoadConfig(startConfig.ConfigKey, startConfig.ConfigFile)
+	cfg, watchEnvConfigChange, err := config.LoadConfig(ctx, startConfig.ConfigKey, startConfig.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("could not load config: %w", err)
 	}
-	onConfigChangeHandlers := []func(func(config.ConfigServices)){watchEnvConfigChange}
+	onConfigChangeHandlers := []config.ConfigWatcher{watchEnvConfigChange}
 
 	if startConfig.configLoaders != nil {
 		slog.Debug("loading configuration from additional provided loaders")
@@ -65,7 +65,7 @@ func Start(f ...StartOptions) error {
 			if err != nil {
 				return fmt.Errorf("failed load config with loader %s: %w", loader.GetName(), err)
 			}
-			watcher, err := loader.Watch(cfg)
+			watcher, err := loader.Watch(ctx, cfg)
 			if err != nil {
 				return fmt.Errorf("failed to watch config with loader %s: %w", loader.GetName(), err)
 			}

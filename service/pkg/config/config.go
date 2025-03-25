@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 
@@ -10,6 +11,8 @@ import (
 	"github.com/opentdf/platform/service/tracing"
 )
 
+type ConfigChangeHook func(ConfigServices) error
+type ConfigWatcher func(ConfigChangeHook)
 type ConfigServices map[string]ServiceConfig
 type ServiceConfig map[string]any
 
@@ -104,7 +107,7 @@ func (c SDKConfig) LogValue() slog.Value {
 }
 
 // LoadConfig loads configuration using the provided loader or creates a default Viper loader
-func LoadConfig(key, file string) (*Config, func(func(ConfigServices)), error) {
+func LoadConfig(ctx context.Context, key, file string) (*Config, ConfigWatcher, error) {
 	config := &Config{}
 
 	// Create default loader if none provided
@@ -119,7 +122,7 @@ func LoadConfig(key, file string) (*Config, func(func(ConfigServices)), error) {
 	}
 
 	// Watch for changes
-	onConfigChange, err := loader.Watch(config)
+	onConfigChange, err := loader.Watch(ctx, config)
 	if err != nil {
 		return nil, nil, err
 	}

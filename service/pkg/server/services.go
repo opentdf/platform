@@ -115,7 +115,7 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 // based on the configuration and namespace mode. It creates a new service logger
 // and a database client if required. It registers the services with the gRPC server,
 // in-process gRPC server, and gRPC gateway. Finally, it logs the status of each service.
-func startServices(ctx context.Context, cfg *config.Config, onServicesConfigChange []func(func(config.ConfigServices)), otdf *server.OpenTDFServer, client *sdk.SDK, logger *logging.Logger, reg serviceregistry.Registry) error {
+func startServices(ctx context.Context, cfg *config.Config, onServicesConfigChange []config.ConfigWatcher, otdf *server.OpenTDFServer, client *sdk.SDK, logger *logging.Logger, reg serviceregistry.Registry) error {
 	// Iterate through the registered namespaces
 	for ns, namespace := range reg {
 		// modeEnabled checks if the mode is enabled based on the configuration and namespace mode.

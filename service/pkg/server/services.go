@@ -24,9 +24,6 @@ import (
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
@@ -189,18 +186,6 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 			// Register In Process Connect RPC Services
 			if err := svc.RegisterConnectRPCServiceHandler(ctx, otdf.ConnectRPCInProcess.ConnectRPC); err != nil {
 				logger.Info("service did not register a connect-rpc handler", slog.String("namespace", ns))
-			}
-
-			// Register GRPC Gateway
-			grpcGatewayDialOptions := make([]grpc.DialOption, 0)
-			if !cfg.Server.TLS.Enabled {
-				grpcGatewayDialOptions = append(grpcGatewayDialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))
-			} else {
-				creds, err := credentials.NewClientTLSFromFile(cfg.Server.TLS.Cert, "")
-				if err != nil {
-					return fmt.Errorf("failed to create grpc-gateway client TLS credentials: %w", err)
-				}
-				grpcGatewayDialOptions = append(grpcGatewayDialOptions, grpc.WithTransportCredentials(creds))
 			}
 
 			// Register GRPC Gateway Handler using the in-process connect rpc

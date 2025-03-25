@@ -75,7 +75,7 @@ type IService interface {
 	Start(ctx context.Context, params RegistrationParams) error
 	IsStarted() bool
 	Shutdown() error
-	RegisterConfigUpdateHooks(_ context.Context, onConfigUpdate []config.ConfigWatcher) error
+	RegisterConfigUpdateHook(_ context.Context, hookAppender func(config.LoadedConfigChangeHook)) error
 	RegisterConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error
 	RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, string, []grpc.DialOption) error
 	RegisterHTTPHandlers(context.Context, *runtime.ServeMux) error
@@ -165,22 +165,19 @@ func (s *Service[S]) Start(ctx context.Context, params RegistrationParams) error
 	return nil
 }
 
-// RegisterConfigUpdateHook stores the service's config update hook (if provided) under its namespace.
-func (s Service[S]) RegisterConfigUpdateHooks(_ context.Context, registrationFuncs []func(func(config.ConfigServices))) error {
-	if registrationFuncs == nil {
-		return fmt.Errorf("onConfigUpdate cannot be nil")
-	}
+// RegisterConfigUpdateHook appends a registered service's onConfigUpdateHook to any watching config loaders.
+func (s Service[S]) RegisterConfigUpdateHook(_ context.Context, hookAppender func(config.LoadedConfigChangeHook)) error {
+	// If no hook is registered, exit
 	if s.OnConfigUpdate != nil {
-		for _, registrationFunc := range registrationFuncs {
-			registrationFunc(func(cfg config.ConfigServices) {
-				// TODO: remove
-				slog.Info("config update hook called", slog.String("namespace", s.GetNamespace()))
-				err := s.OnConfigUpdate(cfg[s.GetNamespace()])
-				if err != nil {
-					slog.Error("error calling config update hook", slog.String("namespace", s.GetNamespace()), slog.String("error", err.Error()))
-				}
-			})
+		var onChange config.LoadedConfigChangeHook = func(cfg config.ConfigServices, loaderName string) error {
+			slog.Debug("service config change hook",
+				slog.String("namespace", s.GetNamespace()),
+				slog.String("service", s.GetServiceDesc().ServiceName),
+				slog.String("config loader", loaderName),
+			)
+			return s.OnConfigUpdate(cfg[s.GetNamespace()])
 		}
+		hookAppender(onChange)
 	}
 	return nil
 }

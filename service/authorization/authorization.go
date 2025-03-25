@@ -164,6 +164,7 @@ func NewRegistration() *serviceregistry.Service[authorizationconnect.Authorizati
 					logger.Error("failed to load rego and builtins", slog.String("error", err.Error()))
 					panic(fmt.Errorf("failed to load rego and builtins: %w", err))
 				}
+				as.config = authZCfg
 
 				logger.Debug("authorization service config")
 

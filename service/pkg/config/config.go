@@ -11,8 +11,10 @@ import (
 	"github.com/opentdf/platform/service/tracing"
 )
 
-type ConfigChangeHook func(ConfigServices) error
-type ConfigWatcher func(ConfigChangeHook)
+// LoadedConfigChangeHook is a function invoked 
+// It is passed the updated configuration for all services and the name of the configuration loader
+// that watched the change and fired the hook.
+type LoadedConfigChangeHook func(configServices ConfigServices, configLoaderName string) error
 type ConfigServices map[string]ServiceConfig
 type ServiceConfig map[string]any
 
@@ -42,6 +44,11 @@ type Config struct {
 
 	// Trace is for configuring open telemetry based tracing.
 	Trace tracing.Config `mapstructure:"trace"`
+
+	// onConfigChangeHooks is a list of functions to call when the configuration changes.
+	onConfigChangeHooks []LoadedConfigChangeHook
+	// loaders is a list of configuration loaders.
+	loaders []ConfigLoader
 }
 
 // SDKConfig represents the configuration for the SDK.
@@ -91,6 +98,26 @@ func (c *Config) LogValue() slog.Value {
 	)
 }
 
+// AddLoader adds a configuration loader to the list of loaders.
+func (c *Config) AddLoader(loader ConfigLoader) {
+	c.loaders = append(c.loaders, loader)
+}
+
+// AddOnConfigChangeHook adds a hook to the list of hooks to call when the configuration changes.
+func (c *Config) AddOnConfigChangeHook(hook LoadedConfigChangeHook) {
+	c.onConfigChangeHooks = append(c.onConfigChangeHooks, hook)
+}
+
+// Watch starts watching the configuration for changes.
+func (c *Config) Watch(ctx context.Context) error {
+	for _, loader := range c.loaders {
+		if err := loader.Watch(ctx, c); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (c SDKConfig) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.Group("core",
@@ -107,25 +134,20 @@ func (c SDKConfig) LogValue() slog.Value {
 }
 
 // LoadConfig loads configuration using the provided loader or creates a default Viper loader
-func LoadConfig(ctx context.Context, key, file string) (*Config, ConfigWatcher, error) {
+func LoadConfig(ctx context.Context, key, file string) (*Config, error) {
 	config := &Config{}
 
 	// Create default loader if none provided
 	loader, err := NewEnvironmentLoader(key, file)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Load initial configuration
 	if err := loader.Load(config); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
+	config.AddLoader(loader)
 
-	// Watch for changes
-	onConfigChange, err := loader.Watch(ctx, config)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return config, onConfigChange, nil
+	return config, nil
 }

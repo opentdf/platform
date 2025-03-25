@@ -49,27 +49,21 @@ func Start(f ...StartOptions) error {
 	ctx := context.Background()
 
 	slog.Debug("loading configuration from environment")
-	cfg, watchEnvConfigChange, err := config.LoadConfig(ctx, startConfig.ConfigKey, startConfig.ConfigFile)
+	cfg, err := config.LoadConfig(ctx, startConfig.ConfigKey, startConfig.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("could not load config: %w", err)
 	}
-	onConfigChangeHandlers := []config.ConfigWatcher{watchEnvConfigChange}
 
 	if startConfig.configLoaders != nil {
 		slog.Debug("loading configuration from additional provided loaders")
+
 		for _, loader := range startConfig.configLoaders {
 			slog.Debug("loading config for loader", slog.String("loader", loader.GetName()))
-
-			// TODO: merge, not replace?
 			err := loader.Load(cfg)
 			if err != nil {
 				return fmt.Errorf("failed load config with loader %s: %w", loader.GetName(), err)
 			}
-			watcher, err := loader.Watch(ctx, cfg)
-			if err != nil {
-				return fmt.Errorf("failed to watch config with loader %s: %w", loader.GetName(), err)
-			}
-			onConfigChangeHandlers = append(onConfigChangeHandlers, watcher)
+			cfg.AddLoader(loader)
 		}
 	}
 
@@ -303,10 +297,15 @@ func Start(f ...StartOptions) error {
 	defer client.Close()
 
 	logger.Info("starting services")
-	err = startServices(ctx, cfg, onConfigChangeHandlers, otdf, client, logger, svcRegistry)
+	err = startServices(ctx, cfg, otdf, client, logger, svcRegistry)
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)
+	}
+
+	// Start watching the configuration for changes
+	if err := cfg.Watch(ctx); err != nil {
+		return fmt.Errorf("failed to watch configuration: %w", err)
 	}
 
 	// Start the server

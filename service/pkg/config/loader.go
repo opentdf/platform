@@ -18,13 +18,10 @@ import (
 type ConfigLoader interface {
 	// Load loads the configuration into the provided struct
 	Load(cfg *Config) error
-
-	// Watch starts watching for configuration changes, returning a watcher function
-	Watch(ctx context.Context, cfg *Config) (ConfigWatcher, error)
-
+	// Watch starts watching for configuration changes and runs the configured change hooks
+	Watch(context.Context, *Config) error
 	// Close closes the configuration loader
 	Close() error
-
 	// GetName returns the name of the configuration loader
 	GetName() string
 }
@@ -32,6 +29,7 @@ type ConfigLoader interface {
 // EnvironmentLoader implements ConfigLoader using Viper
 type EnvironmentLoader struct {
 	viper *viper.Viper
+	name  string
 }
 
 // NewEnvironmentLoader creates a new Viper-based configuration loader
@@ -70,9 +68,10 @@ func NewEnvironmentLoader(key, file string) (*EnvironmentLoader, error) {
 		return nil, errors.Join(err, ErrLoadingConfig)
 	}
 
-	return &EnvironmentLoader{viper: v}, nil
+	return &EnvironmentLoader{viper: v, name: "environment"}, nil
 }
 
+// TODO: ensure this load does not overwrite the hooks or loaders
 // Load loads the configuration into the provided struct
 func (l *EnvironmentLoader) Load(cfg *Config) error {
 	// Set defaults
@@ -95,41 +94,46 @@ func (l *EnvironmentLoader) Load(cfg *Config) error {
 }
 
 // Watch starts watching the config file for configuration changes
-func (l *EnvironmentLoader) Watch(_ context.Context, cfg *Config) (ConfigWatcher, error) {
-	l.viper.WatchConfig()
-
-	// Create a slice to store all the hook functions
-	var configChangeHooks []ConfigChangeHook
-
-	// Return a function that allows registering hooks
-	onConfigChange := func(hook ConfigChangeHook) {
-		configChangeHooks = append(configChangeHooks, hook)
+func (l *EnvironmentLoader) Watch(_ context.Context, cfg *Config) error {
+	if len(cfg.onConfigChangeHooks) == 0 {
+		slog.Debug("No config change hooks registered. Skipping environment config watch.")
+		return nil
 	}
 
-	// Register only one viper config change handler
+	l.viper.WatchConfig()
+
+	// If config changes, reload it and invoke all hooks
 	l.viper.OnConfigChange(func(e fsnotify.Event) {
-		slog.Info("Config file changed", "file", e.Name)
+		slog.Debug("Environment config file changed", "file", e.Name)
 
 		// First reload and validate the config
 		if err := l.Load(cfg); err != nil {
-			slog.Error("Error reloading config", "error", err)
+			slog.Error("Error reloading environment config", "error", err)
 			return
 		}
 
-		slog.Info("Config successfully reloaded", "config", cfg.LogValue())
+		slog.Info("Environment config successfully reloaded",
+			slog.Any("config", cfg.LogValue()),
+			slog.Any("hooks", len(cfg.onConfigChangeHooks)),
+		)
 
 		// Then execute all registered hooks with the event
-		for _, hook := range configChangeHooks {
-			hook(cfg.Services)
+		for _, hook := range cfg.onConfigChangeHooks {
+			if err := hook(cfg.Services, l.GetName()); err != nil {
+				slog.Error("Error executing config change hook",
+					slog.String("error", err.Error()),
+					slog.String("config loader", l.GetName()),
+				)
+			}
 		}
 	})
 
-	return onConfigChange, nil
+	return nil
 }
 
 // GetName returns the name of the environment configuration loader
 func (l *EnvironmentLoader) GetName() string {
-	return "environment"
+	return l.name
 }
 
 // Close closes the environment configuration loader

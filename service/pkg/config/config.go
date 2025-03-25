@@ -11,11 +11,15 @@ import (
 	"github.com/opentdf/platform/service/tracing"
 )
 
-// LoadedConfigChangeHook is a function invoked 
+// LoadedConfigChangeHook is a function invoked when the configuration changes.
 // It is passed the updated configuration for all services and the name of the configuration loader
 // that watched the change and fired the hook.
 type LoadedConfigChangeHook func(configServices ConfigServices, configLoaderName string) error
+
+// Config structure holding all services.
 type ConfigServices map[string]ServiceConfig
+
+// Config structure holding a single service.
 type ServiceConfig map[string]any
 
 // Config represents the configuration settings for the service.
@@ -108,8 +112,11 @@ func (c *Config) AddOnConfigChangeHook(hook LoadedConfigChangeHook) {
 	c.onConfigChangeHooks = append(c.onConfigChangeHooks, hook)
 }
 
-// Watch starts watching the configuration for changes.
+// Watch starts watching the configuration for changes in all config loaders.
 func (c *Config) Watch(ctx context.Context) error {
+	if len(c.loaders) == 0 {
+		return nil
+	}
 	for _, loader := range c.loaders {
 		if err := loader.Watch(ctx, c); err != nil {
 			return err
@@ -144,10 +151,10 @@ func LoadConfig(ctx context.Context, key, file string) (*Config, error) {
 	}
 
 	// Load initial configuration
+	config.AddLoader(loader)
 	if err := loader.Load(config); err != nil {
 		return nil, err
 	}
-	config.AddLoader(loader)
 
 	return config, nil
 }

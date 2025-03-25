@@ -303,7 +303,7 @@ func Start(f ...StartOptions) error {
 		return fmt.Errorf("issue starting services: %w", err)
 	}
 
-	// Start watching the configuration for changes
+	// Start watching the configuration for changes with registered config change service hooks
 	if err := cfg.Watch(ctx); err != nil {
 		return fmt.Errorf("failed to watch configuration: %w", err)
 	}

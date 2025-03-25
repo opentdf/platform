@@ -25,10 +25,10 @@ type EntityResolution struct {
 func NewRegistration() *serviceregistry.Service[entityresolutionconnect.EntityResolutionServiceHandler] {
 	return &serviceregistry.Service[entityresolutionconnect.EntityResolutionServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[entityresolutionconnect.EntityResolutionServiceHandler]{
-			Namespace:      "entityresolution",
-			ServiceDesc:    &entityresolution.EntityResolutionService_ServiceDesc,
-			ConnectRPCFunc: entityresolutionconnect.NewEntityResolutionServiceHandler,
-			GRPCGateayFunc: entityresolution.RegisterEntityResolutionServiceHandlerFromEndpoint,
+			Namespace:       "entityresolution",
+			ServiceDesc:     &entityresolution.EntityResolutionService_ServiceDesc,
+			ConnectRPCFunc:  entityresolutionconnect.NewEntityResolutionServiceHandler,
+			GRPCGatewayFunc: entityresolution.RegisterEntityResolutionServiceHandler,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (entityresolutionconnect.EntityResolutionServiceHandler, serviceregistry.HandlerServer) {
 				var inputConfig ERSConfig
 

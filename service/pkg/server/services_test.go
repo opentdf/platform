@@ -251,7 +251,7 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 	newLogger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
 	suite.Require().NoError(err)
 
-	err = startServices(ctx, config.Config{
+	err = startServices(ctx, &config.Config{
 		Mode:   []string{"test"},
 		Logger: logger.Config{Output: "stdout", Level: "info", Type: "json"},
 		// DB: db.Config{

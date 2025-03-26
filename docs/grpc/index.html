@@ -899,6 +899,65 @@
         
           
           <li>
+            <a href="#policy%2fkeymanagement%2fkey_management.proto">policy/keymanagement/key_management.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#policy.keymanagement.CreateProviderConfigRequest"><span class="badge">M</span>CreateProviderConfigRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.CreateProviderConfigResponse"><span class="badge">M</span>CreateProviderConfigResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.DeleteProviderConfigRequest"><span class="badge">M</span>DeleteProviderConfigRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.DeleteProviderConfigResponse"><span class="badge">M</span>DeleteProviderConfigResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.GetProviderConfigRequest"><span class="badge">M</span>GetProviderConfigRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.GetProviderConfigResponse"><span class="badge">M</span>GetProviderConfigResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.ListProviderConfigsRequest"><span class="badge">M</span>ListProviderConfigsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.ListProviderConfigsResponse"><span class="badge">M</span>ListProviderConfigsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.ProviderConfig"><span class="badge">M</span>ProviderConfig</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.UpdateProviderConfigRequest"><span class="badge">M</span>UpdateProviderConfigRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.UpdateProviderConfigResponse"><span class="badge">M</span>UpdateProviderConfigResponse</a>
+                </li>
+              
+              
+              
+              
+                <li>
+                  <a href="#policy.keymanagement.KeyManagementService"><span class="badge">S</span>KeyManagementService</a>
+                </li>
+              
+            </ul>
+          </li>
+        
+          
+          <li>
             <a href="#policy%2fnamespaces%2fnamespaces.proto">policy/namespaces/namespaces.proto</a>
             <ul>
               
@@ -7508,6 +7567,412 @@ Common metadata </p></td>
             </tbody>
           </table>
           
+        
+    
+      
+      <div class="file-heading">
+        <h2 id="policy/keymanagement/key_management.proto">policy/keymanagement/key_management.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="policy.keymanagement.CreateProviderConfigRequest">CreateProviderConfigRequest</h3>
+        <p>Provider Configuration Requests and Response Messages</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required
+The name of the key provider. (e.g. &#34;AWS KMS&#34;, &#34;Google Cloud KMS&#34;, &#34;Azure Key Vault&#34;) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>config_json</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>Required
+JSON configuration for the key provider. This is unique to individual key providers. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.CreateProviderConfigResponse">CreateProviderConfigResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>provider_config</td>
+                  <td><a href="#policy.keymanagement.ProviderConfig">ProviderConfig</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.DeleteProviderConfigRequest">DeleteProviderConfigRequest</h3>
+        <p>In order to delete a provider configuration you must first delete all keys associated with the provider.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.DeleteProviderConfigResponse">DeleteProviderConfigResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>provider_config</td>
+                  <td><a href="#policy.keymanagement.ProviderConfig">ProviderConfig</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.GetProviderConfigRequest">GetProviderConfigRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.GetProviderConfigResponse">GetProviderConfigResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>provider_config</td>
+                  <td><a href="#policy.keymanagement.ProviderConfig">ProviderConfig</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.ListProviderConfigsRequest">ListProviderConfigsRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.ListProviderConfigsResponse">ListProviderConfigsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>provider_configs</td>
+                  <td><a href="#policy.keymanagement.ProviderConfig">ProviderConfig</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.ProviderConfig">ProviderConfig</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>config_json</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.UpdateProviderConfigRequest">UpdateProviderConfigRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>config_json</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Optional
+Common metadata </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata_update_behavior</td>
+                  <td><a href="#common.MetadataUpdateEnum">common.MetadataUpdateEnum</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.UpdateProviderConfigResponse">UpdateProviderConfigResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>provider_config</td>
+                  <td><a href="#policy.keymanagement.ProviderConfig">ProviderConfig</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+
+      
+
+      
+
+      
+        <h3 id="policy.keymanagement.KeyManagementService">KeyManagementService</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>CreateProviderConfig</td>
+                <td><a href="#policy.keymanagement.CreateProviderConfigRequest">CreateProviderConfigRequest</a></td>
+                <td><a href="#policy.keymanagement.CreateProviderConfigResponse">CreateProviderConfigResponse</a></td>
+                <td><p>Key Management
+Provider Management</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetProviderConfig</td>
+                <td><a href="#policy.keymanagement.GetProviderConfigRequest">GetProviderConfigRequest</a></td>
+                <td><a href="#policy.keymanagement.GetProviderConfigResponse">GetProviderConfigResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ListProviderConfigs</td>
+                <td><a href="#policy.keymanagement.ListProviderConfigsRequest">ListProviderConfigsRequest</a></td>
+                <td><a href="#policy.keymanagement.ListProviderConfigsResponse">ListProviderConfigsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>UpdateProviderConfig</td>
+                <td><a href="#policy.keymanagement.UpdateProviderConfigRequest">UpdateProviderConfigRequest</a></td>
+                <td><a href="#policy.keymanagement.UpdateProviderConfigResponse">UpdateProviderConfigResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>DeleteProviderConfig</td>
+                <td><a href="#policy.keymanagement.DeleteProviderConfigRequest">DeleteProviderConfigRequest</a></td>
+                <td><a href="#policy.keymanagement.DeleteProviderConfigResponse">DeleteProviderConfigResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+
         
     
       

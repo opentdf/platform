@@ -170,7 +170,7 @@ func (s Service[S]) RegisterConfigUpdateHook(ctx context.Context, hookAppender f
 	// If no hook is registered, exit
 	if s.OnConfigUpdate != nil {
 		var onChange config.ConfigChangeHook = func(cfg config.ConfigServices) error {
-			slog.Debug("service config change hook registered",
+			slog.Debug("service config change hook called",
 				slog.String("namespace", s.GetNamespace()),
 				slog.String("service", s.GetServiceDesc().ServiceName),
 			)

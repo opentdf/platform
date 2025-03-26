@@ -307,6 +307,7 @@ func Start(f ...StartOptions) error {
 	if err := cfg.Watch(ctx); err != nil {
 		return fmt.Errorf("failed to watch configuration: %w", err)
 	}
+	defer cfg.Close(ctx)
 
 	// Start the server
 	logger.Info("starting opentdf")

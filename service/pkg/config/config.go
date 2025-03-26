@@ -123,6 +123,20 @@ func (c *Config) Watch(ctx context.Context) error {
 	return nil
 }
 
+// Close invokes close method on all config loaders.
+func (c *Config) Close(ctx context.Context) error {
+	if len(c.loaders) == 0 {
+		return nil
+	}
+	slog.Debug("Closing config loaders")
+	for _, loader := range c.loaders {
+		if err := loader.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // OnChange invokes all registered onConfigChangeHooks after a configuration change.
 func (c *Config) OnChange(ctx context.Context) error {
 	if len(c.loaders) == 0 {

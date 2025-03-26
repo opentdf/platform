@@ -76,7 +76,7 @@ func TestConfig_AddLoader(t *testing.T) {
 func TestConfig_AddOnConfigChangeHook(t *testing.T) {
 	config := &Config{}
 	hookCalled := false
-	hook := func(_ ConfigServices) error {
+	hook := func(_ ServicesMap) error {
 		hookCalled = true
 		return nil
 	}
@@ -86,7 +86,7 @@ func TestConfig_AddOnConfigChangeHook(t *testing.T) {
 	assert.Len(t, config.onConfigChangeHooks, 1)
 
 	// Verify hook works
-	err := config.onConfigChangeHooks[0](ConfigServices{})
+	err := config.onConfigChangeHooks[0](ServicesMap{})
 	require.NoError(t, err)
 	assert.True(t, hookCalled)
 }
@@ -185,7 +185,7 @@ func TestConfig_OnChange(t *testing.T) {
 		loader := newMockLoader()
 		config.AddLoader(loader)
 		hookCalled := false
-		hook := func(_ ConfigServices) error {
+		hook := func(_ ServicesMap) error {
 			hookCalled = true
 			return nil
 		}
@@ -201,7 +201,7 @@ func TestConfig_OnChange(t *testing.T) {
 		config := &Config{}
 		config.AddLoader(newMockLoader())
 		expectedErr := errors.New("hook error")
-		errorHook := func(services ConfigServices) error {
+		errorHook := func(_ ServicesMap) error {
 			return expectedErr
 		}
 		config.AddOnConfigChangeHook(errorHook)
@@ -220,7 +220,7 @@ func TestLoadConfig_NoFileExistsInEnv(t *testing.T) {
 
 func TestLoadConfig_Success(t *testing.T) {
 	// Create a temporary config file
-	tempFile, err := os.CreateTemp("", "config-*.yaml")
+	tempFile, err := os.CreateTemp(t.TempDir(), "config-*.yaml")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}

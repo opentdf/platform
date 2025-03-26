@@ -97,6 +97,7 @@ func OnConfigUpdate(as *AuthorizationService) serviceregistry.OnConfigUpdateHook
 			return fmt.Errorf("invalid auth svc cfg [%v] %w", cfg, err)
 		}
 
+		//nolint:contextcheck // context is not needed here
 		if err = as.loadRegoAndBuiltins(as.config); err != nil {
 			return fmt.Errorf("failed to load rego and builtins: %w", err)
 		}

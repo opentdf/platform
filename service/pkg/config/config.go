@@ -12,10 +12,10 @@ import (
 )
 
 // ChangeHook is a function invoked when the configuration changes.
-type ChangeHook func(configServices ConfigServices) error
+type ChangeHook func(configServices ServicesMap) error
 
 // Config structure holding all services.
-type ConfigServices map[string]ServiceConfig
+type ServicesMap map[string]ServiceConfig
 
 // Config structure holding a single service.
 type ServiceConfig map[string]any
@@ -42,7 +42,7 @@ type Config struct {
 	SDKConfig SDKConfig `mapstructure:"sdk_config" json:"sdk_config"`
 
 	// Services represents the configuration settings for the services.
-	Services ConfigServices `mapstructure:"services"`
+	Services ServicesMap `mapstructure:"services"`
 
 	// Trace is for configuring open telemetry based tracing.
 	Trace tracing.Config `mapstructure:"trace"`

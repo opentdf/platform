@@ -102,6 +102,7 @@ func (l *EnvironmentLoader) Watch(_ context.Context, cfg *Config, onChange func(
 	l.viper.WatchConfig()
 
 	// If config changes, reload it and invoke all hooks
+	//nolint:contextcheck // false positive with external library function signature
 	l.viper.OnConfigChange(func(e fsnotify.Event) {
 		slog.Debug("Environment config file changed", "file", e.Name)
 

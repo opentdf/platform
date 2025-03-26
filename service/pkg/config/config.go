@@ -11,8 +11,8 @@ import (
 	"github.com/opentdf/platform/service/tracing"
 )
 
-// ConfigChangeHook is a function invoked when the configuration changes.
-type ConfigChangeHook func(configServices ConfigServices) error
+// ChangeHook is a function invoked when the configuration changes.
+type ChangeHook func(configServices ConfigServices) error
 
 // Config structure holding all services.
 type ConfigServices map[string]ServiceConfig
@@ -48,9 +48,9 @@ type Config struct {
 	Trace tracing.Config `mapstructure:"trace"`
 
 	// onConfigChangeHooks is a list of functions to call when the configuration changes.
-	onConfigChangeHooks []ConfigChangeHook
+	onConfigChangeHooks []ChangeHook
 	// loaders is a list of configuration loaders.
-	loaders []ConfigLoader
+	loaders []Loader
 }
 
 // SDKConfig represents the configuration for the SDK.
@@ -101,12 +101,12 @@ func (c *Config) LogValue() slog.Value {
 }
 
 // AddLoader adds a configuration loader to the list of loaders.
-func (c *Config) AddLoader(loader ConfigLoader) {
+func (c *Config) AddLoader(loader Loader) {
 	c.loaders = append(c.loaders, loader)
 }
 
 // AddOnConfigChangeHook adds a hook to the list of hooks to call when the configuration changes.
-func (c *Config) AddOnConfigChangeHook(hook ConfigChangeHook) {
+func (c *Config) AddOnConfigChangeHook(hook ChangeHook) {
 	c.onConfigChangeHooks = append(c.onConfigChangeHooks, hook)
 }
 
@@ -124,7 +124,7 @@ func (c *Config) Watch(ctx context.Context) error {
 }
 
 // Close invokes close method on all config loaders.
-func (c *Config) Close(ctx context.Context) error {
+func (c *Config) Close(_ context.Context) error {
 	if len(c.loaders) == 0 {
 		return nil
 	}
@@ -138,7 +138,7 @@ func (c *Config) Close(ctx context.Context) error {
 }
 
 // OnChange invokes all registered onConfigChangeHooks after a configuration change.
-func (c *Config) OnChange(ctx context.Context) error {
+func (c *Config) OnChange(_ context.Context) error {
 	if len(c.loaders) == 0 {
 		return nil
 	}
@@ -166,7 +166,7 @@ func (c SDKConfig) LogValue() slog.Value {
 }
 
 // LoadConfig loads configuration using the provided loader or creates a default Viper loader
-func LoadConfig(ctx context.Context, key, file string) (*Config, error) {
+func LoadConfig(_ context.Context, key, file string) (*Config, error) {
 	config := &Config{}
 
 	// Create default loader if none provided

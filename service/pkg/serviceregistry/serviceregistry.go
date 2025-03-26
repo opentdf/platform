@@ -75,7 +75,7 @@ type IService interface {
 	Start(ctx context.Context, params RegistrationParams) error
 	IsStarted() bool
 	Shutdown() error
-	RegisterConfigUpdateHook(ctx context.Context, hookAppender func(config.ConfigChangeHook)) error
+	RegisterConfigUpdateHook(ctx context.Context, hookAppender func(config.ChangeHook)) error
 	RegisterConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error
 	RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, string, []grpc.DialOption) error
 	RegisterHTTPHandlers(context.Context, *runtime.ServeMux) error
@@ -166,10 +166,10 @@ func (s *Service[S]) Start(ctx context.Context, params RegistrationParams) error
 }
 
 // RegisterConfigUpdateHook appends a registered service's onConfigUpdateHook to any watching config loaders.
-func (s Service[S]) RegisterConfigUpdateHook(ctx context.Context, hookAppender func(config.ConfigChangeHook)) error {
+func (s Service[S]) RegisterConfigUpdateHook(ctx context.Context, hookAppender func(config.ChangeHook)) error {
 	// If no hook is registered, exit
 	if s.OnConfigUpdate != nil {
-		var onChange config.ConfigChangeHook = func(cfg config.ConfigServices) error {
+		var onChange config.ChangeHook = func(cfg config.ConfigServices) error {
 			slog.Debug("service config change hook called",
 				slog.String("namespace", s.GetNamespace()),
 				slog.String("service", s.GetServiceDesc().ServiceName),

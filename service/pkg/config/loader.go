@@ -14,8 +14,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-// ConfigLoader defines the interface for loading and managing configuration
-type ConfigLoader interface {
+// Loader defines the interface for loading and managing configuration
+type Loader interface {
 	// Load loads the configuration into the provided struct
 	Load(cfg *Config) error
 	// Watch starts watching for configuration changes and invokes an onChange callback
@@ -26,7 +26,7 @@ type ConfigLoader interface {
 	GetName() string
 }
 
-// EnvironmentLoader implements ConfigLoader using Viper
+// EnvironmentLoader implements Loader using Viper
 type EnvironmentLoader struct {
 	viper *viper.Viper
 	name  string

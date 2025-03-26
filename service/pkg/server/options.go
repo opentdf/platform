@@ -17,7 +17,7 @@ type StartConfig struct {
 	extraCoreServices     []serviceregistry.IService
 	extraServices         []serviceregistry.IService
 	casbinAdapter         persist.Adapter
-	configLoaders         []config.ConfigLoader
+	configLoaders         []config.Loader
 }
 
 // Deprecated: Use WithConfigKey
@@ -105,7 +105,7 @@ func WithCasbinAdapter(adapter persist.Adapter) StartOptions {
 }
 
 // WithAdditionalConfigLoader option adds an additional configuration loader to the server.
-func WithAdditionalConfigLoader(loader config.ConfigLoader) StartOptions {
+func WithAdditionalConfigLoader(loader config.Loader) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.configLoaders = append(c.configLoaders, loader)
 		return c

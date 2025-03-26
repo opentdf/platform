@@ -7,10 +7,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-// Manual mock implementation of ConfigLoader
-type MockConfigLoader struct {
+// Manual mock implementation of Loader
+type MockLoader struct {
 	loadFn    func(*Config) error
 	watchFn   func(context.Context, *Config, func(context.Context) error) error
 	closeFn   func() error
@@ -24,7 +25,7 @@ type MockConfigLoader struct {
 	onChangeCalled bool
 }
 
-func (l *MockConfigLoader) Load(config *Config) error {
+func (l *MockLoader) Load(config *Config) error {
 	l.loadCalled = true
 	if l.loadFn != nil {
 		return l.loadFn(config)
@@ -32,7 +33,7 @@ func (l *MockConfigLoader) Load(config *Config) error {
 	return nil
 }
 
-func (l *MockConfigLoader) Watch(ctx context.Context, config *Config, onChange func(context.Context) error) error {
+func (l *MockLoader) Watch(ctx context.Context, config *Config, onChange func(context.Context) error) error {
 	l.watchCalled = true
 	if l.watchFn != nil {
 		if err := l.watchFn(ctx, config, onChange); err != nil {
@@ -43,14 +44,14 @@ func (l *MockConfigLoader) Watch(ctx context.Context, config *Config, onChange f
 	return nil
 }
 
-func (l *MockConfigLoader) Close() error {
+func (l *MockLoader) Close() error {
 	l.closeCalled = true
 	if l.closeFn != nil {
 		return l.closeFn()
 	}
 	return nil
 }
-func (l *MockConfigLoader) GetName() string {
+func (l *MockLoader) GetName() string {
 	l.getNameCalled = true
 	if l.getNameFn != nil {
 		return l.getNameFn()
@@ -58,8 +59,8 @@ func (l *MockConfigLoader) GetName() string {
 	return ""
 }
 
-func newMockLoader() *MockConfigLoader {
-	return &MockConfigLoader{}
+func newMockLoader() *MockLoader {
+	return &MockLoader{}
 }
 
 func TestConfig_AddLoader(t *testing.T) {
@@ -75,7 +76,7 @@ func TestConfig_AddLoader(t *testing.T) {
 func TestConfig_AddOnConfigChangeHook(t *testing.T) {
 	config := &Config{}
 	hookCalled := false
-	hook := func(services ConfigServices) error {
+	hook := func(_ ConfigServices) error {
 		hookCalled = true
 		return nil
 	}
@@ -86,7 +87,7 @@ func TestConfig_AddOnConfigChangeHook(t *testing.T) {
 
 	// Verify hook works
 	err := config.onConfigChangeHooks[0](ConfigServices{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, hookCalled)
 }
 
@@ -96,21 +97,21 @@ func TestConfig_Watch(t *testing.T) {
 	t.Run("No loaders", func(t *testing.T) {
 		config := &Config{}
 		err := config.Watch(ctx)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("Loader succeeds", func(t *testing.T) {
 		config := &Config{}
 		loader := newMockLoader()
 		// Mock loader to call onChange
-		loader.watchFn = func(ctx context.Context, cfg *Config, onChange func(context.Context) error) error {
+		loader.watchFn = func(_ context.Context, _ *Config, _ func(context.Context) error) error {
 			return nil
 		}
 		config.AddLoader(loader)
 
 		err := config.Watch(ctx)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, loader.watchCalled)
 		assert.True(t, loader.onChangeCalled)
 	})
@@ -119,7 +120,7 @@ func TestConfig_Watch(t *testing.T) {
 		config := &Config{}
 		expectedErr := errors.New("watch error")
 		loader := newMockLoader()
-		loader.watchFn = func(ctx context.Context, cfg *Config, onChange func(context.Context) error) error {
+		loader.watchFn = func(_ context.Context, _ *Config, _ func(context.Context) error) error {
 			return expectedErr
 		}
 		config.AddLoader(loader)
@@ -138,7 +139,7 @@ func TestConfig_Close(t *testing.T) {
 	t.Run("No loaders", func(t *testing.T) {
 		config := &Config{}
 		err := config.Close(ctx)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("Loader succeeds", func(t *testing.T) {
@@ -148,7 +149,7 @@ func TestConfig_Close(t *testing.T) {
 
 		err := config.Close(ctx)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, loader.closeCalled)
 	})
 
@@ -176,7 +177,7 @@ func TestConfig_OnChange(t *testing.T) {
 		// Need to add a loader for OnChange to do anything
 		config.AddLoader(newMockLoader())
 		err := config.OnChange(ctx)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("Hook succeeds", func(t *testing.T) {
@@ -184,7 +185,7 @@ func TestConfig_OnChange(t *testing.T) {
 		loader := newMockLoader()
 		config.AddLoader(loader)
 		hookCalled := false
-		hook := func(services ConfigServices) error {
+		hook := func(_ ConfigServices) error {
 			hookCalled = true
 			return nil
 		}
@@ -192,7 +193,7 @@ func TestConfig_OnChange(t *testing.T) {
 
 		err := config.OnChange(ctx)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, hookCalled)
 	})
 
@@ -254,7 +255,7 @@ server:
 	config, err := LoadConfig(ctx, "test", tempFile.Name())
 
 	// Assertions
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, config)
 
 	// Verify specific config values were loaded correctly

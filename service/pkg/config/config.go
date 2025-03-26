@@ -116,7 +116,7 @@ func (c *Config) Watch(ctx context.Context) error {
 		return nil
 	}
 	for _, loader := range c.loaders {
-		if err := loader.Watch(ctx, c); err != nil {
+		if err := loader.Watch(ctx, c, c.OnChange); err != nil {
 			return err
 		}
 	}

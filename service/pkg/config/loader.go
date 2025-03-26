@@ -18,8 +18,8 @@ import (
 type ConfigLoader interface {
 	// Load loads the configuration into the provided struct
 	Load(cfg *Config) error
-	// Watch starts watching for configuration changes and runs the configured change hooks
-	Watch(context.Context, *Config) error
+	// Watch starts watching for configuration changes and invokes an onChange callback
+	Watch(ctx context.Context, cfg *Config, onChange func(context.Context) error) error
 	// Close closes the configuration loader
 	Close() error
 	// GetName returns the name of the configuration loader
@@ -93,7 +93,7 @@ func (l *EnvironmentLoader) Load(cfg *Config) error {
 }
 
 // Watch starts watching the config file for configuration changes
-func (l *EnvironmentLoader) Watch(_ context.Context, cfg *Config) error {
+func (l *EnvironmentLoader) Watch(_ context.Context, cfg *Config, onChange func(context.Context) error) error {
 	if len(cfg.onConfigChangeHooks) == 0 {
 		slog.Debug("No config change hooks registered. Skipping environment config watch.")
 		return nil
@@ -117,7 +117,7 @@ func (l *EnvironmentLoader) Watch(_ context.Context, cfg *Config) error {
 		)
 
 		// Then execute all registered hooks with the event
-		if err := cfg.OnChange(context.Background()); err != nil {
+		if err := onChange(context.Background()); err != nil {
 			slog.Error(
 				"Error executing config change hooks",
 				slog.String("error", err.Error()),

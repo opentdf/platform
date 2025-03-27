@@ -21,6 +21,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"google.golang.org/grpc/metadata"
 
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/logger"
@@ -222,6 +223,14 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
+		md, ok := metadata.FromIncomingContext(ctxWithJWK)
+		if !ok {
+			md = metadata.New(nil)
+		}
+		md.Append("access_token", ctxAuth.GetRawAccessTokenFromContext(ctxWithJWK, nil))
+		ctxWithJWK = metadata.NewIncomingContext(ctxWithJWK, md)
+		md, _ = metadata.FromIncomingContext(ctxWithJWK)
+
 		// Check if the token is allowed to access the resource
 		var action string
 		switch r.Method {
@@ -248,7 +257,8 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		handler.ServeHTTP(w, r.WithContext(ctxWithJWK))
+		r = r.WithContext(ctxWithJWK)
+		handler.ServeHTTP(w, r)
 	})
 }
 
@@ -259,6 +269,11 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
+			// if the token is already in the context, skip the interceptor
+			if ctxAuth.GetAccessTokenFromContext(ctx, nil) != nil {
+				return next(ctx, req)
+			}
+
 			ri := receiverInfo{
 				u: []string{req.Spec().Procedure},
 				m: []string{http.MethodPost},
@@ -324,6 +339,43 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			}
 
 			return next(newCtx, req)
+		})
+	}
+	return connect.UnaryInterceptorFunc(interceptor)
+}
+
+// IPCUnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
+func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc {
+	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
+		return connect.UnaryFunc(func(
+			ctx context.Context,
+			req connect.AnyRequest,
+		) (connect.AnyResponse, error) {
+			// if explicit IPC authorization is not required, skip the interceptor
+			if req.Header()[ctxAuth.HeaderWithIPCAuthorizationValidation] == nil {
+				return next(ctx, req)
+			}
+
+			// if the token is already in the context, skip the interceptor
+			if ctxAuth.GetAccessTokenFromContext(ctx, nil) != nil {
+				return next(ctx, req)
+			}
+
+			// Extract the token from the request
+			authHeader := req.Header()[ctxAuth.HeaderAuthorization]
+			if len(authHeader) < 1 {
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
+			}
+
+			_, nextCtx, err := a.checkToken(ctx, authHeader, receiverInfo{
+				u: []string{req.Spec().Procedure},
+				m: []string{http.MethodPost},
+			}, req.Header()["Dpop"])
+			if err != nil {
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+			}
+
+			return next(nextCtx, req)
 		})
 	}
 	return connect.UnaryInterceptorFunc(interceptor)

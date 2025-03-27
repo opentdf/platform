@@ -9,6 +9,7 @@ package policy
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	common "github.com/opentdf/platform/protocol/go/common"
+	keymanagement "github.com/opentdf/platform/protocol/go/policy/keymanagement"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
@@ -238,6 +239,172 @@ func (KasPublicKeyAlgEnum) EnumDescriptor() ([]byte, []int) {
 	return file_policy_objects_proto_rawDescGZIP(), []int{3}
 }
 
+// Supported key algorithms.
+type Algorithm int32
+
+const (
+	Algorithm_ALGORITHM_UNSPECIFIED Algorithm = 0
+	Algorithm_ALGORITHM_RSA_2048    Algorithm = 1
+	Algorithm_ALGORITHM_RSA_4096    Algorithm = 2
+	Algorithm_ALGORITHM_EC_P256     Algorithm = 3
+	Algorithm_ALGORITHM_EC_P384     Algorithm = 4
+	Algorithm_ALGORITHM_EC_P521     Algorithm = 5
+)
+
+// Enum value maps for Algorithm.
+var (
+	Algorithm_name = map[int32]string{
+		0: "ALGORITHM_UNSPECIFIED",
+		1: "ALGORITHM_RSA_2048",
+		2: "ALGORITHM_RSA_4096",
+		3: "ALGORITHM_EC_P256",
+		4: "ALGORITHM_EC_P384",
+		5: "ALGORITHM_EC_P521",
+	}
+	Algorithm_value = map[string]int32{
+		"ALGORITHM_UNSPECIFIED": 0,
+		"ALGORITHM_RSA_2048":    1,
+		"ALGORITHM_RSA_4096":    2,
+		"ALGORITHM_EC_P256":     3,
+		"ALGORITHM_EC_P384":     4,
+		"ALGORITHM_EC_P521":     5,
+	}
+)
+
+func (x Algorithm) Enum() *Algorithm {
+	p := new(Algorithm)
+	*p = x
+	return p
+}
+
+func (x Algorithm) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Algorithm) Descriptor() protoreflect.EnumDescriptor {
+	return file_policy_objects_proto_enumTypes[4].Descriptor()
+}
+
+func (Algorithm) Type() protoreflect.EnumType {
+	return &file_policy_objects_proto_enumTypes[4]
+}
+
+func (x Algorithm) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Algorithm.Descriptor instead.
+func (Algorithm) EnumDescriptor() ([]byte, []int) {
+	return file_policy_objects_proto_rawDescGZIP(), []int{4}
+}
+
+// The status of the key
+type KeyStatus int32
+
+const (
+	KeyStatus_KEY_STATUS_UNSPECIFIED KeyStatus = 0
+	KeyStatus_KEY_STATUS_ACTIVE      KeyStatus = 1
+	KeyStatus_KEY_STATUS_INACTIVE    KeyStatus = 2
+	KeyStatus_KEY_STATUS_COMPROMISED KeyStatus = 3
+)
+
+// Enum value maps for KeyStatus.
+var (
+	KeyStatus_name = map[int32]string{
+		0: "KEY_STATUS_UNSPECIFIED",
+		1: "KEY_STATUS_ACTIVE",
+		2: "KEY_STATUS_INACTIVE",
+		3: "KEY_STATUS_COMPROMISED",
+	}
+	KeyStatus_value = map[string]int32{
+		"KEY_STATUS_UNSPECIFIED": 0,
+		"KEY_STATUS_ACTIVE":      1,
+		"KEY_STATUS_INACTIVE":    2,
+		"KEY_STATUS_COMPROMISED": 3,
+	}
+)
+
+func (x KeyStatus) Enum() *KeyStatus {
+	p := new(KeyStatus)
+	*p = x
+	return p
+}
+
+func (x KeyStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (KeyStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_policy_objects_proto_enumTypes[5].Descriptor()
+}
+
+func (KeyStatus) Type() protoreflect.EnumType {
+	return &file_policy_objects_proto_enumTypes[5]
+}
+
+func (x KeyStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use KeyStatus.Descriptor instead.
+func (KeyStatus) EnumDescriptor() ([]byte, []int) {
+	return file_policy_objects_proto_rawDescGZIP(), []int{5}
+}
+
+// Describe how the kas private key is managed.
+// If the key mode is LOCAL, then the kas private key is stored in the database.
+// This could be encrypted or unencrypted.
+// Remote means that the kas private key is stored in a remote key system like KMS or HSM
+// and all operations are done by the remote key system.
+type KeyMode int32
+
+const (
+	KeyMode_KEY_MODE_UNSPECIFIED KeyMode = 0
+	KeyMode_KEY_MODE_LOCAL       KeyMode = 1
+	KeyMode_KEY_MODE_REMOTE      KeyMode = 2
+)
+
+// Enum value maps for KeyMode.
+var (
+	KeyMode_name = map[int32]string{
+		0: "KEY_MODE_UNSPECIFIED",
+		1: "KEY_MODE_LOCAL",
+		2: "KEY_MODE_REMOTE",
+	}
+	KeyMode_value = map[string]int32{
+		"KEY_MODE_UNSPECIFIED": 0,
+		"KEY_MODE_LOCAL":       1,
+		"KEY_MODE_REMOTE":      2,
+	}
+)
+
+func (x KeyMode) Enum() *KeyMode {
+	p := new(KeyMode)
+	*p = x
+	return p
+}
+
+func (x KeyMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (KeyMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_policy_objects_proto_enumTypes[6].Descriptor()
+}
+
+func (KeyMode) Type() protoreflect.EnumType {
+	return &file_policy_objects_proto_enumTypes[6]
+}
+
+func (x KeyMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use KeyMode.Descriptor instead.
+func (KeyMode) EnumDescriptor() ([]byte, []int) {
+	return file_policy_objects_proto_rawDescGZIP(), []int{6}
+}
+
 type Action_StandardAction int32
 
 const (
@@ -275,11 +442,11 @@ func (x Action_StandardAction) String() string {
 }
 
 func (Action_StandardAction) Descriptor() protoreflect.EnumDescriptor {
-	return file_policy_objects_proto_enumTypes[4].Descriptor()
+	return file_policy_objects_proto_enumTypes[7].Descriptor()
 }
 
 func (Action_StandardAction) Type() protoreflect.EnumType {
-	return &file_policy_objects_proto_enumTypes[4]
+	return &file_policy_objects_proto_enumTypes[7]
 }
 
 func (x Action_StandardAction) Number() protoreflect.EnumNumber {
@@ -1545,6 +1712,7 @@ func (x *Key) GetMetadata() *common.Metadata {
 	return nil
 }
 
+// Deprecated
 // A KAS public key and some associated metadata for further identifcation
 type KasPublicKey struct {
 	state         protoimpl.MessageState
@@ -1885,6 +2053,206 @@ func (x *RegisteredResourceValue) GetResource() *RegisteredResource {
 }
 
 func (x *RegisteredResourceValue) GetMetadata() *common.Metadata {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
+}
+
+type AsymmetricKey struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Id             string                        `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	KeyId          string                        `protobuf:"bytes,2,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
+	KeyStatus      KeyStatus                     `protobuf:"varint,3,opt,name=key_status,json=keyStatus,proto3,enum=policy.KeyStatus" json:"key_status,omitempty"`
+	KeyMode        KeyMode                       `protobuf:"varint,4,opt,name=key_mode,json=keyMode,proto3,enum=policy.KeyMode" json:"key_mode,omitempty"` // Specifies how the key is managed (local or remote)
+	PublicKeyCtx   []byte                        `protobuf:"bytes,5,opt,name=public_key_ctx,json=publicKeyCtx,proto3" json:"public_key_ctx,omitempty"`     // Specific structure based on key provider implementation
+	PrivateKeyCtx  []byte                        `protobuf:"bytes,6,opt,name=private_key_ctx,json=privateKeyCtx,proto3" json:"private_key_ctx,omitempty"`  // Specific structure based on key provider implementation
+	ProviderConfig *keymanagement.ProviderConfig `protobuf:"bytes,7,opt,name=provider_config,json=providerConfig,proto3" json:"provider_config,omitempty"` // Configuration for the key provider
+	// Common metadata fields
+	Metadata *common.Metadata `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
+}
+
+func (x *AsymmetricKey) Reset() {
+	*x = AsymmetricKey{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_policy_objects_proto_msgTypes[19]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AsymmetricKey) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AsymmetricKey) ProtoMessage() {}
+
+func (x *AsymmetricKey) ProtoReflect() protoreflect.Message {
+	mi := &file_policy_objects_proto_msgTypes[19]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AsymmetricKey.ProtoReflect.Descriptor instead.
+func (*AsymmetricKey) Descriptor() ([]byte, []int) {
+	return file_policy_objects_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *AsymmetricKey) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AsymmetricKey) GetKeyId() string {
+	if x != nil {
+		return x.KeyId
+	}
+	return ""
+}
+
+func (x *AsymmetricKey) GetKeyStatus() KeyStatus {
+	if x != nil {
+		return x.KeyStatus
+	}
+	return KeyStatus_KEY_STATUS_UNSPECIFIED
+}
+
+func (x *AsymmetricKey) GetKeyMode() KeyMode {
+	if x != nil {
+		return x.KeyMode
+	}
+	return KeyMode_KEY_MODE_UNSPECIFIED
+}
+
+func (x *AsymmetricKey) GetPublicKeyCtx() []byte {
+	if x != nil {
+		return x.PublicKeyCtx
+	}
+	return nil
+}
+
+func (x *AsymmetricKey) GetPrivateKeyCtx() []byte {
+	if x != nil {
+		return x.PrivateKeyCtx
+	}
+	return nil
+}
+
+func (x *AsymmetricKey) GetProviderConfig() *keymanagement.ProviderConfig {
+	if x != nil {
+		return x.ProviderConfig
+	}
+	return nil
+}
+
+func (x *AsymmetricKey) GetMetadata() *common.Metadata {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
+}
+
+type SymmetricKey struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Id             string                        `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	KeyId          string                        `protobuf:"bytes,2,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
+	KeyStatus      KeyStatus                     `protobuf:"varint,3,opt,name=key_status,json=keyStatus,proto3,enum=policy.KeyStatus" json:"key_status,omitempty"`
+	KeyMode        KeyMode                       `protobuf:"varint,4,opt,name=key_mode,json=keyMode,proto3,enum=policy.KeyMode" json:"key_mode,omitempty"` // Specifies how the key is managed (local or remote)
+	KeyCtx         []byte                        `protobuf:"bytes,5,opt,name=key_ctx,json=keyCtx,proto3" json:"key_ctx,omitempty"`                         // Specific structure based on key provider implementation
+	ProviderConfig *keymanagement.ProviderConfig `protobuf:"bytes,6,opt,name=provider_config,json=providerConfig,proto3" json:"provider_config,omitempty"` // Configuration for the key provider
+	// Common metadata fields
+	Metadata *common.Metadata `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
+}
+
+func (x *SymmetricKey) Reset() {
+	*x = SymmetricKey{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_policy_objects_proto_msgTypes[20]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *SymmetricKey) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SymmetricKey) ProtoMessage() {}
+
+func (x *SymmetricKey) ProtoReflect() protoreflect.Message {
+	mi := &file_policy_objects_proto_msgTypes[20]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SymmetricKey.ProtoReflect.Descriptor instead.
+func (*SymmetricKey) Descriptor() ([]byte, []int) {
+	return file_policy_objects_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *SymmetricKey) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *SymmetricKey) GetKeyId() string {
+	if x != nil {
+		return x.KeyId
+	}
+	return ""
+}
+
+func (x *SymmetricKey) GetKeyStatus() KeyStatus {
+	if x != nil {
+		return x.KeyStatus
+	}
+	return KeyStatus_KEY_STATUS_UNSPECIFIED
+}
+
+func (x *SymmetricKey) GetKeyMode() KeyMode {
+	if x != nil {
+		return x.KeyMode
+	}
+	return KeyMode_KEY_MODE_UNSPECIFIED
+}
+
+func (x *SymmetricKey) GetKeyCtx() []byte {
+	if x != nil {
+		return x.KeyCtx
+	}
+	return nil
+}
+
+func (x *SymmetricKey) GetProviderConfig() *keymanagement.ProviderConfig {
+	if x != nil {
+		return x.ProviderConfig
+	}
+	return nil
+}
+
+func (x *SymmetricKey) GetMetadata() *common.Metadata {
 	if x != nil {
 		return x.Metadata
 	}
@@ -2592,6 +2960,30 @@ func file_policy_objects_proto_init() {
 		}
 		file_policy_objects_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*RegisteredResourceValue); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_policy_objects_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AsymmetricKey); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_policy_objects_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*SymmetricKey); i {
 			case 0:
 				return &v.state
 			case 1:

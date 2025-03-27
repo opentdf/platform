@@ -1170,7 +1170,7 @@
           "description": "A known algorithm type with any additional parameters encoded.\nTo start, these may be `rsa:2048` for encrypting ZTDF files and\n`ec:secp256r1` for nanoTDF, but more formats may be added as needed."
         }
       },
-      "title": "A KAS public key and some associated metadata for further identifcation"
+      "title": "Deprecated\nA KAS public key and some associated metadata for further identifcation"
     },
     "policyKasPublicKeyAlgEnum": {
       "type": "string",

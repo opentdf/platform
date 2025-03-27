@@ -5,6 +5,7 @@ package policy;
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/protobuf/wrappers.proto";
+import "policy/keymanagement/key_management.proto";
 
 message KeyProviderConfig {
   string id = 1;
@@ -340,6 +341,7 @@ enum KasPublicKeyAlgEnum {
   KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1 = 7;
 }
 
+// Deprecated
 // A KAS public key and some associated metadata for further identifcation
 message KasPublicKey {
   // x509 ASN.1 content in PEM envelope, usually
@@ -414,5 +416,63 @@ message RegisteredResourceValue {
   RegisteredResource resource = 3;
 
   // Common metadata
+  common.Metadata metadata = 100;
+}
+
+/*
+   Key Management
+*/
+
+// Supported key algorithms.
+enum Algorithm {
+  ALGORITHM_UNSPECIFIED = 0;
+  ALGORITHM_RSA_2048 = 1;
+  ALGORITHM_RSA_4096 = 2;
+  ALGORITHM_EC_P256 = 3;
+  ALGORITHM_EC_P384 = 4;
+  ALGORITHM_EC_P521 = 5;
+}
+
+// The status of the key
+enum KeyStatus {
+  KEY_STATUS_UNSPECIFIED = 0;
+  KEY_STATUS_ACTIVE = 1;
+  KEY_STATUS_INACTIVE = 2;
+  KEY_STATUS_COMPROMISED = 3;
+}
+
+// Describe how the kas private key is managed.
+// If the key mode is LOCAL, then the kas private key is stored in the database.
+// This could be encrypted or unencrypted.
+// Remote means that the kas private key is stored in a remote key system like KMS or HSM
+// and all operations are done by the remote key system.
+enum KeyMode {
+  KEY_MODE_UNSPECIFIED = 0;
+  KEY_MODE_LOCAL = 1;
+  KEY_MODE_REMOTE = 2;
+}
+
+message AsymmetricKey {
+  string id = 1;
+  string key_id = 2;
+  KeyStatus key_status = 3;
+  KeyMode key_mode = 4; // Specifies how the key is managed (local or remote)
+  bytes public_key_ctx = 5; // Specific structure based on key provider implementation
+  bytes private_key_ctx = 6; // Specific structure based on key provider implementation
+  keymanagement.ProviderConfig provider_config = 7; // Configuration for the key provider
+
+  // Common metadata fields
+  common.Metadata metadata = 100;
+}
+
+message SymmetricKey {
+  string id = 1;
+  string key_id = 2;
+  KeyStatus key_status = 3;
+  KeyMode key_mode = 4; // Specifies how the key is managed (local or remote)
+  bytes key_ctx = 5; // Specific structure based on key provider implementation
+  keymanagement.ProviderConfig provider_config = 6; // Configuration for the key provider
+
+  // Common metadata fields
   common.Metadata metadata = 100;
 }

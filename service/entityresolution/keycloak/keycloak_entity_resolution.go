@@ -49,6 +49,7 @@ type KeycloakConfig struct {
 	LegacyKeycloak bool                   `mapstructure:"legacykeycloak" json:"legacykeycloak" default:"false"`
 	SubGroups      bool                   `mapstructure:"subgroups" json:"subgroups" default:"false"`
 	InferID        InferredIdentityConfig `mapstructure:"inferid,omitempty" json:"inferid,omitempty"`
+	GetGroups      bool                   `mapstructure:"getgroups" json:"getgroups" default:"false"`
 }
 
 func RegisterKeycloakERS(config serviceregistry.ServiceConfig, logger *logger.Logger) (*KeycloakEntityResolutionService, serviceregistry.HandlerServer) {
@@ -202,6 +203,21 @@ func EntityResolution(ctx context.Context,
 			logger.Debug("user found", slog.String("user", *user.ID), slog.String("entity", ident.String()))
 			logger.Debug("user", slog.Any("details", user))
 			logger.Debug("user", slog.Any("attributes", user.Attributes))
+
+			if kcConfig.GetGroups {
+				groups, err := connector.client.GetUserGroups(ctx, connector.token.AccessToken, kcConfig.Realm, *user.ID, gocloak.GetGroupsParams{})
+				if err != nil {
+					return entityresolution.ResolveEntitiesResponse{},
+						connect.NewError(connect.CodeInternal, ErrGetRetrievalFailed)
+				}
+
+				groupStrs := []string{}
+				for _, group := range groups {
+					groupStrs = append(groupStrs, *group.Name)
+				}
+				user.Groups = &groupStrs
+			}
+
 			keycloakEntities = append(keycloakEntities, user)
 		default:
 			logger.Error("no user found for", slog.Any("entity", ident))

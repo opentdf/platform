@@ -22,8 +22,8 @@ type Loader interface {
 	Watch(ctx context.Context, cfg *Config, onChange func(context.Context) error) error
 	// Close closes the configuration loader
 	Close() error
-	// GetName returns the name of the configuration loader
-	GetName() string
+	// Name returns the name of the configuration loader
+	Name() string
 }
 
 // EnvironmentLoader implements Loader using Viper
@@ -114,7 +114,7 @@ func (l *EnvironmentLoader) Watch(_ context.Context, cfg *Config, onChange func(
 
 		slog.Info("Environment config successfully reloaded",
 			slog.Any("config", cfg.LogValue()),
-			slog.String("config loader changed", l.GetName()),
+			slog.String("config loader changed", l.Name()),
 		)
 
 		// Then execute all registered hooks with the event
@@ -122,18 +122,18 @@ func (l *EnvironmentLoader) Watch(_ context.Context, cfg *Config, onChange func(
 			slog.Error(
 				"Error executing config change hooks",
 				slog.String("error", err.Error()),
-				slog.String("config loader changed", l.GetName()),
+				slog.String("config loader changed", l.Name()),
 			)
 		} else {
-			slog.Debug("Config change hooks executed successfully", slog.String("config loader changed", l.GetName()))
+			slog.Debug("Config change hooks executed successfully", slog.String("config loader changed", l.Name()))
 		}
 	})
 
 	return nil
 }
 
-// GetName returns the name of the environment configuration loader
-func (l *EnvironmentLoader) GetName() string {
+// Name returns the name of the environment configuration loader
+func (l *EnvironmentLoader) Name() string {
 	return l.name
 }
 

@@ -41,9 +41,10 @@ fi
 
 mkdir -p "$opt_output"
 
-openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=kas" -keyout "$opt_output/kas-private.pem" -out "$opt_output/kas-cert.pem" -days 365
-openssl ecparam -name prime256v1 >ecparams.tmp
-openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout "$opt_output/kas-ec-private.pem" -out "$opt_output/kas-ec-cert.pem" -days 365
+if ! go run github.com/opentdf/platform/service keys init -o="$opt_output" $( [ "$opt_verbose" == true ] && printf %s '-v' ); then
+    echo "[ERROR] keys init failed"
+    exit 1
+fi
 
 mkdir -p keys
 openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=ca" -keyout keys/keycloak-ca-private.pem -out keys/keycloak-ca.pem -days 365

@@ -5,6 +5,7 @@ package policy;
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/protobuf/wrappers.proto";
+import "policy/keymanagement/key_management.proto";
 
 message Namespace {
   // generated uuid in database
@@ -164,8 +165,7 @@ message SubjectMapping {
 message Condition {
   // a selector for a field value on a flattened Entity Representation (such as
   // from idP/LDAP)
-  string subject_external_selector_value = 1
-      [ (buf.validate.field).required = true ];
+  string subject_external_selector_value = 1 [(buf.validate.field).required = true];
 
   // the evaluation operator of relation
   SubjectMappingOperatorEnum operator = 2 [
@@ -176,14 +176,12 @@ message Condition {
   // list of comparison values for the result of applying the
   // subject_external_selector_value on a flattened Entity Representation
   // (Subject), evaluated by the operator
-  repeated string subject_external_values = 3
-      [ (buf.validate.field).repeated .min_items = 1 ];
+  repeated string subject_external_values = 3 [(buf.validate.field).repeated.min_items = 1];
 }
 
 // A collection of Conditions evaluated by the boolean_operator provided
 message ConditionGroup {
-  repeated Condition conditions = 1
-      [ (buf.validate.field).repeated .min_items = 1 ];
+  repeated Condition conditions = 1 [(buf.validate.field).repeated.min_items = 1];
 
   // the boolean evaluation type across the conditions
   ConditionBooleanTypeEnum boolean_operator = 2 [
@@ -195,8 +193,7 @@ message ConditionGroup {
 // A collection of Condition Groups
 message SubjectSet {
   // multiple Condition Groups are evaluated with AND logic
-  repeated ConditionGroup condition_groups = 1
-      [ (buf.validate.field).repeated .min_items = 1 ];
+  repeated ConditionGroup condition_groups = 1 [(buf.validate.field).repeated.min_items = 1];
 }
 
 /*
@@ -209,8 +206,7 @@ message SubjectSet {
 message SubjectConditionSet {
   string id = 1;
 
-  repeated SubjectSet subject_sets = 3
-      [ (buf.validate.field).repeated .min_items = 1 ];
+  repeated SubjectSet subject_sets = 3 [(buf.validate.field).repeated.min_items = 1];
 
   common.Metadata metadata = 100;
 }
@@ -231,7 +227,7 @@ message SubjectConditionSet {
 message SubjectProperty {
   string external_selector_value = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {min_len : 1}
+    (buf.validate.field).string = {min_len: 1}
   ];
   string external_value = 2;
 }
@@ -244,11 +240,11 @@ message ResourceMappingGroup {
   string id = 1;
 
   // the namespace containing the group of resource mappings
-  string namespace_id = 2 [ (buf.validate.field).required = true ];
+  string namespace_id = 2 [(buf.validate.field).required = true];
 
   // the common name for the group of resource mappings, which must be unique
   // per namespace
-  string name = 3 [ (buf.validate.field).required = true ];
+  string name = 3 [(buf.validate.field).required = true];
 
   // Common metadata
   common.Metadata metadata = 100;
@@ -263,7 +259,7 @@ message ResourceMapping {
 
   common.Metadata metadata = 2;
 
-  policy.Value attribute_value = 3 [ (buf.validate.field).required = true ];
+  policy.Value attribute_value = 3 [(buf.validate.field).required = true];
 
   repeated string terms = 4;
 
@@ -276,17 +272,19 @@ message ResourceMapping {
 message KeyAccessServer {
   string id = 1;
   // Address of a KAS instance
-  string uri = 2 [ (buf.validate.field).cel = {
-    id : "uri_format",
-    message : "URI must be a valid URL (e.g., 'https://demo.com/') followed by "
-              "additional segments. Each segment must start and end with an "
-              "alphanumeric character, can contain hyphens, alphanumeric "
-              "characters, and slashes.",
-    expression : "this.matches('^https?://"
-                 "[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-"
-                 "Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/"
-                 ".*)?$')"
-  } ];
+  string uri = 2 [(buf.validate.field).cel = {
+    id: "uri_format"
+    message:
+      "URI must be a valid URL (e.g., 'https://demo.com/') followed by "
+      "additional segments. Each segment must start and end with an "
+      "alphanumeric character, can contain hyphens, alphanumeric "
+      "characters, and slashes."
+    expression:
+      "this.matches('^https?://"
+      "[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-"
+      "Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/"
+      ".*)?$')"
+  }];
 
   // Deprecated
   PublicKey public_key = 3;
@@ -325,39 +323,35 @@ enum KasPublicKeyAlgEnum {
   KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1 = 7;
 }
 
+// Deprecated
 // A KAS public key and some associated metadata for further identifcation
 message KasPublicKey {
   // x509 ASN.1 content in PEM envelope, usually
-  string pem = 1 [
-     (buf.validate.field).string = {
-        min_len: 1,
-        max_len: 8192
-      }
-  ];
+  string pem = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 8192
+  }];
 
   // A unique string identifier for this key
-  string kid = 2 [
-    (buf.validate.field).string = {
-      min_len : 1,
-      max_len : 32
-    }
-  ];
+  string kid = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 32
+  }];
 
   // A known algorithm type with any additional parameters encoded.
   // To start, these may be `rsa:2048` for encrypting ZTDF files and
   // `ec:secp256r1` for nanoTDF, but more formats may be added as needed.
-  KasPublicKeyAlgEnum alg = 3 [
-    (buf.validate.field).enum = {
-      defined_only: true,
-      not_in: [0]
-    }
-
-  ];
+  KasPublicKeyAlgEnum alg = 3 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
 }
 
 // Deprecated
 // A list of known KAS public keys
-message KasPublicKeySet { repeated KasPublicKey keys = 1; }
+message KasPublicKeySet {
+  repeated KasPublicKey keys = 1;
+}
 
 // Deprecated
 message PublicKey {
@@ -367,18 +361,78 @@ message PublicKey {
 
   oneof public_key {
     // kas public key url - optional since can also be retrieved via public key
-    string remote = 1 [ (buf.validate.field).cel = {
-      id : "uri_format"
-      message : "URI must be a valid URL (e.g., 'https://demo.com/') followed "
-                "by additional segments. Each segment must start and end with "
-                "an alphanumeric character, can contain hyphens, alphanumeric "
-                "characters, and slashes."
-      expression : "this.matches('^https://"
-                   "[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-"
-                   "Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')"
-    } ];
+    string remote = 1 [(buf.validate.field).cel = {
+      id: "uri_format"
+      message:
+        "URI must be a valid URL (e.g., 'https://demo.com/') followed "
+        "by additional segments. Each segment must start and end with "
+        "an alphanumeric character, can contain hyphens, alphanumeric "
+        "characters, and slashes."
+      expression:
+        "this.matches('^https://"
+        "[a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?(\\\\.[a-zA-"
+        "Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')"
+    }];
 
     // public key with additional information. Current preferred version
     KasPublicKeySet cached = 3;
   }
+}
+
+/*
+   Key Management
+*/
+
+// Supported key algorithms.
+enum Algorithm {
+  ALGORITHM_UNSPECIFIED = 0;
+  ALGORITHM_RSA_2048 = 1;
+  ALGORITHM_RSA_4096 = 2;
+  ALGORITHM_EC_P256 = 3;
+  ALGORITHM_EC_P384 = 4;
+  ALGORITHM_EC_P521 = 5;
+}
+
+// The status of the key
+enum KeyStatus {
+  KEY_STATUS_UNSPECIFIED = 0;
+  KEY_STATUS_ACTIVE = 1;
+  KEY_STATUS_INACTIVE = 2;
+  KEY_STATUS_COMPROMISED = 3;
+}
+
+// Describe how the kas private key is managed.
+// If the key mode is LOCAL, then the kas private key is stored in the database.
+// This could be encrypted or unencrypted.
+// Remote means that the kas private key is stored in a remote key system like KMS or HSM
+// and all operations are done by the remote key system.
+enum KeyMode {
+  KEY_MODE_UNSPECIFIED = 0;
+  KEY_MODE_LOCAL = 1;
+  KEY_MODE_REMOTE = 2;
+}
+
+message AsymmetricKey {
+  string id = 1;
+  string key_id = 2;
+  KeyStatus key_status = 3;
+  KeyMode key_mode = 4; // Specifies how the key is managed (local or remote)
+  bytes public_key_ctx = 5; // Specific structure based on key provider implementation
+  bytes private_key_ctx = 6; // Specific structure based on key provider implementation
+  keymanagement.ProviderConfig provider_config = 7; // Configuration for the key provider
+
+  // Common metadata fields
+  common.Metadata metadata = 100;
+}
+
+message SymmetricKey {
+  string id = 1;
+  string key_id = 2;
+  KeyStatus key_status = 3;
+  KeyMode key_mode = 4; // Specifies how the key is managed (local or remote)
+  bytes key_ctx = 5; // Specific structure based on key provider implementation
+  keymanagement.ProviderConfig provider_config = 6; // Configuration for the key provider
+
+  // Common metadata fields
+  common.Metadata metadata = 100;
 }

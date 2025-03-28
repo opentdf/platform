@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.0](https://github.com/opentdf/platform/compare/sdk/v0.3.29...sdk/v0.4.0) (2025-03-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** Require go 1.23+ ([#1979](https://github.com/opentdf/platform/issues/1979))
+
+### Features
+
+* **core:** Require go 1.23+ ([#1979](https://github.com/opentdf/platform/issues/1979)) ([164c922](https://github.com/opentdf/platform/commit/164c922af74b1265fe487362c356abb7f1503ada))
+
+
+### Bug Fixes
+
+* Allow parsing IPs as hostnames ([#1999](https://github.com/opentdf/platform/issues/1999)) ([d54b550](https://github.com/opentdf/platform/commit/d54b550a889a55fe19cc79988cb2fc030860514a))
+
 ## [0.3.29](https://github.com/opentdf/platform/compare/sdk/v0.3.28...sdk/v0.3.29) (2025-03-08)
 
 

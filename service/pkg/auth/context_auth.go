@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 
-	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
@@ -19,16 +18,6 @@ type authContext struct {
 	key         jwk.Key
 	accessToken jwt.Token
 	rawToken    string
-}
-
-func ContextWithRequestTokenToContext(ctx context.Context, req connect.AnyRequest) context.Context {
-	token := req.Header().Get("Authorization")
-
-	return context.WithValue(ctx, authnContextKey, &authContext{
-		nil,
-		nil,
-		token,
-	})
 }
 
 func ContextWithAuthNInfo(ctx context.Context, key jwk.Key, accessToken jwt.Token, raw string) context.Context {
@@ -72,16 +61,4 @@ func GetRawAccessTokenFromContext(ctx context.Context, l *logger.Logger) string 
 		return c.rawToken
 	}
 	return ""
-}
-
-func GetTokenFromContextOrRequestHeader(ctx context.Context, r connect.AnyRequest) string {
-	if token := GetRawAccessTokenFromContext(ctx, nil); token != "" {
-		return token
-	}
-
-	at := r.Header().Get("Authorization")
-	if at == "" {
-		return ""
-	}
-	return at
 }

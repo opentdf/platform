@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.5.0](https://github.com/opentdf/platform/compare/service/v0.4.40...service/v0.5.0) (2025-03-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** update GRPC Gateway to use IPC ([#2005](https://github.com/opentdf/platform/issues/2005))
+* **core:** Require go 1.23+ ([#1979](https://github.com/opentdf/platform/issues/1979))
+
+### Features
+
+* **core:** Require go 1.23+ ([#1979](https://github.com/opentdf/platform/issues/1979)) ([164c922](https://github.com/opentdf/platform/commit/164c922af74b1265fe487362c356abb7f1503ada))
+
+
+### Bug Fixes
+
+* **core:** update GRPC Gateway to use IPC ([#2005](https://github.com/opentdf/platform/issues/2005)) ([ff605f4](https://github.com/opentdf/platform/commit/ff605f40cc1541c35d9492071f47469c4dba1364))
+
 ## [0.4.40](https://github.com/opentdf/platform/compare/service/v0.4.39...service/v0.4.40) (2025-03-10)
 
 

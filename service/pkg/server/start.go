@@ -69,7 +69,7 @@ func Start(f ...StartOptions) error {
 
 	// Initialize tracer
 	logger.Debug("configuring otel tracer")
-	shutdown, err := tracing.InitTracer(ctx, cfg.Trace)
+	shutdown, err := tracing.InitTracer(ctx, cfg.Server.Trace)
 	if err != nil {
 		return fmt.Errorf("could not initialize tracer: %w", err)
 	}

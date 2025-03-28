@@ -104,6 +104,98 @@ go run ./service start
 ```
 <!-- END copy ./service/README#quick-start -->
 
+Okay, here is just the new Markdown section for the README, updated to reflect the `server.trace:` configuration structure shown in your example:
+
+### Observability: Distributed Tracing (OpenTelemetry)
+
+The platform incorporates OpenTelemetry for distributed tracing, providing insights into request flows and performance across services. Tracing can be configured in the main `opentdf.yaml` (or equivalent) configuration file under the `server.trace` key.
+
+**Enabling/Disabling:**
+
+-   `server.trace.enabled`: Set to `true` to enable tracing, `false` to disable (uses no-op tracer).
+
+**Provider Configuration:**
+
+The `server.trace.provider` section determines where trace data is sent.
+
+-   `server.trace.provider.name`: Specifies the provider type. Supported values:
+    -   `"otlp"`: Sends traces using the OpenTelemetry Protocol (OTLP). This is the standard way to export to backends like Jaeger, Grafana Tempo, Datadog, etc.
+    -   `"file"`: Writes traces as JSON lines to a local file, useful for debugging or simple logging. Rotation is handled via `lumberjack`.
+
+**Provider Details:**
+
+1.  **OTLP Provider (`name: otlp`)**
+    -   `server.trace.provider.otlp`: Contains OTLP specific settings.
+        -   `endpoint`: (Required) The target OTLP endpoint (host:port) of your collector (e.g., Jaeger Collector, Grafana Agent, OpenTelemetry Collector).
+        -   `protocol`: (Optional) The OTLP protocol to use. `"grpc"` (default) or `"http/protobuf"`.
+        -   `insecure`: (Optional) Set to `true` to disable TLS (e.g., for local testing). Defaults to `false` (uses TLS).
+        -   `headers`: (Optional) A map of additional headers to send with OTLP requests (e.g., for authentication).
+
+2.  **File Provider (`name: file`)**
+    -   `server.trace.provider.file`: Contains file output settings.
+        -   `path`: (Required) The path to the output log file.
+        -   `prettyPrint`: (Optional) Set to `true` for human-readable JSON output. Defaults to `false` (compact JSON).
+        -   `maxSize`: (Optional) Max size in MB before log rotation (default: 20).
+        -   `maxBackups`: (Optional) Max number of old log files to keep (default: 10).
+        -   `maxAge`: (Optional) Max number of days to keep old log files (default: 30).
+        -   `compress`: (Optional) Set to `true` to compress rotated files (default: false).
+
+**Configuration Examples:**
+
+*   **Disabled:**
+    ```yaml
+    server:
+      trace:
+        enabled: false
+    ```
+
+*   **Send via OTLP/gRPC to Jaeger/Tempo locally (insecure):**
+    ```yaml
+    server:
+      trace:
+        enabled: true
+        provider:
+          name: otlp
+          otlp:
+            endpoint: "localhost:4317" # Default OTLP gRPC port
+            insecure: true
+            # protocol: grpc # Optional, defaults to grpc
+    ```
+
+*   **Send via OTLP/HTTP to a collector:**
+    ```yaml
+    server:
+      trace:
+        enabled: true
+        provider:
+          name: otlp
+          otlp:
+            endpoint: "otel-collector.observability:4318" # Default OTLP HTTP port
+            protocol: "http/protobuf"
+            insecure: false # Assuming collector uses TLS
+            # headers:
+            #   Authorization: "Bearer your-token"
+    ```
+
+*   **Write to a local file with rotation:**
+    ```yaml
+    server:
+      trace:
+        enabled: true
+        provider:
+          name: file
+          file:
+            path: "/var/log/opentdf/traces.log"
+            maxSize: 50
+            maxBackups: 5
+            compress: true
+    ```
+
+**Integration with Backends (Jaeger/Grafana):**
+
+-   Configure the OTLP `endpoint` to point to your trace collector (e.g., Jaeger Collector, OpenTelemetry Collector, Grafana Agent).
+-   Configure your visualization tool (e.g., Grafana) to use your tracing backend (e.g., Jaeger, Tempo) as a data source, pointing Grafana to the backend's *query* endpoint (e.g., Jaeger Query at `http://jaeger-query:16686`).
+
 ## For Contributors
 
 This section is focused on the development of the OpenTDF platform.

@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/opentdf/platform/service/tracing"
 	"log/slog"
 	"net"
 	"net/http"
@@ -57,6 +58,8 @@ type Config struct {
 	Host string `mapstructure:"host,omitempty" json:"host"`
 	// Enable pprof
 	EnablePprof bool `mapstructure:"enable_pprof" json:"enable_pprof" default:"false"`
+	// Trace is for configuring open telemetry based tracing.
+	Trace tracing.Config `mapstructure:"trace"`
 }
 
 func (c Config) LogValue() slog.Value {

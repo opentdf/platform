@@ -385,7 +385,6 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 		return nil, err
 	}
 
-	ctx = ctxAuth.WithAuthorizationContext(ctx, req)
 	entityInfo, err := getEntityInfo(ctx, p.Logger)
 	if err != nil {
 		p.Logger.DebugContext(ctx, "no entity info", "err", err)

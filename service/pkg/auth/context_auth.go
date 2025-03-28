@@ -7,7 +7,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
-	"google.golang.org/grpc/metadata"
 )
 
 var (
@@ -22,39 +21,8 @@ type authContext struct {
 	rawToken    string
 }
 
-const (
-	AuthorizationBearer                  = "Bearer "
-	HeaderAuthorization                  = "Authorization"
-	HeaderWithIPCAuthorizationValidation = "With-Ipc-Authorization-Validation"
-)
-
-// WithAuthorizationContext adds the authorization context to the outgoing context
-// This is used to pass the access token when needing to ensure the current user should have access
-// to the resource
-// Go can't pass the token in the context because it's a struct and not a string and Go doesn't know
-// how to serialize it
-func WithAuthorizationContext(ctx context.Context, req connect.AnyRequest) context.Context {
-	raw := GetRawAccessTokenFromContext(ctx, nil)
-
-	// If token is missing from context, try to get it from the request
-	// This is useful when the request is not a connect request
-	if raw == "" && req != nil {
-		raw = req.Header().Get(HeaderAuthorization)
-	}
-
-	// If we don't have a token, we don't need to do anything
-	if raw == "" {
-		return ctx
-	}
-
-	// Add the token for extraction in auth
-	ctx = metadata.AppendToOutgoingContext(ctx, HeaderAuthorization, AuthorizationBearer+raw)
-	ctx = metadata.AppendToOutgoingContext(ctx, HeaderWithIPCAuthorizationValidation, "true")
-	return ctx
-}
-
 func ContextWithRequestTokenToContext(ctx context.Context, req connect.AnyRequest) context.Context {
-	token := req.Header().Get(HeaderAuthorization)
+	token := req.Header().Get("Authorization")
 
 	return context.WithValue(ctx, authnContextKey, &authContext{
 		nil,

@@ -350,31 +350,27 @@ func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
-			// if explicit IPC authorization is not required, skip the interceptor
-			if req.Header()[ctxAuth.HeaderWithIPCAuthorizationValidation] == nil {
-				return next(ctx, req)
+			// This interceptor is used to rewrap the token for the KAS Rewrap RPC to ensure that the token
+			// is valid and has the correct claims and is appended to the context
+			if req.Spec().Procedure == "/kas.AccessService/Rewrap" {
+				// Extract the token from the request
+				authHeader := req.Header()["Authorization"]
+				if len(authHeader) < 1 {
+					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
+				}
+
+				_, nextCtx, err := a.checkToken(ctx, authHeader, receiverInfo{
+					u: []string{req.Spec().Procedure},
+					m: []string{http.MethodPost},
+				}, req.Header()["Dpop"])
+				if err != nil {
+					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+				}
+
+				return next(nextCtx, req)
 			}
 
-			// if the token is already in the context, skip the interceptor
-			if ctxAuth.GetAccessTokenFromContext(ctx, nil) != nil {
-				return next(ctx, req)
-			}
-
-			// Extract the token from the request
-			authHeader := req.Header()[ctxAuth.HeaderAuthorization]
-			if len(authHeader) < 1 {
-				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
-			}
-
-			_, nextCtx, err := a.checkToken(ctx, authHeader, receiverInfo{
-				u: []string{req.Spec().Procedure},
-				m: []string{http.MethodPost},
-			}, req.Header()["Dpop"])
-			if err != nil {
-				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
-			}
-
-			return next(nextCtx, req)
+			return next(ctx, req)
 		})
 	}
 	return connect.UnaryInterceptorFunc(interceptor)

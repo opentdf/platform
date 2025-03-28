@@ -329,6 +329,37 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 	return connect.UnaryInterceptorFunc(interceptor)
 }
 
+// IPCUnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
+func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc {
+	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
+		return connect.UnaryFunc(func(
+			ctx context.Context,
+			req connect.AnyRequest,
+		) (connect.AnyResponse, error) {
+			if req.Spec().Procedure != "/kas.AccessService/Rewrap" {
+				return next(ctx, req)
+			}
+
+			// Extract the token from the request
+			authHeader := req.Header()["Authorization"]
+			if len(authHeader) < 1 {
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
+			}
+
+			_, nextCtx, err := a.checkToken(ctx, authHeader, receiverInfo{
+				u: []string{req.Spec().Procedure},
+				m: []string{http.MethodPost},
+			}, req.Header()["Dpop"])
+			if err != nil {
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+			}
+
+			return next(nextCtx, req)
+		})
+	}
+	return connect.UnaryInterceptorFunc(interceptor)
+}
+
 // getAction returns the action based on the rpc name
 func getAction(method string) string {
 	switch {

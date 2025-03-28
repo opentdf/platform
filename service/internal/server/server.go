@@ -450,7 +450,7 @@ func (s OpenTDFServer) Stop() {
 	s.logger.Info("shutdown complete")
 }
 
-func (s inProcessServer) Conn(dialOptions ...grpc.DialOption) *grpc.ClientConn {
+func (s inProcessServer) Conn() *grpc.ClientConn {
 	var clientInterceptors []grpc.UnaryClientInterceptor
 
 	// Add audit interceptor
@@ -471,9 +471,8 @@ func (s inProcessServer) Conn(dialOptions ...grpc.DialOption) *grpc.ClientConn {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithChainUnaryInterceptor(clientInterceptors...),
 	}
-	options := append(defaultOptions, dialOptions...)
 
-	conn, _ := grpc.NewClient("passthrough:///", options...)
+	conn, _ := grpc.NewClient("passthrough:///", defaultOptions...)
 	return conn
 }
 

@@ -229,7 +229,6 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		}
 		md.Append("access_token", ctxAuth.GetRawAccessTokenFromContext(ctxWithJWK, nil))
 		ctxWithJWK = metadata.NewIncomingContext(ctxWithJWK, md)
-		md, _ = metadata.FromIncomingContext(ctxWithJWK)
 
 		// Check if the token is allowed to access the resource
 		var action string

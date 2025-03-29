@@ -58,7 +58,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				// Register the KAS legacy REST handlers for backwards compatibility
 				// These were previously handled by gRPC-gateway which is now deprecated
 				// legacy support is required to ensure TDFs are still accessible
-				handlerServer := func(ctx context.Context, mux *runtime.ServeMux) error {
+				handlerServer := func(_ context.Context, mux *runtime.ServeMux) error {
 					if err := mux.HandlePath(access.LegacyPublicKey.Method, access.LegacyPublicKey.Path, p.LegacyMuxHandlerPublicKey); err != nil {
 						return fmt.Errorf("failed to register handler for %s %s: %w", access.LegacyPublicKey.Method, access.LegacyPublicKey.Path, err)
 					}

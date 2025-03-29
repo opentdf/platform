@@ -52,7 +52,10 @@ func (p *Provider) LegacyMuxHandlerPublicKey(w http.ResponseWriter, r *http.Requ
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
-	_, _ = w.Write(responseBytes)
+	if _, err := w.Write(responseBytes); err != nil {
+		http.Error(w, "Failed to write response", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (p *Provider) LegacyMuxHandlerRewrap(w http.ResponseWriter, r *http.Request, _ map[string]string) {
@@ -76,5 +79,8 @@ func (p *Provider) LegacyMuxHandlerRewrap(w http.ResponseWriter, r *http.Request
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
-	_, _ = w.Write(responseBytes)
+	if _, err := w.Write(responseBytes); err != nil {
+		http.Error(w, "Failed to write response", http.StatusInternalServerError)
+		return
+	}
 }

@@ -59,10 +59,9 @@ type CustomRego struct {
 func NewRegistration() *serviceregistry.Service[authorizationconnect.AuthorizationServiceHandler] {
 	return &serviceregistry.Service[authorizationconnect.AuthorizationServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[authorizationconnect.AuthorizationServiceHandler]{
-			Namespace:       "authorization",
-			ServiceDesc:     &authorization.AuthorizationService_ServiceDesc,
-			ConnectRPCFunc:  authorizationconnect.NewAuthorizationServiceHandler,
-			GRPCGatewayFunc: authorization.RegisterAuthorizationServiceHandler,
+			Namespace:      "authorization",
+			ServiceDesc:    &authorization.AuthorizationService_ServiceDesc,
+			ConnectRPCFunc: authorizationconnect.NewAuthorizationServiceHandler,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authorizationconnect.AuthorizationServiceHandler, serviceregistry.HandlerServer) {
 				var (
 					err             error

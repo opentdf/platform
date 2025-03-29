@@ -37,10 +37,9 @@ func RegisterConfiguration(namespace string, config any) error {
 func NewRegistration() *serviceregistry.Service[wellknownconfigurationconnect.WellKnownServiceHandler] {
 	return &serviceregistry.Service[wellknownconfigurationconnect.WellKnownServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[wellknownconfigurationconnect.WellKnownServiceHandler]{
-			Namespace:       "wellknown",
-			ServiceDesc:     &wellknown.WellKnownService_ServiceDesc,
-			ConnectRPCFunc:  wellknownconfigurationconnect.NewWellKnownServiceHandler,
-			GRPCGatewayFunc: wellknown.RegisterWellKnownServiceHandler,
+			Namespace:      "wellknown",
+			ServiceDesc:    &wellknown.WellKnownService_ServiceDesc,
+			ConnectRPCFunc: wellknownconfigurationconnect.NewWellKnownServiceHandler,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (wellknownconfigurationconnect.WellKnownServiceHandler, serviceregistry.HandlerServer) {
 				wk := &WellKnownService{logger: srp.Logger}
 				return wk, nil

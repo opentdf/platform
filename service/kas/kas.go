@@ -1,11 +1,13 @@
 package kas
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/url"
 	"strings"
 
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/mitchellh/mapstructure"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
@@ -16,12 +18,11 @@ import (
 func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler] {
 	return &serviceregistry.Service[kasconnect.AccessServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[kasconnect.AccessServiceHandler]{
-			Namespace:       "kas",
-			ServiceDesc:     &kaspb.AccessService_ServiceDesc,
-			ConnectRPCFunc:  kasconnect.NewAccessServiceHandler,
-			GRPCGatewayFunc: kaspb.RegisterAccessServiceHandler,
+			Namespace:      "kas",
+			ServiceDesc:    &kaspb.AccessService_ServiceDesc,
+			ConnectRPCFunc: kasconnect.NewAccessServiceHandler,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasconnect.AccessServiceHandler, serviceregistry.HandlerServer) {
-				// FIXME msg="mismatched key access url" keyAccessURL=http://localhost:9000 kasURL=https://:9000
+				// Existing logic for KAS setup
 				hostWithPort := srp.OTDF.HTTPServer.Addr
 				if strings.HasPrefix(hostWithPort, ":") {
 					hostWithPort = "localhost" + hostWithPort
@@ -54,7 +55,17 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					srp.Logger.Error("failed to register kas readiness check", slog.String("error", err.Error()))
 				}
 
-				return p, nil
+				// Register the KAS legacy REST handlers for backwards compatibility
+				// These were previously handled by gRPC-gateway which is now deprecated
+				// legacy support is required to ensure TDFs are still accessible
+				handlerServer := func(ctx context.Context, mux *runtime.ServeMux) error {
+					mux.HandlePath(access.LegacyPublicKey.Method, access.LegacyPublicKey.Path, p.LegacyMuxHandlerPublicKey)
+					mux.HandlePath(access.LegacyPublicKeyV2.Method, access.LegacyPublicKeyV2.Path, p.LegacyMuxHandlerPublicKey)
+					mux.HandlePath(access.LegacyRewrap.Method, access.LegacyRewrap.Path, p.LegacyMuxHandlerRewrap)
+					return nil
+				}
+
+				return p, handlerServer
 			},
 		},
 	}

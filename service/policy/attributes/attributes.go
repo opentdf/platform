@@ -26,11 +26,10 @@ type AttributesService struct { //nolint:revive // AttributesService is a valid 
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[attributesconnect.AttributesServiceHandler] {
 	return &serviceregistry.Service[attributesconnect.AttributesServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[attributesconnect.AttributesServiceHandler]{
-			Namespace:       ns,
-			DB:              dbRegister,
-			ServiceDesc:     &attributes.AttributesService_ServiceDesc,
-			ConnectRPCFunc:  attributesconnect.NewAttributesServiceHandler,
-			GRPCGatewayFunc: attributes.RegisterAttributesServiceHandler,
+			Namespace:      ns,
+			DB:             dbRegister,
+			ServiceDesc:    &attributes.AttributesService_ServiceDesc,
+			ConnectRPCFunc: attributesconnect.NewAttributesServiceHandler,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (attributesconnect.AttributesServiceHandler, serviceregistry.HandlerServer) {
 				cfg := policyconfig.GetSharedPolicyConfig(srp)
 				return &AttributesService{

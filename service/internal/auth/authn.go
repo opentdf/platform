@@ -41,6 +41,8 @@ var (
 		"/kas.AccessService/Info",
 		"/kas/kas_public_key",
 		"/kas/v2/kas_public_key",
+		"/kas_mux/kas_public_key",
+		"/kas_mux/v2/kas_public_key",
 		// HealthZ
 		"/healthz",
 		"/grpc.health.v1.Health/Check",

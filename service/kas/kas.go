@@ -59,9 +59,15 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				// These were previously handled by gRPC-gateway which is now deprecated
 				// legacy support is required to ensure TDFs are still accessible
 				handlerServer := func(ctx context.Context, mux *runtime.ServeMux) error {
-					mux.HandlePath(access.LegacyPublicKey.Method, access.LegacyPublicKey.Path, p.LegacyMuxHandlerPublicKey)
-					mux.HandlePath(access.LegacyPublicKeyV2.Method, access.LegacyPublicKeyV2.Path, p.LegacyMuxHandlerPublicKey)
-					mux.HandlePath(access.LegacyRewrap.Method, access.LegacyRewrap.Path, p.LegacyMuxHandlerRewrap)
+					if err := mux.HandlePath(access.LegacyPublicKey.Method, access.LegacyPublicKey.Path, p.LegacyMuxHandlerPublicKey); err != nil {
+						return fmt.Errorf("failed to register handler for %s %s: %w", access.LegacyPublicKey.Method, access.LegacyPublicKey.Path, err)
+					}
+					if err := mux.HandlePath(access.LegacyPublicKeyV2.Method, access.LegacyPublicKeyV2.Path, p.LegacyMuxHandlerPublicKey); err != nil {
+						return fmt.Errorf("failed to register handler for %s %s: %w", access.LegacyPublicKeyV2.Method, access.LegacyPublicKeyV2.Path, err)
+					}
+					if err := mux.HandlePath(access.LegacyRewrap.Method, access.LegacyRewrap.Path, p.LegacyMuxHandlerRewrap); err != nil {
+						return fmt.Errorf("failed to register handler for %s %s: %w", access.LegacyRewrap.Method, access.LegacyRewrap.Path, err)
+					}
 					return nil
 				}
 

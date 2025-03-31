@@ -59,8 +59,6 @@ message Attribute {
   common.Metadata metadata = 100;
 }
 
-// buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't
-// violated when users add new enum values to an enum in a given package
 enum AttributeRuleTypeEnum {
   ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED = 0;
   ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF = 1;
@@ -103,13 +101,28 @@ message Action {
   // Standard actions supported by the platform
   enum StandardAction {
     STANDARD_ACTION_UNSPECIFIED = 0;
-    STANDARD_ACTION_DECRYPT = 1;
-    STANDARD_ACTION_TRANSMIT = 2;
+
+    // Deprecated STANDARD_ACTION_DECRYPT
+    // Migrated to `STANDARD_ACTION_READ`
+    reserved 1;
+
+    // Deprecated STANDARD_ACTION_TRANSMIT
+    // Migrated to `STANDARD_ACTION_CREATE`
+    reserved 2;
+
+    STANDARD_ACTION_CREATE = 3;
+    STANDARD_ACTION_READ = 4;
+    STANDARD_ACTION_UPDATE = 5;
+    STANDARD_ACTION_DELETE = 6;
   }
   oneof value {
+    // standard CRUD action
     StandardAction standard = 1;
+    // distinctly custom action
     string custom = 2;
   }
+
+  common.Metadata metadata = 100;
 }
 
 /*
@@ -117,8 +130,6 @@ message Action {
    supporting the mapping of Subjects and Attributes (e.g. Entitlement)
 */
 
-// buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't
-// violated when users add new enum values to an enum in a given package
 enum SubjectMappingOperatorEnum {
   SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED = 0;
   // operator that returns true if a value in a list matches the string
@@ -130,8 +141,6 @@ enum SubjectMappingOperatorEnum {
   SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS = 3;
 }
 
-// buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't
-// violated when users add new enum values to an enum in a given package
 enum ConditionBooleanTypeEnum {
   CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED = 0;
   CONDITION_BOOLEAN_TYPE_ENUM_AND = 1;

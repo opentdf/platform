@@ -186,14 +186,14 @@
           },
           {
             "name": "name",
-            "description": "Optional\nWARNING!! \nUpdating the name of an Attribute will retroactively alter access to existing TDFs of the old and new Attribute name.",
+            "description": "Optional\nWARNING!!\nUpdating the name of an Attribute will retroactively alter access to existing TDFs of the old and new Attribute name.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "rule",
-            "description": "Optional\nWARNING!! \nUpdating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.",
+            "description": "Optional\nWARNING!!\nUpdating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.",
             "in": "query",
             "required": false,
             "type": "string",
@@ -842,19 +842,19 @@
         }
       }
     },
+    "unsafeUnsafeDeleteKasKeyResponse": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/policyKey"
+        }
+      }
+    },
     "unsafeUnsafeDeleteNamespaceResponse": {
       "type": "object",
       "properties": {
         "namespace": {
           "$ref": "#/definitions/policyNamespace"
-        }
-      }
-    },
-    "unsafeUnsafeDeletePublicKeyResponse": {
-      "type": "object",
-      "properties": {
-        "key": {
-          "$ref": "#/definitions/policyKey"
         }
       }
     },

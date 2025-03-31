@@ -5,7 +5,6 @@ package policy;
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/protobuf/wrappers.proto";
-import "policy/keymanagement/key_management.proto";
 
 message KeyProviderConfig {
   string id = 1;
@@ -423,6 +422,15 @@ message RegisteredResourceValue {
    Key Management
 */
 
+message KeyProviderConfig {
+  string id = 1;
+  string name = 2;
+  string config_json = 3;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
 // Supported key algorithms.
 enum Algorithm {
   ALGORITHM_UNSPECIFIED = 0;
@@ -459,7 +467,7 @@ message AsymmetricKey {
   KeyMode key_mode = 4; // Specifies how the key is managed (local or remote)
   bytes public_key_ctx = 5; // Specific structure based on key provider implementation
   bytes private_key_ctx = 6; // Specific structure based on key provider implementation
-  keymanagement.ProviderConfig provider_config = 7; // Configuration for the key provider
+  KeyProviderConfig provider_config = 7; // Configuration for the key provider
 
   // Common metadata fields
   common.Metadata metadata = 100;
@@ -471,7 +479,7 @@ message SymmetricKey {
   KeyStatus key_status = 3;
   KeyMode key_mode = 4; // Specifies how the key is managed (local or remote)
   bytes key_ctx = 5; // Specific structure based on key provider implementation
-  keymanagement.ProviderConfig provider_config = 6; // Configuration for the key provider
+  KeyProviderConfig provider_config = 6; // Configuration for the key provider
 
   // Common metadata fields
   common.Metadata metadata = 100;

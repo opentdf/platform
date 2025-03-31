@@ -212,3 +212,28 @@ func (s KeyAccessServerRegistry) ListKeyAccessServerGrants(ctx context.Context,
 
 	return connect.NewResponse(rsp), nil
 }
+
+func (s KeyAccessServerRegistry) CreateKey(context.Context, *connect.Request[kasr.CreateKeyRequest]) (*connect.Response[kasr.CreateKeyResponse], error) {
+	// Implementation for CreateKey
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+}
+
+func (s KeyAccessServerRegistry) UpdateKey(context.Context, *connect.Request[kasr.UpdateKeyRequest]) (*connect.Response[kasr.UpdateKeyResponse], error) {
+	// Implementation for UpdateKey
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+}
+
+func (s KeyAccessServerRegistry) GetKey(context.Context, *connect.Request[kasr.GetKeyRequest]) (*connect.Response[kasr.GetKeyResponse], error) {
+	// Implementation for GetKey
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+}
+
+func (s KeyAccessServerRegistry) ListKeys(context.Context, *connect.Request[kasr.ListKeysRequest]) (*connect.Response[kasr.ListKeysResponse], error) {
+	// Implementation for ListKeys
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+}
+
+func (s KeyAccessServerRegistry) RotateKey(context.Context, *connect.Request[kasr.RotateKeyRequest]) (*connect.Response[kasr.RotateKeyResponse], error) {
+	// Implementation for RotateKey
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+}

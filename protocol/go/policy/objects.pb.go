@@ -9,7 +9,6 @@ package policy
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	common "github.com/opentdf/platform/protocol/go/common"
-	keymanagement "github.com/opentdf/platform/protocol/go/policy/keymanagement"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
@@ -2059,18 +2058,90 @@ func (x *RegisteredResourceValue) GetMetadata() *common.Metadata {
 	return nil
 }
 
+type KeyProviderConfig struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Id         string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name       string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	ConfigJson string `protobuf:"bytes,3,opt,name=config_json,json=configJson,proto3" json:"config_json,omitempty"`
+	// Common metadata
+	Metadata *common.Metadata `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
+}
+
+func (x *KeyProviderConfig) Reset() {
+	*x = KeyProviderConfig{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_policy_objects_proto_msgTypes[19]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *KeyProviderConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KeyProviderConfig) ProtoMessage() {}
+
+func (x *KeyProviderConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_policy_objects_proto_msgTypes[19]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KeyProviderConfig.ProtoReflect.Descriptor instead.
+func (*KeyProviderConfig) Descriptor() ([]byte, []int) {
+	return file_policy_objects_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *KeyProviderConfig) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *KeyProviderConfig) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *KeyProviderConfig) GetConfigJson() string {
+	if x != nil {
+		return x.ConfigJson
+	}
+	return ""
+}
+
+func (x *KeyProviderConfig) GetMetadata() *common.Metadata {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
+}
+
 type AsymmetricKey struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id             string                        `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	KeyId          string                        `protobuf:"bytes,2,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
-	KeyStatus      KeyStatus                     `protobuf:"varint,3,opt,name=key_status,json=keyStatus,proto3,enum=policy.KeyStatus" json:"key_status,omitempty"`
-	KeyMode        KeyMode                       `protobuf:"varint,4,opt,name=key_mode,json=keyMode,proto3,enum=policy.KeyMode" json:"key_mode,omitempty"` // Specifies how the key is managed (local or remote)
-	PublicKeyCtx   []byte                        `protobuf:"bytes,5,opt,name=public_key_ctx,json=publicKeyCtx,proto3" json:"public_key_ctx,omitempty"`     // Specific structure based on key provider implementation
-	PrivateKeyCtx  []byte                        `protobuf:"bytes,6,opt,name=private_key_ctx,json=privateKeyCtx,proto3" json:"private_key_ctx,omitempty"`  // Specific structure based on key provider implementation
-	ProviderConfig *keymanagement.ProviderConfig `protobuf:"bytes,7,opt,name=provider_config,json=providerConfig,proto3" json:"provider_config,omitempty"` // Configuration for the key provider
+	Id             string             `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	KeyId          string             `protobuf:"bytes,2,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
+	KeyStatus      KeyStatus          `protobuf:"varint,3,opt,name=key_status,json=keyStatus,proto3,enum=policy.KeyStatus" json:"key_status,omitempty"`
+	KeyMode        KeyMode            `protobuf:"varint,4,opt,name=key_mode,json=keyMode,proto3,enum=policy.KeyMode" json:"key_mode,omitempty"` // Specifies how the key is managed (local or remote)
+	PublicKeyCtx   []byte             `protobuf:"bytes,5,opt,name=public_key_ctx,json=publicKeyCtx,proto3" json:"public_key_ctx,omitempty"`     // Specific structure based on key provider implementation
+	PrivateKeyCtx  []byte             `protobuf:"bytes,6,opt,name=private_key_ctx,json=privateKeyCtx,proto3" json:"private_key_ctx,omitempty"`  // Specific structure based on key provider implementation
+	ProviderConfig *KeyProviderConfig `protobuf:"bytes,7,opt,name=provider_config,json=providerConfig,proto3" json:"provider_config,omitempty"` // Configuration for the key provider
 	// Common metadata fields
 	Metadata *common.Metadata `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
 }
@@ -2078,7 +2149,7 @@ type AsymmetricKey struct {
 func (x *AsymmetricKey) Reset() {
 	*x = AsymmetricKey{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_objects_proto_msgTypes[19]
+		mi := &file_policy_objects_proto_msgTypes[20]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2091,7 +2162,7 @@ func (x *AsymmetricKey) String() string {
 func (*AsymmetricKey) ProtoMessage() {}
 
 func (x *AsymmetricKey) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_objects_proto_msgTypes[19]
+	mi := &file_policy_objects_proto_msgTypes[20]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2104,7 +2175,7 @@ func (x *AsymmetricKey) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AsymmetricKey.ProtoReflect.Descriptor instead.
 func (*AsymmetricKey) Descriptor() ([]byte, []int) {
-	return file_policy_objects_proto_rawDescGZIP(), []int{19}
+	return file_policy_objects_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *AsymmetricKey) GetId() string {
@@ -2149,7 +2220,7 @@ func (x *AsymmetricKey) GetPrivateKeyCtx() []byte {
 	return nil
 }
 
-func (x *AsymmetricKey) GetProviderConfig() *keymanagement.ProviderConfig {
+func (x *AsymmetricKey) GetProviderConfig() *KeyProviderConfig {
 	if x != nil {
 		return x.ProviderConfig
 	}
@@ -2168,12 +2239,12 @@ type SymmetricKey struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id             string                        `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	KeyId          string                        `protobuf:"bytes,2,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
-	KeyStatus      KeyStatus                     `protobuf:"varint,3,opt,name=key_status,json=keyStatus,proto3,enum=policy.KeyStatus" json:"key_status,omitempty"`
-	KeyMode        KeyMode                       `protobuf:"varint,4,opt,name=key_mode,json=keyMode,proto3,enum=policy.KeyMode" json:"key_mode,omitempty"` // Specifies how the key is managed (local or remote)
-	KeyCtx         []byte                        `protobuf:"bytes,5,opt,name=key_ctx,json=keyCtx,proto3" json:"key_ctx,omitempty"`                         // Specific structure based on key provider implementation
-	ProviderConfig *keymanagement.ProviderConfig `protobuf:"bytes,6,opt,name=provider_config,json=providerConfig,proto3" json:"provider_config,omitempty"` // Configuration for the key provider
+	Id             string             `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	KeyId          string             `protobuf:"bytes,2,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
+	KeyStatus      KeyStatus          `protobuf:"varint,3,opt,name=key_status,json=keyStatus,proto3,enum=policy.KeyStatus" json:"key_status,omitempty"`
+	KeyMode        KeyMode            `protobuf:"varint,4,opt,name=key_mode,json=keyMode,proto3,enum=policy.KeyMode" json:"key_mode,omitempty"` // Specifies how the key is managed (local or remote)
+	KeyCtx         []byte             `protobuf:"bytes,5,opt,name=key_ctx,json=keyCtx,proto3" json:"key_ctx,omitempty"`                         // Specific structure based on key provider implementation
+	ProviderConfig *KeyProviderConfig `protobuf:"bytes,6,opt,name=provider_config,json=providerConfig,proto3" json:"provider_config,omitempty"` // Configuration for the key provider
 	// Common metadata fields
 	Metadata *common.Metadata `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
 }
@@ -2181,7 +2252,7 @@ type SymmetricKey struct {
 func (x *SymmetricKey) Reset() {
 	*x = SymmetricKey{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_objects_proto_msgTypes[20]
+		mi := &file_policy_objects_proto_msgTypes[21]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2194,7 +2265,7 @@ func (x *SymmetricKey) String() string {
 func (*SymmetricKey) ProtoMessage() {}
 
 func (x *SymmetricKey) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_objects_proto_msgTypes[20]
+	mi := &file_policy_objects_proto_msgTypes[21]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2207,7 +2278,7 @@ func (x *SymmetricKey) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SymmetricKey.ProtoReflect.Descriptor instead.
 func (*SymmetricKey) Descriptor() ([]byte, []int) {
-	return file_policy_objects_proto_rawDescGZIP(), []int{20}
+	return file_policy_objects_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *SymmetricKey) GetId() string {
@@ -2245,7 +2316,7 @@ func (x *SymmetricKey) GetKeyCtx() []byte {
 	return nil
 }
 
-func (x *SymmetricKey) GetProviderConfig() *keymanagement.ProviderConfig {
+func (x *SymmetricKey) GetProviderConfig() *KeyProviderConfig {
 	if x != nil {
 		return x.ProviderConfig
 	}
@@ -2971,7 +3042,7 @@ func file_policy_objects_proto_init() {
 			}
 		}
 		file_policy_objects_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AsymmetricKey); i {
+			switch v := v.(*KeyProviderConfig); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2983,6 +3054,18 @@ func file_policy_objects_proto_init() {
 			}
 		}
 		file_policy_objects_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AsymmetricKey); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_policy_objects_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*SymmetricKey); i {
 			case 0:
 				return &v.state

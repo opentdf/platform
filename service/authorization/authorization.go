@@ -221,7 +221,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 						EntityChainId: ec.GetId(),
 						Action: &policy.Action{
 							Value: &policy.Action_Standard{
-								Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
+								Standard: policy.Action_STANDARD_ACTION_CREATE,
 							},
 						},
 					}
@@ -385,7 +385,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 				EntityChainId: ec.GetId(),
 				Action: &policy.Action{
 					Value: &policy.Action_Standard{
-						Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
+						Standard: policy.Action_STANDARD_ACTION_CREATE,
 					},
 				},
 			}

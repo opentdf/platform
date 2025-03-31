@@ -83,7 +83,7 @@ func Test_CreateSubjectMappingRequest_WithExistingSubjectConditionSetID_Succeeds
 		Actions: []*policy.Action{
 			{
 				Value: &policy.Action_Standard{
-					Standard: policy.Action_STANDARD_ACTION_DECRYPT,
+					Standard: policy.Action_STANDARD_ACTION_READ,
 				},
 			},
 		},

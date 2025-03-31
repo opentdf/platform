@@ -42,25 +42,30 @@ func (s *SubjectMappingsSuite) TearDownSuite() {
 
 // a set of easily accessible actions for use in tests
 var (
-	Decrypt        = "DECRYPT"
-	Transmit       = "TRANSMIT"
+	Read           = "READ"
+	Transmit       = "CUSTOM_TRANSMIT"
 	CustomDownload = "CUSTOM_DOWNLOAD"
 	CustomUpload   = "CUSTOM_UPLOAD"
 
 	fixtureActions = map[string]*policy.Action{
-		"DECRYPT": {
+		"READ": {
 			Value: &policy.Action_Standard{
-				Standard: policy.Action_STANDARD_ACTION_DECRYPT,
+				Standard: policy.Action_STANDARD_ACTION_READ,
 			},
 		},
-		"TRANSMIT": {
+		"CREATE": {
 			Value: &policy.Action_Standard{
-				Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
+				Standard: policy.Action_STANDARD_ACTION_CREATE,
 			},
 		},
 		"CUSTOM_DOWNLOAD": {
 			Value: &policy.Action_Custom{
 				Custom: "DOWNLOAD",
+			},
+		},
+		"CUSTOM_TRANSMIT": {
+			Value: &policy.Action_Custom{
+				Custom: "TRANSMIT",
 			},
 		},
 		"CUSTOM_UPLOAD": {
@@ -82,7 +87,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_ExistingSubjectCondition
 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
 	fixtureSCSId := s.f.GetSubjectConditionSetKey("subject_condition_set1").ID
 
-	aDecrypt := fixtureActions[Decrypt]
+	aDecrypt := fixtureActions[Read]
 	aTransmit := fixtureActions[Transmit]
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrValID,
@@ -816,7 +821,7 @@ func (s *SubjectMappingsSuite) TestDeleteAllUnmappedSubjectConditionSets() {
 
 	sm, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID,
-		Actions:                       []*policy.Action{fixtureActions[Decrypt]},
+		Actions:                       []*policy.Action{fixtureActions[Read]},
 		ExistingSubjectConditionSetId: mapped.GetId(),
 	})
 	s.Require().NoError(err)
@@ -1258,7 +1263,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_ConditionSetReusedB
 	sm1, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              attrVal1,
 		ExistingSubjectConditionSetId: createdSCS.GetId(),
-		Actions:                       []*policy.Action{fixtureActions[Decrypt]},
+		Actions:                       []*policy.Action{fixtureActions[Read]},
 	})
 	s.Require().NoError(err)
 	s.NotNil(sm1)
@@ -1326,7 +1331,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_OnlyMatchesOnePrope
 
 	subjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:       fixtureAttrValID,
-		Actions:                []*policy.Action{fixtureActions[Transmit], fixtureActions[Decrypt]},
+		Actions:                []*policy.Action{fixtureActions[Transmit], fixtureActions[Read]},
 		NewSubjectConditionSet: newScs,
 	}
 

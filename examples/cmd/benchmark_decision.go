@@ -37,7 +37,7 @@ func runDecisionBenchmark(cmd *cobra.Command, args []string) error {
 		DecisionRequests: []*authorization.DecisionRequest{
 			{
 				Actions: []*policy.Action{{Value: &policy.Action_Standard{
-					Standard: policy.Action_STANDARD_ACTION_DECRYPT,
+					Standard: policy.Action_STANDARD_ACTION_READ,
 				}}},
 				EntityChains: []*authorization.EntityChain{
 					{Id: "rewrap-tok", Entities: []*authorization.Entity{

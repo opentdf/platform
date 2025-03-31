@@ -64,7 +64,7 @@ func (p *Provider) checkAttributes(ctx context.Context, ras []*authorization.Res
 		DecisionRequests: []*authorization.TokenDecisionRequest{
 			{
 				Actions: []*policy.Action{
-					{Value: &policy.Action_Standard{Standard: policy.Action_STANDARD_ACTION_DECRYPT}},
+					{Value: &policy.Action_Standard{Standard: policy.Action_STANDARD_ACTION_READ}},
 				},
 				Tokens:             []*authorization.Token{ent},
 				ResourceAttributes: ras,

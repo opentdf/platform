@@ -4,16 +4,8 @@ package policy.keymanagement;
 
 import "buf/validate/validate.proto";
 import "common/common.proto";
+import "policy/objects.proto";
 import "policy/selectors.proto";
-
-message ProviderConfig {
-  string id = 1;
-  string name = 2;
-  string config_json = 3;
-
-  // Common metadata
-  common.Metadata metadata = 100;
-}
 
 /*
    Provider Configuration Requests and Response Messages
@@ -30,7 +22,7 @@ message CreateProviderConfigRequest {
   common.MetadataMutable metadata = 100;
 }
 message CreateProviderConfigResponse {
-  ProviderConfig provider_config = 1;
+  KeyProviderConfig provider_config = 1;
 }
 
 message GetProviderConfigRequest {
@@ -42,7 +34,7 @@ message GetProviderConfigRequest {
   }
 }
 message GetProviderConfigResponse {
-  ProviderConfig provider_config = 1;
+  KeyProviderConfig provider_config = 1;
 }
 
 message ListProviderConfigsRequest {
@@ -50,7 +42,7 @@ message ListProviderConfigsRequest {
   policy.PageRequest pagination = 10;
 }
 message ListProviderConfigsResponse {
-  repeated ProviderConfig provider_configs = 1;
+  repeated KeyProviderConfig provider_configs = 1;
 
   policy.PageResponse pagination = 10;
 }
@@ -69,7 +61,7 @@ message UpdateProviderConfigRequest {
   common.MetadataUpdateEnum metadata_update_behavior = 101;
 }
 message UpdateProviderConfigResponse {
-  ProviderConfig provider_config = 1;
+  KeyProviderConfig provider_config = 1;
 }
 
 // In order to delete a provider configuration you must first delete all keys associated with the provider.
@@ -78,7 +70,7 @@ message DeleteProviderConfigRequest {
   string id = 1 [(buf.validate.field).string.uuid = true];
 }
 message DeleteProviderConfigResponse {
-  ProviderConfig provider_config = 1;
+  KeyProviderConfig provider_config = 1;
 }
 
 service KeyManagementService {

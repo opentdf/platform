@@ -13,16 +13,14 @@ import "policy/objects.proto";
 // Existing Attribute Definitions and their Values under the Namespace will now be associated with the new Namespace name.
 message UnsafeUpdateNamespaceRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
 
   // Required
   string name = 2 [
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
-      id: "namespace_name_format",
-      message: "Namespace must be a valid hostname. It should include at least one dot, with each segment (label) starting and ending with an alphanumeric character. Each label must be 1 to 63 characters long, allowing hyphens but not as the first or last character. The top-level domain (the last segment after the final dot) must consist of at least two alphabetic characters. The stored namespace will be normalized to lower case.",
+      id: "namespace_name_format"
+      message: "Namespace must be a valid hostname. It should include at least one dot, with each segment (label) starting and ending with an alphanumeric character. Each label must be 1 to 63 characters long, allowing hyphens but not as the first or last character. The top-level domain (the last segment after the final dot) must consist of at least two alphabetic characters. The stored namespace will be normalized to lower case."
       expression: "this.matches('^([a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?\\\\.)+[a-zA-Z]{2,}$')"
     }
   ];
@@ -36,12 +34,10 @@ message UnsafeUpdateNamespaceResponse {
 // Active state of any Definitions and their Values under this Namespace will NOT be changed.
 message UnsafeReactivateNamespaceRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
 }
 message UnsafeReactivateNamespaceResponse {
-    policy.Namespace namespace = 1;
+  policy.Namespace namespace = 1;
 }
 
 // WARNING!!
@@ -50,9 +46,7 @@ message UnsafeReactivateNamespaceResponse {
 message UnsafeDeleteNamespaceRequest {
   // Required
   // UUID of the Namespace
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
   // Required
   // Fully Qualified Name (FQN) of Namespace (i.e. https://<namespace>), normalized to lower case.
   string fqn = 2 [(buf.validate.field).required = true];
@@ -67,28 +61,24 @@ message UnsafeDeleteNamespaceResponse {
 // Updating an Attribute can have dangerous consequences. Use with caution.
 message UnsafeUpdateAttributeRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
 
   // Optional
-  // WARNING!! 
+  // WARNING!!
   // Updating the name of an Attribute will retroactively alter access to existing TDFs of the old and new Attribute name.
   string name = 2 [
     (buf.validate.field).required = false,
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
-      id: "attribute_name_format",
-      message: "Attribute name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute name will be normalized to lower case.",
+      id: "attribute_name_format"
+      message: "Attribute name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute name will be normalized to lower case."
       expression: "size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true"
     }
   ];
   // Optional
-  // WARNING!! 
+  // WARNING!!
   // Updating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.
-  AttributeRuleTypeEnum rule = 3 [
-    (buf.validate.field).enum.defined_only = true
-  ];
+  AttributeRuleTypeEnum rule = 3 [(buf.validate.field).enum.defined_only = true];
   // Optional
   // WARNING!!
   // Unsafe reordering requires the full list of values in the new order they should be stored. Updating the order of values in a HIERARCHY-rule Attribute Definition
@@ -105,9 +95,7 @@ message UnsafeUpdateAttributeResponse {
 // Active state of any Values under this Attribute Definition will NOT be changed.
 message UnsafeReactivateAttributeRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
 }
 message UnsafeReactivateAttributeResponse {
   policy.Attribute attribute = 1;
@@ -120,9 +108,7 @@ message UnsafeReactivateAttributeResponse {
 message UnsafeDeleteAttributeRequest {
   // Required
   // UUID of the Attribute
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
   // Required
   // Fully Qualified Name (FQN) of Attribute Definition (i.e. https://<namespace>/attr/<attribute name>), normalized to lower case.
   string fqn = 2 [(buf.validate.field).required = true];
@@ -135,20 +121,18 @@ message UnsafeDeleteAttributeResponse {
 /// Value Unsafe RPC messages
 ///
 
-// WARNING!! 
+// WARNING!!
 // Updating an Attribute Value will retroactively alter access to existing TDFs containing the old and new Attribute Value.
 message UnsafeUpdateAttributeValueRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
 
   // Required
   string value = 2 [
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
-      id: "value_format",
-      message: "Attribute Value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute value will be normalized to lower case.",
+      id: "value_format"
+      message: "Attribute Value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute value will be normalized to lower case."
       expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
     }
   ];
@@ -161,9 +145,7 @@ message UnsafeUpdateAttributeValueResponse {
 // Reactivating an Attribute Value can potentially open up an access path to existing TDFs containing the Attribute Value.
 message UnsafeReactivateAttributeValueRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
 }
 message UnsafeReactivateAttributeValueResponse {
   policy.Value value = 1;
@@ -175,9 +157,7 @@ message UnsafeReactivateAttributeValueResponse {
 message UnsafeDeleteAttributeValueRequest {
   // Required
   // UUID of the Attribute Value
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
   // Required
   // Fully Qualified Name (FQN) of Attribute Value (i.e. https://<namespace>/attr/<attribute name>/value/<value>), normalized to lower case.
   string fqn = 2 [(buf.validate.field).required = true];
@@ -187,20 +167,18 @@ message UnsafeDeleteAttributeValueResponse {
 }
 
 // WARNING!!
-message UnsafeDeletePublicKeyRequest {
+message UnsafeDeleteKasKeyRequest {
   // Required
   // UUID of the Key
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
 }
 
-message UnsafeDeletePublicKeyResponse {
+message UnsafeDeleteKasKeyResponse {
   policy.Key key = 1;
 }
 
 ///
-/// Unsafe Service 
+/// Unsafe Service
 /// IN FLIGHT AND NOT YET IMPLEMENTED!
 ///
 service UnsafeService {
@@ -244,7 +222,7 @@ service UnsafeService {
   }
 
   /*--------------------------------------*
-   * Key RPCs
+   * Kas Key RPCs
    *---------------------------------------*/
-   rpc UnsafeDeletePublicKey(UnsafeDeletePublicKeyRequest) returns (UnsafeDeletePublicKeyResponse) {}
+  rpc UnsafeDeleteKasKey(UnsafeDeleteKasKeyRequest) returns (UnsafeDeleteKasKeyResponse) {}
 }

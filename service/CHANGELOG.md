@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/opentdf/platform/compare/service/v0.5.0...service/v0.5.1) (2025-03-31)
+
+
+### Bug Fixes
+
+* **main:** add ipc auth extensibility ([#2014](https://github.com/opentdf/platform/issues/2014)) ([0c701d4](https://github.com/opentdf/platform/commit/0c701d4317faf870d99e009f19f6624d951f2917))
+
 ## [0.5.0](https://github.com/opentdf/platform/compare/service/v0.4.40...service/v0.5.0) (2025-03-28)
 
 

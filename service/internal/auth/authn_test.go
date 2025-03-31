@@ -211,6 +211,48 @@ func TestNormalizeUrl(t *testing.T) {
 	}
 }
 
+func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
+	// Mock the checkToken method to return a valid token and context
+	mockToken := jwt.New()
+	type contextKey string
+	mockCtx := context.WithValue(context.Background(), contextKey("mockKey"), "mockValue")
+	s.auth._testCheckTokenFunc = func(_ context.Context, authHeader []string, _ receiverInfo, _ []string) (jwt.Token, context.Context, error) {
+		if len(authHeader) == 0 {
+			return nil, nil, errors.New("missing authorization header")
+		}
+		if authHeader[0] != "Bearer valid" {
+			return nil, nil, errors.New("unauthenticated")
+		}
+		return mockToken, mockCtx, nil
+	}
+
+	// Test ipcReauthCheck directly
+	validAuthHeader := http.Header{}
+	validAuthHeader.Add("Authorization", "Bearer valid")
+	t1Path := "/kas.AccessService/Rewrap"
+	nextCtx, err := s.auth.ipcReauthCheck(context.Background(), t1Path, validAuthHeader)
+	s.Require().NoError(err)
+	s.Require().NotNil(nextCtx)
+	s.Equal("mockValue", nextCtx.Value(contextKey("mockKey")))
+
+	// Test with a route not requiring reauthorization
+	nextCtx, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/PublicKey", nil)
+	s.Require().NoError(err)
+	s.Require().NotNil(nextCtx)
+	s.Nil(nextCtx.Value(contextKey("mockKey")))
+
+	// Test with missing authorization header
+	_, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/Rewrap", nil)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "missing authorization header")
+
+	// Test with invalid token
+	unauthHeader := http.Header{}
+	unauthHeader.Add("Authorization", "Bearer invalid")
+	_, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/Rewrap", unauthHeader)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "unauthenticated")
+}
 func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	tok := jwt.New()
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC)))

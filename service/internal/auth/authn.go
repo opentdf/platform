@@ -45,6 +45,10 @@ var (
 		"/healthz",
 		"/grpc.health.v1.Health/Check",
 	}
+	// Routes which require reauthorization for IPC
+	ipcReauthRoutes = [...]string{
+		"/kas.AccessService/Rewrap",
+	}
 	// only asymmetric algorithms and no 'none'
 	allowedSignatureAlgorithms = map[jwa.SignatureAlgorithm]bool{ //nolint:exhaustive // only asymmetric algorithms
 		jwa.RS256: true,
@@ -79,8 +83,13 @@ type Authentication struct {
 	enforcer *Enforcer
 	// Public Routes HTTP & gRPC
 	publicRoutes []string
+	// IPC Reauthorization Routes
+	ipcReauthRoutes []string
 	// Custom Logger
 	logger *logger.Logger
+
+	// Used for testing
+	_testCheckTokenFunc func(ctx context.Context, authHeader []string, dpopInfo receiverInfo, dpopHeader []string) (jwt.Token, context.Context, error)
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
@@ -144,6 +153,9 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	// Combine public routes
 	a.publicRoutes = append(a.publicRoutes, cfg.PublicRoutes...)
 	a.publicRoutes = append(a.publicRoutes, allowedPublicEndpoints[:]...)
+
+	// Combine IPC reauthorization routes
+	a.ipcReauthRoutes = append(ipcReauthRoutes[:], cfg.IPCReauthRoutes...)
 
 	a.oidcConfiguration = cfg.AuthNConfig
 
@@ -343,34 +355,45 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 	return connect.UnaryInterceptorFunc(interceptor)
 }
 
-// IPCUnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
+func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header http.Header) (context.Context, error) {
+	for _, route := range a.ipcReauthRoutes {
+		reqPath := path
+		if reqPath == route {
+			// Extract the token from the request
+			authHeader := header["Authorization"]
+			if len(authHeader) < 1 {
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
+			}
+
+			// Validate the token and create a JWT token
+			_, nextCtx, err := a.checkToken(ctx, authHeader, receiverInfo{
+				u: []string{path},
+				m: []string{http.MethodPost},
+			}, header["Dpop"])
+			if err != nil {
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+			}
+
+			// Return the next context with the token
+			return nextCtx, nil
+		}
+	}
+	return ctx, nil
+}
+
+// IPCReauthInterceptor is a grpc interceptor that verifies the token in the metadata
+// and reauthorizes the token if the route is in the list
 func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
-			// This interceptor is used to rewrap the token for the KAS Rewrap RPC to ensure that the token
-			// is valid and has the correct claims and is appended to the context
-			if req.Spec().Procedure == "/kas.AccessService/Rewrap" {
-				// Extract the token from the request
-				authHeader := req.Header()["Authorization"]
-				if len(authHeader) < 1 {
-					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
-				}
-
-				_, nextCtx, err := a.checkToken(ctx, authHeader, receiverInfo{
-					u: []string{req.Spec().Procedure},
-					m: []string{http.MethodPost},
-				}, req.Header()["Dpop"])
-				if err != nil {
-					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
-				}
-
-				return next(nextCtx, req)
+			nextCtx, err := a.ipcReauthCheck(ctx, req.Spec().Procedure, req.Header())
+			if err != nil {
+				return nil, err
 			}
-
-			return next(ctx, req)
+			return next(nextCtx, req)
 		})
 	}
 	return connect.UnaryInterceptorFunc(interceptor)
@@ -392,7 +415,12 @@ func getAction(method string) string {
 }
 
 // checkToken is a helper function to verify the token.
-func (a Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo receiverInfo, dpopHeader []string) (jwt.Token, context.Context, error) {
+func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo receiverInfo, dpopHeader []string) (jwt.Token, context.Context, error) {
+	// Use the test function if it is set
+	if a._testCheckTokenFunc != nil {
+		return a._testCheckTokenFunc(ctx, authHeader, dpopInfo, dpopHeader)
+	}
+
 	var tokenRaw string
 
 	// If we don't get a DPoP/Bearer token type, we can't proceed

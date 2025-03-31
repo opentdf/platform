@@ -734,7 +734,7 @@ func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
 	val2SM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              val2.GetId(),
 		ExistingSubjectConditionSetId: s.f.GetSubjectConditionSetKey("subject_condition_set2").ID,
-		Actions:                       []*policy.Action{fixtureActions[Decrypt]},
+		Actions:                       []*policy.Action{fixtureActions[Read]},
 	})
 	s.Require().NoError(err)
 	s.NotNil(val2SM)
@@ -743,7 +743,7 @@ func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
 	val2SM2, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              val2.GetId(),
 		ExistingSubjectConditionSetId: s.f.GetSubjectConditionSetKey("subject_condition_set3").ID,
-		Actions:                       []*policy.Action{fixtureActions[Transmit], fixtureActions[Decrypt]},
+		Actions:                       []*policy.Action{fixtureActions[Transmit], fixtureActions[Read]},
 	})
 	s.Require().NoError(err)
 	s.NotNil(val2SM2)

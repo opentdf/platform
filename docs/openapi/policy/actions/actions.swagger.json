@@ -21,12 +21,15 @@
       "type": "string",
       "enum": [
         "STANDARD_ACTION_UNSPECIFIED",
+        "STANDARD_ACTION_DECRYPT",
+        "STANDARD_ACTION_TRANSMIT",
         "STANDARD_ACTION_CREATE",
         "STANDARD_ACTION_READ",
         "STANDARD_ACTION_UPDATE",
         "STANDARD_ACTION_DELETE"
       ],
       "default": "STANDARD_ACTION_UNSPECIFIED",
+      "description": "- STANDARD_ACTION_DECRYPT: Deprecated\nMigrate to `STANDARD_ACTION_READ`\n - STANDARD_ACTION_TRANSMIT: Deprecated\nMigrate to `STANDARD_ACTION_CREATE` or a custom action",
       "title": "Standard actions supported by the platform"
     },
     "actionsCreateCustomActionResponse": {

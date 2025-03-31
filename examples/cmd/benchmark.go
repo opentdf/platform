@@ -211,21 +211,25 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 	throughput := float64(successCount) / totalTime.Seconds()
 
 	// Print results
-	cmd.Printf("\nBenchmark Results:\n")
-	cmd.Printf("Total Requests: %d\n", config.RequestCount)
-	cmd.Printf("Successful Requests: %d\n", successCount)
-	cmd.Printf("Failed Requests: %d\n", errorCount)
-	cmd.Printf("Concurrent Requests: %d\n", config.ConcurrentRequests)
-	cmd.Printf("Total Time: %s\n", totalTime)
+	fmt.Printf("# Benchmark Results:\n")
+	fmt.Printf("| Metric                | Value                     |\n")
+	fmt.Printf("|-----------------------|---------------------------|\n")
+	fmt.Printf("| Total Requests        | %d                        |\n", config.RequestCount)
+	fmt.Printf("| Successful Requests   | %d                        |\n", successCount)
+	fmt.Printf("| Failed Requests       | %d                        |\n", errorCount)
+	fmt.Printf("| Concurrent Requests   | %d                        |\n", config.ConcurrentRequests)
+	fmt.Printf("| Total Time            | %s                        |\n", totalTime)
 	if successCount > 0 {
-		cmd.Printf("Average Latency: %s\n", averageLatency)
+		fmt.Printf("| Average Latency       | %s                        |\n", averageLatency)
 	}
-	cmd.Printf("Throughput: %.2f requests/second\n", throughput)
+	fmt.Printf("| Throughput            | %.2f requests/second      |\n", throughput)
 
 	if errorCount > 0 {
-		cmd.Printf("\nError Summary:\n")
+		fmt.Printf("\n## Error Summary:\n")
+		fmt.Printf("| Error Message         | Occurrences              |\n")
+		fmt.Printf("|-----------------------|---------------------------|\n")
 		for errMsg, count := range errorMsgs {
-			cmd.Printf("%s: %d occurrences\n", errMsg, count)
+			fmt.Printf("| %s | %d occurrences         |\n", errMsg, count)
 		}
 	}
 

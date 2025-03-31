@@ -50,7 +50,7 @@ func areValid(cmd *cobra.Command, files []string) error {
 		}
 		defer in.Close()
 
-		cmd.Printf("File: [%s], TypeInfo: %v\n", file, isValid(cmd, in))
+		fmt.Printf("File: [%s], TypeInfo: %v\n", file, isValid(cmd, in))
 	}
 	return nil
 }

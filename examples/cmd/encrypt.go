@@ -168,7 +168,7 @@ func cat(cmd *cobra.Command, nTdfFile string) error {
 		return err
 	}
 
-	cmd.Println(string(ocrypto.Base64Encode(buf.Bytes())))
+	fmt.Println(string(ocrypto.Base64Encode(buf.Bytes())))
 
 	return nil
 }

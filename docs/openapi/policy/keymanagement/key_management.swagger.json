@@ -66,7 +66,7 @@
       "type": "object",
       "properties": {
         "providerConfig": {
-          "$ref": "#/definitions/keymanagementProviderConfig"
+          "$ref": "#/definitions/policyKeyProviderConfig"
         }
       }
     },
@@ -74,7 +74,7 @@
       "type": "object",
       "properties": {
         "providerConfig": {
-          "$ref": "#/definitions/keymanagementProviderConfig"
+          "$ref": "#/definitions/policyKeyProviderConfig"
         }
       }
     },
@@ -82,7 +82,7 @@
       "type": "object",
       "properties": {
         "providerConfig": {
-          "$ref": "#/definitions/keymanagementProviderConfig"
+          "$ref": "#/definitions/policyKeyProviderConfig"
         }
       }
     },
@@ -93,7 +93,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/keymanagementProviderConfig"
+            "$ref": "#/definitions/policyKeyProviderConfig"
           }
         },
         "pagination": {
@@ -101,7 +101,15 @@
         }
       }
     },
-    "keymanagementProviderConfig": {
+    "keymanagementUpdateProviderConfigResponse": {
+      "type": "object",
+      "properties": {
+        "providerConfig": {
+          "$ref": "#/definitions/policyKeyProviderConfig"
+        }
+      }
+    },
+    "policyKeyProviderConfig": {
       "type": "object",
       "properties": {
         "id": {
@@ -116,14 +124,6 @@
         "metadata": {
           "$ref": "#/definitions/commonMetadata",
           "title": "Common metadata"
-        }
-      }
-    },
-    "keymanagementUpdateProviderConfigResponse": {
-      "type": "object",
-      "properties": {
-        "providerConfig": {
-          "$ref": "#/definitions/keymanagementProviderConfig"
         }
       }
     },

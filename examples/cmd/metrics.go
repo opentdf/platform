@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -42,8 +43,7 @@ func init() {
 
 func formatDuration(nanos int64) string {
 	ms := float64(nanos) / 1_000_000.0 // Convert to milliseconds
-	us := float64(nanos) / 1_000.0     // Convert to microseconds
-	return fmt.Sprintf("%.3f ms (%.3f µs, %.0f ns)", ms, us, float64(nanos))
+	return fmt.Sprintf("%.3f ms", ms)
 }
 
 func runMetrics(cmd *cobra.Command, args []string) error {
@@ -108,14 +108,27 @@ func runMetrics(cmd *cobra.Command, args []string) error {
 	}
 
 	// Output statistics
-	cmd.Println("\nTrace Statistics:")
-	for name, stats := range traces {
+	cmd.Println("## Benchmark Statistics")
+	cmd.Println("| Name | № Requests | Avg Duration | Min Duration | Max Duration |")
+	cmd.Println("|------|------------|--------------|--------------|--------------|")
+
+	// Sort trace names so output is visually consistent over time
+	names := make([]string, 0, len(traces))
+	for name := range traces {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		stats := traces[name]
 		averageNanos := stats.TotalTime / int64(stats.Count)
-		cmd.Printf("\n%s:\n", name)
-		cmd.Printf("  Total Requests: %d\n", stats.Count)
-		cmd.Printf("  Average Duration: %s\n", formatDuration(averageNanos))
-		cmd.Printf("  Min Duration: %s\n", formatDuration(stats.MinTime))
-		cmd.Printf("  Max Duration: %s\n", formatDuration(stats.MaxTime))
+		cmd.Printf("| %s | %d | %s | %s | %s |\n",
+			name,
+			stats.Count,
+			formatDuration(averageNanos),
+			formatDuration(stats.MinTime),
+			formatDuration(stats.MaxTime),
+		)
 	}
 
 	return nil

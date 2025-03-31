@@ -21,6 +21,7 @@ import (
 
 const (
 	secondsPerMinute = 60
+	statusFail       = "fail"
 	statusPermit     = "permit"
 )
 
@@ -74,7 +75,7 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.Unsig
 
 	response, err := serviceClient.Rewrap(ctx, rewrapRequest)
 	if err != nil {
-		return nil, fmt.Errorf("error making rewrap request: %w", err)
+		return upgradeRewrapErrorV1(err, requests)
 	}
 
 	upgradeRewrapResponseV1(response, requests)
@@ -107,6 +108,30 @@ func upgradeRewrapResponseV1(response *kas.RewrapResponse, requests []*kas.Unsig
 			},
 		},
 	}
+}
+
+// convert v1 errors to v2 responses
+func upgradeRewrapErrorV1(err error, requests []*kas.UnsignedRewrapRequest_WithPolicyRequest) (*kas.RewrapResponse, error) {
+	if len(requests) != 1 {
+		return nil, fmt.Errorf("error making rewrap request: %w", err)
+	}
+
+	return &kas.RewrapResponse{
+		Responses: []*kas.PolicyRewrapResult{
+			{
+				PolicyId: requests[0].GetPolicy().GetId(),
+				Results: []*kas.KeyAccessRewrapResult{
+					{
+						KeyAccessObjectId: requests[0].GetKeyAccessObjects()[0].GetKeyAccessObjectId(),
+						Status:            statusFail,
+						Result: &kas.KeyAccessRewrapResult_Error{
+							Error: err.Error(),
+						},
+					},
+				},
+			},
+		},
+	}, nil
 }
 
 func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]kaoResult, error) {

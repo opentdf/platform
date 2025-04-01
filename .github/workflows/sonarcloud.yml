@@ -18,10 +18,10 @@ jobs:
     steps:
 
       - name: 'Checkout repo'
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
 
       - name: 'Setup Go'
-        uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
+        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
           go-version: '1.23'
           check-latest: false
@@ -38,7 +38,7 @@ jobs:
         run: go tool cover -func=coverage.out
 
       - name: 'Archive Golang Test Results'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 #v4.6.2
         with:
           name: code-coverage-report
           path: coverage.*
@@ -54,12 +54,12 @@ jobs:
 
     steps:
       - name: 'Checkout repo'
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
         with:
           fetch-depth: 0
 
       - name: 'Download Code Coverage Report'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e #v4.2.1
         with:
           name: code-coverage-report
 

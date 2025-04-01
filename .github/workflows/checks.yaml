@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
           go-version-file: 'service/go.mod'
           check-latest: false
@@ -99,7 +99,7 @@ jobs:
       TLS_ENABLED: "true"
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
           go-version-file: 'service/go.mod'
           check-latest: false
@@ -171,7 +171,7 @@ jobs:
       TLS_ENABLED: "true"
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
           go-version-file: 'service/go.mod'
           check-latest: false
@@ -247,7 +247,7 @@ jobs:
 
       - name: save benchmark results as a comment
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v7.0.1
         with:
           script: |
             github.rest.issues.createComment({
@@ -303,7 +303,7 @@ jobs:
         with:
           input: service
           against: 'https://github.com/opentdf/platform.git#branch=main,subdir=service'
-      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
           go-version-file: 'service/go.mod'
           check-latest: false
@@ -348,7 +348,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
           go-version-file: 'service/go.mod'
           check-latest: false

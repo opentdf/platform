@@ -364,27 +364,27 @@ func (c PolicyDBClient) RemoveKeyAccessServerFromNamespace(ctx context.Context, 
 	return k, nil
 }
 
-func (c PolicyDBClient) AssignPublicKeyToNamespace(ctx context.Context, k *namespaces.NamespaceKey) error {
-	_, err := c.Queries.assignPublicKeyToNamespace(ctx, assignPublicKeyToNamespaceParams{
-		NamespaceID: k.GetNamespaceId(),
-		KeyID:       k.GetKeyId(),
-	})
-	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
-	}
+func (c PolicyDBClient) AssignPublicKeyToNamespace(context.Context, *namespaces.NamespaceKey) error {
+	// _, err := c.Queries.assignPublicKeyToNamespace(ctx, assignPublicKeyToNamespaceParams{
+	// 	NamespaceID: k.GetNamespaceId(),
+	// 	KeyID:       k.GetKeyId(),
+	// })
+	// if err != nil {
+	// 	return db.WrapIfKnownInvalidQueryErr(err)
+	// }
 	return nil
 }
 
-func (c PolicyDBClient) RemovePublicKeyFromNamespace(ctx context.Context, k *namespaces.NamespaceKey) (*namespaces.NamespaceKey, error) {
-	count, err := c.Queries.removePublicKeyFromNamespace(ctx, removePublicKeyFromNamespaceParams{
-		NamespaceID: k.GetNamespaceId(),
-		KeyID:       k.GetKeyId(),
-	})
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	if count == 0 {
-		return nil, db.ErrNotFound
-	}
-	return k, nil
+func (c PolicyDBClient) RemovePublicKeyFromNamespace(context.Context, *namespaces.NamespaceKey) (*namespaces.NamespaceKey, error) {
+	// count, err := c.Queries.removePublicKeyFromNamespace(ctx, removePublicKeyFromNamespaceParams{
+	// 	NamespaceID: k.GetNamespaceId(),
+	// 	KeyID:       k.GetKeyId(),
+	// })
+	// if err != nil {
+	// 	return nil, db.WrapIfKnownInvalidQueryErr(err)
+	// }
+	// if count == 0 {
+	// 	return nil, db.ErrNotFound
+	// }
+	return &namespaces.NamespaceKey{}, nil
 }

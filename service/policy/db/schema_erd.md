@@ -1,5 +1,26 @@
+<style>
+div.mermaid {
+	overflow-x: scroll;
+	background: rgb(15, 15, 15);
+}
+div.mermaid > svg {
+	width: 200rem; 
+	height: 100%;
+	padding: 1em;
+}
+</style>
+
 ```mermaid
 erDiagram
+    actions {
+        timestamp_without_time_zone created_at 
+        uuid id PK "Unique identifier for the action"
+        boolean is_standard "Whether the action is standard (proto-enum) or custom (user-defined)."
+        jsonb metadata "Metadata for the action (see protos for structure)"
+        character_varying name UK "Unique name of the action, e.g. read, write, etc."
+        timestamp_without_time_zone updated_at 
+    }
+
     attribute_definition_key_access_grants {
         uuid attribute_definition_id PK,FK "Foreign key to the attribute definition"
         uuid key_access_server_id PK,FK "Foreign key to the KAS registration"
@@ -127,7 +148,7 @@ erDiagram
     }
 
     subject_mappings {
-        jsonb actions "Actions that the subject entity can perform on the attribute value (see protos for details)"
+        ARRAY actions 
         uuid attribute_value_id FK "Foreign key to the attribute value"
         timestamp_with_time_zone created_at 
         uuid id PK "Primary key for the table"

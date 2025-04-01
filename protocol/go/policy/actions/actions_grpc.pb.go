@@ -19,11 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	ActionService_GetAction_FullMethodName          = "/policy.actions.ActionService/GetAction"
-	ActionService_ListActions_FullMethodName        = "/policy.actions.ActionService/ListActions"
-	ActionService_CreateCustomAction_FullMethodName = "/policy.actions.ActionService/CreateCustomAction"
-	ActionService_UpdateAction_FullMethodName       = "/policy.actions.ActionService/UpdateAction"
-	ActionService_DeleteCustomAction_FullMethodName = "/policy.actions.ActionService/DeleteCustomAction"
+	ActionService_GetAction_FullMethodName    = "/policy.actions.ActionService/GetAction"
+	ActionService_ListActions_FullMethodName  = "/policy.actions.ActionService/ListActions"
+	ActionService_CreateAction_FullMethodName = "/policy.actions.ActionService/CreateAction"
+	ActionService_UpdateAction_FullMethodName = "/policy.actions.ActionService/UpdateAction"
+	ActionService_DeleteAction_FullMethodName = "/policy.actions.ActionService/DeleteAction"
 )
 
 // ActionServiceClient is the client API for ActionService service.
@@ -32,9 +32,9 @@ const (
 type ActionServiceClient interface {
 	GetAction(ctx context.Context, in *GetActionRequest, opts ...grpc.CallOption) (*GetActionResponse, error)
 	ListActions(ctx context.Context, in *ListActionsRequest, opts ...grpc.CallOption) (*ListActionsResponse, error)
-	CreateCustomAction(ctx context.Context, in *CreateCustomActionRequest, opts ...grpc.CallOption) (*CreateCustomActionResponse, error)
+	CreateAction(ctx context.Context, in *CreateActionRequest, opts ...grpc.CallOption) (*CreateActionResponse, error)
 	UpdateAction(ctx context.Context, in *UpdateActionRequest, opts ...grpc.CallOption) (*UpdateActionResponse, error)
-	DeleteCustomAction(ctx context.Context, in *DeleteCustomActionRequest, opts ...grpc.CallOption) (*DeleteCustomActionResponse, error)
+	DeleteAction(ctx context.Context, in *DeleteActionRequest, opts ...grpc.CallOption) (*DeleteActionResponse, error)
 }
 
 type actionServiceClient struct {
@@ -63,9 +63,9 @@ func (c *actionServiceClient) ListActions(ctx context.Context, in *ListActionsRe
 	return out, nil
 }
 
-func (c *actionServiceClient) CreateCustomAction(ctx context.Context, in *CreateCustomActionRequest, opts ...grpc.CallOption) (*CreateCustomActionResponse, error) {
-	out := new(CreateCustomActionResponse)
-	err := c.cc.Invoke(ctx, ActionService_CreateCustomAction_FullMethodName, in, out, opts...)
+func (c *actionServiceClient) CreateAction(ctx context.Context, in *CreateActionRequest, opts ...grpc.CallOption) (*CreateActionResponse, error) {
+	out := new(CreateActionResponse)
+	err := c.cc.Invoke(ctx, ActionService_CreateAction_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -81,9 +81,9 @@ func (c *actionServiceClient) UpdateAction(ctx context.Context, in *UpdateAction
 	return out, nil
 }
 
-func (c *actionServiceClient) DeleteCustomAction(ctx context.Context, in *DeleteCustomActionRequest, opts ...grpc.CallOption) (*DeleteCustomActionResponse, error) {
-	out := new(DeleteCustomActionResponse)
-	err := c.cc.Invoke(ctx, ActionService_DeleteCustomAction_FullMethodName, in, out, opts...)
+func (c *actionServiceClient) DeleteAction(ctx context.Context, in *DeleteActionRequest, opts ...grpc.CallOption) (*DeleteActionResponse, error) {
+	out := new(DeleteActionResponse)
+	err := c.cc.Invoke(ctx, ActionService_DeleteAction_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -96,9 +96,9 @@ func (c *actionServiceClient) DeleteCustomAction(ctx context.Context, in *Delete
 type ActionServiceServer interface {
 	GetAction(context.Context, *GetActionRequest) (*GetActionResponse, error)
 	ListActions(context.Context, *ListActionsRequest) (*ListActionsResponse, error)
-	CreateCustomAction(context.Context, *CreateCustomActionRequest) (*CreateCustomActionResponse, error)
+	CreateAction(context.Context, *CreateActionRequest) (*CreateActionResponse, error)
 	UpdateAction(context.Context, *UpdateActionRequest) (*UpdateActionResponse, error)
-	DeleteCustomAction(context.Context, *DeleteCustomActionRequest) (*DeleteCustomActionResponse, error)
+	DeleteAction(context.Context, *DeleteActionRequest) (*DeleteActionResponse, error)
 	mustEmbedUnimplementedActionServiceServer()
 }
 
@@ -112,14 +112,14 @@ func (UnimplementedActionServiceServer) GetAction(context.Context, *GetActionReq
 func (UnimplementedActionServiceServer) ListActions(context.Context, *ListActionsRequest) (*ListActionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListActions not implemented")
 }
-func (UnimplementedActionServiceServer) CreateCustomAction(context.Context, *CreateCustomActionRequest) (*CreateCustomActionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateCustomAction not implemented")
+func (UnimplementedActionServiceServer) CreateAction(context.Context, *CreateActionRequest) (*CreateActionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateAction not implemented")
 }
 func (UnimplementedActionServiceServer) UpdateAction(context.Context, *UpdateActionRequest) (*UpdateActionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateAction not implemented")
 }
-func (UnimplementedActionServiceServer) DeleteCustomAction(context.Context, *DeleteCustomActionRequest) (*DeleteCustomActionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteCustomAction not implemented")
+func (UnimplementedActionServiceServer) DeleteAction(context.Context, *DeleteActionRequest) (*DeleteActionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteAction not implemented")
 }
 func (UnimplementedActionServiceServer) mustEmbedUnimplementedActionServiceServer() {}
 
@@ -170,20 +170,20 @@ func _ActionService_ListActions_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ActionService_CreateCustomAction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateCustomActionRequest)
+func _ActionService_CreateAction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateActionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ActionServiceServer).CreateCustomAction(ctx, in)
+		return srv.(ActionServiceServer).CreateAction(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ActionService_CreateCustomAction_FullMethodName,
+		FullMethod: ActionService_CreateAction_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ActionServiceServer).CreateCustomAction(ctx, req.(*CreateCustomActionRequest))
+		return srv.(ActionServiceServer).CreateAction(ctx, req.(*CreateActionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -206,20 +206,20 @@ func _ActionService_UpdateAction_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ActionService_DeleteCustomAction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteCustomActionRequest)
+func _ActionService_DeleteAction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteActionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ActionServiceServer).DeleteCustomAction(ctx, in)
+		return srv.(ActionServiceServer).DeleteAction(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ActionService_DeleteCustomAction_FullMethodName,
+		FullMethod: ActionService_DeleteAction_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ActionServiceServer).DeleteCustomAction(ctx, req.(*DeleteCustomActionRequest))
+		return srv.(ActionServiceServer).DeleteAction(ctx, req.(*DeleteActionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -240,16 +240,16 @@ var ActionService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ActionService_ListActions_Handler,
 		},
 		{
-			MethodName: "CreateCustomAction",
-			Handler:    _ActionService_CreateCustomAction_Handler,
+			MethodName: "CreateAction",
+			Handler:    _ActionService_CreateAction_Handler,
 		},
 		{
 			MethodName: "UpdateAction",
 			Handler:    _ActionService_UpdateAction_Handler,
 		},
 		{
-			MethodName: "DeleteCustomAction",
-			Handler:    _ActionService_DeleteCustomAction_Handler,
+			MethodName: "DeleteAction",
+			Handler:    _ActionService_DeleteAction_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

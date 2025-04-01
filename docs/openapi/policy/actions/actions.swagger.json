@@ -32,7 +32,7 @@
       "description": "- STANDARD_ACTION_DECRYPT: Deprecated\nMigrate to `STANDARD_ACTION_READ`\n - STANDARD_ACTION_TRANSMIT: Deprecated\nMigrate to `STANDARD_ACTION_CREATE` or a custom action",
       "title": "Standard actions supported by the platform"
     },
-    "actionsCreateCustomActionResponse": {
+    "actionsCreateActionResponse": {
       "type": "object",
       "properties": {
         "action": {
@@ -40,7 +40,7 @@
         }
       }
     },
-    "actionsDeleteCustomActionResponse": {
+    "actionsDeleteActionResponse": {
       "type": "object",
       "properties": {
         "action": {
@@ -59,7 +59,14 @@
     "actionsListActionsResponse": {
       "type": "object",
       "properties": {
-        "actions": {
+        "actionsStandard": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyAction"
+          }
+        },
+        "actionsCustom": {
           "type": "array",
           "items": {
             "type": "object",

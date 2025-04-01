@@ -573,19 +573,19 @@
             <ul>
               
                 <li>
-                  <a href="#policy.actions.CreateCustomActionRequest"><span class="badge">M</span>CreateCustomActionRequest</a>
+                  <a href="#policy.actions.CreateActionRequest"><span class="badge">M</span>CreateActionRequest</a>
                 </li>
               
                 <li>
-                  <a href="#policy.actions.CreateCustomActionResponse"><span class="badge">M</span>CreateCustomActionResponse</a>
+                  <a href="#policy.actions.CreateActionResponse"><span class="badge">M</span>CreateActionResponse</a>
                 </li>
               
                 <li>
-                  <a href="#policy.actions.DeleteCustomActionRequest"><span class="badge">M</span>DeleteCustomActionRequest</a>
+                  <a href="#policy.actions.DeleteActionRequest"><span class="badge">M</span>DeleteActionRequest</a>
                 </li>
               
                 <li>
-                  <a href="#policy.actions.DeleteCustomActionResponse"><span class="badge">M</span>DeleteCustomActionResponse</a>
+                  <a href="#policy.actions.DeleteActionResponse"><span class="badge">M</span>DeleteActionResponse</a>
                 </li>
               
                 <li>
@@ -4686,8 +4686,8 @@ Empty when none remain after current page </p></td>
       <p></p>
 
       
-        <h3 id="policy.actions.CreateCustomActionRequest">CreateCustomActionRequest</h3>
-        <p>Create a new custom action name with optional metadata.</p>
+        <h3 id="policy.actions.CreateActionRequest">CreateActionRequest</h3>
+        <p>Create a new Custom action name with optional metadata.</p><p>Creation of Standard actions is not supported.</p>
 
         
           <table class="field-table">
@@ -4717,7 +4717,7 @@ Empty when none remain after current page </p></td>
 
         
       
-        <h3 id="policy.actions.CreateCustomActionResponse">CreateCustomActionResponse</h3>
+        <h3 id="policy.actions.CreateActionResponse">CreateActionResponse</h3>
         <p></p>
 
         
@@ -4741,8 +4741,8 @@ Empty when none remain after current page </p></td>
 
         
       
-        <h3 id="policy.actions.DeleteCustomActionRequest">DeleteCustomActionRequest</h3>
-        <p>Deletion of standard actions is not supported.</p>
+        <h3 id="policy.actions.DeleteActionRequest">DeleteActionRequest</h3>
+        <p>Custom only: deletion of Standard actions is not supported.</p>
 
         
           <table class="field-table">
@@ -4765,7 +4765,7 @@ Empty when none remain after current page </p></td>
 
         
       
-        <h3 id="policy.actions.DeleteCustomActionResponse">DeleteCustomActionResponse</h3>
+        <h3 id="policy.actions.DeleteActionResponse">DeleteActionResponse</h3>
         <p></p>
 
         
@@ -4879,7 +4879,14 @@ Empty when none remain after current page </p></td>
             <tbody>
               
                 <tr>
-                  <td>actions</td>
+                  <td>actions_standard</td>
+                  <td><a href="#policy.Action">policy.Action</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>actions_custom</td>
                   <td><a href="#policy.Action">policy.Action</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
@@ -4900,7 +4907,7 @@ Empty when none remain after current page </p></td>
         
       
         <h3 id="policy.actions.UpdateActionRequest">UpdateActionRequest</h3>
-        <p>Names may only be updated for custom actions.</p><p>Metadata may be updated for either custom or standard actions.</p>
+        <p>Metadata may be updated for either Custom or Standard actions.</p><p>Names may only be updated for Custom actions.</p>
 
         
           <table class="field-table">
@@ -4998,9 +5005,9 @@ Custom actions only: replaces the existing action name </p></td>
               </tr>
             
               <tr>
-                <td>CreateCustomAction</td>
-                <td><a href="#policy.actions.CreateCustomActionRequest">CreateCustomActionRequest</a></td>
-                <td><a href="#policy.actions.CreateCustomActionResponse">CreateCustomActionResponse</a></td>
+                <td>CreateAction</td>
+                <td><a href="#policy.actions.CreateActionRequest">CreateActionRequest</a></td>
+                <td><a href="#policy.actions.CreateActionResponse">CreateActionResponse</a></td>
                 <td><p></p></td>
               </tr>
             
@@ -5012,9 +5019,9 @@ Custom actions only: replaces the existing action name </p></td>
               </tr>
             
               <tr>
-                <td>DeleteCustomAction</td>
-                <td><a href="#policy.actions.DeleteCustomActionRequest">DeleteCustomActionRequest</a></td>
-                <td><a href="#policy.actions.DeleteCustomActionResponse">DeleteCustomActionResponse</a></td>
+                <td>DeleteAction</td>
+                <td><a href="#policy.actions.DeleteActionRequest">DeleteActionRequest</a></td>
+                <td><a href="#policy.actions.DeleteActionResponse">DeleteActionResponse</a></td>
                 <td><p></p></td>
               </tr>
             

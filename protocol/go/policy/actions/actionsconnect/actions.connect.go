@@ -38,34 +38,34 @@ const (
 	// ActionServiceListActionsProcedure is the fully-qualified name of the ActionService's ListActions
 	// RPC.
 	ActionServiceListActionsProcedure = "/policy.actions.ActionService/ListActions"
-	// ActionServiceCreateCustomActionProcedure is the fully-qualified name of the ActionService's
-	// CreateCustomAction RPC.
-	ActionServiceCreateCustomActionProcedure = "/policy.actions.ActionService/CreateCustomAction"
+	// ActionServiceCreateActionProcedure is the fully-qualified name of the ActionService's
+	// CreateAction RPC.
+	ActionServiceCreateActionProcedure = "/policy.actions.ActionService/CreateAction"
 	// ActionServiceUpdateActionProcedure is the fully-qualified name of the ActionService's
 	// UpdateAction RPC.
 	ActionServiceUpdateActionProcedure = "/policy.actions.ActionService/UpdateAction"
-	// ActionServiceDeleteCustomActionProcedure is the fully-qualified name of the ActionService's
-	// DeleteCustomAction RPC.
-	ActionServiceDeleteCustomActionProcedure = "/policy.actions.ActionService/DeleteCustomAction"
+	// ActionServiceDeleteActionProcedure is the fully-qualified name of the ActionService's
+	// DeleteAction RPC.
+	ActionServiceDeleteActionProcedure = "/policy.actions.ActionService/DeleteAction"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	actionServiceServiceDescriptor                  = actions.File_policy_actions_actions_proto.Services().ByName("ActionService")
-	actionServiceGetActionMethodDescriptor          = actionServiceServiceDescriptor.Methods().ByName("GetAction")
-	actionServiceListActionsMethodDescriptor        = actionServiceServiceDescriptor.Methods().ByName("ListActions")
-	actionServiceCreateCustomActionMethodDescriptor = actionServiceServiceDescriptor.Methods().ByName("CreateCustomAction")
-	actionServiceUpdateActionMethodDescriptor       = actionServiceServiceDescriptor.Methods().ByName("UpdateAction")
-	actionServiceDeleteCustomActionMethodDescriptor = actionServiceServiceDescriptor.Methods().ByName("DeleteCustomAction")
+	actionServiceServiceDescriptor            = actions.File_policy_actions_actions_proto.Services().ByName("ActionService")
+	actionServiceGetActionMethodDescriptor    = actionServiceServiceDescriptor.Methods().ByName("GetAction")
+	actionServiceListActionsMethodDescriptor  = actionServiceServiceDescriptor.Methods().ByName("ListActions")
+	actionServiceCreateActionMethodDescriptor = actionServiceServiceDescriptor.Methods().ByName("CreateAction")
+	actionServiceUpdateActionMethodDescriptor = actionServiceServiceDescriptor.Methods().ByName("UpdateAction")
+	actionServiceDeleteActionMethodDescriptor = actionServiceServiceDescriptor.Methods().ByName("DeleteAction")
 )
 
 // ActionServiceClient is a client for the policy.actions.ActionService service.
 type ActionServiceClient interface {
 	GetAction(context.Context, *connect.Request[actions.GetActionRequest]) (*connect.Response[actions.GetActionResponse], error)
 	ListActions(context.Context, *connect.Request[actions.ListActionsRequest]) (*connect.Response[actions.ListActionsResponse], error)
-	CreateCustomAction(context.Context, *connect.Request[actions.CreateCustomActionRequest]) (*connect.Response[actions.CreateCustomActionResponse], error)
+	CreateAction(context.Context, *connect.Request[actions.CreateActionRequest]) (*connect.Response[actions.CreateActionResponse], error)
 	UpdateAction(context.Context, *connect.Request[actions.UpdateActionRequest]) (*connect.Response[actions.UpdateActionResponse], error)
-	DeleteCustomAction(context.Context, *connect.Request[actions.DeleteCustomActionRequest]) (*connect.Response[actions.DeleteCustomActionResponse], error)
+	DeleteAction(context.Context, *connect.Request[actions.DeleteActionRequest]) (*connect.Response[actions.DeleteActionResponse], error)
 }
 
 // NewActionServiceClient constructs a client for the policy.actions.ActionService service. By
@@ -90,10 +90,10 @@ func NewActionServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(actionServiceListActionsMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		createCustomAction: connect.NewClient[actions.CreateCustomActionRequest, actions.CreateCustomActionResponse](
+		createAction: connect.NewClient[actions.CreateActionRequest, actions.CreateActionResponse](
 			httpClient,
-			baseURL+ActionServiceCreateCustomActionProcedure,
-			connect.WithSchema(actionServiceCreateCustomActionMethodDescriptor),
+			baseURL+ActionServiceCreateActionProcedure,
+			connect.WithSchema(actionServiceCreateActionMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		updateAction: connect.NewClient[actions.UpdateActionRequest, actions.UpdateActionResponse](
@@ -102,10 +102,10 @@ func NewActionServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(actionServiceUpdateActionMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		deleteCustomAction: connect.NewClient[actions.DeleteCustomActionRequest, actions.DeleteCustomActionResponse](
+		deleteAction: connect.NewClient[actions.DeleteActionRequest, actions.DeleteActionResponse](
 			httpClient,
-			baseURL+ActionServiceDeleteCustomActionProcedure,
-			connect.WithSchema(actionServiceDeleteCustomActionMethodDescriptor),
+			baseURL+ActionServiceDeleteActionProcedure,
+			connect.WithSchema(actionServiceDeleteActionMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -113,11 +113,11 @@ func NewActionServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 
 // actionServiceClient implements ActionServiceClient.
 type actionServiceClient struct {
-	getAction          *connect.Client[actions.GetActionRequest, actions.GetActionResponse]
-	listActions        *connect.Client[actions.ListActionsRequest, actions.ListActionsResponse]
-	createCustomAction *connect.Client[actions.CreateCustomActionRequest, actions.CreateCustomActionResponse]
-	updateAction       *connect.Client[actions.UpdateActionRequest, actions.UpdateActionResponse]
-	deleteCustomAction *connect.Client[actions.DeleteCustomActionRequest, actions.DeleteCustomActionResponse]
+	getAction    *connect.Client[actions.GetActionRequest, actions.GetActionResponse]
+	listActions  *connect.Client[actions.ListActionsRequest, actions.ListActionsResponse]
+	createAction *connect.Client[actions.CreateActionRequest, actions.CreateActionResponse]
+	updateAction *connect.Client[actions.UpdateActionRequest, actions.UpdateActionResponse]
+	deleteAction *connect.Client[actions.DeleteActionRequest, actions.DeleteActionResponse]
 }
 
 // GetAction calls policy.actions.ActionService.GetAction.
@@ -130,9 +130,9 @@ func (c *actionServiceClient) ListActions(ctx context.Context, req *connect.Requ
 	return c.listActions.CallUnary(ctx, req)
 }
 
-// CreateCustomAction calls policy.actions.ActionService.CreateCustomAction.
-func (c *actionServiceClient) CreateCustomAction(ctx context.Context, req *connect.Request[actions.CreateCustomActionRequest]) (*connect.Response[actions.CreateCustomActionResponse], error) {
-	return c.createCustomAction.CallUnary(ctx, req)
+// CreateAction calls policy.actions.ActionService.CreateAction.
+func (c *actionServiceClient) CreateAction(ctx context.Context, req *connect.Request[actions.CreateActionRequest]) (*connect.Response[actions.CreateActionResponse], error) {
+	return c.createAction.CallUnary(ctx, req)
 }
 
 // UpdateAction calls policy.actions.ActionService.UpdateAction.
@@ -140,18 +140,18 @@ func (c *actionServiceClient) UpdateAction(ctx context.Context, req *connect.Req
 	return c.updateAction.CallUnary(ctx, req)
 }
 
-// DeleteCustomAction calls policy.actions.ActionService.DeleteCustomAction.
-func (c *actionServiceClient) DeleteCustomAction(ctx context.Context, req *connect.Request[actions.DeleteCustomActionRequest]) (*connect.Response[actions.DeleteCustomActionResponse], error) {
-	return c.deleteCustomAction.CallUnary(ctx, req)
+// DeleteAction calls policy.actions.ActionService.DeleteAction.
+func (c *actionServiceClient) DeleteAction(ctx context.Context, req *connect.Request[actions.DeleteActionRequest]) (*connect.Response[actions.DeleteActionResponse], error) {
+	return c.deleteAction.CallUnary(ctx, req)
 }
 
 // ActionServiceHandler is an implementation of the policy.actions.ActionService service.
 type ActionServiceHandler interface {
 	GetAction(context.Context, *connect.Request[actions.GetActionRequest]) (*connect.Response[actions.GetActionResponse], error)
 	ListActions(context.Context, *connect.Request[actions.ListActionsRequest]) (*connect.Response[actions.ListActionsResponse], error)
-	CreateCustomAction(context.Context, *connect.Request[actions.CreateCustomActionRequest]) (*connect.Response[actions.CreateCustomActionResponse], error)
+	CreateAction(context.Context, *connect.Request[actions.CreateActionRequest]) (*connect.Response[actions.CreateActionResponse], error)
 	UpdateAction(context.Context, *connect.Request[actions.UpdateActionRequest]) (*connect.Response[actions.UpdateActionResponse], error)
-	DeleteCustomAction(context.Context, *connect.Request[actions.DeleteCustomActionRequest]) (*connect.Response[actions.DeleteCustomActionResponse], error)
+	DeleteAction(context.Context, *connect.Request[actions.DeleteActionRequest]) (*connect.Response[actions.DeleteActionResponse], error)
 }
 
 // NewActionServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -172,10 +172,10 @@ func NewActionServiceHandler(svc ActionServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(actionServiceListActionsMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	actionServiceCreateCustomActionHandler := connect.NewUnaryHandler(
-		ActionServiceCreateCustomActionProcedure,
-		svc.CreateCustomAction,
-		connect.WithSchema(actionServiceCreateCustomActionMethodDescriptor),
+	actionServiceCreateActionHandler := connect.NewUnaryHandler(
+		ActionServiceCreateActionProcedure,
+		svc.CreateAction,
+		connect.WithSchema(actionServiceCreateActionMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	actionServiceUpdateActionHandler := connect.NewUnaryHandler(
@@ -184,10 +184,10 @@ func NewActionServiceHandler(svc ActionServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(actionServiceUpdateActionMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	actionServiceDeleteCustomActionHandler := connect.NewUnaryHandler(
-		ActionServiceDeleteCustomActionProcedure,
-		svc.DeleteCustomAction,
-		connect.WithSchema(actionServiceDeleteCustomActionMethodDescriptor),
+	actionServiceDeleteActionHandler := connect.NewUnaryHandler(
+		ActionServiceDeleteActionProcedure,
+		svc.DeleteAction,
+		connect.WithSchema(actionServiceDeleteActionMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/policy.actions.ActionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -196,12 +196,12 @@ func NewActionServiceHandler(svc ActionServiceHandler, opts ...connect.HandlerOp
 			actionServiceGetActionHandler.ServeHTTP(w, r)
 		case ActionServiceListActionsProcedure:
 			actionServiceListActionsHandler.ServeHTTP(w, r)
-		case ActionServiceCreateCustomActionProcedure:
-			actionServiceCreateCustomActionHandler.ServeHTTP(w, r)
+		case ActionServiceCreateActionProcedure:
+			actionServiceCreateActionHandler.ServeHTTP(w, r)
 		case ActionServiceUpdateActionProcedure:
 			actionServiceUpdateActionHandler.ServeHTTP(w, r)
-		case ActionServiceDeleteCustomActionProcedure:
-			actionServiceDeleteCustomActionHandler.ServeHTTP(w, r)
+		case ActionServiceDeleteActionProcedure:
+			actionServiceDeleteActionHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -219,14 +219,14 @@ func (UnimplementedActionServiceHandler) ListActions(context.Context, *connect.R
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.actions.ActionService.ListActions is not implemented"))
 }
 
-func (UnimplementedActionServiceHandler) CreateCustomAction(context.Context, *connect.Request[actions.CreateCustomActionRequest]) (*connect.Response[actions.CreateCustomActionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.actions.ActionService.CreateCustomAction is not implemented"))
+func (UnimplementedActionServiceHandler) CreateAction(context.Context, *connect.Request[actions.CreateActionRequest]) (*connect.Response[actions.CreateActionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.actions.ActionService.CreateAction is not implemented"))
 }
 
 func (UnimplementedActionServiceHandler) UpdateAction(context.Context, *connect.Request[actions.UpdateActionRequest]) (*connect.Response[actions.UpdateActionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.actions.ActionService.UpdateAction is not implemented"))
 }
 
-func (UnimplementedActionServiceHandler) DeleteCustomAction(context.Context, *connect.Request[actions.DeleteCustomActionRequest]) (*connect.Response[actions.DeleteCustomActionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.actions.ActionService.DeleteCustomAction is not implemented"))
+func (UnimplementedActionServiceHandler) DeleteAction(context.Context, *connect.Request[actions.DeleteActionRequest]) (*connect.Response[actions.DeleteActionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.actions.ActionService.DeleteAction is not implemented"))
 }

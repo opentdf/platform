@@ -40,12 +40,15 @@ message ListActionsRequest {
   policy.PageRequest pagination = 10;
 }
 message ListActionsResponse {
-  repeated policy.Action actions = 1;
+  repeated policy.Action actions_standard = 1;
+  repeated policy.Action actions_custom = 2;
+
   policy.PageResponse pagination = 10;
 }
 
-// Create a new custom action name with optional metadata.
-message CreateCustomActionRequest {
+// Create a new Custom action name with optional metadata.
+// Creation of Standard actions is not supported.
+message CreateActionRequest {
   // Required
   string name = 1 [
     (buf.validate.field).string.min_len = 1,
@@ -64,12 +67,12 @@ message CreateCustomActionRequest {
   // Optional
   common.MetadataMutable metadata = 100;
 }
-message CreateCustomActionResponse {
+message CreateActionResponse {
   policy.Action action = 1;
 }
 
-// Names may only be updated for custom actions.
-// Metadata may be updated for either custom or standard actions.
+// Metadata may be updated for either Custom or Standard actions.
+// Names may only be updated for Custom actions.
 message UpdateActionRequest {
   // Required
   string id = 1 [(buf.validate.field).string.uuid = true];
@@ -98,19 +101,19 @@ message UpdateActionResponse {
   policy.Action action = 1;
 }
 
-// Deletion of standard actions is not supported.
-message DeleteCustomActionRequest {
+// Custom only: deletion of Standard actions is not supported.
+message DeleteActionRequest {
   // Required
   string id = 1 [(buf.validate.field).string.uuid = true];
 }
-message DeleteCustomActionResponse {
+message DeleteActionResponse {
   policy.Action action = 1;
 }
 
 service ActionService {
   rpc GetAction(GetActionRequest) returns (GetActionResponse) {}
   rpc ListActions(ListActionsRequest) returns (ListActionsResponse) {}
-  rpc CreateCustomAction(CreateCustomActionRequest) returns (CreateCustomActionResponse) {}
+  rpc CreateAction(CreateActionRequest) returns (CreateActionResponse) {}
   rpc UpdateAction(UpdateActionRequest) returns (UpdateActionResponse) {}
-  rpc DeleteCustomAction(DeleteCustomActionRequest) returns (DeleteCustomActionResponse) {}
+  rpc DeleteAction(DeleteActionRequest) returns (DeleteActionResponse) {}
 }

@@ -600,29 +600,29 @@ func (c PolicyDBClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, 
 	return k, nil
 }
 
-func (c PolicyDBClient) AssignPublicKeyToAttribute(ctx context.Context, k *attributes.AttributeKey) error {
-	_, err := c.Queries.assignPublicKeyToAttributeDefinition(ctx, assignPublicKeyToAttributeDefinitionParams{
-		DefinitionID: k.GetAttributeId(),
-		KeyID:        k.GetKeyId(),
-	})
-	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
-	}
+func (c PolicyDBClient) AssignPublicKeyToAttribute(context.Context, *attributes.AttributeKey) error {
+	// _, err := c.Queries.assignPublicKeyToAttributeDefinition(ctx, assignPublicKeyToAttributeDefinitionParams{
+	// 	DefinitionID: k.GetAttributeId(),
+	// 	KeyID:        k.GetKeyId(),
+	// })
+	// if err != nil {
+	// 	return db.WrapIfKnownInvalidQueryErr(err)
+	// }
 
 	return nil
 }
 
-func (c PolicyDBClient) RemovePublicKeyFromAttribute(ctx context.Context, k *attributes.AttributeKey) (*attributes.AttributeKey, error) {
-	count, err := c.Queries.removePublicKeyFromAttributeDefinition(ctx, removePublicKeyFromAttributeDefinitionParams{
-		DefinitionID: k.GetAttributeId(),
-		KeyID:        k.GetKeyId(),
-	})
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	if count == 0 {
-		return nil, db.ErrNotFound
-	}
+func (c PolicyDBClient) RemovePublicKeyFromAttribute(context.Context, *attributes.AttributeKey) (*attributes.AttributeKey, error) {
+	// count, err := c.Queries.removePublicKeyFromAttributeDefinition(ctx, removePublicKeyFromAttributeDefinitionParams{
+	// 	DefinitionID: k.GetAttributeId(),
+	// 	KeyID:        k.GetKeyId(),
+	// })
+	// if err != nil {
+	// 	return nil, db.WrapIfKnownInvalidQueryErr(err)
+	// }
+	// if count == 0 {
+	// 	return nil, db.ErrNotFound
+	// }
 
-	return k, nil
+	return &attributes.AttributeKey{}, nil
 }

@@ -28,6 +28,17 @@ CREATE TRIGGER actions_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at();
 
+-- 1a. Create intermediary table to hold the mapping of actions to subject_mappings (potentially many to many)
+CREATE TABLE subject_mapping_actions (
+    subject_mapping_id UUID NOT NULL REFERENCES subject_mappings(id) ON DELETE CASCADE,
+    action_id UUID NOT NULL REFERENCES actions(id) ON DELETE CASCADE,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (subject_mapping_id, action_id)
+);
+
+CREATE INDEX idx_subject_mapping_actions_subject ON subject_mapping_actions(subject_mapping_id);
+CREATE INDEX idx_subject_mapping_actions_action ON subject_mapping_actions(action_id);
+
 -- 2. Insert standard CRUD actions from protos
 INSERT INTO actions (name, is_standard) VALUES
     ('create', TRUE),
@@ -38,7 +49,6 @@ INSERT INTO actions (name, is_standard) VALUES
 -- 3. Persist subject mapping relations from marshaled proto actions to actions table rows.
 
 -- 3a. Validate custom actions align with new proto requirements as they were very loose previously.
--- 3a. Validate custom actions
 DO $$
 DECLARE
     invalid_action text;
@@ -82,80 +92,129 @@ FROM custom_actions
 WHERE LOWER(custom_action_name) NOT IN (SELECT name FROM actions)
 ON CONFLICT (name) DO NOTHING;
 
--- Add temporary column to hold actions row ids that match the old actions column marshaled proto values.
-ALTER TABLE subject_mappings ADD COLUMN actions_uuid UUID[];
 
--- 3c. Map the old actions column to the new actions_uuid column.
--- | old actions column JSON array element    | new row with actions.name column value |
+-- 3c. Map the old actions column to the new relation table.
+-- | old actions column JSON array element    | actions.name of the new relation       |
 -- | ---------------------------------------- | -------------------------------------- |
 -- | {"standard": "STANDARD_ACTION_TRANSMIT"} | create                                 |
 -- | {"standard": "STANDARD_ACTION_DECRYPT"}  | read                                   |
 -- | {"custom": "custom_action_name"}         | custom_action_name                     |
-UPDATE subject_mappings
-SET actions_uuid = (
-    SELECT array_agg(a.id)
-    FROM (
-        SELECT 
-            CASE 
-                WHEN elem->>'standard' = 'STANDARD_ACTION_TRANSMIT' THEN 'create'
-                WHEN elem->>'standard' = 'STANDARD_ACTION_DECRYPT' THEN 'read'
-                WHEN elem->>'custom' IS NOT NULL THEN elem->>'custom'
-                ELSE NULL
-            END AS action_name
-        FROM jsonb_array_elements(subject_mappings.actions) AS elem
-        WHERE elem->>'standard' IS NOT NULL OR elem->>'custom' IS NOT NULL
-    ) s
-    JOIN actions a ON s.action_name = a.name
-);
+INSERT INTO subject_mapping_actions (subject_mapping_id, action_id)
+SELECT 
+    sm.id, 
+    a.id
+FROM 
+    subject_mappings sm,
+    LATERAL jsonb_array_elements(sm.actions) AS elem,
+    LATERAL (
+        SELECT a.id 
+        FROM actions a
+        WHERE a.name = CASE 
+            WHEN elem->>'standard' = 'STANDARD_ACTION_TRANSMIT' THEN 'create'
+            WHEN elem->>'standard' = 'STANDARD_ACTION_DECRYPT' THEN 'read'
+            WHEN elem->>'custom' IS NOT NULL THEN LOWER(elem->>'custom')
+            ELSE NULL
+        END
+    ) a;
 
--- Verify data was properly converted from marshaled protos to actions table row ids.
+-- 3d. Verify data was properly converted from marshaled protos to actions table row ids.
 DO $$
+DECLARE
+    expected_count BIGINT;
+    actual_count BIGINT;
 BEGIN
-    IF EXISTS (SELECT 1 FROM subject_mappings WHERE actions_uuid IS NULL) THEN
-        RAISE EXCEPTION 'Migration failed: Some rows have NULL actions_uuid';
+    SELECT COUNT(*) INTO expected_count
+    FROM 
+        subject_mappings sm,
+        LATERAL jsonb_array_elements(sm.actions) AS elem
+    WHERE 
+        elem->>'standard' IS NOT NULL OR elem->>'custom' IS NOT NULL;
+        
+    SELECT COUNT(*) INTO actual_count 
+    FROM subject_mapping_actions;
+    
+    IF expected_count != actual_count THEN
+        RAISE EXCEPTION 'Migration verification failed: Expected % relationships, found %', 
+                        expected_count, actual_count;
     END IF;
 END $$;
 
--- 3c. Drop the old JSONB column and rename the new UUID[] column to the old name.
+-- 3e. Drop the old JSONB column
 ALTER TABLE subject_mappings DROP COLUMN actions;
-ALTER TABLE subject_mappings RENAME COLUMN actions_uuid TO actions;
+
+-- 4. New indexes on the relation table
+CREATE INDEX IF NOT EXISTS idx_subject_mapping_actions_subject ON subject_mapping_actions(subject_mapping_id);
+CREATE INDEX IF NOT EXISTS idx_subject_mapping_actions_action ON subject_mapping_actions(action_id);
 
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
+-- 1. Add a temporary JSONB column to subject_mappings
+ALTER TABLE subject_mappings ADD COLUMN actions JSONB DEFAULT '[]'::JSONB;
 
--- 1. Add a temporary JSONB column to hold the original format
-ALTER TABLE subject_mappings ADD COLUMN actions_jsonb JSONB;
-
--- 2. Convert the UUID[] action references back to the original JSONB format
+-- 2. Convert the intermediary table relationships back to JSONB format
 UPDATE subject_mappings sm
-SET actions_jsonb = (
+SET actions = (
     SELECT jsonb_agg(
         CASE
             WHEN a.name = 'create' THEN jsonb_build_object('standard', 'STANDARD_ACTION_TRANSMIT')
             WHEN a.name = 'read' THEN jsonb_build_object('standard', 'STANDARD_ACTION_DECRYPT')
-            -- Note: update / delete standard action enums in updated proto cannot be backported
+            WHEN a.is_standard = TRUE THEN jsonb_build_object('standard', a.name)
             ELSE jsonb_build_object('custom', a.name)
         END
     )
-    FROM unnest(sm.actions) AS action_id
-    JOIN actions a ON a.id = action_id
+    FROM subject_mapping_actions sma
+    JOIN actions a ON a.id = sma.action_id
+    WHERE sma.subject_mapping_id = sm.id
 );
 
--- 3. Verify the conversion worked
+-- 3. Set empty arrays to NULL to match original schema behavior (if needed)
+UPDATE subject_mappings
+SET actions = NULL
+WHERE actions = '[]'::JSONB;
+
+-- 4. Verify the migration worked correctly
 DO $$
+DECLARE
+    expected_count BIGINT;
+    actual_count BIGINT;
+    subject_mappings_with_actions BIGINT;
+    subject_mappings_with_relations BIGINT;
 BEGIN
-    IF EXISTS (SELECT 1 FROM subject_mappings WHERE actions_jsonb IS NULL AND actions IS NOT NULL) THEN
-        RAISE EXCEPTION 'Down migration failed: Some rows have NULL actions_jsonb';
+    -- Count total elements that should be in the JSONB arrays
+    SELECT COUNT(*) INTO expected_count
+    FROM subject_mapping_actions;
+    
+    -- Count total elements that are in the JSONB arrays
+    SELECT SUM(jsonb_array_length(actions)) INTO actual_count
+    FROM subject_mappings
+    WHERE actions IS NOT NULL;
+    
+    -- Count subject_mappings that have actions
+    SELECT COUNT(*) INTO subject_mappings_with_actions
+    FROM subject_mappings
+    WHERE actions IS NOT NULL;
+    
+    -- Count subject_mappings that had relationships
+    SELECT COUNT(DISTINCT subject_mapping_id) INTO subject_mappings_with_relations
+    FROM subject_mapping_actions;
+    
+    IF expected_count != actual_count THEN
+        RAISE EXCEPTION 'Migration verification failed: Expected % elements in JSONB arrays, found %', 
+                        expected_count, actual_count;
+    END IF;
+    
+    IF subject_mappings_with_actions != subject_mappings_with_relations THEN
+        RAISE EXCEPTION 'Migration verification failed: Expected % subject_mappings with actions, found %', 
+                        subject_mappings_with_relations, subject_mappings_with_actions;
     END IF;
 END $$;
 
--- 4. Drop the UUID[] column and rename the JSONB column back to actions
-ALTER TABLE subject_mappings DROP COLUMN actions;
-ALTER TABLE subject_mappings RENAME COLUMN actions_jsonb TO actions;
+-- 5. Drop the intermediary table
+DROP TABLE subject_mapping_actions;
 
--- 5. Drop the actions table
+-- 6. Drop the actions table
 DROP TABLE actions;
 
 -- +goose StatementEnd

@@ -10,17 +10,14 @@ resources while eliminating confusion in action handling across the platform.
 ```mermaid
 
 erDiagram
-
     SubjectMapping {
         uuid           id                          PK
         uuid           attribute_value_id          FK
         uuid[]         subject_condition_set_id    FK
-        uuid[]         actions                     FK "actions are now defined in actions table"
         jsonb          metadata
         timestamp      created_at
         timestamp      updated_at
     }
-
     Actions {
         uuid        id              PK  "id used for administration"
         name        varchar         UK  "unique name of the action"
@@ -29,7 +26,12 @@ erDiagram
         timestamp   created_at
         timestamp   updated_at
     }
-
-    SubjectMapping 1 -- 1+ Actions : "has"
+    SubjectMappingActions {
+        uuid        subject_mapping_id  PK,FK "references SubjectMapping"
+        uuid        action_id           PK,FK "references Actions"
+        timestamp   created_at
+    }
+    SubjectMapping ||--o{ SubjectMappingActions : "has"
+    SubjectMappingActions }o--|| Actions : "references"
 
 ```

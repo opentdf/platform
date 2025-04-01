@@ -79,6 +79,8 @@ policy-erd-gen:
 	@which mermerd > /dev/null || { echo "mermerd not found, please install it: https://github.com/KarnerTh/mermerd#installation"; exit 1; }
 	# Docs: https://github.com/KarnerTh/mermerd#parametersflags
 	mermerd -c 'postgresql://postgres:changeme@localhost:5432/opentdf' -e -o service/policy/db/schema_erd.md -s opentdf_policy --useAllTables --showDescriptions enumValues,columnComments
+	# Add mermaid CSS to the end of the generated file
+	@echo '\n<style>div.mermaid{overflow-x:scroll;}div.mermaid>svg{width:250rem;}</style>' >> service/policy/db/schema_erd.md
 
 test:
 	for m in $(HAND_MODS); do (cd $$m && go test ./... -race) || exit 1; done

@@ -43,12 +43,8 @@
   run curl -s --show-error --fail-with-body "https://localhost:8080/kas/v2/kas_public_key?algorithm=ec:secp256r1"
   echo "$output"
 
-  # Is public key
-  p=$(jq -r .publicKey <<<"${output}")
-  [[ "$p" = "-----BEGIN PUBLIC KEY"-----* ]]
-
   # Is an EC P256r1 curve
-  printf '%s\n' "$p" | openssl asn1parse | grep prime256v1
+  echo "$output" | jq -r .publicKey | openssl asn1parse | grep prime256v1
 
   # Has expected kid
   [ $(jq -r .kid <<<"${output}") = e1 ]

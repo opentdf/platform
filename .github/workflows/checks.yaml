@@ -256,7 +256,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `${process.env.BENCHMARK_METRICS_OUTPUT}\n\n${process.env.BENCHMARK_BULK_OUTPUT}`
+              body: `${{ toJSON(env.BENCHMARK_METRICS_OUTPUT) }}\n\n${{ toJSON(env.BENCHMARK_BULK_OUTPUT) }}`
             })
       - name: fail so we don't do the rest
         run: |

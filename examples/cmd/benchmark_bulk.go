@@ -151,7 +151,7 @@ func runBenchmarkBulk(cmd *cobra.Command, args []string) error {
 	}
 
 	// Print results
-	fmt.Printf("# Benchmark Results\n")
+	fmt.Printf("## Bulk Benchmark Results\n")
 	fmt.Printf("| Metric               | Value                     |\n")
 	fmt.Printf("|----------------------|---------------------------|\n")
 	fmt.Printf("| Total Decrypts       | %d                        |\n", config.RequestCount)
@@ -161,7 +161,7 @@ func runBenchmarkBulk(cmd *cobra.Command, args []string) error {
 	fmt.Printf("| Throughput           | %.2f requests/second      |\n", throughput)
 
 	if errorCount > 0 {
-		fmt.Printf("\n## Error Summary\n")
+		fmt.Printf("\n### Error Summary\n")
 		fmt.Printf("| Error Message        | Occurrences               |\n")
 		fmt.Printf("|----------------------|---------------------------|\n")
 		for errMsg, count := range errorMsgs {

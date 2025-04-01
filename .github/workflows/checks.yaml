@@ -221,13 +221,31 @@ jobs:
       - name: build examples
         run: cd examples && go build -o examples .
       - name: run bulk rewrap benchmark tests
-        run: ./examples/examples benchmark-bulk --tdf tdf3 --count 100 >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          OUTPUT=$(./examples/examples benchmark-bulk --tdf tdf3 --count 100)
+          echo "$OUTPUT"
+          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+          echo "BENCHMARK_BULK_OUTPUT=$OUTPUT" >> $GITHUB_ENV
       - name: run tdf3 benchmark tests
         run: ./examples/examples benchmark --count=5000 --concurrent=50
       - name: run nanotdf benchmark tests
         run: ./examples/examples benchmark --storeCollectionHeaders=false --tdf=nanotdf --count=5000 --concurrent=50
       - name: collect the metrics from the benchmark tests
-        run: ./examples/examples metrics >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          OUTPUT=$(./examples/examples metrics)
+          echo "$OUTPUT"
+          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+          echo "BENCHMARK_METRICS_OUTPUT=$OUTPUT" >> $GITHUB_ENV
+      - name: save benchmark results as a comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `${process.env.BENCHMARK_METRICS_OUTPUT}\n\n${process.env.BENCHMARK_BULK_OUTPUT}`
+            })
       - name: fail so we don't do the rest
         run: |
           echo "this is a test branch"

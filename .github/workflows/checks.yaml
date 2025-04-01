@@ -22,7 +22,6 @@ on:
 jobs:
   go:
     runs-on: ubuntu-22.04
-    needs: benchmark
     permissions:
       checks: write
       contents: read
@@ -95,7 +94,6 @@ jobs:
 
   integration:
     name: integration tests
-    needs: benchmark
     runs-on: ubuntu-22.04
     env:
       TLS_ENABLED: "true"
@@ -258,13 +256,8 @@ jobs:
               issue_number: context.issue.number,
               body: `${ ${{ toJSON(env.BENCHMARK_METRICS_OUTPUT) }} }\n\n${ ${{ toJSON(env.BENCHMARK_BULK_OUTPUT) }} }`
             })
-      - name: fail so we don't do the rest
-        run: |
-          echo "this is a test branch"
-          exit 1
 
   image:
-    needs: benchmark
     name: image build
     runs-on: ubuntu-22.04
     steps:
@@ -277,7 +270,6 @@ jobs:
           push: false
 
   platform-xtest:
-    needs: benchmark
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       focus-sdk: go
@@ -286,7 +278,6 @@ jobs:
 
   # test latest otdfctl CLI 'main' against platform PR branch
   otdfctl-test:
-    needs: benchmark
     name: otdfctl e2e tests
     runs-on: ubuntu-latest
     steps:
@@ -298,7 +289,6 @@ jobs:
           otdfctl-ref: 'main'
 
   buflint:
-    needs: benchmark
     name: Protocol Buffer Lint and Gencode Up-to-date check
     runs-on: ubuntu-22.04
     steps:

@@ -108,9 +108,9 @@ func runMetrics(cmd *cobra.Command, args []string) error {
 	}
 
 	// Output statistics
-	cmd.Println("## Benchmark Statistics")
-	cmd.Println("| Name | № Requests | Avg Duration | Min Duration | Max Duration |")
-	cmd.Println("|------|------------|--------------|--------------|--------------|")
+	fmt.Println("## Benchmark Statistics")
+	fmt.Println("| Name | № Requests | Avg Duration | Min Duration | Max Duration |")
+	fmt.Println("|------|------------|--------------|--------------|--------------|")
 
 	// Sort trace names so output is visually consistent over time
 	names := make([]string, 0, len(traces))
@@ -122,7 +122,7 @@ func runMetrics(cmd *cobra.Command, args []string) error {
 	for _, name := range names {
 		stats := traces[name]
 		averageNanos := stats.TotalTime / int64(stats.Count)
-		cmd.Printf("| %s | %d | %s | %s | %s |\n",
+		fmt.Printf("| %s | %d | %s | %s | %s |\n",
 			name,
 			stats.Count,
 			formatDuration(averageNanos),

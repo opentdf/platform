@@ -344,25 +344,25 @@ func (c PolicyDBClient) RemoveKeyAccessServerFromValue(ctx context.Context, k *a
 	return k, nil
 }
 
-func (c PolicyDBClient) AssignPublicKeyToValue(ctx context.Context, k *attributes.ValueKey) error {
-	_, err := c.Queries.assignPublicKeyToAttributeValue(ctx, assignPublicKeyToAttributeValueParams{
-		ValueID: k.GetValueId(),
-		KeyID:   k.GetKeyId(),
-	})
-	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
-	}
+func (c PolicyDBClient) AssignPublicKeyToValue(context.Context, *attributes.ValueKey) error {
+	// _, err := c.Queries.assignPublicKeyToAttributeValue(ctx, assignPublicKeyToAttributeValueParams{
+	// 	ValueID: k.GetValueId(),
+	// 	KeyID:   k.GetKeyId(),
+	// })
+	// if err != nil {
+	// 	return db.WrapIfKnownInvalidQueryErr(err)
+	// }
 
 	return nil
 }
 
-func (c PolicyDBClient) RemovePublicKeyFromValue(ctx context.Context, k *attributes.ValueKey) (*attributes.ValueKey, error) {
-	_, err := c.Queries.removePublicKeyFromAttributeValue(ctx, removePublicKeyFromAttributeValueParams{
-		ValueID: k.GetValueId(),
-		KeyID:   k.GetKeyId(),
-	})
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	return k, nil
+func (c PolicyDBClient) RemovePublicKeyFromValue(context.Context, *attributes.ValueKey) (*attributes.ValueKey, error) {
+	// _, err := c.Queries.removePublicKeyFromAttributeValue(ctx, removePublicKeyFromAttributeValueParams{
+	// 	ValueID: k.GetValueId(),
+	// 	KeyID:   k.GetKeyId(),
+	// })
+	// if err != nil {
+	// 	return nil, db.WrapIfKnownInvalidQueryErr(err)
+	// }
+	return &attributes.ValueKey{}, nil
 }

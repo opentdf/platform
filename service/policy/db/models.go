@@ -87,6 +87,33 @@ type ActiveValuePublicKeysView struct {
 	Keys    []byte `json:"keys"`
 }
 
+// Table to store asymmetric keys
+type AsymKey struct {
+	// Unique identifier for the key
+	ID string `json:"id"`
+	// Unique identifier for the key
+	KeyID string `json:"key_id"`
+	// Algorithm used to generate the key
+	KeyAlgorithm int32 `json:"key_algorithm"`
+	// Indicates the status of the key Active, Inactive, Compromised, or Expired
+	KeyStatus int32 `json:"key_status"`
+	// Indicates whether the key is stored LOCAL or REMOTE
+	KeyMode int32 `json:"key_mode"`
+	// Public Key Context is a json defined structure of the public key
+	PublicKeyCtx []byte `json:"public_key_ctx"`
+	// Private Key Context is a json defined structure of the private key. Could include information like PEM encoded key, or external key id information
+	PrivateKeyCtx []byte           `json:"private_key_ctx"`
+	Expiration    pgtype.Timestamp `json:"expiration"`
+	// Reference the provider configuration for this key
+	ProviderConfigID pgtype.UUID `json:"provider_config_id"`
+	// Additional metadata for the key
+	Metadata []byte `json:"metadata"`
+	// Timestamp when the key was created
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	// Timestamp when the key was last updated
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
 // Table to store the definitions of attributes
 type AttributeDefinition struct {
 	// Primary key for the table
@@ -119,8 +146,8 @@ type AttributeDefinitionKeyAccessGrant struct {
 type AttributeDefinitionPublicKeyMap struct {
 	// Foreign key to the attribute definition
 	DefinitionID string `json:"definition_id"`
-	// Foreign key to the public key
-	KeyID string `json:"key_id"`
+	// Foreign key to the key access server public key for wrapping symmetric keys
+	KeyAccessServerKeyID string `json:"key_access_server_key_id"`
 }
 
 // Table to store the fully qualified names of attributes for reverse lookup at their object IDs
@@ -163,8 +190,8 @@ type AttributeNamespaceKeyAccessGrant struct {
 type AttributeNamespacePublicKeyMap struct {
 	// Foreign key to the attribute namespace
 	NamespaceID string `json:"namespace_id"`
-	// Foreign key to the public key
-	KeyID string `json:"key_id"`
+	// Foreign key to the key access server public key for wrapping symmetric keys
+	KeyAccessServerKeyID string `json:"key_access_server_key_id"`
 }
 
 // Table to store the values of attributes
@@ -195,8 +222,8 @@ type AttributeValueKeyAccessGrant struct {
 type AttributeValuePublicKeyMap struct {
 	// Foreign key to the attribute value
 	ValueID string `json:"value_id"`
-	// Foreign key to the public key
-	KeyID string `json:"key_id"`
+	// Foreign key to the key access server public key for wrapping symmetric keys
+	KeyAccessServerKeyID string `json:"key_access_server_key_id"`
 }
 
 // Table to store the known registrations of key access servers (KASs)
@@ -212,31 +239,51 @@ type KeyAccessServer struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 	// Optional common name of the KAS
-	Name pgtype.Text `json:"name"`
+	Name       pgtype.Text `json:"name"`
+	SourceType pgtype.Text `json:"source_type"`
 }
 
-// Table to store public keys for use in TDF encryption
-type PublicKey struct {
-	// Unique identifier for the public key
+type KeyAccessServerKey struct {
+	// Unique identifier for the key
 	ID string `json:"id"`
-	// Flag to indicate if the key is active
-	IsActive bool `json:"is_active"`
-	// Flag to indicate if the key has been used. Triggered when its mapped to a namespace, definition, or value
-	WasMapped bool `json:"was_mapped"`
-	// Foreign key to the key access server that owns the key
-	KeyAccessServerID string `json:"key_access_server_id"`
 	// Unique identifier for the key
 	KeyID string `json:"key_id"`
 	// Algorithm used to generate the key
-	Alg string `json:"alg"`
-	// Public key in PEM format
-	PublicKey string `json:"public_key"`
+	KeyAlgorithm int32 `json:"key_algorithm"`
+	// Indicates the status of the key Active, Inactive, Compromised, or Expired
+	KeyStatus int32 `json:"key_status"`
+	// Indicates whether the key is stored LOCAL or REMOTE
+	KeyMode int32 `json:"key_mode"`
+	// Public Key Context is a json defined structure of the public key
+	PublicKeyCtx []byte `json:"public_key_ctx"`
+	// Private Key Context is a json defined structure of the private key. Could include information like PEM encoded key, or external key id information
+	PrivateKeyCtx []byte           `json:"private_key_ctx"`
+	Expiration    pgtype.Timestamp `json:"expiration"`
+	// Reference the provider configuration for this key
+	ProviderConfigID pgtype.UUID `json:"provider_config_id"`
 	// Additional metadata for the key
 	Metadata []byte `json:"metadata"`
 	// Timestamp when the key was created
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	// Timestamp when the key was last updated
+	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
+	KeyAccessServerID string           `json:"key_access_server_id"`
+}
+
+// Table to store key provider configurations
+type ProviderConfig struct {
+	// Unique identifier for the provider configuration
+	ID string `json:"id"`
+	// Name of the key provider
+	ProviderName string `json:"provider_name"`
+	// Configuration details for the key provider
+	Config []byte `json:"config"`
+	// Timestamp when the provider configuration was created
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	// Timestamp when the provider configuration was last updated
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	// Additional metadata for the provider configuration
+	Metadata []byte `json:"metadata"`
 }
 
 // Table to store registered resources
@@ -328,4 +375,26 @@ type SubjectMappingAction struct {
 	SubjectMappingID string           `json:"subject_mapping_id"`
 	ActionID         string           `json:"action_id"`
 	CreatedAt        pgtype.Timestamp `json:"created_at"`
+}
+
+// Table to store symmetric keys
+type SymKey struct {
+	// Unique identifier for the key
+	ID string `json:"id"`
+	// Unique identifier for the key
+	KeyID string `json:"key_id"`
+	// Indicates the status of the key Active, Inactive, Compromised, or Expired
+	KeyStatus int32 `json:"key_status"`
+	// Indicates whether the key is stored LOCAL or REMOTE
+	KeyMode int32 `json:"key_mode"`
+	// Key value in binary format
+	KeyValue []byte `json:"key_value"`
+	// Reference the provider configuration for this key
+	ProviderConfigID pgtype.UUID `json:"provider_config_id"`
+	// Timestamp when the key was created
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	// Timestamp when the key was last updated
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	// Additional metadata for the key
+	Metadata []byte `json:"metadata"`
 }

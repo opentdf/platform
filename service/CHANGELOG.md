@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/opentdf/platform/compare/service/v0.5.1...service/v0.5.2) (2025-04-01)
+
+
+### Bug Fixes
+
+* **core:** map IPC reauth routes config  ([#2021](https://github.com/opentdf/platform/issues/2021)) ([b232fc6](https://github.com/opentdf/platform/commit/b232fc60283302174109fc201b2233303444fd7b))
+
 ## [0.5.1](https://github.com/opentdf/platform/compare/service/v0.5.0...service/v0.5.1) (2025-03-31)
 
 

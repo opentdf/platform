@@ -225,7 +225,7 @@ jobs:
           OUTPUT=$(./examples/examples benchmark-bulk --tdf tdf3 --count 100)
           echo "$OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
-          echo "BENCHMARK_BULK_OUTPUT<<EOO"
+          echo "BENCHMARK_BULK_OUTPUT<<EOO" >> "$GITHUB_ENV"
           echo "$OUTPUT" >> "$GITHUB_ENV"
           echo "EOO" >> "$GITHUB_ENV"
       - name: run tdf3 benchmark tests
@@ -238,7 +238,7 @@ jobs:
           echo "$OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
 
-          echo "BENCHMARK_METRICS_OUTPUT<<EOO"
+          echo "BENCHMARK_METRICS_OUTPUT<<EOO" >> "$GITHUB_ENV"
           echo "$OUTPUT" >> "$GITHUB_ENV"
           echo "EOO" >> "$GITHUB_ENV"
       - name: save benchmark results as a comment

@@ -1,6 +1,10 @@
 package cmd
 
-import "github.com/spf13/cobra"
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+)
 
 const Version = "0.4.38" // Service Version // x-release-please-version
 
@@ -9,7 +13,7 @@ func init() {
 		Use:   "version",
 		Short: "Platform version information",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			cmd.Println(Version)
+			fmt.Println(Version)
 			return nil
 		},
 	})

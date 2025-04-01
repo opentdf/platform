@@ -17,7 +17,7 @@ COMMENT ON TABLE actions IS 'Table to store actions for use in ABAC decisioning'
 
 COMMENT ON COLUMN actions.id IS 'Unique identifier for the action';
 
-COMMENT ON COLUMN actions.name IS 'Unique name of the action, e.g. "read", "write", etc.';
+COMMENT ON COLUMN actions.name IS 'Unique name of the action, e.g. read, write, etc.';
 
 COMMENT ON COLUMN actions.is_standard IS 'Whether the action is standard (proto-enum) or custom (user-defined).';
 

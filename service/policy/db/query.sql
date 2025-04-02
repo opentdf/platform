@@ -1149,7 +1149,7 @@ DELETE FROM attribute_value_public_key_map WHERE value_id = $1 AND key_id = $2;
 -- name: listActions :many
 WITH counted AS (
     SELECT COUNT(id) AS total FROM actions
-),
+)
 SELECT 
     (
         SELECT JSONB_AGG(
@@ -1184,6 +1184,41 @@ SELECT
     (SELECT total FROM counted) AS total
 LIMIT @limit_ 
 OFFSET @offset_;
+
+-- name: getAction :one
+SELECT 
+    id,
+    name,
+    is_standard,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+FROM actions
+WHERE 
+  (sqlc.narg('id')::uuid IS NULL OR ns.id = sqlc.narg('id')::uuid)
+  AND (sqlc.narg('name')::text IS NULL OR ns.name = sqlc.narg('name')::text);
+
+-- name: createCustomAction :one
+INSERT INTO actions (name, is_standard, metadata)
+VALUES ($1, FALSE, $3)
+RETURNING id;
+
+-- name: updateCustomAction :execrows
+UPDATE actions
+SET
+    name = COALESCE(sqlc.narg('name'), name),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata)
+WHERE id = $1
+  AND is_standard = FALSE;
+
+-- name: updateStandardAction :execrows
+UPDATE actions
+SET metadata = metadata
+WHERE id = $1
+  AND is_standard = TRUE;
+
+-- name: deleteCustomAction :execrows
+DELETE FROM actions
+WHERE id = $1
+  AND is_standard = FALSE;
 
 
 ----------------------------------------------------------------

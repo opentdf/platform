@@ -33,6 +33,9 @@ message GetActionRequest {
 }
 message GetActionResponse {
   policy.Action action = 1;
+
+  // Subject Mappings driving entitlement to the action
+  repeated policy.SubjectMapping subject_mappings = 2;
 }
 
 message ListActionsRequest {

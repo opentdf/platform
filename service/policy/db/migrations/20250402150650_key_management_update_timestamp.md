@@ -10,18 +10,18 @@ erDiagram
     }
     
     asym_key {
-        timestamp_without_time_zone created_at "Timestamp when the key was created"
-        timestamp_without_time_zone expiration 
+        timestamp_with_time_zone created_at "Timestamp when the key was created"
+        timestamp_with_time_zone expiration 
         uuid id PK "Unique identifier for the key"
         integer key_algorithm "Algorithm used to generate the key"
-        character_varying key_id "Unique identifier for the key"
+        character_varying key_id UK "Unique identifier for the key"
         integer key_mode "Indicates whether the key is stored LOCAL or REMOTE"
         integer key_status "Indicates the status of the key Active, Inactive, Compromised, or Expired"
         jsonb metadata "Additional metadata for the key"
         jsonb private_key_ctx "Private Key Context is a json defined structure of the private key. Could include information like PEM encoded key, or external key id information"
         uuid provider_config_id FK "Reference the provider configuration for this key"
         jsonb public_key_ctx "Public Key Context is a json defined structure of the public key"
-        timestamp_without_time_zone updated_at "Timestamp when the key was last updated"
+        timestamp_with_time_zone updated_at "Timestamp when the key was last updated"
     }
 
     attribute_definition_key_access_grants {
@@ -101,11 +101,11 @@ erDiagram
     }
 
     key_access_server_keys {
-        timestamp_without_time_zone created_at 
-        timestamp_without_time_zone expiration 
+        timestamp_with_time_zone created_at 
+        timestamp_with_time_zone expiration 
         uuid id PK 
         uuid key_access_server_id FK,UK 
-        integer key_algorithm UK 
+        integer key_algorithm 
         character_varying key_id UK 
         integer key_mode 
         integer key_status 
@@ -113,7 +113,7 @@ erDiagram
         jsonb private_key_ctx 
         uuid provider_config_id 
         jsonb public_key_ctx 
-        timestamp_without_time_zone updated_at 
+        timestamp_with_time_zone updated_at 
     }
 
     key_access_servers {
@@ -129,11 +129,11 @@ erDiagram
 
     provider_config {
         jsonb config "Configuration details for the key provider"
-        timestamp_without_time_zone created_at "Timestamp when the provider configuration was created"
+        timestamp_with_time_zone created_at "Timestamp when the provider configuration was created"
         uuid id PK "Unique identifier for the provider configuration"
         jsonb metadata "Additional metadata for the provider configuration"
         character_varying provider_name "Name of the key provider"
-        timestamp_without_time_zone updated_at "Timestamp when the provider configuration was last updated"
+        timestamp_with_time_zone updated_at "Timestamp when the provider configuration was last updated"
     }
 
     registered_resource_values {
@@ -196,15 +196,16 @@ erDiagram
     }
 
     sym_key {
-        timestamp_without_time_zone created_at "Timestamp when the key was created"
+        timestamp_with_time_zone created_at "Timestamp when the key was created"
+        timestamp_with_time_zone expiration 
         uuid id PK "Unique identifier for the key"
-        character_varying key_id "Unique identifier for the key"
+        character_varying key_id UK "Unique identifier for the key"
         integer key_mode "Indicates whether the key is stored LOCAL or REMOTE"
         integer key_status "Indicates the status of the key Active, Inactive, Compromised, or Expired"
         bytea key_value "Key value in binary format"
         jsonb metadata "Additional metadata for the key"
         uuid provider_config_id FK "Reference the provider configuration for this key"
-        timestamp_without_time_zone updated_at "Timestamp when the key was last updated"
+        timestamp_with_time_zone updated_at "Timestamp when the key was last updated"
     }
 
     subject_mapping_actions }o--|| actions : "action_id"

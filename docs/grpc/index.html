@@ -1624,17 +1624,31 @@
             <tbody>
               
                 <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Generated uuid in database </p></td>
+                </tr>
+              
+                <tr>
                   <td>standard</td>
                   <td><a href="#policy.Action.StandardAction">Action.StandardAction</a></td>
                   <td></td>
-                  <td><p>standard CRUD action </p></td>
+                  <td><p>Deprecated </p></td>
                 </tr>
               
                 <tr>
                   <td>custom</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>distinctly custom action </p></td>
+                  <td><p>Deprecated </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -2411,7 +2425,7 @@ list of key access servers </p></td>
 
       
         <h3 id="policy.Action.StandardAction">Action.StandardAction</h3>
-        <p>Standard actions supported by the platform</p>
+        <p></p>
         <table class="enum-table">
           <thead>
             <tr><td>Name</td><td>Number</td><td>Description</td></tr>
@@ -2428,38 +2442,14 @@ list of key access servers </p></td>
                 <td>STANDARD_ACTION_DECRYPT</td>
                 <td>1</td>
                 <td><p>Deprecated
-Migrate to `STANDARD_ACTION_READ`</p></td>
+Migrate to &#39;read&#39; action name</p></td>
               </tr>
             
               <tr>
                 <td>STANDARD_ACTION_TRANSMIT</td>
                 <td>2</td>
                 <td><p>Deprecated
-Migrate to `STANDARD_ACTION_CREATE` or a custom action</p></td>
-              </tr>
-            
-              <tr>
-                <td>STANDARD_ACTION_CREATE</td>
-                <td>3</td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>STANDARD_ACTION_READ</td>
-                <td>4</td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>STANDARD_ACTION_UPDATE</td>
-                <td>5</td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>STANDARD_ACTION_DELETE</td>
-                <td>6</td>
-                <td><p></p></td>
+Migrate to &#39;create&#39; action name</p></td>
               </tr>
             
           </tbody>

@@ -110,15 +110,10 @@
       "enum": [
         "STANDARD_ACTION_UNSPECIFIED",
         "STANDARD_ACTION_DECRYPT",
-        "STANDARD_ACTION_TRANSMIT",
-        "STANDARD_ACTION_CREATE",
-        "STANDARD_ACTION_READ",
-        "STANDARD_ACTION_UPDATE",
-        "STANDARD_ACTION_DELETE"
+        "STANDARD_ACTION_TRANSMIT"
       ],
       "default": "STANDARD_ACTION_UNSPECIFIED",
-      "description": "- STANDARD_ACTION_DECRYPT: Deprecated\nMigrate to `STANDARD_ACTION_READ`\n - STANDARD_ACTION_TRANSMIT: Deprecated\nMigrate to `STANDARD_ACTION_CREATE` or a custom action",
-      "title": "Standard actions supported by the platform"
+      "title": "- STANDARD_ACTION_DECRYPT: Deprecated\nMigrate to 'read' action name\n - STANDARD_ACTION_TRANSMIT: Deprecated\nMigrate to 'create' action name"
     },
     "DecisionResponseDecision": {
       "type": "string",
@@ -426,13 +421,20 @@
     "policyAction": {
       "type": "object",
       "properties": {
+        "id": {
+          "type": "string",
+          "title": "Generated uuid in database"
+        },
         "standard": {
           "$ref": "#/definitions/ActionStandardAction",
-          "title": "standard CRUD action"
+          "title": "Deprecated"
         },
         "custom": {
           "type": "string",
-          "title": "distinctly custom action"
+          "title": "Deprecated"
+        },
+        "name": {
+          "type": "string"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata"

@@ -30,7 +30,7 @@ func authorizationExamples() error {
 
 	// request decision on "CREATE" Action
 	actions := []*policy.Action{{
-		Value: &policy.Action_Standard{Standard: policy.Action_STANDARD_ACTION_CREATE},
+		Value: &policy.Action_Standard{Standard: policy.Action_STANDARD_ACTION_DECRYPT},
 	}}
 
 	// model two groups of entities; user bob and user alice

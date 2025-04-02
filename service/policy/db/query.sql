@@ -1140,3 +1140,50 @@ INSERT INTO attribute_value_public_key_map (value_id, key_id) VALUES ($1, $2);
 DELETE FROM attribute_value_public_key_map WHERE value_id = $1 AND key_id = $2;
 
 ----------------------------------------------------------------
+
+
+---------------------------------------------------------------- 
+-- ACTIONS
+----------------------------------------------------------------
+
+-- name: listActions :many
+WITH counted AS (
+    SELECT COUNT(id) AS total FROM actions
+),
+SELECT 
+    (
+        SELECT JSONB_AGG(
+            JSONB_BUILD_OBJECT(
+                'id', id,
+                'name', name,
+                'metadata', JSON_STRIP_NULLS(JSONB_BUILD_OBJECT(
+                    'labels', metadata -> 'labels', 
+                    'created_at', created_at, 
+                    'updated_at', updated_at
+                ))
+            )
+        )
+        FROM actions
+        WHERE is_standard = TRUE
+    ) AS standard_actions,
+    (
+        SELECT JSONB_AGG(
+            JSONB_BUILD_OBJECT(
+                'id', id,
+                'name', name,
+                'metadata', JSON_STRIP_NULLS(JSONB_BUILD_OBJECT(
+                    'labels', metadata -> 'labels', 
+                    'created_at', created_at, 
+                    'updated_at', updated_at
+                ))
+            )
+        )
+        FROM actions
+        WHERE is_standard = FALSE
+    ) AS custom_actions,
+    (SELECT total FROM counted) AS total
+LIMIT @limit_ 
+OFFSET @offset_;
+
+
+----------------------------------------------------------------

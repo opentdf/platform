@@ -855,10 +855,20 @@ WITH counted AS (
     SELECT COUNT(sm.id) AS total
     FROM subject_mappings sm
 )
-
 SELECT
     sm.id,
-    sm.actions,
+    (
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
+        FROM subject_mapping_actions sma
+        JOIN actions a ON sma.action_id = a.id
+        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
+    ) AS standard_actions,
+    (
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
+        FROM subject_mapping_actions sma
+        JOIN actions a ON sma.action_id = a.id
+        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
+    ) AS custom_actions,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
     JSON_BUILD_OBJECT(
         'id', scs.id,
@@ -884,7 +894,18 @@ OFFSET @offset_;
 -- name: GetSubjectMapping :one
 SELECT
     sm.id,
-    sm.actions,
+    (
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
+        FROM subject_mapping_actions sma
+        JOIN actions a ON sma.action_id = a.id
+        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
+    ) AS standard_actions,
+    (
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
+        FROM subject_mapping_actions sma
+        JOIN actions a ON sma.action_id = a.id
+        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
+    ) AS custom_actions,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
     JSON_BUILD_OBJECT(
         'id', scs.id,
@@ -901,7 +922,18 @@ GROUP BY av.id, sm.id, scs.id;
 -- name: MatchSubjectMappings :many
 SELECT
     sm.id,
-    sm.actions,
+    (
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
+        FROM subject_mapping_actions sma
+        JOIN actions a ON sma.action_id = a.id
+        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
+    ) AS standard_actions,
+    (
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
+        FROM subject_mapping_actions sma
+        JOIN actions a ON sma.action_id = a.id
+        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
+    ) AS custom_actions,
     JSON_BUILD_OBJECT(
         'id', scs.id,
         'subject_sets', scs.condition
@@ -918,7 +950,6 @@ WHERE ns.active = true AND ad.active = true and av.active = true AND EXISTS (
     WHERE (each_condition->>'subjectExternalSelectorValue' = ANY(@selectors::TEXT[])) 
 )
 GROUP BY av.id, sm.id, scs.id;
-
 
 -- name: CreateSubjectMapping :one
 INSERT INTO subject_mappings (attribute_value_id, actions, metadata, subject_condition_set_id)
@@ -1191,10 +1222,10 @@ SELECT
     name,
     is_standard,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
-FROM actions
+FROM actions a
 WHERE 
-  (sqlc.narg('id')::uuid IS NULL OR ns.id = sqlc.narg('id')::uuid)
-  AND (sqlc.narg('name')::text IS NULL OR ns.name = sqlc.narg('name')::text);
+  (sqlc.narg('id')::uuid IS NULL OR a.id = sqlc.narg('id')::uuid)
+  AND (sqlc.narg('name')::text IS NULL OR a.name = sqlc.narg('name')::text);
 
 -- name: createCustomAction :one
 INSERT INTO actions (name, is_standard, metadata)
@@ -1219,6 +1250,5 @@ WHERE id = $1
 DELETE FROM actions
 WHERE id = $1
   AND is_standard = FALSE;
-
 
 ----------------------------------------------------------------

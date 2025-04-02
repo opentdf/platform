@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS
         name VARCHAR NOT NULL,
         is_standard BOOLEAN NOT NULL DEFAULT FALSE,
         metadata JSONB,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
         CONSTRAINT actions_name_unique UNIQUE (name) 
     );
 

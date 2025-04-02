@@ -255,14 +255,11 @@ type TDFReaderConfig struct {
 
 	schemaValidationIntensity SchemaValidationIntensity
 	kasSessionKey             ocrypto.KeyPair
-	keyType                   ocrypto.KeyType
 }
 
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
-	var err error
 	c := &TDFReaderConfig{
 		disableAssertionVerification: false,
-		keyType:                      ocrypto.RSA2048Key,
 	}
 
 	for _, o := range opt {
@@ -272,9 +269,12 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 		}
 	}
 
-	c.kasSessionKey, err = ocrypto.NewKeyPair(c.keyType)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create RSA key pair: %w", err)
+	if c.kasSessionKey == nil {
+		// Default to RSA 2048
+		err := WithSessionKeyType(ocrypto.RSA2048Key)(c)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return c, nil
@@ -303,10 +303,18 @@ func WithDisableAssertionVerification(disable bool) TDFReaderOption {
 
 func WithSessionKeyType(keyType ocrypto.KeyType) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
-		if c.keyType == "" {
-			return errors.New("key type missing")
+		kasSessionKey, err := ocrypto.NewKeyPair(keyType)
+		if err != nil {
+			return fmt.Errorf("failed to create RSA key pair: %w", err)
 		}
-		c.keyType = keyType
+		c.kasSessionKey = kasSessionKey
+		return nil
+	}
+}
+
+func withSessionKey(k ocrypto.KeyPair) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.kasSessionKey = k
 		return nil
 	}
 }

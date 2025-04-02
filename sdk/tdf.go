@@ -646,6 +646,10 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		return nil, fmt.Errorf("archive.NewTDFReader failed: %w", err)
 	}
 
+	if s.kasSessionKey != nil {
+		opts = append([]TDFReaderOption{withSessionKey(s.kasSessionKey)}, opts...)
+	}
+
 	config, err := newTDFReaderConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("newAssertionConfig failed: %w", err)

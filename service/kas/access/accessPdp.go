@@ -64,8 +64,8 @@ func (p *Provider) checkAttributes(ctx context.Context, ras []*authorization.Res
 		DecisionRequests: []*authorization.TokenDecisionRequest{
 			{
 				Actions: []*policy.Action{
-					// TODO: support other actions rather than hardcoding read here
-					{Value: &policy.Action_Standard{Standard: policy.Action_STANDARD_ACTION_READ}},
+					// TODO: actions should come from the request and not be hardcoded
+					{Value: &policy.Action_Standard{Standard: policy.Action_STANDARD_ACTION_DECRYPT}},
 				},
 				Tokens:             []*authorization.Token{ent},
 				ResourceAttributes: ras,

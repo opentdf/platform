@@ -98,29 +98,29 @@ message Value {
 
 // An action an entity can take
 message Action {
-  // Standard actions supported by the platform
+  // Generated uuid in database
+  string id = 3;
+
   enum StandardAction {
     STANDARD_ACTION_UNSPECIFIED = 0;
 
     // Deprecated
-    // Migrate to `STANDARD_ACTION_READ`
+    // Migrate to 'read' action name
     STANDARD_ACTION_DECRYPT = 1;
 
     // Deprecated
-    // Migrate to `STANDARD_ACTION_CREATE` or a custom action
+    // Migrate to 'create' action name
     STANDARD_ACTION_TRANSMIT = 2;
-
-    STANDARD_ACTION_CREATE = 3;
-    STANDARD_ACTION_READ = 4;
-    STANDARD_ACTION_UPDATE = 5;
-    STANDARD_ACTION_DELETE = 6;
   }
+  // Deprecated
   oneof value {
-    // standard CRUD action
+    // Deprecated
     StandardAction standard = 1;
-    // distinctly custom action
+    // Deprecated
     string custom = 2;
   }
+
+  string name = 4;
 
   common.Metadata metadata = 100;
 }

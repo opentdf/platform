@@ -48,14 +48,14 @@ var (
 	CustomUpload   = "CUSTOM_UPLOAD"
 
 	fixtureActions = map[string]*policy.Action{
-		"READ": {
+		"DECRYPT": {
 			Value: &policy.Action_Standard{
-				Standard: policy.Action_STANDARD_ACTION_READ,
+				Standard: policy.Action_STANDARD_ACTION_DECRYPT,
 			},
 		},
-		"CREATE": {
+		"TRANSMIT": {
 			Value: &policy.Action_Standard{
-				Standard: policy.Action_STANDARD_ACTION_CREATE,
+				Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
 			},
 		},
 		"CUSTOM_DOWNLOAD": {

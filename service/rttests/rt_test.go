@@ -289,10 +289,10 @@ func (s *RoundtripSuite) CreateTestData() error {
 			AttributeValueId: attributeID,
 			Actions: []*policy.Action{
 				{Value: &policy.Action_Standard{
-					Standard: policy.Action_STANDARD_ACTION_READ,
+					Standard: policy.Action_STANDARD_ACTION_DECRYPT,
 				}},
 				{Value: &policy.Action_Standard{
-					Standard: policy.Action_STANDARD_ACTION_CREATE,
+					Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
 				}},
 			},
 			NewSubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{

@@ -746,6 +746,16 @@ func (s *AuthSuite) Test_LookupGatewayPaths() {
 			expected: []string{s.server.URL + "/kas/v2/rewrap"},
 		},
 		{
+			name: "Multiple Origins",
+			path: "/kas.AccessService/Rewrap",
+			header: http.Header{
+				"Grpcgateway-Origin": []string{s.server.URL, "https://origin.1.com"},
+				"Origin":             []string{"https://origin.com"},
+			},
+			expected: []string{s.server.URL + "/kas/v2/rewrap",
+				"https://origin.1.com/kas/v2/rewrap", "https://origin.com/kas/v2/rewrap"},
+		},
+		{
 			name: "Unknown Path with Pattern",
 			path: "/unknown/path",
 			header: http.Header{

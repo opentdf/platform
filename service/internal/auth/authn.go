@@ -276,7 +276,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 
 func (a Authentication) lookupOrigins(header http.Header) []string {
 	result := make([]string, 0)
-	for _, m := range []string{"Origin", "Grpcgateway-Origin", "Grpcgateway-Referer"} {
+	for _, m := range []string{"Grpcgateway-Origin", "Grpcgateway-Referer", "Origin"} {
 		origins := header.Values(m)
 		if len(origins) == 0 {
 			continue

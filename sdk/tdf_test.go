@@ -2047,10 +2047,10 @@ func TestIsLessThanSemver(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := isLessThanSemver(tt.version, tt.target)
 			if tt.expectError {
-				require.Error(t, err, fmt.Sprintf("Expected an error for test case: %s", tt.name))
+				require.Error(t, err, "Expected an error for test case: %s", tt.name)
 			} else {
-				require.NoError(t, err, fmt.Sprintf("Did not expect an error for test case: %s", tt.name))
-				assert.Equal(t, tt.expected, result, fmt.Sprintf("Unexpected result for test case: %s", tt.name))
+				require.NoError(t, err, "Did not expect an error for test case: %s", tt.name)
+				assert.Equal(t, tt.expected, result, "Unexpected result for test case: %s", tt.name)
 			}
 		})
 	}

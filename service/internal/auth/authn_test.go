@@ -729,3 +729,54 @@ func (s *AuthSuite) Test_GetAction() {
 		s.Equal(c.expected, getAction(c.method))
 	}
 }
+
+func (s *AuthSuite) Test_LookupGatewayPaths() {
+	tests := []struct {
+		name     string
+		path     string
+		header   http.Header
+		expected []string
+	}{
+		{
+			name: "Valid Rewrap Path",
+			path: "/kas.AccessService/Rewrap",
+			header: http.Header{
+				"Grpcgateway-Origin": []string{s.server.URL},
+			},
+			expected: []string{s.server.URL + "/kas/v2/rewrap"},
+		},
+		{
+			name: "Unknown Path with Pattern",
+			path: "/unknown/path",
+			header: http.Header{
+				"Grpcgateway-Origin": []string{"https://origin.com"},
+				"Pattern":            []string{"some-pattern"},
+			},
+			expected: []string{"https://origin.com/some-pattern"},
+		},
+		{
+			name: "Unknown Path without Pattern",
+			path: "/unknown/path",
+			header: http.Header{
+				"Grpcgateway-Origin": []string{"https://origin.com"},
+			},
+			expected: []string{"https://origin.com/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration", "https://origin.com/.well-known/opentdf-configuration", "https://origin.com/kas.AccessService/PublicKey", "https://origin.com/kas.AccessService/LegacyPublicKey", "https://origin.com/kas.AccessService/Info", "https://origin.com/kas/kas_public_key", "https://origin.com/kas/v2/kas_public_key", "https://origin.com/healthz", "https://origin.com/grpc.health.v1.Health/Check"},
+		},
+		{
+			name: "Bad Path",
+			path: "/unkown.App",
+			header: http.Header{
+				"Origin":  []string{"https://origin.com"},
+				"Pattern": []string{"/?this. is=bad"},
+			},
+			expected: []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			result := s.auth.lookupGatewayPaths(context.Background(), tt.path, tt.header)
+			s.Equal(tt.expected, result)
+		})
+	}
+}

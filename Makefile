@@ -21,6 +21,7 @@ toolcheck:
 	@which protoc-gen-doc > /dev/null || (echo "protoc-gen-doc not found, run 'go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1'" && exit 1)
 	@golangci-lint --version | grep "version v\?1.6[456]" > /dev/null || (echo "golangci-lint version must be v1.64 or later [$$(golangci-lint --version)]" && exit 1)
 	@which goimports >/dev/null || (echo "goimports not found, run 'go install golang.org/x/tools/cmd/goimports@latest'")
+	@govulncheck -version >/dev/null || (echo "govulncheck not found, run 'go install golang.org/x/vuln/cmd/govulncheck@latest'")
 
 fix: tidy fmt
 
@@ -28,12 +29,12 @@ fmt:
 	for m in $(HAND_MODS); do (cd $$m && find ./ -name \*.go | xargs goimports -w) || exit 1; done
 
 tidy:
-	for m in $(HAND_MODS); do (cd $$m && go mod tidy) || exit 1; done
+	for m in $(MODS); do (cd $$m && go mod tidy) || exit 1; done
 
 license:
-	for m in $(HAND_MODS); do (cd $$m && go run github.com/google/go-licenses@v1.6.0 check --disallowed_types=forbidden --include_tests ./) || exit 1; done
+	for m in $(MODS); do (cd $$m && go run github.com/google/go-licenses@v1.6.0 check --disallowed_types=forbidden --include_tests ./) || exit 1; done
 
-lint: proto-lint go-lint
+lint: proto-lint go-lint govulncheck
 
 proto-lint:
 	buf lint service || (exit_code=$$?; \
@@ -51,6 +52,15 @@ go-lint:
 		(cd "$$m" && golangci-lint run $(LINT_OPTIONS) --path-prefix="$$m" ) || status=1; \
 	done; \
 	exit $$status
+
+govulncheck:
+	status=0; \
+	for m in $(MODS); do \
+		echo "govulncheck module: $$m"; \
+		(cd "$$m" && govulncheck ./...) || status=1; \
+	done; \
+	exit $$status
+
 proto-generate:
 	rm -rf protocol/go/[a-fh-z]* docs/grpc docs/openapi
 	buf generate service

@@ -17,6 +17,7 @@ import (
 	"github.com/opentdf/platform/sdk"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/auth/oauth"
+	"github.com/opentdf/platform/sdk/httputil"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/server"
@@ -79,6 +80,12 @@ func Start(f ...StartOptions) error {
 	if len(startConfig.PublicRoutes) > 0 {
 		logger.Info("additional public routes added", slog.Any("routes", startConfig.PublicRoutes))
 		cfg.Server.Auth.PublicRoutes = startConfig.PublicRoutes
+	}
+
+	// Set IPC reauthorization routes when platform is being extended
+	if len(startConfig.IPCReauthRoutes) > 0 {
+		logger.Info("additional IPC reauthorization routes added", slog.Any("routes", startConfig.IPCReauthRoutes))
+		cfg.Server.Auth.IPCReauthRoutes = startConfig.IPCReauthRoutes
 	}
 
 	// Set Default Policy
@@ -231,7 +238,8 @@ func Start(f ...StartOptions) error {
 					return fmt.Errorf("error creating ERS tokensource: %w", err)
 				}
 
-				interceptor := sdkauth.NewTokenAddingInterceptor(ts, tlsConfig)
+				interceptor := sdkauth.NewTokenAddingInterceptorWithClient(ts,
+					httputil.SafeHTTPClientWithTLSConfig(tlsConfig))
 
 				ersDialOptions = append(ersDialOptions, grpc.WithChainUnaryInterceptor(interceptor.AddCredentials))
 			}

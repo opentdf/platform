@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"net"
@@ -167,7 +168,7 @@ func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRew
 
 func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]kaoResult, error) {
 	if k.sessionKey == nil {
-		return nil, fmt.Errorf("session key is nil")
+		return nil, errors.New("session key is nil")
 	}
 	pubKey, err := k.sessionKey.PublicKeyInPemFormat()
 	if err != nil {
@@ -194,7 +195,11 @@ func (k *KASClient) handleECKeyResponse(response *kas.RewrapResponse) (map[strin
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
 	}
-	sessionKey, err := ocrypto.CalculateHKDF([]byte("salt"), ecdhKey)
+
+	digest := sha256.New()
+	digest.Write([]byte("TDF"))
+	salt := digest.Sum(nil)
+	sessionKey, err := ocrypto.CalculateHKDF(salt, ecdhKey)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed: %w", err)
 	}
@@ -299,7 +304,7 @@ func (k *KASClient) getRewrapRequest(reqs []*kas.UnsignedRewrapRequest_WithPolic
 
 	requestBodyJSON, err := protojson.Marshal(requestBody)
 	if err != nil {
-		return nil, fmt.Errorf("Error marshaling request body: %w", err)
+		return nil, fmt.Errorf("error marshaling request body: %w", err)
 	}
 
 	now := time.Now()

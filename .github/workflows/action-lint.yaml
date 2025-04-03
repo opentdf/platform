@@ -18,7 +18,7 @@ jobs:
         steps:
             - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
             - name: "Run reviewdog actionlint"
-              uses: reviewdog/action-actionlint@053981cb135d7a696bbeec6181d9d5fae6e07dae # v1.57.0
+              uses: reviewdog/action-actionlint@741f06346b1784e277fcc9bd907cf39c7d31e443 # v1.57.0
               with:
                 reporter: "github-pr-review"
                 fail_on_error: true

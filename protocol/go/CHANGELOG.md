@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.29](https://github.com/opentdf/platform/compare/protocol/go/v0.2.28...protocol/go/v0.2.29) (2025-03-06)
+
+
+### Bug Fixes
+
+* **policy:** remove new public keys rpc's ([#1962](https://github.com/opentdf/platform/issues/1962)) ([5049bab](https://github.com/opentdf/platform/commit/5049baba20ddcefa40c280a18e5dd8ef754b7e22))
+
 ## [0.2.28](https://github.com/opentdf/platform/compare/protocol/go/v0.2.27...protocol/go/v0.2.28) (2025-02-26)
 
 

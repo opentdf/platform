@@ -62,6 +62,11 @@ jobs:
       - run: go work use .
         if: env.IS_RELEASE_BRANCH == 'true'
         working-directory: ${{ matrix.directory }}
+      - name: govluncheck
+        uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee
+        with:
+          go-version-input: "1.24.1"
+          work-dir: ${{ matrix.directory }}
       - name: golangci-lint
         uses: golangci/golangci-lint-action@2226d7cb06a077cd73e56eedd38eecad18e5d837
         with:
@@ -235,6 +240,7 @@ jobs:
   platform-xtest:
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
+      focus-sdk: go
       # use commit instead of ref so we can "go get" specific sdk version
       platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
@@ -255,7 +261,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: bufbuild/buf-setup-action@62ee92603c244ad0da98bab36a834a999a5329e6
+      - uses: bufbuild/buf-setup-action@a47c93e0b1648d5651a065437926377d060baa99
         with:
           github_token: ${{ github.token }}
       - uses: bufbuild/buf-lint-action@06f9dd823d873146471cfaaf108a993fe00e5325
@@ -315,17 +321,18 @@ jobs:
           go-version-file: 'service/go.mod'
           check-latest: false
           cache: false
-      - name: install go-licenses
-        run: go install github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
       - name: check service licenses
         run: >
-          go-licenses check --disallowed_types=forbidden --include_tests
+          "$(go env GOROOT)"/bin/go run github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
+          check --disallowed_types=forbidden --include_tests
           ./service
       - name: check sdk licenses
         run: >
-          go-licenses check --disallowed_types=forbidden --include_tests
+          "$(go env GOROOT)"/bin/go run github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
+          check --disallowed_types=forbidden --include_tests
           ./sdk
       - name: check examples licenses
         run: >
-          go-licenses check --disallowed_types=forbidden --include_tests
+          "$(go env GOROOT)"/bin/go run github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
+          check --disallowed_types=forbidden --include_tests
           ./examples

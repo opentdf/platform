@@ -127,7 +127,7 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 	for id, tdf := range policyTDF {
 		kaoRes, ok := allRewrapResp[id]
 		if !ok {
-			tdf.Error = fmt.Errorf("rewrap did not create a response for this TDF")
+			tdf.Error = errors.New("rewrap did not create a response for this TDF")
 			errList = append(errList, tdf.Error)
 			continue
 		}

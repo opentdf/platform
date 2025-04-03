@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.9](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.1.8...lib/ocrypto/v0.1.9) (2025-03-07)
+
+
+### Bug Fixes
+
+* **core:** Updates ec-wrapped to newer salt ([#1961](https://github.com/opentdf/platform/issues/1961)) ([0e17968](https://github.com/opentdf/platform/commit/0e17968e4bd4e69ddf7f676733327d6f0e0e36f0))
+
 ## [0.1.8](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.1.7...lib/ocrypto/v0.1.8) (2025-02-25)
 
 

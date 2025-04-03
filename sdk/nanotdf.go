@@ -638,7 +638,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	size += uint32(l)
 
 	if string(magicNumber) != kNanoTDFMagicStringAndVersion {
-		return header, 0, fmt.Errorf("not a valid nano tdf")
+		return header, 0, errors.New("not a valid nano tdf")
 	}
 
 	// read resource locator
@@ -662,7 +662,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 
 	// check  ephemeral ECC Params Enum
 	if header.bindCfg.eccMode != ocrypto.ECCModeSecp256r1 {
-		return header, 0, fmt.Errorf("current implementation of nano tdf only support secp256r1 curve")
+		return header, 0, errors.New("current implementation of nano tdf only support secp256r1 curve")
 	}
 
 	// read  Payload and Sig Mode
@@ -681,7 +681,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	size += uint32(l)
 
 	if oneBytes[0] != uint8(policyTypeEmbeddedPolicyEncrypted) {
-		return header, 0, fmt.Errorf(" current implementation only support embedded policy type")
+		return header, 0, errors.New(" current implementation only support embedded policy type")
 	}
 
 	// read policy length
@@ -796,10 +796,10 @@ func nonZeroRandomPaddedIV() ([]byte, error) {
 // CreateNanoTDF - reads plain text from the given reader and saves it to the writer, subject to the given options
 func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFConfig) (uint32, error) {
 	if writer == nil {
-		return 0, fmt.Errorf("writer is nil")
+		return 0, errors.New("writer is nil")
 	}
 	if reader == nil {
-		return 0, fmt.Errorf("reader is nil")
+		return 0, errors.New("reader is nil")
 	}
 	var totalSize uint32
 	buf := bytes.Buffer{}
@@ -960,7 +960,7 @@ func (n *NanoTDFDecryptHandler) CreateRewrapRequest(_ context.Context) (map[stri
 func (n *NanoTDFDecryptHandler) Decrypt(_ context.Context, result []kaoResult) (int, error) {
 	var err error
 	if len(result) != 1 {
-		return 0, fmt.Errorf("improper result from kas")
+		return 0, errors.New("improper result from kas")
 	}
 
 	if result[0].Error != nil {
@@ -1056,7 +1056,7 @@ func (s SDK) getNanoRewrapKey(ctx context.Context, decryptor *NanoTDFDecryptHand
 	}
 	result, ok := policyResult["policy"]
 	if !ok || len(result) != 1 {
-		return nil, fmt.Errorf("policy was not found in rewrap response")
+		return nil, errors.New("policy was not found in rewrap response")
 	}
 	if result[0].Error != nil {
 		return nil, result[0].Error

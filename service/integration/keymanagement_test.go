@@ -98,7 +98,7 @@ func (s *KeyManagementSuite) Test_GetProviderConfig_WithId_Succeeds() {
 	s.NotNil(pc)
 
 	pc, err = s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Id{
-		Id: pc.Id,
+		Id: pc.GetId(),
 	})
 	s.Require().NoError(err)
 	s.NotNil(pc)
@@ -148,7 +148,7 @@ func (s *KeyManagementSuite) Test_ListProviderConfig_No_Pagination_Succeeds() {
 	resp, err := s.db.PolicyClient.ListProviderConfigs(s.ctx, &policy.PageRequest{})
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.NotEmpty(resp.ProviderConfigs)
+	s.NotEmpty(resp.GetProviderConfigs())
 }
 
 func (s *KeyManagementSuite) Test_ListProviderConfig_PaginationLimit_Succeeds() {
@@ -160,9 +160,9 @@ func (s *KeyManagementSuite) Test_ListProviderConfig_PaginationLimit_Succeeds() 
 	})
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.NotEmpty(resp.ProviderConfigs)
-	s.Equal(1, len(resp.ProviderConfigs))
-	s.GreaterOrEqual(resp.Pagination.Total, int32(1))
+	s.NotEmpty(resp.GetProviderConfigs())
+	s.Len(resp.GetProviderConfigs(), 1)
+	s.GreaterOrEqual(resp.GetPagination().GetTotal(), int32(1))
 }
 
 func (s *KeyManagementSuite) Test_ListProviderConfig_PaginationLimitExceeded_Fails() {
@@ -185,12 +185,12 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ExtendsMetadata_Succeeds(
 	})
 	s.Require().NoError(err)
 	s.NotNil(pc)
-	s.Equal(testProvider, pc.Name)
-	s.Equal(validProviderConfig, pc.ConfigJson)
-	s.Equal(validLabels, pc.Metadata.Labels)
+	s.Equal(testProvider, pc.GetName())
+	s.Equal(validProviderConfig, pc.GetConfigJson())
+	s.Equal(validLabels, pc.GetMetadata().GetLabels())
 
 	pc, err = s.db.PolicyClient.UpdateProviderConfig(s.ctx, &keymanagement.UpdateProviderConfigRequest{
-		Id:         pc.Id,
+		Id:         pc.GetId(),
 		Name:       testProvider2,
 		ConfigJson: validProviderConfig2,
 		Metadata: &common.MetadataMutable{
@@ -200,8 +200,8 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ExtendsMetadata_Succeeds(
 	})
 	s.Require().NoError(err)
 	s.NotNil(pc)
-	s.Equal(testProvider2, pc.Name)
-	s.Equal(validProviderConfig2, pc.ConfigJson)
+	s.Equal(testProvider2, pc.GetName())
+	s.Equal(validProviderConfig2, pc.GetConfigJson())
 
 	mixedLabels := make(map[string]string, 2)
 	for k, v := range validLabels {
@@ -210,7 +210,7 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ExtendsMetadata_Succeeds(
 	for k, v := range additionalLabels {
 		mixedLabels[k] = v
 	}
-	s.Equal(mixedLabels, pc.Metadata.Labels)
+	s.Equal(mixedLabels, pc.GetMetadata().GetLabels())
 }
 
 func (s *KeyManagementSuite) Test_UpdateProviderConfig_ReplaceMetadata_Succeeds() {
@@ -223,12 +223,12 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ReplaceMetadata_Succeeds(
 	})
 	s.Require().NoError(err)
 	s.NotNil(pc)
-	s.Equal(testProvider, pc.Name)
-	s.Equal(validProviderConfig, pc.ConfigJson)
-	s.Equal(validLabels, pc.Metadata.Labels)
+	s.Equal(testProvider, pc.GetName())
+	s.Equal(validProviderConfig, pc.GetConfigJson())
+	s.Equal(validLabels, pc.GetMetadata().GetLabels())
 
 	pc, err = s.db.PolicyClient.UpdateProviderConfig(s.ctx, &keymanagement.UpdateProviderConfigRequest{
-		Id:         pc.Id,
+		Id:         pc.GetId(),
 		Name:       testProvider2,
 		ConfigJson: validProviderConfig2,
 		Metadata: &common.MetadataMutable{
@@ -238,9 +238,9 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ReplaceMetadata_Succeeds(
 	})
 	s.Require().NoError(err)
 	s.NotNil(pc)
-	s.Equal(testProvider2, pc.Name)
-	s.Equal(validProviderConfig2, pc.ConfigJson)
-	s.Equal(additionalLabels, pc.Metadata.Labels)
+	s.Equal(testProvider2, pc.GetName())
+	s.Equal(validProviderConfig2, pc.GetConfigJson())
+	s.Equal(additionalLabels, pc.GetMetadata().GetLabels())
 }
 
 func (s *KeyManagementSuite) Test_UpdateProviderConfig_InvalidUUID_Fails() {
@@ -258,15 +258,15 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ConfigNotFound_Fails() {
 	s.Require().NoError(err)
 	s.NotNil(resp)
 
-	pcIds := make(map[string]string, 50)
-	for _, pc := range resp.ProviderConfigs {
-		pcIds[pc.Id] = ""
+	pcIDs := make(map[string]string, 50)
+	for _, pc := range resp.GetProviderConfigs() {
+		pcIDs[pc.GetId()] = ""
 	}
 
 	isUsedUUID := true
 	nonUsedUUID := uuid.NewString()
 	for isUsedUUID {
-		if _, ok := pcIds[nonUsedUUID]; !ok {
+		if _, ok := pcIDs[nonUsedUUID]; !ok {
 			isUsedUUID = false
 		} else {
 			nonUsedUUID = uuid.NewString()
@@ -285,7 +285,7 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ConfigNotFound_Fails() {
 func (s *KeyManagementSuite) Test_DeleteProviderConfig_Succeeds() {
 	pc := s.createTestProviderConfig()
 	s.NotNil(pc)
-	pc, err := s.db.PolicyClient.DeleteProviderConfig(s.ctx, pc.Id)
+	pc, err := s.db.PolicyClient.DeleteProviderConfig(s.ctx, pc.GetId())
 	s.Require().NoError(err)
 	s.NotNil(pc)
 }

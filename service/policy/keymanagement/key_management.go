@@ -111,22 +111,22 @@ func (ksvc Service) ListProviderConfigs(ctx context.Context, req *connect.Reques
 
 func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Request[keyMgmtProto.UpdateProviderConfigRequest]) (*connect.Response[keyMgmtProto.UpdateProviderConfigResponse], error) {
 	rsp := &keyMgmtProto.UpdateProviderConfigResponse{}
-	providerConfigId := req.Msg.GetId()
+	providerConfigID := req.Msg.GetId()
 
 	ksvc.logger.Debug("Updating Provider Config", slog.String("id", req.Msg.GetId()))
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeUpdate,
 		ObjectType: audit.ObjectTypeKeyManagementProviderConfig,
-		ObjectID:   providerConfigId,
+		ObjectID:   providerConfigID,
 	}
 
 	original, err := ksvc.dbClient.GetProviderConfig(ctx, &keyMgmtProto.GetProviderConfigRequest_Id{
-		Id: providerConfigId,
+		Id: providerConfigID,
 	})
 	if err != nil {
 		ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", providerConfigId))
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", providerConfigID))
 	}
 
 	pc, err := ksvc.dbClient.UpdateProviderConfig(ctx, req.Msg)

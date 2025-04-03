@@ -53,7 +53,7 @@ message UpdateProviderConfigRequest {
   // Optional
   string name = 2 [(buf.validate.field).required = false];
   // Optional
-  string config_json = 3 [(buf.validate.field).required = false];
+  bytes config_json = 3 [(buf.validate.field).required = false];
 
   // Optional
   // Common metadata

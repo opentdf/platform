@@ -21,6 +21,7 @@ const (
 	ObjectTypeEntityObject
 	ObjectTypeResourceMappingGroup
 	ObjectTypePublicKey
+	ObjectTypeKeyManagementProviderConfig
 )
 
 func (ot ObjectType) String() string {
@@ -38,6 +39,8 @@ func (ot ObjectType) String() string {
 		"key_object",
 		"entity_object",
 		"resource_mapping_group",
+		"public_key",
+		"key_management_provider_config",
 	}[ot]
 }
 

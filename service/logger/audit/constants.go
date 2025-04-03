@@ -24,6 +24,7 @@ const (
 	ObjectTypeAction
 	ObjectTypeRegisteredResource
 	ObjectTypeRegisteredResourceValue
+	ObjectTypeKeyManagementProviderConfig
 )
 
 func (ot ObjectType) String() string {
@@ -45,6 +46,7 @@ func (ot ObjectType) String() string {
 		"action",
 		"registered_resource",
 		"registered_resource_value",
+		"key_management_provider_config",
 	}[ot]
 }
 

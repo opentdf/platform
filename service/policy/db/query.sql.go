@@ -184,6 +184,73 @@ func (q *Queries) CreateNamespace(ctx context.Context, arg CreateNamespaceParams
 	return id, err
 }
 
+const createProviderConfig = `-- name: CreateProviderConfig :one
+
+WITH inserted AS (
+  INSERT INTO provider_config (provider_name, config, metadata)
+  VALUES ($1, $2, $3)
+  RETURNING id, provider_name, config, created_at, updated_at, metadata
+)
+SELECT 
+  id,
+  provider_name,
+  config,
+  JSON_STRIP_NULLS(
+    JSON_BUILD_OBJECT(
+      'labels', metadata -> 'labels',         
+      'created_at', created_at,               
+      'updated_at', updated_at                
+    )
+  ) AS metadata
+FROM inserted
+`
+
+type CreateProviderConfigParams struct {
+	ProviderName string `json:"provider_name"`
+	Config       []byte `json:"config"`
+	Metadata     []byte `json:"metadata"`
+}
+
+type CreateProviderConfigRow struct {
+	ID           string `json:"id"`
+	ProviderName string `json:"provider_name"`
+	Config       []byte `json:"config"`
+	Metadata     []byte `json:"metadata"`
+}
+
+// --------------------------------------------------------------
+// Provider Config
+// --------------------------------------------------------------
+//
+//	WITH inserted AS (
+//	  INSERT INTO provider_config (provider_name, config, metadata)
+//	  VALUES ($1, $2, $3)
+//	  RETURNING id, provider_name, config, created_at, updated_at, metadata
+//	)
+//	SELECT
+//	  id,
+//	  provider_name,
+//	  config,
+//	  JSON_STRIP_NULLS(
+//	    JSON_BUILD_OBJECT(
+//	      'labels', metadata -> 'labels',
+//	      'created_at', created_at,
+//	      'updated_at', updated_at
+//	    )
+//	  ) AS metadata
+//	FROM inserted
+func (q *Queries) CreateProviderConfig(ctx context.Context, arg CreateProviderConfigParams) (CreateProviderConfigRow, error) {
+	row := q.db.QueryRow(ctx, createProviderConfig, arg.ProviderName, arg.Config, arg.Metadata)
+	var i CreateProviderConfigRow
+	err := row.Scan(
+		&i.ID,
+		&i.ProviderName,
+		&i.Config,
+		&i.Metadata,
+	)
+	return i, err
+}
+
 const createResourceMapping = `-- name: CreateResourceMapping :one
 INSERT INTO resource_mappings (attribute_value_id, terms, metadata, group_id)
 VALUES ($1, $2, $3, $4)
@@ -346,6 +413,23 @@ DELETE FROM attribute_namespaces WHERE id = $1
 //	DELETE FROM attribute_namespaces WHERE id = $1
 func (q *Queries) DeleteNamespace(ctx context.Context, id string) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteNamespace, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteProviderConfig = `-- name: DeleteProviderConfig :execrows
+DELETE FROM provider_config 
+WHERE id = $1
+`
+
+// DeleteProviderConfig
+//
+//	DELETE FROM provider_config
+//	WHERE id = $1
+func (q *Queries) DeleteProviderConfig(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteProviderConfig, id)
 	if err != nil {
 		return 0, err
 	}
@@ -746,6 +830,51 @@ func (q *Queries) GetNamespace(ctx context.Context, arg GetNamespaceParams) (Get
 		&i.Metadata,
 		&i.Grants,
 		&i.Keys,
+	)
+	return i, err
+}
+
+const getProviderConfig = `-- name: GetProviderConfig :one
+SELECT 
+    pc.id,
+    pc.provider_name,
+    pc.config,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS metadata
+FROM provider_config AS pc
+WHERE ($1::uuid IS NULL OR pc.id = $1::uuid)
+  AND ($2::text IS NULL OR pc.provider_name = $2::text)
+`
+
+type GetProviderConfigParams struct {
+	ID   pgtype.UUID `json:"id"`
+	Name pgtype.Text `json:"name"`
+}
+
+type GetProviderConfigRow struct {
+	ID           string `json:"id"`
+	ProviderName string `json:"provider_name"`
+	Config       []byte `json:"config"`
+	Metadata     []byte `json:"metadata"`
+}
+
+// GetProviderConfig
+//
+//	SELECT
+//	    pc.id,
+//	    pc.provider_name,
+//	    pc.config,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS metadata
+//	FROM provider_config AS pc
+//	WHERE ($1::uuid IS NULL OR pc.id = $1::uuid)
+//	  AND ($2::text IS NULL OR pc.provider_name = $2::text)
+func (q *Queries) GetProviderConfig(ctx context.Context, arg GetProviderConfigParams) (GetProviderConfigRow, error) {
+	row := q.db.QueryRow(ctx, getProviderConfig, arg.ID, arg.Name)
+	var i GetProviderConfigRow
+	err := row.Scan(
+		&i.ID,
+		&i.ProviderName,
+		&i.Config,
+		&i.Metadata,
 	)
 	return i, err
 }
@@ -1569,6 +1698,78 @@ func (q *Queries) ListNamespaces(ctx context.Context, arg ListNamespacesParams) 
 	return items, nil
 }
 
+const listProviderConfigs = `-- name: ListProviderConfigs :many
+WITH counted AS (
+    SELECT COUNT(pc.id) AS total 
+    FROM provider_config pc
+)
+SELECT 
+    pc.id,
+    pc.provider_name,
+    pc.config,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS metadata,
+    counted.total
+FROM provider_config AS pc
+CROSS JOIN counted
+LIMIT $2 
+OFFSET $1
+`
+
+type ListProviderConfigsParams struct {
+	Offset int32 `json:"offset_"`
+	Limit  int32 `json:"limit_"`
+}
+
+type ListProviderConfigsRow struct {
+	ID           string `json:"id"`
+	ProviderName string `json:"provider_name"`
+	Config       []byte `json:"config"`
+	Metadata     []byte `json:"metadata"`
+	Total        int64  `json:"total"`
+}
+
+// ListProviderConfigs
+//
+//	WITH counted AS (
+//	    SELECT COUNT(pc.id) AS total
+//	    FROM provider_config pc
+//	)
+//	SELECT
+//	    pc.id,
+//	    pc.provider_name,
+//	    pc.config,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS metadata,
+//	    counted.total
+//	FROM provider_config AS pc
+//	CROSS JOIN counted
+//	LIMIT $2
+//	OFFSET $1
+func (q *Queries) ListProviderConfigs(ctx context.Context, arg ListProviderConfigsParams) ([]ListProviderConfigsRow, error) {
+	rows, err := q.db.Query(ctx, listProviderConfigs, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProviderConfigsRow
+	for rows.Next() {
+		var i ListProviderConfigsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProviderName,
+			&i.Config,
+			&i.Metadata,
+			&i.Total,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listResourceMappingGroups = `-- name: ListResourceMappingGroups :many
 
 WITH counted AS (
@@ -2120,6 +2321,43 @@ func (q *Queries) UpdateNamespace(ctx context.Context, arg UpdateNamespaceParams
 		arg.ID,
 		arg.Name,
 		arg.Active,
+		arg.Metadata,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updateProviderConfig = `-- name: UpdateProviderConfig :execrows
+UPDATE provider_config
+SET
+    provider_name = COALESCE($2, provider_name),
+    config = COALESCE($3, config),
+    metadata = COALESCE($4, metadata)
+WHERE id = $1
+`
+
+type UpdateProviderConfigParams struct {
+	ID           string      `json:"id"`
+	ProviderName pgtype.Text `json:"provider_name"`
+	Config       []byte      `json:"config"`
+	Metadata     []byte      `json:"metadata"`
+}
+
+// UpdateProviderConfig
+//
+//	UPDATE provider_config
+//	SET
+//	    provider_name = COALESCE($2, provider_name),
+//	    config = COALESCE($3, config),
+//	    metadata = COALESCE($4, metadata)
+//	WHERE id = $1
+func (q *Queries) UpdateProviderConfig(ctx context.Context, arg UpdateProviderConfigParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateProviderConfig,
+		arg.ID,
+		arg.ProviderName,
+		arg.Config,
 		arg.Metadata,
 	)
 	if err != nil {
@@ -3099,7 +3337,6 @@ func (q *Queries) getSubjectMapping(ctx context.Context, id string) (getSubjectM
 
 const listActions = `-- name: listActions :many
 
-
 WITH counted AS (
     SELECT COUNT(id) AS total FROM actions
 )
@@ -3132,9 +3369,6 @@ type listActionsRow struct {
 	Total      int64  `json:"total"`
 }
 
-// --------------------------------------------------------------
-// KEYS
-// --------------------------------------------------------------
 // --------------------------------------------------------------
 //
 //	WITH counted AS (

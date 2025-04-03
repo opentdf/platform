@@ -418,18 +418,6 @@ message RegisteredResourceValue {
   common.Metadata metadata = 100;
 }
 
-/*
-   Key Management
-*/
-
-message KeyProviderConfig {
-  string id = 1;
-  string name = 2;
-  string config_json = 3;
-
-  // Common metadata
-  common.Metadata metadata = 100;
-}
 
 // Supported key algorithms.
 enum Algorithm {

@@ -703,7 +703,8 @@
           "type": "string"
         },
         "configJson": {
-          "type": "string"
+          "type": "string",
+          "format": "byte"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",

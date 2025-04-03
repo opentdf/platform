@@ -102,16 +102,16 @@ type AsymKey struct {
 	// Public Key Context is a json defined structure of the public key
 	PublicKeyCtx []byte `json:"public_key_ctx"`
 	// Private Key Context is a json defined structure of the private key. Could include information like PEM encoded key, or external key id information
-	PrivateKeyCtx []byte           `json:"private_key_ctx"`
-	Expiration    pgtype.Timestamp `json:"expiration"`
+	PrivateKeyCtx []byte             `json:"private_key_ctx"`
+	Expiration    pgtype.Timestamptz `json:"expiration"`
 	// Reference the provider configuration for this key
 	ProviderConfigID pgtype.UUID `json:"provider_config_id"`
 	// Additional metadata for the key
 	Metadata []byte `json:"metadata"`
 	// Timestamp when the key was created
-	CreatedAt pgtype.Timestamp `json:"created_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	// Timestamp when the key was last updated
-	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 // Table to store the definitions of attributes
@@ -257,17 +257,17 @@ type KeyAccessServerKey struct {
 	// Public Key Context is a json defined structure of the public key
 	PublicKeyCtx []byte `json:"public_key_ctx"`
 	// Private Key Context is a json defined structure of the private key. Could include information like PEM encoded key, or external key id information
-	PrivateKeyCtx []byte           `json:"private_key_ctx"`
-	Expiration    pgtype.Timestamp `json:"expiration"`
+	PrivateKeyCtx []byte             `json:"private_key_ctx"`
+	Expiration    pgtype.Timestamptz `json:"expiration"`
 	// Reference the provider configuration for this key
 	ProviderConfigID pgtype.UUID `json:"provider_config_id"`
 	// Additional metadata for the key
 	Metadata []byte `json:"metadata"`
 	// Timestamp when the key was created
-	CreatedAt pgtype.Timestamp `json:"created_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	// Timestamp when the key was last updated
-	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
-	KeyAccessServerID string           `json:"key_access_server_id"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	KeyAccessServerID string             `json:"key_access_server_id"`
 }
 
 // Table to store key provider configurations
@@ -279,9 +279,9 @@ type ProviderConfig struct {
 	// Configuration details for the key provider
 	Config []byte `json:"config"`
 	// Timestamp when the provider configuration was created
-	CreatedAt pgtype.Timestamp `json:"created_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	// Timestamp when the provider configuration was last updated
-	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 	// Additional metadata for the provider configuration
 	Metadata []byte `json:"metadata"`
 }
@@ -392,9 +392,10 @@ type SymKey struct {
 	// Reference the provider configuration for this key
 	ProviderConfigID pgtype.UUID `json:"provider_config_id"`
 	// Timestamp when the key was created
-	CreatedAt pgtype.Timestamp `json:"created_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	// Timestamp when the key was last updated
-	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 	// Additional metadata for the key
-	Metadata []byte `json:"metadata"`
+	Metadata   []byte             `json:"metadata"`
+	Expiration pgtype.Timestamptz `json:"expiration"`
 }

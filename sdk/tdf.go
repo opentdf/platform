@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/opentdf/platform/protocol/go/kas"
 
 	"github.com/google/uuid"
@@ -54,6 +55,7 @@ const (
 	kPolicy                 = "policy"
 	kHmacIntegrityAlgorithm = "HS256"
 	kGmacIntegrityAlgorithm = "GMAC"
+	hexSemverThreshold      = "4.3.0"
 )
 
 // Loads and reads ZTDF files
@@ -243,7 +245,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		}
 
 		segmentSig, err := calculateSignature(cipherData, tdfObject.payloadKey[:],
-			tdfConfig.segmentIntegrityAlgorithm, false)
+			tdfConfig.segmentIntegrityAlgorithm, tdfConfig.useHex)
 		if err != nil {
 			return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
@@ -262,7 +264,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	}
 
 	rootSignature, err := calculateSignature([]byte(aggregateHash), tdfObject.payloadKey[:],
-		tdfConfig.integrityAlgorithm, false)
+		tdfConfig.integrityAlgorithm, tdfConfig.useHex)
 	if err != nil {
 		return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 	}
@@ -322,7 +324,11 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 		var completeHashBuilder strings.Builder
 		completeHashBuilder.WriteString(aggregateHash)
-		completeHashBuilder.Write(hashOfAssertion)
+		if tdfConfig.useHex {
+			completeHashBuilder.Write(hashOfAssertionAsHex)
+		} else {
+			completeHashBuilder.Write(hashOfAssertion)
+		}
 
 		encoded := ocrypto.Base64Encode([]byte(completeHashBuilder.String()))
 
@@ -375,7 +381,10 @@ func (r *Reader) Manifest() Manifest {
 func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFConfig) error { //nolint:funlen,gocognit // Better readability keeping it as is
 	manifest := Manifest{}
 
-	manifest.TDFVersion = TDFSpecVersion
+	if !tdfConfig.excludeVersionFromManifest {
+		manifest.TDFVersion = TDFSpecVersion
+	}
+
 	if len(tdfConfig.splitPlan) == 0 && len(tdfConfig.kasInfoList) == 0 {
 		return fmt.Errorf("%w: no key access template specified or inferred", errInvalidKasInfo)
 	}
@@ -1264,4 +1273,18 @@ func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (boo
 	}
 
 	return false, nil
+}
+
+// check if the provided semver is less than the target
+func isLessThanSemver(version, target string) (bool, error) {
+	v1, err := semver.NewVersion(version)
+	if err != nil {
+		return false, fmt.Errorf("semver.NewVersion failed for version %s: %w", version, err)
+	}
+	v2, err := semver.NewVersion(target)
+	if err != nil {
+		return false, fmt.Errorf("semver.NewVersion failed for version %s: %w", target, err)
+	}
+	// Check if the provided version is less than the target version based on semantic versioning rules.
+	return v1.LessThan(v2), nil
 }

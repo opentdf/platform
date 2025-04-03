@@ -95,3 +95,21 @@ func TestWithAssertions(t *testing.T) {
 	assert.Equal(t, id1, cfg.assertions[0].ID)
 	assert.Equal(t, id2, cfg.assertions[1].ID)
 }
+
+func TestWithTargetMode(t *testing.T) {
+	cfg := makeConfig(t, WithTargetMode("0.0.0"))
+	assert.True(t, cfg.useHex)
+	assert.True(t, cfg.excludeVersionFromManifest)
+
+	cfg = makeConfig(t, WithTargetMode("v0.0.0"))
+	assert.True(t, cfg.useHex)
+	assert.True(t, cfg.excludeVersionFromManifest)
+
+	cfg = makeConfig(t, WithTargetMode("4.3.0"))
+	assert.False(t, cfg.useHex)
+	assert.False(t, cfg.excludeVersionFromManifest)
+
+	cfg = makeConfig(t, WithTargetMode("v4.3.1"))
+	assert.False(t, cfg.useHex)
+	assert.False(t, cfg.excludeVersionFromManifest)
+}

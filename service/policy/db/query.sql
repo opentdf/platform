@@ -978,20 +978,27 @@ WITH subject_mapping_update AS (
     WHERE id = sqlc.arg('id')
     RETURNING id
 ),
-action_update AS (
+-- Delete ALL existing action relationships when action_ids are provided
+action_delete AS (
     DELETE FROM subject_mapping_actions
-    WHERE 
+    WHERE
         subject_mapping_id = sqlc.arg('id')
-        AND sqlc.narg('action_ids') IS NOT NULL
-    RETURNING subject_mapping_id
+        AND sqlc.narg('action_ids')::UUID[] IS NOT NULL
+),
+-- Insert new action relationships
+action_insert AS (
+    INSERT INTO subject_mapping_actions (subject_mapping_id, action_id)
+    SELECT
+        sqlc.arg('id'),
+        unnest_value
+    FROM unnest(sqlc.narg('action_ids')::UUID[]) AS unnest_value
+    WHERE
+        sqlc.narg('action_ids')::UUID[] IS NOT NULL
+        AND EXISTS (SELECT 1 FROM subject_mapping_update)
+    -- Handle potential duplicates within the input array
+    ON CONFLICT (subject_mapping_id, action_id) DO NOTHING
 )
-INSERT INTO subject_mapping_actions (subject_mapping_id, action_id)
-SELECT 
-    sqlc.arg('id'),
-    unnest(sqlc.narg('action_ids')::UUID[])
-WHERE
-    sqlc.narg('action_ids') IS NOT NULL
-    AND EXISTS (SELECT 1 FROM subject_mapping_update);
+SELECT 1 as success;
 
 -- name: deleteSubjectMapping :execrows
 DELETE FROM subject_mappings WHERE id = $1;

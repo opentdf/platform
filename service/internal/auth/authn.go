@@ -296,7 +296,6 @@ func (a Authentication) lookupOrigins(header http.Header) []string {
 var goodPaths = regexp.MustCompile(`^[\w/-]{1,128}$`)
 
 func (a Authentication) lookupGatewayPaths(ctx context.Context, procedure string, header http.Header) []string {
-
 	origins := a.lookupOrigins(header)
 	if len(origins) == 0 {
 		return nil

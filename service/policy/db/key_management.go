@@ -178,8 +178,8 @@ func (c PolicyDBClient) UpdateProviderConfig(ctx context.Context, r *keymanageme
 }
 
 func (c PolicyDBClient) DeleteProviderConfig(ctx context.Context, id string) (*policy.KeyProviderConfig, error) {
-	pgId := pgtypeUUID(id)
-	if !pgId.Valid {
+	pgID := pgtypeUUID(id)
+	if !pgID.Valid {
 		return nil, db.ErrUUIDInvalid
 	}
 

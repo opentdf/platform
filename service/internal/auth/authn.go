@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -273,6 +274,64 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	})
 }
 
+func (a Authentication) lookupOrigins(header http.Header) []string {
+	result := make([]string, 0)
+	for _, m := range []string{"Origin", "Grpcgateway-Origin", "Grpcgateway-Referer"} {
+		origins := header.Values(m)
+		if len(origins) == 0 {
+			continue
+		}
+		for _, o := range origins {
+			if strings.HasSuffix(o, ":443") {
+				o = "https://" + strings.TrimPrefix(strings.TrimSuffix(o, ":443"), "https://")
+			} else {
+				o = strings.TrimSuffix(o, ":80")
+			}
+			result = append(result, o)
+		}
+	}
+	return result
+}
+
+var goodPaths = regexp.MustCompile(`^[\w/-]{1,128}$`)
+
+func (a Authentication) lookupGatewayPaths(ctx context.Context, procedure string, header http.Header) []string {
+	origins := a.lookupOrigins(header)
+	if len(origins) == 0 {
+		return nil
+	}
+
+	var paths []string
+	switch procedure {
+	case "/kas.AccessService/Rewrap":
+		paths = append(paths, "/kas/v2/rewrap")
+	default:
+		patterns := header["Pattern"]
+		if len(patterns) == 0 {
+			a.logger.InfoContext(ctx, "underspecified grpc gateway path; no pattern header", slog.Any("origin", origins), slog.String("procedure", procedure))
+			paths = allowedPublicEndpoints[:]
+		} else {
+			a.logger.InfoContext(ctx, "underspecified grpc gateway path; patterns found", slog.Any("origin", origins), slog.String("procedure", procedure), slog.Any("patterns", patterns))
+		}
+		for _, pattern := range patterns {
+			if matched := goodPaths.MatchString(pattern); matched {
+				paths = append(paths, pattern)
+			}
+		}
+		if len(paths) != len(patterns) {
+			a.logger.WarnContext(ctx, "invalid grpc gateway path; ignoring one or more invalid patterns", slog.Any("origin", origins), slog.String("procedure", procedure), slog.Any("patterns", patterns))
+		}
+	}
+
+	u := make([]string, 0, len(origins)*len(paths))
+	for _, o := range origins {
+		for _, p := range paths {
+			u = append(u, normalizeURL(o, &url.URL{Path: p}))
+		}
+	}
+	return u
+}
+
 // UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
 func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
@@ -290,26 +349,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				m: []string{http.MethodPost},
 			}
 
-			paths := req.Header()["Pattern"]
-			if len(paths) == 0 {
-				paths = allowedPublicEndpoints[:]
-			}
-			for _, m := range []string{"Origin", "Grpcgateway-Origin", "Grpcgateway-Referer"} {
-				origins := req.Header().Values(m)
-				if len(origins) == 0 {
-					continue
-				}
-				for _, o := range origins {
-					if strings.HasSuffix(o, ":443") {
-						o = "https://" + strings.TrimPrefix(strings.TrimSuffix(o, ":443"), "https://")
-					} else {
-						o = strings.TrimSuffix(o, ":80")
-					}
-					for _, u := range paths {
-						ri.u = append(ri.u, normalizeURL(o, &url.URL{Path: u}))
-					}
-				}
-			}
+			ri.u = append(ri.u, a.lookupGatewayPaths(ctx, req.Spec().Procedure, req.Header())...)
 
 			// Interceptor Logic
 			// Allow health checks and other public routes to pass through
@@ -365,9 +405,12 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
 			}
 
+			u := []string{path}
+			u = append(u, a.lookupGatewayPaths(ctx, path, header)...)
+
 			// Validate the token and create a JWT token
 			_, nextCtx, err := a.checkToken(ctx, authHeader, receiverInfo{
-				u: []string{path},
+				u: u,
 				m: []string{http.MethodPost},
 			}, header["Dpop"])
 			if err != nil {

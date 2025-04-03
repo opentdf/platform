@@ -4322,8 +4322,8 @@ const updateSubjectMapping = `-- name: updateSubjectMapping :execrows
 WITH subject_mapping_update AS (
     UPDATE subject_mappings
     SET
-        metadata = COALESCE($3::jsonb, metadata),
-        subject_condition_set_id = COALESCE($4::uuid[], subject_condition_set_id)
+        metadata = COALESCE($3::JSONB, metadata),
+        subject_condition_set_id = COALESCE($4::UUID, subject_condition_set_id)
     WHERE id = $1
     RETURNING id
 ),
@@ -4337,17 +4337,17 @@ action_update AS (
 INSERT INTO subject_mapping_actions (subject_mapping_id, action_id)
 SELECT 
     $1,
-    unnest($2::uuid[])
+    unnest($2::UUID[])
 WHERE
     $2 IS NOT NULL
     AND EXISTS (SELECT 1 FROM subject_mapping_update)
 `
 
 type updateSubjectMappingParams struct {
-	ID                    string   `json:"id"`
-	ActionIds             []string `json:"action_ids"`
-	Metadata              []byte   `json:"metadata"`
-	SubjectConditionSetID []string `json:"subject_condition_set_id"`
+	ID                    string      `json:"id"`
+	ActionIds             []string    `json:"action_ids"`
+	Metadata              []byte      `json:"metadata"`
+	SubjectConditionSetID pgtype.UUID `json:"subject_condition_set_id"`
 }
 
 // updateSubjectMapping
@@ -4355,8 +4355,8 @@ type updateSubjectMappingParams struct {
 //	WITH subject_mapping_update AS (
 //	    UPDATE subject_mappings
 //	    SET
-//	        metadata = COALESCE($3::jsonb, metadata),
-//	        subject_condition_set_id = COALESCE($4::uuid[], subject_condition_set_id)
+//	        metadata = COALESCE($3::JSONB, metadata),
+//	        subject_condition_set_id = COALESCE($4::UUID, subject_condition_set_id)
 //	    WHERE id = $1
 //	    RETURNING id
 //	),
@@ -4370,7 +4370,7 @@ type updateSubjectMappingParams struct {
 //	INSERT INTO subject_mapping_actions (subject_mapping_id, action_id)
 //	SELECT
 //	    $1,
-//	    unnest($2::uuid[])
+//	    unnest($2::UUID[])
 //	WHERE
 //	    $2 IS NOT NULL
 //	    AND EXISTS (SELECT 1 FROM subject_mapping_update)

@@ -973,8 +973,8 @@ SELECT id FROM inserted_mapping;
 WITH subject_mapping_update AS (
     UPDATE subject_mappings
     SET
-        metadata = COALESCE(sqlc.narg('metadata')::jsonb, metadata),
-        subject_condition_set_id = COALESCE(sqlc.narg('subject_condition_set_id')::uuid[], subject_condition_set_id)
+        metadata = COALESCE(sqlc.narg('metadata')::JSONB, metadata),
+        subject_condition_set_id = COALESCE(sqlc.narg('subject_condition_set_id')::UUID, subject_condition_set_id)
     WHERE id = sqlc.arg('id')
     RETURNING id
 ),
@@ -988,7 +988,7 @@ action_update AS (
 INSERT INTO subject_mapping_actions (subject_mapping_id, action_id)
 SELECT 
     sqlc.arg('id'),
-    unnest(sqlc.narg('action_ids')::uuid[])
+    unnest(sqlc.narg('action_ids')::UUID[])
 WHERE
     sqlc.narg('action_ids') IS NOT NULL
     AND EXISTS (SELECT 1 FROM subject_mapping_update);

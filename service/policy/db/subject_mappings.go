@@ -307,7 +307,7 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 		return nil, err
 	}
 
-	createdID, err := c.Queries.CreateSubjectMapping(ctx, CreateSubjectMappingParams{
+	createdID, err := c.Queries.createSubjectMapping(ctx, createSubjectMappingParams{
 		AttributeValueID:      attributeValueID,
 		Actions:               actionsJSON,
 		Metadata:              metadataJSON,
@@ -329,7 +329,7 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 }
 
 func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*policy.SubjectMapping, error) {
-	sm, err := c.Queries.GetSubjectMapping(ctx, id)
+	sm, err := c.Queries.getSubjectMapping(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -371,7 +371,7 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmappi
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	list, err := c.Queries.ListSubjectMappings(ctx, ListSubjectMappingsParams{
+	list, err := c.Queries.listSubjectMappings(ctx, listSubjectMappingsParams{
 		Limit:  limit,
 		Offset: offset,
 	})
@@ -452,7 +452,7 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 		}
 	}
 
-	count, err := c.Queries.UpdateSubjectMapping(ctx, UpdateSubjectMappingParams{
+	count, err := c.Queries.updateSubjectMapping(ctx, updateSubjectMappingParams{
 		ID:                    id,
 		Actions:               actionsJSON,
 		Metadata:              metadataJSON,
@@ -477,7 +477,7 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 
 // Deletes specified subject mapping and returns the id of the deleted
 func (c PolicyDBClient) DeleteSubjectMapping(ctx context.Context, id string) (*policy.SubjectMapping, error) {
-	count, err := c.Queries.DeleteSubjectMapping(ctx, id)
+	count, err := c.Queries.deleteSubjectMapping(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -500,7 +500,7 @@ func (c PolicyDBClient) GetMatchedSubjectMappings(ctx context.Context, propertie
 	for _, sp := range properties {
 		selectors = append(selectors, sp.GetExternalSelectorValue())
 	}
-	list, err := c.Queries.MatchSubjectMappings(ctx, selectors)
+	list, err := c.Queries.matchSubjectMappings(ctx, selectors)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

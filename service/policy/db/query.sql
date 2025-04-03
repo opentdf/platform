@@ -970,40 +970,42 @@ inserted_actions AS (
 SELECT id FROM inserted_mapping;
 
 -- name: updateSubjectMapping :execrows
-WITH existence_check AS (
-    SELECT 1 
-    FROM subject_mappings sm
-    WHERE sm.id = sqlc.arg('id')
-),
-subject_mapping_update AS (
-    UPDATE subject_mappings sm
-    SET
-        metadata = COALESCE(sqlc.narg('metadata')::JSONB, metadata),
-        subject_condition_set_id = COALESCE(sqlc.narg('subject_condition_set_id')::UUID, subject_condition_set_id)
-    WHERE sm.id = sqlc.arg('id')
-    RETURNING id
-),
--- Delete ALL existing action relationships when action_ids are provided
-action_delete AS (
-    DELETE FROM subject_mapping_actions
-    WHERE
-        subject_mapping_id = sqlc.arg('id')
-        AND sqlc.narg('action_ids')::UUID[] IS NOT NULL
-),
--- Insert new action relationships
-action_insert AS (
-    INSERT INTO subject_mapping_actions (subject_mapping_id, action_id)
-    SELECT
-        sqlc.arg('id'),
-        unnest_value
-    FROM unnest(sqlc.narg('action_ids')::UUID[]) AS unnest_value
-    WHERE
-        sqlc.narg('action_ids')::UUID[] IS NOT NULL
-        AND EXISTS (SELECT 1 FROM subject_mapping_update)
-    -- Handle potential duplicates within the input array
-    ON CONFLICT (subject_mapping_id, action_id) DO NOTHING
-)
-SELECT EXISTS (SELECT 1 FROM existence_check) as success;
+WITH
+	subject_mapping_update AS (
+		UPDATE subject_mappings
+		SET
+			metadata = COALESCE(sqlc.narg('metadata')::JSONB, metadata),
+			subject_condition_set_id = COALESCE(sqlc.narg('subject_condition_set_id')::UUID, subject_condition_set_id)
+		WHERE id = sqlc.arg('id')
+		RETURNING id
+	),
+	action_delete AS (
+		DELETE FROM subject_mapping_actions
+		WHERE
+			subject_mapping_id = sqlc.arg('id')
+			AND sqlc.narg('action_ids')::UUID[] IS NOT NULL
+	),
+	action_insert AS (
+		INSERT INTO
+			subject_mapping_actions (subject_mapping_id, action_id)
+		SELECT
+			sqlc.arg('id'),
+			unnest_value
+		FROM unnest(sqlc.narg('action_ids')::UUID[]) AS unnest_value
+		WHERE sqlc.narg('action_ids')::UUID[] IS NOT NULL
+		ON CONFLICT (subject_mapping_id, action_id) DO NOTHING
+	),
+	update_count AS (
+		SELECT COUNT(*) AS cnt
+		FROM subject_mapping_update
+	)
+SELECT
+-- Divide by error occurs if id was not found (CTE bypasses typical count failure)
+	1 / CASE WHEN ( 
+            SELECT cnt FROM update_count
+		) = 0 THEN 0
+		ELSE 1
+	END;
 
 -- name: deleteSubjectMapping :execrows
 DELETE FROM subject_mappings WHERE id = $1;

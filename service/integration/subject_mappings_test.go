@@ -175,11 +175,10 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentSubjectCondit
 // 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
 // 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set3")
 // 	actionUpdate := s.f.GetStandardAction("update")
-// 	aCustomUpload := fixtureActionCustomUpload
 
 // 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 // 		AttributeValueId:              fixtureAttrValID,
-// 		Actions:                       []*policy.Action{actionUpdate, aCustomUpload},
+// 		Actions:                       []*policy.Action{actionUpdate, fixtureActionCustomUpload},
 // 		ExistingSubjectConditionSetId: fixtureScs.ID,
 // 	}
 // 	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
@@ -187,10 +186,9 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentSubjectCondit
 // 	s.NotNil(created)
 
 // 	// update the subject mapping
-// 	newActions := []*policy.Action{actionUpdate}
 // 	update := &subjectmapping.UpdateSubjectMappingRequest{
 // 		Id:      created.GetId(),
-// 		Actions: newActions,
+// 		Actions: []*policy.Action{actionUpdate},
 // 	}
 
 // 	updated, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
@@ -202,7 +200,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentSubjectCondit
 // 	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
 // 	s.Require().NoError(err)
 // 	s.NotNil(got)
-// 	s.Equal(len(newActions), len(got.GetActions()))
+// 	s.Equal(len(update.GetActions()), len(got.GetActions()))
 // 	// s.Equal(got.GetActions(), newActions)
 // 	s.Equal(newSubjectMapping.GetAttributeValueId(), got.GetAttributeValue().GetId())
 // 	s.Equal(newSubjectMapping.GetExistingSubjectConditionSetId(), got.GetSubjectConditionSet().GetId())
@@ -253,67 +251,63 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_SubjectConditionSetId() 
 	// s.Equal(newSubjectMapping.GetActions(), got.GetActions())
 }
 
-// func (s *SubjectMappingsSuite) Test_UpdateSubjectMapping_UpdateAllAllowedFields() {
-// 	// create a new one, update it, and verify the update
-// 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").ID
-// 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
-// 	actionCreate := s.f.GetStandardAction("create")
+func (s *SubjectMappingsSuite) Test_UpdateSubjectMapping_UpdateAllAllowedFields() {
+	// create a new one, update it, and verify the update
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").ID
+	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
+	actionCreate := s.f.GetStandardAction("create")
 
-// 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
-// 		AttributeValueId:              fixtureAttrValID,
-// 		Actions:                       []*policy.Action{actionCreate},
-// 		ExistingSubjectConditionSetId: fixtureScs.ID,
-// 	}
+	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              fixtureAttrValID,
+		Actions:                       []*policy.Action{actionCreate},
+		ExistingSubjectConditionSetId: fixtureScs.ID,
+	}
 
-// 	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
-// 	s.Require().NoError(err)
-// 	s.NotNil(created)
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
+	s.Require().NoError(err)
+	s.NotNil(created)
 
-// 	// update the subject mapping
-// 	newScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
-// 	newActions := []*policy.Action{fixtureActionCustomUpload}
-// 	metadata := &common.MetadataMutable{
-// 		Labels: map[string]string{"key": "value"},
-// 	}
-// 	update := &subjectmapping.UpdateSubjectMappingRequest{
-// 		Id:                     created.GetId(),
-// 		SubjectConditionSetId:  newScs.ID,
-// 		Actions:                newActions,
-// 		Metadata:               metadata,
-// 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
-// 	}
+	// update the subject mapping
+	newScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
+	newActions := []*policy.Action{fixtureActionCustomUpload}
+	metadata := &common.MetadataMutable{
+		Labels: map[string]string{"key": "value"},
+	}
+	update := &subjectmapping.UpdateSubjectMappingRequest{
+		Id:                     created.GetId(),
+		SubjectConditionSetId:  newScs.ID,
+		Actions:                newActions,
+		Metadata:               metadata,
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
+	}
 
-// 	updated, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
-// 	s.Require().NoError(err)
-// 	s.NotNil(updated)
-// 	s.Equal(created.GetId(), updated.GetId())
+	updated, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
+	s.Require().NoError(err)
+	s.NotNil(updated)
+	s.Equal(created.GetId(), updated.GetId())
 
-// 	// verify the subject mapping was updated
-// 	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
-// 	s.Require().NoError(err)
-// 	s.NotNil(got)
-// 	s.Equal(created.GetId(), got.GetId())
-// 	s.Equal(newSubjectMapping.GetAttributeValueId(), got.GetAttributeValue().GetId())
-// 	s.Equal(newScs.ID, got.GetSubjectConditionSet().GetId())
-// 	s.Equal(len(newActions), len(got.GetActions()))
-// 	// s.Equal(newActions, got.GetActions())
-// 	s.Equal(metadata.GetLabels()["key"], got.GetMetadata().GetLabels()["key"])
-// }
+	// verify the subject mapping was updated
+	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(created.GetId(), got.GetId())
+	s.Equal(newSubjectMapping.GetAttributeValueId(), got.GetAttributeValue().GetId())
+	s.Equal(newScs.ID, got.GetSubjectConditionSet().GetId())
+	s.Equal(len(newActions), len(got.GetActions()))
+	// s.Equal(newActions, got.GetActions())
+	s.Equal(metadata.GetLabels()["key"], got.GetMetadata().GetLabels()["key"])
+}
 
-// func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_NonExistentId_Fails() {
-// 	update := &subjectmapping.UpdateSubjectMappingRequest{
-// 		Id: nonExistentSubjectMappingID,
-// 		Metadata: &common.MetadataMutable{
-// 			Labels: map[string]string{"key": "value"},
-// 		},
-// 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
-// 	}
+func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_NonExistentId_Fails() {
+	update := &subjectmapping.UpdateSubjectMappingRequest{
+		Id: nonExistentSubjectMappingID,
+	}
 
-// 	sm, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
-// 	s.Require().Error(err)
-// 	s.Nil(sm)
-// 	s.Require().ErrorIs(err, db.ErrNotFound)
-// }
+	sm, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
+	s.Require().Error(err)
+	s.Nil(sm)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_NonExistentSubjectConditionSetId_Fails() {
 	update := &subjectmapping.UpdateSubjectMappingRequest{

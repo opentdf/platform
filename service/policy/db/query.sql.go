@@ -4319,87 +4319,92 @@ func (q *Queries) updateStandardAction(ctx context.Context, id string) (int64, e
 }
 
 const updateSubjectMapping = `-- name: updateSubjectMapping :execrows
-WITH existence_check AS (
-    SELECT 1 
-    FROM subject_mappings sm
-    WHERE sm.id = $1
-),
-subject_mapping_update AS (
-    UPDATE subject_mappings sm
-    SET
-        metadata = COALESCE($2::JSONB, metadata),
-        subject_condition_set_id = COALESCE($3::UUID, subject_condition_set_id)
-    WHERE sm.id = $1
-    RETURNING id
-),
-action_delete AS (
-    DELETE FROM subject_mapping_actions
-    WHERE
-        subject_mapping_id = $1
-        AND $4::UUID[] IS NOT NULL
-),
-action_insert AS (
-    INSERT INTO subject_mapping_actions (subject_mapping_id, action_id)
-    SELECT
-        $1,
-        unnest_value
-    FROM unnest($4::UUID[]) AS unnest_value
-    WHERE
-        $4::UUID[] IS NOT NULL
-        AND EXISTS (SELECT 1 FROM subject_mapping_update)
-    -- Handle potential duplicates within the input array
-    ON CONFLICT (subject_mapping_id, action_id) DO NOTHING
-)
-SELECT EXISTS (SELECT 1 FROM existence_check) as success
+WITH
+	subject_mapping_update AS (
+		UPDATE subject_mappings
+		SET
+			metadata = COALESCE($1::JSONB, metadata),
+			subject_condition_set_id = COALESCE($2::UUID, subject_condition_set_id)
+		WHERE id = $3
+		RETURNING id
+	),
+	action_delete AS (
+		DELETE FROM subject_mapping_actions
+		WHERE
+			subject_mapping_id = $3
+			AND $4::UUID[] IS NOT NULL
+	),
+	action_insert AS (
+		INSERT INTO
+			subject_mapping_actions (subject_mapping_id, action_id)
+		SELECT
+			$3,
+			unnest_value
+		FROM unnest($4::UUID[]) AS unnest_value
+		WHERE $4::UUID[] IS NOT NULL
+		ON CONFLICT (subject_mapping_id, action_id) DO NOTHING
+	),
+	update_count AS (
+		SELECT COUNT(*) AS cnt
+		FROM subject_mapping_update
+	)
+SELECT
+	1 / CASE WHEN ( 
+            SELECT cnt FROM update_count
+		) = 0 THEN 0
+		ELSE 1
+	END
 `
 
 type updateSubjectMappingParams struct {
-	ID                    string      `json:"id"`
 	Metadata              []byte      `json:"metadata"`
 	SubjectConditionSetID pgtype.UUID `json:"subject_condition_set_id"`
+	ID                    string      `json:"id"`
 	ActionIds             []string    `json:"action_ids"`
 }
 
-// Delete ALL existing action relationships when action_ids are provided
-// Insert new action relationships
+// Divide by error occurs if id was not found (CTE bypasses typical count failure)
 //
-//	WITH existence_check AS (
-//	    SELECT 1
-//	    FROM subject_mappings sm
-//	    WHERE sm.id = $1
-//	),
-//	subject_mapping_update AS (
-//	    UPDATE subject_mappings sm
-//	    SET
-//	        metadata = COALESCE($2::JSONB, metadata),
-//	        subject_condition_set_id = COALESCE($3::UUID, subject_condition_set_id)
-//	    WHERE sm.id = $1
-//	    RETURNING id
-//	),
-//	action_delete AS (
-//	    DELETE FROM subject_mapping_actions
-//	    WHERE
-//	        subject_mapping_id = $1
-//	        AND $4::UUID[] IS NOT NULL
-//	),
-//	action_insert AS (
-//	    INSERT INTO subject_mapping_actions (subject_mapping_id, action_id)
-//	    SELECT
-//	        $1,
-//	        unnest_value
-//	    FROM unnest($4::UUID[]) AS unnest_value
-//	    WHERE
-//	        $4::UUID[] IS NOT NULL
-//	        AND EXISTS (SELECT 1 FROM subject_mapping_update)
-//	    -- Handle potential duplicates within the input array
-//	    ON CONFLICT (subject_mapping_id, action_id) DO NOTHING
-//	)
-//	SELECT EXISTS (SELECT 1 FROM existence_check) as success
+//	WITH
+//		subject_mapping_update AS (
+//			UPDATE subject_mappings
+//			SET
+//				metadata = COALESCE($1::JSONB, metadata),
+//				subject_condition_set_id = COALESCE($2::UUID, subject_condition_set_id)
+//			WHERE id = $3
+//			RETURNING id
+//		),
+//		action_delete AS (
+//			DELETE FROM subject_mapping_actions
+//			WHERE
+//				subject_mapping_id = $3
+//				AND $4::UUID[] IS NOT NULL
+//		),
+//		action_insert AS (
+//			INSERT INTO
+//				subject_mapping_actions (subject_mapping_id, action_id)
+//			SELECT
+//				$3,
+//				unnest_value
+//			FROM unnest($4::UUID[]) AS unnest_value
+//			WHERE $4::UUID[] IS NOT NULL
+//			ON CONFLICT (subject_mapping_id, action_id) DO NOTHING
+//		),
+//		update_count AS (
+//			SELECT COUNT(*) AS cnt
+//			FROM subject_mapping_update
+//		)
+//	SELECT
+//		1 / CASE WHEN (
+//	            SELECT cnt FROM update_count
+//			) = 0 THEN 0
+//			ELSE 1
+//		END
 func (q *Queries) updateSubjectMapping(ctx context.Context, arg updateSubjectMappingParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateSubjectMapping,
-		arg.ID,
 		arg.Metadata,
 		arg.SubjectConditionSetID,
+		arg.ID,
 		arg.ActionIds,
 	)
 	if err != nil {

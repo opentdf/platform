@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
@@ -328,6 +331,10 @@ func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*poli
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
+	// ID was not found and we received an empty result set
+	if sm.ID == "" {
+		return nil, db.ErrNotFound
+	}
 
 	metadata := &common.Metadata{}
 	if err = unmarshalMetadata(sm.Metadata, metadata); err != nil {
@@ -475,12 +482,13 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 		updateParams.ActionIds = actionIDs
 	}
 
-	count, err := c.Queries.updateSubjectMapping(ctx, updateParams)
+	_, err = c.Queries.updateSubjectMapping(ctx, updateParams)
 	if err != nil {
+		// CTE behavior requires custom handling with divide by zero to detect 0 count
+		if strings.Contains(err.Error(), pgerrcode.DivisionByZero) {
+			err = pgx.ErrNoRows
+		}
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	if count == 0 {
-		return nil, db.ErrNotFound
 	}
 
 	return &policy.SubjectMapping{

@@ -970,12 +970,17 @@ inserted_actions AS (
 SELECT id FROM inserted_mapping;
 
 -- name: updateSubjectMapping :execrows
-WITH subject_mapping_update AS (
-    UPDATE subject_mappings
+WITH existence_check AS (
+    SELECT 1 
+    FROM subject_mappings sm
+    WHERE sm.id = sqlc.arg('id')
+),
+subject_mapping_update AS (
+    UPDATE subject_mappings sm
     SET
         metadata = COALESCE(sqlc.narg('metadata')::JSONB, metadata),
         subject_condition_set_id = COALESCE(sqlc.narg('subject_condition_set_id')::UUID, subject_condition_set_id)
-    WHERE id = sqlc.arg('id')
+    WHERE sm.id = sqlc.arg('id')
     RETURNING id
 ),
 -- Delete ALL existing action relationships when action_ids are provided
@@ -998,7 +1003,7 @@ action_insert AS (
     -- Handle potential duplicates within the input array
     ON CONFLICT (subject_mapping_id, action_id) DO NOTHING
 )
-SELECT 1 as success;
+SELECT EXISTS (SELECT 1 FROM existence_check) as success;
 
 -- name: deleteSubjectMapping :execrows
 DELETE FROM subject_mappings WHERE id = $1;

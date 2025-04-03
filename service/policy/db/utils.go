@@ -1,6 +1,7 @@
 package db
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -55,6 +56,43 @@ func unmarshalSubjectConditionSet(subjectConditionSetJSON []byte, scs *policy.Su
 			return fmt.Errorf("failed to unmarshal scsJSON [%s]: %w", string(subjectConditionSetJSON), err)
 		}
 	}
+	return nil
+}
+
+func unmarshalAllActionsProto(stdActionsJSON []byte, customActionsJSON []byte, actions *[]*policy.Action) error {
+	var (
+		stdActions    = new([]*policy.Action)
+		customActions = new([]*policy.Action)
+	)
+	if err := unmarshalActionsProto(stdActionsJSON, stdActions); err != nil {
+		return fmt.Errorf("failed to unmarshal standard actions array [%s]: %w", string(stdActionsJSON), err)
+	}
+	if err := unmarshalActionsProto(customActionsJSON, customActions); err != nil {
+		return fmt.Errorf("failed to unmarshal custom actions array [%s]: %w", string(customActionsJSON), err)
+	}
+	*actions = append(*actions, *stdActions...)
+	*actions = append(*actions, *customActions...)
+
+	return nil
+}
+
+func unmarshalActionsProto(actionsJSON []byte, actions *[]*policy.Action) error {
+	var raw []json.RawMessage
+
+	if actionsJSON != nil {
+		if err := json.Unmarshal(actionsJSON, &raw); err != nil {
+			return fmt.Errorf("failed to unmarshal actions array [%s]: %w", string(actionsJSON), err)
+		}
+
+		for _, r := range raw {
+			a := policy.Action{}
+			if err := protojson.Unmarshal(r, &a); err != nil {
+				return fmt.Errorf("failed to unmarshal action [%s]: %w", string(r), err)
+			}
+			*actions = append(*actions, &a)
+		}
+	}
+
 	return nil
 }
 

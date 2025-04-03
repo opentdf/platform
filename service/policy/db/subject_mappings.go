@@ -278,8 +278,6 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 			actionIDs = append(actionIDs, a.ID)
 		}
 	}
-	fmt.Println("action ids", actionIDs)
-	fmt.Println("action names", actionNames)
 
 	// Subject Condition Sets may be existing or new, and protos document preference for existing SCS IDs when both provided
 	switch {
@@ -345,7 +343,6 @@ func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*poli
 	if err = unmarshalAllActionsProto(sm.StandardActions, sm.CustomActions, &a); err != nil {
 		return nil, err
 	}
-	fmt.Println("got actions", a)
 
 	scs := policy.SubjectConditionSet{}
 	if err = unmarshalSubjectConditionSet(sm.SubjectConditionSet, &scs); err != nil {
@@ -442,6 +439,12 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 		return nil, err
 	}
 
+	updateParams := updateSubjectMappingParams{
+		ID:                    id,
+		Metadata:              metadataJSON,
+		SubjectConditionSetID: pgtypeUUID(subjectConditionSetID),
+	}
+
 	actionIDs := make([]string, 0)
 	if len(actions) > 0 {
 		actionNames := make([]string, 0)
@@ -469,18 +472,13 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 				actionIDs = append(actionIDs, a.ID)
 			}
 		}
+		updateParams.ActionIds = actionIDs
 	}
 
-	count, err := c.Queries.updateSubjectMapping(ctx, updateSubjectMappingParams{
-		ID:                    id,
-		ActionIds:             actionIDs,
-		Metadata:              metadataJSON,
-		SubjectConditionSetID: pgtypeUUID(subjectConditionSetID),
-	})
+	count, err := c.Queries.updateSubjectMapping(ctx, updateParams)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-	fmt.Println("count", count)
 	if count == 0 {
 		return nil, db.ErrNotFound
 	}

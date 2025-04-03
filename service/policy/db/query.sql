@@ -430,7 +430,6 @@ values AS (
 	WHERE av.active = TRUE
 	GROUP BY av.attribute_definition_id
 )
-
 SELECT
 	td.id,
 	td.name,
@@ -850,7 +849,7 @@ RETURNING id;
 -- SUBJECT MAPPINGS
 ----------------------------------------------------------------
 
--- name: ListSubjectMappings :many
+-- name: listSubjectMappings :many
 WITH counted AS (
     SELECT COUNT(sm.id) AS total
     FROM subject_mappings sm
@@ -891,7 +890,7 @@ GROUP BY av.id, sm.id, scs.id, counted.total, fqns.fqn
 LIMIT @limit_
 OFFSET @offset_;
 
--- name: GetSubjectMapping :one
+-- name: getSubjectMapping :one
 SELECT
     sm.id,
     (
@@ -919,7 +918,7 @@ LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
 WHERE sm.id = $1
 GROUP BY av.id, sm.id, scs.id;
 
--- name: MatchSubjectMappings :many
+-- name: matchSubjectMappings :many
 SELECT
     sm.id,
     (
@@ -951,20 +950,50 @@ WHERE ns.active = true AND ad.active = true and av.active = true AND EXISTS (
 )
 GROUP BY av.id, sm.id, scs.id;
 
--- name: CreateSubjectMapping :one
-INSERT INTO subject_mappings (attribute_value_id, actions, metadata, subject_condition_set_id)
-VALUES ($1, $2, $3, $4)
-RETURNING id;
+-- name: createSubjectMapping :one
+WITH inserted_mapping AS (
+    INSERT INTO subject_mappings (
+        attribute_value_id,
+        metadata,
+        subject_condition_set_id
+    )
+    VALUES ($1, $2, $3)
+    RETURNING id
+),
+inserted_actions AS (
+    INSERT INTO subject_mapping_actions (subject_mapping_id, action_id)
+    SELECT 
+        (SELECT id FROM inserted_mapping),
+        unnest(sqlc.arg('action_ids')::uuid[])
+    RETURNING subject_mapping_id
+)
+SELECT id FROM inserted_mapping;
 
--- name: UpdateSubjectMapping :execrows
-UPDATE subject_mappings
-SET
-    actions = COALESCE(sqlc.narg('actions'), actions),
-    metadata = COALESCE(sqlc.narg('metadata'), metadata),
-    subject_condition_set_id = COALESCE(sqlc.narg('subject_condition_set_id'), subject_condition_set_id)
-WHERE id = $1;
+-- name: updateSubjectMapping :execrows
+WITH subject_mapping_update AS (
+    UPDATE subject_mappings
+    SET
+        metadata = COALESCE(sqlc.narg('metadata'), metadata),
+        subject_condition_set_id = COALESCE(sqlc.narg('subject_condition_set_id'), subject_condition_set_id)
+    WHERE id = sqlc.arg('id')
+    RETURNING id
+),
+action_update AS (
+    DELETE FROM subject_mapping_actions
+    WHERE 
+        subject_mapping_id = sqlc.arg('id')
+        AND sqlc.narg('action_ids') IS NOT NULL
+    RETURNING subject_mapping_id
+)
+INSERT INTO subject_mapping_actions (subject_mapping_id, action_id)
+SELECT 
+    sqlc.arg('id'),
+    unnest(sqlc.narg('action_ids')::uuid[])
+WHERE
+    sqlc.narg('action_ids') IS NOT NULL
+    AND EXISTS (SELECT 1 FROM subject_mapping_update);
 
--- name: DeleteSubjectMapping :execrows
+-- name: deleteSubjectMapping :execrows
 DELETE FROM subject_mappings WHERE id = $1;
 
 
@@ -1227,9 +1256,48 @@ WHERE
   (sqlc.narg('id')::uuid IS NULL OR a.id = sqlc.narg('id')::uuid)
   AND (sqlc.narg('name')::text IS NULL OR a.name = sqlc.narg('name')::text);
 
+-- name: createOrListActionsByName :many
+WITH input_actions AS (
+    SELECT unnest(sqlc.arg('action_names')::text[]) AS name
+),
+new_actions AS (
+    INSERT INTO actions (name, is_standard)
+    SELECT 
+        input.name, 
+        FALSE -- custom actions
+    FROM input_actions input
+    WHERE NOT EXISTS (
+        SELECT 1 FROM actions a WHERE LOWER(a.name) = LOWER(input.name)
+    )
+    ON CONFLICT (name) DO NOTHING
+    RETURNING id, name, is_standard, created_at
+),
+all_actions AS (
+    -- Get existing actions that match input names
+    SELECT a.id, a.name, a.is_standard, a.created_at, 
+           TRUE AS pre_existing
+    FROM actions a
+    JOIN input_actions input ON LOWER(a.name) = LOWER(input.name)
+    
+    UNION ALL
+    
+    -- Include newly created actions
+    SELECT id, name, is_standard, created_at,
+           FALSE AS pre_existing
+    FROM new_actions
+)
+SELECT 
+    id,
+    name,
+    is_standard,
+    created_at,
+    pre_existing
+FROM all_actions
+ORDER BY name;
+
 -- name: createCustomAction :one
-INSERT INTO actions (name, is_standard, metadata)
-VALUES ($1, FALSE, $3)
+INSERT INTO actions (name, metadata, is_standard)
+VALUES ($1, $2, FALSE)
 RETURNING id;
 
 -- name: updateCustomAction :execrows

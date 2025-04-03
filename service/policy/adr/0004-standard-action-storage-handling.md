@@ -9,7 +9,7 @@ with Custom Actions (which must be fetched / configured) is challenging.
 
 1. We will store CRUD action names with `is_standard = TRUE` in policy db table.
 2. We will expose `ActionCreate`, `ActionRead`, etc, via SDK constants to make standard actions importable.
-3. Custom actions in PEPs will be retrievable or configrable as needed (as action name strings or policy object action ids).
+3. Custom actions in PEPs will be retrievable or configurable as needed (as action name strings or policy object action ids).
 4. We will avoid significant complexity from normalizing proto enums to stored table rows, and vice versa.
 5. Subject Mappings CRUD, Obligations CRUD, and GetDecisions will support actions by `name` or `id` and
 validate that the action exists in the policy database.

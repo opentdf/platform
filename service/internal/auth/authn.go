@@ -365,9 +365,30 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
 			}
 
+			u := []string{path}
+			if len(header["Grpcgateway-Origin"]) > 0 {
+				origin := header["Grpcgateway-Origin"][0]
+				if a.oidcConfiguration.Issuer == strings.TrimSuffix(origin, "/") {
+					// Where was this forwarded from?
+					a.logger.InfoContext(ctx, "invalid grpcgateway-origin header", slog.String("origin", origin), slog.String("issuer", a.oidcConfiguration.Issuer))
+				} else {
+					switch path {
+					case "/kas.AccessService/Rewrap":
+						u = append(u, normalizeURL(origin, &url.URL{Path: "/kas/v2/rewrap"}))
+					default:
+						pattern := header["Pattern"]
+						if len(pattern) == 0 {
+							a.logger.InfoContext(ctx, "unknown grpc gateway path; no pattern header", slog.String("origin", origin), slog.String("path", path))
+						} else {
+							a.logger.InfoContext(ctx, "unknown grpc gateway path", slog.String("origin", origin), slog.String("path", path), slog.String("pattern", pattern[0]))
+						}
+					}
+				}
+			}
+
 			// Validate the token and create a JWT token
 			_, nextCtx, err := a.checkToken(ctx, authHeader, receiverInfo{
-				u: []string{path},
+				u: u,
 				m: []string{http.MethodPost},
 			}, header["Dpop"])
 			if err != nil {

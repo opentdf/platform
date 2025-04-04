@@ -25,11 +25,10 @@ type SubjectMappingService struct { //nolint:revive // SubjectMappingService is 
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[subjectmappingconnect.SubjectMappingServiceHandler] {
 	return &serviceregistry.Service[subjectmappingconnect.SubjectMappingServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[subjectmappingconnect.SubjectMappingServiceHandler]{
-			Namespace:       ns,
-			DB:              dbRegister,
-			ServiceDesc:     &sm.SubjectMappingService_ServiceDesc,
-			ConnectRPCFunc:  subjectmappingconnect.NewSubjectMappingServiceHandler,
-			GRPCGatewayFunc: sm.RegisterSubjectMappingServiceHandler,
+			Namespace:      ns,
+			DB:             dbRegister,
+			ServiceDesc:    &sm.SubjectMappingService_ServiceDesc,
+			ConnectRPCFunc: subjectmappingconnect.NewSubjectMappingServiceHandler,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (subjectmappingconnect.SubjectMappingServiceHandler, serviceregistry.HandlerServer) {
 				cfg := policyconfig.GetSharedPolicyConfig(srp)
 				return &SubjectMappingService{

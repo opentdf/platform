@@ -25,11 +25,10 @@ type ResourceMappingService struct { //nolint:revive // ResourceMappingService i
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[resourcemappingconnect.ResourceMappingServiceHandler] {
 	return &serviceregistry.Service[resourcemappingconnect.ResourceMappingServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[resourcemappingconnect.ResourceMappingServiceHandler]{
-			Namespace:       ns,
-			DB:              dbRegister,
-			ServiceDesc:     &resourcemapping.ResourceMappingService_ServiceDesc,
-			ConnectRPCFunc:  resourcemappingconnect.NewResourceMappingServiceHandler,
-			GRPCGatewayFunc: resourcemapping.RegisterResourceMappingServiceHandler,
+			Namespace:      ns,
+			DB:             dbRegister,
+			ServiceDesc:    &resourcemapping.ResourceMappingService_ServiceDesc,
+			ConnectRPCFunc: resourcemappingconnect.NewResourceMappingServiceHandler,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (resourcemappingconnect.ResourceMappingServiceHandler, serviceregistry.HandlerServer) {
 				cfg := policyconfig.GetSharedPolicyConfig(srp)
 				return &ResourceMappingService{

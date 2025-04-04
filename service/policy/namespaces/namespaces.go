@@ -26,11 +26,10 @@ type NamespacesService struct { //nolint:revive // NamespacesService is a valid 
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[namespacesconnect.NamespaceServiceHandler] {
 	return &serviceregistry.Service[namespacesconnect.NamespaceServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[namespacesconnect.NamespaceServiceHandler]{
-			Namespace:       ns,
-			DB:              dbRegister,
-			ServiceDesc:     &namespaces.NamespaceService_ServiceDesc,
-			ConnectRPCFunc:  namespacesconnect.NewNamespaceServiceHandler,
-			GRPCGatewayFunc: namespaces.RegisterNamespaceServiceHandler,
+			Namespace:      ns,
+			DB:             dbRegister,
+			ServiceDesc:    &namespaces.NamespaceService_ServiceDesc,
+			ConnectRPCFunc: namespacesconnect.NewNamespaceServiceHandler,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (namespacesconnect.NamespaceServiceHandler, serviceregistry.HandlerServer) {
 				cfg := policyconfig.GetSharedPolicyConfig(srp)
 				ns := &NamespacesService{

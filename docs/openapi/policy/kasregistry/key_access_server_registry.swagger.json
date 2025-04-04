@@ -588,6 +588,9 @@
         "keyId": {
           "type": "string"
         },
+        "keyAlgorithm": {
+          "$ref": "#/definitions/policyAlgorithm"
+        },
         "keyStatus": {
           "$ref": "#/definitions/policyKeyStatus"
         },

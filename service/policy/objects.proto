@@ -423,11 +423,12 @@ enum KeyMode {
 message AsymmetricKey {
   string id = 1;
   string key_id = 2;
-  KeyStatus key_status = 3;
-  KeyMode key_mode = 4; // Specifies how the key is managed (local or remote)
-  bytes public_key_ctx = 5; // Specific structure based on key provider implementation
-  bytes private_key_ctx = 6; // Specific structure based on key provider implementation
-  KeyProviderConfig provider_config = 7; // Configuration for the key provider
+  Algorithm key_algorithm = 3;
+  KeyStatus key_status = 4;
+  KeyMode key_mode = 5; // Specifies how the key is managed (local or remote)
+  bytes public_key_ctx = 6; // Specific structure based on key provider implementation
+  bytes private_key_ctx = 7; // Specific structure based on key provider implementation
+  KeyProviderConfig provider_config = 8; // Configuration for the key provider
 
   // Common metadata fields
   common.Metadata metadata = 100;

@@ -23,6 +23,7 @@ type CryptoProvider interface {
 	Identifier() string
 	EncryptAsymmetric(ctx context.Context, keyRef KeyRef, data []byte) ([]byte, error)
 	DecryptAsymmetric(ctx context.Context, keyRef KeyRef, cipherText []byte) ([]byte, error)
+	DeriveSharedKey(ctx context.Context, privateKeyRef KeyRef, publicKeyRef KeyRef) ([]byte, error)
 	Sign(ctx context.Context, data []byte, keyRef KeyRef) ([]byte, error)
 	VerifySignature(ctx context.Context, signature []byte, data []byte, keyRef policy.AsymmetricKey) (bool, error)
 	EncryptSymmetric(ctx context.Context, keyRef KeyRef, data []byte) ([]byte, error)
@@ -52,6 +53,11 @@ func (c *CryptoService) EncryptAsymmetric(ctx context.Context, keyRef *policy.As
 
 func (c *CryptoService) DecryptAsymmetric(keyRef *policy.AsymmetricKey, cipherText []byte) ([]byte, error) {
 	// Implementation of DecryptAsymmetric
+	return nil, nil
+}
+
+func (c *CryptoService) DeriveSharedKey(privateKey *policy.AsymmetricKey, publicKey *policy.AsymmetricKey) ([]byte, error) {
+	// Implementation of DeriveSharedKey
 	return nil, nil
 }
 

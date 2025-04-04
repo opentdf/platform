@@ -53,22 +53,24 @@ type TDFOption func(*TDFConfig) error
 
 // TDFConfig Internal config struct for building TDF options.
 type TDFConfig struct {
-	autoconfigure             bool
-	defaultSegmentSize        int64
-	enableEncryption          bool
-	tdfFormat                 TDFFormat
-	tdfPublicKey              string // TODO: Remove it
-	tdfPrivateKey             string
-	metaData                  string
-	mimeType                  string
-	integrityAlgorithm        IntegrityAlgorithm
-	segmentIntegrityAlgorithm IntegrityAlgorithm
-	assertions                []AssertionConfig
-	attributes                []AttributeValueFQN
-	attributeValues           []*policy.Value
-	kasInfoList               []KASInfo
-	splitPlan                 []keySplitStep
-	keyType                   ocrypto.KeyType
+	autoconfigure              bool
+	defaultSegmentSize         int64
+	enableEncryption           bool
+	tdfFormat                  TDFFormat
+	tdfPublicKey               string // TODO: Remove it
+	tdfPrivateKey              string
+	metaData                   string
+	mimeType                   string
+	integrityAlgorithm         IntegrityAlgorithm
+	segmentIntegrityAlgorithm  IntegrityAlgorithm
+	assertions                 []AssertionConfig
+	attributes                 []AttributeValueFQN
+	attributeValues            []*policy.Value
+	kasInfoList                []KASInfo
+	splitPlan                  []keySplitStep
+	keyType                    ocrypto.KeyType
+	useHex                     bool
+	excludeVersionFromManifest bool
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -233,6 +235,24 @@ func WithWrappingKeyAlg(keyType ocrypto.KeyType) TDFOption {
 			return errors.New("key type missing")
 		}
 		c.keyType = keyType
+		return nil
+	}
+}
+
+// WithTargetMode sets the target schema mode for the TDF
+func WithTargetMode(mode string) TDFOption {
+	return func(c *TDFConfig) error {
+		if mode != "" {
+			lessThan, err := isLessThanSemver(mode, hexSemverThreshold)
+			if err != nil {
+				return fmt.Errorf("isLessThanSemver failed: %w", err)
+			}
+			c.useHex = lessThan
+			c.excludeVersionFromManifest = lessThan
+		} else {
+			c.useHex = false
+			c.excludeVersionFromManifest = false
+		}
 		return nil
 	}
 }

@@ -95,3 +95,108 @@ func TestWithAssertions(t *testing.T) {
 	assert.Equal(t, id1, cfg.assertions[0].ID)
 	assert.Equal(t, id2, cfg.assertions[1].ID)
 }
+
+func TestWithTargetMode(t *testing.T) {
+	tests := []struct {
+		name           string
+		modeInput      string
+		useHex         bool
+		excludeVersion bool
+		expectError    bool
+	}{
+		{
+			name:           "mode 0.0.0",
+			modeInput:      "0.0.0",
+			useHex:         true,
+			excludeVersion: true,
+			expectError:    false,
+		},
+		{
+			name:           "mode v0.0.0",
+			modeInput:      "v0.0.0",
+			useHex:         true,
+			excludeVersion: true,
+			expectError:    false,
+		},
+		{
+			name:           "equal mode 4.3.0",
+			modeInput:      "4.3.0",
+			useHex:         false,
+			excludeVersion: false,
+			expectError:    false,
+		},
+		{
+			name:           "greater mode 4.3.1",
+			modeInput:      "4.3.1",
+			useHex:         false,
+			excludeVersion: false,
+			expectError:    false,
+		},
+		{
+			name:           "greater mode v4.3.1",
+			modeInput:      "v4.3.1",
+			useHex:         false,
+			excludeVersion: false,
+			expectError:    false,
+		},
+		{
+			name:           "mode v2.3",
+			modeInput:      "v2.3",
+			useHex:         true,
+			excludeVersion: true,
+			expectError:    false,
+		},
+		{
+			name:           "mode v4.3",
+			modeInput:      "v4.3",
+			useHex:         false,
+			excludeVersion: false,
+			expectError:    false,
+		},
+		{
+			name:           "mode v2",
+			modeInput:      "v2",
+			useHex:         true,
+			excludeVersion: true,
+			expectError:    false,
+		},
+		{
+			name:           "mode v5",
+			modeInput:      "v5",
+			useHex:         false,
+			excludeVersion: false,
+			expectError:    false,
+		},
+		{
+			name:           "empty mode input",
+			modeInput:      "",
+			useHex:         false,
+			excludeVersion: false,
+			expectError:    false,
+		},
+		{
+			name:           "invalid mode input",
+			modeInput:      "NotSemver",
+			useHex:         false,
+			excludeVersion: false,
+			expectError:    true,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var cfg *TDFConfig
+			var err error
+
+			cfg, err = newTDFConfig(WithTargetMode(test.modeInput))
+
+			if test.expectError {
+				assert.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, test.useHex, cfg.useHex)
+			assert.Equal(t, test.excludeVersion, cfg.excludeVersionFromManifest)
+		})
+	}
+}

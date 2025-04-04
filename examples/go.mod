@@ -7,11 +7,11 @@ toolchain go1.24.1
 require (
 	github.com/opentdf/platform/lib/ocrypto v0.1.9
 	github.com/opentdf/platform/protocol/go v0.2.29
-	github.com/opentdf/platform/sdk v0.3.29
+	github.com/opentdf/platform/sdk v0.4.0
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.9.0
 	google.golang.org/grpc v1.67.1
-	google.golang.org/protobuf v1.35.1
+	google.golang.org/protobuf v1.35.2
 )
 
 require (

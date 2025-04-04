@@ -891,7 +891,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_SubjectMappingsOnAllValues() {
 	foundRead := false
 	foundUpload := false
 	for _, action := range val1SM.GetActions() {
-		if action.GetId() == s.f.GetStandardAction("read").Id {
+		if action.GetId() == s.f.GetStandardAction("read").GetId() {
 			foundRead = true
 		}
 		if action.GetName() == fixtureActionCustomUpload.GetName() {
@@ -907,7 +907,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_SubjectMappingsOnAllValues() {
 	val2SM := val2.GetSubjectMappings()[0]
 	s.Equal(s.f.GetSubjectConditionSetKey("subject_condition_set2").ID, val2SM.GetSubjectConditionSet().GetId())
 	s.Len(val2SM.GetActions(), 1)
-	s.Equal(val2SM.GetActions()[0].GetName(), s.f.GetStandardAction("create").Name)
+	s.Equal(val2SM.GetActions()[0].GetName(), s.f.GetStandardAction("create").GetName())
 
 	val2SM2 := val2.GetSubjectMappings()[1]
 	s.Equal(s.f.GetSubjectConditionSetKey("subject_condition_set3").ID, val2SM2.GetSubjectConditionSet().GetId())
@@ -915,10 +915,10 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_SubjectMappingsOnAllValues() {
 	foundRead = false
 	foundCreate := false
 	for _, action := range val2SM2.GetActions() {
-		if action.GetId() == s.f.GetStandardAction("read").Id {
+		if action.GetId() == s.f.GetStandardAction("read").GetId() {
 			foundRead = true
 		}
-		if action.GetId() == s.f.GetStandardAction("create").Id {
+		if action.GetId() == s.f.GetStandardAction("create").GetId() {
 			foundCreate = true
 		}
 	}

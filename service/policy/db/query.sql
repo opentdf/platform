@@ -971,41 +971,50 @@ SELECT id FROM inserted_mapping;
 
 -- name: updateSubjectMapping :execrows
 WITH
-	subject_mapping_update AS (
-		UPDATE subject_mappings
-		SET
-			metadata = COALESCE(sqlc.narg('metadata')::JSONB, metadata),
-			subject_condition_set_id = COALESCE(sqlc.narg('subject_condition_set_id')::UUID, subject_condition_set_id)
-		WHERE id = sqlc.arg('id')
-		RETURNING id
-	),
-	action_delete AS (
-		DELETE FROM subject_mapping_actions
-		WHERE
-			subject_mapping_id = sqlc.arg('id')
-			AND sqlc.narg('action_ids')::UUID[] IS NOT NULL
-	),
-	action_insert AS (
-		INSERT INTO
-			subject_mapping_actions (subject_mapping_id, action_id)
-		SELECT
-			sqlc.arg('id'),
-			unnest_value
-		FROM unnest(sqlc.narg('action_ids')::UUID[]) AS unnest_value
-		WHERE sqlc.narg('action_ids')::UUID[] IS NOT NULL
-		ON CONFLICT (subject_mapping_id, action_id) DO NOTHING
-	),
-	update_count AS (
-		SELECT COUNT(*) AS cnt
-		FROM subject_mapping_update
-	)
+    subject_mapping_update AS (
+        UPDATE subject_mappings
+        SET
+            metadata = COALESCE(sqlc.narg('metadata')::JSONB, metadata),
+            subject_condition_set_id = COALESCE(sqlc.narg('subject_condition_set_id')::UUID, subject_condition_set_id)
+        WHERE id = sqlc.arg('id')
+        RETURNING id
+    ),
+    -- Delete any actions that are NOT in the new list
+    action_delete AS (
+        DELETE FROM subject_mapping_actions
+        WHERE
+            subject_mapping_id = sqlc.arg('id')
+            AND sqlc.narg('action_ids')::UUID[] IS NOT NULL
+            AND action_id NOT IN (SELECT unnest(sqlc.narg('action_ids')::UUID[]))
+        RETURNING action_id
+    ),
+    -- Insert actions that are not already related to the mapping
+    action_insert AS (
+        INSERT INTO
+            subject_mapping_actions (subject_mapping_id, action_id)
+        SELECT
+            sqlc.arg('id'),
+            a
+        FROM unnest(sqlc.narg('action_ids')::UUID[]) AS a
+        WHERE 
+            sqlc.narg('action_ids')::UUID[] IS NOT NULL
+            AND NOT EXISTS (
+                SELECT 1 
+                FROM subject_mapping_actions 
+                WHERE subject_mapping_id = sqlc.arg('id') AND action_id = a
+            )
+        RETURNING action_id
+    ),
+    update_count AS (
+        SELECT COUNT(*) AS cnt
+        FROM subject_mapping_update
+    )
 SELECT
--- Divide by error occurs if id was not found (CTE bypasses typical count failure)
-	1 / CASE WHEN ( 
+    1 / CASE WHEN (
             SELECT cnt FROM update_count
-		) = 0 THEN 0
-		ELSE 1
-	END;
+        ) = 0 THEN 0
+        ELSE 1
+    END;
 
 -- name: deleteSubjectMapping :execrows
 DELETE FROM subject_mappings WHERE id = $1;

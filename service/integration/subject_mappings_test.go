@@ -170,47 +170,73 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentSubjectCondit
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
-// func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
-// 	// create a new one, update it, and verify the update
-// 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
-// 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set3")
-// 	actionUpdate := s.f.GetStandardAction("update")
+func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
+	// create a new one SM with actions, update it with different actions, and verify the update
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
+	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set3")
+	actionUpdate := s.f.GetStandardAction("update")
+	actionDelete := s.f.GetStandardAction("delete")
 
-// 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
-// 		AttributeValueId:              fixtureAttrValID,
-// 		Actions:                       []*policy.Action{actionUpdate, fixtureActionCustomUpload},
-// 		ExistingSubjectConditionSetId: fixtureScs.ID,
-// 	}
-// 	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
-// 	s.Require().NoError(err)
-// 	s.NotNil(created)
+	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              fixtureAttrValID,
+		Actions:                       []*policy.Action{actionUpdate, fixtureActionCustomUpload},
+		ExistingSubjectConditionSetId: fixtureScs.ID,
+	}
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
+	s.Require().NoError(err)
+	s.NotNil(created)
 
-// 	// update the subject mapping
-// 	update := &subjectmapping.UpdateSubjectMappingRequest{
-// 		Id:      created.GetId(),
-// 		Actions: []*policy.Action{actionUpdate},
-// 	}
+	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(len(newSubjectMapping.GetActions()), len(got.GetActions()))
 
-// 	updated, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
-// 	s.Require().NoError(err)
-// 	s.NotNil(updated)
-// 	s.Equal(created.GetId(), updated.GetId())
+	// update the subject mapping by removing one of the original actions
+	update := &subjectmapping.UpdateSubjectMappingRequest{
+		Id:      created.GetId(),
+		Actions: []*policy.Action{actionUpdate},
+	}
 
-// 	// verify the actions were updated but nothing else
-// 	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
-// 	s.Require().NoError(err)
-// 	s.NotNil(got)
-// 	s.Equal(len(update.GetActions()), len(got.GetActions()))
-// 	// s.Equal(got.GetActions(), newActions)
-// 	s.Equal(newSubjectMapping.GetAttributeValueId(), got.GetAttributeValue().GetId())
-// 	s.Equal(newSubjectMapping.GetExistingSubjectConditionSetId(), got.GetSubjectConditionSet().GetId())
-// 	metadata := got.GetMetadata()
-// 	createdAt := metadata.GetCreatedAt()
-// 	updatedAt := metadata.GetUpdatedAt()
-// 	s.False(createdAt.AsTime().IsZero())
-// 	s.False(updatedAt.AsTime().IsZero())
-// 	s.True(updatedAt.AsTime().After(createdAt.AsTime()))
-// }
+	updated, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
+	s.Require().NoError(err)
+	s.NotNil(updated)
+	s.Equal(created.GetId(), updated.GetId())
+
+	// verify one action was dropped with no other changes
+	got, err = s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	// actions
+	s.Equal(len(update.GetActions()), len(got.GetActions()))
+	s.Equal(actionUpdate.GetName(), got.GetActions()[0].GetName())
+	// attr value
+	s.Equal(newSubjectMapping.GetAttributeValueId(), got.GetAttributeValue().GetId())
+	// scs
+	s.Equal(newSubjectMapping.GetExistingSubjectConditionSetId(), got.GetSubjectConditionSet().GetId())
+	// metadata
+	metadata := got.GetMetadata()
+	createdAt := metadata.GetCreatedAt()
+	updatedAt := metadata.GetUpdatedAt()
+	s.False(createdAt.AsTime().IsZero())
+	s.False(updatedAt.AsTime().IsZero())
+	s.True(updatedAt.AsTime().After(createdAt.AsTime()))
+
+	// update with an action not in the current
+	update = &subjectmapping.UpdateSubjectMappingRequest{
+		Id:      created.GetId(),
+		Actions: []*policy.Action{actionDelete},
+	}
+	updated, err = s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
+	s.Require().NoError(err)
+	s.NotNil(updated)
+
+	// verify the action was added
+	got, err = s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(len(update.GetActions()), len(got.GetActions()))
+	s.Equal(actionDelete.GetName(), got.GetActions()[0].GetName())
+}
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_SubjectConditionSetId() {
 	// create a new one, update it, and verify the update
@@ -321,38 +347,42 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_NonExistentSubjectCondit
 	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
 
-// func (s *SubjectMappingsSuite) TestGetSubjectMapping() {
-// 	fixture := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute2")
+func (s *SubjectMappingsSuite) TestGetSubjectMapping() {
+	fixture := s.f.GetSubjectMappingKey("subject_mapping_subject_attribute2")
 
-// 	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, fixture.ID)
-// 	s.Require().NoError(err)
-// 	s.NotNil(sm)
-// 	s.Equal(fixture.ID, sm.GetId())
-// 	s.Equal(fixture.AttributeValueID, sm.GetAttributeValue().GetId())
-// 	s.True(sm.GetAttributeValue().GetActive().GetValue())
-// 	s.Equal(fixture.SubjectConditionSetID, sm.GetSubjectConditionSet().GetId())
+	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, fixture.ID)
+	s.Require().NoError(err)
+	s.NotNil(sm)
+	s.Equal(fixture.ID, sm.GetId())
+	s.Equal(fixture.AttributeValueID, sm.GetAttributeValue().GetId())
+	s.True(sm.GetAttributeValue().GetActive().GetValue())
+	s.Equal(fixture.SubjectConditionSetID, sm.GetSubjectConditionSet().GetId())
 
-// 	// verify the actions
-// 	for i, a := range sm.GetActions() {
-// 		s.NotNil(a)
-// 		// In protos, standard actions are an enum and custom actions are a string,
-// 		// so their string representations are slightly different
-// 		if fixture.Actions[i].Standard != "" {
-// 			s.Equal("standard:"+fixture.Actions[i].Standard, a.String())
-// 		} else {
-// 			s.Equal("custom:\""+fixture.Actions[i].Custom+"\"", a.String())
-// 		}
-// 	}
-// 	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, fixture.AttributeValueID)
-// 	s.Require().NoError(err)
-// 	s.NotNil(got)
-// 	s.Equal(fixture.AttributeValueID, got.GetId())
-// 	metadata := sm.GetMetadata()
-// 	createdAt := metadata.GetCreatedAt()
-// 	updatedAt := metadata.GetUpdatedAt()
-// 	s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
-// 	s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
-// }
+	foundRead := false
+	foundCreate := false
+	// verify the actions
+	for _, a := range sm.GetActions() {
+		s.NotNil(a)
+		if a.GetName() == "read" {
+			foundRead = true
+		}
+		if a.GetName() == "create" {
+			foundCreate = true
+		}
+	}
+	s.True(foundRead)
+	s.True(foundCreate)
+
+	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, fixture.AttributeValueID)
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(fixture.AttributeValueID, got.GetId())
+	metadata := sm.GetMetadata()
+	createdAt := metadata.GetCreatedAt()
+	updatedAt := metadata.GetUpdatedAt()
+	s.True(createdAt.IsValid() && createdAt.AsTime().Unix() > 0)
+	s.True(updatedAt.IsValid() && updatedAt.AsTime().Unix() > 0)
+}
 
 func (s *SubjectMappingsSuite) Test_GetSubjectMapping_NonExistentId_Fails() {
 	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, nonExistentSubjectMappingID)
@@ -1103,75 +1133,89 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_IgnoresExternalValu
 	s.NotNil(matched.GetActions())
 }
 
-// func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MultipleMatches() {
-// 	externalSelector1 := ".idp_field"
-// 	externalSelector2 := ".org.attributes[]"
-// 	// create a two subject mappings with different subject condition sets
-// 	fixtureAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2").ID
-// 	newScs := &subjectmapping.SubjectConditionSetCreate{
-// 		SubjectSets: []*policy.SubjectSet{
-// 			{
-// 				ConditionGroups: []*policy.ConditionGroup{
-// 					{
-// 						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
-// 						Conditions: []*policy.Condition{
-// 							{
-// 								SubjectExternalSelectorValue: externalSelector1,
-// 								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-// 								SubjectExternalValues:        []string{"idp_value"},
-// 							},
-// 						},
-// 					},
-// 				},
-// 			},
-// 		},
-// 	}
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_MultipleMatches() {
+	externalSelector1 := ".idp_field"
+	externalSelector2 := ".org.attributes[]"
+	// create a two subject mappings with different subject condition sets
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2").ID
+	newScs := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: externalSelector1,
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"idp_value"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 
-// 	subjectMapping := &subjectmapping.CreateSubjectMappingRequest{
-// 		AttributeValueId:       fixtureAttrValID,
-// 		Actions:                []*policy.Action{fixtureActionCustomUpload, fixtureActionCustomDownload},
-// 		NewSubjectConditionSet: newScs,
-// 	}
+	subjectMapping := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:       fixtureAttrValID,
+		Actions:                []*policy.Action{fixtureActionCustomUpload, fixtureActionCustomDownload},
+		NewSubjectConditionSet: newScs,
+	}
 
-// 	subjectMappingFirst, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, subjectMapping)
-// 	s.Require().NoError(err)
-// 	s.NotNil(subjectMappingFirst)
+	subjectMappingFirst, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, subjectMapping)
+	s.Require().NoError(err)
+	s.NotNil(subjectMappingFirst)
 
-// 	// create the second subject mapping with the second SCS
-// 	newScs.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue = externalSelector2
-// 	subjectMapping.NewSubjectConditionSet = newScs
+	// create the second subject mapping with the second SCS
+	newScs.SubjectSets[0].ConditionGroups[0].Conditions[0].SubjectExternalSelectorValue = externalSelector2
+	subjectMapping.NewSubjectConditionSet = newScs
 
-// 	subjectMappingSecond, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, subjectMapping)
-// 	s.Require().NoError(err)
-// 	s.NotNil(subjectMappingSecond)
+	subjectMappingSecond, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, subjectMapping)
+	s.Require().NoError(err)
+	s.NotNil(subjectMappingSecond)
 
-// 	props := []*policy.SubjectProperty{
-// 		{
-// 			ExternalSelectorValue: externalSelector1,
-// 		},
-// 		{
-// 			ExternalSelectorValue: externalSelector2,
-// 		},
-// 	}
+	props := []*policy.SubjectProperty{
+		{
+			ExternalSelectorValue: externalSelector1,
+		},
+		{
+			ExternalSelectorValue: externalSelector2,
+		},
+	}
 
-// 	candidateEntitlements, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
-// 	s.Require().NoError(err)
-// 	s.NotZero(candidateEntitlements)
-// 	s.GreaterOrEqual(len(candidateEntitlements), 2)
+	candidateEntitlements, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
+	s.Require().NoError(err)
+	s.NotZero(candidateEntitlements)
+	s.GreaterOrEqual(len(candidateEntitlements), 2)
 
-// 	foundFirst := false
-// 	foundSecond := false
+	foundFirstSM := false
+	foundSecondSM := false
+	for _, sm := range candidateEntitlements {
+		if sm.GetId() == subjectMappingFirst.GetId() {
+			foundFirstSM = true
+		} else if sm.GetId() == subjectMappingSecond.GetId() {
+			foundSecondSM = true
+		}
+		foundUpload := false
+		foundDownload := false
+		for _, a := range sm.GetActions() {
+			s.NotEmpty(a.GetId())
+			s.NotEmpty(a.GetName())
+			if a.GetName() == fixtureActionCustomUpload.GetName() {
+				foundUpload = true
+			}
+			if a.GetName() == fixtureActionCustomDownload.GetName() {
+				foundDownload = true
+			}
+		}
+		s.True(foundUpload)
+		s.True(foundDownload)
+	}
 
-// 	for _, sm := range candidateEntitlements {
-// 		if sm.GetId() == subjectMappingFirst.GetId() {
-// 			foundFirst = true
-// 		} else if sm.GetId() == subjectMappingSecond.GetId() {
-// 			foundSecond = true
-// 		}
-// 	}
-// 	s.True(foundFirst)
-// 	s.True(foundSecond)
-// }
+	s.True(foundFirstSM)
+	s.True(foundSecondSM)
+}
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DeactivatedValueNotReturned() {
 	// create a new subject mapping with a deactivated attribute value

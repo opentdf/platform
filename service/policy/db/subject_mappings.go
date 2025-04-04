@@ -452,8 +452,8 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 		SubjectConditionSetID: pgtypeUUID(subjectConditionSetID),
 	}
 
-	actionIDs := make([]string, 0)
-	if len(actions) > 0 {
+	if actions != nil {
+		actionIDs := make([]string, 0)
 		actionNames := make([]string, 0)
 		// Check for provided existing Action IDs and existing/new Action Names
 		for _, a := range actions {

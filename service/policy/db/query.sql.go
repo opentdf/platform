@@ -4320,40 +4320,50 @@ func (q *Queries) updateStandardAction(ctx context.Context, id string) (int64, e
 
 const updateSubjectMapping = `-- name: updateSubjectMapping :execrows
 WITH
-	subject_mapping_update AS (
-		UPDATE subject_mappings
-		SET
-			metadata = COALESCE($1::JSONB, metadata),
-			subject_condition_set_id = COALESCE($2::UUID, subject_condition_set_id)
-		WHERE id = $3
-		RETURNING id
-	),
-	action_delete AS (
-		DELETE FROM subject_mapping_actions
-		WHERE
-			subject_mapping_id = $3
-			AND $4::UUID[] IS NOT NULL
-	),
-	action_insert AS (
-		INSERT INTO
-			subject_mapping_actions (subject_mapping_id, action_id)
-		SELECT
-			$3,
-			unnest_value
-		FROM unnest($4::UUID[]) AS unnest_value
-		WHERE $4::UUID[] IS NOT NULL
-		ON CONFLICT (subject_mapping_id, action_id) DO NOTHING
-	),
-	update_count AS (
-		SELECT COUNT(*) AS cnt
-		FROM subject_mapping_update
-	)
+    subject_mapping_update AS (
+        UPDATE subject_mappings
+        SET
+            metadata = COALESCE($1::JSONB, metadata),
+            subject_condition_set_id = COALESCE($2::UUID, subject_condition_set_id)
+        WHERE id = $3
+        RETURNING id
+    ),
+    -- Only delete actions that are NOT in the new list
+    action_delete AS (
+        DELETE FROM subject_mapping_actions
+        WHERE
+            subject_mapping_id = $3
+            AND $4::UUID[] IS NOT NULL
+            AND action_id NOT IN (SELECT unnest($4::UUID[]))
+        RETURNING action_id
+    ),
+    -- Only insert actions that don't already exist
+    action_insert AS (
+        INSERT INTO
+            subject_mapping_actions (subject_mapping_id, action_id)
+        SELECT
+            $3,
+            a
+        FROM unnest($4::UUID[]) AS a
+        WHERE 
+            $4::UUID[] IS NOT NULL
+            AND NOT EXISTS (
+                SELECT 1 
+                FROM subject_mapping_actions 
+                WHERE subject_mapping_id = $3 AND action_id = a
+            )
+        RETURNING action_id
+    ),
+    update_count AS (
+        SELECT COUNT(*) AS cnt
+        FROM subject_mapping_update
+    )
 SELECT
-	1 / CASE WHEN ( 
+    1 / CASE WHEN (
             SELECT cnt FROM update_count
-		) = 0 THEN 0
-		ELSE 1
-	END
+        ) = 0 THEN 0
+        ELSE 1
+    END
 `
 
 type updateSubjectMappingParams struct {
@@ -4363,43 +4373,53 @@ type updateSubjectMappingParams struct {
 	ActionIds             []string    `json:"action_ids"`
 }
 
-// Divide by error occurs if id was not found (CTE bypasses typical count failure)
+// updateSubjectMapping
 //
 //	WITH
-//		subject_mapping_update AS (
-//			UPDATE subject_mappings
-//			SET
-//				metadata = COALESCE($1::JSONB, metadata),
-//				subject_condition_set_id = COALESCE($2::UUID, subject_condition_set_id)
-//			WHERE id = $3
-//			RETURNING id
-//		),
-//		action_delete AS (
-//			DELETE FROM subject_mapping_actions
-//			WHERE
-//				subject_mapping_id = $3
-//				AND $4::UUID[] IS NOT NULL
-//		),
-//		action_insert AS (
-//			INSERT INTO
-//				subject_mapping_actions (subject_mapping_id, action_id)
-//			SELECT
-//				$3,
-//				unnest_value
-//			FROM unnest($4::UUID[]) AS unnest_value
-//			WHERE $4::UUID[] IS NOT NULL
-//			ON CONFLICT (subject_mapping_id, action_id) DO NOTHING
-//		),
-//		update_count AS (
-//			SELECT COUNT(*) AS cnt
-//			FROM subject_mapping_update
-//		)
+//	    subject_mapping_update AS (
+//	        UPDATE subject_mappings
+//	        SET
+//	            metadata = COALESCE($1::JSONB, metadata),
+//	            subject_condition_set_id = COALESCE($2::UUID, subject_condition_set_id)
+//	        WHERE id = $3
+//	        RETURNING id
+//	    ),
+//	    -- Only delete actions that are NOT in the new list
+//	    action_delete AS (
+//	        DELETE FROM subject_mapping_actions
+//	        WHERE
+//	            subject_mapping_id = $3
+//	            AND $4::UUID[] IS NOT NULL
+//	            AND action_id NOT IN (SELECT unnest($4::UUID[]))
+//	        RETURNING action_id
+//	    ),
+//	    -- Only insert actions that don't already exist
+//	    action_insert AS (
+//	        INSERT INTO
+//	            subject_mapping_actions (subject_mapping_id, action_id)
+//	        SELECT
+//	            $3,
+//	            a
+//	        FROM unnest($4::UUID[]) AS a
+//	        WHERE
+//	            $4::UUID[] IS NOT NULL
+//	            AND NOT EXISTS (
+//	                SELECT 1
+//	                FROM subject_mapping_actions
+//	                WHERE subject_mapping_id = $3 AND action_id = a
+//	            )
+//	        RETURNING action_id
+//	    ),
+//	    update_count AS (
+//	        SELECT COUNT(*) AS cnt
+//	        FROM subject_mapping_update
+//	    )
 //	SELECT
-//		1 / CASE WHEN (
+//	    1 / CASE WHEN (
 //	            SELECT cnt FROM update_count
-//			) = 0 THEN 0
-//			ELSE 1
-//		END
+//	        ) = 0 THEN 0
+//	        ELSE 1
+//	    END
 func (q *Queries) updateSubjectMapping(ctx context.Context, arg updateSubjectMappingParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateSubjectMapping,
 		arg.Metadata,

@@ -43,7 +43,7 @@ func TestAttributeFqnSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping attributes integration tests")
 	}
-	// suite.Run(t, new(AttributeFqnSuite))
+	suite.Run(t, new(AttributeFqnSuite))
 }
 
 func (s *AttributeFqnSuite) SetupSuite() {

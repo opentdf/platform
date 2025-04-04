@@ -314,7 +314,7 @@ GROUP BY ad.id, n.name, counted.total
 LIMIT @limit_ 
 OFFSET @offset_; 
 
--- name: ListAttributesByDefOrValueFqns :many
+-- name: listAttributesByDefOrValueFqns :many
 -- get the attribute definition for the provided value or definition fqn
 WITH target_definition AS (
     SELECT DISTINCT
@@ -393,7 +393,20 @@ value_subject_mappings AS (
 		JSON_AGG(
             JSON_BUILD_OBJECT(
                 'id', sm.id,
-                'actions', sm.actions,
+                'actions', (
+                    SELECT COALESCE(
+                        JSON_AGG(
+                            JSON_BUILD_OBJECT(
+                                'id', a.id,
+                                'name', a.name
+                            )
+                        ) FILTER (WHERE a.id IS NOT NULL),
+                        '[]'::JSON
+                    )
+                    FROM subject_mapping_actions sma
+                    LEFT JOIN actions a ON sma.action_id = a.id
+                    WHERE sma.subject_mapping_id = sm.id
+                ),
                 'subject_condition_set', JSON_BUILD_OBJECT(
                     'id', scs.id,
                     'subject_sets', scs.condition

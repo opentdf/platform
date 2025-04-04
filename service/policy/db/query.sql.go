@@ -960,311 +960,6 @@ func (q *Queries) ListAttributeValues(ctx context.Context, arg ListAttributeValu
 	return items, nil
 }
 
-const listAttributesByDefOrValueFqns = `-- name: ListAttributesByDefOrValueFqns :many
-WITH target_definition AS (
-    SELECT DISTINCT
-        ad.id,
-        ad.namespace_id,
-        ad.name,
-        ad.rule,
-        ad.active,
-        ad.values_order,
-        JSONB_AGG(
-	        DISTINCT JSONB_BUILD_OBJECT(
-	            'id', kas.id,
-	            'uri', kas.uri,
-                'name', kas.name,
-	            'public_key', kas.public_key
-	        )
-	    ) FILTER (WHERE kas.id IS NOT NULL) AS grants,
-        k.keys AS keys
-    FROM attribute_fqns fqns
-    INNER JOIN attribute_definitions ad ON fqns.attribute_id = ad.id
-    LEFT JOIN attribute_definition_key_access_grants adkag ON ad.id = adkag.attribute_definition_id
-    LEFT JOIN key_access_servers kas ON adkag.key_access_server_id = kas.id
-    LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
-    WHERE fqns.fqn = ANY($1::TEXT[]) 
-        AND ad.active = TRUE
-    GROUP BY ad.id, k.keys
-),
-namespaces AS (
-	SELECT
-		n.id,
-		JSON_BUILD_OBJECT(
-			'id', n.id,
-			'name', n.name,
-			'active', n.active,
-	        'fqn', fqns.fqn,
-	        'grants', JSONB_AGG(
-	            DISTINCT JSONB_BUILD_OBJECT(
-	                'id', kas.id,
-	                'uri', kas.uri,
-                    'name', kas.name,
-	                'public_key', kas.public_key
-	            )
-	        ) FILTER (WHERE kas.id IS NOT NULL),
-            'keys', k.keys
-    	) AS namespace
-	FROM target_definition td
-	INNER JOIN attribute_namespaces n ON td.namespace_id = n.id
-	INNER JOIN attribute_fqns fqns ON n.id = fqns.namespace_id
-	LEFT JOIN attribute_namespace_key_access_grants ankag ON n.id = ankag.namespace_id
-	LEFT JOIN key_access_servers kas ON ankag.key_access_server_id = kas.id
-    LEFT JOIN active_namespace_public_keys_view k ON n.id = k.namespace_id
-	WHERE n.active = TRUE
-		AND (fqns.attribute_id IS NULL AND fqns.value_id IS NULL)
-	GROUP BY n.id, fqns.fqn, k.keys
-),
-value_grants AS (
-	SELECT
-		av.id,
-		JSON_AGG(
-			DISTINCT JSONB_BUILD_OBJECT(
-				'id', kas.id,
-                'uri', kas.uri,
-                'name', kas.name,
-                'public_key', kas.public_key
-            )
-		) FILTER (WHERE kas.id IS NOT NULL) AS grants
-	FROM target_definition td
-	LEFT JOIN attribute_values av on td.id = av.attribute_definition_id
-	LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
-	LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
-	GROUP BY av.id
-),
-value_subject_mappings AS (
-	SELECT
-		av.id,
-		JSON_AGG(
-            JSON_BUILD_OBJECT(
-                'id', sm.id,
-                'actions', sm.actions,
-                'subject_condition_set', JSON_BUILD_OBJECT(
-                    'id', scs.id,
-                    'subject_sets', scs.condition
-                )
-            )
-        ) FILTER (WHERE sm.id IS NOT NULL) AS sub_maps
-	FROM target_definition td
-	LEFT JOIN attribute_values av ON td.id = av.attribute_definition_id
-	LEFT JOIN subject_mappings sm ON av.id = sm.attribute_value_id
-	LEFT JOIN subject_condition_set scs ON sm.subject_condition_set_id = scs.id
-	GROUP BY av.id
-),
-values AS (
-    SELECT
-		av.attribute_definition_id,
-		JSON_AGG(
-	        JSON_BUILD_OBJECT(
-	            'id', av.id,
-	            'value', av.value,
-	            'active', av.active,
-	            'fqn', fqns.fqn,
-	            'grants', avg.grants,
-	            'subject_mappings', avsm.sub_maps,
-                'keys', k.keys
-	        -- enforce order of values in response
-	        ) ORDER BY ARRAY_POSITION(td.values_order, av.id)
-	    ) AS values
-	FROM target_definition td
-	LEFT JOIN attribute_values av ON td.id = av.attribute_definition_id
-	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
-	LEFT JOIN value_grants avg ON av.id = avg.id
-	LEFT JOIN value_subject_mappings avsm ON av.id = avsm.id
-    LEFT JOIN active_value_public_keys_view k ON av.id = k.value_id                        
-	WHERE av.active = TRUE
-	GROUP BY av.attribute_definition_id
-)
-SELECT
-	td.id,
-	td.name,
-    td.rule,
-	td.active,
-	n.namespace,
-	fqns.fqn,
-	values.values,
-	td.grants,
-    td.keys
-FROM target_definition td
-INNER JOIN attribute_fqns fqns ON td.id = fqns.attribute_id
-INNER JOIN namespaces n ON td.namespace_id = n.id
-LEFT JOIN values ON td.id = values.attribute_definition_id
-WHERE fqns.value_id IS NULL
-`
-
-type ListAttributesByDefOrValueFqnsRow struct {
-	ID        string                  `json:"id"`
-	Name      string                  `json:"name"`
-	Rule      AttributeDefinitionRule `json:"rule"`
-	Active    bool                    `json:"active"`
-	Namespace []byte                  `json:"namespace"`
-	Fqn       string                  `json:"fqn"`
-	Values    []byte                  `json:"values"`
-	Grants    []byte                  `json:"grants"`
-	Keys      []byte                  `json:"keys"`
-}
-
-// get the attribute definition for the provided value or definition fqn
-//
-//	WITH target_definition AS (
-//	    SELECT DISTINCT
-//	        ad.id,
-//	        ad.namespace_id,
-//	        ad.name,
-//	        ad.rule,
-//	        ad.active,
-//	        ad.values_order,
-//	        JSONB_AGG(
-//		        DISTINCT JSONB_BUILD_OBJECT(
-//		            'id', kas.id,
-//		            'uri', kas.uri,
-//	                'name', kas.name,
-//		            'public_key', kas.public_key
-//		        )
-//		    ) FILTER (WHERE kas.id IS NOT NULL) AS grants,
-//	        k.keys AS keys
-//	    FROM attribute_fqns fqns
-//	    INNER JOIN attribute_definitions ad ON fqns.attribute_id = ad.id
-//	    LEFT JOIN attribute_definition_key_access_grants adkag ON ad.id = adkag.attribute_definition_id
-//	    LEFT JOIN key_access_servers kas ON adkag.key_access_server_id = kas.id
-//	    LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
-//	    WHERE fqns.fqn = ANY($1::TEXT[])
-//	        AND ad.active = TRUE
-//	    GROUP BY ad.id, k.keys
-//	),
-//	namespaces AS (
-//		SELECT
-//			n.id,
-//			JSON_BUILD_OBJECT(
-//				'id', n.id,
-//				'name', n.name,
-//				'active', n.active,
-//		        'fqn', fqns.fqn,
-//		        'grants', JSONB_AGG(
-//		            DISTINCT JSONB_BUILD_OBJECT(
-//		                'id', kas.id,
-//		                'uri', kas.uri,
-//	                    'name', kas.name,
-//		                'public_key', kas.public_key
-//		            )
-//		        ) FILTER (WHERE kas.id IS NOT NULL),
-//	            'keys', k.keys
-//	    	) AS namespace
-//		FROM target_definition td
-//		INNER JOIN attribute_namespaces n ON td.namespace_id = n.id
-//		INNER JOIN attribute_fqns fqns ON n.id = fqns.namespace_id
-//		LEFT JOIN attribute_namespace_key_access_grants ankag ON n.id = ankag.namespace_id
-//		LEFT JOIN key_access_servers kas ON ankag.key_access_server_id = kas.id
-//	    LEFT JOIN active_namespace_public_keys_view k ON n.id = k.namespace_id
-//		WHERE n.active = TRUE
-//			AND (fqns.attribute_id IS NULL AND fqns.value_id IS NULL)
-//		GROUP BY n.id, fqns.fqn, k.keys
-//	),
-//	value_grants AS (
-//		SELECT
-//			av.id,
-//			JSON_AGG(
-//				DISTINCT JSONB_BUILD_OBJECT(
-//					'id', kas.id,
-//	                'uri', kas.uri,
-//	                'name', kas.name,
-//	                'public_key', kas.public_key
-//	            )
-//			) FILTER (WHERE kas.id IS NOT NULL) AS grants
-//		FROM target_definition td
-//		LEFT JOIN attribute_values av on td.id = av.attribute_definition_id
-//		LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
-//		LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
-//		GROUP BY av.id
-//	),
-//	value_subject_mappings AS (
-//		SELECT
-//			av.id,
-//			JSON_AGG(
-//	            JSON_BUILD_OBJECT(
-//	                'id', sm.id,
-//	                'actions', sm.actions,
-//	                'subject_condition_set', JSON_BUILD_OBJECT(
-//	                    'id', scs.id,
-//	                    'subject_sets', scs.condition
-//	                )
-//	            )
-//	        ) FILTER (WHERE sm.id IS NOT NULL) AS sub_maps
-//		FROM target_definition td
-//		LEFT JOIN attribute_values av ON td.id = av.attribute_definition_id
-//		LEFT JOIN subject_mappings sm ON av.id = sm.attribute_value_id
-//		LEFT JOIN subject_condition_set scs ON sm.subject_condition_set_id = scs.id
-//		GROUP BY av.id
-//	),
-//	values AS (
-//	    SELECT
-//			av.attribute_definition_id,
-//			JSON_AGG(
-//		        JSON_BUILD_OBJECT(
-//		            'id', av.id,
-//		            'value', av.value,
-//		            'active', av.active,
-//		            'fqn', fqns.fqn,
-//		            'grants', avg.grants,
-//		            'subject_mappings', avsm.sub_maps,
-//	                'keys', k.keys
-//		        -- enforce order of values in response
-//		        ) ORDER BY ARRAY_POSITION(td.values_order, av.id)
-//		    ) AS values
-//		FROM target_definition td
-//		LEFT JOIN attribute_values av ON td.id = av.attribute_definition_id
-//		LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
-//		LEFT JOIN value_grants avg ON av.id = avg.id
-//		LEFT JOIN value_subject_mappings avsm ON av.id = avsm.id
-//	    LEFT JOIN active_value_public_keys_view k ON av.id = k.value_id
-//		WHERE av.active = TRUE
-//		GROUP BY av.attribute_definition_id
-//	)
-//	SELECT
-//		td.id,
-//		td.name,
-//	    td.rule,
-//		td.active,
-//		n.namespace,
-//		fqns.fqn,
-//		values.values,
-//		td.grants,
-//	    td.keys
-//	FROM target_definition td
-//	INNER JOIN attribute_fqns fqns ON td.id = fqns.attribute_id
-//	INNER JOIN namespaces n ON td.namespace_id = n.id
-//	LEFT JOIN values ON td.id = values.attribute_definition_id
-//	WHERE fqns.value_id IS NULL
-func (q *Queries) ListAttributesByDefOrValueFqns(ctx context.Context, fqns []string) ([]ListAttributesByDefOrValueFqnsRow, error) {
-	rows, err := q.db.Query(ctx, listAttributesByDefOrValueFqns, fqns)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListAttributesByDefOrValueFqnsRow
-	for rows.Next() {
-		var i ListAttributesByDefOrValueFqnsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.Rule,
-			&i.Active,
-			&i.Namespace,
-			&i.Fqn,
-			&i.Values,
-			&i.Grants,
-			&i.Keys,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listAttributesDetail = `-- name: ListAttributesDetail :many
 
 WITH counted AS (
@@ -3551,6 +3246,337 @@ func (q *Queries) listActions(ctx context.Context, arg listActionsParams) ([]lis
 	return items, nil
 }
 
+const listAttributesByDefOrValueFqns = `-- name: listAttributesByDefOrValueFqns :many
+WITH target_definition AS (
+    SELECT DISTINCT
+        ad.id,
+        ad.namespace_id,
+        ad.name,
+        ad.rule,
+        ad.active,
+        ad.values_order,
+        JSONB_AGG(
+	        DISTINCT JSONB_BUILD_OBJECT(
+	            'id', kas.id,
+	            'uri', kas.uri,
+                'name', kas.name,
+	            'public_key', kas.public_key
+	        )
+	    ) FILTER (WHERE kas.id IS NOT NULL) AS grants,
+        k.keys AS keys
+    FROM attribute_fqns fqns
+    INNER JOIN attribute_definitions ad ON fqns.attribute_id = ad.id
+    LEFT JOIN attribute_definition_key_access_grants adkag ON ad.id = adkag.attribute_definition_id
+    LEFT JOIN key_access_servers kas ON adkag.key_access_server_id = kas.id
+    LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
+    WHERE fqns.fqn = ANY($1::TEXT[]) 
+        AND ad.active = TRUE
+    GROUP BY ad.id, k.keys
+),
+namespaces AS (
+	SELECT
+		n.id,
+		JSON_BUILD_OBJECT(
+			'id', n.id,
+			'name', n.name,
+			'active', n.active,
+	        'fqn', fqns.fqn,
+	        'grants', JSONB_AGG(
+	            DISTINCT JSONB_BUILD_OBJECT(
+	                'id', kas.id,
+	                'uri', kas.uri,
+                    'name', kas.name,
+	                'public_key', kas.public_key
+	            )
+	        ) FILTER (WHERE kas.id IS NOT NULL),
+            'keys', k.keys
+    	) AS namespace
+	FROM target_definition td
+	INNER JOIN attribute_namespaces n ON td.namespace_id = n.id
+	INNER JOIN attribute_fqns fqns ON n.id = fqns.namespace_id
+	LEFT JOIN attribute_namespace_key_access_grants ankag ON n.id = ankag.namespace_id
+	LEFT JOIN key_access_servers kas ON ankag.key_access_server_id = kas.id
+    LEFT JOIN active_namespace_public_keys_view k ON n.id = k.namespace_id
+	WHERE n.active = TRUE
+		AND (fqns.attribute_id IS NULL AND fqns.value_id IS NULL)
+	GROUP BY n.id, fqns.fqn, k.keys
+),
+value_grants AS (
+	SELECT
+		av.id,
+		JSON_AGG(
+			DISTINCT JSONB_BUILD_OBJECT(
+				'id', kas.id,
+                'uri', kas.uri,
+                'name', kas.name,
+                'public_key', kas.public_key
+            )
+		) FILTER (WHERE kas.id IS NOT NULL) AS grants
+	FROM target_definition td
+	LEFT JOIN attribute_values av on td.id = av.attribute_definition_id
+	LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
+	LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
+	GROUP BY av.id
+),
+value_subject_mappings AS (
+	SELECT
+		av.id,
+		JSON_AGG(
+            JSON_BUILD_OBJECT(
+                'id', sm.id,
+                'actions', (
+                    SELECT COALESCE(
+                        JSON_AGG(
+                            JSON_BUILD_OBJECT(
+                                'id', a.id,
+                                'name', a.name
+                            )
+                        ) FILTER (WHERE a.id IS NOT NULL),
+                        '[]'::JSON
+                    )
+                    FROM subject_mapping_actions sma
+                    LEFT JOIN actions a ON sma.action_id = a.id
+                    WHERE sma.subject_mapping_id = sm.id
+                ),
+                'subject_condition_set', JSON_BUILD_OBJECT(
+                    'id', scs.id,
+                    'subject_sets', scs.condition
+                )
+            )
+        ) FILTER (WHERE sm.id IS NOT NULL) AS sub_maps
+	FROM target_definition td
+	LEFT JOIN attribute_values av ON td.id = av.attribute_definition_id
+	LEFT JOIN subject_mappings sm ON av.id = sm.attribute_value_id
+	LEFT JOIN subject_condition_set scs ON sm.subject_condition_set_id = scs.id
+	GROUP BY av.id
+),
+values AS (
+    SELECT
+		av.attribute_definition_id,
+		JSON_AGG(
+	        JSON_BUILD_OBJECT(
+	            'id', av.id,
+	            'value', av.value,
+	            'active', av.active,
+	            'fqn', fqns.fqn,
+	            'grants', avg.grants,
+	            'subject_mappings', avsm.sub_maps,
+                'keys', k.keys
+	        -- enforce order of values in response
+	        ) ORDER BY ARRAY_POSITION(td.values_order, av.id)
+	    ) AS values
+	FROM target_definition td
+	LEFT JOIN attribute_values av ON td.id = av.attribute_definition_id
+	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+	LEFT JOIN value_grants avg ON av.id = avg.id
+	LEFT JOIN value_subject_mappings avsm ON av.id = avsm.id
+    LEFT JOIN active_value_public_keys_view k ON av.id = k.value_id                        
+	WHERE av.active = TRUE
+	GROUP BY av.attribute_definition_id
+)
+SELECT
+	td.id,
+	td.name,
+    td.rule,
+	td.active,
+	n.namespace,
+	fqns.fqn,
+	values.values,
+	td.grants,
+    td.keys
+FROM target_definition td
+INNER JOIN attribute_fqns fqns ON td.id = fqns.attribute_id
+INNER JOIN namespaces n ON td.namespace_id = n.id
+LEFT JOIN values ON td.id = values.attribute_definition_id
+WHERE fqns.value_id IS NULL
+`
+
+type listAttributesByDefOrValueFqnsRow struct {
+	ID        string                  `json:"id"`
+	Name      string                  `json:"name"`
+	Rule      AttributeDefinitionRule `json:"rule"`
+	Active    bool                    `json:"active"`
+	Namespace []byte                  `json:"namespace"`
+	Fqn       string                  `json:"fqn"`
+	Values    []byte                  `json:"values"`
+	Grants    []byte                  `json:"grants"`
+	Keys      []byte                  `json:"keys"`
+}
+
+// get the attribute definition for the provided value or definition fqn
+//
+//	WITH target_definition AS (
+//	    SELECT DISTINCT
+//	        ad.id,
+//	        ad.namespace_id,
+//	        ad.name,
+//	        ad.rule,
+//	        ad.active,
+//	        ad.values_order,
+//	        JSONB_AGG(
+//		        DISTINCT JSONB_BUILD_OBJECT(
+//		            'id', kas.id,
+//		            'uri', kas.uri,
+//	                'name', kas.name,
+//		            'public_key', kas.public_key
+//		        )
+//		    ) FILTER (WHERE kas.id IS NOT NULL) AS grants,
+//	        k.keys AS keys
+//	    FROM attribute_fqns fqns
+//	    INNER JOIN attribute_definitions ad ON fqns.attribute_id = ad.id
+//	    LEFT JOIN attribute_definition_key_access_grants adkag ON ad.id = adkag.attribute_definition_id
+//	    LEFT JOIN key_access_servers kas ON adkag.key_access_server_id = kas.id
+//	    LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
+//	    WHERE fqns.fqn = ANY($1::TEXT[])
+//	        AND ad.active = TRUE
+//	    GROUP BY ad.id, k.keys
+//	),
+//	namespaces AS (
+//		SELECT
+//			n.id,
+//			JSON_BUILD_OBJECT(
+//				'id', n.id,
+//				'name', n.name,
+//				'active', n.active,
+//		        'fqn', fqns.fqn,
+//		        'grants', JSONB_AGG(
+//		            DISTINCT JSONB_BUILD_OBJECT(
+//		                'id', kas.id,
+//		                'uri', kas.uri,
+//	                    'name', kas.name,
+//		                'public_key', kas.public_key
+//		            )
+//		        ) FILTER (WHERE kas.id IS NOT NULL),
+//	            'keys', k.keys
+//	    	) AS namespace
+//		FROM target_definition td
+//		INNER JOIN attribute_namespaces n ON td.namespace_id = n.id
+//		INNER JOIN attribute_fqns fqns ON n.id = fqns.namespace_id
+//		LEFT JOIN attribute_namespace_key_access_grants ankag ON n.id = ankag.namespace_id
+//		LEFT JOIN key_access_servers kas ON ankag.key_access_server_id = kas.id
+//	    LEFT JOIN active_namespace_public_keys_view k ON n.id = k.namespace_id
+//		WHERE n.active = TRUE
+//			AND (fqns.attribute_id IS NULL AND fqns.value_id IS NULL)
+//		GROUP BY n.id, fqns.fqn, k.keys
+//	),
+//	value_grants AS (
+//		SELECT
+//			av.id,
+//			JSON_AGG(
+//				DISTINCT JSONB_BUILD_OBJECT(
+//					'id', kas.id,
+//	                'uri', kas.uri,
+//	                'name', kas.name,
+//	                'public_key', kas.public_key
+//	            )
+//			) FILTER (WHERE kas.id IS NOT NULL) AS grants
+//		FROM target_definition td
+//		LEFT JOIN attribute_values av on td.id = av.attribute_definition_id
+//		LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
+//		LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
+//		GROUP BY av.id
+//	),
+//	value_subject_mappings AS (
+//		SELECT
+//			av.id,
+//			JSON_AGG(
+//	            JSON_BUILD_OBJECT(
+//	                'id', sm.id,
+//	                'actions', (
+//	                    SELECT COALESCE(
+//	                        JSON_AGG(
+//	                            JSON_BUILD_OBJECT(
+//	                                'id', a.id,
+//	                                'name', a.name
+//	                            )
+//	                        ) FILTER (WHERE a.id IS NOT NULL),
+//	                        '[]'::JSON
+//	                    )
+//	                    FROM subject_mapping_actions sma
+//	                    LEFT JOIN actions a ON sma.action_id = a.id
+//	                    WHERE sma.subject_mapping_id = sm.id
+//	                ),
+//	                'subject_condition_set', JSON_BUILD_OBJECT(
+//	                    'id', scs.id,
+//	                    'subject_sets', scs.condition
+//	                )
+//	            )
+//	        ) FILTER (WHERE sm.id IS NOT NULL) AS sub_maps
+//		FROM target_definition td
+//		LEFT JOIN attribute_values av ON td.id = av.attribute_definition_id
+//		LEFT JOIN subject_mappings sm ON av.id = sm.attribute_value_id
+//		LEFT JOIN subject_condition_set scs ON sm.subject_condition_set_id = scs.id
+//		GROUP BY av.id
+//	),
+//	values AS (
+//	    SELECT
+//			av.attribute_definition_id,
+//			JSON_AGG(
+//		        JSON_BUILD_OBJECT(
+//		            'id', av.id,
+//		            'value', av.value,
+//		            'active', av.active,
+//		            'fqn', fqns.fqn,
+//		            'grants', avg.grants,
+//		            'subject_mappings', avsm.sub_maps,
+//	                'keys', k.keys
+//		        -- enforce order of values in response
+//		        ) ORDER BY ARRAY_POSITION(td.values_order, av.id)
+//		    ) AS values
+//		FROM target_definition td
+//		LEFT JOIN attribute_values av ON td.id = av.attribute_definition_id
+//		LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+//		LEFT JOIN value_grants avg ON av.id = avg.id
+//		LEFT JOIN value_subject_mappings avsm ON av.id = avsm.id
+//	    LEFT JOIN active_value_public_keys_view k ON av.id = k.value_id
+//		WHERE av.active = TRUE
+//		GROUP BY av.attribute_definition_id
+//	)
+//	SELECT
+//		td.id,
+//		td.name,
+//	    td.rule,
+//		td.active,
+//		n.namespace,
+//		fqns.fqn,
+//		values.values,
+//		td.grants,
+//	    td.keys
+//	FROM target_definition td
+//	INNER JOIN attribute_fqns fqns ON td.id = fqns.attribute_id
+//	INNER JOIN namespaces n ON td.namespace_id = n.id
+//	LEFT JOIN values ON td.id = values.attribute_definition_id
+//	WHERE fqns.value_id IS NULL
+func (q *Queries) listAttributesByDefOrValueFqns(ctx context.Context, fqns []string) ([]listAttributesByDefOrValueFqnsRow, error) {
+	rows, err := q.db.Query(ctx, listAttributesByDefOrValueFqns, fqns)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []listAttributesByDefOrValueFqnsRow
+	for rows.Next() {
+		var i listAttributesByDefOrValueFqnsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Rule,
+			&i.Active,
+			&i.Namespace,
+			&i.Fqn,
+			&i.Values,
+			&i.Grants,
+			&i.Keys,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPublicKeyMappings = `-- name: listPublicKeyMappings :many
 WITH counted AS (
     SELECT COUNT(DISTINCT kas.id) AS total FROM public_keys AS pk
@@ -4328,7 +4354,7 @@ WITH
         WHERE id = $3
         RETURNING id
     ),
-    -- Only delete actions that are NOT in the new list
+    -- Delete any actions that are NOT in the new list
     action_delete AS (
         DELETE FROM subject_mapping_actions
         WHERE
@@ -4337,7 +4363,7 @@ WITH
             AND action_id NOT IN (SELECT unnest($4::UUID[]))
         RETURNING action_id
     ),
-    -- Only insert actions that don't already exist
+    -- Insert actions that are not already related to the mapping
     action_insert AS (
         INSERT INTO
             subject_mapping_actions (subject_mapping_id, action_id)
@@ -4384,7 +4410,7 @@ type updateSubjectMappingParams struct {
 //	        WHERE id = $3
 //	        RETURNING id
 //	    ),
-//	    -- Only delete actions that are NOT in the new list
+//	    -- Delete any actions that are NOT in the new list
 //	    action_delete AS (
 //	        DELETE FROM subject_mapping_actions
 //	        WHERE
@@ -4393,7 +4419,7 @@ type updateSubjectMappingParams struct {
 //	            AND action_id NOT IN (SELECT unnest($4::UUID[]))
 //	        RETURNING action_id
 //	    ),
-//	    -- Only insert actions that don't already exist
+//	    -- Insert actions that are not already related to the mapping
 //	    action_insert AS (
 //	        INSERT INTO
 //	            subject_mapping_actions (subject_mapping_id, action_id)

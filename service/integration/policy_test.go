@@ -124,5 +124,5 @@ func TestPolicySuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping policy integration tests")
 	}
-	// suite.Run(t, new(PolicyDBClientSuite))
+	suite.Run(t, new(PolicyDBClientSuite))
 }

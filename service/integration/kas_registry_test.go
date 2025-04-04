@@ -1637,5 +1637,5 @@ func TestKasRegistrySuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping db.KasRegistry integration tests")
 	}
-	// suite.Run(t, new(KasRegistrySuite))
+	suite.Run(t, new(KasRegistrySuite))
 }

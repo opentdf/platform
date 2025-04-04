@@ -104,8 +104,6 @@ go run ./service start
 ```
 <!-- END copy ./service/README#quick-start -->
 
-Okay, here is just the new Markdown section for the README, updated to reflect the `server.trace:` configuration structure shown in your example:
-
 ### Observability: Distributed Tracing (OpenTelemetry)
 
 The platform incorporates OpenTelemetry for distributed tracing, providing insights into request flows and performance across services. Tracing can be configured in the main `opentdf.yaml` (or equivalent) configuration file under the `server.trace` key.

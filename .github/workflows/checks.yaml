@@ -273,7 +273,8 @@ jobs:
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       focus-sdk: go
-      platform-ref: ${{ github.ref }}
+      # use commit instead of ref so we can "go get" specific sdk version
+      platform-ref: ${{ github.event.pull_request.head.sha || github.sha }} ${{ github.ref }} lts
 
   # test latest otdfctl CLI 'main' against platform PR branch
   otdfctl-test:

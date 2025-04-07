@@ -73,7 +73,6 @@ WITH counted AS (
     SELECT COUNT(kas.id) AS total
     FROM key_access_servers AS kas
 )
-
 SELECT kas.id,
     kas.uri,
     kas.public_key,
@@ -113,6 +112,135 @@ WHERE id = $1;
 
 -- name: DeleteKeyAccessServer :execrows
 DELETE FROM key_access_servers WHERE id = $1;
+
+
+-----------------------------------------------------------------
+-- Key Access Server Keys
+------------------------------------------------------------------
+-- name: CreateKey :one
+WITH inserted AS (
+  INSERT INTO key_access_server_keys
+    (key_access_server_id, key_algorithm, key_id, key_mode, key_status, metadata, private_key_ctx, public_key_ctx, provider_config_id)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+  RETURNING *
+)
+SELECT 
+  id,
+  key_id,
+  key_status,
+  key_mode,
+  key_algorithm,
+  private_key_ctx,
+  public_key_ctx,
+  provider_config_id,
+  JSON_STRIP_NULLS(
+    JSON_BUILD_OBJECT(
+      'labels', metadata -> 'labels',         
+      'created_at', created_at,               
+      'updated_at', updated_at                
+    )
+  ) AS metadata
+FROM inserted;
+
+-- name: CheckIfKeyExists :one
+SELECT EXISTS (
+    SELECT 1
+    FROM key_access_server_keys
+    WHERE key_access_server_id = $1 AND key_status = $2 AND key_algorithm = $3
+);
+
+-- name: IsUpdateKeySafe :one
+WITH keyToUpdate AS (
+    SELECT 
+        kask.key_access_server_id AS kas_id,
+        kask.key_algorithm
+    FROM key_access_server_keys AS kask
+    WHERE kask.id = $1
+)
+SELECT EXISTS (
+    SELECT 1
+    FROM key_access_server_keys AS kask
+    INNER JOIN keyToUpdate ON kask.key_access_server_id = keyToUpdate.kas_id
+    WHERE kask.key_access_server_id = keyToUpdate.kas_id 
+    AND kask.key_status = $2
+    AND kask.key_algorithm = keyToUpdate.key_algorithm
+);
+
+-- name: GetKey :one
+SELECT 
+  kask.id,
+  kask.key_id,
+  kask.key_status,
+  kask.key_mode,
+  kask.key_algorithm,
+  kask.private_key_ctx,
+  kask.public_key_ctx,
+  kask.provider_config_id,
+  JSON_STRIP_NULLS(
+    JSON_BUILD_OBJECT(
+      'labels', kask.metadata -> 'labels',         
+      'created_at', kask.created_at,               
+      'updated_at', kask.updated_at                
+    )
+  ) AS metadata,
+  pc.provider_name,
+  pc.config AS pc_config,
+  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata
+FROM key_access_server_keys AS kask
+LEFT JOIN 
+    provider_config as pc ON kask.provider_config_id = pc.id
+WHERE (sqlc.narg('id')::uuid IS NULL OR kask.id = sqlc.narg('id')::uuid)
+  AND (sqlc.narg('key_id')::text IS NULL OR kask.key_id = sqlc.narg('key_id')::text);
+
+-- name: UpdateKey :execrows
+UPDATE key_access_server_keys
+SET
+    key_status = COALESCE(sqlc.narg('key_status'), key_status),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata)
+WHERE id = $1;
+
+-- name: ListKeys :many
+WITH listed AS (
+    SELECT
+        kas.id AS kas_id
+    FROM key_access_servers AS kas
+    WHERE (sqlc.narg('kas_id')::uuid IS NULL OR kas.id = sqlc.narg('kas_id')::uuid)
+            AND (sqlc.narg('kas_name')::text IS NULL OR kas.name = sqlc.narg('kas_name')::text)
+            AND (sqlc.narg('kas_uri')::text IS NULL OR kas.uri = sqlc.narg('kas_uri')::text)
+)
+SELECT 
+  COUNT(*) OVER () AS total,
+  kask.id,
+  kask.key_id,
+  kask.key_status,
+  kask.key_mode,
+  kask.key_algorithm,
+  kask.private_key_ctx,
+  kask.public_key_ctx,
+  kask.provider_config_id,
+  JSON_STRIP_NULLS(
+    JSON_BUILD_OBJECT(
+      'labels', kask.metadata -> 'labels',         
+      'created_at', kask.created_at,               
+      'updated_at', kask.updated_at                
+    )
+  ) AS metadata,
+  pc.provider_name,
+  pc.config AS provider_config,
+  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata
+FROM key_access_server_keys AS kask
+INNER JOIN
+    listed ON kask.key_access_server_id = listed.kas_id
+LEFT JOIN 
+    provider_config as pc ON kask.provider_config_id = pc.id
+WHERE
+    (sqlc.narg('key_algorithm')::integer IS NULL OR kask.key_algorithm = sqlc.narg('key_algorithm')::integer)
+LIMIT @limit_ 
+OFFSET @offset_;
+
+-- name: DeleteKey :execrows
+DELETE FROM key_access_server_keys WHERE id = $1;
+
 
 ---------------------------------------------------------------- 
 -- ATTRIBUTE FQN

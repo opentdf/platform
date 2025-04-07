@@ -9,6 +9,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
@@ -417,6 +418,28 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		payloadKey, err := r.UnsafePayloadKeyRetrieval()
 		s.Require().NoError(err)
 		s.Len(payloadKey, kKeySize)
+
+		// check that root sig and seg sig are hex encoded if useHex is true
+		b64decodedroot, err := ocrypto.Base64Decode([]byte(r.Manifest().EncryptionInformation.RootSignature.Signature))
+		s.Require().NoError(err)
+		b64decodedseg, err := ocrypto.Base64Decode([]byte(r.Manifest().EncryptionInformation.Segments[0].Hash))
+		s.Require().NoError(err)
+		_, err1 := hex.DecodeString(string(b64decodedroot))
+		_, err2 := hex.DecodeString(string(b64decodedseg))
+		if config.useHex {
+			s.Require().NoError(err1)
+			s.Require().NoError(err2)
+		} else {
+			s.Require().Error(err1)
+			s.Require().Error(err2)
+		}
+
+		// check version is present if usehex is false
+		if config.useHex {
+			s.Equal("", r.Manifest().TDFVersion)
+		} else {
+			s.Equal(TDFSpecVersion, r.Manifest().TDFVersion)
+		}
 
 		// test reader
 		readSeeker, err = os.Open(tdfFilename)

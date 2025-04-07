@@ -406,7 +406,7 @@ func (s *KasRegistryKeySuite) Test_ListKeys_FilterAlgo_NoKeysWithAlgo_Success() 
 	resp, err := s.db.PolicyClient.ListKeys(s.ctx, &req)
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.Equal(0, len(resp.GetKeys()))
+	s.Len(resp.GetKeys(), 0)
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_FilterAlgo_TwoKeys_Success() {
@@ -442,7 +442,7 @@ func (s *KasRegistryKeySuite) Test_ListKeys_KasID_Limit_Success() {
 	resp, err := s.db.PolicyClient.ListKeys(s.ctx, &req)
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.Equal(1, len(resp.GetKeys()))
+	s.Len(resp.GetKeys(), 1)
 	s.Equal(int32(2), resp.GetPagination().GetTotal())
 	s.Equal(int32(1), resp.GetPagination().GetNextOffset())
 	s.Equal(int32(0), resp.GetPagination().GetCurrentOffset())

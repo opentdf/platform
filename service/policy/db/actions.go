@@ -10,7 +10,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-func (c PolicyDBClient) GetAction(ctx context.Context, req *actions.GetActionRequest) (*actions.GetActionResponse, error) {
+func (c PolicyDBClient) GetAction(ctx context.Context, req *actions.GetActionRequest) (*policy.Action, error) {
 	getActionParams := getActionParams{}
 	if req.GetId() != "" {
 		getActionParams.ID = pgtypeUUID(req.GetId())
@@ -30,78 +30,132 @@ func (c PolicyDBClient) GetAction(ctx context.Context, req *actions.GetActionReq
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	return &actions.GetActionResponse{
-		Action: &policy.Action{
-			Id:       got.ID,
-			Name:     got.Name,
-			Metadata: metadata,
-		},
+	return &policy.Action{
+		Id:       got.ID,
+		Name:     got.Name,
+		Metadata: metadata,
 	}, nil
 }
 
 func (c PolicyDBClient) ListActions(ctx context.Context, req *actions.ListActionsRequest) (*actions.ListActionsResponse, error) {
-	listActionParams := listActionsParams{}
+	limit, offset := c.getRequestedLimitOffset(req.GetPagination())
 
-	// Execute the query
-	got, err := c.Queries.listActions(ctx, listActionParams)
+	list, err := c.Queries.listActions(ctx, listActionsParams{
+		Limit:  limit,
+		Offset: offset,
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	// Map the results to the response
-	var actionsList []*policy.Action
-	for _, action := range got {
+	var (
+		actionsStandard []*policy.Action
+		actionsCustom   []*policy.Action
+	)
+	for _, a := range list {
 		metadata := &common.Metadata{}
-		if err := protojson.Unmarshal(action.Metadata, metadata); err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		if err := unmarshalMetadata(a.Metadata, metadata); err != nil {
+			return nil, err
 		}
-		actionsList = append(actionsList, &policy.Action{
-			Id:       action.ID,
-			Name:     action.Name,
+		action := &policy.Action{
+			Id:       a.ID,
+			Name:     a.Name,
 			Metadata: metadata,
-		})
+		}
+		if a.IsStandard {
+			actionsStandard = append(actionsStandard, action)
+		} else {
+			actionsCustom = append(actionsCustom, action)
+		}
+	}
+
+	var total int32
+	var nextOffset int32
+	if len(list) > 0 {
+		total = int32(list[0].Total)
+		nextOffset = getNextOffset(offset, limit, total)
 	}
 
 	return &actions.ListActionsResponse{
-		Actions: actionsList,
+		ActionsStandard: actionsStandard,
+		ActionsCustom:   actionsCustom,
+		Pagination: &policy.PageResponse{
+			CurrentOffset: offset,
+			NextOffset:    nextOffset,
+			Total:         total,
+		},
 	}, nil
 }
 
-func (c PolicyDBClient) CreateAction(ctx context.Context, req *actions.CreateActionRequest) (*actions.CreateActionResponse, error) {
-	// Define parameters for the query
+func (c PolicyDBClient) CreateAction(ctx context.Context, req *actions.CreateActionRequest) (*policy.Action, error) {
+	metadataJSON, _, err := db.MarshalCreateMetadata(req.GetMetadata())
+	if err != nil {
+		return nil, err
+	}
 	createParams := createCustomActionParams{
-		ID:       pgtypeUUID(req.GetAction().GetId()),
-		Name:     pgtypeText(req.GetAction().GetName()),
-		Metadata: protojson.Marshal(req.GetAction().GetMetadata()),
+		Name:     req.GetName(),
+		Metadata: metadataJSON,
 	}
 
-	// Execute the query
-	created, err := c.Queries.createCustomAction(ctx, createParams)
+	createdID, err := c.Queries.createCustomAction(ctx, createParams)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	return &actions.CreateActionResponse{}, nil
+	return c.GetAction(ctx, &actions.GetActionRequest{
+		Identifier: &actions.GetActionRequest_Id{
+			Id: createdID,
+		},
+	})
 }
 
-func (c PolicyDBClient) UpdateAction(ctx context.Context, req *actions.UpdateActionRequest) (*actions.UpdateActionResponse, error) {
-	// Define parameters for the query
+func (c PolicyDBClient) UpdateAction(ctx context.Context, req *actions.UpdateActionRequest) (*policy.Action, error) {
+	// if extend we need to merge the metadata
+	metadataJSON, metadata, err := db.MarshalUpdateMetadata(req.GetMetadata(), req.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
+		a, err := c.GetAction(ctx, &actions.GetActionRequest{
+			Identifier: &actions.GetActionRequest_Id{
+				Id: req.GetId(),
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		if a.GetMetadata() == nil {
+			return nil, nil //nolint:nilnil // no metadata does not mean no error
+		}
+		return a.GetMetadata(), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Update what fields were patched to update
 	updateParams := updateCustomActionParams{
-		ID:       pgtypeUUID(req.GetAction().GetId()),
-		Name:     pgtypeText(req.GetAction().GetName()),
-		Metadata: protojson.Marshal(req.GetAction().GetMetadata()),
+		ID: req.GetId(),
+	}
+	if metadataJSON != nil {
+		updateParams.Metadata = metadataJSON
+	}
+	if req.GetName() != "" {
+		updateParams.Name = pgtypeText(req.GetName())
 	}
 
-	// Execute the query
-	updated, err := c.Queries.updateCustomAction(ctx, updateParams)
+	count, err := c.Queries.updateCustomAction(ctx, updateParams)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
 
-	return &actions.UpdateActionResponse{}, nil
+	return &policy.Action{
+		Id:       req.GetId(),
+		Name:     req.GetName(),
+		Metadata: metadata,
+	}, nil
 }
 
-func (c PolicyDBClient) DeleteAction(ctx context.Context, req *actions.DeleteActionRequest) (*actions.DeleteActionResponse, error) {
+func (c PolicyDBClient) DeleteAction(ctx context.Context, req *actions.DeleteActionRequest) (*policy.Action, error) {
 	count, err := c.Queries.deleteCustomAction(ctx, req.GetId())
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -110,9 +164,7 @@ func (c PolicyDBClient) DeleteAction(ctx context.Context, req *actions.DeleteAct
 		return nil, db.ErrNotFound
 	}
 
-	return &actions.DeleteActionResponse{
-		Action: &policy.Action{
-			Id: req.GetId(),
-		},
+	return &policy.Action{
+		Id: req.GetId(),
 	}, nil
 }

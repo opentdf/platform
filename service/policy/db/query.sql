@@ -1247,37 +1247,17 @@ WITH counted AS (
     SELECT COUNT(id) AS total FROM actions
 )
 SELECT 
-    (
-        SELECT JSONB_AGG(
-            JSONB_BUILD_OBJECT(
-                'id', id,
-                'name', name,
-                'metadata', JSON_STRIP_NULLS(JSONB_BUILD_OBJECT(
-                    'labels', metadata -> 'labels', 
-                    'created_at', created_at, 
-                    'updated_at', updated_at
-                ))
-            )
-        )
-        FROM actions
-        WHERE is_standard = TRUE
-    ) AS standard_actions,
-    (
-        SELECT JSONB_AGG(
-            JSONB_BUILD_OBJECT(
-                'id', id,
-                'name', name,
-                'metadata', JSON_STRIP_NULLS(JSONB_BUILD_OBJECT(
-                    'labels', metadata -> 'labels', 
-                    'created_at', created_at, 
-                    'updated_at', updated_at
-                ))
-            )
-        )
-        FROM actions
-        WHERE is_standard = FALSE
-    ) AS custom_actions,
-    (SELECT total FROM counted) AS total
+    a.id,
+    a.name,
+    JSON_STRIP_NULLS(JSONB_BUILD_OBJECT(
+        'labels', a.metadata -> 'labels', 
+        'created_at', a.created_at, 
+        'updated_at', a.updated_at
+    )) as metadata,
+    a.is_standard,
+    counted.total
+FROM actions a
+CROSS JOIN counted
 LIMIT @limit_ 
 OFFSET @offset_;
 

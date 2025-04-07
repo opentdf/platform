@@ -99,84 +99,91 @@ func TestWithAssertions(t *testing.T) {
 func TestWithTargetMode(t *testing.T) {
 	tests := []struct {
 		name           string
-		modeInput      string
+		targetMode     string
 		useHex         bool
 		excludeVersion bool
 		expectError    bool
 	}{
 		{
 			name:           "mode 0.0.0",
-			modeInput:      "0.0.0",
+			targetMode:     "0.0.0",
 			useHex:         true,
 			excludeVersion: true,
 			expectError:    false,
 		},
 		{
 			name:           "mode v0.0.0",
-			modeInput:      "v0.0.0",
+			targetMode:     "v0.0.0",
 			useHex:         true,
 			excludeVersion: true,
 			expectError:    false,
 		},
 		{
 			name:           "equal mode 4.3.0",
-			modeInput:      "4.3.0",
+			targetMode:     "4.3.0",
 			useHex:         false,
 			excludeVersion: false,
 			expectError:    false,
 		},
 		{
 			name:           "greater mode 4.3.1",
-			modeInput:      "4.3.1",
+			targetMode:     "4.3.1",
 			useHex:         false,
 			excludeVersion: false,
 			expectError:    false,
 		},
 		{
 			name:           "greater mode v4.3.1",
-			modeInput:      "v4.3.1",
+			targetMode:     "v4.3.1",
 			useHex:         false,
 			excludeVersion: false,
 			expectError:    false,
 		},
 		{
 			name:           "mode v2.3",
-			modeInput:      "v2.3",
+			targetMode:     "v2.3",
 			useHex:         true,
 			excludeVersion: true,
 			expectError:    false,
 		},
 		{
 			name:           "mode v4.3",
-			modeInput:      "v4.3",
+			targetMode:     "v4.3",
 			useHex:         false,
 			excludeVersion: false,
 			expectError:    false,
 		},
 		{
 			name:           "mode v2",
-			modeInput:      "v2",
+			targetMode:     "v2",
 			useHex:         true,
 			excludeVersion: true,
 			expectError:    false,
 		},
 		{
 			name:           "mode v5",
-			modeInput:      "v5",
+			targetMode:     "v5",
 			useHex:         false,
 			excludeVersion: false,
 			expectError:    false,
 		},
 		{
 			name:           "empty mode input",
-			modeInput:      "",
+			targetMode:     "",
 			useHex:         false,
 			excludeVersion: false,
 			expectError:    false,
 		},
 		{
+			name:           "invalid whitespace mode input",
+			targetMode:     " ",
+			useHex:         false,
+			excludeVersion: false,
+			expectError:    true,
+		},
+		{
 			name:           "invalid mode input",
-			modeInput:      "NotSemver",
+			targetMode:     "NotSemver",
 			useHex:         false,
 			excludeVersion: false,
 			expectError:    true,
@@ -187,7 +194,7 @@ func TestWithTargetMode(t *testing.T) {
 			var cfg *TDFConfig
 			var err error
 
-			cfg, err = newTDFConfig(WithTargetMode(test.modeInput))
+			cfg, err = newTDFConfig(WithTargetMode(test.targetMode))
 
 			if test.expectError {
 				assert.Error(t, err)

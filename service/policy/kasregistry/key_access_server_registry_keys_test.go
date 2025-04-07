@@ -11,12 +11,12 @@ import (
 
 const (
 	invalidUUID             = "invalid-uuid"
-	validKeyId              = "a-key"
-	errMessageId            = "id"
+	validKeyID              = "a-key"
+	errMessageID            = "id"
 	errInvalidUUID          = "invalid uuid"
 	errMessageIdentifier    = "identifier"
-	errMessageKeyId         = "key_id"
-	errMessageKasId         = "kas_id"
+	errMessageKeyID         = "key_id"
+	errMessageKasID         = "kas_id"
 	errMessageKeyStatus     = "key_status"
 	errMessageKeyAlgo       = "key_algorithm"
 	errMessageKeyMode       = "key_mode"
@@ -63,7 +63,7 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 				},
 			},
 			expectError:  true,
-			errorMessage: errMessageKeyId,
+			errorMessage: errMessageKeyID,
 		},
 		{
 			name: "Valid ID (valid uuid)",
@@ -78,7 +78,7 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 			name: "Valid Key ID",
 			req: &kasregistry.GetKeyRequest{
 				Identifier: &kasregistry.GetKeyRequest_KeyId{
-					KeyId: validKeyId,
+					KeyId: validKeyID,
 				},
 			},
 			expectError: false,
@@ -112,13 +112,13 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 		{
 			name: "Invalid - KasId required",
 			req: &kasregistry.CreateKeyRequest{
-				KeyId:         validKeyId,
+				KeyId:         validKeyID,
 				KeyAlgorithm:  policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:       policy.KeyMode_KEY_MODE_LOCAL,
 				PrivateKeyCtx: validKeyCtx,
 			},
 			expectError:  true,
-			errorMessage: errMessageKasId,
+			errorMessage: errMessageKasID,
 		},
 		{
 			name: "Invalid - KeyId required",
@@ -129,13 +129,13 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				PrivateKeyCtx: validKeyCtx,
 			},
 			expectError:  true,
-			errorMessage: errMessageKeyId,
+			errorMessage: errMessageKeyID,
 		},
 		{
 			name: "Invalid - Valid Key Algo required",
 			req: &kasregistry.CreateKeyRequest{
 				KasId:         validUUID,
-				KeyId:         validKeyId,
+				KeyId:         validKeyID,
 				KeyAlgorithm:  invalidAlgo,
 				KeyMode:       policy.KeyMode_KEY_MODE_LOCAL,
 				PrivateKeyCtx: validKeyCtx,
@@ -147,7 +147,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			name: "Invalid - Valid Key Mode required",
 			req: &kasregistry.CreateKeyRequest{
 				KasId:         validUUID,
-				KeyId:         validKeyId,
+				KeyId:         validKeyID,
 				KeyAlgorithm:  policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:       invalidKeyMode,
 				PrivateKeyCtx: validKeyCtx,
@@ -159,7 +159,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			name: "Invalid - PrivateKeyCtx required",
 			req: &kasregistry.CreateKeyRequest{
 				KasId:        validUUID,
-				KeyId:        validKeyId,
+				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
 			},
@@ -170,7 +170,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			name: "Valid request required fields only",
 			req: &kasregistry.CreateKeyRequest{
 				KasId:         validUUID,
-				KeyId:         validKeyId,
+				KeyId:         validKeyID,
 				KeyAlgorithm:  policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:       policy.KeyMode_KEY_MODE_LOCAL,
 				PrivateKeyCtx: validKeyCtx,
@@ -181,7 +181,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			name: "Valid request (optional fields)",
 			req: &kasregistry.CreateKeyRequest{
 				KasId:            validUUID,
-				KeyId:            validKeyId,
+				KeyId:            validKeyID,
 				KeyAlgorithm:     policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:          policy.KeyMode_KEY_MODE_LOCAL,
 				PrivateKeyCtx:    validKeyCtx,
@@ -221,7 +221,7 @@ func Test_UpdateKeyAccessServer_Keys(t *testing.T) {
 			name:         "Invalid Request (empty id)",
 			req:          &kasregistry.UpdateKeyRequest{},
 			expectError:  true,
-			errorMessage: errMessageId,
+			errorMessage: errMessageID,
 		},
 		{
 			name: "Invalid Request (invalid uuid)",
@@ -283,7 +283,7 @@ func Test_ListKeyAccessServer_Keys(t *testing.T) {
 					KasId: invalidUUID,
 				}},
 			expectError:  true,
-			errorMessage: errMessageKasId,
+			errorMessage: errMessageKasID,
 		},
 	}
 

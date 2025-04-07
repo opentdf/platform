@@ -2,6 +2,7 @@ package fixtures
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"log/slog"
 	"os"
@@ -135,6 +136,24 @@ type FixtureDataRegisteredResourceValue struct {
 	Value                string `yaml:"value"`
 }
 
+type FixtureDataKasRegistryKey struct {
+	ID                string `yaml:"id"`
+	KeyAccessServerID string `yaml:"key_access_server_id"`
+	KeyAlgorithm      string `yaml:"key_algorithm"`
+	KeyID             string `yaml:"key_id"`
+	KeyMode           string `yaml:"key_mode"`
+	KeyStatus         string `yaml:"key_status"`
+	PrivateKeyCtx     string `yaml:"private_key_ctx"`
+	PublicKeyCtx      string `yaml:"public_key_ctx"`
+	ProviderConfigID  string `yaml:"provider_config_id"`
+}
+
+type FixtureDataProviderConfig struct {
+	ID             string `yaml:"id"`
+	ProviderName   string `yaml:"provider_name"`
+	ProviderConfig string `yaml:"config"`
+}
+
 type FixtureData struct {
 	Namespaces struct {
 		Metadata FixtureMetadata                 `yaml:"metadata"`
@@ -198,6 +217,14 @@ type FixtureData struct {
 		Metadata FixtureMetadata                               `yaml:"metadata"`
 		Data     map[string]FixtureDataRegisteredResourceValue `yaml:"data"`
 	} `yaml:"registered_resource_values"`
+	KasRegistryKeys struct {
+		Metadata FixtureMetadata                      `yaml:"metadata"`
+		Data     map[string]FixtureDataKasRegistryKey `yaml:"data"`
+	} `yaml:"kas_registry_keys"`
+	ProviderConfigs struct {
+		Metadata FixtureMetadata                      `yaml:"metadata"`
+		Data     map[string]FixtureDataProviderConfig `yaml:"data"`
+	} `yaml:"provider_configs"`
 }
 
 func LoadFixtureData(file string) {
@@ -351,6 +378,15 @@ func (f *Fixtures) GetKasRegistryKey(key string) FixtureDataKasRegistry {
 	return kasr
 }
 
+func (f *Fixtures) GetKasRegistryServerKeys(key string) FixtureDataKasRegistryKey {
+	kasr, ok := fixtureData.KasRegistryKeys.Data[key]
+	if !ok || kasr.ID == "" {
+		slog.Error("could not find kas-registry", slog.String("id", key))
+		panic("could not find kas-registry fixture: " + key)
+	}
+	return kasr
+}
+
 func (f *Fixtures) GetValueMap(key string) []FixtureDataValueKeyMap {
 	var vkms []FixtureDataValueKeyMap
 	for _, vkm := range fixtureData.ValueKeyMap.Data {
@@ -444,6 +480,10 @@ func (f *Fixtures) Provision() {
 	rr := f.provisionRegisteredResources()
 	slog.Info("📦 provisioning registered resource values")
 	rrv := f.provisionRegisteredResourceValues()
+	slog.Info("📦 provisioning provider configs")
+	pcs := f.provisionProviderConfigs()
+	slog.Info("📦 provisioning keys for kas registry")
+	kasKeys := f.provisionKasRegistryKeys()
 
 	slog.Info("📦 provisioned fixtures data",
 		slog.Int64("namespaces", n),
@@ -464,6 +504,8 @@ func (f *Fixtures) Provision() {
 		//slog.Int64("namespace_key_map", nkm),
 		slog.Int64("registered_resources", rr),
 		slog.Int64("registered_resource_values", rrv),
+		slog.Int64("provider_configs", pcs),
+		slog.Int64("kas_registry_keys", kasKeys),
 	)
 	slog.Info("📚 indexing FQNs for fixtures")
 	f.db.PolicyClient.AttrFqnReindex(context.Background())
@@ -646,6 +688,53 @@ func (f *Fixtures) provisionAttributeValueKeyAccessServer() int64 {
 		})
 	}
 	return f.provision("attribute_value_key_access_grants", []string{"attribute_value_id", "key_access_server_id"}, values)
+}
+
+func (f *Fixtures) provisionProviderConfigs() int64 {
+	values := make([][]string, 0, len(fixtureData.ProviderConfigs.Data))
+	for _, d := range fixtureData.ProviderConfigs.Data {
+		providerConfigJSON, err := base64.StdEncoding.DecodeString(d.ProviderConfig)
+		if err != nil {
+			slog.Error("⛔️ 📦 issue with provider config JSON - check policy_fixtures.yaml for issues")
+			panic("issue with provider config JSON")
+		}
+		values = append(values, []string{
+			f.db.StringWrap(d.ID),
+			f.db.StringWrap(d.ProviderName),
+			f.db.StringWrap(string(providerConfigJSON)),
+		})
+	}
+
+	return f.provision(fixtureData.ProviderConfigs.Metadata.TableName, fixtureData.ProviderConfigs.Metadata.Columns, values)
+}
+
+func (f *Fixtures) provisionKasRegistryKeys() int64 {
+	values := make([][]string, 0, len(fixtureData.KasRegistryKeys.Data))
+	for _, d := range fixtureData.KasRegistryKeys.Data {
+		pubCtx, err := base64.StdEncoding.DecodeString(d.PublicKeyCtx)
+		if err != nil {
+			slog.Error("⛔️ 📦 issue with kas registry public key context - check policy_fixtures.yaml for issues")
+			panic("issue with kas registry public key context")
+		}
+		privateCtx, err := base64.StdEncoding.DecodeString(d.PrivateKeyCtx)
+		if err != nil {
+			slog.Error("⛔️ 📦 issue with kas registry private key context - check policy_fixtures.yaml for issues")
+			panic("issue with kas registry private key context")
+		}
+		values = append(values, []string{
+			f.db.StringWrap(d.ID),
+			f.db.StringWrap(d.KeyAccessServerID),
+			f.db.StringWrap(d.KeyAlgorithm),
+			f.db.StringWrap(d.KeyID),
+			f.db.StringWrap(d.KeyMode),
+			f.db.StringWrap(d.KeyStatus),
+			f.db.StringWrap(string(privateCtx)),
+			f.db.StringWrap(string(pubCtx)),
+			f.db.StringWrap(d.ProviderConfigID),
+		})
+	}
+
+	return f.provision(fixtureData.KasRegistryKeys.Metadata.TableName, fixtureData.KasRegistryKeys.Metadata.Columns, values)
 }
 
 // func (f *Fixtures) provisionValueKeyMap() int64 {

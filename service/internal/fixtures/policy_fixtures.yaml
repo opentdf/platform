@@ -521,6 +521,64 @@ kas_registry:
       name: remote-acme-kas
 
 ##############
+# Key access server keys
+##############
+kas_registry_keys:
+  metadata:
+    table_name: key_access_server_keys
+    columns:
+      - id
+      - key_access_server_id
+      - key_algorithm
+      - key_id
+      - key_mode
+      - key_status
+      - private_key_ctx
+      - public_key_ctx
+      - provider_config_id
+  data:
+    kas_key_1:
+      id: 7b9c4f44-ee74-418c-b05c-8320e01953be
+      key_access_server_id: 34f2acdc-3d9c-4e92-80b6-90fe4dc9afcb
+      key_algorithm: 1 # ALGORITHM_RSA_2048
+      key_id: kas_key_1
+      key_mode: 1 # KEY_MODE_LOCAL 
+      key_status: 1 # KEY_STATUS_ACTIVE
+      private_key_ctx: eyJzb21lIjogInZhbHVlIn0g
+      public_key_ctx: eyJzb21lIjogInZhbHVlIn0g
+      provider_config_id: 4ab6b1c4-fa5c-4036-8921-53f8c267b728
+    kas_key_2:
+      id: 7b7197e4-f2de-4f74-b2f5-17c2d87ba13c
+      key_access_server_id: 34f2acdc-3d9c-4e92-80b6-90fe4dc9afcb
+      key_algorithm: 1 # ALGORITHM_RSA_2048
+      key_id: kas_key_2
+      key_mode: 1 # KEY_MODE_LOCAL 
+      key_status: 2 # KEY_STATUS_INACTIVE
+      private_key_ctx: eyJzb21lIjogInZhbHVlIn0g
+      public_key_ctx: eyJzb21lIjogInZhbHVlIn0g
+      provider_config_id: 19098106-54a1-4d33-8846-4894b5b6db3e
+
+##############
+# Provider Config
+##############
+provider_configs:
+  metadata:
+    table_name: provider_config
+    columns:
+      - id
+      - provider_name
+      - config
+  data:
+    provider_config_1:
+      id: 4ab6b1c4-fa5c-4036-8921-53f8c267b728
+      provider_name: aws
+      config: eyJzb21lIjogInZhbHVlIn0g
+    provider_config_2:
+      id: 19098106-54a1-4d33-8846-4894b5b6db3e
+      provider_name: gcp
+      config: eyJzb21lIjogInZhbHVlIn0g
+
+##############
 # Public Keys
 ##############
 # public_keys:

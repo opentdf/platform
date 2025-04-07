@@ -406,7 +406,7 @@ func (s *KasRegistryKeySuite) Test_ListKeys_FilterAlgo_NoKeysWithAlgo_Success() 
 	resp, err := s.db.PolicyClient.ListKeys(s.ctx, &req)
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.Len(resp.GetKeys(), 0)
+	s.Empty(resp.GetKeys())
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_FilterAlgo_TwoKeys_Success() {

@@ -588,6 +588,9 @@
         "keyId": {
           "type": "string"
         },
+        "keyAlgorithm": {
+          "$ref": "#/definitions/policyAlgorithm"
+        },
         "keyStatus": {
           "$ref": "#/definitions/policyKeyStatus"
         },
@@ -703,7 +706,8 @@
           "type": "string"
         },
         "configJson": {
-          "type": "string"
+          "type": "string",
+          "format": "byte"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",

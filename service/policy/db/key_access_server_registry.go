@@ -663,12 +663,12 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 	}
 
 	// PrivateCTX should be > 0 len
-	if privateCtx == nil || len(privateCtx) < 1 {
+	if len(privateCtx) < 1 {
 		return nil, fmt.Errorf("private key context is required")
 	}
 
 	// Verify that publicKey is in the request if key is mode local
-	if mode == int32(policy.KeyMode_KEY_MODE_LOCAL) && (pubCtx == nil || len(pubCtx) < 1) {
+	if mode == int32(policy.KeyMode_KEY_MODE_LOCAL) && len(pubCtx) < 1 {
 		return nil, fmt.Errorf("public key context is required when key mode is local")
 	}
 
@@ -759,7 +759,7 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Asy
 		providerConfig.Name = key.ProviderName.String
 		providerConfig.ConfigJson = key.ProviderConfig
 		providerConfig.Metadata = &common.Metadata{}
-		if err := unmarshalMetadata(key.PcMetadata, providerConfig.Metadata); err != nil {
+		if err := unmarshalMetadata(key.PcMetadata, providerConfig.GetMetadata()); err != nil {
 			return nil, err
 		}
 	}
@@ -778,8 +778,8 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Asy
 }
 
 func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyRequest) (*policy.AsymmetricKey, error) {
-	ID := r.GetId()
-	if !pgtypeUUID(ID).Valid {
+	keyID := r.GetId()
+	if !pgtypeUUID(keyID).Valid {
 		return nil, db.ErrUUIDInvalid
 	}
 
@@ -818,7 +818,7 @@ func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyR
 	}
 
 	count, err := c.Queries.UpdateKey(ctx, UpdateKeyParams{
-		ID:        ID,
+		ID:        keyID,
 		KeyStatus: pgtypeInt4(int32(keyStatus), keyStatus != policy.KeyStatus_KEY_STATUS_UNSPECIFIED),
 		Metadata:  metadataJSON,
 	})
@@ -832,7 +832,7 @@ func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyR
 	}
 
 	return &policy.AsymmetricKey{
-		Id:        ID,
+		Id:        keyID,
 		KeyStatus: r.GetKeyStatus(),
 		Metadata:  metadata,
 	}, nil
@@ -873,7 +873,7 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 			providerConfig.Name = key.ProviderName.String
 			providerConfig.ConfigJson = key.ProviderConfig
 			providerConfig.Metadata = &common.Metadata{}
-			if err := unmarshalMetadata(key.PcMetadata, providerConfig.Metadata); err != nil {
+			if err := unmarshalMetadata(key.PcMetadata, providerConfig.GetMetadata()); err != nil {
 				return nil, err
 			}
 		}

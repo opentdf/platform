@@ -71,7 +71,7 @@ OFFSET @offset_;
 -- name: ListKeyAccessServers :many
 WITH counted AS (
     SELECT COUNT(kas.id) AS total
-    FROM key_access_servers AS kask
+    FROM key_access_servers AS kas
 )
 SELECT kas.id,
     kas.uri,

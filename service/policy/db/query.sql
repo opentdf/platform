@@ -70,8 +70,9 @@ OFFSET @offset_;
 
 -- name: ListKeyAccessServers :many
 WITH counted AS (
-    SELECT COUNT(kas.id) AS total
-    FROM key_access_servers AS kas
+    SELECT
+        COUNT(*) OVER () AS total
+    FROM key_access_servers AS kask
 )
 SELECT kas.id,
     kas.uri,
@@ -193,7 +194,7 @@ SELECT
     )
   ) AS metadata,
   pc.provider_name,
-  pc.config AS pc_config,
+  pc.config AS provider_config,
   JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata
 FROM key_access_server_keys AS kask
 LEFT JOIN 
@@ -246,9 +247,6 @@ WHERE
     (sqlc.narg('key_algorithm')::integer IS NULL OR kask.key_algorithm = sqlc.narg('key_algorithm')::integer)
 LIMIT @limit_ 
 OFFSET @offset_;
-
--- name: DeleteKey :execrows
-DELETE FROM key_access_server_keys WHERE id = $1;
 
 
 ---------------------------------------------------------------- 

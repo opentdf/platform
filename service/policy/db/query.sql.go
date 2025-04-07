@@ -553,21 +553,6 @@ func (q *Queries) DeleteAttributeValue(ctx context.Context, id string) (int64, e
 	return result.RowsAffected(), nil
 }
 
-const deleteKey = `-- name: DeleteKey :execrows
-DELETE FROM key_access_server_keys WHERE id = $1
-`
-
-// DeleteKey
-//
-//	DELETE FROM key_access_server_keys WHERE id = $1
-func (q *Queries) DeleteKey(ctx context.Context, id string) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteKey, id)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const deleteKeyAccessServer = `-- name: DeleteKeyAccessServer :execrows
 DELETE FROM key_access_servers WHERE id = $1
 `
@@ -1015,7 +1000,7 @@ SELECT
     )
   ) AS metadata,
   pc.provider_name,
-  pc.config AS pc_config,
+  pc.config AS provider_config,
   JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata
 FROM key_access_server_keys AS kask
 LEFT JOIN 
@@ -1040,7 +1025,7 @@ type GetKeyRow struct {
 	ProviderConfigID pgtype.UUID `json:"provider_config_id"`
 	Metadata         []byte      `json:"metadata"`
 	ProviderName     pgtype.Text `json:"provider_name"`
-	PcConfig         []byte      `json:"pc_config"`
+	ProviderConfig   []byte      `json:"provider_config"`
 	PcMetadata       []byte      `json:"pc_metadata"`
 }
 
@@ -1063,7 +1048,7 @@ type GetKeyRow struct {
 //	    )
 //	  ) AS metadata,
 //	  pc.provider_name,
-//	  pc.config AS pc_config,
+//	  pc.config AS provider_config,
 //	  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata
 //	FROM key_access_server_keys AS kask
 //	LEFT JOIN
@@ -1084,7 +1069,7 @@ func (q *Queries) GetKey(ctx context.Context, arg GetKeyParams) (GetKeyRow, erro
 		&i.ProviderConfigID,
 		&i.Metadata,
 		&i.ProviderName,
-		&i.PcConfig,
+		&i.ProviderConfig,
 		&i.PcMetadata,
 	)
 	return i, err
@@ -2553,8 +2538,9 @@ func (q *Queries) ListKeyAccessServerGrants(ctx context.Context, arg ListKeyAcce
 
 const listKeyAccessServers = `-- name: ListKeyAccessServers :many
 WITH counted AS (
-    SELECT COUNT(kas.id) AS total
-    FROM key_access_servers AS kas
+    SELECT
+        COUNT(*) OVER () AS total
+    FROM key_access_servers AS kask
 )
 SELECT kas.id,
     kas.uri,
@@ -2587,8 +2573,9 @@ type ListKeyAccessServersRow struct {
 // ListKeyAccessServers
 //
 //	WITH counted AS (
-//	    SELECT COUNT(kas.id) AS total
-//	    FROM key_access_servers AS kas
+//	    SELECT
+//	        COUNT(*) OVER () AS total
+//	    FROM key_access_servers AS kask
 //	)
 //	SELECT kas.id,
 //	    kas.uri,

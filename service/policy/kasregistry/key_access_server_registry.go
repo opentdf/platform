@@ -37,11 +37,10 @@ type KeyAccessServerRegistry struct {
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[kasregistryconnect.KeyAccessServerRegistryServiceHandler] {
 	return &serviceregistry.Service[kasregistryconnect.KeyAccessServerRegistryServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[kasregistryconnect.KeyAccessServerRegistryServiceHandler]{
-			Namespace:       ns,
-			DB:              dbRegister,
-			ServiceDesc:     &kasr.KeyAccessServerRegistryService_ServiceDesc,
-			ConnectRPCFunc:  kasregistryconnect.NewKeyAccessServerRegistryServiceHandler,
-			GRPCGatewayFunc: kasr.RegisterKeyAccessServerRegistryServiceHandler,
+			Namespace:      ns,
+			DB:             dbRegister,
+			ServiceDesc:    &kasr.KeyAccessServerRegistryService_ServiceDesc,
+			ConnectRPCFunc: kasregistryconnect.NewKeyAccessServerRegistryServiceHandler,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasregistryconnect.KeyAccessServerRegistryServiceHandler, serviceregistry.HandlerServer) {
 				cfg := policyconfig.GetSharedPolicyConfig(srp)
 				return &KeyAccessServerRegistry{

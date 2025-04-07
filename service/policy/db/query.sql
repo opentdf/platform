@@ -70,8 +70,9 @@ OFFSET @offset_;
 
 -- name: ListKeyAccessServers :many
 WITH counted AS (
-    SELECT COUNT(kas.id) AS total
-    FROM key_access_servers AS kas
+    SELECT
+        COUNT(*) OVER () AS total
+    FROM key_access_servers AS kask
 )
 SELECT kas.id,
     kas.uri,
@@ -247,9 +248,12 @@ WHERE
 LIMIT @limit_ 
 OFFSET @offset_;
 
+<<<<<<< HEAD
 -- name: DeleteKey :execrows
 DELETE FROM key_access_server_keys WHERE id = $1;
 
+=======
+>>>>>>> a53a7cf2 (feat(policy): DSPX-678 - KAS Key updates.)
 
 ---------------------------------------------------------------- 
 -- ATTRIBUTE FQN

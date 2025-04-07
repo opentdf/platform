@@ -11,12 +11,21 @@ import (
 
 const (
 	invalidUUID             = "invalid-uuid"
+<<<<<<< HEAD
 	validKeyID              = "a-key"
 	errMessageID            = "id"
 	errInvalidUUID          = "invalid uuid"
 	errMessageIdentifier    = "identifier"
 	errMessageKeyID         = "key_id"
 	errMessageKasID         = "kas_id"
+=======
+	validKeyId              = "a-key"
+	errMessageId            = "id"
+	errInvalidUUID          = "invalid uuid"
+	errMessageIdentifier    = "identifier"
+	errMessageKeyId         = "key_id"
+	errMessageKasId         = "kas_id"
+>>>>>>> a53a7cf2 (feat(policy): DSPX-678 - KAS Key updates.)
 	errMessageKeyStatus     = "key_status"
 	errMessageKeyAlgo       = "key_algorithm"
 	errMessageKeyMode       = "key_mode"
@@ -63,7 +72,11 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 				},
 			},
 			expectError:  true,
+<<<<<<< HEAD
 			errorMessage: errMessageKeyID,
+=======
+			errorMessage: errMessageKeyId,
+>>>>>>> a53a7cf2 (feat(policy): DSPX-678 - KAS Key updates.)
 		},
 		{
 			name: "Valid ID (valid uuid)",
@@ -78,7 +91,11 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 			name: "Valid Key ID",
 			req: &kasregistry.GetKeyRequest{
 				Identifier: &kasregistry.GetKeyRequest_KeyId{
+<<<<<<< HEAD
 					KeyId: validKeyID,
+=======
+					KeyId: validKeyId,
+>>>>>>> a53a7cf2 (feat(policy): DSPX-678 - KAS Key updates.)
 				},
 			},
 			expectError: false,
@@ -112,13 +129,21 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 		{
 			name: "Invalid - KasId required",
 			req: &kasregistry.CreateKeyRequest{
+<<<<<<< HEAD
 				KeyId:         validKeyID,
+=======
+				KeyId:         validKeyId,
+>>>>>>> a53a7cf2 (feat(policy): DSPX-678 - KAS Key updates.)
 				KeyAlgorithm:  policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:       policy.KeyMode_KEY_MODE_LOCAL,
 				PrivateKeyCtx: validKeyCtx,
 			},
 			expectError:  true,
+<<<<<<< HEAD
 			errorMessage: errMessageKasID,
+=======
+			errorMessage: errMessageKasId,
+>>>>>>> a53a7cf2 (feat(policy): DSPX-678 - KAS Key updates.)
 		},
 		{
 			name: "Invalid - KeyId required",
@@ -129,13 +154,21 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				PrivateKeyCtx: validKeyCtx,
 			},
 			expectError:  true,
+<<<<<<< HEAD
 			errorMessage: errMessageKeyID,
+=======
+			errorMessage: errMessageKeyId,
+>>>>>>> a53a7cf2 (feat(policy): DSPX-678 - KAS Key updates.)
 		},
 		{
 			name: "Invalid - Valid Key Algo required",
 			req: &kasregistry.CreateKeyRequest{
 				KasId:         validUUID,
+<<<<<<< HEAD
 				KeyId:         validKeyID,
+=======
+				KeyId:         validKeyId,
+>>>>>>> a53a7cf2 (feat(policy): DSPX-678 - KAS Key updates.)
 				KeyAlgorithm:  invalidAlgo,
 				KeyMode:       policy.KeyMode_KEY_MODE_LOCAL,
 				PrivateKeyCtx: validKeyCtx,
@@ -147,7 +180,11 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			name: "Invalid - Valid Key Mode required",
 			req: &kasregistry.CreateKeyRequest{
 				KasId:         validUUID,
+<<<<<<< HEAD
 				KeyId:         validKeyID,
+=======
+				KeyId:         validKeyId,
+>>>>>>> a53a7cf2 (feat(policy): DSPX-678 - KAS Key updates.)
 				KeyAlgorithm:  policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:       invalidKeyMode,
 				PrivateKeyCtx: validKeyCtx,
@@ -159,7 +196,11 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			name: "Invalid - PrivateKeyCtx required",
 			req: &kasregistry.CreateKeyRequest{
 				KasId:        validUUID,
+<<<<<<< HEAD
 				KeyId:        validKeyID,
+=======
+				KeyId:        validKeyId,
+>>>>>>> a53a7cf2 (feat(policy): DSPX-678 - KAS Key updates.)
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
 			},
@@ -170,7 +211,11 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			name: "Valid request required fields only",
 			req: &kasregistry.CreateKeyRequest{
 				KasId:         validUUID,
+<<<<<<< HEAD
 				KeyId:         validKeyID,
+=======
+				KeyId:         validKeyId,
+>>>>>>> a53a7cf2 (feat(policy): DSPX-678 - KAS Key updates.)
 				KeyAlgorithm:  policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:       policy.KeyMode_KEY_MODE_LOCAL,
 				PrivateKeyCtx: validKeyCtx,
@@ -181,7 +226,11 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			name: "Valid request (optional fields)",
 			req: &kasregistry.CreateKeyRequest{
 				KasId:            validUUID,
+<<<<<<< HEAD
 				KeyId:            validKeyID,
+=======
+				KeyId:            validKeyId,
+>>>>>>> a53a7cf2 (feat(policy): DSPX-678 - KAS Key updates.)
 				KeyAlgorithm:     policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:          policy.KeyMode_KEY_MODE_LOCAL,
 				PrivateKeyCtx:    validKeyCtx,
@@ -221,7 +270,11 @@ func Test_UpdateKeyAccessServer_Keys(t *testing.T) {
 			name:         "Invalid Request (empty id)",
 			req:          &kasregistry.UpdateKeyRequest{},
 			expectError:  true,
+<<<<<<< HEAD
 			errorMessage: errMessageID,
+=======
+			errorMessage: errMessageId,
+>>>>>>> a53a7cf2 (feat(policy): DSPX-678 - KAS Key updates.)
 		},
 		{
 			name: "Invalid Request (invalid uuid)",
@@ -283,7 +336,11 @@ func Test_ListKeyAccessServer_Keys(t *testing.T) {
 					KasId: invalidUUID,
 				}},
 			expectError:  true,
+<<<<<<< HEAD
 			errorMessage: errMessageKasID,
+=======
+			errorMessage: errMessageKasId,
+>>>>>>> a53a7cf2 (feat(policy): DSPX-678 - KAS Key updates.)
 		},
 	}
 

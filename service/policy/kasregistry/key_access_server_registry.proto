@@ -365,7 +365,7 @@ message CreateKeyRequest {
   // Required
   KeyMode key_mode = 4 [(buf.validate.field).enum.defined_only = true]; // The mode of the key (e.g., local or external)
   // Required
-  bytes private_key_ctx = 5; // Context or additional data specific to the private key, based on the key provider implementation
+  bytes private_key_ctx = 5 [(buf.validate.field).required = true]; // Context or additional data specific to the private key, based on the key provider implementation
   // Optional
   bytes public_key_ctx = 6; // Context or additional data specific to the public key, based on the key provider implementation
   // Optional

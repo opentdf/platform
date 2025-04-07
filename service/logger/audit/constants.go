@@ -22,6 +22,7 @@ const (
 	ObjectTypeResourceMappingGroup
 	ObjectTypePublicKey
 	ObjectTypeKeyManagementProviderConfig
+	ObjectTypeKasRegistryKeys
 )
 
 func (ot ObjectType) String() string {
@@ -41,6 +42,7 @@ func (ot ObjectType) String() string {
 		"resource_mapping_group",
 		"public_key",
 		"key_management_provider_config",
+		"kas_registry_keys",
 	}[ot]
 }
 

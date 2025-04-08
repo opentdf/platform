@@ -10,6 +10,7 @@
 
 ## General
 
+.policy.yml   @opentdf/maintainers @opentdf/security
 .gitignore    @opentdf/maintainers
 *go.mod       @opentdf/maintainers @opentdf/security
 *.sum         @opentdf/maintainers @opentdf/security

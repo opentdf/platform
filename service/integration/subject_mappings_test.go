@@ -14,7 +14,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const nonExistentAttributeValueUUID = "78909865-8888-9999-9999-000000000000"
+const (
+	nonExistentAttributeValueUUID = "78909865-8888-9999-9999-000000000000"
+	nonExistingActionUUID         = "5dff18c8-1192-4f2e-aa21-2d793c9d97b2"
+)
 
 type SubjectMappingsSuite struct {
 	suite.Suite
@@ -168,6 +171,26 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentSubjectCondit
 	s.Require().Error(err)
 	s.Nil(created)
 	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentActionId_Fails() {
+	fixtureAttrVal := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value1")
+	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set3")
+
+	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId: fixtureAttrVal.ID,
+		Actions: []*policy.Action{
+			{
+				Id: nonExistingActionUUID,
+			},
+		},
+		ExistingSubjectConditionSetId: fixtureScs.ID,
+	}
+
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
+	s.Require().Error(err)
+	s.Nil(created)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {

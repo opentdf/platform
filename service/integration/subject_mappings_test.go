@@ -260,6 +260,36 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 	s.Equal(len(update.GetActions()), len(got.GetActions()))
 	s.Equal(actionDelete.GetName(), got.GetActions()[0].GetName())
 }
+func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions_NonExistentActionID_Fails() {
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").ID
+	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
+	actionRead := s.f.GetStandardAction("read")
+
+	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              fixtureAttrValID,
+		Actions:                       []*policy.Action{actionRead},
+		ExistingSubjectConditionSetId: fixtureScs.ID,
+	}
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(len(newSubjectMapping.GetActions()), len(got.GetActions()))
+
+	// update with a non-existent action
+	update := &subjectmapping.UpdateSubjectMappingRequest{
+		Id:      created.GetId(),
+		Actions: []*policy.Action{{Id: nonExistingActionUUID}},
+	}
+
+	updated, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
+	s.Nil(updated)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
+}
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_SubjectConditionSetId() {
 	// create a new one, update it, and verify the update

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/opentdf/platform/compare/sdk/v0.4.0...sdk/v0.4.1) (2025-04-07)
+
+
+### Features
+
+* **sdk:** CreateTDF option to run with specific target schema version ([#2045](https://github.com/opentdf/platform/issues/2045)) ([0976b15](https://github.com/opentdf/platform/commit/0976b15f9a78509350ecc49a514e2d5028059117))
+
 ## [0.4.0](https://github.com/opentdf/platform/compare/sdk/v0.3.29...sdk/v0.4.0) (2025-04-01)
 
 

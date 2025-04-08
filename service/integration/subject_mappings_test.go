@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/common"
@@ -193,6 +194,48 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentActionId_Fail
 	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
 
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_BrandNewActionNames_Succeeds() {
+	fixtureAttrVal := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
+	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
+	newNameOne := "NewAction-Testing-SMCreate-1"
+	newNameTwo := "NewAction_Testing_SMCreate_2"
+
+	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId: fixtureAttrVal.ID,
+		Actions: []*policy.Action{
+			{
+				Name: newNameOne,
+			},
+			{
+				Name: newNameTwo,
+			},
+		},
+		ExistingSubjectConditionSetId: fixtureScs.ID,
+	}
+
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
+	s.NotNil(created)
+	s.Require().NoError(err)
+
+	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+
+	foundNewActionOne := false
+	foundNewActionTwo := false
+	for _, a := range got.GetActions() {
+		if a.GetName() == strings.ToLower(newNameOne) {
+			foundNewActionOne = true
+		}
+		if a.GetName() == strings.ToLower(newNameTwo) {
+			foundNewActionTwo = true
+		}
+		s.NotEqual("", a.GetId())
+	}
+	s.True(foundNewActionOne)
+	s.True(foundNewActionTwo)
+}
+
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 	// create a new one SM with actions, update it with different actions, and verify the update
 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
@@ -244,10 +287,11 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 	s.False(updatedAt.AsTime().IsZero())
 	s.True(updatedAt.AsTime().After(createdAt.AsTime()))
 
-	// update with an action not in the current
+	// update with actions not in the current
+	newActionName := "NewAction-Testing-SM-UPDATE"
 	update = &subjectmapping.UpdateSubjectMappingRequest{
 		Id:      created.GetId(),
-		Actions: []*policy.Action{actionDelete},
+		Actions: []*policy.Action{actionDelete, {Name: newActionName}},
 	}
 	updated, err = s.db.PolicyClient.UpdateSubjectMapping(s.ctx, update)
 	s.Require().NoError(err)
@@ -258,8 +302,20 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(len(update.GetActions()), len(got.GetActions()))
-	s.Equal(actionDelete.GetName(), got.GetActions()[0].GetName())
+	foundDelete := false
+	foundNewAction := false
+	for _, a := range got.GetActions() {
+		if a.GetName() == actionDelete.GetName() {
+			foundDelete = true
+		}
+		if a.GetName() == strings.ToLower(newActionName) {
+			foundNewAction = true
+		}
+	}
+	s.True(foundDelete)
+	s.True(foundNewAction)
 }
+
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions_NonExistentActionID_Fails() {
 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").ID
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")

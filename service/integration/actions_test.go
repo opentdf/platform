@@ -237,6 +237,70 @@ func (s *ActionsSuite) Test_CreateAction_NormalizesToLowerCase() {
 	s.Equal(strings.ToLower(newName), action.GetName())
 }
 
+func (s *ActionsSuite) Test_UpdateAction_Succeeds() {
+	newAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name: "new_custom_action_updateaction",
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{
+				"original": "original_value",
+			},
+		},
+	})
+	s.NotNil(newAction)
+	s.Require().NoError(err)
+	s.NotEqual("", newAction.GetId())
+	s.Equal("new_custom_action_updateaction", newAction.GetName())
+
+	differentName := "new_custom_action_updateaction_renamed"
+	updatedAction, err := s.db.PolicyClient.UpdateAction(s.ctx, &actions.UpdateActionRequest{
+		Id:   newAction.GetId(),
+		Name: differentName,
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{
+				"original": "replaced",
+			},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.NotNil(updatedAction)
+	s.Require().NoError(err)
+
+	got, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
+		Identifier: &actions.GetActionRequest_Id{
+			Id: updatedAction.GetId(),
+		},
+	})
+	s.NotNil(got)
+	s.Require().NoError(err)
+	s.Equal(differentName, got.GetName())
+	s.Equal("replaced", got.GetMetadata().GetLabels()["original"])
+}
+func (s *ActionsSuite) Test_UpdateAction_NormalizesToLowerCase() {
+	newAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name: "testing_update_action_casing",
+	})
+	s.NotNil(newAction)
+	s.Require().NoError(err)
+	s.NotEqual("", newAction.GetId())
+	s.Equal("testing_update_action_casing", newAction.GetName())
+
+	differentName := "UppER_CasE_Change"
+	updatedAction, err := s.db.PolicyClient.UpdateAction(s.ctx, &actions.UpdateActionRequest{
+		Id:   newAction.GetId(),
+		Name: differentName,
+	})
+	s.NotNil(updatedAction)
+	s.Require().NoError(err)
+
+	got, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
+		Identifier: &actions.GetActionRequest_Id{
+			Id: updatedAction.GetId(),
+		},
+	})
+	s.NotNil(got)
+	s.Require().NoError(err)
+	s.Equal(strings.ToLower(differentName), got.GetName())
+}
 func TestActionsSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping actions integration tests")

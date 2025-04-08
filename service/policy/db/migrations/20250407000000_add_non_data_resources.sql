@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS non_data_resource_groups (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-COMMENT ON TABLE non_data_resource_groups IS 'Table to store non-data resources';
+COMMENT ON TABLE non_data_resource_groups IS 'Table to store non-data resource groups';
 COMMENT ON COLUMN non_data_resource_groups.id IS 'Primary key for the table';
 COMMENT ON COLUMN non_data_resource_groups.name IS 'Name for the non-data resource group';
 COMMENT ON COLUMN non_data_resource_groups.created_at IS 'Timestamp when the record was created';
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS non_data_resource_values (
 );
 COMMENT ON TABLE non_data_resource_values IS 'Table to store non-data resource values';
 COMMENT ON COLUMN non_data_resource_values.id IS 'Primary key for the table';
-COMMENT ON COLUMN non_data_resource_values.non_data_resource_group_id IS 'Foreign key to the non-data resource group';
+COMMENT ON COLUMN non_data_resource_values.non_data_resource_group_id IS 'Foreign key to the non-data resource groups table';
 COMMENT ON COLUMN non_data_resource_values.value IS 'Value for the non-data resource';
 COMMENT ON COLUMN non_data_resource_values.created_at IS 'Timestamp when the record was created';
 COMMENT ON COLUMN non_data_resource_values.updated_at IS 'Timestamp when the record was last updated';

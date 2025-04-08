@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"strings"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -15,7 +16,7 @@ func (c PolicyDBClient) GetAction(ctx context.Context, req *actions.GetActionReq
 	if req.GetId() != "" {
 		getActionParams.ID = pgtypeUUID(req.GetId())
 	} else if req.GetName() != "" {
-		getActionParams.Name = pgtypeText(req.GetName())
+		getActionParams.Name = pgtypeText(strings.ToLower(req.GetName()))
 	} else {
 		return nil, db.ErrSelectIdentifierInvalid
 	}
@@ -39,6 +40,11 @@ func (c PolicyDBClient) GetAction(ctx context.Context, req *actions.GetActionReq
 
 func (c PolicyDBClient) ListActions(ctx context.Context, req *actions.ListActionsRequest) (*actions.ListActionsResponse, error) {
 	limit, offset := c.getRequestedLimitOffset(req.GetPagination())
+
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > maxLimit {
+		return nil, db.ErrListLimitTooLarge
+	}
 
 	list, err := c.Queries.listActions(ctx, listActionsParams{
 		Limit:  limit,
@@ -93,7 +99,7 @@ func (c PolicyDBClient) CreateAction(ctx context.Context, req *actions.CreateAct
 		return nil, err
 	}
 	createParams := createCustomActionParams{
-		Name:     req.GetName(),
+		Name:     strings.ToLower(req.GetName()),
 		Metadata: metadataJSON,
 	}
 
@@ -137,7 +143,7 @@ func (c PolicyDBClient) UpdateAction(ctx context.Context, req *actions.UpdateAct
 		updateParams.Metadata = metadataJSON
 	}
 	if req.GetName() != "" {
-		updateParams.Name = pgtypeText(req.GetName())
+		updateParams.Name = pgtypeText(strings.ToLower(req.GetName()))
 	}
 
 	count, err := c.Queries.updateCustomAction(ctx, updateParams)

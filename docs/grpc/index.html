@@ -250,6 +250,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.NonDataResourceGroup"><span class="badge">M</span>NonDataResourceGroup</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.NonDataResourceValue"><span class="badge">M</span>NonDataResourceValue</a>
+                </li>
+              
+                <li>
                   <a href="#policy.PublicKey"><span class="badge">M</span>PublicKey</a>
                 </li>
               
@@ -987,6 +995,69 @@
               
                 <li>
                   <a href="#policy.namespaces.NamespaceService"><span class="badge">S</span>NamespaceService</a>
+                </li>
+              
+            </ul>
+          </li>
+        
+          
+          <li>
+            <a href="#policy%2fnondataresources%2fnon_data_resources.proto">policy/nondataresources/non_data_resources.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#policy.nondataresources.CreateNonDataResourceGroupRequest"><span class="badge">M</span>CreateNonDataResourceGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.nondataresources.CreateNonDataResourceGroupResponse"><span class="badge">M</span>CreateNonDataResourceGroupResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.nondataresources.CreateNonDataResourceValueRequest"><span class="badge">M</span>CreateNonDataResourceValueRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.nondataresources.CreateNonDataResourceValueResponse"><span class="badge">M</span>CreateNonDataResourceValueResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.nondataresources.GetNonDataResourceGroupRequest"><span class="badge">M</span>GetNonDataResourceGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.nondataresources.GetNonDataResourceGroupResponse"><span class="badge">M</span>GetNonDataResourceGroupResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.nondataresources.GetNonDataResourceValueRequest"><span class="badge">M</span>GetNonDataResourceValueRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.nondataresources.GetNonDataResourceValueResponse"><span class="badge">M</span>GetNonDataResourceValueResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.nondataresources.UpdateNonDataResourceGroupRequest"><span class="badge">M</span>UpdateNonDataResourceGroupRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.nondataresources.UpdateNonDataResourceGroupResponse"><span class="badge">M</span>UpdateNonDataResourceGroupResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.nondataresources.UpdateNonDataResourceValueRequest"><span class="badge">M</span>UpdateNonDataResourceValueRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.nondataresources.UpdateNonDataResourceValueResponse"><span class="badge">M</span>UpdateNonDataResourceValueResponse</a>
+                </li>
+              
+              
+              
+              
+                <li>
+                  <a href="#policy.nondataresources.NonDataResourcesService"><span class="badge">S</span>NonDataResourcesService</a>
                 </li>
               
             </ul>
@@ -1982,6 +2053,96 @@ enable federation </p></td>
                   <td><a href="#policy.Key">Key</a></td>
                   <td>repeated</td>
                   <td><p>Keys for the namespace </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.NonDataResourceGroup">NonDataResourceGroup</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>values</td>
+                  <td><a href="#policy.NonDataResourceValue">NonDataResourceValue</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.NonDataResourceValue">NonDataResourceValue</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>group</td>
+                  <td><a href="#policy.NonDataResourceGroup">NonDataResourceGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
                 </tr>
               
             </tbody>
@@ -8257,6 +8418,520 @@ Namespace &lt;&gt; Key RPCs
             
               <tr>
                 <td>ListNamespaces</td>
+                <td><p>NO_SIDE_EFFECTS</p></td>
+              </tr>
+            
+            </tbody>
+          </table>
+          
+        
+    
+      
+      <div class="file-heading">
+        <h2 id="policy/nondataresources/non_data_resources.proto">policy/nondataresources/non_data_resources.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="policy.nondataresources.CreateNonDataResourceGroupRequest">CreateNonDataResourceGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>values</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Optional
+Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.nondataresources.CreateNonDataResourceGroupResponse">CreateNonDataResourceGroupResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>group</td>
+                  <td><a href="#policy.NonDataResourceGroup">policy.NonDataResourceGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.nondataresources.CreateNonDataResourceValueRequest">CreateNonDataResourceValueRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>group_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Optional
+Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.nondataresources.CreateNonDataResourceValueResponse">CreateNonDataResourceValueResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>non_data_resource_value</td>
+                  <td><a href="#policy.NonDataResourceValue">policy.NonDataResourceValue</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.nondataresources.GetNonDataResourceGroupRequest">GetNonDataResourceGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>group_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.nondataresources.GetNonDataResourceGroupResponse">GetNonDataResourceGroupResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>group</td>
+                  <td><a href="#policy.NonDataResourceGroup">policy.NonDataResourceGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.nondataresources.GetNonDataResourceValueRequest">GetNonDataResourceValueRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>value_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.nondataresources.GetNonDataResourceValueResponse">GetNonDataResourceValueResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#policy.NonDataResourceValue">policy.NonDataResourceValue</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.nondataresources.UpdateNonDataResourceGroupRequest">UpdateNonDataResourceGroupRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Optional
+Common metadata </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata_update_behavior</td>
+                  <td><a href="#common.MetadataUpdateEnum">common.MetadataUpdateEnum</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.nondataresources.UpdateNonDataResourceGroupResponse">UpdateNonDataResourceGroupResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>group</td>
+                  <td><a href="#policy.NonDataResourceGroup">policy.NonDataResourceGroup</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.nondataresources.UpdateNonDataResourceValueRequest">UpdateNonDataResourceValueRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Optional
+Common metadata </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata_update_behavior</td>
+                  <td><a href="#common.MetadataUpdateEnum">common.MetadataUpdateEnum</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.nondataresources.UpdateNonDataResourceValueResponse">UpdateNonDataResourceValueResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#policy.NonDataResourceValue">policy.NonDataResourceValue</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+
+      
+
+      
+
+      
+        <h3 id="policy.nondataresources.NonDataResourcesService">NonDataResourcesService</h3>
+        <p>Non Data Resource Groups</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>CreateNonDataResourceGroup</td>
+                <td><a href="#policy.nondataresources.CreateNonDataResourceGroupRequest">CreateNonDataResourceGroupRequest</a></td>
+                <td><a href="#policy.nondataresources.CreateNonDataResourceGroupResponse">CreateNonDataResourceGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetNonDataResourceGroup</td>
+                <td><a href="#policy.nondataresources.GetNonDataResourceGroupRequest">GetNonDataResourceGroupRequest</a></td>
+                <td><a href="#policy.nondataresources.GetNonDataResourceGroupResponse">GetNonDataResourceGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>UpdateNonDataResourceGroup</td>
+                <td><a href="#policy.nondataresources.UpdateNonDataResourceGroupRequest">UpdateNonDataResourceGroupRequest</a></td>
+                <td><a href="#policy.nondataresources.UpdateNonDataResourceGroupResponse">UpdateNonDataResourceGroupResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CreateNonDataResourceValue</td>
+                <td><a href="#policy.nondataresources.CreateNonDataResourceValueRequest">CreateNonDataResourceValueRequest</a></td>
+                <td><a href="#policy.nondataresources.CreateNonDataResourceValueResponse">CreateNonDataResourceValueResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetNonDataResourceValue</td>
+                <td><a href="#policy.nondataresources.GetNonDataResourceValueRequest">GetNonDataResourceValueRequest</a></td>
+                <td><a href="#policy.nondataresources.GetNonDataResourceValueResponse">GetNonDataResourceValueResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>UpdateNonDataResourceValue</td>
+                <td><a href="#policy.nondataresources.UpdateNonDataResourceValueRequest">UpdateNonDataResourceValueRequest</a></td>
+                <td><a href="#policy.nondataresources.UpdateNonDataResourceValueResponse">UpdateNonDataResourceValueResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+
+        
+          
+          
+          <h4>Methods with HTTP bindings</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Method</td>
+                <td>Pattern</td>
+                <td>Body</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              
+              
+              <tr>
+                <td>CreateNonDataResourceGroup</td>
+                <td>POST</td>
+                <td>/nondataresources</td>
+                <td>*</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>UpdateNonDataResourceGroup</td>
+                <td>PATCH</td>
+                <td>/nondataresources/{id}</td>
+                <td>*</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>CreateNonDataResourceValue</td>
+                <td>POST</td>
+                <td>/nondataresources/{group_id}/values</td>
+                <td>*</td>
+              </tr>
+              
+            
+              
+              
+              <tr>
+                <td>UpdateNonDataResourceValue</td>
+                <td>PATCH</td>
+                <td>/nondataresources/*/values/{id}</td>
+                <td>*</td>
+              </tr>
+              
+            
+            </tbody>
+          </table>
+          
+        
+          
+          
+          <h4>Methods with idempotency_level option</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Option</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              <tr>
+                <td>GetNonDataResourceGroup</td>
+                <td><p>NO_SIDE_EFFECTS</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetNonDataResourceValue</td>
                 <td><p>NO_SIDE_EFFECTS</p></td>
               </tr>
             

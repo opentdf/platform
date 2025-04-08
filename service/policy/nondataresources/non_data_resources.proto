@@ -1,0 +1,177 @@
+syntax = "proto3";
+
+package policy.nondataresources;
+
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+
+import "common/common.proto";
+import "policy/objects.proto";
+import "policy/selectors.proto";
+
+///
+/// Non Data Resource Groups
+///
+
+message CreateNonDataResourceGroupRequest {
+  // Required
+  string name = 1 [
+    (buf.validate.field).required = true
+  ];
+
+  // Required
+  repeated string values = 2 [
+    (buf.validate.field).repeated = {
+      min_items: 0
+    }
+  ];
+
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+}
+message CreateNonDataResourceGroupResponse {
+  policy.NonDataResourceGroup group = 1;
+}
+
+message GetNonDataResourceGroupRequest {
+  oneof identifier {
+    option (buf.validate.oneof).required = true;
+
+    string group_id = 2 [
+      (buf.validate.field).string.uuid = true
+    ];
+
+    string fqn = 3 [
+      (buf.validate.field).string = {
+        min_len : 1
+        uri : true
+      }
+    ];
+  }
+}
+message GetNonDataResourceGroupResponse {
+  policy.NonDataResourceGroup group = 1;
+}
+
+message UpdateNonDataResourceGroupRequest {
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+message UpdateNonDataResourceGroupResponse {
+  policy.NonDataResourceGroup group = 1;
+}
+
+///
+/// Non Data Resource Values
+///
+
+message CreateNonDataResourceValueRequest {
+  // Required
+  string group_id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+  // Required
+  string value = 2 [
+    (buf.validate.field).required = true
+  ];
+  
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+}
+message CreateNonDataResourceValueResponse {
+  policy.NonDataResourceValue non_data_resource_value = 1;
+}
+
+message GetNonDataResourceValueRequest {
+  oneof identifier {
+    option (buf.validate.oneof).required = true;
+
+    string value_id = 2 [
+      (buf.validate.field).string.uuid = true
+    ];
+
+    string fqn = 3 [
+      (buf.validate.field).string = {
+        min_len : 1
+        uri : true
+      }
+    ];
+  }
+}
+message GetNonDataResourceValueResponse {
+  policy.NonDataResourceValue value = 1;
+}
+
+message UpdateNonDataResourceValueRequest {
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+message UpdateNonDataResourceValueResponse {
+  policy.NonDataResourceValue value = 1;
+}
+
+
+
+///
+/// Non Data Resource Service
+///
+
+service NonDataResourcesService {
+  // Non Data Resource Groups
+  
+  rpc CreateNonDataResourceGroup(CreateNonDataResourceGroupRequest) returns (CreateNonDataResourceGroupResponse) {
+    option (google.api.http) = {
+      post: "/nondataresources",
+      body: "*"
+    };
+  }
+
+  rpc GetNonDataResourceGroup(GetNonDataResourceGroupRequest) returns (GetNonDataResourceGroupResponse) {
+    // option (google.api.http) = {get: "/nondataresources/{identifier}"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc UpdateNonDataResourceGroup(UpdateNonDataResourceGroupRequest) returns (UpdateNonDataResourceGroupResponse) {
+    option (google.api.http) = {
+      patch: "/nondataresources/{id}",
+      body: "*"
+    };
+  }
+
+  // Update Non Data Resource Values
+
+  rpc CreateNonDataResourceValue(CreateNonDataResourceValueRequest) returns (CreateNonDataResourceValueResponse) {
+    option (google.api.http) = {
+      post: "/nondataresources/{group_id}/values",
+      body: "*"
+    };
+  }
+
+  rpc GetNonDataResourceValue(GetNonDataResourceValueRequest) returns (GetNonDataResourceValueResponse) {
+    // option (google.api.http) = {get: "/nondataresources/*/values/{identifier}"};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc UpdateNonDataResourceValue(UpdateNonDataResourceValueRequest) returns (UpdateNonDataResourceValueResponse) {
+    option (google.api.http) = {
+      patch: "/nondataresources/*/values/{id}",
+      body: "*"
+    };
+  }
+}

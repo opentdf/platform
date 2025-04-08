@@ -3140,7 +3140,7 @@ WITH counted AS (
 SELECT 
     a.id,
     a.name,
-    JSON_STRIP_NULLS(JSONB_BUILD_OBJECT(
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
         'labels', a.metadata -> 'labels', 
         'created_at', a.created_at, 
         'updated_at', a.updated_at
@@ -3177,7 +3177,7 @@ type listActionsRow struct {
 //	SELECT
 //	    a.id,
 //	    a.name,
-//	    JSON_STRIP_NULLS(JSONB_BUILD_OBJECT(
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
 //	        'labels', a.metadata -> 'labels',
 //	        'created_at', a.created_at,
 //	        'updated_at', a.updated_at

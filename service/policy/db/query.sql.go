@@ -2553,9 +2553,8 @@ func (q *Queries) ListKeyAccessServerGrants(ctx context.Context, arg ListKeyAcce
 
 const listKeyAccessServers = `-- name: ListKeyAccessServers :many
 WITH counted AS (
-    SELECT
-        COUNT(*) OVER () AS total
-    FROM key_access_servers AS kask
+    SELECT COUNT(kas.id) AS total
+    FROM key_access_servers AS kas
 )
 SELECT kas.id,
     kas.uri,
@@ -2588,9 +2587,8 @@ type ListKeyAccessServersRow struct {
 // ListKeyAccessServers
 //
 //	WITH counted AS (
-//	    SELECT
-//	        COUNT(*) OVER () AS total
-//	    FROM key_access_servers AS kask
+//	    SELECT COUNT(kas.id) AS total
+//	    FROM key_access_servers AS kas
 //	)
 //	SELECT kas.id,
 //	    kas.uri,

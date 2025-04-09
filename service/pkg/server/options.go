@@ -13,6 +13,7 @@ type StartConfig struct {
 	ConfigFile            string
 	WaitForShutdownSignal bool
 	PublicRoutes          []string
+	IPCReauthRoutes       []string
 	bultinPolicyOverride  string
 	extraCoreServices     []serviceregistry.IService
 	extraServices         []serviceregistry.IService
@@ -59,6 +60,15 @@ func WithWaitForShutdownSignal() StartOptions {
 func WithPublicRoutes(routes []string) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.PublicRoutes = routes
+		return c
+	}
+}
+
+// WithIPCReauthRoutes option sets the IPC reauthorization routes for the server.
+// It enables the server to reauthorize IPC routes and embed the token on the context.
+func WithIPCReauthRoutes(routes []string) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.IPCReauthRoutes = routes
 		return c
 	}
 }

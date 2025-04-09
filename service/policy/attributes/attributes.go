@@ -44,12 +44,12 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 	onUpdateConfigHook := OnConfigUpdate(as)
 	return &serviceregistry.Service[attributesconnect.AttributesServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[attributesconnect.AttributesServiceHandler]{
-			Namespace:      ns,
-			DB:             dbRegister,
-			ServiceDesc:    &attributes.AttributesService_ServiceDesc,
-			ConnectRPCFunc: attributesconnect.NewAttributesServiceHandler,
-			GRPCGateayFunc: attributes.RegisterAttributesServiceHandlerFromEndpoint,
-			OnConfigUpdate: onUpdateConfigHook,
+			Namespace:       ns,
+			DB:              dbRegister,
+			ServiceDesc:     &attributes.AttributesService_ServiceDesc,
+			ConnectRPCFunc:  attributesconnect.NewAttributesServiceHandler,
+			GRPCGatewayFunc: attributes.RegisterAttributesServiceHandler,
+			OnConfigUpdate:  onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (attributesconnect.AttributesServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)

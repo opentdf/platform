@@ -44,12 +44,12 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 	onUpdateConfigHook := OnConfigUpdate(smSvc)
 	return &serviceregistry.Service[subjectmappingconnect.SubjectMappingServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[subjectmappingconnect.SubjectMappingServiceHandler]{
-			Namespace:      ns,
-			DB:             dbRegister,
-			ServiceDesc:    &sm.SubjectMappingService_ServiceDesc,
-			ConnectRPCFunc: subjectmappingconnect.NewSubjectMappingServiceHandler,
-			GRPCGateayFunc: sm.RegisterSubjectMappingServiceHandlerFromEndpoint,
-			OnConfigUpdate: onUpdateConfigHook,
+			Namespace:       ns,
+			DB:              dbRegister,
+			ServiceDesc:     &sm.SubjectMappingService_ServiceDesc,
+			ConnectRPCFunc:  subjectmappingconnect.NewSubjectMappingServiceHandler,
+			GRPCGatewayFunc: sm.RegisterSubjectMappingServiceHandler,
+			OnConfigUpdate:  onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (subjectmappingconnect.SubjectMappingServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)

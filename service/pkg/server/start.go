@@ -97,6 +97,12 @@ func Start(f ...StartOptions) error {
 		cfg.Server.Auth.PublicRoutes = startConfig.PublicRoutes
 	}
 
+	// Set IPC reauthorization routes when platform is being extended
+	if len(startConfig.IPCReauthRoutes) > 0 {
+		logger.Info("additional IPC reauthorization routes added", slog.Any("routes", startConfig.IPCReauthRoutes))
+		cfg.Server.Auth.IPCReauthRoutes = startConfig.IPCReauthRoutes
+	}
+
 	// Set Default Policy
 	if startConfig.bultinPolicyOverride != "" {
 		cfg.Server.Auth.Policy.Builtin = startConfig.bultinPolicyOverride

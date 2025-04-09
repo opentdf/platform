@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.5.2](https://github.com/opentdf/platform/compare/service/v0.5.1...service/v0.5.2) (2025-04-01)
+
+
+### Bug Fixes
+
+* **core:** map IPC reauth routes config  ([#2021](https://github.com/opentdf/platform/issues/2021)) ([b232fc6](https://github.com/opentdf/platform/commit/b232fc60283302174109fc201b2233303444fd7b))
+
+## [0.5.1](https://github.com/opentdf/platform/compare/service/v0.5.0...service/v0.5.1) (2025-03-31)
+
+
+### Bug Fixes
+
+* **main:** add ipc auth extensibility ([#2014](https://github.com/opentdf/platform/issues/2014)) ([0c701d4](https://github.com/opentdf/platform/commit/0c701d4317faf870d99e009f19f6624d951f2917))
+
+## [0.5.0](https://github.com/opentdf/platform/compare/service/v0.4.40...service/v0.5.0) (2025-03-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** update GRPC Gateway to use IPC ([#2005](https://github.com/opentdf/platform/issues/2005))
+* **core:** Require go 1.23+ ([#1979](https://github.com/opentdf/platform/issues/1979))
+
+### Features
+
+* **core:** Require go 1.23+ ([#1979](https://github.com/opentdf/platform/issues/1979)) ([164c922](https://github.com/opentdf/platform/commit/164c922af74b1265fe487362c356abb7f1503ada))
+
+
+### Bug Fixes
+
+* **core:** update GRPC Gateway to use IPC ([#2005](https://github.com/opentdf/platform/issues/2005)) ([ff605f4](https://github.com/opentdf/platform/commit/ff605f40cc1541c35d9492071f47469c4dba1364))
+
 ## [0.4.40](https://github.com/opentdf/platform/compare/service/v0.4.39...service/v0.4.40) (2025-03-10)
 
 

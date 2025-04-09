@@ -53,22 +53,24 @@ type TDFOption func(*TDFConfig) error
 
 // TDFConfig Internal config struct for building TDF options.
 type TDFConfig struct {
-	autoconfigure             bool
-	defaultSegmentSize        int64
-	enableEncryption          bool
-	tdfFormat                 TDFFormat
-	tdfPublicKey              string // TODO: Remove it
-	tdfPrivateKey             string
-	metaData                  string
-	mimeType                  string
-	integrityAlgorithm        IntegrityAlgorithm
-	segmentIntegrityAlgorithm IntegrityAlgorithm
-	assertions                []AssertionConfig
-	attributes                []AttributeValueFQN
-	attributeValues           []*policy.Value
-	kasInfoList               []KASInfo
-	splitPlan                 []keySplitStep
-	keyType                   ocrypto.KeyType
+	autoconfigure              bool
+	defaultSegmentSize         int64
+	enableEncryption           bool
+	tdfFormat                  TDFFormat
+	tdfPublicKey               string // TODO: Remove it
+	tdfPrivateKey              string
+	metaData                   string
+	mimeType                   string
+	integrityAlgorithm         IntegrityAlgorithm
+	segmentIntegrityAlgorithm  IntegrityAlgorithm
+	assertions                 []AssertionConfig
+	attributes                 []AttributeValueFQN
+	attributeValues            []*policy.Value
+	kasInfoList                []KASInfo
+	splitPlan                  []keySplitStep
+	keyType                    ocrypto.KeyType
+	useHex                     bool
+	excludeVersionFromManifest bool
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -237,6 +239,24 @@ func WithWrappingKeyAlg(keyType ocrypto.KeyType) TDFOption {
 	}
 }
 
+// WithTargetMode sets the target schema mode for the TDF
+func WithTargetMode(mode string) TDFOption {
+	return func(c *TDFConfig) error {
+		if mode != "" {
+			lessThan, err := isLessThanSemver(mode, hexSemverThreshold)
+			if err != nil {
+				return fmt.Errorf("isLessThanSemver failed: %w", err)
+			}
+			c.useHex = lessThan
+			c.excludeVersionFromManifest = lessThan
+		} else {
+			c.useHex = false
+			c.excludeVersionFromManifest = false
+		}
+		return nil
+	}
+}
+
 // Schema Validation where 0 = none (skip), 1 = lax (allowing novel entries, 'falsy' values for unkowns), 2 = strict (rejecting novel entries, strict match to manifest schema)
 type SchemaValidationIntensity int
 
@@ -255,14 +275,11 @@ type TDFReaderConfig struct {
 
 	schemaValidationIntensity SchemaValidationIntensity
 	kasSessionKey             ocrypto.KeyPair
-	keyType                   ocrypto.KeyType
 }
 
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
-	var err error
 	c := &TDFReaderConfig{
 		disableAssertionVerification: false,
-		keyType:                      ocrypto.RSA2048Key,
 	}
 
 	for _, o := range opt {
@@ -272,9 +289,12 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 		}
 	}
 
-	c.kasSessionKey, err = ocrypto.NewKeyPair(c.keyType)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create RSA key pair: %w", err)
+	if c.kasSessionKey == nil {
+		// Default to RSA 2048
+		err := WithSessionKeyType(ocrypto.RSA2048Key)(c)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return c, nil
@@ -303,10 +323,18 @@ func WithDisableAssertionVerification(disable bool) TDFReaderOption {
 
 func WithSessionKeyType(keyType ocrypto.KeyType) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
-		if c.keyType == "" {
-			return errors.New("key type missing")
+		kasSessionKey, err := ocrypto.NewKeyPair(keyType)
+		if err != nil {
+			return fmt.Errorf("failed to create RSA key pair: %w", err)
 		}
-		c.keyType = keyType
+		c.kasSessionKey = kasSessionKey
+		return nil
+	}
+}
+
+func withSessionKey(k ocrypto.KeyPair) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.kasSessionKey = k
 		return nil
 	}
 }

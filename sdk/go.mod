@@ -5,6 +5,7 @@ go 1.23.0
 toolchain go1.24.1
 
 require (
+	github.com/Masterminds/semver/v3 v3.3.1
 	github.com/google/uuid v1.6.0
 	github.com/gowebpki/jcs v1.0.1
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
@@ -44,7 +45,7 @@ require (
 	github.com/go-resty/resty/v2 v2.12.0 // indirect
 	github.com/goccy/go-json v0.10.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.1 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.2 // indirect

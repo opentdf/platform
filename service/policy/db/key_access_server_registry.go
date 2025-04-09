@@ -579,3 +579,23 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 		},
 	}, nil
 }
+
+// We don't currently expose this at the Service layer, but it is used by test code.
+func (c PolicyDBClient) DeleteKey(ctx context.Context, id string) (*policy.AsymmetricKey, error) {
+	if !pgtypeUUID(id).Valid {
+		return nil, db.ErrUUIDInvalid
+	}
+
+	count, err := c.Queries.DeleteKey(ctx, id)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
+
+	// return the key that was deleted
+	return &policy.AsymmetricKey{
+		Id: id,
+	}, nil
+}

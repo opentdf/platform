@@ -551,6 +551,21 @@ func (q *Queries) DeleteAttributeValue(ctx context.Context, id string) (int64, e
 	return result.RowsAffected(), nil
 }
 
+const deleteKey = `-- name: DeleteKey :execrows
+DELETE FROM key_access_server_keys WHERE id = $1
+`
+
+// DeleteKey
+//
+//	DELETE FROM key_access_server_keys WHERE id = $1
+func (q *Queries) DeleteKey(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteKey, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteKeyAccessServer = `-- name: DeleteKeyAccessServer :execrows
 DELETE FROM key_access_servers WHERE id = $1
 `

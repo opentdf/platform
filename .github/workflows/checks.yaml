@@ -65,7 +65,7 @@ jobs:
       - name: govluncheck
         uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee
         with:
-          go-version-input: "1.24.1"
+          go-version-input: "1.24.2"
           work-dir: ${{ matrix.directory }}
       - name: golangci-lint
         uses: golangci/golangci-lint-action@2226d7cb06a077cd73e56eedd38eecad18e5d837

@@ -1324,12 +1324,6 @@ SET
 WHERE id = $1
   AND is_standard = FALSE;
 
--- name: updateStandardAction :execrows
-UPDATE actions
-SET metadata = metadata
-WHERE id = $1
-  AND is_standard = TRUE;
-
 -- name: deleteCustomAction :execrows
 DELETE FROM actions
 WHERE id = $1

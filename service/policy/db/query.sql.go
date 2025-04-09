@@ -4291,27 +4291,6 @@ func (q *Queries) updatePublicKey(ctx context.Context, arg updatePublicKeyParams
 	return i, err
 }
 
-const updateStandardAction = `-- name: updateStandardAction :execrows
-UPDATE actions
-SET metadata = metadata
-WHERE id = $1
-  AND is_standard = TRUE
-`
-
-// updateStandardAction
-//
-//	UPDATE actions
-//	SET metadata = metadata
-//	WHERE id = $1
-//	  AND is_standard = TRUE
-func (q *Queries) updateStandardAction(ctx context.Context, id string) (int64, error) {
-	result, err := q.db.Exec(ctx, updateStandardAction, id)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const updateSubjectMapping = `-- name: updateSubjectMapping :execrows
 WITH
     subject_mapping_update AS (

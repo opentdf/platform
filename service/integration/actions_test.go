@@ -11,6 +11,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/actions"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
+	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -61,14 +62,14 @@ func (s *ActionsSuite) Test_ListActions_NoPagination_Succeeds() {
 		}
 	}
 	for _, action := range list.GetActionsStandard() {
-		switch action.Name {
-		case "read":
+		switch policydb.ActionStandard(action.Name) {
+		case policydb.ActionRead:
 			foundRead = true
-		case "create":
+		case policydb.ActionCreate:
 			foundCreate = true
-		case "update":
+		case policydb.ActionUpdate:
 			foundUpdate = true
-		case "delete":
+		case policydb.ActionDelete:
 			foundDelete = true
 		}
 	}
@@ -123,7 +124,7 @@ func (s *ActionsSuite) Test_ListActions_LimitLargerThanConfigured_Fails() {
 
 func (s *ActionsSuite) Test_GetAction_Id_Succeeds() {
 	fixtureCustomAction1 := s.f.GetCustomActionKey("custom_action_1")
-	actionRead := s.f.GetStandardAction("read")
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
 
 	action, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
 		Identifier: &actions.GetActionRequest_Id{
@@ -151,7 +152,7 @@ func (s *ActionsSuite) Test_GetAction_Id_Succeeds() {
 
 func (s *ActionsSuite) Test_GetAction_Name_Succeeds() {
 	customAction := s.f.GetCustomActionKey("other_special_action")
-	actionCreate := s.f.GetStandardAction("create")
+	actionCreate := s.f.GetStandardAction(policydb.ActionCreate.String())
 	action, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
 		Identifier: &actions.GetActionRequest_Name{
 			Name: customAction.Name,
@@ -275,6 +276,7 @@ func (s *ActionsSuite) Test_UpdateAction_Succeeds() {
 	s.Equal(differentName, got.GetName())
 	s.Equal("replaced", got.GetMetadata().GetLabels()["original"])
 }
+
 func (s *ActionsSuite) Test_UpdateAction_NormalizesToLowerCase() {
 	newAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
 		Name: "testing_update_action_casing",
@@ -301,6 +303,74 @@ func (s *ActionsSuite) Test_UpdateAction_NormalizesToLowerCase() {
 	s.Require().NoError(err)
 	s.Equal(strings.ToLower(differentName), got.GetName())
 }
+
+func (s *ActionsSuite) Test_UpdateAction_Conflict_Fails() {
+	fixtureCustomAction := s.f.GetCustomActionKey("custom_action_1")
+	fixtureCustomAction2 := s.f.GetCustomActionKey("other_special_action")
+	action, err := s.db.PolicyClient.UpdateAction(s.ctx, &actions.UpdateActionRequest{
+		Id:   fixtureCustomAction.ID,
+		Name: fixtureCustomAction2.Name,
+	})
+	s.Nil(action)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
+}
+
+func (s *ActionsSuite) Test_UpdateAction_NonExistent_Fails() {
+	action, err := s.db.PolicyClient.UpdateAction(s.ctx, &actions.UpdateActionRequest{
+		Id:   nonExistingActionUUID,
+		Name: "new_name_nonexistent",
+	})
+	s.Nil(action)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *ActionsSuite) Test_DeleteAction_Succeeds() {
+	created, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name: "new_custom_action_deleteaction",
+	})
+	s.NotNil(created)
+	s.Require().NoError(err)
+	s.NotEqual("", created.GetId())
+
+	deleted, err := s.db.PolicyClient.DeleteAction(s.ctx, &actions.DeleteActionRequest{
+		Id: created.GetId(),
+	})
+	s.NotNil(deleted)
+	s.Require().NoError(err)
+	s.Equal(created.GetId(), deleted.GetId())
+
+	got, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
+		Identifier: &actions.GetActionRequest_Id{
+			Id: created.GetId(),
+		},
+	})
+	s.Nil(got)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *ActionsSuite) Test_DeleteAction_NonExistent_Fails() {
+	action, err := s.db.PolicyClient.DeleteAction(s.ctx, &actions.DeleteActionRequest{
+		Id: nonExistingActionUUID,
+	})
+	s.Nil(action)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *ActionsSuite) Test_DeleteAction_StandardAction_Fails() {
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
+	action, err := s.db.PolicyClient.DeleteAction(s.ctx, &actions.DeleteActionRequest{
+		Id: actionRead.Id,
+	})
+	s.Nil(action)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrRestrictViolation)
+	s.Contains(err.Error(), actionRead.Name)
+}
+
 func TestActionsSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping actions integration tests")

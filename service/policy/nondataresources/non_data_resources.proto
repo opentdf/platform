@@ -16,13 +16,29 @@ import "policy/selectors.proto";
 message CreateNonDataResourceGroupRequest {
   // Required
   string name = 1 [
-    (buf.validate.field).required = true
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "ndr_name_format",
+      message: "Non Data Resource Group Name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.",
+      expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
   ];
 
-  // Required
+  // Optional 
+  // NDR values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
+  // The stored value will be normalized to lower case.
   repeated string values = 2 [
     (buf.validate.field).repeated = {
-      min_items: 0
+      min_items: 0,
+      unique: true,
+      items: {
+        string: 
+          {
+            max_len: 253,
+            pattern: "^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$"
+          }
+      },
     }
   ];
 
@@ -35,23 +51,28 @@ message CreateNonDataResourceGroupResponse {
 }
 
 message GetNonDataResourceGroupRequest {
-  oneof identifier {
-    option (buf.validate.oneof).required = true;
-
-    string group_id = 2 [
-      (buf.validate.field).string.uuid = true
-    ];
-
-    string fqn = 3 [
-      (buf.validate.field).string = {
-        min_len : 1
-        uri : true
-      }
-    ];
-  }
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message GetNonDataResourceGroupResponse {
   policy.NonDataResourceGroup group = 1;
+}
+
+message ListNonDataResourceGroupRequest {
+  // Optional
+  optional string group_id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+
+  // Optional
+  policy.PageRequest pagination = 10;
+}
+message ListNonDataResourceGroupResponse {
+  repeated policy.NonDataResourceGroup groups = 1;
+
+  policy.PageResponse pagination = 10;
 }
 
 message UpdateNonDataResourceGroupRequest {
@@ -61,11 +82,32 @@ message UpdateNonDataResourceGroupRequest {
   ];
 
   // Optional
+  string name = 2 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "ndr_name_format",
+      message: "Non Data Resource Group Name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.",
+      expression: "size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true"
+    }
+  ];
+
+  // Optional
   // Common metadata
   common.MetadataMutable metadata = 100;
   common.MetadataUpdateEnum metadata_update_behavior = 101;
 }
 message UpdateNonDataResourceGroupResponse {
+  policy.NonDataResourceGroup group = 1;
+}
+
+message DeleteNonDataResourceGroupRequest {
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+}
+message DeleteNonDataResourceGroupResponse {
   policy.NonDataResourceGroup group = 1;
 }
 
@@ -78,9 +120,16 @@ message CreateNonDataResourceValueRequest {
   string group_id = 1 [
     (buf.validate.field).string.uuid = true
   ];
+
   // Required
   string value = 2 [
-    (buf.validate.field).required = true
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "ndr_value_format",
+      message: "Non Data Resource Value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored value will be normalized to lower case.",
+      expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
   ];
   
   // Optional
@@ -92,29 +141,49 @@ message CreateNonDataResourceValueResponse {
 }
 
 message GetNonDataResourceValueRequest {
-  oneof identifier {
-    option (buf.validate.oneof).required = true;
-
-    string value_id = 2 [
-      (buf.validate.field).string.uuid = true
-    ];
-
-    string fqn = 3 [
-      (buf.validate.field).string = {
-        min_len : 1
-        uri : true
-      }
-    ];
-  }
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
 }
 message GetNonDataResourceValueResponse {
   policy.NonDataResourceValue value = 1;
+}
+
+message ListNonDataResourceValueRequest {
+  // Optional
+  optional string group_id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+  
+  // Optional
+  policy.PageRequest pagination = 10;
+}
+message ListNonDataResourceValueResponse {
+  repeated policy.NonDataResourceValue values = 1;
+
+  policy.PageResponse pagination = 10;
 }
 
 message UpdateNonDataResourceValueRequest {
   // Required
   string id = 1 [
     (buf.validate.field).string.uuid = true
+  ];
+
+  // Optional
+  optional string group_id = 2 [
+    (buf.validate.field).string.uuid = true
+  ];
+
+  // Optional
+  string value = 3 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "ndr_value_format",
+      message: "Non Data Resource Value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored value will be normalized to lower case.",
+      expression: "size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true"
+    }
   ];
 
   // Optional
@@ -126,52 +195,19 @@ message UpdateNonDataResourceValueResponse {
   policy.NonDataResourceValue value = 1;
 }
 
+message DeleteNonDataResourceValueRequest {
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+}
+message DeleteNonDataResourceValueResponse {
+  policy.NonDataResourceValue value = 1;
+}
 
 
 ///
 /// Non Data Resource Service
 ///
 
-service NonDataResourcesService {
-  // Non Data Resource Groups
-  
-  rpc CreateNonDataResourceGroup(CreateNonDataResourceGroupRequest) returns (CreateNonDataResourceGroupResponse) {
-    option (google.api.http) = {
-      post: "/nondataresources",
-      body: "*"
-    };
-  }
-
-  rpc GetNonDataResourceGroup(GetNonDataResourceGroupRequest) returns (GetNonDataResourceGroupResponse) {
-    // option (google.api.http) = {get: "/nondataresources/{identifier}"};
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-
-  rpc UpdateNonDataResourceGroup(UpdateNonDataResourceGroupRequest) returns (UpdateNonDataResourceGroupResponse) {
-    option (google.api.http) = {
-      patch: "/nondataresources/{id}",
-      body: "*"
-    };
-  }
-
-  // Update Non Data Resource Values
-
-  rpc CreateNonDataResourceValue(CreateNonDataResourceValueRequest) returns (CreateNonDataResourceValueResponse) {
-    option (google.api.http) = {
-      post: "/nondataresources/{group_id}/values",
-      body: "*"
-    };
-  }
-
-  rpc GetNonDataResourceValue(GetNonDataResourceValueRequest) returns (GetNonDataResourceValueResponse) {
-    // option (google.api.http) = {get: "/nondataresources/*/values/{identifier}"};
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-
-  rpc UpdateNonDataResourceValue(UpdateNonDataResourceValueRequest) returns (UpdateNonDataResourceValueResponse) {
-    option (google.api.http) = {
-      patch: "/nondataresources/*/values/{id}",
-      body: "*"
-    };
-  }
-}
+// TODO: Add service definition for Non Data Resource operations

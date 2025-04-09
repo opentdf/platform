@@ -67,8 +67,16 @@ message CreateKeyAccessServerRequest {
       "characters, and slashes."
     expression: "this.isUri()"
   }];
-  // Required
-  PublicKey public_key = 2 [(buf.validate.field).required = true];
+  // Deprecated
+  PublicKey public_key = 2;
+
+  // Optional
+  SourceType source_type = 3 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).enum = {
+      defined_only: true
+    }
+  ];
 
   // Optional
   string name = 20 [
@@ -108,8 +116,22 @@ message UpdateKeyAccessServerRequest {
       "alphanumeric characters, and slashes."
     expression: "size(this) == 0 || this.isUri()"
   }];
+  // Deprecated
   // Optional
   PublicKey public_key = 3;
+
+  // Optional
+  // Using UNSPECIFIED will result in a successful update,
+  // but will not actually update the underlying source.
+  // You should not update KAS's from INTERNAL/EXTERNAL
+  // to unspecified.
+  SourceType source_type = 4 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).enum = {
+      defined_only: true
+    }
+  ];
+
   // Optional
   string name = 20 [
     (buf.validate.field).required = false,

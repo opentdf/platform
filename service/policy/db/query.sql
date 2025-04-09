@@ -248,12 +248,9 @@ WHERE
 LIMIT @limit_ 
 OFFSET @offset_;
 
-<<<<<<< HEAD
 -- name: DeleteKey :execrows
 DELETE FROM key_access_server_keys WHERE id = $1;
 
-=======
->>>>>>> a53a7cf2 (feat(policy): DSPX-678 - KAS Key updates.)
 
 ---------------------------------------------------------------- 
 -- ATTRIBUTE FQN

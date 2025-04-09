@@ -77,6 +77,7 @@ SELECT kas.id,
     kas.uri,
     kas.public_key,
     kas.name AS kas_name,
+    kas.source_type,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) AS metadata,
     counted.total
 FROM key_access_servers AS kas
@@ -90,15 +91,22 @@ SELECT
     kas.uri, 
     kas.public_key, 
     kas.name,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+    kas.source_type,
+    JSON_STRIP_NULLS(
+        JSON_BUILD_OBJECT(
+            'labels', metadata -> 'labels', 
+            'created_at', created_at, 
+            'updated_at', updated_at
+        )
+    ) AS metadata
 FROM key_access_servers AS kas
 WHERE (sqlc.narg('id')::uuid IS NULL OR kas.id = sqlc.narg('id')::uuid)
   AND (sqlc.narg('name')::text IS NULL OR kas.name = sqlc.narg('name')::text)
   AND (sqlc.narg('uri')::text IS NULL OR kas.uri = sqlc.narg('uri')::text);
 
 -- name: CreateKeyAccessServer :one
-INSERT INTO key_access_servers (uri, public_key, name, metadata)
-VALUES ($1, $2, $3, $4)
+INSERT INTO key_access_servers (uri, public_key, name, metadata, source_type)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id;
 
 -- name: UpdateKeyAccessServer :execrows
@@ -107,7 +115,8 @@ SET
     uri = COALESCE(sqlc.narg('uri'), uri),
     public_key = COALESCE(sqlc.narg('public_key'), public_key),
     name = COALESCE(sqlc.narg('name'), name),
-    metadata = COALESCE(sqlc.narg('metadata'), metadata)
+    metadata = COALESCE(sqlc.narg('metadata'), metadata),
+    source_type = COALESCE(sqlc.narg('source_type'), source_type)
 WHERE id = $1;
 
 -- name: DeleteKeyAccessServer :execrows

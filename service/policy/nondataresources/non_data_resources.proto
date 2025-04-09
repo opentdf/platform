@@ -71,11 +71,6 @@ message GetNonDataResourceGroupResponse {
 
 message ListNonDataResourceGroupRequest {
   // Optional
-  optional string group_id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
-
-  // Optional
   policy.PageRequest pagination = 10;
 }
 message ListNonDataResourceGroupResponse {

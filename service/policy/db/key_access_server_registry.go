@@ -161,7 +161,6 @@ func (c PolicyDBClient) CreateKeyAccessServer(ctx context.Context, r *kasregistr
 	publicKey := r.GetPublicKey()
 	name := strings.ToLower(r.GetName())
 	sourceType := pgtypeInt4(int32(r.GetSourceType()), true) // Can we make this required and be backwards compatible? And not unspecified?
-	c.logger.Debug("CreateKeyAccessServer", "uri", uri, "name", name, "sourceType", sourceType)
 
 	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
@@ -185,12 +184,21 @@ func (c PolicyDBClient) CreateKeyAccessServer(ctx context.Context, r *kasregistr
 	}
 
 	return &policy.KeyAccessServer{
-		Id:        createdID,
-		Uri:       uri,
-		PublicKey: publicKey,
-		Name:      name,
-		Metadata:  metadata,
+		Id:         createdID,
+		Uri:        uri,
+		PublicKey:  publicKey,
+		Name:       name,
+		Metadata:   metadata,
+		SourceType: policy.SourceType(sourceType.Int32),
 	}, nil
+}
+
+func (c PolicyDBClient) validateUpdateKASSourceType(r *kasregistry.UpdateKeyAccessServerRequest) error {
+	if r.GetSourceType() == policy.SourceType_SOURCE_TYPE_UNSPECIFIED && r.GetMetadata() == nil && r.GetMetadataUpdateBehavior() == common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_UNSPECIFIED &&
+		r.GetPublicKey() == nil && r.GetName() == "" && r.GetUri() == "" {
+		return fmt.Errorf("cannot update source type to unspecified")
+	}
+	return nil
 }
 
 func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r *kasregistry.UpdateKeyAccessServerRequest) (*policy.KeyAccessServer, error) {
@@ -198,6 +206,11 @@ func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r 
 	publicKey := r.GetPublicKey()
 	name := strings.ToLower(r.GetName())
 	sourceType := pgtypeInt4(int32(r.GetSourceType()), r.GetSourceType() != policy.SourceType_SOURCE_TYPE_UNSPECIFIED)
+
+	// Check if trying to update source type to unspecified
+	if err := c.validateUpdateKASSourceType(r); err != nil {
+		return nil, err
+	}
 
 	// if extend we need to merge the metadata
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {

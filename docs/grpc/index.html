@@ -331,6 +331,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.SourceType"><span class="badge">E</span>SourceType</a>
+                </li>
+              
+                <li>
                   <a href="#policy.SubjectMappingOperatorEnum"><span class="badge">E</span>SubjectMappingOperatorEnum</a>
                 </li>
               
@@ -2289,6 +2293,20 @@ To start, these may be `rsa:2048` for encrypting ZTDF files and
                 </tr>
               
                 <tr>
+                  <td>source_type</td>
+                  <td><a href="#policy.SourceType">SourceType</a></td>
+                  <td></td>
+                  <td><p>The source of the KAS: (INTERNAL, EXTERNAL) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>keys</td>
+                  <td><a href="#policy.AsymmetricKey">AsymmetricKey</a></td>
+                  <td>repeated</td>
+                  <td><p>Asymmetric keys associated with this KAS </p></td>
+                </tr>
+              
+                <tr>
                   <td>name</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
@@ -3183,6 +3201,35 @@ Migrate to &#39;create&#39; action name</p></td>
                 <td>KEY_STATUS_COMPROMISED</td>
                 <td>3</td>
                 <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+        <h3 id="policy.SourceType">SourceType</h3>
+        <p>Describes whether this kas is managed by the organization or if they imported</p><p>the kas information from an external party. These two modes are necessary in order</p><p>to encrypt a tdf dek with an external parties kas public key.</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SOURCE_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SOURCE_TYPE_INTERNAL</td>
+                <td>1</td>
+                <td><p>The kas is managed by the organization.</p></td>
+              </tr>
+            
+              <tr>
+                <td>SOURCE_TYPE_EXTERNAL</td>
+                <td>2</td>
+                <td><p>The kas is managed by an external party.</p></td>
               </tr>
             
           </tbody>
@@ -7390,7 +7437,14 @@ Attribute &lt;&gt; Key Access Server RPCs
                   <td>public_key</td>
                   <td><a href="#policy.PublicKey">policy.PublicKey</a></td>
                   <td></td>
-                  <td><p>Required </p></td>
+                  <td><p>Deprecated </p></td>
+                </tr>
+              
+                <tr>
+                  <td>source_type</td>
+                  <td><a href="#policy.SourceType">policy.SourceType</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>
@@ -8693,7 +8747,19 @@ Specific structure based on key provider implementation </p></td>
                   <td>public_key</td>
                   <td><a href="#policy.PublicKey">policy.PublicKey</a></td>
                   <td></td>
-                  <td><p>Optional </p></td>
+                  <td><p>Deprecated
+Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>source_type</td>
+                  <td><a href="#policy.SourceType">policy.SourceType</a></td>
+                  <td></td>
+                  <td><p>Optional
+Using UNSPECIFIED will result in a successful update,
+but will not actually update the underlying source.
+You should not update KAS&#39;s from INTERNAL/EXTERNAL
+to unspecified. </p></td>
                 </tr>
               
                 <tr>

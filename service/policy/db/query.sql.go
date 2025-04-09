@@ -264,22 +264,23 @@ func (q *Queries) CreateKey(ctx context.Context, arg CreateKeyParams) (CreateKey
 }
 
 const createKeyAccessServer = `-- name: CreateKeyAccessServer :one
-INSERT INTO key_access_servers (uri, public_key, name, metadata)
-VALUES ($1, $2, $3, $4)
+INSERT INTO key_access_servers (uri, public_key, name, metadata, source_type)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id
 `
 
 type CreateKeyAccessServerParams struct {
-	Uri       string      `json:"uri"`
-	PublicKey []byte      `json:"public_key"`
-	Name      pgtype.Text `json:"name"`
-	Metadata  []byte      `json:"metadata"`
+	Uri        string      `json:"uri"`
+	PublicKey  []byte      `json:"public_key"`
+	Name       pgtype.Text `json:"name"`
+	Metadata   []byte      `json:"metadata"`
+	SourceType pgtype.Int4 `json:"source_type"`
 }
 
 // CreateKeyAccessServer
 //
-//	INSERT INTO key_access_servers (uri, public_key, name, metadata)
-//	VALUES ($1, $2, $3, $4)
+//	INSERT INTO key_access_servers (uri, public_key, name, metadata, source_type)
+//	VALUES ($1, $2, $3, $4, $5)
 //	RETURNING id
 func (q *Queries) CreateKeyAccessServer(ctx context.Context, arg CreateKeyAccessServerParams) (string, error) {
 	row := q.db.QueryRow(ctx, createKeyAccessServer,
@@ -287,6 +288,7 @@ func (q *Queries) CreateKeyAccessServer(ctx context.Context, arg CreateKeyAccess
 		arg.PublicKey,
 		arg.Name,
 		arg.Metadata,
+		arg.SourceType,
 	)
 	var id string
 	err := row.Scan(&id)
@@ -949,7 +951,14 @@ SELECT
     kas.uri, 
     kas.public_key, 
     kas.name,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+    kas.source_type,
+    JSON_STRIP_NULLS(
+        JSON_BUILD_OBJECT(
+            'labels', metadata -> 'labels', 
+            'created_at', created_at, 
+            'updated_at', updated_at
+        )
+    ) AS metadata
 FROM key_access_servers AS kas
 WHERE ($1::uuid IS NULL OR kas.id = $1::uuid)
   AND ($2::text IS NULL OR kas.name = $2::text)
@@ -963,11 +972,12 @@ type GetKeyAccessServerParams struct {
 }
 
 type GetKeyAccessServerRow struct {
-	ID        string      `json:"id"`
-	Uri       string      `json:"uri"`
-	PublicKey []byte      `json:"public_key"`
-	Name      pgtype.Text `json:"name"`
-	Metadata  []byte      `json:"metadata"`
+	ID         string      `json:"id"`
+	Uri        string      `json:"uri"`
+	PublicKey  []byte      `json:"public_key"`
+	Name       pgtype.Text `json:"name"`
+	SourceType pgtype.Int4 `json:"source_type"`
+	Metadata   []byte      `json:"metadata"`
 }
 
 // GetKeyAccessServer
@@ -977,7 +987,14 @@ type GetKeyAccessServerRow struct {
 //	    kas.uri,
 //	    kas.public_key,
 //	    kas.name,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+//	    kas.source_type,
+//	    JSON_STRIP_NULLS(
+//	        JSON_BUILD_OBJECT(
+//	            'labels', metadata -> 'labels',
+//	            'created_at', created_at,
+//	            'updated_at', updated_at
+//	        )
+//	    ) AS metadata
 //	FROM key_access_servers AS kas
 //	WHERE ($1::uuid IS NULL OR kas.id = $1::uuid)
 //	  AND ($2::text IS NULL OR kas.name = $2::text)
@@ -990,6 +1007,7 @@ func (q *Queries) GetKeyAccessServer(ctx context.Context, arg GetKeyAccessServer
 		&i.Uri,
 		&i.PublicKey,
 		&i.Name,
+		&i.SourceType,
 		&i.Metadata,
 	)
 	return i, err
@@ -1836,6 +1854,7 @@ SELECT kas.id,
     kas.uri,
     kas.public_key,
     kas.name AS kas_name,
+    kas.source_type,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) AS metadata,
     counted.total
 FROM key_access_servers AS kas
@@ -1850,12 +1869,13 @@ type ListKeyAccessServersParams struct {
 }
 
 type ListKeyAccessServersRow struct {
-	ID        string      `json:"id"`
-	Uri       string      `json:"uri"`
-	PublicKey []byte      `json:"public_key"`
-	KasName   pgtype.Text `json:"kas_name"`
-	Metadata  []byte      `json:"metadata"`
-	Total     int64       `json:"total"`
+	ID         string      `json:"id"`
+	Uri        string      `json:"uri"`
+	PublicKey  []byte      `json:"public_key"`
+	KasName    pgtype.Text `json:"kas_name"`
+	SourceType pgtype.Int4 `json:"source_type"`
+	Metadata   []byte      `json:"metadata"`
+	Total      int64       `json:"total"`
 }
 
 // ListKeyAccessServers
@@ -1868,6 +1888,7 @@ type ListKeyAccessServersRow struct {
 //	    kas.uri,
 //	    kas.public_key,
 //	    kas.name AS kas_name,
+//	    kas.source_type,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) AS metadata,
 //	    counted.total
 //	FROM key_access_servers AS kas
@@ -1888,6 +1909,7 @@ func (q *Queries) ListKeyAccessServers(ctx context.Context, arg ListKeyAccessSer
 			&i.Uri,
 			&i.PublicKey,
 			&i.KasName,
+			&i.SourceType,
 			&i.Metadata,
 			&i.Total,
 		); err != nil {
@@ -2716,16 +2738,18 @@ SET
     uri = COALESCE($2, uri),
     public_key = COALESCE($3, public_key),
     name = COALESCE($4, name),
-    metadata = COALESCE($5, metadata)
+    metadata = COALESCE($5, metadata),
+    source_type = COALESCE($6, source_type)
 WHERE id = $1
 `
 
 type UpdateKeyAccessServerParams struct {
-	ID        string      `json:"id"`
-	Uri       pgtype.Text `json:"uri"`
-	PublicKey []byte      `json:"public_key"`
-	Name      pgtype.Text `json:"name"`
-	Metadata  []byte      `json:"metadata"`
+	ID         string      `json:"id"`
+	Uri        pgtype.Text `json:"uri"`
+	PublicKey  []byte      `json:"public_key"`
+	Name       pgtype.Text `json:"name"`
+	Metadata   []byte      `json:"metadata"`
+	SourceType pgtype.Int4 `json:"source_type"`
 }
 
 // UpdateKeyAccessServer
@@ -2735,7 +2759,8 @@ type UpdateKeyAccessServerParams struct {
 //	    uri = COALESCE($2, uri),
 //	    public_key = COALESCE($3, public_key),
 //	    name = COALESCE($4, name),
-//	    metadata = COALESCE($5, metadata)
+//	    metadata = COALESCE($5, metadata),
+//	    source_type = COALESCE($6, source_type)
 //	WHERE id = $1
 func (q *Queries) UpdateKeyAccessServer(ctx context.Context, arg UpdateKeyAccessServerParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateKeyAccessServer,
@@ -2744,6 +2769,7 @@ func (q *Queries) UpdateKeyAccessServer(ctx context.Context, arg UpdateKeyAccess
 		arg.PublicKey,
 		arg.Name,
 		arg.Metadata,
+		arg.SourceType,
 	)
 	if err != nil {
 		return 0, err

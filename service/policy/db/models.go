@@ -240,7 +240,7 @@ type KeyAccessServer struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 	// Optional common name of the KAS
 	Name       pgtype.Text `json:"name"`
-	SourceType pgtype.Text `json:"source_type"`
+	SourceType pgtype.Int4 `json:"source_type"`
 }
 
 type KeyAccessServerKey struct {

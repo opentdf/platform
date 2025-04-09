@@ -11,6 +11,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
+	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/proto"
 )
@@ -60,9 +61,8 @@ var (
 func (s *SubjectMappingsSuite) TestCreateSubjectMapping_ExistingSubjectConditionSetId() {
 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
 	fixtureSCSId := s.f.GetSubjectConditionSetKey("subject_condition_set1").ID
-	actionRead := s.f.GetStandardAction("read")
-	actionCreate := s.f.GetStandardAction("create")
-
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
+	actionCreate := s.f.GetStandardAction(policydb.ActionCreate.String())
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrValID,
 		ExistingSubjectConditionSetId: fixtureSCSId,
@@ -95,8 +95,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_ExistingSubjectCondition
 
 func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NewSubjectConditionSet() {
 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
-	actionCreate := s.f.GetStandardAction("create")
-
+	actionCreate := s.f.GetStandardAction(policydb.ActionCreate.String())
 	scs := &subjectmapping.SubjectConditionSetCreate{
 		SubjectSets: []*policy.SubjectSet{
 			{
@@ -146,7 +145,8 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NewSubjectConditionSet()
 
 func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentAttributeValueId_Fails() {
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
-	actionCreate := s.f.GetStandardAction("create")
+	actionCreate := s.f.GetStandardAction(policydb.ActionCreate.String())
+
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		Actions:                       []*policy.Action{actionCreate},
 		ExistingSubjectConditionSetId: fixtureScs.ID,
@@ -161,7 +161,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentAttributeValu
 
 func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NonExistentSubjectConditionSetId_Fails() {
 	fixtureAttrVal := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value1")
-	actionRead := s.f.GetStandardAction("read")
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrVal.ID,
 		Actions:                       []*policy.Action{actionRead},
@@ -240,8 +240,8 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 	// create a new one SM with actions, update it with different actions, and verify the update
 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set3")
-	actionUpdate := s.f.GetStandardAction("update")
-	actionDelete := s.f.GetStandardAction("delete")
+	actionUpdate := s.f.GetStandardAction(policydb.ActionUpdate.String())
+	actionDelete := s.f.GetStandardAction(policydb.ActionDelete.String())
 
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrValID,
@@ -319,7 +319,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions_NonExistentActionID_Fails() {
 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").ID
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
-	actionRead := s.f.GetStandardAction("read")
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
 
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrValID,
@@ -351,7 +351,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_SubjectConditionSetId() 
 	// create a new one, update it, and verify the update
 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").ID
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
-	actionDelete := s.f.GetStandardAction("delete")
+	actionDelete := s.f.GetStandardAction(policydb.ActionDelete.String())
 
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrValID,
@@ -390,8 +390,7 @@ func (s *SubjectMappingsSuite) Test_UpdateSubjectMapping_UpdateAllAllowedFields(
 	// create a new one, update it, and verify the update
 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").ID
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
-	actionCreate := s.f.GetStandardAction("create")
-
+	actionCreate := s.f.GetStandardAction(policydb.ActionCreate.String())
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrValID,
 		Actions:                       []*policy.Action{actionCreate},
@@ -667,7 +666,7 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectMapping_DoesNotDeleteSubjectCond
 			},
 		},
 	}
-	actionRead := s.f.GetStandardAction("read")
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
 
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:       fixtureAttrValID,
@@ -1330,7 +1329,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_DeactivatedValueNot
 	// create a new subject mapping with a deactivated attribute value
 	fixtureAttrVal := s.f.GetAttributeValueKey("deactivated.io/attr/deactivated_attr/value/deactivated_value")
 	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
-	actionRead := s.f.GetStandardAction("read")
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
 
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrVal.ID,
@@ -1383,9 +1382,9 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_ConditionSetReusedB
 	s.Require().NoError(err)
 	s.NotNil(createdSCS)
 
-	actionRead := s.f.GetStandardAction("read")
-	actionDelete := s.f.GetStandardAction("delete")
-	actionUpdate := s.f.GetStandardAction("update")
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
+	actionDelete := s.f.GetStandardAction(policydb.ActionDelete.String())
+	actionUpdate := s.f.GetStandardAction(policydb.ActionUpdate.String())
 
 	// Create two subject mappings across different values that reuse the same subject condition set
 	attrVal1 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
@@ -1458,8 +1457,8 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_OnlyMatchesOnePrope
 		},
 	}
 
-	actionCreate := s.f.GetStandardAction("create")
-	actionRead := s.f.GetStandardAction("read")
+	actionCreate := s.f.GetStandardAction(policydb.ActionCreate.String())
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
 
 	subjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:       fixtureAttrValID,

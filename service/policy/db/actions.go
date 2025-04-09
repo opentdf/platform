@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/opentdf/platform/protocol/go/common"
@@ -10,6 +12,29 @@ import (
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 )
+
+type ActionStandard string
+
+const (
+	ActionCreate ActionStandard = "create"
+	ActionRead   ActionStandard = "read"
+	ActionUpdate ActionStandard = "update"
+	ActionDelete ActionStandard = "delete"
+)
+
+// Add a validation method
+func (a ActionStandard) IsValid() bool {
+    switch a {
+    case ActionCreate, ActionRead, ActionUpdate, ActionDelete:
+        return true
+    }
+    return false
+}
+
+// If needed, implement the Stringer interface explicitly
+func (a ActionStandard) String() string {
+    return string(a)
+}
 
 func (c PolicyDBClient) GetAction(ctx context.Context, req *actions.GetActionRequest) (*policy.Action, error) {
 	getActionParams := getActionParams{}
@@ -166,7 +191,25 @@ func (c PolicyDBClient) DeleteAction(ctx context.Context, req *actions.DeleteAct
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
+	// if did not delete, was either not found or was a standard action
 	if count == 0 {
+		got, err := c.GetAction(ctx, &actions.GetActionRequest{
+			Identifier: &actions.GetActionRequest_Id{
+				Id: req.GetId(),
+			},
+		})
+		// not found
+		if err != nil && errors.Is(err, db.ErrNotFound) {
+			return nil, err
+		}
+		// standard action
+		name := got.GetName()
+		if name == string(ActionCreate) ||
+			name == string(ActionRead) ||
+			name == string(ActionUpdate) ||
+			name == string(ActionDelete) {
+			return nil, fmt.Errorf("cannot delete standard action %s: %w", name, db.ErrRestrictViolation)
+		}
 		return nil, db.ErrNotFound
 	}
 

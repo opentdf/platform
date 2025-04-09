@@ -126,7 +126,7 @@ type FixtureDataKasRegistryKey struct {
 	KeyStatus         string `yaml:"key_status"`
 	PrivateKeyCtx     string `yaml:"private_key_ctx"`
 	PublicKeyCtx      string `yaml:"public_key_ctx"`
-	ProviderConfigID  string `yaml:"provider_config_id"`
+	ProvideConfigID   string `yaml:"provider_config_id"`
 }
 
 type FixtureDataProviderConfig struct {
@@ -582,7 +582,7 @@ func (f *Fixtures) provisionKasRegistryKeys() int64 {
 			f.db.StringWrap(d.KeyStatus),
 			f.db.StringWrap(string(privateCtx)),
 			f.db.StringWrap(string(pubCtx)),
-			f.db.StringWrap(d.ProviderConfigID),
+			f.db.StringWrap(d.ProvideConfigID),
 		})
 	}
 

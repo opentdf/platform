@@ -50,10 +50,20 @@ message CreateNonDataResourceGroupResponse {
 }
 
 message GetNonDataResourceGroupRequest {
-  // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  oneof identifier {
+    option (buf.validate.oneof).required = true;
+
+    string group_id = 1 [
+      (buf.validate.field).string.uuid = true
+    ];
+
+    string fqn = 2 [
+      (buf.validate.field).string = {
+        min_len : 1
+        uri : true
+      }
+    ];
+  }
 }
 message GetNonDataResourceGroupResponse {
   policy.NonDataResourceGroup group = 1;
@@ -140,9 +150,20 @@ message CreateNonDataResourceValueResponse {
 }
 
 message GetNonDataResourceValueRequest {
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  oneof identifier {
+    option (buf.validate.oneof).required = true;
+
+    string value_id = 1 [
+      (buf.validate.field).string.uuid = true
+    ];
+
+    string fqn = 2 [
+      (buf.validate.field).string = {
+        min_len : 1
+        uri : true
+      }
+    ];
+  }
 }
 message GetNonDataResourceValueResponse {
   policy.NonDataResourceValue value = 1;
@@ -170,12 +191,7 @@ message UpdateNonDataResourceValueRequest {
   ];
 
   // Optional
-  optional string group_id = 2 [
-    (buf.validate.field).string.uuid = true
-  ];
-
-  // Optional
-  string value = 3 [
+  string value = 2 [
     (buf.validate.field).required = false,
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {

@@ -85,7 +85,7 @@ func (s *KasRegistrySuite) validateKasRegistryKeys(kasr *policy.KeyAccessServer)
 			}
 		}
 	}
-	s.Equal(matchingKeysCount, len(keysFixtureArr))
+	s.Len(keysFixtureArr, matchingKeysCount)
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_NoPagination_Succeeds() {
@@ -105,7 +105,6 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_NoPagination_Succeeds() {
 				found = true
 				s.validateKasRegistryKeys(kasr)
 			}
-
 		}
 		s.True(found)
 	}

@@ -80,12 +80,12 @@ func (s *KasRegistrySuite) validateKasRegistryKeys(kasr *policy.KeyAccessServer)
 	for _, key := range kasr.GetKeys() {
 		for _, f := range keysFixtureArr {
 			if key.GetId() == f.ID {
-				s.Equal(f.ProviderConfigID, key.GetProviderConfig().GetId())
+				s.Equal(f.ProvideConfigID, key.GetProviderConfig().GetId())
 				matchingKeysCount++
 			}
 		}
 	}
-	s.Len(keysFixtureArr, matchingKeysCount)
+	s.Equal(matchingKeysCount, len(keysFixtureArr))
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_NoPagination_Succeeds() {
@@ -105,6 +105,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_NoPagination_Succeeds() {
 				found = true
 				s.validateKasRegistryKeys(kasr)
 			}
+
 		}
 		s.True(found)
 	}

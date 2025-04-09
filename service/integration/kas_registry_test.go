@@ -85,7 +85,7 @@ func (s *KasRegistrySuite) validateKasRegistryKeys(kasr *policy.KeyAccessServer)
 			}
 		}
 	}
-	s.Equal(matchingKeysCount, len(keysFixtureArr))
+	s.Len(keysFixtureArr, matchingKeysCount)
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_NoPagination_Succeeds() {
@@ -105,7 +105,6 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_NoPagination_Succeeds() {
 				found = true
 				s.validateKasRegistryKeys(kasr)
 			}
-
 		}
 		s.True(found)
 	}
@@ -569,7 +568,6 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Metadata_DoesNotAlterOther
 	s.Zero(got.GetPublicKey().GetCached())
 	s.Equal("new label", got.GetMetadata().GetLabels()["new"])
 	s.Equal(sourceType, got.GetSourceType())
-
 }
 
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Uri_DoesNotAlterOtherValues() {

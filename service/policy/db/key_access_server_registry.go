@@ -46,11 +46,22 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 			return nil, err
 		}
 
+		// Get Keys
+		resp, err := c.ListKeys(ctx, &kasregistry.ListKeysRequest{
+			KasFilter: &kasregistry.ListKeysRequest_KasId{
+				KasId: kas.ID},
+		})
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+
 		keyAccessServer.Id = kas.ID
 		keyAccessServer.Uri = kas.Uri
 		keyAccessServer.PublicKey = publicKey
 		keyAccessServer.Name = kas.KasName.String
 		keyAccessServer.Metadata = metadata
+		keyAccessServer.Keys = resp.GetKeys()
+		keyAccessServer.SourceType = policy.SourceType(kas.SourceType.Int32)
 
 		keyAccessServers[i] = keyAccessServer
 	}
@@ -126,12 +137,22 @@ func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, identifier any) 
 		return nil, err
 	}
 
+	resp, err := c.ListKeys(ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{
+			KasId: kas.ID},
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
 	return &policy.KeyAccessServer{
-		Id:        kas.ID,
-		Uri:       kas.Uri,
-		PublicKey: publicKey,
-		Name:      kas.Name.String,
-		Metadata:  metadata,
+		Id:         kas.ID,
+		Uri:        kas.Uri,
+		PublicKey:  publicKey,
+		Name:       kas.Name.String,
+		Metadata:   metadata,
+		SourceType: policy.SourceType(kas.SourceType.Int32),
+		Keys:       resp.GetKeys(),
 	}, nil
 }
 
@@ -139,6 +160,7 @@ func (c PolicyDBClient) CreateKeyAccessServer(ctx context.Context, r *kasregistr
 	uri := r.GetUri()
 	publicKey := r.GetPublicKey()
 	name := strings.ToLower(r.GetName())
+	sourceType := pgtypeInt4(int32(r.GetSourceType()), true) // Can we make this required and be backwards compatible? And not unspecified?
 
 	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
@@ -151,28 +173,44 @@ func (c PolicyDBClient) CreateKeyAccessServer(ctx context.Context, r *kasregistr
 	}
 
 	createdID, err := c.Queries.CreateKeyAccessServer(ctx, CreateKeyAccessServerParams{
-		Uri:       uri,
-		PublicKey: publicKeyJSON,
-		Name:      pgtypeText(name),
-		Metadata:  metadataJSON,
+		Uri:        uri,
+		PublicKey:  publicKeyJSON,
+		Name:       pgtypeText(name),
+		Metadata:   metadataJSON,
+		SourceType: sourceType,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	return &policy.KeyAccessServer{
-		Id:        createdID,
-		Uri:       uri,
-		PublicKey: publicKey,
-		Name:      name,
-		Metadata:  metadata,
+		Id:         createdID,
+		Uri:        uri,
+		PublicKey:  publicKey,
+		Name:       name,
+		Metadata:   metadata,
+		SourceType: policy.SourceType(sourceType.Int32),
 	}, nil
+}
+
+func (c PolicyDBClient) validateUpdateKASSourceType(r *kasregistry.UpdateKeyAccessServerRequest) error {
+	if r.GetSourceType() == policy.SourceType_SOURCE_TYPE_UNSPECIFIED && r.GetMetadata() == nil && r.GetMetadataUpdateBehavior() == common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_UNSPECIFIED &&
+		r.GetPublicKey() == nil && r.GetName() == "" && r.GetUri() == "" {
+		return fmt.Errorf("cannot update source type to unspecified")
+	}
+	return nil
 }
 
 func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r *kasregistry.UpdateKeyAccessServerRequest) (*policy.KeyAccessServer, error) {
 	uri := r.GetUri()
 	publicKey := r.GetPublicKey()
 	name := strings.ToLower(r.GetName())
+	sourceType := pgtypeInt4(int32(r.GetSourceType()), r.GetSourceType() != policy.SourceType_SOURCE_TYPE_UNSPECIFIED)
+
+	// Check if trying to update source type to unspecified
+	if err := c.validateUpdateKASSourceType(r); err != nil {
+		return nil, err
+	}
 
 	// if extend we need to merge the metadata
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
@@ -195,11 +233,12 @@ func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r 
 	}
 
 	count, err := c.Queries.UpdateKeyAccessServer(ctx, UpdateKeyAccessServerParams{
-		ID:        id,
-		Uri:       pgtypeText(uri),
-		Name:      pgtypeText(name),
-		PublicKey: publicKeyJSON,
-		Metadata:  metadataJSON,
+		ID:         id,
+		Uri:        pgtypeText(uri),
+		Name:       pgtypeText(name),
+		PublicKey:  publicKeyJSON,
+		Metadata:   metadataJSON,
+		SourceType: sourceType,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -209,11 +248,12 @@ func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r 
 	}
 
 	return &policy.KeyAccessServer{
-		Id:        id,
-		Uri:       uri,
-		Name:      name,
-		PublicKey: publicKey,
-		Metadata:  metadata,
+		Id:         id,
+		Uri:        uri,
+		Name:       name,
+		PublicKey:  publicKey,
+		Metadata:   metadata,
+		SourceType: r.GetSourceType(),
 	}, nil
 }
 

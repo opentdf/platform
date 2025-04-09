@@ -434,13 +434,15 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 	id := r.GetId()
 	subjectConditionSetID := r.GetSubjectConditionSetId()
 	actions := r.GetActions()
+
+	before, err := c.GetSubjectMapping(ctx, id)
+	if err != nil || before == nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
 	// if extend we need to merge the metadata
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
-		a, err := c.GetSubjectMapping(ctx, id)
-		if err != nil {
-			return nil, err
-		}
-		return a.GetMetadata(), nil
+		return before.GetMetadata(), nil
 	})
 	if err != nil {
 		return nil, err

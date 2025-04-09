@@ -1009,11 +1009,11 @@ WITH
             sqlc.arg('id'),
             a
         FROM unnest(sqlc.narg('action_ids')::UUID[]) AS a
-        WHERE 
+        WHERE
             sqlc.narg('action_ids')::UUID[] IS NOT NULL
             AND NOT EXISTS (
-                SELECT 1 
-                FROM subject_mapping_actions 
+                SELECT 1
+                FROM subject_mapping_actions
                 WHERE subject_mapping_id = sqlc.arg('id') AND action_id = a
             )
         RETURNING action_id
@@ -1022,12 +1022,8 @@ WITH
         SELECT COUNT(*) AS cnt
         FROM subject_mapping_update
     )
-SELECT
-    1 / CASE WHEN (
-            SELECT cnt FROM update_count
-        ) = 0 THEN 0
-        ELSE 1
-    END;
+SELECT cnt
+FROM update_count;
 
 -- name: deleteSubjectMapping :execrows
 DELETE FROM subject_mappings WHERE id = $1;

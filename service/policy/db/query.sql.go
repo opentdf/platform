@@ -4318,11 +4318,11 @@ WITH
             $3,
             a
         FROM unnest($4::UUID[]) AS a
-        WHERE 
+        WHERE
             $4::UUID[] IS NOT NULL
             AND NOT EXISTS (
-                SELECT 1 
-                FROM subject_mapping_actions 
+                SELECT 1
+                FROM subject_mapping_actions
                 WHERE subject_mapping_id = $3 AND action_id = a
             )
         RETURNING action_id
@@ -4331,12 +4331,8 @@ WITH
         SELECT COUNT(*) AS cnt
         FROM subject_mapping_update
     )
-SELECT
-    1 / CASE WHEN (
-            SELECT cnt FROM update_count
-        ) = 0 THEN 0
-        ELSE 1
-    END
+SELECT cnt
+FROM update_count
 `
 
 type updateSubjectMappingParams struct {
@@ -4387,12 +4383,8 @@ type updateSubjectMappingParams struct {
 //	        SELECT COUNT(*) AS cnt
 //	        FROM subject_mapping_update
 //	    )
-//	SELECT
-//	    1 / CASE WHEN (
-//	            SELECT cnt FROM update_count
-//	        ) = 0 THEN 0
-//	        ELSE 1
-//	    END
+//	SELECT cnt
+//	FROM update_count
 func (q *Queries) updateSubjectMapping(ctx context.Context, arg updateSubjectMappingParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateSubjectMapping,
 		arg.Metadata,

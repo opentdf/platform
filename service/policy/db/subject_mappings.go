@@ -262,7 +262,7 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 		if a.GetId() != "" {
 			actionIDs = append(actionIDs, a.GetId())
 		} else if a.GetName() != "" {
-			actionNames = append(actionNames, a.GetName())
+			actionNames = append(actionNames, strings.ToLower(a.GetName()))
 		} else {
 			return nil, db.WrapIfKnownInvalidQueryErr(
 				errors.Join(db.ErrMissingValue, errors.New("action id or name is required when creating a subject mapping")),
@@ -434,13 +434,15 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 	id := r.GetId()
 	subjectConditionSetID := r.GetSubjectConditionSetId()
 	actions := r.GetActions()
+
+	before, err := c.GetSubjectMapping(ctx, id)
+	if err != nil || before == nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
 	// if extend we need to merge the metadata
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
-		a, err := c.GetSubjectMapping(ctx, id)
-		if err != nil {
-			return nil, err
-		}
-		return a.GetMetadata(), nil
+		return before.GetMetadata(), nil
 	})
 	if err != nil {
 		return nil, err
@@ -460,7 +462,7 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 			if a.GetId() != "" {
 				actionIDs = append(actionIDs, a.GetId())
 			} else if a.GetName() != "" {
-				actionNames = append(actionNames, a.GetName())
+				actionNames = append(actionNames, strings.ToLower(a.GetName()))
 			} else {
 				return nil, db.WrapIfKnownInvalidQueryErr(
 					errors.Join(db.ErrMissingValue, errors.New("action id or name is required when updating a subject mapping's actions")),

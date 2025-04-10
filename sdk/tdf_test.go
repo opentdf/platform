@@ -9,6 +9,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
@@ -37,6 +38,7 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -258,6 +260,7 @@ type assertionTests struct {
 	verifiers                    *AssertionVerificationKeys
 	disableAssertionVerification bool
 	expectedSize                 int
+	useHex                       bool
 }
 
 const payload = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -299,6 +302,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 	type TestConfig struct {
 		tdfOptions     []TDFOption
 		tdfReadOptions []TDFReaderOption
+		useHex         bool
 	}
 
 	metaData := []byte(`{"displayName" : "openTDF go sdk"}`)
@@ -308,6 +312,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 	}
 
 	expectedTdfSize := int64(2058)
+	expectedTdfSizeWithHex := int64(2095)
 	tdfFilename := "secure-text.tdf"
 	plainText := "Virtru"
 
@@ -327,6 +332,19 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		{
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
+					URL:       "https://a.kas/",
+					PublicKey: "",
+				}),
+				WithMetaData(string(metaData)),
+				WithDataAttributes(attributes...),
+				WithTargetMode("0.0.0"),
+			},
+			tdfReadOptions: []TDFReaderOption{},
+			useHex:         true,
+		},
+		{
+			tdfOptions: []TDFOption{
+				WithKasInformation(KASInfo{
 					URL:       "https://d.kas/",
 					PublicKey: "",
 				}),
@@ -337,6 +355,22 @@ func (s *TDFSuite) Test_SimpleTDF() {
 			tdfReadOptions: []TDFReaderOption{
 				WithSessionKeyType(ocrypto.EC256Key),
 			},
+		},
+		{
+			tdfOptions: []TDFOption{
+				WithKasInformation(KASInfo{
+					URL:       "https://d.kas/",
+					PublicKey: "",
+				}),
+				WithMetaData(string(metaData)),
+				WithDataAttributes(attributes...),
+				WithWrappingKeyAlg(ocrypto.EC256Key),
+				WithTargetMode("0.0.0"),
+			},
+			tdfReadOptions: []TDFReaderOption{
+				WithSessionKeyType(ocrypto.EC256Key),
+			},
+			useHex: true,
 		},
 	}
 
@@ -355,7 +389,11 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		tdfObj, err := s.sdk.CreateTDF(fileWriter, bufReader, config.tdfOptions...)
 
 		s.Require().NoError(err)
-		s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 36.0)
+		if config.useHex {
+			s.InDelta(float64(expectedTdfSizeWithHex), float64(tdfObj.size), 36.0)
+		} else {
+			s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 36.0)
+		}
 
 		// test meta data and build meta data
 		readSeeker, err := os.Open(tdfFilename)
@@ -380,6 +418,28 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		payloadKey, err := r.UnsafePayloadKeyRetrieval()
 		s.Require().NoError(err)
 		s.Len(payloadKey, kKeySize)
+
+		// check that root sig and seg sig are hex encoded if useHex is true
+		b64decodedroot, err := ocrypto.Base64Decode([]byte(r.Manifest().EncryptionInformation.RootSignature.Signature))
+		s.Require().NoError(err)
+		b64decodedseg, err := ocrypto.Base64Decode([]byte(r.Manifest().EncryptionInformation.Segments[0].Hash))
+		s.Require().NoError(err)
+		_, err1 := hex.DecodeString(string(b64decodedroot))
+		_, err2 := hex.DecodeString(string(b64decodedseg))
+		if config.useHex {
+			s.Require().NoError(err1)
+			s.Require().NoError(err2)
+		} else {
+			s.Require().Error(err1)
+			s.Require().Error(err2)
+		}
+
+		// check version is present if usehex is false
+		if config.useHex {
+			s.Equal("", r.Manifest().TDFVersion)
+		} else {
+			s.Equal(TDFSpecVersion, r.Manifest().TDFVersion)
+		}
 
 		// test reader
 		readSeeker, err = os.Open(tdfFilename)
@@ -449,6 +509,36 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 			verifiers:                    nil,
 			disableAssertionVerification: false,
 			expectedSize:                 2689,
+		},
+		{
+			assertions: []AssertionConfig{
+				{
+					ID:             "assertion1",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "base64binary",
+						Schema: "text",
+						Value:  "ICAgIDxlZGoOkVkaD4=",
+					},
+				},
+				{
+					ID:             "assertion2",
+					Type:           BaseAssertion,
+					Scope:          TrustedDataObj,
+					AppliesToState: Unencrypted,
+					Statement: Statement{
+						Format: "json",
+						Schema: "urn:nato:stanag:5636:A:1:elements:json",
+						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
+					},
+				},
+			},
+			verifiers:                    nil,
+			disableAssertionVerification: false,
+			useHex:                       true,
+			expectedSize:                 2896,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -612,9 +702,13 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				s.Require().NoError(err)
 			}(fileWriter)
 
-			tdfObj, err := s.sdk.CreateTDF(fileWriter, bufReader,
-				WithKasInformation(kasURLs...),
-				WithAssertions(test.assertions...))
+			createOptions := []TDFOption{WithKasInformation(kasURLs...),
+				WithAssertions(test.assertions...)}
+			if test.useHex {
+				createOptions = append(createOptions, WithTargetMode("0.0.0"))
+			}
+
+			tdfObj, err := s.sdk.CreateTDF(fileWriter, bufReader, createOptions...)
 
 			s.Require().NoError(err)
 			s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 32.0)
@@ -1911,4 +2005,111 @@ func (s *TDFSuite) checkIdentical(file, checksum string) bool {
 
 	c := h.Sum(nil)
 	return checksum == fmt.Sprintf("%x", c)
+}
+
+func TestIsLessThanSemver(t *testing.T) {
+	tests := []struct {
+		name        string
+		version     string
+		target      string
+		expected    bool
+		expectError bool
+	}{
+		{
+			name:        "Version is less than target",
+			version:     "1.0.0",
+			target:      "2.0.0",
+			expected:    true,
+			expectError: false,
+		},
+		{
+			name:        "Version is equal to target",
+			version:     "2.0.0",
+			target:      "2.0.0",
+			expected:    false,
+			expectError: false,
+		},
+		{
+			name:        "Version is greater than target",
+			version:     "3.0.0",
+			target:      "2.0.0",
+			expected:    false,
+			expectError: false,
+		},
+		{
+			name:        "Different version format",
+			version:     "v1.41.29",
+			target:      "2.0.0",
+			expected:    true,
+			expectError: false,
+		},
+		{
+			name:        "without patch version",
+			version:     "1.41",
+			target:      "2.0.0",
+			expected:    true,
+			expectError: false,
+		},
+		{
+			name:        "only major",
+			version:     "1",
+			target:      "2.0.0",
+			expected:    true,
+			expectError: false,
+		},
+		{
+			name:        "only major greater",
+			version:     "3",
+			target:      "2.0.0",
+			expected:    false,
+			expectError: false,
+		},
+		{
+			name:        "only major v",
+			version:     "v1",
+			target:      "2.0.0",
+			expected:    true,
+			expectError: false,
+		},
+		{
+			name:        "only major greater v",
+			version:     "v3",
+			target:      "2.0.0",
+			expected:    false,
+			expectError: false,
+		},
+		{
+			name:        "Invalid version format",
+			version:     "invalid",
+			target:      "2.0.0",
+			expected:    false,
+			expectError: true,
+		},
+		{
+			name:        "Invalid target format",
+			version:     "1.0.0",
+			target:      "invalid",
+			expected:    false,
+			expectError: true,
+		},
+		{
+			name:        "Both version and target are invalid",
+			version:     "invalid",
+			target:      "invalid",
+			expected:    false,
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := isLessThanSemver(tt.version, tt.target)
+			if tt.expectError {
+				require.Error(t, err, "Expected an error for test case: %s", tt.name)
+			} else {
+				require.NoError(t, err, "Did not expect an error for test case: %s", tt.name)
+				assert.Equal(t, tt.expected, result, "Unexpected result for test case: %s", tt.name)
+			}
+		})
+	}
 }

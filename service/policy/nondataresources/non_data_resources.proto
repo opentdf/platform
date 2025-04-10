@@ -217,7 +217,8 @@ message DeleteNonDataResourceValueResponse {
 
 
 ///
-/// Non Data Resource Service
+/// Non Data Resources Service
 ///
 
-// TODO: Add service definition for Non Data Resource operations
+service NonDataResourcesService {
+}

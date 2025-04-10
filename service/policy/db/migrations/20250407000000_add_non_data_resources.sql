@@ -31,12 +31,12 @@ COMMENT ON COLUMN non_data_resource_values.metadata IS 'Metadata for the non dat
 COMMENT ON COLUMN non_data_resource_values.created_at IS 'Timestamp when the record was created';
 COMMENT ON COLUMN non_data_resource_values.updated_at IS 'Timestamp when the record was last updated';
 
-CREATE TRIGGER IF NOT EXISTS non_data_resource_groups_updated_at
+CREATE TRIGGER non_data_resource_groups_updated_at
   BEFORE UPDATE ON non_data_resource_groups
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at();
 
-CREATE TRIGGER IF NOT EXISTS non_data_resource_values_updated_at
+CREATE TRIGGER non_data_resource_values_updated_at
   BEFORE UPDATE ON non_data_resource_values
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at();

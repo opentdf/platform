@@ -1139,4 +1139,64 @@ INSERT INTO attribute_value_public_key_map (value_id, key_id) VALUES ($1, $2);
 -- name: removePublicKeyFromAttributeValue :execrows
 DELETE FROM attribute_value_public_key_map WHERE value_id = $1 AND key_id = $2;
 
+
+---------------------------------------------------------------- 
+-- NON DATA RESOURCES
 ----------------------------------------------------------------
+
+/*
+    GROUPS
+*/
+
+-- name: CreateNonDataResourceGroup :one
+INSERT INTO non_data_resource_groups (name, metadata)
+VALUES ($1, $2)
+RETURNING id;
+
+-- name: GetNonDataResourceGroup :one
+-- TODO: add values select to query and FQN filter support
+SELECT
+    id,
+    name,
+    JSON_STRIP_NULLS(
+        JSON_BUILD_OBJECT(
+            'labels', ns.metadata -> 'labels',
+            'created_at', ns.created_at,
+            'updated_at', ns.updated_at
+        )
+    ) as metadata
+FROM non_data_resource_groups
+WHERE
+    (sqlc.narg('id')::uuid IS NULL OR id = sqlc.narg('id')::uuid);
+
+-- name: ListNonDataResourceGroups :many
+WITH counted AS (
+    SELECT COUNT(id) AS total FROM non_data_resource_groups
+)
+SELECT
+    ndrg.id,
+    ndrg.name,
+    JSON_STRIP_NULLS(
+        JSON_BUILD_OBJECT(
+            'labels', ndrg.metadata -> 'labels',
+            'created_at', ndrg.created_at,
+            'updated_at', ndrg.updated_at
+        )
+    ) as metadata,
+    counted.total
+FROM non_data_resource_groups ndrg
+CROSS JOIN counted
+LIMIT @limit_
+OFFSET @offset_;
+
+-- update
+
+-- name: DeleteNonDataResourceGroup :execrows
+DELETE FROM non_data_resource_groups WHERE id = $1;
+
+/*
+    VALUES
+*/
+
+-- name: DeleteNonDataResourceValue :execrows
+DELETE FROM non_data_resource_values WHERE id = $1;

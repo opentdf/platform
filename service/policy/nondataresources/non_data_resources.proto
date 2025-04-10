@@ -69,11 +69,11 @@ message GetNonDataResourceGroupResponse {
   policy.NonDataResourceGroup group = 1;
 }
 
-message ListNonDataResourceGroupRequest {
+message ListNonDataResourceGroupsRequest {
   // Optional
   policy.PageRequest pagination = 10;
 }
-message ListNonDataResourceGroupResponse {
+message ListNonDataResourceGroupsResponse {
   repeated policy.NonDataResourceGroup groups = 1;
 
   policy.PageResponse pagination = 10;
@@ -164,7 +164,7 @@ message GetNonDataResourceValueResponse {
   policy.NonDataResourceValue value = 1;
 }
 
-message ListNonDataResourceValueRequest {
+message ListNonDataResourceValuesRequest {
   // Optional
   optional string group_id = 1 [
     (buf.validate.field).string.uuid = true
@@ -173,7 +173,7 @@ message ListNonDataResourceValueRequest {
   // Optional
   policy.PageRequest pagination = 10;
 }
-message ListNonDataResourceValueResponse {
+message ListNonDataResourceValuesResponse {
   repeated policy.NonDataResourceValue values = 1;
 
   policy.PageResponse pagination = 10;

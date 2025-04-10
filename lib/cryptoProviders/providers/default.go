@@ -3,7 +3,6 @@ package providers
 import (
 	"context"
 	"crypto"
-	"encoding/hex"
 	"fmt"
 
 	"github.com/opentdf/platform/lib/cryptoProviders"
@@ -87,8 +86,6 @@ func (d *Default) DecryptSymmetric(ctx context.Context, key []byte, cipherText [
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println("Nonce:", hex.EncodeToString(cipherText[:12]))
 
 	plainText, err := gcm.Decrypt(cipherText)
 	if err != nil {

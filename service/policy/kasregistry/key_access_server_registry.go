@@ -3,6 +3,7 @@ package kasregistry
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"connectrpc.com/connect"
@@ -264,12 +265,14 @@ func (s KeyAccessServerRegistry) GetKey(ctx context.Context, r *connect.Request[
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("keyAccessServer Keys", r.Msg.String()))
 	}
+	fmt.Println("Got Key")
 
 	auditParams.ObjectID = key.GetKeyId()
 	auditParams.Original = key
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.Key = key
+	fmt.Println("Got Key")
 
 	return connect.NewResponse(rsp), nil
 }

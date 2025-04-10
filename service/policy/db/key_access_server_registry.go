@@ -744,6 +744,7 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Asy
 
 	key, err := c.Queries.GetKey(ctx, params)
 	if err != nil {
+		fmt.Println("Error in GetKey:", err) // Add this line to print the error message
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
@@ -763,7 +764,7 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Asy
 			return nil, err
 		}
 	}
-
+	fmt.Println("Got Key")
 	return &policy.AsymmetricKey{
 		Id:             key.ID,
 		KeyId:          key.KeyID,

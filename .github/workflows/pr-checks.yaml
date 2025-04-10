@@ -60,7 +60,7 @@ jobs:
       # - name: "Issue Accociated with Pull Request"
       #   id: issue-associated
       #   if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name) && !contains(fromJSON('["dependabot[bot]", "opentdf-automation[bot]"]'), github.actor)
-      #   uses: actions/github-script@660ec11d825b714d112a6bb9727086bc2cc500b2
+      #   uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v7.0.1
       #   with:
       #     script: |
       #       core.debug(JSON.stringify(context));

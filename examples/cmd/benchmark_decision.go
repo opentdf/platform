@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
@@ -65,14 +66,16 @@ func runDecisionBenchmark(cmd *cobra.Command, args []string) error {
 	}
 
 	// Print results
-	cmd.Printf("\nBenchmark Results:\n")
+	fmt.Printf("# Benchmark Results:\n")
+	fmt.Printf("| Metric                  | Value                  |\n")
+	fmt.Printf("|-------------------------|------------------------|\n")
 	if err == nil {
-		cmd.Printf("Approved Decision Requests: %d\n", numberApproved)
-		cmd.Printf("Denied Decision Requests: %d\n", numberDenied)
+		fmt.Printf("| Approved Decision Requests | %d |\n", numberApproved)
+		fmt.Printf("| Denied Decision Requests   | %d |\n", numberDenied)
 	} else {
-		cmd.Printf("Error: %s\n", err.Error())
+		fmt.Printf("| Error                    | %s |\n", err.Error())
 	}
-	cmd.Printf("Total Time: %s\n", totalTime)
+	fmt.Printf("| Total Time              | %s |\n", totalTime)
 
 	return nil
 }

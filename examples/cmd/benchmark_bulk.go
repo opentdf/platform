@@ -151,17 +151,21 @@ func runBenchmarkBulk(cmd *cobra.Command, args []string) error {
 	}
 
 	// Print results
-	cmd.Printf("\nBenchmark Results:\n")
-	cmd.Printf("Total Decrypts: %d\n", config.RequestCount)
-	cmd.Printf("Successful Decrypts: %d\n", successCount)
-	cmd.Printf("Failed Decrypts: %d\n", errorCount)
-	cmd.Printf("Total Time: %s\n", totalTime)
-	cmd.Printf("Throughput: %.2f requests/second\n", throughput)
+	fmt.Printf("## Bulk Benchmark Results\n")
+	fmt.Printf("| Metric               | Value                     |\n")
+	fmt.Printf("|----------------------|---------------------------|\n")
+	fmt.Printf("| Total Decrypts       | %d                        |\n", config.RequestCount)
+	fmt.Printf("| Successful Decrypts  | %d                        |\n", successCount)
+	fmt.Printf("| Failed Decrypts      | %d                        |\n", errorCount)
+	fmt.Printf("| Total Time           | %s                        |\n", totalTime)
+	fmt.Printf("| Throughput           | %.2f requests/second      |\n", throughput)
 
 	if errorCount > 0 {
-		cmd.Printf("\nError Summary:\n")
+		fmt.Printf("\n### Error Summary\n")
+		fmt.Printf("| Error Message        | Occurrences               |\n")
+		fmt.Printf("|----------------------|---------------------------|\n")
 		for errMsg, count := range errorMsgs {
-			cmd.Printf("%s: %d occurrences\n", errMsg, count)
+			fmt.Printf("| %s | %d occurrences           |\n", errMsg, count)
 		}
 	}
 

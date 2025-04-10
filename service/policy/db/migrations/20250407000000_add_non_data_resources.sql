@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS non_data_resource_values (
   value VARCHAR NOT NULL,
   metadata JSONB,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(non_data_resource_group_id, value)
 );
 COMMENT ON TABLE non_data_resource_values IS 'Table to store non data resource values';
 COMMENT ON COLUMN non_data_resource_values.id IS 'Primary key for the table';

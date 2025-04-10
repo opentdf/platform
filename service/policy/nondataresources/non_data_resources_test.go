@@ -31,6 +31,7 @@ const (
 	errMsgUUID          = "string.uuid"
 	errMsgURI           = "string.uri"
 	errMsgNameFormat    = "ndr_name_format"
+	errMsgValueFormat   = "ndr_value_format"
 	errMsgStringPattern = "string.pattern"
 	errMsgStringMaxLen  = "string.max_len"
 )
@@ -47,13 +48,13 @@ func TestCreateNonDataResourceGroup_Valid_Succeeds(t *testing.T) {
 		req  *nondataresources.CreateNonDataResourceGroupRequest
 	}{
 		{
-			name: "Valid Name",
+			name: "Name Only",
 			req: &nondataresources.CreateNonDataResourceGroupRequest{
 				Name: validName,
 			},
 		},
 		{
-			name: "Valid Name with Values",
+			name: "Name with Values",
 			req: &nondataresources.CreateNonDataResourceGroupRequest{
 				Name: validName,
 				Values: []string{
@@ -173,7 +174,7 @@ func TestGetNonDataResourceGroup_Valid_Succeeds(t *testing.T) {
 		req  *nondataresources.GetNonDataResourceGroupRequest
 	}{
 		{
-			name: "Valid Identifier (UUID)",
+			name: "Identifier (UUID)",
 			req: &nondataresources.GetNonDataResourceGroupRequest{
 				Identifier: &nondataresources.GetNonDataResourceGroupRequest_GroupId{
 					GroupId: validUUID,
@@ -181,7 +182,7 @@ func TestGetNonDataResourceGroup_Valid_Succeeds(t *testing.T) {
 			},
 		},
 		{
-			name: "Valid Identifier (FQN)",
+			name: "Identifier (FQN)",
 			req: &nondataresources.GetNonDataResourceGroupRequest{
 				Identifier: &nondataresources.GetNonDataResourceGroupRequest_Fqn{
 					Fqn: validURI,
@@ -260,7 +261,7 @@ func TestUpdateNonDataResourceGroup_Valid_Succeeds(t *testing.T) {
 			},
 		},
 		{
-			name: "ID with Valid Name",
+			name: "ID with Name",
 			req: &nondataresources.UpdateNonDataResourceGroupRequest{
 				Id:   validUUID,
 				Name: validName,
@@ -344,6 +345,371 @@ func TestDeleteNonDataResourceGroup_Invalid_Fails(t *testing.T) {
 		{
 			name: "Invalid UUID",
 			req: &nondataresources.DeleteNonDataResourceGroupRequest{
+				Id: invalidUUID,
+			},
+		},
+	}
+
+	v := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), errMsgUUID)
+		})
+	}
+}
+
+///
+/// Non Data Resource Value
+///
+
+// Create
+
+func TestCreateNonDataResourceValue_Valid_Succeeds(t *testing.T) {
+	req := &nondataresources.CreateNonDataResourceValueRequest{
+		GroupId: validUUID,
+		Value:   validValue,
+	}
+
+	v := getValidator()
+	err := v.Validate(req)
+
+	require.NoError(t, err)
+}
+
+func TestCreateNonDataResourceValue_Invalid_Succeeds(t *testing.T) {
+	testCases := []struct {
+		name   string
+		req    *nondataresources.CreateNonDataResourceValueRequest
+		errMsg string
+	}{
+		{
+			name: "Missing Group ID",
+			req: &nondataresources.CreateNonDataResourceValueRequest{
+				Value: validValue,
+			},
+			errMsg: errMsgUUID,
+		},
+		{
+			name: "Invalid Group ID",
+			req: &nondataresources.CreateNonDataResourceValueRequest{
+				GroupId: invalidUUID,
+				Value:   validValue,
+			},
+			errMsg: errMsgUUID,
+		},
+		{
+			name: "Missing Value",
+			req: &nondataresources.CreateNonDataResourceValueRequest{
+				GroupId: validUUID,
+			},
+			errMsg: errMsgRequired,
+		},
+		{
+			name: "Invalid Value (space)",
+			req: &nondataresources.CreateNonDataResourceValueRequest{
+				GroupId: validUUID,
+				Value:   " ",
+			},
+			errMsg: errMsgValueFormat,
+		},
+		{
+			name: "Invalid Value (too long)",
+			req: &nondataresources.CreateNonDataResourceValueRequest{
+				GroupId: validUUID,
+				Value:   strings.Repeat("a", 254),
+			},
+			errMsg: errMsgStringMaxLen,
+		},
+		{
+			name: "Invalid Value (text with spaces)",
+			req: &nondataresources.CreateNonDataResourceValueRequest{
+				GroupId: validUUID,
+				Value:   "invalid value",
+			},
+			errMsg: errMsgValueFormat,
+		},
+		{
+			name: "Invalid Value (text with special chars)",
+			req: &nondataresources.CreateNonDataResourceValueRequest{
+				GroupId: validUUID,
+				Value:   "invalid@value",
+			},
+			errMsg: errMsgValueFormat,
+		},
+		{
+			name: "Invalid Value (leading underscore)",
+			req: &nondataresources.CreateNonDataResourceValueRequest{
+				GroupId: validUUID,
+				Value:   "_invalid_value",
+			},
+			errMsg: errMsgValueFormat,
+		},
+		{
+			name: "Invalid Value (trailing underscore)",
+			req: &nondataresources.CreateNonDataResourceValueRequest{
+				GroupId: validUUID,
+				Value:   "invalid_value_",
+			},
+			errMsg: errMsgValueFormat,
+		},
+		{
+			name: "Invalid Value (leading hyphen)",
+			req: &nondataresources.CreateNonDataResourceValueRequest{
+				GroupId: validUUID,
+				Value:   "-invalid-value",
+			},
+			errMsg: errMsgValueFormat,
+		},
+		{
+			name: "Invalid Value (trailing hyphen)",
+			req: &nondataresources.CreateNonDataResourceValueRequest{
+				GroupId: validUUID,
+				Value:   "invalid-value-",
+			},
+			errMsg: errMsgValueFormat,
+		},
+	}
+
+	v := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.errMsg)
+		})
+	}
+}
+
+// Get
+
+func TestGetNonDataResourceValue_Valid_Succeeds(t *testing.T) {
+	testCases := []struct {
+		name string
+		req  *nondataresources.GetNonDataResourceValueRequest
+	}{
+		{
+			name: "Identifier (UUID)",
+			req: &nondataresources.GetNonDataResourceValueRequest{
+				Identifier: &nondataresources.GetNonDataResourceValueRequest_ValueId{
+					ValueId: validUUID,
+				},
+			},
+		},
+		{
+			name: "Identifier (FQN)",
+			req: &nondataresources.GetNonDataResourceValueRequest{
+				Identifier: &nondataresources.GetNonDataResourceValueRequest_Fqn{
+					Fqn: validURI,
+				},
+			},
+		},
+	}
+
+	v := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestGetNonDataResourceValue_Invalid_Fails(t *testing.T) {
+	testCases := []struct {
+		name   string
+		req    *nondataresources.GetNonDataResourceValueRequest
+		errMsg string
+	}{
+		{
+			name:   "Missing Identifier",
+			req:    &nondataresources.GetNonDataResourceValueRequest{},
+			errMsg: errMsgOneOfRequired,
+		},
+		{
+			name: "Invalid UUID",
+			req: &nondataresources.GetNonDataResourceValueRequest{
+				Identifier: &nondataresources.GetNonDataResourceValueRequest_ValueId{
+					ValueId: invalidUUID,
+				},
+			},
+			errMsg: errMsgUUID,
+		},
+		{
+			name: "Invalid FQN",
+			req: &nondataresources.GetNonDataResourceValueRequest{
+				Identifier: &nondataresources.GetNonDataResourceValueRequest_Fqn{
+					Fqn: invalidURI,
+				},
+			},
+			errMsg: errMsgURI,
+		},
+	}
+
+	v := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.errMsg)
+		})
+	}
+}
+
+// List
+
+func TestListNonDataResourceValue_Valid_Succeeds(t *testing.T) {
+	groupID := string(validUUID)
+
+	testCases := []struct {
+		name string
+		req  *nondataresources.ListNonDataResourceValueRequest
+	}{
+		{
+			name: "Missing Group ID",
+			req:  &nondataresources.ListNonDataResourceValueRequest{},
+		},
+		{
+			name: "Group ID",
+			req: &nondataresources.ListNonDataResourceValueRequest{
+				GroupId: &groupID,
+			},
+		},
+	}
+
+	v := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestListNonDataResourceValue_Invalid_Succeeds(t *testing.T) {
+	groupID := string(invalidUUID)
+	req := &nondataresources.ListNonDataResourceValueRequest{
+		GroupId: &groupID,
+	}
+
+	v := getValidator()
+	err := v.Validate(req)
+
+	require.Error(t, err)
+	require.ErrorContains(t, err, errMsgUUID)
+}
+
+// Update
+
+func TestUpdateNonDataResourceValue_Valid_Succeeds(t *testing.T) {
+	// id provided
+	// valid value provided
+	testCases := []struct {
+		name string
+		req  *nondataresources.UpdateNonDataResourceValueRequest
+	}{
+		{
+			name: "ID only",
+			req: &nondataresources.UpdateNonDataResourceValueRequest{
+				Id: validUUID,
+			},
+		},
+		{
+			name: "ID with Value",
+			req: &nondataresources.UpdateNonDataResourceValueRequest{
+				Id:    validUUID,
+				Value: validValue,
+			},
+		},
+	}
+
+	v := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestUpdateNonDataResourceValue_Invalid_Fails(t *testing.T) {
+	testCases := []struct {
+		name   string
+		req    *nondataresources.UpdateNonDataResourceValueRequest
+		errMsg string
+	}{
+		{
+			name:   "Missing ID",
+			req:    &nondataresources.UpdateNonDataResourceValueRequest{},
+			errMsg: errMsgUUID,
+		},
+		{
+			name: "Invalid ID",
+			req: &nondataresources.UpdateNonDataResourceValueRequest{
+				Id: invalidUUID,
+			},
+			errMsg: errMsgUUID,
+		},
+		{
+			name: "Invalid Value (space)",
+			req: &nondataresources.UpdateNonDataResourceValueRequest{
+				Id:    validUUID,
+				Value: " ",
+			},
+			errMsg: errMsgValueFormat,
+		},
+	}
+
+	v := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.errMsg)
+		})
+	}
+}
+
+// Delete
+
+func TestDeleteNonDataResourceValue_Valid_Succeeds(t *testing.T) {
+	req := &nondataresources.DeleteNonDataResourceValueRequest{
+		Id: validUUID,
+	}
+
+	v := getValidator()
+	err := v.Validate(req)
+
+	require.NoError(t, err)
+}
+
+func TestDeleteNonDataResourceValue_Invalid_Fails(t *testing.T) {
+	testCases := []struct {
+		name string
+		req  *nondataresources.DeleteNonDataResourceValueRequest
+	}{
+		{
+			name: "Missing UUID",
+			req:  &nondataresources.DeleteNonDataResourceValueRequest{},
+		},
+		{
+			name: "Invalid UUID",
+			req: &nondataresources.DeleteNonDataResourceValueRequest{
 				Id: invalidUUID,
 			},
 		},

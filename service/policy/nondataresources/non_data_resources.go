@@ -2,8 +2,10 @@ package nondataresources
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
+	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/policy/nondataresources"
 	"github.com/opentdf/platform/protocol/go/policy/nondataresources/nondataresourcesconnect"
 	"github.com/opentdf/platform/service/logger"
@@ -52,4 +54,48 @@ func (s NonDataResourcesService) IsReady(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+/// Non Data Resource Groups Handlers
+
+func (s NonDataResourcesService) CreateNonDataResourceGroup(context.Context, *connect.Request[nondataresources.CreateNonDataResourceGroupRequest]) (*connect.Response[nondataresources.CreateNonDataResourceGroupResponse], error) {
+	return nil, errors.New("not implemented")
+}
+
+func (s NonDataResourcesService) GetNonDataResourceGroup(context.Context, *connect.Request[nondataresources.GetNonDataResourceGroupRequest]) (*connect.Response[nondataresources.GetNonDataResourceGroupResponse], error) {
+	return nil, errors.New("not implemented")
+}
+
+func (s NonDataResourcesService) ListNonDataResourceGroup(context.Context, *connect.Request[nondataresources.ListNonDataResourceGroupRequest]) (*connect.Response[nondataresources.ListNonDataResourceGroupResponse], error) {
+	return nil, errors.New("not implemented")
+}
+
+func (s NonDataResourcesService) UpdateNonDataResourceGroup(context.Context, *connect.Request[nondataresources.UpdateNonDataResourceGroupRequest]) (*connect.Response[nondataresources.UpdateNonDataResourceGroupResponse], error) {
+	return nil, errors.New("not implemented")
+}
+
+func (s NonDataResourcesService) DeleteNonDataResourceGroup(context.Context, *connect.Request[nondataresources.DeleteNonDataResourceGroupRequest]) (*connect.Response[nondataresources.DeleteNonDataResourceGroupResponse], error) {
+	return nil, errors.New("not implemented")
+}
+
+/// Non Data Resource Values Handlers
+
+func (s NonDataResourcesService) CreateNonDataResourceValue(context.Context, *connect.Request[nondataresources.CreateNonDataResourceValueRequest]) (*connect.Response[nondataresources.CreateNonDataResourceValueResponse], error) {
+	return nil, errors.New("not implemented")
+}
+
+func (s NonDataResourcesService) GetNonDataResourceValue(context.Context, *connect.Request[nondataresources.GetNonDataResourceValueRequest]) (*connect.Response[nondataresources.GetNonDataResourceValueResponse], error) {
+	return nil, errors.New("not implemented")
+}
+
+func (s NonDataResourcesService) ListNonDataResourceValue(context.Context, *connect.Request[nondataresources.ListNonDataResourceValueRequest]) (*connect.Response[nondataresources.ListNonDataResourceValueResponse], error) {
+	return nil, errors.New("not implemented")
+}
+
+func (s NonDataResourcesService) UpdateNonDataResourceValue(context.Context, *connect.Request[nondataresources.UpdateNonDataResourceValueRequest]) (*connect.Response[nondataresources.UpdateNonDataResourceValueResponse], error) {
+	return nil, errors.New("not implemented")
+}
+
+func (s NonDataResourcesService) DeleteNonDataResourceValue(context.Context, *connect.Request[nondataresources.DeleteNonDataResourceValueRequest]) (*connect.Response[nondataresources.DeleteNonDataResourceValueResponse], error) {
+	return nil, errors.New("not implemented")
 }

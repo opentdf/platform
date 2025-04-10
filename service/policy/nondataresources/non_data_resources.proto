@@ -221,4 +221,37 @@ message DeleteNonDataResourceValueResponse {
 ///
 
 service NonDataResourcesService {
+  // Non Data Resource Groups
+
+  rpc CreateNonDataResourceGroup(CreateNonDataResourceGroupRequest) returns (CreateNonDataResourceGroupResponse) {
+  }
+
+  rpc GetNonDataResourceGroup(GetNonDataResourceGroupRequest) returns (GetNonDataResourceGroupResponse) {
+  }
+
+  rpc ListNonDataResourceGroup(ListNonDataResourceGroupRequest) returns (ListNonDataResourceGroupResponse) {
+  }
+
+  rpc UpdateNonDataResourceGroup(UpdateNonDataResourceGroupRequest) returns (UpdateNonDataResourceGroupResponse) {
+  }
+
+  rpc DeleteNonDataResourceGroup(DeleteNonDataResourceGroupRequest) returns (DeleteNonDataResourceGroupResponse) {
+  }
+
+  // Non Data Resource Values
+
+  rpc CreateNonDataResourceValue(CreateNonDataResourceValueRequest) returns (CreateNonDataResourceValueResponse) {
+  }
+
+  rpc GetNonDataResourceValue(GetNonDataResourceValueRequest) returns (GetNonDataResourceValueResponse) {
+  }
+
+  rpc ListNonDataResourceValue(ListNonDataResourceValueRequest) returns (ListNonDataResourceValueResponse) {
+  }
+
+  rpc UpdateNonDataResourceValue(UpdateNonDataResourceValueRequest) returns (UpdateNonDataResourceValueResponse) {
+  }
+
+  rpc DeleteNonDataResourceValue(DeleteNonDataResourceValueRequest) returns (DeleteNonDataResourceValueResponse) {
+  }
 }

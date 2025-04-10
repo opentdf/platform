@@ -6,8 +6,11 @@ package nondataresourcesconnect
 
 import (
 	connect "connectrpc.com/connect"
+	context "context"
+	errors "errors"
 	nondataresources "github.com/opentdf/platform/protocol/go/policy/nondataresources"
 	http "net/http"
+	strings "strings"
 )
 
 // This is a compile-time assertion to ensure that this generated file and the connect package are
@@ -22,14 +25,74 @@ const (
 	NonDataResourcesServiceName = "policy.nondataresources.NonDataResourcesService"
 )
 
+// These constants are the fully-qualified names of the RPCs defined in this package. They're
+// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+//
+// Note that these are different from the fully-qualified method names used by
+// google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
+// reflection-formatted method names, remove the leading slash and convert the remaining slash to a
+// period.
+const (
+	// NonDataResourcesServiceCreateNonDataResourceGroupProcedure is the fully-qualified name of the
+	// NonDataResourcesService's CreateNonDataResourceGroup RPC.
+	NonDataResourcesServiceCreateNonDataResourceGroupProcedure = "/policy.nondataresources.NonDataResourcesService/CreateNonDataResourceGroup"
+	// NonDataResourcesServiceGetNonDataResourceGroupProcedure is the fully-qualified name of the
+	// NonDataResourcesService's GetNonDataResourceGroup RPC.
+	NonDataResourcesServiceGetNonDataResourceGroupProcedure = "/policy.nondataresources.NonDataResourcesService/GetNonDataResourceGroup"
+	// NonDataResourcesServiceListNonDataResourceGroupProcedure is the fully-qualified name of the
+	// NonDataResourcesService's ListNonDataResourceGroup RPC.
+	NonDataResourcesServiceListNonDataResourceGroupProcedure = "/policy.nondataresources.NonDataResourcesService/ListNonDataResourceGroup"
+	// NonDataResourcesServiceUpdateNonDataResourceGroupProcedure is the fully-qualified name of the
+	// NonDataResourcesService's UpdateNonDataResourceGroup RPC.
+	NonDataResourcesServiceUpdateNonDataResourceGroupProcedure = "/policy.nondataresources.NonDataResourcesService/UpdateNonDataResourceGroup"
+	// NonDataResourcesServiceDeleteNonDataResourceGroupProcedure is the fully-qualified name of the
+	// NonDataResourcesService's DeleteNonDataResourceGroup RPC.
+	NonDataResourcesServiceDeleteNonDataResourceGroupProcedure = "/policy.nondataresources.NonDataResourcesService/DeleteNonDataResourceGroup"
+	// NonDataResourcesServiceCreateNonDataResourceValueProcedure is the fully-qualified name of the
+	// NonDataResourcesService's CreateNonDataResourceValue RPC.
+	NonDataResourcesServiceCreateNonDataResourceValueProcedure = "/policy.nondataresources.NonDataResourcesService/CreateNonDataResourceValue"
+	// NonDataResourcesServiceGetNonDataResourceValueProcedure is the fully-qualified name of the
+	// NonDataResourcesService's GetNonDataResourceValue RPC.
+	NonDataResourcesServiceGetNonDataResourceValueProcedure = "/policy.nondataresources.NonDataResourcesService/GetNonDataResourceValue"
+	// NonDataResourcesServiceListNonDataResourceValueProcedure is the fully-qualified name of the
+	// NonDataResourcesService's ListNonDataResourceValue RPC.
+	NonDataResourcesServiceListNonDataResourceValueProcedure = "/policy.nondataresources.NonDataResourcesService/ListNonDataResourceValue"
+	// NonDataResourcesServiceUpdateNonDataResourceValueProcedure is the fully-qualified name of the
+	// NonDataResourcesService's UpdateNonDataResourceValue RPC.
+	NonDataResourcesServiceUpdateNonDataResourceValueProcedure = "/policy.nondataresources.NonDataResourcesService/UpdateNonDataResourceValue"
+	// NonDataResourcesServiceDeleteNonDataResourceValueProcedure is the fully-qualified name of the
+	// NonDataResourcesService's DeleteNonDataResourceValue RPC.
+	NonDataResourcesServiceDeleteNonDataResourceValueProcedure = "/policy.nondataresources.NonDataResourcesService/DeleteNonDataResourceValue"
+)
+
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	nonDataResourcesServiceServiceDescriptor = nondataresources.File_policy_nondataresources_non_data_resources_proto.Services().ByName("NonDataResourcesService")
+	nonDataResourcesServiceServiceDescriptor                          = nondataresources.File_policy_nondataresources_non_data_resources_proto.Services().ByName("NonDataResourcesService")
+	nonDataResourcesServiceCreateNonDataResourceGroupMethodDescriptor = nonDataResourcesServiceServiceDescriptor.Methods().ByName("CreateNonDataResourceGroup")
+	nonDataResourcesServiceGetNonDataResourceGroupMethodDescriptor    = nonDataResourcesServiceServiceDescriptor.Methods().ByName("GetNonDataResourceGroup")
+	nonDataResourcesServiceListNonDataResourceGroupMethodDescriptor   = nonDataResourcesServiceServiceDescriptor.Methods().ByName("ListNonDataResourceGroup")
+	nonDataResourcesServiceUpdateNonDataResourceGroupMethodDescriptor = nonDataResourcesServiceServiceDescriptor.Methods().ByName("UpdateNonDataResourceGroup")
+	nonDataResourcesServiceDeleteNonDataResourceGroupMethodDescriptor = nonDataResourcesServiceServiceDescriptor.Methods().ByName("DeleteNonDataResourceGroup")
+	nonDataResourcesServiceCreateNonDataResourceValueMethodDescriptor = nonDataResourcesServiceServiceDescriptor.Methods().ByName("CreateNonDataResourceValue")
+	nonDataResourcesServiceGetNonDataResourceValueMethodDescriptor    = nonDataResourcesServiceServiceDescriptor.Methods().ByName("GetNonDataResourceValue")
+	nonDataResourcesServiceListNonDataResourceValueMethodDescriptor   = nonDataResourcesServiceServiceDescriptor.Methods().ByName("ListNonDataResourceValue")
+	nonDataResourcesServiceUpdateNonDataResourceValueMethodDescriptor = nonDataResourcesServiceServiceDescriptor.Methods().ByName("UpdateNonDataResourceValue")
+	nonDataResourcesServiceDeleteNonDataResourceValueMethodDescriptor = nonDataResourcesServiceServiceDescriptor.Methods().ByName("DeleteNonDataResourceValue")
 )
 
 // NonDataResourcesServiceClient is a client for the policy.nondataresources.NonDataResourcesService
 // service.
 type NonDataResourcesServiceClient interface {
+	CreateNonDataResourceGroup(context.Context, *connect.Request[nondataresources.CreateNonDataResourceGroupRequest]) (*connect.Response[nondataresources.CreateNonDataResourceGroupResponse], error)
+	GetNonDataResourceGroup(context.Context, *connect.Request[nondataresources.GetNonDataResourceGroupRequest]) (*connect.Response[nondataresources.GetNonDataResourceGroupResponse], error)
+	ListNonDataResourceGroup(context.Context, *connect.Request[nondataresources.ListNonDataResourceGroupRequest]) (*connect.Response[nondataresources.ListNonDataResourceGroupResponse], error)
+	UpdateNonDataResourceGroup(context.Context, *connect.Request[nondataresources.UpdateNonDataResourceGroupRequest]) (*connect.Response[nondataresources.UpdateNonDataResourceGroupResponse], error)
+	DeleteNonDataResourceGroup(context.Context, *connect.Request[nondataresources.DeleteNonDataResourceGroupRequest]) (*connect.Response[nondataresources.DeleteNonDataResourceGroupResponse], error)
+	CreateNonDataResourceValue(context.Context, *connect.Request[nondataresources.CreateNonDataResourceValueRequest]) (*connect.Response[nondataresources.CreateNonDataResourceValueResponse], error)
+	GetNonDataResourceValue(context.Context, *connect.Request[nondataresources.GetNonDataResourceValueRequest]) (*connect.Response[nondataresources.GetNonDataResourceValueResponse], error)
+	ListNonDataResourceValue(context.Context, *connect.Request[nondataresources.ListNonDataResourceValueRequest]) (*connect.Response[nondataresources.ListNonDataResourceValueResponse], error)
+	UpdateNonDataResourceValue(context.Context, *connect.Request[nondataresources.UpdateNonDataResourceValueRequest]) (*connect.Response[nondataresources.UpdateNonDataResourceValueResponse], error)
+	DeleteNonDataResourceValue(context.Context, *connect.Request[nondataresources.DeleteNonDataResourceValueRequest]) (*connect.Response[nondataresources.DeleteNonDataResourceValueResponse], error)
 }
 
 // NewNonDataResourcesServiceClient constructs a client for the
@@ -41,16 +104,158 @@ type NonDataResourcesServiceClient interface {
 // The URL supplied here should be the base URL for the Connect or gRPC server (for example,
 // http://api.acme.com or https://acme.com/grpc).
 func NewNonDataResourcesServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) NonDataResourcesServiceClient {
-	return &nonDataResourcesServiceClient{}
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &nonDataResourcesServiceClient{
+		createNonDataResourceGroup: connect.NewClient[nondataresources.CreateNonDataResourceGroupRequest, nondataresources.CreateNonDataResourceGroupResponse](
+			httpClient,
+			baseURL+NonDataResourcesServiceCreateNonDataResourceGroupProcedure,
+			connect.WithSchema(nonDataResourcesServiceCreateNonDataResourceGroupMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		getNonDataResourceGroup: connect.NewClient[nondataresources.GetNonDataResourceGroupRequest, nondataresources.GetNonDataResourceGroupResponse](
+			httpClient,
+			baseURL+NonDataResourcesServiceGetNonDataResourceGroupProcedure,
+			connect.WithSchema(nonDataResourcesServiceGetNonDataResourceGroupMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listNonDataResourceGroup: connect.NewClient[nondataresources.ListNonDataResourceGroupRequest, nondataresources.ListNonDataResourceGroupResponse](
+			httpClient,
+			baseURL+NonDataResourcesServiceListNonDataResourceGroupProcedure,
+			connect.WithSchema(nonDataResourcesServiceListNonDataResourceGroupMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		updateNonDataResourceGroup: connect.NewClient[nondataresources.UpdateNonDataResourceGroupRequest, nondataresources.UpdateNonDataResourceGroupResponse](
+			httpClient,
+			baseURL+NonDataResourcesServiceUpdateNonDataResourceGroupProcedure,
+			connect.WithSchema(nonDataResourcesServiceUpdateNonDataResourceGroupMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		deleteNonDataResourceGroup: connect.NewClient[nondataresources.DeleteNonDataResourceGroupRequest, nondataresources.DeleteNonDataResourceGroupResponse](
+			httpClient,
+			baseURL+NonDataResourcesServiceDeleteNonDataResourceGroupProcedure,
+			connect.WithSchema(nonDataResourcesServiceDeleteNonDataResourceGroupMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		createNonDataResourceValue: connect.NewClient[nondataresources.CreateNonDataResourceValueRequest, nondataresources.CreateNonDataResourceValueResponse](
+			httpClient,
+			baseURL+NonDataResourcesServiceCreateNonDataResourceValueProcedure,
+			connect.WithSchema(nonDataResourcesServiceCreateNonDataResourceValueMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		getNonDataResourceValue: connect.NewClient[nondataresources.GetNonDataResourceValueRequest, nondataresources.GetNonDataResourceValueResponse](
+			httpClient,
+			baseURL+NonDataResourcesServiceGetNonDataResourceValueProcedure,
+			connect.WithSchema(nonDataResourcesServiceGetNonDataResourceValueMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listNonDataResourceValue: connect.NewClient[nondataresources.ListNonDataResourceValueRequest, nondataresources.ListNonDataResourceValueResponse](
+			httpClient,
+			baseURL+NonDataResourcesServiceListNonDataResourceValueProcedure,
+			connect.WithSchema(nonDataResourcesServiceListNonDataResourceValueMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		updateNonDataResourceValue: connect.NewClient[nondataresources.UpdateNonDataResourceValueRequest, nondataresources.UpdateNonDataResourceValueResponse](
+			httpClient,
+			baseURL+NonDataResourcesServiceUpdateNonDataResourceValueProcedure,
+			connect.WithSchema(nonDataResourcesServiceUpdateNonDataResourceValueMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		deleteNonDataResourceValue: connect.NewClient[nondataresources.DeleteNonDataResourceValueRequest, nondataresources.DeleteNonDataResourceValueResponse](
+			httpClient,
+			baseURL+NonDataResourcesServiceDeleteNonDataResourceValueProcedure,
+			connect.WithSchema(nonDataResourcesServiceDeleteNonDataResourceValueMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
 }
 
 // nonDataResourcesServiceClient implements NonDataResourcesServiceClient.
 type nonDataResourcesServiceClient struct {
+	createNonDataResourceGroup *connect.Client[nondataresources.CreateNonDataResourceGroupRequest, nondataresources.CreateNonDataResourceGroupResponse]
+	getNonDataResourceGroup    *connect.Client[nondataresources.GetNonDataResourceGroupRequest, nondataresources.GetNonDataResourceGroupResponse]
+	listNonDataResourceGroup   *connect.Client[nondataresources.ListNonDataResourceGroupRequest, nondataresources.ListNonDataResourceGroupResponse]
+	updateNonDataResourceGroup *connect.Client[nondataresources.UpdateNonDataResourceGroupRequest, nondataresources.UpdateNonDataResourceGroupResponse]
+	deleteNonDataResourceGroup *connect.Client[nondataresources.DeleteNonDataResourceGroupRequest, nondataresources.DeleteNonDataResourceGroupResponse]
+	createNonDataResourceValue *connect.Client[nondataresources.CreateNonDataResourceValueRequest, nondataresources.CreateNonDataResourceValueResponse]
+	getNonDataResourceValue    *connect.Client[nondataresources.GetNonDataResourceValueRequest, nondataresources.GetNonDataResourceValueResponse]
+	listNonDataResourceValue   *connect.Client[nondataresources.ListNonDataResourceValueRequest, nondataresources.ListNonDataResourceValueResponse]
+	updateNonDataResourceValue *connect.Client[nondataresources.UpdateNonDataResourceValueRequest, nondataresources.UpdateNonDataResourceValueResponse]
+	deleteNonDataResourceValue *connect.Client[nondataresources.DeleteNonDataResourceValueRequest, nondataresources.DeleteNonDataResourceValueResponse]
+}
+
+// CreateNonDataResourceGroup calls
+// policy.nondataresources.NonDataResourcesService.CreateNonDataResourceGroup.
+func (c *nonDataResourcesServiceClient) CreateNonDataResourceGroup(ctx context.Context, req *connect.Request[nondataresources.CreateNonDataResourceGroupRequest]) (*connect.Response[nondataresources.CreateNonDataResourceGroupResponse], error) {
+	return c.createNonDataResourceGroup.CallUnary(ctx, req)
+}
+
+// GetNonDataResourceGroup calls
+// policy.nondataresources.NonDataResourcesService.GetNonDataResourceGroup.
+func (c *nonDataResourcesServiceClient) GetNonDataResourceGroup(ctx context.Context, req *connect.Request[nondataresources.GetNonDataResourceGroupRequest]) (*connect.Response[nondataresources.GetNonDataResourceGroupResponse], error) {
+	return c.getNonDataResourceGroup.CallUnary(ctx, req)
+}
+
+// ListNonDataResourceGroup calls
+// policy.nondataresources.NonDataResourcesService.ListNonDataResourceGroup.
+func (c *nonDataResourcesServiceClient) ListNonDataResourceGroup(ctx context.Context, req *connect.Request[nondataresources.ListNonDataResourceGroupRequest]) (*connect.Response[nondataresources.ListNonDataResourceGroupResponse], error) {
+	return c.listNonDataResourceGroup.CallUnary(ctx, req)
+}
+
+// UpdateNonDataResourceGroup calls
+// policy.nondataresources.NonDataResourcesService.UpdateNonDataResourceGroup.
+func (c *nonDataResourcesServiceClient) UpdateNonDataResourceGroup(ctx context.Context, req *connect.Request[nondataresources.UpdateNonDataResourceGroupRequest]) (*connect.Response[nondataresources.UpdateNonDataResourceGroupResponse], error) {
+	return c.updateNonDataResourceGroup.CallUnary(ctx, req)
+}
+
+// DeleteNonDataResourceGroup calls
+// policy.nondataresources.NonDataResourcesService.DeleteNonDataResourceGroup.
+func (c *nonDataResourcesServiceClient) DeleteNonDataResourceGroup(ctx context.Context, req *connect.Request[nondataresources.DeleteNonDataResourceGroupRequest]) (*connect.Response[nondataresources.DeleteNonDataResourceGroupResponse], error) {
+	return c.deleteNonDataResourceGroup.CallUnary(ctx, req)
+}
+
+// CreateNonDataResourceValue calls
+// policy.nondataresources.NonDataResourcesService.CreateNonDataResourceValue.
+func (c *nonDataResourcesServiceClient) CreateNonDataResourceValue(ctx context.Context, req *connect.Request[nondataresources.CreateNonDataResourceValueRequest]) (*connect.Response[nondataresources.CreateNonDataResourceValueResponse], error) {
+	return c.createNonDataResourceValue.CallUnary(ctx, req)
+}
+
+// GetNonDataResourceValue calls
+// policy.nondataresources.NonDataResourcesService.GetNonDataResourceValue.
+func (c *nonDataResourcesServiceClient) GetNonDataResourceValue(ctx context.Context, req *connect.Request[nondataresources.GetNonDataResourceValueRequest]) (*connect.Response[nondataresources.GetNonDataResourceValueResponse], error) {
+	return c.getNonDataResourceValue.CallUnary(ctx, req)
+}
+
+// ListNonDataResourceValue calls
+// policy.nondataresources.NonDataResourcesService.ListNonDataResourceValue.
+func (c *nonDataResourcesServiceClient) ListNonDataResourceValue(ctx context.Context, req *connect.Request[nondataresources.ListNonDataResourceValueRequest]) (*connect.Response[nondataresources.ListNonDataResourceValueResponse], error) {
+	return c.listNonDataResourceValue.CallUnary(ctx, req)
+}
+
+// UpdateNonDataResourceValue calls
+// policy.nondataresources.NonDataResourcesService.UpdateNonDataResourceValue.
+func (c *nonDataResourcesServiceClient) UpdateNonDataResourceValue(ctx context.Context, req *connect.Request[nondataresources.UpdateNonDataResourceValueRequest]) (*connect.Response[nondataresources.UpdateNonDataResourceValueResponse], error) {
+	return c.updateNonDataResourceValue.CallUnary(ctx, req)
+}
+
+// DeleteNonDataResourceValue calls
+// policy.nondataresources.NonDataResourcesService.DeleteNonDataResourceValue.
+func (c *nonDataResourcesServiceClient) DeleteNonDataResourceValue(ctx context.Context, req *connect.Request[nondataresources.DeleteNonDataResourceValueRequest]) (*connect.Response[nondataresources.DeleteNonDataResourceValueResponse], error) {
+	return c.deleteNonDataResourceValue.CallUnary(ctx, req)
 }
 
 // NonDataResourcesServiceHandler is an implementation of the
 // policy.nondataresources.NonDataResourcesService service.
 type NonDataResourcesServiceHandler interface {
+	CreateNonDataResourceGroup(context.Context, *connect.Request[nondataresources.CreateNonDataResourceGroupRequest]) (*connect.Response[nondataresources.CreateNonDataResourceGroupResponse], error)
+	GetNonDataResourceGroup(context.Context, *connect.Request[nondataresources.GetNonDataResourceGroupRequest]) (*connect.Response[nondataresources.GetNonDataResourceGroupResponse], error)
+	ListNonDataResourceGroup(context.Context, *connect.Request[nondataresources.ListNonDataResourceGroupRequest]) (*connect.Response[nondataresources.ListNonDataResourceGroupResponse], error)
+	UpdateNonDataResourceGroup(context.Context, *connect.Request[nondataresources.UpdateNonDataResourceGroupRequest]) (*connect.Response[nondataresources.UpdateNonDataResourceGroupResponse], error)
+	DeleteNonDataResourceGroup(context.Context, *connect.Request[nondataresources.DeleteNonDataResourceGroupRequest]) (*connect.Response[nondataresources.DeleteNonDataResourceGroupResponse], error)
+	CreateNonDataResourceValue(context.Context, *connect.Request[nondataresources.CreateNonDataResourceValueRequest]) (*connect.Response[nondataresources.CreateNonDataResourceValueResponse], error)
+	GetNonDataResourceValue(context.Context, *connect.Request[nondataresources.GetNonDataResourceValueRequest]) (*connect.Response[nondataresources.GetNonDataResourceValueResponse], error)
+	ListNonDataResourceValue(context.Context, *connect.Request[nondataresources.ListNonDataResourceValueRequest]) (*connect.Response[nondataresources.ListNonDataResourceValueResponse], error)
+	UpdateNonDataResourceValue(context.Context, *connect.Request[nondataresources.UpdateNonDataResourceValueRequest]) (*connect.Response[nondataresources.UpdateNonDataResourceValueResponse], error)
+	DeleteNonDataResourceValue(context.Context, *connect.Request[nondataresources.DeleteNonDataResourceValueRequest]) (*connect.Response[nondataresources.DeleteNonDataResourceValueResponse], error)
 }
 
 // NewNonDataResourcesServiceHandler builds an HTTP handler from the service implementation. It
@@ -59,8 +264,88 @@ type NonDataResourcesServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewNonDataResourcesServiceHandler(svc NonDataResourcesServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	nonDataResourcesServiceCreateNonDataResourceGroupHandler := connect.NewUnaryHandler(
+		NonDataResourcesServiceCreateNonDataResourceGroupProcedure,
+		svc.CreateNonDataResourceGroup,
+		connect.WithSchema(nonDataResourcesServiceCreateNonDataResourceGroupMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	nonDataResourcesServiceGetNonDataResourceGroupHandler := connect.NewUnaryHandler(
+		NonDataResourcesServiceGetNonDataResourceGroupProcedure,
+		svc.GetNonDataResourceGroup,
+		connect.WithSchema(nonDataResourcesServiceGetNonDataResourceGroupMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	nonDataResourcesServiceListNonDataResourceGroupHandler := connect.NewUnaryHandler(
+		NonDataResourcesServiceListNonDataResourceGroupProcedure,
+		svc.ListNonDataResourceGroup,
+		connect.WithSchema(nonDataResourcesServiceListNonDataResourceGroupMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	nonDataResourcesServiceUpdateNonDataResourceGroupHandler := connect.NewUnaryHandler(
+		NonDataResourcesServiceUpdateNonDataResourceGroupProcedure,
+		svc.UpdateNonDataResourceGroup,
+		connect.WithSchema(nonDataResourcesServiceUpdateNonDataResourceGroupMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	nonDataResourcesServiceDeleteNonDataResourceGroupHandler := connect.NewUnaryHandler(
+		NonDataResourcesServiceDeleteNonDataResourceGroupProcedure,
+		svc.DeleteNonDataResourceGroup,
+		connect.WithSchema(nonDataResourcesServiceDeleteNonDataResourceGroupMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	nonDataResourcesServiceCreateNonDataResourceValueHandler := connect.NewUnaryHandler(
+		NonDataResourcesServiceCreateNonDataResourceValueProcedure,
+		svc.CreateNonDataResourceValue,
+		connect.WithSchema(nonDataResourcesServiceCreateNonDataResourceValueMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	nonDataResourcesServiceGetNonDataResourceValueHandler := connect.NewUnaryHandler(
+		NonDataResourcesServiceGetNonDataResourceValueProcedure,
+		svc.GetNonDataResourceValue,
+		connect.WithSchema(nonDataResourcesServiceGetNonDataResourceValueMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	nonDataResourcesServiceListNonDataResourceValueHandler := connect.NewUnaryHandler(
+		NonDataResourcesServiceListNonDataResourceValueProcedure,
+		svc.ListNonDataResourceValue,
+		connect.WithSchema(nonDataResourcesServiceListNonDataResourceValueMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	nonDataResourcesServiceUpdateNonDataResourceValueHandler := connect.NewUnaryHandler(
+		NonDataResourcesServiceUpdateNonDataResourceValueProcedure,
+		svc.UpdateNonDataResourceValue,
+		connect.WithSchema(nonDataResourcesServiceUpdateNonDataResourceValueMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	nonDataResourcesServiceDeleteNonDataResourceValueHandler := connect.NewUnaryHandler(
+		NonDataResourcesServiceDeleteNonDataResourceValueProcedure,
+		svc.DeleteNonDataResourceValue,
+		connect.WithSchema(nonDataResourcesServiceDeleteNonDataResourceValueMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/policy.nondataresources.NonDataResourcesService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case NonDataResourcesServiceCreateNonDataResourceGroupProcedure:
+			nonDataResourcesServiceCreateNonDataResourceGroupHandler.ServeHTTP(w, r)
+		case NonDataResourcesServiceGetNonDataResourceGroupProcedure:
+			nonDataResourcesServiceGetNonDataResourceGroupHandler.ServeHTTP(w, r)
+		case NonDataResourcesServiceListNonDataResourceGroupProcedure:
+			nonDataResourcesServiceListNonDataResourceGroupHandler.ServeHTTP(w, r)
+		case NonDataResourcesServiceUpdateNonDataResourceGroupProcedure:
+			nonDataResourcesServiceUpdateNonDataResourceGroupHandler.ServeHTTP(w, r)
+		case NonDataResourcesServiceDeleteNonDataResourceGroupProcedure:
+			nonDataResourcesServiceDeleteNonDataResourceGroupHandler.ServeHTTP(w, r)
+		case NonDataResourcesServiceCreateNonDataResourceValueProcedure:
+			nonDataResourcesServiceCreateNonDataResourceValueHandler.ServeHTTP(w, r)
+		case NonDataResourcesServiceGetNonDataResourceValueProcedure:
+			nonDataResourcesServiceGetNonDataResourceValueHandler.ServeHTTP(w, r)
+		case NonDataResourcesServiceListNonDataResourceValueProcedure:
+			nonDataResourcesServiceListNonDataResourceValueHandler.ServeHTTP(w, r)
+		case NonDataResourcesServiceUpdateNonDataResourceValueProcedure:
+			nonDataResourcesServiceUpdateNonDataResourceValueHandler.ServeHTTP(w, r)
+		case NonDataResourcesServiceDeleteNonDataResourceValueProcedure:
+			nonDataResourcesServiceDeleteNonDataResourceValueHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -69,3 +354,43 @@ func NewNonDataResourcesServiceHandler(svc NonDataResourcesServiceHandler, opts 
 
 // UnimplementedNonDataResourcesServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedNonDataResourcesServiceHandler struct{}
+
+func (UnimplementedNonDataResourcesServiceHandler) CreateNonDataResourceGroup(context.Context, *connect.Request[nondataresources.CreateNonDataResourceGroupRequest]) (*connect.Response[nondataresources.CreateNonDataResourceGroupResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.nondataresources.NonDataResourcesService.CreateNonDataResourceGroup is not implemented"))
+}
+
+func (UnimplementedNonDataResourcesServiceHandler) GetNonDataResourceGroup(context.Context, *connect.Request[nondataresources.GetNonDataResourceGroupRequest]) (*connect.Response[nondataresources.GetNonDataResourceGroupResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.nondataresources.NonDataResourcesService.GetNonDataResourceGroup is not implemented"))
+}
+
+func (UnimplementedNonDataResourcesServiceHandler) ListNonDataResourceGroup(context.Context, *connect.Request[nondataresources.ListNonDataResourceGroupRequest]) (*connect.Response[nondataresources.ListNonDataResourceGroupResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.nondataresources.NonDataResourcesService.ListNonDataResourceGroup is not implemented"))
+}
+
+func (UnimplementedNonDataResourcesServiceHandler) UpdateNonDataResourceGroup(context.Context, *connect.Request[nondataresources.UpdateNonDataResourceGroupRequest]) (*connect.Response[nondataresources.UpdateNonDataResourceGroupResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.nondataresources.NonDataResourcesService.UpdateNonDataResourceGroup is not implemented"))
+}
+
+func (UnimplementedNonDataResourcesServiceHandler) DeleteNonDataResourceGroup(context.Context, *connect.Request[nondataresources.DeleteNonDataResourceGroupRequest]) (*connect.Response[nondataresources.DeleteNonDataResourceGroupResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.nondataresources.NonDataResourcesService.DeleteNonDataResourceGroup is not implemented"))
+}
+
+func (UnimplementedNonDataResourcesServiceHandler) CreateNonDataResourceValue(context.Context, *connect.Request[nondataresources.CreateNonDataResourceValueRequest]) (*connect.Response[nondataresources.CreateNonDataResourceValueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.nondataresources.NonDataResourcesService.CreateNonDataResourceValue is not implemented"))
+}
+
+func (UnimplementedNonDataResourcesServiceHandler) GetNonDataResourceValue(context.Context, *connect.Request[nondataresources.GetNonDataResourceValueRequest]) (*connect.Response[nondataresources.GetNonDataResourceValueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.nondataresources.NonDataResourcesService.GetNonDataResourceValue is not implemented"))
+}
+
+func (UnimplementedNonDataResourcesServiceHandler) ListNonDataResourceValue(context.Context, *connect.Request[nondataresources.ListNonDataResourceValueRequest]) (*connect.Response[nondataresources.ListNonDataResourceValueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.nondataresources.NonDataResourcesService.ListNonDataResourceValue is not implemented"))
+}
+
+func (UnimplementedNonDataResourcesServiceHandler) UpdateNonDataResourceValue(context.Context, *connect.Request[nondataresources.UpdateNonDataResourceValueRequest]) (*connect.Response[nondataresources.UpdateNonDataResourceValueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.nondataresources.NonDataResourcesService.UpdateNonDataResourceValue is not implemented"))
+}
+
+func (UnimplementedNonDataResourcesServiceHandler) DeleteNonDataResourceValue(context.Context, *connect.Request[nondataresources.DeleteNonDataResourceValueRequest]) (*connect.Response[nondataresources.DeleteNonDataResourceValueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.nondataresources.NonDataResourcesService.DeleteNonDataResourceValue is not implemented"))
+}

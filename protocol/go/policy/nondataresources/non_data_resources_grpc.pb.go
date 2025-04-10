@@ -7,7 +7,10 @@
 package nondataresources
 
 import (
+	context "context"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -15,12 +18,33 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-const ()
+const (
+	NonDataResourcesService_CreateNonDataResourceGroup_FullMethodName = "/policy.nondataresources.NonDataResourcesService/CreateNonDataResourceGroup"
+	NonDataResourcesService_GetNonDataResourceGroup_FullMethodName    = "/policy.nondataresources.NonDataResourcesService/GetNonDataResourceGroup"
+	NonDataResourcesService_ListNonDataResourceGroup_FullMethodName   = "/policy.nondataresources.NonDataResourcesService/ListNonDataResourceGroup"
+	NonDataResourcesService_UpdateNonDataResourceGroup_FullMethodName = "/policy.nondataresources.NonDataResourcesService/UpdateNonDataResourceGroup"
+	NonDataResourcesService_DeleteNonDataResourceGroup_FullMethodName = "/policy.nondataresources.NonDataResourcesService/DeleteNonDataResourceGroup"
+	NonDataResourcesService_CreateNonDataResourceValue_FullMethodName = "/policy.nondataresources.NonDataResourcesService/CreateNonDataResourceValue"
+	NonDataResourcesService_GetNonDataResourceValue_FullMethodName    = "/policy.nondataresources.NonDataResourcesService/GetNonDataResourceValue"
+	NonDataResourcesService_ListNonDataResourceValue_FullMethodName   = "/policy.nondataresources.NonDataResourcesService/ListNonDataResourceValue"
+	NonDataResourcesService_UpdateNonDataResourceValue_FullMethodName = "/policy.nondataresources.NonDataResourcesService/UpdateNonDataResourceValue"
+	NonDataResourcesService_DeleteNonDataResourceValue_FullMethodName = "/policy.nondataresources.NonDataResourcesService/DeleteNonDataResourceValue"
+)
 
 // NonDataResourcesServiceClient is the client API for NonDataResourcesService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type NonDataResourcesServiceClient interface {
+	CreateNonDataResourceGroup(ctx context.Context, in *CreateNonDataResourceGroupRequest, opts ...grpc.CallOption) (*CreateNonDataResourceGroupResponse, error)
+	GetNonDataResourceGroup(ctx context.Context, in *GetNonDataResourceGroupRequest, opts ...grpc.CallOption) (*GetNonDataResourceGroupResponse, error)
+	ListNonDataResourceGroup(ctx context.Context, in *ListNonDataResourceGroupRequest, opts ...grpc.CallOption) (*ListNonDataResourceGroupResponse, error)
+	UpdateNonDataResourceGroup(ctx context.Context, in *UpdateNonDataResourceGroupRequest, opts ...grpc.CallOption) (*UpdateNonDataResourceGroupResponse, error)
+	DeleteNonDataResourceGroup(ctx context.Context, in *DeleteNonDataResourceGroupRequest, opts ...grpc.CallOption) (*DeleteNonDataResourceGroupResponse, error)
+	CreateNonDataResourceValue(ctx context.Context, in *CreateNonDataResourceValueRequest, opts ...grpc.CallOption) (*CreateNonDataResourceValueResponse, error)
+	GetNonDataResourceValue(ctx context.Context, in *GetNonDataResourceValueRequest, opts ...grpc.CallOption) (*GetNonDataResourceValueResponse, error)
+	ListNonDataResourceValue(ctx context.Context, in *ListNonDataResourceValueRequest, opts ...grpc.CallOption) (*ListNonDataResourceValueResponse, error)
+	UpdateNonDataResourceValue(ctx context.Context, in *UpdateNonDataResourceValueRequest, opts ...grpc.CallOption) (*UpdateNonDataResourceValueResponse, error)
+	DeleteNonDataResourceValue(ctx context.Context, in *DeleteNonDataResourceValueRequest, opts ...grpc.CallOption) (*DeleteNonDataResourceValueResponse, error)
 }
 
 type nonDataResourcesServiceClient struct {
@@ -31,10 +55,110 @@ func NewNonDataResourcesServiceClient(cc grpc.ClientConnInterface) NonDataResour
 	return &nonDataResourcesServiceClient{cc}
 }
 
+func (c *nonDataResourcesServiceClient) CreateNonDataResourceGroup(ctx context.Context, in *CreateNonDataResourceGroupRequest, opts ...grpc.CallOption) (*CreateNonDataResourceGroupResponse, error) {
+	out := new(CreateNonDataResourceGroupResponse)
+	err := c.cc.Invoke(ctx, NonDataResourcesService_CreateNonDataResourceGroup_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *nonDataResourcesServiceClient) GetNonDataResourceGroup(ctx context.Context, in *GetNonDataResourceGroupRequest, opts ...grpc.CallOption) (*GetNonDataResourceGroupResponse, error) {
+	out := new(GetNonDataResourceGroupResponse)
+	err := c.cc.Invoke(ctx, NonDataResourcesService_GetNonDataResourceGroup_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *nonDataResourcesServiceClient) ListNonDataResourceGroup(ctx context.Context, in *ListNonDataResourceGroupRequest, opts ...grpc.CallOption) (*ListNonDataResourceGroupResponse, error) {
+	out := new(ListNonDataResourceGroupResponse)
+	err := c.cc.Invoke(ctx, NonDataResourcesService_ListNonDataResourceGroup_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *nonDataResourcesServiceClient) UpdateNonDataResourceGroup(ctx context.Context, in *UpdateNonDataResourceGroupRequest, opts ...grpc.CallOption) (*UpdateNonDataResourceGroupResponse, error) {
+	out := new(UpdateNonDataResourceGroupResponse)
+	err := c.cc.Invoke(ctx, NonDataResourcesService_UpdateNonDataResourceGroup_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *nonDataResourcesServiceClient) DeleteNonDataResourceGroup(ctx context.Context, in *DeleteNonDataResourceGroupRequest, opts ...grpc.CallOption) (*DeleteNonDataResourceGroupResponse, error) {
+	out := new(DeleteNonDataResourceGroupResponse)
+	err := c.cc.Invoke(ctx, NonDataResourcesService_DeleteNonDataResourceGroup_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *nonDataResourcesServiceClient) CreateNonDataResourceValue(ctx context.Context, in *CreateNonDataResourceValueRequest, opts ...grpc.CallOption) (*CreateNonDataResourceValueResponse, error) {
+	out := new(CreateNonDataResourceValueResponse)
+	err := c.cc.Invoke(ctx, NonDataResourcesService_CreateNonDataResourceValue_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *nonDataResourcesServiceClient) GetNonDataResourceValue(ctx context.Context, in *GetNonDataResourceValueRequest, opts ...grpc.CallOption) (*GetNonDataResourceValueResponse, error) {
+	out := new(GetNonDataResourceValueResponse)
+	err := c.cc.Invoke(ctx, NonDataResourcesService_GetNonDataResourceValue_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *nonDataResourcesServiceClient) ListNonDataResourceValue(ctx context.Context, in *ListNonDataResourceValueRequest, opts ...grpc.CallOption) (*ListNonDataResourceValueResponse, error) {
+	out := new(ListNonDataResourceValueResponse)
+	err := c.cc.Invoke(ctx, NonDataResourcesService_ListNonDataResourceValue_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *nonDataResourcesServiceClient) UpdateNonDataResourceValue(ctx context.Context, in *UpdateNonDataResourceValueRequest, opts ...grpc.CallOption) (*UpdateNonDataResourceValueResponse, error) {
+	out := new(UpdateNonDataResourceValueResponse)
+	err := c.cc.Invoke(ctx, NonDataResourcesService_UpdateNonDataResourceValue_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *nonDataResourcesServiceClient) DeleteNonDataResourceValue(ctx context.Context, in *DeleteNonDataResourceValueRequest, opts ...grpc.CallOption) (*DeleteNonDataResourceValueResponse, error) {
+	out := new(DeleteNonDataResourceValueResponse)
+	err := c.cc.Invoke(ctx, NonDataResourcesService_DeleteNonDataResourceValue_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NonDataResourcesServiceServer is the server API for NonDataResourcesService service.
 // All implementations must embed UnimplementedNonDataResourcesServiceServer
 // for forward compatibility
 type NonDataResourcesServiceServer interface {
+	CreateNonDataResourceGroup(context.Context, *CreateNonDataResourceGroupRequest) (*CreateNonDataResourceGroupResponse, error)
+	GetNonDataResourceGroup(context.Context, *GetNonDataResourceGroupRequest) (*GetNonDataResourceGroupResponse, error)
+	ListNonDataResourceGroup(context.Context, *ListNonDataResourceGroupRequest) (*ListNonDataResourceGroupResponse, error)
+	UpdateNonDataResourceGroup(context.Context, *UpdateNonDataResourceGroupRequest) (*UpdateNonDataResourceGroupResponse, error)
+	DeleteNonDataResourceGroup(context.Context, *DeleteNonDataResourceGroupRequest) (*DeleteNonDataResourceGroupResponse, error)
+	CreateNonDataResourceValue(context.Context, *CreateNonDataResourceValueRequest) (*CreateNonDataResourceValueResponse, error)
+	GetNonDataResourceValue(context.Context, *GetNonDataResourceValueRequest) (*GetNonDataResourceValueResponse, error)
+	ListNonDataResourceValue(context.Context, *ListNonDataResourceValueRequest) (*ListNonDataResourceValueResponse, error)
+	UpdateNonDataResourceValue(context.Context, *UpdateNonDataResourceValueRequest) (*UpdateNonDataResourceValueResponse, error)
+	DeleteNonDataResourceValue(context.Context, *DeleteNonDataResourceValueRequest) (*DeleteNonDataResourceValueResponse, error)
 	mustEmbedUnimplementedNonDataResourcesServiceServer()
 }
 
@@ -42,6 +166,36 @@ type NonDataResourcesServiceServer interface {
 type UnimplementedNonDataResourcesServiceServer struct {
 }
 
+func (UnimplementedNonDataResourcesServiceServer) CreateNonDataResourceGroup(context.Context, *CreateNonDataResourceGroupRequest) (*CreateNonDataResourceGroupResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateNonDataResourceGroup not implemented")
+}
+func (UnimplementedNonDataResourcesServiceServer) GetNonDataResourceGroup(context.Context, *GetNonDataResourceGroupRequest) (*GetNonDataResourceGroupResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetNonDataResourceGroup not implemented")
+}
+func (UnimplementedNonDataResourcesServiceServer) ListNonDataResourceGroup(context.Context, *ListNonDataResourceGroupRequest) (*ListNonDataResourceGroupResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListNonDataResourceGroup not implemented")
+}
+func (UnimplementedNonDataResourcesServiceServer) UpdateNonDataResourceGroup(context.Context, *UpdateNonDataResourceGroupRequest) (*UpdateNonDataResourceGroupResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateNonDataResourceGroup not implemented")
+}
+func (UnimplementedNonDataResourcesServiceServer) DeleteNonDataResourceGroup(context.Context, *DeleteNonDataResourceGroupRequest) (*DeleteNonDataResourceGroupResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteNonDataResourceGroup not implemented")
+}
+func (UnimplementedNonDataResourcesServiceServer) CreateNonDataResourceValue(context.Context, *CreateNonDataResourceValueRequest) (*CreateNonDataResourceValueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateNonDataResourceValue not implemented")
+}
+func (UnimplementedNonDataResourcesServiceServer) GetNonDataResourceValue(context.Context, *GetNonDataResourceValueRequest) (*GetNonDataResourceValueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetNonDataResourceValue not implemented")
+}
+func (UnimplementedNonDataResourcesServiceServer) ListNonDataResourceValue(context.Context, *ListNonDataResourceValueRequest) (*ListNonDataResourceValueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListNonDataResourceValue not implemented")
+}
+func (UnimplementedNonDataResourcesServiceServer) UpdateNonDataResourceValue(context.Context, *UpdateNonDataResourceValueRequest) (*UpdateNonDataResourceValueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateNonDataResourceValue not implemented")
+}
+func (UnimplementedNonDataResourcesServiceServer) DeleteNonDataResourceValue(context.Context, *DeleteNonDataResourceValueRequest) (*DeleteNonDataResourceValueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteNonDataResourceValue not implemented")
+}
 func (UnimplementedNonDataResourcesServiceServer) mustEmbedUnimplementedNonDataResourcesServiceServer() {
 }
 
@@ -56,13 +210,234 @@ func RegisterNonDataResourcesServiceServer(s grpc.ServiceRegistrar, srv NonDataR
 	s.RegisterService(&NonDataResourcesService_ServiceDesc, srv)
 }
 
+func _NonDataResourcesService_CreateNonDataResourceGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateNonDataResourceGroupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NonDataResourcesServiceServer).CreateNonDataResourceGroup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NonDataResourcesService_CreateNonDataResourceGroup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NonDataResourcesServiceServer).CreateNonDataResourceGroup(ctx, req.(*CreateNonDataResourceGroupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NonDataResourcesService_GetNonDataResourceGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetNonDataResourceGroupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NonDataResourcesServiceServer).GetNonDataResourceGroup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NonDataResourcesService_GetNonDataResourceGroup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NonDataResourcesServiceServer).GetNonDataResourceGroup(ctx, req.(*GetNonDataResourceGroupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NonDataResourcesService_ListNonDataResourceGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListNonDataResourceGroupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NonDataResourcesServiceServer).ListNonDataResourceGroup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NonDataResourcesService_ListNonDataResourceGroup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NonDataResourcesServiceServer).ListNonDataResourceGroup(ctx, req.(*ListNonDataResourceGroupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NonDataResourcesService_UpdateNonDataResourceGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateNonDataResourceGroupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NonDataResourcesServiceServer).UpdateNonDataResourceGroup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NonDataResourcesService_UpdateNonDataResourceGroup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NonDataResourcesServiceServer).UpdateNonDataResourceGroup(ctx, req.(*UpdateNonDataResourceGroupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NonDataResourcesService_DeleteNonDataResourceGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteNonDataResourceGroupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NonDataResourcesServiceServer).DeleteNonDataResourceGroup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NonDataResourcesService_DeleteNonDataResourceGroup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NonDataResourcesServiceServer).DeleteNonDataResourceGroup(ctx, req.(*DeleteNonDataResourceGroupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NonDataResourcesService_CreateNonDataResourceValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateNonDataResourceValueRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NonDataResourcesServiceServer).CreateNonDataResourceValue(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NonDataResourcesService_CreateNonDataResourceValue_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NonDataResourcesServiceServer).CreateNonDataResourceValue(ctx, req.(*CreateNonDataResourceValueRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NonDataResourcesService_GetNonDataResourceValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetNonDataResourceValueRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NonDataResourcesServiceServer).GetNonDataResourceValue(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NonDataResourcesService_GetNonDataResourceValue_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NonDataResourcesServiceServer).GetNonDataResourceValue(ctx, req.(*GetNonDataResourceValueRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NonDataResourcesService_ListNonDataResourceValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListNonDataResourceValueRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NonDataResourcesServiceServer).ListNonDataResourceValue(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NonDataResourcesService_ListNonDataResourceValue_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NonDataResourcesServiceServer).ListNonDataResourceValue(ctx, req.(*ListNonDataResourceValueRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NonDataResourcesService_UpdateNonDataResourceValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateNonDataResourceValueRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NonDataResourcesServiceServer).UpdateNonDataResourceValue(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NonDataResourcesService_UpdateNonDataResourceValue_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NonDataResourcesServiceServer).UpdateNonDataResourceValue(ctx, req.(*UpdateNonDataResourceValueRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NonDataResourcesService_DeleteNonDataResourceValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteNonDataResourceValueRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NonDataResourcesServiceServer).DeleteNonDataResourceValue(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NonDataResourcesService_DeleteNonDataResourceValue_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NonDataResourcesServiceServer).DeleteNonDataResourceValue(ctx, req.(*DeleteNonDataResourceValueRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // NonDataResourcesService_ServiceDesc is the grpc.ServiceDesc for NonDataResourcesService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var NonDataResourcesService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "policy.nondataresources.NonDataResourcesService",
 	HandlerType: (*NonDataResourcesServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
-	Streams:     []grpc.StreamDesc{},
-	Metadata:    "policy/nondataresources/non_data_resources.proto",
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "CreateNonDataResourceGroup",
+			Handler:    _NonDataResourcesService_CreateNonDataResourceGroup_Handler,
+		},
+		{
+			MethodName: "GetNonDataResourceGroup",
+			Handler:    _NonDataResourcesService_GetNonDataResourceGroup_Handler,
+		},
+		{
+			MethodName: "ListNonDataResourceGroup",
+			Handler:    _NonDataResourcesService_ListNonDataResourceGroup_Handler,
+		},
+		{
+			MethodName: "UpdateNonDataResourceGroup",
+			Handler:    _NonDataResourcesService_UpdateNonDataResourceGroup_Handler,
+		},
+		{
+			MethodName: "DeleteNonDataResourceGroup",
+			Handler:    _NonDataResourcesService_DeleteNonDataResourceGroup_Handler,
+		},
+		{
+			MethodName: "CreateNonDataResourceValue",
+			Handler:    _NonDataResourcesService_CreateNonDataResourceValue_Handler,
+		},
+		{
+			MethodName: "GetNonDataResourceValue",
+			Handler:    _NonDataResourcesService_GetNonDataResourceValue_Handler,
+		},
+		{
+			MethodName: "ListNonDataResourceValue",
+			Handler:    _NonDataResourcesService_ListNonDataResourceValue_Handler,
+		},
+		{
+			MethodName: "UpdateNonDataResourceValue",
+			Handler:    _NonDataResourcesService_UpdateNonDataResourceValue_Handler,
+		},
+		{
+			MethodName: "DeleteNonDataResourceValue",
+			Handler:    _NonDataResourcesService_DeleteNonDataResourceValue_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "policy/nondataresources/non_data_resources.proto",
 }

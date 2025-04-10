@@ -755,7 +755,7 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Asy
 	var providerConfig *policy.KeyProviderConfig
 	if key.ProviderConfigID.Valid {
 		providerConfig = &policy.KeyProviderConfig{}
-		providerConfig.Id = string(key.ProviderConfigID.Bytes[:])
+		providerConfig.Id = UUIDToString(key.ProviderConfigID)
 		providerConfig.Name = key.ProviderName.String
 		providerConfig.ConfigJson = key.ProviderConfig
 		providerConfig.Metadata = &common.Metadata{}

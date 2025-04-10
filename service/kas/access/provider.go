@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/url"
 
+	"github.com/opentdf/platform/lib/cryptoProviders"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/security"
@@ -27,6 +28,7 @@ type Provider struct {
 	Config         *serviceregistry.ServiceConfig
 	KASConfig
 	trace.Tracer
+	CryptoProviderNew *cryptoProviders.CryptoService
 }
 
 type KASConfig struct {

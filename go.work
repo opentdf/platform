@@ -10,4 +10,5 @@ use (
 	./protocol/go
 	./sdk
 	./service
+	./lib/cryptoProviders
 )

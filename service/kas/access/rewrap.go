@@ -28,7 +28,9 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/encoding/protojson"
 
+	"github.com/opentdf/platform/lib/cryptoProviders"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	policyProto "github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
@@ -512,7 +514,53 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				continue
 			}
 
-			symKey, err = p.CryptoProvider.ECDecrypt(kao.GetKeyAccessObject().GetKid(), compressedKey, kao.GetKeyAccessObject().GetWrappedKey())
+			fmt.Println(compressedKey)
+
+			/*******************************
+				Testing Key Mgmt EC
+			********************************/
+			kek, err := hex.DecodeString(configKek)
+			if err != nil {
+				p.Logger.WarnContext(ctx, "failed to decode kek", "err", err)
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
+			}
+
+			fmt.Println("KEK:", kek)
+
+			ecOpts := []cryptoProviders.ECOptions{}
+
+			// Mode 1: Config based KEK
+			// asymKey := &policyProto.AsymmetricKey{
+			// 	KeyAlgorithm:  policyProto.Algorithm_ALGORITHM_RSA_2048,
+			// 	PrivateKeyCtx: []byte(kasPrivateKeyEC),
+			// 	KeyMode:       policyProto.KeyMode_KEY_MODE_LOCAL,
+			// }
+			// ecOpts = append(ecOpts, cryptoProviders.WithECKeK(kek))
+
+			// Mode 2: Provider based KEK
+			// asymKey := &policyProto.AsymmetricKey{
+			// 	KeyAlgorithm:  policyProto.Algorithm_ALGORITHM_EC_P256,
+			// 	PrivateKeyCtx: []byte(kasPrivateKeyEC_AWS_KEK),
+			// 	ProviderConfig: &policyProto.KeyProviderConfig{
+			// 		Name:       "aws",
+			// 		ConfigJson: []byte(``),
+			// 	},
+			// 	KeyMode: policyProto.KeyMode_KEY_MODE_LOCAL,
+			// }
+
+			// Mode 3: Fully Remote Crypto
+			asymKey := &policyProto.AsymmetricKey{
+				KeyAlgorithm:  policyProto.Algorithm_ALGORITHM_EC_P256,
+				PrivateKeyCtx: []byte(kasPrivateKeyEC_AWS_REMOTE),
+				ProviderConfig: &policyProto.KeyProviderConfig{
+					Name:       "aws",
+					ConfigJson: []byte(``),
+				},
+				KeyMode: policyProto.KeyMode_KEY_MODE_REMOTE,
+			}
+			symKey, err = p.CryptoProviderNew.DecryptEC(ctx, asymKey, []byte(kao.GetKeyAccessObject().GetEphemeralPublicKey()), kao.GetKeyAccessObject().GetWrappedKey(), ecOpts...)
+			//symKey, err = p.CryptoProvider.ECDecrypt(kao.GetKeyAccessObject().GetKid(), compressedKey, kao.GetKeyAccessObject().GetWrappedKey())
 			if err != nil {
 				p.Logger.WarnContext(ctx, "failed to decrypt EC key", "err", err)
 				failedKAORewrap(results, kao, err400("bad request"))
@@ -536,7 +584,59 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				}
 			}
 
-			symKey, err = p.CryptoProvider.RSADecrypt(crypto.SHA1, kidsToCheck[0], "", kao.GetKeyAccessObject().GetWrappedKey())
+			//symKey, err = p.CryptoProvider.RSADecrypt(crypto.SHA1, kidsToCheck[0], "", kao.GetKeyAccessObject().GetWrappedKey())
+
+			/*******************************
+				Testing Key Mgmt RSA
+			********************************/
+			kek, err := hex.DecodeString(configKek)
+			if err != nil {
+				p.Logger.WarnContext(ctx, "failed to decode kek", "err", err)
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
+			}
+
+			fmt.Println("KEK:", kek)
+
+			rsaOpts := []cryptoProviders.RSAOptions{}
+
+			// Mode 1: Config based KEK
+			// asymKey := &policyProto.AsymmetricKey{
+			// 	KeyAlgorithm:  policyProto.Algorithm_ALGORITHM_RSA_2048,
+			// 	PrivateKeyCtx: []byte(kasPrivateKeyRSA),
+			// 	KeyMode:       policyProto.KeyMode_KEY_MODE_LOCAL,
+			// }
+			// rsaOpts = append(rsaOpts, cryptoProviders.WithRSAKeK(kek))
+
+			// Mode 2: Provider based KEK
+			// asymKey := &policyProto.AsymmetricKey{
+			// 	KeyAlgorithm:  policyProto.Algorithm_ALGORITHM_RSA_2048,
+			// 	PrivateKeyCtx: []byte(kasPrivateKeyRSA_AWS_KEK),
+			// 	ProviderConfig: &policyProto.KeyProviderConfig{
+			// 		Name:       "aws",
+			// 		ConfigJson: []byte(``),
+			// 	},
+			// 	KeyMode: policyProto.KeyMode_KEY_MODE_LOCAL,
+			// }
+
+			// Mode 3: Fully Remote Crypto
+			asymKey := &policyProto.AsymmetricKey{
+				KeyAlgorithm:  policyProto.Algorithm_ALGORITHM_RSA_2048,
+				PrivateKeyCtx: []byte(kasPrivateKeyRSA_AWS_REMOTE),
+				ProviderConfig: &policyProto.KeyProviderConfig{
+					Name:       "aws",
+					ConfigJson: []byte(``),
+				},
+				KeyMode: policyProto.KeyMode_KEY_MODE_REMOTE,
+			}
+
+			symKey, err = p.CryptoProviderNew.DecryptRSAOAEP(ctx, kao.GetKeyAccessObject().GetWrappedKey(),
+				asymKey, rsaOpts...)
+			if err != nil {
+				p.Logger.WarnContext(ctx, "failure to decrypt dek", "err", err)
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
+			}
 			for _, kid := range kidsToCheck[1:] {
 				p.Logger.WarnContext(ctx, "continue paging through legacy KIDs for kid free kao", "err", err)
 				if err == nil {
@@ -545,13 +645,8 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				symKey, err = p.CryptoProvider.RSADecrypt(crypto.SHA1, kid, "", kao.GetKeyAccessObject().GetWrappedKey())
 			}
 		}
-		if err != nil {
-			p.Logger.WarnContext(ctx, "failure to decrypt dek", "err", err)
-			failedKAORewrap(results, kao, err400("bad request"))
-			continue
-		}
 
-		if err := verifyPolicyBinding(ctx, []byte(req.GetPolicy().GetBody()), kao, symKey, *p.Logger); err != nil {
+		if err = verifyPolicyBinding(ctx, []byte(req.GetPolicy().GetBody()), kao, symKey, *p.Logger); err != nil {
 			failedKAORewrap(results, kao, err)
 			continue
 		}
@@ -670,7 +765,68 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				continue
 			}
 
-			rewrappedKey, err := asymEncrypt.Encrypt(kaoRes.DEK)
+			//rewrappedKey, err := asymEncrypt.Encrypt(kaoRes.DEK)
+			var rewrappedKey []byte
+			var epk []byte
+			switch asymEncrypt.Type() {
+			case ocrypto.EC:
+				/*******************************
+					Testing Key Mgmt EC
+				********************************/
+				kek, err := hex.DecodeString(configKek)
+				if err != nil {
+					p.Logger.WarnContext(ctx, "failed to decode kek", "err", err)
+					failedKAORewrap(kaoResults, kao, err400("bad request"))
+					continue
+				}
+
+				fmt.Println("KEK:", kek)
+
+				ecOpts := []cryptoProviders.ECOptions{}
+
+				// Mode 1: Config based KEK
+				asymKey := &policyProto.AsymmetricKey{
+					KeyAlgorithm:  policyProto.Algorithm_ALGORITHM_RSA_2048,
+					PrivateKeyCtx: []byte(kasPrivateKeyEC),
+					KeyMode:       policyProto.KeyMode_KEY_MODE_LOCAL,
+				}
+				ecOpts = append(ecOpts, cryptoProviders.WithECKeK(kek))
+
+				// Mode 2: Provider based KEK
+				// asymKey := &policyProto.AsymmetricKey{
+				// 	KeyAlgorithm:  policyProto.Algorithm_ALGORITHM_RSA_2048,
+				// 	PrivateKeyCtx: []byte(kasPrivateKeyRSA_AWS_KEK),
+				// 	ProviderConfig: &policyProto.KeyProviderConfig{
+				// 		Name:       "aws",
+				// 		ConfigJson: []byte(``),
+				// 	},
+				// 	KeyMode: policyProto.KeyMode_KEY_MODE_LOCAL,
+				// }
+
+				// Mode 3: Fully Remote Crypto
+				// asymKey := &policyProto.AsymmetricKey{
+				// 	KeyAlgorithm:  policyProto.Algorithm_ALGORITHM_EC_P256,
+				// 	PrivateKeyCtx: []byte(kasPrivateKeyEC_AWS_REMOTE),
+				// 	ProviderConfig: &policyProto.KeyProviderConfig{
+				// 		Name:       "aws",
+				// 		ConfigJson: []byte(``),
+				// 	},
+				// 	KeyMode: policyProto.KeyMode_KEY_MODE_REMOTE,
+				// }
+
+				rewrappedKey, epk, err = p.CryptoProviderNew.EncryptEC(ctx, kaoRes.DEK, asymKey, []byte(clientPublicKey))
+				sessionKey = string(pem.EncodeToMemory(
+					&pem.Block{
+						Type:  "PUBLIC KEY",
+						Bytes: epk,
+					},
+				))
+			case ocrypto.RSA:
+				rewrappedKey, err = p.CryptoProviderNew.EncryptRSAOAEP(ctx, kaoRes.DEK, &policyProto.AsymmetricKey{
+					PublicKeyCtx: []byte(clientPublicKey),
+				}, cryptoProviders.WithRSAHash(crypto.SHA1))
+			}
+
 			if err != nil {
 				p.Logger.WarnContext(ctx, "rewrap: ocrypto.AsymEncryption.encrypt failed", "err", err, "clientPublicKey", clientPublicKey)
 				p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
@@ -680,7 +836,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			kaoResults[kaoID] = kaoResult{
 				ID:                 kaoID,
 				Encapped:           rewrappedKey,
-				EphemeralPublicKey: asymEncrypt.EphemeralKey(),
+				EphemeralPublicKey: epk,
 			}
 
 			p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)

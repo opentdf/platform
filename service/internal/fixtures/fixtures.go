@@ -53,12 +53,8 @@ type FixtureDataAttributeValueKeyAccessServer struct {
 }
 
 type FixtureDataSubjectMapping struct {
-	ID               string `yaml:"id"`
-	AttributeValueID string `yaml:"attribute_value_id"`
-	Actions          []struct {
-		Standard string `yaml:"standard" json:"standard,omitempty"`
-		Custom   string `yaml:"custom" json:"custom,omitempty"`
-	} `yaml:"actions"`
+	ID                    string `yaml:"id"`
+	AttributeValueID      string `yaml:"attribute_value_id"`
 	SubjectConditionSetID string `yaml:"subject_condition_set_id"`
 }
 
@@ -76,6 +72,18 @@ type SubjectConditionSet struct {
 			} `yaml:"condition_groups" json:"condition_groups"`
 		} `yaml:"subject_sets" json:"subject_sets"`
 	} `yaml:"condition" json:"condition"`
+}
+
+type FixtureDataAction struct {
+	ID         string `yaml:"id"`
+	Name       string `yaml:"name"`
+	IsStandard bool   `yaml:"is_standard"`
+}
+
+// Relation table intermediating subject mappings and actions
+type FixtueDataSubjectMappingsActionRelation struct {
+	SubjectMappingID string `yaml:"subject_mapping_id"`
+	ActionName       string `yaml:"action_name"`
 }
 
 type FixtureDataResourceMappingGroup struct {
@@ -145,6 +153,14 @@ type FixtureData struct {
 		Metadata FixtureMetadata                      `yaml:"metadata"`
 		Data     map[string]FixtureDataSubjectMapping `yaml:"data"`
 	} `yaml:"subject_mappings"`
+	CustomActions struct {
+		Metadata FixtureMetadata              `yaml:"metadata"`
+		Data     map[string]FixtureDataAction `yaml:"data"`
+	} `yaml:"custom_actions"`
+	SubjectMappingActions struct {
+		Metadata FixtureMetadata                                    `yaml:"metadata"`
+		Data     map[string]FixtueDataSubjectMappingsActionRelation `yaml:"data"`
+	} `yaml:"subject_mapping_actions_relation"`
 	SubjectConditionSet struct {
 		Metadata FixtureMetadata                `yaml:"metadata"`
 		Data     map[string]SubjectConditionSet `yaml:"data"`
@@ -194,7 +210,11 @@ func LoadFixtureData(file string) {
 }
 
 type Fixtures struct {
-	db DBInterface
+	db           DBInterface
+	MigratedData struct {
+		// name -> id
+		StandardActions map[string]string
+	}
 }
 
 func NewFixture(db DBInterface) Fixtures {
@@ -246,6 +266,57 @@ func (f *Fixtures) GetSubjectConditionSetKey(key string) SubjectConditionSet {
 		panic("could not find subject-condition-set fixture: " + key)
 	}
 	return scs
+}
+
+// Migration adds standard actions [create, read, update, delete] to the database
+func (f *Fixtures) loadMigratedStandardActions() {
+	actions := make(map[string]string)
+	rows, err := f.db.Client.Query(context.Background(), "SELECT id, name FROM actions WHERE is_standard = TRUE", nil)
+	if err != nil {
+		slog.Error("could not get standard actions", slog.String("error", err.Error()))
+		panic("could not get standard actions")
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			slog.Error("could not scan standard actions", slog.String("error", err.Error()))
+			panic("could not scan standard actions")
+		}
+		actions[name] = id
+	}
+	if err := rows.Err(); err != nil {
+		slog.Error("could not get standard actions", slog.String("error", err.Error()))
+		panic("could not get standard actions")
+	}
+	if len(actions) == 0 {
+		slog.Error("could not find standard actions")
+		panic("could not find standard actions")
+	}
+	slog.Info("found standard actions", slog.Any("actions", actions))
+	// add standard actions to fixtureData
+	f.MigratedData.StandardActions = actions
+}
+
+func (f *Fixtures) GetStandardAction(name string) *policypb.Action {
+	id, ok := f.MigratedData.StandardActions[name]
+	if !ok {
+		slog.Error("could not find standard action", slog.String("name", name))
+		panic("could not find standard action: " + name)
+	}
+	return &policypb.Action{
+		Id:   id,
+		Name: name,
+	}
+}
+
+func (f *Fixtures) GetCustomActionKey(key string) FixtureDataAction {
+	a, ok := fixtureData.CustomActions.Data[key]
+	if !ok || a.ID == "" {
+		slog.Error("could not find actions", slog.String("id", key))
+		panic("could not find action fixture: " + key)
+	}
+	return a
 }
 
 func (f *Fixtures) GetResourceMappingGroupKey(key string) FixtureDataResourceMappingGroup {
@@ -321,6 +392,8 @@ func (f *Fixtures) Provision() {
 		panic(err)
 	}
 
+	slog.Info("📦 retrieving migration-inserted standard actions")
+	f.loadMigratedStandardActions()
 	slog.Info("📦 provisioning namespace data")
 	n := f.provisionNamespace()
 	slog.Info("📦 provisioning attribute data")
@@ -333,6 +406,10 @@ func (f *Fixtures) Provision() {
 	sM := f.provisionSubjectMappings()
 	slog.Info("📦 provisioning resource mapping group data")
 	rmg := f.provisionResourceMappingGroups()
+	slog.Info("📦 provisioning custom actions data")
+	actions := f.provisionCustomActions()
+	slog.Info("📦 provisioning subject mapping actions relationships data")
+	relatedSmActions := f.provisionSubjectMappingActionsRelations()
 	slog.Info("📦 provisioning resource mapping data")
 	rm := f.provisionResourceMappings()
 	slog.Info("📦 provisioning kas registry data")
@@ -356,6 +433,8 @@ func (f *Fixtures) Provision() {
 		slog.Int64("attribute_values", aV),
 		slog.Int64("subject_mappings", sM),
 		slog.Int64("subject_condition_set", sc),
+		slog.Int64("actions", actions),
+		slog.Int64("subject_mapping_actions", relatedSmActions),
 		slog.Int64("resource_mapping_groups", rmg),
 		slog.Int64("resource_mappings", rm),
 		slog.Int64("kas_registry", kas),
@@ -441,21 +520,44 @@ func (f *Fixtures) provisionSubjectConditionSet() int64 {
 func (f *Fixtures) provisionSubjectMappings() int64 {
 	values := make([][]string, 0, len(fixtureData.SubjectMappings.Data))
 	for _, d := range fixtureData.SubjectMappings.Data {
-		var actionsJSON []byte
-		actionsJSON, err := json.Marshal(d.Actions)
-		if err != nil {
-			slog.Error("⛔️ 📦 issue with subject mapping actions JSON - check policy_fixtures.yaml for issues")
-			panic("issue with subject mapping actions JSON")
-		}
-
 		values = append(values, []string{
 			f.db.StringWrap(d.ID),
 			f.db.UUIDWrap(d.AttributeValueID),
 			f.db.UUIDWrap(d.SubjectConditionSetID),
-			f.db.StringWrap(string(actionsJSON)),
 		})
 	}
 	return f.provision(fixtureData.SubjectMappings.Metadata.TableName, fixtureData.SubjectMappings.Metadata.Columns, values)
+}
+
+func (f *Fixtures) provisionCustomActions() int64 {
+	values := make([][]string, 0, len(fixtureData.CustomActions.Data))
+	for _, d := range fixtureData.CustomActions.Data {
+		values = append(values, []string{
+			f.db.StringWrap(d.ID),
+			f.db.StringWrap(d.Name),
+			f.db.BoolWrap(d.IsStandard),
+		})
+	}
+	return f.provision(fixtureData.CustomActions.Metadata.TableName, fixtureData.CustomActions.Metadata.Columns, values)
+}
+
+func (f *Fixtures) provisionSubjectMappingActionsRelations() int64 {
+	values := make([][]string, 0, len(fixtureData.SubjectMappingActions.Data))
+	for _, d := range fixtureData.SubjectMappingActions.Data {
+		var actionID string
+		if id, ok := f.MigratedData.StandardActions[d.ActionName]; ok {
+			actionID = id
+		} else {
+			actionID = f.GetCustomActionKey(d.ActionName).ID
+		}
+		values = append(values,
+			[]string{
+				f.db.StringWrap(d.SubjectMappingID),
+				f.db.StringWrap(actionID),
+			},
+		)
+	}
+	return f.provision(fixtureData.SubjectMappingActions.Metadata.TableName, fixtureData.SubjectMappingActions.Metadata.Columns, values)
 }
 
 func (f *Fixtures) provisionResourceMappingGroups() int64 {

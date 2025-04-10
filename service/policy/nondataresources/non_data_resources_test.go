@@ -1,6 +1,7 @@
 package nondataresources
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/bufbuild/protovalidate-go"
@@ -31,6 +32,7 @@ const (
 	errMsgURI           = "string.uri"
 	errMsgNameFormat    = "ndr_name_format"
 	errMsgStringPattern = "string.pattern"
+	errMsgStringMaxLen  = "string.max_len"
 )
 
 ///
@@ -89,6 +91,13 @@ func TestCreateNonDataResourceGroup_Invalid_Fails(t *testing.T) {
 				Name: " ",
 			},
 			errMsg: errMsgNameFormat,
+		},
+		{
+			name: "Invalid Name (too long)",
+			req: &nondataresources.CreateNonDataResourceGroupRequest{
+				Name: strings.Repeat("a", 254),
+			},
+			errMsg: errMsgStringMaxLen,
 		},
 		{
 			name: "Invalid Name (text with spaces)",
@@ -237,7 +246,78 @@ func TestGetNonDataResourceGroup_Invalid_Fails(t *testing.T) {
 
 // Update
 
-// todo....
+func TestUpdateNonDataResourceGroup_Valid_Succeeds(t *testing.T) {
+	// id provided
+	// valid value provided
+	testCases := []struct {
+		name string
+		req  *nondataresources.UpdateNonDataResourceGroupRequest
+	}{
+		{
+			name: "ID only",
+			req: &nondataresources.UpdateNonDataResourceGroupRequest{
+				Id: validUUID,
+			},
+		},
+		{
+			name: "ID with Valid Name",
+			req: &nondataresources.UpdateNonDataResourceGroupRequest{
+				Id:   validUUID,
+				Name: validName,
+			},
+		},
+	}
+
+	v := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestUpdateNonDataResourceGroup_Invalid_Fails(t *testing.T) {
+	testCases := []struct {
+		name   string
+		req    *nondataresources.UpdateNonDataResourceGroupRequest
+		errMsg string
+	}{
+		{
+			name:   "Missing ID",
+			req:    &nondataresources.UpdateNonDataResourceGroupRequest{},
+			errMsg: errMsgUUID,
+		},
+		{
+			name: "Invalid ID",
+			req: &nondataresources.UpdateNonDataResourceGroupRequest{
+				Id: invalidUUID,
+			},
+			errMsg: errMsgUUID,
+		},
+		{
+			name: "Invalid Name (space)",
+			req: &nondataresources.UpdateNonDataResourceGroupRequest{
+				Id:   validUUID,
+				Name: " ",
+			},
+			errMsg: errMsgNameFormat,
+		},
+	}
+
+	v := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.errMsg)
+		})
+	}
+}
 
 // Delete
 

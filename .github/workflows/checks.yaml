@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
           go-version-file: 'service/go.mod'
           check-latest: false
@@ -62,6 +62,11 @@ jobs:
       - run: go work use .
         if: env.IS_RELEASE_BRANCH == 'true'
         working-directory: ${{ matrix.directory }}
+      - name: govluncheck
+        uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee
+        with:
+          go-version-input: "1.24.2"
+          work-dir: ${{ matrix.directory }}
       - name: golangci-lint
         uses: golangci/golangci-lint-action@2226d7cb06a077cd73e56eedd38eecad18e5d837
         with:
@@ -94,7 +99,7 @@ jobs:
       TLS_ENABLED: "true"
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
           go-version-file: 'service/go.mod'
           check-latest: false
@@ -166,7 +171,7 @@ jobs:
       TLS_ENABLED: "true"
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
           go-version-file: 'service/go.mod'
           check-latest: false
@@ -213,12 +218,47 @@ jobs:
           wait-for: 90s
       - name: build examples
         run: cd examples && go build -o examples .
+      - name: run bulk rewrap benchmark tests
+        run: |
+          OUTPUT=$(./examples/examples benchmark-bulk --tdf tdf3 --count 100)
+          echo "$OUTPUT"
+          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "BENCHMARK_BULK_OUTPUT<<EOO";
+            echo "$OUTPUT";
+            echo "EOO"
+          } >> "$GITHUB_ENV"
+
       - name: run tdf3 benchmark tests
         run: ./examples/examples benchmark --count=5000 --concurrent=50
       - name: run nanotdf benchmark tests
         run: ./examples/examples benchmark --storeCollectionHeaders=false --tdf=nanotdf --count=5000 --concurrent=50
       - name: collect the metrics from the benchmark tests
-        run: ./examples/examples metrics
+        run: |
+          OUTPUT=$(./examples/examples metrics)
+          echo "$OUTPUT"
+          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+
+          {
+            echo "BENCHMARK_METRICS_OUTPUT<<EOO";
+            echo "$OUTPUT";
+            echo "EOO"
+          } >> "$GITHUB_ENV"
+
+      - name: save benchmark results as a comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v7.0.1
+        with:
+          script: |
+            const metricsOutput = process.env.BENCHMARK_METRICS_OUTPUT || '## Standard Benchmark Skipped or Failed';
+            const bulkOutput = process.env.BENCHMARK_BULK_OUTPUT || '## Bulk Benchmark Skipped or Failed';
+            const body = `${metricsOutput}\n\n${bulkOutput}`;
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
 
   image:
     name: image build
@@ -237,7 +277,7 @@ jobs:
     with:
       focus-sdk: go
       # use commit instead of ref so we can "go get" specific sdk version
-      platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      platform-ref: ${{ github.event.pull_request.head.sha || github.sha }} lts
 
   # test latest otdfctl CLI 'main' against platform PR branch
   otdfctl-test:
@@ -266,7 +306,7 @@ jobs:
         with:
           input: service
           against: 'https://github.com/opentdf/platform.git#branch=main,subdir=service'
-      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
           go-version-file: 'service/go.mod'
           check-latest: false
@@ -311,7 +351,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
           go-version-file: 'service/go.mod'
           check-latest: false

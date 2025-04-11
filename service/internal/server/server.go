@@ -26,6 +26,7 @@ import (
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
+	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
@@ -160,7 +161,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 		logger.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
-	connectRPCIpc, err := newConnectRPCIPC()
+	connectRPCIpc, err := newConnectRPCIPC(config, authN, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect rpc ipc server: %w", err)
 	}
@@ -191,6 +192,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 			if pattern, ok := runtime.HTTPPathPattern(ctx); ok {
 				md["pattern"] = pattern // /v1/example/login
 			}
+			md["Authorization"] = "Bearer " + ctxAuth.GetRawAccessTokenFromContext(ctx, nil)
 			return metadata.New(md)
 		}),
 	)
@@ -365,8 +367,14 @@ func pprofHandler(h http.Handler) http.Handler {
 	})
 }
 
-func newConnectRPCIPC() (*ConnectRPC, error) {
+func newConnectRPCIPC(c Config, a *auth.Authentication, logger *logger.Logger) (*ConnectRPC, error) {
 	interceptors := make([]connect.HandlerOption, 0)
+
+	if c.Auth.Enabled {
+		interceptors = append(interceptors, connect.WithInterceptors(a.IPCUnaryServerInterceptor()))
+	} else {
+		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
+	}
 
 	// Add protovalidate interceptor
 	vaidationInterceptor, err := validate.NewInterceptor()

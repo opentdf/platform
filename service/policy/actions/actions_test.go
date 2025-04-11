@@ -12,12 +12,12 @@ import (
 )
 
 const (
-	validUUID                          = "00000000-0000-0000-0000-000000000000"
-	errMessageUUID                     = "string.uuid"
-	errMessageActionNameFormatRequired = "common_object_name_required"
-	errMessageActionNameFormatOptional = "common_object_name_optional"
-	errMessageURI                      = "string.uri"
-	errMessageRequired                 = "required"
+	validUUID                    = "00000000-0000-0000-0000-000000000000"
+	errMessageUUID               = "string.uuid"
+	errMessageRequiredObjectName = "string.required_object_name"
+	errMessageOptionalObjectName = "string.optional_object_name"
+	errMessageURI                = "string.uri"
+	errMessageRequired           = "required"
 )
 
 var (
@@ -66,7 +66,7 @@ func (s *ActionSuite) Test_CreateActionRequest_Fails() {
 			}
 			err := s.v.Validate(req)
 			s.Require().Error(err)
-			s.Require().Contains(err.Error(), errMessageActionNameFormatRequired)
+			s.Require().Contains(err.Error(), errMessageRequiredObjectName)
 		})
 	}
 
@@ -76,7 +76,7 @@ func (s *ActionSuite) Test_CreateActionRequest_Fails() {
 	}
 	err := s.v.Validate(req)
 	s.Require().Error(err)
-	s.Require().Contains(err.Error(), errMessageActionNameFormatRequired)
+	s.Require().Contains(err.Error(), errMessageRequiredObjectName)
 }
 
 func (s *ActionSuite) Test_CreateActionRequest_Succeeds() {
@@ -147,7 +147,7 @@ func (s *ActionSuite) Test_GetAction_Fails() {
 			}
 			err := s.v.Validate(req)
 			s.Require().Error(err)
-			s.Require().Contains(err.Error(), errMessageActionNameFormatOptional)
+			s.Require().Contains(err.Error(), errMessageOptionalObjectName)
 		})
 	}
 }
@@ -212,7 +212,7 @@ func (s *ActionSuite) Test_UpdateActionRequest_Fails() {
 			}
 			err := s.v.Validate(req)
 			s.Require().Error(err)
-			s.Require().Contains(err.Error(), errMessageActionNameFormatOptional)
+			s.Require().Contains(err.Error(), errMessageOptionalObjectName)
 		})
 	}
 }

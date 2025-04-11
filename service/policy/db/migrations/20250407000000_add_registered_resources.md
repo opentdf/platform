@@ -1,5 +1,5 @@
-# Add Non Data Resources Table
-[ADR for Non Data Resource Support](https://github.com/opentdf/platform/issues/1915)
+# Add Registered Resources Table
+[ADR for Registered Resources (formerly known as Non Data Resources)](https://github.com/opentdf/platform/issues/1915)
 ```mermaid
 erDiagram
     registered_resources ||--o{ registered_resource_values : "has"

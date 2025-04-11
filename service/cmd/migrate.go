@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/opentdf/platform/service/internal/config"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/policy"
 	"github.com/spf13/cobra"
@@ -121,7 +121,7 @@ func migrateService(cmd *cobra.Command, args []string, migrationFunc func(*db.Cl
 func migrateDBClient(cmd *cobra.Command, opts ...db.OptsFunc) (*db.Client, error) {
 	configFile, _ := cmd.Flags().GetString(configFileFlag)
 	configKey, _ := cmd.Flags().GetString(configKeyFlag)
-	conf, err := config.LoadConfig(configKey, configFile)
+	conf, err := config.LoadConfig(cmd.Context(), configKey, configFile)
 	if err != nil {
 		panic(fmt.Errorf("could not load config: %w", err))
 	}

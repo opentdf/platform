@@ -8,7 +8,7 @@ import (
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
-	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"github.com/opentdf/platform/service/pkg/config"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -24,7 +24,7 @@ type Provider struct {
 	AttributeSvc   *url.URL
 	CryptoProvider security.CryptoProvider
 	Logger         *logger.Logger
-	Config         *serviceregistry.ServiceConfig
+	Config         *config.ServiceConfig
 	KASConfig
 	trace.Tracer
 }

@@ -2,6 +2,7 @@ package unsafe
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"connectrpc.com/connect"
@@ -10,6 +11,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/unsafe/unsafeconnect"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policyconfig "github.com/opentdf/platform/service/policy/config"
@@ -22,20 +24,41 @@ type UnsafeService struct { //nolint:revive // UnsafeService is a valid name for
 	config   *policyconfig.Config
 }
 
+func OnConfigUpdate(unsafeSvc *UnsafeService) serviceregistry.OnConfigUpdateHook {
+	return func(_ context.Context, cfg config.ServiceConfig) error {
+		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
+		if err != nil {
+			return fmt.Errorf("failed to get shared policy config: %w", err)
+		}
+		unsafeSvc.config = sharedCfg
+		unsafeSvc.dbClient = policydb.NewClient(unsafeSvc.dbClient.Client, unsafeSvc.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
+		unsafeSvc.logger.Info("unsafe service config reloaded")
+		return nil
+	}
+}
+
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[unsafeconnect.UnsafeServiceHandler] {
+	unsafeSvc := new(UnsafeService)
+	onUpdateConfigHook := OnConfigUpdate(unsafeSvc)
 	return &serviceregistry.Service[unsafeconnect.UnsafeServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[unsafeconnect.UnsafeServiceHandler]{
 			Namespace:      ns,
 			DB:             dbRegister,
 			ServiceDesc:    &unsafe.UnsafeService_ServiceDesc,
 			ConnectRPCFunc: unsafeconnect.NewUnsafeServiceHandler,
+			OnConfigUpdate: onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (unsafeconnect.UnsafeServiceHandler, serviceregistry.HandlerServer) {
-				cfg := policyconfig.GetSharedPolicyConfig(srp)
-				return &UnsafeService{
-					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
-					logger:   srp.Logger,
-					config:   cfg,
-				}, nil
+				logger := srp.Logger
+				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
+				if err != nil {
+					logger.Error("error getting unsafe service policy config", slog.String("error", err.Error()))
+					panic(err)
+				}
+
+				unsafeSvc.logger = logger
+				unsafeSvc.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
+				unsafeSvc.config = cfg
+				return unsafeSvc, nil
 			},
 		},
 	}

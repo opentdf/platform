@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/casbin/casbin/v2/persist"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 )
 
@@ -17,6 +18,7 @@ type StartConfig struct {
 	extraCoreServices     []serviceregistry.IService
 	extraServices         []serviceregistry.IService
 	casbinAdapter         persist.Adapter
+	configLoaders         []config.Loader
 }
 
 // Deprecated: Use WithConfigKey
@@ -108,6 +110,14 @@ func WithServices(services ...serviceregistry.IService) StartOptions {
 func WithCasbinAdapter(adapter persist.Adapter) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.casbinAdapter = adapter
+		return c
+	}
+}
+
+// WithAdditionalConfigLoader option adds an additional configuration loader to the server.
+func WithAdditionalConfigLoader(loader config.Loader) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.configLoaders = append(c.configLoaders, loader)
 		return c
 	}
 }

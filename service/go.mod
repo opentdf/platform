@@ -30,7 +30,7 @@ require (
 	github.com/opentdf/platform/lib/flattening v0.1.3
 	github.com/opentdf/platform/lib/ocrypto v0.1.9
 	github.com/opentdf/platform/protocol/go v0.2.29
-	github.com/opentdf/platform/sdk v0.3.29
+	github.com/opentdf/platform/sdk v0.4.1
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.18.2
@@ -47,6 +47,8 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+require github.com/Masterminds/semver/v3 v3.3.1 // indirect
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.34.1-20240508200655-46a4cf4ba109.1 // indirect

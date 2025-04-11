@@ -59,7 +59,7 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 
 	// SM Creation may involve action creation or SCS creation, so utilize a transaction
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		subjectMapping, err := s.dbClient.CreateSubjectMapping(ctx, req.Msg)
+		subjectMapping, err := txClient.CreateSubjectMapping(ctx, req.Msg)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
@@ -123,13 +123,13 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 
 	// SM Update may involve action update or SCS update, so utilize a transaction
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		original, err := s.dbClient.GetSubjectMapping(ctx, subjectMappingID)
+		original, err := txClient.GetSubjectMapping(ctx, subjectMappingID)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", subjectMappingID))
 		}
 
-		updated, err := s.dbClient.UpdateSubjectMapping(ctx, req.Msg)
+		updated, err := txClient.UpdateSubjectMapping(ctx, req.Msg)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", req.Msg.GetId()), slog.String("subjectMapping fields", req.Msg.String()))

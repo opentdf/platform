@@ -8,7 +8,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/actions"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -70,8 +69,8 @@ func (s *ActionSuite) Test_CreateActionRequest_Fails() {
 				Name: test.name,
 			}
 			err := s.v.Validate(req)
-			require.Error(s.T(), err)
-			require.Contains(s.T(), err.Error(), test.expectedErrMsg)
+			s.Require().Error(err)
+			s.Require().Contains(err.Error(), test.expectedErrMsg)
 		})
 	}
 
@@ -80,8 +79,8 @@ func (s *ActionSuite) Test_CreateActionRequest_Fails() {
 		Name: "",
 	}
 	err := s.v.Validate(req)
-	require.Error(s.T(), err)
-	require.Contains(s.T(), err.Error(), errMessageMinLen)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageMinLen)
 }
 
 func (s *ActionSuite) Test_CreateActionRequest_Succeeds() {
@@ -91,7 +90,7 @@ func (s *ActionSuite) Test_CreateActionRequest_Succeeds() {
 				Name: name,
 			}
 			err := s.v.Validate(req)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 		})
 	}
 
@@ -103,7 +102,7 @@ func (s *ActionSuite) Test_CreateActionRequest_Succeeds() {
 		},
 	}
 	err := s.v.Validate(req)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 }
 
 func (s *ActionSuite) Test_GetAction_Succeeds() {
@@ -113,7 +112,7 @@ func (s *ActionSuite) Test_GetAction_Succeeds() {
 		},
 	}
 	err := s.v.Validate(req)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	for _, name := range validNames {
 		s.Run(name, func() {
@@ -123,7 +122,7 @@ func (s *ActionSuite) Test_GetAction_Succeeds() {
 				},
 			}
 			err := s.v.Validate(req)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 		})
 	}
 }
@@ -135,24 +134,24 @@ func (s *ActionSuite) Test_GetAction_Fails() {
 		},
 	}
 	err := s.v.Validate(req)
-	require.Error(s.T(), err)
-	require.Contains(s.T(), err.Error(), errMessageUUID)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageUUID)
 
 	req = &actions.GetActionRequest{}
 	err = s.v.Validate(req)
-	require.Error(s.T(), err)
-	require.Contains(s.T(), err.Error(), errMessageRequired)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageRequired)
 
 	for _, test := range invalidNameTests {
 		s.Run(test.name, func() {
-			req := &actions.GetActionRequest{
+			req = &actions.GetActionRequest{
 				Identifier: &actions.GetActionRequest_Name{
 					Name: test.name,
 				},
 			}
 			err := s.v.Validate(req)
-			require.Error(s.T(), err)
-			require.Contains(s.T(), err.Error(), test.expectedErrMsg)
+			s.Require().Error(err)
+			s.Require().Contains(err.Error(), test.expectedErrMsg)
 		})
 	}
 
@@ -163,8 +162,8 @@ func (s *ActionSuite) Test_GetAction_Fails() {
 		},
 	}
 	err = s.v.Validate(req)
-	require.Error(s.T(), err)
-	require.Contains(s.T(), err.Error(), errMessageMinLen)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageMinLen)
 }
 
 func (s *ActionSuite) Test_ListActions_Succeeds() {
@@ -174,15 +173,15 @@ func (s *ActionSuite) Test_ListActions_Succeeds() {
 		},
 	}
 	err := s.v.Validate(reqPaginated)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	reqPaginated.Pagination.Offset = 100
 	err = s.v.Validate(reqPaginated)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	reqNoPagination := &actions.ListActionsRequest{}
 	err = s.v.Validate(reqNoPagination)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 }
 
 func (s *ActionSuite) Test_UpdateActionRequest_Succeeds() {
@@ -193,13 +192,13 @@ func (s *ActionSuite) Test_UpdateActionRequest_Succeeds() {
 		},
 	}
 	err := s.v.Validate(req)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	for _, name := range validNames {
 		s.Run(name, func() {
 			req.Name = name
 			err := s.v.Validate(req)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 		})
 	}
 
@@ -208,7 +207,7 @@ func (s *ActionSuite) Test_UpdateActionRequest_Succeeds() {
 		Name: "no-metadata",
 	}
 	err = s.v.Validate(req)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 }
 
 func (s *ActionSuite) Test_UpdateActionRequest_Fails() {
@@ -216,18 +215,18 @@ func (s *ActionSuite) Test_UpdateActionRequest_Fails() {
 		Id: "",
 	}
 	err := s.v.Validate(req)
-	require.Error(s.T(), err)
-	require.Contains(s.T(), err.Error(), errMessageUUID)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageUUID)
 
 	for _, test := range invalidNameTests {
 		s.Run(test.name, func() {
-			req := &actions.UpdateActionRequest{
+			req = &actions.UpdateActionRequest{
 				Id:   validUUID,
 				Name: test.name,
 			}
 			err := s.v.Validate(req)
-			require.Error(s.T(), err)
-			require.Contains(s.T(), err.Error(), test.expectedErrMsg)
+			s.Require().Error(err)
+			s.Require().Contains(err.Error(), test.expectedErrMsg)
 		})
 	}
 }
@@ -237,7 +236,7 @@ func (s *ActionSuite) Test_DeleteActionRequest_Succeeds() {
 		Id: validUUID,
 	}
 	err := s.v.Validate(req)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 }
 
 func (s *ActionSuite) Test_DeleteActionRequest_Fails() {
@@ -245,18 +244,18 @@ func (s *ActionSuite) Test_DeleteActionRequest_Fails() {
 		Id: "",
 	}
 	err := s.v.Validate(req)
-	require.Error(s.T(), err)
-	require.Contains(s.T(), err.Error(), errMessageUUID)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageUUID)
 
 	req = &actions.DeleteActionRequest{}
 	err = s.v.Validate(req)
-	require.Error(s.T(), err)
-	require.Contains(s.T(), err.Error(), errMessageUUID)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageUUID)
 
 	req = &actions.DeleteActionRequest{
 		Id: "custom_action_name_used_as_id",
 	}
 	err = s.v.Validate(req)
-	require.Error(s.T(), err)
-	require.Contains(s.T(), err.Error(), errMessageUUID)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageUUID)
 }

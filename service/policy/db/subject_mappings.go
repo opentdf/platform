@@ -259,11 +259,12 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 	actionNames := make([]string, 0)
 	// Check for provided existing Action IDs and existing/new Action Names
 	for _, a := range actions {
-		if a.GetId() != "" {
+		switch {
+		case a.GetId() != "":
 			actionIDs = append(actionIDs, a.GetId())
-		} else if a.GetName() != "" {
+		case a.GetName() != "":
 			actionNames = append(actionNames, a.GetName())
-		} else {
+		default:
 			return nil, db.WrapIfKnownInvalidQueryErr(
 				errors.Join(db.ErrMissingValue, errors.New("action id or name is required when creating a subject mapping")),
 			)
@@ -457,16 +458,18 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 		actionNames := make([]string, 0)
 		// Check for provided existing Action IDs and existing/new Action Names
 		for _, a := range actions {
-			if a.GetId() != "" {
+			switch {
+			case a.GetId() != "":
 				actionIDs = append(actionIDs, a.GetId())
-			} else if a.GetName() != "" {
+			case a.GetName() != "":
 				actionNames = append(actionNames, a.GetName())
-			} else {
+			default:
 				return nil, db.WrapIfKnownInvalidQueryErr(
 					errors.Join(db.ErrMissingValue, errors.New("action id or name is required when updating a subject mapping's actions")),
 				)
 			}
 		}
+
 		// Create or list Actions for those provided by name
 		if len(actionNames) > 0 {
 			createdOrListedActions, err := c.createOrListActionsByName(ctx, actionNames)

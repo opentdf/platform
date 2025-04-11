@@ -3,13 +3,13 @@
 ![Vulnerability Check](https://github.com/opentdf/platform/actions/workflows/vulnerability-check.yaml/badge.svg?branch=main)
 
 > [!NOTE]
-> It is advised to familiarize yourself with the [terms and concepts](../README.md#terms-and-concepts) used in the
+> It is advised to familiarize yourself with the [terms and concepts](./README.md#terms-and-concepts) used in the
 > OpenTDF platform.
 
 ## Documentation
 
 - [Configuration](./docs/Configuring.md)
-- [Development](#development)
+- [Development](#for-contributors)
 - [Policy Config Schema](./service/policy/db/schema_erd.md)
 - [Policy Config Testing Diagram](./service/integration/testing_diagram.png)
 

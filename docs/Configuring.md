@@ -169,6 +169,27 @@ db:
   runMigration: false
 ```
 
+### Tracing Configuration
+
+| Field | Description | Default | Environment Variable |
+| ----- | ----------- | ------- | ------------------- |
+| `trace.enabled` | Enable distributed tracing | `false` | OPENTDF_SERVER_TRACE_ENABLED |
+| `trace.provider.name` | Tracing provider (file or otlp) | `otlp` | OPENTDF_SERVER_TRACE_PROVIDER_NAME |
+
+For file provider:
+- `trace.provider.file.path`: Path to trace file output
+- `trace.provider.file.prettyPrint`: Enable pretty-printed JSON
+- `trace.provider.file.maxSize`: Maximum file size in MB
+- `trace.provider.file.maxBackups`: Maximum number of backup files
+- `trace.provider.file.maxAge`: Maximum age of files in days
+- `trace.provider.file.compress`: Enable compression of trace files
+
+For OTLP provider:
+- `trace.provider.otlp.protocol`: Protocol to use (grpc or http/protobuf)
+- `trace.provider.otlp.endpoint`: Endpoint URL for the collector
+- `trace.provider.otlp.insecure`: Whether to use an insecure connection
+- `trace.provider.otlp.headers`: Headers to include in OTLP requests
+
 ## Services Configuration
 
 Root level key `services`
@@ -333,4 +354,3 @@ server:
 #### Managing Authorization Policy
 
 Admins can manage the authorization policy directly in the YAML configuration file. For detailed configuration options, refer to the [Casbin documentation](https://casbin.org/docs/en/syntax-for-models).
-

@@ -13,7 +13,6 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
-	"github.com/opentdf/platform/service/tracing"
 	"github.com/spf13/viper"
 )
 
@@ -40,9 +39,6 @@ type Config struct {
 
 	// Services represents the configuration settings for the services.
 	Services map[string]serviceregistry.ServiceConfig `mapstructure:"services"`
-
-	// Trace is for configuring open telemetry based tracing.
-	Trace tracing.Config `mapstructure:"trace"`
 }
 
 // SDKConfig represents the configuration for the SDK.

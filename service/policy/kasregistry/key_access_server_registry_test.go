@@ -28,6 +28,7 @@ const (
 	errMessageURI      = "string.uri"
 	errMessageMinLen   = "string.min_len"
 	errMessageRequired = "required"
+	invalidSourceType  = -1
 )
 
 var (
@@ -292,54 +293,69 @@ func Test_ListKeyAccessServerGrantsRequest_Succeeds(t *testing.T) {
 
 func Test_CreateKeyAccessServer_Succeeds(t *testing.T) {
 	good := []struct {
-		uri      string
-		key      *policy.PublicKey
-		name     string
-		scenario string
+		uri        string
+		key        *policy.PublicKey
+		name       string
+		scenario   string
+		sourceType policy.SourceType
 	}{
 		{
 			fakeURI,
 			fakeCachedKey,
 			"",
 			"no optional KAS name & cached key",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 		{
 			fakeURI,
 			fakeCachedKey,
 			"kas_name",
 			"included KAS name & cached key",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 		{
 			fakeURI,
 			fakeCachedKey,
 			"kas-name",
 			"hyphenated KAS name",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 		{
 			fakeURI,
 			fakeCachedKey,
 			"kas-name123",
 			"numeric KAS name",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 		{
 			fakeURI,
 			fakeCachedKey,
 			"KASnameIsMiXeDCaSe",
 			"mixed case KAS name",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 		{
 			fakeURI,
 			remotePubKey,
 			"",
 			"no optional KAS name & remote key",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
+		},
+		{
+			fakeURI,
+			remotePubKey,
+			"",
+			"no optional KAS name & remote key",
+			policy.SourceType_SOURCE_TYPE_INTERNAL,
 		},
 	}
 
 	for _, test := range good {
 		createReq := &kasregistry.CreateKeyAccessServerRequest{
-			Uri:       test.uri,
-			PublicKey: test.key,
-			Name:      test.name,
+			Uri:        test.uri,
+			PublicKey:  test.key,
+			Name:       test.name,
+			SourceType: test.sourceType,
 		}
 
 		err := getValidator().Validate(createReq)
@@ -349,58 +365,60 @@ func Test_CreateKeyAccessServer_Succeeds(t *testing.T) {
 
 func Test_CreateKeyAccessServer_Fails(t *testing.T) {
 	bad := []struct {
-		uri      string
-		key      *policy.PublicKey
-		name     string
-		scenario string
+		uri        string
+		key        *policy.PublicKey
+		name       string
+		scenario   string
+		sourceType policy.SourceType
 	}{
 		{
 			"",
 			fakeCachedKey,
 			"",
 			"no uri",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 		{
 			fakeURI,
 			fakeCachedKey,
 			"kas name",
 			"kas name has spaces",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 		{
 			fakeURI,
 			fakeCachedKey,
 			"kas_name_",
 			"kas name ends in underscore",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 		{
 			fakeURI,
 			fakeCachedKey,
 			"_kas_name",
 			"kas name starts with underscore",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 		{
 			fakeURI,
 			fakeCachedKey,
 			"kas-name-",
 			"kas name ends in hyphen",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 		{
 			fakeURI,
 			fakeCachedKey,
 			"-kas-name",
 			"kas name starts with hyphen",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 		{
 			fakeURI,
 			fakeCachedKey,
 			strings.Repeat("a", 254),
 			"name too long",
-		},
-		{
-			fakeURI,
-			nil,
-			"",
-			"no public key",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 		{
 			fakeURI,
@@ -411,14 +429,23 @@ func Test_CreateKeyAccessServer_Fails(t *testing.T) {
 			},
 			"",
 			"remote public key bad format",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
+		},
+		{
+			fakeURI,
+			remotePubKey,
+			"",
+			"no optional KAS name & remote key",
+			invalidSourceType,
 		},
 	}
 
 	for _, test := range bad {
 		createReq := &kasregistry.CreateKeyAccessServerRequest{
-			Uri:       test.uri,
-			PublicKey: test.key,
-			Name:      test.name,
+			Uri:        test.uri,
+			PublicKey:  test.key,
+			Name:       test.name,
+			SourceType: test.sourceType,
 		}
 
 		err := getValidator().Validate(createReq)
@@ -428,67 +455,84 @@ func Test_CreateKeyAccessServer_Fails(t *testing.T) {
 
 func Test_UpdateKeyAccessServer_Succeeds(t *testing.T) {
 	good := []struct {
-		uri      string
-		key      *policy.PublicKey
-		name     string
-		scenario string
+		uri        string
+		key        *policy.PublicKey
+		name       string
+		scenario   string
+		sourceType policy.SourceType
 	}{
 		{
 			fakeURI,
 			fakeCachedKey,
 			"",
 			"no optional KAS name",
+			policy.SourceType_SOURCE_TYPE_UNSPECIFIED,
 		},
 		{
 			fakeURI + "/somewhere-over-the-rainbow",
 			nil,
 			"",
 			"only URI",
+			policy.SourceType_SOURCE_TYPE_UNSPECIFIED,
 		},
 		{
 			"",
 			fakeCachedKey,
 			"",
 			"only cached key",
+			policy.SourceType_SOURCE_TYPE_UNSPECIFIED,
 		},
 		{
 			"",
 			remotePubKey,
 			"",
 			"only remote key",
+			policy.SourceType_SOURCE_TYPE_UNSPECIFIED,
 		},
 		{
 			"",
 			nil,
 			"KASnameIsMiXeDCaSe",
 			"mixed case KAS name",
+			policy.SourceType_SOURCE_TYPE_UNSPECIFIED,
 		},
 		{
 			fakeURI,
 			remotePubKey,
 			"new-name1",
 			"everything included",
+			policy.SourceType_SOURCE_TYPE_UNSPECIFIED,
 		},
 		{
 			fakeURI,
 			fakeCachedKey,
 			"kas-name",
 			"hyphenated KAS name",
+			policy.SourceType_SOURCE_TYPE_UNSPECIFIED,
 		},
 		{
 			fakeURI,
 			fakeCachedKey,
 			"kas-name123",
 			"numeric KAS name",
+			policy.SourceType_SOURCE_TYPE_UNSPECIFIED,
+		},
+		{
+			fakeURI,
+			fakeCachedKey,
+			"kas-name123",
+			"numeric KAS name",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 	}
 
 	for _, test := range good {
 		updateReq := &kasregistry.UpdateKeyAccessServerRequest{
-			Id:        fakeID,
-			Uri:       test.uri,
-			PublicKey: test.key,
-			Name:      test.name,
+			Id:         fakeID,
+			Uri:        test.uri,
+			PublicKey:  test.key,
+			Name:       test.name,
+			SourceType: test.sourceType,
 		}
 
 		err := getValidator().Validate(updateReq)
@@ -498,11 +542,12 @@ func Test_UpdateKeyAccessServer_Succeeds(t *testing.T) {
 
 func Test_UpdateKeyAccessServer_Fails(t *testing.T) {
 	bad := []struct {
-		id       string
-		uri      string
-		key      *policy.PublicKey
-		name     string
-		scenario string
+		id         string
+		uri        string
+		key        *policy.PublicKey
+		name       string
+		scenario   string
+		sourceType policy.SourceType
 	}{
 		{
 			validUUID,
@@ -510,6 +555,7 @@ func Test_UpdateKeyAccessServer_Fails(t *testing.T) {
 			fakeCachedKey,
 			"kas name",
 			"kas name has spaces",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 		{
 			validUUID,
@@ -517,6 +563,7 @@ func Test_UpdateKeyAccessServer_Fails(t *testing.T) {
 			fakeCachedKey,
 			"kas_name_",
 			"kas name ends in underscore",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 		{
 			validUUID,
@@ -524,6 +571,7 @@ func Test_UpdateKeyAccessServer_Fails(t *testing.T) {
 			fakeCachedKey,
 			"_kas_name",
 			"kas name starts with underscore",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 		{
 			validUUID,
@@ -531,6 +579,7 @@ func Test_UpdateKeyAccessServer_Fails(t *testing.T) {
 			fakeCachedKey,
 			"kas-name-",
 			"kas name ends in hyphen",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 		{
 			validUUID,
@@ -538,6 +587,7 @@ func Test_UpdateKeyAccessServer_Fails(t *testing.T) {
 			fakeCachedKey,
 			"-kas-name",
 			"kas name starts with hyphen",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 		{
 			validUUID,
@@ -545,6 +595,7 @@ func Test_UpdateKeyAccessServer_Fails(t *testing.T) {
 			fakeCachedKey,
 			strings.Repeat("a", 254),
 			"name too long",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 		{
 			validUUID,
@@ -556,6 +607,7 @@ func Test_UpdateKeyAccessServer_Fails(t *testing.T) {
 			},
 			"",
 			"remote public key bad format",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 		{
 			"bad-id",
@@ -563,6 +615,7 @@ func Test_UpdateKeyAccessServer_Fails(t *testing.T) {
 			fakeCachedKey,
 			"",
 			"invalid id",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
 		},
 		{
 			"",
@@ -570,15 +623,25 @@ func Test_UpdateKeyAccessServer_Fails(t *testing.T) {
 			fakeCachedKey,
 			"",
 			"no id",
+			policy.SourceType_SOURCE_TYPE_EXTERNAL,
+		},
+		{
+			validUUID,
+			fakeURI,
+			fakeCachedKey,
+			"kas-name123",
+			"numeric KAS name",
+			invalidSourceType,
 		},
 	}
 
 	for _, test := range bad {
 		updateReq := &kasregistry.UpdateKeyAccessServerRequest{
-			Id:        test.id,
-			Uri:       test.uri,
-			PublicKey: test.key,
-			Name:      test.name,
+			Id:         test.id,
+			Uri:        test.uri,
+			PublicKey:  test.key,
+			Name:       test.name,
+			SourceType: test.sourceType,
 		}
 
 		err := getValidator().Validate(updateReq)

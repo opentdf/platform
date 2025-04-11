@@ -51,6 +51,43 @@ func (s *KasRegistrySuite) getKasRegistryFixtures() []fixtures.FixtureDataKasReg
 	}
 }
 
+func (s *KasRegistrySuite) getKasRegistryServerKeysFixtures() []fixtures.FixtureDataKasRegistryKey {
+	return []fixtures.FixtureDataKasRegistryKey{
+		s.f.GetKasRegistryServerKeys("kas_key_1"),
+		s.f.GetKasRegistryServerKeys("kas_key_2"),
+	}
+}
+
+func (s *KasRegistrySuite) getKasToKeysFixtureMap() map[string][]fixtures.FixtureDataKasRegistryKey {
+	// map kas id to keys
+	kasToKeys := make(map[string][]fixtures.FixtureDataKasRegistryKey)
+	for _, k := range s.getKasRegistryServerKeysFixtures() {
+		if kasToKeys[k.KeyAccessServerID] == nil {
+			kasToKeys[k.KeyAccessServerID] = make([]fixtures.FixtureDataKasRegistryKey, 0)
+		}
+		kasToKeys[k.KeyAccessServerID] = append(kasToKeys[k.KeyAccessServerID], k)
+	}
+	return kasToKeys
+}
+
+func (s *KasRegistrySuite) validateKasRegistryKeys(kasr *policy.KeyAccessServer) {
+	kasToKeysFixtures := s.getKasToKeysFixtureMap()
+	// Check that key is present.
+	keysFixtureArr := kasToKeysFixtures[kasr.GetId()]
+	s.GreaterOrEqual(len(kasr.GetKeys()), len(keysFixtureArr))
+	// Check for expected key ids.
+	matchingKeysCount := 0
+	for _, key := range kasr.GetKeys() {
+		for _, f := range keysFixtureArr {
+			if key.GetId() == f.ID {
+				s.Equal(f.ProviderConfigID, key.GetProviderConfig().GetId())
+				matchingKeysCount++
+			}
+		}
+	}
+	s.Len(keysFixtureArr, matchingKeysCount)
+}
+
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_NoPagination_Succeeds() {
 	fixtures := s.getKasRegistryFixtures()
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{})
@@ -66,6 +103,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_NoPagination_Succeeds() {
 		for _, kasr := range listed {
 			if kasr.GetId() == f.ID {
 				found = true
+				s.validateKasRegistryKeys(kasr)
 			}
 		}
 		s.True(found)
@@ -89,6 +127,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_Limit_Succeeds() {
 		s.NotEmpty(kas.GetId())
 		s.NotEmpty(kas.GetUri())
 		s.NotNil(kas.GetPublicKey())
+		s.validateKasRegistryKeys(kas)
 	}
 
 	// request with one below maximum
@@ -196,6 +235,7 @@ func (s *KasRegistrySuite) Test_GetKeyAccessServer() {
 			s.Equal(tc.expected.ID, resp.GetId(), "ID mismatch for %s: %v", tc.identifierType, tc.input)
 			s.Equal(tc.expected.URI, resp.GetUri(), "URI mismatch for %s: %v", tc.identifierType, tc.input)
 			s.Equal(tc.expected.Name, resp.GetName(), "Name mismatch for %s: %v", tc.identifierType, tc.input)
+			s.validateKasRegistryKeys(resp)
 
 			switch tc.expected {
 			case remoteFixture:
@@ -282,16 +322,20 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Remote() {
 		},
 	}
 
+	sourceType := policy.SourceType_SOURCE_TYPE_INTERNAL
+
 	kasRegistry := &kasregistry.CreateKeyAccessServerRequest{
-		Uri:       "kas.uri",
-		PublicKey: pubKey,
-		Metadata:  metadata,
+		Uri:        "kas.uri",
+		PublicKey:  pubKey,
+		Metadata:   metadata,
+		SourceType: sourceType,
 		// Leave off 'name' to test optionality
 	}
 	r, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	s.Require().NoError(err)
 	s.NotNil(r)
 	s.NotEqual("", r.GetId())
+	s.Equal(sourceType, r.GetSourceType())
 }
 
 func (s *KasRegistrySuite) Test_CreateKeyAccessServer_UriConflict_Fails() {
@@ -414,6 +458,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 	updatedPubKeyRemote := "https://remote2.com/key"
 	// name is optional - test only adds name during update
 	updatedName := "key-access-updated"
+	sourceType := policy.SourceType_SOURCE_TYPE_INTERNAL
 
 	// create a test KAS
 	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
@@ -429,6 +474,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 				"update": updateLabel,
 			},
 		},
+		SourceType: sourceType,
 		// Leave off 'name' to test optionality
 	})
 	s.Require().NoError(err)
@@ -437,6 +483,8 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 	initialGot, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(initialGot)
+
+	updatedSourceType := policy.SourceType_SOURCE_TYPE_EXTERNAL
 
 	// update it with new values and metadata
 	updated, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, created.GetId(), &kasregistry.UpdateKeyAccessServerRequest{
@@ -454,6 +502,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 			},
 		},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
+		SourceType:             updatedSourceType,
 	})
 	s.Require().NoError(err)
 	s.NotNil(updated)
@@ -473,12 +522,14 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 	creationTime := initialGot.GetMetadata().GetCreatedAt().AsTime()
 	updatedTime := got.GetMetadata().GetUpdatedAt().AsTime()
 	s.True(updatedTime.After(creationTime))
+	s.Equal(updatedSourceType, got.GetSourceType())
 }
 
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Metadata_DoesNotAlterOtherValues() {
 	uri := "before_metadata_only.com"
 	pubKeyRemote := "https://remote.com/key"
 	name := "kas-name-not-changed"
+	sourceType := policy.SourceType_SOURCE_TYPE_INTERNAL
 
 	// create a test KAS
 	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
@@ -488,7 +539,8 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Metadata_DoesNotAlterOther
 				Remote: pubKeyRemote,
 			},
 		},
-		Name: name,
+		Name:       name,
+		SourceType: sourceType,
 	})
 	s.Require().NoError(err)
 	s.NotNil(created)
@@ -515,6 +567,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Metadata_DoesNotAlterOther
 	s.Equal(pubKeyRemote, got.GetPublicKey().GetRemote())
 	s.Zero(got.GetPublicKey().GetCached())
 	s.Equal("new label", got.GetMetadata().GetLabels()["new"])
+	s.Equal(sourceType, got.GetSourceType())
 }
 
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Uri_DoesNotAlterOtherValues() {
@@ -609,6 +662,79 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOthe
 	s.Equal(updatedKeySet, got.GetPublicKey().GetCached())
 	s.Zero(got.GetPublicKey().GetRemote())
 	s.Equal("unchanged label", got.GetMetadata().GetLabels()["unchanged"])
+}
+
+func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_UpdatingSourceTypeUnspecified_Fails() {
+	uri := "random_uri.com"
+	sourceType := policy.SourceType_SOURCE_TYPE_INTERNAL
+
+	// create a test KAS
+	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri: uri,
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{
+				"unchanged": "unchanged label",
+			},
+		},
+		SourceType: sourceType,
+		// Leave off 'name' to test optionality
+	})
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	// update it with new key
+	_, err = s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, created.GetId(), &kasregistry.UpdateKeyAccessServerRequest{
+		SourceType: policy.SourceType_SOURCE_TYPE_UNSPECIFIED,
+	})
+	s.Require().Error(err)
+	s.Require().ErrorContains(err, "cannot update source type to unspecified")
+
+	// get after update to validate changes were successful
+	got, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(created.GetId(), got.GetId())
+	s.Equal(uri, got.GetUri())
+	s.Empty(got.GetName())
+	s.Zero(got.GetPublicKey().GetRemote())
+	s.Equal("unchanged label", got.GetMetadata().GetLabels()["unchanged"])
+	s.Equal(sourceType, got.GetSourceType())
+}
+
+func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_UnspecifiedSourceType_DoesNotAlterSourceType() {
+	uri := "another_random.com"
+	sourceType := policy.SourceType_SOURCE_TYPE_INTERNAL
+	name := "kas-name-random"
+	nameChanged := "name-changed"
+
+	// create a test KAS
+	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri:  uri,
+		Name: name,
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{
+				"unchanged": "unchanged label",
+			},
+		},
+		SourceType: sourceType,
+		// Leave off 'name' to test optionality
+	})
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	// update it with new key
+	updated, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, created.GetId(), &kasregistry.UpdateKeyAccessServerRequest{
+		Name:       nameChanged,
+		SourceType: policy.SourceType_SOURCE_TYPE_UNSPECIFIED,
+	})
+	s.Require().NoError(err)
+	s.NotNil(updated)
+
+	// get after update to validate changes were successful
+	got, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.Equal(sourceType, got.GetSourceType())
+	s.Equal(nameChanged, got.GetName())
 }
 
 func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_WithNonExistentId_Fails() {

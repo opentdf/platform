@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/opentdf/platform/compare/sdk/v0.4.1...sdk/v0.4.2) (2025-04-11)
+
+
+### Bug Fixes
+
+* **deps:** bump toolchain in /lib/fixtures and /examples to resolve CVE GO-2025-3563 ([#2061](https://github.com/opentdf/platform/issues/2061)) ([9c16843](https://github.com/opentdf/platform/commit/9c168437db3b138613fe629419dd6bd9f837e881))
+
 ## [0.4.1](https://github.com/opentdf/platform/compare/sdk/v0.4.0...sdk/v0.4.1) (2025-04-07)
 
 

@@ -5,7 +5,7 @@ go 1.23.4
 toolchain go1.24.2
 
 require (
-	connectrpc.com/connect v1.17.0
+	connectrpc.com/connect v1.18.1
 	connectrpc.com/grpchealth v1.3.0
 	connectrpc.com/grpcreflect v1.2.0
 	connectrpc.com/validate v0.1.0

@@ -1,6 +1,6 @@
 module github.com/opentdf/platform/protocol/go
 
-go 1.23.0
+go 1.23.4
 
 toolchain go1.24.2
 

@@ -8,7 +8,7 @@ require (
 	connectrpc.com/connect v1.18.1
 	connectrpc.com/grpchealth v1.3.0
 	connectrpc.com/grpcreflect v1.2.0
-	connectrpc.com/validate v0.1.0
+	connectrpc.com/validate v0.2.0
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/Nerzal/gocloak/v13 v13.9.0
 	github.com/bmatcuk/doublestar v1.3.4

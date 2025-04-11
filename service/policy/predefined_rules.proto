@@ -5,8 +5,8 @@ package policy;
 import "buf/validate/validate.proto";
 
 extend buf.validate.StringRules {
-  optional bool common_object_name_required = 80048952 [(buf.validate.predefined).cel = {
-    id: "string.common_object_name_required"
+  optional bool required_object_name = 80048952 [(buf.validate.predefined).cel = {
+    id: "string.required_object_name"
     message:
       "Field is required, alphanumeric, optionally including "
       "underscores and dashes but not preceding or trailing, "
@@ -14,8 +14,8 @@ extend buf.validate.StringRules {
       "Stored field value will be normalized to lower case."
     expression: "size(this) > 0 && size(this) < 254 && this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
   }];
-  optional bool common_object_name_optional = 80048953 [(buf.validate.predefined).cel = {
-    id: "string.common_object_name_optional"
+  optional bool optional_object_name = 80048953 [(buf.validate.predefined).cel = {
+    id: "string.optional_object_name"
     message:
       "Field is optional, and if provided, alphanumeric, allowing "
       "underscores and dashes but not preceding or trailing, and "

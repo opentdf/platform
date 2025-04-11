@@ -17,7 +17,7 @@ message GetActionRequest {
   oneof identifier {
     option (buf.validate.oneof).required = true;
     string id = 1 [(buf.validate.field).string.uuid = true];
-    string name = 2 [(buf.validate.field).string.(common_object_name_optional) = true];
+    string name = 2 [(buf.validate.field).string.(optional_object_name) = true];
   }
 }
 message GetActionResponse {
@@ -42,7 +42,7 @@ message ListActionsResponse {
 // Creation of Standard actions is not supported.
 message CreateActionRequest {
   // Required
-  string name = 1 [(buf.validate.field).string.(common_object_name_required) = true];
+  string name = 1 [(buf.validate.field).string.(required_object_name) = true];
 
   // Optional
   common.MetadataMutable metadata = 100;
@@ -59,7 +59,7 @@ message UpdateActionRequest {
 
   // Optional
   // Custom actions only: replaces the existing action name
-  string name = 2 [(buf.validate.field).string.(common_object_name_optional) = true];
+  string name = 2 [(buf.validate.field).string.(optional_object_name) = true];
 
   // Common metadata
   common.MetadataMutable metadata = 100;

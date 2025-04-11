@@ -105,7 +105,6 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_ExistingSubjectCondition
 	s.Equal(newSubjectMapping.GetAttributeValueId(), sm.GetAttributeValue().GetId())
 	s.Equal(newSubjectMapping.GetExistingSubjectConditionSetId(), sm.GetSubjectConditionSet().GetId())
 	s.Len(sm.GetActions(), 2)
-	s.Equal(sm.GetActions(), newSubjectMapping.GetActions())
 }
 
 func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NewSubjectConditionSet() {

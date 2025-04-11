@@ -32,6 +32,7 @@ const (
 	DefaultFileMaxSize    = 20
 	DefaultFileMaxBackups = 10
 	DefaultFileMaxAge     = 30
+	ShutdownTimeout       = 5 * time.Second // Added constant for shutdown timeout
 )
 
 // --- Configuration Structs ---
@@ -87,7 +88,7 @@ func InitTracer(ctx context.Context, cfg Config) (func(), error) {
 		otel.SetTracerProvider(noop.NewTracerProvider())
 		otel.SetTextMapPropagator(propagation.TraceContext{})
 		otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
-			logger.Error("[otel SDK Error] %v\n", err)
+			logger.Error("[otel SDK Error]", "error", err)
 		}))
 		return func() {}, nil
 	}
@@ -181,7 +182,7 @@ func InitTracer(ctx context.Context, cfg Config) (func(), error) {
 	return func() {
 		logger.Info("Shutting down tracing...")
 		// Use a separate context for shutdown, typically context.Background() or a context with a timeout
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second) // Example timeout
+		shutdownCtx, cancel := context.WithTimeout(ctx, ShutdownTimeout) // Example timeout
 		defer cancel()
 
 		if err := tp.Shutdown(shutdownCtx); err != nil {

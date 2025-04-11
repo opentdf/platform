@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.3](https://github.com/opentdf/platform/compare/service/v0.5.2...service/v0.5.3) (2025-04-11)
+
+
+### Bug Fixes
+
+* **core:** Fix DPoP with grpc-gateway ([#2044](https://github.com/opentdf/platform/issues/2044)) ([4483ef2](https://github.com/opentdf/platform/commit/4483ef20a8d3340d298e21bf7140b8a1b13d1928))
+* **deps:** bump toolchain in /lib/fixtures and /examples to resolve CVE GO-2025-3563 ([#2061](https://github.com/opentdf/platform/issues/2061)) ([9c16843](https://github.com/opentdf/platform/commit/9c168437db3b138613fe629419dd6bd9f837e881))
+
 ## [0.5.2](https://github.com/opentdf/platform/compare/service/v0.5.1...service/v0.5.2) (2025-04-01)
 
 

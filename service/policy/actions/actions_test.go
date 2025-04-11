@@ -116,7 +116,7 @@ func (s *ActionSuite) Test_GetAction_Succeeds() {
 
 	for _, name := range validNames {
 		s.Run(name, func() {
-			req := &actions.GetActionRequest{
+			req = &actions.GetActionRequest{
 				Identifier: &actions.GetActionRequest_Name{
 					Name: name,
 				},

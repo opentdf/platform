@@ -6,7 +6,7 @@ import "buf/validate/validate.proto";
 
 extend buf.validate.StringRules {
   optional bool common_object_name_required = 80048952 [(buf.validate.predefined).cel = {
-    id: "string.common_object_name.required"
+    id: "string.common_object_name_required"
     message:
       "Field is required, alphanumeric, optionally including "
       "underscores and dashes but not preceding or trailing, "
@@ -15,12 +15,12 @@ extend buf.validate.StringRules {
     expression: "size(this) > 0 && size(this) < 254 && this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
   }];
   optional bool common_object_name_optional = 80048953 [(buf.validate.predefined).cel = {
-    id: "string.common_object_name.optional"
+    id: "string.common_object_name_optional"
     message:
       "Field is optional, and if provided, alphanumeric, allowing "
       "underscores and dashes but not preceding or trailing, and "
       "must be between 0 and 254 characters in length. Stored "
       "field value will be normalized to lower case."
-    expression: "size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true"
+    expression: "size(this) == 0 || (size(this) > 0 && size(this) < 254 && this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$'))"
   }];
 }

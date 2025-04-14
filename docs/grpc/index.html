@@ -514,25 +514,6 @@
         
           
           <li>
-            <a href="#policy%2fpredefined_rules.proto">policy/predefined_rules.proto</a>
-            <ul>
-              
-              
-              
-                <li>
-                  <a href="#policy%2fpredefined_rules.proto-extensions"><span class="badge">X</span>File-level Extensions</a>
-                </li>
-              
-                <li>
-                  <a href="#policy%2fpredefined_rules.proto-extensions"><span class="badge">X</span>File-level Extensions</a>
-                </li>
-              
-              
-            </ul>
-          </li>
-        
-          
-          <li>
             <a href="#policy%2fselectors.proto">policy/selectors.proto</a>
             <ul>
               
@@ -582,61 +563,6 @@
               
               
               
-              
-            </ul>
-          </li>
-        
-          
-          <li>
-            <a href="#policy%2factions%2factions.proto">policy/actions/actions.proto</a>
-            <ul>
-              
-                <li>
-                  <a href="#policy.actions.CreateActionRequest"><span class="badge">M</span>CreateActionRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.actions.CreateActionResponse"><span class="badge">M</span>CreateActionResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.actions.DeleteActionRequest"><span class="badge">M</span>DeleteActionRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.actions.DeleteActionResponse"><span class="badge">M</span>DeleteActionResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.actions.GetActionRequest"><span class="badge">M</span>GetActionRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.actions.GetActionResponse"><span class="badge">M</span>GetActionResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.actions.ListActionsRequest"><span class="badge">M</span>ListActionsRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.actions.ListActionsResponse"><span class="badge">M</span>ListActionsResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.actions.UpdateActionRequest"><span class="badge">M</span>UpdateActionRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.actions.UpdateActionResponse"><span class="badge">M</span>UpdateActionResponse</a>
-                </li>
-              
-              
-              
-              
-                <li>
-                  <a href="#policy.actions.ActionService"><span class="badge">S</span>ActionService</a>
-                </li>
               
             </ul>
           </li>
@@ -1643,36 +1569,15 @@
             <tbody>
               
                 <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Generated uuid in database </p></td>
-                </tr>
-              
-                <tr>
                   <td>standard</td>
                   <td><a href="#policy.Action.StandardAction">Action.StandardAction</a></td>
-                  <td></td>
-                  <td><p>Deprecated </p></td>
-                </tr>
-              
-                <tr>
-                  <td>custom</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Deprecated </p></td>
-                </tr>
-              
-                <tr>
-                  <td>name</td>
-                  <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
               
                 <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td>custom</td>
+                  <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -2444,7 +2349,7 @@ list of key access servers </p></td>
 
       
         <h3 id="policy.Action.StandardAction">Action.StandardAction</h3>
-        <p></p>
+        <p>Standard actions supported by the platform</p>
         <table class="enum-table">
           <thead>
             <tr><td>Name</td><td>Number</td><td>Description</td></tr>
@@ -2460,22 +2365,20 @@ list of key access servers </p></td>
               <tr>
                 <td>STANDARD_ACTION_DECRYPT</td>
                 <td>1</td>
-                <td><p>Deprecated
-Migrate to &#39;read&#39; action name</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
                 <td>STANDARD_ACTION_TRANSMIT</td>
                 <td>2</td>
-                <td><p>Deprecated
-Migrate to &#39;create&#39; action name</p></td>
+                <td><p></p></td>
               </tr>
             
           </tbody>
         </table>
       
         <h3 id="policy.AttributeRuleTypeEnum">AttributeRuleTypeEnum</h3>
-        <p></p>
+        <p>buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't</p><p>violated when users add new enum values to an enum in a given package</p>
         <table class="enum-table">
           <thead>
             <tr><td>Name</td><td>Number</td><td>Description</td></tr>
@@ -2510,7 +2413,7 @@ Migrate to &#39;create&#39; action name</p></td>
         </table>
       
         <h3 id="policy.ConditionBooleanTypeEnum">ConditionBooleanTypeEnum</h3>
-        <p></p>
+        <p>buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't</p><p>violated when users add new enum values to an enum in a given package</p>
         <table class="enum-table">
           <thead>
             <tr><td>Name</td><td>Number</td><td>Description</td></tr>
@@ -2586,7 +2489,7 @@ Migrate to &#39;create&#39; action name</p></td>
         </table>
       
         <h3 id="policy.SubjectMappingOperatorEnum">SubjectMappingOperatorEnum</h3>
-        <p></p>
+        <p>buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't</p><p>violated when users add new enum values to an enum in a given package</p>
         <table class="enum-table">
           <thead>
             <tr><td>Name</td><td>Number</td><td>Description</td></tr>
@@ -4344,46 +4247,6 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
     
       
       <div class="file-heading">
-        <h2 id="policy/predefined_rules.proto">policy/predefined_rules.proto</h2><a href="#title">Top</a>
-      </div>
-      <p></p>
-
-      
-
-      
-
-      
-        <h3 id="policy/predefined_rules.proto-extensions">File-level Extensions</h3>
-        <table class="extension-table">
-          <thead>
-            <tr><td>Extension</td><td>Type</td><td>Base</td><td>Number</td><td>Description</td></tr>
-          </thead>
-          <tbody>
-            
-              <tr>
-                <td>optional_object_name</td>
-                <td><a href="#bool">bool</a></td>
-                <td><a href="#buf.validate.StringRules">.buf.validate.StringRules</a></td>
-                <td>80048953</td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>required_object_name</td>
-                <td><a href="#bool">bool</a></td>
-                <td><a href="#buf.validate.StringRules">.buf.validate.StringRules</a></td>
-                <td>80048952</td>
-                <td><p></p></td>
-              </tr>
-            
-          </tbody>
-        </table>
-      
-
-      
-    
-      
-      <div class="file-heading">
         <h2 id="policy/selectors.proto">policy/selectors.proto</h2><a href="#title">Top</a>
       </div>
       <p></p>
@@ -4727,364 +4590,6 @@ Empty when none remain after current page </p></td>
       
 
       
-    
-      
-      <div class="file-heading">
-        <h2 id="policy/actions/actions.proto">policy/actions/actions.proto</h2><a href="#title">Top</a>
-      </div>
-      <p></p>
-
-      
-        <h3 id="policy.actions.CreateActionRequest">CreateActionRequest</h3>
-        <p>Create a new Custom action name with optional metadata.</p><p>Creation of Standard actions is not supported.</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>name</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Required </p></td>
-                </tr>
-              
-                <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
-                  <td></td>
-                  <td><p>Optional </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.actions.CreateActionResponse">CreateActionResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>action</td>
-                  <td><a href="#policy.Action">policy.Action</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.actions.DeleteActionRequest">DeleteActionRequest</h3>
-        <p>Custom only: deletion of Standard actions is not supported.</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Required </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.actions.DeleteActionResponse">DeleteActionResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>action</td>
-                  <td><a href="#policy.Action">policy.Action</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.actions.GetActionRequest">GetActionRequest</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>name</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.actions.GetActionResponse">GetActionResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>action</td>
-                  <td><a href="#policy.Action">policy.Action</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>subject_mappings</td>
-                  <td><a href="#policy.SubjectMapping">policy.SubjectMapping</a></td>
-                  <td>repeated</td>
-                  <td><p>Subject Mappings driving entitlement to the action </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.actions.ListActionsRequest">ListActionsRequest</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>pagination</td>
-                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
-                  <td></td>
-                  <td><p>Optional </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.actions.ListActionsResponse">ListActionsResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>actions_standard</td>
-                  <td><a href="#policy.Action">policy.Action</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>actions_custom</td>
-                  <td><a href="#policy.Action">policy.Action</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>pagination</td>
-                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.actions.UpdateActionRequest">UpdateActionRequest</h3>
-        <p>Metadata may be updated for either Custom or Standard actions.</p><p>Names may only be updated for Custom actions.</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Required </p></td>
-                </tr>
-              
-                <tr>
-                  <td>name</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Optional
-Custom actions only: replaces the existing action name </p></td>
-                </tr>
-              
-                <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
-                  <td></td>
-                  <td><p>Common metadata </p></td>
-                </tr>
-              
-                <tr>
-                  <td>metadata_update_behavior</td>
-                  <td><a href="#common.MetadataUpdateEnum">common.MetadataUpdateEnum</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.actions.UpdateActionResponse">UpdateActionResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>action</td>
-                  <td><a href="#policy.Action">policy.Action</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-
-      
-
-      
-
-      
-        <h3 id="policy.actions.ActionService">ActionService</h3>
-        <p></p>
-        <table class="enum-table">
-          <thead>
-            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
-          </thead>
-          <tbody>
-            
-              <tr>
-                <td>GetAction</td>
-                <td><a href="#policy.actions.GetActionRequest">GetActionRequest</a></td>
-                <td><a href="#policy.actions.GetActionResponse">GetActionResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>ListActions</td>
-                <td><a href="#policy.actions.ListActionsRequest">ListActionsRequest</a></td>
-                <td><a href="#policy.actions.ListActionsResponse">ListActionsResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>CreateAction</td>
-                <td><a href="#policy.actions.CreateActionRequest">CreateActionRequest</a></td>
-                <td><a href="#policy.actions.CreateActionResponse">CreateActionResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>UpdateAction</td>
-                <td><a href="#policy.actions.UpdateActionRequest">UpdateActionRequest</a></td>
-                <td><a href="#policy.actions.UpdateActionResponse">UpdateActionResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>DeleteAction</td>
-                <td><a href="#policy.actions.DeleteActionRequest">DeleteActionRequest</a></td>
-                <td><a href="#policy.actions.DeleteActionResponse">DeleteActionResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-          </tbody>
-        </table>
-
-        
     
       
       <div class="file-heading">

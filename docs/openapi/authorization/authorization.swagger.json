@@ -113,7 +113,7 @@
         "STANDARD_ACTION_TRANSMIT"
       ],
       "default": "STANDARD_ACTION_UNSPECIFIED",
-      "title": "- STANDARD_ACTION_DECRYPT: Deprecated\nMigrate to 'read' action name\n - STANDARD_ACTION_TRANSMIT: Deprecated\nMigrate to 'create' action name"
+      "title": "Standard actions supported by the platform"
     },
     "DecisionResponseDecision": {
       "type": "string",
@@ -395,49 +395,14 @@
       "description": "{\n\"actions\": [\n{\n\"standard\": \"STANDARD_ACTION_TRANSMIT\"\n}\n],\n\"tokens\": [\n{\n\"id\": \"tok1\",\n\"jwt\": ....\n},\n{\n\"id\": \"tok2\",\n\"jwt\": .....\n}\n],\n\"resourceAttributes\": [\n{\n\"attributeFqns\": [\n\"https://www.example.org/attr/foo/value/value1\"\n]\n},\n{\n\"attributeFqns\": [\n\"https://example.net/attr/attr1/value/value1\",\n\"https://example.net/attr/attr1/value/value2\"\n]\n}\n]\n}",
       "title": "Example Request Get Decisions by Token to answer the question -  Do Bob and client1 (represented by token tok1)\nand Alice and client2 (represented by token tok2) have TRANSMIT authorization for\n2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?"
     },
-    "commonMetadata": {
-      "type": "object",
-      "properties": {
-        "createdAt": {
-          "type": "string",
-          "format": "date-time",
-          "title": "created_at set by server (entity who created will recorded in an audit event)"
-        },
-        "updatedAt": {
-          "type": "string",
-          "format": "date-time",
-          "title": "updated_at set by server (entity who updated will recorded in an audit event)"
-        },
-        "labels": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "title": "optional short description"
-        }
-      },
-      "title": "Struct to uniquely identify a resource with optional additional metadata"
-    },
     "policyAction": {
       "type": "object",
       "properties": {
-        "id": {
-          "type": "string",
-          "title": "Generated uuid in database"
-        },
         "standard": {
-          "$ref": "#/definitions/ActionStandardAction",
-          "title": "Deprecated"
+          "$ref": "#/definitions/ActionStandardAction"
         },
         "custom": {
-          "type": "string",
-          "title": "Deprecated"
-        },
-        "name": {
           "type": "string"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata"
         }
       },
       "title": "An action an entity can take"

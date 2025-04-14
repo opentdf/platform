@@ -14,8 +14,8 @@ import (
 const (
 	validUUID                    = "00000000-0000-0000-0000-000000000000"
 	errMessageUUID               = "string.uuid"
-	errMessageRequiredObjectName = "string.required_object_name"
-	errMessageOptionalObjectName = "string.optional_object_name"
+	errMessageRequiredActionName = "action_name_format"
+	errMessageOptionalActionName = "action_name_format"
 	errMessageURI                = "string.uri"
 	errMessageRequired           = "required"
 )
@@ -66,7 +66,7 @@ func (s *ActionSuite) Test_CreateActionRequest_Fails() {
 			}
 			err := s.v.Validate(req)
 			s.Require().Error(err)
-			s.Require().Contains(err.Error(), errMessageRequiredObjectName)
+			s.Require().Contains(err.Error(), errMessageRequiredActionName)
 		})
 	}
 
@@ -76,7 +76,7 @@ func (s *ActionSuite) Test_CreateActionRequest_Fails() {
 	}
 	err := s.v.Validate(req)
 	s.Require().Error(err)
-	s.Require().Contains(err.Error(), errMessageRequiredObjectName)
+	s.Require().Contains(err.Error(), errMessageRequiredActionName)
 }
 
 func (s *ActionSuite) Test_CreateActionRequest_Succeeds() {

@@ -1,8 +1,6 @@
 module github.com/opentdf/platform/service
 
-go 1.23.0
-
-toolchain go1.24.2
+go 1.24
 
 require (
 	connectrpc.com/connect v1.18.1

@@ -3,10 +3,8 @@ syntax = "proto3";
 package policy.actions;
 
 import "buf/validate/validate.proto";
-
 import "common/common.proto";
 import "policy/objects.proto";
-import "policy/predefined_rules.proto";
 import "policy/selectors.proto";
 
 /*
@@ -18,7 +16,14 @@ message GetActionRequest {
   oneof identifier {
     option (buf.validate.oneof).required = true;
     string id = 1 [(buf.validate.field).string.uuid = true];
-    string name = 2 [(buf.validate.field).string.(optional_object_name) = true];
+    string name = 2 [
+      (buf.validate.field).string.max_len = 253,
+      (buf.validate.field).cel = {
+        id: "action_name_format"
+        message: "Action name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored action name will be normalized to lower case."
+        expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+      }
+    ];
   }
 }
 message GetActionResponse {
@@ -43,7 +48,15 @@ message ListActionsResponse {
 // Creation of Standard actions is not supported.
 message CreateActionRequest {
   // Required
-  string name = 1 [(buf.validate.field).string.(required_object_name) = true];
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "action_name_format"
+      message: "Action name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored action name will be normalized to lower case."
+      expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
 
   // Optional
   common.MetadataMutable metadata = 100;
@@ -60,7 +73,14 @@ message UpdateActionRequest {
 
   // Optional
   // Custom actions only: replaces the existing action name
-  string name = 2 [(buf.validate.field).string.(optional_object_name) = true];
+  string name = 2 [
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "action_name_format"
+      message: "Action name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored action name will be normalized to lower case."
+      expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
 
   // Common metadata
   common.MetadataMutable metadata = 100;

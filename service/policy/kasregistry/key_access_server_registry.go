@@ -3,6 +3,7 @@ package kasregistry
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"connectrpc.com/connect"
@@ -11,6 +12,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policyconfig "github.com/opentdf/platform/service/policy/config"
@@ -34,7 +36,24 @@ type KeyAccessServerRegistry struct {
 	config   *policyconfig.Config
 }
 
+func OnConfigUpdate(kasrSvc *KeyAccessServerRegistry) serviceregistry.OnConfigUpdateHook {
+	return func(_ context.Context, cfg config.ServiceConfig) error {
+		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
+		if err != nil {
+			return fmt.Errorf("failed to get shared policy config: %w", err)
+		}
+		kasrSvc.config = sharedCfg
+		kasrSvc.dbClient = policydb.NewClient(kasrSvc.dbClient.Client, kasrSvc.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
+
+		kasrSvc.logger.Info("key access server registry service config reloaded")
+
+		return nil
+	}
+}
+
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[kasregistryconnect.KeyAccessServerRegistryServiceHandler] {
+	kasrSvc := new(KeyAccessServerRegistry)
+	onUpdateConfigHook := OnConfigUpdate(kasrSvc)
 	return &serviceregistry.Service[kasregistryconnect.KeyAccessServerRegistryServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[kasregistryconnect.KeyAccessServerRegistryServiceHandler]{
 			Namespace:       ns,
@@ -42,13 +61,19 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			ServiceDesc:     &kasr.KeyAccessServerRegistryService_ServiceDesc,
 			ConnectRPCFunc:  kasregistryconnect.NewKeyAccessServerRegistryServiceHandler,
 			GRPCGatewayFunc: kasr.RegisterKeyAccessServerRegistryServiceHandler,
+			OnConfigUpdate:  onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasregistryconnect.KeyAccessServerRegistryServiceHandler, serviceregistry.HandlerServer) {
-				cfg := policyconfig.GetSharedPolicyConfig(srp)
-				return &KeyAccessServerRegistry{
-					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
-					logger:   srp.Logger,
-					config:   cfg,
-				}, nil
+				logger := srp.Logger
+				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
+				if err != nil {
+					logger.Error("error getting keyaccessserverregistry service policy config", slog.String("error", err.Error()))
+					panic(err)
+				}
+
+				kasrSvc.logger = logger
+				kasrSvc.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
+				kasrSvc.config = cfg
+				return kasrSvc, nil
 			},
 		},
 	}

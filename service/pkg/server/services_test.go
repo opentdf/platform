@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
@@ -251,7 +251,7 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 	newLogger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
 	suite.Require().NoError(err)
 
-	err = startServices(ctx, config.Config{
+	err = startServices(ctx, &config.Config{
 		Mode:   []string{"test"},
 		Logger: logger.Config{Output: "stdout", Level: "info", Type: "json"},
 		// DB: db.Config{
@@ -262,7 +262,7 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 		// 	Password:      "",
 		// 	RunMigrations: false,
 		// },
-		Services: map[string]serviceregistry.ServiceConfig{
+		Services: map[string]config.ServiceConfig{
 			"test":         {},
 			"test_with_db": {},
 			"foobar":       {},

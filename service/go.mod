@@ -4,6 +4,8 @@ go 1.24.0
 
 toolchain go1.24.2
 
+replace github.com/opentdf/platform/protocol/go => github.com/opentdf/platform/protocol/go v0.2.30-0.20250414175837-aa99448e080a
+
 require (
 	connectrpc.com/connect v1.18.1
 	connectrpc.com/grpchealth v1.3.0

@@ -147,7 +147,7 @@ func (s *ActionSuite) Test_GetAction_Fails() {
 			}
 			err := s.v.Validate(req)
 			s.Require().Error(err)
-			s.Require().Contains(err.Error(), errMessageOptionalObjectName)
+			s.Require().Contains(err.Error(), errMessageRequiredActionName)
 		})
 	}
 }
@@ -212,7 +212,7 @@ func (s *ActionSuite) Test_UpdateActionRequest_Fails() {
 			}
 			err := s.v.Validate(req)
 			s.Require().Error(err)
-			s.Require().Contains(err.Error(), errMessageOptionalObjectName)
+			s.Require().Contains(err.Error(), errMessageRequiredActionName)
 		})
 	}
 }

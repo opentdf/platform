@@ -87,12 +87,12 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_ExistingSubjectCondition
 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
 	fixtureSCSId := s.f.GetSubjectConditionSetKey("subject_condition_set1").ID
 
-	aDecrypt := fixtureActions[Read]
+	aRead := fixtureActions[Read]
 	aTransmit := fixtureActions[Transmit]
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              fixtureAttrValID,
 		ExistingSubjectConditionSetId: fixtureSCSId,
-		Actions:                       []*policy.Action{aDecrypt, aTransmit},
+		Actions:                       []*policy.Action{aRead, aTransmit},
 	}
 
 	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)

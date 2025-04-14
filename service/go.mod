@@ -2,6 +2,8 @@ module github.com/opentdf/platform/service
 
 go 1.24.0
 
+toolchain go1.24.2
+
 require (
 	connectrpc.com/connect v1.18.1
 	connectrpc.com/grpchealth v1.3.0

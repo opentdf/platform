@@ -14,6 +14,7 @@ import (
 const (
 	validUUID                    = "00000000-0000-0000-0000-000000000000"
 	errMessageUUID               = "string.uuid"
+	errMessageMaxLength          = "string.max_len"
 	errMessageRequiredActionName = "action_name_format"
 	errMessageOptionalActionName = "action_name_format"
 	errMessageURI                = "string.uri"
@@ -24,7 +25,6 @@ var (
 	validNames = []string{"valid_Name", "valid_name", "NAME", "NAME-IS-VALID", "SOME_VALID_NAME", "valid-name", strings.Repeat("a", 253), strings.Repeat("a", 1)}
 
 	invalidNameTests = []string{
-		strings.Repeat("a", 254),
 		"!",
 		"name with space",
 		"slash/",
@@ -77,6 +77,14 @@ func (s *ActionSuite) Test_CreateActionRequest_Fails() {
 	err := s.v.Validate(req)
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), errMessageRequiredActionName)
+
+	// too long
+	req = &actions.CreateActionRequest{
+		Name: strings.Repeat("a", 254),
+	}
+	err = s.v.Validate(req)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageMaxLength)
 }
 
 func (s *ActionSuite) Test_CreateActionRequest_Succeeds() {
@@ -150,6 +158,16 @@ func (s *ActionSuite) Test_GetAction_Fails() {
 			s.Require().Contains(err.Error(), errMessageRequiredActionName)
 		})
 	}
+
+	// too long
+	req = &actions.GetActionRequest{
+		Identifier: &actions.GetActionRequest_Name{
+			Name: strings.Repeat("a", 254),
+		},
+	}
+	err = s.v.Validate(req)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageMaxLength)
 }
 
 func (s *ActionSuite) Test_ListActions_Succeeds() {
@@ -215,6 +233,13 @@ func (s *ActionSuite) Test_UpdateActionRequest_Fails() {
 			s.Require().Contains(err.Error(), errMessageRequiredActionName)
 		})
 	}
+
+	req = &actions.UpdateActionRequest{
+		Name: strings.Repeat("a", 254),
+	}
+	err = s.v.Validate(req)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageMaxLength)
 }
 
 func (s *ActionSuite) Test_DeleteActionRequest_Succeeds() {

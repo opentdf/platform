@@ -76,7 +76,7 @@ func (s *ActionSuite) Test_CreateActionRequest_Fails() {
 	}
 	err := s.v.Validate(req)
 	s.Require().Error(err)
-	s.Require().Contains(err.Error(), errMessageRequiredActionName)
+	s.Require().Contains(err.Error(), errMessageRequired)
 
 	// too long
 	req = &actions.CreateActionRequest{

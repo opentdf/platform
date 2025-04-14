@@ -92,7 +92,7 @@ func TestConfig_AddOnConfigChangeHook(t *testing.T) {
 }
 
 func TestConfig_Watch(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("No loaders", func(t *testing.T) {
 		config := &Config{}
@@ -134,7 +134,7 @@ func TestConfig_Watch(t *testing.T) {
 }
 
 func TestConfig_Close(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("No loaders", func(t *testing.T) {
 		config := &Config{}
@@ -170,7 +170,7 @@ func TestConfig_Close(t *testing.T) {
 }
 
 func TestConfig_OnChange(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("No hooks", func(t *testing.T) {
 		config := &Config{}
@@ -213,7 +213,7 @@ func TestConfig_OnChange(t *testing.T) {
 }
 
 func TestLoadConfig_NoFileExistsInEnv(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := LoadConfig(ctx, "test", "non-existent-file")
 	assert.Error(t, err)
 }
@@ -251,7 +251,7 @@ server:
 	tempFile.Close()
 
 	// Call LoadConfig with the temp file
-	ctx := context.Background()
+	ctx := t.Context()
 	config, err := LoadConfig(ctx, "test", tempFile.Name())
 
 	// Assertions

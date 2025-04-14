@@ -13,7 +13,7 @@ import (
 )
 
 func TestGetAuditDataFromContextHappyPath(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	testRequestID := uuid.New()
 	testUserAgent := "test-user-agent"
 	testRequestIP := net.ParseIP("192.168.0.1")
@@ -47,7 +47,7 @@ func TestGetAuditDataFromContextHappyPath(t *testing.T) {
 }
 
 func TestGetAuditDataFromContextDefaultsPath(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	auditData := GetAuditDataFromContext(ctx)
 
@@ -69,7 +69,7 @@ func TestGetAuditDataFromContextDefaultsPath(t *testing.T) {
 }
 
 func TestGetAuditDataFromContextWithNoKeys(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	auditData := GetAuditDataFromContext(ctx)
 
 	if auditData.RequestID != uuid.Nil {
@@ -90,7 +90,7 @@ func TestGetAuditDataFromContextWithNoKeys(t *testing.T) {
 }
 
 func TestGetAuditDataFromContextWithPartialKeys(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	testUserAgent := "partial-user-agent"
 	testActorID := "partial-actor-id"
 
@@ -118,7 +118,7 @@ func TestGetAuditDataFromContextWithPartialKeys(t *testing.T) {
 }
 
 func TestGetAuditDataFromContextWrongType(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	testActorID := 12345
 
 	// Set relevant context keys

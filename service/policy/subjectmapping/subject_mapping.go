@@ -2,6 +2,7 @@ package subjectmapping
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"connectrpc.com/connect"
@@ -10,6 +11,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping/subjectmappingconnect"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policyconfig "github.com/opentdf/platform/service/policy/config"
@@ -22,7 +24,24 @@ type SubjectMappingService struct { //nolint:revive // SubjectMappingService is 
 	config   *policyconfig.Config
 }
 
+func OnConfigUpdate(smSvc *SubjectMappingService) serviceregistry.OnConfigUpdateHook {
+	return func(_ context.Context, cfg config.ServiceConfig) error {
+		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
+		if err != nil {
+			return fmt.Errorf("failed to get shared policy config: %w", err)
+		}
+		smSvc.config = sharedCfg
+		smSvc.dbClient = policydb.NewClient(smSvc.dbClient.Client, smSvc.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
+
+		smSvc.logger.Info("subject mapping service config reloaded")
+
+		return nil
+	}
+}
+
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[subjectmappingconnect.SubjectMappingServiceHandler] {
+	smSvc := new(SubjectMappingService)
+	onUpdateConfigHook := OnConfigUpdate(smSvc)
 	return &serviceregistry.Service[subjectmappingconnect.SubjectMappingServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[subjectmappingconnect.SubjectMappingServiceHandler]{
 			Namespace:       ns,
@@ -30,13 +49,19 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			ServiceDesc:     &sm.SubjectMappingService_ServiceDesc,
 			ConnectRPCFunc:  subjectmappingconnect.NewSubjectMappingServiceHandler,
 			GRPCGatewayFunc: sm.RegisterSubjectMappingServiceHandler,
+			OnConfigUpdate:  onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (subjectmappingconnect.SubjectMappingServiceHandler, serviceregistry.HandlerServer) {
-				cfg := policyconfig.GetSharedPolicyConfig(srp)
-				return &SubjectMappingService{
-					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
-					logger:   srp.Logger,
-					config:   cfg,
-				}, nil
+				logger := srp.Logger
+				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
+				if err != nil {
+					logger.Error("error getting subjectmapping service policy config", slog.String("error", err.Error()))
+					panic(err)
+				}
+
+				smSvc.logger = logger
+				smSvc.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
+				smSvc.config = cfg
+				return smSvc, nil
 			},
 		},
 	}

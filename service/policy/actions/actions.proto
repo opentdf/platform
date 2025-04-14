@@ -3,6 +3,7 @@ syntax = "proto3";
 package policy.actions;
 
 import "buf/validate/validate.proto";
+
 import "common/common.proto";
 import "policy/objects.proto";
 import "policy/predefined_rules.proto";

@@ -14,6 +14,13 @@ const (
 	}
 	`
 
+	kasPrivateKeyFileProvider = `
+	{
+		"path": "/app/kas-private.key"
+		"encrypted": true,
+	}
+	`
+
 	configKek = "493ff7acd07bc738b91d6875af5b64872ef7777a82bc521b44f582187481e79a"
 
 	// Mode 2 LOCAL with REMOTE KEK

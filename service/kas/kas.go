@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/opentdf/platform/lib/cryptoProviders"
-	"github.com/opentdf/platform/lib/cryptoProviders/providers"
+	"github.com/opentdf/platform/lib/cryptoproviders"
+	"github.com/opentdf/platform/lib/cryptoproviders/providers"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/service/kas/access"
@@ -40,7 +40,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				}
 				kasCfg.UpgradeMapToKeyring(srp.OTDF.CryptoProvider)
 
-				cryptSvc := cryptoProviders.NewCryptoService(providers.NewDefault())
+				cryptSvc := cryptoproviders.NewCryptoService(providers.NewDefault())
 				cryptSvc.RegisterProvider(providers.NewAWS())
 
 				p := &access.Provider{

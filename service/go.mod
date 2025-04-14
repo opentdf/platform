@@ -5,7 +5,7 @@ go 1.23.0
 toolchain go1.24.1
 
 replace (
-	github.com/opentdf/platform/lib/cryptoProviders => ../lib/cryptoProviders
+	github.com/opentdf/platform/lib/cryptoproviders => ../lib/cryptoproviders
 	github.com/opentdf/platform/protocol/go => ../protocol/go
 )
 
@@ -31,7 +31,7 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/open-policy-agent/opa v0.68.0
-	github.com/opentdf/platform/lib/cryptoProviders v0.0.0-00010101000000-000000000000
+	github.com/opentdf/platform/lib/cryptoproviders v0.0.0-00010101000000-000000000000
 	github.com/opentdf/platform/lib/fixtures v0.2.10
 	github.com/opentdf/platform/lib/flattening v0.1.3
 	github.com/opentdf/platform/lib/ocrypto v0.1.9

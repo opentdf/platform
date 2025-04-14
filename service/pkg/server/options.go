@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/casbin/casbin/v2/persist"
+	"github.com/opentdf/platform/lib/cryptoproviders"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 )
 
@@ -110,4 +111,8 @@ func WithCasbinAdapter(adapter persist.Adapter) StartOptions {
 		c.casbinAdapter = adapter
 		return c
 	}
+}
+
+func WithCryptoProvider(provider cryptoproviders.CryptoProvider) {
+
 }

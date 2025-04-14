@@ -764,7 +764,6 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Asy
 			return nil, err
 		}
 	}
-	fmt.Println("Got Key")
 	return &policy.AsymmetricKey{
 		Id:             key.ID,
 		KeyId:          key.KeyID,

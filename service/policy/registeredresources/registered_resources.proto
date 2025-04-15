@@ -1,0 +1,225 @@
+syntax = "proto3";
+
+package policy.registeredresources;
+
+import "buf/validate/validate.proto";
+
+import "common/common.proto";
+import "policy/objects.proto";
+import "policy/selectors.proto";
+
+///
+/// Registered Resource
+///
+
+message CreateRegisteredResourceRequest {
+  // Required
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "rr_name_format",
+      message: "Registered Resource Name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.",
+      expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
+
+  // Optional 
+  // Registered Resource Values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
+  // The stored value will be normalized to lower case.
+  repeated string values = 2 [
+    (buf.validate.field).repeated = {
+      min_items: 0,
+      unique: true,
+      items: {
+        string: 
+          {
+            max_len: 253,
+            pattern: "^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$"
+          }
+      },
+    }
+  ];
+
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+}
+message CreateRegisteredResourceResponse {
+  policy.RegisteredResource resource = 1;
+}
+
+message GetRegisteredResourceRequest {
+  oneof identifier {
+    option (buf.validate.oneof).required = true;
+
+    string resource_id = 1 [
+      (buf.validate.field).string.uuid = true
+    ];
+
+    string fqn = 2 [
+      (buf.validate.field).string = {
+        min_len : 1
+        uri : true
+      }
+    ];
+  }
+}
+message GetRegisteredResourceResponse {
+  policy.RegisteredResource group = 1;
+}
+
+message ListRegisteredResourcesRequest {
+  // Optional
+  policy.PageRequest pagination = 10;
+}
+message ListRegisteredResourcesResponse {
+  repeated policy.RegisteredResource resources = 1;
+
+  policy.PageResponse pagination = 10;
+}
+
+message UpdateRegisteredResourceRequest {
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+
+  // Optional
+  string name = 2 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "rr_name_format",
+      message: "Registered Resource Name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.",
+      expression: "size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true"
+    }
+  ];
+
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+message UpdateRegisteredResourceResponse {
+  policy.RegisteredResource resource = 1;
+}
+
+message DeleteRegisteredResourceRequest {
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+}
+message DeleteRegisteredResourceResponse {
+  policy.RegisteredResource resource = 1;
+}
+
+///
+/// Registered Resource Values
+///
+
+message CreateRegisteredResourceValueRequest {
+  // Required
+  string resource_id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+
+  // Required
+  string value = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "rr_value_format",
+      message: "Registered Resource Value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored value will be normalized to lower case.",
+      expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
+  
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+}
+message CreateRegisteredResourceValueResponse {
+  policy.RegisteredResourceValue value = 1;
+}
+
+message GetRegisteredResourceValueRequest {
+  oneof identifier {
+    option (buf.validate.oneof).required = true;
+
+    string value_id = 1 [
+      (buf.validate.field).string.uuid = true
+    ];
+
+    string fqn = 2 [
+      (buf.validate.field).string = {
+        min_len : 1
+        uri : true
+      }
+    ];
+  }
+}
+message GetRegisteredResourceValueResponse {
+  policy.RegisteredResourceValue value = 1;
+}
+
+message ListRegisteredResourceValuesRequest {
+  // Optional
+  string resource_id = 1 [(buf.validate.field).cel = {
+    id: "optional_uuid_format",
+    message: "Optional field must be a valid UUID",
+    expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
+  
+  // Optional
+  policy.PageRequest pagination = 10;
+}
+message ListRegisteredResourceValuesResponse {
+  repeated policy.RegisteredResourceValue values = 1;
+
+  policy.PageResponse pagination = 10;
+}
+
+message UpdateRegisteredResourceValueRequest {
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+
+  // Optional
+  string value = 2 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "rr_value_format",
+      message: "Registered Resource Value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored value will be normalized to lower case.",
+      expression: "size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true"
+    }
+  ];
+
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+message UpdateRegisteredResourceValueResponse {
+  policy.RegisteredResourceValue value = 1;
+}
+
+message DeleteRegisteredResourceValueRequest {
+  // Required
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+}
+message DeleteRegisteredResourceValueResponse {
+  policy.RegisteredResourceValue value = 1;
+}
+
+
+///
+/// Registered Resources Service
+///
+
+// TODO: Add service definition for Registered Resources operations

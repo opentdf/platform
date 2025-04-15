@@ -126,6 +126,17 @@ type FixtureDataNamespaceKeyMap struct {
 	KeyID       string `yaml:"key_id"`
 }
 
+type FixtureDataRegisteredResource struct {
+	ID   string `yaml:"id"`
+	Name string `yaml:"name"`
+}
+
+type FixtureDataRegisteredResourceValue struct {
+	ID                   string `yaml:"id"`
+	RegisteredResourceID string `yaml:"registered_resource_id"`
+	Value                string `yaml:"value"`
+}
+
 type FixtureData struct {
 	Namespaces struct {
 		Metadata FixtureMetadata                 `yaml:"metadata"`
@@ -177,6 +188,14 @@ type FixtureData struct {
 		Metadata FixtureMetadata              `yaml:"metadata"`
 		Data     []FixtureDataNamespaceKeyMap `yaml:"data"`
 	} `yaml:"namespace_key_map"`
+	RegisteredResources struct {
+		Metadata FixtureMetadata                          `yaml:"metadata"`
+		Data     map[string]FixtureDataRegisteredResource `yaml:"data"`
+	} `yaml:"registered_resources"`
+	RegisteredResourceValues struct {
+		Metadata FixtureMetadata                               `yaml:"metadata"`
+		Data     map[string]FixtureDataRegisteredResourceValue `yaml:"data"`
+	} `yaml:"registered_resource_values"`
 }
 
 func LoadFixtureData(file string) {
@@ -349,6 +368,10 @@ func (f *Fixtures) Provision() {
 	dkm := f.provisionDefinitionKeyMap()
 	slog.Info("📦 provisioning namespace key map")
 	nkm := f.provisionNamespaceKeyMap()
+	slog.Info("📦 provisioning registered resources")
+	rr := f.provisionRegisteredResources()
+	slog.Info("📦 provisioning registered resource values")
+	rrv := f.provisionRegisteredResourceValues()
 
 	slog.Info("📦 provisioned fixtures data",
 		slog.Int64("namespaces", n),
@@ -365,6 +388,8 @@ func (f *Fixtures) Provision() {
 		slog.Int64("value_key_map", vkm),
 		slog.Int64("definition_key_map", dkm),
 		slog.Int64("namespace_key_map", nkm),
+		slog.Int64("registered_resources", rr),
+		slog.Int64("registered_resource_values", rrv),
 	)
 	slog.Info("📚 indexing FQNs for fixtures")
 	f.db.PolicyClient.AttrFqnReindex(context.Background())
@@ -571,6 +596,29 @@ func (f *Fixtures) provisionNamespaceKeyMap() int64 {
 		})
 	}
 	return f.provision(fixtureData.NamespaceKeyMap.Metadata.TableName, fixtureData.NamespaceKeyMap.Metadata.Columns, values)
+}
+
+func (f *Fixtures) provisionRegisteredResources() int64 {
+	values := make([][]string, 0, len(fixtureData.RegisteredResources.Data))
+	for _, d := range fixtureData.RegisteredResources.Data {
+		values = append(values, []string{
+			f.db.StringWrap(d.ID),
+			f.db.StringWrap(d.Name),
+		})
+	}
+	return f.provision(fixtureData.RegisteredResources.Metadata.TableName, fixtureData.RegisteredResources.Metadata.Columns, values)
+}
+
+func (f *Fixtures) provisionRegisteredResourceValues() int64 {
+	values := make([][]string, 0, len(fixtureData.RegisteredResourceValues.Data))
+	for _, d := range fixtureData.RegisteredResourceValues.Data {
+		values = append(values, []string{
+			f.db.StringWrap(d.ID),
+			f.db.StringWrap(d.RegisteredResourceID),
+			f.db.StringWrap(d.Value),
+		})
+	}
+	return f.provision(fixtureData.RegisteredResourceValues.Metadata.TableName, fixtureData.RegisteredResourceValues.Metadata.Columns, values)
 }
 
 func (f *Fixtures) provision(t string, c []string, v [][]string) int64 {

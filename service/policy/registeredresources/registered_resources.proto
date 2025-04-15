@@ -66,7 +66,7 @@ message GetRegisteredResourceRequest {
   }
 }
 message GetRegisteredResourceResponse {
-  policy.RegisteredResource group = 1;
+  policy.RegisteredResource resource = 1;
 }
 
 message ListRegisteredResourcesRequest {

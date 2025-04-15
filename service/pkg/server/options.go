@@ -2,7 +2,7 @@ package server
 
 import (
 	"github.com/casbin/casbin/v2/persist"
-	"github.com/opentdf/platform/lib/cryptoproviders"
+	"github.com/opentdf/platform/service/pkg/cryptoproviders"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 )
 

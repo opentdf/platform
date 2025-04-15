@@ -13,7 +13,7 @@ import (
 	"os"
 	"path/filepath" // Use filepath for safer path joining
 
-	"github.com/opentdf/platform/lib/cryptoproviders"
+	"github.com/opentdf/platform/service/pkg/cryptoproviders"
 )
 
 const (

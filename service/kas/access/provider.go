@@ -4,11 +4,11 @@ import (
 	"context"
 	"net/url"
 
-	"github.com/opentdf/platform/lib/cryptoproviders"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cryptoproviders"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
 )

@@ -7,11 +7,11 @@ import (
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/opentdf/platform/lib/cryptoproviders"
-	"github.com/opentdf/platform/lib/cryptoproviders/providers"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/service/kas/access"
+	"github.com/opentdf/platform/service/pkg/cryptoproviders"
+	"github.com/opentdf/platform/service/pkg/cryptoproviders/providers"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 )
 

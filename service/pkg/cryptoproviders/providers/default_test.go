@@ -11,8 +11,8 @@ import (
 	"encoding/pem"
 	"testing"
 
-	"github.com/opentdf/platform/lib/cryptoproviders"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/service/pkg/cryptoproviders"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

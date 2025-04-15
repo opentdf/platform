@@ -4,7 +4,6 @@ toolchain go1.24.1
 
 use (
 	./examples
-	./lib/cryptoproviders
 	./lib/fixtures
 	./lib/flattening
 	./lib/ocrypto

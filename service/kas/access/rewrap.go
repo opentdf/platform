@@ -29,7 +29,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	"github.com/opentdf/platform/lib/cryptoproviders"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	policyProto "github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/sdk"
@@ -37,6 +36,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"github.com/opentdf/platform/service/pkg/cryptoproviders"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -486,49 +486,49 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			// Get the ephemeral public key in PEM format
 			ephemeralPubKeyPEM := kao.GetKeyAccessObject().GetEphemeralPublicKey()
 
-			// Get EC key size and convert to mode
-			keySize, err := ocrypto.GetECKeySize([]byte(ephemeralPubKeyPEM))
-			if err != nil {
-				p.Logger.WarnContext(ctx, "failed to get EC key size", "err", err, "kao", kao)
-				failedKAORewrap(results, kao, err400("bad request"))
-				continue
-			}
+			// // Get EC key size and convert to mode
+			// keySize, err := ocrypto.GetECKeySize([]byte(ephemeralPubKeyPEM))
+			// if err != nil {
+			// 	p.Logger.WarnContext(ctx, "failed to get EC key size", "err", err, "kao", kao)
+			// 	failedKAORewrap(results, kao, err400("bad request"))
+			// 	continue
+			// }
 
-			mode, err := ocrypto.ECSizeToMode(keySize)
-			if err != nil {
-				p.Logger.WarnContext(ctx, "failed to convert key size to mode", "err", err, "kao", kao)
-				failedKAORewrap(results, kao, err400("bad request"))
-				continue
-			}
+			// mode, err := ocrypto.ECSizeToMode(keySize)
+			// if err != nil {
+			// 	p.Logger.WarnContext(ctx, "failed to convert key size to mode", "err", err, "kao", kao)
+			// 	failedKAORewrap(results, kao, err400("bad request"))
+			// 	continue
+			// }
 
-			// Parse the PEM public key
-			block, _ := pem.Decode([]byte(ephemeralPubKeyPEM))
-			if block == nil {
-				p.Logger.WarnContext(ctx, "failed to decode PEM block", "err", err, "kao", kao)
-				failedKAORewrap(results, kao, err400("bad request"))
-				continue
-			}
+			// // Parse the PEM public key
+			// block, _ := pem.Decode([]byte(ephemeralPubKeyPEM))
+			// if block == nil {
+			// 	p.Logger.WarnContext(ctx, "failed to decode PEM block", "err", err, "kao", kao)
+			// 	failedKAORewrap(results, kao, err400("bad request"))
+			// 	continue
+			// }
 
-			pub, err := x509.ParsePKIXPublicKey(block.Bytes)
-			if err != nil {
-				p.Logger.WarnContext(ctx, "failed to parse public key", "err", err, "kao", kao)
-				failedKAORewrap(results, kao, err400("bad request"))
-				continue
-			}
+			// pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+			// if err != nil {
+			// 	p.Logger.WarnContext(ctx, "failed to parse public key", "err", err, "kao", kao)
+			// 	failedKAORewrap(results, kao, err400("bad request"))
+			// 	continue
+			// }
 
-			ecPub, ok := pub.(*ecdsa.PublicKey)
-			if !ok {
-				p.Logger.WarnContext(ctx, "not an EC public key", "err", err)
-				failedKAORewrap(results, kao, err400("bad request"))
-				continue
-			}
+			// ecPub, ok := pub.(*ecdsa.PublicKey)
+			// if !ok {
+			// 	p.Logger.WarnContext(ctx, "not an EC public key", "err", err)
+			// 	failedKAORewrap(results, kao, err400("bad request"))
+			// 	continue
+			// }
 
-			compressedKey, err := ocrypto.CompressedECPublicKey(mode, *ecPub)
-			if err != nil {
-				p.Logger.WarnContext(ctx, "failed to compress public key", "err", err)
-				failedKAORewrap(results, kao, err400("bad request"))
-				continue
-			}
+			// compressedKey, err := ocrypto.CompressedECPublicKey(mode, *ecPub)
+			// if err != nil {
+			// 	p.Logger.WarnContext(ctx, "failed to compress public key", "err", err)
+			// 	failedKAORewrap(results, kao, err400("bad request"))
+			// 	continue
+			// }
 
 			/*******************************
 				Testing Key Mgmt EC
@@ -573,7 +573,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			// 	},
 			// 	KeyMode: policyProto.KeyMode_KEY_MODE_REMOTE,
 			// }
-			ecOpts = append(ecOpts, cryptoproviders.WithECEphemeralKey(compressedKey))
+			ecOpts = append(ecOpts, cryptoproviders.WithECEphemeralKey([]byte(ephemeralPubKeyPEM)))
 			symKey, err = p.CryptoProviderNew.DecryptAsymmetric(ctx, asymKey.GetKey(), kao.GetKeyAccessObject().GetWrappedKey(), ecOpts)
 			//symKey, err = p.CryptoProvider.ECDecrypt(kao.GetKeyAccessObject().GetKid(), compressedKey, kao.GetKeyAccessObject().GetWrappedKey())
 			if err != nil {

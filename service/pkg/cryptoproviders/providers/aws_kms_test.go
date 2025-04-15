@@ -9,8 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws" // Re-add aws import
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
-	"github.com/opentdf/platform/lib/cryptoproviders"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/service/pkg/cryptoproviders"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"

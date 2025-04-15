@@ -468,14 +468,14 @@ func (f *Fixtures) Provision() {
 	akas := f.provisionAttributeKeyAccessServer()
 	slog.Info("📦 provisioning attribute value key access server data")
 	avkas := f.provisionAttributeValueKeyAccessServer()
-	//slog.Info("📦 provisioning public keys")
-	//pk := f.provisionPublicKeys()
-	//slog.Info("📦 provisioning value key map")
-	//vkm := f.provisionValueKeyMap()
-	//slog.Info("📦 provisioning definition key map")
-	//dkm := f.provisionDefinitionKeyMap()
-	//slog.Info("📦 provisioning namespace key map")
-	//nkm := f.provisionNamespaceKeyMap()
+	// slog.Info("📦 provisioning public keys")
+	// pk := f.provisionPublicKeys()
+	// slog.Info("📦 provisioning value key map")
+	// vkm := f.provisionValueKeyMap()
+	// slog.Info("📦 provisioning definition key map")
+	// dkm := f.provisionDefinitionKeyMap()
+	// slog.Info("📦 provisioning namespace key map")
+	// nkm := f.provisionNamespaceKeyMap()
 	slog.Info("📦 provisioning registered resources")
 	rr := f.provisionRegisteredResources()
 	slog.Info("📦 provisioning registered resource values")
@@ -498,10 +498,10 @@ func (f *Fixtures) Provision() {
 		slog.Int64("kas_registry", kas),
 		slog.Int64("attribute_key_access_server", akas),
 		slog.Int64("attribute_value_key_access_server", avkas),
-		slog.Int64("public_keys", pk),
-		//slog.Int64("value_key_map", vkm),
-		//slog.Int64("definition_key_map", dkm),
-		//slog.Int64("namespace_key_map", nkm),
+		// slog.Int64("public_keys", pk),
+		// slog.Int64("value_key_map", vkm),
+		// slog.Int64("definition_key_map", dkm),
+		// slog.Int64("namespace_key_map", nkm),
 		slog.Int64("registered_resources", rr),
 		slog.Int64("registered_resource_values", rrv),
 		slog.Int64("provider_configs", pcs),

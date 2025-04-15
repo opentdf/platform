@@ -8,7 +8,7 @@ erDiagram
         character_varying name UK "Unique name of the action, e.g. read, write, etc."
         timestamp_with_time_zone updated_at 
     }
-    
+
     asym_key {
         timestamp_with_time_zone created_at "Timestamp when the key was created"
         timestamp_with_time_zone expiration 
@@ -122,7 +122,7 @@ erDiagram
         jsonb metadata "Metadata for the KAS (see protos for structure)"
         character_varying name UK "Optional common name of the KAS"
         jsonb public_key "Public key of the KAS (see protos for structure/options)"
-        character_varying source_type 
+        integer source_type 
         timestamp_with_time_zone updated_at 
         character_varying uri UK "URI of the KAS"
     }
@@ -230,9 +230,9 @@ erDiagram
     attribute_value_public_key_map }o--|| key_access_server_keys : "key_access_server_key_id"
     resource_mappings }o--|| attribute_values : "attribute_value_id"
     subject_mappings }o--|| attribute_values : "attribute_value_id"
-    registered_resource_values }o--|| registered_resources : "registered_resource_id"
     key_access_server_keys }o--|| key_access_servers : "key_access_server_id"
     sym_key }o--|| provider_config : "provider_config_id"
+    registered_resource_values }o--|| registered_resources : "registered_resource_id"
     resource_mappings }o--|| resource_mapping_groups : "group_id"
     subject_mappings }o--|| subject_condition_set : "subject_condition_set_id"
     subject_mapping_actions }o--|| subject_mappings : "subject_mapping_id"

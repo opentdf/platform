@@ -624,7 +624,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKey"
+            "$ref": "#/definitions/policyAsymmetricKey"
           },
           "title": "Keys associated with the attribute"
         },
@@ -733,31 +733,6 @@
         }
       },
       "title": "Deprecated\nA list of known KAS public keys"
-    },
-    "policyKey": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "title": "the database record ID, not the key ID (`kid`)"
-        },
-        "isActive": {
-          "type": "boolean"
-        },
-        "wasMapped": {
-          "type": "boolean"
-        },
-        "publicKey": {
-          "$ref": "#/definitions/policyKasPublicKey"
-        },
-        "kas": {
-          "$ref": "#/definitions/policyKeyAccessServer"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata",
-          "title": "Common metadata"
-        }
-      }
     },
     "policyKeyAccessServer": {
       "type": "object",
@@ -869,7 +844,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKey"
+            "$ref": "#/definitions/policyAsymmetricKey"
           },
           "title": "Keys for the namespace"
         }
@@ -1058,7 +1033,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKey"
+            "$ref": "#/definitions/policyAsymmetricKey"
           }
         },
         "metadata": {

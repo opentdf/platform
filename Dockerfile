@@ -10,7 +10,6 @@ COPY lib/flattening lib/flattening
 COPY lib/fixtures lib/fixtures
 COPY service/ service/
 COPY examples/ examples/
-COPY test/ test/
 COPY go.work ./
 RUN cd service \
     && go mod download \

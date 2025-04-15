@@ -33,7 +33,7 @@ message Namespace {
   repeated KeyAccessServer grants = 6;
 
   // Keys for the namespace
-  repeated Key keys = 7;
+  repeated AsymmetricKey keys = 7;
 }
 
 message Attribute {
@@ -62,7 +62,7 @@ message Attribute {
   google.protobuf.BoolValue active = 8;
 
   //Keys associated with the attribute
-  repeated Key keys = 9;
+  repeated AsymmetricKey keys = 9;
 
   // Common metadata
   common.Metadata metadata = 100;
@@ -99,7 +99,7 @@ message Value {
   // subject mapping
   repeated SubjectMapping subject_mappings = 8;
 
-  repeated Key keys = 9;
+  repeated AsymmetricKey keys = 9;
 
   // Common metadata
   common.Metadata metadata = 100;

@@ -1,5 +1,14 @@
 ```mermaid
 erDiagram
+    actions {
+        timestamp_with_time_zone created_at 
+        uuid id PK "Unique identifier for the action"
+        boolean is_standard "Whether the action is standard (proto-enum) or custom (user-defined)."
+        jsonb metadata "Metadata for the action (see protos for structure)"
+        character_varying name UK "Unique name of the action, e.g. read, write, etc."
+        timestamp_with_time_zone updated_at 
+    }
+
     asym_key {
         timestamp_with_time_zone created_at "Timestamp when the key was created"
         timestamp_with_time_zone expiration 
@@ -127,6 +136,23 @@ erDiagram
         timestamp_with_time_zone updated_at "Timestamp when the provider configuration was last updated"
     }
 
+    registered_resource_values {
+        timestamp_with_time_zone created_at "Timestamp when the record was created"
+        uuid id PK "Primary key for the table"
+        jsonb metadata "Metadata for the registered resource value (see protos for structure)"
+        uuid registered_resource_id FK,UK "Foreign key to the registered_resources table"
+        timestamp_with_time_zone updated_at "Timestamp when the record was last updated"
+        character_varying value UK "Value for the registered resource value"
+    }
+
+    registered_resources {
+        timestamp_with_time_zone created_at "Timestamp when the record was created"
+        uuid id PK "Primary key for the table"
+        jsonb metadata "Metadata for the registered resource (see protos for structure)"
+        character_varying name UK "Name for the registered resource"
+        timestamp_with_time_zone updated_at "Timestamp when the record was last updated"
+    }
+
     resource_mapping_groups {
         timestamp_with_time_zone created_at 
         uuid id PK "Primary key for the table"
@@ -154,8 +180,13 @@ erDiagram
         timestamp_with_time_zone updated_at 
     }
 
+    subject_mapping_actions {
+        uuid action_id PK,FK 
+        timestamp_without_time_zone created_at 
+        uuid subject_mapping_id PK,FK 
+    }
+
     subject_mappings {
-        jsonb actions "Actions that the subject entity can perform on the attribute value (see protos for details)"
         uuid attribute_value_id FK "Foreign key to the attribute value"
         timestamp_with_time_zone created_at 
         uuid id PK "Primary key for the table"
@@ -177,6 +208,7 @@ erDiagram
         timestamp_with_time_zone updated_at "Timestamp when the key was last updated"
     }
 
+    subject_mapping_actions }o--|| actions : "action_id"
     asym_key }o--|| provider_config : "provider_config_id"
     attribute_definition_key_access_grants }o--|| attribute_definitions : "attribute_definition_id"
     attribute_definition_key_access_grants }o--|| key_access_servers : "key_access_server_id"
@@ -200,6 +232,9 @@ erDiagram
     subject_mappings }o--|| attribute_values : "attribute_value_id"
     key_access_server_keys }o--|| key_access_servers : "key_access_server_id"
     sym_key }o--|| provider_config : "provider_config_id"
+    registered_resource_values }o--|| registered_resources : "registered_resource_id"
     resource_mappings }o--|| resource_mapping_groups : "group_id"
     subject_mappings }o--|| subject_condition_set : "subject_condition_set_id"
+    subject_mapping_actions }o--|| subject_mappings : "subject_mapping_id"
 ```
+<style>div.mermaid{overflow-x:scroll;}div.mermaid>svg{width:250rem;}</style>

@@ -28,7 +28,7 @@ func getValidator() *protovalidate.Validator {
 	if err != nil {
 		panic(err)
 	}
-	return v
+	return &v
 }
 
 func Test_CreateProviderConfigRequest(t *testing.T) {
@@ -68,7 +68,7 @@ func Test_CreateProviderConfigRequest(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := v.Validate(tc.req)
+			err := (*v).Validate(tc.req)
 			if tc.expectError {
 				require.Error(t, err, "Expected error for test case: %s", tc.name)
 				if tc.errorMessage != "" {
@@ -128,7 +128,7 @@ func Test_GetProviderConfigRequest(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := v.Validate(tc.req)
+			err := (*v).Validate(tc.req)
 			if tc.expectError {
 				require.Error(t, err, "Expected error for test case: %s", tc.name)
 				if tc.errorMessage != "" {
@@ -195,7 +195,7 @@ func Test_UpdateProviderConfigRequest(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := v.Validate(tc.req)
+			err := (*v).Validate(tc.req)
 			if tc.expectError {
 				require.Error(t, err, "Expected error for test case: %s", tc.name)
 				if tc.errorMessage != "" {
@@ -242,7 +242,7 @@ func Test_DeleteProviderConfigRequest(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := v.Validate(tc.req)
+			err := (*v).Validate(tc.req)
 			if tc.expectError {
 				require.Error(t, err, "Expected error for test case: %s", tc.name)
 				if tc.errorMessage != "" {

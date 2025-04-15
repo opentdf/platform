@@ -207,6 +207,200 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrFqn() {
 	s.Equal(attr.GetName(), attrFixture.Name)
 	s.Equal(attr.GetRule().String(), fmt.Sprintf("ATTRIBUTE_RULE_TYPE_ENUM_%s", attrFixture.Rule))
 	s.Equal(attr.GetActive().GetValue(), attrFixture.Active)
+	s.Empty(attr.GetKeys())
+}
+
+func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeDefKeysAssocaited() {
+	fqnFixtureKey := "example.net/attr/attr1"
+	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	fullFqn := fmt.Sprintf("https://%s", fqnFixtureKey)
+	attrFixture := s.f.GetAttributeKey(fqnFixtureKey)
+
+	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
+	s.Require().NoError(err)
+
+	// the number of values should match the fixture
+	s.Len(attr.GetValues(), 2)
+	s.Empty(attr.GetKeys())
+
+	// Associate key with attribute.
+	keyResp, err := s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: attrFixture.ID,
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(keyResp)
+
+	attr, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
+	s.Require().NoError(err)
+
+	// the number of values should match the fixture
+	s.Len(attr.GetValues(), 2)
+
+	// Key checks
+	s.Len(attr.GetKeys(), 1)
+	s.Equal(kasKey.ID, attr.GetKeys()[0].GetId())
+	s.Equal(kasKey.ProviderConfigID, attr.GetKeys()[0].GetProviderConfig().GetId())
+
+	// Remove association
+	_, err = s.db.PolicyClient.RemovePublicKeyFromAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: attrFixture.ID,
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+}
+
+func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeValueKeysAssociated() {
+	fqnFixtureKey := "example.net/attr/attr1"
+	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	fullFqn := fmt.Sprintf("https://%s", fqnFixtureKey)
+
+	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
+	s.Require().NoError(err)
+
+	// the number of values should match the fixture
+	s.Len(attr.GetValues(), 2)
+	s.Empty(attr.GetKeys())
+	for _, v := range attr.GetValues() {
+		s.Empty(v.GetKeys())
+	}
+
+	// Associate key with attribute.
+	keyResp, err := s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &attributes.ValueKey{
+		ValueId: attr.GetValues()[0].GetId(),
+		KeyId:   kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(keyResp)
+
+	// Associate value 2 with the same key
+	keyResp, err = s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &attributes.ValueKey{
+		ValueId: attr.GetValues()[1].GetId(),
+		KeyId:   kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(keyResp)
+
+	attr, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
+	s.Require().NoError(err)
+
+	// the number of values should match the fixture
+	s.Len(attr.GetValues(), 2)
+
+	// Key checks
+	s.Empty(attr.GetKeys())
+	for _, v := range attr.GetValues() {
+		s.Len(v.GetKeys(), 1)
+		s.Equal(kasKey.ID, v.GetKeys()[0].GetId())
+		s.Equal(kasKey.ProviderConfigID, v.GetKeys()[0].GetProviderConfig().GetId())
+		_, err := s.db.PolicyClient.RemovePublicKeyFromValue(s.ctx, &attributes.ValueKey{
+			ValueId: v.GetId(),
+			KeyId:   kasKey.ID,
+		})
+		s.Require().NoError(err)
+	}
+}
+
+func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeysAssociatedWithNamespace() {
+	fqnFixtureKey := "example.net/attr/attr1"
+	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	fullFqn := fmt.Sprintf("https://%s", fqnFixtureKey)
+
+	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
+	s.Require().NoError(err)
+
+	// the number of values should match the fixture
+	s.Len(attr.GetValues(), 2)
+	s.Empty(attr.GetNamespace().GetKeys())
+
+	// Associate key with attribute.
+	keyResp, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: attr.GetNamespace().GetId(),
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(keyResp)
+
+	attr, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
+	s.Require().NoError(err)
+
+	// the number of values should match the fixture
+	s.Len(attr.GetValues(), 2)
+
+	// Key checks
+	s.Empty(attr.GetKeys())
+	s.Len(attr.GetNamespace().GetKeys(), 1)
+	s.Equal(kasKey.ID, attr.GetNamespace().GetKeys()[0].GetId())
+	s.Equal(kasKey.ProviderConfigID, attr.GetNamespace().GetKeys()[0].GetProviderConfig().GetId())
+
+	_, err = s.db.PolicyClient.RemovePublicKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: attr.GetNamespace().GetId(),
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+}
+
+func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeysAssociatedAttributes_MultipleAttributes() {
+	fqnFixtureKey := "example.net/attr/attr1"
+	fqnFixtureKeyTwo := "example.net/attr/attr2"
+	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	kasKey2 := s.f.GetKasRegistryServerKeys("kas_key_2")
+	fullFqn := fmt.Sprintf("https://%s", fqnFixtureKey)
+	fullFqn2 := fmt.Sprintf("https://%s", fqnFixtureKeyTwo)
+
+	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
+	s.Require().NoError(err)
+	s.Len(attr.GetValues(), 2)
+	s.Empty(attr.GetKeys())
+
+	// Associate key with attribute.
+	keyResp, err := s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: attr.GetId(),
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(keyResp)
+
+	attr, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn2)
+	s.Require().NoError(err)
+	s.Empty(attr.GetValues())
+	s.Empty(attr.GetKeys())
+
+	// Associate key with attribute.
+	keyResp, err = s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: attr.GetId(),
+		KeyId:       kasKey2.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(keyResp)
+
+	// Get attribute 1
+	attr, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
+	attrOneID := attr.GetId()
+	s.Require().NoError(err)
+	s.Len(attr.GetKeys(), 1)
+	s.Equal(kasKey.ID, attr.GetKeys()[0].GetId())
+	s.Equal(kasKey.ProviderConfigID, attr.GetKeys()[0].GetProviderConfig().GetId())
+
+	// Get attribute 2
+	attr, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn2)
+	attrTwoID := attr.GetId()
+	s.Require().NoError(err)
+	s.Len(attr.GetKeys(), 1)
+	s.Equal(kasKey2.ID, attr.GetKeys()[0].GetId())
+	s.Equal(kasKey2.ProviderConfigID, attr.GetKeys()[0].GetProviderConfig().GetId())
+
+	_, err = s.db.PolicyClient.RemovePublicKeyFromAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: attrOneID,
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+
+	_, err = s.db.PolicyClient.RemovePublicKeyFromAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: attrTwoID,
+		KeyId:       kasKey2.ID,
+	})
+	s.Require().NoError(err)
 }
 
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Definitions() {

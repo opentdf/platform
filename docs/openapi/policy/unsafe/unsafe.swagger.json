@@ -514,7 +514,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKey"
+            "$ref": "#/definitions/policyAsymmetricKey"
           },
           "title": "Keys associated with the attribute"
         },
@@ -759,7 +759,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKey"
+            "$ref": "#/definitions/policyAsymmetricKey"
           },
           "title": "Keys for the namespace"
         }
@@ -901,7 +901,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKey"
+            "$ref": "#/definitions/policyAsymmetricKey"
           }
         },
         "metadata": {

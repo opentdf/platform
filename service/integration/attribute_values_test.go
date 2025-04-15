@@ -967,6 +967,112 @@ func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Succe
 	s.Equal(v, resp)
 }
 
+// Add tests for assinging key to value / removing key from value
+
+func (s *AttributeValuesSuite) Test_AssociatePublicKeyToAttributeValue_Returns_Error_When_Attribute_Not_Found() {
+	kasKeys := s.f.GetKasRegistryServerKeys("kas_key_1")
+	resp, err := s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &attributes.ValueKey{
+		ValueId: nonExistentAttrID,
+		KeyId:   kasKeys.ID,
+	})
+
+	s.Require().Error(err)
+	s.Nil(resp)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
+}
+
+func (s *AttributeValuesSuite) Test_AssociatePublicKeyToAttributeValue_Returns_Error_When_Key_Not_Found() {
+	f := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	resp, err := s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &attributes.ValueKey{
+		ValueId: f.ID,
+		KeyId:   nonExistentAttrID,
+	})
+
+	s.Require().Error(err)
+	s.Nil(resp)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
+}
+
+func (s *AttributeValuesSuite) Test_AssociatePublicKeyToAttributeValue_Succeeds() {
+	f := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	gotAttrValue, err := s.db.PolicyClient.GetAttributeValue(s.ctx, &attributes.GetAttributeValueRequest_ValueId{
+		ValueId: f.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(gotAttrValue)
+	s.Empty(gotAttrValue.GetKeys())
+
+	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	resp, err := s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &attributes.ValueKey{
+		ValueId: gotAttrValue.GetId(),
+		KeyId:   kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+
+	gotAttrValue, err = s.db.PolicyClient.GetAttributeValue(s.ctx, &attributes.GetAttributeValueRequest_ValueId{
+		ValueId: f.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(gotAttrValue)
+	s.Len(gotAttrValue.GetKeys(), 1)
+	s.Equal(kasKey.ID, gotAttrValue.GetKeys()[0].GetId())
+	s.Equal(kasKey.ProviderConfigID, gotAttrValue.GetKeys()[0].GetProviderConfig().GetId())
+
+	resp, err = s.db.PolicyClient.RemovePublicKeyFromValue(s.ctx, &attributes.ValueKey{
+		ValueId: gotAttrValue.GetId(),
+		KeyId:   gotAttrValue.GetKeys()[0].GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+
+	gotAttrValue, err = s.db.PolicyClient.GetAttributeValue(s.ctx, &attributes.GetAttributeValueRequest_ValueId{
+		ValueId: f.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(gotAttrValue)
+	s.Empty(gotAttrValue.GetKeys())
+}
+
+func (s *AttributeValuesSuite) Test_RemovePublicKeyFromAttributeValue_Not_Found_Fails() {
+	f := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	gotAttr, err := s.db.PolicyClient.GetAttributeValue(s.ctx, f.ID)
+	s.Require().NoError(err)
+	s.NotNil(gotAttr)
+	s.Empty(gotAttr.GetKeys())
+
+	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	resp, err := s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &attributes.ValueKey{
+		ValueId: f.ID,
+		KeyId:   kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+
+	invalidResp, err := s.db.PolicyClient.RemovePublicKeyFromValue(s.ctx, &attributes.ValueKey{
+		ValueId: "009735f1-0fcf-4deb-a47b-760d0ae65fef", // uuid
+		KeyId:   resp.GetKeyId(),
+	})
+	s.Require().Error(err)
+	s.Nil(invalidResp)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+
+	invalidResp, err = s.db.PolicyClient.RemovePublicKeyFromValue(s.ctx, &attributes.ValueKey{
+		ValueId: resp.GetValueId(),
+		KeyId:   nonExistentKeyID,
+	})
+	s.Require().Error(err)
+	s.Nil(invalidResp)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+
+	resp, err = s.db.PolicyClient.RemovePublicKeyFromValue(s.ctx, &attributes.ValueKey{
+		ValueId: resp.GetValueId(),
+		KeyId:   resp.GetKeyId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+}
+
 func TestAttributeValuesSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping attribute values integration tests")

@@ -57,7 +57,7 @@ message ValueKey {
     (buf.validate.field).string.uuid = true,
     (buf.validate.field).required = true
   ];
-  // Required
+  // Required (The id listed in the AsymmetricKeys object)
   string key_id = 2 [
     (buf.validate.field).string.uuid = true,
     (buf.validate.field).required = true
@@ -375,48 +375,50 @@ message RemoveKeyAccessServerFromValueResponse {
    Assign Key to Attribute and Value
 */
 
-message AssignKeyToAttributeRequest {
+message AssignPublicKeyToAttributeRequest {
   // Required
   AttributeKey attribute_key = 1 [
     (buf.validate.field).required = true
   ];
 }
 
-message AssignKeyToAttributeResponse {
+message AssignPublicKeyToAttributeResponse {
   // Required
   AttributeKey attribute_key = 1;
 }
 
-message RemoveKeyFromAttributeRequest {
+message RemovePublicKeyFromAttributeRequest {
   // Required
   AttributeKey attribute_key = 1  [
     (buf.validate.field).required = true
   ];
 }
 
-message RemoveKeyFromAttributeResponse {
+message RemovePublicKeyFromAttributeResponse {
   // Required
   AttributeKey attribute_key = 1;
 }
 
-message AssignKeyToValueRequest {
+message AssignPublicKeyToValueRequest {
   // Required
   ValueKey value_key = 1  [
     (buf.validate.field).required = true
   ];
 }
 
-message AssignKeyToValueResponse {
+message AssignPublicKeyToValueResponse {
   // Required
   ValueKey value_key = 1;
 }
 
-message RemoveKeyFromValueRequest {
+message RemovePublicKeyFromValueRequest {
   // Required
-  ValueKey value_key = 1;
+  ValueKey value_key = 1  [
+    (buf.validate.field).required = true
+  ];
 }
 
-message RemoveKeyFromValueResponse {
+message RemovePublicKeyFromValueResponse {
   // Required
   ValueKey value_key = 1;
 }
@@ -524,13 +526,13 @@ service AttributesService {
   * Attribute <> Key RPCs
   *---------------------------------------*/
 
-  rpc AssignKeyToAttribute(AssignKeyToAttributeRequest) returns (AssignKeyToAttributeResponse){}
+  rpc AssignPublicKeyToAttribute(AssignPublicKeyToAttributeRequest) returns (AssignPublicKeyToAttributeResponse){}
 
-  rpc RemoveKeyFromAttribute(RemoveKeyFromAttributeRequest) returns (RemoveKeyFromAttributeResponse){}
+  rpc RemovePublicKeyFromAttribute(RemovePublicKeyFromAttributeRequest) returns (RemovePublicKeyFromAttributeResponse){}
 
-  rpc AssignKeyToValue(AssignKeyToValueRequest) returns (AssignKeyToValueResponse){}
+  rpc AssignPublicKeyToValue(AssignPublicKeyToValueRequest) returns (AssignPublicKeyToValueResponse){}
 
-  rpc RemoveKeyFromValue(RemoveKeyFromValueRequest) returns (RemoveKeyFromValueResponse){}
+  rpc RemovePublicKeyFromValue(RemovePublicKeyFromValueRequest) returns (RemovePublicKeyFromValueResponse){}
 }
 
 

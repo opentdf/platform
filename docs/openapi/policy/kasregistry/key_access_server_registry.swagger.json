@@ -263,7 +263,11 @@
                 },
                 "publicKey": {
                   "$ref": "#/definitions/policyPublicKey",
-                  "title": "Optional"
+                  "title": "Deprecated\nOptional"
+                },
+                "sourceType": {
+                  "$ref": "#/definitions/policySourceType",
+                  "description": "Optional\nUsing UNSPECIFIED will result in a successful update,\nbut will not actually update the underlying source.\nYou should not update KAS's from INTERNAL/EXTERNAL\nto unspecified."
                 },
                 "name": {
                   "type": "string",
@@ -391,7 +395,11 @@
         },
         "publicKey": {
           "$ref": "#/definitions/policyPublicKey",
-          "title": "Required"
+          "title": "Deprecated"
+        },
+        "sourceType": {
+          "$ref": "#/definitions/policySourceType",
+          "title": "Optional"
         },
         "name": {
           "type": "string",
@@ -675,6 +683,18 @@
           "$ref": "#/definitions/policyPublicKey",
           "title": "Deprecated"
         },
+        "sourceType": {
+          "$ref": "#/definitions/policySourceType",
+          "title": "The source of the KAS: (INTERNAL, EXTERNAL)"
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyAsymmetricKey"
+          },
+          "title": "Asymmetric keys associated with this KAS"
+        },
         "name": {
           "type": "string",
           "title": "Optional\nUnique name of the KAS instance"
@@ -774,6 +794,16 @@
         }
       },
       "title": "Deprecated"
+    },
+    "policySourceType": {
+      "type": "string",
+      "enum": [
+        "SOURCE_TYPE_UNSPECIFIED",
+        "SOURCE_TYPE_INTERNAL",
+        "SOURCE_TYPE_EXTERNAL"
+      ],
+      "default": "SOURCE_TYPE_UNSPECIFIED",
+      "description": "Describes whether this kas is managed by the organization or if they imported\nthe kas information from an external party. These two modes are necessary in order\nto encrypt a tdf dek with an external parties kas public key.\n\n - SOURCE_TYPE_INTERNAL: The kas is managed by the organization.\n - SOURCE_TYPE_EXTERNAL: The kas is managed by an external party."
     },
     "protobufAny": {
       "type": "object",

@@ -20,6 +20,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
+	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
@@ -71,6 +72,7 @@ type SDK struct {
 	Unsafe                  unsafe.UnsafeServiceClient
 	Authorization           authorization.AuthorizationServiceClient
 	EntityResoution         entityresolution.EntityResolutionServiceClient
+	KeyManagement           keymanagement.KeyManagementServiceClient
 	wellknownConfiguration  wellknownconfiguration.WellKnownServiceClient
 }
 
@@ -201,6 +203,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(platformConn),
 		Authorization:           authorization.NewAuthorizationServiceClient(platformConn),
 		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(ersConn),
+		KeyManagement:           keymanagement.NewKeyManagementServiceClient(platformConn),
 		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(platformConn),
 	}, nil
 }

@@ -1157,6 +1157,112 @@ func (s *NamespacesSuite) Test_RemoveKASGrant_FailsAlreadyRemoved() {
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
+func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Returns_Error_When_Namespace_Not_Found() {
+	kasKeys := s.f.GetKasRegistryServerKeys("kas_key_1")
+	resp, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: nonExistentNamespaceID,
+		KeyId:       kasKeys.ID,
+	})
+
+	s.Require().Error(err)
+	s.Nil(resp)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
+}
+
+func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Returns_Error_When_Key_Not_Found() {
+	f := s.getActiveNamespaceFixtures()
+	resp, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: f[0].ID,
+		KeyId:       nonExistentNamespaceID,
+	})
+
+	s.Require().Error(err)
+	s.Nil(resp)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
+}
+
+func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Succeeds() {
+	namespaceFix := s.getActiveNamespaceFixtures()[0]
+	gotAttr, err := s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_NamespaceId{
+		NamespaceId: namespaceFix.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(gotAttr)
+	s.Empty(gotAttr.GetKeys())
+
+	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	resp, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: namespaceFix.ID,
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+
+	gotAttr, err = s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_NamespaceId{
+		NamespaceId: namespaceFix.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(gotAttr)
+	s.Len(gotAttr.GetKeys(), 1)
+	s.Equal(kasKey.ID, gotAttr.GetKeys()[0].GetId())
+	s.Equal(kasKey.ProviderConfigID, gotAttr.GetKeys()[0].GetProviderConfig().GetId())
+
+	resp, err = s.db.PolicyClient.RemovePublicKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: resp.GetNamespaceId(),
+		KeyId:       resp.GetKeyId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+
+	gotAttr, err = s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_NamespaceId{
+		NamespaceId: namespaceFix.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(gotAttr)
+	s.Empty(gotAttr.GetKeys())
+}
+
+func (s *NamespacesSuite) Test_RemovePublicKeyFromNamespace_Not_Found_Fails() {
+	namespaceFix := s.getActiveNamespaceFixtures()[0]
+	gotAttr, err := s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_NamespaceId{
+		NamespaceId: namespaceFix.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(gotAttr)
+	s.Empty(gotAttr.GetKeys())
+
+	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	resp, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: namespaceFix.ID,
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+
+	invalidResp, err := s.db.PolicyClient.RemovePublicKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: nonExistentAttrID,
+		KeyId:       resp.GetKeyId(),
+	})
+	s.Require().Error(err)
+	s.Nil(invalidResp)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+
+	invalidResp, err = s.db.PolicyClient.RemovePublicKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: resp.GetNamespaceId(),
+		KeyId:       nonExistentKeyID,
+	})
+	s.Require().Error(err)
+	s.Nil(invalidResp)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+
+	resp, err = s.db.PolicyClient.RemovePublicKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: resp.GetNamespaceId(),
+		KeyId:       resp.GetKeyId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+}
+
 func TestNamespacesSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping namespaces integration tests")

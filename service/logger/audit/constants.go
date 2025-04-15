@@ -23,6 +23,9 @@ const (
 	ObjectTypePublicKey
 	ObjectTypeKeyManagementProviderConfig
 	ObjectTypeKasRegistryKeys
+	ObjectTypeKasAttributeDefinitionKeyAssignment
+	ObjectTypeKasAttributeValueKeyAssignment
+	ObjectTypeKasAttributeNamespaceKeyAssignment
 )
 
 func (ot ObjectType) String() string {
@@ -43,6 +46,9 @@ func (ot ObjectType) String() string {
 		"public_key",
 		"key_management_provider_config",
 		"kas_registry_keys",
+		"kas_attribute_definition_key_assignment",
+		"kas_attribute_value_key_assignment",
+		"kas_attribute_namespace_key_assignment",
 	}[ot]
 }
 

@@ -72,6 +72,8 @@ func (c PolicyDBClient) GetRegisteredResource(ctx context.Context, identifier an
 	var id string
 
 	switch i := identifier.(type) {
+	case string:
+		id = i
 	case *registeredresources.GetRegisteredResourceRequest_ResourceId:
 		// TODO: refactor to pgtype.UUID once the query supports both id and fqn
 		id = i.ResourceId
@@ -235,6 +237,8 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, identifi
 	var id string
 
 	switch i := identifier.(type) {
+	case string:
+		id = i
 	case *registeredresources.GetRegisteredResourceValueRequest_ValueId:
 		// TODO: refactor to pgtype.UUID once the query supports both id and fqn
 		id = i.ValueId

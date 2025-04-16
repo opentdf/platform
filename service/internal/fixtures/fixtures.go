@@ -333,6 +333,24 @@ func (f *Fixtures) GetNamespaceKeyMap(key string) []FixtureDataNamespaceKeyMap {
 	return nkms
 }
 
+func (f *Fixtures) GetRegisteredResourceKey(key string) FixtureDataRegisteredResource {
+	rr, ok := fixtureData.RegisteredResources.Data[key]
+	if !ok || rr.ID == "" {
+		slog.Error("could not find registered resource", slog.String("id", key))
+		panic("could not find registered resource fixture: " + key)
+	}
+	return rr
+}
+
+func (f *Fixtures) GetRegisteredResourceValueKey(key string) FixtureDataRegisteredResourceValue {
+	rv, ok := fixtureData.RegisteredResourceValues.Data[key]
+	if !ok || rv.ID == "" {
+		slog.Error("could not find registered resource value", slog.String("id", key))
+		panic("could not find registered resource value fixture: " + key)
+	}
+	return rv
+}
+
 func (f *Fixtures) Provision() {
 	slog.Info("📦 running migrations in schema", slog.String("schema", f.db.Schema))
 	_, err := f.db.Client.RunMigrations(context.Background(), policy.Migrations)

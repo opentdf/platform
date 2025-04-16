@@ -42,6 +42,8 @@ func TestRegisteredResourcesSuite(t *testing.T) {
 	suite.Run(t, new(RegisteredResourcesSuite))
 }
 
+const invalidID = "00000000-0000-0000-0000-000000000000"
+
 ///
 /// Registered Resources
 ///
@@ -116,6 +118,49 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResource_WithNonUniqueNa
 	s.Nil(created)
 }
 
+// Delete
+
+func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResource_Succeeds() {
+	created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		Name: "test_delete",
+		Values: []string{
+			"test_delete_value1",
+			"test_delete_value2",
+		},
+	})
+	s.Require().NoError(err)
+
+	deleted, err := s.db.PolicyClient.DeleteRegisteredResource(s.ctx, created.Id)
+	s.Require().NoError(err)
+	s.Require().Equal(created.Id, deleted.Id)
+
+	// verify resource deleted
+
+	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, created.Id)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(got)
+
+	// verify resource values deleted
+
+	gotValue1, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, created.Values[0].Id)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(gotValue1)
+
+	gotValue2, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, created.Values[1].Id)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(gotValue2)
+}
+
+func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResource_WithInvalidID_Fails() {
+	deleted, err := s.db.PolicyClient.DeleteRegisteredResource(s.ctx, invalidID)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(deleted)
+}
+
 ///
 /// Registered Resource Values
 ///
@@ -167,7 +212,7 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithMetada
 
 func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithInvalidResource_Fails() {
 	req := &registeredresources.CreateRegisteredResourceValueRequest{
-		ResourceId: "00000000-0000-0000-0000-000000000000",
+		ResourceId: invalidID,
 		Value:      "test_create_value__invalid_resource",
 	}
 
@@ -190,4 +235,33 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithNonUni
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
 	s.Nil(created)
+}
+
+// Delete
+
+func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResourceValue_Succeeds() {
+	existingRes := s.f.GetRegisteredResourceKey("res_only")
+	created, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
+		ResourceId: existingRes.ID,
+		Value:      "test_delete_value",
+	})
+	s.Require().NoError(err)
+
+	deleted, err := s.db.PolicyClient.DeleteRegisteredResourceValue(s.ctx, created.Id)
+	s.Require().NoError(err)
+	s.Require().Equal(created.Id, deleted.Id)
+
+	// verify resource value deleted
+
+	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, created.Id)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(got)
+}
+
+func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResourceValue_WithInvalidID_Fails() {
+	deleted, err := s.db.PolicyClient.DeleteRegisteredResourceValue(s.ctx, invalidID)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(deleted)
 }

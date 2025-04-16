@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "policy/predefined_rules.proto",
+    "title": "policy/registeredresources/registered_resources.proto",
     "version": "version not set"
   },
   "consumes": [

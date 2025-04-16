@@ -26,6 +26,7 @@ import (
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/policies"
@@ -42,7 +43,7 @@ var ErrEmptyStringAttribute = errors.New("resource attributes must have at least
 
 type AuthorizationService struct { //nolint:revive // AuthorizationService is a valid name for this struct
 	sdk    *otdf.SDK
-	config Config
+	config *Config
 	logger *logger.Logger
 	eval   rego.PreparedEvalQuery
 	trace.Tracer
@@ -60,28 +61,81 @@ type CustomRego struct {
 	Query string `mapstructure:"query" json:"query" default:"data.opentdf.entitlements.attributes"`
 }
 
+func (as *AuthorizationService) loadRegoAndBuiltins(cfg *Config) error {
+	var (
+		entitlementRego []byte
+		err             error
+	)
+	// Build Rego PreparedEvalQuery
+	// Load rego from embedded file or custom path
+	if cfg.Rego.Path != "" {
+		entitlementRego, err = os.ReadFile(cfg.Rego.Path)
+		if err != nil {
+			return fmt.Errorf("failed to read custom entitlements.rego file: %w", err)
+		}
+	} else {
+		entitlementRego, err = policies.EntitlementsRego.ReadFile("entitlements/entitlements.rego")
+		if err != nil {
+			return fmt.Errorf("failed to read entitlements.rego file: %w", err)
+		}
+	}
+
+	// Register builtin
+	subjectmappingbuiltin.SubjectMappingBuiltin()
+
+	as.eval, err = rego.New(
+		rego.Query(cfg.Rego.Query),
+		rego.Module("entitlements.rego", string(entitlementRego)),
+		rego.StrictBuiltinErrors(true),
+	).PrepareForEval(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to prepare entitlements.rego for eval: %w", err)
+	}
+	return nil
+}
+
+func OnConfigUpdate(as *AuthorizationService) serviceregistry.OnConfigUpdateHook {
+	return func(_ context.Context, cfg config.ServiceConfig) error {
+		err := mapstructure.Decode(cfg, as.config)
+		if err != nil {
+			return fmt.Errorf("invalid auth svc cfg [%v] %w", cfg, err)
+		}
+
+		//nolint:contextcheck // context is not needed here
+		if err = as.loadRegoAndBuiltins(as.config); err != nil {
+			return fmt.Errorf("failed to load rego and builtins: %w", err)
+		}
+
+		as.logger.Info("authorization service config reloaded")
+
+		return nil
+	}
+}
+
 func NewRegistration() *serviceregistry.Service[authorizationconnect.AuthorizationServiceHandler] {
+	as := new(AuthorizationService)
+	onUpdateConfig := OnConfigUpdate(as)
+
 	return &serviceregistry.Service[authorizationconnect.AuthorizationServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[authorizationconnect.AuthorizationServiceHandler]{
 			Namespace:       "authorization",
 			ServiceDesc:     &authorization.AuthorizationService_ServiceDesc,
 			ConnectRPCFunc:  authorizationconnect.NewAuthorizationServiceHandler,
 			GRPCGatewayFunc: authorization.RegisterAuthorizationServiceHandler,
+			OnConfigUpdate:  onUpdateConfig,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authorizationconnect.AuthorizationServiceHandler, serviceregistry.HandlerServer) {
-				var (
-					err             error
-					entitlementRego []byte
-					authZCfg        = new(Config)
-				)
+				var authZCfg = new(Config)
 
 				logger := srp.Logger
 
 				// default ERS endpoint
-				as := &AuthorizationService{sdk: srp.SDK, logger: logger}
+				as.sdk = srp.SDK
+				as.logger = logger
 				if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
 					logger.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
 				}
 
+				// Read in config defaults only on first register
 				if err := defaults.Set(authZCfg); err != nil {
 					panic(fmt.Errorf("failed to set defaults for authorization service config: %w", err))
 				}
@@ -111,37 +165,13 @@ func NewRegistration() *serviceregistry.Service[authorizationconnect.Authorizati
 					}
 				}
 
-				logger.Debug("authorization service config", slog.Any("config", *authZCfg))
-
-				// Build Rego PreparedEvalQuery
-
-				// Load rego from embedded file or custom path
-				if authZCfg.Rego.Path != "" {
-					entitlementRego, err = os.ReadFile(authZCfg.Rego.Path)
-					if err != nil {
-						panic(fmt.Errorf("failed to read custom entitlements.rego file: %w", err))
-					}
-				} else {
-					entitlementRego, err = policies.EntitlementsRego.ReadFile("entitlements/entitlements.rego")
-					if err != nil {
-						panic(fmt.Errorf("failed to read entitlements.rego file: %w", err))
-					}
+				if err := as.loadRegoAndBuiltins(authZCfg); err != nil {
+					logger.Error("failed to load rego and builtins", slog.String("error", err.Error()))
+					panic(fmt.Errorf("failed to load rego and builtins: %w", err))
 				}
-
-				// Register builtin
-				subjectmappingbuiltin.SubjectMappingBuiltin()
-
-				as.eval, err = rego.New(
-					rego.Query(authZCfg.Rego.Query),
-					rego.Module("entitlements.rego", string(entitlementRego)),
-					rego.StrictBuiltinErrors(true),
-				).PrepareForEval(context.Background())
-				if err != nil {
-					panic(fmt.Errorf("failed to prepare entitlements.rego for eval: %w", err))
-				}
-
-				as.config = *authZCfg
+				as.config = authZCfg
 				as.Tracer = srp.Tracer
+				logger.Debug("authorization service config")
 
 				return as, nil
 			},

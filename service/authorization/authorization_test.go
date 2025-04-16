@@ -248,8 +248,6 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 		},
 	}
 
-	ctxb := context.Background()
-
 	testrego := rego.New(
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
@@ -258,7 +256,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 		))
 
 	// Run evaluation.
-	prepared, err := testrego.PrepareForEval(ctxb)
+	prepared, err := testrego.PrepareForEval(t.Context())
 	require.NoError(t, err)
 
 	// set the request
@@ -294,7 +292,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
-	resp, err := as.GetDecisions(ctxb, &req)
+	resp, err := as.GetDecisions(t.Context(), &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -356,12 +354,12 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 		))
 
 	// Run evaluation.
-	prepared, err = testrego.PrepareForEval(ctxb)
+	prepared, err = testrego.PrepareForEval(t.Context())
 	require.NoError(t, err)
 
 	as.eval = prepared
 
-	resp, err = as.GetDecisions(ctxb, &req)
+	resp, err = as.GetDecisions(t.Context(), &req)
 	require.NoError(t, err)
 	assert.Len(t, resp.Msg.GetDecisionResponses(), 2)
 	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.Msg.GetDecisionResponses()[0].GetDecision())
@@ -438,8 +436,6 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 		},
 	}
 
-	ctxb := context.Background()
-
 	testrego := rego.New(
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
@@ -448,7 +444,7 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 		))
 
 	// Run evaluation.
-	prepared, err := testrego.PrepareForEval(ctxb)
+	prepared, err := testrego.PrepareForEval(t.Context())
 	require.NoError(t, err)
 
 	as := AuthorizationService{
@@ -460,7 +456,7 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
-	resp, err := as.GetDecisions(ctxb, &req)
+	resp, err := as.GetDecisions(t.Context(), &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -515,8 +511,6 @@ func Test_GetDecisionsAllOfWithEnvironmental_Pass(t *testing.T) {
 		},
 	}
 
-	ctxb := context.Background()
-
 	testrego := rego.New(
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
@@ -525,7 +519,7 @@ func Test_GetDecisionsAllOfWithEnvironmental_Pass(t *testing.T) {
 		))
 
 	// Run evaluation.
-	prepared, err := testrego.PrepareForEval(ctxb)
+	prepared, err := testrego.PrepareForEval(t.Context())
 	require.NoError(t, err)
 
 	// set the request
@@ -560,7 +554,7 @@ func Test_GetDecisionsAllOfWithEnvironmental_Pass(t *testing.T) {
 		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
-	resp, err := as.GetDecisions(ctxb, &req)
+	resp, err := as.GetDecisions(t.Context(), &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -612,8 +606,6 @@ func Test_GetDecisionsAllOfWithEnvironmental_Fail(t *testing.T) {
 		},
 	}
 
-	ctxb := context.Background()
-
 	testrego := rego.New(
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
@@ -622,7 +614,7 @@ func Test_GetDecisionsAllOfWithEnvironmental_Fail(t *testing.T) {
 		))
 
 	// Run evaluation.
-	prepared, err := testrego.PrepareForEval(ctxb)
+	prepared, err := testrego.PrepareForEval(t.Context())
 	require.NoError(t, err)
 
 	// set the request
@@ -657,7 +649,7 @@ func Test_GetDecisionsAllOfWithEnvironmental_Fail(t *testing.T) {
 		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
-	resp, err := as.GetDecisions(ctxb, &req)
+	resp, err := as.GetDecisions(t.Context(), &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -710,8 +702,6 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 		},
 	}
 
-	ctxb := context.Background()
-
 	rego := rego.New(
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
@@ -720,7 +710,7 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 		))
 
 	// Run evaluation.
-	prepared, err := rego.PrepareForEval(ctxb)
+	prepared, err := rego.PrepareForEval(t.Context())
 	require.NoError(t, err)
 
 	as := AuthorizationService{
@@ -739,7 +729,7 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 		},
 	}
 
-	resp, err := as.GetEntitlements(ctxb, &req)
+	resp, err := as.GetEntitlements(t.Context(), &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -784,8 +774,6 @@ func Test_GetEntitlementsFqnCasing(t *testing.T) {
 		},
 	}
 
-	ctxb := context.Background()
-
 	rego := rego.New(
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
@@ -794,7 +782,7 @@ func Test_GetEntitlementsFqnCasing(t *testing.T) {
 		))
 
 	// Run evaluation.
-	prepared, err := rego.PrepareForEval(ctxb)
+	prepared, err := rego.PrepareForEval(t.Context())
 	require.NoError(t, err)
 
 	as := AuthorizationService{
@@ -818,7 +806,7 @@ func Test_GetEntitlementsFqnCasing(t *testing.T) {
 		assert.Equal(t, fqn, strings.ToLower(fqn))
 	}
 
-	resp, err := as.GetEntitlements(ctxb, &req)
+	resp, err := as.GetEntitlements(t.Context(), &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -863,8 +851,6 @@ func Test_GetEntitlements_HandlesPagination(t *testing.T) {
 		},
 	}
 
-	ctxb := context.Background()
-
 	rego := rego.New(
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
@@ -873,7 +859,7 @@ func Test_GetEntitlements_HandlesPagination(t *testing.T) {
 		))
 
 	// Run evaluation.
-	prepared, err := rego.PrepareForEval(ctxb)
+	prepared, err := rego.PrepareForEval(t.Context())
 	require.NoError(t, err)
 
 	as := AuthorizationService{
@@ -898,7 +884,7 @@ func Test_GetEntitlements_HandlesPagination(t *testing.T) {
 		assert.Equal(t, fqn, strings.ToLower(fqn))
 	}
 
-	resp, err := as.GetEntitlements(ctxb, &req)
+	resp, err := as.GetEntitlements(t.Context(), &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -957,8 +943,6 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 		},
 	}
 
-	ctxb := context.Background()
-
 	rego := rego.New(
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
@@ -967,7 +951,7 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 		))
 
 	// Run evaluation.
-	prepared, err := rego.PrepareForEval(ctxb)
+	prepared, err := rego.PrepareForEval(t.Context())
 	require.NoError(t, err)
 	as := AuthorizationService{
 		logger: logger, sdk: &otdf.SDK{
@@ -987,7 +971,7 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 		},
 	}
 
-	resp, err := as.GetEntitlements(ctxb, &req)
+	resp, err := as.GetEntitlements(t.Context(), &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -1198,8 +1182,6 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 		},
 	}
 
-	ctxb := context.Background()
-
 	testrego := rego.New(
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
@@ -1208,7 +1190,7 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 		))
 
 	// Run evaluation.
-	prepared, err := testrego.PrepareForEval(ctxb)
+	prepared, err := testrego.PrepareForEval(t.Context())
 	require.NoError(t, err)
 
 	as := AuthorizationService{
@@ -1248,7 +1230,7 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 		},
 	}
 
-	resp, err := as.GetDecisions(ctxb, &req)
+	resp, err := as.GetDecisions(t.Context(), &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -1284,7 +1266,7 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 		},
 	}
 
-	resp, err = as.GetDecisions(ctxb, &req)
+	resp, err = as.GetDecisions(t.Context(), &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -1320,7 +1302,7 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 		},
 	}
 
-	resp, err = as.GetDecisions(ctxb, &req)
+	resp, err = as.GetDecisions(t.Context(), &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -1371,8 +1353,6 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 		},
 	}
 
-	ctxb := context.Background()
-
 	/////// TEST1: Three entity chains, one resource attribute ///////
 	testrego := rego.New(
 		rego.Query("data.example.p"),
@@ -1382,7 +1362,7 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 		))
 
 	// Run evaluation.
-	prepared, err := testrego.PrepareForEval(ctxb)
+	prepared, err := testrego.PrepareForEval(t.Context())
 	require.NoError(t, err)
 
 	// set the request
@@ -1428,7 +1408,7 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
-	resp, err := as.GetDecisions(ctxb, &req)
+	resp, err := as.GetDecisions(t.Context(), &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -1501,12 +1481,12 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 		))
 
 	// Run evaluation.
-	prepared, err = testrego.PrepareForEval(ctxb)
+	prepared, err = testrego.PrepareForEval(t.Context())
 	require.NoError(t, err)
 
 	as.eval = prepared
 
-	resp, err = as.GetDecisions(ctxb, &req)
+	resp, err = as.GetDecisions(t.Context(), &req)
 	require.NoError(t, err)
 	assert.Len(t, resp.Msg.GetDecisionResponses(), 6)
 
@@ -1570,12 +1550,12 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 		))
 
 	// Run evaluation.
-	prepared, err = testrego.PrepareForEval(ctxb)
+	prepared, err = testrego.PrepareForEval(t.Context())
 	require.NoError(t, err)
 
 	as.eval = prepared
 
-	resp, err = as.GetDecisions(ctxb, &req)
+	resp, err = as.GetDecisions(t.Context(), &req)
 	require.NoError(t, err)
 	assert.Len(t, resp.Msg.GetDecisionResponses(), 3)
 	assert.Equal(t, "ec1", resp.Msg.GetDecisionResponses()[0].GetEntityChainId())
@@ -1619,7 +1599,7 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 		},
 	}
 
-	resp, err = as.GetDecisions(ctxb, &req)
+	resp, err = as.GetDecisions(t.Context(), &req)
 	require.NoError(t, err)
 	assert.Len(t, resp.Msg.GetDecisionResponses(), 6)
 	assert.Equal(t, "ec1", resp.Msg.GetDecisionResponses()[0].GetEntityChainId())
@@ -1685,8 +1665,6 @@ func Test_GetDecisions_Empty_EC_RA(t *testing.T) {
 		},
 	}
 
-	ctxb := context.Background()
-
 	testrego := rego.New(
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
@@ -1695,7 +1673,7 @@ func Test_GetDecisions_Empty_EC_RA(t *testing.T) {
 		))
 
 	// Run evaluation.
-	prepared, err := testrego.PrepareForEval(ctxb)
+	prepared, err := testrego.PrepareForEval(t.Context())
 	require.NoError(t, err)
 
 	as := AuthorizationService{
@@ -1829,7 +1807,7 @@ func Test_GetDecisions_Empty_EC_RA(t *testing.T) {
 	///////////// Run tests /////////////////////
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			resp, err := as.GetDecisions(ctxb, &tc.req)
+			resp, err := as.GetDecisions(t.Context(), &tc.req)
 			require.NoError(t, err)
 			assert.NotNil(t, resp)
 			assert.Len(t, resp.Msg.GetDecisionResponses(), tc.numDecisions)

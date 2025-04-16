@@ -19,9 +19,9 @@ import (
 	"github.com/opentdf/platform/sdk/auth/oauth"
 	"github.com/opentdf/platform/sdk/httputil"
 	"github.com/opentdf/platform/service/internal/auth"
-	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/tracing"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
@@ -48,10 +48,23 @@ func Start(f ...StartOptions) error {
 
 	ctx := context.Background()
 
-	slog.Debug("loading configuration")
-	cfg, err := config.LoadConfig(startConfig.ConfigKey, startConfig.ConfigFile)
+	slog.Debug("loading configuration from environment")
+	cfg, err := config.LoadConfig(ctx, startConfig.ConfigKey, startConfig.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("could not load config: %w", err)
+	}
+
+	if startConfig.configLoaders != nil {
+		slog.Debug("loading configuration from additional provided loaders")
+
+		for _, loader := range startConfig.configLoaders {
+			slog.Debug("loading config for loader", slog.String("loader", loader.Name()))
+			err := loader.Load(cfg)
+			if err != nil {
+				return fmt.Errorf("failed load config with loader %s: %w", loader.Name(), err)
+			}
+			cfg.AddLoader(loader)
+		}
 	}
 
 	if cfg.DevMode {
@@ -74,6 +87,8 @@ func Start(f ...StartOptions) error {
 		return fmt.Errorf("could not initialize tracer: %w", err)
 	}
 	defer shutdown()
+
+	logger.Debug("config loaded", slog.Any("config", cfg.LogValue()))
 
 	logger.Info("starting opentdf services")
 
@@ -98,8 +113,6 @@ func Start(f ...StartOptions) error {
 	if startConfig.casbinAdapter != nil {
 		cfg.Server.Auth.Policy.Adapter = startConfig.casbinAdapter
 	}
-
-	logger.Debug("config loaded", slog.Any("config", cfg))
 
 	// Create new server for grpc & http. Also will support in process grpc potentially too
 	logger.Debug("initializing opentdf server")
@@ -291,11 +304,17 @@ func Start(f ...StartOptions) error {
 	defer client.Close()
 
 	logger.Info("starting services")
-	err = startServices(ctx, *cfg, otdf, client, logger, svcRegistry)
+	err = startServices(ctx, cfg, otdf, client, logger, svcRegistry)
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)
 	}
+
+	// Start watching the configuration for changes with registered config change service hooks
+	if err := cfg.Watch(ctx); err != nil {
+		return fmt.Errorf("failed to watch configuration: %w", err)
+	}
+	defer cfg.Close(ctx)
 
 	// Start the server
 	logger.Info("starting opentdf")

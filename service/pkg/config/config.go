@@ -1,20 +1,26 @@
 package config
 
 import (
+	"context"
 	"errors"
-	"fmt"
 	"log/slog"
-	"os"
-	"strings"
 
-	"github.com/creasty/defaults"
-	"github.com/go-playground/validator/v10"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/spf13/viper"
+	"github.com/opentdf/platform/service/tracing"
 )
+
+// ChangeHook is a function invoked when the configuration changes.
+type ChangeHook func(configServices ServicesMap) error
+
+// Config structure holding all services.
+type ServicesMap map[string]ServiceConfig
+
+// Config structure holding a single service.
+type ServiceConfig map[string]any
 
 // Config represents the configuration settings for the service.
 type Config struct {
@@ -38,7 +44,15 @@ type Config struct {
 	SDKConfig SDKConfig `mapstructure:"sdk_config" json:"sdk_config"`
 
 	// Services represents the configuration settings for the services.
-	Services map[string]serviceregistry.ServiceConfig `mapstructure:"services"`
+	Services ServicesMap `mapstructure:"services"`
+
+	// Trace is for configuring open telemetry based tracing.
+	Trace tracing.Config `mapstructure:"trace"`
+
+	// onConfigChangeHooks is a list of functions to call when the configuration changes.
+	onConfigChangeHooks []ChangeHook
+	// loaders is a list of configuration loaders.
+	loaders []Loader
 }
 
 // SDKConfig represents the configuration for the SDK.
@@ -69,69 +83,11 @@ type Connection struct {
 	Insecure bool `mapstructure:"insecure" json:"insecure" default:"false" validate:"boolean"`
 }
 
-type Error string
-
-func (e Error) Error() string {
-	return string(e)
-}
-
-const (
-	ErrLoadingConfig       Error = "error loading config"
-	ErrUnmarshallingConfig Error = "error unmarshalling config"
-	ErrSettingConfig       Error = "error setting config"
+var (
+	ErrLoadingConfig       = errors.New("error loading config")
+	ErrUnmarshallingConfig = errors.New("error unmarshalling config")
+	ErrSettingConfig       = errors.New("error setting config")
 )
-
-// LoadConfig Load config with viper.
-func LoadConfig(key, file string) (*Config, error) {
-	config := &Config{}
-
-	homedir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, errors.Join(err, ErrLoadingConfig)
-	}
-
-	v := viper.NewWithOptions(viper.WithLogger(slog.Default()))
-	v.AddConfigPath(fmt.Sprintf("%s/."+key, homedir))
-	v.AddConfigPath("." + key)
-	v.AddConfigPath(".")
-	v.SetConfigName(key)
-	v.SetConfigType("yaml")
-
-	// Default config values (non-zero)
-	v.SetDefault("server.auth.cache_refresh_interval", "15m")
-
-	v.SetEnvPrefix(key)
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	v.AutomaticEnv()
-
-	// Allow for a custom config file to be passed in
-	// This takes precedence over the AddConfigPath/SetConfigName
-	if file != "" {
-		v.SetConfigFile(file)
-	}
-
-	if err := v.ReadInConfig(); err != nil {
-		return nil, errors.Join(err, ErrLoadingConfig)
-	}
-
-	if err := defaults.Set(config); err != nil {
-		return nil, errors.Join(err, ErrSettingConfig)
-	}
-
-	err = v.Unmarshal(config)
-	if err != nil {
-		return nil, errors.Join(err, ErrUnmarshallingConfig)
-	}
-
-	// Validate Config
-	validate := validator.New()
-
-	if err := validate.Struct(config); err != nil {
-		return nil, errors.Join(err, ErrUnmarshallingConfig)
-	}
-
-	return config, nil
-}
 
 // LogValue returns a slog.Value representation of the config.
 // We exclude logging service configuration as it may contain sensitive information.
@@ -144,6 +100,56 @@ func (c *Config) LogValue() slog.Value {
 		slog.Any("sdk_config", c.SDKConfig),
 		slog.Any("server", c.Server),
 	)
+}
+
+// AddLoader adds a configuration loader to the list of loaders.
+func (c *Config) AddLoader(loader Loader) {
+	c.loaders = append(c.loaders, loader)
+}
+
+// AddOnConfigChangeHook adds a hook to the list of hooks to call when the configuration changes.
+func (c *Config) AddOnConfigChangeHook(hook ChangeHook) {
+	c.onConfigChangeHooks = append(c.onConfigChangeHooks, hook)
+}
+
+// Watch starts watching the configuration for changes in all config loaders.
+func (c *Config) Watch(ctx context.Context) error {
+	if len(c.loaders) == 0 {
+		return nil
+	}
+	for _, loader := range c.loaders {
+		if err := loader.Watch(ctx, c, c.OnChange); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Close invokes close method on all config loaders.
+func (c *Config) Close(_ context.Context) error {
+	if len(c.loaders) == 0 {
+		return nil
+	}
+	slog.Debug("Closing config loaders")
+	for _, loader := range c.loaders {
+		if err := loader.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// OnChange invokes all registered onConfigChangeHooks after a configuration change.
+func (c *Config) OnChange(_ context.Context) error {
+	if len(c.loaders) == 0 {
+		return nil
+	}
+	for _, hook := range c.onConfigChangeHooks {
+		if err := hook(c.Services); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (c SDKConfig) LogValue() slog.Value {
@@ -159,4 +165,23 @@ func (c SDKConfig) LogValue() slog.Value {
 		slog.String("client_id", c.ClientID),
 		slog.String("client_secret", "[REDACTED]"),
 	)
+}
+
+// LoadConfig loads configuration using the provided loader or creates a default Viper loader
+func LoadConfig(_ context.Context, key, file string) (*Config, error) {
+	config := &Config{}
+
+	// Create default loader if none provided
+	loader, err := NewEnvironmentLoader(key, file)
+	if err != nil {
+		return nil, err
+	}
+
+	// Load initial configuration
+	config.AddLoader(loader)
+	if err := loader.Load(config); err != nil {
+		return nil, err
+	}
+
+	return config, nil
 }

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/fixtures"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/spf13/cobra"
 )
@@ -38,7 +38,7 @@ You can clear/recycle your database with 'docker compose down' and 'docker compo
 		Run: func(cmd *cobra.Command, _ []string) {
 			configFile, _ := cmd.Flags().GetString(configFileFlag)
 			configKey, _ := cmd.Flags().GetString(configKeyFlag)
-			cfg, err := config.LoadConfig(configKey, configFile)
+			cfg, err := config.LoadConfig(cmd.Context(), configKey, configFile)
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))
 			}

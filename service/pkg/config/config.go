@@ -8,8 +8,6 @@ import (
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
-	"github.com/opentdf/platform/service/pkg/serviceregistry"
-	"github.com/spf13/viper"
 	"github.com/opentdf/platform/service/tracing"
 )
 

@@ -46,8 +46,26 @@ func formatDuration(nanos int64) string {
 	return fmt.Sprintf("%.3f ms", ms)
 }
 
-func runMetrics(cmd *cobra.Command, args []string) error {
+func runMetrics(cmd *cobra.Command, _ []string) error {
+	// Ensure the directory exists
+	if err := os.MkdirAll(folderPath, 0755); err != nil {
+		return fmt.Errorf("error creating directory '%s': %w", folderPath, err)
+	}
+
 	logFile := filepath.Join(folderPath, "traces.log")
+
+	// Check if the file exists, create it if it doesn't
+	if _, err := os.Stat(logFile); os.IsNotExist(err) {
+		// Create an empty file
+		emptyFile, err := os.Create(logFile)
+		if err != nil {
+			return fmt.Errorf("error creating file '%s': %w", logFile, err)
+		}
+		emptyFile.Close()
+		cmd.Println("Created empty traces.log file. No trace data to process.")
+		return nil // Exit early as there's no data to process
+	}
+
 	file, err := os.Open(logFile)
 	if err != nil {
 		return fmt.Errorf("error opening file: %w", err)

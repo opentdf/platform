@@ -166,7 +166,7 @@ func (c PolicyDBClient) UpdateRegisteredResource(ctx context.Context, r *registe
 	id := r.GetId()
 	name := strings.ToLower(r.GetName())
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
-		v, err := c.GetAttributeValue(ctx, id)
+		v, err := c.GetRegisteredResource(ctx, id)
 		if err != nil {
 			return nil, err
 		}
@@ -327,7 +327,7 @@ func (c PolicyDBClient) UpdateRegisteredResourceValue(ctx context.Context, r *re
 	id := r.GetId()
 	value := strings.ToLower(r.GetValue())
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
-		v, err := c.GetAttributeValue(ctx, id)
+		v, err := c.GetRegisteredResourceValue(ctx, id)
 		if err != nil {
 			return nil, err
 		}

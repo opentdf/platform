@@ -85,7 +85,7 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResource_WithValues_Succ
 	s.Require().NoError(err)
 	s.NotNil(created)
 	createdVals := created.GetValues()
-	s.Require().Equal(len(createdVals), 2)
+	s.Require().Len(createdVals, 2)
 	s.Equal(values[0], createdVals[0].GetValue())
 	s.Equal(values[1], createdVals[1].GetValue())
 }
@@ -104,7 +104,7 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResource_WithMetadata_Su
 	created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, req)
 	s.Require().NoError(err)
 	s.NotNil(created)
-	s.Require().Equal(len(created.GetMetadata().GetLabels()), 2)
+	s.Require().Len(created.GetMetadata().GetLabels(), 2)
 }
 
 func (s *RegisteredResourcesSuite) Test_CreateRegisteredResource_WithNonUniqueName_Fails() {
@@ -326,7 +326,7 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithMetada
 	created, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, req)
 	s.Require().NoError(err)
 	s.NotNil(created)
-	s.Require().Equal(len(created.GetMetadata().GetLabels()), 2)
+	s.Require().Len(created.GetMetadata().GetLabels(), 2)
 }
 
 func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithInvalidResource_Fails() {

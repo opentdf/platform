@@ -106,7 +106,59 @@ func (c PolicyDBClient) GetRegisteredResource(ctx context.Context, identifier an
 	}, nil
 }
 
-// todo: list
+func (c PolicyDBClient) ListRegisteredResources(ctx context.Context, r *registeredresources.ListRegisteredResourcesRequest) (*registeredresources.ListRegisteredResourcesResponse, error) {
+	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
+
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > maxLimit {
+		return nil, db.ErrListLimitTooLarge
+	}
+
+	list, err := c.Queries.listRegisteredResources(ctx, listRegisteredResourcesParams{
+		Limit:  limit,
+		Offset: offset,
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	rrList := make([]*policy.RegisteredResource, 0, len(list))
+
+	for i, r := range list {
+		metadata := &common.Metadata{}
+		if err = unmarshalMetadata(r.Metadata, metadata); err != nil {
+			return nil, err
+		}
+
+		values := []*policy.RegisteredResourceValue{}
+		if err = unmarshalRegisteredResourceValuesProto(r.Values, &values); err != nil {
+			return nil, err
+		}
+
+		rrList[i] = &policy.RegisteredResource{
+			Id:       r.ID,
+			Name:     r.Name,
+			Metadata: metadata,
+			Values:   values,
+		}
+	}
+
+	var total int32
+	var nextOffset int32
+	if len(list) > 0 {
+		total = int32(list[0].Total)
+		nextOffset = getNextOffset(offset, limit, total)
+	}
+
+	return &registeredresources.ListRegisteredResourcesResponse{
+		Resources: rrList,
+		Pagination: &policy.PageResponse{
+			CurrentOffset: offset,
+			Total:         total,
+			NextOffset:    nextOffset,
+		},
+	}, nil
+}
 
 func (c PolicyDBClient) UpdateRegisteredResource(ctx context.Context, r *registeredresources.UpdateRegisteredResourceRequest) (*policy.RegisteredResource, error) {
 	id := r.GetId()
@@ -194,27 +246,78 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, identifi
 		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
 	}
 
-	rrv, err := c.Queries.getRegisteredResourceValue(ctx, id)
+	rv, err := c.Queries.getRegisteredResourceValue(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	metadata := &common.Metadata{}
-	if err = unmarshalMetadata(rrv.Metadata, metadata); err != nil {
+	if err = unmarshalMetadata(rv.Metadata, metadata); err != nil {
 		return nil, err
 	}
 
 	return &policy.RegisteredResourceValue{
-		Id:       rrv.ID,
-		Value:    rrv.Value,
+		Id:       rv.ID,
+		Value:    rv.Value,
 		Metadata: metadata,
 		Resource: &policy.RegisteredResource{
-			Id: rrv.RegisteredResourceID,
+			Id: rv.RegisteredResourceID,
 		},
 	}, nil
 }
 
-// todo: list
+func (c PolicyDBClient) ListRegisteredResourceValues(ctx context.Context, r *registeredresources.ListRegisteredResourceValuesRequest) (*registeredresources.ListRegisteredResourceValuesResponse, error) {
+	resourceID := r.GetResourceId()
+	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
+
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > maxLimit {
+		return nil, db.ErrListLimitTooLarge
+	}
+
+	list, err := c.Queries.listRegisteredResourceValues(ctx, listRegisteredResourceValuesParams{
+		RegisteredResourceID: resourceID,
+		Limit:                limit,
+		Offset:               offset,
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	rvList := make([]*policy.RegisteredResourceValue, 0, len(list))
+
+	for i, r := range list {
+		metadata := &common.Metadata{}
+		if err = unmarshalMetadata(r.Metadata, metadata); err != nil {
+			return nil, err
+		}
+
+		rvList[i] = &policy.RegisteredResourceValue{
+			Id:       r.ID,
+			Value:    r.Value,
+			Metadata: metadata,
+			Resource: &policy.RegisteredResource{
+				Id: r.RegisteredResourceID,
+			},
+		}
+	}
+
+	var total int32
+	var nextOffset int32
+	if len(list) > 0 {
+		total = int32(list[0].Total)
+		nextOffset = getNextOffset(offset, limit, total)
+	}
+
+	return &registeredresources.ListRegisteredResourceValuesResponse{
+		Values: rvList,
+		Pagination: &policy.PageResponse{
+			CurrentOffset: offset,
+			Total:         total,
+			NextOffset:    nextOffset,
+		},
+	}, nil
+}
 
 func (c PolicyDBClient) UpdateRegisteredResourceValue(ctx context.Context, r *registeredresources.UpdateRegisteredResourceValueRequest) (*policy.RegisteredResourceValue, error) {
 	id := r.GetId()

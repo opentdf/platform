@@ -3964,6 +3964,169 @@ func (q *Queries) listPublicKeys(ctx context.Context, arg listPublicKeysParams) 
 	return items, nil
 }
 
+const listRegisteredResourceValues = `-- name: listRegisteredResourceValues :many
+WITH counted AS (
+    SELECT COUNT(id) AS total
+    FROM registered_resources
+)
+SELECT
+    id,
+    registered_resource_id,
+    value,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+    counted.total
+FROM registered_resource_values
+CROSS JOIN counted
+WHERE
+    NULLIF($1, '') IS NULL OR registered_resource_id = $1::UUID
+LIMIT $3
+OFFSET $2
+`
+
+type listRegisteredResourceValuesParams struct {
+	RegisteredResourceID interface{} `json:"registered_resource_id"`
+	Offset               int32       `json:"offset_"`
+	Limit                int32       `json:"limit_"`
+}
+
+type listRegisteredResourceValuesRow struct {
+	ID                   string `json:"id"`
+	RegisteredResourceID string `json:"registered_resource_id"`
+	Value                string `json:"value"`
+	Metadata             []byte `json:"metadata"`
+	Total                int64  `json:"total"`
+}
+
+// listRegisteredResourceValues
+//
+//	WITH counted AS (
+//	    SELECT COUNT(id) AS total
+//	    FROM registered_resources
+//	)
+//	SELECT
+//	    id,
+//	    registered_resource_id,
+//	    value,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+//	    counted.total
+//	FROM registered_resource_values
+//	CROSS JOIN counted
+//	WHERE
+//	    NULLIF($1, '') IS NULL OR registered_resource_id = $1::UUID
+//	LIMIT $3
+//	OFFSET $2
+func (q *Queries) listRegisteredResourceValues(ctx context.Context, arg listRegisteredResourceValuesParams) ([]listRegisteredResourceValuesRow, error) {
+	rows, err := q.db.Query(ctx, listRegisteredResourceValues, arg.RegisteredResourceID, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []listRegisteredResourceValuesRow
+	for rows.Next() {
+		var i listRegisteredResourceValuesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.RegisteredResourceID,
+			&i.Value,
+			&i.Metadata,
+			&i.Total,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRegisteredResources = `-- name: listRegisteredResources :many
+WITH counted AS (
+    SELECT COUNT(id) AS total
+    FROM registered_resources
+)
+SELECT
+    r.id,
+    r.name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', r.metadata -> 'labels', 'created_at', r.created_at, 'updated_at', r.updated_at)) as metadata,
+    JSON_AGG(
+        JSON_BUILD_OBJECT(
+            'id', v.id,
+            'value', v.value
+        )
+    ) AS values,
+    counted.total
+FROM registered_resources r
+CROSS JOIN counted
+LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
+GROUP BY r.id, counted.total
+LIMIT $2 
+OFFSET $1
+`
+
+type listRegisteredResourcesParams struct {
+	Offset int32 `json:"offset_"`
+	Limit  int32 `json:"limit_"`
+}
+
+type listRegisteredResourcesRow struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Metadata []byte `json:"metadata"`
+	Values   []byte `json:"values"`
+	Total    int64  `json:"total"`
+}
+
+// listRegisteredResources
+//
+//	WITH counted AS (
+//	    SELECT COUNT(id) AS total
+//	    FROM registered_resources
+//	)
+//	SELECT
+//	    r.id,
+//	    r.name,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', r.metadata -> 'labels', 'created_at', r.created_at, 'updated_at', r.updated_at)) as metadata,
+//	    JSON_AGG(
+//	        JSON_BUILD_OBJECT(
+//	            'id', v.id,
+//	            'value', v.value
+//	        )
+//	    ) AS values,
+//	    counted.total
+//	FROM registered_resources r
+//	CROSS JOIN counted
+//	LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
+//	GROUP BY r.id, counted.total
+//	LIMIT $2
+//	OFFSET $1
+func (q *Queries) listRegisteredResources(ctx context.Context, arg listRegisteredResourcesParams) ([]listRegisteredResourcesRow, error) {
+	rows, err := q.db.Query(ctx, listRegisteredResources, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []listRegisteredResourcesRow
+	for rows.Next() {
+		var i listRegisteredResourcesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Metadata,
+			&i.Values,
+			&i.Total,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removePublicKeyFromAttributeDefinition = `-- name: removePublicKeyFromAttributeDefinition :execrows
 DELETE FROM attribute_definition_public_key_map WHERE definition_id = $1 AND key_id = $2
 `
@@ -4063,7 +4226,6 @@ func (q *Queries) updatePublicKey(ctx context.Context, arg updatePublicKeyParams
 }
 
 const updateRegisteredResource = `-- name: updateRegisteredResource :execrows
-
 UPDATE registered_resources
 SET
     name = COALESCE($2, name),
@@ -4077,7 +4239,7 @@ type updateRegisteredResourceParams struct {
 	Metadata []byte      `json:"metadata"`
 }
 
-// TODO add list methods
+// updateRegisteredResource
 //
 //	UPDATE registered_resources
 //	SET
@@ -4093,7 +4255,6 @@ func (q *Queries) updateRegisteredResource(ctx context.Context, arg updateRegist
 }
 
 const updateRegisteredResourceValue = `-- name: updateRegisteredResourceValue :execrows
-
 UPDATE registered_resource_values
 SET
     value = COALESCE($2, value),
@@ -4107,7 +4268,7 @@ type updateRegisteredResourceValueParams struct {
 	Metadata []byte      `json:"metadata"`
 }
 
-// TODO add list methods
+// updateRegisteredResourceValue
 //
 //	UPDATE registered_resource_values
 //	SET

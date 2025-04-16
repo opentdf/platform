@@ -1166,7 +1166,28 @@ LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 WHERE r.id = $1
 GROUP BY r.id;
 
--- TODO add list methods
+-- name: listRegisteredResources :many
+WITH counted AS (
+    SELECT COUNT(id) AS total
+    FROM registered_resources
+)
+SELECT
+    r.id,
+    r.name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', r.metadata -> 'labels', 'created_at', r.created_at, 'updated_at', r.updated_at)) as metadata,
+    JSON_AGG(
+        JSON_BUILD_OBJECT(
+            'id', v.id,
+            'value', v.value
+        )
+    ) AS values,
+    counted.total
+FROM registered_resources r
+CROSS JOIN counted
+LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
+GROUP BY r.id, counted.total
+LIMIT @limit_ 
+OFFSET @offset_; 
 
 -- name: updateRegisteredResource :execrows
 UPDATE registered_resources
@@ -1197,7 +1218,23 @@ SELECT
 FROM registered_resource_values
 WHERE id = $1;
 
--- TODO add list methods
+-- name: listRegisteredResourceValues :many
+WITH counted AS (
+    SELECT COUNT(id) AS total
+    FROM registered_resources
+)
+SELECT
+    id,
+    registered_resource_id,
+    value,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+    counted.total
+FROM registered_resource_values
+CROSS JOIN counted
+WHERE
+    NULLIF(@registered_resource_id, '') IS NULL OR registered_resource_id = @registered_resource_id::UUID
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: updateRegisteredResourceValue :execrows
 UPDATE registered_resource_values

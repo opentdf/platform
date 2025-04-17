@@ -12,33 +12,29 @@ import (
 )
 
 const (
-	validUUID                  = "00000000-0000-0000-0000-000000000000"
-	errMessageUUID             = "string.uuid"
-	errMessageActionNameFormat = "action_name_format"
-	errMessageMinLen           = "string.min_len"
-	errMessageMaxLen           = "string.max_len"
-	errMessageURI              = "string.uri"
-	errMessageRequired         = "required"
+	validUUID                    = "00000000-0000-0000-0000-000000000000"
+	errMessageUUID               = "string.uuid"
+	errMessageMaxLength          = "string.max_len"
+	errMessageRequiredActionName = "action_name_format"
+	errMessageOptionalActionName = "action_name_format"
+	errMessageURI                = "string.uri"
+	errMessageRequired           = "required"
 )
 
 var (
 	validNames = []string{"valid_Name", "valid_name", "NAME", "NAME-IS-VALID", "SOME_VALID_NAME", "valid-name", strings.Repeat("a", 253), strings.Repeat("a", 1)}
 
-	invalidNameTests = []struct {
-		name           string
-		expectedErrMsg string
-	}{
-		{strings.Repeat("a", 254), errMessageMaxLen},
-		{"!", errMessageActionNameFormat},
-		{"name with space", errMessageActionNameFormat},
-		{"slash/", errMessageActionNameFormat},
-		{"slash\\", errMessageActionNameFormat},
-		{"name:with:colon", errMessageActionNameFormat},
-		{"name.dot.delimited", errMessageActionNameFormat},
-		{"_cannot_start_with_underscore", errMessageActionNameFormat},
-		{"cannot_end_with__underscore_", errMessageActionNameFormat},
-		{"-cannot-start-with-hyphen", errMessageActionNameFormat},
-		{"cannot-end-with-hyphen-", errMessageActionNameFormat},
+	invalidNameTests = []string{
+		"!",
+		"name with space",
+		"slash/",
+		"slash\\",
+		"name:with:colon",
+		"name.dot.delimited",
+		"_cannot_start_with_underscore",
+		"cannot_end_with__underscore_",
+		"-cannot-start-with-hyphen",
+		"cannot-end-with-hyphen-",
 	}
 )
 
@@ -46,7 +42,7 @@ var (
 
 type ActionSuite struct {
 	suite.Suite
-	v *protovalidate.Validator
+	v protovalidate.Validator
 }
 
 // Set up the test environment
@@ -63,14 +59,14 @@ func TestActionsServiceProtos(t *testing.T) {
 }
 
 func (s *ActionSuite) Test_CreateActionRequest_Fails() {
-	for _, test := range invalidNameTests {
-		s.Run(test.name, func() {
+	for _, name := range invalidNameTests {
+		s.Run(name, func() {
 			req := &actions.CreateActionRequest{
-				Name: test.name,
+				Name: name,
 			}
 			err := s.v.Validate(req)
 			s.Require().Error(err)
-			s.Require().Contains(err.Error(), test.expectedErrMsg)
+			s.Require().Contains(err.Error(), errMessageRequiredActionName)
 		})
 	}
 
@@ -80,7 +76,15 @@ func (s *ActionSuite) Test_CreateActionRequest_Fails() {
 	}
 	err := s.v.Validate(req)
 	s.Require().Error(err)
-	s.Require().Contains(err.Error(), errMessageMinLen)
+	s.Require().Contains(err.Error(), errMessageRequired)
+
+	// too long
+	req = &actions.CreateActionRequest{
+		Name: strings.Repeat("a", 254),
+	}
+	err = s.v.Validate(req)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageMaxLength)
 }
 
 func (s *ActionSuite) Test_CreateActionRequest_Succeeds() {
@@ -116,7 +120,7 @@ func (s *ActionSuite) Test_GetAction_Succeeds() {
 
 	for _, name := range validNames {
 		s.Run(name, func() {
-			req := &actions.GetActionRequest{
+			req = &actions.GetActionRequest{
 				Identifier: &actions.GetActionRequest_Name{
 					Name: name,
 				},
@@ -142,28 +146,28 @@ func (s *ActionSuite) Test_GetAction_Fails() {
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), errMessageRequired)
 
-	for _, test := range invalidNameTests {
-		s.Run(test.name, func() {
+	for _, name := range invalidNameTests {
+		s.Run(name, func() {
 			req = &actions.GetActionRequest{
 				Identifier: &actions.GetActionRequest_Name{
-					Name: test.name,
+					Name: name,
 				},
 			}
 			err := s.v.Validate(req)
 			s.Require().Error(err)
-			s.Require().Contains(err.Error(), test.expectedErrMsg)
+			s.Require().Contains(err.Error(), errMessageRequiredActionName)
 		})
 	}
 
-	// no name
+	// too long
 	req = &actions.GetActionRequest{
 		Identifier: &actions.GetActionRequest_Name{
-			Name: "",
+			Name: strings.Repeat("a", 254),
 		},
 	}
 	err = s.v.Validate(req)
 	s.Require().Error(err)
-	s.Require().Contains(err.Error(), errMessageMinLen)
+	s.Require().Contains(err.Error(), errMessageMaxLength)
 }
 
 func (s *ActionSuite) Test_ListActions_Succeeds() {
@@ -218,17 +222,24 @@ func (s *ActionSuite) Test_UpdateActionRequest_Fails() {
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), errMessageUUID)
 
-	for _, test := range invalidNameTests {
-		s.Run(test.name, func() {
+	for _, name := range invalidNameTests {
+		s.Run(name, func() {
 			req = &actions.UpdateActionRequest{
 				Id:   validUUID,
-				Name: test.name,
+				Name: name,
 			}
 			err := s.v.Validate(req)
 			s.Require().Error(err)
-			s.Require().Contains(err.Error(), test.expectedErrMsg)
+			s.Require().Contains(err.Error(), errMessageRequiredActionName)
 		})
 	}
+
+	req = &actions.UpdateActionRequest{
+		Name: strings.Repeat("a", 254),
+	}
+	err = s.v.Validate(req)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageMaxLength)
 }
 
 func (s *ActionSuite) Test_DeleteActionRequest_Succeeds() {

@@ -2,10 +2,11 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/creasty/defaults"
 	"github.com/mitchellh/mapstructure"
-	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"github.com/opentdf/platform/service/pkg/config"
 )
 
 // Global policy config to share among policy services
@@ -16,23 +17,31 @@ type Config struct {
 	ListRequestLimitMax int `mapstructure:"list_request_limit_max" default:"2500"`
 }
 
-func GetSharedPolicyConfig(srp serviceregistry.RegistrationParams) *Config {
+func (c Config) Validate() error {
+	if c.ListRequestLimitMax <= c.ListRequestLimitDefault {
+		return fmt.Errorf("policy svc config request limit maximum [%d] must be greater than request limit default [%d]", c.ListRequestLimitMax, c.ListRequestLimitDefault)
+	}
+	return nil
+}
+
+func GetSharedPolicyConfig(cfg config.ServiceConfig) (*Config, error) {
 	policyCfg := new(Config)
 
 	if err := defaults.Set(policyCfg); err != nil {
-		panic(fmt.Errorf("failed to set defaults for policy service config: %w", err))
+		return nil, fmt.Errorf("failed to set defaults for policy service config: %w", err)
 	}
 
 	// Only decode config if it exists
-	if srp.Config != nil {
-		if err := mapstructure.Decode(srp.Config, &policyCfg); err != nil {
-			panic(fmt.Errorf("invalid policy svc cfg [%v] %w", srp.Config, err))
+	if cfg != nil {
+		if err := mapstructure.Decode(cfg, &policyCfg); err != nil {
+			return nil, fmt.Errorf("invalid policy svc cfg [%v] %w", cfg, err)
 		}
 	}
 
-	if policyCfg.ListRequestLimitMax <= policyCfg.ListRequestLimitDefault {
-		panic(fmt.Errorf("policy svc config request limit maximum [%d] must be greater than request limit default [%d]", policyCfg.ListRequestLimitMax, policyCfg.ListRequestLimitDefault))
+	if err := policyCfg.Validate(); err != nil {
+		return nil, fmt.Errorf("failed to validate policy config: %w", err)
 	}
 
-	return policyCfg
+	slog.Debug("policy config", slog.Any("config", policyCfg))
+	return policyCfg, nil
 }

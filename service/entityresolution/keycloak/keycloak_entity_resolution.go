@@ -16,6 +16,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	auth "github.com/opentdf/platform/service/authorization"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -51,7 +52,7 @@ type KeycloakConfig struct {
 	InferID        InferredIdentityConfig `mapstructure:"inferid,omitempty" json:"inferid,omitempty"`
 }
 
-func RegisterKeycloakERS(config serviceregistry.ServiceConfig, logger *logger.Logger) (*KeycloakEntityResolutionService, serviceregistry.HandlerServer) {
+func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger) (*KeycloakEntityResolutionService, serviceregistry.HandlerServer) {
 	var inputIdpConfig KeycloakConfig
 	if err := mapstructure.Decode(config, &inputIdpConfig); err != nil {
 		panic(err)

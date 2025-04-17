@@ -151,7 +151,7 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_WithoutValues_Succ
 	s.NotNil(got)
 	s.Equal(created.GetName(), got.GetName())
 	values := got.GetValues()
-	s.Require().Len(values, 0)
+	s.Require().Empty(values)
 }
 
 func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_InvalidID_Fails() {

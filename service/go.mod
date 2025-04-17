@@ -4,8 +4,6 @@ go 1.24.0
 
 toolchain go1.24.2
 
-replace github.com/opentdf/platform/protocol/go => github.com/opentdf/platform/protocol/go v0.2.30-0.20250414224813-c6a2040f3cf5
-
 require (
 	connectrpc.com/connect v1.18.1
 	connectrpc.com/grpchealth v1.3.0
@@ -31,8 +29,8 @@ require (
 	github.com/opentdf/platform/lib/fixtures v0.2.10
 	github.com/opentdf/platform/lib/flattening v0.1.3
 	github.com/opentdf/platform/lib/ocrypto v0.1.9
-	github.com/opentdf/platform/protocol/go v0.2.29
-	github.com/opentdf/platform/sdk v0.3.29
+	github.com/opentdf/platform/protocol/go v0.3.0
+	github.com/opentdf/platform/sdk v0.4.2
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.18.2
@@ -50,7 +48,10 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-require cel.dev/expr v0.19.1 // indirect
+require (
+	cel.dev/expr v0.19.1 // indirect
+	github.com/Masterminds/semver/v3 v3.3.1 // indirect
+)
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.6-20250307204501-0409229c3780.1 // indirect

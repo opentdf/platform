@@ -47,7 +47,7 @@ func TestAddingAuditMetadataToOutgoingRequest(t *testing.T) {
 
 	contextRequestID := uuid.New()
 	contextActorID := "actorID"
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx = context.WithValue(ctx, RequestIDContextKey, contextRequestID)
 	ctx = context.WithValue(ctx, ActorIDContextKey, contextActorID)
 
@@ -70,7 +70,7 @@ func TestIsOKWithNoContextValues(t *testing.T) {
 	client, stop := runServer(&server)
 	defer stop()
 
-	_, err := client.PublicKey(context.Background(), &kas.PublicKeyRequest{})
+	_, err := client.PublicKey(t.Context(), &kas.PublicKeyRequest{})
 	if err != nil {
 		t.Fatalf("error making call: %v", err)
 	}

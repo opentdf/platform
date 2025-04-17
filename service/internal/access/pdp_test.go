@@ -1,7 +1,6 @@
 package access
 
 import (
-	ctx "context"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -111,7 +110,7 @@ func Test_AccessPDP_AnyOf_Pass(t *testing.T) {
 
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions,
@@ -142,7 +141,7 @@ func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
 
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
@@ -172,7 +171,7 @@ func Test_AccessPDP_AnyOf_FailMissingAttr(t *testing.T) {
 
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
@@ -201,7 +200,7 @@ func Test_AccessPDP_AnyOf_FailAttrWrongNamespace(t *testing.T) {
 
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
@@ -228,7 +227,7 @@ func Test_AccessPDP_AnyOf_NoEntityAttributes_Fails(t *testing.T) {
 
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
@@ -256,7 +255,7 @@ func Test_AccessPDP_AnyOf_NoDataAttributes_NoDecisions(t *testing.T) {
 
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
@@ -304,7 +303,7 @@ func Test_AccessPDP_AnyOf_AllEntitiesFilteredOutOfDataAttributeComparison_NoDeci
 
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
@@ -339,7 +338,7 @@ func Test_AccessPDP_AllOf_Pass(t *testing.T) {
 
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
@@ -367,7 +366,7 @@ func Test_AccessPDP_AllOf_FailMissingValue(t *testing.T) {
 
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
@@ -396,7 +395,7 @@ func Test_AccessPDP_AllOf_FailMissingAttr(t *testing.T) {
 	}
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
@@ -428,7 +427,7 @@ func Test_AccessPDP_AllOf_FailAttrWrongNamespace(t *testing.T) {
 
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
@@ -462,7 +461,7 @@ func Test_AccessPDP_Hierarchy_Pass(t *testing.T) {
 
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
@@ -496,7 +495,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
 
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
@@ -524,7 +523,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueAndDataValuesBothLowest(t *testing.
 
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
@@ -557,7 +556,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
 
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
@@ -590,7 +589,7 @@ func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
 
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
@@ -621,7 +620,7 @@ func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
 
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
@@ -653,7 +652,7 @@ func Test_AccessPDP_Hierarchy_FailDataValueNotInOrder(t *testing.T) {
 
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
@@ -688,7 +687,7 @@ func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T
 
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
@@ -715,7 +714,7 @@ func Test_AccessPDP_Hierarchy_FailWithWrongNamespace(t *testing.T) {
 
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
@@ -748,7 +747,7 @@ func Test_AccessPDP_Hierarchy_FailWithMixedKnownAndUnknownEntityOrder(t *testing
 
 	accessPDP := NewPdp(logger.CreateTestLogger())
 	decisions, err := accessPDP.DetermineAccess(
-		ctx.Background(),
+		t.Context(),
 		mockDataAttrs,
 		mockEntityAttrs,
 		mockAttrDefinitions)
@@ -771,7 +770,7 @@ func Test_GetFqnToDefinitionMap(t *testing.T) {
 		&simpleHierarchyAttribute,
 	}
 
-	fqnToDefinitionMap, err := GetFqnToDefinitionMap(ctx.Background(), mockAttrDefinitions, logger.CreateTestLogger())
+	fqnToDefinitionMap, err := GetFqnToDefinitionMap(t.Context(), mockAttrDefinitions, logger.CreateTestLogger())
 	require.NoError(t, err)
 
 	for _, attrDef := range mockAttrDefinitions {
@@ -786,7 +785,7 @@ func Test_GetFqnToDefinitionMap_SucceedsWithDuplicateDefinitions(t *testing.T) {
 		&simpleAnyOfAttribute,
 	}
 
-	fqnToDefinitionMap, err := GetFqnToDefinitionMap(ctx.Background(), mockAttrDefinitions, logger.CreateTestLogger())
+	fqnToDefinitionMap, err := GetFqnToDefinitionMap(t.Context(), mockAttrDefinitions, logger.CreateTestLogger())
 	require.NoError(t, err)
 	expectedFqn := fqnBuilder(mockAttrDefinitions[0].GetNamespace().GetName(), mockAttrDefinitions[0].GetName(), "")
 	v, ok := fqnToDefinitionMap[expectedFqn]

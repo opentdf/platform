@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.4.1](https://github.com/opentdf/platform/compare/sdk/v0.4.0...sdk/v0.4.1) (2025-04-07)
+
+
+### Features
+
+* **sdk:** CreateTDF option to run with specific target schema version ([#2045](https://github.com/opentdf/platform/issues/2045)) ([0976b15](https://github.com/opentdf/platform/commit/0976b15f9a78509350ecc49a514e2d5028059117))
+
+## [0.4.0](https://github.com/opentdf/platform/compare/sdk/v0.3.29...sdk/v0.4.0) (2025-04-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** Require go 1.23+ ([#1979](https://github.com/opentdf/platform/issues/1979))
+
+### Features
+
+* **core:** Require go 1.23+ ([#1979](https://github.com/opentdf/platform/issues/1979)) ([164c922](https://github.com/opentdf/platform/commit/164c922af74b1265fe487362c356abb7f1503ada))
+
+
+### Bug Fixes
+
+* Allow parsing IPs as hostnames ([#1999](https://github.com/opentdf/platform/issues/1999)) ([d54b550](https://github.com/opentdf/platform/commit/d54b550a889a55fe19cc79988cb2fc030860514a))
+* **sdk:** Allow reuse of session key ([#2016](https://github.com/opentdf/platform/issues/2016)) ([d48c11e](https://github.com/opentdf/platform/commit/d48c11e6e429638662e03dcc2c4ae37bedd0521c))
+
 ## [0.3.29](https://github.com/opentdf/platform/compare/sdk/v0.3.28...sdk/v0.3.29) (2025-03-08)
 
 

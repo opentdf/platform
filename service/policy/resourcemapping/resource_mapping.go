@@ -2,6 +2,7 @@ package resourcemapping
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"connectrpc.com/connect"
@@ -10,6 +11,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping/resourcemappingconnect"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policyconfig "github.com/opentdf/platform/service/policy/config"
@@ -22,7 +24,24 @@ type ResourceMappingService struct { //nolint:revive // ResourceMappingService i
 	config   *policyconfig.Config
 }
 
+func OnConfigUpdate(rmSvc *ResourceMappingService) serviceregistry.OnConfigUpdateHook {
+	return func(_ context.Context, cfg config.ServiceConfig) error {
+		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
+		if err != nil {
+			return fmt.Errorf("failed to get shared policy config: %w", err)
+		}
+		rmSvc.config = sharedCfg
+		rmSvc.dbClient = policydb.NewClient(rmSvc.dbClient.Client, rmSvc.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
+
+		rmSvc.logger.Info("resource mapping service config reloaded")
+
+		return nil
+	}
+}
+
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[resourcemappingconnect.ResourceMappingServiceHandler] {
+	rmSvc := new(ResourceMappingService)
+	onUpdateConfigHook := OnConfigUpdate(rmSvc)
 	return &serviceregistry.Service[resourcemappingconnect.ResourceMappingServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[resourcemappingconnect.ResourceMappingServiceHandler]{
 			Namespace:       ns,
@@ -30,13 +49,19 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			ServiceDesc:     &resourcemapping.ResourceMappingService_ServiceDesc,
 			ConnectRPCFunc:  resourcemappingconnect.NewResourceMappingServiceHandler,
 			GRPCGatewayFunc: resourcemapping.RegisterResourceMappingServiceHandler,
+			OnConfigUpdate:  onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (resourcemappingconnect.ResourceMappingServiceHandler, serviceregistry.HandlerServer) {
-				cfg := policyconfig.GetSharedPolicyConfig(srp)
-				return &ResourceMappingService{
-					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
-					logger:   srp.Logger,
-					config:   cfg,
-				}, nil
+				logger := srp.Logger
+				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
+				if err != nil {
+					logger.Error("error getting attributes service policy config", slog.String("error", err.Error()))
+					panic(err)
+				}
+
+				rmSvc.logger = logger
+				rmSvc.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
+				rmSvc.config = cfg
+				return rmSvc, nil
 			},
 		},
 	}

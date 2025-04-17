@@ -99,6 +99,23 @@ erDiagram
         boolean was_mapped "Flag to indicate if the key has been used. Triggered when its mapped to a namespace, definition, or value"
     }
 
+    registered_resource_values {
+        timestamp_with_time_zone created_at "Timestamp when the record was created"
+        uuid id PK "Primary key for the table"
+        jsonb metadata "Metadata for the registered resource value (see protos for structure)"
+        uuid registered_resource_id FK,UK "Foreign key to the registered_resources table"
+        timestamp_with_time_zone updated_at "Timestamp when the record was last updated"
+        character_varying value UK "Value for the registered resource value"
+    }
+
+    registered_resources {
+        timestamp_with_time_zone created_at "Timestamp when the record was created"
+        uuid id PK "Primary key for the table"
+        jsonb metadata "Metadata for the registered resource (see protos for structure)"
+        character_varying name UK "Name for the registered resource"
+        timestamp_with_time_zone updated_at "Timestamp when the record was last updated"
+    }
+
     resource_mapping_groups {
         timestamp_with_time_zone created_at 
         uuid id PK "Primary key for the table"
@@ -157,6 +174,7 @@ erDiagram
     resource_mappings }o--|| attribute_values : "attribute_value_id"
     subject_mappings }o--|| attribute_values : "attribute_value_id"
     public_keys }o--|| key_access_servers : "key_access_server_id"
+    registered_resource_values }o--|| registered_resources : "registered_resource_id"
     resource_mappings }o--|| resource_mapping_groups : "group_id"
     subject_mappings }o--|| subject_condition_set : "subject_condition_set_id"
 ```

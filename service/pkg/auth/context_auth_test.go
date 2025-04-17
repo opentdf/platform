@@ -17,7 +17,7 @@ func TestContextWithAuthNInfo(t *testing.T) {
 	rawToken := "mockRawToken"
 
 	// Initialize context
-	ctx := context.Background()
+	ctx := t.Context()
 	newCtx := ContextWithAuthNInfo(ctx, mockJWK, mockJWT, rawToken)
 
 	// Assert that the context contains the correct values
@@ -33,7 +33,7 @@ func TestContextWithAuthNInfo(t *testing.T) {
 func TestGetJWKFromContext(t *testing.T) {
 	// Create mock context with JWK
 	mockJWK, _ := jwk.FromRaw([]byte("mockKey"))
-	ctx := ContextWithAuthNInfo(context.Background(), mockJWK, nil, "")
+	ctx := ContextWithAuthNInfo(t.Context(), mockJWK, nil, "")
 
 	// Retrieve the JWK and assert
 	retrievedJWK := GetJWKFromContext(ctx, logger.CreateTestLogger())
@@ -44,7 +44,7 @@ func TestGetJWKFromContext(t *testing.T) {
 func TestGetAccessTokenFromContext(t *testing.T) {
 	// Create mock context with JWT
 	mockJWT, _ := jwt.NewBuilder().Build()
-	ctx := ContextWithAuthNInfo(context.Background(), nil, mockJWT, "")
+	ctx := ContextWithAuthNInfo(t.Context(), nil, mockJWT, "")
 
 	// Retrieve the JWT and assert
 	retrievedJWT := GetAccessTokenFromContext(ctx, logger.CreateTestLogger())
@@ -55,7 +55,7 @@ func TestGetAccessTokenFromContext(t *testing.T) {
 func TestGetRawAccessTokenFromContext(t *testing.T) {
 	// Create mock context with raw token
 	rawToken := "mockRawToken"
-	ctx := ContextWithAuthNInfo(context.Background(), nil, nil, rawToken)
+	ctx := ContextWithAuthNInfo(t.Context(), nil, nil, rawToken)
 
 	// Retrieve the raw token and assert
 	retrievedRawToken := GetRawAccessTokenFromContext(ctx, logger.CreateTestLogger())
@@ -64,7 +64,7 @@ func TestGetRawAccessTokenFromContext(t *testing.T) {
 
 func TestGetContextDetailsInvalidType(t *testing.T) {
 	// Create a context with an invalid type
-	ctx := context.WithValue(context.Background(), authnContextKey, "invalidType")
+	ctx := context.WithValue(t.Context(), authnContextKey, "invalidType")
 
 	// Assert that GetJWKFromContext handles the invalid type correctly
 	retrievedJWK := GetJWKFromContext(ctx, logger.CreateTestLogger())

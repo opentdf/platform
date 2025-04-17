@@ -48,7 +48,7 @@ var (
 	}
 )
 
-func getValidator() *protovalidate.Validator {
+func getValidator() protovalidate.Validator {
 	v, err := protovalidate.New()
 	if err != nil {
 		panic(err)

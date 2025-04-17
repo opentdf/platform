@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.3.0](https://github.com/opentdf/platform/compare/protocol/go/v0.2.29...protocol/go/v0.3.0) (2025-04-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** Require go 1.23+ ([#1979](https://github.com/opentdf/platform/issues/1979))
+
+### Features
+
+* **core:** Require go 1.23+ ([#1979](https://github.com/opentdf/platform/issues/1979)) ([164c922](https://github.com/opentdf/platform/commit/164c922af74b1265fe487362c356abb7f1503ada))
+* **policy:** add enhanced standard/custom actions protos ([#2020](https://github.com/opentdf/platform/issues/2020)) ([bbac53f](https://github.com/opentdf/platform/commit/bbac53fd622defefc6e8831ab041356fe7e23776))
+* **policy:** DSPX-893 NDR define crud protos ([#2056](https://github.com/opentdf/platform/issues/2056)) ([55a5c27](https://github.com/opentdf/platform/commit/55a5c279d0499f684bc62c53838edbcb89bec272))
+
+
+### Bug Fixes
+
+* **deps:** bump toolchain in /lib/fixtures and /examples to resolve CVE GO-2025-3563 ([#2061](https://github.com/opentdf/platform/issues/2061)) ([9c16843](https://github.com/opentdf/platform/commit/9c168437db3b138613fe629419dd6bd9f837e881))
+* **policy:** remove predefined rules in actions protos ([#2069](https://github.com/opentdf/platform/issues/2069)) ([060f059](https://github.com/opentdf/platform/commit/060f05941f9b81b007669f51b6205723af8c1680))
+
 ## [0.2.29](https://github.com/opentdf/platform/compare/protocol/go/v0.2.28...protocol/go/v0.2.29) (2025-03-06)
 
 

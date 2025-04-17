@@ -1,6 +1,7 @@
 package kas
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -10,16 +11,34 @@ import (
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/service/kas/access"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 )
 
+func OnConfigUpdate(p *access.Provider) serviceregistry.OnConfigUpdateHook {
+	return func(_ context.Context, cfg config.ServiceConfig) error {
+		var kasCfg access.KASConfig
+		if err := mapstructure.Decode(cfg, &kasCfg); err != nil {
+			return fmt.Errorf("invalid kas cfg [%v] %w", cfg, err)
+		}
+
+		p.KASConfig = kasCfg
+		p.Logger.Info("kas config reloaded")
+
+		return nil
+	}
+}
+
 func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler] {
+	p := new(access.Provider)
+	onConfigUpdate := OnConfigUpdate(p)
 	return &serviceregistry.Service[kasconnect.AccessServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[kasconnect.AccessServiceHandler]{
 			Namespace:       "kas",
 			ServiceDesc:     &kaspb.AccessService_ServiceDesc,
 			ConnectRPCFunc:  kasconnect.NewAccessServiceHandler,
 			GRPCGatewayFunc: kaspb.RegisterAccessServiceHandler,
+			OnConfigUpdate:  onConfigUpdate,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasconnect.AccessServiceHandler, serviceregistry.HandlerServer) {
 				// FIXME msg="mismatched key access url" keyAccessURL=http://localhost:9000 kasURL=https://:9000
 				hostWithPort := srp.OTDF.HTTPServer.Addr
@@ -38,15 +57,12 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				}
 				kasCfg.UpgradeMapToKeyring(srp.OTDF.CryptoProvider)
 
-				p := &access.Provider{
-					URI:            *kasURI,
-					AttributeSvc:   nil,
-					CryptoProvider: srp.OTDF.CryptoProvider,
-					SDK:            srp.SDK,
-					Logger:         srp.Logger,
-					KASConfig:      kasCfg,
-					Tracer:         srp.Tracer,
-				}
+				p.URI = *kasURI
+				p.CryptoProvider = srp.OTDF.CryptoProvider
+				p.SDK = srp.SDK
+				p.Logger = srp.Logger
+				p.KASConfig = kasCfg
+				p.Tracer = srp.Tracer
 
 				srp.Logger.Debug("kas config", "config", kasCfg)
 

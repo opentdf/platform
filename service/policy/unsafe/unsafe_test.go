@@ -13,7 +13,7 @@ var (
 	validUUID      = "00000000-0000-0000-0000-000000000000"
 )
 
-func getValidator() *protovalidate.Validator {
+func getValidator() protovalidate.Validator {
 	v, err := protovalidate.New()
 	if err != nil {
 		panic(err)

@@ -211,6 +211,48 @@ func TestNormalizeUrl(t *testing.T) {
 	}
 }
 
+func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
+	// Mock the checkToken method to return a valid token and context
+	mockToken := jwt.New()
+	type contextKey string
+	mockCtx := context.WithValue(context.Background(), contextKey("mockKey"), "mockValue")
+	s.auth._testCheckTokenFunc = func(_ context.Context, authHeader []string, _ receiverInfo, _ []string) (jwt.Token, context.Context, error) {
+		if len(authHeader) == 0 {
+			return nil, nil, errors.New("missing authorization header")
+		}
+		if authHeader[0] != "Bearer valid" {
+			return nil, nil, errors.New("unauthenticated")
+		}
+		return mockToken, mockCtx, nil
+	}
+
+	// Test ipcReauthCheck directly
+	validAuthHeader := http.Header{}
+	validAuthHeader.Add("Authorization", "Bearer valid")
+	t1Path := "/kas.AccessService/Rewrap"
+	nextCtx, err := s.auth.ipcReauthCheck(context.Background(), t1Path, validAuthHeader)
+	s.Require().NoError(err)
+	s.Require().NotNil(nextCtx)
+	s.Equal("mockValue", nextCtx.Value(contextKey("mockKey")))
+
+	// Test with a route not requiring reauthorization
+	nextCtx, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/PublicKey", nil)
+	s.Require().NoError(err)
+	s.Require().NotNil(nextCtx)
+	s.Nil(nextCtx.Value(contextKey("mockKey")))
+
+	// Test with missing authorization header
+	_, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/Rewrap", nil)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "missing authorization header")
+
+	// Test with invalid token
+	unauthHeader := http.Header{}
+	unauthHeader.Add("Authorization", "Bearer invalid")
+	_, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/Rewrap", unauthHeader)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "unauthenticated")
+}
 func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	tok := jwt.New()
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC)))
@@ -685,5 +727,66 @@ func (s *AuthSuite) Test_GetAction() {
 	}
 	for _, c := range cases {
 		s.Equal(c.expected, getAction(c.method))
+	}
+}
+
+func (s *AuthSuite) Test_LookupGatewayPaths() {
+	tests := []struct {
+		name     string
+		path     string
+		header   http.Header
+		expected []string
+	}{
+		{
+			name: "Valid Rewrap Path",
+			path: "/kas.AccessService/Rewrap",
+			header: http.Header{
+				"Grpcgateway-Origin": []string{s.server.URL},
+			},
+			expected: []string{s.server.URL + "/kas/v2/rewrap"},
+		},
+		{
+			name: "Multiple Origins",
+			path: "/kas.AccessService/Rewrap",
+			header: http.Header{
+				"Grpcgateway-Origin": []string{s.server.URL, "https://origin.1.com"},
+				"Origin":             []string{"https://origin.com"},
+			},
+			expected: []string{s.server.URL + "/kas/v2/rewrap",
+				"https://origin.1.com/kas/v2/rewrap", "https://origin.com/kas/v2/rewrap"},
+		},
+		{
+			name: "Unknown Path with Pattern",
+			path: "/unknown/path",
+			header: http.Header{
+				"Grpcgateway-Origin": []string{"https://origin.com"},
+				"Pattern":            []string{"some-pattern"},
+			},
+			expected: []string{"https://origin.com/some-pattern"},
+		},
+		{
+			name: "Unknown Path without Pattern",
+			path: "/unknown/path",
+			header: http.Header{
+				"Grpcgateway-Origin": []string{"https://origin.com"},
+			},
+			expected: []string{"https://origin.com/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration", "https://origin.com/.well-known/opentdf-configuration", "https://origin.com/kas.AccessService/PublicKey", "https://origin.com/kas.AccessService/LegacyPublicKey", "https://origin.com/kas.AccessService/Info", "https://origin.com/kas/kas_public_key", "https://origin.com/kas/v2/kas_public_key", "https://origin.com/healthz", "https://origin.com/grpc.health.v1.Health/Check"},
+		},
+		{
+			name: "Bad Path",
+			path: "/unkown.App",
+			header: http.Header{
+				"Origin":  []string{"https://origin.com"},
+				"Pattern": []string{"/?this. is=bad"},
+			},
+			expected: []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			result := s.auth.lookupGatewayPaths(context.Background(), tt.path, tt.header)
+			s.Equal(tt.expected, result)
+		})
 	}
 }

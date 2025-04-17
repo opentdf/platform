@@ -1180,14 +1180,14 @@ SELECT
             'id', v.id,
             'value', v.value
         )
-    ) AS values,
+    ) FILTER (WHERE v.id IS NOT NULL) as values,
     counted.total
 FROM registered_resources r
 CROSS JOIN counted
 LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 GROUP BY r.id, counted.total
 LIMIT @limit_ 
-OFFSET @offset_; 
+OFFSET @offset_;
 
 -- name: updateRegisteredResource :execrows
 UPDATE registered_resources

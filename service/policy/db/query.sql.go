@@ -4055,7 +4055,7 @@ SELECT
             'id', v.id,
             'value', v.value
         )
-    ) AS values,
+    ) FILTER (WHERE v.id IS NOT NULL) as values,
     counted.total
 FROM registered_resources r
 CROSS JOIN counted
@@ -4093,7 +4093,7 @@ type listRegisteredResourcesRow struct {
 //	            'id', v.id,
 //	            'value', v.value
 //	        )
-//	    ) AS values,
+//	    ) FILTER (WHERE v.id IS NOT NULL) as values,
 //	    counted.total
 //	FROM registered_resources r
 //	CROSS JOIN counted

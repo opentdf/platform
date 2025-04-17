@@ -124,7 +124,7 @@ func (c PolicyDBClient) ListRegisteredResources(ctx context.Context, r *register
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	rrList := make([]*policy.RegisteredResource, 0, len(list))
+	rrList := make([]*policy.RegisteredResource, len(list))
 
 	for i, r := range list {
 		metadata := &common.Metadata{}
@@ -288,7 +288,7 @@ func (c PolicyDBClient) ListRegisteredResourceValues(ctx context.Context, r *reg
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	rvList := make([]*policy.RegisteredResourceValue, 0, len(list))
+	rvList := make([]*policy.RegisteredResourceValue, len(list))
 
 	for i, r := range list {
 		metadata := &common.Metadata{}

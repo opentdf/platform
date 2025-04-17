@@ -107,7 +107,7 @@ func (s *ActionsSuite) Test_ListActions_Pagination_Succeeds() {
 	s.NotNil(list)
 	s.Require().NoError(err)
 	s.Equal(total, list.GetPagination().GetTotal())
-	s.Equal(0, list.GetPagination().GetCurrentOffset())
+	s.Equal(int32(0), list.GetPagination().GetCurrentOffset())
 	s.Equal(total-1, list.GetPagination().GetNextOffset())
 }
 

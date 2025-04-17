@@ -50,7 +50,7 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 	client, stop := runServer(&server, oo)
 	defer stop()
 
-	_, err = client.PublicKey(context.Background(), &kas.PublicKeyRequest{})
+	_, err = client.PublicKey(t.Context(), &kas.PublicKeyRequest{})
 	require.NoError(t, err, "error making call")
 
 	assert.ElementsMatch(t, server.accessToken, []string{"DPoP thisisafakeaccesstoken"})
@@ -105,7 +105,7 @@ func Test_InvalidCredentials_DoesNotSendMessage(t *testing.T) {
 	client, stop := runServer(&server, oo)
 	defer stop()
 
-	_, err := client.PublicKey(context.Background(), &kas.PublicKeyRequest{})
+	_, err := client.PublicKey(t.Context(), &kas.PublicKeyRequest{})
 	require.Error(t, err, "should not have sent message because the token source returned an error")
 }
 

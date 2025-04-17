@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
+	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/proto"
 )
@@ -721,9 +722,8 @@ func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
 	s.Require().NoError(err)
 	s.NotNil(val2Grant)
 
-	actionRead := s.f.GetStandardAction("read")
-	actionCreate := s.f.GetStandardAction("create")
-
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
+	actionCreate := s.f.GetStandardAction(policydb.ActionCreate.String())
 	// give a subject mapping to the first value
 	val1SM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              val1.GetId(),

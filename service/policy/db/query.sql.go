@@ -3138,37 +3138,17 @@ WITH counted AS (
     SELECT COUNT(id) AS total FROM actions
 )
 SELECT 
-    (
-        SELECT JSONB_AGG(
-            JSONB_BUILD_OBJECT(
-                'id', id,
-                'name', name,
-                'metadata', JSON_STRIP_NULLS(JSONB_BUILD_OBJECT(
-                    'labels', metadata -> 'labels', 
-                    'created_at', created_at, 
-                    'updated_at', updated_at
-                ))
-            )
-        )
-        FROM actions
-        WHERE is_standard = TRUE
-    ) AS standard_actions,
-    (
-        SELECT JSONB_AGG(
-            JSONB_BUILD_OBJECT(
-                'id', id,
-                'name', name,
-                'metadata', JSON_STRIP_NULLS(JSONB_BUILD_OBJECT(
-                    'labels', metadata -> 'labels', 
-                    'created_at', created_at, 
-                    'updated_at', updated_at
-                ))
-            )
-        )
-        FROM actions
-        WHERE is_standard = FALSE
-    ) AS custom_actions,
-    (SELECT total FROM counted) AS total
+    a.id,
+    a.name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+        'labels', a.metadata -> 'labels', 
+        'created_at', a.created_at, 
+        'updated_at', a.updated_at
+    )) as metadata,
+    a.is_standard,
+    counted.total
+FROM actions a
+CROSS JOIN counted
 LIMIT $2 
 OFFSET $1
 `
@@ -3179,9 +3159,11 @@ type listActionsParams struct {
 }
 
 type listActionsRow struct {
-	StandardActions []byte `json:"standard_actions"`
-	CustomActions   []byte `json:"custom_actions"`
-	Total           int64  `json:"total"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Metadata   []byte `json:"metadata"`
+	IsStandard bool   `json:"is_standard"`
+	Total      int64  `json:"total"`
 }
 
 // --------------------------------------------------------------
@@ -3193,37 +3175,17 @@ type listActionsRow struct {
 //	    SELECT COUNT(id) AS total FROM actions
 //	)
 //	SELECT
-//	    (
-//	        SELECT JSONB_AGG(
-//	            JSONB_BUILD_OBJECT(
-//	                'id', id,
-//	                'name', name,
-//	                'metadata', JSON_STRIP_NULLS(JSONB_BUILD_OBJECT(
-//	                    'labels', metadata -> 'labels',
-//	                    'created_at', created_at,
-//	                    'updated_at', updated_at
-//	                ))
-//	            )
-//	        )
-//	        FROM actions
-//	        WHERE is_standard = TRUE
-//	    ) AS standard_actions,
-//	    (
-//	        SELECT JSONB_AGG(
-//	            JSONB_BUILD_OBJECT(
-//	                'id', id,
-//	                'name', name,
-//	                'metadata', JSON_STRIP_NULLS(JSONB_BUILD_OBJECT(
-//	                    'labels', metadata -> 'labels',
-//	                    'created_at', created_at,
-//	                    'updated_at', updated_at
-//	                ))
-//	            )
-//	        )
-//	        FROM actions
-//	        WHERE is_standard = FALSE
-//	    ) AS custom_actions,
-//	    (SELECT total FROM counted) AS total
+//	    a.id,
+//	    a.name,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+//	        'labels', a.metadata -> 'labels',
+//	        'created_at', a.created_at,
+//	        'updated_at', a.updated_at
+//	    )) as metadata,
+//	    a.is_standard,
+//	    counted.total
+//	FROM actions a
+//	CROSS JOIN counted
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) listActions(ctx context.Context, arg listActionsParams) ([]listActionsRow, error) {
@@ -3235,7 +3197,13 @@ func (q *Queries) listActions(ctx context.Context, arg listActionsParams) ([]lis
 	var items []listActionsRow
 	for rows.Next() {
 		var i listActionsRow
-		if err := rows.Scan(&i.StandardActions, &i.CustomActions, &i.Total); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Metadata,
+			&i.IsStandard,
+			&i.Total,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -4323,27 +4291,6 @@ func (q *Queries) updatePublicKey(ctx context.Context, arg updatePublicKeyParams
 	return i, err
 }
 
-const updateStandardAction = `-- name: updateStandardAction :execrows
-UPDATE actions
-SET metadata = metadata
-WHERE id = $1
-  AND is_standard = TRUE
-`
-
-// updateStandardAction
-//
-//	UPDATE actions
-//	SET metadata = metadata
-//	WHERE id = $1
-//	  AND is_standard = TRUE
-func (q *Queries) updateStandardAction(ctx context.Context, id string) (int64, error) {
-	result, err := q.db.Exec(ctx, updateStandardAction, id)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const updateSubjectMapping = `-- name: updateSubjectMapping :execrows
 WITH
     subject_mapping_update AS (
@@ -4371,11 +4318,11 @@ WITH
             $3,
             a
         FROM unnest($4::UUID[]) AS a
-        WHERE 
+        WHERE
             $4::UUID[] IS NOT NULL
             AND NOT EXISTS (
-                SELECT 1 
-                FROM subject_mapping_actions 
+                SELECT 1
+                FROM subject_mapping_actions
                 WHERE subject_mapping_id = $3 AND action_id = a
             )
         RETURNING action_id
@@ -4384,12 +4331,8 @@ WITH
         SELECT COUNT(*) AS cnt
         FROM subject_mapping_update
     )
-SELECT
-    1 / CASE WHEN (
-            SELECT cnt FROM update_count
-        ) = 0 THEN 0
-        ELSE 1
-    END
+SELECT cnt
+FROM update_count
 `
 
 type updateSubjectMappingParams struct {
@@ -4440,12 +4383,8 @@ type updateSubjectMappingParams struct {
 //	        SELECT COUNT(*) AS cnt
 //	        FROM subject_mapping_update
 //	    )
-//	SELECT
-//	    1 / CASE WHEN (
-//	            SELECT cnt FROM update_count
-//	        ) = 0 THEN 0
-//	        ELSE 1
-//	    END
+//	SELECT cnt
+//	FROM update_count
 func (q *Queries) updateSubjectMapping(ctx context.Context, arg updateSubjectMappingParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateSubjectMapping,
 		arg.Metadata,

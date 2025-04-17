@@ -2,6 +2,7 @@ package actions
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"connectrpc.com/connect"
@@ -9,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/actions/actionsconnect"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 
@@ -22,20 +24,44 @@ type ActionsService struct { //nolint:revive // ActionsService is a valid name f
 	config   *policyconfig.Config
 }
 
+func OnConfigUpdate(actionsSvc *ActionsService) serviceregistry.OnConfigUpdateHook {
+	return func(_ context.Context, cfg config.ServiceConfig) error {
+		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
+		if err != nil {
+			return fmt.Errorf("failed to get shared policy config: %w", err)
+		}
+		actionsSvc.config = sharedCfg
+		actionsSvc.dbClient = policydb.NewClient(actionsSvc.dbClient.Client, actionsSvc.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
+
+		actionsSvc.logger.Info("actions service config reloaded")
+
+		return nil
+	}
+}
+
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[actionsconnect.ActionServiceHandler] {
+	actionsSvc := new(ActionsService)
+	onUpdateConfigHook := OnConfigUpdate(actionsSvc)
+
 	return &serviceregistry.Service[actionsconnect.ActionServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[actionsconnect.ActionServiceHandler]{
 			Namespace:      ns,
 			DB:             dbRegister,
 			ServiceDesc:    &actions.ActionService_ServiceDesc,
 			ConnectRPCFunc: actionsconnect.NewActionServiceHandler,
+			OnConfigUpdate: onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (actionsconnect.ActionServiceHandler, serviceregistry.HandlerServer) {
-				cfg := policyconfig.GetSharedPolicyConfig(srp)
-				return &ActionsService{
-					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
-					logger:   srp.Logger,
-					config:   cfg,
-				}, nil
+				logger := srp.Logger
+				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
+				if err != nil {
+					logger.Error("error getting actions service policy config", slog.String("error", err.Error()))
+					panic(err)
+				}
+
+				actionsSvc.logger = logger
+				actionsSvc.config = cfg
+				actionsSvc.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
+				return actionsSvc, nil
 			},
 		},
 	}

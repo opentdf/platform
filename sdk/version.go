@@ -7,5 +7,5 @@ const (
 	TDFSpecVersion = "4.3.0"
 
 	// The three-part semantic version number of this SDK
-	Version = "0.4.1" // x-release-please-version
+	Version = "0.4.2" // x-release-please-version
 )

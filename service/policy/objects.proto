@@ -385,3 +385,25 @@ message PublicKey {
     KasPublicKeySet cached = 3;
   }
 }
+
+message RegisteredResource {
+  string id = 1;
+
+  string name = 2;
+
+  repeated RegisteredResourceValue values = 3;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
+message RegisteredResourceValue {
+  string id = 1;
+
+  string value = 2;
+
+  RegisteredResource resource = 3;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}

@@ -11,6 +11,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/namespaces/namespacesconnect"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policyconfig "github.com/opentdf/platform/service/policy/config"
@@ -23,7 +24,24 @@ type NamespacesService struct { //nolint:revive // NamespacesService is a valid 
 	config   *policyconfig.Config
 }
 
+func OnConfigUpdate(ns *NamespacesService) serviceregistry.OnConfigUpdateHook {
+	return func(_ context.Context, cfg config.ServiceConfig) error {
+		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
+		if err != nil {
+			return fmt.Errorf("failed to get shared policy config: %w", err)
+		}
+		ns.config = sharedCfg
+		ns.dbClient = policydb.NewClient(ns.dbClient.Client, ns.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
+
+		ns.logger.Info("namespace service config reloaded")
+
+		return nil
+	}
+}
+
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[namespacesconnect.NamespaceServiceHandler] {
+	nsService := new(NamespacesService)
+	onUpdateConfigHook := OnConfigUpdate(nsService)
 	return &serviceregistry.Service[namespacesconnect.NamespaceServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[namespacesconnect.NamespaceServiceHandler]{
 			Namespace:       ns,
@@ -31,19 +49,19 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			ServiceDesc:     &namespaces.NamespaceService_ServiceDesc,
 			ConnectRPCFunc:  namespacesconnect.NewNamespaceServiceHandler,
 			GRPCGatewayFunc: namespaces.RegisterNamespaceServiceHandler,
+			OnConfigUpdate:  onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (namespacesconnect.NamespaceServiceHandler, serviceregistry.HandlerServer) {
-				cfg := policyconfig.GetSharedPolicyConfig(srp)
-				ns := &NamespacesService{
-					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
-					logger:   srp.Logger,
-					config:   cfg,
+				logger := srp.Logger
+				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
+				if err != nil {
+					logger.Error("error getting namespaces service policy config", slog.String("error", err.Error()))
+					panic(err)
 				}
 
-				if err := srp.RegisterReadinessCheck("policy", ns.IsReady); err != nil {
-					srp.Logger.Error("failed to register policy readiness check", slog.String("error", err.Error()))
-				}
-
-				return ns, nil
+				nsService.logger = logger
+				nsService.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
+				nsService.config = cfg
+				return nsService, nil
 			},
 		},
 	}

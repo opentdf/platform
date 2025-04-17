@@ -1,7 +1,6 @@
 package access
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -100,7 +99,7 @@ func TestStandardCertificateHandlerEmpty(t *testing.T) {
 		Logger:         logger.CreateTestLogger(),
 	}
 
-	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{Fmt: "pkcs8"}})
+	result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{Fmt: "pkcs8"}})
 	require.Error(t, err, "not found")
 	assert.Nil(t, result)
 }
@@ -156,13 +155,13 @@ func TestStandardPublicKeyHandlerV2(t *testing.T) {
 		},
 	}
 
-	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{}})
+	result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{}})
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Contains(t, result.Msg.GetPublicKey(), "BEGIN PUBLIC KEY")
 	assert.Equal(t, "rsa", result.Msg.GetKid())
 
-	result, err = kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{
+	result, err = kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{
 		Algorithm: "ec:secp256r1",
 	}})
 	require.NoError(t, err)
@@ -184,7 +183,7 @@ func TestStandardPublicKeyHandlerV2Failure(t *testing.T) {
 		Logger:         logger.CreateTestLogger(),
 	}
 
-	k, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{}})
+	k, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{}})
 	assert.Nil(t, k)
 	require.Error(t, err)
 }
@@ -210,7 +209,7 @@ func TestStandardPublicKeyHandlerV2NotFound(t *testing.T) {
 		Logger:         logger.CreateTestLogger(),
 	}
 
-	k, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{
+	k, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{
 		Msg: &kaspb.PublicKeyRequest{
 			Algorithm: "algorithm:unknown",
 		},
@@ -251,7 +250,7 @@ func TestStandardPublicKeyHandlerV2WithJwk(t *testing.T) {
 		Logger: logger.CreateTestLogger(),
 	}
 
-	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{
+	result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{
 		Msg: &kaspb.PublicKeyRequest{
 			Algorithm: "rsa:2048",
 			V:         "2",
@@ -287,7 +286,7 @@ func TestStandardCertificateHandlerWithEc256(t *testing.T) {
 		Logger:         logger.CreateTestLogger(),
 	}
 
-	result, err := kas.LegacyPublicKey(context.Background(), &connect.Request[kaspb.LegacyPublicKeyRequest]{
+	result, err := kas.LegacyPublicKey(t.Context(), &connect.Request[kaspb.LegacyPublicKeyRequest]{
 		Msg: &kaspb.LegacyPublicKeyRequest{
 			Algorithm: "ec:secp256r1",
 		},
@@ -321,7 +320,7 @@ func TestStandardPublicKeyHandlerWithEc256(t *testing.T) {
 		Logger:         logger.CreateTestLogger(),
 	}
 
-	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{
+	result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{
 		Msg: &kaspb.PublicKeyRequest{
 			Algorithm: "ec:secp256r1",
 		},
@@ -355,7 +354,7 @@ func TestStandardPublicKeyHandlerV2WithEc256(t *testing.T) {
 		Logger:         logger.CreateTestLogger(),
 	}
 
-	result, err := kas.PublicKey(context.Background(), &connect.Request[kaspb.PublicKeyRequest]{
+	result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{
 		Msg: &kaspb.PublicKeyRequest{
 			Algorithm: "ec:secp256r1",
 			V:         "2",

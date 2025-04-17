@@ -1256,7 +1256,16 @@ func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm, isLe
 func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (bool, error) {
 	rootSigAlg := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm
 	rootSigValue := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature
-	isLegacyTDF := manifest.TDFVersion == ""
+	unknownTDFVersion := manifest.TDFVersion == ""
+	isLegacyTDF := unknownTDFVersion
+	if !unknownTDFVersion {
+		stillProfoundlyHexed, err := isLessThanSemver(manifest.TDFVersion, "4.3.0")
+		if err != nil {
+			// Who knows? Could be hexed.
+		} else {
+			isLegacyTDF = stillProfoundlyHexed
+		}
+	}
 
 	sigAlg := HS256
 	if strings.EqualFold(gmacIntegrityAlgorithm, rootSigAlg) {

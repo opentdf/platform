@@ -117,7 +117,6 @@ func (ns NamespacesService) GetNamespace(ctx context.Context, req *connect.Reque
 
 func (ns NamespacesService) CreateNamespace(ctx context.Context, req *connect.Request[namespaces.CreateNamespaceRequest]) (*connect.Response[namespaces.CreateNamespaceResponse], error) {
 	ns.logger.Debug("creating new namespace", slog.String("name", req.Msg.GetName()))
-
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeNamespace,

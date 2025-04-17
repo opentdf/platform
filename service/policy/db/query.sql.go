@@ -3495,7 +3495,7 @@ SELECT
             'id', v.id,
             'value', v.value
         )
-    ) as values
+    ) FILTER (WHERE v.id IS NOT NULL) as values
 FROM registered_resources r
 LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 WHERE r.id = $1
@@ -3520,7 +3520,7 @@ type getRegisteredResourceRow struct {
 //	            'id', v.id,
 //	            'value', v.value
 //	        )
-//	    ) as values
+//	    ) FILTER (WHERE v.id IS NOT NULL) as values
 //	FROM registered_resources r
 //	LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 //	WHERE r.id = $1

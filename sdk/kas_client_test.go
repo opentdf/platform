@@ -151,7 +151,7 @@ func Test_StoreKASKeys(t *testing.T) {
 	assert.Equal(t, "e1", s.kasKeyCache.get("https://localhost:8080", "ec:secp256r1").KID)
 	assert.Equal(t, "r1", s.kasKeyCache.get("https://localhost:8080", "rsa:2048").KID)
 
-	k1, err := s.getPublicKey(t.Context(), "https://localhost:8080", "ec:secp256r1")
+	k1, err := s.getPublicKey(context.Background(), "https://localhost:8080", "ec:secp256r1")
 	require.NoError(t, err)
 	assert.Equal(t, &KASInfo{
 		URL:       "https://localhost:8080",
@@ -162,7 +162,7 @@ func Test_StoreKASKeys(t *testing.T) {
 	}, k1)
 
 	s.kasKeyCache = nil
-	k2, err := s.getPublicKey(t.Context(), "https://localhost:54321", "ec:secp256r1")
+	k2, err := s.getPublicKey(context.Background(), "https://localhost:54321", "ec:secp256r1")
 	assert.Nil(t, k2)
 	require.ErrorContains(t, err, "error making request")
 }

@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -33,7 +34,7 @@ func TestNewOAuthAccessTokenSource_Success(t *testing.T) {
 	assert.Equal(t, dpopPublicKeyPEM, tokenSource.dpopPEM)
 	assert.Equal(t, dpopKey, tokenSource.dpopKey)
 	// Interface checks
-	tok, err := tokenSource.AccessToken(t.Context(), nil)
+	tok, err := tokenSource.AccessToken(context.Background(), nil)
 	require.NoError(t, err)
 	assert.Equal(t, tok, auth.AccessToken(mockToken))
 	made, err := tokenSource.MakeToken(func(jwk.Key) ([]byte, error) { return []byte(mockToken), nil })
@@ -56,7 +57,7 @@ func TestNewOAuthAccessTokenSource_ExpiredToken(t *testing.T) {
 	assert.NotNil(t, tokenSource)
 	assert.Equal(t, mockSource, tokenSource.source)
 	// Interface checks
-	tok, err := tokenSource.AccessToken(t.Context(), nil)
+	tok, err := tokenSource.AccessToken(context.Background(), nil)
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrAccessTokenInvalid)
 	assert.Empty(t, tok)
@@ -76,7 +77,7 @@ func TestNewOAuthAccessTokenSource_InvalidTokenSource(t *testing.T) {
 	assert.NotNil(t, tokenSource)
 	assert.Equal(t, mockSource, tokenSource.source)
 	// Interface checks
-	tok, err := tokenSource.AccessToken(t.Context(), nil)
+	tok, err := tokenSource.AccessToken(context.Background(), nil)
 	require.Error(t, err)
 	assert.Empty(t, tok)
 }

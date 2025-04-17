@@ -60,9 +60,10 @@ func TestActionsServiceProtos(t *testing.T) {
 
 func (s *ActionSuite) Test_CreateActionRequest_Fails() {
 	for _, name := range invalidNameTests {
-		s.Run(name, func() {
+		n := name // Capture the loop variable locally
+		s.Run(n, func() {
 			req := &actions.CreateActionRequest{
-				Name: name,
+				Name: n,
 			}
 			err := s.v.Validate(req)
 			s.Require().Error(err)

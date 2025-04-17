@@ -122,9 +122,7 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResource_WithNonUniqueNa
 // Get
 
 func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_Succeeds() {
-	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
-	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
-	existingResValue2 := s.f.GetRegisteredResourceValueKey("res_with_values__value2")
+	existingRes := s.f.GetRegisteredResourceKey("res_only")
 
 	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, existingRes.ID)
 	s.Require().NoError(err)
@@ -133,25 +131,21 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_Succeeds() {
 	metadata := got.GetMetadata()
 	s.False(metadata.GetCreatedAt().AsTime().IsZero())
 	s.False(metadata.GetUpdatedAt().AsTime().IsZero())
+	s.Empty(got.GetValues())
+}
+
+func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_WithValues_Succeeds() {
+	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
+	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
+	existingResValue2 := s.f.GetRegisteredResourceValueKey("res_with_values__value2")
+
+	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, existingRes.ID)
+	s.Require().NoError(err)
+	s.NotNil(got)
 	values := got.GetValues()
 	s.Require().Len(values, 2)
 	s.Equal(existingResValue1.Value, values[0].GetValue())
 	s.Equal(existingResValue2.Value, values[1].GetValue())
-}
-
-func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_WithoutValues_Succeeds() {
-	created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
-		Name: "test_get_res_without_values",
-	})
-	s.Require().NoError(err)
-	s.NotNil(created)
-
-	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, created.GetId())
-	s.Require().NoError(err)
-	s.NotNil(got)
-	s.Equal(created.GetName(), got.GetName())
-	values := got.GetValues()
-	s.Require().Empty(values)
 }
 
 func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_InvalidID_Fails() {
@@ -329,10 +323,15 @@ func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResource_WithInvalidID_F
 // Create
 
 func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_Succeeds() {
-	res := s.f.GetRegisteredResourceKey("res_only")
+	res, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		Name: "test_create_res_value",
+	})
+	s.Require().NoError(err)
+	s.NotNil(res)
+
 	req := &registeredresources.CreateRegisteredResourceValueRequest{
-		ResourceId: res.ID,
-		Value:      "test_create_res_value",
+		ResourceId: res.GetId(),
+		Value:      "value",
 	}
 
 	created, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, req)
@@ -341,10 +340,15 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_Succeeds()
 }
 
 func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_NormalizedName_Succeeds() {
-	res := s.f.GetRegisteredResourceKey("res_only")
+	res, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		Name: "test_create_res_value_normalized",
+	})
+	s.Require().NoError(err)
+	s.NotNil(res)
+
 	req := &registeredresources.CreateRegisteredResourceValueRequest{
-		ResourceId: res.ID,
-		Value:      "TeST_CrEaTe_RES_value_NorMa-LiZeD",
+		ResourceId: res.GetId(),
+		Value:      "VaLuE_NorMa-LiZeD",
 	}
 
 	created, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, req)
@@ -354,8 +358,14 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_Normalized
 }
 
 func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithMetadata_Succeeds() {
+	res, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		Name: "test_create_res_value_metadata",
+	})
+	s.Require().NoError(err)
+	s.NotNil(res)
+
 	req := &registeredresources.CreateRegisteredResourceValueRequest{
-		ResourceId: s.f.GetRegisteredResourceKey("res_only").ID,
+		ResourceId: res.GetId(),
 		Value:      "test_create_res_value_metadata",
 		Metadata: &common.MetadataMutable{
 			Labels: map[string]string{
@@ -443,10 +453,15 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 		"new":    newLabel,
 	}
 
-	existingRes := s.f.GetRegisteredResourceKey("res_only")
+	res, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		Name: "test_update_res_value",
+	})
+	s.Require().NoError(err)
+	s.NotNil(res)
+
 	created, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
-		ResourceId: existingRes.ID,
-		Value:      "test_update_res_value",
+		ResourceId: res.GetId(),
+		Value:      "value",
 		Metadata: &common.MetadataMutable{
 			Labels: labels,
 		},
@@ -471,7 +486,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	// update with changes
 	updated, err = s.db.PolicyClient.UpdateRegisteredResourceValue(s.ctx, &registeredresources.UpdateRegisteredResourceValueRequest{
 		Id:    created.GetId(),
-		Value: "test_update_res_value__new_value",
+		Value: "updated_value",
 		Metadata: &common.MetadataMutable{
 			Labels: updateLabels,
 		},
@@ -484,7 +499,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	got, err = s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
-	s.Equal("test_update_res_value__new_value", got.GetValue())
+	s.Equal("updated_value", got.GetValue())
 	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
 	metadata := got.GetMetadata()
 	createdAt := metadata.GetCreatedAt()
@@ -495,17 +510,22 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 }
 
 func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_NormalizedName_Succeeds() {
-	existingRes := s.f.GetRegisteredResourceKey("res_only")
+	res, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		Name: "test_update_res_value_normalized",
+	})
+	s.Require().NoError(err)
+	s.NotNil(res)
+
 	created, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
-		ResourceId: existingRes.ID,
-		Value:      "test_update_res_value_normalized",
+		ResourceId: res.GetId(),
+		Value:      "value_normalized",
 	})
 	s.Require().NoError(err)
 	s.NotNil(created)
 
 	updated, err := s.db.PolicyClient.UpdateRegisteredResourceValue(s.ctx, &registeredresources.UpdateRegisteredResourceValueRequest{
 		Id:    created.GetId(),
-		Value: "TeST_UpDaTe_RES_value_NorMa-LiZeD",
+		Value: "VaLuE_NorMa-LiZeD",
 	})
 	s.Require().NoError(err)
 	s.NotNil(updated)
@@ -514,7 +534,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Normalized
 	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
-	s.Equal("test_update_res_value_norma-lized", got.GetValue())
+	s.Equal("value_norma-lized", got.GetValue())
 }
 
 func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_InvalidID_Fails() {
@@ -527,18 +547,30 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_InvalidID_
 }
 
 func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_NonUniqueResourceAndValue_Fails() {
-	existingResValue := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
-
-	created, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
-		ResourceId: existingResValue.RegisteredResourceID,
-		Value:      "test_update_res_value_non_unique",
+	res, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		Name: "test_update_res_value_non_unique",
 	})
 	s.Require().NoError(err)
-	s.NotNil(created)
+	s.NotNil(res)
+
+	resVal1, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
+		ResourceId: res.GetId(),
+		Value:      "value1",
+	})
+	s.Require().NoError(err)
+	s.NotNil(resVal1)
+
+	resVal2, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
+		ResourceId: res.GetId(),
+		Value:      "value2",
+	})
+	s.Require().NoError(err)
+	s.NotNil(resVal2)
 
 	updated, err := s.db.PolicyClient.UpdateRegisteredResourceValue(s.ctx, &registeredresources.UpdateRegisteredResourceValueRequest{
-		Id:    created.GetId(),
-		Value: existingResValue.Value,
+		Id:    resVal1.GetId(),
+		// causes unique constraint violation attempting to update value1 to value2
+		Value: resVal2.GetValue(),
 	})
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
@@ -548,10 +580,15 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_NonUniqueR
 // Delete
 
 func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResourceValue_Succeeds() {
-	existingRes := s.f.GetRegisteredResourceKey("res_only")
+	res, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		Name: "test_delete_res_value",
+	})
+	s.Require().NoError(err)
+	s.NotNil(res)
+
 	created, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
-		ResourceId: existingRes.ID,
-		Value:      "test_delete_res_value",
+		ResourceId: res.GetId(),
+		Value:      "value",
 	})
 	s.Require().NoError(err)
 

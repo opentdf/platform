@@ -1,7 +1,6 @@
 package entityresolution_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
@@ -20,12 +19,10 @@ func Test_ClientResolveEntity(t *testing.T) {
 	var validBody []*authorization.Entity
 	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_ClientId{ClientId: "random"}})
 
-	var ctxb = context.Background()
-
 	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = claims.EntityResolution(ctxb, &req, logger.CreateTestLogger())
+	var resp, reserr = claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -44,12 +41,10 @@ func Test_EmailResolveEntity(t *testing.T) {
 	var validBody []*authorization.Entity
 	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_EmailAddress{EmailAddress: "random"}})
 
-	var ctxb = context.Background()
-
 	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = claims.EntityResolution(ctxb, &req, logger.CreateTestLogger())
+	var resp, reserr = claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -80,12 +75,10 @@ func Test_ClaimsResolveEntity(t *testing.T) {
 	var validBody []*authorization.Entity
 	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_Claims{Claims: anyClaims}})
 
-	var ctxb = context.Background()
-
 	var req = entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = claims.EntityResolution(ctxb, &req, logger.CreateTestLogger())
+	var resp, reserr = claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -101,11 +94,9 @@ func Test_ClaimsResolveEntity(t *testing.T) {
 }
 
 func Test_JWTToEntityChainClaims(t *testing.T) {
-	var ctxb = context.Background()
-
 	validBody := []*authorization.Token{{Jwt: samplejwt}}
 
-	var resp, reserr = claims.CreateEntityChainFromJwt(ctxb, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, logger.CreateTestLogger())
+	var resp, reserr = claims.CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 

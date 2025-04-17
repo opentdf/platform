@@ -209,7 +209,7 @@ func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) kaspb.Unsigne
 	require.NoError(t, err, "rewrap: encryptWithPublicKey failed")
 
 	logger := logger.CreateTestLogger()
-	bindingBytes, err := generateHMACDigest(context.Background(), policyBytes, []byte(plainKey), *logger)
+	bindingBytes, err := generateHMACDigest(t.Context(), policyBytes, []byte(plainKey), *logger)
 	require.NoError(t, err)
 
 	dst := make([]byte, hex.EncodedLen(len(bindingBytes)))
@@ -335,7 +335,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 	// The execution loop
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			bearer := string(jwtStandard(t))
 			if tt.addDPoP {
 				var key jwk.Key
@@ -370,7 +370,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 				require.NotNil(t, verified.GetClientPublicKey(), "unable to load public key")
 
 				for _, req := range verified.GetRequests() {
-					err := verifyPolicyBinding(context.Background(), []byte(req.GetPolicy().GetBody()), req.GetKeyAccessObjects()[0], []byte(plainKey), *logger)
+					err := verifyPolicyBinding(t.Context(), []byte(req.GetPolicy().GetBody()), req.GetKeyAccessObjects()[0], []byte(plainKey), *logger)
 					if !tt.shouldError {
 						require.NoError(t, err, "failed to verify policy body=[%v]", tt.body)
 					} else {
@@ -385,7 +385,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 }
 
 func Test_SignedRequestBody_When_Bad_Signature_Expect_Failure(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	key, err := jwk.FromRaw([]byte("bad key"))
 	require.NoError(t, err, "couldn't get JWK from key")
 
@@ -409,14 +409,14 @@ func Test_SignedRequestBody_When_Bad_Signature_Expect_Failure(t *testing.T) {
 }
 
 func Test_GetEntityInfo_When_Missing_MD_Expect_Error(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := getEntityInfo(ctx, logger.CreateTestLogger())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing")
 }
 
 func Test_GetEntityInfo_When_Authorization_MD_Missing_Expect_Error(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{"token": "test"}))
 
 	_, err := getEntityInfo(ctx, logger.CreateTestLogger())
@@ -425,7 +425,7 @@ func Test_GetEntityInfo_When_Authorization_MD_Missing_Expect_Error(t *testing.T)
 }
 
 func Test_GetEntityInfo_When_Authorization_MD_Invalid_Expect_Error(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{"authorization": "pop test"}))
 
 	_, err := getEntityInfo(ctx, logger.CreateTestLogger())

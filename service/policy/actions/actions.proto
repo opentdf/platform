@@ -17,15 +17,10 @@ message GetActionRequest {
     option (buf.validate.oneof).required = true;
     string id = 1 [(buf.validate.field).string.uuid = true];
     string name = 2 [
-      (buf.validate.field).string.min_len = 1,
       (buf.validate.field).string.max_len = 253,
       (buf.validate.field).cel = {
         id: "action_name_format"
-        message:
-          "Action name must be an alphanumeric string, "
-          "allowing hyphens and underscores but not as the "
-          "first or last character. The stored action name "
-          "is normalized to lower case."
+        message: "Action name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored action name will be normalized to lower case."
         expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
       }
     ];
@@ -54,15 +49,11 @@ message ListActionsResponse {
 message CreateActionRequest {
   // Required
   string name = 1 [
-    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).required = true,
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
       id: "action_name_format"
-      message:
-        "Action name must be an alphanumeric string, "
-        "allowing hyphens and underscores but not as the "
-        "first or last character. The stored action name "
-        "is normalized to lower case."
+      message: "Action name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored action name will be normalized to lower case."
       expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
     }
   ];
@@ -83,18 +74,11 @@ message UpdateActionRequest {
   // Optional
   // Custom actions only: replaces the existing action name
   string name = 2 [
-    (buf.validate.field).required = false,
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
-      id: "optional_action_name_format"
-      message:
-        "Action name must be an alphanumeric string, "
-        "allowing hyphens and underscores but not as the "
-        "first or last character. The stored action name "
-        "is normalized to lower case."
-      expression:
-        "size(this) == 0 || "
-        "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+      id: "action_name_format"
+      message: "Action name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored action name will be normalized to lower case."
+      expression: "size(this) == 0 || this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
     }
   ];
 

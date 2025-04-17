@@ -64,7 +64,7 @@ jobs:
           RELEASED_PATHS: ${{ steps.release-please.outputs.paths_released }}
   update-go-mods:
     runs-on: ubuntu-latest
-    needs: 
+    needs:
       - release-please
     if: fromJSON(needs.release-please.outputs.releases_created) && fromJSON(needs.release-please.outputs.to_update)
     strategy:
@@ -122,3 +122,22 @@ jobs:
           gh pr merge --auto --squash
         env:
           GITHUB_TOKEN: "${{ steps.generate_token.outputs.token }}"
+
+  bump-java-sdk:
+    runs-on: ubuntu-latest
+    needs:
+      - release-please
+    if: fromJSON(needs.release-please.outputs.releases_created) && contains(fromJSON(needs.release-please.outputs.paths_released), 'protocol/go')
+    steps:
+      - name: Lookup version of protocol/go
+        id: version
+        run: |
+          echo "PROTO_VERSION=$(jq -r '.["protocol/go"]' <"${GITHUB_WORKSPACE}"/.release-please-manifest.json)" >> $GITHUB_OUTPUT
+
+      - name: Dispatch Java SDK Release
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.JAVA_SDK_DISPATCH_PAT }}
+          repository: opentdf/java-sdk
+          event-type: update-platform-branch.yaml
+          client-payload: '{"tag": "protocol/go/v${{ steps.version.PROTO_VERSION }}"}'

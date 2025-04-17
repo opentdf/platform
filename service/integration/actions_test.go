@@ -54,7 +54,7 @@ func (s *ActionsSuite) Test_ListActions_NoPagination_Succeeds() {
 	foundDelete := false
 
 	for _, action := range list.GetActionsCustom() {
-		switch action.Name {
+		switch action.GetName() {
 		case fixtureCustomAction1.Name:
 			foundCustomAction1 = true
 		case fixtureCustomAction2.Name:
@@ -62,7 +62,7 @@ func (s *ActionsSuite) Test_ListActions_NoPagination_Succeeds() {
 		}
 	}
 	for _, action := range list.GetActionsStandard() {
-		switch policydb.ActionStandard(action.Name) {
+		switch policydb.ActionStandard(action.GetName()) {
 		case policydb.ActionRead:
 			foundRead = true
 		case policydb.ActionCreate:
@@ -106,9 +106,9 @@ func (s *ActionsSuite) Test_ListActions_Pagination_Succeeds() {
 	})
 	s.NotNil(list)
 	s.Require().NoError(err)
-	s.Equal(int32(total), list.GetPagination().GetTotal())
-	s.Equal(int32(0), list.GetPagination().GetCurrentOffset())
-	s.Equal(int32(total-1), list.GetPagination().GetNextOffset())
+	s.Equal(total, list.GetPagination().GetTotal())
+	s.Equal(0, list.GetPagination().GetCurrentOffset())
+	s.Equal(total-1, list.GetPagination().GetNextOffset())
 }
 
 func (s *ActionsSuite) Test_ListActions_LimitLargerThanConfigured_Fails() {
@@ -140,13 +140,13 @@ func (s *ActionsSuite) Test_GetAction_Id_Succeeds() {
 
 	action, err = s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
 		Identifier: &actions.GetActionRequest_Id{
-			Id: actionRead.Id,
+			Id: actionRead.GetId(),
 		},
 	})
 	s.NotNil(action)
 	s.Require().NoError(err)
-	s.Equal(actionRead.Id, action.GetId())
-	s.Equal(actionRead.Name, action.GetName())
+	s.Equal(actionRead.GetId(), action.GetId())
+	s.Equal(actionRead.GetName(), action.GetName())
 	s.NotNil(action.GetMetadata())
 }
 
@@ -166,13 +166,13 @@ func (s *ActionsSuite) Test_GetAction_Name_Succeeds() {
 
 	action, err = s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
 		Identifier: &actions.GetActionRequest_Name{
-			Name: actionCreate.Name,
+			Name: actionCreate.GetName(),
 		},
 	})
 	s.NotNil(action)
 	s.Require().NoError(err)
-	s.Equal(actionCreate.Name, action.GetName())
-	s.Equal(actionCreate.Id, action.GetId())
+	s.Equal(actionCreate.GetName(), action.GetName())
+	s.Equal(actionCreate.GetId(), action.GetId())
 	s.NotNil(action.GetMetadata())
 }
 
@@ -363,12 +363,12 @@ func (s *ActionsSuite) Test_DeleteAction_NonExistent_Fails() {
 func (s *ActionsSuite) Test_DeleteAction_StandardAction_Fails() {
 	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
 	action, err := s.db.PolicyClient.DeleteAction(s.ctx, &actions.DeleteActionRequest{
-		Id: actionRead.Id,
+		Id: actionRead.GetId(),
 	})
 	s.Nil(action)
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrRestrictViolation)
-	s.Contains(err.Error(), actionRead.Name)
+	s.Contains(err.Error(), actionRead.GetName())
 }
 
 func TestActionsSuite(t *testing.T) {

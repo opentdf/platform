@@ -24,25 +24,27 @@ const (
 
 // Add a validation method
 func (a ActionStandard) IsValid() bool {
-    switch a {
-    case ActionCreate, ActionRead, ActionUpdate, ActionDelete:
-        return true
-    }
-    return false
+	switch a {
+	case ActionCreate, ActionRead, ActionUpdate, ActionDelete:
+		return true
+	}
+	return false
 }
 
 // If needed, implement the Stringer interface explicitly
 func (a ActionStandard) String() string {
-    return string(a)
+	return string(a)
 }
 
 func (c PolicyDBClient) GetAction(ctx context.Context, req *actions.GetActionRequest) (*policy.Action, error) {
 	getActionParams := getActionParams{}
-	if req.GetId() != "" {
+
+	switch {
+	case req.GetId() != "":
 		getActionParams.ID = pgtypeUUID(req.GetId())
-	} else if req.GetName() != "" {
+	case req.GetName() != "":
 		getActionParams.Name = pgtypeText(strings.ToLower(req.GetName()))
-	} else {
+	default:
 		return nil, db.ErrSelectIdentifierInvalid
 	}
 

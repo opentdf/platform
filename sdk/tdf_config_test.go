@@ -197,7 +197,7 @@ func TestWithTargetMode(t *testing.T) {
 			cfg, err = newTDFConfig(WithTargetMode(test.targetMode))
 
 			if test.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
 
@@ -244,9 +244,9 @@ func TestAllowList_Add(t *testing.T) {
 			allowList := make(AllowList)
 			err := allowList.Add(tt.kasURL)
 			if tt.expectError {
-				assert.Error(t, err, "Expected an error for test case: %s", tt.name)
+				require.Error(t, err, "Expected an error for test case: %s", tt.name)
 			} else {
-				assert.NoError(t, err, "Did not expect an error for test case: %s", tt.name)
+				require.NoError(t, err, "Did not expect an error for test case: %s", tt.name)
 				assert.Contains(t, allowList, tt.entry, "Expected URL to be added to the allowlist")
 			}
 		})
@@ -321,9 +321,9 @@ func TestWithKasAllowlist(t *testing.T) {
 			config := &TDFReaderConfig{}
 			err := WithKasAllowlist(tt.kasList)(config)
 			if tt.expectError {
-				assert.Error(t, err, "Expected an error for test case: %s", tt.name)
+				require.Error(t, err, "Expected an error for test case: %s", tt.name)
 			} else {
-				assert.NoError(t, err, "Did not expect an error for test case: %s", tt.name)
+				require.NoError(t, err, "Did not expect an error for test case: %s", tt.name)
 				for _, kasURL := range tt.kasList {
 					assert.True(t, config.kasAllowlist.IsAllowed(kasURL), "Expected KAS URL to be allowed: %s", kasURL)
 				}
@@ -354,7 +354,7 @@ func TestWithIgnoreAllowlist(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			config := &TDFReaderConfig{}
 			err := WithIgnoreAllowlist(tt.ignore)(config)
-			assert.NoError(t, err, "Did not expect an error for test case: %s", tt.name)
+			require.NoError(t, err, "Did not expect an error for test case: %s", tt.name)
 			assert.Equal(t, tt.expectedValue, config.ignoreAllowList, "Unexpected value for ignoreAllowList in test case: %s", tt.name)
 		})
 	}

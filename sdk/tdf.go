@@ -666,7 +666,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		return nil, fmt.Errorf("newAssertionConfig failed: %w", err)
 	}
 
-	if config.kasAllowlist == nil && !config.ignoreAllowList {
+	if config.kasAllowlist == nil && !config.ignoreAllowList { //nolint:nestif // need to handle both cases
 		if s.KeyAccessServerRegistry != nil {
 			// retrieve the registered kases if not provided
 			kases, err := s.KeyAccessServerRegistry.ListKeyAccessServers(context.Background(), &kasregistry.ListKeyAccessServersRequest{})

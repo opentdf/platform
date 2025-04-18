@@ -84,7 +84,7 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 
 	for i, tdf := range bulkReq.TDFs {
 		policyID := fmt.Sprintf("policy-%d", i)
-		decryptor, err := s.createDecryptor(tdf, bulkReq.TDFType)
+		decryptor, err := s.createDecryptor(tdf, bulkReq.TDFType) //nolint:contextcheck // dont want to change signature of LoadTDF
 		if err != nil {
 			tdf.Error = err
 			continue

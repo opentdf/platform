@@ -110,8 +110,8 @@ func (r *tdf3DecryptHandler) CreateRewrapRequest(ctx context.Context) (map[strin
 	return createRewrapRequest(ctx, r.reader)
 }
 
-func (s SDK) createTDF3DecryptHandler(writer io.Writer, reader io.ReadSeeker) (*tdf3DecryptHandler, error) {
-	tdfReader, err := s.LoadTDF(reader)
+func (s SDK) createTDF3DecryptHandler(writer io.Writer, reader io.ReadSeeker, opts ...TDFReaderOption) (*tdf3DecryptHandler, error) {
+	tdfReader, err := s.LoadTDF(reader, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -649,6 +649,26 @@ func createPolicyObject(attributes []AttributeValueFQN) (PolicyObject, error) {
 	return policyObj, nil
 }
 
+func allowListFromKASRegistry(kasRegistryClient kasregistry.KeyAccessServerRegistryServiceClient, platformUrl string) (AllowList, error) {
+	kases, err := kasRegistryClient.ListKeyAccessServers(context.Background(), &kasregistry.ListKeyAccessServersRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("kasregistry.ListKeyAccessServers failed: %w", err)
+	}
+	kasAllowlist := AllowList{}
+	for _, kas := range kases.GetKeyAccessServers() {
+		err = kasAllowlist.Add(kas.GetUri())
+		if err != nil {
+			return nil, fmt.Errorf("kasAllowlist.Add failed: %w", err)
+		}
+	}
+	// grpc target does not have a scheme
+	err = kasAllowlist.Add("http://" + platformUrl)
+	if err != nil {
+		return nil, fmt.Errorf("kasAllowlist.Add failed: %w", err)
+	}
+	return kasAllowlist, nil
+}
+
 // LoadTDF loads the tdf and prepare for reading the payload from TDF
 func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, error) {
 	// create tdf reader
@@ -669,22 +689,11 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 	if config.kasAllowlist == nil && !config.ignoreAllowList { //nolint:nestif // need to handle both cases
 		if s.KeyAccessServerRegistry != nil {
 			// retrieve the registered kases if not provided
-			kases, err := s.KeyAccessServerRegistry.ListKeyAccessServers(context.Background(), &kasregistry.ListKeyAccessServersRequest{})
+			allowList, err := allowListFromKASRegistry(s.KeyAccessServerRegistry, s.conn.Target())
 			if err != nil {
-				return nil, fmt.Errorf("kasregistry.ListKeyAccessServers failed: %w", err)
+				return nil, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
 			}
-			config.kasAllowlist = AllowList{}
-			for _, kas := range kases.GetKeyAccessServers() {
-				err = config.kasAllowlist.Add(kas.GetUri())
-				if err != nil {
-					return nil, fmt.Errorf("kasAllowlist.Add failed: %w", err)
-				}
-			}
-			// grpc target does not have a scheme
-			err = config.kasAllowlist.Add("http://" + s.conn.Target())
-			if err != nil {
-				return nil, fmt.Errorf("kasAllowlist.Add failed: %w", err)
-			}
+			config.kasAllowlist = allowList
 		} else {
 			slog.Warn("No KAS allowlist provided and no KeyAccessServerRegistry available, ignoring allowlist")
 			config.ignoreAllowList = true

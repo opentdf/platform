@@ -17,8 +17,10 @@ type BulkTDF struct {
 }
 
 type BulkDecryptRequest struct {
-	TDFs    []*BulkTDF
-	TDFType TdfType
+	TDFs                  []*BulkTDF
+	TDF3DecryptOptions    []TDFReaderOption     // Options for TDF3 Decryptor
+	NanoTDFDecryptOptions []NanoTDFReaderOption // Options for Nano TDF Decryptor
+	TDFType               TdfType
 }
 
 // BulkErrors List of Errors that Failed during Bulk Decryption
@@ -55,6 +57,18 @@ func WithTDFType(tdfType TdfType) BulkDecryptOption {
 	}
 }
 
+func WithTDF3DecryptOptions(options ...TDFReaderOption) BulkDecryptOption {
+	return func(request *BulkDecryptRequest) {
+		request.TDF3DecryptOptions = append(request.TDF3DecryptOptions, options...)
+	}
+}
+
+func WithNanoTDFDecryptOptions(options ...NanoTDFReaderOption) BulkDecryptOption {
+	return func(request *BulkDecryptRequest) {
+		request.NanoTDFDecryptOptions = append(request.NanoTDFDecryptOptions, options...)
+	}
+}
+
 func createBulkRewrapRequest(options ...BulkDecryptOption) *BulkDecryptRequest {
 	req := &BulkDecryptRequest{}
 	for _, opt := range options {
@@ -63,16 +77,15 @@ func createBulkRewrapRequest(options ...BulkDecryptOption) *BulkDecryptRequest {
 	return req
 }
 
-func (s SDK) createDecryptor(tdf *BulkTDF, tdfType TdfType) (decryptor, error) {
-	switch tdfType {
+func (s SDK) createDecryptor(tdf *BulkTDF, req *BulkDecryptRequest) (decryptor, error) {
+	switch req.TDFType {
 	case Nano:
-		decryptor := createNanoTDFDecryptHandler(tdf.Reader, tdf.Writer)
-		return decryptor, nil
+		return createNanoTDFDecryptHandler(tdf.Reader, tdf.Writer, req.NanoTDFDecryptOptions...)
 	case Standard:
-		return s.createTDF3DecryptHandler(tdf.Writer, tdf.Reader)
+		return s.createTDF3DecryptHandler(tdf.Writer, tdf.Reader, req.TDF3DecryptOptions...)
 	case Invalid:
 	}
-	return nil, fmt.Errorf("unknown tdf type: %s", tdfType)
+	return nil, fmt.Errorf("unknown tdf type: %s", req.TDFType)
 }
 
 // BulkDecrypt Decrypts a list of BulkTDF and if a partial failure of TDFs unable to be decrypted, BulkErrors would be returned.
@@ -84,7 +97,7 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 
 	for i, tdf := range bulkReq.TDFs {
 		policyID := fmt.Sprintf("policy-%d", i)
-		decryptor, err := s.createDecryptor(tdf, bulkReq.TDFType) //nolint:contextcheck // dont want to change signature of LoadTDF
+		decryptor, err := s.createDecryptor(tdf, bulkReq) //nolint:contextcheck // dont want to change signature of LoadTDF
 		if err != nil {
 			tdf.Error = err
 			continue

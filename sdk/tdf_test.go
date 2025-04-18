@@ -29,7 +29,9 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/policy"
 	attributespb "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	wellknownpb "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -1744,21 +1746,7 @@ func (s *TDFSuite) startBackend() {
 
 	fwk := &FakeWellKnown{v: wellknownCfg}
 	fa := &FakeAttributes{}
-
-	listeners := make(map[string]*bufconn.Listener)
-	dialer := func(ctx context.Context, host string) (net.Conn, error) {
-		l, ok := listeners[host]
-		if !ok {
-			slog.ErrorContext(ctx, "bufconn: unable to dial host!", "ctx", ctx, "host", host)
-			return nil, fmt.Errorf("unknown host [%s]", host)
-		}
-		slog.InfoContext(ctx, "bufconn: dialing (local grpc)", "ctx", ctx, "host", host)
-		return l.Dial()
-	}
-
-	s.kases = make([]FakeKas, 12)
-
-	for i, ki := range []struct {
+	kasesToMake := []struct {
 		url, private, public string
 	}{
 		{"http://localhost:65432/", mockRSAPrivateKey1, mockRSAPublicKey1},
@@ -1773,7 +1761,23 @@ func (s *TDFSuite) startBackend() {
 		{kasUk, mockRSAPrivateKey2, mockRSAPublicKey2},
 		{kasNz, mockRSAPrivateKey3, mockRSAPublicKey3},
 		{kasUs, mockRSAPrivateKey1, mockRSAPublicKey1},
-	} {
+	}
+	fkar := &FakeKASRegistry{kases: kasesToMake}
+
+	listeners := make(map[string]*bufconn.Listener)
+	dialer := func(ctx context.Context, host string) (net.Conn, error) {
+		l, ok := listeners[host]
+		if !ok {
+			slog.ErrorContext(ctx, "bufconn: unable to dial host!", "ctx", ctx, "host", host)
+			return nil, fmt.Errorf("unknown host [%s]", host)
+		}
+		slog.InfoContext(ctx, "bufconn: dialing (local grpc)", "ctx", ctx, "host", host)
+		return l.Dial()
+	}
+
+	s.kases = make([]FakeKas, 12)
+
+	for i, ki := range kasesToMake {
 		grpcListener := bufconn.Listen(1024 * 1024)
 		url, err := url.Parse(ki.url)
 		s.Require().NoError(err)
@@ -1800,6 +1804,8 @@ func (s *TDFSuite) startBackend() {
 		attributespb.RegisterAttributesServiceServer(grpcServer, fa)
 		kaspb.RegisterAccessServiceServer(grpcServer, &s.kases[i])
 		wellknownpb.RegisterWellKnownServiceServer(grpcServer, fwk)
+		kasregistry.RegisterKeyAccessServerRegistryServiceServer(grpcServer, fkar)
+
 		go func() {
 			err := grpcServer.Serve(grpcListener)
 			s.NoError(err)
@@ -1853,6 +1859,28 @@ func (f *FakeAttributes) GetAttributeValuesByFqns(_ context.Context, in *attribu
 		}
 	}
 	return &attributespb.GetAttributeValuesByFqnsResponse{FqnAttributeValues: r}, nil
+}
+
+type FakeKASRegistry struct {
+	kasregistry.UnimplementedKeyAccessServerRegistryServiceServer
+	kases []struct {
+		url, private, public string
+	}
+}
+
+func (f *FakeKASRegistry) ListKeyAccessServers(_ context.Context, req *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
+	resp := &kasregistry.ListKeyAccessServersResponse{
+		KeyAccessServers: make([]*policy.KeyAccessServer, 0, len(f.kases)),
+	}
+
+	for _, k := range f.kases {
+		kas := &policy.KeyAccessServer{
+			Uri: k.url,
+		}
+		resp.KeyAccessServers = append(resp.KeyAccessServers, kas)
+	}
+
+	return resp, nil
 }
 
 type FakeKas struct {

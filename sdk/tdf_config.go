@@ -407,6 +407,13 @@ func WithKasAllowlist(kasList []string) TDFReaderOption {
 	}
 }
 
+func withKasAllowlist(kasList AllowList) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.kasAllowlist = kasList
+		return nil
+	}
+}
+
 func WithIgnoreAllowlist(ignore bool) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		c.ignoreAllowList = ignore

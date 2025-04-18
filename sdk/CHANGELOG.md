@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.3](https://github.com/opentdf/platform/compare/sdk/v0.4.2...sdk/v0.4.3) (2025-04-18)
+
+
+### Bug Fixes
+
+* **sdk:** Display proper error on kas rewrap failure ([#2081](https://github.com/opentdf/platform/issues/2081)) ([508cbcd](https://github.com/opentdf/platform/commit/508cbcde80310c2a35b8fe69b110600a7078301c))
+
 ## [0.4.2](https://github.com/opentdf/platform/compare/sdk/v0.4.1...sdk/v0.4.2) (2025-04-17)
 
 

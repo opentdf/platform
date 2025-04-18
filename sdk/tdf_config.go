@@ -3,6 +3,8 @@ package sdk
 import (
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -275,6 +277,68 @@ type TDFReaderConfig struct {
 
 	schemaValidationIntensity SchemaValidationIntensity
 	kasSessionKey             ocrypto.KeyPair
+	kasAllowlist              AllowList // KAS URLs that are allowed to be used for reading TDFs
+	ignoreAllowList           bool      // If true, the kasAllowlist will be ignored, and all KAS URLs will be allowed
+}
+
+type AllowList map[string]bool
+
+func getKasAddress(kasURL string) (string, error) {
+	parsedURL, err := url.Parse(kasURL)
+	if err != nil {
+		return "", fmt.Errorf("cannot parse kas url(%s): %w", kasURL, err)
+	}
+
+	// Needed to support buffconn for testing
+	if parsedURL.Host == "" && parsedURL.Port() == "" {
+		return "", nil
+	}
+
+	port := parsedURL.Port()
+	// if port is empty, default to 443.
+	if port == "" {
+		return parsedURL.Hostname(), nil
+	}
+
+	return net.JoinHostPort(parsedURL.Hostname(), port), nil
+}
+
+func newAllowList(kasList []string) (AllowList, error) {
+	allowList := make(AllowList)
+	for _, kasURL := range kasList {
+		err := allowList.Add(kasURL)
+		if err != nil {
+			return nil, fmt.Errorf("error adding kas url(%s) to allowlist: %w", kasURL, err)
+		}
+	}
+	return allowList, nil
+}
+
+func (a AllowList) IsAllowed(kasURL string) bool {
+	if a == nil {
+		return false // No allowlist, so no URLs are allowed
+	}
+	kasAddress, err := getKasAddress(kasURL)
+	if err != nil {
+		return false // If we can't parse the URL, we can't allow it
+	}
+	_, ok := a[kasAddress]
+	return ok
+}
+
+func (a AllowList) Add(kasURL string) error {
+	if a == nil {
+		a = make(AllowList)
+	}
+	kasAddress, err := getKasAddress(kasURL)
+	if err != nil {
+		// If we can't parse the URL, we can't add it to the allowlist
+		return fmt.Errorf("error parsing kas url(%s): %w", kasURL, err)
+	} else if kasAddress == "" {
+		return fmt.Errorf("kas url(%s) not parsed", kasURL)
+	}
+	a[kasAddress] = true
+	return nil
 }
 
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
@@ -328,6 +392,24 @@ func WithSessionKeyType(keyType ocrypto.KeyType) TDFReaderOption {
 			return fmt.Errorf("failed to create RSA key pair: %w", err)
 		}
 		c.kasSessionKey = kasSessionKey
+		return nil
+	}
+}
+
+func WithKasAllowlist(kasList []string) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		allowlist, err := newAllowList(kasList)
+		if err != nil {
+			return fmt.Errorf("failed to create kas allowlist: %w", err)
+		}
+		c.kasAllowlist = allowlist
+		return nil
+	}
+}
+
+func WithIgnoreAllowlist(ignore bool) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.ignoreAllowList = ignore
 		return nil
 	}
 }

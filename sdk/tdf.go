@@ -9,12 +9,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 	"strconv"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -664,6 +666,31 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		return nil, fmt.Errorf("newAssertionConfig failed: %w", err)
 	}
 
+	if config.kasAllowlist == nil && !config.ignoreAllowList {
+		if s.KeyAccessServerRegistry != nil {
+			// retrieve the registered kases if not provided
+			kases, err := s.KeyAccessServerRegistry.ListKeyAccessServers(context.Background(), &kasregistry.ListKeyAccessServersRequest{})
+			if err != nil {
+				return nil, fmt.Errorf("kasregistry.ListKeyAccessServers failed: %w", err)
+			}
+			config.kasAllowlist = AllowList{}
+			for _, kas := range kases.GetKeyAccessServers() {
+				err = config.kasAllowlist.Add(kas.GetUri())
+				if err != nil {
+					return nil, fmt.Errorf("kasAllowlist.Add failed: %w", err)
+				}
+			}
+			// grpc target does not have a scheme
+			err = config.kasAllowlist.Add("http://" + s.conn.Target())
+			if err != nil {
+				return nil, fmt.Errorf("kasAllowlist.Add failed: %w", err)
+			}
+		} else {
+			slog.Warn("No KAS allowlist provided and no KeyAccessServerRegistry available, ignoring allowlist")
+			config.ignoreAllowList = true
+		}
+	}
+
 	manifest, err := tdfReader.Manifest()
 	if err != nil {
 		return nil, fmt.Errorf("tdfReader.Manifest failed: %w", err)
@@ -954,6 +981,15 @@ func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.Unsigned
 	kasReqs := make(map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest)
 	for i, kao := range r.manifest.EncryptionInformation.KeyAccessObjs {
 		kaoID := fmt.Sprintf("kao-%d", i)
+
+		// if ignoreing allowlist then warn
+		// if kas url is not allowed then return error
+		if r.config.ignoreAllowList {
+			slog.Warn(fmt.Sprintf("KasAllowlist is ignored, kas url %s is allowed", kao.KasURL))
+		} else if !r.config.kasAllowlist.IsAllowed(kao.KasURL) {
+			return nil, fmt.Errorf("KasAllowlist: kas url %s is not allowed", kao.KasURL)
+		}
+
 		key, err := ocrypto.Base64Decode([]byte(kao.WrappedKey))
 		if err != nil {
 			return nil, fmt.Errorf("could not decode wrapper key: %w", err)

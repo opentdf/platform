@@ -649,8 +649,8 @@ func createPolicyObject(attributes []AttributeValueFQN) (PolicyObject, error) {
 	return policyObj, nil
 }
 
-func allowListFromKASRegistry(kasRegistryClient kasregistry.KeyAccessServerRegistryServiceClient, platformUrl string) (AllowList, error) {
-	kases, err := kasRegistryClient.ListKeyAccessServers(context.Background(), &kasregistry.ListKeyAccessServersRequest{})
+func allowListFromKASRegistry(ctx context.Context, kasRegistryClient kasregistry.KeyAccessServerRegistryServiceClient, platformURL string) (AllowList, error) {
+	kases, err := kasRegistryClient.ListKeyAccessServers(ctx, &kasregistry.ListKeyAccessServersRequest{})
 	if err != nil {
 		return nil, fmt.Errorf("kasregistry.ListKeyAccessServers failed: %w", err)
 	}
@@ -662,7 +662,7 @@ func allowListFromKASRegistry(kasRegistryClient kasregistry.KeyAccessServerRegis
 		}
 	}
 	// grpc target does not have a scheme
-	err = kasAllowlist.Add("http://" + platformUrl)
+	err = kasAllowlist.Add("http://" + platformURL)
 	if err != nil {
 		return nil, fmt.Errorf("kasAllowlist.Add failed: %w", err)
 	}
@@ -686,10 +686,10 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		return nil, fmt.Errorf("newAssertionConfig failed: %w", err)
 	}
 
-	if config.kasAllowlist == nil && !config.ignoreAllowList { //nolint:nestif // need to handle both cases
+	if config.kasAllowlist == nil && !config.ignoreAllowList {
 		if s.KeyAccessServerRegistry != nil {
 			// retrieve the registered kases if not provided
-			allowList, err := allowListFromKASRegistry(s.KeyAccessServerRegistry, s.conn.Target())
+			allowList, err := allowListFromKASRegistry(context.Background(), s.KeyAccessServerRegistry, s.conn.Target())
 			if err != nil {
 				return nil, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
 			}

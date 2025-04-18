@@ -359,3 +359,47 @@ func TestWithIgnoreAllowlist(t *testing.T) {
 		})
 	}
 }
+
+func TestWithKasAllowlist_with(t *testing.T) {
+	tests := []struct {
+		name        string
+		kasList     AllowList
+		expectError bool
+		expected    map[string]bool // Expected allowlist entries
+	}{
+		{
+			name: "Valid AllowList",
+			kasList: AllowList{
+				"example.com:443": true,
+				"another.com":     true,
+			},
+			expectError: false,
+			expected: map[string]bool{
+				"example.com:443": true,
+				"another.com":     true,
+			},
+		},
+		{
+			name:        "Empty AllowList",
+			kasList:     AllowList{},
+			expectError: false,
+			expected:    map[string]bool{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := &TDFReaderConfig{}
+			err := withKasAllowlist(tt.kasList)(config)
+
+			if tt.expectError {
+				require.Error(t, err, "Expected an error for test case: %s", tt.name)
+			} else {
+				require.NoError(t, err, "Did not expect an error for test case: %s", tt.name)
+				for kasURL, allowed := range tt.expected {
+					assert.Equal(t, allowed, config.kasAllowlist[kasURL], "Unexpected allowlist entry for: %s", kasURL)
+				}
+			}
+		})
+	}
+}

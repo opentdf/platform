@@ -1868,7 +1868,7 @@ type FakeKASRegistry struct {
 	}
 }
 
-func (f *FakeKASRegistry) ListKeyAccessServers(_ context.Context, req *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
+func (f *FakeKASRegistry) ListKeyAccessServers(_ context.Context, _ *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
 	resp := &kasregistry.ListKeyAccessServersResponse{
 		KeyAccessServers: make([]*policy.KeyAccessServer, 0, len(f.kases)),
 	}

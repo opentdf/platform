@@ -131,7 +131,7 @@ func newNanoTDFReaderConfig(opt ...NanoTDFReaderOption) (*NanoTDFReaderConfig, e
 
 type NanoTDFReaderOption func(*NanoTDFReaderConfig) error
 
-func WitNanoKasAllowlist(kasList []string) NanoTDFReaderOption {
+func WithNanoKasAllowlist(kasList []string) NanoTDFReaderOption {
 	return func(c *NanoTDFReaderConfig) error {
 		allowlist, err := newAllowList(kasList)
 		if err != nil {

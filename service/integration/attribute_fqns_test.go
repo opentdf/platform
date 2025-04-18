@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
+	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/proto"
 )
@@ -721,11 +722,13 @@ func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
 	s.Require().NoError(err)
 	s.NotNil(val2Grant)
 
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
+	actionCreate := s.f.GetStandardAction(policydb.ActionCreate.String())
 	// give a subject mapping to the first value
 	val1SM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              val1.GetId(),
 		ExistingSubjectConditionSetId: s.f.GetSubjectConditionSetKey("subject_condition_set1").ID,
-		Actions:                       []*policy.Action{fixtureActions[Transmit]},
+		Actions:                       []*policy.Action{actionRead, fixtureActionCustomUpload},
 	})
 	s.Require().NoError(err)
 	s.NotNil(val1SM)
@@ -734,7 +737,7 @@ func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
 	val2SM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              val2.GetId(),
 		ExistingSubjectConditionSetId: s.f.GetSubjectConditionSetKey("subject_condition_set2").ID,
-		Actions:                       []*policy.Action{fixtureActions[Read]},
+		Actions:                       []*policy.Action{actionCreate},
 	})
 	s.Require().NoError(err)
 	s.NotNil(val2SM)
@@ -743,7 +746,7 @@ func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
 	val2SM2, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              val2.GetId(),
 		ExistingSubjectConditionSetId: s.f.GetSubjectConditionSetKey("subject_condition_set3").ID,
-		Actions:                       []*policy.Action{fixtureActions[Transmit], fixtureActions[Read]},
+		Actions:                       []*policy.Action{actionRead, actionCreate},
 	})
 	s.Require().NoError(err)
 	s.NotNil(val2SM2)
@@ -884,7 +887,19 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_SubjectMappingsOnAllValues() {
 	s.Len(val1.GetSubjectMappings(), 1)
 	val1SM := val1.GetSubjectMappings()[0]
 	s.Equal(s.f.GetSubjectConditionSetKey("subject_condition_set1").ID, val1SM.GetSubjectConditionSet().GetId())
-	s.Len(val1SM.GetActions(), 1)
+	s.Len(val1SM.GetActions(), 2)
+	foundRead := false
+	foundUpload := false
+	for _, action := range val1SM.GetActions() {
+		if action.GetId() == s.f.GetStandardAction("read").GetId() {
+			foundRead = true
+		}
+		if action.GetName() == fixtureActionCustomUpload.GetName() {
+			foundUpload = true
+		}
+	}
+	s.True(foundRead)
+	s.True(foundUpload)
 
 	// ensure the second value has both expected subject mappings
 	val2 := got.GetValues()[1]
@@ -892,10 +907,23 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_SubjectMappingsOnAllValues() {
 	val2SM := val2.GetSubjectMappings()[0]
 	s.Equal(s.f.GetSubjectConditionSetKey("subject_condition_set2").ID, val2SM.GetSubjectConditionSet().GetId())
 	s.Len(val2SM.GetActions(), 1)
+	s.Equal(val2SM.GetActions()[0].GetName(), s.f.GetStandardAction("create").GetName())
 
 	val2SM2 := val2.GetSubjectMappings()[1]
 	s.Equal(s.f.GetSubjectConditionSetKey("subject_condition_set3").ID, val2SM2.GetSubjectConditionSet().GetId())
 	s.Len(val2SM2.GetActions(), 2)
+	foundRead = false
+	foundCreate := false
+	for _, action := range val2SM2.GetActions() {
+		if action.GetId() == s.f.GetStandardAction("read").GetId() {
+			foundRead = true
+		}
+		if action.GetId() == s.f.GetStandardAction("create").GetId() {
+			foundCreate = true
+		}
+	}
+	s.True(foundRead)
+	s.True(foundCreate)
 }
 
 // Test multiple get attributes by multiple fqns

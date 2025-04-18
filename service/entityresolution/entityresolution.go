@@ -1,7 +1,7 @@
 package entityresolution
 
 import (
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/entityresolution/entityresolutionconnect"
 	claims "github.com/opentdf/platform/service/entityresolution/claims"

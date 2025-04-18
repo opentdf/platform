@@ -277,7 +277,6 @@ func CalculateHKDF(salt []byte, secret []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to derive hkdf key: %w", err)
 	}
-
 	return derivedKey, nil
 }
 

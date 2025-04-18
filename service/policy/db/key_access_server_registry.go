@@ -455,7 +455,7 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Asy
 		providerConfig = &policy.KeyProviderConfig{}
 		providerConfig.Id = UUIDToString(key.ProviderConfigID)
 		providerConfig.Name = key.ProviderName.String
-		providerConfig.ConfigJson = key.PcConfig
+		providerConfig.ConfigJson = key.ProviderConfig
 		providerConfig.Metadata = &common.Metadata{}
 		if err := unmarshalMetadata(key.PcMetadata, providerConfig.GetMetadata()); err != nil {
 			return nil, err

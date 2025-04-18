@@ -1015,7 +1015,7 @@ SELECT
     )
   ) AS metadata,
   pc.provider_name,
-  pc.config AS pc_config,
+  pc.config AS provider_config,
   JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata
 FROM key_access_server_keys AS kask
 LEFT JOIN 
@@ -1040,7 +1040,7 @@ type GetKeyRow struct {
 	ProviderConfigID pgtype.UUID `json:"provider_config_id"`
 	Metadata         []byte      `json:"metadata"`
 	ProviderName     pgtype.Text `json:"provider_name"`
-	PcConfig         []byte      `json:"pc_config"`
+	ProviderConfig   []byte      `json:"provider_config"`
 	PcMetadata       []byte      `json:"pc_metadata"`
 }
 
@@ -1063,7 +1063,7 @@ type GetKeyRow struct {
 //	    )
 //	  ) AS metadata,
 //	  pc.provider_name,
-//	  pc.config AS pc_config,
+//	  pc.config AS provider_config,
 //	  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata
 //	FROM key_access_server_keys AS kask
 //	LEFT JOIN
@@ -1084,7 +1084,7 @@ func (q *Queries) GetKey(ctx context.Context, arg GetKeyParams) (GetKeyRow, erro
 		&i.ProviderConfigID,
 		&i.Metadata,
 		&i.ProviderName,
-		&i.PcConfig,
+		&i.ProviderConfig,
 		&i.PcMetadata,
 	)
 	return i, err

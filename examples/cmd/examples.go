@@ -58,6 +58,7 @@ func newSDK() (*sdk.SDK, error) {
 	if tokenEndpoint != "" {
 		opts = append(opts, sdk.WithTokenEndpoint(tokenEndpoint))
 	}
+
 	return sdk.New(platformEndpoint, opts...)
 }
 

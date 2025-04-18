@@ -1,12 +1,13 @@
 package kas
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"log/slog"
 	"net/url"
 	"strings"
 
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/service/kas/access"
@@ -38,14 +39,21 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				}
 				kasCfg.UpgradeMapToKeyring(srp.OTDF.CryptoProvider)
 
+				// Static Salt
+				digest := sha256.New()
+				digest.Write([]byte("TDF"))
+				salt := digest.Sum(nil)
+
 				p := &access.Provider{
-					URI:            *kasURI,
-					AttributeSvc:   nil,
-					CryptoProvider: srp.OTDF.CryptoProvider,
-					SDK:            srp.SDK,
-					Logger:         srp.Logger,
-					KASConfig:      kasCfg,
-					Tracer:         srp.Tracer,
+					URI:               *kasURI,
+					AttributeSvc:      nil,
+					CryptoProvider:    srp.OTDF.CryptoProvider,
+					SDK:               srp.SDK,
+					Logger:            srp.Logger,
+					KASConfig:         kasCfg,
+					Tracer:            srp.Tracer,
+					CryptoProviderNew: srp.CryptoService,
+					EcSalt:            salt,
 				}
 
 				srp.Logger.Debug("kas config", "config", kasCfg)

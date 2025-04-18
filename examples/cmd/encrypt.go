@@ -64,13 +64,11 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	if !noKIDInNano {
 		opts = append(opts, sdk.WithNoKIDInNano())
 	}
-
 	// Create new offline client
 	client, err := newSDK()
 	if err != nil {
 		return err
 	}
-
 	out := os.Stdout
 	if outputName == "-" && collection > 0 {
 		return fmt.Errorf("cannot use stdout for collection")

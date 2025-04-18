@@ -8,6 +8,7 @@ import (
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cryptoproviders"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -27,6 +28,8 @@ type Provider struct {
 	Config         *serviceregistry.ServiceConfig
 	KASConfig
 	trace.Tracer
+	CryptoProviderNew *cryptoproviders.CryptoService
+	EcSalt            []byte
 }
 
 type KASConfig struct {
@@ -41,6 +44,8 @@ type KASConfig struct {
 	// Enabling is required to parse KAOs with the `ec-wrapped` type,
 	// and (currently) also enables responding with ECIES encrypted responses.
 	ECTDFEnabled bool `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
+
+	KEK string `mapstructure:"wrapping_key" json:"wrapping_key"`
 }
 
 // Specifies the preferred/default key for a given algorithm type.

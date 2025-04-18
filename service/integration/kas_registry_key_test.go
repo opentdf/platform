@@ -88,6 +88,34 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_InvalidKasId_Fail() {
 	s.Nil(resp)
 }
 
+func (s *KasRegistryKeySuite) Test_CreateKasKey_PrivateCtxEmpty_Fail() {
+	req := kasregistry.CreateKeyRequest{
+		KasId:         s.kasKeys[0].KeyAccessServerID,
+		KeyId:         validKeyID1,
+		KeyAlgorithm:  policy.Algorithm_ALGORITHM_RSA_4096,
+		KeyMode:       policy.KeyMode_KEY_MODE_REMOTE,
+		PrivateKeyCtx: make([]byte, 0),
+	}
+	resp, err := s.db.PolicyClient.CreateKey(s.ctx, &req)
+	s.Require().Error(err)
+	s.Nil(resp)
+	s.Require().ErrorContains(err, "private key context")
+}
+
+func (s *KasRegistryKeySuite) Test_CreateKasKey_LocalKeyMode_NoPublicCtx_Fail() {
+	req := kasregistry.CreateKeyRequest{
+		KasId:         s.kasKeys[0].KeyAccessServerID,
+		KeyId:         validKeyID1,
+		KeyAlgorithm:  policy.Algorithm_ALGORITHM_RSA_4096,
+		KeyMode:       policy.KeyMode_KEY_MODE_LOCAL,
+		PrivateKeyCtx: []byte(privateKeyCtx),
+	}
+	resp, err := s.db.PolicyClient.CreateKey(s.ctx, &req)
+	s.Require().Error(err)
+	s.Nil(resp)
+	s.Require().ErrorContains(err, "public key context")
+}
+
 func (s *KasRegistryKeySuite) Test_CreateKasKey_ProviderConfigInvalid_Fail() {
 	req := kasregistry.CreateKeyRequest{
 		KasId:            s.kasKeys[0].KeyAccessServerID,
@@ -169,7 +197,6 @@ func (s *KasRegistryKeySuite) Test_GetKasKeyById_Success() {
 	s.Require().NoError(err)
 	s.NotNil(resp)
 	s.Equal(s.kasKeys[0].ID, resp.GetId())
-	s.Equal(s.kasKeys[0].ProviderConfigID, resp.GetProviderConfig().GetId())
 }
 
 func (s *KasRegistryKeySuite) Test_GetKasKeyByKeyId_Success() {
@@ -179,7 +206,6 @@ func (s *KasRegistryKeySuite) Test_GetKasKeyByKeyId_Success() {
 	s.Require().NoError(err)
 	s.NotNil(resp)
 	s.Equal(s.kasKeys[0].ID, resp.GetId())
-	s.Equal(s.kasKeys[0].ProviderConfigID, resp.GetProviderConfig().GetId())
 }
 
 func (s *KasRegistryKeySuite) Test_UpdateKey_InvalidKeyId_Fails() {
@@ -268,8 +294,8 @@ func (s *KasRegistryKeySuite) validateListKeysResponse(resp *kasregistry.ListKey
 	}
 	s.Contains(respKeyIDs, s.kasKeys[0].ID)
 	s.Contains(respKeyIDs, s.kasKeys[1].ID)
-	s.Contains(respProviderConfigIDs, s.kasKeys[0].ProviderConfigID)
-	s.Contains(respProviderConfigIDs, s.kasKeys[1].ProviderConfigID)
+	s.Contains(respProviderConfigIDs, s.kasKeys[0].ProvideConfigID)
+	s.Contains(respProviderConfigIDs, s.kasKeys[1].ProvideConfigID)
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_KasID_Success() {

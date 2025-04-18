@@ -16,6 +16,7 @@ import (
 
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cryptoproviders"
 	"github.com/opentdf/platform/service/pkg/db"
 )
 
@@ -41,6 +42,9 @@ type RegistrationParams struct {
 	// Logger is the logger that can be used to log messages. This logger is scoped to the service
 	Logger *logger.Logger
 	trace.Tracer
+
+	// CryptoService
+	CryptoService *cryptoproviders.CryptoService
 
 	////// The following functions are optional and intended to be called by the service //////
 

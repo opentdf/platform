@@ -10,21 +10,21 @@ import (
 )
 
 const (
-	invalidUUID          = "invalid-uuid"
-	validKeyID           = "a-key"
-	errMessageID         = "id"
-	errInvalidUUID       = "invalid uuid"
-	errMessageIdentifier = "identifier"
-	errMessageKeyID      = "key_id"
-	errMessageKasID      = "kas_id"
-	errMessageKeyStatus  = "key_status"
-	errMessageKeyAlgo    = "key_algorithm"
-	errMessageKeyMode    = "key_mode"
-	errMessagePubKeyCtx  = "public_key_ctx"
-	invalidKeyMode       = -1
-	invalidAlgo          = -1
-	invalidKeyStatus     = -1
-	invalidPageLimit     = 5001
+	invalidUUID             = "invalid-uuid"
+	validKeyID              = "a-key"
+	errMessageID            = "id"
+	errInvalidUUID          = "invalid uuid"
+	errMessageIdentifier    = "identifier"
+	errMessageKeyID         = "key_id"
+	errMessageKasID         = "kas_id"
+	errMessageKeyStatus     = "key_status"
+	errMessageKeyAlgo       = "key_algorithm"
+	errMessageKeyMode       = "key_mode"
+	errMessagePrivateKeyCtx = "private_key_ctx"
+	invalidKeyMode          = -1
+	invalidAlgo             = -1
+	invalidKeyStatus        = -1
+	invalidPageLimit        = 5001
 )
 
 var (
@@ -156,7 +156,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			errorMessage: errMessageKeyMode,
 		},
 		{
-			name: "Invalid - PublicKeyCtx required",
+			name: "Invalid - PrivateKeyCtx required",
 			req: &kasregistry.CreateKeyRequest{
 				KasId:        validUUID,
 				KeyId:        validKeyID,
@@ -164,28 +164,16 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
 			},
 			expectError:  true,
-			errorMessage: errMessagePubKeyCtx,
-		},
-		{
-			name: "Invalid - PublicKeyCtx required more than 0 bytes",
-			req: &kasregistry.CreateKeyRequest{
-				KasId:        validUUID,
-				KeyId:        validKeyID,
-				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-				KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
-				PublicKeyCtx: make([]byte, 0),
-			},
-			expectError:  true,
-			errorMessage: errMessagePubKeyCtx,
+			errorMessage: errMessagePrivateKeyCtx,
 		},
 		{
 			name: "Valid request required fields only",
 			req: &kasregistry.CreateKeyRequest{
-				KasId:        validUUID,
-				KeyId:        validKeyID,
-				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-				KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
-				PublicKeyCtx: validKeyCtx,
+				KasId:         validUUID,
+				KeyId:         validKeyID,
+				KeyAlgorithm:  policy.Algorithm_ALGORITHM_EC_P256,
+				KeyMode:       policy.KeyMode_KEY_MODE_LOCAL,
+				PrivateKeyCtx: validKeyCtx,
 			},
 			expectError: false,
 		},
@@ -196,8 +184,8 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyId:            validKeyID,
 				KeyAlgorithm:     policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:          policy.KeyMode_KEY_MODE_LOCAL,
-				PublicKeyCtx:     validKeyCtx,
 				PrivateKeyCtx:    validKeyCtx,
+				PublicKeyCtx:     validKeyCtx,
 				ProviderConfigId: validUUID,
 				Metadata:         validMetadata,
 			},

@@ -113,7 +113,11 @@ erDiagram
         jsonb metadata "Metadata for the KAS (see protos for structure)"
         character_varying name UK "Optional common name of the KAS"
         jsonb public_key "Public key of the KAS (see protos for structure/options)"
+<<<<<<<< HEAD:service/policy/db/migrations/20250402150650_key_management_update_timestamp.md
         character_varying source_type 
+========
+        integer source_type 
+>>>>>>>> c0f94f24b52bce33508ae1c495e9444d9a49a1d9:service/policy/db/migrations/20250408140826_kas_source_type_update.md
         timestamp_with_time_zone updated_at 
         character_varying uri UK "URI of the KAS"
     }

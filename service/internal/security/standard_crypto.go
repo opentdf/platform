@@ -296,7 +296,8 @@ func (s StandardCrypto) ECPublicKey(kid string) (string, error) {
 	if pemBytes == nil {
 		return "", fmt.Errorf("failed to encode public key to PEM: %s", kid)
 	}
-	return string(pemBytes), nil
+	// return string(pemBytes), nil // Changed this for testing purposes and so we use the public key loaded from the file system
+	return ec.ecCertificatePEM, nil 
 }
 
 func (s StandardCrypto) RSADecrypt(_ crypto.Hash, kid string, _ string, ciphertext []byte) ([]byte, error) {

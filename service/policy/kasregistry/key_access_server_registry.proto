@@ -73,9 +73,7 @@ message CreateKeyAccessServerRequest {
   // Optional
   SourceType source_type = 3 [
     (buf.validate.field).required = false,
-    (buf.validate.field).enum = {
-      defined_only: true
-    }
+    (buf.validate.field).enum = {defined_only: true}
   ];
 
   // Optional
@@ -127,9 +125,7 @@ message UpdateKeyAccessServerRequest {
   // to unspecified.
   SourceType source_type = 4 [
     (buf.validate.field).required = false,
-    (buf.validate.field).enum = {
-      defined_only: true
-    }
+    (buf.validate.field).enum = {defined_only: true}
   ];
 
   // Optional
@@ -387,10 +383,13 @@ message CreateKeyRequest {
   // Required
   KeyMode key_mode = 4 [(buf.validate.field).enum.defined_only = true]; // The mode of the key (e.g., local or external)
   // Required
-  bytes public_key_ctx = 5 [(buf.validate.field).required = true, (buf.validate.field).bytes = {min_len: 1}]; // Context or additional data specific to the public key, based on the key provider implementation
+  bytes public_key_ctx = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).bytes = {min_len: 1}
+  ]; // Context or additional data specific to the public key, based on the key provider implementation
   // Optional
   bytes private_key_ctx = 6; // Context or additional data specific to the private key, based on the key provider implementation
-  
+
   // Optional
   string provider_config_id = 7; // Configuration ID for the key provider, if applicable
   // Common metadata

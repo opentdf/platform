@@ -80,7 +80,7 @@ func (s *KasRegistrySuite) validateKasRegistryKeys(kasr *policy.KeyAccessServer)
 	for _, key := range kasr.GetKeys() {
 		for _, f := range keysFixtureArr {
 			if key.GetId() == f.ID {
-				s.Equal(f.ProviderConfigID, key.GetProviderConfig().GetId())
+				s.Equal(f.ProvideConfigID, key.GetProviderConfig().GetId())
 				matchingKeysCount++
 			}
 		}

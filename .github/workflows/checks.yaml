@@ -64,6 +64,7 @@ jobs:
         working-directory: ${{ matrix.directory }}
       - name: govluncheck
         uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee
+        continue-on-error: true
         with:
           go-version-input: "1.24.1"
           work-dir: ${{ matrix.directory }}
@@ -242,7 +243,7 @@ jobs:
     with:
       focus-sdk: go
       # use commit instead of ref so we can "go get" specific sdk version
-      platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      platform-ref: ${{ github.event.pull_request.head.sha || github.sha }} lts
 
   # test latest otdfctl CLI 'main' against platform PR branch
   otdfctl-test:

@@ -77,6 +77,34 @@ func (q *Queries) AssignKeyAccessServerToNamespace(ctx context.Context, arg Assi
 	return result.RowsAffected(), nil
 }
 
+const checkIfKeyExists = `-- name: CheckIfKeyExists :one
+SELECT EXISTS (
+    SELECT 1
+    FROM key_access_server_keys
+    WHERE key_access_server_id = $1 AND key_status = $2 AND key_algorithm = $3
+)
+`
+
+type CheckIfKeyExistsParams struct {
+	KeyAccessServerID string `json:"key_access_server_id"`
+	KeyStatus         int32  `json:"key_status"`
+	KeyAlgorithm      int32  `json:"key_algorithm"`
+}
+
+// CheckIfKeyExists
+//
+//	SELECT EXISTS (
+//	    SELECT 1
+//	    FROM key_access_server_keys
+//	    WHERE key_access_server_id = $1 AND key_status = $2 AND key_algorithm = $3
+//	)
+func (q *Queries) CheckIfKeyExists(ctx context.Context, arg CheckIfKeyExistsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, checkIfKeyExists, arg.KeyAccessServerID, arg.KeyStatus, arg.KeyAlgorithm)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const createAttribute = `-- name: CreateAttribute :one
 INSERT INTO attribute_definitions (namespace_id, name, rule, metadata)
 VALUES ($1, $2, $3, $4) 
@@ -131,23 +159,128 @@ func (q *Queries) CreateAttributeValue(ctx context.Context, arg CreateAttributeV
 	return id, err
 }
 
+const createKey = `-- name: CreateKey :one
+WITH inserted AS (
+  INSERT INTO key_access_server_keys
+    (key_access_server_id, key_algorithm, key_id, key_mode, key_status, metadata, private_key_ctx, public_key_ctx, provider_config_id)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+  RETURNING id, key_id, key_algorithm, key_status, key_mode, public_key_ctx, private_key_ctx, expiration, provider_config_id, metadata, created_at, updated_at, key_access_server_id
+)
+SELECT 
+  id,
+  key_id,
+  key_status,
+  key_mode,
+  key_algorithm,
+  private_key_ctx,
+  public_key_ctx,
+  provider_config_id,
+  JSON_STRIP_NULLS(
+    JSON_BUILD_OBJECT(
+      'labels', metadata -> 'labels',         
+      'created_at', created_at,               
+      'updated_at', updated_at                
+    )
+  ) AS metadata
+FROM inserted
+`
+
+type CreateKeyParams struct {
+	KeyAccessServerID string      `json:"key_access_server_id"`
+	KeyAlgorithm      int32       `json:"key_algorithm"`
+	KeyID             string      `json:"key_id"`
+	KeyMode           int32       `json:"key_mode"`
+	KeyStatus         int32       `json:"key_status"`
+	Metadata          []byte      `json:"metadata"`
+	PrivateKeyCtx     []byte      `json:"private_key_ctx"`
+	PublicKeyCtx      []byte      `json:"public_key_ctx"`
+	ProviderConfigID  pgtype.UUID `json:"provider_config_id"`
+}
+
+type CreateKeyRow struct {
+	ID               string      `json:"id"`
+	KeyID            string      `json:"key_id"`
+	KeyStatus        int32       `json:"key_status"`
+	KeyMode          int32       `json:"key_mode"`
+	KeyAlgorithm     int32       `json:"key_algorithm"`
+	PrivateKeyCtx    []byte      `json:"private_key_ctx"`
+	PublicKeyCtx     []byte      `json:"public_key_ctx"`
+	ProviderConfigID pgtype.UUID `json:"provider_config_id"`
+	Metadata         []byte      `json:"metadata"`
+}
+
+// ---------------------------------------------------------------
+// Key Access Server Keys
+// ----------------------------------------------------------------
+//
+//	WITH inserted AS (
+//	  INSERT INTO key_access_server_keys
+//	    (key_access_server_id, key_algorithm, key_id, key_mode, key_status, metadata, private_key_ctx, public_key_ctx, provider_config_id)
+//	  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+//	  RETURNING id, key_id, key_algorithm, key_status, key_mode, public_key_ctx, private_key_ctx, expiration, provider_config_id, metadata, created_at, updated_at, key_access_server_id
+//	)
+//	SELECT
+//	  id,
+//	  key_id,
+//	  key_status,
+//	  key_mode,
+//	  key_algorithm,
+//	  private_key_ctx,
+//	  public_key_ctx,
+//	  provider_config_id,
+//	  JSON_STRIP_NULLS(
+//	    JSON_BUILD_OBJECT(
+//	      'labels', metadata -> 'labels',
+//	      'created_at', created_at,
+//	      'updated_at', updated_at
+//	    )
+//	  ) AS metadata
+//	FROM inserted
+func (q *Queries) CreateKey(ctx context.Context, arg CreateKeyParams) (CreateKeyRow, error) {
+	row := q.db.QueryRow(ctx, createKey,
+		arg.KeyAccessServerID,
+		arg.KeyAlgorithm,
+		arg.KeyID,
+		arg.KeyMode,
+		arg.KeyStatus,
+		arg.Metadata,
+		arg.PrivateKeyCtx,
+		arg.PublicKeyCtx,
+		arg.ProviderConfigID,
+	)
+	var i CreateKeyRow
+	err := row.Scan(
+		&i.ID,
+		&i.KeyID,
+		&i.KeyStatus,
+		&i.KeyMode,
+		&i.KeyAlgorithm,
+		&i.PrivateKeyCtx,
+		&i.PublicKeyCtx,
+		&i.ProviderConfigID,
+		&i.Metadata,
+	)
+	return i, err
+}
+
 const createKeyAccessServer = `-- name: CreateKeyAccessServer :one
-INSERT INTO key_access_servers (uri, public_key, name, metadata)
-VALUES ($1, $2, $3, $4)
+INSERT INTO key_access_servers (uri, public_key, name, metadata, source_type)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id
 `
 
 type CreateKeyAccessServerParams struct {
-	Uri       string      `json:"uri"`
-	PublicKey []byte      `json:"public_key"`
-	Name      pgtype.Text `json:"name"`
-	Metadata  []byte      `json:"metadata"`
+	Uri        string      `json:"uri"`
+	PublicKey  []byte      `json:"public_key"`
+	Name       pgtype.Text `json:"name"`
+	Metadata   []byte      `json:"metadata"`
+	SourceType pgtype.Int4 `json:"source_type"`
 }
 
 // CreateKeyAccessServer
 //
-//	INSERT INTO key_access_servers (uri, public_key, name, metadata)
-//	VALUES ($1, $2, $3, $4)
+//	INSERT INTO key_access_servers (uri, public_key, name, metadata, source_type)
+//	VALUES ($1, $2, $3, $4, $5)
 //	RETURNING id
 func (q *Queries) CreateKeyAccessServer(ctx context.Context, arg CreateKeyAccessServerParams) (string, error) {
 	row := q.db.QueryRow(ctx, createKeyAccessServer,
@@ -155,6 +288,7 @@ func (q *Queries) CreateKeyAccessServer(ctx context.Context, arg CreateKeyAccess
 		arg.PublicKey,
 		arg.Name,
 		arg.Metadata,
+		arg.SourceType,
 	)
 	var id string
 	err := row.Scan(&id)
@@ -419,6 +553,21 @@ func (q *Queries) DeleteAttributeValue(ctx context.Context, id string) (int64, e
 	return result.RowsAffected(), nil
 }
 
+const deleteKey = `-- name: DeleteKey :execrows
+DELETE FROM key_access_server_keys WHERE id = $1
+`
+
+// DeleteKey
+//
+//	DELETE FROM key_access_server_keys WHERE id = $1
+func (q *Queries) DeleteKey(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteKey, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteKeyAccessServer = `-- name: DeleteKeyAccessServer :execrows
 DELETE FROM key_access_servers WHERE id = $1
 `
@@ -552,7 +701,7 @@ SELECT
         )
     ) FILTER (WHERE adkag.attribute_definition_id IS NOT NULL) AS grants,
     fqns.fqn,
-    k.keys AS keys
+    defk.keys as keys
 FROM attribute_definitions ad
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 LEFT JOIN (
@@ -570,10 +719,35 @@ LEFT JOIN (
 LEFT JOIN attribute_definition_key_access_grants adkag ON adkag.attribute_definition_id = ad.id
 LEFT JOIN key_access_servers kas ON kas.id = adkag.key_access_server_id
 LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
-LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
+LEFT JOIN (
+    SELECT
+        k.definition_id,
+        JSONB_AGG(
+            DISTINCT JSONB_BUILD_OBJECT(
+                'id', kask.id,
+                'key_id', kask.key_id,
+                'key_status', kask.key_status,
+                'key_mode', kask.key_mode,
+                'key_algorithm', kask.key_algorithm,
+                'private_key_ctx', ENCODE(kask.private_key_ctx::TEXT::BYTEA, 'base64'),
+                'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64'),
+                'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kask.metadata -> 'labels', 'created_at', kask.created_at, 'updated_at', kask.updated_at)),
+                'provider_config', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+                    'id', pc.id,
+                    'name', pc.provider_name,
+                    'config_json', ENCODE(pc.config::TEXT::BYTEA, 'base64'),
+                    'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at))
+                ))
+            )
+        ) FILTER (WHERE kask.id IS NOT NULL) AS keys
+    FROM attribute_definition_public_key_map k
+    INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+    LEFT JOIN provider_config pc ON kask.provider_config_id = pc.id
+    GROUP BY k.definition_id
+) defk ON ad.id = defk.definition_id
 WHERE ($1::uuid IS NULL OR ad.id = $1::uuid)
   AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE($2::text, '^https?://', ''))
-GROUP BY ad.id, n.name, fqns.fqn, k.keys
+GROUP BY ad.id, n.name, fqns.fqn, defk.keys
 `
 
 type GetAttributeParams struct {
@@ -622,7 +796,7 @@ type GetAttributeRow struct {
 //	        )
 //	    ) FILTER (WHERE adkag.attribute_definition_id IS NOT NULL) AS grants,
 //	    fqns.fqn,
-//	    k.keys AS keys
+//	    defk.keys as keys
 //	FROM attribute_definitions ad
 //	LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 //	LEFT JOIN (
@@ -640,10 +814,35 @@ type GetAttributeRow struct {
 //	LEFT JOIN attribute_definition_key_access_grants adkag ON adkag.attribute_definition_id = ad.id
 //	LEFT JOIN key_access_servers kas ON kas.id = adkag.key_access_server_id
 //	LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
-//	LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
+//	LEFT JOIN (
+//	    SELECT
+//	        k.definition_id,
+//	        JSONB_AGG(
+//	            DISTINCT JSONB_BUILD_OBJECT(
+//	                'id', kask.id,
+//	                'key_id', kask.key_id,
+//	                'key_status', kask.key_status,
+//	                'key_mode', kask.key_mode,
+//	                'key_algorithm', kask.key_algorithm,
+//	                'private_key_ctx', ENCODE(kask.private_key_ctx::TEXT::BYTEA, 'base64'),
+//	                'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64'),
+//	                'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kask.metadata -> 'labels', 'created_at', kask.created_at, 'updated_at', kask.updated_at)),
+//	                'provider_config', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+//	                    'id', pc.id,
+//	                    'name', pc.provider_name,
+//	                    'config_json', ENCODE(pc.config::TEXT::BYTEA, 'base64'),
+//	                    'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at))
+//	                ))
+//	            )
+//	        ) FILTER (WHERE kask.id IS NOT NULL) AS keys
+//	    FROM attribute_definition_public_key_map k
+//	    INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+//	    LEFT JOIN provider_config pc ON kask.provider_config_id = pc.id
+//	    GROUP BY k.definition_id
+//	) defk ON ad.id = defk.definition_id
 //	WHERE ($1::uuid IS NULL OR ad.id = $1::uuid)
 //	  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE($2::text, '^https?://', ''))
-//	GROUP BY ad.id, n.name, fqns.fqn, k.keys
+//	GROUP BY ad.id, n.name, fqns.fqn, defk.keys
 func (q *Queries) GetAttribute(ctx context.Context, arg GetAttributeParams) (GetAttributeRow, error) {
 	row := q.db.QueryRow(ctx, getAttribute, arg.ID, arg.Fqn)
 	var i GetAttributeRow
@@ -679,15 +878,40 @@ SELECT
             'public_key', kas.public_key
         )
     ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants,
-    k.keys as keys
+    value_keys.keys as keys
 FROM attribute_values av
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
 LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
-LEFT JOIN active_value_public_keys_view k ON av.id = k.value_id
+LEFT JOIN (
+    SELECT
+        k.value_id,
+        JSONB_AGG(
+            DISTINCT JSONB_BUILD_OBJECT(
+                'id', kask.id,
+                'key_id', kask.key_id,
+                'key_status', kask.key_status,
+                'key_mode', kask.key_mode,
+                'key_algorithm', kask.key_algorithm,
+                'private_key_ctx', ENCODE(kask.private_key_ctx::TEXT::BYTEA, 'base64'),
+                'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64'),
+                'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kask.metadata -> 'labels', 'created_at', kask.created_at, 'updated_at', kask.updated_at)),
+                'provider_config', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+                    'id', pc.id,
+                    'name', pc.provider_name,
+                    'config_json', ENCODE(pc.config::TEXT::BYTEA, 'base64'),
+                    'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at))
+                ))
+            )
+        ) FILTER (WHERE kask.id IS NOT NULL) AS keys
+    FROM attribute_value_public_key_map k
+    INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+    LEFT JOIN provider_config pc ON kask.provider_config_id = pc.id
+    GROUP BY k.value_id
+) value_keys ON av.id = value_keys.value_id   
 WHERE ($1::uuid IS NULL OR av.id = $1::uuid)
   AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE($2::text, '^https?://', ''))
-GROUP BY av.id, fqns.fqn, k.keys
+GROUP BY av.id, fqns.fqn, value_keys.keys
 `
 
 type GetAttributeValueParams struct {
@@ -723,15 +947,40 @@ type GetAttributeValueRow struct {
 //	            'public_key', kas.public_key
 //	        )
 //	    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants,
-//	    k.keys as keys
+//	    value_keys.keys as keys
 //	FROM attribute_values av
 //	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 //	LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
 //	LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
-//	LEFT JOIN active_value_public_keys_view k ON av.id = k.value_id
+//	LEFT JOIN (
+//	    SELECT
+//	        k.value_id,
+//	        JSONB_AGG(
+//	            DISTINCT JSONB_BUILD_OBJECT(
+//	                'id', kask.id,
+//	                'key_id', kask.key_id,
+//	                'key_status', kask.key_status,
+//	                'key_mode', kask.key_mode,
+//	                'key_algorithm', kask.key_algorithm,
+//	                'private_key_ctx', ENCODE(kask.private_key_ctx::TEXT::BYTEA, 'base64'),
+//	                'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64'),
+//	                'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kask.metadata -> 'labels', 'created_at', kask.created_at, 'updated_at', kask.updated_at)),
+//	                'provider_config', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+//	                    'id', pc.id,
+//	                    'name', pc.provider_name,
+//	                    'config_json', ENCODE(pc.config::TEXT::BYTEA, 'base64'),
+//	                    'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at))
+//	                ))
+//	            )
+//	        ) FILTER (WHERE kask.id IS NOT NULL) AS keys
+//	    FROM attribute_value_public_key_map k
+//	    INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+//	    LEFT JOIN provider_config pc ON kask.provider_config_id = pc.id
+//	    GROUP BY k.value_id
+//	) value_keys ON av.id = value_keys.value_id
 //	WHERE ($1::uuid IS NULL OR av.id = $1::uuid)
 //	  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE($2::text, '^https?://', ''))
-//	GROUP BY av.id, fqns.fqn, k.keys
+//	GROUP BY av.id, fqns.fqn, value_keys.keys
 func (q *Queries) GetAttributeValue(ctx context.Context, arg GetAttributeValueParams) (GetAttributeValueRow, error) {
 	row := q.db.QueryRow(ctx, getAttributeValue, arg.ID, arg.Fqn)
 	var i GetAttributeValueRow
@@ -748,13 +997,113 @@ func (q *Queries) GetAttributeValue(ctx context.Context, arg GetAttributeValuePa
 	return i, err
 }
 
+const getKey = `-- name: GetKey :one
+SELECT 
+  kask.id,
+  kask.key_id,
+  kask.key_status,
+  kask.key_mode,
+  kask.key_algorithm,
+  kask.private_key_ctx,
+  kask.public_key_ctx,
+  kask.provider_config_id,
+  JSON_STRIP_NULLS(
+    JSON_BUILD_OBJECT(
+      'labels', kask.metadata -> 'labels',         
+      'created_at', kask.created_at,               
+      'updated_at', kask.updated_at                
+    )
+  ) AS metadata,
+  pc.provider_name,
+  pc.config AS pc_config,
+  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata
+FROM key_access_server_keys AS kask
+LEFT JOIN 
+    provider_config as pc ON kask.provider_config_id = pc.id
+WHERE ($1::uuid IS NULL OR kask.id = $1::uuid)
+  AND ($2::text IS NULL OR kask.key_id = $2::text)
+`
+
+type GetKeyParams struct {
+	ID    pgtype.UUID `json:"id"`
+	KeyID pgtype.Text `json:"key_id"`
+}
+
+type GetKeyRow struct {
+	ID               string      `json:"id"`
+	KeyID            string      `json:"key_id"`
+	KeyStatus        int32       `json:"key_status"`
+	KeyMode          int32       `json:"key_mode"`
+	KeyAlgorithm     int32       `json:"key_algorithm"`
+	PrivateKeyCtx    []byte      `json:"private_key_ctx"`
+	PublicKeyCtx     []byte      `json:"public_key_ctx"`
+	ProviderConfigID pgtype.UUID `json:"provider_config_id"`
+	Metadata         []byte      `json:"metadata"`
+	ProviderName     pgtype.Text `json:"provider_name"`
+	PcConfig         []byte      `json:"pc_config"`
+	PcMetadata       []byte      `json:"pc_metadata"`
+}
+
+// GetKey
+//
+//	SELECT
+//	  kask.id,
+//	  kask.key_id,
+//	  kask.key_status,
+//	  kask.key_mode,
+//	  kask.key_algorithm,
+//	  kask.private_key_ctx,
+//	  kask.public_key_ctx,
+//	  kask.provider_config_id,
+//	  JSON_STRIP_NULLS(
+//	    JSON_BUILD_OBJECT(
+//	      'labels', kask.metadata -> 'labels',
+//	      'created_at', kask.created_at,
+//	      'updated_at', kask.updated_at
+//	    )
+//	  ) AS metadata,
+//	  pc.provider_name,
+//	  pc.config AS pc_config,
+//	  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata
+//	FROM key_access_server_keys AS kask
+//	LEFT JOIN
+//	    provider_config as pc ON kask.provider_config_id = pc.id
+//	WHERE ($1::uuid IS NULL OR kask.id = $1::uuid)
+//	  AND ($2::text IS NULL OR kask.key_id = $2::text)
+func (q *Queries) GetKey(ctx context.Context, arg GetKeyParams) (GetKeyRow, error) {
+	row := q.db.QueryRow(ctx, getKey, arg.ID, arg.KeyID)
+	var i GetKeyRow
+	err := row.Scan(
+		&i.ID,
+		&i.KeyID,
+		&i.KeyStatus,
+		&i.KeyMode,
+		&i.KeyAlgorithm,
+		&i.PrivateKeyCtx,
+		&i.PublicKeyCtx,
+		&i.ProviderConfigID,
+		&i.Metadata,
+		&i.ProviderName,
+		&i.PcConfig,
+		&i.PcMetadata,
+	)
+	return i, err
+}
+
 const getKeyAccessServer = `-- name: GetKeyAccessServer :one
 SELECT 
     kas.id,
     kas.uri, 
     kas.public_key, 
     kas.name,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+    kas.source_type,
+    JSON_STRIP_NULLS(
+        JSON_BUILD_OBJECT(
+            'labels', metadata -> 'labels', 
+            'created_at', created_at, 
+            'updated_at', updated_at
+        )
+    ) AS metadata
 FROM key_access_servers AS kas
 WHERE ($1::uuid IS NULL OR kas.id = $1::uuid)
   AND ($2::text IS NULL OR kas.name = $2::text)
@@ -768,11 +1117,12 @@ type GetKeyAccessServerParams struct {
 }
 
 type GetKeyAccessServerRow struct {
-	ID        string      `json:"id"`
-	Uri       string      `json:"uri"`
-	PublicKey []byte      `json:"public_key"`
-	Name      pgtype.Text `json:"name"`
-	Metadata  []byte      `json:"metadata"`
+	ID         string      `json:"id"`
+	Uri        string      `json:"uri"`
+	PublicKey  []byte      `json:"public_key"`
+	Name       pgtype.Text `json:"name"`
+	SourceType pgtype.Int4 `json:"source_type"`
+	Metadata   []byte      `json:"metadata"`
 }
 
 // GetKeyAccessServer
@@ -782,7 +1132,14 @@ type GetKeyAccessServerRow struct {
 //	    kas.uri,
 //	    kas.public_key,
 //	    kas.name,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+//	    kas.source_type,
+//	    JSON_STRIP_NULLS(
+//	        JSON_BUILD_OBJECT(
+//	            'labels', metadata -> 'labels',
+//	            'created_at', created_at,
+//	            'updated_at', updated_at
+//	        )
+//	    ) AS metadata
 //	FROM key_access_servers AS kas
 //	WHERE ($1::uuid IS NULL OR kas.id = $1::uuid)
 //	  AND ($2::text IS NULL OR kas.name = $2::text)
@@ -795,6 +1152,7 @@ func (q *Queries) GetKeyAccessServer(ctx context.Context, arg GetKeyAccessServer
 		&i.Uri,
 		&i.PublicKey,
 		&i.Name,
+		&i.SourceType,
 		&i.Metadata,
 	)
 	return i, err
@@ -813,16 +1171,41 @@ SELECT
         'name', kas.name,
         'public_key', kas.public_key
     )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants,
-    k.keys as keys
+    nmp_keys.keys as keys
 FROM attribute_namespaces ns
 LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
 LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
-LEFT JOIN active_namespace_public_keys_view k ON ns.id = k.namespace_id
+LEFT JOIN (
+    SELECT
+        k.namespace_id,
+        JSONB_AGG(
+            DISTINCT JSONB_BUILD_OBJECT(
+                'id', kask.id,
+                'key_id', kask.key_id,
+                'key_status', kask.key_status,
+                'key_mode', kask.key_mode,
+                'key_algorithm', kask.key_algorithm,
+                'private_key_ctx', ENCODE(kask.private_key_ctx::TEXT::BYTEA, 'base64'),
+                'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64'),
+                'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kask.metadata -> 'labels', 'created_at', kask.created_at, 'updated_at', kask.updated_at)),
+                'provider_config', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+                    'id', pc.id,
+                    'name', pc.provider_name,
+                    'config_json', ENCODE(pc.config::TEXT::BYTEA, 'base64'),
+                    'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at))
+                ))
+            )
+        ) FILTER (WHERE kask.id IS NOT NULL) AS keys
+    FROM attribute_namespace_public_key_map k
+    INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+    LEFT JOIN provider_config pc ON kask.provider_config_id = pc.id
+    GROUP BY k.namespace_id
+) nmp_keys ON ns.id = nmp_keys.namespace_id
 WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL 
   AND ($1::uuid IS NULL OR ns.id = $1::uuid)
   AND ($2::text IS NULL OR ns.name = REGEXP_REPLACE($2::text, '^https?://', ''))
-GROUP BY ns.id, fqns.fqn, k.keys
+GROUP BY ns.id, fqns.fqn, nmp_keys.keys
 `
 
 type GetNamespaceParams struct {
@@ -854,16 +1237,41 @@ type GetNamespaceRow struct {
 //	        'name', kas.name,
 //	        'public_key', kas.public_key
 //	    )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants,
-//	    k.keys as keys
+//	    nmp_keys.keys as keys
 //	FROM attribute_namespaces ns
 //	LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
 //	LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
 //	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
-//	LEFT JOIN active_namespace_public_keys_view k ON ns.id = k.namespace_id
+//	LEFT JOIN (
+//	    SELECT
+//	        k.namespace_id,
+//	        JSONB_AGG(
+//	            DISTINCT JSONB_BUILD_OBJECT(
+//	                'id', kask.id,
+//	                'key_id', kask.key_id,
+//	                'key_status', kask.key_status,
+//	                'key_mode', kask.key_mode,
+//	                'key_algorithm', kask.key_algorithm,
+//	                'private_key_ctx', ENCODE(kask.private_key_ctx::TEXT::BYTEA, 'base64'),
+//	                'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64'),
+//	                'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kask.metadata -> 'labels', 'created_at', kask.created_at, 'updated_at', kask.updated_at)),
+//	                'provider_config', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+//	                    'id', pc.id,
+//	                    'name', pc.provider_name,
+//	                    'config_json', ENCODE(pc.config::TEXT::BYTEA, 'base64'),
+//	                    'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at))
+//	                ))
+//	            )
+//	        ) FILTER (WHERE kask.id IS NOT NULL) AS keys
+//	    FROM attribute_namespace_public_key_map k
+//	    INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+//	    LEFT JOIN provider_config pc ON kask.provider_config_id = pc.id
+//	    GROUP BY k.namespace_id
+//	) nmp_keys ON ns.id = nmp_keys.namespace_id
 //	WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 //	  AND ($1::uuid IS NULL OR ns.id = $1::uuid)
 //	  AND ($2::text IS NULL OR ns.name = REGEXP_REPLACE($2::text, '^https?://', ''))
-//	GROUP BY ns.id, fqns.fqn, k.keys
+//	GROUP BY ns.id, fqns.fqn, nmp_keys.keys
 func (q *Queries) GetNamespace(ctx context.Context, arg GetNamespaceParams) (GetNamespaceRow, error) {
 	row := q.db.QueryRow(ctx, getNamespace, arg.ID, arg.Name)
 	var i GetNamespaceRow
@@ -1090,6 +1498,53 @@ func (q *Queries) GetSubjectMapping(ctx context.Context, id string) (GetSubjectM
 	return i, err
 }
 
+const isUpdateKeySafe = `-- name: IsUpdateKeySafe :one
+WITH keyToUpdate AS (
+    SELECT 
+        kask.key_access_server_id AS kas_id,
+        kask.key_algorithm
+    FROM key_access_server_keys AS kask
+    WHERE kask.id = $1
+)
+SELECT EXISTS (
+    SELECT 1
+    FROM key_access_server_keys AS kask
+    INNER JOIN keyToUpdate ON kask.key_access_server_id = keyToUpdate.kas_id
+    WHERE kask.key_access_server_id = keyToUpdate.kas_id 
+    AND kask.key_status = $2
+    AND kask.key_algorithm = keyToUpdate.key_algorithm
+)
+`
+
+type IsUpdateKeySafeParams struct {
+	ID        string `json:"id"`
+	KeyStatus int32  `json:"key_status"`
+}
+
+// IsUpdateKeySafe
+//
+//	WITH keyToUpdate AS (
+//	    SELECT
+//	        kask.key_access_server_id AS kas_id,
+//	        kask.key_algorithm
+//	    FROM key_access_server_keys AS kask
+//	    WHERE kask.id = $1
+//	)
+//	SELECT EXISTS (
+//	    SELECT 1
+//	    FROM key_access_server_keys AS kask
+//	    INNER JOIN keyToUpdate ON kask.key_access_server_id = keyToUpdate.kas_id
+//	    WHERE kask.key_access_server_id = keyToUpdate.kas_id
+//	    AND kask.key_status = $2
+//	    AND kask.key_algorithm = keyToUpdate.key_algorithm
+//	)
+func (q *Queries) IsUpdateKeySafe(ctx context.Context, arg IsUpdateKeySafeParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isUpdateKeySafe, arg.ID, arg.KeyStatus)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const listAttributeValues = `-- name: ListAttributeValues :many
 
 WITH counted AS (
@@ -1207,15 +1662,40 @@ WITH target_definition AS (
 	            'public_key', kas.public_key
 	        )
 	    ) FILTER (WHERE kas.id IS NOT NULL) AS grants,
-        k.keys AS keys
+        defk.keys AS keys
     FROM attribute_fqns fqns
     INNER JOIN attribute_definitions ad ON fqns.attribute_id = ad.id
     LEFT JOIN attribute_definition_key_access_grants adkag ON ad.id = adkag.attribute_definition_id
     LEFT JOIN key_access_servers kas ON adkag.key_access_server_id = kas.id
-    LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
+    LEFT JOIN (
+        SELECT
+            k.definition_id,
+            JSONB_AGG(
+                DISTINCT JSONB_BUILD_OBJECT(
+                    'id', kask.id,
+                    'key_id', kask.key_id,
+                    'key_status', kask.key_status,
+                    'key_mode', kask.key_mode,
+                    'key_algorithm', kask.key_algorithm,
+                    'private_key_ctx', ENCODE(kask.private_key_ctx::TEXT::BYTEA, 'base64'),
+                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64'),
+                    'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kask.metadata -> 'labels', 'created_at', kask.created_at, 'updated_at', kask.updated_at)),
+                    'provider_config', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+                        'id', pc.id,
+                        'name', pc.provider_name,
+                        'config_json', ENCODE(pc.config::TEXT::BYTEA, 'base64'),
+                        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at))
+                    ))
+                )
+            ) FILTER (WHERE kask.id IS NOT NULL) AS keys
+        FROM attribute_definition_public_key_map k
+        INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+        LEFT JOIN provider_config pc ON kask.provider_config_id = pc.id
+        GROUP BY k.definition_id
+    ) defk ON ad.id = defk.definition_id
     WHERE fqns.fqn = ANY($1::TEXT[]) 
         AND ad.active = TRUE
-    GROUP BY ad.id, k.keys
+    GROUP BY ad.id, defk.keys
 ),
 namespaces AS (
 	SELECT
@@ -1233,17 +1713,42 @@ namespaces AS (
 	                'public_key', kas.public_key
 	            )
 	        ) FILTER (WHERE kas.id IS NOT NULL),
-            'keys', k.keys
+            'keys', nmp_keys.keys
     	) AS namespace
 	FROM target_definition td
 	INNER JOIN attribute_namespaces n ON td.namespace_id = n.id
 	INNER JOIN attribute_fqns fqns ON n.id = fqns.namespace_id
 	LEFT JOIN attribute_namespace_key_access_grants ankag ON n.id = ankag.namespace_id
 	LEFT JOIN key_access_servers kas ON ankag.key_access_server_id = kas.id
-    LEFT JOIN active_namespace_public_keys_view k ON n.id = k.namespace_id
+    LEFT JOIN (
+        SELECT
+            k.namespace_id,
+            JSONB_AGG(
+                DISTINCT JSONB_BUILD_OBJECT(
+                    'id', kask.id,
+                    'key_id', kask.key_id,
+                    'key_status', kask.key_status,
+                    'key_mode', kask.key_mode,
+                    'key_algorithm', kask.key_algorithm,
+                    'private_key_ctx', ENCODE(kask.private_key_ctx::TEXT::BYTEA, 'base64'),
+                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64'),
+                    'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kask.metadata -> 'labels', 'created_at', kask.created_at, 'updated_at', kask.updated_at)),
+                    'provider_config', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+                        'id', pc.id,
+                        'name', pc.provider_name,
+                        'config_json', ENCODE(pc.config::TEXT::BYTEA, 'base64'),
+                        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at))
+                    ))
+                )
+            ) FILTER (WHERE kask.id IS NOT NULL) AS keys
+        FROM attribute_namespace_public_key_map k
+        INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+        LEFT JOIN provider_config pc ON kask.provider_config_id = pc.id
+        GROUP BY k.namespace_id
+    ) nmp_keys ON n.id = nmp_keys.namespace_id
 	WHERE n.active = TRUE
 		AND (fqns.attribute_id IS NULL AND fqns.value_id IS NULL)
-	GROUP BY n.id, fqns.fqn, k.keys
+	GROUP BY n.id, fqns.fqn, nmp_keys.keys
 ),
 value_grants AS (
 	SELECT
@@ -1292,7 +1797,7 @@ values AS (
 	            'fqn', fqns.fqn,
 	            'grants', avg.grants,
 	            'subject_mappings', avsm.sub_maps,
-                'keys', k.keys
+                'keys', value_keys.keys
 	        -- enforce order of values in response
 	        ) ORDER BY ARRAY_POSITION(td.values_order, av.id)
 	    ) AS values
@@ -1301,11 +1806,35 @@ values AS (
 	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 	LEFT JOIN value_grants avg ON av.id = avg.id
 	LEFT JOIN value_subject_mappings avsm ON av.id = avsm.id
-    LEFT JOIN active_value_public_keys_view k ON av.id = k.value_id                        
+    LEFT JOIN (
+        SELECT
+            k.value_id,
+            JSONB_AGG(
+                DISTINCT JSONB_BUILD_OBJECT(
+                    'id', kask.id,
+                    'key_id', kask.key_id,
+                    'key_status', kask.key_status,
+                    'key_mode', kask.key_mode,
+                    'key_algorithm', kask.key_algorithm,
+                    'private_key_ctx', ENCODE(kask.private_key_ctx::TEXT::BYTEA, 'base64'),
+                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64'),
+                    'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kask.metadata -> 'labels', 'created_at', kask.created_at, 'updated_at', kask.updated_at)),
+                    'provider_config', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+                        'id', pc.id,
+                        'name', pc.provider_name,
+                        'config_json', ENCODE(pc.config::TEXT::BYTEA, 'base64'),
+                        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at))
+                    ))
+                )
+            ) FILTER (WHERE kask.id IS NOT NULL) AS keys
+        FROM attribute_value_public_key_map k
+        INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+        LEFT JOIN provider_config pc ON kask.provider_config_id = pc.id
+        GROUP BY k.value_id
+    ) value_keys ON av.id = value_keys.value_id                        
 	WHERE av.active = TRUE
 	GROUP BY av.attribute_definition_id
 )
-
 SELECT
 	td.id,
 	td.name,
@@ -1353,15 +1882,40 @@ type ListAttributesByDefOrValueFqnsRow struct {
 //		            'public_key', kas.public_key
 //		        )
 //		    ) FILTER (WHERE kas.id IS NOT NULL) AS grants,
-//	        k.keys AS keys
+//	        defk.keys AS keys
 //	    FROM attribute_fqns fqns
 //	    INNER JOIN attribute_definitions ad ON fqns.attribute_id = ad.id
 //	    LEFT JOIN attribute_definition_key_access_grants adkag ON ad.id = adkag.attribute_definition_id
 //	    LEFT JOIN key_access_servers kas ON adkag.key_access_server_id = kas.id
-//	    LEFT JOIN active_definition_public_keys_view k ON ad.id = k.definition_id
+//	    LEFT JOIN (
+//	        SELECT
+//	            k.definition_id,
+//	            JSONB_AGG(
+//	                DISTINCT JSONB_BUILD_OBJECT(
+//	                    'id', kask.id,
+//	                    'key_id', kask.key_id,
+//	                    'key_status', kask.key_status,
+//	                    'key_mode', kask.key_mode,
+//	                    'key_algorithm', kask.key_algorithm,
+//	                    'private_key_ctx', ENCODE(kask.private_key_ctx::TEXT::BYTEA, 'base64'),
+//	                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64'),
+//	                    'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kask.metadata -> 'labels', 'created_at', kask.created_at, 'updated_at', kask.updated_at)),
+//	                    'provider_config', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+//	                        'id', pc.id,
+//	                        'name', pc.provider_name,
+//	                        'config_json', ENCODE(pc.config::TEXT::BYTEA, 'base64'),
+//	                        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at))
+//	                    ))
+//	                )
+//	            ) FILTER (WHERE kask.id IS NOT NULL) AS keys
+//	        FROM attribute_definition_public_key_map k
+//	        INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+//	        LEFT JOIN provider_config pc ON kask.provider_config_id = pc.id
+//	        GROUP BY k.definition_id
+//	    ) defk ON ad.id = defk.definition_id
 //	    WHERE fqns.fqn = ANY($1::TEXT[])
 //	        AND ad.active = TRUE
-//	    GROUP BY ad.id, k.keys
+//	    GROUP BY ad.id, defk.keys
 //	),
 //	namespaces AS (
 //		SELECT
@@ -1379,17 +1933,42 @@ type ListAttributesByDefOrValueFqnsRow struct {
 //		                'public_key', kas.public_key
 //		            )
 //		        ) FILTER (WHERE kas.id IS NOT NULL),
-//	            'keys', k.keys
+//	            'keys', nmp_keys.keys
 //	    	) AS namespace
 //		FROM target_definition td
 //		INNER JOIN attribute_namespaces n ON td.namespace_id = n.id
 //		INNER JOIN attribute_fqns fqns ON n.id = fqns.namespace_id
 //		LEFT JOIN attribute_namespace_key_access_grants ankag ON n.id = ankag.namespace_id
 //		LEFT JOIN key_access_servers kas ON ankag.key_access_server_id = kas.id
-//	    LEFT JOIN active_namespace_public_keys_view k ON n.id = k.namespace_id
+//	    LEFT JOIN (
+//	        SELECT
+//	            k.namespace_id,
+//	            JSONB_AGG(
+//	                DISTINCT JSONB_BUILD_OBJECT(
+//	                    'id', kask.id,
+//	                    'key_id', kask.key_id,
+//	                    'key_status', kask.key_status,
+//	                    'key_mode', kask.key_mode,
+//	                    'key_algorithm', kask.key_algorithm,
+//	                    'private_key_ctx', ENCODE(kask.private_key_ctx::TEXT::BYTEA, 'base64'),
+//	                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64'),
+//	                    'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kask.metadata -> 'labels', 'created_at', kask.created_at, 'updated_at', kask.updated_at)),
+//	                    'provider_config', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+//	                        'id', pc.id,
+//	                        'name', pc.provider_name,
+//	                        'config_json', ENCODE(pc.config::TEXT::BYTEA, 'base64'),
+//	                        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at))
+//	                    ))
+//	                )
+//	            ) FILTER (WHERE kask.id IS NOT NULL) AS keys
+//	        FROM attribute_namespace_public_key_map k
+//	        INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+//	        LEFT JOIN provider_config pc ON kask.provider_config_id = pc.id
+//	        GROUP BY k.namespace_id
+//	    ) nmp_keys ON n.id = nmp_keys.namespace_id
 //		WHERE n.active = TRUE
 //			AND (fqns.attribute_id IS NULL AND fqns.value_id IS NULL)
-//		GROUP BY n.id, fqns.fqn, k.keys
+//		GROUP BY n.id, fqns.fqn, nmp_keys.keys
 //	),
 //	value_grants AS (
 //		SELECT
@@ -1438,7 +2017,7 @@ type ListAttributesByDefOrValueFqnsRow struct {
 //		            'fqn', fqns.fqn,
 //		            'grants', avg.grants,
 //		            'subject_mappings', avsm.sub_maps,
-//	                'keys', k.keys
+//	                'keys', value_keys.keys
 //		        -- enforce order of values in response
 //		        ) ORDER BY ARRAY_POSITION(td.values_order, av.id)
 //		    ) AS values
@@ -1447,11 +2026,35 @@ type ListAttributesByDefOrValueFqnsRow struct {
 //		LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 //		LEFT JOIN value_grants avg ON av.id = avg.id
 //		LEFT JOIN value_subject_mappings avsm ON av.id = avsm.id
-//	    LEFT JOIN active_value_public_keys_view k ON av.id = k.value_id
+//	    LEFT JOIN (
+//	        SELECT
+//	            k.value_id,
+//	            JSONB_AGG(
+//	                DISTINCT JSONB_BUILD_OBJECT(
+//	                    'id', kask.id,
+//	                    'key_id', kask.key_id,
+//	                    'key_status', kask.key_status,
+//	                    'key_mode', kask.key_mode,
+//	                    'key_algorithm', kask.key_algorithm,
+//	                    'private_key_ctx', ENCODE(kask.private_key_ctx::TEXT::BYTEA, 'base64'),
+//	                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64'),
+//	                    'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kask.metadata -> 'labels', 'created_at', kask.created_at, 'updated_at', kask.updated_at)),
+//	                    'provider_config', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+//	                        'id', pc.id,
+//	                        'name', pc.provider_name,
+//	                        'config_json', ENCODE(pc.config::TEXT::BYTEA, 'base64'),
+//	                        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at))
+//	                    ))
+//	                )
+//	            ) FILTER (WHERE kask.id IS NOT NULL) AS keys
+//	        FROM attribute_value_public_key_map k
+//	        INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+//	        LEFT JOIN provider_config pc ON kask.provider_config_id = pc.id
+//	        GROUP BY k.value_id
+//	    ) value_keys ON av.id = value_keys.value_id
 //		WHERE av.active = TRUE
 //		GROUP BY av.attribute_definition_id
 //	)
-//
 //	SELECT
 //		td.id,
 //		td.name,
@@ -1953,11 +2556,11 @@ WITH counted AS (
     SELECT COUNT(kas.id) AS total
     FROM key_access_servers AS kas
 )
-
 SELECT kas.id,
     kas.uri,
     kas.public_key,
     kas.name AS kas_name,
+    kas.source_type,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) AS metadata,
     counted.total
 FROM key_access_servers AS kas
@@ -1972,12 +2575,13 @@ type ListKeyAccessServersParams struct {
 }
 
 type ListKeyAccessServersRow struct {
-	ID        string      `json:"id"`
-	Uri       string      `json:"uri"`
-	PublicKey []byte      `json:"public_key"`
-	KasName   pgtype.Text `json:"kas_name"`
-	Metadata  []byte      `json:"metadata"`
-	Total     int64       `json:"total"`
+	ID         string      `json:"id"`
+	Uri        string      `json:"uri"`
+	PublicKey  []byte      `json:"public_key"`
+	KasName    pgtype.Text `json:"kas_name"`
+	SourceType pgtype.Int4 `json:"source_type"`
+	Metadata   []byte      `json:"metadata"`
+	Total      int64       `json:"total"`
 }
 
 // ListKeyAccessServers
@@ -1986,11 +2590,11 @@ type ListKeyAccessServersRow struct {
 //	    SELECT COUNT(kas.id) AS total
 //	    FROM key_access_servers AS kas
 //	)
-//
 //	SELECT kas.id,
 //	    kas.uri,
 //	    kas.public_key,
 //	    kas.name AS kas_name,
+//	    kas.source_type,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) AS metadata,
 //	    counted.total
 //	FROM key_access_servers AS kas
@@ -2011,8 +2615,154 @@ func (q *Queries) ListKeyAccessServers(ctx context.Context, arg ListKeyAccessSer
 			&i.Uri,
 			&i.PublicKey,
 			&i.KasName,
+			&i.SourceType,
 			&i.Metadata,
 			&i.Total,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listKeys = `-- name: ListKeys :many
+WITH listed AS (
+    SELECT
+        kas.id AS kas_id
+    FROM key_access_servers AS kas
+    WHERE ($4::uuid IS NULL OR kas.id = $4::uuid)
+            AND ($5::text IS NULL OR kas.name = $5::text)
+            AND ($6::text IS NULL OR kas.uri = $6::text)
+)
+SELECT 
+  COUNT(*) OVER () AS total,
+  kask.id,
+  kask.key_id,
+  kask.key_status,
+  kask.key_mode,
+  kask.key_algorithm,
+  kask.private_key_ctx,
+  kask.public_key_ctx,
+  kask.provider_config_id,
+  JSON_STRIP_NULLS(
+    JSON_BUILD_OBJECT(
+      'labels', kask.metadata -> 'labels',         
+      'created_at', kask.created_at,               
+      'updated_at', kask.updated_at                
+    )
+  ) AS metadata,
+  pc.provider_name,
+  pc.config AS provider_config,
+  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata
+FROM key_access_server_keys AS kask
+INNER JOIN
+    listed ON kask.key_access_server_id = listed.kas_id
+LEFT JOIN 
+    provider_config as pc ON kask.provider_config_id = pc.id
+WHERE
+    ($1::integer IS NULL OR kask.key_algorithm = $1::integer)
+LIMIT $3 
+OFFSET $2
+`
+
+type ListKeysParams struct {
+	KeyAlgorithm pgtype.Int4 `json:"key_algorithm"`
+	Offset       int32       `json:"offset_"`
+	Limit        int32       `json:"limit_"`
+	KasID        pgtype.UUID `json:"kas_id"`
+	KasName      pgtype.Text `json:"kas_name"`
+	KasUri       pgtype.Text `json:"kas_uri"`
+}
+
+type ListKeysRow struct {
+	Total            int64       `json:"total"`
+	ID               string      `json:"id"`
+	KeyID            string      `json:"key_id"`
+	KeyStatus        int32       `json:"key_status"`
+	KeyMode          int32       `json:"key_mode"`
+	KeyAlgorithm     int32       `json:"key_algorithm"`
+	PrivateKeyCtx    []byte      `json:"private_key_ctx"`
+	PublicKeyCtx     []byte      `json:"public_key_ctx"`
+	ProviderConfigID pgtype.UUID `json:"provider_config_id"`
+	Metadata         []byte      `json:"metadata"`
+	ProviderName     pgtype.Text `json:"provider_name"`
+	ProviderConfig   []byte      `json:"provider_config"`
+	PcMetadata       []byte      `json:"pc_metadata"`
+}
+
+// ListKeys
+//
+//	WITH listed AS (
+//	    SELECT
+//	        kas.id AS kas_id
+//	    FROM key_access_servers AS kas
+//	    WHERE ($4::uuid IS NULL OR kas.id = $4::uuid)
+//	            AND ($5::text IS NULL OR kas.name = $5::text)
+//	            AND ($6::text IS NULL OR kas.uri = $6::text)
+//	)
+//	SELECT
+//	  COUNT(*) OVER () AS total,
+//	  kask.id,
+//	  kask.key_id,
+//	  kask.key_status,
+//	  kask.key_mode,
+//	  kask.key_algorithm,
+//	  kask.private_key_ctx,
+//	  kask.public_key_ctx,
+//	  kask.provider_config_id,
+//	  JSON_STRIP_NULLS(
+//	    JSON_BUILD_OBJECT(
+//	      'labels', kask.metadata -> 'labels',
+//	      'created_at', kask.created_at,
+//	      'updated_at', kask.updated_at
+//	    )
+//	  ) AS metadata,
+//	  pc.provider_name,
+//	  pc.config AS provider_config,
+//	  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata
+//	FROM key_access_server_keys AS kask
+//	INNER JOIN
+//	    listed ON kask.key_access_server_id = listed.kas_id
+//	LEFT JOIN
+//	    provider_config as pc ON kask.provider_config_id = pc.id
+//	WHERE
+//	    ($1::integer IS NULL OR kask.key_algorithm = $1::integer)
+//	LIMIT $3
+//	OFFSET $2
+func (q *Queries) ListKeys(ctx context.Context, arg ListKeysParams) ([]ListKeysRow, error) {
+	rows, err := q.db.Query(ctx, listKeys,
+		arg.KeyAlgorithm,
+		arg.Offset,
+		arg.Limit,
+		arg.KasID,
+		arg.KasName,
+		arg.KasUri,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListKeysRow
+	for rows.Next() {
+		var i ListKeysRow
+		if err := rows.Scan(
+			&i.Total,
+			&i.ID,
+			&i.KeyID,
+			&i.KeyStatus,
+			&i.KeyMode,
+			&i.KeyAlgorithm,
+			&i.PrivateKeyCtx,
+			&i.PublicKeyCtx,
+			&i.ProviderConfigID,
+			&i.Metadata,
+			&i.ProviderName,
+			&i.ProviderConfig,
+			&i.PcMetadata,
 		); err != nil {
 			return nil, err
 		}
@@ -2841,22 +3591,53 @@ func (q *Queries) UpdateAttributeValue(ctx context.Context, arg UpdateAttributeV
 	return result.RowsAffected(), nil
 }
 
+const updateKey = `-- name: UpdateKey :execrows
+UPDATE key_access_server_keys
+SET
+    key_status = COALESCE($2, key_status),
+    metadata = COALESCE($3, metadata)
+WHERE id = $1
+`
+
+type UpdateKeyParams struct {
+	ID        string      `json:"id"`
+	KeyStatus pgtype.Int4 `json:"key_status"`
+	Metadata  []byte      `json:"metadata"`
+}
+
+// UpdateKey
+//
+//	UPDATE key_access_server_keys
+//	SET
+//	    key_status = COALESCE($2, key_status),
+//	    metadata = COALESCE($3, metadata)
+//	WHERE id = $1
+func (q *Queries) UpdateKey(ctx context.Context, arg UpdateKeyParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateKey, arg.ID, arg.KeyStatus, arg.Metadata)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const updateKeyAccessServer = `-- name: UpdateKeyAccessServer :execrows
 UPDATE key_access_servers
 SET
     uri = COALESCE($2, uri),
     public_key = COALESCE($3, public_key),
     name = COALESCE($4, name),
-    metadata = COALESCE($5, metadata)
+    metadata = COALESCE($5, metadata),
+    source_type = COALESCE($6, source_type)
 WHERE id = $1
 `
 
 type UpdateKeyAccessServerParams struct {
-	ID        string      `json:"id"`
-	Uri       pgtype.Text `json:"uri"`
-	PublicKey []byte      `json:"public_key"`
-	Name      pgtype.Text `json:"name"`
-	Metadata  []byte      `json:"metadata"`
+	ID         string      `json:"id"`
+	Uri        pgtype.Text `json:"uri"`
+	PublicKey  []byte      `json:"public_key"`
+	Name       pgtype.Text `json:"name"`
+	Metadata   []byte      `json:"metadata"`
+	SourceType pgtype.Int4 `json:"source_type"`
 }
 
 // UpdateKeyAccessServer
@@ -2866,7 +3647,8 @@ type UpdateKeyAccessServerParams struct {
 //	    uri = COALESCE($2, uri),
 //	    public_key = COALESCE($3, public_key),
 //	    name = COALESCE($4, name),
-//	    metadata = COALESCE($5, metadata)
+//	    metadata = COALESCE($5, metadata),
+//	    source_type = COALESCE($6, source_type)
 //	WHERE id = $1
 func (q *Queries) UpdateKeyAccessServer(ctx context.Context, arg UpdateKeyAccessServerParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateKeyAccessServer,
@@ -2875,6 +3657,7 @@ func (q *Queries) UpdateKeyAccessServer(ctx context.Context, arg UpdateKeyAccess
 		arg.PublicKey,
 		arg.Name,
 		arg.Metadata,
+		arg.SourceType,
 	)
 	if err != nil {
 		return 0, err
@@ -3434,4 +4217,139 @@ func (q *Queries) UpsertAttributeValueFqn(ctx context.Context, valueID string) (
 		return nil, err
 	}
 	return items, nil
+}
+
+const assignPublicKeyToAttributeDefinition = `-- name: assignPublicKeyToAttributeDefinition :one
+INSERT INTO attribute_definition_public_key_map (definition_id, key_access_server_key_id)
+VALUES ($1, $2)
+RETURNING definition_id, key_access_server_key_id
+`
+
+type assignPublicKeyToAttributeDefinitionParams struct {
+	DefinitionID         string `json:"definition_id"`
+	KeyAccessServerKeyID string `json:"key_access_server_key_id"`
+}
+
+// assignPublicKeyToAttributeDefinition
+//
+//	INSERT INTO attribute_definition_public_key_map (definition_id, key_access_server_key_id)
+//	VALUES ($1, $2)
+//	RETURNING definition_id, key_access_server_key_id
+func (q *Queries) assignPublicKeyToAttributeDefinition(ctx context.Context, arg assignPublicKeyToAttributeDefinitionParams) (AttributeDefinitionPublicKeyMap, error) {
+	row := q.db.QueryRow(ctx, assignPublicKeyToAttributeDefinition, arg.DefinitionID, arg.KeyAccessServerKeyID)
+	var i AttributeDefinitionPublicKeyMap
+	err := row.Scan(&i.DefinitionID, &i.KeyAccessServerKeyID)
+	return i, err
+}
+
+const assignPublicKeyToAttributeValue = `-- name: assignPublicKeyToAttributeValue :one
+INSERT INTO attribute_value_public_key_map (value_id, key_access_server_key_id)
+VALUES ($1, $2)
+RETURNING value_id, key_access_server_key_id
+`
+
+type assignPublicKeyToAttributeValueParams struct {
+	ValueID              string `json:"value_id"`
+	KeyAccessServerKeyID string `json:"key_access_server_key_id"`
+}
+
+// assignPublicKeyToAttributeValue
+//
+//	INSERT INTO attribute_value_public_key_map (value_id, key_access_server_key_id)
+//	VALUES ($1, $2)
+//	RETURNING value_id, key_access_server_key_id
+func (q *Queries) assignPublicKeyToAttributeValue(ctx context.Context, arg assignPublicKeyToAttributeValueParams) (AttributeValuePublicKeyMap, error) {
+	row := q.db.QueryRow(ctx, assignPublicKeyToAttributeValue, arg.ValueID, arg.KeyAccessServerKeyID)
+	var i AttributeValuePublicKeyMap
+	err := row.Scan(&i.ValueID, &i.KeyAccessServerKeyID)
+	return i, err
+}
+
+const assignPublicKeyToNamespace = `-- name: assignPublicKeyToNamespace :one
+INSERT INTO attribute_namespace_public_key_map (namespace_id, key_access_server_key_id)
+VALUES ($1, $2)
+RETURNING namespace_id, key_access_server_key_id
+`
+
+type assignPublicKeyToNamespaceParams struct {
+	NamespaceID          string `json:"namespace_id"`
+	KeyAccessServerKeyID string `json:"key_access_server_key_id"`
+}
+
+// assignPublicKeyToNamespace
+//
+//	INSERT INTO attribute_namespace_public_key_map (namespace_id, key_access_server_key_id)
+//	VALUES ($1, $2)
+//	RETURNING namespace_id, key_access_server_key_id
+func (q *Queries) assignPublicKeyToNamespace(ctx context.Context, arg assignPublicKeyToNamespaceParams) (AttributeNamespacePublicKeyMap, error) {
+	row := q.db.QueryRow(ctx, assignPublicKeyToNamespace, arg.NamespaceID, arg.KeyAccessServerKeyID)
+	var i AttributeNamespacePublicKeyMap
+	err := row.Scan(&i.NamespaceID, &i.KeyAccessServerKeyID)
+	return i, err
+}
+
+const removePublicKeyFromAttributeDefinition = `-- name: removePublicKeyFromAttributeDefinition :execrows
+DELETE FROM attribute_definition_public_key_map
+WHERE definition_id = $1 AND key_access_server_key_id = $2
+`
+
+type removePublicKeyFromAttributeDefinitionParams struct {
+	DefinitionID         string `json:"definition_id"`
+	KeyAccessServerKeyID string `json:"key_access_server_key_id"`
+}
+
+// removePublicKeyFromAttributeDefinition
+//
+//	DELETE FROM attribute_definition_public_key_map
+//	WHERE definition_id = $1 AND key_access_server_key_id = $2
+func (q *Queries) removePublicKeyFromAttributeDefinition(ctx context.Context, arg removePublicKeyFromAttributeDefinitionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removePublicKeyFromAttributeDefinition, arg.DefinitionID, arg.KeyAccessServerKeyID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const removePublicKeyFromAttributeValue = `-- name: removePublicKeyFromAttributeValue :execrows
+DELETE FROM attribute_value_public_key_map
+WHERE value_id = $1 AND key_access_server_key_id = $2
+`
+
+type removePublicKeyFromAttributeValueParams struct {
+	ValueID              string `json:"value_id"`
+	KeyAccessServerKeyID string `json:"key_access_server_key_id"`
+}
+
+// removePublicKeyFromAttributeValue
+//
+//	DELETE FROM attribute_value_public_key_map
+//	WHERE value_id = $1 AND key_access_server_key_id = $2
+func (q *Queries) removePublicKeyFromAttributeValue(ctx context.Context, arg removePublicKeyFromAttributeValueParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removePublicKeyFromAttributeValue, arg.ValueID, arg.KeyAccessServerKeyID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const removePublicKeyFromNamespace = `-- name: removePublicKeyFromNamespace :execrows
+DELETE FROM attribute_namespace_public_key_map
+WHERE namespace_id = $1 AND key_access_server_key_id = $2
+`
+
+type removePublicKeyFromNamespaceParams struct {
+	NamespaceID          string `json:"namespace_id"`
+	KeyAccessServerKeyID string `json:"key_access_server_key_id"`
+}
+
+// removePublicKeyFromNamespace
+//
+//	DELETE FROM attribute_namespace_public_key_map
+//	WHERE namespace_id = $1 AND key_access_server_key_id = $2
+func (q *Queries) removePublicKeyFromNamespace(ctx context.Context, arg removePublicKeyFromNamespaceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removePublicKeyFromNamespace, arg.NamespaceID, arg.KeyAccessServerKeyID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

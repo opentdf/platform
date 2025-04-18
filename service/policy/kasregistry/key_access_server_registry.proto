@@ -67,8 +67,14 @@ message CreateKeyAccessServerRequest {
       "characters, and slashes."
     expression: "this.isUri()"
   }];
-  // Required
-  PublicKey public_key = 2 [(buf.validate.field).required = true];
+  // Deprecated
+  PublicKey public_key = 2;
+
+  // Optional
+  SourceType source_type = 3 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).enum = {defined_only: true}
+  ];
 
   // Optional
   string name = 20 [
@@ -108,8 +114,20 @@ message UpdateKeyAccessServerRequest {
       "alphanumeric characters, and slashes."
     expression: "size(this) == 0 || this.isUri()"
   }];
+  // Deprecated
   // Optional
   PublicKey public_key = 3;
+
+  // Optional
+  // Using UNSPECIFIED will result in a successful update,
+  // but will not actually update the underlying source.
+  // You should not update KAS's from INTERNAL/EXTERNAL
+  // to unspecified.
+  SourceType source_type = 4 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).enum = {defined_only: true}
+  ];
+
   // Optional
   string name = 20 [
     (buf.validate.field).required = false,
@@ -365,9 +383,13 @@ message CreateKeyRequest {
   // Required
   KeyMode key_mode = 4 [(buf.validate.field).enum.defined_only = true]; // The mode of the key (e.g., local or external)
   // Required
-  bytes private_key_ctx = 5; // Context or additional data specific to the private key, based on the key provider implementation
+  bytes public_key_ctx = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).bytes = {min_len: 1}
+  ]; // Context or additional data specific to the public key, based on the key provider implementation
   // Optional
-  bytes public_key_ctx = 6; // Context or additional data specific to the public key, based on the key provider implementation
+  bytes private_key_ctx = 6; // Context or additional data specific to the private key, based on the key provider implementation
+
   // Optional
   string provider_config_id = 7; // Configuration ID for the key provider, if applicable
   // Common metadata
@@ -419,7 +441,7 @@ message UpdateKeyRequest {
   // Required
   string id = 1 [(buf.validate.field).string.uuid = true]; // The unique identifier of the key to update
   // Optional
-  KeyStatus key_status = 3 [(buf.validate.field).enum.defined_only = true]; // The new status of the key (e.g., active, inactive)
+  KeyStatus key_status = 2 [(buf.validate.field).enum.defined_only = true]; // The new status of the key (e.g., active, inactive)
 
   // Optional
   // Common metadata

@@ -26,11 +26,11 @@ type NamespacesService struct { //nolint:revive // NamespacesService is a valid 
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[namespacesconnect.NamespaceServiceHandler] {
 	return &serviceregistry.Service[namespacesconnect.NamespaceServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[namespacesconnect.NamespaceServiceHandler]{
-			Namespace:      ns,
-			DB:             dbRegister,
-			ServiceDesc:    &namespaces.NamespaceService_ServiceDesc,
-			ConnectRPCFunc: namespacesconnect.NewNamespaceServiceHandler,
-			GRPCGateayFunc: namespaces.RegisterNamespaceServiceHandlerFromEndpoint,
+			Namespace:       ns,
+			DB:              dbRegister,
+			ServiceDesc:     &namespaces.NamespaceService_ServiceDesc,
+			ConnectRPCFunc:  namespacesconnect.NewNamespaceServiceHandler,
+			GRPCGatewayFunc: namespaces.RegisterNamespaceServiceHandler,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (namespacesconnect.NamespaceServiceHandler, serviceregistry.HandlerServer) {
 				cfg := policyconfig.GetSharedPolicyConfig(srp)
 				ns := &NamespacesService{
@@ -240,10 +240,44 @@ func (ns NamespacesService) RemoveKeyAccessServerFromNamespace(ctx context.Conte
 	return connect.NewResponse(rsp), nil
 }
 
-func (ns NamespacesService) AssignKeyToNamespace(context.Context, *connect.Request[namespaces.AssignKeyToNamespaceRequest]) (*connect.Response[namespaces.AssignKeyToNamespaceResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, nil)
+func (ns NamespacesService) AssignPublicKeyToNamespace(ctx context.Context, r *connect.Request[namespaces.AssignPublicKeyToNamespaceRequest]) (*connect.Response[namespaces.AssignPublicKeyToNamespaceResponse], error) {
+	rsp := &namespaces.AssignPublicKeyToNamespaceResponse{}
+
+	key := r.Msg.GetNamespaceKey()
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypeKasAttributeNamespaceKeyAssignment,
+		ObjectID:   fmt.Sprintf("%s-%s", key.GetNamespaceId(), key.GetKeyId()),
+	}
+
+	namespaceKey, err := ns.dbClient.AssignPublicKeyToNamespace(ctx, key)
+	if err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("namespaceKey", key.String()))
+	}
+	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.NamespaceKey = namespaceKey
+
+	return connect.NewResponse(rsp), nil
 }
 
-func (ns NamespacesService) RemoveKeyFromNamespace(context.Context, *connect.Request[namespaces.RemoveKeyFromNamespaceRequest]) (*connect.Response[namespaces.RemoveKeyFromNamespaceResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, nil)
+func (ns NamespacesService) RemovePublicKeyFromNamespace(ctx context.Context, r *connect.Request[namespaces.RemovePublicKeyFromNamespaceRequest]) (*connect.Response[namespaces.RemovePublicKeyFromNamespaceResponse], error) {
+	rsp := &namespaces.RemovePublicKeyFromNamespaceResponse{}
+
+	key := r.Msg.GetNamespaceKey()
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeKasAttributeNamespaceKeyAssignment,
+		ObjectID:   fmt.Sprintf("%s-%s", key.GetNamespaceId(), key.GetKeyId()),
+	}
+
+	_, err := ns.dbClient.RemovePublicKeyFromNamespace(ctx, key)
+	if err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("namespaceKey", key.String()))
+	}
+	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	return connect.NewResponse(rsp), nil
 }

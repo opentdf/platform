@@ -4,18 +4,18 @@ networks:
 services:
   keycloak:
     volumes:
-    - ./keys/localhost.crt:/etc/x509/tls/localhost.crt
-    - ./keys/localhost.key:/etc/x509/tls/localhost.key
-    - ./keys/ca.jks:/truststore/truststore.jks
-    image: keycloak/keycloak:25.0
+      - ./keys/localhost.crt:/etc/x509/tls/localhost.crt
+      - ./keys/localhost.key:/etc/x509/tls/localhost.key
+      - ./keys/ca.jks:/truststore/truststore.jks
+    image: keycloak/keycloak:26.0
     restart: always
     command:
-    - "start-dev"
-    - "--verbose"
-    - "-Djavax.net.ssl.trustStorePassword=password"
-    - "-Djavax.net.ssl.HostnameVerifier=AllowAll"
-    - "-Djavax.net.ssl.trustStore=/truststore/truststore.jks"
-    - "--spi-truststore-file-hostname-verification-policy=ANY"
+      - "start-dev"
+      - "--verbose"
+      - "-Djavax.net.ssl.trustStorePassword=password"
+      - "-Djavax.net.ssl.HostnameVerifier=AllowAll"
+      - "-Djavax.net.ssl.trustStore=/truststore/truststore.jks"
+      - "--spi-truststore-file-hostname-verification-policy=ANY"
     environment:
       KC_PROXY: edge
       KC_HTTP_RELATIVE_PATH: /auth
@@ -42,7 +42,7 @@ services:
       KC_HTTPS_CERTIFICATE_FILE: "/etc/x509/tls/localhost.crt"
       KC_HTTPS_CERTIFICATE_KEY_FILE: "/etc/x509/tls/localhost.key"
       KC_HTTPS_CLIENT_AUTH: "request"
-      # JAVA_OPTS_APPEND: "-XX:UseSVE=0" # Uncommenting resolves SIGILL with Code 134 when running on a machine with an M4 chip: https://github.com/keycloak/keycloak/issues/36008
+      JAVA_OPTS_APPEND: "-XX:UseSVE=0" # Uncommenting resolves SIGILL with Code 134 when running on a machine with an M4 chip: https://github.com/keycloak/keycloak/issues/36008
     ports:
       - "9001:9001"
       - "8888:8888"

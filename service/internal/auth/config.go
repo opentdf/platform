@@ -12,7 +12,9 @@ import (
 type Config struct {
 	Enabled      bool     `mapstructure:"enabled" json:"enabled" default:"true" `
 	PublicRoutes []string `mapstructure:"-"`
-	AuthNConfig  `mapstructure:",squash"`
+	// Used for re-authentication of IPC connections
+	IPCReauthRoutes []string `mapstructure:"-"`
+	AuthNConfig     `mapstructure:",squash"`
 }
 
 // AuthNConfig is the configuration need for the platform to validate tokens

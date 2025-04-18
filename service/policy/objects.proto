@@ -24,7 +24,7 @@ message Namespace {
   repeated KeyAccessServer grants = 6;
 
   // Keys for the namespace
-  repeated Key keys = 7;
+  repeated AsymmetricKey keys = 7;
 }
 
 message Attribute {
@@ -53,7 +53,7 @@ message Attribute {
   google.protobuf.BoolValue active = 8;
 
   //Keys associated with the attribute
-  repeated Key keys = 9;
+  repeated AsymmetricKey keys = 9;
 
   // Common metadata
   common.Metadata metadata = 100;
@@ -92,7 +92,7 @@ message Value {
   // subject mapping
   repeated SubjectMapping subject_mappings = 8;
 
-  repeated Key keys = 9;
+  repeated AsymmetricKey keys = 9;
 
   // Common metadata
   common.Metadata metadata = 100;
@@ -265,6 +265,17 @@ message ResourceMapping {
   ResourceMappingGroup group = 5;
 }
 
+// Describes whether this kas is managed by the organization or if they imported
+// the kas information from an external party. These two modes are necessary in order
+// to encrypt a tdf dek with an external parties kas public key.
+enum SourceType {
+  SOURCE_TYPE_UNSPECIFIED = 0;
+  // The kas is managed by the organization.
+  SOURCE_TYPE_INTERNAL = 1;
+  // The kas is managed by an external party.
+  SOURCE_TYPE_EXTERNAL = 2;
+}
+
 /*
    Key Access Server Registry
 */
@@ -287,6 +298,12 @@ message KeyAccessServer {
 
   // Deprecated
   PublicKey public_key = 3;
+
+  // The source of the KAS: (INTERNAL, EXTERNAL)
+  SourceType source_type = 4;
+  // Asymmetric keys associated with this KAS
+  repeated AsymmetricKey keys = 5;
+
 
   // Optional
   // Unique name of the KAS instance

@@ -1221,13 +1221,14 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		policyRes, err := kasClient.unwrap(ctx, req)
 		if err != nil {
 			reqFail(err, req)
+		} else {
+			result, ok := policyRes["policy"]
+			if !ok {
+				err = errors.New("could not find policy in rewrap response")
+				reqFail(err, req)
+			}
+			kaoResults = append(kaoResults, result...)
 		}
-		result, ok := policyRes["policy"]
-		if !ok {
-			err = errors.New("could not find policy in rewrap response")
-			reqFail(err, req)
-		}
-		kaoResults = append(kaoResults, result...)
 	}
 
 	return r.buildKey(ctx, kaoResults)

@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -21,6 +22,7 @@ import (
 type ClaimsEntityResolutionService struct {
 	entityresolution.UnimplementedEntityResolutionServiceServer
 	logger *logger.Logger
+	trace.Tracer
 }
 
 func RegisterClaimsERS(_ config.ServiceConfig, logger *logger.Logger) (ClaimsEntityResolutionService, serviceregistry.HandlerServer) {
@@ -34,6 +36,9 @@ func (s ClaimsEntityResolutionService) ResolveEntities(ctx context.Context, req 
 }
 
 func (s ClaimsEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
+	ctx, span := s.Tracer.Start(ctx, "CreateEntityChainFromJwt")
+	defer span.End()
+
 	resp, err := CreateEntityChainFromJwt(ctx, req.Msg, s.logger)
 	return connect.NewResponse(&resp), err
 }

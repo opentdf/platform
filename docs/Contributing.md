@@ -25,6 +25,38 @@ For end-users/consumers, see [here](./Consuming.md).
 Note: support was added to provision a set of fixture data into the database.
 Run `go run github.com/opentdf/platform/service provision fixtures -h` for more information.
 
+## Running with Distributed Tracing (OpenTelemetry)
+
+The platform incorporates OpenTelemetry for distributed tracing, providing insights into request flows and performance across services.
+
+To enable distributed tracing with Jaeger:
+
+1. Start the development stack with the tracing profile:
+   ```bash
+   docker compose --profile tracing up
+   ```
+   This will start Jaeger alongside the other services.
+
+2. Configure tracing in your `opentdf.yaml`:
+   ```yaml
+   server:
+     trace:
+       enabled: true
+       provider:
+         name: otlp
+         otlp:
+           protocol: grpc
+           endpoint: "localhost:4317"
+           insecure: true
+   ```
+
+3. Access the Jaeger UI at http://localhost:16686 to view traces:
+   - Search for traces by service name "opentdf-service"
+   - View detailed spans and timing information
+   - Analyze request flows across services
+
+Note: When using the file provider (`name: file`), traces will be written to local files instead of being sent to Jaeger.
+
 ## Advice for Code Contributors
 
 * Make sure to run our linters with `make lint`

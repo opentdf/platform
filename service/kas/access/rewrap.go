@@ -25,17 +25,16 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/authorization"
-	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/protobuf/encoding/protojson"
-
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 const (
@@ -438,6 +437,9 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 }
 
 func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.UnsignedRewrapRequest_WithPolicyRequest) (*Policy, map[string]kaoResult, error) {
+	ctx, span := p.Tracer.Start(ctx, "tdf3Rewrap")
+	defer span.End()
+
 	results := make(map[string]kaoResult)
 	anyValidKAOs := false
 	p.Logger.DebugContext(ctx, "extracting policy", "requestBody.policy", req.GetPolicy())
@@ -690,12 +692,10 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 }
 
 func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entity *entityInfo) (string, policyKAOResults) {
+	ctx, span := p.Tracer.Start(ctx, "nanoTDFRewrap")
+	defer span.End()
+
 	results := make(policyKAOResults)
-	if p.Tracer != nil {
-		var span trace.Span
-		ctx, span = p.Tracer.Start(ctx, "rewrap-nanotdf")
-		defer span.End()
-	}
 
 	var policies []*Policy
 	policyReqs := make(map[*Policy]*kaspb.UnsignedRewrapRequest_WithPolicyRequest)

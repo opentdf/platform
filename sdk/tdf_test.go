@@ -469,6 +469,141 @@ func (s *TDFSuite) Test_SimpleTDF() {
 	}
 }
 
+func (s *TDFSuite) Test_TDF_KAS_Allowlist() {
+	type TestConfig struct {
+		tdfOptions     []TDFOption
+		tdfReadOptions []TDFReaderOption
+		expectedError  string
+	}
+
+	metaData := []byte(`{"displayName" : "openTDF go sdk"}`)
+	attributes := []string{
+		"https://example.com/attr/Classification/value/S",
+		"https://example.com/attr/Classification/value/X",
+	}
+
+	tdfFilename := "secure-text.tdf"
+	plainText := "Virtru"
+
+	// add opts ...TDFOption to  TestConfig
+	testConfigs := []TestConfig{
+		{
+			tdfOptions: []TDFOption{
+				WithKasInformation(KASInfo{
+					URL:       "https://a.kas/",
+					PublicKey: "",
+				}),
+				WithMetaData(string(metaData)),
+				WithDataAttributes(attributes...),
+			},
+			tdfReadOptions: []TDFReaderOption{
+				WithKasAllowlist([]string{"https://a.kas/"}),
+			},
+		},
+		{
+			tdfOptions: []TDFOption{
+				WithKasInformation(KASInfo{
+					URL:       "https://a.kas/",
+					PublicKey: "",
+				}),
+				WithMetaData(string(metaData)),
+				WithDataAttributes(attributes...),
+			},
+			tdfReadOptions: []TDFReaderOption{
+				WithKasAllowlist([]string{"https://nope-not-a-kas.com/kas"}),
+			},
+			expectedError: "KasAllowlist: kas url https://a.kas/ is not allowed",
+		},
+		{
+			tdfOptions: []TDFOption{
+				WithKasInformation(KASInfo{
+					URL:       "https://a.kas/",
+					PublicKey: "",
+				}),
+				WithMetaData(string(metaData)),
+				WithDataAttributes(attributes...),
+			},
+			tdfReadOptions: []TDFReaderOption{
+				withKasAllowlist(AllowList{"nope-not-a-kas.com": true}),
+			},
+			expectedError: "KasAllowlist: kas url https://a.kas/ is not allowed",
+		},
+		{
+			tdfOptions: []TDFOption{
+				WithKasInformation(KASInfo{
+					URL:       "https://a.kas/",
+					PublicKey: "",
+				}),
+				WithMetaData(string(metaData)),
+				WithDataAttributes(attributes...),
+			},
+			tdfReadOptions: []TDFReaderOption{
+				WithKasAllowlist([]string{"https://nope-not-a-kas.com/kas"}),
+				WithIgnoreAllowlist(true),
+			},
+		},
+		{
+			tdfOptions: []TDFOption{
+				WithKasInformation(KASInfo{
+					URL:       "https://a.kas/",
+					PublicKey: "",
+				}),
+				WithMetaData(string(metaData)),
+				WithDataAttributes(attributes...),
+			},
+			tdfReadOptions: []TDFReaderOption{
+				withKasAllowlist(AllowList{"nope-not-a-kas.com": true}),
+				WithIgnoreAllowlist(true),
+			},
+		},
+	}
+
+	for _, config := range testConfigs {
+		inBuf := bytes.NewBufferString(plainText)
+		bufReader := bytes.NewReader(inBuf.Bytes())
+
+		fileWriter, err := os.Create(tdfFilename)
+		s.Require().NoError(err)
+
+		defer func(fileWriter *os.File) {
+			err := fileWriter.Close()
+			s.Require().NoError(err)
+		}(fileWriter)
+
+		_, err = s.sdk.CreateTDF(fileWriter, bufReader, config.tdfOptions...)
+
+		s.Require().NoError(err)
+
+		// test meta data and build meta data
+		readSeeker, err := os.Open(tdfFilename)
+		s.Require().NoError(err)
+
+		defer func(readSeeker *os.File) {
+			err := readSeeker.Close()
+			s.Require().NoError(err)
+		}(readSeeker)
+
+		r, err := s.sdk.LoadTDF(readSeeker, config.tdfReadOptions...)
+		s.Require().NoError(err)
+
+		buf := make([]byte, 8)
+		s.Require().NoError(err)
+
+		offset := 2
+		_, err = r.ReadAt(buf, int64(offset))
+		if config.expectedError != "" {
+			s.Require().Error(err)
+			s.Require().ErrorContains(err, config.expectedError)
+		} else {
+			if err != nil {
+				s.Require().ErrorIs(err, io.EOF)
+			}
+		}
+
+		_ = os.Remove(tdfFilename)
+	}
+}
+
 func (s *TDFSuite) Test_TDFWithAssertion() {
 	hs256Key := make([]byte, 32)
 	_, err := rand.Read(hs256Key)

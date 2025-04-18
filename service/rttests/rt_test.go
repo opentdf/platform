@@ -356,7 +356,7 @@ func encrypt(client *sdk.SDK, testConfig TestConfig, plaintext string, attribute
 	return nil
 }
 
-func decrypt(client *sdk.SDK, tdfFile string, plaintext string) error {
+func decrypt(client *sdk.SDK, tdfFile string, plaintext string, opts ...sdk.TDFReaderOption) error {
 	file, err := os.Open(tdfFile)
 	if err != nil {
 		return err
@@ -424,6 +424,19 @@ func bulk(client *sdk.SDK, tdfSuccess []string, tdfFail []string, plaintext stri
 		}
 	}
 	for _, tdf := range failTDF {
+		if tdf.Error == nil {
+			return fmt.Errorf("no expected err")
+		}
+	}
+
+	_ = client.BulkDecrypt(
+		context.Background(),
+		sdk.WithTDFs(passTDF...),
+		sdk.WithTDFType(sdk.Standard),
+		sdk.WithTDF3DecryptOptions(
+			sdk.WithKasAllowlist([]string{"http://some-non-existant:8080"}),
+		))
+	for _, tdf := range passTDF {
 		if tdf.Error == nil {
 			return fmt.Errorf("no expected err")
 		}

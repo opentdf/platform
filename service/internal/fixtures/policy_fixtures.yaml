@@ -630,9 +630,12 @@ registered_resources:
     res_with_values:
       id: f3a1b2c4-5d6e-7f89-0a1b-2c3d4e5f6789
       name: res1
+    res_with_values2:
+      id: 39cd944b-d703-4330-936a-83b3d497c8d4
+      name: res2
     res_only:
       id: a9b8c7d6-e5f4-3a2b-1c0d-9e8f7a6b5c4d
-      name: res2
+      name: res3
 
 ##
 # Registered Resource Values
@@ -654,3 +657,7 @@ registered_resource_values:
       id: 9e8f7a6b-5c4d-3b2a-1d0c-8f7e6a5b4c3d
       registered_resource_id: f3a1b2c4-5d6e-7f89-0a1b-2c3d4e5f6789
       value: res_with_values__value2
+    res_with_values2__value1:
+      id: a932ff01-cca6-41f6-a147-7eba7560611b
+      registered_resource_id: 39cd944b-d703-4330-936a-83b3d497c8d4
+      value: res_with_values2__value1

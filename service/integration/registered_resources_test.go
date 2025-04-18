@@ -7,10 +7,12 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/proto"
 )
 
 type RegisteredResourcesSuite struct {
@@ -153,6 +155,112 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_InvalidID_Fails() 
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(got)
+}
+
+// List
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_NoPagination_Succeeds() {
+	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
+	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
+	existingResValue2 := s.f.GetRegisteredResourceValueKey("res_with_values__value2")
+	existingResOnly := s.f.GetRegisteredResourceKey("res_only")
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	foundCount := 0
+
+	for _, r := range list.GetResources() {
+		if r.GetId() == existingRes.ID {
+			foundCount++
+			s.Equal(existingRes.Name, r.GetName())
+			values := r.GetValues()
+			s.Require().Len(values, 2)
+			s.Equal(existingResValue1.Value, values[0].GetValue())
+			s.Equal(existingResValue2.Value, values[1].GetValue())
+			metadata := r.GetMetadata()
+			s.False(metadata.GetCreatedAt().AsTime().IsZero())
+			s.False(metadata.GetUpdatedAt().AsTime().IsZero())
+		}
+
+		if r.GetId() == existingResOnly.ID {
+			foundCount++
+			s.Equal(existingResOnly.Name, r.GetName())
+			s.Require().Empty(r.GetValues())
+		}
+	}
+
+	s.Equal(2, foundCount)
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_Limit_Succeeds() {
+	var limit int32 = 1
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Pagination: &policy.PageRequest{
+			Limit: limit,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+	items := list.GetResources()
+	s.Len(items, int(limit))
+
+	// request with one below maximum
+	list, err = s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax - 1,
+		},
+	})
+	s.NoError(err)
+	s.NotNil(list)
+
+	// exactly maximum
+	list, err = s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax,
+		},
+	})
+	s.NoError(err)
+	s.NotNil(list)
+}
+
+func (s *NamespacesSuite) Test_ListRegisteredResources_Limit_TooLarge_Fails() {
+	listRsp, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax + 1,
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrListLimitTooLarge)
+	s.Nil(listRsp)
+}
+
+func (s *AttributesSuite) Test_ListRegisteredResources_Offset_Succeeds() {
+	req := &registeredresources.ListRegisteredResourcesRequest{}
+	// make initial list request to compare against
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(list)
+	items := list.GetResources()
+
+	// set the offset pagination
+	offset := 2
+	req.Pagination = &policy.PageRequest{
+		Offset: int32(offset),
+	}
+	offsetList, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(offsetList)
+	offsetItems := offsetList.GetResources()
+
+	// length is reduced by the offset amount
+	s.Len(offsetItems, len(items)-offset)
+
+	// objects are equal between offset and original list beginning at offset index
+	for i, attr := range offsetItems {
+		s.True(proto.Equal(attr, items[i+offset]))
+	}
 }
 
 // Update
@@ -431,6 +539,137 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_InvalidID_Fai
 	s.Nil(got)
 }
 
+// List
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResourceValues_NoPagination_Succeeds() {
+	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
+	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
+	existingResValue2 := s.f.GetRegisteredResourceValueKey("res_with_values__value2")
+
+	list, err := s.db.PolicyClient.ListRegisteredResourceValues(s.ctx, &registeredresources.ListRegisteredResourceValuesRequest{})
+	s.Require().NoError(err)
+	s.NotNil(list)
+	// should be more values than the 2 explicitly tested below
+	s.Greater(len(list.GetValues()), 2)
+
+	foundCount := 0
+
+	for _, r := range list.GetValues() {
+		if r.GetId() == existingResValue1.ID {
+			foundCount++
+			s.Equal(existingResValue1.Value, r.GetValue())
+			s.Equal(existingRes.ID, r.GetResource().GetId())
+			metadata := r.GetMetadata()
+			s.False(metadata.GetCreatedAt().AsTime().IsZero())
+			s.False(metadata.GetUpdatedAt().AsTime().IsZero())
+		}
+
+		if r.GetId() == existingResValue2.ID {
+			foundCount++
+			s.Equal(existingResValue2.Value, r.GetValue())
+			s.Equal(existingRes.ID, r.GetResource().GetId())
+			metadata := r.GetMetadata()
+			s.False(metadata.GetCreatedAt().AsTime().IsZero())
+			s.False(metadata.GetUpdatedAt().AsTime().IsZero())
+		}
+	}
+
+	s.Equal(2, foundCount)
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResourceValues_Limit_Succeeds() {
+	var limit int32 = 1
+	list, err := s.db.PolicyClient.ListRegisteredResourceValues(s.ctx, &registeredresources.ListRegisteredResourceValuesRequest{
+		Pagination: &policy.PageRequest{
+			Limit: limit,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+	items := list.GetValues()
+	s.Len(items, int(limit))
+
+	// request with one below maximum
+	list, err = s.db.PolicyClient.ListRegisteredResourceValues(s.ctx, &registeredresources.ListRegisteredResourceValuesRequest{
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax - 1,
+		},
+	})
+	s.NoError(err)
+	s.NotNil(list)
+
+	// exactly maximum
+	list, err = s.db.PolicyClient.ListRegisteredResourceValues(s.ctx, &registeredresources.ListRegisteredResourceValuesRequest{
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax,
+		},
+	})
+	s.NoError(err)
+	s.NotNil(list)
+}
+
+func (s *NamespacesSuite) Test_ListRegisteredResourceValues_Limit_TooLarge_Fails() {
+	listRsp, err := s.db.PolicyClient.ListRegisteredResourceValues(s.ctx, &registeredresources.ListRegisteredResourceValuesRequest{
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax + 1,
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrListLimitTooLarge)
+	s.Nil(listRsp)
+}
+
+func (s *AttributesSuite) Test_ListRegisteredResourceValues_Offset_Succeeds() {
+	req := &registeredresources.ListRegisteredResourceValuesRequest{}
+	// make initial list request to compare against
+	list, err := s.db.PolicyClient.ListRegisteredResourceValues(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(list)
+	items := list.GetValues()
+
+	// set the offset pagination
+	offset := 2
+	req.Pagination = &policy.PageRequest{
+		Offset: int32(offset),
+	}
+	offsetList, err := s.db.PolicyClient.ListRegisteredResourceValues(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(offsetList)
+	offsetItems := offsetList.GetValues()
+
+	// length is reduced by the offset amount
+	s.Len(offsetItems, len(items)-offset)
+
+	// objects are equal between offset and original list beginning at offset index
+	for i, attr := range offsetItems {
+		s.True(proto.Equal(attr, items[i+offset]))
+	}
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResourceValues_ByResourceID_Succeeds() {
+	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
+	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
+	existingResValue2 := s.f.GetRegisteredResourceValueKey("res_with_values__value2")
+
+	list, err := s.db.PolicyClient.ListRegisteredResourceValues(s.ctx, &registeredresources.ListRegisteredResourceValuesRequest{
+		ResourceId: existingRes.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+	// should only be the 2 values associated with the resource
+	s.Len(list.GetValues(), 2)
+
+	foundCount := 0
+
+	for _, r := range list.GetValues() {
+		if r.GetId() == existingResValue1.ID || r.GetId() == existingResValue2.ID {
+			foundCount++
+		}
+	}
+
+	s.Equal(2, foundCount)
+}
+
 // Update
 
 func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds() {
@@ -568,7 +807,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_NonUniqueR
 	s.NotNil(resVal2)
 
 	updated, err := s.db.PolicyClient.UpdateRegisteredResourceValue(s.ctx, &registeredresources.UpdateRegisteredResourceValueRequest{
-		Id:    resVal1.GetId(),
+		Id: resVal1.GetId(),
 		// causes unique constraint violation attempting to update value1 to value2
 		Value: resVal2.GetValue(),
 	})

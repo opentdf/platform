@@ -2,15 +2,17 @@ package registeredresources
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
 	"connectrpc.com/connect"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources/registeredresourcesconnect"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
@@ -76,44 +78,236 @@ func (s RegisteredResourcesService) IsReady(ctx context.Context) error {
 
 /// Registered Resources Handlers
 
-func (s RegisteredResourcesService) CreateRegisteredResource(context.Context, *connect.Request[registeredresources.CreateRegisteredResourceRequest]) (*connect.Response[registeredresources.CreateRegisteredResourceResponse], error) {
-	return nil, errors.New("not implemented")
+func (s RegisteredResourcesService) CreateRegisteredResource(ctx context.Context, req *connect.Request[registeredresources.CreateRegisteredResourceRequest]) (*connect.Response[registeredresources.CreateRegisteredResourceResponse], error) {
+	rsp := &registeredresources.CreateRegisteredResourceResponse{}
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypeRegisteredResource,
+	}
+
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		item, err := txClient.CreateRegisteredResource(ctx, req.Msg)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		auditParams.ObjectID = item.GetId()
+		auditParams.Original = item
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.Resource = item
+		return nil
+	})
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("registered resouce", req.Msg.String()))
+	}
+
+	return connect.NewResponse(rsp), nil
 }
 
-func (s RegisteredResourcesService) GetRegisteredResource(context.Context, *connect.Request[registeredresources.GetRegisteredResourceRequest]) (*connect.Response[registeredresources.GetRegisteredResourceResponse], error) {
-	return nil, errors.New("not implemented")
+func (s RegisteredResourcesService) GetRegisteredResource(ctx context.Context, req *connect.Request[registeredresources.GetRegisteredResourceRequest]) (*connect.Response[registeredresources.GetRegisteredResourceResponse], error) {
+	rsp := &registeredresources.GetRegisteredResourceResponse{}
+
+	var identifier any
+	if req.Msg.GetResourceId() != "" {
+		identifier = req.Msg.GetResourceId()
+	} else {
+		identifier = req.Msg.GetFqn()
+	}
+
+	item, err := s.dbClient.GetRegisteredResource(ctx, identifier)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.Any("id", identifier))
+	}
+	rsp.Resource = item
+
+	return connect.NewResponse(rsp), nil
 }
 
-func (s RegisteredResourcesService) ListRegisteredResources(context.Context, *connect.Request[registeredresources.ListRegisteredResourcesRequest]) (*connect.Response[registeredresources.ListRegisteredResourcesResponse], error) {
-	return nil, errors.New("not implemented")
+func (s RegisteredResourcesService) ListRegisteredResources(ctx context.Context, req *connect.Request[registeredresources.ListRegisteredResourcesRequest]) (*connect.Response[registeredresources.ListRegisteredResourcesResponse], error) {
+	rsp, err := s.dbClient.ListRegisteredResources(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
+	}
+
+	return connect.NewResponse(rsp), nil
 }
 
-func (s RegisteredResourcesService) UpdateRegisteredResource(context.Context, *connect.Request[registeredresources.UpdateRegisteredResourceRequest]) (*connect.Response[registeredresources.UpdateRegisteredResourceResponse], error) {
-	return nil, errors.New("not implemented")
+func (s RegisteredResourcesService) UpdateRegisteredResource(ctx context.Context, req *connect.Request[registeredresources.UpdateRegisteredResourceRequest]) (*connect.Response[registeredresources.UpdateRegisteredResourceResponse], error) {
+	rsp := &registeredresources.UpdateRegisteredResourceResponse{}
+
+	resourceID := req.Msg.GetId()
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeRegisteredResource,
+		ObjectID:   resourceID,
+	}
+
+	original, err := s.dbClient.GetRegisteredResource(ctx, resourceID)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", resourceID))
+	}
+
+	updated, err := s.dbClient.UpdateRegisteredResource(ctx, req.Msg)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("resource", req.Msg.String()))
+	}
+
+	auditParams.Original = original
+	auditParams.Updated = updated
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.Resource = &policy.RegisteredResource{
+		Id: resourceID,
+	}
+
+	return connect.NewResponse(rsp), nil
 }
 
-func (s RegisteredResourcesService) DeleteRegisteredResource(context.Context, *connect.Request[registeredresources.DeleteRegisteredResourceRequest]) (*connect.Response[registeredresources.DeleteRegisteredResourceResponse], error) {
-	return nil, errors.New("not implemented")
+func (s RegisteredResourcesService) DeleteRegisteredResource(ctx context.Context, req *connect.Request[registeredresources.DeleteRegisteredResourceRequest]) (*connect.Response[registeredresources.DeleteRegisteredResourceResponse], error) {
+	resourceID := req.Msg.GetId()
+
+	rsp := &registeredresources.DeleteRegisteredResourceResponse{}
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeRegisteredResource,
+		ObjectID:   resourceID,
+	}
+
+	_, err := s.dbClient.DeleteRegisteredResource(ctx, resourceID)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", resourceID))
+	}
+
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.Resource = &policy.RegisteredResource{
+		Id: resourceID,
+	}
+
+	return connect.NewResponse(rsp), nil
 }
 
 /// Registered Resource Values Handlers
 
-func (s RegisteredResourcesService) CreateRegisteredResourceValue(context.Context, *connect.Request[registeredresources.CreateRegisteredResourceValueRequest]) (*connect.Response[registeredresources.CreateRegisteredResourceValueResponse], error) {
-	return nil, errors.New("not implemented")
+func (s RegisteredResourcesService) CreateRegisteredResourceValue(ctx context.Context, req *connect.Request[registeredresources.CreateRegisteredResourceValueRequest]) (*connect.Response[registeredresources.CreateRegisteredResourceValueResponse], error) {
+	rsp := &registeredresources.CreateRegisteredResourceValueResponse{}
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypeRegisteredResourceValue,
+	}
+
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		item, err := txClient.CreateRegisteredResourceValue(ctx, req.Msg)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		auditParams.ObjectID = item.GetId()
+		auditParams.Original = item
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.Value = item
+		return nil
+	})
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("registered resource value", req.Msg.String()))
+	}
+
+	return connect.NewResponse(rsp), nil
 }
 
-func (s RegisteredResourcesService) GetRegisteredResourceValue(context.Context, *connect.Request[registeredresources.GetRegisteredResourceValueRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValueResponse], error) {
-	return nil, errors.New("not implemented")
+func (s RegisteredResourcesService) GetRegisteredResourceValue(ctx context.Context, req *connect.Request[registeredresources.GetRegisteredResourceValueRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValueResponse], error) {
+	rsp := &registeredresources.GetRegisteredResourceValueResponse{}
+
+	var identifier any
+	if req.Msg.GetValueId() != "" {
+		identifier = req.Msg.GetValueId()
+	} else {
+		identifier = req.Msg.GetFqn()
+	}
+
+	item, err := s.dbClient.GetRegisteredResourceValue(ctx, identifier)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.Any("id", identifier))
+	}
+	rsp.Value = item
+
+	return connect.NewResponse(rsp), nil
 }
 
-func (s RegisteredResourcesService) ListRegisteredResourceValues(context.Context, *connect.Request[registeredresources.ListRegisteredResourceValuesRequest]) (*connect.Response[registeredresources.ListRegisteredResourceValuesResponse], error) {
-	return nil, errors.New("not implemented")
+func (s RegisteredResourcesService) ListRegisteredResourceValues(ctx context.Context, req *connect.Request[registeredresources.ListRegisteredResourceValuesRequest]) (*connect.Response[registeredresources.ListRegisteredResourceValuesResponse], error) {
+	rsp, err := s.dbClient.ListRegisteredResourceValues(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
+	}
+
+	return connect.NewResponse(rsp), nil
 }
 
-func (s RegisteredResourcesService) UpdateRegisteredResourceValue(context.Context, *connect.Request[registeredresources.UpdateRegisteredResourceValueRequest]) (*connect.Response[registeredresources.UpdateRegisteredResourceValueResponse], error) {
-	return nil, errors.New("not implemented")
+func (s RegisteredResourcesService) UpdateRegisteredResourceValue(ctx context.Context, req *connect.Request[registeredresources.UpdateRegisteredResourceValueRequest]) (*connect.Response[registeredresources.UpdateRegisteredResourceValueResponse], error) {
+	rsp := &registeredresources.UpdateRegisteredResourceValueResponse{}
+
+	valueID := req.Msg.GetId()
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeRegisteredResourceValue,
+		ObjectID:   valueID,
+	}
+
+	original, err := s.dbClient.GetRegisteredResourceValue(ctx, valueID)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", valueID))
+	}
+
+	updated, err := s.dbClient.UpdateRegisteredResourceValue(ctx, req.Msg)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("resource", req.Msg.String()))
+	}
+
+	auditParams.Original = original
+	auditParams.Updated = updated
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.Value = &policy.RegisteredResourceValue{
+		Id: valueID,
+	}
+
+	return connect.NewResponse(rsp), nil
 }
 
-func (s RegisteredResourcesService) DeleteRegisteredResourceValue(context.Context, *connect.Request[registeredresources.DeleteRegisteredResourceValueRequest]) (*connect.Response[registeredresources.DeleteRegisteredResourceValueResponse], error) {
-	return nil, errors.New("not implemented")
+func (s RegisteredResourcesService) DeleteRegisteredResourceValue(ctx context.Context, req *connect.Request[registeredresources.DeleteRegisteredResourceValueRequest]) (*connect.Response[registeredresources.DeleteRegisteredResourceValueResponse], error) {
+	valueID := req.Msg.GetId()
+
+	rsp := &registeredresources.DeleteRegisteredResourceValueResponse{}
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeRegisteredResourceValue,
+		ObjectID:   valueID,
+	}
+
+	_, err := s.dbClient.DeleteRegisteredResourceValue(ctx, valueID)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", valueID))
+	}
+
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.Value = &policy.RegisteredResourceValue{
+		Id: valueID,
+	}
+
+	return connect.NewResponse(rsp), nil
 }

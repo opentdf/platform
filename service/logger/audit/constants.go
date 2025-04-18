@@ -21,6 +21,8 @@ const (
 	ObjectTypeEntityObject
 	ObjectTypeResourceMappingGroup
 	ObjectTypePublicKey
+	ObjectTypeRegisteredResource
+	ObjectTypeRegisteredResourceValue
 )
 
 func (ot ObjectType) String() string {

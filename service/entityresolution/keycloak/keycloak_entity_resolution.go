@@ -10,8 +10,8 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/Nerzal/gocloak/v13"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/mitchellh/mapstructure"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	auth "github.com/opentdf/platform/service/authorization"

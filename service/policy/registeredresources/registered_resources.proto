@@ -222,4 +222,38 @@ message DeleteRegisteredResourceValueResponse {
 /// Registered Resources Service
 ///
 
-// TODO: Add service definition for Registered Resources operations
+service RegisteredResourcesService {
+  // Registered Resources
+
+  rpc CreateRegisteredResource(CreateRegisteredResourceRequest) returns (CreateRegisteredResourceResponse) {
+  }
+
+  rpc GetRegisteredResource(GetRegisteredResourceRequest) returns (GetRegisteredResourceResponse) {
+  }
+
+  rpc ListRegisteredResources(ListRegisteredResourcesRequest) returns (ListRegisteredResourcesResponse) {
+  }
+
+  rpc UpdateRegisteredResource(UpdateRegisteredResourceRequest) returns (UpdateRegisteredResourceResponse) {
+  }
+
+  rpc DeleteRegisteredResource(DeleteRegisteredResourceRequest) returns (DeleteRegisteredResourceResponse) {
+  }
+
+  // Registered Resource Values
+
+  rpc CreateRegisteredResourceValue(CreateRegisteredResourceValueRequest) returns (CreateRegisteredResourceValueResponse) {
+  }
+
+  rpc GetRegisteredResourceValue(GetRegisteredResourceValueRequest) returns (GetRegisteredResourceValueResponse) {
+  }
+
+  rpc ListRegisteredResourceValues(ListRegisteredResourceValuesRequest) returns (ListRegisteredResourceValuesResponse) {
+  }
+
+  rpc UpdateRegisteredResourceValue(UpdateRegisteredResourceValueRequest) returns (UpdateRegisteredResourceValueResponse) {
+  }
+
+  rpc DeleteRegisteredResourceValue(DeleteRegisteredResourceValueRequest) returns (DeleteRegisteredResourceValueResponse) {
+  }
+}

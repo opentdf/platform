@@ -429,5 +429,18 @@ func bulk(client *sdk.SDK, tdfSuccess []string, tdfFail []string, plaintext stri
 		}
 	}
 
+	_ = client.BulkDecrypt(
+		context.Background(),
+		sdk.WithTDFs(passTDF...),
+		sdk.WithTDFType(sdk.Standard),
+		sdk.WithTDF3DecryptOptions(
+			sdk.WithKasAllowlist([]string{"http://some-non-existant:8080"}),
+		))
+	for _, tdf := range passTDF {
+		if tdf.Error == nil {
+			return fmt.Errorf("no expected err")
+		}
+	}
+
 	return nil
 }

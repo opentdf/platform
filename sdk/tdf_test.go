@@ -29,7 +29,9 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/policy"
 	attributespb "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	wellknownpb "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -462,6 +464,139 @@ func (s *TDFSuite) Test_SimpleTDF() {
 
 		expectedPlainTxt := plainText[offset : offset+n]
 		s.Equal(expectedPlainTxt, string(buf[:n]))
+
+		_ = os.Remove(tdfFilename)
+	}
+}
+
+func (s *TDFSuite) Test_TDF_KAS_Allowlist() {
+	type TestConfig struct {
+		tdfOptions     []TDFOption
+		tdfReadOptions []TDFReaderOption
+		expectedError  string
+	}
+
+	metaData := []byte(`{"displayName" : "openTDF go sdk"}`)
+	attributes := []string{
+		"https://example.com/attr/Classification/value/S",
+		"https://example.com/attr/Classification/value/X",
+	}
+
+	tdfFilename := "secure-text.tdf"
+	plainText := "Virtru"
+
+	// add opts ...TDFOption to  TestConfig
+	testConfigs := []TestConfig{
+		{
+			tdfOptions: []TDFOption{
+				WithKasInformation(KASInfo{
+					URL:       "https://a.kas/",
+					PublicKey: "",
+				}),
+				WithMetaData(string(metaData)),
+				WithDataAttributes(attributes...),
+			},
+			tdfReadOptions: []TDFReaderOption{
+				WithKasAllowlist([]string{"https://a.kas/"}),
+			},
+		},
+		{
+			tdfOptions: []TDFOption{
+				WithKasInformation(KASInfo{
+					URL:       "https://a.kas/",
+					PublicKey: "",
+				}),
+				WithMetaData(string(metaData)),
+				WithDataAttributes(attributes...),
+			},
+			tdfReadOptions: []TDFReaderOption{
+				WithKasAllowlist([]string{"https://nope-not-a-kas.com/kas"}),
+			},
+			expectedError: "KasAllowlist: kas url https://a.kas/ is not allowed",
+		},
+		{
+			tdfOptions: []TDFOption{
+				WithKasInformation(KASInfo{
+					URL:       "https://a.kas/",
+					PublicKey: "",
+				}),
+				WithMetaData(string(metaData)),
+				WithDataAttributes(attributes...),
+			},
+			tdfReadOptions: []TDFReaderOption{
+				withKasAllowlist(AllowList{"nope-not-a-kas.com": true}),
+			},
+			expectedError: "KasAllowlist: kas url https://a.kas/ is not allowed",
+		},
+		{
+			tdfOptions: []TDFOption{
+				WithKasInformation(KASInfo{
+					URL:       "https://a.kas/",
+					PublicKey: "",
+				}),
+				WithMetaData(string(metaData)),
+				WithDataAttributes(attributes...),
+			},
+			tdfReadOptions: []TDFReaderOption{
+				WithKasAllowlist([]string{"https://nope-not-a-kas.com/kas"}),
+				WithIgnoreAllowlist(true),
+			},
+		},
+		{
+			tdfOptions: []TDFOption{
+				WithKasInformation(KASInfo{
+					URL:       "https://a.kas/",
+					PublicKey: "",
+				}),
+				WithMetaData(string(metaData)),
+				WithDataAttributes(attributes...),
+			},
+			tdfReadOptions: []TDFReaderOption{
+				withKasAllowlist(AllowList{"nope-not-a-kas.com": true}),
+				WithIgnoreAllowlist(true),
+			},
+		},
+	}
+
+	for _, config := range testConfigs {
+		inBuf := bytes.NewBufferString(plainText)
+		bufReader := bytes.NewReader(inBuf.Bytes())
+
+		fileWriter, err := os.Create(tdfFilename)
+		s.Require().NoError(err)
+
+		defer func(fileWriter *os.File) {
+			err := fileWriter.Close()
+			s.Require().NoError(err)
+		}(fileWriter)
+
+		_, err = s.sdk.CreateTDF(fileWriter, bufReader, config.tdfOptions...)
+
+		s.Require().NoError(err)
+
+		// test meta data and build meta data
+		readSeeker, err := os.Open(tdfFilename)
+		s.Require().NoError(err)
+
+		defer func(readSeeker *os.File) {
+			err := readSeeker.Close()
+			s.Require().NoError(err)
+		}(readSeeker)
+
+		r, err := s.sdk.LoadTDF(readSeeker, config.tdfReadOptions...)
+		s.Require().NoError(err)
+
+		buf := make([]byte, 8)
+		s.Require().NoError(err)
+
+		offset := 2
+		_, err = r.ReadAt(buf, int64(offset))
+		if config.expectedError != "" {
+			s.Require().Error(err)
+			s.Require().ErrorContains(err, config.expectedError)
+		} else if err != nil {
+			s.Require().ErrorIs(err, io.EOF)
+		}
 
 		_ = os.Remove(tdfFilename)
 	}
@@ -1744,21 +1879,7 @@ func (s *TDFSuite) startBackend() {
 
 	fwk := &FakeWellKnown{v: wellknownCfg}
 	fa := &FakeAttributes{}
-
-	listeners := make(map[string]*bufconn.Listener)
-	dialer := func(ctx context.Context, host string) (net.Conn, error) {
-		l, ok := listeners[host]
-		if !ok {
-			slog.ErrorContext(ctx, "bufconn: unable to dial host!", "ctx", ctx, "host", host)
-			return nil, fmt.Errorf("unknown host [%s]", host)
-		}
-		slog.InfoContext(ctx, "bufconn: dialing (local grpc)", "ctx", ctx, "host", host)
-		return l.Dial()
-	}
-
-	s.kases = make([]FakeKas, 12)
-
-	for i, ki := range []struct {
+	kasesToMake := []struct {
 		url, private, public string
 	}{
 		{"http://localhost:65432/", mockRSAPrivateKey1, mockRSAPublicKey1},
@@ -1773,7 +1894,23 @@ func (s *TDFSuite) startBackend() {
 		{kasUk, mockRSAPrivateKey2, mockRSAPublicKey2},
 		{kasNz, mockRSAPrivateKey3, mockRSAPublicKey3},
 		{kasUs, mockRSAPrivateKey1, mockRSAPublicKey1},
-	} {
+	}
+	fkar := &FakeKASRegistry{kases: kasesToMake}
+
+	listeners := make(map[string]*bufconn.Listener)
+	dialer := func(ctx context.Context, host string) (net.Conn, error) {
+		l, ok := listeners[host]
+		if !ok {
+			slog.ErrorContext(ctx, "bufconn: unable to dial host!", "ctx", ctx, "host", host)
+			return nil, fmt.Errorf("unknown host [%s]", host)
+		}
+		slog.InfoContext(ctx, "bufconn: dialing (local grpc)", "ctx", ctx, "host", host)
+		return l.Dial()
+	}
+
+	s.kases = make([]FakeKas, 12)
+
+	for i, ki := range kasesToMake {
 		grpcListener := bufconn.Listen(1024 * 1024)
 		url, err := url.Parse(ki.url)
 		s.Require().NoError(err)
@@ -1800,6 +1937,8 @@ func (s *TDFSuite) startBackend() {
 		attributespb.RegisterAttributesServiceServer(grpcServer, fa)
 		kaspb.RegisterAccessServiceServer(grpcServer, &s.kases[i])
 		wellknownpb.RegisterWellKnownServiceServer(grpcServer, fwk)
+		kasregistry.RegisterKeyAccessServerRegistryServiceServer(grpcServer, fkar)
+
 		go func() {
 			err := grpcServer.Serve(grpcListener)
 			s.NoError(err)
@@ -1853,6 +1992,28 @@ func (f *FakeAttributes) GetAttributeValuesByFqns(_ context.Context, in *attribu
 		}
 	}
 	return &attributespb.GetAttributeValuesByFqnsResponse{FqnAttributeValues: r}, nil
+}
+
+type FakeKASRegistry struct {
+	kasregistry.UnimplementedKeyAccessServerRegistryServiceServer
+	kases []struct {
+		url, private, public string
+	}
+}
+
+func (f *FakeKASRegistry) ListKeyAccessServers(_ context.Context, _ *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
+	resp := &kasregistry.ListKeyAccessServersResponse{
+		KeyAccessServers: make([]*policy.KeyAccessServer, 0, len(f.kases)),
+	}
+
+	for _, k := range f.kases {
+		kas := &policy.KeyAccessServer{
+			Uri: k.url,
+		}
+		resp.KeyAccessServers = append(resp.KeyAccessServers, kas)
+	}
+
+	return resp, nil
 }
 
 type FakeKas struct {

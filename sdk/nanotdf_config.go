@@ -110,3 +110,48 @@ func WithECDSAPolicyBinding() NanoTDFOption {
 		return nil
 	}
 }
+
+type NanoTDFReaderConfig struct {
+	kasAllowlist    AllowList
+	ignoreAllowList bool
+}
+
+func newNanoTDFReaderConfig(opt ...NanoTDFReaderOption) (*NanoTDFReaderConfig, error) {
+	c := &NanoTDFReaderConfig{}
+
+	for _, o := range opt {
+		err := o(c)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return c, nil
+}
+
+type NanoTDFReaderOption func(*NanoTDFReaderConfig) error
+
+func WithNanoKasAllowlist(kasList []string) NanoTDFReaderOption {
+	return func(c *NanoTDFReaderConfig) error {
+		allowlist, err := newAllowList(kasList)
+		if err != nil {
+			return fmt.Errorf("failed to create kas allowlist: %w", err)
+		}
+		c.kasAllowlist = allowlist
+		return nil
+	}
+}
+
+func withNanoKasAllowlist(allowlist AllowList) NanoTDFReaderOption {
+	return func(c *NanoTDFReaderConfig) error {
+		c.kasAllowlist = allowlist
+		return nil
+	}
+}
+
+func WithNanoIgnoreAllowlist(ignore bool) NanoTDFReaderOption {
+	return func(c *NanoTDFReaderConfig) error {
+		c.ignoreAllowList = ignore
+		return nil
+	}
+}

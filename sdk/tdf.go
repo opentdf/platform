@@ -9,12 +9,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 	"strconv"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -108,8 +110,8 @@ func (r *tdf3DecryptHandler) CreateRewrapRequest(ctx context.Context) (map[strin
 	return createRewrapRequest(ctx, r.reader)
 }
 
-func (s SDK) createTDF3DecryptHandler(writer io.Writer, reader io.ReadSeeker) (*tdf3DecryptHandler, error) {
-	tdfReader, err := s.LoadTDF(reader)
+func (s SDK) createTDF3DecryptHandler(writer io.Writer, reader io.ReadSeeker, opts ...TDFReaderOption) (*tdf3DecryptHandler, error) {
+	tdfReader, err := s.LoadTDF(reader, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -647,6 +649,26 @@ func createPolicyObject(attributes []AttributeValueFQN) (PolicyObject, error) {
 	return policyObj, nil
 }
 
+func allowListFromKASRegistry(ctx context.Context, kasRegistryClient kasregistry.KeyAccessServerRegistryServiceClient, platformURL string) (AllowList, error) {
+	kases, err := kasRegistryClient.ListKeyAccessServers(ctx, &kasregistry.ListKeyAccessServersRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("kasregistry.ListKeyAccessServers failed: %w", err)
+	}
+	kasAllowlist := AllowList{}
+	for _, kas := range kases.GetKeyAccessServers() {
+		err = kasAllowlist.Add(kas.GetUri())
+		if err != nil {
+			return nil, fmt.Errorf("kasAllowlist.Add failed: %w", err)
+		}
+	}
+	// grpc target does not have a scheme
+	err = kasAllowlist.Add("http://" + platformURL)
+	if err != nil {
+		return nil, fmt.Errorf("kasAllowlist.Add failed: %w", err)
+	}
+	return kasAllowlist, nil
+}
+
 // LoadTDF loads the tdf and prepare for reading the payload from TDF
 func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, error) {
 	// create tdf reader
@@ -662,6 +684,20 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 	config, err := newTDFReaderConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("newAssertionConfig failed: %w", err)
+	}
+
+	if config.kasAllowlist == nil && !config.ignoreAllowList {
+		if s.KeyAccessServerRegistry != nil {
+			// retrieve the registered kases if not provided
+			allowList, err := allowListFromKASRegistry(context.Background(), s.KeyAccessServerRegistry, s.conn.Target())
+			if err != nil {
+				return nil, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
+			}
+			config.kasAllowlist = allowList
+		} else {
+			slog.Warn("No KAS allowlist provided and no KeyAccessServerRegistry available, ignoring allowlist")
+			config.ignoreAllowList = true
+		}
 	}
 
 	manifest, err := tdfReader.Manifest()
@@ -954,6 +990,15 @@ func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.Unsigned
 	kasReqs := make(map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest)
 	for i, kao := range r.manifest.EncryptionInformation.KeyAccessObjs {
 		kaoID := fmt.Sprintf("kao-%d", i)
+
+		// if ignoreing allowlist then warn
+		// if kas url is not allowed then return error
+		if r.config.ignoreAllowList {
+			slog.Warn(fmt.Sprintf("KasAllowlist is ignored, kas url %s is allowed", kao.KasURL))
+		} else if !r.config.kasAllowlist.IsAllowed(kao.KasURL) {
+			return nil, fmt.Errorf("KasAllowlist: kas url %s is not allowed", kao.KasURL)
+		}
+
 		key, err := ocrypto.Base64Decode([]byte(kao.WrappedKey))
 		if err != nil {
 			return nil, fmt.Errorf("could not decode wrapper key: %w", err)

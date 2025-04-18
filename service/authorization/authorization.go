@@ -30,6 +30,9 @@ import (
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/policies"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -43,6 +46,7 @@ type AuthorizationService struct { //nolint:revive // AuthorizationService is a 
 	config *Config
 	logger *logger.Logger
 	eval   rego.PreparedEvalQuery
+	trace.Tracer
 }
 
 type Config struct {
@@ -166,7 +170,7 @@ func NewRegistration() *serviceregistry.Service[authorizationconnect.Authorizati
 					panic(fmt.Errorf("failed to load rego and builtins: %w", err))
 				}
 				as.config = authZCfg
-
+				as.Tracer = srp.Tracer
 				logger.Debug("authorization service config")
 
 				return as, nil
@@ -182,7 +186,15 @@ func (as AuthorizationService) IsReady(ctx context.Context) error {
 }
 
 func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *connect.Request[authorization.GetDecisionsByTokenRequest]) (*connect.Response[authorization.GetDecisionsByTokenResponse], error) {
+	// Extract trace context from the incoming request
+	propagator := otel.GetTextMapPropagator()
+	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
+
+	ctx, span := as.Tracer.Start(ctx, "GetDecisionsByToken")
+	defer span.End()
+
 	decisionsRequests := []*authorization.DecisionRequest{}
+
 	// for each token decision request
 	for _, tdr := range req.Msg.GetDecisionRequests() {
 		ecResp, err := as.sdk.EntityResoution.CreateEntityChainFromJwt(ctx, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: tdr.GetTokens()})
@@ -214,6 +226,9 @@ func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *co
 
 func (as *AuthorizationService) GetDecisions(ctx context.Context, req *connect.Request[authorization.GetDecisionsRequest]) (*connect.Response[authorization.GetDecisionsResponse], error) {
 	as.logger.DebugContext(ctx, "getting decisions")
+
+	ctx, span := as.Tracer.Start(ctx, "GetDecisions")
+	defer span.End()
 
 	// Temporary canned echo response with permit decision for all requested decision/entity/ra combos
 	rsp := &authorization.GetDecisionsResponse{
@@ -524,6 +539,9 @@ func makeScopeMap(scope *authorization.ResourceAttribute) map[string]bool {
 
 func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connect.Request[authorization.GetEntitlementsRequest]) (*connect.Response[authorization.GetEntitlementsResponse], error) {
 	as.logger.DebugContext(ctx, "getting entitlements")
+
+	ctx, span := as.Tracer.Start(ctx, "GetEntitlements")
+	defer span.End()
 
 	var nextOffset int32
 	attrsList := make([]*policy.Attribute, 0)

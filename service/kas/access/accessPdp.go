@@ -7,6 +7,7 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/service/tracing"
 )
 
 const (
@@ -43,11 +44,14 @@ func (p *Provider) canAccess(ctx context.Context, token *authorization.Token, po
 		}
 	}
 
-	dr, err := p.checkAttributes(ctx, rasList, token)
+	ctx, span := p.Tracer.Start(ctx, "checkAttributes")
+	defer span.End()
 
+	dr, err := p.checkAttributes(ctx, rasList, token)
 	if err != nil {
 		return nil, err
 	}
+
 	for _, resp := range dr.GetDecisionResponses() {
 		policy, ok := idPolicyMap[resp.GetResourceAttributesId()]
 		if !ok { // this really should not happen
@@ -71,6 +75,8 @@ func (p *Provider) checkAttributes(ctx context.Context, ras []*authorization.Res
 			},
 		},
 	}
+
+	ctx = tracing.InjectTraceContext(ctx)
 	dr, err := p.SDK.Authorization.GetDecisionsByToken(ctx, &in)
 	if err != nil {
 		p.Logger.ErrorContext(ctx, "Error received from GetDecisionsByToken", "err", err)

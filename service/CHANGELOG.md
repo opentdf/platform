@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.5.3](https://github.com/opentdf/platform/compare/service/v0.5.2...service/v0.5.3) (2025-04-18)
+
+
+### Features
+
+* **core:** add otel to opentdf services ([#1858](https://github.com/opentdf/platform/issues/1858)) ([53a7aa0](https://github.com/opentdf/platform/commit/53a7aa0fde3322a54d916169fc11fc495dcbaabe))
+* **core:** support onConfigUpdate hook when registering services ([#1992](https://github.com/opentdf/platform/issues/1992)) ([366d4dc](https://github.com/opentdf/platform/commit/366d4dcdb0ab167bc9523522e2a5a6bb8d310c1b))
+* **policy:** actions crud service endpoints and proto validation ([#2037](https://github.com/opentdf/platform/issues/2037)) ([e933fa9](https://github.com/opentdf/platform/commit/e933fa99283f364a1078191dc4bdd2b94806a9c8))
+* **policy:** add enhanced standard/custom actions protos ([#2020](https://github.com/opentdf/platform/issues/2020)) ([bbac53f](https://github.com/opentdf/platform/commit/bbac53fd622defefc6e8831ab041356fe7e23776))
+* **policy:** DSPX-893 NDR define crud protos ([#2056](https://github.com/opentdf/platform/issues/2056)) ([55a5c27](https://github.com/opentdf/platform/commit/55a5c279d0499f684bc62c53838edbcb89bec272))
+* **policy:** DSPX-898 NDR database schema ([#2055](https://github.com/opentdf/platform/issues/2055)) ([2a10a6a](https://github.com/opentdf/platform/commit/2a10a6a777559e21fae1e4832529a3533a95ad03))
+
+
+### Bug Fixes
+
+* **core:** Autobump service ([#2080](https://github.com/opentdf/platform/issues/2080)) ([006c724](https://github.com/opentdf/platform/commit/006c724d8b97d9ce37e63cda886e058a66e77d06))
+* **core:** bump to go 1.24 and bump service proto module dependencies ([#2064](https://github.com/opentdf/platform/issues/2064)) ([94891a0](https://github.com/opentdf/platform/commit/94891a0c43c105e5a46bda595362705bb6a9feb3))
+* **core:** Fix DPoP with grpc-gateway ([#2044](https://github.com/opentdf/platform/issues/2044)) ([4483ef2](https://github.com/opentdf/platform/commit/4483ef20a8d3340d298e21bf7140b8a1b13d1928))
+* **core:** Updates vulnerable dep go/x/net ([#2072](https://github.com/opentdf/platform/issues/2072)) ([11c02cd](https://github.com/opentdf/platform/commit/11c02cd3d20447edb73db2fdc9181541b541343a))
+* **deps:** bump toolchain in /lib/fixtures and /examples to resolve CVE GO-2025-3563 ([#2061](https://github.com/opentdf/platform/issues/2061)) ([9c16843](https://github.com/opentdf/platform/commit/9c168437db3b138613fe629419dd6bd9f837e881))
+* **policy:** remove predefined rules in actions protos ([#2069](https://github.com/opentdf/platform/issues/2069)) ([060f059](https://github.com/opentdf/platform/commit/060f05941f9b81b007669f51b6205723af8c1680))
+
 ## [0.5.2](https://github.com/opentdf/platform/compare/service/v0.5.1...service/v0.5.2) (2025-04-01)
 
 

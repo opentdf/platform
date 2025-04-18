@@ -356,7 +356,7 @@ func encrypt(client *sdk.SDK, testConfig TestConfig, plaintext string, attribute
 	return nil
 }
 
-func decrypt(client *sdk.SDK, tdfFile string, plaintext string, opts ...sdk.TDFReaderOption) error {
+func decrypt(client *sdk.SDK, tdfFile string, plaintext string) error {
 	file, err := os.Open(tdfFile)
 	if err != nil {
 		return err

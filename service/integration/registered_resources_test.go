@@ -212,7 +212,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_Limit_Succeeds()
 			Limit: s.db.LimitMax - 1,
 		},
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(list)
 
 	// exactly maximum
@@ -221,7 +221,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_Limit_Succeeds()
 			Limit: s.db.LimitMax,
 		},
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(list)
 }
 
@@ -595,7 +595,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResourceValues_Limit_Succe
 			Limit: s.db.LimitMax - 1,
 		},
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(list)
 
 	// exactly maximum
@@ -604,7 +604,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResourceValues_Limit_Succe
 			Limit: s.db.LimitMax,
 		},
 	})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(list)
 }
 
